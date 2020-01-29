@@ -1,0 +1,279 @@
+[
+    {
+        "name": "convective_cloud_fraction",
+        "fortran_name": "cv",
+        "units": "",
+        "container": "Cldprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "convective_cloud_top_pressure",
+        "fortran_name": "cvt",
+        "units": "Pa",
+        "container": "Cldprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "convective_cloud_bottom_pressure",
+        "fortran_name": "cvb",
+        "units": "Pa",
+        "container": "Cldprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "land_sea_mask",
+        "fortran_name": "slmsk",
+        "units": "",
+        "description": "sea=0, land=1, sea-ice=2",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "surface_temperature",
+        "fortran_name": "tsfc",
+        "restart_name": "tsea",
+        "units": "degK",
+        "description": "surface skin temperature",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "water_equivalent_of_accumulated_snow_depth",
+        "fortran_name": "weasd",
+        "restart_name": "sheleg",
+        "units": "kg/m^2",
+        "description": "weasd in Fortran code, over land and sea ice only",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "deep_soil_temperature",
+        "fortran_name": "tg3",
+        "units": "degK",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "surface_roughness",
+        "fortran_name": "zorl",
+        "units": "cm",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "mean_visible_albedo_with_strong_cosz_dependency",
+        "fortran_name": "alvsf",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "mean_visible_albedo_with_weak_cosz_dependency",
+        "fortran_name": "alvwf",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "mean_near_infrared_albedo_with_strong_cosz_dependency",
+        "fortran_name": "alnsf",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "mean_near_infrared_albedo_with_weak_cosz_dependency",
+        "fortran_name": "alnwf",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "fractional_coverage_with_strong_cosz_dependency",
+        "fortran_name": "facsf",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "fractional_coverage_with_weak_cosz_dependency",
+        "fortran_name": "facwf",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "vegetation_fraction",
+        "fortran_name": "vfrac",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "canopy_water",
+        "fortran_name": "canopy",
+        "units": "unknown",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "fm_at_10m",
+        "fortran_name": "f10m",
+        "units": "unknown",
+        "description": "Ratio of sigma level 1 wind and 10m wind",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "air_temperature_at_2m",
+        "fortran_name": "t2m",
+        "units": "degK",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "specific_humidity_at_2m",
+        "fortran_name": "q2m",
+        "units": "kg/kg",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "vegetation_type",
+        "fortran_name": "vtype",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "soil_type",
+        "fortran_name": "stype",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "friction_velocity",
+        "fortran_name": "uustar",
+        "units": "m/s",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "fm_parameter",
+        "fortran_name": "ffmm",
+        "units": "unknown",
+        "description": "used in PBL scheme",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "fh_parameter",
+        "fortran_name": "ffhh",
+        "units": "unknown",
+        "description": "used in PBL scheme",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "sea_ice_thickness",
+        "fortran_name": "hice",
+        "units": "unknown",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "ice_fraction_over_open_water",
+        "fortran_name": "fice",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "surface_temperature_over_ice_fraction",
+        "fortran_name": "tisfc",
+        "units": "degK",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "total_precipitation",
+        "fortran_name": "tprcp",
+        "units": "unknown",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "snow_rain_flag",
+        "fortran_name": "srflag",
+        "units": "",
+        "description": "snow/rain flag for precipitation",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "snow_depth_water_equivalent",
+        "fortran_name": "snowd",
+        "restart_name": "snwdph",
+        "units": "mm",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "minimum_fractional_coverage_of_green_vegetation",
+        "fortran_name": "shdmin",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "maximum_fractional_coverage_of_green_vegetation",
+        "fortran_name": "shdmax",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "surface_slope_type",
+        "fortran_name": "slope",
+        "units": "",
+        "description": "used in land surface model",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "maximum_snow_albedo_in_fraction",
+        "fortran_name": "snoalb",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "snow_cover_in_fraction",
+        "fortran_name": "sncovr",
+        "units": "",
+        "container": "Sfcprop",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "soil_temperature",
+        "fortran_name": "stc",
+        "units": "degK",
+        "container": "Sfcprop",
+        "dims": ["z_soil", "y", "x"]
+    },
+    {
+        "name": "total_soil_moisture",
+        "fortran_name": "smc",
+        "units": "unknown",
+        "container": "Sfcprop",
+        "dims": ["z_soil", "y", "x"]
+    },
+    {
+        "name": "liquid_soil_moisture",
+        "fortran_name": "slc",
+        "units": "unknown",
+        "container": "Sfcprop",
+        "dims": ["z_soil", "y", "x"]
+    }
+]

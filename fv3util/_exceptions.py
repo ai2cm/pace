@@ -1,0 +1,3 @@
+
+class InvalidQuantityError(Exception):
+    pass
