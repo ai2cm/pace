@@ -2,7 +2,10 @@ from setuptools import setup
 
 setup_requirements = []
 
-requirements = []
+requirements = [
+    'xarray>=0.13.0',
+    'numpy>=0.15.0',
+]
 
 test_requirements = []
 
