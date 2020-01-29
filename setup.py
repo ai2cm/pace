@@ -34,6 +34,7 @@ setup(
     license="BSD license",
     long_description=readme,
     packages=['fv3util'],
+    include_package_data=True,
     url='https://github.com/VulcanClimateModeling/fv3gfs-python',
     version='0.2.1',
     zip_safe=False,
