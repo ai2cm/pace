@@ -1,21 +1,20 @@
-from ._wrapper import get_n_ghost_cells
 import xarray as xr
 import numpy as np
 
 horizontal_names = ('x', 'y', 'x_interface', 'y_interface')
 
 
-def without_ghost_cells(state):
+def without_ghost_cells(state, n_ghost):
     """Remove ghost cells from a state.
 
     Args:
         state (dict): a state dictionary with ghost cells
+        n_ghost (int): number of ghost cells to remove
 
     Returns:
         state_without_ghost_cells (dict): a state dictionary whose DataArray objects point to
             the same underlying memory as the input state, but not the ghost cells.
     """
-    n_ghost = get_n_ghost_cells()
     state = state.copy()
     for name, value in state.items():
         if name == 'time':
@@ -52,11 +51,12 @@ def pad_with_ghost_cells(data_array, n_ghost):
     )
 
 
-def with_ghost_cells(state):
+def with_ghost_cells(state, n_ghost):
     """Add ghost cells to a state.
     
     Args:
         state (dict): a state dictionary without ghost cells
+        n_ghost (int): number of ghost cells to add
 
     Returns:
         state_with_ghost_cells (dict): a copy of the state dictionary with ghost cells appended.
@@ -64,7 +64,6 @@ def with_ghost_cells(state):
     return_state = {}
     if 'time' in state:
         return_state['time'] = state['time']
-    n_ghost = get_n_ghost_cells()
     for name, data_array in state.items():
         if name != 'time':
             return_state[name] = pad_with_ghost_cells(data_array, n_ghost)
