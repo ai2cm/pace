@@ -1,4 +1,4 @@
-from fv3gfs._mpi import get_tile_number
+from fv3util import get_tile_number
 import unittest
 
 
