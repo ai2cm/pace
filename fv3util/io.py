@@ -1,4 +1,5 @@
 import xarray as xr
+from datetime import datetime
 from .time import datetime64_to_datetime
 
 
@@ -18,3 +19,15 @@ def read_state(filename):
         else:
             out_dict[name] = value
     return out_dict
+
+
+def _get_integer_tokens(line, n_tokens):
+    all_tokens = line.split()
+    return [int(token) for token in all_tokens[:n_tokens]]
+
+
+def get_current_date_from_coupler_res(file):
+    file.readline()
+    file.readline()
+    year, month, day, hour, minute, second = _get_integer_tokens(file.readline(), 6)
+    return datetime(year, month, day, hour, minute, second)

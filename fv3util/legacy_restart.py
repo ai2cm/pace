@@ -1,7 +1,9 @@
 import os
 import xarray as xr
 from datetime import datetime
+from . import io
 from . import _fortran_info as info
+from . import mpi
 
 
 RESTART_NAMES = ('fv_core.res', 'fv_srf_wnd.res', 'fv_tracer.res')
@@ -9,8 +11,14 @@ RESTART_OPTIONAL_NAMES = ('sfc_data', 'phy_data')
 COUPLER_RES_NAME = 'coupler.res'
 
 
-def get_rank_suffix(tile, rank, total_ranks):
-    count = rank % total_ranks
+def get_rank_suffix(rank, total_ranks):
+    if total_ranks % 6 != 0:
+        raise ValueError(
+            f'total_ranks must be evenly divisible by 6, was given {total_ranks}'
+        )
+    ranks_per_tile = total_ranks // 6
+    tile = mpi.get_tile_number(rank, total_ranks)
+    count = rank % ranks_per_tile
     if total_ranks > 6:
         rank_suffix = f'.tile{tile}.nc.{count:04}'
     else:
@@ -19,7 +27,9 @@ def get_rank_suffix(tile, rank, total_ranks):
 
 
 def apply_dims(da, new_dims):
-    return da.swap_dims(zip(da.dims, new_dims))
+    """Applies new dimension names to the last dimensions of the given DataArray."""
+    print(dict(zip(da.dims[-len(new_dims):], new_dims)))
+    return da.rename(dict(zip(da.dims[-len(new_dims):], new_dims)))
 
 
 def apply_restart_metadata(state):
@@ -29,18 +39,11 @@ def apply_restart_metadata(state):
         new_state[name] = apply_dims(da, new_dims)
 
 
-def get_restart_standard_names():
-    return_dict = {}
-    for var_data in info.physics_properties + info.dynamics_properties:
-        restart_name = var_data.get('restart_name', var_data['fortran_name'])
-        return_dict[restart_name] = var_data['name']
-    return return_dict
-
-
-def map_keys(old_keys_to_new, old_dict):
+def map_keys(old_dict, old_keys_to_new):
     new_dict = {}
     for old_key, new_key in old_keys_to_new.items():
-        new_dict[new_key] = old_dict[old_key]
+        if old_key in old_dict:
+            new_dict[new_key] = old_dict[old_key]
     for old_key in set(old_dict.keys()).difference(old_keys_to_new.keys()):
         new_dict[old_key] = old_dict[old_key]
     return new_dict
@@ -53,32 +56,21 @@ def prepend_label(filename, label=None):
         return filename
 
 
-def get_integer_tokens(line, n_tokens):
-    all_tokens = line.split()
-    return [int(token) for token in all_tokens[:n_tokens]]
+def load_partial_state_from_restart_file(file):
+    ds = xr.open_dataset(file)
+    state = map_keys(ds.data_vars, info.get_restart_standard_names())
+    state = apply_restart_metadata(state)
+    return state
 
 
-def get_current_date_from_coupler_res(filename):
-    with open(filename, 'r') as f:
-        f.readline()
-        f.readline()
-        year, month, day, hour, minute, second = get_integer_tokens(f.readline(), 6)
-        return datetime(year, month, day, hour, minute, second)
-
-
-def open_restart(dirname, tile, rank, total_ranks, label=''):
-    suffix = get_rank_suffix(tile, rank, total_ranks)
+def open_restart(dirname, rank, total_ranks, label=''):
+    suffix = get_rank_suffix(rank, total_ranks)
     state = {}
     for name in RESTART_NAMES:
         filename = os.path.join(dirname, prepend_label(name, label) + suffix)
-        state.update(_load_state(filename))
+        with open(filename, 'r') as f:
+            state.update(load_partial_state_from_restart_file(f))
     coupler_res_filename = os.path.join(dirname, prepend_label(COUPLER_RES_NAME, label))
-    state['time'] = get_current_date_from_coupler_res(coupler_res_filename)
-
-
-def _load_state(filename):
-    ds = xr.open_dataset(filename)
-    state = map_keys(get_restart_standard_names(), ds.data_vars)
-    state = apply_restart_metadata(state)
-    return map_keys(get_restart_standard_names(), ds)
+    with open(coupler_res_filename, 'r') as f:
+        state['time'] = io.get_current_date_from_coupler_res(f)
 
