@@ -35,8 +35,10 @@ def apply_dims(da, new_dims):
 def apply_restart_metadata(state):
     new_state = {}
     for name, da in state.items():
-        new_dims = info.PROPERTIES_BY_STD_NAME[name]['dims']
+        properties = info.PROPERTIES_BY_STD_NAME[name]
+        new_dims = properties['dims']
         new_state[name] = apply_dims(da, new_dims)
+        new_state[name].attrs['units'] = properties['units']
 
 
 def map_keys(old_dict, old_keys_to_new):
