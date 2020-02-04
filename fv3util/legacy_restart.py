@@ -18,12 +18,23 @@ def get_rank_suffix(tile, rank, total_ranks):
     return rank_suffix
 
 
-def apply_restart_metadata():
-    pass
+def apply_dims(da, new_dims):
+    return da.swap_dims(zip(da.dims, new_dims))
+
+
+def apply_restart_metadata(state):
+    new_state = {}
+    for name, da in state.items():
+        new_dims = info.PROPERTIES_BY_STD_NAME[name]['dims']
+        new_state[name] = apply_dims(da, new_dims)
 
 
 def get_restart_standard_names():
-    pass
+    return_dict = {}
+    for var_data in info.physics_properties + info.dynamics_properties:
+        restart_name = var_data.get('restart_name', var_data['fortran_name'])
+        return_dict[restart_name] = var_data['name']
+    return return_dict
 
 
 def map_keys(old_keys_to_new, old_dict):
@@ -67,6 +78,7 @@ def open_restart(dirname, tile, rank, total_ranks, label=''):
 
 def _load_state(filename):
     ds = xr.open_dataset(filename)
-    ds = apply_restart_metadata(ds)
+    state = map_keys(get_restart_standard_names(), ds.data_vars)
+    state = apply_restart_metadata(state)
     return map_keys(get_restart_standard_names(), ds)
 
