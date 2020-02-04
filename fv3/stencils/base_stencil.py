@@ -10,11 +10,11 @@ class BaseStencil:
         self.main_stencil = gtscript.stencil(
             definition=self.main_defs,
             name=self.__class__.__name__,
-            backend=utils.backend,
+            backend=utils.exec_backend,
            )
     def args(self):
         return (self.main_origin, self.main_domain)
-        
+
     def compute(self, args):
         self.main_stencil(*args, origin=self.main_origin, domain=self.main_domain)
         #for edge in self.compute_edges:
@@ -24,7 +24,7 @@ class BaseStencil:
         if(grid.south_edge):
             x_edge_stencil(*args, origin=(0, grid.js, 0),
                               domain=(maxshape[0], 1, maxshape[2]))
-            
+
         if(grid.north_edge):
             x_edge_stencil(*args, origin=(0, grid.je, 0), domain=(maxshape[0], 1, maxshape[2]))
     @staticmethod

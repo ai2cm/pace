@@ -5,11 +5,10 @@ import gt4py.gtscript as gtscript
 from fv3._config import namelist, grid
 from .copy_stencil import copy
 sd = utils.sd
-backend = utils.backend
 origin = (1, 1, 0)
 DZ_MIN = 2.0
 
-#@gtscript.stencil(backend=backend)
+#@gtscript.stencil(backend=utils.exec_backend)
 #def copy_stencil(q_in: sd, q_out: sd):
 #    with computation(PARALLEL), interval(...):
 #        q_out = q_in
@@ -192,7 +191,7 @@ def xy_flux(gz_x, gz_y, xfx, yfx):
 #              gridstruct%ne_corner, gridstruct%nw_corner, bd, gridstruct%grid_type)
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def update_dz_c(dp_ref: sd, zs: sd, area: sd, ut: sd, vt: sd,
                 gz: sd, gz_x: sd, gz_y: sd, ws3: sd, *,
                 dt: float):

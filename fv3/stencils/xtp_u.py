@@ -5,11 +5,10 @@ from fv3._config import grid, namelist
 from .xppm import compute_al,main_al,flux_intermediates, fx1_fn, final_flux, get_bl, get_br, is_smt5_mord5, is_smt5_most_mords, get_b0
 
 sd = utils.sd
-backend = utils.backend
 origin = (0, 0, 0)
 halo = utils.halo
 
-@gtscript.stencil(backend=utils.backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def get_flux_u_stencil_old(q: sd, c: sd, al: sd, rdx: sd, flux: sd, mord: int):
     with computation(PARALLEL), interval(...):
         bl, br, b0, tmp = flux_intermediates(q, al, mord)
@@ -17,7 +16,7 @@ def get_flux_u_stencil_old(q: sd, c: sd, al: sd, rdx: sd, flux: sd, mord: int):
         fx0 = fx1_fn(cfl, br, b0, bl)
         flux = final_flux(c, q, fx0, tmp)
 
-@gtscript.stencil(backend=utils.backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def get_flux_u_stencil(q: sd, c: sd, al: sd, rdx: sd, bl:sd, br:sd, flux: sd, mord: int):
     with computation(PARALLEL), interval(...):
         b0 = get_b0(bl=bl, br=br)
@@ -28,14 +27,14 @@ def get_flux_u_stencil(q: sd, c: sd, al: sd, rdx: sd, bl:sd, br:sd, flux: sd, mo
         flux = final_flux(c, q, fx0, tmp)
 
 
-@gtscript.stencil(backend=utils.backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def br_bl_main(q:sd, al:sd, bl:sd, br:sd):
     with computation(PARALLEL), interval(...):
         bl = get_bl(al=al, q=q)
         br = get_br(al=al, q=q)
 
 
-@gtscript.stencil(backend=utils.backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def br_bl_corner(br:sd, bl:sd):
     with computation(PARALLEL), interval(...):
         bl = 0

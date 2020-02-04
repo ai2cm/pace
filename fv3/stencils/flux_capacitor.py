@@ -4,10 +4,8 @@ import gt4py.gtscript as gtscript
 from fv3._config import namelist, grid
 
 sd = utils.sd
-backend = utils.backend
 
-
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def flux_capacitor(cx: sd, cy: sd, xflux: sd, yflux: sd, crx_adv: sd, cry_adv: sd, fx: sd, fy: sd):
     with computation(PARALLEL), interval(0, None):
         cx = cx + crx_adv

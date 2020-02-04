@@ -10,13 +10,13 @@ sd = utils.sd
 origin = (2, 0, 0)
 
 
-@gtscript.stencil(backend=utils.backend, externals={'p1': p1, 'p2': p2})
+@gtscript.stencil(backend=utils.exec_backend, externals={'p1': p1, 'p2': p2})
 def main_al(q: sd, al: sd):
     with computation(PARALLEL), interval(0, None):
         al = p1 * (q[-1, 0, 0] + q) + p2 * (q[-2, 0, 0] + q[1, 0, 0])
 
 
-@gtscript.stencil(backend=utils.backend, externals={'c1': c1, 'c2': c2, 'c3': c3})
+@gtscript.stencil(backend=utils.exec_backend, externals={'c1': c1, 'c2': c2, 'c3': c3})
 def al_y_edge(q: sd, dya: sd, al: sd):
     with computation(PARALLEL), interval(0, None):
         al = c1 * q[-2, 0, 0] + c2 * q[-1, 0, 0] + c3 * q
@@ -54,7 +54,7 @@ def fx1_fn(c, br, b0, bl):
 def final_flux(c, q, fx1, tmp):
     return q[-1, 0, 0] + fx1 * tmp if c > 0.0 else q + fx1 * tmp
 
-@gtscript.stencil(backend=utils.backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def get_flux(q: sd, c: sd, al: sd, flux: sd, *, mord: int):
     with computation(PARALLEL), interval(0, None):
         bl, br, b0, tmp = flux_intermediates(q, al, mord)

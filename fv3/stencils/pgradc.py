@@ -3,10 +3,12 @@ import gt4py as gt
 import gt4py.gtscript as gtscript
 from fv3._config import namelist, grid
 import numpy as np
+
 sd = utils.sd
-backend = utils.backend
 origin = utils.origin
+
 #from fv3.test.test_python_modules import global_grid
+
 @gtscript.function
 def p_grad_c_u(uc_in, wk, pkc, gz, rdxc, dt2):
     return uc_in + dt2 * rdxc[0, 0] / (wk[-1, 0, 0] + wk) * \
@@ -44,7 +46,7 @@ def p_grad_c_fn(uc_in, vc_in, delpc, pkc, gz,
 
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def p_grad_c(uc_in: sd, vc_in: sd, delpc: sd, pkc: sd, gz: sd,
              rdxc: sd, rdyc: sd,
              hydrostatic: int, dt2: float):
@@ -52,14 +54,14 @@ def p_grad_c(uc_in: sd, vc_in: sd, delpc: sd, pkc: sd, gz: sd,
         uc_in, vc_in = p_grad_c_fn(uc_in, vc_in, delpc, pkc, gz, rdxc, rdyc, hydrostatic, dt2)
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def p_grad_c_ustencil(uc_in: sd,  delpc: sd, pkc: sd, gz: sd,
                       rdxc: sd,   *, hydrostatic: int, dt2: float):
     with computation(PARALLEL), interval(0, -1):
         uc_in =  p_grad_c_u_wk(uc_in, delpc, pkc, gz, rdxc, hydrostatic, dt2)
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def p_grad_c_vstencil(vc_in: sd, delpc: sd, pkc: sd, gz: sd,
                      rdyc: sd, hydrostatic: int, dt2: float):
     with computation(PARALLEL), interval(0, -1):
@@ -81,4 +83,3 @@ def compute(uc, vc, delpc, pkc, gz, dt2):
     # Option 3
     p_grad_c_ustencil(uc, delpc, pkc, gz, grid.rdxc, hydrostatic=hydrostatic, dt2=dt2, origin=co, domain=(grid.nic + 1, grid.njc, grid.npz + 1))
     p_grad_c_vstencil(vc, delpc, pkc, gz, grid.rdyc, hydrostatic=hydrostatic, dt2=dt2, origin=co, domain=(grid.nic, grid.njc + 1, grid.npz + 1))
-  

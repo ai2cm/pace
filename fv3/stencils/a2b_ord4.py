@@ -1,97 +1,96 @@
 #!/usr/bin/env python3
-import fv3.utils.gt4py_utils as utils 
+import fv3.utils.gt4py_utils as utils
 import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
 from .base_stencil import BaseStencil
 from fv3._config import grid, namelist
 from .copy_stencil import copy_stencil
-# comact 4-pt cubic interpolation 
+# comact 4-pt cubic interpolation
 c1 = 2.0/3.0
 c2 = -1.0/6.0
 d1 = 0.375
 d2 = -1.0/24.0
-# PPM volume mean form 
+# PPM volume mean form
 b1 = 7.0/12.0
 b2 = -1.0/12.0
 # 4-pt Lagrange interpolation
 a1 = 0.5625  # 9/16
 a2 = -0.0625  # - 1/16
 sd = utils.sd
-backend = utils.backend
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def ppm_volume_mean_x(qin: sd, qx: sd):
     with computation(PARALLEL), interval(...):
         qx = b2 * (qin[-2, 0, 0] + qin[1, 0, 0]) + b1 * (qin[-1, 0, 0] + qin)
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def ppm_volume_mean_y(qin: sd, qy: sd):
     with computation(PARALLEL), interval(...):
         qy = b2 * (qin[0, -2, 0] + qin[0, 1, 0]) + b1 * (qin[0, -1, 0] + qin)
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def lagrange_interpolation_y(qx: sd, qout: sd):
     with computation(PARALLEL), interval(...):
         qout = a2 * (qx[0, -2, 0] + qx[0, 1, 0]) + a1 * (qx[0, -1, 0] + qx)
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def lagrange_interpolation_x(qy: sd, qout: sd):
     with computation(PARALLEL), interval(...):
         qout = a2 * (qy[-2, 0, 0] + qy[1, 0, 0]) + a1 * (qy[-1, 0, 0] + qy)
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def cubic_interpolation_south(qx: sd, qout: sd, qxx: sd):
     with computation(PARALLEL), interval(...):
         qxx = c1 * (qx[0, -1, 0] + qx) + c2 * (qout[0, -1, 0] + qxx[0, 1, 0])
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def cubic_interpolation_north(qx: sd, qout: sd, qxx: sd):
     with computation(PARALLEL), interval(...):
         qxx = c1 * (qx[0, -1, 0] + qx) + c2 * (qout[0, 1, 0] + qxx[0, -1, 0])
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def cubic_interpolation_west(qy: sd, qout: sd, qyy: sd):
     with computation(PARALLEL), interval(...):
         qyy = c1 * (qy[-1, 0,  0] + qy) + c2 * (qout[-1, 0, 0] + qyy[1, 0, 0])
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def cubic_interpolation_east(qy: sd, qout: sd, qyy: sd):
     with computation(PARALLEL), interval(...):
         qyy = c1 * (qy[-1, 0, 0] + qy) + c2 * (qout[1, 0,  0] + qyy[-1, 0,  0])
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qout_avg(qxx: sd, qyy:sd, qout: sd):
     with computation(PARALLEL), interval(...):
         qout = 0.5 * (qxx + qyy)
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def vort_adjust(qxx: sd, qyy:sd, qout: sd):
     with computation(PARALLEL), interval(...):
         qout = 0.5 * (qxx + qyy)
 
-# @gtscript.stencil(backend=backend)
+# @gtscript.stencil(backend=utils.exec_backend)
 # def x_edge_q2_west(qin: sd, dxa: sd, q2: sd):
 #    with computation(PARALLEL), interval(...):
 #        q2 = (qin[-1, 0, 0] * dxa + qin * dxa[-1, 0, 0]) / (dxa[-1, 0, 0] + dxa)
 
-# @gtscript.stencil(backend=backend)
+# @gtscript.stencil(backend=utils.exec_backend)
 # def x_edge_qout_west_q2(edge_w: sd, q2: sd, qout: sd):
 #    with computation(PARALLEL), interval(...):
 #        qout = edge_w * q2[0, -1, 0] + (1.0 - edge_w) * q2
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qout_x_edge(qin: sd, dxa: sd, edge_w: sd, qout: sd):
     with computation(PARALLEL), interval(...):
         q2 = (qin[-1, 0, 0] * dxa + qin * dxa[-1, 0, 0]) / (dxa[-1, 0, 0] + dxa)
         qout = edge_w * q2[0, -1, 0] + (1.0 - edge_w) * q2
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qout_y_edge(qin: sd, dya: sd, edge_s: sd, qout: sd):
     with computation(PARALLEL), interval(...):
         q1 = (qin[0, -1, 0] * dya + qin * dya[0, -1, 0]) / (dya[0, -1, 0] + dya)
@@ -99,7 +98,7 @@ def qout_y_edge(qin: sd, dya: sd, edge_s: sd, qout: sd):
 
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qx_edge_west(qin: sd, dxa: sd, qx: sd):
     with computation(PARALLEL), interval(...):
         g_in = dxa[1, 0, 0] / dxa
@@ -108,15 +107,15 @@ def qx_edge_west(qin: sd, dxa: sd, qx: sd):
                     ((2.0 + g_ou) * qin[-1, 0, 0] - qin[-2, 0, 0])/(1.0 + g_ou))
         # This does not work, due to access of qx that is changing above
         #qx[1, 0, 0] = (3.0 * (g_in * qin + qin[1, 0, 0]) - (g_in * qx + qx[2, 0, 0])) / (2.0 + 2.0 * g_in)
-       
 
-@gtscript.stencil(backend=backend)
+
+@gtscript.stencil(backend=utils.exec_backend)
 def qx_edge_west2(qin: sd, dxa: sd, qx: sd):
     with computation(PARALLEL), interval(...):
         g_in = dxa / dxa[-1, 0, 0]
         qx = (3.0 * (g_in * qin[-1, 0, 0] + qin) - (g_in * qx[-1, 0, 0] + qx[1, 0, 0])) / (2.0 + 2.0 * g_in)
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qx_edge_east(qin: sd, dxa: sd, qx: sd):
     with computation(PARALLEL), interval(...):
         g_in = dxa[-2, 0, 0] / dxa[-1, 0, 0]
@@ -125,7 +124,7 @@ def qx_edge_east(qin: sd, dxa: sd, qx: sd):
                     ((2.0 + g_ou) * qin - qin[1, 0, 0])/(1.0 + g_ou))
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qx_edge_east2(qin: sd, dxa: sd, qx: sd):
     with computation(PARALLEL), interval(...):
         g_in = dxa[-1, 0, 0] / dxa
@@ -133,7 +132,7 @@ def qx_edge_east2(qin: sd, dxa: sd, qx: sd):
 
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qy_edge_south(qin: sd, dya: sd, qy: sd):
     with computation(PARALLEL), interval(...):
         g_in = dya[0, 1, 0] / dya
@@ -142,14 +141,14 @@ def qy_edge_south(qin: sd, dya: sd, qy: sd):
                     ((2.0 + g_ou) * qin[0, -1, 0] - qin[0, -2, 0])/(1.0 + g_ou))
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qy_edge_south2(qin: sd, dya: sd, qy: sd):
     with computation(PARALLEL), interval(...):
         g_in = dya / dya[0, -1, 0]
         qy = (3.0 * (g_in * qin[0, -1, 0] + qin) - (g_in * qy[0, -1, 0] + qy[0, 1, 0])) / (2.0 + 2.0 * g_in)
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qy_edge_north(qin: sd, dya: sd, qy: sd):
     with computation(PARALLEL), interval(...):
         g_in = dya[0, -2, 0] / dya[0, -1, 0]
@@ -158,7 +157,7 @@ def qy_edge_north(qin: sd, dya: sd, qy: sd):
                     ((2.0 + g_ou) * qin - qin[0, 1, 0])/(1.0 + g_ou))
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def qy_edge_north2(qin: sd, dya: sd, qy: sd):
     with computation(PARALLEL), interval(...):
         g_in = dya[0, -1, 0] / dya
@@ -264,7 +263,7 @@ def compute_qout_edges(qin, qout):
     compute_qout_x_edges(qin, qout)
     compute_qout_y_edges(qin, qout)
 
-    
+
 def compute_qout_x_edges(qin, qout):
     # qout bounds
     js2 = max(grid.halo + 1, grid.js)
@@ -296,11 +295,11 @@ def compute_qx(qin, qout):
     dj = je - js + 1
     # qx interior
     ppm_volume_mean_x(qin, qx, origin=(is_, js, 0), domain=(ie - is_ + 1, dj, grid.npz))
-    
+
     # qx edges
     if grid.west_edge:
         qx_edge_west(qin, grid.dxa, qx, origin=(grid.is_, js, 0), domain=(1, dj, grid.npz))
-        qx_edge_west2(qin, grid.dxa, qx, origin=(grid.is_ + 1, js, 0), domain=(1, dj, grid.npz))     
+        qx_edge_west2(qin, grid.dxa, qx, origin=(grid.is_ + 1, js, 0), domain=(1, dj, grid.npz))
     if grid.east_edge:
         qx_edge_east(qin, grid.dxa, qx, origin=(grid.ie + 1, js, 0), domain=(1, dj, grid.npz))
         qx_edge_east2(qin, grid.dxa, qx, origin=(grid.ie, js, 0), domain=(1, dj, grid.npz))

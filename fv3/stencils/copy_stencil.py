@@ -2,7 +2,7 @@ import fv3.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
 
 
-@gtscript.stencil(backend=utils.backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def copy_stencil(q_in: utils.sd, q_out: utils.sd):
     with computation(PARALLEL), interval(...):
         q_out = q_in

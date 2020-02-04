@@ -11,7 +11,7 @@ class TranslateFortranData2Py:
         self.max_error = 1e-14
         self.grid = grid
         self.maxshape = grid.domain_shape_buffer_1cell()
-        self.backend = utils.backend
+        self.data_backend = utils.data_backend
         self.ordered_input_vars = None
         self.compute_func = None
        
@@ -26,7 +26,7 @@ class TranslateFortranData2Py:
    
     def make_storage_data(self, array, istart=0, jstart=0, kstart=0):
         return utils.make_storage_data(array, self.maxshape, istart, jstart,
-                                       kstart, origin=(istart, jstart, kstart), backend=self.backend)
+                                       kstart, origin=(istart, jstart, kstart), backend=self.data_backend)
 
     def storage_vars(self):
         return self.in_vars['data_vars']
@@ -143,7 +143,7 @@ class TranslateGrid:
     def make_composite_var_storage(self, varname, data3d, shape):
         for s in range(9):
             self.data[varname + str(s + 1)] = utils.make_storage_data(np.squeeze(data3d[:, :, s]), shape,
-                                                                      origin=(0, 0, 0), backend=utils.backend)
+                                                                      origin=(0, 0, 0), backend=utils.data_backend)
 
     def make_grid_storage(self, pygrid):
         shape = pygrid.domain_shape_buffer_1cell()
@@ -160,7 +160,7 @@ class TranslateGrid:
                 istart, jstart = pygrid.horizontal_starts_from_shape(v.shape)
                 if debug:
                     print('Storage for Grid variable', k, istart, jstart, v.shape)
-                self.data[k] = utils.make_storage_data(v, shape, origin=(istart, jstart, 0), istart=istart, jstart=jstart, backend=utils.backend)
+                self.data[k] = utils.make_storage_data(v, shape, origin=(istart, jstart, 0), istart=istart, jstart=jstart, backend=utils.data_backend)
 
 
     def python_grid(self):

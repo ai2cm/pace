@@ -3,10 +3,9 @@ import gt4py as gt
 import gt4py.gtscript as gtscript
 from fv3._config import namelist, grid
 sd = utils.sd
-backend = utils.backend
 origin = utils.origin
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def heat_diss(fx2: sd, fy2: sd, w: sd, rarea: sd, heat_source: sd, diss_est: sd, dw: sd, dd8: float):
     with computation(PARALLEL), interval(...):
         dw = (fx2-fx2[1, 0, 0]+fy2-fy2[0, 1, 0]) * rarea

@@ -25,7 +25,6 @@ import fv3.stencils.divergence_damping as divdamp
 
 dcon_threshold = 1e-5
 sd = utils.sd
-backend = utils.backend
 
 def k_indices():
     return [[0, 1], [1, 2], [2, 3], list(range(3, grid.npz + 1))]
@@ -45,13 +44,13 @@ def flux_integral(w, delp, gx, gy, rarea):
     return w * delp + flux_component(gx, gy, rarea)
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def flux_adjust(w: sd, delp: sd, gx: sd, gy: sd, rarea:sd):
     with computation(PARALLEL), interval(...):
         w = flux_integral(w, delp, gx, gy, rarea)
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def not_inlineq_pressure(gx: sd, gy: sd, rarea: sd, fx: sd, fy: sd, pt: sd, delp: sd):
     with computation(PARALLEL), interval(...):
         pt = flux_integral(pt, delp, gx, gy, rarea)
@@ -59,44 +58,44 @@ def not_inlineq_pressure(gx: sd, gy: sd, rarea: sd, fx: sd, fy: sd, pt: sd, delp
         pt = pt / delp
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def ke_from_bwind(ke: sd, ub: sd, vb: sd):
     with computation(PARALLEL), interval(...):
         ke = 0.5 * (ke + ub * vb)
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def ub_from_vort(vort: sd, ub: sd):
     with computation(PARALLEL), interval(...):
         ub = vort - vort[1, 0, 0]
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def vb_from_vort(vort: sd, vb: sd):
     with computation(PARALLEL), interval(...):
         vb = vort - vort[0, 1, 0]
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def u_from_ke(ke: sd, vt: sd, fy: sd, u: sd):
     with computation(PARALLEL), interval(...):
         u = vt + ke - ke[1, 0, 0] + fy
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def v_from_ke(ke: sd, ut: sd, fx: sd, v: sd):
     with computation(PARALLEL), interval(...):
         v = ut + ke - ke[0, 1, 0] - fx
 
 # TODO: this is untested and the radius may be incorrect
-@gtscript.stencil(backend=backend, rebuild=True, externals={'radius': constants.RADIUS})
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True, externals={'radius': constants.RADIUS})
 def coriolis_force_correction(zh: sd, z_rat: sd):
     from __externals__ import radius
     with computation(PARALLEL), interval(...):
         z_rat = 1.0 + (zh + zh[0, 0, 1])/radius
 
 
-@gtscript.stencil(backend=backend)
+@gtscript.stencil(backend=utils.exec_backend)
 def zrat_vorticity(wk: sd, f0: sd, z_rat: sd, vort: sd):
     with computation(PARALLEL), interval(...):
         vort = wk + f0 * z_rat
@@ -108,7 +107,7 @@ def add_dw(w, dw, damp_w):
     return w
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def adjust_w_and_qcon(w: sd, delp: sd, dw: sd, q_con: sd, damp_w: float):
     with computation(PARALLEL), interval(...):
         w = w / delp
@@ -117,7 +116,7 @@ def adjust_w_and_qcon(w: sd, delp: sd, dw: sd, q_con: sd, damp_w: float):
         q_con = q_con / delp
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def heatdamping_setup(ub: sd, vt: sd, fy: sd, u: sd, gy: sd, rdx: sd):
     with computation(PARALLEL), interval(...):
         ub = (ub + vt) * rdx
@@ -131,7 +130,7 @@ def heat_damping_term(ub, vb, gx, gy, rsin2, cosa_s, u2, v2, du2, dv2):
                     2.0 * (gy + gy[0, 1, 0] + gx + gx[1, 0, 0]) - cosa_s * (u2 * dv2 + v2 * du2 + du2 * dv2))
 
 
-@gtscript.stencil(backend=backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def heatdamping(ub: sd, vb: sd, delp: sd, fx: sd, fy: sd, gx: sd, gy: sd,
                 rsin2: sd, cosa_s: sd, heat_source: sd, diss_est: sd, damp: float, do_skeb: int):
     with computation(PARALLEL), interval(...):
@@ -293,7 +292,7 @@ def d_sw(delpc, delp, ptc, pt, u, v, w, uc, vc, ua, va, divgd,  xflux, yflux, cx
     if not namelist['hydrostatic']:
         dw, wk = damp_vertical_wind(w, heat_s, diss_e, dt, column_namelist)
         w, gx, gy = fvtp2d.compute_no_sg(w, crx, cry, namelist['hord_vt'], xfx, yfx, ra_x, ra_y, column_namelist['nord_v'], column_namelist['damp_vt'], mfx=fx, mfy=fy)
-   
+
         flux_adjust(w, delp, gx, gy, grid.rarea,
                                 origin=grid.compute_origin(), domain=grid.domain_shape_compute())
 
@@ -339,7 +338,7 @@ def d_sw(delpc, delp, ptc, pt, u, v, w, uc, vc, ua, va, divgd,  xflux, yflux, cx
 
     vort, ke, delpc = divdamp.compute(u, v, va, ptc, vort, ua, divgd, vc, uc, delpc, ke, wk,
                                       column_namelist['d2_divg'], dt,  column_namelist['nord'])
-    
+
     if column_namelist['d_con'] > dcon_threshold:
         ub_from_vort(vort, ub, origin=grid.compute_origin(), domain=grid.domain_shape_compute_y())
         vb_from_vort(vort, vb, origin=grid.compute_origin(), domain=grid.domain_shape_compute_x())
@@ -353,7 +352,7 @@ def d_sw(delpc, delp, ptc, pt, u, v, w, uc, vc, ua, va, divgd,  xflux, yflux, cx
     vort, fx, fy = fvtp2d.compute_no_sg(vort, crx, cry, namelist['hord_vt'], xfx, yfx, ra_x, ra_y)
 
     u_from_ke(ke, vt, fy, u, origin=grid.compute_origin(), domain=grid.domain_shape_compute_y())
-    
+
     v_from_ke(ke, ut, fx, v, origin=grid.compute_origin(), domain=grid.domain_shape_compute_x())
 
     if column_namelist['damp_vt'] > dcon_threshold:
