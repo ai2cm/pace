@@ -1,0 +1,71 @@
+[
+    {
+        "name": "x_wind",
+        "fortran_name": "u",
+        "units": "m/s",
+        "dims": ["z", "y_interface", "x"]
+    },
+    {
+        "name": "y_wind",
+        "fortran_name": "v",
+        "units": "m/s",
+        "dims": ["z", "y", "x_interface"]
+    },
+    {
+        "name": "air_temperature",
+        "fortran_name": "pt",
+        "restart_name": "T",
+        "units": "degK",
+        "dims": ["z", "y", "x"]
+    },
+    {
+        "name": "pressure_thickness_of_atmospheric_layer",
+        "fortran_name": "delp",
+        "units": "Pa",
+        "dims": ["z", "y", "x"]
+    },
+    {
+        "name": "vertical_wind",
+        "fortran_name": "w",
+        "restart_name": "W",
+        "units": "m/s",
+        "dims": ["z", "y", "x"]
+    },
+    {
+        "name": "vertical_thickness_of_atmospheric_layer",
+        "fortran_name": "delz",
+        "restart_name": "DZ",
+        "units": "m",
+        "dims": ["z", "y", "x"]
+    },
+    {
+        "name": "surface_geopotential",
+        "fortran_name": "phis",
+        "units": "m^2 s^-2",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "atmosphere_hybrid_a_coordinate",
+        "fortran_name": "ak",
+        "units": "Pa",
+        "dims": ["z"]
+    },
+    {
+        "name": "atmosphere_hybrid_b_coordinate",
+        "fortran_name": "bk",
+        "units": "",
+        "dims": ["z"]
+    },
+    {
+        "name": "eastward_wind_at_surface",
+        "fortran_name": "u_srf",
+        "units": "m/s",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "northward_wind_at_surface",
+        "fortran_name": "v_srf",
+        "units": "m/s",
+        "dims": ["y", "x"]
+    }
+]
