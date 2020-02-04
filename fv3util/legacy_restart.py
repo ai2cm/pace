@@ -1,9 +1,7 @@
 import os
 import xarray as xr
-from datetime import datetime
-from . import io
 from . import _fortran_info as info
-from . import mpi
+from . import mpi, io, filesystem
 
 
 RESTART_NAMES = ('fv_core.res', 'fv_srf_wnd.res', 'fv_tracer.res')
@@ -70,9 +68,10 @@ def open_restart(dirname, rank, total_ranks, label=''):
     state = {}
     for name in RESTART_NAMES:
         filename = os.path.join(dirname, prepend_label(name, label) + suffix)
-        with open(filename, 'r') as f:
+        with filesystem.open(filename, 'r') as f:
             state.update(load_partial_state_from_restart_file(f))
     coupler_res_filename = os.path.join(dirname, prepend_label(COUPLER_RES_NAME, label))
-    with open(coupler_res_filename, 'r') as f:
-        state['time'] = io.get_current_date_from_coupler_res(f)
+    if filesystem.is_file(coupler_res_filename):
+        with filesystem.open(coupler_res_filename, 'r') as f:
+            state['time'] = io.get_current_date_from_coupler_res(f)
 
