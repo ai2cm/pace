@@ -6,21 +6,12 @@ TEST_DATA_HOST=$(shell pwd)/test_data
 TEST_DATA_CONTAINER=/test_data
 GT4PY_PATH=$(shell pwd)/gridtools4py
 GT4PY_REPO=git@github.com:GridTools/gt4py.git
-run_serialize:
-	rm -f $(RUNDIR_HOST)/Gen*.dat
-	rm -f $(RUNDIR_HOST)/Archive*.json
-	rm -f $(RUNDIR_HOST)/Meta*.json
-	if [ ! -d $(shell pwd)/inputdata/fv3gfs-data-docker/fix.v201702 ];then\
-	    ./download_inputdata.sh ;\
-	fi
-	docker run --rm \
-		-v $(RUNDIR_HOST):/Serialize/$(RUNDIR_CONTAINER) \
-		-v $(shell pwd)/inputdata/fv3gfs-data-docker/fix.v201702:/inputdata/fix.v201702 \
-		-it $(GCR_URL)/fv3gfs-compiled-serialize /Serialize/FV3/rundir/submit_job.sh /Serialize/FV3
+
 build:
 	if [ ! -d "$(GT4PY_PATH)" ];then \
 		git clone $(GT4PY_REPO) $(GT4PY_PATH);\
 	fi
+	cd external/fv3gfs-fortran && make build_serialize
 	docker build \
 		-f docker/Dockerfile \
 		-t $(FV3_IMAGE) \

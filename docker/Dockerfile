@@ -1,5 +1,8 @@
 FROM us.gcr.io/vcm-ml/fv3gfs-environment:serialize
 
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip
 RUN pip3 install pytest==5.2.2 && pip3 install f90nml==1.1.0
 COPY gridtools4py gridtools4py 
 RUN pip3 install -e /gridtools4py --no-cache-dir
