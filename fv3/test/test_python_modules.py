@@ -12,6 +12,7 @@ from pydoc import locate
 import nose.tools
 import pytest
 import importlib
+import fv3.utils.gt4py_utils as utils
 
 from .delayed_assert import expect, assert_expectations
 
@@ -99,6 +100,18 @@ def make_grid(sp_grid, serializer):
 
 def savepoint_unique_name(sp):
     return sp.name + '-' + str(sp.metainfo['ID'])
+
+@pytest.fixture()
+def backend(pytestconfig):
+    return pytestconfig.getoption("backend")
+
+@pytest.fixture()
+def data_backend(pytestconfig):
+    return pytestconfig.getoption("data_backend")
+
+@pytest.fixture()
+def exec_backend(pytestconfig):
+    return pytestconfig.getoption("exec_backend")
 
 @pytest.fixture()
 def which_modules(pytestconfig):
@@ -196,9 +209,15 @@ def process_savepoint(serializer, sp, args):
         args['unimplemented'].append(savepoint_unique_name(sp))
 
 
-def test_serialized_savepoints(which_modules, skip_modules, print_failures, failure_stride,  data_path):
+def test_serialized_savepoints(which_modules, skip_modules, print_failures, failure_stride,  data_path, exec_backend, data_backend, backend):
     args = {'which_modules': which_modules, 'skip_modules': skip_modules, 'print_failures': print_failures,
             'failure_stride': failure_stride, 'sp_grid': None, 'serialized_grid': None, 'testcount': 0}
+    if backend != 'numpy':
+        utils.exec_backend = backend
+        utils.data_backend = backend
+    else:
+        utils.exec_backend = exec_backend
+        utils.data_backend = data_backend
     for rank in range(6):
         serializer = ser.Serializer(ser.OpenModeKind.Read, data_path, "Generator_rank" + str(rank))
         savepoints = serializer.savepoint_list()
