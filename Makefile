@@ -25,7 +25,7 @@ build:
 		-f docker/Dockerfile \
 		-t $(FV3_IMAGE) \
     .
-run_unit_tests:
+tests:
 	mkdir -p $(TEST_DATA_HOST)
 	gsutil -m rsync $(TEST_DATA_BUCKET) $(TEST_DATA_HOST) 
 	docker run --rm \

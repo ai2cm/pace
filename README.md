@@ -30,7 +30,7 @@ make build
 make run_unit_tests
 
 -- unit testing with options
-make run_unit_tests TEST_ARGS="add pytest command line args (see below)"
+make tests TEST_ARGS="add pytest command line args (see below)"
 
 Test options:
    --which_modules <modules to run tests for> : comma separated list of which modules to test (default 'all')

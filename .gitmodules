@@ -1,0 +1,3 @@
+[submodule "external/fv3gfs-fortran"]
+	path = external/fv3gfs-fortran
+	url = https://github.com/VulcanClimateModeling/fv3gfs-fortran
