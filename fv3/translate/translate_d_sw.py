@@ -6,6 +6,7 @@ import fv3.utils.gt4py_utils as utils
 class TranslateD_SW(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
+        self.max_error = 2e-13 # propagated error from vt roundoff error in FxAdv
         self.in_vars['data_vars'] = {'uc': grid.x3d_domain_dict(), 'vc': grid.y3d_domain_dict(), 'w':{}, 'delpc':{}, 'delp': {},
                                      'u': grid.y3d_domain_dict(), 'v' :  grid.x3d_domain_dict(), 
                                      'xfx': grid.x3d_compute_domain_y_dict(),

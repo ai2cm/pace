@@ -71,12 +71,16 @@ def compare_arr(computed_data, ref_data):
     #compare[ref_data == 0] = np.abs(computed_data[ref_data == 0] - ref_data[ref_data == 0])
     return compare
 
+def success_array(computed_data, ref_data, eps):
+    return np.logical_or(compare_arr(computed_data, ref_data) < eps,
+                         np.logical_and(np.isnan(computed_data), np.isnan(ref_data)))
+
 def success(computed_data, ref_data, eps):
-    return np.all(compare_arr(computed_data, ref_data) < eps)
+    return np.all(success_array(computed_data, ref_data, eps))
  
 def sample_wherefail(computed_data, ref_data, eps, print_failures, failure_stride, test_str=''):
-    
-    found_indices = np.where(compare_arr(computed_data, ref_data) >= eps)
+    found_indices = np.where(np.logical_not(success_array(computed_data, ref_data, eps)))
+   
     bad_indices_count = len(found_indices[0])
     if print_failures:
         bad_count = 0
@@ -143,6 +147,7 @@ def interpret_success(test_name, var, ref_data, testobj, test_str, args):
             print(bcolors.FAIL + 'WARNING, this may not be a good test, possibly you do not have representative serialized data' + bcolors.ENDC, test_str, 'data mean:', ref_data.mean(), 'max error:', testobj.max_error)
             del(args['output_data'][test_name])
     else:
+        print(var, args['output_data'][test_name][var].shape, ref_data.shape, testobj.max_error)
         example = sample_wherefail(args['output_data'][test_name][var], ref_data,
                                    testobj.max_error, args['print_failures'], args['failure_stride'], test_str)
         expect(False, msg="FAILED for " + test_str + '\n\t' + example)

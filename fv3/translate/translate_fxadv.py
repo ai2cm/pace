@@ -10,6 +10,7 @@ class TranslateFxAdv(TranslateFortranData2Py):
         utinfo['serialname'] = 'ut'
         vtinfo = grid.y3d_domain_dict()
         vtinfo['serialname'] = 'vt'
+        self.max_error = 2e-14
         self.in_vars['data_vars'] = {'uc_in': {'serialname': 'uc'},
                                      'vc_in': {'serialname': 'vc'},
                                      'ut_in': utinfo,
