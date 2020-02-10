@@ -1,0 +1,4 @@
+working_rundir/**
+rundir/**
+src/**
+test_data/**

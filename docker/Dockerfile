@@ -1,14 +1,24 @@
-FROM us.gcr.io/vcm-ml/fv3gfs-environment:serialize
-
+FROM us.gcr.io/vcm-ml/fv3gfs-environment:serialize as fv3ser-environment
 RUN apt-get update && apt-get install -y \
+    llvm-9-dev \
+    libclang-9-dev \
+    libpython3-dev \
     python3 \
     python3-pip
-RUN pip3 install pytest==5.2.2 && pip3 install f90nml==1.1.0
-COPY gridtools4py gridtools4py 
-RUN pip3 install -e /gridtools4py --no-cache-dir
-RUN python3 -m gt4py.gt_src_manager install
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
+FROM fv3ser-environment as install
+RUN pip install scikit-build
+RUN git clone --depth 1 -b dockerize https://github.com/jdahm/dawn.git /usr/src/dawn
+RUN pip install /usr/src/dawn/dawn
+RUN git clone --depth 1 -b field_dimensions_fix https://github.com/jdahm/gt4py /usr/src/gt4py
+RUN pip install -e /usr/src/gt4py
+RUN python /usr/src/gt4py/setup.py install_gt_sources --git-branch=v1.0.4
+RUN pip install pytest==5.2.2 && pip install f90nml==1.1.0
 
-# FROM us.gcr.io/vcm-ml/dawn-gt4py
+# If we update to the latest gt4py, maybe 
+# RUN python -m gt4py.gt_src_manager install
+
 # To be able to run unit tests on generated serialized data
 COPY --from=us.gcr.io/vcm-ml/fv3gfs-environment:serialize /serialbox2 /serialbox2
 COPY fv3 /fv3
