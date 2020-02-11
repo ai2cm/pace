@@ -35,7 +35,7 @@ def state(request):
         raise NotImplementedError()
 
 
-@pytest.fixture(params=["equal", "plus_one"])
+@pytest.fixture(params=["equal", "plus_one", "extra_var"])
 def reference_difference(request):
     return request.param
 
@@ -44,6 +44,13 @@ def reference_difference(request):
 def reference_state(reference_difference, state):
     if reference_difference == "equal":
         reference_state = copy.deepcopy(state)
+    elif reference_difference == "extra_var":
+        reference_state = copy.deepcopy(state)
+        reference_state['extra_var'] = xr.DataArray(
+            np.ones([5]),
+            dims=['dim1'],
+            attrs={'units': 'm'},
+        )
     elif reference_difference == "plus_one":
         reference_state = copy.deepcopy(state)
         for array in reference_state.values():
@@ -70,7 +77,7 @@ def nudging_timescales(state, timestep, multiple_of_timestep):
 
 @pytest.fixture
 def final_state(reference_difference, state, multiple_of_timestep):
-    if reference_difference == "equal":
+    if reference_difference in ("equal", "extra_var"):
         final_state = copy.deepcopy(state)
     elif reference_difference == "plus_one":
         final_state = copy.deepcopy(state)
@@ -83,7 +90,7 @@ def final_state(reference_difference, state, multiple_of_timestep):
 
 @pytest.fixture
 def nudging_tendencies(reference_difference, state, nudging_timescales):
-    if reference_difference == "equal":
+    if reference_difference in ("equal", "extra_var"):
         tendencies = copy.deepcopy(state)
         for array in tendencies.values():
             array.values[:] = 0.

@@ -1,6 +1,7 @@
 import os
 import xarray as xr
-from . import _fortran_info as info
+import copy
+from . import fortran_info
 from . import mpi, io, filesystem
 
 
@@ -26,17 +27,20 @@ def get_rank_suffix(rank, total_ranks):
 
 def apply_dims(da, new_dims):
     """Applies new dimension names to the last dimensions of the given DataArray."""
-    print(dict(zip(da.dims[-len(new_dims):], new_dims)))
     return da.rename(dict(zip(da.dims[-len(new_dims):], new_dims)))
 
 
 def apply_restart_metadata(state):
     new_state = {}
     for name, da in state.items():
-        properties = info.PROPERTIES_BY_STD_NAME[name]
-        new_dims = properties['dims']
-        new_state[name] = apply_dims(da, new_dims)
-        new_state[name].attrs['units'] = properties['units']
+        if name in fortran_info.properties_by_std_name:
+            properties = fortran_info.properties_by_std_name[name]
+            new_dims = properties['dims']
+            new_state[name] = apply_dims(da, new_dims)
+            new_state[name].attrs['units'] = properties['units']
+        else:
+            new_state[name] = copy.deepcopy(da)
+    return new_state
 
 
 def map_keys(old_dict, old_keys_to_new):
@@ -57,8 +61,9 @@ def prepend_label(filename, label=None):
 
 
 def load_partial_state_from_restart_file(file):
-    ds = xr.open_dataset(file)
-    state = map_keys(ds.data_vars, info.get_restart_standard_names())
+    ds = xr.open_dataset(file).isel(Time=0).drop("Time")
+    ds.load()
+    state = map_keys(ds.data_vars, fortran_info.get_restart_standard_names())
     state = apply_restart_metadata(state)
     return state
 
@@ -68,10 +73,10 @@ def open_restart(dirname, rank, total_ranks, label=''):
     state = {}
     for name in RESTART_NAMES:
         filename = os.path.join(dirname, prepend_label(name, label) + suffix)
-        with filesystem.open(filename, 'r') as f:
+        with filesystem.open(filename, 'rb') as f:
             state.update(load_partial_state_from_restart_file(f))
     coupler_res_filename = os.path.join(dirname, prepend_label(COUPLER_RES_NAME, label))
     if filesystem.is_file(coupler_res_filename):
         with filesystem.open(coupler_res_filename, 'r') as f:
             state['time'] = io.get_current_date_from_coupler_res(f)
-
+    return state

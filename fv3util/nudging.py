@@ -52,8 +52,8 @@ def get_nudging_tendencies(state, reference_state, nudging_timescales):
             of that standard name.
     """
     return_array = {}
-    for name, reference in reference_state.items():
-        timescale = nudging_timescales[name].total_seconds()
-        return_array[name] = (reference - state[name]) / timescale
+    for name, timescale in nudging_timescales.items():
+        reference = reference_state[name]
+        return_array[name] = (reference - state[name]) / timescale.total_seconds()
         return_array[name].attrs['units'] = reference.attrs['units'] + ' s^-1'
     return return_array
