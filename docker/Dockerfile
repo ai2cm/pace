@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     libpython3-dev \
     python3 \
     python3-pip 
-# if try to start directly with ubuntu: need at least smake, libssl-dev, libboost-all-dev, git, but others as well    
+# if try to start directly with ubuntu: need at least cmake, libssl-dev, libboost-all-dev, git, but others as well    
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
 FROM fv3ser-environment as install

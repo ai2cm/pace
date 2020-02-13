@@ -54,8 +54,8 @@ rundir:
 	.
 
 generate_test_data:
-	DATA_IMAGE=$(RUNDIR_IMAGE) $(DATA_TARGET)=rundir $(MAKE) rundir
-	DATA_IMAGE=$(TEST_DATA_IMAGE) $(DATA_TARGET)=test_data_storage $(MAKE) rundir
+	DATA_IMAGE=$(RUNDIR_IMAGE) DATA_TARGET=rundir $(MAKE) rundir
+	DATA_IMAGE=$(TEST_DATA_IMAGE) DATA_TARGET=test_data_storage $(MAKE) rundir
 	docker rm $(RUNDIR_IMAGE)
 
 
@@ -80,7 +80,7 @@ pull_test_data:
 tests: build
 	$(MAKE) pull_test_data
 	$(MAKE) extract_test_data
-	$(MAKE) tests_local
+	TEST_DATA_HOST=$(TEST_DATA_PATH) $(MAKE) tests_local
 	(shell rm -r $(TEST_DATA_PATH))
 
 test_base:
