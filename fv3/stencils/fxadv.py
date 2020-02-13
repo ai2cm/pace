@@ -106,10 +106,10 @@ def compute_ut(uc_in, vc_in, cosa_u, rsin_u, ut_in):
     ut.data[:grid.is_ -1, :, :] = ut_in.data[:grid.is_-1, :, :]
     ut.data[grid.ie+3:, :, :] = ut_in.data[grid.ie+3:, :, :]
     # fill in for j /=2 and j/=3
-    if(grid.south_edge):
+    if grid.south_edge:
         ut.data[:, grid.js-1:grid.js+1, :] = ut_in.data[:, grid.js-1:grid.js+1, :]
     # fill in for j/=npy-1 and j /= npy
-    if(grid.north_edge):
+    if grid.north_edge:
         ut.data[:, grid.je:grid.je+2, :] = ut_in.data[:, grid.je:grid.je+2, :]
     return ut
 
@@ -119,7 +119,7 @@ def update_ut_y_edge(uc,  sin_sg1, sin_sg3, ut, dt):
     if grid.west_edge:
         ut_y_edge(uc, sin_sg1, sin_sg3, ut, dt=dt, origin=(grid.is_, 0, 0),
                   domain=edge_shape)
-    if (grid.east_edge):
+    if grid.east_edge:
         ut_y_edge(uc, sin_sg1, sin_sg3, ut, dt=dt, origin=(grid.ie + 1, 0, 0),
                   domain=edge_shape)
 
@@ -155,18 +155,18 @@ def update_vt_y_edge(vc, cosa_v, ut, vt):
         j1 = max(grid.js, grid.halo + 2)
         j2 = min(grid.je + 1, grid.npy) + 1
         edge_shape = (2, j2 - j1, ut.shape[2])
-        if (grid.west_edge):
+        if grid.west_edge:
             vt_y_edge(vc, cosa_v, ut, vt, origin=(grid.is_ - 1, j1, 0), domain=edge_shape)
-        if(grid.east_edge):
+        if grid.east_edge:
             vt_y_edge(vc, cosa_v, ut, vt, origin=(grid.ie, j1, 0), domain=edge_shape)
 
 
 def update_vt_x_edge(vc, sin_sg2, sin_sg4,  vt, dt):
     if (grid.south_edge or grid.north_edge):
         edge_shape = (vt.shape[0], 1, vt.shape[2])
-        if (grid.south_edge):
+        if grid.south_edge:
             vt_x_edge(vc, sin_sg2, sin_sg4, vt, dt=dt, origin=(0, grid.js, 0), domain=edge_shape)
-        if (grid.north_edge):
+        if grid.north_edge:
             vt_x_edge(vc, sin_sg2, sin_sg4, vt, dt=dt, origin=(0, grid.je + 1, 0), domain=edge_shape)
 
 

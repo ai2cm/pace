@@ -1,10 +1,13 @@
-FROM us.gcr.io/vcm-ml/fv3gfs-environment:serialize as fv3ser-environment
+ARG serialbox_image
+FROM $serialbox_image as fv3ser-environment
+
 RUN apt-get update && apt-get install -y \
     llvm-9-dev \
     libclang-9-dev \
     libpython3-dev \
     python3 \
-    python3-pip
+    python3-pip 
+# if try to start directly with ubuntu: need at least smake, libssl-dev, libboost-all-dev, git, but others as well    
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
 FROM fv3ser-environment as install
@@ -19,7 +22,4 @@ RUN pip install pytest==5.2.2 && pip install f90nml==1.1.0
 # If we update to the latest gt4py, maybe 
 # RUN python -m gt4py.gt_src_manager install
 
-# To be able to run unit tests on generated serialized data
-COPY --from=us.gcr.io/vcm-ml/fv3gfs-environment:serialize /serialbox2 /serialbox2
 COPY fv3 /fv3
-

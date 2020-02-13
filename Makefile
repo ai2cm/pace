@@ -1,26 +1,93 @@
 GCR_URL = us.gcr.io/vcm-ml
-TAG ?= latest
-FV3_IMAGE=$(GCR_URL)/fv3ser:$(TAG)
-TEST_DATA_BUCKET= gs://vcm-fv3gfs-data/serialized-unit-test-data
+PYTAG ?= latest
+FORTRAN_TAG ?= serialize
+#<serialization statement change>.<compile options configuration number>.<some other versioned change>
+FORTRAN_VERSION=0.0.0
+VOLUMES ?=''
+CWD=$(shell pwd)
+
 TEST_DATA_HOST=$(shell pwd)/test_data
 TEST_DATA_CONTAINER=/test_data
 
-build:
-	cd external/fv3gfs-fortran && make build_environment_serialize
-	docker build \
+RUNDIR_HOST=$(CWD)/fv3gfs-rundir
+
+SERIALBOX_TARGET=fv3gfs-environment-serialbox
+FORTRAN=$(CWD)/external/fv3gfs-fortran
+
+TEST_DATA_PATH=/tmp/serialized_regression_data
+TEST_DATA_TARGET=fv3gfs-serialization-test-data
+FV3_IMAGE=$(GCR_URL)/fv3py:$(PYTAG)
+COMPILED_IMAGE=$(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-$(FORTRAN_TAG)
+SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
+RUNDIR_IMAGE=$(GCR_URL)/fv3gfs-rundir:$(FORTRAN_VERSION)
+RUN_TARGET ?=rundir
+TEST_DATA_REPO=$(GCR_URL)/$(TEST_DATA_TARGET)
+TEST_DATA_IMAGE=$(TEST_DATA_REPO):$(FORTRAN_VERSION)
+
+FORTRAN_SHA=$(shell git --git-dir=$(FORTRAN)/.git rev-parse HEAD)
+FORTRAN_SHA_FILE=fortran_sha.txt
+REMOTE_TAGS="$(shell gcloud container images list-tags --format='get(tags)' $(TEST_DATA_REPO) | grep $(FORTRAN_VERSION))"
+build_environment_serialize:
+	cd $(FORTRAN) && \
+	DOCKERFILE=$(FORTRAN)/docker/Dockerfile \
+	ENVIRONMENT_TARGET=$(SERIALBOX_TARGET) \
+	$(MAKE) build_environment
+
+build: build_environment_serialize
+	DOCKER_BUILDKIT=1 docker build \
+		--build-arg serialbox_image=$(SERIALBOX_IMAGE) \
 		-f docker/Dockerfile \
 		-t $(FV3_IMAGE) \
     .
-test_data:
-	FORTRAN_COMMIT=git --git-dir=external/fv3gfs-fortran/.git rev-parse HEAD
 
 dev:
-	docker run --rm -v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) -v $(shell pwd):/port_dev -it $(FV3_IMAGE)
+	docker run --rm -v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) -v $(CWD):/port_dev -it $(FV3_IMAGE)
 
-tests:
-	mkdir -p $(TEST_DATA_HOST)
-	# gsutil -m rsync $(TEST_DATA_BUCKET) $(TEST_DATA_HOST) 
-	docker run --rm \
-	-v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) \
+rundir:
+	cd $(FORTRAN) && SERIALIZE_IMAGE=$(COMPILED_IMAGE) $(MAKE) build_serialize
+	docker build \
+		--build-arg model_image=$(COMPILED_IMAGE) \
+		--build-arg fortran_sha_file=$(FORTRAN_SHA_FILE) \
+		-f docker/Dockerfile.rundir \
+		--target $(DATA_TARGET) \
+		-t $(DATA_IMAGE) \
+	.
+
+generate_test_data:
+	DATA_IMAGE=$(RUNDIR_IMAGE) $(DATA_TARGET)=rundir $(MAKE) rundir
+	DATA_IMAGE=$(TEST_DATA_IMAGE) $(DATA_TARGET)=test_data_storage $(MAKE) rundir
+	docker rm $(RUNDIR_IMAGE)
+
+
+extract_test_data:
+	if [ -d $(TEST_DATA_PATH) ]; then (echo "NOTE: $(TEST_DATA_PATH) already exists, move or delete it if you want a new extraction");\
+	else	\
+	docker create --name tmp_modelrundata -it $(TEST_DATA_IMAGE)  &&\
+	docker cp tmp_modelrundata:/test_data .  && \
+	docker rm -f tmp_modelrundata \
+	;fi
+
+
+post_test_data:
+	echo $(REMOTE_TAGS)
+	if [ -z $(REMOTE_TAGS) ]; then docker push $(TEST_DATA_IMAGE) ;\
+	else echo "ERROR: $(FORTRAN_VERSION) of test data has already been pushed. Do a direct docker push if you really intend to overwrite it" && exit 1 ; fi
+
+
+pull_test_data:
+	[ ! -z $(docker images -q $(TEST_DATA_IMAGE)) ] || docker pull $(TEST_DATA_IMAGE)
+
+tests: build
+	$(MAKE) pull_test_data
+	$(MAKE) extract_test_data
+	$(MAKE) tests_local
+	(shell rm -r $(TEST_DATA_PATH))
+
+test_base:
+	docker run --rm $(VOLUMES)\
         -it $(FV3_IMAGE) pytest -v -s  --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} /fv3/test
+
+tests_local: 
+	VOLUMES='-v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER)' \
+	$(MAKE) test_base
 .PHONY: build tests test_data dev
