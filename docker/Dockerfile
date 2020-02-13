@@ -1,4 +1,5 @@
 ARG serialbox_image
+
 FROM $serialbox_image as fv3ser-environment
 
 RUN apt-get update && apt-get install -y \
@@ -10,7 +11,8 @@ RUN apt-get update && apt-get install -y \
 # if try to start directly with ubuntu: need at least cmake, libssl-dev, libboost-all-dev, git, but others as well    
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
-FROM fv3ser-environment as install
+
+FROM fv3ser-environment as fv3ser-install
 RUN pip install scikit-build
 RUN git clone --depth 1 -b dockerize https://github.com/jdahm/dawn.git /usr/src/dawn
 RUN pip install /usr/src/dawn/dawn
@@ -22,4 +24,6 @@ RUN pip install pytest==5.2.2 && pip install f90nml==1.1.0
 # If we update to the latest gt4py, maybe 
 # RUN python -m gt4py.gt_src_manager install
 
+FROM fv3ser-install as fv3ser
 COPY fv3 /fv3
+
