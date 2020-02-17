@@ -26,44 +26,51 @@ def time_step():
     return timedelta(hours=1)
 
 
-@pytest.fixture(params=["empty", "one_var", "one_var_2d", "two_vars"])
-def base_state(request):
+@pytest.fixture
+def ny():
+    return 3
+
+
+@pytest.fixture
+def nx():
+    return 3
+
+
+@pytest.fixture
+def nz():
+    return 5
+
+
+@pytest.fixture(params=["empty", "one_var_2d", "one_var_3d", "two_vars"])
+def base_state(request, nz, ny, nx):
     if request.param == 'empty':
         return {}
-    elif request.param == 'one_var':
-        return {
-            'var1': xr.DataArray(
-                np.ones([5]),
-                dims=('dim1',),
-                attrs={'units': 'm'},
-            )
-        }
-    elif request.param == 'one_var':
-        return {
-            'var1': xr.DataArray(
-                np.ones([3]),
-                dims=('dim1'),
-                attrs={'units': 'm'},
-            )
-        }
     elif request.param == 'one_var_2d':
         return {
             'var1': xr.DataArray(
-                np.ones([3, 3]),
-                dims=('dim1', 'dim2'),
+                np.ones([ny, nx]),
+                dims=('y', 'x'),
+                attrs={'units': 'm'},
+            )
+        }
+    elif request.param == 'one_var_3d':
+        return {
+            'var1': xr.DataArray(
+                np.ones([nz, ny, nx]),
+                dims=('z', 'y', 'x'),
                 attrs={'units': 'm'},
             )
         }
     elif request.param == 'two_vars':
         return {
             'var1': xr.DataArray(
-                np.ones([5]),
-                dims=('dim1',),
+                np.ones([ny, nx]),
+                dims=('y', 'x'),
                 attrs={'units': 'm'},
             ),
             'var2': xr.DataArray(
-                np.ones([5]),
-                dims=('dim1',),
+                np.ones([nz, ny, nx]),
+                dims=('z', 'y', 'x'),
                 attrs={'units': 'm'},
             )
         }
@@ -83,9 +90,10 @@ def state_list(base_state, n_times, start_time, time_step):
     return state_list
 
 
-def test_monitor_file_store(state_list):
+def test_monitor_file_store(state_list, nz, ny, nx):
+    domain = fv3util.Partitioner(rank=0, total_ranks=6, nz=nz, ny=ny, nx=nx, layout=(1, 1))
     with tempfile.TemporaryDirectory(suffix='.zarr') as tempdir:
-        monitor = fv3util.ZarrMonitor(tempdir)
+        monitor = fv3util.ZarrMonitor(tempdir, domain)
         for state in state_list:
             monitor.store(state)
         validate_store(state_list, tempdir)
@@ -99,12 +107,12 @@ def validate_store(states, filename):
         if name == 'time':
             assert array.shape == (nt,)
         else:
-            assert array.shape == (nt, 1) + states[0][name].shape
+            assert array.shape == (nt, 6) + states[0][name].shape
         if name == 'time':
             target_attrs = {"_ARRAY_DIMENSIONS": ['time']}
         else:
             target_attrs = states[0][name].attrs
-            target_attrs["_ARRAY_DIMENSIONS"] = ['time', 'rank'] + list(states[0][name].dims)
+            target_attrs["_ARRAY_DIMENSIONS"] = ['time', 'tile'] + list(states[0][name].dims)
         assert dict(array.attrs) == target_attrs
         if name == 'time':
             for i, s in enumerate(states):
