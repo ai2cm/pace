@@ -1,6 +1,7 @@
 GCR_URL = us.gcr.io/vcm-ml
 PYTAG ?= latest
 FORTRAN_TAG ?= serialize
+PULL ?=True
 #<serialization statement change>.<compile options configuration number>.<some other versioned change>
 FORTRAN_VERSION=0.0.0
 VOLUMES ?=
@@ -15,6 +16,7 @@ FV3_TARGET ?=fv3ser
 FORTRAN=$(CWD)/external/fv3gfs-fortran
 
 FV3_IMAGE ?=$(GCR_URL)/fv3py:$(PYTAG)
+ENV_IMAGE=$(GCR_URL)/fv3gfs-environment:$(FORTRAN_TAG)
 COMPILED_IMAGE=$(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-$(FORTRAN_TAG)
 SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
 RUNDIR_IMAGE=$(GCR_URL)/fv3gfs-rundir:$(FORTRAN_VERSION)
@@ -27,13 +29,14 @@ FORTRAN_SHA=$(shell git --git-dir=$(FORTRAN)/.git rev-parse HEAD)
 FORTRAN_SHA_FILE=fortran_sha.txt
 REMOTE_TAGS="$(shell gcloud container images list-tags --format='get(tags)' $(TEST_DATA_REPO) | grep $(FORTRAN_VERSION))"
 build_environment_serialize:
+	if [ $(PULL) == True ]; then docker pull $(ENV_IMAGE);fi
 	cd $(FORTRAN) && \
 	DOCKERFILE=$(FORTRAN)/docker/Dockerfile \
 	ENVIRONMENT_TARGET=$(SERIALBOX_TARGET) \
 	$(MAKE) build_environment
 
 build: build_environment_serialize
-	docker pull $(FV3_IMAGE)
+	if [ $(PULL) == True ]; then docker pull $(FV3_IMAGE);fi
 	DOCKER_BUILDKIT=1 docker build \
 		--build-arg serialbox_image=$(SERIALBOX_IMAGE) \
 		-f docker/Dockerfile \
@@ -45,7 +48,6 @@ dev:
 	docker run --rm -v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) -v $(CWD):/port_dev -it $(FV3_IMAGE)
 
 rundir:
-	cd $(FORTRAN) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE=$(COMPILED_IMAGE) $(MAKE) build_serialize
 	docker build \
 		--build-arg model_image=$(COMPILED_IMAGE) \
 		--build-arg fortran_sha_file=$(FORTRAN_SHA_FILE) \
@@ -55,9 +57,11 @@ rundir:
 	.
 
 generate_test_data:
+	if [ $(PULL) == True ]; then docker pull $(COMPILED_IMAGE);fi
+	cd $(FORTRAN) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE=$(COMPILED_IMAGE) $(MAKE) build_serialize
 	DATA_IMAGE=$(RUNDIR_IMAGE) DATA_TARGET=rundir $(MAKE) rundir
 	DATA_IMAGE=$(TEST_DATA_IMAGE) DATA_TARGET=test_data_storage $(MAKE) rundir
-	# docker rmi $(RUNDIR_IMAGE)
+	docker rmi $(RUNDIR_IMAGE)
 
 
 extract_test_data:
