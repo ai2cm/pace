@@ -1,7 +1,7 @@
 GCR_URL = us.gcr.io/vcm-ml
 PYTAG ?= latest
 FORTRAN_TAG ?= serialize
-PULL ?=False
+PULL ?=True
 #<serialization statement change>.<compile options configuration number>.<some other versioned change>
 FORTRAN_VERSION=0.0.0
 VOLUMES ?=
@@ -13,9 +13,11 @@ TEST_DATA_TARGET=fv3gfs-serialization-test-data
 
 SERIALBOX_TARGET=fv3gfs-environment-serialbox
 FV3_TARGET ?=fv3ser
+FV3_INSTALL_TARGET=fv3ser-install
 FORTRAN=$(CWD)/external/fv3gfs-fortran
 
 FV3_IMAGE ?=$(GCR_URL)/fv3py:$(PYTAG)
+FV3_INSTALL_IMAGE ?=$(GCR_URL)/$(FV3_INSTALL_TARGET):latest
 COMPILED_IMAGE=$(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-$(FORTRAN_TAG)
 SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
 BASE_ENV_IMAGE=$(GCR_URL)/fv3gfs-environment:latest
@@ -35,17 +37,27 @@ build_environment_serialize:
 	ENVIRONMENT_TARGET=$(SERIALBOX_TARGET) \
 	$(MAKE) build_environment
 
-build: build_environment_serialize
+build_environment: build_environment_serialize
 	DOCKER_BUILDKIT=1 docker build \
 		--build-arg serialbox_image=$(SERIALBOX_IMAGE) \
-		-f docker/Dockerfile \
-		-t $(FV3_IMAGE) \
-	--target $(FV3_TARGET) \
+		-f docker/Dockerfile.build_environment \
+		-t $(FV3_INSTALL_IMAGE) \
+	--target $(FV3_INSTALL_TARGET) \
     .
-pull_base:
-	 docker pull $(FV3_IMAGE)
-push_base:
-	docker push $(FV3_IMAGE)
+
+build:
+	if [ $(PULL) == True ]; then $(MAKE) pull_environment ; else $(MAKE) build_environment ;fi
+	docker build --build-arg build_image=$(FV3_INSTALL_IMAGE) -f docker/Dockerfile -t $(FV3_IMAGE) .
+
+pull_environment:
+	 docker pull $(FV3_INSTALL_IMAGE)
+
+push_environment:
+	docker push $(FV3_INSTALL_IMAGE)
+
+rebuild_environment: build_environment
+	$(MAKE) push_environment
+
 dev:
 	docker run --rm -v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) -v $(CWD):/port_dev -it $(FV3_IMAGE)
 
@@ -59,7 +71,6 @@ rundir:
 	.
 
 generate_test_data:
-	if [ $(PULL) == True ]; then docker pull $(COMPILED_IMAGE);fi
 	cd $(FORTRAN) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE=$(COMPILED_IMAGE) $(MAKE) build_serialize
 	DATA_IMAGE=$(RUNDIR_IMAGE) DATA_TARGET=rundir $(MAKE) rundir
 	DATA_IMAGE=$(TEST_DATA_IMAGE) DATA_TARGET=test_data_storage $(MAKE) rundir
@@ -82,7 +93,7 @@ post_test_data:
 
 
 pull_test_data:
-	[ $(shell -z docker images -q $(TEST_DATA_IMAGE)) ] || docker pull $(TEST_DATA_IMAGE)
+	$(shell -z docker images -q $(TEST_DATA_IMAGE) || docker pull $(TEST_DATA_IMAGE) )
 
 build_tests:
 	 DOCKER_BUILDKIT=1 docker build \
@@ -94,7 +105,7 @@ build_tests:
 	.
 
 tests:
-	if [ $(PULL) == True ]; then $(MAKE) pull_base ;else $(MAKE) build ;fi
+	$(MAKE) build
 	$(MAKE) pull_test_data
 	$(MAKE) build_tests
 	$(MAKE) run_tests_container

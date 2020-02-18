@@ -35,7 +35,7 @@ jobs:
       - run: 
           name: "Run tests"
           command: |
-            PULL=TRUE make tests
+            make tests
      
 workflows:
   version: 2

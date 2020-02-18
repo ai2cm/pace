@@ -5,13 +5,20 @@ FV3ser ('ef-vee-threezer') is a Python (using Gt4py with Dawn) version of the FV
 ------------
 Getting started
 ------------
-* To run the existing unit tests without rebuilding docker containers
-'PULL=True make tests'  -- this will pull the existing docker image for the repo and run the tests
+* To run the existing unit tests 
+'make tests'
 See 'Unit Testing' section below for unit test options
 
+* To rebuild the backend Dawn/Gt4py environment before running tests
+PULL=False make tests
+OR
+make rebuild_environment
+make tests
+
 ------------
-Extract test data from the container if you want to work with it outside the container
+Extracting test data
 ------------
+* To extract test data from the container if you want to work with it outside the container
 make pull_test_data
 make_extract_test_data
 
