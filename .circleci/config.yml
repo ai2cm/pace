@@ -39,12 +39,18 @@ jobs:
      
 workflows:
   version: 2
-  run_only:
-    triggers:
-      filters:
-        branches:
-          only:
-            - master
+  build:
     jobs:
-      - just_run_tests
- 
+      - just_run_tests:
+          filters:
+            branches:
+              only:
+                - master
+     - full_build:
+         triggers:
+           - schedule:
+               cron: "0 0 * * *"
+               filters:
+                 branches:
+                   only:
+                     - master	
