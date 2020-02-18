@@ -46,7 +46,7 @@ build_environment: build_environment_serialize
     .
 
 build:
-	if [ $(PULL) == True ]; then $(MAKE) pull_environment ; else $(MAKE) build_environment ;fi
+	if [ '$(PULL)' == 'True' ]; then $(MAKE) pull_environment ; else $(MAKE) build_environment ;fi
 	docker build --build-arg build_image=$(FV3_INSTALL_IMAGE) -f docker/Dockerfile -t $(FV3_IMAGE) .
 
 pull_environment:
@@ -93,7 +93,7 @@ post_test_data:
 
 
 pull_test_data:
-	$(shell -z docker images -q $(TEST_DATA_IMAGE) || docker pull $(TEST_DATA_IMAGE) )
+	if [ -z $(shell docker images -q $(TEST_DATA_IMAGE)) ]; then docker pull $(TEST_DATA_IMAGE) ;fi
 
 build_tests:
 	 DOCKER_BUILDKIT=1 docker build \
