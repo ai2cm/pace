@@ -42,9 +42,9 @@ workflows:
   run_only:
     triggers:
       filters:
-            branches:
-              only:
-                - master
+        branches:
+          only:
+            - master
     jobs:
       - just_run_tests
   nightly:
