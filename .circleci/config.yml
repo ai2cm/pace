@@ -49,7 +49,7 @@ workflows:
                 - master
       - full_build:
           triggers:
-	    - schedule:
+            - schedule:
                 cron: "0 0 * * *"
                 filters:
                   branches:
