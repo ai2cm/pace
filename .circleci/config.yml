@@ -1,0 +1,59 @@
+version: 2.1
+orbs:
+  gcp-gcr: circleci/gcp-gcr@0.6.1
+jobs:
+  full_build:
+    machine:
+      docker_layer_caching: true
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - run:
+          name: "gcloud auth"
+          command: |
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS 
+      - run:
+          name: "Pull Submodules"
+          command: |
+            git submodule update --init --recursive
+      - run: 
+          name: "Build containers, run tests"
+          command: |
+            make tests
+  just_run_tests:
+    machine:
+      docker_layer_caching: true
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - run:
+          name: "gcloud auth"
+          command: |
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS 
+      - run: 
+          name: "Run tests"
+          command: |
+            PULL=TRUE make tests
+     
+workflows:
+  version: 2
+  run_only:
+    triggers:
+      filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - just_run_tests
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - full_build
