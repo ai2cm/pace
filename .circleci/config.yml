@@ -47,13 +47,4 @@ workflows:
             - master
     jobs:
       - just_run_tests
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - full_build
+ 
