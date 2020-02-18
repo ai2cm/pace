@@ -36,7 +36,7 @@ jobs:
       - run: 
           name: "Run tests"
           command: |
-	    echo "$ENCODED_GCR_KEY" | base64 --decode | docker login --username _json_key --password-stdin https://gcr.io
+            echo "$ENCODED_GCR_KEY" | base64 --decode | docker login --username _json_key --password-stdin https://gcr.io
             make tests
      
 workflows:
