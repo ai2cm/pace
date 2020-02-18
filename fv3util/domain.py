@@ -74,10 +74,12 @@ class Partitioner:
 
     @property
     def ny_rank(self):
+        """the number of cell centers in the y direction on each rank/subtile"""
         return self.ny // self.layout[0]
 
     @property
     def nx_rank(self):
+        """the number of cell centers in the x direction on each rank/subtile"""
         return self.nx // self.layout[1]
 
     def tile(self, rank):
@@ -86,7 +88,7 @@ class Partitioner:
 
     @property
     def ranks_per_tile(self):
-        """Return the number of ranks per tile."""
+        """the number of ranks per tile"""
         return self.total_ranks // 6
 
     def tile_master_rank(self, rank):
@@ -106,7 +108,7 @@ class Partitioner:
             rank,
             array_dims: Tuple[str, ...],
             overlap: bool = False) -> Tuple[slice, slice]:
-        """Get the subtile slice of a given rank on an array.
+        """Return the subtile slice of a given rank on an array.
 
         Assumes 2D arrays are shape [ny, nx] and higher dimensional arrays
         are shape [nz, ny, nx, ...].
