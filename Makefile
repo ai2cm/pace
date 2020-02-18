@@ -16,7 +16,6 @@ FV3_TARGET ?=fv3ser
 FORTRAN=$(CWD)/external/fv3gfs-fortran
 
 FV3_IMAGE ?=$(GCR_URL)/fv3py:$(PYTAG)
-ENV_IMAGE=$(GCR_URL)/fv3gfs-environment:$(FORTRAN_TAG)
 COMPILED_IMAGE=$(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-$(FORTRAN_TAG)
 SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
 RUNDIR_IMAGE=$(GCR_URL)/fv3gfs-rundir:$(FORTRAN_VERSION)
@@ -29,7 +28,7 @@ FORTRAN_SHA=$(shell git --git-dir=$(FORTRAN)/.git rev-parse HEAD)
 FORTRAN_SHA_FILE=fortran_sha.txt
 REMOTE_TAGS="$(shell gcloud container images list-tags --format='get(tags)' $(TEST_DATA_REPO) | grep $(FORTRAN_VERSION))"
 build_environment_serialize:
-	if [ $(PULL) == True ]; then docker pull $(ENV_IMAGE);fi
+	if [ $(PULL) == True ]; then docker pull $(SERIALBOX_IMAGE);fi
 	if [ ! -d $(FORTRAN)/FV3 ]; then git submodule update --init ;fi
 	cd $(FORTRAN) && \
 	DOCKERFILE=$(FORTRAN)/docker/Dockerfile \
