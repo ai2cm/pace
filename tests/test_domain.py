@@ -39,35 +39,32 @@ def test_get_tile_index(rank, total_ranks, tile_index):
 # initialize: rank, total_ranks, ny, nx, layout
 # out: nx_rank, ny_rank, ranks_per_tile, subtile_index
 # array_shape -> tile_extent
-# array_dims -> subtile_range
+# array_dims -> subtile_slice
 
 rank_list = []
-total_rank_list = []
 layout_list = []
 subtile_index_list = []
 
-for layout in ((1, 1), (2, 2), (2, 3)):
+for layout in ((1, 1), (1, 2), (2, 2), (2, 3)):
     rank = 0
-    total_ranks = layout[0] * layout[1] * 6
     for tile in range(6):
-        for y_subtile in range(layout[1]):
-            for x_subtile in range(layout[0]):
+        for y_subtile in range(layout[0]):
+            for x_subtile in range(layout[1]):
                 rank_list.append(rank)
-                total_rank_list.append(total_ranks)
                 layout_list.append(layout)
                 subtile_index_list.append((y_subtile, x_subtile))
                 rank += 1
 
 
 @pytest.mark.parametrize(
-    "rank, total_ranks, layout, subtile_index",
-    zip(rank_list, total_rank_list, layout_list, subtile_index_list))
-def test_subtile_index(rank, total_ranks, layout, subtile_index):
+    "rank, layout, subtile_index",
+    zip(rank_list, layout_list, subtile_index_list))
+def test_subtile_index(rank, layout, subtile_index):
     nz = 60
     ny = 49
     nx = 49
-    grid_2d = fv3util.Grid2D(rank, total_ranks, nz, ny, nx, layout)
-    assert grid_2d.subtile_index == subtile_index
+    partitioner = fv3util.Partitioner(nz, ny, nx, layout)
+    assert partitioner.subtile_index(rank) == subtile_index
 
 
 @pytest.mark.parametrize(
@@ -93,7 +90,7 @@ def test_tile_extent(nz, ny, nx, array_dims, extent):
 
 
 @pytest.mark.parametrize(
-    'array_dims, nz, ny_rank, nx_rank, layout, subtile_index, subtile_range, overlap',
+    'array_dims, nz, ny_rank, nx_rank, layout, subtile_index, subtile_slice, overlap',
     [
         pytest.param(
             [fv3util.Y_DIM, fv3util.X_DIM], 10, 8, 8, (1, 1), (0, 0), (slice(0, 8), slice(0, 8)), False,
@@ -143,11 +140,19 @@ def test_tile_extent(nz, ny, nx, array_dims, extent):
             [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], 10, 4, 4, (2, 2), (1, 1), (slice(4, 9), slice(4, 9)), True,
             id='24_rank_interface_right_overlap'
         ),
+        pytest.param(
+            [fv3util.Y_DIM, fv3util.X_DIM], 10, 4, 2, (1, 2), (0, 0), (slice(0, 4), slice(0, 2)), True,
+            id='24_rank_interface_right_overlap'
+        ),
+        pytest.param(
+            [fv3util.Y_DIM, fv3util.X_DIM], 10, 4, 2, (1, 2), (0, 1), (slice(0, 4), slice(2, 4)), True,
+            id='24_rank_interface_right_overlap'
+        ),
     ]
 )
-def test_subtile_range(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, subtile_range, overlap):
-    result = fv3util.domain.subtile_range(
+def test_subtile_slice(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, subtile_slice, overlap):
+    result = fv3util.domain.subtile_slice(
         array_dims, nz, ny_rank, nx_rank, layout, subtile_index, overlap
     )
-    assert result == subtile_range
+    assert result == subtile_slice
 

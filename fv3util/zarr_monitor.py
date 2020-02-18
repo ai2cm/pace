@@ -41,7 +41,11 @@ class ZarrMonitor:
             mpi_comm: mpi4py comm object to use for communications. By default, will
                 use a dummy comm object that works in single-core mode.
         """
-        self._group = zarr.open_group(store, mode=mode)
+        if mpi_comm.Get_rank() == 0:
+            group = zarr.open_group(store, mode=mode)
+        else:
+            group = None
+        self._group = mpi_comm.bcast(group)
         self._comm = mpi_comm
         self._writers = None
         self.partitioner = partitioner
@@ -116,11 +120,16 @@ class _ZarrVariableWriter:
         self.array.attrs.update(self._get_attrs(array))
 
     def _init_zarr_root(self, array):
-        shape = self._prepend_shape + self._partitioner.tile_extent(array.dims)
+        shape = self._get_tile_shape(array)
         chunks = self._prepend_chunks + self.array_chunks(array.shape)
         self.array = self.group.create_dataset(
             self.name, shape=shape, dtype=array.dtype, chunks=chunks
         )
+
+    def _get_tile_shape(self, array):
+        return_value = (self.i_time + 1, 6) + self._partitioner.tile_extent(array.dims)
+        print(f'tile shape {return_value}')
+        return return_value
 
     def array_chunks(self, array_shape):
         if len(array_shape) == 2:
@@ -146,12 +155,13 @@ class _ZarrVariableWriter:
             self._init_zarr(array)
 
         if self.i_time >= self.array.shape[0] and self.rank == 0:
-            new_shape = (self.i_time + 1,) + self.array.shape[1:]
+            new_shape = self._get_tile_shape(array)
             self.array.resize(*new_shape)
             self._ensure_compatible_attrs(array)
         self.sync_array()
-        target_slice = (self.i_time, self._partitioner.tile) + self._partitioner.subtile_range(array.dims)
-        self.array[target_slice] = np.asarray(array)
+        target_slice = (self.i_time, self._partitioner.tile(self.rank)) + self._partitioner.subtile_slice(self.rank, array.dims)
+        subtile_slice = _get_subtile_slice(target_slice)
+        self.array[target_slice] = np.asarray(array[subtile_slice])
         self.i_time += 1
 
     def _get_attrs(self, array):
@@ -166,6 +176,14 @@ class _ZarrVariableWriter:
                 f"value for {self.name} with attrs {new_attrs} "
                 f"does not match previously stored attrs {dict(self.array.attrs)}"
             )
+
+
+def _get_subtile_slice(target_slice):
+    return_list = []
+    for entry in target_slice:
+        if isinstance(entry, slice):
+            return_list.append(slice(0, entry.stop - entry.start))
+    return tuple(return_list)
 
 
 class _ZarrTimeWriter(_ZarrVariableWriter):

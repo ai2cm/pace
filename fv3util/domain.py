@@ -38,47 +38,39 @@ class Partitioner:
 
     def __init__(
             self,
-            rank: int,
-            total_ranks: int,
             nz: int,
             ny: int,
             nx: int,
             layout: Tuple[int, int]
     ):
-        """Create a Grid2D object for horizontal domain decomposition on a single tile.
+        """Create an object for fv3gfs domain decomposition.
         
         Args:
-            rank: the rank of the process
-            total_ranks: total number of processes
-            ny: number of grid cells along the y-direction
-            nx: number of grid cells along the x-direction
+            nz: number of grid cell centers along the y-direction
+            ny: number of grid cell centers along the y-direction
+            nx: number of grid cell centers along the x-direction
             layout: (x_subtiles, y_subtiles) specifying how the tile is split in the
                 horizontal across multiple processes each with their own subtile.
         """
-        self.rank = rank
-        self.total_ranks = total_ranks
         self.nz = nz
         self.ny = ny
         self.nx = nx
-        self._validate_layout(layout)
         self.layout = layout
+        self.total_ranks = 6 * layout[0] * layout[1]
 
     @classmethod
-    def from_namelist(cls, rank, total_ranks, namelist):
+    def from_namelist(cls, namelist):
+        """Create a Partitioner from a Fortran namelist. Infers dimensions in number
+        of grid cell centers based on namelist parameters.
+
+        Args:
+            namelist (dict): the Fortran namelist
+        """
         return cls(
-            rank=rank,
-            total_ranks=total_ranks,
             nz=namelist['fv_core_nml']['npz'],
             ny=namelist['fv_core_nml']['npy'] - 1,
             nx=namelist['fv_core_nml']['npx'] - 1,
             layout=namelist['fv_core_nml']['layout'])
-
-    def _validate_layout(self, layout):
-        if layout[0] * layout[1] != self.ranks_per_tile:
-            raise ValueError(
-                f"layout must include {self.ranks_per_tile} ranks per tile, "
-                f"but {layout} was given"
-            )
 
     @property
     def ny_rank(self):
@@ -88,30 +80,33 @@ class Partitioner:
     def nx_rank(self):
         return self.nx // self.layout[1]
 
-    @property
-    def tile(self):
-        return get_tile_index(self.rank, self.total_ranks)
+    def tile(self, rank):
+        """Return the tile index of a given rank"""
+        return get_tile_index(rank, self.total_ranks)
 
     @property
     def ranks_per_tile(self):
+        """Return the number of ranks per tile."""
         return self.total_ranks // 6
 
-    @property
-    def tile_master_rank(self):
-        return self.ranks_per_tile * (self.rank // self.ranks_per_tile)
+    def tile_master_rank(self, rank):
+        """Return the lowest rank on the same tile as a given rank."""
+        return self.ranks_per_tile * (rank // self.ranks_per_tile)
 
-    @property
-    def subtile_index(self):
-        return subtile_index(self.rank, self.ranks_per_tile, self.layout)
+    def subtile_index(self, rank):
+        """Return the (y, x) subtile position of a given rank as an integer number of subtiles."""
+        return subtile_index(rank, self.ranks_per_tile, self.layout)
 
     def tile_extent(self, array_dims):
+        """Return the shape of a full tile representation for the given dimensions."""
         return tile_extent(self.nz, self.ny, self.nx, array_dims)
 
-    def subtile_range(
+    def subtile_slice(
             self,
+            rank,
             array_dims: Tuple[str, ...],
             overlap: bool = False) -> Tuple[slice, slice]:
-        """Given array dimensions, return the range of the subtile within the tile domain.
+        """Get the subtile slice of a given rank on an array.
 
         Assumes 2D arrays are shape [ny, nx] and higher dimensional arrays
         are shape [nz, ny, nx, ...].
@@ -127,8 +122,9 @@ class Partitioner:
             y_range: the y range of the array on the tile
             x_range: the x range of the array on the tile
         """
-        return subtile_range(
-            array_dims, self.nz, self.ny_rank, self.nx_rank, self.layout, self.subtile_index,
+        subtile_index = self.subtile_index(rank)
+        return subtile_slice(
+            array_dims, self.nz, self.ny_rank, self.nx_rank, self.layout, subtile_index,
             overlap=overlap,
         )
 
@@ -136,19 +132,13 @@ class Partitioner:
         shape = tile_extent(nz=self.nz, nx=self.nx_rank, ny=self.ny_rank, array_dims=metadata.dims)
         if tile_comm.Get_rank() == constants.MASTER_RANK:
             sendbuf = np.empty((self.ranks_per_tile,) + shape, dtype=metadata.dtype)
-            for add_rank in range(0, self.ranks_per_tile):
-                rank = self.rank + add_rank
-                idx = subtile_index(rank, self.ranks_per_tile, self.layout)
-                subtile_slice = subtile_range(
+            for rank in range(0, self.ranks_per_tile):
+                subtile_slice = self.subtile_slice(
+                    rank,
                     array_dims=metadata.dims,
-                    nz=self.nz,
-                    ny_rank=self.ny_rank,
-                    nx_rank=self.nx_rank,
-                    layout=self.layout,
-                    subtile_index=idx,
-                    overlap=True
+                    overlap=True,
                 )
-                sendbuf[add_rank, :] = np.ascontiguousarray(array[subtile_slice])
+                sendbuf[rank, :] = np.ascontiguousarray(array[subtile_slice])
         else:
             sendbuf = None
         recvbuf = np.empty(shape, dtype=metadata.dtype)
@@ -162,8 +152,8 @@ class Partitioner:
 
 def subtile_index(rank, ranks_per_tile, layout):
     within_tile_rank = rank % ranks_per_tile
-    j = within_tile_rank // layout[0]
-    i = within_tile_rank % layout[0]
+    j = within_tile_rank // layout[1]
+    i = within_tile_rank % layout[1]
     return j, i
 
 
@@ -195,7 +185,7 @@ def tile_extent(nz, ny, nx, array_dims):
     return tuple(return_extents)
 
 
-def subtile_range(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, overlap=False):
+def subtile_slice(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, overlap=False):
     j_subtile, i_subtile = subtile_index
     y_start, x_start = j_subtile * ny_rank, i_subtile * nx_rank
     subtile_extent = tile_extent(nz, ny_rank, nx_rank, array_dims)

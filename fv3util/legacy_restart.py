@@ -61,8 +61,9 @@ def prepend_label(filename, label=None):
 
 
 def load_partial_state_from_restart_file(filename, partitioner, comm, only_names=None):
-    tile_comm = comm.Split(color=partitioner.tile, key=partitioner.rank)
-    if partitioner.rank == partitioner.tile_master_rank:
+    rank = comm.Get_rank()
+    tile_comm = comm.Split(color=partitioner.tile(rank), key=rank)
+    if rank == partitioner.tile_master_rank(rank):
         with filesystem.open(filename) as file:
             ds = xr.open_dataset(file).isel(Time=0).drop("Time")
             state = map_keys(ds.data_vars, fortran_info.get_restart_standard_names())
@@ -78,11 +79,11 @@ def load_partial_state_from_restart_file(filename, partitioner, comm, only_names
             for name, array, metadata in zip(name_list, array_list, metadata_list):
                 state[name] = partitioner.scatter_tile(tile_comm, array, metadata)
     else:
-        name_list = tile_comm.bcast(name_list, root=constants.MASTER_RANK)
-        metadata_list = domain.bcast_metadata_list(tile_comm, array_list)
+        name_list = tile_comm.bcast(None, root=constants.MASTER_RANK)
+        metadata_list = domain.bcast_metadata_list(tile_comm, None)
+        state = {}
         for name, metadata in zip(name_list, metadata_list):
             state[name] = partitioner.scatter_tile(tile_comm, None, metadata)
-        state = {}
     tile_comm.Free()
     return state
 
@@ -112,7 +113,7 @@ def open_restart(dirname, partitioner, comm, label='', only_names=None):
     Returns:
         state: model state dictionary
     """
-    suffix = f'.tile{partitioner.tile + 1}.nc'
+    suffix = f'.tile{partitioner.tile(comm.Get_rank()) + 1}.nc'
     state = {}
     for name in RESTART_NAMES:
         filename = os.path.join(dirname, prepend_label(name, label) + suffix)

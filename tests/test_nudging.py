@@ -27,7 +27,7 @@ def state(request):
             ),
             'var2': xr.DataArray(
                 np.ones([5]),
-                dims=['dim1'],
+                dims=['dim_2'],
                 attrs={'units': 'm'},
             )
         }
@@ -127,6 +127,7 @@ def test_apply_nudging_equals(
         assert result[name].attrs['units'] == tendency.attrs['units']
     for name, reference_array in final_state.items():
         xr.testing.assert_equal(state[name], reference_array)
+        assert state[name].dims == reference_array.dims
         assert state[name].attrs['units'] == reference_array.attrs['units']
 
 
@@ -136,6 +137,7 @@ def test_get_nudging_tendencies_equals(
         state, reference_state, nudging_timescales)
     for name, tendency in nudging_tendencies.items():
         xr.testing.assert_equal(result[name], tendency)
+        assert result[name].dims == tendency.dims
         assert result[name].attrs['units'] == tendency.attrs['units']
 
 
@@ -147,5 +149,6 @@ def test_get_nudging_tendencies_half_timescale(
         state, reference_state, nudging_timescales)
     for name, tendency in nudging_tendencies.items():
         xr.testing.assert_equal(result[name], 2.0 * tendency)
+        assert result[name].dims == tendency.dims
         assert result[name].attrs['units'] == tendency.attrs['units']
 

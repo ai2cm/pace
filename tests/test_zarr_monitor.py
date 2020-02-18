@@ -8,6 +8,33 @@ import copy
 import fv3util
 
 
+class DummyComm:
+
+    _bcast_buffer = []
+
+    def __init__(self, rank, total_ranks):
+        self.rank = rank
+        self.total_ranks = total_ranks
+
+    def Get_rank(self):
+        return self.rank
+
+    def Get_size(self):
+        return self.total_ranks
+
+    def bcast(self, value, root=0):
+        if self.rank == 0:
+            DummyComm._bcast_buffer.append(value)
+        elif self.rank == self.total_ranks:
+            value = DummyComm._bcast_buffer.pop()
+        else:
+            value = DummyComm._bcast_buffer[-1]
+        return value
+
+    def barrier(self):
+        return
+
+
 @pytest.fixture(params=["one_step", "three_steps"])
 def n_times(request):
     if request.param == "one_step":
@@ -28,12 +55,12 @@ def time_step():
 
 @pytest.fixture
 def ny():
-    return 3
+    return 4
 
 
 @pytest.fixture
 def nx():
-    return 3
+    return 4
 
 
 @pytest.fixture
@@ -91,7 +118,7 @@ def state_list(base_state, n_times, start_time, time_step):
 
 
 def test_monitor_file_store(state_list, nz, ny, nx):
-    domain = fv3util.Partitioner(rank=0, total_ranks=6, nz=nz, ny=ny, nx=nx, layout=(1, 1))
+    domain = fv3util.Partitioner(nz=nz, ny=ny, nx=nx, layout=(1, 1))
     with tempfile.TemporaryDirectory(suffix='.zarr') as tempdir:
         monitor = fv3util.ZarrMonitor(tempdir, domain)
         for state in state_list:
@@ -120,3 +147,85 @@ def validate_store(states, filename):
         else:
             for i, s in enumerate(states):
                 np.testing.assert_array_equal(array[i, 0, :], s[name].values)
+
+
+@pytest.mark.parametrize(
+    'layout', [(1, 1), (1, 2), (2, 2), (4, 4)]
+)
+@pytest.mark.parametrize(
+    'nt', [1, 3]
+)
+def test_monitor_file_store_multi_rank_flat_state(layout, nt, tmpdir_factory):
+    tmpdir = tmpdir_factory.mktemp("data.zarr")
+    nz = 5
+    ny = 4
+    nx = 4
+    time = datetime(2010, 6, 20, 6, 0, 0)
+    timestep = timedelta(hours=1)
+    total_ranks = 6 * layout[0] * layout[1]
+    partitioner = fv3util.Partitioner(nz=nz, ny=ny, nx=nx, layout=layout)
+    store = zarr.storage.DirectoryStore(tmpdir)
+    monitor_list = []
+    for rank in range(total_ranks):
+        monitor_list.append(fv3util.ZarrMonitor(
+            store,
+            partitioner,
+            "w",
+            mpi_comm=DummyComm(rank=rank, total_ranks=total_ranks)
+        ))
+    for i_t in range(nt):
+        for rank in range(total_ranks):
+            state = {
+                'time': time + i_t * timestep,
+                'var1': xr.DataArray(
+                    np.ones([nz, partitioner.ny_rank, partitioner.nx_rank]),
+                    dims=['z', 'y', 'x'],
+                    attrs={'units': 'm'}
+                )
+            }
+            monitor_list[rank].store(state)
+    group = zarr.hierarchy.open_group(store=store, mode='r')
+    assert 'var1' in group
+    assert group['var1'].shape == (nt, 6, nz, ny, nx)
+    np.testing.assert_array_equal(group['var1'], 1.0)
+
+
+@pytest.mark.parametrize(
+    'layout', [(1, 1), (1, 2), (2, 2), (4, 4)]
+)
+@pytest.mark.parametrize(
+    'nt', [1, 3]
+)
+def test_monitor_file_store_multi_rank_flat_state_interface(layout, nt, tmpdir_factory):
+    tmpdir = tmpdir_factory.mktemp("data.zarr")
+    nz = 5
+    ny = 4
+    nx = 4
+    time = datetime(2010, 6, 20, 6, 0, 0)
+    timestep = timedelta(hours=1)
+    total_ranks = 6 * layout[0] * layout[1]
+    partitioner = fv3util.Partitioner(nz=nz, ny=ny, nx=nx, layout=layout)
+    store = zarr.storage.DirectoryStore(tmpdir)
+    monitor_list = []
+    for rank in range(total_ranks):
+        monitor_list.append(fv3util.ZarrMonitor(
+            store,
+            partitioner,
+            "w",
+            mpi_comm=DummyComm(rank=rank, total_ranks=total_ranks)
+        ))
+    for i_t in range(nt):
+        for rank in range(total_ranks):
+            state = {
+                'time': time + i_t * timestep,
+                'var1': xr.DataArray(
+                    np.ones([nz, partitioner.ny_rank + 1, partitioner.nx_rank + 1]),
+                    dims=['z', 'y_interface', 'x_interface'],
+                    attrs={'units': 'm'}
+                )
+            }
+            monitor_list[rank].store(state)
+    group = zarr.hierarchy.open_group(store=store, mode='r')
+    assert 'var1' in group
+    assert group['var1'].shape == (nt, 6, nz, ny + 1, nx + 1)
+    np.testing.assert_array_equal(group['var1'], 1.0)
