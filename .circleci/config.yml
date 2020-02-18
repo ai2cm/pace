@@ -47,10 +47,10 @@ workflows:
               only:
                 - master
       - full_build:
-         triggers:
-           - schedule:
-               cron: "0 0 * * *"
-               filters:
-                 branches:
-                   only:
-                     - master	
+          triggers:
+            - schedule:
+                cron: "0 0 * * *"
+                filters:
+                  branches:
+                    only:
+                      - master	
