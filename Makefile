@@ -30,6 +30,7 @@ FORTRAN_SHA_FILE=fortran_sha.txt
 REMOTE_TAGS="$(shell gcloud container images list-tags --format='get(tags)' $(TEST_DATA_REPO) | grep $(FORTRAN_VERSION))"
 build_environment_serialize:
 	if [ $(PULL) == True ]; then docker pull $(ENV_IMAGE);fi
+	if [ ! -d $(FORTRAN)/FV3 ]; then git submodule update --init ;fi
 	cd $(FORTRAN) && \
 	DOCKERFILE=$(FORTRAN)/docker/Dockerfile \
 	ENVIRONMENT_TARGET=$(SERIALBOX_TARGET) \
