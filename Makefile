@@ -1,7 +1,7 @@
 GCR_URL = us.gcr.io/vcm-ml
 PYTAG ?= latest
 FORTRAN_TAG ?= serialize
-PULL ?=True
+PULL ?=False
 #<serialization statement change>.<compile options configuration number>.<some other versioned change>
 FORTRAN_VERSION=0.0.0
 VOLUMES ?=

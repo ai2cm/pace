@@ -14,7 +14,8 @@ RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
 
 FROM fv3ser-environment as fv3ser-install
 RUN pip install scikit-build
-RUN git clone --depth 1 -b dockerize https://github.com/jdahm/dawn.git /usr/src/dawn
+RUN git clone https://github.com/jdahm/dawn.git /usr/src/dawn
+RUN cd /usr/src/dawn && git checkout 5d2939883eeaef8660479c42911f09b54647f5c3
 RUN pip install /usr/src/dawn/dawn
 RUN git clone --depth 1 -b field_dimensions_fix https://github.com/jdahm/gt4py /usr/src/gt4py
 RUN pip install -e /usr/src/gt4py
