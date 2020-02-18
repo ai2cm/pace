@@ -18,6 +18,7 @@ FORTRAN=$(CWD)/external/fv3gfs-fortran
 FV3_IMAGE ?=$(GCR_URL)/fv3py:$(PYTAG)
 COMPILED_IMAGE=$(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-$(FORTRAN_TAG)
 SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
+BASE_ENV_IMAGE=$(GCR_URL)/fv3gfs-environment:latest
 RUNDIR_IMAGE=$(GCR_URL)/fv3gfs-rundir:$(FORTRAN_VERSION)
 RUN_TARGET ?=rundir
 TEST_DATA_REPO=$(GCR_URL)/$(TEST_DATA_TARGET)
@@ -28,22 +29,23 @@ FORTRAN_SHA=$(shell git --git-dir=$(FORTRAN)/.git rev-parse HEAD)
 FORTRAN_SHA_FILE=fortran_sha.txt
 REMOTE_TAGS="$(shell gcloud container images list-tags --format='get(tags)' $(TEST_DATA_REPO) | grep $(FORTRAN_VERSION))"
 build_environment_serialize:
-	if [ $(PULL) == True ]; then docker pull $(SERIALBOX_IMAGE);fi
-	if [ ! -d $(FORTRAN)/FV3 ]; then git submodule update --init ;fi
+	if [ ! -d $(FORTRAN)/FV3 ]; then git submodule update --init --recursive ;fi
 	cd $(FORTRAN) && \
 	DOCKERFILE=$(FORTRAN)/docker/Dockerfile \
 	ENVIRONMENT_TARGET=$(SERIALBOX_TARGET) \
 	$(MAKE) build_environment
 
 build: build_environment_serialize
-	if [ $(PULL) == True ]; then docker pull $(FV3_IMAGE);fi
 	DOCKER_BUILDKIT=1 docker build \
 		--build-arg serialbox_image=$(SERIALBOX_IMAGE) \
 		-f docker/Dockerfile \
 		-t $(FV3_IMAGE) \
-		--target $(FV3_TARGET) \
+	--target $(FV3_TARGET) \
     .
-
+pull_base:
+	 docker pull $(FV3_IMAGE)
+push_base:
+	docker push $(FV3_IMAGE)
 dev:
 	docker run --rm -v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) -v $(CWD):/port_dev -it $(FV3_IMAGE)
 
@@ -80,7 +82,7 @@ post_test_data:
 
 
 pull_test_data:
-	[ -z $(docker images -q $(TEST_DATA_IMAGE)) ] || docker pull $(TEST_DATA_IMAGE)
+	[ $(shell -z docker images -q $(TEST_DATA_IMAGE)) ] || docker pull $(TEST_DATA_IMAGE)
 
 build_tests:
 	 DOCKER_BUILDKIT=1 docker build \
@@ -91,7 +93,8 @@ build_tests:
 		-t $(TEST_IMAGE) \
 	.
 
-tests: build
+tests:
+	if [ $(PULL) == True ]; then $(MAKE) pull_base ;else $(MAKE) build ;fi
 	$(MAKE) pull_test_data
 	$(MAKE) build_tests
 	$(MAKE) run_tests_container

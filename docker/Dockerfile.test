@@ -1,0 +1,6 @@
+ARG fv3ser_image
+ARG testdata_image
+FROM $testdata_image as test_data
+FROM  $fv3ser_image as test
+
+COPY --from=test_data /test_data/ test_data/
