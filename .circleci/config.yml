@@ -20,7 +20,7 @@ jobs:
       - run: 
           name: "Build containers, run tests"
           command: |
-            make tests
+            PULL=False make tests
   just_run_tests:
     machine:
       docker_layer_caching: true
@@ -31,10 +31,12 @@ jobs:
       - run:
           name: "gcloud auth"
           command: |
-            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS 
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+      - gcp-gcr/gcr-auth
       - run: 
           name: "Run tests"
           command: |
+	    echo "$ENCODED_GCR_KEY" | base64 --decode | docker login --username _json_key --password-stdin https://gcr.io
             make tests
      
 workflows:
