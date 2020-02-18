@@ -46,7 +46,7 @@ workflows:
             branches:
               only:
                 - master
-     - full_build:
+      - full_build:
          triggers:
            - schedule:
                cron: "0 0 * * *"
