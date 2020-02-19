@@ -27,7 +27,7 @@ Extracting test data:
 
 * To extract test data from the container if you want to work with it outside the container
 make pull_test_data
-make_extract_test_data
+make extract_test_data
 After you have extracted the test data:
 'make dev'
 The run the tests from /port_dev instead of /fv3

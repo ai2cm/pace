@@ -65,6 +65,7 @@ rundir:
 	docker build \
 		--build-arg model_image=$(COMPILED_IMAGE) \
 		--build-arg fortran_sha_file=$(FORTRAN_SHA_FILE) \
+		--build-arg commit_hash=$(FORTRAN_SHA)\
 		-f docker/Dockerfile.rundir \
 		--target $(DATA_TARGET) \
 		-t $(DATA_IMAGE) \
