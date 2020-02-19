@@ -116,8 +116,8 @@ class _ZarrVariableWriter:
     def _init_zarr(self, array):
         if self.rank == 0:
             self._init_zarr_root(array)
+            self.array.attrs.update(self._get_attrs(array))
         self.sync_array()
-        self.array.attrs.update(self._get_attrs(array))
 
     def _init_zarr_root(self, array):
         shape = self._get_tile_shape(array)
@@ -128,7 +128,6 @@ class _ZarrVariableWriter:
 
     def _get_tile_shape(self, array):
         return_value = (self.i_time + 1, 6) + self._partitioner.tile_extent(array.dims)
-        print(f'tile shape {return_value}')
         return return_value
 
     def array_chunks(self, array_shape):
@@ -161,6 +160,7 @@ class _ZarrVariableWriter:
         self.sync_array()
         target_slice = (self.i_time, self._partitioner.tile(self.rank)) + self._partitioner.subtile_slice(self.rank, array.dims)
         subtile_slice = _get_subtile_slice(target_slice)
+        logger.debug(f'assigning data from subtile slice {subtile_slice} to target slice {target_slice}')
         self.array[target_slice] = np.asarray(array[subtile_slice])
         self.i_time += 1
 
@@ -207,7 +207,6 @@ class _ZarrTimeWriter(_ZarrVariableWriter):
         array = xr.DataArray(np.datetime64(time))
         if self.array is None:
             self._init_zarr(array)
-
         if self.i_time >= self.array.shape[0] and self.rank == 0:
             new_shape = (self.i_time + 1,)
             self.array.resize(*new_shape)

@@ -6,15 +6,19 @@ import pytest
 import xarray as xr
 import copy
 import fv3util
+import logging
+
+
+logger = logging.getLogger('test_zarr_monitor')
 
 
 class DummyComm:
 
-    _bcast_buffer = []
-
-    def __init__(self, rank, total_ranks):
+    def __init__(self, rank, total_ranks, bcast_buffer):
         self.rank = rank
         self.total_ranks = total_ranks
+        self._bcast_buffer = bcast_buffer
+        self._i_buffer = 0
 
     def Get_rank(self):
         return self.rank
@@ -24,11 +28,11 @@ class DummyComm:
 
     def bcast(self, value, root=0):
         if self.rank == 0:
-            DummyComm._bcast_buffer.append(value)
-        elif self.rank == self.total_ranks:
-            value = DummyComm._bcast_buffer.pop()
+            self._bcast_buffer.append(value)
         else:
-            value = DummyComm._bcast_buffer[-1]
+            value = self._bcast_buffer[self._i_buffer]
+            self._i_buffer += 1
+        logger.debug(f'bcast {value} to rank {self.rank}')
         return value
 
     def barrier(self):
@@ -165,13 +169,14 @@ def test_monitor_file_store_multi_rank_flat_state(layout, nt, tmpdir_factory):
     total_ranks = 6 * layout[0] * layout[1]
     partitioner = fv3util.Partitioner(nz=nz, ny=ny, nx=nx, layout=layout)
     store = zarr.storage.DirectoryStore(tmpdir)
+    bcast_buffer = []
     monitor_list = []
     for rank in range(total_ranks):
         monitor_list.append(fv3util.ZarrMonitor(
             store,
             partitioner,
             "w",
-            mpi_comm=DummyComm(rank=rank, total_ranks=total_ranks)
+            mpi_comm=DummyComm(rank=rank, total_ranks=total_ranks, bcast_buffer=bcast_buffer)
         ))
     for i_t in range(nt):
         for rank in range(total_ranks):
@@ -207,13 +212,15 @@ def test_monitor_file_store_multi_rank_flat_state_interface(layout, nt, tmpdir_f
     partitioner = fv3util.Partitioner(nz=nz, ny=ny, nx=nx, layout=layout)
     store = zarr.storage.DirectoryStore(tmpdir)
     monitor_list = []
+    bcast_buffer = []
     for rank in range(total_ranks):
         monitor_list.append(fv3util.ZarrMonitor(
             store,
             partitioner,
             "w",
-            mpi_comm=DummyComm(rank=rank, total_ranks=total_ranks)
+            mpi_comm=DummyComm(rank=rank, total_ranks=total_ranks, bcast_buffer=bcast_buffer)
         ))
+    print("BREAK")
     for i_t in range(nt):
         for rank in range(total_ranks):
             state = {
