@@ -15,17 +15,19 @@ OR
 make rebuild_environment
 make tests
 
-------------
-Extracting test data
-------------
-* To extract test data from the container if you want to work with it outside the container
-make pull_test_data
-make_extract_test_data
 
 ------------
 Developing stencils
 ------------
-It may be easier to volume in the current directory into a container and run tests there (though you can also make build, make tests if you prefer)
+Make a code change in the 'fv3' directory, then erun 'make tests', or 'make build ; make run_tests_container'
+
+Option: develop stencils using data and code as volumes into a container: 
+
+Extracting test data: 
+
+* To extract test data from the container if you want to work with it outside the container
+make pull_test_data
+make_extract_test_data
 After you have extracted the test data:
 'make dev'
 The run the tests from /port_dev instead of /fv3
@@ -39,8 +41,11 @@ pytest -v -s --data_path=/test_data/ /port_dev/fv3/test --which_modules=<Your st
 Installation
 ------------
 
--- build the us.gcr.io/vcm-ml/fv3py container with required dependencies for running the python code (rather than docker pulling it)
+-- build the us.gcr.io/vcm-ml/fv3py container with required dependencies for running the python code 
 make build
+
+To build from scratch (without docker pulling)
+PULL=False make build
 
 ------------
 Relevant repositories
