@@ -46,7 +46,7 @@ build_environment: build_environment_serialize
     .
 
 build:
-	$(if ifeq ($(PULL),True), $(MAKE) pull_environment, $(MAKE) build_environment)
+	if [ $(PULL) == True ]; then $(MAKE) pull_environment; else $(MAKE) build_environment; fi
 	docker build --build-arg build_image=$(FV3_INSTALL_IMAGE) -f docker/Dockerfile -t $(FV3_IMAGE) .
 
 pull_environment:
