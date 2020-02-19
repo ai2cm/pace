@@ -4,7 +4,7 @@ import fv3.utils.corners as corners
 import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
-from fv3._config import grid
+import fv3._config  as spec
 import fv3.stencils.yppm as yppm
 import fv3.stencils.xppm as xppm
 import fv3.stencils.delnflux as delnflux
@@ -41,6 +41,7 @@ def compute(data, nord_column):
 
 def compute_no_sg(q, crx, cry, hord, xfx, yfx, ra_x, ra_y,
                   nord=None, damp_c=None, mass=None, mfx=None, mfy=None):
+    grid = spec.grid
     q_i = utils.make_storage_from_shape(q.shape, (grid.isd, grid.js, 0))
     q_j = utils.make_storage_from_shape(q.shape, (grid.is_, grid.jsd, 0))
     if hord == 10:
@@ -50,11 +51,11 @@ def compute_no_sg(q, crx, cry, hord, xfx, yfx, ra_x, ra_y,
     ord_ou = hord
     corners.copy_corners(q, 'y', grid)
     fy2 = yppm.compute_flux(q, cry, ord_in, grid.isd, grid.ied)
-    q_i_stencil(q, grid.area, yfx, fy2, ra_y, q_i, origin=(grid.isd, grid.js, 0), domain=(grid.nid, grid.njc + 1, grid.npz))#grid.domain_x_compute_y())
+    q_i_stencil(q, grid.area, yfx, fy2, ra_y, q_i, origin=(grid.isd, grid.js, 0), domain=(grid.nid, grid.njc + 1, grid.npz))
     fx = xppm.compute_flux(q_i, crx, ord_ou, grid.js, grid.je)
     corners.copy_corners(q, 'x', grid)
     fx2 = xppm.compute_flux(q, crx, ord_in, grid.jsd, grid.jed)
-    q_j_stencil(q, grid.area, xfx, fx2, ra_x, q_j, origin=(grid.is_, grid.jsd, 0), domain=(grid.nic + 1, grid.njd, grid.npz))#grid.domain_y_compute_x())
+    q_j_stencil(q, grid.area, xfx, fx2, ra_x, q_j, origin=(grid.is_, grid.jsd, 0), domain=(grid.nic + 1, grid.njd, grid.npz))
     fy = yppm.compute_flux(q_j, cry, ord_ou, grid.is_, grid.ie)
     if mfx is not None and mfy is not None:
 

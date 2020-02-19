@@ -3,11 +3,10 @@ import fv3.utils.gt4py_utils as utils
 import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
-from .base_stencil import BaseStencil
-from fv3._config import grid, namelist
-from .copy_stencil import copy_stencil
-from fv3.utils.corners import fill_corners_2d, fill_corners_dgrid
-from .basic_operations import adjustmentfactor_stencil
+import fv3._config as spec
+import fv3.stencils.copy_stencil as cp
+import fv3.utils.corners as corners 
+import fv3.stencils.basic_operations as basic
 import fv3.stencils.a2b_ord4 as a2b_ord4
 
 sd = utils.sd
@@ -95,15 +94,15 @@ def redo_divg_d(uc: sd, vc: sd, divg_d: sd):
 # TODO: can we make this a stencil? docs refer to IR native functions...
 def smagorinksy_diffusion_approx(delpc, vort, dt):
     # abs(dt) * sqrt(delpc**2 + vort **2)
-    interface = (slice(grid.is_, grid.ie+2), slice(grid.js, grid.je+2), slice(0, grid.npz+1))
+    interface = (slice(spec.grid.is_, spec.grid.ie+2), slice(spec.grid.js, spec.grid.je+2), slice(0, spec.grid.npz+1))
     vort[interface] = abs(dt) * np.sqrt(delpc[interface]**2 + vort[interface]**2)
 
 def vorticity_calc(wk, vort, delpc, dt, nord):
     if nord != 0:
-        if namelist['dddmp'] < 1e-5:
+        if spec.namelist['dddmp'] < 1e-5:
             vort[:, :, :] = 0
         else:
-            if namelist['grid_type'] < 3:
+            if spec.namelist['grid_type'] < 3:
                 a2b_ord4.compute(wk, vort, False)
                 smagorinksy_diffusion_approx(delpc, vort, dt)
             else:
@@ -114,6 +113,7 @@ def nord_compute(data, nord_column):
     utils.compute_column_split(compute, data, nord_column, 'nord', ['vort', 'ke', 'delpc'], grid)
 
 def compute(u, v, va, ptc, vort, ua, divg_d, vc, uc, delpc, ke, wk, d2_bg, dt, nord):
+    grid = spec.grid
     js2 = max(grid.halo + 1, grid.js)
     is2 = max(grid.halo + 1, grid.is_)
     je1 = min(grid.npy + 1, grid.je + 1)
@@ -122,22 +122,22 @@ def compute(u, v, va, ptc, vort, ua, divg_d, vc, uc, delpc, ke, wk, d2_bg, dt, n
     if nord == 0:
         damping_zero_order(u, v, va, ptc, vort, ua, vc, uc, delpc, ke, d2_bg, dt, is2, ie1)
     else:
-        copy_stencil(divg_d, delpc, origin=grid.compute_origin(), domain=grid.domain_shape_compute_buffer_2d())
+        cp.copy_stencil(divg_d, delpc, origin=grid.compute_origin(), domain=grid.domain_shape_compute_buffer_2d())
         for n in range(1, nord + 1):
             nt = nord - n
             nint = grid.nic + 2*nt + 1
             njnt = grid.njc + 2*nt + 1
             js = grid.js - nt
             is_ = grid.is_ - nt
-            fillc = (n != nord) and namelist['grid_type'] < 3 and not grid.nested and (grid.sw_corner or grid.se_corner or grid.ne_corner or grid.nw_corner)
+            fillc = (n != nord) and spec.namelist['grid_type'] < 3 and not grid.nested and (grid.sw_corner or grid.se_corner or grid.ne_corner or grid.nw_corner)
             if fillc:
-                fill_corners_2d(divg_d, grid, 'B', 'x')
+                corners.fill_corners_2d(divg_d, grid, 'B', 'x')
             vc_from_divg(divg_d, grid.divg_u, vc, origin=(is_ - 1, js, 0), domain=(nint+1, njnt, grid.npz))
             if fillc:
-                fill_corners_2d(divg_d, grid, 'B', 'y')
+                corners.fill_corners_2d(divg_d, grid, 'B', 'y')
             uc_from_divg(divg_d, grid.divg_v, uc, origin=(is_, js-1, 0), domain=(nint, njnt+1, grid.npz))
             if fillc:
-                fill_corners_dgrid(vc, uc, grid, True)
+                corners.fill_corners_dgrid(vc, uc, grid, True)
 
             redo_divg_d(uc, vc, divg_d, origin=(is_, js, 0), domain=(nint, njnt, grid.npz))
 
@@ -150,18 +150,19 @@ def compute(u, v, va, ptc, vort, ua, divg_d, vc, uc, delpc, ke, wk, d2_bg, dt, n
             if grid.nw_corner:
                 corner_north_remove_extra_term(uc, divg_d, origin=(grid.is_, grid.je+1, 0), domain=grid.corner_domain())
             if not grid.stretched_grid:
-                adjustmentfactor_stencil(grid.rarea_c, divg_d, origin=(is_, js, 0), domain=(nint, njnt, grid.npz))
+                basic.adjustmentfactor_stencil(grid.rarea_c, divg_d, origin=(is_, js, 0), domain=(nint, njnt, grid.npz))
 
         vorticity_calc(wk, vort, delpc, dt, nord)
         if grid.stretched_grid:
-            dd8 = grid.da_min*namelist['d4_bg']**(nord + 1)
+            dd8 = grid.da_min*spec.namelist['d4_bg']**(nord + 1)
         else:
-            dd8 = (grid.da_min_c * namelist['d4_bg'])**(nord + 1)
-        damping_nord_highorder_stencil(vort, ke, delpc, divg_d, grid.da_min_c, d2_bg, namelist['dddmp'], dd8, origin=grid.compute_origin(), domain=grid.domain_shape_compute_buffer_2d())
+            dd8 = (grid.da_min_c * spec.namelist['d4_bg'])**(nord + 1)
+        damping_nord_highorder_stencil(vort, ke, delpc, divg_d, grid.da_min_c, d2_bg, spec.namelist['dddmp'], dd8, origin=grid.compute_origin(), domain=grid.domain_shape_compute_buffer_2d())
 
     return vort, ke, delpc
 
 def damping_zero_order(u, v, va, ptc, vort, ua, vc, uc, delpc, ke, d2_bg, dt, is2, ie1):
+    grid = spec.grid
     if not grid.nested:
         # TODO: ptc and vort are equivalent, but x vs y, consolidate if possible
         ptc_main(u, va, grid.cosa_v, grid.sina_v, grid.dyc, ptc, origin=(grid.is_ - 1, grid.js, 0), domain=(grid.nic + 2, grid.njc + 1, grid.npz))
@@ -190,4 +191,4 @@ def damping_zero_order(u, v, va, ptc, vort, ua, vc, uc, delpc, ke, d2_bg, dt, is
     if grid.nw_corner:
         corner_north_remove_extra_term(vort, delpc, origin=(grid.is_, grid.je+1, 0), domain=grid.corner_domain())
 
-    damping_nord0_stencil(grid.rarea_c, delpc, vort, ke, grid.da_min_c, d2_bg, namelist['dddmp'], dt, origin=grid.compute_origin(), domain=grid.domain_shape_compute_buffer_2d())
+    damping_nord0_stencil(grid.rarea_c, delpc, vort, ke, grid.da_min_c, d2_bg, spec.namelist['dddmp'], dt, origin=grid.compute_origin(), domain=grid.domain_shape_compute_buffer_2d())

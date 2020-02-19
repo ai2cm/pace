@@ -1,7 +1,7 @@
 import fv3.utils.gt4py_utils as utils
 import gt4py as gt
 import gt4py.gtscript as gtscript
-from fv3._config import namelist, grid
+import fv3._config  as spec
 
 sd = utils.sd
 
@@ -16,4 +16,4 @@ def flux_capacitor(cx: sd, cy: sd, xflux: sd, yflux: sd, crx_adv: sd, cry_adv: s
 
 def compute(cx, cy, xflux, yflux, crx_adv, cry_adv, fx, fy):
     # this overcomputes, could split into 2 stencils for x and y directions if this is an issue
-    flux_capacitor(cx, cy, xflux, yflux, crx_adv, cry_adv, fx, fy, origin=grid.default_origin(), domain=grid.domain_shape_standard())
+    flux_capacitor(cx, cy, xflux, yflux, crx_adv, cry_adv, fx, fy, origin=spec.grid.default_origin(), domain=spec.grid.domain_shape_standard())

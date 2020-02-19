@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
 import fv3.utils.gt4py_utils as utils
-from ..utils.corners import copy_corners
-import numpy as np
+import fv3.utils.corners as corners
 import gt4py as gt
 import gt4py.gtscript as gtscript
-from .base_stencil import BaseStencil
-from .copy_stencil import copy
-from fv3._config import grid
-
-origin = (0, 0, 0)
+import fv3.stencils.copy_stencil as cp
+import fv3._config as spec
 sd = utils.sd
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def fx2_order(q: sd, del6_v: sd, fx2: sd, order: int):
     with computation(PARALLEL), interval(...):
         fx2 = del6_v * (q[-1, 0, 0] - q)
         fx2 = -1.0 * fx2 if order > 1 else fx2
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def fy2_order(q: sd, del6_u: sd, fy2: sd, order: int):
     with computation(PARALLEL), interval(...):
         fy2 = del6_u * (q[0, -1, 0] - q)
@@ -27,7 +23,7 @@ def fy2_order(q: sd, del6_u: sd, fy2: sd, order: int):
 
 
 # WARNING: untested
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def fx2_firstorder_use_sg(q: sd, sin_sg1: sd, sin_sg3: sd, dy: sd, rdxc: sd, fx2: sd):
     with computation(PARALLEL), interval(...):
         fx2 = 0.5 * (sin_sg3[-1, 0, 0] + sin_sg1) * \
@@ -35,43 +31,43 @@ def fx2_firstorder_use_sg(q: sd, sin_sg1: sd, sin_sg3: sd, dy: sd, rdxc: sd, fx2
 
 
 # WARNING: untested
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def fy2_firstorder_use_sg(q: sd, sin_sg2: sd, sin_sg4: sd, dx: sd, rdyc: sd, fy2: sd):
     with computation(PARALLEL), interval(...):
         fy2 = 0.5 * (sin_sg4[0, -1, 0] + sin_sg2) * \
             dx * (q[0, -1, 0] - q) * rdyc
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def d2_highorder(fx2: sd, fy2: sd, rarea: sd, d2: sd):
     with computation(PARALLEL), interval(...):
         d2 = (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def d2_damp(q: sd, d2:sd, damp: float):
     with computation(PARALLEL), interval(...):
         d2 = damp * q
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def add_diffusive(fx: sd, fx2: sd, fy: sd, fy2: sd):
     with computation(PARALLEL), interval(...):
         fx = fx + fx2
         fy = fy + fy2
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def diffusive_damp(fx: sd, fx2: sd, fy: sd, fy2: sd,  mass: sd, damp: float):
     with computation(PARALLEL), interval(...):
         fx = fx + 0.5 * damp * (mass[-1, 0, 0] + mass) * fx2
         fy = fy + 0.5 * damp * (mass[0, -1, 0] + mass) * fy2
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def diffusive_damp_x(fx: sd, fx2: sd, mass: sd, damp: float):
     with computation(PARALLEL), interval(...):
         fx = fx + 0.5 * damp * (mass[-1, 0, 0] + mass) * fx2
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
 def diffusive_damp_y(fy: sd, fy2: sd, mass: sd, damp: float):
     with computation(PARALLEL), interval(...):
         fy = fy + 0.5 * damp * (mass[0, -1, 0] + mass) * fy2
@@ -79,24 +75,23 @@ def diffusive_damp_y(fy: sd, fy2: sd, mass: sd, damp: float):
 def compute_delnflux(data, column_info):
     if 'mass' not in data:
         data['mass'] = None
-    utils.compute_column_split(compute_delnflux_no_sg, data, nord_column, 'nord', ['fx', 'fy'], grid)
+    utils.compute_column_split(compute_delnflux_no_sg, data, nord_column, 'nord', ['fx', 'fy'], spec.grid)
 
 
-# TODO: not working for je+2 and ie+2
 def compute_del6vflux(data, nord_column):
     if 'mass' not in data:
         data['mass'] = None
-
-    utils.compute_column_split(compute_no_sg, data, nord_column, 'nord', ['fx2', 'fy2', 'd2', 'q'], grid)
+    utils.compute_column_split(compute_no_sg, data, nord_column, 'nord', ['fx2', 'fy2', 'd2', 'q'], spec.grid)
 
 def compute_delnflux_no_sg(q, fx, fy, nord, damp_c, d2=None, mass=None):
+    grid = spec.grid
     if d2 is None:
         d2 = utils.make_storage_from_shape(q.shape, grid.default_origin())
     if damp_c <= 1e-4:
         return fx, fy
     damp = (damp_c * grid.da_min)**(nord + 1)
-    fx2 = utils.make_storage_from_shape(q.shape, origin)
-    fy2 = utils.make_storage_from_shape(q.shape, origin)
+    fx2 = utils.make_storage_from_shape(q.shape, grid.default_origin())
+    fy2 = utils.make_storage_from_shape(q.shape, grid.default_origin())
     fx2, fy2, d2, q = compute_no_sg(q, fx2, fy2, nord, damp, d2, mass)
     diffuse_domain = grid.domain_shape_compute_buffer_2d()
     if mass is None:
@@ -109,6 +104,7 @@ def compute_delnflux_no_sg(q, fx, fy, nord, damp_c, d2=None, mass=None):
     return fx, fy
 
 def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, mass=None):
+    grid = spec.grid
     nord = int(nord)
     i1 = grid.is_ - 1 - nord
     i2 = grid.ie + 1 + nord
@@ -120,9 +116,9 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, mass=None):
     if mass is None:
         d2_damp(q, d2, damp_c, origin=origin_d2, domain=domain_d2)
     else:
-        d2 = copy(q, origin_d2, domain=domain_d2)
+        d2 = cp.copy(q, origin_d2, domain=domain_d2)
     if nord > 0:
-        copy_corners(d2, 'x', grid)
+        corners.copy_corners(d2, 'x', grid)
     f1_ny = grid.je - grid.js + 1 + 2 * nord
     f1_nx = grid.ie - grid.is_ + 2 + 2 * nord
     fx_origin = (grid.is_ - nord, grid.js - nord, 0)
@@ -130,7 +126,7 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, mass=None):
     fx2_order(d2, grid.del6_v, fx2, order=1, origin=fx_origin, domain=(f1_nx, f1_ny, grid.npz))
 
     if nord > 0:
-        copy_corners(d2, 'y', grid)
+        corners.copy_corners(d2, 'y', grid)
     fy2_order(d2, grid.del6_u, fy2, order=1, origin=fx_origin, domain=(f1_nx - 1, f1_ny + 1, grid.npz))
 
     if nord > 0:
@@ -141,11 +137,11 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, mass=None):
             nt_nx = grid.ie - grid.is_ + 3 + 2 * nt
             d2_highorder(fx2, fy2, grid.rarea, d2, origin=nt_origin, domain=(nt_nx, nt_ny, grid.npz))
 
-            copy_corners(d2, 'x', grid)
+            corners.copy_corners(d2, 'x', grid)
             nt_origin = (grid.is_ - nt, grid.js - nt, 0)
             fx2_order(d2, grid.del6_v, fx2, order=2+n, origin=nt_origin, domain=(nt_nx - 1, nt_ny - 2, grid.npz))
 
-            copy_corners(d2, 'y', grid)
+            corners.copy_corners(d2, 'y', grid)
 
             fy2_order(d2, grid.del6_u, fy2, order=2 + n, origin=nt_origin, domain=(nt_nx - 2, nt_ny - 1, grid.npz))
 

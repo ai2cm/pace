@@ -3,8 +3,7 @@ from fv3.utils.gt4py_utils import sd, halo, exec_backend, make_storage_from_shap
 import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
-from .base_stencil import BaseStencil
-from fv3._config import grid, namelist
+import fv3._config as spec
 
 
 @gtscript.stencil(backend=exec_backend)
@@ -20,6 +19,6 @@ def volume_mean_relative_vorticity(ut: sd, vt: sd, rarea: sd, wk: sd):
 
 
 def compute(u, v, ut, vt, wk):
-    vorticity(u, grid.dx, vt, origin=grid.default_origin(), domain=grid.domain_shape_y())
-    vorticity(v, grid.dy, ut, origin=grid.default_origin(), domain=grid.domain_shape_x())
-    volume_mean_relative_vorticity(ut, vt, grid.rarea, wk, origin=grid.default_origin(), domain=grid.domain_shape_standard())
+    vorticity(u, spec.grid.dx, vt, origin=spec.grid.default_origin(), domain=spec.grid.domain_shape_y())
+    vorticity(v, spec.grid.dy, ut, origin=spec.grid.default_origin(), domain=spec.grid.domain_shape_x())
+    volume_mean_relative_vorticity(ut, vt, spec.grid.rarea, wk, origin=spec.grid.default_origin(), domain=spec.grid.domain_shape_standard())

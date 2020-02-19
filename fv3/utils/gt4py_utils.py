@@ -7,6 +7,7 @@ import copy as cp
 import math
 data_backend = "numpy" # Options: numpy, gtmc, gtx86, gtcuda, debug
 exec_backend = "numpy" # Options: numpy, gtmc, gtx86, gtcuda, debug, and dawn:gtmc
+rebuild = True
 _dtype = np.float_
 sd = gtscript.Field[_dtype]
 halo = 3

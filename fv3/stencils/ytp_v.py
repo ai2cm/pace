@@ -1,7 +1,7 @@
 import fv3.utils.gt4py_utils as utils
 import gt4py as gt
 import gt4py.gtscript as gtscript
-from fv3._config import grid, namelist
+import fv3._config as spec
 from .yppm import compute_al,main_al,flux_intermediates, fx1_fn, final_flux, get_bl, get_br, c1, c2, c3, get_b0, is_smt5_mord5, is_smt5_most_mords
 sd = utils.sd
 origin = (0, 0, 0)
@@ -38,8 +38,9 @@ def br_bl_corner(br:sd, bl:sd):
 
         
 def compute(c, u, v, flux):
+    grid = spec.grid
     # This is an input argument in the Fortran code, but is never called with anything but this namelist option
-    jord = namelist['hord_mt']
+    jord = spec.namelist['hord_mt']
     if jord != 5:
         raise Exception('Currently ytp_v is only supported for hord_mt == 5')
     js3 = max(5, grid.js - 1)

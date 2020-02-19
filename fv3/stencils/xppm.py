@@ -3,11 +3,14 @@ import fv3.utils.gt4py_utils as utils
 import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
-from .base_stencil import BaseStencil
-from fv3._config import grid, namelist
+import fv3._config as spec
 from .yppm import p1, p2, c1, c2, c3, get_bl, get_b0, absolute_value, is_smt5_mord5, is_smt5_most_mords, fx1_c_negative
 sd = utils.sd
 origin = (2, 0, 0)
+
+
+def grid():
+    return spec.grid
 
 
 @gtscript.stencil(backend=utils.exec_backend, externals={'p1': p1, 'p2': p2})
@@ -72,24 +75,24 @@ def compute_al(q, dxa, iord, is1, ie3, jfirst, jlast):
     dimensions = q.shape
     al = utils.make_storage_from_shape(dimensions, origin)
     if (iord < 8):
-        main_al(q, al, origin=(is1, jfirst, 0), domain=(ie3 - is1 + 1, jlast - jfirst + 1, grid.npz))
-        if (not grid.nested and namelist['grid_type'] < 3):
-            if(grid.west_edge):
+        main_al(q, al, origin=(is1, jfirst, 0), domain=(ie3 - is1 + 1, jlast - jfirst + 1, grid().npz))
+        if (not grid().nested and spec.namelist['grid_type'] < 3):
+            if(grid().west_edge):
                 al_y_edge(q, dxa, al,
-                          origin=(grid.is_ - 1, 0, 0),
+                          origin=(grid().is_ - 1, 0, 0),
                           domain=(1, dimensions[1], dimensions[2]))
-            if(grid.east_edge):
+            if(grid().east_edge):
                 al_y_edge(q, dxa, al,
-                          origin=(grid.ie, 0, 0),
+                          origin=(grid().ie, 0, 0),
                           domain=(1, dimensions[1], dimensions[2]))
     return al
 
 def compute_flux(q, c, iord, jfirst, jlast):
     mord = abs(iord)
     # output  storage
-    is1 = max(5, grid.is_ -1)
-    ie3 = min(grid.npx, grid.ie + 2)
+    is1 = max(5, grid().is_ -1)
+    ie3 = min(grid().npx, grid().ie + 2)
     flux = utils.make_storage_from_shape(q.shape, origin)
-    al = compute_al(q, grid.dxa, iord, is1, ie3, jfirst, jlast)
-    get_flux(q, c, al, flux, mord=mord, origin=(grid.is_, jfirst, 0), domain=(grid.nic + 1, jlast - jfirst + 1, grid.npz))
+    al = compute_al(q, grid().dxa, iord, is1, ie3, jfirst, jlast)
+    get_flux(q, c, al, flux, mord=mord, origin=(grid().is_, jfirst, 0), domain=(grid().nic + 1, jlast - jfirst + 1, grid().npz))
     return flux

@@ -2,13 +2,9 @@
 import fv3.utils.gt4py_utils as utils
 import fv3.utils.global_constants as constants
 import fv3.utils.corners as corners
-import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
-from .base_stencil import BaseStencil
-from fv3._config import grid, namelist
-from .copy_stencil import copy_stencil
-import numpy as np
+import fv3._config as spec
 import fv3.stencils.fxadv as fxadv
 import fv3.stencils.fvtp2d as fvtp2d
 import fv3.stencils.flux_capacitor as fluxcap
@@ -26,8 +22,13 @@ import fv3.stencils.divergence_damping as divdamp
 dcon_threshold = 1e-5
 sd = utils.sd
 
+
+def grid():
+    return spec.grid
+
+
 def k_indices():
-    return [[0, 1], [1, 2], [2, 3], list(range(3, grid.npz + 1))]
+    return [[0, 1], [1, 2], [2, 3], list(range(3, grid().npz + 1))]
 
 
 def d_sw_ksplit(func, data, splitvars_values, outputs, grid):
@@ -144,15 +145,15 @@ def heatdamping(ub: sd, vb: sd, delp: sd, fx: sd, fy: sd, gx: sd, gy: sd,
 
 
 def initialize_heat_source(heat_source, diss_est):
-    heat_source[grid.compute_interface()] = 0
-    diss_est[grid.compute_interface()] = 0
+    heat_source[grid().compute_interface()] = 0
+    diss_est[grid().compute_interface()] = 0
 
 
 def heat_from_damping(ub, vb, ut, vt, u, v, delp, fx, fy, gx, gy, heat_source, diss_est, damp):
-    heatdamping_setup(ub, vt, fy, u, gy, grid.rdx, origin=grid.compute_origin(), domain=grid.domain_shape_compute_y())
-    heatdamping_setup(vb, -ut, fx, v, gx, grid.rdy, origin=grid.compute_origin(), domain=grid.domain_shape_compute_x())
-    heatdamping(ub, vb, delp, fx, fy, gx, gy, grid.rsin2, grid.cosa_s, heat_source, diss_est, damp,
-                int(namelist['do_skeb']), origin=grid.compute_origin(), domain=grid.domain_shape_compute())
+    heatdamping_setup(ub, vt, fy, u, gy, grid().rdx, origin=grid().compute_origin(), domain=grid().domain_shape_compute_y())
+    heatdamping_setup(vb, -ut, fx, v, gx, grid().rdy, origin=grid().compute_origin(), domain=grid().domain_shape_compute_x())
+    heatdamping(ub, vb, delp, fx, fy, gx, gy, grid().rsin2, grid().cosa_s, heat_source, diss_est, damp,
+                int(spec.namelist['do_skeb']), origin=grid().compute_origin(), domain=grid().domain_shape_compute())
 
 
 def set_low_kvals(col):
@@ -162,7 +163,7 @@ def set_low_kvals(col):
 
 
 def vort_damp_option(col):
-    if namelist['do_vort_damp']:
+    if spec.namelist['do_vort_damp']:
         col['nord_v'] = 0
         col['damp_vt'] = 0.5 * col['d2_divg']
 
@@ -173,11 +174,11 @@ def lowest_kvals(col):
 
 
 def max_d2_bg0():
-    return max(0.01, namelist['d2_bg'], namelist['d2_bg_k1'])
+    return max(0.01, spec.namelist['d2_bg'], spec.namelist['d2_bg_k1'])
 
 
 def max_d2_bg1():
-    return max(namelist['d2_bg'], namelist['d2_bg_k2'])
+    return max(spec.namelist['d2_bg'], spec.namelist['d2_bg_k2'])
 
 
 def get_column_namelist():
@@ -194,27 +195,27 @@ def column_namelist_options(k):
     column_vars = ['nord', 'nord_v', 'nord_w', 'nord_t', 'damp_vt', 'damp_w', 'damp_t', 'd2_divg', 'ke_bg']
     col = {}
     for name in direct_namelist:
-        col[name] = namelist[name]
-    col['d2_divg'] = min(0.2, namelist['d2_bg'])
+        col[name] = spec.namelist[name]
+    col['d2_divg'] = min(0.2, spec.namelist['d2_bg'])
     col['nord_v'] = min(2, col['nord'])
     col['nord_w'] = col['nord_v']
     col['nord_t'] = col['nord_v']
-    if namelist['do_vort_damp']:
-        col['damp_vt'] = namelist['vtdm4']
+    if spec.namelist['do_vort_damp']:
+        col['damp_vt'] = spec.namelist['vtdm4']
     else:
         col['damp_vt'] = 0
     col['damp_w'] = col['damp_vt']
     col['damp_t'] = col['damp_vt']
-    if grid.npz == 1 or namelist['n_sponge'] < 0:
-        d2_divg = namelist['d2_bg']
+    if grid().npz == 1 or spec.namelist['n_sponge'] < 0:
+        d2_divg = spec.namelist['d2_bg']
     else:
         if k == 0:
             col['d2_divg'] = max_d2_bg0()
             lowest_kvals(col)
-        if k == 1 and namelist['d2_bg_k2'] > 0.01:
+        if k == 1 and spec.namelist['d2_bg_k2'] > 0.01:
             col['d2_divg'] = max_d2_bg1()
             lowest_kvals(col)
-        if k == 2 and namelist['d2_bg_k2'] > 0.05:
+        if k == 2 and spec.namelist['d2_bg_k2'] > 0.05:
             col['d2_divg'] = max_d2_bg1()
             set_low_kvals(col)
     return col
@@ -225,14 +226,14 @@ def compute(delpc, delp, ptc, pt, u, v, w, uc, vc,  ua, va, divgd, mfx, mfy, cx,
     # TODO: remove paired with removal of #d_sw belos
     # column_namelist = column_namelist_options(0)
     column_namelist = get_column_namelist()
-    heat_s = utils.make_storage_from_shape(heat_source.shape, grid.compute_origin())
-    diss_e = utils.make_storage_from_shape(heat_source.shape, grid.compute_origin())
-    z_rat = utils.make_storage_from_shape(heat_source.shape, grid.default_origin())
+    heat_s = utils.make_storage_from_shape(heat_source.shape, grid().compute_origin())
+    diss_e = utils.make_storage_from_shape(heat_source.shape, grid().compute_origin())
+    z_rat = utils.make_storage_from_shape(heat_source.shape, grid().default_origin())
     # TODO if namelist['hydrostatic' and not namelist['use_old_omega'] and last_step
-    if namelist['d_ext'] > 0:
+    if spec.namelist['d_ext'] > 0:
         raise Exception('untested d_ext > 0. need to call a2b_ord2, not yet implemented')
-    if namelist['do_f3d'] and not namelist['hydrostatic']:
-        coriolis_force_correction(zh, z_rat, origin=grid.default_origin(), domain=grid.domain_shape_standard())
+    if spec.namelist['do_f3d'] and not spec.namelist['hydrostatic']:
+        coriolis_force_correction(zh, z_rat, origin=grid().default_origin(), domain=grid().domain_shape_standard())
     # TODO: this seems a little redundant, revisit the k column split mechanism and/or the argument passing method
     in_only_vars = ['z_rat', 'dt']
     xflux = mfx
@@ -246,25 +247,25 @@ def compute(delpc, delp, ptc, pt, u, v, w, uc, vc,  ua, va, divgd, mfx, mfy, cx,
     for iv in inout_vars:
         outputs[iv] = data[iv]
 
-    d_sw_ksplit(d_sw, data, column_namelist, outputs, grid)
+    d_sw_ksplit(d_sw, data, column_namelist, outputs, grid())
 
     # TODO: remove when it has been decided how to handle the parameter arguments that change in the vertical. helpful for debugging
     # d_sw(delpc, delp, ptc, pt, u, v, w, uc, vc,  ua, va, divgd, mfx, mfy, cx, cy,  crx, cry, xfx, yfx, q_con, z_rat, heat_s, diss_e, dt,column_namelist)
     # TODO if namelist['hydrostatic' and not namelist['use_old_omega'] and last_step
     # TODO if namelist['d_ext'] > 0
-    if namelist['d_con'] > dcon_threshold or namelist['do_skeb']:
+    if spec.namelist['d_con'] > dcon_threshold or spec.namelist['do_skeb']:
         basic.add_term_two_vars(heat_s, heat_source, diss_e, diss_est,
-                                origin=grid.compute_origin(), domain=grid.domain_shape_compute())
+                                origin=grid().compute_origin(), domain=grid().domain_shape_compute())
     # return col['nord_v'], col['damp_vt']
 
 def damp_vertical_wind(w, heat_s, diss_e, dt, column_namelist):
-    dw = utils.make_storage_from_shape(w.shape, grid.compute_origin())
-    wk = utils.make_storage_from_shape(w.shape, grid.default_origin())
-    fx2 = utils.make_storage_from_shape(w.shape, grid.default_origin())
-    fy2 = utils.make_storage_from_shape(w.shape, grid.default_origin())
+    dw = utils.make_storage_from_shape(w.shape, grid().compute_origin())
+    wk = utils.make_storage_from_shape(w.shape, grid().default_origin())
+    fx2 = utils.make_storage_from_shape(w.shape, grid().default_origin())
+    fy2 = utils.make_storage_from_shape(w.shape, grid().default_origin())
     if column_namelist['damp_w'] > 1e-5:
         dd8 = column_namelist['ke_bg'] * abs(dt)
-        damp4 = (column_namelist['damp_w'] * grid.da_min_c)**(column_namelist['nord_w']+1)
+        damp4 = (column_namelist['damp_w'] * grid().da_min_c)**(column_namelist['nord_w']+1)
         fx2, fy2, wk, w = delnflux.compute_no_sg(w, fx2, fy2, column_namelist['nord_w'], damp4, wk)
         heatdiss.compute(fx2, fy2, w, dd8, dw, heat_s, diss_e)
     return dw, wk
@@ -273,46 +274,46 @@ def d_sw(delpc, delp, ptc, pt, u, v, w, uc, vc, ua, va, divgd,  xflux, yflux, cx
          q_con, z_rat, heat_s, diss_e,  dt, column_namelist):
     print('Parameters that vary with k', column_namelist)
     shape = heat_s.shape
-    ub = utils.make_storage_from_shape(shape, grid.compute_origin())
-    vb = utils.make_storage_from_shape(shape, grid.compute_origin())
-    ke = utils.make_storage_from_shape(shape, grid.default_origin())
-    vort = utils.make_storage_from_shape(shape, grid.default_origin())
-    ut = utils.make_storage_from_shape(shape, grid.default_origin())
-    vt = utils.make_storage_from_shape(shape, grid.default_origin())
+    ub = utils.make_storage_from_shape(shape, grid().compute_origin())
+    vb = utils.make_storage_from_shape(shape, grid().compute_origin())
+    ke = utils.make_storage_from_shape(shape, grid().default_origin())
+    vort = utils.make_storage_from_shape(shape, grid().default_origin())
+    ut = utils.make_storage_from_shape(shape, grid().default_origin())
+    vt = utils.make_storage_from_shape(shape, grid().default_origin())
 
     ra_x, ra_y = fxadv.compute(uc, vc, ut, vt, xfx, yfx, crx, cry, dt)
 
-    delp, fx, fy = fvtp2d.compute_no_sg(delp, crx, cry, namelist['hord_dp'],
+    delp, fx, fy = fvtp2d.compute_no_sg(delp, crx, cry, spec.namelist['hord_dp'],
                                         xfx, yfx, ra_x, ra_y, column_namelist['nord_v'], column_namelist['damp_vt'])
 
     fluxcap.compute(cx, cy, xflux, yflux, crx, cry, fx, fy)
 
     initialize_heat_source(heat_s, diss_e)
 
-    if not namelist['hydrostatic']:
+    if not spec.namelist['hydrostatic']:
         dw, wk = damp_vertical_wind(w, heat_s, diss_e, dt, column_namelist)
-        w, gx, gy = fvtp2d.compute_no_sg(w, crx, cry, namelist['hord_vt'], xfx, yfx, ra_x, ra_y, column_namelist['nord_v'], column_namelist['damp_vt'], mfx=fx, mfy=fy)
+        w, gx, gy = fvtp2d.compute_no_sg(w, crx, cry, spec.namelist['hord_vt'], xfx, yfx, ra_x, ra_y, column_namelist['nord_v'], column_namelist['damp_vt'], mfx=fx, mfy=fy)
 
-        flux_adjust(w, delp, gx, gy, grid.rarea,
-                                origin=grid.compute_origin(), domain=grid.domain_shape_compute())
+        flux_adjust(w, delp, gx, gy, grid().rarea,
+                                origin=grid().compute_origin(), domain=grid().domain_shape_compute())
 
     # USE_COND
-    q_con, gx, gy = fvtp2d.compute_no_sg(q_con, crx, cry, namelist['hord_dp'], xfx, yfx,
+    q_con, gx, gy = fvtp2d.compute_no_sg(q_con, crx, cry, spec.namelist['hord_dp'], xfx, yfx,
                                          ra_x, ra_y, column_namelist['nord_t'], column_namelist['damp_t'], mass=delp,
                                          mfx=fx, mfy=fy)
 
-    flux_adjust(q_con, delp, gx, gy, grid.rarea,
-                            origin=grid.compute_origin(), domain=grid.domain_shape_compute())
+    flux_adjust(q_con, delp, gx, gy, grid().rarea,
+                            origin=grid().compute_origin(), domain=grid().domain_shape_compute())
 
     # END USE_COND
-    pt, gx, gy = fvtp2d.compute_no_sg(pt, crx, cry, namelist['hord_tm'],  xfx, yfx, ra_x, ra_y,
+    pt, gx, gy = fvtp2d.compute_no_sg(pt, crx, cry, spec.namelist['hord_tm'],  xfx, yfx, ra_x, ra_y,
                                       column_namelist['nord_v'], column_namelist['damp_vt'], mass=delp, mfx=fx, mfy=fy)
 
-    if namelist['inline_q']:
+    if spec.namelist['inline_q']:
         raise Exception('inline_q not yet implemented')
     else:
-        not_inlineq_pressure(gx, gy, grid.rarea, fx, fy, pt, delp,
-                             origin=grid.compute_origin(), domain=grid.domain_shape_compute())
+        not_inlineq_pressure(gx, gy, grid().rarea, fx, fy, pt, delp,
+                             origin=grid().compute_origin(), domain=grid().domain_shape_compute())
 
     dt5 = 0.5 * dt
     dt4 = 0.25 * dt
@@ -320,49 +321,49 @@ def d_sw(delpc, delp, ptc, pt, u, v, w, uc, vc, ua, va, divgd,  xflux, yflux, cx
 
     ytp_v.compute(vb, u, v, ub)
 
-    basic.multiply_stencil(vb, ub, ke, origin=grid.compute_origin(), domain=grid.domain_shape_compute_buffer_2d())
+    basic.multiply_stencil(vb, ub, ke, origin=grid().compute_origin(), domain=grid().domain_shape_compute_buffer_2d())
 
     ubke.compute(uc, vc, ut, ub, dt5, dt4)
 
     xtp_u.compute(ub, u, v, vb)
 
-    ke_from_bwind(ke, ub, vb, origin=grid.compute_origin(), domain=grid.domain_shape_compute_buffer_2d())
+    ke_from_bwind(ke, ub, vb, origin=grid().compute_origin(), domain=grid().domain_shape_compute_buffer_2d())
 
-    if not grid.nested:
-        corners.fix_corner_ke(ke, u, v, ut, vt, dt, grid)
+    if not grid().nested:
+        corners.fix_corner_ke(ke, u, v, ut, vt, dt, grid())
 
     vort_mean.compute(u, v, ut, vt, wk)
 
-    # TODO if namelist['d_f3d'] and ROT3 unimplemeneted
-    adjust_w_and_qcon(w, delp, dw, q_con, column_namelist['damp_w'], origin=grid.compute_origin(), domain=grid.domain_shape_compute())
+    # TODO if spec.namelist['d_f3d'] and ROT3 unimplemeneted
+    adjust_w_and_qcon(w, delp, dw, q_con, column_namelist['damp_w'], origin=grid().compute_origin(), domain=grid().domain_shape_compute())
 
     vort, ke, delpc = divdamp.compute(u, v, va, ptc, vort, ua, divgd, vc, uc, delpc, ke, wk,
                                       column_namelist['d2_divg'], dt,  column_namelist['nord'])
 
     if column_namelist['d_con'] > dcon_threshold:
-        ub_from_vort(vort, ub, origin=grid.compute_origin(), domain=grid.domain_shape_compute_y())
-        vb_from_vort(vort, vb, origin=grid.compute_origin(), domain=grid.domain_shape_compute_x())
+        ub_from_vort(vort, ub, origin=grid().compute_origin(), domain=grid().domain_shape_compute_y())
+        vb_from_vort(vort, vb, origin=grid().compute_origin(), domain=grid().domain_shape_compute_x())
 
     # Vorticity transport
-    if namelist['do_f3d'] and not namelist['hydrostatic']:
-        zrat_vorticity(wk, grid.f0, z_rat, vort, orgin=grid.default_origin(), domain=grid.domain_shape_standard())
+    if spec.namelist['do_f3d'] and not spec.namelist['hydrostatic']:
+        zrat_vorticity(wk, grid().f0, z_rat, vort, orgin=grid().default_origin(), domain=grid().domain_shape_standard())
     else:
-        basic.addition_stencil(wk, grid.f0, vort, origin=grid.default_origin(), domain=grid.domain_shape_standard())
+        basic.addition_stencil(wk, grid().f0, vort, origin=grid().default_origin(), domain=grid().domain_shape_standard())
 
-    vort, fx, fy = fvtp2d.compute_no_sg(vort, crx, cry, namelist['hord_vt'], xfx, yfx, ra_x, ra_y)
+    vort, fx, fy = fvtp2d.compute_no_sg(vort, crx, cry, spec.namelist['hord_vt'], xfx, yfx, ra_x, ra_y)
 
-    u_from_ke(ke, vt, fy, u, origin=grid.compute_origin(), domain=grid.domain_shape_compute_y())
+    u_from_ke(ke, vt, fy, u, origin=grid().compute_origin(), domain=grid().domain_shape_compute_y())
 
-    v_from_ke(ke, ut, fx, v, origin=grid.compute_origin(), domain=grid.domain_shape_compute_x())
+    v_from_ke(ke, ut, fx, v, origin=grid().compute_origin(), domain=grid().domain_shape_compute_x())
 
     if column_namelist['damp_vt'] > dcon_threshold:
-        damp4 = (column_namelist['damp_vt'] * grid.da_min_c)**(column_namelist['nord_v']+1)
+        damp4 = (column_namelist['damp_vt'] * grid().da_min_c)**(column_namelist['nord_v']+1)
         fx2, fy2, vort, wk = delnflux.compute_no_sg(wk, ut, vt, column_namelist['nord_v'], damp4, vort)
 
-    if (column_namelist['d_con'] > dcon_threshold or namelist['do_skeb']):
+    if (column_namelist['d_con'] > dcon_threshold or spec.namelist['do_skeb']):
         damp = 0.25 * column_namelist['d_con']
         heat_from_damping(ub, vb, ut, vt, u, v, delp, fx, fy, gx, gy, heat_s, diss_e, damp)
 
     if column_namelist['damp_vt'] > 1e-5:
-        basic.add_term_stencil(vt, u, origin=grid.compute_origin(), domain=grid.domain_shape_compute_y())
-        basic.add_term_stencil(-ut, v, origin=grid.compute_origin(), domain=grid.domain_shape_compute_x())
+        basic.add_term_stencil(vt, u, origin=grid().compute_origin(), domain=grid().domain_shape_compute_y())
+        basic.add_term_stencil(-ut, v, origin=grid().compute_origin(), domain=grid().domain_shape_compute_x())

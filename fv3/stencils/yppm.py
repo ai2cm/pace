@@ -3,8 +3,7 @@ import fv3.utils.gt4py_utils as utils
 import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
-
-from fv3._config import grid, namelist
+import fv3._config as spec
 input_vars = ['q', 'c']
 inputs_params = ['jord', 'ifirst', 'ilast']
 output_vars = ['flux']
@@ -25,6 +24,8 @@ halo = utils.halo
 sd = utils.sd
 origin = (0, 2, 0)
 
+def grid():
+    return spec.grid
 
 @gtscript.stencil(backend=utils.exec_backend, externals={'p1': p1, 'p2': p2})
 def main_al(q: sd, al: sd):
@@ -143,28 +144,28 @@ def compute_al(q, dyvar, jord, ifirst, ilast, js1, je3):
     dimensions = q.shape
     al = utils.make_storage_from_shape(dimensions, origin)
     if (jord < 8):
-        main_al(q, al, origin=(ifirst, js1, 0), domain=(ilast - ifirst + 1, je3 - js1 + 1, grid.npz))
+        main_al(q, al, origin=(ifirst, js1, 0), domain=(ilast - ifirst + 1, je3 - js1 + 1, grid().npz))
         x_edge_domain = (dimensions[0], 1, dimensions[2])
-        if (not grid.nested and namelist['grid_type'] < 3):
+        if (not grid().nested and spec.namelist['grid_type'] < 3):
             # South Edge
-            if(grid.south_edge):
+            if(grid().south_edge):
                 al_x_edge(q, dyvar, al,
-                          origin=(0, grid.js-1, 0),
+                          origin=(0, grid().js-1, 0),
                           domain=x_edge_domain)
             # North Edge
-            if(grid.north_edge):
+            if(grid().north_edge):
                 al_x_edge(q, dyvar, al,
-                          origin=(0, grid.je, 0),
+                          origin=(0, grid().je, 0),
                           domain=x_edge_domain)
     return al
 
 def compute_flux(q, c, jord, ifirst, ilast):
-    js1 = max(5, grid.js - 1)
-    je3 = min(grid.npy, grid.je+2)
-    je1 = min(grid.npy-1, grid.je+1)
-    al = compute_al(q, grid.dya, jord, ifirst, ilast, js1, je3)
+    js1 = max(5, grid().js - 1)
+    je3 = min(grid().npy, grid().je+2)
+    je1 = min(grid().npy-1, grid().je+1)
+    al = compute_al(q, grid().dya, jord, ifirst, ilast, js1, je3)
     mord = abs(jord)
     flux = utils.make_storage_from_shape(q.shape, origin)
-    flux_domain = (ilast - ifirst + 1, grid.njc + 1, grid.npz)
-    get_flux_stencil(q, c, al, flux, mord=mord,  origin=(ifirst, grid.js, 0), domain=flux_domain)
+    flux_domain = (ilast - ifirst + 1, grid().njc + 1, grid().npz)
+    get_flux_stencil(q, c, al, flux, mord=mord,  origin=(ifirst, grid().js, 0), domain=flux_domain)
     return flux

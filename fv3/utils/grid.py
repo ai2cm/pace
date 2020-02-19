@@ -13,11 +13,19 @@ class Grid:
             setattr(self, i, int(indices[i]))
         for s in self.shape_params:
             setattr(self, s, int(shape_params[s]))
+        
+       
         self.nid = int(self.ied - self.isd + 1)
         self.njd = int(self.jed - self.jsd + 1)
         self.nic = int(self.ie - self.is_ + 1)
         self.njc = int(self.je - self.js + 1)
         self.halo = utils.halo
+        # TODO: do we want to set face indices this way?
+        self.isf = 0
+        self.ief = self.npx - 1
+        self.jsf = 0
+        self.jef = self.npy - 1
+        
         self.west_edge = self.is_ == self.halo
         self.east_edge = self.ie == self.npx + self.halo - 2
         self.south_edge = self.js == self.halo
@@ -35,9 +43,6 @@ class Grid:
         self.data_fields.update(data_dict)
         for k, v in self.data_fields.items():
             setattr(self, k, v)
-    
-    def get_index(self, name):
-        return getattr(self, name)
 
     def irange_compute(self):
         return range(self.is_, self.ie + 1)
@@ -166,8 +171,14 @@ class Grid:
     def domain_x_compute_y(self):
         return (self.nid, self.njc, self.npz)
 
+    def domain_x_compute_ybuffer(self):
+        return (self.nid, self.njc + 1, self.npz)
+
     def domain_y_compute_x(self):
         return (self.nic, self.njd, self.npz)
+
+    def domain_y_compute_xbuffer(self):
+        return (self.nic + 1, self.njd, self.npz)
     
     def domain_shape_buffer_1cell(self):
         return (int(self.nid + 1), int(self.njd + 1), int(self.npz + 1))

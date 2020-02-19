@@ -3,9 +3,8 @@ import fv3.utils.gt4py_utils as utils
 import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
-from .base_stencil import BaseStencil
-from fv3._config import grid, namelist
-from .copy_stencil import copy_stencil
+import fv3._config as spec
+import fv3.stencils.copy_stencil as cp
 # comact 4-pt cubic interpolation
 c1 = 2.0/3.0
 c2 = -1.0/6.0
@@ -18,6 +17,11 @@ b2 = -1.0/12.0
 a1 = 0.5625  # 9/16
 a2 = -0.0625  # - 1/16
 sd = utils.sd
+
+
+def grid():
+    return spec.grid
+
 
 @gtscript.stencil(backend=utils.exec_backend)
 def ppm_volume_mean_x(qin: sd, qx: sd):
@@ -164,13 +168,6 @@ def qy_edge_north2(qin: sd, dya: sd, qy: sd):
         qy = (3.0 * (qin[0, -1, 0] + g_in * qin) - (g_in * qy[0, 1, 0] + qy[0, -1, 0])) / (2.0 + 2.0 * g_in)
 
 
-# TODO: can we make this a stencil? docs refer to IR native functions...
-def smagorinksy_diffusion_approx(delpc, vort, dt):
-    # abs(dt) * sqrt(delpc**2 + vort **2)
-    interface = (slice(grid.is_, grid.is_+2), slice(grid.js, grid.js+2), slice(0, grid.npz+1))
-    vort[interface] = abs(dt) * np.sqrt(delpc[interface]**2 + vort[interface]**2)
-
-
 # TODO: all of these offsets are either 0,1 or -1, -2. Totally should be able to consolidate
 def ec1_offsets_dir(corner, lower_direction):
     if lower_direction in corner:
@@ -232,10 +229,10 @@ def ec3_offsets(corner):
 
 # TODO: put into stencil?
 def extrapolate_corner_qout(qin, qout, i, j, corner):
-    if not getattr(grid, corner + '_corner'):
+    if not getattr(grid(), corner + '_corner'):
         return
-    bgrid = np.stack((grid.bgrid1[:, :, 0], grid.bgrid2[:, :, 0]), axis=2)
-    agrid = np.stack((grid.agrid1[:, :, 0], grid.agrid2[:, :, 0]), axis=2)
+    bgrid = np.stack((grid().bgrid1[:, :, 0], grid().bgrid2[:, :, 0]), axis=2)
+    agrid = np.stack((grid().agrid1[:, :, 0], grid().agrid2[:, :, 0]), axis=2)
     p0 = bgrid[i, j, :]
     # TODO: - please simplify
     i1a, i1b, j1a, j1b = ec1_offsets(corner)
@@ -253,10 +250,10 @@ def extrapolate_corner_qout(qin, qout, i, j, corner):
 
 def extrapolate_corners(qin, qout):
     # qout corners, 3 way extrapolation
-    extrapolate_corner_qout(qin, qout, grid.is_, grid.js, 'sw')
-    extrapolate_corner_qout(qin, qout, grid.ie+1, grid.js, 'se')
-    extrapolate_corner_qout(qin, qout, grid.ie+1, grid.je + 1, 'ne')
-    extrapolate_corner_qout(qin, qout, grid.is_, grid.je+1, 'nw')
+    extrapolate_corner_qout(qin, qout, grid().is_, grid().js, 'sw')
+    extrapolate_corner_qout(qin, qout, grid().ie+1, grid().js, 'se')
+    extrapolate_corner_qout(qin, qout, grid().ie+1, grid().je + 1, 'ne')
+    extrapolate_corner_qout(qin, qout, grid().is_, grid().je+1, 'nw')
 
 
 def compute_qout_edges(qin, qout):
@@ -266,107 +263,107 @@ def compute_qout_edges(qin, qout):
 
 def compute_qout_x_edges(qin, qout):
     # qout bounds
-    js2 = max(grid.halo + 1, grid.js)
-    je1 = min(grid.npy + 1, grid.je + 1)
+    js2 = max(grid().halo + 1, grid().js)
+    je1 = min(grid().npy + 1, grid().je + 1)
     dj2 = je1 - js2 + 1
-    if grid.west_edge:
-        qout_x_edge(qin, grid.dxa, grid.edge_w, qout, origin=(grid.is_, js2, 0), domain=(1, dj2, grid.npz))
-    if grid.east_edge:
-        qout_x_edge(qin, grid.dxa, grid.edge_e, qout, origin=(grid.ie+1, js2, 0), domain=(1, dj2, grid.npz))
+    if grid().west_edge:
+        qout_x_edge(qin, grid().dxa, grid().edge_w, qout, origin=(grid().is_, js2, 0), domain=(1, dj2, grid().npz))
+    if grid().east_edge:
+        qout_x_edge(qin, grid().dxa, grid().edge_e, qout, origin=(grid().ie+1, js2, 0), domain=(1, dj2, grid().npz))
 
 
 def compute_qout_y_edges(qin, qout):
-    is2 = max(grid.halo + 1, grid.is_)
-    ie1 = min(grid.npx + 1, grid.ie + 1)
+    is2 = max(grid().halo + 1, grid().is_)
+    ie1 = min(grid().npx + 1, grid().ie + 1)
     di2 = ie1 - is2 + 1
-    if grid.south_edge:
-        qout_y_edge(qin, grid.dya, grid.edge_s, qout, origin=(is2, grid.js, 0), domain=(di2, 1, grid.npz))
-    if grid.north_edge:
-        qout_y_edge(qin, grid.dya, grid.edge_n, qout, origin=(is2, grid.je+1, 0), domain=(di2, 1, grid.npz))
+    if grid().south_edge:
+        qout_y_edge(qin, grid().dya, grid().edge_s, qout, origin=(is2, grid().js, 0), domain=(di2, 1, grid().npz))
+    if grid().north_edge:
+        qout_y_edge(qin, grid().dya, grid().edge_n, qout, origin=(is2, grid().je+1, 0), domain=(di2, 1, grid().npz))
 
 
 def compute_qx(qin, qout):
-    qx = utils.make_storage_from_shape(qin.shape, origin=(grid.is_, grid.jsd, 0))
+    qx = utils.make_storage_from_shape(qin.shape, origin=(grid().is_, grid().jsd, 0))
     # qx bounds
-    js = max(grid.halo, grid.js - 2)
-    je = min(grid.npy + 1, grid.je+2)
-    is_ = max(grid.halo+2, grid.is_)
-    ie = min(grid.npx, grid.ie + 1)
+    js = max(grid().halo, grid().js - 2)
+    je = min(grid().npy + 1, grid().je+2)
+    is_ = max(grid().halo+2, grid().is_)
+    ie = min(grid().npx, grid().ie + 1)
     dj = je - js + 1
     # qx interior
-    ppm_volume_mean_x(qin, qx, origin=(is_, js, 0), domain=(ie - is_ + 1, dj, grid.npz))
+    ppm_volume_mean_x(qin, qx, origin=(is_, js, 0), domain=(ie - is_ + 1, dj, grid().npz))
 
     # qx edges
-    if grid.west_edge:
-        qx_edge_west(qin, grid.dxa, qx, origin=(grid.is_, js, 0), domain=(1, dj, grid.npz))
-        qx_edge_west2(qin, grid.dxa, qx, origin=(grid.is_ + 1, js, 0), domain=(1, dj, grid.npz))
-    if grid.east_edge:
-        qx_edge_east(qin, grid.dxa, qx, origin=(grid.ie + 1, js, 0), domain=(1, dj, grid.npz))
-        qx_edge_east2(qin, grid.dxa, qx, origin=(grid.ie, js, 0), domain=(1, dj, grid.npz))
+    if grid().west_edge:
+        qx_edge_west(qin, grid().dxa, qx, origin=(grid().is_, js, 0), domain=(1, dj, grid().npz))
+        qx_edge_west2(qin, grid().dxa, qx, origin=(grid().is_ + 1, js, 0), domain=(1, dj, grid().npz))
+    if grid().east_edge:
+        qx_edge_east(qin, grid().dxa, qx, origin=(grid().ie + 1, js, 0), domain=(1, dj, grid().npz))
+        qx_edge_east2(qin, grid().dxa, qx, origin=(grid().ie, js, 0), domain=(1, dj, grid().npz))
     return qx
 
 
 def compute_qy(qin, qout):
-    qy = utils.make_storage_from_shape(qin.shape, origin=(grid.isd, grid.js, 0))
+    qy = utils.make_storage_from_shape(qin.shape, origin=(grid().isd, grid().js, 0))
     # qy bounds
-    is_ = max(grid.halo, grid.is_ - 2)
-    ie = min(grid.npx + 1, grid.ie+2)
-    js = max(grid.halo+2, grid.js)
-    je = min(grid.npy, grid.je + 1)
+    is_ = max(grid().halo, grid().is_ - 2)
+    ie = min(grid().npx + 1, grid().ie+2)
+    js = max(grid().halo+2, grid().js)
+    je = min(grid().npy, grid().je + 1)
     di = ie - is_ + 1
     # qy interior
-    ppm_volume_mean_y(qin, qy, origin=(is_, js, 0), domain=(di, je - js + 1, grid.npz))
+    ppm_volume_mean_y(qin, qy, origin=(is_, js, 0), domain=(di, je - js + 1, grid().npz))
     # qy edges
-    if grid.south_edge:
-        qy_edge_south(qin, grid.dya, qy, origin=(is_, grid.js, 0), domain=(di, 1, grid.npz))
-        qy_edge_south2(qin, grid.dya, qy, origin=(is_, grid.js + 1, 0), domain=(di, 1, grid.npz))
-    if grid.north_edge:
-        qy_edge_north(qin, grid.dya, qy, origin=(is_, grid.je+1, 0), domain=(di, 1, grid.npz))
-        qy_edge_north2(qin, grid.dya, qy, origin=(is_, grid.je, 0), domain=(di, 1, grid.npz))
+    if grid().south_edge:
+        qy_edge_south(qin, grid().dya, qy, origin=(is_, grid().js, 0), domain=(di, 1, grid().npz))
+        qy_edge_south2(qin, grid().dya, qy, origin=(is_, grid().js + 1, 0), domain=(di, 1, grid().npz))
+    if grid().north_edge:
+        qy_edge_north(qin, grid().dya, qy, origin=(is_, grid().je+1, 0), domain=(di, 1, grid().npz))
+        qy_edge_north2(qin, grid().dya, qy, origin=(is_, grid().je, 0), domain=(di, 1, grid().npz))
     return qy
 
 
 def compute_qxx(qx, qout):
-    qxx = utils.make_storage_from_shape(qx.shape, origin=grid.default_origin())
-    js = max(grid.halo+2, grid.js)
-    je = min(grid.npy, grid.je+1)
-    is_ = max(grid.halo+1, grid.is_)
-    ie = min(grid.npx+1, grid.ie + 1)
+    qxx = utils.make_storage_from_shape(qx.shape, origin=grid().default_origin())
+    js = max(grid().halo+2, grid().js)
+    je = min(grid().npy, grid().je+1)
+    is_ = max(grid().halo+1, grid().is_)
+    ie = min(grid().npx+1, grid().ie + 1)
     di = ie - is_ + 1
-    lagrange_interpolation_y(qx, qxx, origin=(is_, js, 0), domain=(di, je - js + 1, grid.npz))
-    if grid.south_edge:
-        cubic_interpolation_south(qx, qout, qxx, origin=(is_, grid.js + 1, 0), domain=(di, 1, grid.npz))
-    if grid.north_edge:
-        cubic_interpolation_north(qx, qout, qxx, origin=(is_, grid.je, 0), domain=(di, 1, grid.npz))
+    lagrange_interpolation_y(qx, qxx, origin=(is_, js, 0), domain=(di, je - js + 1, grid().npz))
+    if grid().south_edge:
+        cubic_interpolation_south(qx, qout, qxx, origin=(is_, grid().js + 1, 0), domain=(di, 1, grid().npz))
+    if grid().north_edge:
+        cubic_interpolation_north(qx, qout, qxx, origin=(is_, grid().je, 0), domain=(di, 1, grid().npz))
     return qxx
 
 
 def compute_qyy(qy, qout):
-    qyy = utils.make_storage_from_shape(qy.shape, origin=grid.default_origin())
-    is_ = max(grid.halo+2, grid.is_)
-    ie = min(grid.npx, grid.ie+1)
-    js = max(grid.halo+1, grid.js)
-    je = min(grid.npy+1, grid.je + 1)
+    qyy = utils.make_storage_from_shape(qy.shape, origin=grid().default_origin())
+    is_ = max(grid().halo+2, grid().is_)
+    ie = min(grid().npx, grid().ie+1)
+    js = max(grid().halo+1, grid().js)
+    je = min(grid().npy+1, grid().je + 1)
     dj = je - js + 1
-    lagrange_interpolation_x(qy, qyy, origin=(is_, js, 0), domain= (ie - is_ + 1, dj, grid.npz))
-    if grid.west_edge:
-        cubic_interpolation_west(qy, qout, qyy, origin=(grid.is_ + 1, js, 0), domain=(1, dj, grid.npz))
-    if grid.east_edge:
-        cubic_interpolation_east(qy, qout, qyy, origin=(grid.ie, js, 0), domain=(1, dj, grid.npz))
+    lagrange_interpolation_x(qy, qyy, origin=(is_, js, 0), domain= (ie - is_ + 1, dj, grid().npz))
+    if grid().west_edge:
+        cubic_interpolation_west(qy, qout, qyy, origin=(grid().is_ + 1, js, 0), domain=(1, dj, grid().npz))
+    if grid().east_edge:
+        cubic_interpolation_east(qy, qout, qyy, origin=(grid().ie, js, 0), domain=(1, dj, grid().npz))
     return qyy
 
 
 def compute_qout(qxx, qyy, qout):
-    is_ = max(grid.halo+1, grid.is_)
-    js = max(grid.halo+1, grid.js)
-    ie = min(grid.npx+1, grid.ie + 1)
-    je = min(grid.npy+1, grid.je + 1)
-    qout_avg(qxx, qyy, qout, origin=(is_, js, 0), domain=(ie - is_ + 1, je - js + 1, grid.npz))
+    is_ = max(grid().halo+1, grid().is_)
+    js = max(grid().halo+1, grid().js)
+    ie = min(grid().npx+1, grid().ie + 1)
+    je = min(grid().npy+1, grid().je + 1)
+    qout_avg(qxx, qyy, qout, origin=(is_, js, 0), domain=(ie - is_ + 1, je - js + 1, grid().npz))
 
 
 def compute(qin, qout, replace=False):
     extrapolate_corners(qin, qout)
-    if namelist['grid_type'] < 3:
+    if spec.namelist['grid_type'] < 3:
         compute_qout_edges(qin, qout)
         qx = compute_qx(qin, qout)
         qy = compute_qy(qin, qout)
@@ -374,6 +371,6 @@ def compute(qin, qout, replace=False):
         qyy = compute_qyy(qy, qout)
         compute_qout(qxx, qyy, qout)
         if replace:
-            copy_stencil(qout, qin, origin=grid.compute_origin(), domain=grid.domain_shape_compute_buffer_2d())
+            cp.copy_stencil(qout, qin, origin=grid().compute_origin(), domain=grid().domain_shape_compute_buffer_2d())
     else:
         raise Exception('grid_type >= 3 is not implemented')
