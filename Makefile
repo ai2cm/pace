@@ -71,6 +71,7 @@ rundir:
 	.
 
 generate_test_data:
+	if [ ! -d $(FORTRAN)/FV3 ]; then git submodule update --init --recursive ;fi
 	cd $(FORTRAN) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE=$(COMPILED_IMAGE) $(MAKE) build_serialize
 	DATA_IMAGE=$(RUNDIR_IMAGE) DATA_TARGET=rundir $(MAKE) rundir
 	DATA_IMAGE=$(TEST_DATA_IMAGE) DATA_TARGET=test_data_storage $(MAKE) rundir
@@ -87,7 +88,6 @@ extract_test_data:
 
 
 post_test_data:
-	echo $(REMOTE_TAGS)
 	if [ -z $(REMOTE_TAGS) ]; then docker push $(TEST_DATA_IMAGE) ;\
 	else echo "ERROR: $(FORTRAN_VERSION) of test data has already been pushed. Do a direct docker push if you really intend to overwrite it" && exit 1 ; fi
 
