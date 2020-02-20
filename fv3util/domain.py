@@ -13,7 +13,7 @@ class ArrayMetadata:
 
 
 def get_tile_index(rank, total_ranks):
-    """Returns the tile number for a given rank and total number of ranks.
+    """Returns the tile index for a given rank and total number of ranks.
     """
     if total_ranks % 6 != 0:
         raise ValueError(f'total_ranks {total_ranks} is not evenly divisible by 6')
