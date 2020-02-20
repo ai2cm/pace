@@ -115,9 +115,10 @@ def open_restart(dirname, partitioner, comm, label='', only_names=None):
     """
     suffix = f'.tile{partitioner.tile(comm.Get_rank()) + 1}.nc'
     state = {}
-    for name in RESTART_NAMES:
+    for name in RESTART_NAMES + RESTART_OPTIONAL_NAMES:
         filename = os.path.join(dirname, prepend_label(name, label) + suffix)
-        state.update(load_partial_state_from_restart_file(filename, partitioner, comm, only_names=only_names))
+        if (name in RESTART_NAMES) or os.path.isfile(filename):
+            state.update(load_partial_state_from_restart_file(filename, partitioner, comm, only_names=only_names))
     coupler_res_filename = os.path.join(dirname, prepend_label(COUPLER_RES_NAME, label))
     if filesystem.is_file(coupler_res_filename):
         with filesystem.open(coupler_res_filename, 'r') as f:

@@ -28,10 +28,7 @@ def get_tile_number(tile_rank, total_ranks):
         'get_tile_number will be removed in a later version, '
         'use get_tile_index(rank, total_ranks) + 1 instead'
     )
-    if total_ranks % 6 != 0:
-        raise ValueError(f'total_ranks {total_ranks} is not evenly divisible by 6')
-    ranks_per_tile = total_ranks // 6
-    return tile_rank // ranks_per_tile + 1
+    return get_tile_index(tile_rank, total_ranks) + 1
 
 
 class Partitioner:
@@ -49,14 +46,13 @@ class Partitioner:
             nz: number of grid cell centers along the y-direction
             ny: number of grid cell centers along the y-direction
             nx: number of grid cell centers along the x-direction
-            layout: (x_subtiles, y_subtiles) specifying how the tile is split in the
+            layout: (y_subtiles, x_subtiles) specifying how the tile is split in the
                 horizontal across multiple processes each with their own subtile.
         """
         self.nz = nz
         self.ny = ny
         self.nx = nx
         self.layout = layout
-        self.total_ranks = 6 * layout[0] * layout[1]
 
     @classmethod
     def from_namelist(cls, namelist):
@@ -84,12 +80,17 @@ class Partitioner:
 
     def tile(self, rank):
         """Return the tile index of a given rank"""
-        return get_tile_index(rank, self.total_ranks)
+        return int(rank // self.ranks_per_tile)
 
     @property
     def ranks_per_tile(self):
         """the number of ranks per tile"""
-        return self.total_ranks // 6
+        return self.layout[0] * self.layout[1]
+
+    @property
+    def cube_total_ranks(self):
+        """the number of ranks per tile"""
+        return self.ranks_per_tile * 6
 
     def tile_master_rank(self, rank):
         """Return the lowest rank on the same tile as a given rank."""
@@ -114,6 +115,7 @@ class Partitioner:
         are shape [nz, ny, nx, ...].
 
         Args:
+            rank: the rank of the process
             array_dims: the array dimensions
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
