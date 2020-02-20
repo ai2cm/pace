@@ -16,7 +16,7 @@ def apply_nudging(state, reference_state, nudging_timescales, timestep):
 
     Returns:
         nudging_tendencies (dict): A dictionary whose keys are standard names
-            and values are DataArray objects indicating the nudging tendency
+            and values are Quantity objects indicating the nudging tendency
             of that standard name.
     """
     tendencies = get_nudging_tendencies(state, reference_state, nudging_timescales)
@@ -48,7 +48,7 @@ def get_nudging_tendencies(state, reference_state, nudging_timescales):
 
     Returns:
         nudging_tendencies (dict): A dictionary whose keys are standard names
-            and values are DataArray objects indicating the nudging tendency
+            and values are Quantity objects indicating the nudging tendency
             of that standard name.
     """
     return_array = {}

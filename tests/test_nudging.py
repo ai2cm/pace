@@ -12,23 +12,23 @@ def state(request):
         return {}
     elif request.param == 'one_var':
         return {
-            'var1': xr.DataArray(
+            'var1': fv3util.Quantity(
                 np.ones([5]),
                 dims=['dim1'],
-                attrs={'units': 'm'},
+                units='m',
             )
         }
     elif request.param == 'two_vars':
         return {
-            'var1': xr.DataArray(
+            'var1': fv3util.Quantity(
                 np.ones([5]),
                 dims=['dim1'],
-                attrs={'units': 'm'},
+                units='m',
             ),
-            'var2': xr.DataArray(
+            'var2': fv3util.Quantity(
                 np.ones([5]),
                 dims=['dim_2'],
-                attrs={'units': 'm'},
+                units='m',
             )
         }
     else:
@@ -46,10 +46,10 @@ def reference_state(reference_difference, state):
         reference_state = copy.deepcopy(state)
     elif reference_difference == "extra_var":
         reference_state = copy.deepcopy(state)
-        reference_state['extra_var'] = xr.DataArray(
+        reference_state['extra_var'] = fv3util.Quantity(
             np.ones([5]),
             dims=['dim1'],
-            attrs={'units': 'm'},
+            units='m',
         )
     elif reference_difference == "plus_one":
         reference_state = copy.deepcopy(state)

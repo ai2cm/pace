@@ -3,13 +3,7 @@ import dataclasses
 from . import constants
 import numpy as np
 import xarray as xr
-
-
-@dataclasses.dataclass
-class ArrayMetadata:
-    dims: Tuple[str, ...]
-    units: str
-    dtype: type
+from .quantity import QuantityMetadata, Quantity
 
 
 def get_tile_index(rank, total_ranks):
@@ -130,25 +124,25 @@ class Partitioner:
             overlap=overlap,
         )
 
-    def scatter_tile(self, tile_comm, array, metadata):
+    def scatter_tile(self, tile_comm, quantity, metadata):
         shape = tile_extent(nz=self.nz, nx=self.nx_rank, ny=self.ny_rank, array_dims=metadata.dims)
         if tile_comm.Get_rank() == constants.MASTER_RANK:
-            sendbuf = np.empty((self.ranks_per_tile,) + shape, dtype=metadata.dtype)
+            sendbuf = metadata.np.empty((self.ranks_per_tile,) + shape, dtype=metadata.dtype)
             for rank in range(0, self.ranks_per_tile):
                 subtile_slice = self.subtile_slice(
                     rank,
                     array_dims=metadata.dims,
                     overlap=True,
                 )
-                sendbuf[rank, :] = np.ascontiguousarray(array[subtile_slice])
+                sendbuf[rank, :] = np.ascontiguousarray(quantity[subtile_slice])
         else:
             sendbuf = None
-        recvbuf = np.empty(shape, dtype=metadata.dtype)
+        recvbuf = metadata.np.empty(shape, dtype=metadata.dtype)
         tile_comm.Scatter(sendbuf, recvbuf, root=0)
-        return xr.DataArray(
+        return Quantity(
             recvbuf,
             dims=metadata.dims,
-            attrs={'units': metadata.units}
+            units=metadata.units,
         )
 
 
@@ -159,12 +153,12 @@ def subtile_index(rank, ranks_per_tile, layout):
     return j, i
 
 
-def bcast_metadata_list(comm, array_list):
+def bcast_metadata_list(comm, quantity_list):
     is_master = comm.Get_rank() == constants.MASTER_RANK
     if is_master:
         metadata_list = []
-        for array in array_list:
-            metadata_list.append(ArrayMetadata(dims=array.dims, units=array.attrs['units'], dtype=array.dtype))
+        for quantity in quantity_list:
+            metadata_list.append(QuantityMetadata.from_quantity(quantity))
     else:
         metadata_list = None
     return comm.bcast(metadata_list, root=constants.MASTER_RANK)

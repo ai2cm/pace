@@ -2,7 +2,7 @@ import os
 import xarray as xr
 import copy
 from . import fortran_info
-from . import domain, io, filesystem, constants
+from . import domain, io, filesystem, constants, quantity
 
 
 RESTART_NAMES = ('fv_core.res', 'fv_srf_wnd.res', 'fv_tracer.res')
@@ -123,4 +123,7 @@ def open_restart(dirname, partitioner, comm, label='', only_names=None):
         with filesystem.open(coupler_res_filename, 'r') as f:
             state['time'] = io.get_current_date_from_coupler_res(f)
             state['time'] = comm.bcast(state['time'], root=constants.MASTER_RANK)
+    for name, value in state.items():
+        if name != 'time':
+            state[name] = quantity.Quantity.from_data_array(value)
     return state

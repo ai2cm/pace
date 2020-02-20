@@ -1,7 +1,6 @@
 import pytest
 import fv3util
 import fv3util.domain
-import xarray as xr
 import numpy as np
 from utils import DummyComm
 
@@ -160,10 +159,6 @@ def test_subtile_slice(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, 
     assert result == subtile_slice
 
 
-def get_metadata(array):
-    return fv3util.ArrayMetadata(dims=array.dims, units=array.attrs['units'], dtype=array.dtype)
-
-
 @pytest.mark.parametrize(
     'layout', [(1, 1), (1, 2), (2, 1), (2, 2), (3, 3)]
 )
@@ -173,29 +168,29 @@ def test_centered_state_one_item_per_rank_scatter_tile(layout):
     nx = layout[1]
     total_ranks = layout[0] * layout[1]
     state = {
-        'rank': xr.DataArray(
+        'rank': fv3util.Quantity(
             np.empty([layout[0], layout[1]]),
             dims=[fv3util.Y_DIM, fv3util.X_DIM],
-            attrs={'units': 'dimensionless'}
+            units='dimensionless',
         ),
-        'rank_pos_j': xr.DataArray(
+        'rank_pos_j': fv3util.Quantity(
             np.empty([layout[0], layout[1]]),
             dims=[fv3util.Y_DIM, fv3util.X_DIM],
-            attrs={'units': 'dimensionless'}
+            units='dimensionless',
         ),
-        'rank_pos_i': xr.DataArray(
+        'rank_pos_i': fv3util.Quantity(
             np.empty([layout[0], layout[1]]),
             dims=[fv3util.Y_DIM, fv3util.X_DIM],
-            attrs={'units': 'dimensionless'}
+            units='dimensionless',
         ),
     }
     
     partitioner = fv3util.Partitioner(nz, ny, nx, layout)
     for rank in range(total_ranks):
-        state['rank'].values[np.unravel_index(rank, state['rank'].shape)] = rank
+        state['rank'].compute_view[np.unravel_index(rank, state['rank'].extent)] = rank
         j, i = partitioner.subtile_index(rank)
-        state['rank_pos_j'].values[np.unravel_index(rank, state['rank_pos_j'].shape)] = j
-        state['rank_pos_i'].values[np.unravel_index(rank, state['rank_pos_i'].shape)] = i
+        state['rank_pos_j'].compute_view[np.unravel_index(rank, state['rank_pos_j'].extent)] = j
+        state['rank_pos_i'].compute_view[np.unravel_index(rank, state['rank_pos_i'].extent)] = i
 
     shared_buffer = {}
     tile_comm_list = []
@@ -208,11 +203,10 @@ def test_centered_state_one_item_per_rank_scatter_tile(layout):
             array = state['rank']
         else:
             array = None
-        metadata = get_metadata(state['rank'])
-        print(state['rank'])
+        metadata = fv3util.QuantityMetadata.from_quantity(state['rank'])
         rank_array = partitioner.scatter_tile(tile_comm, array, metadata)
-        assert rank_array.shape == (1, 1)
-        assert rank_array[0, 0] == rank
+        assert rank_array.extent == (1, 1)
+        assert rank_array.compute_view[0, 0] == rank
         assert rank_array.dtype == state['rank'].dtype
 
 
@@ -225,15 +219,15 @@ def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
     nx = layout[1]
     total_ranks = layout[0] * layout[1]
     state = {
-        'pos_j': xr.DataArray(
+        'pos_j': fv3util.Quantity(
             np.empty([layout[0] + 1, layout[1] + 1]),
             dims=[fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM],
-            attrs={'units': 'dimensionless'}
+            units='dimensionless',
         ),
-        'pos_i': xr.DataArray(
+        'pos_i': fv3util.Quantity(
             np.empty([layout[0] + 1, layout[1] + 1], dtype=np.int32),
             dims=[fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM],
-            attrs={'units': 'dimensionless'}
+            units='dimensionless',
         ),
     }
     
@@ -252,9 +246,9 @@ def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
             array = state['pos_j']
         else:
             array = None
-        metadata = get_metadata(state['pos_j'])
+        metadata = fv3util.QuantityMetadata.from_quantity(state['pos_j'])
         rank_array = partitioner.scatter_tile(tile_comm, array, metadata)
-        assert rank_array.shape == (2, 2)
+        assert rank_array.extent == (2, 2)
         j, i = partitioner.subtile_index(rank)
         assert rank_array[0, 0] == j
         assert rank_array[0, 1] == j
@@ -267,9 +261,9 @@ def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
             array = state['pos_i']
         else:
             array = None
-        metadata = get_metadata(state['pos_i'])
+        metadata = fv3util.QuantityMetadata.from_quantity(state['pos_i'])
         rank_array = partitioner.scatter_tile(tile_comm, array, metadata)
-        assert rank_array.shape == (2, 2)
+        assert rank_array.extent == (2, 2)
         j, i = partitioner.subtile_index(rank)
         assert rank_array[0, 0] == i
         assert rank_array[1, 0] == i
