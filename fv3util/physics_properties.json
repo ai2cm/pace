@@ -1,5 +1,26 @@
 [
     {
+        "name": "mean_cos_zenith_angle",
+        "fortran_name": "coszen",
+        "units": "",
+        "container": "Radtend",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "sensible_heat_flux",
+        "fortran_name": "dtsfc",
+        "units": "W/m^2",
+        "container": "Intdiag",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "latent_heat_flux",
+        "fortran_name": "dqsfc",
+        "units": "W/m^2",
+        "container": "Intdiag",
+        "dims": ["y", "x"]
+    },
+    {
         "name": "convective_cloud_fraction",
         "fortran_name": "cv",
         "units": "",
