@@ -2,7 +2,7 @@ import os
 import xarray as xr
 import copy
 from . import fortran_info
-from . import domain, io, filesystem, constants, quantity
+from . import partitioner, io, filesystem, constants, quantity
 
 
 RESTART_NAMES = ('fv_core.res', 'fv_srf_wnd.res', 'fv_tracer.res')
@@ -16,7 +16,7 @@ def get_rank_suffix(rank, total_ranks):
             f'total_ranks must be evenly divisible by 6, was given {total_ranks}'
         )
     ranks_per_tile = total_ranks // 6
-    tile = domain.get_tile_number(rank, total_ranks)
+    tile = partitioner.get_tile_number(rank, total_ranks)
     count = rank % ranks_per_tile
     if total_ranks > 6:
         rank_suffix = f'.tile{tile}.nc.{count:04}'
@@ -75,12 +75,12 @@ def load_partial_state_from_restart_file(filename, partitioner, comm, only_names
             name_list = list(set(state.keys()).difference('time'))
             name_list = tile_comm.bcast(name_list, root=constants.MASTER_RANK)
             array_list = [state[name] for name in name_list]
-            metadata_list = domain.bcast_metadata_list(tile_comm, array_list)
+            metadata_list = partitioner.bcast_metadata_list(tile_comm, array_list)
             for name, array, metadata in zip(name_list, array_list, metadata_list):
                 state[name] = partitioner.scatter_tile(tile_comm, array, metadata)
     else:
         name_list = tile_comm.bcast(None, root=constants.MASTER_RANK)
-        metadata_list = domain.bcast_metadata_list(tile_comm, None)
+        metadata_list = partitioner.bcast_metadata_list(tile_comm, None)
         state = {}
         for name, metadata in zip(name_list, metadata_list):
             state[name] = partitioner.scatter_tile(tile_comm, None, metadata)

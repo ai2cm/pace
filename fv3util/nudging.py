@@ -1,3 +1,6 @@
+from .quantity import Quantity
+from . import units
+
 
 def apply_nudging(state, reference_state, nudging_timescales, timestep):
     """
@@ -31,7 +34,7 @@ def _apply_tendencies(state, tendencies, timestep):
     for name, tendency in tendencies.items():
         if name not in state:
             raise ValueError(f'no state variable to apply tendency for {name}')
-        state[name].values += tendency.values * timestep.total_seconds()
+        state[name].view[:] += tendency.view[:] * timestep.total_seconds()
 
 
 def get_nudging_tendencies(state, reference_state, nudging_timescales):
@@ -51,9 +54,15 @@ def get_nudging_tendencies(state, reference_state, nudging_timescales):
             and values are Quantity objects indicating the nudging tendency
             of that standard name.
     """
-    return_array = {}
+    return_dict = {}
     for name, timescale in nudging_timescales.items():
+        quantity = state[name]
         reference = reference_state[name]
-        return_array[name] = (reference - state[name]) / timescale.total_seconds()
-        return_array[name].attrs['units'] = reference.attrs['units'] + ' s^-1'
-    return return_array
+        units.ensure_equal_units(quantity.units, reference.units)
+        return_data = (reference.view[:] - quantity.view[:]) / timescale.total_seconds()
+        return_dict[name] = Quantity(
+            return_data,
+            dims=quantity.dims,
+            units=quantity.units + ' s^-1'
+        )
+    return return_dict

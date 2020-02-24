@@ -24,13 +24,13 @@ class QuantityMetadata:
 
     @property
     def np(self):
-        if isinstance(self.data_type, np.ndarray):
+        if issubclass(self.data_type, np.ndarray):
             return np
-        elif isinstance(self.data_type, cupy.ndarray):
+        elif issubclass(self.data_type, cupy.ndarray):
             return cupy
         else:
             raise TypeError(
-                f"quantity underlying data is of unexpected type {type(self._data)}"
+                f"quantity underlying data is of unexpected type {self.data_type}"
             )
 
 
@@ -48,7 +48,7 @@ class Quantity:
             self._extent = tuple(length - start for length, start in zip(data.shape, self._origin))
         else:
             self._extent = tuple(extent)
-        self._compute_view = BoundedArrayView(self._data, self._origin, self._extent)
+        self._compute_domain_view = BoundedArrayView(self._data, self._origin, self._extent)
 
     @classmethod
     def from_xarray(cls, data_array, origin=None, extent=None):
@@ -92,8 +92,8 @@ class Quantity:
         return tuple(return_list)
     
     @property
-    def compute_view(self):
-        return self._compute_view
+    def view(self):
+        return self._compute_domain_view
 
     @property
     def data(self):
@@ -126,6 +126,107 @@ class Quantity:
                 f"quantity underlying data is of unexpected type {type(self._data)}"
             )
 
+    # def __add__(self, other):
+    #     if isinstance(other, Quantity):
+    #         raise NotImplementedError()
+    #     else:
+    #         data = self.view[:] + other
+    #         return Quantity(
+    #             data,
+    #             dims=self.dims,
+    #             units=self.units
+    #         )
+
+    # def _view_operation(self, other, operation):
+    #     if isinstance(other, Quantity):
+    #         if not units_are_compatible(self.units, other.units):
+    #             raise UnitsError(f'Incompatible units {self.units} and {other.units}')
+    #         else:
+    #             data = getattr(self.view[:], operation)(other.view[:])
+    #             return Quantity(
+    #                 data,
+    #                 dims=self.dims,
+    #                 units=self.units
+    #             )
+    #     else:
+    #         data = getattr(self.view[:], operation)(other)
+    #         return Quantity(
+    #             data,
+    #             dims=self.dims,
+    #             units=self.units
+    #         )
+
+
+    # def __radd__(self, other):
+    #     return self.__add__(other)
+
+
+    # def __sub__(self, other):
+    #     if isinstance(other, Quantity):
+    #         if not units_are_compatible(self.units, other.units):
+    #             raise UnitsError(f'Incompatible units {self.units} and {other.units}')
+    #         else:
+    #             data = self.view[:] - other.view[:]
+    #             return Quantity(
+    #                 data,
+    #                 dims=self.dims,
+    #                 units=self.units
+    #             )
+    #     else:
+    #         data = self.view[:] - other
+    #         return Quantity(
+    #             data,
+    #             dims=self.dims,
+    #             units=self.units
+    #         )
+
+    # def __rsub__(self, other):
+    #     if isinstance(other, Quantity):
+    #         raise NotImplementedError()
+    #     else:
+    #         data = other - self.view[:]
+    #         return Quantity(
+    #             data,
+    #             dims=self.dims,
+    #             units=self.units
+    #         )
+
+    # def __mul__(self, other):
+    #     if isinstance(other, Quantity):
+    #         raise NotImplementedError()
+    #     else:
+    #         data = self.view[:] * other
+    #         return Quantity(
+    #             data,
+    #             dims=self.dims,
+    #             units=self.units
+    #         )
+
+    # def __rmul__(self, other):
+    #     return self.__mul__(other)
+
+    # def __truediv__(self, other):
+    #     if isinstance(other, Quantity):
+    #         raise NotImplementedError()
+    #     else:
+    #         data = self.view[:] / other
+    #         return Quantity(
+    #             data,
+    #             dims=self.dims,
+    #             units=self.units
+    #         )
+
+    # def __rtruediv__(self, other):
+    #     if isinstance(other, Quantity):
+    #         raise NotImplementedError()
+    #     else:
+    #         data = other / self.view[:]
+    #         return Quantity(
+    #             data,
+    #             dims=self.dims,
+    #             units='1 / ' + self.units
+    #         )
+
 
 class BoundedArrayView:
 
@@ -143,10 +244,10 @@ class BoundedArrayView:
         return self._extent
 
     def __getitem__(self, index):
-        return self._data.__getitem__(self._get_compute_index(index))
+        return self._data[self._get_compute_index(index)]
 
     def __setitem__(self, index, value):
-        return self._data.__setitem__(self._get_compute_index(index), value)
+        self._data[self._get_compute_index(index)] = value
 
     def _get_compute_index(self, index):
         if not isinstance(index, (tuple, list)):
@@ -155,8 +256,12 @@ class BoundedArrayView:
         shifted_index = []
         for entry, origin, extent in zip(index, self.origin, self.extent):
             if isinstance(entry, slice):
-                shifted_slice = shift_slice(entry, -origin)
+                shifted_slice = shift_slice(entry, origin)
                 shifted_index.append(bound_default_slice(shifted_slice, 0, extent))
+            elif entry is None:
+                shifted_index.append(entry)
+            else:
+                shifted_index.append(entry + origin)
         return tuple(shifted_index)
 
 
@@ -168,11 +273,11 @@ def shift_slice(slice_in, shift):
     if slice_in.start is None:
         start = None
     else:
-        start = slice_in.start - shift
+        start = slice_in.start + shift
     if slice_in.stop is None:
         stop = None
     else:
-        stop = slice_in.stop - shift
+        stop = slice_in.stop + shift
     return slice(start, stop, slice_in.step)
 
 

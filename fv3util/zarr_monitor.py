@@ -3,7 +3,7 @@ import logging
 import zarr
 import numpy as np
 import xarray as xr
-from .domain import Partitioner
+from .partitioner import Partitioner
 
 logger = logging.getLogger("fv3util")
 

@@ -12,6 +12,9 @@ class DummyComm:
         self._buffer = buffer_dict
         self._i_buffer = {}
 
+    def __repr__(self):
+        return f"DummyComm(rank={self.rank}, total_ranks={self.total_ranks})"
+
     def Get_rank(self):
         return self.rank
 
