@@ -6,14 +6,19 @@ import numpy as np
 import copy
 
 
+@pytest.fixture
+def numpy():
+    return np
+
+
 @pytest.fixture(params=["empty", "one_var", "two_vars"])
-def state(request):
+def state(request, numpy):
     if request.param == 'empty':
         return {}
     elif request.param == 'one_var':
         return {
             'var1': fv3util.Quantity(
-                np.ones([5]),
+                numpy.ones([5]),
                 dims=['dim1'],
                 units='m',
             )
@@ -21,12 +26,12 @@ def state(request):
     elif request.param == 'two_vars':
         return {
             'var1': fv3util.Quantity(
-                np.ones([5]),
+                numpy.ones([5]),
                 dims=['dim1'],
                 units='m',
             ),
             'var2': fv3util.Quantity(
-                np.ones([5]),
+                numpy.ones([5]),
                 dims=['dim_2'],
                 units='m',
             )
@@ -41,20 +46,20 @@ def reference_difference(request):
 
 
 @pytest.fixture
-def reference_state(reference_difference, state):
+def reference_state(reference_difference, state, numpy):
     if reference_difference == "equal":
         reference_state = copy.deepcopy(state)
     elif reference_difference == "extra_var":
         reference_state = copy.deepcopy(state)
         reference_state['extra_var'] = fv3util.Quantity(
-            np.ones([5]),
+            numpy.ones([5]),
             dims=['dim1'],
             units='m',
         )
     elif reference_difference == "plus_one":
         reference_state = copy.deepcopy(state)
         for array in reference_state.values():
-            array += 1.0
+            array.data[:] += 1.0
     else:
         raise NotImplementedError()
     return reference_state
@@ -82,7 +87,7 @@ def final_state(reference_difference, state, multiple_of_timestep):
     elif reference_difference == "plus_one":
         final_state = copy.deepcopy(state)
         for name, array in final_state.items():
-            array.values += 1.0 / multiple_of_timestep
+            array.data[:] += 1.0 / multiple_of_timestep
     else:
         raise NotImplementedError()
     return final_state
@@ -93,12 +98,12 @@ def nudging_tendencies(reference_difference, state, nudging_timescales):
     if reference_difference in ("equal", "extra_var"):
         tendencies = copy.deepcopy(state)
         for array in tendencies.values():
-            array.values[:] = 0.
+            array.data[:] = 0.
             array.attrs['units'] = array.attrs['units'] + ' s^-1'
     elif reference_difference == "plus_one":
         tendencies = copy.deepcopy(state)
         for name, array in tendencies.items():
-            array.values[:] = 1.0 / nudging_timescales[name].total_seconds()
+            array.data[:] = 1.0 / nudging_timescales[name].total_seconds()
             array.attrs['units'] = array.attrs['units'] + ' s^-1'
     else:
         raise NotImplementedError()
@@ -119,36 +124,37 @@ def timestep(request):
 
 def test_apply_nudging_equals(
         state, reference_state, nudging_timescales, timestep,
-        final_state, nudging_tendencies):
+        final_state, nudging_tendencies, numpy):
     result = fv3util.apply_nudging(
         state, reference_state, nudging_timescales, timestep)
     for name, tendency in nudging_tendencies.items():
-        xr.testing.assert_equal(result[name], tendency)
-        assert result[name].attrs['units'] == tendency.attrs['units']
+        numpy.testing.assert_array_equal(result[name].data, tendency.data)
+        assert result[name].dims == tendency.dims
+        assert result[name].units == tendency.units
     for name, reference_array in final_state.items():
-        xr.testing.assert_equal(state[name], reference_array)
+        numpy.testing.assert_equal(state[name].data, reference_array.data)
         assert state[name].dims == reference_array.dims
-        assert state[name].attrs['units'] == reference_array.attrs['units']
+        assert state[name].units == reference_array.units
 
 
 def test_get_nudging_tendencies_equals(
-        state, reference_state, nudging_timescales, nudging_tendencies):
+        state, reference_state, nudging_timescales, nudging_tendencies, numpy):
     result = fv3util.get_nudging_tendencies(
         state, reference_state, nudging_timescales)
     for name, tendency in nudging_tendencies.items():
-        xr.testing.assert_equal(result[name], tendency)
+        numpy.testing.assert_array_equal(result[name].data, tendency.data)
         assert result[name].dims == tendency.dims
         assert result[name].attrs['units'] == tendency.attrs['units']
 
 
 def test_get_nudging_tendencies_half_timescale(
-        state, reference_state, nudging_timescales, nudging_tendencies):
+        state, reference_state, nudging_timescales, nudging_tendencies, numpy):
     for name, timescale in nudging_timescales.items():
         nudging_timescales[name] = timedelta(seconds=0.5 * timescale.total_seconds())
     result = fv3util.get_nudging_tendencies(
         state, reference_state, nudging_timescales)
     for name, tendency in nudging_tendencies.items():
-        xr.testing.assert_equal(result[name], 2.0 * tendency)
+        numpy.testing.assert_array_equal(result[name].data, 2.0 * tendency.data)
         assert result[name].dims == tendency.dims
         assert result[name].attrs['units'] == tendency.attrs['units']
 
