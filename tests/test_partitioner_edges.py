@@ -48,7 +48,7 @@ def partitioner_1_by_1():
     ]
 )
 def test_2_by_2_left_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_2_by_2.boundary('left', from_rank)
+    edge = partitioner_2_by_2.left_edge(from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -66,7 +66,7 @@ def test_2_by_2_left_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_ro
     ]
 )
 def test_1_by_1_left_edge(partitioner_1_by_1, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_1_by_1.boundary('left', from_rank)
+    edge = partitioner_1_by_1.left_edge(from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -132,7 +132,7 @@ def test_rotate_subtile_rank(rank, layout, n_clockwise_rotations, new_rank):
     ]
 )
 def test_2_by_2_top_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_2_by_2.boundary('top', from_rank)
+    edge = partitioner_2_by_2.top_edge(from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -150,7 +150,7 @@ def test_2_by_2_top_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rot
     ]
 )
 def test_1_by_1_top_edge(partitioner_1_by_1, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_1_by_1.boundary('top', from_rank)
+    edge = partitioner_1_by_1.top_edge(from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -186,7 +186,7 @@ def test_1_by_1_top_edge(partitioner_1_by_1, from_rank, to_rank, n_clockwise_rot
     ]
 )
 def test_2_by_2_bottom_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_2_by_2.boundary('bottom', from_rank)
+    edge = partitioner_2_by_2.bottom_edge(from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -204,7 +204,7 @@ def test_2_by_2_bottom_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_
     ]
 )
 def test_1_by_1_bottom_edge(partitioner_1_by_1, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_1_by_1.boundary('bottom', from_rank)
+    edge = partitioner_1_by_1.bottom_edge(from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -240,7 +240,7 @@ def test_1_by_1_bottom_edge(partitioner_1_by_1, from_rank, to_rank, n_clockwise_
     ]
 )
 def test_2_by_2_right_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_2_by_2.boundary('right', from_rank)
+    edge = partitioner_2_by_2.right_edge(from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -258,7 +258,7 @@ def test_2_by_2_right_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_r
     ]
 )
 def test_1_by_1_right_edge(partitioner_1_by_1, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_1_by_1.boundary('right', from_rank)
+    edge = partitioner_1_by_1.right_edge(from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -268,7 +268,7 @@ def test_1_by_1_right_edge(partitioner_1_by_1, from_rank, to_rank, n_clockwise_r
     "from_rank", [0, 1, 2, 3, 4, 5]
 )
 def test_1_by_1_top_left_corner(partitioner_1_by_1, from_rank):
-    corner = partitioner_1_by_1.boundary('top_left', from_rank)
+    corner = partitioner_1_by_1.top_left_corner(from_rank)
     assert corner is None
 
 
@@ -276,7 +276,7 @@ def test_1_by_1_top_left_corner(partitioner_1_by_1, from_rank):
     "from_rank", [0, 1, 2, 3, 4, 5]
 )
 def test_1_by_1_top_right_corner(partitioner_1_by_1, from_rank):
-    corner = partitioner_1_by_1.boundary('top_right', from_rank)
+    corner = partitioner_1_by_1.top_right_corner(from_rank)
     assert corner is None
 
 
@@ -284,7 +284,7 @@ def test_1_by_1_top_right_corner(partitioner_1_by_1, from_rank):
     "from_rank", [0, 1, 2, 3, 4, 5]
 )
 def test_1_by_1_bottom_left_corner(partitioner_1_by_1, from_rank):
-    corner = partitioner_1_by_1.boundary('bottom_left', from_rank)
+    corner = partitioner_1_by_1.bottom_left_corner(from_rank)
     assert corner is None
 
 
@@ -292,7 +292,7 @@ def test_1_by_1_bottom_left_corner(partitioner_1_by_1, from_rank):
     "from_rank", [0, 1, 2, 3, 4, 5]
 )
 def test_1_by_1_bottom_right_corner(partitioner_1_by_1, from_rank):
-    corner = partitioner_1_by_1.boundary('bottom_right', from_rank)
+    corner = partitioner_1_by_1.bottom_right_corner(from_rank)
     assert corner is None
 
 
@@ -326,7 +326,7 @@ def test_1_by_1_bottom_right_corner(partitioner_1_by_1, from_rank):
     ]
 )
 def test_2_by_2_top_left_corner(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations):
-    corner = partitioner_2_by_2.boundary('top_left', from_rank)
+    corner = partitioner_2_by_2.top_left_corner(from_rank)
     if to_rank is None:
         assert corner is None
     else:
@@ -365,7 +365,7 @@ def test_2_by_2_top_left_corner(partitioner_2_by_2, from_rank, to_rank, n_clockw
     ]
 )
 def test_2_by_2_top_right_corner(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations):
-    corner = partitioner_2_by_2.boundary('top_right', from_rank)
+    corner = partitioner_2_by_2.top_right_corner(from_rank)
     if to_rank is None:
         assert corner is None
     else:
@@ -404,7 +404,7 @@ def test_2_by_2_top_right_corner(partitioner_2_by_2, from_rank, to_rank, n_clock
     ]
 )
 def test_2_by_2_bottom_left_corner(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations):
-    corner = partitioner_2_by_2.boundary('bottom_left', from_rank)
+    corner = partitioner_2_by_2.bottom_left_corner(from_rank)
     if to_rank is None:
         assert corner is None
     else:
@@ -443,7 +443,7 @@ def test_2_by_2_bottom_left_corner(partitioner_2_by_2, from_rank, to_rank, n_clo
     ]
 )
 def test_2_by_2_bottom_right_corner(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations):
-    corner = partitioner_2_by_2.boundary('bottom_right', from_rank)
+    corner = partitioner_2_by_2.bottom_right_corner(from_rank)
     if to_rank is None:
         assert corner is None
     else:

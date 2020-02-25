@@ -119,7 +119,7 @@ def test_centered_state_one_item_per_rank_scatter_tile(layout):
     'layout', [(1, 1), (1, 2), (2, 1), (2, 2), (3, 3)]
 )
 @pytest.mark.parametrize(
-    'n_halo', [0]
+    'n_halo', [0, 1, 3]
 )
 def test_centered_state_one_item_per_rank_with_halo_scatter_tile(layout, n_halo):
     nz = 5
@@ -131,16 +131,22 @@ def test_centered_state_one_item_per_rank_with_halo_scatter_tile(layout, n_halo)
             np.empty([layout[0] + 2 * n_halo, layout[1] + 2 * n_halo]),
             dims=[fv3util.Y_DIM, fv3util.X_DIM],
             units='dimensionless',
+            origin=(n_halo, n_halo),
+            extent=(ny, nx),
         ),
         'rank_pos_j': fv3util.Quantity(
             np.empty([layout[0] + 2 * n_halo, layout[1] + 2 * n_halo]),
             dims=[fv3util.Y_DIM, fv3util.X_DIM],
             units='dimensionless',
+            origin=(n_halo, n_halo),
+            extent=(ny, nx),
         ),
         'rank_pos_i': fv3util.Quantity(
             np.empty([layout[0] + 2 * n_halo, layout[1] + 2 * n_halo]),
             dims=[fv3util.Y_DIM, fv3util.X_DIM],
             units='dimensionless',
+            origin=(n_halo, n_halo),
+            extent=(ny, nx),
         ),
     }
     
@@ -154,6 +160,6 @@ def test_centered_state_one_item_per_rank_with_halo_scatter_tile(layout, n_halo)
     tile_communicator_list = get_tile_communicator_list(partitioner)
     for communicator, rank_array in rank_scatter_results(tile_communicator_list, state['rank']):
         assert rank_array.extent == (1, 1)
-        assert rank_array.data[0, 0] == rank
+        assert rank_array.data[0, 0] == communicator.rank
         assert rank_array.data.dtype == state['rank'].data.dtype
 

@@ -30,6 +30,15 @@ class DummyComm:
             self._buffer[buffer_type].append(in_value)
         return self._buffer[buffer_type][i_buffer]
 
+    def _get_send_recv(self, from_rank):
+        self._buffer['send_recv'] = self._buffer.get('send_recv', {})
+        return self._buffer['send_recv'].pop((from_rank, self.rank))
+
+
+    def _put_send_recv(self, value, to_rank):
+        self._buffer['send_recv'] = self._buffer.get('send_recv', {})
+        self._buffer['send_recv'][(self.rank, to_rank)] = value
+
     @property
     def _bcast_buffer(self):
         if 'bcast' not in self._buffer:
@@ -57,3 +66,15 @@ class DummyComm:
             raise NotImplementedError('DummyComm assumes ranks are called in order, so root must be the scatter source')
         sendbuf = self._get_buffer('scatter', sendbuf)
         recvbuf[:] = sendbuf[self.rank]
+
+    def Send(self, sendbuf, dest):
+        self._put_send_recv(sendbuf, dest)
+
+    def Isend(self, sendbuf, dest):
+        return self.Send(sendbuf, dest)
+
+    def Recv(self, recvbuf, source):
+        recvbuf[:] = self._get_send_recv(source)
+
+    def Irecv(self, recvbuf, source):
+        return self.Recv(recvbuf, source)
