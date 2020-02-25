@@ -1,6 +1,7 @@
 from typing import Tuple
 import dataclasses
 import numpy as np
+from . import constants
 try:
     import cupy
 except ImportError:
@@ -126,106 +127,94 @@ class Quantity:
                 f"quantity underlying data is of unexpected type {type(self._data)}"
             )
 
-    # def __add__(self, other):
-    #     if isinstance(other, Quantity):
-    #         raise NotImplementedError()
-    #     else:
-    #         data = self.view[:] + other
-    #         return Quantity(
-    #             data,
-    #             dims=self.dims,
-    #             units=self.units
-    #         )
+    def boundary_data(self, boundary_type, n_points, interior=True):
+        """Return a view of points at a domain boundary.
 
-    # def _view_operation(self, other, operation):
-    #     if isinstance(other, Quantity):
-    #         if not units_are_compatible(self.units, other.units):
-    #             raise UnitsError(f'Incompatible units {self.units} and {other.units}')
-    #         else:
-    #             data = getattr(self.view[:], operation)(other.view[:])
-    #             return Quantity(
-    #                 data,
-    #                 dims=self.dims,
-    #                 units=self.units
-    #             )
-    #     else:
-    #         data = getattr(self.view[:], operation)(other)
-    #         return Quantity(
-    #             data,
-    #             dims=self.dims,
-    #             units=self.units
-    #         )
+        The view will move away from the boundary with increasing index
+
+        Args:
+            boundary_type: one of 'left', 'right', 'top', 'bottom', 'top_left',
+                'top_right', 'bottom_left', or 'bottom_right'
+            n_points: the width of boundary to include
+            interior: if True, give points inside the computational domain (default),
+                otherwise give points in the halo
+        """
+        if boundary_type in constants.EDGE_BOUNDARY_TYPES:
+            return self._edge_data(boundary_type, n_points, interior)
+        elif boundary_type in constants.CORNER_BOUNDARY_TYPES:
+            return self._corner_data(boundary_type, n_points, interior)
+        else:
+            raise ValueError(f'boundary_type must be one of {constants.BOUNDARY_TYPES}')
+
+    def _edge_data(self, boundary_type, n_points, interior):
+        boundary_slice = []
+        for dim in self.dims:
+            if dim not in constants.HORIZONTAL_DIMS:
+                boundary_slice.append(slice(None, None))
+            elif DIM_TO_START_EDGE[dim] == boundary_type:
+                start = self.origin[self.dims.index(dim)]
+                if interior:
+                    boundary_slice.append(start, start + n_points)
+                else:
+                    boundary_slice.append(start - 1, start - n_points - 1, -1)
+            elif DIM_TO_END_EDGE[dim] == boundary_type:
+                start = self.origin[self.dims.index(dim)] + self.extent[self.dims.index(dim)]
+                if interior:
+                    boundary_slice.append(start - 1, start - n_points - 1, -1)
+                else:
+                    boundary_slice.append(start, start + n_points)
+            else:
+                boundary_slice.append(slice(None, None))
+        return self.data[boundary_slice]
+
+    def _corner_data(self, boundary_type, n_points, interior):
+        boundary_slice = []
+        for dim in self.dims:
+            if dim not in constants.HORIZONTAL_DIMS:
+                boundary_slice.append(slice(None, None))
+            elif boundary_type in DIM_TO_START_CORNERS[dim]:
+                start = self.origin[self.dims.index(dim)]
+                if interior:
+                    boundary_slice.append(start, start + n_points)
+                else:
+                    boundary_slice.append(start - 1, start - n_points - 1, -1)
+            elif boundary_type in DIM_TO_END_CORNERS[dim]:
+                start = self.origin[self.dims.index(dim)] + self.extent[self.dims.index(dim)]
+                if interior:
+                    boundary_slice.append(start - 1, start - n_points - 1, -1)
+                else:
+                    boundary_slice.append(start, start + n_points)
+        return self.data[boundary_slice]
 
 
-    # def __radd__(self, other):
-    #     return self.__add__(other)
+DIM_TO_START_EDGE = {
+    constants.X_DIM: constants.LEFT,
+    constants.X_INTERFACE_DIM: constants.LEFT,
+    constants.Y_DIM: constants.BOTTOM,
+    constants.Y_INTERFACE_DIM: constants.BOTTOM,
+}
+
+DIM_TO_END_EDGE = {
+    constants.X_DIM: constants.RIGHT,
+    constants.X_INTERFACE_DIM: constants.RIGHT,
+    constants.Y_DIM: constants.TOP,
+    constants.Y_INTERFACE_DIM: constants.TOP,
+}
 
 
-    # def __sub__(self, other):
-    #     if isinstance(other, Quantity):
-    #         if not units_are_compatible(self.units, other.units):
-    #             raise UnitsError(f'Incompatible units {self.units} and {other.units}')
-    #         else:
-    #             data = self.view[:] - other.view[:]
-    #             return Quantity(
-    #                 data,
-    #                 dims=self.dims,
-    #                 units=self.units
-    #             )
-    #     else:
-    #         data = self.view[:] - other
-    #         return Quantity(
-    #             data,
-    #             dims=self.dims,
-    #             units=self.units
-    #         )
+DIM_TO_START_CORNERS = {
+    constants.X_DIM: (constants.TOP_LEFT, constants.BOTTOM_LEFT),
+    constants.X_INTERFACE_DIM: (constants.TOP_LEFT, constants.BOTTOM_LEFT),
+    constants.Y_DIM: (constants.BOTTOM_LEFT, constants.BOTTOM_RIGHT),
+    constants.Y_INTERFACE_DIM: (constants.BOTTOM_LEFT, constants.BOTTOM_RIGHT),
+}
 
-    # def __rsub__(self, other):
-    #     if isinstance(other, Quantity):
-    #         raise NotImplementedError()
-    #     else:
-    #         data = other - self.view[:]
-    #         return Quantity(
-    #             data,
-    #             dims=self.dims,
-    #             units=self.units
-    #         )
-
-    # def __mul__(self, other):
-    #     if isinstance(other, Quantity):
-    #         raise NotImplementedError()
-    #     else:
-    #         data = self.view[:] * other
-    #         return Quantity(
-    #             data,
-    #             dims=self.dims,
-    #             units=self.units
-    #         )
-
-    # def __rmul__(self, other):
-    #     return self.__mul__(other)
-
-    # def __truediv__(self, other):
-    #     if isinstance(other, Quantity):
-    #         raise NotImplementedError()
-    #     else:
-    #         data = self.view[:] / other
-    #         return Quantity(
-    #             data,
-    #             dims=self.dims,
-    #             units=self.units
-    #         )
-
-    # def __rtruediv__(self, other):
-    #     if isinstance(other, Quantity):
-    #         raise NotImplementedError()
-    #     else:
-    #         data = other / self.view[:]
-    #         return Quantity(
-    #             data,
-    #             dims=self.dims,
-    #             units='1 / ' + self.units
-    #         )
+DIM_TO_END_CORNERS = {
+    constants.X_DIM: (constants.TOP_RIGHT, constants.BOTTOM_RIGHT),
+    constants.X_INTERFACE_DIM: (constants.TOP_RIGHT, constants.BOTTOM_RIGHT),
+    constants.Y_DIM: (constants.TOP_LEFT, constants.TOP_RIGHT),
+    constants.Y_INTERFACE_DIM: (constants.TOP_LEFT, constants.TOP_RIGHT),
+}
 
 
 class BoundedArrayView:

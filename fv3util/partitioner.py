@@ -2,11 +2,14 @@ from typing import Tuple
 import functools
 import dataclasses
 from . import constants
+from .constants import (
+    TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
+)
 import numpy as np
 import xarray as xr
 from .quantity import QuantityMetadata, Quantity
 
-BOUNDARY_CACHE_SIZE=None
+BOUNDARY_CACHE_SIZE = None
 
 
 def get_tile_index(rank, total_ranks):
@@ -47,6 +50,9 @@ class Boundary:
             x_data[:] = -x_data[:]
         elif self.n_clockwise_rotations % 4 == 3:
             y_data, x_data = x_data[:], -y_data[:]
+
+    def from_slice(self):
+        pass
 
 
 class Partitioner:
@@ -118,8 +124,20 @@ class Partitioner:
         """Return the lowest rank on the same tile as a given rank."""
         return self.ranks_per_tile * (rank // self.ranks_per_tile)
 
+    def boundary(self, boundary_type, rank):
+        return {
+            LEFT: self._left_edge,
+            RIGHT: self._right_edge,
+            TOP: self._top_edge,
+            BOTTOM: self._bottom_edge,
+            TOP_LEFT: self._top_left_corner,
+            TOP_RIGHT: self._top_right_corner,
+            BOTTOM_LEFT: self._bottom_left_corner,
+            BOTTOM_RIGHT: self._bottom_right_corner,
+        }[boundary_type](rank)
+
     @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
-    def left_edge(self, rank):
+    def _left_edge(self, rank):
         self._ensure_square_layout()
         if on_tile_left(self.subtile_index(rank)):
             if is_even(self.tile(rank)):
@@ -143,7 +161,7 @@ class Partitioner:
         return Boundary(from_rank=rank, to_rank=to_rank, n_clockwise_rotations=rotations)
 
     @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
-    def right_edge(self, rank):
+    def _right_edge(self, rank):
         self._ensure_square_layout()
         self._ensure_square_layout()
         if on_tile_right(self.subtile_index(rank), self.layout):
@@ -168,7 +186,7 @@ class Partitioner:
         return Boundary(from_rank=rank, to_rank=to_rank, n_clockwise_rotations=rotations)
 
     @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
-    def top_edge(self, rank):
+    def _top_edge(self, rank):
         self._ensure_square_layout()
         if on_tile_top(self.subtile_index(rank), self.layout):
             if is_even(self.tile(rank)):
@@ -195,7 +213,7 @@ class Partitioner:
         return Boundary(from_rank=rank, to_rank=to_rank, n_clockwise_rotations=rotations)
 
     @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
-    def bottom_edge(self, rank):
+    def _bottom_edge(self, rank):
         self._ensure_square_layout()
         if (
                 on_tile_bottom(self.subtile_index(rank)) and
@@ -217,52 +235,52 @@ class Partitioner:
         to_rank = to_rank % self.total_ranks
         return Boundary(from_rank=rank, to_rank=to_rank, n_clockwise_rotations=rotations)
 
-    def top_left_corner(self, rank):
+    def _top_left_corner(self, rank):
         if (on_tile_top(self.subtile_index(rank), self.layout) and
                 on_tile_left(self.subtile_index(rank))):
             corner = None
         else:
             if is_even(self.tile(rank)) and on_tile_left(self.subtile_index(rank)):
-                second_edge = self.left_edge
+                second_edge = self._left_edge
             else:
-                second_edge = self.top_edge
-            corner = self._get_corner(rank, self.left_edge, second_edge)
+                second_edge = self._top_edge
+            corner = self._get_corner(rank, self._left_edge, second_edge)
         return corner
 
-    def top_right_corner(self, rank):
+    def _top_right_corner(self, rank):
         if (on_tile_top(self.subtile_index(rank), self.layout) and
                 on_tile_right(self.subtile_index(rank), self.layout)):
             corner = None
         else:
             if is_even(self.tile(rank)) and on_tile_top(self.subtile_index(rank), self.layout):
-                second_edge = self.bottom_edge
+                second_edge = self._bottom_edge
             else:
-                second_edge = self.right_edge
-            corner = self._get_corner(rank, self.top_edge, second_edge)
+                second_edge = self._right_edge
+            corner = self._get_corner(rank, self._top_edge, second_edge)
         return corner
 
-    def bottom_left_corner(self, rank):
+    def _bottom_left_corner(self, rank):
         if (on_tile_bottom(self.subtile_index(rank)) and
                 on_tile_left(self.subtile_index(rank))):
             corner = None
         else:
             if not is_even(self.tile(rank)) and on_tile_bottom(self.subtile_index(rank)):
-                second_edge = self.top_edge
+                second_edge = self._top_edge
             else:
-                second_edge = self.left_edge
-            corner = self._get_corner(rank, self.bottom_edge, second_edge)
+                second_edge = self._left_edge
+            corner = self._get_corner(rank, self._bottom_edge, second_edge)
         return corner
 
-    def bottom_right_corner(self, rank):
+    def _bottom_right_corner(self, rank):
         if (on_tile_bottom(self.subtile_index(rank)) and
                 on_tile_right(self.subtile_index(rank), self.layout)):
             corner = None
         else:
             if not is_even(self.tile(rank)) and on_tile_bottom(self.subtile_index(rank)):
-                second_edge = self.bottom_edge
+                second_edge = self._bottom_edge
             else:
-                second_edge = self.right_edge
-            corner = self._get_corner(rank, self.bottom_edge, second_edge)
+                second_edge = self._right_edge
+            corner = self._get_corner(rank, self._bottom_edge, second_edge)
         return corner
 
     def _get_corner(self, rank, edge_func_1, edge_func_2):

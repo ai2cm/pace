@@ -1,6 +1,7 @@
 from .quantity import Quantity, QuantityMetadata
 from .partitioner import Partitioner
 from . import constants
+import functools
 
 
 class TileCommunicator:
@@ -40,7 +41,7 @@ class TileCommunicator:
 
     @property
     def rank(self):
-        return self.tile_comm.rank
+        return self.tile_comm.Get_rank()
     
 
 class CubedSphereCommunicator:
@@ -49,6 +50,16 @@ class CubedSphereCommunicator:
         self.comm = comm
         self.partitioner = partitioner
         self._tile_communicator = None
+        self._boundaries = None
+
+    @property
+    def boundaries(self):
+        if self._boundaries is None:
+            self._boundaries = {
+                boundary_type: self.partitioner.boundary(boundary_type, self.rank)
+                for boundary_type in constants.BOUNDARY_TYPES
+            }
+        return self._boundaries
 
     @property
     def tile_communicator(self):
@@ -59,8 +70,26 @@ class CubedSphereCommunicator:
     def _initialize_tile_communicator(self):
         raise NotImplementedError()
 
-    def start_halo_update(self, comm, quantity, n_ghost):
-        raise NotImplementedError()
+    def start_halo_update(self, quantity, n_ghost):
+        for boundary_type, boundary in self.boundaries.items():
+            self.comm.Isend(
+                quantity.np.ascontiguousarray(
+                    quantity.boundary_data(
+                        boundary_type, n_points=n_ghost, interior=True
+                    )
+                ),
+                dest=boundary.to_rank,
+            )
 
-    def finish_halo_update(self, comm, quantity, n_ghost):
-        raise NotImplementedError()
+    def finish_halo_update(self, quantity, n_ghost):
+        for boundary_type, boundary in self.boundaries.items():
+            dest_view = quantity.boundary_data(
+                boundary_type, n_points=n_ghost, interior=False
+            )
+            dest_buffer = quantity.np.empty(dest_view.shape, dtype=dest_view.dtype)
+            self.comm.Recv(dest_buffer, source=boundary.to_rank)
+            dest_view[:] = dest_buffer
+
+    @property
+    def rank(self):
+        return self.comm.Get_rank()
