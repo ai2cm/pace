@@ -96,7 +96,7 @@ def state_list(base_state, n_times, start_time, time_step):
 
 
 def test_monitor_file_store(state_list, nz, ny, nx):
-    domain = fv3util.Partitioner(nz=nz, ny=ny, nx=nx, layout=(1, 1))
+    domain = fv3util.CubedSpherePartitioner(nz=nz, ny=ny, nx=nx, layout=(1, 1))
     with tempfile.TemporaryDirectory(suffix='.zarr') as tempdir:
         monitor = fv3util.ZarrMonitor(tempdir, domain)
         for state in state_list:
@@ -105,20 +105,27 @@ def test_monitor_file_store(state_list, nz, ny, nx):
 
 
 def validate_store(states, filename):
-    store = zarr.open_group(filename, mode='r')
-    assert set(store.array_keys()) == set(states[0].keys())
     nt = len(states)
-    for name, array in store.arrays():
+
+    def assert_no_missing_names(store, state):
+        missing_names = set(states[0].keys()).difference(store.array_keys())
+        assert len(missing_names) == 0, missing_names
+
+    def validate_array_shape(name, array):
         if name == 'time':
             assert array.shape == (nt,)
         else:
             assert array.shape == (nt, 6) + states[0][name].shape
+
+    def validate_array_dimensions_and_attributes(name, array):
         if name == 'time':
             target_attrs = {"_ARRAY_DIMENSIONS": ['time']}
         else:
             target_attrs = states[0][name].attrs
             target_attrs["_ARRAY_DIMENSIONS"] = ['time', 'tile'] + list(states[0][name].dims)
         assert dict(array.attrs) == target_attrs
+
+    def validate_array_values(name, array):
         if name == 'time':
             for i, s in enumerate(states):
                 assert array[i] == np.datetime64(s['time'])
@@ -126,6 +133,13 @@ def validate_store(states, filename):
             for i, s in enumerate(states):
                 np.testing.assert_array_equal(array[i, 0, :], s[name].values)
 
+    store = zarr.open_group(filename, mode='r')
+    assert_no_missing_names(store, states[0])  # states in test all have same names defined
+    for name, array in store.arrays():
+        validate_array_shape(name, array)
+        validate_array_dimensions_and_attributes(name, array)
+        validate_array_values(name, array)
+
 
 @pytest.mark.parametrize(
     'layout', [(1, 1), (1, 2), (2, 2), (4, 4)]
@@ -133,15 +147,23 @@ def validate_store(states, filename):
 @pytest.mark.parametrize(
     'nt', [1, 3]
 )
-def test_monitor_file_store_multi_rank_flat_state(layout, nt, tmpdir_factory):
+@pytest.mark.parametrize(
+    'shape, ny_rank_add, nx_rank_add, dims', [
+        ((5, 4, 4), 0, 0, ('z', 'y', 'x')),
+        ((5, 4, 4), 1, 1, ('z', 'y_interface', 'x_interface')),
+        ((5, 4, 4), 0, 1, ('z', 'y', 'x_interface')),
+    ]
+)
+def test_monitor_file_store_multi_rank_state(
+        layout, nt, tmpdir_factory, shape, ny_rank_add, nx_rank_add, dims):
     tmpdir = tmpdir_factory.mktemp("data.zarr")
-    nz = 5
-    ny = 4
-    nx = 4
+    nz, ny, nx = shape
     time = datetime(2010, 6, 20, 6, 0, 0)
     timestep = timedelta(hours=1)
     total_ranks = 6 * layout[0] * layout[1]
-    partitioner = fv3util.Partitioner(nz=nz, ny=ny, nx=nx, layout=layout)
+    partitioner = fv3util.CubedSpherePartitioner(nz=nz, ny=ny, nx=nx, layout=layout)
+    ny_rank = partitioner.ny_rank + ny_rank_add
+    nx_rank = partitioner.nx_rank + nx_rank_add
     store = zarr.storage.DirectoryStore(tmpdir)
     shared_buffer = {}
     monitor_list = []
@@ -157,55 +179,14 @@ def test_monitor_file_store_multi_rank_flat_state(layout, nt, tmpdir_factory):
             state = {
                 'time': time + i_t * timestep,
                 'var1': xr.DataArray(
-                    np.ones([nz, partitioner.ny_rank, partitioner.nx_rank]),
-                    dims=['z', 'y', 'x'],
+                    np.ones([nz, ny_rank, nx_rank]),
+                    dims=dims,
                     attrs={'units': 'm'}
                 )
             }
             monitor_list[rank].store(state)
     group = zarr.hierarchy.open_group(store=store, mode='r')
     assert 'var1' in group
-    assert group['var1'].shape == (nt, 6, nz, ny, nx)
+    assert group['var1'].shape == (nt, 6, nz, ny + ny_rank_add, nx + nx_rank_add)
     np.testing.assert_array_equal(group['var1'], 1.0)
 
-
-@pytest.mark.parametrize(
-    'layout', [(1, 1), (1, 2), (2, 2), (4, 4)]
-)
-@pytest.mark.parametrize(
-    'nt', [1, 3]
-)
-def test_monitor_file_store_multi_rank_flat_state_interface(layout, nt, tmpdir_factory):
-    tmpdir = tmpdir_factory.mktemp("data.zarr")
-    nz = 5
-    ny = 4
-    nx = 4
-    time = datetime(2010, 6, 20, 6, 0, 0)
-    timestep = timedelta(hours=1)
-    total_ranks = 6 * layout[0] * layout[1]
-    partitioner = fv3util.Partitioner(nz=nz, ny=ny, nx=nx, layout=layout)
-    store = zarr.storage.DirectoryStore(tmpdir)
-    monitor_list = []
-    shared_buffer = {}
-    for rank in range(total_ranks):
-        monitor_list.append(fv3util.ZarrMonitor(
-            store,
-            partitioner,
-            "w",
-            mpi_comm=DummyComm(rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer)
-        ))
-    for i_t in range(nt):
-        for rank in range(total_ranks):
-            state = {
-                'time': time + i_t * timestep,
-                'var1': xr.DataArray(
-                    np.ones([nz, partitioner.ny_rank + 1, partitioner.nx_rank + 1]),
-                    dims=['z', 'y_interface', 'x_interface'],
-                    attrs={'units': 'm'}
-                )
-            }
-            monitor_list[rank].store(state)
-    group = zarr.hierarchy.open_group(store=store, mode='r')
-    assert 'var1' in group
-    assert group['var1'].shape == (nt, 6, nz, ny + 1, nx + 1)
-    np.testing.assert_array_equal(group['var1'], 1.0)

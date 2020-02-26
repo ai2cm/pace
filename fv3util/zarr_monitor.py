@@ -3,7 +3,7 @@ import logging
 import zarr
 import numpy as np
 import xarray as xr
-from .domain import Partitioner
+from ._domain import CubedSpherePartitioner
 
 logger = logging.getLogger("fv3util")
 
@@ -30,7 +30,7 @@ class ZarrMonitor:
     def __init__(
             self,
             store: Union[str, zarr.storage.MutableMapping],
-            partitioner: Partitioner,
+            partitioner: CubedSpherePartitioner,
             mode: str = "w",
             mpi_comm=DummyComm()):
         """Create a ZarrMonitor.

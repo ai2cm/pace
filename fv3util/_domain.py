@@ -31,7 +31,7 @@ def get_tile_number(tile_rank, total_ranks):
     return get_tile_index(tile_rank, total_ranks) + 1
 
 
-class Partitioner:
+class CubedSpherePartitioner:
 
     def __init__(
             self,
@@ -43,7 +43,7 @@ class Partitioner:
         """Create an object for fv3gfs domain decomposition.
         
         Args:
-            nz: number of grid cell centers along the y-direction
+            nz: number of grid cell centers along the z-direction
             ny: number of grid cell centers along the y-direction
             nx: number of grid cell centers along the x-direction
             layout: (y_subtiles, x_subtiles) specifying how the tile is split in the

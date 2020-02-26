@@ -1,6 +1,6 @@
 import pytest
 import fv3util
-import fv3util.domain
+import fv3util._domain
 import xarray as xr
 import numpy as np
 from utils import DummyComm
@@ -66,7 +66,7 @@ def test_subtile_index(rank, layout, subtile_index):
     nz = 60
     ny = 49
     nx = 49
-    partitioner = fv3util.Partitioner(nz, ny, nx, layout)
+    partitioner = fv3util.CubedSpherePartitioner(nz, ny, nx, layout)
     assert partitioner.subtile_index(rank) == subtile_index
 
 
@@ -88,7 +88,7 @@ def test_subtile_index(rank, layout, subtile_index):
     ],
 )
 def test_tile_extent(nz, ny, nx, array_dims, extent):
-    result = fv3util.domain.tile_extent(nz, ny, nx, array_dims)
+    result = fv3util._domain.tile_extent(nz, ny, nx, array_dims)
     assert result == extent
 
 
@@ -154,7 +154,7 @@ def test_tile_extent(nz, ny, nx, array_dims, extent):
     ]
 )
 def test_subtile_slice(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, subtile_slice, overlap):
-    result = fv3util.domain.subtile_slice(
+    result = fv3util._domain.subtile_slice(
         array_dims, nz, ny_rank, nx_rank, layout, subtile_index, overlap
     )
     assert result == subtile_slice
@@ -190,7 +190,7 @@ def test_centered_state_one_item_per_rank_scatter_tile(layout):
         ),
     }
     
-    partitioner = fv3util.Partitioner(nz, ny, nx, layout)
+    partitioner = fv3util.CubedSpherePartitioner(nz, ny, nx, layout)
     for rank in range(total_ranks):
         state['rank'].values[np.unravel_index(rank, state['rank'].shape)] = rank
         j, i = partitioner.subtile_index(rank)
@@ -246,7 +246,7 @@ def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
         tile_comm_list.append(
             DummyComm(rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer)
         )
-    partitioner = fv3util.Partitioner(nz, ny, nx, layout)
+    partitioner = fv3util.CubedSpherePartitioner(nz, ny, nx, layout)
     for rank, tile_comm in enumerate(tile_comm_list):
         if rank == 0:
             array = state['pos_j']
