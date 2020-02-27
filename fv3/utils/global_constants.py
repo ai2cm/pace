@@ -1,1 +1,3 @@
 RADIUS = 6.3712e+6
+RDGAS = 287.04
+GRAV = 9.8

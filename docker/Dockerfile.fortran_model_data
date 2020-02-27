@@ -6,7 +6,7 @@ FROM $model_image as rundir
 RUN pip3 install pytest==5.2.2 gcsfs==0.4.0 fsspec==0.6.0 f90nml==1.1.0 google-cloud-storage==1.23.0
 COPY external/fv3config fv3config
 COPY make_rundir.py make_rundir.py
-COPY external/fv3gfs-fortran/tests/pytest/config/serialize.yml serialize.yml
+COPY fv3/test/serialize.yml serialize.yml
 RUN pip3 install -e fv3config
 ENV FV3CONFIG_CACHE_DIR=/cache_fv3_config
 RUN python3 make_rundir.py

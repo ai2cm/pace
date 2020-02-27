@@ -14,10 +14,9 @@ RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
 
 FROM fv3ser-environment as fv3ser-install
 RUN pip install scikit-build
-RUN git clone https://github.com/jdahm/dawn.git /usr/src/dawn
-RUN cd /usr/src/dawn && git checkout b7416f34f060dea41978edc3cf9b3a259510e1a0
+RUN git clone https://github.com/MeteoSwiss-APN/dawn.git /usr/src/dawn
 RUN pip install /usr/src/dawn/dawn
-RUN git clone --depth 1 -b field_dimensions_fix https://github.com/jdahm/gt4py /usr/src/gt4py
+RUN git clone --depth 1 -b dawn-integration https://github.com/twicki/gt4py.git /usr/src/gt4py
 RUN pip install -e /usr/src/gt4py
 RUN python /usr/src/gt4py/setup.py install_gt_sources --git-branch=v1.0.4
 RUN pip install pytest==5.2.2 && pip install f90nml==1.1.0

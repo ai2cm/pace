@@ -4,7 +4,7 @@ orbs:
 jobs:
   full_build:
     machine:
-      docker_layer_caching: true
+      docker_layer_caching: false
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
@@ -37,24 +37,37 @@ jobs:
           name: "Run tests"
           command: |
             make tests
+  just_run_dawn_tests:
+    machine:
+      docker_layer_caching: true
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - run:
+          name: "gcloud auth"
+          command: |
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+      - gcp-gcr/gcr-auth
+      - run: 
+          name: "Run tests"
+          command: |
+            TEST_ARGS="--exec_backend=dawn:gtmc --data_backend=gtmc" make tests
      
 workflows:
   version: 2
   build:
     jobs:
-      - just_run_tests:
-          filters:
-            branches:
-              only:
-                - master
+      - just_run_tests
   nightly:
     triggers:
       - schedule:
-          cron: "0 0 * * *"
+          cron: "0 7 * * *"
           filters:
             branches:
               only:
                 - master
     jobs:
+      - just_run_dawn_tests
       - full_build
           

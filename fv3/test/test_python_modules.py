@@ -13,7 +13,7 @@ import nose.tools
 import pytest
 import importlib
 import fv3.utils.gt4py_utils as utils
-
+import traceback
 from .delayed_assert import expect, assert_expectations
 
 class bcolors:
@@ -231,7 +231,11 @@ def test_serialized_savepoints(which_modules, skip_modules, print_failures, fail
         print('Rank', args['rank'], 'with', len(savepoints), 'savepoints')
         # Iterate over all the savepoints in this mpi rank
         for sp in savepoints:
-            process_savepoint(serializer, sp, args)
+            try:
+                process_savepoint(serializer, sp, args)
+            except Exception as err:
+                expect(False, msg="ERROR running stencil" + sp.name + '\n\t' + str(err) + "\n" +  traceback.format_exc())
+                pass
         # lets make sure expectations are met for this rank, if not, no need to test all the other ranks
         missing_implementation_message = bcolors.FAIL + 'ERROR, there are savepoints encountered that do not have corresponding implemented python code!:\n\t' + '\n\t'.join(args['unimplemented']) + bcolors.ENDC
         # expect(len(unimplemented) == 0, msg=missing_implementation_message)
