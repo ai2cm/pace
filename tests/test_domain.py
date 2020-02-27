@@ -66,29 +66,30 @@ def test_subtile_index(rank, layout, subtile_index):
     nz = 60
     ny = 49
     nx = 49
-    partitioner = fv3util.CubedSpherePartitioner(nz, ny, nx, layout)
+    partitioner = fv3util.CubedSpherePartitioner(ny, nx, layout)
     assert partitioner.subtile_index(rank) == subtile_index
 
 
 @pytest.mark.parametrize(
-    "nz, ny, nx, array_dims, extent",
+    "ny, nx, array_dims, extent",
     [
-        (8, 16, 32, ([fv3util.Y_DIM, fv3util.X_INTERFACE_DIM]), (16, 33)),
-        (8, 16, 32, ([fv3util.Y_DIM, fv3util.X_DIM]), (16, 32)),
-        (8, 16, 32, ([fv3util.Y_INTERFACE_DIM, fv3util.X_DIM]), (17, 32)),
-        (8, 16, 32, ([fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM]), (17, 33)),
-        (8, 16, 32, ([fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_INTERFACE_DIM]), (8, 16, 33)),
-        (8, 16, 32, ([fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM]), (8, 16, 32)),
-        (8, 16, 32, ([fv3util.Z_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_DIM]), (8, 17, 32)),
-        (8, 16, 32, ([fv3util.Z_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM]), (8, 17, 33)),
-        (8, 16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM, fv3util.X_INTERFACE_DIM]), (9, 16, 33)),
-        (8, 16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM, fv3util.X_DIM]), (9, 16, 32)),
-        (8, 16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_DIM]), (9, 17, 32)),
-        (8, 16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM]), (9, 17, 33)),
+        (16, 32, ([fv3util.Y_DIM, fv3util.X_INTERFACE_DIM]), (16, 33)),
+        (16, 32, ([fv3util.Y_DIM, fv3util.X_DIM]), (16, 32)),
+        (16, 32, ([fv3util.Y_INTERFACE_DIM, fv3util.X_DIM]), (17, 32)),
+        (16, 32, ([fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM]), (17, 33)),
+        (16, 32, ([fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_INTERFACE_DIM]), (8, 16, 33)),
+        (16, 32, ([fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM]), (8, 16, 32)),
+        (16, 32, ([fv3util.Z_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_DIM]), (8, 17, 32)),
+        (16, 32, ([fv3util.Z_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM]), (8, 17, 33)),
+        (16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM, fv3util.X_INTERFACE_DIM]), (9, 16, 33)),
+        (16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM, fv3util.X_DIM]), (9, 16, 32)),
+        (16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_DIM]), (9, 17, 32)),
+        (16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM]), (9, 17, 33)),
     ],
 )
-def test_tile_extent(nz, ny, nx, array_dims, extent):
-    result = fv3util._domain.tile_extent(nz, ny, nx, array_dims)
+def test_tile_extent(ny, nx, array_dims, extent):
+    dim_lengths = {fv3util.Z_DIM: 8, fv3util.Z_INTERFACE_DIM: 9}
+    result = fv3util._domain.tile_extent(ny, nx, array_dims, dim_lengths)
     assert result == extent
 
 
@@ -154,14 +155,23 @@ def test_tile_extent(nz, ny, nx, array_dims, extent):
     ]
 )
 def test_subtile_slice(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, subtile_slice, overlap):
+    array_metadata = fv3util.ArrayMetadata(
+        dims=array_dims,
+        dim_lengths={
+            fv3util.Z_DIM: nz,
+            fv3util.Z_INTERFACE_DIM: nz + 1,
+        },
+        units='m',
+        dtype=np.float64,
+    )
     result = fv3util._domain.subtile_slice(
-        array_dims, nz, ny_rank, nx_rank, layout, subtile_index, overlap
+        array_metadata, ny_rank, nx_rank, layout, subtile_index, overlap
     )
     assert result == subtile_slice
 
 
 def get_metadata(array):
-    return fv3util.ArrayMetadata(dims=array.dims, units=array.attrs['units'], dtype=array.dtype)
+    return fv3util.ArrayMetadata.from_data_array(array)
 
 
 @pytest.mark.parametrize(
@@ -190,7 +200,7 @@ def test_centered_state_one_item_per_rank_scatter_tile(layout):
         ),
     }
     
-    partitioner = fv3util.CubedSpherePartitioner(nz, ny, nx, layout)
+    partitioner = fv3util.CubedSpherePartitioner(ny, nx, layout)
     for rank in range(total_ranks):
         state['rank'].values[np.unravel_index(rank, state['rank'].shape)] = rank
         j, i = partitioner.subtile_index(rank)
@@ -246,7 +256,7 @@ def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
         tile_comm_list.append(
             DummyComm(rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer)
         )
-    partitioner = fv3util.CubedSpherePartitioner(nz, ny, nx, layout)
+    partitioner = fv3util.CubedSpherePartitioner(ny, nx, layout)
     for rank, tile_comm in enumerate(tile_comm_list):
         if rank == 0:
             array = state['pos_j']

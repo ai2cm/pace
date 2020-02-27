@@ -3,7 +3,7 @@ import logging
 import zarr
 import numpy as np
 import xarray as xr
-from ._domain import CubedSpherePartitioner
+from ._domain import CubedSpherePartitioner, ArrayMetadata
 
 logger = logging.getLogger("fv3util")
 
@@ -127,7 +127,7 @@ class _ZarrVariableWriter:
         )
 
     def _get_tile_shape(self, array):
-        return_value = (self.i_time + 1, 6) + self._partitioner.tile_extent(array.dims)
+        return_value = (self.i_time + 1, 6) + self._partitioner.tile_extent(ArrayMetadata.from_data_array(array))
         return return_value
 
     def array_chunks(self, array_shape):
@@ -158,7 +158,8 @@ class _ZarrVariableWriter:
             self.array.resize(*new_shape)
             self._ensure_compatible_attrs(array)
         self.sync_array()
-        target_slice = (self.i_time, self._partitioner.tile(self.rank)) + self._partitioner.subtile_slice(self.rank, array.dims)
+        target_slice = (self.i_time, self._partitioner.tile(self.rank)) + self._partitioner.subtile_slice(
+            self.rank, ArrayMetadata.from_data_array(array))
         subtile_slice = _get_subtile_slice(target_slice)
         logger.debug(f'assigning data from subtile slice {subtile_slice} to target slice {target_slice}')
         self.array[target_slice] = np.asarray(array[subtile_slice])

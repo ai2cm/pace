@@ -96,7 +96,7 @@ def state_list(base_state, n_times, start_time, time_step):
 
 
 def test_monitor_file_store(state_list, nz, ny, nx):
-    domain = fv3util.CubedSpherePartitioner(nz=nz, ny=ny, nx=nx, layout=(1, 1))
+    domain = fv3util.CubedSpherePartitioner(ny=ny, nx=nx, layout=(1, 1))
     with tempfile.TemporaryDirectory(suffix='.zarr') as tempdir:
         monitor = fv3util.ZarrMonitor(tempdir, domain)
         for state in state_list:
@@ -161,7 +161,7 @@ def test_monitor_file_store_multi_rank_state(
     time = datetime(2010, 6, 20, 6, 0, 0)
     timestep = timedelta(hours=1)
     total_ranks = 6 * layout[0] * layout[1]
-    partitioner = fv3util.CubedSpherePartitioner(nz=nz, ny=ny, nx=nx, layout=layout)
+    partitioner = fv3util.CubedSpherePartitioner(ny=ny, nx=nx, layout=layout)
     ny_rank = partitioner.ny_rank + ny_rank_add
     nx_rank = partitioner.nx_rank + nx_rank_add
     store = zarr.storage.DirectoryStore(tmpdir)

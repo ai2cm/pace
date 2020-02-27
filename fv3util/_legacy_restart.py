@@ -45,27 +45,37 @@ def get_coupler_res_filename(dirname, label):
 
 
 def broadcast_state(state, partitioner, comm):
-    tile_comm = comm.Split(color=partitioner.tile(comm.Get_rank()), key=comm.Get_rank())
-    if tile_comm.Get_rank() == constants.MASTER_RANK:
+
+    def broadcast_master():
         name_list = list(set(state.keys()).difference('time'))
         name_list = tile_comm.bcast(name_list, root=constants.MASTER_RANK)
         array_list = [state[name] for name in name_list]
         metadata_list = domain.bcast_metadata_list(tile_comm, array_list)
         for name, array, metadata in zip(name_list, array_list, metadata_list):
             state[name] = partitioner.scatter_tile(tile_comm, array, metadata)
-        state['time'] = comm.bcast(state['time'], root=constants.MASTER_RANK)
-    else:
+        comm.bcast(state.get('time', None), root=constants.MASTER_RANK)
+
+    def broadcast_client():
         name_list = tile_comm.bcast(None, root=constants.MASTER_RANK)
         metadata_list = domain.bcast_metadata_list(tile_comm, None)
         for name, metadata in zip(name_list, metadata_list):
             state[name] = partitioner.scatter_tile(tile_comm, None, metadata)
-        state['time'] = tile_comm.bcast(None, root=constants.MASTER_RANK)
+        time = tile_comm.bcast(None, root=constants.MASTER_RANK)
+        if time is not None:
+            state['time'] = time
+
+    tile_comm = comm.Split(color=partitioner.tile(comm.Get_rank()), key=comm.Get_rank())
+    if tile_comm.Get_rank() == constants.MASTER_RANK:
+        broadcast_master()
+    else:
+        broadcast_client()
     tile_comm.Free()
+    return state
 
 
 def restart_files(dirname, tile_index, label):
     for filename in restart_filenames(dirname, tile_index, label):
-        with open(filename, 'rb') as f:
+        with filesystem.open(filename, 'rb') as f:
             yield f
 
 
@@ -132,13 +142,15 @@ def load_partial_state_from_restart_file(file, only_names=None):
     ds = xr.open_dataset(file).isel(Time=0).drop("Time")
     state = map_keys(ds.data_vars, fortran_info.get_restart_standard_names())
     state = apply_restart_metadata(state)
+    if only_names is None:
+        only_names = state.keys()
     state = {  # remove any variables that don't have restart metadata
         name: value for name, value in state.items()
-        if (name == 'time') or ('units' in value.attrs)
+        if ((name == 'time') or ('units' in value.attrs)) and name in only_names
     }
-    name_list = list(set(state.keys()).difference('time'))
-    if only_names is not None:
-        name_list = list(set(name_list).intersection(only_names))
+    for name, array in state.items():
+        if name != 'time':
+            array.load()
     return state
 
 
