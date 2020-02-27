@@ -4,7 +4,7 @@ import xarray as xr
 import numpy as np
 import pytest
 import fv3util
-import fv3util.legacy_restart
+import fv3util._legacy_restart
 
 TEST_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 DATA_DIRECTORY = os.path.join(TEST_DIRECTORY, "data")
@@ -50,7 +50,7 @@ def result_dims(data_array, new_dims):
 
 
 def test_apply_dims(data_array, new_dims, result_dims):
-    result = fv3util.legacy_restart.apply_dims(data_array, new_dims)
+    result = fv3util._legacy_restart.apply_dims(data_array, new_dims)
     np.testing.assert_array_equal(result.values, data_array.values)
     assert result.dims == result_dims
     assert result.attrs == data_array.attrs
@@ -82,7 +82,7 @@ def test_apply_dims(data_array, new_dims, result_dims):
     ]
 )
 def test_map_keys(old_dict, key_mapping, new_dict):
-    result = fv3util.legacy_restart.map_keys(old_dict, key_mapping)
+    result = fv3util._legacy_restart.map_keys(old_dict, key_mapping)
     assert result == new_dict
 
 
@@ -108,7 +108,7 @@ def test_map_keys(old_dict, key_mapping, new_dict):
     ]
 )
 def test_get_rank_suffix(rank, total_ranks, suffix):
-    result = fv3util.legacy_restart.get_rank_suffix(rank, total_ranks)
+    result = fv3util._legacy_restart.get_rank_suffix(rank, total_ranks)
     assert result == suffix
 
 
@@ -118,4 +118,4 @@ def test_get_rank_suffix(rank, total_ranks, suffix):
 def test_get_rank_suffix_invalid_total_ranks(invalid_total_ranks):
     with pytest.raises(ValueError):
         # total_ranks should be multiple of 6
-        fv3util.legacy_restart.get_rank_suffix(0, invalid_total_ranks)
+        fv3util._legacy_restart.get_rank_suffix(0, invalid_total_ranks)

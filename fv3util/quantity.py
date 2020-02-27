@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Dict
 import dataclasses
 import numpy as np
 from . import constants
@@ -15,13 +15,24 @@ except ImportError:
 @dataclasses.dataclass
 class QuantityMetadata:
     dims: Tuple[str, ...]
+    dim_lengths: Dict[str, int]  # defines lengths of non-horizontal dimensions
     units: str
     data_type: type
     dtype: type
 
     @classmethod
     def from_quantity(cls, quantity):
-        return cls(dims=quantity.dims, units=quantity.units, data_type=type(quantity.data), dtype=quantity.data.dtype)
+        dim_lengths = dict(zip(quantity.dims, quantity.extent))
+        for dim in constants.HORIZONTAL_DIMS:
+            if dim in dim_lengths:
+                dim_lengths.pop(dim)
+        return cls(
+            dims=quantity.dims,
+            dim_lengths=dim_lengths,
+            units=quantity.units,
+            data_type=type(quantity.data),
+            dtype=quantity.data.dtype
+        )
 
     @property
     def np(self):

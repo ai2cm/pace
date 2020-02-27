@@ -1,4 +1,5 @@
 from typing import Tuple
+import copy
 import functools
 import dataclasses
 from . import constants
@@ -55,11 +56,10 @@ class Boundary:
         pass
 
 
-class Partitioner:
+class CubedSpherePartitioner:
 
     def __init__(
             self,
-            nz: int,
             ny: int,
             nx: int,
             layout: Tuple[int, int]
@@ -67,13 +67,11 @@ class Partitioner:
         """Create an object for fv3gfs domain decomposition.
         
         Args:
-            nz: number of grid cell centers along the y-direction
             ny: number of grid cell centers along the y-direction
             nx: number of grid cell centers along the x-direction
             layout: (x_subtiles, y_subtiles) specifying how the tile is split in the
                 horizontal across multiple processes each with their own subtile.
         """
-        self.nz = nz
         self.ny = ny
         self.nx = nx
         self._layout = layout
@@ -96,7 +94,6 @@ class Partitioner:
             namelist (dict): the Fortran namelist
         """
         return cls(
-            nz=namelist['fv_core_nml']['npz'],
             ny=namelist['fv_core_nml']['npy'] - 1,
             nx=namelist['fv_core_nml']['npx'] - 1,
             layout=namelist['fv_core_nml']['layout'])
@@ -298,26 +295,35 @@ class Partitioner:
         """Return the (y, x) subtile position of a given rank as an integer number of subtiles."""
         return subtile_index(rank, self.ranks_per_tile, self.layout)
 
-    def tile_extent(self, array_dims):
-        """Return the shape of a full tile representation for the given dimensions."""
-        return tile_extent(self.nz, self.ny, self.nx, array_dims)
+    def tile_extent(self, metadata: QuantityMetadata) -> Tuple[int, ...]:
+        """Return the shape of a full tile representation for the given dimensions.
 
-    def subtile_extent(self, array_dims):
+        Args:
+            metadata: quantity metadata
+
+        Returns:
+            extent: shape of full tile representation
+        """
+        return tile_extent(
+            self.ny, self.nx, metadata.dims, metadata.dim_lengths
+        )
+
+    def subtile_extent(self, metadata):
         """Return the shape of a single rank representation for the given dimensions."""
-        return tile_extent(self.nz, self.ny_rank, self.nx_rank, array_dims)
+        return tile_extent(
+            self.ny_rank, self.nx_rank, metadata.dims, metadata.dim_lengths
+        )
 
     def subtile_slice(
             self,
             rank,
-            array_dims: Tuple[str, ...],
+            metadata: QuantityMetadata,
             overlap: bool = False) -> Tuple[slice, slice]:
         """Return the subtile slice of a given rank on an array.
 
-        Assumes 2D arrays are shape [ny, nx] and higher dimensional arrays
-        are shape [nz, ny, nx, ...].
-
         Args:
-            array_dims: the array dimensions
+            rank: the rank of the process
+            metadata: the quantity metadata
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
@@ -329,7 +335,7 @@ class Partitioner:
         """
         subtile_index = self.subtile_index(rank)
         return subtile_slice(
-            array_dims, self.nz, self.ny_rank, self.nx_rank, self.layout, subtile_index,
+            metadata, self.ny_rank, self.nx_rank, self.layout, subtile_index,
             overlap=overlap,
         )
 
@@ -393,45 +399,29 @@ def is_even(value):
     return value % 2 == 0
 
 
-def bcast_metadata_list(comm, quantity_list):
-    is_master = comm.Get_rank() == constants.MASTER_RANK
-    if is_master:
-        metadata_list = []
-        for quantity in quantity_list:
-            metadata_list.append(QuantityMetadata.from_quantity(quantity))
-    else:
-        metadata_list = None
-    return comm.bcast(metadata_list, root=constants.MASTER_RANK)
-
-
-def bcast_metadata(comm, array):
-    return bcast_metadata_list(comm, [array])[0]
-
-
-def tile_extent(nz, ny, nx, array_dims):
-    dim_extents = {
+def tile_extent(ny, nx, array_dims, dim_lengths):
+    dim_extents = copy.deepcopy(dim_lengths)
+    dim_extents.update({
         constants.X_DIM: nx,
         constants.X_INTERFACE_DIM: nx + 1,
         constants.Y_DIM: ny,
         constants.Y_INTERFACE_DIM: ny + 1,
-        constants.Z_DIM: nz,
-        constants.Z_INTERFACE_DIM: nz + 1,
-    }
+    })
     return_extents = [dim_extents[dim] for dim in array_dims]
     return tuple(return_extents)
 
 
-def subtile_slice(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, overlap=False):
+def subtile_slice(metadata, ny_rank, nx_rank, layout, subtile_index, overlap=False):
     j_subtile, i_subtile = subtile_index
     y_start, x_start = j_subtile * ny_rank, i_subtile * nx_rank
-    subtile_extent = tile_extent(nz, ny_rank, nx_rank, array_dims)
+    subtile_extent = tile_extent(
+        ny_rank, nx_rank, metadata.dims, metadata.dim_lengths
+    )
     # discard last index for interface variables, unless you're the last rank
     # done so that only one rank is responsible for the shared interface point
     return_list = []
-    for dim, extent in zip(array_dims, subtile_extent):
-        if dim in (constants.Z_DIM, constants.Z_INTERFACE_DIM):
-            return_list.append(slice(0, extent))
-        elif not overlap and (dim == constants.Y_INTERFACE_DIM and j_subtile != layout[0] - 1):
+    for dim, extent in zip(metadata.dims, subtile_extent):
+        if not overlap and (dim == constants.Y_INTERFACE_DIM and j_subtile != layout[0] - 1):
             return_list.append(slice(y_start, y_start + extent - 1))
         elif dim in (constants.Y_DIM, constants.Y_INTERFACE_DIM):
             return_list.append(slice(y_start, y_start + extent))
@@ -439,4 +429,6 @@ def subtile_slice(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, overl
             return_list.append(slice(x_start, x_start + extent - 1))
         elif dim in (constants.X_DIM, constants.X_INTERFACE_DIM):
             return_list.append(slice(x_start, x_start + extent))
+        else:
+            return_list.append(slice(0, extent))
     return tuple(return_list)

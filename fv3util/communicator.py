@@ -1,12 +1,27 @@
 from .quantity import Quantity, QuantityMetadata
-from .partitioner import Partitioner
+from .partitioner import CubedSpherePartitioner
 from . import constants
 import functools
 
 
+def bcast_metadata_list(comm, quantity_list):
+    is_master = comm.Get_rank() == constants.MASTER_RANK
+    if is_master:
+        metadata_list = []
+        for quantity in quantity_list:
+            metadata_list.append(QuantityMetadata.from_quantity(quantity))
+    else:
+        metadata_list = None
+    return comm.bcast(metadata_list, root=constants.MASTER_RANK)
+
+
+def bcast_metadata(comm, array):
+    return bcast_metadata_list(comm, [array])[0]
+
+
 class TileCommunicator:
 
-    def __init__(self, tile_comm, partitioner: Partitioner):
+    def __init__(self, tile_comm, partitioner: CubedSpherePartitioner):
         self.partitioner = partitioner
         self.tile_comm = tile_comm
 
@@ -15,7 +30,7 @@ class TileCommunicator:
             metadata: QuantityMetadata,
             send_quantity: Quantity = None,
             recv_quantity: Quantity = None):
-        shape = self.partitioner.subtile_extent(array_dims=metadata.dims)
+        shape = self.partitioner.subtile_extent(metadata)
         if self.tile_comm.Get_rank() == constants.MASTER_RANK:
             sendbuf = metadata.np.empty(
                 (self.partitioner.ranks_per_tile,) + shape,

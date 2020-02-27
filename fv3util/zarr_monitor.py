@@ -1,9 +1,12 @@
-from typing import Union, Tuple
+from typing import Union, Tuple, Dict
+import dataclasses
 import logging
 import zarr
 import numpy as np
 import xarray as xr
-from .partitioner import Partitioner
+from . import constants
+from .partitioner import CubedSpherePartitioner
+from .quantity import QuantityMetadata
 
 logger = logging.getLogger("fv3util")
 
@@ -30,7 +33,7 @@ class ZarrMonitor:
     def __init__(
             self,
             store: Union[str, zarr.storage.MutableMapping],
-            partitioner: Partitioner,
+            partitioner: CubedSpherePartitioner,
             mode: str = "w",
             mpi_comm=DummyComm()):
         """Create a ZarrMonitor.
@@ -89,8 +92,34 @@ class ZarrMonitor:
         is "time" which is stored with dimensions [time].
         """
         self._ensure_writers_are_consistent(state)
-        for name, array in state.items():
-            self._writers[name].append(array)
+        for name, quantity in state.items():
+            if name == 'time':
+                self._writers[name].append(quantity)
+            else:
+                self._writers[name].append(quantity.data_array)
+
+
+@dataclasses.dataclass
+class _ArrayMetadata:
+    dims: Tuple[str, ...]
+    dim_lengths: Dict[str, int]  # defines lengths of non-horizontal dimensions
+    units: str
+    data_type: type
+    dtype: type
+
+    @classmethod
+    def from_quantity(cls, quantity):
+        dim_lengths = dict(zip(quantity.dims, quantity.extent))
+        for dim in constants.HORIZONTAL_DIMS:
+            if dim in dim_lengths:
+                dim_lengths.pop(dim)
+        return cls(
+            dims=quantity.dims,
+            dim_lengths=dim_lengths,
+            units=quantity.units,
+            data_type=type(quantity.data),
+            dtype=quantity.data.dtype
+        )
 
 
 class _ZarrVariableWriter:
@@ -127,7 +156,7 @@ class _ZarrVariableWriter:
         )
 
     def _get_tile_shape(self, array):
-        return_value = (self.i_time + 1, 6) + self._partitioner.tile_extent(array.dims)
+        return_value = (self.i_time + 1, 6) + self._partitioner.tile_extent(_ArrayMetadata.from_data_array(array))
         return return_value
 
     def array_chunks(self, array_shape):
@@ -158,7 +187,8 @@ class _ZarrVariableWriter:
             self.array.resize(*new_shape)
             self._ensure_compatible_attrs(array)
         self.sync_array()
-        target_slice = (self.i_time, self._partitioner.tile(self.rank)) + self._partitioner.subtile_slice(self.rank, array.dims)
+        target_slice = (self.i_time, self._partitioner.tile(self.rank)) + self._partitioner.subtile_slice(
+            self.rank, _ArrayMetadata.from_data_array(array))
         subtile_slice = _get_subtile_slice(target_slice)
         logger.debug(f'assigning data from subtile slice {subtile_slice} to target slice {target_slice}')
         self.array[target_slice] = np.asarray(array[subtile_slice])
