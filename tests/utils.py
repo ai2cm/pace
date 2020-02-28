@@ -34,7 +34,6 @@ class DummyComm:
         self._buffer['send_recv'] = self._buffer.get('send_recv', {})
         return self._buffer['send_recv'].pop((from_rank, self.rank))
 
-
     def _put_send_recv(self, value, to_rank):
         self._buffer['send_recv'] = self._buffer.get('send_recv', {})
         self._buffer['send_recv'][(self.rank, to_rank)] = value

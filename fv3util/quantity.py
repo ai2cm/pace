@@ -74,9 +74,20 @@ class Quantity:
             extent=extent
         )
 
+    def __repr__(self):
+        return (
+            f"Quantity(\n    data={self.data},\n    dims={self.dims},\n"
+            f"    units={self.units},\n    origin={self.origin},\n"
+            f"    extent={self.extent}\n)"
+        )
+
     @classmethod
     def from_data_array(cls, gt4py_storage, dims, units):
         raise NotImplementedError()
+
+    @property
+    def metadata(self):
+        return QuantityMetadata.from_quantity(self)
 
     @property
     def units(self):
@@ -159,24 +170,24 @@ class Quantity:
 
     def _edge_data(self, boundary_type, n_points, interior):
         boundary_slice = []
-        for dim in self.dims:
+        for dim, origin, extent in zip(self.dims, self.origin, self.extent):
             if dim not in constants.HORIZONTAL_DIMS:
                 boundary_slice.append(slice(None, None))
             elif DIM_TO_START_EDGE[dim] == boundary_type:
-                start = self.origin[self.dims.index(dim)]
+                edge_index = self.origin[self.dims.index(dim)]
                 if interior:
-                    boundary_slice.append(start, start + n_points)
+                    boundary_slice.append(slice(edge_index, edge_index + n_points))
                 else:
-                    boundary_slice.append(start - 1, start - n_points - 1, -1)
+                    boundary_slice.append(slice(edge_index - n_points, edge_index))
             elif DIM_TO_END_EDGE[dim] == boundary_type:
-                start = self.origin[self.dims.index(dim)] + self.extent[self.dims.index(dim)]
+                edge_index = self.origin[self.dims.index(dim)] + self.extent[self.dims.index(dim)]
                 if interior:
-                    boundary_slice.append(start - 1, start - n_points - 1, -1)
+                    boundary_slice.append(slice(edge_index - n_points, edge_index))
                 else:
-                    boundary_slice.append(start, start + n_points)
+                    boundary_slice.append(slice(edge_index, edge_index + n_points))
             else:
-                boundary_slice.append(slice(None, None))
-        return self.data[boundary_slice]
+                boundary_slice.append(slice(origin, origin + extent))
+        return self.data[tuple(boundary_slice)]
 
     def _corner_data(self, boundary_type, n_points, interior):
         boundary_slice = []
@@ -184,17 +195,17 @@ class Quantity:
             if dim not in constants.HORIZONTAL_DIMS:
                 boundary_slice.append(slice(None, None))
             elif boundary_type in DIM_TO_START_CORNERS[dim]:
-                start = self.origin[self.dims.index(dim)]
+                edge_index = self.origin[self.dims.index(dim)]
                 if interior:
-                    boundary_slice.append(start, start + n_points)
+                    boundary_slice.append(slice(edge_index, edge_index + n_points))
                 else:
-                    boundary_slice.append(start - 1, start - n_points - 1, -1)
+                    boundary_slice.append(slice(edge_index - n_points, edge_index))
             elif boundary_type in DIM_TO_END_CORNERS[dim]:
-                start = self.origin[self.dims.index(dim)] + self.extent[self.dims.index(dim)]
+                edge_index = self.origin[self.dims.index(dim)] + self.extent[self.dims.index(dim)]
                 if interior:
-                    boundary_slice.append(start - 1, start - n_points - 1, -1)
+                    boundary_slice.append(slice(edge_index - n_points, edge_index))
                 else:
-                    boundary_slice.append(start, start + n_points)
+                    boundary_slice.append(slice(edge_index, edge_index + n_points))
         return self.data[boundary_slice]
 
 
@@ -257,7 +268,7 @@ class BoundedArrayView:
         for entry, origin, extent in zip(index, self.origin, self.extent):
             if isinstance(entry, slice):
                 shifted_slice = shift_slice(entry, origin)
-                shifted_index.append(bound_default_slice(shifted_slice, 0, extent))
+                shifted_index.append(bound_default_slice(shifted_slice, origin, origin + extent))
             elif entry is None:
                 shifted_index.append(entry)
             else:

@@ -8,14 +8,14 @@ import fv3util.partitioner
 
 @pytest.fixture
 def partitioner_2_by_2():
-    nz, ny, nx, layout = 5, 3, 3, (2, 2)
-    return fv3util.Partitioner(nz, ny, nx, layout)
+    grid = fv3util.HorizontalGridSpec(3, 3, (2, 2))
+    return fv3util.CubedSpherePartitioner(grid)
 
 
 @pytest.fixture
 def partitioner_1_by_1():
-    nz, ny, nx, layout = 5, 3, 3, (1, 1)
-    return fv3util.Partitioner(nz, ny, nx, layout)
+    grid = fv3util.HorizontalGridSpec(3, 3, (1, 1))
+    return fv3util.CubedSpherePartitioner(grid)
 
 
 @pytest.mark.parametrize(

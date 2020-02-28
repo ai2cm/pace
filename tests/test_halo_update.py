@@ -15,7 +15,7 @@ def dtype(numpy):
     return numpy.float64
 
 
-@pytest.fixture(params=[(1, 1), (2, 1), (1, 2), (2, 2), (3, 3)])
+@pytest.fixture(params=[(1, 1), (2, 2), (3, 3)])
 def layout(request):
     return request.param
 
@@ -61,7 +61,6 @@ def n_ghost_update(request, n_ghost):
         pytest.param((fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM), id='center_3d'),
         pytest.param((fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM), id='center_3d_reverse'),
         pytest.param((fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM), id='interface'),
-        pytest.param((fv3util.Y_DIM, fv3util.X_INTERFACE_DIM), id='x_interface'),
         pytest.param((fv3util.Z_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM), id='interface_3d'),
     ]
 )
@@ -132,47 +131,55 @@ def zeros_quantity_list(total_ranks, dims, units, origin, extent, shape, numpy, 
     return_list = []
     for rank in range(total_ranks):
         data = numpy.ones(shape, dtype=dtype)
-        return_list.append(fv3util.Quantity(
+        quantity = fv3util.Quantity(
             data,
             dims=dims,
             units=units,
             origin=origin,
             extent=extent,
-        ))
+        )
+        quantity.view[:] = 0.
+        return_list.append(quantity)
     return return_list
 
 
 @pytest.fixture()
-def communicator_list(partitioner):
+def communicator_list(cube_partitioner):
     shared_buffer = {}
     return_list = []
-    for rank in range(partitioner.total_ranks):
+    for rank in range(cube_partitioner.total_ranks):
         return_list.append(
             fv3util.CubedSphereCommunicator(
                 comm=utils.DummyComm(
                     rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
                 ),
-                partitioner=partitioner,
+                partitioner=cube_partitioner,
             )
         )
     return return_list
 
 
 @pytest.fixture
-def partitioner(nz, ny, nx, layout):
-    return fv3util.Partitioner(nz, ny, nx, layout)
+def grid(ny, nx, layout):
+    return fv3util.HorizontalGridSpec(ny, nx, layout)
 
 
 @pytest.fixture
-def updated_slice(nz, ny, nx, dims, n_ghost_update):
+def cube_partitioner(grid):
+    return fv3util.CubedSpherePartitioner(grid)
+
+
+@pytest.fixture
+def updated_slice(ny, nx, dims, n_ghost, n_ghost_update):
+    n_ghost_remain = n_ghost - n_ghost_update
     return_list = []
     length_dict = {
-        fv3util.X_DIM: slice(n_ghost_update, nx + 2 * n_ghost_update),
-        fv3util.X_INTERFACE_DIM: slice(n_ghost_update, nx + 1 + 2 * n_ghost_update),
-        fv3util.Y_DIM: slice(n_ghost_update, ny + 2 * n_ghost_update),
-        fv3util.Y_INTERFACE_DIM: slice(n_ghost_update, ny + 1 + 2 * n_ghost_update),
-        fv3util.Z_DIM: nz,
-        fv3util.Z_INTERFACE_DIM: nz + 1,
+        fv3util.X_DIM: slice(n_ghost_remain, n_ghost + nx + n_ghost_update),
+        fv3util.X_INTERFACE_DIM: slice(n_ghost_remain, n_ghost + nx + 1 + n_ghost_update),
+        fv3util.Y_DIM: slice(n_ghost_remain, n_ghost + ny + n_ghost_update),
+        fv3util.Y_INTERFACE_DIM: slice(n_ghost_remain, n_ghost + ny + 1 + n_ghost_update),
+        fv3util.Z_DIM: slice(None, None),
+        fv3util.Z_INTERFACE_DIM: slice(None, None),
     }
     for dim in dims:
         return_list.append(length_dict[dim])
@@ -186,20 +193,19 @@ def remaining_ones(nz, ny, nx, n_ghost, n_ghost_update):
 
 
 def test_zeros_halo_update(
-        zeros_quantity_list, communicator_list, partitioner, n_ghost_update, n_ghost,
-        updated_slice, remaining_ones, numpy):
+        zeros_quantity_list, communicator_list, n_ghost_update, n_ghost, numpy, subtests):
     """test that zeros from adjacent domains get written over ones on local halo"""
-    if n_ghost >= n_ghost_update:
+    if 0 < n_ghost_update <= n_ghost:
         for communicator, quantity in zip(communicator_list, zeros_quantity_list):
             communicator.start_halo_update(quantity, n_ghost_update)
         for communicator, quantity in zip(communicator_list, zeros_quantity_list):
             communicator.finish_halo_update(quantity, n_ghost_update)
-        for rank, quantity in enumerate(zeros_quantity_list):
-            numpy.testing.assert_array_equal(quantity.data[updated_slice], 0.)
-            assert numpy.sum(quantity.data) == remaining_ones
+        if len(communicator_list) == 6:  # all subtile corners are tile corners
+            for rank, quantity in enumerate(zeros_quantity_list):
+                for side in ('left', 'right', 'top', 'bottom'):
+                    with subtests.test(f'rank={rank}, side={side}'):
+                        numpy.testing.assert_array_equal(
+                            quantity.boundary_data(side, n_ghost_update, interior=False), 0.
+                        )
     else:
-        for communicator, quantity in zip(communicator_list, zeros_quantity_list):
-            with pytest.assertRaises(ValueError):
-                communicator.update_halo(quantity, n_ghost_update)
-            with pytest.assertRaises(ValueError):
-                communicator.start_halo_update(quantity, n_ghost_update)
+        pytest.skip('invalid combination of n_ghost and n_ghost_update')

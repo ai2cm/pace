@@ -123,6 +123,20 @@ def test_compute_view_edit_domain(quantity, n_halo, n_dims, extent_1d):
     assert quantity.np.sum(quantity.data) == 1.0
 
 
+def test_compute_view_edit_all_domain(quantity, n_halo, n_dims, extent_1d):
+    if n_dims != 1 or extent_1d < 1 or n_halo < 1:
+        pytest.skip()
+    quantity.data[:] = 0.
+    quantity.view[:] = 1
+    assert quantity.np.sum(quantity.data) == extent_1d ** n_dims
+    if n_dims > 1:
+        quantity.np.testing.assert_array_equal(quantity.data[:n_halo, :], 0.)
+        quantity.np.testing.assert_array_equal(quantity.data[n_halo + extent_1d:, :], 0.)
+    else:
+        quantity.np.testing.assert_array_equal(quantity.data[:n_halo], 0.)
+        quantity.np.testing.assert_array_equal(quantity.data[n_halo + extent_1d:], 0.)
+
+
 @pytest.mark.parametrize(
     'slice_in, shift, slice_out',
     [
@@ -143,3 +157,84 @@ def test_compute_view_edit_domain(quantity, n_halo, n_dims, extent_1d):
 def test_shift_slice(slice_in, shift, slice_out):
     result = fv3util.quantity.shift_slice(slice_in, shift)
     assert result == slice_out
+
+
+def test_boundary_data_1_by_1_array_1_halo():
+    quantity = fv3util.Quantity(
+        np.random.randn(3, 3),
+        dims=[fv3util.Y_DIM, fv3util.X_DIM],
+        units='m',
+        origin=(1, 1),
+        extent=(1, 1)
+    )
+    for side in ('left', 'right', 'top', 'bottom'):
+        assert quantity.boundary_data(side, n_points=1, interior=True) == quantity.data[1, 1]
+
+    assert quantity.boundary_data('top', n_points=1, interior=False) == quantity.data[2, 1]
+    assert quantity.boundary_data('bottom', n_points=1, interior=False) == quantity.data[0, 1]
+    assert quantity.boundary_data('left', n_points=1, interior=False) == quantity.data[1, 0]
+    assert quantity.boundary_data('right', n_points=1, interior=False) == quantity.data[1, 2]
+
+
+def test_boundary_data_2_by_2_array_2_halo():
+    quantity = fv3util.Quantity(
+        np.random.randn(6, 6),
+        dims=[fv3util.Y_DIM, fv3util.X_DIM],
+        units='m',
+        origin=(2, 2),
+        extent=(2, 2)
+    )
+    for side in ('left', 'right', 'top', 'bottom'):
+        np.testing.assert_array_equal(
+            quantity.boundary_data(side, n_points=2, interior=True),
+            quantity.data[2:4, 2:4]
+        )
+
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('top', n_points=1, interior=True),
+        quantity.data[3:4, 2:4]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('top', n_points=1, interior=False),
+        quantity.data[4:5, 2:4]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('top', n_points=2, interior=False),
+        quantity.data[4:6, 2:4]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('bottom', n_points=1, interior=True),
+        quantity.data[2:3, 2:4]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('bottom', n_points=1, interior=False),
+        quantity.data[1:2, 2:4]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('bottom', n_points=2, interior=False),
+        quantity.data[0:2, 2:4]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('left', n_points=2, interior=False),
+        quantity.data[2:4, 0:2]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('left', n_points=1, interior=True),
+        quantity.data[2:4, 2:3]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('left', n_points=1, interior=False),
+        quantity.data[2:4, 1:2]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('right', n_points=1, interior=False),
+        quantity.data[2:4, 4:5]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('right', n_points=2, interior=False),
+        quantity.data[2:4, 4:6]
+    )
+    quantity.np.testing.assert_array_equal(
+        quantity.boundary_data('right', n_points=1, interior=True),
+        quantity.data[2:4, 3:4]
+    )

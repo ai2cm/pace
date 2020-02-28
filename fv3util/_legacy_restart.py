@@ -1,8 +1,10 @@
+from typing import Iterable
 import os
 import xarray as xr
 import copy
 from . import fortran_info
-from . import partitioner, io, filesystem, constants, quantity, communicator
+from . import io, filesystem, constants, communicator
+from .partitioner import CubedSpherePartitioner, get_tile_index
 
 
 __all__ = ['open_restart']
@@ -12,7 +14,12 @@ RESTART_OPTIONAL_NAMES = ('sfc_data', 'phy_data')  # not output for dycore-only 
 COUPLER_RES_NAME = 'coupler.res'
 
 
-def open_restart(dirname, partitioner, comm, label='', only_names=None):
+def open_restart(
+        dirname: str,
+        partitioner: CubedSpherePartitioner,
+        comm,
+        label: str = '',
+        only_names: Iterable[str] = None):
     """Load restart files output by the Fortran model into a state dictionary.
 
     Args:
@@ -25,7 +32,7 @@ def open_restart(dirname, partitioner, comm, label='', only_names=None):
     Returns:
         state: model state dictionary
     """
-    tile_index = partitioner.tile(comm.Get_rank())
+    tile_index = partitioner.tile_index(comm.Get_rank())
     rank = comm.Get_rank()
     state = {}
     if rank == partitioner.tile_master_rank(rank):
@@ -51,19 +58,19 @@ def broadcast_state(state, partitioner, comm):
         array_list = [state[name] for name in name_list]
         metadata_list = communicator.bcast_metadata_list(tile_comm, array_list)
         for name, array, metadata in zip(name_list, array_list, metadata_list):
-            state[name] = partitioner.scatter_tile(tile_comm, array, metadata)
+            state[name] = partitioner.tile.scatter_tile(tile_comm, array, metadata)
         comm.bcast(state.get('time', None), root=constants.MASTER_RANK)
 
     def broadcast_client():
         name_list = tile_comm.bcast(None, root=constants.MASTER_RANK)
         metadata_list = communicator.bcast_metadata_list(tile_comm, None)
         for name, metadata in zip(name_list, metadata_list):
-            state[name] = partitioner.scatter_tile(tile_comm, None, metadata)
+            state[name] = partitioner.tile.scatter_tile(tile_comm, None, metadata)
         time = tile_comm.bcast(None, root=constants.MASTER_RANK)
         if time is not None:
             state['time'] = time
 
-    tile_comm = comm.Split(color=partitioner.tile(comm.Get_rank()), key=comm.Get_rank())
+    tile_comm = comm.Split(color=partitioner.tile_index(comm.Get_rank()), key=comm.Get_rank())
     if tile_comm.Get_rank() == constants.MASTER_RANK:
         broadcast_master()
     else:
@@ -93,7 +100,7 @@ def get_rank_suffix(rank, total_ranks):
             f'total_ranks must be evenly divisible by 6, was given {total_ranks}'
         )
     ranks_per_tile = total_ranks // 6
-    tile = partitioner.get_tile_number(rank, total_ranks)
+    tile = get_tile_index(rank, total_ranks) + 1
     count = rank % ranks_per_tile
     if total_ranks > 6:
         rank_suffix = f'.tile{tile}.nc.{count:04}'
@@ -151,15 +158,3 @@ def load_partial_state_from_restart_file(file, only_names=None):
         if name != 'time':
             array.load()
     return state
-
-
-def _restrict_to_rank(state, partitioner):
-    return_dict = {}
-    for name, array in state.items():
-        if name == 'time':
-            return_dict['time'] = array
-        else:
-            # discard tile dimension because one tile per file
-            rank_slice = partitioner.subtile_range(array.dims, overlap=True)[1:]
-            return_dict[name] = array[rank_slice]
-    return return_dict
