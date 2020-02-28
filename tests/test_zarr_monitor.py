@@ -45,6 +45,20 @@ def nx():
 def nz():
     return 5
 
+@pytest.fixture
+def layout():
+    return (1, 1)
+
+
+@pytest.fixture
+def grid(ny, nx, layout):
+    return fv3util.HorizontalGridSpec(ny, nx, layout)
+
+
+@pytest.fixture
+def partitioner(grid):
+    return fv3util.CubedSpherePartitioner(grid)
+
 
 @pytest.fixture(params=["empty", "one_var_2d", "one_var_3d", "two_vars"])
 def base_state(request, nz, ny, nx):
@@ -52,31 +66,31 @@ def base_state(request, nz, ny, nx):
         return {}
     elif request.param == 'one_var_2d':
         return {
-            'var1': xr.DataArray(
+            'var1': fv3util.Quantity(
                 np.ones([ny, nx]),
                 dims=('y', 'x'),
-                attrs={'units': 'm'},
+                units="m",
             )
         }
     elif request.param == 'one_var_3d':
         return {
-            'var1': xr.DataArray(
+            'var1': fv3util.Quantity(
                 np.ones([nz, ny, nx]),
                 dims=('z', 'y', 'x'),
-                attrs={'units': 'm'},
+                units="m",
             )
         }
     elif request.param == 'two_vars':
         return {
-            'var1': xr.DataArray(
+            'var1': fv3util.Quantity(
                 np.ones([ny, nx]),
                 dims=('y', 'x'),
-                attrs={'units': 'm'},
+                units="m",
             ),
-            'var2': xr.DataArray(
+            'var2': fv3util.Quantity(
                 np.ones([nz, ny, nx]),
                 dims=('z', 'y', 'x'),
-                attrs={'units': 'm'},
+                units="degK",
             )
         }
     else:
@@ -89,16 +103,15 @@ def state_list(base_state, n_times, start_time, time_step):
     for i in range(n_times):
         new_state = copy.deepcopy(base_state)
         for name in set(new_state.keys()).difference(['time']):
-            new_state[name].values = np.random.randn(*new_state[name].shape)
+            new_state[name].view[:] = np.random.randn(*new_state[name].extent)
         state_list.append(new_state)
         new_state["time"] = start_time + i * time_step
     return state_list
 
 
-def test_monitor_file_store(state_list, nz, ny, nx):
-    domain = fv3util.CubedSpherePartitioner(ny=ny, nx=nx, layout=(1, 1))
+def test_monitor_file_store(state_list, partitioner):
     with tempfile.TemporaryDirectory(suffix='.zarr') as tempdir:
-        monitor = fv3util.ZarrMonitor(tempdir, domain)
+        monitor = fv3util.ZarrMonitor(tempdir, partitioner)
         for state in state_list:
             monitor.store(state)
         validate_store(state_list, tempdir)
@@ -115,7 +128,7 @@ def validate_store(states, filename):
         if name == 'time':
             assert array.shape == (nt,)
         else:
-            assert array.shape == (nt, 6) + states[0][name].shape
+            assert array.shape == (nt, 6) + states[0][name].extent
 
     def validate_array_dimensions_and_attributes(name, array):
         if name == 'time':
@@ -156,14 +169,16 @@ def validate_store(states, filename):
 )
 def test_monitor_file_store_multi_rank_state(
         layout, nt, tmpdir_factory, shape, ny_rank_add, nx_rank_add, dims):
+    units = "m"
     tmpdir = tmpdir_factory.mktemp("data.zarr")
     nz, ny, nx = shape
+    grid = fv3util.HorizontalGridSpec(ny, nx, layout)
     time = datetime(2010, 6, 20, 6, 0, 0)
     timestep = timedelta(hours=1)
     total_ranks = 6 * layout[0] * layout[1]
-    partitioner = fv3util.CubedSpherePartitioner(ny=ny, nx=nx, layout=layout)
-    ny_rank = partitioner.ny_rank + ny_rank_add
-    nx_rank = partitioner.nx_rank + nx_rank_add
+    partitioner = fv3util.CubedSpherePartitioner(grid)
+    ny_rank = partitioner.tile.ny_rank + ny_rank_add
+    nx_rank = partitioner.tile.nx_rank + nx_rank_add
     store = zarr.storage.DirectoryStore(tmpdir)
     shared_buffer = {}
     monitor_list = []
@@ -178,10 +193,10 @@ def test_monitor_file_store_multi_rank_state(
         for rank in range(total_ranks):
             state = {
                 'time': time + i_t * timestep,
-                'var1': xr.DataArray(
+                'var1': fv3util.Quantity(
                     np.ones([nz, ny_rank, nx_rank]),
                     dims=dims,
-                    attrs={'units': 'm'}
+                    units=units,
                 )
             }
             monitor_list[rank].store(state)

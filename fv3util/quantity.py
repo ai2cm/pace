@@ -1,7 +1,10 @@
 from typing import Tuple, Dict
+import functools
+import collections.abc
 import dataclasses
 import numpy as np
 from . import constants
+import xarray as xr
 try:
     import cupy
 except ImportError:
@@ -10,6 +13,24 @@ try:
     import gt4py
 except ImportError:
     gt4py = None
+
+
+class FrozenDict(collections.abc.Mapping):
+
+    def __init__(self, *args, **kwargs):
+        self._d = dict(*args, **kwargs)
+
+    def __iter__(self):
+        return iter(self._d)
+
+    def __len__(self):
+        return len(self._d)
+
+    def __getitem__(self, key):
+        return self._d[key]
+
+    def __hash__(self):
+        return hash(tuple(sorted(self._d.iteritems())))
 
 
 @dataclasses.dataclass
@@ -63,7 +84,7 @@ class Quantity:
         self._compute_domain_view = BoundedArrayView(self._data, self._origin, self._extent)
 
     @classmethod
-    def from_xarray(cls, data_array, origin=None, extent=None):
+    def from_data_array(cls, data_array, origin=None, extent=None):
         if 'units' not in data_array.attrs:
             raise ValueError('need units attribute to create Quantity from DataArray')
         return cls(
@@ -76,13 +97,16 @@ class Quantity:
 
     def __repr__(self):
         return (
-            f"Quantity(\n    data={self.data},\n    dims={self.dims},\n"
+            f"Quantity(\n    data=\n{self.data},\n    dims={self.dims},\n"
             f"    units={self.units},\n    origin={self.origin},\n"
             f"    extent={self.extent}\n)"
         )
 
+    def sel(self, **kwargs):
+        return self.view[tuple(kwargs.get(dim, slice(None, None)) for dim in self.dims)]
+
     @classmethod
-    def from_data_array(cls, gt4py_storage, dims, units):
+    def from_storage(cls, gt4py_storage, dims, units):
         raise NotImplementedError()
 
     @property
@@ -136,7 +160,11 @@ class Quantity:
 
     @property
     def data_array(self):
-        raise NotImplementedError()
+        return xr.DataArray(
+            self.view[:],
+            dims=self.dims,
+            attrs=self._attrs
+        )
 
     @property
     def np(self):
@@ -161,25 +189,35 @@ class Quantity:
             interior: if True, give points inside the computational domain (default),
                 otherwise give points in the halo
         """
-        if boundary_type in constants.EDGE_BOUNDARY_TYPES:
-            return self._edge_data(boundary_type, n_points, interior)
-        elif boundary_type in constants.CORNER_BOUNDARY_TYPES:
-            return self._corner_data(boundary_type, n_points, interior)
-        else:
-            raise ValueError(f'boundary_type must be one of {constants.BOUNDARY_TYPES}')
+        boundary_slice = self._get_boundary_slice(
+            boundary_type, n_points, interior
+        )
+        return self.data[tuple(boundary_slice)]
 
-    def _edge_data(self, boundary_type, n_points, interior):
+    @functools.lru_cache(maxsize=None)
+    def _get_boundary_slice(self, boundary_type, n_points, interior):
+        if boundary_type in constants.EDGE_BOUNDARY_TYPES:
+            dim_to_starts = DIM_TO_START_EDGE
+            dim_to_ends = DIM_TO_END_EDGE
+        elif boundary_type in constants.CORNER_BOUNDARY_TYPES:
+            dim_to_starts = DIM_TO_START_CORNERS
+            dim_to_ends = DIM_TO_END_CORNERS
+        else:
+            raise ValueError(
+                f'invalid boundary type {boundary_type}, '
+                f'must be one of {constants.BOUNDARY_TYPES}'
+            )
         boundary_slice = []
         for dim, origin, extent in zip(self.dims, self.origin, self.extent):
             if dim not in constants.HORIZONTAL_DIMS:
                 boundary_slice.append(slice(None, None))
-            elif DIM_TO_START_EDGE[dim] == boundary_type:
+            elif boundary_type in dim_to_starts[dim]:
                 edge_index = self.origin[self.dims.index(dim)]
                 if interior:
                     boundary_slice.append(slice(edge_index, edge_index + n_points))
                 else:
                     boundary_slice.append(slice(edge_index - n_points, edge_index))
-            elif DIM_TO_END_EDGE[dim] == boundary_type:
+            elif boundary_type in dim_to_ends[dim]:
                 edge_index = self.origin[self.dims.index(dim)] + self.extent[self.dims.index(dim)]
                 if interior:
                     boundary_slice.append(slice(edge_index - n_points, edge_index))
@@ -187,40 +225,21 @@ class Quantity:
                     boundary_slice.append(slice(edge_index, edge_index + n_points))
             else:
                 boundary_slice.append(slice(origin, origin + extent))
-        return self.data[tuple(boundary_slice)]
-
-    def _corner_data(self, boundary_type, n_points, interior):
-        boundary_slice = []
-        for dim in self.dims:
-            if dim not in constants.HORIZONTAL_DIMS:
-                boundary_slice.append(slice(None, None))
-            elif boundary_type in DIM_TO_START_CORNERS[dim]:
-                edge_index = self.origin[self.dims.index(dim)]
-                if interior:
-                    boundary_slice.append(slice(edge_index, edge_index + n_points))
-                else:
-                    boundary_slice.append(slice(edge_index - n_points, edge_index))
-            elif boundary_type in DIM_TO_END_CORNERS[dim]:
-                edge_index = self.origin[self.dims.index(dim)] + self.extent[self.dims.index(dim)]
-                if interior:
-                    boundary_slice.append(slice(edge_index - n_points, edge_index))
-                else:
-                    boundary_slice.append(slice(edge_index, edge_index + n_points))
-        return self.data[boundary_slice]
+        return boundary_slice
 
 
 DIM_TO_START_EDGE = {
-    constants.X_DIM: constants.LEFT,
-    constants.X_INTERFACE_DIM: constants.LEFT,
-    constants.Y_DIM: constants.BOTTOM,
-    constants.Y_INTERFACE_DIM: constants.BOTTOM,
+    constants.X_DIM: (constants.LEFT,),
+    constants.X_INTERFACE_DIM: (constants.LEFT,),
+    constants.Y_DIM: (constants.BOTTOM,),
+    constants.Y_INTERFACE_DIM: (constants.BOTTOM,),
 }
 
 DIM_TO_END_EDGE = {
-    constants.X_DIM: constants.RIGHT,
-    constants.X_INTERFACE_DIM: constants.RIGHT,
-    constants.Y_DIM: constants.TOP,
-    constants.Y_INTERFACE_DIM: constants.TOP,
+    constants.X_DIM: (constants.RIGHT,),
+    constants.X_INTERFACE_DIM: (constants.RIGHT,),
+    constants.Y_DIM: (constants.TOP,),
+    constants.Y_INTERFACE_DIM: (constants.TOP,),
 }
 
 

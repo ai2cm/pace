@@ -96,7 +96,6 @@ class CubedSphereCommunicator:
             data = quantity.np.ascontiguousarray(
                 rotate_data(data, quantity.metadata, boundary.n_clockwise_rotations)
             )
-            assert quantity.np.product(data.shape) != 0, (boundary_type, boundary, n_ghost, data.shape)
             self.comm.Isend(data, dest=boundary.to_rank)
 
     def finish_halo_update(self, quantity, n_ghost):
@@ -105,7 +104,6 @@ class CubedSphereCommunicator:
                 boundary_type, n_points=n_ghost, interior=False
             )
             dest_buffer = quantity.np.empty(dest_view.shape, dtype=dest_view.dtype)
-            print(dest_buffer.shape)
             self.comm.Recv(dest_buffer, source=boundary.to_rank)
             dest_view[:] = dest_buffer
 
@@ -126,9 +124,9 @@ def rotate_data(data, metadata, n_clockwise_rotations):
             elif dim in constants.Y_DIMS:
                 y_dim = i
         if n_clockwise_rotations == 1:
-            data = metadata.np.rot90(data, axes=(y_dim, x_dim))
-        elif n_clockwise_rotations == 3:
             data = metadata.np.rot90(data, axes=(x_dim, y_dim))
+        elif n_clockwise_rotations == 3:
+            data = metadata.np.rot90(data, axes=(y_dim, x_dim))
     elif n_clockwise_rotations == 2:
         slice_list = []
         for dim in metadata.dims:

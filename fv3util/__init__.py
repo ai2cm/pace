@@ -11,7 +11,10 @@ from .partitioner import (
     get_tile_index, get_tile_number
 )
 from .constants import (
-    X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM, Z_INTERFACE_DIM
+    X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM, Z_INTERFACE_DIM,
+    X_DIMS, Y_DIMS, HORIZONTAL_DIMS,
+    LEFT, RIGHT, TOP, BOTTOM, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT,
+    BOTTOM_RIGHT, EDGE_BOUNDARY_TYPES, CORNER_BOUNDARY_TYPES, BOUNDARY_TYPES,
 )
 from .quantity import Quantity, QuantityMetadata
 from .units import ensure_equal_units, units_are_equal, UnitsError

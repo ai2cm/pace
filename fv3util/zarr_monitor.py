@@ -108,17 +108,17 @@ class _ArrayMetadata:
     dtype: type
 
     @classmethod
-    def from_quantity(cls, quantity):
-        dim_lengths = dict(zip(quantity.dims, quantity.extent))
+    def from_data_array(cls, data_array):
+        dim_lengths = dict(zip(data_array.dims, data_array.shape))
         for dim in constants.HORIZONTAL_DIMS:
             if dim in dim_lengths:
                 dim_lengths.pop(dim)
         return cls(
-            dims=quantity.dims,
+            dims=data_array.dims,
             dim_lengths=dim_lengths,
-            units=quantity.units,
-            data_type=type(quantity.data),
-            dtype=quantity.data.dtype
+            units=data_array.units,
+            data_type=type(data_array.data),
+            dtype=data_array.data.dtype
         )
 
 
@@ -133,8 +133,8 @@ class _ZarrVariableWriter:
         
         self._prepend_shape = (1, 6)
         self._prepend_chunks = (1, 1)
-        self._y_chunks = partitioner.layout[0]
-        self._x_chunks = partitioner.layout[1]
+        self._y_chunks = partitioner.grid.layout[0]
+        self._x_chunks = partitioner.grid.layout[1]
         self._PREPEND_DIMS = ("time", "tile")
         self._partitioner = partitioner
 
@@ -156,19 +156,19 @@ class _ZarrVariableWriter:
         )
 
     def _get_tile_shape(self, array):
-        return_value = (self.i_time + 1, 6) + self._partitioner.tile_extent(_ArrayMetadata.from_data_array(array))
+        return_value = (self.i_time + 1, 6) + self._partitioner.tile.tile_extent(_ArrayMetadata.from_data_array(array))
         return return_value
 
     def array_chunks(self, array_shape):
         if len(array_shape) == 2:
             chunks = (
-                self._partitioner.ny // self._y_chunks,
-                self._partitioner.nx // self._x_chunks)
+                self._partitioner.grid.ny // self._y_chunks,
+                self._partitioner.grid.nx // self._x_chunks)
         elif len(array_shape) == 3:
             chunks = (
                 array_shape[0],
-                self._partitioner.ny // self._x_chunks,
-                self._partitioner.nx // self._x_chunks)
+                self._partitioner.grid.ny // self._x_chunks,
+                self._partitioner.grid.nx // self._x_chunks)
         else:
             raise NotImplementedError()
         return chunks
@@ -187,7 +187,7 @@ class _ZarrVariableWriter:
             self.array.resize(*new_shape)
             self._ensure_compatible_attrs(array)
         self.sync_array()
-        target_slice = (self.i_time, self._partitioner.tile(self.rank)) + self._partitioner.subtile_slice(
+        target_slice = (self.i_time, self._partitioner.tile_index(self.rank)) + self._partitioner.tile.subtile_slice(
             self.rank, _ArrayMetadata.from_data_array(array))
         subtile_slice = _get_subtile_slice(target_slice)
         logger.debug(f'assigning data from subtile slice {subtile_slice} to target slice {target_slice}')
