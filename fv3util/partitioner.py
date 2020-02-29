@@ -50,10 +50,7 @@ class Boundary:
             y_data[:] = -y_data[:]
             x_data[:] = -x_data[:]
         elif self.n_clockwise_rotations % 4 == 3:
-            y_data, x_data = x_data[:], -y_data[:]
-
-    def from_slice(self):
-        pass
+            y_data[:], x_data[:] = x_data[:], -y_data[:]
 
 
 @dataclasses.dataclass
@@ -128,7 +125,7 @@ class TilePartitioner:
             self,
             rank,
             metadata: QuantityMetadata,
-            overlap: bool = False) -> Tuple[slice, slice]:
+            overlap: bool = False) -> Tuple[slice, ...]:
         """Return the subtile slice of a given rank on an array.
 
         Args:

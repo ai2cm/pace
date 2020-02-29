@@ -78,7 +78,7 @@ class CubedSphereCommunicator:
         return self._boundaries
 
     @property
-    def tile_communicator(self):
+    def tile(self):
         if self._tile_communicator is None:
             self._initialize_tile_communicator
         return self._tile_communicator

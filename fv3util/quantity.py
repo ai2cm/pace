@@ -130,13 +130,6 @@ class Quantity:
         return_array = np.asarray(self._data)
         return_array.flags.writeable = False
         return return_array
-
-    @property
-    def compute_domain(self):
-        return_list = []
-        for start, length in zip(self._origin, self._extent):
-            return_list.append(slice(start, start + length))
-        return tuple(return_list)
     
     @property
     def view(self):
@@ -179,8 +172,6 @@ class Quantity:
 
     def boundary_data(self, boundary_type, n_points, interior=True):
         """Return a view of points at a domain boundary.
-
-        The view will move away from the boundary with increasing index
 
         Args:
             boundary_type: one of 'left', 'right', 'top', 'bottom', 'top_left',
