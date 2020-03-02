@@ -1,6 +1,6 @@
 GCR_URL = us.gcr.io/vcm-ml
 CWD=$(shell pwd)
-#<some large conceptual version change>.<serialization statement change>.<compile options configuration number>
+#<some large conceptual version change>.<serialization statement change>.<hotfix>
 FORTRAN_VERSION=0.1.0
 
 
@@ -77,7 +77,7 @@ generate_test_data:
 	if [ ! -d $(FORTRAN_DIR)/FV3 ]; then git submodule update --init --recursive ;fi
 	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE=$(COMPILED_IMAGE) $(MAKE) build_serialize
 	DATA_IMAGE=$(RUNDIR_IMAGE) DATA_TARGET=rundir $(MAKE) fortran_model_data
-	DATA_IMAGE=$(TEST_DATA_IMAGE) DATA_TARGET=test_data_storage $(MAKE) rundir
+	DATA_IMAGE=$(TEST_DATA_IMAGE) DATA_TARGET=test_data_storage $(MAKE) fortran_model_data
 	docker rmi $(RUNDIR_IMAGE)
 
 
