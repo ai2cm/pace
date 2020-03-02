@@ -1,9 +1,9 @@
 include LICENSE
 include README.md
 
+recursive-include fv3util *.json
 recursive-include tests *.py *.sh
-recursive-include docs *.rst conf.py Makefile make.bat *.jpg *.png *.gif
-recursive-include fv3util *
+recursive-include tests/data *
 
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]

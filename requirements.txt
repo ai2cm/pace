@@ -21,3 +21,9 @@ kubernetes==10.0.1
 black==19.10b0
 xarray==0.13.0
 numpy==1.16.4
+numcodecs==0.6.4
+zarr==2.3.2
+h5py==2.10.0
+h5netcdf==0.8.0
+dask==2.10.1
+toolz==0.10.0
