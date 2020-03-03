@@ -50,7 +50,10 @@ class Boundary:
             y_data[:] = -y_data[:]
             x_data[:] = -x_data[:]
         elif self.n_clockwise_rotations % 4 == 3:
-            y_data[:], x_data[:] = x_data[:], -y_data[:]
+            y_data, x_data = x_data[:], -y_data[:]
+
+    def from_slice(self):
+        pass
 
 
 @dataclasses.dataclass
@@ -85,12 +88,12 @@ class TilePartitioner:
     @property
     def ny_rank(self):
         """the number of cell centers in the y direction on each rank/subtile"""
-        return self.grid.ny // self.grid.layout[0]
+        return self.grid.ny // self.layout[0]
 
     @property
     def nx_rank(self):
         """the number of cell centers in the x direction on each rank/subtile"""
-        return self.grid.nx // self.grid.layout[1]
+        return self.grid.nx // self.layout[1]
 
     @property
     def total_ranks(self):
@@ -125,7 +128,7 @@ class TilePartitioner:
             self,
             rank,
             metadata: QuantityMetadata,
-            overlap: bool = False) -> Tuple[slice, ...]:
+            overlap: bool = False) -> Tuple[slice, slice]:
         """Return the subtile slice of a given rank on an array.
 
         Args:
@@ -142,7 +145,7 @@ class TilePartitioner:
         """
         subtile_index = self.subtile_index(rank)
         return subtile_slice(
-            metadata, self.ny_rank, self.nx_rank, self.grid.layout, subtile_index,
+            metadata, self.ny_rank, self.nx_rank, self.layout, subtile_index,
             overlap=overlap,
         )
 
@@ -175,7 +178,7 @@ class CubedSpherePartitioner:
         """
         self.grid = grid
         self.tile = TilePartitioner(grid)
-        self.total_ranks = 6 * self.tile.total_ranks
+        self.total_ranks = 6 * grid.layout[0] * grid.layout[1]
 
     def _ensure_square_layout(self):
         if not self.grid.is_square:
@@ -187,7 +190,7 @@ class CubedSpherePartitioner:
 
     def tile_master_rank(self, rank):
         """Return the lowest rank on the same tile as a given rank."""
-        return self.tile.total_ranks * (rank // self.tile.total_ranks)
+        return self.ranks_per_tile * (rank // self.ranks_per_tile)
 
     def boundary(self, boundary_type, rank):
         return {
@@ -206,18 +209,18 @@ class CubedSpherePartitioner:
         self._ensure_square_layout()
         if self.tile.on_tile_left(rank):
             if is_even(self.tile_index(rank)):
-                to_master_rank = self.tile_master_rank(rank - 2 * self.tile.total_ranks)
-                tile_rank = rank % self.tile.total_ranks
+                to_master_rank = self.tile_master_rank(rank - 2 * self.ranks_per_tile)
+                tile_rank = rank % self.ranks_per_tile
                 to_tile_rank = fliplr_subtile_rank(
                     rotate_subtile_rank(
-                        tile_rank, self.grid.layout, n_clockwise_rotations=1
+                        tile_rank, self.layout, n_clockwise_rotations=1
                     ),
-                    self.grid.layout
+                    self.layout
                 )
                 to_rank = to_master_rank + to_tile_rank
                 rotations = 1
             else:
-                to_rank = rank - self.tile.total_ranks + self.grid.layout[0] - 1
+                to_rank = rank - self.ranks_per_tile + self.layout[0] - 1
                 rotations = 0
         else:
             to_rank = rank - 1
@@ -231,18 +234,18 @@ class CubedSpherePartitioner:
         self._ensure_square_layout()
         if self.tile.on_tile_right(rank):
             if not is_even(self.tile_index(rank)):
-                to_master_rank = self.tile_master_rank(rank + 2 * self.tile.total_ranks)
-                tile_rank = rank % self.tile.total_ranks
+                to_master_rank = self.tile_master_rank(rank + 2 * self.ranks_per_tile)
+                tile_rank = rank % self.ranks_per_tile
                 to_tile_rank = fliplr_subtile_rank(
                     rotate_subtile_rank(
-                        tile_rank, self.grid.layout, n_clockwise_rotations=1
+                        tile_rank, self.layout, n_clockwise_rotations=1
                     ),
-                    self.grid.layout
+                    self.layout
                 )
                 to_rank = to_master_rank + to_tile_rank
                 rotations = 1
             else:
-                to_rank = rank + self.tile.total_ranks - self.grid.layout[0] + 1
+                to_rank = rank + self.ranks_per_tile - self.layout[0] + 1
                 rotations = 0
         else:
             to_rank = rank + 1
@@ -255,24 +258,24 @@ class CubedSpherePartitioner:
         self._ensure_square_layout()
         if self.tile.on_tile_top(rank):
             if is_even(self.tile_index(rank)):
-                to_master_rank = (self.tile_index(rank) + 2) * self.tile.total_ranks
-                tile_rank = rank % self.tile.total_ranks
+                to_master_rank = (self.tile(rank) + 2) * self.ranks_per_tile
+                tile_rank = rank % self.ranks_per_tile
                 to_tile_rank = fliplr_subtile_rank(
                     rotate_subtile_rank(
-                        tile_rank, self.grid.layout, n_clockwise_rotations=1
+                        tile_rank, self.layout, n_clockwise_rotations=1
                     ),
-                    self.grid.layout
+                    self.layout
                 )
                 to_rank = to_master_rank + to_tile_rank
                 rotations = 3
             else:
-                to_master_rank = (self.tile_index(rank) + 1) * self.tile.total_ranks
-                tile_rank = rank % self.tile.total_ranks
-                to_tile_rank = flipud_subtile_rank(tile_rank, self.grid.layout)
+                to_master_rank = (self.tile(rank) + 1) * self.ranks_per_tile
+                tile_rank = rank % self.ranks_per_tile
+                to_tile_rank = flipud_subtile_rank(tile_rank, self.layout)
                 to_rank = to_master_rank + to_tile_rank
                 rotations = 0
         else:
-            to_rank = rank + self.grid.layout[1]
+            to_rank = rank + self.layout[1]
             rotations = 0
         to_rank = to_rank % self.total_ranks
         return Boundary(from_rank=rank, to_rank=to_rank, n_clockwise_rotations=rotations)
@@ -284,27 +287,28 @@ class CubedSpherePartitioner:
                 self.tile.on_tile_bottom(rank) and
                 not is_even(self.tile_index(rank))
         ):
-            to_master_rank = (self.tile_index(rank) - 2) * self.tile.total_ranks
-            tile_rank = rank % self.tile.total_ranks
+            to_master_rank = (self.tile(rank) - 2) * self.ranks_per_tile
+            tile_rank = rank % self.ranks_per_tile
             to_tile_rank = fliplr_subtile_rank(
                 rotate_subtile_rank(
-                    tile_rank, self.grid.layout, n_clockwise_rotations=1
+                    tile_rank, self.layout, n_clockwise_rotations=1
                 ),
-                self.grid.layout
+                self.layout
             )
             to_rank = to_master_rank + to_tile_rank
             rotations = 3
         else:
-            to_rank = rank - self.grid.layout[1]
+            to_rank = rank - self.layout[1]
             rotations = 0
         to_rank = to_rank % self.total_ranks
         return Boundary(from_rank=rank, to_rank=to_rank, n_clockwise_rotations=rotations)
 
     def _top_left_corner(self, rank):
-        if self.tile.on_tile_top(rank) and self.tile.on_tile_left(rank):
+        if (on_tile_top(self.subtile_index(rank), self.layout) and
+                on_tile_left(self.subtile_index(rank))):
             corner = None
         else:
-            if is_even(self.tile_index(rank)) and self.tile.on_tile_left(rank):
+            if is_even(self.tile(rank)) and on_tile_left(self.subtile_index(rank)):
                 second_edge = self._left_edge
             else:
                 second_edge = self._top_edge
@@ -312,10 +316,11 @@ class CubedSpherePartitioner:
         return corner
 
     def _top_right_corner(self, rank):
-        if self.tile.on_tile_top(rank) and self.tile.on_tile_right(rank):
+        if (on_tile_top(self.subtile_index(rank), self.layout) and
+                on_tile_right(self.subtile_index(rank), self.layout)):
             corner = None
         else:
-            if is_even(self.tile_index(rank)) and self.tile.on_tile_top(rank):
+            if is_even(self.tile(rank)) and on_tile_top(self.subtile_index(rank), self.layout):
                 second_edge = self._bottom_edge
             else:
                 second_edge = self._right_edge
@@ -323,10 +328,11 @@ class CubedSpherePartitioner:
         return corner
 
     def _bottom_left_corner(self, rank):
-        if self.tile.on_tile_bottom(rank) and self.tile.on_tile_left(rank):
+        if (on_tile_bottom(self.subtile_index(rank)) and
+                on_tile_left(self.subtile_index(rank))):
             corner = None
         else:
-            if not is_even(self.tile_index(rank)) and self.tile.on_tile_bottom(rank):
+            if not is_even(self.tile(rank)) and on_tile_bottom(self.subtile_index(rank)):
                 second_edge = self._top_edge
             else:
                 second_edge = self._left_edge
@@ -334,10 +340,11 @@ class CubedSpherePartitioner:
         return corner
 
     def _bottom_right_corner(self, rank):
-        if self.tile.on_tile_bottom(rank) and self.tile.on_tile_right(rank):
+        if (on_tile_bottom(self.subtile_index(rank)) and
+                on_tile_right(self.subtile_index(rank), self.layout)):
             corner = None
         else:
-            if not is_even(self.tile_index(rank)) and self.tile.on_tile_bottom(rank):
+            if not is_even(self.tile(rank)) and on_tile_bottom(self.subtile_index(rank)):
                 second_edge = self._bottom_edge
             else:
                 second_edge = self._right_edge
