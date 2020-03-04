@@ -1,4 +1,3 @@
-import copy
 import pytest
 import fv3util
 import utils
@@ -22,7 +21,7 @@ def layout(request):
 
 @pytest.fixture
 def nx_rank(n_ghost):
-    return max(3, n_ghost*2 - 1)
+    return max(3, n_ghost * 2 - 1)
 
 
 @pytest.fixture
