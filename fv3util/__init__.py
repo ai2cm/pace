@@ -11,4 +11,4 @@ from .constants import (
     X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM, Z_INTERFACE_DIM
 )
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
