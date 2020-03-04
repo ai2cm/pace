@@ -258,8 +258,6 @@ def test_depth_halo_update(
     y_dim, x_dim = get_horizontal_dims(sample_quantity.dims)
     y_index = sample_quantity.dims.index(y_dim)
     x_index = sample_quantity.dims.index(x_dim)
-    y_origin = sample_quantity.origin[y_index]
-    x_origin = sample_quantity.origin[x_index]
     y_extent = sample_quantity.extent[y_index]
     x_extent = sample_quantity.extent[x_index]
     if 0 < n_ghost_update <= n_ghost:
@@ -314,10 +312,15 @@ def test_zeros_halo_update(
         for rank, quantity in enumerate(zeros_quantity_list):
             boundaries = boundary_dict[rank % ranks_per_tile]
             for boundary in boundaries:
-                with subtests.test(rank=rank, boundary=boundary):
+                boundary_slice = fv3util.boundary._get_boundary_slice(
+                    quantity.dims, quantity.origin, quantity.extent,
+                    boundary, n_ghost_update, interior=False
+                )
+                with subtests.test(quantity=quantity, rank=rank, boundary=boundary, boundary_slice=boundary_slice):
                     numpy.testing.assert_array_equal(
-                        quantity.boundary_data(boundary, n_ghost_update, interior=False), 0.
+                        quantity.data[boundary_slice], 0.
                     )
+
 
 def get_horizontal_dims(dims):
     for dim in fv3util.X_DIMS:

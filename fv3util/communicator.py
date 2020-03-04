@@ -90,9 +90,7 @@ class CubedSphereCommunicator:
         if n_ghost == 0:
             raise ValueError('cannot perform a halo update on zero ghost cells')
         for boundary_type, boundary in self.boundaries.items():
-            data = quantity.boundary_data(
-                boundary_type, n_points=n_ghost, interior=True
-            )
+            data = boundary.send_view(quantity, n_points=n_ghost)
             data = quantity.np.ascontiguousarray(
                 rotate_data(data, quantity.metadata, boundary.n_clockwise_rotations)
             )
@@ -100,9 +98,7 @@ class CubedSphereCommunicator:
 
     def finish_halo_update(self, quantity, n_ghost):
         for boundary_type, boundary in self.boundaries.items():
-            dest_view = quantity.boundary_data(
-                boundary_type, n_points=n_ghost, interior=False
-            )
+            dest_view = boundary.recv_view(quantity, n_points=n_ghost)
             dest_buffer = quantity.np.empty(dest_view.shape, dtype=dest_view.dtype)
             self.comm.Recv(dest_buffer, source=boundary.to_rank)
             dest_view[:] = dest_buffer
