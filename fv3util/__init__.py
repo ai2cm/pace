@@ -1,4 +1,3 @@
-from ._ghost_cells import without_ghost_cells, with_ghost_cells
 from ._exceptions import InvalidQuantityError
 from .time import datetime64_to_datetime
 from .io import read_state, write_state
