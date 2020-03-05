@@ -8,13 +8,13 @@ import fv3util.partitioner
 
 @pytest.fixture
 def partitioner_2_by_2():
-    grid = fv3util.HorizontalGridSpec(3, 3, (2, 2))
+    grid = fv3util.HorizontalGridSpec((2, 2))
     return fv3util.CubedSpherePartitioner(grid)
 
 
 @pytest.fixture
 def partitioner_1_by_1():
-    grid = fv3util.HorizontalGridSpec(3, 3, (1, 1))
+    grid = fv3util.HorizontalGridSpec((1, 1))
     return fv3util.CubedSpherePartitioner(grid)
 
 

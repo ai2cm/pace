@@ -152,8 +152,8 @@ def communicator_list(cube_partitioner):
 
 
 @pytest.fixture
-def grid(ny, nx, layout):
-    return fv3util.HorizontalGridSpec(ny, nx, layout)
+def grid(layout):
+    return fv3util.HorizontalGridSpec(layout)
 
 
 @pytest.fixture
@@ -317,7 +317,7 @@ def test_zeros_halo_update(
                 )
                 with subtests.test(quantity=quantity, rank=rank, boundary=boundary, boundary_slice=boundary_slice):
                     numpy.testing.assert_array_equal(
-                        quantity.data[boundary_slice], 0.
+                        quantity.data[tuple(boundary_slice)], 0.
                     )
 
 

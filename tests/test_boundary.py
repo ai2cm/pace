@@ -3,11 +3,10 @@ import numpy as np
 
 
 def boundary_data(quantity, boundary_type, n_points, interior=True):
-    print(quantity.dims, quantity.origin, quantity.extent)
     boundary_slice = fv3util.boundary._get_boundary_slice(
         quantity.dims, quantity.origin, quantity.extent, boundary_type, n_points, interior
     )
-    return quantity.data[boundary_slice]
+    return quantity.data[tuple(boundary_slice)]
 
 
 def test_boundary_data_1_by_1_array_1_halo():

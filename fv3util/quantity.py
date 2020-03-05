@@ -35,25 +35,16 @@ class FrozenDict(collections.abc.Mapping):
 
 @dataclasses.dataclass
 class QuantityMetadata:
+    origin: Tuple[int, ...]
+    extent: Tuple[int, ...]
     dims: Tuple[str, ...]
-    dim_lengths: Dict[str, int]  # defines lengths of non-horizontal dimensions
     units: str
     data_type: type
     dtype: type
 
-    @classmethod
-    def from_quantity(cls, quantity):
-        dim_lengths = dict(zip(quantity.dims, quantity.extent))
-        for dim in constants.HORIZONTAL_DIMS:
-            if dim in dim_lengths:
-                dim_lengths.pop(dim)
-        return cls(
-            dims=quantity.dims,
-            dim_lengths=dim_lengths,
-            units=quantity.units,
-            data_type=type(quantity.data),
-            dtype=quantity.data.dtype
-        )
+    @property
+    def dim_lengths(self):
+        return dict(zip(self.dims, self.extent))
 
     @property
     def np(self):
@@ -70,18 +61,25 @@ class QuantityMetadata:
 class Quantity:
 
     def __init__(self, data, dims, units, origin=None, extent=None):
-        self._dims = tuple(dims)
-        self._attrs = {'units': units}
-        self._data = data
         if origin is None:
-            self._origin = (0,) * len(dims)  # default origin at origin of array
+            origin = (0,) * len(dims)  # default origin at origin of array
         else:
-            self._origin = tuple(origin)
+            origin = tuple(origin)
         if extent is None:
-            self._extent = tuple(length - start for length, start in zip(data.shape, self._origin))
+            extent = tuple(length - start for length, start in zip(data.shape, origin))
         else:
-            self._extent = tuple(extent)
-        self._compute_domain_view = BoundedArrayView(self._data, self._origin, self._extent)
+            extent = tuple(extent)
+        self._metadata = QuantityMetadata(
+            origin=origin,
+            extent=extent,
+            dims=tuple(dims),
+            units=units,
+            data_type=type(data),
+            dtype=data.dtype,
+        )
+        self._attrs = {}
+        self._data = data
+        self._compute_domain_view = BoundedArrayView(self.data, self.origin, self.extent)
 
     @classmethod
     def from_data_array(cls, data_array, origin=None, extent=None):
@@ -111,19 +109,19 @@ class Quantity:
 
     @property
     def metadata(self):
-        return QuantityMetadata.from_quantity(self)
+        return self._metadata
 
     @property
     def units(self):
-        return self._attrs['units']
+        return self.metadata.units
 
     @property
     def attrs(self):
-        return self._attrs
+        return dict(**self._attrs, units=self._metadata.units)
 
     @property
     def dims(self):
-        return self._dims
+        return self.metadata.dims
     
     @property
     def values(self):
@@ -141,11 +139,11 @@ class Quantity:
 
     @property
     def origin(self):
-        return self._origin
+        return self.metadata.origin
     
     @property
     def extent(self):
-        return self._extent
+        return self.metadata.extent
     
     @property
     def storage(self):
@@ -156,19 +154,12 @@ class Quantity:
         return xr.DataArray(
             self.view[:],
             dims=self.dims,
-            attrs=self._attrs
+            attrs=self.attrs
         )
 
     @property
     def np(self):
-        if isinstance(self._data, np.ndarray):
-            return np
-        elif isinstance(self._data, cupy.ndarray):
-            return cupy
-        else:
-            raise TypeError(
-                f"quantity underlying data is of unexpected type {type(self._data)}"
-            )
+        return self.metadata.np
 
 
 class BoundedArrayView:

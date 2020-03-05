@@ -60,9 +60,11 @@ def get_nudging_tendencies(state, reference_state, nudging_timescales):
         reference = reference_state[name]
         units.ensure_equal_units(quantity.units, reference.units)
         return_data = (reference.view[:] - quantity.view[:]) / timescale.total_seconds()
+        print('before', quantity.units)
         return_dict[name] = Quantity(
             return_data,
             dims=quantity.dims,
             units=quantity.units + ' s^-1'
         )
+        print('after', return_dict[name].units)
     return return_dict

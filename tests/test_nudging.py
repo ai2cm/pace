@@ -99,12 +99,12 @@ def nudging_tendencies(reference_difference, state, nudging_timescales):
         tendencies = copy.deepcopy(state)
         for array in tendencies.values():
             array.data[:] = 0.
-            array.attrs['units'] = array.attrs['units'] + ' s^-1'
+            array.metadata.units = array.units + ' s^-1'
     elif reference_difference == "plus_one":
         tendencies = copy.deepcopy(state)
         for name, array in tendencies.items():
             array.data[:] = 1.0 / nudging_timescales[name].total_seconds()
-            array.attrs['units'] = array.attrs['units'] + ' s^-1'
+            array.metadata.units = array.units + ' s^-1'
     else:
         raise NotImplementedError()
     return tendencies

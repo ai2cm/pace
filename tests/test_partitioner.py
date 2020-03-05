@@ -68,108 +68,98 @@ for layout in ((1, 1), (1, 2), (2, 2), (2, 3)):
     "rank, layout, subtile_index",
     zip(rank_list, layout_list, subtile_index_list))
 def test_subtile_index(rank, layout, subtile_index):
-    grid = fv3util.HorizontalGridSpec(49, 49, layout)
+    grid = fv3util.HorizontalGridSpec(layout)
     partitioner = fv3util.TilePartitioner(grid)
     assert partitioner.subtile_index(rank) == subtile_index
 
 
 @pytest.mark.parametrize(
-    "ny, nx, array_dims, extent",
+    "array_extent, array_dims, layout, tile_extent",
     [
-        (16, 32, ([fv3util.Y_DIM, fv3util.X_INTERFACE_DIM]), (16, 33)),
-        (16, 32, ([fv3util.Y_DIM, fv3util.X_DIM]), (16, 32)),
-        (16, 32, ([fv3util.Y_INTERFACE_DIM, fv3util.X_DIM]), (17, 32)),
-        (16, 32, ([fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM]), (17, 33)),
-        (16, 32, ([fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_INTERFACE_DIM]), (8, 16, 33)),
-        (16, 32, ([fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM]), (8, 16, 32)),
-        (16, 32, ([fv3util.Z_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_DIM]), (8, 17, 32)),
-        (16, 32, ([fv3util.Z_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM]), (8, 17, 33)),
-        (16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM, fv3util.X_INTERFACE_DIM]), (9, 16, 33)),
-        (16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM, fv3util.X_DIM]), (9, 16, 32)),
-        (16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_DIM]), (9, 17, 32)),
-        (16, 32, ([fv3util.Z_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM]), (9, 17, 33)),
+        ((16, 32), (fv3util.Y_DIM, fv3util.X_DIM), (1, 1), (16, 32)),
+        ((16, 32), (fv3util.Y_DIM, fv3util.X_INTERFACE_DIM), (1, 1), (16, 32)),
+        ((16, 32), (fv3util.Y_INTERFACE_DIM, fv3util.X_DIM), (1, 1), (16, 32)),
+        ((16, 32), (fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM), (1, 1), (16, 32)),
+        ((8, 16, 32), (fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM), (1, 1), (8, 16, 32)),
+        ((2, 2), (fv3util.Y_DIM, fv3util.X_DIM), (2, 2), (4, 4)),
+        ((3, 2), (fv3util.Y_INTERFACE_DIM, fv3util.X_DIM), (2, 2), (5, 4)),
+        ((2, 3), (fv3util.Y_DIM, fv3util.X_INTERFACE_DIM), (2, 2), (4, 5)),
+        ((4, 2, 3), (fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM, fv3util.X_INTERFACE_DIM), (2, 2), (4, 4, 5)),
     ],
 )
-def test_tile_extent(ny, nx, array_dims, extent):
-    dim_lengths = {fv3util.Z_DIM: 8, fv3util.Z_INTERFACE_DIM: 9}
-    result = fv3util.partitioner.tile_extent(ny, nx, array_dims, dim_lengths)
-    assert result == extent
+def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_extent):
+    result = fv3util.partitioner.tile_extent_from_rank_metadata(array_dims, array_extent, layout)
+    assert result == tile_extent
 
 
 @pytest.mark.parametrize(
-    'array_dims, nz, ny_rank, nx_rank, layout, subtile_index, subtile_slice, overlap',
+    'array_dims, tile_extent, layout, subtile_index, subtile_slice, overlap',
     [
         pytest.param(
-            [fv3util.Y_DIM, fv3util.X_DIM], 10, 8, 8, (1, 1), (0, 0), (slice(0, 8), slice(0, 8)), False,
+            [fv3util.Y_DIM, fv3util.X_DIM], (8, 8), (1, 1), (0, 0), (slice(0, 8), slice(0, 8)), False,
             id='6_rank_centered'
         ),
         pytest.param(
-            [fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM], 10, 8, 8, (1, 1), (0, 0), (slice(0, 10), slice(0, 8), slice(0, 8)), False,
+            [fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM], (10, 8, 8), (1, 1), (0, 0), (slice(0, 10), slice(0, 8), slice(0, 8)), False,
             id='6_rank_centered_3d'
         ),
         pytest.param(
-            [fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM, fv3util.X_DIM], 10, 8, 8, (1, 1), (0, 0), (slice(0, 11), slice(0, 8), slice(0, 8)), False,
+            [fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM, fv3util.X_DIM], (11, 8, 8), (1, 1), (0, 0), (slice(0, 11), slice(0, 8), slice(0, 8)), False,
             id='6_rank_centered_z_interface'
         ),
         pytest.param(
-            [fv3util.Y_INTERFACE_DIM, fv3util.X_DIM], 10, 8, 8, (1, 1), (0, 0), (slice(0, 9), slice(0, 8)), True,
+            [fv3util.Y_INTERFACE_DIM, fv3util.X_DIM], (9, 8), (1, 1), (0, 0), (slice(0, 9), slice(0, 8)), True,
             id='6_rank_y_interface'
         ),
         pytest.param(
-            [fv3util.Y_DIM, fv3util.X_INTERFACE_DIM], 10, 8, 8, (1, 1), (0, 0), (slice(0, 8), slice(0, 9)), True,
+            [fv3util.Y_DIM, fv3util.X_INTERFACE_DIM], (8, 9), (1, 1), (0, 0), (slice(0, 8), slice(0, 9)), True,
             id='6_rank_x_interface'
         ),
         pytest.param(
-            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], 10, 8, 8, (1, 1), (0, 0), (slice(0, 9), slice(0, 9)), False,
+            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], (9, 9), (1, 1), (0, 0), (slice(0, 9), slice(0, 9)), False,
             id='6_rank_both_interface'
         ),
         pytest.param(
-            [fv3util.Y_DIM, fv3util.X_DIM], 10, 4, 4, (2, 2), (0, 0), (slice(0, 4), slice(0, 4)), True,
+            [fv3util.Y_DIM, fv3util.X_DIM], (8, 8), (2, 2), (0, 0), (slice(0, 4), slice(0, 4)), True,
             id='24_rank_centered_left'
         ),
         pytest.param(
-            [fv3util.Y_DIM, fv3util.X_DIM], 10, 4, 4, (2, 2), (1, 1), (slice(4, 8), slice(4, 8)), False,
+            [fv3util.Y_DIM, fv3util.X_DIM], (8, 8), (2, 2), (1, 1), (slice(4, 8), slice(4, 8)), False,
             id='24_rank_centered_right'
         ),
         pytest.param(
-            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], 10, 4, 4, (2, 2), (0, 0), (slice(0, 4), slice(0, 4)), False,
+            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], (9, 9), (2, 2), (0, 0), (slice(0, 4), slice(0, 4)), False,
             id='24_rank_interface_left_no_overlap'
         ),
         pytest.param(
-            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], 10, 4, 4, (2, 2), (1, 1), (slice(4, 9), slice(4, 9)), False,
+            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], (9, 9), (2, 2), (1, 1), (slice(4, 9), slice(4, 9)), False,
             id='24_rank_interface_right_no_overlap'
         ),
         pytest.param(
-            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], 10, 4, 4, (2, 2), (0, 0), (slice(0, 5), slice(0, 5)), True,
+            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], (9, 9), (2, 2), (0, 0), (slice(0, 5), slice(0, 5)), True,
             id='24_rank_interface_left_overlap',
         ),
         pytest.param(
-            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], 10, 4, 4, (2, 2), (1, 1), (slice(4, 9), slice(4, 9)), True,
+            [fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM], (9, 9), (2, 2), (1, 1), (slice(4, 9), slice(4, 9)), True,
             id='24_rank_interface_right_overlap'
         ),
         pytest.param(
-            [fv3util.Y_DIM, fv3util.X_DIM], 10, 4, 2, (1, 2), (0, 0), (slice(0, 4), slice(0, 2)), True,
+            [fv3util.Y_DIM, fv3util.X_DIM], (4, 4), (1, 2), (0, 0), (slice(0, 4), slice(0, 2)), True,
             id='24_rank_interface_right_overlap'
         ),
         pytest.param(
-            [fv3util.Y_DIM, fv3util.X_DIM], 10, 4, 2, (1, 2), (0, 1), (slice(0, 4), slice(2, 4)), True,
+            [fv3util.Y_DIM, fv3util.X_DIM], (4, 4), (1, 2), (0, 1), (slice(0, 4), slice(2, 4)), True,
             id='24_rank_interface_right_overlap'
+        ),
+        pytest.param(
+            [fv3util.Y_DIM, fv3util.X_DIM], (4, 4), (1, 2), (0, 1), (slice(0, 4), slice(2, 4)), False,
+            id='24_rank_centered_right_no_overlap_rectangle_layout'
         ),
     ]
 )
-def test_subtile_slice(array_dims, nz, ny_rank, nx_rank, layout, subtile_index, subtile_slice, overlap, numpy):
-    metadata = fv3util.QuantityMetadata(
-        dims=array_dims,
-        dim_lengths={
-            fv3util.Z_DIM: nz,
-            fv3util.Z_INTERFACE_DIM: nz + 1,
-        },
-        units='m',
-        data_type=numpy.ndarray,
-        dtype=numpy.float64,
-    )
+def test_subtile_slice(array_dims, tile_extent, layout, subtile_index, subtile_slice, overlap):
     result = fv3util.partitioner.subtile_slice(
-        metadata, ny_rank, nx_rank, layout, subtile_index, overlap
+        array_dims, tile_extent, layout, subtile_index, overlap
     )
     assert result == subtile_slice
 

@@ -81,7 +81,7 @@ def extent(n_ghost, dims, nz, ny, nx):
 
 @pytest.fixture
 def grid():
-    return fv3util.HorizontalGridSpec(1, 1, (1, 1))
+    return fv3util.HorizontalGridSpec((1, 1))
 
 
 @pytest.fixture

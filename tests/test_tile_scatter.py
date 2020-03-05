@@ -10,8 +10,10 @@ def rank_scatter_results(communicator_list, quantity):
             array = quantity
         else:
             array = None
-        metadata = fv3util.QuantityMetadata.from_quantity(quantity)
-        yield tile_communicator, tile_communicator.scatter_tile(metadata, send_quantity=array)
+        yield (
+            tile_communicator,
+            tile_communicator.scatter_tile(quantity.metadata, send_quantity=array)
+        )
 
 
 def get_tile_communicator_list(partitioner):
@@ -34,7 +36,7 @@ def get_tile_communicator_list(partitioner):
     'layout', [(1, 1), (1, 2), (2, 1), (2, 2), (3, 3)]
 )
 def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
-    grid = fv3util.HorizontalGridSpec(layout[0], layout[1], layout)
+    grid = fv3util.HorizontalGridSpec(layout)
     state = {
         'pos_j': fv3util.Quantity(
             np.empty([layout[0] + 1, layout[1] + 1]),
@@ -76,7 +78,7 @@ def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
     'layout', [(1, 1), (1, 2), (2, 1), (2, 2), (3, 3)]
 )
 def test_centered_state_one_item_per_rank_scatter_tile(layout):
-    grid = fv3util.HorizontalGridSpec(layout[0], layout[1], layout)
+    grid = fv3util.HorizontalGridSpec(layout)
     total_ranks = layout[0] * layout[1]
     state = {
         'rank': fv3util.Quantity(
@@ -118,7 +120,8 @@ def test_centered_state_one_item_per_rank_scatter_tile(layout):
     'n_halo', [0, 1, 3]
 )
 def test_centered_state_one_item_per_rank_with_halo_scatter_tile(layout, n_halo):
-    grid = fv3util.HorizontalGridSpec(layout[0], layout[1], layout)
+    extent = layout
+    grid = fv3util.HorizontalGridSpec(layout)
     total_ranks = layout[0] * layout[1]
     state = {
         'rank': fv3util.Quantity(
@@ -126,21 +129,21 @@ def test_centered_state_one_item_per_rank_with_halo_scatter_tile(layout, n_halo)
             dims=[fv3util.Y_DIM, fv3util.X_DIM],
             units='dimensionless',
             origin=(n_halo, n_halo),
-            extent=(grid.ny, grid.nx),
+            extent=extent,
         ),
         'rank_pos_j': fv3util.Quantity(
             np.empty([layout[0] + 2 * n_halo, layout[1] + 2 * n_halo]),
             dims=[fv3util.Y_DIM, fv3util.X_DIM],
             units='dimensionless',
             origin=(n_halo, n_halo),
-            extent=(grid.ny, grid.nx),
+            extent=extent,
         ),
         'rank_pos_i': fv3util.Quantity(
             np.empty([layout[0] + 2 * n_halo, layout[1] + 2 * n_halo]),
             dims=[fv3util.Y_DIM, fv3util.X_DIM],
             units='dimensionless',
             origin=(n_halo, n_halo),
-            extent=(grid.ny, grid.nx),
+            extent=extent,
         ),
     }
     

@@ -138,7 +138,7 @@ def _get_boundary_slice(dims, origin, extent, boundary_type, n_points, interior)
                 boundary_slice.append(slice(edge_index, edge_index + n_points))
         else:
             boundary_slice.append(slice(origin_1d, origin_1d + extent_1d))
-    return boundary_slice
+    return tuple(boundary_slice)
 
 
 DIM_TO_START_EDGE = {

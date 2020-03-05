@@ -45,14 +45,15 @@ def nx():
 def nz():
     return 5
 
+
 @pytest.fixture
 def layout():
     return (1, 1)
 
 
 @pytest.fixture
-def grid(ny, nx, layout):
-    return fv3util.HorizontalGridSpec(ny, nx, layout)
+def grid(layout):
+    return fv3util.HorizontalGridSpec(layout)
 
 
 @pytest.fixture
@@ -172,13 +173,13 @@ def test_monitor_file_store_multi_rank_state(
     units = "m"
     tmpdir = tmpdir_factory.mktemp("data.zarr")
     nz, ny, nx = shape
-    grid = fv3util.HorizontalGridSpec(ny, nx, layout)
+    ny_rank = int(ny / layout[0] + ny_rank_add)
+    nx_rank = int(nx / layout[1] + nx_rank_add)
+    grid = fv3util.HorizontalGridSpec(layout)
     time = datetime(2010, 6, 20, 6, 0, 0)
     timestep = timedelta(hours=1)
     total_ranks = 6 * layout[0] * layout[1]
     partitioner = fv3util.CubedSpherePartitioner(grid)
-    ny_rank = partitioner.tile.ny_rank + ny_rank_add
-    nx_rank = partitioner.tile.nx_rank + nx_rank_add
     store = zarr.storage.DirectoryStore(tmpdir)
     shared_buffer = {}
     monitor_list = []

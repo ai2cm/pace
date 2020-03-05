@@ -39,7 +39,7 @@ class TileCommunicator:
             for rank in range(0, self.partitioner.total_ranks):
                 subtile_slice = self.partitioner.subtile_slice(
                     rank,
-                    metadata=metadata,
+                    tile_metadata=metadata,
                     overlap=True,
                 )
                 sendbuf[rank, :] = send_quantity.view[subtile_slice]

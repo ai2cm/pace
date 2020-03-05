@@ -1,13 +1,11 @@
 from typing import Tuple
-import copy
 import functools
 import dataclasses
-from . import constants
+from . import constants, utils
 from .constants import (
     TOP, BOTTOM, LEFT, RIGHT, TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
 )
 import numpy as np
-import xarray as xr
 from . import boundary as bd
 from .quantity import QuantityMetadata, Quantity
 
@@ -38,8 +36,6 @@ def get_tile_number(tile_rank, total_ranks):
 
 @dataclasses.dataclass
 class HorizontalGridSpec:
-    ny: int
-    nx: int
     layout: Tuple[int, int]
 
     @classmethod
@@ -50,10 +46,7 @@ class HorizontalGridSpec:
         Args:
             namelist (dict): the Fortran namelist
         """
-        return cls(
-            ny=namelist['fv_core_nml']['npy'] - 1,
-            nx=namelist['fv_core_nml']['npx'] - 1,
-            layout=namelist['fv_core_nml']['layout'])
+        return cls(layout=namelist['fv_core_nml']['layout'])
 
     @property
     def is_square(self):
@@ -62,34 +55,24 @@ class HorizontalGridSpec:
 
 class TilePartitioner:
 
-    def __init__(self, grid: HorizontalGridSpec):
+    def __init__(
+            self,
+            grid: HorizontalGridSpec
+    ):
+        """Create an object for fv3gfs tile decomposition.
+        """
         self.grid = grid
-
-    @property
-    def ny_rank(self):
-        """the number of cell centers in the y direction on each rank/subtile"""
-        return self.grid.ny // self.grid.layout[0]
-
-    @property
-    def nx_rank(self):
-        """the number of cell centers in the x direction on each rank/subtile"""
-        return self.grid.nx // self.layout[1]
-
-    @property
-    def layout(self):
-        return self.grid.layout
-
-    @property
-    def total_ranks(self):
-        """the number of ranks per tile"""
-        return self.grid.layout[0] * self.grid.layout[1]
 
     @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
     def subtile_index(self, rank):
         """Return the (y, x) subtile position of a given rank as an integer number of subtiles."""
         return subtile_index(rank, self.total_ranks, self.grid.layout)
 
-    def tile_extent(self, metadata: QuantityMetadata) -> Tuple[int, ...]:
+    @property
+    def total_ranks(self):
+        return self.grid.layout[0] * self.grid.layout[1]
+
+    def tile_extent(self, rank_metadata: QuantityMetadata) -> Tuple[int, ...]:
         """Return the shape of a full tile representation for the given dimensions.
 
         Args:
@@ -98,26 +81,23 @@ class TilePartitioner:
         Returns:
             extent: shape of full tile representation
         """
-        return tile_extent(
-            self.grid.ny, self.grid.nx, metadata.dims, metadata.dim_lengths
-        )
+        return tile_extent_from_rank_metadata(rank_metadata.dims, rank_metadata.extent, self.grid.layout)
 
-    def subtile_extent(self, metadata):
+    def subtile_extent(self, tile_metadata: QuantityMetadata) -> Tuple[int, ...]:
         """Return the shape of a single rank representation for the given dimensions."""
-        return tile_extent(
-            self.ny_rank, self.nx_rank, metadata.dims, metadata.dim_lengths
-        )
+        return rank_extent_from_tile_metadata(
+            tile_metadata.dims, tile_metadata.extent, self.grid.layout)
 
     def subtile_slice(
             self,
             rank,
-            metadata: QuantityMetadata,
+            tile_metadata: QuantityMetadata,
             overlap: bool = False) -> Tuple[slice, slice]:
         """Return the subtile slice of a given rank on an array.
 
         Args:
             rank: the rank of the process
-            metadata: the quantity metadata
+            tile_metadata: the metadata for a quantity on a tile
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
@@ -127,10 +107,12 @@ class TilePartitioner:
             y_range: the y range of the array on the tile
             x_range: the x range of the array on the tile
         """
-        subtile_index = self.subtile_index(rank)
         return subtile_slice(
-            metadata, self.ny_rank, self.nx_rank, self.layout, subtile_index,
-            overlap=overlap,
+            tile_metadata.dims,
+            tile_metadata.extent,
+            self.grid.layout,
+            self.subtile_index(rank),
+            overlap=overlap
         )
 
     def on_tile_top(self, rank):
@@ -161,8 +143,7 @@ class CubedSpherePartitioner:
                 horizontal across multiple processes each with their own subtile.
         """
         self.grid = grid
-        self.tile = TilePartitioner(grid)
-        self.total_ranks = 6 * grid.layout[0] * grid.layout[1]
+        self.tile = TilePartitioner(self.grid)
 
     def _ensure_square_layout(self):
         if not self.grid.is_square:
@@ -179,6 +160,10 @@ class CubedSpherePartitioner:
     @property
     def layout(self):
         return self.grid.layout
+
+    @property
+    def total_ranks(self):
+        return 6 * self.tile.total_ranks
 
     def boundary(self, boundary_type, rank):
         return {
@@ -312,8 +297,8 @@ class CubedSpherePartitioner:
         )
 
     def _top_left_corner(self, rank):
-        if (on_tile_top(self.tile.subtile_index(rank), self.layout) and
-                on_tile_left(self.tile.subtile_index(rank))):
+        if (self.tile.on_tile_top(rank) and
+                self.tile.on_tile_left(rank)):
             corner = None
         else:
             if is_even(self.tile_index(rank)) and on_tile_left(self.tile.subtile_index(rank)):
@@ -430,36 +415,71 @@ def is_even(value):
     return value % 2 == 0
 
 
-def tile_extent(ny, nx, array_dims, dim_lengths):
-    dim_extents = copy.deepcopy(dim_lengths)
-    dim_extents.update({
-        constants.X_DIM: nx,
-        constants.X_INTERFACE_DIM: nx + 1,
-        constants.Y_DIM: ny,
-        constants.Y_INTERFACE_DIM: ny + 1,
-    })
-    return_extents = [dim_extents[dim] for dim in array_dims]
+def tile_extent_from_rank_metadata(dims, rank_extent, layout):
+    layout_factors = np.asarray(
+        utils.list_by_dims(dims, layout, non_horizontal_value=1))
+    return extent_from_metadata(dims, rank_extent, layout_factors)
+
+
+def rank_extent_from_tile_metadata(dims, tile_extent, layout):
+    layout_factors = 1 / np.asarray(
+        utils.list_by_dims(dims, layout, non_horizontal_value=1))
+    return extent_from_metadata(dims, tile_extent, layout_factors)
+
+
+def extent_from_metadata(dims: Tuple[str, ...], extent: Tuple[int, ...], layout_factors: np.ndarray):
+    return_extents = []
+    for dim, rank_extent, layout_factor in zip(dims, extent, layout_factors):
+        if dim in constants.INTERFACE_DIMS:
+            add_extent = -1
+        else:
+            add_extent = 0
+        tile_extent = (rank_extent + add_extent) * layout_factor - add_extent
+        return_extents.append(int(tile_extent))  # layout_factor is float, need to cast
     return tuple(return_extents)
 
 
-def subtile_slice(metadata, ny_rank, nx_rank, layout, subtile_index, overlap=False):
-    j_subtile, i_subtile = subtile_index
-    y_start, x_start = j_subtile * ny_rank, i_subtile * nx_rank
-    subtile_extent = tile_extent(
-        ny_rank, nx_rank, metadata.dims, metadata.dim_lengths
-    )
+@dataclasses.dataclass
+class _IndexData1D:
+    dim: str
+    extent: int
+    i_subtile: int
+    n_ranks: int
+
+    @property
+    def base_extent(self):
+        return self.extent - self.extent_minus_gridcell_count
+
+    @property
+    def extent_minus_gridcell_count(self):
+        if self.dim in constants.INTERFACE_DIMS:
+            return 1
+        else:
+            return 0
+
+    @property
+    def is_end_index(self):
+        return self.i_subtile == self.n_ranks - 1
+
+
+def _index_generator(dims, tile_extent, subtile_index, horizontal_layout):
+    subtile_extent = rank_extent_from_tile_metadata(dims, tile_extent, horizontal_layout)
+    quantity_layout = utils.list_by_dims(dims, horizontal_layout, non_horizontal_value=1)
+    quantity_subtile_index = utils.list_by_dims(dims, subtile_index, non_horizontal_value=0)
+    for dim, extent, i_subtile, n_ranks in zip(
+            dims, subtile_extent, quantity_subtile_index, quantity_layout):
+        yield _IndexData1D(dim, extent, i_subtile, n_ranks)
+
+
+def subtile_slice(dims, tile_extent, layout, subtile_index, overlap=False):
+    return_list = []
     # discard last index for interface variables, unless you're the last rank
     # done so that only one rank is responsible for the shared interface point
-    return_list = []
-    for dim, extent in zip(metadata.dims, subtile_extent):
-        if not overlap and (dim == constants.Y_INTERFACE_DIM and j_subtile != layout[0] - 1):
-            return_list.append(slice(y_start, y_start + extent - 1))
-        elif dim in (constants.Y_DIM, constants.Y_INTERFACE_DIM):
-            return_list.append(slice(y_start, y_start + extent))
-        elif not overlap and (dim == constants.X_INTERFACE_DIM and i_subtile != layout[1] - 1):
-            return_list.append(slice(x_start, x_start + extent - 1))
-        elif dim in (constants.X_DIM, constants.X_INTERFACE_DIM):
-            return_list.append(slice(x_start, x_start + extent))
+    for index in _index_generator(dims, tile_extent, subtile_index, layout):
+        start = index.i_subtile * index.base_extent
+        if index.is_end_index or overlap:
+            end = start + index.extent
         else:
-            return_list.append(slice(0, extent))
+            end = start + index.base_extent
+        return_list.append(slice(start, end))
     return tuple(return_list)
