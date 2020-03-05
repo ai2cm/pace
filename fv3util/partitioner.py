@@ -7,9 +7,14 @@ from .constants import (
 )
 import numpy as np
 from . import boundary as bd
-from .quantity import QuantityMetadata, Quantity
+from .quantity import QuantityMetadata
 
 BOUNDARY_CACHE_SIZE = None
+
+
+__all__ = [
+    'TilePartitioner', 'CubedSpherePartitioner', 'HorizontalGridSpec', 'get_tile_index'
+]
 
 
 def get_tile_index(rank, total_ranks):
@@ -446,9 +451,9 @@ def is_even(value: [int, float]) -> bool:
 
 
 def tile_extent_from_rank_metadata(
-        dims: Iterable[str, ...],
-        rank_extent: Iterable[int, ...],
-        layout: Tuple[int, int]) -> Tuple[int, ...]:
+        dims: Iterable[str],
+        rank_extent: Iterable[int],
+        layout: Tuple[int, int]) -> Tuple[int]:
     """
     Returns the extent of a tile given data about a single rank, and the tile
     layout.
@@ -467,8 +472,8 @@ def tile_extent_from_rank_metadata(
 
 
 def rank_extent_from_tile_metadata(
-        dims: Iterable[str, ...],
-        tile_extent: Iterable[int, ...],
+        dims: Iterable[str],
+        tile_extent: Iterable[int],
         layout: Tuple[int, int]) -> Tuple[int, ...]:
     """
     Returns the extent of a rank given data about a tile, and the tile
@@ -535,8 +540,8 @@ def _index_generator(dims, tile_extent, subtile_index, horizontal_layout):
 
 
 def subtile_slice(
-        dims: Iterable[str, ...],
-        tile_extent: Iterable[int, ...],
+        dims: Iterable[str],
+        tile_extent: Iterable[int],
         layout: Tuple[int, int],
         subtile_index: Tuple[int, int],
         overlap: bool = False) -> Tuple[slice, ...]:

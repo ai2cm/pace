@@ -11,6 +11,9 @@ from .quantity import Quantity, QuantityMetadata
 logger = logging.getLogger("fv3util")
 
 
+__all__ = ['ZarrMonitor']
+
+
 class DummyComm:
     
     def Get_rank(self):
@@ -83,7 +86,7 @@ class ZarrMonitor:
         else:
             self._check_writers(state)
 
-    def store(self, state):
+    def store(self, state: dict) -> None:
         """Append the model state to the zarr store.
 
         Requires the state contain the same quantities with the same metadata as the

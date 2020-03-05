@@ -6,6 +6,7 @@ from . import constants
 
 @dataclasses.dataclass
 class Boundary:
+    """Maps part of a subtile domain to another rank which shares ghost cells"""
     from_rank: int
     to_rank: int
     n_clockwise_rotations: int
@@ -53,6 +54,7 @@ class Boundary:
 
 @dataclasses.dataclass
 class SimpleBoundary(Boundary):
+    """A boundary representing an edge or corner of a subtile."""
     boundary_type: str
 
     def _view(self, quantity: Quantity, n_points: int, interior: bool):
@@ -61,50 +63,6 @@ class SimpleBoundary(Boundary):
             self.boundary_type, n_points, interior
         )
         return quantity.data[tuple(boundary_slice)]
-
-
-class TopBoundary(SimpleBoundary):
-    boundary_type: str = constants.BOTTOM
-
-
-class BottomBoundary(SimpleBoundary):
-    boundary_type: str = constants.BOTTOM
-
-
-class LeftBoundary(Boundary):
-
-    def _view(self, quantity: Quantity, n_points: int, interior: bool):
-        boundary_slice = _get_boundary_slice(
-            constants.LEFT, n_points, interior
-        )
-        return self.data[tuple(boundary_slice)]
-
-
-class RightBoundary(Boundary):
-
-    def _view(self, quantity: Quantity, n_points: int, interior: bool):
-        boundary_slice = _get_boundary_slice(
-            constants.RIGHT, n_points, interior
-        )
-        return self.data[tuple(boundary_slice)]
-
-
-class TopLeftBoundary(Boundary):
-
-    def _view(self, quantity: Quantity, n_points: int, interior: bool):
-        boundary_slice = _get_boundary_slice(
-            constants.TOP_LEFT, n_points, interior
-        )
-        return self.data[tuple(boundary_slice)]
-
-
-class TopRightBoundary(Boundary):
-
-    def _view(self, quantity: Quantity, n_points: int, interior: bool):
-        boundary_slice = _get_boundary_slice(
-            quantity, constants.TOP_RIGHT, n_points, interior
-        )
-        return self.data[tuple(boundary_slice)]
 
 
 @functools.lru_cache(maxsize=None)
