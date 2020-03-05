@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Callable, Iterable
 import functools
 import dataclasses
 from . import constants, utils
@@ -40,8 +40,7 @@ class HorizontalGridSpec:
 
     @classmethod
     def from_namelist(cls, namelist):
-        """Create a Partitioner from a Fortran namelist. Infers dimensions in number
-        of grid cell centers based on namelist parameters.
+        """Initialize a HorizontalGridSpec from a Fortran namelist.
 
         Args:
             namelist (dict): the Fortran namelist
@@ -49,7 +48,7 @@ class HorizontalGridSpec:
         return cls(layout=namelist['fv_core_nml']['layout'])
 
     @property
-    def is_square(self):
+    def is_square(self) -> bool:
         return self.layout[0] == self.layout[1]
 
 
@@ -64,12 +63,12 @@ class TilePartitioner:
         self.grid = grid
 
     @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
-    def subtile_index(self, rank):
+    def subtile_index(self, rank: int) -> Tuple[int, int]:
         """Return the (y, x) subtile position of a given rank as an integer number of subtiles."""
         return subtile_index(rank, self.total_ranks, self.grid.layout)
 
     @property
-    def total_ranks(self):
+    def total_ranks(self) -> int:
         return self.grid.layout[0] * self.grid.layout[1]
 
     def tile_extent(self, rank_metadata: QuantityMetadata) -> Tuple[int, ...]:
@@ -90,7 +89,7 @@ class TilePartitioner:
 
     def subtile_slice(
             self,
-            rank,
+            rank: int,
             tile_metadata: QuantityMetadata,
             overlap: bool = False) -> Tuple[slice, slice]:
         """Return the subtile slice of a given rank on an array.
@@ -115,16 +114,16 @@ class TilePartitioner:
             overlap=overlap
         )
 
-    def on_tile_top(self, rank):
+    def on_tile_top(self, rank: int) -> bool:
         return on_tile_top(self.subtile_index(rank), self.grid.layout)
 
-    def on_tile_bottom(self, rank):
+    def on_tile_bottom(self, rank: int) -> bool:
         return on_tile_bottom(self.subtile_index(rank))
 
-    def on_tile_left(self, rank):
+    def on_tile_left(self, rank: int) -> bool:
         return on_tile_left(self.subtile_index(rank))
 
-    def on_tile_right(self, rank):
+    def on_tile_right(self, rank: int) -> bool:
         return on_tile_right(self.subtile_index(rank), self.grid.layout)
 
 
@@ -134,38 +133,47 @@ class CubedSpherePartitioner:
             self,
             grid: HorizontalGridSpec
     ):
-        """Create an object for fv3gfs domain decomposition.
+        """Create an object for fv3gfs cubed-sphere domain decomposition.
         
         Args:
-            ny: number of grid cell centers along the y-direction
-            nx: number of grid cell centers along the x-direction
-            layout: (x_subtiles, y_subtiles) specifying how the tile is split in the
-                horizontal across multiple processes each with their own subtile.
+            grid: specification of the horizontal grid
         """
         self.grid = grid
         self.tile = TilePartitioner(self.grid)
 
-    def _ensure_square_layout(self):
+    def _ensure_square_layout(self) -> None:
         if not self.grid.is_square:
             raise NotImplementedError('currently only square layouts are supported')
 
-    def tile_index(self, rank):
-        """Return the tile index of a given rank"""
+    def tile_index(self, rank: int) -> Tuple[int, int]:
+        """Returns the tile index of a given rank"""
         return get_tile_index(rank, self.total_ranks)
 
-    def tile_master_rank(self, rank):
-        """Return the lowest rank on the same tile as a given rank."""
+    def tile_master_rank(self, rank: int) -> int:
+        """Returns the lowest rank on the same tile as a given rank."""
         return self.tile.total_ranks * (rank // self.tile.total_ranks)
 
     @property
-    def layout(self):
+    def layout(self) -> Tuple[int, int]:
+        """the (y, x) number of ranks along each axis on a tile"""
         return self.grid.layout
 
     @property
-    def total_ranks(self):
+    def total_ranks(self) -> int:
+        """the number of ranks on the cubed sphere"""
         return 6 * self.tile.total_ranks
 
-    def boundary(self, boundary_type, rank):
+    @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
+    def boundary(self, boundary_type: str, rank: int) -> bd.SimpleBoundary:
+        """Returns a boundary of the requested type for a given rank.
+
+        Args:
+            boundary_type: the type of boundary
+            rank: the processor rank
+
+        Returns:
+            boundary
+        """
         return {
             LEFT: self._left_edge,
             RIGHT: self._right_edge,
@@ -177,8 +185,7 @@ class CubedSpherePartitioner:
             BOTTOM_RIGHT: self._bottom_right_corner,
         }[boundary_type](rank)
 
-    @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
-    def _left_edge(self, rank):
+    def _left_edge(self, rank: int) -> bd.SimpleBoundary:
         self._ensure_square_layout()
         if self.tile.on_tile_left(rank):
             if is_even(self.tile_index(rank)):
@@ -206,8 +213,7 @@ class CubedSpherePartitioner:
             n_clockwise_rotations=rotations
         )
 
-    @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
-    def _right_edge(self, rank):
+    def _right_edge(self, rank: int) -> bd.SimpleBoundary:
         self._ensure_square_layout()
         self._ensure_square_layout()
         if self.tile.on_tile_right(rank):
@@ -236,8 +242,7 @@ class CubedSpherePartitioner:
             n_clockwise_rotations=rotations
         )
 
-    @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
-    def _top_edge(self, rank):
+    def _top_edge(self, rank: int) -> bd.SimpleBoundary:
         self._ensure_square_layout()
         if self.tile.on_tile_top(rank):
             if is_even(self.tile_index(rank)):
@@ -268,8 +273,7 @@ class CubedSpherePartitioner:
             n_clockwise_rotations=rotations
         )
 
-    @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
-    def _bottom_edge(self, rank):
+    def _bottom_edge(self, rank: int) -> bd.SimpleBoundary:
         self._ensure_square_layout()
         if (
                 self.tile.on_tile_bottom(rank) and
@@ -296,7 +300,7 @@ class CubedSpherePartitioner:
             n_clockwise_rotations=rotations
         )
 
-    def _top_left_corner(self, rank):
+    def _top_left_corner(self, rank: int) -> bd.SimpleBoundary:
         if (self.tile.on_tile_top(rank) and
                 self.tile.on_tile_left(rank)):
             corner = None
@@ -308,7 +312,7 @@ class CubedSpherePartitioner:
             corner = self._get_corner(constants.TOP_LEFT, rank, self._left_edge, second_edge)
         return corner
 
-    def _top_right_corner(self, rank):
+    def _top_right_corner(self, rank: int) -> bd.SimpleBoundary:
         if (on_tile_top(self.tile.subtile_index(rank), self.layout) and
                 on_tile_right(self.tile.subtile_index(rank), self.layout)):
             corner = None
@@ -320,7 +324,7 @@ class CubedSpherePartitioner:
             corner = self._get_corner(constants.TOP_RIGHT, rank, self._top_edge, second_edge)
         return corner
 
-    def _bottom_left_corner(self, rank):
+    def _bottom_left_corner(self, rank: int) -> bd.SimpleBoundary:
         if (on_tile_bottom(self.tile.subtile_index(rank)) and
                 on_tile_left(self.tile.subtile_index(rank))):
             corner = None
@@ -332,7 +336,7 @@ class CubedSpherePartitioner:
             corner = self._get_corner(constants.BOTTOM_LEFT, rank, self._bottom_edge, second_edge)
         return corner
 
-    def _bottom_right_corner(self, rank):
+    def _bottom_right_corner(self, rank: int) -> bd.SimpleBoundary:
         if (on_tile_bottom(self.tile.subtile_index(rank)) and
                 on_tile_right(self.tile.subtile_index(rank), self.layout)):
             corner = None
@@ -344,7 +348,11 @@ class CubedSpherePartitioner:
             corner = self._get_corner(constants.BOTTOM_RIGHT, rank, self._bottom_edge, second_edge)
         return corner
 
-    def _get_corner(self, boundary_type, rank, edge_func_1, edge_func_2):
+    def _get_corner(self,
+            boundary_type: int,
+            rank: int,
+            edge_func_1: Callable[[int], bd.Boundary],
+            edge_func_2: Callable[[int], bd.Boundary]):
         edge_1 = edge_func_1(rank)
         edge_2 = edge_func_2(edge_1.to_rank)
         rotations = edge_1.n_clockwise_rotations + edge_2.n_clockwise_rotations
@@ -356,23 +364,27 @@ class CubedSpherePartitioner:
         )
 
 
-def on_tile_left(subtile_index):
+def on_tile_left(subtile_index: Tuple[int, int]) -> bool:
     return subtile_index[1] == 0
 
 
-def on_tile_right(subtile_index, layout):
+def on_tile_right(subtile_index: Tuple[int, int], layout: Tuple[int, int]) -> bool:
     return subtile_index[1] == layout[1] - 1
 
 
-def on_tile_top(subtile_index, layout):
+def on_tile_top(subtile_index: Tuple[int, int], layout: Tuple[int, int]) -> bool:
     return subtile_index[0] == layout[0] - 1
 
 
-def on_tile_bottom(subtile_index):
+def on_tile_bottom(subtile_index: Tuple[int, int]) -> bool:
     return subtile_index[0] == 0
 
 
-def rotate_subtile_rank(rank, layout, n_clockwise_rotations):
+def rotate_subtile_rank(
+        rank: int, layout: Tuple[int, int], n_clockwise_rotations: int) -> int:
+    """Returns the rank position where this rank would be if you rotated the
+    tile n_clockwise_rotations times.
+    """
     if n_clockwise_rotations == 0:
         to_tile_rank = rank
     elif n_clockwise_rotations == 1:
@@ -386,48 +398,99 @@ def rotate_subtile_rank(rank, layout, n_clockwise_rotations):
 
 
 def transpose_subtile_rank(rank, layout):
+    """Returns the rank position where this rank would be if you transposed
+    the tile.
+    """
     return transform_subtile_rank(np.transpose, rank, layout)
 
 
 def fliplr_subtile_rank(rank, layout):
+    """Returns the rank position where this rank would be if you flipped the
+    tile along a vertical axis
+    """
     return transform_subtile_rank(np.fliplr, rank, layout)
 
 
 def flipud_subtile_rank(rank, layout):
+    """Returns the rank position where this rank would be if you flipped the
+    tile along a horizontal axis
+    """
     return transform_subtile_rank(np.flipud, rank, layout)
 
 
-def transform_subtile_rank(transform_func, rank, layout):
+def transform_subtile_rank(
+        transform_func: Callable[[np.ndarray], np.ndarray],
+        rank: int,
+        layout: Tuple[int, int]):
+    """Returns the rank position where this rank would be if you performed
+    a transformation on the tile which strictly moves ranks.
+    """
     total_ranks = layout[0] * layout[1]
     rank_array = np.arange(total_ranks).reshape(layout)
-    fliplr_rank_array = transform_func(rank_array)
-    return rank_array[np.where(fliplr_rank_array == rank)][0]
+    transformed_rank_array = transform_func(rank_array)
+    return rank_array[np.where(transformed_rank_array == rank)][0]
 
 
-def subtile_index(rank, ranks_per_tile, layout):
+def subtile_index(
+        rank: int,
+        ranks_per_tile: int,
+        layout: Tuple[int, int]) -> Tuple[int, int]:
     within_tile_rank = rank % ranks_per_tile
     j = within_tile_rank // layout[1]
     i = within_tile_rank % layout[1]
     return j, i
 
 
-def is_even(value):
+def is_even(value: [int, float]) -> bool:
     return value % 2 == 0
 
 
-def tile_extent_from_rank_metadata(dims, rank_extent, layout):
+def tile_extent_from_rank_metadata(
+        dims: Iterable[str, ...],
+        rank_extent: Iterable[int, ...],
+        layout: Tuple[int, int]) -> Tuple[int, ...]:
+    """
+    Returns the extent of a tile given data about a single rank, and the tile
+    layout.
+
+    Args:
+        dims: dimension names
+        rank_extent: the extent of one rank
+        layout: the (y, x) number of ranks along each tile axis
+
+    Returns:
+        tile_extent: the extent of one tile
+    """
     layout_factors = np.asarray(
         utils.list_by_dims(dims, layout, non_horizontal_value=1))
     return extent_from_metadata(dims, rank_extent, layout_factors)
 
 
-def rank_extent_from_tile_metadata(dims, tile_extent, layout):
+def rank_extent_from_tile_metadata(
+        dims: Iterable[str, ...],
+        tile_extent: Iterable[int, ...],
+        layout: Tuple[int, int]) -> Tuple[int, ...]:
+    """
+    Returns the extent of a rank given data about a tile, and the tile
+    layout.
+
+    Args:
+        dims: dimension names
+        rank_extent: the extent of a tile
+        layout: the (y, x) number of ranks along each tile axis
+
+    Returns:
+        rank_extent: the extent of one rank
+    """
     layout_factors = 1 / np.asarray(
         utils.list_by_dims(dims, layout, non_horizontal_value=1))
     return extent_from_metadata(dims, tile_extent, layout_factors)
 
 
-def extent_from_metadata(dims: Tuple[str, ...], extent: Tuple[int, ...], layout_factors: np.ndarray):
+def extent_from_metadata(
+        dims: Tuple[str, ...],
+        extent: Tuple[int, ...],
+        layout_factors: np.ndarray) -> Tuple[int, ...]:
     return_extents = []
     for dim, rank_extent, layout_factor in zip(dims, extent, layout_factors):
         if dim in constants.INTERFACE_DIMS:
@@ -471,7 +534,24 @@ def _index_generator(dims, tile_extent, subtile_index, horizontal_layout):
         yield _IndexData1D(dim, extent, i_subtile, n_ranks)
 
 
-def subtile_slice(dims, tile_extent, layout, subtile_index, overlap=False):
+def subtile_slice(
+        dims: Iterable[str, ...],
+        tile_extent: Iterable[int, ...],
+        layout: Tuple[int, int],
+        subtile_index: Tuple[int, int],
+        overlap: bool = False) -> Tuple[slice, ...]:
+    """
+    Returns the slice of data within a tile's computational domain belonging
+    to a single rank.
+
+    Args:
+        dims: dimension names for each axis
+        tile_extent: size of the tile's computational domain
+        layout: the (y, x) number of ranks along each tile axis
+        subtile_index: the (y, x) position of the rank on the tile
+        overlap: whether to assign regions which belong to multiple ranks
+            to both ranks, or only to the higher rank (default)
+    """
     return_list = []
     # discard last index for interface variables, unless you're the last rank
     # done so that only one rank is responsible for the shared interface point

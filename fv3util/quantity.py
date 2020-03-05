@@ -1,4 +1,4 @@
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Iterable
 import functools
 import collections.abc
 import dataclasses
@@ -59,8 +59,27 @@ class QuantityMetadata:
 
 
 class Quantity:
+    """
+    Data container for physical quantities.
+    """
 
-    def __init__(self, data, dims, units, origin=None, extent=None):
+    def __init__(
+            self,
+            data,
+            dims: Iterable[str, ...],
+            units: str,
+            origin: Iterable[int, ...] = None,
+            extent: Iterable[int, ...] = None):
+        """
+        Initialize a Quantity.
+
+        Args:
+            data: ndarray-like object containing the underlying data
+            dims: dimension names for each axis
+            units: units of the quantity
+            origin: first point in data within the computational domain
+            extent: number of points along each axis within the computational domain
+        """
         if origin is None:
             origin = (0,) * len(dims)  # default origin at origin of array
         else:
@@ -83,6 +102,12 @@ class Quantity:
 
     @classmethod
     def from_data_array(cls, data_array, origin=None, extent=None):
+        """
+        Initialize a Quantity from an xarray.DataArray.
+
+        Args:
+        
+        """
         if 'units' not in data_array.attrs:
             raise ValueError('need units attribute to create Quantity from DataArray')
         return cls(
