@@ -1,20 +1,21 @@
 import fv3.utils.gt4py_utils as utils
 import numpy as np
-import gt4py as gt
+
+
 class Grid:
-    indices = ['is_', 'ie', 'isd', 'ied', 'js', 'je', 'jsd', 'jed']
-    shape_params = ['npz', 'npx', 'npy']
+    indices = ["is_", "ie", "isd", "ied", "js", "je", "jsd", "jed"]
+    shape_params = ["npz", "npx", "npy"]
     # npx -- number of grid corners on one tile of the domain
     # grid.ie == npx - 1identified east edge in fortran
     # But we need to add the halo - 1 to change this check to 0 based python arrays
     # grid.ie == npx + halo - 2
+
     def __init__(self, indices, shape_params, data_fields={}):
         for i in self.indices:
             setattr(self, i, int(indices[i]))
         for s in self.shape_params:
             setattr(self, s, int(shape_params[s]))
-        
-       
+
         self.nid = int(self.ied - self.isd + 1)
         self.njd = int(self.jed - self.jsd + 1)
         self.nic = int(self.ie - self.is_ + 1)
@@ -25,7 +26,7 @@ class Grid:
         self.ief = self.npx - 1
         self.jsf = 0
         self.jef = self.npy - 1
-        
+
         self.west_edge = self.is_ == self.halo
         self.east_edge = self.ie == self.npx + self.halo - 2
         self.south_edge = self.js == self.halo
@@ -67,7 +68,7 @@ class Grid:
 
     def compute_interface(self):
         return self.slice_dict(self.compute_dict())
-    
+
     def x3d_interface(self):
         return self.slice_dict(self.x3d_compute_dict())
 
@@ -84,70 +85,103 @@ class Grid:
         if num is None:
             return None
         return num + 1
-    
+
     def slice_dict(self, d):
-        return (slice(d['istart'], self.add_one(d['iend'])),
-                slice(d['jstart'], self.add_one(d['jend'])),
-                slice(d['kstart'], self.add_one(d['kend'])))
+        return (
+            slice(d["istart"], self.add_one(d["iend"])),
+            slice(d["jstart"], self.add_one(d["jend"])),
+            slice(d["kstart"], self.add_one(d["kend"])),
+        )
 
     def default_domain_dict(self):
         return {
-            'istart': self.isd, 'iend': self.ied,
-            'jstart': self.jsd, 'jend': self.jed,
-            'kstart': 0, 'kend': self.npz-1,
+            "istart": self.isd,
+            "iend": self.ied,
+            "jstart": self.jsd,
+            "jend": self.jed,
+            "kstart": 0,
+            "kend": self.npz - 1,
         }
-    
+
     def default_dict_buffer_2d(self):
         mydict = self.default_domain_dict()
-        mydict['iend'] += 1
-        mydict['jend'] += 1
+        mydict["iend"] += 1
+        mydict["jend"] += 1
         return mydict
-    
+
     def compute_dict(self):
         return {
-            'istart': self.is_, 'iend': self.ie,
-            'jstart': self.js, 'jend': self.je,
-            'kstart': 0, 'kend': self.npz-1,
+            "istart": self.is_,
+            "iend": self.ie,
+            "jstart": self.js,
+            "jend": self.je,
+            "kstart": 0,
+            "kend": self.npz - 1,
         }
+
     def compute_dict_buffer_2d(self):
         mydict = self.compute_dict()
-        mydict['iend'] += 1
-        mydict['jend'] += 1
+        mydict["iend"] += 1
+        mydict["jend"] += 1
         return mydict
-    
+
     def default_buffer_k_dict(self):
         mydict = self.default_domain_dict()
-        mydict['kend'] = self.npz
+        mydict["kend"] = self.npz
         return mydict
-    
+
     def x3d_domain_dict(self):
-        horizontal_dict = {'istart': self.isd, 'iend': self.ied + 1,
-                           'jstart': self.jsd, 'jend': self.jed}
+        horizontal_dict = {
+            "istart": self.isd,
+            "iend": self.ied + 1,
+            "jstart": self.jsd,
+            "jend": self.jed,
+        }
         return {**self.default_domain_dict(), **horizontal_dict}
 
     def y3d_domain_dict(self):
-        horizontal_dict = {'istart': self.isd, 'iend': self.ied,
-                           'jstart': self.jsd, 'jend': self.jed + 1}
+        horizontal_dict = {
+            "istart": self.isd,
+            "iend": self.ied,
+            "jstart": self.jsd,
+            "jend": self.jed + 1,
+        }
         return {**self.default_domain_dict(), **horizontal_dict}
 
     def x3d_compute_dict(self):
-        horizontal_dict = {'istart': self.is_, 'iend': self.ie + 1,
-                           'jstart': self.js, 'jend': self.je}
+        horizontal_dict = {
+            "istart": self.is_,
+            "iend": self.ie + 1,
+            "jstart": self.js,
+            "jend": self.je,
+        }
         return {**self.default_domain_dict(), **horizontal_dict}
 
     def y3d_compute_dict(self):
-        horizontal_dict = {'istart': self.is_, 'iend': self.ie,
-                           'jstart': self.js, 'jend': self.je + 1}
+        horizontal_dict = {
+            "istart": self.is_,
+            "iend": self.ie,
+            "jstart": self.js,
+            "jend": self.je + 1,
+        }
         return {**self.default_domain_dict(), **horizontal_dict}
 
     def x3d_compute_domain_y_dict(self):
-        horizontal_dict = {'istart': self.is_, 'iend': self.ie + 1,
-                           'jstart': self.jsd, 'jend': self.jed}
+        horizontal_dict = {
+            "istart": self.is_,
+            "iend": self.ie + 1,
+            "jstart": self.jsd,
+            "jend": self.jed,
+        }
         return {**self.default_domain_dict(), **horizontal_dict}
 
     def y3d_compute_domain_x_dict(self):
-        horizontal_dict = {'istart': self.isd, 'iend': self.ied,
-                           'jstart': self.js, 'jend': self.je + 1}
+        horizontal_dict = {
+            "istart": self.isd,
+            "iend": self.ied,
+            "jstart": self.js,
+            "jend": self.je + 1,
+        }
         return {**self.default_domain_dict(), **horizontal_dict}
 
     def domain_shape_standard(self):
@@ -161,10 +195,10 @@ class Grid:
 
     def domain_shape_compute_buffer_2d(self):
         return (self.nic + 1, self.njc + 1, self.npz)
-    
+
     def domain_shape_compute_x(self):
         return (self.nic + 1, self.njc, self.npz)
-    
+
     def domain_shape_compute_y(self):
         return (self.nic, self.njc + 1, self.npz)
 
@@ -179,7 +213,7 @@ class Grid:
 
     def domain_y_compute_xbuffer(self):
         return (self.nic + 1, self.njd, self.npz)
-    
+
     def domain_shape_buffer_1cell(self):
         return (int(self.nid + 1), int(self.njd + 1), int(self.npz + 1))
 
@@ -201,11 +235,11 @@ class Grid:
     def insert_left_edge(self, var, edge_data_i, i_index, edge_data_j, j_index):
         var.data[:i_index, :, :] = edge_data_i
         var.data[:, :j_index, :] = edge_data_j
-        
+
     def insert_right_edge(self, var, edge_data_i, i_index, edge_data_j, j_index):
         var.data[i_index:, :, :] = edge_data_i
         var.data[:, j_index:, :] = edge_data_j
-    
+
     def uvar_edge_halo(self, var):
         return self.copy_right_edge(var, self.ie + 2, self.je + 1)
 
@@ -215,21 +249,33 @@ class Grid:
     def edge_offset_halos(self, uvar, vvar):
         u_edge_i, u_edge_j = self.uvar_edge_halo(uvar)
         v_edge_i, v_edge_j = self.vvar_edge_halo(vvar)
-        return u_edge_i, u_edge_j,  v_edge_i, v_edge_j
-        
+        return u_edge_i, u_edge_j, v_edge_i, v_edge_j
+
     def insert_edge(self, var, edge_data, index):
         var.data[index] = edge_data
 
     def append_edges(self, uvar, u_edge_i, u_edge_j, vvar, v_edge_i, v_edge_j):
-        self.insert_right_edge(uvar, u_edge_i, self.ie+2, u_edge_j, self.je+1)
-        self.insert_right_edge(vvar, v_edge_i, self.ie+1, v_edge_j, self.je+2)
+        self.insert_right_edge(uvar, u_edge_i, self.ie + 2, u_edge_j, self.je + 1)
+        self.insert_right_edge(vvar, v_edge_i, self.ie + 1, v_edge_j, self.je + 2)
 
     def overwrite_edges(self, var, edgevar, left_i_index, left_j_index):
-        self.insert_left_edge(var, edgevar.data[:left_i_index, :, :], left_i_index, edgevar.data[:, :left_j_index, :], left_j_index)
+        self.insert_left_edge(
+            var,
+            edgevar.data[:left_i_index, :, :],
+            left_i_index,
+            edgevar.data[:, :left_j_index, :],
+            left_j_index,
+        )
         right_i_index = self.ie + left_i_index
         right_j_index = self.ie + left_j_index
-        self.insert_right_edge(var, edgevar.data[right_i_index:, :, :], right_i_index, edgevar.data[:, right_j_index:, :], right_j_index)
-        
+        self.insert_right_edge(
+            var,
+            edgevar.data[right_i_index:, :, :],
+            right_i_index,
+            edgevar.data[:, right_j_index:, :],
+            right_j_index,
+        )
+
     def compute_origin(self):
         return (self.is_, self.js, 0)
 
@@ -238,16 +284,17 @@ class Grid:
 
     def compute_x_origin(self):
         return (self.is_, self.jsd, 0)
-    
+
     def compute_y_origin(self):
         return (self.isd, self.js, 0)
-    
+
     # TODO, expand to more cases
     def horizontal_starts_from_shape(self, shape):
-        if shape[0:2] in [self.domain_shape_compute()[0:2],
-                          self.domain_shape_compute_x()[0:2],
-                          self.domain_shape_compute_y()[0:2],
-                          self.domain_shape_compute_buffer_2d()[0:2],
+        if shape[0:2] in [
+            self.domain_shape_compute()[0:2],
+            self.domain_shape_compute_x()[0:2],
+            self.domain_shape_compute_y()[0:2],
+            self.domain_shape_compute_buffer_2d()[0:2],
         ]:
             return self.is_, self.js
         else:

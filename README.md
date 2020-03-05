@@ -103,4 +103,13 @@ Dockerfiles
 There are 3 main Dockerfiles in the 'docker' folder
  1) Dockerfile.build_environment -- builds off of the serialbox environment from fv3gfs-fortran, installs Dawn and Gt4py
  2) Dockerfile -- uses the build environment and copies in the fv3 folder only. This is to make development easier so that when you change a file in fv3, 'make build' does not accidentally or otherwise trigger a 20 minute rebuild of all of those installations, but just updates the code in the fv3ser image. 
- 3) Dockerfile.fortran_model_data -- builds the fv3gfs-fortran model with serialization on, sets up a run directory and generates test data. This is to be done infrequently and is orthogonal to the content in the other dockerfiles. 
+ 3) Dockerfile.fortran_model_data -- builds the fv3gfs-fortran model with serialization on, sets up a run directory and generates test data. This is to be done infrequently and is orthogonal to the content in the other dockerfiles.
+
+
+-------
+Linting
+-------
+
+Before committing your code, you can automatically fix many common style linting errors
+with `make reformat`. `make lint` will tell you about any remaining issues which need
+to be fixed manually.

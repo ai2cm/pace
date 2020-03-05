@@ -1,67 +1,72 @@
 #!/usr/bin/env python3
 
+
 def fill_4corners(q, direction, grid):
-    if direction == 'x':
+    if direction == "x":
         for k in range(q.shape[2]):
             if grid.sw_corner:
-                q[grid.is_-2, grid.js-1, k] = q[grid.is_-1, grid.js+1, k]
-                q[grid.is_-1, grid.js-1, k] = q[grid.is_-1, grid.js, k]
+                q[grid.is_ - 2, grid.js - 1, k] = q[grid.is_ - 1, grid.js + 1, k]
+                q[grid.is_ - 1, grid.js - 1, k] = q[grid.is_ - 1, grid.js, k]
             if grid.se_corner:
-                q[grid.ie+2, grid.js-1, k] = q[grid.ie+1, grid.js+1, k]
-                q[grid.ie+1, grid.js-1, k] = q[grid.ie+1, grid.js, k]
+                q[grid.ie + 2, grid.js - 1, k] = q[grid.ie + 1, grid.js + 1, k]
+                q[grid.ie + 1, grid.js - 1, k] = q[grid.ie + 1, grid.js, k]
             if grid.nw_corner:
-                q[grid.is_-1, grid.je+1, k] = q[grid.is_-1, grid.je, k]
-                q[grid.is_-2, grid.je+1, k] = q[grid.is_-1, grid.je-1, k]
+                q[grid.is_ - 1, grid.je + 1, k] = q[grid.is_ - 1, grid.je, k]
+                q[grid.is_ - 2, grid.je + 1, k] = q[grid.is_ - 1, grid.je - 1, k]
             if grid.ne_corner:
-                q[grid.ie+1, grid.je+1, k] = q[grid.ie+1, grid.je, k]
-                q[grid.ie+2, grid.je+1, k] = q[grid.ie+1, grid.je-1, k]
-    elif direction == 'y':
+                q[grid.ie + 1, grid.je + 1, k] = q[grid.ie + 1, grid.je, k]
+                q[grid.ie + 2, grid.je + 1, k] = q[grid.ie + 1, grid.je - 1, k]
+    elif direction == "y":
         for k in range(q.shape[2]):
             if grid.sw_corner:
-                q[grid.is_-1, grid.js-1, k] = q[grid.is_, grid.js-1, k]
-                q[grid.is_-1, grid.js-2, k] = q[grid.is_+1, grid.js-1, k]
+                q[grid.is_ - 1, grid.js - 1, k] = q[grid.is_, grid.js - 1, k]
+                q[grid.is_ - 1, grid.js - 2, k] = q[grid.is_ + 1, grid.js - 1, k]
             if grid.se_corner:
-                q[grid.ie+1, grid.js-1, k] = q[grid.ie, grid.js-1, k]
-                q[grid.ie+1, grid.js-2, k] = q[grid.ie-1, grid.js-1, k]
+                q[grid.ie + 1, grid.js - 1, k] = q[grid.ie, grid.js - 1, k]
+                q[grid.ie + 1, grid.js - 2, k] = q[grid.ie - 1, grid.js - 1, k]
             if grid.nw_corner:
-                q[grid.is_-1, grid.je+1, k] = q[grid.is_, grid.je+1, k]
-                q[grid.is_-1, grid.je+2, k] = q[grid.is_+1, grid.je+1, k]
+                q[grid.is_ - 1, grid.je + 1, k] = q[grid.is_, grid.je + 1, k]
+                q[grid.is_ - 1, grid.je + 2, k] = q[grid.is_ + 1, grid.je + 1, k]
             if grid.ne_corner:
-                q[grid.ie+1, grid.je+1, k] = q[grid.ie, grid.je+1, k]
-                q[grid.ie+1, grid.je+2, k] = q[grid.ie-1, grid.je+1, k]
+                q[grid.ie + 1, grid.je + 1, k] = q[grid.ie, grid.je + 1, k]
+                q[grid.ie + 1, grid.je + 2, k] = q[grid.ie - 1, grid.je + 1, k]
     else:
-        raise ValueError('Direction not recognized. Specify either x or y')
+        raise ValueError("Direction not recognized. Specify either x or y")
+
 
 def copy_sw_corner(q, direction, grid):
     for j in range(grid.js - grid.halo, grid.js):
         for i in range(grid.is_ - grid.halo, grid.is_):
-            if direction == 'x':
+            if direction == "x":
                 q[i, j, :] = q[j, grid.is_ - i + 2, :]
-            if direction == 'y':
+            if direction == "y":
                 q[i, j, :] = q[grid.js - j + 2, i, :]
+
 
 def copy_se_corner(q, direction, grid):
     for j in range(grid.js - grid.halo, grid.js):
         for i in range(grid.ie + 1, grid.ie + grid.halo + 1):
-            if direction == 'x':
-                q[i, j, :] = q[grid.je + 1 - j+2, i - grid.ie + 2, :]
-            if direction == 'y':
+            if direction == "x":
+                q[i, j, :] = q[grid.je + 1 - j + 2, i - grid.ie + 2, :]
+            if direction == "y":
                 q[i, j, :] = q[grid.je + j - 2, grid.ie + 1 - i + 2, :]
+
 
 def copy_ne_corner(q, direction, grid):
     for j in range(grid.je + 1, grid.je + grid.halo + 1):
         for i in range(grid.ie + 1, grid.ie + grid.halo + 1):
-            if direction == 'x':
+            if direction == "x":
                 q[i, j, :] = q[j, 2 * (grid.ie + 1) - 1 - i, :]
-            if direction == 'y':
+            if direction == "y":
                 q[i, j, :] = q[2 * (grid.je + 1) - 1 - j, i, :]
+
 
 def copy_nw_corner(q, direction, grid):
     for j in range(grid.je + 1, grid.je + grid.halo + 1):
         for i in range(grid.is_ - grid.halo, grid.is_):
-            if direction == 'x':
+            if direction == "x":
                 q[i, j, :] = q[grid.je + 1 - j + 2, i - 2 + grid.ie, :]
-            if direction == 'y':
+            if direction == "y":
                 q[i, j, :] = q[j + 2 - grid.ie, grid.je + 1 - i + 2, :]
 
 
@@ -79,65 +84,65 @@ def copy_corners(q, direction, grid):
 
 # TODO these can definitely be consolidated/made simpler
 def fill_sw_corner_2d_bgrid(q, i, j, direction, grid):
-    if direction == 'x':
+    if direction == "x":
         q[grid.is_ - i, grid.js - j, :] = q[grid.is_ - j, grid.js + i, :]
-    if direction == 'y':
+    if direction == "y":
         q[grid.is_ - j, grid.js - i, :] = q[grid.is_ + i, grid.js - j, :]
 
 
 def fill_nw_corner_2d_bgrid(q, i, j, direction, grid):
-    if direction == 'x':
+    if direction == "x":
         q[grid.is_ - i, grid.je + 1 + j, :] = q[grid.is_ - j, grid.je + 1 - i, :]
-    if direction == 'y':
+    if direction == "y":
         q[grid.is_ - j, grid.je + 1 + i, :] = q[grid.is_ + i, grid.je + 1 + j, :]
 
 
 def fill_se_corner_2d_bgrid(q, i, j, direction, grid):
-    if direction == 'x':
+    if direction == "x":
         q[grid.ie + 1 + i, grid.js - j, :] = q[grid.ie + 1 + j, grid.js + i, :]
-    if direction == 'y':
+    if direction == "y":
         q[grid.ie + 1 + j, grid.js - i, :] = q[grid.ie + 1 - i, grid.js - j, :]
 
 
 def fill_ne_corner_2d_bgrid(q, i, j, direction, grid):
-    if direction == 'x':
+    if direction == "x":
         q[grid.ie + 1 + i, grid.je + 1 + j, :] = q[grid.ie + 1 + j, grid.je + 1 - i, :]
-    if direction == 'y':
+    if direction == "y":
         q[grid.ie + 1 + j, grid.je + 1 + i, :] = q[grid.ie + 1 - i, grid.je + 1 + j, :]
 
 
 def fill_sw_corner_2d_agrid(q, i, j, direction, grid):
-    if direction == 'x':
+    if direction == "x":
         q[grid.is_ - i, grid.js - j, :] = q[grid.is_ - j, i, :]
-    if direction == 'y':
+    if direction == "y":
         q[grid.is_ - j, grid.js - i, :] = q[i, grid.js - j, :]
 
 
 def fill_nw_corner_2d_agrid(q, i, j, direction, grid):
-    if direction == 'x':
+    if direction == "x":
         q[grid.is_ - i, grid.je + j, :] = q[grid.is_ - j, grid.je - i + 1, :]
-    if direction == 'y':
+    if direction == "y":
         q[grid.is_ - j, grid.je + i, :] = q[i, grid.je + j, :]
 
 
 def fill_se_corner_2d_agrid(q, i, j, direction, grid):
-    if direction == 'x':
+    if direction == "x":
         q[grid.ie + i, grid.js - j, :] = q[grid.ie + j, i, :]
-    if direction == 'y':
+    if direction == "y":
         q[grid.ie + j, grid.js - i, :] = q[grid.ie - i + 1, grid.js - j, :]
 
 
 def fill_ne_corner_2d_agrid(q, i, j, direction, grid, mysign=1.0):
-    if direction == 'x':
+    if direction == "x":
         q[grid.ie + i, grid.je + j, :] = q[grid.ie + j, grid.je - i + 1, :]
-    if direction == 'y':
+    if direction == "y":
         q[grid.ie + j, grid.je + i, :] = q[grid.ie - i + 1, grid.je + j, :]
 
 
-def fill_corners_2d(q, grid, gridtype, direction='x'):
+def fill_corners_2d(q, grid, gridtype, direction="x"):
     for i in range(1, 1 + grid.halo):
         for j in range(1, 1 + grid.halo):
-            if gridtype == 'B':
+            if gridtype == "B":
                 if grid.sw_corner:
                     fill_sw_corner_2d_bgrid(q, i, j, direction, grid)
                 if grid.nw_corner:
@@ -146,7 +151,7 @@ def fill_corners_2d(q, grid, gridtype, direction='x'):
                     fill_se_corner_2d_bgrid(q, i, j, direction, grid)
                 if grid.ne_corner:
                     fill_ne_corner_2d_bgrid(q, i, j, direction, grid)
-            if gridtype == 'A':
+            if gridtype == "A":
                 if grid.sw_corner:
                     fill_sw_corner_2d_agrid(q, i, j, direction, grid)
                 if grid.nw_corner:
@@ -158,13 +163,13 @@ def fill_corners_2d(q, grid, gridtype, direction='x'):
 
 
 def fill_sw_corner_vector_dgrid(x, y, i, j, grid, mysign):
-    x[grid.is_ - i, grid.js - j, :] = mysign * y[grid.is_ - j, i +2, :]
-    y[grid.is_ - i, grid.js - j, :] = mysign * x[j +2, grid.js - i, :]
+    x[grid.is_ - i, grid.js - j, :] = mysign * y[grid.is_ - j, i + 2, :]
+    y[grid.is_ - i, grid.js - j, :] = mysign * x[j + 2, grid.js - i, :]
 
 
 def fill_nw_corner_vector_dgrid(x, y, i, j, grid):
     x[grid.is_ - i, grid.je + 1 + j, :] = y[grid.is_ - j, grid.je + 1 - i, :]
-    y[grid.is_ - i, grid.je + j, :] = x[j+2, grid.je + 1 + i, :]
+    y[grid.is_ - i, grid.je + j, :] = x[j + 2, grid.je + 1 + i, :]
 
 
 def fill_se_corner_vector_dgrid(x, y, i, j, grid):
@@ -194,23 +199,25 @@ def fill_corners_dgrid(x, y, grid, vector):
 
 
 def corner_ke(ke, u, v, ut, vt, i, j, dt, offsets, vsign):
-    dt6 = dt/6.0
-    ke[i, j, :] = dt6 * ((ut[i, j, :] + ut[i, j-1, :]) * u[i + offsets['io1'], j, :] +
-                         (vt[i, j, :] + vt[i-1, j, :]) * v[i, j + offsets['jo1'], :] +
-                         (ut[i, j + offsets['jo1'], :] + vsign * vt[i + offsets['io1'], j, :]) * u[i + offsets['io2'], j, :])
+    dt6 = dt / 6.0
+    ke[i, j, :] = dt6 * (
+        (ut[i, j, :] + ut[i, j - 1, :]) * u[i + offsets["io1"], j, :]
+        + (vt[i, j, :] + vt[i - 1, j, :]) * v[i, j + offsets["jo1"], :]
+        + (ut[i, j + offsets["jo1"], :] + vsign * vt[i + offsets["io1"], j, :])
+        * u[i + offsets["io2"], j, :]
+    )
 
 
 def fix_corner_ke(ke, u, v, ut, vt, dt, grid):
     if grid.sw_corner:
-        offsets = {'io1': 0, 'jo1': 0, 'io2': -1}
+        offsets = {"io1": 0, "jo1": 0, "io2": -1}
         corner_ke(ke, u, v, ut, vt, grid.is_, grid.js, dt, offsets, 1)
     if grid.se_corner:
-        offsets = {'io1': -1, 'jo1': 0, 'io2': 0}
-        corner_ke(ke, u, v, ut, vt, grid.ie+1, grid.js, dt, offsets, -1)
+        offsets = {"io1": -1, "jo1": 0, "io2": 0}
+        corner_ke(ke, u, v, ut, vt, grid.ie + 1, grid.js, dt, offsets, -1)
     if grid.ne_corner:
-        offsets = {'io1': -1, 'jo1': -1, 'io2': 0}
-        corner_ke(ke, u, v, ut, vt, grid.ie+1, grid.je+1, dt, offsets, 1)
+        offsets = {"io1": -1, "jo1": -1, "io2": 0}
+        corner_ke(ke, u, v, ut, vt, grid.ie + 1, grid.je + 1, dt, offsets, 1)
     if grid.nw_corner:
-        offsets = {'io1': 0, 'jo1': -1, 'io2': -1}
-        corner_ke(ke, u, v, ut, vt, grid.is_, grid.je+1, dt, offsets, -1)
-       
+        offsets = {"io1": 0, "jo1": -1, "io2": -1}
+        corner_ke(ke, u, v, ut, vt, grid.is_, grid.je + 1, dt, offsets, -1)

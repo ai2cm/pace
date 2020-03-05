@@ -7,4 +7,3 @@ def pytest_addoption(parser):
     parser.addoption("--data_backend", action="store", default="numpy")
     parser.addoption("--exec_backend", action="store", default="numpy")
     parser.addoption("--backend", action="store", default="numpy")
-

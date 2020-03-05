@@ -1,23 +1,23 @@
 import fv3.utils.gt4py_utils as utils
 from fv3.utils.corners import fill_4corners
-import gt4py as gt
 import gt4py.gtscript as gtscript
-import fv3._config  as spec
+import fv3._config as spec
 import fv3.stencils.copy_stencil as cp
+from gt4py.gtscript import computation, interval, PARALLEL, BACKWARD
+
 sd = utils.sd
 origin = (1, 1, 0)
 DZ_MIN = 2.0
 
-#@gtscript.stencil(backend=utils.exec_backend)
-#def copy_stencil(q_in: sd, q_out: sd):
+# @gtscript.stencil(backend=utils.exec_backend)
+# def copy_stencil(q_in: sd, q_out: sd):
 #    with computation(PARALLEL), interval(...):
 #        q_out = q_in
 
-#def copy(q_in):
+# def copy(q_in):
 #    q_out = utils.make_storage_from_shape(q_in.shape, origin)
 #    copy_stencil(q_in, q_out)#, origin=(0,0,0), domain=grid.domain_shape_buffer_1cell())
 #    return q_out
-
 
 
 # call update_dz_c(is, ie, js, je, npz, ng, dt2, dp_ref, zs, gridstruct%area, ut, vt, gz, ws3, &
@@ -76,12 +76,15 @@ DZ_MIN = 2.0
 #            enddo
 #         enddo
 
+
 @gtscript.function
 def p_weighted_average_top(vel, dp0):
     # TODO: ratio is a constant, where should this be placed?
     ratio = dp0 / (dp0 + dp0[0, 0, 1])
-    #return (1. + ratio) * vel - ratio * vel[0, 0, 1]
-    return vel + (vel - vel[0,0,1]) * ratio
+    # return (1. + ratio) * vel - ratio * vel[0, 0, 1]
+    return vel + (vel - vel[0, 0, 1]) * ratio
+
+
 #   bot_ratio = dp0(km) / (dp0(km-1)+dp0(km))
 #
 #      elseif ( k==km+1 ) then  ! bottom
@@ -96,11 +99,13 @@ def p_weighted_average_top(vel, dp0):
 #            enddo
 #         enddo
 
+
 @gtscript.function
 def p_weighted_average_bottom(vel, dp0):
     ratio = dp0[0, 0, -1] / (dp0[0, 0, -2] + dp0[0, 0, -1])
-    #return (1. + ratio ) * vel[0, 0, -1] - ratio * vel[0, 0, -2]
-    return vel[0, 0, -1] + (vel[0, 0, -1] - vel[0, 0, -2])*ratio
+    # return (1. + ratio ) * vel[0, 0, -1] - ratio * vel[0, 0, -2]
+    return vel[0, 0, -1] + (vel[0, 0, -1] - vel[0, 0, -2]) * ratio
+
 
 #      else     ! compute domain
 #         int_ratio = 1./(dp0(k-1)+dp0(k))
@@ -116,12 +121,14 @@ def p_weighted_average_bottom(vel, dp0):
 #         enddo
 #      endif
 
+
 @gtscript.function
 def p_weighted_average_domain(vel, dp0):
-    #ratio = dp0 / ( dp0[0, 0, -1] + dp0 )
-    #return ratio * vel[0, 0, -1] + (1. - ratio) * vel
-    int_ratio = 1.0 / (dp0[0,0,-1] + dp0)
-    return (dp0*vel[0,0,-1] + dp0[0,0,-1] * vel) * int_ratio
+    # ratio = dp0 / ( dp0[0, 0, -1] + dp0 )
+    # return ratio * vel[0, 0, -1] + (1. - ratio) * vel
+    int_ratio = 1.0 / (dp0[0, 0, -1] + dp0)
+    return (dp0 * vel[0, 0, -1] + dp0[0, 0, -1] * vel) * int_ratio
+
 
 #      do j=js-ng, je+ng
 #         do i=is-ng, ie+ng
@@ -155,11 +162,13 @@ def p_weighted_average_domain(vel, dp0):
 #         enddo
 #      enddo
 
+
 @gtscript.function
 def xy_flux(gz_x, gz_y, xfx, yfx):
-    fx = xfx * ( gz_x[-1, 0, 0] if xfx > 0. else gz_x )
-    fy = yfx * ( gz_y[0, -1, 0] if yfx > 0. else gz_y )
+    fx = xfx * (gz_x[-1, 0, 0] if xfx > 0.0 else gz_x)
+    fy = yfx * (gz_y[0, -1, 0] if yfx > 0.0 else gz_y)
     return fx, fy
+
 
 #      do j=js1, je1
 #         do i=is1,ie1
@@ -189,7 +198,7 @@ def xy_flux(gz_x, gz_y, xfx, yfx):
 # call update_dz_c(is, ie, js, je, npz, ng, dt2, dp_ref, zs, gridstruct%area, ut, vt, gz, ws3, &
 #              npx, npy, gridstruct%sw_corner, gridstruct%se_corner, &
 #              gridstruct%ne_corner, gridstruct%nw_corner, bd, gridstruct%grid_type)
-'''
+"""
 @gtscript.stencil(backend=utils.exec_backend, rebuild=True)
 def p_weighted_average_top_stencil(vel:sd, dp0:sd, xfx:sd):
    with computation(PARALLEL):
@@ -204,11 +213,23 @@ def update_dz_c(dp_ref: sd, zs: sd, area: sd, ut: sd, vt: sd,
 
     #xfx = gt.storage.from_array(data=np.zeros(shape), backend=backend, default_origin=(0,0,0), shape=zs.shape)
     p_weighted_average_top_stencil(ut, dp_ref, gz)
-'''
+"""
+
+
 @gtscript.stencil(backend=utils.exec_backend, rebuild=True)
-def update_dz_c(dp_ref: sd, zs: sd, area: sd, ut: sd, vt: sd,
-                gz: sd, gz_x: sd, gz_y: sd, ws3: sd, *,
-                dt: float):
+def update_dz_c(
+    dp_ref: sd,
+    zs: sd,
+    area: sd,
+    ut: sd,
+    vt: sd,
+    gz: sd,
+    gz_x: sd,
+    gz_y: sd,
+    ws3: sd,
+    *,
+    dt: float
+):
     with computation(PARALLEL):
         with interval(0, 1):
             xfx = p_weighted_average_top(ut, dp_ref)
@@ -222,13 +243,15 @@ def update_dz_c(dp_ref: sd, zs: sd, area: sd, ut: sd, vt: sd,
         with interval(...):
             fx, fy = xy_flux(gz_x, gz_y, xfx, yfx)
             # TODO: check if below gz is ok, or if we need gz_y to pass this
-            gz = (gz_y * area + fx - fx[1, 0, 0] + fy - fy[0, 1, 0] ) / ( area + xfx - xfx[1, 0, 0] + yfx[0, 0, 0] - yfx[0, 1, 0] )
+            gz = (gz_y * area + fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) / (
+                area + xfx - xfx[1, 0, 0] + yfx[0, 0, 0] - yfx[0, 1, 0]
+            )
         with interval(-1, None):
             rdt = 1.0 / dt
-            ws3 = (zs - gz) * rdt
+            ws3[0, 0, 0] = (zs - gz) * rdt
     with computation(BACKWARD), interval(0, -1):
         gz_kp1 = gz[0, 0, 1] + DZ_MIN
-        gz = gz if gz > gz_kp1  else gz_kp1
+        gz[0, 0, 0] = gz if gz > gz_kp1 else gz_kp1
 
 
 def compute(dp_ref, zs, ut, vt, gz_in, ws3, dt2):
@@ -237,10 +260,23 @@ def compute(dp_ref, zs, ut, vt, gz_in, ws3, dt2):
     gz = cp.copy(gz_in, origin)
     gz_x = cp.copy(gz, origin)
     ws = cp.copy(ws3, origin=(0, 0, 0), domain=grid.domain_shape_buffer_1cell())
-    fill_4corners(gz_x, 'x', grid)
+    fill_4corners(gz_x, "x", grid)
     gz_y = cp.copy(gz_x, origin)
-    fill_4corners(gz_y, 'y', grid)
-    update_dz_c(dp_ref, zs, grid.area, ut, vt, gz, gz_x, gz_y, ws3, dt=dt2, origin=origin, domain=(grid.nic + 3, grid.njc + 3, grid.npz+1))
+    fill_4corners(gz_y, "y", grid)
+    update_dz_c(
+        dp_ref,
+        zs,
+        grid.area,
+        ut,
+        vt,
+        gz,
+        gz_x,
+        gz_y,
+        ws3,
+        dt=dt2,
+        origin=origin,
+        domain=(grid.nic + 3, grid.njc + 3, grid.npz + 1),
+    )
     grid.overwrite_edges(gz, gz_in, 2, 2)
     grid.overwrite_edges(ws3, ws, 2, 2)
     return gz, ws3
