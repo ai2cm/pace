@@ -157,3 +157,39 @@ def test_compute_view_edit_all_domain(quantity, n_halo, n_dims, extent_1d):
 def test_shift_slice(slice_in, shift, slice_out):
     result = fv3util.quantity.shift_slice(slice_in, shift)
     assert result == slice_out
+
+
+@pytest.mark.parametrize(
+    'quantity',
+    [
+        fv3util.Quantity(
+            np.array(5),
+            dims=[],
+            units='',
+        ),
+        fv3util.Quantity(
+            np.array([1, 2, 3]),
+            dims=['dimension'],
+            units='degK',
+        ),
+        fv3util.Quantity(
+            np.random.randn(3, 2, 4),
+            dims=['dim1', 'dim_2', 'dimension_3'],
+            units='m',
+        ),
+        fv3util.Quantity(
+            np.random.randn(8, 6, 6),
+            dims=['dim1', 'dim_2', 'dimension_3'],
+            units='km',
+            origin=(2, 2, 2),
+            extent=(4, 2, 2),
+        )
+    ])
+def test_to_data_array(quantity):
+    assert quantity.data_array.attrs == quantity.attrs
+    assert quantity.data_array.dims == quantity.dims
+    assert quantity.data_array.shape == quantity.extent
+    np.testing.assert_array_equal(quantity.data_array.values, quantity.view[:])
+    if quantity.extent == quantity.data.shape:
+        assert quantity.data_array.data.ctypes.data == quantity.data.ctypes.data, \
+            'data memory address is not equal'

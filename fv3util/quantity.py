@@ -14,23 +14,7 @@ try:
 except ImportError:
     gt4py = None
 
-
-class FrozenDict(collections.abc.Mapping):
-
-    def __init__(self, *args, **kwargs):
-        self._d = dict(*args, **kwargs)
-
-    def __iter__(self):
-        return iter(self._d)
-
-    def __len__(self):
-        return len(self._d)
-
-    def __getitem__(self, key):
-        return self._d[key]
-
-    def __hash__(self):
-        return hash(tuple(sorted(self._d.iteritems())))
+__all__ = ['Quantity', 'QuantityMetadata']
 
 
 @dataclasses.dataclass
@@ -66,10 +50,10 @@ class Quantity:
     def __init__(
             self,
             data,
-            dims: Iterable[str, ...],
+            dims: Iterable[str],
             units: str,
-            origin: Iterable[int, ...] = None,
-            extent: Iterable[int, ...] = None):
+            origin: Iterable[int] = None,
+            extent: Iterable[int] = None):
         """
         Initialize a Quantity.
 
@@ -203,7 +187,15 @@ class BoundedArrayView:
         return self._extent
 
     def __getitem__(self, index):
-        return self._data[self._get_compute_index(index)]
+        if len(self.origin) == 0:
+            if isinstance(index, tuple) and len(index) > 0:
+                raise IndexError('more than one index given for a zero-dimension array')
+            elif isinstance(index, slice) and index != slice(None, None, None):
+                raise IndexError('cannot slice a zero-dimension array')
+            else:
+                return self._data  # array[()] does not return an ndarray
+        else:
+            return self._data[self._get_compute_index(index)]
 
     def __setitem__(self, index, value):
         self._data[self._get_compute_index(index)] = value
