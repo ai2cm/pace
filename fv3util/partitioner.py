@@ -14,7 +14,7 @@ BOUNDARY_CACHE_SIZE = None
 
 
 __all__ = [
-    'TilePartitioner', 'CubedSpherePartitioner', 'HorizontalGridSpec', 'get_tile_index'
+    'TilePartitioner', 'CubedSpherePartitioner', 'get_tile_index'
 ]
 
 
@@ -246,6 +246,8 @@ class CubedSpherePartitioner:
         Args:
             tile: partitioner for the cube faces
         """
+        if not isinstance(tile, TilePartitioner):
+            raise TypeError('tile must be a TilePartitioner')
         self.tile = tile
 
     def _ensure_square_layout(self) -> None:

@@ -181,9 +181,6 @@ class _ZarrVariableWriter:
 
         from_slice = _get_from_slice(target_slice)
         logger.debug(f'assigning data from subtile slice {from_slice} to target slice {target_slice}')
-        print(self.array.shape)
-        print(self.array[target_slice])
-        print(np.asarray(quantity.view[from_slice]))
         self.array[target_slice] = quantity.view[from_slice]
         self.i_time += 1
 

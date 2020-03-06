@@ -5,9 +5,22 @@ import numpy as np
 import pytest
 import fv3util
 import fv3util._legacy_restart
+from utils import DummyComm
 
 TEST_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 DATA_DIRECTORY = os.path.join(TEST_DIRECTORY, "data")
+
+
+@pytest.mark.parametrize(
+    "rank", list(range(6))
+)
+def test_open_c12_restart_without_crashing(rank):
+    buffer_dict = {}
+    communicator = fv3util.CubedSphereCommunicator(
+        DummyComm(rank, 6, buffer_dict),
+        fv3util.CubedSpherePartitioner(fv3util.TilePartitioner((1, 1)))
+    )
+    fv3util.open_restart(os.path.join(DATA_DIRECTORY, 'c12_restart'), communicator)
 
 
 @pytest.fixture

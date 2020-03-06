@@ -3,9 +3,12 @@ import os
 import xarray as xr
 import copy
 from . import fortran_info
-from . import io, filesystem, constants, communicator
+from . import io, filesystem, constants
+from .communicator import bcast_metadata_list
 from .quantity import Quantity
-from .partitioner import CubedSpherePartitioner, get_tile_index
+from .partitioner import get_tile_index
+from .communicator import CubedSphereCommunicator
+from datetime import datetime
 
 
 __all__ = ['open_restart']
@@ -17,8 +20,7 @@ COUPLER_RES_NAME = 'coupler.res'
 
 def open_restart(
         dirname: str,
-        partitioner: CubedSpherePartitioner,
-        comm,
+        communicator: CubedSphereCommunicator,
         label: str = '',
         only_names: Iterable[str] = None):
     """Load restart files output by the Fortran model into a state dictionary.
@@ -26,24 +28,23 @@ def open_restart(
     Args:
         dirname: location of restart files, can be local or remote
         partitioner: domain decomposition for this rank
-        comm: mpi4py comm object
         label: prepended string on the restart files to load
         only_names (optional): list of standard names to load
 
     Returns:
         state: model state dictionary
     """
-    tile_index = partitioner.tile_index(comm.Get_rank())
-    rank = comm.Get_rank()
+    rank = communicator.rank
+    tile_index = communicator.partitioner.tile_index(rank)
     state = {}
-    if rank == partitioner.tile_master_rank(rank):
+    if communicator.tile.rank == constants.MASTER_RANK:
         for file in restart_files(dirname, tile_index, label):
             state.update(load_partial_state_from_restart_file(file, only_names=only_names))
         coupler_res_filename = get_coupler_res_filename(dirname, label)
         if filesystem.is_file(coupler_res_filename):
             with filesystem.open(coupler_res_filename, 'r') as f:
                 state['time'] = io.get_current_date_from_coupler_res(f)
-    state = broadcast_state(state, partitioner, comm)
+    state = broadcast_state(state, communicator)
     return state
 
 
@@ -51,35 +52,33 @@ def get_coupler_res_filename(dirname, label):
     return os.path.join(dirname, prepend_label(COUPLER_RES_NAME, label))
 
 
-def broadcast_state(state, partitioner, comm):
+def broadcast_state(state, communicator):
 
     def broadcast_master():
-        name_list = list(set(state.keys()).difference('time'))
-        name_list = tile_comm.bcast(name_list, root=constants.MASTER_RANK)
+        name_list = list(state.keys())
+        while 'time' in name_list:
+            name_list.remove('time')
+        name_list = communicator.tile.comm.bcast(name_list, root=constants.MASTER_RANK)
         array_list = [state[name] for name in name_list]
-        metadata_list = communicator.bcast_metadata_list(tile_comm, array_list)
+        metadata_list = bcast_metadata_list(communicator.tile.comm, array_list)
         for name, array, metadata in zip(name_list, array_list, metadata_list):
-            state[name] = partitioner.tile.scatter(tile_comm, array, metadata)
-        comm.bcast(state.get('time', None), root=constants.MASTER_RANK)
+            state[name] = communicator.tile.scatter(metadata, send_quantity=array)
+        communicator.tile.comm.bcast(state.get('time', None), root=constants.MASTER_RANK)
 
     def broadcast_client():
-        name_list = tile_comm.bcast(None, root=constants.MASTER_RANK)
-        metadata_list = communicator.bcast_metadata_list(tile_comm, None)
+        name_list = communicator.tile.comm.bcast(None, root=constants.MASTER_RANK)
+        metadata_list = bcast_metadata_list(communicator.tile.comm, None)
         for name, metadata in zip(name_list, metadata_list):
-            state[name] = partitioner.tile.scatter(tile_comm, None, metadata)
-        metadata_list = communicator.bcast_metadata_list(tile_comm, None)
-        for name, metadata in zip(name_list, metadata_list):
-            state[name] = partitioner.tile.scatter(tile_comm, None, metadata)
-        time = tile_comm.bcast(None, root=constants.MASTER_RANK)
+            state[name] = communicator.tile.scatter(metadata)
+        time = communicator.tile.comm.bcast(None, root=constants.MASTER_RANK)
         if time is not None:
             state['time'] = time
 
-    tile_comm = comm.Split(color=partitioner.tile_index(comm.Get_rank()), key=comm.Get_rank())
-    if tile_comm.Get_rank() == constants.MASTER_RANK:
+    if communicator.tile.rank == constants.MASTER_RANK:
         broadcast_master()
     else:
         broadcast_client()
-    tile_comm.Free()
+
     return state
 
 
@@ -142,7 +141,7 @@ def map_keys(old_dict, old_keys_to_new):
 
 
 def prepend_label(filename, label=None):
-    if label is not None:
+    if label is not None and len(label) > 0:
         return f'{label}.{filename}'
     else:
         return filename
@@ -162,3 +161,4 @@ def load_partial_state_from_restart_file(file, only_names=None):
         if name != 'time':
             array.load()
             state[name] = Quantity.from_data_array(array)
+    return state

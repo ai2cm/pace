@@ -12,7 +12,7 @@ def bcast_metadata_list(comm, quantity_list):
     if is_master:
         metadata_list = []
         for quantity in quantity_list:
-            metadata_list.append(QuantityMetadata.from_quantity(quantity))
+            metadata_list.append(quantity.metadata)
     else:
         metadata_list = None
     return comm.bcast(metadata_list, root=constants.MASTER_RANK)
@@ -22,12 +22,23 @@ def bcast_metadata(comm, array):
     return bcast_metadata_list(comm, [array])[0]
 
 
-class TileCommunicator:
+class Communicator:
+
+    def __init__(self, comm):
+        self.comm = comm
+
+    @property
+    def rank(self) -> int:
+        """rank of the current process within this communicator"""
+        return self.comm.Get_rank()
+
+
+class TileCommunicator(Communicator):
     """Performs communications within a single tile or region of a tile"""
 
-    def __init__(self, tile_comm, partitioner: TilePartitioner):
+    def __init__(self, comm, partitioner: TilePartitioner):
         self.partitioner = partitioner
-        self.tile_comm = tile_comm
+        super(TileCommunicator, self).__init__(comm)
 
     def scatter(
             self,
@@ -45,7 +56,7 @@ class TileCommunicator:
             recv_quantity
         """
         shape = self.partitioner.subtile_extent(metadata)
-        if self.tile_comm.Get_rank() == constants.MASTER_RANK:
+        if self.rank == constants.MASTER_RANK:
             sendbuf = metadata.np.empty(
                 (self.partitioner.total_ranks,) + shape,
                 dtype=metadata.dtype
@@ -65,16 +76,11 @@ class TileCommunicator:
                 dims=metadata.dims,
                 units=metadata.units,
             )
-        self.tile_comm.Scatter(sendbuf, recv_quantity.data, root=0)
+        self.comm.Scatter(sendbuf, recv_quantity.data, root=0)
         return recv_quantity
 
-    @property
-    def rank(self) -> int:
-        """rank of the current process within the tile"""
-        return self.tile_comm.Get_rank()
-    
 
-class CubedSphereCommunicator:
+class CubedSphereCommunicator(Communicator):
     """Performs communications within a cubed sphere"""
 
     def __init__(self, comm, partitioner: CubedSpherePartitioner):
@@ -84,10 +90,10 @@ class CubedSphereCommunicator:
             comm: mpi4py.Comm object
             partitioner: cubed sphere partitioner
         """
-        self.comm = comm
         self.partitioner = partitioner
         self._tile_communicator = None
         self._boundaries = None
+        super(CubedSphereCommunicator, self).__init__(comm)
 
     @property
     def boundaries(self) -> Iterable[Boundary]:
@@ -104,11 +110,12 @@ class CubedSphereCommunicator:
     def tile(self) -> TileCommunicator:
         """communicator for within a tile"""
         if self._tile_communicator is None:
-            self._initialize_tile_communicator
+            self._initialize_tile_communicator()
         return self._tile_communicator
     
     def _initialize_tile_communicator(self):
-        raise NotImplementedError()
+        tile_comm = self.comm.Split(color=self.partitioner.tile_index(self.rank), key=self.rank)
+        self._tile_communicator = TileCommunicator(tile_comm, self.partitioner.tile)
 
     def start_halo_update(self, quantity: Quantity, n_ghost: int):
         """Initiate an asynchronous halo update of a quantity."""
@@ -128,11 +135,6 @@ class CubedSphereCommunicator:
             dest_buffer = quantity.np.empty(dest_view.shape, dtype=dest_view.dtype)
             self.comm.Recv(dest_buffer, source=boundary.to_rank)
             dest_view[:] = dest_buffer
-
-    @property
-    def rank(self) -> int:
-        """rank of the current process on the cubed sphere"""
-        return self.comm.Get_rank()
 
 
 def rotate_data(data, metadata, n_clockwise_rotations):

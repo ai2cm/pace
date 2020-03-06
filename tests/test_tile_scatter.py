@@ -23,7 +23,7 @@ def get_tile_communicator_list(partitioner):
     for rank in range(total_ranks):
         tile_communicator_list.append(
             fv3util.TileCommunicator(
-                tile_comm=DummyComm(
+                comm=DummyComm(
                     rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
                 ),
                 partitioner=partitioner,
