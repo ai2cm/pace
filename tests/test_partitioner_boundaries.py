@@ -7,14 +7,20 @@ import fv3util.partitioner
 
 
 @pytest.fixture
+def partitioner_1_by_1():
+    grid = fv3util.TilePartitioner((1, 1))
+    return fv3util.CubedSpherePartitioner(grid)
+
+
+@pytest.fixture
 def partitioner_2_by_2():
     grid = fv3util.TilePartitioner((2, 2))
     return fv3util.CubedSpherePartitioner(grid)
 
 
 @pytest.fixture
-def partitioner_1_by_1():
-    grid = fv3util.TilePartitioner((1, 1))
+def partitioner_3_by_3():
+    grid = fv3util.TilePartitioner((3, 3))
     return fv3util.CubedSpherePartitioner(grid)
 
 
@@ -450,3 +456,83 @@ def test_2_by_2_bottom_right_corner(partitioner_2_by_2, from_rank, to_rank, n_cl
         assert corner.from_rank == from_rank
         assert corner.to_rank == to_rank
         assert corner.n_clockwise_rotations == n_clockwise_rotations
+
+
+def test_boundary_returns_correct_boundary_type():
+    tile = fv3util.TilePartitioner((3, 3))
+    partitioner = fv3util.CubedSpherePartitioner(tile)
+    for boundary_type in fv3util.BOUNDARY_TYPES:
+        boundary = tile.boundary(boundary_type, rank=4)  # center face
+        assert boundary.boundary_type == boundary_type
+        boundary = partitioner.boundary(boundary_type, rank=4)  # center face
+        assert boundary.boundary_type == boundary_type
+
+
+# rank 42 is tile 4 (5), subrank 6, so top-left corner
+# left is tile 2 top-left corner 1 rotations, up is tile 0 top-left corner 3 rotations
+# rank 0 is tile 0 subrank 0
+# left is tile 4 top-right corner, 1 rotation
+# bottom is tile 5 top-left corner, 0 rotations
+@pytest.mark.parametrize(
+    "boundary_type, from_rank, to_rank, n_clockwise_rotations",
+    [
+        (fv3util.LEFT, 0, 4 * 9 + 8, 1),
+        (fv3util.BOTTOM, 0, 5 * 9 + 6, 0),
+        (fv3util.LEFT, 42, 2 * 9 + 6, 1),
+        (fv3util.TOP, 42, 6, 3),
+    ]
+)
+def test_3_by_3_difficult_cases(partitioner_3_by_3, boundary_type, from_rank, to_rank, n_clockwise_rotations):
+    corner = partitioner_3_by_3.boundary(boundary_type, from_rank)
+    if to_rank is None:
+        assert corner is None
+    else:
+        assert corner.from_rank == from_rank
+        assert corner.to_rank == to_rank
+        assert corner.n_clockwise_rotations == n_clockwise_rotations
+
+
+@pytest.mark.parametrize(
+    "layout", [(1, 1), (2, 2), (4, 4)]
+)
+def test_edge_boundaries_pair(layout, subtests):
+    order = [fv3util.LEFT, fv3util.TOP, fv3util.RIGHT, fv3util.BOTTOM]
+    tile = fv3util.TilePartitioner(layout)
+    partitioner = fv3util.CubedSpherePartitioner(tile)
+    for rank in range(partitioner.total_ranks):
+        for boundary_type in fv3util.EDGE_BOUNDARY_TYPES:
+            with subtests.test(rank=rank, boundary_type=boundary_type):
+                out_boundary = partitioner.boundary(boundary_type, rank)
+                in_boundary = partitioner.boundary(
+                    rotate(boundary_type, 2 - out_boundary.n_clockwise_rotations, order),
+                    out_boundary.to_rank
+                )
+                assert out_boundary.to_rank == in_boundary.from_rank
+                assert in_boundary.to_rank == out_boundary.from_rank
+                assert in_boundary.n_clockwise_rotations % 4 == -out_boundary.n_clockwise_rotations % 4
+
+
+@pytest.mark.parametrize(
+    "layout", [(1, 1), (2, 2), (4, 4)]
+)
+def test_corner_boundaries_pair(layout, subtests):
+    order = [fv3util.TOP_LEFT, fv3util.TOP_RIGHT, fv3util.BOTTOM_RIGHT, fv3util.BOTTOM_LEFT]
+    tile = fv3util.TilePartitioner(layout)
+    partitioner = fv3util.CubedSpherePartitioner(tile)
+    for rank in range(partitioner.total_ranks):
+        for boundary_type in fv3util.CORNER_BOUNDARY_TYPES:
+            with subtests.test(rank=rank, boundary_type=boundary_type):
+                out_boundary = partitioner.boundary(boundary_type, rank)
+                if out_boundary is not None:
+                    in_boundary = partitioner.boundary(
+                        rotate(boundary_type, 2 - out_boundary.n_clockwise_rotations, order),
+                        out_boundary.to_rank
+                    )
+                    assert out_boundary.to_rank == in_boundary.from_rank
+                    assert in_boundary.to_rank == out_boundary.from_rank
+                    assert in_boundary.n_clockwise_rotations % 4 == -out_boundary.n_clockwise_rotations % 4
+
+
+def rotate(boundary_type, n_clockwise_rotations, order):
+    target_index = (order.index(boundary_type) + n_clockwise_rotations) % len(order)
+    return order[target_index]
