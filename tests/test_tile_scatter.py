@@ -36,7 +36,6 @@ def get_tile_communicator_list(partitioner):
     'layout', [(1, 1), (1, 2), (2, 1), (2, 2), (3, 3)]
 )
 def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
-    grid = fv3util.HorizontalGridSpec(layout)
     state = {
         'pos_j': fv3util.Quantity(
             np.empty([layout[0] + 1, layout[1] + 1]),
@@ -53,7 +52,7 @@ def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
     state['pos_j'].view[:, :] = np.arange(0, layout[0] + 1)[:, None]
     state['pos_i'].view[:, :] = np.arange(0, layout[1] + 1)[None, :]
 
-    partitioner = fv3util.TilePartitioner(grid)
+    partitioner = fv3util.TilePartitioner(layout)
     tile_communicator_list = get_tile_communicator_list(partitioner)
     for communicator, rank_array in rank_scatter_results(tile_communicator_list, state['pos_j']):
         assert rank_array.extent == (2, 2)
@@ -78,7 +77,6 @@ def test_interface_state_two_by_two_per_rank_scatter_tile(layout):
     'layout', [(1, 1), (1, 2), (2, 1), (2, 2), (3, 3)]
 )
 def test_centered_state_one_item_per_rank_scatter_tile(layout):
-    grid = fv3util.HorizontalGridSpec(layout)
     total_ranks = layout[0] * layout[1]
     state = {
         'rank': fv3util.Quantity(
@@ -98,14 +96,14 @@ def test_centered_state_one_item_per_rank_scatter_tile(layout):
         ),
     }
     
-    partitioner = fv3util.TilePartitioner(grid)
+    partitioner = fv3util.TilePartitioner(layout)
     for rank in range(total_ranks):
         state['rank'].view[np.unravel_index(rank, state['rank'].extent)] = rank
         j, i = partitioner.subtile_index(rank)
         state['rank_pos_j'].view[np.unravel_index(rank, state['rank_pos_j'].extent)] = j
         state['rank_pos_i'].view[np.unravel_index(rank, state['rank_pos_i'].extent)] = i
 
-    partitioner = fv3util.TilePartitioner(grid)
+    partitioner = fv3util.TilePartitioner(layout)
     tile_communicator_list = get_tile_communicator_list(partitioner)
     for communicator, rank_array in rank_scatter_results(tile_communicator_list, state['rank']):
         assert rank_array.extent == (1, 1)
@@ -121,7 +119,6 @@ def test_centered_state_one_item_per_rank_scatter_tile(layout):
 )
 def test_centered_state_one_item_per_rank_with_halo_scatter_tile(layout, n_halo):
     extent = layout
-    grid = fv3util.HorizontalGridSpec(layout)
     total_ranks = layout[0] * layout[1]
     state = {
         'rank': fv3util.Quantity(
@@ -147,7 +144,7 @@ def test_centered_state_one_item_per_rank_with_halo_scatter_tile(layout, n_halo)
         ),
     }
     
-    partitioner = fv3util.TilePartitioner(grid)
+    partitioner = fv3util.TilePartitioner(layout)
     for rank in range(total_ranks):
         state['rank'].view[np.unravel_index(rank, state['rank'].extent)] = rank
         j, i = partitioner.subtile_index(rank)

@@ -110,8 +110,8 @@ class _ZarrVariableWriter:
         
         self._prepend_shape = (1, 6)
         self._prepend_chunks = (1, 1)
-        self._y_chunks = partitioner.grid.layout[0]
-        self._x_chunks = partitioner.grid.layout[1]
+        self._y_chunks = partitioner.tile.layout[0]
+        self._x_chunks = partitioner.tile.layout[1]
         self._PREPEND_DIMS = ("time", "tile")
         self._partitioner = partitioner
 

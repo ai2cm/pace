@@ -85,12 +85,18 @@ class Quantity:
         self._compute_domain_view = BoundedArrayView(self.data, self.origin, self.extent)
 
     @classmethod
-    def from_data_array(cls, data_array, origin=None, extent=None):
+    def from_data_array(
+            cls,
+            data_array: xr.DataArray,
+            origin: Iterable[int] = None,
+            extent: Iterable[int] = None):
         """
         Initialize a Quantity from an xarray.DataArray.
 
         Args:
-        
+            data_array
+            origin: first point in data within the computational domain
+            extent: number of points along each axis within the computational domain
         """
         if 'units' not in data_array.attrs:
             raise ValueError('need units attribute to create Quantity from DataArray')
@@ -207,7 +213,7 @@ class BoundedArrayView:
         shifted_index = []
         for entry, origin, extent in zip(index, self.origin, self.extent):
             if isinstance(entry, slice):
-                shifted_slice = shift_slice(entry, origin)
+                shifted_slice = shift_slice(entry, origin, extent)
                 shifted_index.append(bound_default_slice(shifted_slice, origin, origin + extent))
             elif entry is None:
                 shifted_index.append(entry)
@@ -220,16 +226,20 @@ def fill_index(index, length):
     return tuple(index) + (slice(None, None, None),) * (length - len(index))
 
 
-def shift_slice(slice_in, shift):
-    if slice_in.start is None:
-        start = None
-    else:
-        start = slice_in.start + shift
-    if slice_in.stop is None:
-        stop = None
-    else:
-        stop = slice_in.stop + shift
+def shift_slice(slice_in, shift, extent):
+    start = shift_index(slice_in.start, shift, extent)
+    stop = shift_index(slice_in.stop, shift, extent)
     return slice(start, stop, slice_in.step)
+
+
+def shift_index(current_value, shift, extent):
+    if current_value is None:
+        new_value = None
+    else:
+        new_value = current_value + shift
+        if new_value < 0:
+            new_value = extent + new_value
+    return new_value
 
 
 def bound_default_slice(slice_in, start=None, stop=None):

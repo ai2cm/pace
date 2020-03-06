@@ -68,8 +68,7 @@ for layout in ((1, 1), (1, 2), (2, 2), (2, 3)):
     "rank, layout, subtile_index",
     zip(rank_list, layout_list, subtile_index_list))
 def test_subtile_index(rank, layout, subtile_index):
-    grid = fv3util.HorizontalGridSpec(layout)
-    partitioner = fv3util.TilePartitioner(grid)
+    partitioner = fv3util.TilePartitioner(layout)
     assert partitioner.subtile_index(rank) == subtile_index
 
 

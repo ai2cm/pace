@@ -39,9 +39,15 @@ def get_tile_number(tile_rank, total_ranks):
     return tile_rank // ranks_per_tile + 1
 
 
-@dataclasses.dataclass
-class HorizontalGridSpec:
-    layout: Tuple[int, int]
+class TilePartitioner:
+
+    def __init__(
+            self,
+            layout: Tuple[int, int],
+    ):
+        """Create an object for fv3gfs tile decomposition.
+        """
+        self.layout = layout
 
     @classmethod
     def from_namelist(cls, namelist):
@@ -52,29 +58,14 @@ class HorizontalGridSpec:
         """
         return cls(layout=namelist['fv_core_nml']['layout'])
 
-    @property
-    def is_square(self) -> bool:
-        return self.layout[0] == self.layout[1]
-
-
-class TilePartitioner:
-
-    def __init__(
-            self,
-            grid: HorizontalGridSpec
-    ):
-        """Create an object for fv3gfs tile decomposition.
-        """
-        self.grid = grid
-
     @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
     def subtile_index(self, rank: int) -> Tuple[int, int]:
         """Return the (y, x) subtile position of a given rank as an integer number of subtiles."""
-        return subtile_index(rank, self.total_ranks, self.grid.layout)
+        return subtile_index(rank, self.total_ranks, self.layout)
 
     @property
     def total_ranks(self) -> int:
-        return self.grid.layout[0] * self.grid.layout[1]
+        return self.layout[0] * self.layout[1]
 
     def tile_extent(self, rank_metadata: QuantityMetadata) -> Tuple[int, ...]:
         """Return the shape of a full tile representation for the given dimensions.
@@ -85,12 +76,12 @@ class TilePartitioner:
         Returns:
             extent: shape of full tile representation
         """
-        return tile_extent_from_rank_metadata(rank_metadata.dims, rank_metadata.extent, self.grid.layout)
+        return tile_extent_from_rank_metadata(rank_metadata.dims, rank_metadata.extent, self.layout)
 
     def subtile_extent(self, tile_metadata: QuantityMetadata) -> Tuple[int, ...]:
         """Return the shape of a single rank representation for the given dimensions."""
         return rank_extent_from_tile_metadata(
-            tile_metadata.dims, tile_metadata.extent, self.grid.layout)
+            tile_metadata.dims, tile_metadata.extent, self.layout)
 
     def subtile_slice(
             self,
@@ -114,13 +105,13 @@ class TilePartitioner:
         return subtile_slice(
             tile_metadata.dims,
             tile_metadata.extent,
-            self.grid.layout,
+            self.layout,
             self.subtile_index(rank),
             overlap=overlap
         )
 
     def on_tile_top(self, rank: int) -> bool:
-        return on_tile_top(self.subtile_index(rank), self.grid.layout)
+        return on_tile_top(self.subtile_index(rank), self.layout)
 
     def on_tile_bottom(self, rank: int) -> bool:
         return on_tile_bottom(self.subtile_index(rank))
@@ -129,25 +120,24 @@ class TilePartitioner:
         return on_tile_left(self.subtile_index(rank))
 
     def on_tile_right(self, rank: int) -> bool:
-        return on_tile_right(self.subtile_index(rank), self.grid.layout)
+        return on_tile_right(self.subtile_index(rank), self.layout)
 
 
 class CubedSpherePartitioner:
 
     def __init__(
             self,
-            grid: HorizontalGridSpec
+            tile: TilePartitioner
     ):
         """Create an object for fv3gfs cubed-sphere domain decomposition.
         
         Args:
-            grid: specification of the horizontal grid
+            tile: partitioner for the cube faces
         """
-        self.grid = grid
-        self.tile = TilePartitioner(self.grid)
+        self.tile = tile
 
     def _ensure_square_layout(self) -> None:
-        if not self.grid.is_square:
+        if not self.tile.layout[0] == self.tile.layout[1]:
             raise NotImplementedError('currently only square layouts are supported')
 
     def tile_index(self, rank: int) -> Tuple[int, int]:
@@ -159,9 +149,8 @@ class CubedSpherePartitioner:
         return self.tile.total_ranks * (rank // self.tile.total_ranks)
 
     @property
-    def layout(self) -> Tuple[int, int]:
-        """the (y, x) number of ranks along each axis on a tile"""
-        return self.grid.layout
+    def layout(self):
+        return self.tile.layout
 
     @property
     def total_ranks(self) -> int:
@@ -198,7 +187,7 @@ class CubedSpherePartitioner:
                 tile_rank = rank % self.tile.total_ranks
                 to_tile_rank = fliplr_subtile_rank(
                     rotate_subtile_rank(
-                        tile_rank, self.layout, n_clockwise_rotations=1
+                        tile_rank, self.tile.layout, n_clockwise_rotations=1
                     ),
                     self.layout
                 )
@@ -353,7 +342,8 @@ class CubedSpherePartitioner:
             corner = self._get_corner(constants.BOTTOM_RIGHT, rank, self._bottom_edge, second_edge)
         return corner
 
-    def _get_corner(self,
+    def _get_corner(
+            self,
             boundary_type: int,
             rank: int,
             edge_func_1: Callable[[int], bd.Boundary],

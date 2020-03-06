@@ -80,13 +80,13 @@ def extent(n_ghost, dims, nz, ny, nx):
 
 
 @pytest.fixture
-def grid():
-    return fv3util.HorizontalGridSpec((1, 1))
+def tile_partitioner(layout):
+    return fv3util.TilePartitioner(layout)
 
 
 @pytest.fixture
-def cube_partitioner(grid):
-    return fv3util.CubedSpherePartitioner(grid)
+def cube_partitioner(tile_partitioner):
+    return fv3util.CubedSpherePartitioner(tile_partitioner)
 
 
 @pytest.fixture()

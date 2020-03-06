@@ -6,7 +6,7 @@ from .fortran_info import PHYSICS_PROPERTIES, DYNAMICS_PROPERTIES
 from ._legacy_restart import open_restart
 from .zarr_monitor import ZarrMonitor
 from .partitioner import (
-    CubedSpherePartitioner, TilePartitioner, HorizontalGridSpec,
+    CubedSpherePartitioner, TilePartitioner,
     get_tile_index, get_tile_number
 )
 from .constants import (

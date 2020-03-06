@@ -152,13 +152,13 @@ def communicator_list(cube_partitioner):
 
 
 @pytest.fixture
-def grid(layout):
-    return fv3util.HorizontalGridSpec(layout)
+def tile_partitioner(layout):
+    return fv3util.TilePartitioner(layout)
 
 
 @pytest.fixture
-def cube_partitioner(grid):
-    return fv3util.CubedSpherePartitioner(grid)
+def cube_partitioner(tile_partitioner):
+    return fv3util.CubedSpherePartitioner(tile_partitioner)
 
 
 @pytest.fixture

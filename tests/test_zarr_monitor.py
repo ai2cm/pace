@@ -3,7 +3,6 @@ import zarr
 import numpy as np
 from datetime import datetime, timedelta
 import pytest
-import xarray as xr
 import copy
 import fv3util
 import logging
@@ -52,13 +51,13 @@ def layout():
 
 
 @pytest.fixture
-def grid(layout):
-    return fv3util.HorizontalGridSpec(layout)
+def tile_partitioner(layout):
+    return fv3util.TilePartitioner(layout)
 
 
 @pytest.fixture
-def partitioner(grid):
-    return fv3util.CubedSpherePartitioner(grid)
+def cube_partitioner(tile_partitioner):
+    return fv3util.CubedSpherePartitioner(tile_partitioner)
 
 
 @pytest.fixture(params=["empty", "one_var_2d", "one_var_3d", "two_vars"])
@@ -110,9 +109,9 @@ def state_list(base_state, n_times, start_time, time_step):
     return state_list
 
 
-def test_monitor_file_store(state_list, partitioner):
+def test_monitor_file_store(state_list, cube_partitioner):
     with tempfile.TemporaryDirectory(suffix='.zarr') as tempdir:
-        monitor = fv3util.ZarrMonitor(tempdir, partitioner)
+        monitor = fv3util.ZarrMonitor(tempdir, cube_partitioner)
         for state in state_list:
             monitor.store(state)
         validate_store(state_list, tempdir)
@@ -175,7 +174,7 @@ def test_monitor_file_store_multi_rank_state(
     nz, ny, nx = shape
     ny_rank = int(ny / layout[0] + ny_rank_add)
     nx_rank = int(nx / layout[1] + nx_rank_add)
-    grid = fv3util.HorizontalGridSpec(layout)
+    grid = fv3util.TilePartitioner(layout)
     time = datetime(2010, 6, 20, 6, 0, 0)
     timestep = timedelta(hours=1)
     total_ranks = 6 * layout[0] * layout[1]

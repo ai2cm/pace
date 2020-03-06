@@ -138,24 +138,44 @@ def test_compute_view_edit_all_domain(quantity, n_halo, n_dims, extent_1d):
 
 
 @pytest.mark.parametrize(
-    'slice_in, shift, slice_out',
+    'slice_in, shift, extent, slice_out',
     [
         pytest.param(
-            slice(0, 1), 0, slice(0, 1),
+            slice(0, 1), 0, 1, slice(0, 1),
             id='zero_shift'
         ),
         pytest.param(
-            slice(None, None), 1, slice(None, None),
+            slice(None, None), 1, 1, slice(None, None),
             id='shift_none_slice'
         ),
         pytest.param(
-            slice(None, 5), -1, slice(None, 4),
+            slice(None, 5), -1, 5, slice(None, 4),
             id='shift_none_start',
+        ),
+        pytest.param(
+            slice(-3, None), 0, 5, slice(2, None),
+            id='negative_start',
+        ),
+        pytest.param(
+            slice(-3, None), 1, 5, slice(3, None),
+            id='shift_negative_start',
+        ),
+        pytest.param(
+            slice(None, -1), 0, 5, slice(None, 4),
+            id='negative_end',
+        ),
+        pytest.param(
+            slice(0, -1), 0, 5, slice(0, 4),
+            id='negative_end_with_none',
+        ),
+        pytest.param(
+            slice(2, -2), 1, 5, slice(3, 4),
+            id='shift_negative_end',
         ),
     ]
 )
-def test_shift_slice(slice_in, shift, slice_out):
-    result = fv3util.quantity.shift_slice(slice_in, shift)
+def test_shift_slice(slice_in, shift, extent, slice_out):
+    result = fv3util.quantity.shift_slice(slice_in, shift, extent)
     assert result == slice_out
 
 
