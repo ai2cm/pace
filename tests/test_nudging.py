@@ -6,7 +6,6 @@ import numpy as np
 import copy
 
 
-@pytest.fixture
 def numpy():
     return np
 
@@ -45,7 +44,6 @@ def reference_difference(request):
     return request.param
 
 
-@pytest.fixture
 def reference_state(reference_difference, state, numpy):
     if reference_difference == "equal":
         reference_state = copy.deepcopy(state)

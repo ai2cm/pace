@@ -3,6 +3,7 @@ import zarr
 import numpy as np
 from datetime import datetime, timedelta
 import pytest
+import xarray as xr
 import copy
 import fv3util
 import logging
@@ -115,6 +116,12 @@ def test_monitor_file_store(state_list, cube_partitioner):
         for state in state_list:
             monitor.store(state)
         validate_store(state_list, tempdir)
+        validate_xarray_can_open(tempdir)
+
+
+def validate_xarray_can_open(dirname):
+    # just checking there are no crashes, validate_group checks data
+    xr.open_zarr(dirname)
 
 
 def validate_store(states, filename):
@@ -128,7 +135,7 @@ def validate_store(states, filename):
         if name == 'time':
             assert array.shape == (nt,)
         else:
-            assert array.shape == (nt, 6) + states[0][name].extent
+            assert array.shape == (nt, 6) + states[0][name].shape
 
     def validate_array_dimensions_and_attributes(name, array):
         if name == 'time':

@@ -10,7 +10,6 @@ from .quantity import Quantity, QuantityMetadata
 
 logger = logging.getLogger("fv3util")
 
-
 __all__ = ['ZarrMonitor']
 
 
@@ -31,7 +30,7 @@ class DummyComm:
 
 
 class ZarrMonitor:
-    """sympl.Monitor-style object for storing model states in a Zarr store."""
+    """sympl.Monitor-style object for storing model state dictionaries in a Zarr store."""
 
     def __init__(
             self,
@@ -87,7 +86,7 @@ class ZarrMonitor:
             self._check_writers(state)
 
     def store(self, state: dict) -> None:
-        """Append the model state to the zarr store.
+        """Append the model state dictionary to the zarr store.
 
         Requires the state contain the same quantities with the same metadata as the
         first time this is called. Quantities are stored with dimensions [time, rank]

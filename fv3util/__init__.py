@@ -20,4 +20,4 @@ from .units import ensure_equal_units, units_are_equal, UnitsError
 from .communicator import TileCommunicator, CubedSphereCommunicator
 from ._xarray import to_dataset
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'

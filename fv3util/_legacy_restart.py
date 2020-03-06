@@ -59,14 +59,17 @@ def broadcast_state(state, partitioner, comm):
         array_list = [state[name] for name in name_list]
         metadata_list = communicator.bcast_metadata_list(tile_comm, array_list)
         for name, array, metadata in zip(name_list, array_list, metadata_list):
-            state[name] = partitioner.tile.scatter_tile(tile_comm, array, metadata)
+            state[name] = partitioner.tile.scatter(tile_comm, array, metadata)
         comm.bcast(state.get('time', None), root=constants.MASTER_RANK)
 
     def broadcast_client():
         name_list = tile_comm.bcast(None, root=constants.MASTER_RANK)
         metadata_list = communicator.bcast_metadata_list(tile_comm, None)
         for name, metadata in zip(name_list, metadata_list):
-            state[name] = partitioner.tile.scatter_tile(tile_comm, None, metadata)
+            state[name] = partitioner.tile.scatter(tile_comm, None, metadata)
+        metadata_list = communicator.bcast_metadata_list(tile_comm, None)
+        for name, metadata in zip(name_list, metadata_list):
+            state[name] = partitioner.tile.scatter(tile_comm, None, metadata)
         time = tile_comm.bcast(None, root=constants.MASTER_RANK)
         if time is not None:
             state['time'] = time
@@ -159,4 +162,3 @@ def load_partial_state_from_restart_file(file, only_names=None):
         if name != 'time':
             array.load()
             state[name] = Quantity.from_data_array(array)
-    return state

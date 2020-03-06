@@ -11,6 +11,8 @@ class DummyComm:
         self.total_ranks = total_ranks
         self._buffer = buffer_dict
         self._i_buffer = {}
+        self._split_comms = {}
+        self._split_buffers = {}
 
     def __repr__(self):
         return f"DummyComm(rank={self.rank}, total_ranks={self.total_ranks})"
@@ -52,7 +54,7 @@ class DummyComm:
 
     def bcast(self, value, root=0):
         if root != 0:
-            raise NotImplementedError('DummyComm assumes ranks are called in order, so root must be the scatter source')
+            raise NotImplementedError('DummyComm assumes ranks are called in order, so root must be the bcast source')
         value = self._get_buffer('bcast', value)
         logger.debug(f'bcast {value} to rank {self.rank}')
         return value
@@ -77,3 +79,20 @@ class DummyComm:
 
     def Irecv(self, recvbuf, source):
         return self.Recv(recvbuf, source)
+
+    def Split(self, color, key):
+        # key argument is ignored, assumes we're calling the ranks from least to
+        # greatest when mocking Split
+        self._split_comms[color] = self._split_comms.get(color, [])
+        self._split_buffers[color] = self._split_buffers.get(color, {})
+        rank = len(self._split_comms[color])
+        total_ranks = rank + 1
+        new_comm = DummyComm(
+            rank=rank,
+            total_ranks=total_ranks,
+            buffer_dict=self._split_buffers[color]
+        )
+        for comm in self._split_comms[color]:
+            comm.total_ranks = total_ranks
+        self._split_comms[color].append(new_comm)
+        return new_comm
