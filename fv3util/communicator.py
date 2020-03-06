@@ -29,7 +29,7 @@ class TileCommunicator:
         self.partitioner = partitioner
         self.tile_comm = tile_comm
 
-    def scatter_tile(
+    def scatter(
             self,
             metadata: QuantityMetadata,
             send_quantity: Quantity = None,

@@ -3,6 +3,8 @@ from typing import TextIO
 from datetime import datetime
 from .time import datetime64_to_datetime
 from . import filesystem
+from .quantity import Quantity
+from ._xarray import to_dataset
 
 
 def write_state(state: dict, filename: str) -> None:
@@ -14,7 +16,7 @@ def write_state(state: dict, filename: str) -> None:
     """
     if 'time' not in state:
         raise ValueError('state must include a value for "time"')
-    ds = xr.Dataset(data_vars=state)
+    ds = to_dataset(state)
     with filesystem.open(filename, 'wb') as f:
         ds.to_netcdf(f)
 
@@ -35,7 +37,7 @@ def read_state(filename: str) -> dict:
         if name == 'time':
             out_dict[name] = datetime64_to_datetime(value)
         else:
-            out_dict[name] = value
+            out_dict[name] = Quantity.from_data_array(value)
     return out_dict
 
 

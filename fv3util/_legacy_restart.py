@@ -4,6 +4,7 @@ import xarray as xr
 import copy
 from . import fortran_info
 from . import io, filesystem, constants, communicator
+from .quantity import Quantity
 from .partitioner import CubedSpherePartitioner, get_tile_index
 
 
@@ -157,4 +158,5 @@ def load_partial_state_from_restart_file(file, only_names=None):
     for name, array in state.items():
         if name != 'time':
             array.load()
+            state[name] = Quantity.from_data_array(array)
     return state
