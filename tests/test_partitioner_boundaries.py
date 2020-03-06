@@ -342,6 +342,31 @@ def test_2_by_2_top_left_corner(partitioner_2_by_2, from_rank, to_rank, n_clockw
 
 
 @pytest.mark.parametrize(
+    'layout, boundary_type, from_rank, to_rank',
+    (
+        ((1, 1), fv3util.LEFT, 0, 0),
+        ((1, 1), fv3util.RIGHT, 0, 0),
+        ((1, 1), fv3util.TOP, 0, 0),
+        ((1, 1), fv3util.BOTTOM, 0, 0),
+        ((2, 2), fv3util.LEFT, 0, 1),
+        ((2, 2), fv3util.RIGHT, 0, 1),
+        ((2, 2), fv3util.TOP, 0, 2),
+        ((2, 2), fv3util.BOTTOM, 0, 2),
+        ((2, 2), fv3util.LEFT, 3, 2),
+        ((2, 2), fv3util.RIGHT, 3, 2),
+        ((2, 2), fv3util.TOP, 3, 1),
+        ((2, 2), fv3util.BOTTOM, 3, 1),
+    )
+)
+def test_tile_boundary(layout, boundary_type, from_rank, to_rank):
+    tile = fv3util.TilePartitioner(layout)
+    boundary = tile.boundary(boundary_type, from_rank)
+    assert boundary.from_rank == from_rank
+    assert boundary.to_rank == to_rank
+    assert boundary.n_clockwise_rotations == 0
+
+
+@pytest.mark.parametrize(
     "from_rank, to_rank, n_clockwise_rotations",
     [
         (0, 3, 0),  #
@@ -462,8 +487,6 @@ def test_boundary_returns_correct_boundary_type():
     tile = fv3util.TilePartitioner((3, 3))
     partitioner = fv3util.CubedSpherePartitioner(tile)
     for boundary_type in fv3util.BOUNDARY_TYPES:
-        boundary = tile.boundary(boundary_type, rank=4)  # center face
-        assert boundary.boundary_type == boundary_type
         boundary = partitioner.boundary(boundary_type, rank=4)  # center face
         assert boundary.boundary_type == boundary_type
 

@@ -44,7 +44,7 @@ def nx(nx_rank, layout):
     return nx_rank * layout[1]
 
 
-@pytest.fixture(params=[1, 3])#, 3])
+@pytest.fixture(params=[1, 3])
 def n_ghost(request):
     return request.param
 
