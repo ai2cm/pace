@@ -1,9 +1,6 @@
-from typing import Tuple, Dict, Iterable
-import functools
-import collections.abc
+from typing import Tuple, Iterable
 import dataclasses
 import numpy as np
-from . import constants
 import xarray as xr
 try:
     import cupy
@@ -64,6 +61,8 @@ class Quantity:
             origin: first point in data within the computational domain
             extent: number of points along each axis within the computational domain
         """
+        if isinstance(data, (int, float, list)):
+            data = np.asarray(data)
         if origin is None:
             origin = (0,) * len(dims)  # default origin at origin of array
         else:
