@@ -135,7 +135,7 @@ def validate_store(states, filename):
         if name == 'time':
             assert array.shape == (nt,)
         else:
-            assert array.shape == (nt, 6) + states[0][name].shape
+            assert array.shape == (nt, 6) + states[0][name].extent
 
     def validate_array_dimensions_and_attributes(name, array):
         if name == 'time':
@@ -209,6 +209,6 @@ def test_monitor_file_store_multi_rank_state(
             monitor_list[rank].store(state)
     group = zarr.hierarchy.open_group(store=store, mode='r')
     assert 'var1' in group
-    assert group['var1'].extent == (nt, 6, nz, ny + ny_rank_add, nx + nx_rank_add)
+    assert group['var1'].shape == (nt, 6, nz, ny + ny_rank_add, nx + nx_rank_add)
     np.testing.assert_array_equal(group['var1'], 1.0)
 
