@@ -47,6 +47,53 @@ class QuantityMetadata:
             )
 
 
+class BoundedArrayView:
+
+    def __init__(self, array, origin, extent):
+        self._data = array
+        self._origin = origin
+        self._extent = extent
+
+    @property
+    def origin(self):
+        """the start of the computational domain"""
+        return self._origin
+    
+    @property
+    def extent(self):
+        """the shape of the computational domain"""
+        return self._extent
+
+    def __getitem__(self, index):
+        if len(self.origin) == 0:
+            if isinstance(index, tuple) and len(index) > 0:
+                raise IndexError('more than one index given for a zero-dimension array')
+            elif isinstance(index, slice) and index != slice(None, None, None):
+                raise IndexError('cannot slice a zero-dimension array')
+            else:
+                return self._data  # array[()] does not return an ndarray
+        else:
+            return self._data[self._get_compute_index(index)]
+
+    def __setitem__(self, index, value):
+        self._data[self._get_compute_index(index)] = value
+
+    def _get_compute_index(self, index):
+        if not isinstance(index, (tuple, list)):
+            index = (index,)
+        index = fill_index(index, len(self._data.shape))
+        shifted_index = []
+        for entry, origin, extent in zip(index, self.origin, self.extent):
+            if isinstance(entry, slice):
+                shifted_slice = shift_slice(entry, origin, extent)
+                shifted_index.append(bound_default_slice(shifted_slice, origin, origin + extent))
+            elif entry is None:
+                shifted_index.append(entry)
+            else:
+                shifted_index.append(entry + origin)
+        return tuple(shifted_index)
+
+
 class Quantity:
     """
     Data container for physical quantities.
@@ -145,6 +192,7 @@ class Quantity:
 
     @property
     def units(self) -> str:
+        """units of the quantity"""
         return self.metadata.units
 
     @property
@@ -153,6 +201,7 @@ class Quantity:
 
     @property
     def dims(self) -> Tuple[str, ...]:
+        """names of each dimension"""
         return self.metadata.dims
     
     @property
@@ -162,19 +211,23 @@ class Quantity:
         return return_array
     
     @property
-    def view(self) -> np.ndarray:
+    def view(self) -> BoundedArrayView:
+        """a view into the computational domain of the underlying data"""
         return self._compute_domain_view
 
     @property
     def data(self) -> np.ndarray:
+        """the underlying array of data"""
         return self._data
 
     @property
     def origin(self) -> Tuple[int, ...]:
+        """the start of the computational domain"""
         return self.metadata.origin
     
     @property
     def extent(self) -> Tuple[int, ...]:
+        """the shape of the computational domain"""
         return self.metadata.extent
     
     @property
@@ -192,51 +245,6 @@ class Quantity:
     @property
     def np(self) -> ModuleType:
         return self.metadata.np
-
-
-class BoundedArrayView:
-
-    def __init__(self, array, origin, extent):
-        self._data = array
-        self._origin = origin
-        self._extent = extent
-
-    @property
-    def origin(self):
-        return self._origin
-    
-    @property
-    def extent(self):
-        return self._extent
-
-    def __getitem__(self, index):
-        if len(self.origin) == 0:
-            if isinstance(index, tuple) and len(index) > 0:
-                raise IndexError('more than one index given for a zero-dimension array')
-            elif isinstance(index, slice) and index != slice(None, None, None):
-                raise IndexError('cannot slice a zero-dimension array')
-            else:
-                return self._data  # array[()] does not return an ndarray
-        else:
-            return self._data[self._get_compute_index(index)]
-
-    def __setitem__(self, index, value):
-        self._data[self._get_compute_index(index)] = value
-
-    def _get_compute_index(self, index):
-        if not isinstance(index, (tuple, list)):
-            index = (index,)
-        index = fill_index(index, len(self._data.shape))
-        shifted_index = []
-        for entry, origin, extent in zip(index, self.origin, self.extent):
-            if isinstance(entry, slice):
-                shifted_slice = shift_slice(entry, origin, extent)
-                shifted_index.append(bound_default_slice(shifted_slice, origin, origin + extent))
-            elif entry is None:
-                shifted_index.append(entry)
-            else:
-                shifted_index.append(entry + origin)
-        return tuple(shifted_index)
 
 
 def fill_index(index, length):
