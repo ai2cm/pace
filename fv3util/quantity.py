@@ -1,4 +1,4 @@
-from typing import Tuple, Iterable
+from typing import Tuple, Iterable, ModuleType, Dict
 import dataclasses
 import numpy as np
 import xarray as xr
@@ -17,18 +17,26 @@ __all__ = ['Quantity', 'QuantityMetadata']
 @dataclasses.dataclass
 class QuantityMetadata:
     origin: Tuple[int, ...]
+    "the start of the computational domain"
     extent: Tuple[int, ...]
+    "the shape of the computational domain"
     dims: Tuple[str, ...]
+    "names of each dimension"
     units: str
+    "units of the quantity"
     data_type: type
+    "ndarray-like type used to store the data"
     dtype: type
+    "dtype of the data in the ndarray-like object"
 
     @property
-    def dim_lengths(self):
+    def dim_lengths(self) -> Dict[str, int]:
+        """mapping of dimension names to their lengths"""
         return dict(zip(self.dims, self.extent))
 
     @property
-    def np(self):
+    def np(self) -> ModuleType:
+        """numpy-like module used to interact with the data"""
         if issubclass(self.data_type, np.ndarray):
             return np
         elif issubclass(self.data_type, cupy.ndarray):
@@ -114,7 +122,17 @@ class Quantity:
             f"    extent={self.extent}\n)"
         )
 
-    def sel(self, **kwargs):
+    def sel(self, **kwargs: (slice, int)) -> np.ndarray:
+        """Convenience method to perform indexing on `view` using dimension names
+        without knowing dimension order.
+        
+        Args:
+            **kwargs: slice/index to retrieve for a given dimension name
+
+        Returns:
+            view_selection: an ndarray-like selection of the given indices
+                on `self.view`
+        """
         return self.view[tuple(kwargs.get(dim, slice(None, None)) for dim in self.dims)]
 
     @classmethod
@@ -122,41 +140,41 @@ class Quantity:
         raise NotImplementedError()
 
     @property
-    def metadata(self):
+    def metadata(self) -> QuantityMetadata:
         return self._metadata
 
     @property
-    def units(self):
+    def units(self) -> str:
         return self.metadata.units
 
     @property
-    def attrs(self):
+    def attrs(self) -> dict:
         return dict(**self._attrs, units=self._metadata.units)
 
     @property
-    def dims(self):
+    def dims(self) -> Tuple[str, ...]:
         return self.metadata.dims
     
     @property
-    def values(self):
+    def values(self) -> np.ndarray:
         return_array = np.asarray(self._data)
         return_array.flags.writeable = False
         return return_array
     
     @property
-    def view(self):
+    def view(self) -> np.ndarray:
         return self._compute_domain_view
 
     @property
-    def data(self):
+    def data(self) -> np.ndarray:
         return self._data
 
     @property
-    def origin(self):
+    def origin(self) -> Tuple[int, ...]:
         return self.metadata.origin
     
     @property
-    def extent(self):
+    def extent(self) -> Tuple[int, ...]:
         return self.metadata.extent
     
     @property
@@ -164,7 +182,7 @@ class Quantity:
         raise NotImplementedError()
 
     @property
-    def data_array(self):
+    def data_array(self) -> xr.DataArray:
         return xr.DataArray(
             self.view[:],
             dims=self.dims,
@@ -172,7 +190,7 @@ class Quantity:
         )
 
     @property
-    def np(self):
+    def np(self) -> ModuleType:
         return self.metadata.np
 
 
