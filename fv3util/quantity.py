@@ -1,4 +1,5 @@
-from typing import Tuple, Iterable, ModuleType, Dict
+from typing import Tuple, Iterable, Dict
+from types import ModuleType
 import dataclasses
 import numpy as np
 import xarray as xr
