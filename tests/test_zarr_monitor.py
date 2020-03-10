@@ -7,7 +7,7 @@ import xarray as xr
 import copy
 import fv3util
 import logging
-from utils import DummyComm
+from fv3util.testing import DummyComm
 
 
 logger = logging.getLogger('test_zarr_monitor')

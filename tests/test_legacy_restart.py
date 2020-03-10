@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import fv3util
 import fv3util._legacy_restart
-from utils import DummyComm
+from fv3util.testing import DummyComm
 
 TEST_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 DATA_DIRECTORY = os.path.join(TEST_DIRECTORY, "data")

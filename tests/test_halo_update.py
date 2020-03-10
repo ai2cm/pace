@@ -1,6 +1,5 @@
 import pytest
 import fv3util
-import utils
 import numpy as np
 
 
@@ -142,7 +141,7 @@ def communicator_list(cube_partitioner):
     for rank in range(cube_partitioner.total_ranks):
         return_list.append(
             fv3util.CubedSphereCommunicator(
-                comm=utils.DummyComm(
+                comm=fv3util.testing.DummyComm(
                     rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
                 ),
                 partitioner=cube_partitioner,

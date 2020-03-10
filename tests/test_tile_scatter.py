@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from utils import DummyComm
+from fv3util.testing import DummyComm
 import fv3util
 
 

@@ -1,9 +1,7 @@
 import pytest
 import fv3util
 import fv3util.partitioner
-import xarray as xr
 import numpy as np
-from utils import DummyComm
 
 
 rank_list = []

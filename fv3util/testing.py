@@ -1,7 +1,7 @@
 import logging
 
 
-logger = logging.getLogger('fv3util-tests')
+logger = logging.getLogger('fv3util')
 
 
 class DummyComm:
