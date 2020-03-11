@@ -31,19 +31,32 @@ def main_al(q: sd, al: sd):
 
 
 @gtscript.stencil(backend=utils.exec_backend, externals={"c1": c1, "c2": c2, "c3": c3})
-def al_y_edge(q: sd, dya: sd, al: sd):
+def al_y_edge_0(q: sd, dya: sd, al: sd):
     with computation(PARALLEL), interval(0, None):
-        al = c1 * q[-2, 0, 0] + c2 * q[-1, 0, 0] + c3 * q
-        al[1, 0, 0] = 0.5 * (
-            ((2.0 * dya + dya[-1, 0, 0]) * q - dya * q[-1, 0, 0])
-            / (dya[-1, 0, 0] + dya)
-            + (
-                (2.0 * dya[1, 0, 0] + dya[2, 0, 0]) * q[1, 0, 0]
-                - dya[1, 0, 0] * q[2, 0, 0]
+        al[0, 0, 0] = c1 * q[-2, 0, 0] + c2 * q[-1, 0, 0] + c3 * q
+
+
+@gtscript.stencil(backend=utils.exec_backend, externals={"c1": c1, "c2": c2, "c3": c3})
+def al_y_edge_1(q: sd, dya: sd, al: sd):
+    with computation(PARALLEL), interval(0, None):
+        al[0, 0, 0] = 0.5 * (
+            (
+                (2.0 * dya[-1, 0, 0] + dya[-2, 0, 0]) * q[-1, 0, 0]
+                - dya[-1, 0, 0] * q[-2, 0, 0]
             )
-            / (dya[1, 0, 0] + dya[2, 0, 0])
+            / (dya[-2, 0, 0] + dya[-1, 0, 0])
+            + (
+                (2.0 * dya[0, 0, 0] + dya[1, 0, 0]) * q[0, 0, 0]
+                - dya[0, 0, 0] * q[1, 0, 0]
+            )
+            / (dya[0, 0, 0] + dya[1, 0, 0])
         )
-        al[2, 0, 0] = c3 * q[1, 0, 0] + c2 * q[2, 0, 0] + c1 * q[3, 0, 0]
+
+
+@gtscript.stencil(backend=utils.exec_backend, externals={"c1": c1, "c2": c2, "c3": c3})
+def al_y_edge_2(q: sd, dya: sd, al: sd):
+    with computation(PARALLEL), interval(0, None):
+        al[0, 0, 0] = c3 * q[-1, 0, 0] + c2 * q[0, 0, 0] + c1 * q[1, 0, 0]
 
 
 @gtscript.function
@@ -96,6 +109,7 @@ def get_flux(q: sd, c: sd, al: sd, flux: sd, *, mord: int):
 def compute_al(q, dxa, iord, is1, ie3, jfirst, jlast):
     dimensions = q.shape
     al = utils.make_storage_from_shape(dimensions, origin)
+    domain_y = (1, dimensions[1], dimensions[2])
     if iord < 8:
         main_al(
             q,
@@ -105,21 +119,13 @@ def compute_al(q, dxa, iord, is1, ie3, jfirst, jlast):
         )
         if not grid().nested and spec.namelist["grid_type"] < 3:
             if grid().west_edge:
-                al_y_edge(
-                    q,
-                    dxa,
-                    al,
-                    origin=(grid().is_ - 1, 0, 0),
-                    domain=(1, dimensions[1], dimensions[2]),
-                )
+                al_y_edge_0(q, dxa, al, origin=(grid().is_ - 1, 0, 0), domain=domain_y)
+                al_y_edge_1(q, dxa, al, origin=(grid().is_, 0, 0), domain=domain_y)
+                al_y_edge_2(q, dxa, al, origin=(grid().is_ + 1, 0, 0), domain=domain_y)
             if grid().east_edge:
-                al_y_edge(
-                    q,
-                    dxa,
-                    al,
-                    origin=(grid().ie, 0, 0),
-                    domain=(1, dimensions[1], dimensions[2]),
-                )
+                al_y_edge_0(q, dxa, al, origin=(grid().ie, 0, 0), domain=domain_y)
+                al_y_edge_1(q, dxa, al, origin=(grid().ie + 1, 0, 0), domain=domain_y)
+                al_y_edge_2(q, dxa, al, origin=(grid().ie + 2, 0, 0), domain=domain_y)
     return al
 
 
