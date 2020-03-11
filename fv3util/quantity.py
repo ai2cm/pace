@@ -185,6 +185,8 @@ class Quantity:
 
     @classmethod
     def from_storage(cls, gt4py_storage, dims, units):
+        if gt4py is None:
+            raise ImportError('could not import gt4py')
         raise NotImplementedError()
 
     @property
@@ -233,7 +235,12 @@ class Quantity:
     
     @property
     def storage(self):
-        raise NotImplementedError()
+        if gt4py is None:
+            raise ImportError('could not import gt4py')
+        if isinstance(self.data, np.ndarray):
+            return gt4py.storage.from_array(self.data, backend='numpy', default_origin=self.origin, shape=self.extent)
+        else:
+            raise NotImplementedError()
 
     @property
     def data_array(self) -> xr.DataArray:
