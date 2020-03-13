@@ -20,18 +20,18 @@ jobs:
       - run:
           name: "gcloud auth"
           command: |
-            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS 
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
       - run:
           name: "Pull Submodules"
           command: |
             git submodule update --init --recursive
       - gcp-gcr/gcr-auth
-      - run: 
+      - run:
           name: "Build containers, run tests"
           command: |
             PULL=False make tests
-      
-      - run: 
+
+      - run:
           name: "Push new image"
           command: |
             docker push $BUILD_IMAGE
@@ -47,7 +47,7 @@ jobs:
           command: |
             echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
       - gcp-gcr/gcr-auth
-      - run: 
+      - run:
           name: "Run tests"
           command: |
             make tests
@@ -63,11 +63,11 @@ jobs:
           command: |
             echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
       - gcp-gcr/gcr-auth
-      - run: 
+      - run:
           name: "Run tests"
           command: |
-            TEST_ARGS="--exec_backend=dawn:gtmc --data_backend=gtmc" make tests
-     
+            TEST_ARGS="--backend=dawn:gtmc" make tests
+
 workflows:
   version: 2
   build:
@@ -94,5 +94,3 @@ workflows:
                 - master
     jobs:
       - just_run_dawn_tests
-
-          

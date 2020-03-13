@@ -13,7 +13,7 @@ class BaseStencil:
         self.main_stencil = gtscript.stencil(
             definition=self.main_defs,
             name=self.__class__.__name__,
-            backend=utils.exec_backend,
+            backend=utils.backend,
         )
 
     def args(self):

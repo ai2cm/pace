@@ -7,44 +7,44 @@ sd = utils.sd
 origin = utils.origin
 
 # Vorticity field computation
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.backend, rebuild=True)
 def copy_vc_values(vort: sd, vc: sd, va: sd):
     with computation(PARALLEL), interval(...):
         vort[0, 0, 0] = vc if va > 0.0 else vc[0, 1, 0]
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.backend, rebuild=True)
 def update_vorticity_edge_values(vort: sd, va: sd, u: sd, sin: sd, cos: sd):
     with computation(PARALLEL), interval(...):
         vort[0, 0, 0] = vort * sin + u * cos if va > 0.0 else vort
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.backend, rebuild=True)
 def update_vorticity_outer_edge_values(vort: sd, va: sd, u: sd, sin: sd, cos: sd):
     with computation(PARALLEL), interval(...):
         vort[0, 0, 0] = vort * sin + u[0, 1, 0] * cos if va <= 0.0 else vort
 
 
 # Kinetic energy field computations
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.backend, rebuild=True)
 def copy_uc_values(ke: sd, uc: sd, ua: sd):
     with computation(PARALLEL), interval(...):
         ke[0, 0, 0] = uc if ua > 0.0 else uc[1, 0, 0]
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.backend, rebuild=True)
 def update_kinetic_energy(ke: sd, vort: sd, ua: sd, va: sd, dt2: float):
     with computation(PARALLEL), interval(...):
         ke[0, 0, 0] = 0.5 * dt2 * (ua * ke + va * vort)
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.backend, rebuild=True)
 def update_ke_edge_values(ke: sd, ua: sd, v: sd, sin: sd, cos: sd):
     with computation(PARALLEL), interval(...):
         ke[0, 0, 0] = ke * sin + v * cos if ua > 0.0 else ke
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.backend, rebuild=True)
 def update_ke_outer_edge_values(ke: sd, ua: sd, v: sd, sin: sd, cos: sd):
     with computation(PARALLEL), interval(...):
         ke[0, 0, 0] = ke * sin + v[1, 0, 0] * cos if ua <= 0.0 else ke

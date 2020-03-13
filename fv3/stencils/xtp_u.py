@@ -19,7 +19,7 @@ origin = (0, 0, 0)
 halo = utils.halo
 
 
-@gtscript.stencil(backend=utils.exec_backend)
+@gtscript.stencil(backend=utils.backend)
 def get_flux_u_stencil_old(q: sd, c: sd, al: sd, rdx: sd, flux: sd, mord: int):
     with computation(PARALLEL), interval(...):
         bl, br, b0, tmp = flux_intermediates(q, al, mord)
@@ -29,7 +29,7 @@ def get_flux_u_stencil_old(q: sd, c: sd, al: sd, rdx: sd, flux: sd, mord: int):
         flux = final_flux(c, q, fx0, tmp)  # noqa
 
 
-@gtscript.stencil(backend=utils.exec_backend)
+@gtscript.stencil(backend=utils.backend)
 def get_flux_u_stencil(
     q: sd, c: sd, al: sd, rdx: sd, bl: sd, br: sd, flux: sd, mord: int
 ):
@@ -43,7 +43,7 @@ def get_flux_u_stencil(
         flux = final_flux(c, q, fx0, tmp)  # noqa
 
 
-@gtscript.stencil(backend=utils.exec_backend)
+@gtscript.stencil(backend=utils.backend)
 def br_bl_main(q: sd, al: sd, bl: sd, br: sd):
     with computation(PARALLEL), interval(...):
         # TODO: add [0, 0, 0] when gt4py bug is fixed
@@ -51,7 +51,7 @@ def br_bl_main(q: sd, al: sd, bl: sd, br: sd):
         br = get_br(al=al, q=q)  # noqa
 
 
-@gtscript.stencil(backend=utils.exec_backend)
+@gtscript.stencil(backend=utils.backend)
 def br_bl_corner(br: sd, bl: sd):
     with computation(PARALLEL), interval(...):
         bl = 0

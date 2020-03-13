@@ -155,16 +155,6 @@ def backend(pytestconfig):
 
 
 @pytest.fixture()
-def data_backend(pytestconfig):
-    return pytestconfig.getoption("data_backend")
-
-
-@pytest.fixture()
-def exec_backend(pytestconfig):
-    return pytestconfig.getoption("exec_backend")
-
-
-@pytest.fixture()
 def which_modules(pytestconfig):
     return pytestconfig.getoption("which_modules").split(",")
 
@@ -303,14 +293,7 @@ def process_savepoint(serializer, sp, args):
 
 
 def test_serialized_savepoints(
-    which_modules,
-    skip_modules,
-    print_failures,
-    failure_stride,
-    data_path,
-    exec_backend,
-    data_backend,
-    backend,
+    which_modules, skip_modules, print_failures, failure_stride, data_path, backend,
 ):
     args = {
         "which_modules": which_modules,
@@ -321,12 +304,7 @@ def test_serialized_savepoints(
         "serialized_grid": None,
         "testcount": 0,
     }
-    if backend != "numpy":
-        utils.exec_backend = backend
-        utils.data_backend = backend
-    else:
-        utils.exec_backend = exec_backend
-        utils.data_backend = data_backend
+    utils.backend = backend
     for rank in range(6):
         serializer = ser.Serializer(
             ser.OpenModeKind.Read, data_path, "Generator_rank" + str(rank)

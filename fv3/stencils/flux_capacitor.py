@@ -6,7 +6,7 @@ from gt4py.gtscript import computation, interval, PARALLEL
 sd = utils.sd
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=True)
+@gtscript.stencil(backend=utils.backend, rebuild=True)
 def flux_capacitor(
     cx: sd, cy: sd, xflux: sd, yflux: sd, crx_adv: sd, cry_adv: sd, fx: sd, fy: sd
 ):

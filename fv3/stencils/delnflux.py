@@ -9,14 +9,14 @@ from gt4py.gtscript import computation, interval, PARALLEL
 sd = utils.sd
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def fx2_order(q: sd, del6_v: sd, fx2: sd, order: int):
     with computation(PARALLEL), interval(...):
         fx2[0, 0, 0] = del6_v * (q[-1, 0, 0] - q)
         fx2[0, 0, 0] = -1.0 * fx2 if order > 1 else fx2
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def fy2_order(q: sd, del6_u: sd, fy2: sd, order: int):
     with computation(PARALLEL), interval(...):
         fy2[0, 0, 0] = del6_u * (q[0, -1, 0] - q)
@@ -24,7 +24,7 @@ def fy2_order(q: sd, del6_u: sd, fy2: sd, order: int):
 
 
 # WARNING: untested
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def fx2_firstorder_use_sg(q: sd, sin_sg1: sd, sin_sg3: sd, dy: sd, rdxc: sd, fx2: sd):
     with computation(PARALLEL), interval(...):
         fx2[0, 0, 0] = (
@@ -33,7 +33,7 @@ def fx2_firstorder_use_sg(q: sd, sin_sg1: sd, sin_sg3: sd, dy: sd, rdxc: sd, fx2
 
 
 # WARNING: untested
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def fy2_firstorder_use_sg(q: sd, sin_sg2: sd, sin_sg4: sd, dx: sd, rdyc: sd, fy2: sd):
     with computation(PARALLEL), interval(...):
         fy2[0, 0, 0] = (
@@ -41,39 +41,39 @@ def fy2_firstorder_use_sg(q: sd, sin_sg2: sd, sin_sg4: sd, dx: sd, rdyc: sd, fy2
         )
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def d2_highorder(fx2: sd, fy2: sd, rarea: sd, d2: sd):
     with computation(PARALLEL), interval(...):
         d2[0, 0, 0] = (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def d2_damp(q: sd, d2: sd, damp: float):
     with computation(PARALLEL), interval(...):
         d2[0, 0, 0] = damp * q
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def add_diffusive(fx: sd, fx2: sd, fy: sd, fy2: sd):
     with computation(PARALLEL), interval(...):
         fx[0, 0, 0] = fx + fx2
         fy[0, 0, 0] = fy + fy2
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def diffusive_damp(fx: sd, fx2: sd, fy: sd, fy2: sd, mass: sd, damp: float):
     with computation(PARALLEL), interval(...):
         fx[0, 0, 0] = fx + 0.5 * damp * (mass[-1, 0, 0] + mass) * fx2
         fy[0, 0, 0] = fy + 0.5 * damp * (mass[0, -1, 0] + mass) * fy2
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def diffusive_damp_x(fx: sd, fx2: sd, mass: sd, damp: float):
     with computation(PARALLEL), interval(...):
         fx = fx + 0.5 * damp * (mass[-1, 0, 0] + mass) * fx2
 
 
-@gtscript.stencil(backend=utils.exec_backend, rebuild=utils.rebuild)
+@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
 def diffusive_damp_y(fy: sd, fy2: sd, mass: sd, damp: float):
     with computation(PARALLEL), interval(...):
         fy[0, 0, 0] = fy + 0.5 * damp * (mass[0, -1, 0] + mass) * fy2

@@ -13,7 +13,7 @@ class TranslateFortranData2Py:
         self.max_error = 1e-14
         self.grid = grid
         self.maxshape = grid.domain_shape_buffer_1cell()
-        self.data_backend = utils.data_backend
+        self.backend = utils.backend
         self.ordered_input_vars = None
         self.compute_func = None
 
@@ -32,7 +32,7 @@ class TranslateFortranData2Py:
             jstart,
             kstart,
             origin=(istart, jstart, kstart),
-            backend=self.data_backend,
+            backend=self.backend,
         )
 
     def storage_vars(self):
@@ -48,7 +48,7 @@ class TranslateFortranData2Py:
         return data_vars + parameters
 
     #[data[key] for parent_key in ['data_vars', 'parameters'] for key in self.in_vars[parent_key]]
-  
+
     def make_storage_data_input_vars(self, inputs, storage_vars=None):
         from fv3._config import grid
         if storage_vars is None:
@@ -62,7 +62,7 @@ class TranslateFortranData2Py:
             if type(inputs[p]) == np.int64:
                 storage[p] = int(storage[p])
         return storage
-    
+
     """
 
     def get_index_from_info(self, varinfo, index_name, initial_index):
@@ -172,7 +172,7 @@ class TranslateGrid:
                 np.squeeze(data3d[:, :, s]),
                 shape,
                 origin=(0, 0, 0),
-                backend=utils.data_backend,
+                backend=utils.backend,
             )
 
     def make_grid_storage(self, pygrid):
@@ -198,7 +198,7 @@ class TranslateGrid:
                     origin=(istart, jstart, 0),
                     istart=istart,
                     jstart=jstart,
-                    backend=utils.data_backend,
+                    backend=utils.backend,
                 )
 
     def python_grid(self):
