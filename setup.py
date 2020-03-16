@@ -5,6 +5,9 @@ setup_requirements = []
 requirements = [
     'xarray>=0.13.0',
     'numpy>=0.15.0',
+    'fsspec>=0.6.0',
+    'zarr>=2.3.2',
+
 ]
 
 test_requirements = []

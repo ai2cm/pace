@@ -6,7 +6,7 @@ from . import constants
 
 @dataclasses.dataclass
 class Boundary:
-    """Maps part of a subtile domain to another rank which shares ghost cells"""
+    """Maps part of a subtile domain to another rank which shares halo points"""
     from_rank: int
     to_rank: int
     n_clockwise_rotations: int
@@ -100,30 +100,30 @@ def _get_boundary_slice(dims, origin, extent, boundary_type, n_points, interior)
 
 
 DIM_TO_START_EDGE = {
-    constants.X_DIM: (constants.LEFT,),
-    constants.X_INTERFACE_DIM: (constants.LEFT,),
-    constants.Y_DIM: (constants.BOTTOM,),
-    constants.Y_INTERFACE_DIM: (constants.BOTTOM,),
+    constants.X_DIM: (constants.WEST,),
+    constants.X_INTERFACE_DIM: (constants.WEST,),
+    constants.Y_DIM: (constants.SOUTH,),
+    constants.Y_INTERFACE_DIM: (constants.SOUTH,),
 }
 
 DIM_TO_END_EDGE = {
-    constants.X_DIM: (constants.RIGHT,),
-    constants.X_INTERFACE_DIM: (constants.RIGHT,),
-    constants.Y_DIM: (constants.TOP,),
-    constants.Y_INTERFACE_DIM: (constants.TOP,),
+    constants.X_DIM: (constants.EAST,),
+    constants.X_INTERFACE_DIM: (constants.EAST,),
+    constants.Y_DIM: (constants.NORTH,),
+    constants.Y_INTERFACE_DIM: (constants.NORTH,),
 }
 
 
 DIM_TO_START_CORNERS = {
-    constants.X_DIM: (constants.TOP_LEFT, constants.BOTTOM_LEFT),
-    constants.X_INTERFACE_DIM: (constants.TOP_LEFT, constants.BOTTOM_LEFT),
-    constants.Y_DIM: (constants.BOTTOM_LEFT, constants.BOTTOM_RIGHT),
-    constants.Y_INTERFACE_DIM: (constants.BOTTOM_LEFT, constants.BOTTOM_RIGHT),
+    constants.X_DIM: (constants.NORTHWEST, constants.SOUTHWEST),
+    constants.X_INTERFACE_DIM: (constants.NORTHWEST, constants.SOUTHWEST),
+    constants.Y_DIM: (constants.SOUTHWEST, constants.SOUTHEAST),
+    constants.Y_INTERFACE_DIM: (constants.SOUTHWEST, constants.SOUTHEAST),
 }
 
 DIM_TO_END_CORNERS = {
-    constants.X_DIM: (constants.TOP_RIGHT, constants.BOTTOM_RIGHT),
-    constants.X_INTERFACE_DIM: (constants.TOP_RIGHT, constants.BOTTOM_RIGHT),
-    constants.Y_DIM: (constants.TOP_LEFT, constants.TOP_RIGHT),
-    constants.Y_INTERFACE_DIM: (constants.TOP_LEFT, constants.TOP_RIGHT),
+    constants.X_DIM: (constants.NORTHEAST, constants.SOUTHEAST),
+    constants.X_INTERFACE_DIM: (constants.NORTHEAST, constants.SOUTHEAST),
+    constants.Y_DIM: (constants.NORTHWEST, constants.NORTHEAST),
+    constants.Y_INTERFACE_DIM: (constants.NORTHWEST, constants.NORTHEAST),
 }

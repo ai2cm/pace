@@ -27,7 +27,7 @@ def open_restart(
 
     Args:
         dirname: location of restart files, can be local or remote
-        partitioner: domain decomposition for this rank
+        communicator: object for communication over the cubed sphere
         label: prepended string on the restart files to load
         only_names (optional): list of standard names to load
 
@@ -44,42 +44,12 @@ def open_restart(
         if filesystem.is_file(coupler_res_filename):
             with filesystem.open(coupler_res_filename, 'r') as f:
                 state['time'] = io.get_current_date_from_coupler_res(f)
-    state = broadcast_state(state, communicator)
+    state = communicator.tile.scatter_state(state)
     return state
 
 
 def get_coupler_res_filename(dirname, label):
     return os.path.join(dirname, prepend_label(COUPLER_RES_NAME, label))
-
-
-def broadcast_state(state, communicator):
-
-    def broadcast_master():
-        name_list = list(state.keys())
-        while 'time' in name_list:
-            name_list.remove('time')
-        name_list = communicator.tile.comm.bcast(name_list, root=constants.MASTER_RANK)
-        array_list = [state[name] for name in name_list]
-        metadata_list = bcast_metadata_list(communicator.tile.comm, array_list)
-        for name, array, metadata in zip(name_list, array_list, metadata_list):
-            state[name] = communicator.tile.scatter(metadata, send_quantity=array)
-        communicator.tile.comm.bcast(state.get('time', None), root=constants.MASTER_RANK)
-
-    def broadcast_client():
-        name_list = communicator.tile.comm.bcast(None, root=constants.MASTER_RANK)
-        metadata_list = bcast_metadata_list(communicator.tile.comm, None)
-        for name, metadata in zip(name_list, metadata_list):
-            state[name] = communicator.tile.scatter(metadata)
-        time = communicator.tile.comm.bcast(None, root=constants.MASTER_RANK)
-        if time is not None:
-            state['time'] = time
-
-    if communicator.tile.rank == constants.MASTER_RANK:
-        broadcast_master()
-    else:
-        broadcast_client()
-
-    return state
 
 
 def restart_files(dirname, tile_index, label):

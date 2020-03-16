@@ -17,13 +17,13 @@ def test_boundary_data_1_by_1_array_1_halo():
         origin=(1, 1),
         extent=(1, 1)
     )
-    for side in ('left', 'right', 'top', 'bottom'):
+    for side in (fv3util.WEST, fv3util.EAST, fv3util.NORTH, fv3util.SOUTH):
         assert boundary_data(quantity, side, n_points=1, interior=True) == quantity.data[1, 1]
 
-    assert boundary_data(quantity, 'top', n_points=1, interior=False) == quantity.data[2, 1]
-    assert boundary_data(quantity, 'bottom', n_points=1, interior=False) == quantity.data[0, 1]
-    assert boundary_data(quantity, 'left', n_points=1, interior=False) == quantity.data[1, 0]
-    assert boundary_data(quantity, 'right', n_points=1, interior=False) == quantity.data[1, 2]
+    assert boundary_data(quantity, fv3util.NORTH, n_points=1, interior=False) == quantity.data[2, 1]
+    assert boundary_data(quantity, fv3util.SOUTH, n_points=1, interior=False) == quantity.data[0, 1]
+    assert boundary_data(quantity, fv3util.WEST, n_points=1, interior=False) == quantity.data[1, 0]
+    assert boundary_data(quantity, fv3util.EAST, n_points=1, interior=False) == quantity.data[1, 2]
 
 
 def test_boundary_data_2_by_2_array_2_halo():
@@ -34,57 +34,57 @@ def test_boundary_data_2_by_2_array_2_halo():
         origin=(2, 2),
         extent=(2, 2)
     )
-    for side in ('left', 'right', 'top', 'bottom'):
+    for side in (fv3util.WEST, fv3util.EAST, fv3util.NORTH, fv3util.SOUTH):
         np.testing.assert_array_equal(
             boundary_data(quantity, side, n_points=2, interior=True),
             quantity.data[2:4, 2:4]
         )
 
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'top', n_points=1, interior=True),
+        boundary_data(quantity, fv3util.NORTH, n_points=1, interior=True),
         quantity.data[3:4, 2:4]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'top', n_points=1, interior=False),
+        boundary_data(quantity, fv3util.NORTH, n_points=1, interior=False),
         quantity.data[4:5, 2:4]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'top', n_points=2, interior=False),
+        boundary_data(quantity, fv3util.NORTH, n_points=2, interior=False),
         quantity.data[4:6, 2:4]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'bottom', n_points=1, interior=True),
+        boundary_data(quantity, fv3util.SOUTH, n_points=1, interior=True),
         quantity.data[2:3, 2:4]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'bottom', n_points=1, interior=False),
+        boundary_data(quantity, fv3util.SOUTH, n_points=1, interior=False),
         quantity.data[1:2, 2:4]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'bottom', n_points=2, interior=False),
+        boundary_data(quantity, fv3util.SOUTH, n_points=2, interior=False),
         quantity.data[0:2, 2:4]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'left', n_points=2, interior=False),
+        boundary_data(quantity, fv3util.WEST, n_points=2, interior=False),
         quantity.data[2:4, 0:2]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'left', n_points=1, interior=True),
+        boundary_data(quantity, fv3util.WEST, n_points=1, interior=True),
         quantity.data[2:4, 2:3]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'left', n_points=1, interior=False),
+        boundary_data(quantity, fv3util.WEST, n_points=1, interior=False),
         quantity.data[2:4, 1:2]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'right', n_points=1, interior=False),
+        boundary_data(quantity, fv3util.EAST, n_points=1, interior=False),
         quantity.data[2:4, 4:5]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'right', n_points=2, interior=False),
+        boundary_data(quantity, fv3util.EAST, n_points=2, interior=False),
         quantity.data[2:4, 4:6]
     )
     quantity.np.testing.assert_array_equal(
-        boundary_data(quantity, 'right', n_points=1, interior=True),
+        boundary_data(quantity, fv3util.EAST, n_points=1, interior=True),
         quantity.data[2:4, 3:4]
     )
