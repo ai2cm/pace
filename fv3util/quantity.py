@@ -183,11 +183,6 @@ class Quantity:
         """
         return self.view[tuple(kwargs.get(dim, slice(None, None)) for dim in self.dims)]
 
-    @classmethod
-    def from_storage(cls, gt4py_storage, extent, dims, units):
-        origin = gt4py_storage.default_origin
-        return Quantity(gt4py_storage, dims, units, origin=origin, extent=extent)
-
     @property
     def metadata(self) -> QuantityMetadata:
         return self._metadata
