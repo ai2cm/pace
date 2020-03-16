@@ -1,11 +1,16 @@
-from typing import Union, Tuple
+from typing import Union, Tuple, Dict
+import dataclasses
 import logging
 import zarr
 import numpy as np
 import xarray as xr
-from ._domain import CubedSpherePartitioner, ArrayMetadata
+from . import constants, utils
+from .partitioner import CubedSpherePartitioner, subtile_slice
+from .quantity import Quantity, QuantityMetadata
 
 logger = logging.getLogger("fv3util")
+
+__all__ = ['ZarrMonitor']
 
 
 class DummyComm:
@@ -80,7 +85,7 @@ class ZarrMonitor:
         else:
             self._check_writers(state)
 
-    def store(self, state):
+    def store(self, state: dict) -> None:
         """Append the model state dictionary to the zarr store.
 
         Requires the state contain the same quantities with the same metadata as the
@@ -89,8 +94,8 @@ class ZarrMonitor:
         is "time" which is stored with dimensions [time].
         """
         self._ensure_writers_are_consistent(state)
-        for name, array in state.items():
-            self._writers[name].append(array)
+        for name, quantity in state.items():
+            self._writers[name].append(quantity)
 
 
 class _ZarrVariableWriter:
@@ -104,74 +109,89 @@ class _ZarrVariableWriter:
         
         self._prepend_shape = (1, 6)
         self._prepend_chunks = (1, 1)
-        self._y_chunks = partitioner.layout[0]
-        self._x_chunks = partitioner.layout[1]
+        self._y_chunks = partitioner.tile.layout[0]
+        self._x_chunks = partitioner.tile.layout[1]
         self._PREPEND_DIMS = ("time", "tile")
         self._partitioner = partitioner
+
+    @property
+    def partitioner(self):
+        return self._partitioner
 
     @property
     def rank(self):
         return self.comm.Get_rank()
 
-    def _init_zarr(self, array):
+    def _init_zarr(self, quantity):
         if self.rank == 0:
-            self._init_zarr_root(array)
-            self.array.attrs.update(self._get_attrs(array))
+            self._init_zarr_root(quantity)
+            self.array.attrs.update(self._get_attrs(quantity))
         self.sync_array()
 
-    def _init_zarr_root(self, array):
-        shape = self._get_tile_shape(array)
-        chunks = self._prepend_chunks + self.array_chunks(array.shape)
+    def _init_zarr_root(self, quantity):
+        tile_shape = self._get_tile_shape(quantity)
+        chunks = self._prepend_chunks + self.array_chunks(tile_shape, quantity.dims)
         self.array = self.group.create_dataset(
-            self.name, shape=shape, dtype=array.dtype, chunks=chunks
+            self.name, shape=tile_shape, dtype=quantity.data.dtype, chunks=chunks
         )
 
-    def _get_tile_shape(self, array):
-        return_value = (self.i_time + 1, 6) + self._partitioner.tile_extent(ArrayMetadata.from_data_array(array))
+    def _get_tile_shape(self, quantity):
+        return_value = (self.i_time + 1, 6) + self._partitioner.tile.tile_extent(
+            quantity.metadata
+        )
         return return_value
 
-    def array_chunks(self, array_shape):
-        if len(array_shape) == 2:
-            chunks = (
-                self._partitioner.ny // self._y_chunks,
-                self._partitioner.nx // self._x_chunks)
-        elif len(array_shape) == 3:
-            chunks = (
-                array_shape[0],
-                self._partitioner.ny // self._x_chunks,
-                self._partitioner.nx // self._x_chunks)
-        else:
-            raise NotImplementedError()
-        return chunks
+    def array_chunks(self, tile_array_shape, array_dims):
+        layout_by_dims = utils.list_by_dims(array_dims, self._partitioner.layout, 1)
+        chunks_list = []
+        for extent, dim, n_ranks in zip(tile_array_shape, array_dims, layout_by_dims):
+            if dim in constants.INTERFACE_DIMS:
+                chunks_list.append(int((extent - 1) // n_ranks))
+            else:
+                chunks_list.append(int(extent // n_ranks))
+        return tuple(chunks_list)
 
     def sync_array(self):
         self.array = self.comm.bcast(self.array, root=0)
 
-    def append(self, array):
+    def append(self, quantity):
         # can't just use zarr_array.append because we only want to
         # extend the dimension once, from the master rank
         if self.array is None:
-            self._init_zarr(array)
+            self._init_zarr(quantity)
 
         if self.i_time >= self.array.shape[0] and self.rank == 0:
-            new_shape = self._get_tile_shape(array)
+            new_shape = self._get_tile_shape(quantity)
             self.array.resize(*new_shape)
-            self._ensure_compatible_attrs(array)
+            self._ensure_compatible_attrs(quantity)
         self.sync_array()
-        target_slice = (self.i_time, self._partitioner.tile(self.rank)) + self._partitioner.subtile_slice(
-            self.rank, ArrayMetadata.from_data_array(array))
-        subtile_slice = _get_subtile_slice(target_slice)
-        logger.debug(f'assigning data from subtile slice {subtile_slice} to target slice {target_slice}')
-        self.array[target_slice] = np.asarray(array[subtile_slice])
+
+        target_slice = (
+            self.i_time,
+            self._partitioner.tile_index(
+                self.rank
+            )
+        ) + subtile_slice(
+            quantity.dims,
+            self.array.shape[2:],  # remove time and tile dimensions
+            self.partitioner.layout,
+            self.partitioner.tile.subtile_index(self.rank),
+            overlap=False
+        )
+
+        from_slice = _get_from_slice(target_slice)
+        logger.debug(f'assigning data from subtile slice {from_slice} to target slice {target_slice}')
+        self.array[target_slice] = quantity.view[from_slice]
         self.i_time += 1
 
-    def _get_attrs(self, array):
-        attrs = {'_ARRAY_DIMENSIONS': list(self._PREPEND_DIMS + array.dims)}
-        attrs.update(array.attrs)
-        return attrs
+    def _get_attrs(self, quantity):
+        return {
+            '_ARRAY_DIMENSIONS': list(self._PREPEND_DIMS + quantity.dims),
+            **quantity.attrs
+        }
 
-    def _ensure_compatible_attrs(self, new_array):
-        new_attrs = self._get_attrs(new_array)
+    def _ensure_compatible_attrs(self, new_quantity):
+        new_attrs = self._get_attrs(new_quantity)
         if dict(self.array.attrs) != new_attrs:
             raise ValueError(
                 f"value for {self.name} with attrs {new_attrs} "
@@ -179,7 +199,7 @@ class _ZarrVariableWriter:
             )
 
 
-def _get_subtile_slice(target_slice):
+def _get_from_slice(target_slice):
     return_list = []
     for entry in target_slice:
         if isinstance(entry, slice):
