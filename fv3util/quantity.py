@@ -184,10 +184,9 @@ class Quantity:
         return self.view[tuple(kwargs.get(dim, slice(None, None)) for dim in self.dims)]
 
     @classmethod
-    def from_storage(cls, gt4py_storage, dims, units):
-        if gt4py is None:
-            raise ImportError('could not import gt4py')
-        raise NotImplementedError()
+    def from_storage(cls, gt4py_storage, extent, dims, units):
+        origin = gt4py_storage.default_origin
+        return Quantity(gt4py_storage, dims, units, origin=origin, extent=extent)
 
     @property
     def metadata(self) -> QuantityMetadata:
@@ -232,15 +231,6 @@ class Quantity:
     def extent(self) -> Tuple[int, ...]:
         """the shape of the computational domain"""
         return self.metadata.extent
-    
-    @property
-    def storage(self):
-        if gt4py is None:
-            raise ImportError('could not import gt4py')
-        if isinstance(self.data, np.ndarray):
-            return gt4py.storage.from_array(self.data, backend='numpy', default_origin=self.origin, shape=self.extent)
-        else:
-            raise NotImplementedError()
 
     @property
     def data_array(self) -> xr.DataArray:

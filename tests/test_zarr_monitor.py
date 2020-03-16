@@ -1,6 +1,5 @@
 import tempfile
 import zarr
-import numpy as np
 from datetime import datetime, timedelta
 import pytest
 import xarray as xr
@@ -62,13 +61,13 @@ def cube_partitioner(tile_partitioner):
 
 
 @pytest.fixture(params=["empty", "one_var_2d", "one_var_3d", "two_vars"])
-def base_state(request, nz, ny, nx):
+def base_state(request, nz, ny, nx, numpy):
     if request.param == 'empty':
         return {}
     elif request.param == 'one_var_2d':
         return {
             'var1': fv3util.Quantity(
-                np.ones([ny, nx]),
+                numpy.ones([ny, nx]),
                 dims=('y', 'x'),
                 units="m",
             )
@@ -76,7 +75,7 @@ def base_state(request, nz, ny, nx):
     elif request.param == 'one_var_3d':
         return {
             'var1': fv3util.Quantity(
-                np.ones([nz, ny, nx]),
+                numpy.ones([nz, ny, nx]),
                 dims=('z', 'y', 'x'),
                 units="m",
             )
@@ -84,12 +83,12 @@ def base_state(request, nz, ny, nx):
     elif request.param == 'two_vars':
         return {
             'var1': fv3util.Quantity(
-                np.ones([ny, nx]),
+                numpy.ones([ny, nx]),
                 dims=('y', 'x'),
                 units="m",
             ),
             'var2': fv3util.Quantity(
-                np.ones([nz, ny, nx]),
+                numpy.ones([nz, ny, nx]),
                 dims=('z', 'y', 'x'),
                 units="degK",
             )
@@ -99,23 +98,23 @@ def base_state(request, nz, ny, nx):
 
 
 @pytest.fixture
-def state_list(base_state, n_times, start_time, time_step):
+def state_list(base_state, n_times, start_time, time_step, numpy):
     state_list = []
     for i in range(n_times):
         new_state = copy.deepcopy(base_state)
         for name in set(new_state.keys()).difference(['time']):
-            new_state[name].view[:] = np.random.randn(*new_state[name].extent)
+            new_state[name].view[:] = numpy.random.randn(*new_state[name].extent)
         state_list.append(new_state)
         new_state["time"] = start_time + i * time_step
     return state_list
 
 
-def test_monitor_file_store(state_list, cube_partitioner):
+def test_monitor_file_store(state_list, cube_partitioner, numpy):
     with tempfile.TemporaryDirectory(suffix='.zarr') as tempdir:
         monitor = fv3util.ZarrMonitor(tempdir, cube_partitioner)
         for state in state_list:
             monitor.store(state)
-        validate_store(state_list, tempdir)
+        validate_store(state_list, tempdir, numpy)
         validate_xarray_can_open(tempdir)
 
 
@@ -124,7 +123,7 @@ def validate_xarray_can_open(dirname):
     xr.open_zarr(dirname)
 
 
-def validate_store(states, filename):
+def validate_store(states, filename, numpy):
     nt = len(states)
 
     def assert_no_missing_names(store, state):
@@ -148,10 +147,10 @@ def validate_store(states, filename):
     def validate_array_values(name, array):
         if name == 'time':
             for i, s in enumerate(states):
-                assert array[i] == np.datetime64(s['time'])
+                assert array[i] == numpy.datetime64(s['time'])
         else:
             for i, s in enumerate(states):
-                np.testing.assert_array_equal(array[i, 0, :], s[name].values)
+                numpy.testing.assert_array_equal(array[i, 0, :], s[name].values)
 
     store = zarr.open_group(filename, mode='r')
     assert_no_missing_names(store, states[0])  # states in test all have same names defined
@@ -175,7 +174,7 @@ def validate_store(states, filename):
     ]
 )
 def test_monitor_file_store_multi_rank_state(
-        layout, nt, tmpdir_factory, shape, ny_rank_add, nx_rank_add, dims):
+        layout, nt, tmpdir_factory, shape, ny_rank_add, nx_rank_add, dims, numpy):
     units = "m"
     tmpdir = tmpdir_factory.mktemp("data.zarr")
     nz, ny, nx = shape
@@ -201,7 +200,7 @@ def test_monitor_file_store_multi_rank_state(
             state = {
                 'time': time + i_t * timestep,
                 'var1': fv3util.Quantity(
-                    np.ones([nz, ny_rank, nx_rank]),
+                    numpy.ones([nz, ny_rank, nx_rank]),
                     dims=dims,
                     units=units,
                 )
@@ -210,5 +209,5 @@ def test_monitor_file_store_multi_rank_state(
     group = zarr.hierarchy.open_group(store=store, mode='r')
     assert 'var1' in group
     assert group['var1'].shape == (nt, 6, nz, ny + ny_rank_add, nx + nx_rank_add)
-    np.testing.assert_array_equal(group['var1'], 1.0)
+    numpy.testing.assert_array_equal(group['var1'], 1.0)
 

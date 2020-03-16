@@ -1,11 +1,5 @@
 import pytest
 import fv3util
-import numpy as np
-
-
-@pytest.fixture
-def numpy():
-    return np
 
 
 @pytest.fixture
@@ -18,6 +12,7 @@ def layout(request):
     return request.param
 
 
+@pytest.fixture
 def nx_rank(n_points):
     return max(3, n_points * 2 - 1)
 

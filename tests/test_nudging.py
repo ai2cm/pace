@@ -5,11 +5,6 @@ import numpy as np
 import copy
 
 
-@pytest.fixture
-def numpy():
-    return np
-
-
 @pytest.fixture(params=["empty", "one_var", "two_vars"])
 def state(request, numpy):
     if request.param == 'empty':

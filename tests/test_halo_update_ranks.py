@@ -1,12 +1,5 @@
-import copy
 import pytest
 import fv3util
-import numpy as np
-
-
-@pytest.fixture
-def numpy():
-    return np
 
 
 @pytest.fixture
@@ -108,7 +101,7 @@ def communicator_list(cube_partitioner):
 def rank_quantity_list(total_ranks, numpy, dtype):
     quantity_list = []
     for rank in range(total_ranks):
-        data = numpy.ones((3, 3), dtype=dtype) * np.nan
+        data = numpy.ones((3, 3), dtype=dtype) * numpy.nan
         data[1, 1] = rank
         quantity = fv3util.Quantity(
             data,
@@ -131,15 +124,15 @@ def test_correct_rank_layout(
     for rank, quantity in enumerate(rank_quantity_list):
         with subtests.test(rank=rank):
             if rank % 2 == 0:
-                target_data = np.array([
-                    [np.nan, rank - 1, np.nan],
+                target_data = numpy.array([
+                    [numpy.nan, rank - 1, numpy.nan],
                     [rank - 2, rank, rank + 1],
-                    [np.nan, rank + 2, np.nan]
+                    [numpy.nan, rank + 2, numpy.nan]
                 ]) % 6
             else:
-                target_data = np.array([
-                    [np.nan, rank - 2, np.nan],
+                target_data = numpy.array([
+                    [numpy.nan, rank - 2, numpy.nan],
                     [rank - 1, rank, rank + 2],
-                    [np.nan, rank + 1, np.nan]
+                    [numpy.nan, rank + 1, numpy.nan]
                 ]) % 6
             numpy.testing.assert_array_equal(quantity.data, target_data)

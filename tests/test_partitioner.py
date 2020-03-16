@@ -19,11 +19,6 @@ for ranks_per_tile in (1, 4):
             rank += 1
 
 
-@pytest.fixture
-def numpy():
-    return np
-
-
 @pytest.mark.parametrize(
     "rank, total_ranks, tile_index",
     zip(rank_list, total_rank_list, tile_index_list)
