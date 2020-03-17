@@ -1,5 +1,26 @@
 [
     {
+        "name": "air_temperature_after_physics",
+        "fortran_name": "gt0",
+        "units": "K",
+        "container": "Stateout",
+        "dims": ["z", "y", "x"]
+    },
+    {
+        "name": "northward_wind_after_physics",
+        "fortran_name": "gv0",
+        "units": "m/s",
+        "container": "Stateout",
+        "dims": ["z", "y", "x"]
+    },
+    {
+        "name": "eastward_wind_after_physics",
+        "fortran_name": "gu0",
+        "units": "m/s",
+        "container": "Stateout",
+        "dims": ["z", "y", "x"]
+    },
+    {
         "name": "mean_cos_zenith_angle",
         "fortran_name": "coszen",
         "units": "",
