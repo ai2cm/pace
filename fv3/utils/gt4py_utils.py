@@ -15,15 +15,6 @@ origin = (halo, halo, 0)
 # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
 
 
-def _data_backend(backend: str):
-    """Convert gt4py backend to a data backend for calls to """
-    prefix = "dawn:"
-    if backend.startswith(prefix):
-        return backend[len(prefix) :]
-    else:
-        return backend
-
-
 def make_storage_data(
     array, full_shape, istart=0, jstart=0, kstart=0, origin=origin, backend=backend
 ):
@@ -47,10 +38,7 @@ def make_storage_data(
             istart : istart + isize, jstart : jstart + jsize, kstart : kstart + ksize
         ] = array
         return gt.storage.from_array(
-            data=full_np_arr,
-            backend=_data_backend(backend),
-            default_origin=origin,
-            shape=full_shape,
+            data=full_np_arr, backend=backend, default_origin=origin, shape=full_shape,
         )
 
 
@@ -64,10 +52,7 @@ def make_storage_data_from_2d(
     # full_np_arr_3d = np.lib.stride_tricks.as_strided(full_np_arr_2d, shape=full_shape, strides=(*full_np_arr_2d.strides, 0))
     full_np_arr_3d = np.repeat(full_np_arr_2d[:, :, np.newaxis], full_shape[2], axis=2)
     return gt.storage.from_array(
-        data=full_np_arr_3d,
-        backend=_data_backend(backend),
-        default_origin=origin,
-        shape=full_shape,
+        data=full_np_arr_3d, backend=backend, default_origin=origin, shape=full_shape,
     )
 
 
@@ -90,16 +75,13 @@ def make_storage_data_from_1d(
         y = np.repeat(full_1d[:, np.newaxis], full_shape[1], axis=1)
         r = np.repeat(y[:, :, np.newaxis], full_shape[2], axis=2)
     return gt.storage.from_array(
-        data=r, backend=_data_backend(backend), default_origin=origin, shape=full_shape
+        data=r, backend=backend, default_origin=origin, shape=full_shape
     )
 
 
 def make_storage_from_shape(shape, origin, backend=backend):
     return gt.storage.from_array(
-        data=np.zeros(shape),
-        backend=_data_backend(backend),
-        default_origin=origin,
-        shape=shape,
+        data=np.zeros(shape), backend=backend, default_origin=origin, shape=shape,
     )
 
 
