@@ -183,10 +183,6 @@ class Quantity:
         """
         return self.view[tuple(kwargs.get(dim, slice(None, None)) for dim in self.dims)]
 
-    @classmethod
-    def from_storage(cls, gt4py_storage, dims, units):
-        raise NotImplementedError()
-
     @property
     def metadata(self) -> QuantityMetadata:
         return self._metadata
@@ -230,10 +226,6 @@ class Quantity:
     def extent(self) -> Tuple[int, ...]:
         """the shape of the computational domain"""
         return self.metadata.extent
-    
-    @property
-    def storage(self):
-        raise NotImplementedError()
 
     @property
     def data_array(self) -> xr.DataArray:

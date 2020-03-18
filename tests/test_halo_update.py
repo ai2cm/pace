@@ -1,11 +1,5 @@
 import pytest
 import fv3util
-import numpy as np
-
-
-@pytest.fixture
-def numpy():
-    return np
 
 
 @pytest.fixture
@@ -219,7 +213,6 @@ def depth_quantity_list(total_ranks, dims, units, origin, extent, shape, numpy, 
     return_list = []
     for rank in range(total_ranks):
         data = numpy.zeros(shape, dtype=dtype) + numpy.nan
-
         for n_inside in range(n_points - 1, -1, -1):
             for i, dim in enumerate(dims):
                 if dim in fv3util.HORIZONTAL_DIMS:

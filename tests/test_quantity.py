@@ -5,9 +5,12 @@ import fv3util.quantity
 
 
 @pytest.fixture(params=['empty', 'one', 'five'])
-def extent_1d(request):
+def extent_1d(request, backend, n_halo):
     if request.param == 'empty':
-        return 0
+        if 'gt4py' in backend and n_halo == 0:
+            pytest.skip('gt4py does not support length-zero dimensions')
+        else:
+            return 0
     elif request.param == 'one':
         return 1
     elif request.param == 'five':
@@ -27,11 +30,6 @@ def n_dims(request):
 @pytest.fixture
 def extent(extent_1d, n_dims):
     return (extent_1d,) * n_dims
-
-
-@pytest.fixture
-def numpy():
-    return np
 
 
 @pytest.fixture
