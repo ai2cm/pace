@@ -13,13 +13,13 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
 
 FROM fv3ser-environment as fv3ser-install
-RUN pip install scikit-build
-RUN git clone https://github.com/MeteoSwiss-APN/dawn.git /usr/src/dawn
-RUN pip install /usr/src/dawn/dawn
-RUN git clone --depth 1 -b new-gt4py https://github.com/twicki/gt4py.git /usr/src/gt4py
-RUN pip install -e /usr/src/gt4py
-RUN cd /usr/src/gt4py && python -m gt4py.gt_src_manager install
-RUN pip install pytest==5.2.2 && pip install f90nml==1.1.0
+RUN pip install --no-cache-dir scikit-build && \
+    git clone https://github.com/MeteoSwiss-APN/dawn.git /usr/src/dawn && \
+    pip install --no-cache-dir /usr/src/dawn/dawn
+RUN git clone --depth 1 -b new-gt4py https://github.com/twicki/gt4py.git /usr/src/gt4py && \
+    pip install --no-cache-dir -e /usr/src/gt4py && \
+    cd /usr/src/gt4py && python -m gt4py.gt_src_manager install
+#RUN pip install --no-cache-dir pytest==5.2.2 f90nml==1.1.0 pytest-subtests==0.3.0 pytest-xdist
 # If we update to the latest gt4py, maybe 
 # RUN python -m gt4py.gt_src_manager install
 

@@ -7,7 +7,7 @@ sd = utils.sd
 origin = utils.origin
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=True)
+@utils.stencil()
 def heat_diss(
     fx2: sd,
     fy2: sd,

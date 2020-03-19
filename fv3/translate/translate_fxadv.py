@@ -4,8 +4,7 @@ import fv3.stencils.fxadv as fxadv
 
 class TranslateFxAdv(TranslateFortranData2Py):
     def __init__(self, grid):
-        origin = fxadv.origin
-        super().__init__(grid, origin)
+        super().__init__(grid)
         utinfo = grid.x3d_domain_dict()
         utinfo["serialname"] = "ut"
         vtinfo = grid.y3d_domain_dict()

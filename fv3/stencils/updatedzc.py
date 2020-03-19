@@ -199,14 +199,14 @@ def xy_flux(gz_x, gz_y, xfx, yfx):
 #              npx, npy, gridstruct%sw_corner, gridstruct%se_corner, &
 #              gridstruct%ne_corner, gridstruct%nw_corner, bd, gridstruct%grid_type)
 """
-@gtscript.stencil(backend=utils.backend, rebuild=True)
+@utils.stencil
 def p_weighted_average_top_stencil(vel:sd, dp0:sd, xfx:sd):
    with computation(PARALLEL):
         with interval(0, 1):
             ratio = dp0 / (dp0 + dp0[0, 0, 1])
             xfx = vel + (vel - vel[0,0,1]) * ratio
 
-@gtscript.stencil(backend=utils.backend, rebuild=True)
+@utils.stencil
 def update_dz_c(dp_ref: sd, zs: sd, area: sd, ut: sd, vt: sd,
                 gz: sd, gz_x: sd, gz_y: sd, ws3: sd, *,
                 dt: float):
@@ -216,7 +216,7 @@ def update_dz_c(dp_ref: sd, zs: sd, area: sd, ut: sd, vt: sd,
 """
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=True)
+@utils.stencil()
 def update_dz_c(
     dp_ref: sd,
     zs: sd,

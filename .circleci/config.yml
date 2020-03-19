@@ -17,6 +17,9 @@ jobs:
       BUILD_IMAGE: us.gcr.io/vcm-ml/fv3ser-install:latest
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "80:d3:ce:22:ea:9e:bf:df:1c:8d:64:e2:c1:8e:2c:44"
       - run:
           name: "gcloud auth"
           command: |
@@ -42,10 +45,17 @@ jobs:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "80:d3:ce:22:ea:9e:bf:df:1c:8d:64:e2:c1:8e:2c:44"
       - run:
           name: "gcloud auth"
           command: |
             echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+      - run:
+          name: "Pull Submodules"
+          command: |
+            git submodule update --init --recursive
       - gcp-gcr/gcr-auth
       - run:
           name: "Run tests"
@@ -58,6 +68,13 @@ jobs:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "80:d3:ce:22:ea:9e:bf:df:1c:8d:64:e2:c1:8e:2c:44"
+      - run:
+          name: "Pull Submodules"
+          command: |
+            git submodule update --init --recursive
       - run:
           name: "gcloud auth"
           command: |
@@ -66,7 +83,7 @@ jobs:
       - run:
           name: "Run tests"
           command: |
-            TEST_ARGS="--backend=dawn:gtmc" make tests
+            TEST_ARGS="--backend=dawn:gtmc -v -s -rsx" make tests
 
 workflows:
   version: 2

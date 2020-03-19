@@ -7,19 +7,19 @@ from gt4py.gtscript import computation, interval, PARALLEL
 sd = utils.sd
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
+@utils.stencil()
 def main_vb(vc: sd, uc: sd, cosa: sd, rsina: sd, vb: sd, dt5: float):
     with computation(PARALLEL), interval(...):
         vb[0, 0, 0] = dt5 * (vc[-1, 0, 0] + vc - (uc[0, -1, 0] + uc) * cosa) * rsina
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
+@utils.stencil()
 def y_edge(vt: sd, vb: sd, dt5: float):
     with computation(PARALLEL), interval(...):
         vb[0, 0, 0] = dt5 * (vt[-1, 0, 0] + vt)
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
+@utils.stencil()
 def x_edge(vt: sd, vb: sd, dt4: float):
     with computation(PARALLEL), interval(...):
         vb[0, 0, 0] = dt4 * (-vt[-2, 0, 0] + 3.0 * (vt[-1, 0, 0] + vt) - vt[1, 0, 0])

@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-from fv3.utils.gt4py_utils import sd, backend
+import fv3.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
 import fv3._config as spec
 from gt4py.gtscript import computation, interval, PARALLEL
 
+sd = utils.sd
 
-@gtscript.stencil(backend=backend)
+
+@utils.stencil()
 def vorticity(u: sd, dx: sd, vt: sd):
     with computation(PARALLEL), interval(...):
         vt[0, 0, 0] = u * dx
 
 
-@gtscript.stencil(backend=backend)
+@utils.stencil()
 def volume_mean_relative_vorticity(ut: sd, vt: sd, rarea: sd, wk: sd):
     with computation(PARALLEL), interval(...):
         wk[0, 0, 0] = rarea * (vt - vt[0, 1, 0] - ut + ut[1, 0, 0])

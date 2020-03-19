@@ -5,7 +5,10 @@ import gt4py as gt
 import gt4py.gtscript as gtscript
 import copy as cp
 import math
+import logging
+import functools
 
+logger = logging.getLogger("fv3ser")
 backend = "numpy"  # Options: numpy, gtmc, gtx86, gtcuda, debug, dawn:gtmc
 rebuild = True
 _dtype = np.float_
@@ -13,6 +16,33 @@ sd = gtscript.Field[_dtype]
 halo = 3
 origin = (halo, halo, 0)
 # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
+
+
+def stencil(**stencil_kwargs):
+    def decorator(func):
+        stencils = {}
+
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            key = (backend, rebuild)
+            if key not in stencils:
+                stencils[key] = gtscript.stencil(
+                    backend=backend, rebuild=rebuild, **stencil_kwargs
+                )(func)
+            return stencils[key](*args, **kwargs)
+
+        return wrapped
+
+    return decorator
+
+
+def _data_backend(backend: str):
+    """Convert gt4py backend to a data backend for calls to """
+    prefix = "dawn:"
+    if backend.startswith(prefix):
+        return backend[len(prefix) :]
+    else:
+        return backend
 
 
 def make_storage_data(
@@ -127,7 +157,7 @@ def k_subset_run(func, data, splitvars, ki, outputs, grid_data, grid):
 
 def collect_results(data, results, outputs, ki):
     outnames = list(outputs.keys())
-    print("Computing results for k indices:", ki[:-1])
+    logger.debug("Computing results for k indices: {}".format(ki[:-1]))
     for k in outnames:
         if k in data:
             # passing fields with single item in 3rd dimension leads to errors

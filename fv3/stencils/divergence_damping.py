@@ -12,43 +12,43 @@ from gt4py.gtscript import computation, interval, PARALLEL
 sd = utils.sd
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def ptc_main(u: sd, va: sd, cosa_v: sd, sina_v: sd, dyc: sd, ptc: sd):
     with computation(PARALLEL), interval(...):
         ptc[0, 0, 0] = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def ptc_y_edge(u: sd, vc: sd, dyc: sd, sin_sg4: sd, sin_sg2: sd, ptc: sd):
     with computation(PARALLEL), interval(...):
         ptc[0, 0, 0] = u * dyc * sin_sg4[0, -1, 0] if vc > 0 else u * dyc * sin_sg2
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def vorticity_main(v: sd, ua: sd, cosa_u: sd, sina_u: sd, dxc: sd, vort: sd):
     with computation(PARALLEL), interval(...):
         vort[0, 0, 0] = (v - 0.5 * (ua[-1, 0, 0] + ua) * cosa_u) * dxc * sina_u
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def vorticity_x_edge(v: sd, uc: sd, dxc: sd, sin_sg3: sd, sin_sg1: sd, vort: sd):
     with computation(PARALLEL), interval(...):
         vort[0, 0, 0] = v * dxc * sin_sg3[-1, 0, 0] if uc > 0 else v * dxc * sin_sg1
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def delpc_main(vort: sd, ptc: sd, delpc: sd):
     with computation(PARALLEL), interval(...):
         delpc[0, 0, 0] = vort[0, -1, 0] - vort + ptc[-1, 0, 0] - ptc
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def corner_south_remove_extra_term(vort: sd, delpc: sd):
     with computation(PARALLEL), interval(...):
         delpc[0, 0, 0] = delpc - vort[0, -1, 0]
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def corner_north_remove_extra_term(vort: sd, delpc: sd):
     with computation(PARALLEL), interval(...):
         delpc[0, 0, 0] = delpc + vort
@@ -63,7 +63,7 @@ def damp_tmp(q, da_min_c, d2_bg, dddmp):
     return damp
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def damping_nord0_stencil(
     rarea_c: sd,
     delpc: sd,
@@ -83,7 +83,7 @@ def damping_nord0_stencil(
         ke[0, 0, 0] = ke + vort
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def damping_nord_highorder_stencil(
     vort: sd,
     ke: sd,
@@ -100,19 +100,19 @@ def damping_nord_highorder_stencil(
         ke = ke + vort
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def vc_from_divg(divg_d: sd, divg_u: sd, vc: sd):
     with computation(PARALLEL), interval(...):
         vc[0, 0, 0] = (divg_d[1, 0, 0] - divg_d) * divg_u
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def uc_from_divg(divg_d: sd, divg_v: sd, uc: sd):
     with computation(PARALLEL), interval(...):
         uc[0, 0, 0] = (divg_d[0, 1, 0] - divg_d) * divg_v
 
 
-@gtscript.stencil(backend=utils.backend)
+@utils.stencil()
 def redo_divg_d(uc: sd, vc: sd, divg_d: sd):
     with computation(PARALLEL), interval(...):
         divg_d[0, 0, 0] = uc[0, -1, 0] - uc + vc[-1, 0, 0] - vc

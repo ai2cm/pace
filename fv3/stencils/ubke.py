@@ -8,19 +8,19 @@ sd = utils.sd
 
 
 # TODO: merge with vbke?
-@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
+@utils.stencil()
 def main_ub(uc: sd, vc: sd, cosa: sd, rsina: sd, ub: sd, *, dt5: float):
     with computation(PARALLEL), interval(...):
         ub[0, 0, 0] = dt5 * (uc[0, -1, 0] + uc - (vc[-1, 0, 0] + vc) * cosa) * rsina
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
+@utils.stencil()
 def x_edge(ut: sd, ub: sd, *, dt5: float):
     with computation(PARALLEL), interval(...):
         ub[0, 0, 0] = dt5 * (ut[0, -1, 0] + ut)
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
+@utils.stencil()
 def y_edge(ut: sd, ub: sd, *, dt4: float):
     with computation(PARALLEL), interval(...):
         ub[0, 0, 0] = dt4 * (-ut[0, -2, 0] + 3.0 * (ut[0, -1, 0] + ut) - ut[0, 1, 0])

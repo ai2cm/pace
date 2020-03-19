@@ -50,7 +50,7 @@ def p_grad_c_fn(uc_in, vc_in, delpc, pkc, gz, rdxc, rdyc, hydrostatic, dt2):
     return uc_in, vc_in
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=True)
+@utils.stencil()
 def p_grad_c(
     uc_in: sd,
     vc_in: sd,
@@ -76,7 +76,7 @@ def p_grad_c(
         )
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=True)
+@utils.stencil()
 def p_grad_c_ustencil(
     uc_in: sd, delpc: sd, pkc: sd, gz: sd, rdxc: sd, *, hydrostatic: int, dt2: float
 ):
@@ -86,7 +86,7 @@ def p_grad_c_ustencil(
         )  # TODO: add [0, 0, 0] when gt4py bug is fixed
 
 
-@gtscript.stencil(backend=utils.backend, rebuild=True)
+@utils.stencil()
 def p_grad_c_vstencil(
     vc_in: sd, delpc: sd, pkc: sd, gz: sd, rdyc: sd, hydrostatic: int, dt2: float
 ):

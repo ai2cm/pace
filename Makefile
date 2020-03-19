@@ -3,9 +3,10 @@ CWD=$(shell pwd)
 #<some large conceptual version change>.<serialization statement change>.<hotfix>
 FORTRAN_VERSION=0.1.1
 
-
+TEST_ARGS ?=-v -s -rsx
 PULL ?=True
 VOLUMES ?=
+MOUNTS ?=
 TEST_DATA_HOST ?=$(CWD)/test_data
 FV3_IMAGE ?=$(GCR_URL)/fv3ser:latest
 
@@ -13,6 +14,7 @@ FV3_INSTALL_TARGET=fv3ser-install
 FV3_INSTALL_IMAGE=$(GCR_URL)/$(FV3_INSTALL_TARGET):latest
 
 FORTRAN_DIR=$(CWD)/external/fv3gfs-fortran
+FV3UTIL_DIR=$(CWD)/external/fv3gfs-python/external/fv3util
 COMPILED_IMAGE=$(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-serialize
 SERIALBOX_TARGET=fv3gfs-environment-serialbox
 SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
@@ -31,14 +33,13 @@ REMOTE_TAGS="$(shell gcloud container images list-tags --format='get(tags)' $(TE
 PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
 PYTHON_INIT_FILES = $(shell git ls-files | grep '__init__.py')
 
-build_environment_serialize:
+build_environment_serialbox:
 	if [ ! -d $(FORTRAN_DIR)/FV3 ]; then git submodule update --init --recursive ;fi
-	cd $(FORTRAN_DIR) && \
 	DOCKERFILE=$(FORTRAN_DIR)/docker/Dockerfile \
 	ENVIRONMENT_TARGET=$(SERIALBOX_TARGET) \
-	$(MAKE) build_environment
+	$(MAKE) -C $(FORTRAN_DIR) build_environment
 
-build_environment: build_environment_serialize
+build_environment: build_environment_serialbox
 	DOCKER_BUILDKIT=1 docker build \
 		--build-arg serialbox_image=$(SERIALBOX_IMAGE) \
 		-f docker/Dockerfile.build_environment \
@@ -48,6 +49,7 @@ build_environment: build_environment_serialize
 
 build:
 	if [ $(PULL) == True ]; then $(MAKE) pull_environment; else $(MAKE) build_environment; fi
+	if [ ! -d $(FV3UTIL_DIR) ]; then git submodule update --init --recursive ;fi
 	docker build --build-arg build_image=$(FV3_INSTALL_IMAGE) -f docker/Dockerfile -t $(FV3_IMAGE) .
 
 pull_environment:
@@ -118,10 +120,12 @@ tests_host:
 	$(MAKE) extract_test_data
 	$(MAKE) run_tests_host_data
 
+dev_tests:
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_container
 
 test_base:
-	docker run --rm $(VOLUMES) \
-	-it $(RUNTEST_IMAGE) pytest -v -s  --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} /fv3/test
+	docker run --rm $(VOLUMES) $(MOUNTS) \
+	-it $(RUNTEST_IMAGE) pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} /fv3/test
 
 run_tests_container:
 	VOLUMES='--volumes-from $(TEST_DATA_RUN_CONTAINER)' \
