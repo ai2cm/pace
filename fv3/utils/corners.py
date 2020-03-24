@@ -34,6 +34,55 @@ def fill_4corners(q, direction, grid):
         raise ValueError("Direction not recognized. Specify either x or y")
 
 
+def fill2_4corners(q1, q2, direction, grid):
+    if direction == "x":
+        for k in range(q1.shape[2]):
+            if grid.sw_corner:
+                q1[grid.is_ - 2, grid.js - 1, k] = q1[grid.is_ - 1, grid.js + 1, k]
+                q1[grid.is_ - 1, grid.js - 1, k] = q1[grid.is_ - 1, grid.js, k]
+                q2[grid.is_ - 2, grid.js - 1, k] = q2[grid.is_ - 1, grid.js + 1, k]
+                q2[grid.is_ - 1, grid.js - 1, k] = q2[grid.is_ - 1, grid.js, k]
+            if grid.se_corner:
+                q1[grid.ie + 2, grid.js - 1, k] = q1[grid.ie + 1, grid.js + 1, k]
+                q1[grid.ie + 1, grid.js - 1, k] = q1[grid.ie + 1, grid.js, k]
+                q2[grid.ie + 2, grid.js - 1, k] = q2[grid.ie + 1, grid.js + 1, k]
+                q2[grid.ie + 1, grid.js - 1, k] = q2[grid.ie + 1, grid.js, k]
+            if grid.nw_corner:
+                q1[grid.is_ - 1, grid.je + 1, k] = q1[grid.is_ - 1, grid.je, k]
+                q1[grid.is_ - 2, grid.je + 1, k] = q1[grid.is_ - 1, grid.je - 1, k]
+                q2[grid.is_ - 1, grid.je + 1, k] = q2[grid.is_ - 1, grid.je, k]
+                q2[grid.is_ - 2, grid.je + 1, k] = q2[grid.is_ - 1, grid.je - 1, k]
+            if grid.ne_corner:
+                q1[grid.ie + 1, grid.je + 1, k] = q1[grid.ie + 1, grid.je, k]
+                q1[grid.ie + 2, grid.je + 1, k] = q1[grid.ie + 1, grid.je - 1, k]
+                q2[grid.ie + 1, grid.je + 1, k] = q2[grid.ie + 1, grid.je, k]
+                q2[grid.ie + 2, grid.je + 1, k] = q2[grid.ie + 1, grid.je - 1, k]
+    elif direction == "y":
+        for k in range(q1.shape[2]):
+            if grid.sw_corner:
+                q1[grid.is_ - 1, grid.js - 1, k] = q1[grid.is_, grid.js - 1, k]
+                q1[grid.is_ - 1, grid.js - 2, k] = q1[grid.is_ + 1, grid.js - 1, k]
+                q2[grid.is_ - 1, grid.js - 1, k] = q2[grid.is_, grid.js - 1, k]
+                q2[grid.is_ - 1, grid.js - 2, k] = q2[grid.is_ + 1, grid.js - 1, k]
+            if grid.se_corner:
+                q1[grid.ie + 1, grid.js - 1, k] = q1[grid.ie, grid.js - 1, k]
+                q1[grid.ie + 1, grid.js - 2, k] = q1[grid.ie - 1, grid.js - 1, k]
+                q2[grid.ie + 1, grid.js - 1, k] = q2[grid.ie, grid.js - 1, k]
+                q2[grid.ie + 1, grid.js - 2, k] = q2[grid.ie - 1, grid.js - 1, k]
+            if grid.nw_corner:
+                q1[grid.is_ - 1, grid.je + 1, k] = q1[grid.is_, grid.je + 1, k]
+                q1[grid.is_ - 1, grid.je + 2, k] = q1[grid.is_ + 1, grid.je + 1, k]
+                q2[grid.is_ - 1, grid.je + 1, k] = q2[grid.is_, grid.je + 1, k]
+                q2[grid.is_ - 1, grid.je + 2, k] = q2[grid.is_ + 1, grid.je + 1, k]
+            if grid.ne_corner:
+                q1[grid.ie + 1, grid.je + 1, k] = q1[grid.ie, grid.je + 1, k]
+                q1[grid.ie + 1, grid.je + 2, k] = q1[grid.ie - 1, grid.je + 1, k]
+                q2[grid.ie + 1, grid.je + 1, k] = q2[grid.ie, grid.je + 1, k]
+                q2[grid.ie + 1, grid.je + 2, k] = q2[grid.ie - 1, grid.je + 1, k]
+    else:
+        raise ValueError("Direction not recognized. Specify either x or y")
+
+
 def copy_sw_corner(q, direction, grid):
     for j in range(grid.js - grid.halo, grid.js):
         for i in range(grid.is_ - grid.halo, grid.is_):
