@@ -137,6 +137,8 @@ class TranslateFortranData2Py:
     def column_namelist_vals(self, varname, inputs):
         info = self.in_vars["data_vars"][varname]
         name = info["serialname"] if "serialname" in info else varname
+        if len(inputs[name].shape) == 1:
+            return inputs[name]
         return [i for i in inputs[name][0, 0, :]]
 
 

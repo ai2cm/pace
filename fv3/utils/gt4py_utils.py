@@ -136,48 +136,55 @@ def k_slice(data_dict, ki):
     return new_dict
 
 
-def compute_column_split(func, data, column_split, split_varname, outputs, grid):
+def compute_column_split(
+    func, data, column_split, split_varname, outputs, grid, allz=False
+):
     num_k = grid.npz
     grid_data = cp.deepcopy(grid.data_fields)
     for kval in np.unique(column_split):
         ki = [i for i in range(num_k) if column_split[i] == kval]
-        k_subset_run(func, data, {split_varname: kval}, ki, outputs, grid_data, grid)
+        k_subset_run(
+            func, data, {split_varname: kval}, ki, outputs, grid_data, grid, allz
+        )
     grid.npz = num_k
 
 
-def k_subset_run(func, data, splitvars, ki, outputs, grid_data, grid):
+def k_subset_run(func, data, splitvars, ki, outputs, grid_data, grid, allz=False):
     grid.npz = len(ki)
     grid.slice_data_k(ki)
     d = k_slice(data, ki)
     d.update(splitvars)
     results = func(**d)
-    collect_results(d, results, outputs, ki)
+    collect_results(d, results, outputs, ki, allz)
     grid.add_data(grid_data)
 
 
-def collect_results(data, results, outputs, ki):
+def collect_results(data, results, outputs, ki, allz=False):
     outnames = list(outputs.keys())
+    endz = None if allz else -1
     logger.debug("Computing results for k indices: {}".format(ki[:-1]))
     for k in outnames:
         if k in data:
             # passing fields with single item in 3rd dimension leads to errors
-            outputs[k][:, :, ki[:-1]] = data[k][:, :, :-1]
+            outputs[k][:, :, ki[:endz]] = data[k][:, :, :endz]
             # outnames.remove(k)
         # else:
         #    print(k, 'not in data')
     if results is not None:
         for ri in range(len(results)):
-            outputs[outnames[ri]][:, :, ki[:-1]] = results[ri][:, :, :-1]
+            outputs[outnames[ri]][:, :, ki[:endz]] = results[ri][:, :, :endz]
 
 
-def k_split_run(func, data, k_indices_array, splitvars_values, outputs, grid):
+def k_split_run(
+    func, data, k_indices_array, splitvars_values, outputs, grid, allz=False
+):
     num_k = grid.npz
     grid_data = cp.deepcopy(grid.data_fields)
     for ki in k_indices_array:
         splitvars = {}
         for name, value_array in splitvars_values.items():
             splitvars[name] = value_array[ki[0]]
-        k_subset_run(func, data, splitvars, ki, outputs, grid_data, grid)
+        k_subset_run(func, data, splitvars, ki, outputs, grid_data, grid, allz)
     grid.npz = num_k
 
 

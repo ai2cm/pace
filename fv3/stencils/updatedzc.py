@@ -4,10 +4,11 @@ import gt4py.gtscript as gtscript
 import fv3._config as spec
 import fv3.stencils.copy_stencil as cp
 from gt4py.gtscript import computation, interval, PARALLEL, BACKWARD
+import fv3.utils.global_constants as constants
 
 sd = utils.sd
 origin = (1, 1, 0)
-DZ_MIN = 2.0
+DZ_MIN = constants.DZ_MIN
 
 # @gtscript.stencil(backend=utils.backend)
 # def copy_stencil(q_in: sd, q_out: sd):

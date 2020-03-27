@@ -33,8 +33,8 @@ def k_indices():
     return [[0, 1], [1, 2], [2, 3], list(range(3, grid().npz + 1))]
 
 
-def d_sw_ksplit(func, data, splitvars_values, outputs, grid):
-    utils.k_split_run(func, data, k_indices(), splitvars_values, outputs, grid)
+def d_sw_ksplit(func, data, splitvars_values, outputs, grid, allz=False):
+    utils.k_split_run(func, data, k_indices(), splitvars_values, outputs, grid, allz)
 
 
 @gtscript.function
@@ -311,6 +311,7 @@ def compute(
     # TODO: remove paired with removal of #d_sw belos
     # column_namelist = column_namelist_options(0)
     column_namelist = get_column_namelist()
+
     heat_s = utils.make_storage_from_shape(heat_source.shape, grid().compute_origin())
     diss_e = utils.make_storage_from_shape(heat_source.shape, grid().compute_origin())
     z_rat = utils.make_storage_from_shape(heat_source.shape, grid().default_origin())
