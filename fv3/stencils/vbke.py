@@ -27,10 +27,11 @@ def x_edge(vt: sd, vb: sd, dt4: float):
 
 def compute(uc, vc, vt, vb, dt5, dt4):
     grid = spec.grid
-    js2 = 4 if grid.south_edge else grid.js
-    is2 = 4 if grid.west_edge else grid.is_
-    je1 = grid.npy + 1 if grid.north_edge else grid.je + 1
-    ie1 = grid.npx + 1 if grid.east_edge else grid.ie + 1
+    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    js2 = grid.js + 1 if grid.south_edge else grid.js
+    is2 = grid.is_ + 1 if grid.west_edge else grid.is_
+    je1 = grid.je if grid.north_edge else grid.je + 1
+    ie1 = grid.ie if grid.east_edge else grid.ie + 1
     jdiff = je1 - js2 + 1
     idiff = ie1 - is2 + 1
     if spec.namelist["grid_type"] < 3 and not grid.nested:

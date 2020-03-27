@@ -222,8 +222,8 @@ def update_ut_y_edge(uc, sin_sg1, sin_sg3, ut, dt):
 
 
 def update_ut_x_edge(uc, cosa_u, vt, ut):
-    i1 = max(grid().is_, 5)
-    i2 = min(grid().npx, grid().ie + 1)
+    i1 = grid().is_ + 2 if grid().west_edge else grid().is_
+    i2 = grid().ie - 1 if grid().east_edge else grid().ie + 1
     edge_shape = (i2 - i1 + 1, 2, ut.shape[2])
     if grid().south_edge:
         ut_x_edge(uc, cosa_u, vt, ut, origin=(i1, grid().js - 1, 0), domain=edge_shape)
@@ -256,8 +256,8 @@ def compute_vt(uc_in, vc_in, cosa_v, rsin_v, sin_sg2, sin_sg4, vt_in):
 
 def update_vt_y_edge(vc, cosa_v, ut, vt):
     if grid().west_edge or grid().east_edge:
-        j1 = max(grid().js, grid().halo + 2)
-        j2 = min(grid().je + 1, grid().npy) + 1
+        j1 = grid().js + 2 if grid().south_edge else grid().js
+        j2 = grid().je if grid().north_edge else grid().je + 2
         edge_shape = (2, j2 - j1, ut.shape[2])
         if grid().west_edge:
             vt_y_edge(

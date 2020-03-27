@@ -67,12 +67,12 @@ def to_output_name(savepoint_name):
     return savepoint_name[-3:] + "-Out"
 
 
-def make_grid(grid_savepoint, serializer):
+def make_grid(grid_savepoint, serializer, rank):
     grid_data = {}
     grid_fields = serializer.fields_at_savepoint(grid_savepoint)
     for field in grid_fields:
         grid_data[field] = read_serialized_data(serializer, grid_savepoint, field)
-    return fv3.translate.translate.TranslateGrid(grid_data).python_grid()
+    return fv3.translate.translate.TranslateGrid(grid_data, rank).python_grid()
 
 
 def read_serialized_data(serializer, savepoint, variable):
@@ -82,8 +82,8 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def process_grid_savepoint(serializer, grid_savepoint):
-    grid = make_grid(grid_savepoint, serializer)
+def process_grid_savepoint(serializer, grid_savepoint, rank):
+    grid = make_grid(grid_savepoint, serializer, rank)
     fv3._config.set_grid(grid)
     return grid
 
@@ -153,7 +153,7 @@ def sequential_savepoint_cases(metafunc, data_path):
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = process_grid_savepoint(serializer, grid_savepoint)
+        grid = process_grid_savepoint(serializer, grid_savepoint, rank)
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -189,7 +189,7 @@ def parallel_savepoint_cases(metafunc, data_path):
     for rank in reversed(range(total_ranks)):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid_list.append(process_grid_savepoint(serializer, grid_savepoint))
+        grid_list.append(process_grid_savepoint(serializer, grid_savepoint, rank))
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     for test_name in sorted(list(savepoint_names)):
         input_list = []

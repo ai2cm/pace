@@ -1,8 +1,9 @@
 import fv3.utils.gt4py_utils as utils
 from fv3.utils.grid import Grid
 import numpy as np
-
+import fv3._config
 import logging
+
 
 logger = logging.getLogger("fv3ser")
 
@@ -104,6 +105,7 @@ class TranslateFortranData2Py:
                     d, istart, jstart
                 )
             )
+
             inputs[d] = self.make_storage_data(
                 np.squeeze(inputs[serialname]),
                 istart=istart,
@@ -154,16 +156,20 @@ class TranslateGrid:
     #     |       |
     #     6---2---7
 
-    def __init__(self, inputs):
+    def __init__(self, inputs, rank):
         self.indices = {}
         self.shape_params = {}
         self.data = {}
-        for i in Grid.indices:
-            self.indices[i] = inputs[i] + self.fpy_model_index_offset
-            del inputs[i]
         for s in Grid.shape_params:
             self.shape_params[s] = inputs[s]
             del inputs[s]
+        self.rank = rank
+        self.layout = fv3._config.namelist["layout"]
+        for i, j in Grid.index_pairs:
+            for index in [i, j]:
+                self.indices[index] = inputs[index] + self.fpy_model_index_offset
+                del inputs[index]
+
         self.data = inputs
 
     def make_composite_var_storage(self, varname, data3d, shape):
@@ -183,8 +189,18 @@ class TranslateGrid:
                 del self.data[k]
         for k, axis in TranslateGrid.edge_var_axis.items():
             if k in self.data:
+                edge_offset = pygrid.local_to_global_indices(pygrid.isd, pygrid.jsd)[
+                    axis
+                ]
+                if axis == 0:
+                    edge_offset = pygrid.global_isd
+                    width = pygrid.subtile_width_x
+                else:
+                    edge_offset = pygrid.global_jsd
+                    width = pygrid.subtile_width_y
+                edgeslice = slice(int(edge_offset), int(edge_offset + width + 1))
                 self.data[k] = utils.make_storage_data_from_1d(
-                    self.data[k], shape, kstart=pygrid.halo, axis=axis
+                    self.data[k][edgeslice], shape, kstart=pygrid.halo, axis=axis
                 )
         for k, v in self.data.items():
             if type(v) is np.ndarray:
@@ -205,7 +221,7 @@ class TranslateGrid:
                 )
 
     def python_grid(self):
-        pygrid = Grid(self.indices, self.shape_params)
+        pygrid = Grid(self.indices, self.shape_params, self.rank, self.layout)
         self.make_grid_storage(pygrid)
         pygrid.add_data(self.data)
         return pygrid

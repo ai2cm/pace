@@ -1,21 +1,32 @@
 import fv3.utils.gt4py_utils as utils
 import numpy as np
+import fv3util
 
 
 class Grid:
-    indices = ["is_", "ie", "isd", "ied", "js", "je", "jsd", "jed"]
+    # indices = ["is_", "ie", "isd", "ied", "js", "je", "jsd", "jed"]
+    index_pairs = [("is_", "js"), ("ie", "je"), ("isd", "jsd"), ("ied", "jed")]
     shape_params = ["npz", "npx", "npy"]
     # npx -- number of grid corners on one tile of the domain
     # grid.ie == npx - 1identified east edge in fortran
     # But we need to add the halo - 1 to change this check to 0 based python arrays
     # grid.ie == npx + halo - 2
 
-    def __init__(self, indices, shape_params, data_fields={}):
-        for i in self.indices:
-            setattr(self, i, int(indices[i]))
+    def __init__(self, indices, shape_params, rank, layout, data_fields={}):
+        self.rank = rank
+        self.partitioner = fv3util.TilePartitioner(layout)
+        self.subtile_index = self.partitioner.subtile_index(self.rank)
+        self.layout = layout
         for s in self.shape_params:
             setattr(self, s, int(shape_params[s]))
-
+        self.subtile_width_x = int((self.npx - 1) / self.layout[0])
+        self.subtile_width_y = int((self.npy - 1) / self.layout[1])
+        for ivar, jvar in self.index_pairs:
+            local_i, local_j = self.global_to_local_indices(
+                int(indices[ivar]), int(indices[jvar])
+            )
+            setattr(self, ivar, local_i)
+            setattr(self, jvar, local_j)
         self.nid = int(self.ied - self.isd + 1)
         self.njd = int(self.jed - self.jsd + 1)
         self.nic = int(self.ie - self.is_ + 1)
@@ -26,11 +37,19 @@ class Grid:
         self.ief = self.npx - 1
         self.jsf = 0
         self.jef = self.npy - 1
+        self.global_is, self.global_js = self.local_to_global_indices(self.is_, self.js)
+        self.global_ie, self.global_je = self.local_to_global_indices(self.ie, self.je)
+        self.global_isd, self.global_jsd = self.local_to_global_indices(
+            self.isd, self.jsd
+        )
+        self.global_ied, self.global_jed = self.local_to_global_indices(
+            self.ied, self.jed
+        )
+        self.west_edge = self.global_is == self.halo
+        self.east_edge = self.global_ie == self.npx + self.halo - 2
+        self.south_edge = self.global_js == self.halo
+        self.north_edge = self.global_je == self.npy + self.halo - 2
 
-        self.west_edge = self.is_ == self.halo
-        self.east_edge = self.ie == self.npx + self.halo - 2
-        self.south_edge = self.js == self.halo
-        self.north_edge = self.je == self.npy + self.halo - 2
         self.j_offset = self.js - self.jsd - 1
         self.i_offset = self.is_ - self.isd - 1
         self.sw_corner = self.west_edge and self.south_edge
@@ -39,6 +58,36 @@ class Grid:
         self.ne_corner = self.east_edge and self.north_edge
         self.data_fields = {}
         self.add_data(data_fields)
+
+    def global_to_local_1d(self, global_value, subtile_index, subtile_length):
+        return global_value - subtile_index * subtile_length
+
+    def global_to_local_x(self, i_global):
+        return self.global_to_local_1d(
+            i_global, self.subtile_index[1], self.subtile_width_x
+        )
+
+    def global_to_local_y(self, j_global):
+        return self.global_to_local_1d(
+            j_global, self.subtile_index[0], self.subtile_width_y
+        )
+
+    def global_to_local_indices(self, i_global, j_global):
+        i_local = self.global_to_local_x(i_global)
+        j_local = self.global_to_local_y(j_global)
+        return i_local, j_local
+
+    def local_to_global_1d(self, local_value, subtile_index, subtile_length):
+        return local_value + subtile_index * subtile_length
+
+    def local_to_global_indices(self, i_local, j_local):
+        i_global = self.local_to_global_1d(
+            i_local, self.subtile_index[1], self.subtile_width_x
+        )
+        j_global = self.local_to_global_1d(
+            j_local, self.subtile_index[0], self.subtile_width_y
+        )
+        return i_global, j_global
 
     def add_data(self, data_dict):
         self.data_fields.update(data_dict)

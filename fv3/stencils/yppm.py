@@ -20,7 +20,7 @@ p2 = -1.0 / 12.0
 s11 = 11.0 / 14.0
 s14 = 4.0 / 7.0
 s15 = 3.0 / 14.0
-halo = utils.halo
+
 sd = utils.sd
 origin = (0, 2, 0)
 
@@ -207,8 +207,8 @@ def compute_al(q, dyvar, jord, ifirst, ilast, js1, je3):
 
 
 def compute_flux(q, c, jord, ifirst, ilast):
-    js1 = max(5, grid().js - 1)
-    je3 = min(grid().npy, grid().je + 2)
+    js1 = grid().js + 2 if grid().south_edge else grid().js - 1
+    je3 = grid().je - 1 if grid().north_edge else grid().je + 2
     al = compute_al(q, grid().dya, jord, ifirst, ilast, js1, je3)
     mord = abs(jord)
     flux = utils.make_storage_from_shape(q.shape, origin)

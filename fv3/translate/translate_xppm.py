@@ -23,6 +23,8 @@ class TranslateXPPM(TranslateFortranData2Py):
     def jvars(self, inputs):
         inputs["jfirst"] += TranslateGrid.fpy_model_index_offset
         inputs["jlast"] += TranslateGrid.fpy_model_index_offset
+        inputs["jfirst"] = self.grid.global_to_local_y(inputs["jfirst"])
+        inputs["jlast"] = self.grid.global_to_local_y(inputs["jlast"])
 
     def process_inputs(self, inputs):
         self.jvars(inputs)

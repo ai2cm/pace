@@ -72,16 +72,16 @@ def compute(uc, vc, vort_c):
         )
     if grid.nw_corner:
         update_vorticity_western_corner(
-            vort_c, fy, origin=(grid.is_, grid.npy + 2, 0), domain=grid.corner_domain()
+            vort_c, fy, origin=(grid.is_, grid.je + 1, 0), domain=grid.corner_domain()
         )
     if grid.se_corner:
         update_vorticity_eastern_corner(
-            vort_c, fy, origin=(grid.npx + 2, grid.js, 0), domain=grid.corner_domain()
+            vort_c, fy, origin=(grid.ie + 1, grid.js, 0), domain=grid.corner_domain()
         )
     if grid.ne_corner:
         update_vorticity_eastern_corner(
             vort_c,
             fy,
-            origin=(grid.npx + 2, grid.npy + 2, 0),
+            origin=(grid.ie + 1, grid.je + 1, 0),
             domain=grid.corner_domain(),
         )

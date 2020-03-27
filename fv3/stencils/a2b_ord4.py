@@ -303,8 +303,9 @@ def compute_qout_edges(qin, qout):
 
 def compute_qout_x_edges(qin, qout):
     # qout bounds
-    js2 = max(grid().halo + 1, grid().js)
-    je1 = min(grid().npy + 1, grid().je + 1)
+    # avoid running west/east computation on south/north tile edges, since they'll be overwritten.
+    js2 = grid().js + 1 if grid().south_edge else grid().js
+    je1 = grid().je if grid().north_edge else grid().je + 1
     dj2 = je1 - js2 + 1
     if grid().west_edge:
         qout_x_edge(
@@ -327,8 +328,9 @@ def compute_qout_x_edges(qin, qout):
 
 
 def compute_qout_y_edges(qin, qout):
-    is2 = max(grid().halo + 1, grid().is_)
-    ie1 = min(grid().npx + 1, grid().ie + 1)
+    # avoid running south/north computation on west/east tile edges, since they'll be overwritten.
+    is2 = grid().is_ + 1 if grid().west_edge else grid().is_
+    ie1 = grid().ie if grid().east_edge else grid().ie + 1
     di2 = ie1 - is2 + 1
     if grid().south_edge:
         qout_y_edge(
@@ -353,10 +355,11 @@ def compute_qout_y_edges(qin, qout):
 def compute_qx(qin, qout):
     qx = utils.make_storage_from_shape(qin.shape, origin=(grid().is_, grid().jsd, 0))
     # qx bounds
-    js = max(grid().halo, grid().js - 2)
-    je = min(grid().npy + 1, grid().je + 2)
-    is_ = max(grid().halo + 2, grid().is_)
-    ie = min(grid().npx, grid().ie + 1)
+    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    js = grid().js if grid().south_edge else grid().js - 2
+    je = grid().je if grid().north_edge else grid().je + 2
+    is_ = grid().is_ + 2 if grid().west_edge else grid().is_
+    ie = grid().ie - 1 if grid().east_edge else grid().ie + 1
     dj = je - js + 1
     # qx interior
     ppm_volume_mean_x(
@@ -392,10 +395,11 @@ def compute_qx(qin, qout):
 def compute_qy(qin, qout):
     qy = utils.make_storage_from_shape(qin.shape, origin=(grid().isd, grid().js, 0))
     # qy bounds
-    is_ = max(grid().halo, grid().is_ - 2)
-    ie = min(grid().npx + 1, grid().ie + 2)
-    js = max(grid().halo + 2, grid().js)
-    je = min(grid().npy, grid().je + 1)
+    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    js = grid().js + 2 if grid().south_edge else grid().js
+    je = grid().je - 1 if grid().north_edge else grid().je + 1
+    is_ = grid().is_ if grid().west_edge else grid().is_ - 2
+    ie = grid().ie if grid().east_edge else grid().ie + 2
     di = ie - is_ + 1
     # qy interior
     ppm_volume_mean_y(
@@ -429,10 +433,11 @@ def compute_qy(qin, qout):
 
 def compute_qxx(qx, qout):
     qxx = utils.make_storage_from_shape(qx.shape, origin=grid().default_origin())
-    js = max(grid().halo + 2, grid().js)
-    je = min(grid().npy, grid().je + 1)
-    is_ = max(grid().halo + 1, grid().is_)
-    ie = min(grid().npx + 1, grid().ie + 1)
+    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    js = grid().js + 2 if grid().south_edge else grid().js
+    je = grid().je - 1 if grid().north_edge else grid().je + 1
+    is_ = grid().is_ + 1 if grid().west_edge else grid().is_
+    ie = grid().ie if grid().east_edge else grid().ie + 1
     di = ie - is_ + 1
     lagrange_interpolation_y(
         qx, qxx, origin=(is_, js, 0), domain=(di, je - js + 1, grid().npz)
@@ -450,10 +455,11 @@ def compute_qxx(qx, qout):
 
 def compute_qyy(qy, qout):
     qyy = utils.make_storage_from_shape(qy.shape, origin=grid().default_origin())
-    is_ = max(grid().halo + 2, grid().is_)
-    ie = min(grid().npx, grid().ie + 1)
-    js = max(grid().halo + 1, grid().js)
-    je = min(grid().npy + 1, grid().je + 1)
+    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    js = grid().js + 1 if grid().south_edge else grid().js
+    je = grid().je if grid().north_edge else grid().je + 1
+    is_ = grid().is_ + 2 if grid().west_edge else grid().is_
+    ie = grid().ie - 1 if grid().east_edge else grid().ie + 1
     dj = je - js + 1
     lagrange_interpolation_x(
         qy, qyy, origin=(is_, js, 0), domain=(ie - is_ + 1, dj, grid().npz)
@@ -470,10 +476,11 @@ def compute_qyy(qy, qout):
 
 
 def compute_qout(qxx, qyy, qout):
-    is_ = max(grid().halo + 1, grid().is_)
-    js = max(grid().halo + 1, grid().js)
-    ie = min(grid().npx + 1, grid().ie + 1)
-    je = min(grid().npy + 1, grid().je + 1)
+    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    js = grid().js + 1 if grid().south_edge else grid().js
+    je = grid().je if grid().north_edge else grid().je + 1
+    is_ = grid().is_ + 1 if grid().west_edge else grid().is_
+    ie = grid().ie if grid().east_edge else grid().ie + 1
     qout_avg(
         qxx,
         qyy,

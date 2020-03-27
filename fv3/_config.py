@@ -35,7 +35,7 @@ def merge_namelist_defaults(nml):
 
 
 # TODO: Before this can be used, we need to write a module to make the grid data from files on disk and call it
-def make_grid_from_namelist(namelist):
+def make_grid_from_namelist(namelist, rank):
     shape_params = {}
     for narg in ["npx", "npy", "npz"]:
         shape_params[narg] = namelist[narg]
@@ -49,7 +49,7 @@ def make_grid_from_namelist(namelist):
         "js": utils.halo,
         "je": namelist["npy"] + utils.halo - 2,
     }
-    return Grid(indices, shape_params)
+    return Grid(indices, shape_params, rank, namelist["layout"])
 
 
 def set_grid(in_grid):
@@ -63,7 +63,7 @@ def set_namelist(filename):
     namelist = merge_namelist_defaults(
         namelist_to_flatish_dict(f90nml.read(filename).items())
     )
-    grid = make_grid_from_namelist(namelist)
+    grid = make_grid_from_namelist(namelist, 0)
 
 
 if "NAMELIST_FILENAME" in os.environ:

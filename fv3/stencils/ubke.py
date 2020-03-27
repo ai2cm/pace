@@ -28,8 +28,9 @@ def y_edge(ut: sd, ub: sd, *, dt4: float):
 
 def compute(uc, vc, ut, ub, dt5, dt4):
     grid = spec.grid
-    is2 = 4 if grid.west_edge else grid.is_
-    ie1 = grid.npx + 1 if grid.east_edge else grid.ie + 1
+    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    is2 = grid.is_ + 1 if grid.west_edge else grid.is_
+    ie1 = grid.ie if grid.east_edge else grid.ie + 1
     idiff = ie1 - is2 + 1
     if spec.namelist["grid_type"] < 3 and not grid.nested:
         domain_y = (idiff, 1, grid.npz)

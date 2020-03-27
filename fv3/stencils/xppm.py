@@ -132,8 +132,8 @@ def compute_al(q, dxa, iord, is1, ie3, jfirst, jlast):
 def compute_flux(q, c, iord, jfirst, jlast):
     mord = abs(iord)
     # output  storage
-    is1 = max(5, grid().is_ - 1)
-    ie3 = min(grid().npx, grid().ie + 2)
+    is1 = grid().is_ + 2 if grid().west_edge else grid().is_ - 1
+    ie3 = grid().ie - 1 if grid().east_edge else grid().ie + 2
     flux = utils.make_storage_from_shape(q.shape, origin)
     al = compute_al(q, grid().dxa, iord, is1, ie3, jfirst, jlast)
     get_flux(

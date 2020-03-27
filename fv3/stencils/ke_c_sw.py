@@ -66,7 +66,7 @@ def compute(uc, vc, u, v, ua, va, dt2):
 
     # If we are NOT using a nested grid configuration, then edge values need to be evaluated separately
     if spec.namelist["grid_type"] < 3 and not grid.nested:
-        vort_domain = (grid.npx + 2, 1, grid.npz)
+        vort_domain = (grid.ie + 1, 1, grid.npz)
         if grid.south_edge:
             update_vorticity_outer_edge_values(
                 vort_c,
@@ -94,7 +94,7 @@ def compute(uc, vc, u, v, ua, va, dt2):
                 u,
                 grid.sin_sg4,
                 grid.cos_sg4,
-                origin=(grid.is_ - 1, grid.npy + 1, 0),
+                origin=(grid.is_ - 1, grid.je, 0),
                 domain=vort_domain,
             )
             update_vorticity_edge_values(
@@ -103,11 +103,11 @@ def compute(uc, vc, u, v, ua, va, dt2):
                 u,
                 grid.sin_sg2,
                 grid.cos_sg2,
-                origin=(grid.is_ - 1, grid.npy + 2, 0),
+                origin=(grid.is_ - 1, grid.je + 1, 0),
                 domain=vort_domain,
             )
 
-        ke_domain = (1, grid.npy + 3, grid.npz)
+        ke_domain = (1, grid.je + 2, grid.npz)
         if grid.east_edge:
             update_ke_outer_edge_values(
                 ke_c,
@@ -115,7 +115,7 @@ def compute(uc, vc, u, v, ua, va, dt2):
                 v,
                 grid.sin_sg3,
                 grid.cos_sg3,
-                origin=(grid.npx + 1, grid.js - 1, 0),
+                origin=(grid.ie, grid.js - 1, 0),
                 domain=ke_domain,
             )
             update_ke_edge_values(
@@ -124,7 +124,7 @@ def compute(uc, vc, u, v, ua, va, dt2):
                 v,
                 grid.sin_sg1,
                 grid.cos_sg1,
-                origin=(grid.npx + 2, grid.js - 1, 0),
+                origin=(grid.ie + 1, grid.js - 1, 0),
                 domain=ke_domain,
             )
 
