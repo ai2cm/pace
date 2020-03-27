@@ -3,6 +3,9 @@ import os
 import fv3.utils.gt4py_utils as utils
 from fv3.utils.grid import Grid
 
+grid = None
+namelist = None
+
 
 def namelist_to_flatish_dict(source):
     namelist = dict(source)

@@ -96,9 +96,7 @@ def v_from_ke(ke: sd, ut: sd, fx: sd, v: sd):
 
 
 # TODO: this is untested and the radius may be incorrect
-@gtscript.stencil(
-    backend=utils.backend, rebuild=True, externals={"radius": constants.RADIUS}
-)
+@utils.stencil(externals={"radius": constants.RADIUS})
 def coriolis_force_correction(zh: sd, z_rat: sd):
     from __externals__ import radius
 

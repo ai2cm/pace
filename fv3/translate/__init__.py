@@ -1,5 +1,6 @@
 from . import translate
 from .translate import TranslateGrid, TranslateFortranData2Py
+from .parallel_translate import ParallelTranslate
 from .translate_a2b_ord4 import TranslateA2B_Ord4
 from .translate_circulation_cgrid import TranslateCirculation_Cgrid
 from .translate_copycorners import TranslateCopyCorners
@@ -15,6 +16,12 @@ from .translate_fluxcapacitor import TranslateFluxCapacitor
 from .translate_fvtp2d import TranslateFvTp2d
 from .translate_fxadv import TranslateFxAdv
 from .translate_heatdiss import TranslateHeatDiss
+from .translate_haloupdate import (
+    TranslateHaloUpdate,
+    TranslateHaloUpdate_2,
+    TranslateMPPUpdateDomains,
+    TranslateHaloVectorUpdate,
+)
 from .translate_ke_c_sw import TranslateKE_C_SW
 from .translate_pgradc import TranslatePGradC
 from .translate_ubke import TranslateUbKE

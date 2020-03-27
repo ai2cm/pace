@@ -8,13 +8,19 @@ import fv3._config
 import fv3.utils.gt4py_utils
 import fv3.translate
 import collections
+import fv3util
 
 sys.path.append("/serialbox2/install/python")  # noqa
 import serialbox
 
 
 GRID_SAVEPOINT_NAME = "Grid-Info"
-PARALLEL_SAVEPOINT_NAMES = ["HaloUpdate"]
+PARALLEL_SAVEPOINT_NAMES = [
+    "HaloUpdate",
+    "HaloUpdate-2",
+    "HaloVectorUpdate",
+    "MPPUpdateDomains",
+]
 
 
 class ReplaceRepr:
@@ -141,6 +147,7 @@ SavepointCase = collections.namedtuple(
         "input_savepoints",
         "output_savepoints",
         "grid",
+        "layout",
     ],
 )
 
@@ -166,6 +173,7 @@ def sequential_savepoint_cases(metafunc, data_path):
                     input_savepoints,
                     output_savepoints,
                     grid,
+                    layout,
                 )
             )
     return return_list
@@ -194,8 +202,10 @@ def parallel_savepoint_cases(metafunc, data_path):
     for test_name in sorted(list(savepoint_names)):
         input_list = []
         output_list = []
-        for rank in reversed(range(total_ranks)):
+        serializer_list = []
+        for rank in range(total_ranks):
             serializer = get_serializer(data_path, rank)
+            serializer_list.append(serializer)
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
             check_savepoint_counts(test_name, input_savepoints, output_savepoints)
@@ -205,19 +215,24 @@ def parallel_savepoint_cases(metafunc, data_path):
             SavepointCase(
                 test_name,
                 None,
-                serializer,
-                zip(input_list),
-                zip(output_list),
+                serializer_list,
+                list(
+                    zip(*input_list)
+                ),  # input_list[rank][count] -> input_list[count][rank]
+                list(zip(*output_list)),
                 grid_list,
+                layout,
             )
         )
     return return_list
 
 
 def pytest_generate_tests(metafunc):
+    backend = metafunc.config.getoption("backend")
+    fv3.utils.gt4py_utils.backend = backend
     if metafunc.function.__name__ == "test_sequential_savepoint":
         generate_sequential_stencil_tests(metafunc)
-    if metafunc.function.__name__ == "test_parallel_savepoint":
+    if metafunc.function.__name__ == "test_parallel_savepoint_sequentially":
         generate_parallel_stencil_tests(metafunc)
 
 
@@ -231,64 +246,62 @@ def generate_sequential_stencil_tests(metafunc):
         "rank",
         "grid",
     ]
-    if all(name in metafunc.fixturenames for name in arg_names):
-        data_path = data_path_from_config(metafunc.config)
-        _generate_stencil_tests(
-            metafunc,
-            arg_names,
-            sequential_savepoint_cases(metafunc, data_path),
-            get_sequential_param,
-        )
+    data_path = data_path_from_config(metafunc.config)
+    _generate_stencil_tests(
+        metafunc,
+        arg_names,
+        sequential_savepoint_cases(metafunc, data_path),
+        get_sequential_param,
+    )
 
 
 def generate_parallel_stencil_tests(metafunc):
     arg_names = [
         "testobj",
         "test_name",
-        "serializer",
-        "savepoint_in",
-        "savepoint_out",
+        "serializer_list",
+        "savepoint_in_list",
+        "savepoint_out_list",
         "grid",
+        "layout",
     ]
-    if all(name in metafunc.fixturenames for name in arg_names):
-        data_path = data_path_from_config(metafunc.config)
-        _generate_stencil_tests(
-            metafunc,
-            arg_names,
-            parallel_savepoint_cases(metafunc, data_path),
-            get_parallel_param,
-        )
+    data_path = data_path_from_config(metafunc.config)
+    _generate_stencil_tests(
+        metafunc,
+        arg_names,
+        parallel_savepoint_cases(metafunc, data_path),
+        get_parallel_param,
+    )
 
 
 def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
-    if all(name in metafunc.fixturenames for name in arg_names):
-        param_list = []
-        for case in savepoint_cases:
-            testobj = get_test_class_instance(case.test_name, case.grid)
-            max_call_count = min(
-                len(case.input_savepoints), len(case.output_savepoints)
+    param_list = []
+    for case in savepoint_cases:
+        testobj = get_test_class_instance(case.test_name, case.grid)
+        max_call_count = min(len(case.input_savepoints), len(case.output_savepoints))
+        for i, (savepoint_in, savepoint_out) in enumerate(
+            zip(case.input_savepoints, case.output_savepoints)
+        ):
+            param_list.append(
+                get_param(case, testobj, savepoint_in, savepoint_out, i, max_call_count)
             )
-            for i, (savepoint_in, savepoint_out) in enumerate(
-                zip(case.input_savepoints, case.output_savepoints)
-            ):
-                param_list.append(
-                    get_param(
-                        case, testobj, savepoint_in, savepoint_out, i, max_call_count
-                    )
-                )
-        metafunc.parametrize(", ".join(arg_names), param_list)
+    metafunc.parametrize(", ".join(arg_names), param_list)
 
 
 def get_parallel_param(
-    case, testobj, savepoint_in, savepoint_out, call_count, max_call_count
+    case, testobj, savepoint_in_list, savepoint_out_list, call_count, max_call_count
 ):
     return pytest.param(
         testobj,
         case.test_name,
-        ReplaceRepr(case.serializer, f"<Serializer>"),
-        savepoint_in,
-        savepoint_out,
+        [
+            ReplaceRepr(ser, f"<Serializer for rank {rank}>")
+            for rank, ser in enumerate(case.serializer)
+        ],
+        savepoint_in_list,
+        savepoint_out_list,
         case.grid,
+        case.layout,
         id=f"{case.test_name}-call_count={call_count}",
         marks=pytest.mark.dependency(
             name=f"{case.test_name}-{call_count}",
@@ -326,6 +339,28 @@ def get_sequential_param(
             ],
         ),
     )
+
+
+@pytest.fixture()
+def communicator_list(layout):
+    return get_communicator_list(layout)
+
+
+def get_communicator_list(layout):
+    total_ranks = 6 * fv3util.TilePartitioner(layout).total_ranks
+    shared_buffer = {}
+    communicators = []
+    for rank in range(total_ranks):
+        comm = fv3util.testing.DummyComm(rank, total_ranks, buffer_dict=shared_buffer)
+        communicator = get_communicator(comm, layout)
+        communicators.append(communicator)
+    return communicators
+
+
+def get_communicator(comm, layout):
+    partitioner = fv3util.CubedSpherePartitioner(fv3util.TilePartitioner(layout))
+    communicator = fv3util.CubedSphereCommunicator(comm, partitioner)
+    return communicator
 
 
 def pytest_addoption(parser):

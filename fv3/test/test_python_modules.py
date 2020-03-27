@@ -1,36 +1,23 @@
 #!/usr/bin/env python3
 
 import sys
-
-sys.path.append("/serialbox2/install/python")  # noqa
-
+import contextlib
 import numpy as np
-import serialbox as ser
 import fv3._config
 import fv3.utils.gt4py_utils
 import pytest
 import fv3util
 import logging
-import sys
+import os
+import xarray as xr
 
+sys.path.append("/serialbox2/install/python")  # noqa
+import serialbox as ser
 
-def read_serialized_data(serializer, savepoint, variable):
-    data = serializer.read(variable, savepoint)
-    if len(data.flatten()) == 1:
-        return data[0]
-    return data
+# this only matters for manually-added print statements
+np.set_printoptions(threshold=4096)
 
-
-def collect_input_data(
-    testobj, serializer, savepoint,
-):
-    input_data = {}
-    for varname in (
-        testobj.serialnames(testobj.in_vars["data_vars"])
-        + testobj.in_vars["parameters"]
-    ):
-        input_data[varname] = read_serialized_data(serializer, savepoint, varname)
-    return input_data
+OUTDIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
 
 
 def compare_arr(computed_data, ref_data):
@@ -100,13 +87,13 @@ def test_sequential_savepoint(
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     fv3._config.set_grid(grid)
-    input_data = collect_input_data(testobj, serializer, savepoint_in)
+    input_data = testobj.collect_input_data(serializer, savepoint_in)
     # run python version of functionality
     output = testobj.compute(input_data)
     failing_names = []
     passing_names = []
     for varname in testobj.serialnames(testobj.out_vars):
-        ref_data = read_serialized_data(serializer, savepoint_out, varname)
+        ref_data = serializer.read(varname, savepoint_out)
         with subtests.test(varname=varname):
             failing_names.append(varname)
             assert success(
@@ -146,38 +133,96 @@ def state_from_savepoint(serializer, savepoint, name_to_std_name):
     return state
 
 
-def get_communicator(comm, layout):
-    partitioner = fv3util.CubedSpherePartitioner(fv3util.TilePartitioner(layout))
-    communicator = fv3util.CubedSphereCommunicator(comm, partitioner)
-    return communicator
-
-
 @pytest.mark.parallel
-def test_halo_update(data_path, subtests):
-    n_ghost = fv3.utils.gt4py_utils.halo
-    layout = fv3._config.namelist["layout"]
-    total_ranks = 6 * layout[0] * layout[1]
-    shared_buffer = {}
-    states = []
-    communicators = []
-    for rank in range(total_ranks):
-        serializer = get_serializer(data_path, rank)
-        savepoint = serializer.savepoint["HaloUpdate-In"]
-        state = state_from_savepoint(
-            serializer, savepoint, {"array": "air_temperature"}
+def test_parallel_savepoint_sequentially(
+    testobj,
+    test_name,
+    grid,
+    communicator_list,
+    serializer_list,
+    savepoint_in_list,
+    savepoint_out_list,
+    backend,
+    print_failures,
+    failure_stride,
+    subtests,
+    caplog,
+):
+    caplog.set_level(logging.DEBUG, logger="fv3ser")
+    caplog.set_level(logging.DEBUG, logger="fv3util")
+    if testobj is None:
+        pytest.xfail(f"no translate object available for savepoint {test_name}")
+    fv3._config.set_grid(grid)
+    inputs_list = []
+    for savepoint_in, serializer in zip(savepoint_in_list, serializer_list):
+        inputs_list.append(testobj.collect_input_data(serializer, savepoint_in))
+    output_list = testobj.compute_sequential(inputs_list, communicator_list)
+    failing_names = []
+    ref_data = {}
+    for varname in testobj.outputs.keys():
+        ref_data[varname] = []
+        with _subtest(failing_names, subtests, varname=varname):
+            with subtests.test(varname=varname):
+                failing_ranks = []
+                for rank, (savepoint_out, serializer, output) in enumerate(
+                    zip(savepoint_out_list, serializer_list, output_list)
+                ):
+                    with _subtest(failing_ranks, subtests, varname=varname, rank=rank):
+                        ref_data[varname].append(
+                            serializer.read(varname, savepoint_out)
+                        )
+                        assert success(
+                            output[varname], ref_data[varname][-1], testobj.max_error
+                        ), sample_wherefail(
+                            output[varname],
+                            ref_data[varname][-1],
+                            testobj.max_error,
+                            print_failures,
+                            failure_stride,
+                            test_name,
+                        )
+                assert failing_ranks == []
+    if len(failing_names) > 0:
+        out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
+        save_netcdf(
+            testobj, inputs_list, output_list, ref_data, failing_names, out_filename
         )
-        states.append(state)
-        comm = fv3util.testing.DummyComm(rank, total_ranks, buffer_dict=shared_buffer)
-        communicator = get_communicator(comm, layout)
-        communicator.start_halo_update(state["air_temperature"], n_ghost=n_ghost)
-        communicators.append(communicator)
-    for rank, (state, communicator) in enumerate(zip(states, communicators)):
-        serializer = ser.Serializer(
-            ser.OpenModeKind.Read, data_path, "Generator_rank" + str(rank)
+    assert failing_names == [], f"names tested: {list(testobj.outputs.keys())}"
+
+
+@contextlib.contextmanager
+def _subtest(failure_list, subtests, **kwargs):
+    failure_list.append(kwargs)
+    with subtests.test(**kwargs):
+        yield
+    failure_list.pop()  # will remove kwargs if the test passes
+
+
+def save_netcdf(
+    testobj, inputs_list, output_list, ref_data, failing_names, out_filename
+):
+    data_vars = {}
+    for varname in failing_names:
+        dims = testobj.outputs[varname]["dims"]
+        attrs = {
+            "units": testobj.outputs[varname]["units"],
+            "n_halo": testobj.outputs[varname]["n_halo"],
+        }
+        data_vars[f"{varname}_in"] = xr.DataArray(
+            np.stack([in_data[varname] for in_data in inputs_list]),
+            dims=("rank",) + tuple(dims),
+            attrs=attrs,
         )
-        savepoint = serializer.savepoint["HaloUpdate-Out"]
-        array = serializer.read("array", savepoint)
-        quantity = state["air_temperature"]
-        communicator.finish_halo_update(quantity, n_ghost=n_ghost)
-        with subtests.test(rank=rank):
-            quantity.np.testing.assert_array_equal(quantity.data, array)
+        data_vars[f"{varname}_ref"] = xr.DataArray(
+            np.stack(ref_data[varname]), dims=("rank",) + tuple(dims), attrs=attrs
+        )
+        data_vars[f"{varname}_out"] = xr.DataArray(
+            np.stack([output[varname] for output in output_list]),
+            dims=("rank",) + tuple(dims),
+            attrs=attrs,
+        )
+        data_vars[f"{varname}_error"] = (
+            data_vars[f"{varname}_ref"] - data_vars[f"{varname}_out"]
+        )
+        data_vars[f"{varname}_error"].attrs = attrs
+    xr.Dataset(data_vars=data_vars).to_netcdf(out_filename)
