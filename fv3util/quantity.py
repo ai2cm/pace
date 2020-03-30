@@ -95,6 +95,19 @@ class BoundedArrayView:
         return tuple(shifted_index)
 
 
+def ensure_int_tuple(arg, arg_name):
+    return_list = []
+    for item in arg:
+        try:
+            return_list.append(int(item))
+        except ValueError:
+            raise TypeError(
+                f'tuple arg {arg_name}={arg} contains item {item} of '
+                f'unexpected type {type(item)}'
+            )
+    return tuple(return_list)
+
+
 class Quantity:
     """
     Data container for physical quantities.
@@ -128,8 +141,8 @@ class Quantity:
         else:
             extent = tuple(extent)
         self._metadata = QuantityMetadata(
-            origin=origin,
-            extent=extent,
+            origin=ensure_int_tuple(origin, 'origin'),
+            extent=ensure_int_tuple(extent, 'extent'),
             dims=tuple(dims),
             units=units,
             data_type=type(data),

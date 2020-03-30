@@ -11,7 +11,7 @@ def rank_scatter_results(communicator_list, quantity):
             array = None
         yield (
             tile_communicator,
-            tile_communicator.scatter(quantity.metadata, send_quantity=array)
+            tile_communicator.scatter(send_quantity=array)
         )
 
 

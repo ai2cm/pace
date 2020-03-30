@@ -1,5 +1,6 @@
 import pytest
 import fv3util
+import copy
 
 
 @pytest.fixture
@@ -46,7 +47,7 @@ def n_points(request):
 def n_points_update(request, n_points):
     update = n_points + {'fewer': -1, 'more': 1, 'same': 0}[request.param]
     if update > n_points:
-        pytest.skip()
+        pytest.skip('cannot update more points than exist in the halo')
     else:
         return update
 
@@ -80,16 +81,21 @@ def total_ranks(ranks_per_tile):
     return 6 * ranks_per_tile
 
 
+@pytest.fixture(params=[0, 1])
+def n_buffer(request):
+    return request.param
+
+
 @pytest.fixture
-def shape(nz, ny, nx, dims, n_points):
+def shape(nz, ny, nx, dims, n_points, n_buffer):
     return_list = []
     length_dict = {
-        fv3util.X_DIM: 2 * n_points + nx,
-        fv3util.X_INTERFACE_DIM: 2 * n_points + nx + 1,
-        fv3util.Y_DIM: 2 * n_points + ny,
-        fv3util.Y_INTERFACE_DIM: 2 * n_points + ny + 1,
-        fv3util.Z_DIM: nz,
-        fv3util.Z_INTERFACE_DIM: nz + 1,
+        fv3util.X_DIM: 2 * n_points + nx + n_buffer,
+        fv3util.X_INTERFACE_DIM: 2 * n_points + nx + 1 + n_buffer,
+        fv3util.Y_DIM: 2 * n_points + ny + n_buffer,
+        fv3util.Y_INTERFACE_DIM: 2 * n_points + ny + 1 + n_buffer,
+        fv3util.Z_DIM: nz + n_buffer,
+        fv3util.Z_INTERFACE_DIM: nz + 1 + n_buffer,
     }
     for dim in dims:
         return_list.append(length_dict[dim])
@@ -97,15 +103,15 @@ def shape(nz, ny, nx, dims, n_points):
 
 
 @pytest.fixture
-def origin(n_points, dims):
+def origin(n_points, dims, n_buffer):
     return_list = []
     origin_dict = {
-        fv3util.X_DIM: n_points,
-        fv3util.X_INTERFACE_DIM: n_points,
-        fv3util.Y_DIM: n_points,
-        fv3util.Y_INTERFACE_DIM: n_points,
-        fv3util.Z_DIM: 0,
-        fv3util.Z_INTERFACE_DIM: 0,
+        fv3util.X_DIM: n_points + n_buffer,
+        fv3util.X_INTERFACE_DIM: n_points + n_buffer,
+        fv3util.Y_DIM: n_points + n_buffer,
+        fv3util.Y_INTERFACE_DIM: n_points + n_buffer,
+        fv3util.Z_DIM: n_buffer,
+        fv3util.Z_INTERFACE_DIM: n_buffer,
     }
     for dim in dims:
         return_list.append(origin_dict[dim])
@@ -213,9 +219,9 @@ def depth_quantity_list(total_ranks, dims, units, origin, extent, shape, numpy, 
     return_list = []
     for rank in range(total_ranks):
         data = numpy.zeros(shape, dtype=dtype) + numpy.nan
-        for n_inside in range(n_points - 1, -1, -1):
+        for n_inside in range(max(n_points, max(extent) // 2), -1, -1):
             for i, dim in enumerate(dims):
-                if dim in fv3util.HORIZONTAL_DIMS:
+                if (n_inside <= extent[i] // 2) and (dim in fv3util.HORIZONTAL_DIMS):
                     pos = [slice(None, None)] * len(dims)
                     pos[i] = origin[i] + n_inside
                     data[tuple(pos)] = n_inside
@@ -260,14 +266,14 @@ def test_depth_halo_update(
             for rank, quantity in enumerate(depth_quantity_list):
                 with subtests.test(rank=rank, quantity=quantity):
                     for dim, extent in ((y_dim, y_extent), (x_dim, x_extent)):
-                        assert numpy.all(quantity.sel(**{dim: -1}) == 0)
-                        assert numpy.all(quantity.sel(**{dim: extent}) == 0)
+                        assert numpy.all(quantity.sel(**{dim: -1}) <= 1)
+                        assert numpy.all(quantity.sel(**{dim: extent}) <= 1)
                         if n_points_update >= 2:
-                            assert numpy.all(quantity.sel(**{dim: -2}) <= 1)
-                            assert numpy.all(quantity.sel(**{dim: extent + 1}) <= 1)
+                            assert numpy.all(quantity.sel(**{dim: -2}) <= 2)
+                            assert numpy.all(quantity.sel(**{dim: extent + 1}) <= 2)
                         if n_points_update >= 3:
-                            assert numpy.all(quantity.sel(**{dim: -3}) <= 2)
-                            assert numpy.all(quantity.sel(**{dim: extent + 2}) <= 2)
+                            assert numpy.all(quantity.sel(**{dim: -3}) <= 3)
+                            assert numpy.all(quantity.sel(**{dim: extent + 2}) <= 3)
                         if n_points_update > 3:
                             raise NotImplementedError(n_points_update)
 
@@ -311,6 +317,31 @@ def test_zeros_halo_update(
                     numpy.testing.assert_array_equal(
                         quantity.data[tuple(boundary_slice)], 0.
                     )
+
+
+def test_zeros_vector_halo_update(
+        zeros_quantity_list, communicator_list, n_points_update, n_points, numpy,
+        subtests, boundary_dict, ranks_per_tile):
+    """test that zeros from adjacent domains get written over ones on local halo"""
+    x_list = zeros_quantity_list
+    y_list = copy.deepcopy(x_list)
+    if 0 < n_points_update <= n_points:
+        for communicator, y_quantity, x_quantity in zip(communicator_list, y_list, x_list):
+            communicator.start_vector_halo_update(y_quantity, x_quantity, n_points_update)
+        for communicator, y_quantity, x_quantity in zip(communicator_list, y_list, x_list):
+            communicator.finish_vector_halo_update(y_quantity, x_quantity, n_points_update)
+        for rank, (y_quantity, x_quantity) in enumerate(zip(y_list, x_list)):
+            boundaries = boundary_dict[rank % ranks_per_tile]
+            for boundary in boundaries:
+                boundary_slice = fv3util.boundary._get_boundary_slice(
+                    x_quantity.dims, x_quantity.origin, x_quantity.extent,
+                    boundary, n_points_update, interior=False
+                )
+                with subtests.test(x_quantity=x_quantity, rank=rank, boundary=boundary, boundary_slice=boundary_slice):
+                    for quantity in y_quantity, x_quantity:
+                        numpy.testing.assert_array_equal(
+                            quantity.data[tuple(boundary_slice)], 0.
+                        )
 
 
 def get_horizontal_dims(dims):

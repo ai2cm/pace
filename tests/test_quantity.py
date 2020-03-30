@@ -85,45 +85,50 @@ def test_quantity_extent(quantity, extent):
     assert quantity.extent == extent
 
 
-def test_compute_view_get_value(quantity, n_halo, n_dims, extent_1d):
-    if n_dims != 1 or extent_1d < 1:
-        pytest.skip()
+def test_compute_view_get_value(quantity, extent_1d, n_halo, n_dims):
     quantity.data[:] = 0.
-    value = quantity.view[0]
-    assert value.shape == ()
+    if extent_1d == 0 and n_halo == 0:
+        with pytest.raises(IndexError):
+            quantity.view[[0] * n_dims]
+    else:
+        value = quantity.view[[0] * n_dims]
+        assert value.shape == ()
 
 
-def test_compute_view_edit_start_halo(quantity, n_halo):
-    if n_dims != 1 or n_halo < 1:
-        pytest.skip()
+def test_compute_view_edit_start_halo(quantity, extent_1d, n_halo, n_dims):
     quantity.data[:] = 0.
-    quantity.view[-1] = 1
-    assert quantity.data[n_halo - 1] == 1
-    assert quantity.np.sum(quantity.data) == 1.0
+    if extent_1d == 0 and n_halo == 0:
+        with pytest.raises(IndexError):
+            quantity.view[[-1] * n_dims] = 1
+    else:
+        quantity.view[[-1] * n_dims] = 1
+        assert quantity.np.sum(quantity.data) == 1.0
+        assert quantity.data[(n_halo - 1,) * n_dims] == 1
 
 
 def test_compute_view_edit_end_halo(quantity, extent_1d, n_halo, n_dims):
-    if n_dims != 1 or n_halo < 1:
-        pytest.skip()
     quantity.data[:] = 0.
-    quantity.view[extent_1d] = 1
-    print(quantity.data, extent_1d, n_halo, n_dims)
-    assert quantity.data[n_halo + extent_1d] == 1
-    assert quantity.np.sum(quantity.data) == 1.0
+    if n_halo == 0:
+        with pytest.raises(IndexError):
+            quantity.view[[extent_1d] * n_dims] = 1
+    else:
+        quantity.view[(extent_1d,) * n_dims] = 1
+        assert quantity.np.sum(quantity.data) == 1.0
+        assert quantity.data[(n_halo + extent_1d,) * n_dims] == 1
 
 
-def test_compute_view_edit_domain(quantity, n_halo, n_dims, extent_1d):
-    if n_dims != 1 or extent_1d < 1 or n_halo < 1:
-        pytest.skip()
+def test_compute_view_edit_start_of_domain(quantity, extent_1d, n_halo, n_dims):
+    if extent_1d == 0:
+        pytest.skip('cannot edit an empty domain')
     quantity.data[:] = 0.
-    quantity.view[0] = 1
-    assert quantity.data[n_halo] == 1
+    quantity.view[(0,) * n_dims] = 1
+    assert quantity.data[(n_halo,) * n_dims] == 1
     assert quantity.np.sum(quantity.data) == 1.0
 
 
 def test_compute_view_edit_all_domain(quantity, n_halo, n_dims, extent_1d):
-    if n_dims != 1 or extent_1d < 1 or n_halo < 1:
-        pytest.skip()
+    if extent_1d == 0:
+        pytest.skip('cannot edit an empty domain')
     quantity.data[:] = 0.
     quantity.view[:] = 1
     assert quantity.np.sum(quantity.data) == extent_1d ** n_dims

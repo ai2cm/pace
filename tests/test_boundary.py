@@ -26,6 +26,38 @@ def test_boundary_data_1_by_1_array_1_halo():
     assert boundary_data(quantity, fv3util.EAST, n_points=1, interior=False) == quantity.data[1, 2]
 
 
+def test_boundary_data_3d_array_1_halo_z_offset_origin():
+    quantity = fv3util.Quantity(
+        np.random.randn(2, 3, 3),
+        dims=[fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM],
+        units='m',
+        origin=(1, 1, 1),
+        extent=(1, 1, 1)
+    )
+    for side in (fv3util.WEST, fv3util.EAST, fv3util.NORTH, fv3util.SOUTH):
+        quantity.np.testing.assert_array_equal(
+            boundary_data(quantity, side, n_points=1, interior=True),
+            quantity.data[1, 1, 1]
+        )
+
+    quantity.np.testing.assert_array_equal(
+        boundary_data(quantity, fv3util.NORTH, n_points=1, interior=False),
+        quantity.data[1, 2, 1]
+    )
+    quantity.np.testing.assert_array_equal(
+        boundary_data(quantity, fv3util.SOUTH, n_points=1, interior=False),
+        quantity.data[1, 0, 1]
+    )
+    quantity.np.testing.assert_array_equal(
+        boundary_data(quantity, fv3util.WEST, n_points=1, interior=False),
+        quantity.data[1, 1, 0]
+    )
+    quantity.np.testing.assert_array_equal(
+        boundary_data(quantity, fv3util.EAST, n_points=1, interior=False),
+        quantity.data[1, 1, 2]
+    )
+
+
 def test_boundary_data_2_by_2_array_2_halo():
     quantity = fv3util.Quantity(
         np.random.randn(6, 6),
