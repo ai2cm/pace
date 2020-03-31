@@ -1,14 +1,14 @@
 from typing import Iterable, Hashable
-from .quantity import Quantity, QuantityMetadata
+from .quantity import Quantity
 from .partitioner import CubedSpherePartitioner, TilePartitioner
 from . import constants
 from .boundary import Boundary
 from .rotate import rotate_scalar_data, rotate_vector_data
 import logging
 
-__all__ = ['TileCommunicator', 'CubedSphereCommunicator']
+__all__ = ["TileCommunicator", "CubedSphereCommunicator"]
 
-logger = logging.getLogger('fv3util')
+logger = logging.getLogger("fv3util")
 
 
 def bcast_metadata_list(comm, quantity_list):
@@ -27,7 +27,6 @@ def bcast_metadata(comm, array):
 
 
 class Communicator:
-
     def __init__(self, comm):
         self.comm = comm
 
@@ -45,9 +44,8 @@ class TileCommunicator(Communicator):
         super(TileCommunicator, self).__init__(comm)
 
     def scatter(
-            self,
-            send_quantity: Quantity = None,
-            recv_quantity: Quantity = None) -> Quantity:
+        self, send_quantity: Quantity = None, recv_quantity: Quantity = None
+    ) -> Quantity:
         """Transfer subtile regions of a full-tile quantity
         from the tile master rank to all subtiles.
         
@@ -58,22 +56,21 @@ class TileCommunicator(Communicator):
             recv_quantity
         """
         if self.rank == constants.MASTER_RANK and send_quantity is None:
-            raise TypeError('send_quantity is a required argument on the master rank')
+            raise TypeError("send_quantity is a required argument on the master rank")
         if self.rank == constants.MASTER_RANK:
-            metadata = self.comm.bcast(send_quantity.metadata, root=constants.MASTER_RANK)
+            metadata = self.comm.bcast(
+                send_quantity.metadata, root=constants.MASTER_RANK
+            )
         else:
             metadata = self.comm.bcast(None, root=constants.MASTER_RANK)
         shape = self.partitioner.subtile_extent(metadata)
         if self.rank == constants.MASTER_RANK:
             sendbuf = metadata.np.empty(
-                (self.partitioner.total_ranks,) + shape,
-                dtype=metadata.dtype
+                (self.partitioner.total_ranks,) + shape, dtype=metadata.dtype
             )
             for rank in range(0, self.partitioner.total_ranks):
                 subtile_slice = self.partitioner.subtile_slice(
-                    rank,
-                    tile_metadata=metadata,
-                    overlap=True,
+                    rank, tile_metadata=metadata, overlap=True,
                 )
                 sendbuf[rank, :] = send_quantity.view[subtile_slice]
         else:
@@ -88,9 +85,8 @@ class TileCommunicator(Communicator):
         return recv_quantity
 
     def gather(
-            self,
-            send_quantity: Quantity,
-            recv_quantity: Quantity = None) -> Quantity:
+        self, send_quantity: Quantity, recv_quantity: Quantity = None
+    ) -> Quantity:
         """Transfer subtile regions of a full-tile quantity
         from each rank to the tile master rank.
         
@@ -104,27 +100,28 @@ class TileCommunicator(Communicator):
         if self.rank == constants.MASTER_RANK:
             recvbuf = send_quantity.np.empty(
                 [self.partitioner.total_ranks] + list(send_quantity.extent),
-                dtype=send_quantity.data.dtype
+                dtype=send_quantity.data.dtype,
             )
             self.comm.Gather(send_quantity.view[:], recvbuf, root=constants.MASTER_RANK)
             if recv_quantity is None:
                 tile_extent = self.partitioner.tile_extent(send_quantity.metadata)
                 recv_quantity = Quantity(
-                    send_quantity.np.empty(
-                        tile_extent,
-                        dtype=send_quantity.data.dtype
-                    ),
+                    send_quantity.np.empty(tile_extent, dtype=send_quantity.data.dtype),
                     dims=send_quantity.dims,
                     units=send_quantity.units,
                     origin=tuple([0 for dim in send_quantity.dims]),
                     extent=tile_extent,
                 )
             for rank in range(recvbuf.shape[0]):
-                to_slice = self.partitioner.subtile_slice(rank, recv_quantity.metadata, overlap=True)
+                to_slice = self.partitioner.subtile_slice(
+                    rank, recv_quantity.metadata, overlap=True
+                )
                 recv_quantity.view[to_slice] = recvbuf[rank, :]
             result = recv_quantity
         else:
-            result = self.comm.Gather(send_quantity.view[:], recvbuf=None, root=constants.MASTER_RANK)
+            result = self.comm.Gather(
+                send_quantity.view[:], recvbuf=None, root=constants.MASTER_RANK
+            )
         return result
 
     def gather_state(self, send_state: dict = None, recv_state: dict = None):
@@ -143,12 +140,14 @@ class TileCommunicator(Communicator):
         if self.rank == constants.MASTER_RANK and recv_state is None:
             recv_state = {}
         for name, quantity in send_state.items():
-            if name == 'time':
+            if name == "time":
                 if self.rank == constants.MASTER_RANK:
-                    recv_state['time'] = send_state['time']
+                    recv_state["time"] = send_state["time"]
             else:
                 if recv_state is not None and name in recv_state:
-                    tile_quantity = self.gather(quantity, recv_quantity=recv_state[name])
+                    tile_quantity = self.gather(
+                        quantity, recv_quantity=recv_state[name]
+                    )
                 else:
                     tile_quantity = self.gather(quantity)
                 if self.rank == constants.MASTER_RANK:
@@ -166,12 +165,13 @@ class TileCommunicator(Communicator):
         Returns:
             rank_state: the state corresponding to this rank's subdomain
         """
+
         def scatter_master():
             if send_state is None:
-                raise TypeError('send_state is a required argument on the master rank')
+                raise TypeError("send_state is a required argument on the master rank")
             name_list = list(send_state.keys())
-            while 'time' in name_list:
-                name_list.remove('time')
+            while "time" in name_list:
+                name_list.remove("time")
             name_list = self.comm.bcast(name_list, root=constants.MASTER_RANK)
             array_list = [send_state[name] for name in name_list]
             for name, array in zip(name_list, array_list):
@@ -179,7 +179,9 @@ class TileCommunicator(Communicator):
                     self.scatter(send_quantity=array, recv_quantity=recv_state[name])
                 else:
                     recv_state[name] = self.scatter(send_quantity=array)
-            recv_state['time'] = self.comm.bcast(send_state.get('time', None), root=constants.MASTER_RANK)
+            recv_state["time"] = self.comm.bcast(
+                send_state.get("time", None), root=constants.MASTER_RANK
+            )
 
         def scatter_client():
             name_list = self.comm.bcast(None, root=constants.MASTER_RANK)
@@ -190,7 +192,7 @@ class TileCommunicator(Communicator):
                     recv_state[name] = self.scatter()
             time = self.comm.bcast(None, root=constants.MASTER_RANK)
             if time is not None:
-                recv_state['time'] = time
+                recv_state["time"] = time
 
         if recv_state is None:
             recv_state = {}
@@ -233,15 +235,17 @@ class CubedSphereCommunicator(Communicator):
         if self._tile_communicator is None:
             self._initialize_tile_communicator()
         return self._tile_communicator
-    
+
     def _initialize_tile_communicator(self):
-        tile_comm = self.comm.Split(color=self.partitioner.tile_index(self.rank), key=self.rank)
+        tile_comm = self.comm.Split(
+            color=self.partitioner.tile_index(self.rank), key=self.rank
+        )
         self._tile_communicator = TileCommunicator(tile_comm, self.partitioner.tile)
 
     def start_halo_update(self, quantity: Quantity, n_points: int):
         """Initiate an asynchronous halo update of a quantity."""
         if n_points == 0:
-            raise ValueError('cannot perform a halo update on zero halo points')
+            raise ValueError("cannot perform a halo update on zero halo points")
         for boundary_type, boundary in self.boundaries.items():
             data = boundary.send_view(quantity, n_points=n_points)
             # sending data across the boundary will rotate the data
@@ -249,37 +253,62 @@ class CubedSphereCommunicator(Communicator):
             # Thus we rotate that number of times counterclockwise before sending,
             # to get the right final orientation
             data = quantity.np.ascontiguousarray(
-                rotate_scalar_data(data, quantity.dims, quantity.np, -boundary.n_clockwise_rotations)
+                rotate_scalar_data(
+                    data, quantity.dims, quantity.np, -boundary.n_clockwise_rotations
+                )
             )
             self.comm.Isend(data, dest=boundary.to_rank)
 
-    def finish_halo_update(self, quantity: Quantity, n_points: int, tag: Hashable = None):
+    def finish_halo_update(
+        self, quantity: Quantity, n_points: int, tag: Hashable = None
+    ):
         """Complete an asynchronous halo update of a quantity."""
         for boundary_type, boundary in self.boundaries.items():
             dest_view = boundary.recv_view(quantity, n_points=n_points)
-            logger.debug('finish_halo_update: retrieving boundary_type=%s shape=%s from_rank=%s to_rank=%s', boundary_type, dest_view.shape, boundary.to_rank, self.rank)
+            logger.debug(
+                "finish_halo_update: retrieving boundary_type=%s shape=%s from_rank=%s to_rank=%s",
+                boundary_type,
+                dest_view.shape,
+                boundary.to_rank,
+                self.rank,
+            )
             if tag is None:
                 self.comm.Recv(dest_view, source=boundary.to_rank)
             else:
                 self.comm.Recv(dest_view, source=boundary.to_rank, tag=tag)
 
-    def start_vector_halo_update(self, x_quantity: Quantity, y_quantity: Quantity, n_points: int, tag: Hashable = None):
+    def start_vector_halo_update(
+        self,
+        x_quantity: Quantity,
+        y_quantity: Quantity,
+        n_points: int,
+        tag: Hashable = None,
+    ):
         """Initiate an asynchronous halo update of a horizontal vector quantity.
 
         Assumes the x and y dimension indices are the same between the two quantities.
         """
         if n_points == 0:
-            raise ValueError('cannot perform a halo update on zero halo points')
+            raise ValueError("cannot perform a halo update on zero halo points")
         for boundary_type, boundary in self.boundaries.items():
             x_data = boundary.send_view(x_quantity, n_points=n_points)
             y_data = boundary.send_view(y_quantity, n_points=n_points)
             logger.debug("%s %s", x_data.shape, y_data.shape)
             x_data, y_data = rotate_vector_data(
-                x_data, y_data,
+                x_data,
+                y_data,
                 -boundary.n_clockwise_rotations,
-                x_quantity.dims, x_quantity.np
+                x_quantity.dims,
+                x_quantity.np,
             )
-            logger.debug("%s %s %s %s %s", boundary.from_rank, boundary.to_rank, boundary.n_clockwise_rotations, x_data.shape, y_data.shape)
+            logger.debug(
+                "%s %s %s %s %s",
+                boundary.from_rank,
+                boundary.to_rank,
+                boundary.n_clockwise_rotations,
+                x_data.shape,
+                y_data.shape,
+            )
             if tag is None:
                 self.comm.Isend(x_data, dest=boundary.to_rank)
                 self.comm.Isend(y_data, dest=boundary.to_rank)
@@ -287,9 +316,19 @@ class CubedSphereCommunicator(Communicator):
                 self.comm.Isend(x_data, dest=boundary.to_rank, tag=tag)
                 self.comm.Isend(y_data, dest=boundary.to_rank, tag=tag)
 
-    def finish_vector_halo_update(self, x_quantity: Quantity, y_quantity: Quantity, n_points: int, tag: Hashable = None):
+    def finish_vector_halo_update(
+        self,
+        x_quantity: Quantity,
+        y_quantity: Quantity,
+        n_points: int,
+        tag: Hashable = None,
+    ):
         """Complete an asynchronous halo update of a horizontal vector quantity."""
-        logger.debug('finish_vector_halo_update: retrieving x quantity on rank=%i', self.rank)
+        logger.debug(
+            "finish_vector_halo_update: retrieving x quantity on rank=%i", self.rank
+        )
         self.finish_halo_update(x_quantity, n_points, tag=tag)
-        logger.debug('finish_vector_halo_update: retrieving y quantity on rank=%i', self.rank)
+        logger.debug(
+            "finish_vector_halo_update: retrieving y quantity on rank=%i", self.rank
+        )
         self.finish_halo_update(y_quantity, n_points, tag=tag)

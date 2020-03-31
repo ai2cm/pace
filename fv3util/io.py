@@ -14,10 +14,10 @@ def write_state(state: dict, filename: str) -> None:
         state: a model state dictionary
         filename: local or remote location to write the NetCDF file
     """
-    if 'time' not in state:
+    if "time" not in state:
         raise ValueError('state must include a value for "time"')
     ds = to_dataset(state)
-    with filesystem.open(filename, 'wb') as f:
+    with filesystem.open(filename, "wb") as f:
         ds.to_netcdf(f)
 
 
@@ -31,10 +31,10 @@ def read_state(filename: str) -> dict:
         state: a model state dictionary
     """
     out_dict = {}
-    with filesystem.open(filename, 'rb') as f:
+    with filesystem.open(filename, "rb") as f:
         ds = xr.open_dataset(f)
     for name, value in ds.data_vars.items():
-        if name == 'time':
+        if name == "time":
             out_dict[name] = datetime64_to_datetime(value)
         else:
             out_dict[name] = Quantity.from_data_array(value)

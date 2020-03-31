@@ -1,9 +1,7 @@
-import tempfile
-import inspect
-import sys
 import pytest
 import numpy as np
 import fv3util
+
 try:
     from mpi4py import MPI
 except ImportError:
@@ -23,6 +21,7 @@ def worker(rank_order=range):
         func.rank_order = rank_order
         worker_function_list.append(func)
         return func
+
     return decorator
 
 
@@ -117,6 +116,7 @@ def gather_decorator(worker_function):
     def wrapped(comm):
         result = worker_function(comm)
         return comm.gather(result, root=0)
+
     return wrapped
 
 
@@ -150,17 +150,17 @@ def mpi_results(comm, worker_function):
 
 @pytest.fixture
 def dummy_results(worker_function, dummy_list):
-    print('Getting dummy results')
+    print("Getting dummy results")
     result_list = [None] * len(dummy_list)
     for i in worker_function.rank_order(len(dummy_list)):
         comm = dummy_list[i]
         result_list[i] = worker_function(comm)
-    print('done getting dummy results')
+    print("done getting dummy results")
     return result_list
 
 
 @pytest.mark.skipif(
-    MPI is None, reason='mpi4py is not available or pytest was not run in parallel'
+    MPI is None, reason="mpi4py is not available or pytest was not run in parallel"
 )
 def test_worker(comm, dummy_results, mpi_results):
     comm.barrier()  # synchronize the test "dots" across ranks

@@ -20,7 +20,8 @@ def rotate_scalar_data(data, dims, numpy, n_clockwise_rotations):
         elif (x_dim is None) != (y_dim is None):
             # requires converting y dims to x dims and vice-versa
             raise NotImplementedError(
-                "cannot yet rotate values which don't have both x and y dims")
+                "cannot yet rotate values which don't have both x and y dims"
+            )
     elif n_clockwise_rotations == 2:
         slice_list = []
         for dim in dims:
@@ -46,4 +47,3 @@ def rotate_vector_data(x_data, y_data, n_clockwise_rotations, dims, numpy):
     elif n_clockwise_rotations == 3:
         data[0], data[1] = -data[1], data[0]
     return data
-

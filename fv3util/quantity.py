@@ -3,6 +3,7 @@ from types import ModuleType
 import dataclasses
 import numpy as np
 import xarray as xr
+
 try:
     import cupy
 except ImportError:
@@ -12,7 +13,7 @@ try:
 except ImportError:
     gt4py = None
 
-__all__ = ['Quantity', 'QuantityMetadata']
+__all__ = ["Quantity", "QuantityMetadata"]
 
 
 @dataclasses.dataclass
@@ -49,7 +50,6 @@ class QuantityMetadata:
 
 
 class BoundedArrayView:
-
     def __init__(self, array, origin, extent):
         self._data = array
         self._origin = origin
@@ -59,7 +59,7 @@ class BoundedArrayView:
     def origin(self):
         """the start of the computational domain"""
         return self._origin
-    
+
     @property
     def extent(self):
         """the shape of the computational domain"""
@@ -68,9 +68,9 @@ class BoundedArrayView:
     def __getitem__(self, index):
         if len(self.origin) == 0:
             if isinstance(index, tuple) and len(index) > 0:
-                raise IndexError('more than one index given for a zero-dimension array')
+                raise IndexError("more than one index given for a zero-dimension array")
             elif isinstance(index, slice) and index != slice(None, None, None):
-                raise IndexError('cannot slice a zero-dimension array')
+                raise IndexError("cannot slice a zero-dimension array")
             else:
                 return self._data  # array[()] does not return an ndarray
         else:
@@ -87,7 +87,9 @@ class BoundedArrayView:
         for entry, origin, extent in zip(index, self.origin, self.extent):
             if isinstance(entry, slice):
                 shifted_slice = shift_slice(entry, origin, extent)
-                shifted_index.append(bound_default_slice(shifted_slice, origin, origin + extent))
+                shifted_index.append(
+                    bound_default_slice(shifted_slice, origin, origin + extent)
+                )
             elif entry is None:
                 shifted_index.append(entry)
             else:
@@ -102,8 +104,8 @@ def ensure_int_tuple(arg, arg_name):
             return_list.append(int(item))
         except ValueError:
             raise TypeError(
-                f'tuple arg {arg_name}={arg} contains item {item} of '
-                f'unexpected type {type(item)}'
+                f"tuple arg {arg_name}={arg} contains item {item} of "
+                f"unexpected type {type(item)}"
             )
     return tuple(return_list)
 
@@ -114,12 +116,13 @@ class Quantity:
     """
 
     def __init__(
-            self,
-            data,
-            dims: Iterable[str],
-            units: str,
-            origin: Iterable[int] = None,
-            extent: Iterable[int] = None):
+        self,
+        data,
+        dims: Iterable[str],
+        units: str,
+        origin: Iterable[int] = None,
+        extent: Iterable[int] = None,
+    ):
         """
         Initialize a Quantity.
 
@@ -141,8 +144,8 @@ class Quantity:
         else:
             extent = tuple(extent)
         self._metadata = QuantityMetadata(
-            origin=ensure_int_tuple(origin, 'origin'),
-            extent=ensure_int_tuple(extent, 'extent'),
+            origin=ensure_int_tuple(origin, "origin"),
+            extent=ensure_int_tuple(extent, "extent"),
             dims=tuple(dims),
             units=units,
             data_type=type(data),
@@ -150,14 +153,17 @@ class Quantity:
         )
         self._attrs = {}
         self._data = data
-        self._compute_domain_view = BoundedArrayView(self.data, self.origin, self.extent)
+        self._compute_domain_view = BoundedArrayView(
+            self.data, self.origin, self.extent
+        )
 
     @classmethod
     def from_data_array(
-            cls,
-            data_array: xr.DataArray,
-            origin: Iterable[int] = None,
-            extent: Iterable[int] = None):
+        cls,
+        data_array: xr.DataArray,
+        origin: Iterable[int] = None,
+        extent: Iterable[int] = None,
+    ):
         """
         Initialize a Quantity from an xarray.DataArray.
 
@@ -166,14 +172,14 @@ class Quantity:
             origin: first point in data within the computational domain
             extent: number of points along each axis within the computational domain
         """
-        if 'units' not in data_array.attrs:
-            raise ValueError('need units attribute to create Quantity from DataArray')
+        if "units" not in data_array.attrs:
+            raise ValueError("need units attribute to create Quantity from DataArray")
         return cls(
             data_array.values,
             data_array.dims,
-            data_array.attrs['units'],
+            data_array.attrs["units"],
             origin=origin,
-            extent=extent
+            extent=extent,
         )
 
     def __repr__(self):
@@ -213,13 +219,13 @@ class Quantity:
     def dims(self) -> Tuple[str, ...]:
         """names of each dimension"""
         return self.metadata.dims
-    
+
     @property
     def values(self) -> np.ndarray:
         return_array = np.asarray(self._data)
         return_array.flags.writeable = False
         return return_array
-    
+
     @property
     def view(self) -> BoundedArrayView:
         """a view into the computational domain of the underlying data"""
@@ -234,7 +240,7 @@ class Quantity:
     def origin(self) -> Tuple[int, ...]:
         """the start of the computational domain"""
         return self.metadata.origin
-    
+
     @property
     def extent(self) -> Tuple[int, ...]:
         """the shape of the computational domain"""
@@ -242,11 +248,7 @@ class Quantity:
 
     @property
     def data_array(self) -> xr.DataArray:
-        return xr.DataArray(
-            self.view[:],
-            dims=self.dims,
-            attrs=self.attrs
-        )
+        return xr.DataArray(self.view[:], dims=self.dims, attrs=self.attrs)
 
     @property
     def np(self) -> ModuleType:

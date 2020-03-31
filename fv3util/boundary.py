@@ -7,6 +7,7 @@ from . import constants
 @dataclasses.dataclass
 class Boundary:
     """Maps part of a subtile domain to another rank which shares halo points"""
+
     from_rank: int
     to_rank: int
     n_clockwise_rotations: int
@@ -60,12 +61,17 @@ class Boundary:
 @dataclasses.dataclass
 class SimpleBoundary(Boundary):
     """A boundary representing an edge or corner of a subtile."""
+
     boundary_type: str
 
     def _view(self, quantity: Quantity, n_points: int, interior: bool):
         boundary_slice = _get_boundary_slice(
-            quantity.dims, quantity.origin, quantity.extent,
-            self.boundary_type, n_points, interior
+            quantity.dims,
+            quantity.origin,
+            quantity.extent,
+            self.boundary_type,
+            n_points,
+            interior,
         )
         return quantity.data[tuple(boundary_slice)]
 
@@ -80,8 +86,8 @@ def _get_boundary_slice(dims, origin, extent, boundary_type, n_halo, interior):
         dim_to_ends = DIM_TO_END_CORNERS
     else:
         raise ValueError(
-            f'invalid boundary type {boundary_type}, '
-            f'must be one of {constants.BOUNDARY_TYPES}'
+            f"invalid boundary type {boundary_type}, "
+            f"must be one of {constants.BOUNDARY_TYPES}"
         )
     boundary_slice = []
     for dim, origin_1d, extent_1d in zip(dims, origin, extent):

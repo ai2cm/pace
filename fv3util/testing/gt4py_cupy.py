@@ -11,5 +11,5 @@ from .gt4py_numpy import inject_storage_methods, inject_attrs
 
 
 if cupy is not None:
-    inject_storage_methods(locals(), 'cupy')
+    inject_storage_methods(locals(), "cupy")
     inject_attrs(locals(), cupy)

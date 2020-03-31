@@ -3,7 +3,6 @@ import unittest
 
 
 class TileNumberTests(unittest.TestCase):
-    
     def test_get_tile_number_six_ranks(self):
         rank_list = list(range(6))
         for i_rank in rank_list:
@@ -21,5 +20,5 @@ class TileNumberTests(unittest.TestCase):
                 i_rank += 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

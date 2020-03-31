@@ -106,7 +106,7 @@ def rank_quantity_list(total_ranks, numpy, dtype):
         quantity = fv3util.Quantity(
             data,
             dims=(fv3util.Y_DIM, fv3util.X_DIM),
-            units='m',
+            units="m",
             origin=(1, 1),
             extent=(1, 1),
         )
@@ -115,8 +115,7 @@ def rank_quantity_list(total_ranks, numpy, dtype):
 
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in remainder")
-def test_correct_rank_layout(
-        rank_quantity_list, communicator_list, subtests, numpy):
+def test_correct_rank_layout(rank_quantity_list, communicator_list, subtests, numpy):
     for communicator, quantity in zip(communicator_list, rank_quantity_list):
         communicator.start_halo_update(quantity, 1)
     for communicator, quantity in zip(communicator_list, rank_quantity_list):
@@ -124,15 +123,25 @@ def test_correct_rank_layout(
     for rank, quantity in enumerate(rank_quantity_list):
         with subtests.test(rank=rank):
             if rank % 2 == 0:
-                target_data = numpy.array([
-                    [numpy.nan, rank - 1, numpy.nan],
-                    [rank - 2, rank, rank + 1],
-                    [numpy.nan, rank + 2, numpy.nan]
-                ]) % 6
+                target_data = (
+                    numpy.array(
+                        [
+                            [numpy.nan, rank - 1, numpy.nan],
+                            [rank - 2, rank, rank + 1],
+                            [numpy.nan, rank + 2, numpy.nan],
+                        ]
+                    )
+                    % 6
+                )
             else:
-                target_data = numpy.array([
-                    [numpy.nan, rank - 2, numpy.nan],
-                    [rank - 1, rank, rank + 2],
-                    [numpy.nan, rank + 1, numpy.nan]
-                ]) % 6
+                target_data = (
+                    numpy.array(
+                        [
+                            [numpy.nan, rank - 2, numpy.nan],
+                            [rank - 1, rank, rank + 2],
+                            [numpy.nan, rank + 1, numpy.nan],
+                        ]
+                    )
+                    % 6
+                )
             numpy.testing.assert_array_equal(quantity.data, target_data)

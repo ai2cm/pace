@@ -1,20 +1,17 @@
-from typing import Union, Tuple, Dict
-import dataclasses
+from typing import Union
 import logging
 import zarr
 import numpy as np
 import xarray as xr
 from . import constants, utils
 from .partitioner import CubedSpherePartitioner, subtile_slice
-from .quantity import Quantity, QuantityMetadata
 
 logger = logging.getLogger("fv3util")
 
-__all__ = ['ZarrMonitor']
+__all__ = ["ZarrMonitor"]
 
 
 class DummyComm:
-    
     def Get_rank(self):
         return 0
 
@@ -22,7 +19,9 @@ class DummyComm:
         return 1
 
     def bcast(self, value, root=0):
-        assert root == 0, "DummyComm should only be used on a single core, so root should only ever be 0"
+        assert (
+            root == 0
+        ), "DummyComm should only be used on a single core, so root should only ever be 0"
         return value
 
     def barrier(self):
@@ -33,11 +32,12 @@ class ZarrMonitor:
     """sympl.Monitor-style object for storing model state dictionaries in a Zarr store."""
 
     def __init__(
-            self,
-            store: Union[str, zarr.storage.MutableMapping],
-            partitioner: CubedSpherePartitioner,
-            mode: str = "w",
-            mpi_comm=DummyComm()):
+        self,
+        store: Union[str, zarr.storage.MutableMapping],
+        partitioner: CubedSpherePartitioner,
+        mode: str = "w",
+        mpi_comm=DummyComm(),
+    ):
         """Create a ZarrMonitor.
 
         Args:
@@ -58,11 +58,12 @@ class ZarrMonitor:
     def _init_writers(self, state):
         self._writers = {
             key: _ZarrVariableWriter(
-                self._comm, self._group, name=key, partitioner=self.partitioner)
-            for key in set(state.keys()).difference(['time'])
+                self._comm, self._group, name=key, partitioner=self.partitioner
+            )
+            for key in set(state.keys()).difference(["time"])
         }
-        self._writers['time'] = _ZarrTimeWriter(
-            self._comm, self._group, name='time', partitioner=self.partitioner
+        self._writers["time"] = _ZarrTimeWriter(
+            self._comm, self._group, name="time", partitioner=self.partitioner
         )
 
     def _check_writers(self, state):
@@ -99,14 +100,13 @@ class ZarrMonitor:
 
 
 class _ZarrVariableWriter:
-
     def __init__(self, comm, group, name, partitioner):
         self.i_time = 0
         self.comm = comm
         self.group = group
         self.name = name
         self.array = None
-        
+
         self._prepend_shape = (1, 6)
         self._prepend_chunks = (1, 1)
         self._y_chunks = partitioner.tile.layout[0]
@@ -168,26 +168,26 @@ class _ZarrVariableWriter:
 
         target_slice = (
             self.i_time,
-            self._partitioner.tile_index(
-                self.rank
-            )
+            self._partitioner.tile_index(self.rank),
         ) + subtile_slice(
             quantity.dims,
             self.array.shape[2:],  # remove time and tile dimensions
             self.partitioner.layout,
             self.partitioner.tile.subtile_index(self.rank),
-            overlap=False
+            overlap=False,
         )
 
         from_slice = _get_from_slice(target_slice)
-        logger.debug(f'assigning data from subtile slice {from_slice} to target slice {target_slice}')
+        logger.debug(
+            f"assigning data from subtile slice {from_slice} to target slice {target_slice}"
+        )
         self.array[target_slice] = quantity.view[from_slice]
         self.i_time += 1
 
     def _get_attrs(self, quantity):
         return {
-            '_ARRAY_DIMENSIONS': list(self._PREPEND_DIMS + quantity.dims),
-            **quantity.attrs
+            "_ARRAY_DIMENSIONS": list(self._PREPEND_DIMS + quantity.dims),
+            **quantity.attrs,
         }
 
     def _ensure_compatible_attrs(self, new_quantity):

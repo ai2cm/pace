@@ -43,23 +43,32 @@ def n_points(request):
     return request.param
 
 
-@pytest.fixture(params=['fewer', 'more', 'same'])
+@pytest.fixture(params=["fewer", "more", "same"])
 def n_points_update(request, n_points):
-    update = n_points + {'fewer': -1, 'more': 1, 'same': 0}[request.param]
+    update = n_points + {"fewer": -1, "more": 1, "same": 0}[request.param]
     if update > n_points:
-        pytest.skip('cannot update more points than exist in the halo')
+        pytest.skip("cannot update more points than exist in the halo")
     else:
         return update
 
 
 @pytest.fixture(
     params=[
-        pytest.param((fv3util.Y_DIM, fv3util.X_DIM), id='center'),
-        pytest.param((fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM), id='center_3d'),
-        pytest.param((fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM), id='center_3d_reverse'),
-        pytest.param((fv3util.X_DIM, fv3util.Z_DIM, fv3util.Y_DIM), id='center_3d_shuffle'),
-        pytest.param((fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM), id='interface'),
-        pytest.param((fv3util.Z_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM), id='interface_3d'),
+        pytest.param((fv3util.Y_DIM, fv3util.X_DIM), id="center"),
+        pytest.param((fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM), id="center_3d"),
+        pytest.param(
+            (fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM), id="center_3d_reverse"
+        ),
+        pytest.param(
+            (fv3util.X_DIM, fv3util.Z_DIM, fv3util.Y_DIM), id="center_3d_shuffle"
+        ),
+        pytest.param(
+            (fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM), id="interface"
+        ),
+        pytest.param(
+            (fv3util.Z_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM),
+            id="interface_3d",
+        ),
     ]
 )
 def dims(request):
@@ -68,7 +77,7 @@ def dims(request):
 
 @pytest.fixture
 def units():
-    return 'm'
+    return "m"
 
 
 @pytest.fixture
@@ -166,9 +175,13 @@ def updated_slice(ny, nx, dims, n_points, n_points_update):
     return_list = []
     length_dict = {
         fv3util.X_DIM: slice(n_points_remain, n_points + nx + n_points_update),
-        fv3util.X_INTERFACE_DIM: slice(n_points_remain, n_points + nx + 1 + n_points_update),
+        fv3util.X_INTERFACE_DIM: slice(
+            n_points_remain, n_points + nx + 1 + n_points_update
+        ),
         fv3util.Y_DIM: slice(n_points_remain, n_points + ny + n_points_update),
-        fv3util.Y_INTERFACE_DIM: slice(n_points_remain, n_points + ny + 1 + n_points_update),
+        fv3util.Y_INTERFACE_DIM: slice(
+            n_points_remain, n_points + ny + 1 + n_points_update
+        ),
         fv3util.Z_DIM: slice(None, None),
         fv3util.Z_INTERFACE_DIM: slice(None, None),
     }
@@ -186,34 +199,42 @@ def remaining_ones(nz, ny, nx, n_points, n_points_update):
 @pytest.fixture
 def boundary_dict(ranks_per_tile):
     if ranks_per_tile == 1:
-        return {
-            0: fv3util.EDGE_BOUNDARY_TYPES
-        }
+        return {0: fv3util.EDGE_BOUNDARY_TYPES}
     elif ranks_per_tile == 4:
         return {
-            0: fv3util.EDGE_BOUNDARY_TYPES + (fv3util.NORTHWEST, fv3util.NORTHEAST, fv3util.SOUTHEAST),
-            1: fv3util.EDGE_BOUNDARY_TYPES + (fv3util.NORTHWEST, fv3util.NORTHEAST, fv3util.SOUTHWEST),
-            2: fv3util.EDGE_BOUNDARY_TYPES + (fv3util.NORTHEAST, fv3util.SOUTHWEST, fv3util.SOUTHEAST),
-            3: fv3util.EDGE_BOUNDARY_TYPES + (fv3util.NORTHWEST, fv3util.SOUTHWEST, fv3util.SOUTHEAST),
+            0: fv3util.EDGE_BOUNDARY_TYPES
+            + (fv3util.NORTHWEST, fv3util.NORTHEAST, fv3util.SOUTHEAST),
+            1: fv3util.EDGE_BOUNDARY_TYPES
+            + (fv3util.NORTHWEST, fv3util.NORTHEAST, fv3util.SOUTHWEST),
+            2: fv3util.EDGE_BOUNDARY_TYPES
+            + (fv3util.NORTHEAST, fv3util.SOUTHWEST, fv3util.SOUTHEAST),
+            3: fv3util.EDGE_BOUNDARY_TYPES
+            + (fv3util.NORTHWEST, fv3util.SOUTHWEST, fv3util.SOUTHEAST),
         }
     elif ranks_per_tile == 9:
         return {
-            0: fv3util.EDGE_BOUNDARY_TYPES + (fv3util.NORTHWEST, fv3util.NORTHEAST, fv3util.SOUTHEAST),
+            0: fv3util.EDGE_BOUNDARY_TYPES
+            + (fv3util.NORTHWEST, fv3util.NORTHEAST, fv3util.SOUTHEAST),
             1: fv3util.BOUNDARY_TYPES,
-            2: fv3util.EDGE_BOUNDARY_TYPES + (fv3util.NORTHWEST, fv3util.NORTHEAST, fv3util.SOUTHWEST),
+            2: fv3util.EDGE_BOUNDARY_TYPES
+            + (fv3util.NORTHWEST, fv3util.NORTHEAST, fv3util.SOUTHWEST),
             3: fv3util.BOUNDARY_TYPES,
             4: fv3util.BOUNDARY_TYPES,
             5: fv3util.BOUNDARY_TYPES,
-            6: fv3util.EDGE_BOUNDARY_TYPES + (fv3util.NORTHEAST, fv3util.SOUTHWEST, fv3util.SOUTHEAST),
+            6: fv3util.EDGE_BOUNDARY_TYPES
+            + (fv3util.NORTHEAST, fv3util.SOUTHWEST, fv3util.SOUTHEAST),
             7: fv3util.BOUNDARY_TYPES,
-            8: fv3util.EDGE_BOUNDARY_TYPES + (fv3util.NORTHWEST, fv3util.SOUTHWEST, fv3util.SOUTHEAST),
+            8: fv3util.EDGE_BOUNDARY_TYPES
+            + (fv3util.NORTHWEST, fv3util.SOUTHWEST, fv3util.SOUTHEAST),
         }
     else:
         raise NotImplementedError(ranks_per_tile)
 
 
 @pytest.fixture
-def depth_quantity_list(total_ranks, dims, units, origin, extent, shape, numpy, dtype, n_points):
+def depth_quantity_list(
+    total_ranks, dims, units, origin, extent, shape, numpy, dtype, n_points
+):
     """A list of quantities whose value indicates the distance from the computational
     domain boundary."""
     return_list = []
@@ -236,19 +257,22 @@ def depth_quantity_list(total_ranks, dims, units, origin, extent, shape, numpy, 
                     pos[i] = origin[i] + extent[i] + n_outside - 1
                     data[tuple(pos)] = numpy.nan
         quantity = fv3util.Quantity(
-            data,
-            dims=dims,
-            units=units,
-            origin=origin,
-            extent=extent,
+            data, dims=dims, units=units, origin=origin, extent=extent,
         )
         return_list.append(quantity)
     return return_list
 
 
 def test_depth_halo_update(
-        depth_quantity_list, communicator_list, n_points_update, n_points, numpy,
-        subtests, boundary_dict, ranks_per_tile):
+    depth_quantity_list,
+    communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
     """test that written values have the correct orientation"""
     sample_quantity = depth_quantity_list[0]
     dims = sample_quantity.dims
@@ -286,20 +310,23 @@ def zeros_quantity_list(total_ranks, dims, units, origin, extent, shape, numpy, 
     for rank in range(total_ranks):
         data = numpy.ones(shape, dtype=dtype)
         quantity = fv3util.Quantity(
-            data,
-            dims=dims,
-            units=units,
-            origin=origin,
-            extent=extent,
+            data, dims=dims, units=units, origin=origin, extent=extent,
         )
-        quantity.view[:] = 0.
+        quantity.view[:] = 0.0
         return_list.append(quantity)
     return return_list
 
 
 def test_zeros_halo_update(
-        zeros_quantity_list, communicator_list, n_points_update, n_points, numpy,
-        subtests, boundary_dict, ranks_per_tile):
+    zeros_quantity_list,
+    communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
     """test that zeros from adjacent domains get written over ones on local halo"""
     if 0 < n_points_update <= n_points:
         for communicator, quantity in zip(communicator_list, zeros_quantity_list):
@@ -310,37 +337,70 @@ def test_zeros_halo_update(
             boundaries = boundary_dict[rank % ranks_per_tile]
             for boundary in boundaries:
                 boundary_slice = fv3util.boundary._get_boundary_slice(
-                    quantity.dims, quantity.origin, quantity.extent,
-                    boundary, n_points_update, interior=False
+                    quantity.dims,
+                    quantity.origin,
+                    quantity.extent,
+                    boundary,
+                    n_points_update,
+                    interior=False,
                 )
-                with subtests.test(quantity=quantity, rank=rank, boundary=boundary, boundary_slice=boundary_slice):
+                with subtests.test(
+                    quantity=quantity,
+                    rank=rank,
+                    boundary=boundary,
+                    boundary_slice=boundary_slice,
+                ):
                     numpy.testing.assert_array_equal(
-                        quantity.data[tuple(boundary_slice)], 0.
+                        quantity.data[tuple(boundary_slice)], 0.0
                     )
 
 
 def test_zeros_vector_halo_update(
-        zeros_quantity_list, communicator_list, n_points_update, n_points, numpy,
-        subtests, boundary_dict, ranks_per_tile):
+    zeros_quantity_list,
+    communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
     """test that zeros from adjacent domains get written over ones on local halo"""
     x_list = zeros_quantity_list
     y_list = copy.deepcopy(x_list)
     if 0 < n_points_update <= n_points:
-        for communicator, y_quantity, x_quantity in zip(communicator_list, y_list, x_list):
-            communicator.start_vector_halo_update(y_quantity, x_quantity, n_points_update)
-        for communicator, y_quantity, x_quantity in zip(communicator_list, y_list, x_list):
-            communicator.finish_vector_halo_update(y_quantity, x_quantity, n_points_update)
+        for communicator, y_quantity, x_quantity in zip(
+            communicator_list, y_list, x_list
+        ):
+            communicator.start_vector_halo_update(
+                y_quantity, x_quantity, n_points_update
+            )
+        for communicator, y_quantity, x_quantity in zip(
+            communicator_list, y_list, x_list
+        ):
+            communicator.finish_vector_halo_update(
+                y_quantity, x_quantity, n_points_update
+            )
         for rank, (y_quantity, x_quantity) in enumerate(zip(y_list, x_list)):
             boundaries = boundary_dict[rank % ranks_per_tile]
             for boundary in boundaries:
                 boundary_slice = fv3util.boundary._get_boundary_slice(
-                    x_quantity.dims, x_quantity.origin, x_quantity.extent,
-                    boundary, n_points_update, interior=False
+                    x_quantity.dims,
+                    x_quantity.origin,
+                    x_quantity.extent,
+                    boundary,
+                    n_points_update,
+                    interior=False,
                 )
-                with subtests.test(x_quantity=x_quantity, rank=rank, boundary=boundary, boundary_slice=boundary_slice):
+                with subtests.test(
+                    x_quantity=x_quantity,
+                    rank=rank,
+                    boundary=boundary,
+                    boundary_slice=boundary_slice,
+                ):
                     for quantity in y_quantity, x_quantity:
                         numpy.testing.assert_array_equal(
-                            quantity.data[tuple(boundary_slice)], 0.
+                            quantity.data[tuple(boundary_slice)], 0.0
                         )
 
 
@@ -350,12 +410,11 @@ def get_horizontal_dims(dims):
             x_dim = dim
             break
     else:
-        raise ValueError(f'no x dimension in {dims}')
+        raise ValueError(f"no x dimension in {dims}")
     for dim in fv3util.Y_DIMS:
         if dim in dims:
             y_dim = dim
             break
     else:
-        raise ValueError(f'no y dimension in {dims}')
+        raise ValueError(f"no y dimension in {dims}")
     return y_dim, x_dim
-

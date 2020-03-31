@@ -9,7 +9,7 @@ import logging
 from fv3util.testing import DummyComm
 
 
-logger = logging.getLogger('test_zarr_monitor')
+logger = logging.getLogger("test_zarr_monitor")
 
 
 @pytest.fixture(params=["one_step", "three_steps"])
@@ -62,36 +62,24 @@ def cube_partitioner(tile_partitioner):
 
 @pytest.fixture(params=["empty", "one_var_2d", "one_var_3d", "two_vars"])
 def base_state(request, nz, ny, nx, numpy):
-    if request.param == 'empty':
+    if request.param == "empty":
         return {}
-    elif request.param == 'one_var_2d':
+    elif request.param == "one_var_2d":
         return {
-            'var1': fv3util.Quantity(
-                numpy.ones([ny, nx]),
-                dims=('y', 'x'),
-                units="m",
+            "var1": fv3util.Quantity(numpy.ones([ny, nx]), dims=("y", "x"), units="m",)
+        }
+    elif request.param == "one_var_3d":
+        return {
+            "var1": fv3util.Quantity(
+                numpy.ones([nz, ny, nx]), dims=("z", "y", "x"), units="m",
             )
         }
-    elif request.param == 'one_var_3d':
+    elif request.param == "two_vars":
         return {
-            'var1': fv3util.Quantity(
-                numpy.ones([nz, ny, nx]),
-                dims=('z', 'y', 'x'),
-                units="m",
-            )
-        }
-    elif request.param == 'two_vars':
-        return {
-            'var1': fv3util.Quantity(
-                numpy.ones([ny, nx]),
-                dims=('y', 'x'),
-                units="m",
+            "var1": fv3util.Quantity(numpy.ones([ny, nx]), dims=("y", "x"), units="m",),
+            "var2": fv3util.Quantity(
+                numpy.ones([nz, ny, nx]), dims=("z", "y", "x"), units="degK",
             ),
-            'var2': fv3util.Quantity(
-                numpy.ones([nz, ny, nx]),
-                dims=('z', 'y', 'x'),
-                units="degK",
-            )
         }
     else:
         raise NotImplementedError()
@@ -102,7 +90,7 @@ def state_list(base_state, n_times, start_time, time_step, numpy):
     state_list = []
     for i in range(n_times):
         new_state = copy.deepcopy(base_state)
-        for name in set(new_state.keys()).difference(['time']):
+        for name in set(new_state.keys()).difference(["time"]):
             new_state[name].view[:] = numpy.random.randn(*new_state[name].extent)
         state_list.append(new_state)
         new_state["time"] = start_time + i * time_step
@@ -110,7 +98,7 @@ def state_list(base_state, n_times, start_time, time_step, numpy):
 
 
 def test_monitor_file_store(state_list, cube_partitioner, numpy):
-    with tempfile.TemporaryDirectory(suffix='.zarr') as tempdir:
+    with tempfile.TemporaryDirectory(suffix=".zarr") as tempdir:
         monitor = fv3util.ZarrMonitor(tempdir, cube_partitioner)
         for state in state_list:
             monitor.store(state)
@@ -131,50 +119,52 @@ def validate_store(states, filename, numpy):
         assert len(missing_names) == 0, missing_names
 
     def validate_array_shape(name, array):
-        if name == 'time':
+        if name == "time":
             assert array.shape == (nt,)
         else:
             assert array.shape == (nt, 6) + states[0][name].extent
 
     def validate_array_dimensions_and_attributes(name, array):
-        if name == 'time':
-            target_attrs = {"_ARRAY_DIMENSIONS": ['time']}
+        if name == "time":
+            target_attrs = {"_ARRAY_DIMENSIONS": ["time"]}
         else:
             target_attrs = states[0][name].attrs
-            target_attrs["_ARRAY_DIMENSIONS"] = ['time', 'tile'] + list(states[0][name].dims)
+            target_attrs["_ARRAY_DIMENSIONS"] = ["time", "tile"] + list(
+                states[0][name].dims
+            )
         assert dict(array.attrs) == target_attrs
 
     def validate_array_values(name, array):
-        if name == 'time':
+        if name == "time":
             for i, s in enumerate(states):
-                assert array[i] == numpy.datetime64(s['time'])
+                assert array[i] == numpy.datetime64(s["time"])
         else:
             for i, s in enumerate(states):
                 numpy.testing.assert_array_equal(array[i, 0, :], s[name].values)
 
-    store = zarr.open_group(filename, mode='r')
-    assert_no_missing_names(store, states[0])  # states in test all have same names defined
+    store = zarr.open_group(filename, mode="r")
+    assert_no_missing_names(
+        store, states[0]
+    )  # states in test all have same names defined
     for name, array in store.arrays():
         validate_array_shape(name, array)
         validate_array_dimensions_and_attributes(name, array)
         validate_array_values(name, array)
 
 
+@pytest.mark.parametrize("layout", [(1, 1), (1, 2), (2, 2), (4, 4)])
+@pytest.mark.parametrize("nt", [1, 3])
 @pytest.mark.parametrize(
-    'layout', [(1, 1), (1, 2), (2, 2), (4, 4)]
-)
-@pytest.mark.parametrize(
-    'nt', [1, 3]
-)
-@pytest.mark.parametrize(
-    'shape, ny_rank_add, nx_rank_add, dims', [
-        ((5, 4, 4), 0, 0, ('z', 'y', 'x')),
-        ((5, 4, 4), 1, 1, ('z', 'y_interface', 'x_interface')),
-        ((5, 4, 4), 0, 1, ('z', 'y', 'x_interface')),
-    ]
+    "shape, ny_rank_add, nx_rank_add, dims",
+    [
+        ((5, 4, 4), 0, 0, ("z", "y", "x")),
+        ((5, 4, 4), 1, 1, ("z", "y_interface", "x_interface")),
+        ((5, 4, 4), 0, 1, ("z", "y", "x_interface")),
+    ],
 )
 def test_monitor_file_store_multi_rank_state(
-        layout, nt, tmpdir_factory, shape, ny_rank_add, nx_rank_add, dims, numpy):
+    layout, nt, tmpdir_factory, shape, ny_rank_add, nx_rank_add, dims, numpy
+):
     units = "m"
     tmpdir = tmpdir_factory.mktemp("data.zarr")
     nz, ny, nx = shape
@@ -189,25 +179,26 @@ def test_monitor_file_store_multi_rank_state(
     shared_buffer = {}
     monitor_list = []
     for rank in range(total_ranks):
-        monitor_list.append(fv3util.ZarrMonitor(
-            store,
-            partitioner,
-            "w",
-            mpi_comm=DummyComm(rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer)
-        ))
+        monitor_list.append(
+            fv3util.ZarrMonitor(
+                store,
+                partitioner,
+                "w",
+                mpi_comm=DummyComm(
+                    rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
+                ),
+            )
+        )
     for i_t in range(nt):
         for rank in range(total_ranks):
             state = {
-                'time': time + i_t * timestep,
-                'var1': fv3util.Quantity(
-                    numpy.ones([nz, ny_rank, nx_rank]),
-                    dims=dims,
-                    units=units,
-                )
+                "time": time + i_t * timestep,
+                "var1": fv3util.Quantity(
+                    numpy.ones([nz, ny_rank, nx_rank]), dims=dims, units=units,
+                ),
             }
             monitor_list[rank].store(state)
-    group = zarr.hierarchy.open_group(store=store, mode='r')
-    assert 'var1' in group
-    assert group['var1'].shape == (nt, 6, nz, ny + ny_rank_add, nx + nx_rank_add)
-    numpy.testing.assert_array_equal(group['var1'], 1.0)
-
+    group = zarr.hierarchy.open_group(store=store, mode="r")
+    assert "var1" in group
+    assert group["var1"].shape == (nt, 6, nz, ny + ny_rank_add, nx + nx_rank_add)
+    numpy.testing.assert_array_equal(group["var1"], 1.0)
