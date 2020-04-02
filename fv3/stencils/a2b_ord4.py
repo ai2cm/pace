@@ -36,16 +36,26 @@ def ppm_volume_mean_y(qin: sd, qy: sd):
         qy[0, 0, 0] = b2 * (qin[0, -2, 0] + qin[0, 1, 0]) + b1 * (qin[0, -1, 0] + qin)
 
 
+@gtscript.function
+def lagrange_y_func(qx):
+    return a2 * (qx[0, -2, 0] + qx[0, 1, 0]) + a1 * (qx[0, -1, 0] + qx)
+
+
 @utils.stencil()
 def lagrange_interpolation_y(qx: sd, qout: sd):
     with computation(PARALLEL), interval(...):
-        qout[0, 0, 0] = a2 * (qx[0, -2, 0] + qx[0, 1, 0]) + a1 * (qx[0, -1, 0] + qx)
+        qout = lagrange_y_func(qx)
+
+
+@gtscript.function
+def lagrange_x_func(qy):
+    return a2 * (qy[-2, 0, 0] + qy[1, 0, 0]) + a1 * (qy[-1, 0, 0] + qy)
 
 
 @utils.stencil()
 def lagrange_interpolation_x(qy: sd, qout: sd):
     with computation(PARALLEL), interval(...):
-        qout[0, 0, 0] = a2 * (qy[-2, 0, 0] + qy[1, 0, 0]) + a1 * (qy[-1, 0, 0] + qy)
+        qout = lagrange_x_func(qy)
 
 
 @utils.stencil()
@@ -187,18 +197,6 @@ def qy_edge_north2(qin: sd, dya: sd, qy: sd):
         qy[0, 0, 0] = (
             3.0 * (qin[0, -1, 0] + g_in * qin) - (g_in * qy[0, 1, 0] + qy[0, -1, 0])
         ) / (2.0 + 2.0 * g_in)
-
-
-# # TODO: all of these offsets are either 0,1 or -1, -2. Totally should be able to consolidate
-# implemented below in a re-definition, can this be deleted?
-# def ec1_offsets_dir(corner, lower_direction):
-#     if lower_direction in corner:
-#         a = 0
-#         b = 1
-#     else:
-#         a = -1
-#         b = -2
-#     return i1a, i1b
 
 
 def ec1_offsets(corner):
