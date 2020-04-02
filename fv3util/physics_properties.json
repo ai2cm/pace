@@ -28,6 +28,131 @@
         "dims": ["y", "x"]
     },
     {
+        "name": "longitude",
+        "fortran_name": "xlon",
+        "units": "radians",
+        "container": "Grid",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "latitude",
+        "fortran_name": "xlat",
+        "units": "radians",
+        "container": "Grid",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "area_of_grid_cell",
+        "fortran_name": "area",
+        "units": "m^2",
+        "container": "Grid",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "total_sky_downward_shortwave_flux_at_surface",
+        "fortran_name": "sfcfsw",
+        "fortran_subname": "dnfxc",
+        "units": "W/m^2",
+        "container": "Radtend",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "clear_sky_downward_shortwave_flux_at_surface",
+        "fortran_name": "sfcfsw",
+        "fortran_subname": "dnfx0",
+        "units": "W/m^2",
+        "container": "Radtend",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "total_sky_upward_shortwave_flux_at_surface",
+        "fortran_name": "sfcfsw",
+        "fortran_subname": "upfxc",
+        "units": "W/m^2",
+        "container": "Radtend",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "clear_sky_upward_shortwave_flux_at_surface",
+        "fortran_name": "sfcfsw",
+        "fortran_subname": "upfx0",
+        "units": "W/m^2",
+        "container": "Radtend",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "total_sky_downward_longwave_flux_at_surface",
+        "fortran_name": "sfcflw",
+        "fortran_subname": "dnfxc",
+        "units": "W/m^2",
+        "container": "Radtend",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "clear_sky_downward_longwave_flux_at_surface",
+        "fortran_name": "sfcflw",
+        "fortran_subname": "dnfx0",
+        "units": "W/m^2",
+        "container": "Radtend",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "total_sky_upward_longwave_flux_at_surface",
+        "fortran_name": "sfcflw",
+        "fortran_subname": "upfxc",
+        "units": "W/m^2",
+        "container": "Radtend",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "clear_sky_upward_longwave_flux_at_surface",
+        "fortran_name": "sfcflw",
+        "fortran_subname": "upfx0",
+        "units": "W/m^2",
+        "container": "Radtend",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "total_sky_downward_shortwave_flux_at_top_of_atmosphere",
+        "fortran_name": "topfsw",
+        "fortran_subname": "dnfxc",
+        "units": "W/m^2",
+        "container": "Intdiag",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "total_sky_upward_shortwave_flux_at_top_of_atmosphere",
+        "fortran_name": "topfsw",
+        "fortran_subname": "upfxc",
+        "units": "W/m^2",
+        "container": "Intdiag",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "clear_sky_upward_shortwave_flux_at_top_of_atmosphere",
+        "fortran_name": "topfsw",
+        "fortran_subname": "upfx0",
+        "units": "W/m^2",
+        "container": "Intdiag",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "total_sky_upward_longwave_flux_at_top_of_atmosphere",
+        "fortran_name": "topflw",
+        "fortran_subname": "upfxc",
+        "units": "W/m^2",
+        "container": "Intdiag",
+        "dims": ["y", "x"]
+    },
+    {
+        "name": "clear_sky_upward_longwave_flux_at_top_of_atmosphere",
+        "fortran_name": "topflw",
+        "fortran_subname": "upfx0",
+        "units": "W/m^2",
+        "container": "Intdiag",
+        "dims": ["y", "x"]
+    },
+    {
         "name": "sensible_heat_flux",
         "fortran_name": "dtsfc",
         "units": "W/m^2",
