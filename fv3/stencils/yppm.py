@@ -169,51 +169,76 @@ def get_flux_stencil(q: sd, c: sd, al: sd, flux: sd, mord: int):
         #    flux = tmp
 
 
-def compute_al(q, dyvar, jord, ifirst, ilast, js1, je3):
+def compute_al(q, dyvar, jord, ifirst, ilast, js1, je3, kstart=0, nk=None):
+    if nk is None:
+        nk = grid().npz - kstart
     dimensions = q.shape
-    al = utils.make_storage_from_shape(dimensions, origin)
+    local_origin = (origin[0], origin[1], kstart)
+    al = utils.make_storage_from_shape(dimensions, local_origin)
     if jord < 8:
         main_al(
             q,
             al,
-            origin=(ifirst, js1, 0),
-            domain=(ilast - ifirst + 1, je3 - js1 + 1, grid().npz),
+            origin=(ifirst, js1, kstart),
+            domain=(ilast - ifirst + 1, je3 - js1 + 1, nk),
         )
-        x_edge_domain = (dimensions[0], 1, dimensions[2])
+        x_edge_domain = (dimensions[0], 1, nk)
         if not grid().nested and spec.namelist["grid_type"] < 3:
             # South Edge
             if grid().south_edge:
                 al_x_edge_0(
-                    q, dyvar, al, origin=(0, grid().js - 1, 0), domain=x_edge_domain
+                    q,
+                    dyvar,
+                    al,
+                    origin=(0, grid().js - 1, kstart),
+                    domain=x_edge_domain,
                 )
                 al_x_edge_1(
-                    q, dyvar, al, origin=(0, grid().js, 0), domain=x_edge_domain
+                    q, dyvar, al, origin=(0, grid().js, kstart), domain=x_edge_domain
                 )
                 al_x_edge_2(
-                    q, dyvar, al, origin=(0, grid().js + 1, 0), domain=x_edge_domain
+                    q,
+                    dyvar,
+                    al,
+                    origin=(0, grid().js + 1, kstart),
+                    domain=x_edge_domain,
                 )
             # North Edge
             if grid().north_edge:
                 al_x_edge_0(
-                    q, dyvar, al, origin=(0, grid().je, 0), domain=x_edge_domain
+                    q, dyvar, al, origin=(0, grid().je, kstart), domain=x_edge_domain
                 )
                 al_x_edge_1(
-                    q, dyvar, al, origin=(0, grid().je + 1, 0), domain=x_edge_domain
+                    q,
+                    dyvar,
+                    al,
+                    origin=(0, grid().je + 1, kstart),
+                    domain=x_edge_domain,
                 )
                 al_x_edge_2(
-                    q, dyvar, al, origin=(0, grid().je + 2, 0), domain=x_edge_domain
+                    q,
+                    dyvar,
+                    al,
+                    origin=(0, grid().je + 2, kstart),
+                    domain=x_edge_domain,
                 )
     return al
 
 
-def compute_flux(q, c, jord, ifirst, ilast):
+def compute_flux(q, c, flux, jord, ifirst, ilast, kstart=0, nk=None):
+    if nk is None:
+        nk = grid().npz - kstart
     js1 = grid().js + 2 if grid().south_edge else grid().js - 1
     je3 = grid().je - 1 if grid().north_edge else grid().je + 2
-    al = compute_al(q, grid().dya, jord, ifirst, ilast, js1, je3)
+    al = compute_al(q, grid().dya, jord, ifirst, ilast, js1, je3, kstart, nk)
     mord = abs(jord)
-    flux = utils.make_storage_from_shape(q.shape, origin)
-    flux_domain = (ilast - ifirst + 1, grid().njc + 1, grid().npz)
+    flux_domain = (ilast - ifirst + 1, grid().njc + 1, nk)
     get_flux_stencil(
-        q, c, al, flux, mord=mord, origin=(ifirst, grid().js, 0), domain=flux_domain
+        q,
+        c,
+        al,
+        flux,
+        mord=mord,
+        origin=(ifirst, grid().js, kstart),
+        domain=flux_domain,
     )
-    return flux

@@ -34,7 +34,9 @@ def k_indices():
 
 
 def d_sw_ksplit(func, data, splitvars_values, outputs, grid, allz=False):
-    utils.k_split_run(func, data, k_indices(), splitvars_values, outputs, grid, allz)
+    utils.k_split_run_dataslice(
+        func, data, k_indices(), splitvars_values, outputs, grid, allz
+    )
 
 
 @gtscript.function
@@ -389,9 +391,7 @@ def damp_vertical_wind(w, heat_s, diss_e, dt, column_namelist):
         damp4 = (column_namelist["damp_w"] * grid().da_min_c) ** (
             column_namelist["nord_w"] + 1
         )
-        fx2, fy2, wk, w = delnflux.compute_no_sg(
-            w, fx2, fy2, column_namelist["nord_w"], damp4, wk
-        )
+        delnflux.compute_no_sg(w, fx2, fy2, column_namelist["nord_w"], damp4, wk)
         heatdiss.compute(fx2, fy2, w, dd8, dw, heat_s, diss_e)
     return dw, wk
 
@@ -432,10 +432,13 @@ def d_sw(
     vort = utils.make_storage_from_shape(shape, grid().default_origin())
     ut = utils.make_storage_from_shape(shape, grid().default_origin())
     vt = utils.make_storage_from_shape(shape, grid().default_origin())
-
+    fx = utils.make_storage_from_shape(shape, grid().compute_origin())
+    fy = utils.make_storage_from_shape(shape, grid().compute_origin())
+    gx = utils.make_storage_from_shape(shape, grid().compute_origin())
+    gy = utils.make_storage_from_shape(shape, grid().compute_origin())
     ra_x, ra_y = fxadv.compute(uc, vc, ut, vt, xfx, yfx, crx, cry, dt)
 
-    delp, fx, fy = fvtp2d.compute_no_sg(
+    fvtp2d.compute_no_sg(
         delp,
         crx,
         cry,
@@ -444,8 +447,10 @@ def d_sw(
         yfx,
         ra_x,
         ra_y,
-        column_namelist["nord_v"],
-        column_namelist["damp_vt"],
+        fx,
+        fy,
+        nord=column_namelist["nord_v"],
+        damp_c=column_namelist["damp_vt"],
     )
 
     fluxcap.compute(cx, cy, xflux, yflux, crx, cry, fx, fy)
@@ -454,7 +459,7 @@ def d_sw(
 
     if not spec.namelist["hydrostatic"]:
         dw, wk = damp_vertical_wind(w, heat_s, diss_e, dt, column_namelist)
-        w, gx, gy = fvtp2d.compute_no_sg(
+        fvtp2d.compute_no_sg(
             w,
             crx,
             cry,
@@ -463,8 +468,10 @@ def d_sw(
             yfx,
             ra_x,
             ra_y,
-            column_namelist["nord_v"],
-            column_namelist["damp_vt"],
+            gx,
+            gy,
+            nord=column_namelist["nord_v"],
+            damp_c=column_namelist["damp_vt"],
             mfx=fx,
             mfy=fy,
         )
@@ -480,7 +487,7 @@ def d_sw(
         )
 
     # USE_COND
-    q_con, gx, gy = fvtp2d.compute_no_sg(
+    fvtp2d.compute_no_sg(
         q_con,
         crx,
         cry,
@@ -489,8 +496,10 @@ def d_sw(
         yfx,
         ra_x,
         ra_y,
-        column_namelist["nord_t"],
-        column_namelist["damp_t"],
+        gx,
+        gy,
+        nord=column_namelist["nord_t"],
+        damp_c=column_namelist["damp_t"],
         mass=delp,
         mfx=fx,
         mfy=fy,
@@ -507,7 +516,7 @@ def d_sw(
     )
 
     # END USE_COND
-    pt, gx, gy = fvtp2d.compute_no_sg(
+    fvtp2d.compute_no_sg(
         pt,
         crx,
         cry,
@@ -516,8 +525,10 @@ def d_sw(
         yfx,
         ra_x,
         ra_y,
-        column_namelist["nord_v"],
-        column_namelist["damp_vt"],
+        gx,
+        gy,
+        nord=column_namelist["nord_v"],
+        damp_c=column_namelist["damp_vt"],
         mass=delp,
         mfx=fx,
         mfy=fy,
@@ -580,7 +591,7 @@ def d_sw(
         domain=grid().domain_shape_compute(),
     )
 
-    vort, ke, delpc = divdamp.compute(
+    divdamp.compute(
         u,
         v,
         va,
@@ -631,8 +642,8 @@ def d_sw(
             domain=grid().domain_shape_standard(),
         )
 
-    vort, fx, fy = fvtp2d.compute_no_sg(
-        vort, crx, cry, spec.namelist["hord_vt"], xfx, yfx, ra_x, ra_y
+    fvtp2d.compute_no_sg(
+        vort, crx, cry, spec.namelist["hord_vt"], xfx, yfx, ra_x, ra_y, fx, fy
     )
 
     u_from_ke(
@@ -657,9 +668,7 @@ def d_sw(
         damp4 = (column_namelist["damp_vt"] * grid().da_min_c) ** (
             column_namelist["nord_v"] + 1
         )
-        fx2, fy2, vort, wk = delnflux.compute_no_sg(
-            wk, ut, vt, column_namelist["nord_v"], damp4, vort
-        )
+        delnflux.compute_no_sg(wk, ut, vt, column_namelist["nord_v"], damp4, vort)
 
     if column_namelist["d_con"] > dcon_threshold or spec.namelist["do_skeb"]:
         damp = 0.25 * column_namelist["d_con"]

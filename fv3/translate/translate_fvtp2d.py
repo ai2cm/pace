@@ -1,10 +1,12 @@
 import fv3.stencils.fvtp2d as fvtp2d
-from .translate_d_sw import TranslateD_SW
+from fv3.translate.translate import TranslateFortranData2Py
+import fv3.utils.gt4py_utils as utils
 
 
-class TranslateFvTp2d(TranslateD_SW):
+class TranslateFvTp2d(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
+        self.compute_func = fvtp2d.compute_no_sg
         self.in_vars["data_vars"] = {
             "q": {},
             "mass": {},
@@ -29,19 +31,18 @@ class TranslateFvTp2d(TranslateD_SW):
 
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute(self, inputs):
-
-        # column_info = {'nord': self.column_namelist_vals('nord_column', inputs), 'damp_c':self.column_namelist_vals('damp_c', inputs)}
-        # column_info['nord'] = [int(i) for i in column_info['nord']]
-        # self.make_storage_data_input_vars(inputs)
-        # del inputs['nord_column']
-        # del inputs['damp_c']
-        # d_sw.d_sw_ksplit(fvtp2d.compute_no_sg, inputs, column_info, list(self.out_vars.keys()), self.grid)
-        # #fvtp2d.compute(inputs, nord_column)
-        # return self.slice_output(inputs)
+        inputs["fx"] = utils.make_storage_from_shape(
+            self.maxshape, self.grid.default_origin()
+        )
+        inputs["fy"] = utils.make_storage_from_shape(
+            self.maxshape, self.grid.default_origin()
+        )
         for optional_arg in ["mass", "mfx", "mfy"]:
             if optional_arg not in inputs:
                 inputs[optional_arg] = None
-        return self.nord_column_split_compute(inputs, fvtp2d.compute_no_sg)
+        return self.column_split_compute(
+            inputs, {"nord": "nord_column", "damp_c": "damp_c"}
+        )
 
 
 class TranslateFvTp2d_2(TranslateFvTp2d):

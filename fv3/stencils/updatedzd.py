@@ -7,7 +7,6 @@ from gt4py.gtscript import computation, interval, PARALLEL, BACKWARD
 from fv3.stencils.fxadv import ra_x_func, ra_y_func
 import fv3.stencils.delnflux as delnflux
 import fv3.stencils.fvtp2d as fvtp2d
-import fv3.stencils.d_sw as d_sw
 import fv3.utils.global_constants as constants
 
 sd = utils.sd
@@ -199,22 +198,10 @@ def compute(ndif, damp_vtd, dp0, zs, zh, crx, cry, xfx, yfx, wsd, dt):
     data = {}
     for varname in ["zh", "crx_adv", "cry_adv", "xfx_adv", "yfx_adv", "ra_x", "ra_y"]:
         data[varname] = locals()[varname]
-    outputs = {"zh": data["zh"]}
-    ks = [k[0] for k in d_sw.k_indices()]
-    col = {"column_namelist": []}
-    for ki in ks:
-        col["column_namelist"].append(
-            {"ndif": ndif[0, 0, ki], "damp": damp_vtd[0, 0, ki]}
-        )
-    utils.k_split_run(
-        column_calls,
-        data,
-        [[0], [1], list(range(2, grid.npz + 1))],
-        col,
-        outputs,
-        grid,
-        allz=True,
-    )
+    col = {"ndif": ndif[0, 0, :], "damp": damp_vtd[0, 0, :]}
+
+    kstarts = utils.get_kstarts(col, grid.npz + 1)
+    utils.k_split_run(column_calls, data, kstarts, col)
     out(
         zs,
         zh,
@@ -225,19 +212,35 @@ def compute(ndif, damp_vtd, dp0, zs, zh, crx, cry, xfx, yfx, wsd, dt):
     )
 
 
-def column_calls(zh, crx_adv, cry_adv, xfx_adv, yfx_adv, ra_x, ra_y, column_namelist):
+def column_calls(
+    zh, crx_adv, cry_adv, xfx_adv, yfx_adv, ra_x, ra_y, ndif, damp, kstart, nk
+):
     grid = spec.grid
-    if column_namelist["damp"] > 1e-5:
-        wk = utils.make_storage_from_shape(zh.shape, grid.default_origin())
-        fx2 = utils.make_storage_from_shape(zh.shape, grid.default_origin())
-        fy2 = utils.make_storage_from_shape(zh.shape, grid.default_origin())
-        z2 = cp.copy(zh, origin=grid.default_origin())
-        z2, fx, fy = fvtp2d.compute_no_sg(
-            z2, crx_adv, cry_adv, spec.namelist["hord_tm"], xfx_adv, yfx_adv, ra_x, ra_y
+    default_origin = (grid.isd, grid.jsd, kstart)
+    compute_origin = (grid.is_, grid.js, kstart)
+    compute_domain = (grid.nic, grid.njc, nk)
+    if damp > 1e-5:
+        wk = utils.make_storage_from_shape(zh.shape, default_origin)
+        fx2 = utils.make_storage_from_shape(zh.shape, default_origin)
+        fy2 = utils.make_storage_from_shape(zh.shape, default_origin)
+        fx = utils.make_storage_from_shape(zh.shape, default_origin)
+        fy = utils.make_storage_from_shape(zh.shape, default_origin)
+        z2 = cp.copy(zh, origin=default_origin)
+        fvtp2d.compute_no_sg(
+            z2,
+            crx_adv,
+            cry_adv,
+            spec.namelist["hord_tm"],
+            xfx_adv,
+            yfx_adv,
+            ra_x,
+            ra_y,
+            fx,
+            fy,
+            kstart=kstart,
+            nk=nk,
         )
-        fx2, fy2, wk, z2 = delnflux.compute_no_sg(
-            z2, fx2, fy2, column_namelist["ndif"], column_namelist["damp"], wk
-        )
+        delnflux.compute_no_sg(z2, fx2, fy2, ndif, damp, wk, kstart=kstart, nk=nk)
         zh_damp_stencil(
             grid.area,
             z2,
@@ -249,13 +252,24 @@ def column_calls(zh, crx_adv, cry_adv, xfx_adv, yfx_adv, ra_x, ra_y, column_name
             fy2,
             grid.rarea,
             zh,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(),
+            origin=compute_origin,
+            domain=compute_domain,
         )
     else:
         raise Exception("untested")
-        zh, fx, fy = fvtp2d.compute_no_sg(
-            zh, crx_adv, cry_adv, spec.namelist["hord_tm"], xfx_adv, yfx_adv, ra_x, ra_y
+        fvtp2d.compute_no_sg(
+            zh,
+            crx_adv,
+            cry_adv,
+            spec.namelist["hord_tm"],
+            xfx_adv,
+            yfx_adv,
+            ra_x,
+            ra_y,
+            fx,
+            fy,
+            kstart=kstart,
+            nk=nk,
         )
         zh_stencil(
             grid.area,
@@ -264,8 +278,8 @@ def column_calls(zh, crx_adv, cry_adv, xfx_adv, yfx_adv, ra_x, ra_y, column_name
             fy,
             ra_x,
             ra_y,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(),
+            origin=compute_origin,
+            domain=compute_domain,
         )
 
     return [zh]

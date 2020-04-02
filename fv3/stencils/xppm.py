@@ -106,43 +106,54 @@ def get_flux(q: sd, c: sd, al: sd, flux: sd, *, mord: int):
         # flux = q[-1, 0, 0] + fx1 * tmp if c > 0.0 else q + fx1 * tmp
 
 
-def compute_al(q, dxa, iord, is1, ie3, jfirst, jlast):
+def compute_al(q, dxa, iord, is1, ie3, jfirst, jlast, kstart=0, nk=None):
+    if nk is None:
+        nk = grid().npz - kstart
     dimensions = q.shape
-    al = utils.make_storage_from_shape(dimensions, origin)
-    domain_y = (1, dimensions[1], dimensions[2])
+    local_origin = (origin[0], origin[1], kstart)
+    al = utils.make_storage_from_shape(dimensions, local_origin)
+    domain_y = (1, dimensions[1], nk)
     if iord < 8:
         main_al(
             q,
             al,
-            origin=(is1, jfirst, 0),
-            domain=(ie3 - is1 + 1, jlast - jfirst + 1, grid().npz),
+            origin=(is1, jfirst, kstart),
+            domain=(ie3 - is1 + 1, jlast - jfirst + 1, nk),
         )
         if not grid().nested and spec.namelist["grid_type"] < 3:
             if grid().west_edge:
-                al_y_edge_0(q, dxa, al, origin=(grid().is_ - 1, 0, 0), domain=domain_y)
-                al_y_edge_1(q, dxa, al, origin=(grid().is_, 0, 0), domain=domain_y)
-                al_y_edge_2(q, dxa, al, origin=(grid().is_ + 1, 0, 0), domain=domain_y)
+                al_y_edge_0(
+                    q, dxa, al, origin=(grid().is_ - 1, 0, kstart), domain=domain_y
+                )
+                al_y_edge_1(q, dxa, al, origin=(grid().is_, 0, kstart), domain=domain_y)
+                al_y_edge_2(
+                    q, dxa, al, origin=(grid().is_ + 1, 0, kstart), domain=domain_y
+                )
             if grid().east_edge:
-                al_y_edge_0(q, dxa, al, origin=(grid().ie, 0, 0), domain=domain_y)
-                al_y_edge_1(q, dxa, al, origin=(grid().ie + 1, 0, 0), domain=domain_y)
-                al_y_edge_2(q, dxa, al, origin=(grid().ie + 2, 0, 0), domain=domain_y)
+                al_y_edge_0(q, dxa, al, origin=(grid().ie, 0, kstart), domain=domain_y)
+                al_y_edge_1(
+                    q, dxa, al, origin=(grid().ie + 1, 0, kstart), domain=domain_y
+                )
+                al_y_edge_2(
+                    q, dxa, al, origin=(grid().ie + 2, 0, kstart), domain=domain_y
+                )
     return al
 
 
-def compute_flux(q, c, iord, jfirst, jlast):
+def compute_flux(q, c, xflux, iord, jfirst, jlast, kstart=0, nk=None):
+    if nk is None:
+        nk = grid().npz - kstart
     mord = abs(iord)
     # output  storage
     is1 = grid().is_ + 2 if grid().west_edge else grid().is_ - 1
     ie3 = grid().ie - 1 if grid().east_edge else grid().ie + 2
-    flux = utils.make_storage_from_shape(q.shape, origin)
-    al = compute_al(q, grid().dxa, iord, is1, ie3, jfirst, jlast)
+    al = compute_al(q, grid().dxa, iord, is1, ie3, jfirst, jlast, kstart, nk)
     get_flux(
         q,
         c,
         al,
-        flux,
+        xflux,
         mord=mord,
-        origin=(grid().is_, jfirst, 0),
-        domain=(grid().nic + 1, jlast - jfirst + 1, grid().npz),
+        origin=(grid().is_, jfirst, kstart),
+        domain=(grid().nic + 1, jlast - jfirst + 1, nk),
     )
-    return flux

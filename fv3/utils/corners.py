@@ -83,52 +83,52 @@ def fill2_4corners(q1, q2, direction, grid):
         raise ValueError("Direction not recognized. Specify either x or y")
 
 
-def copy_sw_corner(q, direction, grid):
+def copy_sw_corner(q, direction, grid, kslice):
     for j in range(grid.js - grid.halo, grid.js):
         for i in range(grid.is_ - grid.halo, grid.is_):
             if direction == "x":
-                q[i, j, :] = q[j, grid.is_ - i + 2, :]
+                q[i, j, kslice] = q[j, grid.is_ - i + 2, kslice]
             if direction == "y":
-                q[i, j, :] = q[grid.js - j + 2, i, :]
+                q[i, j, kslice] = q[grid.js - j + 2, i, kslice]
 
 
-def copy_se_corner(q, direction, grid):
+def copy_se_corner(q, direction, grid, kslice):
     for j in range(grid.js - grid.halo, grid.js):
         for i in range(grid.ie + 1, grid.ie + grid.halo + 1):
             if direction == "x":
-                q[i, j, :] = q[grid.je + 1 - j + 2, i - grid.ie + 2, :]
+                q[i, j, kslice] = q[grid.je + 1 - j + 2, i - grid.ie + 2, kslice]
             if direction == "y":
-                q[i, j, :] = q[grid.je + j - 2, grid.ie + 1 - i + 2, :]
+                q[i, j, kslice] = q[grid.je + j - 2, grid.ie + 1 - i + 2, kslice]
 
 
-def copy_ne_corner(q, direction, grid):
+def copy_ne_corner(q, direction, grid, kslice):
     for j in range(grid.je + 1, grid.je + grid.halo + 1):
         for i in range(grid.ie + 1, grid.ie + grid.halo + 1):
             if direction == "x":
-                q[i, j, :] = q[j, 2 * (grid.ie + 1) - 1 - i, :]
+                q[i, j, kslice] = q[j, 2 * (grid.ie + 1) - 1 - i, kslice]
             if direction == "y":
-                q[i, j, :] = q[2 * (grid.je + 1) - 1 - j, i, :]
+                q[i, j, kslice] = q[2 * (grid.je + 1) - 1 - j, i, kslice]
 
 
-def copy_nw_corner(q, direction, grid):
+def copy_nw_corner(q, direction, grid, kslice):
     for j in range(grid.je + 1, grid.je + grid.halo + 1):
         for i in range(grid.is_ - grid.halo, grid.is_):
             if direction == "x":
-                q[i, j, :] = q[grid.je + 1 - j + 2, i - 2 + grid.ie, :]
+                q[i, j, kslice] = q[grid.je + 1 - j + 2, i - 2 + grid.ie, kslice]
             if direction == "y":
-                q[i, j, :] = q[j + 2 - grid.ie, grid.je + 1 - i + 2, :]
+                q[i, j, kslice] = q[j + 2 - grid.ie, grid.je + 1 - i + 2, kslice]
 
 
 # can't actually be a stencil because offsets are variable
-def copy_corners(q, direction, grid):
+def copy_corners(q, direction, grid, kslice=slice(0, None)):
     if grid.sw_corner:
-        copy_sw_corner(q, direction, grid)
+        copy_sw_corner(q, direction, grid, kslice)
     if grid.se_corner:
-        copy_se_corner(q, direction, grid)
+        copy_se_corner(q, direction, grid, kslice)
     if grid.ne_corner:
-        copy_ne_corner(q, direction, grid)
+        copy_ne_corner(q, direction, grid, kslice)
     if grid.nw_corner:
-        copy_nw_corner(q, direction, grid)
+        copy_nw_corner(q, direction, grid, kslice)
 
 
 # TODO these can definitely be consolidated/made simpler

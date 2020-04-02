@@ -33,6 +33,17 @@ class TranslateFortranData2Py:
         outputs = self.compute_func(**inputs)
         return self.slice_output(inputs)
 
+    def column_split_compute(self, inputs, info_mapping):
+        column_info = {}
+        for pyfunc_var, serialbox_var in info_mapping.items():
+            column_info[pyfunc_var] = self.column_namelist_vals(serialbox_var, inputs)
+        self.make_storage_data_input_vars(inputs)
+        for k in info_mapping.values():
+            del inputs[k]
+        kstarts = utils.get_kstarts(column_info, self.grid.npz)
+        utils.k_split_run(self.compute_func, inputs, kstarts, column_info)
+        return self.slice_output(inputs)
+
     def collect_input_data(
         self, serializer, savepoint,
     ):
