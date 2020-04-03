@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Tuple
 import logging
 import zarr
 import numpy as np
@@ -42,9 +42,11 @@ class ZarrMonitor:
 
         Args:
             store: Zarr store in which to store data
+            partitoner: object providing grid layout information to the Monitor
             mode: mode to use to open the store. Options are as in zarr.open_group.
             mpi_comm: mpi4py comm object to use for communications. By default, will
                 use a dummy comm object that works in single-core mode.
+            time_chunk_size: the chunk size of the time dimension
         """
         if mpi_comm.Get_rank() == 0:
             group = zarr.open_group(store, mode=mode)
@@ -58,12 +60,12 @@ class ZarrMonitor:
     def _init_writers(self, state):
         self._writers = {
             key: _ZarrVariableWriter(
-                self._comm, self._group, name=key, partitioner=self.partitioner
+                self._comm, self._group, name=key, partitioner=self.partitioner,
             )
             for key in set(state.keys()).difference(["time"])
         }
         self._writers["time"] = _ZarrTimeWriter(
-            self._comm, self._group, name="time", partitioner=self.partitioner
+            self._comm, self._group, name="time", partitioner=self.partitioner,
         )
 
     def _check_writers(self, state):
@@ -129,27 +131,16 @@ class _ZarrVariableWriter:
         self.sync_array()
 
     def _init_zarr_root(self, quantity):
-        tile_shape = self._get_tile_shape(quantity)
-        chunks = self._prepend_chunks + self.array_chunks(tile_shape, quantity.dims)
+        tile_shape = self._partitioner.tile.tile_extent(quantity.metadata)
+        chunks = self._prepend_chunks + array_chunks(
+            self._partitioner.layout, tile_shape, quantity.dims
+        )
         self.array = self.group.create_dataset(
-            self.name, shape=tile_shape, dtype=quantity.data.dtype, chunks=chunks
+            self.name,
+            shape=self._prepend_shape + tile_shape,
+            dtype=quantity.data.dtype,
+            chunks=chunks,
         )
-
-    def _get_tile_shape(self, quantity):
-        return_value = (self.i_time + 1, 6) + self._partitioner.tile.tile_extent(
-            quantity.metadata
-        )
-        return return_value
-
-    def array_chunks(self, tile_array_shape, array_dims):
-        layout_by_dims = utils.list_by_dims(array_dims, self._partitioner.layout, 1)
-        chunks_list = []
-        for extent, dim, n_ranks in zip(tile_array_shape, array_dims, layout_by_dims):
-            if dim in constants.INTERFACE_DIMS:
-                chunks_list.append(int((extent - 1) // n_ranks))
-            else:
-                chunks_list.append(int(extent // n_ranks))
-        return tuple(chunks_list)
 
     def sync_array(self):
         self.array = self.comm.bcast(self.array, root=0)
@@ -161,7 +152,11 @@ class _ZarrVariableWriter:
             self._init_zarr(quantity)
 
         if self.i_time >= self.array.shape[0] and self.rank == 0:
-            new_shape = self._get_tile_shape(quantity)
+            new_shape = list(
+                self._prepend_shape
+                + self._partitioner.tile.tile_extent(quantity.metadata)
+            )
+            new_shape[0] = self.i_time + 1
             self.array.resize(*new_shape)
             self._ensure_compatible_attrs(quantity)
         self.sync_array()
@@ -199,6 +194,21 @@ class _ZarrVariableWriter:
             )
 
 
+def array_chunks(
+    layout: Tuple[int, int],
+    tile_array_shape: Tuple[int, ...],
+    array_dims: Tuple[str, ...],
+):
+    layout_by_dims = utils.list_by_dims(array_dims, layout, 1)
+    chunks_list = []
+    for extent, dim, n_ranks in zip(tile_array_shape, array_dims, layout_by_dims):
+        if dim in constants.INTERFACE_DIMS:
+            chunks_list.append(int((extent - 1) // n_ranks))
+        else:
+            chunks_list.append(int(extent // n_ranks))
+    return tuple(chunks_list)
+
+
 def _get_from_slice(target_slice):
     return_list = []
     for entry in target_slice:
@@ -214,7 +224,7 @@ class _ZarrTimeWriter(_ZarrVariableWriter):
     def __init__(self, *args, **kwargs):
         super(_ZarrTimeWriter, self).__init__(*args, **kwargs)
         self._prepend_shape = (1,)
-        self._prepend_chunks = (_ZarrTimeWriter._TIME_CHUNK_SIZE,)
+        self._prepend_chunks = (self._TIME_CHUNK_SIZE,)
         self._PREPEND_DIMS = ("time",)
 
     def _init_zarr_root(self, array):
