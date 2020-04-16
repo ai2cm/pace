@@ -30,7 +30,7 @@ def compute(
     peln,
     wsd,
 ):
-    rgrav = 1.0 / constants.GRAV_APPROX
+    rgrav = 1.0 / constants.GRAV
     km = spec.grid.npz - 1
     peln1 = math.log(ptop)
     ptk = math.exp(akap * peln1)

@@ -14,6 +14,7 @@ from .translate_fillcorners import TranslateFillCorners
 from .translate_fillcornersvector import TranslateFillCornersVector
 from .translate_fluxcapacitor import TranslateFluxCapacitor
 from .translate_fvtp2d import TranslateFvTp2d
+from .translate_fvtp2d import TranslateFvTp2d_2
 from .translate_fxadv import TranslateFxAdv
 from .translate_heatdiss import TranslateHeatDiss
 from .translate_haloupdate import (
