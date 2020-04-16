@@ -18,6 +18,7 @@ OR
 `make tests`
 
 
+
 Porting a new stencil
 ---------------------
 
@@ -40,6 +41,7 @@ make pull_test_data
 'make devc'
 2. Extracting test data:
 
+
 * To extract test data from the container if you want to work with it outside the container
 make pull_test_data
 make extract_test_data
@@ -49,7 +51,9 @@ Then run the tests from /port_dev instead of /fv3
 
 If you prefer using docker run directly:
 docker run -v <Local fv3gfs checkout>:/port_dev -v <TEST DATA PATH>:/test_data   --name <your favorite name> -it us.gcr.io/vcm-ml/fv3ser
+
 Then in the container:
+
 pytest -v -s --data_path=/test_data/ /port_dev/fv3/test --which_modules=<Your stencil>
 
 
@@ -57,6 +61,7 @@ Installation
 ------------
 
 -- build the us.gcr.io/vcm-ml/fv3ser container with required dependencies for running the python code
+
 make build
 
 To build from scratch (without docker pulling)

@@ -32,6 +32,7 @@ def merge_namelist_defaults(nml):
         "do_f3d": False,
         "inline_q": False,
         "do_skeb": False,  # save dissipation estimate
+        "use_logp": False,
     }
     defaults.update(nml)
     return defaults

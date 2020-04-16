@@ -34,6 +34,10 @@ from .translate_xtp_u import TranslateXTP_U
 from .translate_yppm import TranslateYPPM, TranslateYPPM_2
 from .translate_ytp_v import TranslateYTP_V
 from .translate_transportdelp import TranslateTransportDelp
+from .translate_riem_solver3 import TranslateRiem_Solver3
+from .translate_riem_solver_c import TranslateRiem_Solver_C
+from .translate_pe_halo import TranslatePE_Halo
+from .translate_pk3_halo import TranslatePK3_Halo
 from .translate_del2cubed import TranslateDel2Cubed
 from .translate_d2a2c_vect import TranslateD2A2C_Vect
 from .translate_updatedzd import TranslateUpdateDzD

@@ -1,5 +1,6 @@
 GCR_URL = us.gcr.io/vcm-ml
 CWD=$(shell pwd)
+
 #<some large conceptual version change>.<serialization statement change>.<hotfix>
 FORTRAN_VERSION=0.1.3
 
@@ -14,6 +15,7 @@ FV3_INSTALL_TARGET=fv3ser-install
 FV3_INSTALL_IMAGE=$(GCR_URL)/$(FV3_INSTALL_TARGET):latest
 
 FORTRAN_DIR=$(CWD)/external/fv3gfs-fortran
+
 FV3UTIL_DIR=$(CWD)/external/fv3gfs-python/external/fv3util
 COMPILED_IMAGE=$(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-serialize
 SERIALBOX_TARGET=fv3gfs-environment-serialbox
