@@ -154,14 +154,14 @@
     },
     {
         "name": "sensible_heat_flux",
-        "fortran_name": "dtsfc",
+        "fortran_name": "dtsfci",
         "units": "W/m^2",
         "container": "Intdiag",
         "dims": ["y", "x"]
     },
     {
         "name": "latent_heat_flux",
-        "fortran_name": "dqsfc",
+        "fortran_name": "dqsfci",
         "units": "W/m^2",
         "container": "Intdiag",
         "dims": ["y", "x"]
@@ -366,7 +366,7 @@
     {
         "name": "total_precipitation",
         "fortran_name": "tprcp",
-        "units": "unknown",
+        "units": "mm/s",
         "container": "Sfcprop",
         "dims": ["y", "x"]
     },
