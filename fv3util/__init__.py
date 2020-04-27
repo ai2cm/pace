@@ -12,6 +12,7 @@ from .partitioner import (
     get_tile_number,
 )
 from .constants import (
+    MASTER_RANK,
     X_DIM,
     X_INTERFACE_DIM,
     Y_DIM,

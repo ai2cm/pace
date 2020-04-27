@@ -4,6 +4,7 @@ from .partitioner import CubedSpherePartitioner, TilePartitioner
 from . import constants
 from .boundary import Boundary
 from .rotate import rotate_scalar_data, rotate_vector_data
+from .buffer import array_buffer, send_buffer, recv_buffer
 import logging
 
 __all__ = ["TileCommunicator", "CubedSphereCommunicator"]
@@ -43,6 +44,14 @@ class TileCommunicator(Communicator):
         self.partitioner = partitioner
         super(TileCommunicator, self).__init__(comm)
 
+    def _Scatter(self, numpy, sendbuf, recvbuf, **kwargs):
+        with send_buffer(numpy, sendbuf) as send, recv_buffer(numpy, recvbuf) as recv:
+            self.comm.Scatter(send, recv, **kwargs)
+
+    def _Gather(self, numpy, sendbuf, recvbuf, **kwargs):
+        with send_buffer(numpy, sendbuf) as send, recv_buffer(numpy, recvbuf) as recv:
+            self.comm.Gather(send, recv, **kwargs)
+
     def scatter(
         self, send_quantity: Quantity = None, recv_quantity: Quantity = None
     ) -> Quantity:
@@ -64,24 +73,33 @@ class TileCommunicator(Communicator):
         else:
             metadata = self.comm.bcast(None, root=constants.MASTER_RANK)
         shape = self.partitioner.subtile_extent(metadata)
-        if self.rank == constants.MASTER_RANK:
-            sendbuf = metadata.np.empty(
-                (self.partitioner.total_ranks,) + shape, dtype=metadata.dtype
-            )
-            for rank in range(0, self.partitioner.total_ranks):
-                subtile_slice = self.partitioner.subtile_slice(
-                    rank, tile_metadata=metadata, overlap=True,
-                )
-                sendbuf[rank, :] = send_quantity.view[subtile_slice]
-        else:
-            sendbuf = None
         if recv_quantity is None:
             recv_quantity = Quantity(
                 metadata.np.empty(shape, dtype=metadata.dtype),
                 dims=metadata.dims,
                 units=metadata.units,
             )
-        self.comm.Scatter(sendbuf, recv_quantity.view[:], root=0)
+        if self.rank == constants.MASTER_RANK:
+            with array_buffer(
+                metadata.np.empty,
+                (self.partitioner.total_ranks,) + shape,
+                dtype=metadata.dtype,
+            ) as sendbuf:
+                for rank in range(0, self.partitioner.total_ranks):
+                    subtile_slice = self.partitioner.subtile_slice(
+                        rank, tile_metadata=metadata, overlap=True,
+                    )
+                    sendbuf[rank, :] = send_quantity.view[subtile_slice]
+                self._Scatter(
+                    metadata.np,
+                    sendbuf,
+                    recv_quantity.view[:],
+                    root=constants.MASTER_RANK,
+                )
+        else:
+            self._Scatter(
+                metadata.np, None, recv_quantity.view[:], root=constants.MASTER_RANK
+            )
         return recv_quantity
 
     def gather(
@@ -98,29 +116,40 @@ class TileCommunicator(Communicator):
             recv_quantity
         """
         if self.rank == constants.MASTER_RANK:
-            recvbuf = send_quantity.np.empty(
-                [self.partitioner.total_ranks] + list(send_quantity.extent),
+            with array_buffer(
+                send_quantity.np.empty,
+                (self.partitioner.total_ranks,) + tuple(send_quantity.extent),
                 dtype=send_quantity.data.dtype,
-            )
-            self.comm.Gather(send_quantity.view[:], recvbuf, root=constants.MASTER_RANK)
-            if recv_quantity is None:
-                tile_extent = self.partitioner.tile_extent(send_quantity.metadata)
-                recv_quantity = Quantity(
-                    send_quantity.np.empty(tile_extent, dtype=send_quantity.data.dtype),
-                    dims=send_quantity.dims,
-                    units=send_quantity.units,
-                    origin=tuple([0 for dim in send_quantity.dims]),
-                    extent=tile_extent,
+            ) as recvbuf:
+                self._Gather(
+                    send_quantity.np,
+                    send_quantity.view[:],
+                    recvbuf,
+                    root=constants.MASTER_RANK,
                 )
-            for rank in range(recvbuf.shape[0]):
-                to_slice = self.partitioner.subtile_slice(
-                    rank, recv_quantity.metadata, overlap=True
-                )
-                recv_quantity.view[to_slice] = recvbuf[rank, :]
-            result = recv_quantity
+                if recv_quantity is None:
+                    tile_extent = self.partitioner.tile_extent(send_quantity.metadata)
+                    recv_quantity = Quantity(
+                        send_quantity.np.empty(
+                            tile_extent, dtype=send_quantity.data.dtype
+                        ),
+                        dims=send_quantity.dims,
+                        units=send_quantity.units,
+                        origin=tuple([0 for dim in send_quantity.dims]),
+                        extent=tile_extent,
+                    )
+                for rank in range(self.partitioner.total_ranks):
+                    to_slice = self.partitioner.subtile_slice(
+                        rank, recv_quantity.metadata, overlap=True
+                    )
+                    recv_quantity.view[to_slice] = recvbuf[rank, :]
+                result = recv_quantity
         else:
-            result = self.comm.Gather(
-                send_quantity.view[:], recvbuf=None, root=constants.MASTER_RANK
+            result = self._Gather(
+                send_quantity.np,
+                send_quantity.view[:],
+                None,
+                root=constants.MASTER_RANK,
             )
         return result
 
@@ -242,7 +271,7 @@ class CubedSphereCommunicator(Communicator):
         )
         self._tile_communicator = TileCommunicator(tile_comm, self.partitioner.tile)
 
-    def start_halo_update(self, quantity: Quantity, n_points: int):
+    def start_halo_update(self, quantity: Quantity, n_points: int, tag: Hashable = 0):
         """Initiate an asynchronous halo update of a quantity."""
         if n_points == 0:
             raise ValueError("cannot perform a halo update on zero halo points")
@@ -252,16 +281,13 @@ class CubedSphereCommunicator(Communicator):
             # n_clockwise_rotations times, due to the difference in axis orientation.\
             # Thus we rotate that number of times counterclockwise before sending,
             # to get the right final orientation
-            data = quantity.np.ascontiguousarray(
-                rotate_scalar_data(
-                    data, quantity.dims, quantity.np, -boundary.n_clockwise_rotations
-                )
+            data = rotate_scalar_data(
+                data, quantity.dims, quantity.np, -boundary.n_clockwise_rotations
             )
-            self.comm.Isend(data, dest=boundary.to_rank)
+            req = self._Isend(quantity.np, data, dest=boundary.to_rank, tag=tag)
+        return req
 
-    def finish_halo_update(
-        self, quantity: Quantity, n_points: int, tag: Hashable = None
-    ):
+    def finish_halo_update(self, quantity: Quantity, n_points: int, tag: Hashable = 0):
         """Complete an asynchronous halo update of a quantity."""
         for boundary_type, boundary in self.boundaries.items():
             dest_view = boundary.recv_view(quantity, n_points=n_points)
@@ -272,17 +298,14 @@ class CubedSphereCommunicator(Communicator):
                 boundary.to_rank,
                 self.rank,
             )
-            if tag is None:
-                self.comm.Recv(dest_view, source=boundary.to_rank)
-            else:
-                self.comm.Recv(dest_view, source=boundary.to_rank, tag=tag)
+            self._Recv(quantity.np, dest_view, source=boundary.to_rank, tag=tag)
 
     def start_vector_halo_update(
         self,
         x_quantity: Quantity,
         y_quantity: Quantity,
         n_points: int,
-        tag: Hashable = None,
+        tag: Hashable = 0,
     ):
         """Initiate an asynchronous halo update of a horizontal vector quantity.
 
@@ -309,19 +332,30 @@ class CubedSphereCommunicator(Communicator):
                 x_data.shape,
                 y_data.shape,
             )
-            if tag is None:
-                self.comm.Isend(x_data, dest=boundary.to_rank)
-                self.comm.Isend(y_data, dest=boundary.to_rank)
-            else:
-                self.comm.Isend(x_data, dest=boundary.to_rank, tag=tag)
-                self.comm.Isend(y_data, dest=boundary.to_rank, tag=tag)
+            self._Isend(x_quantity.np, x_data, dest=boundary.to_rank, tag=tag)
+            self._Isend(y_quantity.np, y_data, dest=boundary.to_rank, tag=tag)
+
+    def _Isend(self, numpy, in_array, **kwargs):
+        # don't want to use a buffer here, because we leave this scope and can't close
+        # the context manager. might figure out a way to do it later
+        if "tag" in kwargs and kwargs["tag"] is None:
+            kwargs.pop("tag")
+        return self.comm.Isend(numpy.ascontiguousarray(in_array), **kwargs)
+
+    def _Send(self, numpy, in_array, **kwargs):
+        with send_buffer(numpy, in_array) as sendbuf:
+            self.comm.Send(sendbuf, **kwargs)
+
+    def _Recv(self, numpy, out_array, **kwargs):
+        with recv_buffer(numpy, out_array) as recvbuf:
+            self.comm.Recv(recvbuf, **kwargs)
 
     def finish_vector_halo_update(
         self,
         x_quantity: Quantity,
         y_quantity: Quantity,
         n_points: int,
-        tag: Hashable = None,
+        tag: Hashable = 0,
     ):
         """Complete an asynchronous halo update of a horizontal vector quantity."""
         logger.debug(

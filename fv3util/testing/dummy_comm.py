@@ -1,5 +1,6 @@
 import logging
 import copy
+from ..utils import ensure_contiguous
 
 
 logger = logging.getLogger("fv3util")
@@ -97,17 +98,24 @@ class DummyComm:
     def barrier(self):
         return
 
-    def Scatter(self, sendbuf, recvbuf, root=0):
+    def Scatter(self, sendbuf, recvbuf, root=0, **kwargs):
+        ensure_contiguous(sendbuf)
+        ensure_contiguous(recvbuf)
         if root != 0:
             raise NotImplementedError(
                 "DummyComm assumes ranks are called in order, so root must be the scatter source"
             )
-        sendbuf = self._get_buffer("scatter", sendbuf)
+        if sendbuf is not None:
+            sendbuf = self._get_buffer("scatter", copy.deepcopy(sendbuf))
+        else:
+            sendbuf = self._get_buffer("scatter", None)
         recvbuf[:] = sendbuf[self.rank]
 
-    def Gather(self, sendbuf, recvbuf, root=0):
+    def Gather(self, sendbuf, recvbuf, root=0, **kwargs):
+        ensure_contiguous(sendbuf)
+        ensure_contiguous(recvbuf)
         gather_buffer = self._gather_buffer
-        gather_buffer[self.rank] = sendbuf
+        gather_buffer[self.rank] = copy.deepcopy(sendbuf)
         if self.rank == root:
             # ndarrays are finnicky, have to check for None like this:
             if any(item is None for item in gather_buffer):
@@ -120,16 +128,23 @@ class DummyComm:
             for i, sendbuf in enumerate(gather_buffer):
                 recvbuf[i, :] = sendbuf
 
-    def Send(self, sendbuf, dest):
+    def Send(self, sendbuf, dest, **kwargs):
+        ensure_contiguous(sendbuf)
         self._put_send_recv(sendbuf, dest)
 
-    def Isend(self, sendbuf, dest):
-        return self.Send(sendbuf, dest)
+    def Isend(self, sendbuf, dest, **kwargs):
+        result = self.Send(sendbuf, dest)
 
-    def Recv(self, recvbuf, source):
+        def send():
+            return result
+
+        return AsyncResult(send)
+
+    def Recv(self, recvbuf, source, **kwargs):
+        ensure_contiguous(recvbuf)
         recvbuf[:] = self._get_send_recv(source)
 
-    def Irecv(self, recvbuf, source):
+    def Irecv(self, recvbuf, source, **kwargs):
         def receive():
             return self.Recv(recvbuf, source)
 

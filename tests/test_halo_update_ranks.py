@@ -116,10 +116,14 @@ def rank_quantity_list(total_ranks, numpy, dtype):
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in remainder")
 def test_correct_rank_layout(rank_quantity_list, communicator_list, subtests, numpy):
+    req_list = []
     for communicator, quantity in zip(communicator_list, rank_quantity_list):
-        communicator.start_halo_update(quantity, 1)
+        req = communicator.start_halo_update(quantity, 1)
+        req_list.append(req)
     for communicator, quantity in zip(communicator_list, rank_quantity_list):
         communicator.finish_halo_update(quantity, 1)
+    for req in req_list:
+        req.wait()
     for rank, quantity in enumerate(rank_quantity_list):
         with subtests.test(rank=rank):
             if rank % 2 == 0:

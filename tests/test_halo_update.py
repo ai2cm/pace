@@ -281,11 +281,15 @@ def test_depth_halo_update(
     x_index = sample_quantity.dims.index(x_dim)
     y_extent = sample_quantity.extent[y_index]
     x_extent = sample_quantity.extent[x_index]
+    req_list = []
     if 0 < n_points_update <= n_points:
         for communicator, quantity in zip(communicator_list, depth_quantity_list):
-            communicator.start_halo_update(quantity, n_points_update)
+            req = communicator.start_halo_update(quantity, n_points_update)
+            req_list.append(req)
         for communicator, quantity in zip(communicator_list, depth_quantity_list):
             communicator.finish_halo_update(quantity, n_points_update)
+        for req in req_list:
+            req.wait()
         if dims.index(y_dim) < dims.index(x_dim):
             for rank, quantity in enumerate(depth_quantity_list):
                 with subtests.test(rank=rank, quantity=quantity):
@@ -328,11 +332,15 @@ def test_zeros_halo_update(
     ranks_per_tile,
 ):
     """test that zeros from adjacent domains get written over ones on local halo"""
+    req_list = []
     if 0 < n_points_update <= n_points:
         for communicator, quantity in zip(communicator_list, zeros_quantity_list):
-            communicator.start_halo_update(quantity, n_points_update)
+            req = communicator.start_halo_update(quantity, n_points_update)
+            req_list.append(req)
         for communicator, quantity in zip(communicator_list, zeros_quantity_list):
             communicator.finish_halo_update(quantity, n_points_update)
+        for req in req_list:
+            req.wait()
         for rank, quantity in enumerate(zeros_quantity_list):
             boundaries = boundary_dict[rank % ranks_per_tile]
             for boundary in boundaries:
