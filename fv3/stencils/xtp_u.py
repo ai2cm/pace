@@ -53,8 +53,6 @@ def br_bl_corner(br: sd, bl: sd):
     with computation(PARALLEL), interval(...):
         bl = 0
         br = 0
-        bl[1, 0, 0] = 0
-        br[1, 0, 0] = 0
 
 
 def compute(c, u, v, flux):
@@ -68,6 +66,7 @@ def compute(c, u, v, flux):
     tmp_origin = (is3, grid.js, 0)
     bl = utils.make_storage_from_shape(v.shape, tmp_origin)
     br = utils.make_storage_from_shape(v.shape, tmp_origin)
+    corner_domain = (2, 1, grid.npz)
     if iord < 8:
 
         al = compute_al(u, grid.dx, iord, is3, ie3 + 1, grid.js, grid.je + 1)
@@ -85,23 +84,16 @@ def compute(c, u, v, flux):
 
         if grid.sw_corner:
             br_bl_corner(
-                br, bl, origin=(grid.is_ - 1, grid.js, 0), domain=grid.corner_domain()
+                br, bl, origin=(grid.is_ - 1, grid.js, 0), domain=corner_domain
             )
         if grid.se_corner:
-            br_bl_corner(
-                br, bl, origin=(grid.ie, grid.js, 0), domain=grid.corner_domain()
-            )
+            br_bl_corner(br, bl, origin=(grid.ie, grid.js, 0), domain=corner_domain)
         if grid.nw_corner:
             br_bl_corner(
-                br,
-                bl,
-                origin=(grid.is_ - 1, grid.je + 1, 0),
-                domain=grid.corner_domain(),
+                br, bl, origin=(grid.is_ - 1, grid.je + 1, 0), domain=corner_domain,
             )
         if grid.ne_corner:
-            br_bl_corner(
-                br, bl, origin=(grid.ie, grid.je + 1, 0), domain=grid.corner_domain()
-            )
+            br_bl_corner(br, bl, origin=(grid.ie, grid.je + 1, 0), domain=corner_domain)
 
         get_flux_u_stencil(
             u,

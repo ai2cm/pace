@@ -241,18 +241,18 @@ def update_dz_c(
         with interval(1, -1):
             xfx = p_weighted_average_domain(ut, dp_ref)
             yfx = p_weighted_average_domain(vt, dp_ref)
-        with interval(...):
-            fx, fy = xy_flux(gz_x, gz_y, xfx, yfx)
-            # TODO: check if below gz is ok, or if we need gz_y to pass this
-            gz = (gz_y * area + fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) / (
-                area + xfx - xfx[1, 0, 0] + yfx[0, 0, 0] - yfx[0, 1, 0]
-            )
-        with interval(-1, None):
-            rdt = 1.0 / dt
-            ws3[0, 0, 0] = (zs - gz) * rdt
+    with computation(PARALLEL), interval(...):
+        fx, fy = xy_flux(gz_x, gz_y, xfx, yfx)
+        # TODO: check if below gz is ok, or if we need gz_y to pass this
+        gz = (gz_y * area + fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) / (
+            area + xfx - xfx[1, 0, 0] + yfx - yfx[0, 1, 0]
+        )
+    with computation(PARALLEL), interval(-1, None):
+        rdt = 1.0 / dt
+        ws3 = (zs - gz) * rdt
     with computation(BACKWARD), interval(0, -1):
         gz_kp1 = gz[0, 0, 1] + DZ_MIN
-        gz[0, 0, 0] = gz if gz > gz_kp1 else gz_kp1
+        gz = gz if gz > gz_kp1 else gz_kp1
 
 
 def compute(dp_ref, zs, ut, vt, gz_in, ws3, dt2):
