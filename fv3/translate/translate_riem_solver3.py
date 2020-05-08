@@ -47,4 +47,3 @@ class TranslateRiem_Solver3(TranslateFortranData2Py):
             "pk": grid.compute_buffer_k_dict(),
             "pk3": grid.default_buffer_k_dict(),
         }
-        self.max_error = 1e-13

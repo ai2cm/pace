@@ -18,6 +18,7 @@ def solve(is_, ie, dt, gm2, cp2, pe2, dm, pm2, pem, w2, dz2, ptr, wsr):
     tmpshape = (nic, km + 1)
     tmpshape_p1 = (nic, km + 2)
     t1g = 2.0 * dt * dt
+    rdt = 1.0 / dt
     slice_m = slice(0, km + 1)
     slice_m2 = slice(1, km + 1)
     slice_n = slice(0, km)
@@ -90,7 +91,7 @@ def solve(is_, ie, dt, gm2, cp2, pe2, dm, pm2, pem, w2, dz2, ptr, wsr):
 
     pe2[:, 0] = 0.0
     for k in range(npz):
-        pe2[:, k + 1] = pe2[:, k] + dm[:, k] * (w2[:, k] - w1[:, k]) * 1.0 / dt
+        pe2[:, k + 1] = pe2[:, k] + dm[:, k] * (w2[:, k] - w1[:, k]) * rdt
 
     p1[:] = (pe2[:, km] + 2.0 * pe2[:, km + 1]) * 1.0 / 3.0
 
