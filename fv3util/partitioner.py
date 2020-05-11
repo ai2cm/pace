@@ -1,4 +1,5 @@
 from typing import Tuple, Callable, Iterable
+import warnings
 import copy
 import functools
 import dataclasses
@@ -89,8 +90,26 @@ class TilePartitioner:
             tile_metadata.dims, tile_metadata.extent, self.layout
         )
 
+    def subtile_nx(self, nx):
+        warnings.warn(
+            "subtile_nx method may be removed soon as it only supports constant-size subdomains, use subtile_slice instead",
+            warnings.DeprecationWarning,
+        )
+        return nx // self.layout[1]
+
+    def subtile_ny(self, ny):
+        warnings.warn(
+            "subtile_ny method may be removed soon as it only supports constant-size subdomains, use subtile_slice instead",
+            warnings.DeprecationWarning,
+        )
+        return ny // self.layout[0]
+
     def subtile_slice(
-        self, rank: int, tile_metadata: QuantityMetadata, overlap: bool = False
+        self,
+        rank: int,
+        tile_dims: Iterable[str],
+        tile_extent: Iterable[int],
+        overlap: bool = False,
     ) -> Tuple[slice, slice]:
         """Return the subtile slice of a given rank on an array.
 
@@ -107,8 +126,8 @@ class TilePartitioner:
             x_range: the x range of the array on the tile
         """
         return subtile_slice(
-            tile_metadata.dims,
-            tile_metadata.extent,
+            tile_dims,
+            tile_extent,
             self.layout,
             self.subtile_index(rank),
             overlap=overlap,

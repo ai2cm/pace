@@ -34,6 +34,7 @@ from .constants import (
     EDGE_BOUNDARY_TYPES,
     CORNER_BOUNDARY_TYPES,
     BOUNDARY_TYPES,
+    N_HALO_DEFAULT,
 )
 from .quantity import Quantity, QuantityMetadata
 from .units import ensure_equal_units, units_are_equal, UnitsError
@@ -41,5 +42,6 @@ from .communicator import TileCommunicator, CubedSphereCommunicator, Communicato
 from ._xarray import to_dataset
 from ._capture_stream import capture_stream
 from . import testing
+from .initialization import SubtileGridSizer, QuantityFactory
 
 __version__ = "0.4.1"

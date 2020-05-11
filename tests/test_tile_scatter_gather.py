@@ -105,7 +105,10 @@ def scattered_quantities(tile_quantity, layout, n_rank_halo, numpy):
     for rank in range(total_ranks):
         # partitioner is tested in other tests, here we assume it works
         subtile_slice = partitioner.subtile_slice(
-            rank, tile_quantity.metadata, overlap=True
+            rank,
+            tile_dims=tile_quantity.dims,
+            tile_extent=tile_quantity.extent,
+            overlap=True,
         )
         subtile_view = tile_quantity.view[subtile_slice]
         subtile_quantity = get_quantity(
