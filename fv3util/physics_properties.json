@@ -366,7 +366,7 @@
     {
         "name": "total_precipitation",
         "fortran_name": "tprcp",
-        "units": "mm/s",
+        "units": "m",
         "container": "Sfcprop",
         "dims": ["y", "x"]
     },
