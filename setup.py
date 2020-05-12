@@ -38,6 +38,6 @@ setup(
     packages=["fv3util"],
     include_package_data=True,
     url="https://github.com/VulcanClimateModeling/fv3gfs-python",
-    version="0.4.1",
+    version="0.4.2",
     zip_safe=False,
 )

@@ -49,4 +49,4 @@ from ._capture_stream import capture_stream
 from . import testing
 from .initialization import SubtileGridSizer, QuantityFactory
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"
