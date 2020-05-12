@@ -275,7 +275,6 @@ def test_depth_halo_update(
 ):
     """test that written values have the correct orientation"""
     sample_quantity = depth_quantity_list[0]
-    dims = sample_quantity.dims
     y_dim, x_dim = get_horizontal_dims(sample_quantity.dims)
     y_index = sample_quantity.dims.index(y_dim)
     x_index = sample_quantity.dims.index(x_dim)
@@ -286,24 +285,21 @@ def test_depth_halo_update(
         for communicator, quantity in zip(communicator_list, depth_quantity_list):
             req = communicator.start_halo_update(quantity, n_points_update)
             req_list.append(req)
-        for communicator, quantity in zip(communicator_list, depth_quantity_list):
-            communicator.finish_halo_update(quantity, n_points_update)
         for req in req_list:
             req.wait()
-        if dims.index(y_dim) < dims.index(x_dim):
-            for rank, quantity in enumerate(depth_quantity_list):
-                with subtests.test(rank=rank, quantity=quantity):
-                    for dim, extent in ((y_dim, y_extent), (x_dim, x_extent)):
-                        assert numpy.all(quantity.sel(**{dim: -1}) <= 1)
-                        assert numpy.all(quantity.sel(**{dim: extent}) <= 1)
-                        if n_points_update >= 2:
-                            assert numpy.all(quantity.sel(**{dim: -2}) <= 2)
-                            assert numpy.all(quantity.sel(**{dim: extent + 1}) <= 2)
-                        if n_points_update >= 3:
-                            assert numpy.all(quantity.sel(**{dim: -3}) <= 3)
-                            assert numpy.all(quantity.sel(**{dim: extent + 2}) <= 3)
-                        if n_points_update > 3:
-                            raise NotImplementedError(n_points_update)
+        for rank, quantity in enumerate(depth_quantity_list):
+            with subtests.test(rank=rank, quantity=quantity):
+                for dim, extent in ((y_dim, y_extent), (x_dim, x_extent)):
+                    assert numpy.all(quantity.sel(**{dim: -1}) <= 1)
+                    assert numpy.all(quantity.sel(**{dim: extent}) <= 1)
+                    if n_points_update >= 2:
+                        assert numpy.all(quantity.sel(**{dim: -2}) <= 2)
+                        assert numpy.all(quantity.sel(**{dim: extent + 1}) <= 2)
+                    if n_points_update >= 3:
+                        assert numpy.all(quantity.sel(**{dim: -3}) <= 3)
+                        assert numpy.all(quantity.sel(**{dim: extent + 2}) <= 3)
+                    if n_points_update > 3:
+                        raise NotImplementedError(n_points_update)
 
 
 @pytest.fixture
@@ -337,8 +333,6 @@ def test_zeros_halo_update(
         for communicator, quantity in zip(communicator_list, zeros_quantity_list):
             req = communicator.start_halo_update(quantity, n_points_update)
             req_list.append(req)
-        for communicator, quantity in zip(communicator_list, zeros_quantity_list):
-            communicator.finish_halo_update(quantity, n_points_update)
         for req in req_list:
             req.wait()
         for rank, quantity in enumerate(zeros_quantity_list):
@@ -377,18 +371,17 @@ def test_zeros_vector_halo_update(
     x_list = zeros_quantity_list
     y_list = copy.deepcopy(x_list)
     if 0 < n_points_update <= n_points:
+        req_list = []
         for communicator, y_quantity, x_quantity in zip(
             communicator_list, y_list, x_list
         ):
-            communicator.start_vector_halo_update(
-                y_quantity, x_quantity, n_points_update
+            req_list.append(
+                communicator.start_vector_halo_update(
+                    y_quantity, x_quantity, n_points_update
+                )
             )
-        for communicator, y_quantity, x_quantity in zip(
-            communicator_list, y_list, x_list
-        ):
-            communicator.finish_vector_halo_update(
-                y_quantity, x_quantity, n_points_update
-            )
+        for req in req_list:
+            req.wait()
         for rank, (y_quantity, x_quantity) in enumerate(zip(y_list, x_list)):
             boundaries = boundary_dict[rank % ranks_per_tile]
             for boundary in boundaries:

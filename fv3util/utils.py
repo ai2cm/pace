@@ -26,6 +26,14 @@ def is_contiguous(array):
         return array.data.data.contiguous
 
 
+def is_c_contiguous(array):
+    try:
+        return array.data.c_contiguous
+    except AttributeError:
+        # gt4py storages use numpy arrays for .data attribute instead of memoryview
+        return array.data.data.c_contiguous
+
+
 def ensure_contiguous(maybe_array):
     if isinstance(maybe_array, np.ndarray) and not is_contiguous(maybe_array):
         raise ValueError("ndarray is not contiguous")

@@ -1,18 +1,11 @@
 import pytest
 import fv3util
-
-try:
-    from mpi4py import MPI
-except ImportError:
-    MPI = None
-
-if MPI is not None and MPI.COMM_WORLD.Get_size() == 1:
-    # not run as a parallel test, disable MPI tests
-    MPI.Finalize()
-    MPI = None
+from mpi_comm import MPI
 
 
 worker_function_list = []
+
+MAX_WORKER_ITERATIONS = 16
 
 
 def worker(rank_order=range):
@@ -44,6 +37,51 @@ def send_recv(comm, numpy):
             print(f"recieving data from {rank - 1} to {rank}")
         comm.Recv(data, source=rank - 1)
     return data
+
+
+@worker()
+def send_recv_big_data(comm, numpy):
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    data = numpy.ones([5, 3, 96], dtype=numpy.float64) * rank
+
+    if rank < size - 1:
+        if isinstance(comm, fv3util.testing.DummyComm):
+            print(f"sending data from {rank} to {rank + 1}")
+        comm.Send(data, dest=rank + 1)
+    if rank > 0:
+        if isinstance(comm, fv3util.testing.DummyComm):
+            print(f"recieving data from {rank - 1} to {rank}")
+        comm.Recv(data, source=rank - 1)
+    return data
+
+
+def data_send(data, to_rank):
+    new_array = data.copy()
+    return comm.Isend(new_array, dest=to_rank, tag=0)
+
+
+@worker()
+def send_recv_multiple_async_calls(comm, numpy):
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    shape = [50, 3, 48]
+    data = numpy.ones(shape, dtype=numpy.float64) * rank
+    recv_data = numpy.zeros([size] + shape, dtype=numpy.float64) - 1
+
+    req_list = []
+
+    for to_rank in range(size):
+        if to_rank != rank:
+            req_list.append(data_send(data, dest=to_rank))
+
+    for from_rank in range(size):
+        if from_rank != rank:
+            with fv3util.recv_buffer(numpy, recv_data[from_rank, :]) as recvbuf:
+                comm.Recv(recvbuf, source=from_rank, tag=0)
+    for req in req_list:
+        req.wait()
+    return recv_data
 
 
 @worker()
@@ -234,13 +272,22 @@ def mpi_results(comm, worker_function, numpy):
 def dummy_results(worker_function, dummy_list, numpy):
     print("Getting dummy results")
     result_list = [None] * len(dummy_list)
-    for i in worker_function.rank_order(len(dummy_list)):
-        comm = dummy_list[i]
-        try:
-            result_list[i] = worker_function(comm, numpy)
-        except Exception as err:
-            result_list[i] = err
-    print("done getting dummy results")
+    done = False
+    iter_count = 0
+    while not done:
+        iter_count += 1
+        done = True
+        for i in worker_function.rank_order(len(dummy_list)):
+            comm = dummy_list[i]
+            try:
+                result_list[i] = worker_function(comm, numpy)
+            except fv3util.testing.ConcurrencyError as err:
+                if iter_count >= MAX_WORKER_ITERATIONS:
+                    result_list[i] = err
+                else:
+                    done = False
+            except Exception as err:
+                result_list[i] = err
     return result_list
 
 

@@ -1,4 +1,4 @@
-
+PYTEST_ARGS?=
 SHELL = /bin/sh
 
 define BROWSER_PYSCRIPT
@@ -37,7 +37,10 @@ coverage: ## check code coverage quickly with the default Python
 	$(BROWSER) htmlcov/index.html
 
 test: ## run tests quickly with the default Python
-	pytest tests
+	pytest $(PYTEST_ARGS) tests
+
+test_mpi:
+	mpirun -n 6 --allow-run-as-root --mca btl_vader_single_copy_mechanism none --oversubscribe pytest $(PYTEST_ARGS) tests/mpi
 
 lint:
 	black --diff --check $(PYTHON_FILES) $(PYTHON_INIT_FILES)

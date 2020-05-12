@@ -120,8 +120,6 @@ def test_correct_rank_layout(rank_quantity_list, communicator_list, subtests, nu
     for communicator, quantity in zip(communicator_list, rank_quantity_list):
         req = communicator.start_halo_update(quantity, 1)
         req_list.append(req)
-    for communicator, quantity in zip(communicator_list, rank_quantity_list):
-        communicator.finish_halo_update(quantity, 1)
     for req in req_list:
         req.wait()
     for rank, quantity in enumerate(rank_quantity_list):
