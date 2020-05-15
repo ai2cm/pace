@@ -34,6 +34,7 @@ class QuantityFactory:
         self._sizer = sizer
         self._numpy = numpy
 
+    @classmethod
     def from_backend(cls, sizer: SubtileGridSizer, backend: str):
         """Initialize a QuantityFactory to use a specific gt4py backend.
 
