@@ -17,11 +17,12 @@ FV3_INSTALL_IMAGE=$(GCR_URL)/$(FV3_INSTALL_TARGET):latest
 FORTRAN_DIR=$(CWD)/external/fv3gfs-fortran
 
 FV3UTIL_DIR=$(CWD)/external/fv3gfs-python/external/fv3util
-COMPILED_IMAGE=$(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-serialize
+COMPILED_IMAGE ?= $(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-serialize
 SERIALBOX_TARGET=fv3gfs-environment-serialbox
 SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
 BASE_ENV_IMAGE=$(GCR_URL)/fv3gfs-environment:latest
 RUNDIR_IMAGE=$(GCR_URL)/fv3gfs-rundir:$(FORTRAN_VERSION)
+GCOV_IMAGE=fv3gfs-gcov:latest
 
 TEST_DATA_CONTAINER=/test_data
 TEST_DATA_REPO=$(GCR_URL)/fv3gfs-serialization-test-data
@@ -35,8 +36,10 @@ REMOTE_TAGS="$(shell gcloud container images list-tags --format='get(tags)' $(TE
 PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
 PYTHON_INIT_FILES = $(shell git ls-files | grep '__init__.py')
 
-build_environment_serialbox:
-	if [ ! -d $(FORTRAN_DIR)/FV3 ]; then git submodule update --init --recursive ;fi
+update_submodules:
+	if [ ! -d $(FORTRAN_DIR)/FV3 -o ! -d $(FV3UTIL_DIR) ]; then git submodule update --init --recursive ;fi
+
+build_environment_serialbox: update_submodules
 	DOCKERFILE=$(FORTRAN_DIR)/docker/Dockerfile \
 	ENVIRONMENT_TARGET=$(SERIALBOX_TARGET) \
 	$(MAKE) -C $(FORTRAN_DIR) build_environment
@@ -49,9 +52,8 @@ build_environment: build_environment_serialbox
 	--target $(FV3_INSTALL_TARGET) \
     .
 
-build:
+build: update_submodules
 	if [ $(PULL) == True ]; then $(MAKE) pull_environment; else $(MAKE) build_environment; fi
-	if [ ! -d $(FV3UTIL_DIR) ]; then git submodule update --init --recursive ;fi
 	docker build --build-arg build_image=$(FV3_INSTALL_IMAGE) -f docker/Dockerfile -t $(FV3_IMAGE) .
 
 pull_environment:
@@ -79,13 +81,20 @@ fortran_model_data: #uses the 'fv3config.yml' in the fv3gfs-fortran regression t
 		-t $(DATA_IMAGE) \
 	.
 
-generate_test_data:
-	if [ ! -d $(FORTRAN_DIR)/FV3 ]; then git submodule update --init --recursive ;fi
+generate_test_data: update_submodules
 	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE=$(COMPILED_IMAGE) $(MAKE) build_serialize
 	DATA_IMAGE=$(RUNDIR_IMAGE) DATA_TARGET=rundir $(MAKE) fortran_model_data
 	DATA_IMAGE=$(TEST_DATA_IMAGE) DATA_TARGET=test_data_storage $(MAKE) fortran_model_data
 	docker rmi $(RUNDIR_IMAGE)
 
+
+generate_coverage: update_submodules
+	/bin/rm -rf coverage
+	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 $(MAKE) build_coverage
+	DATA_IMAGE=$(GCOV_IMAGE) COMPILED_IMAGE=fv3gfs-compiled:gcov DATA_TARGET=rundir $(MAKE) fortran_model_data
+	mkdir coverage
+	docker run -it --rm --mount type=bind,source=$(PWD)/coverage,target=/coverage fv3gfs-gcov:latest bash -c "pip install gcovr; cd /coverage; gcovr -r /FV3/atmos_cubed_sphere --html --html-details -o index.html"
+	@echo "==== Coverage ananlysis done. Now open coverage/index.html in your browser ===="
 
 extract_test_data:
 	if [ -d $(TEST_DATA_HOST) ]; then (echo "NOTE: $(TEST_DATA_HOST) already exists, move or delete it if you want a new extraction");\
@@ -157,5 +166,6 @@ reformat:
 .PHONY: build tests tests_host test_base run_tests_container run_tests_host_data \
 	dev devc generate_test_data extract_test_data post_test_data pull_test_data \
 	data_container fortran_model_data pull_environment push_environment  \
-	build_environment build_environment_serialize cleanup_container flake8 lint reformat
+	update_submodules build_environment build_environment_serialize cleanup_container \
+	flake8 lint reformat
 
