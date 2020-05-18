@@ -61,6 +61,10 @@ jobs:
           name: "Run tests"
           command: |
             make tests
+      - run:
+          name: "Run parallel tests"
+          command: |
+            make tests_mpi
   just_run_dawn_tests:
     machine:
       docker_layer_caching: true

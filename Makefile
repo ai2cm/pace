@@ -104,11 +104,18 @@ post_test_data:
 pull_test_data:
 	docker pull $(TEST_DATA_IMAGE)
 
-tests:
+setup_tests:
 	$(MAKE) build
 	if [ -z $(shell docker images -q $(TEST_DATA_IMAGE)) ]; then $(MAKE) pull_test_data ;fi
 	if [ -z $(shell docker ps -q -f name=$(TEST_DATA_RUN_CONTAINER)) ]; then $(MAKE) data_container;fi
+
+tests:
+	$(MAKE) setup_tests
 	$(MAKE) run_tests_container
+
+tests_mpi:
+	$(MAKE) setup_tests
+	$(MAKE) run_tests_parallel_container
 
 data_container:
 	docker run -d -it --name=$(TEST_DATA_RUN_CONTAINER) -v TestDataVolume$(FORTRAN_VERSION):/test_data $(TEST_DATA_IMAGE)
@@ -129,6 +136,14 @@ test_base:
 	docker run --rm $(VOLUMES) $(MOUNTS) \
 	-it $(RUNTEST_IMAGE) pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} /fv3/test
 
+test_base_parallel:
+	docker run --rm $(VOLUMES) $(MOUNTS) \
+	-it $(RUNTEST_IMAGE) mpirun --allow-run-as-root --mca btl_vader_single_copy_mechanism none --oversubscribe -np 6  pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} -m parallel /fv3/test
+
+run_tests_parallel_container:
+	VOLUMES='--volumes-from $(TEST_DATA_RUN_CONTAINER)' \
+	RUNTEST_IMAGE=$(FV3_IMAGE) $(MAKE) test_base_parallel
+
 run_tests_container:
 	VOLUMES='--volumes-from $(TEST_DATA_RUN_CONTAINER)' \
 	RUNTEST_IMAGE=$(FV3_IMAGE) $(MAKE) test_base
@@ -137,6 +152,11 @@ run_tests_host_data:
 	VOLUMES='-v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER)' \
 	RUNTEST_IMAGE=$(FV3_IMAGE) \
 	$(MAKE) test_base
+
+run_tests_parallel_host: 
+	VOLUMES='-v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER)' \
+	RUNTEST_IMAGE=$(FV3_IMAGE) \
+	$(MAKE) test_base_parallel
 
 lint:
 	black --diff --check $(PYTHON_FILES) $(PYTHON_INIT_FILES)

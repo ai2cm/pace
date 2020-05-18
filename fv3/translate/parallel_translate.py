@@ -17,7 +17,7 @@ class ParallelTranslate:
             "parameters": {},
         }
         self.max_error = self._base.max_error
-        self._rank_grids = rank_grids  # one for each rank
+        self._rank_grids = rank_grids
 
     def state_list_from_inputs_list(self, inputs_list: List[list]) -> list:
         state_list = []
@@ -69,16 +69,16 @@ class ParallelTranslate:
         return return_dict
 
     @property
-    def layout(self):
-        return fv3._config.namelist["layout"]
+    def rank_grids(self):
+        return self._rank_grids
 
     @property
     def grid(self):
         return self._rank_grids[0]
 
     @property
-    def rank_grids(self):
-        return self._rank_grids
+    def layout(self):
+        return fv3._config.namelist["layout"]
 
     def compute_sequential(self, inputs_list, communicator_list):
         """Compute the outputs while iterating over a set of communicator objects sequentially"""

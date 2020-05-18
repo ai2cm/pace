@@ -16,9 +16,10 @@ FROM fv3ser-environment as fv3ser-install
 RUN pip install --no-cache-dir scikit-build && \
     git clone https://github.com/MeteoSwiss-APN/dawn.git /usr/src/dawn && \
     pip install --no-cache-dir /usr/src/dawn/dawn
-RUN git clone --depth 1 -b fv3_validation https://github.com/eddie-c-davis/gt4py.git /usr/src/gt4py && pip install --no-cache-dir -e /usr/src/gt4py && \
+RUN git clone https://github.com/GridTools/gt4py.git /usr/src/gt4py && \
+    cd /usr/src/gt4py && git checkout d275eb78f63647c57eac9b665282a2c2f1efa33c && \
     pip install --no-cache-dir -e /usr/src/gt4py && \
-    cd /usr/src/gt4py && python -m gt4py.gt_src_manager install
+    python -m gt4py.gt_src_manager install
 #RUN pip install --no-cache-dir pytest==5.2.2 f90nml==1.1.0 pytest-subtests==0.3.0 pytest-xdist
 # If we update to the latest gt4py, maybe 
 # RUN python -m gt4py.gt_src_manager install

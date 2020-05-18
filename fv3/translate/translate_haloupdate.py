@@ -1,8 +1,9 @@
-from .parallel_translate import ParallelTranslate
+from .parallel_translate import ParallelTranslate, _serialize_slice
+from .translate import TranslateFortranData2Py
 import fv3util
 from fv3.utils import gt4py_utils as utils
 import logging
-
+import numpy as np
 
 logger = logging.getLogger("fv3ser")
 
@@ -26,24 +27,32 @@ class TranslateHaloUpdate(ParallelTranslate):
             "n_halo": utils.halo,
         }
     }
-
     halo_update_varname = "air_temperature"
 
-    def __init__(self, rank_grids):
-        super(TranslateHaloUpdate, self).__init__(rank_grids)
+    def __init__(self, grid):
+        super().__init__(grid)
+
+    def compute_parallel(self, inputs, communicator):
+        state = self.state_from_inputs(inputs)
+        req = communicator.start_halo_update(
+            state[self.halo_update_varname], n_points=utils.halo
+        )
+        req.wait()
+        return self.outputs_from_state(state)
 
     def compute_sequential(self, inputs_list, communicator_list):
         state_list = self.state_list_from_inputs_list(inputs_list)
+        req_list = []
         for state, communicator in zip(state_list, communicator_list):
             logger.debug(f"starting on {communicator.rank}")
-            communicator.start_halo_update(
-                state[self.halo_update_varname], n_points=utils.halo
+            req_list.append(
+                communicator.start_halo_update(
+                    state[self.halo_update_varname], n_points=utils.halo
+                )
             )
-        for state, communicator in zip(state_list, communicator_list):
+        for communicator, req in zip(communicator_list, req_list):
             logger.debug(f"finishing on {communicator.rank}")
-            communicator.finish_halo_update(
-                state[self.halo_update_varname], n_points=utils.halo
-            )
+            req.wait()
         return self.outputs_list_from_state_list(state_list)
 
 
@@ -125,23 +134,33 @@ class TranslateHaloVectorUpdate(ParallelTranslate):
         },
     }
 
-    def __init__(self, rank_grids):
-        super(TranslateHaloVectorUpdate, self).__init__(rank_grids)
+    def __init__(self, grid):
+        super(TranslateHaloVectorUpdate, self).__init__(grid)
+
+    def compute_parallel(self, inputs, communicator):
+        logger.debug(f"starting on {communicator.rank}")
+        state = self.state_from_inputs(inputs)
+        req = communicator.start_vector_halo_update(
+            state["x_wind_on_c_grid"], state["y_wind_on_c_grid"], n_points=utils.halo,
+        )
+
+        logger.debug(f"finishing on {communicator.rank}")
+        req.wait()
+        return self.outputs_from_state(state)
 
     def compute_sequential(self, inputs_list, communicator_list):
         state_list = self.state_list_from_inputs_list(inputs_list)
+        req_list = []
         for state, communicator in zip(state_list, communicator_list):
             logger.debug(f"starting on {communicator.rank}")
-            communicator.start_vector_halo_update(
-                state["x_wind_on_c_grid"],
-                state["y_wind_on_c_grid"],
-                n_points=utils.halo,
+            req_list.append(
+                communicator.start_vector_halo_update(
+                    state["x_wind_on_c_grid"],
+                    state["y_wind_on_c_grid"],
+                    n_points=utils.halo,
+                )
             )
-        for state, communicator in zip(state_list, communicator_list):
+        for communicator, req in zip(communicator_list, req_list):
             logger.debug(f"finishing on {communicator.rank}")
-            communicator.finish_vector_halo_update(
-                state["x_wind_on_c_grid"],
-                state["y_wind_on_c_grid"],
-                n_points=utils.halo,
-            )
+            req.wait()
         return self.outputs_list_from_state_list(state_list)
