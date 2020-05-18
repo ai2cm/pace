@@ -171,26 +171,24 @@ def test_mock_parallel_savepoint(
     for varname in testobj.outputs.keys():
         ref_data[varname] = []
         with _subtest(failing_names, subtests, varname=varname):
-            with subtests.test(varname=varname):
-                failing_ranks = []
-                for rank, (savepoint_out, serializer, output) in enumerate(
-                    zip(savepoint_out_list, serializer_list, output_list)
-                ):
-                    with _subtest(failing_ranks, subtests, varname=varname, rank=rank):
-                        ref_data[varname].append(
-                            serializer.read(varname, savepoint_out)
-                        )
-                        assert success(
-                            output[varname], ref_data[varname][-1], testobj.max_error
-                        ), sample_wherefail(
-                            output[varname],
-                            ref_data[varname][-1],
-                            testobj.max_error,
-                            print_failures,
-                            failure_stride,
-                            test_name,
-                        )
-                assert failing_ranks == []
+            failing_ranks = []
+            for rank, (savepoint_out, serializer, output) in enumerate(
+                zip(savepoint_out_list, serializer_list, output_list)
+            ):
+                with _subtest(failing_ranks, subtests, varname=varname, rank=rank):
+                    ref_data[varname].append(serializer.read(varname, savepoint_out))
+                    assert success(
+                        output[varname], ref_data[varname][-1], testobj.max_error
+                    ), sample_wherefail(
+                        output[varname],
+                        ref_data[varname][-1],
+                        testobj.max_error,
+                        print_failures,
+                        failure_stride,
+                        test_name,
+                    )
+            assert failing_ranks == []
+    failing_names = [item["varname"] for item in failing_names]
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
         save_netcdf(
@@ -251,7 +249,7 @@ def _subtest(failure_list, subtests, **kwargs):
     failure_list.append(kwargs)
     with subtests.test(**kwargs):
         yield
-    failure_list.pop()  # will remove kwargs if the test passes
+        failure_list.pop()  # will remove kwargs if the test passes
 
 
 def save_netcdf(
@@ -262,7 +260,6 @@ def save_netcdf(
         dims = testobj.outputs[varname]["dims"]
         attrs = {
             "units": testobj.outputs[varname]["units"],
-            "n_halo": testobj.outputs[varname]["n_halo"],
         }
         data_vars[f"{varname}_in"] = xr.DataArray(
             np.stack([in_data[varname] for in_data in inputs_list]),

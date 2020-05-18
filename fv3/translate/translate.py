@@ -16,11 +16,12 @@ def read_serialized_data(serializer, savepoint, variable):
 
 
 class TranslateFortranData2Py:
+    max_error = 1e-14
+
     def __init__(self, grid, origin=utils.origin):
         self.origin = origin
         self.in_vars = {"data_vars": {}, "parameters": []}
         self.out_vars = []
-        self.max_error = 1e-14
         self.grid = grid
         self.maxshape = grid.domain_shape_buffer_1cell()
         self.ordered_input_vars = None

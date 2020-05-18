@@ -58,6 +58,31 @@ class Grid:
         self.ne_corner = self.east_edge and self.north_edge
         self.data_fields = {}
         self.add_data(data_fields)
+        self._sizer = None
+        self._quantity_factory = None
+
+    @property
+    def sizer(self):
+        if self._sizer is None:
+            # in the future this should use from_namelist, when we have a non-flattened
+            # namelist
+            self._sizer = fv3util.SubtileGridSizer._from_tile_params(
+                nx_tile=self.npx - 1,
+                ny_tile=self.npy - 1,
+                nz=self.npz,
+                n_halo=self.halo,
+                extra_dim_lengths={},
+                layout=self.layout,
+            )
+        return self._sizer
+
+    @property
+    def quantity_factory(self):
+        if self._quantity_factory is None:
+            self._quantity_factory = fv3util.QuantityFactory.from_backend(
+                self.sizer, backend=utils.backend
+            )
+        return self._quantity_factory
 
     def global_to_local_1d(self, global_value, subtile_index, subtile_length):
         return global_value - subtile_index * subtile_length

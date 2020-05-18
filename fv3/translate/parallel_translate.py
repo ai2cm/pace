@@ -8,9 +8,17 @@ import fv3
 
 class ParallelTranslate:
 
+    max_error = TranslateFortranData2Py.max_error
+
     inputs = {}
+    outputs = {}
 
     def __init__(self, rank_grids):
+        if not hasattr(rank_grids, "__getitem__"):
+            raise TypeError(
+                "rank_grids should be a sequence of grids, one for each rank, "
+                f"is {self.__class__} being properly called as a parallel test?"
+            )
         self._base = TranslateFortranData2Py(rank_grids[0])
         self._base.in_vars = {
             "data_vars": {name: {} for name in self.inputs},
@@ -25,27 +33,27 @@ class ParallelTranslate:
             state_list.append(self.state_from_inputs(inputs))
         return state_list
 
-    def state_from_inputs(self, inputs: dict) -> dict:
+    def state_from_inputs(self, inputs: dict, grid=None) -> dict:
+        if grid is None:
+            grid = self.grid
         inputs = copy.copy(inputs)  # don't want to modify the dict we were passed
         self._base.make_storage_data_input_vars(inputs)
         state = {}
         for name, properties in self.inputs.items():
-            origin, extent = get_origin_and_extent(
-                properties["dims"],
-                inputs[name].shape,
-                self.grid.npx,
-                self.grid.npy,
-                self.grid.npz,
-                utils.halo,
-                self.layout,
-            )
-            state[properties["name"]] = fv3util.Quantity(
-                inputs[name],
-                dims=properties["dims"],
-                units=properties["units"],
-                origin=origin,
-                extent=extent,
-            )
+            if len(properties["dims"]) > 0:
+                state[properties["name"]] = grid.quantity_factory.empty(
+                    properties["dims"], properties["units"], dtype=inputs[name].dtype
+                )
+                if len(properties["dims"]) == 3:
+                    state[properties["name"]].data[:] = inputs[name]
+                elif len(properties["dims"]) == 2:
+                    state[properties["name"]].data[:] = inputs[name][:, :, 0]
+                else:
+                    raise NotImplementedError(
+                        "only 0, 2, and 3-d variables are supported"
+                    )
+            else:
+                state[properties["name"]] = inputs[name]
         return state
 
     def outputs_list_from_state_list(self, state_list):
@@ -64,7 +72,9 @@ class ParallelTranslate:
         return_dict = {}
         for name, properties in self.outputs.items():
             standard_name = properties["name"]
-            output_slice = _serialize_slice(state[standard_name], utils.halo)
+            output_slice = _serialize_slice(
+                state[standard_name], properties.get("n_halo", utils.halo)
+            )
             return_dict[name] = state[standard_name].data[output_slice]
         return return_dict
 
@@ -98,26 +108,3 @@ def _serialize_slice(quantity, n_halo):
             halo = 0
         slice_list.append(slice(origin - halo, origin + extent + halo))
     return tuple(slice_list)
-
-
-def get_origin_and_extent(dims, shape, npx, npy, npz, n_halo, layout):
-    nx_rank = (npx - 1) / layout[1]
-    ny_rank = (npy - 1) / layout[0]
-    dim_lengths = {
-        fv3util.X_DIM: nx_rank,
-        fv3util.X_INTERFACE_DIM: nx_rank + 1,
-        fv3util.Y_DIM: ny_rank,
-        fv3util.Y_INTERFACE_DIM: ny_rank + 1,
-        fv3util.Z_DIM: npz,
-        fv3util.Z_INTERFACE_DIM: npz + 1,
-    }
-    origin = []
-    extent = []
-    for dim, current_length in zip(dims, shape):
-        extent.append(int(dim_lengths.get(dim, current_length)))
-        if dim in fv3util.HORIZONTAL_DIMS:
-            halo = n_halo
-        else:
-            halo = 0
-        origin.append(int(halo))
-    return origin, extent
