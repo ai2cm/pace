@@ -23,7 +23,7 @@ SERIALBOX_TARGET=fv3gfs-environment-serialbox
 SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
 BASE_ENV_IMAGE=$(GCR_URL)/fv3gfs-environment:latest
 RUNDIR_IMAGE=$(GCR_URL)/fv3gfs-rundir:$(FORTRAN_VERSION)
-GCOV_IMAGE=fv3gfs-gcov:latest
+GCOV_IMAGE=fv3gfs-gcov-data:latest
 
 TEST_DATA_CONTAINER=/test_data
 TEST_DATA_REPO=$(GCR_URL)/fv3gfs-serialization-test-data
@@ -100,7 +100,7 @@ generate_coverage: update_submodules
 	DATA_IMAGE=$(GCOV_IMAGE) COMPILED_IMAGE=fv3gfs-compiled:gcov DATA_TARGET=rundir $(MAKE) fortran_model_data
 	git checkout fv3/test/fv3config.yml
 	mkdir coverage
-	docker run -it --rm --mount type=bind,source=$(PWD)/coverage,target=/coverage fv3gfs-gcov:latest bash -c "pip install gcovr; cd /coverage; gcovr -r /FV3/atmos_cubed_sphere --html --html-details -o index.html"
+	docker run -it --rm --mount type=bind,source=$(PWD)/coverage,target=/coverage fv3gfs-gcov-data:latest bash -c "pip install gcovr; cd /coverage; gcovr -r /FV3/atmos_cubed_sphere --html --html-details -o index.html"
 	@echo "==== Coverage ananlysis done. Now open coverage/index.html in your browser ===="
 
 extract_test_data:
@@ -170,9 +170,9 @@ flake8:
 reformat:
 	black $(PYTHON_FILES) $(PYTHON_INIT_FILES)
 
-.PHONY: build tests tests_host test_base run_tests_container run_tests_host_data \
-	dev devc generate_test_data extract_test_data post_test_data pull_test_data \
-	data_container fortran_model_data pull_environment push_environment  \
-	update_submodules build_environment build_environment_serialize cleanup_container \
-	flake8 lint reformat
+.PHONY: build build_environment build_environment_serialbox cleanup_container data_container \
+	dev dev_tests devc extract_test_data flake8 fortran_model_data generate_coverage \
+	generate_test_data lint post_test_data pull_environment pull_test_data push_environment \
+	rebuild_environment reformat run_tests_container run_tests_host_data test_base \
+	tests tests_host update_submodules
 
