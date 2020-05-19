@@ -100,7 +100,7 @@ generate_coverage: update_submodules
 	DATA_IMAGE=$(GCOV_IMAGE) COMPILED_IMAGE=fv3gfs-compiled:gcov DATA_TARGET=rundir $(MAKE) fortran_model_data
 	git checkout fv3/test/fv3config.yml
 	mkdir coverage
-	docker run -it --rm --mount type=bind,source=$(PWD)/coverage,target=/coverage fv3gfs-gcov-data:latest bash -c "pip install gcovr; cd /coverage; gcovr -r /FV3/atmos_cubed_sphere --html --html-details -o index.html"
+	docker run -it --rm --mount type=bind,source=$(PWD)/coverage,target=/coverage $(GCR_URL)/fv3gfs-gcov-data:$(FORTRAN_VERSION) bash -c "pip install gcovr; cd /coverage; gcovr -r /FV3/atmos_cubed_sphere --html --html-details -o index.html"
 	@echo "==== Coverage ananlysis done. Now open coverage/index.html in your browser ===="
 
 extract_test_data:
