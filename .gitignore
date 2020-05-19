@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+coverage
+gridtools4py
+test_data
 fv3/test/output
 .DS_Store
 
