@@ -23,7 +23,7 @@ SERIALBOX_TARGET=fv3gfs-environment-serialbox
 SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
 BASE_ENV_IMAGE=$(GCR_URL)/fv3gfs-environment:latest
 RUNDIR_IMAGE=$(GCR_URL)/fv3gfs-rundir:$(FORTRAN_VERSION)
-GCOV_IMAGE=fv3gfs-gcov-data:latest
+GCOV_IMAGE=$(GCR_URL)/fv3gfs-gcov-data:$(FORTRAN_VERSION)
 
 TEST_DATA_CONTAINER=/test_data
 TEST_DATA_REPO=$(GCR_URL)/fv3gfs-serialization-test-data
