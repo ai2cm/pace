@@ -1,5 +1,6 @@
 GCR_URL = us.gcr.io/vcm-ml
 CWD=$(shell pwd)
+SED := $(shell { command -v gsed || command -v sed; } 2>/dev/null)
 
 #<some large conceptual version change>.<serialization statement change>.<hotfix>
 FORTRAN_VERSION=0.3.9
@@ -91,7 +92,13 @@ generate_test_data: update_submodules
 generate_coverage: update_submodules
 	/bin/rm -rf coverage
 	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 $(MAKE) build_coverage
+	$(SED) -i 's/months: [0-9].*/months: 0/g' fv3/test/fv3config.yml
+	$(SED) -i 's/days: [0-9].*/days: 0/g' fv3/test/fv3config.yml
+	$(SED) -i 's/hours: [0-9].*/hours: 0/g' fv3/test/fv3config.yml
+	$(SED) -i 's/minutes: [0-9].*/minutes: 30/g' fv3/test/fv3config.yml
+	$(SED) -i 's/seconds: [0-9].*/seconds: 0/g' fv3/test/fv3config.yml
 	DATA_IMAGE=$(GCOV_IMAGE) COMPILED_IMAGE=fv3gfs-compiled:gcov DATA_TARGET=rundir $(MAKE) fortran_model_data
+	git checkout fv3/test/fv3config.yml
 	mkdir coverage
 	docker run -it --rm --mount type=bind,source=$(PWD)/coverage,target=/coverage fv3gfs-gcov:latest bash -c "pip install gcovr; cd /coverage; gcovr -r /FV3/atmos_cubed_sphere --html --html-details -o index.html"
 	@echo "==== Coverage ananlysis done. Now open coverage/index.html in your browser ===="
