@@ -43,3 +43,6 @@ from .translate_del2cubed import TranslateDel2Cubed
 from .translate_d2a2c_vect import TranslateD2A2C_Vect
 from .translate_updatedzd import TranslateUpdateDzD
 from .translate_nh_p_grad import TranslateNH_P_Grad
+from .translate_c2l_ord2 import TranslateC2L_Ord2
+from .translate_cubedtolatlon import TranslateCubedToLatLon
+from .translate_rayleigh_super import TranslateRayleigh_Super

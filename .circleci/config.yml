@@ -43,6 +43,7 @@ jobs:
       docker_layer_caching: true
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+      BUILD_IMAGE: us.gcr.io/vcm-ml/fv3ser-install:latest
     steps:
       - checkout
       - add_ssh_keys:
@@ -57,6 +58,10 @@ jobs:
           command: |
             git submodule update --init --recursive
       - gcp-gcr/gcr-auth
+      - run:
+          name: "Pull environment image"
+          command: |
+            docker pull $BUILD_IMAGE
       - run:
           name: "Run tests"
           command: |

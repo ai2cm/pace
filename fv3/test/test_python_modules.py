@@ -161,6 +161,7 @@ def test_mock_parallel_savepoint(
     caplog.set_level(logging.DEBUG, logger="fv3util")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
+
     fv3._config.set_grid(grid)
     inputs_list = []
     for savepoint_in, serializer in zip(savepoint_in_list, serializer_list):
@@ -219,14 +220,15 @@ def test_parallel_savepoint(
     caplog.set_level(logging.DEBUG, logger="fv3ser")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
-    fv3._config.set_grid([grid])
+    fv3._config.set_grid(grid[0])
     input_data = testobj.collect_input_data(serializer, savepoint_in)
     # run python version of functionality
     output = testobj.compute_parallel(input_data, communicator)
     failing_names = []
     passing_names = []
-
-    for varname in testobj.outputs:
+    out_vars = set(testobj.outputs.keys())
+    out_vars.update(list(testobj._base.out_vars.keys()))
+    for varname in out_vars:
         ref_data = serializer.read(varname, savepoint_out)
         with subtests.test(varname=varname):
             failing_names.append(varname)

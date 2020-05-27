@@ -21,7 +21,7 @@ class TranslateFortranData2Py:
     def __init__(self, grid, origin=utils.origin):
         self.origin = origin
         self.in_vars = {"data_vars": {}, "parameters": []}
-        self.out_vars = []
+        self.out_vars = {}
         self.grid = grid
         self.maxshape = grid.domain_shape_buffer_1cell()
         self.ordered_input_vars = None
@@ -31,7 +31,13 @@ class TranslateFortranData2Py:
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
+        return self.compute_from_storage(inputs)
+
+    # assume inputs already has been turned into gt4py storages (or Quantities)
+    def compute_from_storage(self, inputs):
         outputs = self.compute_func(**inputs)
+        if outputs is not None:
+            inputs.update(outputs)
         return self.slice_output(inputs)
 
     def column_split_compute(self, inputs, info_mapping):

@@ -33,6 +33,8 @@ def merge_namelist_defaults(nml):
         "inline_q": False,
         "do_skeb": False,  # save dissipation estimate
         "use_logp": False,
+        "c2l_ord": 4,
+        "regional": False,
     }
     defaults.update(nml)
     return defaults

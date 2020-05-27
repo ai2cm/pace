@@ -3,8 +3,10 @@ CWD=$(shell pwd)
 SED := $(shell { command -v gsed || command -v sed; } 2>/dev/null)
 
 #<some large conceptual version change>.<serialization statement change>.<hotfix>
+
 FORTRAN_VERSION=0.3.9
 SHELL=/bin/bash
+
 TEST_ARGS ?=-v -s -rsx
 PULL ?=True
 VOLUMES ?=
@@ -133,6 +135,7 @@ tests_mpi:
 	$(MAKE) setup_tests
 	$(MAKE) run_tests_parallel_container
 
+
 data_container:
 	docker run -d -it --name=$(TEST_DATA_RUN_CONTAINER) -v TestDataVolume$(FORTRAN_VERSION):/test_data $(TEST_DATA_IMAGE)
 
@@ -147,6 +150,12 @@ tests_host:
 
 dev_tests:
 	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_container
+
+dev_tests_mpi:
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_parallel_container
+
+dev_tests_host:
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_host_data
 
 test_base:
 	docker run --rm $(VOLUMES) $(MOUNTS) \

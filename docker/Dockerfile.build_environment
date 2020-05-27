@@ -16,6 +16,7 @@ FROM fv3ser-environment as fv3ser-install
 RUN pip install --no-cache-dir scikit-build && \
     git clone https://github.com/MeteoSwiss-APN/dawn.git /usr/src/dawn && \
     pip install --no-cache-dir /usr/src/dawn/dawn
+
 RUN git clone https://github.com/GridTools/gt4py.git /usr/src/gt4py && \
     cd /usr/src/gt4py && git checkout bf34e67ad9633e74644aaa787193607c9fedc59c && \
     pip install --no-cache-dir -e /usr/src/gt4py && \

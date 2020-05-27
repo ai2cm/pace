@@ -379,6 +379,8 @@ class Grid:
             self.domain_shape_compute_buffer_2d()[0:2],
         ]:
             return self.is_, self.js
+        elif shape[0:2] == (self.nic + 2, self.njc + 2):
+            return self.is_ - 1, self.js - 1
         else:
             return 0, 0
 
