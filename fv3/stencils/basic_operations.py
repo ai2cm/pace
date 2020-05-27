@@ -46,3 +46,9 @@ def add_term_two_vars(in1: sd, out1: sd, in2: sd, out2: sd):
     with computation(PARALLEL), interval(...):
         out1[0, 0, 0] = out1 + in1
         out2[0, 0, 0] = out2 + in2
+
+
+@gtscript.function
+def absolute_value(in_array):
+    abs_value = in_array if in_array > 0 else -in_array
+    return abs_value

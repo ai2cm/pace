@@ -91,9 +91,11 @@ def compute_delnflux_no_sg(
     if damp_c <= 1e-4:
         return fx, fy
     damp = (damp_c * grid.da_min) ** (nord + 1)
-    fx2 = utils.make_storage_from_shape(q.shape, default_origin)
-    fy2 = utils.make_storage_from_shape(q.shape, default_origin)
+
+    fx2 = utils.make_storage_from_shape(q.shape, grid.default_origin())
+    fy2 = utils.make_storage_from_shape(q.shape, grid.default_origin())
     compute_no_sg(q, fx2, fy2, nord, damp, d2, kstart, nk, mass)
+
     diffuse_domain = (grid.nic + 1, grid.njc + 1, nk)
     if mass is None:
         add_diffusive(

@@ -61,14 +61,20 @@ class TranslateFortranData2Py:
             input_data[varname] = read_serialized_data(serializer, savepoint, varname)
         return input_data
 
-    def make_storage_data(self, array, istart=0, jstart=0, kstart=0):
+    def make_storage_data(self, array, istart=0, jstart=0, kstart=0, dummy_axes=None):
+        use_shape = list(self.maxshape)
+        if dummy_axes:
+            for axis in dummy_axes:
+                use_shape[axis] = 1
+        use_shape = tuple(use_shape)
         return utils.make_storage_data(
             array,
-            self.maxshape,
+            use_shape,
             istart,
             jstart,
             kstart,
             origin=(istart, jstart, kstart),
+            dummy=dummy_axes,
         )
 
     def storage_vars(self):
