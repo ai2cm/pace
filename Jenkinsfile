@@ -1,27 +1,17 @@
 pipeline {
-    agent {
-        kubernetes {
-        label fv3ser
-        yaml """
-kind: Pod
-spec:
-  containers:
-  - name: test
-    image: gtclang/dawn-env-ubuntu19.10
-    command:
-    - cat
-    tty: true
-"""
-}
+  agent {
+    kubernetes {
+      label fv3ser
+      defaultContainer 'test'
+      yamlFile 'KubernetesPod.yaml'
     }
-    stages {
-        stage('Build') {
-            steps {
-                container('test') {
-                    checkout scm
-                    echo 'Hello world!'
-                }
-            }
-        }
+  }
+  stages {
+    stage('Build') {
+      steps {
+        checkout scm
+        echo 'Hello world!'
+      }
     }
+  }
 }
