@@ -1,7 +1,6 @@
 pipeline {
   agent {
     kubernetes {
-      label 'fv3ser'
       defaultContainer 'test'
       yamlFile 'KubernetesPod.yaml'
     }
