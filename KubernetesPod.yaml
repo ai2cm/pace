@@ -1,8 +1,0 @@
-kind: Pod
-spec:
-  containers:
-    - name: test
-      image: gtclang/dawn-env-ubuntu19.10
-      command:
-        - cat
-      tty: true
