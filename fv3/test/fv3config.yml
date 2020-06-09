@@ -94,7 +94,7 @@ namelist:
     adjust_dry_mass: false
     beta: 0.0
     consv_am: false
-    consv_te: 1.0
+    consv_te: 0.0
     d2_bg: 0.0
     d2_bg_k1: 0.16
     d2_bg_k2: 0.02
@@ -115,7 +115,7 @@ namelist:
     hord_dp: 5
     hord_mt: 5
     hord_tm: 5
-    hord_tr: 8
+    hord_tr: -5
     hord_vt: 5
     hydrostatic: false
     io_layout:

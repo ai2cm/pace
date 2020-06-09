@@ -2,6 +2,7 @@
 import fv3.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
 import fv3._config as spec
+import fv3.stencils.basic_operations as basic
 from gt4py.gtscript import computation, interval, PARALLEL
 
 input_vars = ["q", "c"]
@@ -222,6 +223,13 @@ def compute_al(q, dyvar, jord, ifirst, ilast, js1, je3, kstart=0, nk=None):
                     origin=(0, grid().je + 2, kstart),
                     domain=x_edge_domain,
                 )
+        if jord < 0:
+            basic.floor_cap(
+                al,
+                0.0,
+                origin=(ifirst, grid().js - 1, kstart),
+                domain=(ilast - ifirst + 1, grid().njc + 3, nk),
+            )
     return al
 
 
@@ -232,6 +240,10 @@ def compute_flux(q, c, flux, jord, ifirst, ilast, kstart=0, nk=None):
     je3 = grid().je - 1 if grid().north_edge else grid().je + 2
     al = compute_al(q, grid().dya, jord, ifirst, ilast, js1, je3, kstart, nk)
     mord = abs(jord)
+    if mord != 5:
+        raise Exception(
+            "We have only implemented yppm for hord=5 and -5, not " + str(jord)
+        )
     flux_domain = (ilast - ifirst + 1, grid().njc + 1, nk)
     get_flux_stencil(
         q,

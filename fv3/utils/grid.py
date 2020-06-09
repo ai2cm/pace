@@ -84,6 +84,15 @@ class Grid:
             )
         return self._quantity_factory
 
+    def quantity_wrap(
+        self, data, dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], units="Unknown"
+    ):
+        origin = self.sizer.get_origin(dims)
+        extent = self.sizer.get_extent(dims)
+        return fv3util.Quantity(
+            data, dims=dims, units=units, origin=origin, extent=extent
+        )
+
     def global_to_local_1d(self, global_value, subtile_index, subtile_length):
         return global_value - subtile_index * subtile_length
 

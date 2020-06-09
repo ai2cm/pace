@@ -4,7 +4,7 @@ SED := $(shell { command -v gsed || command -v sed; } 2>/dev/null)
 
 #<some large conceptual version change>.<serialization statement change>.<hotfix>
 
-FORTRAN_VERSION=0.3.9
+FORTRAN_VERSION=0.5.0
 SHELL=/bin/bash
 
 TEST_ARGS ?=-v -s -rsx
@@ -85,6 +85,7 @@ fortran_model_data: #uses the 'fv3config.yml' in the fv3gfs-fortran regression t
 	.
 
 generate_test_data: update_submodules
+
 	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE=$(COMPILED_IMAGE) $(MAKE) build_serialize
 	DATA_IMAGE=$(RUNDIR_IMAGE) DATA_TARGET=rundir $(MAKE) fortran_model_data
 	DATA_IMAGE=$(TEST_DATA_IMAGE) DATA_TARGET=test_data_storage $(MAKE) fortran_model_data
@@ -153,6 +154,9 @@ dev_tests:
 
 dev_tests_mpi:
 	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_parallel_container
+
+dev_tests_mpi_host:
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_parallel_host
 
 dev_tests_host:
 	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_host_data

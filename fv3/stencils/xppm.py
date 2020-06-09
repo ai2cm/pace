@@ -2,6 +2,7 @@
 import fv3.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
 import fv3._config as spec
+import fv3.stencils.basic_operations as basic
 from .yppm import (
     p1,
     p2,
@@ -137,6 +138,13 @@ def compute_al(q, dxa, iord, is1, ie3, jfirst, jlast, kstart=0, nk=None):
                 al_y_edge_2(
                     q, dxa, al, origin=(grid().ie + 2, 0, kstart), domain=domain_y
                 )
+        if iord < 0:
+            basic.floor_cap(
+                al,
+                0.0,
+                origin=(grid().is_ - 1, jfirst, kstart),
+                domain=(grid().nic + 3, jlast - jfirst + 1, nk),
+            )
     return al
 
 
@@ -144,6 +152,10 @@ def compute_flux(q, c, xflux, iord, jfirst, jlast, kstart=0, nk=None):
     if nk is None:
         nk = grid().npz - kstart
     mord = abs(iord)
+    if mord != 5:
+        raise Exception(
+            "We have only implemented xppm for hord=5 and -5, not " + str(iord)
+        )
     # output  storage
     is1 = grid().is_ + 2 if grid().west_edge else grid().is_ - 1
     ie3 = grid().ie - 1 if grid().east_edge else grid().ie + 2
