@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup_requirements = []
 
@@ -35,7 +35,7 @@ setup(
     name="fv3util",
     license="BSD license",
     long_description=readme,
-    packages=["fv3util"],
+    packages=find_packages(),
     include_package_data=True,
     url="https://github.com/VulcanClimateModeling/fv3gfs-python",
     version="0.4.3",
