@@ -95,11 +95,7 @@ generate_test_data: update_submodules
 generate_coverage: update_submodules
 	/bin/rm -rf coverage
 	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 $(MAKE) build_coverage
-	$(SED) -i 's/months: [0-9].*/months: 0/g' fv3/test/fv3config.yml
-	$(SED) -i 's/days: [0-9].*/days: 0/g' fv3/test/fv3config.yml
-	$(SED) -i 's/hours: [0-9].*/hours: 0/g' fv3/test/fv3config.yml
-	$(SED) -i 's/minutes: [0-9].*/minutes: 30/g' fv3/test/fv3config.yml
-	$(SED) -i 's/seconds: [0-9].*/seconds: 0/g' fv3/test/fv3config.yml
+	cp fv3/test/fv3config_coverage.yml fv3/test/fv3config.yml
 	DATA_IMAGE=$(GCOV_IMAGE) COMPILED_IMAGE=fv3gfs-compiled:gcov DATA_TARGET=rundir $(MAKE) fortran_model_data
 	git checkout fv3/test/fv3config.yml
 	mkdir coverage
