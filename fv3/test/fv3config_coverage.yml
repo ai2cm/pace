@@ -1,6 +1,7 @@
 data_table: default
 diag_table: default
-experiment_name: serialize
+field_table: "gs://vcm-fv3config/config/field_table/TKE-EDMF/v1.0/field_table"
+experiment_name: coverage
 forcing: "gs://vcm-fv3config/data/base_forcing/v1.1/"
 initial_conditions: gfs_example
 namelist:
@@ -122,11 +123,11 @@ namelist:
     fv_debug: false
     fv_sg_adj: 600
     gfs_phil: false
-    hord_dp: -5
-    hord_mt: 5
-    hord_tm: 5
-    hord_tr: -5
-    hord_vt: 5
+    hord_dp: 6
+    hord_mt: 6
+    hord_tm: 6
+    hord_tr: 8
+    hord_vt: 6
     hydrostatic: false
     io_layout:
     - 1
@@ -150,7 +151,7 @@ namelist:
     nord: 3
     npx: 49
     npy: 49
-    npz: 63
+    npz: 79
     ntiles: 6
     nudge: false
     nudge_qv: true
@@ -191,7 +192,7 @@ namelist:
     icloud_f: 0
     irain_f: 0
     mono_prof: false
-    mp_time: 225
+    mp_time: 225.0
     prog_ccn: false
     qi0_crt: 8.0e-05
     qi_lim: 1.0
@@ -226,6 +227,8 @@ namelist:
     cdmbgwd:
     - 0.0
     - 0.0
+    - 0.0
+    - 0.0
     cnvcld: false
     cnvgwd: false
     debug: false
@@ -235,7 +238,7 @@ namelist:
     fhlwr: 1800.0
     fhswr: 1800.0
     fhzero: 0.25
-    hybedmf: true
+    hybedmf: false
     iaer: 111
     ialb: 1
     ico2: 2
@@ -257,7 +260,7 @@ namelist:
     prslrd0: 0.0
     random_clds: false
     redrag: true
-    satmedmf: false
+    satmedmf: true
     shal_cnv: true
     swhtr: true
     trans_trac: true

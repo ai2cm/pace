@@ -1,0 +1,449 @@
+&amip_interp_nml  ! user at all?
+    data_set = 'hurrell'     ! changed from 'reynold_oi'
+    date_out_of_range = 'climo'
+    do_sst_pert = .false.    ! added
+    interp_oi_sst = .true.
+    no_anom_sst = .true.     ! changed from .false.
+    sst_pert = 0.0           ! added
+    sst_pert_type = 'random' ! added
+    use_daily = .false.      ! added
+    use_ncep_ice = .true.    ! changed from .true.
+    use_ncep_sst = .true.
+/
+
+&atmos_model_nml
+    blocksize = 24           ! 32 for 3 km simluations
+    chksum_debug = .false.
+    dycore_only = .false.
+    fdiag = 0.25             ! changed from 0.25
+!!    first_time_step = .false.  ! flag exists only in xSHIELD
+!!    fhmax = 1024.0              ! flag exists only in fv3gfs
+!!    fhmaxhf = -1.0              ! flag exists only in fv3gfs
+!!    fhout = 0.25                ! flag exists only in fv3gfs
+!!    fhouthf = 0.0               ! flag exists only in fv3gfs
+/
+
+&cires_ugwp_nml                 ! namelist block exists only in fv3gfs
+    knob_ugwp_azdir = 2, 4, 4, 4
+    knob_ugwp_doaxyz = 1
+    knob_ugwp_doheat = 1
+    knob_ugwp_dokdis = 0
+    knob_ugwp_effac = 1, 1, 1, 1
+    knob_ugwp_ndx4lh = 4
+    knob_ugwp_solver = 2
+    knob_ugwp_source = 1, 1, 1, 0
+    knob_ugwp_stoch = 0, 0, 0, 0
+    knob_ugwp_version = 0
+    knob_ugwp_wvspec = 1, 32, 32, 32
+    launch_level = 55
+/
+
+&cloud_diagnosis_nml         ! added whole namelist block
+    reiflag = 4
+    reimax = 150.0
+    reimin = 10.0
+    rewmax = 10.0
+    rewmin = 5.0
+/
+
+&coupler_nml
+    atmos_nthreads = 1       ! 4 for 3 km simulations
+    calendar = 'julian'
+    current_date = 2016, 8, 1, 0, 0, 0
+    days = 0
+    dt_atmos = 225           ! changed from 450
+    dt_ocean = 225           ! changed from 450
+    hours = 2
+    memuse_verbose = .false. ! changed from .true.
+    minutes = 0
+    months = 0
+    ncores_per_node = 32     ! 36 for 3 km simulations
+!!    restart_secs = 900       ! for ML data generation
+    seconds = 0
+    use_hyper_thread = .false. ! .true. for 3 km simluations
+/
+
+&diag_manager_nml
+    max_axes = 240           ! added
+    max_files = 106          ! added
+    max_num_axis_sets = 100  ! added
+    prepend_date = .false.
+/
+
+&external_ic_nml
+    checker_tr = .false.
+    filtered_terrain = .true.
+    gfs_dwinds = .true.
+    levp = 64
+    nt_checker = 0
+/
+
+&fms_io_nml
+    checksum_required = .false.
+    max_files_r = 100
+    max_files_w = 100
+/
+
+&fms_nml
+    clock_grain = 'ROUTINE'
+    domains_stack_size = 3000000  ! 16000000 for 3 km simulations
+    print_memory_usage = .false.
+/
+
+&fv_core_nml
+    a_imp = 1.0
+    adjust_dry_mass = .false.
+    beta = 0.0
+    consv_am = .false.
+    consv_te = 0.0
+    d2_bg = 0.0
+    d2_bg_k1 = 0.2           ! changed from 0.16
+    d2_bg_k2 = 0.1           ! changed from 0.02
+    d4_bg = 0.15
+    d_con = 1.0
+    d_ext = 0.0
+    dddmp = 0.5              ! changed from 0.2
+    delt_max = 0.002
+    dnats = 1
+!!    dnrts = 1               ! flag exists only in xSHIELD
+!!    do_cube_transform = .false.  ! flag exists only in xSHIELD
+!!    do_inline_mp = .false.  ! flag exists only in xSHIELD
+    do_sat_adj = .true.
+    do_vort_damp = .true.
+    dwind_2d = .false.
+    external_ic = .true.
+!!    fac_n_spl = 1.0          ! flag exists only in fv3gfs
+!!    fhouri = 0.0             ! flag exists only in fv3gfs
+    fill = .true.
+    fill_dp = .true.         ! added
+!!    fill_gfs = .true.       ! flag exists only in xSHIELD
+    fv_debug = .false.
+    fv_sg_adj = 600          ! changed from 900
+    gfs_phil = .false.
+!!    grid_type = 0            ! -1 for 3 km simulations with xSHIELD
+    hord_dp = 6             ! -5 for xSHIELD (but also a different scheme)
+    hord_mt = 6             ! 5 for xSHIELD (but also a different scheme)
+    hord_tm = 6             ! 5 for xSHIELD (but also a different scheme)
+    hord_tr = 8             ! -5 for xSHIELD (but also a different scheme)
+    hord_vt = 6             ! 5 for xSHIELD (but also a different scheme)
+    hydrostatic = .false.
+    io_layout = 1, 1         ! 2, 2 for 3 km simulations
+!!    ioffset = 0              ! flag exists only in fv3gfs
+!!    joffset = 0              ! flag exists only in fv3gfs
+    k_split = 2              ! changed from 1, 7 for 3 km simulations
+    ke_bg = 0.0
+    kord_mt = 9              ! changed from 10
+    kord_tm = -9             ! changed from -10
+    kord_tr = 9              ! changed from 10
+    kord_wz = 9              ! changed from 10
+    layout = 1, 1            ! 24, 48 for 3 km simulations
+    make_nh = .true.
+    mountain = .false.
+    n_split = 4              ! changed from 1, 8 for 3 km simulations
+    n_sponge = 48            ! changed from 4
+    na_init = 1              ! changed from 0, 1 for 3 km simulations
+    ncep_ic = .false.
+    nggps_ic = .true.
+!!    no_dycore = .false.    ! flag exists only in fv3gfs
+    nord = 3                 ! changed from 2
+    npx = 49                 ! 3073 for 3 km simulations
+    npy = 49                 ! 3073 for 3 km simulations
+    npz = 79                 ! changed to from 63
+!!    npz_type = 'gcrm'       ! flag exists only in xSHIELD
+    ntiles = 6
+    nudge = .false.          ! .true. for ML data generation
+    nudge_qv = .true.
+    nwat = 6
+    p_fac = 0.05             ! changed from 0.1
+!!    parent_grid_num = -1     ! flag exists only in fv3gfs
+!!    parent_tile = 1          ! flag exists only in fv3gfs
+    phys_hydrostatic = .false.
+    print_freq = 1           ! changed from 3
+    range_warn = .true.
+    reset_eta = .false.
+!!    restart_from_agrid_winds = .false.   ! flag exists only in fv3gfs
+!!    restart_resolution = 'only_coarse'  ! flag exists only in xSHIELD
+    rf_cutoff = 3000.0       ! changed from 800.0
+    rf_fast = .true.         ! changed from .false.
+!!    sg_cutoff = -1.0        ! flag exists only in xSHIELD
+    tau = 10.0               ! changed from 5.0
+    tau_h2o = 0.0            ! added
+!!    update_blend = 1.0      ! flag exists only in xSHIELD
+    use_hydro_pressure = .false.
+    vtdm4 = 0.06
+    warm_start = .false.
+    z_tracer = .true.
+/
+
+&fv_grid_nml
+!!    grid_file = 'INPUT/grid_spec.nc'  ! flag exists only in xSHIELD
+/
+
+&gfdl_cloud_microphysics_nml
+    c_cracw = 0.8            ! overridden to 0.9 in xSHIELD
+    c_paut = 0.5             ! overridden to 0.55 in xSHIELD
+    c_pgacs = 0.01           ! overridden to 0.002 in xSHIELD
+!!    c_piacr = 5.0            ! flag exists only in fv3gfs
+    c_psaci = 0.05           ! overridden to 0.02 in xSHIELD
+    ccn_l = 300.0            ! overridden to 270.0 in xSHIELD
+    ccn_o = 100.0            ! overridden to 90.0 in xSHIELD
+    const_vg = .false.
+    const_vi = .false.
+    const_vr = .false.
+    const_vs = .false.
+    de_ice = .false.
+!!    do_hail = .false.       ! flag exists only in xSHIELD
+!!    do_cond_timescale = .true.  ! flag exists only in xSHIELD
+    do_qa = .true.
+    do_sedi_heat = .false.
+    do_sedi_w = .true.       ! added
+    dw_land = 0.15           ! changed from 0.16, overridden to 0.2 in xSHIELD
+    dw_ocean = 0.1
+    fast_sat_adj = .true.
+    fix_negative = .true.    ! overridden to .false. in xSHIELD
+    icloud_f = 0             ! changed from 1
+    irain_f = 0
+    mono_prof = .false.      ! changed from .true., overridden to .true. in xSHIELD
+    mp_time = 225.           ! changed from 450, overridden to 150.0 in xSHIELD (should be set to dt_atmos?)
+    prog_ccn = .false.
+    qi0_crt = 8.e-05         ! overridden to 0.0001 in xSHIELD
+    qi_lim = 1.0
+    ql_gen = 0.001
+    ql_mlt = 0.002           ! changed from 0.001
+    qs0_crt = 0.003          ! changed from 0.001, overridden to 0.001 in xSHIELD
+    qs_mlt = 1e-06           ! added
+    rad_graupel = .true.
+    rad_rain = .true.
+    rad_snow = .true.
+    rh_inc = 0.2             ! changed from 0.3, overridden to 0.25 in xSHIELD
+    rh_inr = 0.3             ! overridden to 0.25 in xSHIELD
+    rh_ins = 0.3             ! overridden to 0.25 in xSHIELD
+    rthresh = 1e-05
+    sedi_transport = .true.  ! changed from .false.
+    tau_g2v = 1200.0         ! changed from 900.0, overridden to 900.0 in xSHIELD
+    tau_i2s = 1000.0
+    tau_l2v = 300.0          ! changed from 225.0
+    tau_v2l = 90.0           ! changed from 150.0
+!!    tintqs = .false.         ! flag exists only in fv3gfs
+    use_ccn = .true.         ! overridden to .false. in xSHIELD
+    use_ppm = .false.
+    vg_max = 16.0            ! changed from 12.0
+    vi_max = 1.0
+    vr_max = 16.0            ! changed from 12.0
+    vs_max = 2.0
+    z_slope_ice = .true.     ! overridden to .false. in xSHIELD
+    z_slope_liq = .true.
+/
+
+&gfs_physics_nml
+!!    afac_canopy = 1.0       ! flag exists only in xSHIELD
+!!    asolfac_deep = 0.958     ! default value changed to 0.89 in xSHIELD
+!!    asolfac_shal = 0.958     ! default value changed to 0.89 in xSHIELD
+!!    avg_max_length = 3600.0  ! flag exists only in fv3gfs
+    c0s_shal = 0.01          ! added
+    c1_shal = 0.005          ! added
+!!    ca_global = .false.      ! flag exists only in fv3gfs
+!!    ca_sgs = .false.         ! flag exists only in fv3gfs
+!!    ca_smooth = .false.      ! flag exists only in fv3gfs
+    cal_pre = .false.
+    cdmbgwd = 0.0, 0.0, 0.0, 0.0  ! changed from "3.5, 0.25", only two values (0.0, 0.0) in xSHIELD
+!!    cloud_gfdl = .false.    ! flag exists only in xSHIELD
+    cnvcld = .false.
+    cnvgwd = .false.         ! changed from .true.
+!!    cplchm = .false.         ! flag exists only in fv3gfs
+!!    cs_parm = 8.0, 4.0, 1000.0, 3500.0, 20.0, 1.0, -999.0, 1.0, 0.6, 0.0  ! default changed to 5.0, 2.5, 1000.0, 3000.0, 20.0, -999.0, -999.0, 0.0, 0.0, 0.0 in xSHIELD
+!!    czil_sfc = 0.8          ! flag exists only in xSHIELD
+    debug = .false.
+!!    do_ca = .false.          ! flag exists only in fv3gfs
+!!    do_cldice = .true.       ! flag exists only in fv3gfs
+    do_deep = .false.        ! added
+!!    do_gfdl_mp_in_physics = .true.  ! flag exists only in fv3gfs
+!!    do_inline_mp = .false.  ! flag exists only in xSHIELD
+!!    do_ocean = .false.      ! flag exists only in xSHIELD
+!!    do_only_clearsky_rad = .false.  ! flag exists only in fv3gfs
+!!    do_sb_physics = .true.   ! flag exists only in fv3gfs
+!!    do_sfcperts = .false.    ! flag exists only in fv3gfs
+!!    do_shum = .false.        ! flag exists only in fv3gfs
+!!    do_skeb = .false.        ! flag exists only in fv3gfs
+!!    do_sppt = .false.        ! flag exists only in fv3gfs
+!!    do_tofd = .false.        ! flag exists only in fv3gfs
+!!    do_ugwp = .false.        ! flag exists only in fv3gfs
+!!    do_ysu = .false.         ! flag exists only in fv3gfs
+!!    do_z0_hwrf15 = .false.  ! flag exists only in xSHIELD
+!!    do_z0_hwrf17 = .false.  ! flag exists only in xSHIELD
+!!    do_z0_hwrf17_hwonly = .false.  ! flag exists only in xSHIELD
+!!    do_z0_moon = .false.    ! flag exists only in xSHIELD
+    dspheat = .true.
+!!    effr_in = .false.        ! flag exists only in fv3gfs
+!!    evfact_shal = 0.3       ! flag exists only in xSHIELD
+!!    evfactl_shal = 0.3      ! flag exists only in xSHIELD
+!!    ext_rain_deep = .false. ! flag exists only in xSHIELD
+!!    ext_rain_shal = .false. ! flag exists only in xSHIELD
+    fhcyc = 24.0             ! flag exists only in fv3gfs
+!!    fhgoc3d = 0.0           ! flag exists only in xSHIELD
+    fhlwr = 1800.0           ! flag exists only in fv3gfs
+    fhswr = 1800.0           ! flag exists only in fv3gfs
+    fhzero = 0.25            ! flag exists only in fv3gfs
+!!    fixed_date = .false.    ! flag exists only in xSHIELD
+!!    frac_grid = .false.      ! flag exists only in fv3gfs
+!!    fscav_aero = '...'      ! flag exists only in fv3gfs
+!!    gwd_p_crit = 0.0        ! flag exists only in xSHIELD
+!!    hetfrz_classnuc = .false. ! flag exists only in fv3gfs
+!!    hour_canopy = 0.0       ! flag exists only in xSHIELD
+    hybedmf = .false.         ! changed to .false. (see satmedmf below)
+    iaer = 111
+    ialb = 1
+!!    iau_delthrs = 0.0       ! flag exists only in fv3gfs
+!!    iau_filter_increments = .false. ! flag exists only in fv3gfs
+!!    iau_inc_files = '...'   ! flag exists only in fv3gfs
+!!    iaufhrs = ...           ! flag exists only in fv3gfs
+!!    iccn = .false.           ! flag exists only in fv3gfs
+!!    icliq_sw = 1             ! flag exists only in fv3gfs
+    ico2 = 2
+    iems = 1
+    imfdeepcnv = 2
+    imfshalcnv = 2
+    imp_physics = 11         ! flag exists only in fv3gfs
+!!    iopt_XXX (XXX=alb,btr,crs,dveg,frz,inf,rad,run,sfc,snf,stc,tbot)  ! flag exists only in fv3gfs
+!!    iseed_ca = 0             ! flag exists only in fv3gfs
+    isol = 2
+    isot = 1
+!!    isppt_deep = .false.     ! flag exists only in fv3gfs
+    isubc_lw = 2
+    isubc_sw = 2
+    ivegsrc = 1
+    ldiag3d = .false.        ! .true. for 3 km simulations
+!!    ldiag_ugwp = .false.     ! flag exists only in fv3gfs
+!!    lgfdlmprad = .false.     ! flag exists only in fv3gfs
+!!    lgocart = .false.       ! flag exists only in xSHIELD
+!!    lradar = .false.         ! flag exists only in fv3gfs
+!!    lprnt = .false.         ! flag exists only in xSHIELD
+!!    ltaerosol = .false.      ! flag exists only in fv3gfs
+    lwhtr = .true.
+!!    max_lat = 2000           ! flag exists only in fv3gfs
+!!    max_lon = 5000           ! flag exists only in fv3gfs
+!!    mg_XXX (XXX=alf,dcs,do_graupel,do_hail,do_ice_gmao,do_liq_liu,ncons,ncnst,ngcons,ngnst,nicons,ninst,...)   ! flag exists only in fv3gfs
+!!    mg_XXX (qcvar, ts_auto_ice) ! flag exists only in xSHIELD
+!!    microp_uniform = .true.  ! flag exists only in fv3gfs
+!!    min_lakeice = 0.15       ! flag exists only in fv3gfs
+!!    min_lat = 94             ! flag exists only in fv3gfs
+!!    min_lon = 192            ! flag exists only in fv3gfs
+!!    min_seaice = 1.e-6       ! flag exists only in fv3gfs
+!!    mix_precip = .true.     ! flag exists only in xSHIELD
+!!    mom4ice = .false.       ! flag exists only in xSHIELD
+!!    myj_pbl = .false.       ! flag exists only in xSHIELD
+!!    nca = 1                  ! flag exists only in fv3gfs
+!!    ncells = 5               ! flag exists only in fv3gfs
+    ncld = 5
+!!    nfracseed = 0.5          ! flag exists only in fv3gfs
+!!    nfxr = 45                ! default 39 in xSHIELD
+!!    nlives = 10              ! flag exists only in fv3gfs
+!!    nkld = 8                ! flag exists only in xSHIELD
+!!    nseed = 100000           ! flag exists only in fv3gfs
+!!    no_pbl = .false.        ! flag exists only in xSHIELD
+!!    nospinup = 1             ! flag exists only in fv3gfs
+    nst_anl = .true.
+!!    nthresh = 0.0            ! flag exists only in fv3gfs
+!!    orogwd = .true.         ! flag exists only in xSHIELD
+    pdfcld = .false.
+!!    pdfflag = 4              ! flag exists only in fv3gfs
+!!    phys_version = 'v2018 FV3GFS BETA VERSION PHYSICS' ! flag exists only in fv3gfs
+!!    prauras = 0.002, 0.002   ! flag exists only in fv3gfs
+    pre_rad = .false.
+    prslrd0 = 0.0
+!!    psauras = 0.001, 0.001   ! flag exists only in fv3gfs
+!!    qnl_fac = 1.0           ! flag exists only in xSHIELD
+    random_clds = .false.
+    redrag = .true.
+!!    rhcmax = 0.9999999       ! flag exists only in fv3gfs
+    satmedmf = .true.       ! added, requires additional TKE tracer in field_table (see hybedmf above)
+!!    sed_supersat = .true.    ! flag exists only in fv3gfs
+!!    sfc_gfdl = .false.      ! flag exists only in xSHIELD
+!!    sfc_override = .false.  ! flag exists only in xSHIELD
+!!    sfc_z0_type = 0          ! flag exists only in fv3gfs
+    shal_cnv = .true.
+!!    shinhong = .false.       ! flag exists only in fv3gfs
+!!    shoc_parm = 7000.0, 1.0, 4.2857143, 0.7, -999.0  ! flag exists only in fv3gfs
+!!    shum = -999.0, -999.0, -999.0, -999.0, -999.0    ! flag exists only in xSHIELD
+!!    skeb = -999.0, -999.0, -999.0, -999.0, -999.0    ! flag exists only in xSHIELD
+!!    sppt = -999.0, -999.0, -999.0, -999.0, -999.0    ! flag exists only in xSHIELD
+!!    sup = 1.0                ! default 1.1 in xSHIELD
+    swhtr = .true.
+!!    tnl_fac = 1.0           ! flag exists only in xSHIELD
+    trans_trac = .true.
+!!    ttendlim = -999.0        ! flag exists only in fv3gfs
+!!    unl_fac = 1.0           ! flag exists only in xSHIELD
+!!    use_analysis_sst = .false. ! flag exists only in fv3gfs
+!!    use_ec_sst = .true.     ! flag exists only in xSHIELD
+    use_ufo = .true.
+!!    vc = 0.0                ! flag exists only in xSHIELD
+!!    vcamp = -999.0, -999.0, -999.0, -999.0, -999.0  ! flag exists only in xSHIELD
+!!    wind_th_hwrf = 33.0     ! flag exists only in xSHIELD
+!!    winras = 1.0e-5, 1.0e-5  ! flag exists only in fv3gfs
+    xkzm_h = 0.1             ! added
+    xkzm_m = 0.01            ! added
+    xkzminv = 0.0            ! added
+!!    ysu_XXX (XXX=afac, bfac, brcr_ub, ent_fac, hpbl_cr, pfac_q, rlam)  ! flag exists only in xSHIELD
+!!    ysupbl = .false.        ! flag exists only in xSHIELD
+!!    z0s_max = 0.00317       ! flag exists only in xSHIELD
+!!    zhao_mic = .false.      ! flag exists only in xSHIELD
+/
+
+&interpolator_nml
+    interp_method = 'conserve_great_circle'
+/
+
+&nam_stochy
+    lat_s = 96
+    lon_s = 192
+    ntrunc = 94
+/
+
+&namsfc
+    fabsl = 99999
+    faisl = 99999
+    faiss = 99999
+    fnabsc = 'grb/global_mxsnoalb.uariz.t1534.3072.1536.rg.grb'
+    fnacna = ''
+    fnaisc = 'grb/CFSR.SEAICE.1982.2012.monthly.clim.grb'
+    fnalbc = 'grb/global_snowfree_albedo.bosu.t1534.3072.1536.rg.grb'
+    fnalbc2 = 'grb/global_albedo4.1x1.grb'
+    fnglac = 'grb/global_glacier.2x2.grb'
+    fnmskh = 'grb/seaice_newland.grb'
+    fnmxic = 'grb/global_maxice.2x2.grb'
+    fnslpc = 'grb/global_slope.1x1.grb'
+    fnsmcc = 'grb/global_soilmgldas.t1534.3072.1536.grb'
+    fnsnoa = ''
+    fnsnoc = 'grb/global_snoclim.1.875.grb'
+    fnsotc = 'grb/global_soiltype.statsgo.t1534.3072.1536.rg.grb'
+    fntg3c = 'grb/global_tg3clim.2.6x1.5.grb'
+    fntsfa = ''
+    fntsfc = 'grb/RTGSST.1982.2012.monthly.clim.grb'
+    fnvegc = 'grb/global_vegfrac.0.144.decpercent.grb'
+    fnvetc = 'grb/global_vegtype.igbp.t1534.3072.1536.rg.grb'
+    fnvmnc = 'grb/global_shdmin.0.144x0.144.grb'
+    fnvmxc = 'grb/global_shdmax.0.144x0.144.grb'
+    fnzorc = 'igbp'
+    fsicl = 99999
+    fsics = 99999
+    fslpl = 99999
+    fsmcl = 99999, 99999, 99999
+    fsnol = 99999
+    fsnos = 99999
+    fsotl = 99999
+    ftsfl = 99999
+    ftsfs = 90
+    fvetl = 99999
+    fvmnl = 99999
+    fvmxl = 99999
+    ldebug = .false.
+/
+
+!! &sat_vapro_pres_nml
+!!     show_all_bad_values = .false.  ! default .true. in xSHIELD
+!! /
+!! 
+!! &soil_veg_nml
+!!     ! namelist missing in fv3gfs
+!!     ! potentially different soil/vegetation parameters in xSHIELD?
+!! /
