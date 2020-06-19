@@ -17,7 +17,7 @@ namelist:
     use_ncep_ice: true
     use_ncep_sst: true
   atmos_model_nml:
-    blocksize: 24
+    blocksize: -1
     chksum_debug: false
     dycore_only: false
     fdiag: 0.25
