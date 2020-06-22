@@ -40,7 +40,9 @@ PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
 PYTHON_INIT_FILES = $(shell git ls-files | grep '__init__.py')
 
 update_submodules:
-	if [ ! -d $(FORTRAN_DIR)/FV3 -o ! -d $(FV3UTIL_DIR) ]; then git submodule update --init --recursive ;fi
+	if [ ! -d $(FORTRAN_DIR)/FV3 -o ! -d $(FV3UTIL_DIR) ]; then \
+		git submodule update --init --recursive; \
+	fi
 
 build_environment_serialbox: update_submodules
 	DOCKERFILE=$(FORTRAN_DIR)/docker/Dockerfile \
@@ -52,15 +54,25 @@ build_environment: build_environment_serialbox
 		--build-arg serialbox_image=$(SERIALBOX_IMAGE) \
 		-f docker/Dockerfile.build_environment \
 		-t $(FV3_INSTALL_IMAGE) \
-	--target $(FV3_INSTALL_TARGET) \
-    .
+		--target $(FV3_INSTALL_TARGET) \
+		.
 
 build: update_submodules
-	if [ $(PULL) == True ]; then $(MAKE) pull_environment; else $(MAKE) build_environment; fi
-	docker build --build-arg build_image=$(FV3_INSTALL_IMAGE) -f docker/Dockerfile -t $(FV3_IMAGE) .
+	if [ $(PULL) == True ]; then \
+		$(MAKE) pull_environment; \
+	else \
+		$(MAKE) build_environment; \
+	fi
+	docker build \
+		--build-arg build_image=$(FV3_INSTALL_IMAGE) \
+		-f docker/Dockerfile \
+		-t $(FV3_IMAGE) \
+		.
 
 pull_environment:
-	if [ -z $(shell docker images -q $(FV3_INSTALL_IMAGE)) ]; then docker pull $(FV3_INSTALL_IMAGE) ;fi
+	if [ -z $(shell docker images -q $(FV3_INSTALL_IMAGE)) ]; then \
+		docker pull $(FV3_INSTALL_IMAGE); \
+	fi
 
 push_environment:
 	docker push $(FV3_INSTALL_IMAGE)
@@ -69,11 +81,19 @@ rebuild_environment: build_environment
 	$(MAKE) push_environment
 
 dev:
-	docker run --rm -v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) -v $(CWD):/port_dev -it $(FV3_IMAGE)
+	docker run --rm -it \
+		-v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) \
+		-v $(CWD):/port_dev \
+		$(FV3_IMAGE)
 
 devc:
-	if [ -z $(shell docker ps -q -f name=$(TEST_DATA_RUN_CONTAINER)) ]; then $(MAKE) data_container;fi
-	docker run --rm --volumes-from $(TEST_DATA_RUN_CONTAINER) -v $(CWD):/port_dev -it $(FV3_IMAGE)
+	if [ -z $(shell docker ps -q -f name=$(TEST_DATA_RUN_CONTAINER)) ]; then \
+		$(MAKE) data_container; \
+	fi
+	docker run --rm -it \
+		--volumes-from $(TEST_DATA_RUN_CONTAINER) \
+		-v $(CWD):/port_dev \
+		$(FV3_IMAGE)
 
 fortran_model_data: #uses the 'fv3config.yml' in the fv3gfs-fortran regression tests to configure a test run for generation serialization data
 	docker build \
@@ -82,7 +102,7 @@ fortran_model_data: #uses the 'fv3config.yml' in the fv3gfs-fortran regression t
 		-f docker/Dockerfile.fortran_model_data \
 		--target $(DATA_TARGET) \
 		-t $(DATA_IMAGE) \
-	.
+		.
 
 generate_test_data: update_submodules
 
@@ -93,7 +113,7 @@ generate_test_data: update_submodules
 
 
 generate_coverage: update_submodules
-	/bin/rm -rf coverage
+	rm -rf coverage
 	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 $(MAKE) build_coverage
 	cp fv3/test/fv3config_coverage.yml fv3/test/fv3config.yml
 	DATA_IMAGE=$(GCOV_IMAGE) COMPILED_IMAGE=fv3gfs-compiled:gcov DATA_TARGET=rundir $(MAKE) fortran_model_data
@@ -103,17 +123,21 @@ generate_coverage: update_submodules
 	@echo "==== Coverage ananlysis done. Now open coverage/dycore/index.html coverage/physics/index.html in your browser ===="
 
 extract_test_data:
-	if [ -d $(TEST_DATA_HOST) ]; then (echo "NOTE: $(TEST_DATA_HOST) already exists, move or delete it if you want a new extraction");\
-	else	\
-	docker create --name tmp_modelrundata -it $(TEST_DATA_IMAGE)  &&\
-	docker cp tmp_modelrundata:/test_data $(TEST_DATA_HOST)  && \
-	docker rm -f tmp_modelrundata \
-	;fi
+	if [ -d $(TEST_DATA_HOST) ]; then \
+		echo "NOTE: $(TEST_DATA_HOST) already exists, move or delete it if you want a new extraction"; \
+	else \
+		docker create --name tmp_modelrundata -it $(TEST_DATA_IMAGE)  && \
+		docker cp tmp_modelrundata:/test_data $(TEST_DATA_HOST)  && \
+		docker rm -f tmp_modelrundata; \
+	fi
 
 
 post_test_data:
-	if [ -z $(REMOTE_TAGS) ]; then docker push $(TEST_DATA_IMAGE) ;\
-	else echo "ERROR: $(FORTRAN_VERSION) of test data has already been pushed. Do a direct docker push if you really intend to overwrite it" && exit 1 ; fi
+	if [ -z $(REMOTE_TAGS) ]; then \
+		docker push $(TEST_DATA_IMAGE); \
+	else \
+		echo "ERROR: $(FORTRAN_VERSION) of test data has already been pushed. Do a direct docker push if you really intend to overwrite it" && exit 1; \
+	fi
 
 
 pull_test_data:
@@ -121,8 +145,12 @@ pull_test_data:
 
 setup_tests:
 	$(MAKE) build
-	if [ -z $(shell docker images -q $(TEST_DATA_IMAGE)) ]; then $(MAKE) pull_test_data ;fi
-	if [ -z $(shell docker ps -q -f name=$(TEST_DATA_RUN_CONTAINER)) ]; then $(MAKE) data_container;fi
+	if [ -z $(shell docker images -q $(TEST_DATA_IMAGE)) ]; then \
+		$(MAKE) pull_test_data; \
+	fi
+	if [ -z $(shell docker ps -q -f name=$(TEST_DATA_RUN_CONTAINER)) ]; then \
+		$(MAKE) data_container; \
+	fi
 
 tests:
 	$(MAKE) setup_tests
@@ -134,7 +162,10 @@ tests_mpi:
 
 
 data_container:
-	docker run -d -it --name=$(TEST_DATA_RUN_CONTAINER) -v TestDataVolume$(FORTRAN_VERSION):/test_data $(TEST_DATA_IMAGE)
+	docker run -d -it \
+		--name=$(TEST_DATA_RUN_CONTAINER) \
+		-v TestDataVolume$(FORTRAN_VERSION):/test_data \
+		$(TEST_DATA_IMAGE)
 
 cleanup_container:
 	docker stop $(TEST_DATA_RUN_CONTAINER)
@@ -146,7 +177,8 @@ tests_host:
 	$(MAKE) run_tests_host_data
 
 dev_tests:
-	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_container
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' \
+		$(MAKE) run_tests_container
 
 dev_tests_mpi:
 	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_parallel_container
@@ -162,8 +194,10 @@ test_base:
 	-it $(RUNTEST_IMAGE) pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} /fv3/test
 
 test_base_parallel:
-	docker run --rm $(VOLUMES) $(MOUNTS) \
-	-it $(RUNTEST_IMAGE) mpirun --allow-run-as-root --mca btl_vader_single_copy_mechanism none --oversubscribe -np 6  pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} -m parallel /fv3/test
+	docker run --rm -it $(VOLUMES) $(MOUNTS) \
+		$(RUNTEST_IMAGE) \
+		mpirun -np 6 --allow-run-as-root --mca btl_vader_single_copy_mechanism none --oversubscribe \
+		pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} -m parallel /fv3/test
 
 run_tests_parallel_container:
 	VOLUMES='--volumes-from $(TEST_DATA_RUN_CONTAINER)' \
@@ -173,12 +207,12 @@ run_tests_container:
 	VOLUMES='--volumes-from $(TEST_DATA_RUN_CONTAINER)' \
 	RUNTEST_IMAGE=$(FV3_IMAGE) $(MAKE) test_base
 
-run_tests_host_data: 
+run_tests_host_data:
 	VOLUMES='-v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER)' \
 	RUNTEST_IMAGE=$(FV3_IMAGE) \
 	$(MAKE) test_base
 
-run_tests_parallel_host: 
+run_tests_parallel_host:
 	VOLUMES='-v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER)' \
 	RUNTEST_IMAGE=$(FV3_IMAGE) \
 	$(MAKE) test_base_parallel
@@ -204,4 +238,3 @@ reformat:
 	generate_test_data lint post_test_data pull_environment pull_test_data push_environment \
 	rebuild_environment reformat run_tests_container run_tests_host_data test_base \
 	tests tests_host update_submodules
-
