@@ -177,8 +177,8 @@ def edge_interpolate4_y(va, dxa):
 def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
     grid = spec.grid
     big_number = 1e30  # 1e8 if 32 bit
-    nx = grid.npx + 2
-    ny = grid.npy + 2
+    nx = grid.ie + 1  # grid.npx + 2
+    ny = grid.je + 1  # grid.npy + 2
     i1 = grid.is_ - 1
     j1 = grid.js - 1
     id_ = 1 if dord4 else 0
@@ -205,7 +205,7 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
         v, vtmp, origin=(is1, js1, 0), domain=(ie1 - is1 + 1, je1 - js1 + 1, grid.npz)
     )
     # tmp edges
-    if grid.south_edge or grid.jsd < npt:
+    if grid.south_edge:
         avg_box(
             u,
             v,
@@ -214,7 +214,7 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
             origin=(grid.isd, grid.jsd, 0),
             domain=(grid.nid, npt + grid.js - 1 - grid.jsd, grid.npz),
         )
-    if grid.north_edge or grid.jed >= (ny - npt):
+    if grid.north_edge:
         je2 = ny - npt + 1
         avg_box(
             u,
@@ -228,7 +228,7 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
     js2 = npt + grid.js - 1 if grid.south_edge else grid.jsd
     je2 = ny - npt if grid.north_edge else grid.jed
     jdiff = je2 - js2 + 1
-    if grid.west_edge or grid.isd < npt:
+    if grid.west_edge:
         avg_box(
             u,
             v,
@@ -237,7 +237,7 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
             origin=(grid.isd, js2, 0),
             domain=(npt + grid.is_ - 1 - grid.isd, jdiff, grid.npz),
         )
-    if grid.east_edge or grid.ied >= (nx - npt):
+    if grid.east_edge:
         avg_box(
             u,
             v,
@@ -289,7 +289,7 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
             ua[i1, ny, :] = va[i1, ny - 1, :]
 
     ifirst = grid.is_ + 2 if grid.west_edge else grid.is_ - 1
-    ilast = grid.npx if grid.east_edge else grid.ie + 2
+    ilast = grid.ie - 1 if grid.east_edge else grid.ie + 2
     idiff = ilast - ifirst + 1
 
     ut_main(
@@ -369,7 +369,7 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
                 grid.cosa_u,
                 grid.rsin_u,
                 utc,
-                origin=(grid.npx + 1, j1, 0),
+                origin=(grid.ie, j1, 0),
                 domain=domain_edge_x,
             )
             contravariant_stencil(
@@ -476,6 +476,10 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
                 origin=(i1, ny + 1, 0),
                 domain=domain_edge_y,
             )
+        jfirst = grid.js + 2 if grid.south_edge else grid.js - 1
+        jlast = grid.je - 1 if grid.north_edge else grid.je + 2
+        jdiff = jlast - jfirst + 1
+
         vt_main(
             vtmp,
             vc,
@@ -483,9 +487,8 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
             grid.cosa_v,
             grid.rsin_v,
             vtc,
-            origin=(i1, grid.js + 2, 0),
-            domain=(grid.nic + 2, ny - grid.js - 3, grid.npz),
+            origin=(i1, jfirst, 0),
+            domain=(grid.nic + 2, jdiff, grid.npz),
         )
-
     else:
         raise Exception("unimplemented grid_type >= 3")

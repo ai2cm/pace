@@ -27,3 +27,10 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
             self.out_vars[v] = self.in_vars["data_vars"][v]
         self.out_vars["wsd"]["kstart"] = grid.npz
         self.out_vars["wsd"]["kend"] = None
+
+    def compute(self, inputs):
+        self.make_storage_data_input_vars(inputs)
+        inputs["ndif"] = inputs["ndif"][0, 0, :]
+        inputs["damp_vtd"] = inputs["damp_vtd"][0, 0, :]
+        self.compute_func(**inputs)
+        return self.slice_output(inputs)

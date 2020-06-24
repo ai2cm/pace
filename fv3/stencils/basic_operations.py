@@ -48,6 +48,12 @@ def add_term_two_vars(in1: sd, out1: sd, in2: sd, out2: sd):
         out2[0, 0, 0] = out2 + in2
 
 
+@utils.stencil()
+def multiply_constant(in1: sd, in2: float, out: sd):
+    with computation(PARALLEL), interval(...):
+        out[0, 0, 0] = in1 * in2
+
+
 @gtscript.function
 def absolute_value(in_array):
     abs_value = in_array if in_array > 0 else -in_array

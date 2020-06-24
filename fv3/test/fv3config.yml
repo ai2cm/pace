@@ -123,10 +123,10 @@ namelist:
     - 1
     k_split: 1
     ke_bg: 0.0
-    kord_mt: 10
-    kord_tm: -10
-    kord_tr: 10
-    kord_wz: 10
+    kord_mt: 9
+    kord_tm: -9
+    kord_tr: 9
+    kord_wz: 9
     layout:
     - 1
     - 1

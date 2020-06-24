@@ -14,6 +14,7 @@ from .yppm import (
     is_smt5_mord5,
     is_smt5_most_mords,
     fx1_c_negative,
+    floor_cap,
 )
 from gt4py.gtscript import computation, interval, PARALLEL
 

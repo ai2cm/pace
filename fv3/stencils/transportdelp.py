@@ -78,7 +78,7 @@ def transportdelp_nonhydrostatic(
         wc = (w * delp + (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea) / delpc
 
 
-def compute(delp, pt, w, utc, vtc):
+def compute(delp, pt, w, utc, vtc, wc):
     grid = spec.grid
     orig = (grid.is_ - 1, grid.js - 1, 0)
     hydrostatic = int(spec.namelist["hydrostatic"])
@@ -89,7 +89,6 @@ def compute(delp, pt, w, utc, vtc):
     fy1 = utils.make_storage_from_shape(w.shape, origin=orig)
     delpc = utils.make_storage_from_shape(delp.shape, origin=orig)
     ptc = utils.make_storage_from_shape(pt.shape, origin=orig)
-    wc = utils.make_storage_from_shape(w.shape, origin=orig)
 
     # TODO: untested currently, don't have serialized data
     if hydrostatic:
@@ -180,4 +179,4 @@ def compute(delp, pt, w, utc, vtc):
             domain=(grid.nic + 2, grid.njc + 2, grid.npz),
         )
 
-    return delpc, ptc, wc
+    return delpc, ptc

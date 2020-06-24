@@ -51,23 +51,29 @@ def _data_backend(backend: str):
 
 
 def make_storage_data(
-    array, full_shape, istart=0, jstart=0, kstart=0, origin=origin, dummy=None
+    array, full_shape, istart=0, jstart=0, kstart=0, origin=origin, dummy=None, axis=2
 ):
     full_np_arr = np.zeros(full_shape)
     if len(array.shape) == 2:
         return make_storage_data_from_2d(
-            array, full_shape, istart=istart, jstart=jstart, origin=origin, dummy=dummy
+            array,
+            full_shape,
+            istart=istart,
+            jstart=jstart,
+            origin=origin,
+            dummy=dummy,
+            axis=axis,
         )
     elif len(array.shape) == 1:
         if dummy:
             axes = [0, 1, 2]
             axis = list(set(axes).difference(dummy))[0]
             return make_storage_data_from_1d(
-                array, full_shape, kstart=kstart, origin=origin, axis=axis, dummy=dummy,
+                array, full_shape, kstart=kstart, origin=origin, axis=axis, dummy=dummy
             )
         else:
             return make_storage_data_from_1d(
-                array, full_shape, kstart=kstart, origin=origin,
+                array, full_shape, kstart=kstart, origin=origin, axis=axis
             )
     else:
         isize, jsize, ksize = array.shape
@@ -126,7 +132,17 @@ def make_storage_data_from_1d(
     full_1d[kstart : kstart + len(array1d)] = array1d
     tilespec[axis] = 1
     if dummy:
-        r = full_1d.reshape((full_shape))
+        if len(dummy) == len(tilespec) - 1:
+            r = full_1d.reshape((full_shape))
+        else:
+            # TODO maybe, this is a little silly (repeat the array, then squash the dim), though eventually we shouldn't need this general capability if we refactor stencils to operate on 3d
+            full_1d = make_storage_data_from_1d(
+                array1d, full_shape, kstart=kstart, origin=origin, axis=axis, dummy=None
+            )
+            dimslice = [slice(None)] * len(tilespec)
+            for dummy_axis in dummy:
+                dimslice[dummy_axis] = slice(0, 1)
+            r = full_1d[tuple(dimslice)]
     else:
         if axis == 2:
             r = np.tile(full_1d, tuple(tilespec))
@@ -146,6 +162,11 @@ def make_storage_from_shape(shape, origin):
     return gt.storage.from_array(
         data=np.zeros(shape), backend=backend, default_origin=origin, shape=shape,
     )
+
+
+def storage_dict(st_dict, names, shape, origin):
+    for name in names:
+        st_dict[name] = make_storage_from_shape(shape, origin)
 
 
 def k_slice_operation(key, value, ki, dictionary):

@@ -4,6 +4,7 @@ import gt4py.gtscript as gtscript
 import fv3._config as spec
 import fv3.stencils.basic_operations as basic
 from gt4py.gtscript import computation, interval, PARALLEL
+from fv3.stencils.basic_operations import absolute_value
 
 input_vars = ["q", "c"]
 inputs_params = ["jord", "ifirst", "ilast"]
@@ -65,6 +66,12 @@ def al_x_edge_2(q: sd, dya: sd, al: sd):
         al[0, 0, 0] = c3 * q[0, -1, 0] + c2 * q[0, 0, 0] + c1 * q[0, 1, 0]
 
 
+@utils.stencil()
+def floor_cap(var: sd, floor_value: float):
+    with computation(PARALLEL), interval(0, None):
+        var[0, 0, 0] = var if var > floor_value else floor_value
+
+
 @gtscript.function
 def get_bl(al, q):
     bl = al - q
@@ -81,12 +88,6 @@ def get_br(al, q):
 def get_b0(bl, br):
     b0 = bl + br
     return b0
-
-
-@gtscript.function
-def absolute_value(in_array):
-    abs_value = in_array if in_array > 0 else -in_array
-    return abs_value
 
 
 @gtscript.function

@@ -12,6 +12,7 @@ class TranslateTransportDelp(TranslateFortranData2Py):
             "w": {},
             "utc": {},
             "vtc": {},
+            "wc": {},
         }
         self.out_vars = {
             "delpc": {},
@@ -21,5 +22,5 @@ class TranslateTransportDelp(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        delpc, ptc, wc = self.compute_func(**inputs)
-        return self.slice_output(inputs, {"delpc": delpc, "ptc": ptc, "wc": wc})
+        delpc, ptc = self.compute_func(**inputs)
+        return self.slice_output(inputs, {"delpc": delpc, "ptc": ptc})

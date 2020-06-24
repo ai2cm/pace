@@ -98,7 +98,6 @@ def compute(
     comm,
 ):
     grid = spec.grid
-
     # start HALO update on q (in dyn_core in fortran -- just has started when this function is called...)
     xfx = utils.make_storage_from_shape(
         qvapor.data.shape, origin=grid.compute_x_origin()

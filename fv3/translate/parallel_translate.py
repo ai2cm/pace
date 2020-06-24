@@ -5,6 +5,7 @@ import fv3util
 from fv3.utils import gt4py_utils as utils
 import fv3
 import pytest
+from types import SimpleNamespace
 
 
 class ParallelTranslate:
@@ -23,10 +24,11 @@ class ParallelTranslate:
         self._base = TranslateFortranData2Py(rank_grids[0])
         self._base.in_vars = {
             "data_vars": {name: {} for name in self.inputs},
-            "parameters": {},
+            "parameters": [],
         }
         self.max_error = self._base.max_error
         self._rank_grids = rank_grids
+        self.ignore_near_zero_errors = {}
 
     def state_list_from_inputs_list(self, inputs_list: List[list]) -> list:
         state_list = []
@@ -133,3 +135,16 @@ class ParallelTranslate2Py(ParallelTranslate):
         pytest.skip(
             f"{self.__class__} only has a mpirun implementation, not running in mock-parallel"
         )
+
+
+class ParallelTranslate2PyState(ParallelTranslate2Py):
+    def compute_parallel(self, inputs, communicator):
+        self._base.make_storage_data_input_vars(inputs)
+        for name, properties in self.inputs.items():
+            self.grid.quantity_dict_update(
+                inputs, name, dims=properties["dims"], units=properties["units"]
+            )
+        statevars = SimpleNamespace(**inputs)
+        state = {"state": statevars, "comm": communicator}
+        self._base.compute_func(**state)
+        return self._base.slice_output(vars(state["state"]))

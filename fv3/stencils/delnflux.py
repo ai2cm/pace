@@ -61,6 +61,12 @@ def add_diffusive(fx: sd, fx2: sd, fy: sd, fy2: sd):
 
 
 @utils.stencil()
+def add_diffusive_component(fx: sd, fx2: sd):
+    with computation(PARALLEL), interval(...):
+        fx[0, 0, 0] = fx + fx2
+
+
+@utils.stencil()
 def diffusive_damp(fx: sd, fx2: sd, fy: sd, fy2: sd, mass: sd, damp: float):
     with computation(PARALLEL), interval(...):
         fx[0, 0, 0] = fx + 0.5 * damp * (mass[-1, 0, 0] + mass) * fx2
@@ -91,30 +97,24 @@ def compute_delnflux_no_sg(
     if damp_c <= 1e-4:
         return fx, fy
     damp = (damp_c * grid.da_min) ** (nord + 1)
-
-    fx2 = utils.make_storage_from_shape(q.shape, grid.default_origin())
-    fy2 = utils.make_storage_from_shape(q.shape, grid.default_origin())
+    fx2 = utils.make_storage_from_shape(q.shape, default_origin)
+    fy2 = utils.make_storage_from_shape(q.shape, default_origin)
     compute_no_sg(q, fx2, fy2, nord, damp, d2, kstart, nk, mass)
-
-    diffuse_domain = (grid.nic + 1, grid.njc + 1, nk)
+    diffuse_origin = (grid.is_, grid.js, kstart)
+    diffuse_domain_x = (grid.nic + 1, grid.njc, nk)
+    diffuse_domain_y = (grid.nic, grid.njc + 1, nk)
     if mass is None:
-        add_diffusive(
-            fx, fx2, fy, fy2, origin=(grid.is_, grid.js, kstart), domain=diffuse_domain
-        )
+        add_diffusive_component(fx, fx2, origin=diffuse_origin, domain=diffuse_domain_x)
+        add_diffusive_component(fy, fy2, origin=diffuse_origin, domain=diffuse_domain_y)
     else:
-        # this won't work if we end up with different sized arrays for fx and fy, would need to have different domains for each
-        diffusive_damp(
-            fx,
-            fx2,
-            fy,
-            fy2,
-            mass,
-            damp,
-            origin=(grid.is_, grid.js, kstart),
-            domain=diffuse_domain,
+        # TODO to join these stencils you need to overcompute, making the edges 'wrong', but not actually used, separating now for comparison sanity
+        # diffusive_damp(fx, fx2, fy, fy2, mass, damp,origin=diffuse_origin,domain=(grid.nic + 1, grid.njc + 1, nk))
+        diffusive_damp_x(
+            fx, fx2, mass, damp, origin=diffuse_origin, domain=diffuse_domain_x
         )
-        # diffusive_damp_x(fx, fx2, mass, damp, origin=(grid.is_, grid.js, 0), domaingrid.domain_shape_compute_x())
-        # diffusive_damp_y(fx, fx2,  mass, damp, origin=(grid.is_, grid.js, 0), domain=grid.domain_shape.compute_y())
+        diffusive_damp_y(
+            fy, fy2, mass, damp, origin=diffuse_origin, domain=diffuse_domain_y
+        )
     return fx, fy
 
 
@@ -134,6 +134,7 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, kstart=0, nk=None, mass=None):
         d2_damp(q, d2, damp_c, origin=origin_d2, domain=domain_d2)
     else:
         d2 = cp.copy(q, origin_d2, domain=domain_d2)
+
     if nord > 0:
         corners.copy_corners(d2, "x", grid, kslice)
     f1_ny = grid.je - grid.js + 1 + 2 * nord
@@ -164,7 +165,6 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, kstart=0, nk=None, mass=None):
             d2_highorder(
                 fx2, fy2, grid.rarea, d2, origin=nt_origin, domain=(nt_nx, nt_ny, nk),
             )
-
             corners.copy_corners(d2, "x", grid, kslice)
             nt_origin = (grid.is_ - nt, grid.js - nt, kstart)
             fx2_order(

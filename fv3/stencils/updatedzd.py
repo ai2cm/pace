@@ -145,8 +145,8 @@ def out(zs: sd, zh: sd, ws: sd, dt: float):
 def compute(ndif, damp_vtd, dp0, zs, zh, crx, cry, xfx, yfx, wsd, dt):
     grid = spec.grid
 
-    ndif[:, :, -1] = ndif[:, :, -2]
-    damp_vtd[:, :, -1] = damp_vtd[:, :, -2]
+    ndif[-1] = ndif[-2]
+    damp_vtd[-1] = damp_vtd[-2]
 
     crx_adv = utils.make_storage_from_shape(crx.shape, grid.compute_x_origin())
     cry_adv = utils.make_storage_from_shape(cry.shape, grid.compute_y_origin())
@@ -198,7 +198,8 @@ def compute(ndif, damp_vtd, dp0, zs, zh, crx, cry, xfx, yfx, wsd, dt):
     data = {}
     for varname in ["zh", "crx_adv", "cry_adv", "xfx_adv", "yfx_adv", "ra_x", "ra_y"]:
         data[varname] = locals()[varname]
-    col = {"ndif": ndif[0, 0, :], "damp": damp_vtd[0, 0, :]}
+
+    col = {"ndif": ndif, "damp": damp_vtd}
 
     kstarts = utils.get_kstarts(col, grid.npz + 1)
     utils.k_split_run(column_calls, data, kstarts, col)

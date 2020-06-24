@@ -4,7 +4,7 @@ SED := $(shell { command -v gsed || command -v sed; } 2>/dev/null)
 
 #<some large conceptual version change>.<serialization statement change>.<hotfix>
 
-FORTRAN_VERSION=0.5.0
+FORTRAN_VERSION=0.5.1
 SHELL=/bin/bash
 
 TEST_ARGS ?=-v -s -rsx
@@ -106,11 +106,14 @@ fortran_model_data: #uses the 'fv3config.yml' in the fv3gfs-fortran regression t
 
 generate_test_data: update_submodules
 
-	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE=$(COMPILED_IMAGE) $(MAKE) build_serialize
+	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE_GT4PYDEV=$(COMPILED_IMAGE) $(MAKE) build_serialize_gt4pydev
 	DATA_IMAGE=$(RUNDIR_IMAGE) DATA_TARGET=rundir $(MAKE) fortran_model_data
 	DATA_IMAGE=$(TEST_DATA_IMAGE) DATA_TARGET=test_data_storage $(MAKE) fortran_model_data
 	docker rmi $(RUNDIR_IMAGE)
 
+generate_test_data_local:
+	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE_GT4PYDEV=$(COMPILED_IMAGE) $(MAKE) build_serialize_gt4pydev
+	docker run --rm -v $(CWD)/rundir:/rundir -it $(COMPILED_IMAGE) /rundir/submit_job.sh
 
 generate_coverage: update_submodules
 	rm -rf coverage
@@ -142,6 +145,9 @@ post_test_data:
 
 pull_test_data:
 	docker pull $(TEST_DATA_IMAGE)
+
+move_test_data:
+	docker build -f docker/Dockerfile.dev_data -t $(TEST_DATA_IMAGE) .
 
 setup_tests:
 	$(MAKE) build
@@ -179,6 +185,9 @@ tests_host:
 dev_tests:
 	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' \
 		$(MAKE) run_tests_container
+dev_tests_host:
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' \
+    $(MAKE) run_tests_host_data
 
 dev_tests_mpi:
 	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_parallel_container
@@ -194,8 +203,8 @@ test_base:
 	-it $(RUNTEST_IMAGE) pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} /fv3/test
 
 test_base_parallel:
-	docker run --rm -it $(VOLUMES) $(MOUNTS) \
-		$(RUNTEST_IMAGE) \
+	docker run --rm $(VOLUMES) $(MOUNTS) \
+		-it $(RUNTEST_IMAGE) \
 		mpirun -np 6 --allow-run-as-root --mca btl_vader_single_copy_mechanism none --oversubscribe \
 		pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} -m parallel /fv3/test
 
@@ -237,4 +246,4 @@ reformat:
 	dev dev_tests devc extract_test_data flake8 fortran_model_data generate_coverage \
 	generate_test_data lint post_test_data pull_environment pull_test_data push_environment \
 	rebuild_environment reformat run_tests_container run_tests_host_data test_base \
-	tests tests_host update_submodules
+	tests tests_host update_submodules generate_test_data_local move_test_data

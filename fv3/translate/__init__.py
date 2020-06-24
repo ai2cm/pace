@@ -44,8 +44,40 @@ from .translate_d2a2c_vect import TranslateD2A2C_Vect
 from .translate_updatedzd import TranslateUpdateDzD
 from .translate_nh_p_grad import TranslateNH_P_Grad
 from .translate_tracer2d1l import TranslateTracer2D1L
+from .translate_moistcvpluste_2d import TranslateMoistCVPlusTe_2d
+from .translate_moistcvpluspt_2d import TranslateMoistCVPlusPt_2d
+from .translate_moistcvpluspkz_2d import TranslateMoistCVPlusPkz_2d
+from .translate_satadjust3d import TranslateSatAdjust3d
+from .translate_qsinit import TranslateQSInit
+from .translate_neg_adj3 import TranslateNeg_Adj3
+from .translate_compute_total_energy import TranslateComputeTotalEnergy
+from .translate_last_step import TranslateLastStep
+from .translate_fvsetup import TranslateFVSetup
+from .translate_neg_adj3 import TranslateNeg_Adj3
 from .translate_remap_profile_2d import TranslateCS_Profile_2d, TranslateCS_Profile_2d_2
 from .translate_map_scalar_2d import TranslateMapScalar_2d
+from .translate_map1_ppm_2d import (
+    TranslateMap1_PPM_2d,
+    TranslateMap1_PPM_2d_2,
+    TranslateMap1_PPM_2d_3,
+)
+from .translate_remapping import TranslateRemapping
+from .translate_remapping_part1 import TranslateRemapping_Part1
+from .translate_remapping_part2 import TranslateRemapping_Part2
 from .translate_c2l_ord2 import TranslateC2L_Ord2
 from .translate_cubedtolatlon import TranslateCubedToLatLon
 from .translate_rayleigh_super import TranslateRayleigh_Super
+from .translate_divergencecorner import TranslateDivergenceCorner
+from .translate_vorticitytransport_cgrid import TranslateVorticityTransport_Cgrid
+from .translate_pressureadjustedtemperature_nonhydrostatic import (
+    TranslatePressureAdjustedTemperature_NonHydrostatic,
+)
+from .translate_c_sw import TranslateC_SW
+from .translate_dyncore import TranslateDynCore
+from .translate_mapn_tracer_2d import TranslateMapN_Tracer_2d
+from .translate_fillz import TranslateFillz
+from .translate_fvdynamics_preamble import TranslateFVDynamics_Preamble
+from .translate_fvdynamics_kloopdyn import TranslateFVDynamics_KLoopDyn
+from .translate_fvdynamics_klooppostremap import TranslateFVDynamics_KLoopPostRemap
+from .translate_fvdynamics_wrapup import TranslateFVDynamics_Wrapup
+from .translate_fvdynamics import TranslateFVDynamics

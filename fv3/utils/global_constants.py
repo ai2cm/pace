@@ -30,3 +30,6 @@ ql0_max = 2.0e-3  # max cloud water value (auto converted to rain)
 t_sub = 184.0  # min temp for sublimation of cloud ice
 DC_ICE = C_LIQ - C_ICE
 LI0 = HLF - DC_ICE * TICE
+# TODO!!! These are supposed to be part of the namelist, but gt4py function calls break when you have a conditional comparison with a runtime float.
+ql0_max = 2.0e-3
+t_sub = 184.0
