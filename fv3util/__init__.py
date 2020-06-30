@@ -21,6 +21,7 @@ from .constants import (
     Z_INTERFACE_DIM,
     X_DIMS,
     Y_DIMS,
+    Z_DIMS,
     HORIZONTAL_DIMS,
     INTERFACE_DIMS,
     WEST,

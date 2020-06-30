@@ -203,6 +203,13 @@ class Quantity:
         return self.view[tuple(kwargs.get(dim, slice(None, None)) for dim in self.dims)]
 
     @property
+    def storage(self):
+        if gt4py is None:
+            raise ImportError("gt4py is not installed")
+        else:
+            return self.data
+
+    @property
     def metadata(self) -> QuantityMetadata:
         return self._metadata
 
