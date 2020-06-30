@@ -16,6 +16,7 @@ from fv3.stencils.c2l_ord import compute_cubed_to_latlon
 import fv3util
 import numpy as np
 from types import SimpleNamespace
+from ..decorators import ArgSpec, state_inputs
 
 sd = utils.sd
 
@@ -237,7 +238,68 @@ def set_constants(state):
     state.rdg = -constants.RDGAS / agrav
     state.akap = constants.KAPPA
     state.dt2 = 0.5 * state.bdt
-    state.nq = state.nq_tot - spec.namelist["dnats"]
+    # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
+    # ncnst = Atm(mytile)%ncnst
+    # pnats = Atm(mytile)%flagstruct%pnats
+    # here we hard-coded it because 7 is the only supported value, refactor this later!
+    state.nq = 7  # state.nq_tot - spec.namelist["dnats"]
+    state.zvir = constants.RVGAS / constants.RDGAS - 1
+
+
+@state_inputs(
+    ArgSpec("qvapor", "specific_humidity", "kg/kg", intent="inout"),
+    ArgSpec("qliquid", "cloud_water_mixing_ratio", "kg/kg", intent="inout"),
+    ArgSpec("qrain", "rain_mixing_ratio", "kg/kg", intent="inout"),
+    ArgSpec("qsnow", "snow_mixing_ratio", "kg/kg", intent="inout"),
+    ArgSpec("qice", "ice_mixing_ratio", "kg/kg", intent="inout"),
+    ArgSpec("qgraupel", "graupel_mixing_ratio", "kg/kg", intent="inout"),
+    ArgSpec("qcld", "cloud_fraction", "", intent="inout"),
+    ArgSpec("pt", "air_temperature", "degK", intent="inout"),
+    ArgSpec("delp", "pressure_thickness_of_atmospheric_layer", "Pa", intent="inout"),
+    ArgSpec("delz", "vertical_thickness_of_atmospheric_layer", "m", intent="inout"),
+    ArgSpec("peln", "logarithm_of_interface_pressure", "ln(Pa)", intent="inout"),
+    ArgSpec("u", "x_wind", "m/s", intent="inout"),
+    ArgSpec("v", "y_wind", "m/s", intent="inout"),
+    ArgSpec("w", "vertical_wind", "m/s", intent="inout"),
+    ArgSpec("ua", "x_wind_on_a_grid", "m/s", intent="inout"),
+    ArgSpec("va", "y_wind_on_a_grid", "m/s", intent="inout"),
+    ArgSpec("uc", "x_wind_on_c_grid", "m/s", intent="inout"),
+    ArgSpec("vc", "y_wind_on_c_grid", "m/s", intent="inout"),
+    ArgSpec("q_con", "total_condensate_mixing_ratio", "kg/kg", intent="inout"),
+    ArgSpec("pe", "interface_pressure", "Pa", intent="inout"),
+    ArgSpec("phis", "surface_geopotential", "m^2 s^-2", intent="in"),
+    ArgSpec(
+        "pk", "interface_pressure_raised_to_power_of_kappa", "unknown", intent="inout"
+    ),
+    ArgSpec(
+        "pkz",
+        "finite_volume_mean_pressure_raised_to_power_of_kappa",
+        "unknown",
+        intent="inout",
+    ),
+    ArgSpec("ps", "surface_pressure", "Pa", intent="inout"),
+    ArgSpec("omga", "vertical_pressure_velocity", "Pa/s", intent="inout"),
+    ArgSpec("ak", "atmosphere_hybrid_a_coordinate", "Pa", intent="in"),
+    ArgSpec("bk", "atmosphere_hybrid_b_coordinate", "", intent="in"),
+    ArgSpec("mfxd", "accumulated_x_mass_flux", "unknown", intent="inout"),
+    ArgSpec("mfyd", "accumulated_y_mass_flux", "unknown", intent="inout"),
+    ArgSpec("cxd", "accumulated_x_courant_number", "unknown", intent="inout"),
+    ArgSpec("cyd", "accumulated_y_courant_number", "unknown", intent="inout"),
+    ArgSpec(
+        "diss_estd", "dissipation_estimate_from_heat_source", "unknown", intent="inout"
+    ),
+)
+def fv_dynamics(state, comm, consv_te, do_adiabatic_init, timestep, ptop, n_split):
+    state.__dict__.update(
+        {
+            "consv_te": consv_te,
+            "bdt": timestep,
+            "do_adiabatic_init": do_adiabatic_init,
+            "ptop": ptop,
+            "n_split": n_split,
+        }
+    )
+    compute(state, comm)
 
 
 def compute(state, comm):

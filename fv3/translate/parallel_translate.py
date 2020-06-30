@@ -8,6 +8,18 @@ import pytest
 from types import SimpleNamespace
 
 
+def ensure_3d_dims(dims_in):
+    dims_out = [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM]
+    for dim in dims_in:
+        for i, dim_set in enumerate([fv3util.X_DIMS, fv3util.Y_DIMS, fv3util.Z_DIMS]):
+            if dim in dim_set:
+                dims_out[i] = dim
+                break
+        else:
+            raise ValueError(f"dimension {dim} is not an x/y/z dimension")
+    return dims_out
+
+
 class ParallelTranslate:
 
     max_error = TranslateFortranData2Py.max_error
@@ -26,6 +38,7 @@ class ParallelTranslate:
             "data_vars": {name: {} for name in self.inputs},
             "parameters": [],
         }
+        self._base.out_vars = {name: {} for name in self.outputs}
         self.max_error = self._base.max_error
         self._rank_grids = rank_grids
         self.ignore_near_zero_errors = {}
@@ -46,17 +59,15 @@ class ParallelTranslate:
                 properties["name"] = name
             input_data = state[name]
             if len(properties["dims"]) > 0:
-                state[properties["name"]] = grid.quantity_factory.empty(
-                    properties["dims"], properties["units"], dtype=inputs[name].dtype
+                # self._base will always make a 3D array
+                dims = ensure_3d_dims(properties["dims"])
+                state[properties["name"]] = fv3util.Quantity(
+                    input_data,
+                    dims,
+                    properties["units"],
+                    origin=grid.sizer.get_origin(dims),
+                    extent=grid.sizer.get_extent(dims),
                 )
-                if len(properties["dims"]) == 3:
-                    state[properties["name"]].data[:] = input_data
-                elif len(properties["dims"]) == 2:
-                    state[properties["name"]].data[:] = input_data[:, :, 0]
-                else:
-                    raise NotImplementedError(
-                        "only 0, 2, and 3-d variables are supported"
-                    )
             else:
                 state[properties["name"]] = input_data
         return state
@@ -106,14 +117,44 @@ class ParallelTranslate:
         self.compute_sequential(self, [inputs], [communicator])
 
 
-def _serialize_slice(quantity, n_halo):
+class ParallelTranslateBaseSlicing(ParallelTranslate):
+    def outputs_from_state(self, state: dict):
+        if len(self.outputs) == 0:
+            return {}
+        outputs = {}
+        storages = {}
+        for name, properties in self.outputs.items():
+            standard_name = properties.get("name", name)
+            if isinstance(state[name], fv3util.Quantity):
+                storages[name] = state[standard_name].storage
+            elif len(self.outputs[name]["dims"]) > 0:
+                storages[name] = state[standard_name]  # assume it's a storage
+            else:
+                outputs[name] = state[standard_name]  # scalar
+        outputs.update(self._base.slice_output(storages))
+        return outputs
+
+
+def _serialize_slice(quantity, n_halo, real_dims=None):
+    if real_dims is None:
+        real_dims = quantity.dims
     slice_list = []
     for dim, origin, extent in zip(quantity.dims, quantity.origin, quantity.extent):
-        if dim in fv3util.HORIZONTAL_DIMS:
-            halo = n_halo
+        if dim in real_dims:
+            if dim in fv3util.HORIZONTAL_DIMS:
+                if isinstance(n_halo, int):
+                    halo = n_halo
+                elif dim in fv3util.X_DIMS:
+                    halo = n_halo[0]
+                elif dim in fv3util.Y_DIMS:
+                    halo = n_halo[1]
+                else:
+                    raise RuntimeError(n_halo)
+            else:
+                halo = 0
+            slice_list.append(slice(origin - halo, origin + extent + halo))
         else:
-            halo = 0
-        slice_list.append(slice(origin - halo, origin + extent + halo))
+            slice_list.append(-1)
     return tuple(slice_list)
 
 

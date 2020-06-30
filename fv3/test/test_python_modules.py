@@ -247,18 +247,20 @@ def test_parallel_savepoint(
     output = testobj.compute_parallel(input_data, communicator)
     failing_names = []
     passing_names = []
+    ref_data = {}
     out_vars = set(testobj.outputs.keys())
     out_vars.update(list(testobj._base.out_vars.keys()))
     for varname in out_vars:
-        ref_data = serializer.read(varname, savepoint_out)
+        ref_data[varname] = []
+        ref_data[varname].append(serializer.read(varname, savepoint_out))
         near0 = testobj.ignore_near_zero_errors.get(varname, False)
         with subtests.test(varname=varname):
             failing_names.append(varname)
             assert success(
-                output[varname], ref_data, testobj.max_error, near0
+                output[varname], ref_data[varname][0], testobj.max_error, near0
             ), sample_wherefail(
                 output[varname],
-                ref_data,
+                ref_data[varname][0],
                 testobj.max_error,
                 print_failures,
                 failure_stride,
@@ -266,6 +268,11 @@ def test_parallel_savepoint(
                 near0,
             )
             passing_names.append(failing_names.pop())
+    if len(failing_names) > 0:
+        out_filename = os.path.join(OUTDIR, f"{test_name}-{grid[0].rank}.nc")
+        save_netcdf(
+            testobj, [input_data], [output], ref_data, failing_names, out_filename
+        )
     assert failing_names == [], f"only the following variables passed: {passing_names}"
 
 
@@ -281,8 +288,8 @@ def save_netcdf(
     testobj, inputs_list, output_list, ref_data, failing_names, out_filename
 ):
     data_vars = {}
-    for varname in failing_names:
-        dims = testobj.outputs[varname]["dims"]
+    for i, varname in enumerate(failing_names):
+        dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
         attrs = {
             "units": testobj.outputs[varname]["units"],
         }
