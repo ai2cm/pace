@@ -51,6 +51,7 @@ build_environment_serialbox: update_submodules
 
 build_environment: build_environment_serialbox
 	DOCKER_BUILDKIT=1 docker build \
+		--network host \
 		--build-arg serialbox_image=$(SERIALBOX_IMAGE) \
 		-f docker/Dockerfile.build_environment \
 		-t $(FV3_INSTALL_IMAGE) \
@@ -64,6 +65,7 @@ build: update_submodules
 		$(MAKE) build_environment; \
 	fi
 	docker build \
+		--network host \
 		--build-arg build_image=$(FV3_INSTALL_IMAGE) \
 		-f docker/Dockerfile \
 		-t $(FV3_IMAGE) \
@@ -82,6 +84,7 @@ rebuild_environment: build_environment
 
 dev:
 	docker run --rm -it \
+		--network host \
 		-v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) \
 		-v $(CWD):/port_dev \
 		$(FV3_IMAGE)
@@ -91,12 +94,14 @@ devc:
 		$(MAKE) data_container; \
 	fi
 	docker run --rm -it \
+		--network host \
 		--volumes-from $(TEST_DATA_RUN_CONTAINER) \
 		-v $(CWD):/port_dev \
 		$(FV3_IMAGE)
 
 fortran_model_data: #uses the 'fv3config.yml' in the fv3gfs-fortran regression tests to configure a test run for generation serialization data
 	docker build \
+		--network host \
 		--build-arg model_image=$(COMPILED_IMAGE) \
 		--build-arg commit_hash=$(FORTRAN_SHA)\
 		-f docker/Dockerfile.fortran_model_data \
@@ -113,7 +118,7 @@ generate_test_data: update_submodules
 
 generate_test_data_local:
 	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE_GT4PYDEV=$(COMPILED_IMAGE) $(MAKE) build_serialize_gt4pydev
-	docker run --rm -v $(CWD)/rundir:/rundir -it $(COMPILED_IMAGE) /rundir/submit_job.sh
+	docker run --network host --rm -v $(CWD)/rundir:/rundir -it $(COMPILED_IMAGE) /rundir/submit_job.sh
 
 generate_coverage: update_submodules
 	rm -rf coverage
@@ -122,7 +127,7 @@ generate_coverage: update_submodules
 	DATA_IMAGE=$(GCOV_IMAGE) COMPILED_IMAGE=fv3gfs-compiled:gcov DATA_TARGET=rundir $(MAKE) fortran_model_data
 	git checkout fv3/test/fv3config.yml
 	mkdir coverage
-	docker run -it --rm --mount type=bind,source=$(PWD)/coverage,target=/coverage $(GCR_URL)/fv3gfs-gcov-data:$(FORTRAN_VERSION) bash -c "pip install gcovr; cd /coverage; mkdir physics; cd physics; gcovr -d -r /FV3/gfsphysics --html --html-details -o index.html; cd ../; mkdir dycore; cd dycore; gcovr -d -r /FV3/atmos_cubed_sphere --html --html-details -o index.html"
+	docker run -it --rm --network host --mount type=bind,source=$(PWD)/coverage,target=/coverage $(GCR_URL)/fv3gfs-gcov-data:$(FORTRAN_VERSION) bash -c "pip install gcovr; cd /coverage; mkdir physics; cd physics; gcovr -d -r /FV3/gfsphysics --html --html-details -o index.html; cd ../; mkdir dycore; cd dycore; gcovr -d -r /FV3/atmos_cubed_sphere --html --html-details -o index.html"
 	@echo "==== Coverage ananlysis done. Now open coverage/dycore/index.html coverage/physics/index.html in your browser ===="
 
 extract_test_data:
