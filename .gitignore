@@ -136,3 +136,6 @@ dmypy.json
 
 # Visual Studio Code
 .vscode/
+
+# GT4Py
+**/.gt_cache/
