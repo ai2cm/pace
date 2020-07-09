@@ -19,6 +19,7 @@ from .constants import (
     Y_INTERFACE_DIM,
     Z_DIM,
     Z_INTERFACE_DIM,
+    Z_SOIL_DIM,
     X_DIMS,
     Y_DIMS,
     Z_DIMS,
@@ -48,6 +49,7 @@ from .communicator import (
 from ._xarray import to_dataset
 from ._capture_stream import capture_stream
 from . import testing
-from .initialization import SubtileGridSizer, QuantityFactory
+from .initialization import SubtileGridSizer, GridSizer, QuantityFactory
+from .buffer import array_buffer, send_buffer, recv_buffer
 
 __version__ = "0.4.3"

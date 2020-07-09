@@ -140,7 +140,7 @@ def validate_store(states, filename, numpy):
                 assert array[i] == numpy.datetime64(s["time"])
         else:
             for i, s in enumerate(states):
-                numpy.testing.assert_array_equal(array[i, 0, :], s[name].values)
+                numpy.testing.assert_array_equal(array[i, 0, :], s[name].view[:])
 
     store = zarr.open_group(filename, mode="r")
     assert_no_missing_names(

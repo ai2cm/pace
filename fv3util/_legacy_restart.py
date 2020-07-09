@@ -21,6 +21,7 @@ def open_restart(
     communicator: CubedSphereCommunicator,
     label: str = "",
     only_names: Iterable[str] = None,
+    to_state: dict = None,
 ):
     """Load restart files output by the Fortran model into a state dictionary.
 
@@ -29,6 +30,8 @@ def open_restart(
         communicator: object for communication over the cubed sphere
         label: prepended string on the restart files to load
         only_names (optional): list of standard names to load
+        to_state (optional): if given, assign loaded data into pre-allocated quantities
+            in this state dictionary
 
     Returns:
         state: model state dictionary
@@ -45,7 +48,10 @@ def open_restart(
         if filesystem.is_file(coupler_res_filename):
             with filesystem.open(coupler_res_filename, "r") as f:
                 state["time"] = io.get_current_date_from_coupler_res(f)
-    state = communicator.tile.scatter_state(state)
+    if to_state is None:
+        state = communicator.tile.scatter_state(state)
+    else:
+        state = communicator.tile.scatter_state(state, recv_state=to_state)
     return state
 
 

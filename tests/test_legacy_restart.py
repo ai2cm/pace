@@ -39,6 +39,97 @@ def test_open_c12_restart_without_crashing(layout):
                 assert isinstance(value, datetime)
             else:
                 assert isinstance(value, fv3util.Quantity)
+                assert np.sum(np.isnan(value.view[:])) == 0
+                for dim, extent in zip(value.dims, value.extent):
+                    if dim == fv3util.X_DIM:
+                        assert extent == nx
+                    elif dim == fv3util.X_INTERFACE_DIM:
+                        assert extent == nx + 1
+                    elif dim == fv3util.Y_DIM:
+                        assert extent == ny
+                    elif dim == fv3util.Y_INTERFACE_DIM:
+                        assert extent == ny + 1
+
+
+@pytest.mark.parametrize("layout", [(1, 1), (3, 3)])
+def test_open_c12_restart_empty_to_state_without_crashing(layout):
+    total_ranks = layout[0] * layout[1]
+    ny = 12 / layout[0]
+    nx = 12 / layout[1]
+    shared_buffer = {}
+    communicator_list = []
+    for rank in range(total_ranks):
+        communicator = fv3util.CubedSphereCommunicator(
+            DummyComm(rank, total_ranks, shared_buffer),
+            fv3util.CubedSpherePartitioner(fv3util.TilePartitioner(layout)),
+        )
+        communicator_list.append(communicator)
+    state_list = []
+    for communicator in communicator_list:
+        state_list.append({})
+        fv3util.open_restart(
+            os.path.join(DATA_DIRECTORY, "c12_restart"),
+            communicator,
+            to_state=state_list[-1],
+        )
+    for state in state_list:
+        assert "time" in state.keys()
+        assert len(state.keys()) == 63
+        for name, value in state.items():
+            if name == "time":
+                assert isinstance(value, datetime)
+            else:
+                assert isinstance(value, fv3util.Quantity)
+                assert np.sum(np.isnan(value.view[:])) == 0
+                for dim, extent in zip(value.dims, value.extent):
+                    if dim == fv3util.X_DIM:
+                        assert extent == nx
+                    elif dim == fv3util.X_INTERFACE_DIM:
+                        assert extent == nx + 1
+                    elif dim == fv3util.Y_DIM:
+                        assert extent == ny
+                    elif dim == fv3util.Y_INTERFACE_DIM:
+                        assert extent == ny + 1
+
+
+@pytest.mark.parametrize("layout", [(1, 1), (3, 3)])
+def test_open_c12_restart_to_allocated_state_without_crashing(layout):
+    total_ranks = layout[0] * layout[1]
+    ny = 12 / layout[0]
+    nx = 12 / layout[1]
+    shared_buffer = {}
+    communicator_list = []
+    for rank in range(total_ranks):
+        communicator = fv3util.CubedSphereCommunicator(
+            DummyComm(rank, total_ranks, shared_buffer),
+            fv3util.CubedSpherePartitioner(fv3util.TilePartitioner(layout)),
+        )
+        communicator_list.append(communicator)
+    state_list = []
+    for communicator in communicator_list:
+        state_list.append(
+            fv3util.open_restart(
+                os.path.join(DATA_DIRECTORY, "c12_restart"), communicator
+            )
+        )
+    for state in state_list:
+        for name, value in state.items():
+            if name != "time":
+                value.view[:] = np.nan
+    for state, communicator in zip(state_list, communicator_list):
+        fv3util.open_restart(
+            os.path.join(DATA_DIRECTORY, "c12_restart"), communicator, to_state=state
+        )
+
+    for state in state_list:
+        assert "time" in state.keys()
+        assert len(state.keys()) == 63
+        for name, value in state.items():
+            if name == "time":
+                assert isinstance(value, datetime)
+            else:
+                assert isinstance(value, fv3util.Quantity)
+                assert np.sum(np.isnan(value.view[:])) == 0
                 for dim, extent in zip(value.dims, value.extent):
                     if dim == fv3util.X_DIM:
                         assert extent == nx

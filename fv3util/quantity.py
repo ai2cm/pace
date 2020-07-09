@@ -1,5 +1,6 @@
 from typing import Tuple, Iterable, Dict
 from types import ModuleType
+import warnings
 import dataclasses
 import numpy as np
 import xarray as xr
@@ -229,7 +230,11 @@ class Quantity:
 
     @property
     def values(self) -> np.ndarray:
-        return_array = np.asarray(self._data)
+        warnings.warn(
+            "values exists only for backwards-compatibility with DataArray and will be removed, use .view[:] instead",
+            DeprecationWarning,
+        )
+        return_array = np.asarray(self.view[:])
         return_array.flags.writeable = False
         return return_array
 
