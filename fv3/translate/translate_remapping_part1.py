@@ -8,13 +8,7 @@ class TranslateRemapping_Part1(TranslateFortranData2Py):
         super().__init__(grid)
         self.compute_func = remap_part1.compute
         self.in_vars["data_vars"] = {
-            "qvapor": {},
-            "qliquid": {},
-            "qice": {},
-            "qrain": {},
-            "qsnow": {},
-            "qgraupel": {},
-            "qcld": {},
+            "tracers": {"serialname": "qtracers"},
             "w": {},
             "u": grid.y3d_domain_dict(),
             "ua": {},
@@ -64,11 +58,7 @@ class TranslateRemapping_Part1(TranslateFortranData2Py):
             "gz": {"serialname": "gz1d", "kstart": grid.is_, "axis": 0},
             "cvm": {"kstart": grid.is_, "axis": 0},
         }
-        self.in_vars["parameters"] = [
-            "ptop",
-            "akap",
-            "r_vir",
-        ]
+        self.in_vars["parameters"] = ["ptop", "akap", "r_vir", "nq"]
         self.out_vars = {}
         for k in [
             "pe",
@@ -76,13 +66,7 @@ class TranslateRemapping_Part1(TranslateFortranData2Py):
             "pk",
             "peln",
             "pt",
-            "qvapor",
-            "qliquid",
-            "qice",
-            "qrain",
-            "qsnow",
-            "qgraupel",
-            "qcld",
+            "tracers",
             "cappa",
             "delp",
             "delz",
@@ -100,4 +84,4 @@ class TranslateRemapping_Part1(TranslateFortranData2Py):
         self.out_vars["wsd"]["kstart"] = grid.npz - 1
         self.out_vars["wsd"]["kend"] = grid.npz - 1
         self.out_vars["ps"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
-        self.max_error = 1e-11
+        self.max_error = 1e-10

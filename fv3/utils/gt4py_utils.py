@@ -16,11 +16,26 @@ _dtype = np.float_
 sd = gtscript.Field[_dtype]
 halo = 3
 origin = (halo, halo, 0)
+# TODO get from field_table
+tracer_variables = [
+    "qvapor",
+    "qliquid",
+    "qrain",
+    "qice",
+    "qsnow",
+    "qgraupel",
+    "qo3mr",
+    "qsgs_tke",
+    "qcld",
+]
 # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
 if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
     gt.config.cache_settings["dir_name"] = ".gt_cache_{:0>6d}".format(
         MPI.COMM_WORLD.Get_rank()
     )
+# TODO remove when using quantities throughout model
+def quantity_name(name):
+    return name + "_quantity"
 
 
 def stencil(**stencil_kwargs):
@@ -51,7 +66,15 @@ def _data_backend(backend: str):
 
 
 def make_storage_data(
-    array, full_shape, istart=0, jstart=0, kstart=0, origin=origin, dummy=None, axis=2
+    array,
+    full_shape,
+    istart=0,
+    jstart=0,
+    kstart=0,
+    origin=origin,
+    dummy=None,
+    axis=2,
+    names_4d=None,
 ):
     full_np_arr = np.zeros(full_shape)
     if len(array.shape) == 2:
@@ -75,6 +98,23 @@ def make_storage_data(
             return make_storage_data_from_1d(
                 array, full_shape, kstart=kstart, origin=origin, axis=axis
             )
+    elif len(array.shape) == 4:
+        if names_4d is None:
+            raise Exception("for 4d variable storages, specify a list of names")
+        data_dict = {}
+        for i in range(array.shape[3]):
+            data_dict[names_4d[i]] = make_storage_data(
+                np.squeeze(array[:, :, :, i]),
+                full_shape,
+                istart=istart,
+                jstart=jstart,
+                kstart=kstart,
+                origin=origin,
+                dummy=dummy,
+                axis=axis,
+            )
+        return data_dict
+
     else:
         isize, jsize, ksize = array.shape
         full_np_arr[

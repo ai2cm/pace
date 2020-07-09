@@ -2,6 +2,7 @@ from .parallel_translate import ParallelTranslateBaseSlicing
 import fv3.stencils.fv_dynamics as fv_dynamics
 import fv3util
 import pytest
+import fv3.utils.gt4py_utils as utils
 
 
 class TranslateFVDynamics(ParallelTranslateBaseSlicing):
@@ -165,6 +166,16 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             "units": "kg/kg",
         },
+        "qo3mr": {
+            "name": "ozone_mixing_ratio",
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "units": "kg/kg",
+        },
+        "qsgs_tke": {
+            "name": "turbulent_kinetic_energy",
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "units": "m**2/s**2",
+        },
         "qcld": {
             "name": "cloud_fraction",
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
@@ -180,11 +191,21 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         "bdt": {"dims": []},
         "ptop": {"dims": []},
         "n_split": {"dims": []},
+        "ks": {"dims": []},
     }
 
     outputs = inputs.copy()
 
-    for name in ("do_adiabatic_init", "consv_te", "bdt", "ptop", "n_split", "ak", "bk"):
+    for name in (
+        "do_adiabatic_init",
+        "consv_te",
+        "bdt",
+        "ptop",
+        "n_split",
+        "ak",
+        "bk",
+        "ks",
+    ):
         outputs.pop(name)
 
     def __init__(self, grids, *args, **kwargs):
@@ -201,6 +222,8 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "qrain": {},
             "qsnow": {},
             "qgraupel": {},
+            "qo3mr": {},
+            "qsgs_tke": {},
             "qcld": {},
             "ps": {},
             "pe": {
@@ -238,6 +261,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "cyd": grid.y3d_compute_domain_x_dict(),
             "diss_estd": {},
         }
+
         self._base.out_vars = self._base.in_vars["data_vars"].copy()
         for var in ["ak", "bk"]:
             self._base.out_vars.pop(var)
@@ -247,17 +271,9 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self.max_error = 1e-5
 
         self.ignore_near_zero_errors = {}
-        for qvar in [
-            "qice",
-            "qvapor",
-            "qliquid",
-            "qgraupel",
-            "qrain",
-            "qsnow",
-            "qcld",
-            "q_con",
-        ]:
+        for qvar in utils.tracer_variables:
             self.ignore_near_zero_errors[qvar] = True
+        self.ignore_near_zero_errors["q_con"] = True
 
     def compute_parallel(self, inputs, communicator):
         inputs["comm"] = communicator
@@ -270,6 +286,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             inputs["bdt"],
             inputs["ptop"],
             inputs["n_split"],
+            inputs["ks"],
         )
         outputs = self.outputs_from_state(state)
         return outputs

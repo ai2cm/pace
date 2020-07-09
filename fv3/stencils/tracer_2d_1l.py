@@ -81,42 +81,19 @@ def q_other_adjust(q: sd, qset: sd, dp1: sd, fx: sd, fy: sd, rarea: sd, dp2: sd)
 
 
 def compute(
-    qvapor,
-    qliquid,
-    qice,
-    qrain,
-    qsnow,
-    qgraupel,
-    qcld,
-    dp1,
-    mfxd,
-    mfyd,
-    cxd,
-    cyd,
-    mdt,
-    nq,
-    comm,
+    comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq,
 ):
     grid = spec.grid
+    shape = mfxd.data.shape
     # start HALO update on q (in dyn_core in fortran -- just has started when this function is called...)
-    xfx = utils.make_storage_from_shape(
-        qvapor.data.shape, origin=grid.compute_x_origin()
-    )
-    yfx = utils.make_storage_from_shape(
-        qvapor.data.shape, origin=grid.compute_y_origin()
-    )
-    fx = utils.make_storage_from_shape(qvapor.data.shape, origin=grid.compute_origin())
-    fy = utils.make_storage_from_shape(qvapor.data.shape, origin=grid.compute_origin())
-    ra_x = utils.make_storage_from_shape(
-        qvapor.data.shape, origin=grid.compute_x_origin()
-    )
-    ra_y = utils.make_storage_from_shape(
-        qvapor.data.shape, origin=grid.compute_y_origin()
-    )
-    cmax = utils.make_storage_from_shape(
-        qvapor.data.shape, origin=grid.compute_origin()
-    )
-    dp2 = utils.make_storage_from_shape(qvapor.data.shape, origin=grid.compute_origin())
+    xfx = utils.make_storage_from_shape(shape, origin=grid.compute_x_origin())
+    yfx = utils.make_storage_from_shape(shape, origin=grid.compute_y_origin())
+    fx = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
+    fy = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
+    ra_x = utils.make_storage_from_shape(shape, origin=grid.compute_x_origin())
+    ra_y = utils.make_storage_from_shape(shape, origin=grid.compute_y_origin())
+    cmax = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
+    dp2 = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
     flux_x(
         cxd,
         grid.dxa,
@@ -202,7 +179,8 @@ def compute(
     )
 
     # complete HALO update on q
-    for q in [qvapor, qliquid, qice, qrain, qsnow, qgraupel]:
+    for qname in utils.tracer_variables[0:nq]:
+        q = tracers[qname + "_quantity"]
         comm.halo_update(q, n_points=utils.halo)
 
     ra_x_stencil(
@@ -226,7 +204,8 @@ def compute(
     dp1_orig = cp.copy(
         dp1, origin=grid.default_origin(), domain=grid.domain_shape_standard()
     )
-    for q in [qvapor, qliquid, qice, qrain, qsnow, qgraupel]:
+    for qname in utils.tracer_variables[0:nq]:
+        q = tracers[qname + "_quantity"]
         # handling the q and it loop switching
         cp.copy_stencil(
             dp1_orig,

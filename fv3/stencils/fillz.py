@@ -102,41 +102,30 @@ def final_check(q: sd, dp: sd, dm: sd, zfix: sd, fac: sd):
                 q = fac * dm / dp if fac * dm / dp > 0.0 else 0.0
 
 
-def compute(
-    dp2, qvapor, qliquid, qice, qrain, qsnow, qgraupel, qcld, im, km, nq, jslice
-):
+def compute(dp2, tracers, im, km, nq, jslice):
     # Same as above, but with multiple tracer fields
+    shape = tracers[utils.tracer_variables[0]].shape
     i1 = grid().is_
     js = jslice.start
     j_extent = jslice.stop - jslice.start
     orig = (i1, js, 0)
-    zfix = utils.make_storage_from_shape(qvapor.shape, origin=(0, 0, 0))
-    upper_fix = utils.make_storage_from_shape(qvapor.shape, origin=(0, 0, 0))
-    lower_fix = utils.make_storage_from_shape(qvapor.shape, origin=(0, 0, 0))
-    dm = utils.make_storage_from_shape(qvapor.shape, origin=(0, 0, 0))
-    dm_pos = utils.make_storage_from_shape(qvapor.shape, origin=(0, 0, 0))
-    fac = utils.make_storage_from_shape(qvapor.shape, origin=(0, 0, 0))
+    zfix = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
+    upper_fix = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
+    lower_fix = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
+    dm = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
+    dm_pos = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
+    fac = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
     # TODO: implement dev_gfs_physics ifdef when we implement compiler defs
 
-    tracers = ["qvapor", "qliquid", "qice", "qrain", "qsnow", "qgraupel", "qcld"]
-    tracer_qs = {
-        "qvapor": qvapor,
-        "qliquid": qliquid,
-        "qice": qice,
-        "qrain": qrain,
-        "qsnow": qsnow,
-        "qgraupel": qgraupel,
-    }
-
-    for q in tracer_qs:
+    for q in utils.tracer_variables[0:nq]:
         # reset fields
-        zfix.data[:] = np.zeros(qvapor.shape)
-        fac.data[:] = np.zeros(qvapor.shape)
-        lower_fix.data[:] = np.zeros(qvapor.shape)
-        upper_fix.data[:] = np.zeros(qvapor.shape)
-        fix_top(tracer_qs[q], dp2, dm, origin=orig, domain=(im, j_extent, 2))
+        zfix.data[:] = np.zeros(shape)
+        fac.data[:] = np.zeros(shape)
+        lower_fix.data[:] = np.zeros(shape)
+        upper_fix.data[:] = np.zeros(shape)
+        fix_top(tracers[q], dp2, dm, origin=orig, domain=(im, j_extent, 2))
         fix_interior(
-            tracer_qs[q],
+            tracers[q],
             dp2,
             zfix,
             upper_fix,
@@ -147,7 +136,7 @@ def compute(
             domain=(im, j_extent, km),
         )
         fix_bottom(
-            tracer_qs[q],
+            tracers[q],
             dp2,
             zfix,
             upper_fix,
@@ -165,7 +154,7 @@ def compute(
         adj_factor[sum0 > 0] = sum0[sum0 > 0] / sum1[sum0 > 0]
         fac.data[:] = np.repeat(adj_factor[:, :, np.newaxis], km + 1, axis=2)
         final_check(
-            tracer_qs[q],
+            tracers[q],
             dp2,
             dm,
             zfix,
@@ -173,5 +162,4 @@ def compute(
             origin=(i1, js, 1),
             domain=(im, j_extent, km - 1),
         )
-    tracer_qs["qcld"] = qcld  # TODO, testing found qcld is not run through this
-    return [tracer_qs[tracer] for tracer in tracers]
+    return [tracers[tracer] for tracer in tracers.keys()]

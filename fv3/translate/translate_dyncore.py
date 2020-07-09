@@ -89,6 +89,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
             "ak": {},
             "bk": {},
             "diss_estd": {},
+            "pfull": {},
         }
         self._base.in_vars["data_vars"]["wsd"]["kstart"] = grid.npz
         self._base.in_vars["data_vars"]["wsd"]["kend"] = None
@@ -98,8 +99,8 @@ class TranslateDynCore(ParallelTranslate2PyState):
             "n_split",
             "akap",
             "ptop",
-            "pfull",
             "n_map",
+            "ks",
         ]
         self._base.out_vars = {}
 
@@ -109,4 +110,4 @@ class TranslateDynCore(ParallelTranslate2PyState):
         del self._base.out_vars["bk"]
 
         # TODO - fix edge_interpolate4 in d2a2c_vect to match closer and the variables here should as well
-        self.max_error = 1e-7
+        self.max_error = 1e-6

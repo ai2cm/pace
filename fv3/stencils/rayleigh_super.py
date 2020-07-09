@@ -12,6 +12,7 @@ import fv3util
 sd = utils.sd
 U0 = 60.0
 SDAY = 86400.0
+RCV = 1.0 / (constants.CP_AIR - constants.RDGAS)
 
 
 @utils.stencil()
@@ -31,7 +32,6 @@ def rayleigh_pt_vert(
     w: sd,
     pfull: sd,
     u2f: sd,
-    rcv: float,
     ptop: float,
     rf_cutoff: float,
     conserve: bool,
@@ -46,7 +46,7 @@ def rayleigh_pt_vert(
                     )
                 else:
                     pt = (
-                        pt + 0.5 * (ua ** 2 + va ** 2 + w ** 2) * (1.0 - u2f ** 2) * rcv
+                        pt + 0.5 * (ua ** 2 + va ** 2 + w ** 2) * (1.0 - u2f ** 2) * RCV
                     )
             if not hydrostatic:
                 w = u2f * w
@@ -66,12 +66,49 @@ def rayleigh_v(v: sd, pfull: sd, u2f: sd, rf_cutoff: float):
             v = 0.5 * (u2f[-1, 0, 0] + u2f) * v
 
 
+# TODO put in stencil
+def rayleigh_rfvals(bdt, tau0, rf_cutoff, pfull, ptop):
+    rfvals = (
+        bdt
+        / tau0
+        * np.sin(
+            0.5
+            * constants.PI
+            * np.log(
+                rf_cutoff
+                / np.squeeze(pfull[spec.grid.is_, spec.grid.js, 0 : spec.grid.npz])
+            )
+            / math.log(rf_cutoff / ptop)
+        )
+        ** 2
+    )
+    return rfvals
+
+
+def get_kmax(pfull, rf_cutoff):
+    neg_pfull = np.argwhere(
+        pfull[spec.grid.is_, spec.grid.js, 0 : spec.grid.npz] < rf_cutoff
+    )
+    if len(neg_pfull) == 0:
+        kmax = 1
+    else:
+        kmax = neg_pfull[-1][-1] + 1
+    return kmax, neg_pfull
+
+
+def fill_rf(rf, rfvals, rf_cutoff, pfull, shape3d):
+    kmax, neg_pfull = get_kmax(pfull, rf_cutoff)
+    rf[neg_pfull] = rfvals[neg_pfull]
+    # TODO this makes the column 3d, undo when you can
+    rf = utils.make_storage_data(rf, shape3d, origin=spec.grid.default_origin())
+    return rf, kmax
+
+
 def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
     grid = spec.grid
     rf_initialized = False  # TODO pull this into a state dict or arguments that get updated when called
     conserve = not (grid.nested or spec.namelist["regional"])
     rf_cutoff = spec.namelist["rf_cutoff"]
-    rcv = 1.0 / (constants.CP_AIR - constants.RDGAS)
     if not rf_initialized:
         tau0 = abs(spec.namelist["tau"] * SDAY)
         # is only a column actually
@@ -83,29 +120,8 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
                 * (np.log(rf_cutoff / pfull[grid.is_, grid.js, 0 : grid.npz])) ** 2
             )
         else:
-            rfvals = (
-                bdt
-                / tau0
-                * np.sin(
-                    0.5
-                    * constants.PI
-                    * np.log(
-                        rf_cutoff / np.squeeze(pfull[grid.is_, grid.js, 0 : grid.npz])
-                    )
-                    / math.log(rf_cutoff / ptop)
-                )
-                ** 2
-            )
-        neg_pfull = np.argwhere(pfull[grid.is_, grid.js, 0 : grid.npz] < rf_cutoff)
-
-        if len(neg_pfull) == 0:
-            kmax = 1
-        else:
-            kmax = neg_pfull[-1][-1] + 1
-
-        rf[neg_pfull] = rfvals[neg_pfull]
-        # TODO this makes the column 3d, undo when you can
-        rf = utils.make_storage_data(rf, u.shape, origin=grid.default_origin())
+            rfvals = rayleigh_rfvals(bdt, tau0, rf_cutoff, pfull, ptop)
+        rf, kmax = fill_rf(rf, rfvals, rf_cutoff, pfull, u.shape)
         rf_initialized = True  # TODO propagate to global scope
     c2l_ord.compute_ord2(u, v, ua, va)
 
@@ -131,7 +147,6 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
         w,
         pfull,
         u2f.data,
-        rcv,
         ptop,
         rf_cutoff,
         conserve,

@@ -4,7 +4,7 @@ SED := $(shell { command -v gsed || command -v sed; } 2>/dev/null)
 
 #<some large conceptual version change>.<serialization statement change>.<hotfix>
 
-FORTRAN_VERSION=0.5.1
+FORTRAN_VERSION=0.6.0
 SHELL=/bin/bash
 
 TEST_ARGS ?=-v -s -rsx
@@ -120,6 +120,7 @@ generate_test_data_local:
 	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 SERIALIZE_IMAGE_GT4PYDEV=$(COMPILED_IMAGE) $(MAKE) build_serialize_gt4pydev
 	docker run --network host --rm -v $(CWD)/rundir:/rundir -it $(COMPILED_IMAGE) /rundir/submit_job.sh
 
+
 generate_coverage: update_submodules
 	rm -rf coverage
 	cd $(FORTRAN_DIR) && DOCKER_BUILDKIT=1 $(MAKE) build_coverage
@@ -200,8 +201,6 @@ dev_tests_mpi:
 dev_tests_mpi_host:
 	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_parallel_host
 
-dev_tests_host:
-	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_host_data
 
 test_base:
 	docker run --rm $(VOLUMES) $(MOUNTS) \

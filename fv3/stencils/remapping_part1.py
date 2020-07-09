@@ -100,13 +100,7 @@ def reset_1d_x(gz):
 
 
 def compute(
-    qvapor,
-    qliquid,
-    qrain,
-    qsnow,
-    qice,
-    qgraupel,
-    qcld,
+    tracers,
     pt,
     delp,
     delz,
@@ -132,10 +126,10 @@ def compute(
     ptop,
     akap,
     r_vir,
+    nq,
 ):
     grid = spec.grid
     hydrostatic = spec.namelist["hydrostatic"]
-    nq = 7
     t_min = 184.0
     # do_omega = hydrostatic and last_step # TODO pull into inputs
     domain_jextra = (grid.nic, grid.njc + 1, grid.npz + 1)
@@ -152,12 +146,12 @@ def compute(
             raise Exception("Hydrostatic is not implemented")
         else:
             moist_cv.compute_pt(
-                qvapor,
-                qliquid,
-                qice,
-                qrain,
-                qsnow,
-                qgraupel,
+                tracers["qvapor"],
+                tracers["qliquid"],
+                tracers["qice"],
+                tracers["qrain"],
+                tracers["qsnow"],
+                tracers["qgraupel"],
                 q_con,
                 gz,
                 cvm,
@@ -242,13 +236,7 @@ def compute(
         pe1,
         pe2,
         dp2,
-        qvapor,
-        qliquid,
-        qice,
-        qrain,
-        qsnow,
-        qgraupel,
-        qcld,
+        tracers,
         nq,
         0.0,
         grid.is_,
@@ -284,12 +272,12 @@ def compute(
         pass
     else:
         moist_cv.compute_pkz(
-            qvapor,
-            qliquid,
-            qice,
-            qrain,
-            qsnow,
-            qgraupel,
+            tracers["qvapor"],
+            tracers["qliquid"],
+            tracers["qice"],
+            tracers["qrain"],
+            tracers["qsnow"],
+            tracers["qgraupel"],
             q_con,
             gz,
             cvm,

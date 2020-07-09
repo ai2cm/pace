@@ -22,6 +22,7 @@ import fv3.stencils.pk3_halo as pk3_halo
 import fv3.stencils.nh_p_grad as nh_p_grad
 import fv3.stencils.del2cubed as del2cubed
 import fv3.stencils.temperature_adjust as temperature_adjust
+import fv3.stencils.ray_fast as ray_fast
 import fv3util
 import copy
 
@@ -391,9 +392,17 @@ def compute(state, comm):
                 akap,
             )
 
-        if spec.namelist["RF_fast"]:
-            raise Exception(
-                "Unimplemented namelist option -- we do not support RF_fast"
+        if spec.namelist["rf_fast"]:
+            # TODO pass through ks, or remove, inconsistent representation vs Fortran
+            ray_fast.compute(
+                state.u,
+                state.v,
+                state.w,
+                state.dp_ref,
+                state.pfull,
+                dt,
+                state.ptop,
+                state.ks,
             )
 
         if it != n_split - 1:

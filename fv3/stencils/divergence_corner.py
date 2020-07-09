@@ -72,7 +72,8 @@ def compute_diverg_d(div: sd, vf: sd, uf: sd):
 def compute(u, v, ua, va, divg_d):
     grid = spec.grid
     co = grid.compute_origin()
-
+    is2 = grid.is_ if grid.west_edge else grid.is_ + 1
+    ie1 = grid.ie + 1 if grid.east_edge else grid.ie
     # Create storage objects for the temporary velocity arrays, uf and vf
     uf = utils.make_storage_from_shape(ua.shape, origin=(grid.is_ - 2, grid.js - 1, 0))
     vf = utils.make_storage_from_shape(va.shape, origin=(grid.is_ - 1, grid.js - 2, 0))
@@ -93,7 +94,7 @@ def compute(u, v, ua, va, divg_d):
             origin=(grid.is_ - 1, grid.js - 2, 0),
             domain=(grid.nic + 3, grid.njc + 4, grid.npz),
         )
-
+        raise Exception("unimplemented, untest option grid_type = 4")
     else:
         compute_uf(
             uf,
@@ -138,79 +139,63 @@ def compute(u, v, ua, va, divg_d):
             grid.dxc,
             grid.sin_sg3,
             grid.sin_sg1,
-            origin=(grid.is_, grid.js - 1, 0),
-            domain=(grid.nic + 2, grid.njc + 2, grid.npz),
+            origin=(is2, grid.js - 1, 0),
+            domain=(ie1 - is2 + 1, grid.njc + 2, grid.npz),
         )
-        if not grid.nested:
-            edge_domain = (1, grid.njc + 2, grid.npz)
-            if grid.west_edge:
-                compute_vf_edge_values(
-                    vf,
-                    v,
-                    grid.dxc,
-                    grid.sin_sg3,
-                    grid.sin_sg1,
-                    origin=(grid.is_, grid.js - 1, 0),
-                    domain=edge_domain,
-                )
-            if grid.east_edge:
-                compute_vf_edge_values(
-                    vf,
-                    v,
-                    grid.dxc,
-                    grid.sin_sg3,
-                    grid.sin_sg1,
-                    origin=(grid.ie + 1, grid.js - 1, 0),
-                    domain=edge_domain,
-                )
-
-        # Compute the divergence tensor values
-    if spec.namelist["grid_type"] == 4:
-        compute_divg(
-            divg_d,
-            grid.rarea_c,
-            vf,
-            uf,
-            origin=(grid.is_ - 1, grid.js - 1, 0),
-            domain=(grid.nic + 2, grid.njc + 2, grid.npz),
-        )
-    else:
-        compute_diverg_d(
-            divg_d,
-            vf,
-            uf,
-            origin=(grid.is_, grid.js, 0),
-            domain=(grid.nic + 1, grid.njc + 1, grid.npz),
-        )
-        if grid.sw_corner:
-            matrix_element_subtraction(
-                divg_d, vf, origin=(grid.is_, grid.js, 0), domain=grid.corner_domain()
-            )
-        if grid.se_corner:
-            matrix_element_subtraction(
-                divg_d,
+        edge_domain = (1, grid.njc + 2, grid.npz)
+        if grid.west_edge:
+            compute_vf_edge_values(
                 vf,
-                origin=(grid.ie + 1, grid.js, 0),
-                domain=grid.corner_domain(),
+                v,
+                grid.dxc,
+                grid.sin_sg3,
+                grid.sin_sg1,
+                origin=(grid.is_, grid.js - 1, 0),
+                domain=edge_domain,
             )
-        if grid.ne_corner:
-            basic.add_term_stencil(
+        if grid.east_edge:
+            compute_vf_edge_values(
                 vf,
-                divg_d,
-                origin=(grid.ie + 1, grid.je + 1, 0),
-                domain=grid.corner_domain(),
-            )
-        if grid.nw_corner:
-            basic.add_term_stencil(
-                vf,
-                divg_d,
-                origin=(grid.is_, grid.je + 1, 0),
-                domain=grid.corner_domain(),
+                v,
+                grid.dxc,
+                grid.sin_sg3,
+                grid.sin_sg1,
+                origin=(grid.ie + 1, grid.js - 1, 0),
+                domain=edge_domain,
             )
 
-        basic.adjustmentfactor_stencil(
-            grid.rarea_c,
-            divg_d,
-            origin=(grid.is_, grid.js, 0),
-            domain=(grid.ie, grid.je, grid.npz),
+    # Compute the divergence tensor values
+
+    compute_diverg_d(
+        divg_d,
+        vf,
+        uf,
+        origin=(grid.is_, grid.js, 0),
+        domain=(grid.nic + 1, grid.njc + 1, grid.npz),
+    )
+    if grid.sw_corner:
+        matrix_element_subtraction(
+            divg_d, vf, origin=(grid.is_, grid.js, 0), domain=grid.corner_domain()
         )
+    if grid.se_corner:
+        matrix_element_subtraction(
+            divg_d, vf, origin=(grid.ie + 1, grid.js, 0), domain=grid.corner_domain(),
+        )
+    if grid.ne_corner:
+        basic.add_term_stencil(
+            vf,
+            divg_d,
+            origin=(grid.ie + 1, grid.je + 1, 0),
+            domain=grid.corner_domain(),
+        )
+    if grid.nw_corner:
+        basic.add_term_stencil(
+            vf, divg_d, origin=(grid.is_, grid.je + 1, 0), domain=grid.corner_domain(),
+        )
+
+    basic.adjustmentfactor_stencil(
+        grid.rarea_c,
+        divg_d,
+        origin=(grid.is_, grid.js, 0),
+        domain=(grid.nic + 1, grid.njc + 1, grid.npz),
+    )

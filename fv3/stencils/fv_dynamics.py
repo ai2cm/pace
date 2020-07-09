@@ -41,6 +41,17 @@ def set_omega(delp: sd, delz: sd, w: sd, omga: sd):
         omga = delp / delz * w
 
 
+# TODO replace with something from fv3config probably, using the field_table
+def tracers_dict(state):
+    tracers = {}
+    for tracername in utils.tracer_variables:
+        tracers[tracername] = state.__getattribute__(tracername)
+        quantity_name = utils.quantity_name(tracername)
+        if quantity_name in state.__dict__:
+            tracers[quantity_name] = state.__getattribute__(quantity_name)
+    state.tracers = tracers
+
+
 def fvdyn_temporaries(shape):
     grid = spec.grid
     tmps = {}
@@ -120,7 +131,7 @@ def compute_preamble(state, comm):
             state.qgraupel,
         )
 
-    if (not spec.namelist["RF_fast"]) and spec.namelist["tau"] != 0:
+    if (not spec.namelist["rf_fast"]) and spec.namelist["tau"] != 0:
         if grid.grid_type < 4:
             print("Rayleigh Super", grid.rank)
             rayleigh_super.compute(
@@ -137,6 +148,8 @@ def compute_preamble(state, comm):
                 state.pfull,
                 comm,
             )
+        # else:
+        #     rayleigh_friction.compute()
 
     if spec.namelist["adiabatic"] and spec.namelist["kord_tm"] > 0:
         raise Exception(
@@ -168,13 +181,8 @@ def do_dyn(state, comm):
         if spec.namelist["z_tracer"]:
             print("Tracer2D1L", grid.rank)
             tracer_2d_1l.compute(
-                state.qvapor_quantity,
-                state.qliquid_quantity,
-                state.qice_quantity,
-                state.qrain_quantity,
-                state.qsnow_quantity,
-                state.qgraupel_quantity,
-                state.qcld_quantity,
+                comm,
+                state.tracers,
                 state.dp1,
                 state.mfxd,
                 state.mfyd,
@@ -182,7 +190,6 @@ def do_dyn(state, comm):
                 state.cyd,
                 state.mdt,
                 state.nq,
-                comm,
             )
         else:
             raise Exception("tracer_2d no =t implemented, turn on z_tracer")
@@ -210,23 +217,21 @@ def post_remap(state, comm):
 
 def wrapup(state, comm):
     grid = spec.grid
-    if state.nq == 7:
-        print("Neg Adj 3", grid.rank)
-        neg_adj3.compute(
-            state.qvapor,
-            state.qliquid,
-            state.qrain,
-            state.qsnow,
-            state.qice,
-            state.qgraupel,
-            state.qcld,
-            state.pt,
-            state.delp,
-            state.delz,
-            state.peln,
-        )
-    else:
-        raise Exception("Unimplemented, anything but 7 water species")
+    print("Neg Adj 3", grid.rank)
+    neg_adj3.compute(
+        state.qvapor,
+        state.qliquid,
+        state.qrain,
+        state.qsnow,
+        state.qice,
+        state.qgraupel,
+        state.qcld,
+        state.pt,
+        state.delp,
+        state.delz,
+        state.peln,
+    )
+
     print("CubedToLatLon", grid.rank)
     compute_cubed_to_latlon(
         state.u_quantity, state.v_quantity, state.ua, state.va, comm, 1
@@ -238,11 +243,12 @@ def set_constants(state):
     state.rdg = -constants.RDGAS / agrav
     state.akap = constants.KAPPA
     state.dt2 = 0.5 * state.bdt
+
     # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
     # ncnst = Atm(mytile)%ncnst
     # pnats = Atm(mytile)%flagstruct%pnats
-    # here we hard-coded it because 7 is the only supported value, refactor this later!
-    state.nq = 7  # state.nq_tot - spec.namelist["dnats"]
+    # here we hard-coded it because 8 is the only supported value, refactor this later!
+    state.nq = 8  # state.nq_tot - spec.namelist["dnats"]
     state.zvir = constants.RVGAS / constants.RDGAS - 1
 
 
@@ -253,6 +259,8 @@ def set_constants(state):
     ArgSpec("qsnow", "snow_mixing_ratio", "kg/kg", intent="inout"),
     ArgSpec("qice", "ice_mixing_ratio", "kg/kg", intent="inout"),
     ArgSpec("qgraupel", "graupel_mixing_ratio", "kg/kg", intent="inout"),
+    ArgSpec("qo3mr", "ozone_mixing_ratio", "kg/kg", intent="inout"),
+    ArgSpec("qsgs_tke", "turbulent_kinetic_energy", "m**2/s**2", intent="inout"),
     ArgSpec("qcld", "cloud_fraction", "", intent="inout"),
     ArgSpec("pt", "air_temperature", "degK", intent="inout"),
     ArgSpec("delp", "pressure_thickness_of_atmospheric_layer", "Pa", intent="inout"),
@@ -289,7 +297,7 @@ def set_constants(state):
         "diss_estd", "dissipation_estimate_from_heat_source", "unknown", intent="inout"
     ),
 )
-def fv_dynamics(state, comm, consv_te, do_adiabatic_init, timestep, ptop, n_split):
+def fv_dynamics(state, comm, consv_te, do_adiabatic_init, timestep, ptop, n_split, ks):
     state.__dict__.update(
         {
             "consv_te": consv_te,
@@ -297,6 +305,7 @@ def fv_dynamics(state, comm, consv_te, do_adiabatic_init, timestep, ptop, n_spli
             "do_adiabatic_init": do_adiabatic_init,
             "ptop": ptop,
             "n_split": n_split,
+            "ks": ks,
         }
     )
     compute(state, comm)
@@ -306,6 +315,7 @@ def compute(state, comm):
     grid = spec.grid
     state.__dict__.update(fvdyn_temporaries(state.u.shape))
     set_constants(state)
+    tracers_dict(state)
     last_step = False
     k_split = spec.namelist["k_split"]
     state.mdt = state.bdt / k_split
@@ -321,13 +331,7 @@ def compute(state, comm):
             # do_omega = spec.namelist['hydrostatic'] and last_step
             print("Remapping", grid.rank)
             lagrangian_to_eulerian.compute(
-                state.qvapor,
-                state.qliquid,
-                state.qrain,
-                state.qsnow,
-                state.qice,
-                state.qgraupel,
-                state.qcld,
+                state.tracers,
                 state.pt,
                 state.delp,
                 state.delz,
@@ -360,6 +364,7 @@ def compute(state, comm):
                 state.bdt,
                 kord_tracer,
                 state.do_adiabatic_init,
+                state.nq,
             )
             if last_step:
                 post_remap(state, comm)

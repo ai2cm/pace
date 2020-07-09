@@ -34,7 +34,7 @@ def success_array(computed_data, ref_data, eps, ignore_near_zero_errors):
         np.logical_and(np.isnan(computed_data), np.isnan(ref_data)),
     )
     if ignore_near_zero_errors:
-        small_number = 1e-20
+        small_number = 1e-18
         success = np.logical_or(
             success,
             np.logical_and(
@@ -213,9 +213,12 @@ def test_mock_parallel_savepoint(
     failing_names = [item["varname"] for item in failing_names]
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
-        save_netcdf(
-            testobj, inputs_list, output_list, ref_data, failing_names, out_filename
-        )
+        try:
+            save_netcdf(
+                testobj, inputs_list, output_list, ref_data, failing_names, out_filename
+            )
+        except Exception as error:
+            print(error)
     assert failing_names == [], f"names tested: {list(testobj.outputs.keys())}"
 
 
@@ -270,9 +273,12 @@ def test_parallel_savepoint(
             passing_names.append(failing_names.pop())
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{test_name}-{grid[0].rank}.nc")
-        save_netcdf(
-            testobj, [input_data], [output], ref_data, failing_names, out_filename
-        )
+        try:
+            save_netcdf(
+                testobj, [input_data], [output], ref_data, failing_names, out_filename
+            )
+        except Exception as error:
+            print(error)
     assert failing_names == [], f"only the following variables passed: {passing_names}"
 
 

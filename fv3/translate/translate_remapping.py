@@ -8,13 +8,7 @@ class TranslateRemapping(TranslateFortranData2Py):
         super().__init__(grid)
         self.compute_func = remapping.compute
         self.in_vars["data_vars"] = {
-            "qvapor": {},
-            "qliquid": {},
-            "qice": {},
-            "qrain": {},
-            "qsnow": {},
-            "qgraupel": {},
-            "qcld": {},
+            "tracers": {},
             "w": {},
             "u": grid.y3d_domain_dict(),
             "ua": {},
@@ -83,6 +77,7 @@ class TranslateRemapping(TranslateFortranData2Py):
             "bdt",
             "kord_tracer",
             "do_adiabatic_init",
+            "nq",
         ]
         self.out_vars = {}
         for k in [
@@ -91,13 +86,7 @@ class TranslateRemapping(TranslateFortranData2Py):
             "pk",
             "peln",
             "pt",
-            "qvapor",
-            "qliquid",
-            "qice",
-            "qrain",
-            "qsnow",
-            "qgraupel",
-            "qcld",
+            "tracers",
             "cappa",
             "delp",
             "delz",
