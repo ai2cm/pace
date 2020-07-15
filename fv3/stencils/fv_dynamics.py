@@ -249,7 +249,7 @@ def set_constants(state):
     # pnats = Atm(mytile)%flagstruct%pnats
     # here we hard-coded it because 8 is the only supported value, refactor this later!
     state.nq = 8  # state.nq_tot - spec.namelist["dnats"]
-    state.zvir = constants.RVGAS / constants.RDGAS - 1
+    state.zvir = constants.ZVIR
 
 
 @state_inputs(

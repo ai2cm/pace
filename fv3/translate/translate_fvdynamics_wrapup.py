@@ -2,6 +2,7 @@ from .parallel_translate import ParallelTranslate2PyState
 import fv3.stencils.fv_dynamics as fv_dynamics
 from .translate_cubedtolatlon import TranslateCubedToLatLon
 import copy
+import fv3.utils.gt4py_utils as utils
 
 
 class TranslateFVDynamics_Wrapup(ParallelTranslate2PyState):
@@ -40,3 +41,5 @@ class TranslateFVDynamics_Wrapup(ParallelTranslate2PyState):
         # could do this, but don't have to
         # for var in ['delp', 'delz']:
         #    del self._base.out_vars[var]
+        for qvar in utils.tracer_variables:
+            self.ignore_near_zero_errors[qvar] = True

@@ -26,4 +26,4 @@ class TranslateD2A2C_Vect(TranslateFortranData2Py):
             "vtc": {},
         }
         # TODO -- this seems to be needed primarily for the edge_interpolate_4 methods, can we rejigger the order of operations to make it match to more precision?
-        self.max_error = 1e-10
+        self.max_error = 2e-10

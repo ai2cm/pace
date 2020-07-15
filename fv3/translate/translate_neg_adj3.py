@@ -1,5 +1,6 @@
 from .translate import TranslateFortranData2Py
 import fv3.stencils.neg_adj3 as neg_adj3
+import fv3.utils.gt4py_utils as utils
 
 
 class TranslateNeg_Adj3(TranslateFortranData2Py):
@@ -30,3 +31,5 @@ class TranslateNeg_Adj3(TranslateFortranData2Py):
             "qcld": {},
             # "pt": {},
         }
+        for qvar in utils.tracer_variables:
+            self.ignore_near_zero_errors[qvar] = True

@@ -18,6 +18,7 @@ CNST_0P20 = 0.2
 # in fv_mapz, might want to localize these to remapping
 CV_VAP = 3.0 * RVGAS
 CV_AIR = CP_AIR - RDGAS
+ZVIR = RVGAS / RDGAS - 1
 C_ICE = 1972.0
 C_LIQ = 4.1855e3
 CP_VAP = 4.0 * RVGAS

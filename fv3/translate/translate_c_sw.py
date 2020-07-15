@@ -30,7 +30,7 @@ class TranslateC_SW(TranslateFortranData2Py):
         for servar in ["delpcd", "ptcd"]:
             self.out_vars[servar] = {}
         # TODO - fix edge_interpolate4 in d2a2c_vect to match closer and the variables here should as well
-        self.max_error = 1e-10
+        self.max_error = 2e-10
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)

@@ -21,7 +21,6 @@ class TranslateFVDynamics_Preamble(ParallelTranslate2PyState):
             "qrain": {},
             "qsnow": {},
             "qgraupel": {},
-            "qcld": {},
             "ph1": {},
             "ph2": {},
             "pe": {
