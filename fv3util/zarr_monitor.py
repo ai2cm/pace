@@ -140,6 +140,7 @@ class _ZarrVariableWriter:
             shape=self._prepend_shape + tile_shape,
             dtype=quantity.data.dtype,
             chunks=chunks,
+            fill_value=None,
         )
 
     def sync_array(self):
@@ -176,7 +177,7 @@ class _ZarrVariableWriter:
         logger.debug(
             f"assigning data from subtile slice {from_slice} to target slice {target_slice}"
         )
-        self.array[target_slice] = quantity.view[from_slice]
+        self.array[target_slice] = np.asarray(quantity.view[:])[from_slice]
         self.i_time += 1
 
     def _get_attrs(self, quantity):
