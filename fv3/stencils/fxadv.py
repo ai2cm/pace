@@ -369,7 +369,7 @@ def corner_ut(
                 "vx": vx - ui,
                 "vy": vy - uj,
             },
-            rebuild=True,
+            rebuild=utils.rebuild,
         )
         corner_stencil = decorator(corner_ut_stencil)
         corner_stencil(

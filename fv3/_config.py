@@ -2,6 +2,7 @@ import f90nml
 import os
 import fv3.utils.gt4py_utils as utils
 from fv3.utils.grid import Grid
+import gt4py.gtscript as gtscript
 
 grid = None
 namelist = None
@@ -97,6 +98,13 @@ def make_grid_from_namelist(namelist, rank):
         "je": namelist["npy"] + utils.halo - 2,
     }
     return Grid(indices, shape_params, rank, namelist["layout"])
+
+
+def namelist_externals_decorator():
+    dec = gtscript.stencil(
+        backend=utils.backend, externals=namelist, rebuild=utils.rebuild
+    )
+    return dec
 
 
 def set_grid(in_grid):

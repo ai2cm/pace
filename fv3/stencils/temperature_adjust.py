@@ -3,6 +3,7 @@ import fv3.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
 import fv3._config as spec
 import fv3.utils.global_constants as constants
+from fv3.stencils.basic_operations import absolute_value, min_fn
 from gt4py.gtscript import computation, interval, PARALLEL
 import numpy as np
 import math
@@ -11,36 +12,31 @@ sd = utils.sd
 
 
 @utils.stencil()
-def dtmp_stencil(heat_source: sd, delp: sd, cv_air: float):
+def compute_pkz_tempadjust(
+    delp: sd, delz: sd, cappa: sd, heat_source: sd, delt: sd, pt: sd, pkz: sd
+):
     with computation(PARALLEL), interval(...):
-        dtmp[0, 0, 0] = heat_source / (cv_air * delp)
-
-
-@utils.stencil()
-def x_edge(ut: sd, ub: sd, *, dt5: float):
-    with computation(PARALLEL), interval(...):
-        ub[0, 0, 0] = dt5 * (ut[0, -1, 0] + ut)
-
-
-@utils.stencil()
-def y_edge(ut: sd, ub: sd, *, dt4: float):
-    with computation(PARALLEL), interval(...):
-        ub[0, 0, 0] = dt4 * (-ut[0, -2, 0] + 3.0 * (ut[0, -1, 0] + ut) - ut[0, 1, 0])
+        # pkz = exp(cappa / (1. - cappa) * log(constants.RDG * delp / delz * pt))
+        # pkz = (constants.RDG * delp / delz * pt) ** (cappa / (1.0 - cappa))
+        dtmp = heat_source / (constants.CV_AIR * delp)
+        abs_dtmp = absolute_value(dtmp)
+        deltmin = min_fn(delt, abs_dtmp) * dtmp / abs_dtmp
+        pt = pt + deltmin / pkz
 
 
 # TODO use stencils. limited by functions exp, log and variable that depends on k
 def compute(pt, pkz, heat_source, delz, delp, cappa, n_con, bdt):
     grid = spec.grid
+    delt_column = np.ones(delz.shape[2]) * abs(bdt * spec.namelist["delt_max"])
+    delt_column[0] *= 0.1
+    delt_column[1] *= 0.5
+    delt = utils.make_storage_data_from_1d(
+        delt_column, delz.shape, origin=grid.default_origin()
+    )
+    # TODO move into stencil when have math functions
     isl = slice(grid.is_, grid.ie + 1)
     jsl = slice(grid.js, grid.je + 1)
     ksl = slice(0, n_con)
-    delt_column = np.ones(n_con) * abs(bdt * spec.namelist["delt_max"])
-    delt_column[0] *= 0.1
-    delt_column[1] *= 0.5
-    dshape = (grid.nic, grid.njc, n_con)
-    delt = utils.make_storage_data_from_1d(
-        delt_column, dshape, origin=grid.default_origin()
-    )
     pkz[isl, jsl, ksl] = np.exp(
         cappa[isl, jsl, ksl]
         / (1 - cappa[isl, jsl, ksl])
@@ -52,6 +48,14 @@ def compute(pt, pkz, heat_source, delz, delp, cappa, n_con, bdt):
         )
     )
 
-    dtmp = heat_source[isl, jsl, ksl] / (constants.CV_AIR * delp[isl, jsl, ksl])
-    deltmin = np.minimum(delt, np.abs(dtmp)) * dtmp / np.abs(dtmp)
-    pt[isl, jsl, ksl] = pt[isl, jsl, ksl] + deltmin / pkz[isl, jsl, ksl]
+    compute_pkz_tempadjust(
+        delp,
+        delz,
+        cappa,
+        heat_source,
+        delt,
+        pt,
+        pkz,
+        origin=grid.compute_origin(),
+        domain=(grid.nic, grid.njc, n_con),
+    )

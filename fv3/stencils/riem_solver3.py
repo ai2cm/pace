@@ -5,11 +5,99 @@ import fv3.utils.global_constants as constants
 import numpy as np
 import fv3.stencils.sim1_solver as sim1_solver
 import fv3.stencils.copy_stencil as cp
+import fv3.stencils.basic_operations as basic
 import math
+import fv3.decorators as decorators
 
 sd = utils.sd
 
-# TODO: this is totally inefficient, can we use stencils?
+
+@utils.stencil()
+def precompute(
+    cp3: sd,
+    dm: sd,
+    zh: sd,
+    q_con: sd,
+    pem: sd,
+    peln: sd,
+    pk3: sd,
+    peg: sd,
+    pelng: sd,
+    gm: sd,
+    dz: sd,
+    ptop: float,
+    peln1: float,
+    ptk: float,
+    rgrav: float,
+):
+    with computation(FORWARD):
+        with interval(0, 1):
+            pem = ptop
+            peln = peln1
+            pk3 = ptk
+            peg = ptop
+            pelng = peln1
+        with interval(1, None):
+            # TODO consolidate with riem_solver_c, same functions, math functions
+            pem = pem[0, 0, -1] + dm[0, 0, -1]
+            # peln = log(pem)
+            peg = peg[0, 0, -1] + dm[0, 0, -1] * (1.0 - q_con[0, 0, -1])
+            # pelng = log(peg)
+            # pk3 = exp(akap * peln)
+    with computation(PARALLEL), interval(0, -1):
+        dz = zh[0, 0, 1] - zh
+    with computation(PARALLEL), interval(...):
+        gm = 1.0 / (1 - cp3)
+        dm = dm * rgrav
+
+
+@utils.stencil()
+def compute_pm(peg: sd, pelng: sd, pm: sd):
+    with computation(PARALLEL), interval(0, -1):
+        pm = (peg[0, 0, 1] - peg) / (pelng[0, 0, 1] - pelng)
+
+
+@utils.stencil()
+def last_call_copy(peln_run: sd, peln: sd, pk3: sd, pk: sd, pem: sd, pe: sd):
+    with computation(PARALLEL), interval(...):
+        peln = peln_run
+        pk = pk3
+        pe = pem
+
+
+def finalize(
+    zs: sd,
+    dz: sd,
+    zh: sd,
+    peln_run: sd,
+    peln: sd,
+    pk3: sd,
+    pk: sd,
+    pem: sd,
+    pe: sd,
+    ppe: sd,
+    last_call: bool,
+):
+    from __externals__ import beta, use_logp
+
+    with computation(PARALLEL), interval(...):
+        if __INLINED(use_logp):
+            pk3 = peln_run
+        if __INLINED(beta < -0.1):
+            ppe = pe + pem
+        else:
+            ppe = pe
+        if last_call:
+            peln = peln_run
+            pk = pk3
+            pe = pem
+    with computation(BACKWARD):
+        with interval(-1, None):
+            zh = zs
+        with interval(0, -1):
+            zh = zh[0, 0, 1] - dz
+
+
 def compute(
     last_call,
     dt,
@@ -30,79 +118,81 @@ def compute(
     peln,
     wsd,
 ):
+    grid = spec.grid
     rgrav = 1.0 / constants.GRAV
-    km = spec.grid.npz - 1
+    km = grid.npz - 1
     peln1 = math.log(ptop)
     ptk = math.exp(akap * peln1)
-    islice = slice(spec.grid.is_, spec.grid.ie + 1)
+    islice = slice(grid.is_, grid.ie + 1)
     kslice = slice(0, km + 1)
     kslice_shift = slice(1, km + 2)
-    shape1 = (spec.grid.nic, km + 2)
+    shape = w.shape
+    domain = (grid.nic, grid.njc, km + 2)
+    riemorigin = (grid.is_, grid.js, 0)
     dm = cp.copy(delp, (0, 0, 0))
     cp3 = cp.copy(cappa, (0, 0, 0))
-    # pk3[islice, spec.grid.js:spec.grid.je+1, 0] = ptk
-    pm2 = np.zeros(shape1)
-    pe2 = np.zeros(shape1)
-    pem = np.zeros(shape1)
-    peln2 = np.zeros(shape1)
-    peg = np.zeros(shape1)
-    pelng = np.zeros(shape1)
-    for j in range(spec.grid.js, spec.grid.je + 1):
-        dm2 = np.squeeze(dm.data[islice, j, kslice])
-        cp2 = np.squeeze(cp3.data[islice, j, kslice])
-        pem[:, 0] = ptop
-        peln2[:, 0] = peln1
-        pk3[islice, j, 0] = ptk
-        peg[:, 0] = ptop
-        pelng[:, 0] = peln1
-        for k in range(1, km + 2):
-            pem[:, k] = pem[:, k - 1] + dm2[:, k - 1]
-            peln2[:, k] = np.log(pem[:, k])
-            peg[:, k] = peg[:, k - 1] + dm2[:, k - 1] * (1.0 - q_con[islice, j, k - 1])
-            pelng[:, k] = np.log(peg[:, k])
-            pk3[islice, j, k] = np.exp(akap * peln2[:, k])
+    pm = utils.make_storage_from_shape(shape, riemorigin)
+    pem = utils.make_storage_from_shape(shape, riemorigin)
+    peln_run = utils.make_storage_from_shape(shape, riemorigin)
+    peg = utils.make_storage_from_shape(shape, riemorigin)
+    pelng = utils.make_storage_from_shape(shape, riemorigin)
+    gm = utils.make_storage_from_shape(shape, riemorigin)
+    precompute(
+        cp3,
+        dm,
+        zh,
+        q_con,
+        pem,
+        peln_run,
+        pk3,
+        peg,
+        pelng,
+        gm,
+        delz,
+        ptop,
+        peln1,
+        ptk,
+        rgrav,
+        origin=riemorigin,
+        domain=domain,
+    )
+    # TODO put into stencil when have math functions
+    tmpslice = (islice, slice(grid.js, grid.je + 1), kslice_shift)
+    peln_run[tmpslice] = np.log(pem[tmpslice])
+    pelng[tmpslice] = np.log(peg[tmpslice])
+    pk3[tmpslice] = np.exp(akap * peln_run[tmpslice])
+    compute_pm(peg, pelng, pm, origin=riemorigin, domain=domain)
+    sim1_solver.solve(
+        grid.is_,
+        grid.ie,
+        grid.js,
+        grid.je,
+        dt,
+        gm,
+        cp3,
+        pe,
+        dm,
+        pm,
+        pem,
+        w,
+        delz,
+        pt,
+        wsd,
+    )
 
-        pm2 = (peg[:, kslice_shift] - peg[:, kslice]) / (
-            pelng[:, kslice_shift] - pelng[:, kslice]
-        )
-
-        gm2 = 1.0 / (1 - cp2)
-        dm2 = dm2 * rgrav
-        dz2 = np.squeeze(zh[islice, j, kslice_shift] - zh[islice, j, kslice])
-        w2 = w[islice, j, kslice]
-        pt2 = pt.data[islice, j, kslice]
-        ws2 = wsd[islice, j, :]
-        sim1_solver.solve(
-            spec.grid.is_,
-            spec.grid.ie,
-            dt,
-            gm2,
-            cp2,
-            pe2,
-            dm2,
-            pm2,
-            pem,
-            w2,
-            dz2,
-            pt2,
-            ws2,
-        )
-
-        w[islice, j, kslice] = w2
-        delz[islice, j, kslice] = dz2
-        if last_call:
-            peln[islice, j, :] = peln2
-            pk[islice, j, :] = pk3[islice, j, :]
-            pe[islice, j, :] = pem
-
-        if spec.namelist["beta"] < -0.1:  # fp_out
-            ppe[islice, j, :] = pe2 + pem
-        else:
-            ppe[islice, j, :] = pe2
-
-        if spec.namelist["use_logp"]:
-            pk3[islice, j, kslice_shift] = peln2[:, kslice_shift]
-
-        zh[islice, j, km + 1] = zs[islice, j, km + 1]
-        for k in range(km, -1, -1):
-            zh[islice, j, k] = zh[islice, j, k + 1] - dz2[:, k]
+    finalize_stencil = spec.namelist_externals_decorator()(finalize)
+    finalize_stencil(
+        zs,
+        delz,
+        zh,
+        peln_run,
+        peln,
+        pk3,
+        pk,
+        pem,
+        pe,
+        ppe,
+        last_call,
+        origin=riemorigin,
+        domain=domain,
+    )

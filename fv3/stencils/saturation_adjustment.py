@@ -2,6 +2,7 @@
 import fv3.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
 import fv3._config as spec
+import fv3.stencils.moist_cv as moist_cv
 from gt4py.gtscript import computation, interval, PARALLEL
 import fv3.utils.global_constants as constants
 from fv3.stencils.basic_operations import max_fn, min_fn, dim
@@ -1215,6 +1216,7 @@ def compute(
     iqs2 = utils.make_storage_from_shape(peln.shape, utils.origin)
     dqsdt = utils.make_storage_from_shape(peln.shape, utils.origin)
     wqs2_iqs2(pt1, den, iqs2, dqsdt, tablename="table2", desname="des2")
+    # TODO: this can be pushed into the stencil function as (qice * den)**0.875, but breaks validation
     expsubl = np.exp(0.875 * np.log(qice * den))
     do_qa = True  # TODO  -- this isn't a namelist option in Fortran, it is whether or not cld_amount is a tracer. If/when we support different sets of tracers, this will need to change
     satadjust_part5(
@@ -1290,14 +1292,14 @@ def compute(
             origin=origin,
             domain=domain,
         )
-    # TODO put into stencil when exp allowed inside stencil
-    # e.g. pkz = exp(cappa * log(rrg * delp / delz * pt)) #rrg = constants.RDG
-    tmpslice = (
-        slice(grid.is_, grid.ie + 1),
-        slice(grid.js, grid.je + 1),
-        slice(kmp, grid.npz),
-    )
-    pkz[tmpslice] = np.exp(
-        cappa[tmpslice]
-        * np.log(constants.RDG * delp[tmpslice] / delz[tmpslice] * pt[tmpslice])
-    )
+    if not spec.namelist["hydrostatic"]:
+        # moist_cv.compute_pkz_stencil_func(
+        #    pkz, cappa, delp, delz, pt, origin=origin, domain=domain
+        # )
+        # TODO when we have math functions replace the below with the above
+        tmpslice = (
+            slice(grid.is_, grid.ie + 1),
+            slice(grid.js, grid.je + 1),
+            slice(kmp, grid.npz),
+        )
+        moist_cv.compute_pkz_slice(pkz, cappa, delp, delz, pt, tmpslice)

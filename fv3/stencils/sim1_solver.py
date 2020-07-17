@@ -6,117 +6,229 @@ import fv3._config as spec
 import fv3.utils.global_constants as constants
 import numpy as np
 import fv3.stencils.copy_stencil as cp
+from gt4py.gtscript import computation, interval, PARALLEL
 
 sd = utils.sd
 
 
+@utils.stencil()
+def initial(
+    w: sd,
+    dm: sd,
+    gm: sd,
+    dz: sd,
+    ptr: sd,
+    pm: sd,
+    pe: sd,
+    g_rat: sd,
+    bb: sd,
+    dd: sd,
+    w1: sd,
+):
+    with computation(PARALLEL), interval(...):
+        w1 = w
+        # pe = (-dm / dz * constants.RDGAS * ptr)**gm - pm
+    with computation(PARALLEL):
+        with interval(0, -1):
+            g_rat = dm / dm[0, 0, 1]
+            bb = 2.0 * (1.0 + g_rat)
+            dd = 3.0 * (pe + g_rat * pe[0, 0, 1])
+        with interval(-1, None):
+            bb = 2.0
+            dd = 3.0 * pe
+
+
+@utils.stencil()
+def w_solver(
+    aa: sd,
+    bet: sd,
+    g_rat: sd,
+    gam: sd,
+    pp: sd,
+    dd: sd,
+    gm: sd,
+    dz: sd,
+    pem: sd,
+    dm: sd,
+    pe: sd,
+    bb: sd,
+    t1g: float,
+):
+    with computation(PARALLEL):
+        with interval(0, 1):
+            pp = 0.0
+        with interval(1, 2):
+            pp = dd[0, 0, -1] / bet
+    with computation(FORWARD), interval(1, -1):
+        gam = g_rat[0, 0, -1] / bet[0, 0, -1]
+        bet = bb - gam
+    with computation(FORWARD), interval(2, None):
+        pp = (dd[0, 0, -1] - pp[0, 0, -1]) / bet[0, 0, -1]
+    with computation(BACKWARD), interval(1, -1):
+        pp = pp - gam * pp[0, 0, 1]
+        # w solver
+        aa = t1g * 0.5 * (gm[0, 0, -1] + gm) / (dz[0, 0, -1] + dz) * (pem + pp)
+
+
+@utils.stencil()
+def w_pe_dz_compute(
+    dm: sd,
+    w1: sd,
+    pp: sd,
+    aa: sd,
+    gm: sd,
+    dz: sd,
+    pem: sd,
+    wsr_top: sd,
+    bb: sd,
+    g_rat: sd,
+    bet: sd,
+    gam: sd,
+    p1: sd,
+    pe: sd,
+    w: sd,
+    pm: sd,
+    ptr: sd,
+    cp3: sd,
+    maxp: sd,
+    dt: float,
+    t1g: float,
+    rdt: float,
+    p_fac: float,
+):
+    with computation(FORWARD):
+        with interval(0, 1):
+            w = (dm * w1 + dt * pp[0, 0, 1]) / bet
+        with interval(1, -2):
+            gam = aa / bet[0, 0, -1]
+            bet = dm - (aa + aa[0, 0, 1] + aa * gam)
+            w = (dm * w1 + dt * (pp[0, 0, 1] - pp) - aa * w[0, 0, -1]) / bet
+        with interval(-2, -1):
+            p1 = t1g * gm / dz * (pem[0, 0, 1] + pp[0, 0, 1])
+            gam = aa / bet[0, 0, -1]
+            bet = dm - (aa + p1 + aa * gam)
+            w = (
+                dm * w1 + dt * (pp[0, 0, 1] - pp) - p1 * wsr_top - aa * w[0, 0, -1]
+            ) / bet
+    with computation(BACKWARD), interval(0, -1):
+        w = w - gam[0, 0, 1] * w[0, 0, 1]
+    with computation(FORWARD):
+        with interval(0, 1):
+            pe = 0.0
+        with interval(1, None):
+            pe = pe[0, 0, -1] + dm[0, 0, -1] * (w[0, 0, -1] - w1[0, 0, -1]) * rdt
+    with computation(BACKWARD):
+        with interval(-2, -1):
+            p1 = (pe + 2.0 * pe[0, 0, 1]) * 1.0 / 3.0
+        with interval(0, -2):
+            p1 = (pe + bb * pe[0, 0, 1] + g_rat * pe[0, 0, 2]) * 1.0 / 3.0 - g_rat * p1[
+                0, 0, 1
+            ]
+    with computation(PARALLEL), interval(0, -1):
+        maxp = p_fac * pm if p_fac * dm > p1 + pm else p1 + pm
+        # dz = -dm * constants.RDGAS * ptr * exp((cp3 - 1.0) * log(maxp)
+        # dz = -dm * constants.RDGAS * ptr * maxp ** (cp3 - 1.0)
+
+
 # TODO: implement MOIST_CAPPA=false
-def solve(is_, ie, dt, gm2, cp2, pe2, dm, pm2, pem, w2, dz2, ptr, wsr):
+def solve(is_, ie, js, je, dt, gm, cp3, pe, dm, pm, pem, w, dz, ptr, wsr):
+    grid = spec.grid
     nic = ie - is_ + 1
-    km = spec.grid.npz - 1
-    npz = spec.grid.npz
-    tmpshape = (nic, km + 1)
-    tmpshape_p1 = (nic, km + 2)
+    njc = je - js + 1
+    simshape = pe.shape
+    simorigin = (is_, js, 0)
+    simdomain = (nic, njc, grid.npz)
+    simdomainplus = (nic, njc, grid.npz + 1)
+    g_rat = utils.make_storage_from_shape(simshape, simorigin)
+    bb = utils.make_storage_from_shape(simshape, simorigin)
+    aa = utils.make_storage_from_shape(simshape, simorigin)
+    dd = utils.make_storage_from_shape(simshape, simorigin)
+    gam = utils.make_storage_from_shape(simshape, simorigin)
+    w1 = utils.make_storage_from_shape(simshape, simorigin)
+    pp = utils.make_storage_from_shape(simshape, simorigin)
+    p1 = utils.make_storage_from_shape(simshape, simorigin)
+    pp = utils.make_storage_from_shape(simshape, simorigin)
     t1g = 2.0 * dt * dt
     rdt = 1.0 / dt
-    slice_m = slice(0, km + 1)
-    slice_m2 = slice(1, km + 1)
-    slice_n = slice(0, km)
-    g_rat = np.zeros(tmpshape)
-    bb = np.zeros(tmpshape)
-    aa = np.zeros(tmpshape)
-    dd = np.zeros(tmpshape)
-    gam = np.zeros(tmpshape)
-    w1 = np.zeros(tmpshape)
-    pp = np.zeros(tmpshape_p1)
-    bet = np.zeros(nic)
-    p1 = np.zeros(nic)
-    pp = np.zeros(pem.shape)
-    pe2[:, slice_m] = np.exp(gm2 * np.log(-dm / dz2 * constants.RDGAS * ptr)) - pm2
-    w1 = np.copy(w2)
-
-    g_rat[:, slice_n] = dm[:, slice_n] / dm[:, slice_m2]
-    bb[:, slice_n] = 2.0 * (1.0 + g_rat[:, slice_n])
-    dd[:, slice_n] = 3.0 * (pe2[:, slice_n] + g_rat[:, slice_n] * pe2[:, slice_m2])
-
-    bet[:] = bb[:, 0]
-    pp[:, 0] = 0.0
-    pp[:, 1] = dd[:, 0] / bet
-    bb[:, km] = 2.0
-    dd[:, km] = 3.0 * pe2[:, km]
-
-    for k in range(1, npz):
-        for i in range(nic):
-            gam[i, k] = g_rat[i, k - 1] / bet[i]
-            bet[i] = bb[i, k] - gam[i, k]
-            pp[i, k + 1] = (dd[i, k] - pp[i, k]) / bet[i]
-
-    for k in range(km, 0, -1):
-        pp[:, k] = pp[:, k] - gam[:, k] * pp[:, k + 1]
-
-    # w solver
-    aa[:, slice_m2] = (
-        t1g
-        * 0.5
-        * (gm2[:, slice_n] + gm2[:, slice_m2])
-        / (dz2[:, slice_n] + dz2[:, slice_m2])
-        * (pem[:, slice_m2] + pp[:, slice_m2])
+    tmpslice = (slice(is_, ie + 1), slice(js, je + 1), slice(0, grid.npz))
+    # putting this into stencil removing the exp and log from the equation makes it not validate
+    pe[tmpslice] = (
+        np.exp(
+            gm[tmpslice]
+            * np.log(-dm[tmpslice] / dz[tmpslice] * constants.RDGAS * ptr[tmpslice])
+        )
+        - pm[tmpslice]
+    )
+    initial(
+        w,
+        dm,
+        gm,
+        dz,
+        ptr,
+        pm,
+        pe,
+        g_rat,
+        bb,
+        dd,
+        w1,
+        origin=simorigin,
+        domain=simdomain,
+    )
+    bet = utils.make_storage_data(bb.data[:, :, 0], simshape)
+    w_solver(
+        aa,
+        bet,
+        g_rat,
+        gam,
+        pp,
+        dd,
+        gm,
+        dz,
+        pem,
+        dm,
+        pe,
+        bb,
+        t1g,
+        origin=simorigin,
+        domain=simdomainplus,
     )
 
-    bet[:] = dm[:, 0] - aa[:, 1]
-    w2[:, 0] = (dm[:, 0] * w1[:, 0] + dt * pp[:, 1]) / bet
-    for k in range(1, km):
-        for i in range(nic):
-            gam[i, k] = aa[i, k] / bet[i]
-            bet[i] = dm[i, k] - (aa[i, k] + aa[i, k + 1] + aa[i, k] * gam[i, k])
-            w2[i, k] = (
-                dm[i, k] * w1[i, k]
-                + dt * (pp[i, k + 1] - pp[i, k])
-                - aa[i, k] * w2[i, k - 1]
-            ) / bet[i]
-
-    for i in range(nic):
-        p1[i] = t1g * gm2[i, km] / dz2[i, km] * (pem[i, km + 1] + pp[i, km + 1])
-        gam[i, km] = aa[i, km] / bet[i]
-        bet[i] = dm[i, km] - (aa[i, km] + p1[i] + aa[i, km] * gam[i, km])
-        w2[i, km] = (
-            dm[i, km] * w1[i, km]
-            + dt * (pp[i, km + 1] - pp[i, km])
-            - p1[i] * wsr[i, 0]
-            - aa[i, km] * w2[i, km - 1]
-        ) / bet[i]
-
-    for k in range(km - 1, -1, -1):
-        w2[:, k] = w2[:, k] - gam[:, k + 1] * w2[:, k + 1]
-
-    pe2[:, 0] = 0.0
-    for k in range(npz):
-        pe2[:, k + 1] = pe2[:, k] + dm[:, k] * (w2[:, k] - w1[:, k]) * rdt
-
-    p1[:] = (pe2[:, km] + 2.0 * pe2[:, km + 1]) * 1.0 / 3.0
-
-    for i in range(nic):
-        dz2[i, km] = (
-            -dm[i, km]
-            * constants.RDGAS
-            * ptr[i, km]
-            * np.exp(
-                (cp2[i, km] - 1.0)
-                * np.log(max(spec.namelist["p_fac"] * pm2[i, km], p1[i] + pm2[i, km]))
-            )
-        )
-
-    for k in range(npz - 2, -1, -1):
-        for i in range(nic):
-            p1[i] = (
-                pe2[i, k] + bb[i, k] * pe2[i, k + 1] + g_rat[i, k] * pe2[i, k + 2]
-            ) * 1.0 / 3.0 - g_rat[i, k] * p1[i]
-            dz2[i, k] = (
-                -dm[i, k]
-                * constants.RDGAS
-                * ptr[i, k]
-                * np.exp(
-                    (cp2[i, k] - 1.0)
-                    * np.log(max(spec.namelist["p_fac"] * pm2[i, k], p1[i] + pm2[i, k]))
-                )
-            )
+    # reset bet column to the new value. TODO reuse the same storage
+    bet = utils.make_storage_data(dm.data[:, :, 0] - aa.data[:, :, 1], simshape)
+    wsr_top = utils.make_storage_data(wsr.data[:, :, 0], simshape)
+    # TODO remove when put exponential function into stencil
+    maxp = utils.make_storage_from_shape(simshape, simorigin)
+    w_pe_dz_compute(
+        dm,
+        w1,
+        pp,
+        aa,
+        gm,
+        dz,
+        pem,
+        wsr_top,
+        bb,
+        g_rat,
+        bet,
+        gam,
+        p1,
+        pe,
+        w,
+        pm,
+        ptr,
+        cp3,
+        maxp,
+        dt,
+        t1g,
+        rdt,
+        spec.namelist["p_fac"],
+        origin=simorigin,
+        domain=simdomainplus,
+    )
+    # TODO put back into w_pe_dz stencil when have exp and log
+    dz[tmpslice] = (
+        -dm[tmpslice]
+        * constants.RDGAS
+        * ptr[tmpslice]
+        * np.exp((cp3[tmpslice] - 1.0) * np.log(maxp[tmpslice]))
+    )
