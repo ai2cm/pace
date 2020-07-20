@@ -28,7 +28,7 @@ def CalcWk(pk: sd, wk: sd):
 
 
 @utils.stencil()
-def CalcU(u: sd, du: sd, dt: float, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rdx: sd):
+def CalcU(u: sd, du: sd, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rdx: sd, dt: float):
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution
         du = (
@@ -53,7 +53,7 @@ def CalcU(u: sd, du: sd, dt: float, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rd
 
 
 @utils.stencil()
-def CalcV(v: sd, dv: sd, dt: float, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rdy: sd):
+def CalcV(v: sd, dv: sd, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rdy: sd, dt: float):
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution
         dv[0, 0, 0] = (
@@ -98,8 +98,6 @@ def compute(u, v, pp, gz, pk3, delp, dt, ptop, akap):
     a2b_ord4.compute(pp, wk1, kstart=1, nk=grid.npz, replace=True)
     a2b_ord4.compute(pk3, wk1, kstart=1, nk=grid.npz, replace=True)
 
-    assert pp[3, 3, 0] == 0.0
-    assert pk3[3, 3, 0] == top_value
     a2b_ord4.compute(gz, wk1, kstart=0, nk=grid.npz + 1, replace=True)
     a2b_ord4.compute(delp, wk1)
 
@@ -110,13 +108,13 @@ def compute(u, v, pp, gz, pk3, delp, dt, ptop, akap):
     CalcU(
         u,
         du,
-        dt,
         wk,
         wk1,
         gz,
         pk3,
         pp,
         grid.rdx,
+        dt,
         origin=orig,
         domain=(grid.nic, grid.njc + 1, grid.npz),
     )
@@ -126,13 +124,13 @@ def compute(u, v, pp, gz, pk3, delp, dt, ptop, akap):
     CalcV(
         v,
         dv,
-        dt,
         wk,
         wk1,
         gz,
         pk3,
         pp,
         grid.rdy,
+        dt,
         origin=orig,
         domain=(grid.nic + 1, grid.njc, grid.npz),
     )
