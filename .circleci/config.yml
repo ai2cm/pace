@@ -1,0 +1,56 @@
+version: 2.1
+orbs:
+  gcp-gcr: circleci/gcp-gcr@0.6.1
+jobs:
+
+  lint:
+    docker:
+    - image: circleci/python:3.7
+    steps:
+      - checkout
+      - run: sudo pip3 install black==19.10b0 flake8==3.7.8
+      - run: make lint
+
+  test_python:
+    docker:
+      - image: circleci/python:3.7
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip3 install -r requirements.txt
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            pip3 install -e .
+            pytest tests
+
+workflows:
+  version: 2
+  tagged-build:
+    jobs:
+      - lint:
+          filters:
+            tags:
+              only: /^v.*/
+      - test_python:
+          filters:
+            tags:
+              only: /^v.*/
