@@ -266,6 +266,8 @@ class TileCommunicator(Communicator):
             scatter_master()
         else:
             scatter_client()
+        if recv_state["time"] is None:
+            recv_state.pop("time")
         return recv_state
 
 
