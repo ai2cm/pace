@@ -61,25 +61,29 @@ def lagrange_interpolation_x(qy: sd, qout: sd):
 @utils.stencil()
 def cubic_interpolation_south(qx: sd, qout: sd, qxx: sd):
     with computation(PARALLEL), interval(...):
-        qxx[0, 0, 0] = c1 * (qx[0, -1, 0] + qx) + c2 * (qout[0, -1, 0] + qxx[0, 1, 0])
+        qxx0 = qxx
+        qxx = c1 * (qx[0, -1, 0] + qx) + c2 * (qout[0, -1, 0] + qxx0[0, 1, 0])
 
 
 @utils.stencil()
 def cubic_interpolation_north(qx: sd, qout: sd, qxx: sd):
     with computation(PARALLEL), interval(...):
-        qxx[0, 0, 0] = c1 * (qx[0, -1, 0] + qx) + c2 * (qout[0, 1, 0] + qxx[0, -1, 0])
+        qxx0 = qxx
+        qxx = c1 * (qx[0, -1, 0] + qx) + c2 * (qout[0, 1, 0] + qxx0[0, -1, 0])
 
 
 @utils.stencil()
 def cubic_interpolation_west(qy: sd, qout: sd, qyy: sd):
     with computation(PARALLEL), interval(...):
-        qyy[0, 0, 0] = c1 * (qy[-1, 0, 0] + qy) + c2 * (qout[-1, 0, 0] + qyy[1, 0, 0])
+        qyy0 = qyy
+        qyy = c1 * (qy[-1, 0, 0] + qy) + c2 * (qout[-1, 0, 0] + qyy0[1, 0, 0])
 
 
 @utils.stencil()
 def cubic_interpolation_east(qy: sd, qout: sd, qyy: sd):
     with computation(PARALLEL), interval(...):
-        qyy[0, 0, 0] = c1 * (qy[-1, 0, 0] + qy) + c2 * (qout[1, 0, 0] + qyy[-1, 0, 0])
+        qyy0 = qyy
+        qyy = c1 * (qy[-1, 0, 0] + qy) + c2 * (qout[1, 0, 0] + qyy0[-1, 0, 0])
 
 
 @utils.stencil()
@@ -134,8 +138,9 @@ def qx_edge_west(qin: sd, dxa: sd, qx: sd):
 def qx_edge_west2(qin: sd, dxa: sd, qx: sd):
     with computation(PARALLEL), interval(...):
         g_in = dxa / dxa[-1, 0, 0]
-        qx[0, 0, 0] = (
-            3.0 * (g_in * qin[-1, 0, 0] + qin) - (g_in * qx[-1, 0, 0] + qx[1, 0, 0])
+        qx0 = qx
+        qx = (
+            3.0 * (g_in * qin[-1, 0, 0] + qin) - (g_in * qx0[-1, 0, 0] + qx0[1, 0, 0])
         ) / (2.0 + 2.0 * g_in)
 
 
@@ -154,8 +159,9 @@ def qx_edge_east(qin: sd, dxa: sd, qx: sd):
 def qx_edge_east2(qin: sd, dxa: sd, qx: sd):
     with computation(PARALLEL), interval(...):
         g_in = dxa[-1, 0, 0] / dxa
-        qx[0, 0, 0] = (
-            3.0 * (qin[-1, 0, 0] + g_in * qin) - (g_in * qx[1, 0, 0] + qx[-1, 0, 0])
+        qx0 = qx
+        qx = (
+            3.0 * (qin[-1, 0, 0] + g_in * qin) - (g_in * qx0[1, 0, 0] + qx0[-1, 0, 0])
         ) / (2.0 + 2.0 * g_in)
 
 
@@ -174,8 +180,9 @@ def qy_edge_south(qin: sd, dya: sd, qy: sd):
 def qy_edge_south2(qin: sd, dya: sd, qy: sd):
     with computation(PARALLEL), interval(...):
         g_in = dya / dya[0, -1, 0]
-        qy[0, 0, 0] = (
-            3.0 * (g_in * qin[0, -1, 0] + qin) - (g_in * qy[0, -1, 0] + qy[0, 1, 0])
+        qy0 = qy
+        qy = (
+            3.0 * (g_in * qin[0, -1, 0] + qin) - (g_in * qy0[0, -1, 0] + qy0[0, 1, 0])
         ) / (2.0 + 2.0 * g_in)
 
 
@@ -194,8 +201,9 @@ def qy_edge_north(qin: sd, dya: sd, qy: sd):
 def qy_edge_north2(qin: sd, dya: sd, qy: sd):
     with computation(PARALLEL), interval(...):
         g_in = dya[0, -1, 0] / dya
-        qy[0, 0, 0] = (
-            3.0 * (qin[0, -1, 0] + g_in * qin) - (g_in * qy[0, 1, 0] + qy[0, -1, 0])
+        qy0 = qy
+        qy = (
+            3.0 * (qin[0, -1, 0] + g_in * qin) - (g_in * qy0[0, 1, 0] + qy0[0, -1, 0])
         ) / (2.0 + 2.0 * g_in)
 
 
@@ -371,11 +379,7 @@ def compute_qx(qin, qout, kstart, nk):
             qin, grid().dxa, qx, origin=(grid().is_, js, kstart), domain=(1, dj, nk)
         )
         qx_edge_west2(
-            qin,
-            grid().dxa,
-            qx,
-            origin=(grid().is_ + 1, js, kstart),
-            domain=(1, dj, nk),
+            qin, grid().dxa, qx, origin=(grid().is_ + 1, js, kstart), domain=(1, dj, nk)
         )
     if grid().east_edge:
         qx_edge_east(
@@ -406,19 +410,11 @@ def compute_qy(qin, qout, kstart, nk):
             qin, grid().dya, qy, origin=(is_, grid().js, kstart), domain=(di, 1, nk)
         )
         qy_edge_south2(
-            qin,
-            grid().dya,
-            qy,
-            origin=(is_, grid().js + 1, kstart),
-            domain=(di, 1, nk),
+            qin, grid().dya, qy, origin=(is_, grid().js + 1, kstart), domain=(di, 1, nk)
         )
     if grid().north_edge:
         qy_edge_north(
-            qin,
-            grid().dya,
-            qy,
-            origin=(is_, grid().je + 1, kstart),
-            domain=(di, 1, nk),
+            qin, grid().dya, qy, origin=(is_, grid().je + 1, kstart), domain=(di, 1, nk)
         )
         qy_edge_north2(
             qin, grid().dya, qy, origin=(is_, grid().je, kstart), domain=(di, 1, nk)
