@@ -149,7 +149,7 @@ The submodule include:
 
 - `external/fv3gfs-fortran` - git@github.com:VulcanClimateModeling/fv3gfs-fortran
 - `external/fv3config` - https://github.com/VulcanClimateModeling/fv3config
-- external/fv3gfs-python` - git@github.com:VulcanClimateModeling/fv3gfs-python.git
+- `external/fv3util` - git@github.com:VulcanClimateModeling/fv3util.git
 
 
 ## Unit testing stencils

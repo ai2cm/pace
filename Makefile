@@ -19,7 +19,7 @@ FV3_INSTALL_IMAGE=$(GCR_URL)/$(FV3_INSTALL_TARGET):latest
 
 FORTRAN_DIR=$(CWD)/external/fv3gfs-fortran
 
-FV3UTIL_DIR=$(CWD)/external/fv3gfs-python/external/fv3util
+FV3UTIL_DIR=$(CWD)/external/fv3util
 COMPILED_IMAGE ?= $(GCR_URL)/fv3gfs-compiled:$(FORTRAN_VERSION)-serialize
 SERIALBOX_TARGET=fv3gfs-environment-serialbox
 SERIALBOX_IMAGE=$(GCR_URL)/$(SERIALBOX_TARGET):latest
@@ -189,17 +189,17 @@ tests_host:
 	$(MAKE) run_tests_host_data
 
 dev_tests:
-	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' \
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(FV3UTIL_DIR):/usr/src/fv3util' \
 		$(MAKE) run_tests_container
 dev_tests_host:
-	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' \
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(FV3UTIL_DIR):/usr/src/fv3util' \
     $(MAKE) run_tests_host_data
 
 dev_tests_mpi:
-	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_parallel_container
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(FV3UTIL_DIR):/usr/src/fv3util' $(MAKE) run_tests_parallel_container
 
 dev_tests_mpi_host:
-	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(CWD)/external/fv3gfs-python/external/fv3util:/usr/src/fv3util' $(MAKE) run_tests_parallel_host
+	MOUNTS='-v $(CWD)/fv3:/fv3 -v $(FV3UTIL_DIR):/usr/src/fv3util' $(MAKE) run_tests_parallel_host
 
 
 test_base:
