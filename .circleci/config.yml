@@ -19,7 +19,7 @@ jobs:
       - checkout
       - add_ssh_keys:
           fingerprints:
-            - "80:d3:ce:22:ea:9e:bf:df:1c:8d:64:e2:c1:8e:2c:44"
+            - "d0:e1:7b:b2:c2:cb:a3:dc:7f:4f:c2:02:01:74:37:54"
       - run:
           name: "gcloud auth"
           command: |
@@ -48,7 +48,7 @@ jobs:
       - checkout
       - add_ssh_keys:
           fingerprints:
-            - "80:d3:ce:22:ea:9e:bf:df:1c:8d:64:e2:c1:8e:2c:44"
+            - "d0:e1:7b:b2:c2:cb:a3:dc:7f:4f:c2:02:01:74:37:54"
       - run:
           name: "gcloud auth"
           command: |
@@ -79,7 +79,7 @@ jobs:
       - checkout
       - add_ssh_keys:
           fingerprints:
-            - "80:d3:ce:22:ea:9e:bf:df:1c:8d:64:e2:c1:8e:2c:44"
+            - "d0:e1:7b:b2:c2:cb:a3:dc:7f:4f:c2:02:01:74:37:54"
       - run:
           name: "Pull Submodules"
           command: |
