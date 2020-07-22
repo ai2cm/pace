@@ -39,11 +39,3 @@ class TranslateComputeTotalEnergy(TranslateFortranData2Py):
                 "kend": grid.npz - 1,
             },
         }
-
-    # def compute(self, inputs):
-    #    self.make_storage_data_input_vars(inputs)
-    #    inputs["j_2d"] += 2
-    #    self.compute_func(**inputs)
-    #    for var in ["gz", "cvm"]:
-    #        inputs[var] = inputs[var][:, inputs["j_2d"]:inputs["j_2d"] + 1,:]
-    #    return self.slice_output(inputs)

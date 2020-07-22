@@ -58,8 +58,8 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        inputs["i1"] -= 1
-        inputs["i2"] -= 1
+        inputs["i1"] = self.grid.global_to_local_x(inputs["i1"] - 1)
+        inputs["i2"] = self.grid.global_to_local_x(inputs["i2"] - 1)
         inputs["jslice"] = slice(0, 1)
 
         q4_1, q4_2, q4_3, q4_4 = self.compute_func(**inputs)

@@ -1,4 +1,4 @@
-from .translate import TranslateFortranData2Py
+from .translate import TranslateFortranData2Py, TranslateGrid
 import fv3.stencils.map_single as Map_Single
 import numpy as np
 
@@ -40,10 +40,16 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        inputs["i1"] += 2
-        inputs["i2"] += 2
+        inputs["i1"] = self.grid.global_to_local_x(
+            inputs["i1"] + TranslateGrid.fpy_model_index_offset
+        )
+        inputs["i2"] = self.grid.global_to_local_x(
+            inputs["i2"] + TranslateGrid.fpy_model_index_offset
+        )
         inputs["qmin"] = 0.0
-        inputs["j_2d"] += 2
+        inputs["j_2d"] = self.grid.global_to_local_y(
+            inputs["j_2d"] + TranslateGrid.fpy_model_index_offset
+        )
         var_inout = self.compute_func(**inputs)
         return self.slice_output(inputs, {"var_inout": var_inout})
 

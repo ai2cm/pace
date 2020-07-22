@@ -72,8 +72,8 @@ def compute_diverg_d(div: sd, vf: sd, uf: sd):
 def compute(u, v, ua, va, divg_d):
     grid = spec.grid
     co = grid.compute_origin()
-    is2 = grid.is_ if grid.west_edge else grid.is_ + 1
-    ie1 = grid.ie + 1 if grid.east_edge else grid.ie
+    is2 = grid.is_
+    ie1 = grid.ie + 1
     # Create storage objects for the temporary velocity arrays, uf and vf
     uf = utils.make_storage_from_shape(ua.shape, origin=(grid.is_ - 2, grid.js - 1, 0))
     vf = utils.make_storage_from_shape(va.shape, origin=(grid.is_ - 1, grid.js - 2, 0))

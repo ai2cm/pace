@@ -1,4 +1,4 @@
-from .translate import TranslateFortranData2Py
+from .translate import TranslateFortranData2Py, TranslateGrid
 import fv3.stencils.mapn_tracer as MapN_Tracer
 import fv3._config as spec
 
@@ -22,7 +22,9 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        inputs["j_2d"] += 2
+        inputs["j_2d"] = self.grid.global_to_local_y(
+            inputs["j_2d"] + TranslateGrid.fpy_model_index_offset
+        )
         inputs["i1"] = self.is_
         inputs["i2"] = self.ie
         inputs["kord"] = abs(spec.namelist["kord_tr"])
