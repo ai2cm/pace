@@ -1,4 +1,4 @@
-from ._exceptions import InvalidQuantityError
+from ._exceptions import InvalidQuantityError, OutOfBoundsError
 from .time import datetime64_to_datetime
 from .io import read_state, write_state
 from .nudging import get_nudging_tendencies, apply_nudging
@@ -51,5 +51,6 @@ from ._capture_stream import capture_stream
 from . import testing
 from .initialization import SubtileGridSizer, GridSizer, QuantityFactory
 from .buffer import array_buffer, send_buffer, recv_buffer
+from ._corners import fill_scalar_corners
 
 __version__ = "0.4.3"

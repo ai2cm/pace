@@ -45,11 +45,7 @@ def n_points(request):
 
 @pytest.fixture(params=["fewer", "more", "same"])
 def n_points_update(request, n_points):
-    update = n_points + {"fewer": -1, "more": 1, "same": 0}[request.param]
-    if update > n_points:
-        pytest.skip("cannot update more points than exist in the halo")
-    else:
-        return update
+    return n_points + {"fewer": -1, "more": 1, "same": 0}[request.param]
 
 
 @pytest.fixture(
@@ -317,6 +313,27 @@ def zeros_quantity_list(total_ranks, dims, units, origin, extent, shape, numpy, 
     return return_list
 
 
+@pytest.mark.parametrize(
+    "n_points, n_points_update, n_buffer", [(2, "more", 0)], indirect=True
+)
+def test_too_many_points_requested(
+    zeros_quantity_list,
+    communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
+    """
+    test that an exception is raised when trying to update more halo points than exist
+    """
+    for communicator, quantity in zip(communicator_list, zeros_quantity_list):
+        with pytest.raises(fv3util.OutOfBoundsError):
+            communicator.start_halo_update(quantity, n_points_update)
+
+
 def test_zeros_halo_update(
     zeros_quantity_list,
     communicator_list,
@@ -338,10 +355,11 @@ def test_zeros_halo_update(
         for rank, quantity in enumerate(zeros_quantity_list):
             boundaries = boundary_dict[rank % ranks_per_tile]
             for boundary in boundaries:
-                boundary_slice = fv3util.boundary._get_boundary_slice(
+                boundary_slice = fv3util._boundary_utils.get_boundary_slice(
                     quantity.dims,
                     quantity.origin,
                     quantity.extent,
+                    quantity.data.shape,
                     boundary,
                     n_points_update,
                     interior=False,
@@ -385,10 +403,11 @@ def test_zeros_vector_halo_update(
         for rank, (y_quantity, x_quantity) in enumerate(zip(y_list, x_list)):
             boundaries = boundary_dict[rank % ranks_per_tile]
             for boundary in boundaries:
-                boundary_slice = fv3util.boundary._get_boundary_slice(
+                boundary_slice = fv3util._boundary_utils.get_boundary_slice(
                     x_quantity.dims,
                     x_quantity.origin,
                     x_quantity.extent,
+                    x_quantity.data.shape,
                     boundary,
                     n_points_update,
                     interior=False,

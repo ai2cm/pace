@@ -269,12 +269,6 @@ def _assert_no_nulls(dataset: xr.Dataset):
 @pytest.mark.parametrize("mask_and_scale", [True, False])
 def test_open_zarr_without_nans(cube_partitioner, numpy, backend, mask_and_scale):
 
-    if backend == "gt4py_numpy":
-        pytest.xfail(
-            "g4py_numpy gives an intermittent error where a substantial "
-            "fraction of the roundtripped data contains NaNs."
-        )
-
     store = {}
 
     # initialize store
@@ -284,4 +278,25 @@ def test_open_zarr_without_nans(cube_partitioner, numpy, backend, mask_and_scale
 
     # open w/o dask using chunks=None
     dataset = xr.open_zarr(store, chunks=None, mask_and_scale=mask_and_scale)
-    _assert_no_nulls(dataset)
+    _assert_no_nulls(dataset.sel(tile=0))
+
+
+def test_values_preserved(cube_partitioner, numpy):
+    dims = ("y", "x")
+    units = "m"
+
+    store = {}
+
+    # initialize store
+    monitor = fv3util.ZarrMonitor(store, cube_partitioner)
+    quantity = fv3util.Quantity(
+        numpy.random.uniform(size=(10, 10)), dims=dims, units=units
+    )
+    monitor.store({"var": quantity})
+
+    # open w/o dask using chunks=None
+    dataset = xr.open_zarr(store, chunks=None)
+    numpy.testing.assert_almost_equal(dataset["var"][0, 0, :, :].values, quantity.data)
+    assert dataset["var"].shape[:2] == (1, 6)
+    assert dataset["var"].attrs["units"] == units
+    assert dataset["var"].dims[2:] == dims

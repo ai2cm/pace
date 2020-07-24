@@ -18,6 +18,9 @@ with open("README.md") as readme_file:
     readme = readme_file.read()
 
 
+with open("HISTORY.md") as history_file:
+    history = history_file.read()
+
 setup(
     author="Vulcan Technologies LLC",
     author_email="jeremym@vulcan.com",
@@ -37,7 +40,7 @@ setup(
     tests_require=test_requirements,
     name="fv3util",
     license="BSD license",
-    long_description=readme,
+    long_description=readme + "\n\n" + history,
     packages=find_packages(),
     include_package_data=True,
     url="https://github.com/VulcanClimateModeling/fv3gfs-python",

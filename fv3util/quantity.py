@@ -4,6 +4,8 @@ import warnings
 import dataclasses
 import numpy as np
 import xarray as xr
+from ._boundary_utils import shift_boundary_slice_tuple, bound_default_slice
+from . import constants
 
 try:
     import cupy
@@ -50,11 +52,81 @@ class QuantityMetadata:
             )
 
 
-class BoundedArrayView:
-    def __init__(self, array, origin, extent):
-        self._data = array
+class BoundaryArrayView:
+    def __init__(self, data, boundary_type, dims, origin, extent):
+        self._data = data
+        self._boundary_type = boundary_type
+        self._dims = dims
         self._origin = origin
         self._extent = extent
+
+    def __getitem__(self, index):
+        if len(self._origin) == 0:
+            if isinstance(index, tuple) and len(index) > 0:
+                raise IndexError("more than one index given for a zero-dimension array")
+            elif isinstance(index, slice) and index != slice(None, None, None):
+                raise IndexError("cannot slice a zero-dimension array")
+            else:
+                return self._data  # array[()] does not return an ndarray
+        else:
+            return self._data[self._get_array_index(index)]
+
+    def __setitem__(self, index, value):
+        self._data[self._get_array_index(index)] = value
+
+    def _get_array_index(self, index):
+        if len(index) > len(self._dims):
+            raise IndexError(
+                f"{len(index)} is too many indices for a "
+                f"{len(self._dims)}-dimensional quantity"
+            )
+        return shift_boundary_slice_tuple(
+            self._dims, self._origin, self._extent, self._boundary_type, index
+        )
+
+
+class BoundedArrayView:
+    """
+    A container of objects which provide indexing relative to corners and edges
+    of the computational domain for convenience.
+
+    Default start and end indices for all dimensions are modified to be the
+    start and end of the compute domain. When using edge and corner attributes, it is
+    recommended to explicitly write start and end offsets to avoid confusion.
+
+    Indexing on the object itself (view[:]) is offset by the origin, and default
+    start and end indices are modified to be the start and end of the compute domain.
+
+    For corner attributes e.g. `northwest`, modified indexing is done for the two
+    axes according to the edges which make up the corner. In other words, indexing
+    is offset relative to the intersection of the two edges which make the corner.
+
+    For `interior`, start indices of the horizontal dimensions are relative to the
+    origin, and end indices are relative to the origin + extent. For example,
+    view.interior[0:0, 0:0, :] would retrieve the entire compute domain for an x/y/z
+    array, while view.interior[-1:1, -1:1, :] would also include one halo point.
+    """
+
+    def __init__(self, array, dims, origin, extent):
+        self._data = array
+        self._dims = dims
+        self._origin = origin
+        self._extent = extent
+        self._northwest = BoundaryArrayView(
+            array, constants.NORTHWEST, dims, origin, extent
+        )
+        self._northeast = BoundaryArrayView(
+            array, constants.NORTHEAST, dims, origin, extent
+        )
+        self._southwest = BoundaryArrayView(
+            array, constants.SOUTHWEST, dims, origin, extent
+        )
+        self._southeast = BoundaryArrayView(
+            array, constants.SOUTHEAST, dims, origin, extent
+        )
+        self._interior = BoundaryArrayView(
+            array, constants.INTERIOR, dims, origin, extent
+        )
 
     @property
     def origin(self):
@@ -83,6 +155,11 @@ class BoundedArrayView:
     def _get_compute_index(self, index):
         if not isinstance(index, (tuple, list)):
             index = (index,)
+        if len(index) > len(self._dims):
+            raise IndexError(
+                f"{len(index)} is too many indices for a "
+                f"{len(self.dims)}-dimensional quantity"
+            )
         index = fill_index(index, len(self._data.shape))
         shifted_index = []
         for entry, origin, extent in zip(index, self.origin, self.extent):
@@ -97,6 +174,26 @@ class BoundedArrayView:
                 shifted_index.append(entry + origin)
         return tuple(shifted_index)
 
+    @property
+    def northwest(self) -> BoundaryArrayView:
+        return self._northwest
+
+    @property
+    def northeast(self) -> BoundaryArrayView:
+        return self._northeast
+
+    @property
+    def southwest(self) -> BoundaryArrayView:
+        return self._southwest
+
+    @property
+    def southeast(self) -> BoundaryArrayView:
+        return self._southeast
+
+    @property
+    def interior(self) -> BoundaryArrayView:
+        return self._interior
+
 
 def ensure_int_tuple(arg, arg_name):
     return_list = []
@@ -109,6 +206,19 @@ def ensure_int_tuple(arg, arg_name):
                 f"unexpected type {type(item)}"
             )
     return tuple(return_list)
+
+
+def _validate_quantity_property_lengths(shape, dims, origin, extent):
+    n_dims = len(shape)
+    for var, desc in (
+        (dims, "dimension names"),
+        (origin, "origins"),
+        (extent, "extents"),
+    ):
+        if len(var) != n_dims:
+            raise ValueError(
+                f"received {len(var)} {desc} for {n_dims} dimensions: {var}"
+            )
 
 
 class Quantity:
@@ -144,6 +254,7 @@ class Quantity:
             extent = tuple(length - start for length, start in zip(data.shape, origin))
         else:
             extent = tuple(extent)
+        _validate_quantity_property_lengths(data.shape, dims, origin, extent)
         self._metadata = QuantityMetadata(
             origin=ensure_int_tuple(origin, "origin"),
             extent=ensure_int_tuple(extent, "extent"),
@@ -155,7 +266,7 @@ class Quantity:
         self._attrs = {}
         self._data = data
         self._compute_domain_view = BoundedArrayView(
-            self.data, self.origin, self.extent
+            self.data, self.dims, self.origin, self.extent
         )
 
     @classmethod
@@ -285,11 +396,3 @@ def shift_index(current_value, shift, extent):
         if new_value < 0:
             new_value = extent + new_value
     return new_value
-
-
-def bound_default_slice(slice_in, start=None, stop=None):
-    if slice_in.start is not None:
-        start = slice_in.start
-    if slice_in.stop is not None:
-        stop = slice_in.stop
-    return slice(start, stop, slice_in.step)
