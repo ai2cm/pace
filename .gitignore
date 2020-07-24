@@ -6,7 +6,7 @@ __pycache__/
 coverage
 gridtools4py
 test_data
-fv3/test/output
+tests/output
 .DS_Store
 
 # C extensions

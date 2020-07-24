@@ -64,7 +64,7 @@ $ pytest -–which_modules=<stencil name(s)>
 
 ## Developing stencils
 
-Changes to code in the `fv3/` directory can be validated by running all tests using `make test`.
+Changes to code in the `fv3core/` directory can be validated by running all tests using `make test`.
 
 Alternatively, you can develop stencils using data and code as volumes into the container.
 Two approaches:
@@ -100,7 +100,7 @@ $ docker run -v <path/to/fv3gfs>:/port_dev -v <test data path>:/test_data --name
 Then in the container:
 
 ```shell
-$ pytest -v -s --data_path=/test_data/ /port_dev/fv3/test --which_modules=<stencil name>
+$ pytest -v -s --data_path=/test_data/ /port_dev/tests --which_modules=<stencil name>
 ```
 
 
