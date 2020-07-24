@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+import sys
 
 setup_requirements = []
 
@@ -8,6 +9,8 @@ requirements = [
     "fsspec>=0.6.0",
     "zarr>=2.3.2",
 ]
+if sys.version_info.major == 3 and sys.version_info.minor == 6:
+    requirements.append("dataclasses")
 
 test_requirements = []
 
