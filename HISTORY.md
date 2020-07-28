@@ -4,6 +4,14 @@ History
 latest
 ------
 
+v0.5.1
+------
+
+- enable MPI tests on CircleCI
+
+v0.5.0
+------
+
 Breaking changes:
 - `send_buffer` and `recv_buffer` are modified to take in a `callable`, which is more easily serialized than a `numpy`-like module (necessary because we serialize the arguments to re-use buffers), and allows custom specification of the initialization if zeros are needed instead of empty.
 
