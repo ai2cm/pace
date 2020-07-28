@@ -326,7 +326,7 @@ def test_zeros_halo_update(
         communicator.halo_update(quantity, n_points_update)
         boundaries = boundary_dict[communicator.rank % ranks_per_tile]
         for boundary in boundaries:
-            boundary_slice = fv3util.boundary._get_boundary_slice(
+            boundary_slice = fv3util._boundary_utils.get_boundary_slice(
                 quantity.dims,
                 quantity.origin,
                 quantity.extent,
@@ -366,7 +366,7 @@ def test_zeros_vector_halo_update(
         communicator.vector_halo_update(y_quantity, x_quantity, n_points_update)
         boundaries = boundary_dict[communicator.rank % ranks_per_tile]
         for boundary in boundaries:
-            boundary_slice = fv3util.boundary._get_boundary_slice(
+            boundary_slice = fv3util._boundary_utils.get_boundary_slice(
                 x_quantity.dims,
                 x_quantity.origin,
                 x_quantity.extent,
