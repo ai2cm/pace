@@ -14,7 +14,7 @@ origin = utils.origin
 # Flux field computations
 @utils.stencil()
 def compute_tmp_flux(
-    tmp_flux: sd, dt2: float, velocity: sd, velocity_c: sd, cosa: sd, sina: sd
+    tmp_flux: sd, velocity: sd, velocity_c: sd, cosa: sd, sina: sd, dt2: float
 ):
     with computation(PARALLEL), interval(...):
         tmp_flux = dt2 * (velocity - velocity_c * cosa) / sina
@@ -33,7 +33,7 @@ def compute_zonal_flux(flux: sd, tmp_flux: sd, vort: sd):
 
 
 @utils.stencil()
-def compute_f1_edge_values(flux: sd, dt2: float, velocity: sd):
+def compute_f1_edge_values(flux: sd, velocity: sd, dt2: float):
     with computation(PARALLEL), interval(...):
         flux = dt2 * velocity
 
@@ -63,28 +63,28 @@ def compute(uc, vc, vort_c, ke_c, v, u, fxv, fyv, dt2):
 
     # Compute the temporary fluxes in the zonal and meridional coordimate directions
     compute_tmp_flux(
-        fx1, dt2, u, vc, grid.cosa_v, grid.sina_v, origin=co, domain=meridional_domain
+        fx1, u, vc, grid.cosa_v, grid.sina_v, dt2, origin=co, domain=meridional_domain
     )
     compute_tmp_flux(
-        fy1, dt2, v, uc, grid.cosa_u, grid.sina_u, origin=co, domain=zonal_domain
+        fy1, v, uc, grid.cosa_u, grid.sina_u, dt2, origin=co, domain=zonal_domain
     )
 
     # Add edge effects if we are not in a regional or nested grid configuration
     if not grid.nested and spec.namelist["grid_type"] < 3:
         edge_domain = (1, grid.njc, grid.npz)
         if grid.west_edge:
-            compute_f1_edge_values(fy1, dt2, v, origin=co, domain=edge_domain)
+            compute_f1_edge_values(fy1, v, dt2, origin=co, domain=edge_domain)
         if grid.east_edge:
             compute_f1_edge_values(
-                fy1, dt2, v, origin=(grid.ie + 1, grid.js, 0), domain=edge_domain
+                fy1, v, dt2, origin=(grid.ie + 1, grid.js, 0), domain=edge_domain
             )
 
         edge_domain = (grid.nic, 1, grid.npz)
         if grid.south_edge:
-            compute_f1_edge_values(fx1, dt2, u, origin=co, domain=edge_domain)
+            compute_f1_edge_values(fx1, u, dt2, origin=co, domain=edge_domain)
         if grid.north_edge:
             compute_f1_edge_values(
-                fx1, dt2, u, origin=(grid.is_, grid.je + 1, 0), domain=edge_domain
+                fx1, u, dt2, origin=(grid.is_, grid.je + 1, 0), domain=edge_domain
             )
 
     # Compute main flux fields (ignoring edge values)
