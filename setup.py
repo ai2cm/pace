@@ -20,7 +20,7 @@ requirements = [
 
 setup_requirements = []
 
-test_requirements = ["pytest>=4.0", "pytest-subtests>=0.3.0", "serialbox"]
+test_requirements = ["pytest==5.2.2", "pytest-subtests>=0.3.0", "serialbox"]
 
 setup(
     author="Vulcan Technologies LLC",

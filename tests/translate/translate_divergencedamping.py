@@ -28,6 +28,7 @@ class TranslateDivergenceDamping(TranslateFortranData2Py):
             "ke": {"iend": grid.ied + 1, "jend": grid.jed + 1},
             "delpc": {},
         }
+        self.max_error = 3.0e-11
 
     def compute(self, inputs):
         return self.column_split_compute(inputs, {"nord": "nord_col", "d2_bg": "d2_bg"})

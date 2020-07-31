@@ -118,15 +118,10 @@ def redo_divg_d(uc: sd, vc: sd, divg_d: sd):
         divg_d[0, 0, 0] = uc[0, -1, 0] - uc + vc[-1, 0, 0] - vc
 
 
-# TODO: can we make this a stencil? docs refer to IR native functions...
-def smagorinksy_diffusion_approx(delpc, vort, dt, kstart, nk):
-    # abs(dt) * sqrt(delpc**2 + vort **2)
-    interface = (
-        slice(spec.grid.is_, spec.grid.ie + 2),
-        slice(spec.grid.js, spec.grid.je + 2),
-        slice(kstart, kstart + nk),
-    )
-    vort[interface] = abs(dt) * np.sqrt(delpc[interface] ** 2 + vort[interface] ** 2)
+@utils.stencil()
+def smagorinksy_diffusion_approx(delpc: sd, vort: sd, absdt: float):
+    with computation(PARALLEL), interval(...):
+        vort = absdt * (delpc ** 2.0 + vort ** 2.0) ** 0.5
 
 
 def vorticity_calc(wk, vort, delpc, dt, nord, kstart, nk):
@@ -136,7 +131,13 @@ def vorticity_calc(wk, vort, delpc, dt, nord, kstart, nk):
         else:
             if spec.namelist["grid_type"] < 3:
                 a2b_ord4.compute(wk, vort, kstart, nk, False)
-                smagorinksy_diffusion_approx(delpc, vort, dt, kstart, nk)
+                smagorinksy_diffusion_approx(
+                    delpc,
+                    vort,
+                    abs(dt),
+                    origin=(spec.grid.is_, spec.grid.js, kstart),
+                    domain=(spec.grid.nic + 1, spec.grid.njc + 1, nk),
+                )
             else:
                 raise Exception("Not implemented, smag_corner")
 
