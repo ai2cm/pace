@@ -1,6 +1,6 @@
-# FV3ser
+# FV3core
 
-FV3ser (pronounced *ef-vee-threezer*) is a Python version, using GT4Py with Dawn, of the FV3 dynamical core (fv3gfs-fortran repo).
+FV3core is a Python version, using GT4Py with Dawn, of the FV3 dynamical core (fv3gfs-fortran repo).
 The code here includes regression test data of computation units coming from serialized output from the Fortran model generated using the `GridTools/serialbox` framework.
 
 
@@ -187,7 +187,7 @@ There are three main driver files:
 
 1. `docker/Dockerfile.build_environment` - builds off of the serialbox environment from fv3gfs-fortran, installs Serialbox, Dawn and GT4Py
 
-2. `docker/Dockerfile` - uses the build environment and copies in the fv3 folder only. This is to make development easier so that when you change a file in fv3, 'make build' does not accidentally or otherwise trigger a 20 minute rebuild of all of those installations, but just updates the code in the fv3ser image.
+2. `docker/Dockerfile` - uses the build environment and copies in the fv3 folder only. This is to make development easier so that when you change a file in fv3, 'make build' does not accidentally or otherwise trigger a 20 minute rebuild of all of those installations, but just updates the code in the fv3core image.
 
 
 
