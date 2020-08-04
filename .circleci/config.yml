@@ -9,36 +9,6 @@ jobs:
       - checkout
       - run: sudo pip3 install black==19.10b0 flake8==3.7.8
       - run: make lint
-  full_build:
-    machine:
-      docker_layer_caching: false
-    environment:
-      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
-      BUILD_IMAGE: us.gcr.io/vcm-ml/fv3core-install:latest
-      BOTO_CONFIG: /dev/null 
-    steps:
-      - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "73:a2:6d:8a:44:ba:77:58:8c:56:33:0d:37:6a:8e:96"
-      - run:
-          name: "gcloud auth"
-          command: |
-            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
-      - run:
-          name: "Pull Submodules"
-          command: |
-            git submodule update --init --recursive
-      - gcp-gcr/gcr-auth
-      - run:
-          name: "Build containers, run tests"
-          command: |
-            PULL=False make tests
-
-      - run:
-          name: "Push new image"
-          command: |
-            docker push $BUILD_IMAGE
   just_run_tests:
     machine:
       docker_layer_caching: true
@@ -103,16 +73,6 @@ workflows:
     jobs:
       - lint
       - just_run_tests
-  nightly_build:
-    triggers:
-      - schedule:
-          cron: "0 7 * * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - full_build
   nightly_dawn_tests:
     triggers:
       - schedule:
