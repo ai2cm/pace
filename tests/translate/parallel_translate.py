@@ -125,7 +125,7 @@ class ParallelTranslateBaseSlicing(ParallelTranslate):
         storages = {}
         for name, properties in self.outputs.items():
             standard_name = properties.get("name", name)
-            if isinstance(state[name], fv3util.Quantity):
+            if isinstance(state[standard_name], fv3util.Quantity):
                 storages[name] = state[standard_name].storage
             elif len(self.outputs[name]["dims"]) > 0:
                 storages[name] = state[standard_name]  # assume it's a storage
@@ -168,8 +168,12 @@ class ParallelTranslate2Py(ParallelTranslate):
         inputs["comm"] = communicator
         inputs = self.state_from_inputs(inputs)
         result = self._base.compute_from_storage(inputs)
-        quantity_result = self.outputs_from_state(inputs)
+        quantity_result = self.outputs_from_state(result)
         result.update(quantity_result)
+        for name, data in result.items():
+            if isinstance(data, fv3util.Quantity):
+                result[name] = data.storage
+        result.update(self._base.slice_output(result))
         return result
 
     def compute_sequential(self, a, b):
