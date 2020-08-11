@@ -479,12 +479,12 @@ def wqs2_iqs2(ta, den, wqsat, dqdt, tablename="tablew", desname="desw"):
     ap1_for_wqs2(ta, ap1, origin=(0, 0, 0), domain=spec.grid.domain_shape_standard())
     it = ap1.data.astype(int)
     itgt = utils.make_storage_data(it, ta.shape)
-    tablew_lookup = utils.make_storage_data(satmix[tablename][it], ta.shape)
-    desw_lookup = utils.make_storage_data(satmix[desname][it], ta.shape)
+    tablew_lookup = utils.make_storage_data(utils.index(satmix[tablename], it), ta.shape)
+    desw_lookup = utils.make_storage_data(utils.index(satmix[desname], it), ta.shape)
     it2 = (ap1 - 0.5).data.astype(int)
     it2gt = utils.make_storage_data(it2, ta.shape)
-    desw2_lookup = utils.make_storage_data(satmix[desname][it2], ta.shape)
-    desw2_p1_lookup = utils.make_storage_data(satmix[desname][it2 + 1], ta.shape)
+    desw2_lookup = utils.make_storage_data(utils.index(satmix[desname], it2), ta.shape)
+    desw2_p1_lookup = utils.make_storage_data(utils.index(satmix[desname], it2 + 1), ta.shape)
     wqs2_stencil(
         ta,
         den,
@@ -507,8 +507,8 @@ def wqs1_iqs1(ta, den, wqsat, tablename="tablew", desname="desw"):
     ap1_for_wqs2(ta, ap1, origin=(0, 0, 0), domain=spec.grid.domain_shape_standard())
     it = ap1.data.astype(int)
     itgt = utils.make_storage_data(it, ta.shape)
-    tablew_lookup = utils.make_storage_data(satmix[tablename][it], ta.shape)
-    desw_lookup = utils.make_storage_data(satmix[desname][it], ta.shape)
+    tablew_lookup = utils.make_storage_data(utils.index(satmix[tablename], it), ta.shape)
+    desw_lookup = utils.make_storage_data(utils.index(satmix[desname], it), ta.shape)
     wqs1_stencil(
         ta,
         den,
@@ -676,7 +676,6 @@ def satadjust_part3(
     lhi: sd,
     lcp2: sd,
     icp2: sd,
-    last_step: bool,
     qv: sd,
     ql: sd,
     q_liq: sd,
@@ -687,6 +686,7 @@ def satadjust_part3(
     lv00: float,
     d0_vap: float,
     c_vap: float,
+    last_step: bool,
 ):
     with computation(PARALLEL), interval(...):
         dq0 = 0.0
@@ -822,7 +822,6 @@ def satadjust_part5(
     lhi: sd,
     lcp2: sd,
     icp2: sd,
-    last_step: bool,
     qv: sd,
     ql: sd,
     q_liq: sd,
@@ -850,6 +849,7 @@ def satadjust_part5(
     rad_rain: bool,
     rad_graupel: bool,
     tintqs: bool,
+    last_step: bool,
 ):
     with computation(PARALLEL), interval(...):
         lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
@@ -1169,7 +1169,6 @@ def compute(
         lhi,
         lcp2,
         icp2,
-        last_step,
         qvapor,
         qliquid,
         q_liq,
@@ -1180,6 +1179,7 @@ def compute(
         lv00,
         d0_vap,
         c_vap,
+        last_step,
         origin=origin,
         domain=domain,
     )
@@ -1238,7 +1238,6 @@ def compute(
         lhi,
         lcp2,
         icp2,
-        last_step,
         qvapor,
         qliquid,
         q_liq,
@@ -1266,6 +1265,7 @@ def compute(
         namelist["rad_rain"],
         namelist["rad_graupel"],
         namelist["tintqs"],
+        last_step,
         origin=origin,
         domain=domain,
     )

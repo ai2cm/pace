@@ -168,10 +168,10 @@ def compute(
             delp, delz, origin=grid.compute_origin(), domain=grid.domain_shape_compute()
         )
     pe_bottom = utils.make_storage_data(
-        np.repeat(pe.data[:, :, grid.npz :], pe.shape[2], axis=2), pe.shape
+        utils.repeat(pe.data[:, :, grid.npz :], pe.shape[2], axis=2), pe.shape
     )
     pe1_bottom = utils.make_storage_data(
-        np.repeat(pe1.data[:, :, grid.npz :], pe1.shape[2], axis=2), pe1.shape
+        utils.repeat(pe1.data[:, :, grid.npz :], pe1.shape[2], axis=2), pe1.shape
     )
     # TODO ps is a 2d stencil...
     cp.copy_stencil(
@@ -295,10 +295,10 @@ def compute(
     # dp2 update, if larger than pe0 and smaller than one level up, update omega and  exit
 
     pe_bottom = utils.make_storage_data(
-        np.repeat(pe.data[:, :, -1:], pe.shape[2], axis=2), pe.shape
+        utils.repeat(pe.data[:, :, -1:], pe.shape[2], axis=2), pe.shape
     )
     pe1_bottom = utils.make_storage_data(
-        np.repeat(pe1.data[:, :, -1:], pe.shape[2], axis=2), pe.shape
+        utils.repeat(pe1.data[:, :, -1:], pe.shape[2], axis=2), pe.shape
     )
     pressures_mapu(
         pe,

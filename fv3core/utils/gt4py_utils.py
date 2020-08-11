@@ -3,11 +3,16 @@
 import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
-import copy as cp
+import copy
 import math
 import logging
 import functools
 from fv3core.utils.mpi import MPI
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 logger = logging.getLogger("fv3ser")
 backend = None  # Options: numpy, gtmc, gtx86, gtcuda, debug, dawn:gtmc
@@ -56,15 +61,6 @@ def stencil(**stencil_kwargs):
     return decorator
 
 
-def _data_backend(backend: str):
-    """Convert gt4py backend to a data backend for calls to """
-    prefix = "dawn:"
-    if backend.startswith(prefix):
-        return backend[len(prefix) :]
-    else:
-        return backend
-
-
 def make_storage_data(
     array,
     full_shape,
@@ -76,7 +72,6 @@ def make_storage_data(
     axis=2,
     names_4d=None,
 ):
-    full_np_arr = np.zeros(full_shape)
     if len(array.shape) == 2:
         return make_storage_data_from_2d(
             array,
@@ -116,10 +111,11 @@ def make_storage_data(
         return data_dict
 
     else:
+        full_np_arr = np.zeros(full_shape)
         isize, jsize, ksize = array.shape
         full_np_arr[
             istart : istart + isize, jstart : jstart + jsize, kstart : kstart + ksize
-        ] = array
+        ] = asarray(array, type(full_np_arr))
         return gt.storage.from_array(
             data=full_np_arr, backend=backend, default_origin=origin, shape=full_shape,
         )
@@ -136,7 +132,9 @@ def make_storage_data_from_2d(
         shape2d = full_shape[0:2]
     isize, jsize = array2d.shape
     full_np_arr_2d = np.zeros(shape2d)
-    full_np_arr_2d[istart : istart + isize, jstart : jstart + jsize] = array2d
+    full_np_arr_2d[
+        istart : istart + isize, jstart : jstart + jsize
+    ] = asarray(array2d, type(full_np_arr_2d))
     # full_np_arr_3d = np.lib.stride_tricks.as_strided(full_np_arr_2d, shape=full_shape, strides=(*full_np_arr_2d.strides, 0))
     if dummy:
         full_np_arr_3d = full_np_arr_2d.reshape(full_shape)
@@ -212,7 +210,7 @@ def storage_dict(st_dict, names, shape, origin):
 def k_slice_operation(key, value, ki, dictionary):
     if isinstance(value, gt.storage.storage.Storage):
         dictionary[key] = make_storage_data(
-            value.data[:, :, ki], (value.data.shape[0], value.data.shape[1], len(ki))
+            value[:, :, ki], (value.shape[0], value.shape[1], len(ki))
         )
     else:
         dictionary[key] = value
@@ -257,7 +255,7 @@ def k_split_run_dataslice(
     func, data, k_indices_array, splitvars_values, outputs, grid, allz=False
 ):
     num_k = grid.npz
-    grid_data = cp.deepcopy(grid.data_fields)
+    grid_data = copy.deepcopy(grid.data_fields)
     for ki in k_indices_array:
         splitvars = {}
         for name, value_array in splitvars_values.items():
@@ -334,3 +332,36 @@ def extrap_corner(p0, p1, p2, q1, q2):
     x1 = great_circle_dist(p1, p0)
     x2 = great_circle_dist(p2, p0)
     return q1 + x1 / (x2 - x1) * (q1 - q2)
+
+
+def asarray(array, to_type=np.ndarray, dtype=None, order=None):
+    if cp and (isinstance(array.data, cp.ndarray) or isinstance(array.data, cp.cuda.memory.MemoryPointer)):
+        if to_type is np.ndarray:
+            order = "F" if order is None else order
+            return cp.asnumpy(array, order=order)
+        else:
+            return cp.asarray(array, dtype, order)
+    else:
+        if to_type is np.ndarray:
+            return np.asarray(array, dtype, order)
+        else:
+            return cp.asarray(array, dtype, order)
+
+
+def zeros(shape, storage_type=np.ndarray, dtype=_dtype, order="F"):
+    xp = cp if cp and storage_type is cp.ndarray else np
+    return xp.zeros(shape)
+
+
+def sum(array, axis=None, dtype=None, out=None, keepdims=False):
+    xp = cp if cp and type(array) is cp.ndarray else np
+    return xp.sum(array, axis, dtype, out, keepdims)
+
+
+def repeat(array, repeats, axis=None):
+    xp = cp if cp and type(array) is cp.ndarray else np
+    return xp.repeat(array.data, repeats, axis)
+
+
+def index(array, key):
+    return asarray(array, type(key))[key]

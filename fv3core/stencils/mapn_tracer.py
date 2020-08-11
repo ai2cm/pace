@@ -47,9 +47,9 @@ def compute(
         cp.copy_stencil(tracers[q], q4_1, origin=origin, domain=domain)
         # else:
         #    q4_1.data[:] = tracers[q].data[:]
-        q4_2.data[:] = np.zeros(q4_1.shape)
-        q4_3.data[:] = np.zeros(q4_1.shape)
-        q4_4.data[:] = np.zeros(q4_1.shape)
+        q4_2[:] = utils.zeros(q4_1.shape, type(q4_2))
+        q4_3[:] = utils.zeros(q4_1.shape, type(q4_3))
+        q4_4[:] = utils.zeros(q4_1.shape, type(q4_4))
         q4_1, q4_2, q4_3, q4_4 = remap_profile.compute(
             qs, q4_1, q4_2, q4_3, q4_4, dp1, grid.npz, i1, i2, 0, kord, jslice, q_min
         )

@@ -206,8 +206,8 @@ def lagrangian_contributions_stencil(
     for k_eul in klevs:
         eulerian_top_pressure = pe2.data[:, :, k_eul]
         eulerian_bottom_pressure = pe2.data[:, :, k_eul + 1]
-        top_p = np.repeat(eulerian_top_pressure[:, :, np.newaxis], km + 1, axis=2)
-        bot_p = np.repeat(eulerian_bottom_pressure[:, :, np.newaxis], km + 1, axis=2)
+        top_p = utils.repeat(eulerian_top_pressure[:, :, np.newaxis], km + 1, axis=2)
+        bot_p = utils.repeat(eulerian_bottom_pressure[:, :, np.newaxis], km + 1, axis=2)
         ptop = utils.make_storage_data(top_p, q4_1.shape)
         pbot = utils.make_storage_data(bot_p, q4_1.shape)
 
@@ -227,7 +227,7 @@ def lagrangian_contributions_stencil(
             domain=domain,
         )
 
-        q1[i1 : i2 + 1, jslice, k_eul] = np.sum(
+        q1[i1 : i2 + 1, jslice, k_eul] = utils.sum(
             q2_adds.data[i1 : i2 + 1, jslice, :], axis=2
         )
 
