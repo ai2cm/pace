@@ -65,7 +65,7 @@ def compute(uc, vc, u, v, ua, va, dt2):
     copy_vc_values(vort_c, vc, va, origin=origin, domain=copy_domain)
 
     # If we are NOT using a nested grid configuration, then edge values need to be evaluated separately
-    if spec.namelist["grid_type"] < 3 and not grid.nested:
+    if spec.namelist.grid_type < 3 and not grid.nested:
         vort_domain = (grid.ie + 1, 1, grid.npz)
         if grid.south_edge:
             update_vorticity_outer_edge_values(

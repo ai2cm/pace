@@ -38,7 +38,7 @@ class TranslateMapScalar_2d(TranslateFortranData2Py):
         )
         inputs["i1"] = self.is_
         inputs["i2"] = self.ie
-        inputs["kord"] = abs(spec.namelist["kord_tm"])
+        inputs["kord"] = abs(spec.namelist.kord_tm)
         inputs["qmin"] = 184.0
         var_inout = self.compute_func(**inputs)
         return self.slice_output(inputs, {"pt": var_inout})

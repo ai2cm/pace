@@ -106,7 +106,7 @@ class ParallelTranslate:
 
     @property
     def layout(self):
-        return fv3core._config.namelist["layout"]
+        return fv3core._config.namelist.layout
 
     def compute_sequential(self, inputs_list, communicator_list):
         """Compute the outputs while iterating over a set of communicator objects sequentially"""

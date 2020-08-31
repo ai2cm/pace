@@ -300,7 +300,7 @@ def compute_al(q, dxa, iord, is1, ie3, jfirst, jlast, kstart=0, nk=None):
             origin=(is1, jfirst, kstart),
             domain=(ie3 - is1 + 1, jlast - jfirst + 1, nk),
         )
-        if not grid().nested and spec.namelist["grid_type"] < 3:
+        if not grid().nested and spec.namelist.grid_type < 3:
             if grid().west_edge:
                 al_y_edge_0(
                     q, dxa, al, origin=(grid().is_ - 1, 0, kstart), domain=domain_y
@@ -355,8 +355,8 @@ def compute_blbr_ord8plus(q, iord, jfirst, jlast, is1, ie1, kstart, nk):
     else:
         raise Exception("Unimplemented iord=" + str(iord))
 
-    if spec.namelist["grid_type"] < 3 and not (
-        grid.nested or spec.namelist["regional"]
+    if spec.namelist.grid_type < 3 and not (
+        grid.nested or spec.namelist.regional
     ):
         y_edge_domain = (1, dj, nk)
         do_xt_minmax = True

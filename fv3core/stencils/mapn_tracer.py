@@ -25,7 +25,7 @@ def compute(
     version="transliterated",
 ):
     grid = spec.grid
-    fill = spec.namelist["fill"]
+    fill = spec.namelist.fill
     qs = utils.make_storage_from_shape(pe1.shape, origin=(0, 0, 0))
     (
         dp1,

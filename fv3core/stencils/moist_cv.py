@@ -337,7 +337,7 @@ def compute_te(
 ):
     grid = spec.grid
     origin, domain, jslice = region_mode(j_2d, grid)
-    nwat = spec.namelist["nwat"]
+    nwat = spec.namelist.nwat
     if (
         nwat != 6
     ):  # TODO -- to do this cleanly, we probably need if blocks working inside stencils
@@ -363,7 +363,7 @@ def compute_te(
         grid.rsin2,
         grid.cosa_s,
         r_vir,
-        spec.namelist["nwat"],
+        spec.namelist.nwat,
         origin=origin,
         domain=domain,
     )
@@ -403,7 +403,7 @@ def compute_pt(
         delp,
         delz,
         r_vir,
-        spec.namelist["nwat"],
+        spec.namelist.nwat,
         origin=origin,
         domain=domain,
     )
@@ -453,7 +453,7 @@ def compute_pkz(
         delp,
         delz,
         r_vir,
-        spec.namelist["nwat"],
+        spec.namelist.nwat,
         origin=origin,
         domain=domain,
     )
@@ -496,9 +496,9 @@ def compute_total_energy(
     qgraupel,
 ):
     grid = spec.grid
-    if spec.namelist["hydrostatic"]:
+    if spec.namelist.hydrostatic:
         raise Exception("Porting compute_total_energy incomplete for hydrostatic=True")
-    if not spec.namelist["moist_phys"]:
+    if not spec.namelist.moist_phys:
         raise Exception(
             "To run without moist_phys, the if conditional bug needs to be fixed, or code needs to be duplicated"
         )
@@ -520,8 +520,8 @@ def compute_total_energy(
         grid.cosa_s,
         delz,
         zvir,
-        spec.namelist["nwat"],
-        spec.namelist["moist_phys"],
+        spec.namelist.nwat,
+        spec.namelist.moist_phys,
         origin=(grid.is_, grid.js, 0),
         domain=(grid.nic, grid.njc, grid.npz + 1),
     )
@@ -543,7 +543,7 @@ def compute_last_step(
         pkz,
         dtmp,
         r_vir,
-        spec.namelist["nwat"],
+        spec.namelist.nwat,
         origin=(grid.is_, grid.js, 0),
         domain=(grid.nic, grid.njc, grid.npz + 1),
     )
@@ -602,7 +602,7 @@ def fv_setup(
     dp1,
 ):
     grid = spec.grid
-    if not spec.namelist["moist_phys"]:
+    if not spec.namelist.moist_phys:
         raise Exception("fvsetup is only implem ented for moist_phys=true")
     fvsetup_stencil(
         qvapor,
@@ -620,8 +620,8 @@ def fv_setup(
         delz,
         dp1,
         zvir,
-        spec.namelist["nwat"],
-        spec.namelist["moist_phys"],
+        spec.namelist.nwat,
+        spec.namelist.moist_phys,
         origin=grid.compute_origin(),
         domain=grid.domain_shape_compute(),
     )

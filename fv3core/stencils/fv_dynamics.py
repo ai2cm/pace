@@ -78,7 +78,7 @@ def compute_preamble(state, comm):
         state.pfull,
         state.ph1,
         state.ph2,
-        spec.namelist["p_ref"],
+        spec.namelist.p_ref,
         origin=grid.compute_origin(),
         domain=grid.domain_shape_compute(),
     )  # TODO put pfull calc below into stencil
@@ -86,7 +86,7 @@ def compute_preamble(state, comm):
     state.pfull[tmpslice] = (state.ph2[tmpslice] - state.ph1[tmpslice]) / np.log(
         state.ph2[tmpslice] / state.ph1[tmpslice]
     )
-    if spec.namelist["hydrostatic"]:
+    if spec.namelist.hydrostatic:
         raise Exception("Hydrostatic is not implemented")
     print("FV Setup", grid.rank)
     moist_cv.fv_setup(
@@ -131,7 +131,7 @@ def compute_preamble(state, comm):
             state.qgraupel,
         )
 
-    if (not spec.namelist["rf_fast"]) and spec.namelist["tau"] != 0:
+    if (not spec.namelist.rf_fast) and spec.namelist.tau != 0:
         if grid.grid_type < 4:
             print("Rayleigh Super", grid.rank)
             rayleigh_super.compute(
@@ -151,7 +151,7 @@ def compute_preamble(state, comm):
         # else:
         #     rayleigh_friction.compute()
 
-    if spec.namelist["adiabatic"] and spec.namelist["kord_tm"] > 0:
+    if spec.namelist.adiabatic and spec.namelist.kord_tm > 0:
         raise Exception(
             "unimplemented namelist options adiabatic with positive kord_tm"
         )
@@ -177,8 +177,8 @@ def do_dyn(state, comm):
     )
     print("DynCore", grid.rank)
     dyn_core.compute(state, comm)
-    if not spec.namelist["inline_q"] and state.nq != 0:
-        if spec.namelist["z_tracer"]:
+    if not spec.namelist.inline_q and state.nq != 0:
+        if spec.namelist.z_tracer:
             print("Tracer2D1L", grid.rank)
             tracer_2d_1l.compute(
                 comm,
@@ -197,7 +197,7 @@ def do_dyn(state, comm):
 
 def post_remap(state, comm):
     grid = spec.grid
-    if not spec.namelist["hydrostatic"]:
+    if not spec.namelist.hydrostatic:
         print("Omega", grid.rank)
         set_omega(
             state.delp,
@@ -207,11 +207,11 @@ def post_remap(state, comm):
             origin=grid.compute_origin(),
             domain=grid.domain_shape_compute(),
         )
-    if spec.namelist["nf_omega"] > 0:
+    if spec.namelist.nf_omega > 0:
         print("Del2Cubed", grid.rank)
         comm.halo_update(state.omga_quantity, n_points=utils.halo)
         del2cubed.compute(
-            state.omga, spec.namelist["nf_omega"], 0.18 * grid.da_min, grid.npz
+            state.omga, spec.namelist.nf_omega, 0.18 * grid.da_min, grid.npz
         )
 
 
@@ -248,7 +248,7 @@ def set_constants(state):
     # ncnst = Atm(mytile)%ncnst
     # pnats = Atm(mytile)%flagstruct%pnats
     # here we hard-coded it because 8 is the only supported value, refactor this later!
-    state.nq = 8  # state.nq_tot - spec.namelist["dnats"]
+    state.nq = 8  # state.nq_tot - spec.namelist.dnats
     state.zvir = constants.ZVIR
 
 
@@ -317,7 +317,7 @@ def compute(state, comm):
     set_constants(state)
     tracers_dict(state)
     last_step = False
-    k_split = spec.namelist["k_split"]
+    k_split = spec.namelist.k_split
     state.mdt = state.bdt / k_split
     compute_preamble(state, comm)
     for n_map in range(k_split):
@@ -326,9 +326,9 @@ def compute(state, comm):
             last_step = True
         do_dyn(state, comm)
         if grid.npz > 4:
-            kord_tracer = np.ones(state.nq) * spec.namelist["kord_tr"]
+            kord_tracer = np.ones(state.nq) * spec.namelist.kord_tr
             kord_tracer[6] = 9
-            # do_omega = spec.namelist['hydrostatic'] and last_step
+            # do_omega = spec.namelist.hydrostatic and last_step
             print("Remapping", grid.rank)
             lagrangian_to_eulerian.compute(
                 state.tracers,

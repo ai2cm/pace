@@ -169,7 +169,7 @@ SavepointCase = collections.namedtuple(
 
 def sequential_savepoint_cases(metafunc, data_path):
     return_list = []
-    layout = fv3core._config.namelist["layout"]
+    layout = fv3core._config.namelist.layout
     total_ranks = 6 * layout[0] * layout[1]
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
     for rank in range(total_ranks):
@@ -206,7 +206,7 @@ def check_savepoint_counts(test_name, input_savepoints, output_savepoints):
 
 def mock_parallel_savepoint_cases(metafunc, data_path):
     return_list = []
-    layout = fv3core._config.namelist["layout"]
+    layout = fv3core._config.namelist.layout
     total_ranks = 6 * layout[0] * layout[1]
     grid_list = []
     for rank in range(total_ranks):
@@ -248,7 +248,7 @@ def parallel_savepoint_cases(metafunc, data_path, mpi_rank):
     grid = process_grid_savepoint(serializer, grid_savepoint, mpi_rank)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     return_list = []
-    layout = fv3core._config.namelist["layout"]
+    layout = fv3core._config.namelist.layout
     for test_name in sorted(list(savepoint_names)):
         input_savepoints = serializer.get_savepoint(f"{test_name}-In")
         output_savepoints = serializer.get_savepoint(f"{test_name}-Out")

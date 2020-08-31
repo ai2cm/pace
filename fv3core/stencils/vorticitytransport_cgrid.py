@@ -70,7 +70,7 @@ def compute(uc, vc, vort_c, ke_c, v, u, fxv, fyv, dt2):
     )
 
     # Add edge effects if we are not in a regional or nested grid configuration
-    if not grid.nested and spec.namelist["grid_type"] < 3:
+    if not grid.nested and spec.namelist.grid_type < 3:
         edge_domain = (1, grid.njc, grid.npz)
         if grid.west_edge:
             compute_f1_edge_values(fy1, v, dt2, origin=co, domain=edge_domain)

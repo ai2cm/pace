@@ -193,7 +193,7 @@ def compute_ord4(u, v, ua, va, comm, mode=1):
 
 
 def compute_cubed_to_latlon(u, v, ua, va, comm, mode=1):
-    if spec.namelist["c2l_ord"] == 2:
+    if spec.namelist.c2l_ord == 2:
         compute_ord2(u, v, ua, va, False)
     else:
         compute_ord4(u, v, ua, va, comm, mode)

@@ -27,6 +27,6 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
         )
         inputs["i1"] = self.is_
         inputs["i2"] = self.ie
-        inputs["kord"] = abs(spec.namelist["kord_tr"])
+        inputs["kord"] = abs(spec.namelist.kord_tr)
         self.compute_func(**inputs)
         return self.slice_output(inputs,)

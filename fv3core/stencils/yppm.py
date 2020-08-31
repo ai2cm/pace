@@ -410,7 +410,7 @@ def compute_al(q, dyvar, jord, ifirst, ilast, js1, je3, kstart=0, nk=None):
             domain=(ilast - ifirst + 1, je3 - js1 + 1, nk),
         )
         x_edge_domain = (dimensions[0], 1, nk)
-        if not grid().nested and spec.namelist["grid_type"] < 3:
+        if not grid().nested and spec.namelist.grid_type < 3:
             # South Edge
             if grid().south_edge:
                 al_x_under8_edge_0(
@@ -488,8 +488,8 @@ def compute_blbr_ord8plus(q, jord, dya, ifirst, ilast, js1, je1, kstart, nk):
     else:
         raise Exception("Unimplemented jord=" + str(jord))
 
-    if spec.namelist["grid_type"] < 3 and not (
-        grid.nested or spec.namelist["regional"]
+    if spec.namelist.grid_type < 3 and not (
+        grid.nested or spec.namelist.regional
     ):
         x_edge_domain = (di, 1, nk)
         do_xt_minmax = True

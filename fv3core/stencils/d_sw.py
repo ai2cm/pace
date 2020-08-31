@@ -211,7 +211,7 @@ def heat_from_damping(
         heat_source,
         diss_est,
         damp,
-        int(spec.namelist["do_skeb"]),
+        int(spec.namelist.do_skeb),
         origin=grid().compute_origin(),
         domain=grid().domain_shape_compute(),
     )
@@ -224,7 +224,7 @@ def set_low_kvals(col):
 
 
 def vort_damp_option(col):
-    if spec.namelist["do_vort_damp"]:
+    if spec.namelist.do_vort_damp:
         col["nord_v"] = 0
         col["damp_vt"] = 0.5 * col["d2_divg"]
 
@@ -235,11 +235,11 @@ def lowest_kvals(col):
 
 
 def max_d2_bg0():
-    return max(0.01, spec.namelist["d2_bg"], spec.namelist["d2_bg_k1"])
+    return max(0.01, spec.namelist.d2_bg, spec.namelist.d2_bg_k1)
 
 
 def max_d2_bg1():
-    return max(spec.namelist["d2_bg"], spec.namelist["d2_bg_k2"])
+    return max(spec.namelist.d2_bg, spec.namelist.d2_bg_k2)
 
 
 def get_column_namelist():
@@ -262,30 +262,30 @@ def column_namelist_options(k):
     direct_namelist = ["ke_bg", "d_con", "nord"]
     col = {}
     for name in direct_namelist:
-        col[name] = spec.namelist[name]
-    col["d2_divg"] = min(0.2, spec.namelist["d2_bg"])
+        col[name] = getattr(spec.namelist, name)
+    col["d2_divg"] = min(0.2, spec.namelist.d2_bg)
     col["nord_v"] = min(2, col["nord"])
     col["nord_w"] = col["nord_v"]
     col["nord_t"] = col["nord_v"]
-    if spec.namelist["do_vort_damp"]:
-        col["damp_vt"] = spec.namelist["vtdm4"]
+    if spec.namelist.do_vort_damp:
+        col["damp_vt"] = spec.namelist.vtdm4
     else:
         col["damp_vt"] = 0
     col["damp_w"] = col["damp_vt"]
     col["damp_t"] = col["damp_vt"]
-    if grid().npz == 1 or spec.namelist["n_sponge"] < 0:
+    if grid().npz == 1 or spec.namelist.n_sponge < 0:
         pass
-    #     d2_divg = spec.namelist["d2_bg"]  # commenting because unused, never gets set into col
+    #     d2_divg = spec.namelist.d2_bg  # commenting because unused, never gets set into col
     else:
         if k == 0:
             col["d2_divg"] = max_d2_bg0()
             lowest_kvals(col)
-        if k == 1 and spec.namelist["d2_bg_k2"] > 0.01:
+        if k == 1 and spec.namelist.d2_bg_k2 > 0.01:
             col["d2_divg"] = max_d2_bg1()
             lowest_kvals(col)
-        if k == 2 and spec.namelist["d2_bg_k2"] > 0.05:
+        if k == 2 and spec.namelist.d2_bg_k2 > 0.05:
             col["d2_divg"] = max(
-                spec.namelist["d2_bg"], 0.2 * spec.namelist["d2_bg_k2"]
+                spec.namelist.d2_bg, 0.2 * spec.namelist.d2_bg_k2
             )
             set_low_kvals(col)
     return col
@@ -326,11 +326,11 @@ def compute(
     diss_e = utils.make_storage_from_shape(heat_source.shape, grid().compute_origin())
     z_rat = utils.make_storage_from_shape(heat_source.shape, grid().default_origin())
     # TODO if namelist['hydrostatic' and not namelist['use_old_omega'] and last_step
-    if spec.namelist["d_ext"] > 0:
+    if spec.namelist.d_ext > 0:
         raise Exception(
             "untested d_ext > 0. need to call a2b_ord2, not yet implemented"
         )
-    if spec.namelist["do_f3d"] and not spec.namelist["hydrostatic"]:
+    if spec.namelist.do_f3d and not spec.namelist.hydrostatic:
         coriolis_force_correction(
             zh,
             z_rat,
@@ -378,7 +378,7 @@ def compute(
     # TODO if namelist['hydrostatic' and not namelist['use_old_omega'] and last_step
     # TODO if namelist['d_ext'] > 0
 
-    if spec.namelist["d_con"] > dcon_threshold or spec.namelist["do_skeb"]:
+    if spec.namelist.d_con > dcon_threshold or spec.namelist.do_skeb:
         basic.add_term_two_vars(
             heat_s,
             heat_source,
@@ -454,7 +454,7 @@ def d_sw(
         delp,
         crx,
         cry,
-        spec.namelist["hord_dp"],
+        spec.namelist.hord_dp,
         xfx,
         yfx,
         ra_x,
@@ -468,13 +468,13 @@ def d_sw(
     fluxcap.compute(cx, cy, xflux, yflux, crx, cry, fx, fy)
     initialize_heat_source(heat_s, diss_e)
 
-    if not spec.namelist["hydrostatic"]:
+    if not spec.namelist.hydrostatic:
         dw, wk = damp_vertical_wind(w, heat_s, diss_e, dt, column_namelist)
         fvtp2d.compute_no_sg(
             w,
             crx,
             cry,
-            spec.namelist["hord_vt"],
+            spec.namelist.hord_vt,
             xfx,
             yfx,
             ra_x,
@@ -501,7 +501,7 @@ def d_sw(
         q_con,
         crx,
         cry,
-        spec.namelist["hord_dp"],
+        spec.namelist.hord_dp,
         xfx,
         yfx,
         ra_x,
@@ -530,7 +530,7 @@ def d_sw(
         pt,
         crx,
         cry,
-        spec.namelist["hord_tm"],
+        spec.namelist.hord_tm,
         xfx,
         yfx,
         ra_x,
@@ -544,7 +544,7 @@ def d_sw(
         mfy=fy,
     )
 
-    if spec.namelist["inline_q"]:
+    if spec.namelist.inline_q:
         raise Exception("inline_q not yet implemented")
     else:
         not_inlineq_pressure(
@@ -590,7 +590,7 @@ def d_sw(
 
     vort_mean.compute(u, v, ut, vt, wk)
 
-    # TODO if spec.namelist['d_f3d'] and ROT3 unimplemeneted
+    # TODO if spec.namelist.d_f3d and ROT3 unimplemeneted
     adjust_w_and_qcon(
         w,
         delp,
@@ -634,7 +634,7 @@ def d_sw(
         )
 
     # Vorticity transport
-    if spec.namelist["do_f3d"] and not spec.namelist["hydrostatic"]:
+    if spec.namelist.do_f3d and not spec.namelist.hydrostatic:
         zrat_vorticity(
             wk,
             grid().f0,
@@ -653,7 +653,7 @@ def d_sw(
         )
 
     fvtp2d.compute_no_sg(
-        vort, crx, cry, spec.namelist["hord_vt"], xfx, yfx, ra_x, ra_y, fx, fy
+        vort, crx, cry, spec.namelist.hord_vt, xfx, yfx, ra_x, ra_y, fx, fy
     )
 
     u_from_ke(
@@ -680,7 +680,7 @@ def d_sw(
         )
         delnflux.compute_no_sg(wk, ut, vt, column_namelist["nord_v"], damp4, vort)
 
-    if column_namelist["d_con"] > dcon_threshold or spec.namelist["do_skeb"]:
+    if column_namelist["d_con"] > dcon_threshold or spec.namelist.do_skeb:
         damp = 0.25 * column_namelist["d_con"]
         heat_from_damping(
             ub, vb, ut, vt, u, v, delp, fx, fy, gx, gy, heat_s, diss_e, damp

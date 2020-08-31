@@ -1041,23 +1041,22 @@ def compute(
     kmp,
 ):
     grid = spec.grid
-    namelist = spec.namelist
     origin = (grid.is_, grid.js, kmp)
     domain = (grid.nic, grid.njc, (grid.npz - kmp))
     qs_init()
-    hydrostatic = spec.namelist["hydrostatic"]
+    hydrostatic = spec.namelist.hydrostatic
     sdt = 0.5 * mdt  # half remapping time step
     # define conversion scalar / factor
-    fac_i2s = 1.0 - math.exp(-mdt / namelist["tau_i2s"])
-    fac_v2l = 1.0 - math.exp(-sdt / namelist["tau_v2l"])
-    fac_r2g = 1.0 - math.exp(-mdt / namelist["tau_r2g"])
-    fac_l2r = 1.0 - math.exp(-mdt / namelist["tau_l2r"])
+    fac_i2s = 1.0 - math.exp(-mdt / spec.namelist.tau_i2s)
+    fac_v2l = 1.0 - math.exp(-sdt / spec.namelist.tau_v2l)
+    fac_r2g = 1.0 - math.exp(-mdt / spec.namelist.tau_r2g)
+    fac_l2r = 1.0 - math.exp(-mdt / spec.namelist.tau_l2r)
 
-    fac_l2v = 1.0 - math.exp(-sdt / namelist["tau_l2v"])
-    fac_l2v = min(namelist["sat_adj0"], fac_l2v)
+    fac_l2v = 1.0 - math.exp(-sdt / spec.namelist.tau_l2v)
+    fac_l2v = min(spec.namelist.sat_adj0, fac_l2v)
 
-    fac_imlt = 1.0 - math.exp(-sdt / namelist["tau_imlt"])
-    fac_smlt = 1.0 - math.exp(-mdt / namelist["tau_smlt"])
+    fac_imlt = 1.0 - math.exp(-sdt / spec.namelist.tau_imlt)
+    fac_smlt = 1.0 - math.exp(-mdt / spec.namelist.tau_smlt)
 
     # define heat capacity of dry air and water vapor based on hydrostatical property
 
@@ -1125,7 +1124,7 @@ def compute(
         domain=domain,
     )
     wqs2_iqs2(pt1, den, wqsat, dq2dt)
-    adj_fac = namelist["sat_adj0"]
+    adj_fac = spec.namelist.sat_adj0
     satadjust_part2(
         wqsat,
         dq2dt,
@@ -1147,7 +1146,7 @@ def compute(
         d0_vap,
         c_vap,
         adj_fac,
-        namelist["ql_gen"],
+        spec.namelist.ql_gen,
         origin=origin,
         domain=domain,
     )
@@ -1207,8 +1206,8 @@ def compute(
         fac_r2g,
         fac_smlt,
         fac_l2r,
-        namelist["qs_mlt"],
-        namelist["ql0_max"],
+        spec.namelist.qs_mlt,
+        spec.namelist.ql0_max,
         last_step,
         origin=origin,
         domain=domain,
@@ -1254,17 +1253,17 @@ def compute(
         r_vir,
         fac_i2s,
         c_air,
-        namelist["t_sub"],
-        namelist["qi_gen"],
-        namelist["qi_lim"],
-        namelist["qi0_max"],
+        spec.namelist.t_sub,
+        spec.namelist.qi_gen,
+        spec.namelist.qi_lim,
+        spec.namelist.qi0_max,
         fast_mp_consv,
         hydrostatic,
         do_qa,
-        namelist["rad_snow"],
-        namelist["rad_rain"],
-        namelist["rad_graupel"],
-        namelist["tintqs"],
+        spec.namelist.rad_snow,
+        spec.namelist.rad_rain,
+        spec.namelist.rad_graupel,
+        spec.namelist.tintqs,
         last_step,
         origin=origin,
         domain=domain,
@@ -1285,14 +1284,14 @@ def compute(
             iqs1,
             wqs1,
             q_sol,
-            namelist["dw_ocean"],
-            namelist["dw_land"],
-            namelist["icloud_f"],
-            namelist["cld_min"],
+            spec.namelist.dw_ocean,
+            spec.namelist.dw_land,
+            spec.namelist.icloud_f,
+            spec.namelist.cld_min,
             origin=origin,
             domain=domain,
         )
-    if not spec.namelist["hydrostatic"]:
+    if not spec.namelist.hydrostatic:
         # moist_cv.compute_pkz_stencil_func(
         #    pkz, cappa, delp, delz, pt, origin=origin, domain=domain
         # )

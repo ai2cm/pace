@@ -126,10 +126,10 @@ def smagorinksy_diffusion_approx(delpc: sd, vort: sd, absdt: float):
 
 def vorticity_calc(wk, vort, delpc, dt, nord, kstart, nk):
     if nord != 0:
-        if spec.namelist["dddmp"] < 1e-5:
+        if spec.namelist.dddmp < 1e-5:
             vort[:, :, kstart : kstart + nk] = 0
         else:
-            if spec.namelist["grid_type"] < 3:
+            if spec.namelist.grid_type < 3:
                 a2b_ord4.compute(wk, vort, kstart, nk, False)
                 smagorinksy_diffusion_approx(
                     delpc,
@@ -187,7 +187,7 @@ def compute(
             is_ = grid.is_ - nt
             fillc = (
                 (n != nord)
-                and spec.namelist["grid_type"] < 3
+                and spec.namelist.grid_type < 3
                 and not grid.nested
                 and (
                     grid.sw_corner or grid.se_corner or grid.ne_corner or grid.nw_corner
@@ -256,9 +256,9 @@ def compute(
 
         vorticity_calc(wk, vort, delpc, dt, nord, kstart, nk)
         if grid.stretched_grid:
-            dd8 = grid.da_min * spec.namelist["d4_bg"] ** (nord + 1)
+            dd8 = grid.da_min * spec.namelist.d4_bg ** (nord + 1)
         else:
-            dd8 = (grid.da_min_c * spec.namelist["d4_bg"]) ** (nord + 1)
+            dd8 = (grid.da_min_c * spec.namelist.d4_bg) ** (nord + 1)
         damping_nord_highorder_stencil(
             vort,
             ke,
@@ -266,7 +266,7 @@ def compute(
             divg_d,
             grid.da_min_c,
             d2_bg,
-            spec.namelist["dddmp"],
+            spec.namelist.dddmp,
             dd8,
             origin=(grid.is_, grid.js, kstart),
             domain=(grid.nic + 1, grid.njc + 1, nk),
@@ -383,7 +383,7 @@ def damping_zero_order(
         ke,
         grid.da_min_c,
         d2_bg,
-        spec.namelist["dddmp"],
+        spec.namelist.dddmp,
         dt,
         origin=compute_origin,
         domain=compute_domain,

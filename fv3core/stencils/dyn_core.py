@@ -64,13 +64,13 @@ def heatadjust_temperature_lowlevel(
 
 
 def get_n_con():
-    if spec.namelist["convert_ke"] or spec.namelist["vtdm4"] > 1.0e-4:
+    if spec.namelist.convert_ke or spec.namelist.vtdm4 > 1.0e-4:
         n_con = spec.grid.npz
     else:
-        if spec.namelist["d2_bg_k1"] < 1.0e-3:
+        if spec.namelist.d2_bg_k1 < 1.0e-3:
             n_con = 0
         else:
-            if spec.namelist["d2_bg_k2"] < 1.0e-3:
+            if spec.namelist.d2_bg_k2 < 1.0e-3:
                 n_con = 1
             else:
                 n_con = 2
@@ -108,19 +108,19 @@ def compute(state, comm):
     grid = spec.grid
 
     init_step = state.n_map == 1
-    end_step = state.n_map == spec.namelist["k_split"]
+    end_step = state.n_map == spec.namelist.k_split
     akap = state.akap
     # peln1 = math.log(ptop)
     # ptk = ptop**akap
     dt = state.mdt / state.n_split
     dt2 = 0.5 * dt
-    hydrostatic = spec.namelist["hydrostatic"]
+    hydrostatic = spec.namelist.hydrostatic
     rgrav = 1.0 / constants.GRAV
     n_split = state.n_split
     # TODO -- put defaults into code
     # m_split = 1. + abs(dt_atmos)/real(k_split*n_split*abs(p_split))
     # n_split = nint( real(n0split)/real(k_split*abs(p_split)) * stretch_fac + 0.5 )
-    ms = max(1, spec.namelist["m_split"] / 2.0)
+    ms = max(1, spec.namelist.m_split / 2.0)
     shape = state.delz.shape
     # NOTE in Fortran model the halo update starts happens in fv_dynamics, not here
 
@@ -157,7 +157,7 @@ def compute(state, comm):
 
     for it in range(n_split):
         remap_step = False
-        if spec.namelist["breed_vortex_inline"] or (it == n_split - 1):
+        if spec.namelist.breed_vortex_inline or (it == n_split - 1):
             remap_step = True
 
         if not hydrostatic:
@@ -180,13 +180,13 @@ def compute(state, comm):
             reqs["pt_quantity"].wait()
             beta_d = 0
         else:
-            beta_d = spec.namelist["beta"]
+            beta_d = spec.namelist.beta
         last_step = False
         if it == n_split - 1 and end_step:
             last_step = True
 
         if it == n_split - 1 and end_step:
-            if spec.namelist["use_old_omega"]:  # apparently true
+            if spec.namelist.use_old_omega:  # apparently True
                 set_pem(
                     state.delp,
                     state.pem,
@@ -216,7 +216,7 @@ def compute(state, comm):
             state.omga,
             dt2,
         )
-        if spec.namelist["nord"] > 0:
+        if spec.namelist.nord > 0:
             reqs["divgd_quantity"] = comm.start_halo_update(
                 state.divgd_quantity, n_points=utils.halo
             )
@@ -264,7 +264,7 @@ def compute(state, comm):
         reqc_vector = comm.start_vector_halo_update(
             state.uc_quantity, state.vc_quantity, n_points=utils.halo
         )
-        if spec.namelist["nord"] > 0:
+        if spec.namelist.nord > 0:
             reqs["divgd_quantity"].wait()
         reqc_vector.wait()
         state.nord_v, state.damp_vt = d_sw.compute(
@@ -299,7 +299,7 @@ def compute(state, comm):
             comm.halo_update(state.__getattribute__(halovar), n_points=utils.halo)
 
         # Not used unless we implement other betas and alternatives to nh_p_grad
-        # if spec.namelist['d_ext'] > 0:
+        # if spec.namelist.d_ext > 0:
         #    raise 'Unimplemented namelist option d_ext > 0'
         # else:
         #    divg2 = utils.make_storage_from_shape(delz.shape, grid.compute_origin())
@@ -357,7 +357,7 @@ def compute(state, comm):
                 )
             if remap_step:
                 pe_halo.compute(state.pe, state.delp, state.ptop)
-            if spec.namelist["use_logp"]:
+            if spec.namelist.use_logp:
                 raise Exception("unimplemented namelist option use_logp=True")
             else:
                 pk3_halo.compute(state.pk3, state.delp, state.ptop, akap)
@@ -375,7 +375,7 @@ def compute(state, comm):
             )
             if grid.npx == grid.npy:
                 reqs["pkc_quantity"].wait()
-            if spec.namelist["beta"] != 0:
+            if spec.namelist.beta != 0:
                 raise Exception(
                     "Unimplemented namelist option -- we only support beta=0"
                 )
@@ -392,7 +392,7 @@ def compute(state, comm):
                 akap,
             )
 
-        if spec.namelist["rf_fast"]:
+        if spec.namelist.rf_fast:
             # TODO pass through ks, or remove, inconsistent representation vs Fortran
             ray_fast.compute(
                 state.u,
@@ -409,8 +409,8 @@ def compute(state, comm):
             reqs_vector = comm.start_vector_halo_update(
                 state.u_quantity, state.v_quantity, n_points=utils.halo
             )
-    if n_con != 0 and spec.namelist["d_con"] > 1.0e-5:
-        nf_ke = min(3, spec.namelist["nord"] + 1)
+    if n_con != 0 and spec.namelist.d_con > 1.0e-5:
+        nf_ke = min(3, spec.namelist.nord + 1)
 
         comm.halo_update(state.heat_source_quantity, n_points=utils.halo)
         cd = constants.CNST_0P20 * grid.da_min

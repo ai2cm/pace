@@ -83,7 +83,7 @@ def zero_br_bl_corners_north(br, bl):
 def compute(c, u, v, flux):
     grid = spec.grid
     # This is an input argument in the Fortran code, but is never called with anything but this namelist option
-    jord = spec.namelist["hord_mt"]
+    jord = spec.namelist.hord_mt
     if jord not in [5, 6, 7, 8]:
         raise Exception("Currently ytp_v is only supported for hord_mt == 5,6,7,8")
     js3 = grid.js - 1
@@ -151,8 +151,8 @@ def compute(c, u, v, flux):
         else:
             raise Exception("Unimplemented jord=" + str(jord))
 
-        if spec.namelist["grid_type"] < 3 and not (
-            grid.nested or spec.namelist["regional"]
+        if spec.namelist.grid_type < 3 and not (
+            grid.nested or spec.namelist.regional
         ):
             x_edge_domain = (di, 1, nk)
             do_xt_minmax = False

@@ -79,7 +79,7 @@ def compute(u, v, ua, va, divg_d):
     vf = utils.make_storage_from_shape(va.shape, origin=(grid.is_ - 1, grid.js - 2, 0))
 
     # Compute values for the temporary velocity arrays
-    if spec.namelist["grid_type"] == 4:
+    if spec.namelist.grid_type == 4:
         basic.multiply_stencil(
             u,
             grid.dyc,

@@ -32,7 +32,7 @@ def compute(uc, vc, ut, ub, dt5, dt4):
     is2 = grid.is_ + 1 if grid.west_edge else grid.is_
     ie1 = grid.ie if grid.east_edge else grid.ie + 1
     idiff = ie1 - is2 + 1
-    if spec.namelist["grid_type"] < 3 and not grid.nested:
+    if spec.namelist.grid_type < 3 and not grid.nested:
         domain_y = (idiff, 1, grid.npz)
         domain_x = (1, grid.njc + 1, grid.npz)
         if grid.west_edge:

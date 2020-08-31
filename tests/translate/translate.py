@@ -248,7 +248,7 @@ class TranslateGrid:
             self.shape_params[s] = inputs[s]
             del inputs[s]
         self.rank = rank
-        self.layout = fv3core._config.namelist["layout"]
+        self.layout = fv3core._config.namelist.layout
         for i, j in Grid.index_pairs:
             for index in [i, j]:
                 self.indices[index] = inputs[index] + self.fpy_model_index_offset

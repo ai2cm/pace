@@ -101,7 +101,7 @@ def compute(uc, vc, delpc, pkc, gz, dt2):
     #      3) compute uc and vc stencils separately specifying different domains to compute on
     grid = spec.grid
     co = grid.compute_origin()
-    hydrostatic = int(spec.namelist["hydrostatic"])
+    hydrostatic = int(spec.namelist.hydrostatic)
     # Option 2
     # uc_edge_i,  uc_edge_j, vc_edge_i, vc_edge_j = grid.edge_offset_halos(uc_in, vc_in)
     # p_grad_c(uc_in, vc_in, delpc, pkc, gz, grid.rdxc, grid.rdyc,

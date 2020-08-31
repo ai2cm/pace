@@ -485,7 +485,7 @@ def compute(qin, qout, kstart=0, nk=None, replace=False):
     if nk == None:
         nk = grid().npz - kstart
     extrapolate_corners(qin, qout, kstart, nk)
-    if spec.namelist["grid_type"] < 3:
+    if spec.namelist.grid_type < 3:
         compute_qout_edges(qin, qout, kstart, nk)
         qx = compute_qx(qin, qout, kstart, nk)
         qy = compute_qy(qin, qout, kstart, nk)

@@ -430,7 +430,7 @@ def compute(state, nq, dt):
 
     grid = spec.grid
     rdt = 1.0 / dt
-    k_bot = spec.namelist["n_sponge"]
+    k_bot = spec.namelist.n_sponge
     if k_bot is not None:
         if k_bot < 3:
             return
@@ -445,15 +445,15 @@ def compute(state, nq, dt):
     else:
         t_min = T2_MIN
 
-    if spec.namelist["nwat"] == 0:
+    if spec.namelist.nwat == 0:
         xvir = 0.0
         # rz = 0 # hydrostatic only
     else:
         xvir = ZVIR
         # rz = constants.RV_GAS - constants.RDGAS # hydrostatic only
     m = 3
-    fra = dt / float(spec.namelist["fv_sg_adj"])
-    if spec.namelist["hydrostatic"]:
+    fra = dt / float(spec.namelist.fv_sg_adj)
+    if spec.namelist.hydrostatic:
         raise Exception("Hydrostatic not supported for fv_subgridz")
     q0 = {}
     for tracername in utils.tracer_variables:
@@ -640,7 +640,7 @@ def compute(state, nq, dt):
             w0,
             state.w,
             fra,
-            spec.namelist["hydrostatic"],
+            spec.namelist.hydrostatic,
             origin=origin,
             domain=kbot_domain,
         )

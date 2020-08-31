@@ -34,7 +34,7 @@ def compute(uc, vc, vt, vb, dt5, dt4):
     ie1 = grid.ie if grid.east_edge else grid.ie + 1
     jdiff = je1 - js2 + 1
     idiff = ie1 - is2 + 1
-    if spec.namelist["grid_type"] < 3 and not grid.nested:
+    if spec.namelist.grid_type < 3 and not grid.nested:
         domain_y = (grid.nic + 1, 1, grid.npz)
         domain_x = (1, jdiff, grid.npz)
         if grid.south_edge:

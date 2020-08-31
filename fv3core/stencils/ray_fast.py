@@ -65,13 +65,13 @@ def compute(u, v, w, dp, pfull, dt, ptop, ks):
     rff_initialized = (
         False  # TODO pull this out to higher level so don't do over and over
     )
-    rf_cutoff = spec.namelist["rf_cutoff"]
+    rf_cutoff = spec.namelist.rf_cutoff
     rf_cutoff_nudge = rf_cutoff + min(100.0, 10.0 * ptop)
     if not rff_initialized:
         # is only a column actually
         rf = np.ones(grid.npz)
         rffvals = ray_super.rayleigh_rfvals(
-            dt, spec.namelist["tau"] * ray_super.SDAY, rf_cutoff, pfull, ptop
+            dt, spec.namelist.tau * ray_super.SDAY, rf_cutoff, pfull, ptop
         )
         rffvals = 1.0 / (1.0 + rffvals)  # TODO put in stencil with the rayleigh_rfvals
         rf, kmax = ray_super.fill_rf(rf, rffvals, rf_cutoff, pfull, u.shape)
@@ -111,7 +111,7 @@ def compute(u, v, w, dp, pfull, dt, ptop, ks):
         origin=grid.compute_origin(),
         domain=(grid.nic + 1, grid.njc, kmax),
     )
-    if not spec.namelist["hydrostatic"]:
+    if not spec.namelist.hydrostatic:
         ray_fast_w(
             w, rf, origin=grid.compute_origin(), domain=(grid.nic, grid.njc, kmax),
         )

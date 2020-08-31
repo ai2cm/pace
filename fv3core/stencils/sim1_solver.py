@@ -221,7 +221,7 @@ def solve(is_, ie, js, je, dt, gm, cp3, pe, dm, pm, pem, w, dz, ptr, wsr):
         dt,
         t1g,
         rdt,
-        spec.namelist["p_fac"],
+        spec.namelist.p_fac,
         origin=simorigin,
         domain=simdomainplus,
     )

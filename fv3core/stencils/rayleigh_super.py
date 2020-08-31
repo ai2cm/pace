@@ -107,13 +107,13 @@ def fill_rf(rf, rfvals, rf_cutoff, pfull, shape3d):
 def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
     grid = spec.grid
     rf_initialized = False  # TODO pull this into a state dict or arguments that get updated when called
-    conserve = not (grid.nested or spec.namelist["regional"])
-    rf_cutoff = spec.namelist["rf_cutoff"]
+    conserve = not (grid.nested or spec.namelist.regional)
+    rf_cutoff = spec.namelist.rf_cutoff
     if not rf_initialized:
-        tau0 = abs(spec.namelist["tau"] * SDAY)
+        tau0 = abs(spec.namelist.tau * SDAY)
         # is only a column actually
         rf = np.zeros(grid.npz)
-        if spec.namelist["tau"] < 0:
+        if spec.namelist.tau < 0:
             rfvals = (
                 bdt
                 / tau0
@@ -150,7 +150,7 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
         ptop,
         rf_cutoff,
         conserve,
-        spec.namelist["hydrostatic"],
+        spec.namelist.hydrostatic,
         origin=grid.compute_origin(),
         domain=(grid.nic, grid.njc, kmax),
     )

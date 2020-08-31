@@ -93,7 +93,7 @@ def zero_br_bl_corners_east(br, bl):
 def compute(c, u, v, flux):
     # This is an input argument in the Fortran code, but is never called with anything but this namelist option
     grid = spec.grid
-    iord = spec.namelist["hord_mt"]
+    iord = spec.namelist.hord_mt
     if iord not in [5, 6, 7, 8]:
         raise Exception("Currently ytp_v is only supported for hord_mt == 5, 6, 7, 8")
     is3 = grid.is_ - 1  # max(5, grid.is_ - 1)
@@ -160,8 +160,8 @@ def compute(c, u, v, flux):
         else:
             raise Exception("Unimplemented iord=" + str(iord))
 
-        if spec.namelist["grid_type"] < 3 and not (
-            grid.nested or spec.namelist["regional"]
+        if spec.namelist.grid_type < 3 and not (
+            grid.nested or spec.namelist.regional
         ):
             y_edge_domain = (1, dj, nk)
             do_xt_minmax = False
