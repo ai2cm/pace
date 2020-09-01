@@ -2,8 +2,7 @@ GCR_URL = us.gcr.io/vcm-ml
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_standard
 FV3CORE_VERSION=0.0.0
-FORTRAN_SERIALIZED_DATA_VERSION=7.0.0
-
+FORTRAN_SERIALIZED_DATA_VERSION=7.1.1
 SHELL=/bin/bash
 CWD=$(shell pwd)
 TEST_ARGS ?=-v -s -rsx
