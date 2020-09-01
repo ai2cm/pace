@@ -20,6 +20,7 @@ def precompute(
     dz: sd,
     gm: sd,
     pef: sd,
+    pm: sd,
     ptop: float,
 ):
     with computation(FORWARD):
@@ -36,10 +37,19 @@ def precompute(
     with computation(PARALLEL), interval(...):
         gm = 1.0 / (1.0 - cp3)
         dm = dm / constants.GRAV
+    with computation(PARALLEL), interval(0, -1):
+        pm = (peg[0, 0, 1] - peg) / log(peg[0, 0, 1] / peg)
 
 
 @utils.stencil()
-def finalize(pe2: sd, pem: sd, hs_0: sd, dz: sd, pef: sd, gz: sd):
+def finalize(pe2: sd, pem: sd, hs: sd, dz: sd, pef: sd, gz: sd):
+    # TODO: we only want to bottom level of hd, so this could be removed once hd0 is a 2d field
+    with computation(FORWARD):
+        with interval(0, 1):
+            hs_0 = hs
+        with interval(1, None):
+            hs_0 = hs_0[0, 0, -1]
+
     with computation(PARALLEL), interval(1, None):
         pef = pe2 + pem
     with computation(BACKWARD):
@@ -83,17 +93,10 @@ def compute(ms, dt2, akap, cappa, ptop, hs, w3, ptc, q_con, delpc, gz, pef, ws):
         dz,
         gm,
         pef,
+        pm,
         ptop,
         origin=riemorigin,
         domain=domain,
     )
-    # TODO add to stencil when we have math functions
-    jslice = slice(js1, je1 + 1)
-    tmpslice_shift = (islice, jslice, kslice_shift)
-    tmpslice = (islice, jslice, kslice)
-    pm[tmpslice] = (peg[tmpslice_shift] - peg[tmpslice]) / np.log(
-        peg[tmpslice_shift] / peg[tmpslice]
-    )
     sim1_solver.solve(is1, ie1, js1, je1, dt2, gm, cp3, pe, dm, pm, pem, w, dz, ptc, ws)
-    hs_0 = utils.make_storage_data(hs[:, :, 0].data, shape)
-    finalize(pe, pem, hs_0, dz, pef, gz, origin=riemorigin, domain=domain)
+    finalize(pe, pem, hs, dz, pef, gz, origin=riemorigin, domain=domain)

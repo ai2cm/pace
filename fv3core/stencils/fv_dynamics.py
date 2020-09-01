@@ -14,7 +14,6 @@ import fv3core.stencils.del2cubed as del2cubed
 import fv3core.stencils.neg_adj3 as neg_adj3
 from fv3core.stencils.c2l_ord import compute_cubed_to_latlon
 import fv3util
-import numpy as np
 from types import SimpleNamespace
 from ..decorators import ArgSpec, state_inputs
 
@@ -26,7 +25,7 @@ def init_ph_columns(ak: sd, bk: sd, pfull: sd, ph1: sd, ph2: sd, p_ref: float):
     with computation(PARALLEL), interval(...):
         ph1 = ak + bk * p_ref
         ph2 = ak[0, 0, 1] + bk[0, 0, 1] * p_ref
-        # pfull = (ph2 - ph1) / log(ph2 / ph1)
+        pfull = (ph2 - ph1) / log(ph2 / ph1)
 
 
 @utils.stencil()
@@ -81,10 +80,6 @@ def compute_preamble(state, comm):
         spec.namelist.p_ref,
         origin=grid.compute_origin(),
         domain=grid.domain_shape_compute(),
-    )  # TODO put pfull calc below into stencil
-    tmpslice = grid.compute_interface()
-    state.pfull[tmpslice] = (state.ph2[tmpslice] - state.ph1[tmpslice]) / np.log(
-        state.ph2[tmpslice] / state.ph1[tmpslice]
     )
     if spec.namelist.hydrostatic:
         raise Exception("Hydrostatic is not implemented")
@@ -326,7 +321,7 @@ def compute(state, comm):
             last_step = True
         do_dyn(state, comm)
         if grid.npz > 4:
-            kord_tracer = np.ones(state.nq) * spec.namelist.kord_tr
+            kord_tracer = [spec.namelist.kord_tr] * state.nq
             kord_tracer[6] = 9
             # do_omega = spec.namelist.hydrostatic and last_step
             print("Remapping", grid.rank)

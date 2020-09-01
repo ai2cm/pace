@@ -6,7 +6,7 @@ from gt4py.gtscript import computation, interval, PARALLEL
 from fv3core.stencils.updatedzd import ra_x_stencil, ra_y_stencil
 import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.fvtp2d as fvtp2d
-import numpy as np
+import math
 
 sd = utils.sd
 
@@ -31,13 +31,23 @@ def flux_y(cy: sd, dya: sd, dx: sd, sin_sg4: sd, sin_sg2: sd, yfx: sd):
         )
 
 
+@gtscript.function
+def mult_frac(var, frac):
+    var_tmp = var
+    return var_tmp * frac
+
+
 @utils.stencil()
-def cmax_split(var: sd, nsplt: sd):
+def cmax_split_vars(
+    cxd: sd, xfx: sd, mfxd: sd, cyd: sd, yfx: sd, mfyd: sd, frac: float
+):
     with computation(PARALLEL), interval(...):
-        frac = 1.0
-        if nsplt > 1.0:
-            frac = 1.0 / nsplt
-            var = var * frac
+        cxd = mult_frac(cxd, frac)
+        xfx = mult_frac(xfx, frac)
+        mfxd = mult_frac(mfxd, frac)
+        cyd = mult_frac(cyd, frac)
+        yfx = mult_frac(yfx, frac)
+        mfyd = mult_frac(mfyd, frac)
 
 
 @utils.stencil()
@@ -136,46 +146,23 @@ def compute(
     # comm.Allreduce(cmax_flat, cmax_max_all_ranks, op=MPI.MAX)
     """
     cmax_max_all_ranks = 2.0
-    nsplt = np.floor(1.0 + cmax_max_all_ranks)
-
-    # for nsplit > 1
-    nsplt3d = utils.make_storage_from_shape(cyd.shape, origin=grid.compute_origin())
-    nsplt3d[:] = nsplt
-    cmax_split(
+    nsplt = math.floor(1.0 + cmax_max_all_ranks)
+    # NOTE cmax is not usually a single value, it varies with k, if return to that, make nsplt a column as well and compute frac inside cmax_split_vars
+    # nsplt3d = utils.make_storage_from_shape(cyd.shape, origin=grid.compute_origin())
+    # nsplt3d[:] = nsplt
+    frac = 1.0
+    if nsplt > 1.0:
+        frac = 1.0 / nsplt
+    cmax_split_vars(
         cxd,
-        nsplt3d,
-        origin=grid.compute_x_origin(),
-        domain=grid.domain_y_compute_xbuffer(),
-    )
-    cmax_split(
         xfx,
-        nsplt3d,
-        origin=grid.compute_x_origin(),
-        domain=grid.domain_y_compute_xbuffer(),
-    )
-    cmax_split(
         mfxd,
-        nsplt3d,
-        origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute_x(),
-    )
-    cmax_split(
         cyd,
-        nsplt3d,
-        origin=grid.compute_y_origin(),
-        domain=grid.domain_x_compute_ybuffer(),
-    )
-    cmax_split(
         yfx,
-        nsplt3d,
-        origin=grid.compute_y_origin(),
-        domain=grid.domain_x_compute_ybuffer(),
-    )
-    cmax_split(
         mfyd,
-        nsplt3d,
-        origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute_y(),
+        frac,
+        origin=grid.default_origin(),
+        domain=grid.domain_shape_buffer_1cell(),
     )
 
     # complete HALO update on q

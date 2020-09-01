@@ -25,10 +25,12 @@ def precompute(
     pelng: sd,
     gm: sd,
     dz: sd,
+    pm: sd,
     ptop: float,
     peln1: float,
     ptk: float,
     rgrav: float,
+    akap: float,
 ):
     with computation(FORWARD):
         with interval(0, 1):
@@ -40,19 +42,15 @@ def precompute(
         with interval(1, None):
             # TODO consolidate with riem_solver_c, same functions, math functions
             pem = pem[0, 0, -1] + dm[0, 0, -1]
-            # peln = log(pem)
+            peln = log(pem)
             peg = peg[0, 0, -1] + dm[0, 0, -1] * (1.0 - q_con[0, 0, -1])
-            # pelng = log(peg)
-            # pk3 = exp(akap * peln)
+            pelng = log(peg)
+            pk3 = exp(akap * peln)
     with computation(PARALLEL), interval(0, -1):
         dz = zh[0, 0, 1] - zh
     with computation(PARALLEL), interval(...):
         gm = 1.0 / (1 - cp3)
         dm = dm * rgrav
-
-
-@utils.stencil()
-def compute_pm(peg: sd, pelng: sd, pm: sd):
     with computation(PARALLEL), interval(0, -1):
         pm = (peg[0, 0, 1] - peg) / (pelng[0, 0, 1] - pelng)
 
@@ -148,19 +146,15 @@ def compute(
         pelng,
         gm,
         delz,
+        pm,
         ptop,
         peln1,
         ptk,
         rgrav,
+        akap,
         origin=riemorigin,
         domain=domain,
     )
-    # TODO put into stencil when have math functions
-    tmpslice = (islice, slice(grid.js, grid.je + 1), kslice_shift)
-    peln_run[tmpslice] = np.log(pem[tmpslice])
-    pelng[tmpslice] = np.log(peg[tmpslice])
-    pk3[tmpslice] = np.exp(akap * peln_run[tmpslice])
-    compute_pm(peg, pelng, pm, origin=riemorigin, domain=domain)
     sim1_solver.solve(
         grid.is_,
         grid.ie,

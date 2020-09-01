@@ -134,7 +134,6 @@ $ make dev_tests TEST_ARGS="-–which_modules=<stencil name(s)>"
 ```
 
 
-
 ## Installation
 
 To build the `us.gcr.io/vcm-ml/fv3core` image with required dependencies for running the Python code, run
@@ -148,7 +147,6 @@ Add `PULL=False` to build from scratch without running `docker pull`:
 ```shell
 PULL=False make build
 ```
-
 
 ## Relevant repositories
 

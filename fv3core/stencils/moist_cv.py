@@ -1,13 +1,8 @@
 import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.corners import fill2_4corners, fill_4corners
 import gt4py.gtscript as gtscript
 import fv3core._config as spec
 from gt4py.gtscript import computation, interval, PARALLEL
-import fv3core.stencils.copy_stencil as cp
 import fv3core.utils.global_constants as constants
-
-# import fv3core.stencils.ppm_profile as ppm_profile
-import numpy as np
 
 sd = utils.sd
 
@@ -225,8 +220,7 @@ def moist_pt(
         )  # if (nwat == 6) else moist_cv_default_fn(cv_air)
         q_con[0, 0, 0] = gz
         cappa = set_cappa(qvapor, cvm, r_vir)
-        # pt[0, 0, 0] = pt * exp(cappa / (1.0 - cappa) * log(constants.RDG * delp / delz * pt))
-        # pt[0, 0, 0] = pt * (constants.RDG * delp / delz * pt) ** (cappa / (1.0 - cappa))
+        pt = pt * exp(cappa / (1.0 - cappa) * log(constants.RDG * delp / delz * pt))
 
 
 @gtscript.function
@@ -265,8 +259,7 @@ def moist_pt_last_step(
 @gtscript.function
 def compute_pkz_func(delp, delz, pt, cappa):
     # TODO use the exponential form for closer answer matching
-    # return exp(cappa * log(constants.RDG * delp /delz * pt))
-    return (constants.RDG * delp / delz * pt) ** cappa
+    return exp(cappa * log(constants.RDG * delp / delz * pt))
 
 
 @utils.stencil()
@@ -294,7 +287,7 @@ def moist_pkz(
         )  # if (nwat == 6) else moist_cv_default_fn(cv_air)
         q_con[0, 0, 0] = gz
         cappa = set_cappa(qvapor, cvm, r_vir)
-        # pkz = compute_pkz_func(delp, delz, pt, cappa)
+        pkz = compute_pkz_func(delp, delz, pt, cappa)
 
 
 def region_mode(j_2d, grid):
@@ -407,13 +400,6 @@ def compute_pt(
         origin=origin,
         domain=domain,
     )
-    # TODO push theis inside stencil one we can do exp and log there
-    tmpslice = (slice(grid.is_, grid.ie + 1), jslice, slice(0, grid.npz))
-    pt[tmpslice] = pt[tmpslice] * np.exp(
-        cappa[tmpslice]
-        / (1.0 - cappa[tmpslice])
-        * np.log(constants.RDG * delp[tmpslice] / delz[tmpslice] * pt[tmpslice])
-    )
 
 
 def compute_pkz(
@@ -456,16 +442,6 @@ def compute_pkz(
         spec.namelist.nwat,
         origin=origin,
         domain=domain,
-    )
-    tmpslice = (slice(grid.is_, grid.ie + 1), jslice, slice(0, grid.npz))
-    compute_pkz_slice(pkz, cappa, delp, delz, pt, tmpslice)
-
-
-# TODO remove and replace with stencil below
-def compute_pkz_slice(pkz, cappa, delp, delz, pt, tmpslice):
-    pkz[tmpslice] = np.exp(
-        cappa[tmpslice]
-        * np.log(constants.RDG * delp[tmpslice] / delz[tmpslice] * pt[tmpslice])
     )
 
 
@@ -577,7 +553,9 @@ def fvsetup_stencil(
         )  # if (nwat == 6) else moist_cv_default_fn(cv_air)
         dp1 = zvir * qvapor
         cappa = constants.RDGAS / (constants.RDGAS + cvm / (1.0 + dp1))
-        # pkz = exp(cappa * np.log(constants.RDG * delp * pt * (1.0 + dp1) * (1.0 - q_con) / delz))
+        pkz = exp(
+            cappa * log(constants.RDG * delp * pt * (1.0 + dp1) * (1.0 - q_con) / delz)
+        )
         # else:
         #    dp1 = 0
         #    pkz = exp(constants.KAPPA * log(constants.RDG * delp * pt / delz)
@@ -624,21 +602,4 @@ def fv_setup(
         spec.namelist.moist_phys,
         origin=grid.compute_origin(),
         domain=grid.domain_shape_compute(),
-    )
-    # TODO push theis inside stencil one we can do exp and log there. refacroting out the exp and log works, but down stream validation challenges brough us back
-    tmpslice = (
-        slice(grid.is_, grid.ie + 1),
-        slice(grid.js, grid.je + 1),
-        slice(0, grid.npz),
-    )
-    pkz[tmpslice] = np.exp(
-        cappa[tmpslice]
-        * np.log(
-            constants.RDG
-            * delp[tmpslice]
-            * pt[tmpslice]
-            * (1.0 + dp1[tmpslice])
-            * (1.0 - q_con[tmpslice])
-            / delz[tmpslice]
-        )
     )

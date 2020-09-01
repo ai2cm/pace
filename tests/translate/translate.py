@@ -209,7 +209,9 @@ class TranslateFortranData2Py:
                 out[serialname] = var4d
             else:
                 data_result.synchronize()
-                out[serialname] = np.squeeze(np.asarray(data_result)[self.grid.slice_dict(ds)])
+                out[serialname] = np.squeeze(
+                    np.asarray(data_result)[self.grid.slice_dict(ds)]
+                )
             if "kaxis" in info:
                 out[serialname] = np.moveaxis(out[serialname], 2, info["kaxis"])
         return out

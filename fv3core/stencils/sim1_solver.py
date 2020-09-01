@@ -12,7 +12,7 @@ sd = utils.sd
 
 
 @utils.stencil()
-def initial(
+def sim1_solver(
     w: sd,
     dm: sd,
     gm: sd,
@@ -20,40 +20,41 @@ def initial(
     ptr: sd,
     pm: sd,
     pe: sd,
-    g_rat: sd,
-    bb: sd,
-    dd: sd,
-    w1: sd,
+    pem: sd,
+    wsr: sd,
+    cp3: sd,
+    dt: float,
+    t1g: float,
+    rdt: float,
+    p_fac: float,
 ):
+    # TODO: we only want to bottom level of wsr, so this could be removed once wsr_top is a 2d field
+    with computation(FORWARD):
+        with interval(0, 1):
+            wsr_top = wsr
+        with interval(1, None):
+            wsr_top = wsr_top[0, 0, -1]
+
     with computation(PARALLEL), interval(...):
+        pe = exp(gm * log(-dm / dz * constants.RDGAS * ptr)) - pm
         w1 = w
-        # pe = (-dm / dz * constants.RDGAS * ptr)**gm - pm
     with computation(PARALLEL):
-        with interval(0, -1):
+        with interval(0, -2):
             g_rat = dm / dm[0, 0, 1]
             bb = 2.0 * (1.0 + g_rat)
             dd = 3.0 * (pe + g_rat * pe[0, 0, 1])
-        with interval(-1, None):
+        with interval(-2, -1):
             bb = 2.0
             dd = 3.0 * pe
+    # bet[i,j,k] = bb[i,j,0]
+    with computation(FORWARD):
+        with interval(0, 1):
+            bet = bb
+        with interval(1, None):
+            bet = bet[0, 0, -1]
 
-
-@utils.stencil()
-def w_solver(
-    aa: sd,
-    bet: sd,
-    g_rat: sd,
-    gam: sd,
-    pp: sd,
-    dd: sd,
-    gm: sd,
-    dz: sd,
-    pem: sd,
-    dm: sd,
-    pe: sd,
-    bb: sd,
-    t1g: float,
-):
+    ### stencils: w_solver
+    # {
     with computation(PARALLEL):
         with interval(0, 1):
             pp = 0.0
@@ -68,34 +69,15 @@ def w_solver(
         pp = pp - gam * pp[0, 0, 1]
         # w solver
         aa = t1g * 0.5 * (gm[0, 0, -1] + gm) / (dz[0, 0, -1] + dz) * (pem + pp)
-
-
-@utils.stencil()
-def w_pe_dz_compute(
-    dm: sd,
-    w1: sd,
-    pp: sd,
-    aa: sd,
-    gm: sd,
-    dz: sd,
-    pem: sd,
-    wsr_top: sd,
-    bb: sd,
-    g_rat: sd,
-    bet: sd,
-    gam: sd,
-    p1: sd,
-    pe: sd,
-    w: sd,
-    pm: sd,
-    ptr: sd,
-    cp3: sd,
-    maxp: sd,
-    dt: float,
-    t1g: float,
-    rdt: float,
-    p_fac: float,
-):
+    # }
+    ## updates on bet:
+    with computation(FORWARD):
+        with interval(0, 1):
+            bet = dm[0, 0, 0] - aa[0, 0, 1]
+        with interval(1, None):
+            bet = bet[0, 0, -1]
+    ### w_pe_dz_compute
+    # {
     with computation(FORWARD):
         with interval(0, 1):
             w = (dm * w1 + dt * pp[0, 0, 1]) / bet
@@ -126,8 +108,8 @@ def w_pe_dz_compute(
             ]
     with computation(PARALLEL), interval(0, -1):
         maxp = p_fac * pm if p_fac * dm > p1 + pm else p1 + pm
-        # dz = -dm * constants.RDGAS * ptr * exp((cp3 - 1.0) * log(maxp)
-        # dz = -dm * constants.RDGAS * ptr * maxp ** (cp3 - 1.0)
+        dz = -dm * constants.RDGAS * ptr * exp((cp3 - 1.0) * log(maxp))
+    # }
 
 
 # TODO: implement MOIST_CAPPA=false
@@ -137,29 +119,10 @@ def solve(is_, ie, js, je, dt, gm, cp3, pe, dm, pm, pem, w, dz, ptr, wsr):
     njc = je - js + 1
     simshape = pe.shape
     simorigin = (is_, js, 0)
-    simdomain = (nic, njc, grid.npz)
     simdomainplus = (nic, njc, grid.npz + 1)
-    g_rat = utils.make_storage_from_shape(simshape, simorigin)
-    bb = utils.make_storage_from_shape(simshape, simorigin)
-    aa = utils.make_storage_from_shape(simshape, simorigin)
-    dd = utils.make_storage_from_shape(simshape, simorigin)
-    gam = utils.make_storage_from_shape(simshape, simorigin)
-    w1 = utils.make_storage_from_shape(simshape, simorigin)
-    pp = utils.make_storage_from_shape(simshape, simorigin)
-    p1 = utils.make_storage_from_shape(simshape, simorigin)
-    pp = utils.make_storage_from_shape(simshape, simorigin)
     t1g = 2.0 * dt * dt
     rdt = 1.0 / dt
-    tmpslice = (slice(is_, ie + 1), slice(js, je + 1), slice(0, grid.npz))
-    # putting this into stencil removing the exp and log from the equation makes it not validate
-    pe[tmpslice] = (
-        np.exp(
-            gm[tmpslice]
-            * np.log(-dm[tmpslice] / dz[tmpslice] * constants.RDGAS * ptr[tmpslice])
-        )
-        - pm[tmpslice]
-    )
-    initial(
+    sim1_solver(
         w,
         dm,
         gm,
@@ -167,68 +130,13 @@ def solve(is_, ie, js, je, dt, gm, cp3, pe, dm, pm, pem, w, dz, ptr, wsr):
         ptr,
         pm,
         pe,
-        g_rat,
-        bb,
-        dd,
-        w1,
-        origin=simorigin,
-        domain=simdomain,
-    )
-    bet = utils.make_storage_data(bb.data[:, :, 0], simshape)
-    w_solver(
-        aa,
-        bet,
-        g_rat,
-        gam,
-        pp,
-        dd,
-        gm,
-        dz,
         pem,
-        dm,
-        pe,
-        bb,
-        t1g,
-        origin=simorigin,
-        domain=simdomainplus,
-    )
-
-    # reset bet column to the new value. TODO reuse the same storage
-    bet = utils.make_storage_data(dm.data[:, :, 0] - aa.data[:, :, 1], simshape)
-    wsr_top = utils.make_storage_data(wsr.data[:, :, 0], simshape)
-    # TODO remove when put exponential function into stencil
-    maxp = utils.make_storage_from_shape(simshape, simorigin)
-    w_pe_dz_compute(
-        dm,
-        w1,
-        pp,
-        aa,
-        gm,
-        dz,
-        pem,
-        wsr_top,
-        bb,
-        g_rat,
-        bet,
-        gam,
-        p1,
-        pe,
-        w,
-        pm,
-        ptr,
+        wsr,
         cp3,
-        maxp,
         dt,
         t1g,
         rdt,
         spec.namelist.p_fac,
         origin=simorigin,
         domain=simdomainplus,
-    )
-    # TODO put back into w_pe_dz stencil when have exp and log
-    dz[tmpslice] = (
-        -dm[tmpslice]
-        * constants.RDGAS
-        * ptr[tmpslice]
-        * np.exp((cp3[tmpslice] - 1.0) * np.log(maxp[tmpslice]))
     )

@@ -19,6 +19,7 @@ backend = None  # Options: numpy, gtmc, gtx86, gtcuda, debug, dawn:gtmc
 rebuild = True
 _dtype = np.float_
 sd = gtscript.Field[_dtype]
+si = gtscript.Field[np.int_]
 halo = 3
 origin = (halo, halo, 0)
 # TODO get from field_table
@@ -132,9 +133,9 @@ def make_storage_data_from_2d(
         shape2d = full_shape[0:2]
     isize, jsize = array2d.shape
     full_np_arr_2d = np.zeros(shape2d)
-    full_np_arr_2d[
-        istart : istart + isize, jstart : jstart + jsize
-    ] = asarray(array2d, type(full_np_arr_2d))
+    full_np_arr_2d[istart : istart + isize, jstart : jstart + jsize] = asarray(
+        array2d, type(full_np_arr_2d)
+    )
     # full_np_arr_3d = np.lib.stride_tricks.as_strided(full_np_arr_2d, shape=full_shape, strides=(*full_np_arr_2d.strides, 0))
     if dummy:
         full_np_arr_3d = full_np_arr_2d.reshape(full_shape)
@@ -196,9 +197,12 @@ def make_storage_data_from_1d(
     )
 
 
-def make_storage_from_shape(shape, origin):
+def make_storage_from_shape(shape, origin, dtype=np.float64):
     return gt.storage.from_array(
-        data=np.zeros(shape), backend=backend, default_origin=origin, shape=shape,
+        data=np.zeros(shape, dtype=dtype),
+        backend=backend,
+        default_origin=origin,
+        shape=shape,
     )
 
 
@@ -335,7 +339,10 @@ def extrap_corner(p0, p1, p2, q1, q2):
 
 
 def asarray(array, to_type=np.ndarray, dtype=None, order=None):
-    if cp and (isinstance(array.data, cp.ndarray) or isinstance(array.data, cp.cuda.memory.MemoryPointer)):
+    if cp and (
+        isinstance(array.data, cp.ndarray)
+        or isinstance(array.data, cp.cuda.memory.MemoryPointer)
+    ):
         if to_type is np.ndarray:
             order = "F" if order is None else order
             return cp.asnumpy(array, order=order)

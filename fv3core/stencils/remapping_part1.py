@@ -5,7 +5,6 @@ from gt4py.gtscript import computation, interval, PARALLEL
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.stencils.map_single as map_single
 import fv3core.stencils.mapn_tracer as mapn_tracer
-import numpy as np
 import fv3core.stencils.copy_stencil as cp
 
 sd = utils.sd
@@ -35,18 +34,15 @@ def undo_delz_adjust(delp: sd, delz: sd):
 
 @utils.stencil()
 def pressure_updates(
-    pe1: sd,
-    pe2: sd,
-    pe: sd,
-    ak: sd,
-    bk: sd,
-    delp: sd,
-    pe_bottom: sd,
-    pn2: sd,
-    peln: sd,
+    pe1: sd, pe2: sd, pe: sd, ak: sd, bk: sd, delp: sd, ps: sd, pn2: sd, peln: sd,
 ):
+    with computation(BACKWARD):
+        with interval(-1, None):
+            ps = pe
+        with interval(0, -1):
+            ps = ps[0, 0, 1]
     with computation(FORWARD), interval(1, -1):
-        pe2 = ak + bk * pe_bottom
+        pe2 = ak + bk * ps
     with computation(FORWARD), interval(0, -1):
         delp = pe2[0, 0, 1] - pe2
     with computation(PARALLEL):
@@ -57,9 +53,21 @@ def pressure_updates(
 
 
 @utils.stencil()
-def pressures_mapu(
-    pe: sd, pe1: sd, ak: sd, bk: sd, pe_bottom: sd, pe1_bottom: sd, pe0: sd, pe3: sd
-):
+def pn2_and_pk(pe2: sd, pn2: sd, pk: sd, akap: float):
+    with computation(PARALLEL), interval(...):
+        pn2 = log(pe2)
+        pk = exp(akap * pn2)
+
+
+@utils.stencil()
+def pressures_mapu(pe: sd, pe1: sd, ak: sd, bk: sd, pe0: sd, pe3: sd):
+    with computation(BACKWARD):
+        with interval(-1, None):
+            pe_bottom = pe
+            pe1_bottom = pe
+        with interval(0, -1):
+            pe_bottom = pe_bottom[0, 0, 1]
+            pe1_bottom = pe1_bottom[0, 0, 1]
     with computation(FORWARD):
         with interval(0, 1):
             pe0 = pe
@@ -71,7 +79,12 @@ def pressures_mapu(
 
 
 @utils.stencil()
-def pressures_mapv(pe: sd, ak: sd, bk: sd, pe_bottom: sd, pe0: sd, pe3: sd):
+def pressures_mapv(pe: sd, ak: sd, bk: sd, pe0: sd, pe3: sd):
+    with computation(BACKWARD):
+        with interval(-1, None):
+            pe_bottom = pe
+        with interval(0, -1):
+            pe_bottom = pe_bottom[0, 0, 1]
     with computation(FORWARD):
         with interval(0, 1):
             pe3 = ak
@@ -92,11 +105,6 @@ def copy_j_adjacent(pe2: sd):
 def update_ua(pe2: sd, ua: sd):
     with computation(PARALLEL), interval(0, -1):
         ua = pe2[0, 0, 1]
-
-
-# TODO remove this, this is a hack to deal with the fact that gz is a column
-def reset_1d_x(gz):
-    return utils.make_storage_data(np.squeeze(gz[:, :, spec.grid.npz - 1]), gz.shape)
 
 
 def compute(
@@ -161,25 +169,10 @@ def compute(
                 delz,
                 r_vir,
             )
-            gz = reset_1d_x(gz)
-            cvm = reset_1d_x(cvm)
     if not hydrostatic:
         delz_adjust(
             delp, delz, origin=grid.compute_origin(), domain=grid.domain_shape_compute()
         )
-    pe_bottom = utils.make_storage_data(
-        utils.repeat(pe.data[:, :, grid.npz :], pe.shape[2], axis=2), pe.shape
-    )
-    pe1_bottom = utils.make_storage_data(
-        utils.repeat(pe1.data[:, :, grid.npz :], pe1.shape[2], axis=2), pe1.shape
-    )
-    # TODO ps is a 2d stencil...
-    cp.copy_stencil(
-        pe1_bottom,
-        ps,
-        origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute_buffer_k(),
-    )
     pressure_updates(
         pe1,
         pe2,
@@ -187,7 +180,7 @@ def compute(
         ak,
         bk,
         dp2,
-        pe_bottom,
+        ps,
         pn2,
         peln,
         origin=grid.compute_origin(),
@@ -200,12 +193,14 @@ def compute(
     cp.copy_stencil(
         dp2, delp, origin=grid.compute_origin(), domain=grid.domain_shape_compute()
     )
-    # TODO merge into pressure updates when math available
-    islice = slice(grid.is_, grid.ie + 1)
-    jslice = slice(grid.js, grid.je + 1)
-    kslice = slice(1, grid.npz)
-    pn2[islice, jslice, kslice] = np.log(pe2[islice, jslice, kslice])
-    pk[islice, jslice, kslice] = np.exp(akap * pn2[islice, jslice, kslice])
+    pn2_and_pk(
+        pe2,
+        pn2,
+        pk,
+        akap,
+        origin=grid.compute_origin(),
+        domain=grid.domain_shape_compute(),
+    )
     if spec.namelist.kord_tm < 0:
         map_single.compute(
             pt,
@@ -288,29 +283,11 @@ def compute(
             delz,
             r_vir,
         )
-        # fix gz
-        gz = reset_1d_x(gz)
-        cvm = reset_1d_x(cvm)
     # if do_omega:
     # dp2 update, if larger than pe0 and smaller than one level up, update omega and  exit
 
-    pe_bottom = utils.make_storage_data(
-        utils.repeat(pe.data[:, :, -1:], pe.shape[2], axis=2), pe.shape
-    )
-    pe1_bottom = utils.make_storage_data(
-        utils.repeat(pe1.data[:, :, -1:], pe.shape[2], axis=2), pe.shape
-    )
     pressures_mapu(
-        pe,
-        pe1,
-        ak,
-        bk,
-        pe_bottom,
-        pe1_bottom,
-        pe0,
-        pe3,
-        origin=grid.compute_origin(),
-        domain=domain_jextra,
+        pe, pe1, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_jextra,
     )
     map_single.compute(
         u,
@@ -325,14 +302,7 @@ def compute(
     )
     domain_iextra = (grid.nic + 1, grid.njc, grid.npz + 1)
     pressures_mapv(
-        pe,
-        ak,
-        bk,
-        pe_bottom,
-        pe0,
-        pe3,
-        origin=grid.compute_origin(),
-        domain=domain_iextra,
+        pe, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_iextra,
     )
     map_single.compute(
         v, pe0, pe3, gz, -1, grid.is_, grid.ie + 1, spec.namelist.kord_mt

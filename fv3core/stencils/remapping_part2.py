@@ -7,7 +7,6 @@ import fv3core.utils.global_constants as constants
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.stencils.saturation_adjustment as saturation_adjustment
 import fv3core.stencils.basic_operations as basic
-import numpy as np
 
 sd = utils.sd
 
@@ -100,9 +99,12 @@ def compute(
     dpln = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
     if spec.namelist.do_sat_adj:
         fast_mp_consv = not do_adiabatic_init and consv > constants.CONSV_MIN
-        # TODO pfull is a 1d var, does not need to be a storage
-        kmp = np.where(pfull[grid.is_, grid.js, :] > 10.0e2)[0]
-        kmp = kmp[0] if len(kmp) > 0 else grid.npz - 1
+        # TODO pfull is a 1d var
+        kmp = grid.npz - 1
+        for k in range(pfull.shape[2]):
+            if pfull[grid.is_, grid.js, k] > 10.0e2:
+                kmp = k
+                break
     if last_step and not do_adiabatic_init:
         if consv > constants.CONSV_MIN:
             if spec.namelist.hydrostatic:
@@ -199,8 +201,6 @@ def compute(
             akap,
             kmp,
         )
-        # if not spec.namelist.hydrostatic:
-        #    moist_cv.compute_pkz_stencil_func(pkz, cappa, delp, delz, pt, origin=kmp_origin, domain=kmp_domain)
         if fast_mp_consv:
             sum_te(te, te0_2d, origin=kmp_origin, domain=kmp_domain)
     if last_step:
