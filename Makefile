@@ -12,12 +12,12 @@ VOLUMES ?=
 MOUNTS ?=
 
 TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
-FV3_IMAGE ?=$(GCR_URL)/fv3core:$(FV3CORE_VERSION)
 FV3UTIL_DIR=$(CWD)/external/fv3util
 DEV_MOUNTS = '-v $(CWD)/fv3core:/fv3core/fv3core -v $(CWD)/tests:/fv3core/tests -v $(FV3UTIL_DIR):/usr/src/fv3util'
 FV3_INSTALL_TAG=master
 FV3_INSTALL_TARGET=fv3core-install
 FV3_INSTALL_IMAGE=$(GCR_URL)/$(FV3_INSTALL_TARGET):$(FV3_INSTALL_TAG)
+FV3_IMAGE ?=$(GCR_URL)/fv3core:$(FV3CORE_VERSION)-$(FV3_INSTALL_TAG)
 
 
 TEST_DATA_CONTAINER=/test_data
@@ -26,6 +26,7 @@ PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
 PYTHON_INIT_FILES = $(shell git ls-files | grep '__init__.py')
 TEST_DATA_TARFILE=dat_files.tar.gz
 TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
+BASE_INSTALL?=fv3core-install-serialbox
 
 clean:
 	find . -name ""
@@ -39,6 +40,7 @@ update_submodules:
 build_environment: 
 	DOCKER_BUILDKIT=1 docker build \
 		--network host \
+		--build-arg MIDBASE=$(BASE_INSTALL) \
 		-f $(CWD)/docker/Dockerfile.build_environment \
 		-t $(FV3_INSTALL_IMAGE) \
 		--target $(FV3_INSTALL_TARGET) \
