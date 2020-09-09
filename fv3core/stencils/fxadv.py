@@ -182,16 +182,16 @@ def compute_ut(uc_in, vc_in, cosa_u, rsin_u, ut_in):
         origin=ut_origin,
         domain=(grid().nic + 3, grid().njd, grid().npz),
     )
-    ut.data[: grid().is_ - 1, :, :] = ut_in.data[: grid().is_ - 1, :, :]
-    ut.data[grid().ie + 3 :, :, :] = ut_in.data[grid().ie + 3 :, :, :]
+    ut[: grid().is_ - 1, :, :] = ut_in[: grid().is_ - 1, :, :]
+    ut[grid().ie + 3 :, :, :] = ut_in[grid().ie + 3 :, :, :]
     # fill in for j /=2 and j/=3
     if grid().south_edge:
-        ut.data[:, grid().js - 1 : grid().js + 1, :] = ut_in.data[
+        ut[:, grid().js - 1 : grid().js + 1, :] = ut_in[
             :, grid().js - 1 : grid().js + 1, :
         ]
     # fill in for j/=npy-1 and j /= npy
     if grid().north_edge:
-        ut.data[:, grid().je : grid().je + 2, :] = ut_in.data[
+        ut[:, grid().je : grid().je + 2, :] = ut_in[
             :, grid().je : grid().je + 2, :
         ]
     return ut
@@ -245,12 +245,12 @@ def compute_vt(uc_in, vc_in, cosa_v, rsin_v, sin_sg2, sin_sg4, vt_in):
     )  # , origin=(0, 2, 0), domain=(vt.shape[0]-1, main_j_size, vt.shape[2]))
     # cannot pass vt_in array to stencil without it zeroing out data outside specified domain
     # So... for now copying in so the 'undefined' answers match
-    vt.data[:, : grid().js - 1, :] = vt_in.data[:, : grid().js - 1, :]
-    vt.data[:, grid().je + 3, :] = vt_in.data[:, grid().je + 3, :]
+    vt[:, : grid().js - 1, :] = vt_in[:, : grid().js - 1, :]
+    vt[:, grid().je + 3, :] = vt_in[:, grid().je + 3, :]
     if grid().south_edge:
-        vt.data[:, grid().js, :] = vt_in.data[:, grid().js, :]
+        vt[:, grid().js, :] = vt_in[:, grid().js, :]
     if grid().north_edge:
-        vt.data[:, grid().je + 1, :] = vt_in.data[:, grid().je + 1, :]
+        vt[:, grid().je + 1, :] = vt_in[:, grid().je + 1, :]
     return vt
 
 

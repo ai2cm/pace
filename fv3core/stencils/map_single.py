@@ -204,8 +204,8 @@ def lagrangian_contributions_stencil(
     orig = spec.grid.default_origin()
     q2_adds = utils.make_storage_from_shape(q4_1.shape, origin=orig)
     for k_eul in klevs:
-        eulerian_top_pressure = pe2.data[:, :, k_eul]
-        eulerian_bottom_pressure = pe2.data[:, :, k_eul + 1]
+        eulerian_top_pressure = pe2[:, :, k_eul]
+        eulerian_bottom_pressure = pe2[:, :, k_eul + 1]
         top_p = utils.repeat(eulerian_top_pressure[:, :, np.newaxis], km + 1, axis=2)
         bot_p = utils.repeat(eulerian_bottom_pressure[:, :, np.newaxis], km + 1, axis=2)
         ptop = utils.make_storage_data(top_p, q4_1.shape)
@@ -228,7 +228,7 @@ def lagrangian_contributions_stencil(
         )
 
         q1[i1 : i2 + 1, jslice, k_eul] = utils.sum(
-            q2_adds.data[i1 : i2 + 1, jslice, :], axis=2
+            q2_adds[i1 : i2 + 1, jslice, :], axis=2
         )
 
 

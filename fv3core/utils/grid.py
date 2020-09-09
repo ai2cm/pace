@@ -351,15 +351,15 @@ class Grid:
         return (int(self.nid + 1), int(self.njd + 1), int(self.npz))
 
     def copy_right_edge(self, var, i_index, j_index):
-        return np.copy(var.data[i_index:, :, :]), np.copy(var.data[:, j_index:, :])
+        return np.copy(var[i_index:, :, :]), np.copy(var[:, j_index:, :])
 
     def insert_left_edge(self, var, edge_data_i, i_index, edge_data_j, j_index):
-        var.data[:i_index, :, :] = edge_data_i
-        var.data[:, :j_index, :] = edge_data_j
+        var[:i_index, :, :] = edge_data_i
+        var[:, :j_index, :] = edge_data_j
 
     def insert_right_edge(self, var, edge_data_i, i_index, edge_data_j, j_index):
-        var.data[i_index:, :, :] = edge_data_i
-        var.data[:, j_index:, :] = edge_data_j
+        var[i_index:, :, :] = edge_data_i
+        var[:, j_index:, :] = edge_data_j
 
     def uvar_edge_halo(self, var):
         return self.copy_right_edge(var, self.ie + 2, self.je + 1)
@@ -373,7 +373,7 @@ class Grid:
         return u_edge_i, u_edge_j, v_edge_i, v_edge_j
 
     def insert_edge(self, var, edge_data, index):
-        var.data[index] = edge_data
+        var[index] = edge_data
 
     def append_edges(self, uvar, u_edge_i, u_edge_j, vvar, v_edge_i, v_edge_j):
         self.insert_right_edge(uvar, u_edge_i, self.ie + 2, u_edge_j, self.je + 1)
@@ -382,18 +382,18 @@ class Grid:
     def overwrite_edges(self, var, edgevar, left_i_index, left_j_index):
         self.insert_left_edge(
             var,
-            edgevar.data[:left_i_index, :, :],
+            edgevar[:left_i_index, :, :],
             left_i_index,
-            edgevar.data[:, :left_j_index, :],
+            edgevar[:, :left_j_index, :],
             left_j_index,
         )
         right_i_index = self.ie + left_i_index
         right_j_index = self.ie + left_j_index
         self.insert_right_edge(
             var,
-            edgevar.data[right_i_index:, :, :],
+            edgevar[right_i_index:, :, :],
             right_i_index,
-            edgevar.data[:, right_j_index:, :],
+            edgevar[:, right_j_index:, :],
             right_j_index,
         )
 

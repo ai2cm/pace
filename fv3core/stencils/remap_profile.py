@@ -478,7 +478,7 @@ def compute(qs, a4_1, a4_2, a4_3, a4_4, delp, km, i1, i2, iv, kord, jslice, qmin
 
     qs_field = utils.make_storage_from_shape(delp.shape, origin=full_orig)
 
-    qs_field[i1 : i2 + 1, js : js + j_extent, -1] = qs.data[
+    qs_field[i1 : i2 + 1, js : js + j_extent, -1] = qs[
         i1 : i2 + 1, js : js + j_extent, 0
     ]  # make a qs that can be passed to a stencil
 

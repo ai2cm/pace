@@ -128,9 +128,9 @@ def adjust_w_and_qcon(w: sd, delp: sd, dw: sd, q_con: sd, damp_w: float):
 
 
 @utils.stencil()
-def heatdamping_setup(ub: sd, vt: sd, fy: sd, u: sd, gy: sd, rdx: sd):
+def heatdamping_setup(ub: sd, vt: sd, fy: sd, u: sd, gy: sd, rdx: sd, sign: float):
     with computation(PARALLEL), interval(...):
-        ub[0, 0, 0] = (ub + vt) * rdx
+        ub[0, 0, 0] = (ub + sign * vt) * rdx
         fy[0, 0, 0] = u * rdx
         gy[0, 0, 0] = fy * ub
 
@@ -185,16 +185,18 @@ def heat_from_damping(
         u,
         gy,
         grid().rdx,
+        1.0,
         origin=grid().compute_origin(),
         domain=grid().domain_shape_compute_y(),
     )
     heatdamping_setup(
         vb,
-        -ut,
+        ut,
         fx,
         v,
         gx,
         grid().rdy,
+        -1.0,
         origin=grid().compute_origin(),
         domain=grid().domain_shape_compute_x(),
     )
@@ -692,8 +694,8 @@ def d_sw(
             origin=grid().compute_origin(),
             domain=grid().domain_shape_compute_y(),
         )
-        basic.add_term_stencil(
-            -ut,
+        basic.subtract_term_stencil(
+            ut,
             v,
             origin=grid().compute_origin(),
             domain=grid().domain_shape_compute_x(),
