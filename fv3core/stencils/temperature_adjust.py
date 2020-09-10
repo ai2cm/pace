@@ -16,11 +16,11 @@ def compute_pkz_tempadjust(
     delp: sd, delz: sd, cappa: sd, heat_source: sd, delt: sd, pt: sd, pkz: sd
 ):
     with computation(PARALLEL), interval(...):
-        # pkz = exp(cappa / (1. - cappa) * log(constants.RDG * delp / delz * pt))
-        # pkz = (constants.RDG * delp / delz * pt) ** (cappa / (1.0 - cappa))
+        pkz = exp(cappa / (1.0 - cappa) * log(constants.RDG * delp / delz * pt))
+        pkz = (constants.RDG * delp / delz * pt) ** (cappa / (1.0 - cappa))
         dtmp = heat_source / (constants.CV_AIR * delp)
-        abs_dtmp = absolute_value(dtmp)
-        deltmin = min_fn(delt, abs_dtmp) * dtmp / abs_dtmp
+        abs_dtmp = abs(dtmp)
+        deltmin = min(delt, abs_dtmp) * dtmp / abs_dtmp
         pt = pt + deltmin / pkz
 
 
@@ -33,21 +33,6 @@ def compute(pt, pkz, heat_source, delz, delp, cappa, n_con, bdt):
     delt = utils.make_storage_data_from_1d(
         delt_column, delz.shape, origin=grid.default_origin()
     )
-    # TODO move into stencil when have math functions
-    isl = slice(grid.is_, grid.ie + 1)
-    jsl = slice(grid.js, grid.je + 1)
-    ksl = slice(0, n_con)
-    pkz[isl, jsl, ksl] = np.exp(
-        cappa[isl, jsl, ksl]
-        / (1 - cappa[isl, jsl, ksl])
-        * np.log(
-            constants.RDG
-            * delp[isl, jsl, ksl]
-            / delz[isl, jsl, ksl]
-            * pt[isl, jsl, ksl]
-        )
-    )
-
     compute_pkz_tempadjust(
         delp,
         delz,
