@@ -355,9 +355,7 @@ def compute_blbr_ord8plus(q, iord, jfirst, jlast, is1, ie1, kstart, nk):
     else:
         raise Exception("Unimplemented iord=" + str(iord))
 
-    if spec.namelist.grid_type < 3 and not (
-        grid.nested or spec.namelist.regional
-    ):
+    if spec.namelist.grid_type < 3 and not (grid.nested or spec.namelist.regional):
         y_edge_domain = (1, dj, nk)
         do_xt_minmax = True
         if grid.west_edge:

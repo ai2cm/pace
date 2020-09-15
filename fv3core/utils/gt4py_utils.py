@@ -222,7 +222,6 @@ def make_storage_from_shape(shape, origin, dtype=np.float64):
         default_origin=origin,
         shape=shape,
         managed_memory=managed_memory,
-
     )
 
 

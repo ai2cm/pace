@@ -102,9 +102,7 @@ def make_grid_from_namelist(namelist, rank):
 
 
 def namelist_externals_decorator():
-    dec = gtscript.stencil(
-        backend=utils.backend, rebuild=utils.rebuild
-    )
+    dec = gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
     return dec
 
 

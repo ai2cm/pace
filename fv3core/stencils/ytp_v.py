@@ -151,9 +151,7 @@ def compute(c, u, v, flux):
         else:
             raise Exception("Unimplemented jord=" + str(jord))
 
-        if spec.namelist.grid_type < 3 and not (
-            grid.nested or spec.namelist.regional
-        ):
+        if spec.namelist.grid_type < 3 and not (grid.nested or spec.namelist.regional):
             x_edge_domain = (di, 1, nk)
             do_xt_minmax = False
             if grid.south_edge:

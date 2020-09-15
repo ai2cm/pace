@@ -20,6 +20,7 @@ c2 = 11.0 / 14.0
 c3 = 5.0 / 14.0
 OFFSET = 2
 
+
 def grid():
     return spec.grid
 
@@ -205,7 +206,7 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
     lagrange_interpolation_x_p1(
         v, vtmp, origin=(is1, js1, 0), domain=(ie1 - is1 + 1, je1 - js1 + 1, grid.npz)
     )
-   
+
     # tmp edges
     if grid.south_edge:
         avg_box(

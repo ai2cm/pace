@@ -191,9 +191,7 @@ def compute_ut(uc_in, vc_in, cosa_u, rsin_u, ut_in):
         ]
     # fill in for j/=npy-1 and j /= npy
     if grid().north_edge:
-        ut[:, grid().je : grid().je + 2, :] = ut_in[
-            :, grid().je : grid().je + 2, :
-        ]
+        ut[:, grid().je : grid().je + 2, :] = ut_in[:, grid().je : grid().je + 2, :]
     return ut
 
 

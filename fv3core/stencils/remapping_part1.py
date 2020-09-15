@@ -228,15 +228,7 @@ def compute(
         )
     # TODO if nq > 5:
     mapn_tracer.compute(
-        pe1,
-        pe2,
-        dp2,
-        tracers,
-        nq,
-        0.0,
-        grid.is_,
-        grid.ie,
-        abs(spec.namelist.kord_tr),
+        pe1, pe2, dp2, tracers, nq, 0.0, grid.is_, grid.ie, abs(spec.namelist.kord_tr),
     )
     # TODO else if nq > 0:
     # TODO map1_q2, fillz
@@ -290,15 +282,7 @@ def compute(
         pe, pe1, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_jextra,
     )
     map_single.compute(
-        u,
-        pe0,
-        pe3,
-        gz,
-        -1,
-        grid.is_,
-        grid.ie,
-        spec.namelist.kord_mt,
-        j_interface=True,
+        u, pe0, pe3, gz, -1, grid.is_, grid.ie, spec.namelist.kord_mt, j_interface=True,
     )
     domain_iextra = (grid.nic + 1, grid.njc, grid.npz + 1)
     pressures_mapv(

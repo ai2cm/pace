@@ -286,9 +286,7 @@ def column_namelist_options(k):
             col["d2_divg"] = max_d2_bg1()
             lowest_kvals(col)
         if k == 2 and spec.namelist.d2_bg_k2 > 0.05:
-            col["d2_divg"] = max(
-                spec.namelist.d2_bg, 0.2 * spec.namelist.d2_bg_k2
-            )
+            col["d2_divg"] = max(spec.namelist.d2_bg, 0.2 * spec.namelist.d2_bg_k2)
             set_low_kvals(col)
     return col
 
