@@ -125,7 +125,7 @@ run_tests_parallel:
 	$(MAKE) test_base_parallel
 
 get_test_data:
-	if [ ! -d $(TEST_DATA_HOST) ]; then \
+	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ]; then \
 	mkdir -p $(TEST_DATA_HOST) && \
 	gsutil -m rsync $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/ $(TEST_DATA_HOST) && \
 	$(MAKE) unpack_test_data ;\
