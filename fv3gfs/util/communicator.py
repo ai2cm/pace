@@ -5,6 +5,7 @@ from . import constants
 from .boundary import Boundary
 from .rotate import rotate_scalar_data, rotate_vector_data
 from .buffer import array_buffer, send_buffer, recv_buffer
+from ._timing import Timer
 import logging
 
 __all__ = [
@@ -14,7 +15,7 @@ __all__ = [
     "HaloUpdateRequest",
 ]
 
-logger = logging.getLogger("fv3util")
+logger = logging.getLogger("fv3gfs.util")
 
 
 def bcast_metadata_list(comm, quantity_list):
@@ -109,6 +110,7 @@ class TileCommunicator(Communicator):
                 metadata.np.empty(shape, dtype=metadata.dtype),
                 dims=metadata.dims,
                 units=metadata.units,
+                gt4py_backend=metadata.gt4py_backend,
             )
         if self.rank == constants.MASTER_RANK:
             with array_buffer(
@@ -171,6 +173,7 @@ class TileCommunicator(Communicator):
                         units=send_quantity.units,
                         origin=tuple([0 for dim in send_quantity.dims]),
                         extent=tile_extent,
+                        gt4py_backend=send_quantity.gt4py_backend,
                     )
                 for rank in range(self.partitioner.total_ranks):
                     to_slice = self.partitioner.subtile_slice(
@@ -274,6 +277,9 @@ class TileCommunicator(Communicator):
 class CubedSphereCommunicator(Communicator):
     """Performs communications within a cubed sphere"""
 
+    timer: Timer
+    partitioner: CubedSpherePartitioner
+
     def __init__(self, comm, partitioner: CubedSpherePartitioner):
         """Initialize a CubedSphereCommunicator.
         
@@ -281,7 +287,8 @@ class CubedSphereCommunicator(Communicator):
             comm: mpi4py.Comm object
             partitioner: cubed sphere partitioner
         """
-        self.partitioner = partitioner
+        self.partitioner: CubedSpherePartitioner = partitioner
+        self.timer: Timer = Timer()
         self._tile_communicator = None
         self._boundaries = None
         super(CubedSphereCommunicator, self).__init__(comm)
@@ -339,21 +346,23 @@ class CubedSphereCommunicator(Communicator):
     def _Isend_halos(self, quantity: Quantity, n_points: int):
         send_requests = []
         for boundary_type, boundary in self.boundaries.items():
-            data = boundary.send_view(quantity, n_points=n_points)
-            # sending data across the boundary will rotate the data
-            # n_clockwise_rotations times, due to the difference in axis orientation.\
-            # Thus we rotate that number of times counterclockwise before sending,
-            # to get the right final orientation
-            data = rotate_scalar_data(
-                data, quantity.dims, quantity.np, -boundary.n_clockwise_rotations
-            )
+            with self.timer.clock("pack"):
+                data = boundary.send_view(quantity, n_points=n_points)
+                # sending data across the boundary will rotate the data
+                # n_clockwise_rotations times, due to the difference in axis orientation.\
+                # Thus we rotate that number of times counterclockwise before sending,
+                # to get the right final orientation
+                data = rotate_scalar_data(
+                    data, quantity.dims, quantity.np, -boundary.n_clockwise_rotations
+                )
             send_requests.append(self._Isend(quantity.np, data, dest=boundary.to_rank))
         return send_requests
 
     def _Irecv_halos(self, quantity: Quantity, n_points: int):
         recv_requests = []
         for boundary_type, boundary in self.boundaries.items():
-            dest_view = boundary.recv_view(quantity, n_points=n_points)
+            with self.timer.clock("unpack"):
+                dest_view = boundary.recv_view(quantity, n_points=n_points)
             logger.debug(
                 "finish_halo_update: retrieving boundary_type=%s shape=%s from_rank=%s to_rank=%s",
                 boundary_type,
@@ -413,24 +422,25 @@ class CubedSphereCommunicator(Communicator):
     def _Isend_vector_halos(self, x_quantity, y_quantity, n_points):
         send_requests = []
         for boundary_type, boundary in self.boundaries.items():
-            x_data = boundary.send_view(x_quantity, n_points=n_points)
-            y_data = boundary.send_view(y_quantity, n_points=n_points)
-            logger.debug("%s %s", x_data.shape, y_data.shape)
-            x_data, y_data = rotate_vector_data(
-                x_data,
-                y_data,
-                -boundary.n_clockwise_rotations,
-                x_quantity.dims,
-                x_quantity.np,
-            )
-            logger.debug(
-                "%s %s %s %s %s",
-                boundary.from_rank,
-                boundary.to_rank,
-                boundary.n_clockwise_rotations,
-                x_data.shape,
-                y_data.shape,
-            )
+            with self.timer.clock("pack"):
+                x_data = boundary.send_view(x_quantity, n_points=n_points)
+                y_data = boundary.send_view(y_quantity, n_points=n_points)
+                logger.debug("%s %s", x_data.shape, y_data.shape)
+                x_data, y_data = rotate_vector_data(
+                    x_data,
+                    y_data,
+                    -boundary.n_clockwise_rotations,
+                    x_quantity.dims,
+                    x_quantity.np,
+                )
+                logger.debug(
+                    "%s %s %s %s %s",
+                    boundary.from_rank,
+                    boundary.to_rank,
+                    boundary.n_clockwise_rotations,
+                    x_data.shape,
+                    y_data.shape,
+                )
             send_requests.append(
                 self._Isend(x_quantity.np, x_data, dest=boundary.to_rank)
             )
@@ -442,24 +452,28 @@ class CubedSphereCommunicator(Communicator):
     def _Isend(self, numpy, in_array, **kwargs):
         # don't want to use a buffer here, because we leave this scope and can't close
         # the context manager. might figure out a way to do it later
-        array = numpy.ascontiguousarray(in_array)
-        return self.comm.Isend(array, **kwargs)
+        with self.timer.clock("pack"):
+            array = numpy.ascontiguousarray(in_array)
+        with self.timer.clock("Isend"):
+            return self.comm.Isend(array, **kwargs)
 
     def _Send(self, numpy, in_array, **kwargs):
-        with send_buffer(numpy.empty, in_array) as sendbuf:
+        with send_buffer(numpy.empty, in_array, timer=self.timer) as sendbuf:
             self.comm.Send(sendbuf, **kwargs)
 
     def _Recv(self, numpy, out_array, **kwargs):
-        with recv_buffer(numpy.empty, out_array) as recvbuf:
-            self.comm.Recv(recvbuf, **kwargs)
+        with recv_buffer(numpy.empty, out_array, timer=self.timer) as recvbuf:
+            with self.timer.clock("Recv"):
+                self.comm.Recv(recvbuf, **kwargs)
 
     def _Irecv(self, numpy, out_array, **kwargs):
         # we can't perform a true Irecv because we need to receive the data into a
         # buffer and then copy that buffer into the output array. Instead we will
         # just do a Recv() when wait is called.
         def recv():
-            with recv_buffer(numpy.empty, out_array) as recvbuf:
-                self.comm.Recv(recvbuf, **kwargs)
+            with recv_buffer(numpy.empty, out_array, timer=self.timer) as recvbuf:
+                with self.timer.clock("Recv"):
+                    self.comm.Recv(recvbuf, **kwargs)
 
         return FunctionRequest(recv)
 

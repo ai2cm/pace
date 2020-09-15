@@ -1,28 +1,35 @@
 import tempfile
 import zarr
-from datetime import datetime, timedelta
+import cftime
+from datetime import timedelta
 import pytest
 import xarray as xr
 import copy
-import fv3util
+import fv3gfs.util
 import logging
-from fv3util.testing import DummyComm
+from fv3gfs.util.testing import DummyComm
 
 
 logger = logging.getLogger("test_zarr_monitor")
 
 
 @pytest.fixture(params=["one_step", "three_steps"])
-def n_times(request):
+def n_times(request, fast):
     if request.param == "one_step":
-        return 1
+        if fast:
+            pytest.skip("running in fast mode")
+        else:
+            return 1
     elif request.param == "three_steps":
         return 3
 
 
-@pytest.fixture
-def start_time():
-    return datetime(2010, 1, 1)
+@pytest.fixture(
+    params=[cftime.DatetimeJulian, cftime.Datetime360Day, cftime.DatetimeNoLeap]
+)
+def start_time(request):
+    date_type = request.param
+    return date_type(2010, 1, 1)
 
 
 @pytest.fixture
@@ -52,12 +59,12 @@ def layout():
 
 @pytest.fixture
 def tile_partitioner(layout):
-    return fv3util.TilePartitioner(layout)
+    return fv3gfs.util.TilePartitioner(layout)
 
 
 @pytest.fixture
 def cube_partitioner(tile_partitioner):
-    return fv3util.CubedSpherePartitioner(tile_partitioner)
+    return fv3gfs.util.CubedSpherePartitioner(tile_partitioner)
 
 
 @pytest.fixture(params=["empty", "one_var_2d", "one_var_3d", "two_vars"])
@@ -66,18 +73,22 @@ def base_state(request, nz, ny, nx, numpy):
         return {}
     elif request.param == "one_var_2d":
         return {
-            "var1": fv3util.Quantity(numpy.ones([ny, nx]), dims=("y", "x"), units="m",)
+            "var1": fv3gfs.util.Quantity(
+                numpy.ones([ny, nx]), dims=("y", "x"), units="m",
+            )
         }
     elif request.param == "one_var_3d":
         return {
-            "var1": fv3util.Quantity(
+            "var1": fv3gfs.util.Quantity(
                 numpy.ones([nz, ny, nx]), dims=("z", "y", "x"), units="m",
             )
         }
     elif request.param == "two_vars":
         return {
-            "var1": fv3util.Quantity(numpy.ones([ny, nx]), dims=("y", "x"), units="m",),
-            "var2": fv3util.Quantity(
+            "var1": fv3gfs.util.Quantity(
+                numpy.ones([ny, nx]), dims=("y", "x"), units="m",
+            ),
+            "var2": fv3gfs.util.Quantity(
                 numpy.ones([nz, ny, nx]), dims=("z", "y", "x"), units="degK",
             ),
         }
@@ -97,12 +108,12 @@ def state_list(base_state, n_times, start_time, time_step, numpy):
     return state_list
 
 
-def test_monitor_file_store(state_list, cube_partitioner, numpy):
+def test_monitor_file_store(state_list, cube_partitioner, numpy, start_time):
     with tempfile.TemporaryDirectory(suffix=".zarr") as tempdir:
-        monitor = fv3util.ZarrMonitor(tempdir, cube_partitioner)
+        monitor = fv3gfs.util.ZarrMonitor(tempdir, cube_partitioner)
         for state in state_list:
             monitor.store(state)
-        validate_store(state_list, tempdir, numpy)
+        validate_store(state_list, tempdir, numpy, start_time)
         validate_xarray_can_open(tempdir)
 
 
@@ -111,8 +122,9 @@ def validate_xarray_can_open(dirname):
     xr.open_zarr(dirname)
 
 
-def validate_store(states, filename, numpy):
+def validate_store(states, filename, numpy, start_time):
     nt = len(states)
+    calendar = start_time.calendar
 
     def assert_no_missing_names(store, state):
         missing_names = set(states[0].keys()).difference(store.array_keys())
@@ -126,7 +138,11 @@ def validate_store(states, filename, numpy):
 
     def validate_array_dimensions_and_attributes(name, array):
         if name == "time":
-            target_attrs = {"_ARRAY_DIMENSIONS": ["time"]}
+            target_attrs = {
+                "_ARRAY_DIMENSIONS": ["time"],
+                "units": "seconds since 2010-01-01 00:00:00",
+                "calendar": calendar,
+            }
         else:
             target_attrs = states[0][name].attrs
             target_attrs["_ARRAY_DIMENSIONS"] = ["time", "tile"] + list(
@@ -137,7 +153,12 @@ def validate_store(states, filename, numpy):
     def validate_array_values(name, array):
         if name == "time":
             for i, s in enumerate(states):
-                assert array[i] == numpy.datetime64(s["time"])
+                value = cftime.num2date(
+                    array[i],
+                    units="seconds since 2010-01-01 00:00:00",
+                    calendar=calendar,
+                )
+                assert value == s["time"]
         else:
             for i, s in enumerate(states):
                 numpy.testing.assert_array_equal(array[i, 0, :], s[name].view[:])
@@ -170,17 +191,17 @@ def test_monitor_file_store_multi_rank_state(
     nz, ny, nx = shape
     ny_rank = int(ny / layout[0] + ny_rank_add)
     nx_rank = int(nx / layout[1] + nx_rank_add)
-    grid = fv3util.TilePartitioner(layout)
-    time = datetime(2010, 6, 20, 6, 0, 0)
+    grid = fv3gfs.util.TilePartitioner(layout)
+    time = cftime.DatetimeJulian(2010, 6, 20, 6, 0, 0)
     timestep = timedelta(hours=1)
     total_ranks = 6 * layout[0] * layout[1]
-    partitioner = fv3util.CubedSpherePartitioner(grid)
+    partitioner = fv3gfs.util.CubedSpherePartitioner(grid)
     store = zarr.storage.DirectoryStore(tmpdir)
     shared_buffer = {}
     monitor_list = []
     for rank in range(total_ranks):
         monitor_list.append(
-            fv3util.ZarrMonitor(
+            fv3gfs.util.ZarrMonitor(
                 store,
                 partitioner,
                 "w",
@@ -193,7 +214,7 @@ def test_monitor_file_store_multi_rank_state(
         for rank in range(total_ranks):
             state = {
                 "time": time + i_t * timestep,
-                "var1": fv3util.Quantity(
+                "var1": fv3gfs.util.Quantity(
                     numpy.ones([nz, ny_rank, nx_rank]), dims=dims, units=units,
                 ),
             }
@@ -210,50 +231,60 @@ def test_monitor_file_store_multi_rank_state(
         pytest.param(
             (1, 1),
             (7, 6, 6),
-            [fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM],
+            [fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
             (7, 6, 6),
             id="single_chunk_tile_3d",
         ),
         pytest.param(
             (1, 1),
             (6, 6),
-            [fv3util.Y_DIM, fv3util.X_DIM],
+            [fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
             (6, 6),
             id="single_chunk_tile_2d",
         ),
-        pytest.param((1, 1), (6,), [fv3util.Y_DIM], (6,), id="single_chunk_tile_1d"),
+        pytest.param(
+            (1, 1), (6,), [fv3gfs.util.Y_DIM], (6,), id="single_chunk_tile_1d"
+        ),
         pytest.param(
             (1, 1),
             (7, 6, 6),
-            [fv3util.Z_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM],
+            [
+                fv3gfs.util.Z_DIM,
+                fv3gfs.util.Y_INTERFACE_DIM,
+                fv3gfs.util.X_INTERFACE_DIM,
+            ],
             (7, 5, 5),
             id="single_chunk_tile_3d_interfaces",
         ),
         pytest.param(
             (2, 2),
             (7, 6, 6),
-            [fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM],
+            [fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
             (7, 3, 3),
             id="2_by_2_tile_3d",
         ),
         pytest.param(
             (2, 2),
             (6, 16, 6),
-            [fv3util.Y_DIM, fv3util.Z_DIM, fv3util.X_DIM],
+            [fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM, fv3gfs.util.X_DIM],
             (3, 16, 3),
             id="2_by_2_tile_3d_odd_dim_order",
         ),
         pytest.param(
             (2, 2),
             (7, 7, 7),
-            [fv3util.Z_DIM, fv3util.Y_INTERFACE_DIM, fv3util.X_INTERFACE_DIM],
+            [
+                fv3gfs.util.Z_DIM,
+                fv3gfs.util.Y_INTERFACE_DIM,
+                fv3gfs.util.X_INTERFACE_DIM,
+            ],
             (7, 3, 3),
             id="2_by_2_tile_3d_interfaces",
         ),
     ],
 )
 def test_array_chunks(layout, tile_array_shape, array_dims, target):
-    result = fv3util.zarr_monitor.array_chunks(layout, tile_array_shape, array_dims)
+    result = fv3gfs.util.zarr_monitor.array_chunks(layout, tile_array_shape, array_dims)
     assert result == target
 
 
@@ -272,8 +303,10 @@ def test_open_zarr_without_nans(cube_partitioner, numpy, backend, mask_and_scale
     store = {}
 
     # initialize store
-    monitor = fv3util.ZarrMonitor(store, cube_partitioner)
-    zero_quantity = fv3util.Quantity(numpy.zeros([10, 10]), dims=("y", "x"), units="m")
+    monitor = fv3gfs.util.ZarrMonitor(store, cube_partitioner)
+    zero_quantity = fv3gfs.util.Quantity(
+        numpy.zeros([10, 10]), dims=("y", "x"), units="m"
+    )
     monitor.store({"var": zero_quantity})
 
     # open w/o dask using chunks=None
@@ -288,15 +321,41 @@ def test_values_preserved(cube_partitioner, numpy):
     store = {}
 
     # initialize store
-    monitor = fv3util.ZarrMonitor(store, cube_partitioner)
-    quantity = fv3util.Quantity(
+    monitor = fv3gfs.util.ZarrMonitor(store, cube_partitioner)
+    quantity = fv3gfs.util.Quantity(
         numpy.random.uniform(size=(10, 10)), dims=dims, units=units
     )
     monitor.store({"var": quantity})
 
     # open w/o dask using chunks=None
     dataset = xr.open_zarr(store, chunks=None)
-    numpy.testing.assert_almost_equal(dataset["var"][0, 0, :, :].values, quantity.data)
+    numpy.testing.assert_array_almost_equal(
+        dataset["var"][0, 0, :, :].values, quantity.data
+    )
     assert dataset["var"].shape[:2] == (1, 6)
     assert dataset["var"].attrs["units"] == units
     assert dataset["var"].dims[2:] == dims
+
+
+@pytest.fixture
+def state_list_with_inconsistent_calendars(base_state, numpy):
+    state_list = []
+    state_times = [cftime.DatetimeNoLeap(2000, 1, 1), cftime.Datetime360Day(2000, 1, 2)]
+    for i in range(2):
+        new_state = copy.deepcopy(base_state)
+        for name in set(new_state.keys()).difference(["time"]):
+            new_state[name].view[:] = numpy.random.randn(*new_state[name].extent)
+        state_list.append(new_state)
+        new_state["time"] = state_times[i]
+    return state_list
+
+
+def test_monitor_file_store_inconsistent_calendars(
+    state_list_with_inconsistent_calendars, cube_partitioner, numpy
+):
+    with tempfile.TemporaryDirectory(suffix=".zarr") as tempdir:
+        monitor = fv3gfs.util.ZarrMonitor(tempdir, cube_partitioner)
+        initial_state, final_state = state_list_with_inconsistent_calendars
+        monitor.store(initial_state)
+        with pytest.raises(ValueError, match="Calendar type"):
+            monitor.store(final_state)

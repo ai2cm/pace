@@ -4,6 +4,15 @@ History
 latest
 ------
 
+Major changes:
+- Use `cftime.datetime` objects to represent datetimes instead
+of `datetime.datetime` objects.  This results in times stored in a format compatible with
+the fortran model, and accurate internal representation of times with the calendar specified
+in the `coupler_nml` namelist.
+- `Timer` class is added, with methods `start` and `stop`, and properties `clock` (context manager), and `times` (dictionary of accumulated timing)
+- `CubedSphereCommunicator` instances now have a `.timer` attribute, which accumulates times for "pack", "unpack", "Isend", and "Recv" during halo updates
+- make `SubtileGridSizer.from_tile_params` public API
+
 v0.5.1
 ------
 

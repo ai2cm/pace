@@ -1,7 +1,12 @@
 import copy
 import datetime
 import pytest
-import fv3util
+import fv3gfs.util
+
+try:
+    import gt4py
+except ImportError:
+    gt4py = None
 
 
 @pytest.fixture(params=[(1, 1), (3, 3)])
@@ -20,19 +25,25 @@ def n_tile_halo(request):
 
 
 @pytest.fixture(params=["x,y", "y,x", "xi,y", "x,y,z", "z,y,x", "y,z,x"])
-def dims(request):
+def dims(request, fast):
     if request.param == "x,y":
-        return [fv3util.X_DIM, fv3util.Y_DIM]
+        return [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM]
     elif request.param == "y,x":
-        return [fv3util.Y_DIM, fv3util.X_DIM]
+        if fast:
+            pytest.skip("running in fast mode")
+        else:
+            return [fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM]
     elif request.param == "xi,y":
-        return [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM]
+        return [fv3gfs.util.X_INTERFACE_DIM, fv3gfs.util.Y_DIM]
     elif request.param == "x,y,z":
-        return [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM]
+        return [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM]
     elif request.param == "z,y,x":
-        return [fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM]
+        if fast:
+            pytest.skip("running in fast mode")
+        else:
+            return [fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM]
     elif request.param == "y,z,x":
-        return [fv3util.Y_DIM, fv3util.Z_DIM, fv3util.X_DIM]
+        return [fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM, fv3gfs.util.X_DIM]
     else:
         raise NotImplementedError()
 
@@ -50,12 +61,12 @@ def time():
 @pytest.fixture()
 def dim_lengths(layout):
     return {
-        fv3util.X_DIM: 2 * layout[1],
-        fv3util.X_INTERFACE_DIM: 2 * layout[1] + 1,
-        fv3util.Y_DIM: 2 * layout[0],
-        fv3util.Y_INTERFACE_DIM: 2 * layout[0] + 1,
-        fv3util.Z_DIM: 3,
-        fv3util.Z_INTERFACE_DIM: 4,
+        fv3gfs.util.X_DIM: 2 * layout[1],
+        fv3gfs.util.X_INTERFACE_DIM: 2 * layout[1] + 1,
+        fv3gfs.util.Y_DIM: 2 * layout[0],
+        fv3gfs.util.Y_INTERFACE_DIM: 2 * layout[0] + 1,
+        fv3gfs.util.Z_DIM: 3,
+        fv3gfs.util.Z_INTERFACE_DIM: 4,
     }
 
 
@@ -66,9 +77,9 @@ def communicator_list(layout):
     return_list = []
     for rank in range(total_ranks):
         return_list.append(
-            fv3util.TileCommunicator(
-                fv3util.testing.DummyComm(rank, total_ranks, shared_buffer),
-                fv3util.TilePartitioner(layout),
+            fv3gfs.util.TileCommunicator(
+                fv3gfs.util.testing.DummyComm(rank, total_ranks, shared_buffer),
+                fv3gfs.util.TilePartitioner(layout),
             )
         )
     return return_list
@@ -101,7 +112,7 @@ def tile_quantity(dims, units, dim_lengths, tile_extent, n_tile_halo, numpy):
 def scattered_quantities(tile_quantity, layout, n_rank_halo, numpy):
     return_list = []
     total_ranks = layout[0] * layout[1]
-    partitioner = fv3util.TilePartitioner(layout)
+    partitioner = fv3gfs.util.TilePartitioner(layout)
     for rank in range(total_ranks):
         # partitioner is tested in other tests, here we assume it works
         subtile_slice = partitioner.subtile_slice(
@@ -134,16 +145,47 @@ def get_quantity(dims, units, extent, n_halo, numpy):
     shape = list(copy.deepcopy(extent))
     origin = [0 for dim in dims]
     for i, dim in enumerate(dims):
-        if dim in fv3util.HORIZONTAL_DIMS:
+        if dim in fv3gfs.util.HORIZONTAL_DIMS:
             origin[i] += n_halo
             shape[i] += 2 * n_halo
-    return fv3util.Quantity(
+    return fv3gfs.util.Quantity(
         numpy.zeros(shape), dims, units, origin=tuple(origin), extent=tuple(extent),
     )
 
 
+@pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
+@pytest.mark.parametrize("dims, layout", [["x,y,z", (2, 2)]], indirect=True)
+def test_gathered_quantity_has_storage(
+    tile_quantity, scattered_quantities, communicator_list, time, backend
+):
+    for communicator, rank_quantity in reversed(
+        list(zip(communicator_list, scattered_quantities))
+    ):
+        result = communicator.gather(send_quantity=rank_quantity)
+        if communicator.rank == 0:
+            print(result.gt4py_backend, result.metadata)
+            assert isinstance(result.storage, gt4py.storage.storage.Storage)
+        else:
+            assert result is None
+
+
+@pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
+@pytest.mark.parametrize("dims, layout", [["x,y,z", (2, 2)]], indirect=True)
+def test_scattered_quantity_has_storage(
+    tile_quantity, communicator_list, time, backend
+):
+    result_list = []
+    for communicator in communicator_list:
+        if communicator.rank == 0:
+            result_list.append(communicator.scatter(send_quantity=tile_quantity))
+        else:
+            result_list.append(communicator.scatter())
+    for rank, result in enumerate(result_list):
+        assert isinstance(result.storage, gt4py.storage.storage.Storage)
+
+
 def test_tile_gather_state(
-    tile_quantity, scattered_quantities, communicator_list, time
+    tile_quantity, scattered_quantities, communicator_list, time, backend
 ):
     for communicator, rank_quantity in reversed(
         list(zip(communicator_list, scattered_quantities))
@@ -159,6 +201,7 @@ def test_tile_gather_state(
     assert result.dims == tile_quantity.dims
     assert result.units == tile_quantity.units
     assert result.extent == tile_quantity.extent
+    assert isinstance(result.data, type(tile_quantity.data))
     tile_quantity.np.testing.assert_array_equal(result.view[:], tile_quantity.view[:])
 
 

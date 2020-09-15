@@ -1,8 +1,8 @@
-from typing import Iterable
+from typing import Iterable, BinaryIO
 import os
 import xarray as xr
 import copy
-from . import fortran_info
+from ._properties import RestartProperties, RESTART_PROPERTIES
 from . import io, filesystem, constants
 from .quantity import Quantity
 from .partitioner import get_tile_index
@@ -22,6 +22,7 @@ def open_restart(
     label: str = "",
     only_names: Iterable[str] = None,
     to_state: dict = None,
+    tracer_properties: RestartProperties = None,
 ):
     """Load restart files output by the Fortran model into a state dictionary.
 
@@ -36,13 +37,19 @@ def open_restart(
     Returns:
         state: model state dictionary
     """
+    if tracer_properties is None:
+        restart_properties = RESTART_PROPERTIES
+    else:
+        restart_properties = {**tracer_properties, **RESTART_PROPERTIES}
     rank = communicator.rank
     tile_index = communicator.partitioner.tile_index(rank)
     state = {}
     if communicator.tile.rank == constants.MASTER_RANK:
         for file in restart_files(dirname, tile_index, label):
             state.update(
-                load_partial_state_from_restart_file(file, only_names=only_names)
+                load_partial_state_from_restart_file(
+                    file, restart_properties, only_names=only_names
+                )
             )
         coupler_res_filename = get_coupler_res_filename(dirname, label)
         if filesystem.is_file(coupler_res_filename):
@@ -59,7 +66,7 @@ def get_coupler_res_filename(dirname, label):
     return os.path.join(dirname, prepend_label(COUPLER_RES_NAME, label))
 
 
-def restart_files(dirname, tile_index, label):
+def restart_files(dirname, tile_index, label) -> BinaryIO:
     for filename in restart_filenames(dirname, tile_index, label):
         with filesystem.open(filename, "rb") as f:
             yield f
@@ -90,18 +97,18 @@ def get_rank_suffix(rank, total_ranks):
     return rank_suffix
 
 
-def apply_dims(da, new_dims):
+def _apply_dims(da, new_dims):
     """Applies new dimension names to the last dimensions of the given DataArray."""
     return da.rename(dict(zip(da.dims[-len(new_dims) :], new_dims)))
 
 
-def apply_restart_metadata(state):
+def _apply_restart_metadata(state, restart_properties: RestartProperties):
     new_state = {}
     for name, da in state.items():
-        if name in fortran_info.properties_by_std_name:
-            properties = fortran_info.properties_by_std_name[name]
+        if name in restart_properties.keys():
+            properties = restart_properties[name]
             new_dims = properties["dims"]
-            new_state[name] = apply_dims(da, new_dims)
+            new_state[name] = _apply_dims(da, new_dims)
             new_state[name].attrs["units"] = properties["units"]
         else:
             new_state[name] = copy.deepcopy(da)
@@ -125,10 +132,12 @@ def prepend_label(filename, label=None):
         return filename
 
 
-def load_partial_state_from_restart_file(file, only_names=None):
+def load_partial_state_from_restart_file(
+    file, restart_properties: RestartProperties, only_names=None
+):
     ds = xr.open_dataset(file).isel(Time=0).drop("Time")
-    state = map_keys(ds.data_vars, fortran_info.get_restart_standard_names())
-    state = apply_restart_metadata(state)
+    state = map_keys(ds.data_vars, _get_restart_standard_names(restart_properties))
+    state = _apply_restart_metadata(state, restart_properties)
     if only_names is None:
         only_names = state.keys()
     state = {  # remove any variables that don't have restart metadata
@@ -141,3 +150,14 @@ def load_partial_state_from_restart_file(file, only_names=None):
             array.load()
             state[name] = Quantity.from_data_array(array)
     return state
+
+
+def _get_restart_standard_names(restart_properties: RestartProperties = None):
+    """Return a list of variable names needed for a smooth restart. By default uses
+    restart_properties from RESTART_PROPERTIES."""
+    if restart_properties is None:
+        restart_properties = RESTART_PROPERTIES
+    return_dict = {}
+    for std_name, properties in restart_properties.items():
+        return_dict[properties["restart_name"]] = std_name
+    return return_dict

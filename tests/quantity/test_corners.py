@@ -1,5 +1,5 @@
 import pytest
-import fv3util
+import fv3gfs.util
 import numpy as np
 
 
@@ -10,7 +10,7 @@ def units():
 
 @pytest.fixture
 def dims(request):
-    return [fv3util.X_DIM, fv3util.Y_DIM]
+    return [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM]
 
 
 @pytest.fixture
@@ -35,14 +35,14 @@ def layout(request):
 
 @pytest.fixture
 def quantity(shape, dims, units, origin, extent, numpy):
-    return fv3util.Quantity(
+    return fv3gfs.util.Quantity(
         numpy.zeros(shape), dims=dims, units=units, origin=origin, extent=extent
     )
 
 
 @pytest.fixture
 def tile_partitioner(layout):
-    return fv3util.TilePartitioner(layout)
+    return fv3gfs.util.TilePartitioner(layout)
 
 
 @pytest.fixture
@@ -72,7 +72,7 @@ def test_fill_scalar_corners_copies_from_halo(
     quantity.view.northwest[-n_halo:0, 0:n_halo] = quantity.np.nan
     quantity.view.northeast[0:n_halo, 0:n_halo] = quantity.np.nan
     quantity.view[:] = 2
-    fv3util.fill_scalar_corners(
+    fv3gfs.util.fill_scalar_corners(
         quantity=quantity,
         direction=direction,
         tile_partitioner=tile_partitioner,
@@ -99,7 +99,7 @@ def test_fill_scalar_corners_copies_from_halo(
     "quantity_in, direction, layout, rank, n_halo, reference",
     [
         pytest.param(
-            fv3util.Quantity(
+            fv3gfs.util.Quantity(
                 np.array(
                     [
                         [0, 1, 2, 3, 4, 5],
@@ -110,7 +110,7 @@ def test_fill_scalar_corners_copies_from_halo(
                         [30, 31, 32, 33, 34, 35],
                     ]
                 ).T,
-                dims=[fv3util.X_DIM, fv3util.Y_DIM],
+                dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM],
                 units="m",
                 origin=(2, 2),
                 extent=(2, 2),
@@ -132,7 +132,7 @@ def test_fill_scalar_corners_copies_from_halo(
             id="all_corners_x",
         ),
         pytest.param(
-            fv3util.Quantity(
+            fv3gfs.util.Quantity(
                 np.array(
                     [
                         [0, 1, 2, 0, 3, 4, 5],
@@ -144,7 +144,7 @@ def test_fill_scalar_corners_copies_from_halo(
                         [30, 31, 32, 6, 33, 34, 35],
                     ]
                 ).T,
-                dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM],
+                dims=[fv3gfs.util.X_INTERFACE_DIM, fv3gfs.util.Y_INTERFACE_DIM],
                 units="m",
                 origin=(2, 2),
                 extent=(3, 3),
@@ -167,7 +167,7 @@ def test_fill_scalar_corners_copies_from_halo(
             id="all_corners_x_interfaces",
         ),
         pytest.param(
-            fv3util.Quantity(
+            fv3gfs.util.Quantity(
                 np.array(
                     [
                         [0, 1, 2, 3, 4, 5],
@@ -179,7 +179,7 @@ def test_fill_scalar_corners_copies_from_halo(
                         [30, 31, 32, 33, 34, 35],
                     ]
                 ).T,
-                dims=[fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
+                dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_INTERFACE_DIM],
                 units="m",
                 origin=(2, 2),
                 extent=(2, 3),
@@ -202,7 +202,7 @@ def test_fill_scalar_corners_copies_from_halo(
             id="all_corners_x_one_iface_dim",
         ),
         pytest.param(
-            fv3util.Quantity(
+            fv3gfs.util.Quantity(
                 np.array(
                     [
                         [0, 1, 2, 0, 3, 4, 5],
@@ -214,7 +214,7 @@ def test_fill_scalar_corners_copies_from_halo(
                         [30, 31, 32, 6, 33, 34, 35],
                     ]
                 ).T,
-                dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM],
+                dims=[fv3gfs.util.X_INTERFACE_DIM, fv3gfs.util.Y_INTERFACE_DIM],
                 units="m",
                 origin=(2, 2),
                 extent=(3, 3),
@@ -237,7 +237,7 @@ def test_fill_scalar_corners_copies_from_halo(
             id="all_corners_y_interfaces",
         ),
         pytest.param(
-            fv3util.Quantity(
+            fv3gfs.util.Quantity(
                 np.array(
                     [
                         [0, 1, 2, 3, 4, 5],
@@ -248,7 +248,7 @@ def test_fill_scalar_corners_copies_from_halo(
                         [30, 31, 32, 33, 34, 35],
                     ]
                 ).T,
-                dims=[fv3util.X_DIM, fv3util.Y_DIM],
+                dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM],
                 units="m",
                 origin=(2, 2),
                 extent=(2, 2),
@@ -270,7 +270,7 @@ def test_fill_scalar_corners_copies_from_halo(
             id="one_corner_x",
         ),
         pytest.param(
-            fv3util.Quantity(
+            fv3gfs.util.Quantity(
                 np.array(
                     [
                         [0, 1, 2, 3, 4, 5],
@@ -281,7 +281,7 @@ def test_fill_scalar_corners_copies_from_halo(
                         [30, 31, 32, 33, 34, 35],
                     ]
                 ).T,
-                dims=[fv3util.X_DIM, fv3util.Y_DIM],
+                dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM],
                 units="m",
                 origin=(2, 2),
                 extent=(2, 2),
@@ -305,10 +305,11 @@ def test_fill_scalar_corners_copies_from_halo(
     ],
     indirect=["layout"],
 )
+@pytest.mark.cpu_only
 def test_fill_corners(
     quantity_in, direction, tile_partitioner, rank, n_halo, reference
 ):
-    fv3util.fill_scalar_corners(
+    fv3gfs.util.fill_scalar_corners(
         quantity=quantity_in,
         direction=direction,
         tile_partitioner=tile_partitioner,

@@ -3,7 +3,7 @@ import pytest
 import os
 import ctypes
 
-from fv3util import capture_stream
+from fv3gfs.util import capture_stream
 
 
 def get_libc():
@@ -24,6 +24,7 @@ def printpy(_, text):
 
 
 @pytest.mark.parametrize("print_", [printc, printpy])
+@pytest.mark.cpu_only
 def test_capture_stream_python_print(capfdbinary, print_):
     text = "hello world"
 

@@ -1,7 +1,7 @@
 include LICENSE
 include README.md
 
-recursive-include fv3util *.json
+recursive-include fv3gfs *.json *.yml
 recursive-include tests *.py *.sh
 recursive-include tests/data *
 

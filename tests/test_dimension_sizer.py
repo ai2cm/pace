@@ -1,5 +1,5 @@
 import pytest
-import fv3util
+import fv3gfs.util
 from collections import namedtuple
 
 
@@ -9,12 +9,16 @@ def nx_tile(request):
 
 
 @pytest.fixture(params=[48, 96])
-def ny_tile(request):
+def ny_tile(request, fast):
+    if fast and request.param == 96:
+        pytest.skip("running in fast mode")
     return request.param
 
 
 @pytest.fixture(params=[60, 80])
-def nz(request):
+def nz(request, fast):
+    if fast and request.param == 80:
+        pytest.skip("running in fast mode")
     return request.param
 
 
@@ -54,16 +58,16 @@ def namelist(nx_tile, ny_tile, nz, layout):
 @pytest.fixture(params=["from_namelist", "from_tile_params"])
 def sizer(request, nx_tile, ny_tile, nz, layout, namelist, extra_dimension_lengths):
     if request.param == "from_tile_params":
-        sizer = fv3util.SubtileGridSizer._from_tile_params(
+        sizer = fv3gfs.util.SubtileGridSizer.from_tile_params(
             nx_tile,
             ny_tile,
             nz,
-            fv3util.N_HALO_DEFAULT,
+            fv3gfs.util.N_HALO_DEFAULT,
             extra_dimension_lengths,
             layout,
         )
     elif request.param == "from_namelist":
-        sizer = fv3util.SubtileGridSizer.from_namelist(namelist)
+        sizer = fv3gfs.util.SubtileGridSizer.from_namelist(namelist)
     else:
         raise NotImplementedError()
     return sizer
@@ -97,73 +101,79 @@ DimCase = namedtuple("DimCase", ["dims", "origin", "extent", "shape"])
 def dim_case(request, nx, ny, nz):
     if request.param == "x_only":
         return DimCase(
-            (fv3util.X_DIM,),
-            (fv3util.N_HALO_DEFAULT,),
+            (fv3gfs.util.X_DIM,),
+            (fv3gfs.util.N_HALO_DEFAULT,),
             (nx,),
-            (2 * fv3util.N_HALO_DEFAULT + nx + 1,),
+            (2 * fv3gfs.util.N_HALO_DEFAULT + nx + 1,),
         )
     elif request.param == "x_interface_only":
         return DimCase(
-            (fv3util.X_INTERFACE_DIM,),
-            (fv3util.N_HALO_DEFAULT,),
+            (fv3gfs.util.X_INTERFACE_DIM,),
+            (fv3gfs.util.N_HALO_DEFAULT,),
             (nx + 1,),
-            (2 * fv3util.N_HALO_DEFAULT + nx + 1,),
+            (2 * fv3gfs.util.N_HALO_DEFAULT + nx + 1,),
         )
     elif request.param == "y_only":
         return DimCase(
-            (fv3util.Y_DIM,),
-            (fv3util.N_HALO_DEFAULT,),
+            (fv3gfs.util.Y_DIM,),
+            (fv3gfs.util.N_HALO_DEFAULT,),
             (ny,),
-            (2 * fv3util.N_HALO_DEFAULT + ny + 1,),
+            (2 * fv3gfs.util.N_HALO_DEFAULT + ny + 1,),
         )
     elif request.param == "y_interface_only":
         return DimCase(
-            (fv3util.Y_INTERFACE_DIM,),
-            (fv3util.N_HALO_DEFAULT,),
+            (fv3gfs.util.Y_INTERFACE_DIM,),
+            (fv3gfs.util.N_HALO_DEFAULT,),
             (ny + 1,),
-            (2 * fv3util.N_HALO_DEFAULT + ny + 1,),
+            (2 * fv3gfs.util.N_HALO_DEFAULT + ny + 1,),
         )
     elif request.param == "z_only":
-        return DimCase((fv3util.Z_DIM,), (0,), (nz,), (nz + 1,))
+        return DimCase((fv3gfs.util.Z_DIM,), (0,), (nz,), (nz + 1,))
     elif request.param == "z_interface_only":
-        return DimCase((fv3util.Z_INTERFACE_DIM,), (0,), (nz + 1,), (nz + 1,))
+        return DimCase((fv3gfs.util.Z_INTERFACE_DIM,), (0,), (nz + 1,), (nz + 1,))
     elif request.param == "x_y":
         return DimCase(
-            (fv3util.X_DIM, fv3util.Y_DIM,),
-            (fv3util.N_HALO_DEFAULT, fv3util.N_HALO_DEFAULT),
+            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM,),
+            (fv3gfs.util.N_HALO_DEFAULT, fv3gfs.util.N_HALO_DEFAULT),
             (nx, ny),
-            (2 * fv3util.N_HALO_DEFAULT + nx + 1, 2 * fv3util.N_HALO_DEFAULT + ny + 1),
+            (
+                2 * fv3gfs.util.N_HALO_DEFAULT + nx + 1,
+                2 * fv3gfs.util.N_HALO_DEFAULT + ny + 1,
+            ),
         )
     elif request.param == "z_y_x":
         return DimCase(
-            (fv3util.Z_DIM, fv3util.Y_DIM, fv3util.X_DIM,),
-            (0, fv3util.N_HALO_DEFAULT, fv3util.N_HALO_DEFAULT),
+            (fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM,),
+            (0, fv3gfs.util.N_HALO_DEFAULT, fv3gfs.util.N_HALO_DEFAULT),
             (nz, ny, nx),
             (
                 nz + 1,
-                2 * fv3util.N_HALO_DEFAULT + ny + 1,
-                2 * fv3util.N_HALO_DEFAULT + nx + 1,
+                2 * fv3gfs.util.N_HALO_DEFAULT + ny + 1,
+                2 * fv3gfs.util.N_HALO_DEFAULT + nx + 1,
             ),
         )
 
 
+@pytest.mark.cpu_only
 def test_subtile_dimension_sizer_origin(sizer, dim_case):
     result = sizer.get_origin(dim_case.dims)
     assert result == dim_case.origin
 
 
+@pytest.mark.cpu_only
 def test_subtile_dimension_sizer_extent(sizer, dim_case):
     result = sizer.get_extent(dim_case.dims)
     assert result == dim_case.extent
 
 
+@pytest.mark.cpu_only
 def test_subtile_dimension_sizer_shape(sizer, dim_case):
     result = sizer.get_shape(dim_case.dims)
     assert result == dim_case.shape
 
 
 def test_allocator_zeros(numpy, sizer, dim_case, units, dtype):
-    allocator = fv3util.QuantityFactory(sizer, numpy)
+    allocator = fv3gfs.util.QuantityFactory(sizer, numpy)
     quantity = allocator.zeros(dim_case.dims, units, dtype=dtype)
     assert quantity.units == units
     assert quantity.dims == dim_case.dims
@@ -174,7 +184,7 @@ def test_allocator_zeros(numpy, sizer, dim_case, units, dtype):
 
 
 def test_allocator_ones(numpy, sizer, dim_case, units, dtype):
-    allocator = fv3util.QuantityFactory(sizer, numpy)
+    allocator = fv3gfs.util.QuantityFactory(sizer, numpy)
     quantity = allocator.ones(dim_case.dims, units, dtype=dtype)
     assert quantity.units == units
     assert quantity.dims == dim_case.dims
@@ -185,7 +195,7 @@ def test_allocator_ones(numpy, sizer, dim_case, units, dtype):
 
 
 def test_allocator_empty(numpy, sizer, dim_case, units, dtype):
-    allocator = fv3util.QuantityFactory(sizer, numpy)
+    allocator = fv3gfs.util.QuantityFactory(sizer, numpy)
     quantity = allocator.empty(dim_case.dims, units, dtype=dtype)
     assert quantity.units == units
     assert quantity.dims == dim_case.dims

@@ -3,7 +3,7 @@ import copy
 from ..utils import ensure_contiguous
 
 
-logger = logging.getLogger("fv3util")
+logger = logging.getLogger("fv3gfs.util")
 
 
 class ConcurrencyError(Exception):

@@ -1,4 +1,4 @@
-from typing import Tuple, Iterable, Dict
+from typing import Tuple, Iterable, Dict, Union, Sequence
 from types import ModuleType
 import warnings
 import dataclasses
@@ -33,6 +33,8 @@ class QuantityMetadata:
     "ndarray-like type used to store the data"
     dtype: type
     "dtype of the data in the ndarray-like object"
+    gt4py_backend: Union[str, None] = None
+    "backend to use for gt4py storages"
 
     @property
     def dim_lengths(self) -> Dict[str, int]:
@@ -42,10 +44,10 @@ class QuantityMetadata:
     @property
     def np(self) -> ModuleType:
         """numpy-like module used to interact with the data"""
-        if issubclass(self.data_type, np.ndarray):
-            return np
-        elif issubclass(self.data_type, cupy.ndarray):
+        if issubclass(self.data_type, cupy.ndarray):
             return cupy
+        elif issubclass(self.data_type, np.ndarray):
+            return np
         else:
             raise TypeError(
                 f"quantity underlying data is of unexpected type {self.data_type}"
@@ -233,6 +235,7 @@ class Quantity:
         units: str,
         origin: Iterable[int] = None,
         extent: Iterable[int] = None,
+        gt4py_backend: Union[str, None] = None,
     ):
         """
         Initialize a Quantity.
@@ -243,9 +246,29 @@ class Quantity:
             units: units of the quantity
             origin: first point in data within the computational domain
             extent: number of points along each axis within the computational domain
+            gt4py_backend: backend to use for gt4py storages, if not given this will
+                be derived from a Storage if given as the data argument, otherwise the
+                storage attribute is disabled and will raise an exception
         """
         if isinstance(data, (int, float, list)):
             data = np.asarray(data)
+        elif gt4py is not None and isinstance(data, gt4py.storage.storage.Storage):
+            gt4py_backend = data.backend
+            if isinstance(data, gt4py.storage.storage.GPUStorage):
+                self._storage = data
+                self._data = data.gpu_view
+            elif isinstance(data, gt4py.storage.storage.CPUStorage):
+                self._storage = data
+                self._data = np.asarray(data)
+            else:
+                raise TypeError(
+                    "only storages supported are CPUStorage and GPUStorage, "
+                    f"got {type(data)}"
+                )
+        else:
+            self._storage = None
+            self._data = data
+
         if origin is None:
             origin = (0,) * len(dims)  # default origin at origin of array
         else:
@@ -260,11 +283,11 @@ class Quantity:
             extent=ensure_int_tuple(extent, "extent"),
             dims=tuple(dims),
             units=units,
-            data_type=type(data),
+            data_type=type(self._data),
             dtype=data.dtype,
+            gt4py_backend=gt4py_backend,
         )
         self._attrs = {}
-        self._data = data
         self._compute_domain_view = BoundedArrayView(
             self.data, self.dims, self.origin, self.extent
         )
@@ -275,7 +298,7 @@ class Quantity:
         data_array: xr.DataArray,
         origin: Iterable[int] = None,
         extent: Iterable[int] = None,
-    ):
+    ) -> "Quantity":
         """
         Initialize a Quantity from an xarray.DataArray.
 
@@ -316,10 +339,33 @@ class Quantity:
 
     @property
     def storage(self):
+        """A gt4py storage representing the data in this Quantity.
+
+        Will raise TypeError if the gt4py backend was not specified when initializing
+        this object, either by providing a Storage for data or explicitly specifying
+        a backend.
+        """
         if gt4py is None:
             raise ImportError("gt4py is not installed")
-        else:
-            return self.data
+        elif self._storage is None and self.gt4py_backend is None:
+            raise TypeError(
+                f"Quantity was initialized with a non-storage type and "
+                "no gt4py backend was given"
+            )
+        elif self._storage is None:
+            if isinstance(self._data, np.ndarray):
+                storage_type = gt4py.storage.storage.CPUStorage
+            elif isinstance(self._data, cupy.ndarray):
+                storage_type = gt4py.storage.storage.GPUStorage
+            self._storage = storage_type(
+                shape=self._data.shape,
+                dtype=self._data.dtype,
+                backend=self.gt4py_backend,
+                default_origin=self.origin,
+                mask=None,
+            )
+            self._storage[...] = self._data
+        return self._storage
 
     @property
     def metadata(self) -> QuantityMetadata:
@@ -329,6 +375,10 @@ class Quantity:
     def units(self) -> str:
         """units of the quantity"""
         return self.metadata.units
+
+    @property
+    def gt4py_backend(self) -> Union[str, None]:
+        return self.metadata.gt4py_backend
 
     @property
     def attrs(self) -> dict:
@@ -355,7 +405,7 @@ class Quantity:
         return self._compute_domain_view
 
     @property
-    def data(self) -> np.ndarray:
+    def data(self) -> Union[np.ndarray, cupy.ndarray]:
         """the underlying array of data"""
         return self._data
 
@@ -376,6 +426,76 @@ class Quantity:
     @property
     def np(self) -> ModuleType:
         return self.metadata.np
+
+    def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
+        """Change the dimension order of this Quantity.
+
+        If you know you are working with cell-centered variables, you can do:
+
+        >>> from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
+        >>> transposed_quantity = quantity.transpose([X_DIM, Y_DIM, Z_DIM])
+
+        To support re-ordering without checking whether quantities are on
+        cell centers or interfaces, the API supports giving a list of dimension names
+        for dimensions. For example, to re-order to X-Y-Z dimensions regardless of the
+        grid the variable is on, one could do:
+        
+        >>> from fv3gfs.util import X_DIMS, Y_DIMS, Z_DIMS
+        >>> transposed_quantity = quantity.transpose([X_DIMS, Y_DIMS, Z_DIMS])
+        
+        Args:
+            target_dims: a list of output dimensions. Instead of a single dimension
+                name, an iterable of dimensions can be used instead for any entries.
+                For example, you may want to use fv3gfs.util.X_DIMS to place an
+                x-dimension without knowing whether it is on cell centers or interfaces.
+
+        Returns:
+            transposed: Quantity with the requested output dimension order
+
+        Raises:
+            ValueError: if any of the target dimensions do not exist on this Quantity,
+                or if this Quantity contains multiple values from an iterable entry
+        """
+        target_dims = _collapse_dims(target_dims, self.dims)
+        transpose_order = [self.dims.index(dim) for dim in target_dims]
+        return Quantity(
+            self.np.transpose(self.data, transpose_order),
+            dims=transpose_sequence(self.dims, transpose_order),
+            units=self.units,
+            origin=transpose_sequence(self.origin, transpose_order),
+            extent=transpose_sequence(self.extent, transpose_order),
+            gt4py_backend=self.gt4py_backend,
+        )
+
+
+def transpose_sequence(sequence, order):
+    return sequence.__class__(sequence[i] for i in order)
+
+
+def _collapse_dims(target_dims, dims):
+    return_list = []
+    for target in target_dims:
+        if isinstance(target, str):
+            if target in dims:
+                return_list.append(target)
+            else:
+                raise ValueError(
+                    f"requested dimension {target} is not defined in "
+                    f"quantity dimensions {dims}"
+                )
+        elif isinstance(target, Iterable):
+            matches = [d for d in target if d in dims]
+            if len(matches) > 1:
+                raise ValueError(
+                    f"multiple matches for {target} found in quantity dimensions {dims}"
+                )
+            elif len(matches) == 0:
+                raise ValueError(
+                    f"no matches for {target} found in quantity dimensions {dims}"
+                )
+            else:
+                return_list.append(matches[0])
+    return return_list
 
 
 def fill_index(index, length):

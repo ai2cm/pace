@@ -1,57 +1,123 @@
-from datetime import datetime
 import os
+import tempfile
+import cftime
 import xarray as xr
 import numpy as np
 import pytest
-import fv3util
-import fv3util._legacy_restart
-from fv3util.testing import DummyComm
+import fv3gfs.util
+import fv3gfs.util._legacy_restart
+from fv3gfs.util.testing import DummyComm
 
 TEST_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 DATA_DIRECTORY = os.path.join(TEST_DIRECTORY, "data")
 
 
-@pytest.mark.parametrize("layout", [(1, 1), (3, 3)])
-def test_open_c12_restart_without_crashing(layout):
+@pytest.fixture(params=[(1, 1)])
+def layout(request):
+    return request.param
+
+
+def get_c12_restart_state_list(layout, tracer_properties):
     total_ranks = layout[0] * layout[1]
-    ny = 12 / layout[0]
-    nx = 12 / layout[1]
     shared_buffer = {}
     communicator_list = []
     for rank in range(total_ranks):
-        communicator = fv3util.CubedSphereCommunicator(
+        communicator = fv3gfs.util.CubedSphereCommunicator(
             DummyComm(rank, total_ranks, shared_buffer),
-            fv3util.CubedSpherePartitioner(fv3util.TilePartitioner(layout)),
+            fv3gfs.util.CubedSpherePartitioner(fv3gfs.util.TilePartitioner(layout)),
         )
         communicator_list.append(communicator)
     state_list = []
     for communicator in communicator_list:
         state_list.append(
-            fv3util.open_restart(
-                os.path.join(DATA_DIRECTORY, "c12_restart"), communicator
+            fv3gfs.util.open_restart(
+                os.path.join(DATA_DIRECTORY, "c12_restart"),
+                communicator,
+                tracer_properties=tracer_properties,
             )
         )
-    for state in state_list:
+    return state_list
+
+
+@pytest.mark.parametrize("layout", [(1, 1), (3, 3)])
+@pytest.mark.cpu_only
+def test_open_c12_restart(layout):
+    tracer_properties = {}
+    c12_restart_state_list = get_c12_restart_state_list(layout, tracer_properties)
+    # C12 has 12 gridcells along each tile side, we divide this across processors
+    ny = 12 / layout[0]
+    nx = 12 / layout[1]
+    for state in c12_restart_state_list:
         assert "time" in state.keys()
         assert len(state.keys()) == 63
         for name, value in state.items():
             if name == "time":
-                assert isinstance(value, datetime)
+                assert isinstance(value, cftime.DatetimeJulian)
             else:
-                assert isinstance(value, fv3util.Quantity)
+                assert isinstance(value, fv3gfs.util.Quantity)
                 assert np.sum(np.isnan(value.view[:])) == 0
                 for dim, extent in zip(value.dims, value.extent):
-                    if dim == fv3util.X_DIM:
+                    if dim == fv3gfs.util.X_DIM:
                         assert extent == nx
-                    elif dim == fv3util.X_INTERFACE_DIM:
+                    elif dim == fv3gfs.util.X_INTERFACE_DIM:
                         assert extent == nx + 1
-                    elif dim == fv3util.Y_DIM:
+                    elif dim == fv3gfs.util.Y_DIM:
                         assert extent == ny
-                    elif dim == fv3util.Y_INTERFACE_DIM:
+                    elif dim == fv3gfs.util.Y_INTERFACE_DIM:
                         assert extent == ny + 1
 
 
+@pytest.mark.parametrize(
+    "tracer_properties",
+    [
+        {
+            "specific_humidity": {
+                "dims": [fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
+                "units": "kg/kg",
+                "restart_name": "sphum",
+            },
+        },
+        {
+            "specific_humidity_by_another_name": {
+                "dims": [fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
+                "units": "kg/kg",
+                "restart_name": "sphum",
+            },
+        },
+        {
+            "specific_humidity": {
+                "dims": [fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
+                "units": "kg/kg",
+                "restart_name": "sphum",
+            },
+        },
+        {
+            "specific_humidity": {
+                "dims": [fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
+                "units": "kg/kg",
+                "restart_name": "sphum",
+            },
+            "snow_water_mixing_ratio": {
+                "dims": [fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
+                "units": "kg/kg",
+                "restart_name": "snowwat",
+            },
+        },
+    ],
+)
+@pytest.mark.cpu_only
+def test_open_c12_restart_tracer_properties(layout, tracer_properties):
+    c12_restart_state_list = get_c12_restart_state_list(layout, tracer_properties)
+    for state in c12_restart_state_list:
+        for name, properties in tracer_properties.items():
+            assert name in state.keys()
+            assert state[name].dims == tuple(properties["dims"])
+            assert state[name].attrs["units"] == properties["units"]
+            assert properties["restart_name"] not in state
+
+
 @pytest.mark.parametrize("layout", [(1, 1), (3, 3)])
+@pytest.mark.cpu_only
 def test_open_c12_restart_empty_to_state_without_crashing(layout):
     total_ranks = layout[0] * layout[1]
     ny = 12 / layout[0]
@@ -59,15 +125,15 @@ def test_open_c12_restart_empty_to_state_without_crashing(layout):
     shared_buffer = {}
     communicator_list = []
     for rank in range(total_ranks):
-        communicator = fv3util.CubedSphereCommunicator(
+        communicator = fv3gfs.util.CubedSphereCommunicator(
             DummyComm(rank, total_ranks, shared_buffer),
-            fv3util.CubedSpherePartitioner(fv3util.TilePartitioner(layout)),
+            fv3gfs.util.CubedSpherePartitioner(fv3gfs.util.TilePartitioner(layout)),
         )
         communicator_list.append(communicator)
     state_list = []
     for communicator in communicator_list:
         state_list.append({})
-        fv3util.open_restart(
+        fv3gfs.util.open_restart(
             os.path.join(DATA_DIRECTORY, "c12_restart"),
             communicator,
             to_state=state_list[-1],
@@ -77,22 +143,23 @@ def test_open_c12_restart_empty_to_state_without_crashing(layout):
         assert len(state.keys()) == 63
         for name, value in state.items():
             if name == "time":
-                assert isinstance(value, datetime)
+                assert isinstance(value, cftime.DatetimeJulian)
             else:
-                assert isinstance(value, fv3util.Quantity)
+                assert isinstance(value, fv3gfs.util.Quantity)
                 assert np.sum(np.isnan(value.view[:])) == 0
                 for dim, extent in zip(value.dims, value.extent):
-                    if dim == fv3util.X_DIM:
+                    if dim == fv3gfs.util.X_DIM:
                         assert extent == nx
-                    elif dim == fv3util.X_INTERFACE_DIM:
+                    elif dim == fv3gfs.util.X_INTERFACE_DIM:
                         assert extent == nx + 1
-                    elif dim == fv3util.Y_DIM:
+                    elif dim == fv3gfs.util.Y_DIM:
                         assert extent == ny
-                    elif dim == fv3util.Y_INTERFACE_DIM:
+                    elif dim == fv3gfs.util.Y_INTERFACE_DIM:
                         assert extent == ny + 1
 
 
 @pytest.mark.parametrize("layout", [(1, 1), (3, 3)])
+@pytest.mark.cpu_only
 def test_open_c12_restart_to_allocated_state_without_crashing(layout):
     total_ranks = layout[0] * layout[1]
     ny = 12 / layout[0]
@@ -100,15 +167,15 @@ def test_open_c12_restart_to_allocated_state_without_crashing(layout):
     shared_buffer = {}
     communicator_list = []
     for rank in range(total_ranks):
-        communicator = fv3util.CubedSphereCommunicator(
+        communicator = fv3gfs.util.CubedSphereCommunicator(
             DummyComm(rank, total_ranks, shared_buffer),
-            fv3util.CubedSpherePartitioner(fv3util.TilePartitioner(layout)),
+            fv3gfs.util.CubedSpherePartitioner(fv3gfs.util.TilePartitioner(layout)),
         )
         communicator_list.append(communicator)
     state_list = []
     for communicator in communicator_list:
         state_list.append(
-            fv3util.open_restart(
+            fv3gfs.util.open_restart(
                 os.path.join(DATA_DIRECTORY, "c12_restart"), communicator
             )
         )
@@ -117,7 +184,7 @@ def test_open_c12_restart_to_allocated_state_without_crashing(layout):
             if name != "time":
                 value.view[:] = np.nan
     for state, communicator in zip(state_list, communicator_list):
-        fv3util.open_restart(
+        fv3gfs.util.open_restart(
             os.path.join(DATA_DIRECTORY, "c12_restart"), communicator, to_state=state
         )
 
@@ -126,30 +193,42 @@ def test_open_c12_restart_to_allocated_state_without_crashing(layout):
         assert len(state.keys()) == 63
         for name, value in state.items():
             if name == "time":
-                assert isinstance(value, datetime)
+                assert isinstance(value, cftime.DatetimeJulian)
             else:
-                assert isinstance(value, fv3util.Quantity)
+                assert isinstance(value, fv3gfs.util.Quantity)
                 assert np.sum(np.isnan(value.view[:])) == 0
                 for dim, extent in zip(value.dims, value.extent):
-                    if dim == fv3util.X_DIM:
+                    if dim == fv3gfs.util.X_DIM:
                         assert extent == nx
-                    elif dim == fv3util.X_INTERFACE_DIM:
+                    elif dim == fv3gfs.util.X_INTERFACE_DIM:
                         assert extent == nx + 1
-                    elif dim == fv3util.Y_DIM:
+                    elif dim == fv3gfs.util.Y_DIM:
                         assert extent == ny
-                    elif dim == fv3util.Y_INTERFACE_DIM:
+                    elif dim == fv3gfs.util.Y_INTERFACE_DIM:
                         assert extent == ny + 1
 
 
-@pytest.fixture
-def coupler_res_file_and_time():
-    return os.path.join(DATA_DIRECTORY, "coupler.res"), datetime(2016, 8, 3)
+@pytest.fixture(
+    params=[
+        ("coupler_julian.res", cftime.DatetimeJulian),
+        ("coupler_thirty_day.res", cftime.Datetime360Day),
+        ("coupler_noleap.res", cftime.DatetimeNoLeap),
+    ],
+    ids=["julian", "thirty_day", "noleap"],
+)
+def coupler_res_file_and_time(request):
+    file, expected_date_type = request.param
+    return (
+        os.path.join(DATA_DIRECTORY, file),
+        expected_date_type(2016, 8, 3),
+    )
 
 
+@pytest.mark.cpu_only
 def test_get_current_date_from_coupler_res(coupler_res_file_and_time):
     filename, current_time = coupler_res_file_and_time
     with open(filename, "r") as f:
-        result = fv3util.io.get_current_date_from_coupler_res(f)
+        result = fv3gfs.util.io.get_current_date_from_coupler_res(f)
     assert result == current_time
 
 
@@ -176,8 +255,9 @@ def result_dims(data_array, new_dims):
     return tuple(list(data_array.dims[:kept_dims]) + list(new_dims))
 
 
+@pytest.mark.cpu_only
 def test_apply_dims(data_array, new_dims, result_dims):
-    result = fv3util._legacy_restart.apply_dims(data_array, new_dims)
+    result = fv3gfs.util._legacy_restart._apply_dims(data_array, new_dims)
     np.testing.assert_array_equal(result.values, data_array.values)
     assert result.dims == result_dims
     assert result.attrs == data_array.attrs
@@ -210,8 +290,9 @@ def test_apply_dims(data_array, new_dims, result_dims):
         ),
     ],
 )
+@pytest.mark.cpu_only
 def test_map_keys(old_dict, key_mapping, new_dict):
-    result = fv3util._legacy_restart.map_keys(old_dict, key_mapping)
+    result = fv3gfs.util._legacy_restart.map_keys(old_dict, key_mapping)
     assert result == new_dict
 
 
@@ -224,13 +305,33 @@ def test_map_keys(old_dict, key_mapping, new_dict):
         pytest.param(6, 24, ".tile2.nc.0002", id="third_subtile_second_tile",),
     ],
 )
+@pytest.mark.cpu_only
 def test_get_rank_suffix(rank, total_ranks, suffix):
-    result = fv3util._legacy_restart.get_rank_suffix(rank, total_ranks)
+    result = fv3gfs.util._legacy_restart.get_rank_suffix(rank, total_ranks)
     assert result == suffix
 
 
 @pytest.mark.parametrize("invalid_total_ranks", [5, 7, 9, 23])
+@pytest.mark.cpu_only
 def test_get_rank_suffix_invalid_total_ranks(invalid_total_ranks):
     with pytest.raises(ValueError):
         # total_ranks should be multiple of 6
-        fv3util._legacy_restart.get_rank_suffix(0, invalid_total_ranks)
+        fv3gfs.util._legacy_restart.get_rank_suffix(0, invalid_total_ranks)
+
+
+@pytest.mark.cpu_only
+def test_read_state_incorrectly_encoded_time():
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".nc") as file:
+        state_ds = xr.DataArray(0.0, name="time").to_dataset()
+        state_ds.to_netcdf(file.name)
+        with pytest.raises(ValueError, match="Time in stored state"):
+            fv3gfs.util.io.read_state(file.name)
+
+
+@pytest.mark.cpu_only
+def test_read_state_non_scalar_time():
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".nc") as file:
+        state_ds = xr.DataArray([0.0, 1.0], dims=["T"], name="time").to_dataset()
+        state_ds.to_netcdf(file.name)
+        with pytest.raises(ValueError, match="scalar time"):
+            fv3gfs.util.io.read_state(file.name)

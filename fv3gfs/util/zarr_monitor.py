@@ -1,4 +1,5 @@
 from typing import Union, Tuple
+import cftime
 import logging
 import zarr
 import numpy as np
@@ -6,7 +7,12 @@ import xarray as xr
 from . import constants, utils
 from .partitioner import CubedSpherePartitioner, subtile_slice
 
-logger = logging.getLogger("fv3util")
+try:
+    import cupy
+except ImportError:
+    cupy = np
+
+logger = logging.getLogger("fv3gfs.util")
 
 __all__ = ["ZarrMonitor"]
 
@@ -177,7 +183,12 @@ class _ZarrVariableWriter:
         logger.debug(
             f"assigning data from subtile slice {from_slice} to target slice {target_slice}"
         )
-        self.array[target_slice] = np.asarray(quantity.view[:])[from_slice]
+        try:
+            self.array[target_slice] = quantity.view[:][from_slice]
+        except ValueError as err:
+            if err.args[0] == "object __array__ method not producing an array":
+                self.array[target_slice] = cupy.asnumpy(quantity.view[:][from_slice])
+
         self.i_time += 1
 
     def _get_attrs(self, quantity):
@@ -232,18 +243,36 @@ class _ZarrTimeWriter(_ZarrVariableWriter):
         shape = self._prepend_shape
         chunks = self._prepend_chunks
         self.array = self.group.create_dataset(
-            self.name, shape=shape, dtype=array.dtype, chunks=chunks
+            self.name, shape=shape, dtype=array.dtype, chunks=chunks, fill_value=None
+        )
+
+    def _set_time_encoding_attrs(self, time):
+        self._encoding_units = f"seconds since {time}"
+        self._encoding_calendar = time.calendar
+        if self.rank == 0:
+            self.array.attrs["units"] = self._encoding_units
+            self.array.attrs["calendar"] = self._encoding_calendar
+
+    def _encode_time(self, time):
+        if time.calendar != self._encoding_calendar:
+            raise ValueError(
+                f"Calendar type of time, {time.calendar}, does not match the original "
+                f"calendar encoding, {self._encoding_calendar}."
+            )
+        return cftime.date2num(
+            time, units=self._encoding_units, calendar=self._encoding_calendar
         )
 
     def append(self, time):
-        array = xr.DataArray(np.datetime64(time))
+        array = xr.DataArray()
         if self.array is None:
             self._init_zarr(array)
+            self._set_time_encoding_attrs(time)
         if self.i_time >= self.array.shape[0] and self.rank == 0:
             new_shape = (self.i_time + 1,)
             self.array.resize(*new_shape)
         self.sync_array()
         if self.rank == 0:
-            self.array[self.i_time] = np.datetime64(time)
+            self.array[self.i_time] = self._encode_time(time)
         self.i_time += 1
         self.comm.barrier()

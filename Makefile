@@ -33,7 +33,7 @@ help:
 	@python3 -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
 coverage: ## check code coverage quickly with the default Python
-	pytest --cov=fv3util --cov-report=html
+	pytest --cov=fv3gfs --cov-report=html
 	$(BROWSER) htmlcov/index.html
 
 test: ## run tests quickly with the default Python
@@ -41,6 +41,7 @@ test: ## run tests quickly with the default Python
 
 test_mpi:
 	mpirun -n 6 --allow-run-as-root --mca btl_vader_single_copy_mechanism none --oversubscribe pytest $(PYTEST_ARGS) tests/mpi
+	$(MAKE) -C examples/mpi
 
 lint:
 	black --diff --check $(PYTHON_FILES) $(PYTHON_INIT_FILES)
@@ -49,5 +50,15 @@ lint:
 	flake8 --ignore=F401 $(PYTHON_INIT_FILES)
 	@echo "LINTING SUCCESSFUL"
 
+clean:
+	$(MAKE) -c examples/mpi clean
+
 reformat:
 	black $(PYTHON_FILES) $(PYTHON_INIT_FILES)
+
+docs: ## generate Sphinx HTML documentation, including API docs
+	$(MAKE) -C docs clean
+	$(MAKE) -C docs html
+	$(BROWSER) docs/_build/html/index.html
+
+.PHONY: docs clean test lint reformat test_mpi coverage help

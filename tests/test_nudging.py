@@ -1,4 +1,4 @@
-import fv3util
+import fv3gfs.util
 from datetime import timedelta
 import pytest
 import copy
@@ -9,11 +9,13 @@ def state(request, numpy):
     if request.param == "empty":
         return {}
     elif request.param == "one_var":
-        return {"var1": fv3util.Quantity(numpy.ones([5]), dims=["dim1"], units="m",)}
+        return {
+            "var1": fv3gfs.util.Quantity(numpy.ones([5]), dims=["dim1"], units="m",)
+        }
     elif request.param == "two_vars":
         return {
-            "var1": fv3util.Quantity(numpy.ones([5]), dims=["dim1"], units="m",),
-            "var2": fv3util.Quantity(numpy.ones([5]), dims=["dim_2"], units="m",),
+            "var1": fv3gfs.util.Quantity(numpy.ones([5]), dims=["dim1"], units="m",),
+            "var2": fv3gfs.util.Quantity(numpy.ones([5]), dims=["dim_2"], units="m",),
         }
     else:
         raise NotImplementedError()
@@ -30,7 +32,7 @@ def reference_state(reference_difference, state, numpy):
         reference_state = copy.deepcopy(state)
     elif reference_difference == "extra_var":
         reference_state = copy.deepcopy(state)
-        reference_state["extra_var"] = fv3util.Quantity(
+        reference_state["extra_var"] = fv3gfs.util.Quantity(
             numpy.ones([5]), dims=["dim1"], units="m",
         )
     elif reference_difference == "plus_one":
@@ -108,13 +110,15 @@ def test_apply_nudging_equals(
     nudging_tendencies,
     numpy,
 ):
-    result = fv3util.apply_nudging(state, reference_state, nudging_timescales, timestep)
+    result = fv3gfs.util.apply_nudging(
+        state, reference_state, nudging_timescales, timestep
+    )
     for name, tendency in nudging_tendencies.items():
         numpy.testing.assert_array_equal(result[name].data, tendency.data)
         assert result[name].dims == tendency.dims
         assert result[name].units == tendency.units
     for name, reference_array in final_state.items():
-        numpy.testing.assert_equal(state[name].data, reference_array.data)
+        numpy.testing.assert_array_equal(state[name].data, reference_array.data)
         assert state[name].dims == reference_array.dims
         assert state[name].units == reference_array.units
 
@@ -122,7 +126,9 @@ def test_apply_nudging_equals(
 def test_get_nudging_tendencies_equals(
     state, reference_state, nudging_timescales, nudging_tendencies, numpy
 ):
-    result = fv3util.get_nudging_tendencies(state, reference_state, nudging_timescales)
+    result = fv3gfs.util.get_nudging_tendencies(
+        state, reference_state, nudging_timescales
+    )
     for name, tendency in nudging_tendencies.items():
         numpy.testing.assert_array_equal(result[name].data, tendency.data)
         assert result[name].dims == tendency.dims
@@ -134,7 +140,9 @@ def test_get_nudging_tendencies_half_timescale(
 ):
     for name, timescale in nudging_timescales.items():
         nudging_timescales[name] = timedelta(seconds=0.5 * timescale.total_seconds())
-    result = fv3util.get_nudging_tendencies(state, reference_state, nudging_timescales)
+    result = fv3gfs.util.get_nudging_tendencies(
+        state, reference_state, nudging_timescales
+    )
     for name, tendency in nudging_tendencies.items():
         numpy.testing.assert_array_equal(result[name].data, 2.0 * tendency.data)
         assert result[name].dims == tendency.dims
