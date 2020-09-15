@@ -17,11 +17,12 @@ def rotate_scalar_data(data, dims, numpy, n_clockwise_rotations):
                 data = numpy.rot90(data, axes=(y_dim, x_dim))
             elif n_clockwise_rotations == 3:
                 data = numpy.rot90(data, axes=(x_dim, y_dim))
-        elif (x_dim is None) != (y_dim is None):
-            # requires converting y dims to x dims and vice-versa
-            raise NotImplementedError(
-                "cannot yet rotate values which don't have both x and y dims"
-            )
+        elif x_dim is not None:
+            if n_clockwise_rotations == 1:
+                data = numpy.flip(data, axis=x_dim)
+        elif y_dim is not None:
+            if n_clockwise_rotations == 3:
+                data = numpy.flip(data, axis=y_dim)
     elif n_clockwise_rotations == 2:
         slice_list = []
         for dim in dims:

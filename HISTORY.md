@@ -12,6 +12,8 @@ in the `coupler_nml` namelist.
 - `Timer` class is added, with methods `start` and `stop`, and properties `clock` (context manager), and `times` (dictionary of accumulated timing)
 - `CubedSphereCommunicator` instances now have a `.timer` attribute, which accumulates times for "pack", "unpack", "Isend", and "Recv" during halo updates
 - make `SubtileGridSizer.from_tile_params` public API
+- New method `CubedSphereCommunicator.synchronize_vector_interfaces` which synchronizes edge values on interface variables which are duplicated between adjacent ranks
+- Added `.sel` method to corner views (e.g. `quantity.view.northeast.sel(x=0, y=1)`) to allow indexing these corner views with arbitrary dimension ordering.
 - Halo updates now use tagged send/recv operations, which prevents deadlocks in certain situations
 
 v0.5.1

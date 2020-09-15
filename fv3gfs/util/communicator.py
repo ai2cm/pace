@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple
+from typing import Tuple, Mapping, Union
 from .quantity import Quantity
 from .partitioner import CubedSpherePartitioner, TilePartitioner
 from . import constants
@@ -140,7 +140,7 @@ class TileCommunicator(Communicator):
 
     def gather(
         self, send_quantity: Quantity, recv_quantity: Quantity = None
-    ) -> Quantity:
+    ) -> Union[Quantity, None]:
         """Transfer subtile regions of a full-tile quantity
         from each rank to the tile master rank.
         
@@ -149,7 +149,7 @@ class TileCommunicator(Communicator):
             recv_quantity: if provided, assign received data into this Quantity (only
                 used on the tile master rank)
         Returns:
-            recv_quantity
+            recv_quantity: quantity if on master rank, otherwise None
         """
         if self.rank == constants.MASTER_RANK:
             with array_buffer(
@@ -185,12 +185,13 @@ class TileCommunicator(Communicator):
                     recv_quantity.view[to_slice] = recvbuf[rank, :]
                 result = recv_quantity
         else:
-            result = self._Gather(
+            self._Gather(
                 send_quantity.np,
                 send_quantity.view[:],
                 None,
                 root=constants.MASTER_RANK,
             )
+            result = None
         return result
 
     def gather_state(self, send_state: dict = None, recv_state: dict = None):
@@ -299,7 +300,7 @@ class CubedSphereCommunicator(Communicator):
         return self._last_halo_tag
 
     @property
-    def boundaries(self) -> Iterable[Boundary]:
+    def boundaries(self) -> Mapping[int, Boundary]:
         """boundaries of this tile with neighboring tiles"""
         if self._boundaries is None:
             self._boundaries = {}
@@ -351,7 +352,7 @@ class CubedSphereCommunicator(Communicator):
 
     def _Isend_halos(self, quantity: Quantity, n_points: int, tag: int = 0):
         send_requests = []
-        for boundary_type, boundary in self.boundaries.items():
+        for boundary in self.boundaries.values():
             with self.timer.clock("pack"):
                 data = boundary.send_view(quantity, n_points=n_points)
                 # sending data across the boundary will rotate the data
@@ -403,6 +404,57 @@ class CubedSphereCommunicator(Communicator):
             n_points: how many halo points to update, starting at the interior
         """
         req = self.start_vector_halo_update(x_quantity, y_quantity, n_points)
+        req.wait()
+
+    def start_synchronize_vector_interfaces(
+        self, x_quantity: Quantity, y_quantity: Quantity
+    ):
+        """
+        Synchronize shared points at the edges of a vector interface variable.
+
+        Sends the values on the south and west edges to overwrite the values on adjacent
+        subtiles. Vector must be defined on the Arakawa C grid.
+
+        For interface variables, the edges of the tile are computed on both ranks
+        bordering that edge. This routine copies values across those shared edges
+        so that both ranks have the same value for that edge. It also handles any
+        rotation of vector quantities needed to move data across the edge.
+
+        Args:
+            x_quantity: the x-component quantity to be synchronized
+            y_quantity: the y-component quantity to be synchronized
+        
+        Returns:
+            request: an asynchronous request object with a .wait() method
+        """
+        if not on_c_grid(x_quantity, y_quantity):
+            raise ValueError("vector must be defined on Arakawa C-grid")
+        tag = self._get_halo_tag()
+        send_requests = self._Isend_vector_shared_boundary(
+            x_quantity, y_quantity, tag=tag
+        )
+        recv_requests = self._Irecv_vector_shared_boundary(
+            x_quantity, y_quantity, tag=tag
+        )
+        return HaloUpdateRequest(send_requests, recv_requests)
+
+    def synchronize_vector_interfaces(self, x_quantity: Quantity, y_quantity: Quantity):
+        """
+        Synchronize shared points at the edges of a vector interface variable.
+
+        Sends the values on the south and west edges to overwrite the values on adjacent
+        subtiles. Vector must be defined on the Arakawa C grid.
+
+        For interface variables, the edges of the tile are computed on both ranks
+        bordering that edge. This routine copies values across those shared edges
+        so that both ranks have the same value for that edge. It also handles any
+        rotation of vector quantities needed to move data across the edge.
+
+        Args:
+            x_quantity: the x-component quantity to be synchronized
+            y_quantity: the y-component quantity to be synchronized
+        """
+        req = self.start_synchronize_vector_interfaces(x_quantity, y_quantity)
         req.wait()
 
     def start_vector_halo_update(
@@ -462,6 +514,74 @@ class CubedSphereCommunicator(Communicator):
             )
         return send_requests
 
+    def _Isend_vector_shared_boundary(self, x_quantity, y_quantity, tag=0):
+        south_boundary = self.boundaries[constants.SOUTH]
+        west_boundary = self.boundaries[constants.WEST]
+        south_data = x_quantity.view.southwest.sel(
+            **{
+                constants.Y_INTERFACE_DIM: 0,
+                constants.X_DIM: slice(
+                    0, x_quantity.extent[x_quantity.dims.index(constants.X_DIM)]
+                ),
+            }
+        )
+        south_data = rotate_scalar_data(
+            south_data,
+            [constants.X_DIM],
+            x_quantity.np,
+            -south_boundary.n_clockwise_rotations,
+        )
+        if south_boundary.n_clockwise_rotations in (3, 2):
+            south_data = -south_data
+        west_data = y_quantity.view.southwest.sel(
+            **{
+                constants.X_INTERFACE_DIM: 0,
+                constants.Y_DIM: slice(
+                    0, y_quantity.extent[y_quantity.dims.index(constants.Y_DIM)]
+                ),
+            }
+        )
+        west_data = rotate_scalar_data(
+            west_data,
+            [constants.Y_DIM],
+            y_quantity.np,
+            -west_boundary.n_clockwise_rotations,
+        )
+        if west_boundary.n_clockwise_rotations in (1, 2):
+            west_data = -west_data
+        send_requests = [
+            self._Isend(
+                x_quantity.np, south_data, dest=south_boundary.to_rank, tag=tag
+            ),
+            self._Isend(y_quantity.np, west_data, dest=west_boundary.to_rank, tag=tag),
+        ]
+        return send_requests
+
+    def _Irecv_vector_shared_boundary(self, x_quantity, y_quantity, tag=0):
+        north_rank = self.boundaries[constants.NORTH].to_rank
+        east_rank = self.boundaries[constants.EAST].to_rank
+        north_data = x_quantity.view.northwest.sel(
+            **{
+                constants.Y_INTERFACE_DIM: -1,
+                constants.X_DIM: slice(
+                    0, x_quantity.extent[x_quantity.dims.index(constants.X_DIM)]
+                ),
+            }
+        )
+        east_data = y_quantity.view.southeast.sel(
+            **{
+                constants.X_INTERFACE_DIM: -1,
+                constants.Y_DIM: slice(
+                    0, y_quantity.extent[y_quantity.dims.index(constants.Y_DIM)]
+                ),
+            }
+        )
+        recv_requests = [
+            self._Irecv(x_quantity.np, north_data, source=north_rank, tag=tag),
+            self._Irecv(y_quantity.np, east_data, source=east_rank, tag=tag),
+        ]
+        return recv_requests
+
     def _Isend(self, numpy, in_array, **kwargs):
         # don't want to use a buffer here, because we leave this scope and can't close
         # the context manager. might figure out a way to do it later
@@ -498,3 +618,18 @@ class CubedSphereCommunicator(Communicator):
             "finish_vector_halo_update has been removed, use .wait() on the request object "
             "returned by start_vector_halo_update"
         )
+
+
+def on_c_grid(x_quantity, y_quantity):
+    if (
+        constants.X_DIM not in x_quantity.dims
+        or constants.Y_INTERFACE_DIM not in x_quantity.dims
+    ):
+        return False
+    if (
+        constants.Y_DIM not in y_quantity.dims
+        or constants.X_INTERFACE_DIM not in y_quantity.dims
+    ):
+        return False
+    else:
+        return True

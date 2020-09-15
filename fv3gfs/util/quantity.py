@@ -86,6 +86,19 @@ class BoundaryArrayView:
             self._dims, self._origin, self._extent, self._boundary_type, index
         )
 
+    def sel(self, **kwargs: (slice, int)) -> np.ndarray:
+        """Convenience method to perform indexing using dimension names
+        without knowing dimension order.
+        
+        Args:
+            **kwargs: slice/index to retrieve for a given dimension name
+
+        Returns:
+            view_selection: an ndarray-like selection of the given indices
+                on `self.view`
+        """
+        return self[tuple(kwargs.get(dim, slice(None, None)) for dim in self._dims)]
+
 
 class BoundedArrayView:
     """
