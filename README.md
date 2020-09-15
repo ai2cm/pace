@@ -80,7 +80,7 @@ or for the parallel tests:
 ```shell
 $ make dev_tests_mpi
 ```
-These will mount your current code into the fv3core container and run it rather than the code that was built when `make build` ran. 
+These will mount your current code into the fv3core container and run it rather than the code that was built when `make build` ran.
 
 
 ### Test options
@@ -152,7 +152,7 @@ PULL=False make build
 
 - https://github.com/VulcanClimateModeling/serialbox2 -
   Serialbox generates serialized data when the Fortran model runs and has bindings to manage data from Python
-  
+
 - https://github.com/VulcanClimateModeling/fv3gfs-fortran -
   This is the existing Fortran model decorated with serialization statements from which the test data is generated
 
@@ -202,3 +202,7 @@ To list linting issues
 ```shell
 $ make lint
 ```
+
+## License
+
+FV3Core is provided under the terms of the [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html) license.
