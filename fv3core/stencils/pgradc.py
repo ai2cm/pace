@@ -9,9 +9,9 @@ origin = utils.origin
 
 @gtscript.function
 def p_grad_c_u(uc_in, wk, pkc, gz, rdxc, dt2):
-    return uc_in + dt2 * rdxc[0, 0] / (wk[-1, 0, 0] + wk) * (
-        (gz[-1, 0, 1] - gz[0, 0, 0]) * (pkc[0, 0, 1] - pkc[-1, 0, 0])
-        + (gz[-1, 0, 0] - gz[0, 0, 1]) * (pkc[-1, 0, 1] - pkc[0, 0, 0])
+    return uc_in + dt2 * rdxc / (wk[-1, 0, 0] + wk) * (
+        (gz[-1, 0, 1] - gz) * (pkc[0, 0, 1] - pkc[-1, 0, 0])
+        + (gz[-1, 0, 0] - gz[0, 0, 1]) * (pkc[-1, 0, 1] - pkc)
     )
 
 
@@ -28,7 +28,7 @@ def p_grad_c_u_wk(uc_in, delpc, pkc, gz, rdxc, hydrostatic, dt2):
 
 @gtscript.function
 def p_grad_c_v(vc_in, wk, pkc, gz, rdyc, dt2):
-    return vc_in + dt2 * rdyc[0, 0] / (wk[0, -1, 0] + wk) * (
+    return vc_in + dt2 * rdyc / (wk[0, -1, 0] + wk) * (
         (gz[0, -1, 1] - gz) * (pkc[0, 0, 1] - pkc[0, -1, 0])
         + (gz[0, -1, 0] - gz[0, 0, 1]) * (pkc[0, -1, 1] - pkc)
     )
