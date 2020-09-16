@@ -1,6 +1,7 @@
 ARG MIDBASE=fv3core-install-serialbox
 FROM ubuntu:19.10 as fv3core-install-base
 COPY requirements_hpc.txt requirements_hpc.txt
+ENV MPICC=/usr/bin/mpicc
 ###
 ### Install some prerequisite system packages
 ###
