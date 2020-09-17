@@ -6,7 +6,7 @@ import numpy as np
 import fv3core._config
 import fv3core.utils.gt4py_utils
 import pytest
-import fv3util
+import fv3gfs.util as fv3util
 import logging
 import os
 import xarray as xr
@@ -30,8 +30,8 @@ def compare_arr(computed_data, ref_data):
 
 def success_array(computed_data, ref_data, eps, ignore_near_zero_errors):
     success = np.logical_or(
-        compare_arr(computed_data, ref_data) < eps,
         np.logical_and(np.isnan(computed_data), np.isnan(ref_data)),
+        compare_arr(computed_data, ref_data) < eps,
     )
     if ignore_near_zero_errors:
         small_number = 1e-18
@@ -105,7 +105,7 @@ def test_sequential_savepoint(
     subtests,
     caplog,
 ):
-    caplog.set_level(logging.DEBUG, logger="fv3ser")
+    caplog.set_level(logging.DEBUG, logger="fv3core")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     fv3core._config.set_grid(grid)
@@ -176,7 +176,7 @@ def test_mock_parallel_savepoint(
     subtests,
     caplog,
 ):
-    caplog.set_level(logging.DEBUG, logger="fv3ser")
+    caplog.set_level(logging.DEBUG, logger="fv3core")
     caplog.set_level(logging.DEBUG, logger="fv3util")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
@@ -241,7 +241,7 @@ def test_parallel_savepoint(
     subtests,
     caplog,
 ):
-    caplog.set_level(logging.DEBUG, logger="fv3ser")
+    caplog.set_level(logging.DEBUG, logger="fv3core")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     fv3core._config.set_grid(grid[0])

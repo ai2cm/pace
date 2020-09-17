@@ -1,7 +1,8 @@
 from .parallel_translate import ParallelTranslate, _serialize_slice
 from .translate import TranslateFortranData2Py
-import fv3util
+import fv3gfs.util as fv3util
 from fv3core.utils import gt4py_utils as utils
+import fv3core._config as spec
 import logging
 import numpy as np
 
@@ -158,6 +159,66 @@ class TranslateHaloVectorUpdate(ParallelTranslate):
                     state["x_wind_on_c_grid"],
                     state["y_wind_on_c_grid"],
                     n_points=utils.halo,
+                )
+            )
+        for communicator, req in zip(communicator_list, req_list):
+            logger.debug(f"finishing on {communicator.rank}")
+            req.wait()
+        return self.outputs_list_from_state_list(state_list)
+
+
+class TranslateMPPBoundaryAdjust(ParallelTranslate):
+
+    inputs = {
+        "u": {
+            "name": "x_wind_on_d_grid",
+            "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+            "units": "m/s",
+            "n_halo": utils.halo,
+        },
+        "v": {
+            "name": "y_wind_on_d_grid",
+            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "units": "m/s",
+            "n_halo": utils.halo,
+        },
+    }
+
+    outputs = {
+        "u": {
+            "name": "x_wind_on_d_grid",
+            "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+            "units": "m/s",
+            "n_halo": utils.halo,
+        },
+        "v": {
+            "name": "y_wind_on_d_grid",
+            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "units": "m/s",
+            "n_halo": utils.halo,
+        },
+    }
+
+    def __init__(self, grid):
+        super(TranslateMPPBoundaryAdjust, self).__init__(grid)
+
+    def compute_parallel(self, inputs, communicator):
+        logger.debug(f"starting on {communicator.rank}")
+        state = self.state_from_inputs(inputs)
+        req = communicator.start_synchronize_vector_interfaces(
+            state["x_wind_on_d_grid"], state["y_wind_on_d_grid"]
+        )
+        logger.debug(f"finishing on {communicator.rank}")
+        req.wait()
+        return self.outputs_from_state(state)
+
+    def compute_sequential(self, inputs_list, communicator_list):
+        state_list = self.state_list_from_inputs_list(inputs_list)
+        req_list = []
+        for state, communicator, grid in zip(state_list, communicator_list, spec.grid):
+            req_list.append(
+                communicator.start_synchronize_vector_interfaces(
+                    state["x_wind_on_d_grid"], state["y_wind_on_d_grid"]
                 )
             )
         for communicator, req in zip(communicator_list, req_list):

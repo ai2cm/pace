@@ -1,7 +1,7 @@
 from typing import List
 import copy
 from .translate import TranslateFortranData2Py, read_serialized_data
-import fv3util
+import fv3gfs.util as fv3util
 from fv3core.utils import gt4py_utils as utils
 import fv3core
 import pytest

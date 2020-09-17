@@ -215,7 +215,7 @@ def compute(
                     # TODO 1d
                     qn2 = grid.quantity_wrap(
                         cp.copy(
-                            q.data,
+                            q.storage,
                             origin=grid.default_origin(),
                             domain=grid.domain_shape_standard(),
                         ),
@@ -223,7 +223,7 @@ def compute(
                     )
 
                 fvtp2d.compute_no_sg(
-                    qn2.data,
+                    qn2.storage,
                     cxd,
                     cyd,
                     spec.namelist.hord_tr,
@@ -238,7 +238,7 @@ def compute(
                 )
                 if it < nsplt - 1:
                     q_adjust(
-                        qn2.data,
+                        qn2.storage,
                         dp1,
                         fx,
                         fy,
@@ -249,8 +249,8 @@ def compute(
                     )
                 else:
                     q_other_adjust(
-                        qn2.data,
-                        q.data,
+                        qn2.storage,
+                        q.storage,
                         dp1,
                         fx,
                         fy,
@@ -261,7 +261,7 @@ def compute(
                     )
             else:
                 fvtp2d.compute_no_sg(
-                    q.data,
+                    q.storage,
                     cxd,
                     cyd,
                     spec.namelist.hord_tr,
@@ -275,7 +275,7 @@ def compute(
                     mfy=mfyd,
                 )
                 q_adjust(
-                    q.data,
+                    q.storage,
                     dp1,
                     fx,
                     fy,

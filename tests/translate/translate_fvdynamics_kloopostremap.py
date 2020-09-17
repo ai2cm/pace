@@ -4,7 +4,7 @@ from .translate_dyncore import TranslateDynCore
 from .translate_tracer2d1l import TranslateTracer2D1L
 import fv3core.utils.gt4py_utils as utils
 
-import fv3util
+import fv3gfs.util as fv3util
 import copy
 
 

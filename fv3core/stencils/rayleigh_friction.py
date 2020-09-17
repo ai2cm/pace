@@ -8,7 +8,7 @@ import fv3core.utils.global_constants as constants
 import fv3core.stencils.rayleigh_super as ray_super
 import numpy as np
 import math
-import fv3util
+import fv3gfs.util as fv3util
 
 sd = utils.sd
 SDAY = 86400.0  # seconds per day
@@ -94,7 +94,7 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
         ua,
         va,
         w,
-        u2f.data,
+        u2f.storage,
         spec.namelist.hydrostatic,
         origin=grid.compute_origin(),
         domain=(grid.nic, grid.njc, kmax),
@@ -105,7 +105,7 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
         pt,
         rf,
         pfull,
-        u2f.data,
+        u2f.storage,
         delz,
         ptop,
         rf_cutoff,
@@ -115,20 +115,20 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
         domain=(grid.nic, grid.njc, kmax),
     )
     update_u2f(
-        u2f.data,
+        u2f.storage,
         rf,
         origin=(grid.is_ - 1, grid.js - 1, 0),
         domain=(grid.nic + 2, grid.njc + 2, kmax),
     )
     rayleigh_u_friction(
         u,
-        u2f.data,
+        u2f.storage,
         origin=grid.compute_origin(),
         domain=(grid.nic, grid.njc + 1, kmax),
     )
     rayleigh_v_friction(
         v,
-        u2f.data,
+        u2f.storage,
         origin=grid.compute_origin(),
         domain=(grid.nic + 1, grid.njc, kmax),
     )

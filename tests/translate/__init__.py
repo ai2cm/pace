@@ -22,6 +22,7 @@ from .translate_haloupdate import (
     TranslateHaloUpdate_2,
     TranslateMPPUpdateDomains,
     TranslateHaloVectorUpdate,
+    TranslateMPPBoundaryAdjust,
 )
 from .translate_ke_c_sw import TranslateKE_C_SW
 from .translate_pgradc import TranslatePGradC

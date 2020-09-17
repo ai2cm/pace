@@ -7,7 +7,7 @@ from gt4py.gtscript import computation, interval, PARALLEL
 import fv3core.utils.global_constants as constants
 import numpy as np
 import math
-import fv3util
+import fv3gfs.util as fv3util
 
 sd = utils.sd
 U0 = 60.0
@@ -133,7 +133,7 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
     initialize_u2f(
         rf,
         pfull,
-        u2f.data,
+        u2f.storage,
         rf_cutoff,
         origin=grid.compute_origin(),
         domain=(grid.nic, grid.njc, kmax),
@@ -146,7 +146,7 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
         va,
         w,
         pfull,
-        u2f.data,
+        u2f.storage,
         ptop,
         rf_cutoff,
         conserve,
@@ -157,7 +157,7 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
     rayleigh_u(
         u,
         pfull,
-        u2f.data,
+        u2f.storage,
         rf_cutoff,
         origin=grid.compute_origin(),
         domain=(grid.nic, grid.njc + 1, kmax),
@@ -165,7 +165,7 @@ def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
     rayleigh_v(
         v,
         pfull,
-        u2f.data,
+        u2f.storage,
         rf_cutoff,
         origin=grid.compute_origin(),
         domain=(grid.nic + 1, grid.njc, kmax),

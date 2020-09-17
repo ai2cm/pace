@@ -7,7 +7,7 @@ import fv3core._config
 import fv3core.utils.gt4py_utils
 import translate
 import collections
-import fv3util
+import fv3gfs.util as fv3util
 from fv3core.utils.mpi import MPI
 
 # get MPI environment

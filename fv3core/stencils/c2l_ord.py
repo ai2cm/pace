@@ -3,7 +3,7 @@ import fv3core.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
 import fv3core._config as spec
 from gt4py.gtscript import computation, interval, PARALLEL
-import fv3util
+import fv3gfs.util as fv3util
 
 sd = utils.sd
 
@@ -108,8 +108,8 @@ def compute_ord4(u, v, ua, va, comm, mode=1):
     i1 = grid.is_ + 1 if grid.west_edge else grid.is_
     i2 = grid.ie - 1 if grid.east_edge else grid.ie
     vector_tmp(
-        u.data,
-        v.data,
+        u.storage,
+        v.storage,
         utmp,
         vtmp,
         origin=(i1, j1, 0),
@@ -117,8 +117,8 @@ def compute_ord4(u, v, ua, va, comm, mode=1):
     )
     if grid.south_edge:
         y_edge_tmp(
-            u.data,
-            v.data,
+            u.storage,
+            v.storage,
             utmp,
             vtmp,
             grid.dx,
@@ -128,8 +128,8 @@ def compute_ord4(u, v, ua, va, comm, mode=1):
         )
     if grid.north_edge:
         y_edge_tmp(
-            u.data,
-            v.data,
+            u.storage,
+            v.storage,
             utmp,
             vtmp,
             grid.dx,
@@ -140,7 +140,7 @@ def compute_ord4(u, v, ua, va, comm, mode=1):
     if grid.west_edge:
         wv = utils.make_storage_from_shape(ua.shape, utils.origin)
         x_edge_wv(
-            v.data,
+            v.storage,
             grid.dy,
             wv,
             origin=(grid.is_, grid.js, 0),
@@ -148,8 +148,8 @@ def compute_ord4(u, v, ua, va, comm, mode=1):
         )
         x_edge_tmp(
             wv,
-            u.data,
-            v.data,
+            u.storage,
+            v.storage,
             utmp,
             vtmp,
             grid.dx,
@@ -160,7 +160,7 @@ def compute_ord4(u, v, ua, va, comm, mode=1):
     if grid.east_edge:
         wv = utils.make_storage_from_shape(ua.shape, utils.origin)
         x_edge_wv(
-            v.data,
+            v.storage,
             grid.dy,
             wv,
             origin=(grid.ie, grid.js, 0),
@@ -168,8 +168,8 @@ def compute_ord4(u, v, ua, va, comm, mode=1):
         )
         x_edge_tmp(
             wv,
-            u.data,
-            v.data,
+            u.storage,
+            v.storage,
             utmp,
             vtmp,
             grid.dx,

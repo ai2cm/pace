@@ -1,3 +1,3 @@
-[submodule "external/fv3util"]
-	path = external/fv3util
-	url = git@github.com:VulcanClimateModeling/fv3util.git
+[submodule "external/fv3gfs-util"]
+	path = external/fv3gfs-util
+	url = git@github.com:VulcanClimateModeling/fv3gfs-util.git

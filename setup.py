@@ -15,7 +15,7 @@ requirements = [
     "f90nml>=1.1.0",
     "gt4py",
     "numpy",
-    "fv3util>=0.4.3",
+    "fv3gfs-util>=0.4.3",
 ]
 
 setup_requirements = []

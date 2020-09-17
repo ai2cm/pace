@@ -83,7 +83,6 @@ def compute(u, v, pp, gz, pk3, delp, dt, ptop, akap):
     """
     grid = spec.grid
     orig = (grid.is_, grid.js, 0)
-
     # peln1 = log(ptop)
     ptk = ptop ** akap
     top_value = ptk  # = peln1 if spec.namelist.use_logp else ptk

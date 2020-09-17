@@ -3,7 +3,7 @@ FROM $build_image as fv3ser
 ###
 ### Copy over necessary source and configuration files
 ###
-COPY external/fv3util/ /usr/src/fv3util/
+COPY external/fv3gfs-util/ /usr/src/fv3gfs-util/
 COPY fv3core /fv3core/fv3core
 COPY tests /fv3core/tests
 COPY setup.py setup.cfg HISTORY.md README.md /fv3core/
@@ -11,7 +11,7 @@ COPY setup.py setup.cfg HISTORY.md README.md /fv3core/
 ###
 ### Install FV3Util
 ###
-RUN pip install --no-cache-dir -e /usr/src/fv3util
+RUN pip install --no-cache-dir -e /usr/src/fv3gfs-util
 
 ###
 ### Install fv3core

@@ -1,6 +1,6 @@
 import fv3core.utils.gt4py_utils as utils
 import numpy as np
-import fv3util
+import fv3gfs.util as fv3util
 
 
 class Grid:
@@ -66,7 +66,7 @@ class Grid:
         if self._sizer is None:
             # in the future this should use from_namelist, when we have a non-flattened
             # namelist
-            self._sizer = fv3util.SubtileGridSizer._from_tile_params(
+            self._sizer = fv3util.SubtileGridSizer.from_tile_params(
                 nx_tile=self.npx - 1,
                 ny_tile=self.npy - 1,
                 nz=self.npz,

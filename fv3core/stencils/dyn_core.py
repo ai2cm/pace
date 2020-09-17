@@ -23,11 +23,10 @@ import fv3core.stencils.nh_p_grad as nh_p_grad
 import fv3core.stencils.del2cubed as del2cubed
 import fv3core.stencils.temperature_adjust as temperature_adjust
 import fv3core.stencils.ray_fast as ray_fast
-import fv3util
+import fv3gfs.util as fv3util
 import copy
 
 sd = utils.sd
-
 HUGE_R = 1.0e40
 
 # NOTE in Fortran these are columns
@@ -123,7 +122,6 @@ def compute(state, comm):
     ms = max(1, spec.namelist.m_split / 2.0)
     shape = state.delz.shape
     # NOTE in Fortran model the halo update starts happens in fv_dynamics, not here
-
     reqs = {}
     for halovar in ["q_con_quantity", "cappa_quantity", "delp_quantity", "pt_quantity"]:
         reqs[halovar] = comm.start_halo_update(
@@ -159,7 +157,6 @@ def compute(state, comm):
         remap_step = False
         if spec.namelist.breed_vortex_inline or (it == n_split - 1):
             remap_step = True
-
         if not hydrostatic:
             reqs["w_quantity"] = comm.start_halo_update(
                 state.w_quantity, n_points=utils.halo
@@ -194,9 +191,7 @@ def compute(state, comm):
                     origin=(grid.is_ - 1, grid.js - 1, 0),
                     domain=(grid.nic + 2, grid.njc + 2, grid.npz),
                 )
-
         reqs_vector.wait()
-
         if not hydrostatic:
             reqs["w_quantity"].wait()
 
@@ -216,6 +211,7 @@ def compute(state, comm):
             state.omga,
             dt2,
         )
+
         if spec.namelist.nord > 0:
             reqs["divgd_quantity"] = comm.start_halo_update(
                 state.divgd_quantity, n_points=utils.halo
@@ -409,6 +405,10 @@ def compute(state, comm):
             reqs_vector = comm.start_vector_halo_update(
                 state.u_quantity, state.v_quantity, n_points=utils.halo
             )
+        else:
+            if spec.namelist.grid_type < 4:
+                comm.synchronize_vector_interfaces(state.u_quantity, state.v_quantity)
+
     if n_con != 0 and spec.namelist.d_con > 1.0e-5:
         nf_ke = min(3, spec.namelist.nord + 1)
 

@@ -1,6 +1,6 @@
 from .parallel_translate import ParallelTranslateBaseSlicing
 import fv3core.stencils.fv_subgridz as fv_subgridz
-import fv3util
+import fv3gfs.util as fv3util
 import fv3core.utils.gt4py_utils as utils
 import fv3core._config as spec
 
