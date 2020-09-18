@@ -77,7 +77,7 @@ def restart_filenames(dirname, tile_index, label):
     return_list = []
     for name in RESTART_NAMES + RESTART_OPTIONAL_NAMES:
         filename = os.path.join(dirname, prepend_label(name, label) + suffix)
-        if (name in RESTART_NAMES) or filesystem.is_file(filename):
+        if (name in RESTART_NAMES) or os.path.exists(filename):
             return_list.append(filename)
     return return_list
 
