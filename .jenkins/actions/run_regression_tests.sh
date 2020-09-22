@@ -2,7 +2,7 @@
 set -e -x
 BACKEND=$1
 EXPNAME=$2
-ARGS="-v -s -rsx --backend=${BACKEND}"
+ARGS="-v -s -rsx --backend=${BACKEND} --junitxml=/.jenkins/sequential_test_results.xml"
 export EXPERIMENT=${EXPNAME}
 
 # Set the host data location

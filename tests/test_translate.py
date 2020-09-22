@@ -132,6 +132,7 @@ def test_sequential_savepoint(
             )
             passing_names.append(failing_names.pop())
     assert failing_names == [], f"only the following variables passed: {passing_names}"
+    assert len(passing_names) > 0, f"No tests passed"
 
 
 def get_serializer(data_path, rank):
@@ -280,6 +281,7 @@ def test_parallel_savepoint(
         except Exception as error:
             print(error)
     assert failing_names == [], f"only the following variables passed: {passing_names}"
+    assert len(passing_names) > 0, f"No tests passed"
 
 
 @contextlib.contextmanager

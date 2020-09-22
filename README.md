@@ -1,17 +1,18 @@
 # FV3core
 
-FV3core is a Python version, using GT4Py with Dawn, of the FV3 dynamical core (fv3gfs-fortran repo).
+FV3core is a Python version, using GT4Py with CPU and GPU backend options, of the FV3 dynamical core (fv3gfs-fortran repo).
 The code here includes regression test data of computation units coming from serialized output from the Fortran model generated using the `GridTools/serialbox` framework.
 
 
 ## Getting started
 
-Use the `tests` target of the Makefile to run the unit tests
+Use the `tests` target of the Makefile to run the unit tests.
 
 ```shell
 $ make tests
 ```
-This will pull the test data from the Google storage bucket (using the `make get_test_data') `if it does not exist locally yet, build the fv3core docker image, and run all of the seqential tests using that image.
+This will pull the test data from the Google storage bucket (using the `make get_test_data`) if it does not exist locally yet, build the fv3core docker image, and run all of the sequential tests using that image.
+
 See the [Unit Testing]() section below for options.
 
 If you'd like to run MPI parallel tests (which are needed for parts of the code with halo updates), run
@@ -42,7 +43,7 @@ e.g.
 ```shell
 $EXPERIMENT=c48_6ranks_standard make tests
 ```
-
+If you choose an experiment with a different number of ranks than 6, also set `NUM_RANKS=<num ranks>`
 
 ## Running tests  inside a container
 
@@ -121,7 +122,9 @@ $ git grep <stencil_name> <checkout of fv3gfs-fortran>
 
 2. Create a `translate` class from the serialized save-point data to a call to the stencil or function that calls the relevant stencil(s).
 
-These are usually named `fv3/translate/translate_<lowercase name>`
+These are usually named `tests/translate/translate_<lowercase name>`
+
+Import this class in the `tests/translate/__init__.py` file
 
 3. Write a Python function wrapper that the translate function (created above) calls.
 

@@ -200,8 +200,7 @@ def check_savepoint_counts(test_name, input_savepoints, output_savepoints):
             f"number of input and output savepoints not equal for {test_name}:"
             f" {len(input_savepoints)} in and {len(output_savepoints)} out"
         )
-    elif len(input_savepoints) == 0:
-        warnings.warn(f"no savepoints found for {test_name}")
+    assert len(input_savepoints) > 0, f"no savepoints found for {test_name}"
 
 
 def mock_parallel_savepoint_cases(metafunc, data_path):

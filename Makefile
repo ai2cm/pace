@@ -13,26 +13,26 @@ VOLUMES ?=
 MOUNTS ?=
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?="--rm"
-FV3=fv3core
 TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
+FV3=fv3core
+FV3UTIL_DIR=$(CWD)/external/fv3util
 FV3UTIL_DIR=$(CWD)/external/fv3gfs-util
-DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util'
 FV3_INSTALL_TAG ?= develop
 FV3_INSTALL_TARGET=$(FV3)-install
-
 FV3_INSTALL_IMAGE=$(GCR_URL)/$(FV3_INSTALL_TARGET):$(FV3_INSTALL_TAG)
-FV3_IMAGE ?=$(GCR_URL)/fv3core:$(FV3CORE_VERSION)-$(FV3_INSTALL_TAG)
+FV3_TAG ?= $(FV3CORE_VERSION)-$(FV3_INSTALL_TAG)
+FV3_IMAGE ?=$(GCR_URL)/$(FV3):$(FV3_TAG)
 
 TEST_DATA_CONTAINER=/test_data
-
 PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
 PYTHON_INIT_FILES = $(shell git ls-files | grep '__init__.py')
 TEST_DATA_TARFILE=dat_files.tar.gz
 TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
-CORE_TAR=$(FV3).tar
-CORE_BUCKET_LOC=gs://vcm-jenkins/${CORE_TAR}
+CORE_TAR=$(FV3_TAG).tar
+CORE_BUCKET_LOC=gs://vcm-jenkins/$(CORE_TAR)
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
-BASE_INSTALL?=fv3core-install-serialbox
+BASE_INSTALL?=$(FV3)-install-serialbox
+DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util -v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER)'
 
 clean:
 	find . -name ""
@@ -88,11 +88,18 @@ pull_core:
 tar_core:
 	docker save $(FV3_IMAGE) -o $(CORE_TAR)
 	gsutil copy $(CORE_TAR) $(CORE_BUCKET_LOC)
+
 sarus_load_tar:
-	if [ ! -f `pwd`/$(CORE_TAR) ]; then \
+	export FOUND_IMAGE=`sarus images | grep $(FV3_TAG)`
+	if [ -z $(FOUND_IMAGE) ] && [ ! -f `pwd`/$(CORE_TAR) ]; then \
 		gsutil copy $(CORE_BUCKET_LOC) . && \
-		sarus load ./$(CORE_TAR) ${FV3}; \
-	fi
+		sarus load ./$(CORE_TAR) $(FV3_TAG); \
+        fi
+
+cleanup_remote:
+	gsutil rm $(CORE_BUCKET_LOC)
+	gcloud container images delete -q --force-delete-tags $(FV3_IMAGE)
+
 tests: build
 	$(MAKE) get_test_data
 	$(MAKE) run_tests_sequential
@@ -114,10 +121,10 @@ dev:
 
 
 dev_tests:
-	MOUNTS=$(DEV_MOUNTS) $(MAKE) run_tests_sequential
+	VOLUMES=$(DEV_MOUNTS) $(MAKE) test_base
 
 dev_tests_mpi:
-	MOUNTS=$(DEV_MOUNTS) $(MAKE) run_tests_parallel
+	VOLUMES=$(DEV_MOUNTS) $(MAKE) test_base_parallel
 
 dev_test_mpi: dev_tests_mpi
 
@@ -127,20 +134,20 @@ dev_tests_mpi_host:
 
 test_base:
 	$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(MOUNTS) \
-	$(FV3_IMAGE) pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} /$(FV3)/tests
+	$(FV3_IMAGE) pytest --data_path=$(TEST_DATA_CONTAINER) $(TEST_ARGS) /$(FV3)/tests
 
 test_base_parallel:
 	$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(MOUNTS) $(FV3_IMAGE) \
 	$(MPIRUN_CALL) \
-	pytest --data_path=$(TEST_DATA_CONTAINER) ${TEST_ARGS} -m parallel /$(FV3)/tests
+	pytest --data_path=$(TEST_DATA_CONTAINER) $(TEST_ARGS) -m parallel /$(FV3)/tests
 
 
 run_tests_sequential:
-	VOLUMES='--mount=type=bind,source=$(TEST_DATA_HOST),destination=$(TEST_DATA_CONTAINER)' \
+	VOLUMES='--mount=type=bind,source=$(TEST_DATA_HOST),destination=$(TEST_DATA_CONTAINER) --mount=type=bind,source=$(CWD)/.jenkins,destination=/.jenkins' \
 	$(MAKE) test_base
 
 run_tests_parallel:
-	VOLUMES='--mount=type=bind,source=$(TEST_DATA_HOST),destination=$(TEST_DATA_CONTAINER)' \
+	VOLUMES='--mount=type=bind,source=$(TEST_DATA_HOST),destination=$(TEST_DATA_CONTAINER) --mount=type=bind,source=$(CWD)/.jenkins,destination=/.jenkins' \
 	$(MAKE) test_base_parallel
 
 sync_test_data:
@@ -179,4 +186,4 @@ reformat:
 .PHONY: update_submodules build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
 	 list_test_data_options pull_environment pull_test_data push_environment \
 	rebuild_environment reformat run_tests_sequential run_tests_parallel test_base test_base_parallel \
-	tests update_submodules 
+	tests update_submodules push_core pull_core tar_core sarus_load_tar cleanup_remote
