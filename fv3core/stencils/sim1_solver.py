@@ -38,7 +38,7 @@ def sim1_solver(
     with computation(PARALLEL), interval(...):
         pe = exp(gm * log(-dm / dz * constants.RDGAS * ptr)) - pm
         w1 = w
-    with computation(PARALLEL):
+    with computation(FORWARD):
         with interval(0, -2):
             g_rat = dm / dm[0, 0, 1]
             bb = 2.0 * (1.0 + g_rat)

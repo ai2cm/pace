@@ -142,7 +142,7 @@ def moist_te_2d(
     r_vir: float,
     nwat: int,
 ):
-    with computation(FORWARD), interval(...):
+    with computation(PARALLEL), interval(...):
         cvm, gz = moist_cv_nwat6_fn(
             qvapor, qliquid, qrain, qsnow, qice, qgraupel
         )  # if (nwat == 6) else moist_cv_default_fn()
@@ -214,7 +214,7 @@ def moist_pt(
     r_vir: float,
     nwat: int,
 ):
-    with computation(FORWARD), interval(...):
+    with computation(PARALLEL), interval(...):
         cvm, gz = moist_cv_nwat6_fn(
             qvapor, qliquid, qrain, qsnow, qice, qgraupel
         )  # if (nwat == 6) else moist_cv_default_fn(cv_air)
@@ -243,7 +243,7 @@ def moist_pt_last_step(
     zvir: float,
     nwat: int,
 ):
-    with computation(FORWARD), interval(...):
+    with computation(PARALLEL), interval(...):
         # if nwat == 2:
         #    gz = qliquid if qliquid > 0. else 0.
         #    qv = qvapor if qvapor > 0. else 0.
@@ -281,7 +281,7 @@ def moist_pkz(
     r_vir: float,
     nwat: int,
 ):
-    with computation(FORWARD), interval(...):
+    with computation(PARALLEL), interval(...):
         cvm, gz = moist_cv_nwat6_fn(
             qvapor, qliquid, qrain, qsnow, qice, qgraupel
         )  # if (nwat == 6) else moist_cv_default_fn(cv_air)

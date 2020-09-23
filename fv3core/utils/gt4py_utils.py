@@ -359,7 +359,8 @@ def extrap_corner(p0, p1, p2, q1, q2):
 
 def asarray(array, to_type=np.ndarray, dtype=None, order=None):
     if cp and (
-        isinstance(array.data, cp.ndarray)
+        isinstance(array, memoryview)
+        or isinstance(array.data, cp.ndarray)
         or isinstance(array.data, cp.cuda.memory.MemoryPointer)
     ):
         if to_type is np.ndarray:

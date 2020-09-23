@@ -54,13 +54,12 @@ def set_vals_2(gam: sd, q: sd, delp: sd, a4_1: sd, q_bot: sd, qs: sd):
             # set top
             # gam = 0.5
             q = 1.5 * a4_1
-    with computation(PARALLEL):
+    with computation(FORWARD):
         with interval(1, 2):
             gam = 0.5
             grid_ratio = delp[0, 0, -1] / delp
             bet = 2.0 + grid_ratio + grid_ratio - gam
             q = (3.0 * (a4_1[0, 0, -1] + a4_1) - q[0, 0, -1]) / bet
-    with computation(FORWARD):
         with interval(2, -2):
             # set middle
             old_grid_ratio = delp[0, 0, -2] / delp[0, 0, -1]
@@ -70,7 +69,7 @@ def set_vals_2(gam: sd, q: sd, delp: sd, a4_1: sd, q_bot: sd, qs: sd):
             bet = 2.0 + grid_ratio + grid_ratio - gam
             q = (3.0 * (a4_1[0, 0, -1] + a4_1) - q[0, 0, -1]) / bet
             # gam[0, 0, 1] = grid_ratio / bet
-    with computation(PARALLEL):
+    with computation(FORWARD):
         with interval(-2, -1):
             # set bottom
             old_grid_ratio = delp[0, 0, -2] / delp[0, 0, -1]
@@ -139,17 +138,15 @@ def set_avals(q: sd, a4_1: sd, a4_2: sd, a4_3: sd, a4_4: sd, q_bot: sd):
 def Apply_constraints(q: sd, gam: sd, a4_1: sd, a4_2: sd, a4_3: sd, iv: int):
     with computation(PARALLEL):
         with interval(1, None):
-            tmp = a4_1[0, 0, -1] if a4_1[0, 0, -1] > a4_1 else a4_1
-            tmp2 = a4_1[0, 0, -1] if a4_1[0, 0, -1] < a4_1 else a4_1
-    with computation(PARALLEL):
+            a4_1_0 = a4_1[0, 0, -1]
+            tmp = a4_1_0 if a4_1_0 > a4_1 else a4_1
+            tmp2 = a4_1_0 if a4_1_0 < a4_1 else a4_1
+            gam = a4_1 - a4_1_0
         with interval(1, 2):
             # do top
             q = q if q < tmp else tmp
             q = q if q > tmp2 else tmp2
-    with computation(PARALLEL):
-        with interval(1, None):
-            gam = a4_1 - a4_1[0, 0, -1]
-    with computation(PARALLEL):
+    with computation(FORWARD):
         with interval(2, -1):
             # do middle
             if (gam[0, 0, -1] * gam[0, 0, 1]) > 0:
@@ -179,10 +176,8 @@ def set_extm(extm: sd, a4_1: sd, a4_2: sd, a4_3: sd, gam: sd):
     with computation(PARALLEL):
         with interval(0, 1):
             extm = (a4_2 - a4_1) * (a4_3 - a4_1) > 0.0
-    with computation(PARALLEL):
         with interval(1, -1):
             extm = gam * gam[0, 0, 1] < 0.0
-    with computation(PARALLEL):
         with interval(-1, None):
             extm = (a4_2 - a4_1) * (a4_3 - a4_1) > 0.0
 

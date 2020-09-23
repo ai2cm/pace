@@ -46,13 +46,12 @@ def precompute(
             peg = peg[0, 0, -1] + dm[0, 0, -1] * (1.0 - q_con[0, 0, -1])
             pelng = log(peg)
             pk3 = exp(akap * peln)
-    with computation(PARALLEL), interval(0, -1):
-        dz = zh[0, 0, 1] - zh
     with computation(PARALLEL), interval(...):
-        gm = 1.0 / (1 - cp3)
+        gm = 1.0 / (1.0 - cp3)
         dm = dm * rgrav
     with computation(PARALLEL), interval(0, -1):
         pm = (peg[0, 0, 1] - peg) / (pelng[0, 0, 1] - pelng)
+        dz = zh[0, 0, 1] - zh
 
 
 @utils.stencil()

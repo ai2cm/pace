@@ -19,6 +19,7 @@ import serialbox as ser
 np.set_printoptions(threshold=4096)
 
 OUTDIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
+GPU_MAX_ERR = 1e-10
 
 
 def compare_arr(computed_data, ref_data):
@@ -108,6 +109,9 @@ def test_sequential_savepoint(
     caplog.set_level(logging.DEBUG, logger="fv3core")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
+    # Reduce error threshold for GPU
+    if backend.endswith("cuda") and testobj.max_error < GPU_MAX_ERR:
+        testobj.max_error = GPU_MAX_ERR
     fv3core._config.set_grid(grid)
     input_data = testobj.collect_input_data(serializer, savepoint_in)
     # run python version of functionality
@@ -181,7 +185,9 @@ def test_mock_parallel_savepoint(
     caplog.set_level(logging.DEBUG, logger="fv3util")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
-
+    # Reduce error threshold for GPU
+    if backend.endswith("cuda") and testobj.max_error < GPU_MAX_ERR:
+        testobj.max_error = GPU_MAX_ERR
     fv3core._config.set_grid(grid)
     inputs_list = []
     for savepoint_in, serializer in zip(savepoint_in_list, serializer_list):
@@ -245,6 +251,9 @@ def test_parallel_savepoint(
     caplog.set_level(logging.DEBUG, logger="fv3core")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
+    # Reduce error threshold for GPU
+    if backend.endswith("cuda") and testobj.max_error < GPU_MAX_ERR:
+        testobj.max_error = GPU_MAX_ERR
     fv3core._config.set_grid(grid[0])
     input_data = testobj.collect_input_data(serializer, savepoint_in)
     # run python version of functionality
