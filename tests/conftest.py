@@ -4,18 +4,21 @@ import numpy as np
 
 try:
     import gt4py
-except ImportError:
+except ModuleNotFoundError:
     gt4py = None
 try:
     import cupy
-except ImportError:
+except ModuleNotFoundError:
     cupy = None
 
 
 @pytest.fixture(params=["numpy", "cupy", "gt4py_numpy", "gt4py_cupy"])
 def backend(request):
     if cupy is None and request.param.endswith("cupy"):
-        pytest.skip("cupy is not available for GPU backend")
+        if request.config.getoption("--gpu-only"):
+            raise ModuleNotFoundError("cupy must be installed to run gpu tests")
+        else:
+            pytest.skip("cupy is not available for GPU backend")
     elif gt4py is None and request.param.startswith("gt4py"):
         pytest.skip("gt4py backend is not available")
     elif request.config.getoption("--gpu-only") and not request.param.endswith("cupy"):

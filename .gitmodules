@@ -1,0 +1,3 @@
+[submodule ".jenkins/buildenv"]
+	path = .jenkins/env
+	url = https://github.com/VulcanClimateModeling/buildenv.git
