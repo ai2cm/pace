@@ -311,6 +311,7 @@ class Quantity:
         data_array: xr.DataArray,
         origin: Iterable[int] = None,
         extent: Iterable[int] = None,
+        gt4py_backend: Union[str, None] = None,
     ) -> "Quantity":
         """
         Initialize a Quantity from an xarray.DataArray.
@@ -319,6 +320,9 @@ class Quantity:
             data_array
             origin: first point in data within the computational domain
             extent: number of points along each axis within the computational domain
+            gt4py_backend: backend to use for gt4py storages, if not given this will
+                be derived from a Storage if given as the data argument, otherwise the
+                storage attribute is disabled and will raise an exception
         """
         if "units" not in data_array.attrs:
             raise ValueError("need units attribute to create Quantity from DataArray")
@@ -328,6 +332,7 @@ class Quantity:
             data_array.attrs["units"],
             origin=origin,
             extent=extent,
+            gt4py_backend=gt4py_backend,
         )
 
     def __repr__(self):

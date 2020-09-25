@@ -15,6 +15,8 @@ in the `coupler_nml` namelist.
 - New method `CubedSphereCommunicator.synchronize_vector_interfaces` which synchronizes edge values on interface variables which are duplicated between adjacent ranks
 - Added `.sel` method to corner views (e.g. `quantity.view.northeast.sel(x=0, y=1)`) to allow indexing these corner views with arbitrary dimension ordering.
 - Halo updates now use tagged send/recv operations, which prevents deadlocks in certain situations
+- Quantity.data is now guaranteed to be a numpy or cupy array matching its `.np` module, and will no longer be a gt4py Storage
+- Quantity accepts a `gt4py_backend` on initialize which is used to create its `.storage` if one was not used on initialize
 
 v0.5.1
 ------
