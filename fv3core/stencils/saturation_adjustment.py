@@ -660,8 +660,6 @@ def satadjust_part1(
     lv00: float,
     fac_v2l: float,
     fac_l2v: float,
-    ql_gen: float,
-    adj_fac: float,
 ):
     with computation(FORWARD), interval(1, None):
         if hydrostatic:
@@ -727,12 +725,16 @@ def satadjust_part1(
         a = 0.0
         b = 0.0
         if dq0 > 0:  # whole grid - box saturated
-            a = ql_gen - ql
+            a = spec.namelist.ql_gen - ql
             b = fac_v2l * dq0
             tmpmax = (
                 a if a > b else b
             )  # max_fn(a, b) -- this yields an incorrect answer
-            src = adj_fac * dq0 if adj_fac * dq0 < tmpmax else tmpmax
+            src = (
+                spec.namelist.sat_adj0 * dq0
+                if spec.namelist.sat_adj0 * dq0 < tmpmax
+                else tmpmax
+            )
         else:
             # TODO -- we'd like to use this abstraction rather than duplicate code, but inside the if conditional complains 'not implemented'
             # factor, src = ql_evaporation(wqsat, qv, ql, dq0,fac_l2v)
@@ -797,12 +799,6 @@ def satadjust_part2(
     fac_smlt: float,
     fac_l2r: float,
     last_step: bool,
-    qs_mlt: float,
-    ql0_max: float,
-    t_sub: float,
-    qi_gen: float,
-    qi_lim: float,
-    qi0_max: float,
     rad_snow: bool,
     rad_rain: bool,
     rad_graupel: bool,
@@ -883,16 +879,14 @@ def satadjust_part2(
             mc_air,
             qv,
             c_vap,
-            qs_mlt,
+            spec.namelist.qs_mlt,
         )
         #  autoconversion from cloud water to rain
-        # TODO ql0_max is supposed to come from the namelist, but runtime floats cause an error while constants do not
-        ql, qr = autoconversion_cloud_to_rain(ql, qr, fac_l2r, constants.ql0_max)
+        ql, qr = autoconversion_cloud_to_rain(ql, qr, fac_l2r, spec.namelist.ql0_max)
         iqs2, dqsdt = wqs2_fn_2(pt1, den)
         expsubl = exp(0.875 * log(qi * den))
         lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
         tcp2 = lcp2 + icp2
-        # TODO t_sub is supposed to come from the namelist, but currently gt4py breaks with a coniditional comparison of a runtime float (vs a constant)
         qv, qi, q_sol, cvm, pt1 = sublimation(
             pt1,
             cvm,
@@ -911,9 +905,9 @@ def satadjust_part2(
             c_vap,
             lhl,
             lhi,
-            constants.t_sub,
-            qi_gen,
-            qi_lim,
+            spec.namelist.t_sub,
+            spec.namelist.qi_gen,
+            spec.namelist.qi_lim,
         )
         # virtual temp updated
         q_con = q_liq + q_sol
@@ -931,7 +925,7 @@ def satadjust_part2(
         else:
             qg = qg
         #  autoconversion from cloud ice to snow
-        qim = qi0_max / den
+        qim = spec.namelist.qi0_max / den
         sink = 0.0
         if qi > qim:
             sink = fac_i2s * (qi - qim)
@@ -971,18 +965,7 @@ def satadjust_part2(
 
 @utils.stencil()
 def satadjust_part3_laststep_qa(
-    qa: sd,
-    area: sd,
-    qpz: sd,
-    hs: sd,
-    tin: sd,
-    q_cond: sd,
-    q_sol: sd,
-    den: sd,
-    dw_ocean: float,
-    dw_land: float,
-    icloud_f: int,
-    cld_min: float,
+    qa: sd, area: sd, qpz: sd, hs: sd, tin: sd, q_cond: sd, q_sol: sd, den: sd,
 ):
     with computation(PARALLEL), interval(...):
         it, ap1 = ap1_and_index(tin)
@@ -1006,7 +989,10 @@ def satadjust_part3_laststep_qa(
         #  higher than 10 m is considered "land" and will have higher subgrid variability
         abshs = hs if hs > 0 else -hs
         mindw = min_fn(1.0, abshs / (10.0 * constants.GRAV))
-        dw = dw_ocean + (dw_land - dw_ocean) * mindw
+        dw = (
+            spec.namelist.dw_ocean
+            + (spec.namelist.dw_land - spec.namelist.dw_ocean) * mindw
+        )
         # "scale - aware" subgrid variability: 100 - km as the base
         dbl_sqrt_area = dw * (area ** 0.5 / 100.0e3) ** 0.5
         maxtmp = 0.01 if 0.01 > dbl_sqrt_area else dbl_sqrt_area
@@ -1025,7 +1011,7 @@ def satadjust_part3_laststep_qa(
             dq = hvar * qpz
             q_plus = qpz + dq
             q_minus = qpz - dq
-            # if (icloud_f == 2): # TODO this many if conditionals triggers an assertion error
+            # if (spec.namelist.icloud_f == 2): # TODO this many if conditionals triggers an assertion error
             #    if (qpz > qstar):
             #        qa = 1.
             #    elif ((qstar < q_plus) and (q_cond > 1.e-8)):
@@ -1039,7 +1025,7 @@ def satadjust_part3_laststep_qa(
                 qa = 1.0
             else:
                 if qstar < q_plus:
-                    if icloud_f == 0:
+                    if spec.namelist.icloud_f == 0:
                         qa = (q_plus - qstar) / (dq + dq)
                     else:
                         qa = (q_plus - qstar) / (2.0 * dq * (1.0 - q_cond))
@@ -1047,7 +1033,9 @@ def satadjust_part3_laststep_qa(
                     qa = 0.0
                 # impose minimum cloudiness if substantial q_cond exist
                 if q_cond > 1.0e-8:
-                    qa = cld_min if cld_min > qa else qa  # max_fn(cld_min, qa)
+                    qa = (
+                        spec.namelist.cld_min if spec.namelist.cld_min > qa else qa
+                    )  # max_fn(spec.namelist.cld_min, qa)
                 else:
                     qa = qa
                 qa = 1.0 if 1.0 < qa else qa  # min_fn(1., qa)
@@ -1125,7 +1113,6 @@ def compute(
     tin = utils.make_storage_from_shape(peln.shape, utils.origin)
     q_cond = utils.make_storage_from_shape(peln.shape, utils.origin)
     qpz = utils.make_storage_from_shape(peln.shape, utils.origin)
-    adj_fac = spec.namelist.sat_adj0
     satadjust_part1(
         wqsat,
         dq2dt,
@@ -1163,8 +1150,6 @@ def compute(
         lv00,
         fac_v2l,
         fac_l2v,
-        spec.namelist.ql_gen,
-        adj_fac,
         origin=origin,
         domain=domain,
     )
@@ -1183,6 +1168,8 @@ def compute(
             origin=(0, 0, 0),
             domain=spec.grid.domain_shape_standard(),
         )
+    else:
+        adj_fac = spec.namelist.sat_adj0
     do_qa = True  # TODO  -- this isn't a namelist option in Fortran, it is whether or not cld_amount is a tracer. If/when we support different sets of tracers, this will need to change
     satadjust_part2(
         wqsat,
@@ -1229,12 +1216,6 @@ def compute(
         fac_smlt,
         fac_l2r,
         last_step,
-        spec.namelist.qs_mlt,
-        spec.namelist.ql0_max,
-        spec.namelist.t_sub,
-        spec.namelist.qi_gen,
-        spec.namelist.qi_lim,
-        spec.namelist.qi0_max,
         spec.namelist.rad_snow,
         spec.namelist.rad_rain,
         spec.namelist.rad_graupel,
@@ -1253,10 +1234,6 @@ def compute(
             q_cond,
             q_sol,
             den,
-            spec.namelist.dw_ocean,
-            spec.namelist.dw_land,
-            spec.namelist.icloud_f,
-            spec.namelist.cld_min,
             origin=origin,
             domain=domain,
         )
