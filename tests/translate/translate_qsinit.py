@@ -1,7 +1,9 @@
-from .translate import TranslateFortranData2Py
+import numpy as np
+
 import fv3core.stencils.saturation_adjustment as satadjust
 import fv3core.utils.gt4py_utils as utils
-import numpy as np
+
+from .translate import TranslateFortranData2Py
 
 
 class TranslateQSInit(TranslateFortranData2Py):

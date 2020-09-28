@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
-from fv3core.utils.global_constants import (
-    CP_AIR,
-    CV_AIR,
-    CP_VAP,
-    CV_VAP,
-    C_LIQ,
-    C_ICE,
-    GRAV,
-    ZVIR,
-    RDGAS,
-)
-from fv3core.stencils.basic_operations import dim, multiply_constant_inout
 import fv3core.stencils.copy_stencil as cp
+import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.basic_operations import dim, multiply_constant_inout
+from fv3core.utils.global_constants import (
+    C_ICE,
+    C_LIQ,
+    CP_AIR,
+    CP_VAP,
+    CV_AIR,
+    CV_VAP,
+    GRAV,
+    RDGAS,
+    ZVIR,
+)
+
 from ..decorators import ArgSpec, state_inputs
+
 
 sd = utils.sd
 RK = CP_AIR / RDGAS + 1.0
@@ -406,7 +409,7 @@ def tracers_dict(state):
     ArgSpec("delz", "vertical_thickness_of_atmospheric_layer", "m", intent="in"),
     ArgSpec("pe", "interface_pressure", "Pa", intent="in"),
     ArgSpec(
-        "pkz", "layer_mean_pressure_raised_to_power_of_kappa", "unknown", intent="in",
+        "pkz", "layer_mean_pressure_raised_to_power_of_kappa", "unknown", intent="in"
     ),
     ArgSpec("peln", "logarithm_of_interface_pressure", "ln(Pa)", intent="in"),
     ArgSpec("pt", "air_temperature", "degK", intent="inout"),

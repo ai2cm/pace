@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
+import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils.basic_operations import (
     absolute_value,
     floor_cap,
-    min_fn,
     max_fn,
+    min_fn,
     sign,
 )
+
 
 input_vars = ["q", "c"]
 inputs_params = ["jord", "ifirst", "ilast"]
@@ -575,7 +577,7 @@ def compute_flux(q, c, flux, jord, ifirst, ilast, kstart=0, nk=None):
     if mord < 8:
         al = compute_al(q, grid.dya, jord, ifirst, ilast, js1, je3, kstart, nk)
         get_flux_stencil(
-            q, c, al, flux, mord=mord, origin=flux_origin, domain=flux_domain,
+            q, c, al, flux, mord=mord, origin=flux_origin, domain=flux_domain
         )
     else:
         bl, br = compute_blbr_ord8plus(

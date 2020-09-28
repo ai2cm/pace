@@ -1,5 +1,6 @@
-from .translate import TranslateFortranData2Py
 import fv3core.stencils.circulation_cgrid as Circulation_Cgrid
+
+from .translate import TranslateFortranData2Py
 
 
 class TranslateCirculation_Cgrid(TranslateFortranData2Py):

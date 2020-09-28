@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
+import math
+
+import fv3gfs.util as fv3util
 import gt4py.gtscript as gtscript
+import numpy as np
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
 import fv3core.stencils.c2l_ord as c2l_ord
-from gt4py.gtscript import computation, interval, PARALLEL
-import fv3core.utils.global_constants as constants
 import fv3core.stencils.rayleigh_super as ray_super
-import numpy as np
-import math
-import fv3gfs.util as fv3util
+import fv3core.utils.global_constants as constants
+import fv3core.utils.gt4py_utils as utils
+
 
 sd = utils.sd
 
@@ -25,9 +28,7 @@ def ray_fast_u(u: sd, rf: sd, dp: sd, dmu: sd):
 
 
 @utils.stencil()
-def ray_fast_v(
-    v: sd, rf: sd, dp: sd, dmv: sd,
-):
+def ray_fast_v(v: sd, rf: sd, dp: sd, dmv: sd):
     with computation(FORWARD):
         with interval(0, 1):
             dmv = (1.0 - rf) * dp * v
@@ -113,7 +114,7 @@ def compute(u, v, w, dp, pfull, dt, ptop, ks):
     )
     if not spec.namelist.hydrostatic:
         ray_fast_w(
-            w, rf, origin=grid.compute_origin(), domain=(grid.nic, grid.njc, kmax),
+            w, rf, origin=grid.compute_origin(), domain=(grid.nic, grid.njc, kmax)
         )
     dmu = utils.make_storage_data(np.squeeze(dmu[:, :, kmax - 1]), dm.shape)
     dmv = utils.make_storage_data(np.squeeze(dmv[:, :, kmax - 1]), dm.shape)

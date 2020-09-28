@@ -1,11 +1,14 @@
+from math import log
+
+import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
+import fv3core._config as spec
+import fv3core.stencils.a2b_ord4 as a2b_ord4
+import fv3core.stencils.copy_stencil as cp
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.corners import fill2_4corners, fill_4corners
-import gt4py.gtscript as gtscript
-import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
-import fv3core.stencils.copy_stencil as cp
-import fv3core.stencils.a2b_ord4 as a2b_ord4
-from math import log
+
 
 sd = utils.sd
 
@@ -90,9 +93,7 @@ def compute(u, v, pp, gz, pk3, delp, dt, ptop, akap):
     wk1 = utils.make_storage_from_shape(pp.shape, origin=orig)
     wk = utils.make_storage_from_shape(pk3.shape, origin=orig)
 
-    set_k0(
-        pp, pk3, top_value, origin=orig, domain=(grid.nic + 1, grid.njc + 1, 1),
-    )
+    set_k0(pp, pk3, top_value, origin=orig, domain=(grid.nic + 1, grid.njc + 1, 1))
 
     a2b_ord4.compute(pp, wk1, kstart=1, nk=grid.npz, replace=True)
     a2b_ord4.compute(pk3, wk1, kstart=1, nk=grid.npz, replace=True)

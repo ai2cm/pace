@@ -1,6 +1,8 @@
-from .parallel_translate import ParallelTranslate2Py
-import fv3core.stencils.c2l_ord as c2l_ord
 import fv3gfs.util as fv3util
+
+import fv3core.stencils.c2l_ord as c2l_ord
+
+from .parallel_translate import ParallelTranslate2Py
 
 
 class TranslateCubedToLatLon(ParallelTranslate2Py):

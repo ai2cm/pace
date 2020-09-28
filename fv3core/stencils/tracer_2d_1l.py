@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
+import math
+
 import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
-from fv3core.stencils.updatedzd import ra_x_stencil, ra_y_stencil
 import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.fvtp2d as fvtp2d
-import math
+import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.updatedzd import ra_x_stencil, ra_y_stencil
+
 
 sd = utils.sd
 
@@ -90,9 +93,7 @@ def q_other_adjust(q: sd, qset: sd, dp1: sd, fx: sd, fy: sd, rarea: sd, dp2: sd)
         qset = adjustment(q, dp1, fx, fy, rarea, dp2)
 
 
-def compute(
-    comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq,
-):
+def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
     grid = spec.grid
     shape = mfxd.data.shape
     # start HALO update on q (in dyn_core in fortran -- just has started when this function is called...)

@@ -1,5 +1,6 @@
-from .translate import TranslateFortranData2Py
 import fv3core.stencils.vorticity_volumemean as vm
+
+from .translate import TranslateFortranData2Py
 
 
 class TranslateVorticityVolumeMean(TranslateFortranData2Py):

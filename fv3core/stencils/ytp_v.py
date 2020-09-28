@@ -1,23 +1,26 @@
-import fv3core.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
+import fv3core.stencils.yppm as yppm
+import fv3core.utils.gt4py_utils as utils
+
 from .yppm import (
     compute_al,
-    fx1_fn,
     final_flux,
+    fx1_fn,
+    get_b0,
     get_bl,
     get_br,
-    get_b0,
     is_smt5_mord5,
     is_smt5_most_mords,
+    s11,
+    s14,
+    s15,
     xt_dya_edge_0_base,
     xt_dya_edge_1_base,
-    s15,
-    s14,
-    s11,
 )
-import fv3core.stencils.yppm as yppm
-from gt4py.gtscript import computation, interval, PARALLEL
+
 
 sd = utils.sd
 
@@ -66,9 +69,7 @@ def zero_br_bl_corners_south(br, bl):
     if grid.sw_corner:
         br_bl_corner(br, bl, origin=(grid.is_, grid.js - 1, 0), domain=corner_domain)
     if grid.se_corner:
-        br_bl_corner(
-            br, bl, origin=(grid.ie + 1, grid.js - 1, 0), domain=corner_domain,
-        )
+        br_bl_corner(br, bl, origin=(grid.ie + 1, grid.js - 1, 0), domain=corner_domain)
 
 
 def zero_br_bl_corners_north(br, bl):

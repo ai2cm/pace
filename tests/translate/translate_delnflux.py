@@ -1,6 +1,7 @@
 import fv3core.stencils.delnflux as delnflux
-from .translate import TranslateFortranData2Py
 import fv3core.utils.gt4py_utils as utils
+
+from .translate import TranslateFortranData2Py
 
 
 class TranslateDelnFlux(TranslateFortranData2Py):

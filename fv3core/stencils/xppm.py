@@ -1,33 +1,35 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
+import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils.basic_operations import (
     absolute_value,
     floor_cap,
-    min_fn,
     max_fn,
+    min_fn,
     sign,
 )
 
 from .yppm import (
-    p1,
-    p2,
     c1,
     c2,
     c3,
-    get_bl,
+    floor_cap,
+    fx1_c_negative,
     get_b0,
+    get_bl,
     is_smt5_mord5,
     is_smt5_most_mords,
-    fx1_c_negative,
-    floor_cap,
+    p1,
+    p2,
     pert_ppm,
-    s15,
-    s14,
     s11,
+    s14,
+    s15,
 )
-from gt4py.gtscript import computation, interval, PARALLEL
+
 
 sd = utils.sd
 origin = (2, 0, 0)
@@ -442,9 +444,7 @@ def compute_flux(q, c, xflux, iord, jfirst, jlast, kstart=0, nk=None):
     flux_domain = (grid.nic + 1, jlast - jfirst + 1, nk)
     if mord < 8:
         al = compute_al(q, grid.dxa, iord, is1, ie3, jfirst, jlast, kstart, nk)
-        get_flux(
-            q, c, al, xflux, mord=mord, origin=flux_origin, domain=flux_domain,
-        )
+        get_flux(q, c, al, xflux, mord=mord, origin=flux_origin, domain=flux_domain)
     else:
         bl, br = compute_blbr_ord8plus(q, iord, jfirst, jlast, is1, ie1, kstart, nk)
         finalflux_ord8plus(q, c, bl, br, xflux, origin=flux_origin, domain=flux_domain)

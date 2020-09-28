@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
-import fv3core.utils.corners as corners
 import gt4py.gtscript as gtscript
-import fv3core.stencils.copy_stencil as cp
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
+import fv3core.stencils.copy_stencil as cp
+import fv3core.utils.corners as corners
+import fv3core.utils.gt4py_utils as utils
+
 
 sd = utils.sd
 
@@ -163,7 +165,7 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, kstart=0, nk=None, mass=None):
             nt_ny = grid.je - grid.js + 3 + 2 * nt
             nt_nx = grid.ie - grid.is_ + 3 + 2 * nt
             d2_highorder(
-                fx2, fy2, grid.rarea, d2, origin=nt_origin, domain=(nt_nx, nt_ny, nk),
+                fx2, fy2, grid.rarea, d2, origin=nt_origin, domain=(nt_nx, nt_ny, nk)
             )
             corners.copy_corners(d2, "x", grid, kslice)
             nt_origin = (grid.is_ - nt, grid.js - nt, kstart)

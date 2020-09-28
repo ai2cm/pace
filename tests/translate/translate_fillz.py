@@ -1,7 +1,9 @@
-from .translate import TranslateFortranData2Py
-import fv3core.stencils.fillz as Fillz
 import numpy as np
+
+import fv3core.stencils.fillz as Fillz
 import fv3core.utils.gt4py_utils as utils
+
+from .translate import TranslateFortranData2Py
 
 
 class TranslateFillz(TranslateFortranData2Py):
@@ -32,7 +34,7 @@ class TranslateFillz(TranslateFortranData2Py):
                 inputs[p] = int(inputs[p])
         info = storage_vars["dp2"]
         inputs["dp2"] = self.make_storage_data(
-            np.squeeze(inputs["dp2"]), istart=info["istart"], axis=info["axis"],
+            np.squeeze(inputs["dp2"]), istart=info["istart"], axis=info["axis"]
         )
         inputs["tracers"] = {}
         info = storage_vars["q2tracers"]

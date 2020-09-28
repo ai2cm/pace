@@ -1,28 +1,20 @@
-import fv3core.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
+import numpy as np
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
 import fv3core.stencils.copy_stencil as cp
-import fv3core.stencils.remap_profile as remap_profile
 import fv3core.stencils.fillz as fillz
 import fv3core.stencils.map_single as map_single
-import numpy as np
+import fv3core.stencils.remap_profile as remap_profile
+import fv3core.utils.gt4py_utils as utils
+
 
 sd = utils.sd
 
 
 def compute(
-    pe1,
-    pe2,
-    dp2,
-    tracers,
-    nq,
-    q_min,
-    i1,
-    i2,
-    kord,
-    j_2d=None,
-    version="transliterated",
+    pe1, pe2, dp2, tracers, nq, q_min, i1, i2, kord, j_2d=None, version="transliterated"
 ):
     grid = spec.grid
     fill = spec.namelist.fill
@@ -71,6 +63,4 @@ def compute(
             version,
         )
     if fill:
-        fillz.compute(
-            dp2, tracers, i_extent, spec.grid.npz, nq, jslice,
-        )
+        fillz.compute(dp2, tracers, i_extent, spec.grid.npz, nq, jslice)

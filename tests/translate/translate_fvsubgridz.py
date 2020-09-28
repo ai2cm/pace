@@ -1,8 +1,11 @@
-from .parallel_translate import ParallelTranslateBaseSlicing
-import fv3core.stencils.fv_subgridz as fv_subgridz
 import fv3gfs.util as fv3util
-import fv3core.utils.gt4py_utils as utils
+
 import fv3core._config as spec
+import fv3core.stencils.fv_subgridz as fv_subgridz
+import fv3core.utils.gt4py_utils as utils
+
+from .parallel_translate import ParallelTranslateBaseSlicing
+
 
 # NOTE, does no halo updates, does not need to be a Parallel test,
 # but doing so here to make the interface match fv_dynamics.
@@ -117,15 +120,7 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
     }
     outputs = inputs.copy()
 
-    for name in (
-        "nq",
-        "dt",
-        "pe",
-        "peln",
-        "delp",
-        "delz",
-        "pkz",
-    ):
+    for name in ("nq", "dt", "pe", "peln", "delp", "delz", "pkz"):
         outputs.pop(name)
 
     def __init__(self, grids, *args, **kwargs):
@@ -169,13 +164,7 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
         }
 
         self._base.out_vars = self._base.in_vars["data_vars"].copy()
-        for var in [
-            "pe",
-            "peln",
-            "delp",
-            "delz",
-            "pkz",
-        ]:
+        for var in ["pe", "peln", "delp", "delz", "pkz"]:
             self._base.out_vars.pop(var)
 
         self.ignore_near_zero_errors = {}

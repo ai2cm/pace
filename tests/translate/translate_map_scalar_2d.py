@@ -1,6 +1,7 @@
-from .translate import TranslateFortranData2Py, TranslateGrid
-import fv3core.stencils.map_single as Map_Single
 import fv3core._config as spec
+import fv3core.stencils.map_single as Map_Single
+
+from .translate import TranslateFortranData2Py, TranslateGrid
 
 
 class TranslateMapScalar_2d(TranslateFortranData2Py):
@@ -25,9 +26,7 @@ class TranslateMapScalar_2d(TranslateFortranData2Py):
             "qs": {"serialname": "gz1d", "kstart": grid.is_, "axis": 0},
         }
         self.in_vars["parameters"] = ["j_2d", "mode"]
-        self.out_vars = {
-            "pt": {},
-        }
+        self.out_vars = {"pt": {}}
         self.is_ = grid.is_
         self.ie = grid.ie
 

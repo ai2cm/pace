@@ -1,10 +1,12 @@
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.corners import fill_4corners
 import gt4py.gtscript as gtscript
+from gt4py.gtscript import BACKWARD, PARALLEL, computation, interval
+
 import fv3core._config as spec
 import fv3core.stencils.copy_stencil as cp
-from gt4py.gtscript import computation, interval, PARALLEL, BACKWARD
 import fv3core.utils.global_constants as constants
+import fv3core.utils.gt4py_utils as utils
+from fv3core.utils.corners import fill_4corners
+
 
 sd = utils.sd
 origin = (1, 1, 0)
@@ -229,7 +231,7 @@ def update_dz_c(
     gz_y: sd,
     ws3: sd,
     *,
-    dt: float
+    dt: float,
 ):
     with computation(PARALLEL):
         with interval(0, 1):

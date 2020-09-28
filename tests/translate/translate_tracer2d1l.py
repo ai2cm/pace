@@ -1,8 +1,10 @@
-from .parallel_translate import ParallelTranslate
-import fv3core.stencils.tracer_2d_1l as tracer_2d_1l
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
 import pytest
+
+import fv3core.stencils.tracer_2d_1l as tracer_2d_1l
+import fv3core.utils.gt4py_utils as utils
+
+from .parallel_translate import ParallelTranslate
 
 
 class TranslateTracer2D1L(ParallelTranslate):

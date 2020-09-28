@@ -43,7 +43,7 @@ update_submodules:
 	fi
 
 
-build_environment: 
+build_environment:
 	DOCKER_BUILDKIT=1 docker build \
 		--network host \
 		--build-arg MIDBASE=$(BASE_INSTALL) \
@@ -168,20 +168,14 @@ list_test_data_options:
 	gsutil ls $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)
 
 lint:
-	black --diff --check $(PYTHON_FILES) $(PYTHON_INIT_FILES)
+	pre-commit run
+	# pre-commit runs black for now. Will also run flake8 eventually.
+	# black --diff --check $(PYTHON_FILES) $(PYTHON_INIT_FILES)
 	# disable flake8 tests for now, re-enable when dycore is "running"
-	#flake8 $(PYTHON_FILES)
+	#@flake8 $(PYTHON_FILES)
 	# ignore unused import error in __init__.py files
-	#flake8 --ignore=F401 $(PYTHON_INIT_FILES)
-	@echo "LINTING SUCCESSFUL"
-
-flake8:
-	flake8 $(PYTHON_FILES)
-	# ignore unused import error in __init__.py files
-	flake8 --ignore=F401 $(PYTHON_INIT_FILES)
-
-reformat:
-	black $(PYTHON_FILES) $(PYTHON_INIT_FILES)
+	#@flake8 --ignore=F401 $(PYTHON_INIT_FILES)
+	# @echo "LINTING SUCCESSFUL"
 
 .PHONY: update_submodules build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
 	 list_test_data_options pull_environment pull_test_data push_environment \

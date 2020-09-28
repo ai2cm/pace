@@ -19,4 +19,3 @@ RUN pip install --no-cache-dir -e /usr/src/fv3gfs-util
 RUN cd /fv3core && \
     rm -rf /fv3core/.git && \
     pip install -e /fv3core
- 

@@ -1,8 +1,10 @@
+import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
+import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.corners import fill2_4corners, fill_4corners
-import gt4py.gtscript as gtscript
-import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
+
 
 sd = utils.sd
 
@@ -49,7 +51,7 @@ def nonhydro_y_fluxes(delp: sd, pt: sd, w: sd, vtc: sd, fy: sd, fy1: sd, fy2: sd
 
 @utils.stencil()
 def transportdelp_hydrostatic(
-    delp: sd, pt: sd, fx: sd, fx1: sd, fy: sd, fy1: sd, rarea: sd, delpc: sd, ptc: sd,
+    delp: sd, pt: sd, fx: sd, fx1: sd, fy: sd, fy1: sd, rarea: sd, delpc: sd, ptc: sd
 ):
     with computation(PARALLEL), interval(...):
         delpc = delp + (fx1 - fx1[1, 0, 0] + fy1 - fy1[0, 1, 0]) * rarea

@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
-import numpy as np
+import copy
+import functools
+import logging
+import math
+
 import gt4py as gt
 import gt4py.gtscript as gtscript
-import copy
-import math
-import logging
-import functools
+import numpy as np
+
 from fv3core.utils.mpi import MPI
+
 
 try:
     import cupy as cp

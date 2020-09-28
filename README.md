@@ -178,10 +178,6 @@ The submodule include:
 
 - `external/fv3util` - git@github.com:VulcanClimateModeling/fv3util.git
 
-
-
-
-
 ## Dockerfiles
 
 There are three main driver files:
@@ -191,20 +187,21 @@ There are three main driver files:
 2. `docker/Dockerfile` - uses the build environment and copies in the fv3 folder only. This is to make development easier so that when you change a file in fv3, 'make build' does not accidentally or otherwise trigger a 20 minute rebuild of all of those installations, but just updates the code in the fv3core image.
 
 
+## Development
 
-## Linting
+Requirements for developing fv3core have pinned versions in `requirements.txt`, and should be installed.
+This adds `pre-commit`, which we use to lint and enforce style on the code.
+After changing files and before pushing, run `pre-commit run` or equivalently `make lint` to ensure changes conform to the style.
+The `pre-commit` command can also be installed as a pre-commit git hook, to ensure tests pass before committing code.
 
-Before committing your code, you can automatically fix many common style linting errors by running
-
-```shell
-$ make reformat
+```bash
+$ pip install -r requirements.txt
+... installs packages...
+$ pre-commit install
+pre-commit installed at .git/hooks/pre-commit
 ```
 
-To list linting issues
-
-```shell
-$ make lint
-```
+As a convenience, the `lint` target of the top-level makefile executes `pre-commit run --all-files`.
 
 ## License
 

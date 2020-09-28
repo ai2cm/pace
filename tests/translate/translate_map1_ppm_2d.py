@@ -1,6 +1,8 @@
-from .translate import TranslateFortranData2Py, TranslateGrid
-import fv3core.stencils.map_single as Map_Single
 import numpy as np
+
+import fv3core.stencils.map_single as Map_Single
+
+from .translate import TranslateFortranData2Py, TranslateGrid
 
 
 class TranslateSingleJ(TranslateFortranData2Py):
@@ -33,9 +35,7 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
             "qs": {"serialname": "ws_1d", "kstart": grid.is_, "axis": 0},
         }
         self.in_vars["parameters"] = ["j_2d", "i1", "i2", "mode", "kord"]
-        self.out_vars = {
-            "var_inout": {},
-        }
+        self.out_vars = {"var_inout": {}}
         self.max_error = 5e-13
 
     def compute(self, inputs):
@@ -65,7 +65,7 @@ class TranslateMap1_PPM_2d_3(TranslateMap1_PPM_2d):
                 "serialname": "var_inout_3",
                 "istart": 0,
                 "iend": grid.ied + 1,
-            },
+            }
         }
 
 
@@ -80,6 +80,6 @@ class TranslateMap1_PPM_2d_2(TranslateMap1_PPM_2d):
                 "serialname": "var_inout_2",
                 "jstart": 0,
                 "jend": grid.jed + 1,
-            },
+            }
         }
         self.max_error = 2e-14

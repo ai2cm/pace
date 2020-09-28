@@ -1,5 +1,6 @@
-from .translate import TranslateFortranData2Py
 import fv3core.stencils.ray_fast as ray_fast
+
+from .translate import TranslateFortranData2Py
 
 
 class TranslateRay_Fast(TranslateFortranData2Py):

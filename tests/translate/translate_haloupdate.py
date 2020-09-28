@@ -1,10 +1,14 @@
+import logging
+
+import fv3gfs.util as fv3util
+import numpy as np
+
+import fv3core._config as spec
+from fv3core.utils import gt4py_utils as utils
+
 from .parallel_translate import ParallelTranslate, _serialize_slice
 from .translate import TranslateFortranData2Py
-import fv3gfs.util as fv3util
-from fv3core.utils import gt4py_utils as utils
-import fv3core._config as spec
-import logging
-import numpy as np
+
 
 logger = logging.getLogger("fv3ser")
 
@@ -142,7 +146,7 @@ class TranslateHaloVectorUpdate(ParallelTranslate):
         logger.debug(f"starting on {communicator.rank}")
         state = self.state_from_inputs(inputs)
         req = communicator.start_vector_halo_update(
-            state["x_wind_on_c_grid"], state["y_wind_on_c_grid"], n_points=utils.halo,
+            state["x_wind_on_c_grid"], state["y_wind_on_c_grid"], n_points=utils.halo
         )
 
         logger.debug(f"finishing on {communicator.rank}")

@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     git && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
-    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10 
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10
 ###
 ### Download necessary source code tarballs and directories
 ###
@@ -43,13 +43,13 @@ RUN tar xzf boost_1_73_0.tar.gz -C /usr/local && \
 
 FROM fv3core-install-base as fv3core-install-serialbox
 ###
-### Build and install Serialbox 
+### Build and install Serialbox
 ###
 RUN git clone -b v2.6.0 --depth 1 https://github.com/GridTools/serialbox.git /usr/src/serialbox  && cd /usr/src/serialbox && \
     mkdir build && cd build && \
     cmake -DSERIALBOX_USE_NETCDF=ON -DSERIALBOX_TESTING=ON -DCMAKE_BUILD_TYPE=Release ../ && \
     make -j8 && make install && rm -rf /usr/src/serialbox/build
-   
+
 FROM $MIDBASE as fv3core-install
 ###
 ### Build and install GT4Py

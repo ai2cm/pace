@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
-import numpy as np
 import gt4py.gtscript as gtscript
+import numpy as np
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
+import fv3core.stencils.a2b_ord4 as a2b_ord4
+import fv3core.stencils.basic_operations as basic
 import fv3core.stencils.copy_stencil as cp
 import fv3core.utils.corners as corners
-import fv3core.stencils.basic_operations as basic
-import fv3core.stencils.a2b_ord4 as a2b_ord4
-from gt4py.gtscript import computation, interval, PARALLEL
+import fv3core.utils.gt4py_utils as utils
+
 
 sd = utils.sd
 
@@ -220,10 +222,7 @@ def compute(
             corner_domain = (1, 1, nk)
             if grid.sw_corner:
                 corner_south_remove_extra_term(
-                    uc,
-                    divg_d,
-                    origin=(grid.is_, grid.js, kstart),
-                    domain=corner_domain,
+                    uc, divg_d, origin=(grid.is_, grid.js, kstart), domain=corner_domain
                 )
             if grid.se_corner:
                 corner_south_remove_extra_term(
@@ -352,9 +351,7 @@ def damping_zero_order(
         raise Exception("nested not implemented")
     compute_origin = (grid.is_, grid.js, kstart)
     compute_domain = (grid.nic + 1, grid.njc + 1, nk)
-    delpc_main(
-        vort, ptc, delpc, origin=compute_origin, domain=compute_domain,
-    )
+    delpc_main(vort, ptc, delpc, origin=compute_origin, domain=compute_domain)
     corner_domain = (1, 1, nk)
     if grid.sw_corner:
         corner_south_remove_extra_term(
@@ -366,10 +363,7 @@ def damping_zero_order(
         )
     if grid.ne_corner:
         corner_north_remove_extra_term(
-            vort,
-            delpc,
-            origin=(grid.ie + 1, grid.je + 1, kstart),
-            domain=corner_domain,
+            vort, delpc, origin=(grid.ie + 1, grid.je + 1, kstart), domain=corner_domain
         )
     if grid.nw_corner:
         corner_north_remove_extra_term(

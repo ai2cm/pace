@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
-import fv3core.utils.global_constants as constants
+import fv3core.stencils.basic_operations as basic
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.stencils.saturation_adjustment as saturation_adjustment
-import fv3core.stencils.basic_operations as basic
+import fv3core.utils.global_constants as constants
+import fv3core.utils.gt4py_utils as utils
+
 
 sd = utils.sd
 

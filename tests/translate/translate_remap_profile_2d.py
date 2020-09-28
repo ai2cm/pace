@@ -1,6 +1,8 @@
-from .translate import TranslateFortranData2Py
-import fv3core.stencils.remap_profile as Profile
 import numpy as np
+
+import fv3core.stencils.remap_profile as Profile
+
+from .translate import TranslateFortranData2Py
 
 
 class TranslateCS_Profile_2d(TranslateFortranData2Py):

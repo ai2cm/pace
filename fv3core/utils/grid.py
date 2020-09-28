@@ -1,6 +1,7 @@
-import fv3core.utils.gt4py_utils as utils
-import numpy as np
 import fv3gfs.util as fv3util
+import numpy as np
+
+import fv3core.utils.gt4py_utils as utils
 
 
 class Grid:

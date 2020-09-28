@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 
-import sys
 import contextlib
-import numpy as np
-import fv3core._config
-import fv3core.utils.gt4py_utils
-import pytest
-import fv3gfs.util as fv3util
 import logging
 import os
+import sys
+
+import fv3gfs.util as fv3util
+import numpy as np
+import pytest
 import xarray as xr
+
+import fv3core._config
+import fv3core.utils.gt4py_utils
 from fv3core.utils.mpi import MPI
+
 
 sys.path.append("/serialbox2/install/python")  # noqa
 import serialbox as ser
+
 
 # this only matters for manually-added print statements
 np.set_printoptions(threshold=4096)
@@ -307,9 +311,7 @@ def save_netcdf(
     data_vars = {}
     for i, varname in enumerate(failing_names):
         dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
-        attrs = {
-            "units": testobj.outputs[varname]["units"],
-        }
+        attrs = {"units": testobj.outputs[varname]["units"]}
         data_vars[f"{varname}_in"] = xr.DataArray(
             np.stack([in_data[varname] for in_data in inputs_list]),
             dims=("rank",) + tuple(dims),

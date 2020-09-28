@@ -1,8 +1,10 @@
+import logging
+
+import numpy as np
+
+import fv3core._config
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.grid import Grid
-import numpy as np
-import fv3core._config
-import logging
 
 
 logger = logging.getLogger("fv3ser")
@@ -52,9 +54,7 @@ class TranslateFortranData2Py:
         utils.k_split_run(self.compute_func, inputs, kstarts, column_info)
         return self.slice_output(inputs)
 
-    def collect_input_data(
-        self, serializer, savepoint,
-    ):
+    def collect_input_data(self, serializer, savepoint):
         input_data = {}
         for varname in (
             self.serialnames(self.in_vars["data_vars"]) + self.in_vars["parameters"]
@@ -261,7 +261,7 @@ class TranslateGrid:
     def make_composite_var_storage(self, varname, data3d, shape):
         for s in range(9):
             self.data[varname + str(s + 1)] = utils.make_storage_data(
-                np.squeeze(data3d[:, :, s]), shape, origin=(0, 0, 0),
+                np.squeeze(data3d[:, :, s]), shape, origin=(0, 0, 0)
             )
 
     def make_grid_storage(self, pygrid):
@@ -295,7 +295,7 @@ class TranslateGrid:
                     )
                 )
                 self.data[k] = utils.make_storage_data(
-                    v, shape, origin=(istart, jstart, 0), istart=istart, jstart=jstart,
+                    v, shape, origin=(istart, jstart, 0), istart=istart, jstart=jstart
                 )
 
     def python_grid(self):

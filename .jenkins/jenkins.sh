@@ -116,7 +116,7 @@ if [ ${container_engine} == "sarus" ]; then
     else
 	export CONTAINER_ENGINE="sarus"
 	export RUN_FLAGS=""
-    fi 
+    fi
 fi
 
 # get the test data version from the Makefile

@@ -1,6 +1,8 @@
-from .parallel_translate import ParallelTranslate2PyState
-import fv3core.stencils.fv_dynamics as fv_dynamics
 import copy
+
+import fv3core.stencils.fv_dynamics as fv_dynamics
+
+from .parallel_translate import ParallelTranslate2PyState
 
 
 class TranslateFVDynamics_Preamble(ParallelTranslate2PyState):

@@ -1,7 +1,8 @@
-import fv3core.utils.gt4py_utils as utils
 import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
+import fv3core.utils.gt4py_utils as utils
 
 
 def grid():
@@ -294,7 +295,7 @@ def update_vt_x_edge(vc, sin_sg2, sin_sg4, vt, dt):
 
 
 def corner_ut_stencil(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
-    from __externals__ import vi, vj, ux, uy, vx, vy
+    from __externals__ import ux, uy, vi, vj, vx, vy
 
     with computation(PARALLEL), interval(...):
         ut[0, 0, 0] = (

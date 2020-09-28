@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
+import math
+
 import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
 import fv3core.stencils.moist_cv as moist_cv
-from gt4py.gtscript import computation, interval, PARALLEL
 import fv3core.utils.global_constants as constants
-from fv3core.stencils.basic_operations import max_fn, min_fn, dim
-import math
+import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.basic_operations import dim, max_fn, min_fn
+
 
 # TODO, this code could be reduced greatly with abstraction, but first gt4py needs to support gtscript function calls of arbitrary depth embedded in conditionals
 sd = utils.sd
@@ -217,8 +220,9 @@ def subtract_sink_pt1(pt1, sink, lhl, cvm):
 def melt_cloud_ice(
     qv, qi, ql, q_liq, q_sol, pt1, icp2, fac_imlt, mc_air, c_vap, lhi, cvm
 ):
-    factmp = 0.0  # TODO, if temporaries inside of if-statements become supported, remove this
-    sink = 0.0  # TODO ditto factmp
+    # TODO, if temporaries inside of if-statements become supported, remove factmp and sink
+    factmp = 0.0
+    sink = 0.0
     if (qi > 1.0e-8) and (pt1 > TICE):
         factmp = fac_imlt * (pt1 - TICE) / icp2
         sink = qi if qi < factmp else factmp
@@ -331,9 +335,8 @@ def make_graupel(pt1, cvm, fac_r2g, qr, qg, q_liq, q_sol, lhi, icp2, mc_air, qv,
     sink = 0.0
     if qr > 1e-7 and dtmp > 0.0:
         rainfac = (dtmp * 0.025) ** 2
-        tmp = (
-            qr if 1.0 < rainfac else rainfac * qr
-        )  #  no limit on freezing below - 40 deg c
+        #  no limit on freezing below - 40 deg c
+        tmp = qr if 1.0 < rainfac else rainfac * qr
         sinktmp = fac_r2g * dtmp / icp2
         sink = tmp if tmp < sinktmp else sinktmp
         qr = qr - sink
@@ -965,7 +968,14 @@ def satadjust_part2(
 
 @utils.stencil()
 def satadjust_part3_laststep_qa(
-    qa: sd, area: sd, qpz: sd, hs: sd, tin: sd, q_cond: sd, q_sol: sd, den: sd,
+    qa: sd,
+    area: sd,
+    qpz: sd,
+    hs: sd,
+    tin: sd,
+    q_cond: sd,
+    q_sol: sd,
+    den: sd,
 ):
     with computation(PARALLEL), interval(...):
         it, ap1 = ap1_and_index(tin)
@@ -1170,7 +1180,9 @@ def compute(
         )
     else:
         adj_fac = spec.namelist.sat_adj0
-    do_qa = True  # TODO  -- this isn't a namelist option in Fortran, it is whether or not cld_amount is a tracer. If/when we support different sets of tracers, this will need to change
+
+    # TODO  -- this isn't a namelist option in Fortran, it is whether or not cld_amount is a tracer. If/when we support different sets of tracers, this will need to change
+    do_qa = True
     satadjust_part2(
         wqsat,
         dq2dt,

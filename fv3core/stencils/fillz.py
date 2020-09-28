@@ -1,14 +1,15 @@
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.corners import fill2_4corners, fill_4corners
-import gt4py.gtscript as gtscript
-import fv3core._config as spec
 import math as math
-from gt4py.gtscript import computation, interval, PARALLEL, FORWARD
+
+import gt4py.gtscript as gtscript
+import numpy as np
+from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
+
+import fv3core._config as spec
 import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.remap_profile as remap_profile
-import numpy as np
+import fv3core.utils.gt4py_utils as utils
+from fv3core.utils.corners import fill2_4corners, fill_4corners
 
-import numpy as np
 
 sd = utils.sd
 

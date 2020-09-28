@@ -1,5 +1,6 @@
-from .translate import TranslateFortranData2Py
 from fv3core.utils.corners import copy_corners
+
+from .translate import TranslateFortranData2Py
 
 
 class TranslateCopyCorners(TranslateFortranData2Py):

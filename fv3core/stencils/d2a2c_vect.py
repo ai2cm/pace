@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
-import numpy as np
 import gt4py as gt
 import gt4py.gtscript as gtscript
+import numpy as np
+
 import fv3core._config as spec
 import fv3core.stencils.copy_stencil as cp
+import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import (
-    lagrange_interpolation_y,
-    lagrange_interpolation_x,
-    lagrange_x_func,
-    lagrange_y_func,
     a1,
     a2,
+    lagrange_interpolation_x,
+    lagrange_interpolation_y,
+    lagrange_x_func,
+    lagrange_y_func,
 )
+
 
 sd = utils.sd
 c1 = -2.0 / 14.0

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-import fv3core.utils.gt4py_utils as utils
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core._config as spec
-from gt4py.gtscript import computation, interval, PARALLEL
-import fv3core.stencils.moist_cv as moist_cv
+import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.map_single as map_single
 import fv3core.stencils.mapn_tracer as mapn_tracer
-import fv3core.stencils.copy_stencil as cp
+import fv3core.stencils.moist_cv as moist_cv
+import fv3core.utils.gt4py_utils as utils
+
 
 sd = utils.sd
 CONSV_MIN = 0.001
@@ -34,7 +36,7 @@ def undo_delz_adjust(delp: sd, delz: sd):
 
 @utils.stencil()
 def pressure_updates(
-    pe1: sd, pe2: sd, pe: sd, ak: sd, bk: sd, delp: sd, ps: sd, pn2: sd, peln: sd,
+    pe1: sd, pe2: sd, pe: sd, ak: sd, bk: sd, delp: sd, ps: sd, pn2: sd, peln: sd
 ):
     with computation(BACKWARD):
         with interval(-1, None):
@@ -229,7 +231,7 @@ def compute(
         )
     # TODO if nq > 5:
     mapn_tracer.compute(
-        pe1, pe2, dp2, tracers, nq, 0.0, grid.is_, grid.ie, abs(spec.namelist.kord_tr),
+        pe1, pe2, dp2, tracers, nq, 0.0, grid.is_, grid.ie, abs(spec.namelist.kord_tr)
     )
     # TODO else if nq > 0:
     # TODO map1_q2, fillz
@@ -280,14 +282,14 @@ def compute(
     # dp2 update, if larger than pe0 and smaller than one level up, update omega and  exit
 
     pressures_mapu(
-        pe, pe1, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_jextra,
+        pe, pe1, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_jextra
     )
     map_single.compute(
-        u, pe0, pe3, gz, -1, grid.is_, grid.ie, spec.namelist.kord_mt, j_interface=True,
+        u, pe0, pe3, gz, -1, grid.is_, grid.ie, spec.namelist.kord_mt, j_interface=True
     )
     domain_iextra = (grid.nic + 1, grid.njc, grid.npz + 1)
     pressures_mapv(
-        pe, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_iextra,
+        pe, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_iextra
     )
     map_single.compute(
         v, pe0, pe3, gz, -1, grid.is_, grid.ie + 1, spec.namelist.kord_mt

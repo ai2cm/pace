@@ -1,9 +1,11 @@
-import fv3core.utils.gt4py_utils as utils
 import gt4py as gt
 import gt4py.gtscript as gtscript
-import fv3core._config as spec
 import numpy as np
+
+import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
+import fv3core.utils.gt4py_utils as utils
+
 
 sd = utils.sd
 origin = utils.origin
@@ -179,7 +181,7 @@ def compute(u, v, ua, va, divg_d):
         )
     if grid.se_corner:
         matrix_element_subtraction(
-            divg_d, vf, origin=(grid.ie + 1, grid.js, 0), domain=grid.corner_domain(),
+            divg_d, vf, origin=(grid.ie + 1, grid.js, 0), domain=grid.corner_domain()
         )
     if grid.ne_corner:
         basic.add_term_stencil(
@@ -190,7 +192,7 @@ def compute(u, v, ua, va, divg_d):
         )
     if grid.nw_corner:
         basic.add_term_stencil(
-            vf, divg_d, origin=(grid.is_, grid.je + 1, 0), domain=grid.corner_domain(),
+            vf, divg_d, origin=(grid.is_, grid.je + 1, 0), domain=grid.corner_domain()
         )
 
     basic.adjustmentfactor_stencil(

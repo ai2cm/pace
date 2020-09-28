@@ -1,5 +1,6 @@
-from .translate import TranslateFortranData2Py
 import fv3core.stencils.transportdelp as TransportDelp
+
+from .translate import TranslateFortranData2Py
 
 
 class TranslateTransportDelp(TranslateFortranData2Py):
@@ -14,11 +15,7 @@ class TranslateTransportDelp(TranslateFortranData2Py):
             "vtc": {},
             "wc": {},
         }
-        self.out_vars = {
-            "delpc": {},
-            "ptc": {},
-            "wc": {},
-        }
+        self.out_vars = {"delpc": {}, "ptc": {}, "wc": {}}
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
