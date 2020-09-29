@@ -77,6 +77,7 @@ def finalize(
     pem: sd,
     pe: sd,
     ppe: sd,
+    pe_init: sd,
     last_call: bool,
 ):
     with computation(PARALLEL), interval(...):
@@ -90,6 +91,8 @@ def finalize(
             peln = peln_run
             pk = pk3
             pe = pem
+        else:
+            pe = pe_init
     with computation(BACKWARD):
         with interval(-1, None):
             zh = zs
@@ -130,6 +133,7 @@ def compute(
     riemorigin = (grid.is_, grid.js, 0)
     dm = cp.copy(delp, (0, 0, 0))
     cp3 = cp.copy(cappa, (0, 0, 0))
+    pe_init = cp.copy(pe, (0, 0, 0))
     pm = utils.make_storage_from_shape(shape, riemorigin)
     pem = utils.make_storage_from_shape(shape, riemorigin)
     peln_run = utils.make_storage_from_shape(shape, riemorigin)
@@ -186,6 +190,7 @@ def compute(
         pem,
         pe,
         ppe,
+        pe_init,
         last_call,
         origin=riemorigin,
         domain=domain,

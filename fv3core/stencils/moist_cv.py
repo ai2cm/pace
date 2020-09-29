@@ -144,15 +144,25 @@ def moist_te_2d(
     r_vir: float,
     nwat: int,
 ):
-    with computation(PARALLEL), interval(...):
-        cvm, gz = moist_cv_nwat6_fn(
-            qvapor, qliquid, qrain, qsnow, qice, qgraupel
-        )  # if (nwat == 6) else moist_cv_default_fn()
-        q_con[0, 0, 0] = gz
-        te_2d[0, 0, 0] = te_2d[0, 0, -1] + delp * (
-            cvm * pt / ((1.0 + r_vir * qvapor) * (1.0 - gz))
-            + te_always_part(u, v, w, phis, rsin2, cosa_s)
-        )
+    with computation(FORWARD):
+        with interval(0, 1):
+            cvm, gz = moist_cv_nwat6_fn(
+                qvapor, qliquid, qrain, qsnow, qice, qgraupel
+            )  # if (nwat == 6) else moist_cv_default_fn()
+            q_con = gz
+            te_2d = te_2d + delp * (
+                cvm * pt / ((1.0 + r_vir * qvapor) * (1.0 - gz))
+                + te_always_part(u, v, w, phis, rsin2, cosa_s)
+            )
+        with interval(1, None):
+            cvm, gz = moist_cv_nwat6_fn(
+                qvapor, qliquid, qrain, qsnow, qice, qgraupel
+            )  # if (nwat == 6) else moist_cv_default_fn()
+            q_con = gz
+            te_2d = te_2d[0, 0, -1] + delp * (
+                cvm * pt / ((1.0 + r_vir * qvapor) * (1.0 - gz))
+                + te_always_part(u, v, w, phis, rsin2, cosa_s)
+            )
 
 
 # # TODO calling gtscript functions from inside the if statements is causing problems, if we want 'moist_phys' to be changeable, we either need to duplicate the stencil code or fix the gt4py bug
@@ -337,7 +347,6 @@ def compute_te(
         nwat != 6
     ):  # TODO -- to do this cleanly, we probably need if blocks working inside stencils
         raise Exception("We still need to implement other nwats for moist_cv")
-
     moist_te_2d(
         qvapor_js,
         qliquid_js,
