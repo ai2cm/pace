@@ -103,7 +103,8 @@ if [ ! -z "${UPSTREAM_PROJECT}" ] ; then
     export FV3_TAG="${UPSTREAM_PROJECT}-${UPSTREAM_BUILD_NUMBER}"
     echo "Downstream project using FV3_TAG=${FV3_TAG}"
 fi
-# If using sarus, load the image and set variables for running tests
+# If using sarus, load the image and set variables for running tests,
+# otherwise build the image
 if [ ${container_engine} == "sarus" ]; then
     module load sarus
     export FV3_IMAGE="load/library/${FV3_TAG}"
@@ -117,6 +118,8 @@ if [ ${container_engine} == "sarus" ]; then
 	export CONTAINER_ENGINE="sarus"
 	export RUN_FLAGS=""
     fi
+else
+    make build
 fi
 
 # get the test data version from the Makefile
