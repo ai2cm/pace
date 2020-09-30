@@ -8,15 +8,12 @@ import sys
 import fv3gfs.util as fv3util
 import numpy as np
 import pytest
+import serialbox as ser
 import xarray as xr
 
 import fv3core._config
 import fv3core.utils.gt4py_utils
 from fv3core.utils.mpi import MPI
-
-
-sys.path.append("/serialbox2/install/python")  # noqa
-import serialbox as ser
 
 
 # this only matters for manually-added print statements
