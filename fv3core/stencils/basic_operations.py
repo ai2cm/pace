@@ -75,14 +75,8 @@ def floor_cap(var: sd, floor_value: float):
 
 
 @gtscript.function
-def absolute_value(in_array):
-    abs_value = in_array if in_array > 0 else -in_array
-    return abs_value
-
-
-@gtscript.function
 def sign(a, b):
-    asignb = absolute_value(a)
+    asignb = abs(a)
     if b > 0:
         asignb = asignb
     else:

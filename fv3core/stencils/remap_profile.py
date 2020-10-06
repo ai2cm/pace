@@ -6,7 +6,6 @@ import fv3core._config as spec
 import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.profile_limiters as limiters
 import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.basic_operations import absolute_value
 from fv3core.utils.corners import fill2_4corners, fill_4corners
 
 
@@ -188,10 +187,10 @@ def set_extm(extm: sd, a4_1: sd, a4_2: sd, a4_3: sd, gam: sd):
 def set_exts(a4_4: sd, ext5: sd, ext6: sd, a4_1: sd, a4_2: sd, a4_3: sd):
     with computation(PARALLEL), interval(...):
         x0 = 2.0 * a4_1 - (a4_2 + a4_3)
-        x1 = absolute_value(a4_2 - a4_3)
+        x1 = abs(a4_2 - a4_3)
         a4_4 = 3.0 * x0
-        ext5 = absolute_value(x0) > x1
-        ext6 = absolute_value(a4_4) > x1
+        ext5 = abs(x0) > x1
+        ext6 = abs(a4_4) > x1
 
 
 @utils.stencil()
@@ -300,8 +299,6 @@ def set_inner_as_kord9(
         tmp_max = a4_2
         tmp_max0 = a4_1
         diff_23 = 0.0
-        abs_a44 = 0.0
-        abs_diff23 = 0.0
         if extm and extm[0, 0, -1]:
             a4_2 = a4_1
             a4_3 = a4_1
@@ -316,10 +313,8 @@ def set_inner_as_kord9(
             a4_4 = 0.0
         else:
             diff_23 = a4_2 - a4_3
-            abs_diff23 = diff_23 if diff_23 > 0 else -diff_23
             a4_4 = 6.0 * a4_1 - 3.0 * (a4_2 + a4_3)
-            abs_a44 = a4_4 if a4_4 > 0 else -a4_4
-            if abs_a44 > abs_diff23:
+            if abs(a4_4) > abs(diff_23):
                 tmp_min = (
                     a4_1
                     if (a4_1 < pmp_1) and (a4_1 < lac_1)

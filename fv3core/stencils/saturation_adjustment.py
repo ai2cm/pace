@@ -997,8 +997,7 @@ def satadjust_part3_laststep_qa(
                 rqi = (TICE - tin) / (TICE - T_WFR)
             qstar = rqi * iqs1 + (1.0 - rqi) * wqs1
         #  higher than 10 m is considered "land" and will have higher subgrid variability
-        abshs = hs if hs > 0 else -hs
-        mindw = min_fn(1.0, abshs / (10.0 * constants.GRAV))
+        mindw = min_fn(1.0, abs(hs) / (10.0 * constants.GRAV))
         dw = (
             spec.namelist.dw_ocean
             + (spec.namelist.dw_land - spec.namelist.dw_ocean) * mindw

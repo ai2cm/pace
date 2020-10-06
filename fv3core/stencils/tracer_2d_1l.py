@@ -56,18 +56,13 @@ def cmax_split_vars(
 @utils.stencil()
 def cmax_stencil1(cx: sd, cy: sd, cmax: sd):
     with computation(PARALLEL), interval(...):
-        abscx = cx if cx > 0 else -cx
-        abscy = cy if cy > 0 else cy
-        cmax = abscx if abscx > abscy else abscy
+        cmax = max(abs(cx), abs(cy))
 
 
 @utils.stencil()
 def cmax_stencil2(cx: sd, cy: sd, sin_sg5: sd, cmax: sd):
     with computation(PARALLEL), interval(...):
-        abscx = cx if cx > 0 else -cx
-        abscy = cy if cy > 0 else cy
-        tmpmax = abscx if abscx > abscy else abscy
-        cmax = tmpmax + 1.0 - sin_sg5
+        cmax = max(abs(cx), abs(cy)) + 1.0 - sin_sg5
 
 
 @utils.stencil()

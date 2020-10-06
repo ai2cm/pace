@@ -4,7 +4,6 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.stencils.copy_stencil as cp
 import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.basic_operations import absolute_value
 from fv3core.utils.corners import fill2_4corners, fill_4corners
 
 
@@ -19,7 +18,7 @@ def grid():
 def posdef_constraint_iv0(a4_1: sd, a4_2: sd, a4_3: sd, a4_4: sd, r12: float):
     with computation(PARALLEL), interval(...):
         a32 = a4_3 - a4_2
-        absa32 = absolute_value(a32)
+        absa32 = abs(a32)
         if a4_1 <= 0.0:
             a4_2 = a4_1
             a4_3 = a4_1
