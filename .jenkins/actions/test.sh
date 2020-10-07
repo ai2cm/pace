@@ -45,7 +45,7 @@ T="$(date +%s)"
 # parse command line options (pass all of them to function)
 parseOptions $*
 
-if [ "${target}" == "gpu"] ; then
+if [ "${target}" == "gpu" ] ; then
     # we only run this on HPC
     set +e
     module load cray-python
@@ -61,7 +61,7 @@ fi
 python3 -m venv venv
 . ./venv/bin/activate
 
-if [ "${target}" == "gpu"] ; then
+if [ "${target}" == "gpu" ] ; then
     set +e
     module unload cray-python
     module unload pycuda

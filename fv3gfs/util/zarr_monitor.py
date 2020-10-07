@@ -188,6 +188,15 @@ class _ZarrVariableWriter:
         except ValueError as err:
             if err.args[0] == "object __array__ method not producing an array":
                 self.array[target_slice] = cupy.asnumpy(quantity.view[:][from_slice])
+            else:
+                raise err
+        except TypeError as err:
+            if err.args[0].startswith(
+                "Implicit conversion to a NumPy array is not allowed."
+            ):
+                self.array[target_slice] = cupy.asnumpy(quantity.view[:][from_slice])
+            else:
+                raise err
 
         self.i_time += 1
 
