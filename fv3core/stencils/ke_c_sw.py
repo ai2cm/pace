@@ -6,158 +6,78 @@ import fv3core.utils.gt4py_utils as utils
 
 
 sd = utils.sd
-origin = utils.origin
-
-# Vorticity field computation
-@utils.stencil()
-def copy_vc_values(vort: sd, vc: sd, va: sd):
-    with computation(PARALLEL), interval(...):
-        vort[0, 0, 0] = vc if va > 0.0 else vc[0, 1, 0]
 
 
 @utils.stencil()
-def update_vorticity_edge_values(vort: sd, va: sd, u: sd, sin: sd, cos: sd):
+def update_vorticity_and_kinetic_energy(
+    ke: sd,
+    vort: sd,
+    ua: sd,
+    va: sd,
+    uc: sd,
+    vc: sd,
+    u: sd,
+    v: sd,
+    sin_sg1: sd,
+    cos_sg1: sd,
+    sin_sg2: sd,
+    cos_sg2: sd,
+    sin_sg3: sd,
+    cos_sg3: sd,
+    sin_sg4: sd,
+    cos_sg4: sd,
+    dt2: float,
+):
+    from __splitters__ import i_end, i_start, j_end, j_start
+
     with computation(PARALLEL), interval(...):
-        vort[0, 0, 0] = vort * sin + u * cos if va > 0.0 else vort
+        ke = uc if ua > 0.0 else uc[1, 0, 0]
+        vort = vc if va > 0.0 else vc[0, 1, 0]
+
+        if __INLINED(spec.namelist.grid_type < 3):
+            # additional assumption: not __INLINED(spec.grid.nested)
+            with parallel(region[:, j_start], region[:, j_end + 1]):
+                vort = vort * sin_sg4 + u[0, 1, 0] * cos_sg4 if va <= 0.0 else vort
+            with parallel(region[:, j_start + 1], region[:, j_end + 2]):
+                vort = vort * sin_sg2 + u * cos_sg2 if va > 0.0 else vort
+
+            with parallel(region[i_end + 1, :], region[i_start, :]):
+                ke = ke * sin_sg3 + v[1, 0, 0] * cos_sg3 if ua <= 0.0 else ke
+            with parallel(region[i_end + 2, :], region[i_start + 1, :]):
+                ke = ke * sin_sg1 + v * cos_sg1 if ua > 0.0 else ke
+
+        ke = 0.5 * dt2 * (ua * ke + va * vort)
 
 
-@utils.stencil()
-def update_vorticity_outer_edge_values(vort: sd, va: sd, u: sd, sin: sd, cos: sd):
-    with computation(PARALLEL), interval(...):
-        vort[0, 0, 0] = vort * sin + u[0, 1, 0] * cos if va <= 0.0 else vort
-
-
-# Kinetic energy field computations
-@utils.stencil()
-def copy_uc_values(ke: sd, uc: sd, ua: sd):
-    with computation(PARALLEL), interval(...):
-        ke[0, 0, 0] = uc if ua > 0.0 else uc[1, 0, 0]
-
-
-@utils.stencil()
-def update_kinetic_energy(ke: sd, vort: sd, ua: sd, va: sd, dt2: float):
-    with computation(PARALLEL), interval(...):
-        ke[0, 0, 0] = 0.5 * dt2 * (ua * ke + va * vort)
-
-
-@utils.stencil()
-def update_ke_edge_values(ke: sd, ua: sd, v: sd, sin: sd, cos: sd):
-    with computation(PARALLEL), interval(...):
-        ke[0, 0, 0] = ke * sin + v * cos if ua > 0.0 else ke
-
-
-@utils.stencil()
-def update_ke_outer_edge_values(ke: sd, ua: sd, v: sd, sin: sd, cos: sd):
-    with computation(PARALLEL), interval(...):
-        ke[0, 0, 0] = ke * sin + v[1, 0, 0] * cos if ua <= 0.0 else ke
-
-
-def compute(uc, vc, u, v, ua, va, dt2):
+def compute(uc: sd, vc: sd, u: sd, v: sd, ua: sd, va: sd, dt2: float):
     grid = spec.grid
-    # co = grid.compute_origin()
     origin = (grid.is_ - 1, grid.js - 1, 0)
 
     # Create storage objects to hold the new vorticity and kinetic energy values
     ke_c = utils.make_storage_from_shape(uc.shape, origin=origin)
     vort_c = utils.make_storage_from_shape(vc.shape, origin=origin)
 
-    # Set vorticity and kinetic energy values (ignoring edge values)
-    copy_domain = (grid.nic + 2, grid.njc + 2, grid.npz)
-    copy_uc_values(ke_c, uc, ua, origin=origin, domain=copy_domain)
-    copy_vc_values(vort_c, vc, va, origin=origin, domain=copy_domain)
-
-    # If we are NOT using a nested grid configuration, then edge values need to be evaluated separately
-    if spec.namelist.grid_type < 3 and not grid.nested:
-        vort_domain = (grid.ie + 1, 1, grid.npz)
-        if grid.south_edge:
-            update_vorticity_outer_edge_values(
-                vort_c,
-                va,
-                u,
-                grid.sin_sg4,
-                grid.cos_sg4,
-                origin=origin,
-                domain=vort_domain,
-            )
-            update_vorticity_edge_values(
-                vort_c,
-                va,
-                u,
-                grid.sin_sg2,
-                grid.cos_sg2,
-                origin=(grid.is_ - 1, grid.js, 0),
-                domain=vort_domain,
-            )
-
-        if grid.north_edge:
-            update_vorticity_outer_edge_values(
-                vort_c,
-                va,
-                u,
-                grid.sin_sg4,
-                grid.cos_sg4,
-                origin=(grid.is_ - 1, grid.je, 0),
-                domain=vort_domain,
-            )
-            update_vorticity_edge_values(
-                vort_c,
-                va,
-                u,
-                grid.sin_sg2,
-                grid.cos_sg2,
-                origin=(grid.is_ - 1, grid.je + 1, 0),
-                domain=vort_domain,
-            )
-
-        ke_domain = (1, grid.je + 2, grid.npz)
-        if grid.east_edge:
-            update_ke_outer_edge_values(
-                ke_c,
-                ua,
-                v,
-                grid.sin_sg3,
-                grid.cos_sg3,
-                origin=(grid.ie, grid.js - 1, 0),
-                domain=ke_domain,
-            )
-            update_ke_edge_values(
-                ke_c,
-                ua,
-                v,
-                grid.sin_sg1,
-                grid.cos_sg1,
-                origin=(grid.ie + 1, grid.js - 1, 0),
-                domain=ke_domain,
-            )
-
-        if grid.west_edge:
-            update_ke_outer_edge_values(
-                ke_c,
-                ua,
-                v,
-                grid.sin_sg3,
-                grid.cos_sg3,
-                origin=(grid.is_ - 1, grid.js - 1, 0),
-                domain=ke_domain,
-            )
-            update_ke_edge_values(
-                ke_c,
-                ua,
-                v,
-                grid.sin_sg1,
-                grid.cos_sg1,
-                origin=(grid.is_, grid.js - 1, 0),
-                domain=ke_domain,
-            )
-
-    # Update kinetic energy field using computed vorticity
-    update_kinetic_energy(
+    # Set vorticity and kinetic energy values
+    update_vorticity_and_kinetic_energy(
         ke_c,
         vort_c,
         ua,
         va,
+        uc,
+        vc,
+        u,
+        v,
+        grid.sin_sg1,
+        grid.cos_sg1,
+        grid.sin_sg2,
+        grid.cos_sg2,
+        grid.sin_sg3,
+        grid.cos_sg3,
+        grid.sin_sg4,
+        grid.cos_sg4,
         dt2,
-        origin=origin,
+        origin=(grid.is_ - 1, grid.js - 1, 0),
         domain=(grid.nic + 2, grid.njc + 2, grid.npz),
+        splitters=grid.splitters,
     )
     return ke_c, vort_c
