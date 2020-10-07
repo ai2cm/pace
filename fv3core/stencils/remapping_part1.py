@@ -2,11 +2,11 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.map_single as map_single
 import fv3core.stencils.mapn_tracer as mapn_tracer
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.basic_operations import copy, copy_stencil
 
 
 sd = utils.sd
@@ -144,7 +144,7 @@ def compute(
     t_min = 184.0
     # do_omega = hydrostatic and last_step # TODO pull into inputs
     domain_jextra = (grid.nic, grid.njc + 1, grid.npz + 1)
-    pe1 = cp.copy(pe, origin=grid.compute_origin(), domain=domain_jextra)
+    pe1 = copy(pe, origin=grid.compute_origin(), domain=domain_jextra)
     pe2 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
     dp2 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
     pn2 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
@@ -193,7 +193,7 @@ def compute(
     copy_j_adjacent(
         pe2, origin=(grid.is_, grid.je + 1, 1), domain=(grid.nic, 1, grid.npz - 1)
     )
-    cp.copy_stencil(
+    copy_stencil(
         dp2, delp, origin=grid.compute_origin(), domain=grid.domain_shape_compute()
     )
     pn2_and_pk(
@@ -246,12 +246,12 @@ def compute(
             delp, delz, origin=grid.compute_origin(), domain=grid.domain_shape_compute()
         )
     # if do_omega:  # NOTE untested
-    #    pe3 = cp.copy(omga, (grid.is_, grid.js, 1))
+    #    pe3 = copy(omga, origin=(grid.is_, grid.js, 1))
 
-    pe0 = cp.copy(
-        peln, grid.compute_origin(), domain=(grid.nic, grid.njc, grid.npz + 1)
+    pe0 = copy(
+        peln, origin=grid.compute_origin(), domain=(grid.nic, grid.njc, grid.npz + 1)
     )
-    cp.copy_stencil(
+    copy_stencil(
         pn2,
         peln,
         origin=grid.compute_origin(),

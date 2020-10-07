@@ -5,9 +5,9 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.fvtp2d as fvtp2d
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.basic_operations import copy, copy_stencil
 from fv3core.stencils.updatedzd import ra_x_stencil, ra_y_stencil
 
 
@@ -184,13 +184,13 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
     # TODO revisit: the loops over q and nsplt have two inefficient options duplicating storages/stencil calls,
     # return to this, maybe you have more options now, or maybe the one chosen here is the worse one
 
-    dp1_orig = cp.copy(
+    dp1_orig = copy(
         dp1, origin=grid.default_origin(), domain=grid.domain_shape_standard()
     )
     for qname in utils.tracer_variables[0:nq]:
         q = tracers[qname + "_quantity"]
         # handling the q and it loop switching
-        cp.copy_stencil(
+        copy_stencil(
             dp1_orig,
             dp1,
             origin=grid.default_origin(),
@@ -210,7 +210,7 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
                 if it == 0:
                     # TODO 1d
                     qn2 = grid.quantity_wrap(
-                        cp.copy(
+                        copy(
                             q.storage,
                             origin=grid.default_origin(),
                             domain=grid.domain_shape_standard(),
@@ -282,7 +282,7 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
                 )
 
             if it < nsplt - 1:
-                cp.copy_stencil(
+                copy_stencil(
                     dp2,
                     dp1,
                     origin=grid.compute_origin(),

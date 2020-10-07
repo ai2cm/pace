@@ -4,7 +4,6 @@ import numpy as np
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.stencils.remapping_part1 as remap_part1
 import fv3core.stencils.remapping_part2 as remap_part2

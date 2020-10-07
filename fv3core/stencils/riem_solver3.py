@@ -5,11 +5,10 @@ import numpy as np
 
 import fv3core._config as spec
 import fv3core.decorators as decorators
-import fv3core.stencils.basic_operations as basic
-import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.sim1_solver as sim1_solver
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.basic_operations import copy
 
 
 sd = utils.sd
@@ -131,9 +130,9 @@ def compute(
     shape = w.shape
     domain = (grid.nic, grid.njc, km + 2)
     riemorigin = (grid.is_, grid.js, 0)
-    dm = cp.copy(delp, (0, 0, 0))
-    cp3 = cp.copy(cappa, (0, 0, 0))
-    pe_init = cp.copy(pe, (0, 0, 0))
+    dm = copy(delp)
+    cp3 = copy(cappa)
+    pe_init = copy(pe)
     pm = utils.make_storage_from_shape(shape, riemorigin)
     pem = utils.make_storage_from_shape(shape, riemorigin)
     peln_run = utils.make_storage_from_shape(shape, riemorigin)

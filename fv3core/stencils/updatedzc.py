@@ -2,9 +2,9 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.copy_stencil as cp
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.basic_operations import copy
 from fv3core.utils.corners import fill_4corners
 
 
@@ -260,11 +260,11 @@ def update_dz_c(
 def compute(dp_ref, zs, ut, vt, gz_in, ws3, dt2):
     # TODO: once we have a concept for corners, the following 4 lines should be refactored
     grid = spec.grid
-    gz = cp.copy(gz_in, origin)
-    gz_x = cp.copy(gz, origin)
-    ws = cp.copy(ws3, origin=(0, 0, 0), domain=grid.domain_shape_buffer_1cell())
+    gz = copy(gz_in, origin=origin)
+    gz_x = copy(gz, origin=origin)
+    ws = copy(ws3, domain=grid.domain_shape_buffer_1cell())
     fill_4corners(gz_x, "x", grid)
-    gz_y = cp.copy(gz_x, origin)
+    gz_y = copy(gz_x, origin=origin)
     fill_4corners(gz_y, "y", grid)
     update_dz_c(
         dp_ref,

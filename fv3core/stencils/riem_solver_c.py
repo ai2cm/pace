@@ -2,10 +2,10 @@
 import numpy as np
 
 import fv3core._config as spec
-import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.sim1_solver as sim1_solver
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.basic_operations import copy
 
 
 sd = utils.sd
@@ -75,9 +75,9 @@ def compute(ms, dt2, akap, cappa, ptop, hs, w3, ptc, q_con, delpc, gz, pef, ws):
     shape = w3.shape
     domain = (spec.grid.nic + 2, grid.njc + 2, km + 2)
     riemorigin = (is1, js1, 0)
-    dm = cp.copy(delpc, (0, 0, 0))
-    cp3 = cp.copy(cappa, (0, 0, 0))
-    w = cp.copy(w3, (0, 0, 0))
+    dm = copy(delpc)
+    cp3 = copy(cappa)
+    w = copy(w3)
 
     pem = utils.make_storage_from_shape(shape, riemorigin)
     peg = utils.make_storage_from_shape(shape, riemorigin)

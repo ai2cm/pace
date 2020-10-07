@@ -3,9 +3,9 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.copy_stencil as cp
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.basic_operations import copy
 
 
 sd = utils.sd
@@ -135,7 +135,7 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, kstart=0, nk=None, mass=None):
     if mass is None:
         d2_damp(q, d2, damp_c, origin=origin_d2, domain=domain_d2)
     else:
-        d2 = cp.copy(q, origin_d2, domain=domain_d2)
+        d2 = copy(q, origin=origin_d2, domain=domain_d2)
 
     if nord > 0:
         corners.copy_corners(d2, "x", grid, kslice)

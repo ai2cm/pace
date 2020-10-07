@@ -5,9 +5,9 @@ import numpy as np
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.copy_stencil as cp
 import fv3core.stencils.remap_profile as remap_profile
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.basic_operations import copy
 from fv3core.utils.corners import fill2_4corners, fill_4corners
 
 
@@ -189,7 +189,7 @@ def setup_data(q1, pe1, i1, i2, j_2d=None, j_interface=False):
         domain = (domain[0], jslice.stop - jslice.start, domain[2])
 
     dp1 = utils.make_storage_from_shape(q1.shape, origin=origin)
-    q4_1 = cp.copy(q1, origin=(0, 0, 0), domain=grid.domain_shape_standard())
+    q4_1 = copy(q1, origin=(0, 0, 0), domain=grid.domain_shape_standard())
     q4_2 = utils.make_storage_from_shape(q4_1.shape, origin=(grid.is_, 0, 0))
     q4_3 = utils.make_storage_from_shape(q4_1.shape, origin=(grid.is_, 0, 0))
     q4_4 = utils.make_storage_from_shape(q4_1.shape, origin=(grid.is_, 0, 0))

@@ -3,9 +3,13 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.copy_stencil as cp
 import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.basic_operations import dim, multiply_constant_inout
+from fv3core.stencils.basic_operations import (
+    copy,
+    copy_stencil,
+    dim,
+    multiply_constant_inout,
+)
 from fv3core.utils.global_constants import (
     C_ICE,
     C_LIQ,
@@ -460,7 +464,7 @@ def compute(state, nq, dt):
         raise Exception("Hydrostatic not supported for fv_subgridz")
     q0 = {}
     for tracername in utils.tracer_variables:
-        q0[tracername] = cp.copy(state.__dict__[tracername], (0, 0, 0))
+        q0[tracername] = copy(state.__dict__[tracername], origin=(0, 0, 0))
     origin = grid.compute_origin()
     shape = state.delp.shape
     u0 = utils.make_storage_from_shape(shape, origin)
@@ -656,7 +660,7 @@ def compute(state, nq, dt):
                 domain=kbot_domain,
             )
     for tracername in utils.tracer_variables:
-        cp.copy_stencil(
+        copy_stencil(
             q0[tracername], state.tracers[tracername], origin=origin, domain=kbot_domain
         )
     finalize(

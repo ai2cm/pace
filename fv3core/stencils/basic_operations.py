@@ -8,6 +8,34 @@ sd = utils.sd
 
 
 @utils.stencil()
+def copy_stencil(q_in: sd, q_out: sd):
+    """Copy q_in to q_out.
+
+    Args:
+        q_in: input field
+        q_out: output field
+    """
+    with computation(PARALLEL), interval(...):
+        q_out = q_in
+
+
+def copy(q_in, origin=(0, 0, 0), domain=None):
+    """Copy q_in inside the origin and domain, and zero outside.
+
+    Args:
+        q_in: input field
+        origin: Origin of the copy and new field
+        domain: Extent to copy
+
+    Returns:
+        gtscript.Field[float]: Copied field
+    """
+    q_out = utils.make_storage_from_shape(q_in.shape, origin, init=True)
+    copy_stencil(q_in, q_out, origin=origin, domain=domain)
+    return q_out
+
+
+@utils.stencil()
 def adjustmentfactor_stencil(adjustment: sd, q_out: sd):
     with computation(PARALLEL), interval(...):
         q_out[0, 0, 0] = q_out * adjustment
