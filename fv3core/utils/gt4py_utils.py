@@ -8,6 +8,7 @@ from typing import Callable, Tuple, Union
 
 import gt4py as gt
 import gt4py.gtscript as gtscript
+import gt4py.ir as gt_ir
 import numpy as np
 
 from fv3core.utils.mpi import MPI
@@ -52,6 +53,23 @@ if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
         MPI.COMM_WORLD.Get_rank()
     )
 
+
+class FV3StencilObject:
+    """GT4Py stencil object used for fv3core"""
+
+    def __init__(self, stencil_object: gt.StencilObject, build_info: dict):
+        self.stencil_object = stencil_object
+        self._build_info = build_info
+
+    @property
+    def build_info(self) -> dict:
+        """Return the build_info created when compiling the stencil"""
+        return self._build_info
+
+    def __call__(self, *args, **kwargs):
+        return self.stencil_object(*args, **kwargs)
+
+
 # TODO remove when using quantities throughout model
 def quantity_name(name):
     return name + "_quantity"
@@ -80,7 +98,11 @@ def stencil(**stencil_kwargs) -> Callable[..., None]:
                 stencil_kwargs["rebuild"] = rebuild
                 stencil_kwargs["backend"] = backend
                 # Generate stencil
-                stencils[key] = gtscript.stencil(**stencil_kwargs)(func)
+                build_info = {}
+                stencil = gtscript.stencil(build_info=build_info, **stencil_kwargs)(
+                    func
+                )
+                stencils[key] = FV3StencilObject(stencil, build_info)
             return stencils[key](*args, **kwargs)
 
         return wrapped
