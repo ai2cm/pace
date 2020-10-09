@@ -4,7 +4,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.basic_operations import floor_cap, max_fn, min_fn, sign
+from fv3core.stencils.basic_operations import floor_cap, sign
 
 from .yppm import (
     c1,
@@ -127,16 +127,9 @@ def finalflux_ord8plus(q: sd, c: sd, bl: sd, br: sd, flux: sd):
 def dm_iord8plus(q: sd, al: sd, dm: sd):
     with computation(PARALLEL), interval(...):
         xt = 0.25 * (q[1, 0, 0] - q[-1, 0, 0])
-        maxqj = max_fn(q, q[-1, 0, 0])
-        maxqj = max_fn(maxqj, q[1, 0, 0])
-        minqj = min_fn(q, q[-1, 0, 0])
-        minqj = min_fn(minqj, q[1, 0, 0])
-        dqr = maxqj - q
-        dql = q - minqj
-        absxt = abs(xt)
-        minmaxq = min_fn(absxt, dqr)
-        minmaxq = min_fn(minmaxq, dql)
-        dm = sign(minmaxq, xt)
+        dqr = max(max(q, q[-1, 0, 0]), q[1, 0, 0]) - q
+        dql = q - min(min(q, q[-1, 0, 0]), q[1, 0, 0])
+        dm = sign(min(min(abs(xt), dqr), dql), xt)
 
 
 @utils.stencil()
@@ -150,15 +143,8 @@ def blbr_iord8(q: sd, al: sd, bl: sd, br: sd, dm: sd):
     with computation(PARALLEL), interval(...):
         # al, dm = al_iord8plus_fn(q, al, dm, r3)
         xt = 2.0 * dm
-        aldiff = al - q
-        aldiffj = al[1, 0, 0] - q
-        absxt = abs(xt)
-        abs_aldiff = abs(aldiff)
-        abs_aldiffj = abs(aldiffj)
-        min_aldiff = min_fn(absxt, abs_aldiff)
-        min_aldiffj = min_fn(absxt, abs_aldiffj)
-        bl = -1.0 * sign(min_aldiff, xt)
-        br = sign(min_aldiffj, xt)
+        bl = -1.0 * sign(min(abs(xt), abs(al - q)), xt)
+        br = sign(min(abs(xt), abs(al[1, 0, 0] - q)), xt)
 
 
 @gtscript.function
@@ -188,22 +174,9 @@ def xt_dxa_edge_0(q, dxa, xt_minmax):
     minq = 0.0
     maxq = 0.0
     if xt_minmax:
-        # minq = min_fn(q[-1, 0, 0], q)
-        # minq = min_fn(minq, q[1, 0, 0])
-        # minq = min_fn(minq, q[2, 0, 0])
-        # maxq = max_fn(q[-1, 0, 0], q)
-        # maxq = max_fn(maxq, q[1, 0, 0])
-        # maxq = max_fn(maxq, q[2, 0, 0])
-        # xt = max_fn(xt, minq)
-        # xt = min_fn(xt, maxq)
-        minq = q[-1, 0, 0] if q[-1, 0, 0] < q else q
-        minq = minq if minq < q[1, 0, 0] else q[1, 0, 0]
-        minq = minq if minq < q[2, 0, 0] else q[2, 0, 0]
-        maxq = q[-1, 0, 0] if q[-1, 0, 0] > q else q
-        maxq = maxq if maxq > q[1, 0, 0] else q[1, 0, 0]
-        maxq = maxq if maxq > q[2, 0, 0] else q[2, 0, 0]
-        xt = xt if xt > minq else minq
-        xt = xt if xt < maxq else maxq
+        minq = min(min(min(q[-1, 0, 0], q), q[1, 0, 0]), q[2, 0, 0])
+        maxq = max(max(max(q[-1, 0, 0], q), q[1, 0, 0]), q[2, 0, 0])
+        xt = min(max(xt, minq), maxq)
     return xt
 
 
@@ -213,22 +186,9 @@ def xt_dxa_edge_1(q, dxa, xt_minmax):
     minq = 0.0
     maxq = 0.0
     if xt_minmax:
-        # minq = min_fn(q[-2, 0, 0], q[-1, 0, 0])
-        # minq = min_fn(minq, q)
-        # minq = min_fn(minq, q[1, 0, 0])
-        # maxq = max_fn(q[-2, 0, 0], q[-1, 0, 0])
-        # maxq = max_fn(maxq, q)
-        # maxq = max_fn(maxq, q[1, 0, 0])
-        # xt = max_fn(xt, minq)
-        # xt = min_fn(xt, maxq)
-        minq = q[-2, 0, 0] if q[-2, 0, 0] < q[-1, 0, 0] else q[-1, 0, 0]
-        minq = minq if minq < q else q
-        minq = minq if minq < q[1, 0, 0] else q[1, 0, 0]
-        maxq = q[-2, 0, 0] if q[-2, 0, 0] > q[-1, 0, 0] else q[-1, 0, 0]
-        maxq = maxq if maxq > q else q
-        maxq = maxq if maxq > q[1, 0, 0] else q[1, 0, 0]
-        xt = xt if xt > minq else minq
-        xt = xt if xt < maxq else maxq
+        minq = min(min(min(q[-2, 0, 0], q[-1, 0, 0]), q), q[1, 0, 0])
+        maxq = max(max(max(q[-2, 0, 0], q[-1, 0, 0]), q), q[1, 0, 0])
+        xt = min(max(xt, minq), maxq)
     return xt
 
 

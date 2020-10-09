@@ -113,16 +113,6 @@ def sign(a, b):
 
 
 @gtscript.function
-def min_fn(a, b):
-    return a if a < b else b
-
-
-@gtscript.function
-def max_fn(a, b):
-    return a if a > b else b
-
-
-@gtscript.function
 def dim(a, b):
     diff = a - b if a - b > 0 else 0
     return diff

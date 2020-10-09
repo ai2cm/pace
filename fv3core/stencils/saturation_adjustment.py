@@ -8,7 +8,7 @@ import fv3core._config as spec
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.basic_operations import dim, max_fn, min_fn
+from fv3core.stencils.basic_operations import dim
 
 
 # TODO, this code could be reduced greatly with abstraction, but first gt4py needs to support gtscript function calls of arbitrary depth embedded in conditionals
@@ -527,7 +527,7 @@ def ap1_stencil(ta: sd, ap1: sd):
 @gtscript.function
 def ap1_for_wqs2(ta):
     ap1 = 10.0 * dim(ta, TMIN) + 1.0
-    return min_fn(ap1, QS_LENGTH) - 1
+    return min(ap1, QS_LENGTH) - 1
 
 
 @gtscript.function
@@ -715,35 +715,24 @@ def satadjust_part1(
         # update latent heat coefficient
         lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
         diff_ice = dim(TICE, pt1) / 48.0
-        dimmin = min_fn(1.0, diff_ice)
+        dimmin = min(1.0, diff_ice)
         tcp3 = lcp2 + icp2 * dimmin
 
         dq0 = (qv - wqsat) / (
             1.0 + tcp3 * dq2dt
         )  # compute_dq0(qv, wqsat, dq2dt, tcp3)  #(qv - wqsat) / (1.0 + tcp3 * dq2dt)
         # TODO might be able to get rid of these temporary allocations when not used?
-        tmpmax = 0.0
-        src = 0.0
-        factor = 0.0
-        a = 0.0
-        b = 0.0
         if dq0 > 0:  # whole grid - box saturated
-            a = spec.namelist.ql_gen - ql
-            b = fac_v2l * dq0
-            tmpmax = (
-                a if a > b else b
-            )  # max_fn(a, b) -- this yields an incorrect answer
-            src = (
-                spec.namelist.sat_adj0 * dq0
-                if spec.namelist.sat_adj0 * dq0 < tmpmax
-                else tmpmax
+            src = min(
+                spec.namelist.sat_adj0 * dq0,
+                max(spec.namelist.ql_gen - ql, fac_v2l * dq0),
             )
         else:
             # TODO -- we'd like to use this abstraction rather than duplicate code, but inside the if conditional complains 'not implemented'
             # factor, src = ql_evaporation(wqsat, qv, ql, dq0,fac_l2v)
-            factor = fac_l2v * 10.0 * (1.0 - qv / wqsat)
-            factor = -1.0 if 1.0 < factor else -factor
-            src = -ql if ql < factor * dq0 else -factor * dq0
+            factor = -1.0 * min(1, fac_l2v * 10.0 * (1.0 - qv / wqsat))
+            src = -1.0 * min(ql, factor * dq0)
+
         qv, ql, q_liq, cvm, pt1 = wqsat_correct(
             src, pt1, lhl, qv, ql, q_liq, q_sol, mc_air, c_vap
         )
@@ -751,7 +740,7 @@ def satadjust_part1(
         lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
         # TODO remove duplicate
         diff_ice = dim(TICE, pt1) / 48.0
-        dimmin = min_fn(1.0, diff_ice)
+        dimmin = min(1.0, diff_ice)
         tcp3 = lcp2 + icp2 * dimmin
 
 
@@ -809,8 +798,6 @@ def satadjust_part2(
 ):
     with computation(PARALLEL), interval(...):
         dq0 = 0.0
-        src = 0.0
-        factor = 0.0
         if last_step:
             dq0 = compute_dq0(qv, wqsat, dq2dt, tcp3)
             if dq0 > 0:
@@ -818,11 +805,8 @@ def satadjust_part2(
             else:
                 # TODO -- we'd like to use this abstraction rather than duplicate code, but inside the if conditional complains 'not implemented'
                 # factor, src = ql_evaporation(wqsat, qv, ql, dq0,fac_l2v)
-                factor = fac_l2v * 10.0 * (1.0 - qv / wqsat)
-                factor = -1.0 if 1.0 < factor else -factor  # min_fn(1, factor) * -1
-                src = (
-                    -ql if ql < factor * dq0 else -factor * dq0
-                )  # min_func(ql, factor * dq0) * -1
+                factor = -1.0 * min(1, fac_l2v * 10.0 * (1.0 - qv / wqsat))
+                src = -1.0 * min(ql, factor * dq0)
             # TODO causes a visit_if error 'NoneType' object has no attribute 'inputs'
             # qv, ql, q_liq, cvm, pt1 = wqsat_correct(src, pt1, lhl, qv, ql, q_liq, q_sol, mc_air, c_vap)
             # lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
@@ -981,8 +965,6 @@ def satadjust_part3_laststep_qa(
         it, ap1 = ap1_and_index(tin)
         wqs1 = wqs1_fn_w(it, ap1, tin, den)
         iqs1 = wqs1_fn_2(it, ap1, tin, den)
-        qstar = 0.0
-        rqi = 0.0
         # Determine saturated specific humidity
         if tin < T_WFR:
             # ice phase
@@ -997,7 +979,7 @@ def satadjust_part3_laststep_qa(
                 rqi = (TICE - tin) / (TICE - T_WFR)
             qstar = rqi * iqs1 + (1.0 - rqi) * wqs1
         #  higher than 10 m is considered "land" and will have higher subgrid variability
-        mindw = min_fn(1.0, abs(hs) / (10.0 * constants.GRAV))
+        mindw = min(1.0, abs(hs) / (10.0 * constants.GRAV))
         dw = (
             spec.namelist.dw_ocean
             + (spec.namelist.dw_land - spec.namelist.dw_ocean) * mindw
@@ -1005,7 +987,7 @@ def satadjust_part3_laststep_qa(
         # "scale - aware" subgrid variability: 100 - km as the base
         dbl_sqrt_area = dw * (area ** 0.5 / 100.0e3) ** 0.5
         maxtmp = 0.01 if 0.01 > dbl_sqrt_area else dbl_sqrt_area
-        hvar = min_fn(0.2, maxtmp)
+        hvar = min(0.2, maxtmp)
         # partial cloudiness by pdf:
         # assuming subgrid linear distribution in horizontal; this is effectively a smoother for the
         # binary cloud scheme; qa = 0.5 if qstar == qpz
@@ -1013,41 +995,32 @@ def satadjust_part3_laststep_qa(
         # icloud_f = 0: bug - fixed
         # icloud_f = 1: old fvgfs gfdl) mp implementation
         # icloud_f = 2: binary cloud scheme (0 / 1)
-        dq = 0.0
-        q_plus = 0.0
-        q_minus = 0.0
         if rh > 0.75 and qpz > 1.0e-8:
             dq = hvar * qpz
             q_plus = qpz + dq
             q_minus = qpz - dq
-            # if (spec.namelist.icloud_f == 2): # TODO this many if conditionals triggers an assertion error
-            #    if (qpz > qstar):
-            #        qa = 1.
-            #    elif ((qstar < q_plus) and (q_cond > 1.e-8)):
-            #        qa = ((q_plus - qstar) / dq)**2
-            #        qa = 1. if 1. < qa else qa  # min_fn(1., qa)
-            #    else:
-            #        qa = 0.
-            # else:
-            qa = 0.0
-            if qstar < q_minus:
-                qa = 1.0
-            else:
-                if qstar < q_plus:
-                    if spec.namelist.icloud_f == 0:
-                        qa = (q_plus - qstar) / (dq + dq)
-                    else:
-                        qa = (q_plus - qstar) / (2.0 * dq * (1.0 - q_cond))
+            if spec.namelist.icloud_f == 2:  # TODO untested
+                if qpz > qstar:
+                    qa = 1.0
+                elif (qstar < q_plus) and (q_cond > 1.0e-8):
+                    qa = min(1.0, ((q_plus - qstar) / dq) ** 2)
                 else:
                     qa = 0.0
-                # impose minimum cloudiness if substantial q_cond exist
-                if q_cond > 1.0e-8:
-                    qa = (
-                        spec.namelist.cld_min if spec.namelist.cld_min > qa else qa
-                    )  # max_fn(spec.namelist.cld_min, qa)
+            else:
+                if qstar < q_minus:
+                    qa = 1.0
                 else:
-                    qa = qa
-                qa = 1.0 if 1.0 < qa else qa  # min_fn(1., qa)
+                    if qstar < q_plus:
+                        if spec.namelist.icloud_f == 0:
+                            qa = (q_plus - qstar) / (dq + dq)
+                        else:
+                            qa = (q_plus - qstar) / (2.0 * dq * (1.0 - q_cond))
+                    else:
+                        qa = 0.0
+                    # impose minimum cloudiness if substantial q_cond exist
+                    if q_cond > 1.0e-8:
+                        qa = max(spec.namelist.cld_min, qa)
+                    qa = min(1, qa)
         else:
             qa = 0.0
 
