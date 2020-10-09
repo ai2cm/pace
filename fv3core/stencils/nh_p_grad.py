@@ -6,6 +6,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.stencils.a2b_ord4 as a2b_ord4
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 from fv3core.utils.corners import fill2_4corners, fill_4corners
 
 
@@ -16,20 +17,20 @@ def grid():
     return spec.grid
 
 
-@utils.stencil()
+@gtstencil()
 def set_k0(pp: sd, pk3: sd, top_value: float):
     with computation(PARALLEL), interval(...):
         pp[0, 0, 0] = 0.0
         pk3[0, 0, 0] = top_value
 
 
-@utils.stencil()
+@gtstencil()
 def CalcWk(pk: sd, wk: sd):
     with computation(PARALLEL), interval(...):
         wk = pk[0, 0, 1] - pk[0, 0, 0]
 
 
-@utils.stencil()
+@gtstencil()
 def CalcU(u: sd, du: sd, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rdx: sd, dt: float):
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution
@@ -54,7 +55,7 @@ def CalcU(u: sd, du: sd, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rdx: sd, dt: 
         ) * rdx[0, 0, 0]
 
 
-@utils.stencil()
+@gtstencil()
 def CalcV(v: sd, dv: sd, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rdy: sd, dt: float):
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution

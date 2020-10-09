@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 import fv3gfs.util as fv3util
 import numpy as np
@@ -87,13 +87,20 @@ class Grid:
             )
         return self._quantity_factory
 
-    @property
-    def splitters(self):
+    def splitters(self, *, origin=None):
+        """Return the splitters relative to origin.
+
+        Args:
+            origin: The compute origin
+
+        """
+        if origin is None:
+            origin = self.compute_origin()
         return {
-            "i_start": self.is_ - self.global_is,
-            "i_end": self.npx + self.halo - 2 - self.global_is,
-            "j_start": self.js - self.global_js,
-            "j_end": self.npy + self.halo - 2 - self.global_js,
+            "i_start": self.is_ - self.global_is + (self.is_ - origin[0]),
+            "i_end": self.npx + self.halo - 2 - self.global_is + (self.is_ - origin[0]),
+            "j_start": self.js - self.global_js + (self.js - origin[1]),
+            "j_end": self.npy + self.halo - 2 - self.global_js + (self.js - origin[1]),
         }
 
     def make_quantity(
@@ -409,8 +416,8 @@ class Grid:
             right_j_index,
         )
 
-    def compute_origin(self):
-        return (self.is_, self.js, 0)
+    def compute_origin(self, add: Tuple[int, int, int] = (0, 0, 0)):
+        return (self.is_ + add[0], self.js + add[1], add[2])
 
     def default_origin(self):
         return (self.isd, self.jsd, 0)

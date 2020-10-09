@@ -10,12 +10,13 @@ import fv3core.stencils.ke_c_sw as ke_c_sw
 import fv3core.stencils.transportdelp as transportdelp
 import fv3core.stencils.vorticitytransport_cgrid as vorticity_transport
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 
 
 sd = utils.sd
 
 
-@utils.stencil()
+@gtstencil()
 def geoadjust_ut(ut: sd, dy: sd, sin_sg3: sd, sin_sg1: sd, dt2: float):
     with computation(PARALLEL), interval(...):
         ut[0, 0, 0] = (
@@ -23,7 +24,7 @@ def geoadjust_ut(ut: sd, dy: sd, sin_sg3: sd, sin_sg1: sd, dt2: float):
         )
 
 
-@utils.stencil()
+@gtstencil()
 def geoadjust_vt(vt: sd, dx: sd, sin_sg4: sd, sin_sg2: sd, dt2: float):
     with computation(PARALLEL), interval(...):
         vt[0, 0, 0] = (
@@ -31,7 +32,7 @@ def geoadjust_vt(vt: sd, dx: sd, sin_sg4: sd, sin_sg2: sd, dt2: float):
         )
 
 
-@utils.stencil()
+@gtstencil()
 def absolute_vorticity(vort: sd, fC: sd, rarea_c: sd):
     with computation(PARALLEL), interval(...):
         vort[0, 0, 0] = fC + rarea_c * vort

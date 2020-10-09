@@ -11,12 +11,13 @@ import fv3core.stencils.c2l_ord as c2l_ord
 import fv3core.stencils.rayleigh_super as ray_super
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 
 
 sd = utils.sd
 
 
-@utils.stencil()
+@gtstencil()
 def ray_fast_u(u: sd, rf: sd, dp: sd, dmu: sd):
     with computation(FORWARD):
         with interval(0, 1):
@@ -27,7 +28,7 @@ def ray_fast_u(u: sd, rf: sd, dp: sd, dmu: sd):
             u = rf * u
 
 
-@utils.stencil()
+@gtstencil()
 def ray_fast_v(v: sd, rf: sd, dp: sd, dmv: sd):
     with computation(FORWARD):
         with interval(0, 1):
@@ -38,13 +39,13 @@ def ray_fast_v(v: sd, rf: sd, dp: sd, dmv: sd):
             v = rf * v
 
 
-@utils.stencil()
+@gtstencil()
 def ray_fast_w(w: sd, rf: sd):
     with computation(PARALLEL), interval(...):
         w = rf * w
 
 
-@utils.stencil()
+@gtstencil()
 def ray_fast_horizontal_dm(wind: sd, dmwind: sd, dm: sd):
     with computation(PARALLEL):
         with interval(...):
@@ -52,7 +53,7 @@ def ray_fast_horizontal_dm(wind: sd, dmwind: sd, dm: sd):
             wind = wind + dmwind
 
 
-@utils.stencil()
+@gtstencil()
 def dm_stencil(dp: sd, dm: sd):
     with computation(FORWARD):
         with interval(0, 1):

@@ -1,6 +1,13 @@
 import collections
 import functools
 import types
+from typing import Callable, Tuple, Union
+
+import gt4py
+from gt4py import gtscript
+
+import fv3core._config as spec
+import fv3core.utils.gt4py_utils as utils
 
 
 ArgSpec = collections.namedtuple(
@@ -36,3 +43,60 @@ def state_inputs(*arg_specs):
         return wrapped
 
     return decorator
+
+
+def module_level_var_errmsg(var: str, func: str):
+    loc = f"fv3core.utils.gt4py_utils.{var}"
+    return f"The {var} flag should be set in {loc} instead of as an argument to {func}"
+
+
+class FV3StencilObject:
+    """GT4Py stencil object used for fv3core."""
+
+    def __init__(self, stencil_object: gt4py.StencilObject, build_info: dict):
+        self.stencil_object = stencil_object
+        self._build_info = build_info
+
+    @property
+    def build_info(self) -> dict:
+        """Return the build_info created when compiling the stencil."""
+        return self._build_info
+
+    def __call__(self, *args, **kwargs):
+        return self.stencil_object(*args, **kwargs)
+
+
+def gtstencil(definition=None, **stencil_kwargs) -> Callable[..., None]:
+    if "rebuild" in stencil_kwargs:
+        raise ValueError(module_level_var_errmsg("rebuild", "gtstencil"))
+    if "backend" in stencil_kwargs:
+        raise ValueError(module_level_var_errmsg("backend", "gtstencil"))
+
+    def decorator(func) -> Callable[..., None]:
+        stencils = {}
+
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs) -> None:
+            # This uses the module-level globals backend and rebuild (defined above)
+            key = (utils.backend, utils.rebuild)
+            if key not in stencils:
+                # Add globals to stencil_kwargs
+                stencil_kwargs["rebuild"] = utils.rebuild
+                stencil_kwargs["backend"] = utils.backend
+                # Generate stencil
+                build_info = {}
+                stencil = gtscript.stencil(build_info=build_info, **stencil_kwargs)(
+                    func
+                )
+                stencils[key] = FV3StencilObject(stencil, build_info)
+            kwargs["splitters"] = kwargs.get(
+                "splitters", spec.grid.splitters(origin=kwargs.get("origin"))
+            )
+            return stencils[key](*args, **kwargs)
+
+        return wrapped
+
+    if definition is None:
+        return decorator
+    else:
+        return decorator(definition)

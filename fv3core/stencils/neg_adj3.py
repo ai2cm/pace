@@ -6,6 +6,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 
 
 sd = utils.sd
@@ -120,7 +121,7 @@ def fillq(q, dp, grid):
 """
 # TODO fix this to do fillq with a stencil that validates
 # need sum1, sum2 to be an accumulating floats
-@utils.stencil()
+@gtstencil()
 def fillq(q:sd, dp:sd):
     with computation(FORWARD), interval(...):
         if q > 0:
@@ -139,7 +140,7 @@ def fillq(q:sd, dp:sd):
 """
 
 
-@utils.stencil()
+@gtstencil()
 def fix_neg_water(
     pt: sd,
     dp: sd,
@@ -177,7 +178,7 @@ def fix_neg_water(
         # no GFS_PHYS compiler flag -- additional saturation adjustment calculations!
 
 
-@utils.stencil()
+@gtstencil()
 def fix_neg_cloud(dp: sd, qcld: sd):
     with computation(FORWARD), interval(1, -1):
         if qcld[0, 0, -1] < 0.0:
@@ -251,7 +252,7 @@ def fix_water_vapor_k_loop(i, j, kbot, qv, dp):
 
 
 # Stencil version
-@utils.stencil()
+@gtstencil()
 def fix_water_vapor_down(qv: sd, dp: sd, upper_fix: sd, lower_fix: sd, dp_bot: sd):
     with computation(PARALLEL):
         with interval(1, 2):

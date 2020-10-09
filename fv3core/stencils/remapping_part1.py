@@ -6,6 +6,7 @@ import fv3core.stencils.map_single as map_single
 import fv3core.stencils.mapn_tracer as mapn_tracer
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy, copy_stencil
 
 
@@ -13,7 +14,7 @@ sd = utils.sd
 CONSV_MIN = 0.001
 
 
-@utils.stencil()
+@gtstencil()
 def init_pe2(pe: sd, pe2: sd, ptop: float):
     with computation(PARALLEL):
         with interval(0, 1):
@@ -22,19 +23,19 @@ def init_pe2(pe: sd, pe2: sd, ptop: float):
             pe2 = pe
 
 
-@utils.stencil()
+@gtstencil()
 def delz_adjust(delp: sd, delz: sd):
     with computation(PARALLEL), interval(...):
         delz = -delz / delp
 
 
-@utils.stencil()
+@gtstencil()
 def undo_delz_adjust(delp: sd, delz: sd):
     with computation(PARALLEL), interval(...):
         delz = -delz * delp
 
 
-@utils.stencil()
+@gtstencil()
 def pressure_updates(
     pe1: sd, pe2: sd, pe: sd, ak: sd, bk: sd, delp: sd, ps: sd, pn2: sd, peln: sd
 ):
@@ -54,14 +55,14 @@ def pressure_updates(
         delp = pe2[0, 0, 1] - pe2
 
 
-@utils.stencil()
+@gtstencil()
 def pn2_and_pk(pe2: sd, pn2: sd, pk: sd, akap: float):
     with computation(PARALLEL), interval(...):
         pn2 = log(pe2)
         pk = exp(akap * pn2)
 
 
-@utils.stencil()
+@gtstencil()
 def pressures_mapu(pe: sd, pe1: sd, ak: sd, bk: sd, pe0: sd, pe3: sd):
     with computation(BACKWARD):
         with interval(-1, None):
@@ -80,7 +81,7 @@ def pressures_mapu(pe: sd, pe1: sd, ak: sd, bk: sd, pe0: sd, pe3: sd):
         pe3 = ak + bkh * (pe_bottom[0, -1, 0] + pe1_bottom)
 
 
-@utils.stencil()
+@gtstencil()
 def pressures_mapv(pe: sd, ak: sd, bk: sd, pe0: sd, pe3: sd):
     with computation(BACKWARD):
         with interval(-1, None):
@@ -97,14 +98,14 @@ def pressures_mapv(pe: sd, ak: sd, bk: sd, pe0: sd, pe3: sd):
             pe3 = ak + bkh * (pe_bottom[-1, 0, 0] + pe_bottom)
 
 
-@utils.stencil()
+@gtstencil()
 def copy_j_adjacent(pe2: sd):
     with computation(PARALLEL), interval(...):
         pe2_0 = pe2[0, -1, 0]
         pe2 = pe2_0
 
 
-@utils.stencil()
+@gtstencil()
 def update_ua(pe2: sd, ua: sd):
     with computation(PARALLEL), interval(0, -1):
         ua = pe2[0, 0, 1]

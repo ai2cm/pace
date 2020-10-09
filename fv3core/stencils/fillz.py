@@ -7,6 +7,7 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.stencils.remap_profile as remap_profile
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 from fv3core.utils.corners import fill2_4corners, fill_4corners
 
 
@@ -17,7 +18,7 @@ def grid():
     return spec.grid
 
 
-@utils.stencil()
+@gtstencil()
 def fix_top(q: sd, dp: sd, dm: sd):
     with computation(PARALLEL), interval(1, 2):
         if q[0, 0, -1] < 0.0:
@@ -30,7 +31,7 @@ def fix_top(q: sd, dp: sd, dm: sd):
         dm = q * dp
 
 
-@utils.stencil()
+@gtstencil()
 def fix_interior(
     q: sd, dp: sd, zfix: sd, upper_fix: sd, lower_fix: sd, dm: sd, dm_pos: sd
 ):
@@ -67,7 +68,7 @@ def fix_interior(
         dm_pos = dm if dm > 0.0 else 0.0
 
 
-@utils.stencil()
+@gtstencil()
 def fix_bottom(
     q: sd, dp: sd, zfix: sd, upper_fix: sd, lower_fix: sd, dm: sd, dm_pos: sd
 ):
@@ -94,7 +95,7 @@ def fix_bottom(
             dm_pos = dm if dm > 0.0 else 0.0  # now we gotta update these too
 
 
-@utils.stencil()
+@gtstencil()
 def final_check(q: sd, dp: sd, dm: sd, zfix: sd, fac: sd):
     with computation(PARALLEL), interval(...):
         if zfix > 0:

@@ -8,6 +8,7 @@ import fv3core._config as spec
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import dim
 
 
@@ -518,7 +519,7 @@ def wqsat_correct(src, pt1, lhl, qv, ql, q_liq, q_sol, mc_air, c_vap):
     return qv, ql, q_liq, cvm, pt1
 
 
-@utils.stencil()
+@gtstencil()
 def ap1_stencil(ta: sd, ap1: sd):
     with computation(PARALLEL), interval(...):
         ap1 = ap1_for_wqs2(ta)
@@ -609,13 +610,13 @@ def wqs1_fn_2(it, ap1, ta, den):
     return wqsat_wsq1(table2, des2, ap1, it, ta, den)
 
 
-@utils.stencil()
+@gtstencil()
 def wqs2_stencil_w(ta: sd, den: sd, wqsat: sd, dqdt: sd):
     with computation(PARALLEL), interval(...):
         wqsat, dqdt = wqs2_fn_w(ta, den)
 
 
-@utils.stencil()
+@gtstencil()
 def compute_q_tables(index: sd, tablew: sd, table2: sd, table: sd, desw: sd, des2: sd):
     with computation(PARALLEL), interval(...):
         tablew = qs_tablew_fn(index)
@@ -625,7 +626,7 @@ def compute_q_tables(index: sd, tablew: sd, table2: sd, table: sd, desw: sd, des
         des2 = des2_table(index)
 
 
-@utils.stencil()
+@gtstencil()
 def satadjust_part1(
     wqsat: sd,
     dq2dt: sd,
@@ -745,7 +746,7 @@ def satadjust_part1(
 
 
 # TODO reading in ql0_max as a runtime argument causes problems for the if statement
-@utils.stencil()
+@gtstencil()
 def satadjust_part2(
     wqsat: sd,
     dq2dt: sd,
@@ -950,7 +951,7 @@ def satadjust_part2(
                 tin = pt1 - (lcp2 * q_cond + icp2 * q_sol)
 
 
-@utils.stencil()
+@gtstencil()
 def satadjust_part3_laststep_qa(
     qa: sd,
     area: sd,

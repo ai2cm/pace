@@ -3,6 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 
 
 sd = utils.sd
@@ -50,7 +51,7 @@ def p_grad_c_fn(uc_in, vc_in, delpc, pkc, gz, rdxc, rdyc, hydrostatic, dt2):
     return uc_in, vc_in
 
 
-@utils.stencil()
+@gtstencil()
 def p_grad_c(
     uc_in: sd,
     vc_in: sd,
@@ -76,7 +77,7 @@ def p_grad_c(
         )
 
 
-@utils.stencil()
+@gtstencil()
 def p_grad_c_ustencil(
     uc_in: sd, delpc: sd, pkc: sd, gz: sd, rdxc: sd, *, hydrostatic: int, dt2: float
 ):
@@ -86,7 +87,7 @@ def p_grad_c_ustencil(
         )  # TODO: add [0, 0, 0] when gt4py bug is fixed
 
 
-@utils.stencil()
+@gtstencil()
 def p_grad_c_vstencil(
     vc_in: sd, delpc: sd, pkc: sd, gz: sd, rdyc: sd, hydrostatic: int, dt2: float
 ):

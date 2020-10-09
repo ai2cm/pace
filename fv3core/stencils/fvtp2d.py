@@ -8,27 +8,28 @@ import fv3core.stencils.xppm as xppm
 import fv3core.stencils.yppm as yppm
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 
 
 origin = (0, 0, 0)
 sd = utils.sd
 
 
-@utils.stencil()
+@gtstencil()
 def q_i_stencil(q: sd, area: sd, yfx: sd, fy2: sd, ra_y: sd, q_i: sd):
     with computation(PARALLEL), interval(...):
         fyy = yfx * fy2
         q_i[0, 0, 0] = (q * area + fyy - fyy[0, 1, 0]) / ra_y
 
 
-@utils.stencil()
+@gtstencil()
 def q_j_stencil(q: sd, area: sd, xfx: sd, fx2: sd, ra_x: sd, q_j: sd):
     with computation(PARALLEL), interval(...):
         fx1 = xfx * fx2
         q_j[0, 0, 0] = (q * area + fx1 - fx1[1, 0, 0]) / ra_x
 
 
-@utils.stencil()
+@gtstencil()
 def transport_flux(f: sd, f2: sd, mf: sd):
     with computation(PARALLEL), interval(...):
         f = 0.5 * (f + f2) * mf

@@ -4,13 +4,14 @@ import numpy as np
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 
 
 sd = utils.sd
 origin = utils.origin
 
 
-@utils.stencil()
+@gtstencil()
 def update_zonal_velocity(
     vorticity: sd,
     ke: sd,
@@ -33,7 +34,7 @@ def update_zonal_velocity(
         velocity_c = velocity_c + tmp_flux * flux + rdxc * (ke[-1, 0, 0] - ke)
 
 
-@utils.stencil()
+@gtstencil()
 def update_meridional_velocity(
     vorticity: sd,
     ke: sd,
@@ -70,7 +71,6 @@ def compute(uc, vc, vort_c, ke_c, v, u, fxv, fyv, dt2):
         dt2,
         origin=grid.compute_origin(),
         domain=grid.domain_shape_compute_buffer_2d(add=(0, 1, 0)),
-        splitters=grid.splitters,
     )
     update_zonal_velocity(
         vort_c,
@@ -84,5 +84,4 @@ def compute(uc, vc, vort_c, ke_c, v, u, fxv, fyv, dt2):
         origin=grid.compute_origin(),
         domain=grid.domain_shape_compute_buffer_2d(add=(1, 0, 0)),
         # domain=(grid.nic + 1, grid.njc, grid.npz),
-        splitters=grid.splitters,
     )

@@ -5,6 +5,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 
 
 sd = utils.sd
@@ -15,7 +16,7 @@ c1 = 1.125
 c2 = -0.125
 
 
-@utils.stencil()
+@gtstencil()
 def c2l_ord2(
     u: sd, v: sd, dx: sd, dy: sd, a11: sd, a12: sd, a21: sd, a22: sd, ua: sd, va: sd
 ):
@@ -59,14 +60,14 @@ def compute_ord2(u, v, ua, va, do_halo=False):
     )
 
 
-@utils.stencil()
+@gtstencil()
 def vector_tmp(u: sd, v: sd, utmp: sd, vtmp: sd):
     with computation(PARALLEL), interval(...):
         utmp = c2 * (u[0, -1, 0] + u[0, 2, 0]) + c1 * (u + u[0, 1, 0])
         vtmp = c2 * (v[-1, 0, 0] + v[2, 0, 0]) + c1 * (v + v[1, 0, 0])
 
 
-@utils.stencil()
+@gtstencil()
 def y_edge_tmp(u: sd, v: sd, utmp: sd, vtmp: sd, dx: sd, dy: sd):
     with computation(PARALLEL), interval(...):
         wv = v * dy
@@ -74,13 +75,13 @@ def y_edge_tmp(u: sd, v: sd, utmp: sd, vtmp: sd, dx: sd, dy: sd):
         utmp = 2.0 * (u * dx + u[0, 1, 0] * dx[0, 1, 0]) / (dx + dx[0, 1, 0])
 
 
-@utils.stencil()
+@gtstencil()
 def x_edge_wv(v: sd, dy: sd, wv: sd):
     with computation(PARALLEL), interval(...):
         wv = v * dy
 
 
-@utils.stencil()
+@gtstencil()
 def x_edge_tmp(wv: sd, u: sd, v: sd, utmp: sd, vtmp: sd, dx: sd, dy: sd):
     with computation(PARALLEL), interval(...):
         wu = u * dx
@@ -88,7 +89,7 @@ def x_edge_tmp(wv: sd, u: sd, v: sd, utmp: sd, vtmp: sd, dx: sd, dy: sd):
         vtmp = 2.0 * (wv + wv[1, 0, 0]) / (dy + dy[1, 0, 0])
 
 
-@utils.stencil()
+@gtstencil()
 def ord4_transform(
     utmp: sd, vtmp: sd, a11: sd, a12: sd, a21: sd, a22: sd, ua: sd, va: sd
 ):

@@ -7,6 +7,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.stencils.remap_profile as remap_profile
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy
 from fv3core.utils.corners import fill2_4corners, fill_4corners
 
@@ -20,13 +21,13 @@ def grid():
     return spec.grid
 
 
-@utils.stencil()
+@gtstencil()
 def set_dp(dp1: sd, pe1: sd):
     with computation(PARALLEL), interval(...):
         dp1 = pe1[0, 0, 1] - pe1
 
 
-@utils.stencil()
+@gtstencil()
 def lagrangian_contributions(
     pe1: sd,
     ptop: sd,
