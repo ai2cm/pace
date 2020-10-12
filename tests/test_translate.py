@@ -3,7 +3,6 @@
 import contextlib
 import logging
 import os
-import sys
 
 import fv3gfs.util as fv3util
 import numpy as np
@@ -12,7 +11,7 @@ import serialbox as ser
 import xarray as xr
 
 import fv3core._config
-import fv3core.utils.gt4py_utils
+import fv3core.utils.gt4py_utils as gt_utils
 from fv3core.utils.mpi import MPI
 
 
@@ -148,7 +147,7 @@ def get_serializer(data_path, rank):
 
 def state_from_savepoint(serializer, savepoint, name_to_std_name):
     properties = fv3util.fortran_info.properties_by_std_name
-    origin = fv3core.utils.gt4py_utils.origin
+    origin = gt_utils.origin
     state = {}
     for name, std_name in name_to_std_name.items():
         array = serializer.read(name, savepoint)
@@ -207,7 +206,10 @@ def test_mock_parallel_savepoint(
                 with _subtest(failing_ranks, subtests, varname=varname, rank=rank):
                     ref_data[varname].append(serializer.read(varname, savepoint_out))
                     assert success(
-                        output[varname], ref_data[varname][-1], testobj.max_error, near0
+                        gt_utils.asarray(output[varname]),
+                        ref_data[varname][-1],
+                        testobj.max_error,
+                        near0,
                     ), sample_wherefail(
                         output[varname],
                         ref_data[varname][-1],
