@@ -238,12 +238,12 @@ def update_dz_c(
         with interval(0, 1):
             xfx = p_weighted_average_top(ut, dp_ref)
             yfx = p_weighted_average_top(vt, dp_ref)
-        with interval(-1, None):
-            xfx = p_weighted_average_bottom(ut, dp_ref)
-            yfx = p_weighted_average_bottom(vt, dp_ref)
         with interval(1, -1):
             xfx = p_weighted_average_domain(ut, dp_ref)
             yfx = p_weighted_average_domain(vt, dp_ref)
+        with interval(-1, None):
+            xfx = p_weighted_average_bottom(ut, dp_ref)
+            yfx = p_weighted_average_bottom(vt, dp_ref)
     with computation(PARALLEL), interval(...):
         fx, fy = xy_flux(gz_x, gz_y, xfx, yfx)
         # TODO: check if below gz is ok, or if we need gz_y to pass this

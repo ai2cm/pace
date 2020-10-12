@@ -45,10 +45,10 @@ def pressure_updates(
         with interval(0, -1):
             ps = ps[0, 0, 1]
     with computation(PARALLEL):
-        with interval(1, -1):
-            pe2 = ak + bk * ps
         with interval(0, 1):
             pn2 = peln
+        with interval(1, -1):
+            pe2 = ak + bk * ps
         with interval(-1, None):
             pn2 = peln
     with computation(BACKWARD), interval(0, -1):

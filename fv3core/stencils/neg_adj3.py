@@ -255,11 +255,11 @@ def fix_water_vapor_k_loop(i, j, kbot, qv, dp):
 @gtstencil()
 def fix_water_vapor_down(qv: sd, dp: sd, upper_fix: sd, lower_fix: sd, dp_bot: sd):
     with computation(PARALLEL):
+        with interval(0, 1):
+            qv = qv if qv >= 0 else 0
         with interval(1, 2):
             if qv[0, 0, -1] < 0:
                 qv = qv + qv[0, 0, -1] * dp[0, 0, -1] / dp
-        with interval(0, 1):
-            qv = qv if qv >= 0 else 0
     with computation(FORWARD), interval(1, -1):
         dq = qv[0, 0, -1] * dp[0, 0, -1]
         if lower_fix[0, 0, -1] != 0:
