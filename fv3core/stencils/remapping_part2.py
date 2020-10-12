@@ -151,7 +151,9 @@ def compute(
             )
             # dtmp = consv * g_sum(te_2d, grid.area_64)  # global mpi step
             # dtmp = dtmp / (constants.CV_AIR * g_sum(zsum1, grid.area_64))
-            dtmp = -4.5874105210330514e-07  # TODO replace with computed value
+            raise NotImplementedError(
+                "We do not support consv_te > 0.001 because that would trigger an allReduce"
+            )
             # E_Flux = dtmp / (constants.GRAV * pdt * 4. * constants.PI * constants.RADIUS**2)
         elif consv < -constants.CONSV_MIN:
             sum_z1(
