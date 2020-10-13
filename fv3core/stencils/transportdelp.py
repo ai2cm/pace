@@ -4,7 +4,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.utils.corners import fill2_4corners, fill_4corners
+from fv3core.utils.corners import fill_4corners
 
 
 sd = utils.sd
@@ -96,7 +96,8 @@ def compute(delp, pt, w, utc, vtc, wc):
     # TODO: untested currently, don't have serialized data
     if hydrostatic:
         if spec.namelist.grid_type < 3 and not grid.nested:
-            fill2_4corners(delp, pt, "x", grid)
+            fill_4corners(delp, "x", grid)
+            fill_4corners(pt, "x", grid)
         hydro_x_fluxes(
             delp,
             pt,
@@ -107,7 +108,8 @@ def compute(delp, pt, w, utc, vtc, wc):
             domain=(grid.nic + 3, grid.njc + 2, grid.npz),
         )
         if spec.namelist.grid_type < 3 and not grid.nested:
-            fill2_4corners(delp, pt, "y", grid)
+            fill_4corners(delp, "y", grid)
+            fill_4corners(pt, "y", grid)
         hydro_y_fluxes(
             delp,
             pt,
@@ -134,7 +136,8 @@ def compute(delp, pt, w, utc, vtc, wc):
 
     else:
         if spec.namelist.grid_type < 3 and not grid.nested:
-            fill2_4corners(delp, pt, "x", grid)
+            fill_4corners(delp, "x", grid)
+            fill_4corners(pt, "x", grid)
             fill_4corners(w, "x", grid)
         fx2 = utils.make_storage_from_shape(w.shape, origin=orig)
         nonhydro_x_fluxes(
@@ -149,7 +152,8 @@ def compute(delp, pt, w, utc, vtc, wc):
             domain=(grid.nic + 3, grid.njc + 2, grid.npz),
         )
         if spec.namelist.grid_type < 3 and not grid.nested:
-            fill2_4corners(delp, pt, "y", grid)
+            fill_4corners(delp, "y", grid)
+            fill_4corners(pt, "y", grid)
             fill_4corners(w, "y", grid)
         fy2 = utils.make_storage_from_shape(w.shape, origin=orig)
         nonhydro_y_fluxes(
