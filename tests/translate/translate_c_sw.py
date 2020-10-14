@@ -39,6 +39,60 @@ class TranslateC_SW(TranslateFortranData2Py):
         return self.slice_output(inputs, {"delpcd": delpc, "ptcd": ptc})
 
 
+class TranslateDivergenceCorner(TranslateFortranData2Py):
+    def __init__(self, grid):
+        super().__init__(grid)
+        self.in_vars["data_vars"] = {
+            "u": {
+                "istart": grid.isd,
+                "iend": grid.ied,
+                "jstart": grid.jsd,
+                "jend": grid.jed + 1,
+            },
+            "v": {
+                "istart": grid.isd,
+                "iend": grid.ied + 1,
+                "jstart": grid.jsd,
+                "jend": grid.jed,
+            },
+            "ua": {},
+            "va": {},
+            "divg_d": {},
+        }
+        self.out_vars = {
+            "divg_d": {
+                "istart": grid.isd,
+                "iend": grid.ied + 1,
+                "jstart": grid.jsd,
+                "jend": grid.jed + 1,
+            }
+        }
+
+    def compute(self, inputs):
+        self.make_storage_data_input_vars(inputs)
+        c_sw.divergence_corner(
+            inputs["u"],
+            inputs["v"],
+            inputs["ua"],
+            inputs["va"],
+            self.grid.dxc,
+            self.grid.dyc,
+            self.grid.sin_sg1,
+            self.grid.sin_sg2,
+            self.grid.sin_sg3,
+            self.grid.sin_sg4,
+            self.grid.cos_sg1,
+            self.grid.cos_sg2,
+            self.grid.cos_sg3,
+            self.grid.cos_sg4,
+            self.grid.rarea_c,
+            inputs["divg_d"],
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute_buffer_2d(add=(1, 1, 0)),
+        )
+        return self.slice_output({"divg_d": inputs["divg_d"]})
+
+
 class TranslateCirculation_Cgrid(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
