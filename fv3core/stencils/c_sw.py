@@ -195,5 +195,5 @@ def compute(delp, pt, u, v, w, uc, vc, ua, va, ut, vt, divgd, omga, dt2):
         origin=grid.compute_origin(),
         domain=(grid.nic + 1, grid.njc + 1, grid.npz),
     )
-    vorticity_transport.compute(uc, vc, vort, ke, v, u, fx, fy, dt2)
+    vorticity_transport.compute(uc, vc, vort, ke, v, u, dt2)
     return delpc, ptc

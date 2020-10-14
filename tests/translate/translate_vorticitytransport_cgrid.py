@@ -24,18 +24,6 @@ class TranslateVorticityTransport_Cgrid(TranslateFortranData2Py):
             },
             "u": {},
             "v": {},
-            "fxv": {
-                "istart": grid.is_ - 1,
-                "iend": grid.ie + 2,
-                "jstart": grid.js - 1,
-                "jend": grid.je + 1,
-            },
-            "fyv": {
-                "istart": grid.is_ - 1,
-                "iend": grid.ie + 1,
-                "jstart": grid.js - 1,
-                "jend": grid.je + 2,
-            },
         }
         self.in_vars["parameters"] = ["dt2"]
         self.out_vars = {"uc": grid.x3d_domain_dict(), "vc": grid.y3d_domain_dict()}
