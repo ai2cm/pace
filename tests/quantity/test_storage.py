@@ -108,5 +108,14 @@ def test_modifying_data_modifies_storage(quantity):
 
 @pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
 def test_modifying_storage_modifies_data(quantity):
+    storage = quantity.storage
     quantity.data[:] = 5
-    assert quantity.np.all(quantity.np.asarray(quantity.storage[:]) == 5)
+    assert quantity.np.all(quantity.np.asarray(storage) == 5)
+
+
+@pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
+def test_modifying_storage_modifies_data_after_transpose(quantity):
+    quantity = quantity.transpose(quantity.dims[::-1])
+    storage = quantity.storage
+    quantity.data[:] = 5
+    assert quantity.np.all(quantity.np.asarray(storage) == 5)

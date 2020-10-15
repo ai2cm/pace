@@ -18,6 +18,9 @@ in the `coupler_nml` namelist.
 - Quantity.data is now guaranteed to be a numpy or cupy array matching its `.np` module, and will no longer be a gt4py Storage
 - Quantity accepts a `gt4py_backend` on initialize which is used to create its `.storage` if one was not used on initialize
 
+Fixes:
+- Fixed a bug where quantity.storage and quantity.data could be out of sync if the quantity was initialized using data and a gt4py backend string
+
 v0.5.1
 ------
 
