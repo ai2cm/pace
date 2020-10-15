@@ -10,6 +10,7 @@ except ImportError:
 
 def _wrap_storage_call(function, backend):
     def wrapped(shape, dtype=float, **kwargs):
+        kwargs["managed_memory"] = True
         return function(backend, [0] * len(shape), shape, dtype, **kwargs)
 
     wrapped.__name__ = function.__name__
