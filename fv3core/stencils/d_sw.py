@@ -2,7 +2,7 @@
 import logging
 
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import __INLINED, PARALLEL, computation, interval, parallel, region
 
 import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
@@ -12,8 +12,6 @@ import fv3core.stencils.flux_capacitor as fluxcap
 import fv3core.stencils.fvtp2d as fvtp2d
 import fv3core.stencils.fxadv as fxadv
 import fv3core.stencils.heatdiss as heatdiss
-import fv3core.stencils.ubke as ubke
-import fv3core.stencils.vbke as vbke
 import fv3core.stencils.vorticity_volumemean as vort_mean
 import fv3core.stencils.xtp_u as xtp_u
 import fv3core.stencils.ytp_v as ytp_v
@@ -412,6 +410,32 @@ def damp_vertical_wind(w, heat_s, diss_e, dt, column_namelist):
     return dw, wk
 
 
+@gtstencil()
+def ubke(uc: sd, vc: sd, cosa: sd, rsina: sd, ut: sd, ub: sd, dt4: float, dt5: float):
+    from __splitters__ import i_end, i_start, j_end, j_start
+
+    with computation(PARALLEL), interval(...):
+        ub = dt5 * (uc[0, -1, 0] + uc - (vc[-1, 0, 0] + vc) * cosa) * rsina
+        if __INLINED(spec.namelist.grid_type < 3):
+            with parallel(region[:, j_start], region[:, j_end + 1]):
+                ub = dt4 * (-ut[0, -2, 0] + 3.0 * (ut[0, -1, 0] + ut) - ut[0, 1, 0])
+            with parallel(region[i_start, :], region[i_end + 1, :]):
+                ub = dt5 * (ut[0, -1, 0] + ut)
+
+
+@gtstencil()
+def vbke(vc: sd, uc: sd, cosa: sd, rsina: sd, vt: sd, vb: sd, dt4: float, dt5: float):
+    from __splitters__ import i_end, i_start, j_end, j_start
+
+    with computation(PARALLEL), interval(...):
+        vb = dt5 * (vc[-1, 0, 0] + vc - (uc[0, -1, 0] + uc) * cosa) * rsina
+        if __INLINED(spec.namelist.grid_type < 3):
+            with parallel(region[i_start, :], region[i_end + 1, :]):
+                vb = dt4 * (-vt[-2, 0, 0] + 3.0 * (vt[-1, 0, 0] + vt) - vt[1, 0, 0])
+            with parallel(region[:, j_start], region[:, j_end + 1]):
+                vb = dt5 * (vt[-1, 0, 0] + vt)
+
+
 def d_sw(
     delpc,
     delp,
@@ -565,7 +589,19 @@ def d_sw(
 
     dt5 = 0.5 * dt
     dt4 = 0.25 * dt
-    vbke.compute(uc, vc, vt, vb, dt5, dt4)
+
+    vbke(
+        vc,
+        uc,
+        grid().cosa,
+        grid().rsina,
+        vt,
+        vb,
+        dt4,
+        dt5,
+        origin=grid().compute_origin(),
+        domain=grid().domain_shape_compute_buffer_2d(),
+    )
 
     ytp_v.compute(vb, u, v, ub)
 
@@ -577,7 +613,18 @@ def d_sw(
         domain=grid().domain_shape_compute_buffer_2d(),
     )
 
-    ubke.compute(uc, vc, ut, ub, dt5, dt4)
+    ubke(
+        uc,
+        vc,
+        grid().cosa,
+        grid().rsina,
+        ut,
+        ub,
+        dt4,
+        dt5,
+        origin=grid().compute_origin(),
+        domain=grid().domain_shape_compute_buffer_2d(),
+    )
 
     xtp_u.compute(ub, u, v, vb)
 
