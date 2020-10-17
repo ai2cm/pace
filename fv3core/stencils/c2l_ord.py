@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import fv3gfs.util as fv3util
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval

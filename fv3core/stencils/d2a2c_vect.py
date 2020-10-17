@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import gt4py as gt
 import gt4py.gtscript as gtscript
 import numpy as np

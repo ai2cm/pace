@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec

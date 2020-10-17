@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import gt4py.gtscript as gtscript
 
 import fv3core._config as spec

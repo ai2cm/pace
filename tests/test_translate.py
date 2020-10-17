@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import contextlib
 import logging
 import os
