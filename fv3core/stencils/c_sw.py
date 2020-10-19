@@ -75,20 +75,21 @@ def transportdelp(
         wc: Updated w (output)
     """
 
+    from __externals__ import namelist
+
     with computation(PARALLEL), interval(...):
-        if __INLINED(spec.namelist.grid_type < 3):
-            # additional assumption (not grid.nested)
-            delp = fill_4corners_x(delp)
-            pt = fill_4corners_x(pt)
-            w = fill_4corners_x(w)
+        assert __INLINED(namelist.grid_type < 3)
+        # additional assumption (not grid.nested)
+
+        delp = fill_4corners_x(delp)
+        pt = fill_4corners_x(pt)
+        w = fill_4corners_x(w)
 
         fx, fx1, fx2 = nonhydro_x_fluxes(delp, pt, w, utc)
 
-        if __INLINED(spec.namelist.grid_type < 3):
-            # additional assumption (not grid.nested)
-            delp = fill_4corners_y(delp)
-            pt = fill_4corners_y(pt)
-            w = fill_4corners_y(w)
+        delp = fill_4corners_y(delp)
+        pt = fill_4corners_y(pt)
+        w = fill_4corners_y(w)
 
         fy, fy1, fy2 = nonhydro_y_fluxes(delp, pt, w, vtc)
 
