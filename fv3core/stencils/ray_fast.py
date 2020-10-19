@@ -18,7 +18,9 @@ sd = utils.sd
 
 @gtscript.function
 def compute_rf_nudged_cutoff(ptop):
-    return spec.namelist.rf_cutoff + min(100.0, 10.0 * ptop)
+    from __externals__ import namelist
+
+    return namelist.rf_cutoff + min(100.0, 10.0 * ptop)
 
 
 @gtscript.function
@@ -44,12 +46,14 @@ def dm_stencil(
     rf_cutoff_nudge: float,
     ks: int,
 ):
+    from __externals__ import namelist
+
     with computation(PARALLEL), interval(...):
         # TODO -- in the fortran model rf is only computed once, repeating
         # the computation every time ray_fast is run is inefficient
-        if pfull < spec.namelist.rf_cutoff:
+        if pfull < namelist.rf_cutoff:
             rf = compute_rff_vals(
-                pfull, dt, spec.namelist.rf_cutoff, spec.namelist.tau * SDAY, ptop
+                pfull, dt, namelist.rf_cutoff, namelist.tau * SDAY, ptop
             )
     with computation(FORWARD):
         with interval(0, 1):
@@ -77,21 +81,23 @@ def ray_fast_wind(
     rf_cutoff_nudge: float,
     ks: int,
 ):
+    from __externals__ import namelist
+
     with computation(FORWARD):
         with interval(0, 1):
-            if pfull < spec.namelist.rf_cutoff:
+            if pfull < namelist.rf_cutoff:
                 dmdir = dm_layer(rf, dp, wind)
                 wind = rf * wind
             else:
                 dm = 0
         with interval(1, None):
-            if pfull < spec.namelist.rf_cutoff:
+            if pfull < namelist.rf_cutoff:
                 dmdir = dmdir[0, 0, -1] + dm_layer(rf, dp, wind)
                 wind = rf * wind
             else:
                 dmdir = dmdir[0, 0, -1]
     with computation(BACKWARD), interval(0, -1):
-        if pfull < spec.namelist.rf_cutoff:
+        if pfull < namelist.rf_cutoff:
             dmdir = dmdir[0, 0, 1]
     with computation(PARALLEL), interval(...):
         if pfull < rf_cutoff_nudge:  # TODO and axes(k) < ks:
@@ -101,15 +107,18 @@ def ray_fast_wind(
 
 @gtstencil()
 def ray_fast_w(w: sd, rf: sd, pfull: sd):
+    from __externals__ import namelist
+
     with computation(PARALLEL), interval(...):
-        if pfull < spec.namelist.rf_cutoff:
+        if pfull < namelist.rf_cutoff:
             w = rf * w
 
 
 def compute(u, v, w, dp, pfull, dt, ptop, ks):
     grid = spec.grid
+    namelist = spec.namelist
     # The next 3 variables and dm_stencil could be pushed into ray_fast_wind and still work, but then recomputing it all twice
-    rf_cutoff_nudge = spec.namelist.rf_cutoff + min(100.0, 10.0 * ptop)
+    rf_cutoff_nudge = namelist.rf_cutoff + min(100.0, 10.0 * ptop)
     # TODO 1D variable
     dm = utils.make_storage_from_shape(u.shape, grid.default_origin())
     # TODO 1D variable
@@ -149,7 +158,7 @@ def compute(u, v, w, dp, pfull, dt, ptop, ks):
         domain=(grid.nic + 1, grid.njc, grid.npz),
     )
 
-    if not spec.namelist.hydrostatic:
+    if not namelist.hydrostatic:
         ray_fast_w(
             w,
             rf,
