@@ -1,4 +1,5 @@
 import fv3core.stencils.c_sw as c_sw
+import fv3core.utils.gt4py_utils as utils
 
 from .translate import TranslateFortranData2Py
 
@@ -39,6 +40,37 @@ class TranslateC_SW(TranslateFortranData2Py):
         return self.slice_output(inputs, {"delpcd": delpc, "ptcd": ptc})
 
 
+class TranslateTransportDelp(TranslateFortranData2Py):
+    def __init__(self, grid):
+        super().__init__(grid)
+        self.in_vars["data_vars"] = {
+            "delp": {},
+            "pt": {},
+            "utc": {},
+            "vtc": {},
+            "w": {},
+            "wc": {},
+        }
+        self.out_vars = {"delpc": {}, "ptc": {}, "wc": {}}
+
+    def compute(self, inputs):
+        self.make_storage_data_input_vars(inputs)
+        orig = (self.grid.is_ - 1, self.grid.js - 1, 0)
+        inputs["delpc"] = utils.make_storage_from_shape(
+            inputs["delp"].shape, origin=orig
+        )
+        inputs["ptc"] = utils.make_storage_from_shape(inputs["pt"].shape, origin=orig)
+        c_sw.transportdelp(
+            **inputs,
+            rarea=self.grid.rarea,
+            origin=orig,
+            domain=self.grid.domain_shape_compute_buffer_2d(add=(2, 2, 0)),
+        )
+        return self.slice_output(
+            inputs,
+        )
+
+
 class TranslateDivergenceCorner(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
@@ -71,22 +103,18 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         c_sw.divergence_corner(
-            inputs["u"],
-            inputs["v"],
-            inputs["ua"],
-            inputs["va"],
-            self.grid.dxc,
-            self.grid.dyc,
-            self.grid.sin_sg1,
-            self.grid.sin_sg2,
-            self.grid.sin_sg3,
-            self.grid.sin_sg4,
-            self.grid.cos_sg1,
-            self.grid.cos_sg2,
-            self.grid.cos_sg3,
-            self.grid.cos_sg4,
-            self.grid.rarea_c,
-            inputs["divg_d"],
+            **inputs,
+            dxc=self.grid.dxc,
+            dyc=self.grid.dyc,
+            sin_sg1=self.grid.sin_sg1,
+            sin_sg2=self.grid.sin_sg2,
+            sin_sg3=self.grid.sin_sg3,
+            sin_sg4=self.grid.sin_sg4,
+            cos_sg1=self.grid.cos_sg1,
+            cos_sg2=self.grid.cos_sg2,
+            cos_sg3=self.grid.cos_sg3,
+            cos_sg4=self.grid.cos_sg4,
+            rarea_c=self.grid.rarea_c,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute_buffer_2d(add=(1, 1, 0)),
         )
@@ -118,11 +146,9 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         c_sw.circulation_cgrid(
-            inputs["uc"],
-            inputs["vc"],
-            self.grid.dxc,
-            self.grid.dyc,
-            inputs["vort_c"],
+            **inputs,
+            dxc=self.grid.dxc,
+            dyc=self.grid.dyc,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute_buffer_2d(add=(1, 1, 0)),
         )

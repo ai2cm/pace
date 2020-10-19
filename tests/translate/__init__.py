@@ -7,6 +7,7 @@ from .translate_c_sw import (
     TranslateC_SW,
     TranslateCirculation_Cgrid,
     TranslateDivergenceCorner,
+    TranslateTransportDelp,
 )
 from .translate_compute_total_energy import TranslateComputeTotalEnergy
 from .translate_copycorners import TranslateCopyCorners
@@ -67,7 +68,6 @@ from .translate_riem_solver3 import TranslateRiem_Solver3
 from .translate_riem_solver_c import TranslateRiem_Solver_C
 from .translate_satadjust3d import TranslateSatAdjust3d
 from .translate_tracer2d1l import TranslateTracer2D1L
-from .translate_transportdelp import TranslateTransportDelp
 from .translate_updatedzc import TranslateUpdateDzC
 from .translate_updatedzd import TranslateUpdateDzD
 from .translate_vorticitytransport_cgrid import TranslateVorticityTransport_Cgrid
