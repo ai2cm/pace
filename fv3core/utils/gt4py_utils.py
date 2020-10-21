@@ -22,7 +22,7 @@ except ImportError:
 backend = None
 
 # Whether to rebuild stencils on every call
-rebuild = True
+rebuild = False
 
 # Set to "False" to skip validating gt4py stencil arguments
 validate_args = True
