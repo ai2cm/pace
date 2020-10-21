@@ -24,6 +24,9 @@ backend = None
 # Whether to rebuild stencils on every call
 rebuild = True
 
+# Set to "False" to skip validating gt4py stencil arguments
+validate_args = True
+
 # If True, automatically transfers memory between CPU and GPU (see gt4py.storage)
 managed_memory = True
 
