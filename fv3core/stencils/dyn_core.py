@@ -239,7 +239,7 @@ def compute(state, comm):
                 state.dp_ref, state.zs, state.ut, state.vt, state.gz, state.ws3, dt2
             )
             # TODO this is really a 2d field.
-            state.ws3 = utils.make_storage_data_from_2d(
+            state.ws3 = utils.make_storage_data(
                 state.ws3[:, :, -1], shape, origin=(0, 0, 0)
             )
             riem_solver_c.compute(
@@ -318,7 +318,7 @@ def compute(state, comm):
             )
 
             # TODO this is really a 2d field.
-            state.wsd = utils.make_storage_data_from_2d(
+            state.wsd = utils.make_storage_data(
                 state.wsd[:, :, -1], shape, origin=grid.compute_origin()
             )
             riem_solver3.compute(

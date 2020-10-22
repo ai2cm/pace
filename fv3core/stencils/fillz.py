@@ -119,10 +119,10 @@ def compute(dp2, tracers, im, km, nq, jslice):
 
     for q in utils.tracer_variables[0:nq]:
         # reset fields
-        zfix[:] = utils.zeros(shape, type(zfix))
-        fac[:] = utils.zeros(shape, type(fac))
-        lower_fix[:] = utils.zeros(shape, type(lower_fix))
-        upper_fix[:] = utils.zeros(shape, type(upper_fix))
+        zfix[:] = 0.0
+        fac[:] = 0.0
+        lower_fix[:] = 0.0
+        upper_fix[:] = 0.0
         fix_top(tracers[q], dp2, dm, origin=orig, domain=(im, j_extent, 2))
         fix_interior(
             tracers[q],
@@ -150,7 +150,7 @@ def compute(dp2, tracers, im, km, nq, jslice):
         zfix[:] = utils.repeat(fix_cols[:, :, np.newaxis], km + 1, axis=2)
         sum0 = utils.sum(dm[:, :, 1:], axis=2)
         sum1 = utils.sum(dm_pos[:, :, 1:], axis=2)
-        adj_factor = utils.zeros(sum0.shape, type(fac))
+        adj_factor = utils.zeros(sum0.shape)
         adj_factor[sum0 > 0] = sum0[sum0 > 0] / sum1[sum0 > 0]
         fac[:] = utils.repeat(adj_factor[:, :, np.newaxis], km + 1, axis=2)
         final_check(

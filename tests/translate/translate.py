@@ -1,10 +1,12 @@
 import logging
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 import fv3core._config
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.grid import Grid
+from fv3core.utils.typing import Field
 
 
 logger = logging.getLogger("fv3ser")
@@ -64,30 +66,39 @@ class TranslateFortranData2Py:
 
     def make_storage_data(
         self,
-        array,
-        istart=0,
-        jstart=0,
-        kstart=0,
-        dummy_axes=None,
-        axis=2,
-        names_4d=None,
-    ):
+        array: np.ndarray,
+        istart: int = 0,
+        jstart: int = 0,
+        kstart: int = 0,
+        dummy_axes: Optional[Tuple[int, int, int]] = None,
+        axis: int = 2,
+        names_4d: Optional[List[str]] = None,
+    ) -> Dict[str, type(Field)]:
         use_shape = list(self.maxshape)
         if dummy_axes:
             for axis in dummy_axes:
                 use_shape[axis] = 1
         use_shape = tuple(use_shape)
-        return utils.make_storage_data(
-            array,
-            use_shape,
-            istart,
-            jstart,
-            kstart,
-            origin=(istart, jstart, kstart),
-            dummy=dummy_axes,
-            axis=axis,
-            names_4d=names_4d,
-        )
+        start = (istart, jstart, kstart)
+        if names_4d:
+            return utils.make_storage_dict(
+                array,
+                use_shape,
+                start=start,
+                origin=start,
+                dummy=dummy_axes,
+                axis=axis,
+                names=names_4d,
+            )
+        else:
+            return utils.make_storage_data(
+                array,
+                use_shape,
+                start=start,
+                origin=start,
+                dummy=dummy_axes,
+                axis=axis,
+            )
 
     def storage_vars(self):
         return self.in_vars["data_vars"]
@@ -281,9 +292,12 @@ class TranslateGrid:
                 else:
                     edge_offset = pygrid.global_jsd
                     width = pygrid.subtile_width_y
-                edgeslice = slice(int(edge_offset), int(edge_offset + width + 1))
-                self.data[k] = utils.make_storage_data_from_1d(
-                    self.data[k][edgeslice], shape, kstart=pygrid.halo, axis=axis
+                edge_slice = slice(int(edge_offset), int(edge_offset + width + 1))
+                self.data[k] = utils.make_storage_data(
+                    self.data[k][edge_slice],
+                    shape,
+                    start=(0, 0, pygrid.halo),
+                    axis=axis,
                 )
         for k, v in self.data.items():
             if type(v) is np.ndarray:
@@ -294,8 +308,9 @@ class TranslateGrid:
                         k, istart, jstart, v.shape
                     )
                 )
+                origin = (istart, jstart, 0)
                 self.data[k] = utils.make_storage_data(
-                    v, shape, origin=(istart, jstart, 0), istart=istart, jstart=jstart
+                    v, shape, origin=origin, start=origin
                 )
 
     def python_grid(self):
