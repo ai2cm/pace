@@ -24,16 +24,23 @@ If you'd like to run MPI parallel tests (which are needed for parts of the code 
 $ make tests_mpi
 ```
 
-To rebuild the backend Dawn/GT4Py environment before running tests, either run
+The environment image that the fv3core container uses is prebuilt and lives in the GCR. The above commands will by default pull this image before building the fv3core image and running the tests.
+To build the environment from scratch (including GT4py) before running tests, either run
+
+```
+make build_environment
+```
+
+or
+
 
 ```shell
 $ PULL=False make tests
 ```
 
-```shell
-$ make rebuild_environment
-$ make tests
-```
+which will execute the target `build_environment` for you before running the tests.
+
+There are `push_environment` and `rebuild_environment` targets, but these should normally not be done manually. Updating the install image should only be done by Jenkins after the tests pass using a new environment.
 
 ### Test data options
 
@@ -188,7 +195,7 @@ The submodule include:
 
 There are three main driver files:
 
-1. `docker/Dockerfile.build_environment` - builds off of the serialbox environment from fv3gfs-fortran, installs Serialbox, Dawn and GT4Py
+1. `docker/Dockerfile.build_environment` - builds off of the serialbox environment from fv3gfs-fortran, installs Serialbox and GT4Py
 
 2. `docker/Dockerfile` - uses the build environment and copies in the fv3 folder only. This is to make development easier so that when you change a file in fv3, 'make build' does not accidentally or otherwise trigger a 20 minute rebuild of all of those installations, but just updates the code in the fv3core image.
 
