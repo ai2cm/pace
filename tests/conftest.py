@@ -36,7 +36,7 @@ class ReplaceRepr:
 @pytest.fixture()
 def backend(pytestconfig):
     backend = pytestconfig.getoption("backend")
-    fv3core.utils.gt4py_utils.backend = backend
+    fv3core.set_backend(backend)
     return backend
 
 
@@ -271,7 +271,7 @@ def parallel_savepoint_cases(metafunc, data_path, mpi_rank):
 
 def pytest_generate_tests(metafunc):
     backend = metafunc.config.getoption("backend")
-    fv3core.utils.gt4py_utils.backend = backend
+    fv3core.set_backend(backend)
     if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
         if metafunc.function.__name__ == "test_parallel_savepoint":
             generate_parallel_stencil_tests(metafunc)

@@ -53,7 +53,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "n_halo": 0,
         },
         "pkz": {
-            "name": "finite_volume_mean_pressure_raised_to_power_of_kappa",
+            "name": "layer_mean_pressure_raised_to_power_of_kappa",
             "units": "unknown",
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             "n_halo": 0,
@@ -79,13 +79,13 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         "cxd": {
             "name": "accumulated_x_courant_number",
             "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
-            "units": "unknown",
+            "units": "",
             "n_halo": (0, 3),
         },
         "cyd": {
             "name": "accumulated_y_courant_number",
             "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
-            "units": "unknown",
+            "units": "",
             "n_halo": (3, 0),
         },
         "diss_estd": {
@@ -109,12 +109,12 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "units": "m/s",
         },
         "ua": {
-            "name": "x_wind_on_a_grid",
+            "name": "eastward_wind",
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             "units": "m/s",
         },
         "va": {
-            "name": "y_wind_on_a_grid",
+            "name": "northward_wind",
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             "units": "m/s",
         },
@@ -149,7 +149,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "units": "kg/kg",
         },
         "qice": {
-            "name": "ice_mixing_ratio",
+            "name": "cloud_ice_mixing_ratio",
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             "units": "kg/kg",
         },

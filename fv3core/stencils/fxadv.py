@@ -5,6 +5,8 @@ import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 
+from ..utils import global_config
+
 
 def grid():
     return spec.grid
@@ -360,7 +362,7 @@ def corner_ut(
     uy = uj + index_offset(lower, True, south) * lowerfactor
     if stencil_corner:
         decorator = gtscript.stencil(
-            backend=utils.backend,
+            backend=global_config.get_backend(),
             externals={
                 "vi": vi - ui,
                 "vj": vj - uj,
@@ -369,7 +371,7 @@ def corner_ut(
                 "vx": vx - ui,
                 "vy": vy - uj,
             },
-            rebuild=utils.rebuild,
+            rebuild=global_config.get_rebuild(),
         )
         corner_stencil = decorator(corner_ut_stencil)
         corner_stencil(

@@ -46,12 +46,12 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
             "units": "degK",
         },
         "ua": {
-            "name": "eastward_wind_on_a_grid",
+            "name": "eastward_wind",
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             "units": "m/s",
         },
         "va": {
-            "name": "northward_wind_on_a_grid",
+            "name": "northward_wind",
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             "units": "m/s",
         },
@@ -71,7 +71,7 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
             "units": "kg/kg",
         },
         "qice": {
-            "name": "ice_mixing_ratio",
+            "name": "cloud_ice_mixing_ratio",
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             "units": "kg/kg",
         },

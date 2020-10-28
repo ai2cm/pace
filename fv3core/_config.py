@@ -7,6 +7,8 @@ import gt4py.gtscript as gtscript
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.grid import Grid
 
+from .utils import global_config
+
 
 grid = None
 namelist = SimpleNamespace()
@@ -100,11 +102,6 @@ def make_grid_from_namelist(namelist, rank):
         "je": namelist.npy + utils.halo - 2,
     }
     return Grid(indices, shape_params, rank, namelist.layout)
-
-
-def namelist_externals_decorator():
-    dec = gtscript.stencil(backend=utils.backend, rebuild=utils.rebuild)
-    return dec
 
 
 def set_grid(in_grid):

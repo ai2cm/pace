@@ -11,18 +11,15 @@ from gt4py import gtscript
 from fv3core.utils.mpi import MPI
 from fv3core.utils.typing import DTypes, Field, float_type, int_type
 
+from . import global_config
+
 
 try:
     import cupy as cp
 except ImportError:
     cp = None
 
-# Options: numpy, gtmc, gtx86, gtcuda, debug
-backend = None
-
-# Whether to rebuild stencils on every call
-rebuild = False
-
+logger = logging.getLogger("fv3ser")
 # Set to "False" to skip validating gt4py stencil arguments
 validate_args = True
 
@@ -117,7 +114,7 @@ def make_storage_data(
 
     storage = gt_storage.from_array(
         data=data,
-        backend=backend,
+        backend=global_config.get_backend(),
         default_origin=origin,
         shape=shape,
         dtype=dtype,
@@ -231,7 +228,7 @@ def make_storage_from_shape(
         3) q_out = utils.make_storage_from_shape(q_in.shape, origin, init=True)
     """
     storage = gt_storage.empty(
-        backend=backend,
+        backend=global_config.get_backend(),
         default_origin=origin,
         shape=shape,
         dtype=dtype,
@@ -420,7 +417,7 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
 
 
 def zeros(shape, dtype=float_type):
-    storage_type = cp.ndarray if "cuda" in backend else np.ndarray
+    storage_type = cp.ndarray if "cuda" in global_config.get_backend() else np.ndarray
     xp = cp if cp and storage_type is cp.ndarray else np
     return xp.zeros(shape)
 

@@ -81,7 +81,7 @@ def compute_preamble(state, comm):
         state.ph2,
         spec.namelist.p_ref,
         origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute(),
+        domain=grid.domain_shape_compute_buffer_2d(),
     )
     if spec.namelist.hydrostatic:
         raise Exception("Hydrostatic is not implemented")
@@ -254,7 +254,7 @@ def set_constants(state):
     ArgSpec("qliquid", "cloud_water_mixing_ratio", "kg/kg", intent="inout"),
     ArgSpec("qrain", "rain_mixing_ratio", "kg/kg", intent="inout"),
     ArgSpec("qsnow", "snow_mixing_ratio", "kg/kg", intent="inout"),
-    ArgSpec("qice", "ice_mixing_ratio", "kg/kg", intent="inout"),
+    ArgSpec("qice", "cloud_ice_mixing_ratio", "kg/kg", intent="inout"),
     ArgSpec("qgraupel", "graupel_mixing_ratio", "kg/kg", intent="inout"),
     ArgSpec("qo3mr", "ozone_mixing_ratio", "kg/kg", intent="inout"),
     ArgSpec("qsgs_tke", "turbulent_kinetic_energy", "m**2/s**2", intent="inout"),
@@ -266,8 +266,8 @@ def set_constants(state):
     ArgSpec("u", "x_wind", "m/s", intent="inout"),
     ArgSpec("v", "y_wind", "m/s", intent="inout"),
     ArgSpec("w", "vertical_wind", "m/s", intent="inout"),
-    ArgSpec("ua", "x_wind_on_a_grid", "m/s", intent="inout"),
-    ArgSpec("va", "y_wind_on_a_grid", "m/s", intent="inout"),
+    ArgSpec("ua", "eastward_wind", "m/s", intent="inout"),
+    ArgSpec("va", "northward_wind", "m/s", intent="inout"),
     ArgSpec("uc", "x_wind_on_c_grid", "m/s", intent="inout"),
     ArgSpec("vc", "y_wind_on_c_grid", "m/s", intent="inout"),
     ArgSpec("q_con", "total_condensate_mixing_ratio", "kg/kg", intent="inout"),
@@ -278,7 +278,7 @@ def set_constants(state):
     ),
     ArgSpec(
         "pkz",
-        "finite_volume_mean_pressure_raised_to_power_of_kappa",
+        "layer_mean_pressure_raised_to_power_of_kappa",
         "unknown",
         intent="inout",
     ),
@@ -288,8 +288,8 @@ def set_constants(state):
     ArgSpec("bk", "atmosphere_hybrid_b_coordinate", "", intent="in"),
     ArgSpec("mfxd", "accumulated_x_mass_flux", "unknown", intent="inout"),
     ArgSpec("mfyd", "accumulated_y_mass_flux", "unknown", intent="inout"),
-    ArgSpec("cxd", "accumulated_x_courant_number", "unknown", intent="inout"),
-    ArgSpec("cyd", "accumulated_y_courant_number", "unknown", intent="inout"),
+    ArgSpec("cxd", "accumulated_x_courant_number", "", intent="inout"),
+    ArgSpec("cyd", "accumulated_y_courant_number", "", intent="inout"),
     ArgSpec(
         "diss_estd", "dissipation_estimate_from_heat_source", "unknown", intent="inout"
     ),
@@ -316,6 +316,7 @@ def compute(state, comm):
     last_step = False
     k_split = spec.namelist.k_split
     state.mdt = state.bdt / k_split
+    comm.halo_update(state.phis_quantity, n_points=utils.halo)
     compute_preamble(state, comm)
     for n_map in range(k_split):
         state.n_map = n_map + 1

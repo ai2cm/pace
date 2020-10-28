@@ -179,7 +179,6 @@ def compute(
         kmp_origin = (grid.is_, grid.js, kmp)
         kmp_domain = (grid.nic, grid.njc, grid.npz - kmp)
         layer_gradient(peln, dpln, origin=kmp_origin, domain=kmp_domain)
-
         saturation_adjustment.compute(
             dpln,
             te,

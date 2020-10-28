@@ -139,3 +139,7 @@ dmypy.json
 
 # GT4Py
 **/.gt_cache/
+
+# Run outputs
+examples/wrapped/output/
+examples/wrapped/plots/

@@ -52,7 +52,6 @@ def compute(pk3, delp, ptop, akap):
         origin=(grid.is_ - 2, grid.js - 2, 0),
         domain=edge_domain_y,
     )
-
     edge_pe(
         pej,
         delp,

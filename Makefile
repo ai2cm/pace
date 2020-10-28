@@ -3,6 +3,7 @@ REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_standard
 FV3CORE_VERSION=0.1.0
 FORTRAN_SERIALIZED_DATA_VERSION=7.1.1
+WRAPPER_IMAGE = us.gcr.io/vcm-ml/fv3gfs-wrapper:gnu9-mpich314-nocuda
 
 SHELL=/bin/bash
 CWD=$(shell pwd)
@@ -15,13 +16,18 @@ CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?="--rm"
 TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
 FV3=fv3core
-FV3UTIL_DIR=$(CWD)/external/fv3util
 FV3UTIL_DIR=$(CWD)/external/fv3gfs-util
 FV3_INSTALL_TAG ?= develop
+FV3_WRAPPED_TAG ?= wrapped
 FV3_INSTALL_TARGET=$(FV3)-install
+
+FV3=fv3core
 FV3_INSTALL_IMAGE=$(GCR_URL)/$(FV3_INSTALL_TARGET):$(FV3_INSTALL_TAG)
+WRAPPER_INSTALL_IMAGE=$(GCR_URL)/$(FV3_INSTALL_TARGET):$(FV3_WRAPPED_TAG)
 FV3_TAG ?= $(FV3CORE_VERSION)-$(FV3_INSTALL_TAG)
+WRAPPED_TAG ?= $(FV3CORE_VERSION)-wrapped
 FV3_IMAGE ?=$(GCR_URL)/$(FV3):$(FV3_TAG)
+WRAPPED_FV3_IMAGE ?=$(GCR_URL)/$(FV3):$(WRAPPED_TAG)
 
 TEST_DATA_CONTAINER=/test_data
 PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
@@ -36,6 +42,7 @@ DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $
 
 clean:
 	find . -name ""
+	$(RM) -rf examples/wrapped/output/*
 
 update_submodules:
 	if [ ! -f $(FV3UTIL_DIR)/requirements.txt  ]; then \
@@ -52,6 +59,16 @@ build_environment:
 		--target $(FV3_INSTALL_TARGET) \
 		.
 
+build_wrapped_environment:
+	$(MAKE) -C external/fv3gfs-wrapper build-docker
+	DOCKER_BUILDKIT=1 docker build \
+		--network host \
+		-f $(CWD)/docker/Dockerfile.build_environment \
+		-t $(WRAPPER_INSTALL_IMAGE) \
+		--target $(FV3_INSTALL_TARGET) \
+		--build-arg BASE_IMAGE=$(WRAPPER_IMAGE) \
+		.
+
 build: update_submodules
 	if [ $(PULL) == True ]; then \
 		$(MAKE) pull_environment_if_needed; \
@@ -65,9 +82,29 @@ build: update_submodules
 		-t $(FV3_IMAGE) \
 		.
 
+build_wrapped: update_submodules
+	if [ $(PULL) == True ]; then \
+		$(MAKE) pull_wrapped_environment_if_needed; \
+	else \
+		$(MAKE) build_wrapped_environment; \
+	fi
+	docker build \
+		--network host \
+		--no-cache \
+		--build-arg build_image=$(WRAPPER_INSTALL_IMAGE) \
+		-f $(CWD)/docker/Dockerfile \
+		-t $(WRAPPED_FV3_IMAGE) \
+		.
+
+
 pull_environment_if_needed:
 	if [ -z $(shell docker images -q $(FV3_INSTALL_IMAGE)) ]; then \
 		docker pull $(FV3_INSTALL_IMAGE); \
+	fi
+
+pull_wrapped_environment_if_needed:
+	if [ -z $(shell docker images -q $(WRAPPER_INSTALL_IMAGE)) ]; then \
+		docker pull $(WRAPPER_INSTALL_IMAGE); \
 	fi
 
 pull_environment:

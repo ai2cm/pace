@@ -5,6 +5,8 @@ import numpy as np
 
 import fv3core.utils.gt4py_utils as utils
 
+from . import global_config
+
 
 class Grid:
     # indices = ["is_", "ie", "isd", "ied", "js", "je", "jsd", "jed"]
@@ -83,7 +85,7 @@ class Grid:
     def quantity_factory(self):
         if self._quantity_factory is None:
             self._quantity_factory = fv3util.QuantityFactory.from_backend(
-                self.sizer, backend=utils.backend
+                self.sizer, backend=global_config.get_backend()
             )
         return self._quantity_factory
 
