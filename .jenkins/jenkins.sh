@@ -107,8 +107,6 @@ fi
 # otherwise build the image
 if [ ${container_engine} == "sarus" ]; then
     module load sarus
-    export FV3_IMAGE="load/library/${FV3_TAG}"
-    echo "Using FV3_IMAGE=${FV3_IMAGE}"
     make sarus_load_tar
     if grep -q "parallel" <<< "${script}"; then
 	export CONTAINER_ENGINE="srun sarus"
@@ -118,8 +116,6 @@ if [ ${container_engine} == "sarus" ]; then
 	export CONTAINER_ENGINE="sarus"
 	export RUN_FLAGS=""
     fi
-else
-    make build
 fi
 
 # get the test data version from the Makefile

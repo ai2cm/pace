@@ -27,7 +27,7 @@ import fv3core
 import fv3core._config as spec
 
 
-sys.path.append("/serialbox/python")  # noqa: E402
+sys.path.append("/usr/local/serialbox/python")  # noqa: E40
 sys.path.append("/fv3core/tests/translate")  # noqa: E402
 import serialbox
 import translate as translate

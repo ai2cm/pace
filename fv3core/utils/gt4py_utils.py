@@ -20,6 +20,7 @@ except ImportError:
     cp = None
 
 logger = logging.getLogger("fv3ser")
+
 # Set to "False" to skip validating gt4py stencil arguments
 validate_args = True
 

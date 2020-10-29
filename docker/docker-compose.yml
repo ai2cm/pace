@@ -1,0 +1,10 @@
+# this is only for development purposes and integration with visual studio code
+# see https://docs.docker.com/compose/ for more information
+version: '3.4'
+services:
+  fv3core_wrapper:
+    image: ${FV3CORE_WRAPPER_IMAGE}
+    volumes:
+      - ../external/fv3gfs-util:/external/fv3gfs-util
+      - ../external/fv3gfs-wrapper:/external/fv3gfs-wrapper
+      - ..:/fv3core

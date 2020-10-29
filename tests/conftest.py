@@ -14,7 +14,7 @@ from fv3core.utils.mpi import MPI
 
 
 # get MPI environment
-sys.path.append("/usr/local/python")  # noqa
+sys.path.append("/usr/local/serialbox/python")  # noqa
 import serialbox
 
 
