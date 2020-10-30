@@ -79,11 +79,9 @@ def xfx_adv_stencil(
     dt: float,
 ):
     with computation(PARALLEL), interval(...):
-        xfx_adv[0, 0, 0] = dt * ut
-        crx_adv[0, 0, 0] = xfx_adv * rdxa[-1, 0, 0] if xfx_adv > 0 else xfx_adv * rdxa
-        xfx_adv[0, 0, 0] = (
-            dy * xfx_adv * sin_sg3[-1, 0, 0] if xfx_adv > 0 else dy * xfx_adv * sin_sg1
-        )
+        prod = dt * ut
+        crx_adv = prod * rdxa[-1, 0, 0] if prod > 0 else prod * rdxa
+        xfx_adv = dy * prod * sin_sg3[-1, 0, 0] if prod > 0 else dy * prod * sin_sg1
         ra_x = ra_x_func(area, xfx_adv)
 
 
@@ -106,11 +104,9 @@ def yfx_adv_stencil(
     dt: float,
 ):
     with computation(PARALLEL), interval(...):
-        yfx_adv[0, 0, 0] = dt * vt
-        cry_adv[0, 0, 0] = yfx_adv * rdya[0, -1, 0] if yfx_adv > 0 else yfx_adv * rdya
-        yfx_adv[0, 0, 0] = (
-            dx * yfx_adv * sin_sg4[0, -1, 0] if yfx_adv > 0 else dx * yfx_adv * sin_sg2
-        )
+        prod = dt * vt
+        cry_adv = prod * rdya[0, -1, 0] if prod > 0 else prod * rdya
+        yfx_adv = dx * prod * sin_sg4[0, -1, 0] if prod > 0 else dx * prod * sin_sg2
         ra_y = ra_y_func(area, yfx_adv)
 
 

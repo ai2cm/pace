@@ -290,8 +290,7 @@ def extrapolate_corner_qout(qin, qout, i, j, kstart, nk, corner):
         qin[i + i3a, j + j3a, kslice],
         qin[i + i3b, j + j3b, kslice],
     )
-    r3 = 1.0 / 3.0
-    qout[i, j, kslice] = (ec1 + ec2 + ec3) * r3
+    qout[i, j, kslice] = (ec1 + ec2 + ec3) * (1.0 / 3.0)
 
 
 def extrapolate_corners(qin, qout, kstart, nk):

@@ -89,7 +89,7 @@ def set_vals_2(gam: sd, q: sd, delp: sd, a4_1: sd, q_bot: sd, qs: sd):
 
 
 @gtstencil()
-def set_vals_1(gam: sd, q: sd, delp: sd, a4_1: sd, q_bot: sd):
+def set_vals_1(gam: sd, q: sd, delp: sd, a4_1: sd):
     with computation(PARALLEL):
         with interval(0, 1):
             # set top
@@ -207,7 +207,6 @@ def set_top_as_iv1(a4_1: sd, a4_2: sd, a4_3: sd, a4_4: sd):
     with computation(PARALLEL):
         with interval(0, 1):
             a4_2 = 0.0 if a4_2 * a4_1 <= 0.0 else a4_2
-    with computation(PARALLEL):
         with interval(...):
             a4_4 = 3 * (2 * a4_1 - (a4_2 + a4_3))
 
@@ -285,8 +284,6 @@ def set_inner_as_kord9(
     a4_4: sd,
     gam: sd,
     extm: sd,
-    ext5: sd,
-    ext6: sd,
     qmin: float,
 ):
     with computation(PARALLEL), interval(...):
@@ -297,23 +294,17 @@ def set_inner_as_kord9(
         tmp_min = a4_1
         tmp_max = a4_2
         tmp_max0 = a4_1
-        diff_23 = 0.0
-        if extm and extm[0, 0, -1]:
-            a4_2 = a4_1
-            a4_3 = a4_1
-            a4_4 = 0.0
-        elif extm and extm[0, 0, 1]:
-            a4_2 = a4_1
-            a4_3 = a4_1
-            a4_4 = 0.0
-        elif extm > 0.0 and (qmin > 0.0 and a4_1 < qmin):
+        if (
+            (extm != 0.0 and extm[0, 0, -1] != 0.0)
+            or (extm != 0.0 and extm[0, 0, 1] != 0.0)
+            or (extm > 0.0 and (qmin > 0.0 and a4_1 < qmin))
+        ):
             a4_2 = a4_1
             a4_3 = a4_1
             a4_4 = 0.0
         else:
-            diff_23 = a4_2 - a4_3
             a4_4 = 6.0 * a4_1 - 3.0 * (a4_2 + a4_3)
-            if abs(a4_4) > abs(diff_23):
+            if abs(a4_4) > abs(a4_2 - a4_3):
                 tmp_min = (
                     a4_1
                     if (a4_1 < pmp_1) and (a4_1 < lac_1)
@@ -387,21 +378,6 @@ def set_inner_as_kord10(
             else lac_1
         )
         tmp2 = a4_2 if a4_2 > tmp_min2 else tmp_min2
-
-        # tmp_min3 = (
-        #    a4_1
-        #    if (a4_1 < pmp_2) and (a4_1 < lac_2)
-        #    else pmp_2
-        #    if pmp_2 < lac_2
-        #    else lac_2
-        # )
-        # tmp_max3 = (
-        #    a4_1
-        #    if (a4_1 > pmp_2) and (a4_1 > lac_2)
-        #    else pmp_2
-        #    if pmp_2 > lac_2
-        #    else lac_2
-        # )
         tmp_min3 = a4_1 if a4_1 < pmp_2 else pmp_2
         tmp_min3 = lac_2 if lac_2 < tmp_min3 else tmp_min3
         tmp_max3 = a4_1 if a4_1 > pmp_2 else pmp_2
@@ -493,9 +469,7 @@ def compute(qs, a4_1, a4_2, a4_3, a4_4, delp, km, i1, i2, iv, kord, jslice, qmin
             domain=(i_extent, j_extent, km + 1),
         )
     else:
-        set_vals_1(
-            gam, q, delp, a4_1, q_bot, origin=orig, domain=(i_extent, j_extent, km + 1)
-        )
+        set_vals_1(gam, q, delp, a4_1, origin=orig, domain=(i_extent, j_extent, km + 1))
 
     if abs(kord) > 16:
         set_avals(q, a4_1, a4_2, a4_3, a4_4, q_bot, origin=orig, domain=dom)
@@ -515,7 +489,6 @@ def compute(qs, a4_1, a4_2, a4_3, a4_4, delp, km, i1, i2, iv, kord, jslice, qmin
             set_top_as_iv1(
                 a4_1, a4_2, a4_3, a4_4, origin=orig, domain=(i_extent, j_extent, 2)
             )
-
             a4_1, a4_2, a4_3, a4_4 = limiters.compute(
                 a4_1, a4_2, a4_3, a4_4, extm, 1, i1, i_extent, 0, 1, js, j_extent
             )
@@ -556,8 +529,6 @@ def compute(qs, a4_1, a4_2, a4_3, a4_4, delp, km, i1, i2, iv, kord, jslice, qmin
                 a4_4,
                 gam,
                 extm,
-                ext5,
-                ext6,
                 qmin,
                 origin=(i1, js, 2),
                 domain=(i_extent, j_extent, km - 4),
