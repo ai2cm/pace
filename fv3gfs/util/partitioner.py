@@ -291,7 +291,7 @@ class CubedSpherePartitioner:
         """Returns the tile index of a given rank"""
         return get_tile_index(rank, self.total_ranks)
 
-    def tile_master_rank(self, rank: int) -> int:
+    def tile_root_rank(self, rank: int) -> int:
         """Returns the lowest rank on the same tile as a given rank."""
         return self.tile.total_ranks * (rank // self.tile.total_ranks)
 
@@ -337,12 +337,12 @@ class CubedSpherePartitioner:
         self._ensure_square_layout()
         if self.tile.on_tile_left(rank):
             if is_even(self.tile_index(rank)):
-                to_master_rank = self.tile_master_rank(rank - 2 * self.tile.total_ranks)
+                to_root_rank = self.tile_root_rank(rank - 2 * self.tile.total_ranks)
                 tile_rank = rank % self.tile.total_ranks
                 to_tile_rank = self.tile.fliplr_rank(
                     self.tile.rotate_rank(tile_rank, 1)
                 )
-                to_rank = to_master_rank + to_tile_rank
+                to_rank = to_root_rank + to_tile_rank
                 rotations = 1
                 boundary = bd.SimpleBoundary(
                     boundary_type=constants.WEST,
@@ -361,7 +361,7 @@ class CubedSpherePartitioner:
         self._ensure_square_layout()
         if self.tile.on_tile_right(rank):
             if not is_even(self.tile_index(rank)):
-                to_master_rank = self.tile_master_rank(rank + 2 * self.tile.total_ranks)
+                to_root_rank = self.tile_root_rank(rank + 2 * self.tile.total_ranks)
                 tile_rank = rank % self.tile.total_ranks
                 to_tile_rank = self.tile.fliplr_rank(
                     self.tile.rotate_rank(tile_rank, 1)
@@ -369,7 +369,7 @@ class CubedSpherePartitioner:
                 boundary = bd.SimpleBoundary(
                     boundary_type=constants.EAST,
                     from_rank=rank,
-                    to_rank=to_master_rank + to_tile_rank,
+                    to_rank=to_root_rank + to_tile_rank,
                     n_clockwise_rotations=1,
                 )
             else:
@@ -383,7 +383,7 @@ class CubedSpherePartitioner:
         self._ensure_square_layout()
         if self.tile.on_tile_top(rank):
             if is_even(self.tile_index(rank)):
-                to_master_rank = (self.tile_index(rank) + 2) * self.tile.total_ranks
+                to_root_rank = (self.tile_index(rank) + 2) * self.tile.total_ranks
                 tile_rank = rank % self.tile.total_ranks
                 to_tile_rank = self.tile.fliplr_rank(
                     self.tile.rotate_rank(tile_rank, 1)
@@ -391,7 +391,7 @@ class CubedSpherePartitioner:
                 boundary = bd.SimpleBoundary(
                     boundary_type=constants.NORTH,
                     from_rank=rank,
-                    to_rank=to_master_rank + to_tile_rank,
+                    to_rank=to_root_rank + to_tile_rank,
                     n_clockwise_rotations=3,
                 )
             else:
@@ -404,13 +404,13 @@ class CubedSpherePartitioner:
     def _bottom_edge(self, rank: int) -> bd.SimpleBoundary:
         self._ensure_square_layout()
         if self.tile.on_tile_bottom(rank) and not is_even(self.tile_index(rank)):
-            to_master_rank = (self.tile_index(rank) - 2) * self.tile.total_ranks
+            to_root_rank = (self.tile_index(rank) - 2) * self.tile.total_ranks
             tile_rank = rank % self.tile.total_ranks
             to_tile_rank = self.tile.fliplr_rank(self.tile.rotate_rank(tile_rank, 1))
             boundary = bd.SimpleBoundary(
                 boundary_type=constants.SOUTH,
                 from_rank=rank,
-                to_rank=to_master_rank + to_tile_rank,
+                to_rank=to_root_rank + to_tile_rank,
                 n_clockwise_rotations=3,
             )
         else:

@@ -12,7 +12,7 @@ from .partitioner import (
 )
 from ._timing import Timer
 from .constants import (
-    MASTER_RANK,
+    ROOT_RANK,
     X_DIM,
     X_INTERFACE_DIM,
     Y_DIM,

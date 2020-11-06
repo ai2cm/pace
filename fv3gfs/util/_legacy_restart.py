@@ -44,7 +44,7 @@ def open_restart(
     rank = communicator.rank
     tile_index = communicator.partitioner.tile_index(rank)
     state = {}
-    if communicator.tile.rank == constants.MASTER_RANK:
+    if communicator.tile.rank == constants.ROOT_RANK:
         for file in restart_files(dirname, tile_index, label):
             state.update(
                 load_partial_state_from_restart_file(

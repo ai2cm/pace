@@ -1,6 +1,6 @@
 #!/bin/bash -f
 
-# This is the master script used to trigger Jenkins actions.
+# This is the main script used to trigger Jenkins actions.
 # The idea of this script is to keep the amount of code in the "Execute shell" field small
 #
 # Example syntax:
@@ -10,11 +10,11 @@
 
 ### Some environment variables available from Jenkins
 ### Note: for a complete list see https://jenkins.ginko.ch/env-vars.html
-# slave              The name of the build slave (daint, kesch, ...).
+# slave              The name of the build worker (daint, kesch, ...).
 # BUILD_NUMBER       The current build number, such as "153".
 # BUILD_ID           The current build id, such as "2005-08-22_23-59-59" (YYYY-MM-DD_hh-mm-ss).
 # BUILD_DISPLAY_NAME The display name of the current build, something like "#153" by default.
-# NODE_NAME          Name of the slave if the build is on a slave, or "master" if run on master.
+# NODE_NAME          Name of the worker if the build is on a worker, or "master" if run on main worker.
 # NODE_LABELS        Whitespace-separated list of labels that the node is assigned.
 # JENKINS_HOME       The absolute path of the data storage directory assigned on the master node.
 # JENKINS_URL        Full URL of Jenkins, like http://server:port/jenkins/

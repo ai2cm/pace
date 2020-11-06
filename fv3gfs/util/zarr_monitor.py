@@ -154,7 +154,7 @@ class _ZarrVariableWriter:
 
     def append(self, quantity):
         # can't just use zarr_array.append because we only want to
-        # extend the dimension once, from the master rank
+        # extend the dimension once, from the root rank
         if self.array is None:
             self._init_zarr(quantity)
 

@@ -1,4 +1,4 @@
-MASTER_RANK = 0
+ROOT_RANK = 0
 X_DIM = "x"
 X_INTERFACE_DIM = "x_interface"
 Y_DIM = "y"

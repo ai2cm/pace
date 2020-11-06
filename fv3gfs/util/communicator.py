@@ -19,14 +19,14 @@ logger = logging.getLogger("fv3gfs.util")
 
 
 def bcast_metadata_list(comm, quantity_list):
-    is_master = comm.Get_rank() == constants.MASTER_RANK
-    if is_master:
+    is_root = comm.Get_rank() == constants.ROOT_RANK
+    if is_root:
         metadata_list = []
         for quantity in quantity_list:
             metadata_list.append(quantity.metadata)
     else:
         metadata_list = None
-    return comm.bcast(metadata_list, root=constants.MASTER_RANK)
+    return comm.bcast(metadata_list, root=constants.ROOT_RANK)
 
 
 def bcast_metadata(comm, array):
@@ -88,22 +88,20 @@ class TileCommunicator(Communicator):
         self, send_quantity: Quantity = None, recv_quantity: Quantity = None
     ) -> Quantity:
         """Transfer subtile regions of a full-tile quantity
-        from the tile master rank to all subtiles.
+        from the tile root rank to all subtiles.
         
         Args:
-            send_quantity: quantity to send, only required/used on the tile master rank
+            send_quantity: quantity to send, only required/used on the tile root rank
             recv_quantity: if provided, assign received data into this Quantity.
         Returns:
             recv_quantity
         """
-        if self.rank == constants.MASTER_RANK and send_quantity is None:
-            raise TypeError("send_quantity is a required argument on the master rank")
-        if self.rank == constants.MASTER_RANK:
-            metadata = self.comm.bcast(
-                send_quantity.metadata, root=constants.MASTER_RANK
-            )
+        if self.rank == constants.ROOT_RANK and send_quantity is None:
+            raise TypeError("send_quantity is a required argument on the root rank")
+        if self.rank == constants.ROOT_RANK:
+            metadata = self.comm.bcast(send_quantity.metadata, root=constants.ROOT_RANK)
         else:
-            metadata = self.comm.bcast(None, root=constants.MASTER_RANK)
+            metadata = self.comm.bcast(None, root=constants.ROOT_RANK)
         shape = self.partitioner.subtile_extent(metadata)
         if recv_quantity is None:
             recv_quantity = Quantity(
@@ -112,7 +110,7 @@ class TileCommunicator(Communicator):
                 units=metadata.units,
                 gt4py_backend=metadata.gt4py_backend,
             )
-        if self.rank == constants.MASTER_RANK:
+        if self.rank == constants.ROOT_RANK:
             with array_buffer(
                 metadata.np.empty,
                 (self.partitioner.total_ranks,) + shape,
@@ -130,11 +128,11 @@ class TileCommunicator(Communicator):
                     metadata.np,
                     sendbuf,
                     recv_quantity.view[:],
-                    root=constants.MASTER_RANK,
+                    root=constants.ROOT_RANK,
                 )
         else:
             self._Scatter(
-                metadata.np, None, recv_quantity.view[:], root=constants.MASTER_RANK
+                metadata.np, None, recv_quantity.view[:], root=constants.ROOT_RANK
             )
         return recv_quantity
 
@@ -142,16 +140,16 @@ class TileCommunicator(Communicator):
         self, send_quantity: Quantity, recv_quantity: Quantity = None
     ) -> Union[Quantity, None]:
         """Transfer subtile regions of a full-tile quantity
-        from each rank to the tile master rank.
+        from each rank to the tile root rank.
         
         Args:
             send_quantity: quantity to send
             recv_quantity: if provided, assign received data into this Quantity (only
-                used on the tile master rank)
+                used on the tile root rank)
         Returns:
-            recv_quantity: quantity if on master rank, otherwise None
+            recv_quantity: quantity if on root rank, otherwise None
         """
-        if self.rank == constants.MASTER_RANK:
+        if self.rank == constants.ROOT_RANK:
             with array_buffer(
                 send_quantity.np.empty,
                 (self.partitioner.total_ranks,) + tuple(send_quantity.extent),
@@ -161,7 +159,7 @@ class TileCommunicator(Communicator):
                     send_quantity.np,
                     send_quantity.view[:],
                     recvbuf,
-                    root=constants.MASTER_RANK,
+                    root=constants.ROOT_RANK,
                 )
                 if recv_quantity is None:
                     tile_extent = self.partitioner.tile_extent(send_quantity.metadata)
@@ -186,32 +184,29 @@ class TileCommunicator(Communicator):
                 result = recv_quantity
         else:
             self._Gather(
-                send_quantity.np,
-                send_quantity.view[:],
-                None,
-                root=constants.MASTER_RANK,
+                send_quantity.np, send_quantity.view[:], None, root=constants.ROOT_RANK,
             )
             result = None
         return result
 
     def gather_state(self, send_state: dict = None, recv_state: dict = None):
-        """Transfer a state dictionary from subtile ranks to the tile master rank.
+        """Transfer a state dictionary from subtile ranks to the tile root rank.
 
         'time' is assumed to be the same on all ranks, and its value will be set
-        to the value from the master rank.
+        to the value from the root rank.
 
         Args:
             send_state: the model state to be sent containing the subtile data
             recv_state: the pre-allocated state in which to recieve the full tile
                 state. Only variables which are scattered will be written to.
         Returns:
-            recv_state: on the master rank, the state containing the entire tile
+            recv_state: on the root rank, the state containing the entire tile
         """
-        if self.rank == constants.MASTER_RANK and recv_state is None:
+        if self.rank == constants.ROOT_RANK and recv_state is None:
             recv_state = {}
         for name, quantity in send_state.items():
             if name == "time":
-                if self.rank == constants.MASTER_RANK:
+                if self.rank == constants.ROOT_RANK:
                     recv_state["time"] = send_state["time"]
             else:
                 if recv_state is not None and name in recv_state:
@@ -220,29 +215,29 @@ class TileCommunicator(Communicator):
                     )
                 else:
                     tile_quantity = self.gather(quantity)
-                if self.rank == constants.MASTER_RANK:
+                if self.rank == constants.ROOT_RANK:
                     recv_state[name] = tile_quantity
         return recv_state
 
     def scatter_state(self, send_state: dict = None, recv_state: dict = None):
-        """Transfer a state dictionary from the tile master rank to all subtiles.
+        """Transfer a state dictionary from the tile root rank to all subtiles.
         
         Args:
             send_state: the model state to be sent containing the entire tile,
-                required only from the master rank
+                required only from the root rank
             recv_state: the pre-allocated state in which to recieve the scattered
                 state. Only variables which are scattered will be written to.
         Returns:
             rank_state: the state corresponding to this rank's subdomain
         """
 
-        def scatter_master():
+        def scatter_root():
             if send_state is None:
-                raise TypeError("send_state is a required argument on the master rank")
+                raise TypeError("send_state is a required argument on the root rank")
             name_list = list(send_state.keys())
             while "time" in name_list:
                 name_list.remove("time")
-            name_list = self.comm.bcast(name_list, root=constants.MASTER_RANK)
+            name_list = self.comm.bcast(name_list, root=constants.ROOT_RANK)
             array_list = [send_state[name] for name in name_list]
             for name, array in zip(name_list, array_list):
                 if name in recv_state:
@@ -250,24 +245,24 @@ class TileCommunicator(Communicator):
                 else:
                     recv_state[name] = self.scatter(send_quantity=array)
             recv_state["time"] = self.comm.bcast(
-                send_state.get("time", None), root=constants.MASTER_RANK
+                send_state.get("time", None), root=constants.ROOT_RANK
             )
 
         def scatter_client():
-            name_list = self.comm.bcast(None, root=constants.MASTER_RANK)
+            name_list = self.comm.bcast(None, root=constants.ROOT_RANK)
             for name in name_list:
                 if name in recv_state:
                     self.scatter(recv_quantity=recv_state[name])
                 else:
                     recv_state[name] = self.scatter()
-            time = self.comm.bcast(None, root=constants.MASTER_RANK)
+            time = self.comm.bcast(None, root=constants.ROOT_RANK)
             if time is not None:
                 recv_state["time"] = time
 
         if recv_state is None:
             recv_state = {}
-        if self.rank == constants.MASTER_RANK:
-            scatter_master()
+        if self.rank == constants.ROOT_RANK:
+            scatter_root()
         else:
             scatter_client()
         if recv_state["time"] is None:
