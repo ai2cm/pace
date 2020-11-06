@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Sequence, Iterable
 from ..constants import N_HALO_DEFAULT
 from .. import constants
 from ..partitioner import TilePartitioner
@@ -19,13 +19,13 @@ class GridSizer:
     extra_dim_lengths: Dict[str, int]
     """lengths of any non-x/y/z dimensions, such as land or radiation dimensions"""
 
-    def get_origin(self, dims: Tuple[str, ...]) -> Tuple[int, ...]:
+    def get_origin(self, dims: Sequence[str]) -> Tuple[int, ...]:
         raise NotImplementedError()
 
-    def get_extent(self, dims: Tuple[str, ...]) -> Tuple[int, ...]:
+    def get_extent(self, dims: Sequence[str]) -> Tuple[int, ...]:
         raise NotImplementedError()
 
-    def get_shape(self, dims: Tuple[str, ...]) -> Tuple[int, ...]:
+    def get_shape(self, dims: Sequence[str]) -> Tuple[int, ...]:
         raise NotImplementedError()
 
 
@@ -116,17 +116,17 @@ class SubtileGridSizer(GridSizer):
         )
         return return_dict
 
-    def get_origin(self, dims: Tuple[str, ...]) -> Tuple[int, ...]:
+    def get_origin(self, dims: Iterable[str]) -> Tuple[int, ...]:
         return_list = [
             self.n_halo if dim in constants.HORIZONTAL_DIMS else 0 for dim in dims
         ]
         return tuple(return_list)
 
-    def get_extent(self, dims: Tuple[str, ...]) -> Tuple[int, ...]:
+    def get_extent(self, dims: Iterable[str]) -> Tuple[int, ...]:
         extents = self.dim_extents
         return tuple(extents[dim] for dim in dims)
 
-    def get_shape(self, dims: Tuple[str, ...]) -> Tuple[int, ...]:
+    def get_shape(self, dims: Iterable[str]) -> Tuple[int, ...]:
         shape_dict = self.extra_dim_lengths.copy()
         # must pad non-interface variables to have the same shape as interface variables
         shape_dict.update(

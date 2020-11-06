@@ -48,7 +48,9 @@ lint:
 	flake8 $(PYTHON_FILES)
 	# ignore unused import error in __init__.py files
 	flake8 --ignore=F401 $(PYTHON_INIT_FILES)
+	mypy --follow-imports silent --show-error-codes fv3gfs
 	@echo "LINTING SUCCESSFUL"
+
 
 clean:
 	$(MAKE) -c examples/mpi clean

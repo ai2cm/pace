@@ -74,13 +74,14 @@ shown earlier.
 """
 from .quantity import Quantity
 from .partitioner import TilePartitioner
-from typing import Union, Tuple
+from typing import Sequence
+from typing_extensions import Literal
 from . import constants
 
 
 def fill_scalar_corners(
     quantity: Quantity,
-    direction: Union["x", "y"],
+    direction: Literal["x", "y"],
     tile_partitioner: TilePartitioner,
     rank: int,
     n_halo: int,
@@ -155,7 +156,7 @@ def fill_scalar_corners(
             )
 
 
-def _shared_edge_points(fill_direction: Union["x", "y"], dims: Tuple[str]):
+def _shared_edge_points(fill_direction: Literal["x", "y"], dims: Sequence[str]):
     """
     Returns the number of edge points shared by adjacent tiles along the direction
     that is going to be copied when a given fill_direction is passed to a corner

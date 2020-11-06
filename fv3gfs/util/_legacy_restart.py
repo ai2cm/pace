@@ -1,4 +1,4 @@
-from typing import Iterable, BinaryIO
+from typing import Iterable, BinaryIO, Generator
 import os
 import xarray as xr
 import copy
@@ -66,7 +66,7 @@ def get_coupler_res_filename(dirname, label):
     return os.path.join(dirname, prepend_label(COUPLER_RES_NAME, label))
 
 
-def restart_files(dirname, tile_index, label) -> BinaryIO:
+def restart_files(dirname, tile_index, label) -> Generator[BinaryIO, None, None]:
     for filename in restart_filenames(dirname, tile_index, label):
         with filesystem.open(filename, "rb") as f:
             yield f

@@ -1,15 +1,16 @@
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Optional, Dict, Tuple
 from ._timing import Timer, NullTimer
 from numpy import ndarray
 import contextlib
 from .utils import is_c_contiguous
+from .types import Allocator
 
 
-BUFFER_CACHE = {}
+BUFFER_CACHE: Dict[Tuple[Callable, Iterable[int], type], ndarray] = {}
 
 
 @contextlib.contextmanager
-def array_buffer(allocator: Callable, shape: Iterable[int], dtype: type):
+def array_buffer(allocator: Allocator, shape: Iterable[int], dtype: type):
     """
     A context manager providing a contiguous array, which may be re-used between calls.
 

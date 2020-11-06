@@ -5,7 +5,7 @@ try:
     from gt4py.storage.storage import Storage
 except ImportError:
 
-    class Storage:
+    class Storage:  # type: ignore[no-redef]
         pass
 
 

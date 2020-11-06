@@ -1,4 +1,4 @@
-from typing import Iterable, Callable
+from typing import Callable, Sequence
 from ..quantity import Quantity
 from .sizer import SubtileGridSizer
 
@@ -46,17 +46,17 @@ class QuantityFactory:
         numpy = StorageNumpy(backend)
         return cls(sizer, numpy)
 
-    def empty(self, dims: Iterable[str], units: str, dtype: type = float):
+    def empty(self, dims: Sequence[str], units: str, dtype: type = float):
         return self._allocate(self._numpy.empty, dims, units, dtype)
 
-    def zeros(self, dims: Iterable[str], units: str, dtype: type = float):
+    def zeros(self, dims: Sequence[str], units: str, dtype: type = float):
         return self._allocate(self._numpy.zeros, dims, units, dtype)
 
-    def ones(self, dims: Iterable[str], units: str, dtype: type = float):
+    def ones(self, dims: Sequence[str], units: str, dtype: type = float):
         return self._allocate(self._numpy.ones, dims, units, dtype)
 
     def _allocate(
-        self, allocator: Callable, dims: Iterable[str], units: str, dtype: type = float
+        self, allocator: Callable, dims: Sequence[str], units: str, dtype: type = float
     ):
         origin = self._sizer.get_origin(dims)
         extent = self._sizer.get_extent(dims)

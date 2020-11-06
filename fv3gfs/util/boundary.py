@@ -61,7 +61,7 @@ class Boundary:
 class SimpleBoundary(Boundary):
     """A boundary representing an edge or corner of a subtile."""
 
-    boundary_type: str
+    boundary_type: int
 
     def _view(self, quantity: Quantity, n_points: int, interior: bool):
         boundary_slice = get_boundary_slice(

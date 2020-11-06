@@ -104,7 +104,7 @@ class ZarrMonitor:
         """
         self._ensure_writers_are_consistent(state)
         for name, quantity in state.items():
-            self._writers[name].append(quantity)
+            self._writers[name].append(quantity)  # type: ignore[index]
 
 
 class _ZarrVariableWriter:

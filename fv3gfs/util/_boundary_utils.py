@@ -1,3 +1,4 @@
+from typing import Union
 from . import constants
 import functools
 from ._exceptions import OutOfBoundsError
@@ -94,7 +95,7 @@ def get_boundary_slice(dims, origin, extent, shape, boundary_type, n_halo, inter
     return tuple(boundary_slice)
 
 
-def boundary_at_start_of_dim(boundary: int, dim: str) -> bool:
+def boundary_at_start_of_dim(boundary: int, dim: str) -> Union[bool, None]:
     """
     Return True if boundary is at the start of the dimension,
     False if at the end, None if the boundary does not align with the dimension.
