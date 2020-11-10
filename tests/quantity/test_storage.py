@@ -119,3 +119,21 @@ def test_modifying_storage_modifies_data_after_transpose(quantity):
     storage = quantity.storage
     quantity.data[:] = 5
     assert quantity.np.all(quantity.np.asarray(storage) == 5)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "cupy"], indirect=True)
+def test_accessing_storage_does_not_break_view(
+    data, origin, extent, dims, units, backend
+):
+    if backend == "cupy":
+        backend = "gtcuda"
+    quantity = fv3gfs.util.Quantity(
+        data,
+        origin=origin,
+        extent=extent,
+        dims=dims,
+        units=units,
+        gt4py_backend=backend,
+    )
+    quantity.storage[origin] = -1.0
+    assert quantity.data[origin] == quantity.view[tuple(0 for _ in origin)]

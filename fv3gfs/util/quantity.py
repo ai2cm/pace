@@ -383,14 +383,19 @@ class Quantity:
                 mask=None,
             )
             self._storage[...] = self._data
-            # storage must initialize new memory. when GDP-2 is merged, we can instead
+            # storage must initialize new memory. when GDP-3 is merged, we can instead
             # initialize storage from self._data
-            # when GDP-2 is merged, we can instead use the data in self._data to
+            # when GDP-3 is merged, we can instead use the data in self._data to
             # initialize the storage, instead of making a copy.
             if isinstance(self._data, np.ndarray):
                 self._data = self.np.asarray(self._storage.data)
             elif isinstance(self._data, cupy.ndarray):
                 self._data = self._storage.gpu_view
+            # must re-initialize compute domain view with new array
+            # this also can be removed when we merge GDP-3
+            self._compute_domain_view = BoundedArrayView(
+                self.data, self.dims, self.origin, self.extent
+            )
         return self._storage
 
     @property
