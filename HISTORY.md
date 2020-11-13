@@ -21,6 +21,7 @@ in the `coupler_nml` namelist.
 
 Fixes:
 - Fixed a bug where quantity.storage and quantity.data could be out of sync if the quantity was initialized using data and a gt4py backend string
+- Default slice for corner views when not given at all as an index (e.g. when providing one index to a 2D view) now gives the same result as providing an empty slice (:)
 - Fixed a bug where quantity.view could refer to a different array than quantity.data if the quantity was initialized using data and a gt4py backend string, and then quantity.storage was accessed
 
 v0.5.1

@@ -22,8 +22,7 @@ def bound_default_slice(slice_in, start=None, stop=None):
 
 
 def _shift_boundary_slice(dim, origin, extent, boundary_type, slice_object):
-    """A special case of _get_boundary_slice where one edge must be an interior or
-    exterior halo point."""
+    """_get_boundary_slice for corner views"""
     start_offset, stop_offset = _get_offset(boundary_type, dim, origin, extent)
     if isinstance(slice_object, slice):
         if slice_object.start is not None:

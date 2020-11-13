@@ -77,11 +77,17 @@ class BoundaryArrayView:
         self._data[self._get_array_index(index)] = value
 
     def _get_array_index(self, index):
+        if isinstance(index, list):
+            index = tuple(index)
+        if not isinstance(index, tuple):
+            index = (index,)
         if len(index) > len(self._dims):
             raise IndexError(
                 f"{len(index)} is too many indices for a "
                 f"{len(self._dims)}-dimensional quantity"
             )
+        if len(index) < len(self._dims):
+            index = index + (slice(None, None),) * (len(self._dims) - len(index))
         return shift_boundary_slice_tuple(
             self._dims, self._origin, self._extent, self._boundary_type, index
         )

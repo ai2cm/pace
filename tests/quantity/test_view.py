@@ -1177,6 +1177,26 @@ def test_northeast(quantity, view_slice, reference):
             np.array([[2, 3], [7, 8], [12, 13]]),
             id="5_by_5_larger_slice",
         ),
+        pytest.param(
+            fv3gfs.util.Quantity(
+                np.array(
+                    [
+                        [0, 1, 2, 3, 4],
+                        [5, 6, 7, 8, 9],
+                        [10, 11, 12, 13, 14],
+                        [15, 16, 17, 18, 19],
+                        [20, 21, 22, 23, 24],
+                    ]
+                ),
+                dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM],
+                units="m",
+                origin=(1, 1),
+                extent=(3, 3),
+            ),
+            (0,),
+            np.array([6, 7, 8]),
+            id="5_by_5_one_index",
+        ),
     ],
 )
 def test_interior(quantity, view_slice, reference):
@@ -1191,8 +1211,9 @@ def test_interior(quantity, view_slice, reference):
         origin=quantity.origin[::-1],
         extent=quantity.extent[::-1],
     )
-    transposed_result = transposed_quantity.view.interior[view_slice[::-1]]
-    if isinstance(reference, quantity.np.ndarray):
-        quantity.np.testing.assert_array_equal(transposed_result, reference.T)
-    else:
-        quantity.np.testing.assert_array_equal(transposed_result, reference)
+    if len(view_slice) == len(quantity.dims):  # skip if not
+        transposed_result = transposed_quantity.view.interior[view_slice[::-1]]
+        if isinstance(reference, quantity.np.ndarray):
+            quantity.np.testing.assert_array_equal(transposed_result, reference.T)
+        else:
+            quantity.np.testing.assert_array_equal(transposed_result, reference)
