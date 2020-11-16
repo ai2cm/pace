@@ -128,11 +128,13 @@ class BoundedArrayView:
     array, while view.interior[-1:1, -1:1, :] would also include one halo point.
     """
 
-    def __init__(self, array, dims, origin, extent):
+    def __init__(
+        self, array, dims: Sequence[str], origin: Sequence[int], extent: Sequence[int]
+    ):
         self._data = array
-        self._dims = dims
-        self._origin = origin
-        self._extent = extent
+        self._dims = tuple(dims)
+        self._origin = tuple(origin)
+        self._extent = tuple(extent)
         self._northwest = BoundaryArrayView(
             array, constants.NORTHWEST, dims, origin, extent
         )
@@ -150,12 +152,12 @@ class BoundedArrayView:
         )
 
     @property
-    def origin(self):
+    def origin(self) -> Tuple[int, ...]:
         """the start of the computational domain"""
         return self._origin
 
     @property
-    def extent(self):
+    def extent(self) -> Tuple[int, ...]:
         """the shape of the computational domain"""
         return self._extent
 

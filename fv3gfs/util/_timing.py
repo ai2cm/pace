@@ -12,7 +12,7 @@ class Timer:
         self._accumulated_time = {}
         self._enabled = True
 
-    def start(self, name):
+    def start(self, name: str):
         """Start timing a given named operation."""
         if self._enabled:
             if name in self._clock_starts:
@@ -20,7 +20,7 @@ class Timer:
             else:
                 self._clock_starts[name] = time()
 
-    def stop(self, name):
+    def stop(self, name: str):
         """Stop timing a given named operation, and add the time elapsed to
         accumulated timing.
         """
@@ -31,7 +31,7 @@ class Timer:
                 self._accumulated_time[name] += time() - self._clock_starts.pop(name)
 
     @contextlib.contextmanager
-    def clock(self, name):
+    def clock(self, name: str):
         """Context manager to produce timings of operations.
 
         Args:
@@ -95,8 +95,8 @@ class NullTimer(Timer):
     Meant to be used in place of an optional timer.
     """
 
-    def start(self, name):
+    def start(self, name: str):
         pass
 
-    def stop(self, name):
+    def stop(self, name: str):
         pass

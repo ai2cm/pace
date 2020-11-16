@@ -17,7 +17,7 @@ FMS_TO_CFTIME_TYPE = {
 }
 
 
-def datetime64_to_datetime(dt64):
+def datetime64_to_datetime(dt64: np.datetime64) -> datetime.datetime:
     utc_start = np.datetime64(0, "s")
     timestamp = (dt64 - utc_start) / np.timedelta64(1, "s")
-    return datetime.utcfromtimestamp(timestamp)
+    return datetime.datetime.utcfromtimestamp(timestamp)

@@ -1,4 +1,4 @@
-from typing import Tuple, Callable, Iterable, Optional, Union, cast
+from typing import Tuple, Callable, Iterable, Optional, Union, cast, Sequence
 import copy
 import functools
 import dataclasses
@@ -23,8 +23,9 @@ BOUNDARY_CACHE_SIZE = None
 __all__ = ["TilePartitioner", "CubedSpherePartitioner", "get_tile_index"]
 
 
-def get_tile_index(rank, total_ranks):
-    """Returns the tile number for a given rank and total number of ranks.
+def get_tile_index(rank: int, total_ranks: int) -> int:
+    """
+    Returns the zero-indexed tile number, given a rank and total number of ranks.
     """
     if total_ranks % 6 != 0:
         raise ValueError(f"total_ranks {total_ranks} is not evenly divisible by 6")
@@ -32,8 +33,10 @@ def get_tile_index(rank, total_ranks):
     return rank // ranks_per_tile
 
 
-def get_tile_number(tile_rank, total_ranks):
-    """Returns the tile number for a given rank and total number of ranks.
+def get_tile_number(tile_rank: int, total_ranks: int) -> int:
+    """Deprecated: use get_tile_index.
+    
+    Returns the tile number for a given rank and total number of ranks.
     """
     FutureWarning(
         "get_tile_number will be removed in a later version, "
@@ -286,7 +289,7 @@ class CubedSpherePartitioner:
         return self.tile.total_ranks * (rank // self.tile.total_ranks)
 
     @property
-    def layout(self):
+    def layout(self) -> Tuple[int, int]:
         return self.tile.layout
 
     @property
@@ -580,7 +583,7 @@ def is_even(value: Union[int, float]) -> bool:
 
 
 def tile_extent_from_rank_metadata(
-    dims: Iterable[str], rank_extent: Iterable[int], layout: Tuple[int, int]
+    dims: Sequence[str], rank_extent: Sequence[int], layout: Tuple[int, int]
 ) -> Tuple[int, ...]:
     """
     Returns the extent of a tile given data about a single rank, and the tile
@@ -601,7 +604,7 @@ def tile_extent_from_rank_metadata(
 
 
 def rank_extent_from_tile_metadata(
-    dims: Iterable[str], tile_extent: Iterable[int], layout: Tuple[int, int]
+    dims: Sequence[str], tile_extent: Sequence[int], layout: Tuple[int, int]
 ) -> Tuple[int, ...]:
     """
     Returns the extent of a rank given data about a tile, and the tile

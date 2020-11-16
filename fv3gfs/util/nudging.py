@@ -1,7 +1,14 @@
 from .quantity import Quantity
+from datetime import timedelta
+from typing import Mapping
 
 
-def apply_nudging(state, reference_state, nudging_timescales, timestep):
+def apply_nudging(
+    state,
+    reference_state,
+    nudging_timescales: Mapping[str, timedelta],
+    timestep: timedelta,
+):
     """
     Nudge the given state towards the reference state according to the provided
     nudging timescales.
@@ -26,7 +33,7 @@ def apply_nudging(state, reference_state, nudging_timescales, timestep):
     return tendencies
 
 
-def _apply_tendencies(state, tendencies, timestep):
+def _apply_tendencies(state, tendencies, timestep: timedelta):
     """Apply a dictionary of tendencies to a state, in-place. Assumes the tendencies
     are in units of <state units> per second.
     """
@@ -36,7 +43,9 @@ def _apply_tendencies(state, tendencies, timestep):
         state[name].view[:] += tendency.view[:] * timestep.total_seconds()
 
 
-def get_nudging_tendencies(state, reference_state, nudging_timescales):
+def get_nudging_tendencies(
+    state, reference_state, nudging_timescales: Mapping[str, timedelta]
+):
     """
     Return the nudging tendency of the given state towards the reference state
     according to the provided nudging timescales.

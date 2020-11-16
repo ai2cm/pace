@@ -1,9 +1,6 @@
-.. meta::
-   :robots: noindex, nofollow
-
-=====
-Usage
-=====
+=========
+Utilities
+=========
 
 Nudging
 -------
@@ -35,7 +32,7 @@ Alternatively, the grid information can be specified manually::
         layout=(1, 1)
     )
 
-Once you have a :py:class:`fv3gfs.util.Partitioner`, the monitor can be created using any
+Once you have a :py:class:`fv3gfs.util.TilePartitioner`, the monitor can be created using any
 Zarr store::
 
     import zarr

@@ -1,8 +1,3 @@
-.. meta::
-   :robots: noindex, nofollow
-
-.. _state-overview:
-
 =====
 State
 =====
@@ -45,7 +40,7 @@ domain::
     quantity.view[:] = 0.  # set all data this rank is responsible for to 0
     quantity.view[1:-1, :] = 1.0  # set data not on the first dimension edge to 1
     array = quantity.view[:]  # gives an array accessing just the compute domain
-    new_array = np.ascontiguousarray(quantity.view[:])  # gives a *copy* of the compute domain
+    new_array = np.copy(quantity.view[:])  # gives a copy of the compute domain
 
 If you want to access data in ghost cells, instead of ``.view`` you should
 access ``.data``, which is the underlying ``ndarray``-like object used by the ``Quantity``::

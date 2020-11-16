@@ -1,3 +1,4 @@
+from typing import Union, Sequence, TypeVar, Tuple
 from . import constants
 import numpy as np
 
@@ -9,7 +10,12 @@ except ImportError:
         pass
 
 
-def list_by_dims(dims, horizontal_list, non_horizontal_value):
+T = TypeVar("T")
+
+
+def list_by_dims(
+    dims: Sequence[str], horizontal_list: Sequence[T], non_horizontal_value: T
+) -> Tuple[T, ...]:
     """Take in a list of dimensions, a (y, x) set of values, and a value for any
     non-horizontal dimensions. Return a list of length len(dims) with the value for
     each dimension.
@@ -25,7 +31,7 @@ def list_by_dims(dims, horizontal_list, non_horizontal_value):
     return tuple(return_list)
 
 
-def is_contiguous(array):
+def is_contiguous(array: Union[np.ndarray, Storage]) -> bool:
     if isinstance(array, Storage):
         # gt4py storages use numpy arrays for .data attribute instead of memoryvie
         return array.data.flags["C_CONTIGUOUS"] or array.flags["F_CONTIGUOUS"]
@@ -33,7 +39,7 @@ def is_contiguous(array):
         return array.flags["C_CONTIGUOUS"] or array.flags["F_CONTIGUOUS"]
 
 
-def is_c_contiguous(array):
+def is_c_contiguous(array: Union[np.ndarray, Storage]) -> bool:
     if isinstance(array, Storage):
         # gt4py storages use numpy arrays for .data attribute instead of memoryview
         return array.data.flags["C_CONTIGUOUS"]
@@ -41,6 +47,6 @@ def is_c_contiguous(array):
         return array.flags["C_CONTIGUOUS"]
 
 
-def ensure_contiguous(maybe_array):
+def ensure_contiguous(maybe_array: Union[np.ndarray, Storage]) -> None:
     if isinstance(maybe_array, np.ndarray) and not is_contiguous(maybe_array):
         raise ValueError("ndarray is not contiguous")

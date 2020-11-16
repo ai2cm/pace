@@ -1,6 +1,3 @@
-.. meta::
-   :robots: noindex, nofollow
-
 API
 ===
 
