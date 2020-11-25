@@ -269,12 +269,29 @@ class Quantity:
             extent: number of points along each axis within the computational domain
             gt4py_backend: backend to use for gt4py storages, if not given this will
                 be derived from a Storage if given as the data argument, otherwise the
-                storage attribute is disabled and will raise an exception
+                storage attribute is disabled and will raise an exception. Will raise
+                a TypeError if this is given with a gt4py storage type as data
         """
+        if origin is None:
+            origin = (0,) * len(dims)  # default origin at origin of array
+        else:
+            origin = tuple(origin)
+
+        if extent is None:
+            extent = tuple(length - start for length, start in zip(data.shape, origin))
+        else:
+            extent = tuple(extent)
+
         if isinstance(data, (int, float, list)):
             data = np.asarray(data)
         elif gt4py is not None and isinstance(data, gt4py.storage.storage.Storage):
-            gt4py_backend = data.backend
+            if gt4py_backend is not None:
+                raise TypeError(
+                    "cannot select gt4py backend with keyword argument "
+                    "when providing storage as data"
+                )
+            else:
+                gt4py_backend = data.backend
             if isinstance(data, gt4py.storage.storage.GPUStorage):
                 self._storage = data
                 self._data = data.gpu_view
@@ -286,18 +303,14 @@ class Quantity:
                     "only storages supported are CPUStorage and GPUStorage, "
                     f"got {type(data)}"
                 )
+        elif gt4py_backend is not None:
+            self._storage, self._data = self._initialize_storage(
+                data, origin, gt4py_backend
+            )
         else:
-            self._storage = None
             self._data = data
+            self._storage = None
 
-        if origin is None:
-            origin = (0,) * len(dims)  # default origin at origin of array
-        else:
-            origin = tuple(origin)
-        if extent is None:
-            extent = tuple(length - start for length, start in zip(data.shape, origin))
-        else:
-            extent = tuple(extent)
         _validate_quantity_property_lengths(data.shape, dims, origin, extent)
         self._metadata = QuantityMetadata(
             origin=ensure_int_tuple(origin, "origin"),
@@ -371,40 +384,35 @@ class Quantity:
         this object, either by providing a Storage for data or explicitly specifying
         a backend.
         """
-        if gt4py is None:
-            raise ImportError("gt4py is not installed")
-        elif self._storage is None and self.gt4py_backend is None:
+        if self._storage is None:
             raise TypeError(
-                "Quantity was initialized with a non-storage type and "
-                "no gt4py backend was given"
-            )
-        elif self._storage is None:
-            if isinstance(self._data, np.ndarray):
-                storage_type = gt4py.storage.storage.CPUStorage
-            elif isinstance(self._data, cupy.ndarray):
-                storage_type = gt4py.storage.storage.GPUStorage
-            self._storage = storage_type(
-                shape=self._data.shape,
-                dtype=self._data.dtype,
-                backend=self.gt4py_backend,
-                default_origin=self.origin,
-                mask=None,
-            )
-            self._storage[...] = self._data
-            # storage must initialize new memory. when GDP-3 is merged, we can instead
-            # initialize storage from self._data
-            # when GDP-3 is merged, we can instead use the data in self._data to
-            # initialize the storage, instead of making a copy.
-            if isinstance(self._data, np.ndarray):
-                self._data = self.np.asarray(self._storage.data)
-            elif isinstance(self._data, cupy.ndarray):
-                self._data = self._storage.gpu_view
-            # must re-initialize compute domain view with new array
-            # this also can be removed when we merge GDP-3
-            self._compute_domain_view = BoundedArrayView(
-                self.data, self.dims, self.origin, self.extent
+                "gt4py backend was not specified when initializing this object"
             )
         return self._storage
+
+    def _initialize_storage(self, data, origin, gt4py_backend: str):
+        storage = gt4py.storage.storage.empty(
+            gt4py_backend,
+            default_origin=origin,
+            shape=data.shape,
+            dtype=data.dtype,
+            managed_memory=True,  # required to get GPUStorage with only gpu data copy
+        )
+        storage[...] = data
+        # storage must initialize new memory. when GDP-3 is merged, we can instead
+        # initialize storage from self._data
+        # when GDP-3 is merged, we can instead use the data in self._data to
+        # initialize the storage, instead of making a copy.
+        if isinstance(storage, gt4py.storage.storage.CPUStorage):
+            data = np.asarray(storage.data)
+        elif isinstance(storage, gt4py.storage.storage.GPUStorage):
+            data = storage.gpu_view
+        else:
+            raise NotImplementedError(
+                f"received unexpected storage type {type(storage)} "
+                f"for gt4py_backend {gt4py_backend}, did gt4py get updated?"
+            )
+        return storage, data
 
     @property
     def metadata(self) -> QuantityMetadata:

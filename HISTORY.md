@@ -18,6 +18,10 @@ in the `coupler_nml` namelist.
 - Quantity.data is now guaranteed to be a numpy or cupy array matching its `.np` module, and will no longer be a gt4py Storage
 - Quantity accepts a `gt4py_backend` on initialize which is used to create its `.storage` if one was not used on initialize
 - parent MPI rank now referred to as "root" rank in variable names and documentation
+- Fixed a bug where initializing a Quantity with a numpy array and a gpu backend would give CPUStorage
+- raise TypeError if initializing a quantity with both a storage and a gt4py_backend argument
+- eagerly create storage object when initializing Quantity
+- make data type of quantity and storage reflect the gt4py_backend chosen, instead of being determined based on the data type being numpy/cupy
 
 Fixes:
 - Fixed a bug where quantity.storage and quantity.data could be out of sync if the quantity was initialized using data and a gt4py backend string
