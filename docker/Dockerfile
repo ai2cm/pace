@@ -37,7 +37,7 @@ COPY --from=gt4py_image /gt4py /gt4py
 ENV BOOST_HOME=/usr/include/boost
 ARG CPPFLAGS="-I${BOOST_HOME} -I${BOOST_HOME}/boost"
 ARG GT4PY_OPTIONALS=""
-RUN pip install --no-cache-dir -c /constraints.txt "/gt4py${GT4PY_OPTIONALS}" && \
+RUN pip install --use-deprecated=legacy-resolver --no-cache-dir -c /constraints.txt "/gt4py${GT4PY_OPTIONALS}" && \
     rm -rf /gt4py && \
     python3 -m gt4py.gt_src_manager install
 

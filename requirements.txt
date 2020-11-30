@@ -10,8 +10,6 @@ zarr
 cftime
 git+https://github.com/mpi4py/mpi4py.git@aac3d8f2a56f3d74a75ad32ac0554d63e7ef90ab
 pip-tools
-pip
-setuptools
 wheel
 netCDF4
 hypothesis

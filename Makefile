@@ -51,14 +51,12 @@ update_submodules:
 
 constraints.txt: requirements.txt requirements_wrapper.txt requirements_lint.txt
 	pip-compile $^ --output-file constraints.txt
-
+	sed -i '' '/^git+https/d' constraints.txt
 # Image build instructions have moved to docker/Makefile but are kept here for backwards-compatibility
 
 build_environment: update_submodules
 	$(MAKE) -C docker build_core_deps
 
-build_wrapped_environment: update_submodules
-	$(MAKE) -C docker build_deps
 
 build_wrapped_environment:
 	$(MAKE) -C external/fv3gfs-wrapper build-docker
@@ -88,9 +86,6 @@ build_wrapped: update_submodules
 
 pull_environment_if_needed:
 	$(MAKE) -C docker pull_core_deps_if_needed
-
-pull_wrapped_environment_if_needed:
-	$(MAKE) -C docker pull_deps_if_needed
 
 pull_wrapped_environment_if_needed:
 	if [ -z $(shell docker images -q $(WRAPPER_INSTALL_IMAGE)) ]; then \

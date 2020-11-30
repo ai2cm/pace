@@ -25,7 +25,6 @@ f90nml==1.2               # via -r requirements.txt, fv3config
 fasteners==0.15           # via zarr
 filelock==3.0.12          # via virtualenv
 fsspec==0.8.4             # via -r requirements_wrapper.txt, fv3config, gcsfs
-git+https://github.com/VulcanClimateModeling/fv3config.git@a0799928824a4f10617cf4615e8837c81ccb1f2d  # via -r requirements.txt
 gcsfs==0.7.1              # via -r requirements_wrapper.txt, fv3config
 google-auth-oauthlib==0.4.1  # via gcsfs
 google-auth==1.22.1       # via gcsfs, google-auth-oauthlib
@@ -37,7 +36,6 @@ iniconfig==1.1.1          # via pytest
 jinja2==2.11.2            # via -r requirements_wrapper.txt
 markupsafe==1.1.1         # via jinja2
 monotonic==1.5            # via fasteners
-git+https://github.com/mpi4py/mpi4py.git@aac3d8f2a56f3d74a75ad32ac0554d63e7ef90ab  # via -r requirements.txt
 multidict==4.7.6          # via aiohttp, yarl
 netcdf4==1.5.4            # via -r requirements.txt
 nodeenv==1.5.0            # via pre-commit
@@ -79,7 +77,3 @@ xarray==0.16.1            # via -r requirements.txt
 yarl==1.5.1               # via aiohttp
 zarr==2.5.0               # via -r requirements.txt
 zipp==3.3.0               # via importlib-metadata
-
-# The following packages are considered to be unsafe in a requirements file:
-# pip
-# setuptools
