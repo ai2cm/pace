@@ -89,8 +89,8 @@ class Grid:
             )
         return self._quantity_factory
 
-    def splitters(self, *, origin=None):
-        """Return the splitters relative to origin.
+    def axis_offsets(self, *, origin=None):
+        """Return the axis offsets relative to origin.
 
         Args:
             origin: The compute origin
@@ -99,10 +99,18 @@ class Grid:
         if origin is None:
             origin = self.compute_origin()
         return {
-            "i_start": self.is_ - self.global_is + (self.is_ - origin[0]),
-            "i_end": self.npx + self.halo - 2 - self.global_is + (self.is_ - origin[0]),
-            "j_start": self.js - self.global_js + (self.js - origin[1]),
-            "j_end": self.npy + self.halo - 2 - self.global_js + (self.js - origin[1]),
+            "i_start": self.is_ - self.global_is + (self.is_ - origin[0])
+            if self.west_edge
+            else None,
+            "i_end": self.npx + self.halo - 2 - self.global_is + (self.is_ - origin[0])
+            if self.east_edge
+            else None,
+            "j_start": self.js - self.global_js + (self.js - origin[1])
+            if self.south_edge
+            else None,
+            "j_end": self.npy + self.halo - 2 - self.global_js + (self.js - origin[1])
+            if self.north_edge
+            else None,
         }
 
     def make_quantity(

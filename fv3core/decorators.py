@@ -1,9 +1,10 @@
 import collections
 import functools
 import hashlib
+import inspect
 import os
 import types
-from typing import BinaryIO, Callable, Tuple, Union
+from typing import BinaryIO, Callable, Sequence, Tuple, Union
 
 import gt4py
 import gt4py as gt
@@ -123,6 +124,38 @@ def gtstencil(definition=None, **stencil_kwargs) -> Callable[..., None]:
         stencils = {}
         times_called = 0
 
+        def get_origin(func, call_args, call_kwargs):
+            sig = inspect.signature(func)
+            first_name = next(iter(sig.parameters))
+
+            if len(call_args) == 0:
+                first_storage = call_kwargs[first_name]
+            else:
+                first_storage = call_args[0]
+
+            if not isinstance(first_storage, gt4py.storage.storage.Storage):
+                raise TypeError(
+                    "First stencil argument should be a gt4py.storage.storage.Storage."
+                )
+
+            origin: Sequence[int, ...]
+            origin_arg = call_kwargs.get("origin", None)
+            if isinstance(origin_arg, collections.Mapping):
+                if first_name in origin_arg:
+                    origin = origin_arg[first_name]
+                else:
+                    origin = first_storage.default_origin
+            elif isinstance(origin_arg, collections.Sequence):
+                origin = origin_arg
+            elif origin_arg is None:
+                origin = first_storage.default_origin
+            else:
+                raise TypeError(
+                    f"Type of the origin argument was {type(origin_arg)}. Expected Sequence or Mapping."
+                )
+
+            return origin
+
         @functools.wraps(func)
         def wrapped(*args, **kwargs) -> None:
             nonlocal times_called
@@ -133,22 +166,23 @@ def gtstencil(definition=None, **stencil_kwargs) -> Callable[..., None]:
                 stencil_kwargs["rebuild"] = global_config.get_rebuild()
                 stencil_kwargs["backend"] = global_config.get_backend()
 
-                # Add externals
                 stencil_kwargs["externals"] = {
                     "namelist": spec.namelist,
                     "grid": spec.grid,
                     **stencil_kwargs.get("externals", dict()),
                 }
+
+                axis_offsets = spec.grid.axis_offsets(
+                    origin=get_origin(func, args, kwargs)
+                )
+                stencil_kwargs["externals"].update(axis_offsets)
+
                 # Generate stencil
                 build_info = {}
                 stencil = gtscript.stencil(build_info=build_info, **stencil_kwargs)(
                     func
                 )
                 stencils[key] = FV3StencilObject(stencil, build_info)
-            kwargs["splitters"] = kwargs.get(
-                "splitters",
-                spec.grid.splitters(origin=kwargs.get("origin")),
-            )
             name = f"{func.__module__}.{func.__name__}"
             _maybe_save_report(
                 f"{name}-before",

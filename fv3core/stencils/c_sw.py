@@ -137,7 +137,7 @@ def divergence_corner(
         rarea_c: inverse cell areas on c-grid (input)
         divg_d: divergence on d-grid (output)
     """
-    from __splitters__ import i_end, i_start, j_end, j_start
+    from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
         uf = (
@@ -177,7 +177,7 @@ def circulation_cgrid(uc: sd, vc: sd, dxc: sd, dyc: sd, vort_c: sd):
         dyc: grid spacing in y-dir (input)
         vort_c: C-grid vorticity (output)
     """
-    from __splitters__ import i_end, i_start, j_end, j_start
+    from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
         fx = dxc * uc
