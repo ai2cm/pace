@@ -130,7 +130,7 @@ fi
 export TEST_DATA_DIR="${SCRATCH}/fv3core_fortran_data/${FORTRAN_VERSION}"
 
 G2G="false"
-
+export DOCKER_BUILDKIT=1
 # Run the jenkins command
 run_command "${script} ${optarg} ${optarg2} " Job${action} ${G2G} ${scheduler_script}
 
