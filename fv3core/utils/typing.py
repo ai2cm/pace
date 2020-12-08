@@ -41,3 +41,5 @@ def _FieldDescriptorMaker(dtype):
 FloatField = _FieldDescriptor(float_type)
 IntField = _FieldDescriptor(int_type)
 BoolField = _FieldDescriptor(bool_type)
+
+Index3D = Tuple[int, int, int]

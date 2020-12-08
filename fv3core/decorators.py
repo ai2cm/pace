@@ -3,11 +3,13 @@ import functools
 import hashlib
 import inspect
 import os
+import pickle
 import types
-from typing import BinaryIO, Callable, Sequence, Tuple, Union
+from typing import Any, BinaryIO, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import gt4py
-import gt4py as gt
+import gt4py.ir as gt_ir
+import gt4py.storage as gt_storage
 import numpy as np
 import xarray as xr
 import yaml
@@ -16,7 +18,9 @@ from gt4py import gtscript
 
 import fv3core
 import fv3core._config as spec
+import fv3core.utils
 import fv3core.utils.gt4py_utils as utils
+from fv3core.utils.typing import Index3D
 
 from .utils import global_config
 
@@ -90,120 +94,175 @@ def state_inputs(*arg_specs):
     return decorator
 
 
-class FV3StencilObject:
-    """GT4Py stencil object used for fv3core."""
-
-    def __init__(self, stencil_object: gt4py.StencilObject, build_info: dict):
-        self.stencil_object = stencil_object
-        self._build_info = build_info
-
-    @property
-    def build_info(self) -> dict:
-        """Return the build_info created when compiling the stencil."""
-        return self._build_info
-
-    def __call__(self, *args, **kwargs):
-        return self.stencil_object(*args, **kwargs)
-
-
 def _ensure_global_flags_not_specified_in_kwargs(stencil_kwargs):
-    flag_errmsg = (
-        "The {} flag should be set in "
-        + __name__
-        + " instead of as an argument to stencil"
-    )
+    flag_errmsg = "The {} flag should be set in fv3core.utils.global_config.py instead of as an argument to stencil"
     for flag in ("rebuild", "backend"):
         if flag in stencil_kwargs:
             raise ValueError(flag_errmsg.format(flag))
 
 
+class StencilDataCache(collections.abc.Mapping):
+    """A python object cache along with stencils (uses the disk and an in-memory map)."""
+
+    def __init__(self, extension: str = "cache.py"):
+        self.extension: str = extension
+        """Extension used for filenames in cache."""
+
+        self.cache: Dict[str, Any] = {}
+        """In-memory cache of the data pickled to disk."""
+
+    def _get_cache_filename(self, stencil: gt4py.StencilObject) -> str:
+        pymodule_filename = stencil._file_name
+        return f"{os.path.splitext(pymodule_filename)[0]}_{self.extension}"
+
+    def __getitem__(self, stencil: gt4py.StencilObject):
+        key = hash(stencil)
+        if key not in self.cache:
+            filename = self._get_cache_filename(stencil)
+            if not os.path.exists(filename):
+                raise KeyError(f"Cache file {filename} does not exist")
+            self.cache[key] = pickle.load(open(filename, mode="rb"))
+        return self.cache[key]
+
+    def __setitem__(self, stencil: gt4py.StencilObject, value: Any):
+        key = hash(stencil)
+        filename = self._get_cache_filename(stencil)
+        self.cache[key] = value
+        pickle.dump(self.cache[key], open(filename, mode="wb"))
+        return self.cache[key]
+
+    def __len__(self) -> int:
+        return len(self.cache)
+
+    def __iter__(self):
+        return self.cache.__iter__()
+
+
+class FV3StencilObject:
+    """GT4Py stencil object used for fv3core."""
+
+    def __init__(self, func: Callable[..., None], **kwargs):
+        self.func: Callable[..., None] = func
+        """The definition function."""
+
+        self.stencil_object: Optional[gt4py.StencilObject] = None
+        """The current generated stencil object returned from gt4py."""
+
+        self.times_called: int = 0
+        """Number of times this stencil has been called."""
+
+        self.timers: Dict[str, float] = types.SimpleNamespace(call_run=0.0, run=0.0)
+        """Accumulated time spent in this stencil.
+
+        call_run includes stencil call overhead, while run omits it."""
+
+        self._passed_externals: Dict[str, Any] = kwargs.pop("externals", {})
+        """Externals passed in the decorator (others are added later)."""
+
+        self.backend_kwargs: Dict[str, Any] = kwargs
+        """Remainder of the arguments are assumed to be gt4py compiler backend options."""
+
+        self._axis_offsets_cache: StencilDataCache = StencilDataCache("axis_offsets.p")
+
+    @property
+    def built(self) -> bool:
+        """Indicates whether the stencil is loaded."""
+        return self.stencil_object is not None
+
+    @property
+    def axis_offsets(self) -> Dict[str, Any]:
+        """AxisOffsets used in this stencil."""
+        return self._axis_offsets_cache[self.stencil_object]
+
+    def __call__(self, *args, origin: Index3D, domain: Index3D, **kwargs) -> None:
+        """Call the stencil, compiling the stencil if necessary.
+
+        The stencil needs to be recompiled if any of the following changes
+        1. the origin and/or domain
+        2. any external value
+        3. the function signature or code
+
+        Args:
+            domain: Stencil compute domain (required)
+            origin: Data index mapped to (0, 0, 0) in the compute domain (required)
+        """
+
+        # Can optimize this by marking stencils that need these
+        axis_offsets = fv3core.utils.axis_offsets(spec.grid, origin, domain)
+
+        regenerate_stencil = not self.built or global_config.get_rebuild()
+        if not regenerate_stencil:
+            # Check if we really do need to regenerate
+            for key, value in self.axis_offsets.items():
+                if axis_offsets[key] != value:
+                    axis_offsets_changed = True
+                    break
+            else:
+                axis_offsets_changed = False
+            regenerate_stencil = regenerate_stencil or axis_offsets_changed
+
+        if regenerate_stencil:
+            new_build_info = {}
+            stencil_kwargs = {
+                "rebuild": global_config.get_rebuild(),
+                "backend": global_config.get_backend(),
+                "externals": {
+                    "namelist": spec.namelist,
+                    "grid": spec.grid,
+                    **axis_offsets,
+                    **self._passed_externals,
+                },
+                "build_info": new_build_info,
+                **self.backend_kwargs,
+            }
+
+            # gtscript.stencil always returns a new class instance even if it
+            # used the cached module.
+            self.stencil_object = gtscript.stencil(
+                definition=self.func, **stencil_kwargs
+            )
+            if self.stencil_object not in self._axis_offsets_cache:
+                def_ir = stencil_kwargs["build_info"]["def_ir"]
+                axis_offsets = {
+                    k: v for k, v in def_ir.externals.items() if k in axis_offsets
+                }
+                self._axis_offsets_cache[self.stencil_object] = axis_offsets
+
+        # Call it
+        exec_info = {}
+        kwargs["exec_info"] = kwargs.get("exec_info", exec_info)
+        kwargs["validate_args"] = kwargs.get("validate_args", utils.validate_args)
+        name = f"{self.func.__module__}.{self.func.__name__}"
+        _maybe_save_report(
+            f"{name}-before",
+            self.times_called,
+            self.func.__dict__["_gtscript_"]["api_signature"],
+            args,
+            kwargs,
+        )
+        self.stencil_object(*args, **kwargs, origin=origin, domain=domain)
+        _maybe_save_report(
+            f"{name}-after",
+            self.times_called,
+            self.func.__dict__["_gtscript_"]["api_signature"],
+            args,
+            kwargs,
+        )
+        self.times_called += 1
+
+        # Update timers
+        exec_info = kwargs["exec_info"]
+        self.timers.run += exec_info["run_end_time"] - exec_info["run_start_time"]
+        self.timers.call_run += (
+            exec_info["call_run_end_time"] - exec_info["call_run_start_time"]
+        )
+
+
 def gtstencil(definition=None, **stencil_kwargs) -> Callable[..., None]:
     _ensure_global_flags_not_specified_in_kwargs(stencil_kwargs)
 
-    def decorator(func) -> Callable[..., None]:
-        stencils = {}
-        times_called = 0
-
-        def get_origin(func, call_args, call_kwargs):
-            sig = inspect.signature(func)
-            first_name = next(iter(sig.parameters))
-
-            if len(call_args) == 0:
-                first_storage = call_kwargs[first_name]
-            else:
-                first_storage = call_args[0]
-
-            if not isinstance(first_storage, gt4py.storage.storage.Storage):
-                raise TypeError(
-                    "First stencil argument should be a gt4py.storage.storage.Storage."
-                )
-
-            origin: Sequence[int, ...]
-            origin_arg = call_kwargs.get("origin", None)
-            if isinstance(origin_arg, collections.Mapping):
-                if first_name in origin_arg:
-                    origin = origin_arg[first_name]
-                else:
-                    origin = first_storage.default_origin
-            elif isinstance(origin_arg, collections.Sequence):
-                origin = origin_arg
-            elif origin_arg is None:
-                origin = first_storage.default_origin
-            else:
-                raise TypeError(
-                    f"Type of the origin argument was {type(origin_arg)}. Expected Sequence or Mapping."
-                )
-
-            return origin
-
-        @functools.wraps(func)
-        def wrapped(*args, **kwargs) -> None:
-            nonlocal times_called
-            # This uses the module-level globals backend and rebuild (defined above)
-            key = (global_config.get_backend(), global_config.get_rebuild())
-            if key not in stencils:
-                # Add globals to stencil_kwargs
-                stencil_kwargs["rebuild"] = global_config.get_rebuild()
-                stencil_kwargs["backend"] = global_config.get_backend()
-
-                stencil_kwargs["externals"] = {
-                    "namelist": spec.namelist,
-                    "grid": spec.grid,
-                    **stencil_kwargs.get("externals", dict()),
-                }
-
-                axis_offsets = spec.grid.axis_offsets(
-                    origin=get_origin(func, args, kwargs)
-                )
-                stencil_kwargs["externals"].update(axis_offsets)
-
-                # Generate stencil
-                build_info = {}
-                stencil = gtscript.stencil(build_info=build_info, **stencil_kwargs)(
-                    func
-                )
-                stencils[key] = FV3StencilObject(stencil, build_info)
-            name = f"{func.__module__}.{func.__name__}"
-            _maybe_save_report(
-                f"{name}-before",
-                times_called,
-                func.__dict__["_gtscript_"]["api_signature"],
-                args,
-                kwargs,
-            )
-            kwargs["validate_args"] = kwargs.get("validate_args", utils.validate_args)
-            result = stencils[key](*args, **kwargs)
-            _maybe_save_report(
-                f"{name}-after",
-                times_called,
-                func.__dict__["_gtscript_"]["api_signature"],
-                args,
-                kwargs,
-            )
-            times_called += 1
-            return result
-
-        return wrapped
+    def decorator(func) -> FV3StencilObject:
+        return FV3StencilObject(func, **stencil_kwargs)
 
     if definition is None:
         return decorator
@@ -235,10 +294,10 @@ def _save_args(file: BinaryIO, args, kwargs):
     args = list(args)
     kwargs_list = sorted(list(kwargs.items()))
     for i, arg in enumerate(args):
-        if isinstance(arg, gt.storage.storage.Storage):
+        if isinstance(arg, gt_storage.Storage):
             args[i] = np.asarray(arg)
     for i, (name, value) in enumerate(kwargs_list):
-        if isinstance(value, gt.storage.storage.Storage):
+        if isinstance(value, gt_storage.Storage):
             kwargs_list[i] = (name, np.asarray(value))
     np.savez(file, *args, **dict(kwargs_list))
 
@@ -262,7 +321,7 @@ def _get_kwargs_report(kwargs):
 
 
 def _get_arg_report(arg):
-    if isinstance(arg, gt.storage.storage.Storage):
+    if isinstance(arg, gt_storage.storage.Storage):
         arg = np.asarray(arg)
     if isinstance(arg, np.ndarray):
         if not report_include_halos:

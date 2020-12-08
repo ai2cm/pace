@@ -10,7 +10,6 @@ from fv3core.utils.corners import fill_4corners
 
 
 sd = utils.sd
-origin = (1, 1, 0)
 DZ_MIN = constants.DZ_MIN
 
 
@@ -236,9 +235,12 @@ def update_dz_c(
 def compute(dp_ref, zs, ut, vt, gz_in, ws3, dt2):
     # TODO: once we have a concept for corners, the following 4 lines should be refactored
     grid = spec.grid
+    origin = (1, 1, 0)
     gz = copy(gz_in, origin=origin)
     gz_x = copy(gz, origin=origin)
-    ws = copy(ws3, domain=grid.domain_shape_buffer_1cell())
+    ws = copy(
+        ws3, origin=grid.default_origin(), domain=grid.domain_shape_buffer_1cell()
+    )
     fill_4corners(gz_x, "x", grid)
     gz_y = copy(gz_x, origin=origin)
     fill_4corners(gz_y, "y", grid)

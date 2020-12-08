@@ -229,7 +229,7 @@ def column_calls(
         fy2 = utils.make_storage_from_shape(zh.shape, default_origin)
         fx = utils.make_storage_from_shape(zh.shape, default_origin)
         fy = utils.make_storage_from_shape(zh.shape, default_origin)
-        z2 = copy(zh, origin=default_origin)
+        z2 = copy(zh, origin=default_origin, domain=(grid.nid, grid.njd, nk))
         fvtp2d.compute_no_sg(
             z2,
             crx_adv,

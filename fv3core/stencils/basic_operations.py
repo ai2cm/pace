@@ -1,4 +1,5 @@
 import gt4py.gtscript as gtscript
+import gt4py.storage as gt_storage
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.utils.gt4py_utils as utils
@@ -25,13 +26,16 @@ def copy(q_in, origin=(0, 0, 0), domain=None):
 
     Args:
         q_in: input field
-        origin: Origin of the copy and new field
-        domain: Extent to copy
+        origin: Origin of the copy (if None, uses the start of the field)
+        domain: Extent to copy (if None, uses the remainder of the field)
 
     Returns:
-        gtscript.Field[float]: Copied field
+        gtscript.Field[float]: Copied field (default_origin inherited from q_in)
     """
-    q_out = utils.make_storage_from_shape(q_in.shape, origin, init=True)
+    if domain is None:
+        domain = tuple(extent - orig for extent, orig in zip(q_in.shape, origin))
+
+    q_out = utils.make_storage_from_shape(q_in.shape, q_in.default_origin, init=True)
     copy_stencil(q_in, q_out, origin=origin, domain=domain)
     return q_out
 

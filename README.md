@@ -69,7 +69,7 @@ $ make dev_tests_mpi
 ```
 These will mount your current code into the fv3core container and run it rather than the code that was built when `make build` ran.
 
-## Running tests  inside a container
+## Running tests inside a container
 
 If you to prefer to work interactively inside the fv3core container, get the test data and build the docker image:
 ```shell
@@ -122,6 +122,11 @@ common options for our tests, which you can add to `TEST_ARGS`:
 
 * `-m` - will let you run only certain groups of tests. For example, `-m=parallel` will run only parallel stencils, while `-m=sequential` will run only stencils that operate on one rank at a time.
 
+**NOTE:** FV3 is current assumed to be by default in a "development mode", where stencils are checked each time they execute for code changes (which can trigger regeneration). This process is somewhat expensive, so there is an option to put FV3 in a performance mode by telling it that stencils should not automatically be rebuilt:
+
+```shell
+$ export FV3_STENCIL_REBUILD_FLAG=False
+```
 
 ## Porting a new stencil
 

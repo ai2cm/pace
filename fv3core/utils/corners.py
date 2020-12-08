@@ -1,6 +1,7 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval, parallel, region
 
+import fv3core.utils
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 
@@ -85,19 +86,13 @@ def fill_4corners(q, direction, grid):
     origin = (grid.is_ - extent, grid.js - extent, 0)
     domain = (grid.nic + 2 * extent, grid.njc + 2 * extent, q.shape[2])
 
-    axis_offsets = grid.axis_offsets(origin=origin)
-
     kwargs = {"origin": origin, "domain": domain}
 
     if direction == "x":
-        stencil = gtstencil(
-            definition=definition, externals={"func": fill_4corners_x, **axis_offsets}
-        )
+        stencil = gtstencil(definition=definition, externals={"func": fill_4corners_x})
         stencil(q, **kwargs)
     elif direction == "y":
-        stencil = gtstencil(
-            definition=definition, externals={"func": fill_4corners_y, **axis_offsets}
-        )
+        stencil = gtstencil(definition=definition, externals={"func": fill_4corners_y})
         stencil(q, **kwargs)
     else:
         raise ValueError("Direction not recognized. Specify either x or y")

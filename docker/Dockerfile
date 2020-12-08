@@ -41,6 +41,9 @@ RUN pip install --use-deprecated=legacy-resolver --no-cache-dir -c /constraints.
     rm -rf /gt4py && \
     python3 -m gt4py.gt_src_manager install
 
+# This environment flag sets rebuild=False in gtscript.stencil calls
+ENV FV3_STENCIL_REBUILD_FLAG=False
+
 ###
 ### Copy over necessary source and configuration files
 ###
