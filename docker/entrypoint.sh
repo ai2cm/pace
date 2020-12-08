@@ -22,6 +22,6 @@ do
         pip install -e "$package" -c /constraints.txt
     fi
 done
-pip install --use-deprecated=legacy-resolver -e /fv3core -c /constraints.txt
+pip install -e /fv3core -c /constraints.txt
 
 exec "$@"

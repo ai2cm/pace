@@ -9,7 +9,7 @@ apipkg==1.5               # via execnet
 appdirs==1.4.4            # via fv3config, virtualenv
 asciitree==0.3.3          # via zarr
 async-timeout==3.0.1      # via aiohttp
-attrs==20.2.0             # via aiohttp, hypothesis, pytest
+attrs==20.3.0             # via aiohttp, hypothesis, pytest
 backoff==1.10.0           # via fv3config
 cachetools==4.1.1         # via google-auth
 certifi==2020.6.20        # via requests
