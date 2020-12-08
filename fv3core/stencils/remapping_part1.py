@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core._config as spec
 import fv3core.stencils.map_single as map_single
@@ -189,7 +189,8 @@ def compute(
         origin=grid.compute_origin(),
         domain=grid.domain_shape_compute_buffer_k(),
     )
-    # TODO fix silly hack due to pe2 being 2d, so pe[:, je+1, 1:npz] should be the same as it was for pe[:, je, 1:npz] (unchanged)
+    # TODO: Fix silly hack due to pe2 being 2d, so pe[:, je+1, 1:npz] should be
+    # the same as it was for pe[:, je, 1:npz] (unchanged)
     copy_j_adjacent(
         pe2, origin=(grid.is_, grid.je + 1, 1), domain=(grid.nic, 1, grid.npz - 1)
     )
@@ -279,7 +280,8 @@ def compute(
             r_vir,
         )
     # if do_omega:
-    # dp2 update, if larger than pe0 and smaller than one level up, update omega and  exit
+    # dp2 update, if larger than pe0 and smaller than one level up, update omega
+    # and exit
 
     pressures_mapu(
         pe, pe1, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_jextra

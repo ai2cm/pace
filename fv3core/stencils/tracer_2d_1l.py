@@ -91,7 +91,8 @@ def q_other_adjust(q: sd, qset: sd, dp1: sd, fx: sd, fy: sd, rarea: sd, dp2: sd)
 def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
     grid = spec.grid
     shape = mfxd.data.shape
-    # start HALO update on q (in dyn_core in fortran -- just has started when this function is called...)
+    # start HALO update on q (in dyn_core in fortran -- just has started when
+    # this function is called...)
     xfx = utils.make_storage_from_shape(shape, origin=grid.compute_x_origin())
     yfx = utils.make_storage_from_shape(shape, origin=grid.compute_y_origin())
     fx = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
@@ -120,30 +121,34 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
         origin=grid.compute_y_origin(),
         domain=grid.domain_x_compute_ybuffer(),
     )
-    """
-    # TODO for if we end up using the Allreduce and compute cmax globally (or locally). For now, hardcoded
-    split = int(grid.npz / 6)
-    cmax_stencil1(
-        cxd, cyd, cmax, origin=grid.compute_origin(), domain=(grid.nic, grid.njc, split)
-    )
-    cmax_stencil2(
-        cxd,
-        cyd,
-        grid.sin_sg5,
-        cmax,
-        origin=(grid.is_, grid.js, split),
-        domain=(grid.nic, grid.njc, grid.npz - split + 1),
-    )
-    cmax_flat = np.amax(cmax, axis=(0, 1))
-    # cmax_flat is a gt4py storage still, but of dimension [npz+1]...
+    # {
+    # # TODO for if we end up using the Allreduce and compute cmax globally
+    # (or locally). For now, hardcoded.
+    # split = int(grid.npz / 6)
+    # cmax_stencil1(
+    #     cxd, cyd, cmax, origin=grid.compute_origin(),
+    #     domain=(grid.nic, grid.njc, split)
+    # )
+    # cmax_stencil2(
+    #     cxd,
+    #     cyd,
+    #     grid.sin_sg5,
+    #     cmax,
+    #     origin=(grid.is_, grid.js, split),
+    #     domain=(grid.nic, grid.njc, grid.npz - split + 1),
+    # )
+    # cmax_flat = np.amax(cmax, axis=(0, 1))
+    # # cmax_flat is a gt4py storage still, but of dimension [npz+1]...
 
-    cmax_max_all_ranks = cmax_flat.data
-    # TODO mpi allreduce.... can we not?
-    # comm.Allreduce(cmax_flat, cmax_max_all_ranks, op=MPI.MAX)
-    """
+    # cmax_max_all_ranks = cmax_flat.data
+    # # TODO mpi allreduce.... can we not?
+    # # comm.Allreduce(cmax_flat, cmax_max_all_ranks, op=MPI.MAX)
+    # }
     cmax_max_all_ranks = 2.0
     nsplt = math.floor(1.0 + cmax_max_all_ranks)
-    # NOTE cmax is not usually a single value, it varies with k, if return to that, make nsplt a column as well and compute frac inside cmax_split_vars
+    # NOTE: cmax is not usually a single value, it varies with k, if return to
+    # that, make nsplt a column as well and compute frac inside cmax_split_vars.
+
     # nsplt3d = utils.make_storage_from_shape(cyd.shape, origin=grid.compute_origin())
     # nsplt3d[:] = nsplt
     frac = 1.0
@@ -181,8 +186,9 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
         domain=grid.domain_x_compute_y(),
     )
 
-    # TODO revisit: the loops over q and nsplt have two inefficient options duplicating storages/stencil calls,
-    # return to this, maybe you have more options now, or maybe the one chosen here is the worse one
+    # TODO: Revisit: the loops over q and nsplt have two inefficient options
+    # duplicating storages/stencil calls, return to this, maybe you have more
+    # options now, or maybe the one chosen here is the worse one.
 
     dp1_orig = copy(
         dp1, origin=grid.default_origin(), domain=grid.domain_shape_standard()

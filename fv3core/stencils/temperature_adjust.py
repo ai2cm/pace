@@ -1,8 +1,5 @@
-import math
-
-import gt4py.gtscript as gtscript
 import numpy as np
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import PARALLEL, computation, exp, interval, log
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants

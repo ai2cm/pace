@@ -1,7 +1,7 @@
 import math
 
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, floor, interval, log
 
 import fv3core._config as spec
 import fv3core.stencils.moist_cv as moist_cv
@@ -11,7 +11,9 @@ from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import dim
 
 
-# TODO, this code could be reduced greatly with abstraction, but first gt4py needs to support gtscript function calls of arbitrary depth embedded in conditionals
+# TODO: This code could be reduced greatly with abstraction, but first gt4py
+# needs to support gtscript function calls of arbitrary depth embedded in
+# conditionals.
 sd = utils.sd
 si = utils.si
 DC_VAP = constants.CP_VAP - constants.C_LIQ  # - 2339.5, isobaric heating / cooling
@@ -48,23 +50,24 @@ def tem_upper(i):
     return 253.16 + DELT * i
 
 
-"""
-# TODO this abstraction is not possible in gt4py as these are called in conditionals and temporaries get created. but would be nice to have 1 version of the equation
-@gtscript.function
-def q_table_oneline(delta_heat_capacity, latent_heat_coefficient, tem):
-    return E00 * exp(
-        (delta_heat_capacity * log(tem / TICE) + (tem - TICE) / (tem * TICE) *  latent_heat_coefficient) / constants.RVGAS
-    )
+# TODO this abstraction is not possible in gt4py as these are called in
+# conditionals and temporaries get created. but would be nice to have 1 version
+# of the equation.
+# {
+# @gtscript.function
+# def q_table_oneline(delta_heat_capacity, latent_heat_coefficient, tem):
+#     return E00 * exp((delta_heat_capacity * log(tem / TICE)
+#         + (tem - TICE) / (tem * TICE) *  latent_heat_coefficient) / constants.RVGAS)
 
-@gtscript.function
-def table_vapor_oneline(tem):
-    return q_table_oneline(DC_VAP, LV0, tem)
+# @gtscript.function
+# def table_vapor_oneline(tem):
+#     return q_table_oneline(DC_VAP, LV0, tem)
 
 
-@gtscript.function
-def table_ice_oneline(tem):
-    return q_table_oneline(D2ICE, LI2, tem)
-"""
+# @gtscript.function
+# def table_ice_oneline(tem):
+#     return q_table_oneline(D2ICE, LI2, tem)
+# }
 
 
 @gtscript.function
@@ -81,7 +84,8 @@ def table_ice_oneline(tem):
     )
 
 
-# TODO math can be consolidated if we can call gtscript functions from conditionals, fac0 and fac2 functions and others
+# TODO Math can be consolidated if we can call gtscript functions from
+# conditionals, fac0 and fac2 functions and others.
 @gtscript.function
 def qs_table_fn(i):
     table = 0.0
@@ -104,7 +108,8 @@ def qs_table_fn(i):
     return table
 
 
-# TODO math can be consolidated if we can call gtscript functions from conditionals, fac0 and fac2 functions and others
+# TODO Math can be consolidated if we can call gtscript functions from
+# conditionals, fac0 and fac2 functions and others.
 @gtscript.function
 def qs_table2_fn(i):
     tem0 = tem_lower(i)
@@ -177,7 +182,8 @@ def des_end(t, i, z, des2):
     return des2
 
 
-# TODO there might be a cleaner way to set des2[QS_LENGTH - 1] to des2[QS_LENGTH - 2]
+# TODO There might be a cleaner way to set des2[QS_LENGTH - 1] to des2[QS_LENGTH
+# - 2].
 @gtscript.function
 def des2_table(i):
     t_p1 = qs_table2_fn(i + 1)
@@ -189,7 +195,8 @@ def des2_table(i):
     return des2
 
 
-# TODO there might be a cleaner way to set desw[QS_LENGTH - 1] to desw[QS_LENGTH - 2]
+# TODO There might be a cleaner way to set desw[QS_LENGTH - 1] to desw[QS_LENGTH
+# - 2].
 @gtscript.function
 def desw_table(i):
     t_p1 = qs_tablew_fn(i + 1)
@@ -220,7 +227,8 @@ def subtract_sink_pt1(pt1, sink, lhl, cvm):
 def melt_cloud_ice(
     qv, qi, ql, q_liq, q_sol, pt1, icp2, fac_imlt, mc_air, c_vap, lhi, cvm
 ):
-    # TODO, if temporaries inside of if-statements become supported, remove factmp and sink
+    # TODO, If temporaries inside of if-statements become supported, remove
+    # factmp and sink.
     factmp = 0.0
     sink = 0.0
     if (qi > 1.0e-8) and (pt1 > TICE):
@@ -243,8 +251,8 @@ def minmax_tmp_h20(qa, qb):
     return tmp
 
 
-# fix negative snow with graupel or graupel with available snow
-# TODO fix so only compute tmp when it is needed
+# Fix negative snow with graupel or graupel with available snow.
+# TODO Fix so only compute tmp when it is needed
 @gtscript.function
 def fix_negative_snow(qs, qg):
     tmp = minmax_tmp_h20(qg, qs)
@@ -257,7 +265,7 @@ def fix_negative_snow(qs, qg):
     return qs, qg
 
 
-# fix negative cloud water with rain or rain with available cloud water
+# Fix negative cloud water with rain or rain with available cloud water
 # TODO fix so only compute tmp when it is needed
 @gtscript.function
 def fix_negative_cloud_water(ql, qr):
@@ -272,7 +280,7 @@ def fix_negative_cloud_water(ql, qr):
     return ql, qr
 
 
-# enforce complete freezing of cloud water to cloud ice below - 48 c
+# Enforce complete freezing of cloud water to cloud ice below - 48 c
 @gtscript.function
 def complete_freezing(qv, ql, qi, q_liq, q_sol, pt1, cvm, icp2, mc_air, lhi, c_vap):
     dtmp = TICE - 48.0 - pt1
@@ -306,7 +314,7 @@ def homogenous_freezing(qv, ql, qi, q_liq, q_sol, pt1, cvm, icp2, mc_air, lhi, c
     return ql, qi, q_liq, q_sol, cvm, pt1
 
 
-# bigg mechanism for heterogeneous freezing
+# Bigg mechanism for heterogeneous freezing
 @gtscript.function
 def heterogeneous_freezing(
     exptc, pt1, cvm, ql, qi, q_liq, q_sol, den, icp2, dt_bigg, mc_air, lhi, qv, c_vap
@@ -721,14 +729,16 @@ def satadjust_part1(
         dq0 = (qv - wqsat) / (
             1.0 + tcp3 * dq2dt
         )  # compute_dq0(qv, wqsat, dq2dt, tcp3)  #(qv - wqsat) / (1.0 + tcp3 * dq2dt)
-        # TODO might be able to get rid of these temporary allocations when not used?
+        # TODO Might be able to get rid of these temporary allocations when not used?
         if dq0 > 0:  # whole grid - box saturated
             src = min(
                 spec.namelist.sat_adj0 * dq0,
                 max(spec.namelist.ql_gen - ql, fac_v2l * dq0),
             )
         else:
-            # TODO -- we'd like to use this abstraction rather than duplicate code, but inside the if conditional complains 'not implemented'
+            # TODO We'd like to use this abstraction rather than duplicate
+            # code, but inside the if conditional complains 'not implemented'
+
             # factor, src = ql_evaporation(wqsat, qv, ql, dq0,fac_l2v)
             factor = -1.0 * min(1, fac_l2v * 10.0 * (1.0 - qv / wqsat))
             src = -1.0 * min(ql, factor * dq0)
@@ -738,7 +748,7 @@ def satadjust_part1(
         )
         # update latent heat coefficient
         lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
-        # TODO remove duplicate
+        # TODO: Remove duplicate
         diff_ice = dim(TICE, pt1) / 48.0
         dimmin = min(1.0, diff_ice)
         tcp3 = lcp2 + icp2 * dimmin
@@ -803,20 +813,31 @@ def satadjust_part2(
             if dq0 > 0:
                 src = dq0
             else:
-                # TODO -- we'd like to use this abstraction rather than duplicate code, but inside the if conditional complains 'not implemented'
+                # TODO: We'd like to use this abstraction rather than duplicate
+                # code, but inside the if conditional complains 'not
+                # implemented'.
+
                 # factor, src = ql_evaporation(wqsat, qv, ql, dq0,fac_l2v)
                 factor = -1.0 * min(1, fac_l2v * 10.0 * (1.0 - qv / wqsat))
                 src = -1.0 * min(ql, factor * dq0)
-            # TODO causes a visit_if error 'NoneType' object has no attribute 'inputs'
-            # qv, ql, q_liq, cvm, pt1 = wqsat_correct(src, pt1, lhl, qv, ql, q_liq, q_sol, mc_air, c_vap)
-            # lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
+            # TODO Causes a visit_if error 'NoneType' object has no attribute 'inputs'
+
+            # qv, ql, q_liq, cvm, pt1 = wqsat_correct(src, pt1, lhl, qv, ql,
+            # q_liq, q_sol, mc_air, c_vap)
+
+            # lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm,
+            # lv00, d0_vap)
+
             qv = qv - src
             ql = ql + src
             q_liq = q_liq + src
             cvm = compute_cvm(mc_air, qv, c_vap, q_liq, q_sol)
             pt1 = add_src_pt1(pt1, src, lhl, cvm)  # pt1 + src * lhl / cvm
-            # TODO, revisit when gt4py updated, causes an Assertion error
-            # lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
+            # TODO: Revisit when gt4py updated, causes an Assertion error
+
+            # lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm,
+            # lv00, d0_vap)
+
             lhl = lv00 + d0_vap * pt1
             lhi = LI00 + DC_ICE * pt1
             lcp2 = lhl / cvm
@@ -943,7 +964,8 @@ def satadjust_part2(
             else:
                 q_liq = ql
             q_cond = q_sol + q_liq
-            # use the "liquid - frozen water temperature" (tin) to compute saturated specific humidity
+            # use the "liquid - frozen water temperature" (tin) to compute
+            # saturated specific humidity
             if tintqs:
                 tin = pt1
             else:
@@ -978,7 +1000,8 @@ def satadjust_part3_laststep_qa(
             else:
                 rqi = (TICE - tin) / (TICE - T_WFR)
             qstar = rqi * iqs1 + (1.0 - rqi) * wqs1
-        #  higher than 10 m is considered "land" and will have higher subgrid variability
+        # higher than 10 m is considered "land" and will have higher subgrid
+        # variability
         mindw = min(1.0, abs(hs) / (10.0 * constants.GRAV))
         dw = (
             spec.namelist.dw_ocean
@@ -989,8 +1012,9 @@ def satadjust_part3_laststep_qa(
         maxtmp = 0.01 if 0.01 > dbl_sqrt_area else dbl_sqrt_area
         hvar = min(0.2, maxtmp)
         # partial cloudiness by pdf:
-        # assuming subgrid linear distribution in horizontal; this is effectively a smoother for the
-        # binary cloud scheme; qa = 0.5 if qstar == qpz
+        # assuming subgrid linear distribution in horizontal; this is
+        # effectively a smoother for the binary cloud scheme;
+        # qa = 0.5 if qstar == qpz
         rh = qpz / qstar
         # icloud_f = 0: bug - fixed
         # icloud_f = 1: old fvgfs gfdl) mp implementation
@@ -1067,7 +1091,8 @@ def compute(
     fac_imlt = 1.0 - math.exp(-sdt / spec.namelist.tau_imlt)
     fac_smlt = 1.0 - math.exp(-mdt / spec.namelist.tau_smlt)
 
-    # define heat capacity of dry air and water vapor based on hydrostatical property
+    # define heat capacity of dry air and water vapor based on hydrostatical
+    # property
 
     if hydrostatic:
         c_air = constants.CP_AIR
@@ -1078,7 +1103,8 @@ def compute(
 
     d0_vap = c_vap - constants.C_LIQ
     lv00 = constants.HLV - d0_vap * TICE
-    # temporaries needed for passing data between stencil calls (break currently required by wqs2_vect, and a couple of exp/log calls)
+    # temporaries needed for passing data between stencil calls (break currently
+    # required by wqs2_vect, and a couple of exp/log calls)
     den = utils.make_storage_from_shape(peln.shape, utils.origin)
     wqsat = utils.make_storage_from_shape(peln.shape, utils.origin)
     dq2dt = utils.make_storage_from_shape(peln.shape, utils.origin)
@@ -1141,7 +1167,9 @@ def compute(
         # condensation / evaporation between water vapor and cloud water, last time step
         #  enforce upper (no super_sat) & lower (critical rh) bounds
         # final iteration:
-        # TODO, if can call functions from conditionals, can call function inside the stencil
+
+        # TODO: If can call functions from conditionals, can call function
+        # inside the stencil
         wqs2_stencil_w(
             pt1,
             den,
@@ -1153,7 +1181,9 @@ def compute(
     else:
         adj_fac = spec.namelist.sat_adj0
 
-    # TODO  -- this isn't a namelist option in Fortran, it is whether or not cld_amount is a tracer. If/when we support different sets of tracers, this will need to change
+    # TODO: This isn't a namelist option in Fortran, it is whether or not
+    # cld_amount is a tracer. If/when we support different sets of tracers, this
+    # will need to change
     do_qa = True
     satadjust_part2(
         wqsat,

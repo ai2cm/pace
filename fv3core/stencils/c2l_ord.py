@@ -1,5 +1,3 @@
-import fv3gfs.util as fv3util
-import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec

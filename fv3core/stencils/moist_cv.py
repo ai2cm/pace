@@ -1,5 +1,5 @@
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
@@ -36,7 +36,7 @@ def moist_cv_nwat6_fn(qvapor, qliquid, qrain, qsnow, qice, qgraupel):
     return cvm, gz
 
 
-# TODO : note untested
+# TODO: Note untested
 @gtscript.function
 def moist_cv_nwat5_fn(qvapor, qliquid, qrain, qsnow, qice):
     ql = qliquid + qrain
@@ -46,7 +46,7 @@ def moist_cv_nwat5_fn(qvapor, qliquid, qrain, qsnow, qice):
     return cvm, gz
 
 
-# TODO : note untested
+# TODO: Note untested
 @gtscript.function
 def moist_cv_nwat4_fn(qvapor, qliquid, qrain):
     gz = qliquid + qrain
@@ -58,7 +58,7 @@ def moist_cv_nwat4_fn(qvapor, qliquid, qrain):
     return cvm, gz
 
 
-# TODO : note untested
+# TODO: Note untested
 @gtscript.function
 def moist_cv_nwat3_fn(qvapor, qliquid, qice):
     gz = qliquid + qice
@@ -66,7 +66,7 @@ def moist_cv_nwat3_fn(qvapor, qliquid, qice):
     return cvm, gz
 
 
-# TODO : note untested
+# TODO: Note untested
 @gtscript.function
 def moist_cv_nwat2_fn(qvapor, qliquid):
     qv = qvapor if qvapor > 0 else 0.0
@@ -76,7 +76,7 @@ def moist_cv_nwat2_fn(qvapor, qliquid):
     return cvm, gz
 
 
-# TODO : note untested
+# TODO: Note untested
 @gtscript.function
 def moist_cv_nwat2_gfs_fn(qvapor, qliquid, t1):
     gz = qliquid if qliquid > 0 else 0.0
@@ -88,7 +88,7 @@ def moist_cv_nwat2_gfs_fn(qvapor, qliquid, t1):
     return cvm, gz
 
 
-# TODO : note untested
+# TODO: Note untested
 @gtscript.function
 def moist_cv_default_fn():
     gz = 0
@@ -166,7 +166,9 @@ def moist_te_2d(
             )
 
 
-# # TODO calling gtscript functions from inside the if statements is causing problems, if we want 'moist_phys' to be changeable, we either need to duplicate the stencil code or fix the gt4py bug
+# TODO: Calling gtscript functions from inside the if statements is causing
+# problems, if we want 'moist_phys' to be changeable, we either need to
+# duplicate the stencil code or fix the gt4py bug.
 @gtstencil()
 def moist_te_total_energy(
     qvapor: sd,
@@ -206,7 +208,9 @@ def moist_te_total_energy(
             cvm * pt + te_always_part(u, v, w, phiz, rsin2, cosa_s)
         )
         # else:
-        #    te_2d = te_2d[0, 0, -1] + delp * (constants.CV_AIR * pt + te_always_part(u, v, w, phiz, rsin2, cosa_s))
+        #    te_2d = te_2d[0, 0, -1] + delp * (
+        #        constants.CV_AIR * pt + te_always_part(u, v, w, phiz, rsin2, cosa_s)
+        #    )
 
 
 @gtstencil()
@@ -488,7 +492,8 @@ def compute_total_energy(
         raise Exception("Porting compute_total_energy incomplete for hydrostatic=True")
     if not spec.namelist.moist_phys:
         raise Exception(
-            "To run without moist_phys, the if conditional bug needs to be fixed, or code needs to be duplicated"
+            "To run without moist_phys, the if conditional bug needs to be fixed, "
+            "or code needs to be duplicated"
         )
     moist_te_total_energy(
         qvapor,
@@ -558,7 +563,8 @@ def fvsetup_stencil(
     moist_phys: bool,
 ):
     with computation(PARALLEL), interval(...):
-        # TODO the conditional with gtscript function triggers and undefined termporary variable, even though there are no new temporaries
+        # TODO: The conditional with gtscript function triggers and undefined
+        # temporary variable, even though there are no new temporaries
         # if moist_phys:
         cvm, q_con = moist_cv_nwat6_fn(
             qvapor, qliquid, qrain, qsnow, qice, qgraupel

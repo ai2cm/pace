@@ -1,5 +1,4 @@
 import gt4py.gtscript as gtscript
-import numpy as np
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
@@ -166,7 +165,8 @@ def compute(
     grid = spec.grid
     if nk is None:
         nk = grid.npz - kstart
-    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    # Avoid running center-domain computation on tile edges, since they'll be
+    # overwritten.
     is2 = grid.is_ + 1 if grid.west_edge else grid.is_
     ie1 = grid.ie if grid.east_edge else grid.ie + 1
     nord = int(nord)
@@ -279,7 +279,7 @@ def damping_zero_order(
 ):
     grid = spec.grid
     if not grid.nested:
-        # TODO: ptc and vort are equivalent, but x vs y, consolidate if possible
+        # TODO: ptc and vort are equivalent, but x vs y, consolidate if possible.
         ptc_main(
             u,
             va,

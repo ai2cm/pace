@@ -95,7 +95,8 @@ def zero_br_bl_corners_east(br, bl):
 
 
 def compute(c, u, v, flux):
-    # This is an input argument in the Fortran code, but is never called with anything but this namelist option
+    # This is an input argument in the Fortran code, but is never called with
+    # anything but this namelist option
     grid = spec.grid
     iord = spec.namelist.hord_mt
     if iord not in [5, 6, 7, 8]:
@@ -107,7 +108,9 @@ def compute(c, u, v, flux):
     br = utils.make_storage_from_shape(v.shape, tmp_origin)
     if iord < 8:
         al = compute_al(u, grid.dx, iord, is3, ie3 + 1, grid.js, grid.je + 1)
-        # get_flux_u_stencil_old(u, c, al, grid.rdx, flux, iord, origin=grid.compute_origin(), domain=(grid.nic + 1, grid.njc + 1, grid.npz))
+        # get_flux_u_stencil_old(u, c, al, grid.rdx, flux, iord,
+        # origin=grid.compute_origin(), domain=(grid.nic + 1, grid.njc + 1,
+        # grid.npz))
         br_bl_main(
             u,
             al,
@@ -246,7 +249,8 @@ def compute(c, u, v, flux):
         )
 
 
-# TODO merge better with equivalent xppm functions, the main difference is there is no minmax on xt here
+# TODO: merge better with equivalent xppm functions, the main difference is there
+# is no minmax on xt here
 
 
 @gtstencil()

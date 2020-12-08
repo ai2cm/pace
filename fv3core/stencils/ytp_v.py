@@ -1,4 +1,3 @@
-import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
@@ -15,11 +14,6 @@ from .yppm import (
     get_br,
     is_smt5_mord5,
     is_smt5_most_mords,
-    s11,
-    s14,
-    s15,
-    xt_dya_edge_0_base,
-    xt_dya_edge_1_base,
 )
 
 
@@ -84,7 +78,8 @@ def zero_br_bl_corners_north(br, bl):
 
 def compute(c, u, v, flux):
     grid = spec.grid
-    # This is an input argument in the Fortran code, but is never called with anything but this namelist option
+    # This is an input argument in the Fortran code, but is never called with
+    # anything but this namelist option.
     jord = spec.namelist.hord_mt
     if jord not in [5, 6, 7, 8]:
         raise Exception("Currently ytp_v is only supported for hord_mt == 5,6,7,8")

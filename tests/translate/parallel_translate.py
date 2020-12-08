@@ -2,10 +2,10 @@ import copy
 from types import SimpleNamespace
 from typing import List
 
-import fv3gfs.util as fv3util
 import pytest
 
 import fv3core
+import fv3gfs.util as fv3util
 from fv3core.utils import gt4py_utils as utils
 
 from .translate import TranslateFortranData2Py, read_serialized_data
@@ -112,11 +112,12 @@ class ParallelTranslate:
         return fv3core._config.namelist.layout
 
     def compute_sequential(self, inputs_list, communicator_list):
-        """Compute the outputs while iterating over a set of communicator objects sequentially"""
+        """Compute the outputs while iterating over a set of communicator
+        objects sequentially."""
         raise NotImplementedError()
 
     def compute_parallel(self, inputs, communicator):
-        """Compute the outputs using one communicator operating in parallel"""
+        """Compute the outputs using one communicator operating in parallel."""
         self.compute_sequential(self, [inputs], [communicator])
 
 
@@ -181,7 +182,8 @@ class ParallelTranslate2Py(ParallelTranslate):
 
     def compute_sequential(self, a, b):
         pytest.skip(
-            f"{self.__class__} only has a mpirun implementation, not running in mock-parallel"
+            f"{self.__class__} only has a mpirun implementation, "
+            "not running in mock-parallel"
         )
 
 

@@ -5,7 +5,7 @@ import numpy as np
 from netCDF4 import Dataset
 
 
-usage = "usage: python %(prog)s <output directory> [optional 2nd output directory] [other options]"
+usage = "usage: python %(prog)s <output directory> [optional 2nd output directory] [other options]"  # noqa: E501
 parser = ArgumentParser(usage=usage)
 
 parser.add_argument(

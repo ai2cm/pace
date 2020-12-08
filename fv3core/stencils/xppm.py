@@ -10,7 +10,6 @@ from .yppm import (
     c1,
     c2,
     c3,
-    floor_cap,
     fx1_c_negative,
     get_b0,
     get_bl,

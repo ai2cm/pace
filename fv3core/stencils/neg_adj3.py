@@ -276,10 +276,12 @@ def fix_water_vapor_down(qv: sd, dp: sd, upper_fix: sd, lower_fix: sd, dp_bot: s
     with computation(PARALLEL), interval(-1, None):
         if lower_fix[0, 0, -1] > 0:
             qv = qv + lower_fix / dp
-        # Here we're re-using upper_fix to represent the current version of qv[k_bot] fixed from above
-        # we could also re-use lower_fix instead of dp_bot, but that's probably over-optimized for now
+        # Here we're re-using upper_fix to represent the current version of
+        # qv[k_bot] fixed from above. We could also re-use lower_fix instead of
+        # dp_bot, but that's probably over-optimized for now
         upper_fix = qv
-        # if we didn't have to worry about float valitation and negative column mass we could set qv[k_bot] to 0 here...
+        # If we didn't have to worry about float valitation and negative column
+        # mass we could set qv[k_bot] to 0 here...
     with computation(BACKWARD), interval(0, -1):
         dq = qv * dp
         if (upper_fix[0, 0, 1] < 0) and (qv > 0):
@@ -324,7 +326,9 @@ def compute(qvapor, qliquid, qrain, qsnow, qice, qgraupel, qcld, pt, delp, delz,
     )
     fillq(qgraupel, delp, grid)
     fillq(qrain, delp, grid)
-    # # fix_water_vapor(delp, qvapor, origin=grid.compute_origin(), domain=grid.domain_shape_compute())
+    # fix_water_vapor(delp, qvapor, origin=grid.compute_origin(),
+    # domain=grid.domain_shape_compute())
+
     # fix_water_vapor_nonstencil(grid, qvapor, delp)
     # fix_water_vapor_bottom(grid, qvapor, delp)
     upper_fix = utils.make_storage_from_shape(qvapor.shape, origin=(0, 0, 0))

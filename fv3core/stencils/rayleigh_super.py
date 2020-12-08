@@ -1,14 +1,11 @@
-import math
-
-import fv3gfs.util as fv3util
 import gt4py.gtscript as gtscript
-import numpy as np
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import PARALLEL, computation, interval, log, sin
 
 import fv3core._config as spec
 import fv3core.stencils.c2l_ord as c2l_ord
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util as fv3util
 from fv3core.decorators import gtstencil
 
 
@@ -16,8 +13,11 @@ sd = utils.sd
 U0 = 60.0
 SDAY = 86400.0
 RCV = 1.0 / (constants.CP_AIR - constants.RDGAS)
-# NOTE The fortran version of this computes rf in the first timestep only. Then rf_initialized let's you know you can skip it.
-# Here we calculate it every time
+
+
+# NOTE: The fortran version of this computes rf in the first timestep only. Then
+# rf_initialized let's you know you can skip it. Here we calculate it every
+# time.
 @gtscript.function
 def compute_rf_vals(pfull, bdt, rf_cutoff, tau0, ptop):
     return (

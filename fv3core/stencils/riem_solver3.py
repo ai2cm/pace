@@ -1,6 +1,15 @@
 import math
 
-import numpy as np
+from gt4py.gtscript import (
+    __INLINED,
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    exp,
+    interval,
+    log,
+)
 
 import fv3core._config as spec
 import fv3core.stencils.sim1_solver as sim1_solver

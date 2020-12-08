@@ -1,7 +1,3 @@
-import gt4py.gtscript as gtscript
-import numpy as np
-from gt4py.gtscript import PARALLEL, computation, interval
-
 import fv3core._config as spec
 import fv3core.stencils.fillz as fillz
 import fv3core.stencils.map_single as map_single

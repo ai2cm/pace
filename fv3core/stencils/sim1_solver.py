@@ -1,7 +1,4 @@
-import gt4py as gt
-import gt4py.gtscript as gtscript
-import numpy as np
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
@@ -29,7 +26,8 @@ def sim1_solver(
     rdt: float,
     p_fac: float,
 ):
-    # TODO: we only want to bottom level of wsr, so this could be removed once wsr_top is a 2d field
+    # TODO: We only want to bottom level of wsr, so this could be removed once
+    # wsr_top is a 2d field.
     with computation(FORWARD):
         with interval(0, 1):
             wsr_top = wsr
@@ -54,7 +52,7 @@ def sim1_solver(
         with interval(1, -1):
             bet = bet[0, 0, -1]
 
-    ### stencils: w_solver
+    # stencils: w_solver
     # {
     with computation(PARALLEL):
         with interval(0, 1):
@@ -71,13 +69,13 @@ def sim1_solver(
         # w solver
         aa = t1g * 0.5 * (gm[0, 0, -1] + gm) / (dz[0, 0, -1] + dz) * (pem + pp)
     # }
-    ## updates on bet:
+    # updates on bet:
     with computation(FORWARD):
         with interval(0, 1):
             bet = dm[0, 0, 0] - aa[0, 0, 1]
         with interval(1, None):
             bet = bet[0, 0, -1]
-    ### w_pe_dz_compute
+    # w_pe_dz_compute
     # {
     with computation(FORWARD):
         with interval(0, 1):

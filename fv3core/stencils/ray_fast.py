@@ -1,13 +1,7 @@
-import math
-
-import fv3gfs.util as fv3util
 import gt4py.gtscript as gtscript
-import numpy as np
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.c2l_ord as c2l_ord
-import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.rayleigh_super import SDAY, compute_rf_vals
@@ -117,7 +111,8 @@ def ray_fast_w(w: sd, rf: sd, pfull: sd):
 def compute(u, v, w, dp, pfull, dt, ptop, ks):
     grid = spec.grid
     namelist = spec.namelist
-    # The next 3 variables and dm_stencil could be pushed into ray_fast_wind and still work, but then recomputing it all twice
+    # The next 3 variables and dm_stencil could be pushed into ray_fast_wind and
+    # still work, but then recomputing it all twice.
     rf_cutoff_nudge = namelist.rf_cutoff + min(100.0, 10.0 * ptop)
     # TODO 1D variable
     dm = utils.make_storage_from_shape(u.shape, grid.default_origin())

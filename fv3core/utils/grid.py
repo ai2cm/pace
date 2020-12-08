@@ -1,10 +1,10 @@
-from typing import Optional, Tuple
+from typing import Tuple
 
-import fv3gfs.util as fv3util
 import numpy as np
 from gt4py import gtscript
 
 import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util as fv3util
 
 from . import global_config
 

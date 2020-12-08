@@ -1,15 +1,8 @@
-import copy
-import math
-from types import SimpleNamespace
-
-import fv3gfs.util as fv3util
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
 import fv3core.stencils.c_sw as c_sw
-import fv3core.stencils.d2a2c_vect as d2a2c
 import fv3core.stencils.d_sw as d_sw
 import fv3core.stencils.del2cubed as del2cubed
 import fv3core.stencils.nh_p_grad as nh_p_grad
@@ -24,12 +17,14 @@ import fv3core.stencils.updatedzc as updatedzc
 import fv3core.stencils.updatedzd as updatedzd
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util as fv3util
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy_stencil
 
 
 sd = utils.sd
 HUGE_R = 1.0e40
+
 
 # NOTE in Fortran these are columns
 @gtstencil()
@@ -105,7 +100,9 @@ def dyncore_temporaries(shape):
 
 
 def compute(state, comm):
-    # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd, mfyd, cxd, cyd, pkz, peln, q_con, ak, bk, diss_estd, cappa, mdt, n_split, akap, ptop, pfull, n_map, comm):
+    # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
+    # mfyd, cxd, cyd, pkz, peln, q_con, ak, bk, diss_estd, cappa, mdt, n_split,
+    # akap, ptop, pfull, n_map, comm):
     grid = spec.grid
 
     init_step = state.n_map == 1
@@ -118,12 +115,12 @@ def compute(state, comm):
     hydrostatic = spec.namelist.hydrostatic
     rgrav = 1.0 / constants.GRAV
     n_split = state.n_split
-    # TODO -- put defaults into code
+    # TODO: Put defaults into code.
     # m_split = 1. + abs(dt_atmos)/real(k_split*n_split*abs(p_split))
     # n_split = nint( real(n0split)/real(k_split*abs(p_split)) * stretch_fac + 0.5 )
     ms = max(1, spec.namelist.m_split / 2.0)
     shape = state.delz.shape
-    # NOTE in Fortran model the halo update starts happens in fv_dynamics, not here
+    # NOTE: In Fortran model the halo update starts happens in fv_dynamics, not here.
     reqs = {}
     for halovar in ["q_con_quantity", "cappa_quantity", "delp_quantity", "pt_quantity"]:
         reqs[halovar] = comm.start_halo_update(
@@ -147,7 +144,9 @@ def compute(state, comm):
     state.cyd[grid.slice_dict(grid.y3d_compute_domain_x_dict())] = 0.0
     if not hydrostatic:
         # k1k = akap / (1.0 - akap)
-        # TODO -- is really just a column... when different shapes are supported perhaps change this
+
+        # TODO: Is really just a column... when different shapes are supported
+        # perhaps change this.
         state.dp_ref = utils.make_storage_from_shape(
             state.ak.shape, grid.default_origin()
         )
@@ -244,7 +243,7 @@ def compute(state, comm):
             state.gz, state.ws3 = updatedzc.compute(
                 state.dp_ref, state.zs, state.ut, state.vt, state.gz, state.ws3, dt2
             )
-            # TODO this is really a 2d field.
+            # TODO: This is really a 2d field.
             state.ws3 = utils.make_storage_data(
                 state.ws3[:, :, -1], shape, origin=(0, 0, 0)
             )
@@ -323,7 +322,7 @@ def compute(state, comm):
                 dt,
             )
 
-            # TODO this is really a 2d field.
+            # TODO: This is really a 2d field.
             state.wsd = utils.make_storage_data(
                 state.wsd[:, :, -1], shape, origin=grid.compute_origin()
             )
@@ -397,7 +396,7 @@ def compute(state, comm):
             )
 
         if spec.namelist.rf_fast:
-            # TODO pass through ks, or remove, inconsistent representation vs Fortran
+            # TODO: Pass through ks, or remove, inconsistent representation vs Fortran.
             ray_fast.compute(
                 state.u,
                 state.v,

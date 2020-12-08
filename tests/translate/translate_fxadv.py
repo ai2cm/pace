@@ -10,7 +10,9 @@ class TranslateFxAdv(TranslateFortranData2Py):
         utinfo["serialname"] = "ut"
         vtinfo = grid.y3d_domain_dict()
         vtinfo["serialname"] = "vt"
-        # TODO: do we want this to be bit reproducible? We think this error is spawning from generalizing the u and v corner calculations, ut it's possible we are missing something
+        # TODO: Do we want this to be bit reproducible? We think this error is
+        # spawning from generalizing the u and v corner calculations, ut it's
+        # possible we are missing something
         self.max_error = 1e-12
         self.in_vars["data_vars"] = {
             "uc_in": {"serialname": "uc"},
@@ -30,7 +32,9 @@ class TranslateFxAdv(TranslateFortranData2Py):
         for invar, info in self.in_vars["data_vars"].items():
             if "c_in" not in invar:
                 self.out_vars[invar] = info
-        # TODO: there is roundoff error at 1e-15 max_error due to different ordering of additive terms in the y direction, as a result of reusing the same stencil for x and y directions
+        # TODO: There is roundoff error at 1e-15 max_error due to different
+        # ordering of additive terms in the y direction, as a result of reusing
+        # the same stencil for x and y directions
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)

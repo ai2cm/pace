@@ -1,6 +1,3 @@
-import gt4py.gtscript as gtscript
-import gt4py.storage as gt_storage
-import numpy as np
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
@@ -13,11 +10,9 @@ sd = utils.sd
 origin = utils.origin
 
 
-##
-## Flux value stencils
-##---------------------
-
-
+#
+# Flux value stencils
+# ---------------------
 @gtstencil()
 def compute_zonal_flux(flux: sd, A_in: sd, del_term: sd):
     with computation(PARALLEL), interval(...):
@@ -30,9 +25,9 @@ def compute_meridional_flux(flux: sd, A_in: sd, del_term: sd):
         flux = del_term * (A_in[0, -1, 0] - A_in)
 
 
-##
-## Q update stencil
-##------------------
+#
+# Q update stencil
+# ------------------
 @gtstencil()
 def update_q(q: sd, rarea: sd, fx: sd, fy: sd, cd: float):
     with computation(PARALLEL), interval(...):
@@ -53,11 +48,11 @@ def copy_column(A: sd):
         A = A0[0, 1, 0]
 
 
-##
-## corner_fill
-##
-## Subroutine that copies/fills in the appropriate corner values for qdel
-##------------------------------------------------------------------------
+#
+# corner_fill
+#
+# Subroutine that copies/fills in the appropriate corner values for qdel
+# ------------------------------------------------------------------------
 def corner_fill(grid, q):
     r3 = 1.0 / 3.0
     if grid.sw_corner:

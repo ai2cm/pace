@@ -1,4 +1,3 @@
-import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
@@ -21,7 +20,8 @@ def flux_capacitor(
 
 
 def compute(cx, cy, xflux, yflux, crx_adv, cry_adv, fx, fy):
-    # this overcomputes, could split into 2 stencils for x and y directions if this is an issue
+    # this overcomputes, could split into 2 stencils for x and y directions if
+    # this is an issue
     flux_capacitor(
         cx,
         cy,

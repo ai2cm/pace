@@ -61,10 +61,10 @@ def not_inlineq_pressure(gx: sd, gy: sd, rarea: sd, fx: sd, fy: sd, pt: sd, delp
     with computation(PARALLEL), interval(...):
         pt = flux_integral(
             pt, delp, gx, gy, rarea
-        )  # TODO: put [0, 0, 0] on left when gt4py bug is fixed
+        )  # TODO: Put [0, 0, 0] on left when gt4py bug is fixed
         delp = delp + flux_component(
             fx, fy, rarea
-        )  # TODO: put [0, 0, 0] on left when gt4py bug is fixed
+        )  # TODO: Put [0, 0, 0] on left when gt4py bug is fixed
         pt[0, 0, 0] = pt / delp
 
 
@@ -98,7 +98,7 @@ def v_from_ke(ke: sd, ut: sd, fx: sd, v: sd):
         v[0, 0, 0] = ut + ke - ke[0, 1, 0] - fx
 
 
-# TODO: this is untested and the radius may be incorrect
+# TODO: This is untested and the radius may be incorrect
 @gtstencil(externals={"radius": constants.RADIUS})
 def coriolis_force_correction(zh: sd, z_rat: sd):
     from __externals__ import radius
@@ -278,7 +278,8 @@ def column_namelist_options(k):
     col["damp_t"] = col["damp_vt"]
     if grid().npz == 1 or spec.namelist.n_sponge < 0:
         pass
-    #     d2_divg = spec.namelist.d2_bg  # commenting because unused, never gets set into col
+    # commenting because unused, never gets set into col
+    #     d2_divg = spec.namelist.d2_bg
     else:
         if k == 0:
             col["d2_divg"] = max_d2_bg0()
@@ -320,13 +321,13 @@ def compute(
     dt,
 ):
 
-    # TODO: remove paired with removal of #d_sw belos
+    # TODO: Remove paired with removal of #d_sw belos
     # column_namelist = column_namelist_options(0)
     column_namelist = get_column_namelist()
     heat_s = utils.make_storage_from_shape(heat_source.shape, grid().compute_origin())
     diss_e = utils.make_storage_from_shape(heat_source.shape, grid().compute_origin())
     z_rat = utils.make_storage_from_shape(heat_source.shape, grid().default_origin())
-    # TODO if namelist['hydrostatic' and not namelist['use_old_omega'] and last_step
+    # TODO: If namelist['hydrostatic' and not namelist['use_old_omega'] and last_step.
     if spec.namelist.d_ext > 0:
         raise Exception(
             "untested d_ext > 0. need to call a2b_ord2, not yet implemented"
@@ -338,7 +339,8 @@ def compute(
             origin=grid().default_origin(),
             domain=grid().domain_shape_standard(),
         )
-    # TODO: this seems a little redundant, revisit the k column split mechanism and/or the argument passing method
+    # TODO: This seems a little redundant, revisit the k column split mechanism
+    # and/or the argument passing method
     in_only_vars = ["z_rat", "dt"]
     xflux = mfx
     yflux = mfy
@@ -374,10 +376,15 @@ def compute(
     for iv in inout_vars:
         outputs[iv] = data[iv]
     d_sw_ksplit(d_sw, data, column_namelist, outputs, grid())
-    # TODO: remove when it has been decided how to handle the parameter arguments that change in the vertical. helpful for debugging
-    # d_sw(delpc, delp, ptc, pt, u, v, w, uc, vc,  ua, va, divgd, mfx, mfy, cx, cy,  crx, cry, xfx, yfx, q_con, z_rat, heat_s, diss_e, dt,column_namelist)
-    # TODO if namelist['hydrostatic' and not namelist['use_old_omega'] and last_step
-    # TODO if namelist['d_ext'] > 0
+    # TODO: Remove when it has been decided how to handle the parameter
+    # arguments that change in the vertical. Helpful for debugging.
+
+    # d_sw(delpc, delp, ptc, pt, u, v, w, uc, vc,  ua, va, divgd, mfx, mfy, cx,
+    # cy,  crx, cry, xfx, yfx, q_con, z_rat, heat_s, diss_e, dt,column_namelist)
+
+    # TODO: If namelist['hydrostatic' and not namelist['use_old_omega'] and last_step.
+
+    # TODO: If namelist['d_ext'] > 0
 
     if spec.namelist.d_con > dcon_threshold or spec.namelist.do_skeb:
         basic.add_term_two_vars(

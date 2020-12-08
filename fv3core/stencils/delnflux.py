@@ -1,4 +1,3 @@
-import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
@@ -109,8 +108,11 @@ def compute_delnflux_no_sg(
         add_diffusive_component(fx, fx2, origin=diffuse_origin, domain=diffuse_domain_x)
         add_diffusive_component(fy, fy2, origin=diffuse_origin, domain=diffuse_domain_y)
     else:
-        # TODO to join these stencils you need to overcompute, making the edges 'wrong', but not actually used, separating now for comparison sanity
-        # diffusive_damp(fx, fx2, fy, fy2, mass, damp,origin=diffuse_origin,domain=(grid.nic + 1, grid.njc + 1, nk))
+        # TODO: To join these stencils you need to overcompute, making the edges
+        # 'wrong', but not actually used, separating now for comparison sanity.
+
+        # diffusive_damp(fx, fx2, fy, fy2, mass, damp, origin=diffuse_origin,
+        # domain=(grid.nic + 1, grid.njc + 1, nk))
         diffusive_damp_x(
             fx, fx2, mass, damp, origin=diffuse_origin, domain=diffuse_domain_x
         )

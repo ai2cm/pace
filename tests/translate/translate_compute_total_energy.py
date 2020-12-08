@@ -1,5 +1,4 @@
 import fv3core.stencils.moist_cv as moist_cv
-import fv3core.utils.gt4py_utils as utils
 
 from .translate import TranslateFortranData2Py
 

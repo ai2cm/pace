@@ -2,12 +2,15 @@ import copy
 import os
 import sys
 
-import fv3gfs.wrapper as wrapper
 import mpi4py
 import numpy
 import numpy as np
 import xarray as xr
 import yaml
+
+import fv3core
+import fv3core._config as spec
+import fv3gfs.wrapper as wrapper
 from fv3gfs.util import (
     X_DIMS,
     X_INTERFACE_DIM,
@@ -23,14 +26,11 @@ from fv3gfs.util import (
     io,
 )
 
-import fv3core
-import fv3core._config as spec
 
-
-sys.path.append("/usr/local/serialbox/python")  # noqa: E40
-sys.path.append("/fv3core/tests/translate")  # noqa: E402
-import serialbox
-import translate as translate
+sys.path.append("/usr/local/serialbox/python")
+sys.path.append("/fv3core/tests/translate")
+import serialbox  # noqa: E402
+import translate as translate  # noqa: E402
 
 
 # May need to run 'ulimit -s unlimited' before running this example
@@ -143,7 +143,8 @@ if __name__ == "__main__":
         comm, CubedSpherePartitioner.from_namelist(nml2)
     )
 
-    # Set the names of quantities in State. This is everything coming from wrapper.initialize
+    # Set the names of quantities in State. This is everything coming from
+    # wrapper.initialize.
     initial_names = [
         "specific_humidity",
         "cloud_water_mixing_ratio",

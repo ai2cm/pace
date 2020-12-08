@@ -133,7 +133,9 @@ def qx_edge_west(qin: sd, dxa: sd, qx: sd):
             + ((2.0 + g_ou) * qin[-1, 0, 0] - qin[-2, 0, 0]) / (1.0 + g_ou)
         )
         # This does not work, due to access of qx that is changing above
-        # qx[1, 0, 0] = (3.0 * (g_in * qin + qin[1, 0, 0]) - (g_in * qx + qx[2, 0, 0])) / (2.0 + 2.0 * g_in)
+
+        # qx[1, 0, 0] = (3.0 * (g_in * qin + qin[1, 0, 0])
+        #     - (g_in * qx + qx[2, 0, 0])) / (2.0 + 2.0 * g_in)
 
 
 @gtstencil()
@@ -257,7 +259,7 @@ def ec3_offsets(corner):
     return i3a, i3b, j3a, j3b
 
 
-# TODO: put into stencil?
+# TODO: Put into stencil?
 def extrapolate_corner_qout(qin, qout, i, j, kstart, nk, corner):
     if not getattr(grid(), corner + "_corner"):
         return
@@ -265,7 +267,7 @@ def extrapolate_corner_qout(qin, qout, i, j, kstart, nk, corner):
     bgrid = np.stack((grid().bgrid1[:, :, 0], grid().bgrid2[:, :, 0]), axis=2)
     agrid = np.stack((grid().agrid1[:, :, 0], grid().agrid2[:, :, 0]), axis=2)
     p0 = bgrid[i, j, :]
-    # TODO: - please simplify
+    # TODO: Please simplify
     i1a, i1b, j1a, j1b = ec1_offsets(corner)
     i2a, i2b, j2a, j2b = ec2_offsets(corner)
     i3a, i3b, j3a, j3b = ec3_offsets(corner)
@@ -308,7 +310,8 @@ def compute_qout_edges(qin, qout, kstart, nk):
 
 def compute_qout_x_edges(qin, qout, kstart, nk):
     # qout bounds
-    # avoid running west/east computation on south/north tile edges, since they'll be overwritten.
+    # avoid running west/east computation on south/north tile edges, since
+    # they'll be overwritten.
     js2 = grid().js + 1 if grid().south_edge else grid().js
     je1 = grid().je if grid().north_edge else grid().je + 1
     dj2 = je1 - js2 + 1
@@ -333,7 +336,8 @@ def compute_qout_x_edges(qin, qout, kstart, nk):
 
 
 def compute_qout_y_edges(qin, qout, kstart, nk):
-    # avoid running south/north computation on west/east tile edges, since they'll be overwritten.
+    # avoid running south/north computation on west/east tile edges, since
+    # they'll be overwritten.
     is2 = grid().is_ + 1 if grid().west_edge else grid().is_
     ie1 = grid().ie if grid().east_edge else grid().ie + 1
     di2 = ie1 - is2 + 1
@@ -362,7 +366,8 @@ def compute_qx(qin, qout, kstart, nk):
         qin.shape, origin=(grid().is_, grid().jsd, kstart)
     )
     # qx bounds
-    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    # avoid running center-domain computation on tile edges, since they'll be
+    # overwritten.
     js = grid().js if grid().south_edge else grid().js - 2
     je = grid().je if grid().north_edge else grid().je + 2
     is_ = grid().is_ + 2 if grid().west_edge else grid().is_
@@ -394,7 +399,8 @@ def compute_qy(qin, qout, kstart, nk):
         qin.shape, origin=(grid().isd, grid().js, kstart)
     )
     # qy bounds
-    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    # avoid running center-domain computation on tile edges, since they'll be
+    # overwritten.
     js = grid().js + 2 if grid().south_edge else grid().js
     je = grid().je - 1 if grid().north_edge else grid().je + 1
     is_ = grid().is_ if grid().west_edge else grid().is_ - 2
@@ -422,7 +428,8 @@ def compute_qy(qin, qout, kstart, nk):
 
 def compute_qxx(qx, qout, kstart, nk):
     qxx = utils.make_storage_from_shape(qx.shape, origin=grid().default_origin())
-    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    # avoid running center-domain computation on tile edges, since they'll be
+    # overwritten.
     js = grid().js + 2 if grid().south_edge else grid().js
     je = grid().je - 1 if grid().north_edge else grid().je + 1
     is_ = grid().is_ + 1 if grid().west_edge else grid().is_
@@ -444,7 +451,8 @@ def compute_qxx(qx, qout, kstart, nk):
 
 def compute_qyy(qy, qout, kstart, nk):
     qyy = utils.make_storage_from_shape(qy.shape, origin=grid().default_origin())
-    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    # avoid running center-domain computation on tile edges, since they'll be
+    # overwritten.
     js = grid().js + 1 if grid().south_edge else grid().js
     je = grid().je if grid().north_edge else grid().je + 1
     is_ = grid().is_ + 2 if grid().west_edge else grid().is_
@@ -465,7 +473,8 @@ def compute_qyy(qy, qout, kstart, nk):
 
 
 def compute_qout(qxx, qyy, qout, kstart, nk):
-    # avoid running center-domain computation on tile edges, since they'll be overwritten.
+    # avoid running center-domain computation on tile edges, since they'll be
+    # overwritten.
     js = grid().js + 1 if grid().south_edge else grid().js
     je = grid().je if grid().north_edge else grid().je + 1
     is_ = grid().is_ + 1 if grid().west_edge else grid().is_
@@ -476,7 +485,7 @@ def compute_qout(qxx, qyy, qout, kstart, nk):
 
 
 def compute(qin, qout, kstart=0, nk=None, replace=False):
-    if nk == None:
+    if nk is None:
         nk = grid().npz - kstart
     extrapolate_corners(qin, qout, kstart, nk)
     if spec.namelist.grid_type < 3:

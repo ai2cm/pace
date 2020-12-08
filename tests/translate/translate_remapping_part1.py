@@ -1,5 +1,4 @@
 import fv3core.stencils.remapping_part1 as remap_part1
-import fv3core.utils.gt4py_utils as utils
 
 from .translate import TranslateFortranData2Py
 

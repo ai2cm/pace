@@ -1,5 +1,4 @@
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
@@ -151,9 +150,11 @@ def compute(
             # dtmp = consv * g_sum(te_2d, grid.area_64)  # global mpi step
             # dtmp = dtmp / (constants.CV_AIR * g_sum(zsum1, grid.area_64))
             raise NotImplementedError(
-                "We do not support consv_te > 0.001 because that would trigger an allReduce"
+                "We do not support consv_te > 0.001 "
+                "because that would trigger an allReduce"
             )
-            # E_Flux = dtmp / (constants.GRAV * pdt * 4. * constants.PI * constants.RADIUS**2)
+            # E_Flux = dtmp / (constants.GRAV * pdt * 4. * constants.PI *
+            # constants.RADIUS**2)
         elif consv < -constants.CONSV_MIN:
             sum_z1(
                 pkz,
@@ -165,7 +166,9 @@ def compute(
                 domain=grid.domain_shape_compute(),
             )
             # E_Flux = consv
-            # dtmp  = E_Flux *  (constants.GRAV * pdt * 4. * constants.PI * constants.RADIUS**2) / (constants.CV_AIR * g_sum(zsum1, grid,.area_64))
+            # dtmp  = E_Flux *  (constants.GRAV * pdt * 4. * constants.PI *
+            # constants.RADIUS**2) / (constants.CV_AIR * g_sum(zsum1,
+            # grid,.area_64))
             raise Exception(
                 "Unimplemented/untested case consv("
                 + str(consv)

@@ -1,9 +1,6 @@
 import copy
 
-import fv3gfs.util as fv3util
-
 import fv3core.stencils.fv_dynamics as fv_dynamics
-import fv3core.utils.gt4py_utils as utils
 
 from .parallel_translate import ParallelTranslate2PyState
 from .translate_dyncore import TranslateDynCore

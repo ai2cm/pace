@@ -1,8 +1,4 @@
-from types import SimpleNamespace
-
-import fv3gfs.util as fv3util
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core._config as spec
 import fv3core.stencils.del2cubed as del2cubed
@@ -42,7 +38,7 @@ def set_omega(delp: sd, delz: sd, w: sd, omga: sd):
         omga = delp / delz * w
 
 
-# TODO replace with something from fv3core.onfig probably, using the field_table
+# TODO: Replace with something from fv3core.onfig probably, using the field_table.
 def tracers_dict(state):
     tracers = {}
     for tracername in utils.tracer_variables:
@@ -105,7 +101,8 @@ def compute_preamble(state, comm):
     )
 
     if state.consv_te > 0 and not state.do_adiabatic_init:
-        # NOTE not run in default configuration (turned off consv_te so we don't need a global allreduce)
+        # NOTE: Not run in default configuration (turned off consv_te so we don't
+        # need a global allreduce).
         print("Compute Total Energy", grid.rank)
         moist_cv.compute_total_energy(
             state.u,
@@ -145,8 +142,6 @@ def compute_preamble(state, comm):
                 state.pfull,
                 comm,
             )
-        # else:
-        #     rayleigh_friction.compute()
 
     if spec.namelist.adiabatic and spec.namelist.kord_tm > 0:
         raise Exception(

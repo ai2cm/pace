@@ -1,11 +1,7 @@
-import math as math
-
-import gt4py.gtscript as gtscript
 import numpy as np
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.remap_profile as remap_profile
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 
@@ -115,7 +111,7 @@ def compute(dp2, tracers, im, km, nq, jslice):
     dm = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
     dm_pos = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
     fac = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
-    # TODO: implement dev_gfs_physics ifdef when we implement compiler defs
+    # TODO: Implement dev_gfs_physics ifdef when we implement compiler defs.
 
     for q in utils.tracer_variables[0:nq]:
         # reset fields

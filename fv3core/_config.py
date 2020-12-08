@@ -2,12 +2,9 @@ import os
 from types import SimpleNamespace
 
 import f90nml
-import gt4py.gtscript as gtscript
 
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.grid import Grid
-
-from .utils import global_config
 
 
 grid = None
@@ -32,7 +29,7 @@ namelist_defaults = {
     "tau_g2v": 900.0,  # graupel sublimation
     "tau_v2g": 21600.0,  # graupel deposition -- make it a slow process
     "sat_adj0": 0.90,  # adjustment factor (0: no, 1: full) during fast_sat_adj
-    "ql_gen": 1.0e-3,  #  max cloud water generation during remapping step if fast_sat_adj = .t.
+    "ql_gen": 1.0e-3,  # max new cloud water during remapping step if fast_sat_adj = .t.
     "ql_mlt": 2.0e-3,  # max value of cloud water allowed from melted cloud ice
     "qs_mlt": 1.0e-6,  # max cloud water due to snow melt
     "ql0_max": 2.0e-3,  # max cloud water value (auto converted to rain)
@@ -46,7 +43,10 @@ namelist_defaults = {
     "tintqs": False,  # use temperature in the saturation mixing in PDF
     "dw_ocean": 0.10,  # base value for ocean
     "dw_land": 0.20,  # base value for subgrid deviation / variability over land
-    "icloud_f": 0,  # cloud scheme 0 - ?, 1: old fvgfs gfdl) mp implementation, 2: binary cloud scheme (0 / 1)
+    # cloud scheme 0 - ?
+    # 1: old fvgfs gfdl) mp implementation
+    # 2: binary cloud scheme (0 / 1)
+    "icloud_f": 0,
     "cld_min": 0.05,  # !< minimum cloud fraction
     "tau_l2v": 300.0,  # cloud water to water vapor (evaporation)
     "tau_v2l": 150.0,  # water vapor to cloud water (condensation)

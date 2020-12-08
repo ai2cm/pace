@@ -1,5 +1,3 @@
-import gt4py as gt
-import numpy as np
 from gt4py.gtscript import __INLINED, PARALLEL, computation, interval, parallel, region
 
 import fv3core._config as spec

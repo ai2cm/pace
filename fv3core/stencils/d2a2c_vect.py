@@ -1,18 +1,10 @@
-import gt4py as gt
 import gt4py.gtscript as gtscript
-import numpy as np
+from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.stencils.a2b_ord4 import (
-    a1,
-    a2,
-    lagrange_interpolation_x,
-    lagrange_interpolation_y,
-    lagrange_x_func,
-    lagrange_y_func,
-)
+from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
 
 
 sd = utils.sd
@@ -159,7 +151,7 @@ def vc_y_edge1(vt: sd, sin_sg4: sd, sin_sg2: sd, vc: sd):
         vc = vt * sin_sg4[0, -1, 0] if vt > 0 else vt * sin_sg2
 
 
-# TODO make this a stencil?
+# TODO: Make this a stencil?
 def edge_interpolate4_x(ua, dxa):
     t1 = dxa[0, :, :] + dxa[1, :, :]
     t2 = dxa[2, :, :] + dxa[3, :, :]
@@ -265,7 +257,7 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
     )
     # Fix the edges
     # Xdir:
-    # TODO, make stencils? need variable offsets
+    # TODO: Make stencils? Need variable offsets.
 
     if grid.sw_corner:
         for i in range(-2, 1):

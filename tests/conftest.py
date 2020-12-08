@@ -3,19 +3,19 @@ import os
 import sys
 import warnings
 
-import fv3gfs.util as fv3util
 import pytest
 import translate
 
 import fv3core
 import fv3core._config
 import fv3core.utils.gt4py_utils
+import fv3gfs.util as fv3util
 from fv3core.utils.mpi import MPI
 
 
 # get MPI environment
-sys.path.append("/usr/local/serialbox/python")  # noqa
-import serialbox
+sys.path.append("/usr/local/serialbox/python")  # noqa: E402
+import serialbox  # noqa: E402
 
 
 GRID_SAVEPOINT_NAME = "Grid-Info"

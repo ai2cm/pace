@@ -1,15 +1,10 @@
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import BACKWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import ArgSpec, gtstencil, state_inputs
-from fv3core.stencils.basic_operations import (
-    copy,
-    copy_stencil,
-    dim,
-    multiply_constant_inout,
-)
+from fv3core.stencils.basic_operations import copy, copy_stencil, dim
 from fv3core.utils.global_constants import (
     C_ICE,
     C_LIQ,
@@ -187,32 +182,47 @@ def m_loop(
         if RI_MAX < ri_ref:
             ri_ref = RI_MAX
 
+    # with computation(BACKWARD):
+    #     with interval(1, 2):
+    #         ri_ref = 4.0 * ri_ref
+    #     with interval(2, 3):
+    #         ri_ref = 2.0 * ri_ref
+    #     # This crashes gt4py, invalid interval, offset_limit default is 2 in
+    #     # make_axis_interval function
+    #     # with interval(3, 4):
+    #     #    ri_ref = 1.5 * ri_ref
+    # with computation(BACKWARD), interval(1, None):
+    #     max_ri_ratio = ri / ri_ref
+    #     if max_ri_ratio < 0.0:
+    #         max_ri_ratio = 0.0
+    #     if ri < ri_ref:
+    #         mc = (
+    #             ratio
+    #             * delp[0, 0, -1]
+    #             * delp
+    #             / (delp[0, 0, -1] + delp)
+    #             * (1.0 - max_ri_ratio) ** 2.0
+    #         )
 
-"""
-    with computation(BACKWARD):
-        with interval(1, 2):
-            ri_ref = 4. * ri_ref
-        with interval(2, 3):
-            ri_ref = 2. * ri_ref
-        #with interval(3, 4):  # This crashes gt4py, invalid interval, offset_limit default is 2 in make_axis_interval function
-        #    ri_ref = 1.5 * ri_ref
-    with computation(BACKWARD),interval(1, None):
-        max_ri_ratio = ri / ri_ref
-        if max_ri_ratio < 0.:
-            max_ri_ratio = 0.
-        if ri < ri_ref:
-            mc = ratio * delp[0, 0, -1] * delp / (delp[0, 0, -1] + delp) * (1. - max_ri_ratio)**2.
 
 @gtstencil()
 def m_loop_hack_interval_3_4(ri: sd, ri_ref: sd, mc: sd, delp: sd, ratio: float):
     with computation(BACKWARD), interval(2, 3):
         ri_ref = 1.5 * ri_ref
         max_ri_ratio = ri / ri_ref
-        if max_ri_ratio < 0.:
-            max_ri_ratio = 0.
+        if max_ri_ratio < 0.0:
+            max_ri_ratio = 0.0
         if ri < ri_ref:
-            mc = ratio * delp[0, 0, -1] * delp / (delp[0, 0, -1] + delp) * (1. - max_ri_ratio)**2
-"""
+            mc = (
+                ratio
+                * delp[0, 0, -1]
+                * delp
+                / (delp[0, 0, -1] + delp)
+                * (1.0 - max_ri_ratio) ** 2
+            )
+
+
+# }
 
 
 @gtstencil()
@@ -231,27 +241,26 @@ def equivalent_mass_flux(ri: sd, ri_ref: sd, mc: sd, delp: sd, ratio: float):
             )
 
 
-# 3d version, doesn't work due to this k-1 value needing to be updated before calculating variables in the k - 1 case
-"""
-@gtstencil()
-def KH_instability_adjustment(ri: sd, ri_ref: sd, mc: sd, q0: sd, delp: sd):
-    with computation(BACKWARD):
-        with interval(-1, None):
-            h0 = 0.
-            if ri < ri_ref:
-                h0 = mc * (q0 - q0[0, 0, -1])
-                q0 = q0 - h0 / delp
-        with interval(1, -1):
-            h0 = 0.
-            if ri[0, 0, 1] < ri_ref[0, 0, 1]:
-                q0 = q0 + h0[0, 0, 1] / delp
-            if ri < ri_ref:
-                h0 = mc * (q0 - q0[0, 0, -1])
-                q0 = q0 - h0 / delp
-        with interval(0, 1):
-            if ri[0, 0, 1] < ri_ref[0, 0, 1]:
-                q0 = q0 + h0[0, 0, 1] / delp
-"""
+# 3d version, doesn't work due to this k-1 value needing to be updated before
+# calculating variables in the k - 1 case.
+# @gtstencil()
+# def KH_instability_adjustment(ri: sd, ri_ref: sd, mc: sd, q0: sd, delp: sd):
+#     with computation(BACKWARD):
+#         with interval(-1, None):
+#             h0 = 0.
+#             if ri < ri_ref:
+#                 h0 = mc * (q0 - q0[0, 0, -1])
+#                 q0 = q0 - h0 / delp
+#         with interval(1, -1):
+#             h0 = 0.
+#             if ri[0, 0, 1] < ri_ref[0, 0, 1]:
+#                 q0 = q0 + h0[0, 0, 1] / delp
+#             if ri < ri_ref:
+#                 h0 = mc * (q0 - q0[0, 0, -1])
+#                 q0 = q0 - h0 / delp
+#         with interval(0, 1):
+#             if ri[0, 0, 1] < ri_ref[0, 0, 1]:
+#                 q0 = q0 + h0[0, 0, 1] / delp
 
 
 @gtstencil()
@@ -398,7 +407,8 @@ def finalize(
         w = w0
 
 
-# TODO replace with something from fv3core.onfig probably, using the field_table. When finalize reperesentation of tracers, adjust this
+# TODO: Replace with something from fv3core.onfig probably, using the
+# field_table. When finalize reperesentation of tracers, adjust this.
 def tracers_dict(state):
     tracers = {}
     for tracername in utils.tracer_variables:
@@ -571,8 +581,10 @@ def compute(state, nq, dt):
             if k == 3:
                 ri_ref *= 1.5
 
-            # work around that gt4py will not accept interval(3, 4), no longer used, mc calc per k
-            # m_loop_hack_interval_3_4(ri, ri_ref, mc, state.delp, ratio, origin=(grid.is_, grid.js, 1), domain=(grid.nic, grid.njc, k_bot - 1))
+            # work around that gt4py will not accept interval(3, 4), no longer
+            # used, mc calc per k.
+            # m_loop_hack_interval_3_4(ri, ri_ref, mc, state.delp, ratio,
+            # origin=(grid.is_, grid.js, 1), domain=(grid.nic, grid.njc, k_bot - 1))
             equivalent_mass_flux(
                 ri, ri_ref, mc, state.delp, ratio, origin=korigin, domain=kdomain
             )

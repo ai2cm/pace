@@ -112,7 +112,7 @@ class TranslateFortranData2Py:
         parameters = [data[key] for key in self.in_vars['parameters']]
         return data_vars + parameters
 
-    #[data[key] for parent_key in ['data_vars', 'parameters'] for key in self.in_vars[parent_key]]
+    #[data[key] for parent_key in ['data_vars', 'parameters'] for key in self.in_vars[parent_key]] # noqa: E501
 
     def make_storage_data_input_vars(self, inputs, storage_vars=None):
         from fv3core._config import grid
@@ -121,7 +121,7 @@ class TranslateFortranData2Py:
         storage = {}
         for d in storage_vars:
             istart, jstart = grid.horizontal_starts_from_shape(inputs[d].shape)
-            storage[d] = self.make_storage_data(np.squeeze(inputs[d]), istart=istart, jstart=jstart)
+            storage[d] = self.make_storage_data(np.squeeze(inputs[d]), istart=istart, jstart=jstart) # noqa: E501
         for p in self.in_vars['parameters'] + self.in_vars['grid_parameters']:
             storage[p] = inputs[p]
             if type(inputs[p]) == np.int64:
@@ -301,7 +301,8 @@ class TranslateGrid:
                 )
         for k, v in self.data.items():
             if type(v) is np.ndarray:
-                # TODO: when grid initialization model exists, may want to use it to inform this
+                # TODO: when grid initialization model exists, may want to use
+                # it to inform this
                 istart, jstart = pygrid.horizontal_starts_from_shape(v.shape)
                 logger.debug(
                     "Storage for Grid variable {}, {}, {}, {}".format(

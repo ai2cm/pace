@@ -1,4 +1,4 @@
-import numpy as np
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, log
 
 import fv3core._config as spec
 import fv3core.stencils.sim1_solver as sim1_solver
@@ -45,7 +45,8 @@ def precompute(
 
 @gtstencil()
 def finalize(pe2: sd, pem: sd, hs: sd, dz: sd, pef: sd, gz: sd):
-    # TODO: we only want to bottom level of hd, so this could be removed once hd0 is a 2d field
+    # TODO: We only want to bottom level of hd, so this could be removed once
+    # hd0 is a 2d field.
     with computation(FORWARD):
         with interval(0, 1):
             hs_0 = hs

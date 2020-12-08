@@ -1,5 +1,5 @@
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import BACKWARD, PARALLEL, computation, interval
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.stencils.delnflux as delnflux
@@ -9,7 +9,6 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy
 from fv3core.stencils.fxadv import ra_x_func, ra_y_func
-from fv3core.utils.corners import fill_4corners
 
 
 sd = utils.sd
@@ -57,8 +56,8 @@ def zh_stencil(area: sd, zh: sd, fx: sd, fy: sd, ra_x: sd, ra_y: sd):
         zh = zh_base(zh, area, fx, fy, ra_x, ra_y)
 
 
-# NOTE: we have not ported the uniform_grid True option as it is never called that way in this model,
-# we have also ignored limite != 0 for the same reason
+# NOTE: We have not ported the uniform_grid True option as it is never called
+# that way in this model. We have also ignored limite != 0 for the same reason.
 @gtstencil()
 def edge_profile(q1: sd, q2: sd, qe1: sd, qe2: sd, dp0: sd, gam: sd):
     with computation(FORWARD):
@@ -169,7 +168,8 @@ def compute(ndif, damp_vtd, dp0, zs, zh, crx, cry, xfx, yfx, wsd, dt):
         origin=(grid.is_, grid.jsd, 0),
         domain=(grid.nic + 1, grid.njd, grid.npz + 1),
     )
-    # edge_python(crx, xfx, crx_adv, xfx_adv, dp0, gam, slice(grid.is_, grid.ie + 2), slice(grid.jsd, grid.jed+1),  qe1_2, gam_2)
+    # edge_python(crx, xfx, crx_adv, xfx_adv, dp0, gam, slice(grid.is_, grid.ie
+    # + 2), slice(grid.jsd, grid.jed+1),  qe1_2, gam_2)
 
     gam = utils.make_storage_from_shape(zs.shape, grid.default_origin())
     edge_profile(

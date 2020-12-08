@@ -1,9 +1,7 @@
+import fv3core.stencils.dyn_core as dyn_core
 import fv3gfs.util as fv3util
 
-import fv3core.stencils.dyn_core as dyn_core
-
 from .parallel_translate import ParallelTranslate2PyState
-from .translate import TranslateFortranData2Py
 
 
 class TranslateDynCore(ParallelTranslate2PyState):
@@ -111,5 +109,6 @@ class TranslateDynCore(ParallelTranslate2PyState):
         del self._base.out_vars["ak"]
         del self._base.out_vars["bk"]
 
-        # TODO - fix edge_interpolate4 in d2a2c_vect to match closer and the variables here should as well
+        # TODO: Fix edge_interpolate4 in d2a2c_vect to match closer and the
+        # variables here should as well.
         self.max_error = 2e-6

@@ -13,9 +13,9 @@ IJK = gtscript.IJK
 IJ = gtscript.IJ
 IK = gtscript.IK
 JK = gtscript.JK
-I = gtscript.I
-J = gtscript.J
-K = gtscript.K
+I = gtscript.I  # noqa: E741
+J = gtscript.J  # noqa: E741
+K = gtscript.K  # noqa: E741
 
 # Union of valid data types (from gt4py.gtscript)
 DTypes = Union[bool, np.bool, int, np.int32, np.int64, float, np.float32, np.float64]
