@@ -7,7 +7,7 @@ tox==3.14.0
 coverage==4.5.4
 Sphinx==1.8.5
 twine==1.14.0
-Click==7.0
+Click==7.1
 f90nml>=1.1.0
 appdirs>=1.4.0
 requests
@@ -15,9 +15,9 @@ sphinx_rtd_theme
 pytest==5.2.2
 pytest-cov==2.8.1
 pytest-subtests==0.3.0
-gcsfs>=0.4.0
+gcsfs>=0.7.0
 google-cloud-storage
-fsspec==0.6.0
+fsspec==0.8.0
 kubernetes==10.0.1
 black==19.10b0
 xarray==0.15.1

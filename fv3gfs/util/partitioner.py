@@ -1,5 +1,6 @@
 from typing import Tuple, Callable, Iterable, Optional, Union, cast, Sequence
 import copy
+import abc
 import functools
 import dataclasses
 from . import constants, utils
@@ -48,7 +49,58 @@ def get_tile_number(tile_rank: int, total_ranks: int) -> int:
     return tile_rank // ranks_per_tile + 1
 
 
-class TilePartitioner:
+class Partitioner(abc.ABC):
+    @abc.abstractmethod
+    def global_extent(self, rank_metadata: QuantityMetadata) -> Tuple[int, ...]:
+        """Return the shape of a full tile representation for the given dimensions.
+
+        Args:
+            metadata: quantity metadata
+
+        Returns:
+            extent: shape of full tile representation
+        """
+        pass
+
+    @abc.abstractmethod
+    def subtile_slice(
+        self,
+        rank: int,
+        global_dims: Sequence[str],
+        global_extent: Sequence[int],
+        overlap: bool = False,
+    ) -> Tuple[Union[int, slice], ...]:
+        """Return the subtile slice of a given rank on an array.
+
+        Global refers to the domain being partitioned. For example, for a partitioning
+        of a tile, the tile would be the "global" domain.
+
+        Args:
+            rank: the rank of the process
+            global_dims: dimensions of the global quantity being partitioned
+            global_extent: extent of the global quantity being partitioned
+            overlap (optional): if True, for interface variables include the part
+                of the array shared by adjacent ranks in both ranks. If False, ensure
+                only one of those ranks (the greater rank) is assigned the overlapping
+                section. Default is False.
+
+        Returns:
+            subtile_slice: the slice of the global compute domain corresponding
+                to the subtile compute domain
+        """
+        pass
+
+    @abc.abstractmethod
+    def subtile_extent(self, global_metadata: QuantityMetadata) -> Tuple[int, ...]:
+        """Return the shape of a single rank representation for the given dimensions."""
+        pass
+
+    @abc.abstractproperty
+    def total_ranks(self) -> int:
+        pass
+
+
+class TilePartitioner(Partitioner):
     def __init__(
         self, layout: Tuple[int, int],
     ):
@@ -73,7 +125,7 @@ class TilePartitioner:
     def total_ranks(self) -> int:
         return self.layout[0] * self.layout[1]
 
-    def tile_extent(self, rank_metadata: QuantityMetadata) -> Tuple[int, ...]:
+    def global_extent(self, rank_metadata: QuantityMetadata) -> Tuple[int, ...]:
         """Return the shape of a full tile representation for the given dimensions.
 
         Args:
@@ -86,42 +138,43 @@ class TilePartitioner:
             rank_metadata.dims, rank_metadata.extent, self.layout
         )
 
-    def subtile_extent(self, tile_metadata: QuantityMetadata) -> Tuple[int, ...]:
+    def subtile_extent(self, global_metadata: QuantityMetadata) -> Tuple[int, ...]:
         """Return the shape of a single rank representation for the given dimensions."""
         return rank_extent_from_tile_metadata(
-            tile_metadata.dims, tile_metadata.extent, self.layout
+            global_metadata.dims, global_metadata.extent, self.layout
         )
 
     def subtile_slice(
         self,
         rank: int,
-        tile_dims: Iterable[str],
-        tile_extent: Iterable[int],
+        global_dims: Sequence[str],
+        global_extent: Sequence[int],
         overlap: bool = False,
-    ) -> Tuple[slice, slice]:
+    ) -> Tuple[slice, ...]:
         """Return the subtile slice of a given rank on an array.
+
+        Global refers to the domain being partitioned. For example, for a partitioning
+        of a tile, the tile would be the "global" domain.
 
         Args:
             rank: the rank of the process
-            tile_metadata: the metadata for a quantity on a tile
+            global_dims: dimensions of the global quantity being partitioned
+            global_extent: extent of the global quantity being partitioned
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
                 section. Default is False.
 
         Returns:
-            y_range: the y range of the array on the tile
-            x_range: the x range of the array on the tile
+            subtile_slice: the slice of the global compute domain corresponding
+                to the subtile compute domain
         """
-        return cast(
-            Tuple[slice, slice],
-            subtile_slice(
-                tile_dims,
-                tile_extent,
-                self.layout,
-                self.subtile_index(rank),
-                overlap=overlap,
-            ),
+        return subtile_slice(
+            global_dims,
+            global_extent,
+            self.layout,
+            self.subtile_index(rank),
+            overlap=overlap,
         )
 
     def on_tile_top(self, rank: int) -> bool:
@@ -256,7 +309,7 @@ def _get_corner(
     )
 
 
-class CubedSpherePartitioner:
+class CubedSpherePartitioner(Partitioner):
     def __init__(self, tile: TilePartitioner):
         """Create an object for fv3gfs cubed-sphere domain decomposition.
         
@@ -499,6 +552,69 @@ class CubedSpherePartitioner:
             n_clockwise_rotations=rotations,
         )
 
+    def global_extent(self, rank_metadata: QuantityMetadata) -> Tuple[int, ...]:
+        """Return the shape of a full cube representation for the given dimensions.
+
+        Args:
+            metadata: quantity metadata
+
+        Returns:
+            extent: shape of full cube representation
+        """
+        return (6,) + tile_extent_from_rank_metadata(
+            rank_metadata.dims, rank_metadata.extent, self.layout
+        )
+
+    def subtile_extent(self, cube_metadata: QuantityMetadata) -> Tuple[int, ...]:
+        """Return the shape of a single rank representation for the given dimensions."""
+        if cube_metadata.dims[0] != constants.TILE_DIM:
+            raise NotImplementedError(
+                "currently only supports tile dimension {constants.TILE_DIM} as the "
+                "first dimension, got dims {cube_metadata.dims}"
+            )
+        return rank_extent_from_tile_metadata(
+            cube_metadata.dims[1:], cube_metadata.extent[1:], self.layout
+        )
+
+    def subtile_slice(
+        self,
+        rank: int,
+        global_dims: Sequence[str],
+        global_extent: Sequence[int],
+        overlap: bool = False,
+    ) -> Tuple[Union[int, slice], ...]:
+        """Return the subtile slice of a given rank on an array.
+
+        Global refers to the domain being partitioned. For example, for a partitioning
+        of a tile, the tile would be the "global" domain.
+
+        Args:
+            rank: the rank of the process
+            global_dims: dimensions of the global quantity being partitioned
+            global_extent: extent of the global quantity being partitioned
+            overlap (optional): if True, for interface variables include the part
+                of the array shared by adjacent ranks in both ranks. If False, ensure
+                only one of those ranks (the greater rank) is assigned the overlapping
+                section. Default is False.
+
+        Returns:
+            subtile_slice: the tuple slice of the global compute domain corresponding
+                to the subtile compute domain
+        """
+        if global_dims[0] != constants.TILE_DIM:
+            raise NotImplementedError(
+                "currently only supports tile dimension {constants.TILE_DIM} as the "
+                "first dimension, got dims {cube_metadata.dims}"
+            )
+        i_tile = self.tile_index(rank)
+        return (i_tile,) + subtile_slice(
+            global_dims[1:],
+            global_extent[1:],
+            self.layout,
+            self.tile.subtile_index(rank),
+            overlap=overlap,
+        )
+
 
 def on_tile_left(subtile_index: Tuple[int, int]) -> bool:
     return subtile_index[1] == 0
@@ -679,7 +795,7 @@ def _index_generator(dims, tile_extent, subtile_index, horizontal_layout):
 
 def subtile_slice(
     dims: Iterable[str],
-    tile_extent: Iterable[int],
+    global_extent: Iterable[int],
     layout: Tuple[int, int],
     subtile_index: Tuple[int, int],
     overlap: bool = False,
@@ -690,7 +806,7 @@ def subtile_slice(
 
     Args:
         dims: dimension names for each axis
-        tile_extent: size of the tile's computational domain
+        global_extent: size of the tile or cube's computational domain
         layout: the (y, x) number of ranks along each tile axis
         subtile_index: the (y, x) position of the rank on the tile
         overlap: whether to assign regions which belong to multiple ranks
@@ -699,7 +815,7 @@ def subtile_slice(
     return_list = []
     # discard last index for interface variables, unless you're the last rank
     # done so that only one rank is responsible for the shared interface point
-    for index in _index_generator(dims, tile_extent, subtile_index, layout):
+    for index in _index_generator(dims, global_extent, subtile_index, layout):
         start = index.i_subtile * index.base_extent
         if index.is_end_index or overlap:
             end = start + index.extent

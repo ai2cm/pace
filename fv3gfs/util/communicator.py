@@ -1,6 +1,6 @@
-from typing import Tuple, Mapping, Optional, cast
-from .quantity import Quantity
-from .partitioner import CubedSpherePartitioner, TilePartitioner
+from typing import Tuple, Mapping, Optional, Sequence, cast
+from .quantity import Quantity, QuantityMetadata
+from .partitioner import CubedSpherePartitioner, TilePartitioner, Partitioner
 from . import constants
 from .boundary import Boundary
 from .rotate import rotate_scalar_data, rotate_vector_data
@@ -33,16 +33,6 @@ def bcast_metadata(comm, array):
     return bcast_metadata_list(comm, [array])[0]
 
 
-class Communicator:
-    def __init__(self, comm):
-        self.comm = comm
-
-    @property
-    def rank(self) -> int:
-        """rank of the current process within this communicator"""
-        return self.comm.Get_rank()
-
-
 class FunctionRequest:
     def __init__(self, function):
         self._function = function
@@ -65,12 +55,15 @@ class HaloUpdateRequest:
             request.wait()
 
 
-class TileCommunicator(Communicator):
-    """Performs communications within a single tile or region of a tile"""
+class Communicator:
+    def __init__(self, comm, partitioner):
+        self.comm = comm
+        self.partitioner: Partitioner = partitioner
 
-    def __init__(self, comm, partitioner: TilePartitioner):
-        self.partitioner = partitioner
-        super(TileCommunicator, self).__init__(comm)
+    @property
+    def rank(self) -> int:
+        """rank of the current process within this communicator"""
+        return self.comm.Get_rank()
 
     def _Scatter(self, numpy, sendbuf, recvbuf, **kwargs):
         with send_buffer(numpy.empty, sendbuf) as send, recv_buffer(
@@ -107,12 +100,7 @@ class TileCommunicator(Communicator):
             metadata = self.comm.bcast(None, root=constants.ROOT_RANK)
         shape = self.partitioner.subtile_extent(metadata)
         if recv_quantity is None:
-            recv_quantity = Quantity(
-                metadata.np.empty(shape, dtype=metadata.dtype),
-                dims=metadata.dims,
-                units=metadata.units,
-                gt4py_backend=metadata.gt4py_backend,
-            )
+            recv_quantity = self._get_scatter_recv_quantity(shape, metadata)
         if self.rank == constants.ROOT_RANK:
             send_quantity = cast(Quantity, send_quantity)
             with array_buffer(
@@ -123,8 +111,8 @@ class TileCommunicator(Communicator):
                 for rank in range(0, self.partitioner.total_ranks):
                     subtile_slice = self.partitioner.subtile_slice(
                         rank,
-                        tile_dims=metadata.dims,
-                        tile_extent=metadata.extent,
+                        global_dims=metadata.dims,
+                        global_extent=metadata.extent,
                         overlap=True,
                     )
                     sendbuf[rank, :] = send_quantity.view[subtile_slice]
@@ -138,6 +126,32 @@ class TileCommunicator(Communicator):
             self._Scatter(
                 metadata.np, None, recv_quantity.view[:], root=constants.ROOT_RANK
             )
+        return recv_quantity
+
+    def _get_gather_recv_quantity(
+        self, global_extent: Sequence[int], send_metadata: QuantityMetadata
+    ) -> Quantity:
+        """Initialize a Quantity for use when receiving global data during gather"""
+        recv_quantity = Quantity(
+            send_metadata.np.empty(global_extent, dtype=send_metadata.dtype),
+            dims=send_metadata.dims,
+            units=send_metadata.units,
+            origin=tuple([0 for dim in send_metadata.dims]),
+            extent=global_extent,
+            gt4py_backend=send_metadata.gt4py_backend,
+        )
+        return recv_quantity
+
+    def _get_scatter_recv_quantity(
+        self, shape: Sequence[int], send_metadata: QuantityMetadata
+    ) -> Quantity:
+        """Initialize a Quantity for use when receiving subtile data during scatter"""
+        recv_quantity = Quantity(
+            send_metadata.np.empty(shape, dtype=send_metadata.dtype),
+            dims=send_metadata.dims,
+            units=send_metadata.units,
+            gt4py_backend=send_metadata.gt4py_backend,
+        )
         return recv_quantity
 
     def gather(
@@ -167,22 +181,17 @@ class TileCommunicator(Communicator):
                     root=constants.ROOT_RANK,
                 )
                 if recv_quantity is None:
-                    tile_extent = self.partitioner.tile_extent(send_quantity.metadata)
-                    recv_quantity = Quantity(
-                        send_quantity.np.empty(
-                            tile_extent, dtype=send_quantity.data.dtype
-                        ),
-                        dims=send_quantity.dims,
-                        units=send_quantity.units,
-                        origin=tuple([0 for dim in send_quantity.dims]),
-                        extent=tile_extent,
-                        gt4py_backend=send_quantity.gt4py_backend,
+                    global_extent = self.partitioner.global_extent(
+                        send_quantity.metadata
+                    )
+                    recv_quantity = self._get_gather_recv_quantity(
+                        global_extent, send_quantity.metadata
                     )
                 for rank in range(self.partitioner.total_ranks):
                     to_slice = self.partitioner.subtile_slice(
                         rank,
-                        tile_dims=recv_quantity.dims,
-                        tile_extent=recv_quantity.extent,
+                        global_dims=recv_quantity.dims,
+                        global_extent=recv_quantity.extent,
                         overlap=True,
                     )
                     recv_quantity.view[to_slice] = recvbuf[rank, :]
@@ -275,6 +284,20 @@ class TileCommunicator(Communicator):
         return recv_state
 
 
+class TileCommunicator(Communicator):
+    """Performs communications within a single tile or region of a tile"""
+
+    def __init__(self, comm, partitioner: TilePartitioner):
+        """Initialize a TileCommunicator.
+        
+        Args:
+            comm: mpi4py.Comm object
+            partitioner: tile partitioner
+        """
+        super(TileCommunicator, self).__init__(comm, partitioner)
+        self.partitioner: TilePartitioner = partitioner
+
+
 class CubedSphereCommunicator(Communicator):
     """Performs communications within a cubed sphere"""
 
@@ -288,12 +311,12 @@ class CubedSphereCommunicator(Communicator):
             comm: mpi4py.Comm object
             partitioner: cubed sphere partitioner
         """
-        self.partitioner: CubedSpherePartitioner = partitioner
         self.timer: Timer = Timer()
         self._tile_communicator: Optional[TileCommunicator] = None
         self._boundaries: Optional[Mapping[int, Boundary]] = None
         self._last_halo_tag = 0
-        super(CubedSphereCommunicator, self).__init__(comm)
+        super(CubedSphereCommunicator, self).__init__(comm, partitioner)
+        self.partitioner: CubedSpherePartitioner = partitioner
 
     def _get_halo_tag(self) -> int:
         self._last_halo_tag += 1
@@ -322,6 +345,36 @@ class CubedSphereCommunicator(Communicator):
             color=self.partitioner.tile_index(self.rank), key=self.rank
         )
         self._tile_communicator = TileCommunicator(tile_comm, self.partitioner.tile)
+
+    def _get_gather_recv_quantity(
+        self, global_extent: Sequence[int], send_metadata: QuantityMetadata
+    ):
+        """Initialize a Quantity for use when receiving global data during gather"""
+        # needs to change the quantity dimensions since we add a "tile" dimension,
+        # unlike for tile scatter/gather which retains the same dimensions
+        recv_quantity = Quantity(
+            send_metadata.np.empty(global_extent, dtype=send_metadata.dtype),
+            dims=(constants.TILE_DIM,) + send_metadata.dims,
+            units=send_metadata.units,
+            origin=(0,) + tuple([0 for dim in send_metadata.dims]),
+            extent=global_extent,
+            gt4py_backend=send_metadata.gt4py_backend,
+        )
+        return recv_quantity
+
+    def _get_scatter_recv_quantity(
+        self, shape: Sequence[int], send_metadata: QuantityMetadata
+    ):
+        """Initialize a Quantity for use when receiving subtile data during scatter"""
+        # needs to change the quantity dimensions since we remove a "tile" dimension,
+        # unlike for tile scatter/gather which retains the same dimensions
+        recv_quantity = Quantity(
+            send_metadata.np.empty(shape, dtype=send_metadata.dtype),
+            dims=send_metadata.dims[1:],
+            units=send_metadata.units,
+            gt4py_backend=send_metadata.gt4py_backend,
+        )
+        return recv_quantity
 
     def halo_update(self, quantity: Quantity, n_points: int):
         """Perform a halo update on a quantity.

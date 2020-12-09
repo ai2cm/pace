@@ -18,6 +18,11 @@ in the `coupler_nml` namelist.
 - Quantity.data is now guaranteed to be a numpy or cupy array matching its `.np` module, and will no longer be a gt4py Storage
 - Quantity accepts a `gt4py_backend` on initialize which is used to create its `.storage` if one was not used on initialize
 - parent MPI rank now referred to as "root" rank in variable names and documentation
+- Added TILE_DIM constant for tile dimension of global quantities
+- Added Partitioner base class implementing features necessary for scatter/gather
+- Moved scatter and gather from TileCommunicator to the Communicator base class, so its code can be re-used by the CubedSphereCommunicator
+- Implemented subtile_slice, global_extent, and subtile_extent routines on CubedSpherePartitioner necessary for scatter/gather in CubedSphereCommunicator
+- Renamed argument `tile_extent` and `tile_dims` to `global_extent` and `global_dims` in routines to refer generically to the tile in the case of tile scatter/gather or cube in the case of cube scatter/gather
 - Fixed a bug where initializing a Quantity with a numpy array and a gpu backend would give CPUStorage
 - raise TypeError if initializing a quantity with both a storage and a gt4py_backend argument
 - eagerly create storage object when initializing Quantity

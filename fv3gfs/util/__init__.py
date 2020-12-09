@@ -20,6 +20,7 @@ from .constants import (
     Z_DIM,
     Z_INTERFACE_DIM,
     Z_SOIL_DIM,
+    TILE_DIM,
     X_DIMS,
     Y_DIMS,
     Z_DIMS,
