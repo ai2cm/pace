@@ -329,6 +329,29 @@ pre-commit installed at .git/hooks/pre-commit
 
 As a convenience, the `lint` target of the top-level makefile executes `pre-commit run --all-files`.
 
+
+## GT4Py Version
+
+FV3Core does not actually use the [GridTools/gt4py](https://github.com/gridtools/gt4py) main, it instead uses a Vulcan Climate Modeling development branch.
+This is publically available version at [VCM/gt4py](https://github.com/vulcanclimatemodeling/gt4py).
+
+Situation: There is a new stable feature in a gt4py PR, but it is not yet merged into the GridTools/gt4py main branch.
+[branches.cfg](https://github.com/VulcanClimateModeling/gt4py/blob/develop/branches.cfg) lists these features.
+Steps:
+
+1. Add any new branches to `branches.cfg`
+2. Rebuild the develop branch, either:
+  a. `make_develop gt4py-dev path/to/branches.cfg` (you may have to resolve conflicts...)
+  b. Adding new commits on top of the existing develop branch (e.g. merge or cherry-pick)
+3. Force push to the develop branch: `git push -f upstream develop`
+
+The last step will launch Jenkins tests. If these pass:
+
+1. Create a git tag: `git tag v-$(git rev-parse --short HEAD)`
+2. Push the tag: `git push upstream --tags`
+3. Make a PR to [VCM/gt4py](https://github.com/vulcanclimatemodeling/fv3core) that updates the version in `docker/Makefile` to the new tag.
+
+
 ## License
 
 FV3Core is provided under the terms of the [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html) license.
