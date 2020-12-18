@@ -1,8 +1,9 @@
 
 # update this if you need everything to rebuild for backwards-incompatible changes
-VERSION = v0.2.0
+VERSION = v0.3.0
 GCR_URL ?= us.gcr.io/vcm-ml
 CUDA ?= n
+TEST_ARGS ?=-v -s -rsx
 FORTRAN_NAME = fv3core-build-fortran
 WRAPPER_NAME = fv3core-build-wrapper
 FV3CORE_NAME = fv3core
@@ -14,26 +15,39 @@ FV3CORE_DOCKERFILE = Dockerfile
 # fv3core or fv3core-wrapper
 FV3CORE_TARGET ?= fv3core
 
-# base images w/ or w/o CUDA
+BASE_IMAGE = ubuntu:18.04
+# If trying to test the gtcuda backend, override the CUDA option
+# and use the cuda based image
+ifneq (,$(findstring gtcuda,$(TEST_ARGS)))
+    CUDA_FLAGS = --gpus all
+    CUDA = y
+else
+    CUDA_FLAGS =
+endif
+
+
+# base environment images w/ or w/o CUDA
 ifeq ($(CUDA),n)
-	BASE_IMAGE = ubuntu:19.10
-	TAG_NAME = $(VERSION)-gnu9-mpich314-nocuda-develop
+	BASE_IMAGE_ENV = ubuntu:18.04
+	TAG_NAME = $(VERSION)-gnu7-mpich314-nocuda-develop
 	GT4PY_OPTIONALS = ""
 	ENV_CUDA_PATH = ""
 else
-	BASE_IMAGE = nvidia/cuda:10.2-devel-ubuntu18.04
-	TAG_NAME = $(VERSION)-gnu8-mpich314-cuda102-develop
+	BASE_IMAGE_ENV = nvidia/cuda:10.2-devel-ubuntu18.04
+	TAG_NAME = $(VERSION)-gnu7-mpich314-cuda102-develop
 	GT4PY_OPTIONALS = "[cuda102]"
-	ENV_CUDA_PATH = /usr/local/cuda/10.2
+	ENV_CUDA_PATH = /usr/local/cuda/
 endif
-BUILD_ARGS += --network host --build-arg BASE_IMAGE=$(BASE_IMAGE)
+
+BUILD_ARGS += --network host --build-arg BASE_IMAGE=$(BASE_IMAGE)  --build-arg BASE_IMAGE_ENV=$(BASE_IMAGE_ENV)
 
 # dependency image names, update sha to update version
-GT4PY_IMAGE ?= $(GCR_URL)/gt4py-src:$(TAG_NAME)
-MPI_IMAGE ?= $(GCR_URL)/mpi-build:$(TAG_NAME)
-FMS_IMAGE ?= $(GCR_URL)/fms-build:$(TAG_NAME)
-ESMF_IMAGE ?= $(GCR_URL)/esmf-build:$(TAG_NAME)
-SERIALBOX_IMAGE ?= $(GCR_URL)/serialbox-build:$(TAG_NAME)
+TAG_SRC=$(VERSION)-srcfiles
+GT4PY_IMAGE ?= $(GCR_URL)/gt4py-src:$(TAG_SRC)
+MPI_IMAGE ?= $(GCR_URL)/mpi-build:$(TAG_SRC)
+FMS_IMAGE ?= $(GCR_URL)/fms-build:$(TAG_SRC)
+ESMF_IMAGE ?= $(GCR_URL)/esmf-build:$(TAG_SRC)
+SERIALBOX_IMAGE ?= $(GCR_URL)/serialbox-build:$(TAG_SRC)
 ENVIRONMENT_IMAGE ?= $(GCR_URL)/fv3core-environment:$(TAG_NAME)
 
 # built image names

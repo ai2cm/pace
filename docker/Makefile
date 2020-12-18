@@ -4,6 +4,7 @@ include Makefile.image_names
 DOCKER_BUILDKIT=1
 
 BUILD_ARGS += \
+	--network host \
 	--build-arg FMS_IMAGE=$(FMS_IMAGE) \
 	--build-arg ESMF_IMAGE=$(ESMF_IMAGE) \
 	--build-arg MPI_IMAGE=$(MPI_IMAGE) \
@@ -19,8 +20,8 @@ BUILD_ARGS += \
 CORE_TAR=$(TAG_NAME)$(JENKINS_TAG).tar
 CORE_BUCKET_LOC=gs://vcm-jenkins/$(CORE_TAR)
 
-CORE_DEPS_IMAGES = $(MPI_IMAGE) $(SERIALBOX_IMAGE) $(GT4PY_IMAGE) $(ENVIRONMENT_IMAGE)
-DEPS_IMAGES ?= $(CORE_DEPS_IMAGES) $(FMS_IMAGE) $(ESMF_IMAGE)
+CORE_DEPS_IMAGES = $(SERIALBOX_IMAGE) $(GT4PY_IMAGE) $(ENVIRONMENT_IMAGE)
+DEPS_IMAGES ?= $(CORE_DEPS_IMAGES) $(FMS_IMAGE) $(ESMF_IMAGE) $(MPI_IMAGE)
 
 build: fv3core_image
 
@@ -45,7 +46,7 @@ full_fortran_image:
 	FMS_IMAGE=fv3gfs-fms ESMF_IMAGE=fv3gfs-esmf MPI_IMAGE=fv3gfs-mpi $(MAKE) fortran_image
 
 fv3core_image: ## build production container image
-	docker build \
+	DOCKER_BUILDKIT=1 docker build \
 		$(BUILD_ARGS) \
 		-f $(FV3CORE_DOCKERFILE) \
 		-t $(FV3CORE_IMAGE) \
@@ -60,10 +61,21 @@ build_deps: build_core_deps ## build container images of all dependencies
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(ESMF_IMAGE) $(BUILD_ARGS) --target fv3gfs-esmf ../external/fv3gfs-fortran
 
 build_core_deps: ## build container images of dependencies
-	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(ENVIRONMENT_IMAGE) $(BUILD_ARGS) --target fv3core-environment .
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(MPI_IMAGE) $(BUILD_ARGS) --target fv3gfs-mpi ../external/fv3gfs-fortran
+	$(MAKE) build_core_env
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(SERIALBOX_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment-serialbox .
+	$(MAKE) build_gt4py
+
+build_gt4py:
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(GT4PY_IMAGE) $(BUILD_ARGS) --target gt4py-src .
+
+push_gt4py:
+	if [ ! -z $$(docker images -q $(GT4PY_IMAGE)) ]; then \
+		docker push $(GT4PY_IMAGE); \
+	fi
+
+build_core_env:
+	 docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(ENVIRONMENT_IMAGE) $(BUILD_ARGS) --target fv3core-environment .
 
 push_deps: ## push container images of dependencies to GCP
 	for IMAGE in $(DEPS_IMAGES); \

@@ -1,13 +1,10 @@
 ARG FORTRAN_IMAGE
-ARG BASE_IMAGE
-ARG MPI_IMAGE
 ARG FMS_IMAGE
 ARG ESMF_IMAGE
 ARG SERIALBOX_IMAGE
 ARG GT4PY_IMAGE
 ARG ENVIRONMENT_IMAGE
 
-FROM $MPI_IMAGE as mpi_image
 FROM $FORTRAN_IMAGE as fortran_image
 FROM $ESMF_IMAGE as esmf_image
 FROM $FMS_IMAGE as fms_image
@@ -16,9 +13,6 @@ FROM $GT4PY_IMAGE AS gt4py_image
 from $ENVIRONMENT_IMAGE AS environment
 
 FROM environment as fv3core
-
-COPY --from=mpi_image /mpich-3.1.4 /mpich-3.1.4
-RUN cd /mpich-3.1.4 && make install && ldconfig && rm -rf /mpich-3.1.4
 
 RUN pip3 install --upgrade pip setuptools wheel && \
     ln -s /bin/python3 /bin/python && \
@@ -37,7 +31,9 @@ COPY --from=gt4py_image /gt4py /gt4py
 ENV BOOST_HOME=/usr/include/boost
 ARG CPPFLAGS="-I${BOOST_HOME} -I${BOOST_HOME}/boost"
 ARG GT4PY_OPTIONALS=""
-RUN pip install --no-cache-dir -c /constraints.txt "/gt4py${GT4PY_OPTIONALS}" && \
+
+RUN if [ ! -z `echo $GT4PY_OPTIONALS | grep cuda` ] ; then pip install cupy-cuda102==7.7.0 ; else echo Not installing cuda ; fi
+RUN pip install  --no-cache-dir -c /constraints.txt "/gt4py${GT4PY_OPTIONALS}" && \
     rm -rf /gt4py && \
     python3 -m gt4py.gt_src_manager install
 
