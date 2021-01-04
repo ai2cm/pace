@@ -290,15 +290,15 @@ if __name__ == "__main__":
             wrapper.flags.ks,
         )
         if spec.namelist.fv_sg_adj > 0:
-            state["eastward_wind_tendency"] = u_tendency
-            state["northward_wind_tendency"] = v_tendency
+            state["eastward_wind_tendency_due_to_physics"] = u_tendency
+            state["northward_wind_tendency_due_to_physics"] = v_tendency
             fv3core.fv_subgridz(state, n_tracers, dt_atmos)
 
         newstate = {}
         for name, quantity in state.items():
             if name not in [
-                "eastward_wind_tendency",
-                "northward_wind_tendency",
+                "eastward_wind_tendency_due_to_physics",
+                "northward_wind_tendency_due_to_physics",
                 "turbulent_kinetic_energy",
             ]:
                 newstate[name] = quantity

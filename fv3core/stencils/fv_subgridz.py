@@ -437,8 +437,8 @@ def tracers_dict(state):
     ArgSpec("qo3mr", "ozone_mixing_ratio", "kg/kg", intent="inout"),
     ArgSpec("qsgs_tke", "turbulent_kinetic_energy", "m**2/s**2", intent="inout"),
     ArgSpec("qcld", "cloud_fraction", "", intent="inout"),
-    ArgSpec("u_dt", "eastward_wind_tendency", "m/s**2", intent="inout"),
-    ArgSpec("v_dt", "northward_wind_tendency", "m/s**2", intent="inout"),
+    ArgSpec("u_dt", "eastward_wind_tendency_due_to_physics", "m/s**2", intent="inout"),
+    ArgSpec("v_dt", "northward_wind_tendency_due_to_physics", "m/s**2", intent="inout"),
 )
 def compute(state, nq, dt):
     tracers_dict(state)  # TODO get rid of this when finalize representation of tracers
