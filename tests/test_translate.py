@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import logging
 import os
 
@@ -48,6 +49,11 @@ def success_array(computed_data, ref_data, eps, ignore_near_zero_errors):
 
 def success(computed_data, ref_data, eps, ignore_near_zero_errors):
     return np.all(success_array(computed_data, ref_data, eps, ignore_near_zero_errors))
+
+
+def platform():
+    in_docker = os.environ.get("IN_DOCKER", False)
+    return "docker" if in_docker else "metal"
 
 
 def sample_wherefail(
@@ -257,14 +263,26 @@ def test_mock_parallel_savepoint(
     assert failing_names == [], f"names tested: {list(testobj.outputs.keys())}"
 
 
+def hash_result_data(result, data_keys):
+    hashes = {}
+    for k in data_keys:
+        hashes[k] = hashlib.sha1(
+            np.ascontiguousarray(gt_utils.asarray(result[k]))
+        ).hexdigest()
+    return hashes
+
+
 @pytest.mark.parallel
 @pytest.mark.skipif(
     MPI is not None and MPI.COMM_WORLD.Get_size() == 1,
     reason="Not running in parallel with mpi",
 )
 def test_parallel_savepoint(
+    data_regression,
+    data_path,
     testobj,
     test_name,
+    test_case,
     grid,
     serializer,
     savepoint_in,
@@ -275,9 +293,12 @@ def test_parallel_savepoint(
     failure_stride,
     subtests,
     caplog,
+    python_regression,
     xy_indices=False,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")
+    if python_regression and not testobj.python_regression:
+        pytest.xfail(f"python_regression not set for test {test_name}")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     # Reduce error threshold for GPU
@@ -287,11 +308,19 @@ def test_parallel_savepoint(
     input_data = testobj.collect_input_data(serializer, savepoint_in)
     # run python version of functionality
     output = testobj.compute_parallel(input_data, communicator)
+    out_vars = set(testobj.outputs.keys())
+    out_vars.update(list(testobj._base.out_vars.keys()))
+    if python_regression and testobj.python_regression:
+        filename = f"python_regressions/{test_case}_{backend}_{platform()}.yml"
+        filename = filename.replace("=", "_")
+        data_regression.check(
+            hash_result_data(output, out_vars),
+            fullpath=os.path.join(data_path, filename),
+        )
+        return
     failing_names = []
     passing_names = []
     ref_data = {}
-    out_vars = set(testobj.outputs.keys())
-    out_vars.update(list(testobj._base.out_vars.keys()))
     for varname in out_vars:
         ref_data[varname] = []
         ref_data[varname].append(serializer.read(varname, savepoint_out))

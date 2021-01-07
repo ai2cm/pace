@@ -83,6 +83,11 @@ if grep -q "parallel" <<< "${script}"; then
     if grep -q "ranks" <<< "${optarg2}"; then
 	export NUM_RANKS=`echo ${optarg2} | grep -o -E '[0-9]+ranks' | grep -o -E '[0-9]+'`
 	echo "Setting NUM_RANKS=${NUM_RANKS}"
+	if grep -q "cuda" <<< "${optarg}" ; then
+            export MPICH_RDMA_ENABLED_CUDA=1
+        else
+            export MPICH_RDMA_ENABLED_CUDA=0
+        fi
 	if [ -f ${scheduler_script} ] ; then
 	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
 	    sed -i 's|45|30|g' ${scheduler_script}

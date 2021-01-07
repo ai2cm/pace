@@ -108,7 +108,7 @@ All of the make endpoints involved running tests can be prefixed with the `TEST_
 * `--data_path` - path to where you have the `Generator*.dat` and `*.json` serialization regression data. Defaults to current directory.
 
 * `--backend` - which backend to use for the computation. Defaults to numpy. Other options: gtmc, gtcuda, gtx86.
-
+* `--python_regression` - Run the tests that have Python based regression data. Only applies to running parallel tests (tests_mpi)
 Pytest provides a lot of options, which you can see by `pytest --help`. Here are some
 common options for our tests, which you can add to `TEST_ARGS`:
 

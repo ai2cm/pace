@@ -8,7 +8,7 @@ from .parallel_translate import ParallelTranslateBaseSlicing
 
 
 class TranslateFVDynamics(ParallelTranslateBaseSlicing):
-
+    python_regression = True
     inputs = {
         "q_con": {
             "name": "total_condensate_mixing_ratio",

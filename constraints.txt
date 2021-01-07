@@ -59,6 +59,7 @@ pytest-forked==1.3.0      # via pytest-xdist
 pytest-subtests==0.3.2    # via -r requirements.txt
 pytest-xdist==2.1.0       # via -r requirements.txt
 pytest==6.1.1             # via -r requirements.txt, pytest-cov, pytest-dependency, pytest-forked, pytest-subtests, pytest-xdist
+pytest-regressions==2.1.1 # via -r requirements.txt
 python-dateutil==2.8.1    # via pandas
 pytz==2020.1              # via pandas
 pyyaml==5.3.1             # via fv3config, pre-commit

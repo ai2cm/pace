@@ -26,7 +26,7 @@ def ensure_3d_dims(dims_in):
 class ParallelTranslate:
 
     max_error = TranslateFortranData2Py.max_error
-
+    python_regression = False
     inputs = {}
     outputs = {}
 

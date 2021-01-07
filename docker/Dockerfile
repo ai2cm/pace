@@ -54,7 +54,7 @@ RUN chmod +x /entrypoint.sh && \
 
 ARG ENV_CUDA_PATH=""
 ENV CUDA_PATH=${ENV_CUDA_PATH}
-
+ENV IN_DOCKER=True
 ENTRYPOINT [ "/entrypoint.sh" ]
 
 FROM fv3core AS fv3core_wrapper
