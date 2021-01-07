@@ -7,18 +7,40 @@ The code here includes regression test data of computation units coming from ser
 
 **WARNING** This repo is under active development and relies on code and data that is not publicly available at this point.
 
-## Getting started
+## QuickStart
 
-Use the `tests` target of the Makefile to run the unit tests.
+1. Ensure you have docker installed and available for building and running and has access to the VCM cloud
+
+Be sure to complete any required post-installation instructions (e.g. [for linux](https://docs.docker.com/engine/install/linux-postinstall/)). Also [authorize Docker to pull from gcr](https://cloud.google.com/container-registry/docs/advanced-authentication). Your user will need to have read access to the `us.gcr.io/vcm-ml` repository.
+
+2.  You can build the image, download the data, and run the tests using:
 
 ```shell
 $ make tests
 ```
-This will pull the test data from the Google storage bucket (using the `make get_test_data`) if it does not exist locally yet, build the fv3core docker image, and run all of the sequential tests using that image.
 
-See the [Unit Testing]() section below for options.
+If you want to develop code, you should also install the linting requirements and git hooks locally
 
-If you'd like to run MPI parallel tests (which are needed for parts of the code with halo updates), run
+```shell
+$ pip install -c constraints.txt -r requirements_lint.txt
+$ pre-commit install
+
+## Getting started, in more detail
+If you want to build the main fv3core docker image, run
+
+```shell
+$ make build
+```
+
+If you want to download test data run
+
+```shell
+$ make get_test_data
+```
+
+And the c12_6ranks_standard data will download into the `test_data` directory
+
+MPI parallel tests (that run that way to exercise halo updates in the model) can also be run with:
 
 ```shell
 $ make tests_mpi
@@ -47,12 +69,14 @@ There are `push_environment` and `rebuild_environment` targets, but these should
 If you want to run different test data, discover the possible options with
 ```shell
 $ make list_test_data_options
-
+```
 This will list the storage buckets in the cloud. Then to run one of them, set EXPERIMENT to the folder name of the data you'd like to use:
+
 e.g.
 ```shell
 $EXPERIMENT=c48_6ranks_standard make tests
 ```
+
 If you choose an experiment with a different number of ranks than 6, also set `NUM_RANKS=<num ranks>`
 
 ## Testing interactively outside the container
@@ -152,7 +176,7 @@ By convention, we name these `fv3core/stencils/<lower case stencil name>.py`
 $ make dev_tests TEST_ARGS="-–which_modules=<stencil name(s)>"
 ```
 
-
+**Please also review the [Porting conventions](#porting-conventions) section for additional explanation**
 ## Installation
 
 To build the `us.gcr.io/vcm-ml/fv3core` image with required dependencies for running the Python code, run
@@ -317,7 +341,7 @@ This file is committed to the repository, and gives more reproducible tests if a
 To develop fv3core, you need to install the linting requirements in `requirements_lint.txt`. To install the pinned versions, use:
 
 ```shell
-$ pip install -r requirements_lint.txt -c constraints.txt
+$ pip install -c constraints.txt -r requirements_lint.txt
 ```
 
 This adds `pre-commit`, which we use to lint and enforce style on the code. The first time you install `pre-commit`, install its git hooks using:
@@ -328,9 +352,12 @@ pre-commit installed at .git/hooks/pre-commit
 ```
 
 As a convenience, the `lint` target of the top-level makefile executes `pre-commit run --all-files`.
+Linting, which formats files and checks for some style conventions, is required, as the same checks are the first step in the continuous integration testing that happens when creating a pull request.
+Linting locally saves time and literal energy, since CI tests do not have to be launched so many times!
 
+ Please see the 'Development Guidelines' below for more information on the structure of the code to align your new code with the current conventions, as well as the CONTRIBUTING.md document for style guidelines.
 
-## GT4Py Version
+## GT4Py version
 
 FV3Core does not actually use the [GridTools/gt4py](https://github.com/gridtools/gt4py) main, it instead uses a Vulcan Climate Modeling development branch.
 This is publically available version at [VCM/gt4py](https://github.com/vulcanclimatemodeling/gt4py).
@@ -351,7 +378,108 @@ The last step will launch Jenkins tests. If these pass:
 2. Push the tag: `git push upstream --tags`
 3. Make a PR to [VCM/gt4py](https://github.com/vulcanclimatemodeling/fv3core) that updates the version in `docker/Makefile` to the new tag.
 
-
 ## License
-
 FV3Core is provided under the terms of the [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html) license.
+
+# Development guidelines
+
+## File structure / conventions
+The main functionality of the FV3 dynamical core, which has been ported from the Fortran version in the fv3gfs-fortran repo, is defined using GT4py stencils and python 'compute' functions in fv3core/stencils. The core is comprised of units of calculations defined for regression testing. These were initially generally separated into distinct files in fv3core/stencils with corresponding files in tests/translate/translate_<unit>.py defining the translation of variables from Fortran to Python. Exceptions exist in cases where topical and logical grouping allowed for code reuse. As refactors optimize the model, these units may be merged to occupy the same files and even methods/stencils, but the units should still be tested separately, unless determined to be redundant.
+
+The core has most of its calculations happening in GT4py stencils, but there are still several instances of operations happening in Python directly, which will need to be replaced with GT4py code for optimal performance.
+
+The 'units' fv_dynamics and fv_subgridz can be called by fv3gfs-wrapper to run the FV3core model using Pythong wrapped fortran for code not ported to GT4py at the moment.
+
+The namelist and grid are global variables defined in fv3core/_config.py The namelist is 'flattened' so that the grouping name of the option is not required to access the data (we may want to change this).
+
+The grid variables are mostly 2d variables and are 'global' to the model thread per mpi rank. The grid object also contains domain and layout information relevant to the current rank being operated on.
+
+Utility functions in `fv3core/utils/` include:
+  - `gt4py_utils.py`:
+    - default gt4py and model settings
+    - methods for generating gt4py storages
+    - methods for using numpy and cupy arrays in python functions that have not been put into GT4py
+    - methods for handling complex patterns that did not immediately map to gt4py, and will mostly be removed with future refactors (e.g. k_split_run)
+    - some general model math computations (e.g. great_circle_dist), that will eventually be put into gt4py with a future refactor
+  - `grid.py`:
+    - A Grid class definition that provides information about the grid layout, current tile informationm access to grid variables used globally, and convenience methods related to tile indexing, origins and domains commonly used
+    - A grid is defined for each MPI rank (minimum 6 ranks, 1 for each tile face of the cubed sphere grid represnting the whole Earth)
+    - Also provides functionality for generating a Quantity object (used to interface with the fv3gfs-wrapper, that allows us to run the full model, not just the dynamical core)
+  - `corners`: port of corner calculations, initially direct Python calculations, being replaced with GT4py gtscript functions as the GT4py regions feature is implemented
+  - `mpi.py`: a wrapper for importing mpi4py when available
+  - `global_constants.py`: constants for use throughout the model
+  - `typing.py`: Clean names for common types we use in the model. This is new and
+    hasn't been adopted throughout the model yet, but will eventually be our
+    standard. A shorthand 'sd' has been used in the intial version.
+
+The `tests/` directory currently includes a framework for translating fields serialized (using
+Serialbox from GridTools) from a Fortran run into gt4py storages that can be inputs to
+fv3core unit computations, and compares the results of the ported code to serialized
+data following a unit computation.
+
+The `docker/` directory provides Dockerfiles for building a repeatable environment in which
+to run the core
+
+The `external/` directory is for submoduled repos that provide essential functionality
+
+The build system uses Makefiles following the convention of other repos within VulcanClimateModeling.
+
+## Model Interface
+
+The top level functions fv_dynamics and fv_sugridz can currenty only be run in parallel using mpi with a minimum of 6 ranks (there are a few other units that also require this, e.g. whenever there is a halo update involved in a unit). These are the interface to the rest of the model and currently have different conventions than the rest of the model.
+ - A 'state' object (currently a SimpleNamespace) stores pointers to the allocated data fields
+ - Most functions within dyn_core can be run sequentially per rank
+ - Currently a list of ArgSpecs must decorate an interface function, where each ArgSpec provides useful information about the argument, e.g.: `@state_inputs( ArgSpec("qvapor", "specific_humidity", "kg/kg", intent="inout")`
+   - The format is (fortran_name, long_name, units, intent)
+   - We currently provide a duplicate of most of the metadata in the specification of the unit test, but that may be removed eventually.
+ - Then the function itself, e.g. fv_dynamics, has arguments of 'state', 'comm' (the communicator) and all of the scalar parameters being provided.
+
+### Porting conventions
+
+Generation of regression data occurs in the fv3gfs-fortran repo (https://github.com/VulcanClimateModeling/fv3gfs-fortran) with serialization statements and a build procedure defined in `tests/serialized_test_data_generation`. The version of data this repo currently tests against is defined in `FORTRAN_SERIALIZED_DATA_VERSION` in this repo's `docker/Makefile.image_names`. Fields serialized are defined in Fortran code with serialization comment statements such as:
+
+```
+    !$ser savepoint C_SW-In
+    !$ser data delpcd=delpc delpd=delp ptcd=ptc
+```
+
+where the name being assigned is the name the fv3core uses to identify the variable in the test code. When this name is not equal to the name of the variable, this was usually done to avoid conflicts with other parts of the code where the same name is used to reference a differently sized field.
+
+The majority of the logic for translating from data serialized from Fortran to something that can be used by Python, and the comparison of the results, is encompassed by the main Translate class in the tests/translate/translate.py file. Any units not involving a halo
+update can be run using this framework, while those that need to be run in parallel can look to the ParallelTranslate class as the parent class in tests/translate/parallel_translate.py. These parent classes provide generally useful operations for translating serialized data between Fortran and Python specifications, and for applying regression tests.
+
+A new unit test can be defined as a new child class of one of these, with a naming convention of `Translate<Savepoint Name>` where `Savepoint Name` is the name used in the serialization statements in the Fortran code, without the `-In` and `-Out` part of the name. A translate class can usually be minimally specify the input and output fields. Then, in cases where the parent compute function is insuffient to handle the complexity of either the data translation or the compute function, the appropriate methods can be overridden.
+
+For Translate objects
+  - The init function establishes the assumed translation setup for the class, which can be dynamically overridden as needed.
+  - the parent compute function does:
+    - Makes gt4py storages of the max shape (grid.npx+1, grid.npy+1, grid.npz+1) aligning the data based on the start indices specified. (gt4py requires data fields have the same shape, so in this model we have buffer points so all calculations can be done easily without worrying about shape matching).
+    - runs the compute function (defined in self.compute_func) on the input data storages
+    - slices the computed Python fields to be compared to fortran regression data
+  - The unit test then uses a modified relative error metric to determine whether the unit passes
+  - The init method for a Translate class:
+    - The input (self.in_vars["data_vars"]) and output(self.out_vars) variables are specified in dictionaries, where the keys are the name of the variable used in the model and the values are dictionaries specifying metadata for translation of serialized data to gt4py storages. The metadata that can be specied to override defaults are:
+    - Indices to line up data arrays into gt4py storages (which all get created as the max possible size needed by all operations, for simplicity): "istart", "iend", "jstart", "jend", "kstart", "kend". These should be set using the 'grid' object available to the Translate object, using equivalent index names as in the declaration of variables in the Fortran code, e.g. real:: cx(bd%is:bd%ie+1,bd%jsd:bd%jed ) means we should assign. Example:
+
+```python
+      self.in_vars["data_vars"]["cx"] = {"istart": self.is\_, "iend": self.ie + 1,
+                                         "jstart": self.jsd, "jend": self.jed,}
+```
+  - There is only a limited set of Fortran shapes declared, so abstractions defined in the grid can also be used,
+    e.g.: `self.out_vars["cx"] = self.grid.x3d_compute_domain_y_dict()`. Note that the variables, e.g. `grid.is\_` and `grid.ie` specify the 'compute' domain in the x direction of the current tile, equivalent to `bd%is` and `bd%ie` in the Fortran model EXCEPT that the Python variables are local to the current MPI rank (a subset of the tile face), while the Fortran values are global to the tile face. This is because these indices are used to slice into fields, which in Python is 0-based, and in Fortran is based on however the variables are declared. But, for the purposes of aligning data for computations and comparisons, we can match them in this framework. Shapes need to be defined in a dictionary per variable including `"istart"`, `"iend"`, `"jstart"`, `"jend"`, `"kstart"`, `"kend"` that represent the shape of that variable as defined in the Fortran code. The default shape assumed if a variable is specified with an empty dictionary is `isd:ied, jsd:jed, 0:npz - 1` inclusive, and variables that aren't that shape in the Fortran code need to have the 'start' indices specified for the in_vars dictionary , and 'start' and 'end' for the out_vars.
+    - `"serialname"` can be used to specify a name used in the Fortran code declaration if we'd like the model to use a different name
+    - `"kaxis"`: which dimension is the vertical direction. For most variables this is '2' and does not need to be specified. For Fortran variables that assign the vertical dimension to a different axis, this can be set to ensure we end up with 3d storages that have the vertical dimension where it is expected by GT4py.
+    - `"dummy_axes"`: If set this will set of the storage to have singleton dimensions in the axes defined. This is to enable testing stencils where the full 3d data has not been collected and we want to run stencil tests on the data for a particular slice.
+    - `"names_4d"`: If a 4d variable is being serialized, this can be set to specify the names of each 3d field. By default this is the list of tracers.
+    - input variables that are scalars should be added to `self.in_vars["parameters"]`
+    - `self.compute_func` is the name of the model function that should be run by the compute method in the translate class
+    - `self.max_error` overrides the parent classes relative error threshold. This should only be changed when the reasons for non-bit reproducibility are understood.
+    - `self.max_shape` sets the size of the gt4py storage created for testing
+    - `self.ignore_near_zero_errors[<varname>] = True`: This is an option to let some fields pass with higher relative error if the absolute error is very small
+
+For `ParallelTranslate` objects:
+  - Inputs and outputs are defined at the class level, and these include metadata such as the "name" (e.g. understandable name for the symbol), dimensions, units and n_halo(numb er of halo lines)
+  - Both `compute_sequential` and `compute_parallel` methods may be defined, where a mock communicator is used in the `compute_sequential` case
+  - The parent assumes a state object for tracking fields and methods exist for translating from inputs to a state object and extracting the output variables from the state. It is assumed that Quantity objects are needed in the model method in order to do halo updates.
+  - `ParallelTranslate2Py` is a slight variation of this used for many of the parallel units that do not yet utilize a state object and relies on the specification of the same index metadata of the Translate classes
+  - `ParallelTranslateBaseSlicing` makes use of the state but relies on the Translate object of self._base, a Translate class object, to align the data before making quantities, computing and comparing.
