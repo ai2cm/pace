@@ -402,8 +402,8 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
     if isinstance(array, gt_storage.storage.Storage):
         array = array.data
     if cp and (
-        isinstance(array.data, cp.ndarray)
-        or isinstance(array.data, cp.cuda.memory.MemoryPointer)
+        isinstance(array, memoryview)
+        or isinstance(array.data, (cp.ndarray, cp.cuda.memory.MemoryPointer))
     ):
         if to_type is np.ndarray:
             order = "F" if order is None else order
