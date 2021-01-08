@@ -4,11 +4,11 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, floor, interval, log
 
 import fv3core._config as spec
-import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import dim
+from fv3core.stencils.moist_cv import compute_pkz_func
 
 
 # TODO: This code could be reduced greatly with abstraction, but first gt4py
@@ -634,7 +634,7 @@ def compute_q_tables(index: sd, tablew: sd, table2: sd, table: sd, desw: sd, des
 
 
 @gtstencil()
-def satadjust_part1(
+def satadjust(
     wqsat: sd,
     dq2dt: sd,
     dpln: sd,
@@ -649,28 +649,48 @@ def satadjust_part1(
     qi: sd,
     qr: sd,
     qs: sd,
+    cappa: sd,
     q_sol: sd,
     qg: sd,
     pt: sd,
     dp: sd,
+    tin: sd,
     delz: sd,
     te0: sd,
+    q_cond: sd,
+    q_con: sd,
+    qa: sd,
+    area: sd,
     qpz: sd,
+    hs: sd,
+    pkz: sd,
     lhl: sd,
     lhi: sd,
     lcp2: sd,
     icp2: sd,
     tcp3: sd,
+    sdt: float,
     zvir: float,
+    fac_i2s: float,
+    do_qa: bool,
     hydrostatic: bool,
     consv_te: bool,
     c_air: float,
     c_vap: float,
+    mdt: float,
+    fac_r2g: float,
+    fac_smlt: float,
+    fac_l2r: float,
     fac_imlt: float,
     d0_vap: float,
     lv00: float,
     fac_v2l: float,
     fac_l2v: float,
+    last_step: bool,
+    rad_snow: bool,
+    rad_rain: bool,
+    rad_graupel: bool,
+    tintqs: bool,
 ):
     with computation(FORWARD), interval(1, None):
         if hydrostatic:
@@ -753,62 +773,11 @@ def satadjust_part1(
         dimmin = min(1.0, diff_ice)
         tcp3 = lcp2 + icp2 * dimmin
 
-
-# TODO reading in ql0_max as a runtime argument causes problems for the if statement
-@gtstencil()
-def satadjust_part2(
-    wqsat: sd,
-    dq2dt: sd,
-    pt1: sd,
-    pt: sd,
-    cvm: sd,
-    mc_air: sd,
-    tcp3: sd,
-    lhl: sd,
-    lhi: sd,
-    lcp2: sd,
-    icp2: sd,
-    qv: sd,
-    ql: sd,
-    q_liq: sd,
-    qi: sd,
-    q_sol: sd,
-    den: sd,
-    qr: sd,
-    qg: sd,
-    qs: sd,
-    cappa: sd,
-    dp: sd,
-    tin: sd,
-    te0: sd,
-    q_cond: sd,
-    q_con: sd,
-    sdt: float,
-    adj_fac: float,
-    zvir: float,
-    fac_i2s: float,
-    c_air: float,
-    consv_te: bool,
-    hydrostatic: bool,
-    do_qa: bool,
-    fac_v2l: float,
-    fac_l2v: float,
-    lv00: float,
-    d0_vap: float,
-    c_vap: float,
-    mdt: float,
-    fac_r2g: float,
-    fac_smlt: float,
-    fac_l2r: float,
-    last_step: bool,
-    rad_snow: bool,
-    rad_rain: bool,
-    rad_graupel: bool,
-    tintqs: bool,
-):
-    with computation(PARALLEL), interval(...):
         dq0 = 0.0
+
         if last_step:
+            wqsat, dq2dt = wqs2_fn_w(pt1, den)
+
             dq0 = compute_dq0(qv, wqsat, dq2dt, tcp3)
             if dq0 > 0:
                 src = dq0
@@ -842,6 +811,7 @@ def satadjust_part2(
             lhi = LI00 + DC_ICE * pt1
             lcp2 = lhl / cvm
             icp2 = lhi / cvm
+
         # homogeneous freezing of cloud water to cloud ice
         ql, qi, q_liq, q_sol, cvm, pt1 = homogenous_freezing(
             qv, ql, qi, q_liq, q_sol, pt1, cvm, icp2, mc_air, lhi, c_vap
@@ -866,6 +836,7 @@ def satadjust_part2(
             qv,
             c_vap,
         )
+
         lhi, icp2 = update_latent_heat_coefficient_i(pt1, cvm)
         # freezing of rain to graupel
         qr, qg, q_liq, q_sol, cvm, pt1 = make_graupel(
@@ -895,6 +866,12 @@ def satadjust_part2(
         expsubl = exp(0.875 * log(qi * den))
         lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
         tcp2 = lcp2 + icp2
+
+        if last_step:
+            adj_fac = 1.0
+        else:
+            adj_fac = spec.namelist.sat_adj0
+
         qv, qi, q_sol, cvm, pt1 = sublimation(
             pt1,
             cvm,
@@ -971,82 +948,75 @@ def satadjust_part2(
             else:
                 tin = pt1 - (lcp2 * q_cond + icp2 * q_sol)
 
-
-@gtstencil()
-def satadjust_part3_laststep_qa(
-    qa: sd,
-    area: sd,
-    qpz: sd,
-    hs: sd,
-    tin: sd,
-    q_cond: sd,
-    q_sol: sd,
-    den: sd,
-):
-    with computation(PARALLEL), interval(...):
-        it, ap1 = ap1_and_index(tin)
-        wqs1 = wqs1_fn_w(it, ap1, tin, den)
-        iqs1 = wqs1_fn_2(it, ap1, tin, den)
-        # Determine saturated specific humidity
-        if tin < T_WFR:
-            # ice phase
-            qstar = iqs1
-        elif tin >= TICE:
-            qstar = wqs1
-        else:
-            # qsw = wqs1
-            if q_cond > 1e-6:
-                rqi = q_sol / q_cond
+            # CK : Additions from satadjust_part3_laststep_qa
+            it, ap1 = ap1_and_index(tin)
+            wqs1 = wqs1_fn_w(it, ap1, tin, den)
+            iqs1 = wqs1_fn_2(it, ap1, tin, den)
+            # Determine saturated specific humidity
+            if tin < T_WFR:
+                # ice phase
+                qstar = iqs1
+            elif tin >= TICE:
+                qstar = wqs1
             else:
-                rqi = (TICE - tin) / (TICE - T_WFR)
-            qstar = rqi * iqs1 + (1.0 - rqi) * wqs1
-        # higher than 10 m is considered "land" and will have higher subgrid
-        # variability
-        mindw = min(1.0, abs(hs) / (10.0 * constants.GRAV))
-        dw = (
-            spec.namelist.dw_ocean
-            + (spec.namelist.dw_land - spec.namelist.dw_ocean) * mindw
-        )
-        # "scale - aware" subgrid variability: 100 - km as the base
-        dbl_sqrt_area = dw * (area ** 0.5 / 100.0e3) ** 0.5
-        maxtmp = 0.01 if 0.01 > dbl_sqrt_area else dbl_sqrt_area
-        hvar = min(0.2, maxtmp)
-        # partial cloudiness by pdf:
-        # assuming subgrid linear distribution in horizontal; this is
-        # effectively a smoother for the binary cloud scheme;
-        # qa = 0.5 if qstar == qpz
-        rh = qpz / qstar
-        # icloud_f = 0: bug - fixed
-        # icloud_f = 1: old fvgfs gfdl) mp implementation
-        # icloud_f = 2: binary cloud scheme (0 / 1)
-        if rh > 0.75 and qpz > 1.0e-8:
-            dq = hvar * qpz
-            q_plus = qpz + dq
-            q_minus = qpz - dq
-            if spec.namelist.icloud_f == 2:  # TODO untested
-                if qpz > qstar:
-                    qa = 1.0
-                elif (qstar < q_plus) and (q_cond > 1.0e-8):
-                    qa = min(1.0, ((q_plus - qstar) / dq) ** 2)
+                # qsw = wqs1
+                if q_cond > 1e-6:
+                    rqi = q_sol / q_cond
                 else:
-                    qa = 0.0
-            else:
-                if qstar < q_minus:
-                    qa = 1.0
-                else:
-                    if qstar < q_plus:
-                        if spec.namelist.icloud_f == 0:
-                            qa = (q_plus - qstar) / (dq + dq)
-                        else:
-                            qa = (q_plus - qstar) / (2.0 * dq * (1.0 - q_cond))
+                    rqi = (TICE - tin) / (TICE - T_WFR)
+                qstar = rqi * iqs1 + (1.0 - rqi) * wqs1
+                # higher than 10 m is considered "land" and will have higher subgrid
+                # variability
+            mindw = min(1.0, abs(hs) / (10.0 * constants.GRAV))
+            dw = (
+                spec.namelist.dw_ocean
+                + (spec.namelist.dw_land - spec.namelist.dw_ocean) * mindw
+            )
+            # "scale - aware" subgrid variability: 100 - km as the base
+            dbl_sqrt_area = dw * (area ** 0.5 / 100.0e3) ** 0.5
+            maxtmp = 0.01 if 0.01 > dbl_sqrt_area else dbl_sqrt_area
+            hvar = min(0.2, maxtmp)
+            # partial cloudiness by pdf:
+            # assuming subgrid linear distribution in horizontal; this is
+            # effectively a smoother for the binary cloud scheme;
+            # qa = 0.5 if qstar == qpz
+            rh = qpz / qstar
+            # icloud_f = 0: bug - fixed
+            # icloud_f = 1: old fvgfs gfdl) mp implementation
+            # icloud_f = 2: binary cloud scheme (0 / 1)
+            if rh > 0.75 and qpz > 1.0e-8:
+                dq = hvar * qpz
+                q_plus = qpz + dq
+                q_minus = qpz - dq
+                if spec.namelist.icloud_f == 2:  # TODO untested
+                    if qpz > qstar:
+                        qa = 1.0
+                    elif (qstar < q_plus) and (q_cond > 1.0e-8):
+                        qa = min(1.0, ((q_plus - qstar) / dq) ** 2)
                     else:
                         qa = 0.0
-                    # impose minimum cloudiness if substantial q_cond exist
-                    if q_cond > 1.0e-8:
-                        qa = max(spec.namelist.cld_min, qa)
-                    qa = min(1, qa)
-        else:
-            qa = 0.0
+                else:
+                    if qstar < q_minus:
+                        qa = 1.0
+                    else:
+                        if qstar < q_plus:
+                            if spec.namelist.icloud_f == 0:
+                                qa = (q_plus - qstar) / (dq + dq)
+                            else:
+                                qa = (q_plus - qstar) / (2.0 * dq * (1.0 - q_cond))
+                        else:
+                            qa = 0.0
+                        # impose minimum cloudiness if substantial q_cond exist
+                        if q_cond > 1.0e-8:
+                            qa = max(spec.namelist.cld_min, qa)
+                        qa = min(1, qa)
+            else:
+                qa = 0.0
+
+        if not hydrostatic:
+            pkz = compute_pkz_func(dp, delz, pt, cappa)
+            # pkz = moist_cv.compute_pkz_func(dp, delz, pt, cappa)
+            # pkz = exp(cappa * log(constants.RDG * dp / delz * pt))
 
 
 def compute(
@@ -1079,6 +1049,7 @@ def compute(
     domain = (grid.nic, grid.njc, (grid.npz - kmp))
     hydrostatic = spec.namelist.hydrostatic
     sdt = 0.5 * mdt  # half remapping time step
+    adj_fac = 0.0
     # define conversion scalar / factor
     fac_i2s = 1.0 - math.exp(-mdt / spec.namelist.tau_i2s)
     fac_v2l = 1.0 - math.exp(-sdt / spec.namelist.tau_v2l)
@@ -1121,7 +1092,10 @@ def compute(
     tin = utils.make_storage_from_shape(peln.shape, utils.origin)
     q_cond = utils.make_storage_from_shape(peln.shape, utils.origin)
     qpz = utils.make_storage_from_shape(peln.shape, utils.origin)
-    satadjust_part1(
+
+    do_qa = True
+
+    satadjust(
         wqsat,
         dq2dt,
         dpln,
@@ -1136,99 +1110,43 @@ def compute(
         qice,
         qrain,
         qsnow,
-        q_sol,
-        qgraupel,
-        pt,
-        delp,
-        delz,
-        te,
-        qpz,
-        lhl,
-        lhi,
-        lcp2,
-        icp2,
-        tcp3,
-        r_vir,
-        hydrostatic,
-        fast_mp_consv,
-        c_air,
-        c_vap,
-        fac_imlt,
-        d0_vap,
-        lv00,
-        fac_v2l,
-        fac_l2v,
-        origin=origin,
-        domain=domain,
-    )
-
-    if last_step:
-        adj_fac = 1.0
-        # condensation / evaporation between water vapor and cloud water, last time step
-        #  enforce upper (no super_sat) & lower (critical rh) bounds
-        # final iteration:
-
-        # TODO: If can call functions from conditionals, can call function
-        # inside the stencil
-        wqs2_stencil_w(
-            pt1,
-            den,
-            wqsat,
-            dq2dt,
-            origin=(0, 0, 0),
-            domain=spec.grid.domain_shape_standard(),
-        )
-    else:
-        adj_fac = spec.namelist.sat_adj0
-
-    # TODO: This isn't a namelist option in Fortran, it is whether or not
-    # cld_amount is a tracer. If/when we support different sets of tracers, this
-    # will need to change
-    do_qa = True
-    satadjust_part2(
-        wqsat,
-        dq2dt,
-        pt1,
-        pt,
-        cvm,
-        mc_air,
-        tcp3,
-        lhl,
-        lhi,
-        lcp2,
-        icp2,
-        qvapor,
-        qliquid,
-        q_liq,
-        qice,
-        q_sol,
-        den,
-        qrain,
-        qgraupel,
-        qsnow,
         cappa,
+        q_sol,
+        qgraupel,
+        pt,
         delp,
         tin,
+        delz,
         te,
         q_cond,
         q_con,
+        qcld,
+        grid.area_64,
+        qpz,
+        hs,
+        pkz,
+        lhl,
+        lhi,
+        lcp2,
+        icp2,
+        tcp3,
         sdt,
-        adj_fac,
         r_vir,
         fac_i2s,
-        c_air,
-        fast_mp_consv,
-        hydrostatic,
         do_qa,
-        fac_v2l,
-        fac_l2v,
-        lv00,
-        d0_vap,
+        hydrostatic,
+        fast_mp_consv,
+        c_air,
         c_vap,
         mdt,
         fac_r2g,
         fac_smlt,
         fac_l2r,
+        fac_imlt,
+        d0_vap,
+        lv00,
+        fac_v2l,
+        fac_l2v,
         last_step,
         spec.namelist.rad_snow,
         spec.namelist.rad_rain,
@@ -1237,21 +1155,3 @@ def compute(
         origin=origin,
         domain=domain,
     )
-
-    if do_qa and last_step:
-        satadjust_part3_laststep_qa(
-            qcld,
-            grid.area_64,
-            qpz,
-            hs,
-            tin,
-            q_cond,
-            q_sol,
-            den,
-            origin=origin,
-            domain=domain,
-        )
-    if not spec.namelist.hydrostatic:
-        moist_cv.compute_pkz_stencil_func(
-            pkz, cappa, delp, delz, pt, origin=origin, domain=domain
-        )
