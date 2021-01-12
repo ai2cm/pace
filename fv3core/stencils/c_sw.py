@@ -3,7 +3,6 @@ from gt4py.gtscript import __INLINED, PARALLEL, computation, interval, parallel,
 
 import fv3core._config as spec
 import fv3core.stencils.d2a2c_vect as d2a2c
-import fv3core.stencils.ke_c_sw as ke_c_sw
 import fv3core.stencils.vorticitytransport_cgrid as vorticity_transport
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
@@ -192,6 +191,47 @@ def circulation_cgrid(uc: sd, vc: sd, dxc: sd, dyc: sd, vort_c: sd):
             vort_c -= fy[0, 0, 0]
 
 
+@gtstencil()
+def update_vorticity_and_kinetic_energy(
+    ke: sd,
+    vort: sd,
+    ua: sd,
+    va: sd,
+    uc: sd,
+    vc: sd,
+    u: sd,
+    v: sd,
+    sin_sg1: sd,
+    cos_sg1: sd,
+    sin_sg2: sd,
+    cos_sg2: sd,
+    sin_sg3: sd,
+    cos_sg3: sd,
+    sin_sg4: sd,
+    cos_sg4: sd,
+    dt2: float,
+):
+    from __externals__ import i_end, i_start, j_end, j_start, namelist
+
+    with computation(PARALLEL), interval(...):
+        assert __INLINED(namelist.grid_type < 3)
+
+        ke = uc if ua > 0.0 else uc[1, 0, 0]
+        vort = vc if va > 0.0 else vc[0, 1, 0]
+
+        with parallel(region[:, j_start - 1], region[:, j_end]):
+            vort = vort * sin_sg4 + u[0, 1, 0] * cos_sg4 if va <= 0.0 else vort
+        with parallel(region[:, j_start], region[:, j_end + 1]):
+            vort = vort * sin_sg2 + u * cos_sg2 if va > 0.0 else vort
+
+        with parallel(region[i_end, :], region[i_start - 1, :]):
+            ke = ke * sin_sg3 + v[1, 0, 0] * cos_sg3 if ua <= 0.0 else ke
+        with parallel(region[i_end + 1, :], region[i_start, :]):
+            ke = ke * sin_sg1 + v * cos_sg1 if ua > 0.0 else ke
+
+        ke = 0.5 * dt2 * (ua * ke + va * vort)
+
+
 def compute(delp, pt, u, v, w, uc, vc, ua, va, ut, vt, divgd, omga, dt2):
     grid = spec.grid
     dord4 = True
@@ -252,7 +292,38 @@ def compute(delp, pt, u, v, w, uc, vc, ua, va, ut, vt, divgd, omga, dt2):
         origin=geo_origin,
         domain=(grid.nic + 2, grid.njc + 2, grid.npz),
     )
-    ke, vort = ke_c_sw.compute(uc, vc, u, v, ua, va, dt2)
+
+    # ke_c_sw
+    # {
+    # Create storage objects to hold the new vorticity and kinetic energy values
+    ke = utils.make_storage_from_shape(uc.shape)
+    vort = utils.make_storage_from_shape(vc.shape)
+
+    # Set vorticity and kinetic energy values
+    update_vorticity_and_kinetic_energy(
+        ke,
+        vort,
+        ua,
+        va,
+        uc,
+        vc,
+        u,
+        v,
+        grid.sin_sg1,
+        grid.cos_sg1,
+        grid.sin_sg2,
+        grid.cos_sg2,
+        grid.sin_sg3,
+        grid.cos_sg3,
+        grid.sin_sg4,
+        grid.cos_sg4,
+        dt2,
+        origin=(grid.is_ - 1, grid.js - 1, 0),
+        domain=(grid.nic + 2, grid.njc + 2, grid.npz),
+    )
+    # }
+
+    # ke, vort = ke_c_sw.compute(uc, vc, u, v, ua, va, dt2)
     circulation_cgrid(
         uc,
         vc,

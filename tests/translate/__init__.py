@@ -8,6 +8,7 @@ from .translate_c_sw import (
     TranslateC_SW,
     TranslateCirculation_Cgrid,
     TranslateDivergenceCorner,
+    TranslateKE_C_SW,
     TranslateTransportDelp,
 )
 from .translate_compute_total_energy import TranslateComputeTotalEnergy
@@ -38,7 +39,6 @@ from .translate_haloupdate import (
     TranslateMPPUpdateDomains,
 )
 from .translate_heatdiss import TranslateHeatDiss
-from .translate_ke_c_sw import TranslateKE_C_SW
 from .translate_last_step import TranslateLastStep
 from .translate_map1_ppm_2d import (
     TranslateMap1_PPM_2d,
