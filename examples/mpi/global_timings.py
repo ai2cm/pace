@@ -18,7 +18,7 @@ def print_global_timings(times, comm, root=0):
         for label, op in [("min", MPI.MIN), ("max", MPI.MAX), ("mean", MPI.SUM)]:
             comm.Reduce(np.array(value), recvbuf, op=op)
             if is_root:
-                if op == "mean":
+                if label == "mean":
                     recvbuf /= comm.Get_size()
                 print(f"    {label}: {recvbuf}")
 

@@ -21,7 +21,7 @@ fsspec==0.8.0
 kubernetes==10.0.1
 black==19.10b0
 xarray==0.15.1
-numpy==1.16.4
+numpy==1.16.5
 numcodecs==0.7.2
 zarr==2.3.2
 h5py==2.10.0
