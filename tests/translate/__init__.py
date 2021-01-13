@@ -10,6 +10,7 @@ from .translate_c_sw import (
     TranslateDivergenceCorner,
     TranslateKE_C_SW,
     TranslateTransportDelp,
+    TranslateVorticityTransport_Cgrid,
 )
 from .translate_compute_total_energy import TranslateComputeTotalEnergy
 from .translate_copycorners import TranslateCopyCorners
@@ -71,7 +72,6 @@ from .translate_satadjust3d import TranslateSatAdjust3d
 from .translate_tracer2d1l import TranslateTracer2D1L
 from .translate_updatedzc import TranslateUpdateDzC
 from .translate_updatedzd import TranslateUpdateDzD
-from .translate_vorticitytransport_cgrid import TranslateVorticityTransport_Cgrid
 from .translate_vorticityvolumemean import TranslateVorticityVolumeMean
 from .translate_wdivergence import TranslateWdivergence
 from .translate_xppm import TranslateXPPM, TranslateXPPM_2
