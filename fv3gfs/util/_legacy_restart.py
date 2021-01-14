@@ -53,8 +53,9 @@ def open_restart(
             )
         coupler_res_filename = get_coupler_res_filename(dirname, label)
         if filesystem.is_file(coupler_res_filename):
-            with filesystem.open(coupler_res_filename, "r") as f:
-                state["time"] = io.get_current_date_from_coupler_res(f)
+            if only_names is None or "time" in only_names:
+                with filesystem.open(coupler_res_filename, "r") as f:
+                    state["time"] = io.get_current_date_from_coupler_res(f)
     if to_state is None:
         state = communicator.tile.scatter_state(state)
     else:

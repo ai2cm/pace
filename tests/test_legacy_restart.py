@@ -17,7 +17,7 @@ def layout(request):
     return request.param
 
 
-def get_c12_restart_state_list(layout, tracer_properties):
+def get_c12_restart_state_list(layout, only_names, tracer_properties):
     total_ranks = layout[0] * layout[1]
     shared_buffer = {}
     communicator_list = []
@@ -33,6 +33,7 @@ def get_c12_restart_state_list(layout, tracer_properties):
             fv3gfs.util.open_restart(
                 os.path.join(DATA_DIRECTORY, "c12_restart"),
                 communicator,
+                only_names=only_names,
                 tracer_properties=tracer_properties,
             )
         )
@@ -43,7 +44,10 @@ def get_c12_restart_state_list(layout, tracer_properties):
 @pytest.mark.cpu_only
 def test_open_c12_restart(layout):
     tracer_properties = {}
-    c12_restart_state_list = get_c12_restart_state_list(layout, tracer_properties)
+    only_names = None
+    c12_restart_state_list = get_c12_restart_state_list(
+        layout, only_names, tracer_properties
+    )
     # C12 has 12 gridcells along each tile side, we divide this across processors
     ny = 12 / layout[0]
     nx = 12 / layout[1]
@@ -107,7 +111,10 @@ def test_open_c12_restart(layout):
 )
 @pytest.mark.cpu_only
 def test_open_c12_restart_tracer_properties(layout, tracer_properties):
-    c12_restart_state_list = get_c12_restart_state_list(layout, tracer_properties)
+    only_names = None
+    c12_restart_state_list = get_c12_restart_state_list(
+        layout, only_names, tracer_properties
+    )
     for state in c12_restart_state_list:
         for name, properties in tracer_properties.items():
             assert name in state.keys()
@@ -335,3 +342,17 @@ def test_read_state_non_scalar_time():
         state_ds.to_netcdf(file.name)
         with pytest.raises(ValueError, match="scalar time"):
             fv3gfs.util.io.read_state(file.name)
+
+
+@pytest.mark.parametrize(
+    "only_names",
+    [["time", "air_temperature"], ["air_temperature"]],
+    ids=lambda x: f"{x}",
+)
+def test_open_c12_restart_only_names(layout, only_names):
+    tracer_properties = {}
+    c12_restart_state_list = get_c12_restart_state_list(
+        layout, only_names, tracer_properties
+    )
+    for state in c12_restart_state_list:
+        assert set(only_names) == set(state.keys())
