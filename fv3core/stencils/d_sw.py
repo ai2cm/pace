@@ -1,7 +1,14 @@
 import logging
 
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import __INLINED, PARALLEL, computation, interval, parallel, region
+from gt4py.gtscript import (
+    __INLINED,
+    PARALLEL,
+    computation,
+    horizontal,
+    interval,
+    region,
+)
 
 import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
@@ -423,9 +430,9 @@ def ubke(uc: sd, vc: sd, cosa: sd, rsina: sd, ut: sd, ub: sd, dt4: float, dt5: f
     with computation(PARALLEL), interval(...):
         ub = dt5 * (uc[0, -1, 0] + uc - (vc[-1, 0, 0] + vc) * cosa) * rsina
         if __INLINED(spec.namelist.grid_type < 3):
-            with parallel(region[:, j_start], region[:, j_end + 1]):
+            with horizontal(region[:, j_start], region[:, j_end + 1]):
                 ub = dt4 * (-ut[0, -2, 0] + 3.0 * (ut[0, -1, 0] + ut) - ut[0, 1, 0])
-            with parallel(region[i_start, :], region[i_end + 1, :]):
+            with horizontal(region[i_start, :], region[i_end + 1, :]):
                 ub = dt5 * (ut[0, -1, 0] + ut)
 
 
@@ -436,9 +443,9 @@ def vbke(vc: sd, uc: sd, cosa: sd, rsina: sd, vt: sd, vb: sd, dt4: float, dt5: f
     with computation(PARALLEL), interval(...):
         vb = dt5 * (vc[-1, 0, 0] + vc - (uc[0, -1, 0] + uc) * cosa) * rsina
         if __INLINED(spec.namelist.grid_type < 3):
-            with parallel(region[i_start, :], region[i_end + 1, :]):
+            with horizontal(region[i_start, :], region[i_end + 1, :]):
                 vb = dt4 * (-vt[-2, 0, 0] + 3.0 * (vt[-1, 0, 0] + vt) - vt[1, 0, 0])
-            with parallel(region[:, j_start], region[:, j_end + 1]):
+            with horizontal(region[:, j_start], region[:, j_end + 1]):
                 vb = dt5 * (vt[-1, 0, 0] + vt)
 
 

@@ -1,5 +1,12 @@
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import __INLINED, PARALLEL, computation, interval, parallel, region
+from gt4py.gtscript import (
+    __INLINED,
+    PARALLEL,
+    computation,
+    horizontal,
+    interval,
+    region,
+)
 
 import fv3core._config as spec
 import fv3core.stencils.d2a2c_vect as d2a2c
@@ -144,7 +151,7 @@ def divergence_corner(
             * 0.5
             * (sin_sg4[0, -1, 0] + sin_sg2)
         )
-        with parallel(region[:, j_start], region[:, j_end + 1]):
+        with horizontal(region[:, j_start], region[:, j_end + 1]):
             uf = u * dyc * 0.5 * (sin_sg4[0, -1, 0] + sin_sg2)
 
         vf = (
@@ -153,13 +160,13 @@ def divergence_corner(
             * 0.5
             * (sin_sg3[-1, 0, 0] + sin_sg1)
         )
-        with parallel(region[i_start, :], region[i_end + 1, :]):
+        with horizontal(region[i_start, :], region[i_end + 1, :]):
             vf = v * dxc * 0.5 * (sin_sg3[-1, 0, 0] + sin_sg1)
 
         divg_d = vf[0, -1, 0] - vf + uf[-1, 0, 0] - uf
-        with parallel(region[i_start, j_start], region[i_end + 1, j_start]):
+        with horizontal(region[i_start, j_start], region[i_end + 1, j_start]):
             divg_d -= vf[0, -1, 0]
-        with parallel(region[i_end + 1, j_end + 1], region[i_start, j_end + 1]):
+        with horizontal(region[i_end + 1, j_end + 1], region[i_start, j_end + 1]):
             divg_d += vf
         divg_d *= rarea_c
 
@@ -183,10 +190,10 @@ def circulation_cgrid(uc: sd, vc: sd, dxc: sd, dyc: sd, vort_c: sd):
 
         vort_c = fx[0, -1, 0] - fx - fy[-1, 0, 0] + fy
 
-        with parallel(region[i_start, j_start], region[i_start, j_end + 1]):
+        with horizontal(region[i_start, j_start], region[i_start, j_end + 1]):
             vort_c += fy[-1, 0, 0]
 
-        with parallel(region[i_end + 1, j_start], region[i_end + 1, j_end + 1]):
+        with horizontal(region[i_end + 1, j_start], region[i_end + 1, j_end + 1]):
             vort_c -= fy[0, 0, 0]
 
 
@@ -218,14 +225,14 @@ def update_vorticity_and_kinetic_energy(
         ke = uc if ua > 0.0 else uc[1, 0, 0]
         vort = vc if va > 0.0 else vc[0, 1, 0]
 
-        with parallel(region[:, j_start - 1], region[:, j_end]):
+        with horizontal(region[:, j_start - 1], region[:, j_end]):
             vort = vort * sin_sg4 + u[0, 1, 0] * cos_sg4 if va <= 0.0 else vort
-        with parallel(region[:, j_start], region[:, j_end + 1]):
+        with horizontal(region[:, j_start], region[:, j_end + 1]):
             vort = vort * sin_sg2 + u * cos_sg2 if va > 0.0 else vort
 
-        with parallel(region[i_end, :], region[i_start - 1, :]):
+        with horizontal(region[i_end, :], region[i_start - 1, :]):
             ke = ke * sin_sg3 + v[1, 0, 0] * cos_sg3 if ua <= 0.0 else ke
-        with parallel(region[i_end + 1, :], region[i_start, :]):
+        with horizontal(region[i_end + 1, :], region[i_start, :]):
             ke = ke * sin_sg1 + v * cos_sg1 if ua > 0.0 else ke
 
         ke = 0.5 * dt2 * (ua * ke + va * vort)
@@ -249,7 +256,7 @@ def update_zonal_velocity(
         # additional assumption: not __INLINED(spec.grid.nested)
 
         tmp_flux = dt2 * (velocity - velocity_c * cosa) / sina
-        with parallel(region[i_start, :], region[i_end + 1, :]):
+        with horizontal(region[i_start, :], region[i_end + 1, :]):
             tmp_flux = dt2 * velocity
 
         flux = vorticity[0, 0, 0] if tmp_flux > 0.0 else vorticity[0, 1, 0]
@@ -274,7 +281,7 @@ def update_meridional_velocity(
         # additional assumption: not __INLINED(spec.grid.nested)
 
         tmp_flux = dt2 * (velocity - velocity_c * cosa) / sina
-        with parallel(region[:, j_start], region[:, j_end + 1]):
+        with horizontal(region[:, j_start], region[:, j_end + 1]):
             tmp_flux = dt2 * velocity
 
         flux = vorticity[0, 0, 0] if tmp_flux > 0.0 else vorticity[1, 0, 0]
