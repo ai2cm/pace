@@ -38,8 +38,10 @@ def _FieldDescriptorMaker(dtype):
     return _FieldDescriptor(dtype)
 
 
-FloatField = _FieldDescriptor(float_type)
-IntField = _FieldDescriptor(int_type)
+FloatField = Field[float_type]
+FloatFieldIJ = Field[float_type, gtscript.IJ]
+IntField = Field[int_type]
+IntFieldIJ = Field[int_type, gtscript.IJ]
 BoolField = _FieldDescriptor(bool_type)
 
 Index3D = Tuple[int, int, int]
