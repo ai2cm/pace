@@ -454,7 +454,7 @@ def axis_offsets(
         endpt_offset = (grid.is_ - origin[0]) - domain[0] + 1
         i_end = gtscript.I[-1] + proc_offset + endpt_offset
     else:
-        i_end = gtscript.I[0] + np.iinfo(np.int32).max
+        i_end = gtscript.I[-1] + np.iinfo(np.int32).max
 
     if grid.south_edge:
         proc_offset = grid.js - grid.global_js
@@ -468,7 +468,7 @@ def axis_offsets(
         endpt_offset = (grid.js - origin[1]) - domain[1] + 1
         j_end = gtscript.J[-1] + proc_offset + endpt_offset
     else:
-        j_end = gtscript.J[0] + np.iinfo(np.int32).max
+        j_end = gtscript.J[-1] + np.iinfo(np.int32).max
 
     return {
         "i_start": i_start,
