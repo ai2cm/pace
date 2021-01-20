@@ -217,6 +217,7 @@ class FV3StencilObject:
                     **axis_offsets,
                     **self._passed_externals,
                 },
+                "format_source": global_config.get_format_source(),
                 "build_info": new_build_info,
                 **self.backend_kwargs,
             }

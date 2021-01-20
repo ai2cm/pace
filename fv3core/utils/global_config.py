@@ -24,5 +24,15 @@ def get_rebuild() -> bool:
     return _REBUILD
 
 
+def set_format_source(flag: bool):
+    global _FORMAT_SOURCE
+    _FORMAT_SOURCE = flag
+
+
+def get_format_source() -> bool:
+    return _FORMAT_SOURCE
+
+
 _BACKEND = None  # Options: numpy, gtx86, gtcuda, debug
 _REBUILD = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "True")
+_FORMAT_SOURCE = getenv_bool("FV3_STENCIL_FORMAT_SOURCE", "False")
