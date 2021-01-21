@@ -2,3 +2,53 @@ C_SW:
   - backend: numpy
     platform: docker
     max_error: 2e-10
+
+CS_Profile_2d:
+  - backend: gtcuda
+    max_error: 2.5e-9
+    near_zero: 1.5e-14
+
+CS_Profile_2d-2:
+  - backend: gtcuda
+    max_error: 3e-8
+    near_zero: 1.5e-14
+
+Fillz:
+  - backend: gtcuda
+    max_error: 1e-13
+    near_zero: 3e-15
+
+MapN_Tracer_2d:
+  - backend: gtcuda
+    max_error: 2e-7
+    near_zero: 2.5e-15
+
+NH_P_Grad:
+  - backend: gtcuda
+    max_error: 2e-9
+
+Riem_Solver3:
+  - backend: gtcuda
+    max_error: 5e-6
+
+Remapping_Part1:
+  - backend: gtcuda
+    max_error: 5e-6
+    near_zero: 3.5e-15
+
+Remapping:
+  - backend: gtcuda
+    near_zero: 5e-6
+
+UpdateDzC:
+  - backend: gtcuda
+    max_error: 5e-10
+    near_zero: 4.5e-15
+
+UpdateDzD:
+  - backend: gtcuda
+    max_error: 5e-10
+
+FVSubgridZ:
+  - backend: gtcuda
+    max_error: 1e-8

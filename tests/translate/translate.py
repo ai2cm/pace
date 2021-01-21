@@ -21,6 +21,7 @@ def read_serialized_data(serializer, savepoint, variable):
 
 class TranslateFortranData2Py:
     max_error = 1e-14
+    near_zero = 1e-18
 
     def __init__(self, grid, origin=utils.origin):
         self.origin = origin

@@ -25,6 +25,7 @@ class TranslateFillz(TranslateFortranData2Py):
             }
         }
         self.max_error = 1e-13
+        self.ignore_near_zero_errors = {"q2tracers": True}
 
     def make_storage_data_input_vars(self, inputs, storage_vars=None):
         if storage_vars is None:
