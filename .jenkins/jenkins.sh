@@ -97,7 +97,17 @@ if grep -q "parallel" <<< "${script}"; then
 	fi
     fi
 fi
-
+# set thresholds override file if it exists
+test_type=${optarg2##*_}
+OVERRIDES_FOLDER="${envloc}/../tests/translate/overrides/"
+OVERRIDES_FILE="${OVERRIDES_FOLDER}/${test_type}.yaml"
+echo "overrides file:"
+echo ${OVERRIDES_FILE}
+if test -f "${OVERRIDES_FILE}"; then
+    echo "OVERRIDE"
+    export MOUNTS=" --mount=type=bind,source=${OVERRIDES_FOLDER},destination=/thresholds"
+    export THRESH_ARGS="--threshold_overrides_file=/thresholds/${test_type}.yaml"
+fi
 module load daint-gpu
 module add "${installdir}/modulefiles/"
 module load gcloud

@@ -2,7 +2,7 @@
 set -e -x
 BACKEND=$1
 EXPNAME=$2
-ARGS="-v -s -rsx --backend=${BACKEND}"
+ARGS="-v -s -rsx --backend=${BACKEND} ${THRESH_ARGS}"
 export EXPERIMENT=${EXPNAME}
 # Set the host data location
 export TEST_DATA_HOST="${TEST_DATA_DIR}/${EXPNAME}/"

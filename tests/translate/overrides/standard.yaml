@@ -1,0 +1,4 @@
+C_SW:
+  - backend: numpy
+    platform: docker
+    max_error: 2e-10
