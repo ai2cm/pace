@@ -1,7 +1,8 @@
 import copy
 import logging
 import math
-from typing import Dict, List, Optional, Tuple, Union
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gt4py as gt
 import gt4py.storage as gt_storage
@@ -62,6 +63,18 @@ if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
 # TODO remove when using quantities throughout model
 def quantity_name(name):
     return name + "_quantity"
+
+
+def mark_untested(msg="This is not tested"):
+    def inner(func) -> Callable[..., Any]:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            print(f"{func.__name__}: {msg}")
+            func(*args, **kwargs)
+
+        return wrapper
+
+    return inner
 
 
 def make_storage_data(

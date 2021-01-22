@@ -80,7 +80,20 @@ def rayleigh_v(
 
 def compute(u, v, w, ua, va, pt, delz, phis, bdt, ptop, pfull, comm):
     grid = spec.grid
-    c2l_ord.compute_ord2(u, v, ua, va)
+    c2l_ord.c2l_ord2(
+        u,
+        v,
+        grid.dx,
+        grid.dy,
+        grid.a11,
+        grid.a12,
+        grid.a21,
+        grid.a22,
+        ua,
+        va,
+        origin=grid.compute_origin(add=(0, 0, 0)),
+        domain=grid.domain_shape_compute(add=(0, 0, 0)),
+    )
 
     # TODO this really only needs to be kmax size in the 3rd dimension...
     u2f = grid.quantity_factory.zeros(
