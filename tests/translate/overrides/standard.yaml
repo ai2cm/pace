@@ -22,6 +22,8 @@ MapN_Tracer_2d:
   - backend: gtcuda
     max_error: 2e-7
     near_zero: 2.5e-15
+    ignore_near_zero_errors:
+      - qtracers
 
 NH_P_Grad:
   - backend: gtcuda
@@ -35,19 +37,29 @@ Remapping_Part1:
   - backend: gtcuda
     max_error: 5e-6
     near_zero: 3.5e-15
+    ignore_near_zero_errors:
+      - q_con
+      - qtracers
 
 Remapping:
   - backend: gtcuda
     near_zero: 5e-6
+    ignore_near_zero_errors:
+      - q_con
+      - tracers
 
 UpdateDzC:
   - backend: gtcuda
     max_error: 5e-10
     near_zero: 4.5e-15
+    ignore_near_zero_errors:
+      - ws
 
 UpdateDzD:
   - backend: gtcuda
     max_error: 5e-10
+    ignore_near_zero_errors:
+      - wsd
 
 FVSubgridZ:
   - backend: gtcuda

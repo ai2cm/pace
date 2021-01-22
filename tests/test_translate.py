@@ -135,6 +135,10 @@ def process_override(threshold_overrides, testobj, test_name, backend):
                 testobj.max_error = float(match["max_error"])
             if "near_zero" in match:
                 testobj.near_zero = float(match["near_zero"])
+            if "ignore_near_zero_errors" in match:
+                testobj.ignore_near_zero_errors = {
+                    field: True for field in match["ignore_near_zero_errors"]
+                }
         elif len(matches) > 1:
             raise Exception(
                 "misconfigured threshold overrides file, more than 1 specification for "
