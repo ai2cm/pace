@@ -1,6 +1,5 @@
 from fv3core.stencils.d_sw import flux_adjust
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateWdivergence(TranslateFortranData2Py):

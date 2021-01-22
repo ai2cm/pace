@@ -1,6 +1,5 @@
 import fv3core.stencils.flux_capacitor as flux_capacitor
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateFluxCapacitor(TranslateFortranData2Py):

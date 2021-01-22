@@ -1,7 +1,6 @@
 import fv3core.stencils.c_sw as c_sw
 import fv3core.utils.gt4py_utils as utils
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateC_SW(TranslateFortranData2Py):

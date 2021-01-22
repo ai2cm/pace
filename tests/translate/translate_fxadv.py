@@ -1,6 +1,5 @@
 import fv3core.stencils.fxadv as fxadv
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateFxAdv(TranslateFortranData2Py):

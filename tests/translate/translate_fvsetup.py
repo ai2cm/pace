@@ -1,6 +1,5 @@
 import fv3core.stencils.moist_cv as moist_cv
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateFVSetup(TranslateFortranData2Py):

@@ -1,6 +1,5 @@
 from fv3core.stencils import d_sw
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateD_SW(TranslateFortranData2Py):

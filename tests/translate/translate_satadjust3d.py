@@ -1,6 +1,5 @@
 import fv3core.stencils.saturation_adjustment as satadjust
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateSatAdjust3d(TranslateFortranData2Py):

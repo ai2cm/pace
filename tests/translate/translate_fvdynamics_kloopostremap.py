@@ -1,8 +1,8 @@
 import copy
 
 import fv3core.stencils.fv_dynamics as fv_dynamics
+from fv3core.testing import ParallelTranslate2PyState
 
-from .parallel_translate import ParallelTranslate2PyState
 from .translate_dyncore import TranslateDynCore
 from .translate_tracer2d1l import TranslateTracer2D1L
 

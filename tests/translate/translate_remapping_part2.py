@@ -1,6 +1,5 @@
 import fv3core.stencils.remapping_part2 as remap_part2
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateRemapping_Part2(TranslateFortranData2Py):

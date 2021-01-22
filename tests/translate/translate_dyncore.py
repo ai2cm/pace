@@ -1,7 +1,6 @@
 import fv3core.stencils.dyn_core as dyn_core
 import fv3gfs.util as fv3util
-
-from .parallel_translate import ParallelTranslate2PyState
+from fv3core.testing import ParallelTranslate2PyState
 
 
 class TranslateDynCore(ParallelTranslate2PyState):

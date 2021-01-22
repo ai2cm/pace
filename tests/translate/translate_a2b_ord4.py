@@ -1,6 +1,5 @@
 import fv3core.stencils.divergence_damping as dd
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateA2B_Ord4(TranslateFortranData2Py):

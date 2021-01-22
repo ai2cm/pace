@@ -1,7 +1,6 @@
 import fv3core._config as spec
 import fv3core.stencils.map_single as Map_Single
-
-from .translate import TranslateFortranData2Py, TranslateGrid
+from fv3core.testing import TranslateFortranData2Py, TranslateGrid
 
 
 class TranslateMapScalar_2d(TranslateFortranData2Py):

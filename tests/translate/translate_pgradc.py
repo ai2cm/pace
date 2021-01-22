@@ -1,6 +1,5 @@
 import fv3core.stencils.pgradc as pgradc
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslatePGradC(TranslateFortranData2Py):

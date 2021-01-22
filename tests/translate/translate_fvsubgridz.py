@@ -2,8 +2,7 @@ import fv3core._config as spec
 import fv3core.stencils.fv_subgridz as fv_subgridz
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
-
-from .parallel_translate import ParallelTranslateBaseSlicing
+from fv3core.testing import ParallelTranslateBaseSlicing
 
 
 # NOTE, does no halo updates, does not need to be a Parallel test,

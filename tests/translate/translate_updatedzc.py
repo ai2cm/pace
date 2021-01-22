@@ -1,6 +1,5 @@
 import fv3core.stencils.updatedzc as updatedzc
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateUpdateDzC(TranslateFortranData2Py):

@@ -2,9 +2,8 @@ import logging
 
 import fv3core._config as spec
 import fv3gfs.util as fv3util
+from fv3core.testing import ParallelTranslate
 from fv3core.utils import gt4py_utils as utils
-
-from .parallel_translate import ParallelTranslate
 
 
 logger = logging.getLogger("fv3ser")

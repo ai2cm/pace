@@ -371,8 +371,8 @@ def compute(state, comm):
         if not hydrostatic:
             basic.multiply_constant(
                 state.zh,
-                constants.GRAV,
                 state.gz,
+                constants.GRAV,
                 origin=(grid.is_ - 2, grid.js - 2, 0),
                 domain=(grid.nic + 4, grid.njc + 4, grid.npz + 1),
             )

@@ -1,8 +1,7 @@
 import numpy as np
 
 import fv3core.stencils.remap_profile as Profile
-
-from .translate import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateCS_Profile_2d(TranslateFortranData2Py):

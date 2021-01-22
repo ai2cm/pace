@@ -89,7 +89,11 @@ def subtract_term_stencil(in1: sd, out: sd):
 
 
 @gtstencil()
-def multiply_constant(in1: sd, in2: float, out: sd):
+def multiply_constant(
+    in1: sd,
+    out: sd,
+    in2: float,
+):
     with computation(PARALLEL), interval(...):
         out[0, 0, 0] = in1 * in2
 

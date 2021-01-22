@@ -1,7 +1,6 @@
 import fv3core.stencils.c2l_ord as c2l_ord
 import fv3gfs.util as fv3util
-
-from .parallel_translate import ParallelTranslate2Py
+from fv3core.testing import ParallelTranslate2Py
 
 
 class TranslateCubedToLatLon(ParallelTranslate2Py):
