@@ -23,8 +23,9 @@ if __name__ == "__main__":
     for subdir, dirs, files in os.walk(args.data_dir):
         for file in files:
             fullpath = os.path.join(subdir, file)
-            with open(fullpath) as f:
-                alldata.append(json.load(f))
+            if fullpath.endswith(".json"):
+                with open(fullpath) as f:
+                    alldata.append(json.load(f))
     alldata.sort(
         key=lambda k: datetime.strptime(
             k["setup"]["experiment time"], "%d/%m/%Y %H:%M:%S"
@@ -44,7 +45,7 @@ if __name__ == "__main__":
                             )
                             for e in specific
                         ],
-                        [e["times"][key]["mean"] for e in specific],
+                        [e["times"][key]["median"] for e in specific],
                         label=key + " " + backend,
                     )
                     plt.fill_between(
@@ -63,4 +64,15 @@ if __name__ == "__main__":
         plt.ylabel("Execution time")
         plt.legend()
         plt.title(plottype)
+        plt.figtext(
+            0.5,
+            0.01,
+            "data: "
+            + alldata[0]["setup"]["data set"]
+            + "  timesteps:"
+            + str(alldata[0]["setup"]["timesteps"]),
+            wrap=True,
+            horizontalalignment="center",
+            fontsize=12,
+        )
         plt.savefig("history" + plottype + ".png")
