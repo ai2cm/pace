@@ -472,7 +472,11 @@ def axis_offsets(
 
     return {
         "i_start": i_start,
+        "local_is": grid.is_ - origin[0],
         "i_end": i_end,
+        "local_ie": grid.ie - origin[0] - domain[0],
         "j_start": j_start,
+        "local_js": grid.js - origin[1],
         "j_end": j_end,
+        "local_je": grid.je - origin[1] - domain[1],
     }
