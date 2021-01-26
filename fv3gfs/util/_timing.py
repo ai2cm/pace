@@ -10,6 +10,7 @@ class Timer:
     def __init__(self):
         self._clock_starts = {}
         self._accumulated_time = {}
+        self._hit_count = {}
         self._enabled = True
 
     def start(self, name: str):
@@ -21,14 +22,18 @@ class Timer:
                 self._clock_starts[name] = time()
 
     def stop(self, name: str):
-        """Stop timing a given named operation, and add the time elapsed to
-        accumulated timing.
+        """Stop timing a given named operation, add the time elapsed to
+        accumulated timing and increase the hit count.
         """
         if self._enabled:
             if name not in self._accumulated_time:
                 self._accumulated_time[name] = time() - self._clock_starts.pop(name)
             else:
                 self._accumulated_time[name] += time() - self._clock_starts.pop(name)
+            if name not in self._hit_count:
+                self._hit_count[name] = 1
+            else:
+                self._hit_count[name] += 1
 
     @contextlib.contextmanager
     def clock(self, name: str):
@@ -66,9 +71,22 @@ class Timer:
             )
         return self._accumulated_time.copy()
 
+    @property
+    def hits(self) -> Mapping[str, int]:
+        """accumulated hit counts for each operation name"""
+        if len(self._clock_starts) > 0:
+            warnings.warn(
+                "Retrieved hit counts while clocks are still going, "
+                "incomplete times are not included: "
+                f"{list(self._clock_starts.keys())}",
+                RuntimeWarning,
+            )
+        return self._hit_count.copy()
+
     def reset(self):
         """Remove all accumulated timings."""
         self._accumulated_time.clear()
+        self._hit_count.clear()
 
     def enable(self):
         """Enable the Timer."""

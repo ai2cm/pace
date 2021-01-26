@@ -14,6 +14,8 @@ def test_start_stop(timer):
     times = timer.times
     assert "label" in times
     assert len(times) == 1
+    assert timer.hits["label"] == 1
+    assert len(timer.hits) == 1
 
 
 def test_clock(timer):
@@ -24,6 +26,8 @@ def test_clock(timer):
     assert "label" in times
     assert len(times) == 1
     assert abs(times["label"] - 0.1) < 1e-2
+    assert timer.hits["label"] == 1
+    assert len(timer.hits) == 1
 
 
 def test_start_twice(timer):
@@ -55,6 +59,7 @@ def test_consecutive_start_stops(timer):
         timer.stop("label")
         assert timer.times["label"] >= previous_time + 0.01
         previous_time = timer.times["label"]
+    assert timer.hits["label"] == 6
 
 
 def test_consecutive_clocks(timer):
@@ -67,6 +72,7 @@ def test_consecutive_clocks(timer):
             time.sleep(0.01)
         assert timer.times["label"] >= previous_time + 0.01
         previous_time = timer.times["label"]
+    assert timer.hits["label"] == 6
 
 
 @pytest.mark.parametrize(
@@ -93,6 +99,7 @@ def test_disabled_timer_does_not_add_key(timer):
     with timer.clock("label2"):
         time.sleep(0.01)
     assert len(timer.times) == 0
+    assert len(timer.hits) == 0
 
 
 def test_disabled_timer_does_not_add_time(timer):
@@ -103,6 +110,7 @@ def test_disabled_timer_does_not_add_time(timer):
     with timer.clock("label"):
         time.sleep(0.01)
     assert timer.times["label"] == initial_time
+    assert timer.hits["label"] == 1
 
 
 @pytest.fixture(params=["clean", "one_label", "two_labels"])
@@ -124,3 +132,4 @@ def used_timer(request, timer):
 def test_timer_reset(used_timer):
     used_timer.reset()
     assert len(used_timer.times) == 0
+    assert len(used_timer.hits) == 0
