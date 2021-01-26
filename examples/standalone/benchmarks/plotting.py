@@ -32,7 +32,7 @@ if __name__ == "__main__":
         )
     )
     for plottype in ["mainLoop", "initTotal"]:
-        keyval = ["main"] if plottype == "mainLoop" else ["init", "total"]
+        keyval = ["main_loop"] if plottype == "mainLoop" else ["init", "total"]
         plt.figure()
         for backend in ["python/gtx86", "python/numpy", "fortran", "python/gtcuda"]:
             specific = [x for x in alldata if x["setup"]["version"] == backend]

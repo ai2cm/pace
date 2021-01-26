@@ -56,7 +56,7 @@ def write_to_json(
     experiment_name: str,
     init_times: List[float],
     total_times: List[float],
-    main_times: List[float],
+    main_loop_times: List[float],
 ):
     """
     Given input times this function writes a json file with statistics for
@@ -87,11 +87,11 @@ def write_to_json(
     experiment["times"]["init"]["maximum"] = max(init_times)
     experiment["times"]["init"]["median"] = median(init_times)
     experiment["times"]["init"]["mean"] = mean(init_times)
-    experiment["times"]["main"] = {}
-    experiment["times"]["main"]["minimum"] = min(main_times)
-    experiment["times"]["main"]["maximum"] = max(main_times)
-    experiment["times"]["main"]["median"] = median(main_times)
-    experiment["times"]["main"]["mean"] = mean(main_times)
+    experiment["times"]["main_loop"] = {}
+    experiment["times"]["main_loop"]["minimum"] = min(main_loop_times)
+    experiment["times"]["main_loop"]["maximum"] = max(main_loop_times)
+    experiment["times"]["main_loop"]["median"] = median(main_loop_times)
+    experiment["times"]["main_loop"]["mean"] = mean(main_loop_times)
     experiment["times"]["cleanup"] = {}
 
     with open(filename + ".json", "w") as outfile:

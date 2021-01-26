@@ -112,8 +112,8 @@ if __name__ == "__main__":
     )
     timing.time("init")
 
-    timing.time("mainloop")
     # Run the dynamics
+    timing.time("main_loop")
     for i in range(time_step - 1):
         fv_dynamics.fv_dynamics(
             state,
@@ -125,18 +125,23 @@ if __name__ == "__main__":
             input_data["n_split"],
             input_data["ks"],
         )
+    timing.time("main_loop")
 
     # collect times and output simple statistics
-    timing.time("mainloop")
-    main_time = timing.get_totals("mainloop")["total"]
+    main_loop_time = timing.get_totals("main_loop")["total"]
     init_time = timing.get_totals("init")["total"]
-    total_time = main_time + init_time
+    total_time = main_loop_time + init_time
 
     # write times to file
     init_times = comm.gather(init_time, root=0)
-    main_times = comm.gather(main_time, root=0)
+    main_loop_times = comm.gather(main_loop_time, root=0)
     total_times = comm.gather(total_time, root=0)
     if comm.Get_rank() == 0:
         write_to_json(
-            time_step, backend, experiment_name, init_times, total_times, main_times
+            time_step,
+            backend,
+            experiment_name,
+            init_times,
+            total_times,
+            main_loop_times,
         )
