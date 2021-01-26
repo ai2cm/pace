@@ -54,5 +54,5 @@ from .initialization import SubtileGridSizer, GridSizer, QuantityFactory
 from .buffer import array_buffer, send_buffer, recv_buffer
 from ._corners import fill_scalar_corners
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"
 __all__ = list(key for key in locals().keys() if not key.startswith("_"))
