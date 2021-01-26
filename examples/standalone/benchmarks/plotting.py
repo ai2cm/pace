@@ -45,7 +45,7 @@ if __name__ == "__main__":
                             )
                             for e in specific
                         ],
-                        [e["times"][key]["median"] for e in specific],
+                        [e["times"][key]["mean"] for e in specific],
                         label=key + " " + backend,
                     )
                     plt.fill_between(
