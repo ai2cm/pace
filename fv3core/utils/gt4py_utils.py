@@ -244,9 +244,9 @@ def make_storage_from_shape(
     if not mask:
         n_dims = len(shape)
         if n_dims == 1:
-            mask = [False, False, True]  # Assume 1D is a k-field
+            mask = (False, False, True)  # Assume 1D is a k-field
         else:
-            mask = (n_dims * [True]) + ((3 - n_dims) * [False])
+            mask = (n_dims * (True,)) + ((3 - n_dims) * (False,))
 
     storage_func = gt_storage.zeros if init else gt_storage.empty
     storage = storage_func(

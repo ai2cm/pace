@@ -18,15 +18,15 @@ def fix_tracer(
     lower_fix: FloatField,
     sum0: FloatFieldIJ,
     sum1: FloatFieldIJ,
-    fac: FloatFieldIJ,
 ):
     # reset fields
-    with computation(PARALLEL), interval(...):
+    with computation(FORWARD), interval(...):
         zfix = 0
-        lower_fix = 0.0
-        upper_fix = 0.0
         sum0 = 0.0
         sum1 = 0.0
+    with computation(PARALLEL), interval(...):
+        lower_fix = 0.0
+        upper_fix = 0.0
     # fix_top:
     with computation(PARALLEL):
         with interval(0, 1):
@@ -70,7 +70,7 @@ def fix_tracer(
         dm = q * dp
         dm_pos = dm if dm > 0.0 else 0.0
     # fix_bottom:
-    with computation(PARALLEL), interval(-1, None):
+    with computation(FORWARD), interval(-1, None):
         # the 2nd-to-last layer borrowed from this one, account for that here
         if lower_fix[0, 0, -1] != 0.0:
             q = q - (lower_fix[0, 0, -1] / dp)
@@ -114,7 +114,6 @@ def compute(dp2, tracers, im, km, nq, jslice):
     upper_fix = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
     lower_fix = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
     zfix = utils.make_storage_from_shape(shape_ij, dtype=np.int, origin=(0, 0))
-    fac = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
     sum0 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
     sum1 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
     # TODO: Implement dev_gfs_physics ifdef when we implement compiler defs.
@@ -130,7 +129,6 @@ def compute(dp2, tracers, im, km, nq, jslice):
             lower_fix,
             sum0,
             sum1,
-            fac,
             origin=(i1, js, 0),
             domain=(im, jext, km),
         )
