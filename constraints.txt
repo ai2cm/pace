@@ -16,6 +16,7 @@ certifi==2020.6.20        # via requests
 cfgv==3.2.0               # via pre-commit
 cftime==1.2.1             # via -r requirements.txt, netcdf4
 chardet==3.0.4            # via aiohttp, requests
+clang-format==9.0.0       # via -r requirements.txt
 click==7.1.2              # via pip-tools
 coverage==5.3             # via pytest-cov
 decorator==4.4.2          # via gcsfs
