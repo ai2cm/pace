@@ -10,7 +10,7 @@ from .partitioner import (
     get_tile_index,
     get_tile_number,
 )
-from ._timing import Timer
+from ._timing import Timer, NullTimer
 from .constants import (
     ROOT_RANK,
     X_DIM,
