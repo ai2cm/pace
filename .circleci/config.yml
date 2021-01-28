@@ -8,8 +8,8 @@ jobs:
     - image: circleci/python:3.7
     steps:
       - checkout
-      - run: sudo pip3 install black==19.10b0 flake8==3.8.4 mypy==0.790
-      - run: make lint
+      - run: sudo pip3 install tox
+      - run: tox -e lint
 
   test_python:
     docker:
@@ -23,30 +23,12 @@ jobs:
           command: |
             sudo apt-get update
             sudo apt-get install libopenmpi3
-
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
-      - run:
-          name: install dependencies
-          command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip3 install -r requirements.txt
-            pip3 install mpi4py==3.0.3
-      - save_cache:
-          paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
+            sudo pip3 install tox
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
-            pip3 install .
-            make test test_mpi
+            tox
+
 
 workflows:
   version: 2
