@@ -1,20 +1,18 @@
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+from gt4py.gtscript import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    horizontal,
+    interval,
+    region,
+)
 
 import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.rayleigh_super import SDAY, compute_rf_vals
-
-
-sd = utils.sd
-
-
-@gtscript.function
-def compute_rf_nudged_cutoff(ptop):
-    from __externals__ import namelist
-
-    return namelist.rf_cutoff + min(100.0, 10.0 * ptop)
+from fv3core.utils.typing import FloatField
 
 
 @gtscript.function
@@ -30,18 +28,22 @@ def dm_layer(rf, dp, wind):
 
 
 @gtstencil()
-def dm_stencil(
-    dp: sd,
-    dm: sd,
-    pfull: sd,
-    rf: sd,
+def ray_fast_wind(
+    u: FloatField,
+    v: FloatField,
+    w: FloatField,
+    dp: FloatField,
+    pfull: FloatField,
     dt: float,
     ptop: float,
-    rf_cutoff_nudge: float,
     ks: int,
+    hydrostatic: bool,
 ):
-    from __externals__ import namelist
+    from __externals__ import local_ie, local_je, namelist
 
+    with computation(PARALLEL), interval(...):
+        rf_cutoff_nudge = namelist.rf_cutoff + min(100.0, 10.0 * ptop)
+    # dm_stencil
     with computation(PARALLEL), interval(...):
         # TODO -- in the fortran model rf is only computed once, repeating
         # the computation every time ray_fast is run is inefficient
@@ -53,111 +55,78 @@ def dm_stencil(
         with interval(0, 1):
             if pfull < rf_cutoff_nudge:  # TODO and kaxes(k) < ks:
                 dm = dp
-            else:
-                dm = 0.0
         with interval(1, None):
+            dm = dm[0, 0, -1]
             if pfull < rf_cutoff_nudge:  # TODO and kaxes(k) < ks:
-                dm = dm[0, 0, -1] + dp
-            else:
-                dm = dm[0, 0, -1]
+                dm += dp
     with computation(BACKWARD), interval(0, -1):
         if pfull < rf_cutoff_nudge:
             dm = dm[0, 0, 1]
-
-
-@gtstencil()
-def ray_fast_wind(
-    wind: sd,
-    rf: sd,
-    dp: sd,
-    dm: sd,
-    pfull: sd,
-    rf_cutoff_nudge: float,
-    ks: int,
-):
-    from __externals__ import namelist
-
+    # ray_fast_wind(u)
     with computation(FORWARD):
         with interval(0, 1):
-            if pfull < namelist.rf_cutoff:
-                dmdir = dm_layer(rf, dp, wind)
-                wind = rf * wind
-            else:
-                dm = 0
+            with horizontal(region[: local_ie + 1, :]):
+                if pfull < namelist.rf_cutoff:
+                    dmdir = dm_layer(rf, dp, u)
+                    u *= rf
+                else:
+                    dm = 0
         with interval(1, None):
-            if pfull < namelist.rf_cutoff:
-                dmdir = dmdir[0, 0, -1] + dm_layer(rf, dp, wind)
-                wind = rf * wind
-            else:
+            with horizontal(region[: local_ie + 1, :]):
                 dmdir = dmdir[0, 0, -1]
+                if pfull < namelist.rf_cutoff:
+                    dmdir += dm_layer(rf, dp, u)
+                    u *= rf
     with computation(BACKWARD), interval(0, -1):
         if pfull < namelist.rf_cutoff:
             dmdir = dmdir[0, 0, 1]
     with computation(PARALLEL), interval(...):
-        if pfull < rf_cutoff_nudge:  # TODO and axes(k) < ks:
-            dmwind = dmdir / dm
-            wind = wind + dmwind
-
-
-@gtstencil()
-def ray_fast_w(w: sd, rf: sd, pfull: sd):
-    from __externals__ import namelist
-
-    with computation(PARALLEL), interval(...):
+        with horizontal(region[: local_ie + 1, :]):
+            if pfull < rf_cutoff_nudge:  # TODO and axes(k) < ks:
+                u += dmdir / dm
+    # ray_fast_wind(v)
+    with computation(FORWARD):
+        with interval(0, 1):
+            with horizontal(region[:, : local_je + 1]):
+                if pfull < namelist.rf_cutoff:
+                    dmdir = dm_layer(rf, dp, v)
+                    v *= rf
+                else:
+                    dm = 0
+        with interval(1, None):
+            with horizontal(region[:, : local_je + 1]):
+                dmdir = dmdir[0, 0, -1]
+                if pfull < namelist.rf_cutoff:
+                    dmdir += dm_layer(rf, dp, v)
+                    v *= rf
+    with computation(BACKWARD), interval(0, -1):
         if pfull < namelist.rf_cutoff:
-            w = rf * w
+            dmdir = dmdir[0, 0, 1]
+    with computation(PARALLEL), interval(...):
+        with horizontal(region[:, : local_je + 1]):
+            if pfull < rf_cutoff_nudge:  # TODO and axes(k) < ks:
+                v += dmdir / dm
+    # ray_fast_w
+    with computation(PARALLEL), interval(...):
+        with horizontal(region[: local_ie + 1, : local_je + 1]):
+            if not hydrostatic and pfull < namelist.rf_cutoff:
+                w *= rf
 
 
 def compute(u, v, w, dp, pfull, dt, ptop, ks):
     grid = spec.grid
     namelist = spec.namelist
-    # The next 3 variables and dm_stencil could be pushed into ray_fast_wind and
-    # still work, but then recomputing it all twice.
-    rf_cutoff_nudge = namelist.rf_cutoff + min(100.0, 10.0 * ptop)
-    # TODO 1D variable
-    dm = utils.make_storage_from_shape(u.shape, grid.default_origin())
-    # TODO 1D variable
-    rf = utils.make_storage_from_shape(u.shape, grid.default_origin())
-    dm_stencil(
+
+    ray_fast_wind(
+        u,
+        v,
+        w,
         dp,
-        dm,
         pfull,
-        rf,
         dt,
         ptop,
-        rf_cutoff_nudge,
         ks,
+        hydrostatic=namelist.hydrostatic,
         origin=grid.compute_origin(),
         domain=(grid.nic + 1, grid.njc + 1, grid.npz),
     )
-    ray_fast_wind(
-        u,
-        rf,
-        dp,
-        dm,
-        pfull,
-        rf_cutoff_nudge,
-        ks,
-        origin=grid.compute_origin(),
-        domain=(grid.nic, grid.njc + 1, grid.npz),
-    )
-    ray_fast_wind(
-        v,
-        rf,
-        dp,
-        dm,
-        pfull,
-        rf_cutoff_nudge,
-        ks,
-        origin=grid.compute_origin(),
-        domain=(grid.nic + 1, grid.njc, grid.npz),
-    )
-
-    if not namelist.hydrostatic:
-        ray_fast_w(
-            w,
-            rf,
-            pfull,
-            origin=grid.compute_origin(),
-            domain=(grid.nic, grid.njc, grid.npz),
-        )
