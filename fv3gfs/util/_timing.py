@@ -113,8 +113,18 @@ class NullTimer(Timer):
     Meant to be used in place of an optional timer.
     """
 
-    def start(self, name: str):
-        pass
+    def __init__(self):
+        super().__init__()
+        self._enabled = False
 
-    def stop(self, name: str):
-        pass
+    def enable(self):
+        """Enable the Timer."""
+        raise NotImplementedError(
+            "NullTimer cannot be enabled, maybe create a Timer and "
+            "disable it instead of using NullTimer"
+        )
+
+    @property
+    def enabled(self) -> bool:
+        """Indicates whether the timer is currently enabled."""
+        return False

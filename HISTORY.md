@@ -1,6 +1,12 @@
 History
 =======
 
+latest
+------
+
+Major changes:
+- Added NullTimer to use for default Timer value, it is a disabled timer which cannot be enabled (raises NotImplementedError)
+
 v0.6.0
 ------
 

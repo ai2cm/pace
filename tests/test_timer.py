@@ -1,4 +1,4 @@
-from fv3gfs.util import Timer
+from fv3gfs.util import Timer, NullTimer
 import pytest
 import time
 
@@ -6,6 +6,11 @@ import time
 @pytest.fixture
 def timer():
     return Timer()
+
+
+@pytest.fixture
+def null_timer():
+    return NullTimer()
 
 
 def test_start_stop(timer):
@@ -16,6 +21,15 @@ def test_start_stop(timer):
     assert len(times) == 1
     assert timer.hits["label"] == 1
     assert len(timer.hits) == 1
+
+
+def test_null_timer_cannot_be_enabled(null_timer):
+    with pytest.raises(NotImplementedError):
+        null_timer.enable()
+
+
+def test_null_timer_is_disabled(null_timer):
+    assert not null_timer.enabled
 
 
 def test_clock(timer):
