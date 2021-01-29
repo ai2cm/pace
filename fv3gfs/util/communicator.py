@@ -269,9 +269,7 @@ class Communicator:
                     self.scatter(recv_quantity=recv_state[name])
                 else:
                     recv_state[name] = self.scatter()
-            time = self.comm.bcast(None, root=constants.ROOT_RANK)
-            if time is not None:
-                recv_state["time"] = time
+            recv_state["time"] = self.comm.bcast(None, root=constants.ROOT_RANK)
 
         if recv_state is None:
             recv_state = {}
