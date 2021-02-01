@@ -64,7 +64,7 @@ class TranslateTransportDelp(TranslateFortranData2Py):
             **inputs,
             rarea=self.grid.rarea,
             origin=orig,
-            domain=self.grid.domain_shape_compute_buffer_2d(add=(2, 2, 0)),
+            domain=self.grid.domain_shape_compute(add=(2, 2, 0)),
         )
         return self.slice_output(
             inputs,
@@ -116,7 +116,7 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
             cos_sg4=self.grid.cos_sg4,
             rarea_c=self.grid.rarea_c,
             origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute_buffer_2d(add=(1, 1, 0)),
+            domain=self.grid.domain_shape_compute(add=(1, 1, 0)),
         )
         return self.slice_output({"divg_d": inputs["divg_d"]})
 
@@ -150,7 +150,7 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
             dxc=self.grid.dxc,
             dyc=self.grid.dyc,
             origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute_buffer_2d(add=(1, 1, 0)),
+            domain=self.grid.domain_shape_compute(add=(1, 1, 0)),
         )
         return self.slice_output({"vort_c": inputs["vort_c"]})
 

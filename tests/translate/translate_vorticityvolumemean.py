@@ -1,4 +1,4 @@
-import fv3core.stencils.vorticity_volumemean as vm
+from fv3core.stencils.d_sw import horizontal_relative_vorticity_from_winds
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -14,5 +14,16 @@ class TranslateVorticityVolumeMean(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        vm.compute(**inputs)
+        horizontal_relative_vorticity_from_winds(
+            inputs["u"],
+            inputs["v"],
+            inputs["ut"],
+            inputs["vt"],
+            self.grid.dx,
+            self.grid.dy,
+            self.grid.rarea,
+            inputs["wk"],
+            origin=self.grid.default_origin(),
+            domain=self.grid.domain_shape_standard(),
+        )
         return self.slice_output(inputs)

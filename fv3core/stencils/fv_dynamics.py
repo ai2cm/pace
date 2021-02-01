@@ -78,7 +78,7 @@ def compute_preamble(state, comm):
         state.ph2,
         spec.namelist.p_ref,
         origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute_buffer_2d(),
+        domain=grid.domain_shape_compute(add=(1, 1, 0)),
     )
     if spec.namelist.hydrostatic:
         raise Exception("Hydrostatic is not implemented")

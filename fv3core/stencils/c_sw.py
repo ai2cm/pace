@@ -313,7 +313,7 @@ def vorticitytransport_cgrid(
         grid.rdyc,
         dt2,
         origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute_buffer_2d(add=(0, 1, 0)),
+        domain=grid.domain_shape_compute(add=(0, 1, 0)),
     )
     update_zonal_velocity(
         vort_c,
@@ -325,7 +325,7 @@ def vorticitytransport_cgrid(
         grid.rdxc,
         dt2,
         origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute_buffer_2d(add=(1, 0, 0)),
+        domain=grid.domain_shape_compute(add=(1, 0, 0)),
     )
 
 
@@ -355,7 +355,7 @@ def compute(delp, pt, u, v, w, uc, vc, ua, va, ut, vt, divgd, omga, dt2):
             grid.rarea_c,
             divgd,
             origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute_buffer_2d(add=(1, 1, 0)),
+            domain=grid.domain_shape_compute(add=(1, 1, 0)),
         )
     geo_origin = (grid.is_ - 1, grid.js - 1, 0)
     geoadjust_ut(
@@ -428,7 +428,7 @@ def compute(delp, pt, u, v, w, uc, vc, ua, va, ut, vt, divgd, omga, dt2):
         grid.dyc,
         vort,
         origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute_buffer_2d(add=(1, 1, 0)),
+        domain=grid.domain_shape_compute(add=(1, 1, 0)),
     )
     absolute_vorticity(
         vort,

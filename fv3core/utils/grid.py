@@ -305,16 +305,13 @@ class Grid:
         }
         return {**self.default_domain_dict(), **horizontal_dict}
 
-    def domain_shape_standard(self):
-        return (self.nid, self.njd, self.npz)
+    def domain_shape_standard(self, add: Tuple[int, int, int] = (0, 0, 0)):
+        return (self.nid + add[0], self.njd + add[1], self.npz + add[2])
 
     def domain_shape_buffer_k(self):
         return (self.nid, self.njd, self.npz + 1)
 
-    def domain_shape_compute(self):
-        return (self.nic, self.njc, self.npz)
-
-    def domain_shape_compute_buffer_2d(self, add: Tuple[int, int, int] = (1, 1, 0)):
+    def domain_shape_compute(self, add: Tuple[int, int, int] = (0, 0, 0)):
         return (self.nic + add[0], self.njc + add[1], self.npz + add[2])
 
     def domain_shape_compute_buffer_k(self):
@@ -421,7 +418,7 @@ class Grid:
             self.domain_shape_compute()[0:2],
             self.domain_shape_compute_x()[0:2],
             self.domain_shape_compute_y()[0:2],
-            self.domain_shape_compute_buffer_2d()[0:2],
+            self.domain_shape_compute(add=(1, 1, 0))[0:2],
         ]:
             return self.is_, self.js
         elif shape[0:2] == (self.nic + 2, self.njc + 2):
