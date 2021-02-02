@@ -7,3 +7,6 @@
 [submodule "external/fv3gfs-fortran"]
 	path = external/fv3gfs-fortran
 	url = https://github.com/VulcanClimateModeling/fv3gfs-fortran.git
+[submodule "external/daint_venv"]
+	path = external/daint_venv
+	url = git@github.com:VulcanClimateModeling/daint_venv.git

@@ -135,6 +135,11 @@ if [ ${container_engine} == "sarus" ]; then
     fi
 fi
 
+if [ ${host} == "daint" ]; then
+    daintenv=${SCRATCH}/vcm_env_${BUILD_TAG}
+    ${root}/install_virtualenv.sh ${daintenv}
+    source ${daintenv}/bin/activate
+fi
 # get the test data version from the Makefile
 export FORTRAN_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
 
@@ -150,6 +155,12 @@ G2G="false"
 export DOCKER_BUILDKIT=1
 # Run the jenkins command
 run_command "${script} ${optarg} ${optarg2} " Job${action} ${G2G} ${scheduler_script}
+
+# clean up the venv
+if [ ${host} == "daint" ]; then
+  deactivate
+  rm -rf ${daintenv}
+fi
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
