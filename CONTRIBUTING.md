@@ -44,7 +44,10 @@ The first version of the dycore was written with minimal metadata and typing, mo
 We are now actively refactoring, moving code that still does computations in Python into GT4py stencils and merging stencils together with the introduction of enabling features in GT4py (such as regions).
 While we do that, clarifying the operation of the model and what the variables are will both help make the model easier to read and reduce errors as we move around long lists of argument variables.
 
-Specifically, we want to start adding the following where appropriate:
+First, checking you are following the guidelines established at [Code Review Checklist](https://paper.dropb\
+ox.com/doc/Code-Review-Checklist--BD7zigBMAhMZAPkeNENeuU2UAg-IlsYffZgTwyKEylty7NhY) when writing new code.
+
+For code visited in refactors, we want to start adding the following where appropriate:
 - Type hints on Python functions (see [`fv3core/utils/typing.py`](https://github.com/VulcanClimateModeling/fv3core/blob/master/fv3core/utils/typing.py) and below)
 - More descriptive types on stencil definitions
 - Docstrings on outward facing Python functions: describe what methods are doing, describe the intent (*in*, *out*, or *inout*) of the function arguments
