@@ -28,9 +28,11 @@ HUGE_R = 1.0e40
 
 # NOTE in Fortran these are columns
 @gtstencil()
-def dp_ref_compute(ak: sd, bk: sd, dp_ref: sd):
-    with computation(PARALLEL), interval(...):
+def dp_ref_compute(ak: sd, bk: sd, phis: sd, dp_ref: sd, zs: sd, rgrav: float):
+    with computation(PARALLEL), interval(0, -1):
         dp_ref = ak[0, 0, 1] - ak + (bk[0, 0, 1] - bk) * 1.0e5
+    with computation(PARALLEL), interval(...):
+        zs = phis * rgrav
 
 
 @gtstencil()
@@ -150,14 +152,17 @@ def compute(state, comm):
         state.dp_ref = utils.make_storage_from_shape(
             state.ak.shape, grid.default_origin()
         )
+        state.zs = utils.make_storage_from_shape(state.ak.shape, grid.default_origin())
         dp_ref_compute(
             state.ak,
             state.bk,
+            state.phis,
             state.dp_ref,
+            state.zs,
+            rgrav,
             origin=grid.default_origin(),
-            domain=grid.domain_shape_standard(),
+            domain=grid.domain_shape_standard(add=(0, 0, 1)),
         )
-        state.zs = state.phis * rgrav
     n_con = get_n_con()
 
     for it in range(n_split):
