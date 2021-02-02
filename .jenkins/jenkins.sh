@@ -40,8 +40,8 @@ test -n "${slave}" || exitError 1005 ${LINENO} "slave is not defined"
 
 # some global variables
 action="$1"
-optarg="$2"
-optarg2="$3"
+backend="$2"
+experiment="$3"
 # check presence of env directory
 pushd `dirname $0` > /dev/null
 envloc=`/bin/pwd`
@@ -53,9 +53,10 @@ shopt -s expand_aliases
 # setup module environment and default queue
 test -f ${envloc}/env/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
 . ${envloc}/env/machineEnvironment.sh
-
+export python_env=${python_env}
+echo "PYTHON env ${python_env}"
 # get root directory of where jenkins.sh is sitting
-root=`dirname $0`
+export jenkins_dir=`dirname $0`
 
 # load machine dependent environment
 if [ ! -f ${envloc}/env/env.${host}.sh ] ; then
@@ -64,7 +65,7 @@ fi
 . ${envloc}/env/env.${host}.sh
 
 # check if action script exists
-script="${root}/actions/${action}.sh"
+script="${jenkins_dir}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
 # load scheduler tools
@@ -73,17 +74,21 @@ scheduler_script="`dirname $0`/env/submit.${host}.${scheduler}"
 
 # if there is a scheduler script, make a copy for this job
 if [ -f ${scheduler_script} ] ; then
-    cp  ${scheduler_script} job_${action}.sh
-    scheduler_script=job_${action}.sh
+    if [ "${action}" == "setup" ]; then
+	scheduler="none"
+    else
+	cp  ${scheduler_script} job_${action}.sh
+	scheduler_script=job_${action}.sh
+    fi
 fi
 
-# if this is a parallel job and the number of ranks is specified in optarg2, set NUM_RANKS
+# if this is a parallel job and the number of ranks is specified in the experiment argument, set NUM_RANKS
 # and update the scheduler script if there is one
 if grep -q "parallel" <<< "${script}"; then
-    if grep -q "ranks" <<< "${optarg2}"; then
-	export NUM_RANKS=`echo ${optarg2} | grep -o -E '[0-9]+ranks' | grep -o -E '[0-9]+'`
+    if grep -q "ranks" <<< "${experiment}"; then
+	export NUM_RANKS=`echo ${experiment} | grep -o -E '[0-9]+ranks' | grep -o -E '[0-9]+'`
 	echo "Setting NUM_RANKS=${NUM_RANKS}"
-	if grep -q "cuda" <<< "${optarg}" ; then
+	if grep -q "cuda" <<< "${backend}" ; then
 	    export MPICH_RDMA_ENABLED_CUDA=1
 	else
 	    export MPICH_RDMA_ENABLED_CUDA=0
@@ -99,47 +104,30 @@ if grep -q "parallel" <<< "${script}"; then
 	fi
     fi
 fi
+
 # set thresholds override file if it exists
-test_type=${optarg2##*_}
+test_type=${experiment##*_}
 OVERRIDES_FOLDER="${envloc}/../tests/translate/overrides/"
 OVERRIDES_FILE="${OVERRIDES_FOLDER}/${test_type}.yaml"
 echo "overrides file:"
 echo ${OVERRIDES_FILE}
 if test -f "${OVERRIDES_FILE}"; then
     echo "OVERRIDE"
-    export MOUNTS=" --mount=type=bind,source=${OVERRIDES_FOLDER},destination=/thresholds"
-    export THRESH_ARGS="--threshold_overrides_file=/thresholds/${test_type}.yaml"
+    export MOUNTS=" -v ${OVERRIDES_FOLDER}:/thresholds"
+    if [ ${python_env} == "virtualenv" ]; then
+	threshold_folder=${OVERRIDES_FOLDER}
+    else
+	threshold_folder="/thresholds"
+    fi
+    export THRESH_ARGS="--threshold_overrides_file=${threshold_folder}/${test_type}.yaml"
 fi
+export PROF_FOLDER="${envloc}/../prof"
+`mkdir -p ${PROF_FOLDER}`
+export MOUNTS="${MOUNTS} -v ${PROF_FOLDER}:/prof"
 module load daint-gpu
 module add "${installdir}/modulefiles/"
 module load gcloud
-echo "UPSTREAM_PROJECT: ${UPSTREAM_PROJECT}"
-echo "UPSTREAM_BUILD_NUMBER: ${UPSTREAM_BUILD_NUMBER}"
-if [ ! -z "${UPSTREAM_PROJECT}" ] ; then
-    # Set in build_for_daint jenkins plan, to mark what fv3core image to pull
-    export JENKINS_TAG="${UPSTREAM_PROJECT}-${UPSTREAM_BUILD_NUMBER}"
-    echo "Downstream project using JENKINS_TAG=${JENKINS_TAG}"
-fi
-# If using sarus, load the image and set variables for running tests,
-# otherwise build the image
-if [ ${container_engine} == "sarus" ]; then
-    module load sarus
-    make sarus_load_tar
-    if grep -q "parallel" <<< "${script}"; then
-	export CONTAINER_ENGINE="srun sarus"
-	export RUN_FLAGS="--mpi"
-	export MPIRUN_CALL=""
-    else
-	export CONTAINER_ENGINE="sarus"
-	export RUN_FLAGS=""
-    fi
-fi
 
-if [ ${host} == "daint" ]; then
-    daintenv=${SCRATCH}/vcm_env_${BUILD_TAG}
-    ${root}/install_virtualenv.sh ${daintenv}
-    source ${daintenv}/bin/activate
-fi
 # get the test data version from the Makefile
 export FORTRAN_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
 
@@ -148,19 +136,40 @@ if [ -z ${SCRATCH} ] ; then
     export SCRATCH=`pwd`
 fi
 
-# Set the host data location
+# Set the host data head directory location
 export TEST_DATA_DIR="${SCRATCH}/fv3core_fortran_data/${FORTRAN_VERSION}"
+export FV3_STENCIL_REBUILD_FLAG=False
+# Set the host data location
+export TEST_DATA_HOST="${TEST_DATA_DIR}/${experiment}/"
+export EXPERIMENT=${experiment}
+if [ -z ${JENKINS_TAG} ]; then
+    export JENKINS_TAG=${JOB_NAME}-${BUILD_NUMBER}
+fi
+echo "JENKINS TAG ${JENKINS_TAG}"
+if [ -z ${VIRTUALENV} ]; then
+    echo "setting VIRTUALENV"
+    export VIRTUALENV=${WORKSPACE}/vcm_env_${JENKINS_TAG}
+fi
+
+if [ ${python_env} == "virtualenv" ]; then
+    if [ -d ${VIRTUALENV} ]; then
+	echo "Using existing virtualenv ${VIRTUALENV}"
+	source ${VIRTUALENV}/bin/activate
+    else
+	echo "virtualenv is not setup yet"
+    fi
+    if grep -q "parallel" <<< "${script}"; then
+	export MPIRUN_CALL="srun"
+    fi
+    export FV3_PATH="${envloc}/../"
+    export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
+    export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:$PYTHONPATH
+fi
 
 G2G="false"
 export DOCKER_BUILDKIT=1
-# Run the jenkins command
-run_command "${script} ${optarg} ${optarg2} " Job${action} ${G2G} ${scheduler_script}
 
-# clean up the venv
-if [ ${host} == "daint" ]; then
-  deactivate
-  rm -rf ${daintenv}
-fi
+run_command "${script} ${backend} ${experiment} " Job${action} ${G2G} ${scheduler_script}
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"

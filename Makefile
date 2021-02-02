@@ -14,28 +14,24 @@ VOLUMES ?=
 MOUNTS ?=
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
+BASH_PREFIX ?=
 TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
 FV3UTIL_DIR=$(CWD)/external/fv3gfs-util
 
 FV3=fv3core
-ifeq ($(CONTAINER_ENGINE),sarus)
-	FV3_IMAGE = load/library/$(SARUS_FV3CORE_IMAGE)
-else ifeq ($(CONTAINER_ENGINE),srun sarus)
-	FV3_IMAGE = load/library/$(SARUS_FV3CORE_IMAGE)
-else
-	FV3_IMAGE ?= $(FV3CORE_IMAGE)
-endif
+FV3_PATH ?=/$(FV3)
 
-TEST_DATA_CONTAINER=/test_data
+TEST_DATA_RUN_LOC ?=/test_data
 PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
 PYTHON_INIT_FILES = $(shell git ls-files | grep '__init__.py')
 TEST_DATA_TARFILE=dat_files.tar.gz
 TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
 CORE_TAR=$(SARUS_FV3CORE_IMAGE).tar
-CORE_BUCKET_LOC=gs://vcm-jenkins/$(CORE_TAR)
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 BASE_INSTALL?=$(FV3)-install-serialbox
-DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util -v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER)'
+DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC)'
+PYTEST_SEQUENTIAL=pytest --profile --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(FV3_PATH)/tests
+PYTEST_PARALLEL=$(MPIRUN_CALL) pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) -m parallel $(FV3_PATH)/tests
 
 clean:
 	find . -name ""
@@ -134,9 +130,9 @@ test_mpi: tests_mpi
 dev:
 	docker run --rm -it \
 		--network host \
-		-v $(TEST_DATA_HOST):$(TEST_DATA_CONTAINER) \
+		-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) \
 		-v $(CWD):/port_dev \
-		$(FV3_IMAGE) bash
+		$(FV3CORE_IMAGE) bash
 
 dev_wrapper:
 	$(MAKE) -C docker dev_wrapper
@@ -152,20 +148,26 @@ dev_test_mpi: dev_tests_mpi
 dev_tests_mpi_host:
 	MOUNTS=$(DEV_MOUNTS) $(MAKE) run_tests_parallel_host
 
+tests_venv:
+	pip list && $(BASH_PREFIX) bash -c "$(PYTEST_SEQUENTIAL)"
+
+tests_venv_mpi:
+	pip list && $(BASH_PREFIX) bash -c "$(PYTEST_PARALLEL)"
+
 test_base:
 	$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(MOUNTS) $(CUDA_FLAGS) \
-	$(FV3_IMAGE) bash -c "pip list && pytest --data_path=$(TEST_DATA_CONTAINER) $(TEST_ARGS) /$(FV3)/tests"
+	$(FV3CORE_IMAGE) bash -c "pip list && $(PYTEST_SEQUENTIAL)"
 
 test_base_parallel:
-	$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(MOUNTS) $(CUDA_FLAGS) $(FV3_IMAGE) \
-	bash -c "pip list && $(MPIRUN_CALL) pytest --data_path=$(TEST_DATA_CONTAINER) $(TEST_ARGS) -m parallel /$(FV3)/tests"
+	$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(MOUNTS) $(CUDA_FLAGS) $(FV3CORE_IMAGE) \
+	bash -c "pip list && $(PYTEST_PARALLEL)"
 
 run_tests_sequential:
-	VOLUMES='--mount=type=bind,source=$(TEST_DATA_HOST),destination=$(TEST_DATA_CONTAINER) --mount=type=bind,source=$(CWD)/.jenkins,destination=/.jenkins' \
+	VOLUMES='-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(CWD)/.jenkins:/.jenkins' \
 	$(MAKE) test_base
 
 run_tests_parallel:
-	VOLUMES='--mount=type=bind,source=$(TEST_DATA_HOST),destination=$(TEST_DATA_CONTAINER) --mount=type=bind,source=$(CWD)/.jenkins,destination=/.jenkins' \
+	VOLUMES='-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(CWD)/.jenkins:/.jenkins' \
 	$(MAKE) test_base_parallel
 
 sync_test_data:
@@ -193,7 +195,7 @@ lint:
 
 gt4py_tests_gpu:
 	CUDA=y make build && \
-        docker run --gpus all $(FV3_IMAGE) python3 -m pytest -k "not gtc" -x gt4py/
+        docker run --gpus all $(FV3CORE_IMAGE) python3 -m pytest -k "not gtc" -x gt4py/
 
 .PHONY: update_submodules build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
 	 list_test_data_options pull_environment pull_test_data push_environment \

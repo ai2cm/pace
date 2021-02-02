@@ -12,10 +12,10 @@ exitError()
 test -n "$1" || exitError 1001 ${virtualenv_path} "must pass an argument"
 
 virtualenv_path=$1
-root=`dirname $0`/../
-(cd ${root}/external/daint_venv && ./install.sh ${virtualenv_path})
+fv3core_dir=`dirname $0`/../
+(cd ${fv3core_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
 source ${virtualenv_path}/bin/activate
-python3 -m pip install ${root}/external/fv3gfs-util/
-python3 -m pip install -c ${root}/constraints.txt -r ${root}/requirements.txt
-python3 -m pip install ${root}
+python3 -m pip install ${fv3core_dir}/external/fv3gfs-util/
+python3 -m pip install -c ${fv3core_dir}/constraints.txt -r ${fv3core_dir}/requirements.txt
+python3 -m pip install ${fv3core_dir}
 deactivate

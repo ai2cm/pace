@@ -4,6 +4,7 @@ pytest-dependency
 pytest
 pytest-cov
 pytest-subtests
+pytest-profiling
 xarray
 numpy
 zarr

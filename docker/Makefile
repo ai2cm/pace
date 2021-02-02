@@ -16,9 +16,6 @@ BUILD_ARGS += \
 	--build-arg GT4PY_OPTIONALS=$(GT4PY_OPTIONALS) \
 	--build-arg ENV_CUDA_PATH=$(ENV_CUDA_PATH)
 
-# sarus paths
-CORE_TAR=$(TAG_NAME)$(JENKINS_TAG).tar
-CORE_BUCKET_LOC=gs://vcm-jenkins/$(CORE_TAR)
 
 CORE_DEPS_IMAGES = $(SERIALBOX_IMAGE) $(GT4PY_IMAGE) $(ENVIRONMENT_IMAGE)
 DEPS_IMAGES ?= $(CORE_DEPS_IMAGES) $(FMS_IMAGE) $(ESMF_IMAGE) $(MPI_IMAGE)
@@ -114,18 +111,5 @@ push:
 pull:
 	docker pull $(FV3CORE_IMAGE)
 
-tar_core:
-	docker save $(FV3CORE_IMAGE) -o $(CORE_TAR)
-	gsutil copy $(CORE_TAR) $(CORE_BUCKET_LOC)
-	$(RM) $(CORE_TAR)
-
-sarus_load_tar:
-	export FOUND_IMAGE=`sarus images | grep $(TAG_NAME)`
-	if [ -z $(FOUND_IMAGE) ] && [ ! -f `pwd`/$(CORE_TAR) ]; then \
-		gsutil copy $(CORE_BUCKET_LOC) . && \
-		sarus load ./$(CORE_TAR) $(SARUS_FV3CORE_IMAGE); \
-        fi
-
 cleanup_remote:
-	gsutil rm $(CORE_BUCKET_LOC)
 	gcloud container images delete -q --force-delete-tags $(FV3CORE_IMAGE)
