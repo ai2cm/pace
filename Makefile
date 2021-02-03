@@ -29,9 +29,11 @@ TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
 CORE_TAR=$(SARUS_FV3CORE_IMAGE).tar
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 BASE_INSTALL?=$(FV3)-install-serialbox
+DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/
 DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC)'
 PYTEST_SEQUENTIAL=pytest --profile --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(FV3_PATH)/tests
 PYTEST_PARALLEL=$(MPIRUN_CALL) pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) -m parallel $(FV3_PATH)/tests
+
 
 clean:
 	find . -name ""
@@ -171,13 +173,15 @@ run_tests_parallel:
 	$(MAKE) test_base_parallel
 
 sync_test_data:
-	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/ $(TEST_DATA_HOST)
+	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)
 
 push_python_regressions:
-	gsutil -m cp -r $(TEST_DATA_HOST)/python_regressions $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/python_regressions
+	gsutil -m cp -r $(TEST_DATA_HOST)/python_regressions $(DATA_BUCKET)python_regressions
 
 get_test_data:
-	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ]; then \
+	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
+	[ "$$(gsutil cat $(DATA_BUCKET)md5sums.txt)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
+	rm -rf $(TEST_DATA_HOST) && \
 	$(MAKE) sync_test_data && \
 	$(MAKE) unpack_test_data ;\
 	fi
