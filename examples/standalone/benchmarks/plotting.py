@@ -27,12 +27,12 @@ if __name__ == "__main__":
                 with open(fullpath) as f:
                     alldata.append(json.load(f))
     alldata.sort(
-        key=lambda k: datetime.strptime(
-            k["setup"]["experiment time"], "%d/%m/%Y %H:%M:%S"
-        )
+        key=lambda k: datetime.strptime(k["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S")
     )
-    for plottype in ["mainLoop", "initTotal"]:
-        keyval = ["main_loop"] if plottype == "mainLoop" else ["init", "total"]
+    for plottype in ["mainLoop", "initializationTotal"]:
+        keyval = (
+            ["main_loop"] if plottype == "mainLoop" else ["initialization", "total"]
+        )
         plt.figure()
         for backend in ["python/gtx86", "python/numpy", "fortran", "python/gtcuda"]:
             specific = [x for x in alldata if x["setup"]["version"] == backend]
@@ -41,7 +41,7 @@ if __name__ == "__main__":
                     plt.plot(
                         [
                             datetime.strptime(
-                                e["setup"]["experiment time"], "%d/%m/%Y %H:%M:%S"
+                                e["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
                             )
                             for e in specific
                         ],
@@ -51,7 +51,7 @@ if __name__ == "__main__":
                     plt.fill_between(
                         [
                             datetime.strptime(
-                                e["setup"]["experiment time"], "%d/%m/%Y %H:%M:%S"
+                                e["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
                             )
                             for e in specific
                         ],
@@ -68,7 +68,7 @@ if __name__ == "__main__":
             0.5,
             0.01,
             "data: "
-            + alldata[0]["setup"]["data set"]
+            + alldata[0]["setup"]["dataset"]
             + "  timesteps:"
             + str(alldata[0]["setup"]["timesteps"]),
             wrap=True,
