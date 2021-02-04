@@ -165,14 +165,6 @@ def adjust_w_and_qcon(w: sd, delp: sd, dw: sd, q_con: sd, damp_w: float):
         q_con = q_con / delp
 
 
-@gtstencil()
-def heatdamping_setup(ub: sd, vt: sd, fy: sd, u: sd, gy: sd, rdx: sd, sign: float):
-    with computation(PARALLEL), interval(...):
-        ub[0, 0, 0] = (ub + sign * vt) * rdx
-        fy[0, 0, 0] = u * rdx
-        gy[0, 0, 0] = fy * ub
-
-
 @gtscript.function
 def heat_damping_term(ub, vb, gx, gy, rsin2, cosa_s, u2, v2, du2, dv2):
     return rsin2 * (
@@ -183,29 +175,67 @@ def heat_damping_term(ub, vb, gx, gy, rsin2, cosa_s, u2, v2, du2, dv2):
 
 
 @gtstencil()
-def heatdamping(
-    ub: sd,
-    vb: sd,
-    delp: sd,
-    fx: sd,
-    fy: sd,
-    gx: sd,
-    gy: sd,
-    rsin2: sd,
-    cosa_s: sd,
-    heat_source: sd,
-    diss_est: sd,
-    damp: float,
-    do_skeb: int,
+def heat_source_from_vorticity_damping(
+    ub: FloatField,
+    vb: FloatField,
+    ut: FloatField,
+    vt: FloatField,
+    u: FloatField,
+    v: FloatField,
+    delp: FloatField,
+    rsin2: FloatField,
+    cosa_s: FloatField,
+    rdx: FloatField,
+    rdy: FloatField,
+    heat_source: FloatField,
+    dissipation_estimate: FloatField,
+    kinetic_energy_fraction_to_damp: float,
+    calculate_dissipation_estimate: int,
 ):
+    """
+    Calculates heat source from vorticity damping implied by energy conservation.
+
+    Args:
+        ub (in)
+        vb (in)
+        ut (in)
+        vt (in)
+        u (in)
+        v (in)
+        delp (in)
+        rsin2 (in)
+        cosa_s (in)
+        rdx (in): radius of Earth multiplied by x-direction gridcell width
+        rdy (in): radius of Earth multiplied by y-direction gridcell width
+        heat_source (out): heat source from vorticity damping
+            implied by energy conservation
+        diss_est (out): dissipation estimate, only calculated if
+            calculate_dissipation_estimate is 1
+        kinetic_energy_fraction_to_damp (in): according to its comment in fv_arrays,
+            the fraction of kinetic energy to explicitly damp and convert into heat.
+            TODO: confirm this description is accurate, why is it multiplied
+            by 0.25 below?
+        calculate_dissipation_estimate (in): If 1, calculate dissipation estimate.
+            Equivalent in Fortran model is do_skeb
+    """
     with computation(PARALLEL), interval(...):
+        ubt = (ub + vt) * rdx
+        fy = u * rdx
+        gy = fy * ubt
+        vbt = (vb - ut) * rdy
+        fx = v * rdy
+        gx = fx * vbt
         u2 = fy + fy[0, 1, 0]
-        du2 = ub + ub[0, 1, 0]
+        du2 = ubt + ubt[0, 1, 0]
         v2 = fx + fx[1, 0, 0]
-        dv2 = vb + vb[1, 0, 0]
-        dampterm = heat_damping_term(ub, vb, gx, gy, rsin2, cosa_s, u2, v2, du2, dv2)
-        heat_source[0, 0, 0] = delp * (heat_source - damp * dampterm)
-        diss_est[0, 0, 0] = diss_est - dampterm if do_skeb == 1 else diss_est
+        dv2 = vbt + vbt[1, 0, 0]
+        dampterm = heat_damping_term(ubt, vbt, gx, gy, rsin2, cosa_s, u2, v2, du2, dv2)
+        heat_source[0, 0, 0] = delp * (
+            heat_source - 0.25 * kinetic_energy_fraction_to_damp * dampterm
+        )
+        dissipation_estimate[0, 0, 0] = (
+            -dampterm if calculate_dissipation_estimate == 1 else dissipation_estimate
+        )
 
 
 def initialize_heat_source(heat_source, diss_est):
@@ -214,43 +244,34 @@ def initialize_heat_source(heat_source, diss_est):
 
 
 def heat_from_damping(
-    ub, vb, ut, vt, u, v, delp, fx, fy, gx, gy, heat_source, diss_est, damp
+    ub,
+    vb,
+    ut,
+    vt,
+    u,
+    v,
+    delp,
+    fx,
+    fy,
+    heat_source,
+    diss_est,
+    kinetic_energy_fraction_to_damp,
 ):
-    heatdamping_setup(
+    heat_source_from_vorticity_damping(
         ub,
-        vt,
-        fy,
-        u,
-        gy,
-        grid().rdx,
-        1.0,
-        origin=grid().compute_origin(),
-        domain=grid().domain_shape_compute_y(),
-    )
-    heatdamping_setup(
         vb,
         ut,
-        fx,
+        vt,
+        u,
         v,
-        gx,
-        grid().rdy,
-        -1.0,
-        origin=grid().compute_origin(),
-        domain=grid().domain_shape_compute_x(),
-    )
-    heatdamping(
-        ub,
-        vb,
         delp,
-        fx,
-        fy,
-        gx,
-        gy,
         grid().rsin2,
         grid().cosa_s,
+        grid().rdx,
+        grid().rdy,
         heat_source,
         diss_est,
-        damp,
+        kinetic_energy_fraction_to_damp,
         int(spec.namelist.do_skeb),
         origin=grid().compute_origin(),
         domain=grid().domain_shape_compute(),
@@ -724,7 +745,9 @@ def d_sw(
         column_namelist["nord"],
     )
 
-    if column_namelist["d_con"] > dcon_threshold:
+    kinetic_energy_fraction_to_damp = column_namelist["d_con"]
+
+    if kinetic_energy_fraction_to_damp > dcon_threshold:
         ub_from_vort(
             vort,
             ub,
@@ -785,10 +808,20 @@ def d_sw(
         )
         delnflux.compute_no_sg(wk, ut, vt, column_namelist["nord_v"], damp4, vort)
 
-    if column_namelist["d_con"] > dcon_threshold or spec.namelist.do_skeb:
-        damp = 0.25 * column_namelist["d_con"]
+    if kinetic_energy_fraction_to_damp > dcon_threshold or spec.namelist.do_skeb:
         heat_from_damping(
-            ub, vb, ut, vt, u, v, delp, fx, fy, gx, gy, heat_s, diss_e, damp
+            ub,
+            vb,
+            ut,
+            vt,
+            u,
+            v,
+            delp,
+            fx,
+            fy,
+            heat_s,
+            diss_e,
+            kinetic_energy_fraction_to_damp,
         )
     if column_namelist["damp_vt"] > 1e-5:
         basic.add_term_stencil(
