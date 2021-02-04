@@ -34,23 +34,18 @@ def flux_y(cy: sd, dya: sd, dx: sd, sin_sg4: sd, sin_sg2: sd, yfx: sd):
         )
 
 
-@gtscript.function
-def mult_frac(var, frac):
-    var_tmp = var
-    return var_tmp * frac
-
-
 @gtstencil()
-def cmax_split_vars(
+def cmax_multiply_by_frac(
     cxd: sd, xfx: sd, mfxd: sd, cyd: sd, yfx: sd, mfyd: sd, frac: float
 ):
+    """multiply all other inputs in-place by frac."""
     with computation(PARALLEL), interval(...):
-        cxd = mult_frac(cxd, frac)
-        xfx = mult_frac(xfx, frac)
-        mfxd = mult_frac(mfxd, frac)
-        cyd = mult_frac(cyd, frac)
-        yfx = mult_frac(yfx, frac)
-        mfyd = mult_frac(mfyd, frac)
+        cxd = cxd * frac
+        xfx = xfx * frac
+        mfxd = mfxd * frac
+        cyd = cyd * frac
+        yfx = yfx * frac
+        mfyd = mfyd * frac
 
 
 @gtstencil()
@@ -154,17 +149,17 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
     frac = 1.0
     if nsplt > 1.0:
         frac = 1.0 / nsplt
-    cmax_split_vars(
-        cxd,
-        xfx,
-        mfxd,
-        cyd,
-        yfx,
-        mfyd,
-        frac,
-        origin=grid.default_origin(),
-        domain=grid.domain_shape_buffer_1cell(),
-    )
+        cmax_multiply_by_frac(
+            cxd,
+            xfx,
+            mfxd,
+            cyd,
+            yfx,
+            mfyd,
+            frac,
+            origin=grid.default_origin(),
+            domain=grid.domain_shape_buffer_1cell(),
+        )
 
     # complete HALO update on q
     for qname in utils.tracer_variables[0:nq]:
