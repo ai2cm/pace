@@ -187,7 +187,6 @@ def fix_neg_cloud(dp: sd, qcld: sd):
             qcld = 0.0
     with computation(FORWARD):
         with interval(-2, -1):
-            dq = 0.0
             if qcld[0, 0, 1] < 0.0 and qcld > 0:
                 dq = (
                     -qcld * dp
@@ -196,7 +195,6 @@ def fix_neg_cloud(dp: sd, qcld: sd):
                 )
                 qcld = qcld - dq / dp
         with interval(-1, None):
-            dq = 0.0
             if qcld < 0 and qcld[0, 0, -1] > 0.0:
                 dq = (
                     -qcld * dp
