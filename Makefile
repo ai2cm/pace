@@ -31,7 +31,7 @@ MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 BASE_INSTALL?=$(FV3)-install-serialbox
 DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/
 DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC)'
-PYTEST_SEQUENTIAL=pytest --profile --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(FV3_PATH)/tests
+PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(FV3_PATH)/tests
 PYTEST_PARALLEL=$(MPIRUN_CALL) pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) -m parallel $(FV3_PATH)/tests
 
 
