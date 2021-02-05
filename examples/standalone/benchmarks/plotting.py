@@ -18,6 +18,12 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    # setup what to plot
+    plots = {}
+    plots["mainLoop"] = ["mainloop", "DynCore", "Remapping", "TracerAdvection"]
+    plots["initializationTotal"] = ["initialization", "total"]
+    backends = ["python/gtx86", "python/numpy", "fortran", "python/gtcuda"]
+
     # collect and sort the data
     alldata = []
     for subdir, dirs, files in os.walk(args.data_dir):
@@ -29,41 +35,77 @@ if __name__ == "__main__":
     alldata.sort(
         key=lambda k: datetime.strptime(k["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S")
     )
-    for plottype in ["mainLoop", "initializationTotal"]:
-        keyval = (
-            ["main_loop"] if plottype == "mainLoop" else ["initialization", "total"]
-        )
+
+    for plottype, timers in plots.items():
         plt.figure()
-        for backend in ["python/gtx86", "python/numpy", "fortran", "python/gtcuda"]:
+        for backend in backends:
             specific = [x for x in alldata if x["setup"]["version"] == backend]
             if specific:
-                for key in keyval:
+                for time in timers:
                     plt.plot(
                         [
                             datetime.strptime(
-                                e["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
+                                elememt["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
                             )
-                            for e in specific
+                            for elememt in specific
                         ],
-                        [e["times"][key]["mean"] for e in specific],
-                        label=key + " " + backend,
+                        [
+                            elememt["times"][time]["mean"]
+                            / (
+                                (elememt["setup"]["timesteps"] - 1)
+                                if plottype == "mainLoop"
+                                else 1
+                            )
+                            for elememt in specific
+                        ],
+                        "--o",
+                        label=time + " " + backend,
                     )
                     plt.fill_between(
                         [
                             datetime.strptime(
-                                e["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
+                                elememt["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
                             )
-                            for e in specific
+                            for elememt in specific
                         ],
-                        [e["times"][key]["maximum"] for e in specific],
-                        [e["times"][key]["minimum"] for e in specific],
-                        alpha=0.5,
+                        [
+                            elememt["times"][time]["maximum"]
+                            / (
+                                (elememt["setup"]["timesteps"] - 1)
+                                if plottype == "mainLoop"
+                                else 1
+                            )
+                            for elememt in specific
+                        ],
+                        [
+                            elememt["times"][time]["minimum"]
+                            / (
+                                (elememt["setup"]["timesteps"] - 1)
+                                if plottype == "mainLoop"
+                                else 1
+                            )
+                            for elememt in specific
+                        ],
+                        alpha=0.3,
                     )
 
+        ax = plt.axes()
+        ax.set_facecolor("silver")
         plt.gcf().autofmt_xdate()
-        plt.ylabel("Execution time")
-        plt.legend()
-        plt.title(plottype)
+        plt.ylabel(
+            "Execution time per timestep"
+            if plottype == "mainLoop"
+            else "Execution time"
+        )
+        plt.legend(
+            loc="upper center",
+            bbox_to_anchor=(0.5, 1.05),
+            ncol=2,
+            fancybox=True,
+            shadow=True,
+            fontsize=8,
+        )
+        plt.title(plottype, pad=20)
         plt.figtext(
             0.5,
             0.01,
@@ -75,4 +117,5 @@ if __name__ == "__main__":
             horizontalalignment="center",
             fontsize=12,
         )
+        plt.grid(color="white", alpha=0.4)
         plt.savefig("history" + plottype + ".png")

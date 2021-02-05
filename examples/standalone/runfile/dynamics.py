@@ -49,7 +49,7 @@ def set_experiment_info(experiment_name, time_step, backend):
             pathlib.Path(__file__).parent.absolute(), search_parent_directories=True
         ).head.object.hexsha
     except git.InvalidGitRepositoryError:
-        sha = "6ac5225202279ae3ff2e5bebb224b817"
+        sha = "hash not found"
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
     experiment["setup"] = {}
@@ -69,6 +69,7 @@ def gather_timing_statistics(timer, experiment, comm, root=0):
         if is_root:
             print(name)
             experiment["times"][name] = {}
+            experiment["times"][name]["hits"] = int(timer.hits[name])
         for label, op in [
             ("minimum", MPI.MIN),
             ("maximum", MPI.MAX),
