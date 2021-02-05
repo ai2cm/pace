@@ -1,3 +1,4 @@
+from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core.utils.gt4py_utils as utils
@@ -7,6 +8,7 @@ from fv3core.decorators import gtstencil
 sd = utils.sd
 
 
+@gtscript.function
 def fill_4corners_x(q: sd):
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -40,6 +42,7 @@ def fill_4corners_x(q: sd):
     return q_out
 
 
+@gtscript.function
 def fill_4corners_y(q: sd):
     from __externals__ import i_end, i_start, j_end, j_start
 
