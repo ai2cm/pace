@@ -3,11 +3,8 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interv
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-
-
-sd = utils.sd
+from fv3core.utils.typing import FloatField
 
 
 @gtscript.function
@@ -28,7 +25,14 @@ def moist_cvm(qvapor, gz, ql, qs):
 
 
 @gtscript.function
-def moist_cv_nwat6_fn(qvapor, qliquid, qrain, qsnow, qice, qgraupel):
+def moist_cv_nwat6_fn(
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+):
     ql = qliquid + qrain
     qs = qice + qsnow + qgraupel
     gz = ql + qs
@@ -98,7 +102,13 @@ def moist_cv_default_fn():
 
 @gtstencil()
 def moist_cv_nwat6(
-    qvapor: sd, qliquid: sd, qrain: sd, qsnow: sd, qice: sd, qgraupel: sd, cvm: sd
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    cvm: FloatField,
 ):
     with computation(PARALLEL), interval(...):
         cvm = moist_cv_nwat6_fn(qvapor, qliquid, qrain, qsnow, qice, qgraupel)
@@ -122,28 +132,53 @@ def te_always_part(u, v, w, phis, rsin2, cosa_s):
     )
 
 
+@gtscript.function
+def moist_pt_func(
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    q_con: FloatField,
+    gz: FloatField,
+    cvm: FloatField,
+    pt: FloatField,
+    cappa: FloatField,
+    delp: FloatField,
+    delz: FloatField,
+    r_vir: float,
+):
+    cvm, gz = moist_cv_nwat6_fn(
+        qvapor, qliquid, qrain, qsnow, qice, qgraupel
+    )  # if (nwat == 6) else moist_cv_default_fn(cv_air)
+    q_con = gz
+    cappa = set_cappa(qvapor, cvm, r_vir)
+    pt = pt * exp(cappa / (1.0 - cappa) * log(constants.RDG * delp / delz * pt))
+    return cvm, gz, q_con, cappa, pt
+
+
 @gtstencil()
 def moist_te_2d(
-    qvapor: sd,
-    qliquid: sd,
-    qrain: sd,
-    qsnow: sd,
-    qice: sd,
-    qgraupel: sd,
-    q_con: sd,
-    gz: sd,
-    cvm: sd,
-    te_2d: sd,
-    delp: sd,
-    pt: sd,
-    phis: sd,
-    u: sd,
-    v: sd,
-    w: sd,
-    rsin2: sd,
-    cosa_s: sd,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    q_con: FloatField,
+    gz: FloatField,
+    cvm: FloatField,
+    te_2d: FloatField,
+    delp: FloatField,
+    pt: FloatField,
+    phis: FloatField,
+    u: FloatField,
+    v: FloatField,
+    w: FloatField,
+    rsin2: FloatField,
+    cosa_s: FloatField,
     r_vir: float,
-    nwat: int,
 ):
     with computation(FORWARD):
         with interval(0, 1):
@@ -171,24 +206,23 @@ def moist_te_2d(
 # duplicate the stencil code or fix the gt4py bug.
 @gtstencil()
 def moist_te_total_energy(
-    qvapor: sd,
-    qliquid: sd,
-    qrain: sd,
-    qsnow: sd,
-    qice: sd,
-    qgraupel: sd,
-    te_2d: sd,
-    delp: sd,
-    pt: sd,
-    phis: sd,
-    u: sd,
-    v: sd,
-    w: sd,
-    rsin2: sd,
-    cosa_s: sd,
-    delz: sd,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    te_2d: FloatField,
+    delp: FloatField,
+    pt: FloatField,
+    phis: FloatField,
+    u: FloatField,
+    v: FloatField,
+    w: FloatField,
+    rsin2: FloatField,
+    cosa_s: FloatField,
+    delz: FloatField,
     r_vir: float,
-    nwat: int,
     moist_phys: bool,
 ):
     with computation(BACKWARD):
@@ -215,50 +249,65 @@ def moist_te_total_energy(
 
 @gtstencil()
 def moist_pt(
-    qvapor: sd,
-    qliquid: sd,
-    qrain: sd,
-    qsnow: sd,
-    qice: sd,
-    qgraupel: sd,
-    q_con: sd,
-    gz: sd,
-    cvm: sd,
-    pt: sd,
-    cappa: sd,
-    delp: sd,
-    delz: sd,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    q_con: FloatField,
+    gz: FloatField,
+    cvm: FloatField,
+    pt: FloatField,
+    cappa: FloatField,
+    delp: FloatField,
+    delz: FloatField,
     r_vir: float,
-    nwat: int,
 ):
     with computation(PARALLEL), interval(...):
-        cvm, gz = moist_cv_nwat6_fn(
-            qvapor, qliquid, qrain, qsnow, qice, qgraupel
-        )  # if (nwat == 6) else moist_cv_default_fn(cv_air)
-        q_con[0, 0, 0] = gz
-        cappa = set_cappa(qvapor, cvm, r_vir)
-        pt = pt * exp(cappa / (1.0 - cappa) * log(constants.RDG * delp / delz * pt))
+        cvm, gz, q_con, cappa, pt = moist_pt_func(
+            qvapor,
+            qliquid,
+            qrain,
+            qsnow,
+            qice,
+            qgraupel,
+            q_con,
+            gz,
+            cvm,
+            pt,
+            cappa,
+            delp,
+            delz,
+            r_vir,
+        )
 
 
 @gtscript.function
-def last_pt(pt, dtmp, pkz, gz, qv, zvir):
+def last_pt(
+    pt: FloatField,
+    dtmp: float,
+    pkz: FloatField,
+    gz: FloatField,
+    qv: FloatField,
+    zvir: float,
+):
     return (pt + dtmp * pkz) / ((1.0 + zvir * qv) * (1.0 - gz))
 
 
 @gtstencil()
 def moist_pt_last_step(
-    qvapor: sd,
-    qliquid: sd,
-    qrain: sd,
-    qsnow: sd,
-    qice: sd,
-    qgraupel: sd,
-    gz: sd,
-    pt: sd,
-    pkz: sd,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    gz: FloatField,
+    pt: FloatField,
+    pkz: FloatField,
     dtmp: float,
     zvir: float,
-    nwat: int,
 ):
     with computation(PARALLEL), interval(...):
         # if nwat == 2:
@@ -281,22 +330,21 @@ def compute_pkz_func(delp, delz, pt, cappa):
 
 @gtstencil()
 def moist_pkz(
-    qvapor: sd,
-    qliquid: sd,
-    qrain: sd,
-    qsnow: sd,
-    qice: sd,
-    qgraupel: sd,
-    q_con: sd,
-    gz: sd,
-    cvm: sd,
-    pkz: sd,
-    pt: sd,
-    cappa: sd,
-    delp: sd,
-    delz: sd,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    q_con: FloatField,
+    gz: FloatField,
+    cvm: FloatField,
+    pkz: FloatField,
+    pt: FloatField,
+    cappa: FloatField,
+    delp: FloatField,
+    delz: FloatField,
     r_vir: float,
-    nwat: int,
 ):
     with computation(PARALLEL), interval(...):
         cvm, gz = moist_cv_nwat6_fn(
@@ -319,39 +367,36 @@ def region_mode(j_2d, grid):
     return origin, domain, jslice
 
 
-#
 # Computes the FV3-consistent moist heat capacity under constant volume,
 # including the heating capacity of water vapor and condensates.
 # See emanuel1994atmospheric for information on variable heat capacities.
 
 # assumes 3d variables are indexed to j
 def compute_te(
-    qvapor_js,
-    qliquid_js,
-    qice_js,
-    qrain_js,
-    qsnow_js,
-    qgraupel_js,
-    te_2d,
-    gz,
-    cvm,
-    delp,
-    q_con,
-    pt,
-    phis,
-    w,
-    u,
-    v,
-    r_vir,
-    j_2d=None,
+    qvapor_js: FloatField,
+    qliquid_js: FloatField,
+    qice_js: FloatField,
+    qrain_js: FloatField,
+    qsnow_js: FloatField,
+    qgraupel_js: FloatField,
+    te_2d: FloatField,
+    gz: FloatField,
+    cvm: FloatField,
+    delp: FloatField,
+    q_con: FloatField,
+    pt: FloatField,
+    phis: FloatField,
+    w: FloatField,
+    u: FloatField,
+    v: FloatField,
+    r_vir: float,
+    j_2d: int = None,
 ):
+    # TODO -- to do this cleanly, we probably need if blocks working inside stencils
+    if spec.namelist.nwat != 6:
+        raise Exception("We still need to implement other nwats for moist_cv")
     grid = spec.grid
     origin, domain, jslice = region_mode(j_2d, grid)
-    nwat = spec.namelist.nwat
-    if (
-        nwat != 6
-    ):  # TODO -- to do this cleanly, we probably need if blocks working inside stencils
-        raise Exception("We still need to implement other nwats for moist_cv")
     moist_te_2d(
         qvapor_js,
         qliquid_js,
@@ -372,28 +417,27 @@ def compute_te(
         grid.rsin2,
         grid.cosa_s,
         r_vir,
-        spec.namelist.nwat,
         origin=origin,
         domain=domain,
     )
 
 
 def compute_pt(
-    qvapor_js,
-    qliquid_js,
-    qice_js,
-    qrain_js,
-    qsnow_js,
-    qgraupel_js,
-    q_con,
-    gz,
-    cvm,
-    pt,
-    cappa,
-    delp,
-    delz,
-    r_vir,
-    j_2d=None,
+    qvapor_js: FloatField,
+    qliquid_js: FloatField,
+    qice_js: FloatField,
+    qrain_js: FloatField,
+    qsnow_js: FloatField,
+    qgraupel_js: FloatField,
+    q_con: FloatField,
+    gz: FloatField,
+    cvm: FloatField,
+    pt: FloatField,
+    cappa: FloatField,
+    delp: FloatField,
+    delz: FloatField,
+    r_vir: float,
+    j_2d: int = None,
 ):
     grid = spec.grid
     origin, domain, jslice = region_mode(j_2d, grid)
@@ -412,29 +456,28 @@ def compute_pt(
         delp,
         delz,
         r_vir,
-        spec.namelist.nwat,
         origin=origin,
         domain=domain,
     )
 
 
 def compute_pkz(
-    qvapor_js,
-    qliquid_js,
-    qice_js,
-    qrain_js,
-    qsnow_js,
-    qgraupel_js,
-    q_con,
-    gz,
-    cvm,
-    pkz,
-    pt,
-    cappa,
-    delp,
-    delz,
-    r_vir,
-    j_2d=None,
+    qvapor_js: FloatField,
+    qliquid_js: FloatField,
+    qice_js: FloatField,
+    qrain_js: FloatField,
+    qsnow_js: FloatField,
+    qgraupel_js: FloatField,
+    q_con: FloatField,
+    gz: FloatField,
+    cvm: FloatField,
+    pkz: FloatField,
+    pt: FloatField,
+    cappa: FloatField,
+    delp: FloatField,
+    delz: FloatField,
+    r_vir: float,
+    j_2d: int = None,
 ):
     grid = spec.grid
     origin, domain, jslice = region_mode(j_2d, grid)
@@ -455,37 +498,42 @@ def compute_pkz(
         delp,
         delz,
         r_vir,
-        spec.namelist.nwat,
         origin=origin,
         domain=domain,
     )
 
 
 @gtstencil()
-def compute_pkz_stencil_func(pkz: sd, cappa: sd, delp: sd, delz: sd, pt: sd):
+def compute_pkz_stencil_func(
+    pkz: FloatField,
+    cappa: FloatField,
+    delp: FloatField,
+    delz: FloatField,
+    pt: FloatField,
+):
     with computation(PARALLEL), interval(...):
         pkz = compute_pkz_func(delp, delz, pt, cappa)
 
 
 def compute_total_energy(
-    u,
-    v,
-    w,
-    delz,
-    pt,
-    delp,
-    qc,
-    pe,
-    peln,
-    hs,
-    zvir,
-    te_2d,
-    qvapor,
-    qliquid,
-    qice,
-    qrain,
-    qsnow,
-    qgraupel,
+    u: FloatField,
+    v: FloatField,
+    w: FloatField,
+    delz: FloatField,
+    pt: FloatField,
+    delp: FloatField,
+    qc: FloatField,
+    pe: FloatField,
+    peln: FloatField,
+    hs: FloatField,
+    zvir: float,
+    te_2d: FloatField,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qice: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qgraupel: FloatField,
 ):
     grid = spec.grid
     if spec.namelist.hydrostatic:
@@ -521,7 +569,17 @@ def compute_total_energy(
 
 
 def compute_last_step(
-    pt, pkz, dtmp, r_vir, qvapor, qliquid, qice, qrain, qsnow, qgraupel, gz
+    pt: FloatField,
+    pkz: FloatField,
+    dtmp: FloatField,
+    r_vir: float,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qice: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qgraupel: FloatField,
+    gz: FloatField,
 ):
     grid = spec.grid
     moist_pt_last_step(
@@ -536,7 +594,6 @@ def compute_last_step(
         pkz,
         dtmp,
         r_vir,
-        spec.namelist.nwat,
         origin=(grid.is_, grid.js, 0),
         domain=(grid.nic, grid.njc, grid.npz + 1),
     )
@@ -544,20 +601,20 @@ def compute_last_step(
 
 @gtstencil()
 def fvsetup_stencil(
-    qvapor: sd,
-    qliquid: sd,
-    qrain: sd,
-    qsnow: sd,
-    qice: sd,
-    qgraupel: sd,
-    q_con: sd,
-    cvm: sd,
-    pkz: sd,
-    pt: sd,
-    cappa: sd,
-    delp: sd,
-    delz: sd,
-    dp1: sd,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    q_con: FloatField,
+    cvm: FloatField,
+    pkz: FloatField,
+    pt: FloatField,
+    cappa: FloatField,
+    delp: FloatField,
+    delz: FloatField,
+    dp1: FloatField,
     zvir: float,
     nwat: int,
     moist_phys: bool,
@@ -581,23 +638,22 @@ def fvsetup_stencil(
 
 
 def fv_setup(
-    pt,
-    pkz,
-    delz,
-    delp,
-    cappa,
-    q_con,
-    zvir,
-    qvapor,
-    qliquid,
-    qice,
-    qrain,
-    qsnow,
-    qgraupel,
-    cvm,
-    dp1,
+    pt: FloatField,
+    pkz: FloatField,
+    delz: FloatField,
+    delp: FloatField,
+    cappa: FloatField,
+    q_con: FloatField,
+    zvir: float,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qice: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qgraupel: FloatField,
+    cvm: FloatField,
+    dp1: FloatField,
 ):
-    grid = spec.grid
     if not spec.namelist.moist_phys:
         raise Exception("fvsetup is only implem ented for moist_phys=true")
     fvsetup_stencil(
@@ -618,6 +674,6 @@ def fv_setup(
         zvir,
         spec.namelist.nwat,
         spec.namelist.moist_phys,
-        origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute(),
+        origin=spec.grid.compute_origin(),
+        domain=spec.grid.domain_shape_compute(),
     )

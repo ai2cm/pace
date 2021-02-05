@@ -83,4 +83,6 @@ class TranslateRemapping_Part1(TranslateFortranData2Py):
         self.out_vars["wsd"]["kstart"] = grid.npz - 1
         self.out_vars["wsd"]["kend"] = grid.npz - 1
         self.out_vars["ps"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
-        self.max_error = 1e-10
+        self.max_error = 3e-9
+        self.near_zero = 5e-18
+        self.ignore_near_zero_errors = {"q_con": True, "qtracers": True}

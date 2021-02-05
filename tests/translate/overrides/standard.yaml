@@ -21,7 +21,7 @@ Fillz:
 MapN_Tracer_2d:
   - backend: gtcuda
     max_error: 2e-7
-    near_zero: 2.5e-15
+    near_zero: 1e-17
     ignore_near_zero_errors:
       - qtracers
 
@@ -38,7 +38,7 @@ Riem_Solver3:
 Remapping_Part1:
   - backend: gtcuda
     max_error: 5e-6
-    near_zero: 3.5e-15
+    near_zero: 8.5e-15
     ignore_near_zero_errors:
       - q_con
       - qtracers

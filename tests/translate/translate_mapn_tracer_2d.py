@@ -18,7 +18,9 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
 
         self.is_ = grid.is_
         self.ie = grid.ie
-        self.max_error = 1e-13
+        self.max_error = 3.5e-11
+        self.near_zero = 7e-17
+        self.ignore_near_zero_errors["qtracers"] = True
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
