@@ -1,9 +1,7 @@
 import json
-import pathlib
 from argparse import ArgumentParser
 from datetime import datetime
 
-import git
 import numpy as np
 import serialbox
 import yaml
@@ -17,7 +15,7 @@ import fv3gfs.util as util
 
 
 def parse_args():
-    usage = "usage: python %(prog)s <data_dir> <timesteps> <backend>"
+    usage = "usage: python %(prog)s <data_dir> <timesteps> <backend> <hash>"
     parser = ArgumentParser(usage=usage)
 
     parser.add_argument(
@@ -38,25 +36,25 @@ def parse_args():
         action="store",
         help="path to the namelist",
     )
+    parser.add_argument(
+        "hash",
+        type=str,
+        action="store",
+        help="git hash to store",
+    )
 
     return parser.parse_args()
 
 
-def set_experiment_info(experiment_name, time_step, backend):
+def set_experiment_info(experiment_name, time_step, backend, git_hash):
     experiment = {}
-    try:
-        sha = git.Repo(
-            pathlib.Path(__file__).parent.absolute(), search_parent_directories=True
-        ).head.object.hexsha
-    except git.InvalidGitRepositoryError:
-        sha = "hash not found"
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
     experiment["setup"] = {}
     experiment["setup"]["timestamp"] = dt_string
     experiment["setup"]["dataset"] = experiment_name
     experiment["setup"]["timesteps"] = time_step
-    experiment["setup"]["hash"] = sha
+    experiment["setup"]["hash"] = git_hash
     experiment["setup"]["version"] = "python/" + backend
     experiment["times"] = {}
     return experiment
@@ -176,7 +174,9 @@ if __name__ == "__main__":
     timer.stop("total")
     # collect times and output simple statistics
     print("Gathering Times")
-    experiment = set_experiment_info(experiment_name, args.time_step, args.backend)
+    experiment = set_experiment_info(
+        experiment_name, args.time_step, args.backend, args.hash
+    )
     gather_timing_statistics(timer, experiment, comm)
     now = datetime.now()
     filename = now.strftime("%Y-%m-%d-%H-%M-%S")

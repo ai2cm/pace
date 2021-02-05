@@ -77,6 +77,12 @@ echo "    Input data dir:   $data_path"
 echo "    Output dir:       $target_dir"
 echo "    Slurm output dir: $ROOT_DIR"
 
+if git rev-parse --git-dir > /dev/null 2>&1; then
+  githash =`git rev-parse HEAD`
+else
+  githash="notarepo"
+fi
+
 # Adapt batch script:
 cp buildenv/submit.daint.slurm .
 sed -i s/\<NAME\>/standalone/g submit.daint.slurm
@@ -87,7 +93,7 @@ sed -i s/--output=\<OUTFILE\>/--hint=nomultithread/g submit.daint.slurm
 sed -i s/00:45:00/03:30:00/g submit.daint.slurm
 sed -i s/cscsci/normal/g submit.daint.slurm
 sed -i s/\<G2G\>//g submit.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun vcm_1.0/bin/python examples/standalone/runfile/dynamics.py test_data/ $timesteps $backend#g" submit.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun vcm_1.0/bin/python examples/standalone/runfile/dynamics.py test_data/ $timesteps $backend $githash#g" submit.daint.slurm
 
 # execute on a gpu node
 sbatch -W -C gpu submit.daint.slurm
