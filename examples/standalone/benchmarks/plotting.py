@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
+
 import json
 import os
 from argparse import ArgumentParser
 from datetime import datetime
 
+import matplotlib
 import matplotlib.pyplot as plt
 
 
@@ -19,10 +22,38 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # setup what to plot
-    plots = {}
-    plots["mainLoop"] = ["mainloop", "DynCore", "Remapping", "TracerAdvection"]
-    plots["initializationTotal"] = ["initialization", "total"]
-    backends = ["python/gtx86", "python/numpy", "fortran", "python/gtcuda"]
+    fontsize = 10
+    markersize = 4
+    plot_variance = True
+    plots = {
+        "per_timestep": {
+            "title": "Performance history of components",
+            "timers": [
+                {"name": "mainloop", "linestyle": "-o"},
+                {"name": "DynCore", "linestyle": "--o"},
+                {"name": "Remapping", "linestyle": "-.o"},
+                {"name": "TracerAdvection", "linestyle": ":o"},
+            ],
+            "x_axis_label": "Date of benchmark",
+            "y_axis_label": "Execution time per timestep [s]",
+        },
+        "absolute_time": {
+            "title": "Performance history of absolute runtime",
+            "timers": [
+                {"name": "total", "linestyle": "-o"},
+                {"name": "initialization", "linestyle": "--o"},
+            ],
+            "x_axis_label": "Date of benchmark",
+            "y_axis_label": "Execution time [s]",
+        },
+    }
+    backends = {
+        "python/gtcuda": {"short_name": "gtcuda", "color": "#d62728"},
+        "python/gtx86": {"short_name": "gtx86", "color": "#2ca02c"},
+        "python/numpy": {"short_name": "numpy", "color": "#1f77b4"},
+        "fortran": {"short_name": "f90", "color": "#7f7f7f"},
+    }
+    filter = "c128"
 
     # collect and sort the data
     alldata = []
@@ -31,17 +62,20 @@ if __name__ == "__main__":
             fullpath = os.path.join(subdir, file)
             if fullpath.endswith(".json"):
                 with open(fullpath) as f:
-                    alldata.append(json.load(f))
+                    data = json.load(f)
+                    if filter in data["setup"]["dataset"]:
+                        alldata.append(data)
     alldata.sort(
         key=lambda k: datetime.strptime(k["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S")
     )
 
-    for plottype, timers in plots.items():
+    for plottype, plot_config in plots.items():
+        matplotlib.rcParams.update({"font.size": fontsize})
         plt.figure()
-        for backend in backends:
+        for backend, backend_config in backends.items():
             specific = [x for x in alldata if x["setup"]["version"] == backend]
             if specific:
-                for time in timers:
+                for timer in plot_config["timers"]:
                     plt.plot(
                         [
                             datetime.strptime(
@@ -50,72 +84,78 @@ if __name__ == "__main__":
                             for elememt in specific
                         ],
                         [
-                            elememt["times"][time]["mean"]
+                            elememt["times"][timer["name"]]["mean"]
                             / (
                                 (elememt["setup"]["timesteps"] - 1)
-                                if plottype == "mainLoop"
+                                if plottype == "per_timestep"
                                 else 1
                             )
                             for elememt in specific
                         ],
-                        "--o",
-                        label=time + " " + backend,
+                        timer["linestyle"],
+                        markersize=markersize,
+                        label=backend_config["short_name"] + " " + timer["name"],
+                        color=backend_config["color"],
                     )
-                    plt.fill_between(
-                        [
-                            datetime.strptime(
-                                elememt["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
-                            )
-                            for elememt in specific
-                        ],
-                        [
-                            elememt["times"][time]["maximum"]
-                            / (
-                                (elememt["setup"]["timesteps"] - 1)
-                                if plottype == "mainLoop"
-                                else 1
-                            )
-                            for elememt in specific
-                        ],
-                        [
-                            elememt["times"][time]["minimum"]
-                            / (
-                                (elememt["setup"]["timesteps"] - 1)
-                                if plottype == "mainLoop"
-                                else 1
-                            )
-                            for elememt in specific
-                        ],
-                        alpha=0.3,
-                    )
+                    if plot_variance:
+                        plt.fill_between(
+                            [
+                                datetime.strptime(
+                                    elememt["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
+                                )
+                                for elememt in specific
+                            ],
+                            [
+                                elememt["times"][timer["name"]]["maximum"]
+                                / (
+                                    (elememt["setup"]["timesteps"] - 1)
+                                    if plottype == "per_timestep"
+                                    else 1
+                                )
+                                for elememt in specific
+                            ],
+                            [
+                                elememt["times"][timer["name"]]["minimum"]
+                                / (
+                                    (elememt["setup"]["timesteps"] - 1)
+                                    if plottype == "per_timestep"
+                                    else 1
+                                )
+                                for elememt in specific
+                            ],
+                            color=backend_config["color"],
+                            alpha=0.2,
+                        )
 
-        ax = plt.axes()
-        ax.set_facecolor("silver")
-        plt.gcf().autofmt_xdate()
-        plt.ylabel(
-            "Execution time per timestep"
-            if plottype == "mainLoop"
-            else "Execution time"
-        )
+        ax = plt.gca()
+        plt.gcf().autofmt_xdate(rotation=45, ha="right")
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%m/%d"))
+        plt.xticks(fontsize=fontsize)
+        plt.ylabel(plot_config["y_axis_label"])
+        plt.xlabel(plot_config["x_axis_label"])
+        plt.yticks(fontsize=fontsize)
         plt.legend(
             loc="upper center",
             bbox_to_anchor=(0.5, 1.05),
             ncol=2,
             fancybox=True,
             shadow=True,
-            fontsize=8,
+            fontsize=fontsize * 0.8,
+            handlelength=5,
         )
-        plt.title(plottype, pad=20)
+        plt.title(plot_config["title"], pad=20)
         plt.figtext(
             0.5,
             0.01,
             "data: "
             + alldata[0]["setup"]["dataset"]
-            + "  timesteps:"
+            + "   timesteps:"
             + str(alldata[0]["setup"]["timesteps"]),
             wrap=True,
             horizontalalignment="center",
-            fontsize=12,
+            fontsize=fontsize,
         )
-        plt.grid(color="white", alpha=0.4)
-        plt.savefig("history" + plottype + ".png")
+        ax.set_facecolor("white")
+        plt.grid(color="silver", alpha=0.4)
+        plt.gcf().set_size_inches(8, 6)
+        plt.savefig("history_" + plottype + ".png", dpi=100)
