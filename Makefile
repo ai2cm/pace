@@ -30,10 +30,13 @@ CORE_TAR=$(SARUS_FV3CORE_IMAGE).tar
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 BASE_INSTALL?=$(FV3)-install-serialbox
 DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/
-DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC)'
-PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(FV3_PATH)/tests
-PYTEST_PARALLEL=$(MPIRUN_CALL) pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) -m parallel $(FV3_PATH)/tests
 
+DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) '
+TEST_TYPE=$(word 3, $(subst _, ,$(EXPERIMENT)))
+THRESH_ARGS=--threshold_overrides_file=$(FV3_PATH)/tests/translate/overrides/$(TEST_TYPE).yaml
+TEST_ARGS_USE=$(TEST_ARGS) $(THRESH_ARGS)
+PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS_USE) $(FV3_PATH)/tests
+PYTEST_PARALLEL=$(MPIRUN_CALL) pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS_USE) -m parallel $(FV3_PATH)/tests
 
 clean:
 	find . -name ""
