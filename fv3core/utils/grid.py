@@ -469,11 +469,11 @@ def axis_offsets(
 
     return {
         "i_start": i_start,
-        "local_is": grid.is_ - origin[0],
+        "local_is": gtscript.I[0] + grid.is_ - origin[0],
         "i_end": i_end,
-        "local_ie": grid.ie - origin[0] - domain[0],
+        "local_ie": gtscript.I[-1] + grid.ie - origin[0] - domain[0] + 1,
         "j_start": j_start,
-        "local_js": grid.js - origin[1],
+        "local_js": gtscript.J[0] + grid.js - origin[1],
         "j_end": j_end,
-        "local_je": grid.je - origin[1] - domain[1],
+        "local_je": gtscript.J[-1] + grid.je - origin[1] - domain[1] + 1,
     }
