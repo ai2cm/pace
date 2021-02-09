@@ -1,16 +1,6 @@
 from typing import Any, Dict
 
-from gt4py.gtscript import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    exp,
-    horizontal,
-    interval,
-    log,
-    region,
-)
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core._config as spec
 import fv3core.stencils.map_single as map_single
@@ -18,7 +8,7 @@ import fv3core.stencils.mapn_tracer as mapn_tracer
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.stencils.basic_operations import copy
+from fv3core.stencils.basic_operations import copy, copy_stencil
 from fv3core.stencils.moist_cv import moist_pt_func
 from fv3core.utils.typing import FloatField
 
@@ -121,16 +111,14 @@ def moist_cv_pt_pressure(
 
 
 @gtstencil()
-def pn2_and_pk(pe2: FloatField, pn2: FloatField, pk: FloatField, akap: float):
-    from __externals__ import local_je
+def copy_j_adjacent(pe2: FloatField):
+    with computation(PARALLEL), interval(...):
+        pe2_0 = pe2[0, -1, 0]
+        pe2 = pe2_0
 
-    # copy_j_adjacent
-    with computation(PARALLEL), interval(1, None):
-        with horizontal(region[:, local_je + 1 : local_je + 2]):
-            # TODO: Fix silly hack due to pe2 being 2d, so pe[:, je+1, 1:npz] should be
-            # the same as it was for pe[:, je, 1:npz] (unchanged)
-            pe2 = pe2[0, -1, 0]
-    # pn2_and_pk
+
+@gtstencil()
+def pn2_and_pk(pe2: FloatField, pn2: FloatField, pk: FloatField, akap: float):
     with computation(PARALLEL), interval(...):
         pn2 = log(pe2)
         pk = exp(akap * pn2)
@@ -265,13 +253,22 @@ def compute(
         domain=grid.domain_shape_compute_buffer_k(),
     )
 
+    # TODO: Fix silly hack due to pe2 being 2d, so pe[:, je+1, 1:npz] should be
+    # the same as it was for pe[:, je, 1:npz] (unchanged)
+    copy_j_adjacent(
+        pe2, origin=(grid.is_, grid.je + 1, 1), domain=(grid.nic, 1, grid.npz - 1)
+    )
+    copy_stencil(
+        dp2, delp, origin=grid.compute_origin(), domain=grid.domain_shape_compute()
+    )
+
     pn2_and_pk(
         pe2,
         pn2,
         pk,
         akap,
         origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute(add=(0, 1, 0)),
+        domain=grid.domain_shape_compute(),
     )
 
     map_single.compute(
