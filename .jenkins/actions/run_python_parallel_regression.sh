@@ -2,7 +2,7 @@
 set -e -x
 BACKEND=$1
 EXPNAME=$2
-ARGS="-v -s -rsx --backend=${BACKEND} ${THRESH_ARGS}"
+ARGS="-v -s -rsx --backend=${BACKEND} "
 # sync the test data
 make get_test_data
 export TEST_ARGS="${ARGS} --which_modules=FVSubgridZ"
