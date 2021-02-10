@@ -1,5 +1,5 @@
-import fv3core.stencils.yppm as yppm
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils import yppm
 from fv3core.testing import TranslateFortranData2Py, TranslateGrid
 
 
@@ -30,7 +30,7 @@ class TranslateYPPM(TranslateFortranData2Py):
     def process_inputs(self, inputs):
         self.ivars(inputs)
         self.make_storage_data_input_vars(inputs)
-        inputs["flux"] = utils.make_storage_from_shape(inputs["q"].shape, yppm.origin)
+        inputs["flux"] = utils.make_storage_from_shape(inputs["q"].shape)
 
     def compute(self, inputs):
         self.process_inputs(inputs)

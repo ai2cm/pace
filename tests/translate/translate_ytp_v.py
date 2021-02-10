@@ -15,5 +15,5 @@ class TranslateYTP_V(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        ytpv.compute(**inputs)
+        ytpv.compute(inputs["c"], inputs["v"], inputs["flux"])
         return self.slice_output(inputs)

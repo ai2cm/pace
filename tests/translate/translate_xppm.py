@@ -1,5 +1,5 @@
-import fv3core.stencils.xppm as xppm
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils import xppm
 from fv3core.testing import TranslateFortranData2Py, TranslateGrid
 
 
@@ -33,7 +33,7 @@ class TranslateXPPM(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.process_inputs(inputs)
-        inputs["xflux"] = utils.make_storage_from_shape(inputs["q"].shape, xppm.origin)
+        inputs["xflux"] = utils.make_storage_from_shape(inputs["q"].shape)
         self.compute_func(**inputs)
         return self.slice_output(inputs)
 

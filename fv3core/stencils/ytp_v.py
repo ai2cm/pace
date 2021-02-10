@@ -1,230 +1,154 @@
-from gt4py.gtscript import PARALLEL, computation, interval
-
-import fv3core._config as spec
-import fv3core.stencils.yppm as yppm
-import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import gtstencil
-
-from .yppm import (
-    compute_al,
-    final_flux,
-    fx1_fn,
-    get_b0,
-    get_bl,
-    get_br,
-    is_smt5_mord5,
-    is_smt5_most_mords,
+from gt4py import gtscript
+from gt4py.gtscript import (
+    __INLINED,
+    PARALLEL,
+    computation,
+    horizontal,
+    interval,
+    region,
 )
 
+import fv3core._config as spec
+from fv3core.decorators import gtstencil
+from fv3core.stencils import yppm
+from fv3core.utils.typing import FloatField
 
-sd = utils.sd
 
-
-@gtstencil()
-def get_flux_v_stencil(
-    q: sd, c: sd, al: sd, rdy: sd, bl: sd, br: sd, flux: sd, mord: int
+@gtscript.function
+def _get_flux(
+    v: FloatField, courant: FloatField, rdy: FloatField, bl: FloatField, br: FloatField
 ):
-    with computation(PARALLEL), interval(...):
-        b0 = get_b0(bl=bl, br=br)
-        smt5 = is_smt5_mord5(bl, br) if mord == 5 else is_smt5_most_mords(bl, br, b0)
-        tmp = smt5[0, -1, 0] + smt5 * (smt5[0, -1, 0] == 0)
-        cfl = c * rdy[0, -1, 0] if c > 0 else c * rdy
-        fx0 = fx1_fn(cfl, br, b0, bl)
-        # TODO: add [0, 0, 0] when gt4py bug is fixed
-        flux = final_flux(c, q, fx0, tmp)  # noqa
+    """
+    Compute the y-dir flux of kinetic energy(?).
 
+    Inputs:
+        v: y-dir wind
+        courant: Courant number in flux form
+        rdy: 1.0 / dy
+        bl: ???
+        br: ???
 
-@gtstencil()
-def get_flux_v_ord8plus(q: sd, c: sd, rdy: sd, bl: sd, br: sd, flux: sd):
-    with computation(PARALLEL), interval(...):
-        b0 = get_b0(bl, br)
-        cfl = c * rdy[0, -1, 0] if c > 0 else c * rdy
-        fx1 = fx1_fn(cfl, br, b0, bl)
-        flux = q[0, -1, 0] + fx1 if c > 0.0 else q + fx1
+    Returns:
+        Kinetic energy flux
+    """
+    from __externals__ import jord
 
+    b0 = bl + br
+    cfl = courant * rdy[0, -1, 0] if courant > 0 else courant * rdy
+    fx0 = yppm.fx1_fn(cfl, br, b0, bl)
 
-@gtstencil()
-def br_bl_main(q: sd, al: sd, bl: sd, br: sd):
-    with computation(PARALLEL), interval(...):
-        # TODO: add [0, 0, 0] when gt4py bug is fixed
-        bl = get_bl(al=al, q=q)  # noqa
-        br = get_br(al=al, q=q)  # noqa
-
-
-@gtstencil()
-def br_bl_corner(br: sd, bl: sd):
-    with computation(PARALLEL), interval(...):
-        bl = 0
-        br = 0
-
-
-def zero_br_bl_corners_south(br, bl):
-    grid = spec.grid
-    corner_domain = (1, 2, grid.npz)
-    if grid.sw_corner:
-        br_bl_corner(br, bl, origin=(grid.is_, grid.js - 1, 0), domain=corner_domain)
-    if grid.se_corner:
-        br_bl_corner(br, bl, origin=(grid.ie + 1, grid.js - 1, 0), domain=corner_domain)
-
-
-def zero_br_bl_corners_north(br, bl):
-    grid = spec.grid
-    corner_domain = (1, 2, grid.npz)
-    if grid.nw_corner:
-        br_bl_corner(br, bl, origin=(grid.is_, grid.je, 0), domain=corner_domain)
-    if grid.ne_corner:
-        br_bl_corner(br, bl, origin=(grid.ie + 1, grid.je, 0), domain=corner_domain)
-
-
-def compute(c, u, v, flux):
-    grid = spec.grid
-    # This is an input argument in the Fortran code, but is never called with
-    # anything but this namelist option.
-    jord = spec.namelist.hord_mt
-    if jord not in [5, 6, 7, 8]:
-        raise Exception("Currently ytp_v is only supported for hord_mt == 5,6,7,8")
-    js3 = grid.js - 1
-    je3 = grid.je + 1
-
-    tmp_origin = (grid.is_, grid.js - 1, 0)
-    bl = utils.make_storage_from_shape(u.shape, tmp_origin)
-    br = utils.make_storage_from_shape(u.shape, tmp_origin)
-
-    if jord < 8:
-        # this not get the exact right edges
-        al = compute_al(v, grid.dy, jord, grid.is_, grid.ie + 1, js3, je3 + 1)
-        br_bl_main(
-            v,
-            al,
-            bl,
-            br,
-            origin=(grid.is_, grid.js - 1, 0),
-            domain=(grid.nic + 1, grid.njc + 2, grid.npz),
-        )
-        zero_br_bl_corners_south(br, bl)
-        zero_br_bl_corners_north(br, bl)
-        get_flux_v_stencil(
-            v,
-            c,
-            al,
-            grid.rdy,
-            bl,
-            br,
-            flux,
-            jord,
-            origin=(grid.is_, grid.js, 0),
-            domain=(grid.nic + 1, grid.njc + 1, grid.npz),
-        )
+    if __INLINED(jord < 8):
+        tmp = yppm.get_tmp(bl, b0, br)
     else:
-        js1 = grid.js + 2 if grid.south_edge else grid.js - 1
-        je1 = grid.je - 2 if grid.north_edge else grid.je + 1
-        dm = utils.make_storage_from_shape(v.shape, grid.compute_origin())
-        al = utils.make_storage_from_shape(v.shape, grid.compute_origin())
-        di = grid.nic + 1
-        ifirst = grid.is_
-        kstart = 0
-        nk = grid.npz
-        r3 = 1.0 / 3.0
-        yppm.dm_jord8plus(
-            v,
-            al,
-            dm,
-            origin=(ifirst, grid.js - 2, kstart),
-            domain=(di, grid.njc + 4, nk),
-        )
-        yppm.al_jord8plus(
-            v, al, dm, r3, origin=(ifirst, js1, kstart), domain=(di, je1 - js1 + 2, nk)
-        )
-        if jord == 8:
-            yppm.blbr_jord8(
-                v,
-                al,
-                bl,
-                br,
-                dm,
-                origin=(ifirst, js1, kstart),
-                domain=(di, je1 - js1 + 2, nk),
-            )
+        tmp = 1.0
+
+    return yppm.final_flux(courant, v, fx0, tmp)
+
+
+def _compute_stencil(
+    courant: FloatField,
+    v: FloatField,
+    flux: FloatField,
+    dy: FloatField,
+    dya: FloatField,
+    rdy: FloatField,
+):
+    from __externals__ import i_end, i_start, j_end, j_start, jord, namelist
+
+    with computation(PARALLEL), interval(...):
+
+        if __INLINED(jord < 8):
+            al = yppm.compute_al(v, dy)
+
+            bl = al[0, 0, 0] - v[0, 0, 0]
+            br = al[0, 1, 0] - v[0, 0, 0]
+
+            # Zero corners
+            with horizontal(
+                region[i_start, j_start - 1 : j_start + 1],
+                region[i_start, j_end : j_end + 2],
+                region[i_end + 1, j_start - 1 : j_start + 1],
+                region[i_end + 1, j_end : j_end + 2],
+            ):
+                bl = 0.0
+                br = 0.0
+
         else:
-            raise Exception("Unimplemented jord=" + str(jord))
+            dm = yppm.dm_jord8plus(v)
+            al = yppm.al_jord8plus(v, dm)
 
-        if spec.namelist.grid_type < 3 and not (grid.nested or spec.namelist.regional):
-            x_edge_domain = (di, 1, nk)
-            do_xt_minmax = False
-            if grid.south_edge:
-                yppm.south_edge_jord8plus_0(
-                    v,
-                    grid.dy,
-                    dm,
-                    bl,
-                    br,
-                    False,
-                    origin=(ifirst, grid.js - 1, kstart),
-                    domain=x_edge_domain,
-                )
-                yppm.south_edge_jord8plus_1(
-                    v,
-                    grid.dy,
-                    dm,
-                    bl,
-                    br,
-                    False,
-                    origin=(ifirst, grid.js, kstart),
-                    domain=x_edge_domain,
-                )
-                yppm.south_edge_jord8plus_2(
-                    v,
-                    grid.dy,
-                    dm,
-                    al,
-                    bl,
-                    br,
-                    origin=(ifirst, grid.js + 1, kstart),
-                    domain=x_edge_domain,
-                )
-                zero_br_bl_corners_south(br, bl)
-                yppm.pert_ppm(v, bl, br, -1, ifirst, grid.js + 1, kstart, di, 1, nk)
+            assert __INLINED(jord == 8)
+            # {
+            bl, br = yppm.blbr_jord8(v, al, dm)
+            # }
 
-            if grid.north_edge:
-                yppm.north_edge_jord8plus_0(
-                    v,
-                    grid.dy,
-                    dm,
-                    al,
-                    bl,
-                    br,
-                    origin=(ifirst, grid.je - 1, kstart),
-                    domain=x_edge_domain,
-                )
-                yppm.north_edge_jord8plus_1(
-                    v,
-                    grid.dy,
-                    dm,
-                    bl,
-                    br,
-                    False,
-                    origin=(ifirst, grid.je, kstart),
-                    domain=x_edge_domain,
-                )
-                yppm.north_edge_jord8plus_2(
-                    v,
-                    grid.dy,
-                    dm,
-                    bl,
-                    br,
-                    False,
-                    origin=(ifirst, grid.je + 1, kstart),
-                    domain=x_edge_domain,
-                )
-                zero_br_bl_corners_north(br, bl)
-                yppm.pert_ppm(v, bl, br, -1, ifirst, grid.je - 1, kstart, di, 1, nk)
-        get_flux_v_ord8plus(
-            v,
-            c,
-            grid.rdy,
-            bl,
-            br,
-            flux,
-            origin=(grid.is_, grid.js, kstart),
-            domain=(grid.nic + 1, grid.njc + 1, nk),
+            assert __INLINED(namelist.grid_type < 3)
+            # {
+            with horizontal(region[:, j_start - 1]):
+                bl, br = yppm.south_edge_jord8plus_0(v, dy, dm)
+
+            with horizontal(region[:, j_start]):
+                bl, br = yppm.south_edge_jord8plus_1(v, dy, dm)
+
+            with horizontal(region[:, j_start + 1]):
+                bl, br = yppm.south_edge_jord8plus_2(v, dm, al)
+                bl, br = yppm.pert_ppm_standard_constraint_fcn(v, bl, br)
+
+            with horizontal(region[:, j_end - 1]):
+                bl, br = yppm.north_edge_jord8plus_0(v, dm, al)
+                bl, br = yppm.pert_ppm_standard_constraint_fcn(v, bl, br)
+
+            with horizontal(region[:, j_end]):
+                bl, br = yppm.north_edge_jord8plus_1(v, dy, dm)
+
+            with horizontal(region[:, j_end + 1]):
+                bl, br = yppm.north_edge_jord8plus_2(v, dy, dm)
+
+            # Zero corners
+            with horizontal(
+                region[i_start, j_start - 1 : j_start + 1],
+                region[i_start, j_end : j_end + 2],
+                region[i_end + 1, j_start - 1 : j_start + 1],
+                region[i_end + 1, j_end : j_end + 2],
+            ):
+                bl = 0.0
+                br = 0.0
+            # }
+
+        flux = _get_flux(v, courant, rdy, bl, br)
+
+
+def compute(c: FloatField, v: FloatField, flux: FloatField):
+    """
+    Compute flux of kinetic energy in y-dir.
+
+    Args:
+        c (in): Courant number in flux form
+        v (in): y-dir wind on Arakawa D-grid
+        flux (out): Flux of kinetic energy
+    """
+    grid = spec.grid
+    jord = spec.namelist.hord_mt
+    if jord not in (5, 6, 7, 8):
+        raise NotImplementedError(
+            "Currently ytp_v is only supported for hord_mt == 5,6,7,8"
         )
+
+    stencil = gtstencil(
+        definition=_compute_stencil,
+        externals={
+            "jord": jord,
+            "mord": jord,
+            "xt_minmax": False,
+        },
+    )
+    stencil(
+        c,
+        v,
+        flux,
+        grid.dy,
+        grid.dya,
+        grid.rdy,
+        origin=grid.compute_origin(),
+        domain=grid.domain_shape_compute(add=(1, 1, 0)),
+    )
