@@ -306,7 +306,9 @@ def set_top(
                 a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
         with interval(0, -1):
             if iv != 2:
-                a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 1)
+                a4_1, a4_2, a4_3, a4_4 = remap_constraint(
+                    a4_1, a4_2, a4_3, a4_4, extm, 1
+                )
         with interval(1, None):
             a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 2)
 

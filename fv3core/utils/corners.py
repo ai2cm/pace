@@ -1,102 +1,223 @@
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.utils.gt4py_utils as utils
+import fv3core._config as spec
 from fv3core.decorators import gtstencil
-
-
-sd = utils.sd
+from fv3core.utils.typing import FloatField
 
 
 @gtscript.function
-def fill_4corners_x(q: sd):
+def fill_corners_2cells_mult_x(
+    q: FloatField,
+    q_corner: FloatField,
+    sw_mult: float,
+    se_mult: float,
+    nw_mult: float,
+    ne_mult: float,
+):
+    """
+    Fills cell quantity q using corners from q_corner and multipliers in x-dir.
+    """
     from __externals__ import i_end, i_start, j_end, j_start
 
-    # copy field
-    q_out = q
-
     # Southwest
+    with horizontal(region[i_start - 1, j_start - 1]):
+        q = sw_mult * q_corner[0, 1, 0]
     with horizontal(region[i_start - 2, j_start - 1]):
-        q_out = q[1, 2, 0]
-    with horizontal(region[i_start - 1, j_start - 1]):
-        q_out = q[0, 1, 0]
+        q = sw_mult * q_corner[1, 2, 0]
 
     # Southeast
-    with horizontal(region[i_end + 2, j_start - 1]):
-        q_out = q[-1, 2, 0]
     with horizontal(region[i_end + 1, j_start - 1]):
-        q_out = q[0, 1, 0]
+        q = se_mult * q_corner[0, 1, 0]
+    with horizontal(region[i_end + 2, j_start - 1]):
+        q = se_mult * q_corner[-1, 2, 0]
 
     # Northwest
     with horizontal(region[i_start - 1, j_end + 1]):
-        q_out = q[0, -1, 0]
+        q = nw_mult * q_corner[0, -1, 0]
     with horizontal(region[i_start - 2, j_end + 1]):
-        q_out = q[1, -2, 0]
+        q = nw_mult * q_corner[1, -2, 0]
 
     # Northeast
     with horizontal(region[i_end + 1, j_end + 1]):
-        q_out = q[0, -1, 0]
+        q = ne_mult * q_corner[0, -1, 0]
     with horizontal(region[i_end + 2, j_end + 1]):
-        q_out = q[-1, -2, 0]
+        q = ne_mult * q_corner[-1, -2, 0]
 
-    return q_out
+    return q
 
 
 @gtscript.function
-def fill_4corners_y(q: sd):
+def fill_corners_2cells_x(q: FloatField):
+    """
+    Fills cell quantity q in x-dir.
+    """
+    return fill_corners_2cells_mult_x(q, q, 1.0, 1.0, 1.0, 1.0)
+
+
+@gtscript.function
+def fill_corners_3cells_mult_x(
+    q: FloatField,
+    q_corner: FloatField,
+    sw_mult: float,
+    se_mult: float,
+    nw_mult: float,
+    ne_mult: float,
+):
+    """
+    Fills cell quantity q using corners from q_corner and multipliers in x-dir.
+    """
     from __externals__ import i_end, i_start, j_end, j_start
 
-    # copy field
-    q_out = q
+    q = fill_corners_2cells_mult_x(q, q_corner, sw_mult, se_mult, nw_mult, ne_mult)
+
+    # Southwest
+    with horizontal(region[i_start - 3, j_start - 1]):
+        q = sw_mult * q_corner[2, 3, 0]
+
+    # Southeast
+    with horizontal(region[i_end + 3, j_start - 1]):
+        q = se_mult * q_corner[-2, 3, 0]
+
+    # Northwest
+    with horizontal(region[i_start - 3, j_end + 1]):
+        q = nw_mult * q_corner[2, -3, 0]
+
+    # Northeast
+    with horizontal(region[i_end + 3, j_end + 1]):
+        q = ne_mult * q_corner[-2, -3, 0]
+
+    return q
+
+
+@gtscript.function
+def fill_corners_2cells_mult_y(
+    q: FloatField,
+    q_corner: FloatField,
+    sw_mult: float,
+    se_mult: float,
+    nw_mult: float,
+    ne_mult: float,
+):
+    """
+    Fills cell quantity q using corners from q_corner and multipliers in y-dir.
+    """
+    from __externals__ import i_end, i_start, j_end, j_start
 
     # Southwest
     with horizontal(region[i_start - 1, j_start - 1]):
-        q_out = q[1, 0, 0]
+        q = sw_mult * q_corner[1, 0, 0]
     with horizontal(region[i_start - 1, j_start - 2]):
-        q_out = q[2, 1, 0]
+        q = sw_mult * q_corner[2, 1, 0]
 
     # Southeast
     with horizontal(region[i_end + 1, j_start - 1]):
-        q_out = q[-1, 0, 0]
+        q = se_mult * q_corner[-1, 0, 0]
     with horizontal(region[i_end + 1, j_start - 2]):
-        q_out = q[-2, 1, 0]
+        q = se_mult * q_corner[-2, 1, 0]
 
     # Northwest
     with horizontal(region[i_start - 1, j_end + 1]):
-        q_out = q[1, 0, 0]
+        q = nw_mult * q_corner[1, 0, 0]
     with horizontal(region[i_start - 1, j_end + 2]):
-        q_out = q[2, -1, 0]
+        q = nw_mult * q_corner[2, -1, 0]
 
     # Northeast
     with horizontal(region[i_end + 1, j_end + 1]):
-        q_out = q[-1, 0, 0]
+        q = ne_mult * q_corner[-1, 0, 0]
     with horizontal(region[i_end + 1, j_end + 2]):
-        q_out = q[-2, -1, 0]
+        q = ne_mult * q_corner[-2, -1, 0]
 
-    return q_out
+    return q
 
 
-def fill_4corners(q, direction, grid):
-    def definition(q: sd):
+@gtscript.function
+def fill_corners_2cells_y(q: FloatField):
+    """
+    Fills cell quantity q in y-dir.
+    """
+    return fill_corners_2cells_mult_y(q, q, 1.0, 1.0, 1.0, 1.0)
+
+
+@gtscript.function
+def fill_corners_3cells_mult_y(
+    q: FloatField,
+    q_corner: FloatField,
+    sw_mult: float,
+    se_mult: float,
+    nw_mult: float,
+    ne_mult: float,
+):
+    """
+    Fills cell quantity q using corners from q_corner and multipliers in y-dir.
+    """
+    from __externals__ import i_end, i_start, j_end, j_start
+
+    q = fill_corners_2cells_mult_y(q, q_corner, sw_mult, se_mult, nw_mult, ne_mult)
+
+    # Southwest
+    with horizontal(region[i_start - 1, j_start - 3]):
+        q = sw_mult * q_corner[3, 2, 0]
+
+    # Southeast
+    with horizontal(region[i_end + 1, j_start - 3]):
+        q = se_mult * q_corner[-3, 2, 0]
+
+    # Northwest
+    with horizontal(region[i_start - 1, j_end + 3]):
+        q = nw_mult * q_corner[3, -2, 0]
+
+    # Northeast
+    with horizontal(region[i_end + 1, j_end + 3]):
+        q = ne_mult * q_corner[-3, -2, 0]
+
+    return q
+
+
+def fill_corners_cells(q: FloatField, direction: str, num_fill: int = 2):
+    """
+    Fill corners of q from Python.
+
+    Corresponds to fill4corners in Fortran.
+
+    Args:
+        q (inout): Cell field
+        direction: Direction to fill. Either "x" or "y".
+        num_fill: Number of indices to fill
+    """
+
+    def definition(q: FloatField):
         from __externals__ import func
 
         with computation(PARALLEL), interval(...):
-            q = func(q)
+            q = func(q, q, 1.0, 1.0, 1.0, 1.0)
 
-    extent = 3
-    origin = (grid.is_ - extent, grid.js - extent, 0)
-    domain = (grid.nic + 2 * extent, grid.njc + 2 * extent, q.shape[2])
-
-    kwargs = {"origin": origin, "domain": domain}
+    if num_fill not in (2, 3):
+        raise ValueError("Only supports 2 <= num_fill <= 3")
 
     if direction == "x":
-        stencil = gtstencil(definition=definition, externals={"func": fill_4corners_x})
-        stencil(q, **kwargs)
+        func = (
+            fill_corners_2cells_mult_x if num_fill == 2 else fill_corners_3cells_mult_x
+        )
+        stencil = gtstencil(
+            definition=definition,
+            externals={"func": func},
+        )
     elif direction == "y":
-        stencil = gtstencil(definition=definition, externals={"func": fill_4corners_y})
-        stencil(q, **kwargs)
+        func = (
+            fill_corners_2cells_mult_y if num_fill == 2 else fill_corners_3cells_mult_y
+        )
+        stencil = gtstencil(
+            definition=definition,
+            externals={"func": func},
+        )
     else:
         raise ValueError("Direction not recognized. Specify either x or y")
+
+    extent = 3
+    origin = (spec.grid.is_ - extent, spec.grid.js - extent, 0)
+    domain = (spec.grid.nic + 2 * extent, spec.grid.njc + 2 * extent, q.shape[2])
+    stencil(q, origin=origin, domain=domain)
 
 
 def copy_sw_corner(q, direction, grid, kslice):

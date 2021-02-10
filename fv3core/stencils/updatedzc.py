@@ -6,7 +6,7 @@ import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy
-from fv3core.utils.corners import fill_4corners
+from fv3core.utils import corners
 
 
 sd = utils.sd
@@ -241,9 +241,9 @@ def compute(dp_ref, zs, ut, vt, gz_in, ws3, dt2):
     ws = copy(
         ws3, origin=grid.default_origin(), domain=grid.domain_shape_buffer_1cell()
     )
-    fill_4corners(gz_x, "x", grid)
+    corners.fill_corners_cells(gz_x, "x")
     gz_y = copy(gz_x, origin=origin)
-    fill_4corners(gz_y, "y", grid)
+    corners.fill_corners_cells(gz_y, "y")
     update_dz_c(
         dp_ref,
         zs,

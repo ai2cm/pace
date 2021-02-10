@@ -12,7 +12,7 @@ import fv3core._config as spec
 import fv3core.stencils.d2a2c_vect as d2a2c
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.utils.corners import fill_4corners_x, fill_4corners_y
+from fv3core.utils import corners
 
 
 sd = utils.sd
@@ -86,15 +86,15 @@ def transportdelp(
         assert __INLINED(namelist.grid_type < 3)
         # additional assumption (not grid.nested)
 
-        delp = fill_4corners_x(delp)
-        pt = fill_4corners_x(pt)
-        w = fill_4corners_x(w)
+        delp = corners.fill_corners_2cells_x(delp)
+        pt = corners.fill_corners_2cells_x(pt)
+        w = corners.fill_corners_2cells_x(w)
 
         fx, fx1, fx2 = nonhydro_x_fluxes(delp, pt, w, utc)
 
-        delp = fill_4corners_y(delp)
-        pt = fill_4corners_y(pt)
-        w = fill_4corners_y(w)
+        delp = corners.fill_corners_2cells_y(delp)
+        pt = corners.fill_corners_2cells_y(pt)
+        w = corners.fill_corners_2cells_y(w)
 
         fy, fy1, fy2 = nonhydro_y_fluxes(delp, pt, w, vtc)
 
