@@ -61,7 +61,7 @@ def fvdyn_temporaries(shape):
         tmps,
         halo_vars + storage_vars + column_vars + plane_vars,
         shape,
-        grid.default_origin(),
+        grid.full_origin(),
     )
     for q in halo_vars:
         grid.quantity_dict_update(tmps, q)
@@ -165,8 +165,8 @@ def do_dyn(state, comm, timer=NullTimer()):
     copy_stencil(
         state.delp,
         state.dp1,
-        origin=grid.default_origin(),
-        domain=grid.domain_shape_standard(),
+        origin=grid.full_origin(),
+        domain=grid.domain_shape_full(),
     )
     print("DynCore", grid.rank)
     with timer.clock("DynCore"):

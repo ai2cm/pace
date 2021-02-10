@@ -32,10 +32,10 @@ class TranslateFvTp2d(TranslateFortranData2Py):
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute(self, inputs):
         inputs["fx"] = utils.make_storage_from_shape(
-            self.maxshape, self.grid.default_origin()
+            self.maxshape, self.grid.full_origin()
         )
         inputs["fy"] = utils.make_storage_from_shape(
-            self.maxshape, self.grid.default_origin()
+            self.maxshape, self.grid.full_origin()
         )
         for optional_arg in ["mass", "mfx", "mfy"]:
             if optional_arg not in inputs:

@@ -70,7 +70,7 @@ def corner_fill(grid, q):
             + q[grid.ie, grid.js - 1, :]
         ) * r3
         q[grid.ie + 1, grid.js, :] = q[grid.ie, grid.js, :]
-        copy_column(q, origin=(grid.ie, grid.js - 1, 0), domain=grid.corner_domain())
+        copy_column(q, origin=(grid.ie, grid.js - 1, 0), domain=(1, 1, grid.npz))
 
     if grid.ne_corner:
         q[grid.ie, grid.je, :] = (
@@ -87,7 +87,7 @@ def corner_fill(grid, q):
             + q[grid.is_ - 1, grid.je, :]
             + q[grid.is_, grid.je + 1, :]
         ) * r3
-        copy_row(q, origin=(grid.is_ - 1, grid.je, 0), domain=grid.corner_domain())
+        copy_row(q, origin=(grid.is_ - 1, grid.je, 0), domain=(1, 1, grid.npz))
         q[grid.is_, grid.je + 1, :] = q[grid.is_, grid.je, :]
 
     return q

@@ -82,10 +82,14 @@ def dyncore_temporaries(shape):
         tmps,
         ["ut", "vt", "gz", "zh", "pem", "ws3", "pkc", "pk3", "heat_source", "divgd"],
         shape,
-        grid.default_origin(),
+        grid.full_origin(),
     )
-    utils.storage_dict(tmps, ["crx", "xfx"], shape, grid.compute_x_origin())
-    utils.storage_dict(tmps, ["cry", "yfx"], shape, grid.compute_y_origin())
+    utils.storage_dict(
+        tmps, ["crx", "xfx"], shape, grid.compute_origin(add=(0, -grid.halo, 0))
+    )
+    utils.storage_dict(
+        tmps, ["cry", "yfx"], shape, grid.compute_origin(add=(-grid.halo, 0, 0))
+    )
     grid.quantity_dict_update(
         tmps, "heat_source", dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM]
     )
@@ -149,10 +153,8 @@ def compute(state, comm):
 
         # TODO: Is really just a column... when different shapes are supported
         # perhaps change this.
-        state.dp_ref = utils.make_storage_from_shape(
-            state.ak.shape, grid.default_origin()
-        )
-        state.zs = utils.make_storage_from_shape(state.ak.shape, grid.default_origin())
+        state.dp_ref = utils.make_storage_from_shape(state.ak.shape, grid.full_origin())
+        state.zs = utils.make_storage_from_shape(state.ak.shape, grid.full_origin())
         dp_ref_compute(
             state.ak,
             state.bk,
@@ -160,8 +162,8 @@ def compute(state, comm):
             state.dp_ref,
             state.zs,
             rgrav,
-            origin=grid.default_origin(),
-            domain=grid.domain_shape_standard(add=(0, 0, 1)),
+            origin=grid.full_origin(),
+            domain=grid.domain_shape_full(add=(0, 0, 1)),
         )
     n_con = get_n_con()
 
@@ -234,15 +236,15 @@ def compute(state, comm):
                 copy_stencil(
                     state.gz,
                     state.zh,
-                    origin=grid.default_origin(),
-                    domain=grid.domain_shape_buffer_k(),
+                    origin=grid.full_origin(),
+                    domain=grid.domain_shape_full(add=(0, 0, 1)),
                 )
             else:
                 copy_stencil(
                     state.gz,
                     state.zh,
-                    origin=grid.default_origin(),
-                    domain=grid.domain_shape_buffer_k(),
+                    origin=grid.full_origin(),
+                    domain=grid.domain_shape_full(add=(0, 0, 1)),
                 )
         if not hydrostatic:
             state.gz, state.ws3 = updatedzc.compute(

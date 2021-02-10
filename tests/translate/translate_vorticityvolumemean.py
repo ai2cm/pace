@@ -23,7 +23,7 @@ class TranslateVorticityVolumeMean(TranslateFortranData2Py):
             self.grid.dy,
             self.grid.rarea,
             inputs["wk"],
-            origin=self.grid.default_origin(),
-            domain=self.grid.domain_shape_standard(),
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(),
         )
         return self.slice_output(inputs)

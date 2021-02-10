@@ -179,8 +179,8 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
     npt = 4 if spec.namelist.grid_type < 3 and not grid.nested else 0
     if npt > grid.nic - 1 or npt > grid.njc - 1:
         npt = 0
-    utmp = utils.make_storage_from_shape(ua.shape, grid.default_origin())
-    vtmp = utils.make_storage_from_shape(va.shape, grid.default_origin())
+    utmp = utils.make_storage_from_shape(ua.shape, grid.full_origin())
+    vtmp = utils.make_storage_from_shape(va.shape, grid.full_origin())
     utmp[:] = big_number
     vtmp[:] = big_number
     js1 = npt + OFFSET if grid.south_edge else grid.js - 1

@@ -305,53 +305,13 @@ class Grid:
         }
         return {**self.default_domain_dict(), **horizontal_dict}
 
-    def domain_shape_standard(self, add: Tuple[int, int, int] = (0, 0, 0)):
+    def domain_shape_full(self, *, add: Tuple[int, int, int] = (0, 0, 0)):
+        """Domain shape for the full array including halo points."""
         return (self.nid + add[0], self.njd + add[1], self.npz + add[2])
 
-    def domain_shape_buffer_k(self):
-        return (self.nid, self.njd, self.npz + 1)
-
-    def domain_shape_compute(self, add: Tuple[int, int, int] = (0, 0, 0)):
+    def domain_shape_compute(self, *, add: Tuple[int, int, int] = (0, 0, 0)):
+        """Compute domain shape excluding halo points."""
         return (self.nic + add[0], self.njc + add[1], self.npz + add[2])
-
-    def domain_shape_compute_buffer_k(self):
-        return (self.nic, self.njc, self.npz + 1)
-
-    def domain_shape_compute_x(self):
-        return (self.nic + 1, self.njc, self.npz)
-
-    def domain_shape_compute_y(self):
-        return (self.nic, self.njc + 1, self.npz)
-
-    def domain_x_compute_y(self):
-        return (self.nid, self.njc, self.npz)
-
-    def domain_x_compute_ybuffer(self):
-        return (self.nid, self.njc + 1, self.npz)
-
-    def domain_y_compute_x(self):
-        return (self.nic, self.njd, self.npz)
-
-    def domain_y_compute_xbuffer(self):
-        return (self.nic + 1, self.njd, self.npz)
-
-    def domain_shape_buffer_1cell(self):
-        return (int(self.nid + 1), int(self.njd + 1), int(self.npz + 1))
-
-    def domain2d_ik_buffer_1cell(self):
-        return (int(self.nid + 1), 1, int(self.npz + 1))
-
-    def domain_shape_y(self):
-        return (int(self.nid), int(self.njd + 1), int(self.npz))
-
-    def domain_shape_x(self):
-        return (int(self.nid + 1), int(self.njd), int(self.npz))
-
-    def corner_domain(self):
-        return (1, 1, self.npz)
-
-    def domain_shape_buffer_2d(self):
-        return (int(self.nid + 1), int(self.njd + 1), int(self.npz))
 
     def copy_right_edge(self, var, i_index, j_index):
         return np.copy(var[i_index:, :, :]), np.copy(var[:, j_index:, :])
@@ -401,23 +361,27 @@ class Grid:
         )
 
     def compute_origin(self, add: Tuple[int, int, int] = (0, 0, 0)):
+        """Start of the compute domain (e.g. (halo, halo, 0))"""
         return (self.is_ + add[0], self.js + add[1], add[2])
 
-    def default_origin(self):
+    def full_origin(self):
+        """Start of the full array including halo points (e.g. (0, 0, 0))"""
         return (self.isd, self.jsd, 0)
 
-    def compute_x_origin(self):
-        return (self.is_, self.jsd, 0)
-
-    def compute_y_origin(self):
-        return (self.isd, self.js, 0)
+    def default_origin(self):
+        # This only exists as a reminder because devs might
+        # be used to writing "default origin"
+        # if it's no longer useful please delete this method
+        raise NotImplementedError(
+            "This has been renamed to `full_origin`, update your code!"
+        )
 
     # TODO, expand to more cases
     def horizontal_starts_from_shape(self, shape):
         if shape[0:2] in [
             self.domain_shape_compute()[0:2],
-            self.domain_shape_compute_x()[0:2],
-            self.domain_shape_compute_y()[0:2],
+            self.domain_shape_compute(add=(1, 0, 0))[0:2],
+            self.domain_shape_compute(add=(0, 1, 0))[0:2],
             self.domain_shape_compute(add=(1, 1, 0))[0:2],
         ]:
             return self.is_, self.js

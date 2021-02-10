@@ -21,7 +21,7 @@ def edge_pe(pe: sd, delp: sd, pk3: sd, ptop: float, akap: float):
 
 def compute(pk3, delp, ptop, akap):
     grid = spec.grid
-    pei = utils.make_storage_from_shape(pk3.shape, grid.default_origin())
+    pei = utils.make_storage_from_shape(pk3.shape, grid.full_origin())
     edge_domain_x = (2, grid.njc, grid.npz + 1)
     edge_pe(
         pei,
@@ -41,7 +41,7 @@ def compute(pk3, delp, ptop, akap):
         origin=(grid.ie + 1, grid.js, 0),
         domain=edge_domain_x,
     )
-    pej = utils.make_storage_from_shape(pk3.shape, grid.default_origin())
+    pej = utils.make_storage_from_shape(pk3.shape, grid.full_origin())
     edge_domain_y = (grid.nic + 4, 2, grid.npz + 1)
     edge_pe(
         pej,

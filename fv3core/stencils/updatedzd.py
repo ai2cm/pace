@@ -150,14 +150,26 @@ def compute(ndif, damp_vtd, dp0, zs, zh, crx, cry, xfx, yfx, wsd, dt):
     ndif[-1] = ndif[-2]
     damp_vtd[-1] = damp_vtd[-2]
 
-    crx_adv = utils.make_storage_from_shape(crx.shape, grid.compute_x_origin())
-    cry_adv = utils.make_storage_from_shape(cry.shape, grid.compute_y_origin())
-    xfx_adv = utils.make_storage_from_shape(xfx.shape, grid.compute_x_origin())
-    yfx_adv = utils.make_storage_from_shape(yfx.shape, grid.compute_y_origin())
-    ra_x = utils.make_storage_from_shape(crx.shape, grid.compute_x_origin())
-    ra_y = utils.make_storage_from_shape(cry.shape, grid.compute_y_origin())
+    crx_adv = utils.make_storage_from_shape(
+        crx.shape, grid.compute_origin(add=(0, -grid.halo, 0))
+    )
+    cry_adv = utils.make_storage_from_shape(
+        cry.shape, grid.compute_origin(add=(-grid.halo, 0, 0))
+    )
+    xfx_adv = utils.make_storage_from_shape(
+        xfx.shape, grid.compute_origin(add=(0, -grid.halo, 0))
+    )
+    yfx_adv = utils.make_storage_from_shape(
+        yfx.shape, grid.compute_origin(add=(-grid.halo, 0, 0))
+    )
+    ra_x = utils.make_storage_from_shape(
+        crx.shape, grid.compute_origin(add=(0, -grid.halo, 0))
+    )
+    ra_y = utils.make_storage_from_shape(
+        cry.shape, grid.compute_origin(add=(-grid.halo, 0, 0))
+    )
 
-    gam = utils.make_storage_from_shape(zs.shape, grid.default_origin())
+    gam = utils.make_storage_from_shape(zs.shape, grid.full_origin())
     edge_profile(
         crx,
         xfx,
@@ -171,7 +183,7 @@ def compute(ndif, damp_vtd, dp0, zs, zh, crx, cry, xfx, yfx, wsd, dt):
     # edge_python(crx, xfx, crx_adv, xfx_adv, dp0, gam, slice(grid.is_, grid.ie
     # + 2), slice(grid.jsd, grid.jed+1),  qe1_2, gam_2)
 
-    gam = utils.make_storage_from_shape(zs.shape, grid.default_origin())
+    gam = utils.make_storage_from_shape(zs.shape, grid.full_origin())
     edge_profile(
         cry,
         yfx,
@@ -187,14 +199,14 @@ def compute(ndif, damp_vtd, dp0, zs, zh, crx, cry, xfx, yfx, wsd, dt):
         grid.area,
         xfx_adv,
         ra_x,
-        origin=grid.compute_x_origin(),
+        origin=grid.compute_origin(add=(0, -grid.halo, 0)),
         domain=(grid.nic, grid.njd, grid.npz + 1),
     )
     ra_y_stencil(
         grid.area,
         yfx_adv,
         ra_y,
-        origin=grid.compute_y_origin(),
+        origin=grid.compute_origin(add=(-grid.halo, 0, 0)),
         domain=(grid.nid, grid.njc, grid.npz + 1),
     )
     # TODO, when consoldiating k plitting, change this too
@@ -220,16 +232,16 @@ def column_calls(
     zh, crx_adv, cry_adv, xfx_adv, yfx_adv, ra_x, ra_y, ndif, damp, kstart, nk
 ):
     grid = spec.grid
-    default_origin = (grid.isd, grid.jsd, kstart)
+    full_origin = (grid.isd, grid.jsd, kstart)
     compute_origin = (grid.is_, grid.js, kstart)
     compute_domain = (grid.nic, grid.njc, nk)
     if damp > 1e-5:
-        wk = utils.make_storage_from_shape(zh.shape, default_origin)
-        fx2 = utils.make_storage_from_shape(zh.shape, default_origin)
-        fy2 = utils.make_storage_from_shape(zh.shape, default_origin)
-        fx = utils.make_storage_from_shape(zh.shape, default_origin)
-        fy = utils.make_storage_from_shape(zh.shape, default_origin)
-        z2 = copy(zh, origin=default_origin, domain=(grid.nid, grid.njd, nk))
+        wk = utils.make_storage_from_shape(zh.shape, full_origin)
+        fx2 = utils.make_storage_from_shape(zh.shape, full_origin)
+        fy2 = utils.make_storage_from_shape(zh.shape, full_origin)
+        fx = utils.make_storage_from_shape(zh.shape, full_origin)
+        fy = utils.make_storage_from_shape(zh.shape, full_origin)
+        z2 = copy(zh, origin=full_origin, domain=(grid.nid, grid.njd, nk))
         fvtp2d.compute_no_sg(
             z2,
             crx_adv,

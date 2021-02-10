@@ -16,7 +16,7 @@ DZ_MIN = constants.DZ_MIN
 # def copy(q_in):
 #    q_out = utils.make_storage_from_shape(q_in.shape, origin)
 #    copy_stencil(q_in, q_out)#, origin=(0,0,0),
-# domain=grid.domain_shape_buffer_1cell())
+# domain=grid.domain_shape_full(add=(1, 1, 1)))
 #    return q_out
 
 
@@ -239,7 +239,7 @@ def compute(dp_ref, zs, ut, vt, gz_in, ws3, dt2):
     gz = copy(gz_in, origin=origin)
     gz_x = copy(gz, origin=origin)
     ws = copy(
-        ws3, origin=grid.default_origin(), domain=grid.domain_shape_buffer_1cell()
+        ws3, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(1, 1, 0))
     )
     corners.fill_corners_cells(gz_x, "x")
     gz_y = copy(gz_x, origin=origin)

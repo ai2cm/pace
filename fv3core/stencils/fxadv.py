@@ -134,7 +134,9 @@ def compute(uc_in, vc_in, ut_in, vt_in, xfx_adv, yfx_adv, crx_adv, cry_adv, dt):
         ne_corner(uc_in, vc_in, ut, vt, grid().cosa_u, grid().cosa_v, corner_shape)
     if grid().nw_corner:
         nw_corner(uc_in, vc_in, ut, vt, grid().cosa_u, grid().cosa_v, corner_shape)
-    ra_x = utils.make_storage_from_shape(uc_in.shape, grid().compute_x_origin())
+    ra_x = utils.make_storage_from_shape(
+        uc_in.shape, grid().compute_origin(add=(0, -grid().halo, 0))
+    )
     xfx_adv_stencil(
         ut,
         grid().rdxa,
@@ -146,10 +148,12 @@ def compute(uc_in, vc_in, ut_in, vt_in, xfx_adv, yfx_adv, crx_adv, cry_adv, dt):
         xfx_adv,
         ra_x,
         dt,
-        origin=grid().compute_x_origin(),
-        domain=grid().domain_y_compute_xbuffer(),
+        origin=grid().compute_origin(add=(0, -grid().halo, 0)),
+        domain=grid().domain_shape_compute(add=(1, 2 * grid().halo, 0)),
     )
-    ra_y = utils.make_storage_from_shape(vc_in.shape, grid().compute_y_origin())
+    ra_y = utils.make_storage_from_shape(
+        vc_in.shape, grid().compute_origin(add=(-grid().halo, 0, 0))
+    )
     yfx_adv_stencil(
         vt,
         grid().rdya,
@@ -161,8 +165,8 @@ def compute(uc_in, vc_in, ut_in, vt_in, xfx_adv, yfx_adv, crx_adv, cry_adv, dt):
         yfx_adv,
         ra_y,
         dt,
-        origin=grid().compute_y_origin(),
-        domain=grid().domain_x_compute_ybuffer(),
+        origin=grid().compute_origin(add=(-grid().halo, 0, 0)),
+        domain=grid().domain_shape_compute(add=(2 * grid().halo, 1, 0)),
     )
     # TODO: Remove the need for a copied extra ut and vt variables, edit in place
     # (rexolve issue with data getting zeroed out).
