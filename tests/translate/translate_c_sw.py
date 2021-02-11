@@ -1,6 +1,17 @@
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core.stencils.c_sw as c_sw
 import fv3core.utils.gt4py_utils as utils
+from fv3core.decorators import gtstencil
+from fv3core.stencils.c_sw import (
+    circulation_cgrid,
+    divergence_corner,
+    transportdelp,
+    update_vorticity_and_kinetic_energy,
+    vorticitytransport,
+)
 from fv3core.testing import TranslateFortranData2Py
+from fv3core.utils.typing import FloatField
 
 
 class TranslateC_SW(TranslateFortranData2Py):
@@ -27,7 +38,8 @@ class TranslateC_SW(TranslateFortranData2Py):
             info["serialname"] = name + "d"
         self.out_vars = {}
         for v, d in self.in_vars["data_vars"].items():
-            self.out_vars[v] = d
+            if v not in ("delp", "pt", "w"):
+                self.out_vars[v] = d
         for servar in ["delpcd", "ptcd"]:
             self.out_vars[servar] = {}
         # TODO: Fix edge_interpolate4 in d2a2c_vect to match closer and the
@@ -38,6 +50,22 @@ class TranslateC_SW(TranslateFortranData2Py):
         self.make_storage_data_input_vars(inputs)
         delpc, ptc = self.compute_func(**inputs)
         return self.slice_output(inputs, {"delpcd": delpc, "ptcd": ptc})
+
+
+@gtstencil()
+def transportdelp_stencil(
+    delp: FloatField,
+    pt: FloatField,
+    utc: FloatField,
+    vtc: FloatField,
+    w: FloatField,
+    rarea: FloatField,
+    delpc: FloatField,
+    ptc: FloatField,
+    wc: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        delpc, ptc, wc = transportdelp(delp, pt, utc, vtc, w, rarea)
 
 
 class TranslateTransportDelp(TranslateFortranData2Py):
@@ -60,14 +88,51 @@ class TranslateTransportDelp(TranslateFortranData2Py):
             inputs["delp"].shape, origin=orig
         )
         inputs["ptc"] = utils.make_storage_from_shape(inputs["pt"].shape, origin=orig)
-        c_sw.transportdelp(
+        transportdelp_stencil(
             **inputs,
             rarea=self.grid.rarea,
             origin=orig,
             domain=self.grid.domain_shape_compute(add=(2, 2, 0)),
         )
-        return self.slice_output(
-            inputs,
+        return self.slice_output(inputs)
+
+
+@gtstencil()
+def divergence_corner_stencil(
+    u: FloatField,
+    v: FloatField,
+    ua: FloatField,
+    va: FloatField,
+    dxc: FloatField,
+    dyc: FloatField,
+    sin_sg1: FloatField,
+    sin_sg2: FloatField,
+    sin_sg3: FloatField,
+    sin_sg4: FloatField,
+    cos_sg1: FloatField,
+    cos_sg2: FloatField,
+    cos_sg3: FloatField,
+    cos_sg4: FloatField,
+    rarea_c: FloatField,
+    divg_d: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        divg_d = divergence_corner(
+            u,
+            v,
+            ua,
+            va,
+            dxc,
+            dyc,
+            sin_sg1,
+            sin_sg2,
+            sin_sg3,
+            sin_sg4,
+            cos_sg1,
+            cos_sg2,
+            cos_sg3,
+            cos_sg4,
+            rarea_c,
         )
 
 
@@ -102,7 +167,7 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        c_sw.divergence_corner(
+        divergence_corner_stencil(
             **inputs,
             dxc=self.grid.dxc,
             dyc=self.grid.dyc,
@@ -119,6 +184,14 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
             domain=self.grid.domain_shape_compute(add=(1, 1, 0)),
         )
         return self.slice_output({"divg_d": inputs["divg_d"]})
+
+
+@gtstencil()
+def circulation_cgrid_stencil(
+    uc: FloatField, vc: FloatField, dxc: FloatField, dyc: FloatField, vort_c: FloatField
+):
+    with computation(PARALLEL), interval(...):
+        vort_c = circulation_cgrid(uc, vc, dxc, dyc)
 
 
 class TranslateCirculation_Cgrid(TranslateFortranData2Py):
@@ -145,7 +218,7 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        c_sw.circulation_cgrid(
+        circulation_cgrid_stencil(
             **inputs,
             dxc=self.grid.dxc,
             dyc=self.grid.dyc,
@@ -153,6 +226,46 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
             domain=self.grid.domain_shape_compute(add=(1, 1, 0)),
         )
         return self.slice_output({"vort_c": inputs["vort_c"]})
+
+
+@gtstencil()
+def update_vorticity_and_kinetic_energy_stencil(
+    ua: FloatField,
+    va: FloatField,
+    uc: FloatField,
+    vc: FloatField,
+    u: FloatField,
+    v: FloatField,
+    sin_sg1: FloatField,
+    cos_sg1: FloatField,
+    sin_sg2: FloatField,
+    cos_sg2: FloatField,
+    sin_sg3: FloatField,
+    cos_sg3: FloatField,
+    sin_sg4: FloatField,
+    cos_sg4: FloatField,
+    dt2: float,
+    ke_c: FloatField,
+    vort_c: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        ke_c, vort_c = update_vorticity_and_kinetic_energy(
+            ua,
+            va,
+            uc,
+            vc,
+            u,
+            v,
+            sin_sg1,
+            cos_sg1,
+            sin_sg2,
+            cos_sg2,
+            sin_sg3,
+            cos_sg3,
+            sin_sg4,
+            cos_sg4,
+            dt2,
+        )
 
 
 class TranslateKE_C_SW(TranslateFortranData2Py):
@@ -184,11 +297,9 @@ class TranslateKE_C_SW(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        ke = utils.make_storage_from_shape(inputs["uc"].shape)
-        vort = utils.make_storage_from_shape(inputs["vc"].shape)
-        c_sw.update_vorticity_and_kinetic_energy(
-            ke=ke,
-            vort=vort,
+        inputs["ke_c"] = utils.make_storage_from_shape(inputs["uc"].shape)
+        inputs["vort_c"] = utils.make_storage_from_shape(inputs["uc"].shape)
+        update_vorticity_and_kinetic_energy_stencil(
             sin_sg1=self.grid.sin_sg1,
             cos_sg1=self.grid.cos_sg1,
             sin_sg2=self.grid.sin_sg2,
@@ -198,16 +309,37 @@ class TranslateKE_C_SW(TranslateFortranData2Py):
             sin_sg4=self.grid.sin_sg4,
             cos_sg4=self.grid.cos_sg4,
             **inputs,
-            origin=(self.grid.is_ - 1, self.grid.js - 1, 0),
-            domain=(self.grid.nic + 2, self.grid.njc + 2, self.grid.npz),
+            origin=self.grid.compute_origin(add=(-1, -1, 0)),
+            domain=self.grid.domain_shape_compute(add=(2, 2, 0)),
         )
-        return self.slice_output(inputs, {"ke_c": ke, "vort_c": vort})
+        return self.slice_output(inputs)
+
+
+@gtstencil()
+def vorticitytransport_stencil(
+    vort_c: FloatField,
+    ke_c: FloatField,
+    u: FloatField,
+    v: FloatField,
+    uc: FloatField,
+    vc: FloatField,
+    cosa_u: FloatField,
+    sina_u: FloatField,
+    cosa_v: FloatField,
+    sina_v: FloatField,
+    rdxc: FloatField,
+    rdyc: FloatField,
+    dt2: float,
+):
+    with computation(PARALLEL), interval(...):
+        uc, vc = vorticitytransport(
+            vort_c, ke_c, u, v, uc, vc, cosa_u, sina_u, cosa_v, sina_v, rdxc, rdyc, dt2
+        )
 
 
 class TranslateVorticityTransport_Cgrid(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = c_sw.vorticitytransport_cgrid
         self.in_vars["data_vars"] = {
             "uc": {},
             "vc": {},
@@ -228,3 +360,18 @@ class TranslateVorticityTransport_Cgrid(TranslateFortranData2Py):
         }
         self.in_vars["parameters"] = ["dt2"]
         self.out_vars = {"uc": grid.x3d_domain_dict(), "vc": grid.y3d_domain_dict()}
+
+    def compute(self, inputs):
+        self.make_storage_data_input_vars(inputs)
+        vorticitytransport_stencil(
+            **inputs,
+            cosa_u=self.grid.cosa_u,
+            sina_u=self.grid.sina_u,
+            cosa_v=self.grid.cosa_v,
+            sina_v=self.grid.sina_v,
+            rdxc=self.grid.rdxc,
+            rdyc=self.grid.rdyc,
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute(add=(1, 1, 0)),
+        )
+        return self.slice_output(inputs)
