@@ -51,12 +51,17 @@ fi
 cd $ROOT_DIR
 rm -rf vcm_1.0
 
-echo "copying in the venv..."
-cp -r /project/s1053/install/venv/vcm_1.0/ .
+echo "creating the venv"
 git submodule update --init --recursive
+cd external/daint_venv
+./install.sh test_ve
+source test_ve/bin/activate
 echo "install requirements..."
-vcm_1.0/bin/python -m pip install external/fv3gfs-util/
-vcm_1.0/bin/python -m pip install .
+cd $ROOT_DIR
+pip install external/fv3gfs-util/
+pip install .
+
+pip list
 
 # set up the experiment data
 cp -r $data_path test_data
@@ -65,10 +70,10 @@ cp test_data/*.yml test_data/input.yml
 
 # set the environment
 git clone https://github.com/VulcanClimateModeling/buildenv/
-source buildenv/machineEnvironment.sh
-source buildenv/env.${host}.sh
-nthreads=12
+cp buildenv/submit.daint.slurm compile.daint.slurm
+cp buildenv/submit.daint.slurm run.daint.slurm
 
+nthreads=12
 echo "Configuration overview:"
 echo "    Timesteps:        $timesteps"
 echo "    Ranks:            $ranks"
@@ -83,19 +88,39 @@ else
   githash="notarepo"
 fi
 
-# Adapt batch script:
-cp buildenv/submit.daint.slurm .
-sed -i s/\<NAME\>/standalone/g submit.daint.slurm
-sed -i s/\<NTASKS\>/$ranks/g submit.daint.slurm
-sed -i s/\<NTASKSPERNODE\>/1/g submit.daint.slurm
-sed -i s/\<CPUSPERTASK\>/$nthreads/g submit.daint.slurm
-sed -i s/--output=\<OUTFILE\>/--hint=nomultithread/g submit.daint.slurm
-sed -i s/00:45:00/03:30:00/g submit.daint.slurm
-sed -i s/cscsci/normal/g submit.daint.slurm
-sed -i s/\<G2G\>//g submit.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun vcm_1.0/bin/python examples/standalone/runfile/dynamics.py test_data/ $timesteps $backend $githash#g" submit.daint.slurm
+
+
+echo "submitting script to do compilation"
+# Adapt batch script to compile the code:
+sed -i s/\<NAME\>/standalone/g compile.daint.slurm
+sed -i s/\<NTASKS\>/$ranks/g compile.daint.slurm
+sed -i s/\<NTASKSPERNODE\>/$ranks/g compile.daint.slurm
+sed -i s/\<CPUSPERTASK\>/1/g compile.daint.slurm
+sed -i s/--output=\<OUTFILE\>/--hint=nomultithread/g compile.daint.slurm
+sed -i s/00:45:00/03:30:00/g compile.daint.slurm
+sed -i s/\<G2G\>/export\ CRAY_CUDA_MPS=1/g compile.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py test_data/ 1 $backend $githash#g" compile.daint.slurm
 
 # execute on a gpu node
-sbatch -W -C gpu submit.daint.slurm
+sbatch -W -C gpu compile.daint.slurm
+wait
+echo "compilation step finished"
+rm *.json
+
+echo "submitting script to do performance run"
+# Adapt batch script to run the code:
+sed -i s/\<NAME\>/standalone/g run.daint.slurm
+sed -i s/\<NTASKS\>/$ranks/g run.daint.slurm
+sed -i s/\<NTASKSPERNODE\>/1/g run.daint.slurm
+sed -i s/\<CPUSPERTASK\>/$nthreads/g run.daint.slurm
+sed -i s/--output=\<OUTFILE\>/--hint=nomultithread/g run.daint.slurm
+sed -i s/00:45:00/00:30:00/g run.daint.slurm
+sed -i s/cscsci/normal/g run.daint.slurm
+sed -i s/\<G2G\>//g run.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py test_data/ $timesteps $backend $githash#g" run.daint.slurm
+
+# execute on a gpu node
+sbatch -W -C gpu run.daint.slurm
 wait
 cp *.json $target_dir
+echo "performance run sucessful"
