@@ -244,9 +244,9 @@ def update_vorticity_and_kinetic_energy_stencil(
     cos_sg3: FloatField,
     sin_sg4: FloatField,
     cos_sg4: FloatField,
-    dt2: float,
     ke_c: FloatField,
     vort_c: FloatField,
+    dt2: float,
 ):
     with computation(PARALLEL), interval(...):
         ke_c, vort_c = update_vorticity_and_kinetic_energy(
