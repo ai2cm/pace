@@ -5,7 +5,6 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, floor, interval,
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import dim
 from fv3core.stencils.moist_cv import compute_pkz_func
@@ -555,40 +554,23 @@ def compute_q_tables(
 
 @gtstencil()
 def satadjust(
-    wqsat: FloatField,
-    dq2dt: FloatField,
-    dpln: FloatField,
-    den: FloatField,
-    pt1: FloatField,
-    cvm: FloatField,
-    mc_air: FloatField,
     peln: FloatField,
     qv: FloatField,
     ql: FloatField,
-    q_liq: FloatField,
     qi: FloatField,
     qr: FloatField,
     qs: FloatField,
     cappa: FloatField,
-    q_sol: FloatField,
     qg: FloatField,
     pt: FloatField,
     dp: FloatField,
-    tin: FloatField,
     delz: FloatField,
     te0: FloatField,
-    q_cond: FloatField,
     q_con: FloatField,
     qa: FloatField,
     area: FloatField,
-    qpz: FloatField,
     hs: FloatField,
     pkz: FloatField,
-    lhl: FloatField,
-    lhi: FloatField,
-    lcp2: FloatField,
-    icp2: FloatField,
-    tcp3: FloatField,
     sdt: float,
     zvir: float,
     fac_i2s: float,
@@ -616,7 +598,6 @@ def satadjust(
         if hydrostatic:
             delz = delz[0, 0, -1]
     with computation(PARALLEL), interval(...):
-        dpln = peln[0, 0, 1] - peln
         q_liq = ql + qr
         q_sol = qi + qs + qg
         qpz = q_liq + q_sol
@@ -625,7 +606,7 @@ def satadjust(
         qpz = qpz + qv  # total_wat conserved in this routine
         # define air density based on hydrostatical property
         den = (
-            dp / (dpln * constants.RDGAS * pt)
+            dp / ((peln[0, 0, 1] - peln) * constants.RDGAS * pt)
             if hydrostatic
             else -dp / (constants.GRAV * delz)
         )
@@ -906,7 +887,6 @@ def satadjust(
 
 
 def compute(
-    dpln,
     te,
     qvapor,
     qliquid,
@@ -959,62 +939,27 @@ def compute(
 
     d0_vap = c_vap - constants.C_LIQ
     lv00 = constants.HLV - d0_vap * TICE
-    # temporaries needed for passing data between stencil calls (break currently
-    # required by wqs2_vect, and a couple of exp/log calls)
-    den = utils.make_storage_from_shape(peln.shape, utils.origin)
-    wqsat = utils.make_storage_from_shape(peln.shape, utils.origin)
-    dq2dt = utils.make_storage_from_shape(peln.shape, utils.origin)
-    pt1 = utils.make_storage_from_shape(peln.shape, utils.origin)
-    cvm = utils.make_storage_from_shape(peln.shape, utils.origin)
-    q_liq = utils.make_storage_from_shape(peln.shape, utils.origin)
-    mc_air = utils.make_storage_from_shape(peln.shape, utils.origin)
-    q_sol = utils.make_storage_from_shape(peln.shape, utils.origin)
-    tcp3 = utils.make_storage_from_shape(peln.shape, utils.origin)
-    lhl = utils.make_storage_from_shape(peln.shape, utils.origin)
-    lhi = utils.make_storage_from_shape(peln.shape, utils.origin)
-    lcp2 = utils.make_storage_from_shape(peln.shape, utils.origin)
-    icp2 = utils.make_storage_from_shape(peln.shape, utils.origin)
-    tin = utils.make_storage_from_shape(peln.shape, utils.origin)
-    q_cond = utils.make_storage_from_shape(peln.shape, utils.origin)
-    qpz = utils.make_storage_from_shape(peln.shape, utils.origin)
 
     do_qa = True
 
     satadjust(
-        wqsat,
-        dq2dt,
-        dpln,
-        den,
-        pt1,
-        cvm,
-        mc_air,
         peln,
         qvapor,
         qliquid,
-        q_liq,
         qice,
         qrain,
         qsnow,
         cappa,
-        q_sol,
         qgraupel,
         pt,
         delp,
-        tin,
         delz,
         te,
-        q_cond,
         q_con,
         qcld,
         grid.area_64,
-        qpz,
         hs,
         pkz,
-        lhl,
-        lhi,
-        lcp2,
-        icp2,
-        tcp3,
         sdt,
         r_vir,
         fac_i2s,
