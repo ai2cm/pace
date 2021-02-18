@@ -120,7 +120,7 @@ class StencilDataCache(collections.abc.Mapping):
         pymodule_filename = stencil._file_name
         return f"{os.path.splitext(pymodule_filename)[0]}_{self.extension}"
 
-    def __getitem__(self, stencil: gt4py.StencilObject):
+    def __getitem__(self, stencil: gt4py.StencilObject) -> Any:
         key = hash(stencil)
         if key not in self.cache:
             filename = self._get_cache_filename(stencil)
@@ -128,12 +128,15 @@ class StencilDataCache(collections.abc.Mapping):
                 self.cache[key] = pickle.load(open(filename, mode="rb"))
         return self.cache[key] if key in self.cache else {}
 
-    def __setitem__(self, stencil: gt4py.StencilObject, value: Any):
+    def __setitem__(self, stencil: gt4py.StencilObject, value: Any) -> None:
         key = hash(stencil)
         filename = self._get_cache_filename(stencil)
         self.cache[key] = value
         pickle.dump(self.cache[key], open(filename, mode="wb"))
         return self.cache[key]
+
+    def __contains__(self, stencil: gt4py.StencilObject) -> bool:
+        return self[stencil]
 
     def __len__(self) -> int:
         return len(self.cache)
