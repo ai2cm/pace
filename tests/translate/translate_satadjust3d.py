@@ -9,6 +9,7 @@ class TranslateSatAdjust3d(TranslateFortranData2Py):
         cvar = {"axis": 0, "kstart": 3}
         self.in_vars["data_vars"] = {
             "te": {},
+            "dpln": {"istart": grid.is_, "jstart": grid.js},
             "qvapor": {},
             "qliquid": {},
             "qice": {},
@@ -37,6 +38,14 @@ class TranslateSatAdjust3d(TranslateFortranData2Py):
         ]
         self.out_vars = {
             "te": {},
+            "dpln": {
+                "istart": grid.is_,
+                "iend": grid.ie,
+                "jstart": grid.js,
+                "jend": grid.je,
+                "kstart": grid.npz - 1,
+                "kend": grid.npz - 1,
+            },
             "qvapor": {},
             "qliquid": {},
             "qice": {},

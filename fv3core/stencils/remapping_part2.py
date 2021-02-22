@@ -41,6 +41,12 @@ def sum_z1(pkz: sd, delp: sd, te0_2d: sd, te_2d: sd, zsum1: sd):
 
 
 @gtstencil()
+def layer_gradient(peln: sd, dpln: sd):
+    with computation(PARALLEL), interval(...):
+        dpln = peln[0, 0, 1] - peln
+
+
+@gtstencil()
 def sum_te(te: sd, te0_2d: sd):
     with computation(FORWARD):
         with interval(0, None):
@@ -91,6 +97,7 @@ def compute(
     )
     dtmp = 0.0
     phis = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
+    dpln = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
     if spec.namelist.do_sat_adj:
         fast_mp_consv = not do_adiabatic_init and consv > constants.CONSV_MIN
         # TODO pfull is a 1d var
@@ -174,7 +181,9 @@ def compute(
 
         kmp_origin = (grid.is_, grid.js, kmp)
         kmp_domain = (grid.nic, grid.njc, grid.npz - kmp)
+        layer_gradient(peln, dpln, origin=kmp_origin, domain=kmp_domain)
         saturation_adjustment.compute(
+            dpln,
             te,
             qvapor,
             qliquid,
