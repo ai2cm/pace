@@ -1,16 +1,14 @@
 import copy
 import logging
-import math
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gt4py as gt
 import gt4py.storage as gt_storage
 import numpy as np
-from gt4py import gtscript
 
 from fv3core.utils.mpi import MPI
-from fv3core.utils.typing import DTypes, Field, float_type, int_type
+from fv3core.utils.typing import DTypes, Field, Float, FloatField, IntField
 
 from . import global_config
 
@@ -29,8 +27,8 @@ validate_args = True
 managed_memory = True
 
 # [DEPRECATED] field types
-sd = gtscript.Field[float_type]
-si = gtscript.Field[int_type]
+sd = FloatField
+si = IntField
 
 # Number of halo lines for each field and default origin
 halo = 3
@@ -392,31 +390,6 @@ def krange_from_slice(kslice, grid):
     return kstart, nk
 
 
-def great_circle_dist(p1, p2, radius=None):
-    beta = (
-        math.asin(
-            math.sqrt(
-                math.sin((p1[1] - p2[1]) / 2.0) ** 2
-                + math.cos(p1[1])
-                * math.cos(p2[1])
-                * math.sin((p1[0] - p2[0]) / 2.0) ** 2
-            )
-        )
-        * 2.0
-    )
-    if radius is not None:
-        great_circle_dist = radius * beta
-    else:
-        great_circle_dist = beta
-    return great_circle_dist
-
-
-def extrap_corner(p0, p1, p2, q1, q2):
-    x1 = great_circle_dist(p1, p0)
-    x2 = great_circle_dist(p2, p0)
-    return q1 + x1 / (x2 - x1) * (q1 - q2)
-
-
 def asarray(array, to_type=np.ndarray, dtype=None, order=None):
     if isinstance(array, gt_storage.storage.Storage):
         array = array.data
@@ -436,13 +409,13 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
             return cp.asarray(array, dtype, order)
 
 
-def zeros(shape, dtype=float_type):
+def zeros(shape, dtype=Float):
     storage_type = cp.ndarray if "cuda" in global_config.get_backend() else np.ndarray
     xp = cp if cp and storage_type is cp.ndarray else np
     return xp.zeros(shape)
 
 
-def sum(array, axis=None, dtype=float_type, out=None, keepdims=False):
+def sum(array, axis=None, dtype=Float, out=None, keepdims=False):
     if isinstance(array, gt_storage.storage.Storage):
         array = array.data
     xp = cp if cp and type(array) is cp.ndarray else np
