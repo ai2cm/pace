@@ -19,6 +19,5 @@ if [ "$experiment" = "c128_6ranks_baroclinic" ]; then
 fi
 
 $ROOT_DIR/examples/standalone/benchmarks/run_on_daint.sh 1 6 $backend . $data_path
-#mkdir -p /scratch/snx3000/tobwi/store_gt_caches/$experiment
-mkdir -p /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment
-cp -r .gt_cache_00000* /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/
+mkdir -p /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend
+cp -r .gt_cache_00000* /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend/
