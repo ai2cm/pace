@@ -7,6 +7,9 @@ latest
 Major changes:
 - Added NullTimer to use for default Timer value, it is a disabled timer which cannot be enabled (raises NotImplementedError)
 
+Fixes:
+- Fixed bug where ZarrMonitor depended on dict `.items()` always returning items in the same order
+
 v0.6.0
 ------
 

@@ -103,7 +103,7 @@ class ZarrMonitor:
         is "time" which is stored with dimensions [time].
         """
         self._ensure_writers_are_consistent(state)
-        for name, quantity in state.items():
+        for name, quantity in sorted(state.items(), key=lambda x: x[0]):
             self._writers[name].append(quantity)  # type: ignore[index]
 
 
