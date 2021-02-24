@@ -11,11 +11,15 @@ import fv3core
 import fv3core._config as spec
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.testing
+import fv3core.utils.global_config as global_config
 import fv3gfs.util as util
+from fv3core.utils import gt4py_utils
 
 
 def parse_args():
-    usage = "usage: python %(prog)s <data_dir> <timesteps> <backend> <hash>"
+    usage = (
+        "usage: python %(prog)s <data_dir> <timesteps> <backend> <hash> <halo_exchange>"
+    )
     parser = ArgumentParser(usage=usage)
 
     parser.add_argument(
@@ -41,6 +45,11 @@ def parse_args():
         type=str,
         action="store",
         help="git hash to store",
+    )
+    parser.add_argument(
+        "--disable_halo_exchange",
+        action="store_true",
+        help="enable or disable the halo exchange",
     )
 
     return parser.parse_args()
@@ -99,6 +108,8 @@ if __name__ == "__main__":
 
         fv3core.set_backend(args.backend)
         fv3core.set_rebuild(False)
+        gt4py_utils.validate_args = False
+        global_config.set_do_halo_exchange(not args.disable_halo_exchange)
 
         spec.set_namelist(args.data_dir + "/input.nml")
 

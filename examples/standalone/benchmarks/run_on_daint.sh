@@ -89,17 +89,24 @@ else
 fi
 
 
+split_path=(${data_path//\// })
+experiment=${split_path[-1]}
 
+if [ ! -d $(pwd)/.gt_cache_000000 ]; then
+    cp -r /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend/.gt_cache_0000* .
+    find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/zz_fv3core_cacheSetup\/backend\/$backend\/experiment\/$EXPNAME\/slave\/daint_submit|$(pwd)|g" {} +
+fi
 echo "submitting script to do compilation"
 # Adapt batch script to compile the code:
 sed -i s/\<NAME\>/standalone/g compile.daint.slurm
 sed -i s/\<NTASKS\>/$ranks/g compile.daint.slurm
-sed -i s/\<NTASKSPERNODE\>/$ranks/g compile.daint.slurm
-sed -i s/\<CPUSPERTASK\>/1/g compile.daint.slurm
+sed -i s/\<NTASKSPERNODE\>/1/g compile.daint.slurm
+sed -i s/\<CPUSPERTASK\>/$nthreads/g compile.daint.slurm
 sed -i s/--output=\<OUTFILE\>/--hint=nomultithread/g compile.daint.slurm
 sed -i s/00:45:00/03:30:00/g compile.daint.slurm
+sed -i s/cscsci/normal/g compile.daint.slurm
 sed -i s/\<G2G\>/export\ CRAY_CUDA_MPS=1/g compile.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py test_data/ 1 $backend $githash#g" compile.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py test_data/ 1 $backend $githash --disable_halo_exchange#g" compile.daint.slurm
 
 # execute on a gpu node
 sbatch -W -C gpu compile.daint.slurm

@@ -52,6 +52,7 @@ tracer_variables = [
 # Logger instance
 logger = logging.getLogger("fv3ser")
 
+
 # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
 if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
     gt.config.cache_settings["dir_name"] = ".gt_cache_{:0>6d}".format(

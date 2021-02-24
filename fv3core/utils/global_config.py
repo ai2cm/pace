@@ -33,6 +33,16 @@ def get_format_source() -> bool:
     return _FORMAT_SOURCE
 
 
+def set_do_halo_exchange(flag: bool):
+    global _DO_HALO_EXCHANGE
+    _DO_HALO_EXCHANGE = flag
+
+
+def get_do_halo_exchange() -> bool:
+    return _DO_HALO_EXCHANGE
+
+
 _BACKEND = None  # Options: numpy, gtx86, gtcuda, debug
 _REBUILD = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "True")
 _FORMAT_SOURCE = getenv_bool("FV3_STENCIL_FORMAT_SOURCE", "False")
+_DO_HALO_EXCHANGE = True
