@@ -427,7 +427,7 @@ def compute_qy(qin, qout, kstart, nk):
 
 
 def compute_qxx(qx, qout, kstart, nk):
-    qxx = utils.make_storage_from_shape(qx.shape, origin=grid().default_origin())
+    qxx = utils.make_storage_from_shape(qx.shape, origin=grid().full_origin())
     # avoid running center-domain computation on tile edges, since they'll be
     # overwritten.
     js = grid().js + 2 if grid().south_edge else grid().js
@@ -450,7 +450,7 @@ def compute_qxx(qx, qout, kstart, nk):
 
 
 def compute_qyy(qy, qout, kstart, nk):
-    qyy = utils.make_storage_from_shape(qy.shape, origin=grid().default_origin())
+    qyy = utils.make_storage_from_shape(qy.shape, origin=grid().full_origin())
     # avoid running center-domain computation on tile edges, since they'll be
     # overwritten.
     js = grid().js + 1 if grid().south_edge else grid().js

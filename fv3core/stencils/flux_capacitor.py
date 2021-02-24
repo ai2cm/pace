@@ -31,6 +31,6 @@ def compute(cx, cy, xflux, yflux, crx_adv, cry_adv, fx, fy):
         cry_adv,
         fx,
         fy,
-        origin=spec.grid.default_origin(),
-        domain=spec.grid.domain_shape_standard(),
+        origin=spec.grid.full_origin(),
+        domain=spec.grid.domain_shape_full(),
     )

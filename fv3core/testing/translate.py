@@ -28,7 +28,7 @@ class TranslateFortranData2Py:
         self.in_vars = {"data_vars": {}, "parameters": []}
         self.out_vars = {}
         self.grid = grid
-        self.maxshape = grid.domain_shape_buffer_1cell()
+        self.maxshape = grid.domain_shape_full(add=(1, 1, 1))
         self.ordered_input_vars = None
         self.ignore_near_zero_errors = {}
 
@@ -277,7 +277,7 @@ class TranslateGrid:
             )
 
     def make_grid_storage(self, pygrid):
-        shape = pygrid.domain_shape_buffer_1cell()
+        shape = pygrid.domain_shape_full(add=(1, 1, 1))
         for k in TranslateGrid.composite_grid_vars:
             if k in self.data:
                 self.make_composite_var_storage(k, self.data[k], shape)

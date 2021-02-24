@@ -29,9 +29,7 @@ def compute(pt, pkz, heat_source, delz, delp, cappa, n_con, bdt):
     delt_column = np.ones(delz.shape[2]) * abs(bdt * spec.namelist.delt_max)
     delt_column[0] *= 0.1
     delt_column[1] *= 0.5
-    delt = utils.make_storage_data(
-        delt_column, delz.shape, origin=grid.default_origin()
-    )
+    delt = utils.make_storage_data(delt_column, delz.shape, origin=grid.full_origin())
     compute_pkz_tempadjust(
         delp,
         delz,

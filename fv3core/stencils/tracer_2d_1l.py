@@ -88,12 +88,20 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
     shape = mfxd.data.shape
     # start HALO update on q (in dyn_core in fortran -- just has started when
     # this function is called...)
-    xfx = utils.make_storage_from_shape(shape, origin=grid.compute_x_origin())
-    yfx = utils.make_storage_from_shape(shape, origin=grid.compute_y_origin())
+    xfx = utils.make_storage_from_shape(
+        shape, origin=grid.compute_origin(add=(0, -grid.halo, 0))
+    )
+    yfx = utils.make_storage_from_shape(
+        shape, origin=grid.compute_origin(add=(-grid.halo, 0, 0))
+    )
     fx = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
     fy = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
-    ra_x = utils.make_storage_from_shape(shape, origin=grid.compute_x_origin())
-    ra_y = utils.make_storage_from_shape(shape, origin=grid.compute_y_origin())
+    ra_x = utils.make_storage_from_shape(
+        shape, origin=grid.compute_origin(add=(0, -grid.halo, 0))
+    )
+    ra_y = utils.make_storage_from_shape(
+        shape, origin=grid.compute_origin(add=(-grid.halo, 0, 0))
+    )
     cmax = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
     dp2 = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
     flux_x(
@@ -103,8 +111,8 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
         grid.sin_sg3,
         grid.sin_sg1,
         xfx,
-        origin=grid.compute_x_origin(),
-        domain=grid.domain_y_compute_xbuffer(),
+        origin=grid.compute_origin(add=(0, -grid.halo, 0)),
+        domain=grid.domain_shape_compute(add=(1, 2 * grid.halo, 0)),
     )
     flux_y(
         cyd,
@@ -113,8 +121,8 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
         grid.sin_sg4,
         grid.sin_sg2,
         yfx,
-        origin=grid.compute_y_origin(),
-        domain=grid.domain_x_compute_ybuffer(),
+        origin=grid.compute_origin(add=(-grid.halo, 0, 0)),
+        domain=grid.domain_shape_compute(add=(2 * grid.halo, 1, 0)),
     )
     # {
     # # TODO for if we end up using the Allreduce and compute cmax globally
@@ -157,8 +165,8 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
             yfx,
             mfyd,
             frac,
-            origin=grid.default_origin(),
-            domain=grid.domain_shape_buffer_1cell(),
+            origin=grid.full_origin(),
+            domain=grid.domain_shape_full(add=(1, 1, 0)),
         )
 
     # complete HALO update on q
@@ -170,32 +178,30 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
         grid.area,
         xfx,
         ra_x,
-        origin=grid.compute_x_origin(),
-        domain=grid.domain_y_compute_x(),
+        origin=grid.compute_origin(add=(0, -grid.halo, 0)),
+        domain=grid.domain_shape_compute(add=(0, 2 * grid.halo, 0)),
     )
     ra_y_stencil(
         grid.area,
         yfx,
         ra_y,
-        origin=grid.compute_y_origin(),
-        domain=grid.domain_x_compute_y(),
+        origin=grid.compute_origin(add=(-grid.halo, 0, 0)),
+        domain=grid.domain_shape_compute(add=(2 * grid.halo, 0, 0)),
     )
 
     # TODO: Revisit: the loops over q and nsplt have two inefficient options
     # duplicating storages/stencil calls, return to this, maybe you have more
     # options now, or maybe the one chosen here is the worse one.
 
-    dp1_orig = copy(
-        dp1, origin=grid.default_origin(), domain=grid.domain_shape_standard()
-    )
+    dp1_orig = copy(dp1, origin=grid.full_origin(), domain=grid.domain_shape_full())
     for qname in utils.tracer_variables[0:nq]:
         q = tracers[qname + "_quantity"]
         # handling the q and it loop switching
         copy_stencil(
             dp1_orig,
             dp1,
-            origin=grid.default_origin(),
-            domain=grid.domain_shape_standard(),
+            origin=grid.full_origin(),
+            domain=grid.domain_shape_full(),
         )
         for it in range(int(nsplt)):
             dp_fluxadjustment(
@@ -213,8 +219,8 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
                     qn2 = grid.quantity_wrap(
                         copy(
                             q.storage,
-                            origin=grid.default_origin(),
-                            domain=grid.domain_shape_standard(),
+                            origin=grid.full_origin(),
+                            domain=grid.domain_shape_full(),
                         ),
                         units="kg/m^2",
                     )

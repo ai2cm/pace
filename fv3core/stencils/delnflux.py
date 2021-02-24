@@ -92,14 +92,14 @@ def compute_delnflux_no_sg(
     grid = spec.grid
     if nk is None:
         nk = grid.npz - kstart
-    default_origin = (grid.isd, grid.jsd, kstart)
+    full_origin = (grid.isd, grid.jsd, kstart)
     if d2 is None:
-        d2 = utils.make_storage_from_shape(q.shape, default_origin)
+        d2 = utils.make_storage_from_shape(q.shape, full_origin)
     if damp_c <= 1e-4:
         return fx, fy
     damp = (damp_c * grid.da_min) ** (nord + 1)
-    fx2 = utils.make_storage_from_shape(q.shape, default_origin)
-    fy2 = utils.make_storage_from_shape(q.shape, default_origin)
+    fx2 = utils.make_storage_from_shape(q.shape, full_origin)
+    fy2 = utils.make_storage_from_shape(q.shape, full_origin)
     compute_no_sg(q, fx2, fy2, nord, damp, d2, kstart, nk, mass)
     diffuse_origin = (grid.is_, grid.js, kstart)
     diffuse_domain_x = (grid.nic + 1, grid.njc, nk)
