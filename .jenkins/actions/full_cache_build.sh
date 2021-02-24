@@ -20,4 +20,4 @@ fi
 
 $ROOT_DIR/examples/standalone/benchmarks/run_on_daint.sh 1 6 $backend . $data_path
 mkdir -p /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend
-cp -r .gt_cache_00000* /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend/
+mv .gt_cache_00000* /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend/

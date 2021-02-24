@@ -92,10 +92,6 @@ fi
 split_path=(${data_path//\// })
 experiment=${split_path[-1]}
 
-if [ ! -d $(pwd)/.gt_cache_000000 ]; then
-    cp -r /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend/.gt_cache_0000* .
-    find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/zz_fv3core_cacheSetup\/backend\/$backend\/experiment\/$EXPNAME\/slave\/daint_submit|$(pwd)|g" {} +
-fi
 echo "submitting script to do compilation"
 # Adapt batch script to compile the code:
 sed -i s/\<NAME\>/standalone/g compile.daint.slurm
@@ -130,4 +126,7 @@ sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/p
 sbatch -W -C gpu run.daint.slurm
 wait
 rsync *.json $target_dir
+
+echo "clean up workspace"
+rm -rf test_data
 echo "performance run sucessful"

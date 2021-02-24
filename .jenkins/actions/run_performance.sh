@@ -19,3 +19,4 @@ if [ "$experiment" = "c128_6ranks_baroclinic" ]; then
 fi
 
 $ROOT_DIR/examples/standalone/benchmarks/run_on_daint.sh 2 6 $backend /project/s1053/performance/fv3core_monitor/$backend/ $data_path
+rm -rf .gt_cache_0000*
