@@ -196,7 +196,7 @@ if grep -q "fv_dynamics" <<< "${script}"; then
 	    export MPICH_RDMA_ENABLED_CUDA=0
 	fi
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${run_timing_script}
-    sed -i 's|00:45:00|00:30:00|g' ${run_timing_script}
+    sed -i 's|00:45:00|00:10:00|g' ${run_timing_script}
     sed -i 's|<NTASKSPERNODE>|1|g' ${run_timing_script}
     sed -i 's/<CPUSPERTASK>/1/g' ${run_timing_script}
     sed -i 's|cscsci|debug|g' ${run_timing_script}
