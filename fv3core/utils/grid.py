@@ -3,9 +3,9 @@ from typing import Tuple
 import numpy as np
 from gt4py import gtscript
 
+import fv3core.utils.global_config as global_config
 import fv3gfs.util as fv3util
 
-from . import global_config
 from . import gt4py_utils as utils
 
 

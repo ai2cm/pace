@@ -15,10 +15,9 @@ from gt4py import gtscript
 import fv3core
 import fv3core._config as spec
 import fv3core.utils
+import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.typing import Index3D
-
-from .utils import global_config
 
 
 ArgSpec = collections.namedtuple(
