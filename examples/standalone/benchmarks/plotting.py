@@ -27,7 +27,7 @@ if __name__ == "__main__":
     plot_variance = True
     plots = {
         "per_timestep": {
-            "title": "Performance history of components",
+            "title": "Performance history of components of mainloop",
             "timers": [
                 {"name": "mainloop", "linestyle": "-o"},
                 {"name": "DynCore", "linestyle": "--o"},
@@ -38,7 +38,7 @@ if __name__ == "__main__":
             "y_axis_label": "Execution time per timestep [s]",
         },
         "absolute_time": {
-            "title": "Performance history of absolute runtime",
+            "title": "Performance history of total runtime",
             "timers": [
                 {"name": "total", "linestyle": "-o"},
                 {"name": "initialization", "linestyle": "--o"},
@@ -76,6 +76,11 @@ if __name__ == "__main__":
             specific = [x for x in alldata if x["setup"]["version"] == backend]
             if specific:
                 for timer in plot_config["timers"]:
+                    label = None
+                    if "mainloop" in timer["name"] or "total" in timer["name"]:
+                        label = backend_config["short_name"]
+                    elif "gtcuda" in backend_config["short_name"]:
+                        label = backend_config["short_name"] + " " + timer["name"]
                     plt.plot(
                         [
                             datetime.strptime(
@@ -94,7 +99,7 @@ if __name__ == "__main__":
                         ],
                         timer["linestyle"],
                         markersize=markersize,
-                        label=backend_config["short_name"] + " " + timer["name"],
+                        label=label,
                         color=backend_config["color"],
                     )
                     if plot_variance:
@@ -156,6 +161,7 @@ if __name__ == "__main__":
             fontsize=fontsize,
         )
         ax.set_facecolor("white")
+        ax.set_yscale("log")
         plt.grid(color="silver", alpha=0.4)
         plt.gcf().set_size_inches(8, 6)
         plt.savefig("history_" + plottype + ".png", dpi=100)
