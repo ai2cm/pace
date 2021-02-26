@@ -184,11 +184,13 @@ if __name__ == "__main__":
 
     timer.stop("total")
     # collect times and output simple statistics
-    print("Gathering Times")
-    experiment = set_experiment_info(
-        experiment_name, args.time_step, args.backend, args.hash
-    )
-    gather_timing_statistics(timer, experiment, comm)
-    now = datetime.now()
-    filename = now.strftime("%Y-%m-%d-%H-%M-%S")
-    write_global_timings(experiment, filename, comm)
+    comm.Barrier()
+    if not args.disable_halo_exchange:
+        print("Gathering Times")
+        experiment = set_experiment_info(
+            experiment_name, args.time_step, args.backend, args.hash
+        )
+        gather_timing_statistics(timer, experiment, comm)
+        now = datetime.now()
+        filename = now.strftime("%Y-%m-%d-%H-%M-%S")
+        write_global_timings(experiment, filename, comm)
