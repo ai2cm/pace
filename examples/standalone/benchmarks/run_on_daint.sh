@@ -89,8 +89,13 @@ else
 fi
 
 
+
 split_path=(${data_path//\// })
 experiment=${split_path[-1]}
+if [ ! -d $(pwd)/.gt_cache_000000 ]; then
+    cp -r /scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend/.gt_cache_0000* .
+    find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/fv3core-cache-setup\/backend\/$backend\/experiment\/$experiment\/slave\/daint_submit|$(pwd)|g" {} +
+fi
 
 echo "submitting script to do compilation"
 # Adapt batch script to compile the code:
@@ -108,7 +113,6 @@ sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/p
 sbatch -W -C gpu compile.daint.slurm
 wait
 echo "compilation step finished"
-rm *.json
 
 echo "submitting script to do performance run"
 # Adapt batch script to run the code:
