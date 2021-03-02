@@ -43,7 +43,7 @@ fi
 data_path="$5"
 if [ -z "$5" ]
   then
-    data_path="/project/s1053/fv3core_serialized_test_data/7.0.0/c12_6ranks_standard/"
+    data_path="/scratch/snx3000/olifu/jenkins/scratch/fv3core_fortran_data/7.2.5/c12_6ranks_standard/"
 fi
 
 
@@ -63,10 +63,6 @@ pip install .
 
 pip list
 
-# set up the experiment data
-cp -r $data_path test_data
-tar -xf test_data/dat_files.tar.gz -C test_data
-cp test_data/*.yml test_data/input.yml
 
 # set the environment
 git clone https://github.com/VulcanClimateModeling/buildenv/
@@ -111,7 +107,7 @@ sed -i s/--output=\<OUTFILE\>/--hint=nomultithread/g compile.daint.slurm
 sed -i s/00:45:00/03:30:00/g compile.daint.slurm
 sed -i s/cscsci/normal/g compile.daint.slurm
 sed -i s/\<G2G\>/export\ CRAY_CUDA_MPS=1/g compile.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py test_data/ 1 $backend $githash --disable_halo_exchange#g" compile.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py $data_path 1 $backend $githash --disable_halo_exchange#g" compile.daint.slurm
 
 # execute on a gpu node
 sbatch -W -C gpu compile.daint.slurm
@@ -128,13 +124,11 @@ sed -i s/--output=\<OUTFILE\>/--hint=nomultithread/g run.daint.slurm
 sed -i s/00:45:00/00:30:00/g run.daint.slurm
 sed -i s/cscsci/normal/g run.daint.slurm
 sed -i s/\<G2G\>//g run.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py test_data/ $timesteps $backend $githash#g" run.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash#g" run.daint.slurm
 
 # execute on a gpu node
 sbatch -W -C gpu run.daint.slurm
 wait
 rsync *.json $target_dir
 
-echo "clean up workspace"
-rm -rf test_data
 echo "performance run sucessful"
