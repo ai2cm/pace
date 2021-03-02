@@ -1,5 +1,13 @@
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+from gt4py.gtscript import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    horizontal,
+    interval,
+    region,
+)
 
 import fv3core._config as spec
 import fv3core.stencils.delnflux as delnflux
@@ -16,15 +24,14 @@ DZ_MIN = constants.DZ_MIN
 
 
 @gtstencil()
-def ra_x_stencil(area: sd, xfx_adv: sd, ra_x: sd):
-    with computation(PARALLEL), interval(...):
-        ra_x = ra_x_func(area, xfx_adv)
+def ra_stencil_update(area: sd, xfx_adv: sd, ra_x: sd, yfx_adv: sd, ra_y: sd):
+    from __externals__ import local_ie, local_is, local_je, local_js
 
-
-@gtstencil()
-def ra_y_stencil(area: sd, yfx_adv: sd, ra_y: sd):
     with computation(PARALLEL), interval(...):
-        ra_y = ra_y_func(area, yfx_adv)
+        with horizontal(region[local_is : local_ie + 1, local_js - 3 : local_je + 4]):
+            ra_x = ra_x_func(area, xfx_adv)
+        with horizontal(region[local_is - 3 : local_ie + 4, local_js : local_je + 1]):
+            ra_y = ra_y_func(area, yfx_adv)
 
 
 @gtscript.function
@@ -195,20 +202,16 @@ def compute(ndif, damp_vtd, dp0, zs, zh, crx, cry, xfx, yfx, wsd, dt):
         domain=(grid.nid, grid.njc + 1, grid.npz + 1),
     )
 
-    ra_x_stencil(
+    ra_stencil_update(
         grid.area,
         xfx_adv,
         ra_x,
-        origin=grid.compute_origin(add=(0, -grid.halo, 0)),
-        domain=(grid.nic, grid.njd, grid.npz + 1),
-    )
-    ra_y_stencil(
-        grid.area,
         yfx_adv,
         ra_y,
-        origin=grid.compute_origin(add=(-grid.halo, 0, 0)),
-        domain=(grid.nid, grid.njc, grid.npz + 1),
+        origin=grid.compute_origin(add=(-grid.halo, -grid.halo, 0)),
+        domain=(grid.nid, grid.njd, grid.npz + 1),
     )
+
     # TODO, when consoldiating k plitting, change this too
     data = {}
     for varname in ["zh", "crx_adv", "cry_adv", "xfx_adv", "yfx_adv", "ra_x", "ra_y"]:

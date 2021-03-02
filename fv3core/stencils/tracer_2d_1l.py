@@ -1,7 +1,7 @@
 import math
 
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.stencils.fvtp2d as fvtp2d
@@ -9,35 +9,65 @@ import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy, copy_stencil
-from fv3core.stencils.updatedzd import ra_x_stencil, ra_y_stencil
+from fv3core.stencils.updatedzd import ra_stencil_update
+from fv3core.utils.typing import FloatField
 
 
-sd = utils.sd
+@gtscript.function
+def flux_x(cx, dxa, dy, sin_sg3, sin_sg1, xfx):
+    from __externals__ import local_ie, local_is, local_je, local_js
 
-
-@gtstencil()
-def flux_x(cx: sd, dxa: sd, dy: sd, sin_sg3: sd, sin_sg1: sd, xfx: sd):
-    with computation(PARALLEL), interval(...):
-        xfx[0, 0, 0] = (
+    with horizontal(region[local_is : local_ie + 2, local_js - 3 : local_je + 4]):
+        xfx = (
             cx * dxa[-1, 0, 0] * dy * sin_sg3[-1, 0, 0]
             if cx > 0
             else cx * dxa * dy * sin_sg1
         )
+    return xfx
 
 
-@gtstencil()
-def flux_y(cy: sd, dya: sd, dx: sd, sin_sg4: sd, sin_sg2: sd, yfx: sd):
-    with computation(PARALLEL), interval(...):
-        yfx[0, 0, 0] = (
+@gtscript.function
+def flux_y(cy, dya, dx, sin_sg4, sin_sg2, yfx):
+    from __externals__ import local_ie, local_is, local_je, local_js
+
+    with horizontal(region[local_is - 3 : local_ie + 4, local_js : local_je + 2]):
+        yfx = (
             cy * dya[0, -1, 0] * dx * sin_sg4[0, -1, 0]
             if cy > 0
             else cy * dya * dx * sin_sg2
         )
+    return yfx
+
+
+@gtstencil()
+def flux_compute(
+    cx: FloatField,
+    cy: FloatField,
+    dxa: FloatField,
+    dya: FloatField,
+    dx: FloatField,
+    dy: FloatField,
+    sin_sg1: FloatField,
+    sin_sg2: FloatField,
+    sin_sg3: FloatField,
+    sin_sg4: FloatField,
+    xfx: FloatField,
+    yfx: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        xfx = flux_x(cx, dxa, dy, sin_sg3, sin_sg1, xfx)
+        yfx = flux_y(cy, dya, dx, sin_sg4, sin_sg2, yfx)
 
 
 @gtstencil()
 def cmax_multiply_by_frac(
-    cxd: sd, xfx: sd, mfxd: sd, cyd: sd, yfx: sd, mfyd: sd, frac: float
+    cxd: FloatField,
+    xfx: FloatField,
+    mfxd: FloatField,
+    cyd: FloatField,
+    yfx: FloatField,
+    mfyd: FloatField,
+    frac: float,
 ):
     """multiply all other inputs in-place by frac."""
     with computation(PARALLEL), interval(...):
@@ -50,19 +80,27 @@ def cmax_multiply_by_frac(
 
 
 @gtstencil()
-def cmax_stencil1(cx: sd, cy: sd, cmax: sd):
+def cmax_stencil1(cx: FloatField, cy: FloatField, cmax: FloatField):
     with computation(PARALLEL), interval(...):
         cmax = max(abs(cx), abs(cy))
 
 
 @gtstencil()
-def cmax_stencil2(cx: sd, cy: sd, sin_sg5: sd, cmax: sd):
+def cmax_stencil2(
+    cx: FloatField, cy: FloatField, sin_sg5: FloatField, cmax: FloatField
+):
     with computation(PARALLEL), interval(...):
         cmax = max(abs(cx), abs(cy)) + 1.0 - sin_sg5
 
 
 @gtstencil()
-def dp_fluxadjustment(dp1: sd, mfx: sd, mfy: sd, rarea: sd, dp2: sd):
+def dp_fluxadjustment(
+    dp1: FloatField,
+    mfx: FloatField,
+    mfy: FloatField,
+    rarea: FloatField,
+    dp2: FloatField,
+):
     with computation(PARALLEL), interval(...):
         dp2 = dp1 + (mfx - mfx[1, 0, 0] + mfy - mfy[0, 1, 0]) * rarea
 
@@ -73,15 +111,35 @@ def adjustment(q, dp1, fx, fy, rarea, dp2):
 
 
 @gtstencil()
-def q_adjust(q: sd, dp1: sd, fx: sd, fy: sd, rarea: sd, dp2: sd):
+def q_adjust(
+    q: FloatField,
+    dp1: FloatField,
+    fx: FloatField,
+    fy: FloatField,
+    rarea: FloatField,
+    dp2: FloatField,
+):
     with computation(PARALLEL), interval(...):
         q = adjustment(q, dp1, fx, fy, rarea, dp2)
 
 
 @gtstencil()
-def q_other_adjust(q: sd, qset: sd, dp1: sd, fx: sd, fy: sd, rarea: sd, dp2: sd):
+def q_adjustments(
+    q: FloatField,
+    qset: FloatField,
+    dp1: FloatField,
+    fx: FloatField,
+    fy: FloatField,
+    rarea: FloatField,
+    dp2: FloatField,
+    it: int,
+    nsplt: int,
+):
     with computation(PARALLEL), interval(...):
-        qset = adjustment(q, dp1, fx, fy, rarea, dp2)
+        if it < nsplt - 1:
+            q = adjustment(q, dp1, fx, fy, rarea, dp2)
+        else:
+            qset = adjustment(q, dp1, fx, fy, rarea, dp2)
 
 
 def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
@@ -105,25 +163,22 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
     )
     cmax = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
     dp2 = utils.make_storage_from_shape(shape, origin=grid.compute_origin())
-    flux_x(
+
+    flux_compute(
         cxd,
-        grid.dxa,
-        grid.dy,
-        grid.sin_sg3,
-        grid.sin_sg1,
-        xfx,
-        origin=grid.compute_origin(add=(0, -grid.halo, 0)),
-        domain=grid.domain_shape_compute(add=(1, 2 * grid.halo, 0)),
-    )
-    flux_y(
         cyd,
+        grid.dxa,
         grid.dya,
         grid.dx,
-        grid.sin_sg4,
+        grid.dy,
+        grid.sin_sg1,
         grid.sin_sg2,
+        grid.sin_sg3,
+        grid.sin_sg4,
+        xfx,
         yfx,
-        origin=grid.compute_origin(add=(-grid.halo, 0, 0)),
-        domain=grid.domain_shape_compute(add=(2 * grid.halo, 1, 0)),
+        origin=grid.full_origin(),
+        domain=grid.domain_shape_full(),
     )
     # {
     # # TODO for if we end up using the Allreduce and compute cmax globally
@@ -176,19 +231,14 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
             q = tracers[qname + "_quantity"]
             comm.halo_update(q, n_points=utils.halo)
 
-    ra_x_stencil(
+    ra_stencil_update(
         grid.area,
         xfx,
         ra_x,
-        origin=grid.compute_origin(add=(0, -grid.halo, 0)),
-        domain=grid.domain_shape_compute(add=(0, 2 * grid.halo, 0)),
-    )
-    ra_y_stencil(
-        grid.area,
         yfx,
         ra_y,
-        origin=grid.compute_origin(add=(-grid.halo, 0, 0)),
-        domain=grid.domain_shape_compute(add=(2 * grid.halo, 0, 0)),
+        origin=grid.full_origin(),
+        domain=grid.domain_shape_full(),
     )
 
     # TODO: Revisit: the loops over q and nsplt have two inefficient options
@@ -205,6 +255,14 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
             origin=grid.full_origin(),
             domain=grid.domain_shape_full(),
         )
+        qn2 = grid.quantity_wrap(
+            copy(
+                q.storage,
+                origin=grid.full_origin(),
+                domain=grid.domain_shape_full(),
+            ),
+            units="kg/m^2",
+        )
         for it in range(int(nsplt)):
             dp_fluxadjustment(
                 dp1,
@@ -216,17 +274,6 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
                 domain=grid.domain_shape_compute(),
             )
             if nsplt != 1:
-                if it == 0:
-                    # TODO 1d
-                    qn2 = grid.quantity_wrap(
-                        copy(
-                            q.storage,
-                            origin=grid.full_origin(),
-                            domain=grid.domain_shape_full(),
-                        ),
-                        units="kg/m^2",
-                    )
-
                 fvtp2d.compute_no_sg(
                     qn2.storage,
                     cxd,
@@ -241,29 +288,20 @@ def compute(comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
                     mfx=mfxd,
                     mfy=mfyd,
                 )
-                if it < nsplt - 1:
-                    q_adjust(
-                        qn2.storage,
-                        dp1,
-                        fx,
-                        fy,
-                        grid.rarea,
-                        dp2,
-                        origin=grid.compute_origin(),
-                        domain=grid.domain_shape_compute(),
-                    )
-                else:
-                    q_other_adjust(
-                        qn2.storage,
-                        q.storage,
-                        dp1,
-                        fx,
-                        fy,
-                        grid.rarea,
-                        dp2,
-                        origin=grid.compute_origin(),
-                        domain=grid.domain_shape_compute(),
-                    )
+
+                q_adjustments(
+                    qn2.storage,
+                    q.storage,
+                    dp1,
+                    fx,
+                    fy,
+                    grid.rarea,
+                    dp2,
+                    it,
+                    nsplt,
+                    origin=grid.compute_origin(),
+                    domain=grid.domain_shape_compute(),
+                )
             else:
                 fvtp2d.compute_no_sg(
                     q.storage,
