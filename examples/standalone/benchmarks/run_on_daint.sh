@@ -46,6 +46,11 @@ if [ -z "$5" ]
     data_path="/scratch/snx3000/olifu/jenkins/scratch/fv3core_fortran_data/7.2.5/c12_6ranks_standard/"
 fi
 
+py_args="$6"
+if [ -z "$6" ]
+  then
+    py_args=""
+fi
 
 # set up the virtual environment
 cd $ROOT_DIR
@@ -124,7 +129,7 @@ sed -i s/--output=\<OUTFILE\>/--hint=nomultithread/g run.daint.slurm
 sed -i s/00:45:00/00:30:00/g run.daint.slurm
 sed -i s/cscsci/normal/g run.daint.slurm
 sed -i s/\<G2G\>//g run.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash#g" run.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash#g" run.daint.slurm
 
 # execute on a gpu node
 sbatch -W -C gpu run.daint.slurm
