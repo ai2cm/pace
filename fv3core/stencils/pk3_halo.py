@@ -1,63 +1,49 @@
-from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
+from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
-sd = utils.sd
 # TODO merge with pe_halo? reuse partials?
 # NOTE: This is different from fv3core.stencils.pe_halo.edge_pe
 @gtstencil()
-def edge_pe(pe: sd, delp: sd, pk3: sd, ptop: float, akap: float):
+def edge_pe_update(
+    pe: FloatFieldIJ, delp: FloatField, pk3: FloatField, ptop: float, akap: float
+):
+    from __externals__ import local_ie, local_is, local_je, local_js
+
     with computation(FORWARD):
         with interval(0, 1):
-            pe[0, 0, 0] = ptop
+            with horizontal(
+                region[local_is - 2 : local_is, local_js : local_je + 1],
+                region[local_ie + 1 : local_ie + 3, local_js : local_je + 1],
+                region[local_is - 2 : local_ie + 3, local_js - 2 : local_js],
+                region[local_is - 2 : local_ie + 3, local_je + 1 : local_je + 3],
+            ):
+                pe = ptop
         with interval(1, None):
-            pe[0, 0, 0] = pe[0, 0, -1] + delp[0, 0, -1]
-    with computation(PARALLEL), interval(1, None):
-        pk3 = exp(akap * log(pe))
+            with horizontal(
+                region[local_is - 2 : local_is, local_js : local_je + 1],
+                region[local_ie + 1 : local_ie + 3, local_js : local_je + 1],
+                region[local_is - 2 : local_ie + 3, local_js - 2 : local_js],
+                region[local_is - 2 : local_ie + 3, local_je + 1 : local_je + 3],
+            ):
+                pe = pe + delp[0, 0, -1]
+                pk3 = pe ** akap
 
 
 def compute(pk3, delp, ptop, akap):
     grid = spec.grid
-    pei = utils.make_storage_from_shape(pk3.shape, grid.full_origin())
-    edge_domain_x = (2, grid.njc, grid.npz + 1)
-    edge_pe(
-        pei,
+    pe_tmp = utils.make_storage_from_shape(pk3.shape[0:2], grid.full_origin())
+
+    edge_pe_update(
+        pe_tmp,
         delp,
         pk3,
         ptop,
         akap,
-        origin=(grid.is_ - 2, grid.js, 0),
-        domain=edge_domain_x,
-    )
-    edge_pe(
-        pei,
-        delp,
-        pk3,
-        ptop,
-        akap,
-        origin=(grid.ie + 1, grid.js, 0),
-        domain=edge_domain_x,
-    )
-    pej = utils.make_storage_from_shape(pk3.shape, grid.full_origin())
-    edge_domain_y = (grid.nic + 4, 2, grid.npz + 1)
-    edge_pe(
-        pej,
-        delp,
-        pk3,
-        ptop,
-        akap,
-        origin=(grid.is_ - 2, grid.js - 2, 0),
-        domain=edge_domain_y,
-    )
-    edge_pe(
-        pej,
-        delp,
-        pk3,
-        ptop,
-        akap,
-        origin=(grid.is_ - 2, grid.je + 1, 0),
-        domain=edge_domain_y,
+        origin=grid.full_origin(),
+        domain=grid.domain_shape_full(add=(0, 0, 1)),
     )
