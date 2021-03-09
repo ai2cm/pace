@@ -29,26 +29,22 @@ test -n "$2" || exitError 1002 ${LINENO} "must pass a number of ranks"
 ranks="$2"
 
 backend="$3"
-if [ -z "$3" ]
-  then
+if [ -z "$3" ] ; then
     backend="numpy"
 fi
 
 target_dir="$4"
-if [ -z "$4" ]
-  then
+if [ -z "$4" ] ; then
     target_dir="$ROOT_DIR"
 fi
 
 data_path="$5"
-if [ -z "$5" ]
-  then
+if [ -z "$5" ] ; then
     data_path="/scratch/snx3000/olifu/jenkins/scratch/fv3core_fortran_data/7.2.5/c12_6ranks_standard/"
 fi
 
 py_args="$6"
-if [ -z "$6" ]
-  then
+if [ -z "$6" ] ; then
     py_args=""
 fi
 
@@ -68,7 +64,6 @@ pip install .
 
 pip list
 
-
 # set the environment
 git clone https://github.com/VulcanClimateModeling/buildenv/
 cp buildenv/submit.daint.slurm compile.daint.slurm
@@ -83,7 +78,7 @@ echo "    Input data dir:   $data_path"
 echo "    Output dir:       $target_dir"
 echo "    Slurm output dir: $ROOT_DIR"
 
-if git rev-parse --git-dir > /dev/null 2>&1; then
+if git rev-parse --git-dir > /dev/null 2>&1 ; then
   githash=`git rev-parse HEAD`
 else
   githash="notarepo"
@@ -94,9 +89,9 @@ fi
 split_path=(${data_path//\// })
 experiment=${split_path[-1]}
 sample_cache=.gt_cache_000000
-if [ ! -d $(pwd)/${sample_cache} ]; then
+if [ ! -d $(pwd)/${sample_cache} ] ; then
     premade_caches=/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend
-    if [ -d ${premade_caches}/${sample_cache} ]; then
+    if [ -d ${premade_caches}/${sample_cache} ] ; then
 	cp -r ${premade_caches}/.gt_cache_0000* .
 	find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/fv3core-cache-setup\/backend\/$backend\/experiment\/$experiment\/slave\/daint_submit|$(pwd)|g" {} +
     fi
