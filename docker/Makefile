@@ -1,14 +1,15 @@
+
 # setup (use XXX=<value> make <target> to override)
 include Makefile.image_names
 
 DOCKER_BUILDKIT=1
-
+GT4PY_DIR=../gt4py
 BUILD_ARGS += \
 	--network host \
 	--build-arg FMS_IMAGE=$(FMS_IMAGE) \
 	--build-arg ESMF_IMAGE=$(ESMF_IMAGE) \
 	--build-arg MPI_IMAGE=$(MPI_IMAGE) \
-	--build-arg GT4PY_IMAGE=$(GT4PY_IMAGE) \
+	--build-arg GT4PY_DIR=${GT4PY_DIR} \
 	--build-arg SERIALBOX_IMAGE=$(SERIALBOX_IMAGE) \
 	--build-arg ENVIRONMENT_IMAGE=$(ENVIRONMENT_IMAGE) \
 	--build-arg FORTRAN_IMAGE=$(FORTRAN_IMAGE) \
@@ -17,7 +18,7 @@ BUILD_ARGS += \
 	--build-arg ENV_CUDA_PATH=$(ENV_CUDA_PATH)
 
 
-CORE_DEPS_IMAGES = $(SERIALBOX_IMAGE) $(GT4PY_IMAGE) $(ENVIRONMENT_IMAGE)
+CORE_DEPS_IMAGES = $(SERIALBOX_IMAGE) $(ENVIRONMENT_IMAGE)
 DEPS_IMAGES ?= $(CORE_DEPS_IMAGES) $(FMS_IMAGE) $(ESMF_IMAGE) $(MPI_IMAGE)
 
 build: fv3core_image
@@ -28,7 +29,13 @@ dev_wrapper:
 	fi
 	FV3CORE_WRAPPER_IMAGE=$(FV3CORE_WRAPPER_IMAGE) docker-compose run fv3core_wrapper bash
 
-.PHONY: dev fortran_image wrapper_image fv3core_image build build_deps push_deps pull_deps
+.PHONY: dev fortran_image wrapper_image fv3core_image build build_deps push_deps pull_deps get_gt4py
+
+get_gt4py:
+	if [ ! -f ${GT4PY_DIR}/pyproject.toml ]; then \
+	  git clone https://github.com/VulcanClimateModeling/gt4py.git ${GT4PY_DIR} && \
+	  cd ${GT4PY_DIR} && git checkout ${GT4PY_VERSION};\
+	fi
 
 fortran_image:
 	docker build \
@@ -42,7 +49,8 @@ fortran_image:
 full_fortran_image:
 	FMS_IMAGE=fv3gfs-fms ESMF_IMAGE=fv3gfs-esmf MPI_IMAGE=fv3gfs-mpi $(MAKE) fortran_image
 
-fv3core_image: ## build production container image
+ ## build production container image
+fv3core_image: get_gt4py
 	DOCKER_BUILDKIT=1 docker build \
 		$(BUILD_ARGS) \
 		-f $(FV3CORE_DOCKERFILE) \
@@ -61,15 +69,6 @@ build_core_deps: ## build container images of dependencies
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(MPI_IMAGE) $(BUILD_ARGS) --target fv3gfs-mpi ../external/fv3gfs-fortran
 	$(MAKE) build_core_env
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(SERIALBOX_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment-serialbox .
-	$(MAKE) build_gt4py
-
-build_gt4py:
-	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(GT4PY_IMAGE) $(BUILD_ARGS) --target gt4py-src .
-
-push_gt4py:
-	if [ ! -z $$(docker images -q $(GT4PY_IMAGE)) ]; then \
-		docker push $(GT4PY_IMAGE); \
-	fi
 
 build_core_env:
 	 docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(ENVIRONMENT_IMAGE) $(BUILD_ARGS) --target fv3core-environment .

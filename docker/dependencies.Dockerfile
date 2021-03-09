@@ -125,16 +125,6 @@ COPY --from=fv3core-environment-serialbox-install /usr/local/serialbox /usr/loca
 COPY --from=fv3core-environment-serialbox-install /usr/include/boost /usr/include/boost
 
 ###
-### Get GT4Py sources
-###
-FROM $BASE_IMAGE AS gt4py-src
-
-RUN apt-get update \
-    && apt-get install -y git && \
-    git clone -b develop https://github.com/VulcanClimateModeling/gt4py.git
-
-
-###
 ### Set Fortran environment
 ###
 FROM $BASE_IMAGE_ENV AS fv3gfs-environment

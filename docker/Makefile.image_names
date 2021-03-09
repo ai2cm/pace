@@ -1,6 +1,7 @@
 
 # update this if you need everything to rebuild for backwards-incompatible changes
 VERSION = v0.3.0
+GT4PY_VERSION ?=v11
 GCR_URL ?= us.gcr.io/vcm-ml
 CUDA ?= n
 TEST_ARGS ?=-v -s -rsx
@@ -43,7 +44,6 @@ BUILD_ARGS += --network host --build-arg BASE_IMAGE=$(BASE_IMAGE)  --build-arg B
 
 # dependency image names, update sha to update version
 TAG_SRC=$(VERSION)-srcfiles
-GT4PY_IMAGE ?= $(GCR_URL)/gt4py-src:$(TAG_SRC)
 MPI_IMAGE ?= $(GCR_URL)/mpi-build:$(TAG_SRC)
 FMS_IMAGE ?= $(GCR_URL)/fms-build:$(TAG_SRC)
 ESMF_IMAGE ?= $(GCR_URL)/esmf-build:$(TAG_SRC)

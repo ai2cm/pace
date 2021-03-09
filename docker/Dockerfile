@@ -2,14 +2,12 @@ ARG FORTRAN_IMAGE
 ARG FMS_IMAGE
 ARG ESMF_IMAGE
 ARG SERIALBOX_IMAGE
-ARG GT4PY_IMAGE
 ARG ENVIRONMENT_IMAGE
 
 FROM $FORTRAN_IMAGE as fortran_image
 FROM $ESMF_IMAGE as esmf_image
 FROM $FMS_IMAGE as fms_image
 FROM $SERIALBOX_IMAGE as serialbox_image
-FROM $GT4PY_IMAGE AS gt4py_image
 from $ENVIRONMENT_IMAGE AS environment
 
 FROM environment as fv3core
@@ -23,7 +21,6 @@ RUN pip3 install -r /requirements.txt -c /constraints.txt
 
 COPY --from=serialbox_image /usr/local/serialbox /usr/local/serialbox
 COPY --from=serialbox_image /usr/include/boost /usr/include/boost
-COPY --from=gt4py_image /gt4py /gt4py
 
 ###
 ### Build and install GT4Py
@@ -31,6 +28,8 @@ COPY --from=gt4py_image /gt4py /gt4py
 ENV BOOST_HOME=/usr/include/boost
 ARG CPPFLAGS="-I${BOOST_HOME} -I${BOOST_HOME}/boost"
 ARG GT4PY_OPTIONALS=""
+ARG GT4PY_DIR
+COPY ${GT4PY_DIR} /gt4py
 
 RUN if [ ! -z `echo $GT4PY_OPTIONALS | grep cuda` ] ; then pip install cupy-cuda102==7.7.0 ; else echo Not installing cuda ; fi
 RUN pip install --no-cache-dir -c /constraints.txt "/gt4py${GT4PY_OPTIONALS}" && \
