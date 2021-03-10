@@ -142,12 +142,11 @@ export FV3_STENCIL_REBUILD_FLAG=False
 export TEST_DATA_HOST="${TEST_DATA_DIR}/${experiment}/"
 export EXPERIMENT=${experiment}
 if [ -z ${JENKINS_TAG} ]; then
-    if [ ${#JOB_NAME} -gt 85 ]; then
-	NAME=`echo ${JOB_NAME} | md5sum | cut -f1 -d" "`
-    else
-	NAME=${JOB_NAME}
-    fi
-    export JENKINS_TAG=${NAME//[,=\/]/-}-${BUILD_NUMBER}
+    export JENKINS_TAG=${JOB_NAME//[,=\/]/-}-${BUILD_NUMBER}
+fi
+if [ ${#JENKINS_TAG} -gt 85 ]; then
+	NAME=`echo ${JENKINS_TAG} | md5sum | cut -f1 -d" "`
+	export JENKINS_TAG=${NAME//[,=\/]/-}-${BUILD_NUMBER}
 fi
 echo "JENKINS TAG ${JENKINS_TAG}"
 
@@ -176,16 +175,14 @@ export DOCKER_BUILDKIT=1
 
 run_command "${script} ${backend} ${experiment} " Job${action} ${G2G} ${scheduler_script}
 
-
-# load scheduler tools
-. ${envloc}/env/schedulerTools.sh
-run_timing_script="`dirname $0`/env/submit.${host}.${scheduler}"
-
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
 fi
 echo "### ACTION ${action} SUCCESSFUL"
 
+# load scheduler tools
+. ${envloc}/env/schedulerTools.sh
+run_timing_script="`dirname $0`/env/submit.${host}.${scheduler}"
 
 # second run, this time with timing
 if grep -q "fv_dynamics" <<< "${script}"; then
