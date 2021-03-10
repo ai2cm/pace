@@ -25,7 +25,7 @@ from .translate_del2cubed import TranslateDel2Cubed
 from .translate_del6vtflux import TranslateDel6VtFlux
 from .translate_delnflux import TranslateDelnFlux, TranslateDelnFlux_2
 from .translate_divergencedamping import TranslateDivergenceDamping
-from .translate_dyncore import TranslateDynCore
+from .translate_dyncore import TranslateDynCore, TranslatePGradC
 from .translate_fillz import TranslateFillz
 from .translate_fluxcapacitor import TranslateFluxCapacitor
 from .translate_fvsetup import TranslateFVSetup
@@ -54,7 +54,6 @@ from .translate_moistcvpluste_2d import TranslateMoistCVPlusTe_2d
 from .translate_neg_adj3 import TranslateNeg_Adj3
 from .translate_nh_p_grad import TranslateNH_P_Grad
 from .translate_pe_halo import TranslatePE_Halo
-from .translate_pgradc import TranslatePGradC
 from .translate_pk3_halo import TranslatePK3_Halo
 from .translate_pressureadjustedtemperature_nonhydrostatic import (
     TranslatePressureAdjustedTemperature_NonHydrostatic,

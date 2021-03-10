@@ -1,4 +1,13 @@
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+from gt4py.gtscript import (
+    __INLINED,
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    horizontal,
+    interval,
+    region,
+)
 
 import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
@@ -7,7 +16,6 @@ import fv3core.stencils.d_sw as d_sw
 import fv3core.stencils.del2cubed as del2cubed
 import fv3core.stencils.nh_p_grad as nh_p_grad
 import fv3core.stencils.pe_halo as pe_halo
-import fv3core.stencils.pgradc as pgradc
 import fv3core.stencils.pk3_halo as pk3_halo
 import fv3core.stencils.ray_fast as ray_fast
 import fv3core.stencils.riem_solver3 as riem_solver3
@@ -21,15 +29,22 @@ import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy_stencil
+from fv3core.utils.typing import FloatField
 
 
-sd = utils.sd
 HUGE_R = 1.0e40
 
 
 # NOTE in Fortran these are columns
 @gtstencil()
-def dp_ref_compute(ak: sd, bk: sd, phis: sd, dp_ref: sd, zs: sd, rgrav: float):
+def dp_ref_compute(
+    ak: FloatField,
+    bk: FloatField,
+    phis: FloatField,
+    dp_ref: FloatField,
+    zs: FloatField,
+    rgrav: float,
+):
     with computation(PARALLEL), interval(0, -1):
         dp_ref = ak[0, 0, 1] - ak + (bk[0, 0, 1] - bk) * 1.0e5
     with computation(PARALLEL), interval(...):
@@ -37,7 +52,7 @@ def dp_ref_compute(ak: sd, bk: sd, phis: sd, dp_ref: sd, zs: sd, rgrav: float):
 
 
 @gtstencil()
-def set_gz(zs: sd, delz: sd, gz: sd):
+def set_gz(zs: FloatField, delz: FloatField, gz: FloatField):
     with computation(BACKWARD):
         with interval(-1, None):
             gz[0, 0, 0] = zs
@@ -46,7 +61,7 @@ def set_gz(zs: sd, delz: sd, gz: sd):
 
 
 @gtstencil()
-def set_pem(delp: sd, pem: sd, ptop: float):
+def set_pem(delp: FloatField, pem: FloatField, ptop: float):
     with computation(FORWARD):
         with interval(0, 1):
             pem[0, 0, 0] = ptop
@@ -56,10 +71,65 @@ def set_pem(delp: sd, pem: sd, ptop: float):
 
 @gtstencil()
 def heatadjust_temperature_lowlevel(
-    pt: sd, heat_source: sd, delp: sd, pkz: sd, cp_air: float
+    pt: FloatField,
+    heat_source: FloatField,
+    delp: FloatField,
+    pkz: FloatField,
+    cp_air: float,
 ):
     with computation(PARALLEL), interval(...):
         pt[0, 0, 0] = pt + heat_source / (cp_air * delp * pkz)
+
+
+@gtstencil()
+def p_grad_c_stencil(
+    rdxc: FloatField,
+    rdyc: FloatField,
+    uc: FloatField,
+    vc: FloatField,
+    delpc: FloatField,
+    pkc: FloatField,
+    gz: FloatField,
+    dt2: float,
+):
+    """Update C-grid winds from the pressure gradient force
+
+    When this is run the C-grid winds have almost been completely
+    updated by computing the momentum equation terms, but the pressure
+    gradient force term has not yet been applied. This stencil completes
+    the equation and Arakawa C-grid winds have been advected half a timestep
+    upon completing this stencil..
+
+     Args:
+         uc: x-velocity on the C-grid (inout)
+         vc: y-velocity on the C-grid (inout)
+         delpc: vertical delta in pressure (in)
+         pkc:  pressure if non-hydrostatic,
+               (edge pressure)**(moist kappa) if hydrostatic(in)
+         gz:  height of the model grid cells (m)(in)
+         dt2: half a model timestep (for C-grid update) in seconds (in)
+    Grid variable inputs:
+        rdxc, rdyc
+    """
+    from __externals__ import local_ie, local_is, local_je, local_js, namelist
+
+    with computation(PARALLEL), interval(...):
+        if __INLINED(namelist.hydrostatic):
+            wk = pkc[0, 0, 1] - pkc
+        else:
+            wk = delpc
+        # TODO for PGradC validation only, not necessary for DynCore
+        with horizontal(region[local_is : local_ie + 2, local_js : local_je + 1]):
+            uc = uc + dt2 * rdxc / (wk[-1, 0, 0] + wk) * (
+                (gz[-1, 0, 1] - gz) * (pkc[0, 0, 1] - pkc[-1, 0, 0])
+                + (gz[-1, 0, 0] - gz[0, 0, 1]) * (pkc[-1, 0, 1] - pkc)
+            )
+        # TODO for PGradC validation only, not necessary for DynCore
+        with horizontal(region[local_is : local_ie + 1, local_js : local_je + 2]):
+            vc = vc + dt2 * rdyc / (wk[0, -1, 0] + wk) * (
+                (gz[0, -1, 1] - gz) * (pkc[0, 0, 1] - pkc[0, -1, 0])
+                + (gz[0, -1, 0] - gz[0, 0, 1]) * (pkc[0, -1, 1] - pkc)
+            )
 
 
 def get_n_con():
@@ -282,7 +352,18 @@ def compute(state, comm):
                 state.ws3,
             )
 
-        pgradc.compute(state.uc, state.vc, state.delpc, state.pkc, state.gz, dt2)
+        p_grad_c_stencil(
+            grid.rdxc,
+            grid.rdyc,
+            state.uc,
+            state.vc,
+            state.delpc,
+            state.pkc,
+            state.gz,
+            dt2,
+            origin=grid.compute_origin(),
+            domain=grid.domain_shape_compute(add=(1, 1, 0)),
+        )
         if global_config.get_do_halo_exchange():
             reqc_vector = comm.start_vector_halo_update(
                 state.uc_quantity, state.vc_quantity, n_points=utils.halo
