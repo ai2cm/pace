@@ -25,6 +25,7 @@ ROOT_DIR="$(dirname "$(dirname "$(dirname "$SCRIPTPATH")")")"
 # check sanity of environment
 test -n "$1" || exitError 1001 ${LINENO} "must pass a number of timesteps"
 timesteps="$1"
+
 test -n "$2" || exitError 1002 ${LINENO} "must pass a number of ranks"
 ranks="$2"
 
@@ -44,49 +45,58 @@ if [ -z "$5" ] ; then
 fi
 
 py_args="$6"
-if [ -z "$6" ] ; then
-    py_args=""
-fi
+
+run_args="$7"
+
+# get dependencies
+cd $ROOT_DIR
+git submodule update --init external/fv3gfs-util external/daint_venv
+
+# set GT4PY version
+cd $ROOT_DIR
+export GT4PY_VERSION=`grep "GT4PY_VERSION=" docker/Makefile.image_names  | cut -d '=' -f 2`
 
 # set up the virtual environment
-cd $ROOT_DIR
-rm -rf vcm_1.0
-
 echo "creating the venv"
-git submodule update --init --recursive
-export GT4PY_VERSION=`grep "GT4PY_VERSION=" docker/Makefile.image_names  | cut -d '=' -f 2`
-cd external/daint_venv
-./install.sh test_ve
-source test_ve/bin/activate
-echo "install requirements..."
+if [ -d ./venv ] ; then rm -rf venv ; fi
+cd $ROOT_DIR/external/daint_venv/
+if [ -d ./gt4py ] ; then rm -rf gt4py ; fi
+./install.sh $ROOT_DIR/venv
 cd $ROOT_DIR
-pip install external/fv3gfs-util/
-pip install .
+source ./venv/bin/activate
 
+# install the local packages
+echo "install requirements..."
+pip install ./external/fv3gfs-util/
+pip install .
 pip list
 
 # set the environment
+if [ -d ./buildenv ] ; then rm -rf buildenv ; fi
 git clone https://github.com/VulcanClimateModeling/buildenv/
-cp buildenv/submit.daint.slurm compile.daint.slurm
-cp buildenv/submit.daint.slurm run.daint.slurm
+cp ./buildenv/submit.daint.slurm compile.daint.slurm
+cp ./buildenv/submit.daint.slurm run.daint.slurm
 
 nthreads=12
-echo "Configuration overview:"
-echo "    Timesteps:        $timesteps"
-echo "    Ranks:            $ranks"
-echo "    Threads per rank: $nthreads"
-echo "    Input data dir:   $data_path"
-echo "    Output dir:       $target_dir"
-echo "    Slurm output dir: $ROOT_DIR"
-
 if git rev-parse --git-dir > /dev/null 2>&1 ; then
   githash=`git rev-parse HEAD`
 else
   githash="notarepo"
 fi
 
+echo "Configuration overview:"
+echo "    Timesteps:        $timesteps"
+echo "    Ranks:            $ranks"
+echo "    Backend:          $backend"
+echo "    Output dir:       $target_dir"
+echo "    Input data dir:   $data_path"
+echo "    Threads per rank: $nthreads"
+echo "    GIT hash:         $githash"
+echo "    Slurm output dir: $ROOT_DIR"
+echo "    Python arguments: $py_args"
+echo "    Run arguments:    $run_args"
 
-
+echo "copying premade GT4Py caches"
 split_path=(${data_path//\// })
 experiment=${split_path[-1]}
 sample_cache=.gt_cache_000000
@@ -122,14 +132,16 @@ sed -i s/\<NTASKS\>/$ranks/g run.daint.slurm
 sed -i s/\<NTASKSPERNODE\>/1/g run.daint.slurm
 sed -i s/\<CPUSPERTASK\>/$nthreads/g run.daint.slurm
 sed -i s/--output=\<OUTFILE\>/--hint=nomultithread/g run.daint.slurm
-sed -i s/00:45:00/00:30:00/g run.daint.slurm
+sed -i s/00:45:00/00:40:00/g run.daint.slurm
 sed -i s/cscsci/normal/g run.daint.slurm
 sed -i s/\<G2G\>//g run.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash#g" run.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 
 # execute on a gpu node
 sbatch -W -C gpu run.daint.slurm
 wait
-rsync *.json $target_dir
+if [ -n "$target_dir" ] ; then
+    rsync *.json $target_dir
+fi
 
 echo "performance run sucessful"

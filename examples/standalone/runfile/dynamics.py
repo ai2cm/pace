@@ -51,6 +51,11 @@ def parse_args():
         action="store_true",
         help="enable or disable the halo exchange",
     )
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        help="enable performance profiling using cProfile",
+    )
 
     return parser.parse_args()
 
@@ -105,6 +110,13 @@ if __name__ == "__main__":
 
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
+
+        profiler = None
+        if args.profile:
+            import cProfile
+
+            profiler = cProfile.Profile()
+            profiler.disable()
 
         fv3core.set_backend(args.backend)
         fv3core.set_rebuild(False)
@@ -168,6 +180,9 @@ if __name__ == "__main__":
             input_data["ks"],
         )
 
+    if profiler is not None:
+        profiler.enable()
+
     with timer.clock("mainloop"):
         for i in range(args.time_step - 1):
             fv_dynamics.fv_dynamics(
@@ -182,7 +197,15 @@ if __name__ == "__main__":
                 timer,
             )
 
+    if profiler is not None:
+        profiler.disable()
+
     timer.stop("total")
+
+    # output profiling data
+    if profiler is not None:
+        profiler.dump_stats(f"fv3core_{experiment_name}_{args.backend}_{rank}.prof")
+
     # collect times and output simple statistics
     comm.Barrier()
     if not args.disable_halo_exchange:
