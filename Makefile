@@ -202,7 +202,7 @@ lint:
 
 gt4py_tests_gpu:
 	CUDA=y make build && \
-        docker run --gpus all $(FV3CORE_IMAGE) python3 -m pytest -k "not gtc" -x gt4py/tests
+        docker run --gpus all $(FV3CORE_IMAGE) python3 -m pytest -k "gtcuda or (not gtc)" -x gt4py/tests
 
 .PHONY: update_submodules build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
 	 list_test_data_options pull_environment pull_test_data push_environment \
