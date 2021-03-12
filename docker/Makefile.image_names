@@ -1,7 +1,7 @@
 
 # update this if you need everything to rebuild for backwards-incompatible changes
 VERSION = v0.3.0
-GT4PY_VERSION ?=v11
+GT4PY_VERSION ?=v16
 GCR_URL ?= us.gcr.io/vcm-ml
 CUDA ?= n
 TEST_ARGS ?=-v -s -rsx
