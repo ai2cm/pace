@@ -333,8 +333,8 @@ def compute(delp, pt, u, v, w, uc, vc, ua, va, ut, vt, divgd, omga, dt2):
     grid = spec.grid
     dord4 = True
     origin_halo1 = (grid.is_ - 1, grid.js - 1, 0)
-    delpc = utils.make_storage_from_shape(delp.shape, origin=origin_halo1)
-    ptc = utils.make_storage_from_shape(pt.shape, origin=origin_halo1)
+    delpc = utils.make_storage_from_shape(delp.shape, origin=origin_halo1, init=True)
+    ptc = utils.make_storage_from_shape(pt.shape, origin=origin_halo1, init=True)
     d2a2c.compute(dord4, uc, vc, u, v, ua, va, ut, vt)
     if spec.namelist.nord > 0:
         divergence_corner(

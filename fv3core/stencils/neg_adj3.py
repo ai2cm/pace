@@ -233,6 +233,9 @@ def fix_water_vapor_down(
     qvapor: FloatField, dp: FloatField, upper_fix: FloatField, lower_fix: FloatField
 ):
     with computation(PARALLEL):
+        with interval(...):
+            upper_fix = 0.0
+            lower_fix = 0.0
         with interval(0, 1):
             qvapor = qvapor if qvapor >= 0 else 0
         with interval(1, 2):

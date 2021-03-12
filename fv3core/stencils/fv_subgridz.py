@@ -472,20 +472,22 @@ def compute(state, nq, dt):
         raise Exception("Hydrostatic not supported for fv_subgridz")
     q0 = {}
     for tracername in utils.tracer_variables:
-        q0[tracername] = copy(state.__dict__[tracername])
+        q0[tracername] = copy(state.__dict__[tracername], use_cache=False)
     origin = grid.compute_origin()
     shape = state.delp.shape
-    u0 = utils.make_storage_from_shape(shape, origin)
-    v0 = utils.make_storage_from_shape(shape, origin)
-    w0 = utils.make_storage_from_shape(shape, origin)
-    gzh = utils.make_storage_from_shape(shape, origin)
-    gz = utils.make_storage_from_shape(shape, origin)
-    t0 = utils.make_storage_from_shape(shape, origin)
-    pm = utils.make_storage_from_shape(shape, origin)
+    # not 100% sure which of these require init=True,
+    # if you figure it out please remove unnecessary ones and this comment
+    u0 = utils.make_storage_from_shape(shape, origin, init=True)
+    v0 = utils.make_storage_from_shape(shape, origin, init=True)
+    w0 = utils.make_storage_from_shape(shape, origin, init=True)
+    gzh = utils.make_storage_from_shape(shape, origin, init=True)
+    gz = utils.make_storage_from_shape(shape, origin, init=True)
+    t0 = utils.make_storage_from_shape(shape, origin, init=True)
+    pm = utils.make_storage_from_shape(shape, origin, init=True)
     hd = utils.make_storage_from_shape(shape, origin)
     te = utils.make_storage_from_shape(shape, origin)
     den = utils.make_storage_from_shape(shape, origin)
-    qcon = utils.make_storage_from_shape(shape, origin)
+    qcon = utils.make_storage_from_shape(shape, origin, init=True)
     cvm = utils.make_storage_from_shape(shape, origin)
     cpm = utils.make_storage_from_shape(shape, origin)
 

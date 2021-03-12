@@ -235,7 +235,7 @@ def update_ut_x_edge(uc, cosa_u, vt, ut):
 
 def compute_vt(uc_in, vc_in, cosa_v, rsin_v, sin_sg2, sin_sg4, vt_in):
     vt_origin = (grid().isd, grid().js - 1, 0)
-    vt = utils.make_storage_from_shape(vt_in.shape, vt_origin)
+    vt = utils.make_storage_from_shape(vt_in.shape, vt_origin, init=True)
     main_vt(
         uc_in,
         vc_in,

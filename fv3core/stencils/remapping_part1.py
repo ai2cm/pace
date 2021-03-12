@@ -221,7 +221,6 @@ def compute(
     pn2 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
     pe0 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
     pe3 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
-    pk2 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
 
     init_pe2(pe, pe2, ptop, origin=grid.compute_origin(), domain=domain_jextra)
 
