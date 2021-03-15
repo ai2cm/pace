@@ -76,7 +76,9 @@ def compute_no_sg(
     else:
         ord_in = hord
     ord_ou = hord
-    corners.copy_corners(q, "y", grid, kslice)
+    corners.copy_corners_y_stencil(
+        q, origin=(grid.isd, grid.jsd, kstart), domain=(grid.nid, grid.njd, nk)
+    )
     yppm.compute_flux(q, cry, fy2, ord_in, grid.isd, grid.ied, kstart=kstart, nk=nk)
     q_i_stencil(
         q,
@@ -90,7 +92,9 @@ def compute_no_sg(
     )
 
     xppm.compute_flux(q_i, crx, fx, ord_ou, grid.js, grid.je, kstart=kstart, nk=nk)
-    corners.copy_corners(q, "x", grid, kslice)
+    corners.copy_corners_x_stencil(
+        q, origin=(grid.isd, grid.jsd, kstart), domain=(grid.nid, grid.njd, nk)
+    )
     xppm.compute_flux(q, crx, fx2, ord_in, grid.jsd, grid.jed, kstart=kstart, nk=nk)
     q_j_stencil(
         q,

@@ -140,7 +140,9 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, kstart=0, nk=None, mass=None):
         d2 = copy(q, origin=origin_d2, domain=domain_d2)
 
     if nord > 0:
-        corners.copy_corners(d2, "x", grid, kslice)
+        corners.copy_corners_x_stencil(
+            d2, origin=(grid.isd, grid.jsd, kstart), domain=(grid.nid, grid.njd, nk)
+        )
     f1_ny = grid.je - grid.js + 1 + 2 * nord
     f1_nx = grid.ie - grid.is_ + 2 + 2 * nord
     fx_origin = (grid.is_ - nord, grid.js - nord, kstart)
@@ -150,7 +152,9 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, kstart=0, nk=None, mass=None):
     )
 
     if nord > 0:
-        corners.copy_corners(d2, "y", grid, kslice)
+        corners.copy_corners_y_stencil(
+            d2, origin=(grid.isd, grid.jsd, kstart), domain=(grid.nid, grid.njd, nk)
+        )
     fy2_order(
         d2,
         grid.del6_u,
@@ -169,7 +173,9 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, kstart=0, nk=None, mass=None):
             d2_highorder(
                 fx2, fy2, grid.rarea, d2, origin=nt_origin, domain=(nt_nx, nt_ny, nk)
             )
-            corners.copy_corners(d2, "x", grid, kslice)
+            corners.copy_corners_x_stencil(
+                d2, origin=(grid.isd, grid.jsd, kstart), domain=(grid.nid, grid.njd, nk)
+            )
             nt_origin = (grid.is_ - nt, grid.js - nt, kstart)
             fx2_order(
                 d2,
@@ -179,8 +185,9 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, kstart=0, nk=None, mass=None):
                 origin=nt_origin,
                 domain=(nt_nx - 1, nt_ny - 2, nk),
             )
-
-            corners.copy_corners(d2, "y", grid, kslice)
+            corners.copy_corners_y_stencil(
+                d2, origin=(grid.isd, grid.jsd, kstart), domain=(grid.nid, grid.njd, nk)
+            )
 
             fy2_order(
                 d2,
