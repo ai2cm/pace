@@ -46,7 +46,7 @@ clean:
 
 update_submodules:
 	if [ ! -f $(FV3UTIL_DIR)/requirements.txt  ]; then \
-		git submodule update --init --recursive; \
+		git submodule update --init external/fv3gfs-util external/daint_venv; \
 	fi
 
 constraints.txt: requirements.txt requirements_wrapper.txt requirements_lint.txt

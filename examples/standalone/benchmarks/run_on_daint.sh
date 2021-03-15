@@ -18,6 +18,23 @@ exitError()
     exit $1
 }
 
+function cleanupFailedJob {
+    res=$1
+    jobid=`echo "${res}" | sed  's/^Submitted batch job //g'`
+    test -n "${jobid}" || exitError 7207 ${LINENO} "problem determining job ID of SLURM job"
+    echo "jobid:" ${jobid}
+    status=`scontrol show job ${jobid} | grep JobState`
+    if [[ ! $status == *"COMPLETED"* ]]; then
+	echo ${status}
+	echo `cat slurm*`
+	rm -rf .gt_cache_0000*
+	pip list
+	deactivate
+	rm -rf venv
+	exitError 1003 ${LINENO} "problem in slurm job"
+    fi
+}
+
 SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
 ROOT_DIR="$(dirname "$(dirname "$(dirname "$SCRIPTPATH")")")"
@@ -121,8 +138,11 @@ sed -i s/\<G2G\>/export\ CRAY_CUDA_MPS=1/g compile.daint.slurm
 sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py $data_path 1 $backend $githash --disable_halo_exchange#g" compile.daint.slurm
 
 # execute on a gpu node
-sbatch -W -C gpu compile.daint.slurm
+res=$(sbatch -W -C gpu compile.daint.slurm 2>&1)
 wait
+cleanupFailedJob "${res}"
+
+echo "DONE WAITING ${$?}"
 echo "compilation step finished"
 
 echo "submitting script to do performance run"
@@ -138,8 +158,10 @@ sed -i s/\<G2G\>//g run.daint.slurm
 sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 
 # execute on a gpu node
-sbatch -W -C gpu run.daint.slurm
+res=$(sbatch -W -C gpu run.daint.slurm 2>&1)
 wait
+cleanupFailedJob "${res}"
+
 if [ -n "$target_dir" ] ; then
     rsync *.json $target_dir
 fi
