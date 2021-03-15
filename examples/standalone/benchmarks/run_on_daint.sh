@@ -23,7 +23,16 @@ function cleanupFailedJob {
     jobid=`echo "${res}" | sed  's/^Submitted batch job //g'`
     test -n "${jobid}" || exitError 7207 ${LINENO} "problem determining job ID of SLURM job"
     echo "jobid:" ${jobid}
-    status=`scontrol show job ${jobid} | grep JobState`
+    status=`sacct --jobs ${jobid} -X -p -n -b -D `
+    while [[ $status == *"COMPLETING"* ]]; do
+        if [ $timeout -lt 120 ]; then
+	    status=`sacct --jobs ${jobid} -p -n -b -D `
+	    sleep 30
+	    timeout=$timeout + 30
+        else
+            exitError 1004 ${LINENO} "problem waiting for job ${jobid} to complete"
+        fi
+    done
     if [[ ! $status == *"COMPLETED"* ]]; then
 	echo ${status}
 	echo `cat slurm*`
@@ -136,10 +145,11 @@ sed -i s/00:45:00/03:30:00/g compile.daint.slurm
 sed -i s/cscsci/normal/g compile.daint.slurm
 sed -i s/\<G2G\>/export\ CRAY_CUDA_MPS=1/g compile.daint.slurm
 sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py $data_path 1 $backend $githash --disable_halo_exchange#g" compile.daint.slurm
-
+set +e
 # execute on a gpu node
 res=$(sbatch -W -C gpu compile.daint.slurm 2>&1)
 wait
+set -e
 cleanupFailedJob "${res}"
 
 echo "DONE WAITING ${$?}"
@@ -156,10 +166,11 @@ sed -i s/00:45:00/00:40:00/g run.daint.slurm
 sed -i s/cscsci/normal/g run.daint.slurm
 sed -i s/\<G2G\>//g run.daint.slurm
 sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
-
+set +e
 # execute on a gpu node
 res=$(sbatch -W -C gpu run.daint.slurm 2>&1)
 wait
+set -e
 cleanupFailedJob "${res}"
 
 if [ -n "$target_dir" ] ; then
