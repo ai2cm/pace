@@ -65,6 +65,14 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
         inputs["jslice"] = slice(0, 1)
         if "qs" not in inputs:
             inputs["qs"] = utils.make_storage_from_shape(self.maxshape)
+        else:
+            qs_field = utils.make_storage_from_shape(
+                inputs["delp"].shape, origin=(0, 0, 0)
+            )
+            qs_field[inputs["i1"] : inputs["i2"] + 1, inputs["jslice"], -1] = inputs[
+                "qs"
+            ][inputs["i1"] : inputs["i2"] + 1, inputs["jslice"], 0]
+            inputs["qs"] = qs_field
         q4_1, q4_2, q4_3, q4_4 = self.compute_func(**inputs)
         return self.slice_output(
             inputs, {"q4_1": q4_1, "q4_2": q4_2, "q4_3": q4_3, "q4_4": q4_4}
@@ -76,7 +84,7 @@ class TranslateCS_Profile_2d_2(TranslateCS_Profile_2d):
         super().__init__(grid)
         self.compute_func = Profile.compute
         self.in_vars["data_vars"] = {
-            "qs": {"serialname": "qs_column_2"},
+            "qs": {"serialname": "qs_column_2", "kstart": 0, "kend": grid.npz},
             "a4_1": {"serialname": "q4_1_2"},
             "a4_2": {"serialname": "q4_2_2"},
             "a4_3": {"serialname": "q4_3_2"},

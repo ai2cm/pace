@@ -75,6 +75,8 @@ def lagrangian_contributions(
                         * (q4_2 + 0.5 * esl * (q4_3 - q4_2 + q4_4 * (1.0 - r23 * esl)))
                         / (pbot - ptop)
                     )
+    with computation(FORWARD), interval(0, 1):
+        q2_adds = 0.0
     with computation(FORWARD), interval(...):
         q2_adds += q2_tmp
 
@@ -216,9 +218,9 @@ def lagrangian_contributions_stencil(
     pbot = utils.make_storage_from_shape(shape2d)
 
     for k_eul in range(km):
+        # TODO (olivere): Pull these assignments into stencils when it is possible
         ptop[:, :] = pe2[:, :, k_eul]
         pbot[:, :] = pe2[:, :, k_eul + 1]
-        q2_adds[:] = 0.0
 
         lagrangian_contributions(
             pe1,
