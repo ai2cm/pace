@@ -1,4 +1,4 @@
-import fv3core.stencils.heatdiss as heatdiss
+import fv3core.stencils.d_sw as d_sw
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -20,7 +20,9 @@ class TranslateHeatDiss(TranslateFortranData2Py):
             "dw": grid.compute_dict(),
         }
 
-    def compute(self, inputs):
-        self.make_storage_data_input_vars(inputs)
-        heatdiss.compute(**inputs)
-        return self.slice_output(inputs)
+    def compute_from_storage(self, inputs):
+        inputs["rarea"] = self.grid.rarea
+        inputs["origin"] = self.grid.compute_origin()
+        inputs["domain"] = self.grid.domain_shape_compute()
+        d_sw.heat_diss(**inputs)
+        return inputs

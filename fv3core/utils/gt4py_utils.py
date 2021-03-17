@@ -1,4 +1,3 @@
-import copy
 import inspect
 import logging
 import math
@@ -353,63 +352,6 @@ def make_storage_dict(
 def storage_dict(st_dict, names, shape, origin):
     for name in names:
         st_dict[name] = make_storage_from_shape_uncached(shape, origin, init=True)
-
-
-def k_slice_operation(key, value, ki, dictionary):
-    if isinstance(value, gt_storage.storage.Storage):
-        dictionary[key] = make_storage_data(
-            value[:, :, ki], (value.shape[0], value.shape[1], len(ki))
-        )
-    else:
-        dictionary[key] = value
-
-
-def k_slice_inplace(data_dict, ki):
-    for k, v in data_dict.items():
-        k_slice_operation(k, v, ki, data_dict)
-
-
-def k_slice(data_dict, ki):
-    new_dict = {}
-    for k, v in data_dict.items():
-        k_slice_operation(k, v, ki, new_dict)
-    return new_dict
-
-
-def k_subset_run(func, data, splitvars, ki, outputs, grid_data, grid, allz=False):
-    grid.npz = len(ki)
-    grid.slice_data_k(ki)
-    d = k_slice(data, ki)
-    d.update(splitvars)
-    results = func(**d)
-    collect_results(d, results, outputs, ki, allz)
-    grid.add_data(grid_data)
-
-
-def collect_results(data, results, outputs, ki, allz=False):
-    outnames = list(outputs.keys())
-    endz = None if allz else -1
-    logger.debug("Computing results for k indices: {}".format(ki[:-1]))
-    for k in outnames:
-        if k in data:
-            # passing fields with single item in 3rd dimension leads to errors
-            outputs[k][:, :, ki[:endz]] = data[k][:, :, :endz]
-    if results is not None:
-        for ri in range(len(results)):
-            outputs[outnames[ri]][:, :, ki[:endz]] = results[ri][:, :, :endz]
-
-
-def k_split_run_dataslice(
-    func, data, k_indices_array, splitvars_values, outputs, grid, allz=False
-):
-    num_k = grid.npz
-    grid_data = copy.deepcopy(grid.data_fields)
-    for ki in k_indices_array:
-        splitvars = {}
-        for name, value_array in splitvars_values.items():
-            splitvars[name] = value_array[ki[0]]
-        k_subset_run(func, data, splitvars, ki, outputs, grid_data, grid, allz)
-    grid.npz = num_k
 
 
 def get_kstarts(column_info, npz):

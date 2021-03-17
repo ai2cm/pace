@@ -1,6 +1,5 @@
 import numpy as np
 
-import fv3core.utils.gt4py_utils as utils
 from fv3core.testing import TranslateFortranData2Py
 from fv3core.utils import corners
 
@@ -32,21 +31,19 @@ class TranslateFillCorners(TranslateFortranData2Py):
             direction = "y"
         else:
             raise ValueError("Invalid input")
-        # for nord in inputs['nord_col'][0,0,:]:
-        #    if nord != 0:
-        #        fill_corners_2d(inputs['divg_d'], self.grid, 'B', direction)
-        # return {'divg_d':inputs['divg_d']}
         nord_column = inputs["nord_col"][0, 0, :]
         self.make_storage_data_input_vars(inputs)
-        num_k = self.grid.npz
         for nord in np.unique(nord_column):
             if nord != 0:
-                ki = [i for i in range(num_k) if nord_column[i] == nord]
-                d = utils.k_slice(inputs, ki)
-                self.grid.npz = len(ki)
-                corners.fill_corners_2d(d["divg_d"], self.grid, "B", direction)
-                inputs["divg_d"][:, :, ki] = d["divg_d"]
-        self.grid.npz = num_k
+                ki = [i for i in range(self.grid.npz) if nord_column[i] == nord]
+                corners.fill_corners_2d(
+                    inputs["divg_d"],
+                    self.grid,
+                    "B",
+                    direction,
+                    kstart=ki[0],
+                    nk=len(ki),
+                )
         return self.slice_output(inputs)
 
 
@@ -85,14 +82,15 @@ class TranslateFillCornersVector(TranslateFortranData2Py):
         nord_column = inputs["nord_col"][0, 0, :]
         vector = True
         self.make_storage_data_input_vars(inputs)
-        num_k = self.grid.npz
         for nord in np.unique(nord_column):
             if nord != 0:
-                ki = [i for i in range(num_k) if nord_column[i] == nord]
-                d = utils.k_slice(inputs, ki)
-                self.grid.npz = len(ki)
-                corners.fill_corners_dgrid(d["vc"], d["uc"], self.grid, vector)
-                inputs["vc"][:, :, ki] = d["vc"]
-                inputs["uc"][:, :, ki] = d["uc"]
-        self.grid.npz = num_k
+                ki = [i for i in range(self.grid.npz) if nord_column[i] == nord]
+                corners.fill_corners_dgrid(
+                    inputs["vc"],
+                    inputs["uc"],
+                    self.grid,
+                    vector,
+                    kstart=ki[0],
+                    nk=len(ki),
+                )
         return self.slice_output(inputs)

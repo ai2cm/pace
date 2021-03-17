@@ -390,12 +390,6 @@ class Grid:
         else:
             return 0, 0
 
-    def slice_data_k(self, ki):
-        utils.k_slice_inplace(self.data_fields, ki)
-        # update instance vars
-        for k, v in self.data_fields.items():
-            setattr(self, k, self.data_fields[k])
-
 
 def axis_offsets(
     grid: Grid,
