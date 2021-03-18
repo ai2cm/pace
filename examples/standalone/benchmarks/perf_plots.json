@@ -1,39 +1,18 @@
 {
     "filters": "c128",
     "backends": {
-        "fortran": {
-            "color": "#7f7f7f",
-            "short_name": "f90"
-        },
-        "python/gtcuda": {
-            "color": "#d62728",
-            "short_name": "gtcuda"
-        },
-        "python/gtx86": {
-            "color": "#2ca02c",
-            "short_name": "gtx86"
-        },
-        "python/numpy": {
-            "color": "#1f77b4",
-            "short_name": "numpy"
-        }
+        "fortran": { "color": "#7f7f7f", "short_name": "f90" },
+        "python/gtcuda": { "color": "#d62728", "short_name": "gtcuda" },
+        "python/gtx86": { "color": "#2ca02c", "short_name": "gtx86" },
+        "python/numpy": { "color": "#1f77b4", "short_name": "numpy" }
     },
     "plots": {
         "absolute_time": {
-            "backends": [
-                "fortran",
-                "python/gtcuda",
-                "python/gtx86"
-            ],
+            "backends": [ "fortran", "python/gtcuda", "python/gtx86" ],
+            "only_recent": false,
             "timers": [
-                {
-                    "linestyle": "-o",
-                    "name": "total"
-                },
-                {
-                    "linestyle": "--o",
-                    "name": "initialization"
-                }
+                { "linestyle": "-o", "name": "total" },
+                { "linestyle": "--o", "name": "initialization" }
             ],
             "title": "Performance history of total runtime",
             "type": "absolute_time",
@@ -41,28 +20,27 @@
             "y_axis_label": "Execution time [s]"
         },
         "per_timestep": {
-            "backends": [
-                "python/gtcuda",
-                "python/gtx86",
-                "fortran"
-            ],
+            "backends": [ "python/gtcuda", "python/gtx86", "fortran" ],
+            "only_recent": false,
             "timers": [
-                {
-                    "linestyle": "-o",
-                    "name": "mainloop"
-                },
-                {
-                    "linestyle": "--o",
-                    "name": "DynCore"
-                },
-                {
-                    "linestyle": "-.o",
-                    "name": "Remapping"
-                },
-                {
-                    "linestyle": ":o",
-                    "name": "TracerAdvection"
-                }
+                { "linestyle": "-o", "name": "mainloop" },
+                { "linestyle": "--o", "name": "DynCore" },
+                { "linestyle": "-.o", "name": "Remapping" },
+                { "linestyle": ":o", "name": "TracerAdvection" }
+            ],
+            "title": "Performance history of components of mainloop",
+            "type": "per_timestep",
+            "x_axis_label": "Date of benchmark",
+            "y_axis_label": "Execution time per timestep [s]"
+        },
+        "per_timestep_recent": {
+            "backends": [ "python/gtcuda", "python/gtx86", "fortran" ],
+            "only_recent": true,
+            "timers": [
+                { "linestyle": "-o", "name": "mainloop" },
+                { "linestyle": "--o", "name": "DynCore" },
+                { "linestyle": "-.o", "name": "Remapping" },
+                { "linestyle": ":o", "name": "TracerAdvection" }
             ],
             "title": "Performance history of components of mainloop",
             "type": "per_timestep",
@@ -70,26 +48,13 @@
             "y_axis_label": "Execution time per timestep [s]"
         },
         "only_fortran": {
-            "backends": [
-                "fortran"
-            ],
+            "backends": [ "fortran" ],
+            "only_recent": false,
             "timers": [
-                {
-                    "linestyle": "-o",
-                    "name": "mainloop"
-                },
-                {
-                    "linestyle": "--o",
-                    "name": "DynCore"
-                },
-                {
-                    "linestyle": "-.o",
-                    "name": "Remapping"
-                },
-                {
-                    "linestyle": ":o",
-                    "name": "TracerAdvection"
-                }
+                { "linestyle": "-o", "name": "mainloop" },
+                { "linestyle": "--o", "name": "DynCore" },
+                { "linestyle": "-.o", "name": "Remapping" },
+                { "linestyle": ":o", "name": "TracerAdvection" }
             ],
             "title": "Performance history of components of mainloop",
             "type": "per_timestep",

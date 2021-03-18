@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 
 if __name__ == "__main__":
-    usage = "usage: python %(prog)s <data_dir>"
+    usage = "python %(prog)s <data_dir> <config.json>"
     parser = ArgumentParser(usage=usage)
     parser.add_argument(
         "data_dir",
@@ -57,6 +57,15 @@ if __name__ == "__main__":
         for backend in plot_config["backends"]:
             backend_config = backends[backend]
             specific = [x for x in alldata if x["setup"]["version"] == backend]
+            if plot_config["only_recent"]:
+                select = []
+                for datum in specific:
+                    tdelta = datetime.now() - datetime.strptime(
+                        datum["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
+                    )
+                    if tdelta.days < 7:
+                        select.append(datum)
+                specific = select
             if specific:
                 for timer in plot_config["timers"]:
                     label = None
@@ -67,18 +76,18 @@ if __name__ == "__main__":
                     plt.plot(
                         [
                             datetime.strptime(
-                                elememt["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
+                                element["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
                             )
-                            for elememt in specific
+                            for element in specific
                         ],
                         [
-                            elememt["times"][timer["name"]]["mean"]
+                            element["times"][timer["name"]]["mean"]
                             / (
-                                (elememt["setup"]["timesteps"] - 1)
+                                (element["setup"]["timesteps"] - 1)
                                 if plot_config["type"] == "per_timestep"
                                 else 1
                             )
-                            for elememt in specific
+                            for element in specific
                         ],
                         timer["linestyle"],
                         markersize=markersize,
@@ -89,27 +98,27 @@ if __name__ == "__main__":
                         plt.fill_between(
                             [
                                 datetime.strptime(
-                                    elememt["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
+                                    element["setup"]["timestamp"], "%d/%m/%Y %H:%M:%S"
                                 )
-                                for elememt in specific
+                                for element in specific
                             ],
                             [
-                                elememt["times"][timer["name"]]["maximum"]
+                                element["times"][timer["name"]]["maximum"]
                                 / (
-                                    (elememt["setup"]["timesteps"] - 1)
+                                    (element["setup"]["timesteps"] - 1)
                                     if plot_config["type"] == "per_timestep"
                                     else 1
                                 )
-                                for elememt in specific
+                                for element in specific
                             ],
                             [
-                                elememt["times"][timer["name"]]["minimum"]
+                                element["times"][timer["name"]]["minimum"]
                                 / (
-                                    (elememt["setup"]["timesteps"] - 1)
+                                    (element["setup"]["timesteps"] - 1)
                                     if plot_config["type"] == "per_timestep"
                                     else 1
                                 )
-                                for elememt in specific
+                                for element in specific
                             ],
                             color=backend_config["color"],
                             alpha=0.2,
