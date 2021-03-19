@@ -1,4 +1,5 @@
-from gt4py.gtscript import PARALLEL, computation, interval
+import gt4py.gtscript as gtscript
+from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.stencils.delnflux as delnflux
@@ -7,30 +8,56 @@ import fv3core.stencils.yppm as yppm
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-
-
-origin = (0, 0, 0)
-sd = utils.sd
+from fv3core.utils.typing import FloatField
 
 
 @gtstencil()
-def q_i_stencil(q: sd, area: sd, yfx: sd, fy2: sd, ra_y: sd, q_i: sd):
+def q_i_stencil(
+    q: FloatField,
+    area: FloatField,
+    yfx: FloatField,
+    fy2: FloatField,
+    ra_y: FloatField,
+    q_i: FloatField,
+):
     with computation(PARALLEL), interval(...):
         fyy = yfx * fy2
         q_i[0, 0, 0] = (q * area + fyy - fyy[0, 1, 0]) / ra_y
 
 
 @gtstencil()
-def q_j_stencil(q: sd, area: sd, xfx: sd, fx2: sd, ra_x: sd, q_j: sd):
+def q_j_stencil(
+    q: FloatField,
+    area: FloatField,
+    xfx: FloatField,
+    fx2: FloatField,
+    ra_x: FloatField,
+    q_j: FloatField,
+):
     with computation(PARALLEL), interval(...):
         fx1 = xfx * fx2
         q_j[0, 0, 0] = (q * area + fx1 - fx1[1, 0, 0]) / ra_x
 
 
+@gtscript.function
+def transport_flux(f, f2, mf):
+    return 0.5 * (f + f2) * mf
+
+
 @gtstencil()
-def transport_flux(f: sd, f2: sd, mf: sd):
+def transport_flux_xy(
+    fx: FloatField,
+    fx2: FloatField,
+    fy: FloatField,
+    fy2: FloatField,
+    mfx: FloatField,
+    mfy: FloatField,
+):
     with computation(PARALLEL), interval(...):
-        f = 0.5 * (f + f2) * mf
+        with horizontal(region[:, :-1]):
+            fx = transport_flux(fx, fx2, mfx)
+        with horizontal(region[:-1, :]):
+            fy = transport_flux(fy, fy2, mfy)
 
 
 def compute(data, nord_column):
@@ -109,23 +136,32 @@ def compute_no_sg(
     yppm.compute_flux(q_j, cry, fy, ord_ou, grid.is_, grid.ie, kstart=kstart, nk=nk)
 
     if mfx is not None and mfy is not None:
-        transport_flux(
-            fx, fx2, mfx, origin=compute_origin, domain=(grid.nic + 1, grid.njc, nk)
+        transport_flux_xy(
+            fx,
+            fx2,
+            fy,
+            fy2,
+            mfx,
+            mfy,
+            origin=compute_origin,
+            domain=(grid.nic + 1, grid.njc + 1, nk),
         )
-        transport_flux(
-            fy, fy2, mfy, origin=compute_origin, domain=(grid.nic, grid.njc + 1, nk)
-        )
+
         if (mass is not None) and (nord is not None) and (damp_c is not None):
             delnflux.compute_delnflux_no_sg(
                 q, fx, fy, nord, damp_c, kstart, nk, mass=mass
             )
     else:
+        transport_flux_xy(
+            fx,
+            fx2,
+            fy,
+            fy2,
+            xfx,
+            yfx,
+            origin=compute_origin,
+            domain=(grid.nic + 1, grid.njc + 1, nk),
+        )
 
-        transport_flux(
-            fx, fx2, xfx, origin=compute_origin, domain=(grid.nic + 1, grid.njc, nk)
-        )
-        transport_flux(
-            fy, fy2, yfx, origin=compute_origin, domain=(grid.nic, grid.njc + 1, nk)
-        )
         if (nord is not None) and (damp_c is not None):
             delnflux.compute_delnflux_no_sg(q, fx, fy, nord, damp_c, kstart, nk)
