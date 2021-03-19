@@ -23,6 +23,13 @@ def set_dp(dp1: FloatField, pe1: FloatField):
 
 
 @gtstencil()
+def set_eulerian_pressures(pe: FloatField, ptop: FloatFieldIJ, pbot: FloatFieldIJ):
+    with computation(FORWARD), interval(0, 1):
+        ptop = pe[0, 0, 0]
+        pbot = pe[0, 0, 1]
+
+
+@gtstencil()
 def lagrangian_contributions(
     pe1: FloatField,
     ptop: FloatFieldIJ,
@@ -218,9 +225,16 @@ def lagrangian_contributions_stencil(
     pbot = utils.make_storage_from_shape(shape2d)
 
     for k_eul in range(km):
-        # TODO (olivere): Pull these assignments into stencils when it is possible
-        ptop[:, :] = pe2[:, :, k_eul]
-        pbot[:, :] = pe2[:, :, k_eul + 1]
+
+        # TODO (olivere): This is hacky
+        # merge with subsequent stencil when possible
+        set_eulerian_pressures(
+            pe2,
+            ptop,
+            pbot,
+            origin=(origin[0], origin[1], k_eul),
+            domain=(domain[0], domain[1], 1),
+        )
 
         lagrangian_contributions(
             pe1,
