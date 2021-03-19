@@ -71,7 +71,6 @@ from .translate_satadjust3d import TranslateSatAdjust3d
 from .translate_tracer2d1l import TranslateTracer2D1L
 from .translate_updatedzc import TranslateUpdateDzC
 from .translate_updatedzd import TranslateUpdateDzD
-from .translate_vorticityvolumemean import TranslateVorticityVolumeMean
 from .translate_wdivergence import TranslateWdivergence
 from .translate_xppm import TranslateXPPM, TranslateXPPM_2
 from .translate_xtp_u import TranslateXTP_U

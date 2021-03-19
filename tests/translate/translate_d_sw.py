@@ -1,5 +1,9 @@
+from gt4py.gtscript import PARALLEL, computation, interval
+
+from fv3core.decorators import gtstencil
 from fv3core.stencils import d_sw
 from fv3core.testing import TranslateFortranData2Py
+from fv3core.utils.typing import FloatField
 
 
 class TranslateD_SW(TranslateFortranData2Py):
@@ -64,8 +68,22 @@ class TranslateD_SW(TranslateFortranData2Py):
 
 
 class TranslateUbKE(TranslateFortranData2Py):
+    @gtstencil
+    def ubke(
+        uc: FloatField,
+        vc: FloatField,
+        cosa: FloatField,
+        rsina: FloatField,
+        ut: FloatField,
+        ub: FloatField,
+        dt4: float,
+        dt5: float,
+    ):
+        with computation(PARALLEL), interval(...):
+            ub = d_sw.ubke(uc, vc, cosa, rsina, ut, ub, dt4, dt5)
+
     def _call(self, *args, **kwargs):
-        d_sw.ubke(
+        self.ubke(
             *args,
             **kwargs,
             cosa=self.grid.cosa,
@@ -88,8 +106,22 @@ class TranslateUbKE(TranslateFortranData2Py):
 
 
 class TranslateVbKE(TranslateFortranData2Py):
+    @gtstencil
+    def vbke(
+        vc: FloatField,
+        uc: FloatField,
+        cosa: FloatField,
+        rsina: FloatField,
+        vt: FloatField,
+        vb: FloatField,
+        dt4: float,
+        dt5: float,
+    ):
+        with computation(PARALLEL), interval(...):
+            vb = d_sw.vbke(vc, uc, cosa, rsina, vt, vb, dt4, dt5)
+
     def _call(self, *args, **kwargs):
-        d_sw.vbke(
+        self.vbke(
             *args,
             **kwargs,
             cosa=self.grid.cosa,
