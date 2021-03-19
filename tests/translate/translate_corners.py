@@ -24,27 +24,26 @@ class TranslateFillCorners(TranslateFortranData2Py):
         self.in_vars["parameters"] = ["dir"]
         self.out_vars = {"divg_d": {"iend": grid.ied + 1, "jend": grid.jed + 1}}
 
-    def compute(self, inputs):
-        if inputs["dir"] == 1:
-            direction = "x"
-        elif inputs["dir"] == 2:
-            direction = "y"
-        else:
-            raise ValueError("Invalid input")
-        nord_column = inputs["nord_col"][0, 0, :]
-        self.make_storage_data_input_vars(inputs)
+    def compute_from_storage(self, inputs):
+        nord_column = inputs["nord_col"].data[0, 0, :]
         for nord in np.unique(nord_column):
             if nord != 0:
                 ki = [i for i in range(self.grid.npz) if nord_column[i] == nord]
-                corners.fill_corners_2d(
-                    inputs["divg_d"],
-                    self.grid,
-                    "B",
-                    direction,
-                    kstart=ki[0],
-                    nk=len(ki),
-                )
-        return self.slice_output(inputs)
+                if inputs["dir"] == 1:
+                    corners.fill_corners_bgrid_x(
+                        inputs["divg_d"],
+                        origin=(self.grid.isd, self.grid.jsd, ki[0]),
+                        domain=(self.grid.nid + 1, self.grid.njd + 1, len(ki)),
+                    )
+                elif inputs["dir"] == 2:
+                    corners.fill_corners_bgrid_y(
+                        inputs["divg_d"],
+                        origin=(self.grid.isd, self.grid.jsd, ki[0]),
+                        domain=(self.grid.nid + 1, self.grid.njd + 1, len(ki)),
+                    )
+                else:
+                    raise ValueError("Invalid input")
+        return inputs
 
 
 class TranslateCopyCorners(TranslateFortranData2Py):
@@ -80,7 +79,6 @@ class TranslateFillCornersVector(TranslateFortranData2Py):
 
     def compute(self, inputs):
         nord_column = inputs["nord_col"][0, 0, :]
-        vector = True
         self.make_storage_data_input_vars(inputs)
         for nord in np.unique(nord_column):
             if nord != 0:
@@ -88,9 +86,8 @@ class TranslateFillCornersVector(TranslateFortranData2Py):
                 corners.fill_corners_dgrid(
                     inputs["vc"],
                     inputs["uc"],
-                    self.grid,
-                    vector,
-                    kstart=ki[0],
-                    nk=len(ki),
+                    -1.0,
+                    origin=(self.grid.isd, self.grid.jsd, ki[0]),
+                    domain=(self.grid.nid + 1, self.grid.njd + 1, len(ki)),
                 )
         return self.slice_output(inputs)
