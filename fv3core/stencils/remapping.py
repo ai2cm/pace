@@ -43,6 +43,10 @@ def compute(
     do_adiabatic_init,
     nq,
 ):
+    """
+    Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
+    coordinate levels.
+    """
     grid = spec.grid
 
     gz = utils.make_storage_from_shape(pt.shape, grid.compute_origin())

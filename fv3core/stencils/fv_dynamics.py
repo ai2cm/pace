@@ -329,6 +329,7 @@ def compute(state, comm, timer=NullTimer()):
     if global_config.get_do_halo_exchange():
         comm.halo_update(state.phis_quantity, n_points=utils.halo)
     compute_preamble(state, comm)
+    # "remapping" loop (because there's one remapping per iteration)
     for n_map in range(k_split):
         state.n_map = n_map + 1
         if n_map == k_split - 1:

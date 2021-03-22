@@ -41,26 +41,66 @@ def lagrange_interpolation_x_p1(qy: sd, qout: sd):
         qout = lagrange_x_func_p1(qy)
 
 
-@gtscript.function
-def avg_x(u):
-    return 0.5 * (u + u[0, 1, 0])
-
-
-@gtscript.function
-def avg_y(v):
-    return 0.5 * (v + v[1, 0, 0])
-
-
 @gtstencil()
 def avg_box(u: sd, v: sd, utmp: sd, vtmp: sd):
     with computation(PARALLEL), interval(...):
-        utmp = avg_x(u)
-        vtmp = avg_y(v)
+        utmp = 0.5 * (u + u[0, 1, 0])
+        vtmp = 0.5 * (v + v[1, 0, 0])
 
 
 @gtscript.function
-def contravariant(u, v, cosa, rsin):
-    return (u - v * cosa) * rsin
+def contravariant(v1, v2, cosa, rsin2):
+    """
+    Retrieve the contravariant component of the wind from its covariant
+    component and the covariant component in the "other" (x/y) direction.
+
+    For an orthogonal grid, cosa would be 0 and rsin2 would be 1, meaning
+    the contravariant component is equal to the covariant component.
+    However, the gnomonic cubed sphere grid is not orthogonal.
+
+    Args:
+        v1: covariant component of the wind for which we want to get the
+            contravariant component
+        v2: covariant component of the wind for the other direction,
+            i.e. y if v1 is in x, x if v1 is in y
+        cosa: cosine of the angle between the local x-direction and y-direction.
+        rsin2: 1 / (sin(alpha))^2, where alpha is the angle between the local
+            x-direction and y-direction
+
+    Returns:
+        v1_contravariant: contravariant component of v1
+    """
+    # From technical docs on FV3 cubed sphere grid:
+    # The gnomonic cubed sphere grid is not orthogonal, meaning
+    # the u and v vectors have some overlapping component. We can decompose
+    # the total wind U in two ways, as a linear combination of the
+    # coordinate vectors ("contravariant"):
+    #    U = u_contravariant * u_dir + v_contravariant * v_dir
+    # or as the projection of the vector onto the coordinate
+    #    u_covariant = U dot u_dir
+    #    v_covariant = U dot v_dir
+    # The names come from the fact that the covariant vectors vary
+    # (under a change in coordinate system) the same way the coordinate values do,
+    # while the contravariant vectors vary in the "opposite" way.
+    #
+    # equations from FV3 technical documentation
+    # u_cov = u_contra + v_contra * cos(alpha)  (eq 3.4)
+    # v_cov = u_contra * cos(alpha) + v_contra  (eq 3.5)
+    #
+    # u_contra = u_cov - v_contra * cos(alpha)  (1, from 3.4)
+    # v_contra = v_cov - u_contra * cos(alpha)  (2, from 3.5)
+    # u_contra = u_cov - (v_cov - u_contra * cos(alpha)) * cos(alpha)  (from 1 & 2)
+    # u_contra = u_cov - v_cov * cos(alpha) + u_contra * cos2(alpha) (follows)
+    # u_contra * (1 - cos2(alpha)) = u_cov - v_cov * cos(alpha)
+    # u_contra = u_cov/(1 - cos2(alpha)) - v_cov * cos(alpha)/(1 - cos2(alpha))
+    # matches because rsin = 1 /(1 + cos2(alpha)),
+    #                 cosa*rsin = cos(alpha)/(1 + cos2(alpha))
+
+    # recall that:
+    # rsin2 is 1/(sin(alpha))^2
+    # cosa is cos(alpha)
+
+    return (v1 - v2 * cosa) * rsin2
 
 
 @gtstencil()

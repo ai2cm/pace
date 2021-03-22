@@ -244,7 +244,21 @@ def compute(state, comm):
         )
     n_con = get_n_con()
 
+    # "acoustic" loop
+    # called this because its timestep is usually limited by horizontal sound-wave
+    # processes. Note this is often not the limiting factor near the poles, where
+    # the speed of the polar night jets can exceed two-thirds of the speed of sound.
     for it in range(n_split):
+        # the Lagrangian dynamics have two parts. First we advance the C-grid winds
+        # by half a time step (c_sw). Then the C-grid winds are used to define advective
+        # fluxes to advance the D-grid prognostic fields a full time step
+        # (the rest of the routines).
+        #
+        # Along-surface flux terms (mass, heat, vertical momentum, vorticity,
+        # kinetic energy gradient terms) are evaluated forward-in-time.
+        #
+        # The pressure gradient force and elastic terms are then evaluated
+        # backwards-in-time, to improve stability.
         remap_step = False
         if spec.namelist.breed_vortex_inline or (it == n_split - 1):
             remap_step = True
@@ -269,12 +283,6 @@ def compute(state, comm):
             if global_config.get_do_halo_exchange():
                 reqs["delp_quantity"].wait()
                 reqs["pt_quantity"].wait()
-            beta_d = 0
-        else:
-            beta_d = spec.namelist.beta
-        last_step = False
-        if it == n_split - 1 and end_step:
-            last_step = True
 
         if it == n_split - 1 and end_step:
             if spec.namelist.use_old_omega:  # apparently True
@@ -290,6 +298,7 @@ def compute(state, comm):
             if not hydrostatic:
                 reqs["w_quantity"].wait()
 
+        # compute the c-grid winds at t + 1/2 timestep
         state.delpc, state.ptc = c_sw.compute(
             state.delp,
             state.pt,
@@ -371,6 +380,8 @@ def compute(state, comm):
             if spec.namelist.nord > 0:
                 reqs["divgd_quantity"].wait()
             reqc_vector.wait()
+        # use the computed c-grid winds to evolve the d-grid winds forward
+        # by 1 timestep
         state.nord_v, state.damp_vt = d_sw.compute(
             state.vt,
             state.delp,
@@ -398,6 +409,8 @@ def compute(state, comm):
             state.diss_estd,
             dt,
         )
+        # note that uc and vc are not needed at all past this point.
+        # they will be re-computed from scratch on the next acoustic timestep.
 
         if global_config.get_do_halo_exchange():
             for halovar in ["delp_quantity", "pt_quantity", "q_con_quantity"]:
