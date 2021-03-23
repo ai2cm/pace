@@ -101,12 +101,14 @@ class TranslateDynCore(ParallelTranslate2PyState):
             "n_map",
             "ks",
         ]
-        self._base.out_vars = {}
 
+        self._base.out_vars = {}
         for v, d in self._base.in_vars["data_vars"].items():
             self._base.out_vars[v] = d
+
         del self._base.out_vars["ak"]
         del self._base.out_vars["bk"]
+        del self._base.out_vars["pfull"]
 
         # TODO: Fix edge_interpolate4 in d2a2c_vect to match closer and the
         # variables here should as well.

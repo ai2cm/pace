@@ -27,6 +27,7 @@ class TranslateFortranData2Py:
         self.origin = origin
         self.in_vars = {"data_vars": {}, "parameters": []}
         self.out_vars = {}
+        self.write_vars = []
         self.grid = grid
         self.maxshape = grid.domain_shape_full(add=(1, 1, 1))
         self.ordered_input_vars = None
@@ -74,11 +75,15 @@ class TranslateFortranData2Py:
         dummy_axes: Optional[Tuple[int, int, int]] = None,
         axis: int = 2,
         names_4d: Optional[List[str]] = None,
-    ) -> Dict[str, type(Field)]:
+        read_only: bool = False,
+        full_shape: bool = False,
+    ) -> Dict[str, "Field"]:
         use_shape = list(self.maxshape)
         if dummy_axes:
             for axis in dummy_axes:
                 use_shape[axis] = 1
+        elif not full_shape and len(array.shape) < 3 and axis == len(array.shape) - 1:
+            use_shape[1] = 1
         use_shape = tuple(use_shape)
         start = (istart, jstart, kstart)
         if names_4d:
@@ -99,6 +104,7 @@ class TranslateFortranData2Py:
                 origin=start,
                 dummy=dummy_axes,
                 axis=axis,
+                read_only=read_only,
             )
 
     def storage_vars(self):
@@ -166,11 +172,6 @@ class TranslateFortranData2Py:
                 inputs[serialname].shape, info
             )
 
-            logger.debug(
-                "Making storage for {} with istart = {}, jstart = {}".format(
-                    d, istart, jstart
-                )
-            )
             names_4d = None
             if len(inputs[serialname].shape) == 4:
                 names_4d = info.get("names_4d", utils.tracer_variables)
@@ -185,6 +186,8 @@ class TranslateFortranData2Py:
                 dummy_axes=dummy_axes,
                 axis=axis,
                 names_4d=names_4d,
+                read_only=d not in self.write_vars,
+                full_shape="full_shape" in storage_vars[d],
             )
             if d != serialname:
                 del inputs[serialname]
@@ -221,9 +224,8 @@ class TranslateFortranData2Py:
                 out[serialname] = var4d
             else:
                 data_result.synchronize()
-                out[serialname] = np.squeeze(
-                    np.asarray(data_result)[self.grid.slice_dict(ds)]
-                )
+                slice_tuple = self.grid.slice_dict(ds, len(data_result.shape))
+                out[serialname] = np.squeeze(np.asarray(data_result)[slice_tuple])
             if "kaxis" in info:
                 out[serialname] = np.moveaxis(out[serialname], 2, info["kaxis"])
         return out
@@ -299,6 +301,7 @@ class TranslateGrid:
                     shape,
                     start=(0, 0, pygrid.halo),
                     axis=axis,
+                    read_only=True,
                 )
         for k, v in self.data.items():
             if type(v) is np.ndarray:
@@ -312,7 +315,7 @@ class TranslateGrid:
                 )
                 origin = (istart, jstart, 0)
                 self.data[k] = utils.make_storage_data(
-                    v, shape, origin=origin, start=origin
+                    v, shape, origin=origin, start=origin, read_only=True
                 )
 
     def python_grid(self):

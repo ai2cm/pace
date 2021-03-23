@@ -7,19 +7,17 @@ import fv3core.stencils.saturation_adjustment as saturation_adjustment
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-
-
-sd = utils.sd
+from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
 @gtstencil()
-def copy_from_below(a: sd, b: sd):
+def copy_from_below(a: FloatField, b: FloatField):
     with computation(PARALLEL), interval(1, None):
         b = a[0, 0, -1]
 
 
 @gtstencil()
-def init_phis(hs: sd, delz: sd, phis: sd, te_2d: sd):
+def init_phis(hs: FloatField, delz: FloatField, phis: FloatField, te_2d: FloatFieldIJ):
     with computation(BACKWARD):
         with interval(-1, None):
             te_2d = 0.0
@@ -30,7 +28,13 @@ def init_phis(hs: sd, delz: sd, phis: sd, te_2d: sd):
 
 
 @gtstencil()
-def sum_z1(pkz: sd, delp: sd, te0_2d: sd, te_2d: sd, zsum1: sd):
+def sum_z1(
+    pkz: FloatField,
+    delp: FloatField,
+    te0_2d: FloatField,
+    te_2d: FloatFieldIJ,
+    zsum1: FloatFieldIJ,
+):
     with computation(FORWARD):
         with interval(0, 1):
             te_2d = te0_2d - te_2d
@@ -41,49 +45,47 @@ def sum_z1(pkz: sd, delp: sd, te0_2d: sd, te_2d: sd, zsum1: sd):
 
 
 @gtstencil()
-def sum_te(te: sd, te0_2d: sd):
+def sum_te(te: FloatField, te0_2d: FloatField):
     with computation(FORWARD):
         with interval(0, None):
             te0_2d = te0_2d[0, 0, -1] + te
 
 
 def compute(
-    qvapor,
-    qliquid,
-    qice,
-    qrain,
-    qsnow,
-    qgraupel,
-    qcld,
-    pt,
-    delp,
-    delz,
-    peln,
-    u,
-    v,
-    w,
-    ua,
-    cappa,
-    q_con,
-    gz,
-    pkz,
-    pk,
-    pe,
-    hs,
-    te_2d,
-    te0_2d,
-    te,
-    cvm,
-    zsum1,
-    pfull,
-    ptop,
-    akap,
-    r_vir,
-    last_step,
-    pdt,
-    mdt,
-    consv,
-    do_adiabatic_init,
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qice: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qgraupel: FloatField,
+    qcld: FloatField,
+    pt: FloatField,
+    delp: FloatField,
+    delz: FloatField,
+    peln: FloatField,
+    u: FloatField,
+    v: FloatField,
+    w: FloatField,
+    ua: FloatField,
+    cappa: FloatField,
+    q_con: FloatField,
+    gz: FloatField,
+    pkz: FloatField,
+    pk: FloatField,
+    pe: FloatField,
+    hs: FloatFieldIJ,
+    te0_2d: FloatFieldIJ,
+    te: FloatField,
+    cvm: FloatField,
+    pfull: FloatFieldK,
+    ptop: float,
+    akap: float,
+    r_vir: float,
+    last_step: bool,
+    pdt: float,
+    mdt: float,
+    consv: float,
+    do_adiabatic_init: bool,
 ):
     grid = spec.grid
     copy_from_below(
@@ -91,12 +93,14 @@ def compute(
     )
     dtmp = 0.0
     phis = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
+    te_2d = utils.make_storage_from_shape(pt.shape[0:2], grid.compute_origin())
+    zsum1 = utils.make_storage_from_shape(pt.shape[0:2], grid.compute_origin())
     if spec.namelist.do_sat_adj:
         fast_mp_consv = not do_adiabatic_init and consv > constants.CONSV_MIN
         # TODO pfull is a 1d var
         kmp = grid.npz - 1
-        for k in range(pfull.shape[2]):
-            if pfull[grid.is_, grid.js, k] > 10.0e2:
+        for k in range(pfull.shape[0]):
+            if pfull[k] > 10.0e2:
                 kmp = k
                 break
     if last_step and not do_adiabatic_init:

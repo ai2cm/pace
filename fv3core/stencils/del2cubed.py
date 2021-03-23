@@ -4,48 +4,47 @@ import fv3core._config as spec
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-
-
-sd = utils.sd
-origin = utils.origin
+from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 #
 # Flux value stencils
 # ---------------------
 @gtstencil()
-def compute_zonal_flux(flux: sd, A_in: sd, del_term: sd):
+def compute_zonal_flux(flux: FloatField, a_in: FloatField, del_term: FloatFieldIJ):
     with computation(PARALLEL), interval(...):
-        flux = del_term * (A_in[-1, 0, 0] - A_in)
+        flux = del_term * (a_in[-1, 0, 0] - a_in)
 
 
 @gtstencil()
-def compute_meridional_flux(flux: sd, A_in: sd, del_term: sd):
+def compute_meridional_flux(flux: FloatField, a_in: FloatField, del_term: FloatFieldIJ):
     with computation(PARALLEL), interval(...):
-        flux = del_term * (A_in[0, -1, 0] - A_in)
+        flux = del_term * (a_in[0, -1, 0] - a_in)
 
 
 #
 # Q update stencil
 # ------------------
 @gtstencil()
-def update_q(q: sd, rarea: sd, fx: sd, fy: sd, cd: float):
+def update_q(
+    q: FloatField, rarea: FloatFieldIJ, fx: FloatField, fy: FloatField, cd: float
+):
     with computation(PARALLEL), interval(...):
         q = q + cd * rarea * (fx - fx[1, 0, 0] + fy - fy[0, 1, 0])
 
 
 @gtstencil()
-def copy_row(A: sd):
+def copy_row(a: FloatField):
     with computation(PARALLEL), interval(...):
-        A0 = A
-        A = A0[1, 0, 0]
+        a0 = a
+        a = a0[1, 0, 0]
 
 
 @gtstencil()
-def copy_column(A: sd):
+def copy_column(a: FloatField):
     with computation(PARALLEL), interval(...):
-        A0 = A
-        A = A0[0, 1, 0]
+        a0 = a
+        a = a0[0, 1, 0]
 
 
 #
@@ -93,7 +92,7 @@ def corner_fill(grid, q):
     return q
 
 
-def compute(qdel, nmax, cd, km):
+def compute(qdel: FloatField, nmax: int, cd: float, km: int):
     grid = spec.grid
     origin = (grid.isd, grid.jsd, 0)
 

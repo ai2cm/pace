@@ -22,8 +22,9 @@ class TranslateMoistCVPlusPkz_2d(TranslateFortranData2Py):
             "pt": {},
             "cappa": {},
         }
+        self.write_vars = ["gz", "cvm"]
         for k, v in self.in_vars["data_vars"].items():
-            if k not in ["gz", "cvm"]:
+            if k not in self.write_vars:
                 v["axis"] = 1
 
         self.in_vars["parameters"] = ["r_vir", "j_2d"]
@@ -57,6 +58,4 @@ class TranslateMoistCVPlusPkz_2d(TranslateFortranData2Py):
             inputs["j_2d"] + TranslateGrid.fpy_model_index_offset
         )
         self.compute_func(**inputs)
-        for var in ["gz", "cvm"]:
-            inputs[var] = inputs[var][:, inputs["j_2d"] : inputs["j_2d"] + 1, :]
         return self.slice_output(inputs)

@@ -10,7 +10,7 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy, copy_stencil
 from fv3core.stencils.moist_cv import moist_pt_func
-from fv3core.utils.typing import FloatField
+from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
 CONSV_MIN = 0.001
@@ -57,10 +57,10 @@ def moist_cv_pt_pressure(
     delz: FloatField,
     pe: FloatField,
     pe2: FloatField,
-    ak: FloatField,
-    bk: FloatField,
+    ak: FloatFieldK,
+    bk: FloatFieldK,
     dp2: FloatField,
-    ps: FloatField,
+    ps: FloatFieldIJ,
     pn2: FloatField,
     peln: FloatField,
     r_vir: float,
@@ -91,11 +91,9 @@ def moist_cv_pt_pressure(
         if not hydrostatic:
             delz = -delz / delp
     # pressure_updates
-    with computation(BACKWARD):
+    with computation(FORWARD):
         with interval(-1, None):
             ps = pe
-        with interval(0, -1):
-            ps = ps[0, 0, 1]
     with computation(PARALLEL):
         with interval(0, 1):
             pn2 = peln
@@ -128,8 +126,8 @@ def pn2_and_pk(pe2: FloatField, pn2: FloatField, pk: FloatField, akap: float):
 def pressures_mapu(
     pe: FloatField,
     pe1: FloatField,
-    ak: FloatField,
-    bk: FloatField,
+    ak: FloatFieldK,
+    bk: FloatFieldK,
     pe0: FloatField,
     pe3: FloatField,
 ):
@@ -152,7 +150,7 @@ def pressures_mapu(
 
 @gtstencil()
 def pressures_mapv(
-    pe: FloatField, ak: FloatField, bk: FloatField, pe0: FloatField, pe3: FloatField
+    pe: FloatField, ak: FloatFieldK, bk: FloatFieldK, pe0: FloatField, pe3: FloatField
 ):
     with computation(BACKWARD):
         with interval(-1, None):
@@ -190,13 +188,13 @@ def compute(
     pkz: FloatField,
     pk: FloatField,
     pe: FloatField,
-    hs: FloatField,
+    hs: FloatFieldIJ,
     te: FloatField,
-    ps: FloatField,
+    ps: FloatFieldIJ,
     wsd: FloatField,
     omga: FloatField,
-    ak: FloatField,
-    bk: FloatField,
+    ak: FloatFieldK,
+    bk: FloatFieldK,
     gz: FloatField,
     cvm: FloatField,
     ptop: float,
@@ -204,14 +202,15 @@ def compute(
     r_vir: float,
     nq: int,
 ):
-    grid = spec.grid
-    hydrostatic = spec.namelist.hydrostatic
-    t_min = 184.0
-
     if spec.namelist.kord_tm >= 0:
         raise Exception("map ppm, untested mode where kord_tm >= 0")
+
+    hydrostatic = spec.namelist.hydrostatic
     if hydrostatic:
         raise Exception("Hydrostatic is not implemented")
+
+    grid = spec.grid
+    t_min = 184.0
 
     # do_omega = hydrostatic and last_step # TODO pull into inputs
     domain_jextra = (grid.nic, grid.njc + 1, grid.npz + 1)
@@ -288,8 +287,9 @@ def compute(
     )
     # TODO else if nq > 0:
     # TODO map1_q2, fillz
-    map_single.compute(w, pe1, pe2, wsd, -2, grid.is_, grid.ie, spec.namelist.kord_wz)
-    map_single.compute(delz, pe1, pe2, gz, 1, grid.is_, grid.ie, spec.namelist.kord_wz)
+    kord_wz = spec.namelist.kord_wz
+    map_single.compute(w, pe1, pe2, wsd, -2, grid.is_, grid.ie, kord_wz)
+    map_single.compute(delz, pe1, pe2, gz, 1, grid.is_, grid.ie, kord_wz)
 
     undo_delz_adjust_and_copy_peln(
         delp,

@@ -17,25 +17,23 @@ import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy
-
-
-sd = utils.sd
+from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtstencil()
 def precompute(
-    cp3: sd,
-    dm: sd,
-    zh: sd,
-    q_con: sd,
-    pem: sd,
-    peln: sd,
-    pk3: sd,
-    peg: sd,
-    pelng: sd,
-    gm: sd,
-    dz: sd,
-    pm: sd,
+    cp3: FloatField,
+    dm: FloatField,
+    zh: FloatField,
+    q_con: FloatField,
+    pem: FloatField,
+    peln: FloatField,
+    pk3: FloatField,
+    peg: FloatField,
+    pelng: FloatField,
+    gm: FloatField,
+    dz: FloatField,
+    pm: FloatField,
     ptop: float,
     peln1: float,
     ptk: float,
@@ -65,7 +63,14 @@ def precompute(
 
 
 @gtstencil()
-def last_call_copy(peln_run: sd, peln: sd, pk3: sd, pk: sd, pem: sd, pe: sd):
+def last_call_copy(
+    peln_run: FloatField,
+    peln: FloatField,
+    pk3: FloatField,
+    pk: FloatField,
+    pem: FloatField,
+    pe: FloatField,
+):
     with computation(PARALLEL), interval(...):
         peln = peln_run
         pk = pk3
@@ -74,17 +79,17 @@ def last_call_copy(peln_run: sd, peln: sd, pk3: sd, pk: sd, pem: sd, pe: sd):
 
 @gtstencil()
 def finalize(
-    zs: sd,
-    dz: sd,
-    zh: sd,
-    peln_run: sd,
-    peln: sd,
-    pk3: sd,
-    pk: sd,
-    pem: sd,
-    pe: sd,
-    ppe: sd,
-    pe_init: sd,
+    zs: FloatFieldIJ,
+    dz: FloatField,
+    zh: FloatField,
+    peln_run: FloatField,
+    peln: FloatField,
+    pk3: FloatField,
+    pk: FloatField,
+    pem: FloatField,
+    pe: FloatField,
+    ppe: FloatField,
+    pe_init: FloatField,
     last_call: bool,
 ):
     with computation(PARALLEL), interval(...):
@@ -108,24 +113,24 @@ def finalize(
 
 
 def compute(
-    last_call,
-    dt,
-    akap,
-    cappa,
-    ptop,
-    zs,
-    w,
-    delz,
-    q_con,
-    delp,
-    pt,
-    zh,
-    pe,
-    ppe,
-    pk3,
-    pk,
-    peln,
-    wsd,
+    last_call: bool,
+    dt: float,
+    akap: float,
+    cappa: FloatField,
+    ptop: float,
+    zs: FloatFieldIJ,
+    w: FloatField,
+    delz: FloatField,
+    q_con: FloatField,
+    delp: FloatField,
+    pt: FloatField,
+    zh: FloatField,
+    pe: FloatField,
+    ppe: FloatField,
+    pk3: FloatField,
+    pk: FloatField,
+    peln: FloatField,
+    wsd: FloatFieldIJ,
 ):
     grid = spec.grid
     rgrav = 1.0 / constants.GRAV
@@ -147,6 +152,7 @@ def compute(
     peg = utils.make_storage_from_shape(shape, riemorigin)
     pelng = utils.make_storage_from_shape(shape, riemorigin)
     gm = utils.make_storage_from_shape(shape, riemorigin)
+
     precompute(
         cp3,
         dm,
@@ -168,6 +174,7 @@ def compute(
         origin=riemorigin,
         domain=domain,
     )
+
     sim1_solver.solve(
         grid.is_,
         grid.ie,
