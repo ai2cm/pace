@@ -13,35 +13,45 @@ import fv3core.stencils.d2a2c_vect as d2a2c
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.utils import corners
-
-
-sd = utils.sd
+from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtstencil()
-def geoadjust_ut(ut: sd, dy: sd, sin_sg3: sd, sin_sg1: sd, dt2: float):
+def geoadjust_ut(
+    ut: FloatField,
+    dy: FloatFieldIJ,
+    sin_sg3: FloatFieldIJ,
+    sin_sg1: FloatFieldIJ,
+    dt2: float,
+):
     with computation(PARALLEL), interval(...):
         ut[0, 0, 0] = (
-            dt2 * ut * dy * sin_sg3[-1, 0, 0] if ut > 0 else dt2 * ut * dy * sin_sg1
+            dt2 * ut * dy * sin_sg3[-1, 0] if ut > 0 else dt2 * ut * dy * sin_sg1
         )
 
 
 @gtstencil()
-def geoadjust_vt(vt: sd, dx: sd, sin_sg4: sd, sin_sg2: sd, dt2: float):
+def geoadjust_vt(
+    vt: FloatField,
+    dx: FloatFieldIJ,
+    sin_sg4: FloatFieldIJ,
+    sin_sg2: FloatFieldIJ,
+    dt2: float,
+):
     with computation(PARALLEL), interval(...):
         vt[0, 0, 0] = (
-            dt2 * vt * dx * sin_sg4[0, -1, 0] if vt > 0 else dt2 * vt * dx * sin_sg2
+            dt2 * vt * dx * sin_sg4[0, -1] if vt > 0 else dt2 * vt * dx * sin_sg2
         )
 
 
 @gtstencil()
-def absolute_vorticity(vort: sd, fC: sd, rarea_c: sd):
+def absolute_vorticity(vort: FloatField, fC: FloatFieldIJ, rarea_c: FloatFieldIJ):
     with computation(PARALLEL), interval(...):
         vort[0, 0, 0] = fC + rarea_c * vort
 
 
 @gtscript.function
-def nonhydro_x_fluxes(delp: sd, pt: sd, w: sd, utc: sd):
+def nonhydro_x_fluxes(delp: FloatField, pt: FloatField, w: FloatField, utc: FloatField):
     fx1 = delp[-1, 0, 0] if utc > 0.0 else delp
     fx = pt[-1, 0, 0] if utc > 0.0 else pt
     fx2 = w[-1, 0, 0] if utc > 0.0 else w
@@ -52,7 +62,7 @@ def nonhydro_x_fluxes(delp: sd, pt: sd, w: sd, utc: sd):
 
 
 @gtscript.function
-def nonhydro_y_fluxes(delp: sd, pt: sd, w: sd, vtc: sd):
+def nonhydro_y_fluxes(delp: FloatField, pt: FloatField, w: FloatField, vtc: FloatField):
     fy1 = delp[0, -1, 0] if vtc > 0.0 else delp
     fy = pt[0, -1, 0] if vtc > 0.0 else pt
     fy2 = w[0, -1, 0] if vtc > 0.0 else w
@@ -64,7 +74,15 @@ def nonhydro_y_fluxes(delp: sd, pt: sd, w: sd, vtc: sd):
 
 @gtstencil()
 def transportdelp(
-    delp: sd, pt: sd, utc: sd, vtc: sd, w: sd, rarea: sd, delpc: sd, ptc: sd, wc: sd
+    delp: FloatField,
+    pt: FloatField,
+    utc: FloatField,
+    vtc: FloatField,
+    w: FloatField,
+    rarea: FloatFieldIJ,
+    delpc: FloatField,
+    ptc: FloatField,
+    wc: FloatField,
 ):
     """Transport delp.
 
@@ -105,25 +123,24 @@ def transportdelp(
 
 @gtstencil()
 def divergence_corner(
-    u: sd,
-    v: sd,
-    ua: sd,
-    va: sd,
-    dxc: sd,
-    dyc: sd,
-    sin_sg1: sd,
-    sin_sg2: sd,
-    sin_sg3: sd,
-    sin_sg4: sd,
-    cos_sg1: sd,
-    cos_sg2: sd,
-    cos_sg3: sd,
-    cos_sg4: sd,
-    rarea_c: sd,
-    divg_d: sd,
+    u: FloatField,
+    v: FloatField,
+    ua: FloatField,
+    va: FloatField,
+    dxc: FloatFieldIJ,
+    dyc: FloatFieldIJ,
+    sin_sg1: FloatFieldIJ,
+    sin_sg2: FloatFieldIJ,
+    sin_sg3: FloatFieldIJ,
+    sin_sg4: FloatFieldIJ,
+    cos_sg1: FloatFieldIJ,
+    cos_sg2: FloatFieldIJ,
+    cos_sg3: FloatFieldIJ,
+    cos_sg4: FloatFieldIJ,
+    rarea_c: FloatFieldIJ,
+    divg_d: FloatField,
 ):
     """Calculate divg on d-grid.
-
     Args:
         u: x-velocity (input)
         v: y-velocity (input)
@@ -146,22 +163,22 @@ def divergence_corner(
 
     with computation(PARALLEL), interval(...):
         uf = (
-            (u - 0.25 * (va[0, -1, 0] + va) * (cos_sg4[0, -1, 0] + cos_sg2))
+            (u - 0.25 * (va[0, -1, 0] + va) * (cos_sg4[0, -1] + cos_sg2))
             * dyc
             * 0.5
-            * (sin_sg4[0, -1, 0] + sin_sg2)
+            * (sin_sg4[0, -1] + sin_sg2)
         )
         with horizontal(region[:, j_start], region[:, j_end + 1]):
-            uf = u * dyc * 0.5 * (sin_sg4[0, -1, 0] + sin_sg2)
+            uf = u * dyc * 0.5 * (sin_sg4[0, -1] + sin_sg2)
 
         vf = (
-            (v - 0.25 * (ua[-1, 0, 0] + ua) * (cos_sg3[-1, 0, 0] + cos_sg1))
+            (v - 0.25 * (ua[-1, 0, 0] + ua) * (cos_sg3[-1, 0] + cos_sg1))
             * dxc
             * 0.5
-            * (sin_sg3[-1, 0, 0] + sin_sg1)
+            * (sin_sg3[-1, 0] + sin_sg1)
         )
         with horizontal(region[i_start, :], region[i_end + 1, :]):
-            vf = v * dxc * 0.5 * (sin_sg3[-1, 0, 0] + sin_sg1)
+            vf = v * dxc * 0.5 * (sin_sg3[-1, 0] + sin_sg1)
 
         divg_d = vf[0, -1, 0] - vf + uf[-1, 0, 0] - uf
         with horizontal(region[i_start, j_start], region[i_end + 1, j_start]):
@@ -172,7 +189,13 @@ def divergence_corner(
 
 
 @gtstencil()
-def circulation_cgrid(uc: sd, vc: sd, dxc: sd, dyc: sd, vort_c: sd):
+def circulation_cgrid(
+    uc: FloatField,
+    vc: FloatField,
+    dxc: FloatFieldIJ,
+    dyc: FloatFieldIJ,
+    vort_c: FloatField,
+):
     """Update vort_c.
 
     Args:
@@ -199,22 +222,22 @@ def circulation_cgrid(uc: sd, vc: sd, dxc: sd, dyc: sd, vort_c: sd):
 
 @gtstencil()
 def update_vorticity_and_kinetic_energy(
-    ke: sd,
-    vort: sd,
-    ua: sd,
-    va: sd,
-    uc: sd,
-    vc: sd,
-    u: sd,
-    v: sd,
-    sin_sg1: sd,
-    cos_sg1: sd,
-    sin_sg2: sd,
-    cos_sg2: sd,
-    sin_sg3: sd,
-    cos_sg3: sd,
-    sin_sg4: sd,
-    cos_sg4: sd,
+    ke: FloatField,
+    vort: FloatField,
+    ua: FloatField,
+    va: FloatField,
+    uc: FloatField,
+    vc: FloatField,
+    u: FloatField,
+    v: FloatField,
+    sin_sg1: FloatFieldIJ,
+    cos_sg1: FloatFieldIJ,
+    sin_sg2: FloatFieldIJ,
+    cos_sg2: FloatFieldIJ,
+    sin_sg3: FloatFieldIJ,
+    cos_sg3: FloatFieldIJ,
+    sin_sg4: FloatFieldIJ,
+    cos_sg4: FloatFieldIJ,
     dt2: float,
 ):
     from __externals__ import i_end, i_start, j_end, j_start, namelist
@@ -240,13 +263,13 @@ def update_vorticity_and_kinetic_energy(
 
 @gtstencil()
 def update_zonal_velocity(
-    vorticity: sd,
-    ke: sd,
-    velocity: sd,
-    velocity_c: sd,
-    cosa: sd,
-    sina: sd,
-    rdxc: sd,
+    vorticity: FloatField,
+    ke: FloatField,
+    velocity: FloatField,
+    velocity_c: FloatField,
+    cosa: FloatFieldIJ,
+    sina: FloatFieldIJ,
+    rdxc: FloatFieldIJ,
     dt2: float,
 ):
     from __externals__ import i_end, i_start, namelist
@@ -265,13 +288,13 @@ def update_zonal_velocity(
 
 @gtstencil()
 def update_meridional_velocity(
-    vorticity: sd,
-    ke: sd,
-    velocity: sd,
-    velocity_c: sd,
-    cosa: sd,
-    sina: sd,
-    rdyc: sd,
+    vorticity: FloatField,
+    ke: FloatField,
+    velocity: FloatField,
+    velocity_c: FloatField,
+    cosa: FloatFieldIJ,
+    sina: FloatFieldIJ,
+    rdyc: FloatFieldIJ,
     dt2: float,
 ):
     from __externals__ import j_end, j_start, namelist
@@ -289,7 +312,13 @@ def update_meridional_velocity(
 
 
 def vorticitytransport_cgrid(
-    uc: sd, vc: sd, vort_c: sd, ke_c: sd, v: sd, u: sd, dt2: float
+    uc: FloatField,
+    vc: FloatField,
+    vort_c: FloatField,
+    ke_c: FloatField,
+    v: FloatField,
+    u: FloatField,
+    dt2: float,
 ):
     """Update the C-Grid zonal and meridional velocity fields.
 

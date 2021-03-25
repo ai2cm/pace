@@ -11,18 +11,6 @@ from fv3core.utils import gt4py_utils as utils
 from .translate import TranslateFortranData2Py, read_serialized_data
 
 
-def ensure_3d_dims(dims_in):
-    dims_out = [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM]
-    for dim in dims_in:
-        for i, dim_set in enumerate([fv3util.X_DIMS, fv3util.Y_DIMS, fv3util.Z_DIMS]):
-            if dim in dim_set:
-                dims_out[i] = dim
-                break
-        else:
-            raise ValueError(f"dimension {dim} is not an x/y/z dimension")
-    return dims_out
-
-
 class ParallelTranslate:
 
     max_error = TranslateFortranData2Py.max_error
@@ -63,8 +51,7 @@ class ParallelTranslate:
                 properties["name"] = name
             input_data = state[name]
             if len(properties["dims"]) > 0:
-                # self._base will always make a 3D array
-                dims = ensure_3d_dims(properties["dims"])
+                dims = properties["dims"]
                 state[properties["name"]] = fv3util.Quantity(
                     input_data,
                     dims,

@@ -1,9 +1,12 @@
+from typing import Optional
+
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
 from fv3core.decorators import gtstencil
+from fv3core.utils import Grid
 from fv3core.utils.typing import FloatField
 
 
@@ -355,7 +358,7 @@ def moist_pkz(
         pkz = compute_pkz_func(delp, delz, pt, cappa)
 
 
-def region_mode(j_2d, grid):
+def region_mode(j_2d: Optional[int], grid: Grid):
     if j_2d is None:
         origin = grid.compute_origin()
         domain = grid.domain_shape_compute()
@@ -439,8 +442,7 @@ def compute_pt(
     r_vir: float,
     j_2d: int = None,
 ):
-    grid = spec.grid
-    origin, domain, jslice = region_mode(j_2d, grid)
+    origin, domain, jslice = region_mode(j_2d, spec.grid)
     moist_pt(
         qvapor_js,
         qliquid_js,

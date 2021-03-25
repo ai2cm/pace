@@ -21,9 +21,9 @@ K = gtscript.K  # noqa: E741
 DTypes = Union[bool, np.bool, int, np.int32, np.int64, float, np.float32, np.float64]
 
 # Default float and int types
-float_type = np.float_
-int_type = np.int_
-bool_type = np.bool_
+Float = np.float_
+Int = np.int_
+Bool = np.bool_
 
 
 class _FieldDescriptor:
@@ -38,10 +38,12 @@ def _FieldDescriptorMaker(dtype):
     return _FieldDescriptor(dtype)
 
 
-FloatField = Field[float_type]
-FloatFieldIJ = Field[float_type, gtscript.IJ]
-IntField = Field[int_type]
-IntFieldIJ = Field[int_type, gtscript.IJ]
-BoolField = _FieldDescriptor(bool_type)
+FloatField = Field[Float]
+FloatFieldI = Field[Float, gtscript.I]
+FloatFieldIJ = Field[Float, gtscript.IJ]
+FloatFieldK = Field[Float, gtscript.K]
+IntField = Field[Int]
+IntFieldIJ = Field[Int, gtscript.IJ]
+BoolField = _FieldDescriptor(Bool)
 
 Index3D = Tuple[int, int, int]

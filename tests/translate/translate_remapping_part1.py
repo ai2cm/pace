@@ -54,11 +54,17 @@ class TranslateRemapping_Part1(TranslateFortranData2Py):
             # column variables...
             "ak": {},
             "bk": {},
-            "gz": {"serialname": "gz1d", "kstart": grid.is_, "axis": 0},
-            "cvm": {"kstart": grid.is_, "axis": 0},
+            "gz": {
+                "serialname": "gz1d",
+                "kstart": grid.is_,
+                "axis": 0,
+                "full_shape": True,
+            },
+            "cvm": {"kstart": grid.is_, "axis": 0, "full_shape": True},
         }
         self.in_vars["parameters"] = ["ptop", "akap", "r_vir", "nq"]
         self.out_vars = {}
+        self.write_vars = ["gz", "cvm", "wsd"]
         for k in [
             "pe",
             "pkz",

@@ -6,21 +6,19 @@ import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy
-
-
-sd = utils.sd
+from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtstencil()
 def precompute(
-    cp3: sd,
-    gz: sd,
-    dm: sd,
-    q_con: sd,
-    pem: sd,
-    dz: sd,  # is actually delta of gz
-    gm: sd,
-    pm: sd,
+    cp3: FloatField,
+    gz: FloatField,
+    dm: FloatField,
+    q_con: FloatField,
+    pem: FloatField,
+    dz: FloatField,  # is actually delta of gz
+    gm: FloatField,
+    pm: FloatField,
     ptop: float,
 ):
     with computation(FORWARD):
@@ -40,7 +38,15 @@ def precompute(
 
 
 @gtstencil()
-def finalize(pe2: sd, pem: sd, hs: sd, dz: sd, pef: sd, gz: sd, ptop: float):
+def finalize(
+    pe2: FloatField,
+    pem: FloatField,
+    hs: FloatFieldIJ,
+    dz: FloatField,
+    pef: FloatField,
+    gz: FloatField,
+    ptop: float,
+):
     # TODO: We only want to bottom level of hd, so this could be removed once
     # hd0 is a 2d field.
     with computation(FORWARD):
@@ -62,7 +68,21 @@ def finalize(pe2: sd, pem: sd, hs: sd, dz: sd, pef: sd, gz: sd, ptop: float):
 
 
 # TODO: this is totally inefficient, can we use stencils?
-def compute(ms, dt2, akap, cappa, ptop, hs, w3, ptc, q_con, delpc, gz, pef, ws):
+def compute(
+    ms: int,
+    dt2: float,
+    akap: float,
+    cappa: FloatField,
+    ptop: float,
+    hs: FloatFieldIJ,
+    w3: FloatField,
+    ptc: FloatField,
+    q_con: FloatField,
+    delpc: FloatField,
+    gz: FloatField,
+    pef: FloatField,
+    ws: FloatFieldIJ,
+):
     grid = spec.grid
     is1 = grid.is_ - 1
     ie1 = grid.ie + 1

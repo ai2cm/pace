@@ -3,21 +3,18 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-
-
-sd = utils.sd
-origin = utils.origin
+from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtstencil()
 def heat_diss(
-    fx2: sd,
-    fy2: sd,
-    w: sd,
-    rarea: sd,
-    heat_source: sd,
-    diss_est: sd,
-    dw: sd,
+    fx2: FloatField,
+    fy2: FloatField,
+    w: FloatField,
+    rarea: FloatFieldIJ,
+    heat_source: FloatField,
+    diss_est: FloatField,
+    dw: FloatField,
     dd8: float,
 ):
     with computation(PARALLEL), interval(...):
@@ -26,7 +23,15 @@ def heat_diss(
         diss_est[0, 0, 0] = heat_source
 
 
-def compute(fx2, fy2, w, dd8, dw, heat_source, diss_est):
+def compute(
+    fx2: FloatField,
+    fy2: FloatField,
+    w: FloatField,
+    dd8: float,
+    dw: FloatField,
+    heat_source: FloatField,
+    diss_est: FloatField,
+) -> None:
     heat_diss(
         fx2,
         fy2,
@@ -36,6 +41,6 @@ def compute(fx2, fy2, w, dd8, dw, heat_source, diss_est):
         diss_est,
         dw,
         dd8,
-        origin=origin,
+        origin=utils.origin,
         domain=spec.grid.domain_shape_compute(),
     )

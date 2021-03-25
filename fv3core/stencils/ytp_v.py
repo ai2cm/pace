@@ -4,6 +4,7 @@ import fv3core._config as spec
 import fv3core.stencils.yppm as yppm
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 from .yppm import (
     compute_al,
@@ -17,34 +18,45 @@ from .yppm import (
 )
 
 
-sd = utils.sd
-
-
 @gtstencil()
 def get_flux_v_stencil(
-    q: sd, c: sd, al: sd, rdy: sd, bl: sd, br: sd, flux: sd, mord: int
+    q: FloatField,
+    c: FloatField,
+    al: FloatField,
+    rdy: FloatFieldIJ,
+    bl: FloatField,
+    br: FloatField,
+    flux: FloatField,
+    mord: int,
 ):
     with computation(PARALLEL), interval(...):
         b0 = get_b0(bl=bl, br=br)
         smt5 = is_smt5_mord5(bl, br) if mord == 5 else is_smt5_most_mords(bl, br, b0)
         tmp = smt5[0, -1, 0] + smt5 * (smt5[0, -1, 0] == 0)
-        cfl = c * rdy[0, -1, 0] if c > 0 else c * rdy
+        cfl = c * rdy[0, -1] if c > 0 else c * rdy
         fx0 = fx1_fn(cfl, br, b0, bl)
         # TODO: add [0, 0, 0] when gt4py bug is fixed
         flux = final_flux(c, q, fx0, tmp)  # noqa
 
 
 @gtstencil()
-def get_flux_v_ord8plus(q: sd, c: sd, rdy: sd, bl: sd, br: sd, flux: sd):
+def get_flux_v_ord8plus(
+    q: FloatField,
+    c: FloatField,
+    rdy: FloatFieldIJ,
+    bl: FloatField,
+    br: FloatField,
+    flux: FloatField,
+):
     with computation(PARALLEL), interval(...):
         b0 = get_b0(bl, br)
-        cfl = c * rdy[0, -1, 0] if c > 0 else c * rdy
+        cfl = c * rdy[0, -1] if c > 0 else c * rdy
         fx1 = fx1_fn(cfl, br, b0, bl)
         flux = q[0, -1, 0] + fx1 if c > 0.0 else q + fx1
 
 
 @gtstencil()
-def br_bl_main(q: sd, al: sd, bl: sd, br: sd):
+def br_bl_main(q: FloatField, al: FloatField, bl: FloatField, br: FloatField):
     with computation(PARALLEL), interval(...):
         # TODO: add [0, 0, 0] when gt4py bug is fixed
         bl = get_bl(al=al, q=q)  # noqa
@@ -52,7 +64,7 @@ def br_bl_main(q: sd, al: sd, bl: sd, br: sd):
 
 
 @gtstencil()
-def br_bl_corner(br: sd, bl: sd):
+def br_bl_corner(br: FloatField, bl: FloatField):
     with computation(PARALLEL), interval(...):
         bl = 0
         br = 0

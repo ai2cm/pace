@@ -14,28 +14,31 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import ArgSpec, gtstencil, state_inputs
 from fv3core.stencils import c2l_ord
 from fv3core.stencils.basic_operations import copy_stencil
+from fv3core.utils.typing import FloatField, FloatFieldK
 from fv3gfs.util import CubedSphereCommunicator, NullTimer
 
 
-sd = utils.sd
-
-
 @gtstencil()
-def init_ph_columns(ak: sd, bk: sd, pfull: sd, ph1: sd, ph2: sd, p_ref: float):
+def init_ph_columns(
+    ak: FloatFieldK,
+    bk: FloatFieldK,
+    pfull: FloatField,
+    p_ref: float,
+):
     with computation(PARALLEL), interval(...):
         ph1 = ak + bk * p_ref
-        ph2 = ak[0, 0, 1] + bk[0, 0, 1] * p_ref
+        ph2 = ak[1] + bk[1] * p_ref
         pfull = (ph2 - ph1) / log(ph2 / ph1)
 
 
 @gtstencil()
-def pt_adjust(pkz: sd, dp1: sd, q_con: sd, pt: sd):
+def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatField):
     with computation(PARALLEL), interval(...):
         pt = pt * (1.0 + dp1) * (1.0 - q_con) / pkz
 
 
 @gtstencil()
-def set_omega(delp: sd, delz: sd, w: sd, omga: sd):
+def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatField):
     with computation(PARALLEL), interval(...):
         omga = delp / delz * w
 
@@ -53,16 +56,29 @@ def tracers_dict(state):
 
 def fvdyn_temporaries(shape):
     grid = spec.grid
+    origin = grid.full_origin()
     tmps = {}
     halo_vars = ["cappa"]
-    storage_vars = ["te_2d", "dp1", "ph1", "ph2", "dp1", "wsd"]
-    column_vars = ["pfull", "gz", "cvm"]
-    plane_vars = ["te_2d", "te0_2d"]
+    storage_vars = ["te_2d", "dp1", "pfull", "cvm", "wsd_3d"]
+    column_vars = ["gz"]
+    plane_vars = ["te_2d", "te0_2d", "wsd"]
     utils.storage_dict(
         tmps,
-        halo_vars + storage_vars + column_vars + plane_vars,
+        halo_vars + storage_vars,
         shape,
-        grid.full_origin(),
+        origin,
+    )
+    utils.storage_dict(
+        tmps,
+        plane_vars,
+        shape[0:2],
+        origin[0:2],
+    )
+    utils.storage_dict(
+        tmps,
+        column_vars,
+        (shape[2],),
+        (origin[2],),
     )
     for q in halo_vars:
         grid.quantity_dict_update(tmps, q)
@@ -75,12 +91,13 @@ def compute_preamble(state, comm):
         state.ak,
         state.bk,
         state.pfull,
-        state.ph1,
-        state.ph2,
         spec.namelist.p_ref,
-        origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute(add=(1, 1, 0)),
+        origin=(0, 0, 0),
+        domain=(1, 1, grid.domain_shape_compute()[2]),
     )
+
+    state.pfull = utils.make_storage_data(state.pfull[0, 0, :], state.ak.shape, (0,))
+
     if spec.namelist.hydrostatic:
         raise Exception("Hydrostatic is not implemented")
     print("FV Setup", grid.rank)
@@ -332,14 +349,15 @@ def compute(state, comm, timer=NullTimer()):
     # "remapping" loop (because there's one remapping per iteration)
     for n_map in range(k_split):
         state.n_map = n_map + 1
-        if n_map == k_split - 1:
-            last_step = True
+        last_step = n_map == k_split - 1
         do_dyn(state, comm, timer)
         if grid.npz > 4:
             kord_tracer = [spec.namelist.kord_tr] * state.nq
             kord_tracer[6] = 9
             # do_omega = spec.namelist.hydrostatic and last_step
             print("Remapping", grid.rank)
+            # TODO: Determine a better way to do this, polymorphic fields perhaps?
+            state.wsd_3d[:] = utils.reshape(state.wsd, state.wsd_3d.shape)
             with timer.clock("Remapping"):
                 lagrangian_to_eulerian.compute(
                     state.tracers,
@@ -360,7 +378,7 @@ def compute(state, comm, timer=NullTimer()):
                     state.phis,
                     state.te0_2d,
                     state.ps,
-                    state.wsd,
+                    state.wsd_3d,
                     state.omga,
                     state.ak,
                     state.bk,
@@ -379,4 +397,5 @@ def compute(state, comm, timer=NullTimer()):
                 )
             if last_step:
                 post_remap(state, comm)
+            state.wsd[:] = state.wsd_3d[:, :, 0]
     wrapup(state, comm)

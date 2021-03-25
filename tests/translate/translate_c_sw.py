@@ -121,6 +121,7 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
             domain=self.grid.domain_shape_compute(add=(1, 1, 0)),
         )
         return self.slice_output({"divg_d": inputs["divg_d"]})
+        return self.slice_output({"divg_d": inputs["divg_d"]})
 
 
 class TranslateCirculation_Cgrid(TranslateFortranData2Py):

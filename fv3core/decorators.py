@@ -4,7 +4,7 @@ import hashlib
 import os
 import pickle
 import types
-from typing import Any, BinaryIO, Callable, Dict, Optional
+from typing import Any, BinaryIO, Callable, Dict, Optional, Tuple
 
 import gt4py
 import gt4py.storage as gt_storage
@@ -203,6 +203,27 @@ class FV3StencilObject:
                 return True
         return False
 
+    def _get_field_origins(
+        self, origin: Tuple[int], *args, **kwargs
+    ) -> Dict[str, Tuple[int]]:
+        origin_dict = {}
+        field_names = list(self.stencil_object.field_info.keys())
+        field_axes = []
+        for i in range(len(field_names)):
+            field_name = field_names[i]
+            # TODO: assert self.stencil_object.field_info[field_name] is not None
+            if self.stencil_object.field_info[field_name]:
+                field_axes = self.stencil_object.field_info[field_name].axes
+            field_shape = args[i].shape if i < len(args) else kwargs[field_name].shape
+            if field_axes == ["K"]:
+                field_origin = [min(field_shape[0] - 1, origin[2])]
+            else:
+                field_origin = [
+                    min(field_shape[j] - 1, origin[j]) for j in range(len(field_shape))
+                ]
+            origin_dict[field_name] = tuple(field_origin)
+        return origin_dict
+
     def __call__(self, *args, origin: Index3D, domain: Index3D, **kwargs) -> None:
         """Call the stencil, compiling the stencil if necessary.
 
@@ -269,6 +290,7 @@ class FV3StencilObject:
         kwargs["exec_info"] = kwargs.get("exec_info", exec_info)
         kwargs["validate_args"] = kwargs.get("validate_args", utils.validate_args)
         name = f"{self.func.__module__}.{self.func.__name__}"
+
         _maybe_save_report(
             f"{name}-before",
             self.times_called,
@@ -276,7 +298,10 @@ class FV3StencilObject:
             args,
             kwargs,
         )
-        self.stencil_object(*args, **kwargs, origin=origin, domain=domain)
+
+        origin_dict = self._get_field_origins(origin, *args, **kwargs)
+        self.stencil_object(*args, **kwargs, origin=origin_dict, domain=domain)
+
         _maybe_save_report(
             f"{name}-after",
             self.times_called,

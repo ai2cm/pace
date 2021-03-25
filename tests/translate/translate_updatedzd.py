@@ -29,7 +29,5 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        inputs["ndif"] = inputs["ndif"][0, 0, :]
-        inputs["damp_vtd"] = inputs["damp_vtd"][0, 0, :]
         self.compute_func(**inputs)
         return self.slice_output(inputs)
