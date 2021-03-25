@@ -11,5 +11,5 @@ class TranslateXTP_U(TranslateYTP_V):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        xtpu.compute(**inputs)
+        xtpu.compute(inputs["c"], inputs["u"], inputs["flux"])
         return self.slice_output(inputs)
