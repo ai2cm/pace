@@ -15,12 +15,7 @@ class TranslateLastStep(TranslateFortranData2Py):
             "qgraupel": {},
             "pt": {},
             "pkz": {"istart": grid.is_, "jstart": grid.js},
-            "gz": {
-                "serialname": "gz1d",
-                "kstart": grid.is_,
-                "axis": 0,
-                "full_shape": True,
-            },
+            "gz": {"serialname": "gz1d", "kstart": grid.is_, "axis": 0},
         }
         self.in_vars["parameters"] = ["r_vir", "dtmp"]
         self.out_vars = {
@@ -35,4 +30,3 @@ class TranslateLastStep(TranslateFortranData2Py):
             },
             "pt": {},
         }
-        self.write_vars = ["gz"]

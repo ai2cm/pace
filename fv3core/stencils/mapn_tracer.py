@@ -21,6 +21,7 @@ def compute(
     j_2d: Optional[int] = None,
     version: str = "stencil",
 ):
+    fill = spec.namelist.fill
     qs = utils.make_storage_from_shape(pe1.shape, origin=(0, 0, 0))
     (
         dp1,
@@ -73,5 +74,5 @@ def compute(
             domain,
             version,
         )
-    if spec.namelist.fill:
+    if fill:
         fillz.compute(dp2, tracers, i_extent, spec.grid.npz, nq, jslice)

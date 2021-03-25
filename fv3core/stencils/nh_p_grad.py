@@ -4,34 +4,30 @@ import fv3core._config as spec
 import fv3core.stencils.a2b_ord4 as a2b_ord4
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+
+
+sd = utils.sd
+
+
+def grid():
+    return spec.grid
 
 
 @gtstencil()
-def set_k0(pp: FloatField, pk3: FloatField, top_value: float):
+def set_k0(pp: sd, pk3: sd, top_value: float):
     with computation(PARALLEL), interval(...):
         pp[0, 0, 0] = 0.0
         pk3[0, 0, 0] = top_value
 
 
 @gtstencil()
-def CalcWk(pk: FloatField, wk: FloatField):
+def CalcWk(pk: sd, wk: sd):
     with computation(PARALLEL), interval(...):
         wk = pk[0, 0, 1] - pk[0, 0, 0]
 
 
 @gtstencil()
-def CalcU(
-    u: FloatField,
-    du: FloatField,
-    wk: FloatField,
-    wk1: FloatField,
-    gz: FloatField,
-    pk3: FloatField,
-    pp: FloatField,
-    rdx: FloatFieldIJ,
-    dt: float,
-):
+def CalcU(u: sd, du: sd, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rdx: sd, dt: float):
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution
         du = (
@@ -52,21 +48,11 @@ def CalcU(
                 (gz[0, 0, 1] - gz[1, 0, 0]) * (pp[1, 0, 1] - pp[0, 0, 0])
                 + (gz[0, 0, 0] - gz[1, 0, 1]) * (pp[0, 0, 1] - pp[1, 0, 0])
             )
-        ) * rdx
+        ) * rdx[0, 0, 0]
 
 
 @gtstencil()
-def CalcV(
-    v: FloatField,
-    dv: FloatField,
-    wk: FloatField,
-    wk1: FloatField,
-    gz: FloatField,
-    pk3: FloatField,
-    pp: FloatField,
-    rdy: FloatFieldIJ,
-    dt: float,
-):
+def CalcV(v: sd, dv: sd, wk: sd, wk1: sd, gz: sd, pk3: sd, pp: sd, rdy: sd, dt: float):
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution
         dv[0, 0, 0] = (
@@ -87,7 +73,7 @@ def CalcV(
                 (gz[0, 0, 1] - gz[0, 1, 0]) * (pp[0, 1, 1] - pp[0, 0, 0])
                 + (gz[0, 0, 0] - gz[0, 1, 1]) * (pp[0, 0, 1] - pp[0, 1, 0])
             )
-        ) * rdy
+        ) * rdy[0, 0, 0]
 
 
 def compute(u, v, pp, gz, pk3, delp, dt, ptop, akap):

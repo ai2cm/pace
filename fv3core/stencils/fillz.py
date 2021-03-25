@@ -1,5 +1,3 @@
-from typing import Any, Dict, Tuple
-
 import numpy as np
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
@@ -101,14 +99,7 @@ def fix_tracer(
             q = fac * dm / dp if fac * dm / dp > 0.0 else 0.0
 
 
-def compute(
-    dp2: FloatField,
-    tracers: Dict[str, Any],
-    im: int,
-    km: int,
-    nq: int,
-    jslice: Tuple[int],
-):
+def compute(dp2, tracers, im, km, nq, jslice):
     # Same as above, but with multiple tracer fields
     i1 = spec.grid.is_
     js = jslice.start

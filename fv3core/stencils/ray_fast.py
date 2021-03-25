@@ -12,7 +12,7 @@ from gt4py.gtscript import (
 import fv3core._config as spec
 from fv3core.decorators import gtstencil
 from fv3core.stencils.rayleigh_super import SDAY, compute_rf_vals
-from fv3core.utils.typing import FloatField, FloatFieldK
+from fv3core.utils.typing import FloatField
 
 
 @gtscript.function
@@ -32,8 +32,8 @@ def ray_fast_wind(
     u: FloatField,
     v: FloatField,
     w: FloatField,
-    dp: FloatFieldK,
-    pfull: FloatFieldK,
+    dp: FloatField,
+    pfull: FloatField,
     dt: float,
     ptop: float,
     ks: int,
@@ -113,17 +113,9 @@ def ray_fast_wind(
                 w *= rf
 
 
-def compute(
-    u: FloatField,
-    v: FloatField,
-    w: FloatField,
-    dp: FloatFieldK,
-    pfull: FloatFieldK,
-    dt: float,
-    ptop: float,
-    ks: int,
-):
+def compute(u, v, w, dp, pfull, dt, ptop, ks):
     grid = spec.grid
+    namelist = spec.namelist
 
     ray_fast_wind(
         u,
@@ -134,7 +126,7 @@ def compute(
         dt,
         ptop,
         ks,
-        hydrostatic=spec.namelist.hydrostatic,
+        hydrostatic=namelist.hydrostatic,
         origin=grid.compute_origin(),
         domain=(grid.nic + 1, grid.njc + 1, grid.npz),
     )

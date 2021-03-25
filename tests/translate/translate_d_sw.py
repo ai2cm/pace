@@ -3,7 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 from fv3core.decorators import gtstencil
 from fv3core.stencils import d_sw
 from fv3core.testing import TranslateFortranData2Py
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3core.utils.typing import FloatField
 
 
 class TranslateD_SW(TranslateFortranData2Py):
@@ -72,8 +72,8 @@ class TranslateUbKE(TranslateFortranData2Py):
     def ubke(
         uc: FloatField,
         vc: FloatField,
-        cosa: FloatFieldIJ,
-        rsina: FloatFieldIJ,
+        cosa: FloatField,
+        rsina: FloatField,
         ut: FloatField,
         ub: FloatField,
         dt4: float,
@@ -110,8 +110,8 @@ class TranslateVbKE(TranslateFortranData2Py):
     def vbke(
         vc: FloatField,
         uc: FloatField,
-        cosa: FloatFieldIJ,
-        rsina: FloatFieldIJ,
+        cosa: FloatField,
+        rsina: FloatField,
         vt: FloatField,
         vb: FloatField,
         dt4: float,

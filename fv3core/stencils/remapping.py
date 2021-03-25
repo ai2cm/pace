@@ -1,56 +1,58 @@
-from typing import Dict, List
-
 import fv3core._config as spec
 import fv3core.stencils.remapping_part1 as remap_part1
 import fv3core.stencils.remapping_part2 as remap_part2
 import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+
+
+sd = utils.sd
 
 
 def compute(
-    tracers: Dict[str, "FloatField"],
-    pt: FloatField,
-    delp: FloatField,
-    delz: FloatField,
-    peln: FloatField,
-    u: FloatField,
-    v: FloatField,
-    w: FloatField,
-    ua: FloatField,
-    va: FloatField,
-    cappa: FloatField,
-    q_con: FloatField,
-    pkz: FloatField,
-    pk: FloatField,
-    pe: FloatField,
-    hs: FloatFieldIJ,
-    te0_2d: FloatFieldIJ,
-    ps: FloatFieldIJ,
-    wsd: FloatField,
-    omga: FloatField,
-    ak: FloatFieldK,
-    bk: FloatFieldK,
-    pfull: FloatFieldK,
-    dp1: FloatField,
-    ptop: float,
-    akap: float,
-    zvir: float,
-    last_step: bool,
-    consv_te: float,
-    mdt: float,
-    bdt: float,
-    kord_tracer: List[int],
-    do_adiabatic_init: bool,
-    nq: int,
+    tracers,
+    pt,
+    delp,
+    delz,
+    peln,
+    u,
+    v,
+    w,
+    ua,
+    va,
+    cappa,
+    q_con,
+    pkz,
+    pk,
+    pe,
+    hs,
+    te0_2d,
+    ps,
+    wsd,
+    omga,
+    ak,
+    bk,
+    pfull,
+    dp1,
+    ptop,
+    akap,
+    zvir,
+    last_step,
+    consv_te,
+    mdt,
+    bdt,
+    kord_tracer,
+    do_adiabatic_init,
+    nq,
 ):
     """
     Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
     coordinate levels.
     """
     grid = spec.grid
-    gz: FloatField = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
-    cvm: FloatField = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
 
+    gz = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
+    cvm = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
+    te_2d = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
+    zsum1 = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
     remap_part1.compute(
         tracers,
         pt,
@@ -103,9 +105,11 @@ def compute(
         pk,
         pe,
         hs,
+        te_2d,
         te0_2d,
         dp1,
         cvm,
+        zsum1,
         pfull,
         ptop,
         akap,

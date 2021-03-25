@@ -1,4 +1,5 @@
-import fv3core.utils.gt4py_utils as utils
+import numpy as np
+
 from fv3core.testing import TranslateFortranData2Py
 from fv3core.utils import corners
 
@@ -24,8 +25,8 @@ class TranslateFillCorners(TranslateFortranData2Py):
         self.out_vars = {"divg_d": {"iend": grid.ied + 1, "jend": grid.jed + 1}}
 
     def compute_from_storage(self, inputs):
-        nord_column = inputs["nord_col"][:]
-        for nord in utils.unique(nord_column):
+        nord_column = inputs["nord_col"].data[0, 0, :]
+        for nord in np.unique(nord_column):
             if nord != 0:
                 ki = [i for i in range(self.grid.npz) if nord_column[i] == nord]
                 if inputs["dir"] == 1:
@@ -77,11 +78,11 @@ class TranslateFillCornersVector(TranslateFortranData2Py):
         self.out_vars = {"vc": grid.y3d_domain_dict(), "uc": grid.x3d_domain_dict()}
 
     def compute(self, inputs):
-        nord_column = inputs["nord_col"][:]
+        nord_column = inputs["nord_col"][0, 0, :]
         self.make_storage_data_input_vars(inputs)
-        for nord in utils.unique(nord_column):
+        for nord in np.unique(nord_column):
             if nord != 0:
-                ki = [k for k in range(self.grid.npz) if nord_column[0, 0, k] == nord]
+                ki = [i for i in range(self.grid.npz) if nord_column[i] == nord]
                 corners.fill_corners_dgrid(
                     inputs["vc"],
                     inputs["uc"],

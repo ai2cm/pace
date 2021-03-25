@@ -4,7 +4,6 @@ import fv3core._config as spec
 import fv3core.stencils.xppm as xppm
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 from .xppm import (
     compute_al,
@@ -24,18 +23,14 @@ from .xppm import (
 )
 
 
+sd = utils.sd
+
+
 @gtstencil()
-def get_flux_u_stencil_old(
-    q: FloatField,
-    c: FloatField,
-    al: FloatField,
-    rdx: FloatFieldIJ,
-    flux: FloatField,
-    mord: int,
-):
+def get_flux_u_stencil_old(q: sd, c: sd, al: sd, rdx: sd, flux: sd, mord: int):
     with computation(PARALLEL), interval(...):
         bl, br, b0, tmp = flux_intermediates(q, al, mord)
-        cfl = c * rdx[-1, 0] if c > 0 else c * rdx
+        cfl = c * rdx[-1, 0, 0] if c > 0 else c * rdx
         fx0 = fx1_fn(cfl, br, b0, bl)
         # TODO: add [0, 0, 0] when gt4py bug is fixed
         flux = final_flux(c, q, fx0, tmp)  # noqa
@@ -43,43 +38,29 @@ def get_flux_u_stencil_old(
 
 @gtstencil()
 def get_flux_u_stencil(
-    q: FloatField,
-    c: FloatField,
-    al: FloatField,
-    rdx: FloatFieldIJ,
-    bl: FloatField,
-    br: FloatField,
-    flux: FloatField,
-    mord: int,
+    q: sd, c: sd, al: sd, rdx: sd, bl: sd, br: sd, flux: sd, mord: int
 ):
     with computation(PARALLEL), interval(...):
         b0 = get_b0(bl=bl, br=br)
         smt5 = is_smt5_mord5(bl, br) if mord == 5 else is_smt5_most_mords(bl, br, b0)
         tmp = smt5[-1, 0, 0] + smt5 * (smt5[-1, 0, 0] == 0)
-        cfl = c * rdx[-1, 0] if c > 0 else c * rdx
+        cfl = c * rdx[-1, 0, 0] if c > 0 else c * rdx
         fx0 = fx1_fn(cfl, br, b0, bl)
         # TODO: add [0, 0, 0] when gt4py bug is fixed
         flux = final_flux(c, q, fx0, tmp)  # noqa
 
 
 @gtstencil()
-def get_flux_u_ord8plus(
-    q: FloatField,
-    c: FloatField,
-    rdx: FloatFieldIJ,
-    bl: FloatField,
-    br: FloatField,
-    flux: FloatField,
-):
+def get_flux_u_ord8plus(q: sd, c: sd, rdx: sd, bl: sd, br: sd, flux: sd):
     with computation(PARALLEL), interval(...):
         b0 = get_b0(bl, br)
-        cfl = c * rdx[-1, 0] if c > 0 else c * rdx
+        cfl = c * rdx[-1, 0, 0] if c > 0 else c * rdx
         fx1 = fx1_fn(cfl, br, b0, bl)
         flux = q[-1, 0, 0] + fx1 if c > 0.0 else q + fx1
 
 
 @gtstencil()
-def br_bl_main(q: FloatField, al: FloatField, bl: FloatField, br: FloatField):
+def br_bl_main(q: sd, al: sd, bl: sd, br: sd):
     with computation(PARALLEL), interval(...):
         # TODO: add [0, 0, 0] when gt4py bug is fixed
         bl = get_bl(al=al, q=q)  # noqa
@@ -87,7 +68,7 @@ def br_bl_main(q: FloatField, al: FloatField, bl: FloatField, br: FloatField):
 
 
 @gtstencil()
-def br_bl_corner(br: FloatField, bl: FloatField):
+def br_bl_corner(br: sd, bl: sd):
     with computation(PARALLEL), interval(...):
         bl = 0
         br = 0
@@ -273,9 +254,7 @@ def compute(c, u, v, flux):
 
 
 @gtstencil()
-def west_edge_iord8plus_0(
-    q: FloatField, dxa: FloatFieldIJ, dm: FloatField, bl: FloatField, br: FloatField
-):
+def west_edge_iord8plus_0(q: sd, dxa: sd, dm: sd, bl: sd, br: sd):
     with computation(PARALLEL), interval(...):
         bl = s14 * dm[-1, 0, 0] + s11 * (q[-1, 0, 0] - q)
         xt = xt_dxa_edge_0_base(q, dxa)
@@ -283,9 +262,7 @@ def west_edge_iord8plus_0(
 
 
 @gtstencil()
-def west_edge_iord8plus_1(
-    q: FloatField, dxa: FloatFieldIJ, dm: FloatField, bl: FloatField, br: FloatField
-):
+def west_edge_iord8plus_1(q: sd, dxa: sd, dm: sd, bl: sd, br: sd):
     with computation(PARALLEL), interval(...):
         xt = xt_dxa_edge_1_base(q, dxa)
         bl = xt - q
@@ -294,9 +271,7 @@ def west_edge_iord8plus_1(
 
 
 @gtstencil()
-def east_edge_iord8plus_1(
-    q: FloatField, dxa: FloatFieldIJ, dm: FloatField, bl: FloatField, br: FloatField
-):
+def east_edge_iord8plus_1(q: sd, dxa: sd, dm: sd, bl: sd, br: sd):
     with computation(PARALLEL), interval(...):
         xt = s15 * q + s11 * q[-1, 0, 0] + s14 * dm[-1, 0, 0]
         bl = xt - q
@@ -305,9 +280,7 @@ def east_edge_iord8plus_1(
 
 
 @gtstencil()
-def east_edge_iord8plus_2(
-    q: FloatField, dxa: FloatFieldIJ, dm: FloatField, bl: FloatField, br: FloatField
-):
+def east_edge_iord8plus_2(q: sd, dxa: sd, dm: sd, bl: sd, br: sd):
     with computation(PARALLEL), interval(...):
         xt = xt_dxa_edge_1_base(q, dxa)
         bl = xt - q

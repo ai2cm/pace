@@ -1,5 +1,3 @@
-from typing import Optional
-
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
@@ -7,79 +5,54 @@ import fv3core._config as spec
 import fv3core.stencils.a2b_ord4 as a2b_ord4
 import fv3core.stencils.basic_operations as basic
 import fv3core.utils.corners as corners
+import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy_stencil
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+
+
+sd = utils.sd
 
 
 @gtstencil()
-def ptc_main(
-    u: FloatField,
-    va: FloatField,
-    cosa_v: FloatFieldIJ,
-    sina_v: FloatFieldIJ,
-    dyc: FloatFieldIJ,
-    ptc: FloatField,
-):
+def ptc_main(u: sd, va: sd, cosa_v: sd, sina_v: sd, dyc: sd, ptc: sd):
     with computation(PARALLEL), interval(...):
-        ptc = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
+        ptc[0, 0, 0] = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
 
 
 @gtstencil()
-def ptc_y_edge(
-    u: FloatField,
-    vc: FloatField,
-    dyc: FloatFieldIJ,
-    sin_sg4: FloatFieldIJ,
-    sin_sg2: FloatFieldIJ,
-    ptc: FloatField,
-):
+def ptc_y_edge(u: sd, vc: sd, dyc: sd, sin_sg4: sd, sin_sg2: sd, ptc: sd):
     with computation(PARALLEL), interval(...):
-        ptc = u * dyc * sin_sg4[0, -1] if vc > 0 else u * dyc * sin_sg2
+        ptc[0, 0, 0] = u * dyc * sin_sg4[0, -1, 0] if vc > 0 else u * dyc * sin_sg2
 
 
 @gtstencil()
-def vorticity_main(
-    v: FloatField,
-    ua: FloatField,
-    cosa_u: FloatFieldIJ,
-    sina_u: FloatFieldIJ,
-    dxc: FloatFieldIJ,
-    vort: FloatField,
-):
+def vorticity_main(v: sd, ua: sd, cosa_u: sd, sina_u: sd, dxc: sd, vort: sd):
     with computation(PARALLEL), interval(...):
-        vort = (v - 0.5 * (ua[-1, 0, 0] + ua) * cosa_u) * dxc * sina_u
+        vort[0, 0, 0] = (v - 0.5 * (ua[-1, 0, 0] + ua) * cosa_u) * dxc * sina_u
 
 
 @gtstencil()
-def vorticity_x_edge(
-    v: FloatField,
-    uc: FloatField,
-    dxc: FloatFieldIJ,
-    sin_sg3: FloatFieldIJ,
-    sin_sg1: FloatFieldIJ,
-    vort: FloatField,
-):
+def vorticity_x_edge(v: sd, uc: sd, dxc: sd, sin_sg3: sd, sin_sg1: sd, vort: sd):
     with computation(PARALLEL), interval(...):
-        vort = v * dxc * sin_sg3[-1, 0] if uc > 0 else v * dxc * sin_sg1
+        vort[0, 0, 0] = v * dxc * sin_sg3[-1, 0, 0] if uc > 0 else v * dxc * sin_sg1
 
 
 @gtstencil()
-def delpc_main(vort: FloatField, ptc: FloatField, delpc: FloatField):
+def delpc_main(vort: sd, ptc: sd, delpc: sd):
     with computation(PARALLEL), interval(...):
-        delpc = vort[0, -1, 0] - vort + ptc[-1, 0, 0] - ptc
+        delpc[0, 0, 0] = vort[0, -1, 0] - vort + ptc[-1, 0, 0] - ptc
 
 
 @gtstencil()
-def corner_south_remove_extra_term(vort: FloatField, delpc: FloatField):
+def corner_south_remove_extra_term(vort: sd, delpc: sd):
     with computation(PARALLEL), interval(...):
-        delpc -= vort[0, -1, 0]
+        delpc[0, 0, 0] = delpc - vort[0, -1, 0]
 
 
 @gtstencil()
-def corner_north_remove_extra_term(vort: FloatField, delpc: FloatField):
+def corner_north_remove_extra_term(vort: sd, delpc: sd):
     with computation(PARALLEL), interval(...):
-        delpc += vort
+        delpc[0, 0, 0] = delpc + vort
 
 
 @gtscript.function
@@ -93,30 +66,30 @@ def damp_tmp(q, da_min_c, d2_bg, dddmp):
 
 @gtstencil()
 def damping_nord0_stencil(
-    rarea_c: FloatFieldIJ,
-    delpc: FloatField,
-    vort: FloatField,
-    ke: FloatField,
+    rarea_c: sd,
+    delpc: sd,
+    vort: sd,
+    ke: sd,
     da_min_c: float,
     d2_bg: float,
     dddmp: float,
     dt: float,
 ):
     with computation(PARALLEL), interval(...):
-        delpc = rarea_c * delpc
+        delpc[0, 0, 0] = rarea_c * delpc
         delpcdt = delpc * dt
         absdelpcdt = delpcdt if delpcdt >= 0 else -delpcdt
         damp = damp_tmp(absdelpcdt, da_min_c, d2_bg, dddmp)
-        vort = damp * delpc
-        ke += vort
+        vort[0, 0, 0] = damp * delpc
+        ke[0, 0, 0] = ke + vort
 
 
 @gtstencil()
 def damping_nord_highorder_stencil(
-    vort: FloatField,
-    ke: FloatField,
-    delpc: FloatField,
-    divg_d: FloatField,
+    vort: sd,
+    ke: sd,
+    delpc: sd,
+    divg_d: sd,
     da_min_c: float,
     d2_bg: float,
     dddmp: float,
@@ -129,25 +102,25 @@ def damping_nord_highorder_stencil(
 
 
 @gtstencil()
-def vc_from_divg(divg_d: FloatField, divg_u: FloatFieldIJ, vc: FloatField):
+def vc_from_divg(divg_d: sd, divg_u: sd, vc: sd):
     with computation(PARALLEL), interval(...):
         vc[0, 0, 0] = (divg_d[1, 0, 0] - divg_d) * divg_u
 
 
 @gtstencil()
-def uc_from_divg(divg_d: FloatField, divg_v: FloatFieldIJ, uc: FloatField):
+def uc_from_divg(divg_d: sd, divg_v: sd, uc: sd):
     with computation(PARALLEL), interval(...):
         uc[0, 0, 0] = (divg_d[0, 1, 0] - divg_d) * divg_v
 
 
 @gtstencil()
-def redo_divg_d(uc: FloatField, vc: FloatField, divg_d: FloatField):
+def redo_divg_d(uc: sd, vc: sd, divg_d: sd):
     with computation(PARALLEL), interval(...):
         divg_d[0, 0, 0] = uc[0, -1, 0] - uc + vc[-1, 0, 0] - vc
 
 
 @gtstencil()
-def smagorinksy_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: float):
+def smagorinksy_diffusion_approx(delpc: sd, vort: sd, absdt: float):
     with computation(PARALLEL), interval(...):
         vort = absdt * (delpc ** 2.0 + vort ** 2.0) ** 0.5
 
@@ -171,24 +144,24 @@ def vorticity_calc(wk, vort, delpc, dt, nord, kstart, nk):
 
 
 def compute(
-    u: FloatField,
-    v: FloatField,
-    va: FloatField,
-    ptc: FloatField,
-    vort: FloatField,
-    ua: FloatField,
-    divg_d: FloatField,
-    vc: FloatField,
-    uc: FloatField,
-    delpc: FloatField,
-    ke: FloatField,
-    wk: FloatField,
-    d2_bg: float,
-    dt: float,
-    nord: float,
-    kstart: int = 0,
-    nk: Optional[int] = None,
-) -> None:
+    u,
+    v,
+    va,
+    ptc,
+    vort,
+    ua,
+    divg_d,
+    vc,
+    uc,
+    delpc,
+    ke,
+    wk,
+    d2_bg,
+    dt,
+    nord,
+    kstart=0,
+    nk=None,
+):
     grid = spec.grid
     if nk is None:
         nk = grid.npz - kstart
@@ -316,23 +289,8 @@ def compute(
 
 
 def damping_zero_order(
-    u: FloatField,
-    v: FloatField,
-    va: FloatField,
-    ptc: FloatField,
-    vort: FloatField,
-    ua: FloatField,
-    vc: FloatField,
-    uc: FloatField,
-    delpc: FloatField,
-    ke: FloatField,
-    d2_bg: float,
-    dt: float,
-    is2: int,
-    ie1: int,
-    kstart: int,
-    nk: int,
-) -> None:
+    u, v, va, ptc, vort, ua, vc, uc, delpc, ke, d2_bg, dt, is2, ie1, kstart, nk
+):
     grid = spec.grid
     if not grid.nested:
         # TODO: ptc and vort are equivalent, but x vs y, consolidate if possible.

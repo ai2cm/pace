@@ -1,4 +1,4 @@
-from typing import Dict
+import logging
 
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
@@ -23,10 +23,12 @@ import fv3core.utils.corners as corners
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3core.utils.typing import FloatField
 
 
 dcon_threshold = 1e-5
+
+logger = logging.getLogger("fv3ser")
 
 
 def grid():
@@ -49,7 +51,7 @@ def flux_integral(w, delp, gx, gy, rarea):
 
 @gtstencil()
 def flux_adjust(
-    w: FloatField, delp: FloatField, gx: FloatField, gy: FloatField, rarea: FloatFieldIJ
+    w: FloatField, delp: FloatField, gx: FloatField, gy: FloatField, rarea: FloatField
 ):
     with computation(PARALLEL), interval(...):
         w = flux_integral(w, delp, gx, gy, rarea)
@@ -99,7 +101,7 @@ def all_corners_ke(ke, u, v, ut, vt, dt):
 def not_inlineq_pressure(
     gx: FloatField,
     gy: FloatField,
-    rarea: FloatFieldIJ,
+    rarea: FloatField,
     fx: FloatField,
     fy: FloatField,
     pt: FloatField,
@@ -119,15 +121,15 @@ def not_inlineq_pressure(
 def not_inlineq_pressure_and_vbke(
     gx: FloatField,
     gy: FloatField,
-    rarea: FloatFieldIJ,
+    rarea: FloatField,
     fx: FloatField,
     fy: FloatField,
     pt: FloatField,
     delp: FloatField,
     vc: FloatField,
     uc: FloatField,
-    cosa: FloatFieldIJ,
-    rsina: FloatFieldIJ,
+    cosa: FloatField,
+    rsina: FloatField,
     vt: FloatField,
     vb: FloatField,
     dt4: float,
@@ -216,7 +218,7 @@ def coriolis_force_correction(zh: FloatField, z_rat: FloatField):
 @gtstencil()
 def zrat_vorticity(
     wk: FloatField,
-    f0: FloatFieldIJ,
+    f0: FloatField,
     z_rat: FloatField,
     vort: FloatField,
     do_f3d: bool,
@@ -226,7 +228,7 @@ def zrat_vorticity(
         if do_f3d and not hydrostatic:
             vort[0, 0, 0] = wk + f0 * z_rat
         else:
-            vort = wk[0, 0, 0] + f0[0, 0]
+            vort = wk[0, 0, 0] + f0[0, 0, 0]
 
 
 @gtscript.function
@@ -260,7 +262,7 @@ def heat_diss(
     fx2: FloatField,
     fy2: FloatField,
     w: FloatField,
-    rarea: FloatFieldIJ,
+    rarea: FloatField,
     heat_source: FloatField,
     diss_est: FloatField,
     dw: FloatField,
@@ -281,10 +283,10 @@ def heat_source_from_vorticity_damping(
     u: FloatField,
     v: FloatField,
     delp: FloatField,
-    rsin2: FloatFieldIJ,
-    cosa_s: FloatFieldIJ,
-    rdx: FloatFieldIJ,
-    rdy: FloatFieldIJ,
+    rsin2: FloatField,
+    cosa_s: FloatField,
+    rdx: FloatField,
+    rdy: FloatField,
     heat_source: FloatField,
     dissipation_estimate: FloatField,
     kinetic_energy_fraction_to_damp: float,
@@ -345,9 +347,9 @@ def ke_horizontal_vorticity(
     vb: FloatField,
     ut: FloatField,
     vt: FloatField,
-    dx: FloatFieldIJ,
-    dy: FloatFieldIJ,
-    rarea: FloatFieldIJ,
+    dx: FloatField,
+    dy: FloatField,
+    rarea: FloatField,
     vorticity: FloatField,
     dt: float,
 ):
@@ -623,8 +625,8 @@ def mult_ubke(
     ke: FloatField,
     uc: FloatField,
     vc: FloatField,
-    cosa: FloatFieldIJ,
-    rsina: FloatFieldIJ,
+    cosa: FloatField,
+    rsina: FloatField,
     ut: FloatField,
     ub: FloatField,
     dt4: float,
@@ -651,33 +653,35 @@ def vbke(vc, uc, cosa, rsina, vt, vb, dt4, dt5):
 
 
 def d_sw(
-    delpc: FloatField,
-    delp: FloatField,
-    ptc: FloatField,
-    pt: FloatField,
-    u: FloatField,
-    v: FloatField,
-    w: FloatField,
-    uc: FloatField,
-    vc: FloatField,
-    ua: FloatField,
-    va: FloatField,
-    divgd: FloatField,
-    xflux: FloatField,
-    yflux: FloatField,
-    cx: FloatField,
-    cy: FloatField,
-    crx: FloatField,
-    cry: FloatField,
-    xfx: FloatField,
-    yfx: FloatField,
-    q_con: FloatField,
-    z_rat: FloatField,
-    heat_s: FloatField,
-    diss_e: FloatField,
-    dt: float,
-    column_namelist: Dict[int, Dict[str, float]],
+    delpc,
+    delp,
+    ptc,
+    pt,
+    u,
+    v,
+    w,
+    uc,
+    vc,
+    ua,
+    va,
+    divgd,
+    xflux,
+    yflux,
+    cx,
+    cy,
+    crx,
+    cry,
+    xfx,
+    yfx,
+    q_con,
+    z_rat,
+    heat_s,
+    diss_e,
+    dt,
+    column_namelist,
 ):
+
+    logger.debug("Parameters that vary with k: {}".format(column_namelist))
     shape = heat_s.shape
     ub = utils.make_storage_from_shape(shape, grid().compute_origin())
     vb = utils.make_storage_from_shape(shape, grid().compute_origin())

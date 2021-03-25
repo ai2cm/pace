@@ -79,7 +79,6 @@ class TranslateRemapping(TranslateFortranData2Py):
             "nq",
         ]
         self.out_vars = {}
-        self.write_vars = ["wsd"]
         for k in [
             "pe",
             "pkz",

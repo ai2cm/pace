@@ -202,13 +202,11 @@ class Grid:
             return None
         return num + 1
 
-    def slice_dict(self, d, ndim: int = 3):
-        iters: str = "ijk" if ndim > 1 else "k"
-        return tuple(
-            [
-                slice(d[f"{iters[i]}start"], self.add_one(d[f"{iters[i]}end"]))
-                for i in range(ndim)
-            ]
+    def slice_dict(self, d):
+        return (
+            slice(d["istart"], self.add_one(d["iend"])),
+            slice(d["jstart"], self.add_one(d["jend"])),
+            slice(d["kstart"], self.add_one(d["kend"])),
         )
 
     def default_domain_dict(self):
@@ -319,20 +317,12 @@ class Grid:
         return np.copy(var[i_index:, :, :]), np.copy(var[:, j_index:, :])
 
     def insert_left_edge(self, var, edge_data_i, i_index, edge_data_j, j_index):
-        if len(var.shape) < 3:
-            var[:i_index, :] = edge_data_i
-            var[:, :j_index] = edge_data_j
-        else:
-            var[:i_index, :, :] = edge_data_i
-            var[:, :j_index, :] = edge_data_j
+        var[:i_index, :, :] = edge_data_i
+        var[:, :j_index, :] = edge_data_j
 
     def insert_right_edge(self, var, edge_data_i, i_index, edge_data_j, j_index):
-        if len(var.shape) < 3:
-            var[i_index:, :] = edge_data_i
-            var[:, j_index:] = edge_data_j
-        else:
-            var[i_index:, :, :] = edge_data_i
-            var[:, j_index:, :] = edge_data_j
+        var[i_index:, :, :] = edge_data_i
+        var[:, j_index:, :] = edge_data_j
 
     def uvar_edge_halo(self, var):
         return self.copy_right_edge(var, self.ie + 2, self.je + 1)
@@ -353,40 +343,22 @@ class Grid:
         self.insert_right_edge(vvar, v_edge_i, self.ie + 1, v_edge_j, self.je + 2)
 
     def overwrite_edges(self, var, edgevar, left_i_index, left_j_index):
-        if len(var.shape) < 3:
-            self.insert_left_edge(
-                var,
-                edgevar[:left_i_index, :],
-                left_i_index,
-                edgevar[:, :left_j_index],
-                left_j_index,
-            )
-            right_i_index = self.ie + left_i_index
-            right_j_index = self.ie + left_j_index
-            self.insert_right_edge(
-                var,
-                edgevar[right_i_index:, :],
-                right_i_index,
-                edgevar[:, right_j_index:],
-                right_j_index,
-            )
-        else:
-            self.insert_left_edge(
-                var,
-                edgevar[:left_i_index, :, :],
-                left_i_index,
-                edgevar[:, :left_j_index, :],
-                left_j_index,
-            )
-            right_i_index = self.ie + left_i_index
-            right_j_index = self.ie + left_j_index
-            self.insert_right_edge(
-                var,
-                edgevar[right_i_index:, :, :],
-                right_i_index,
-                edgevar[:, right_j_index:, :],
-                right_j_index,
-            )
+        self.insert_left_edge(
+            var,
+            edgevar[:left_i_index, :, :],
+            left_i_index,
+            edgevar[:, :left_j_index, :],
+            left_j_index,
+        )
+        right_i_index = self.ie + left_i_index
+        right_j_index = self.ie + left_j_index
+        self.insert_right_edge(
+            var,
+            edgevar[right_i_index:, :, :],
+            right_i_index,
+            edgevar[:, right_j_index:, :],
+            right_j_index,
+        )
 
     def compute_origin(self, add: Tuple[int, int, int] = (0, 0, 0)):
         """Start of the compute domain (e.g. (halo, halo, 0))"""

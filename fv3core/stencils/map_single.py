@@ -230,9 +230,6 @@ def lagrangian_contributions_stencil(
     ptop = utils.make_storage_from_shape(shape2d)
     pbot = utils.make_storage_from_shape(shape2d)
 
-    jsize = shape2d[1]
-    jslice2d = slice(min(jslice.start, jsize - 1), min(jslice.stop, jsize))
-
     for k_eul in range(km):
 
         # TODO (olivere): This is hacky

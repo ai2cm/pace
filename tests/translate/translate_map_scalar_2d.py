@@ -28,7 +28,6 @@ class TranslateMapScalar_2d(TranslateFortranData2Py):
         self.out_vars = {"pt": {}}
         self.is_ = grid.is_
         self.ie = grid.ie
-        self.write_vars = ["qs"]
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)

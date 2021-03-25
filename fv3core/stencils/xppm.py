@@ -5,7 +5,6 @@ import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import floor_cap, sign
-from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 from .yppm import (
     c1,
@@ -25,6 +24,7 @@ from .yppm import (
 )
 
 
+sd = utils.sd
 origin = (2, 0, 0)
 
 
@@ -33,30 +33,36 @@ def grid():
 
 
 @gtstencil(externals={"p1": p1, "p2": p2})
-def main_al(q: FloatField, al: FloatField):
+def main_al(q: sd, al: sd):
     with computation(PARALLEL), interval(0, None):
         al[0, 0, 0] = p1 * (q[-1, 0, 0] + q) + p2 * (q[-2, 0, 0] + q[1, 0, 0])
 
 
 @gtstencil(externals={"c1": c1, "c2": c2, "c3": c3})
-def al_y_edge_0(q: FloatField, dxa: FloatField, al: FloatField):
+def al_y_edge_0(q: sd, dxa: sd, al: sd):
     with computation(PARALLEL), interval(0, None):
         al[0, 0, 0] = c1 * q[-2, 0, 0] + c2 * q[-1, 0, 0] + c3 * q
 
 
 @gtstencil(externals={"c1": c1, "c2": c2, "c3": c3})
-def al_y_edge_1(q: FloatField, dxa: FloatFieldIJ, al: FloatField):
+def al_y_edge_1(q: sd, dxa: sd, al: sd):
     with computation(PARALLEL), interval(0, None):
         al[0, 0, 0] = 0.5 * (
-            ((2.0 * dxa[-1, 0] + dxa[-2, 0]) * q[-1, 0, 0] - dxa[-1, 0] * q[-2, 0, 0])
-            / (dxa[-2, 0] + dxa[-1, 0])
-            + ((2.0 * dxa[0, 0] + dxa[1, 0]) * q[0, 0, 0] - dxa[0, 0] * q[1, 0, 0])
-            / (dxa[0, 0] + dxa[1, 0])
+            (
+                (2.0 * dxa[-1, 0, 0] + dxa[-2, 0, 0]) * q[-1, 0, 0]
+                - dxa[-1, 0, 0] * q[-2, 0, 0]
+            )
+            / (dxa[-2, 0, 0] + dxa[-1, 0, 0])
+            + (
+                (2.0 * dxa[0, 0, 0] + dxa[1, 0, 0]) * q[0, 0, 0]
+                - dxa[0, 0, 0] * q[1, 0, 0]
+            )
+            / (dxa[0, 0, 0] + dxa[1, 0, 0])
         )
 
 
 @gtstencil(externals={"c1": c1, "c2": c2, "c3": c3})
-def al_y_edge_2(q: FloatField, dxa: FloatField, al: FloatField):
+def al_y_edge_2(q: sd, dxa: sd, al: sd):
     with computation(PARALLEL), interval(0, None):
         al[0, 0, 0] = c3 * q[-1, 0, 0] + c2 * q[0, 0, 0] + c1 * q[1, 0, 0]
 
@@ -93,9 +99,7 @@ def final_flux(c, q, fx1, tmp):
 
 
 @gtstencil()
-def get_flux(
-    q: FloatField, c: FloatField, al: FloatField, flux: FloatField, *, mord: int
-):
+def get_flux(q: sd, c: sd, al: sd, flux: sd, *, mord: int):
     with computation(PARALLEL), interval(0, None):
         bl, br, b0, tmp = flux_intermediates(q, al, mord)
         fx1 = fx1_fn(c, br, b0, bl)
@@ -111,9 +115,7 @@ def get_flux(
 
 
 @gtstencil()
-def finalflux_ord8plus(
-    q: FloatField, c: FloatField, bl: FloatField, br: FloatField, flux: FloatField
-):
+def finalflux_ord8plus(q: sd, c: sd, bl: sd, br: sd, flux: sd):
     with computation(PARALLEL), interval(...):
         b0 = get_b0(bl, br)
         fx1 = fx1_fn(c, br, b0, bl)
@@ -121,7 +123,7 @@ def finalflux_ord8plus(
 
 
 @gtstencil()
-def dm_iord8plus(q: FloatField, al: FloatField, dm: FloatField):
+def dm_iord8plus(q: sd, al: sd, dm: sd):
     with computation(PARALLEL), interval(...):
         xt = 0.25 * (q[1, 0, 0] - q[-1, 0, 0])
         dqr = max(max(q, q[-1, 0, 0]), q[1, 0, 0]) - q
@@ -130,19 +132,13 @@ def dm_iord8plus(q: FloatField, al: FloatField, dm: FloatField):
 
 
 @gtstencil()
-def al_iord8plus(q: FloatField, al: FloatField, dm: FloatField, r3: float):
+def al_iord8plus(q: sd, al: sd, dm: sd, r3: float):
     with computation(PARALLEL), interval(...):
         al = 0.5 * (q[-1, 0, 0] + q) + r3 * (dm[-1, 0, 0] - dm)
 
 
 @gtstencil()
-def blbr_iord8(
-    q: FloatField,
-    al: FloatField,
-    bl: FloatField,
-    br: FloatField,
-    dm: FloatField,
-):
+def blbr_iord8(q: sd, al: sd, bl: sd, br: sd, dm: sd):
     with computation(PARALLEL), interval(...):
         # al, dm = al_iord8plus_fn(q, al, dm, r3)
         xt = 2.0 * dm
@@ -153,18 +149,21 @@ def blbr_iord8(
 @gtscript.function
 def xt_dxa_edge_0_base(q, dxa):
     return 0.5 * (
-        ((2.0 * dxa + dxa[-1, 0]) * q - dxa * q[-1, 0, 0]) / (dxa[-1, 0] + dxa)
-        + ((2.0 * dxa[1, 0] + dxa[2, 0]) * q[1, 0, 0] - dxa[1, 0] * q[2, 0, 0])
-        / (dxa[1, 0] + dxa[2, 0])
+        ((2.0 * dxa + dxa[-1, 0, 0]) * q - dxa * q[-1, 0, 0]) / (dxa[-1, 0, 0] + dxa)
+        + ((2.0 * dxa[1, 0, 0] + dxa[2, 0, 0]) * q[1, 0, 0] - dxa[1, 0, 0] * q[2, 0, 0])
+        / (dxa[1, 0, 0] + dxa[2, 0, 0])
     )
 
 
 @gtscript.function
 def xt_dxa_edge_1_base(q, dxa):
     return 0.5 * (
-        ((2.0 * dxa[-1, 0] + dxa[-2, 0]) * q[-1, 0, 0] - dxa[-1, 0] * q[-2, 0, 0])
-        / (dxa[-2, 0] + dxa[-1, 0])
-        + ((2.0 * dxa + dxa[1, 0]) * q - dxa * q[1, 0, 0]) / (dxa + dxa[1, 0])
+        (
+            (2.0 * dxa[-1, 0, 0] + dxa[-2, 0, 0]) * q[-1, 0, 0]
+            - dxa[-1, 0, 0] * q[-2, 0, 0]
+        )
+        / (dxa[-2, 0, 0] + dxa[-1, 0, 0])
+        + ((2.0 * dxa + dxa[1, 0, 0]) * q - dxa * q[1, 0, 0]) / (dxa + dxa[1, 0, 0])
     )
 
 
@@ -193,14 +192,7 @@ def xt_dxa_edge_1(q, dxa, xt_minmax):
 
 
 @gtstencil()
-def west_edge_iord8plus_0(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-    bl: FloatField,
-    br: FloatField,
-    xt_minmax: bool,
-):
+def west_edge_iord8plus_0(q: sd, dxa: sd, dm: sd, bl: sd, br: sd, xt_minmax: bool):
     with computation(PARALLEL), interval(...):
         bl = s14 * dm[-1, 0, 0] + s11 * (q[-1, 0, 0] - q)
         xt = xt_dxa_edge_0(q, dxa, xt_minmax)
@@ -208,14 +200,7 @@ def west_edge_iord8plus_0(
 
 
 @gtstencil()
-def west_edge_iord8plus_1(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-    bl: FloatField,
-    br: FloatField,
-    xt_minmax: bool,
-):
+def west_edge_iord8plus_1(q: sd, dxa: sd, dm: sd, bl: sd, br: sd, xt_minmax: bool):
     with computation(PARALLEL), interval(...):
         xt = xt_dxa_edge_1(q, dxa, xt_minmax)
         bl = xt - q
@@ -224,14 +209,7 @@ def west_edge_iord8plus_1(
 
 
 @gtstencil()
-def west_edge_iord8plus_2(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-    al: FloatField,
-    bl: FloatField,
-    br: FloatField,
-):
+def west_edge_iord8plus_2(q: sd, dxa: sd, dm: sd, al: sd, bl: sd, br: sd):
     with computation(PARALLEL), interval(...):
         xt = s15 * q[-1, 0, 0] + s11 * q - s14 * dm
         bl = xt - q
@@ -239,14 +217,7 @@ def west_edge_iord8plus_2(
 
 
 @gtstencil()
-def east_edge_iord8plus_0(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-    al: FloatField,
-    bl: FloatField,
-    br: FloatField,
-):
+def east_edge_iord8plus_0(q: sd, dxa: sd, dm: sd, al: sd, bl: sd, br: sd):
     with computation(PARALLEL), interval(...):
         bl = al - q
         xt = s15 * q[1, 0, 0] + s11 * q + s14 * dm
@@ -254,14 +225,7 @@ def east_edge_iord8plus_0(
 
 
 @gtstencil()
-def east_edge_iord8plus_1(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-    bl: FloatField,
-    br: FloatField,
-    xt_minmax: bool,
-):
+def east_edge_iord8plus_1(q: sd, dxa: sd, dm: sd, bl: sd, br: sd, xt_minmax: bool):
     with computation(PARALLEL), interval(...):
         xt = s15 * q + s11 * q[-1, 0, 0] + s14 * dm[-1, 0, 0]
         bl = xt - q
@@ -270,14 +234,7 @@ def east_edge_iord8plus_1(
 
 
 @gtstencil()
-def east_edge_iord8plus_2(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-    bl: FloatField,
-    br: FloatField,
-    xt_minmax: bool,
-):
+def east_edge_iord8plus_2(q: sd, dxa: sd, dm: sd, bl: sd, br: sd, xt_minmax: bool):
     with computation(PARALLEL), interval(...):
         xt = xt_dxa_edge_1(q, dxa, xt_minmax)
         bl = xt - q

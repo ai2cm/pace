@@ -5,24 +5,18 @@ import fv3core._config as spec
 import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 def grid():
     return spec.grid
 
 
+sd = utils.sd
 stencil_corner = True
 
 
 @gtstencil()
-def main_ut(
-    uc: FloatField,
-    vc: FloatField,
-    cosa_u: FloatFieldIJ,
-    rsin_u: FloatFieldIJ,
-    ut: FloatField,
-):
+def main_ut(uc: sd, vc: sd, cosa_u: sd, rsin_u: sd, ut: sd):
     with computation(PARALLEL), interval(...):
         ut[0, 0, 0] = (
             uc - 0.25 * cosa_u * (vc[-1, 0, 0] + vc + vc[-1, 1, 0] + vc[0, 1, 0])
@@ -30,20 +24,13 @@ def main_ut(
 
 
 @gtstencil()
-def ut_y_edge(
-    uc: FloatField,
-    sin_sg1: FloatFieldIJ,
-    sin_sg3: FloatFieldIJ,
-    ut: FloatField,
-    *,
-    dt: float,
-):
+def ut_y_edge(uc: sd, sin_sg1: sd, sin_sg3: sd, ut: sd, *, dt: float):
     with computation(PARALLEL), interval(0, -1):
-        ut[0, 0, 0] = (uc / sin_sg3[-1, 0]) if (uc * dt > 0) else (uc / sin_sg1)
+        ut[0, 0, 0] = (uc / sin_sg3[-1, 0, 0]) if (uc * dt > 0) else (uc / sin_sg1)
 
 
 @gtstencil()
-def ut_x_edge(uc: FloatField, cosa_u: FloatFieldIJ, vt: FloatField, ut: FloatField):
+def ut_x_edge(uc: sd, cosa_u: sd, vt: sd, ut: sd):
     with computation(PARALLEL), interval(0, -1):
         ut[0, 0, 0] = uc - 0.25 * cosa_u * (
             vt[-1, 0, 0] + vt[0, 0, 0] + vt[-1, 1, 0] + vt[0, 1, 0]
@@ -51,13 +38,7 @@ def ut_x_edge(uc: FloatField, cosa_u: FloatFieldIJ, vt: FloatField, ut: FloatFie
 
 
 @gtstencil()
-def main_vt(
-    uc: FloatField,
-    vc: FloatField,
-    cosa_v: FloatFieldIJ,
-    rsin_v: FloatFieldIJ,
-    vt: FloatField,
-):
+def main_vt(uc: sd, vc: sd, cosa_v: sd, rsin_v: sd, vt: sd):
     with computation(PARALLEL), interval(...):
         vt[0, 0, 0] = (
             vc - 0.25 * cosa_v * (uc[0, -1, 0] + uc[1, -1, 0] + uc + uc[1, 0, 0])
@@ -65,7 +46,7 @@ def main_vt(
 
 
 @gtstencil()
-def vt_y_edge(vc: FloatField, cosa_v: FloatFieldIJ, ut: FloatField, vt: FloatField):
+def vt_y_edge(vc: sd, cosa_v: sd, ut: sd, vt: sd):
     with computation(PARALLEL), interval(0, -1):
         vt[0, 0, 0] = vc - 0.25 * cosa_v * (
             ut[0, -1, 0] + ut[1, -1, 0] + ut[0, 0, 0] + ut[1, 0, 0]
@@ -73,16 +54,9 @@ def vt_y_edge(vc: FloatField, cosa_v: FloatFieldIJ, ut: FloatField, vt: FloatFie
 
 
 @gtstencil()
-def vt_x_edge(
-    vc: FloatField,
-    sin_sg2: FloatFieldIJ,
-    sin_sg4: FloatFieldIJ,
-    vt: FloatField,
-    *,
-    dt: float,
-):
+def vt_x_edge(vc: sd, sin_sg2: sd, sin_sg4: sd, vt: sd, *, dt: float):
     with computation(PARALLEL), interval(0, -1):
-        vt[0, 0, 0] = (vc / sin_sg4[0, -1]) if (vc * dt > 0) else (vc / sin_sg2)
+        vt[0, 0, 0] = (vc / sin_sg4[0, -1, 0]) if (vc * dt > 0) else (vc / sin_sg2)
 
 
 @gtscript.function
@@ -92,21 +66,21 @@ def ra_x_func(area, xfx_adv):
 
 @gtstencil()
 def xfx_adv_stencil(
-    ut: FloatField,
-    rdxa: FloatFieldIJ,
-    area: FloatFieldIJ,
-    dy: FloatFieldIJ,
-    sin_sg1: FloatFieldIJ,
-    sin_sg3: FloatFieldIJ,
-    crx_adv: FloatField,
-    xfx_adv: FloatField,
-    ra_x: FloatField,
+    ut: sd,
+    rdxa: sd,
+    area: sd,
+    dy: sd,
+    sin_sg1: sd,
+    sin_sg3: sd,
+    crx_adv: sd,
+    xfx_adv: sd,
+    ra_x: sd,
     dt: float,
 ):
     with computation(PARALLEL), interval(...):
         prod = dt * ut
-        crx_adv = prod * rdxa[-1, 0] if prod > 0 else prod * rdxa
-        xfx_adv = dy * prod * sin_sg3[-1, 0] if prod > 0 else dy * prod * sin_sg1
+        crx_adv = prod * rdxa[-1, 0, 0] if prod > 0 else prod * rdxa
+        xfx_adv = dy * prod * sin_sg3[-1, 0, 0] if prod > 0 else dy * prod * sin_sg1
         ra_x = ra_x_func(area, xfx_adv)
 
 
@@ -117,21 +91,21 @@ def ra_y_func(area, yfx_adv):
 
 @gtstencil()
 def yfx_adv_stencil(
-    vt: FloatField,
-    rdya: FloatFieldIJ,
-    area: FloatFieldIJ,
-    dx: FloatFieldIJ,
-    sin_sg2: FloatFieldIJ,
-    sin_sg4: FloatFieldIJ,
-    cry_adv: FloatField,
-    yfx_adv: FloatField,
-    ra_y: FloatField,
+    vt: sd,
+    rdya: sd,
+    area: sd,
+    dx: sd,
+    sin_sg2: sd,
+    sin_sg4: sd,
+    cry_adv: sd,
+    yfx_adv: sd,
+    ra_y: sd,
     dt: float,
 ):
     with computation(PARALLEL), interval(...):
         prod = dt * vt
-        cry_adv = prod * rdya[0, -1] if prod > 0 else prod * rdya
-        yfx_adv = dx * prod * sin_sg4[0, -1] if prod > 0 else dx * prod * sin_sg2
+        cry_adv = prod * rdya[0, -1, 0] if prod > 0 else prod * rdya
+        yfx_adv = dx * prod * sin_sg4[0, -1, 0] if prod > 0 else dx * prod * sin_sg2
         ra_y = ra_y_func(area, yfx_adv)
 
 
@@ -325,14 +299,7 @@ def update_vt_x_edge(vc, sin_sg2, sin_sg4, vt, dt):
 # -------------------- CORNERS-----------------
 
 
-def corner_ut_stencil(
-    uc: FloatField,
-    vc: FloatField,
-    ut: FloatField,
-    vt: FloatField,
-    cosa_u: FloatFieldIJ,
-    cosa_v: FloatFieldIJ,
-):
+def corner_ut_stencil(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
     from __externals__ import ux, uy, vi, vj, vx, vy
 
     with computation(PARALLEL), interval(...):
@@ -340,25 +307,25 @@ def corner_ut_stencil(
             (
                 uc[0, 0, 0]
                 - 0.25
-                * cosa_u[0, 0]
+                * cosa_u[0, 0, 0]
                 * (
                     vt[vi, vy, 0]
                     + vt[vx, vy, 0]
                     + vt[vx, vj, 0]
                     + vc[vi, vj, 0]
                     - 0.25
-                    * cosa_v[vi, vj]
+                    * cosa_v[vi, vj, 0]
                     * (ut[ux, 0, 0] + ut[ux, uy, 0] + ut[0, uy, 0])
                 )
             )
             * 1.0
-            / (1.0 - 0.0625 * cosa_u[0, 0] * cosa_v[vi, vj])
+            / (1.0 - 0.0625 * cosa_u[0, 0, 0] * cosa_v[vi, vj, 0])
         )
 
 
 # for the non-stencil version of filling corners
 def get_damp(cosa_u, cosa_v, ui, uj, vi, vj):
-    return 1.0 / (1.0 - 0.0625 * cosa_u[ui, uj] * cosa_v[vi, vj])
+    return 1.0 / (1.0 - 0.0625 * cosa_u[ui, uj, :] * cosa_v[vi, vj, :])
 
 
 def index_offset(lower, u, south=True):
@@ -820,14 +787,7 @@ def nw_corner(uc, vc, ut, vt, cosa_u, cosa_v, corner_shape):
 
 
 # @gtstencil()
-# def west_corner_ut_lowest(
-#     uc: FloatField,
-#     vc: FloatField,
-#     ut: FloatField,
-#     vt: FloatField,
-#     cosa_u: FloatField,
-#     cosa_v: FloatField
-# ):
+# def west_corner_ut_lowest(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
 #     with computation(PARALLEL), interval(...):
 #         damp_u = 1.0 / (1.0 - 0.0625 * cosa_u[0, 0, 0] * cosa_v[-1, 0, 0])
 #         ut[0, 0, 0] = (
@@ -847,14 +807,7 @@ def nw_corner(uc, vc, ut, vt, cosa_u, cosa_v, corner_shape):
 
 
 # @gtstencil()
-# def west_corner_ut_adjacent(
-#     uc: FloatField,
-#     vc: FloatField,
-#     ut: FloatField,
-#     vt: FloatField,
-#     cosa_u: FloatFieldIJ,
-#     cosa_v: FloatFieldIJ,
-# ):
+# def west_corner_ut_adjacent(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
 #     with computation(PARALLEL), interval(...):
 #         damp = 1.0 / (1.0 - 0.0625 * cosa_u[0, 0, 0] * cosa_v[-1, 1, 0])
 #         ut[0, 0, 0] = (
@@ -873,14 +826,7 @@ def nw_corner(uc, vc, ut, vt, cosa_u, cosa_v, corner_shape):
 
 
 # @gtstencil()
-# def south_corner_vt_left(
-#     uc: FloatField,
-#     vc: FloatField,
-#     ut: FloatField,
-#     vt: FloatField,
-#     cosa_u: FloatFieldIJ,
-#     cosa_v: FloatFieldIJ
-# ):
+# def south_corner_vt_left(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
 #     with computation(PARALLEL), interval(...):
 #         damp_v = 1.0 / (1.0 - 0.0625 * cosa_u[0, -1, 0] * cosa_v[0, 0, 0])
 #         vt[0, 0, 0] = (
@@ -900,14 +846,7 @@ def nw_corner(uc, vc, ut, vt, cosa_u, cosa_v, corner_shape):
 
 
 # @gtstencil()
-# def south_corner_vt_adjacent(
-#     uc: FloatField,
-#     vc: FloatField,
-#     ut: FloatField,
-#     vt: FloatField,
-#     cosa_u: FloatFieldIJ,
-#     cosa_v: FloatFieldIJ,
-# ):
+# def south_corner_vt_adjacent(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
 #     with computation(PARALLEL), interval(...):
 #         damp_v = 1.0 / (1.0 - 0.0625 * cosa_u[1, -1, 0] * cosa_v[0, 0, 0])
 #         vt[0, 0, 0] = (
@@ -926,14 +865,7 @@ def nw_corner(uc, vc, ut, vt, cosa_u, cosa_v, corner_shape):
 
 
 # @gtstencil()
-# def east_corner_ut_lowest(
-#     uc: FloatField,
-#     vc: FloatField,
-#     ut: FloatField,
-#     vt: FloatField,
-#     cosa_u: FloatFieldIJ,
-#     cosa_v: FloatFieldIJ
-# ):
+# def east_corner_ut_lowest(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
 #     with computation(PARALLEL), interval(...):
 #         damp_u = 1.0 / (1.0 - 0.0625 * cosa_u[0, 0, 0] * cosa_v[0, 0, 0])
 #         ut[0, 0, 0] = (
@@ -951,14 +883,7 @@ def nw_corner(uc, vc, ut, vt, cosa_u, cosa_v, corner_shape):
 
 
 # @gtstencil()
-# def east_corner_ut_adjacent(
-#     uc: FloatField,
-#     vc: FloatField,
-#     ut: FloatField,
-#     vt: FloatField,
-#     cosa_u: FloatFieldIJ,
-#     cosa_v: FloatFieldIJ
-# ):
+# def east_corner_ut_adjacent(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
 #     with computation(PARALLEL), interval(...):
 #         damp = 1.0 / (1.0 - 0.0625 * cosa_u[0, 0, 0] * cosa_v[0, 1, 0])
 #         ut[0, 0, 0] = (
@@ -976,14 +901,7 @@ def nw_corner(uc, vc, ut, vt, cosa_u, cosa_v, corner_shape):
 
 
 # @gtstencil()
-# def north_corner_vt_left(
-#     uc: FloatField,
-#     vc: FloatField,
-#     ut: FloatField,
-#     vt: FloatField,
-#     cosa_u: FloatFieldIJ,
-#     cosa_v: FloatFieldIJ
-# ):
+# def north_corner_vt_left(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
 #     with computation(PARALLEL), interval(...):
 #         damp_v = 1.0 / (1.0 - 0.0625 * cosa_u[0, 0, 0] * cosa_v[0, 0, 0])
 #         vt[0, 0, 0] = (
@@ -1001,14 +919,7 @@ def nw_corner(uc, vc, ut, vt, cosa_u, cosa_v, corner_shape):
 
 
 # @gtstencil()
-# def north_corner_vt_adjacent(
-#     uc: FloatField,
-#     vc: FloatField,
-#     ut: FloatField,
-#     vt: FloatField,
-#     cosa_u: FloatFieldIJ,
-#     cosa_v: FloatFieldIJ
-# ):
+# def north_corner_vt_adjacent(uc: sd, vc: sd, ut: sd, vt: sd, cosa_u: sd, cosa_v: sd):
 #     with computation(PARALLEL), interval(...):
 #         damp_v = 1.0 / (1.0 - 0.0625 * cosa_u[1, 0, 0] * cosa_v[0, 0, 0])
 #         vt[0, 0, 0] = (
