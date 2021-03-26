@@ -182,3 +182,4 @@ if [ $status1 -ne 0 -o $status2 -ne 0 ] ; then
 else
     echo "performance run sucessful"
 fi
+python examples/standalone/benchmarks/collect_memory_usage_data.py . $githash
