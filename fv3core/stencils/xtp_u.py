@@ -9,8 +9,9 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
-from fv3core.decorators import gtstencil
+import fv3core.utils.global_config as global_config
 from fv3core.stencils import xppm, yppm
+from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -58,7 +59,7 @@ def _compute_stencil(
     dxa: FloatFieldIJ,
     rdx: FloatFieldIJ,
 ):
-    from __externals__ import i_end, i_start, iord, j_end, j_start, namelist
+    from __externals__ import i_end, i_start, iord, j_end, j_start
 
     with computation(PARALLEL), interval(...):
 
@@ -86,8 +87,6 @@ def _compute_stencil(
             # {
             bl, br = xppm.blbr_iord8(u, al, dm)
             # }
-
-            assert __INLINED(namelist.grid_type < 3)
             # {
             with horizontal(region[i_start - 1, :]):
                 bl, br = xppm.west_edge_iord8plus_0(u, dxa, dm)
@@ -123,37 +122,49 @@ def _compute_stencil(
         flux = _get_flux(u, courant, rdx, bl, br)
 
 
-def compute(c: FloatField, u: FloatField, flux: FloatField):
-    """
-    Compute flux of kinetic energy in x-dir.
-
-    Args:
-        c (in): Courant number in flux form
-        u (in): x-dir wind on D-grid
-        flux (out): Flux of kinetic energy
-    """
-    grid = spec.grid
-    iord = spec.namelist.hord_mt
-    if iord not in (5, 6, 7, 8):
-        raise NotImplementedError(
-            "Currently xtp_v is only supported for hord_mt == 5,6,7,8"
+class XTP_U:
+    def __init__(self, namelist):
+        iord = spec.namelist.hord_mt
+        if iord not in (5, 6, 7, 8):
+            raise NotImplementedError(
+                "Currently xtp_v is only supported for hord_mt == 5,6,7,8"
+            )
+        grid = spec.grid
+        self.origin = grid.compute_origin()
+        self.domain = grid.domain_shape_compute(add=(1, 1, 0))
+        self.dx = grid.dx
+        self.dxa = grid.dxa
+        self.rdx = grid.rdx
+        ax_offsets = axis_offsets(grid, self.origin, self.domain)
+        assert namelist.grid_type < 3
+        self.stencil = gtscript.stencil(
+            definition=_compute_stencil,
+            externals={
+                "iord": iord,
+                "mord": iord,
+                "xt_minmax": False,
+                **ax_offsets,
+            },
+            backend=global_config.get_backend(),
+            rebuild=global_config.get_rebuild(),
         )
 
-    stencil = gtstencil(
-        definition=_compute_stencil,
-        externals={
-            "iord": iord,
-            "mord": iord,
-            "xt_minmax": False,
-        },
-    )
-    stencil(
-        c,
-        u,
-        flux,
-        grid.dx,
-        grid.dxa,
-        grid.rdx,
-        origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute(add=(1, 1, 0)),
-    )
+    def __call__(self, c: FloatField, u: FloatField, flux: FloatField):
+        """
+        Compute flux of kinetic energy in x-dir.
+
+        Args:
+            c (in): Courant number in flux form
+            u (in): x-dir wind on D-grid
+            flux (out): Flux of kinetic energy
+        """
+        self.stencil(
+            c,
+            u,
+            flux,
+            self.dx,
+            self.dxa,
+            self.rdx,
+            origin=self.origin,
+            domain=self.domain,
+        )

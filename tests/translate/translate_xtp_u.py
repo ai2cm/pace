@@ -1,4 +1,5 @@
-import fv3core.stencils.xtp_u as xtpu
+import fv3core._config as spec
+import fv3core.stencils.xtp_u as xtp_u
 
 from .translate_ytp_v import TranslateYTP_V
 
@@ -6,10 +7,11 @@ from .translate_ytp_v import TranslateYTP_V
 class TranslateXTP_U(TranslateYTP_V):
     def __init__(self, grid):
         super().__init__(grid)
+        self.in_vars["data_vars"]["u"] = {}
         self.in_vars["data_vars"]["c"]["serialname"] = "ub"
         self.in_vars["data_vars"]["flux"]["serialname"] = "vb"
 
-    def compute(self, inputs):
-        self.make_storage_data_input_vars(inputs)
-        xtpu.compute(inputs["c"], inputs["u"], inputs["flux"])
-        return self.slice_output(inputs)
+    def compute_from_storage(self, inputs):
+        xtp_obj = xtp_u.XTP_U(spec.namelist)
+        xtp_obj(inputs["c"], inputs["u"], inputs["flux"])
+        return inputs

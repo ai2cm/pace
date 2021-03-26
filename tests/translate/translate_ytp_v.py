@@ -1,4 +1,5 @@
-import fv3core.stencils.ytp_v as ytpv
+import fv3core._config as spec
+import fv3core.stencils.ytp_v as ytp_v
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -9,11 +10,11 @@ class TranslateYTP_V(TranslateFortranData2Py):
         c_info["serialname"] = "vb"
         flux_info = self.grid.compute_dict_buffer_2d()
         flux_info["serialname"] = "ub"
-        self.in_vars["data_vars"] = {"c": c_info, "u": {}, "v": {}, "flux": flux_info}
+        self.in_vars["data_vars"] = {"c": c_info, "v": {}, "flux": flux_info}
         self.in_vars["parameters"] = []
         self.out_vars = {"flux": flux_info}
 
-    def compute(self, inputs):
-        self.make_storage_data_input_vars(inputs)
-        ytpv.compute(inputs["c"], inputs["v"], inputs["flux"])
-        return self.slice_output(inputs)
+    def compute_from_storage(self, inputs):
+        ytp_obj = ytp_v.YTP_V(spec.namelist)
+        ytp_obj(inputs["c"], inputs["v"], inputs["flux"])
+        return inputs

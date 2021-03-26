@@ -9,8 +9,9 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
-from fv3core.decorators import gtstencil
+import fv3core.utils.global_config as global_config
 from fv3core.stencils import yppm
+from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -56,7 +57,7 @@ def _compute_stencil(
     dya: FloatFieldIJ,
     rdy: FloatFieldIJ,
 ):
-    from __externals__ import i_end, i_start, j_end, j_start, jord, namelist
+    from __externals__ import i_end, i_start, j_end, j_start, jord
 
     with computation(PARALLEL), interval(...):
 
@@ -84,8 +85,6 @@ def _compute_stencil(
             # {
             bl, br = yppm.blbr_jord8(v, al, dm)
             # }
-
-            assert __INLINED(namelist.grid_type < 3)
             # {
             with horizontal(region[:, j_start - 1]):
                 bl, br = yppm.south_edge_jord8plus_0(v, dy, dm)
@@ -121,37 +120,50 @@ def _compute_stencil(
         flux = _get_flux(v, courant, rdy, bl, br)
 
 
-def compute(c: FloatField, v: FloatField, flux: FloatField):
-    """
-    Compute flux of kinetic energy in y-dir.
+class YTP_V:
+    def __init__(self, namelist):
+        jord = spec.namelist.hord_mt
+        if jord not in (5, 6, 7, 8):
+            raise NotImplementedError(
+                "Currently xtp_v is only supported for hord_mt == 5,6,7,8"
+            )
+        grid = spec.grid
+        self.origin = grid.compute_origin()
+        self.domain = grid.domain_shape_compute(add=(1, 1, 0))
+        self.dy = grid.dy
+        self.dya = grid.dya
+        self.rdy = grid.rdy
+        ax_offsets = axis_offsets(grid, self.origin, self.domain)
+        assert namelist.grid_type < 3
+        self.stencil = gtscript.stencil(
+            definition=_compute_stencil,
+            externals={
+                "jord": jord,
+                "mord": jord,
+                "xt_minmax": False,
+                **ax_offsets,
+            },
+            backend=global_config.get_backend(),
+            rebuild=global_config.get_rebuild(),
+        )
 
-    Args:
+    def __call__(self, c: FloatField, v: FloatField, flux: FloatField):
+        """
+        Compute flux of kinetic energy in y-dir.
+
+        Args:
         c (in): Courant number in flux form
         v (in): y-dir wind on Arakawa D-grid
         flux (out): Flux of kinetic energy
-    """
-    grid = spec.grid
-    jord = spec.namelist.hord_mt
-    if jord not in (5, 6, 7, 8):
-        raise NotImplementedError(
-            "Currently ytp_v is only supported for hord_mt == 5,6,7,8"
-        )
+        """
 
-    stencil = gtstencil(
-        definition=_compute_stencil,
-        externals={
-            "jord": jord,
-            "mord": jord,
-            "xt_minmax": False,
-        },
-    )
-    stencil(
-        c,
-        v,
-        flux,
-        grid.dy,
-        grid.dya,
-        grid.rdy,
-        origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute(add=(1, 1, 0)),
-    )
+        self.stencil(
+            c,
+            v,
+            flux,
+            self.dy,
+            self.dya,
+            self.rdy,
+            origin=self.origin,
+            domain=self.domain,
+        )

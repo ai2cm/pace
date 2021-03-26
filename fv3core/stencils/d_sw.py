@@ -17,12 +17,12 @@ import fv3core.stencils.divergence_damping as divdamp
 import fv3core.stencils.flux_capacitor as fluxcap
 import fv3core.stencils.fvtp2d as fvtp2d
 import fv3core.stencils.fxadv as fxadv
-import fv3core.stencils.xtp_u as xtp_u
-import fv3core.stencils.ytp_v as ytp_v
 import fv3core.utils.corners as corners
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.stencils.xtp_u import XTP_U
+from fv3core.stencils.ytp_v import YTP_V
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -828,8 +828,8 @@ def d_sw(
         origin=grid().compute_origin(),
         domain=grid().domain_shape_compute(add=(1, 1, 0)),
     )
-
-    ytp_v.compute(vb, v, ub)
+    ytp_v_obj = utils.cached_stencil_class(YTP_V)(spec.namelist, cache_key="ytp_v")
+    ytp_v_obj(vb, v, ub)
 
     mult_ubke(
         vb,
@@ -845,8 +845,8 @@ def d_sw(
         origin=grid().compute_origin(),
         domain=grid().domain_shape_compute(add=(1, 1, 0)),
     )
-
-    xtp_u.compute(ub, u, vb)
+    xtp_u_obj = utils.cached_stencil_class(XTP_U)(spec.namelist, cache_key="xtp_u")
+    xtp_u_obj(ub, u, vb)
 
     ke_horizontal_vorticity(
         ke,
