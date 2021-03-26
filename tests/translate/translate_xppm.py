@@ -1,3 +1,4 @@
+import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils import xppm
 from fv3core.testing import TranslateFortranData2Py, TranslateGrid
@@ -6,7 +7,6 @@ from fv3core.testing import TranslateFortranData2Py, TranslateGrid
 class TranslateXPPM(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = xppm.compute_flux
         self.in_vars["data_vars"] = {
             "q": {"serialname": "qx", "jstart": "jfirst"},
             "c": {"serialname": "cx", "istart": grid.is_},
@@ -34,6 +34,8 @@ class TranslateXPPM(TranslateFortranData2Py):
     def compute(self, inputs):
         self.process_inputs(inputs)
         inputs["xflux"] = utils.make_storage_from_shape(inputs["q"].shape)
+        self.compute_func = xppm.XPPM(spec.namelist, int(inputs["iord"]))
+        del inputs["iord"]
         self.compute_func(**inputs)
         return self.slice_output(inputs)
 

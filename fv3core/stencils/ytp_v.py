@@ -9,8 +9,8 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
-import fv3core.stencils.yppm as yppm
 from fv3core.decorators import gtstencil
+from fv3core.stencils import yppm
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 

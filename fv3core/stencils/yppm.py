@@ -11,8 +11,10 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
+import fv3core.utils.global_config as global_config
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import sign
+from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -277,7 +279,6 @@ def compute_al(q: FloatField, dya: FloatFieldIJ):
     from __externals__ import j_end, j_start, jord
 
     assert __INLINED(jord < 8), "Not implemented"
-
     al = p1 * (q[0, -1, 0] + q) + p2 * (q[0, -2, 0] + q[0, 1, 0])
 
     if __INLINED(jord < 0):
@@ -303,7 +304,7 @@ def compute_al(q: FloatField, dya: FloatFieldIJ):
 
 @gtscript.function
 def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
-    from __externals__ import j_end, j_start, jord, namelist
+    from __externals__ import j_end, j_start, jord
 
     bl = 0.0
     br = 0.0
@@ -312,12 +313,8 @@ def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
     al = al_jord8plus(q, dm)
 
     assert __INLINED(jord == 8)
-    # {
     bl, br = blbr_jord8(q, al, dm)
-    # }
 
-    assert __INLINED(namelist.grid_type < 3)
-    # {
     with horizontal(region[:, j_start - 1]):
         bl, br = south_edge_jord8plus_0(q, dya, dm)
         bl, br = pert_ppm_standard_constraint_fcn(q, bl, br)
@@ -341,7 +338,6 @@ def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
     with horizontal(region[:, j_end + 1]):
         bl, br = north_edge_jord8plus_2(q, dya, dm)
         bl, br = pert_ppm_standard_constraint_fcn(q, bl, br)
-    # }
 
     return bl, br
 
@@ -374,53 +370,65 @@ def _compute_flux_stencil(
             yflux = get_flux_ord8plus(q, courant, bl, br)
 
 
-def compute_flux(
-    q: FloatField,
-    c: FloatField,
-    flux: FloatField,
-    jord: int,
-    ifirst: int,
-    ilast: int,
-    kstart: int = 0,
-    nk: Optional[int] = None,
-):
-    """
-    Compute y-flux using the PPM method.
-
-    Args:
-        q (in): Transported scalar
-        c (in): Courant number
-        flux (out): Flux
-        jord: Method selector
-        ifirst: Starting index of the I-dir compute domain
-        ilast: Final index of the I-dir compute domain
-        kstart: First index of the K-dir compute domain
-        nk: Number of indices in the K-dir compute domain
-    """
-    grid = spec.grid
-    if nk is None:
-        nk = grid.npz - kstart
-    mord = abs(jord)
-    if mord not in [5, 6, 7, 8]:
-        raise NotImplementedError(
-            f"Unimplemented hord value, {jord}. "
-            "Currently only support hord={5, 6, 7, 8}"
+class YPPM:
+    def __init__(self, namelist, jord):
+        grid = spec.grid
+        origin = grid.compute_origin()
+        domain = grid.domain_shape_compute(add=(1, 1, 1))
+        ax_offsets = axis_offsets(spec.grid, origin, domain)
+        assert namelist.grid_type < 3
+        if abs(jord) not in [5, 6, 7, 8]:
+            raise NotImplementedError(
+                f"Unimplemented hord value, {jord}. "
+                "Currently only support hord={5, 6, 7, 8}"
+            )
+        self.npz = grid.npz
+        self.js = grid.js
+        self.njc = grid.njc
+        self.dya = grid.dya
+        self.compute_flux_stencil = gtscript.stencil(
+            definition=_compute_flux_stencil,
+            externals={
+                "jord": jord,
+                "mord": abs(jord),
+                "xt_minmax": True,
+                **ax_offsets,
+            },
+            backend=global_config.get_backend(),
+            rebuild=global_config.get_rebuild(),
         )
 
-    stencil = gtstencil(
-        definition=_compute_flux_stencil,
-        externals={
-            "jord": jord,
-            "mord": mord,
-            "xt_minmax": True,
-        },
-    )
-    ni = ilast - ifirst + 1
-    stencil(
-        q,
-        c,
-        grid.dya,
-        flux,
-        origin=(ifirst, grid.js, kstart),
-        domain=(ni, grid.njc + 1, nk),
-    )
+    def __call__(
+        self,
+        q: FloatField,
+        c: FloatField,
+        flux: FloatField,
+        ifirst: int,
+        ilast: int,
+        kstart: int = 0,
+        nk: Optional[int] = None,
+    ):
+        """
+        Compute y-flux using the PPM method.
+
+        Args:
+            q (in): Transported scalar
+            c (in): Courant number
+            flux (out): Flux
+            ifirst: Starting index of the I-dir compute domain
+            ilast: Final index of the I-dir compute domain
+            kstart: First index of the K-dir compute domain
+            nk: Number of indices in the K-dir compute domain
+        """
+        if nk is None:
+            nk = self.npz - kstart
+
+        ni = ilast - ifirst + 1
+        self.compute_flux_stencil(
+            q,
+            c,
+            self.dya,
+            flux,
+            origin=(ifirst, self.js, kstart),
+            domain=(ni, self.njc + 1, nk),
+        )
