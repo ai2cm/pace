@@ -689,13 +689,21 @@ def d_sw(
     fy = utils.make_storage_from_shape(shape, grid().compute_origin())
     gx = utils.make_storage_from_shape(shape, grid().compute_origin())
     gy = utils.make_storage_from_shape(shape, grid().compute_origin())
+    fvtp2d_dp = utils.cached_stencil_class(fvtp2d.FvTp2d)(
+        spec.namelist, spec.namelist.hord_dp, cache_key="d_sw-dp"
+    )
+    fvtp2d_vt = utils.cached_stencil_class(fvtp2d.FvTp2d)(
+        spec.namelist, spec.namelist.hord_vt, cache_key="d_sw-vt"
+    )
+    fvtp2d_tm = utils.cached_stencil_class(fvtp2d.FvTp2d)(
+        spec.namelist, spec.namelist.hord_tm, cache_key="d_sw-tm"
+    )
     ra_x, ra_y = fxadv.compute(uc, vc, ut, vt, xfx, yfx, crx, cry, dt)
     for kstart, nk in k_bounds():
-        fvtp2d.compute_no_sg(
+        fvtp2d_dp(
             delp,
             crx,
             cry,
-            spec.namelist.hord_dp,
             xfx,
             yfx,
             ra_x,
@@ -716,11 +724,10 @@ def d_sw(
             dw, wk = damp_vertical_wind(
                 w, heat_s, diss_e, dt, column_namelist, kstart, nk
             )
-            fvtp2d.compute_no_sg(
+            fvtp2d_vt(
                 w,
                 crx,
                 cry,
-                spec.namelist.hord_vt,
                 xfx,
                 yfx,
                 ra_x,
@@ -746,11 +753,10 @@ def d_sw(
         )
     # USE_COND
     for kstart, nk in k_bounds():
-        fvtp2d.compute_no_sg(
+        fvtp2d_dp(
             q_con,
             crx,
             cry,
-            spec.namelist.hord_dp,
             xfx,
             yfx,
             ra_x,
@@ -778,11 +784,10 @@ def d_sw(
 
     # END USE_COND
     for kstart, nk in k_bounds():
-        fvtp2d.compute_no_sg(
+        fvtp2d_tm(
             pt,
             crx,
             cry,
-            spec.namelist.hord_tm,
             xfx,
             yfx,
             ra_x,
@@ -913,9 +918,7 @@ def d_sw(
         domain=grid().domain_shape_full(),
     )
 
-    fvtp2d.compute_no_sg(
-        vort, crx, cry, spec.namelist.hord_vt, xfx, yfx, ra_x, ra_y, fx, fy
-    )
+    fvtp2d_vt(vort, crx, cry, xfx, yfx, ra_x, ra_y, fx, fy)
 
     u_and_v_from_ke(
         ke,

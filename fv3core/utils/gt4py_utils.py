@@ -9,6 +9,7 @@ import gt4py.storage as gt_storage
 import numpy as np
 from gt4py import gtscript
 
+import fv3core._config as spec
 import fv3core.utils.global_config as global_config
 from fv3core.utils.mpi import MPI
 from fv3core.utils.typing import DTypes, Field, Float, Int
@@ -353,6 +354,19 @@ def make_storage_from_shape(
         storage_shape_outputs[key] = return_value
 
     return return_value
+
+
+compiled_stencil_classes = {}
+
+
+def cached_stencil_class(class_init):
+    def memoized(*args, **kwargs):
+        key = str(id(class_init)) + str(kwargs.pop("cache_key") + str(spec.grid.rank))
+        if key not in compiled_stencil_classes:
+            compiled_stencil_classes[key] = class_init(*args, **kwargs)
+        return compiled_stencil_classes[key]
+
+    return memoized
 
 
 def make_storage_dict(
