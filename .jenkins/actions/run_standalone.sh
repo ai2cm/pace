@@ -97,8 +97,9 @@ fi
 
 # store cache artifacts (and remove caches afterwards)
 if [ "${SAVE_CACHE}" == "true" ] ; then
-    echo "Copying GT4Py cache directories to ${CACHE_DIR}"
     mkdir -p ${CACHE_DIR}
+    echo "Copying GT4Py cache directories to ${CACHE_DIR}"
+    cp ${ROOT_DIR}/GT4PY_VERSION.txt ${CACHE_DIR}
     rm -rf ${CACHE_DIR}/.gt_cache*
     cp -rp .gt_cache* ${CACHE_DIR}/
 fi

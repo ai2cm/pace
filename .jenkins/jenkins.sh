@@ -128,7 +128,7 @@ module load gcloud
 # get the test data version from the Makefile
 export FORTRAN_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
 if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`grep -m 1 "GT4PY_VERSION" docker/Makefile.image_names | tr -d ' ' | cut -d '=' -f 2`
+    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
 fi
 # Set the SCRATCH directory to the working directory if not set (e.g. for running on gce)
 if [ -z ${SCRATCH} ] ; then

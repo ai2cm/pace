@@ -75,7 +75,7 @@ git submodule update --init external/fv3gfs-util external/daint_venv
 
 # set GT4PY version
 cd $ROOT_DIR
-export GT4PY_VERSION=`grep -m 1 "GT4PY_VERSION" docker/Makefile.image_names | tr -d ' ' | cut -d '=' -f 2`
+export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
 
 # set up the virtual environment
 echo "creating the venv"
