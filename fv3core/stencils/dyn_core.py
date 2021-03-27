@@ -387,7 +387,7 @@ def compute(state, comm):
             reqc_vector.wait()
         # use the computed c-grid winds to evolve the d-grid winds forward
         # by 1 timestep
-        state.nord_v, state.damp_vt = d_sw.compute(
+        d_sw.compute(
             state.vt,
             state.delp,
             state.ptc,
@@ -429,8 +429,6 @@ def compute(state, comm):
 
         if not hydrostatic:
             updatedzd.compute(
-                state.nord_v,
-                state.damp_vt,
                 state.dp_ref,
                 state.zs,
                 state.zh,

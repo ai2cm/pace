@@ -392,9 +392,9 @@ class Grid:
         """Start of the compute domain (e.g. (halo, halo, 0))"""
         return (self.is_ + add[0], self.js + add[1], add[2])
 
-    def full_origin(self):
+    def full_origin(self, add: Tuple[int, int, int] = (0, 0, 0)):
         """Start of the full array including halo points (e.g. (0, 0, 0))"""
-        return (self.isd, self.jsd, 0)
+        return (self.isd + add[0], self.jsd + add[1], add[2])
 
     def default_origin(self):
         # This only exists as a reminder because devs might

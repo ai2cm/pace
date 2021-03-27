@@ -11,7 +11,7 @@ class TranslateFvTp2d(TranslateFortranData2Py):
             "q": {},
             "mass": {},
             "damp_c": {},
-            "nord_column": {},
+            "nord": {"serialname": "nord_column"},
             "crx": {"istart": grid.is_},
             "cry": {"jstart": grid.js},
             "xfx": {"istart": grid.is_},
@@ -30,7 +30,7 @@ class TranslateFvTp2d(TranslateFortranData2Py):
         }
 
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
-    def compute(self, inputs):
+    def compute_from_storage(self, inputs):
         inputs["fx"] = utils.make_storage_from_shape(
             self.maxshape, self.grid.full_origin()
         )
@@ -40,14 +40,13 @@ class TranslateFvTp2d(TranslateFortranData2Py):
         for optional_arg in ["mass", "mfx", "mfy"]:
             if optional_arg not in inputs:
                 inputs[optional_arg] = None
+
         self.compute_func = utils.cached_stencil_class(fvtp2d.FvTp2d)(
             spec.namelist, int(inputs["hord"]), cache_key="regression-test"
         )
         del inputs["hord"]
-        self.in_vars["parameters"] = []
-        return self.column_split_compute(
-            inputs, {"nord": "nord_column", "damp_c": "damp_c"}
-        )
+        self.compute_func(**inputs)
+        return inputs
 
 
 class TranslateFvTp2d_2(TranslateFvTp2d):

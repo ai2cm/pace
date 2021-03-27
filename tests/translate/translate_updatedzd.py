@@ -7,8 +7,6 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
         super().__init__(grid)
         self.compute_func = updatedzd.compute
         self.in_vars["data_vars"] = {
-            "ndif": {},  # column var
-            "damp_vtd": {},  # column var
             "dp0": {},  # column var
             "zs": {},
             "zh": {"kend": grid.npz + 1},

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from gt4py import gtscript
 from gt4py.gtscript import (
     __INLINED,
@@ -279,6 +277,7 @@ def compute_al(q: FloatField, dya: FloatFieldIJ):
     from __externals__ import j_end, j_start, jord
 
     assert __INLINED(jord < 8), "Not implemented"
+
     al = p1 * (q[0, -1, 0] + q) + p2 * (q[0, -2, 0] + q[0, 1, 0])
 
     if __INLINED(jord < 0):
@@ -313,6 +312,7 @@ def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
     al = al_jord8plus(q, dm)
 
     assert __INLINED(jord == 8)
+
     bl, br = blbr_jord8(q, al, dm)
 
     with horizontal(region[:, j_start - 1]):
@@ -343,15 +343,20 @@ def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
 
 
 # Optimized PPM in perturbation form:
-def pert_ppm(a0, al, ar, iv, istart, jstart, kstart, ni, nj, nk):
+def pert_ppm(a0, al, ar, iv, istart, jstart, ni, nj):
     r12 = 1.0 / 12.0
     if iv == 0:
         pert_ppm_positive_definite_constraint(
-            a0, al, ar, r12, origin=(istart, jstart, kstart), domain=(ni, nj, nk)
+            a0,
+            al,
+            ar,
+            r12,
+            origin=(istart, jstart, 0),
+            domain=(ni, nj, spec.grid.npz + 1),
         )
     else:
         pert_ppm_standard_constraint(
-            a0, al, ar, origin=(istart, jstart, kstart), domain=(ni, nj, nk)
+            a0, al, ar, origin=(istart, jstart, 0), domain=(ni, nj, spec.grid.npz + 1)
         )
     return al, ar
 
@@ -399,14 +404,7 @@ class YPPM:
         )
 
     def __call__(
-        self,
-        q: FloatField,
-        c: FloatField,
-        flux: FloatField,
-        ifirst: int,
-        ilast: int,
-        kstart: int = 0,
-        nk: Optional[int] = None,
+        self, q: FloatField, c: FloatField, flux: FloatField, ifirst: int, ilast: int
     ):
         """
         Compute y-flux using the PPM method.
@@ -417,11 +415,7 @@ class YPPM:
             flux (out): Flux
             ifirst: Starting index of the I-dir compute domain
             ilast: Final index of the I-dir compute domain
-            kstart: First index of the K-dir compute domain
-            nk: Number of indices in the K-dir compute domain
         """
-        if nk is None:
-            nk = self.npz - kstart
 
         ni = ilast - ifirst + 1
         self.compute_flux_stencil(
@@ -429,6 +423,6 @@ class YPPM:
             c,
             self.dya,
             flux,
-            origin=(ifirst, self.js, kstart),
-            domain=(ni, self.njc + 1, nk),
+            origin=(ifirst, self.js, 0),
+            domain=(ni, self.njc + 1, self.npz + 1),
         )

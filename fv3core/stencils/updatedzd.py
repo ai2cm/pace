@@ -10,6 +10,7 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
+import fv3core.stencils.d_sw as d_sw
 import fv3core.stencils.delnflux as delnflux
 import fv3core.stencils.fvtp2d as fvtp2d
 import fv3core.utils.global_constants as constants
@@ -22,7 +23,7 @@ from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 DZ_MIN = constants.DZ_MIN
 
-
+# TODO merge with fxadv
 @gtscript.function
 def ra_func(
     area: FloatFieldIJ,
@@ -48,7 +49,15 @@ def ra_stencil_update(
     yfx_adv: FloatField,
     ra_y: FloatField,
 ):
-    """Updates 'ra' fields."""
+    """Updates 'ra' fields.
+    Args:
+       xfx_adv: Finite volume flux form operator in x direction (in)
+       yfx_adv: Finite volume flux form operator in y direction (in)
+       ra_x: Area increased in the x direction due to flux divergence (inout)
+       ra_y: Area increased in the y direction due to flux divergence (inout)
+    Grid input vars:
+      area
+    """
     with computation(PARALLEL), interval(...):
         ra_x, ra_y = ra_func(area, xfx_adv, yfx_adv, ra_x, ra_y)
 
@@ -66,7 +75,7 @@ def zh_base(
 
 
 @gtstencil()
-def zh_damp_stencil(
+def zh_damp(
     area: FloatFieldIJ,
     z2: FloatField,
     fx: FloatField,
@@ -77,10 +86,36 @@ def zh_damp_stencil(
     fy2: FloatField,
     rarea: FloatFieldIJ,
     zh: FloatField,
+    zs: FloatFieldIJ,
+    ws: FloatFieldIJ,
+    dt: float,
 ):
+    """Update geopotential height due to area average flux divergence
+    Args:
+       z2: zh that has been advected forward in time (in)
+       fx: Flux in the x direction that transported z2 (in)
+       fy: Flux in the y direction that transported z2(in)
+       ra_x: Area increased in the x direction due to flux divergence (in)
+       ra_y: Area increased in the y direction due to flux divergence (in)
+       fx2: diffusive flux in the x-direction (in)
+       fy2: diffusive flux in the y-direction (in)
+       zh: geopotential height (out)
+       zs: surface geopotential height (in)
+       ws: vertical velocity of the lowest level (to keep it at the surface) (out)
+       dt: acoustic timestep (seconds) (in)
+    Grid variable inputs:
+       area
+      rarea
+    """
     with computation(PARALLEL), interval(...):
         zhbase = zh_base(z2, area, fx, fy, ra_x, ra_y)
-        zh[0, 0, 0] = zhbase + (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea
+        zh = zhbase + (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea
+    with computation(BACKWARD):
+        with interval(-1, None):
+            ws = (zs - zh) * 1.0 / dt
+        with interval(0, -1):
+            other = zh[0, 0, 1] + DZ_MIN
+            zh = zh if zh > other else other
 
 
 @gtstencil()
@@ -198,19 +233,7 @@ def edge_profile_stencil(
         qe1x, qe2x, qe1y, qe2y = edge_profile_reverse(qe1x, qe2x, qe1y, qe2y, gam)
 
 
-@gtstencil()
-def out(zs: FloatFieldIJ, zh: FloatField, ws: FloatFieldIJ, dt: float):
-    with computation(BACKWARD):
-        with interval(-1, None):
-            ws[0, 0, 0] = (zs - zh) * 1.0 / dt
-        with interval(0, -1):
-            other = zh[0, 0, 1] + DZ_MIN
-            zh[0, 0, 0] = zh if zh > other else other
-
-
 def compute(
-    ndif: FloatField,
-    damp_vtd: FloatField,
     dp0: FloatFieldK,
     zs: FloatFieldIJ,
     zh: FloatField,
@@ -266,59 +289,17 @@ def compute(
         domain=grid.domain_shape_full(add=(0, 0, 1)),
     )
 
-    ndif[-1] = ndif[-2]
-    damp_vtd[-1] = damp_vtd[-2]
-    kstarts = utils.get_kstarts({"ndif": ndif, "damp": damp_vtd}, grid.npz + 1)
+    grid = spec.grid
 
-    for ki, nk in kstarts:
-        column_calls(
-            zh,
-            crx_adv,
-            cry_adv,
-            xfx_adv,
-            yfx_adv,
-            ra_x,
-            ra_y,
-            ndif[ki],
-            damp_vtd[ki],
-            ki,
-            nk,
-        )
-
-    out(
-        zs,
-        zh,
-        wsd,
-        dt,
-        origin=grid.compute_origin(),
-        domain=grid.domain_shape_compute(add=(0, 0, 1)),
+    wk = utils.make_storage_from_shape(zh.shape, grid.full_origin())
+    fx2 = utils.make_storage_from_shape(zh.shape, grid.full_origin())
+    fy2 = utils.make_storage_from_shape(zh.shape, grid.full_origin())
+    fx = utils.make_storage_from_shape(zh.shape, grid.full_origin())
+    fy = utils.make_storage_from_shape(zh.shape, grid.full_origin())
+    z2 = copy(
+        zh, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
     )
 
-
-def column_calls(
-    zh: FloatField,
-    crx_adv: FloatField,
-    cry_adv: FloatField,
-    xfx_adv: FloatField,
-    yfx_adv: FloatField,
-    ra_x: FloatField,
-    ra_y: FloatField,
-    ndif: float,
-    damp: float,
-    kstart: int,
-    nk: int,
-):
-    if damp <= 1e-5:
-        raise Exception("damp <= 1e-5 in column_cols is untested")
-
-    grid = spec.grid
-    full_origin = (grid.isd, grid.jsd, kstart)
-    wk = utils.make_storage_from_shape(zh.shape, full_origin)
-    fx2 = utils.make_storage_from_shape(zh.shape, full_origin)
-    fy2 = utils.make_storage_from_shape(zh.shape, full_origin)
-    fx = utils.make_storage_from_shape(zh.shape, full_origin)
-    fy = utils.make_storage_from_shape(zh.shape, full_origin)
-    z2 = copy(zh, origin=full_origin, domain=(grid.nid, grid.njd, nk))
     fvtp2d_obj = utils.cached_stencil_class(fvtp2d.FvTp2d)(
         spec.namelist, spec.namelist.hord_tm, cache_key="updatedzd"
     )
@@ -332,11 +313,24 @@ def column_calls(
         ra_y,
         fx,
         fy,
-        kstart=kstart,
-        nk=nk,
     )
-    delnflux.compute_no_sg(z2, fx2, fy2, int(ndif), damp, wk, kstart=kstart, nk=nk)
-    zh_damp_stencil(
+    # TODO, do not recreate this, and have it part of aninitialization step
+    # or remove entirely when refactored away
+    column_namelist = d_sw.get_column_namelist()
+    for kstart, nk in d_sw.k_bounds():
+        if column_namelist["damp_vt"][kstart] <= 1e-5:
+            raise Exception("damp <= 1e-5 in column_cols is untested")
+        delnflux.compute_no_sg(
+            z2,
+            fx2,
+            fy2,
+            int(column_namelist["nord_v"][kstart]),
+            column_namelist["damp_vt"][kstart],
+            wk,
+            kstart=kstart,
+            nk=nk,
+        )
+    zh_damp(
         grid.area,
         z2,
         fx,
@@ -347,6 +341,9 @@ def column_calls(
         fy2,
         grid.rarea,
         zh,
-        origin=grid.compute_origin(add=(0, 0, kstart)),
-        domain=(grid.nic, grid.njc, nk),
+        zs,
+        wsd,
+        dt,
+        origin=grid.compute_origin(),
+        domain=grid.domain_shape_compute(add=(0, 0, 1)),
     )

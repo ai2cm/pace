@@ -1,5 +1,3 @@
-from typing import Optional
-
 from gt4py import gtscript
 from gt4py.gtscript import (
     __INLINED,
@@ -255,6 +253,7 @@ def compute_blbr_ord8plus(q: FloatField, dxa: FloatFieldIJ):
     al = al_iord8plus(q, dm)
 
     assert __INLINED(iord == 8), "Unimplemented iord"
+
     bl, br = blbr_iord8(q, al, dm)
 
     with horizontal(region[i_start - 1, :]):
@@ -323,14 +322,7 @@ class XPPM:
         )
 
     def __call__(
-        self,
-        q: FloatField,
-        c: FloatField,
-        xflux: FloatField,
-        jfirst: int,
-        jlast: int,
-        kstart: int = 0,
-        nk: Optional[int] = None,
+        self, q: FloatField, c: FloatField, xflux: FloatField, jfirst: int, jlast: int
     ):
         """
         Compute x-flux using the PPM method.
@@ -341,18 +333,14 @@ class XPPM:
             xflux (out): Flux
             jfirst: Starting index of the J-dir compute domain
             jlast: Final index of the J-dir compute domain
-            kstart: First index of the K-dir compute domain
-            nk: Number of indices in the K-dir compute domain
         """
 
-        if nk is None:
-            nk = self.npz - kstart
         nj = jlast - jfirst + 1
         self.compute_flux_stencil(
             q,
             c,
             self.dxa,
             xflux,
-            origin=(self.is_, jfirst, kstart),
-            domain=(self.nic + 1, nj, nk),
+            origin=(self.is_, jfirst, 0),
+            domain=(self.nic + 1, nj, self.npz + 1),
         )

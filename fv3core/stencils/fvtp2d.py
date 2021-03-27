@@ -2,6 +2,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
+import fv3core.stencils.d_sw as d_sw
 import fv3core.stencils.delnflux as delnflux
 import fv3core.stencils.xppm as xppm
 import fv3core.stencils.yppm as yppm
@@ -21,7 +22,7 @@ def q_i_stencil(
 ):
     with computation(PARALLEL), interval(...):
         fyy = yfx * fy2
-        q_i[0, 0, 0] = (q * area + fyy - fyy[0, 1, 0]) / ra_y
+        q_i = (q * area + fyy - fyy[0, 1, 0]) / ra_y
 
 
 def q_j_stencil(
@@ -34,7 +35,7 @@ def q_j_stencil(
 ):
     with computation(PARALLEL), interval(...):
         fx1 = xfx * fx2
-        q_j[0, 0, 0] = (q * area + fx1 - fx1[1, 0, 0]) / ra_x
+        q_j = (q * area + fx1 - fx1[1, 0, 0]) / ra_x
 
 
 @gtscript.function
@@ -96,8 +97,6 @@ class FvTp2d:
         ra_y,
         fx,
         fy,
-        kstart=0,
-        nk=None,
         nord=None,
         damp_c=None,
         mass=None,
@@ -105,16 +104,10 @@ class FvTp2d:
         mfy=None,
     ):
         grid = self.grid
-        if nk is None:
-            nk = grid.npz - kstart
-        kslice = slice(kstart, kstart + nk)
-        compute_origin = (grid.is_, grid.js, kstart)
         corners.copy_corners_y_stencil(
-            q, origin=(grid.isd, grid.jsd, kstart), domain=(grid.nid, grid.njd, nk)
+            q, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
         )
-        self.yppm_object_in(
-            q, cry, self._tmp_fy2, grid.isd, grid.ied, kstart=kstart, nk=nk
-        )
+        self.yppm_object_in(q, cry, self._tmp_fy2, grid.isd, grid.ied)
         self.stencil_q_i(
             q,
             grid.area,
@@ -122,19 +115,15 @@ class FvTp2d:
             self._tmp_fy2,
             ra_y,
             self._tmp_q_i,
-            origin=(grid.isd, grid.js, kstart),
-            domain=(grid.nid, grid.njc + 1, nk),
+            origin=grid.full_origin(add=(0, 3, 0)),
+            domain=grid.domain_shape_full(add=(0, -3, 1)),
         )
-        self.xppm_object_ou(
-            self._tmp_q_i, crx, fx, grid.js, grid.je, kstart=kstart, nk=nk
-        )
+        self.xppm_object_ou(self._tmp_q_i, crx, fx, grid.js, grid.je)
 
         corners.copy_corners_x_stencil(
-            q, origin=(grid.isd, grid.jsd, kstart), domain=(grid.nid, grid.njd, nk)
+            q, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
         )
-        self.xppm_object_in(
-            q, crx, self._tmp_fx2, grid.jsd, grid.jed, kstart=kstart, nk=nk
-        )
+        self.xppm_object_in(q, crx, self._tmp_fx2, grid.jsd, grid.jed)
         self.stencil_q_j(
             q,
             grid.area,
@@ -142,12 +131,10 @@ class FvTp2d:
             self._tmp_fx2,
             ra_x,
             self._tmp_q_j,
-            origin=(grid.is_, grid.jsd, kstart),
-            domain=(grid.nic + 1, grid.njd, nk),
+            origin=grid.full_origin(add=(3, 0, 0)),
+            domain=grid.domain_shape_full(add=(-3, 0, 1)),
         )
-        self.yppm_object_ou(
-            self._tmp_q_j, cry, fy, grid.is_, grid.ie, kstart=kstart, nk=nk
-        )
+        self.yppm_object_ou(self._tmp_q_j, cry, fy, grid.is_, grid.ie)
         if mfx is not None and mfy is not None:
             self.stencil_transport_flux(
                 fx,
@@ -156,13 +143,14 @@ class FvTp2d:
                 self._tmp_fy2,
                 mfx,
                 mfy,
-                origin=compute_origin,
-                domain=(grid.nic + 1, grid.njc + 1, nk),
+                origin=grid.compute_origin(),
+                domain=grid.domain_shape_compute(add=(1, 1, 1)),
             )
             if (mass is not None) and (nord is not None) and (damp_c is not None):
-                delnflux.compute_delnflux_no_sg(
-                    q, fx, fy, nord, damp_c, kstart, nk, mass=mass
-                )
+                for kstart, nk in d_sw.k_bounds():
+                    delnflux.compute_delnflux_no_sg(
+                        q, fx, fy, nord[kstart], damp_c[kstart], kstart, nk, mass=mass
+                    )
         else:
 
             self.stencil_transport_flux(
@@ -172,8 +160,11 @@ class FvTp2d:
                 self._tmp_fy2,
                 xfx,
                 yfx,
-                origin=compute_origin,
-                domain=(grid.nic + 1, grid.njc + 1, nk),
+                origin=grid.compute_origin(),
+                domain=grid.domain_shape_compute(add=(1, 1, 1)),
             )
             if (nord is not None) and (damp_c is not None):
-                delnflux.compute_delnflux_no_sg(q, fx, fy, nord, damp_c, kstart, nk)
+                for kstart, nk in d_sw.k_bounds():
+                    delnflux.compute_delnflux_no_sg(
+                        q, fx, fy, nord[kstart], damp_c[kstart], kstart, nk
+                    )
