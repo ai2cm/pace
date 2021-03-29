@@ -672,6 +672,9 @@ def d_sw(
     fy = utils.make_storage_from_shape(shape, grid().compute_origin())
     gx = utils.make_storage_from_shape(shape, grid().compute_origin())
     gy = utils.make_storage_from_shape(shape, grid().compute_origin())
+
+    ra_x = utils.make_storage_from_shape(shape, grid().compute_origin())
+    ra_y = utils.make_storage_from_shape(shape, grid().compute_origin())
     fvtp2d_dp = utils.cached_stencil_class(fvtp2d.FvTp2d)(
         spec.namelist, spec.namelist.hord_dp, cache_key="d_sw-dp"
     )
@@ -681,7 +684,8 @@ def d_sw(
     fvtp2d_tm = utils.cached_stencil_class(fvtp2d.FvTp2d)(
         spec.namelist, spec.namelist.hord_tm, cache_key="d_sw-tm"
     )
-    ra_x, ra_y = fxadv.compute(uc, vc, ut, vt, xfx, yfx, crx, cry, dt)
+
+    fxadv.compute(uc, vc, crx, cry, xfx, yfx, ut, vt, ra_x, ra_y, dt)
 
     fvtp2d_dp(
         delp,
