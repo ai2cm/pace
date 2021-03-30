@@ -95,7 +95,6 @@ class TranslateDynCore(ParallelTranslate2PyState):
 
         self._base.in_vars["parameters"] = [
             "mdt",
-            "n_split",
             "akap",
             "ptop",
             "n_map",

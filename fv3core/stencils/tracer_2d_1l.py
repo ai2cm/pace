@@ -8,6 +8,7 @@ import fv3core.stencils.fvtp2d as fvtp2d
 import fv3core.utils
 import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.updatedzd import ra_stencil_update
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -144,8 +145,10 @@ def q_adjustments(
 
 
 class Tracer2D1L:
-    def __init__(self, namelist):
+    def __init__(self, comm: fv3gfs.util.CubedSphereCommunicator, namelist):
+        self.comm = comm
         self.grid = spec.grid
+        self.do_halo_exchange = global_config.get_do_halo_exchange()
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         origin = self.grid.compute_origin()
         self._tmp_xfx = utils.make_storage_from_shape(shape, origin)
@@ -176,13 +179,13 @@ class Tracer2D1L:
         self.stencil_dp_fluxadjustment = stencil_wrapper(dp_fluxadjustment)
         self.stencil_q_adjustments = stencil_wrapper(q_adjustments)
         self.stencil_q_adjust = stencil_wrapper(q_adjust)
-        self.fvtp2d_obj = fvtp2d.FvTp2d(spec.namelist, spec.namelist.hord_tr)
+        self.fvtp2d = fvtp2d.FvTp2d(namelist, namelist.hord_tr)
         # If use AllReduce, will need something like this:
         # self._tmp_cmax = utils.make_storage_from_shape(shape, origin)
         # self.stencil_cmax_1 = stencil_wrapper(cmax_stencil1)
         # self.stencil_max_2 = stencil_wrapper(cmax_stencil2)
 
-    def __call__(self, comm, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
+    def __call__(self, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
         grid = self.grid
         # start HALO update on q (in dyn_core in fortran -- just has started when
         # this function is called...)
@@ -243,10 +246,10 @@ class Tracer2D1L:
                 domain=grid.domain_shape_full(add=(1, 1, 0)),
             )
 
-        if global_config.get_do_halo_exchange():
+        if self.do_halo_exchange:
             for qname in utils.tracer_variables[0:nq]:
                 q = tracers[qname + "_quantity"]
-                comm.halo_update(q, n_points=utils.halo)
+                self.comm.halo_update(q, n_points=utils.halo)
 
         self.stencil_ra_update(
             grid.area,
@@ -288,7 +291,7 @@ class Tracer2D1L:
                     domain=grid.domain_shape_compute(),
                 )
                 if nsplt != 1:
-                    self.fvtp2d_obj(
+                    self.fvtp2d(
                         self._tmp_qn2.storage,
                         cxd,
                         cyd,
@@ -316,7 +319,7 @@ class Tracer2D1L:
                         domain=grid.domain_shape_compute(),
                     )
                 else:
-                    self.fvtp2d_obj(
+                    self.fvtp2d(
                         q.storage,
                         cxd,
                         cyd,
@@ -347,5 +350,5 @@ class Tracer2D1L:
                         origin=grid.compute_origin(),
                         domain=grid.domain_shape_compute(),
                     )
-                    if global_config.get_do_halo_exchange():
-                        comm.halo_update(self._tmp_qn2, n_points=utils.halo)
+                    if self.do_halo_exchange:
+                        self.comm.halo_update(self._tmp_qn2, n_points=utils.halo)

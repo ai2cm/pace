@@ -67,28 +67,33 @@ def state_inputs(*arg_specs):
     def decorator(func):
         @functools.wraps(func)
         def wrapped(state, *args, **kwargs):
-            namespace_kwargs = {}
-            for sp in arg_specs:
-                arg_name, standard_name, units, intent = sp
-                if standard_name not in state:
-                    raise ValueError(f"{standard_name} not present in state")
-                elif units != state[standard_name].units:
-                    raise ValueError(
-                        f"{standard_name} has units "
-                        f"{state[standard_name].units} when {units} is required"
-                    )
-                elif intent not in VALID_INTENTS:
-                    raise ValueError(
-                        f"expected intent to be one of {VALID_INTENTS}, got {intent}"
-                    )
-                else:
-                    namespace_kwargs[arg_name] = state[standard_name].storage
-                    namespace_kwargs[arg_name + "_quantity"] = state[standard_name]
-            func(types.SimpleNamespace(**namespace_kwargs), *args, **kwargs)
+            namespace = get_namespace(arg_specs, state)
+            func(namespace, *args, **kwargs)
 
         return wrapped
 
     return decorator
+
+
+def get_namespace(arg_specs, state):
+    namespace_kwargs = {}
+    for sp in arg_specs:
+        arg_name, standard_name, units, intent = sp
+        if standard_name not in state:
+            raise ValueError(f"{standard_name} not present in state")
+        elif units != state[standard_name].units:
+            raise ValueError(
+                f"{standard_name} has units "
+                f"{state[standard_name].units} when {units} is required"
+            )
+        elif intent not in VALID_INTENTS:
+            raise ValueError(
+                f"expected intent to be one of {VALID_INTENTS}, got {intent}"
+            )
+        else:
+            namespace_kwargs[arg_name] = state[standard_name].storage
+            namespace_kwargs[arg_name + "_quantity"] = state[standard_name]
+    return types.SimpleNamespace(**namespace_kwargs)
 
 
 def _ensure_global_flags_not_specified_in_kwargs(stencil_kwargs):

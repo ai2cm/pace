@@ -34,7 +34,6 @@ class TranslateTracer2D1L(ParallelTranslate):
         return input_data
 
     def compute_parallel(self, inputs, communicator):
-        inputs["comm"] = communicator
 
         self._base.make_storage_data_input_vars(inputs)
         properties = self.inputs["tracers"]
@@ -46,7 +45,7 @@ class TranslateTracer2D1L(ParallelTranslate):
                 units=properties["units"],
             )
         self._base.compute_func = utils.cached_stencil_class(tracer_2d_1l.Tracer2D1L)(
-            spec.namelist, cache_key="regression-test"
+            communicator, spec.namelist, cache_key="regression-test"
         )
         self._base.compute_func(**inputs)
         for name in utils.tracer_variables:

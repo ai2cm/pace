@@ -365,7 +365,9 @@ compiled_stencil_classes = {}
 
 def cached_stencil_class(class_init):
     def memoized(*args, **kwargs):
-        key = str(id(class_init)) + str(kwargs.pop("cache_key") + str(spec.grid.rank))
+        key = str(id(class_init)) + str(
+            kwargs.pop("cache_key", "") + str(spec.grid.rank)
+        )
         if key not in compiled_stencil_classes:
             compiled_stencil_classes[key] = class_init(*args, **kwargs)
         return compiled_stencil_classes[key]

@@ -41,7 +41,7 @@ def _get_flux(
     from __externals__ import iord
 
     b0 = bl + br
-    cfl = courant * rdx[-1, 0] if courant > 0 else courant * rdx[0, 0]
+    cfl = courant * rdx[-1, 0] if courant > 0 else courant * rdx
     fx0 = xppm.fx1_fn(cfl, br, b0, bl)
 
     if __INLINED(iord < 8):
