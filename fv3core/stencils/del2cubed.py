@@ -97,8 +97,12 @@ def compute(qdel: FloatField, nmax: int, cd: float, km: int):
     origin = (grid.isd, grid.jsd, 0)
 
     # Construct some necessary temporary storage objects
-    fx = utils.make_storage_from_shape(qdel.shape, origin=origin)
-    fy = utils.make_storage_from_shape(qdel.shape, origin=origin)
+    fx = utils.make_storage_from_shape(
+        qdel.shape, origin=origin, cache_key="del2cubed_fx"
+    )
+    fy = utils.make_storage_from_shape(
+        qdel.shape, origin=origin, cache_key="del2cubed_fy"
+    )
 
     # set up the temporal loop
     ntimes = min(3, nmax)

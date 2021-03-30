@@ -260,8 +260,12 @@ def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
     npt = 4 if not grid.nested else 0
     if npt > grid.nic - 1 or npt > grid.njc - 1:
         npt = 0
-    utmp = utils.make_storage_from_shape(ua.shape, grid.full_origin())
-    vtmp = utils.make_storage_from_shape(va.shape, grid.full_origin())
+    utmp = utils.make_storage_from_shape(
+        ua.shape, grid.full_origin(), cache_key="d2a2c_vect_utmp"
+    )
+    vtmp = utils.make_storage_from_shape(
+        va.shape, grid.full_origin(), cache_key="d2a2c_vect_vtmp"
+    )
     utmp[:] = big_number
     vtmp[:] = big_number
     js1 = npt + OFFSET if grid.south_edge else grid.js - 1

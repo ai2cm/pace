@@ -146,12 +146,16 @@ def compute(
     dm = copy(delp)
     cp3 = copy(cappa)
     pe_init = copy(pe)
-    pm = utils.make_storage_from_shape(shape, riemorigin)
-    pem = utils.make_storage_from_shape(shape, riemorigin)
-    peln_run = utils.make_storage_from_shape(shape, riemorigin)
-    peg = utils.make_storage_from_shape(shape, riemorigin)
-    pelng = utils.make_storage_from_shape(shape, riemorigin)
-    gm = utils.make_storage_from_shape(shape, riemorigin)
+    pm = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver3_pm")
+    pem = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver3_pem")
+    peln_run = utils.make_storage_from_shape(
+        shape, riemorigin, cache_key="riem_solver3_peln_run"
+    )
+    peg = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver3_peg")
+    pelng = utils.make_storage_from_shape(
+        shape, riemorigin, cache_key="riem_solver3_pelng"
+    )
+    gm = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver3_gm")
 
     precompute(
         cp3,

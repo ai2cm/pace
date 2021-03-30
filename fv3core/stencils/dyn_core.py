@@ -236,8 +236,12 @@ def compute(state, comm):
         # k1k = akap / (1.0 - akap)
 
         # To write in parallel region, these need to be 3D first
-        state.dp_ref = utils.make_storage_from_shape(shape, grid.full_origin())
-        state.zs = utils.make_storage_from_shape(shape, grid.full_origin())
+        state.dp_ref = utils.make_storage_from_shape(
+            shape, grid.full_origin(), cache_key="dyn_core_dp_ref"
+        )
+        state.zs = utils.make_storage_from_shape(
+            shape, grid.full_origin(), cache_key="dyn_core_zs"
+        )
         dp_ref_compute(
             state.ak,
             state.bk,

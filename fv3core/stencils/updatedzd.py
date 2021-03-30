@@ -248,22 +248,26 @@ def compute(
     halo = grid.halo
 
     crx_adv = utils.make_storage_from_shape(
-        crx.shape, grid.compute_origin(add=(0, -halo, 0))
+        crx.shape, grid.compute_origin(add=(0, -halo, 0)), cache_key="updatedzd_crx_adv"
     )
     cry_adv = utils.make_storage_from_shape(
-        cry.shape, grid.compute_origin(add=(-halo, 0, 0))
+        cry.shape, grid.compute_origin(add=(-halo, 0, 0)), cache_key="updatedzd_cry_adv"
     )
     xfx_adv = utils.make_storage_from_shape(
-        xfx.shape, grid.compute_origin(add=(0, -halo, 0))
+        xfx.shape, grid.compute_origin(add=(0, -halo, 0)), cache_key="updatedzd_xfx_adv"
     )
     yfx_adv = utils.make_storage_from_shape(
-        yfx.shape, grid.compute_origin(add=(-halo, 0, 0))
+        yfx.shape, grid.compute_origin(add=(-halo, 0, 0)), cache_key="updatedzd_yfx_adv"
     )
     ra_x = utils.make_storage_from_shape(
-        crx.shape, grid.compute_origin(add=(0, -halo, 0))
+        crx.shape,
+        grid.compute_origin(add=(0, -halo, 0)),
+        cache_key="updatedzd_ra_x",
     )
     ra_y = utils.make_storage_from_shape(
-        cry.shape, grid.compute_origin(add=(-halo, 0, 0))
+        cry.shape,
+        grid.compute_origin(add=(-halo, 0, 0)),
+        cache_key="updatedzd_ra_y",
     )
 
     edge_profile_stencil(
@@ -291,11 +295,21 @@ def compute(
 
     grid = spec.grid
 
-    wk = utils.make_storage_from_shape(zh.shape, grid.full_origin())
-    fx2 = utils.make_storage_from_shape(zh.shape, grid.full_origin())
-    fy2 = utils.make_storage_from_shape(zh.shape, grid.full_origin())
-    fx = utils.make_storage_from_shape(zh.shape, grid.full_origin())
-    fy = utils.make_storage_from_shape(zh.shape, grid.full_origin())
+    wk = utils.make_storage_from_shape(
+        zh.shape, grid.full_origin(), cache_key="updatedzd_wk"
+    )
+    fx2 = utils.make_storage_from_shape(
+        zh.shape, grid.full_origin(), cache_key="updatedzd_fx2"
+    )
+    fy2 = utils.make_storage_from_shape(
+        zh.shape, grid.full_origin(), cache_key="updatedzd_fy2"
+    )
+    fx = utils.make_storage_from_shape(
+        zh.shape, grid.full_origin(), cache_key="updatedzd_fx"
+    )
+    fy = utils.make_storage_from_shape(
+        zh.shape, grid.full_origin(), cache_key="updatedzd_fy"
+    )
     z2 = copy(
         zh, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
     )

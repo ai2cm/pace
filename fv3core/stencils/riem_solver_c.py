@@ -96,11 +96,13 @@ def compute(
     cp3 = copy(cappa)
     w = copy(w3)
 
-    pem = utils.make_storage_from_shape(shape, riemorigin)
-    pe = utils.make_storage_from_shape(shape, riemorigin)
-    gm = utils.make_storage_from_shape(shape, riemorigin)
-    dz = utils.make_storage_from_shape(shape, riemorigin)
-    pm = utils.make_storage_from_shape(shape, riemorigin)
+    pem = utils.make_storage_from_shape(
+        shape, riemorigin, cache_key="riem_solver_c_pem"
+    )
+    pe = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver_c_pe")
+    gm = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver_c_gm")
+    dz = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver_c_dz")
+    pm = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver_c_pm")
     # it looks like this code sets pef = ptop, and does not otherwise use pef here
     precompute(
         cp3,

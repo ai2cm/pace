@@ -215,11 +215,21 @@ def compute(
     # do_omega = hydrostatic and last_step # TODO pull into inputs
     domain_jextra = (grid.nic, grid.njc + 1, grid.npz + 1)
     pe1 = copy(pe, origin=grid.compute_origin(), domain=domain_jextra)
-    pe2 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
-    dp2 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
-    pn2 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
-    pe0 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
-    pe3 = utils.make_storage_from_shape(pe.shape, grid.compute_origin())
+    pe2 = utils.make_storage_from_shape(
+        pe.shape, grid.compute_origin(), cache_key="remapping_part1_pe2"
+    )
+    dp2 = utils.make_storage_from_shape(
+        pe.shape, grid.compute_origin(), cache_key="remapping_part1_dp2"
+    )
+    pn2 = utils.make_storage_from_shape(
+        pe.shape, grid.compute_origin(), cache_key="remapping_part1_pn2"
+    )
+    pe0 = utils.make_storage_from_shape(
+        pe.shape, grid.compute_origin(), cache_key="remapping_part1_pe0"
+    )
+    pe3 = utils.make_storage_from_shape(
+        pe.shape, grid.compute_origin(), cache_key="remapping_part1_pe3"
+    )
 
     init_pe2(pe, pe2, ptop, origin=grid.compute_origin(), domain=domain_jextra)
 

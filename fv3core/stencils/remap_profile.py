@@ -530,12 +530,24 @@ def compute(
     full_orig: Tuple[int] = (spec.grid.is_, js, 0)
     dom: Tuple[int] = (i_extent, j_extent, km)
 
-    gam: FloatField = utils.make_storage_from_shape(delp.shape, origin=full_orig)
-    q: FloatField = utils.make_storage_from_shape(delp.shape, origin=full_orig)
-    q_bot: FloatField = utils.make_storage_from_shape(delp.shape, origin=full_orig)
-    extm: FloatField = utils.make_storage_from_shape(delp.shape, origin=full_orig)
-    ext5: FloatField = utils.make_storage_from_shape(delp.shape, origin=full_orig)
-    ext6: FloatField = utils.make_storage_from_shape(delp.shape, origin=full_orig)
+    gam: FloatField = utils.make_storage_from_shape(
+        delp.shape, origin=full_orig, cache_key="remap_profile_gam"
+    )
+    q: FloatField = utils.make_storage_from_shape(
+        delp.shape, origin=full_orig, cache_key="remap_profile_q"
+    )
+    q_bot: FloatField = utils.make_storage_from_shape(
+        delp.shape, origin=full_orig, cache_key="remap_profile_q_bot"
+    )
+    extm: FloatField = utils.make_storage_from_shape(
+        delp.shape, origin=full_orig, cache_key="remap_profile_extm"
+    )
+    ext5: FloatField = utils.make_storage_from_shape(
+        delp.shape, origin=full_orig, cache_key="remap_profile_ext5"
+    )
+    ext6: FloatField = utils.make_storage_from_shape(
+        delp.shape, origin=full_orig, cache_key="remap_profile_ext6"
+    )
 
     set_vals(
         gam,

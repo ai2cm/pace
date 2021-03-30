@@ -48,8 +48,12 @@ def compute(
     coordinate levels.
     """
     grid = spec.grid
-    gz: FloatField = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
-    cvm: FloatField = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
+    gz: FloatField = utils.make_storage_from_shape(
+        pt.shape, grid.compute_origin(), cache_key="remapping_gz"
+    )
+    cvm: FloatField = utils.make_storage_from_shape(
+        pt.shape, grid.compute_origin(), cache_key="remapping_cvm"
+    )
 
     remap_part1.compute(
         tracers,

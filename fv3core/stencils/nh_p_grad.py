@@ -100,8 +100,10 @@ def compute(u, v, pp, gz, pk3, delp, dt, ptop, akap):
     ptk = ptop ** akap
     top_value = ptk  # = peln1 if spec.namelist.use_logp else ptk
 
-    wk1 = utils.make_storage_from_shape(pp.shape, origin=orig)
-    wk = utils.make_storage_from_shape(pk3.shape, origin=orig)
+    wk1 = utils.make_storage_from_shape(
+        pp.shape, origin=orig, cache_key="nh_p_grad_wk1"
+    )
+    wk = utils.make_storage_from_shape(pk3.shape, origin=orig, cache_key="nh_p_grad_wk")
 
     set_k0(pp, pk3, top_value, origin=orig, domain=(grid.nic + 1, grid.njc + 1, 1))
 
@@ -113,7 +115,7 @@ def compute(u, v, pp, gz, pk3, delp, dt, ptop, akap):
 
     CalcWk(pk3, wk, origin=orig, domain=(grid.nic + 1, grid.njc + 1, grid.npz))
 
-    du = utils.make_storage_from_shape(u.shape, origin=orig)
+    du = utils.make_storage_from_shape(u.shape, origin=orig, cache_key="nh_p_grad_du")
 
     CalcU(
         u,
@@ -129,7 +131,7 @@ def compute(u, v, pp, gz, pk3, delp, dt, ptop, akap):
         domain=(grid.nic, grid.njc + 1, grid.npz),
     )
 
-    dv = utils.make_storage_from_shape(v.shape, origin=orig)
+    dv = utils.make_storage_from_shape(v.shape, origin=orig, cache_key="nh_p_grad_dv")
 
     CalcV(
         v,

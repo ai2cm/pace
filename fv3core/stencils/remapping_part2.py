@@ -92,9 +92,15 @@ def compute(
         ua, pe, origin=grid.compute_origin(), domain=grid.domain_shape_compute()
     )
     dtmp = 0.0
-    phis = utils.make_storage_from_shape(pt.shape, grid.compute_origin())
-    te_2d = utils.make_storage_from_shape(pt.shape[0:2], grid.compute_origin())
-    zsum1 = utils.make_storage_from_shape(pt.shape[0:2], grid.compute_origin())
+    phis = utils.make_storage_from_shape(
+        pt.shape, grid.compute_origin(), cache_key="remapping_part2_phis"
+    )
+    te_2d = utils.make_storage_from_shape(
+        pt.shape[0:2], grid.compute_origin(), cache_key="remapping_part2_te_2d"
+    )
+    zsum1 = utils.make_storage_from_shape(
+        pt.shape[0:2], grid.compute_origin(), cache_key="remapping_part2_zsum1"
+    )
     if spec.namelist.do_sat_adj:
         fast_mp_consv = not do_adiabatic_init and consv > constants.CONSV_MIN
         # TODO pfull is a 1d var

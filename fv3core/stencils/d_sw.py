@@ -491,9 +491,15 @@ def compute(
     # TODO: Remove paired with removal of #d_sw belos
     # column_namelist = column_namelist_options(0)
     column_namelist = get_column_namelist()
-    heat_s = utils.make_storage_from_shape(heat_source.shape, grid().compute_origin())
-    diss_e = utils.make_storage_from_shape(heat_source.shape, grid().compute_origin())
-    z_rat = utils.make_storage_from_shape(heat_source.shape, grid().full_origin())
+    heat_s = utils.make_storage_from_shape(
+        heat_source.shape, grid().compute_origin(), cache_key="d_sw_heat_s"
+    )
+    diss_e = utils.make_storage_from_shape(
+        heat_source.shape, grid().compute_origin(), cache_key="d_sw_diss_e"
+    )
+    z_rat = utils.make_storage_from_shape(
+        heat_source.shape, grid().full_origin(), cache_key="d_sw_z_rat"
+    )
     # TODO: If namelist['hydrostatic' and not namelist['use_old_omega'] and last_step.
     if spec.namelist.d_ext > 0:
         raise Exception(
@@ -552,10 +558,18 @@ def compute(
 
 
 def damp_vertical_wind(w, heat_s, diss_e, dt, column_namelist, kstart, nk):
-    dw = utils.make_storage_from_shape(w.shape, grid().compute_origin())
-    wk = utils.make_storage_from_shape(w.shape, grid().full_origin())
-    fx2 = utils.make_storage_from_shape(w.shape, grid().full_origin())
-    fy2 = utils.make_storage_from_shape(w.shape, grid().full_origin())
+    dw = utils.make_storage_from_shape(
+        w.shape, grid().compute_origin(), cache_key="d_sw_dw"
+    )
+    wk = utils.make_storage_from_shape(
+        w.shape, grid().full_origin(), cache_key="d_sw_wk"
+    )
+    fx2 = utils.make_storage_from_shape(
+        w.shape, grid().full_origin(), cache_key="d_sw_fx2"
+    )
+    fy2 = utils.make_storage_from_shape(
+        w.shape, grid().full_origin(), cache_key="d_sw_fy2"
+    )
     if column_namelist["damp_w"][kstart] > 1e-5:
         dd8 = column_namelist["ke_bg"][kstart] * abs(dt)
         damp4 = (column_namelist["damp_w"][kstart] * grid().da_min_c) ** (
@@ -662,19 +676,37 @@ def d_sw(
     column_namelist: Dict[str, List],
 ):
     shape = heat_s.shape
-    ub = utils.make_storage_from_shape(shape, grid().compute_origin())
-    vb = utils.make_storage_from_shape(shape, grid().compute_origin())
-    ke = utils.make_storage_from_shape(shape, grid().full_origin())
-    vort = utils.make_storage_from_shape(shape, grid().full_origin())
-    ut = utils.make_storage_from_shape(shape, grid().full_origin())
-    vt = utils.make_storage_from_shape(shape, grid().full_origin())
-    fx = utils.make_storage_from_shape(shape, grid().compute_origin())
-    fy = utils.make_storage_from_shape(shape, grid().compute_origin())
-    gx = utils.make_storage_from_shape(shape, grid().compute_origin())
-    gy = utils.make_storage_from_shape(shape, grid().compute_origin())
+    ub = utils.make_storage_from_shape(
+        shape, grid().compute_origin(), cache_key="d_sw_ub"
+    )
+    vb = utils.make_storage_from_shape(
+        shape, grid().compute_origin(), cache_key="d_sw_vb"
+    )
+    ke = utils.make_storage_from_shape(shape, grid().full_origin(), cache_key="d_sw_ke")
+    vort = utils.make_storage_from_shape(
+        shape, grid().full_origin(), cache_key="d_sw_vort"
+    )
+    ut = utils.make_storage_from_shape(shape, grid().full_origin(), cache_key="d_sw_ut")
+    vt = utils.make_storage_from_shape(shape, grid().full_origin(), cache_key="d_sw_vt")
+    fx = utils.make_storage_from_shape(
+        shape, grid().compute_origin(), cache_key="d_sw_fx"
+    )
+    fy = utils.make_storage_from_shape(
+        shape, grid().compute_origin(), cache_key="d_sw_fy"
+    )
+    gx = utils.make_storage_from_shape(
+        shape, grid().compute_origin(), cache_key="d_sw_gx"
+    )
+    gy = utils.make_storage_from_shape(
+        shape, grid().compute_origin(), cache_key="d_sw_gy"
+    )
 
-    ra_x = utils.make_storage_from_shape(shape, grid().compute_origin())
-    ra_y = utils.make_storage_from_shape(shape, grid().compute_origin())
+    ra_x = utils.make_storage_from_shape(
+        shape, grid().compute_origin(), cache_key="d_sw_ra_x"
+    )
+    ra_y = utils.make_storage_from_shape(
+        shape, grid().compute_origin(), cache_key="d_sw_ra_y"
+    )
     fvtp2d_dp = utils.cached_stencil_class(fvtp2d.FvTp2d)(
         spec.namelist, spec.namelist.hord_dp, cache_key="d_sw-dp"
     )

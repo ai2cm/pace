@@ -198,11 +198,19 @@ def setup_data(
         jslice = slice(jslice.start, jslice.stop + 1)
         domain = (domain[0], jslice.stop - jslice.start, domain[2])
 
-    dp1 = utils.make_storage_from_shape(q1.shape, origin=origin)
+    dp1 = utils.make_storage_from_shape(
+        q1.shape, origin=origin, cache_key="map_single_dp1"
+    )
     q4_1 = copy(q1, origin=(0, 0, 0), domain=grid.domain_shape_full())
-    q4_2 = utils.make_storage_from_shape(q4_1.shape, origin=(grid.is_, 0, 0))
-    q4_3 = utils.make_storage_from_shape(q4_1.shape, origin=(grid.is_, 0, 0))
-    q4_4 = utils.make_storage_from_shape(q4_1.shape, origin=(grid.is_, 0, 0))
+    q4_2 = utils.make_storage_from_shape(
+        q4_1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_2"
+    )
+    q4_3 = utils.make_storage_from_shape(
+        q4_1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_3"
+    )
+    q4_4 = utils.make_storage_from_shape(
+        q4_1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_4"
+    )
     set_dp(dp1, pe1, origin=origin, domain=domain)
     return dp1, q4_1, q4_2, q4_3, q4_4, origin, domain, jslice, i_extent
 
@@ -226,9 +234,9 @@ def lagrangian_contributions_stencil(
     # A stencil with a loop over k2:
     km = spec.grid.npz
     shape2d = pe2.shape[0:2]
-    q2_adds = utils.make_storage_from_shape(shape2d)
-    ptop = utils.make_storage_from_shape(shape2d)
-    pbot = utils.make_storage_from_shape(shape2d)
+    q2_adds = utils.make_storage_from_shape(shape2d, cache_key="map_single_q2_adds")
+    ptop = utils.make_storage_from_shape(shape2d, cache_key="map_single_ptop")
+    pbot = utils.make_storage_from_shape(shape2d, cache_key="map_single_pbot")
 
     jsize = shape2d[1]
     jslice2d = slice(min(jslice.start, jsize - 1), min(jslice.stop, jsize))

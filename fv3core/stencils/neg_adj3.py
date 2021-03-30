@@ -300,20 +300,25 @@ def compute(qvapor, qliquid, qrain, qsnow, qice, qgraupel, qcld, pt, delp, delz,
         peln: Logarithm of interface pressure (in)
     """
     grid = spec.grid
-    i_ext = grid.domain_shape_compute()[0]
-    j_ext = grid.domain_shape_compute()[1]
-    k_ext = grid.domain_shape_compute()[2]
 
     shape_ij = qgraupel.shape[0:2]
-    sum1 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
-    sum2 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
-    upper_fix = utils.make_storage_from_shape(qvapor.shape, origin=(0, 0, 0))
-    lower_fix = utils.make_storage_from_shape(qvapor.shape, origin=(0, 0, 0))
+    sum1 = utils.make_storage_from_shape(
+        shape_ij, origin=(0, 0), cache_key="neg_adj3_sum1"
+    )
+    sum2 = utils.make_storage_from_shape(
+        shape_ij, origin=(0, 0), cache_key="neg_adj3_sum2"
+    )
+    upper_fix = utils.make_storage_from_shape(
+        qvapor.shape, origin=(0, 0, 0), cache_key="neg_adj3_upper_fix"
+    )
+    lower_fix = utils.make_storage_from_shape(
+        qvapor.shape, origin=(0, 0, 0), cache_key="neg_adj3_lower_fix"
+    )
     if spec.namelist.check_negative:
-        raise Exception("Unimplemented namelist value check_negative=True")
+        raise NotImplementedError("Unimplemented namelist value check_negative=True")
     if spec.namelist.hydrostatic:
         d0_vap = constants.CP_VAP - constants.C_LIQ
-        raise Exception("Unimplemented namelist hydrostatic=True")
+        raise NotImplementedError("Unimplemented namelist hydrostatic=True")
     else:
         d0_vap = constants.CV_VAP - constants.C_LIQ
     lv00 = constants.HLV - d0_vap * constants.TICE
