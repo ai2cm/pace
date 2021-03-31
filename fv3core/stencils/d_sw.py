@@ -14,12 +14,12 @@ import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
 import fv3core.stencils.delnflux as delnflux
 import fv3core.stencils.divergence_damping as divdamp
-import fv3core.stencils.fvtp2d as fvtp2d
 import fv3core.stencils.fxadv as fxadv
 import fv3core.utils.corners as corners
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.xtp_u import XTP_U
 from fv3core.stencils.ytp_v import YTP_V
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -707,13 +707,13 @@ def d_sw(
     ra_y = utils.make_storage_from_shape(
         shape, grid().compute_origin(), cache_key="d_sw_ra_y"
     )
-    fvtp2d_dp = utils.cached_stencil_class(fvtp2d.FvTp2d)(
+    fvtp2d_dp = utils.cached_stencil_class(FiniteVolumeTransport)(
         spec.namelist, spec.namelist.hord_dp, cache_key="d_sw-dp"
     )
-    fvtp2d_vt = utils.cached_stencil_class(fvtp2d.FvTp2d)(
+    fvtp2d_vt = utils.cached_stencil_class(FiniteVolumeTransport)(
         spec.namelist, spec.namelist.hord_vt, cache_key="d_sw-vt"
     )
-    fvtp2d_tm = utils.cached_stencil_class(fvtp2d.FvTp2d)(
+    fvtp2d_tm = utils.cached_stencil_class(FiniteVolumeTransport)(
         spec.namelist, spec.namelist.hord_tm, cache_key="d_sw-tm"
     )
 

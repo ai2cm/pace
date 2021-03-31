@@ -1,6 +1,6 @@
 import fv3core._config as spec
-import fv3core.stencils.fvtp2d as fvtp2d
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -40,8 +40,7 @@ class TranslateFvTp2d(TranslateFortranData2Py):
         for optional_arg in ["mass", "mfx", "mfy"]:
             if optional_arg not in inputs:
                 inputs[optional_arg] = None
-
-        self.compute_func = utils.cached_stencil_class(fvtp2d.FvTp2d)(
+        self.compute_func = utils.cached_stencil_class(FiniteVolumeTransport)(
             spec.namelist, int(inputs["hord"]), cache_key="regression-test"
         )
         del inputs["hord"]

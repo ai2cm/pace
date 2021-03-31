@@ -24,6 +24,16 @@ def get_rebuild() -> bool:
     return _REBUILD
 
 
+def set_validate_args(new_validate_args: bool):
+    global _VALIDATE_ARGS
+    _VALIDATE_ARGS = new_validate_args
+
+
+# Set to "False" to skip validating gt4py stencil arguments
+def get_validate_args() -> bool:
+    return _VALIDATE_ARGS
+
+
 def set_format_source(flag: bool):
     global _FORMAT_SOURCE
     _FORMAT_SOURCE = flag
@@ -46,3 +56,4 @@ _BACKEND = None  # Options: numpy, gtx86, gtcuda, debug
 _REBUILD = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "True")
 _FORMAT_SOURCE = getenv_bool("FV3_STENCIL_FORMAT_SOURCE", "False")
 _DO_HALO_EXCHANGE = True
+_VALIDATE_ARGS = True

@@ -16,7 +16,6 @@ import fv3core
 import fv3core._config as spec
 import fv3core.utils
 import fv3core.utils.global_config as global_config
-import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.typing import Index3D
 
 
@@ -293,7 +292,7 @@ class FV3StencilObject:
         # Call it
         exec_info = {}
         kwargs["exec_info"] = kwargs.get("exec_info", exec_info)
-        kwargs["validate_args"] = kwargs.get("validate_args", utils.validate_args)
+        kwargs["validate_args"] = global_config.get_validate_args()
         name = f"{self.func.__module__}.{self.func.__name__}"
 
         _maybe_save_report(

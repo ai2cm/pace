@@ -320,6 +320,7 @@ class XPPM:
             backend=global_config.get_backend(),
             rebuild=global_config.get_rebuild(),
         )
+        self.stencil_runtime_args = {"validate_args": global_config.get_validate_args()}
 
     def __call__(
         self, q: FloatField, c: FloatField, xflux: FloatField, jfirst: int, jlast: int
@@ -343,4 +344,5 @@ class XPPM:
             xflux,
             origin=(self.is_, jfirst, 0),
             domain=(self.nic + 1, nj, self.npz + 1),
+            **self.stencil_runtime_args,
         )

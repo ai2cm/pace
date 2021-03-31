@@ -22,9 +22,6 @@ except ImportError:
 
 logger = logging.getLogger("fv3ser")
 
-# Set to "False" to skip validating gt4py stencil arguments
-validate_args = True
-
 # If True, automatically transfers memory between CPU and GPU (see gt4py.storage)
 managed_memory = True
 

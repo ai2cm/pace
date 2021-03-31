@@ -148,6 +148,7 @@ class XTP_U:
             backend=global_config.get_backend(),
             rebuild=global_config.get_rebuild(),
         )
+        self.stencil_runtime_args = {"validate_args": global_config.get_validate_args()}
 
     def __call__(self, c: FloatField, u: FloatField, flux: FloatField):
         """
@@ -167,4 +168,5 @@ class XTP_U:
             self.rdx,
             origin=self.origin,
             domain=self.domain,
+            **self.stencil_runtime_args,
         )

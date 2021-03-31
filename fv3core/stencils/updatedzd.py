@@ -12,11 +12,11 @@ from gt4py.gtscript import (
 import fv3core._config as spec
 import fv3core.stencils.d_sw as d_sw
 import fv3core.stencils.delnflux as delnflux
-import fv3core.stencils.fvtp2d as fvtp2d
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy
+from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import ra_x_func, ra_y_func
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
@@ -314,10 +314,10 @@ def compute(
         zh, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
     )
 
-    fvtp2d_obj = utils.cached_stencil_class(fvtp2d.FvTp2d)(
+    fvtp2d = utils.cached_stencil_class(FiniteVolumeTransport)(
         spec.namelist, spec.namelist.hord_tm, cache_key="updatedzd"
     )
-    fvtp2d_obj(
+    fvtp2d(
         z2,
         crx_adv,
         cry_adv,

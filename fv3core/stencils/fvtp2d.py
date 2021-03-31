@@ -4,11 +4,11 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import fv3core._config as spec
 import fv3core.stencils.d_sw as d_sw
 import fv3core.stencils.delnflux as delnflux
-import fv3core.stencils.xppm as xppm
-import fv3core.stencils.yppm as yppm
 import fv3core.utils.corners as corners
 import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
+from fv3core.stencils.xppm import XPPM
+from fv3core.stencils.yppm import YPPM
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -58,8 +58,10 @@ def transport_flux_xy(
             fy = transport_flux(fy, fy2, mfy)
 
 
-class FvTp2d:
+class FiniteVolumeTransport:
     """
+    Equivalent of Fortran FV3 subroutine fv_tp_2d, done in 3 dimensions.
+    Tested on serialized data with FvTp2d
     ONLY USE_SG=False compiler flag implements
     """
 
@@ -71,20 +73,23 @@ class FvTp2d:
         self._tmp_q_j = utils.make_storage_from_shape(shape, origin)
         self._tmp_fx2 = utils.make_storage_from_shape(shape, origin)
         self._tmp_fy2 = utils.make_storage_from_shape(shape, origin)
-        ord_out = hord
-        ord_in = 8 if hord == 10 else hord
+        ord_outer = hord
+        ord_inner = 8 if hord == 10 else hord
         stencil_kwargs = {
             "backend": global_config.get_backend(),
             "rebuild": global_config.get_rebuild(),
+        }
+        self.stencil_runtime_args = {
+            "validate_args": global_config.get_validate_args(),
         }
         stencil_wrapper = gtscript.stencil(**stencil_kwargs)
         self.stencil_q_i = stencil_wrapper(q_i_stencil)
         self.stencil_q_j = stencil_wrapper(q_j_stencil)
         self.stencil_transport_flux = stencil_wrapper(transport_flux_xy)
-        self.xppm_in = xppm.XPPM(spec.namelist, ord_in)
-        self.yppm_in = yppm.YPPM(spec.namelist, ord_in)
-        self.xppm_out = xppm.XPPM(spec.namelist, ord_out)
-        self.yppm_out = yppm.YPPM(spec.namelist, ord_out)
+        self.xppm_inner = XPPM(spec.namelist, ord_inner)
+        self.yppm_inner = YPPM(spec.namelist, ord_inner)
+        self.xppm_outer = XPPM(spec.namelist, ord_outer)
+        self.yppm_outer = YPPM(spec.namelist, ord_outer)
 
     def __call__(
         self,
@@ -107,7 +112,8 @@ class FvTp2d:
         corners.copy_corners_y_stencil(
             q, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
         )
-        self.yppm_in(q, cry, self._tmp_fy2, grid.isd, grid.ied)
+
+        self.yppm_inner(q, cry, self._tmp_fy2, grid.isd, grid.ied)
         self.stencil_q_i(
             q,
             grid.area,
@@ -117,13 +123,13 @@ class FvTp2d:
             self._tmp_q_i,
             origin=grid.full_origin(add=(0, 3, 0)),
             domain=grid.domain_shape_full(add=(0, -3, 1)),
+            **self.stencil_runtime_args,
         )
-        self.xppm_out(self._tmp_q_i, crx, fx, grid.js, grid.je)
-
+        self.xppm_outer(self._tmp_q_i, crx, fx, grid.js, grid.je)
         corners.copy_corners_x_stencil(
             q, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
         )
-        self.xppm_out(q, crx, self._tmp_fx2, grid.jsd, grid.jed)
+        self.xppm_inner(q, crx, self._tmp_fx2, grid.jsd, grid.jed)
         self.stencil_q_j(
             q,
             grid.area,
@@ -133,8 +139,9 @@ class FvTp2d:
             self._tmp_q_j,
             origin=grid.full_origin(add=(3, 0, 0)),
             domain=grid.domain_shape_full(add=(-3, 0, 1)),
+            **self.stencil_runtime_args,
         )
-        self.yppm_out(self._tmp_q_j, cry, fy, grid.is_, grid.ie)
+        self.yppm_outer(self._tmp_q_j, cry, fy, grid.is_, grid.ie)
         if mfx is not None and mfy is not None:
             self.stencil_transport_flux(
                 fx,
@@ -145,6 +152,7 @@ class FvTp2d:
                 mfy,
                 origin=grid.compute_origin(),
                 domain=grid.domain_shape_compute(add=(1, 1, 1)),
+                **self.stencil_runtime_args,
             )
             if (mass is not None) and (nord is not None) and (damp_c is not None):
                 for kstart, nk in d_sw.k_bounds():
@@ -161,6 +169,7 @@ class FvTp2d:
                 yfx,
                 origin=grid.compute_origin(),
                 domain=grid.domain_shape_compute(add=(1, 1, 1)),
+                **self.stencil_runtime_args,
             )
             if (nord is not None) and (damp_c is not None):
                 for kstart, nk in d_sw.k_bounds():

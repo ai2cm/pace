@@ -9,7 +9,6 @@ import fv3core.stencils.moist_cv as moist_cv
 import fv3core.stencils.neg_adj3 as neg_adj3
 import fv3core.stencils.rayleigh_super as rayleigh_super
 import fv3core.stencils.remapping as lagrangian_to_eulerian
-import fv3core.stencils.tracer_2d_1l
 import fv3core.utils.global_config as global_config
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
@@ -17,6 +16,7 @@ import fv3gfs.util
 from fv3core.decorators import ArgSpec, get_namespace, gtstencil
 from fv3core.stencils import c2l_ord
 from fv3core.stencils.basic_operations import copy_stencil
+from fv3core.stencils.tracer_2d_1l import Tracer2D1L
 from fv3core.utils.typing import FloatField, FloatFieldK
 
 
@@ -278,9 +278,11 @@ class DynamicalCore:
         self.grid = spec.grid
         self.namelist = namelist
         self.do_halo_exchange = global_config.get_do_halo_exchange()
-        self.tracer_advection = fv3core.stencils.tracer_2d_1l.Tracer2D1L(comm, namelist)
+
+        self.tracer_advection = Tracer2D1L(comm, namelist)
         # npx and npy are number of interfaces, npz is number of centers
         # and shapes should be the full data shape
+
         self._temporaries = fvdyn_temporaries(
             self.grid.domain_shape_full(add=(1, 1, 1)), self.grid
         )
