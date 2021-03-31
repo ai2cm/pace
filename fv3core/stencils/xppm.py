@@ -283,7 +283,7 @@ def compute_blbr_ord8plus(q: FloatField, dxa: FloatFieldIJ):
     return bl, br
 
 
-def _compute_flux_stencil(
+def compute_x_flux(
     q: FloatField, courant: FloatField, dxa: FloatFieldIJ, xflux: FloatField
 ):
     from __externals__ import mord
@@ -297,20 +297,23 @@ def _compute_flux_stencil(
             xflux = get_flux_ord8plus(q, courant, bl, br)
 
 
-class XPPM:
+class XPiecewiseParabolic:
+    """
+    Fortran name is xppm
+    """
+
     def __init__(self, namelist, iord):
         grid = spec.grid
         origin = grid.compute_origin()
         domain = grid.domain_shape_compute(add=(1, 1, 1))
         ax_offsets = axis_offsets(spec.grid, origin, domain)
         assert namelist.grid_type < 3
-        self.npz = grid.npz
-        self.is_ = grid.is_
-        self.ie = grid.ie
-        self.nic = grid.nic
-        self.dxa = grid.dxa
-        self.compute_flux_stencil = gtscript.stencil(
-            definition=_compute_flux_stencil,
+        self._npz = grid.npz
+        self._is_ = grid.is_
+        self._nic = grid.nic
+        self._dxa = grid.dxa
+        self._compute_flux_stencil = gtscript.stencil(
+            definition=compute_x_flux,
             externals={
                 "iord": iord,
                 "mord": abs(iord),
@@ -337,12 +340,12 @@ class XPPM:
         """
 
         nj = jlast - jfirst + 1
-        self.compute_flux_stencil(
+        self._compute_flux_stencil(
             q,
             c,
-            self.dxa,
+            self._dxa,
             xflux,
-            origin=(self.is_, jfirst, 0),
-            domain=(self.nic + 1, nj, self.npz + 1),
+            origin=(self._is_, jfirst, 0),
+            domain=(self._nic + 1, nj, self._npz + 1),
             **self.stencil_runtime_args,
         )

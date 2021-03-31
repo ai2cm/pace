@@ -361,7 +361,7 @@ def pert_ppm(a0, al, ar, iv, istart, jstart, ni, nj):
     return al, ar
 
 
-def _compute_flux_stencil(
+def compute_y_flux(
     q: FloatField, courant: FloatField, dya: FloatFieldIJ, yflux: FloatField
 ):
     from __externals__ import mord
@@ -375,7 +375,11 @@ def _compute_flux_stencil(
             yflux = get_flux_ord8plus(q, courant, bl, br)
 
 
-class YPPM:
+class YPiecewiseParabolic:
+    """
+    Fortran name is yppm
+    """
+
     def __init__(self, namelist, jord):
         grid = spec.grid
         origin = grid.compute_origin()
@@ -387,12 +391,12 @@ class YPPM:
                 f"Unimplemented hord value, {jord}. "
                 "Currently only support hord={5, 6, 7, 8}"
             )
-        self.npz = grid.npz
-        self.js = grid.js
-        self.njc = grid.njc
-        self.dya = grid.dya
-        self.compute_flux_stencil = gtscript.stencil(
-            definition=_compute_flux_stencil,
+        self._npz = grid.npz
+        self._js = grid.js
+        self._njc = grid.njc
+        self._dya = grid.dya
+        self._compute_flux_stencil = gtscript.stencil(
+            definition=compute_y_flux,
             externals={
                 "jord": jord,
                 "mord": abs(jord),
@@ -421,12 +425,12 @@ class YPPM:
         """
 
         ni = ilast - ifirst + 1
-        self.compute_flux_stencil(
+        self._compute_flux_stencil(
             q,
             c,
-            self.dya,
+            self._dya,
             flux,
-            origin=(ifirst, self.js, 0),
-            domain=(ni, self.njc + 1, self.npz + 1),
+            origin=(ifirst, self._js, 0),
+            domain=(ni, self._njc + 1, self._npz + 1),
             **self.stencil_runtime_args,
         )

@@ -34,7 +34,7 @@ class TranslateYPPM(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.process_inputs(inputs)
-        self.compute_func = yppm.YPPM(spec.namelist, int(inputs["jord"]))
+        self.compute_func = yppm.YPiecewiseParabolic(spec.namelist, int(inputs["jord"]))
         del inputs["jord"]
         self.compute_func(**inputs)
         return self.slice_output(inputs)
