@@ -187,7 +187,9 @@ def compute(state, comm):
     # mfyd, cxd, cyd, pkz, peln, q_con, ak, bk, diss_estd, cappa, mdt, n_split,
     # akap, ptop, pfull, n_map, comm):
     grid = spec.grid
-
+    nonhydrostatic_pressure = utils.cached_stencil_class(
+        nh_p_grad.NonHydrostaticPressureGradient
+    )(cache_key="dyn_core_nhpgrad")
     init_step = state.n_map == 1
     end_step = state.n_map == spec.namelist.k_split
     akap = constants.KAPPA
@@ -501,7 +503,7 @@ def compute(state, comm):
                 raise Exception(
                     "Unimplemented namelist option -- we only support beta=0"
                 )
-            nh_p_grad.compute(
+            nonhydrostatic_pressure(
                 state.u,
                 state.v,
                 state.pkc,
