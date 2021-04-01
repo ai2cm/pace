@@ -360,6 +360,7 @@ def generate_parallel_stencil_tests(metafunc):
 def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
     param_list = []
     for case in savepoint_cases:
+        fv3core._config.set_grid(case.grid)
         testobj = get_test_class_instance(case.test_name, case.grid)
         max_call_count = min(len(case.input_savepoints), len(case.output_savepoints))
         for i, (savepoint_in, savepoint_out) in enumerate(
