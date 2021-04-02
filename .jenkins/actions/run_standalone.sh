@@ -41,7 +41,7 @@ SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
 ROOT_DIR="$(dirname "$(dirname "$SCRIPTPATH")")"
 DATA_VERSION=`grep 'FORTRAN_SERIALIZED_DATA_VERSION *=' ${ROOT_DIR}/Makefile | cut -d '=' -f 2`
-TIMESTEPS=2
+TIMESTEPS=6
 RANKS=6
 BENCHMARK_DIR=${ROOT_DIR}/examples/standalone/benchmarks
 DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}/${experiment}"
@@ -59,6 +59,9 @@ if [ ! -d "${ARTIFACT_DIR}" ] ; then
 fi
 if [ ! -d "${BENCHMARK_DIR}" ] ; then
     exitError 1005 ${LINENO} "Benchmark directory ${BENCHMARK_DIR} does not exist"
+fi
+if [ "${SAVE_CACHE}" == "true" ] ; then
+    TIMESTEPS=2
 fi
 
 # echo config
