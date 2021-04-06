@@ -7,7 +7,7 @@ import fv3core._config as spec
 import fv3core.stencils.remap_profile as remap_profile
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.stencils.basic_operations import copy
+from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.utils.grid import Grid
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
@@ -201,7 +201,9 @@ def setup_data(
     dp1 = utils.make_storage_from_shape(
         q1.shape, origin=origin, cache_key="map_single_dp1"
     )
-    q4_1 = copy(q1, origin=(0, 0, 0), domain=grid.domain_shape_full())
+    q4_1 = utils.make_storage_from_shape(
+        q1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_1"
+    )
     q4_2 = utils.make_storage_from_shape(
         q4_1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_2"
     )
@@ -210,6 +212,12 @@ def setup_data(
     )
     q4_4 = utils.make_storage_from_shape(
         q4_1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_4"
+    )
+    copy_stencil(
+        q1,
+        q4_1,
+        origin=(0, 0, 0),
+        domain=grid.domain_shape_full(),
     )
     set_dp(dp1, pe1, origin=origin, domain=domain)
     return dp1, q4_1, q4_2, q4_3, q4_4, origin, domain, jslice, i_extent

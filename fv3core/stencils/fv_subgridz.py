@@ -472,7 +472,9 @@ def compute(state, nq, dt):
         raise Exception("Hydrostatic not supported for fv_subgridz")
     q0 = {}
     for tracername in utils.tracer_variables:
-        q0[tracername] = copy(state.__dict__[tracername], use_cache=False)
+        q0[tracername] = copy(
+            state.__dict__[tracername], cache_key="fv_subgridz_" + tracername
+        )
     origin = grid.compute_origin()
     shape = state.delp.shape
     # not 100% sure which of these require init=True,

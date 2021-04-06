@@ -311,6 +311,13 @@ def update_meridional_velocity(
         velocity_c = velocity_c - tmp_flux * flux + rdyc * (ke[0, -1, 0] - ke)
 
 
+@gtstencil
+def initialize_delpc_ptc(delpc: FloatField, ptc: FloatField):
+    with computation(PARALLEL), interval(...):
+        delpc = 0.0
+        ptc = 0.0
+
+
 def vorticitytransport_cgrid(
     uc: FloatField,
     vc: FloatField,
@@ -363,10 +370,13 @@ def compute(delp, pt, u, v, w, uc, vc, ua, va, ut, vt, divgd, omga, dt2):
     dord4 = True
     origin_halo1 = (grid.is_ - 1, grid.js - 1, 0)
     delpc = utils.make_storage_from_shape(
-        delp.shape, origin=origin_halo1, init=True, cache_key="c_sw_delpc"
+        delp.shape, origin=origin_halo1, cache_key="c_sw_delpc"
     )
     ptc = utils.make_storage_from_shape(
-        pt.shape, origin=origin_halo1, init=True, cache_key="c_sw_ptc"
+        pt.shape, origin=origin_halo1, cache_key="c_sw_ptc"
+    )
+    initialize_delpc_ptc(
+        delpc, ptc, origin=grid.full_origin(), domain=grid.domain_shape_full()
     )
     d2a2c.compute(dord4, uc, vc, u, v, ua, va, ut, vt)
     if spec.namelist.nord > 0:

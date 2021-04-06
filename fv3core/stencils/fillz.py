@@ -16,8 +16,6 @@ def fix_tracer(
     dm: FloatField,
     dm_pos: FloatField,
     zfix: IntFieldIJ,
-    upper_fix: FloatField,
-    lower_fix: FloatField,
     sum0: FloatFieldIJ,
     sum1: FloatFieldIJ,
 ):
@@ -65,7 +63,7 @@ def fix_tracer(
                 )
                 q = q + dq / dp
                 lower_fix = dq
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0, -1):
         if upper_fix[0, 0, 1] != 0.0:
             # If a lower layer borrowed from this one, account for that here
             q = q - upper_fix[0, 0, 1] / dp
@@ -124,12 +122,6 @@ def compute(
     )
     # setting initial value of upper_fix to zero is only needed
     # for validation. The values in the compute domain are set to zero in the stencil.
-    upper_fix = utils.make_storage_from_shape(
-        shape, origin=(0, 0, 0), init=True, cache_key="fillz_upper_Fix"
-    )
-    lower_fix = utils.make_storage_from_shape(
-        shape, origin=(0, 0, 0), init=True, cache_key="fillz_lower_fix"
-    )
     zfix = utils.make_storage_from_shape(
         shape_ij, dtype=np.int, origin=(0, 0), cache_key="fillz_zfix"
     )
@@ -148,8 +140,6 @@ def compute(
             dm,
             dm_pos,
             zfix,
-            upper_fix,
-            lower_fix,
             sum0,
             sum1,
             origin=(i1, js, 0),

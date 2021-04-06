@@ -30,7 +30,7 @@ def copy_stencil_2d(q_in: FloatFieldIJ, q_out: FloatFieldIJ):
         q_out = q_in
 
 
-def copy(q_in, origin=(0, 0, 0), domain=None, use_cache=True):
+def copy(q_in, origin=(0, 0, 0), domain=None, cache_key=None):
     """Copy q_in inside the origin and domain, and zero outside.
 
     Args:
@@ -51,9 +51,9 @@ def copy(q_in, origin=(0, 0, 0), domain=None, use_cache=True):
         domain = (domain[0], domain[1], 1)
         origin = origin[0:2]
         copy_fxn = copy_stencil_2d
-    if use_cache:
+    if cache_key:
         q_out = utils.make_storage_from_shape(
-            q_in.shape, q_in.default_origin, init=True
+            q_in.shape, q_in.default_origin, cache_key=cache_key
         )
     else:
         q_out = utils.make_storage_from_shape_uncached(

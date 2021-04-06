@@ -4,7 +4,7 @@ import fv3core._config as spec
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.stencils.basic_operations import copy
+from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -158,7 +158,7 @@ def compute_no_sg(q, fx2, fy2, nord, damp_c, d2, kstart=0, nk=None, mass=None):
     if mass is None:
         d2_damp(q, d2, damp_c, origin=origin_d2, domain=domain_d2)
     else:
-        d2 = copy(q, origin=origin_d2, domain=domain_d2)
+        copy_stencil(q, d2, origin=origin_d2, domain=domain_d2)
 
     if nord > 0:
         corners.copy_corners_x_stencil(

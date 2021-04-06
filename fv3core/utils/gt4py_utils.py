@@ -1,4 +1,3 @@
-import inspect
 import logging
 import math
 from functools import wraps
@@ -297,30 +296,15 @@ def make_storage_from_shape(
     mask: Optional[Tuple[bool, bool, bool]] = None,
     cache_key: Optional[Hashable] = None,
 ) -> Field:
-    """Create a new gt4py storage of a given shape. Outputs are memoized.
-
-    The key used for memoization is the arguments used combined with the
-    calling scope file and line number, as well as the file and line number
-    which called in to that scope. This handles cases where a utility
-    function (such as `copy`) calls our `make_storage_from_shape`, since
-    `copy` will be called from different places each time. This does *not*
-    handle any more deeply nested duplicate calls, such as if another
-    utility function were to call `copy`, and does not handle allocations
-    which take place within for loops, such as tracer allocations. In
-    those cases, memoization will provide the same storage to two
-    conceptually different objects, causing a bug.
-
-    For this reason, and because of the significant overhead cost of
-    `inspect`, we should move away from this implementation in the
-    longer term.
-
+    """Create a new gt4py storage of a given shape. Outputs are memoized
+       using a provided cache_key
     Args:
         shape: Shape of the new storage
         origin: Default origin for gt4py stencil calls
         dtype: Data type
         init: If True, initializes the storage to zero
         mask: Tuple indicating the axes used when initializing the storage
-
+        cache_key: string for memoizing the storage
     Returns:
         Field[dtype]: New storage
 
@@ -338,14 +322,9 @@ def make_storage_from_shape(
     # We should shift to an explicit caching or array re-use system down
     # the line.
     if cache_key is None:
-        callers = tuple(
-            # only need to look at the calling scope and its calling scope
-            # because we don't have any utility functions that call utility
-            # functions that call this function (only nested 1 deep)
-            inspect.getframeinfo(stack_item[0])
-            for stack_item in inspect.stack()[1:3]
+        return make_storage_from_shape_uncached(
+            shape, origin, dtype=dtype, init=init, mask=mask
         )
-        cache_key = tuple((caller.filename, caller.lineno) for caller in callers)
     full_key = (shape, origin, cache_key, dtype, init, mask)
     if full_key not in storage_shape_outputs:
         storage_shape_outputs[full_key] = make_storage_from_shape_uncached(

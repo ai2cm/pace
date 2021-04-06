@@ -5,12 +5,15 @@ import fv3core.stencils.sim1_solver as sim1_solver
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.stencils.basic_operations import copy
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtstencil()
 def precompute(
+    delpc: FloatField,
+    cappa: FloatField,
+    w3: FloatField,
+    w: FloatField,
     cp3: FloatField,
     gz: FloatField,
     dm: FloatField,
@@ -21,6 +24,10 @@ def precompute(
     pm: FloatField,
     ptop: float,
 ):
+    with computation(PARALLEL), interval(...):
+        dm = delpc
+        cp3 = cappa
+        w = w3
     with computation(FORWARD):
         with interval(0, 1):
             pem = ptop
@@ -92,10 +99,9 @@ def compute(
     shape = w3.shape
     domain = (spec.grid.nic + 2, grid.njc + 2, km + 2)
     riemorigin = (is1, js1, 0)
-    dm = copy(delpc)
-    cp3 = copy(cappa)
-    w = copy(w3)
-
+    dm = utils.make_storage_from_shape(shape, riemorigin, cache_key="riemc_dm")
+    cp3 = utils.make_storage_from_shape(shape, riemorigin, cache_key="riemc_cp3")
+    w = utils.make_storage_from_shape(shape, riemorigin, cache_key="riemc_w")
     pem = utils.make_storage_from_shape(
         shape, riemorigin, cache_key="riem_solver_c_pem"
     )
@@ -105,6 +111,10 @@ def compute(
     pm = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver_c_pm")
     # it looks like this code sets pef = ptop, and does not otherwise use pef here
     precompute(
+        delpc,
+        cappa,
+        w3,
+        w,
         cp3,
         gz,
         dm,

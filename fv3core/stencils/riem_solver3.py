@@ -16,12 +16,15 @@ import fv3core.stencils.sim1_solver as sim1_solver
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.stencils.basic_operations import copy
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtstencil()
 def precompute(
+    delp: FloatField,
+    cappa: FloatField,
+    pe: FloatField,
+    pe_init: FloatField,
     cp3: FloatField,
     dm: FloatField,
     zh: FloatField,
@@ -40,6 +43,10 @@ def precompute(
     rgrav: float,
     akap: float,
 ):
+    with computation(PARALLEL), interval(...):
+        dm = delp
+        cp3 = cappa
+        pe_init = pe
     with computation(FORWARD):
         with interval(0, 1):
             pem = ptop
@@ -137,15 +144,15 @@ def compute(
     km = grid.npz - 1
     peln1 = math.log(ptop)
     ptk = math.exp(akap * peln1)
-    islice = slice(grid.is_, grid.ie + 1)
-    kslice = slice(0, km + 1)
-    kslice_shift = slice(1, km + 2)
     shape = w.shape
     domain = (grid.nic, grid.njc, km + 2)
     riemorigin = (grid.is_, grid.js, 0)
-    dm = copy(delp)
-    cp3 = copy(cappa)
-    pe_init = copy(pe)
+
+    dm = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem3_dm")
+    cp3 = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem3_cp3")
+    pe_init = utils.make_storage_from_shape(
+        shape, riemorigin, cache_key="riem3_pe_init"
+    )
     pm = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver3_pm")
     pem = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver3_pem")
     peln_run = utils.make_storage_from_shape(
@@ -158,6 +165,10 @@ def compute(
     gm = utils.make_storage_from_shape(shape, riemorigin, cache_key="riem_solver3_gm")
 
     precompute(
+        delp,
+        cappa,
+        pe,
+        pe_init,
         cp3,
         dm,
         zh,

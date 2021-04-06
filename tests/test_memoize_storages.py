@@ -32,7 +32,11 @@ def init(request):
 def test_storage_is_cached(backend, shape, origin, init):
     outputs = []
     for _ in range(2):
-        outputs.append(make_storage_from_shape(shape, origin=origin, init=init))
+        outputs.append(
+            make_storage_from_shape(
+                shape, origin=origin, init=init, cache_key="test-cached"
+            )
+        )
     assert outputs[0] is outputs[1]
 
 

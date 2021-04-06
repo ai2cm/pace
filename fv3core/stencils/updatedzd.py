@@ -15,7 +15,7 @@ import fv3core.stencils.delnflux as delnflux
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.stencils.basic_operations import copy
+from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import ra_x_func, ra_y_func
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -310,8 +310,14 @@ def compute(
     fy = utils.make_storage_from_shape(
         zh.shape, grid.full_origin(), cache_key="updatedzd_fy"
     )
-    z2 = copy(
-        zh, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
+    z2 = utils.make_storage_from_shape(
+        zh.shape, grid.full_origin(), cache_key="updatedzd_z2"
+    )
+    copy_stencil(
+        zh,
+        z2,
+        origin=grid.full_origin(),
+        domain=grid.domain_shape_full(add=(0, 0, 1)),
     )
 
     fvtp2d = utils.cached_stencil_class(FiniteVolumeTransport)(

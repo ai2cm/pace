@@ -243,13 +243,16 @@ def compute(
 ):
     grid = spec.grid
     origin = (1, 1, 0)
-    gz = copy(gz_in, origin=origin)
-    gz_x = copy(gz, origin=origin)
+    gz = copy(gz_in, origin=origin, cache_key="updatedzc_gz")
+    gz_x = copy(gz, origin=origin, cache_key="updatedzc_gz_x")
     ws = copy(
-        ws3, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(1, 1, 0))
+        ws3,
+        origin=grid.full_origin(),
+        domain=grid.domain_shape_full(add=(1, 1, 0)),
+        cache_key="updatedzc_ws",
     )
     corners.fill_corners_cells(gz_x, "x")
-    gz_y = copy(gz_x, origin=origin)
+    gz_y = copy(gz_x, origin=origin, cache_key="updatedzc_gz_y")
     corners.fill_corners_cells(gz_y, "y")
     update_dz_c(
         dp_ref,

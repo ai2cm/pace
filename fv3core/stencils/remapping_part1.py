@@ -8,7 +8,6 @@ import fv3core.stencils.mapn_tracer as mapn_tracer
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
-from fv3core.stencils.basic_operations import copy, copy_stencil
 from fv3core.stencils.moist_cv import moist_pt_func
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
@@ -17,12 +16,14 @@ CONSV_MIN = 0.001
 
 
 @gtstencil()
-def init_pe2(pe: FloatField, pe2: FloatField, ptop: float):
+def init_pe(pe: FloatField, pe1: FloatField, pe2: FloatField, ptop: float):
     with computation(PARALLEL):
         with interval(0, 1):
             pe2 = ptop
         with interval(-1, None):
             pe2 = pe
+    with computation(PARALLEL), interval(...):
+        pe1 = pe
 
 
 @gtstencil()
@@ -116,8 +117,16 @@ def copy_j_adjacent(pe2: FloatField):
 
 
 @gtstencil()
-def pn2_and_pk(pe2: FloatField, pn2: FloatField, pk: FloatField, akap: float):
+def pn2_pk_delp(
+    dp2: FloatField,
+    delp: FloatField,
+    pe2: FloatField,
+    pn2: FloatField,
+    pk: FloatField,
+    akap: float,
+):
     with computation(PARALLEL), interval(...):
+        delp = dp2
         pn2 = log(pe2)
         pk = exp(akap * pn2)
 
@@ -214,7 +223,11 @@ def compute(
 
     # do_omega = hydrostatic and last_step # TODO pull into inputs
     domain_jextra = (grid.nic, grid.njc + 1, grid.npz + 1)
-    pe1 = copy(pe, origin=grid.compute_origin(), domain=domain_jextra)
+
+    pe1 = utils.make_storage_from_shape(
+        pe.shape, grid.compute_origin(), cache_key="remapping_part1_pe1"
+    )
+
     pe2 = utils.make_storage_from_shape(
         pe.shape, grid.compute_origin(), cache_key="remapping_part1_pe2"
     )
@@ -231,7 +244,7 @@ def compute(
         pe.shape, grid.compute_origin(), cache_key="remapping_part1_pe3"
     )
 
-    init_pe2(pe, pe2, ptop, origin=grid.compute_origin(), domain=domain_jextra)
+    init_pe(pe, pe1, pe2, ptop, origin=grid.compute_origin(), domain=domain_jextra)
 
     moist_cv_pt_pressure(
         tracers["qvapor"],
@@ -266,11 +279,9 @@ def compute(
     copy_j_adjacent(
         pe2, origin=(grid.is_, grid.je + 1, 1), domain=(grid.nic, 1, grid.npz - 1)
     )
-    copy_stencil(
-        dp2, delp, origin=grid.compute_origin(), domain=grid.domain_shape_compute()
-    )
-
-    pn2_and_pk(
+    pn2_pk_delp(
+        dp2,
+        delp,
         pe2,
         pn2,
         pk,
