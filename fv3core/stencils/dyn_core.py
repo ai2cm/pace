@@ -353,7 +353,7 @@ def compute(state, comm):
                     domain=grid.domain_shape_full(add=(0, 0, 1)),
                 )
         if not hydrostatic:
-            state.gz, state.ws3 = updatedzc.compute(
+            updatedzc.compute(
                 state.dp_ref, state.zs, state.ut, state.vt, state.gz, state.ws3, dt2
             )
             riem_solver_c.compute(
