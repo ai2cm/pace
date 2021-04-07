@@ -1,5 +1,5 @@
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import PARALLEL, asin, computation, cos, interval, sin, sqrt
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
@@ -23,6 +23,203 @@ a2 = -1.0 / 16.0
 
 def grid():
     return spec.grid
+
+
+@gtscript.function
+def great_circle_dist(p1a, p1b, p2a, p2b):
+    tb = sin((p1b - p2b) / 2.0) ** 2.0
+    ta = sin((p1a - p2a) / 2.0) ** 2.0
+    return asin(sqrt(tb + cos(p1b) * cos(p2b) * ta)) * 2.0
+
+
+@gtscript.function
+def extrap_corner(
+    p0a,
+    p0b,
+    p1a,
+    p1b,
+    p2a,
+    p2b,
+    qa,
+    qb,
+):
+    x1 = great_circle_dist(p1a, p1b, p0a, p0b)
+    x2 = great_circle_dist(p2a, p2b, p0a, p0b)
+    return qa + x1 / (x2 - x1) * (qa - qb)
+
+
+@gtstencil()
+def _sw_corner(
+    qin: FloatField,
+    qout: FloatField,
+    agrid1: FloatFieldIJ,
+    agrid2: FloatFieldIJ,
+    bgrid1: FloatFieldIJ,
+    bgrid2: FloatFieldIJ,
+):
+
+    with computation(PARALLEL), interval(...):
+        ec1 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[0, 0],
+            agrid2[0, 0],
+            agrid1[1, 1],
+            agrid2[1, 1],
+            qin[0, 0, 0],
+            qin[1, 1, 0],
+        )
+        ec2 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[-1, 0],
+            agrid2[-1, 0],
+            agrid1[-2, 1],
+            agrid2[-2, 1],
+            qin[-1, 0, 0],
+            qin[-2, 1, 0],
+        )
+        ec3 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[0, -1],
+            agrid2[0, -1],
+            agrid1[1, -2],
+            agrid2[1, -2],
+            qin[0, -1, 0],
+            qin[1, -2, 0],
+        )
+
+        qout = (ec1 + ec2 + ec3) * (1.0 / 3.0)
+
+
+@gtstencil()
+def _nw_corner(
+    qin: FloatField,
+    qout: FloatField,
+    agrid1: FloatFieldIJ,
+    agrid2: FloatFieldIJ,
+    bgrid1: FloatFieldIJ,
+    bgrid2: FloatFieldIJ,
+):
+    with computation(PARALLEL), interval(...):
+        ec1 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[-1, 0],
+            agrid2[-1, 0],
+            agrid1[-2, 1],
+            agrid2[-2, 1],
+            qin[-1, 0, 0],
+            qin[-2, 1, 0],
+        )
+        ec2 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[-1, -1],
+            agrid2[-1, -1],
+            agrid1[-2, -2],
+            agrid2[-2, -2],
+            qin[-1, -1, 0],
+            qin[-2, -2, 0],
+        )
+        ec3 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[0, 0],
+            agrid2[0, 0],
+            agrid1[1, 1],
+            agrid2[1, 1],
+            qin[0, 0, 0],
+            qin[1, 1, 0],
+        )
+        qout = (ec1 + ec2 + ec3) * (1.0 / 3.0)
+
+
+@gtstencil()
+def _ne_corner(
+    qin: FloatField,
+    qout: FloatField,
+    agrid1: FloatFieldIJ,
+    agrid2: FloatFieldIJ,
+    bgrid1: FloatFieldIJ,
+    bgrid2: FloatFieldIJ,
+):
+    with computation(PARALLEL), interval(...):
+        ec1 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[-1, -1],
+            agrid2[-1, -1],
+            agrid1[-2, -2],
+            agrid2[-2, -2],
+            qin[-1, -1, 0],
+            qin[-2, -2, 0],
+        )
+        ec2 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[0, -1],
+            agrid2[0, -1],
+            agrid1[1, -2],
+            agrid2[1, -2],
+            qin[0, -1, 0],
+            qin[1, -2, 0],
+        )
+        ec3 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[-1, 0],
+            agrid2[-1, 0],
+            agrid1[-2, 1],
+            agrid2[-2, 1],
+            qin[-1, 0, 0],
+            qin[-2, 1, 0],
+        )
+        qout = (ec1 + ec2 + ec3) * (1.0 / 3.0)
+
+
+@gtstencil()
+def _se_corner(
+    qin: FloatField,
+    qout: FloatField,
+    agrid1: FloatFieldIJ,
+    agrid2: FloatFieldIJ,
+    bgrid1: FloatFieldIJ,
+    bgrid2: FloatFieldIJ,
+):
+    with computation(PARALLEL), interval(...):
+        ec1 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[0, -1],
+            agrid2[0, -1],
+            agrid1[1, -2],
+            agrid2[1, -2],
+            qin[0, -1, 0],
+            qin[1, -2, 0],
+        )
+        ec2 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[-1, -1],
+            agrid2[-1, -1],
+            agrid1[-2, -2],
+            agrid2[-2, -2],
+            qin[-1, -1, 0],
+            qin[-2, -2, 0],
+        )
+        ec3 = extrap_corner(
+            bgrid1[0, 0],
+            bgrid2[0, 0],
+            agrid1[0, 0],
+            agrid2[0, 0],
+            agrid1[1, 1],
+            agrid2[1, 1],
+            qin[0, 0, 0],
+            qin[1, 1, 0],
+        )
+        qout = (ec1 + ec2 + ec3) * (1.0 / 3.0)
 
 
 @gtstencil()
@@ -214,98 +411,6 @@ def qy_edge_north2(qin: FloatField, dya: FloatFieldIJ, qy: FloatField):
         ) / (2.0 + 2.0 * g_in)
 
 
-def ec1_offsets(corner):
-    i1a, i1b = ec1_offsets_dir(corner, "w")
-    j1a, j1b = ec1_offsets_dir(corner, "s")
-    return i1a, i1b, j1a, j1b
-
-
-def ec1_offsets_dir(corner, lower_direction):
-    if lower_direction in corner:
-        a = 0
-        b = 1
-    else:
-        a = -1
-        b = -2
-    return (a, b)
-
-
-def ec2_offsets_dirs(corner, lower_direction, other_direction):
-    if lower_direction in corner or other_direction in corner:
-        a = -1
-        b = -2
-    else:
-        a = 0
-        b = 1
-    return a, b
-
-
-def ec2_offsets(corner):
-    i2a, i2b = ec2_offsets_dirs(corner, "s", "w")
-    j2a, j2b = ec2_offsets_dirs(corner, "e", "n")
-    return i2a, i2b, j2a, j2b
-
-
-def ec3_offsets_dirs(corner, lower_direction, other_direction):
-    if lower_direction in corner or other_direction in corner:
-        a = 0
-        b = 1
-    else:
-        a = -1
-        b = -2
-    return a, b
-
-
-def ec3_offsets(corner):
-    i3a, i3b = ec3_offsets_dirs(corner, "s", "w")
-    j3a, j3b = ec3_offsets_dirs(corner, "e", "n")
-    return i3a, i3b, j3a, j3b
-
-
-# TODO: Put into stencil?
-def extrapolate_corner_qout(qin, qout, i, j, kstart, nk, corner):
-    if not getattr(grid(), corner + "_corner"):
-        return
-    kslice = slice(kstart, kstart + nk)
-    bgrid = utils.stack((grid().bgrid1[:, :], grid().bgrid2[:, :]), axis=2)
-    agrid = utils.stack((grid().agrid1[:, :], grid().agrid2[:, :]), axis=2)
-    p0 = bgrid[i, j, :]
-    # TODO: Please simplify
-    i1a, i1b, j1a, j1b = ec1_offsets(corner)
-    i2a, i2b, j2a, j2b = ec2_offsets(corner)
-    i3a, i3b, j3a, j3b = ec3_offsets(corner)
-    ec1 = utils.extrap_corner(
-        p0,
-        agrid[i + i1a, j + j1a, :],
-        agrid[i + i1b, j + j1b, :],
-        qin[i + i1a, j + j1a, kslice],
-        qin[i + i1b, j + j1b, kslice],
-    )
-    ec2 = utils.extrap_corner(
-        p0,
-        agrid[i + i2a, j + j2a, :],
-        agrid[i + i2b, j + j2b, :],
-        qin[i + i2a, j + j2a, kslice],
-        qin[i + i2b, j + j2b, kslice],
-    )
-    ec3 = utils.extrap_corner(
-        p0,
-        agrid[i + i3a, j + j3a, :],
-        agrid[i + i3b, j + j3b, :],
-        qin[i + i3a, j + j3a, kslice],
-        qin[i + i3b, j + j3b, kslice],
-    )
-    qout[i, j, kslice] = (ec1 + ec2 + ec3) * (1.0 / 3.0)
-
-
-def extrapolate_corners(qin, qout, kstart, nk):
-    # qout corners, 3 way extrapolation
-    extrapolate_corner_qout(qin, qout, grid().is_, grid().js, kstart, nk, "sw")
-    extrapolate_corner_qout(qin, qout, grid().ie + 1, grid().js, kstart, nk, "se")
-    extrapolate_corner_qout(qin, qout, grid().ie + 1, grid().je + 1, kstart, nk, "ne")
-    extrapolate_corner_qout(qin, qout, grid().is_, grid().je + 1, kstart, nk, "nw")
-
-
 def compute_qout_edges(qin, qout, kstart, nk):
     compute_qout_x_edges(qin, qout, kstart, nk)
     compute_qout_y_edges(qin, qout, kstart, nk)
@@ -494,7 +599,48 @@ def compute_qout(qxx, qyy, qout, kstart, nk):
 def compute(qin, qout, kstart=0, nk=None, replace=False):
     if nk is None:
         nk = grid().npz - kstart
-    extrapolate_corners(qin, qout, kstart, nk)
+    corner_domain = (1, 1, nk)
+    _sw_corner(
+        qin,
+        qout,
+        grid().agrid1,
+        grid().agrid2,
+        grid().bgrid1,
+        grid().bgrid2,
+        origin=(grid().is_, grid().js, kstart),
+        domain=corner_domain,
+    )
+
+    _nw_corner(
+        qin,
+        qout,
+        grid().agrid1,
+        grid().agrid2,
+        grid().bgrid1,
+        grid().bgrid2,
+        origin=(grid().ie + 1, grid().js, kstart),
+        domain=corner_domain,
+    )
+    _ne_corner(
+        qin,
+        qout,
+        grid().agrid1,
+        grid().agrid2,
+        grid().bgrid1,
+        grid().bgrid2,
+        origin=(grid().ie + 1, grid().je + 1, kstart),
+        domain=corner_domain,
+    )
+    _se_corner(
+        qin,
+        qout,
+        grid().agrid1,
+        grid().agrid2,
+        grid().bgrid1,
+        grid().bgrid2,
+        origin=(grid().is_, grid().je + 1, kstart),
+        domain=corner_domain,
+    )
     if spec.namelist.grid_type < 3:
         compute_qout_edges(qin, qout, kstart, nk)
         qx = compute_qx(qin, qout, kstart, nk)
