@@ -3,6 +3,7 @@ from gt4py.gtscript import (
     __INLINED,
     PARALLEL,
     computation,
+    external_assert,
     horizontal,
     interval,
     region,
@@ -80,7 +81,7 @@ def _compute_stencil(
             dm = yppm.dm_jord8plus(v)
             al = yppm.al_jord8plus(v, dm)
 
-            assert __INLINED(jord == 8)
+            external_assert(jord == 8)
             # {
             bl, br = yppm.blbr_jord8(v, al, dm)
             # }

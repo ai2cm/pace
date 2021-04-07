@@ -1,8 +1,8 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
-    __INLINED,
     PARALLEL,
     computation,
+    external_assert,
     horizontal,
     interval,
     region,
@@ -101,7 +101,7 @@ def transportdelp(
     from __externals__ import namelist
 
     with computation(PARALLEL), interval(...):
-        assert __INLINED(namelist.grid_type < 3)
+        external_assert(namelist.grid_type < 3)
         # additional assumption (not grid.nested)
 
         delp = corners.fill_corners_2cells_x(delp)
@@ -243,7 +243,7 @@ def update_vorticity_and_kinetic_energy(
     from __externals__ import i_end, i_start, j_end, j_start, namelist
 
     with computation(PARALLEL), interval(...):
-        assert __INLINED(namelist.grid_type < 3)
+        external_assert(namelist.grid_type < 3)
 
         ke = uc if ua > 0.0 else uc[1, 0, 0]
         vort = vc if va > 0.0 else vc[0, 1, 0]
@@ -275,7 +275,7 @@ def update_zonal_velocity(
     from __externals__ import i_end, i_start, namelist
 
     with computation(PARALLEL), interval(...):
-        assert __INLINED(namelist.grid_type < 3)
+        external_assert(namelist.grid_type < 3)
         # additional assumption: not __INLINED(spec.grid.nested)
 
         tmp_flux = dt2 * (velocity - velocity_c * cosa) / sina
@@ -300,7 +300,7 @@ def update_meridional_velocity(
     from __externals__ import j_end, j_start, namelist
 
     with computation(PARALLEL), interval(...):
-        assert __INLINED(namelist.grid_type < 3)
+        external_assert(namelist.grid_type < 3)
         # additional assumption: not __INLINED(spec.grid.nested)
 
         tmp_flux = dt2 * (velocity - velocity_c * cosa) / sina

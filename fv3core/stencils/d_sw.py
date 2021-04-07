@@ -3,6 +3,7 @@ from gt4py.gtscript import (
     __INLINED,
     PARALLEL,
     computation,
+    external_assert,
     horizontal,
     interval,
     region,
@@ -169,7 +170,7 @@ def not_inlineq_pressure_and_vbke(
                 pt = flux_integral(pt, delp, gx, gy, rarea)
                 delp = delp + flux_component(fx, fy, rarea)
                 pt = pt / delp
-        assert __INLINED(spec.namelist.grid_type < 3)
+        external_assert(spec.namelist.grid_type < 3)
         vb = vbke(vc, uc, cosa, rsina, vt, vb, dt4, dt5)
 
 
@@ -567,7 +568,7 @@ def mult_ubke(
 ):
     with computation(PARALLEL), interval(...):
         ke = vb * ub
-        assert __INLINED(spec.namelist.grid_type < 3)
+        external_assert(spec.namelist.grid_type < 3)
         ub = ubke(uc, vc, cosa, rsina, ut, ub, dt4, dt5)
 
 
