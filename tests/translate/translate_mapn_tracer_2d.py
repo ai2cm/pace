@@ -21,6 +21,7 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
         self.max_error = 3.5e-11
         self.near_zero = 7e-17
         self.ignore_near_zero_errors["qtracers"] = True
+        self.nj = grid.npy
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -29,6 +30,9 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
         )
         inputs["i1"] = self.is_
         inputs["i2"] = self.ie
+        inputs["j1"] = inputs["j_2d"]
+        inputs["j2"] = inputs["j_2d"]
+        del inputs["j_2d"]
         inputs["kord"] = abs(spec.namelist.kord_tr)
         self.compute_func(**inputs)
         return self.slice_output(inputs)

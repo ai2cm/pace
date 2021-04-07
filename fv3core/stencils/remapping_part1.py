@@ -298,19 +298,35 @@ def compute(
         1,
         grid.is_,
         grid.ie,
+        grid.js,
+        grid.je,
         abs(spec.namelist.kord_tm),
         qmin=t_min,
     )
 
     # TODO if nq > 5:
     mapn_tracer.compute(
-        pe1, pe2, dp2, tracers, nq, 0.0, grid.is_, grid.ie, abs(spec.namelist.kord_tr)
+        pe1,
+        pe2,
+        dp2,
+        tracers,
+        nq,
+        0.0,
+        grid.is_,
+        grid.ie,
+        grid.js,
+        grid.je,
+        abs(spec.namelist.kord_tr),
     )
     # TODO else if nq > 0:
     # TODO map1_q2, fillz
     kord_wz = spec.namelist.kord_wz
-    map_single.compute(w, pe1, pe2, wsd, -2, grid.is_, grid.ie, kord_wz)
-    map_single.compute(delz, pe1, pe2, gz, 1, grid.is_, grid.ie, kord_wz)
+    map_single.compute(
+        w, pe1, pe2, wsd, -2, grid.is_, grid.ie, grid.js, grid.je, kord_wz
+    )
+    map_single.compute(
+        delz, pe1, pe2, gz, 1, grid.is_, grid.ie, grid.js, grid.je, kord_wz
+    )
 
     undo_delz_adjust_and_copy_peln(
         delp,
@@ -349,13 +365,31 @@ def compute(
         pe, pe1, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_jextra
     )
     map_single.compute(
-        u, pe0, pe3, gz, -1, grid.is_, grid.ie, spec.namelist.kord_mt, j_interface=True
+        u,
+        pe0,
+        pe3,
+        gz,
+        -1,
+        grid.is_,
+        grid.ie,
+        grid.js,
+        grid.je + 1,
+        spec.namelist.kord_mt,
     )
     domain_iextra = (grid.nic + 1, grid.njc, grid.npz + 1)
     pressures_mapv(
         pe, ak, bk, pe0, pe3, origin=grid.compute_origin(), domain=domain_iextra
     )
     map_single.compute(
-        v, pe0, pe3, gz, -1, grid.is_, grid.ie + 1, spec.namelist.kord_mt
+        v,
+        pe0,
+        pe3,
+        gz,
+        -1,
+        grid.is_,
+        grid.ie + 1,
+        grid.js,
+        grid.je,
+        spec.namelist.kord_mt,
     )
     update_ua(pe2, ua, origin=grid.compute_origin(), domain=domain_jextra)

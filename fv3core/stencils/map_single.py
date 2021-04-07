@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
@@ -8,7 +8,6 @@ import fv3core.stencils.remap_profile as remap_profile
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy_stencil
-from fv3core.utils.grid import Grid
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -94,13 +93,6 @@ def lagrangian_contributions(
         q2_adds += q2_tmp
 
 
-def region_mode(j_2d: Optional[int], i1: int, i_extent: int, grid: Grid):
-    jslice = slice(j_2d, j_2d + 1) if j_2d else slice(grid.js, grid.je + 1)
-    origin = (i1, jslice.start, 0)
-    domain = (i_extent, jslice.stop - jslice.start, grid.npz)
-    return origin, domain, jslice
-
-
 def compute(
     q1: FloatField,
     pe1: FloatField,
@@ -109,17 +101,17 @@ def compute(
     mode: int,
     i1: int,
     i2: int,
+    j1: int,
+    j2: int,
     kord: int,
     qmin: float = 0.0,
-    j_2d: Optional[int] = None,
-    j_interface: bool = False,
     version: str = "stencil",
 ):
-    dp1, q4_1, q4_2, q4_3, q4_4, origin, domain, jslice, i_extent = setup_data(
-        q1, pe1, i1, i2, j_2d, j_interface
+    dp1, q4_1, q4_2, q4_3, q4_4, origin, domain, i_extent, j_extent = setup_data(
+        q1, pe1, i1, i2, j1, j2
     )
     q4_1, q4_2, q4_3, q4_4 = remap_profile.compute(
-        qs, q4_1, q4_2, q4_3, q4_4, dp1, spec.grid.npz, i1, i2, mode, kord, jslice, qmin
+        qs, q4_1, q4_2, q4_3, q4_4, dp1, spec.grid.npz, i1, i2, j1, j2, mode, kord, qmin
     )
     do_lagrangian_contributions(
         q1,
@@ -132,8 +124,9 @@ def compute(
         dp1,
         i1,
         i2,
+        j1,
+        j2,
         kord,
-        jslice,
         origin,
         domain,
         version,
@@ -152,15 +145,16 @@ def do_lagrangian_contributions(
     dp1: FloatField,
     i1: int,
     i2: int,
+    j1: int,
+    j2: int,
     kord: int,
-    jslice: Tuple[int, int, int],
     origin: Tuple[int, int, int],
     domain: Tuple[int, int, int],
     version: str,
 ):
     if version == "transliterated":
         lagrangian_contributions_transliterated(
-            q1, pe1, pe2, q4_1, q4_2, q4_3, q4_4, dp1, i1, i2, kord, jslice
+            q1, pe1, pe2, q4_1, q4_2, q4_3, q4_4, dp1, i1, i2, j1, j2, kord
         )
     elif version == "stencil":
         lagrangian_contributions_stencil(
@@ -174,8 +168,9 @@ def do_lagrangian_contributions(
             dp1,
             i1,
             i2,
+            j1,
+            j2,
             kord,
-            jslice,
             origin,
             domain,
         )
@@ -183,20 +178,12 @@ def do_lagrangian_contributions(
         raise NotImplementedError(version + " is not an implemented remapping version")
 
 
-def setup_data(
-    q1: FloatField,
-    pe1: FloatField,
-    i1: int,
-    i2: int,
-    j_2d: Optional[int] = None,
-    j_interface: bool = False,
-):
+def setup_data(q1: FloatField, pe1: FloatField, i1: int, i2: int, j1: int, j2: int):
     grid = spec.grid
     i_extent = i2 - i1 + 1
-    origin, domain, jslice = region_mode(j_2d, i1, i_extent, grid)
-    if j_interface:
-        jslice = slice(jslice.start, jslice.stop + 1)
-        domain = (domain[0], jslice.stop - jslice.start, domain[2])
+    j_extent = j2 - j1 + 1
+    origin = (i1, j1, 0)
+    domain = (i_extent, j_extent, grid.npz)
 
     dp1 = utils.make_storage_from_shape(
         q1.shape, origin=origin, cache_key="map_single_dp1"
@@ -205,13 +192,13 @@ def setup_data(
         q1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_1"
     )
     q4_2 = utils.make_storage_from_shape(
-        q4_1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_2"
+        q4_1.shape, origin=grid.compute_origin(), cache_key="map_single_q4_2"
     )
     q4_3 = utils.make_storage_from_shape(
-        q4_1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_3"
+        q4_1.shape, origin=grid.compute_origin(), cache_key="map_single_q4_3"
     )
     q4_4 = utils.make_storage_from_shape(
-        q4_1.shape, origin=(grid.is_, 0, 0), cache_key="map_single_q4_4"
+        q4_1.shape, origin=grid.compute_origin(), cache_key="map_single_q4_4"
     )
     copy_stencil(
         q1,
@@ -220,7 +207,7 @@ def setup_data(
         domain=grid.domain_shape_full(),
     )
     set_dp(dp1, pe1, origin=origin, domain=domain)
-    return dp1, q4_1, q4_2, q4_3, q4_4, origin, domain, jslice, i_extent
+    return dp1, q4_1, q4_2, q4_3, q4_4, origin, domain, i_extent, j_extent
 
 
 def lagrangian_contributions_stencil(
@@ -234,8 +221,9 @@ def lagrangian_contributions_stencil(
     dp1: FloatField,
     i1: int,
     i2: int,
+    j1: int,
+    j2: int,
     kord: int,
-    jslice: Tuple[int, int, int],
     origin: Tuple[int, int, int],
     domain: Tuple[int, int, int],
 ):
@@ -245,9 +233,6 @@ def lagrangian_contributions_stencil(
     q2_adds = utils.make_storage_from_shape(shape2d, cache_key="map_single_q2_adds")
     ptop = utils.make_storage_from_shape(shape2d, cache_key="map_single_ptop")
     pbot = utils.make_storage_from_shape(shape2d, cache_key="map_single_pbot")
-
-    jsize = shape2d[1]
-    jslice2d = slice(min(jslice.start, jsize - 1), min(jslice.stop, jsize))
 
     for k_eul in range(km):
 
@@ -294,14 +279,15 @@ def lagrangian_contributions_transliterated(
     dp1: FloatField,
     i1: int,
     i2: int,
+    j1: int,
+    j2: int,
     kord: int,
-    jslice: Tuple[int, int, int],
 ):
     grid = spec.grid
     i_vals = np.arange(i1, i2 + 1)
     kn = grid.npz
     km = grid.npz
-    for j in range(jslice.start, jslice.stop):
+    for j in range(j1, j2 + 1):
         for ii in i_vals:
             k0 = 0
             for k2 in np.arange(kn):  # loop over new, remapped ks]

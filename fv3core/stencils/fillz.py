@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 import numpy as np
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
@@ -103,14 +103,13 @@ def compute(
     dp2: FloatField,
     tracers: Dict[str, Any],
     im: int,
+    jm: int,
     km: int,
     nq: int,
-    jslice: Tuple[int],
 ):
     # Same as above, but with multiple tracer fields
     i1 = spec.grid.is_
-    js = jslice.start
-    jext = jslice.stop - jslice.start
+    j1 = spec.grid.js
 
     tracer_list = [tracers[q] for q in utils.tracer_variables[0:nq]]
     shape = tracer_list[0].shape
@@ -142,7 +141,7 @@ def compute(
             zfix,
             sum0,
             sum1,
-            origin=(i1, js, 0),
-            domain=(im, jext, km),
+            origin=(i1, j1, 0),
+            domain=(im, jm, km),
         )
     return tracer_list
