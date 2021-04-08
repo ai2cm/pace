@@ -312,8 +312,6 @@ def compute(
             domain=(grid.nic + 1, grid.njc + 1, nk),
         )
 
-    return vort, ke, delpc
-
 
 def damping_zero_order(
     u: FloatField,

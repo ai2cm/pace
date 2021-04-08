@@ -11,8 +11,6 @@ with open("README.md", encoding="utf-8") as readme_file:
 
 requirements = ["f90nml>=1.1.0", "gt4py", "numpy", "fv3gfs-util>=0.4.3"]
 
-setup_requirements = []
-
 test_requirements = ["pytest==5.2.2", "pytest-subtests>=0.3.0", "serialbox"]
 
 setup(
@@ -37,7 +35,7 @@ setup(
     keywords="fv3core",
     name="fv3core",
     packages=find_packages(include=["fv3core", "fv3core.*"]),
-    setup_requires=setup_requirements,
+    setup_requires=[],
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/VulcanClimateModeling/fv3core",

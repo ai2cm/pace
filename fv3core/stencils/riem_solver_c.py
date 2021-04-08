@@ -1,3 +1,5 @@
+import typing
+
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, log
 
 import fv3core._config as spec
@@ -9,6 +11,7 @@ from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtstencil()
+@typing.no_type_check
 def precompute(
     delpc: FloatField,
     cappa: FloatField,

@@ -11,6 +11,7 @@ import yaml
 import fv3core
 import fv3core._config as spec
 import fv3gfs.wrapper as wrapper
+from fv3core.testing import translate
 from fv3gfs.util import (
     X_DIMS,
     X_INTERFACE_DIM,
@@ -28,9 +29,7 @@ from fv3gfs.util import (
 
 
 sys.path.append("/usr/local/serialbox/python")
-sys.path.append("/fv3core/tests/translate")
 import serialbox  # noqa: E402
-import translate as translate  # noqa: E402
 
 
 # May need to run 'ulimit -s unlimited' before running this example

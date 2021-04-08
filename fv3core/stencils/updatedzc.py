@@ -38,7 +38,7 @@ def xy_flux(gz_x, gz_y, xfx, yfx):
     return fx, fy
 
 
-@gtstencil
+@gtstencil()
 def set_zero_2d(out_field: FloatFieldIJ):
     with computation(FORWARD):
         with interval(0, 1):

@@ -74,7 +74,7 @@ def mark_untested(msg="This is not tested"):
 
 def make_storage_data(
     data: Field,
-    shape: Optional[Tuple[int, int, int]] = None,
+    shape: Optional[Tuple[int, ...]] = None,
     origin: Tuple[int, int, int] = origin,
     *,
     dtype: DTypes = np.float64,
@@ -89,10 +89,12 @@ def make_storage_data(
 
     Args:
         data: Data array for new storage
-        shape: Shape of the new storage
+        shape: Shape of the new storage. Number of indices should be equal
+            to number of unmasked axes
         origin: Default origin for gt4py stencil calls
         dtype: Data type
-        mask: Tuple indicating the axes used when initializing the storage
+        mask: Tuple indicating the axes used when initializing the storage.
+            True indicates a masked axis, False is a used axis.
         start: Starting points for slices in data copies
         dummy: Dummy axes
         axis: Axis for 2D to 3D arrays
@@ -287,8 +289,8 @@ storage_shape_outputs = {}
 
 
 def make_storage_from_shape(
-    shape: Tuple[int, int, int],
-    origin: Tuple[int, int, int] = origin,
+    shape: Tuple[int, ...],
+    origin: Tuple[int, ...] = origin,
     *,
     dtype: DTypes = np.float64,
     init: bool = False,

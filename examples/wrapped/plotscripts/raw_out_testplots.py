@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,7 +52,7 @@ datafiles = [
 surface_pressure_plots = []
 surface_temperature_plots = []
 
-relative_errors = {}
+relative_errors: Dict[str, np.ndarray] = {}
 
 for filename in datafiles:
     fname_model = args.model_dir + filename

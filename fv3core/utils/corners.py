@@ -212,17 +212,15 @@ def fill_corners_cells(q: FloatField, direction: str, num_fill: int = 2):
         func = (
             fill_corners_2cells_mult_x if num_fill == 2 else fill_corners_3cells_mult_x
         )
-        stencil = gtstencil(
-            definition=definition,
-            externals={"func": func},
+        stencil = gtstencil(externals={"func": func})(
+            definition,
         )
     elif direction == "y":
         func = (
             fill_corners_2cells_mult_y if num_fill == 2 else fill_corners_3cells_mult_y
         )
-        stencil = gtstencil(
-            definition=definition,
-            externals={"func": func},
+        stencil = gtstencil(externals={"func": func})(
+            definition,
         )
     else:
         raise ValueError("Direction not recognized. Specify either x or y")
@@ -235,7 +233,7 @@ def fill_corners_cells(q: FloatField, direction: str, num_fill: int = 2):
 
 # @gtscript.function
 # def copy_corners_x(q):
-@gtstencil
+@gtstencil()
 def copy_corners_x_stencil(q: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -298,7 +296,7 @@ def copy_corners_x_stencil(q: FloatField):
 
 # @gtscript.function
 # def copy_corners_y(q):
-@gtstencil
+@gtstencil()
 def copy_corners_y_stencil(q: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -360,13 +358,13 @@ def copy_corners_y_stencil(q: FloatField):
 
 
 """
-@gtstencil
+@gtstencil()
 def copy_corners_x_stencil(q: FloatField):
     with computation(PARALLEL), interval(...):
         q = copy_corners_x(q)
 
 
-@gtstencil
+@gtstencil()
 def copy_corners_y_stencil(q: FloatField):
     with computation(PARALLEL), interval(...):
         q = copy_corners_y(q)

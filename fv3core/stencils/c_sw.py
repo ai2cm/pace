@@ -311,7 +311,7 @@ def update_meridional_velocity(
         velocity_c = velocity_c - tmp_flux * flux + rdyc * (ke[0, -1, 0] - ke)
 
 
-@gtstencil
+@gtstencil()
 def initialize_delpc_ptc(delpc: FloatField, ptc: FloatField):
     with computation(PARALLEL), interval(...):
         delpc = 0.0

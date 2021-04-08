@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 
 from gt4py.gtscript import PARALLEL, computation, interval
 
@@ -11,7 +11,7 @@ from fv3core.decorators import gtstencil
 from fv3core.utils.typing import FloatField
 
 
-@gtstencil
+@gtstencil()
 def set_components(
     tracer: FloatField,
     a4_1: FloatField,
@@ -30,7 +30,7 @@ def compute(
     pe1: FloatField,
     pe2: FloatField,
     dp2: FloatField,
-    tracers: Dict[str, type(FloatField)],
+    tracers: Dict[str, Any],  # Dict[str, FloatField] but that causes error on import
     nq: int,
     q_min: float,
     i1: int,

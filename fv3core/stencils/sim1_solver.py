@@ -1,3 +1,5 @@
+import typing
+
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core._config as spec
@@ -7,6 +9,7 @@ from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtstencil()
+@typing.no_type_check
 def sim1_solver(
     w: FloatField,
     dm: FloatField,

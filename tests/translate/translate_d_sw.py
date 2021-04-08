@@ -69,7 +69,7 @@ class TranslateD_SW(TranslateFortranData2Py):
 
 
 class TranslateUbKE(TranslateFortranData2Py):
-    @gtstencil
+    @gtstencil()
     def ubke(
         uc: FloatField,
         vc: FloatField,
@@ -107,7 +107,7 @@ class TranslateUbKE(TranslateFortranData2Py):
 
 
 class TranslateVbKE(TranslateFortranData2Py):
-    @gtstencil
+    @gtstencil()
     def vbke(
         vc: FloatField,
         uc: FloatField,

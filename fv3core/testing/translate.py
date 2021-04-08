@@ -84,7 +84,6 @@ class TranslateFortranData2Py:
                 use_shape[axis] = 1
         elif not full_shape and len(array.shape) < 3 and axis == len(array.shape) - 1:
             use_shape[1] = 1
-        use_shape = tuple(use_shape)
         start = (istart, jstart, kstart)
         if names_4d:
             return utils.make_storage_dict(
