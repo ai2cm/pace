@@ -1,3 +1,4 @@
+import functools
 from typing import Tuple
 
 import numpy as np
@@ -371,6 +372,7 @@ class Grid:
             return 0, 0
 
 
+@functools.lru_cache
 def axis_offsets(
     grid: Grid,
     origin: Tuple[int, ...],
