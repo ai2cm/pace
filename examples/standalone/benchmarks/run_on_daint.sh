@@ -136,7 +136,7 @@ sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
 sed -i "s/00:45:00/03:30:00/g" compile.daint.slurm
 sed -i "s/cscsci/normal/g" compile.daint.slurm
-sed -i "s/<G2G>/export CRAY_CUDA_MPS=1/g" compile.daint.slurm
+sed -i "s/<G2G>/export CRAY_CUDA_MPS=1\nexport PYTHONOPTIMIZE=TRUE/g" compile.daint.slurm
 sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py $data_path 1 $backend $githash --disable_halo_exchange#g" compile.daint.slurm
 # execute on a gpu node
 set +e
@@ -164,7 +164,7 @@ sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
 sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
 sed -i "s/00:45:00/00:40:00/g" run.daint.slurm
 sed -i "s/cscsci/normal/g" run.daint.slurm
-sed -i "s/<G2G>//g" run.daint.slurm
+sed -i "s/<G2G>/export PYTHONOPTIMIZE=TRUE/g" run.daint.slurm
 sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 # execute on a gpu node
 set +e
