@@ -8,6 +8,7 @@ import fv3core.utils
 import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
+from fv3core.decorators import FixedOriginStencil
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.updatedzd import ra_stencil_update
@@ -178,14 +179,49 @@ class Tracer2D1L:
         self.stencil_runtime_args = {"validate_args": global_config.get_validate_args()}
         stencil_wrapper = gtscript.stencil(**stencil_kwargs)
 
-        self._flux_compute = stencil_wrapper(flux_compute)
-        self._ra_update = stencil_wrapper(ra_stencil_update.func)
-        self._cmax_multiply_by_frac = stencil_wrapper(cmax_multiply_by_frac)
+        self._flux_compute = FixedOriginStencil(
+            flux_compute,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(add=(1, 1, 0)),
+            externals=local_axis_offsets,
+        )
+        self._ra_update = FixedOriginStencil(
+            ra_stencil_update.func,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(),
+            externals=local_axis_offsets,
+        )
+        self._cmax_multiply_by_frac = FixedOriginStencil(
+            cmax_multiply_by_frac,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(add=(1, 1, 0)),
+            externals=local_axis_offsets,
+        )
         self._copy_field = stencil_wrapper(copy_stencil.func)
-        self._loop_temporaries_copy = stencil_wrapper(loop_temporaries_copy)
-        self._dp_fluxadjustment = stencil_wrapper(dp_fluxadjustment)
-        self._q_adjustments = stencil_wrapper(q_adjustments)
-        self._q_adjust = stencil_wrapper(q_adjust)
+        self._loop_temporaries_copy = FixedOriginStencil(
+            loop_temporaries_copy,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(),
+            externals=local_axis_offsets,
+        )
+        self._dp_fluxadjustment = FixedOriginStencil(
+            dp_fluxadjustment,
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute(),
+            externals=local_axis_offsets,
+        )
+        self._q_adjustments = FixedOriginStencil(
+            q_adjustments,
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute(),
+            externals=local_axis_offsets,
+        )
+        self._q_adjust = FixedOriginStencil(
+            q_adjust,
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute(),
+            externals=local_axis_offsets,
+        )
         self.fvtp2d = FiniteVolumeTransport(namelist, namelist.hord_tr)
         # If use AllReduce, will need something like this:
         # self._tmp_cmax = utils.make_storage_from_shape(shape, origin)
@@ -208,9 +244,6 @@ class Tracer2D1L:
             self.grid.sin_sg4,
             self._tmp_xfx,
             self._tmp_yfx,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(add=(1, 1, 0)),
-            **self.stencil_runtime_args,
         )
 
         # # TODO for if we end up using the Allreduce and compute cmax globally
@@ -249,9 +282,6 @@ class Tracer2D1L:
                 self._tmp_yfx,
                 mfyd,
                 nsplt,
-                origin=self.grid.full_origin(),
-                domain=self.grid.domain_shape_full(add=(1, 1, 0)),
-                **self.stencil_runtime_args,
             )
 
         if self.do_halo_exchange:
@@ -265,9 +295,6 @@ class Tracer2D1L:
             self._tmp_ra_x,
             self._tmp_yfx,
             self._tmp_ra_y,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(),
-            **self.stencil_runtime_args,
         )
         # TODO: Revisit: the loops over q and nsplt have two inefficient options
         # duplicating storages/stencil calls, return to this, maybe you have more
@@ -287,9 +314,6 @@ class Tracer2D1L:
                 q.storage,
                 dp1,
                 self._tmp_qn2.storage,
-                origin=self.grid.full_origin(),
-                domain=self.grid.domain_shape_full(),
-                **self.stencil_runtime_args,
             )
             for it in range(int(nsplt)):
                 self._dp_fluxadjustment(
@@ -298,9 +322,6 @@ class Tracer2D1L:
                     mfyd,
                     self.grid.rarea,
                     self._tmp_dp2,
-                    origin=self.grid.compute_origin(),
-                    domain=self.grid.domain_shape_compute(),
-                    **self.stencil_runtime_args,
                 )
                 if nsplt != 1:
                     self.fvtp2d(
@@ -327,9 +348,6 @@ class Tracer2D1L:
                         self._tmp_dp2,
                         it,
                         nsplt,
-                        origin=self.grid.compute_origin(),
-                        domain=self.grid.domain_shape_compute(),
-                        **self.stencil_runtime_args,
                     )
                 else:
                     self.fvtp2d(
@@ -352,9 +370,6 @@ class Tracer2D1L:
                         self._tmp_fy,
                         self.grid.rarea,
                         self._tmp_dp2,
-                        origin=self.grid.compute_origin(),
-                        domain=self.grid.domain_shape_compute(),
-                        **self.stencil_runtime_args,
                     )
 
                 if it < nsplt - 1:
