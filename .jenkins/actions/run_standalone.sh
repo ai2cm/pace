@@ -117,6 +117,7 @@ if [ "${DO_PROFILE}" == "true" ] ; then
 fi
 
 # remove venv (too many files!)
+rm -rf $ROOT_DIR/external/*
 rm -rf $ROOT_DIR/venv
 
 echo "=== Done ======================================="
