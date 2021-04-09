@@ -170,6 +170,8 @@ if __name__ == "__main__":
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
         # warmup/compilation from the internal timers
+        if rank == 0:
+            print("timestep 1")
         dycore.step_dynamics(
             state,
             input_data["consv_te"],
@@ -185,6 +187,8 @@ if __name__ == "__main__":
 
     with timer.clock("mainloop"):
         for i in range(args.time_step - 1):
+            if rank == 0:
+                print(f"timestep {i+2}")
             dycore.step_dynamics(
                 state,
                 input_data["consv_te"],
@@ -217,5 +221,5 @@ if __name__ == "__main__":
         filename = now.strftime("%Y-%m-%d-%H-%M-%S")
         write_global_timings(experiment, filename, comm)
 
-    if comm.Get_rank() == 0:
+    if rank == 0:
         print("SUCCESS")
