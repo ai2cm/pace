@@ -2,7 +2,7 @@
 
 #############################################
 # Example syntax:
-# ./run_on_daint.sh 60 6 gtx86
+# ./run_on_daint.sh 60 6 gtx86 <path_to_serialized_data>
 
 ## Arguments:
 # $1: number of timesteps to run
