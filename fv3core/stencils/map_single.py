@@ -4,10 +4,10 @@ import numpy as np
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.remap_profile as remap_profile
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.basic_operations import copy_stencil
+from fv3core.stencils.remap_profile import RemapProfile
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -107,11 +107,14 @@ def compute(
     qmin: float = 0.0,
     version: str = "stencil",
 ):
+    remap_profile_k = utils.cached_stencil_class(RemapProfile)(
+        kord, mode, cache_key=f"map_profile_{kord}_{mode}"
+    )
     dp1, q4_1, q4_2, q4_3, q4_4, origin, domain, i_extent, j_extent = setup_data(
         q1, pe1, i1, i2, j1, j2
     )
-    q4_1, q4_2, q4_3, q4_4 = remap_profile.compute(
-        qs, q4_1, q4_2, q4_3, q4_4, dp1, spec.grid.npz, i1, i2, j1, j2, mode, kord, qmin
+    q4_1, q4_2, q4_3, q4_4 = remap_profile_k(
+        qs, q4_1, q4_2, q4_3, q4_4, dp1, i1, i2, j1, j2, qmin
     )
     do_lagrangian_contributions(
         q1,

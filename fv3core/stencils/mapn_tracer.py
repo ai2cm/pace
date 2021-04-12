@@ -5,9 +5,9 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.stencils.fillz as fillz
 import fv3core.stencils.map_single as map_single
-import fv3core.stencils.remap_profile as remap_profile
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.stencils.remap_profile import RemapProfile
 from fv3core.utils.typing import FloatField
 
 
@@ -40,6 +40,10 @@ def compute(
     kord: int,
     version: str = "stencil",
 ):
+    remapping_calculation = utils.cached_stencil_class(RemapProfile)(
+        kord, 0, cache_key=f"map_profile_{kord}_0"
+    )
+
     domain_compute = (
         spec.grid.ie - spec.grid.is_ + 1,
         spec.grid.je - spec.grid.js + 1,
@@ -74,20 +78,17 @@ def compute(
             domain=domain_compute,
         )
 
-        q4_1, q4_2, q4_3, q4_4 = remap_profile.compute(
+        q4_1, q4_2, q4_3, q4_4 = remapping_calculation(
             qs,
             q4_1,
             q4_2,
             q4_3,
             q4_4,
             dp1,
-            spec.grid.npz,
             i1,
             i2,
             j1,
             j2,
-            0,
-            kord,
             q_min,
         )
         map_single.do_lagrangian_contributions(

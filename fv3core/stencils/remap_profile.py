@@ -1,11 +1,11 @@
 from typing import Tuple
 
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
+import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import gtstencil
 from fv3core.utils.typing import FloatField
 
 
@@ -106,7 +106,6 @@ def remap_constraint(
     return a4_1, a4_2, a4_3, a4_4
 
 
-@gtstencil()
 def set_vals(
     gam: FloatField,
     q: FloatField,
@@ -117,12 +116,12 @@ def set_vals(
     a4_4: FloatField,
     q_bot: FloatField,
     qs: FloatField,
-    iv: int,
-    kord: int,
 ):
+    from __externals__ import iv, kord
+
     with computation(PARALLEL), interval(0, 1):
         # set top
-        if iv == -2:
+        if __INLINED(iv == -2):
             # gam = 0.5
             q = 1.5 * a4_1
         else:
@@ -134,20 +133,20 @@ def set_vals(
             gam = (1.0 + grid_ratio * (grid_ratio + 1.5)) / bet
     with computation(FORWARD):
         with interval(1, 2):
-            if iv == -2:
+            if __INLINED(iv == -2):
                 gam = 0.5
                 grid_ratio = delp[0, 0, -1] / delp
                 bet = 2.0 + grid_ratio + grid_ratio - gam
                 q = (3.0 * (a4_1[0, 0, -1] + a4_1) - q[0, 0, -1]) / bet
         with interval(1, -1):
-            if iv != -2:
+            if __INLINED(iv != -2):
                 # set middle
                 d4 = delp[0, 0, -1] / delp
                 bet = 2.0 + d4 + d4 - gam[0, 0, -1]
                 q = (3.0 * (a4_1[0, 0, -1] + d4 * a4_1) - q[0, 0, -1]) / bet
                 gam = d4 / bet
         with interval(2, -2):
-            if iv == -2:
+            if __INLINED(iv == -2):
                 # set middle
                 old_grid_ratio = delp[0, 0, -2] / delp[0, 0, -1]
                 old_bet = 2.0 + old_grid_ratio + old_grid_ratio - gam[0, 0, -1]
@@ -157,7 +156,7 @@ def set_vals(
                 q = (3.0 * (a4_1[0, 0, -1] + a4_1) - q[0, 0, -1]) / bet
                 # gam[0, 0, 1] = grid_ratio / bet
     with computation(FORWARD), interval(-2, -1):
-        if iv == -2:
+        if __INLINED(iv == -2):
             # set bottom
             old_grid_ratio = delp[0, 0, -2] / delp[0, 0, -1]
             old_bet = 2.0 + old_grid_ratio + old_grid_ratio - gam[0, 0, -1]
@@ -168,7 +167,7 @@ def set_vals(
             ) / (2.0 + grid_ratio + grid_ratio - gam)
             q_bot = qs
     with computation(PARALLEL), interval(-1, None):
-        if iv == -2:
+        if __INLINED(iv == -2):
             q_bot = qs
             q = qs
         else:
@@ -181,26 +180,25 @@ def set_vals(
                 - a_bot * q[0, 0, -1]
             ) / (d4 * (d4 + 0.5) - a_bot * gam[0, 0, -1])
     with computation(BACKWARD), interval(0, -1):
-        if iv != -2:
+        if __INLINED(iv != -2):
             q = q - gam * q[0, 0, 1]
     with computation(BACKWARD), interval(0, -2):
-        if iv == -2:
+        if __INLINED(iv == -2):
             q = q - gam[0, 0, 1] * q[0, 0, 1]
     # set_avals
     with computation(PARALLEL):
         with interval(0, -1):
-            if kord > 16:
+            if __INLINED(kord > 16):
                 a4_2 = q
                 a4_3 = q[0, 0, 1]
                 a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
         with interval(-1, None):
-            if kord > 16:
+            if __INLINED(kord > 16):
                 a4_2 = q
                 a4_3 = q_bot
                 a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
 
 
-@gtstencil()
 def apply_constraints(
     q: FloatField,
     gam: FloatField,
@@ -211,9 +209,9 @@ def apply_constraints(
     ext5: FloatField,
     ext6: FloatField,
     extm: FloatField,
-    iv: int,
-    kord: int,
 ):
+    from __externals__ import iv, kord
+
     with computation(PARALLEL):
         with interval(1, None):
             a4_1_0 = a4_1[0, 0, -1]
@@ -236,7 +234,8 @@ def apply_constraints(
             else:
                 # there's a local minimum
                 q = q if q < tmp else tmp
-                q = 0.0 if (q < 0.0 and iv == 0) else q
+                if __INLINED(iv == 0):
+                    q = 0.0 if (q < 0.0) else q
             # q = constrain_interior(q, gam, a4_1)
         with interval(-1, None):
             # do bottom
@@ -256,7 +255,7 @@ def apply_constraints(
             extm = (a4_2 - a4_1) * (a4_3 - a4_1) > 0.0
     # set_exts
     with computation(PARALLEL), interval(...):
-        if kord > 9:
+        if __INLINED(kord > 9):
             x0 = 2.0 * a4_1 - (a4_2 + a4_3)
             x1 = abs(a4_2 - a4_3)
             a4_4 = 3.0 * x0
@@ -264,48 +263,48 @@ def apply_constraints(
             ext6 = abs(a4_4) > x1
 
 
-@gtstencil()
 def set_top(
     a4_1: FloatField,
     a4_2: FloatField,
     a4_3: FloatField,
     a4_4: FloatField,
     extm: FloatField,
-    iv: int,
 ):
+    from __externals__ import iv
+
     # set_top_as_iv0
     with computation(PARALLEL):
         with interval(0, 1):
-            if iv == 0:
+            if __INLINED(iv == 0):
                 a4_2 = a4_2 if a4_2 > 0.0 else 0.0
         with interval(...):
-            if iv == 0:
+            if __INLINED(iv == 0):
                 a4_4 = 3 * (2 * a4_1 - (a4_2 + a4_3))
     # set_top_as_iv1
     with computation(PARALLEL):
         with interval(0, 1):
-            if iv == -1:
+            if __INLINED(iv == -1):
                 a4_2 = 0.0 if a4_2 * a4_1 <= 0.0 else a4_2
         with interval(...):
-            if iv == -1:
+            if __INLINED(iv == -1):
                 a4_4 = 3 * (2 * a4_1 - (a4_2 + a4_3))
     # set_top_as_iv2
     with computation(PARALLEL):
         with interval(0, 1):
-            if iv == 2:
+            if __INLINED(iv == 2):
                 a4_2 = a4_1
                 a4_3 = a4_1
                 a4_4 = 0.0
         with interval(1, None):
-            if iv == 2:
+            if __INLINED(iv == 2):
                 a4_4 = 3 * (2 * a4_1 - (a4_2 + a4_3))
     # set_top_as_else
     with computation(PARALLEL):
         with interval(...):
-            if iv < -1 or iv == 1 or iv > 2:
+            if __INLINED(iv < -1 or iv == 1 or iv > 2):
                 a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
         with interval(0, -1):
-            if iv != 2:
+            if __INLINED(iv != 2):
                 a4_1, a4_2, a4_3, a4_4 = remap_constraint(
                     a4_1, a4_2, a4_3, a4_4, extm, 1
                 )
@@ -313,7 +312,6 @@ def set_top(
             a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 2)
 
 
-@gtstencil()
 def set_inner(
     a4_1: FloatField,
     a4_2: FloatField,
@@ -324,12 +322,12 @@ def set_inner(
     ext5: FloatField,
     ext6: FloatField,
     qmin: float,
-    kord: int,
-    iv: int,
 ):
+    from __externals__ import iv, kord
+
     with computation(PARALLEL), interval(...):
         # set_inner_as_kordsmall
-        if kord < 9:
+        if __INLINED(kord < 9):
             # left edges?
             pmp_1 = a4_1 - gam[0, 0, 1]
             lac_1 = pmp_1 + 1.5 * gam[0, 0, 2]
@@ -370,7 +368,7 @@ def set_inner(
             a4_3 = tmp_max0 if tmp_max0 < tmp_max else tmp_max
             a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
         # set_inner_as_kord9
-        if kord == 9:
+        if __INLINED(kord == 9):
             pmp_1 = a4_1 - 2.0 * gam[0, 0, 1]
             lac_1 = pmp_1 + 1.5 * gam[0, 0, 2]
             pmp_2 = a4_1 + 2.0 * gam
@@ -425,7 +423,7 @@ def set_inner(
                 else:
                     a4_2 = a4_2
         # set_inner_as_kord10
-        if kord == 10:
+        if __INLINED(kord == 10):
             pmp_1 = a4_1 - 2.0 * gam[0, 0, 1]
             lac_1 = pmp_1 + 1.5 * gam[0, 0, 2]
             pmp_2 = a4_1 + 2.0 * gam
@@ -469,36 +467,36 @@ def set_inner(
                 a4_2 = a4_2
             a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
         # remap_constraint
-        if iv == 0:
+        if __INLINED(iv == 0):
             a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 0)
 
 
-@gtstencil()
 def set_bottom(
     a4_1: FloatField,
     a4_2: FloatField,
     a4_3: FloatField,
     a4_4: FloatField,
     extm: FloatField,
-    iv: int,
 ):
+    from __externals__ import iv
+
     # set_bottom_as_iv0
     with computation(PARALLEL), interval(1, None):
-        if iv == 0:
+        if __INLINED(iv == 0):
             a4_3 = a4_3 if a4_3 > 0.0 else 0.0
     # set_bottom_as_iv1
     with computation(PARALLEL), interval(-1, None):
-        if iv == -1:
+        if __INLINED(iv == -1):
             a4_3 = 0.0 if a4_3 * a4_1 <= 0.0 else a4_3
     with computation(PARALLEL), interval(...):
         # set_bottom_as_iv0
-        if iv == 0:
+        if __INLINED(iv == 0):
             a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
         # set_bottom_as_iv1
-        if iv == -1:
+        if __INLINED(iv == -1):
             a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
         # set_bottom_as_else
-        if iv > 0 or iv < -1:
+        if __INLINED(iv > 0 or iv < -1):
             a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
     with computation(PARALLEL), interval(0, -1):
         a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 2)
@@ -506,121 +504,170 @@ def set_bottom(
         a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 1)
 
 
-def compute(
-    qs: FloatField,
-    a4_1: FloatField,
-    a4_2: FloatField,
-    a4_3: FloatField,
-    a4_4: FloatField,
-    delp: FloatField,
-    km: int,
-    i1: int,
-    i2: int,
-    j1: int,
-    j2: int,
-    iv: int,
-    kord: int,
-    qmin: float = 0.0,
-):
-    assert kord <= 10, f"kord {kord} not implemented."
-    grid = spec.grid
-    km = grid.npz
-    i_extent: int = i2 - i1 + 1
-    j_extent: int = j2 - j1 + 1
+class RemapProfile:
+    """
+    This corresponds to the cs_profile routine in FV3
+    """
 
-    orig: Tuple[int] = (i1, j1, 0)
-    full_orig: Tuple[int] = grid.compute_origin()
-    dom: Tuple[int] = (i_extent, j_extent, km)
-    dom_extend: Tuple[int] = (i_extent, j_extent, km + 1)
+    def __init__(self, kord, iv):
+        assert kord <= 10, f"kord {kord} not implemented."
+        grid = spec.grid
+        self._full_orig: Tuple[int] = grid.full_origin()
+        self._km: int = grid.npz
+        self._kord = kord
 
-    gam: FloatField = utils.make_storage_from_shape(
-        delp.shape, origin=full_orig, cache_key="remap_profile_gam"
-    )
-    q: FloatField = utils.make_storage_from_shape(
-        delp.shape, origin=full_orig, cache_key="remap_profile_q"
-    )
-    q_bot: FloatField = utils.make_storage_from_shape(
-        delp.shape, origin=full_orig, cache_key="remap_profile_q_bot"
-    )
-    extm: FloatField = utils.make_storage_from_shape(
-        delp.shape, origin=full_orig, cache_key="remap_profile_extm"
-    )
-    ext5: FloatField = utils.make_storage_from_shape(
-        delp.shape, origin=full_orig, cache_key="remap_profile_ext5"
-    )
-    ext6: FloatField = utils.make_storage_from_shape(
-        delp.shape, origin=full_orig, cache_key="remap_profile_ext6"
-    )
+        self._gam: FloatField = utils.make_storage_from_shape(
+            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+        )
+        self._q: FloatField = utils.make_storage_from_shape(
+            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+        )
+        self._q_bot: FloatField = utils.make_storage_from_shape(
+            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+        )
+        self._extm: FloatField = utils.make_storage_from_shape(
+            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+        )
+        self._ext5: FloatField = utils.make_storage_from_shape(
+            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+        )
+        self._ext6: FloatField = utils.make_storage_from_shape(
+            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+        )
 
-    set_vals(
-        gam,
-        q,
-        delp,
-        a4_1,
-        a4_2,
-        a4_3,
-        a4_4,
-        q_bot,
-        qs,
-        iv=iv,
-        kord=abs(kord),
-        origin=orig,
-        domain=dom_extend,
-    )
+        self._set_values_stencil = gtscript.stencil(
+            definition=set_vals,
+            externals={"iv": iv, "kord": abs(kord)},
+            backend=global_config.get_backend(),
+            rebuild=global_config.get_rebuild(),
+        )
 
-    if abs(kord) <= 16:
-        apply_constraints(
-            q,
-            gam,
+        self._apply_constraints_stencil = gtscript.stencil(
+            definition=apply_constraints,
+            externals={"iv": iv, "kord": abs(kord)},
+            backend=global_config.get_backend(),
+            rebuild=global_config.get_rebuild(),
+        )
+
+        self._set_top_stencil = gtscript.stencil(
+            definition=set_top,
+            externals={"iv": iv},
+            backend=global_config.get_backend(),
+            rebuild=global_config.get_rebuild(),
+        )
+
+        self._set_set_inner_stencil = gtscript.stencil(
+            definition=set_inner,
+            externals={"iv": iv, "kord": abs(kord)},
+            backend=global_config.get_backend(),
+            rebuild=global_config.get_rebuild(),
+        )
+
+        self._set_bottom_stencil = gtscript.stencil(
+            definition=set_bottom,
+            externals={"iv": iv},
+            backend=global_config.get_backend(),
+            rebuild=global_config.get_rebuild(),
+        )
+
+    def __call__(
+        self,
+        qs: FloatField,
+        a4_1: FloatField,
+        a4_2: FloatField,
+        a4_3: FloatField,
+        a4_4: FloatField,
+        delp: FloatField,
+        i1: int,
+        i2: int,
+        j1: int,
+        j2: int,
+        qmin: float = 0.0,
+    ):
+        """
+        Calculates the interpolation coefficients for a cubic-spline which models the
+        distribution of the remapped field within each deformed grid cell.
+        The constraints on the spline are set by kord and iv.
+        Arguments:
+            qs: The field to be remapped
+            a4_1: The first interpolation coefficient
+            a4_2: The second interpolation coefficient
+            a4_3: The third interpolation coefficient
+            a4_4: The fourth interpolation coefficient
+            delp: The pressure difference between grid levels
+            i1: The first i-element to compute on
+            i2: The last i-element to compute on
+            j1: The first j-element to compute on
+            j2: The last j-element to compute on
+            qmin: The minimum value the field can take in a cell
+        """
+        i_extent: int = i2 - i1 + 1
+        j_extent: int = j2 - j1 + 1
+        orig: Tuple[int] = (i1, j1, 0)
+        dom: Tuple[int] = (i_extent, j_extent, self._km)
+        dom_extend: Tuple[int] = (i_extent, j_extent, self._km + 1)
+
+        self._set_values_stencil(
+            self._gam,
+            self._q,
+            delp,
             a4_1,
             a4_2,
             a4_3,
             a4_4,
-            ext5,
-            ext6,
-            extm,
-            iv,
-            kord=abs(kord),
+            self._q_bot,
+            qs,
             origin=orig,
-            domain=dom,
+            domain=dom_extend,
         )
 
-        set_top(
-            a4_1,
-            a4_2,
-            a4_3,
-            a4_4,
-            extm,
-            iv,
-            origin=orig,
-            domain=(i_extent, j_extent, 2),
-        )
+        if abs(self._kord) <= 16:
+            self._apply_constraints_stencil(
+                self._q,
+                self._gam,
+                a4_1,
+                a4_2,
+                a4_3,
+                a4_4,
+                self._ext5,
+                self._ext6,
+                self._extm,
+                origin=orig,
+                domain=dom,
+            )
 
-        set_inner(
-            a4_1,
-            a4_2,
-            a4_3,
-            a4_4,
-            gam,
-            extm,
-            ext5,
-            ext6,
-            qmin,
-            abs(kord),
-            iv,
-            origin=(i1, j1, 2),
-            domain=(i_extent, j_extent, km - 4),
-        )
+            self._set_top_stencil(
+                a4_1,
+                a4_2,
+                a4_3,
+                a4_4,
+                self._extm,
+                origin=orig,
+                domain=(i_extent, j_extent, 2),
+            )
 
-        set_bottom(
-            a4_1,
-            a4_2,
-            a4_3,
-            a4_4,
-            extm,
-            iv,
-            origin=(i1, j1, km - 2),
-            domain=(i_extent, j_extent, 2),
-        )
+            self._set_set_inner_stencil(
+                a4_1,
+                a4_2,
+                a4_3,
+                a4_4,
+                self._gam,
+                self._extm,
+                self._ext5,
+                self._ext6,
+                qmin,
+                origin=(i1, j1, 2),
+                domain=(i_extent, j_extent, self._km - 4),
+            )
 
-    return a4_1, a4_2, a4_3, a4_4
+            self._set_bottom_stencil(
+                a4_1,
+                a4_2,
+                a4_3,
+                a4_4,
+                self._extm,
+                origin=(i1, j1, self._km - 2),
+                domain=(i_extent, j_extent, 2),
+            )
+
+        return a4_1, a4_2, a4_3, a4_4

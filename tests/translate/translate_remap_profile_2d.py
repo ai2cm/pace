@@ -8,7 +8,6 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateCS_Profile_2d(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = profile.compute
         self.in_vars["data_vars"] = {
             "a4_1": {"serialname": "q4_1"},
             "a4_2": {"serialname": "q4_2"},
@@ -50,6 +49,7 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
                 del inputs[serialname]
 
     def compute(self, inputs):
+        self.compute_func = profile.RemapProfile(inputs["kord"], inputs["iv"])
         self.make_storage_data_input_vars(inputs)
         inputs["i1"] = self.grid.global_to_local_x(inputs["i1"] - 1)
         inputs["i2"] = self.grid.global_to_local_x(inputs["i2"] - 1)
@@ -67,6 +67,7 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
                 inputs["i1"] : inputs["i2"] + 1, inputs["j1"] : inputs["j2"] + 1, 0
             ]
             inputs["qs"] = qs_field
+        del inputs["km"], inputs["iv"], inputs["kord"]
         q4_1, q4_2, q4_3, q4_4 = self.compute_func(**inputs)
         return self.slice_output(
             inputs, {"q4_1": q4_1, "q4_2": q4_2, "q4_3": q4_3, "q4_4": q4_4}
@@ -76,7 +77,6 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
 class TranslateCS_Profile_2d_2(TranslateCS_Profile_2d):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = profile.compute
         self.in_vars["data_vars"] = {
             "qs": {"serialname": "qs_column_2", "kstart": 0, "kend": grid.npz},
             "a4_1": {"serialname": "q4_1_2"},
