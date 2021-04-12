@@ -183,6 +183,6 @@ class ParallelTranslate2PyState(ParallelTranslate2Py):
                 inputs, name, dims=properties["dims"], units=properties["units"]
             )
         statevars = SimpleNamespace(**inputs)
-        state = {"state": statevars, "comm": communicator}
+        state = {"state": statevars}
         self._base.compute_func(**state)
         return self._base.slice_output(vars(state["state"]))
