@@ -1,10 +1,11 @@
 import collections
+import collections.abc
 import functools
 import hashlib
 import os
 import pickle
 import types
-from typing import Any, BinaryIO, Callable, Dict, Optional, Tuple
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Tuple
 
 import gt4py
 import gt4py.storage as gt_storage
@@ -116,7 +117,7 @@ class StencilDataCache(collections.abc.Mapping):
         self.extension: str = extension
         """Extension used for filenames in cache."""
 
-        self.cache: Dict[str, Any] = {}
+        self.cache: Dict[int, Any] = {}
         """In-memory cache of the data pickled to disk."""
 
     def _get_cache_filename(self, stencil: gt4py.StencilObject) -> str:
@@ -161,7 +162,7 @@ class FV3StencilObject:
         self.times_called: int = 0
         """Number of times this stencil has been called."""
 
-        self.timers: Dict[str, float] = types.SimpleNamespace(call_run=0.0, run=0.0)
+        self.timers = types.SimpleNamespace(call_run=0.0, run=0.0)
         """Accumulated time spent in this stencil.
 
         call_run includes stencil call overhead, while run omits it."""
@@ -208,19 +209,21 @@ class FV3StencilObject:
         return False
 
     def _get_field_origins(
-        self, origin: Tuple[int], *args, **kwargs
-    ) -> Dict[str, Tuple[int]]:
+        self, origin: Tuple[int, int, int], *args, **kwargs
+    ) -> Dict[str, Tuple[int, ...]]:
         origin_dict = {}
-        field_names = list(self.stencil_object.field_info.keys())
+        field_names: List[str] = list(self.stencil_object.field_info.keys())
         field_axes = []
         for i in range(len(field_names)):
             field_name = field_names[i]
             # TODO: assert self.stencil_object.field_info[field_name] is not None
             if self.stencil_object.field_info[field_name]:
                 field_axes = self.stencil_object.field_info[field_name].axes
-            field_shape = args[i].shape if i < len(args) else kwargs[field_name].shape
+            field_shape: Tuple[int, ...] = (
+                args[i].shape if i < len(args) else kwargs[field_name].shape
+            )
             if field_axes == ["K"]:
-                field_origin = [min(field_shape[0] - 1, origin[2])]
+                field_origin: List[int] = [min(field_shape[0] - 1, origin[2])]
             else:
                 field_origin = [
                     min(field_shape[j] - 1, origin[j]) for j in range(len(field_shape))
@@ -256,7 +259,7 @@ class FV3StencilObject:
             regenerate_stencil = regenerate_stencil or passed_externals_changed
 
         if regenerate_stencil:
-            new_build_info = {}
+            new_build_info: Dict[str, Any] = {}
             stencil_kwargs = {
                 "rebuild": global_config.get_rebuild(),
                 "backend": global_config.get_backend(),
@@ -267,21 +270,17 @@ class FV3StencilObject:
                     **self._passed_externals,
                 },
                 "format_source": global_config.get_format_source(),
-                "build_info": new_build_info,
                 **self.backend_kwargs,
             }
 
             # gtscript.stencil always returns a new class instance even if it
             # used the cached module.
             self.stencil_object = gtscript.stencil(
-                definition=self.func, **stencil_kwargs
+                definition=self.func, build_info=new_build_info, **stencil_kwargs
             )
             stencil = self.stencil_object
-            if (
-                stencil not in self._data_cache
-                and "def_ir" in stencil_kwargs["build_info"]
-            ):
-                def_ir = stencil_kwargs["build_info"]["def_ir"]
+            if stencil not in self._data_cache and "def_ir" in new_build_info:
+                def_ir = new_build_info["def_ir"]
                 axis_offsets = {
                     k: v for k, v in def_ir.externals.items() if k in axis_offsets
                 }
@@ -290,8 +289,7 @@ class FV3StencilObject:
                 )
 
         # Call it
-        exec_info = {}
-        kwargs["exec_info"] = kwargs.get("exec_info", exec_info)
+        kwargs["exec_info"] = kwargs.get("exec_info", {})
         kwargs["validate_args"] = global_config.get_validate_args()
         name = f"{self.func.__module__}.{self.func.__name__}"
 
@@ -357,8 +355,10 @@ class FixedOriginStencil:
         )
 
     def __call__(self, *args, **kwargs) -> None:
-        assert "origin" not in kwargs
-        assert "domain" not in kwargs
+        if "origin" in kwargs:
+            raise ValueError("cannot pass origin to FixedOriginStencil at call time")
+        if "domain" in kwargs:
+            raise ValueError("cannot pass domain to FixedOriginStencil at call time")
         self.stencil_object(
             *args,
             **kwargs,

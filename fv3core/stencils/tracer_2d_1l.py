@@ -9,9 +9,9 @@ import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import FixedOriginStencil
+from fv3core.stencils import updatedzd
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
-from fv3core.stencils.updatedzd import ra_stencil_update
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -186,7 +186,7 @@ class Tracer2D1L:
             externals=local_axis_offsets,
         )
         self._ra_update = FixedOriginStencil(
-            ra_stencil_update.func,
+            updatedzd.ra_update,
             origin=self.grid.full_origin(),
             domain=self.grid.domain_shape_full(),
             externals=local_axis_offsets,

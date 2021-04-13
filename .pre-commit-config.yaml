@@ -22,7 +22,6 @@ repos:
         (?x)^(
         fv3core/utils/grid.py |
         fv3core/utils/gt4py_utils.py |
-        fv3core/decorators.py |
         fv3core/stencils/fillz.py |
         fv3core/stencils/moist_cv.py |
         fv3core/stencils/corners.py |
