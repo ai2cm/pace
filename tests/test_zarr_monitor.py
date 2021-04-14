@@ -1,14 +1,23 @@
 import tempfile
-import zarr
+
+try:
+    import zarr
+except ModuleNotFoundError:
+    zarr = None
 import cftime
 from datetime import timedelta
 import pytest
-import xarray as xr
+
+try:
+    import xarray as xr
+except ModuleNotFoundError:
+    xr = None
 import copy
 import fv3gfs.util
 import logging
 from fv3gfs.util.testing import DummyComm
 
+requires_zarr = pytest.mark.skipif(zarr is None, reason="zarr is not installed")
 
 logger = logging.getLogger("test_zarr_monitor")
 
@@ -108,6 +117,7 @@ def state_list(base_state, n_times, start_time, time_step, numpy):
     return state_list
 
 
+@requires_zarr
 def test_monitor_file_store(state_list, cube_partitioner, numpy, start_time):
     with tempfile.TemporaryDirectory(suffix=".zarr") as tempdir:
         monitor = fv3gfs.util.ZarrMonitor(tempdir, cube_partitioner)
@@ -117,11 +127,13 @@ def test_monitor_file_store(state_list, cube_partitioner, numpy, start_time):
         validate_xarray_can_open(tempdir)
 
 
+@requires_zarr
 def validate_xarray_can_open(dirname):
     # just checking there are no crashes, validate_group checks data
     xr.open_zarr(dirname)
 
 
+@requires_zarr
 def validate_store(states, filename, numpy, start_time):
     nt = len(states)
     calendar = start_time.calendar
@@ -183,6 +195,7 @@ def validate_store(states, filename, numpy, start_time):
         ((5, 4, 4), 0, 1, ("z", "y", "x_interface")),
     ],
 )
+@requires_zarr
 def test_monitor_file_store_multi_rank_state(
     layout, nt, tmpdir_factory, shape, ny_rank_add, nx_rank_add, dims, numpy
 ):
@@ -283,12 +296,13 @@ def test_monitor_file_store_multi_rank_state(
         ),
     ],
 )
+@requires_zarr
 def test_array_chunks(layout, tile_array_shape, array_dims, target):
     result = fv3gfs.util.zarr_monitor.array_chunks(layout, tile_array_shape, array_dims)
     assert result == target
 
 
-def _assert_no_nulls(dataset: xr.Dataset):
+def _assert_no_nulls(dataset: "xr.Dataset"):
     number_of_null = dataset["var"].isnull().sum().item()
     total_size = dataset["var"].size
 
@@ -298,6 +312,7 @@ def _assert_no_nulls(dataset: xr.Dataset):
 
 
 @pytest.mark.parametrize("mask_and_scale", [True, False])
+@requires_zarr
 def test_open_zarr_without_nans(cube_partitioner, numpy, backend, mask_and_scale):
 
     store = {}
@@ -314,6 +329,7 @@ def test_open_zarr_without_nans(cube_partitioner, numpy, backend, mask_and_scale
     _assert_no_nulls(dataset.sel(tile=0))
 
 
+@requires_zarr
 def test_values_preserved(cube_partitioner, numpy):
     dims = ("y", "x")
     units = "m"
@@ -350,6 +366,7 @@ def state_list_with_inconsistent_calendars(base_state, numpy):
     return state_list
 
 
+@requires_zarr
 def test_monitor_file_store_inconsistent_calendars(
     state_list_with_inconsistent_calendars, cube_partitioner, numpy
 ):

@@ -1,6 +1,6 @@
 from typing import Iterable, BinaryIO, Generator
 import os
-import xarray as xr
+from . import _xarray as xr
 import copy
 from ._properties import RestartProperties, RESTART_PROPERTIES
 from . import io, filesystem, constants

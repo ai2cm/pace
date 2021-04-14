@@ -2,7 +2,7 @@ from typing import Tuple, Iterable, Dict, Union, Sequence, cast
 import warnings
 import dataclasses
 import numpy as np
-import xarray as xr
+from . import _xarray
 from ._boundary_utils import shift_boundary_slice_tuple, bound_default_slice
 from . import constants
 from .types import NumpyModule
@@ -329,7 +329,7 @@ class Quantity:
     @classmethod
     def from_data_array(
         cls,
-        data_array: xr.DataArray,
+        data_array: _xarray.DataArray,
         origin: Sequence[int] = None,
         extent: Sequence[int] = None,
         gt4py_backend: Union[str, None] = None,
@@ -467,8 +467,8 @@ class Quantity:
         return self.metadata.extent
 
     @property
-    def data_array(self) -> xr.DataArray:
-        return xr.DataArray(self.view[:], dims=self.dims, attrs=self.attrs)
+    def data_array(self) -> _xarray.DataArray:
+        return _xarray.DataArray(self.view[:], dims=self.dims, attrs=self.attrs)
 
     @property
     def np(self) -> NumpyModule:

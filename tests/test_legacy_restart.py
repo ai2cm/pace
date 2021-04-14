@@ -1,12 +1,18 @@
 import os
 import tempfile
 import cftime
-import xarray as xr
+
+try:
+    import xarray as xr
+except ModuleNotFoundError:
+    xr = None
 import numpy as np
 import pytest
 import fv3gfs.util
 import fv3gfs.util._legacy_restart
 from fv3gfs.util.testing import DummyComm
+
+requires_xarray = pytest.mark.skipif(xr is None, reason="xarray is not installed")
 
 TEST_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 DATA_DIRECTORY = os.path.join(TEST_DIRECTORY, "data")
@@ -17,6 +23,7 @@ def layout(request):
     return request.param
 
 
+@requires_xarray
 def get_c12_restart_state_list(layout, only_names, tracer_properties):
     total_ranks = layout[0] * layout[1]
     shared_buffer = {}
@@ -42,6 +49,7 @@ def get_c12_restart_state_list(layout, only_names, tracer_properties):
 
 @pytest.mark.parametrize("layout", [(1, 1), (3, 3)])
 @pytest.mark.cpu_only
+@requires_xarray
 def test_open_c12_restart(layout):
     tracer_properties = {}
     only_names = None
@@ -109,6 +117,7 @@ def test_open_c12_restart(layout):
         },
     ],
 )
+@requires_xarray
 @pytest.mark.cpu_only
 def test_open_c12_restart_tracer_properties(layout, tracer_properties):
     only_names = None
@@ -125,6 +134,7 @@ def test_open_c12_restart_tracer_properties(layout, tracer_properties):
 
 @pytest.mark.parametrize("layout", [(1, 1), (3, 3)])
 @pytest.mark.cpu_only
+@requires_xarray
 def test_open_c12_restart_empty_to_state_without_crashing(layout):
     total_ranks = layout[0] * layout[1]
     ny = 12 / layout[0]
@@ -167,6 +177,7 @@ def test_open_c12_restart_empty_to_state_without_crashing(layout):
 
 @pytest.mark.parametrize("layout", [(1, 1), (3, 3)])
 @pytest.mark.cpu_only
+@requires_xarray
 def test_open_c12_restart_to_allocated_state_without_crashing(layout):
     total_ranks = layout[0] * layout[1]
     ny = 12 / layout[0]
@@ -263,6 +274,7 @@ def result_dims(data_array, new_dims):
 
 
 @pytest.mark.cpu_only
+@requires_xarray
 def test_apply_dims(data_array, new_dims, result_dims):
     result = fv3gfs.util._legacy_restart._apply_dims(data_array, new_dims)
     np.testing.assert_array_equal(result.values, data_array.values)
@@ -327,6 +339,7 @@ def test_get_rank_suffix_invalid_total_ranks(invalid_total_ranks):
 
 
 @pytest.mark.cpu_only
+@requires_xarray
 def test_read_state_incorrectly_encoded_time():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".nc") as file:
         state_ds = xr.DataArray(0.0, name="time").to_dataset()
@@ -336,6 +349,7 @@ def test_read_state_incorrectly_encoded_time():
 
 
 @pytest.mark.cpu_only
+@requires_xarray
 def test_read_state_non_scalar_time():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".nc") as file:
         state_ds = xr.DataArray([0.0, 1.0], dims=["T"], name="time").to_dataset()
@@ -349,6 +363,7 @@ def test_read_state_non_scalar_time():
     [["time", "air_temperature"], ["air_temperature"]],
     ids=lambda x: f"{x}",
 )
+@requires_xarray
 def test_open_c12_restart_only_names(layout, only_names):
     tracer_properties = {}
     c12_restart_state_list = get_c12_restart_state_list(

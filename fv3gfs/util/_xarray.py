@@ -1,6 +1,15 @@
-import xarray as xr
+try:
+    import xarray as xr
+    from xarray import DataArray
+except ModuleNotFoundError as err:
+    from ._optional_imports import RaiseWhenAccessed
 
-__all__ = ["to_dataset"]
+    xr = RaiseWhenAccessed(err)
+    DataArray = RaiseWhenAccessed(err)
+
+
+def open_dataset(*args, **kwargs):
+    return xr.open_dataset(*args, **kwargs)
 
 
 def to_dataset(state):

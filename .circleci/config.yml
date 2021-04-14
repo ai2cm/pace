@@ -27,7 +27,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            tox
+            tox -e test -e test_no_extras
 
 
 workflows:

@@ -1,10 +1,9 @@
 import cftime
-import xarray as xr
+from . import _xarray as xr
 from typing import TextIO
 from .time import FMS_TO_CFTIME_TYPE
 from . import filesystem
 from .quantity import Quantity
-from ._xarray import to_dataset
 
 
 def write_state(state: dict, filename: str) -> None:
@@ -16,7 +15,7 @@ def write_state(state: dict, filename: str) -> None:
     """
     if "time" not in state:
         raise ValueError('state must include a value for "time"')
-    ds = to_dataset(state)
+    ds = xr.to_dataset(state)
     with filesystem.open(filename, "wb") as f:
         ds.to_netcdf(f)
 

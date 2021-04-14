@@ -3,6 +3,13 @@ import numpy as np
 import fv3gfs.util
 import fv3gfs.util.quantity
 
+try:
+    import xarray as xr
+except ModuleNotFoundError:
+    xr = None
+
+requires_xarray = pytest.mark.skipif(xr is None, reason="xarray is not installed")
+
 
 @pytest.fixture(params=["empty", "one", "five"])
 def extent_1d(request, backend, n_halo):
@@ -213,6 +220,7 @@ def test_shift_slice(slice_in, shift, extent, slice_out):
         ),
     ],
 )
+@requires_xarray
 def test_to_data_array(quantity):
     assert quantity.data_array.attrs == quantity.attrs
     assert quantity.data_array.dims == quantity.dims
