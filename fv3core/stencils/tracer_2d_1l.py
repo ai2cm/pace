@@ -309,7 +309,8 @@ class Tracer2D1L:
             **self.stencil_runtime_args,
         )
         for qname in utils.tracer_variables[0:nq]:
-            reqs[qname].wait()
+            if self.do_halo_exchange:
+                reqs[qname].wait()
             q = tracers[qname + "_quantity"]
             self._loop_temporaries_copy(
                 self._tmp_dp1_orig,
