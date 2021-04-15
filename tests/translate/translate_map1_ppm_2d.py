@@ -45,7 +45,7 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
         self.out_vars = {"var_inout": {}}
         self.max_error = 5e-13
         self.write_vars = ["qs"]
-        self.nj = grid.npy
+        self.nj = self.maxshape[1]
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
