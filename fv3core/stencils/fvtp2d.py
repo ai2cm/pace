@@ -7,7 +7,7 @@ import fv3core.stencils.delnflux as delnflux
 import fv3core.utils.corners as corners
 import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FixedOriginStencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -80,17 +80,17 @@ class FiniteVolumeTransport:
             "backend": global_config.get_backend(),
             "rebuild": global_config.get_rebuild(),
         }
-        self.stencil_q_i = FixedOriginStencil(
+        self.stencil_q_i = FrozenStencil(
             q_i_stencil,
             origin=self.grid.full_origin(add=(0, 3, 0)),
             domain=self.grid.domain_shape_full(add=(0, -3, 1)),
         )
-        self.stencil_q_j = FixedOriginStencil(
+        self.stencil_q_j = FrozenStencil(
             q_j_stencil,
             origin=self.grid.full_origin(add=(3, 0, 0)),
             domain=self.grid.domain_shape_full(add=(-3, 0, 1)),
         )
-        self.stencil_transport_flux = FixedOriginStencil(
+        self.stencil_transport_flux = FrozenStencil(
             transport_flux_xy,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(1, 1, 1)),
@@ -121,7 +121,6 @@ class FiniteVolumeTransport:
         corners.copy_corners_y_stencil(
             q, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
         )
-
         self.y_piecewise_parabolic_inner(q, cry, self._tmp_fy2, grid.isd, grid.ied)
         self.stencil_q_i(
             q,

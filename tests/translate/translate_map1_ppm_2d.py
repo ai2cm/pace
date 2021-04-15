@@ -1,11 +1,13 @@
 import numpy as np
 
 import fv3core.stencils.map_single as map_single
+import fv3core.utils.gt4py_utils as utils
 from fv3core.testing import TranslateFortranData2Py, TranslateGrid
 
 
 def pad_field_in_j(field, nj):
-    outfield = np.tile(field[:, 0, :], [nj, 1, 1]).transpose(1, 0, 2)
+    utils.device_sync()
+    outfield = utils.tile(field[:, 0, :], [nj, 1, 1]).transpose(1, 0, 2)
     np.testing.assert_array_equal(outfield[:, 0, :], field[:, 0, :])
     return outfield
 
@@ -48,7 +50,7 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         if "qs" in inputs:
-            qs_3d = pad_field_in_j(inputs["qs"].data, self.nj)
+            qs_3d = pad_field_in_j(inputs["qs"], self.nj)
             inputs["qs"] = self.make_storage_data(qs_3d)
         inputs["i1"] = self.grid.global_to_local_x(
             inputs["i1"] + TranslateGrid.fpy_model_index_offset

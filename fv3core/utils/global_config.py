@@ -52,8 +52,18 @@ def get_do_halo_exchange() -> bool:
     return _DO_HALO_EXCHANGE
 
 
+def set_device_sync(flag: bool):
+    global _DEVICE_SYNC
+    _DEVICE_SYNC = flag
+
+
+def get_device_sync() -> bool:
+    return _DEVICE_SYNC
+
+
 _BACKEND = None  # Options: numpy, gtx86, gtcuda, debug
 _REBUILD = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "True")
 _FORMAT_SOURCE = getenv_bool("FV3_STENCIL_FORMAT_SOURCE", "False")
 _DO_HALO_EXCHANGE = True
 _VALIDATE_ARGS = True
+_DEVICE_SYNC = False

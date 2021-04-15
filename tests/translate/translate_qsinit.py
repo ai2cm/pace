@@ -28,6 +28,7 @@ class TranslateQSInit(TranslateFortranData2Py):
         )
         kwargs = {"origin": (0, 0, 0), "domain": self.maxshape}
         self.compute_func(**inputs, **kwargs)
+        utils.device_sync()
         for k, v in inputs.items():
             if v.shape == self.maxshape:
                 inputs[k] = np.squeeze(v)

@@ -10,7 +10,7 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
-from fv3core.decorators import FixedOriginStencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils import yppm
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -127,6 +127,8 @@ class YTP_V:
             raise NotImplementedError(
                 "Currently xtp_v is only supported for hord_mt == 5,6,7,8"
             )
+        assert namelist.grid_type < 3
+
         grid = spec.grid
         origin = grid.compute_origin()
         domain = grid.domain_shape_compute(add=(1, 1, 0))
@@ -136,7 +138,7 @@ class YTP_V:
         ax_offsets = axis_offsets(grid, origin, domain)
         assert namelist.grid_type < 3
 
-        self.stencil = FixedOriginStencil(
+        self.stencil = FrozenStencil(
             _compute_stencil,
             externals={
                 "jord": jord,

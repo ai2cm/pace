@@ -28,7 +28,7 @@ import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 import fv3gfs.util as fv3util
-from fv3core.decorators import FixedOriginStencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -221,17 +221,17 @@ class AcousticDynamics:
         self._temporaries["gz"][:] = HUGE_R
         if not namelist.hydrostatic:
             self._temporaries["pk3"][:] = HUGE_R
-        self._dp_ref_compute = FixedOriginStencil(
+        self._dp_ref_compute = FrozenStencil(
             dp_ref_compute,
             origin=self.grid.full_origin(),
             domain=self.grid.domain_shape_full(add=(0, 0, 1)),
         )
-        self._set_gz = FixedOriginStencil(
+        self._set_gz = FrozenStencil(
             set_gz,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
         )
-        self._set_pem = FixedOriginStencil(
+        self._set_pem = FrozenStencil(
             set_pem,
             origin=self.grid.compute_origin(add=(-1, -1, 0)),
             domain=self.grid.domain_shape_compute(add=(2, 2, 0)),
@@ -240,13 +240,13 @@ class AcousticDynamics:
         pgradc_origin = self.grid.compute_origin()
         pgradc_domain = self.grid.domain_shape_compute(add=(1, 1, 0))
         ax_offsets = axis_offsets(self.grid, pgradc_origin, pgradc_domain)
-        self._p_grad_c = FixedOriginStencil(
+        self._p_grad_c = FrozenStencil(
             p_grad_c_stencil,
             origin=pgradc_origin,
             domain=pgradc_domain,
             externals={"hydrostatic": self.namelist.hydrostatic, **ax_offsets},
         )
-        self._zero_data = FixedOriginStencil(
+        self._zero_data = FrozenStencil(
             zero_data,
             origin=self.grid.full_origin(),
             domain=self.grid.domain_shape_full(),
@@ -270,6 +270,7 @@ class AcousticDynamics:
         # NOTE: In Fortran model the halo update starts happens in fv_dynamics, not here
         reqs = {}
         if self.do_halo_exchange:
+            utils.device_sync()
             for halovar in [
                 "q_con_quantity",
                 "cappa_quantity",
@@ -284,6 +285,7 @@ class AcousticDynamics:
             )
             reqs["q_con_quantity"].wait()
             reqs["cappa_quantity"].wait()
+            utils.device_sync()
 
         state.__dict__.update(self._temporaries)
 
@@ -305,6 +307,7 @@ class AcousticDynamics:
                 state.zs,
                 rgrav,
             )
+            utils.device_sync()
             # After writing, make 'dp_ref' a K-field and 'zs' an IJ-field
             state.dp_ref = utils.make_storage_data(
                 state.dp_ref[0, 0, :], (shape[2],), (0,)
@@ -331,6 +334,7 @@ class AcousticDynamics:
                 remap_step = True
             if not self.namelist.hydrostatic:
                 if self.do_halo_exchange:
+                    utils.device_sync()
                     reqs["w_quantity"] = self.comm.start_halo_update(
                         state.w_quantity, n_points=self.grid.halo
                     )
@@ -341,6 +345,7 @@ class AcousticDynamics:
                         state.gz,
                     )
                     if self.do_halo_exchange:
+                        utils.device_sync()
                         reqs["gz_quantity"] = self.comm.start_halo_update(
                             state.gz_quantity, n_points=self.grid.halo
                         )
@@ -348,6 +353,7 @@ class AcousticDynamics:
                 if self.do_halo_exchange:
                     reqs["delp_quantity"].wait()
                     reqs["pt_quantity"].wait()
+                    utils.device_sync()
 
             if it == n_split - 1 and end_step:
                 if self.namelist.use_old_omega:
@@ -360,6 +366,7 @@ class AcousticDynamics:
                 reqs_vector.wait()
                 if not self.namelist.hydrostatic:
                     reqs["w_quantity"].wait()
+                    utils.device_sync()
 
             # compute the c-grid winds at t + 1/2 timestep
             state.delpc, state.ptc = c_sw.compute(
@@ -380,6 +387,7 @@ class AcousticDynamics:
             )
 
             if self.namelist.nord > 0 and self.do_halo_exchange:
+                utils.device_sync()
                 reqs["divgd_quantity"] = self.comm.start_halo_update(
                     state.divgd_quantity, n_points=self.grid.halo
                 )
@@ -387,6 +395,7 @@ class AcousticDynamics:
                 if it == 0:
                     if self.do_halo_exchange:
                         reqs["gz_quantity"].wait()
+                        utils.device_sync()
                     copy_stencil(
                         state.gz,
                         state.zh,
@@ -400,6 +409,7 @@ class AcousticDynamics:
                         origin=self.grid.full_origin(),
                         domain=self.grid.domain_shape_full(add=(0, 0, 1)),
                     )
+                utils.device_sync()
             if not self.namelist.hydrostatic:
                 updatedzc.compute(
                     state.dp_ref, state.zs, state.ut, state.vt, state.gz, state.ws3, dt2
@@ -431,12 +441,14 @@ class AcousticDynamics:
                 dt2,
             )
             if self.do_halo_exchange:
+                utils.device_sync()
                 req_vector_c_grid = self.comm.start_vector_halo_update(
                     state.uc_quantity, state.vc_quantity, n_points=self.grid.halo
                 )
                 if self.namelist.nord > 0:
                     reqs["divgd_quantity"].wait()
                 req_vector_c_grid.wait()
+                utils.device_sync()
             # use the computed c-grid winds to evolve the d-grid winds forward
             # by 1 timestep
             d_sw.compute(
@@ -470,6 +482,7 @@ class AcousticDynamics:
             # they will be re-computed from scratch on the next acoustic timestep.
 
             if self.do_halo_exchange:
+                utils.device_sync()
                 for halovar in ["delp_quantity", "pt_quantity", "q_con_quantity"]:
                     self.comm.halo_update(
                         state.__getattribute__(halovar), n_points=self.grid.halo
@@ -514,6 +527,7 @@ class AcousticDynamics:
                 )
 
                 if self.do_halo_exchange:
+                    utils.device_sync()
                     reqs["zh_quantity"] = self.comm.start_halo_update(
                         state.zh_quantity, n_points=self.grid.halo
                     )
@@ -547,6 +561,7 @@ class AcousticDynamics:
                 )
                 if self.grid.npx == self.grid.npy and self.do_halo_exchange:
                     reqs["pkc_quantity"].wait()
+                    utils.device_sync()
 
                 self.nonhydrostatic_pressure_gradient(
                     state.u,
@@ -576,6 +591,7 @@ class AcousticDynamics:
 
             if self.do_halo_exchange:
                 if it != n_split - 1:
+                    utils.device_sync()
                     reqs_vector = self.comm.start_vector_halo_update(
                         state.u_quantity, state.v_quantity, n_points=self.grid.halo
                     )
@@ -589,6 +605,7 @@ class AcousticDynamics:
             nf_ke = min(3, self.namelist.nord + 1)
 
             if self.do_halo_exchange:
+                utils.device_sync()
                 self.comm.halo_update(
                     state.heat_source_quantity, n_points=self.grid.halo
                 )

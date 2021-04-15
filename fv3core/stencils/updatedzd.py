@@ -15,7 +15,7 @@ import fv3core.stencils.delnflux as delnflux
 import fv3core.utils
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FixedOriginStencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils import basic_operations
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import ra_x_func, ra_y_func
@@ -293,19 +293,19 @@ class UpdateDeltaZOnDGrid:
         ax_offsets = fv3core.utils.axis_offsets(
             self.grid, self.grid.full_origin(), self.grid.domain_shape_full()
         )
-        self._ra_update = FixedOriginStencil(
+        self._ra_update = FrozenStencil(
             ra_update,
             origin=self.grid.full_origin(),
             domain=self.grid.domain_shape_full(add=(0, 0, 1)),
             externals=ax_offsets,
         )
-        self._edge_profile = FixedOriginStencil(
+        self._edge_profile = FrozenStencil(
             edge_profile,
             origin=self.grid.full_origin(),
             domain=self.grid.domain_shape_full(add=(0, 0, 1)),
             externals=ax_offsets,
         )
-        self._zh_damp = FixedOriginStencil(
+        self._zh_damp = FrozenStencil(
             zh_damp,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(0, 0, 1)),

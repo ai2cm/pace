@@ -54,6 +54,7 @@ def copy_column(a: FloatField):
 # ------------------------------------------------------------------------
 def corner_fill(grid, q):
     r3 = 1.0 / 3.0
+    utils.device_sync()
     if grid.sw_corner:
         q[grid.is_, grid.js, :] = (
             q[grid.is_, grid.js, :]

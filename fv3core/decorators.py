@@ -17,6 +17,7 @@ import fv3core
 import fv3core._config as spec
 import fv3core.utils
 import fv3core.utils.global_config as global_config
+import fv3core.utils.gt4py_utils as gt4py_utils
 from fv3core.utils.typing import Index3D
 
 
@@ -272,6 +273,7 @@ class FV3StencilObject:
                 "format_source": global_config.get_format_source(),
                 **self.backend_kwargs,
             }
+            gt4py_utils.apply_device_sync(stencil_kwargs)
 
             # gtscript.stencil always returns a new class instance even if it
             # used the cached module.
@@ -330,11 +332,37 @@ def gtstencil(**stencil_kwargs) -> Callable[[Any], FV3StencilObject]:
     return decorator
 
 
-class FixedOriginStencil:
-    """Wrapped GT4Py stencil object explicitly genrating
+class StencilWrapper:
+    """Wrapped GT4Py stencil object."""
+
+    def __init__(self, func: Callable, **kwargs):
+        self.func = func
+
+        if "format_source" not in kwargs:
+            kwargs["format_source"] = global_config.get_format_source()
+        gt4py_utils.apply_device_sync(kwargs)
+
+        self.stencil_object = gtscript.stencil(
+            backend=global_config.get_backend(),
+            rebuild=global_config.get_rebuild(),
+            definition=self.func,
+            **kwargs,
+        )
+
+    def __call__(self, *args, **kwargs) -> None:
+        self.stencil_object(
+            *args,
+            **kwargs,
+            validate_args=global_config.get_validate_args(),
+        )
+
+
+class FrozenStencil(StencilWrapper):
+    """Wrapped GT4Py stencil object explicitly generating
     and using the normalized origins."""
 
     def __init__(self, func, origin, domain, **kwargs):
+        super().__init__(func, **kwargs)
         self.normalized_origin = (
             gtscript.gt_definitions.normalize_origin_mapping(origin)
             if origin is not None
@@ -346,25 +374,20 @@ class FixedOriginStencil:
             else None
         )
         self.domain = domain
-        self.func = func
-        self.stencil_object = gtscript.stencil(
-            backend=global_config.get_backend(),
-            rebuild=global_config.get_rebuild(),
-            definition=self.func,
-            **kwargs,
-        )
 
     def __call__(self, *args, **kwargs) -> None:
-        if "origin" in kwargs:
-            raise ValueError("cannot pass origin to FixedOriginStencil at call time")
-        if "domain" in kwargs:
-            raise ValueError("cannot pass domain to FixedOriginStencil at call time")
+        assert (
+            "origin" not in kwargs
+        ), "cannot pass origin to FrozenStencil at call time"
+        assert (
+            "domain" not in kwargs
+        ), "cannot pass domain to FrozenStencil at call time"
         self.stencil_object(
             *args,
             **kwargs,
-            validate_args=global_config.get_validate_args(),
             normalized_domain=self.normalized_domain,
             normalized_origin=self.normalized_origin,
+            validate_args=global_config.get_validate_args(),
         )
 
 
