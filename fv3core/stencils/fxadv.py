@@ -1,4 +1,3 @@
-import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
@@ -297,16 +296,6 @@ def vt_corners(
             ) * damp
 
 
-@gtscript.function
-def ra_x_func(area, xfx_adv):
-    return area + xfx_adv - xfx_adv[1, 0, 0]
-
-
-@gtscript.function
-def ra_y_func(area, yfx_adv):
-    return area + yfx_adv - yfx_adv[0, 1, 0]
-
-
 """
 @gtstencil()
 def fxadv_stencil(
@@ -368,7 +357,7 @@ def fxadv_fluxes_stencil(
     dx: FloatFieldIJ,
     crx_adv: FloatField,
     cry_adv: FloatField,
-    xfx_adv: FloatField,
+    xfx_adv: FloatField,  # TODO: rename to x_area_flux, similarly for y_area_flux
     yfx_adv: FloatField,
     ut: FloatField,
     vt: FloatField,
@@ -387,33 +376,17 @@ def fxadv_fluxes_stencil(
             yfx_adv = dx * prod * sin_sg4[0, -1] if prod > 0 else dx * prod * sin_sg2
 
 
-@gtstencil()
-def flux_divergence_area(
-    area: FloatFieldIJ,
-    xfx_adv: FloatField,
-    yfx_adv: FloatField,
-    ra_x: FloatField,
-    ra_y: FloatField,
+def compute(
+    uc,
+    vc,
+    crx_adv,
+    cry_adv,
+    xfx_adv,
+    yfx_adv,
+    ut,
+    vt,
+    dt,
 ):
-    """Compute the area with flux divergence applied
-     Args:
-       xfx_adv: Finite volume flux form operator in x direction (in)
-       yfx_adv: Finite volume flux form operator in y direction (in)
-       ra_x: Area increased in the x direction due to flux divergence (inout)
-       ra_y: Area increased in the y direction due to flux divergence (inout)
-    Grid variable inputs:
-       area
-    """
-    from __externals__ import local_ie, local_is, local_je, local_js
-
-    with computation(PARALLEL), interval(...):
-        with horizontal(region[local_is : local_ie + 2, :]):
-            ra_x = ra_x_func(area, xfx_adv)
-        with horizontal(region[:, local_js : local_je + 2]):
-            ra_y = ra_y_func(area, yfx_adv)
-
-
-def compute(uc, vc, crx_adv, cry_adv, xfx_adv, yfx_adv, ut, vt, ra_x, ra_y, dt):
     grid = spec.grid
     main_ut(
         uc,
@@ -503,15 +476,6 @@ def compute(uc, vc, crx_adv, cry_adv, xfx_adv, yfx_adv, ut, vt, ra_x, ra_y, dt):
         ut,
         vt,
         dt,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(),
-    )
-    flux_divergence_area(
-        grid.area,
-        xfx_adv,
-        yfx_adv,
-        ra_x,
-        ra_y,
         origin=grid.full_origin(),
         domain=grid.domain_shape_full(),
     )

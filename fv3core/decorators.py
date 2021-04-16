@@ -336,15 +336,18 @@ class StencilWrapper:
     """Wrapped GT4Py stencil object."""
 
     def __init__(self, func: Callable, **kwargs):
-        self.func = func
-
+        if "backend" not in kwargs:
+            kwargs["backend"] = global_config.get_backend()
+        if "rebuild" not in kwargs:
+            kwargs["rebuild"] = global_config.get_rebuild()
         if "format_source" not in kwargs:
             kwargs["format_source"] = global_config.get_format_source()
+
+        self.func = func
+
         gt4py_utils.apply_device_sync(kwargs)
 
         self.stencil_object = gtscript.stencil(
-            backend=global_config.get_backend(),
-            rebuild=global_config.get_rebuild(),
             definition=self.func,
             **kwargs,
         )

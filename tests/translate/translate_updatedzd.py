@@ -28,7 +28,11 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         updatedzd = fv3core.stencils.updatedzd.UpdateDeltaZOnDGrid(
-            self.grid, d_sw.get_column_namelist(), d_sw.k_bounds()
+            self.grid, inputs.pop("dp0"), d_sw.get_column_namelist(), d_sw.k_bounds()
         )
+        inputs["x_area_flux"] = inputs.pop("xfx")
+        inputs["y_area_flux"] = inputs.pop("yfx")
         updatedzd(**inputs)
+        inputs["xfx"] = inputs.pop("x_area_flux")
+        inputs["yfx"] = inputs.pop("y_area_flux")
         return self.slice_output(inputs)

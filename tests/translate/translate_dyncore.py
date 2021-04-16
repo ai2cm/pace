@@ -112,13 +112,21 @@ class TranslateDynCore(ParallelTranslate2PyState):
         del self._base.out_vars["ak"]
         del self._base.out_vars["bk"]
         del self._base.out_vars["pfull"]
+        del self._base.out_vars["phis"]
 
         # TODO: Fix edge_interpolate4 in d2a2c_vect to match closer and the
         # variables here should as well.
         self.max_error = 2e-6
 
     def compute_parallel(self, inputs, communicator):
-        self._base.compute_func = dyn_core.AcousticDynamics(communicator, spec.namelist)
+
+        self._base.compute_func = dyn_core.AcousticDynamics(
+            communicator,
+            spec.namelist,
+            inputs["ak"],
+            inputs["bk"],
+            inputs["phis"],
+        )
         return super().compute_parallel(inputs, communicator)
 
 

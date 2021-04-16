@@ -39,11 +39,6 @@ class Grid:
         self.nic = int(self.ie - self.is_ + 1)
         self.njc = int(self.je - self.js + 1)
         self.halo = utils.halo
-        # TODO: do we want to set face indices this way?
-        self.isf = 0
-        self.ief = self.npx - 1
-        self.jsf = 0
-        self.jef = self.npy - 1
         self.global_is, self.global_js = self.local_to_global_indices(self.is_, self.js)
         self.global_ie, self.global_je = self.local_to_global_indices(self.ie, self.je)
         self.global_isd, self.global_jsd = self.local_to_global_indices(

@@ -165,7 +165,13 @@ if __name__ == "__main__":
         input_data = driver_object.collect_input_data(serializer, savepoint_in)
         input_data["comm"] = communicator
         state = driver_object.state_from_inputs(input_data)
-        dycore = fv3core.DynamicalCore(communicator, spec.namelist)
+        dycore = fv3core.DynamicalCore(
+            communicator,
+            spec.namelist,
+            state["atmosphere_hybrid_a_coordinate"],
+            state["atmosphere_hybrid_b_coordinate"],
+            state["surface_geopotential"],
+        )
 
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
