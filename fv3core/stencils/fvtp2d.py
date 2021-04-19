@@ -3,9 +3,8 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.utils.corners as corners
-import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
+from fv3core.decorators import StencilWrapper
 from fv3core.stencils import d_sw, delnflux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
@@ -91,27 +90,20 @@ class FiniteVolumeTransport:
         self._tmp_fy2 = utils.make_storage_from_shape(shape, origin)
         ord_outer = hord
         ord_inner = 8 if hord == 10 else hord
-        stencil_kwargs = {
-            "backend": global_config.get_backend(),
-            "rebuild": global_config.get_rebuild(),
-        }
-        self.stencil_q_i = FrozenStencil(
+        self.stencil_q_i = StencilWrapper(
             q_i_stencil,
             origin=self.grid.full_origin(add=(0, 3, 0)),
             domain=self.grid.domain_shape_full(add=(0, -3, 1)),
-            **stencil_kwargs,
         )
-        self.stencil_q_j = FrozenStencil(
+        self.stencil_q_j = StencilWrapper(
             q_j_stencil,
             origin=self.grid.full_origin(add=(3, 0, 0)),
             domain=self.grid.domain_shape_full(add=(-3, 0, 1)),
-            **stencil_kwargs,
         )
-        self.stencil_transport_flux = FrozenStencil(
+        self.stencil_transport_flux = StencilWrapper(
             transport_flux_xy,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(1, 1, 1)),
-            **stencil_kwargs,
         )
         self.x_piecewise_parabolic_inner = XPiecewiseParabolic(namelist, ord_inner)
         self.y_piecewise_parabolic_inner = YPiecewiseParabolic(namelist, ord_inner)

@@ -24,7 +24,7 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
         self.nj = grid.npy
 
     def compute(self, inputs):
-        self.make_storage_data_input_vars(inputs)
+        self.setup(inputs)
         inputs["j_2d"] = self.grid.global_to_local_y(
             inputs["j_2d"] + TranslateGrid.fpy_model_index_offset
         )

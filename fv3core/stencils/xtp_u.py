@@ -10,7 +10,7 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
+from fv3core.decorators import StencilWrapper
 from fv3core.stencils import xppm, yppm
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -140,7 +140,7 @@ class XTP_U:
         self.rdx = grid.rdx
         ax_offsets = axis_offsets(grid, self.origin, self.domain)
         assert namelist.grid_type < 3
-        self.stencil = FrozenStencil(
+        self.stencil = StencilWrapper(
             _compute_stencil,
             externals={
                 "iord": iord,

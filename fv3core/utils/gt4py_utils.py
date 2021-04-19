@@ -554,9 +554,3 @@ def stack(tup, axis: int = 0, out=None):
 def device_sync() -> None:
     if cp and "cuda" in global_config.get_backend():
         cp.cuda.Device(0).synchronize()
-
-
-def apply_device_sync(stencil_kwargs: Dict[str, Any]) -> None:
-    backend = global_config.get_backend()
-    if "cuda" in backend and "device_sync" not in stencil_kwargs:
-        stencil_kwargs["device_sync"] = global_config.get_device_sync()

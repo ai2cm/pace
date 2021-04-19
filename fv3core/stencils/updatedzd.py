@@ -4,7 +4,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
+from fv3core.decorators import StencilWrapper
 from fv3core.stencils import basic_operations, d_sw, delnflux
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -243,7 +243,7 @@ class UpdateDeltaZOnDGrid:
         gamma_3d = utils.make_storage_from_shape((1, 1, self.grid.npz + 1), (0, 0, 0))
         beta_3d = utils.make_storage_from_shape((1, 1, self.grid.npz + 1), (0, 0, 0))
 
-        _cubic_spline_interpolation_constants = FrozenStencil(
+        _cubic_spline_interpolation_constants = StencilWrapper(
             cubic_spline_interpolation_constants,
             origin=(0, 0, 0),
             domain=(1, 1, self.grid.npz + 1),
@@ -257,12 +257,12 @@ class UpdateDeltaZOnDGrid:
             gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,)
         )
 
-        self._interpolate_to_layer_interface = FrozenStencil(
+        self._interpolate_to_layer_interface = StencilWrapper(
             cubic_spline_interpolation_from_layer_center_to_interfaces,
             origin=self.grid.full_origin(),
             domain=self.grid.domain_shape_full(add=(0, 0, 1)),
         )
-        self._apply_geopotential_height_fluxes = FrozenStencil(
+        self._apply_geopotential_height_fluxes = StencilWrapper(
             apply_geopotential_height_fluxes,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
