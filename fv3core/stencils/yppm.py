@@ -205,9 +205,6 @@ def north_edge_jord8plus_2(q: FloatField, dya: FloatFieldIJ, dm: FloatField):
 def pert_ppm_positive_definite_constraint_fcn(
     a0: FloatField, al: FloatField, ar: FloatField
 ):
-    da1 = 0.0
-    a4 = 0.0
-    fmin = 0.0
     if a0 <= 0.0:
         al = 0.0
         ar = 0.0
@@ -238,9 +235,6 @@ def pert_ppm_positive_definite_constraint(
 
 @gtscript.function
 def pert_ppm_standard_constraint_fcn(a0: FloatField, al: FloatField, ar: FloatField):
-    da1 = 0.0
-    da2 = 0.0
-    a6da = 0.0
     if al * ar < 0.0:
         da1 = al - ar
         da2 = da1 ** 2
@@ -317,26 +311,25 @@ def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
 
     with horizontal(region[:, j_start - 1]):
         bl, br = south_edge_jord8plus_0(q, dya, dm)
-        bl, br = pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[:, j_start]):
         bl, br = south_edge_jord8plus_1(q, dya, dm)
-        bl, br = pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[:, j_start + 1]):
         bl, br = south_edge_jord8plus_2(q, dm, al)
-        bl, br = pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[:, j_end - 1]):
         bl, br = north_edge_jord8plus_0(q, dm, al)
-        bl, br = pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[:, j_end]):
         bl, br = north_edge_jord8plus_1(q, dya, dm)
-        bl, br = pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[:, j_end + 1]):
         bl, br = north_edge_jord8plus_2(q, dya, dm)
+
+    with horizontal(
+        region[:, j_start - 1 : j_start + 2], region[:, j_end - 1 : j_end + 2]
+    ):
         bl, br = pert_ppm_standard_constraint_fcn(q, bl, br)
 
     return bl, br

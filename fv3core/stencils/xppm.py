@@ -112,8 +112,6 @@ def xt_dxa_edge_0(q, dxa):
     from __externals__ import xt_minmax
 
     xt = xt_dxa_edge_0_base(q, dxa)
-    minq = 0.0
-    maxq = 0.0
     if __INLINED(xt_minmax):
         minq = min(min(min(q[-1, 0, 0], q), q[1, 0, 0]), q[2, 0, 0])
         maxq = max(max(max(q[-1, 0, 0], q), q[1, 0, 0]), q[2, 0, 0])
@@ -126,8 +124,6 @@ def xt_dxa_edge_1(q, dxa):
     from __externals__ import xt_minmax
 
     xt = xt_dxa_edge_1_base(q, dxa)
-    minq = 0.0
-    maxq = 0.0
     if __INLINED(xt_minmax):
         minq = min(min(min(q[-2, 0, 0], q[-1, 0, 0]), q), q[1, 0, 0])
         maxq = max(max(max(q[-2, 0, 0], q[-1, 0, 0]), q), q[1, 0, 0])
@@ -259,26 +255,25 @@ def compute_blbr_ord8plus(q: FloatField, dxa: FloatFieldIJ):
 
     with horizontal(region[i_start - 1, :]):
         bl, br = west_edge_iord8plus_0(q, dxa, dm)
-        bl, br = yppm.pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[i_start, :]):
         bl, br = west_edge_iord8plus_1(q, dxa, dm)
-        bl, br = yppm.pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[i_start + 1, :]):
         bl, br = west_edge_iord8plus_2(q, dm, al)
-        bl, br = yppm.pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[i_end - 1, :]):
         bl, br = east_edge_iord8plus_0(q, dm, al)
-        bl, br = yppm.pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[i_end, :]):
         bl, br = east_edge_iord8plus_1(q, dxa, dm)
-        bl, br = yppm.pert_ppm_standard_constraint_fcn(q, bl, br)
 
     with horizontal(region[i_end + 1, :]):
         bl, br = east_edge_iord8plus_2(q, dxa, dm)
+
+    with horizontal(
+        region[i_start - 1 : i_start + 2, :], region[i_end - 1 : i_end + 2, :]
+    ):
         bl, br = yppm.pert_ppm_standard_constraint_fcn(q, bl, br)
 
     return bl, br
