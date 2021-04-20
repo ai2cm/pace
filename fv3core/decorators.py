@@ -214,14 +214,14 @@ class StencilWrapper:
         self.stencil_object: Optional[gt4py.StencilObject] = stencil_object
         """The current generated stencil object returned from gt4py."""
 
-        self.processed_kwargs: Dict[str, Any] = {}
-        """A dictionary of processed keyword args."""
+        self.arg_names: List[str] = []
+        """List of argument names."""
 
     def clear(self):
         """Clears cached data items."""
         self.is_cached = False
         self.field_origins.clear()
-        self.processed_kwargs.clear()
+        self.arg_names.clear()
 
     def __call__(
         self,
@@ -231,7 +231,8 @@ class StencilWrapper:
         **kwargs,
     ) -> None:
         if self.is_cached and not self.validate_args:
-            self.stencil_object.run(**self.processed_kwargs, exec_info=None)
+            kwargs = self._process_kwargs(domain, *args, **kwargs)
+            self.stencil_object.run(**kwargs, exec_info=None)
         else:
             if self.origin:
                 assert origin is None, "cannot override origin provided at init"
@@ -257,20 +258,19 @@ class StencilWrapper:
             else:
                 kwargs = self._process_kwargs(domain, *args, **kwargs)
                 self.stencil_object.run(**kwargs, exec_info=None)
-
             self.is_cached = True
 
     def _process_kwargs(self, domain: Optional[Index3D], *args, **kwargs):
         """Processes keyword args for direct calls to stencil_object.run."""
 
-        if not self.processed_kwargs:
-            kwargs["_origin_"] = self.field_origins
-            kwargs["_domain_"] = Shape(domain)
+        if domain is None:
+            domain = self.domain
+        if not self.arg_names:
+            self.arg_names = self.field_names + self.parameter_names
 
-            arg_names = self.field_names + self.parameter_names
-            kwargs.update({name: arg for name, arg in zip(arg_names, args)})
-            self.processed_kwargs = kwargs
-        return self.processed_kwargs
+        kwargs.update({"_origin_": self.field_origins, "_domain_": Shape(domain)})
+        kwargs.update({name: arg for name, arg in zip(self.arg_names, args)})
+        return kwargs
 
     def _compute_field_origins(
         self, origin: Tuple[int, ...], *args, **kwargs
