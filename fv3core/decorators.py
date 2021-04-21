@@ -12,7 +12,6 @@ import gt4py.storage as gt_storage
 import numpy as np
 import yaml
 from gt4py import gtscript
-from gt4py.definitions import Shape
 
 import fv3core
 import fv3core._config as spec
@@ -173,9 +172,7 @@ class StencilWrapper:
         self.origin: Tuple[int, ...] = origin
         """The compute origin."""
 
-        if domain is not None:
-            domain = Shape(domain)
-        self.domain: Optional[Shape] = domain
+        self.domain: Optional[Index3D] = domain
         """The compute domain."""
 
         self.disable_cache: bool = disable_cache
@@ -230,10 +227,7 @@ class StencilWrapper:
         domain: Optional[Index3D] = None,
         **kwargs,
     ) -> None:
-        if self.is_cached and not self.validate_args:
-            kwargs = self._process_kwargs(domain, *args, **kwargs)
-            self.stencil_object.run(**kwargs, exec_info=None)
-        else:
+        if not self.is_cached:
             if self.origin:
                 assert origin is None, "cannot override origin provided at init"
                 origin = self.origin
@@ -247,17 +241,17 @@ class StencilWrapper:
 
             self.validate_args = global_config.get_validate_args()
 
-            if self.validate_args:
-                self.stencil_object(
-                    *args,
-                    **kwargs,
-                    origin=self.field_origins,
-                    domain=domain,
-                    validate_args=True,
-                )
-            else:
-                kwargs = self._process_kwargs(domain, *args, **kwargs)
-                self.stencil_object.run(**kwargs, exec_info=None)
+        if self.validate_args:
+            self.stencil_object(
+                *args,
+                **kwargs,
+                origin=self.field_origins,
+                domain=domain,
+                validate_args=True,
+            )
+        else:
+            kwargs = self._process_kwargs(domain, *args, **kwargs)
+            self.stencil_object.run(**kwargs, exec_info=None)
             self.is_cached = True
 
     def _process_kwargs(self, domain: Optional[Index3D], *args, **kwargs):
@@ -268,7 +262,7 @@ class StencilWrapper:
         if not self.arg_names:
             self.arg_names = self.field_names + self.parameter_names
 
-        kwargs.update({"_origin_": self.field_origins, "_domain_": Shape(domain)})
+        kwargs.update({"_origin_": self.field_origins, "_domain_": domain})
         kwargs.update({name: arg for name, arg in zip(self.arg_names, args)})
         return kwargs
 
