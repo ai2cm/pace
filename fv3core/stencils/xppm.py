@@ -132,80 +132,6 @@ def xt_dxa_edge_1(q, dxa):
 
 
 @gtscript.function
-def west_edge_iord8plus_0(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-):
-    bl = yppm.s14 * dm[-1, 0, 0] + yppm.s11 * (q[-1, 0, 0] - q)
-    xt = xt_dxa_edge_0(q, dxa)
-    br = xt - q
-    return bl, br
-
-
-@gtscript.function
-def west_edge_iord8plus_1(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-):
-    xt = xt_dxa_edge_1(q, dxa)
-    bl = xt - q
-    xt = yppm.s15 * q + yppm.s11 * q[1, 0, 0] - yppm.s14 * dm[1, 0, 0]
-    br = xt - q
-    return bl, br
-
-
-@gtscript.function
-def west_edge_iord8plus_2(
-    q: FloatField,
-    dm: FloatField,
-    al: FloatField,
-):
-    xt = yppm.s15 * q[-1, 0, 0] + yppm.s11 * q - yppm.s14 * dm
-    bl = xt - q
-    br = al[1, 0, 0] - q
-    return bl, br
-
-
-@gtscript.function
-def east_edge_iord8plus_0(
-    q: FloatField,
-    dm: FloatField,
-    al: FloatField,
-):
-    bl = al - q
-    xt = yppm.s15 * q[1, 0, 0] + yppm.s11 * q + yppm.s14 * dm
-    br = xt - q
-    return bl, br
-
-
-@gtscript.function
-def east_edge_iord8plus_1(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-):
-    xt = yppm.s15 * q + yppm.s11 * q[-1, 0, 0] + yppm.s14 * dm[-1, 0, 0]
-    bl = xt - q
-    xt = xt_dxa_edge_0(q, dxa)
-    br = xt - q
-    return bl, br
-
-
-@gtscript.function
-def east_edge_iord8plus_2(
-    q: FloatField,
-    dxa: FloatFieldIJ,
-    dm: FloatField,
-):
-    xt = xt_dxa_edge_1(q, dxa)
-    bl = xt - q
-    br = yppm.s11 * (q[1, 0, 0] - q) - yppm.s14 * dm[1, 0, 0]
-    return bl, br
-
-
-@gtscript.function
 def compute_al(q: FloatField, dxa: FloatFieldIJ):
     """
     Interpolate q at interface.
@@ -243,6 +169,43 @@ def compute_al(q: FloatField, dxa: FloatFieldIJ):
 
 
 @gtscript.function
+def bl_br_edges(bl, br, q, dxa, al, dm):
+    from __externals__ import i_end, i_start
+
+    with horizontal(region[i_start - 1, :]):
+        xt_bl = yppm.s14 * dm[-1, 0, 0] + yppm.s11 * (q[-1, 0, 0] - q) + q
+        xt_br = xt_dxa_edge_0(q, dxa)
+
+    with horizontal(region[i_start, :]):
+        xt_bl = xt_dxa_edge_1(q, dxa)
+        xt_br = yppm.s15 * q + yppm.s11 * q[1, 0, 0] - yppm.s14 * dm[1, 0, 0]
+
+    with horizontal(region[i_start + 1, :]):
+        xt_bl = yppm.s15 * q[-1, 0, 0] + yppm.s11 * q - yppm.s14 * dm
+        xt_br = al[1, 0, 0]
+
+    with horizontal(region[i_end - 1, :]):
+        xt_bl = al
+        xt_br = yppm.s15 * q[1, 0, 0] + yppm.s11 * q + yppm.s14 * dm
+
+    with horizontal(region[i_end, :]):
+        xt_bl = yppm.s15 * q + yppm.s11 * q[-1, 0, 0] + yppm.s14 * dm[-1, 0, 0]
+        xt_br = xt_dxa_edge_0(q, dxa)
+
+    with horizontal(region[i_end + 1, :]):
+        xt_bl = xt_dxa_edge_1(q, dxa)
+        xt_br = yppm.s11 * (q[1, 0, 0] - q) - yppm.s14 * dm[1, 0, 0] + q
+
+    with horizontal(
+        region[i_start - 1 : i_start + 2, :], region[i_end - 1 : i_end + 2, :]
+    ):
+        bl = xt_bl - q
+        br = xt_br - q
+
+    return bl, br
+
+
+@gtscript.function
 def compute_blbr_ord8plus(q: FloatField, dxa: FloatFieldIJ):
     from __externals__ import i_end, i_start, iord
 
@@ -252,24 +215,7 @@ def compute_blbr_ord8plus(q: FloatField, dxa: FloatFieldIJ):
     external_assert(iord == 8)
 
     bl, br = blbr_iord8(q, al, dm)
-
-    with horizontal(region[i_start - 1, :]):
-        bl, br = west_edge_iord8plus_0(q, dxa, dm)
-
-    with horizontal(region[i_start, :]):
-        bl, br = west_edge_iord8plus_1(q, dxa, dm)
-
-    with horizontal(region[i_start + 1, :]):
-        bl, br = west_edge_iord8plus_2(q, dm, al)
-
-    with horizontal(region[i_end - 1, :]):
-        bl, br = east_edge_iord8plus_0(q, dm, al)
-
-    with horizontal(region[i_end, :]):
-        bl, br = east_edge_iord8plus_1(q, dxa, dm)
-
-    with horizontal(region[i_end + 1, :]):
-        bl, br = east_edge_iord8plus_2(q, dxa, dm)
+    bl, br = bl_br_edges(bl, br, q, dxa, al, dm)
 
     with horizontal(
         region[i_start - 1 : i_start + 2, :], region[i_end - 1 : i_end + 2, :]

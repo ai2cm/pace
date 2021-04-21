@@ -70,55 +70,27 @@ def _compute_stencil(
             bl = al[0, 0, 0] - u[0, 0, 0]
             br = al[1, 0, 0] - u[0, 0, 0]
 
-            # Zero corners
-            with horizontal(
-                region[i_start - 1 : i_start + 1, j_start],
-                region[i_start - 1 : i_start + 1, j_end + 1],
-                region[i_end : i_end + 2, j_start],
-                region[i_end : i_end + 2, j_end + 1],
-            ):
-                bl = 0.0
-                br = 0.0
-
         else:
             dm = xppm.dm_iord8plus(u)
             al = xppm.al_iord8plus(u, dm)
 
             external_assert(iord == 8)
-            # {
+
             bl, br = xppm.blbr_iord8(u, al, dm)
-            # }
-            # {
-            with horizontal(region[i_start - 1, :]):
-                bl, br = xppm.west_edge_iord8plus_0(u, dxa, dm)
+            bl, br = xppm.bl_br_edges(bl, br, u, dxa, al, dm)
 
-            with horizontal(region[i_start, :]):
-                bl, br = xppm.west_edge_iord8plus_1(u, dxa, dm)
-
-            with horizontal(region[i_start + 1, :]):
-                bl, br = xppm.west_edge_iord8plus_2(u, dm, al)
+            with horizontal(region[i_start + 1, :], region[i_end - 1, :]):
                 bl, br = yppm.pert_ppm_standard_constraint_fcn(u, bl, br)
 
-            with horizontal(region[i_end - 1, :]):
-                bl, br = xppm.east_edge_iord8plus_0(u, dm, al)
-                bl, br = yppm.pert_ppm_standard_constraint_fcn(u, bl, br)
-
-            with horizontal(region[i_end, :]):
-                bl, br = xppm.east_edge_iord8plus_1(u, dxa, dm)
-
-            with horizontal(region[i_end + 1, :]):
-                bl, br = xppm.east_edge_iord8plus_2(u, dxa, dm)
-
-            # Zero corners
-            with horizontal(
-                region[i_start - 1 : i_start + 1, j_start],
-                region[i_start - 1 : i_start + 1, j_end + 1],
-                region[i_end : i_end + 2, j_start],
-                region[i_end : i_end + 2, j_end + 1],
-            ):
-                bl = 0.0
-                br = 0.0
-            # }
+        # Zero corners
+        with horizontal(
+            region[i_start - 1 : i_start + 1, j_start],
+            region[i_start - 1 : i_start + 1, j_end + 1],
+            region[i_end : i_end + 2, j_start],
+            region[i_end : i_end + 2, j_end + 1],
+        ):
+            bl = 0.0
+            br = 0.0
 
         flux = _get_flux(u, courant, rdx, bl, br)
 

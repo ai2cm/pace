@@ -152,56 +152,6 @@ def xt_dya_edge_1(q, dya):
 
 
 @gtscript.function
-def south_edge_jord8plus_0(q: FloatField, dya: FloatFieldIJ, dm: FloatField):
-    bl = s14 * dm[0, -1, 0] + s11 * (q[0, -1, 0] - q)
-    xt = xt_dya_edge_0(q, dya)
-    br = xt - q
-    return bl, br
-
-
-@gtscript.function
-def south_edge_jord8plus_1(q: FloatField, dya: FloatFieldIJ, dm: FloatField):
-    xt = xt_dya_edge_1(q, dya)
-    bl = xt - q
-    xt = s15 * q + s11 * q[0, 1, 0] - s14 * dm[0, 1, 0]
-    br = xt - q
-    return bl, br
-
-
-@gtscript.function
-def south_edge_jord8plus_2(q: FloatField, dm: FloatField, al: FloatField):
-    xt = s15 * q[0, -1, 0] + s11 * q - s14 * dm
-    bl = xt - q
-    br = al[0, 1, 0] - q
-    return bl, br
-
-
-@gtscript.function
-def north_edge_jord8plus_0(q: FloatField, dm: FloatField, al: FloatField):
-    bl = al - q
-    xt = s15 * q[0, 1, 0] + s11 * q + s14 * dm
-    br = xt - q
-    return bl, br
-
-
-@gtscript.function
-def north_edge_jord8plus_1(q: FloatField, dya: FloatFieldIJ, dm: FloatField):
-    xt = s15 * q + s11 * q[0, -1, 0] + s14 * dm[0, -1, 0]
-    bl = xt - q
-    xt = xt_dya_edge_0(q, dya)
-    br = xt - q
-    return bl, br
-
-
-@gtscript.function
-def north_edge_jord8plus_2(q: FloatField, dya: FloatFieldIJ, dm: FloatField):
-    xt = xt_dya_edge_1(q, dya)
-    bl = xt - q
-    br = s11 * (q[0, 1, 0] - q) - s14 * dm[0, 1, 0]
-    return bl, br
-
-
-@gtscript.function
 def pert_ppm_positive_definite_constraint_fcn(
     a0: FloatField, al: FloatField, ar: FloatField
 ):
@@ -296,6 +246,43 @@ def compute_al(q: FloatField, dya: FloatFieldIJ):
 
 
 @gtscript.function
+def bl_br_edges(bl, br, q, dya, al, dm):
+    from __externals__ import j_end, j_start
+
+    with horizontal(region[:, j_start - 1]):
+        xt_bl = s14 * dm[0, -1, 0] + s11 * (q[0, -1, 0] - q) + q
+        xt_br = xt_dya_edge_0(q, dya)
+
+    with horizontal(region[:, j_start]):
+        xt_bl = xt_dya_edge_1(q, dya)
+        xt_br = s15 * q + s11 * q[0, 1, 0] - s14 * dm[0, 1, 0]
+
+    with horizontal(region[:, j_start + 1]):
+        xt_bl = s15 * q[0, -1, 0] + s11 * q - s14 * dm
+        xt_br = al[0, 1, 0]
+
+    with horizontal(region[:, j_end - 1]):
+        xt_bl = al
+        xt_br = s15 * q[0, 1, 0] + s11 * q + s14 * dm
+
+    with horizontal(region[:, j_end]):
+        xt_bl = s15 * q + s11 * q[0, -1, 0] + s14 * dm[0, -1, 0]
+        xt_br = xt_dya_edge_0(q, dya)
+
+    with horizontal(region[:, j_end + 1]):
+        xt_bl = xt_dya_edge_1(q, dya)
+        xt_br = s11 * (q[0, 1, 0] - q) - s14 * dm[0, 1, 0] + q
+
+    with horizontal(
+        region[:, j_start - 1 : j_start + 2], region[:, j_end - 1 : j_end + 2]
+    ):
+        bl = xt_bl - q
+        br = xt_br - q
+
+    return bl, br
+
+
+@gtscript.function
 def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
     from __externals__ import j_end, j_start, jord
 
@@ -308,24 +295,7 @@ def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
     external_assert(jord == 8)
 
     bl, br = blbr_jord8(q, al, dm)
-
-    with horizontal(region[:, j_start - 1]):
-        bl, br = south_edge_jord8plus_0(q, dya, dm)
-
-    with horizontal(region[:, j_start]):
-        bl, br = south_edge_jord8plus_1(q, dya, dm)
-
-    with horizontal(region[:, j_start + 1]):
-        bl, br = south_edge_jord8plus_2(q, dm, al)
-
-    with horizontal(region[:, j_end - 1]):
-        bl, br = north_edge_jord8plus_0(q, dm, al)
-
-    with horizontal(region[:, j_end]):
-        bl, br = north_edge_jord8plus_1(q, dya, dm)
-
-    with horizontal(region[:, j_end + 1]):
-        bl, br = north_edge_jord8plus_2(q, dya, dm)
+    bl, br = bl_br_edges(bl, br, q, dya, al, dm)
 
     with horizontal(
         region[:, j_start - 1 : j_start + 2], region[:, j_end - 1 : j_end + 2]
