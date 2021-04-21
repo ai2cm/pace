@@ -1,11 +1,10 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core._config as spec
 import fv3core.utils.global_constants as constants
-from fv3core.decorators import gtstencil
-from fv3core.stencils.basic_operations import copy, copy_stencil
-from fv3core.utils import corners
+from fv3core.decorators import StencilWrapper, gtstencil
+from fv3core.stencils import basic_operations
+from fv3core.utils import corners, gt4py_utils
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -38,7 +37,6 @@ def xy_flux(gz_x, gz_y, xfx, yfx):
     return fx, fy
 
 
-@gtstencil()
 def set_zero_2d(out_field: FloatFieldIJ):
     with computation(FORWARD):
         with interval(0, 1):
@@ -47,7 +45,6 @@ def set_zero_2d(out_field: FloatFieldIJ):
             out_field = out_field
 
 
-@gtstencil()
 def update_dz_c(
     dp_ref: FloatFieldK,
     zs: FloatFieldIJ,
@@ -85,45 +82,106 @@ def update_dz_c(
         gz = gz if gz > gz_kp1 else gz_kp1
 
 
-def compute(
-    dp_ref: FloatFieldK,
-    zs: FloatFieldIJ,
-    ut: FloatField,
-    vt: FloatField,
-    gz: FloatField,
-    ws: FloatFieldIJ,
-    dt2: float,
-):
-    grid = spec.grid
-    origin = (1, 1, 0)
-    gz_in = copy(gz, origin=origin, cache_key="updatedzc_gz")
-    gz_x = copy(gz, origin=origin, cache_key="updatedzc_gz_x")
+class UpdateGeopotentialHeightOnCGrid:
+    def __init__(self, grid):
+        self.grid = grid
+        largest_possible_shape = self.grid.domain_shape_full(add=(1, 1, 1))
+        self._gz_in = gt4py_utils.make_storage_from_shape(
+            largest_possible_shape,
+            self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
+        )
+        self._gz_x = gt4py_utils.make_storage_from_shape(
+            largest_possible_shape,
+            self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
+        )
+        self._gz_y = gt4py_utils.make_storage_from_shape(
+            largest_possible_shape,
+            self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
+        )
+        self._update_dz_c = StencilWrapper(
+            update_dz_c,
+            origin=(1, 1, 0),
+            domain=(grid.nic + 3, grid.njc + 3, grid.npz + 1),
+        )
+        # TODO: convert to StencilWrapper when we have selective validation
+        self._set_zero_2d = gtstencil()(set_zero_2d)
 
-    # corners.fill_corners_cells(gz_x, "x")
-    corners.fill_corners_2cells_x_stencil(
-        gz_x, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
-    )
-    gz_y = copy(gz_x, origin=origin, cache_key="updatedzc_gz_y")
-    # corners.fill_corners_cells(gz_y, "y")
-    corners.fill_corners_2cells_y_stencil(
-        gz_y, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
-    )
-    update_dz_c(
-        dp_ref,
-        zs,
-        grid.area,
-        ut,
-        vt,
-        gz,
-        gz_x,
-        gz_y,
-        ws,
-        dt=dt2,
-        origin=origin,
-        domain=(grid.nic + 3, grid.njc + 3, grid.npz + 1),
-    )
+    def __call__(
+        self,
+        dp_ref: FloatFieldK,
+        zs: FloatFieldIJ,
+        ut: FloatField,
+        vt: FloatField,
+        gz: FloatField,
+        ws: FloatFieldIJ,
+        dt: float,
+    ):
+        """
+        Args:
+            dp_ref: layer thickness in Pa
+            zs: surface height in m
+            ut: horizontal wind (TODO: covariant or contravariant?)
+            vt: horizontal wind (TODO: covariant or contravariant?)
+            gz: geopotential height (TODO: on cell mid levels or interfaces?)
+            ws: surface vertical wind implied by horizontal motion over topography
+            dt: timestep over which to evolve the geopotential height
+        """
+        basic_operations.copy_stencil(
+            gz,
+            self._gz_in,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
+        )
+        basic_operations.copy_stencil(
+            gz,
+            self._gz_x,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
+        )
+        basic_operations.copy_stencil(
+            gz,
+            self._gz_y,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
+        )
 
-    set_zero_2d(ws, origin=(1, 1, 0), domain=(1, grid.njc + 3, 1))
-    set_zero_2d(ws, origin=(1, 1, 0), domain=(grid.nic + 3, 1, 1))
-    copy_stencil(gz_in, gz, origin=(1, 1, 0), domain=(1, grid.njc + 3, grid.npz + 1))
-    copy_stencil(gz_in, gz, origin=(1, 1, 0), domain=(grid.nic + 3, 1, grid.npz + 1))
+        corners.fill_corners_2cells_x_stencil(
+            self._gz_x,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
+        )
+        corners.fill_corners_2cells_y_stencil(
+            self._gz_y,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
+        )
+
+        self._update_dz_c(
+            dp_ref,
+            zs,
+            self.grid.area,
+            ut,
+            vt,
+            gz,
+            self._gz_x,
+            self._gz_y,
+            ws,
+            dt=dt,
+        )
+
+        # should be able to combine these set_zero_2d with selective validation
+        self._set_zero_2d(ws, origin=(1, 1, 0), domain=(1, self.grid.njc + 3, 1))
+        self._set_zero_2d(ws, origin=(1, 1, 0), domain=(self.grid.nic + 3, 1, 1))
+        # similarly should be able to combine these copies with selective validation
+        basic_operations.copy_stencil(
+            self._gz_in,
+            gz,
+            origin=(1, 1, 0),
+            domain=(1, self.grid.njc + 3, self.grid.npz + 1),
+        )
+        basic_operations.copy_stencil(
+            self._gz_in,
+            gz,
+            origin=(1, 1, 0),
+            domain=(self.grid.nic + 3, 1, self.grid.npz + 1),
+        )

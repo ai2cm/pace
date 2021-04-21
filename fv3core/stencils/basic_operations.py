@@ -41,7 +41,8 @@ def copy(q_in, origin=(0, 0, 0), domain=None, cache_key=None):
             and the call stack.
 
     Returns:
-        gtscript.Field[float]: Copied field (default_origin inherited from q_in)
+        gtscript.Field[float]: Copied field of same shape as q_in,
+            with default_origin inherited from q_in
     """
     if domain is None:
         domain = tuple(extent - orig for extent, orig in zip(q_in.shape, origin))
