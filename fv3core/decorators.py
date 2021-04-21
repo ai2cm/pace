@@ -394,7 +394,8 @@ class FV3StencilObject(StencilWrapper):
         # Can optimize this by marking stencils that need these
         axis_offsets = fv3core.utils.axis_offsets(spec.grid, origin, domain)
 
-        regenerate_stencil = not self.built or global_config.get_rebuild()
+        self.rebuild = global_config.get_rebuild()
+        regenerate_stencil = not self.built or self.rebuild
 
         # Check if we really do need to regenerate
         if not regenerate_stencil:
