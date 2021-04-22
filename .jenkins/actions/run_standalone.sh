@@ -101,8 +101,8 @@ fi
 # store cache artifacts (and remove caches afterwards)
 if [ "${SAVE_CACHE}" == "true" ] ; then
     echo "Pruning cache to make sure no __pycache__ and *_pyext_BUILD dirs are present"
-    find .gt_cache* -type d -name \*_pyext_BUILD -exec \rm -rf {} \;
-    find .gt_cache* -type d -name __pycache__ -exec \rm -rf {} \;
+    find .gt_cache* -type d -name \*_pyext_BUILD -prune -exec \rm -rf {} \;
+    find .gt_cache* -type d -name __pycache__ -prune -exec \rm -rf {} \;
     echo "Copying GT4Py cache directories to ${CACHE_DIR}"
     mkdir -p ${CACHE_DIR}
     cp ${ROOT_DIR}/GT4PY_VERSION.txt ${CACHE_DIR}
