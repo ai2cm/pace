@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.utils.corners as corners
@@ -33,64 +33,44 @@ def update_q(
         q = q + cd * rarea * (fx - fx[1, 0, 0] + fy - fy[0, 1, 0])
 
 
-@gtstencil()
-def copy_row(a: FloatField):
-    with computation(PARALLEL), interval(...):
-        a0 = a
-        a = a0[1, 0, 0]
-
-
-@gtstencil()
-def copy_column(a: FloatField):
-    with computation(PARALLEL), interval(...):
-        a0 = a
-        a = a0[0, 1, 0]
-
-
 #
 # corner_fill
 #
-# Subroutine that copies/fills in the appropriate corner values for qdel
+# Stencil that copies/fills in the appropriate corner values for qdel
 # ------------------------------------------------------------------------
-def corner_fill(grid, q):
-    r3 = 1.0 / 3.0
-    utils.device_sync()
-    if grid.sw_corner:
-        q[grid.is_, grid.js, :] = (
-            q[grid.is_, grid.js, :]
-            + q[grid.is_ - 1, grid.js, :]
-            + q[grid.is_, grid.js - 1, :]
-        ) * r3
-        q[grid.is_ - 1, grid.js, :] = q[grid.is_, grid.js, :]
-        q[grid.is_, grid.js - 1, :] = q[grid.is_, grid.js, :]
-    if grid.se_corner:
-        q[grid.ie, grid.js, :] = (
-            q[grid.ie, grid.js, :]
-            + q[grid.ie + 1, grid.js, :]
-            + q[grid.ie, grid.js - 1, :]
-        ) * r3
-        q[grid.ie + 1, grid.js, :] = q[grid.ie, grid.js, :]
-        copy_column(q, origin=(grid.ie, grid.js - 1, 0), domain=(1, 1, grid.npz))
+@gtstencil()
+def corner_fill(q: FloatField):
+    from __externals__ import i_end, i_start, j_end, j_start
 
-    if grid.ne_corner:
-        q[grid.ie, grid.je, :] = (
-            q[grid.ie, grid.je, :]
-            + q[grid.ie + 1, grid.je, :]
-            + q[grid.ie, grid.je + 1, :]
-        ) * r3
-        q[grid.ie + 1, grid.je, :] = q[grid.ie, grid.je, :]
-        q[grid.ie, grid.je + 1, :] = q[grid.ie, grid.je, :]
+    # Fills the same scalar value into three locations in q for each corner
+    with computation(PARALLEL), interval(...):
+        with horizontal(region[i_start, j_start]):
+            q = (q[0, 0, 0] + q[-1, 0, 0] + q[0, -1, 0]) * (1.0 / 3.0)
+        with horizontal(region[i_start - 1, j_start]):
+            q = q[1, 0, 0]
+        with horizontal(region[i_start, j_start - 1]):
+            q = q[0, 1, 0]
 
-    if grid.nw_corner:
-        q[grid.is_, grid.je, :] = (
-            q[grid.is_, grid.je, :]
-            + q[grid.is_ - 1, grid.je, :]
-            + q[grid.is_, grid.je + 1, :]
-        ) * r3
-        copy_row(q, origin=(grid.is_ - 1, grid.je, 0), domain=(1, 1, grid.npz))
-        q[grid.is_, grid.je + 1, :] = q[grid.is_, grid.je, :]
+        with horizontal(region[i_end, j_start]):
+            q = (q[0, 0, 0] + q[1, 0, 0] + q[0, -1, 0]) * (1.0 / 3.0)
+        with horizontal(region[i_end + 1, j_start]):
+            q = q[-1, 0, 0]
+        with horizontal(region[i_end, j_start - 1]):
+            q = q[0, 1, 0]
 
-    return q
+        with horizontal(region[i_end, j_end]):
+            q = (q[0, 0, 0] + q[1, 0, 0] + q[0, 1, 0]) * (1.0 / 3.0)
+        with horizontal(region[i_end + 1, j_end]):
+            q = q[-1, 0, 0]
+        with horizontal(region[i_end, j_end + 1]):
+            q = q[0, -1, 0]
+
+        with horizontal(region[i_start, j_end]):
+            q = (q[0, 0, 0] + q[-1, 0, 0] + q[0, 1, 0]) * (1.0 / 3.0)
+        with horizontal(region[i_start - 1, j_end]):
+            q = q[1, 0, 0]
+        with horizontal(region[i_start, j_end + 1]):
+            q = q[0, -1, 0]
 
 
 def compute(qdel: FloatField, nmax: int, cd: float, km: int):
@@ -112,13 +92,15 @@ def compute(qdel: FloatField, nmax: int, cd: float, km: int):
         origin = (grid.is_ - nt, grid.js - nt, 0)
 
         # Fill in appropriate corner values
-        qdel = corner_fill(grid, qdel)
+        corner_fill(
+            qdel, origin=(grid.isd, grid.jsd, 0), domain=(grid.nid, grid.njd, km)
+        )
 
         if nt > 0:
             corners.copy_corners_x_stencil(
                 qdel, origin=(grid.isd, grid.jsd, 0), domain=(grid.nid, grid.njd, km)
             )
-        nx = grid.njc + 2 * nt + 1  # (grid.ie+nt+1) - (grid.is_-nt) + 1
+        nx = grid.nic + 2 * nt + 1  # (grid.ie+nt+1) - (grid.is_-nt) + 1
         ny = grid.njc + 2 * nt  # (grid.je+nt) - (grid.js-nt) + 1
         compute_zonal_flux(fx, qdel, grid.del6_v, origin=origin, domain=(nx, ny, km))
 
