@@ -3,10 +3,10 @@ import typing
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, log
 
 import fv3core._config as spec
-import fv3core.stencils.sim1_solver as sim1_solver
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.stencils.sim1_solver import Sim1Solver
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -130,5 +130,16 @@ def compute(
         origin=riemorigin,
         domain=domain,
     )
-    sim1_solver.solve(is1, ie1, js1, je1, dt2, gm, cp3, pe, dm, pm, pem, w, dz, ptc, ws)
+
+    sim1_solve = utils.cached_stencil_class(Sim1Solver)(
+        spec.namelist,
+        spec.grid,
+        is1,
+        ie1,
+        js1,
+        je1,
+        cache_key="riem_solver_c_sim1solver",
+    )
+    sim1_solve(dt2, gm, cp3, pe, dm, pm, pem, w, dz, ptc, ws)
+
     finalize(pe, pem, hs, dz, pef, gz, ptop, origin=riemorigin, domain=domain)

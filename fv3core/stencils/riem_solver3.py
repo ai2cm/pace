@@ -12,10 +12,10 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
-import fv3core.stencils.sim1_solver as sim1_solver
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.stencils.sim1_solver import Sim1Solver
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -190,23 +190,16 @@ def compute(
         domain=domain,
     )
 
-    sim1_solver.solve(
+    sim1_solve = utils.cached_stencil_class(Sim1Solver)(
+        spec.namelist,
+        spec.grid,
         grid.is_,
         grid.ie,
         grid.js,
         grid.je,
-        dt,
-        gm,
-        cp3,
-        pe,
-        dm,
-        pm,
-        pem,
-        w,
-        delz,
-        pt,
-        wsd,
+        cache_key="riem_solver3_sim1solver",
     )
+    sim1_solve(dt, gm, cp3, pe, dm, pm, pem, w, delz, pt, wsd)
 
     finalize(
         zs,

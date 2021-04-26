@@ -2,13 +2,11 @@ import typing
 
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
-import fv3core._config as spec
 import fv3core.utils.global_constants as constants
-from fv3core.decorators import gtstencil
+from fv3core.decorators import StencilWrapper
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
-@gtstencil()
 @typing.no_type_check
 def sim1_solver(
     w: FloatField,
@@ -111,47 +109,55 @@ def sim1_solver(
     # }
 
 
-# TODO: implement MOIST_CAPPA=false
-def solve(
-    is_: int,
-    ie: int,
-    js: int,
-    je: int,
-    dt: float,
-    gm: FloatField,
-    cp3: FloatField,
-    pe: FloatField,
-    dm: FloatField,
-    pm: FloatField,
-    pem: FloatField,
-    w: FloatField,
-    dz: FloatField,
-    ptr: FloatField,
-    wsr: FloatFieldIJ,
-):
-    grid = spec.grid
-    nic = ie - is_ + 1
-    njc = je - js + 1
-    simshape = pe.shape
-    simorigin = (is_, js, 0)
-    simdomainplus = (nic, njc, grid.npz + 1)
-    t1g = 2.0 * dt * dt
-    rdt = 1.0 / dt
-    sim1_solver(
-        w,
-        dm,
-        gm,
-        dz,
-        ptr,
-        pm,
-        pe,
-        pem,
-        wsr,
-        cp3,
-        dt,
-        t1g,
-        rdt,
-        spec.namelist.p_fac,
-        origin=simorigin,
-        domain=simdomainplus,
-    )
+class Sim1Solver:
+    """
+    Fortran name is sim1_solver
+
+    Namelist:
+        p_fac: Safety factor for minimum nonhydrostatic pressures.
+    """
+
+    # TODO: implement MOIST_CAPPA=false
+
+    def __init__(self, namelist, grid, istart, iend, jstart, jend):
+        self._pfac = namelist.p_fac
+        nic = iend - istart + 1
+        njc = jend - jstart + 1
+        self._origin = (istart, jstart, 0)
+        self._domain = (nic, njc, grid.npz + 1)
+        self._compute_sim1_solve = StencilWrapper(func=sim1_solver, externals={})
+
+    def __call__(
+        self,
+        dt: float,
+        gm: FloatField,
+        cp3: FloatField,
+        pe: FloatField,
+        dm: FloatField,
+        pm: FloatField,
+        pem: FloatField,
+        w: FloatField,
+        dz: FloatField,
+        ptr: FloatField,
+        wsr: FloatFieldIJ,
+    ):
+        t1g = 2.0 * dt * dt
+        rdt = 1.0 / dt
+        self._compute_sim1_solve(
+            w,
+            dm,
+            gm,
+            dz,
+            ptr,
+            pm,
+            pe,
+            pem,
+            wsr,
+            cp3,
+            dt,
+            t1g,
+            rdt,
+            self._pfac,
+            origin=self._origin,
+            domain=self._domain,
+        )
