@@ -3,10 +3,10 @@ from typing import Any, Dict
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.fillz as fillz
 import fv3core.stencils.map_single as map_single
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.stencils.fillz import FillNegativeTracerValues
 from fv3core.stencils.remap_profile import RemapProfile
 from fv3core.utils.typing import FloatField
 
@@ -110,4 +110,7 @@ def compute(
             version,
         )
     if spec.namelist.fill:
-        fillz.compute(dp2, tracers, i_extent, j_extent, spec.grid.npz, nq)
+        fillz = utils.cached_stencil_class(FillNegativeTracerValues)(
+            cache_key="mapntracer-fillz"
+        )
+        fillz(dp2, tracers, i_extent, j_extent, spec.grid.npz, nq)

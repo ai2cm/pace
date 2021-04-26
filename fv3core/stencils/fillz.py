@@ -1,15 +1,13 @@
 from typing import Any, Dict
 
-import numpy as np
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import gtstencil
+from fv3core.decorators import StencilWrapper
 from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
-@gtstencil()
 def fix_tracer(
     q: FloatField,
     dp: FloatField,
@@ -99,49 +97,49 @@ def fix_tracer(
             q = fac * dm / dp if fac * dm / dp > 0.0 else 0.0
 
 
-def compute(
-    dp2: FloatField,
-    tracers: Dict[str, Any],
-    im: int,
-    jm: int,
-    km: int,
-    nq: int,
-):
-    # Same as above, but with multiple tracer fields
-    i1 = spec.grid.is_
-    j1 = spec.grid.js
+class FillNegativeTracerValues:
+    """
+    Fix tracer values to prevent negative masses.
 
-    tracer_list = [tracers[q] for q in utils.tracer_variables[0:nq]]
-    shape = tracer_list[0].shape
-    shape_ij = shape[0:2]
+    Fortran name is `fillz`
+    """
 
-    dm = utils.make_storage_from_shape(shape, origin=(0, 0, 0), cache_key="fillz_dm")
-    dm_pos = utils.make_storage_from_shape(
-        shape, origin=(0, 0, 0), cache_key="fillz_dm_pos"
-    )
-    # setting initial value of upper_fix to zero is only needed
-    # for validation. The values in the compute domain are set to zero in the stencil.
-    zfix = utils.make_storage_from_shape(
-        shape_ij, dtype=np.int, origin=(0, 0), cache_key="fillz_zfix"
-    )
-    sum0 = utils.make_storage_from_shape(
-        shape_ij, origin=(0, 0), cache_key="fillz_sum0"
-    )
-    sum1 = utils.make_storage_from_shape(
-        shape_ij, origin=(0, 0), cache_key="fillz_sum1"
-    )
-    # TODO: Implement dev_gfs_physics ifdef when we implement compiler defs.
+    def __init__(self):
+        grid = spec.grid
+        self.origin = grid.compute_origin()
+        self._fix_tracer_stencil = StencilWrapper(fix_tracer)
 
-    for tracer in tracer_list:
-        fix_tracer(
-            tracer,
-            dp2,
-            dm,
-            dm_pos,
-            zfix,
-            sum0,
-            sum1,
-            origin=(i1, j1, 0),
-            domain=(im, jm, km),
-        )
-    return tracer_list
+        shape = grid.domain_shape_full(add=(1, 1, 1))
+        shape_ij = shape[0:2]
+
+        self._dm = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
+        self._dm_pos = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
+        # Setting initial value of upper_fix to zero is only needed for validation.
+        # The values in the compute domain are set to zero in the stencil.
+        self._zfix = utils.make_storage_from_shape(shape_ij, dtype=int, origin=(0, 0))
+        self._sum0 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
+        self._sum1 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
+
+    def __call__(
+        self,
+        dp2: FloatField,
+        tracers: Dict[str, Any],
+        im: int,
+        jm: int,
+        km: int,
+        nq: int,
+    ):
+        tracer_list = [tracers[name] for name in utils.tracer_variables[0:nq]]
+        for tracer in tracer_list:
+            self._fix_tracer_stencil(
+                tracer,
+                dp2,
+                self._dm,
+                self._dm_pos,
+                self._zfix,
+                self._sum0,
+                self._sum1,
+                origin=self.origin,
+                domain=(im, jm, km),
+            )
+        return tracer_list

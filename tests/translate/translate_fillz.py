@@ -1,6 +1,6 @@
 import numpy as np
 
-import fv3core.stencils.fillz as Fillz
+import fv3core.stencils.fillz as fillz
 import fv3core.utils.gt4py_utils as utils
 from fv3core.testing import TranslateFortranData2Py
 
@@ -8,7 +8,7 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateFillz(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = Fillz.compute
+        self.compute_func = fillz.FillNegativeTracerValues()
         self.in_vars["data_vars"] = {
             "dp2": {"istart": grid.is_, "iend": grid.ie, "axis": 1},
             "q2tracers": {"istart": grid.is_, "iend": grid.ie, "axis": 1},
