@@ -1,11 +1,12 @@
-import fv3core.stencils.riem_solver3 as riem_solver3
+import fv3core._config as spec
+from fv3core.stencils.riem_solver3 import RiemannSolver3
 from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateRiem_Solver3(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = riem_solver3.compute
+        self.compute_func = RiemannSolver3(spec.namelist)
         self.in_vars["data_vars"] = {
             "cappa": {},
             "zs": {},
@@ -22,7 +23,7 @@ class TranslateRiem_Solver3(TranslateFortranData2Py):
             "peln": {"istart": grid.is_, "jstart": grid.js, "kaxis": 1},
             "wsd": {"istart": grid.is_, "jstart": grid.js},
         }
-        self.in_vars["parameters"] = ["dt", "akap", "ptop", "last_call"]
+        self.in_vars["parameters"] = ["dt", "ptop", "last_call"]
         self.out_vars = {
             "zh": {"kend": grid.npz},
             "w": {},

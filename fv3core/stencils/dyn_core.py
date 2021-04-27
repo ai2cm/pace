@@ -18,7 +18,6 @@ import fv3core.stencils.nh_p_grad as nh_p_grad
 import fv3core.stencils.pe_halo as pe_halo
 import fv3core.stencils.pk3_halo as pk3_halo
 import fv3core.stencils.ray_fast as ray_fast
-import fv3core.stencils.riem_solver3 as riem_solver3
 import fv3core.stencils.riem_solver_c as riem_solver_c
 import fv3core.stencils.temperature_adjust as temperature_adjust
 import fv3core.stencils.updatedzc as updatedzc
@@ -30,6 +29,7 @@ import fv3gfs.util
 import fv3gfs.util as fv3util
 from fv3core.decorators import StencilWrapper
 from fv3core.stencils.basic_operations import copy_stencil
+from fv3core.stencils.riem_solver3 import RiemannSolver3
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
@@ -260,6 +260,7 @@ class AcousticDynamics:
             self._update_height_on_d_grid = updatedzd.UpdateDeltaZOnDGrid(
                 self.grid, self._dp_ref, d_sw.get_column_namelist(), d_sw.k_bounds()
             )
+            self._riem_solver3 = RiemannSolver3(spec.namelist)
 
         self._set_gz = StencilWrapper(
             set_gz,
@@ -527,15 +528,13 @@ class AcousticDynamics:
                     state.wsd,
                     dt,
                 )
-
-                riem_solver3.compute(
+                self._riem_solver3(
                     remap_step,
                     dt,
-                    akap,
                     state.cappa,
                     state.ptop,
                     self._zs,
-                    state.w,
+                    state.wsd,
                     state.delz,
                     state.q_con,
                     state.delp,
@@ -546,7 +545,7 @@ class AcousticDynamics:
                     state.pk3,
                     state.pk,
                     state.peln,
-                    state.wsd,
+                    state.w,
                 )
 
                 if self.do_halo_exchange:
