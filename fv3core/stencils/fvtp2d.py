@@ -105,10 +105,18 @@ class FiniteVolumeTransport:
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(1, 1, 1)),
         )
-        self.x_piecewise_parabolic_inner = XPiecewiseParabolic(namelist, ord_inner)
-        self.y_piecewise_parabolic_inner = YPiecewiseParabolic(namelist, ord_inner)
-        self.x_piecewise_parabolic_outer = XPiecewiseParabolic(namelist, ord_outer)
-        self.y_piecewise_parabolic_outer = YPiecewiseParabolic(namelist, ord_outer)
+        self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
+            namelist, ord_inner, self.grid.jsd, self.grid.jed
+        )
+        self.y_piecewise_parabolic_inner = YPiecewiseParabolic(
+            namelist, ord_inner, self.grid.isd, self.grid.ied
+        )
+        self.x_piecewise_parabolic_outer = XPiecewiseParabolic(
+            namelist, ord_outer, self.grid.js, self.grid.je
+        )
+        self.y_piecewise_parabolic_outer = YPiecewiseParabolic(
+            namelist, ord_outer, self.grid.is_, self.grid.ie
+        )
 
     def __call__(
         self,
@@ -146,7 +154,7 @@ class FiniteVolumeTransport:
         corners.copy_corners_y_stencil(
             q, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
         )
-        self.y_piecewise_parabolic_inner(q, cry, self._tmp_fy2, grid.isd, grid.ied)
+        self.y_piecewise_parabolic_inner(q, cry, self._tmp_fy2)
         self.stencil_q_i(
             q,
             grid.area,
@@ -154,11 +162,11 @@ class FiniteVolumeTransport:
             self._tmp_fy2,
             self._tmp_q_i,
         )
-        self.x_piecewise_parabolic_outer(self._tmp_q_i, crx, fx, grid.js, grid.je)
+        self.x_piecewise_parabolic_outer(self._tmp_q_i, crx, fx)
         corners.copy_corners_x_stencil(
             q, origin=grid.full_origin(), domain=grid.domain_shape_full(add=(0, 0, 1))
         )
-        self.x_piecewise_parabolic_inner(q, crx, self._tmp_fx2, grid.jsd, grid.jed)
+        self.x_piecewise_parabolic_inner(q, crx, self._tmp_fx2)
         self.stencil_q_j(
             q,
             grid.area,
@@ -166,7 +174,7 @@ class FiniteVolumeTransport:
             self._tmp_fx2,
             self._tmp_q_j,
         )
-        self.y_piecewise_parabolic_outer(self._tmp_q_j, cry, fy, grid.is_, grid.ie)
+        self.y_piecewise_parabolic_outer(self._tmp_q_j, cry, fy)
         if mfx is not None and mfy is not None:
             self.stencil_transport_flux(
                 fx,

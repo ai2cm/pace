@@ -343,7 +343,7 @@ class YPiecewiseParabolic:
     Fortran name is yppm
     """
 
-    def __init__(self, namelist, jord):
+    def __init__(self, namelist, jord, ifirst, ilast):
         grid = spec.grid
         origin = grid.compute_origin()
         domain = grid.domain_shape_compute(add=(1, 1, 1))
@@ -354,9 +354,6 @@ class YPiecewiseParabolic:
                 f"Unimplemented hord value, {jord}. "
                 "Currently only support hord={5, 6, 7, 8}"
             )
-        self._npz = grid.npz
-        self._js = grid.js
-        self._njc = grid.njc
         self._dya = grid.dya
         self._compute_flux_stencil = StencilWrapper(
             func=compute_y_flux,
@@ -366,11 +363,11 @@ class YPiecewiseParabolic:
                 "xt_minmax": True,
                 **ax_offsets,
             },
+            origin=(ifirst, grid.js, 0),
+            domain=(ilast - ifirst + 1, grid.njc + 1, grid.npz + 1),
         )
 
-    def __call__(
-        self, q: FloatField, c: FloatField, flux: FloatField, ifirst: int, ilast: int
-    ):
+    def __call__(self, q: FloatField, c: FloatField, flux: FloatField):
         """
         Compute y-flux using the PPM method.
 
@@ -382,12 +379,4 @@ class YPiecewiseParabolic:
             ilast: Final index of the I-dir compute domain
         """
 
-        ni = ilast - ifirst + 1
-        self._compute_flux_stencil(
-            q,
-            c,
-            self._dya,
-            flux,
-            origin=(ifirst, self._js, 0),
-            domain=(ni, self._njc + 1, self._npz + 1),
-        )
+        self._compute_flux_stencil(q, c, self._dya, flux)

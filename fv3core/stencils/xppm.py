@@ -244,15 +244,12 @@ class XPiecewiseParabolic:
     Fortran name is xppm
     """
 
-    def __init__(self, namelist, iord):
+    def __init__(self, namelist, iord, jfirst, jlast):
         grid = spec.grid
         origin = grid.compute_origin()
         domain = grid.domain_shape_compute(add=(1, 1, 1))
         ax_offsets = axis_offsets(spec.grid, origin, domain)
         assert namelist.grid_type < 3
-        self._npz = grid.npz
-        self._is_ = grid.is_
-        self._nic = grid.nic
         self._dxa = grid.dxa
         self._compute_flux_stencil = StencilWrapper(
             func=compute_x_flux,
@@ -262,11 +259,11 @@ class XPiecewiseParabolic:
                 "xt_minmax": True,
                 **ax_offsets,
             },
+            origin=(grid.is_, jfirst, 0),
+            domain=(grid.nic + 1, jlast - jfirst + 1, grid.npz + 1),
         )
 
-    def __call__(
-        self, q: FloatField, c: FloatField, xflux: FloatField, jfirst: int, jlast: int
-    ):
+    def __call__(self, q: FloatField, c: FloatField, xflux: FloatField):
         """
         Compute x-flux using the PPM method.
 
@@ -278,12 +275,4 @@ class XPiecewiseParabolic:
             jlast: Final index of the J-dir compute domain
         """
 
-        nj = jlast - jfirst + 1
-        self._compute_flux_stencil(
-            q,
-            c,
-            self._dxa,
-            xflux,
-            origin=(self._is_, jfirst, 0),
-            domain=(self._nic + 1, nj, self._npz + 1),
-        )
+        self._compute_flux_stencil(q, c, self._dxa, xflux)
