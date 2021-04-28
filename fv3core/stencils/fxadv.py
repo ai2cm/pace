@@ -1,14 +1,13 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
-from fv3core.decorators import gtstencil
+from fv3core.decorators import StencilWrapper
+from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 # TODO: the mix of local and global regions is strange here
 # it's a workaround to specify DON'T do this calculation if on the tile edge
-# check that the fortran is correct
-@gtstencil()
 def main_ut(
     uc: FloatField,
     vc: FloatField,
@@ -32,8 +31,6 @@ def main_ut(
 
 # TODO: the mix of local and global regions is strange here
 # it's a workaround to specify DON'T do this calculation if on the tile edge
-# check that the fortran is correct
-@gtstencil()
 def main_vt(
     uc: FloatField,
     vc: FloatField,
@@ -53,7 +50,6 @@ def main_vt(
             vt = vtmp
 
 
-@gtstencil()
 def ut_y_edge(
     uc: FloatField,
     sin_sg1: FloatFieldIJ,
@@ -68,7 +64,6 @@ def ut_y_edge(
             ut = (uc / sin_sg3[-1, 0]) if (uc * dt > 0) else (uc / sin_sg1)
 
 
-@gtstencil()
 def ut_x_edge(uc: FloatField, cosa_u: FloatFieldIJ, vt: FloatField, ut: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start, local_ie, local_is
 
@@ -89,7 +84,6 @@ def ut_x_edge(uc: FloatField, cosa_u: FloatFieldIJ, vt: FloatField, ut: FloatFie
             ut = utmp
 
 
-@gtstencil()
 def vt_y_edge(vc: FloatField, cosa_v: FloatFieldIJ, ut: FloatField, vt: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start, local_je, local_js
 
@@ -123,7 +117,6 @@ def vt_y_edge(vc: FloatField, cosa_v: FloatFieldIJ, ut: FloatField, vt: FloatFie
             vt = vtmp
 
 
-@gtstencil()
 def vt_x_edge(
     vc: FloatField,
     sin_sg2: FloatFieldIJ,
@@ -138,7 +131,6 @@ def vt_x_edge(
             vt = (vc / sin_sg4[0, -1]) if (vc * dt > 0) else (vc / sin_sg2)
 
 
-@gtstencil()
 def ut_corners(
     cosa_u: FloatFieldIJ,
     cosa_v: FloatFieldIJ,
@@ -224,7 +216,6 @@ def ut_corners(
             ) * damp
 
 
-@gtstencil()
 def vt_corners(
     cosa_u: FloatFieldIJ,
     cosa_v: FloatFieldIJ,
@@ -297,7 +288,7 @@ def vt_corners(
 
 
 """
-@gtstencil()
+# Single stencil version to use when possible with gt backends
 def fxadv_stencil(
     cosa_u: FloatFieldIJ,
     cosa_v: FloatFieldIJ,
@@ -313,26 +304,6 @@ def fxadv_stencil(
     vt: FloatField,
     dt: float,
 ):
-    Updates flux operators and courant numbers for fvtp2d
-
-    To kick off D_SW after the C-grid winds have been advanced half a timestep,
-    and and compute finite volume transport on the D-grid (e.g.Putman and Lin 2007),
-    this module prepares terms such as parts of equations 7 and 13 in Putnam and Lin,
-    2007, that get consumed by fvtp2d and ppm methods.
-
-    Args:
-        uc: x-velocity on the C-grid (in)
-        vc: y-velocity on the C-grid (in)
-        crx_adv: Courant number, x direction(inout)
-        cry_adv: Courant number, y direction(inout)
-        xfx_adv: Finite volume flux form operator in x direction (inout)
-        yfx_adv: Finite volume flux form operator in y direction (inout)
-        ut: temporary x-velocity transformed from C-grid to D-grid equivalent(?) (inout)
-        vt: temporary y-velocity transformed from C-grid to D-grid equivalent(?) (inout)
-        dt: timestep in seconds
-    Grid variable inputs:
-        cosa_u, cosa_v, rsin_u, rsin_v, sin_sg1,sin_sg2, sin_sg3, sin_sg4
-
     with computation(PARALLEL), interval(...):
         ut = main_ut(uc, vc, cosa_u, rsin_u, ut)
         ut = ut_y_edge(uc, sin_sg1, sin_sg3, ut, dt)
@@ -345,7 +316,6 @@ def fxadv_stencil(
 """
 
 
-@gtstencil()
 def fxadv_fluxes_stencil(
     sin_sg1: FloatFieldIJ,
     sin_sg2: FloatFieldIJ,
@@ -355,10 +325,10 @@ def fxadv_fluxes_stencil(
     rdya: FloatFieldIJ,
     dy: FloatFieldIJ,
     dx: FloatFieldIJ,
-    crx_adv: FloatField,
-    cry_adv: FloatField,
-    xfx_adv: FloatField,  # TODO: rename to x_area_flux, similarly for y_area_flux
-    yfx_adv: FloatField,
+    crx: FloatField,
+    cry: FloatField,
+    x_area_flux: FloatField,
+    y_area_flux: FloatField,
     ut: FloatField,
     vt: FloatField,
     dt: float,
@@ -368,123 +338,169 @@ def fxadv_fluxes_stencil(
     with computation(PARALLEL), interval(...):
         prod = dt * ut
         with horizontal(region[local_is : local_ie + 2, :]):
-            crx_adv = prod * rdxa[-1, 0] if prod > 0 else prod * rdxa
-            xfx_adv = dy * prod * sin_sg3[-1, 0] if prod > 0 else dy * prod * sin_sg1
+            if prod > 0:
+                crx = prod * rdxa[-1, 0]
+                x_area_flux = dy * prod * sin_sg3[-1, 0]
+            else:
+                crx = prod * rdxa
+                x_area_flux = dy * prod * sin_sg1
         prod = dt * vt
         with horizontal(region[:, local_js : local_je + 2]):
-            cry_adv = prod * rdya[0, -1] if prod > 0 else prod * rdya
-            yfx_adv = dx * prod * sin_sg4[0, -1] if prod > 0 else dx * prod * sin_sg2
+            if prod > 0:
+                cry = prod * rdya[0, -1]
+                y_area_flux = dx * prod * sin_sg4[0, -1]
+            else:
+                cry = prod * rdya
+                y_area_flux = dx * prod * sin_sg2
 
 
-def compute(
-    uc,
-    vc,
-    crx_adv,
-    cry_adv,
-    xfx_adv,
-    yfx_adv,
-    ut,
-    vt,
-    dt,
-):
-    grid = spec.grid
-    main_ut(
+class FiniteVolumeFluxPrep:
+    """
+    A large section of code near the beginning of Fortran's d_sw subroutinw
+    Known in this repo as FxAdv,
+    """
+
+    def __init__(self):
+        self.grid = spec.grid
+        origin = self.grid.full_origin()
+        domain = self.grid.domain_shape_full()
+        ax_offsets = axis_offsets(self.grid, origin, domain)
+        kwargs = {"externals": ax_offsets, "origin": origin, "domain": domain}
+        origin_corners = self.grid.full_origin(add=(1, 1, 0))
+        domain_corners = self.grid.domain_shape_full(add=(-1, -1, 0))
+        corner_offsets = axis_offsets(self.grid, origin_corners, domain_corners)
+        kwargs_corners = {
+            "externals": corner_offsets,
+            "origin": origin_corners,
+            "domain": domain_corners,
+        }
+        self._main_ut_stencil = StencilWrapper(main_ut, **kwargs)
+        self._main_vt_stencil = StencilWrapper(main_vt, **kwargs)
+        self._ut_y_edge_stencil = StencilWrapper(ut_y_edge, **kwargs)
+        self._vt_y_edge_stencil = StencilWrapper(vt_y_edge, **kwargs)
+        self._ut_x_edge_stencil = StencilWrapper(ut_x_edge, **kwargs)
+        self._vt_x_edge_stencil = StencilWrapper(vt_x_edge, **kwargs)
+        self._ut_corners_stencil = StencilWrapper(ut_corners, **kwargs_corners)
+        self._vt_corners_stencil = StencilWrapper(vt_corners, **kwargs_corners)
+        self._fxadv_fluxes_stencil = StencilWrapper(fxadv_fluxes_stencil, **kwargs)
+
+    def __call__(
+        self,
         uc,
         vc,
-        grid.cosa_u,
-        grid.rsin_u,
-        ut,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(),
-    )
-    ut_y_edge(
-        uc,
-        grid.sin_sg1,
-        grid.sin_sg3,
-        ut,
-        dt,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(),
-    )
-    main_vt(
-        uc,
-        vc,
-        grid.cosa_v,
-        grid.rsin_v,
-        vt,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(),
-    )
-    vt_y_edge(
-        vc,
-        grid.cosa_v,
-        ut,
-        vt,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(),
-    )
-    vt_x_edge(
-        vc,
-        grid.sin_sg2,
-        grid.sin_sg4,
-        vt,
-        dt,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(),
-    )
-    ut_x_edge(
-        uc,
-        grid.cosa_u,
-        vt,
-        ut,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(),
-    )
-    ut_corners(
-        grid.cosa_u,
-        grid.cosa_v,
-        uc,
-        vc,
-        ut,
-        vt,
-        origin=(1, 1, 0),
-        domain=grid.domain_shape_full(add=(-1, -1, 0)),
-    )
-    vt_corners(
-        grid.cosa_u,
-        grid.cosa_v,
-        uc,
-        vc,
-        ut,
-        vt,
-        origin=(1, 1, 0),
-        domain=grid.domain_shape_full(add=(-1, -1, 0)),
-    )
-    fxadv_fluxes_stencil(
-        grid.sin_sg1,
-        grid.sin_sg2,
-        grid.sin_sg3,
-        grid.sin_sg4,
-        grid.rdxa,
-        grid.rdya,
-        grid.dy,
-        grid.dx,
-        crx_adv,
-        cry_adv,
-        xfx_adv,
-        yfx_adv,
+        crx,
+        cry,
+        x_area_flux,
+        y_area_flux,
         ut,
         vt,
         dt,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(),
-    )
+    ):
+        """
+        Updates flux operators and courant numbers for fvtp2d
+        To start off D_SW after the C-grid winds have been advanced half a timestep,
+        and and compute finite volume transport on the D-grid (e.g.Putman and Lin 2007),
+        this module prepares terms such as parts of equations 7 and 13 in Putnam and
+        Lin, 2007, that get consumed by fvtp2d and ppm methods.
+
+        Args:
+            uc: x-velocity on the C-grid (in)
+            vc: y-velocity on the C-grid (in)
+            cry: Courant number, x direction(inout)
+            cry: Courant number, y direction(inout)
+            x_area_flux: flux of area in x-direction, in units of m^2 (inout)
+            y_area_flux: flux of area in y-direction, in units of m^2 (inout)
+            ut: temporary x-velocity transformed from C-grid to D-grid equiv(?) (inout)
+            vt: temporary y-velocity transformed from C-grid to D-grid equiv(?) (inout)
+            dt: acoustic timestep in seconds
+
+        Grid variable inputs:
+            cosa_u, cosa_v, rsin_u, rsin_v, sin_sg1,sin_sg2, sin_sg3, sin_sg4, dx, dy
+        """
+
+        self._main_ut_stencil(
+            uc,
+            vc,
+            self.grid.cosa_u,
+            self.grid.rsin_u,
+            ut,
+        )
+        self._ut_y_edge_stencil(
+            uc,
+            self.grid.sin_sg1,
+            self.grid.sin_sg3,
+            ut,
+            dt,
+        )
+        self._main_vt_stencil(
+            uc,
+            vc,
+            self.grid.cosa_v,
+            self.grid.rsin_v,
+            vt,
+        )
+        self._vt_y_edge_stencil(
+            vc,
+            self.grid.cosa_v,
+            ut,
+            vt,
+        )
+        self._vt_x_edge_stencil(
+            vc,
+            self.grid.sin_sg2,
+            self.grid.sin_sg4,
+            vt,
+            dt,
+        )
+        self._ut_x_edge_stencil(
+            uc,
+            self.grid.cosa_u,
+            vt,
+            ut,
+        )
+        self._ut_corners_stencil(
+            self.grid.cosa_u,
+            self.grid.cosa_v,
+            uc,
+            vc,
+            ut,
+            vt,
+        )
+        self._vt_corners_stencil(
+            self.grid.cosa_u,
+            self.grid.cosa_v,
+            uc,
+            vc,
+            ut,
+            vt,
+        )
+        self._fxadv_fluxes_stencil(
+            self.grid.sin_sg1,
+            self.grid.sin_sg2,
+            self.grid.sin_sg3,
+            self.grid.sin_sg4,
+            self.grid.rdxa,
+            self.grid.rdya,
+            self.grid.dy,
+            self.grid.dx,
+            crx,
+            cry,
+            x_area_flux,
+            y_area_flux,
+            ut,
+            vt,
+            dt,
+        )
 
 
 # -------------------- DEPRECATED CORNERS-----------------
+# TODO: Remove this when satisfied with this file, below is
+# another implementation option:
 # Using 1 function with different sets of externals
-# Unlikely to use as different externals in single stencil version
-# but if gt4py adds feature to assign index offsets with runtime integers,
+# Now that we are using a class here, this could work and
+# be performant if all external variations are initialized
+# as different stencil objects.
+# Or if gt4py adds feature to assign index offsets with runtime integers,
 # this might be useful.
 # Note, it changes the order of operatons slightly and yields 1e-15 errors
 # @gtscript.function
