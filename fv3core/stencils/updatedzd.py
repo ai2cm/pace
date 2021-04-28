@@ -250,7 +250,6 @@ class UpdateDeltaZOnDGrid:
         )
 
         _cubic_spline_interpolation_constants(self._dp0, gk_3d, beta_3d, gamma_3d)
-        utils.device_sync()
         self._gk = utils.make_storage_data(gk_3d[0, 0, :], gk_3d.shape[2:], (0,))
         self._beta = utils.make_storage_data(beta_3d[0, 0, :], beta_3d.shape[2:], (0,))
         self._gamma = utils.make_storage_data(

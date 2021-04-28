@@ -54,7 +54,6 @@ def compute_preamble(state, comm, grid, namelist):
         origin=(0, 0, 0),
         domain=(1, 1, grid.domain_shape_compute()[2]),
     )
-    utils.device_sync()
 
     state.pfull = utils.make_storage_data(state.pfull[0, 0, :], state.ak.shape, (0,))
 
@@ -144,7 +143,6 @@ def compute_preamble(state, comm, grid, namelist):
             origin=grid.compute_origin(),
             domain=grid.domain_shape_compute(),
         )
-        utils.device_sync()
 
 
 def post_remap(state, comm, grid, namelist):
@@ -166,7 +164,6 @@ def post_remap(state, comm, grid, namelist):
             if grid.rank == 0:
                 print("Del2Cubed")
         if global_config.get_do_halo_exchange():
-            utils.device_sync()
             comm.halo_update(state.omga_quantity, n_points=utils.halo)
         del2cubed.compute(state.omga, namelist.nf_omega, 0.18 * grid.da_min, grid.npz)
 
@@ -378,7 +375,6 @@ class DynamicalCore:
         state.bk = self._bk
         last_step = False
         if self.do_halo_exchange:
-            utils.device_sync()
             self.comm.halo_update(state.phis_quantity, n_points=utils.halo)
         compute_preamble(state, self.comm, self.grid, self.namelist)
 
@@ -473,7 +469,6 @@ class DynamicalCore:
                     state.mdt,
                     DynamicalCore.NQ,
                 )
-        utils.device_sync()
 
 
 def fv_dynamics(

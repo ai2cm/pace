@@ -48,7 +48,6 @@ class TranslateFortranData2Py:
     # assume inputs already has been turned into gt4py storages (or Quantities)
     def compute_from_storage(self, inputs):
         outputs = self.compute_func(**inputs)
-        utils.device_sync()
         if outputs is not None:
             inputs.update(outputs)
         return inputs
