@@ -9,9 +9,9 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core._config as spec
-from fv3core.decorators import gtstencil
+from fv3core.decorators import StencilWrapper
 from fv3core.stencils.rayleigh_super import SDAY, compute_rf_vals
+from fv3core.utils import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldK
 
 
@@ -27,8 +27,7 @@ def dm_layer(rf, dp, wind):
     return (1.0 - rf) * dp * wind
 
 
-@gtstencil()
-def ray_fast_wind(
+def ray_fast_wind_compute(
     u: FloatField,
     v: FloatField,
     w: FloatField,
@@ -40,16 +39,14 @@ def ray_fast_wind(
     ks: int,
     hydrostatic: bool,
 ):
-    from __externals__ import local_ie, local_je, namelist
+    from __externals__ import rf_cutoff, tau, local_ie, local_je
 
     # dm_stencil
     with computation(PARALLEL), interval(...):
         # TODO -- in the fortran model rf is only computed once, repeating
         # the computation every time ray_fast is run is inefficient
-        if pfull < namelist.rf_cutoff:
-            rf = compute_rff_vals(
-                pfull, dt, namelist.rf_cutoff, namelist.tau * SDAY, ptop
-            )
+        if pfull < rf_cutoff:
+            rf = compute_rff_vals(pfull, dt, rf_cutoff, tau * SDAY, ptop)
     with computation(FORWARD):
         with interval(0, 1):
             if pfull < rf_cutoff_nudge:  # TODO and kaxes(k) < ks:
@@ -65,7 +62,7 @@ def ray_fast_wind(
     with computation(FORWARD):
         with interval(0, 1):
             with horizontal(region[: local_ie + 1, :]):
-                if pfull < namelist.rf_cutoff:
+                if pfull < rf_cutoff:
                     dmdir = dm_layer(rf, dp, u)
                     u *= rf
                 else:
@@ -73,11 +70,11 @@ def ray_fast_wind(
         with interval(1, None):
             with horizontal(region[: local_ie + 1, :]):
                 dmdir = dmdir[0, 0, -1]
-                if pfull < namelist.rf_cutoff:
+                if pfull < rf_cutoff:
                     dmdir += dm_layer(rf, dp, u)
                     u *= rf
     with computation(BACKWARD), interval(0, -1):
-        if pfull < namelist.rf_cutoff:
+        if pfull < rf_cutoff:
             dmdir = dmdir[0, 0, 1]
     with computation(PARALLEL), interval(...):
         with horizontal(region[: local_ie + 1, :]):
@@ -87,7 +84,7 @@ def ray_fast_wind(
     with computation(FORWARD):
         with interval(0, 1):
             with horizontal(region[:, : local_je + 1]):
-                if pfull < namelist.rf_cutoff:
+                if pfull < rf_cutoff:
                     dmdir = dm_layer(rf, dp, v)
                     v *= rf
                 else:
@@ -95,11 +92,11 @@ def ray_fast_wind(
         with interval(1, None):
             with horizontal(region[:, : local_je + 1]):
                 dmdir = dmdir[0, 0, -1]
-                if pfull < namelist.rf_cutoff:
+                if pfull < rf_cutoff:
                     dmdir += dm_layer(rf, dp, v)
                     v *= rf
     with computation(BACKWARD), interval(0, -1):
-        if pfull < namelist.rf_cutoff:
+        if pfull < rf_cutoff:
             dmdir = dmdir[0, 0, 1]
     with computation(PARALLEL), interval(...):
         with horizontal(region[:, : local_je + 1]):
@@ -108,34 +105,60 @@ def ray_fast_wind(
     # ray_fast_w
     with computation(PARALLEL), interval(...):
         with horizontal(region[: local_ie + 1, : local_je + 1]):
-            if not hydrostatic and pfull < namelist.rf_cutoff:
+            if not hydrostatic and pfull < rf_cutoff:
                 w *= rf
 
 
-def compute(
-    u: FloatField,
-    v: FloatField,
-    w: FloatField,
-    dp: FloatFieldK,
-    pfull: FloatFieldK,
-    dt: float,
-    ptop: float,
-    ks: int,
-):
-    grid = spec.grid
-    rf_cutoff_nudge = spec.namelist.rf_cutoff + min(100.0, 10.0 * ptop)
+class RayleighDamping:
+    """
+    Apply Rayleigh damping (for tau > 0).
 
-    ray_fast_wind(
-        u,
-        v,
-        w,
-        dp,
-        pfull,
-        dt,
-        ptop,
-        rf_cutoff_nudge,
-        ks,
-        hydrostatic=spec.namelist.hydrostatic,
-        origin=grid.compute_origin(),
-        domain=(grid.nic + 1, grid.njc + 1, grid.npz),
-    )
+    Namelist:
+        - tau [Float]: time scale (in days) for Rayleigh friction applied to horizontal
+                       and vertical winds; lost kinetic energy is converted to heat,
+                       except on nested grids.
+        - rf_cutoff [Float]: pressure below which no Rayleigh damping is applied
+                             if tau > 0.
+
+    Fotran name: ray_fast.
+    """
+
+    def __init__(self, grid, namelist):
+        self._rf_cutoff = namelist.rf_cutoff
+        self._hydrostatic = namelist.hydrostatic
+        origin = grid.compute_origin()
+        domain = (grid.nic + 1, grid.njc + 1, grid.npz)
+
+        ax_offsets = axis_offsets(grid, origin, domain)
+        local_axis_offsets = {}
+        for axis_offset_name, axis_offset_value in ax_offsets.items():
+            if "local" in axis_offset_name:
+                local_axis_offsets[axis_offset_name] = axis_offset_value
+
+        self._ray_fast_wind_compute = StencilWrapper(
+            ray_fast_wind_compute,
+            origin=origin,
+            domain=domain,
+            externals={
+                "rf_cutoff": namelist.rf_cutoff,
+                "tau": namelist.tau,
+                **local_axis_offsets,
+            },
+        )
+
+    def __call__(
+        self,
+        u: FloatField,
+        v: FloatField,
+        w: FloatField,
+        dp: FloatFieldK,
+        pfull: FloatFieldK,
+        dt: float,
+        ptop: float,
+        ks: int,
+    ):
+        rf_cutoff_nudge = self._rf_cutoff + min(100.0, 10.0 * ptop)
+
+        self._ray_fast_wind_compute(
+            u, v, w, dp, pfull, dt, ptop, rf_cutoff_nudge, ks, self._hydrostatic,
+        )
