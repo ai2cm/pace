@@ -18,7 +18,6 @@ import fv3core.stencils.nh_p_grad as nh_p_grad
 import fv3core.stencils.pe_halo as pe_halo
 import fv3core.stencils.pk3_halo as pk3_halo
 import fv3core.stencils.ray_fast as ray_fast
-import fv3core.stencils.riem_solver_c as riem_solver_c
 import fv3core.stencils.temperature_adjust as temperature_adjust
 import fv3core.stencils.updatedzc as updatedzc
 import fv3core.stencils.updatedzd as updatedzd
@@ -30,6 +29,7 @@ import fv3gfs.util as fv3util
 from fv3core.decorators import StencilWrapper
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.riem_solver3 import RiemannSolver3
+from fv3core.stencils.riem_solver_c import RiemannSolverC
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
@@ -252,6 +252,7 @@ class AcousticDynamics:
                 self.grid, self._dp_ref, d_sw.get_column_namelist(), d_sw.k_bounds()
             )
             self._riem_solver3 = RiemannSolver3(spec.namelist)
+            self._riem_solver_c = RiemannSolverC(spec.namelist)
 
         self._set_gz = StencilWrapper(
             set_gz,
@@ -420,20 +421,18 @@ class AcousticDynamics:
                 self.update_geopotential_height_on_c_grid(
                     self._dp_ref, self._zs, state.ut, state.vt, state.gz, state.ws3, dt2
                 )
-                riem_solver_c.compute(
-                    ms,
+                self._riem_solver_c(
                     dt2,
-                    akap,
                     state.cappa,
                     state.ptop,
                     state.phis,
-                    state.omga,
+                    state.ws3,
                     state.ptc,
                     state.q_con,
                     state.delpc,
                     state.gz,
                     state.pkc,
-                    state.ws3,
+                    state.omga,
                 )
 
             self._p_grad_c(
