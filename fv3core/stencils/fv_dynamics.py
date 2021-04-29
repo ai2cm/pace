@@ -3,7 +3,6 @@ from typing import Mapping
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core._config as spec
-import fv3core.stencils.del2cubed as del2cubed
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.stencils.neg_adj3 as neg_adj3
 import fv3core.stencils.rayleigh_super as rayleigh_super
@@ -15,6 +14,7 @@ import fv3gfs.util
 from fv3core.decorators import ArgSpec, get_namespace, gtstencil
 from fv3core.stencils import c2l_ord
 from fv3core.stencils.basic_operations import copy_stencil
+from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.tracer_2d_1l import Tracer2D1L
 from fv3core.utils.typing import FloatField, FloatFieldK
@@ -145,7 +145,7 @@ def compute_preamble(state, comm, grid, namelist):
         )
 
 
-def post_remap(state, comm, grid, namelist):
+def post_remap(hyperdiffusion, state, comm, grid, namelist):
     grid = grid
     if not namelist.hydrostatic:
         if __debug__:
@@ -165,7 +165,7 @@ def post_remap(state, comm, grid, namelist):
                 print("Del2Cubed")
         if global_config.get_do_halo_exchange():
             comm.halo_update(state.omga_quantity, n_points=utils.halo)
-        del2cubed.compute(state.omga, namelist.nf_omega, 0.18 * grid.da_min, grid.npz)
+        hyperdiffusion(state.omga, namelist.nf_omega, 0.18 * grid.da_min)
 
 
 def wrapup(state, comm: fv3gfs.util.CubedSphereCommunicator, grid):
@@ -317,6 +317,7 @@ class DynamicalCore:
         self.acoustic_dynamics = AcousticDynamics(
             comm, namelist, self._ak, self._bk, self._phis
         )
+        self._hyperdiffusion = HyperdiffusionDamping(self.grid)
 
         self._temporaries = fvdyn_temporaries(
             self.grid.domain_shape_full(add=(1, 1, 1)), self.grid
@@ -438,7 +439,13 @@ class DynamicalCore:
                         DynamicalCore.NQ,
                     )
                 if last_step:
-                    post_remap(state, self.comm, self.grid, self.namelist)
+                    post_remap(
+                        self._hyperdiffusion,
+                        state,
+                        self.comm,
+                        self.grid,
+                        self.namelist,
+                    )
                 state.wsd[:] = state.wsd_3d[:, :, 0]
         wrapup(state, self.comm, self.grid)
 

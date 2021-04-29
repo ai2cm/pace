@@ -13,7 +13,6 @@ import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
 import fv3core.stencils.c_sw as c_sw
 import fv3core.stencils.d_sw as d_sw
-import fv3core.stencils.del2cubed as del2cubed
 import fv3core.stencils.nh_p_grad as nh_p_grad
 import fv3core.stencils.pe_halo as pe_halo
 import fv3core.stencils.pk3_halo as pk3_halo
@@ -28,6 +27,7 @@ import fv3gfs.util
 import fv3gfs.util as fv3util
 from fv3core.decorators import StencilWrapper
 from fv3core.stencils.basic_operations import copy_stencil
+from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.riem_solver3 import RiemannSolver3
 from fv3core.stencils.riem_solver_c import RiemannSolverC
 from fv3core.utils.grid import axis_offsets
@@ -285,6 +285,12 @@ class AcousticDynamics:
             domain=self.grid.domain_shape_full(),
         )
 
+        self._do_del2cubed = (
+            self._nk_heat_dissipation != 0 and self.namelist.d_con > 1.0e-5
+        )
+
+        if self._do_del2cubed:
+            self._hyperdiffusion = HyperdiffusionDamping(self.grid)
         if self.namelist.rf_fast:
             self._rayleigh_damping = ray_fast.RayleighDamping(self.grid, self.namelist)
 
@@ -597,7 +603,7 @@ class AcousticDynamics:
                             state.u_quantity, state.v_quantity
                         )
 
-        if self._nk_heat_dissipation != 0 and self.namelist.d_con > 1.0e-5:
+        if self._do_del2cubed:
             nf_ke = min(3, self.namelist.nord + 1)
 
             if self.do_halo_exchange:
@@ -605,7 +611,7 @@ class AcousticDynamics:
                     state.heat_source_quantity, n_points=self.grid.halo
                 )
             cd = constants.CNST_0P20 * self.grid.da_min
-            del2cubed.compute(state.heat_source, nf_ke, cd, self.grid.npz)
+            self._hyperdiffusion(state.heat_source, nf_ke, cd)
             if not self.namelist.hydrostatic:
                 temperature_adjust.compute(
                     state.pt,
