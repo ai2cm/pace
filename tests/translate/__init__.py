@@ -26,6 +26,7 @@ from .translate_d_sw import (
     TranslateHeatDiss,
     TranslateUbKE,
     TranslateVbKE,
+    TranslateWdivergence,
 )
 from .translate_del2cubed import TranslateDel2Cubed
 from .translate_del6vtflux import TranslateDel6VtFlux
@@ -75,7 +76,6 @@ from .translate_satadjust3d import TranslateSatAdjust3d
 from .translate_tracer2d1l import TranslateTracer2D1L
 from .translate_updatedzc import TranslateUpdateDzC
 from .translate_updatedzd import TranslateUpdateDzD
-from .translate_wdivergence import TranslateWdivergence
 from .translate_xppm import TranslateXPPM, TranslateXPPM_2
 from .translate_xtp_u import TranslateXTP_U
 from .translate_yppm import TranslateYPPM, TranslateYPPM_2

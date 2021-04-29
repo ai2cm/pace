@@ -406,7 +406,7 @@ class FiniteVolumeFluxPrep:
         Args:
             uc: x-velocity on the C-grid (in)
             vc: y-velocity on the C-grid (in)
-            cry: Courant number, x direction(inout)
+            crx: Courant number, x direction(inout)
             cry: Courant number, y direction(inout)
             x_area_flux: flux of area in x-direction, in units of m^2 (inout)
             y_area_flux: flux of area in y-direction, in units of m^2 (inout)

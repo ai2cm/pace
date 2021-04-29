@@ -32,6 +32,6 @@ srun nsys profile --force-overwrite=true \
   --trace=cuda,mpi,nvtx --mpi-impl=mpich \
   --stats=true \
   python ./profiler/external_profiler.py \
-  examples/standalone/runfile/dynamics.py /project/s1053/fv3core_serialized_test_data/7.2.5/c128_6ranks_baroclinic/ 2 gtcuda profiling 
+  examples/standalone/runfile/dynamics.py /project/s1053/fv3core_serialized_test_data/7.2.5/c128_6ranks_baroclinic/ 2 gtcuda profiling
 
 ########################################################

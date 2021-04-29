@@ -7,6 +7,7 @@ Works with nvtx (via cupy) for now.
 
 import sys
 
+
 try:
     import cupy as cp
 except ModuleNotFoundError:
