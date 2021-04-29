@@ -39,7 +39,7 @@ def ray_fast_wind_compute(
     ks: int,
     hydrostatic: bool,
 ):
-    from __externals__ import rf_cutoff, tau, local_ie, local_je
+    from __externals__ import local_ie, local_je, rf_cutoff, tau
 
     # dm_stencil
     with computation(PARALLEL), interval(...):
@@ -160,5 +160,14 @@ class RayleighDamping:
         rf_cutoff_nudge = self._rf_cutoff + min(100.0, 10.0 * ptop)
 
         self._ray_fast_wind_compute(
-            u, v, w, dp, pfull, dt, ptop, rf_cutoff_nudge, ks, self._hydrostatic,
+            u,
+            v,
+            w,
+            dp,
+            pfull,
+            dt,
+            ptop,
+            rf_cutoff_nudge,
+            ks,
+            self._hydrostatic,
         )

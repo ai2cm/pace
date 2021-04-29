@@ -198,13 +198,13 @@ class UpdateDeltaZOnDGrid:
             k_bounds: ???
         """
         self.grid = spec.grid
+        self._nk = self.grid.npz + 1
         self._column_namelist = column_namelist
         if any(
             column_namelist["damp_vt"][kstart] <= 1e-5
             for kstart in range(len(k_bounds))
         ):
             raise NotImplementedError("damp <= 1e-5 in column_cols is untested")
-        self._k_bounds = k_bounds  # d_sw.k_bounds()
         largest_possible_shape = self.grid.domain_shape_full(add=(1, 1, 1))
         self._crx_interface = utils.make_storage_from_shape(
             largest_possible_shape, grid.compute_origin(add=(0, -self.grid.halo, 0))
@@ -319,17 +319,19 @@ class UpdateDeltaZOnDGrid:
             self._fx,
             self._fy,
         )
-        for kstart, nk in self._k_bounds:
-            delnflux.compute_no_sg(
-                self._zh_tmp,
-                self._fx2,
-                self._fy2,
-                int(self._column_namelist["nord_v"][kstart]),
-                self._column_namelist["damp_vt"][kstart],
-                self._wk,
-                kstart=kstart,
-                nk=nk,
-            )
+
+        # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
+        # only compute for k-levels where this is true
+        delnflux.compute_no_sg(
+            self._zh_tmp,
+            self._fx2,
+            self._fy2,
+            self._column_namelist["nord_v"],
+            self._column_namelist["damp_vt"],
+            self._wk,
+            nk=self._nk,
+        )
+
         self._apply_geopotential_height_fluxes(
             self.grid.area,
             zh,

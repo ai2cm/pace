@@ -15,7 +15,7 @@ import fv3core.stencils.divergence_damping as divdamp
 import fv3core.utils.corners as corners
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import gtstencil
+from fv3core.decorators import StencilWrapper, gtstencil
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import XTP_U
@@ -507,21 +507,34 @@ def damp_vertical_wind(w, heat_s, diss_est, dt, column_namelist):
     fy2 = utils.make_storage_from_shape(
         w.shape, grid().full_origin(), cache_key="d_sw_fy2"
     )
-    for kstart, nk in k_bounds():
-        if column_namelist["damp_w"][kstart] > 1e-5:
-            damp4 = (column_namelist["damp_w"][kstart] * grid().da_min_c) ** (
-                column_namelist["nord_w"][kstart] + 1
-            )
-            delnflux.compute_no_sg(
-                w,
-                fx2,
-                fy2,
-                column_namelist["nord_w"][kstart],
-                damp4,
-                wk,
-                kstart=kstart,
-                nk=nk,
-            )
+
+    assert (column_namelist["damp_w"] > dcon_threshold).all()
+    # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
+    # only compute for k-levels where this is true
+
+    damping_factor_calculation1 = StencilWrapper(
+        delnflux.calc_damp, origin=(0, 0, 0), domain=(1, 1, grid().npz)
+    )
+
+    damp_3d = utils.make_storage_from_shape(
+        (1, 1, grid().npz), cache_key="d_sw_damp_d3"
+    )  # fields must be 3d to assign to them
+    damping_factor_calculation1(
+        damp_3d,
+        column_namelist["nord_w"],
+        column_namelist["damp_w"],
+        grid().da_min_c,
+    )
+    damp4 = utils.make_storage_data(damp_3d[0, 0, :], (grid().npz,), (0,))
+
+    delnflux.compute_no_sg(
+        w,
+        fx2,
+        fy2,
+        column_namelist["nord_w"],
+        damp4,
+        wk,
+    )
     heat_diss(
         fx2,
         fy2,
@@ -879,21 +892,33 @@ def compute(
         domain=grid().domain_shape_compute(add=(1, 1, 0)),
     )
 
-    for kstart, nk in k_bounds():
-        if column_namelist["damp_vt"][kstart] > dcon_threshold:
-            damp4 = (column_namelist["damp_vt"][kstart] * grid().da_min_c) ** (
-                column_namelist["nord_v"][kstart] + 1
-            )
-            delnflux.compute_no_sg(
-                wk,
-                ut,
-                vt,
-                column_namelist["nord_v"][kstart],
-                damp4,
-                vort,
-                kstart=kstart,
-                nk=nk,
-            )
+    assert (column_namelist["damp_vt"] > dcon_threshold).all()
+    # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
+    # only compute for k-levels where this is true
+
+    damping_factor_calculation2 = StencilWrapper(
+        delnflux.calc_damp, origin=(0, 0, 0), domain=(1, 1, grid().npz)
+    )
+
+    damp2_3d = utils.make_storage_from_shape(
+        (1, 1, grid().npz), cache_key="d_sw_damp2_3d"
+    )  # fields must be 3d to assign to them
+    damping_factor_calculation2(
+        damp2_3d,
+        column_namelist["nord_v"],
+        column_namelist["damp_vt"],
+        grid().da_min_c,
+    )
+    damp4_2 = utils.make_storage_data(damp2_3d[0, 0, :], (grid().npz,), (0,))
+
+    delnflux.compute_no_sg(
+        wk,
+        ut,
+        vt,
+        column_namelist["nord_v"],
+        damp4_2,
+        vort,
+    )
 
     heat_source_from_vorticity_damping(
         ub,
