@@ -18,3 +18,11 @@ Configuration of the markings are inlined in code under the `functions_desc` lis
 
 `example.profiling.standalone.daint.slurm` is an example slurm job file to run the above. To be launched from
 root director `fv3core` with a `sbatch` command.
+
+# `nsys` kernel name lookup
+
+Lookup kernel name using `nsys` correlation id and the `sqlite` database
+
+Usage: `python nsys_id_kernel <NSYS_GENERATED.sqlite> <CORRELATION_ID> [--all]`
+
+Correlation id can be found on the tooltip when overring above a kernel in `nsys` ui.
