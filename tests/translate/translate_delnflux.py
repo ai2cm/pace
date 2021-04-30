@@ -5,7 +5,7 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateDelnFlux(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = delnflux.compute_delnflux_no_sg
+        self.compute_func = delnflux.DelnFlux()
         self.in_vars["data_vars"] = {
             "q": {},
             "fx": grid.x3d_compute_dict(),

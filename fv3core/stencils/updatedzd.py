@@ -5,7 +5,8 @@ import fv3core._config as spec
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import StencilWrapper
-from fv3core.stencils import basic_operations, delnflux
+from fv3core.stencils import basic_operations
+from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
@@ -266,6 +267,7 @@ class UpdateDeltaZOnDGrid:
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
         )
+        self.delnflux = DelnFluxNoSG()
         self.finite_volume_transport = FiniteVolumeTransport(
             spec.namelist, spec.namelist.hord_tm
         )
@@ -322,7 +324,7 @@ class UpdateDeltaZOnDGrid:
 
         # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
         # only compute for k-levels where this is true
-        delnflux.compute_no_sg(
+        self.delnflux(
             self._zh_tmp,
             self._fx2,
             self._fy2,

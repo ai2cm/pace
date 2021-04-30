@@ -5,7 +5,7 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateDel6VtFlux(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = delnflux.compute_no_sg
+        self.compute_func = delnflux.DelnFluxNoSG()
         fxstat = grid.x3d_domain_dict()
         fxstat.update({"serialname": "fx2"})
         fystat = grid.y3d_domain_dict()

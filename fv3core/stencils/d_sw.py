@@ -15,6 +15,7 @@ import fv3core.utils.corners as corners
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import StencilWrapper
+from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import XTP_U
@@ -541,6 +542,7 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_fy2 = utils.make_storage_from_shape(shape, origin)
         self._tmp_damp_3d = utils.make_storage_from_shape((1, 1, self.grid.npz))
 
+        self.delnflux_nosg = DelnFluxNoSG()
         self.fvtp2d_dp = FiniteVolumeTransport(namelist, namelist.hord_dp)
         self.fvtp2d_vt = FiniteVolumeTransport(namelist, namelist.hord_vt)
         self.fvtp2d_tm = FiniteVolumeTransport(namelist, namelist.hord_tm)
@@ -707,7 +709,7 @@ class DGridShallowWaterLagrangianDynamics:
                 self._tmp_damp_3d[0, 0, :], (self.grid.npz,), (0,)
             )
 
-            delnflux.compute_no_sg(
+            self.delnflux_nosg(
                 w,
                 self._tmp_fx2,
                 self._tmp_fy2,
@@ -888,7 +890,7 @@ class DGridShallowWaterLagrangianDynamics:
             self._tmp_damp_3d[0, 0, :], (self.grid.npz,), (0,)
         )
 
-        delnflux.compute_no_sg(
+        self.delnflux_nosg(
             self._tmp_wk,
             self._tmp_ut,
             self._tmp_vt,
