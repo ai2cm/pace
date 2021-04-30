@@ -15,7 +15,6 @@ import fv3core.utils.corners as corners
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import StencilWrapper
-from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import XTP_U
@@ -514,14 +513,6 @@ class DGridShallowWaterLagrangianDynamics:
         assert (
             namelist.d_ext <= 0
         ), "untested d_ext > 0. need to call a2b_ord2, not yet implemented"
-        assert (column_namelist["damp_vt"] > dcon_threshold).all()
-        # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
-        # only compute delnflux for k-levels where this is true
-        assert (column_namelist["damp_w"] > dcon_threshold).all()
-        # TODO: in theory, we should check if damp_w > 1e-5 for each k-level and
-        # only compute delnflux for k-levels where this is true
-
-        # only compute for k-levels where this is true
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         origin = self.grid.compute_origin()
         self.hydrostatic = namelist.hydrostatic
@@ -540,9 +531,7 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_wk = utils.make_storage_from_shape(shape, origin)
         self._tmp_fx2 = utils.make_storage_from_shape(shape, origin)
         self._tmp_fy2 = utils.make_storage_from_shape(shape, origin)
-        self._tmp_damp_3d = utils.make_storage_from_shape((1, 1, self.grid.npz))
 
-        self.delnflux_nosg = DelnFluxNoSG()
         self.fvtp2d_dp = FiniteVolumeTransport(namelist, namelist.hord_dp)
         self.fvtp2d_vt = FiniteVolumeTransport(namelist, namelist.hord_vt)
         self.fvtp2d_tm = FiniteVolumeTransport(namelist, namelist.hord_tm)
@@ -614,9 +603,6 @@ class DGridShallowWaterLagrangianDynamics:
         )
         self._mult_ubke_stencil = StencilWrapper(
             mult_ubke, externals=ax_offsets_b, origin=b_origin, domain=b_domain
-        )
-        self._damping_factor_calculation_stencil = StencilWrapper(
-            delnflux.calc_damp, origin=(0, 0, 0), domain=(1, 1, self.grid.npz)
         )
 
     def __call__(
@@ -698,26 +684,21 @@ class DGridShallowWaterLagrangianDynamics:
         )
 
         if not self.hydrostatic:
-
-            self._damping_factor_calculation_stencil(
-                self._tmp_damp_3d,
-                self._column_namelist["nord_w"],
-                self._column_namelist["damp_w"],
-                self.grid.da_min_c,
-            )
-            damp4 = utils.make_storage_data(
-                self._tmp_damp_3d[0, 0, :], (self.grid.npz,), (0,)
-            )
-
-            self.delnflux_nosg(
-                w,
-                self._tmp_fx2,
-                self._tmp_fy2,
-                self._column_namelist["nord_w"],
-                damp4,
-                self._tmp_wk,
-            )
-
+            for kstart, nk in k_bounds():
+                if self._column_namelist["damp_w"][kstart] > 1e-5:
+                    damp4 = (
+                        self._column_namelist["damp_w"][kstart] * self.grid.da_min_c
+                    ) ** (self._column_namelist["nord_w"][kstart] + 1)
+                    delnflux.compute_no_sg(
+                        w,
+                        self._tmp_fx2,
+                        self._tmp_fy2,
+                        self._column_namelist["nord_w"][kstart],
+                        damp4,
+                        self._tmp_wk,
+                        kstart=kstart,
+                        nk=nk,
+                    )
             self._heat_diss_stencil(
                 self._tmp_fx2,
                 self._tmp_fy2,
@@ -880,24 +861,21 @@ class DGridShallowWaterLagrangianDynamics:
             self._tmp_ke, self._tmp_ut, self._tmp_vt, self._tmp_fx, self._tmp_fy, u, v
         )
 
-        self._damping_factor_calculation_stencil(
-            self._tmp_damp_3d,
-            self._column_namelist["nord_v"],
-            self._column_namelist["damp_vt"],
-            self.grid.da_min_c,
-        )
-        damp4 = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :], (self.grid.npz,), (0,)
-        )
-
-        self.delnflux_nosg(
-            self._tmp_wk,
-            self._tmp_ut,
-            self._tmp_vt,
-            self._column_namelist["nord_v"],
-            damp4,
-            self._tmp_vort,
-        )
+        for kstart, nk in k_bounds():
+            if self._column_namelist["damp_vt"][kstart] > dcon_threshold:
+                damp4 = (
+                    self._column_namelist["damp_vt"][kstart] * self.grid.da_min_c
+                ) ** (self._column_namelist["nord_v"][kstart] + 1)
+                delnflux.compute_no_sg(
+                    self._tmp_wk,
+                    self._tmp_ut,
+                    self._tmp_vt,
+                    self._column_namelist["nord_v"][kstart],
+                    damp4,
+                    self._tmp_vort,
+                    kstart=kstart,
+                    nk=nk,
+                )
 
         self._heat_source_from_vorticity_damping_stencil(
             self._tmp_ub,

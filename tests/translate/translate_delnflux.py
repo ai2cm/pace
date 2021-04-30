@@ -5,7 +5,7 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateDelnFlux(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = delnflux.DelnFlux()
+        self.compute_func = delnflux.compute_delnflux_no_sg
         self.in_vars["data_vars"] = {
             "q": {},
             "fx": grid.x3d_compute_dict(),
@@ -21,10 +21,9 @@ class TranslateDelnFlux(TranslateFortranData2Py):
     def compute(self, inputs):
         if "mass" not in inputs:
             inputs["mass"] = None
-        self.make_storage_data_input_vars(inputs)
-        inputs["nord"] = inputs.pop("nord_column")
-        self.compute_func(**inputs)
-        return self.slice_output(inputs)
+        return self.column_split_compute(
+            inputs, {"nord": "nord_column", "damp_c": "damp_c"}
+        )
 
 
 class TranslateDelnFlux_2(TranslateDelnFlux):

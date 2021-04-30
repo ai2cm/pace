@@ -5,7 +5,7 @@ import fv3core._config as spec
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import StencilWrapper
-from fv3core.stencils.delnflux import DelnFlux
+from fv3core.stencils import d_sw, delnflux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -105,7 +105,6 @@ class FiniteVolumeTransport:
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(1, 1, 1)),
         )
-        self.delnflux = DelnFlux()
         self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
             namelist, ord_inner, self.grid.jsd, self.grid.jed
         )
@@ -186,7 +185,10 @@ class FiniteVolumeTransport:
                 mfy,
             )
             if (mass is not None) and (nord is not None) and (damp_c is not None):
-                self.delnflux(q, fx, fy, nord, damp_c, mass=mass)
+                for kstart, nk in d_sw.k_bounds():
+                    delnflux.compute_delnflux_no_sg(
+                        q, fx, fy, nord[kstart], damp_c[kstart], kstart, nk, mass=mass
+                    )
         else:
             self.stencil_transport_flux(
                 fx,
@@ -197,4 +199,7 @@ class FiniteVolumeTransport:
                 y_area_flux,
             )
             if (nord is not None) and (damp_c is not None):
-                self.delnflux(q, fx, fy, nord, damp_c)
+                for kstart, nk in d_sw.k_bounds():
+                    delnflux.compute_delnflux_no_sg(
+                        q, fx, fy, nord[kstart], damp_c[kstart], kstart, nk
+                    )
