@@ -22,14 +22,8 @@ repos:
         (?x)^(
         fv3core/utils/grid.py |
         fv3core/utils/gt4py_utils.py |
-        fv3core/stencils/fillz.py |
-        fv3core/stencils/moist_cv.py |
-        fv3core/stencils/corners.py |
         fv3core/stencils/rayleigh_super.py |
-        fv3core/stencils/map_single.py |
-        fv3core/stencils/remap_profile.py |
         fv3core/stencils/fv_subgridz.py |
-        fv3core/testing/parallel_translate.py
         )$
 
 -   repo: https://github.com/pre-commit/pre-commit-hooks

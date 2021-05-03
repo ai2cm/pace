@@ -1,3 +1,4 @@
+import typing
 from typing import Any, Dict
 
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
@@ -8,6 +9,7 @@ from fv3core.decorators import StencilWrapper
 from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
+@typing.no_type_check
 def fix_tracer(
     q: FloatField,
     dp: FloatField,

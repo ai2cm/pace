@@ -593,9 +593,9 @@ class RemapProfile:
         """
         i_extent: int = i2 - i1 + 1
         j_extent: int = j2 - j1 + 1
-        orig: Tuple[int] = (i1, j1, 0)
-        dom: Tuple[int] = (i_extent, j_extent, self._km)
-        dom_extend: Tuple[int] = (i_extent, j_extent, self._km + 1)
+        origin: Tuple[int, int, int] = (i1, j1, 0)
+        domain: Tuple[int, int, int] = (i_extent, j_extent, self._km)
+        domain_extend: Tuple[int, int, int] = (i_extent, j_extent, self._km + 1)
 
         self._set_values_stencil(
             self._gam,
@@ -607,8 +607,8 @@ class RemapProfile:
             a4_4,
             self._q_bot,
             qs,
-            origin=orig,
-            domain=dom_extend,
+            origin=origin,
+            domain=domain_extend,
         )
 
         if abs(self._kord) <= 16:
@@ -622,8 +622,8 @@ class RemapProfile:
                 self._ext5,
                 self._ext6,
                 self._extm,
-                origin=orig,
-                domain=dom,
+                origin=origin,
+                domain=domain,
             )
 
             self._set_top_stencil(
@@ -632,7 +632,7 @@ class RemapProfile:
                 a4_3,
                 a4_4,
                 self._extm,
-                origin=orig,
+                origin=origin,
                 domain=(i_extent, j_extent, 2),
             )
 

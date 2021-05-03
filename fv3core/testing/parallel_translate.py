@@ -1,7 +1,8 @@
 import copy
 from types import SimpleNamespace
-from typing import List
+from typing import Any, Dict, List
 
+import numpy as np
 import pytest
 
 import fv3core
@@ -16,8 +17,8 @@ class ParallelTranslate:
     max_error = TranslateFortranData2Py.max_error
     near_zero = TranslateFortranData2Py.near_zero
     python_regression = False
-    inputs = {}
-    outputs = {}
+    inputs: Dict[str, Any] = {}
+    outputs: Dict[str, Any] = {}
 
     def __init__(self, rank_grids):
         if not hasattr(rank_grids, "__getitem__"):
@@ -35,7 +36,7 @@ class ParallelTranslate:
         self._rank_grids = rank_grids
         self.ignore_near_zero_errors = {}
 
-    def state_list_from_inputs_list(self, inputs_list: List[list]) -> list:
+    def state_list_from_inputs_list(self, inputs_list: List[dict]) -> list:
         state_list = []
         for inputs in inputs_list:
             state_list.append(self.state_from_inputs(inputs))
@@ -76,7 +77,7 @@ class ParallelTranslate:
         return input_data
 
     def outputs_from_state(self, state: dict):
-        return_dict = {}
+        return_dict: Dict[str, np.ndarray] = {}
         if len(self.outputs) == 0:
             return return_dict
         for name, properties in self.outputs.items():
