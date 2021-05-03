@@ -4,7 +4,6 @@ from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core._config as spec
 import fv3core.stencils.moist_cv as moist_cv
-import fv3core.stencils.neg_adj3 as neg_adj3
 import fv3core.stencils.rayleigh_super as rayleigh_super
 import fv3core.stencils.remapping as lagrangian_to_eulerian
 import fv3core.utils.global_config as global_config
@@ -16,6 +15,7 @@ from fv3core.stencils import c2l_ord
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
+from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.tracer_2d_1l import Tracer2D1L
 from fv3core.utils.typing import FloatField, FloatFieldK
 
@@ -168,11 +168,16 @@ def post_remap(hyperdiffusion, state, comm, grid, namelist):
         hyperdiffusion(state.omga, namelist.nf_omega, 0.18 * grid.da_min)
 
 
-def wrapup(state, comm: fv3gfs.util.CubedSphereCommunicator, grid):
+def wrapup(
+    state,
+    comm: fv3gfs.util.CubedSphereCommunicator,
+    grid,
+    adjust_stencil: AdjustNegativeTracerMixingRatio,
+):
     if __debug__:
         if grid.rank == 0:
             print("Neg Adj 3")
-    neg_adj3.compute(
+    adjust_stencil(
         state.qvapor,
         state.qliquid,
         state.qrain,
@@ -296,6 +301,8 @@ class DynamicalCore:
         ak: fv3gfs.util.Quantity,
         bk: fv3gfs.util.Quantity,
         phis: fv3gfs.util.Quantity,
+        qvapor: fv3gfs.util.Quantity,
+        qgraupel: fv3gfs.util.Quantity,
     ):
         """
         Args:
@@ -324,6 +331,9 @@ class DynamicalCore:
         )
         if not (not self.namelist.inline_q and DynamicalCore.NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
+        self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
+            self.grid, self.namelist, qvapor, qgraupel
+        )
 
     def step_dynamics(
         self,
@@ -447,7 +457,7 @@ class DynamicalCore:
                         self.namelist,
                     )
                 state.wsd[:] = state.wsd_3d[:, :, 0]
-        wrapup(state, self.comm, self.grid)
+        wrapup(state, self.comm, self.grid, self._adjust_tracer_mixing_ratio)
 
     def _dyn(self, state, timer=fv3gfs.util.NullTimer()):
         copy_stencil(
@@ -495,6 +505,8 @@ def fv_dynamics(
         state["atmosphere_hybrid_a_coordinate"],
         state["atmosphere_hybrid_b_coordinate"],
         state["surface_geopotential"],
+        state["specific_humidity"].data,
+        state["graupel_mixing_ratio"].data,
     )
     dycore.step_dynamics(
         state,

@@ -1,5 +1,5 @@
-import sqlite3
 import re
+import sqlite3
 from argparse import ArgumentParser
 
 
@@ -20,7 +20,9 @@ def parse_args():
         help="correlation id as in nsys tooltip",
     )
     parser.add_argument(
-        "--all", action="store_true", help="print full string",
+        "--all",
+        action="store_true",
+        help="print full string",
     )
 
     return parser.parse_args()
