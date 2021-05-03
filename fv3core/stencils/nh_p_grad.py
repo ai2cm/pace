@@ -1,9 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.a2b_ord4 as a2b_ord4
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import StencilWrapper
+from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -130,6 +130,24 @@ class NonHydrostaticPressureGradient:
             origin=self.orig,
             domain=self.v_domain,
         )
+        self.a2b_k1 = AGrid2BGridFourthOrder(
+            spec.namelist,
+            kstart=1,
+            nk=self.nk,
+            replace=True,
+        )
+        self.a2b_kbuffer = AGrid2BGridFourthOrder(
+            spec.namelist,
+            kstart=0,
+            nk=self.nk + 1,
+            replace=True,
+        )
+        self.a2b_kstandard = AGrid2BGridFourthOrder(
+            spec.namelist,
+            kstart=0,
+            nk=self.nk,
+            replace=False,
+        )
 
     def __call__(
         self,
@@ -168,11 +186,11 @@ class NonHydrostaticPressureGradient:
             top_value,
         )
 
-        a2b_ord4.compute(pp, self._tmp_wk1, kstart=1, nk=self.nk, replace=True)
-        a2b_ord4.compute(pk3, self._tmp_wk1, kstart=1, nk=self.nk, replace=True)
+        self.a2b_k1(pp, self._tmp_wk1)
+        self.a2b_k1(pk3, self._tmp_wk1)
 
-        a2b_ord4.compute(gz, self._tmp_wk1, kstart=0, nk=self.nk + 1, replace=True)
-        a2b_ord4.compute(delp, self._tmp_wk1)
+        self.a2b_kbuffer(gz, self._tmp_wk1)
+        self.a2b_kstandard(delp, self._tmp_wk1)
 
         self._calc_wk_stencil(pk3, self._tmp_wk)
 

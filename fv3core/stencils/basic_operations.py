@@ -18,6 +18,11 @@ def copy_stencil(q_in: FloatField, q_out: FloatField):
         q_out = q_in
 
 
+def copy_stencil_method(q_in: FloatField, q_out: FloatField):
+    with computation(PARALLEL), interval(...):
+        q_out = q_in
+
+
 @gtstencil()
 def copy_stencil_2d(q_in: FloatFieldIJ, q_out: FloatFieldIJ):
     """Copy q_in to q_out.

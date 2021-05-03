@@ -4,10 +4,11 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.a2b_ord4 as a2b_ord4
 import fv3core.stencils.basic_operations as basic
 import fv3core.utils.corners as corners
+import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
@@ -158,7 +159,15 @@ def vorticity_calc(wk, vort, delpc, dt, nord, kstart, nk):
             vort[:, :, kstart : kstart + nk] = 0
         else:
             if spec.namelist.grid_type < 3:
-                a2b_ord4.compute(wk, vort, kstart, nk, False)
+                a2b = utils.cached_stencil_class(AGrid2BGridFourthOrder)(
+                    spec.namelist,
+                    kstart,
+                    nk,
+                    replace=False,
+                    cache_key="a2bdd-" + str(kstart) + "-" + str(nk),
+                )
+
+                a2b(wk, vort)
                 smagorinksy_diffusion_approx(
                     delpc,
                     vort,
