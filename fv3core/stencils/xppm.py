@@ -2,8 +2,8 @@ from gt4py import gtscript
 from gt4py.gtscript import (
     __INLINED,
     PARALLEL,
+    compile_assert,
     computation,
-    external_assert,
     horizontal,
     interval,
     region,
@@ -145,12 +145,12 @@ def compute_al(q: FloatField, dxa: FloatFieldIJ):
     """
     from __externals__ import i_end, i_start, iord
 
-    external_assert(iord < 8)
+    compile_assert(iord < 8)
 
     al = yppm.p1 * (q[-1, 0, 0] + q) + yppm.p2 * (q[-2, 0, 0] + q[1, 0, 0])
 
     if __INLINED(iord < 0):
-        external_assert(False)
+        compile_assert(False)
         al = max(al, 0.0)
 
     with horizontal(region[i_start - 1, :], region[i_end, :]):
@@ -212,7 +212,7 @@ def compute_blbr_ord8plus(q: FloatField, dxa: FloatFieldIJ):
     dm = dm_iord8plus(q)
     al = al_iord8plus(q, dm)
 
-    external_assert(iord == 8)
+    compile_assert(iord == 8)
 
     bl, br = blbr_iord8(q, al, dm)
     bl, br = bl_br_edges(bl, br, q, dxa, al, dm)

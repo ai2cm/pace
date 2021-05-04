@@ -2,8 +2,8 @@ from gt4py import gtscript
 from gt4py.gtscript import (
     __INLINED,
     PARALLEL,
+    compile_assert,
     computation,
-    external_assert,
     horizontal,
     interval,
     region,
@@ -74,7 +74,7 @@ def _compute_stencil(
             dm = xppm.dm_iord8plus(u)
             al = xppm.al_iord8plus(u, dm)
 
-            external_assert(iord == 8)
+            compile_assert(iord == 8)
 
             bl, br = xppm.blbr_iord8(u, al, dm)
             bl, br = xppm.bl_br_edges(bl, br, u, dxa, al, dm)

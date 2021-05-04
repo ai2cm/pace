@@ -148,7 +148,7 @@ e.g.:
     def get_bl(al, q):
 
 ### Assertions
-We can now include assertions of compile time variables inside of gtscript functions with the syntax `external_assert(<expression>)`, for example `external_assert(namelist.grid_type < 3)`.
+We can now include assertions of compile time variables inside of gtscript functions with the syntax `compile_assert(<expression>)`, for example `compile_assert(namelist.grid_type < 3)`.
 
 ### State
 Some outer functions include a 'state' object that is a SimpleNamespace of variables and a `comm` object that is the `CubedSphereCommunicator` object enabling halo updates.

@@ -26,25 +26,13 @@ Int = np.int_
 Bool = np.bool_
 
 
-class _FieldDescriptor:
-    def __init__(self, dtype):
-        self.dtype = dtype
-
-    def __getitem__(self, axes):
-        return Field[self.dtype, axes]
-
-
-def _FieldDescriptorMaker(dtype):
-    return _FieldDescriptor(dtype)
-
-
-FloatField = Field[Float]
-FloatFieldI = Field[Float, gtscript.I]
-FloatFieldJ = Field[Float, gtscript.J]
-FloatFieldIJ = Field[Float, gtscript.IJ]
-FloatFieldK = Field[Float, gtscript.K]
-IntField = Field[Int]
-IntFieldIJ = Field[Int, gtscript.IJ]
-BoolField = _FieldDescriptor(Bool)
+FloatField = Field[gtscript.IJK, Float]
+FloatFieldI = Field[gtscript.I, Float]
+FloatFieldJ = Field[gtscript.J, Float]
+FloatFieldIJ = Field[gtscript.IJ, Float]
+FloatFieldK = Field[gtscript.K, Float]
+IntField = Field[gtscript.IJK, Int]
+IntFieldIJ = Field[gtscript.IJ, Int]
+BoolField = Field[gtscript.IJK, Bool]
 
 Index3D = Tuple[int, int, int]
