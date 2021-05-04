@@ -30,6 +30,7 @@ from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.riem_solver3 import RiemannSolver3
 from fv3core.stencils.riem_solver_c import RiemannSolverC
+from fv3core.utils import Grid
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
@@ -188,6 +189,23 @@ def dyncore_temporaries(shape, namelist, grid):
     return tmps
 
 
+def _initialize_edge_pe_stencil(grid: Grid) -> StencilWrapper:
+    """
+    Returns the StencilWrapper Object for the pe_halo stencil
+    """
+    ax_offsets_pe = axis_offsets(
+        grid,
+        grid.full_origin(),
+        grid.domain_shape_full(add=(0, 0, 1)),
+    )
+    return StencilWrapper(
+        pe_halo.edge_pe,
+        origin=grid.full_origin(),
+        domain=grid.domain_shape_full(add=(0, 0, 1)),
+        externals={**ax_offsets_pe},
+    )
+
+
 class AcousticDynamics:
     """
     Fortran name is dyn_core
@@ -296,6 +314,8 @@ class AcousticDynamics:
             origin=self.grid.full_origin(),
             domain=self.grid.domain_shape_full(),
         )
+        self._edge_pe_stencil: StencilWrapper = _initialize_edge_pe_stencil(self.grid)
+        """ The stencil object responsible for updading the interface pressure"""
 
         self._do_del2cubed = (
             self._nk_heat_dissipation != 0 and self.namelist.d_con > 1.0e-5
@@ -305,7 +325,6 @@ class AcousticDynamics:
             self._hyperdiffusion = HyperdiffusionDamping(self.grid)
         if self.namelist.rf_fast:
             self._rayleigh_damping = ray_fast.RayleighDamping(self.grid, self.namelist)
-
         self._compute_pkz_tempadjust = self.initialize_temp_adjust_stencil(
             self.grid,
             self._nk_heat_dissipation,
@@ -578,7 +597,7 @@ class AcousticDynamics:
                             state.pkc_quantity, n_points=self.grid.halo
                         )
                 if remap_step:
-                    pe_halo.compute(state.pe, state.delp, state.ptop)
+                    self._edge_pe_stencil(state.pe, state.delp, state.ptop)
                 if self.namelist.use_logp:
                     raise NotImplementedError(
                         "unimplemented namelist option use_logp=True"

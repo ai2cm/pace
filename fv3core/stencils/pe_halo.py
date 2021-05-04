@@ -1,12 +1,17 @@
 from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
-import fv3core._config as spec
-from fv3core.decorators import gtstencil
 from fv3core.utils.typing import FloatField
 
 
-@gtstencil()
 def edge_pe(pe: FloatField, delp: FloatField, ptop: float):
+    """
+    This corresponds to the pe_halo routine in FV3core
+    Updading the interface pressure from the pressure differences
+    Arguments:
+        pe: The pressure on the interfaces of the cell
+        delp: The pressure difference between vertical grid cells
+        ptop: The pressure level at the top of the grid
+    """
     from __externals__ import local_ie, local_is, local_je, local_js
 
     with computation(FORWARD):
@@ -26,14 +31,3 @@ def edge_pe(pe: FloatField, delp: FloatField, ptop: float):
                 region[local_is - 1 : local_ie + 2, local_je + 1],
             ):
                 pe[0, 0, 0] = pe[0, 0, -1] + delp[0, 0, -1]
-
-
-def compute(pe, delp, ptop):
-    grid = spec.grid
-    edge_pe(
-        pe,
-        delp,
-        ptop,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(add=(0, 0, 1)),
-    )
