@@ -6,13 +6,29 @@ from gt4py.gtscript import (
     computation,
     horizontal,
     interval,
+    log,
     region,
+    sin,
 )
 
+import fv3core.utils.global_constants as constants
 from fv3core.decorators import FrozenStencil
-from fv3core.stencils.rayleigh_super import SDAY, compute_rf_vals
 from fv3core.utils import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldK
+
+
+SDAY = 86400.0
+
+# NOTE: The fortran version of this computes rf in the first timestep only. Then
+# rf_initialized let's you know you can skip it. Here we calculate it every
+# time.
+@gtscript.function
+def compute_rf_vals(pfull, bdt, rf_cutoff, tau0, ptop):
+    return (
+        bdt
+        / tau0
+        * sin(0.5 * constants.PI * log(rf_cutoff / pfull) / log(rf_cutoff / ptop)) ** 2
+    )
 
 
 @gtscript.function

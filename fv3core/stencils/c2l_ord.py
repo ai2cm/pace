@@ -15,31 +15,6 @@ C1 = 1.125
 C2 = -0.125
 
 
-@utils.mark_untested("This namelist option is not tested")
-@gtstencil
-def c2l_ord2(
-    u: FloatField,
-    v: FloatField,
-    dx: FloatFieldIJ,
-    dy: FloatFieldIJ,
-    a11: FloatFieldIJ,
-    a12: FloatFieldIJ,
-    a21: FloatFieldIJ,
-    a22: FloatFieldIJ,
-    ua: FloatField,
-    va: FloatField,
-):
-    with computation(PARALLEL), interval(...):
-        wu = u * dx
-        wv = v * dy
-        # Co-variant vorticity-conserving interpolation
-        u1 = 2.0 * (wu + wu[0, 1, 0]) / (dx + dx[0, 1])
-        v1 = 2.0 * (wv + wv[1, 0, 0]) / (dy + dy[1, 0])
-        # Cubed (cell center co-variant winds) to lat-lon
-        ua = a11 * u1 + a12 * v1
-        va = a21 * u1 + a22 * v1
-
-
 @gtstencil
 def ord4_transform(
     u: FloatField,
@@ -97,24 +72,7 @@ def compute_cubed_to_latlon(
     grid = spec.grid
 
     if spec.namelist.c2l_ord == 2:
-        c2l_ord2(
-            u.storage,
-            v.storage,
-            grid.dx,
-            grid.dy,
-            grid.a11,
-            grid.a12,
-            grid.a21,
-            grid.a22,
-            ua,
-            va,
-            origin=grid.compute_origin(
-                add=(-1, -1, 0) if do_halo_update else (0, 0, 0)
-            ),
-            domain=grid.domain_shape_compute(
-                add=(2, 2, 0) if do_halo_update else (0, 0, 0)
-            ),
-        )
+        raise NotImplementedError("c2l_ord of 2 is not implemented")
     else:
         if do_halo_update:
             comm.vector_halo_update(u, v, n_points=grid.halo)
