@@ -275,14 +275,14 @@ class AcousticDynamics:
             )
             self._zs = utils.make_storage_data(zs_3d[:, :, 0], zs_3d.shape[0:2], (0, 0))
             column_namelist = d_sw.get_column_namelist(namelist, self.grid.npz)
-            self.update_height_on_d_grid = updatedzd.UpdateDeltaZOnDGrid(
-                self.grid, self._dp_ref, column_namelist, d_sw.k_bounds()
+            self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
+                self.grid, self.namelist, self._dp_ref, column_namelist, d_sw.k_bounds()
             )
             self.dgrid_shallow_water_lagrangian_dynamics = (
                 d_sw.DGridShallowWaterLagrangianDynamics(namelist, column_namelist)
             )
-            self.riem_solver3 = RiemannSolver3(spec.namelist)
-            self.riem_solver_c = RiemannSolverC(spec.namelist)
+            self.riem_solver3 = RiemannSolver3(namelist)
+            self.riem_solver_c = RiemannSolverC(namelist)
 
         self._set_gz = FrozenStencil(
             set_gz,

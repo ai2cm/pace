@@ -36,7 +36,8 @@ TEST_TYPE=$(word 3, $(subst _, ,$(EXPERIMENT)))
 THRESH_ARGS=--threshold_overrides_file=$(FV3_PATH)/tests/translate/overrides/$(TEST_TYPE).yaml
 TEST_ARGS_USE=$(TEST_ARGS) $(THRESH_ARGS)
 PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS_USE) $(FV3_PATH)/tests
-PYTEST_PARALLEL=$(MPIRUN_CALL) pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS_USE) -m parallel $(FV3_PATH)/tests
+# we can't rule out a deadlock if one test fails, so we must set maxfail=1 for parallel tests
+PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS_USE) -m parallel $(FV3_PATH)/tests
 
 clean:
 	find . -name ""

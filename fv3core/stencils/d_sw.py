@@ -633,10 +633,13 @@ class DGridShallowWaterLagrangianDynamics:
         diss_est,
         dt,
     ):
-        """D-Grid Shallow Water Routine
+        """
+        D-grid shallow water routine.
+
         Peforms a full-timestep advance of the D-grid winds and other
         prognostic variables using Lagrangian dynamics on the cubed-sphere.
         described by Lin 1997, Lin 2004 and Harris 2013.
+
         Args:
             delpc: C-grid  vertical delta in pressure (in)
             delp: D-grid vertical delta in pressure (inout),

@@ -1,12 +1,12 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core._config as spec
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
-from fv3core.stencils import basic_operations, delnflux
+from fv3core.stencils import delnflux
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
+from fv3core.utils import validation
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -14,8 +14,8 @@ DZ_MIN = constants.DZ_MIN
 
 
 @gtscript.function
-def apply_height_flux(
-    geopotential_height: FloatField,
+def _apply_height_advective_flux(
+    height: FloatField,
     area: FloatFieldIJ,
     x_height_flux: FloatField,
     y_height_flux: FloatField,
@@ -29,15 +29,17 @@ def apply_height_flux(
     the layer thickness.
 
     Args:
-        geopotential_height: initial geopotential height
+        height: initial height
         area: gridcell area in m^2
-        x_height_flux: area-weighted flux of geopotential height in x-direction,
+        x_height_flux: area-weighted flux of height in x-direction,
             in units of g * m^3
-        y_height_flux: area-weighted flux of geopotential height in y-direction,
+        y_height_flux: area-weighted flux of height in y-direction,
             in units of g * m^3
         x_area_flux: flux of area in x-direction, in units of m^2
         y_area_flux: flux of area in y-direction, in units of m^2
     """
+    # described in Putman and Lin 2007 equation 7
+    # updated area is used because of implicit-in-time evaluation
     area_after_flux = (
         (area + x_area_flux - x_area_flux[1, 0, 0])
         + (area + y_area_flux - y_area_flux[0, 1, 0])
@@ -46,7 +48,7 @@ def apply_height_flux(
     # final height is the original volume plus the fluxed volumes,
     # divided by the final area
     return (
-        geopotential_height * area
+        height * area
         + x_height_flux
         - x_height_flux[1, 0, 0]
         + y_height_flux
@@ -54,48 +56,46 @@ def apply_height_flux(
     ) / area_after_flux
 
 
-def apply_geopotential_height_fluxes(
+def apply_height_fluxes(
     area: FloatFieldIJ,
-    initial_gz: FloatField,
+    height: FloatField,
     fx: FloatField,
     fy: FloatField,
     x_area_flux: FloatField,
     y_area_flux: FloatField,
     gz_x_diffusive_flux: FloatField,
     gz_y_diffusive_flux: FloatField,
-    final_gz: FloatField,
-    zs: FloatFieldIJ,
+    surface_height: FloatFieldIJ,
     ws: FloatFieldIJ,
     dt: float,
 ):
     """
-    Apply all computed fluxes to profile of geopotential height.
+    Apply all computed fluxes to height profile.
 
     All vertically-resolved arguments are defined on the same grid
     (normally interface levels).
 
     Args:
-        initial_gz: geopotential height profile on which to apply fluxes (in)
-        fx: area-weighted flux of geopotential height in x-direction,
+        height: height profile on which to apply fluxes (inout)
+        fx: area-weighted flux of height in x-direction,
             in units of g * m^3
-        fy: area-weighted flux of geopotential height in y-direction,
+        fy: area-weighted flux of height in y-direction,
             in units of g * m^3
         x_area_flux: flux of area in x-direction, in units of m^2 (in)
         y_area_flux: flux of area in y-direction, in units of m^2 (in)
-        gz_x_diffusive_flux: diffusive flux of area-weighted geopotential height
+        gz_x_diffusive_flux: diffusive flux of area-weighted height
             in x-direction (in)
-        gz_y_diffusive_flux: diffusive flux of area-weighted geopotential height
+        gz_y_diffusive_flux: diffusive flux of area-weighted height
             in y-direction (in)
-        final_gz: geopotential height (out)
-        zs: surface geopotential height (in)
+        surface_height: surface height (in)
         ws: vertical velocity of the lowest level (to keep it at the surface) (out)
         dt: acoustic timestep (seconds) (in)
     Grid variable inputs:
         area
     """
     with computation(PARALLEL), interval(...):
-        final_gz = (
-            apply_height_flux(initial_gz, area, fx, fy, x_area_flux, y_area_flux)
+        height = (
+            _apply_height_advective_flux(height, area, fx, fy, x_area_flux, y_area_flux)
             + (
                 gz_x_diffusive_flux
                 - gz_x_diffusive_flux[1, 0, 0]
@@ -107,11 +107,11 @@ def apply_geopotential_height_fluxes(
 
     with computation(BACKWARD):
         with interval(-1, None):
-            ws = (zs - final_gz) / dt
+            ws = (surface_height - height) / dt
         with interval(0, -1):
             # ensure layer thickness exceeds minimum
-            other = final_gz[0, 0, 1] + DZ_MIN
-            final_gz = final_gz if final_gz > other else other
+            other = height[0, 0, 1] + DZ_MIN
+            height = height if height > other else other
 
 
 def cubic_spline_interpolation_constants(
@@ -183,60 +183,79 @@ def cubic_spline_interpolation_from_layer_center_to_interfaces(
         q_interface -= gamma * q_interface[0, 0, 1]
 
 
-class UpdateDeltaZOnDGrid:
+class UpdateHeightOnDGrid:
     """
     Fortran name is updatedzd.
     """
 
-    def __init__(self, grid, dp0: FloatFieldK, column_namelist, k_bounds):
+    def __init__(self, grid, namelist, dp0: FloatFieldK, column_namelist, k_bounds):
         """
         Args:
             grid: fv3core grid object
+            namelist: flattened fv3gfs namelist
             dp0: air pressure on interface levels, reference pressure
                 can be used as an approximation
             column_namelist: ???
             k_bounds: ???
         """
-        self.grid = spec.grid
+        self.grid = grid
         self._column_namelist = column_namelist
+        self._k_bounds = k_bounds  # d_sw.k_bounds()
         if any(
             column_namelist["damp_vt"][kstart] <= 1e-5
             for kstart in range(len(k_bounds))
         ):
             raise NotImplementedError("damp <= 1e-5 in column_cols is untested")
-        self._k_bounds = k_bounds  # d_sw.k_bounds()
+        self._dp0 = dp0
+        self._allocate_temporary_storages()
+        self._initialize_interpolation_constants()
+        self._compile_stencils(namelist)
+
+        self._zh_validator = validation.SelectiveValidation(
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
+        )
+
+        self.finite_volume_transport = FiniteVolumeTransport(namelist, namelist.hord_tm)
+
+    def _allocate_temporary_storages(self):
         largest_possible_shape = self.grid.domain_shape_full(add=(1, 1, 1))
         self._crx_interface = utils.make_storage_from_shape(
-            largest_possible_shape, grid.compute_origin(add=(0, -self.grid.halo, 0))
+            largest_possible_shape,
+            self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
         )
         self._cry_interface = utils.make_storage_from_shape(
-            largest_possible_shape, grid.compute_origin(add=(-self.grid.halo, 0, 0))
+            largest_possible_shape,
+            self.grid.compute_origin(add=(-self.grid.halo, 0, 0)),
         )
         self._x_area_flux_interface = utils.make_storage_from_shape(
-            largest_possible_shape, grid.compute_origin(add=(0, -self.grid.halo, 0))
+            largest_possible_shape,
+            self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
         )
         self._y_area_flux_interface = utils.make_storage_from_shape(
-            largest_possible_shape, grid.compute_origin(add=(-self.grid.halo, 0, 0))
+            largest_possible_shape,
+            self.grid.compute_origin(add=(-self.grid.halo, 0, 0)),
         )
         self._wk = utils.make_storage_from_shape(
-            largest_possible_shape, grid.full_origin()
+            largest_possible_shape, self.grid.full_origin()
         )
-        self._fx2 = utils.make_storage_from_shape(
-            largest_possible_shape, grid.full_origin()
+        self._height_x_diffusive_flux = utils.make_storage_from_shape(
+            largest_possible_shape, self.grid.full_origin()
         )
-        self._fy2 = utils.make_storage_from_shape(
-            largest_possible_shape, grid.full_origin()
+        self._height_y_diffusive_flux = utils.make_storage_from_shape(
+            largest_possible_shape, self.grid.full_origin()
         )
         self._fx = utils.make_storage_from_shape(
-            largest_possible_shape, grid.full_origin()
+            largest_possible_shape, self.grid.full_origin()
         )
         self._fy = utils.make_storage_from_shape(
-            largest_possible_shape, grid.full_origin()
+            largest_possible_shape, self.grid.full_origin()
         )
         self._zh_tmp = utils.make_storage_from_shape(
-            largest_possible_shape, grid.full_origin()
+            largest_possible_shape, self.grid.full_origin()
         )
-        self._dp0 = dp0
+
+    def _initialize_interpolation_constants(self):
         # because stencils only work on 3D at the moment, need to compute in 3D
         # and then make these 1D
         gk_3d = utils.make_storage_from_shape((1, 1, self.grid.npz + 1), (0, 0, 0))
@@ -256,62 +275,60 @@ class UpdateDeltaZOnDGrid:
             gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,)
         )
 
+    def _compile_stencils(self, namelist):
         self._interpolate_to_layer_interface = FrozenStencil(
             cubic_spline_interpolation_from_layer_center_to_interfaces,
             origin=self.grid.full_origin(),
             domain=self.grid.domain_shape_full(add=(0, 0, 1)),
         )
-        self._apply_geopotential_height_fluxes = FrozenStencil(
-            apply_geopotential_height_fluxes,
+        self._apply_height_fluxes = FrozenStencil(
+            apply_height_fluxes,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
         )
-        self.finite_volume_transport = FiniteVolumeTransport(
-            spec.namelist, spec.namelist.hord_tm
-        )
+        self.finite_volume_transport = FiniteVolumeTransport(namelist, namelist.hord_tm)
 
     def __call__(
         self,
-        zs: FloatFieldIJ,
-        zh: FloatField,
-        crx: FloatField,
-        cry: FloatField,
+        surface_height: FloatFieldIJ,
+        height: FloatField,
+        courant_number_x: FloatField,
+        courant_number_y: FloatField,
         x_area_flux: FloatField,
         y_area_flux: FloatField,
-        wsd: FloatFieldIJ,
+        ws: FloatFieldIJ,
         dt: float,
     ):
         """
+        Advect height on D-grid.
+
+        Height can be in any units, including geopotential units.
+
         Args:
-            zs: geopotential height of surface
-            zh: geopotential height defined on layer interfaces
-            crx: Courant number in x-direction
-            cry: Courant number in y-direction
-            x_area_flux: Area flux in x-direction
-            y_area_flux: Area flux in y-direction
-            wsd: lowest layer vertical velocity required to keep layer at surface
-            dt: ???
+            surface_height: height of surface (in)
+            height: height defined on layer interfaces (inout)
+            courant_number_x: Courant number in x-direction defined on cell centers (in)
+            courant_number_y: Courant number in y-direction defined on cell centers (in)
+            x_area_flux: Area flux in x-direction defined on cell centers (in)
+            y_area_flux: Area flux in y-direction defined on cell centers (in)
+            ws: lowest layer vertical velocity implied by horizontal motion
+                over topography, in units of [height units] / second (out)
+            dt: timestep over which input fluxes have been computed, in seconds
         """
         self._interpolate_to_layer_interface(
-            crx, self._crx_interface, self._gk, self._beta, self._gamma
+            courant_number_x, self._crx_interface, self._gk, self._beta, self._gamma
         )
         self._interpolate_to_layer_interface(
             x_area_flux, self._x_area_flux_interface, self._gk, self._beta, self._gamma
         )
         self._interpolate_to_layer_interface(
-            cry, self._cry_interface, self._gk, self._beta, self._gamma
+            courant_number_y, self._cry_interface, self._gk, self._beta, self._gamma
         )
         self._interpolate_to_layer_interface(
             y_area_flux, self._y_area_flux_interface, self._gk, self._beta, self._gamma
         )
-        basic_operations.copy_stencil(
-            zh,
-            self._zh_tmp,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
-        )  # this temporary can be replaced with zh if we have selective validation
         self.finite_volume_transport(
-            self._zh_tmp,
+            height,
             self._crx_interface,
             self._cry_interface,
             self._x_area_flux_interface,
@@ -321,26 +338,26 @@ class UpdateDeltaZOnDGrid:
         )
         for kstart, nk in self._k_bounds:
             delnflux.compute_no_sg(
-                self._zh_tmp,
-                self._fx2,
-                self._fy2,
+                height,
+                self._height_x_diffusive_flux,
+                self._height_y_diffusive_flux,
                 int(self._column_namelist["nord_v"][kstart]),
                 self._column_namelist["damp_vt"][kstart],
                 self._wk,
                 kstart=kstart,
                 nk=nk,
             )
-        self._apply_geopotential_height_fluxes(
+        self._apply_height_fluxes(
             self.grid.area,
-            zh,
+            height,
             self._fx,
             self._fy,
             self._x_area_flux_interface,
             self._y_area_flux_interface,
-            self._fx2,
-            self._fy2,
-            zh,
-            zs,
-            wsd,
+            self._height_x_diffusive_flux,
+            self._height_y_diffusive_flux,
+            surface_height,
+            ws,
             dt,
         )
+        self._zh_validator.set_nans_if_test_mode(height)
