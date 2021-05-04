@@ -1,5 +1,4 @@
 import copy
-import os
 import sys
 
 import mpi4py
@@ -271,11 +270,6 @@ if __name__ == "__main__":
             spec.namelist.npz,
             spec.namelist.npx,
             spec.namelist.npy,
-        )
-
-        OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
-        fv3core.enable_stencil_report(
-            path=OUTPUT_DIR, save_args=False, save_report=True
         )
 
         fv3core.fv_dynamics(

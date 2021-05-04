@@ -5,7 +5,7 @@ from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, 
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import gtstencil
 from fv3core.utils.typing import FloatField
 
 
@@ -535,27 +535,27 @@ class RemapProfile:
             grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
         )
 
-        self._set_values_stencil = StencilWrapper(
+        self._set_values_stencil = gtstencil(
             func=set_vals,
             externals={"iv": iv, "kord": abs(kord)},
         )
 
-        self._apply_constraints_stencil = StencilWrapper(
+        self._apply_constraints_stencil = gtstencil(
             func=apply_constraints,
             externals={"iv": iv, "kord": abs(kord)},
         )
 
-        self._set_top_stencil = StencilWrapper(
+        self._set_top_stencil = gtstencil(
             func=set_top,
             externals={"iv": iv},
         )
 
-        self._set_set_inner_stencil = StencilWrapper(
+        self._set_set_inner_stencil = gtstencil(
             func=set_inner,
             externals={"iv": iv, "kord": abs(kord)},
         )
 
-        self._set_bottom_stencil = StencilWrapper(
+        self._set_bottom_stencil = gtstencil(
             func=set_bottom,
             externals={"iv": iv},
         )

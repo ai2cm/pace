@@ -9,7 +9,7 @@ from gt4py.gtscript import (
     region,
 )
 
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.rayleigh_super import SDAY, compute_rf_vals
 from fv3core.utils import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldK
@@ -135,7 +135,7 @@ class RayleighDamping:
             if "local" in axis_offset_name:
                 local_axis_offsets[axis_offset_name] = axis_offset_value
 
-        self._ray_fast_wind_compute = StencilWrapper(
+        self._ray_fast_wind_compute = FrozenStencil(
             ray_fast_wind_compute,
             origin=origin,
             domain=domain,

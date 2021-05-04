@@ -15,7 +15,7 @@ from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 CONSV_MIN = 0.001
 
 
-@gtstencil()
+@gtstencil
 def init_pe(pe: FloatField, pe1: FloatField, pe2: FloatField, ptop: float):
     with computation(PARALLEL):
         with interval(0, 1):
@@ -26,7 +26,7 @@ def init_pe(pe: FloatField, pe1: FloatField, pe2: FloatField, ptop: float):
         pe1 = pe
 
 
-@gtstencil()
+@gtstencil
 def undo_delz_adjust_and_copy_peln(
     delp: FloatField,
     delz: FloatField,
@@ -41,7 +41,7 @@ def undo_delz_adjust_and_copy_peln(
         peln = pn2
 
 
-@gtstencil()
+@gtstencil
 def moist_cv_pt_pressure(
     qvapor: FloatField,
     qliquid: FloatField,
@@ -109,14 +109,14 @@ def moist_cv_pt_pressure(
         delp = dp2
 
 
-@gtstencil()
+@gtstencil
 def copy_j_adjacent(pe2: FloatField):
     with computation(PARALLEL), interval(...):
         pe2_0 = pe2[0, -1, 0]
         pe2 = pe2_0
 
 
-@gtstencil()
+@gtstencil
 def pn2_pk_delp(
     dp2: FloatField,
     delp: FloatField,
@@ -131,7 +131,7 @@ def pn2_pk_delp(
         pk = exp(akap * pn2)
 
 
-@gtstencil()
+@gtstencil
 def pressures_mapu(
     pe: FloatField,
     pe1: FloatField,
@@ -157,7 +157,7 @@ def pressures_mapu(
         pe3 = ak + bkh * (pe_bottom[0, -1, 0] + pe1_bottom)
 
 
-@gtstencil()
+@gtstencil
 def pressures_mapv(
     pe: FloatField, ak: FloatFieldK, bk: FloatFieldK, pe0: FloatField, pe3: FloatField
 ):
@@ -176,7 +176,7 @@ def pressures_mapv(
             pe3 = ak + bkh * (pe_bottom[-1, 0, 0] + pe_bottom)
 
 
-@gtstencil()
+@gtstencil
 def update_ua(pe2: FloatField, ua: FloatField):
     with computation(PARALLEL), interval(0, -1):
         ua = pe2[0, 0, 1]

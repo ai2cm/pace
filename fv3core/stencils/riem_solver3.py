@@ -15,7 +15,7 @@ from gt4py.gtscript import (
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.sim1_solver import Sim1Solver
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
@@ -128,12 +128,12 @@ class RiemannSolver3:
         self._tmp_pem = utils.make_storage_from_shape(shape, riemorigin)
         self._tmp_peln_run = utils.make_storage_from_shape(shape, riemorigin)
         self._tmp_gm = utils.make_storage_from_shape(shape, riemorigin)
-        self._precompute_stencil = StencilWrapper(
+        self._precompute_stencil = FrozenStencil(
             precompute,
             origin=riemorigin,
             domain=domain,
         )
-        self._finalize_stencil = StencilWrapper(
+        self._finalize_stencil = FrozenStencil(
             finalize,
             externals={"use_logp": namelist.use_logp, "beta": namelist.beta},
             origin=riemorigin,

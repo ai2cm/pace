@@ -16,7 +16,7 @@ C2 = -0.125
 
 
 @utils.mark_untested("This namelist option is not tested")
-@gtstencil()
+@gtstencil
 def c2l_ord2(
     u: FloatField,
     v: FloatField,
@@ -40,7 +40,7 @@ def c2l_ord2(
         va = a21 * u1 + a22 * v1
 
 
-@gtstencil()
+@gtstencil
 def ord4_transform(
     u: FloatField,
     v: FloatField,

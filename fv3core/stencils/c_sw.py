@@ -16,7 +16,7 @@ from fv3core.utils import corners
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
-@gtstencil()
+@gtstencil
 def geoadjust_ut(
     ut: FloatField,
     dy: FloatFieldIJ,
@@ -30,7 +30,7 @@ def geoadjust_ut(
         )
 
 
-@gtstencil()
+@gtstencil
 def geoadjust_vt(
     vt: FloatField,
     dx: FloatFieldIJ,
@@ -44,7 +44,7 @@ def geoadjust_vt(
         )
 
 
-@gtstencil()
+@gtstencil
 def absolute_vorticity(vort: FloatField, fC: FloatFieldIJ, rarea_c: FloatFieldIJ):
     with computation(PARALLEL), interval(...):
         vort[0, 0, 0] = fC + rarea_c * vort
@@ -72,7 +72,7 @@ def nonhydro_y_fluxes(delp: FloatField, pt: FloatField, w: FloatField, vtc: Floa
     return fy, fy1, fy2
 
 
-@gtstencil()
+@gtstencil
 def transportdelp(
     delp: FloatField,
     pt: FloatField,
@@ -121,7 +121,7 @@ def transportdelp(
         wc = (w * delp + (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea) / delpc
 
 
-@gtstencil()
+@gtstencil
 def divergence_corner(
     u: FloatField,
     v: FloatField,
@@ -188,7 +188,7 @@ def divergence_corner(
         divg_d *= rarea_c
 
 
-@gtstencil()
+@gtstencil
 def circulation_cgrid(
     uc: FloatField,
     vc: FloatField,
@@ -220,7 +220,7 @@ def circulation_cgrid(
             vort_c -= fy[0, 0, 0]
 
 
-@gtstencil()
+@gtstencil
 def update_vorticity_and_kinetic_energy(
     ke: FloatField,
     vort: FloatField,
@@ -261,7 +261,7 @@ def update_vorticity_and_kinetic_energy(
         ke = 0.5 * dt2 * (ua * ke + va * vort)
 
 
-@gtstencil()
+@gtstencil
 def update_zonal_velocity(
     vorticity: FloatField,
     ke: FloatField,
@@ -286,7 +286,7 @@ def update_zonal_velocity(
         velocity_c = velocity_c + tmp_flux * flux + rdxc * (ke[-1, 0, 0] - ke)
 
 
-@gtstencil()
+@gtstencil
 def update_meridional_velocity(
     vorticity: FloatField,
     ke: FloatField,
@@ -311,7 +311,7 @@ def update_meridional_velocity(
         velocity_c = velocity_c - tmp_flux * flux + rdyc * (ke[0, -1, 0] - ke)
 
 
-@gtstencil()
+@gtstencil
 def initialize_delpc_ptc(delpc: FloatField, ptc: FloatField):
     with computation(PARALLEL), interval(...):
         delpc = 0.0

@@ -1,15 +1,7 @@
 import numpy as np
 
 import fv3core.stencils.map_single as map_single
-import fv3core.utils.gt4py_utils as utils
-from fv3core.testing import TranslateFortranData2Py, TranslateGrid
-
-
-def pad_field_in_j(field, nj):
-    utils.device_sync()
-    outfield = utils.tile(field[:, 0, :], [nj, 1, 1]).transpose(1, 0, 2)
-    np.testing.assert_array_equal(outfield[:, 0, :], field[:, 0, :])
-    return outfield
+from fv3core.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
 
 
 class TranslateSingleJ(TranslateFortranData2Py):
@@ -62,8 +54,22 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
         inputs["j_2d"] = self.grid.global_to_local_y(
             inputs["j_2d"] + TranslateGrid.fpy_model_index_offset
         )
-        inputs["j1"] = inputs["j_2d"]
-        inputs["j2"] = inputs["j_2d"]
+        if inputs["q1"].shape[1] == 1:
+            # some test cases are on singleton j-slices,
+            # so for those calls these are zero and not n_halo
+            inputs["j1"] = 0
+            inputs["j2"] = 0
+        else:
+            inputs["j1"] = inputs["j_2d"]
+            inputs["j2"] = inputs["j_2d"]
+            if inputs["pe1"].shape[1] == 1:
+                inputs["pe1"] = self.make_storage_data(
+                    pad_field_in_j(inputs["pe1"], self.nj)
+                )
+            if inputs["pe2"].shape[1] == 1:
+                inputs["pe2"] = self.make_storage_data(
+                    pad_field_in_j(inputs["pe2"], self.nj)
+                )
         del inputs["j_2d"]
         var_inout = self.compute_func(**inputs)
         return self.slice_output(inputs, {"var_inout": var_inout})

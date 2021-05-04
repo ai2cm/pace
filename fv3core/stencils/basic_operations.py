@@ -6,7 +6,7 @@ from fv3core.decorators import gtstencil
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
-@gtstencil()
+@gtstencil
 def copy_stencil(q_in: FloatField, q_out: FloatField):
     """Copy q_in to q_out.
 
@@ -29,7 +29,7 @@ def copy_defn(q_in: FloatField, q_out: FloatField):
         q_out = q_in
 
 
-@gtstencil()
+@gtstencil
 def copy_stencil_2d(q_in: FloatFieldIJ, q_out: FloatFieldIJ):
     """Copy q_in to q_out.
 
@@ -76,43 +76,43 @@ def copy(q_in, origin=(0, 0, 0), domain=None, cache_key=None):
     return q_out
 
 
-@gtstencil()
+@gtstencil
 def adjustmentfactor_stencil(adjustment: FloatFieldIJ, q_out: FloatField):
     with computation(PARALLEL), interval(...):
         q_out[0, 0, 0] = q_out * adjustment
 
 
-@gtstencil()
+@gtstencil
 def adjust_divide_stencil(adjustment: FloatField, q_out: FloatField):
     with computation(PARALLEL), interval(...):
         q_out[0, 0, 0] = q_out / adjustment
 
 
-@gtstencil()
+@gtstencil
 def multiply_stencil(in1: FloatField, in2: FloatField, out: FloatField):
     with computation(PARALLEL), interval(...):
         out[0, 0, 0] = in1 * in2
 
 
-@gtstencil()
+@gtstencil
 def divide_stencil(in1: FloatField, in2: FloatField, out: FloatField):
     with computation(PARALLEL), interval(...):
         out[0, 0, 0] = in1 / in2
 
 
-@gtstencil()
+@gtstencil
 def addition_stencil(in1: FloatField, in2: FloatFieldIJ, out: FloatField):
     with computation(PARALLEL), interval(...):
         out[0, 0, 0] = in1 + in2
 
 
-@gtstencil()
+@gtstencil
 def add_term_stencil(in1: FloatField, out: FloatField):
     with computation(PARALLEL), interval(...):
         out[0, 0, 0] = out + in1
 
 
-@gtstencil()
+@gtstencil
 def add_term_two_vars(
     in1: FloatField, out1: FloatField, in2: FloatField, out2: FloatField
 ):
@@ -121,13 +121,13 @@ def add_term_two_vars(
         out2[0, 0, 0] = out2 + in2
 
 
-@gtstencil()
+@gtstencil
 def subtract_term_stencil(in1: FloatField, out: FloatField):
     with computation(PARALLEL), interval(...):
         out[0, 0, 0] = out - in1
 
 
-@gtstencil()
+@gtstencil
 def multiply_constant(
     in1: FloatField,
     out: FloatField,
@@ -137,13 +137,13 @@ def multiply_constant(
         out[0, 0, 0] = in1 * in2
 
 
-@gtstencil()
+@gtstencil
 def multiply_constant_inout(inout: FloatField, in_float: float):
     with computation(PARALLEL), interval(...):
         inout[0, 0, 0] = in_float * inout
 
 
-@gtstencil()
+@gtstencil
 def floor_cap(var: FloatField, floor_value: float):
     with computation(PARALLEL), interval(0, None):
         var[0, 0, 0] = var if var > floor_value else floor_value

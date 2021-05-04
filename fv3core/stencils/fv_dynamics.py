@@ -20,7 +20,7 @@ from fv3core.stencils.tracer_2d_1l import Tracer2D1L
 from fv3core.utils.typing import FloatField, FloatFieldK
 
 
-@gtstencil()
+@gtstencil
 def init_ph_columns(
     ak: FloatFieldK,
     bk: FloatFieldK,
@@ -33,13 +33,13 @@ def init_ph_columns(
         pfull = (ph2 - ph1) / log(ph2 / ph1)
 
 
-@gtstencil()
+@gtstencil
 def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatField):
     with computation(PARALLEL), interval(...):
         pt = pt * (1.0 + dp1) * (1.0 - q_con) / pkz
 
 
-@gtstencil()
+@gtstencil
 def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatField):
     with computation(PARALLEL), interval(...):
         omga = delp / delz * w

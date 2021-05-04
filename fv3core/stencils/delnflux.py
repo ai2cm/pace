@@ -8,14 +8,14 @@ from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
-@gtstencil()
+@gtstencil
 def fx2_order(q: FloatField, del6_v: FloatFieldIJ, fx2: FloatField, order: int):
     with computation(PARALLEL), interval(...):
         fx2[0, 0, 0] = del6_v * (q[-1, 0, 0] - q)
         fx2[0, 0, 0] = -1.0 * fx2 if order > 1 else fx2
 
 
-@gtstencil()
+@gtstencil
 def fy2_order(q: FloatField, del6_u: FloatFieldIJ, fy2: FloatField, order: int):
     with computation(PARALLEL), interval(...):
         fy2[0, 0, 0] = del6_u * (q[0, -1, 0] - q)
@@ -23,7 +23,7 @@ def fy2_order(q: FloatField, del6_u: FloatFieldIJ, fy2: FloatField, order: int):
 
 
 # WARNING: untested
-@gtstencil()
+@gtstencil
 def fx2_firstorder_use_sg(
     q: FloatField,
     sin_sg1: FloatField,
@@ -39,7 +39,7 @@ def fx2_firstorder_use_sg(
 
 
 # WARNING: untested
-@gtstencil()
+@gtstencil
 def fy2_firstorder_use_sg(
     q: FloatField,
     sin_sg2: FloatField,
@@ -54,32 +54,32 @@ def fy2_firstorder_use_sg(
         )
 
 
-@gtstencil()
+@gtstencil
 def d2_highorder(fx2: FloatField, fy2: FloatField, rarea: FloatFieldIJ, d2: FloatField):
     with computation(PARALLEL), interval(...):
         d2[0, 0, 0] = (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea
 
 
-@gtstencil()
+@gtstencil
 def d2_damp(q: FloatField, d2: FloatField, damp: float):
     with computation(PARALLEL), interval(...):
         d2[0, 0, 0] = damp * q
 
 
-@gtstencil()
+@gtstencil
 def add_diffusive(fx: FloatField, fx2: FloatField, fy: FloatField, fy2: FloatField):
     with computation(PARALLEL), interval(...):
         fx[0, 0, 0] = fx + fx2
         fy[0, 0, 0] = fy + fy2
 
 
-@gtstencil()
+@gtstencil
 def add_diffusive_component(fx: FloatField, fx2: FloatField):
     with computation(PARALLEL), interval(...):
         fx[0, 0, 0] = fx + fx2
 
 
-@gtstencil()
+@gtstencil
 def diffusive_damp(
     fx: FloatField,
     fx2: FloatField,
@@ -93,13 +93,13 @@ def diffusive_damp(
         fy[0, 0, 0] = fy + 0.5 * damp * (mass[0, -1, 0] + mass) * fy2
 
 
-@gtstencil()
+@gtstencil
 def diffusive_damp_x(fx: FloatField, fx2: FloatField, mass: FloatField, damp: float):
     with computation(PARALLEL), interval(...):
         fx = fx + 0.5 * damp * (mass[-1, 0, 0] + mass) * fx2
 
 
-@gtstencil()
+@gtstencil
 def diffusive_damp_y(fy: FloatField, fy2: FloatField, mass: FloatField, damp: float):
     with computation(PARALLEL), interval(...):
         fy[0, 0, 0] = fy + 0.5 * damp * (mass[0, -1, 0] + mass) * fy2

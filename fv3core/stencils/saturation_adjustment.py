@@ -535,7 +535,7 @@ def wqs1_fn_2(it, ap1, ta, den):
     return wqsat_wsq1(table2, des2, ap1, it, ta, den)
 
 
-@gtstencil()
+@gtstencil
 def compute_q_tables(
     index: FloatField,
     tablew: FloatField,
@@ -552,7 +552,7 @@ def compute_q_tables(
         des2 = des2_table(index)
 
 
-@gtstencil()
+@gtstencil
 def satadjust(
     peln: FloatField,
     qv: FloatField,

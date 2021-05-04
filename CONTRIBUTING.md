@@ -119,7 +119,7 @@ This eventually calls `gt4py.gtscript.stencil`, but sets default external argume
 The type of each input of a stencil requires a type and the first version of the model used a shorthand 'sd' (storage data) to indicate a 3D gt4py storage, such as
 
 ```python
-@gtstencil()
+@gtstencil
 def pt_adjust(pkz:sd, dp1: sd, q_con: sd, pt: sd):
     with computation(PARALLEL), interval(...):
 ```
@@ -132,7 +132,7 @@ For example, `FloatField[IJ]` for a 2D field of default floating point values.
 The `fv3core.gtstencil` decorator automatically makes `namelist` available, if `from __externals__ import namelist` is added at the top of the stencil or any stencil function along with other imports.
 
 ```python
-@fv3core.gtstencil()
+@fv3core.gtstencil
 def mystencil(var: FloatField):
     from gtscript import parallel
     from __externals__ import namelist, x_start

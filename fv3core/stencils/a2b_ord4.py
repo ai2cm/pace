@@ -13,7 +13,7 @@ from gt4py.gtscript import (
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
@@ -418,22 +418,22 @@ class AGrid2BGridFourthOrder:
             nk = self.grid.npz - kstart
         corner_domain = (1, 1, nk)
 
-        self._sw_corner_stencil = StencilWrapper(
+        self._sw_corner_stencil = FrozenStencil(
             _sw_corner,
             origin=(self.grid.is_, self.grid.js, kstart),
             domain=corner_domain,
         )
-        self._nw_corner_stencil = StencilWrapper(
+        self._nw_corner_stencil = FrozenStencil(
             _nw_corner,
             origin=(self.grid.ie + 1, self.grid.js, kstart),
             domain=corner_domain,
         )
-        self._ne_corner_stencil = StencilWrapper(
+        self._ne_corner_stencil = FrozenStencil(
             _ne_corner,
             origin=(self.grid.ie + 1, self.grid.je + 1, kstart),
             domain=corner_domain,
         )
-        self._se_corner_stencil = StencilWrapper(
+        self._se_corner_stencil = FrozenStencil(
             _se_corner,
             origin=(self.grid.is_, self.grid.je + 1, kstart),
             domain=corner_domain,
@@ -441,20 +441,28 @@ class AGrid2BGridFourthOrder:
         js2 = self.grid.js + 1 if self.grid.south_edge else self.grid.js
         je1 = self.grid.je if self.grid.north_edge else self.grid.je + 1
         dj2 = je1 - js2 + 1
-        self._qout_x_edge_west = StencilWrapper(
-            qout_x_edge, origin=(self.grid.is_, js2, kstart), domain=(1, dj2, nk)
+
+        # edge_w is singleton in the I-dimension to work around gt4py not yet
+        # supporting J-fields. As a result, the origin has to be zero for
+        # edge_w, anything higher is outside its index range
+        self._qout_x_edge_west = FrozenStencil(
+            qout_x_edge,
+            origin={"_all_": (self.grid.is_, js2, kstart), "edge_w": (0, js2)},
+            domain=(1, dj2, nk),
         )
-        self._qout_x_edge_east = StencilWrapper(
-            qout_x_edge, origin=(self.grid.ie + 1, js2, kstart), domain=(1, dj2, nk)
+        self._qout_x_edge_east = FrozenStencil(
+            qout_x_edge,
+            origin={"_all_": (self.grid.ie + 1, js2, kstart), "edge_w": (0, js2)},
+            domain=(1, dj2, nk),
         )
 
         is2 = self.grid.is_ + 1 if self.grid.west_edge else self.grid.is_
         ie1 = self.grid.ie if self.grid.east_edge else self.grid.ie + 1
         di2 = ie1 - is2 + 1
-        self._qout_y_edge_south = StencilWrapper(
+        self._qout_y_edge_south = FrozenStencil(
             qout_y_edge, origin=(is2, self.grid.js, kstart), domain=(di2, 1, nk)
         )
-        self._qout_y_edge_north = StencilWrapper(
+        self._qout_y_edge_north = FrozenStencil(
             qout_y_edge, origin=(is2, self.grid.je + 1, kstart), domain=(di2, 1, nk)
         )
         origin_x = (self.grid.is_, self.grid.js - 2, kstart)
@@ -464,7 +472,7 @@ class AGrid2BGridFourthOrder:
             origin_x,
             domain_x,
         )
-        self._ppm_volume_mean_x_stencil = StencilWrapper(
+        self._ppm_volume_mean_x_stencil = FrozenStencil(
             ppm_volume_mean_x, externals=ax_offsets_x, origin=origin_x, domain=domain_x
         )
         origin_y = (self.grid.is_ - 2, self.grid.js, kstart)
@@ -474,7 +482,7 @@ class AGrid2BGridFourthOrder:
             origin_y,
             domain_y,
         )
-        self._ppm_volume_mean_y_stencil = StencilWrapper(
+        self._ppm_volume_mean_y_stencil = FrozenStencil(
             ppm_volume_mean_y, externals=ax_offsets_y, origin=origin_y, domain=domain_y
         )
 
@@ -489,10 +497,10 @@ class AGrid2BGridFourthOrder:
             origin,
             domain,
         )
-        self._a2b_interpolation_stencil = StencilWrapper(
+        self._a2b_interpolation_stencil = FrozenStencil(
             a2b_interpolation, externals=ax_offsets, origin=origin, domain=domain
         )
-        self._copy_stencil = StencilWrapper(
+        self._copy_stencil = FrozenStencil(
             copy_defn,
             origin=(self.grid.is_, self.grid.js, kstart),
             domain=(self.grid.nic + 1, self.grid.njc + 1, nk),

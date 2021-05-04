@@ -27,7 +27,7 @@ def compute_rf_vals(pfull, bdt, rf_cutoff, tau0, ptop):
     )
 
 
-@gtstencil()
+@gtstencil
 def initialize_u2f(pfull: sd, u2f: sd, bdt: float, tau0: float, ptop: float):
     with computation(PARALLEL), interval(...):
         if pfull < spec.namelist.rf_cutoff:
@@ -37,7 +37,7 @@ def initialize_u2f(pfull: sd, u2f: sd, bdt: float, tau0: float, ptop: float):
             u2f = 1.0
 
 
-@gtstencil()
+@gtstencil
 def rayleigh_pt_vert(
     pt: sd,
     ua: sd,
@@ -60,14 +60,14 @@ def rayleigh_pt_vert(
                 w = u2f * w
 
 
-@gtstencil()
+@gtstencil
 def rayleigh_u(u: sd, pfull: sd, u2f: sd):
     with computation(PARALLEL), interval(...):
         if pfull < spec.namelist.rf_cutoff:
             u = 0.5 * (u2f[0, -1, 0] + u2f) * u
 
 
-@gtstencil()
+@gtstencil
 def rayleigh_v(
     v: sd,
     pfull: sd,

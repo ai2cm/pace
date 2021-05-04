@@ -2,7 +2,7 @@ import numpy as np
 
 import fv3core.stencils.fillz as fillz
 import fv3core.utils.gt4py_utils as utils
-from fv3core.testing import TranslateFortranData2Py
+from fv3core.testing import TranslateFortranData2Py, pad_field_in_j
 
 
 class TranslateFillz(TranslateFortranData2Py):
@@ -18,8 +18,8 @@ class TranslateFillz(TranslateFortranData2Py):
             "q2tracers": {
                 "istart": grid.is_,
                 "iend": grid.ie,
-                "jstart": 0,
-                "jend": 0,
+                "jstart": grid.js,
+                "jend": grid.js,
                 "axis": 1,
             }
         }
@@ -46,6 +46,16 @@ class TranslateFillz(TranslateFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         inputs["jm"] = 1
+        for name, value in tuple(inputs.items()):
+            if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
+                inputs[name] = self.make_storage_data(
+                    pad_field_in_j(value, self.grid.npy)
+                )
+        for name, value in tuple(inputs["tracers"].items()):
+            if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
+                inputs["tracers"][name] = self.make_storage_data(
+                    pad_field_in_j(value, self.grid.npy)
+                )
         self.compute_func(**inputs)
         ds = self.grid.default_domain_dict()
         ds.update(self.out_vars["q2tracers"])

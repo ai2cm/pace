@@ -13,7 +13,7 @@ from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
-@gtstencil()
+@gtstencil
 def ptc_main(
     u: FloatField,
     va: FloatField,
@@ -26,7 +26,7 @@ def ptc_main(
         ptc = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
 
 
-@gtstencil()
+@gtstencil
 def ptc_y_edge(
     u: FloatField,
     vc: FloatField,
@@ -39,7 +39,7 @@ def ptc_y_edge(
         ptc = u * dyc * sin_sg4[0, -1] if vc > 0 else u * dyc * sin_sg2
 
 
-@gtstencil()
+@gtstencil
 def vorticity_main(
     v: FloatField,
     ua: FloatField,
@@ -52,7 +52,7 @@ def vorticity_main(
         vort = (v - 0.5 * (ua[-1, 0, 0] + ua) * cosa_u) * dxc * sina_u
 
 
-@gtstencil()
+@gtstencil
 def vorticity_x_edge(
     v: FloatField,
     uc: FloatField,
@@ -65,19 +65,19 @@ def vorticity_x_edge(
         vort = v * dxc * sin_sg3[-1, 0] if uc > 0 else v * dxc * sin_sg1
 
 
-@gtstencil()
+@gtstencil
 def delpc_main(vort: FloatField, ptc: FloatField, delpc: FloatField):
     with computation(PARALLEL), interval(...):
         delpc = vort[0, -1, 0] - vort + ptc[-1, 0, 0] - ptc
 
 
-@gtstencil()
+@gtstencil
 def corner_south_remove_extra_term(vort: FloatField, delpc: FloatField):
     with computation(PARALLEL), interval(...):
         delpc -= vort[0, -1, 0]
 
 
-@gtstencil()
+@gtstencil
 def corner_north_remove_extra_term(vort: FloatField, delpc: FloatField):
     with computation(PARALLEL), interval(...):
         delpc += vort
@@ -92,7 +92,7 @@ def damp_tmp(q, da_min_c, d2_bg, dddmp):
     return damp
 
 
-@gtstencil()
+@gtstencil
 def damping_nord0_stencil(
     rarea_c: FloatFieldIJ,
     delpc: FloatField,
@@ -112,7 +112,7 @@ def damping_nord0_stencil(
         ke += vort
 
 
-@gtstencil()
+@gtstencil
 def damping_nord_highorder_stencil(
     vort: FloatField,
     ke: FloatField,
@@ -129,25 +129,25 @@ def damping_nord_highorder_stencil(
         ke = ke + vort
 
 
-@gtstencil()
+@gtstencil
 def vc_from_divg(divg_d: FloatField, divg_u: FloatFieldIJ, vc: FloatField):
     with computation(PARALLEL), interval(...):
         vc[0, 0, 0] = (divg_d[1, 0, 0] - divg_d) * divg_u
 
 
-@gtstencil()
+@gtstencil
 def uc_from_divg(divg_d: FloatField, divg_v: FloatFieldIJ, uc: FloatField):
     with computation(PARALLEL), interval(...):
         uc[0, 0, 0] = (divg_d[0, 1, 0] - divg_d) * divg_v
 
 
-@gtstencil()
+@gtstencil
 def redo_divg_d(uc: FloatField, vc: FloatField, divg_d: FloatField):
     with computation(PARALLEL), interval(...):
         divg_d[0, 0, 0] = uc[0, -1, 0] - uc + vc[-1, 0, 0] - vc
 
 
-@gtstencil()
+@gtstencil
 def smagorinksy_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: float):
     with computation(PARALLEL), interval(...):
         vort = absdt * (delpc ** 2.0 + vort ** 2.0) ** 0.5
@@ -201,6 +201,7 @@ def compute(
     grid = spec.grid
     if nk is None:
         nk = grid.npz - kstart
+    nk = min(grid.npz - kstart, nk)
     # Avoid running center-domain computation on tile edges, since they'll be
     # overwritten.
     is2 = grid.is_ + 1 if grid.west_edge else grid.is_

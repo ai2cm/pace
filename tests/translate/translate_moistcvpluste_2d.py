@@ -1,5 +1,5 @@
 import fv3core.stencils.moist_cv as moist_cv
-from fv3core.testing import TranslateFortranData2Py, TranslateGrid
+from fv3core.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
 
 
 class TranslateMoistCVPlusTe_2d(TranslateFortranData2Py):
@@ -59,6 +59,11 @@ class TranslateMoistCVPlusTe_2d(TranslateFortranData2Py):
         inputs["j_2d"] = self.grid.global_to_local_y(
             inputs["j_2d"] + TranslateGrid.fpy_model_index_offset
         )
+        for name, value in inputs.items():
+            if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
+                inputs[name] = self.make_storage_data(
+                    pad_field_in_j(value, self.grid.npy)
+                )
         self.compute_func(**inputs)
         for var in ["gz", "cvm"]:
             inputs[var] = inputs[var][:, inputs["j_2d"] : inputs["j_2d"] + 1, :]

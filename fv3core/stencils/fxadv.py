@@ -1,7 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import FrozenStencil
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
@@ -374,15 +374,15 @@ class FiniteVolumeFluxPrep:
             "origin": origin_corners,
             "domain": domain_corners,
         }
-        self._main_ut_stencil = StencilWrapper(main_ut, **kwargs)
-        self._main_vt_stencil = StencilWrapper(main_vt, **kwargs)
-        self._ut_y_edge_stencil = StencilWrapper(ut_y_edge, **kwargs)
-        self._vt_y_edge_stencil = StencilWrapper(vt_y_edge, **kwargs)
-        self._ut_x_edge_stencil = StencilWrapper(ut_x_edge, **kwargs)
-        self._vt_x_edge_stencil = StencilWrapper(vt_x_edge, **kwargs)
-        self._ut_corners_stencil = StencilWrapper(ut_corners, **kwargs_corners)
-        self._vt_corners_stencil = StencilWrapper(vt_corners, **kwargs_corners)
-        self._fxadv_fluxes_stencil = StencilWrapper(fxadv_fluxes_stencil, **kwargs)
+        self._main_ut_stencil = FrozenStencil(main_ut, **kwargs)
+        self._main_vt_stencil = FrozenStencil(main_vt, **kwargs)
+        self._ut_y_edge_stencil = FrozenStencil(ut_y_edge, **kwargs)
+        self._vt_y_edge_stencil = FrozenStencil(vt_y_edge, **kwargs)
+        self._ut_x_edge_stencil = FrozenStencil(ut_x_edge, **kwargs)
+        self._vt_x_edge_stencil = FrozenStencil(vt_x_edge, **kwargs)
+        self._ut_corners_stencil = FrozenStencil(ut_corners, **kwargs_corners)
+        self._vt_corners_stencil = FrozenStencil(vt_corners, **kwargs_corners)
+        self._fxadv_fluxes_stencil = FrozenStencil(fxadv_fluxes_stencil, **kwargs)
 
     def __call__(
         self,

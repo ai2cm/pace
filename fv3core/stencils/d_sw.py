@@ -14,7 +14,7 @@ import fv3core.stencils.divergence_damping as divdamp
 import fv3core.utils.corners as corners
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import XTP_U
@@ -545,27 +545,27 @@ class DGridShallowWaterLagrangianDynamics:
         b_origin = self.grid.compute_origin()
         b_domain = self.grid.domain_shape_compute(add=(1, 1, 0))
         ax_offsets_b = axis_offsets(self.grid, b_origin, b_domain)
-        self._pressure_and_vbke_stencil = StencilWrapper(
+        self._pressure_and_vbke_stencil = FrozenStencil(
             pressure_and_vbke,
             externals={"inline_q": namelist.inline_q, **ax_offsets_b},
             origin=b_origin,
             domain=b_domain,
         )
-        self._flux_adjust_stencil = StencilWrapper(
+        self._flux_adjust_stencil = FrozenStencil(
             flux_adjust,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(),
         )
-        self._flux_capacitor_stencil = StencilWrapper(
+        self._flux_capacitor_stencil = FrozenStencil(
             flux_capacitor, origin=full_origin, domain=full_domain
         )
-        self._ub_vb_from_vort_stencil = StencilWrapper(
+        self._ub_vb_from_vort_stencil = FrozenStencil(
             ub_vb_from_vort, externals=ax_offsets_b, origin=b_origin, domain=b_domain
         )
-        self._u_and_v_from_ke_stencil = StencilWrapper(
+        self._u_and_v_from_ke_stencil = FrozenStencil(
             u_and_v_from_ke, externals=ax_offsets_b, origin=b_origin, domain=b_domain
         )
-        self._compute_vorticity_stencil = StencilWrapper(
+        self._compute_vorticity_stencil = FrozenStencil(
             compute_vorticity,
             externals={
                 "radius": constants.RADIUS,
@@ -575,17 +575,17 @@ class DGridShallowWaterLagrangianDynamics:
             origin=full_origin,
             domain=full_domain,
         )
-        self._adjust_w_and_qcon_stencil = StencilWrapper(
+        self._adjust_w_and_qcon_stencil = FrozenStencil(
             adjust_w_and_qcon,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(),
         )
-        self._heat_diss_stencil = StencilWrapper(
+        self._heat_diss_stencil = FrozenStencil(
             heat_diss,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(),
         )
-        self._heat_source_from_vorticity_damping_stencil = StencilWrapper(
+        self._heat_source_from_vorticity_damping_stencil = FrozenStencil(
             heat_source_from_vorticity_damping,
             externals={
                 "do_skeb": namelist.do_skeb,
@@ -595,13 +595,13 @@ class DGridShallowWaterLagrangianDynamics:
             origin=b_origin,
             domain=b_domain,
         )
-        self._ke_horizontal_vorticity_stencil = StencilWrapper(
+        self._ke_horizontal_vorticity_stencil = FrozenStencil(
             ke_horizontal_vorticity,
             externals=ax_offsets_full,
             origin=full_origin,
             domain=full_domain,
         )
-        self._mult_ubke_stencil = StencilWrapper(
+        self._mult_ubke_stencil = FrozenStencil(
             mult_ubke, externals=ax_offsets_b, origin=b_origin, domain=b_domain
         )
 

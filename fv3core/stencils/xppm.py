@@ -10,7 +10,7 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import gtstencil
 from fv3core.stencils import yppm
 from fv3core.stencils.basic_operations import sign
 from fv3core.utils.grid import axis_offsets
@@ -246,21 +246,22 @@ class XPiecewiseParabolic:
 
     def __init__(self, namelist, iord, jfirst, jlast):
         grid = spec.grid
-        origin = grid.compute_origin()
-        domain = grid.domain_shape_compute(add=(1, 1, 1))
-        ax_offsets = axis_offsets(spec.grid, origin, domain)
         assert namelist.grid_type < 3
         self._dxa = grid.dxa
-        self._compute_flux_stencil = StencilWrapper(
+        origin = (grid.is_, jfirst, 0)
+        domain = (grid.nic + 1, jlast - jfirst + 1, grid.npz + 1)
+        ax_offsets = axis_offsets(grid, origin, domain)
+        self._compute_flux_stencil = gtstencil(
             func=compute_x_flux,
             externals={
                 "iord": iord,
                 "mord": abs(iord),
                 "xt_minmax": True,
-                **ax_offsets,
+                "i_start": ax_offsets["i_start"],
+                "i_end": ax_offsets["i_end"],
             },
-            origin=(grid.is_, jfirst, 0),
-            domain=(grid.nic + 1, jlast - jfirst + 1, grid.npz + 1),
+            origin=origin,
+            domain=domain,
         )
 
     def __call__(self, q: FloatField, c: FloatField, xflux: FloatField):

@@ -2,7 +2,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.global_constants as constants
-from fv3core.decorators import StencilWrapper, gtstencil
+from fv3core.decorators import FrozenStencil, gtstencil
 from fv3core.stencils import basic_operations
 from fv3core.utils import corners, gt4py_utils
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -98,13 +98,13 @@ class UpdateGeopotentialHeightOnCGrid:
             largest_possible_shape,
             self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
         )
-        self._update_dz_c = StencilWrapper(
+        self._update_dz_c = FrozenStencil(
             update_dz_c,
             origin=(1, 1, 0),
             domain=(grid.nic + 3, grid.njc + 3, grid.npz + 1),
         )
-        # TODO: convert to StencilWrapper when we have selective validation
-        self._set_zero_2d = gtstencil()(set_zero_2d)
+        # TODO: convert to FrozenStencil when we have selective validation
+        self._set_zero_2d = gtstencil(set_zero_2d)
 
     def __call__(
         self,

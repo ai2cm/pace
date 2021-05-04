@@ -98,14 +98,26 @@ def sample_wherefail(
     )
 
     if xy_indices:
+        if len(computed_data.shape) == 3:
+            axis = 2
+            any = np.any
+        elif len(computed_data.shape) == 4:
+            axis = (2, 3)
+            any = np.any
+        else:
+            axis = None
+
+            def any(array, axis):
+                return array
+
         found_xy_indices = np.where(
-            np.any(
+            any(
                 np.logical_not(
                     success_array(
                         computed_data, ref_data, eps, ignore_near_zero_errors, near_zero
                     )
                 ),
-                axis=2,
+                axis=axis,
             )
         )
 
@@ -169,7 +181,7 @@ def test_sequential_savepoint(
     subtests,
     caplog,
     threshold_overrides,
-    xy_indices=False,
+    xy_indices=True,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")
     if testobj is None:

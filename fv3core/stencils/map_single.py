@@ -15,26 +15,26 @@ r3 = 1.0 / 3.0
 r23 = 2.0 / 3.0
 
 
-@gtstencil()
+@gtstencil
 def set_dp(dp1: FloatField, pe1: FloatField):
     with computation(PARALLEL), interval(...):
         dp1 = pe1[0, 0, 1] - pe1
 
 
-@gtstencil()
+@gtstencil
 def set_eulerian_pressures(pe: FloatField, ptop: FloatFieldIJ, pbot: FloatFieldIJ):
     with computation(FORWARD), interval(0, 1):
         ptop = pe[0, 0, 0]
         pbot = pe[0, 0, 1]
 
 
-@gtstencil()
+@gtstencil
 def set_remapped_quantity(q: FloatField, set_values: FloatFieldIJ):
     with computation(FORWARD), interval(0, 1):
         q = set_values[0, 0]
 
 
-@gtstencil()
+@gtstencil
 def lagrangian_contributions(
     pe1: FloatField,
     ptop: FloatFieldIJ,
@@ -110,7 +110,7 @@ def compute(
     remap_profile_k = utils.cached_stencil_class(RemapProfile)(
         kord, mode, cache_key=f"map_profile_{kord}_{mode}"
     )
-    dp1, q4_1, q4_2, q4_3, q4_4, origin, domain, i_extent, j_extent = setup_data(
+    dp1, q4_1, q4_2, q4_3, q4_4, origin, domain, _, _ = setup_data(
         q1, pe1, i1, i2, j1, j2
     )
     q4_1, q4_2, q4_3, q4_4 = remap_profile_k(

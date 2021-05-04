@@ -54,7 +54,7 @@ def tvol(gz, u0, v0, w0):
     return gz + 0.5 * (u0 ** 2 + v0 ** 2 + w0 ** 2)
 
 
-@gtstencil()
+@gtstencil
 def init(
     den: sd,
     gz: sd,
@@ -108,7 +108,7 @@ def qcon_func(qcon, q0_liquid, q0_ice, q0_snow, q0_rain, q0_graupel):
     return q0_liquid + q0_ice + q0_snow + q0_rain + q0_graupel
 
 
-@gtstencil()
+@gtstencil
 def compute_qcon(
     qcon: sd, q0_liquid: sd, q0_ice: sd, q0_snow: sd, q0_rain: sd, q0_graupel: sd
 ):
@@ -116,7 +116,7 @@ def compute_qcon(
         qcon = qcon_func(qcon, q0_liquid, q0_ice, q0_snow, q0_rain, q0_graupel)
 
 
-@gtstencil()
+@gtstencil
 def recompute_qcon(
     ri: sd,
     ri_ref: sd,
@@ -132,7 +132,7 @@ def recompute_qcon(
             qcon = qcon_func(qcon, q0_liquid, q0_ice, q0_snow, q0_rain, q0_graupel)
 
 
-@gtstencil()
+@gtstencil
 def m_loop(
     ri: sd,
     ri_ref: sd,
@@ -205,7 +205,7 @@ def m_loop(
     #         )
 
 
-@gtstencil()
+@gtstencil
 def m_loop_hack_interval_3_4(ri: sd, ri_ref: sd, mc: sd, delp: sd, ratio: float):
     with computation(BACKWARD), interval(2, 3):
         ri_ref = 1.5 * ri_ref
@@ -225,7 +225,7 @@ def m_loop_hack_interval_3_4(ri: sd, ri_ref: sd, mc: sd, delp: sd, ratio: float)
 # }
 
 
-@gtstencil()
+@gtstencil
 def equivalent_mass_flux(ri: sd, ri_ref: sd, mc: sd, delp: sd, ratio: float):
     with computation(PARALLEL), interval(...):
         max_ri_ratio = ri / ri_ref
@@ -243,7 +243,7 @@ def equivalent_mass_flux(ri: sd, ri_ref: sd, mc: sd, delp: sd, ratio: float):
 
 # 3d version, doesn't work due to this k-1 value needing to be updated before
 # calculating variables in the k - 1 case.
-# @gtstencil()
+# @gtstencil
 # def KH_instability_adjustment(ri: sd, ri_ref: sd, mc: sd, q0: sd, delp: sd):
 #     with computation(BACKWARD):
 #         with interval(-1, None):
@@ -263,7 +263,7 @@ def equivalent_mass_flux(ri: sd, ri_ref: sd, mc: sd, delp: sd, ratio: float):
 #                 q0 = q0 + h0[0, 0, 1] / delp
 
 
-@gtstencil()
+@gtstencil
 def KH_instability_adjustment_bottom(
     ri: sd, ri_ref: sd, mc: sd, q0: sd, delp: sd, h0: sd
 ):
@@ -273,7 +273,7 @@ def KH_instability_adjustment_bottom(
             q0 = q0 - h0 / delp
 
 
-@gtstencil()
+@gtstencil
 def KH_instability_adjustment_top(ri: sd, ri_ref: sd, mc: sd, q0: sd, delp: sd, h0: sd):
     with computation(BACKWARD), interval(...):
         if ri[0, 0, 1] < ri_ref[0, 0, 1]:
@@ -315,7 +315,7 @@ def KH_instability_adjustment_te(
     )
 
 
-@gtstencil()
+@gtstencil
 def KH_instability_adjustment_bottom_te(
     ri: sd, ri_ref: sd, mc: sd, q0: sd, delp: sd, h0: sd, hd: sd
 ):
@@ -325,7 +325,7 @@ def KH_instability_adjustment_bottom_te(
             q0 = q0 - h0 / delp
 
 
-@gtstencil()
+@gtstencil
 def double_adjust_cvm(
     cvm: sd,
     cpm: sd,
@@ -357,7 +357,7 @@ def readjust_by_frac(a0, a, fra):
     return a + (a0 - a) * fra
 
 
-@gtstencil()
+@gtstencil
 def fraction_adjust(
     t0: sd,
     ta: sd,
@@ -378,13 +378,13 @@ def fraction_adjust(
             w0 = readjust_by_frac(w0, w, fra)
 
 
-@gtstencil()
+@gtstencil
 def fraction_adjust_tracer(q0: sd, q: sd, fra: float):
     with computation(PARALLEL), interval(...):
         q0 = readjust_by_frac(q0, q, fra)
 
 
-@gtstencil()
+@gtstencil
 def finalize(
     u0: sd,
     v0: sd,

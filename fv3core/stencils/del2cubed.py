@@ -3,7 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import fv3core._config as spec
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import FrozenStencil, gtstencil
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
@@ -91,7 +91,7 @@ class HyperdiffusionDamping:
             self.grid.domain_shape_full(add=(1, 1, 1)), origin=origin
         )
 
-        self._corner_fill = StencilWrapper(
+        self._corner_fill = FrozenStencil(
             func=corner_fill,
             externals={
                 **ax_offsets,
@@ -99,9 +99,9 @@ class HyperdiffusionDamping:
             origin=origin,
             domain=domain,
         )
-        self._compute_zonal_flux = StencilWrapper(func=compute_zonal_flux)
-        self._compute_meridional_flux = StencilWrapper(func=compute_meridional_flux)
-        self._update_q = StencilWrapper(func=update_q)
+        self._compute_zonal_flux = gtstencil(compute_zonal_flux)
+        self._compute_meridional_flux = gtstencil(compute_meridional_flux)
+        self._update_q = gtstencil(update_q)
 
         self._copy_corners_x: corners.CopyCorners = corners.CopyCorners("x")
         """Stencil responsible for doing corners updates in x-direction."""

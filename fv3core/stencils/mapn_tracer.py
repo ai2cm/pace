@@ -11,7 +11,7 @@ from fv3core.stencils.remap_profile import RemapProfile
 from fv3core.utils.typing import FloatField
 
 
-@gtstencil()
+@gtstencil
 def set_components(
     tracer: FloatField,
     a4_1: FloatField,

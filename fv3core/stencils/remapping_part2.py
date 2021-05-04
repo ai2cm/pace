@@ -10,13 +10,13 @@ from fv3core.decorators import gtstencil
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
-@gtstencil()
+@gtstencil
 def copy_from_below(a: FloatField, b: FloatField):
     with computation(PARALLEL), interval(1, None):
         b = a[0, 0, -1]
 
 
-@gtstencil()
+@gtstencil
 def init_phis(hs: FloatField, delz: FloatField, phis: FloatField, te_2d: FloatFieldIJ):
     with computation(BACKWARD):
         with interval(-1, None):
@@ -27,7 +27,7 @@ def init_phis(hs: FloatField, delz: FloatField, phis: FloatField, te_2d: FloatFi
             phis = phis[0, 0, 1] - constants.GRAV * delz
 
 
-@gtstencil()
+@gtstencil
 def sum_z1(
     pkz: FloatField,
     delp: FloatField,
@@ -44,7 +44,7 @@ def sum_z1(
             zsum1 = zsum1[0, 0, -1] + pkz * delp
 
 
-@gtstencil()
+@gtstencil
 def sum_te(te: FloatField, te0_2d: FloatField):
     with computation(FORWARD):
         with interval(0, None):

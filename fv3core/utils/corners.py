@@ -3,7 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import StencilWrapper, gtstencil
+from fv3core.decorators import FrozenStencil, gtstencil
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField
@@ -32,7 +32,7 @@ class CopyCorners:
                 self.grid.domain_shape_full(add=(1, 1, 1)), origin=origin
             )
 
-        self._copy_full_domain = StencilWrapper(
+        self._copy_full_domain = FrozenStencil(
             func=copy_defn,
             origin=origin,
             domain=domain,
@@ -41,7 +41,7 @@ class CopyCorners:
 
         ax_offsets = axis_offsets(spec.grid, origin, domain)
         if direction == "x":
-            self._copy_corners = StencilWrapper(
+            self._copy_corners = FrozenStencil(
                 func=copy_corners_x_stencil_defn,
                 origin=origin,
                 domain=domain,
@@ -50,7 +50,7 @@ class CopyCorners:
                 },
             )
         elif direction == "y":
-            self._copy_corners = StencilWrapper(
+            self._copy_corners = FrozenStencil(
                 func=copy_corners_y_stencil_defn,
                 origin=origin,
                 domain=domain,
@@ -111,13 +111,13 @@ def fill_corners_2cells_mult_x(
     return q
 
 
-@gtstencil()
+@gtstencil
 def fill_corners_2cells_x_stencil(q: FloatField):
     with computation(PARALLEL), interval(...):
         q = fill_corners_2cells_mult_x(q, q, 1.0, 1.0, 1.0, 1.0)
 
 
-@gtstencil()
+@gtstencil
 def fill_corners_2cells_y_stencil(q: FloatField):
     with computation(PARALLEL), interval(...):
         q = fill_corners_2cells_mult_y(q, q, 1.0, 1.0, 1.0, 1.0)
@@ -275,16 +275,12 @@ def fill_corners_cells(q: FloatField, direction: str, num_fill: int = 2):
         func = (
             fill_corners_2cells_mult_x if num_fill == 2 else fill_corners_3cells_mult_x
         )
-        stencil = gtstencil(externals={"func": func})(
-            definition,
-        )
+        stencil = gtstencil(definition, externals={"func": func})
     elif direction == "y":
         func = (
             fill_corners_2cells_mult_y if num_fill == 2 else fill_corners_3cells_mult_y
         )
-        stencil = gtstencil(externals={"func": func})(
-            definition,
-        )
+        stencil = gtstencil(definition, externals={"func": func})
     else:
         raise ValueError("Direction not recognized. Specify either x or y")
 
@@ -294,7 +290,7 @@ def fill_corners_cells(q: FloatField, direction: str, num_fill: int = 2):
     stencil(q, origin=origin, domain=domain)
 
 
-@gtstencil()
+@gtstencil
 def copy_corners_x_stencil(q: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -475,7 +471,7 @@ def copy_corners_y_stencil_defn(q_in: FloatField, q_out: FloatField):
             q_out = q_in[-3, -2, 0]
 
 
-@gtstencil()
+@gtstencil
 def copy_corners_y_stencil(q: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -536,7 +532,7 @@ def copy_corners_y_stencil(q: FloatField):
             q = q[-3, -2, 0]
 
 
-@gtstencil()
+@gtstencil
 def fill_corners_bgrid_x(q: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -599,7 +595,7 @@ def fill_corners_bgrid_x(q: FloatField):
             q = q[0, -6, 0]
 
 
-@gtstencil()
+@gtstencil
 def fill_corners_bgrid_y(q: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -707,7 +703,7 @@ def fill_corners_2d_agrid(q, grid, gridtype, direction="x"):
                 fill_ne_corner_2d_agrid(q, i, j, direction, grid)
 
 
-@gtstencil()
+@gtstencil
 def fill_corners_dgrid(x: FloatField, y: FloatField, mysign: float):
     from __externals__ import i_end, i_start, j_end, j_start
 

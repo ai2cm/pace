@@ -6,5 +6,10 @@ from .parallel_translate import (
     ParallelTranslate2PyState,
     ParallelTranslateBaseSlicing,
 )
-from .translate import TranslateFortranData2Py, TranslateGrid, read_serialized_data
+from .translate import (
+    TranslateFortranData2Py,
+    TranslateGrid,
+    pad_field_in_j,
+    read_serialized_data,
+)
 from .translate_fvdynamics import TranslateFVDynamics

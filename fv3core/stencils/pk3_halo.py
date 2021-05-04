@@ -8,7 +8,7 @@ from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 # TODO merge with pe_halo? reuse partials?
 # NOTE: This is different from fv3core.stencils.pe_halo.edge_pe
-@gtstencil()
+@gtstencil
 def edge_pe_update(
     pe: FloatFieldIJ, delp: FloatField, pk3: FloatField, ptop: float, akap: float
 ):

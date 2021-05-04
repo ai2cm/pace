@@ -19,14 +19,14 @@ def grid():
     return spec.grid
 
 
-@gtstencil()
+@gtstencil
 def set_tmps(utmp: FloatField, vtmp: FloatField, big_number: float):
     with computation(PARALLEL), interval(...):
         utmp = big_number
         vtmp = big_number
 
 
-@gtstencil()
+@gtstencil
 def fill_corners_x(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: FloatField):
     with computation(PARALLEL), interval(...):
         utmp = corners.fill_corners_3cells_mult_x(
@@ -37,7 +37,7 @@ def fill_corners_x(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: Float
         )
 
 
-@gtstencil()
+@gtstencil
 def fill_corners_y(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: FloatField):
     with computation(PARALLEL), interval(...):
         vtmp = corners.fill_corners_3cells_mult_y(
@@ -48,7 +48,7 @@ def fill_corners_y(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: Float
         )
 
 
-@gtstencil()
+@gtstencil
 def east_west_edges(
     u: FloatField,
     ua: FloatField,
@@ -101,7 +101,7 @@ def east_west_edges(
             utc = contravariant(uc, v, cosa_u, rsin_u)
 
 
-@gtstencil()
+@gtstencil
 def north_south_edges(
     v: FloatField,
     va: FloatField,
@@ -156,7 +156,7 @@ def lagrange_y_func_p1(qx):
     return a2 * (qx[0, -1, 0] + qx[0, 2, 0]) + a1 * (qx + qx[0, 1, 0])
 
 
-@gtstencil()
+@gtstencil
 def lagrange_interpolation_y_p1(qx: FloatField, qout: FloatField):
     with computation(PARALLEL), interval(...):
         qout = lagrange_y_func_p1(qx)
@@ -167,13 +167,13 @@ def lagrange_x_func_p1(qy):
     return a2 * (qy[-1, 0, 0] + qy[2, 0, 0]) + a1 * (qy + qy[1, 0, 0])
 
 
-@gtstencil()
+@gtstencil
 def lagrange_interpolation_x_p1(qy: FloatField, qout: FloatField):
     with computation(PARALLEL), interval(...):
         qout = lagrange_x_func_p1(qy)
 
 
-@gtstencil()
+@gtstencil
 def avg_box(u: FloatField, v: FloatField, utmp: FloatField, vtmp: FloatField):
     with computation(PARALLEL), interval(...):
         utmp = 0.5 * (u + u[0, 1, 0])
@@ -235,7 +235,7 @@ def contravariant(v1, v2, cosa, rsin2):
     return (v1 - v2 * cosa) * rsin2
 
 
-@gtstencil()
+@gtstencil
 def contravariant_stencil(
     u: FloatField,
     v: FloatField,
@@ -247,7 +247,7 @@ def contravariant_stencil(
         out = contravariant(u, v, cosa, rsin)
 
 
-@gtstencil()
+@gtstencil
 def contravariant_components(
     utmp: FloatField,
     vtmp: FloatField,
@@ -261,7 +261,7 @@ def contravariant_components(
         va = contravariant(vtmp, utmp, cosa_s, rsin2)
 
 
-@gtstencil()
+@gtstencil
 def ut_main(
     utmp: FloatField,
     uc: FloatField,
@@ -275,7 +275,7 @@ def ut_main(
         ut = contravariant(uc, v, cosa_u, rsin_u)
 
 
-@gtstencil()
+@gtstencil
 def vt_main(
     vtmp: FloatField,
     vc: FloatField,
@@ -309,25 +309,25 @@ def vol_conserv_cubic_interp_func_y_rev(v):
     return c1 * v[0, 1, 0] + c2 * v + c3 * v[0, -1, 0]
 
 
-@gtstencil()
+@gtstencil
 def vol_conserv_cubic_interp_x(utmp: FloatField, uc: FloatField):
     with computation(PARALLEL), interval(...):
         uc = vol_conserv_cubic_interp_func_x(utmp)
 
 
-@gtstencil()
+@gtstencil
 def vol_conserv_cubic_interp_x_rev(utmp: FloatField, uc: FloatField):
     with computation(PARALLEL), interval(...):
         uc = vol_conserv_cubic_interp_func_x_rev(utmp)
 
 
-@gtstencil()
+@gtstencil
 def vol_conserv_cubic_interp_y(vtmp: FloatField, vc: FloatField):
     with computation(PARALLEL), interval(...):
         vc = vol_conserv_cubic_interp_func_y(vtmp)
 
 
-@gtstencil()
+@gtstencil
 def vt_edge(
     vtmp: FloatField,
     vc: FloatField,
@@ -346,7 +346,7 @@ def vt_edge(
         vt = contravariant(vc, u, cosa_v, rsin_v)
 
 
-@gtstencil()
+@gtstencil
 def uc_x_edge1(
     ut: FloatField, sin_sg3: FloatFieldIJ, sin_sg1: FloatFieldIJ, uc: FloatField
 ):
@@ -354,7 +354,7 @@ def uc_x_edge1(
         uc = ut * sin_sg3[-1, 0] if ut > 0 else ut * sin_sg1
 
 
-@gtstencil()
+@gtstencil
 def vc_y_edge1(
     vt: FloatField, sin_sg4: FloatFieldIJ, sin_sg2: FloatFieldIJ, vc: FloatField
 ):

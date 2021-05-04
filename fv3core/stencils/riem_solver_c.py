@@ -5,7 +5,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, l
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.sim1_solver import Sim1Solver
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
@@ -84,7 +84,7 @@ class RiemannSolverC:
         self._dz = utils.make_storage_from_shape(shape, origin)
         self._pm = utils.make_storage_from_shape(shape, origin)
 
-        self._precompute_stencil = StencilWrapper(
+        self._precompute_stencil = FrozenStencil(
             precompute,
             origin=origin,
             domain=domain,
@@ -97,7 +97,7 @@ class RiemannSolverC:
             grid.js - 1,
             grid.je + 1,
         )
-        self._finalize_stencil = StencilWrapper(
+        self._finalize_stencil = FrozenStencil(
             finalize,
             origin=origin,
             domain=domain,

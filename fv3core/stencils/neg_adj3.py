@@ -3,7 +3,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import FrozenStencil
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -319,22 +319,22 @@ class AdjustNegativeTracerMixingRatio:
             self._d0_vap = constants.CV_VAP - constants.C_LIQ
         self._lv00 = constants.HLV - self._d0_vap * constants.TICE
 
-        self._fix_neg_water = StencilWrapper(
+        self._fix_neg_water = FrozenStencil(
             func=fix_neg_water,
             origin=grid.compute_origin(),
             domain=grid.domain_shape_compute(),
         )
-        self._fillq = StencilWrapper(
+        self._fillq = FrozenStencil(
             func=fillq,
             origin=grid.compute_origin(),
             domain=grid.domain_shape_compute(),
         )
-        self._fix_water_vapor_down = StencilWrapper(
+        self._fix_water_vapor_down = FrozenStencil(
             func=fix_water_vapor_down,
             origin=grid.compute_origin(),
             domain=grid.domain_shape_compute(),
         )
-        self._fix_neg_cloud = StencilWrapper(
+        self._fix_neg_cloud = FrozenStencil(
             func=fix_neg_cloud,
             origin=grid.compute_origin(),
             domain=grid.domain_shape_compute(),

@@ -4,7 +4,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import fv3core._config as spec
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import StencilWrapper
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils import d_sw, delnflux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
@@ -94,17 +94,17 @@ class FiniteVolumeTransport:
         """Temporary field to use for corner computation in both x and y direction"""
         ord_outer = hord
         ord_inner = 8 if hord == 10 else hord
-        self.stencil_q_i = StencilWrapper(
+        self.stencil_q_i = FrozenStencil(
             q_i_stencil,
             origin=self.grid.full_origin(add=(0, 3, 0)),
             domain=self.grid.domain_shape_full(add=(0, -3, 1)),
         )
-        self.stencil_q_j = StencilWrapper(
+        self.stencil_q_j = FrozenStencil(
             q_j_stencil,
             origin=self.grid.full_origin(add=(3, 0, 0)),
             domain=self.grid.domain_shape_full(add=(-3, 0, 1)),
         )
-        self.stencil_transport_flux = StencilWrapper(
+        self.stencil_transport_flux = FrozenStencil(
             transport_flux_xy,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(1, 1, 1)),
