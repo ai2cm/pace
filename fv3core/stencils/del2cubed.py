@@ -103,6 +103,11 @@ class HyperdiffusionDamping:
         self._compute_meridional_flux = StencilWrapper(func=compute_meridional_flux)
         self._update_q = StencilWrapper(func=update_q)
 
+        self._copy_corners_x: corners.CopyCorners = corners.CopyCorners("x")
+        """Stencil responsible for doing corners updates in x-direction."""
+        self._copy_corners_y: corners.CopyCorners = corners.CopyCorners("y")
+        """Stencil responsible for doing corners updates in y-direction."""
+
     def __call__(self, qdel: FloatField, nmax: int, cd: float):
         """
         Perform hyperdiffusion damping/filtering
@@ -121,11 +126,7 @@ class HyperdiffusionDamping:
             self._corner_fill(qdel)
 
             if nt > 0:
-                corners.copy_corners_x_stencil(
-                    qdel,
-                    origin=(self.grid.isd, self.grid.jsd, 0),
-                    domain=(self.grid.nid, self.grid.njd, self.grid.npz),
-                )
+                self._copy_corners_x(qdel)
             nx = self.grid.nic + 2 * nt + 1
             ny = self.grid.njc + 2 * nt
             self._compute_zonal_flux(
@@ -137,11 +138,7 @@ class HyperdiffusionDamping:
             )
 
             if nt > 0:
-                corners.copy_corners_y_stencil(
-                    qdel,
-                    origin=(self.grid.isd, self.grid.jsd, 0),
-                    domain=(self.grid.nid, self.grid.njd, self.grid.npz),
-                )
+                self._copy_corners_y(qdel)
             nx = self.grid.nic + 2 * nt
             ny = self.grid.njc + 2 * nt + 1
             self._compute_meridional_flux(

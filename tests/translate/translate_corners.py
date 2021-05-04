@@ -52,20 +52,14 @@ class TranslateCopyCorners(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {"q": {}}
         self.in_vars["parameters"] = ["dir"]
         self.out_vars = {"q": {}}
+        self._copy_corners_x = corners.CopyCorners("x")
+        self._copy_corners_y = corners.CopyCorners("y")
 
     def compute_from_storage(self, inputs):
         if inputs["dir"] == 1:
-            corners.copy_corners_x_stencil(
-                inputs["q"],
-                origin=self.grid.full_origin(),
-                domain=self.grid.domain_shape_full(),
-            )
+            self._copy_corners_x(inputs["q"])
         elif inputs["dir"] == 2:
-            corners.copy_corners_y_stencil(
-                inputs["q"],
-                origin=self.grid.full_origin(),
-                domain=self.grid.domain_shape_full(),
-            )
+            self._copy_corners_y(inputs["q"])
         else:
             raise ValueError("Invalid input")
         return inputs

@@ -14,7 +14,7 @@ from gt4py.gtscript import (
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import StencilWrapper
-from fv3core.stencils.basic_operations import copy_stencil_method
+from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
 
@@ -493,7 +493,7 @@ class AGrid2BGridFourthOrder:
             a2b_interpolation, externals=ax_offsets, origin=origin, domain=domain
         )
         self._copy_stencil = StencilWrapper(
-            copy_stencil_method,
+            copy_defn,
             origin=(self.grid.is_, self.grid.js, kstart),
             domain=(self.grid.nic + 1, self.grid.njc + 1, nk),
         )
