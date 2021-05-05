@@ -54,7 +54,7 @@ class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
         for name, value in inputs.items():
             if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
                 inputs[name] = self.make_storage_data(
-                    pad_field_in_j(value, self.grid.npy)
+                    pad_field_in_j(value, self.grid.njd)
                 )
         self.compute_func(**inputs)
         for var in ["gz", "cvm"]:

@@ -29,7 +29,7 @@ class TranslateMapScalar_2d(TranslateFortranData2Py):
         self.is_ = grid.is_
         self.ie = grid.ie
         self.write_vars = ["qs"]
-        self.nj = grid.npy
+        self.nj = grid.njd
         self.nk = grid.npz
 
     def compute(self, inputs):
