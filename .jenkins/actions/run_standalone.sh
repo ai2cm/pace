@@ -25,6 +25,8 @@ exitError()
 DO_PROFILE="false"
 SAVE_CACHE="false"
 SAVE_TIMINGS="false"
+SAVE_ARTIFACTS="true"
+
 if [ "$1" == "profile" ] ; then
     DO_PROFILE="true"
 fi
@@ -34,6 +36,11 @@ fi
 # only save timings if this is neither a cache build nor a profiling run
 if [ "${SAVE_CACHE}" != "true" -a "${DO_PROFILE}" != "true" ] ; then
     SAVE_TIMINGS="true"
+fi
+# check if we store the results of this run
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [[ "$BRANCH" != "master" ]]; then
+  SAVE_ARTIFACTS="false"
 fi
 
 # configuration
@@ -45,8 +52,11 @@ TIMESTEPS=60
 RANKS=6
 BENCHMARK_DIR=${ROOT_DIR}/examples/standalone/benchmarks
 DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}/${experiment}"
-ARTIFACT_DIR="/project/s1053/performance/fv3core_monitor/${backend}"
+ARTIFACT_ROOT="/project/s1053/performance/"
+TIMING_DIR="${ARTIFACT_ROOT}/fv3core_monitor/${backend}"
+PROFILE_DIR="${ARTIFACT_ROOT}/fv3core_profile/${backend}"
 CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/${experiment}/${backend}"
+
 
 # check sanity of environment
 test -n "${experiment}" || exitError 1001 ${LINENO} "experiment is not defined"
@@ -54,8 +64,8 @@ test -n "${backend}" || exitError 1002 ${LINENO} "backend is not defined"
 if [ ! -d "${DATA_DIR}" ] ; then
     exitError 1003 ${LINENO} "test data directory ${DATA_DIR} does not exist"
 fi
-if [ ! -d "${ARTIFACT_DIR}" ] ; then
-    exitError 1004 ${LINENO} "Artifact directory ${ARTIFACT_DIR} does not exist"
+if [ ! -d "${ARTIFACT_ROOT}" ] ; then
+    exitError 1004 ${LINENO} "Artifact directory ${ARTIFACT_ROOT} does not exist"
 fi
 if [ ! -d "${BENCHMARK_DIR}" ] ; then
     exitError 1005 ${LINENO} "Benchmark directory ${BENCHMARK_DIR} does not exist"
@@ -66,20 +76,22 @@ fi
 
 # echo config
 echo "=== $0 configuration ==========================="
-echo "Script:               ${SCRIPT}"
-echo "Do profiling:         ${DO_PROFILE}"
-echo "Save GT4Py caches:    ${SAVE_CACHE}"
-echo "Save timings:         ${SAVE_TIMINGS}"
-echo "Root directory:       ${ROOT_DIR}"
-echo "Experiment:           ${experiment}"
-echo "Backend:              ${backend}"
-echo "Data version:         ${DATA_VERSION}"
-echo "Timesteps:            ${TIMESTEPS}"
-echo "Ranks:                ${RANKS}"
-echo "Benchmark directory:  ${BENCHMARK_DIR}"
-echo "Data directory:       ${DATA_DIR}"
-echo "Artifact directory:   ${ARTIFACT_DIR}"
-echo "Cache directory:      ${CACHE_DIR}"
+echo "Script:                       ${SCRIPT}"
+echo "Do profiling:                 ${DO_PROFILE}"
+echo "Save GT4Py caches:            ${SAVE_CACHE}"
+echo "Save timings:                 ${SAVE_TIMINGS}"
+echo "Save Aritfacts:               ${SAVE_ARTIFACTS}"
+echo "Root directory:               ${ROOT_DIR}"
+echo "Experiment:                   ${experiment}"
+echo "Backend:                      ${backend}"
+echo "Data version:                 ${DATA_VERSION}"
+echo "Timesteps:                    ${TIMESTEPS}"
+echo "Ranks:                        ${RANKS}"
+echo "Benchmark directory:          ${BENCHMARK_DIR}"
+echo "Data directory:               ${DATA_DIR}"
+echo "Perf. artifact directory:     ${TIMING_DIR}"
+echo "Profile artifact directory:   ${PROFILE_DIR}"
+echo "Cache directory:              ${CACHE_DIR}"
 
 # run standalone
 echo "=== Running standalone ========================="
@@ -93,13 +105,13 @@ ${cmd} "" "${profile}"
 echo "=== Post-processing ============================"
 
 # store timing artifacts
-if [ "${SAVE_TIMINGS}" == "true" ] ; then
-    echo "Copying timing information to ${ARTIFACT_DIR}"
-    cp $ROOT_DIR/*.json ${ARTIFACT_DIR}/
+if [ "${SAVE_TIMINGS}" == "true" ] && [ "${SAVE_ARTIFACTS}" == "true" ] ; then
+        echo "Copying timing information to ${TIMING_DIR}"
+        cp $ROOT_DIR/*.json ${TIMING_DIR}/
 fi
 
 # store cache artifacts (and remove caches afterwards)
-if [ "${SAVE_CACHE}" == "true" ] ; then
+if [ "${SAVE_CACHE}" == "true" ] && [ "${SAVE_ARTIFACTS}" == "true" ] ; then
     echo "Pruning cache to make sure no __pycache__ and *_pyext_BUILD dirs are present"
     find .gt_cache* -type d -name \*_pyext_BUILD -prune -exec \rm -rf {} \;
     find .gt_cache* -type d -name __pycache__ -prune -exec \rm -rf {} \;
@@ -107,7 +119,7 @@ if [ "${SAVE_CACHE}" == "true" ] ; then
     mkdir -p ${CACHE_DIR}
     cp ${ROOT_DIR}/GT4PY_VERSION.txt ${CACHE_DIR}
     rm -rf ${CACHE_DIR}/.gt_cache*
-    cp -rp .gt_cache* ${CACHE_DIR}/
+    cp -rp .gt_cache* ${CACHE_DIR}
 fi
 rm -rf .gt_cache*
 
@@ -115,8 +127,10 @@ rm -rf .gt_cache*
 if [ "${DO_PROFILE}" == "true" ] ; then
     echo "Analyzing profiling results"
     ${BENCHMARK_DIR}/process_profiling.sh
-    echo "Copying profiling information to ${ARTIFACT_DIR}"
-    cp $ROOT_DIR/*.prof ${ARTIFACT_DIR}/
+    if [ "${SAVE_ARTIFACTS}" == "true" ] ; then
+        echo "Copying profiling information to ${PROFILE_DIR}"
+        cp $ROOT_DIR/*.prof ${PROFILE_DIR}/prof/
+    fi
 fi
 
 # remove venv (too many files!)
