@@ -109,6 +109,7 @@ class FrozenStencil:
             **self.stencil_config.stencil_kwargs,
         )
         """generated stencil object returned from gt4py."""
+
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
         self._field_origins: Dict[str, Tuple[int, ...]] = compute_field_origins(

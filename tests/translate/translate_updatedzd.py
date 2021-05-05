@@ -1,11 +1,8 @@
-from typing import Optional
-
 import numpy as np
 
 import fv3core._config as spec
 import fv3core.stencils.updatedzd
 from fv3core.stencils import d_sw
-from fv3core.stencils.updatedzd import UpdateHeightOnDGrid
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -44,7 +41,6 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
             self.out_vars[v] = self.in_vars["data_vars"][v]
         self.out_vars["ws"]["kstart"] = grid.npz
         self.out_vars["ws"]["kend"] = None
-        self.updatedzd: Optional[UpdateHeightOnDGrid] = None
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -65,9 +61,4 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
         Given an output array, return the slice of the array which we'd
         like to validate against reference data
         """
-        if varname == "zh":
-            if self.updatedzd is not None:
-                output = output[self.updatedzd._zh_validator.validation_slice]
-            else:
-                raise RuntimeError("must call compute before calling subset_output")
-        return output
+        return self.updatedzd.subset_output(varname, output)

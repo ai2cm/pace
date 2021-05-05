@@ -6,7 +6,6 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils import delnflux
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
-from fv3core.utils import validation
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -211,11 +210,6 @@ class UpdateHeightOnDGrid:
         self._initialize_interpolation_constants()
         self._compile_stencils(namelist)
 
-        self._zh_validator = validation.SelectiveValidation(
-            origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
-        )
-
         self.finite_volume_transport = FiniteVolumeTransport(namelist, namelist.hord_tm)
 
     def _allocate_temporary_storages(self):
@@ -360,4 +354,3 @@ class UpdateHeightOnDGrid:
             ws,
             dt,
         )
-        self._zh_validator.set_nans_if_test_mode(height)
