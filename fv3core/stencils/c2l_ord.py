@@ -1,9 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core._config as spec
 import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import gtstencil
+from fv3core.decorators import FrozenStencil
+from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.util import CubedSphereCommunicator
 from fv3gfs.util.quantity import Quantity
@@ -15,16 +15,39 @@ C1 = 1.125
 C2 = -0.125
 
 
-@gtstencil
-def ord4_transform(
+@utils.mark_untested("This namelist option is not tested")
+def c2l_ord2(
     u: FloatField,
     v: FloatField,
+    dx: FloatFieldIJ,
+    dy: FloatFieldIJ,
     a11: FloatFieldIJ,
     a12: FloatFieldIJ,
     a21: FloatFieldIJ,
     a22: FloatFieldIJ,
+    ua: FloatField,
+    va: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        wu = u * dx
+        wv = v * dy
+        # Co-variant vorticity-conserving interpolation
+        u1 = 2.0 * (wu + wu[0, 1, 0]) / (dx + dx[0, 1])
+        v1 = 2.0 * (wv + wv[1, 0, 0]) / (dy + dy[1, 0])
+        # Cubed (cell center co-variant winds) to lat-lon
+        ua = a11 * u1 + a12 * v1
+        va = a21 * u1 + a22 * v1
+
+
+def ord4_transform(
+    u: FloatField,
+    v: FloatField,
     dx: FloatFieldIJ,
     dy: FloatFieldIJ,
+    a11: FloatFieldIJ,
+    a12: FloatFieldIJ,
+    a21: FloatFieldIJ,
+    a22: FloatFieldIJ,
     ua: FloatField,
     va: FloatField,
 ):
@@ -49,44 +72,80 @@ def ord4_transform(
         va = a21 * utmp + a22 * vtmp
 
 
-def compute_cubed_to_latlon(
-    u: Quantity,
-    v: Quantity,
-    ua: FloatField,
-    va: FloatField,
-    comm: CubedSphereCommunicator,
-    do_halo_update: bool,
-):
+class CubedToLatLon:
     """
-    Interpolate D-grid to A-grid winds at latitude-longitude coordinates.
-
-    Args:
-        u: x-wind on D-grid (in)
-        v: y-wind on D-grid (in)
-        ua: x-wind on A-grid (out)
-        va: y-wind on A-grid (out)
-        comm: Cubed-sphere communicator
-        do_halo_update: If True, performs a halo update on u and v
+    Fortan name is c2l_ord2
     """
-    do_halo_update = do_halo_update and global_config.get_do_halo_exchange()
-    grid = spec.grid
 
-    if spec.namelist.c2l_ord == 2:
-        raise NotImplementedError("c2l_ord of 2 is not implemented")
-    else:
-        if do_halo_update:
-            comm.vector_halo_update(u, v, n_points=grid.halo)
-        ord4_transform(
+    def __init__(self, grid, namelist, do_halo_update=None):
+        """
+        Initializes stencils to use either 2nd or 4th order of interpolation
+        based on namelist setting
+        Args:
+            grid: fv3core grid object
+            namelist:
+                c2l_ord: Order of interpolation
+            do_halo_update: Optional. If passed, overrides global halo exchange flag
+                            and performs a halo update on u and v
+        """
+        if do_halo_update is not None:
+            self._do_halo_update = do_halo_update
+        else:
+            self._do_halo_update = global_config.get_do_halo_exchange()
+        self._do_ord4 = True
+        self.grid = grid
+        if namelist.c2l_ord == 2:
+            self._do_ord4 = False
+            self._compute_cubed_to_latlon = FrozenStencil(
+                func=c2l_ord2,
+                origin=self.grid.compute_origin(
+                    add=(-1, -1, 0) if self._do_halo_update else (0, 0, 0)
+                ),
+                domain=self.grid.domain_shape_compute(
+                    add=(2, 2, 0) if self._do_halo_update else (0, 0, 0)
+                ),
+            )
+        else:
+            origin = self.grid.compute_origin()
+            domain = self.grid.domain_shape_compute()
+            ax_offsets = axis_offsets(self.grid, origin, domain)
+            self._compute_cubed_to_latlon = FrozenStencil(
+                func=ord4_transform,
+                externals={
+                    **ax_offsets,
+                },
+                origin=origin,
+                domain=domain,
+            )
+
+    def __call__(
+        self,
+        u: Quantity,
+        v: Quantity,
+        ua: FloatField,
+        va: FloatField,
+        comm: CubedSphereCommunicator,
+    ):
+        """
+        Interpolate D-grid to A-grid winds at latitude-longitude coordinates.
+        Args:
+            u: x-wind on D-grid (in)
+            v: y-wind on D-grid (in)
+            ua: x-wind on A-grid (out)
+            va: y-wind on A-grid (out)
+            comm: Cubed-sphere communicator
+        """
+        if self._do_halo_update and self._do_ord4:
+            comm.vector_halo_update(u, v, n_points=self.grid.halo)
+        self._compute_cubed_to_latlon(
             u.storage,
             v.storage,
-            grid.a11,
-            grid.a12,
-            grid.a21,
-            grid.a22,
-            grid.dx,
-            grid.dy,
+            self.grid.dx,
+            self.grid.dy,
+            self.grid.a11,
+            self.grid.a12,
+            self.grid.a21,
+            self.grid.a22,
             ua,
             va,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(),
         )

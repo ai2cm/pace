@@ -10,8 +10,8 @@ import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import ArgSpec, get_namespace, gtstencil
-from fv3core.stencils import c2l_ord
 from fv3core.stencils.basic_operations import copy_stencil
+from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
@@ -135,6 +135,7 @@ def wrapup(
     comm: fv3gfs.util.CubedSphereCommunicator,
     grid,
     adjust_stencil: AdjustNegativeTracerMixingRatio,
+    cubed_to_latlon_stencil: CubedToLatLon,
 ):
     if __debug__:
         if grid.rank == 0:
@@ -156,8 +157,12 @@ def wrapup(
     if __debug__:
         if grid.rank == 0:
             print("CubedToLatLon")
-    c2l_ord.compute_cubed_to_latlon(
-        state.u_quantity, state.v_quantity, state.ua, state.va, comm, True
+    cubed_to_latlon_stencil(
+        state.u_quantity,
+        state.v_quantity,
+        state.ua,
+        state.va,
+        comm,
     )
 
 
@@ -287,6 +292,7 @@ class DynamicalCore:
             comm, namelist, self._ak, self._bk, self._phis
         )
         self._hyperdiffusion = HyperdiffusionDamping(self.grid)
+        self._do_cubed_to_latlon = CubedToLatLon(self.grid, namelist)
 
         self._temporaries = fvdyn_temporaries(
             self.grid.domain_shape_full(add=(1, 1, 1)), self.grid
@@ -419,7 +425,13 @@ class DynamicalCore:
                         self.namelist,
                     )
                 state.wsd[:] = state.wsd_3d[:, :, 0]
-        wrapup(state, self.comm, self.grid, self._adjust_tracer_mixing_ratio)
+        wrapup(
+            state,
+            self.comm,
+            self.grid,
+            self._adjust_tracer_mixing_ratio,
+            self._do_cubed_to_latlon,
+        )
 
     def _dyn(self, state, timer=fv3gfs.util.NullTimer()):
         copy_stencil(
