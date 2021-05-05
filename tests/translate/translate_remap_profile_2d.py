@@ -49,25 +49,25 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
                 del inputs[serialname]
 
     def compute(self, inputs):
-        self.compute_func = profile.RemapProfile(inputs["kord"], inputs["iv"])
+        i1 = self.grid.global_to_local_x(inputs["i1"] - 1)
+        i2 = self.grid.global_to_local_x(inputs["i2"] - 1)
+        j1 = 0
+        j2 = 0
+        self.compute_func = profile.RemapProfile(
+            inputs["kord"], inputs["iv"], i1, i2, j1, j2
+        )
         self.make_storage_data_input_vars(inputs)
-        inputs["i1"] = self.grid.global_to_local_x(inputs["i1"] - 1)
-        inputs["i2"] = self.grid.global_to_local_x(inputs["i2"] - 1)
-        inputs["j1"] = 0
-        inputs["j2"] = 0
         if "qs" not in inputs:
             inputs["qs"] = utils.make_storage_from_shape(self.maxshape)
         else:
             qs_field = utils.make_storage_from_shape(
                 inputs["delp"].shape, origin=(0, 0, 0)
             )
-            qs_field[
-                inputs["i1"] : inputs["i2"] + 1, inputs["j1"] : inputs["j2"] + 1, -1
-            ] = inputs["qs"][
-                inputs["i1"] : inputs["i2"] + 1, inputs["j1"] : inputs["j2"] + 1, 0
+            qs_field[i1 : i2 + 1, j1 : j2 + 1, -1] = inputs["qs"][
+                i1 : i2 + 1, j1 : j2 + 1, 0
             ]
             inputs["qs"] = qs_field
-        del inputs["km"], inputs["iv"], inputs["kord"]
+        del inputs["km"], inputs["iv"], inputs["kord"], inputs["i1"], inputs["i2"]
         q4_1, q4_2, q4_3, q4_4 = self.compute_func(**inputs)
         return self.slice_output(
             inputs, {"q4_1": q4_1, "q4_2": q4_2, "q4_3": q4_3, "q4_4": q4_4}

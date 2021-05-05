@@ -5,7 +5,7 @@ from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, 
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import gtstencil
+from fv3core.decorators import FrozenStencil
 from fv3core.utils.typing import FloatField
 
 
@@ -509,55 +509,89 @@ class RemapProfile:
     This corresponds to the cs_profile routine in FV3
     """
 
-    def __init__(self, kord, iv):
+    def __init__(
+        self,
+        kord: int,
+        iv: int,
+        i1: int,
+        i2: int,
+        j1: int,
+        j2: int,
+    ):
+        """
+        The constraints on the spline are set by kord and iv.
+        Arguments:
+            kord: ???
+            iv: ???
+            i1: The first i-element to compute on
+            i2: The last i-element to compute on
+            j1: The first j-element to compute on
+            j2: The last j-element to compute on
+        """
         assert kord <= 10, f"kord {kord} not implemented."
         grid = spec.grid
-        self._full_orig: Tuple[int] = grid.full_origin()
-        self._km: int = grid.npz
+        full_orig: Tuple[int] = grid.full_origin()
+        km: int = grid.npz
         self._kord = kord
 
         self._gam: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
         )
         self._q: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
         )
         self._q_bot: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
         )
         self._extm: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
         )
         self._ext5: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
         )
         self._ext6: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=self._full_orig
+            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
         )
 
-        self._set_values_stencil = gtstencil(
+        i_extent: int = i2 - i1 + 1
+        j_extent: int = j2 - j1 + 1
+        origin: Tuple[int, int, int] = (i1, j1, 0)
+        domain: Tuple[int, int, int] = (i_extent, j_extent, km)
+        domain_extend: Tuple[int, int, int] = (i_extent, j_extent, km + 1)
+
+        self._set_values_stencil = FrozenStencil(
             func=set_vals,
             externals={"iv": iv, "kord": abs(kord)},
+            origin=origin,
+            domain=domain_extend,
         )
 
-        self._apply_constraints_stencil = gtstencil(
+        self._apply_constraints_stencil = FrozenStencil(
             func=apply_constraints,
             externals={"iv": iv, "kord": abs(kord)},
+            origin=origin,
+            domain=domain,
         )
 
-        self._set_top_stencil = gtstencil(
+        self._set_top_stencil = FrozenStencil(
             func=set_top,
             externals={"iv": iv},
+            origin=origin,
+            domain=(i_extent, j_extent, 2),
         )
 
-        self._set_set_inner_stencil = gtstencil(
+        self._set_set_inner_stencil = FrozenStencil(
             func=set_inner,
             externals={"iv": iv, "kord": abs(kord)},
+            origin=(i1, j1, 2),
+            domain=(i_extent, j_extent, km - 4),
         )
 
-        self._set_bottom_stencil = gtstencil(
+        self._set_bottom_stencil = FrozenStencil(
             func=set_bottom,
             externals={"iv": iv},
+            origin=(i1, j1, km - 2),
+            domain=(i_extent, j_extent, 2),
         )
 
     def __call__(
@@ -568,10 +602,6 @@ class RemapProfile:
         a4_3: FloatField,
         a4_4: FloatField,
         delp: FloatField,
-        i1: int,
-        i2: int,
-        j1: int,
-        j2: int,
         qmin: float = 0.0,
     ):
         """
@@ -585,18 +615,8 @@ class RemapProfile:
             a4_3: The third interpolation coefficient
             a4_4: The fourth interpolation coefficient
             delp: The pressure difference between grid levels
-            i1: The first i-element to compute on
-            i2: The last i-element to compute on
-            j1: The first j-element to compute on
-            j2: The last j-element to compute on
             qmin: The minimum value the field can take in a cell
         """
-        i_extent: int = i2 - i1 + 1
-        j_extent: int = j2 - j1 + 1
-        origin: Tuple[int, int, int] = (i1, j1, 0)
-        domain: Tuple[int, int, int] = (i_extent, j_extent, self._km)
-        domain_extend: Tuple[int, int, int] = (i_extent, j_extent, self._km + 1)
-
         self._set_values_stencil(
             self._gam,
             self._q,
@@ -607,8 +627,6 @@ class RemapProfile:
             a4_4,
             self._q_bot,
             qs,
-            origin=origin,
-            domain=domain_extend,
         )
 
         if abs(self._kord) <= 16:
@@ -622,8 +640,6 @@ class RemapProfile:
                 self._ext5,
                 self._ext6,
                 self._extm,
-                origin=origin,
-                domain=domain,
             )
 
             self._set_top_stencil(
@@ -632,8 +648,6 @@ class RemapProfile:
                 a4_3,
                 a4_4,
                 self._extm,
-                origin=origin,
-                domain=(i_extent, j_extent, 2),
             )
 
             self._set_set_inner_stencil(
@@ -646,8 +660,6 @@ class RemapProfile:
                 self._ext5,
                 self._ext6,
                 qmin,
-                origin=(i1, j1, 2),
-                domain=(i_extent, j_extent, self._km - 4),
             )
 
             self._set_bottom_stencil(
@@ -656,8 +668,6 @@ class RemapProfile:
                 a4_3,
                 a4_4,
                 self._extm,
-                origin=(i1, j1, self._km - 2),
-                domain=(i_extent, j_extent, 2),
             )
 
         return a4_1, a4_2, a4_3, a4_4
