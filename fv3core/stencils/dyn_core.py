@@ -206,6 +206,19 @@ def _initialize_edge_pe_stencil(grid: Grid) -> FrozenStencil:
     )
 
 
+def _initialize_temp_adjust_stencil(grid, n_adj):
+    """
+    Returns the FrozenStencil Object for the temperature_adjust stencil
+    Args:
+        n_adj: Number of vertical levels to adjust temperature on
+    """
+    return FrozenStencil(
+        temperature_adjust.compute_pkz_tempadjust,
+        origin=grid.compute_origin(),
+        domain=(grid.nic, grid.njc, n_adj),
+    )
+
+
 class AcousticDynamics:
     """
     Fortran name is dyn_core
@@ -325,22 +338,9 @@ class AcousticDynamics:
             self._hyperdiffusion = HyperdiffusionDamping(self.grid)
         if self.namelist.rf_fast:
             self._rayleigh_damping = ray_fast.RayleighDamping(self.grid, self.namelist)
-        self._compute_pkz_tempadjust = self.initialize_temp_adjust_stencil(
+        self._compute_pkz_tempadjust = _initialize_temp_adjust_stencil(
             self.grid,
             self._nk_heat_dissipation,
-        )
-
-    @staticmethod
-    def initialize_temp_adjust_stencil(grid, n_adj):
-        """
-        Returns the FrozenStencil Object for the temperature_adjust stencil
-        Args:
-            n_adj: Number of vertical levels to adjust temperature on
-        """
-        return FrozenStencil(
-            temperature_adjust.compute_pkz_tempadjust,
-            origin=grid.compute_origin(),
-            domain=(grid.nic, grid.njc, n_adj),
         )
 
     def __call__(self, state):
