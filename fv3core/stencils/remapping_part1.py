@@ -3,11 +3,11 @@ from typing import Any, Dict
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core._config as spec
-import fv3core.stencils.mapn_tracer as mapn_tracer
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
 from fv3core.stencils.map_single import MapSingle
+from fv3core.stencils.mapn_tracer import MapNTracer
 from fv3core.stencils.moist_cv import moist_pt_func
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
@@ -303,19 +303,15 @@ def compute(
     )
 
     # TODO if nq > 5:
-    mapn_tracer.compute(
-        pe1,
-        pe2,
-        dp2,
-        tracers,
-        nq,
-        0.0,
+    mapn_tracer = utils.cached_stencil_class(MapNTracer)(
+        abs(spec.namelist.kord_tr),
         grid.is_,
         grid.ie,
         grid.js,
         grid.je,
-        abs(spec.namelist.kord_tr),
+        cache_key="remap1-tracers",
     )
+    mapn_tracer(pe1, pe2, dp2, tracers, nq, 0.0)
     # TODO else if nq > 0:
     # TODO map1_q2, fillz
     kord_wz = spec.namelist.kord_wz

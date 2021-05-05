@@ -1,7 +1,7 @@
+import fv3core._config as spec
 import fv3gfs.util as fv3util
 from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.testing import ParallelTranslate2Py
-import fv3core._config as spec
 
 
 class TranslateCubedToLatLon(ParallelTranslate2Py):

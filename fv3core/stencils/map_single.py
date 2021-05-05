@@ -126,6 +126,19 @@ class LagrangianContributions:
         q4_4: FloatField,
         dp1: FloatField,
     ):
+        """
+        Distributes a field from the deformed Lagrangian grid onto the remapped
+        Eulerian grid.
+
+        Args:
+            q1 (out): the field on the remapped grid
+            pe1 (in): Lagrangian pressure levels
+            pe2 (in): Eulerian pressure levels
+            q4_1, q4_2, q4_3, a4_4 (in): the interpolation coefficients that specify
+                the cubic subgrid distribution of q on the deformed grid.
+            dp1 (in): the pressure difference between the top and bottom of each
+                Lagrangian level
+        """
         eul_domain = (self.domain[0], self.domain[1], 1)
 
         # A stencil with a loop over k2:
@@ -206,8 +219,8 @@ class MapSingle:
         Args:
             q1 (out): Remapped field on Eulerian grid
             pe1 (in): Lagrangian pressure levels
-            pe2 (out): Eulerian pressure levels
-            qs (out): Field to be remapped on deformed grid
+            pe2 (in): Eulerian pressure levels
+            qs (in): Field to be remapped on deformed grid
             jfirst: Starting index of the J-dir compute domain
             jlast: Final index of the J-dir compute domain
         """

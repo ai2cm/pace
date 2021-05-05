@@ -6,7 +6,6 @@ from fv3core.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in
 class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = MapN_Tracer.compute
         self.in_vars["data_vars"] = {
             "pe1": {"istart": grid.is_, "iend": grid.ie - 2, "axis": 1},
             "pe2": {"istart": grid.is_, "iend": grid.ie - 2, "axis": 1},
@@ -42,5 +41,12 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
             pad_field_in_j(inputs["dp2"], self.grid.npy)
         )
         inputs["kord"] = abs(spec.namelist.kord_tr)
+        self.compute_func = MapN_Tracer.MapNTracer(
+            inputs.pop("kord"),
+            inputs.pop("i1"),
+            inputs.pop("i2"),
+            inputs.pop("j1"),
+            inputs.pop("j2"),
+        )
         self.compute_func(**inputs)
         return self.slice_output(inputs)
