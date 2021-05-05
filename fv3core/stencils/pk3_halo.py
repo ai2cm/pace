@@ -1,14 +1,13 @@
 from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import gtstencil
+from fv3core.decorators import FrozenStencil
+from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 # TODO merge with pe_halo? reuse partials?
 # NOTE: This is different from fv3core.stencils.pe_halo.edge_pe
-@gtstencil
 def edge_pe_update(
     pe: FloatFieldIJ, delp: FloatField, pk3: FloatField, ptop: float, akap: float
 ):
@@ -34,18 +33,33 @@ def edge_pe_update(
                 pk3 = pe ** akap
 
 
-def compute(pk3, delp, ptop, akap):
-    grid = spec.grid
-    pe_tmp = utils.make_storage_from_shape(
-        pk3.shape[0:2], grid.full_origin(), cache_key="pk3_halo_pe_tmp"
-    )
+class PK3Halo:
+    """
+    Fortran name is pk3_halo
+    """
 
-    edge_pe_update(
-        pe_tmp,
-        delp,
-        pk3,
-        ptop,
-        akap,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(add=(0, 0, 1)),
-    )
+    def __init__(self, grid):
+        shape_2D = grid.domain_shape_full(add=(1, 1, 1))[0:2]
+        origin = grid.full_origin()
+        domain = grid.domain_shape_full(add=(0, 0, 1))
+        ax_offsets = axis_offsets(grid, origin, domain)
+        self._pe_tmp = utils.make_storage_from_shape(shape_2D, grid.full_origin())
+        self._edge_pe_update = FrozenStencil(
+            func=edge_pe_update,
+            externals={
+                **ax_offsets,
+            },
+            origin=origin,
+            domain=domain,
+        )
+
+    def __call__(self, pk3: FloatField, delp: FloatField, ptop: float, akap: float):
+        """Update pressure (pk3) in halo region
+
+        Args:
+            pk3: Interface pressure raised to power of kappa using constant kappa
+            delp: Vertical delta in pressure
+            ptop: The pressure level at the top of atmosphere
+            akap: Poisson constant (KAPPA)
+        """
+        self._edge_pe_update(self._pe_tmp, delp, pk3, ptop, akap)

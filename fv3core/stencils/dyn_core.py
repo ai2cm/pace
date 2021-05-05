@@ -15,7 +15,6 @@ import fv3core.stencils.c_sw as c_sw
 import fv3core.stencils.d_sw as d_sw
 import fv3core.stencils.nh_p_grad as nh_p_grad
 import fv3core.stencils.pe_halo as pe_halo
-import fv3core.stencils.pk3_halo as pk3_halo
 import fv3core.stencils.ray_fast as ray_fast
 import fv3core.stencils.temperature_adjust as temperature_adjust
 import fv3core.stencils.updatedzc as updatedzc
@@ -28,6 +27,7 @@ import fv3gfs.util as fv3util
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
+from fv3core.stencils.pk3_halo import PK3Halo
 from fv3core.stencils.riem_solver3 import RiemannSolver3
 from fv3core.stencils.riem_solver_c import RiemannSolverC
 from fv3core.utils import Grid
@@ -342,6 +342,7 @@ class AcousticDynamics:
             self.grid,
             self._nk_heat_dissipation,
         )
+        self._pk3_halo = PK3Halo(self.grid)
 
     def __call__(self, state):
         # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
@@ -603,7 +604,7 @@ class AcousticDynamics:
                         "unimplemented namelist option use_logp=True"
                     )
                 else:
-                    pk3_halo.compute(state.pk3, state.delp, state.ptop, akap)
+                    self._pk3_halo(state.pk3, state.delp, state.ptop, akap)
             if not self.namelist.hydrostatic:
                 if self.do_halo_exchange:
                     reqs["zh_quantity"].wait()
