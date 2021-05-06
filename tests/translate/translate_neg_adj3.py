@@ -36,9 +36,7 @@ class TranslateNeg_Adj3(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        compute_fn = AdjustNegativeTracerMixingRatio(
-            self.grid, spec.namelist, inputs["qvapor"], inputs["qgraupel"]
-        )
+        compute_fn = AdjustNegativeTracerMixingRatio(self.grid, spec.namelist)
         compute_fn(
             inputs["qvapor"],
             inputs["qliquid"],

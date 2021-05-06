@@ -256,8 +256,6 @@ class DynamicalCore:
         ak: fv3gfs.util.Quantity,
         bk: fv3gfs.util.Quantity,
         phis: fv3gfs.util.Quantity,
-        qvapor: fv3gfs.util.Quantity,
-        qgraupel: fv3gfs.util.Quantity,
     ):
         """
         Args:
@@ -295,7 +293,7 @@ class DynamicalCore:
         if not (not self.namelist.inline_q and DynamicalCore.NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
-            self.grid, self.namelist, qvapor, qgraupel
+            self.grid, self.namelist
         )
 
     def step_dynamics(
@@ -474,8 +472,6 @@ def fv_dynamics(
         state["atmosphere_hybrid_a_coordinate"],
         state["atmosphere_hybrid_b_coordinate"],
         state["surface_geopotential"],
-        state["specific_humidity"].data,
-        state["graupel_mixing_ratio"].data,
     )
     dycore.step_dynamics(
         state,

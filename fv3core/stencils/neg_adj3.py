@@ -301,11 +301,9 @@ class AdjustNegativeTracerMixingRatio:
         self,
         grid,
         namelist,
-        qvapor,
-        qgraupel,
     ):
 
-        shape_ij = qgraupel.shape[0:2]
+        shape_ij = grid.domain_shape_full(add=(1, 1, 0))[:2]
         self._sum1 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
         self._sum2 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
         if namelist.check_negative:
