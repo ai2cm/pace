@@ -9,7 +9,7 @@ import fv3core.utils.global_config as global_config
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
-from fv3core.decorators import ArgSpec, get_namespace, gtstencil
+from fv3core.decorators import ArgSpec, FrozenStencil, get_namespace, gtstencil
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
@@ -17,19 +17,6 @@ from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.tracer_2d_1l import Tracer2D1L
 from fv3core.utils.typing import FloatField, FloatFieldK
-
-
-@gtstencil
-def init_ph_columns(
-    ak: FloatFieldK,
-    bk: FloatFieldK,
-    pfull: FloatField,
-    p_ref: float,
-):
-    with computation(PARALLEL), interval(...):
-        ph1 = ak + bk * p_ref
-        ph2 = ak[1] + bk[1] * p_ref
-        pfull = (ph2 - ph1) / log(ph2 / ph1)
 
 
 @gtstencil
@@ -44,18 +31,19 @@ def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatFiel
         omga = delp / delz * w
 
 
+def init_pfull(
+    ak: FloatFieldK,
+    bk: FloatFieldK,
+    pfull: FloatField,
+    p_ref: float,
+):
+    with computation(PARALLEL), interval(...):
+        ph1 = ak + bk * p_ref
+        ph2 = ak[1] + bk[1] * p_ref
+        pfull = (ph2 - ph1) / log(ph2 / ph1)
+
+
 def compute_preamble(state, comm, grid, namelist):
-    init_ph_columns(
-        state.ak,
-        state.bk,
-        state.pfull,
-        namelist.p_ref,
-        origin=(0, 0, 0),
-        domain=(1, 1, grid.domain_shape_compute()[2]),
-    )
-
-    state.pfull = utils.make_storage_data(state.pfull[0, 0, :], state.ak.shape, (0,))
-
     if namelist.hydrostatic:
         raise NotImplementedError("Hydrostatic is not implemented")
     if __debug__:
@@ -170,7 +158,7 @@ def fvdyn_temporaries(shape, grid):
     origin = grid.full_origin()
     tmps = {}
     halo_vars = ["cappa"]
-    storage_vars = ["te_2d", "dp1", "pfull", "cvm", "wsd_3d"]
+    storage_vars = ["te_2d", "dp1", "cvm", "wsd_3d"]
     column_vars = ["gz"]
     plane_vars = ["te_2d", "te0_2d", "wsd"]
     utils.storage_dict(
@@ -288,8 +276,15 @@ class DynamicalCore:
         self._ak = ak.storage
         self._bk = bk.storage
         self._phis = phis.storage
+        pfull_stencil = FrozenStencil(
+            init_pfull, origin=(0, 0, 0), domain=(1, 1, self.grid.npz)
+        )
+        pfull = utils.make_storage_from_shape((1, 1, self._ak.shape[0]))
+        pfull_stencil(self._ak, self._bk, pfull, self.namelist.p_ref)
+        # workaround because cannot write to FieldK storage in stencil
+        self._pfull = utils.make_storage_data(pfull[0, 0, :], self._ak.shape, (0,))
         self.acoustic_dynamics = AcousticDynamics(
-            comm, namelist, self._ak, self._bk, self._phis
+            comm, namelist, self._ak, self._bk, self._pfull, self._phis
         )
         self._hyperdiffusion = HyperdiffusionDamping(self.grid)
         self._do_cubed_to_latlon = CubedToLatLon(self.grid, namelist)
@@ -403,7 +398,7 @@ class DynamicalCore:
                         state.omga,
                         self._ak,
                         self._bk,
-                        state.pfull,
+                        self._pfull,
                         state.dp1,
                         state.ptop,
                         constants.KAPPA,

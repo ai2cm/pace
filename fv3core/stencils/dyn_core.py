@@ -231,6 +231,7 @@ class AcousticDynamics:
         namelist,
         ak: FloatFieldK,
         bk: FloatFieldK,
+        pfull: FloatFieldK,
         phis: FloatFieldIJ,
     ):
         """
@@ -248,6 +249,7 @@ class AcousticDynamics:
         assert not self.namelist.use_logp, "use_logp=True is not implemented"
         self.grid = spec.grid
         self.do_halo_exchange = global_config.get_do_halo_exchange()
+        self._pfull = pfull
         self._nk_heat_dissipation = get_nk_heat_dissipation(namelist, self.grid)
         self.nonhydrostatic_pressure_gradient = (
             nh_p_grad.NonHydrostaticPressureGradient()
@@ -347,7 +349,7 @@ class AcousticDynamics:
     def __call__(self, state):
         # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
         # mfyd, cxd, cyd, pkz, peln, q_con, ak, bk, diss_estd, cappa, mdt, n_split,
-        # akap, ptop, pfull, n_map, comm):
+        # akap, ptop, n_map, comm):
         end_step = state.n_map == self.namelist.k_split
         akap = constants.KAPPA
         dt = state.mdt / self.namelist.n_split
@@ -640,7 +642,7 @@ class AcousticDynamics:
                     state.v,
                     state.w,
                     self._dp_ref,
-                    state.pfull,
+                    self._pfull,
                     dt,
                     state.ptop,
                     state.ks,

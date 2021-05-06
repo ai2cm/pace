@@ -117,12 +117,12 @@ class TranslateDynCore(ParallelTranslate2PyState):
         self.max_error = 2e-6
 
     def compute_parallel(self, inputs, communicator):
-
         self._base.compute_func = dyn_core.AcousticDynamics(
             communicator,
             spec.namelist,
             inputs["ak"],
             inputs["bk"],
+            inputs["pfull"],
             inputs["phis"],
         )
         return super().compute_parallel(inputs, communicator)
