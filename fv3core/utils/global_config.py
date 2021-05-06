@@ -95,9 +95,9 @@ class StencilConfig(Hashable):
         return self._hash
 
     def __eq__(self, other):
-        if isinstance(other, Hashable):
+        try:
             return self.__hash__() == other.__hash__()
-        else:
+        except AttributeError:
             return False
 
     @property

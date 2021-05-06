@@ -3,7 +3,18 @@ import collections.abc
 import functools
 import inspect
 import types
-from typing import Any, Callable, Dict, Hashable, List, Mapping, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Hashable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 import gt4py
 import gt4py.definitions
@@ -223,7 +234,7 @@ def gtstencil(
         origin: the start of the compute domain
         domain: the size of the compute domain, required if origin is given
         stencil_config: stencil configuration, by default global stencil
-            configuration at the time of calling this function is used
+            configuration at the first call time is used
         externals: compile-time constants used by stencil
 
     Returns:
@@ -253,6 +264,12 @@ def gtstencil(
 
 def get_non_frozen_stencil(func, externals) -> Callable[..., None]:
     stencil_dict: Dict[Hashable, FrozenStencil] = {}
+    # must use a mutable container object here to hold config,
+    # `global` does not work in this case. Cannot retreve StencilConfig
+    # yet because it is not set at import time, when this function
+    # is called by gtstencil throughout the repo
+    # so instead we retrieve it at first call time
+    stencil_config_holder: List[StencilConfig] = []
 
     @functools.wraps(func)
     def decorated(
@@ -261,17 +278,23 @@ def get_non_frozen_stencil(func, externals) -> Callable[..., None]:
         domain: Index3D,
         **kwargs,
     ):
-        stencil_config = global_config.get_stencil_config()
-        if isinstance(origin, Mapping):
-            origin_key: Hashable = tuple(sorted(origin.items(), key=lambda x: x[0]))
-            origin_tuple: Tuple[int, ...] = origin["_all_"]
-        else:
+        try:
+            stencil_config = stencil_config_holder[0]
+        except IndexError:
+            stencil_config = global_config.get_stencil_config()
+            stencil_config_holder.append(stencil_config)
+        try:  # works if origin is a Mapping
+            origin_key: Hashable = tuple(
+                sorted(origin.items(), key=lambda x: x[0])  # type: ignore
+            )
+            origin_tuple: Tuple[int, ...] = origin["_all_"]  # type: ignore
+        except AttributeError:  # assume origin is a tuple
             origin_key = origin
-            origin_tuple = origin
+            origin_tuple = cast(Index3D, origin)
         # rank is needed in the key for regression testing
         # for > 6 ranks, where each rank may or may not be
         # on a tile edge
-        key: Hashable = (origin_key, domain, stencil_config, spec.grid.rank)
+        key: Hashable = (origin_key, domain, spec.grid.rank)
         if key not in stencil_dict:
             axis_offsets = fv3core.utils.grid.axis_offsets(
                 spec.grid, origin=origin_tuple, domain=domain
