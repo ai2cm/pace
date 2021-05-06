@@ -552,7 +552,6 @@ def compute_q_tables(
         des2 = des2_table(index)
 
 
-@gtstencil
 def satadjust(
     peln: FloatField,
     qv: FloatField,
@@ -575,7 +574,6 @@ def satadjust(
     zvir: float,
     fac_i2s: float,
     do_qa: bool,
-    hydrostatic: bool,
     consv_te: bool,
     c_air: float,
     c_vap: float,
@@ -589,11 +587,27 @@ def satadjust(
     fac_v2l: float,
     fac_l2v: float,
     last_step: bool,
-    rad_snow: bool,
-    rad_rain: bool,
-    rad_graupel: bool,
-    tintqs: bool,
 ):
+    from __externals__ import (
+        cld_min,
+        dw_land,
+        dw_ocean,
+        hydrostatic,
+        icloud_f,
+        qi0_max,
+        qi_gen,
+        qi_lim,
+        ql0_max,
+        ql_gen,
+        qs_mlt,
+        rad_graupel,
+        rad_rain,
+        rad_snow,
+        sat_adj0,
+        t_sub,
+        tintqs,
+    )
+
     with computation(FORWARD), interval(1, None):
         if hydrostatic:
             delz = delz[0, 0, -1]
@@ -651,8 +665,8 @@ def satadjust(
         # TODO Might be able to get rid of these temporary allocations when not used?
         if dq0 > 0:  # whole grid - box saturated
             src = min(
-                spec.namelist.sat_adj0 * dq0,
-                max(spec.namelist.ql_gen - ql, fac_v2l * dq0),
+                sat_adj0 * dq0,
+                max(ql_gen - ql, fac_v2l * dq0),
             )
         else:
             factor, src = ql_evaporation(wqsat, qv, ql, dq0, fac_l2v)
@@ -730,10 +744,10 @@ def satadjust(
             mc_air,
             qv,
             c_vap,
-            spec.namelist.qs_mlt,
+            qs_mlt,
         )
         #  autoconversion from cloud water to rain
-        ql, qr = autoconversion_cloud_to_rain(ql, qr, fac_l2r, spec.namelist.ql0_max)
+        ql, qr = autoconversion_cloud_to_rain(ql, qr, fac_l2r, ql0_max)
         iqs2, dqsdt = wqs2_fn_2(pt1, den)
         expsubl = exp(0.875 * log(qi * den))
         lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
@@ -742,7 +756,7 @@ def satadjust(
         if last_step:
             adj_fac = 1.0
         else:
-            adj_fac = spec.namelist.sat_adj0
+            adj_fac = sat_adj0
 
         qv, qi, q_sol, cvm, pt1 = sublimation(
             pt1,
@@ -762,9 +776,9 @@ def satadjust(
             c_vap,
             lhl,
             lhi,
-            spec.namelist.t_sub,
-            spec.namelist.qi_gen,
-            spec.namelist.qi_lim,
+            t_sub,
+            qi_gen,
+            qi_lim,
         )
         # virtual temp updated
         q_con = q_liq + q_sol
@@ -781,7 +795,7 @@ def satadjust(
         else:
             qg = qg
         #  autoconversion from cloud ice to snow
-        qim = spec.namelist.qi0_max / den
+        qim = qi0_max / den
         if qi > qim:
             sink = fac_i2s * (qi - qim)
             qi = qi - sink
@@ -837,10 +851,7 @@ def satadjust(
                 # higher than 10 m is considered "land" and will have higher subgrid
                 # variability
             mindw = min(1.0, abs(hs) / (10.0 * constants.GRAV))
-            dw = (
-                spec.namelist.dw_ocean
-                + (spec.namelist.dw_land - spec.namelist.dw_ocean) * mindw
-            )
+            dw = dw_ocean + (dw_land - dw_ocean) * mindw
             # "scale - aware" subgrid variability: 100 - km as the base
             dbl_sqrt_area = dw * (area ** 0.5 / 100.0e3) ** 0.5
             maxtmp = 0.01 if 0.01 > dbl_sqrt_area else dbl_sqrt_area
@@ -857,7 +868,7 @@ def satadjust(
                 dq = hvar * qpz
                 q_plus = qpz + dq
                 q_minus = qpz - dq
-                if spec.namelist.icloud_f == 2:  # TODO untested
+                if icloud_f == 2:  # TODO untested
                     if qpz > qstar:
                         qa = 1.0
                     elif (qstar < q_plus) and (q_cond > 1.0e-8):
@@ -869,7 +880,7 @@ def satadjust(
                         qa = 1.0
                     else:
                         if qstar < q_plus:
-                            if spec.namelist.icloud_f == 0:
+                            if icloud_f == 0:
                                 qa = (q_plus - qstar) / (dq + dq)
                             else:
                                 qa = (q_plus - qstar) / (2.0 * dq * (1.0 - q_cond))
@@ -877,7 +888,7 @@ def satadjust(
                             qa = 0.0
                         # impose minimum cloudiness if substantial q_cond exist
                         if q_cond > 1.0e-8:
-                            qa = max(spec.namelist.cld_min, qa)
+                            qa = max(cld_min, qa)
                         qa = min(1, qa)
             else:
                 qa = 0.0
@@ -886,103 +897,121 @@ def satadjust(
             pkz = compute_pkz_func(dp, delz, pt, cappa)
 
 
-def compute(
-    te: FloatField,
-    qvapor: FloatField,
-    qliquid: FloatField,
-    qice: FloatField,
-    qrain: FloatField,
-    qsnow: FloatField,
-    qgraupel: FloatField,
-    qcld: FloatField,
-    hs: FloatFieldIJ,
-    peln: FloatField,
-    delp: FloatField,
-    delz: FloatField,
-    q_con: FloatField,
-    pt: FloatField,
-    pkz: FloatField,
-    cappa: FloatField,
-    r_vir: float,
-    mdt: float,
-    fast_mp_consv: bool,
-    last_step: bool,
-    akap: float,
-    kmp: int,
-) -> None:
+class SatAdjust3d:
+    def __init__(self):
+        self.grid = spec.grid
+        self.namelist = spec.namelist
+        self._satadjust_stencil = gtstencil(
+            func=satadjust,
+            externals={
+                "hydrostatic": self.namelist.hydrostatic,
+                "rad_snow": self.namelist.rad_snow,
+                "rad_rain": self.namelist.rad_rain,
+                "rad_graupel": self.namelist.rad_graupel,
+                "tintqs": self.namelist.tintqs,
+                "sat_adj0": self.namelist.sat_adj0,
+                "ql_gen": self.namelist.ql_gen,
+                "qs_mlt": self.namelist.qs_mlt,
+                "ql0_max": self.namelist.ql0_max,
+                "t_sub": self.namelist.t_sub,
+                "qi_gen": self.namelist.qi_gen,
+                "qi_lim": self.namelist.qi_lim,
+                "qi0_max": self.namelist.qi0_max,
+                "dw_ocean": self.namelist.dw_ocean,
+                "dw_land": self.namelist.dw_land,
+                "icloud_f": self.namelist.icloud_f,
+                "cld_min": self.namelist.cld_min,
+            },
+        )
 
-    grid = spec.grid
-    origin = (grid.is_, grid.js, kmp)
-    domain = (grid.nic, grid.njc, (grid.npz - kmp))
-    hydrostatic = spec.namelist.hydrostatic
-    sdt = 0.5 * mdt  # half remapping time step
-    # define conversion scalar / factor
-    fac_i2s = 1.0 - math.exp(-mdt / spec.namelist.tau_i2s)
-    fac_v2l = 1.0 - math.exp(-sdt / spec.namelist.tau_v2l)
-    fac_r2g = 1.0 - math.exp(-mdt / spec.namelist.tau_r2g)
-    fac_l2r = 1.0 - math.exp(-mdt / spec.namelist.tau_l2r)
+    def __call__(
+        self,
+        te: FloatField,
+        qvapor: FloatField,
+        qliquid: FloatField,
+        qice: FloatField,
+        qrain: FloatField,
+        qsnow: FloatField,
+        qgraupel: FloatField,
+        qcld: FloatField,
+        hs: FloatFieldIJ,
+        peln: FloatField,
+        delp: FloatField,
+        delz: FloatField,
+        q_con: FloatField,
+        pt: FloatField,
+        pkz: FloatField,
+        cappa: FloatField,
+        r_vir: float,
+        mdt: float,
+        fast_mp_consv: bool,
+        last_step: bool,
+        akap: float,
+        kmp: int,
+    ):
+        sdt = 0.5 * mdt  # half remapping time step
+        # define conversion scalar / factor
+        fac_i2s = 1.0 - math.exp(-mdt / self.namelist.tau_i2s)
+        fac_v2l = 1.0 - math.exp(-sdt / self.namelist.tau_v2l)
+        fac_r2g = 1.0 - math.exp(-mdt / self.namelist.tau_r2g)
+        fac_l2r = 1.0 - math.exp(-mdt / self.namelist.tau_l2r)
 
-    fac_l2v = 1.0 - math.exp(-sdt / spec.namelist.tau_l2v)
-    fac_l2v = min(spec.namelist.sat_adj0, fac_l2v)
+        fac_l2v = 1.0 - math.exp(-sdt / self.namelist.tau_l2v)
+        fac_l2v = min(self.namelist.sat_adj0, fac_l2v)
 
-    fac_imlt = 1.0 - math.exp(-sdt / spec.namelist.tau_imlt)
-    fac_smlt = 1.0 - math.exp(-mdt / spec.namelist.tau_smlt)
+        fac_imlt = 1.0 - math.exp(-sdt / self.namelist.tau_imlt)
+        fac_smlt = 1.0 - math.exp(-mdt / self.namelist.tau_smlt)
 
-    # define heat capacity of dry air and water vapor based on hydrostatical
-    # property
+        # define heat capacity of dry air and water vapor based on hydrostatical
+        # property
 
-    if hydrostatic:
-        c_air = constants.CP_AIR
-        c_vap = constants.CP_VAP
-    else:
-        c_air = constants.CV_AIR
-        c_vap = constants.CV_VAP
+        if self.namelist.hydrostatic:
+            c_air = constants.CP_AIR
+            c_vap = constants.CP_VAP
+        else:
+            c_air = constants.CV_AIR
+            c_vap = constants.CV_VAP
 
-    d0_vap = c_vap - constants.C_LIQ
-    lv00 = constants.HLV - d0_vap * TICE
+        d0_vap = c_vap - constants.C_LIQ
+        lv00 = constants.HLV - d0_vap * TICE
 
-    do_qa = True
+        do_qa = True
 
-    satadjust(
-        peln,
-        qvapor,
-        qliquid,
-        qice,
-        qrain,
-        qsnow,
-        cappa,
-        qgraupel,
-        pt,
-        delp,
-        delz,
-        te,
-        q_con,
-        qcld,
-        grid.area_64,
-        hs,
-        pkz,
-        sdt,
-        r_vir,
-        fac_i2s,
-        do_qa,
-        hydrostatic,
-        fast_mp_consv,
-        c_air,
-        c_vap,
-        mdt,
-        fac_r2g,
-        fac_smlt,
-        fac_l2r,
-        fac_imlt,
-        d0_vap,
-        lv00,
-        fac_v2l,
-        fac_l2v,
-        last_step,
-        spec.namelist.rad_snow,
-        spec.namelist.rad_rain,
-        spec.namelist.rad_graupel,
-        spec.namelist.tintqs,
-        origin=origin,
-        domain=domain,
-    )
+        self._satadjust_stencil(
+            peln,
+            qvapor,
+            qliquid,
+            qice,
+            qrain,
+            qsnow,
+            cappa,
+            qgraupel,
+            pt,
+            delp,
+            delz,
+            te,
+            q_con,
+            qcld,
+            self.grid.area_64,
+            hs,
+            pkz,
+            sdt,
+            r_vir,
+            fac_i2s,
+            do_qa,
+            fast_mp_consv,
+            c_air,
+            c_vap,
+            mdt,
+            fac_r2g,
+            fac_smlt,
+            fac_l2r,
+            fac_imlt,
+            d0_vap,
+            lv00,
+            fac_v2l,
+            fac_l2v,
+            last_step,
+            origin=(self.grid.is_, self.grid.js, kmp),
+            domain=(self.grid.nic, self.grid.njc, (self.grid.npz - kmp)),
+        )

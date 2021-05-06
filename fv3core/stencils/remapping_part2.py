@@ -3,10 +3,10 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
 import fv3core.stencils.moist_cv as moist_cv
-import fv3core.stencils.saturation_adjustment as saturation_adjustment
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import gtstencil
+from fv3core.stencils.saturation_adjustment import SatAdjust3d
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -70,6 +70,10 @@ def compute(
     consv: float,
     do_adiabatic_init: bool,
 ):
+    saturation_adjustment = utils.cached_stencil_class(SatAdjust3d)(
+        cache_key="satadjust3d"
+    )
+
     grid = spec.grid
     copy_from_below(
         ua, pe, origin=grid.compute_origin(), domain=grid.domain_shape_compute()
@@ -111,7 +115,7 @@ def compute(
 
         kmp_origin = (grid.is_, grid.js, kmp)
         kmp_domain = (grid.nic, grid.njc, grid.npz - kmp)
-        saturation_adjustment.compute(
+        saturation_adjustment(
             te,
             qvapor,
             qliquid,
