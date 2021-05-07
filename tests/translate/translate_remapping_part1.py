@@ -1,3 +1,4 @@
+import fv3core._config as spec
 import fv3core.stencils.remapping_part1 as remap_part1
 from fv3core.testing import TranslateFortranData2Py
 
@@ -5,7 +6,6 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateRemapping_Part1(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = remap_part1.compute
         self.in_vars["data_vars"] = {
             "tracers": {"serialname": "qtracers"},
             "w": {},
@@ -92,3 +92,12 @@ class TranslateRemapping_Part1(TranslateFortranData2Py):
         self.max_error = 3e-9
         self.near_zero = 5e-18
         self.ignore_near_zero_errors = {"q_con": True, "qtracers": True}
+
+    def compute(self, inputs):
+        self.setup(inputs)
+        self.compute_func = remap_part1.VerticalRemapping1(
+            spec.namelist, inputs.pop("nq")
+        )
+        del inputs["akap"]
+        del inputs["r_vir"]
+        return self.slice_output(self.compute_from_storage(inputs))

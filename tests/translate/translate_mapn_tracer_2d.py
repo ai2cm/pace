@@ -43,6 +43,7 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
         inputs["kord"] = abs(spec.namelist.kord_tr)
         self.compute_func = MapN_Tracer.MapNTracer(
             inputs.pop("kord"),
+            inputs.pop("nq"),
             inputs.pop("i1"),
             inputs.pop("i2"),
             inputs.pop("j1"),
