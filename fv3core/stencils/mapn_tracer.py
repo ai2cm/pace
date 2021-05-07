@@ -12,24 +12,30 @@ class MapNTracer:
     Fortran code is mapn_tracer, test class is MapN_Tracer_2d
     """
 
-    def __init__(self, kord: int, i1: int, i2: int, j1: int, j2: int):
+    def __init__(self, kord: int, nq: int, i1: int, i2: int, j1: int, j2: int):
         grid = spec.grid
+        namelist = spec.namelist
         self._origin = (i1, j1, 0)
         self._domain = ()
         self._nk = grid.npz
+        self._nq = nq
         self._i1 = i1
         self._i2 = i2
         self._j1 = j1
         self._j2 = j2
         self._qs = utils.make_storage_from_shape(
-            (grid.npx, grid.npy, self._nk + 1),
-            origin=(0, 0, 0),
-            cache_key="mapn_tracer_qs",
+            (grid.npx, grid.npy, self._nk + 1), origin=(0, 0, 0)
         )
 
-        self._map_single = MapSingle(kord, 0, i1, i2, j1, j2)
+        kord_tracer = [kord] * self._nq
+        kord_tracer[5] = 9  # qcld
 
-        if spec.namelist.fill:
+        self._list_of_remap_objects = [
+            MapSingle(kord_tracer[i], 0, i1, i2, j1, j2)
+            for i in range(len(kord_tracer))
+        ]
+
+        if namelist.fill:
             self._fill_negative_tracers = True
             self._fillz = FillNegativeTracerValues()
         else:
@@ -41,7 +47,6 @@ class MapNTracer:
         pe2: FloatField,
         dp2: FloatField,
         tracers: Dict[str, "FloatField"],
-        nq: int,
         q_min: float,
     ):
         """
@@ -56,15 +61,15 @@ class MapNTracer:
             jfirst: Starting index of the J-dir compute domain
             jlast: Final index of the J-dir compute domain
         """
-        for q in utils.tracer_variables[0:nq]:
-            self._map_single(tracers[q], pe1, pe2, self._qs)
+        for i, q in enumerate(utils.tracer_variables[0 : self._nq]):
+            self._list_of_remap_objects[i](tracers[q], pe1, pe2, self._qs)
 
         if self._fill_negative_tracers is True:
             self._fillz(
                 dp2,
                 tracers,
-                self._map_single.i_extent,
-                self._map_single.j_extent,
+                self._list_of_remap_objects[0].i_extent,
+                self._list_of_remap_objects[0].j_extent,
                 self._nk,
-                nq,
+                self._nq,
             )
