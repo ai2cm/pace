@@ -74,6 +74,7 @@ class TranslateRemapping(TranslateFortranData2Py):
             "consv_te",
             "mdt",
             "bdt",
+            "kord_tracer",
             "do_adiabatic_init",
             "nq",
         ]

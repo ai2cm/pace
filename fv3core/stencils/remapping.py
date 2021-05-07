@@ -1,9 +1,9 @@
-from typing import Dict
+from typing import Dict, List
 
 import fv3core._config as spec
+import fv3core.stencils.remapping_part1 as remap_part1
 import fv3core.stencils.remapping_part2 as remap_part2
 import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.remapping_part1 import VerticalRemapping1
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -39,6 +39,7 @@ def compute(
     consv_te: float,
     mdt: float,
     bdt: float,
+    kord_tracer: List[int],
     do_adiabatic_init: bool,
     nq: int,
 ):
@@ -47,7 +48,6 @@ def compute(
     coordinate levels.
     """
     grid = spec.grid
-    namelist = spec.namelist
     gz: FloatField = utils.make_storage_from_shape(
         pt.shape, grid.compute_origin(), cache_key="remapping_gz"
     )
@@ -55,11 +55,7 @@ def compute(
         pt.shape, grid.compute_origin(), cache_key="remapping_cvm"
     )
 
-    remapping_part_1 = utils.cached_stencil_class(VerticalRemapping1)(
-        namelist, nq, cache_key="remapping_part_1"
-    )
-
-    remapping_part_1(
+    remap_part1.compute(
         tracers,
         pt,
         delp,
@@ -84,6 +80,9 @@ def compute(
         gz,
         cvm,
         ptop,
+        akap,
+        zvir,
+        nq,
     )
     remap_part2.compute(
         tracers["qvapor"],
