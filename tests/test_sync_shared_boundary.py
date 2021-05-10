@@ -51,6 +51,7 @@ def communicator_list(cube_partitioner):
                     rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
                 ),
                 partitioner=cube_partitioner,
+                timer=fv3gfs.util.Timer(),
             )
         )
     return return_list
@@ -156,7 +157,7 @@ def test_specific_edges_synced_correctly_on_first_rank(
 ):
     """
     A test that a couple chosen edges send the correct data.
-    
+
     Each example takes significant time to manually determine the correct answer,
     so this is limited to the first rank. Please add more cases as needed.
     """
@@ -195,7 +196,7 @@ def test_interior_edges_synced_correctly_on_first_tile(
 ):
     """
     A test that a couple chosen edges send the correct data.
-    
+
     Each example takes significant time to manually determine the correct answer,
     so this is limited to the first rank. Please add more cases as needed.
     """

@@ -174,6 +174,7 @@ def communicator_list(cube_partitioner):
                     rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
                 ),
                 partitioner=cube_partitioner,
+                timer=fv3gfs.util.Timer(),
             )
         )
     return return_list
@@ -310,7 +311,7 @@ def test_halo_update_timer(
         req_list.append(req)
     for req in req_list:
         req.wait()
-    required_times_keys = ("pack", "unpack", "Isend", "Recv")
+    required_times_keys = ("pack", "unpack", "Isend", "Irecv", "wait")
     for communicator in communicator_list:
         with subtests.test(rank=communicator.rank):
             assert isinstance(communicator.timer, fv3gfs.util.Timer)
@@ -518,7 +519,7 @@ def test_vector_halo_update_timer(
         )
     for req in req_list:
         req.wait()
-    required_times_keys = ("pack", "unpack", "Isend", "Recv")
+    required_times_keys = ("pack", "unpack", "Isend", "Irecv", "wait")
     for communicator in communicator_list:
         with subtests.test(rank=communicator.rank):
             assert isinstance(communicator.timer, fv3gfs.util.Timer)

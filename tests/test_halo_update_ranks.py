@@ -24,7 +24,6 @@ def total_ranks(ranks_per_tile):
 
 @pytest.fixture
 def shape(nz, ny, nx, dims, n_points):
-    return (3, 3, 3)
     return_list = []
     length_dict = {
         fv3gfs.util.X_DIM: 2 * n_points + nx,
@@ -92,6 +91,7 @@ def communicator_list(cube_partitioner):
                     rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
                 ),
                 partitioner=cube_partitioner,
+                timer=fv3gfs.util.Timer(),
             )
         )
     return return_list

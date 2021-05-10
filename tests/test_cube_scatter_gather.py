@@ -88,6 +88,7 @@ def communicator_list(layout):
             fv3gfs.util.CubedSphereCommunicator(
                 fv3gfs.util.testing.DummyComm(rank, total_ranks, shared_buffer),
                 fv3gfs.util.CubedSpherePartitioner(fv3gfs.util.TilePartitioner(layout)),
+                timer=fv3gfs.util.Timer(),
             )
         )
     return return_list

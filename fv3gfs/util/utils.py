@@ -1,10 +1,11 @@
-from typing import Union, Sequence, TypeVar, Tuple
+from typing import Union, Sequence, TypeVar, Tuple, Iterable
+from .types import Allocator
 from . import constants
 import numpy as np
 
 try:
     import cupy as cp
-except ModuleNotFoundError:
+except ImportError:
     cp = None
 
 try:
@@ -57,16 +58,54 @@ def ensure_contiguous(maybe_array: Union[np.ndarray, Storage]) -> None:
         raise ValueError("ndarray is not contiguous")
 
 
-def assign_array(
-    to_array: Union[np.ndarray, Storage], from_array: Union[np.ndarray, Storage],
+def safe_assign_array(
+    to_array: Union[np.ndarray, Storage], from_array: Union[np.ndarray, Storage]
 ):
-    # The cp.asarray call is required to explicitly copy the data
-    # in the case of numpy arrays or to prevent memory ownership
-    # errors on the cupy arrays from gt4py storages.
-    # This should be fixed in a later version of gt4py
-    if cp and isinstance(to_array, cp.ndarray):
-        to_array[:] = cp.asarray(from_array)
-    elif cp and isinstance(from_array, cp.ndarray):
-        to_array[:] = cp.asnumpy(from_array)
-    else:
+    """Failproof assignment for array on different devices.
+    
+    The memory will be downloaded/uploaded from GPU if need be.
+
+    Args:
+        to_array: destination ndarray
+        from_array: source ndarray
+    """
+    try:
         to_array[:] = from_array
+    except (ValueError, TypeError):
+        if cp and isinstance(to_array, cp.ndarray):
+            to_array[:] = cp.asarray(from_array)
+        elif cp and isinstance(from_array, cp.ndarray):
+            to_array[:] = cp.asnumpy(from_array)
+        else:
+            raise
+
+
+def device_synchronize(array: Union[np.ndarray, Storage]):
+    """Synchronize all memory communication"""
+    if cp and isinstance(array, cp.ndarray):
+        cp.cuda.runtime.deviceSynchronize()
+
+
+def safe_mpi_allocate(
+    allocator: Allocator, shape: Iterable[int], dtype: type
+) -> np.ndarray:
+    """Make sure the allocation use an allocator that works with MPI
+    
+    For G2G transfer, MPICH requires the allocation to not be done with managed
+    memory. Since we can't know what state `cupy` is in with switch for the default
+    pooled allocator.
+    If allocator comes from cupy, it must be cupy.empty or cupy.zeros.
+    We raise a RuntimeError if a cupy array is allocated outside of the safe code path.
+    Though the allocation _might_ be safe, the MPI crash that result from a managed memory
+    allocation is non trivial and should be tightly controlled.
+    """
+    if cp and (allocator is cp.empty or allocator is cp.zeros):
+        original_allocator = cp.cuda.get_allocator()
+        cp.cuda.set_allocator(cp.get_default_memory_pool().malloc)
+        array = allocator(shape, dtype=dtype)  # type: np.ndarray
+        cp.cuda.set_allocator(original_allocator)
+    else:
+        array = allocator(shape, dtype=dtype)
+        if __debug__ and cp and isinstance(array, cp.ndarray):
+            raise RuntimeError("cupy allocation might not be MPI-safe")
+    return array
