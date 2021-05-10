@@ -123,6 +123,10 @@ class FrozenStencil:
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
+        assert (
+            len(self._argument_names) > 0
+        ), "A stencil with no arguments? You may be double decorating"
+
         self._field_origins: Dict[str, Tuple[int, ...]] = compute_field_origins(
             self.stencil_object.field_info, self.origin
         )
