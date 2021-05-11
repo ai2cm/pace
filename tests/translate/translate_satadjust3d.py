@@ -5,7 +5,6 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateSatAdjust3d(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = SatAdjust3d()
         cvar = {"axis": 0, "kstart": 3}
         self.in_vars["data_vars"] = {
             "te": {},
@@ -55,8 +54,8 @@ class TranslateSatAdjust3d(TranslateFortranData2Py):
             "cappa": {},
         }
 
-    def compute(self, inputs):
-        self.make_storage_data_input_vars(inputs)
+    def compute_from_storage(self, inputs):
         inputs["kmp"] -= 1
-        self.compute_func(**inputs)
-        return self.slice_output(inputs)
+        satadjust3d_obj = SatAdjust3d(inputs["kmp"])
+        satadjust3d_obj(**inputs)
+        return inputs

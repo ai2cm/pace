@@ -1,11 +1,10 @@
-import fv3core.stencils.remapping_part2 as remap_part2
+from fv3core.stencils.remapping_part2 import VerticalRemapping2
 from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateRemapping_Part2(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = remap_part2.compute
         self.in_vars["data_vars"] = {
             "qvapor": {},
             "qliquid": {},
@@ -100,3 +99,8 @@ class TranslateRemapping_Part2(TranslateFortranData2Py):
             self.out_vars[k] = self.in_vars["data_vars"][k]
         self.max_error = 2e-14
         self.write_vars = ["gz", "cvm"]
+
+    def compute_from_storage(self, inputs):
+        remapping_pt2_obj = VerticalRemapping2(inputs["pfull"])
+        remapping_pt2_obj(**inputs)
+        return inputs

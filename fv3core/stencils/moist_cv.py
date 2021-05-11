@@ -177,7 +177,6 @@ def last_pt(
     return (pt + dtmp * pkz) / ((1.0 + zvir * qv) * (1.0 - gz))
 
 
-@gtstencil
 def moist_pt_last_step(
     qvapor: FloatField,
     qliquid: FloatField,
@@ -343,7 +342,11 @@ def compute_last_step(
     gz: FloatField,
 ):
     grid = spec.grid
-    moist_pt_last_step(
+
+    # Temporary Fix for calling moist_pt_last_step for verification tests
+    last_step = gtstencil(moist_pt_last_step)
+
+    last_step(
         qvapor,
         qliquid,
         qrain,

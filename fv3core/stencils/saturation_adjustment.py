@@ -5,7 +5,7 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, floor, interval,
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
-from fv3core.decorators import gtstencil
+from fv3core.decorators import FrozenStencil, gtstencil
 from fv3core.stencils.basic_operations import dim
 from fv3core.stencils.moist_cv import compute_pkz_func
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -898,10 +898,11 @@ def satadjust(
 
 
 class SatAdjust3d:
-    def __init__(self):
+    def __init__(self, kmp):
         self.grid = spec.grid
         self.namelist = spec.namelist
-        self._satadjust_stencil = gtstencil(
+
+        self._satadjust_stencil = FrozenStencil(
             func=satadjust,
             externals={
                 "hydrostatic": self.namelist.hydrostatic,
@@ -922,6 +923,8 @@ class SatAdjust3d:
                 "icloud_f": self.namelist.icloud_f,
                 "cld_min": self.namelist.cld_min,
             },
+            origin=(self.grid.is_, self.grid.js, kmp),
+            domain=(self.grid.nic, self.grid.njc, (self.grid.npz - kmp)),
         )
 
     def __call__(
@@ -1012,6 +1015,4 @@ class SatAdjust3d:
             fac_v2l,
             fac_l2v,
             last_step,
-            origin=(self.grid.is_, self.grid.js, kmp),
-            domain=(self.grid.nic, self.grid.njc, (self.grid.npz - kmp)),
         )
