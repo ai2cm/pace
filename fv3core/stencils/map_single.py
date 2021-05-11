@@ -4,89 +4,69 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil, gtstencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.remap_profile import RemapProfile
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3core.utils.typing import FloatField, IntFieldIJ
 
 
-def set_dp(dp1: FloatField, pe1: FloatField):
+def set_dp(dp1: FloatField, pe1: FloatField, lev: IntFieldIJ):
     with computation(PARALLEL), interval(...):
         dp1 = pe1[0, 0, 1] - pe1
-
-
-def set_eulerian_pressures(pe: FloatField, ptop: FloatFieldIJ, pbot: FloatFieldIJ):
     with computation(FORWARD), interval(0, 1):
-        ptop = pe[0, 0, 0]
-        pbot = pe[0, 0, 1]
-
-
-def set_remapped_quantity(q: FloatField, set_values: FloatFieldIJ):
-    with computation(FORWARD), interval(0, 1):
-        q = set_values[0, 0]
+        lev = 0
 
 
 def lagrangian_contributions(
+    q: FloatField,
     pe1: FloatField,
-    ptop: FloatFieldIJ,
-    pbot: FloatFieldIJ,
+    pe2: FloatField,
     q4_1: FloatField,
     q4_2: FloatField,
     q4_3: FloatField,
     q4_4: FloatField,
     dp1: FloatField,
-    q2_adds: FloatFieldIJ,
+    lev: IntFieldIJ,
 ):
-    with computation(PARALLEL), interval(...):
-        q2_tmp = 0.0
-        if pe1 < pbot and pe1[0, 0, 1] > ptop:
-            # We are in the right pressure range to contribute to the Eulerian cell
-            if pe1 <= ptop:
-                # we are in the first Lagrangian level that conributes
-                pl = (ptop - pe1) / dp1
-                if pbot <= pe1[0, 0, 1]:
-                    # Eulerian grid element is contained in the Lagrangian element
-                    pr = (pbot - pe1) / dp1
-                    q2_tmp = (
-                        q4_2
-                        + 0.5 * (q4_4 + q4_3 - q4_2) * (pr + pl)
-                        - q4_4 * (1.0 / 3.0) * (pr * (pr + pl) + pl ** 2)
-                    )
-                else:
-                    # Eulerian element encompasses multiple Lagrangian elements
-                    # and this is just the first one
-                    q2_tmp = (
-                        (pe1[0, 0, 1] - ptop)
-                        * (
-                            q4_2
-                            + 0.5 * (q4_4 + q4_3 - q4_2) * (1.0 + pl)
-                            - q4_4 * (1.0 / 3.0) * (1.0 + pl * (1.0 + pl))
-                        )
-                        / (pbot - ptop)
-                    )
-            else:
-                # we are in a farther-down level
-                if pbot > pe1[0, 0, 1]:
-                    # add the whole level to the Eulerian cell
-                    q2_tmp = dp1 * q4_1 / (pbot - ptop)
-                else:
-                    # this is the bottom layer that contributes
-                    dp = pbot - pe1
-                    esl = dp / dp1
-                    q2_tmp = (
-                        dp
-                        * (
-                            q4_2
-                            + 0.5
-                            * esl
-                            * (q4_3 - q4_2 + q4_4 * (1.0 - (2.0 / 3.0) * esl))
-                        )
-                        / (pbot - ptop)
-                    )
-    with computation(FORWARD), interval(0, 1):
-        q2_adds = 0.0
     with computation(FORWARD), interval(...):
-        q2_adds += q2_tmp
+        v_pe2 = pe2
+        v_pe1 = pe1[0, 0, lev]
+        pl = (v_pe2 - v_pe1) / dp1[0, 0, lev]
+        if pe2[0, 0, 1] <= pe1[0, 0, lev + 1]:
+            pr = (pe2[0, 0, 1] - v_pe1) / dp1[0, 0, lev]
+            q = (
+                q4_2[0, 0, lev]
+                + 0.5
+                * (q4_4[0, 0, lev] + q4_3[0, 0, lev] - q4_2[0, 0, lev])
+                * (pr + pl)
+                - q4_4[0, 0, lev] * 1.0 / 3.0 * (pr * (pr + pl) + pl * pl)
+            )
+        else:
+            qsum = (pe1[0, 0, lev + 1] - pe2) * (
+                q4_2[0, 0, lev]
+                + 0.5
+                * (q4_4[0, 0, lev] + q4_3[0, 0, lev] - q4_2[0, 0, lev])
+                * (1.0 + pl)
+                - q4_4[0, 0, lev] * 1.0 / 3.0 * (1.0 + pl * (1.0 + pl))
+            )
+            lev = lev + 1
+            while pe1[0, 0, lev + 1] < pe2[0, 0, 1]:
+                qsum += dp1[0, 0, lev] * q4_1[0, 0, lev]
+                lev = lev + 1
+            dp = pe2[0, 0, 1] - pe1[0, 0, lev]
+            esl = dp / dp1[0, 0, lev]
+            qsum += dp * (
+                q4_2[0, 0, lev]
+                + 0.5
+                * esl
+                * (
+                    q4_3[0, 0, lev]
+                    - q4_2[0, 0, lev]
+                    + q4_4[0, 0, lev] * (1.0 - (2.0 / 3.0) * esl)
+                )
+            )
+            q = qsum / (pe2[0, 0, 1] - pe2)
+        lev = lev - 1
 
 
 class MapSingle:
@@ -95,13 +75,9 @@ class MapSingle:
     """
 
     def __init__(self, kord: int, mode: int, i1: int, i2: int, j1: int, j2: int):
-        shape = spec.grid.domain_shape_full(add=(1, 1, 1))
-        origin = spec.grid.compute_origin()
-        shape2d = shape[0:2]
-
-        self._q2_adds = utils.make_storage_from_shape(shape2d)
-        self._ptop = utils.make_storage_from_shape(shape2d)
-        self._pbot = utils.make_storage_from_shape(shape2d)
+        grid = spec.grid
+        shape = grid.domain_shape_full(add=(1, 1, 1))
+        origin = grid.compute_origin()
 
         self._dp1 = utils.make_storage_from_shape(shape, origin=origin)
         self._q4_1 = utils.make_storage_from_shape(shape, origin=origin)
@@ -109,24 +85,29 @@ class MapSingle:
         self._q4_3 = utils.make_storage_from_shape(shape, origin=origin)
         self._q4_4 = utils.make_storage_from_shape(shape, origin=origin)
 
-        self._extents = (i2 - i1 + 1, j2 - j1 + 1)
-        self._origin = (i1, j1, 0)
-        self._domain = (*self._extents, spec.grid.npz)
+        self._lev = utils.make_storage_from_shape(
+            shape[:-1],
+            origin=origin[:-1],
+            mask=(True, True, False),
+            dtype=int,
+        )
 
-        self._set_eulerian_pressures = gtstencil(set_eulerian_pressures)
+        self._extents = (i2 - i1 + 1, j2 - j1 + 1)
+        origin = (i1, j1, 0)
+        domain = (*self._extents, grid.npz)
+
         self._lagrangian_contributions = FrozenStencil(
             lagrangian_contributions,
-            origin=self._origin,
-            domain=self._domain,
+            origin=origin,
+            domain=domain,
         )
-        self._set_remapped_quantity = gtstencil(set_remapped_quantity)
         self._remap_profile = RemapProfile(kord, mode, i1, i2, j1, j2)
 
-        self._set_dp = FrozenStencil(set_dp, origin=origin, domain=self._domain)
+        self._set_dp = FrozenStencil(set_dp, origin=origin, domain=domain)
         self._copy_stencil = FrozenStencil(
             copy_defn,
             origin=(0, 0, 0),
-            domain=spec.grid.domain_shape_full(),
+            domain=grid.domain_shape_full(),
         )
 
     @property
@@ -157,7 +138,7 @@ class MapSingle:
             jlast: Final index of the J-dir compute domain
         """
         self._copy_stencil(q1, self._q4_1)
-        self._set_dp(self._dp1, pe1)
+        self._set_dp(self._dp1, pe1, self._lev)
         q4_1, q4_2, q4_3, q4_4 = self._remap_profile(
             qs,
             self._q4_1,
@@ -167,41 +148,17 @@ class MapSingle:
             self._dp1,
             qmin,
         )
-
-        eul_domain = (self._domain[0], self._domain[1], 1)
-
-        # A stencil with a loop over k2:
-        for k_eul in range(self._domain[2]):
-            eul_origin = (self._origin[0], self._origin[1], k_eul)
-
-            # TODO (olivere): This is hacky
-            # merge with subsequent stencil when possible
-            self._set_eulerian_pressures(
-                pe2,
-                self._ptop,
-                self._pbot,
-                origin=eul_origin,
-                domain=eul_domain,
-            )
-
-            self._lagrangian_contributions(
-                pe1,
-                self._ptop,
-                self._pbot,
-                q4_1,
-                q4_2,
-                q4_3,
-                q4_4,
-                self._dp1,
-                self._q2_adds,
-            )
-
-            self._set_remapped_quantity(
-                q1,
-                self._q2_adds,
-                origin=eul_origin,
-                domain=eul_domain,
-            )
+        self._lagrangian_contributions(
+            q1,
+            pe1,
+            pe2,
+            q4_1,
+            q4_2,
+            q4_3,
+            q4_4,
+            self._dp1,
+            self._lev,
+        )
         return q1
 
 

@@ -146,7 +146,7 @@ sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.d
 sed -i "s/00:45:00/03:30:00/g" compile.daint.slurm
 sed -i "s/cscsci/normal/g" compile.daint.slurm
 sed -i "s/<G2G>/export CRAY_CUDA_MPS=1\nexport PYTHONOPTIMIZE=TRUE/g" compile.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py $data_path 1 $backend $githash --disable_halo_exchange#g" compile.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python examples/standalone/runfile/dynamics.py $data_path 1 $backend $githash#g" compile.daint.slurm
 # execute on a gpu node
 set +e
 res=$(sbatch -W -C gpu compile.daint.slurm 2>&1)
