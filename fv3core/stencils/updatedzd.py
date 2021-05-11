@@ -4,7 +4,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
-from fv3core.stencils import delnflux
+from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
@@ -280,6 +280,9 @@ class UpdateHeightOnDGrid:
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
         )
+        self.delnflux = DelnFluxNoSG(
+            self._column_namelist["nord_v"], nk=self.grid.npz + 1
+        )
         self.finite_volume_transport = FiniteVolumeTransport(namelist, namelist.hord_tm)
 
     def __call__(
@@ -330,17 +333,16 @@ class UpdateHeightOnDGrid:
             self._fx,
             self._fy,
         )
-        for kstart, nk in self._k_bounds:
-            delnflux.compute_no_sg(
-                height,
-                self._height_x_diffusive_flux,
-                self._height_y_diffusive_flux,
-                int(self._column_namelist["nord_v"][kstart]),
-                self._column_namelist["damp_vt"][kstart],
-                self._wk,
-                kstart=kstart,
-                nk=nk,
-            )
+
+        # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
+        # only compute for k-levels where this is true
+        self.delnflux(
+            height,
+            self._height_x_diffusive_flux,
+            self._height_y_diffusive_flux,
+            self._column_namelist["damp_vt"],
+            self._wk,
+        )
         self._apply_height_fluxes(
             self.grid.area,
             height,

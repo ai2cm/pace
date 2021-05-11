@@ -5,7 +5,6 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateDel6VtFlux(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = delnflux.compute_no_sg
         fxstat = grid.x3d_domain_dict()
         fxstat.update({"serialname": "fx2"})
         fystat = grid.y3d_domain_dict()
@@ -28,6 +27,7 @@ class TranslateDel6VtFlux(TranslateFortranData2Py):
 
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute(self, inputs):
-        return self.column_split_compute(
-            inputs, {"nord": "nord_column", "damp_c": "damp_c"}
-        )
+        self.make_storage_data_input_vars(inputs)
+        self.compute_func = delnflux.DelnFluxNoSG(inputs.pop("nord_column"))
+        self.compute_func(**inputs)
+        return self.slice_output(inputs)

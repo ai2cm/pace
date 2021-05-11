@@ -5,7 +5,7 @@ import fv3core._config as spec
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
-from fv3core.stencils import d_sw, delnflux
+from fv3core.stencils.delnflux import DelnFlux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -80,7 +80,7 @@ class FiniteVolumeTransport:
     ONLY USE_SG=False compiler flag implements
     """
 
-    def __init__(self, namelist, hord):
+    def __init__(self, namelist, hord, nord=None, damp_c=None):
         self.grid = spec.grid
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         origin = self.grid.compute_origin()
@@ -92,6 +92,8 @@ class FiniteVolumeTransport:
             self.grid.domain_shape_full(add=(1, 1, 1)), origin=self.grid.full_origin()
         )
         """Temporary field to use for corner computation in both x and y direction"""
+        self._nord = nord
+        self._damp_c = damp_c
         ord_outer = hord
         ord_inner = 8 if hord == 10 else hord
         self.stencil_q_i = FrozenStencil(
@@ -109,6 +111,9 @@ class FiniteVolumeTransport:
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(1, 1, 1)),
         )
+        if (self._nord is not None) and (self._damp_c is not None):
+            self.delnflux = DelnFlux(self._nord, self._damp_c)
+
         self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
             namelist, ord_inner, self.grid.jsd, self.grid.jed
         )
@@ -141,8 +146,6 @@ class FiniteVolumeTransport:
         y_area_flux,
         fx,
         fy,
-        nord=None,
-        damp_c=None,
         mass=None,
         mfx=None,
         mfy=None,
@@ -158,8 +161,6 @@ class FiniteVolumeTransport:
             y_area_flux: flux of area in y-direction, in units of m^2 (in)
             fx: transport flux of q in x-direction (out)
             fy: transport flux of q in y-direction (out)
-            nord: ???
-            damp_c: ???
             mass: ???
             mfx: ???
             mfy: ???
@@ -198,11 +199,12 @@ class FiniteVolumeTransport:
                 mfx,
                 mfy,
             )
-            if (mass is not None) and (nord is not None) and (damp_c is not None):
-                for kstart, nk in d_sw.k_bounds():
-                    delnflux.compute_delnflux_no_sg(
-                        q, fx, fy, nord[kstart], damp_c[kstart], kstart, nk, mass=mass
-                    )
+            if (
+                (mass is not None)
+                and (self._nord is not None)
+                and (self._damp_c is not None)
+            ):
+                self.delnflux(q, fx, fy, mass=mass)
         else:
             self.stencil_transport_flux(
                 fx,
@@ -212,8 +214,5 @@ class FiniteVolumeTransport:
                 x_area_flux,
                 y_area_flux,
             )
-            if (nord is not None) and (damp_c is not None):
-                for kstart, nk in d_sw.k_bounds():
-                    delnflux.compute_delnflux_no_sg(
-                        q, fx, fy, nord[kstart], damp_c[kstart], kstart, nk
-                    )
+            if (self._nord is not None) and (self._damp_c is not None):
+                self.delnflux(q, fx, fy)
