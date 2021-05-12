@@ -222,7 +222,11 @@ class VerticalRemapping1:
             origin=grid.compute_origin(),
             domain=grid.domain_shape_compute(add=(0, 0, 1)),
         )
-
+        self._moist_cv_pkz = FrozenStencil(
+            moist_cv.moist_pkz,
+            origin=grid.compute_origin(),
+            domain=grid.domain_shape_compute(),
+        )
         self._copy_j_adjacent = FrozenStencil(
             copy_j_adjacent,
             origin=(grid.is_, grid.je + 1, 1),
@@ -359,12 +363,12 @@ class VerticalRemapping1:
         # if do_omega:  # NOTE untested
         #    pe3 = copy(omga, origin=(grid.is_, grid.js, 1))
 
-        moist_cv.compute_pkz(
+        self._moist_cv_pkz(
             tracers["qvapor"],
             tracers["qliquid"],
-            tracers["qice"],
             tracers["qrain"],
             tracers["qsnow"],
+            tracers["qice"],
             tracers["qgraupel"],
             q_con,
             gz,

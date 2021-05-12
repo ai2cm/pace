@@ -10,7 +10,7 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
-from fv3core.decorators import gtstencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils import yppm
 from fv3core.stencils.basic_operations import sign
 from fv3core.utils.grid import axis_offsets
@@ -251,7 +251,7 @@ class XPiecewiseParabolic:
         origin = (grid.is_, jfirst, 0)
         domain = (grid.nic + 1, jlast - jfirst + 1, grid.npz + 1)
         ax_offsets = axis_offsets(grid, origin, domain)
-        self._compute_flux_stencil = gtstencil(
+        self._compute_flux_stencil = FrozenStencil(
             func=compute_x_flux,
             externals={
                 "iord": iord,

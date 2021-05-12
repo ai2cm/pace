@@ -32,7 +32,6 @@ from .translate_delnflux import TranslateDelnFlux, TranslateDelnFlux_2
 from .translate_divergencedamping import TranslateDivergenceDamping
 from .translate_dyncore import TranslateDynCore, TranslatePGradC
 from .translate_fillz import TranslateFillz
-from .translate_fvsetup import TranslateFVSetup
 from .translate_fvsubgridz import TranslateFVSubgridZ
 from .translate_fvtp2d import TranslateFvTp2d, TranslateFvTp2d_2
 from .translate_fxadv import TranslateFxAdv

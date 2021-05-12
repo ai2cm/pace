@@ -1,18 +1,24 @@
 import fv3core.stencils.moist_cv as moist_cv
-from fv3core.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
+from fv3core.decorators import FrozenStencil
+from fv3core.testing import TranslateFortranData2Py, pad_field_in_j
 
 
 class TranslateMoistCVPlusPkz_2d(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = moist_cv.compute_pkz
+        self.compute_func = FrozenStencil(
+            moist_cv.moist_pkz,
+            origin=self.grid.compute_origin(),
+            domain=(self.grid.nic, 1, self.grid.npz),
+        )
+
         self.in_vars["data_vars"] = {
-            "qvapor_js": {},
-            "qliquid_js": {},
-            "qice_js": {},
-            "qrain_js": {},
-            "qsnow_js": {},
-            "qgraupel_js": {},
+            "qvapor": {"serialname": "qvapor_js"},
+            "qliquid": {"serialname": "qliquid_js"},
+            "qice": {"serialname": "qice_js"},
+            "qrain": {"serialname": "qrain_js"},
+            "qsnow": {"serialname": "qsnow_js"},
+            "qgraupel": {"serialname": "qgraupel_js"},
             "gz": {"serialname": "gz1d", "kstart": grid.is_, "axis": 0},
             "cvm": {"kstart": grid.is_, "axis": 0},
             "delp": {},
@@ -27,18 +33,22 @@ class TranslateMoistCVPlusPkz_2d(TranslateFortranData2Py):
             if k not in self.write_vars:
                 v["axis"] = 1
 
-        self.in_vars["parameters"] = ["r_vir", "j_2d"]
+        self.in_vars["parameters"] = ["r_vir"]
         self.out_vars = {
             "gz": {
                 "serialname": "gz1d",
                 "istart": grid.is_,
                 "iend": grid.ie,
+                "jstart": grid.js,
+                "jend": grid.js,
                 "kstart": grid.npz - 1,
                 "kend": grid.npz - 1,
             },
             "cvm": {
                 "istart": grid.is_,
                 "iend": grid.ie,
+                "jstart": grid.js,
+                "jend": grid.js,
                 "kstart": grid.npz - 1,
                 "kend": grid.npz - 1,
             },
@@ -52,18 +62,11 @@ class TranslateMoistCVPlusPkz_2d(TranslateFortranData2Py):
             "q_con": {},
         }
 
-    def compute(self, inputs):
-        self.make_storage_data_input_vars(inputs)
-        inputs["j_2d"] = self.grid.global_to_local_y(
-            inputs["j_2d"] + TranslateGrid.fpy_model_index_offset
-        )
+    def compute_from_storage(self, inputs):
         for name, value in inputs.items():
             if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
                 inputs[name] = self.make_storage_data(
                     pad_field_in_j(value, self.grid.njd)
                 )
         self.compute_func(**inputs)
-        j = inputs["j_2d"]
-        inputs["gz"] = inputs["gz"][:, j : j + 1, :]
-        inputs["cvm"] = inputs["cvm"][:, j : j + 1, :]
-        return self.slice_output(inputs)
+        return inputs

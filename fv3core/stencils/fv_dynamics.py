@@ -9,7 +9,7 @@ import fv3core.utils.global_config as global_config
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
-from fv3core.decorators import ArgSpec, FrozenStencil, get_namespace, gtstencil
+from fv3core.decorators import ArgSpec, FrozenStencil, get_namespace
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
@@ -19,13 +19,11 @@ from fv3core.stencils.tracer_2d_1l import Tracer2D1L
 from fv3core.utils.typing import FloatField, FloatFieldK
 
 
-@gtstencil
 def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatField):
     with computation(PARALLEL), interval(...):
         pt = pt * (1.0 + dp1) * (1.0 - q_con) / pkz
 
 
-@gtstencil
 def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatField):
     with computation(PARALLEL), interval(...):
         omga = delp / delz * w
@@ -43,27 +41,32 @@ def init_pfull(
         pfull = (ph2 - ph1) / log(ph2 / ph1)
 
 
-def compute_preamble(state, comm, grid, namelist):
+def compute_preamble(
+    state,
+    grid,
+    namelist,
+    fv_setup_stencil: FrozenStencil,
+    pt_adjust_stencil: FrozenStencil,
+):
     if namelist.hydrostatic:
         raise NotImplementedError("Hydrostatic is not implemented")
     if __debug__:
         if grid.rank == 0:
             print("FV Setup")
-    moist_cv.fv_setup(
-        state.pt,
-        state.pkz,
-        state.delz,
-        state.delp,
-        state.cappa,
-        state.q_con,
-        constants.ZVIR,
+    fv_setup_stencil(
         state.qvapor,
         state.qliquid,
-        state.qice,
         state.qrain,
         state.qsnow,
+        state.qice,
         state.qgraupel,
+        state.q_con,
         state.cvm,
+        state.pkz,
+        state.pt,
+        state.cappa,
+        state.delp,
+        state.delz,
         state.dp1,
     )
 
@@ -85,29 +88,32 @@ def compute_preamble(state, comm, grid, namelist):
         if __debug__:
             if grid.rank == 0:
                 print("Adjust pt")
-        pt_adjust(
+        pt_adjust_stencil(
             state.pkz,
             state.dp1,
             state.q_con,
             state.pt,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(),
         )
 
 
-def post_remap(hyperdiffusion, state, comm, grid, namelist):
+def post_remap(
+    state,
+    comm,
+    grid,
+    namelist,
+    hyperdiffusion: HyperdiffusionDamping,
+    set_omega_stencil: FrozenStencil,
+):
     grid = grid
     if not namelist.hydrostatic:
         if __debug__:
             if grid.rank == 0:
                 print("Omega")
-        set_omega(
+        set_omega_stencil(
             state.delp,
             state.delz,
             state.w,
             state.omga,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(),
         )
     if namelist.nf_omega > 0:
         if __debug__:
@@ -265,6 +271,8 @@ class DynamicalCore:
             bk: atmosphere hybrid b coordinate (dimensionless)
             phis: surface geopotential height
         """
+        assert namelist.moist_phys, "fvsetup is only implemented for moist_phys=true"
+        assert namelist.nwat == 6, "Only nwat=6 has been implemented and tested"
         self.comm = comm
         self.grid = spec.grid
         self.namelist = namelist
@@ -281,6 +289,25 @@ class DynamicalCore:
         pfull_stencil(self._ak, self._bk, pfull, self.namelist.p_ref)
         # workaround because cannot write to FieldK storage in stencil
         self._pfull = utils.make_storage_data(pfull[0, 0, :], self._ak.shape, (0,))
+        self._fv_setup_stencil = FrozenStencil(
+            moist_cv.fv_setup,
+            externals={
+                "nwat": self.namelist.nwat,
+                "moist_phys": self.namelist.moist_phys,
+            },
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute(),
+        )
+        self._pt_adjust_stencil = FrozenStencil(
+            pt_adjust,
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute(),
+        )
+        self._set_omega_stencil = FrozenStencil(
+            set_omega,
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute(),
+        )
         self.acoustic_dynamics = AcousticDynamics(
             comm, namelist, self._ak, self._bk, self._pfull, self._phis
         )
@@ -348,7 +375,13 @@ class DynamicalCore:
         last_step = False
         if self.do_halo_exchange:
             self.comm.halo_update(state.phis_quantity, n_points=utils.halo)
-        compute_preamble(state, self.comm, self.grid, self.namelist)
+        compute_preamble(
+            state,
+            self.grid,
+            self.namelist,
+            self._fv_setup_stencil,
+            self._pt_adjust_stencil,
+        )
 
         for n_map in range(state.k_split):
             state.n_map = n_map + 1
@@ -409,11 +442,12 @@ class DynamicalCore:
                     )
                 if last_step:
                     post_remap(
-                        self._hyperdiffusion,
                         state,
                         self.comm,
                         self.grid,
                         self.namelist,
+                        self._hyperdiffusion,
+                        self._set_omega_stencil,
                     )
                 state.wsd[:] = state.wsd_3d[:, :, 0]
         wrapup(

@@ -1,8 +1,8 @@
-from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
+from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
-from fv3core.decorators import FrozenStencil, gtstencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import adjust_divide_stencil
 from fv3core.stencils.moist_cv import moist_pt_last_step
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
@@ -12,17 +12,6 @@ from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 def copy_from_below(a: FloatField, b: FloatField):
     with computation(PARALLEL), interval(1, None):
         b = a[0, 0, -1]
-
-
-@gtstencil
-def init_phis(hs: FloatField, delz: FloatField, phis: FloatField, te_2d: FloatFieldIJ):
-    with computation(BACKWARD):
-        with interval(-1, None):
-            te_2d = 0.0
-            phis = hs
-        with interval(0, -1):
-            te_2d = 0.0
-            phis = phis[0, 0, 1] - constants.GRAV * delz
 
 
 def sum_te(te: FloatField, te0_2d: FloatField):

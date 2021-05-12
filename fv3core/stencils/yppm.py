@@ -10,7 +10,7 @@ from gt4py.gtscript import (
 )
 
 import fv3core._config as spec
-from fv3core.decorators import gtstencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import sign
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -175,14 +175,6 @@ def pert_ppm_positive_definite_constraint_fcn(
     return al, ar
 
 
-@gtstencil
-def pert_ppm_positive_definite_constraint(
-    a0: FloatField, al: FloatField, ar: FloatField
-):
-    with computation(PARALLEL), interval(...):
-        al, ar = pert_ppm_positive_definite_constraint_fcn(a0, al, ar)
-
-
 @gtscript.function
 def pert_ppm_standard_constraint_fcn(a0: FloatField, al: FloatField, ar: FloatField):
     if al * ar < 0.0:
@@ -198,12 +190,6 @@ def pert_ppm_standard_constraint_fcn(a0: FloatField, al: FloatField, ar: FloatFi
         al = 0.0
         ar = 0.0
     return al, ar
-
-
-@gtstencil
-def pert_ppm_standard_constraint(a0: FloatField, al: FloatField, ar: FloatField):
-    with computation(PARALLEL), interval(...):
-        al, ar = pert_ppm_standard_constraint_fcn(a0, al, ar)
 
 
 @gtscript.function
@@ -305,25 +291,6 @@ def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
     return bl, br
 
 
-# Optimized PPM in perturbation form:
-def pert_ppm(a0, al, ar, iv, istart, jstart, ni, nj):
-    r12 = 1.0 / 12.0
-    if iv == 0:
-        pert_ppm_positive_definite_constraint(
-            a0,
-            al,
-            ar,
-            r12,
-            origin=(istart, jstart, 0),
-            domain=(ni, nj, spec.grid.npz + 1),
-        )
-    else:
-        pert_ppm_standard_constraint(
-            a0, al, ar, origin=(istart, jstart, 0), domain=(ni, nj, spec.grid.npz + 1)
-        )
-    return al, ar
-
-
 def compute_y_flux(
     q: FloatField, courant: FloatField, dya: FloatFieldIJ, yflux: FloatField
 ):
@@ -355,7 +322,7 @@ class YPiecewiseParabolic:
         origin = (ifirst, grid.js, 0)
         domain = (ilast - ifirst + 1, grid.njc + 1, grid.npz + 1)
         ax_offsets = axis_offsets(grid, origin, domain)
-        self._compute_flux_stencil = gtstencil(
+        self._compute_flux_stencil = FrozenStencil(
             func=compute_y_flux,
             externals={
                 "jord": jord,
