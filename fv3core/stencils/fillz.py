@@ -5,7 +5,7 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import gtstencil
+from fv3core.decorators import FrozenStencil
 from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
@@ -106,10 +106,18 @@ class FillNegativeTracerValues:
     Fortran name is `fillz`
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        im: int,
+        jm: int,
+        km: int,
+        nq: int,
+    ):
         grid = spec.grid
-        self.origin = grid.compute_origin()
-        self._fix_tracer_stencil = gtstencil(fix_tracer)
+        self._nq = nq
+        self._fix_tracer_stencil = FrozenStencil(
+            fix_tracer, origin=grid.compute_origin(), domain=(im, jm, km)
+        )
 
         shape = grid.domain_shape_full(add=(1, 1, 1))
         shape_ij = shape[0:2]
@@ -126,12 +134,8 @@ class FillNegativeTracerValues:
         self,
         dp2: FloatField,
         tracers: Dict[str, Any],
-        im: int,
-        jm: int,
-        km: int,
-        nq: int,
     ):
-        tracer_list = [tracers[name] for name in utils.tracer_variables[0:nq]]
+        tracer_list = [tracers[name] for name in utils.tracer_variables[0 : self._nq]]
         for tracer in tracer_list:
             self._fix_tracer_stencil(
                 tracer,
@@ -141,7 +145,5 @@ class FillNegativeTracerValues:
                 self._zfix,
                 self._sum0,
                 self._sum1,
-                origin=self.origin,
-                domain=(im, jm, km),
             )
         return tracer_list
