@@ -26,7 +26,7 @@ def compute(
     hs: FloatFieldIJ,
     te0_2d: FloatFieldIJ,
     ps: FloatFieldIJ,
-    wsd: FloatField,
+    wsd: FloatFieldIJ,
     omga: FloatField,
     ak: FloatFieldK,
     bk: FloatFieldK,

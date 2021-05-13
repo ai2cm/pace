@@ -164,7 +164,7 @@ def fvdyn_temporaries(shape, grid):
     origin = grid.full_origin()
     tmps = {}
     halo_vars = ["cappa"]
-    storage_vars = ["te_2d", "dp1", "cvm", "wsd_3d"]
+    storage_vars = ["te_2d", "dp1", "cvm"]
     column_vars = ["gz"]
     plane_vars = ["te_2d", "te0_2d", "wsd"]
     utils.storage_dict(
@@ -400,7 +400,6 @@ class DynamicalCore:
                 # TODO: Determine a better way to do this, polymorphic fields perhaps?
                 # issue is that set_val in map_single expects a 3D field for the
                 # "surface" array
-                state.wsd_3d[:] = utils.reshape(state.wsd, state.wsd_3d.shape)
                 if __debug__:
                     if self.grid.rank == 0:
                         print("Remapping")
@@ -424,7 +423,7 @@ class DynamicalCore:
                         state.phis,
                         state.te0_2d,
                         state.ps,
-                        state.wsd_3d,
+                        state.wsd,
                         state.omga,
                         self._ak,
                         self._bk,
@@ -449,7 +448,6 @@ class DynamicalCore:
                         self._hyperdiffusion,
                         self._set_omega_stencil,
                     )
-                state.wsd[:] = state.wsd_3d[:, :, 0]
         wrapup(
             state,
             self.comm,

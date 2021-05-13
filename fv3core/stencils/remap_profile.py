@@ -6,7 +6,7 @@ from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
-from fv3core.utils.typing import FloatField
+from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtscript.function
@@ -115,7 +115,7 @@ def set_vals(
     a4_3: FloatField,
     a4_4: FloatField,
     q_bot: FloatField,
-    qs: FloatField,
+    qs: FloatFieldIJ,
 ):
     from __externals__ import iv, kord
 
@@ -162,9 +162,9 @@ def set_vals(
             old_bet = 2.0 + old_grid_ratio + old_grid_ratio - gam[0, 0, -1]
             gam = old_grid_ratio / old_bet
             grid_ratio = delp[0, 0, -1] / delp
-            q = (
-                3.0 * (a4_1[0, 0, -1] + a4_1) - grid_ratio * qs[0, 0, 1] - q[0, 0, -1]
-            ) / (2.0 + grid_ratio + grid_ratio - gam)
+            q = (3.0 * (a4_1[0, 0, -1] + a4_1) - grid_ratio * qs - q[0, 0, -1]) / (
+                2.0 + grid_ratio + grid_ratio - gam
+            )
             q_bot = qs
     with computation(PARALLEL), interval(-1, None):
         if __INLINED(iv == -2):
@@ -596,7 +596,7 @@ class RemapProfile:
 
     def __call__(
         self,
-        qs: FloatField,
+        qs: FloatFieldIJ,
         a4_1: FloatField,
         a4_2: FloatField,
         a4_3: FloatField,
@@ -609,7 +609,7 @@ class RemapProfile:
         distribution of the remapped field within each deformed grid cell.
         The constraints on the spline are set by kord and iv.
         Arguments:
-            qs: The field to be remapped
+            qs: Bottom boundary condition
             a4_1: The first interpolation coefficient
             a4_2: The second interpolation coefficient
             a4_3: The third interpolation coefficient

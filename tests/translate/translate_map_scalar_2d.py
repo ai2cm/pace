@@ -1,4 +1,5 @@
 import fv3core._config as spec
+import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils.map_single import MapSingleFactory
 from fv3core.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
 
@@ -53,7 +54,11 @@ class TranslateMapScalar_2d(TranslateFortranData2Py):
             inputs["pe2"] = self.make_storage_data(
                 pad_field_in_j(inputs["pe2"], self.nj)
             )
+
+        qs_field = utils.make_storage_from_shape(self.maxshape[0:2], origin=(0, 0))
+        qs_field[:, :] = inputs["qs"][:, :, 0]
+        inputs["qs"] = qs_field
         if inputs["qs"].shape[1] == 1:
-            inputs["qs"] = self.make_storage_data(pad_field_in_j(inputs["qs"], self.nj))
+            inputs["qs"] = utils.tile(inputs["qs"][:, 0], [self.nj, 1]).transpose(1, 0)
         var_inout = self.compute_func(**inputs)
         return self.slice_output(inputs, {"pt": var_inout})

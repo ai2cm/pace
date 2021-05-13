@@ -299,7 +299,7 @@ class VerticalRemapping1:
         hs: FloatFieldIJ,
         te: FloatField,
         ps: FloatFieldIJ,
-        wsd: FloatField,
+        wsd: FloatFieldIJ,
         omga: FloatField,
         ak: FloatFieldK,
         bk: FloatFieldK,
@@ -349,15 +349,15 @@ class VerticalRemapping1:
 
         self._pn2_pk_delp(self._dp2, delp, self._pe2, self._pn2, pk, akap)
 
-        self._map_single_pt(pt, peln, self._pn2, gz, qmin=self._t_min)
+        self._map_single_pt(pt, peln, self._pn2, qmin=self._t_min)
 
         # TODO if self._nq > 5:
         self._mapn_tracer(self._pe1, self._pe2, self._dp2, tracers, 0.0)
         # TODO else if self._nq > 0:
         # TODO map1_q2, fillz
 
-        self._map_single_w(w, self._pe1, self._pe2, wsd)
-        self._map_single_delz(delz, self._pe1, self._pe2, gz)
+        self._map_single_w(w, self._pe1, self._pe2, qs=wsd)
+        self._map_single_delz(delz, self._pe1, self._pe2)
 
         self._undo_delz_adjust_and_copy_peln(delp, delz, peln, self._pe0, self._pn2)
         # if do_omega:  # NOTE untested
@@ -385,9 +385,9 @@ class VerticalRemapping1:
         # and exit
 
         self._pressures_mapu(pe, self._pe1, ak, bk, self._pe0, self._pe3)
-        self._map_single_u(u, self._pe0, self._pe3, gz)
+        self._map_single_u(u, self._pe0, self._pe3)
 
         self._pressures_mapv(pe, ak, bk, self._pe0, self._pe3)
-        self._map_single_v(v, self._pe0, self._pe3, gz)
+        self._map_single_v(v, self._pe0, self._pe3)
 
         self._update_ua(self._pe2, ua)

@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
@@ -7,7 +7,7 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.remap_profile import RemapProfile
-from fv3core.utils.typing import FloatField, IntFieldIJ
+from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
 def set_dp(dp1: FloatField, pe1: FloatField, lev: IntFieldIJ):
@@ -84,7 +84,7 @@ class MapSingle:
         self._q4_2 = utils.make_storage_from_shape(shape, origin=origin)
         self._q4_3 = utils.make_storage_from_shape(shape, origin=origin)
         self._q4_4 = utils.make_storage_from_shape(shape, origin=origin)
-
+        self._tmp_qs = utils.make_storage_from_shape(shape[0:2], origin=(0, 0))
         self._lev = utils.make_storage_from_shape(
             shape[:-1],
             origin=origin[:-1],
@@ -123,7 +123,7 @@ class MapSingle:
         q1: FloatField,
         pe1: FloatField,
         pe2: FloatField,
-        qs: FloatField,
+        qs: Optional["FloatFieldIJ"] = None,
         qmin: float = 0.0,
     ):
         """
@@ -133,10 +133,12 @@ class MapSingle:
             q1 (out): Remapped field on Eulerian grid
             pe1 (in): Lagrangian pressure levels
             pe2 (in): Eulerian pressure levels
-            qs (in): Field to be remapped on deformed grid
+            qs (in): Bottom boundary condition
             jfirst: Starting index of the J-dir compute domain
             jlast: Final index of the J-dir compute domain
         """
+        if qs is None:
+            qs = self._tmp_qs
         self._copy_stencil(q1, self._q4_1)
         self._set_dp(self._dp1, pe1, self._lev)
         q4_1, q4_2, q4_3, q4_4 = self._remap_profile(
