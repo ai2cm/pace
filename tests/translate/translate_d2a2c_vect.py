@@ -1,11 +1,13 @@
-import fv3core.stencils.d2a2c_vect as d2a2c_vect
+import fv3core._config as spec
+from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateD2A2C_Vect(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = d2a2c_vect.compute
+        dord4 = True
+        self.compute_func = DGrid2AGrid2CGridVectors(grid, spec.namelist, dord4)
         self.in_vars["data_vars"] = {
             "uc": {},
             "vc": {},
@@ -16,7 +18,6 @@ class TranslateD2A2C_Vect(TranslateFortranData2Py):
             "utc": {},
             "vtc": {},
         }
-        self.in_vars["parameters"] = ["dord4"]
         self.out_vars = {
             "uc": grid.x3d_domain_dict(),
             "vc": grid.y3d_domain_dict(),

@@ -3,9 +3,10 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import gtstencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
 from fv3core.utils import corners
+from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -19,14 +20,12 @@ def grid():
     return spec.grid
 
 
-@gtstencil
 def set_tmps(utmp: FloatField, vtmp: FloatField, big_number: float):
     with computation(PARALLEL), interval(...):
         utmp = big_number
         vtmp = big_number
 
 
-@gtstencil
 def fill_corners_x(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: FloatField):
     with computation(PARALLEL), interval(...):
         utmp = corners.fill_corners_3cells_mult_x(
@@ -37,7 +36,6 @@ def fill_corners_x(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: Float
         )
 
 
-@gtstencil
 def fill_corners_y(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: FloatField):
     with computation(PARALLEL), interval(...):
         vtmp = corners.fill_corners_3cells_mult_y(
@@ -48,7 +46,6 @@ def fill_corners_y(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: Float
         )
 
 
-@gtstencil
 def east_west_edges(
     u: FloatField,
     ua: FloatField,
@@ -101,7 +98,6 @@ def east_west_edges(
             utc = contravariant(uc, v, cosa_u, rsin_u)
 
 
-@gtstencil
 def north_south_edges(
     v: FloatField,
     va: FloatField,
@@ -156,7 +152,6 @@ def lagrange_y_func_p1(qx):
     return a2 * (qx[0, -1, 0] + qx[0, 2, 0]) + a1 * (qx + qx[0, 1, 0])
 
 
-@gtstencil
 def lagrange_interpolation_y_p1(qx: FloatField, qout: FloatField):
     with computation(PARALLEL), interval(...):
         qout = lagrange_y_func_p1(qx)
@@ -167,17 +162,29 @@ def lagrange_x_func_p1(qy):
     return a2 * (qy[-1, 0, 0] + qy[2, 0, 0]) + a1 * (qy + qy[1, 0, 0])
 
 
-@gtstencil
 def lagrange_interpolation_x_p1(qy: FloatField, qout: FloatField):
     with computation(PARALLEL), interval(...):
         qout = lagrange_x_func_p1(qy)
 
 
-@gtstencil
 def avg_box(u: FloatField, v: FloatField, utmp: FloatField, vtmp: FloatField):
+    """
+    D2A2C_AVG_OFFSET is an external that describes how far the
+    averaging should go before switching to Lagrangian interpolation. For
+    sufficiently small grids, this should be set to -1, otherwise 3. Note that
+    this makes the stencil code in d2a2c grid-dependent!
+    """
+    from __externals__ import D2A2C_AVG_OFFSET, i_end, i_start, j_end, j_start
+
     with computation(PARALLEL), interval(...):
-        utmp = 0.5 * (u + u[0, 1, 0])
-        vtmp = 0.5 * (v + v[1, 0, 0])
+        with horizontal(
+            region[:, : j_start + D2A2C_AVG_OFFSET],
+            region[:, j_end - D2A2C_AVG_OFFSET + 1 :],
+            region[: i_start + D2A2C_AVG_OFFSET, :],
+            region[i_end - D2A2C_AVG_OFFSET + 1 :, :],
+        ):
+            utmp = 0.5 * (u + u[0, 1, 0])
+            vtmp = 0.5 * (v + v[1, 0, 0])
 
 
 @gtscript.function
@@ -235,7 +242,6 @@ def contravariant(v1, v2, cosa, rsin2):
     return (v1 - v2 * cosa) * rsin2
 
 
-@gtstencil
 def contravariant_stencil(
     u: FloatField,
     v: FloatField,
@@ -247,7 +253,6 @@ def contravariant_stencil(
         out = contravariant(u, v, cosa, rsin)
 
 
-@gtstencil
 def contravariant_components(
     utmp: FloatField,
     vtmp: FloatField,
@@ -261,7 +266,6 @@ def contravariant_components(
         va = contravariant(vtmp, utmp, cosa_s, rsin2)
 
 
-@gtstencil
 def ut_main(
     utmp: FloatField,
     uc: FloatField,
@@ -275,7 +279,6 @@ def ut_main(
         ut = contravariant(uc, v, cosa_u, rsin_u)
 
 
-@gtstencil
 def vt_main(
     vtmp: FloatField,
     vc: FloatField,
@@ -309,25 +312,21 @@ def vol_conserv_cubic_interp_func_y_rev(v):
     return c1 * v[0, 1, 0] + c2 * v + c3 * v[0, -1, 0]
 
 
-@gtstencil
 def vol_conserv_cubic_interp_x(utmp: FloatField, uc: FloatField):
     with computation(PARALLEL), interval(...):
         uc = vol_conserv_cubic_interp_func_x(utmp)
 
 
-@gtstencil
 def vol_conserv_cubic_interp_x_rev(utmp: FloatField, uc: FloatField):
     with computation(PARALLEL), interval(...):
         uc = vol_conserv_cubic_interp_func_x_rev(utmp)
 
 
-@gtstencil
 def vol_conserv_cubic_interp_y(vtmp: FloatField, vc: FloatField):
     with computation(PARALLEL), interval(...):
         vc = vol_conserv_cubic_interp_func_y(vtmp)
 
 
-@gtstencil
 def vt_edge(
     vtmp: FloatField,
     vc: FloatField,
@@ -346,7 +345,6 @@ def vt_edge(
         vt = contravariant(vc, u, cosa_v, rsin_v)
 
 
-@gtstencil
 def uc_x_edge1(
     ut: FloatField, sin_sg3: FloatFieldIJ, sin_sg1: FloatFieldIJ, uc: FloatField
 ):
@@ -354,7 +352,6 @@ def uc_x_edge1(
         uc = ut * sin_sg3[-1, 0] if ut > 0 else ut * sin_sg1
 
 
-@gtstencil
 def vc_y_edge1(
     vt: FloatField, sin_sg4: FloatFieldIJ, sin_sg2: FloatFieldIJ, vc: FloatField
 ):
@@ -380,187 +377,257 @@ def edge_interpolate4_y(va, dya):
     return 0.5 * (n1 / t1 + n2 / t2)
 
 
-def compute(dord4, uc, vc, u, v, ua, va, utc, vtc):
-    if spec.namelist.grid_type >= 3:
-        raise Exception("unimplemented grid_type >= 3")
-    grid = spec.grid
-    big_number = 1e30  # 1e8 if 32 bit
-    nx = grid.ie + 1  # grid.npx + 2
-    ny = grid.je + 1  # grid.npy + 2
-    i1 = grid.is_ - 1
-    j1 = grid.js - 1
-    id_ = 1 if dord4 else 0
-    pad = 2 + 2 * id_
-    npt = 4 if not grid.nested else 0
-    if npt > grid.nic - 1 or npt > grid.njc - 1:
-        npt = 0
-    utmp = utils.make_storage_from_shape(
-        ua.shape, grid.full_origin(), cache_key="d2a2c_vect_utmp"
-    )
-    vtmp = utils.make_storage_from_shape(
-        va.shape, grid.full_origin(), cache_key="d2a2c_vect_vtmp"
-    )
+class DGrid2AGrid2CGridVectors:
+    """
+    Fortran name d2a2c_vect
+    """
 
-    js1 = npt + OFFSET if grid.south_edge else grid.js - 1
-    je1 = ny - npt if grid.north_edge else grid.je + 1
-    is1 = npt + OFFSET if grid.west_edge else grid.isd
-    ie1 = nx - npt if grid.east_edge else grid.ied
-
-    is2 = npt + OFFSET if grid.west_edge else grid.is_ - 1
-    ie2 = nx - npt if grid.east_edge else grid.ie + 1
-    js2 = npt + OFFSET if grid.south_edge else grid.jsd
-    je2 = ny - npt if grid.north_edge else grid.jed
-
-    ifirst = grid.is_ + 2 if grid.west_edge else grid.is_ - 1
-    ilast = grid.ie - 1 if grid.east_edge else grid.ie + 2
-    idiff = ilast - ifirst + 1
-
-    jfirst = grid.js + 2 if grid.south_edge else grid.js - 1
-    jlast = grid.je - 1 if grid.north_edge else grid.je + 2
-    jdiff = jlast - jfirst + 1
-
-    js3 = npt + OFFSET if grid.south_edge else grid.jsd
-    je3 = ny - npt if grid.north_edge else grid.jed
-    jdiff3 = je3 - js3 + 1
-
-    set_tmps(
-        utmp,
-        vtmp,
-        big_number,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(),
-    )
-
-    lagrange_interpolation_y_p1(
-        u, utmp, origin=(is1, js1, 0), domain=(ie1 - is1 + 1, je1 - js1 + 1, grid.npz)
-    )
-
-    lagrange_interpolation_x_p1(
-        v, vtmp, origin=(is2, js2, 0), domain=(ie2 - is2 + 1, je2 - js2 + 1, grid.npz)
-    )
-
-    # tmp edges
-    if grid.south_edge:
-        avg_box(
-            u,
-            v,
-            utmp,
-            vtmp,
-            origin=(grid.isd, grid.jsd, 0),
-            domain=(grid.nid, npt + OFFSET - grid.jsd, grid.npz),
+    def __init__(self, grid, namelist, dord4):
+        if namelist.grid_type >= 3:
+            raise Exception("unimplemented grid_type >= 3")
+        self.grid = grid
+        self._big_number = 1e30  # 1e8 if 32 bit
+        nx = self.grid.ie + 1  # grid.npx + 2
+        ny = self.grid.je + 1  # grid.npy + 2
+        i1 = self.grid.is_ - 1
+        j1 = self.grid.js - 1
+        id_ = 1 if dord4 else 0
+        pad = 2 + 2 * id_
+        npt = 4 if not self.grid.nested else 0
+        if npt > self.grid.nic - 1 or npt > self.grid.njc - 1:
+            npt = 0
+        self._utmp = utils.make_storage_from_shape(
+            self.grid.domain_shape_full(add=(1, 1, 1)),
+            self.grid.full_origin(),
         )
-    if grid.north_edge:
-        je2 = ny - npt + 1
-        avg_box(
-            u,
-            v,
-            utmp,
-            vtmp,
-            origin=(grid.isd, je2, 0),
-            domain=(grid.nid, grid.jed - je2 + 1, grid.npz),
+        self._vtmp = utils.make_storage_from_shape(
+            self.grid.domain_shape_full(add=(1, 1, 1)), self.grid.full_origin()
         )
 
-    if grid.west_edge:
-        avg_box(
+        js1 = npt + OFFSET if self.grid.south_edge else self.grid.js - 1
+        je1 = ny - npt if self.grid.north_edge else self.grid.je + 1
+        is1 = npt + OFFSET if self.grid.west_edge else self.grid.isd
+        ie1 = nx - npt if self.grid.east_edge else self.grid.ied
+
+        is2 = npt + OFFSET if self.grid.west_edge else self.grid.is_ - 1
+        ie2 = nx - npt if self.grid.east_edge else self.grid.ie + 1
+        js2 = npt + OFFSET if self.grid.south_edge else self.grid.jsd
+        je2 = ny - npt if self.grid.north_edge else self.grid.jed
+
+        ifirst = self.grid.is_ + 2 if self.grid.west_edge else self.grid.is_ - 1
+        ilast = self.grid.ie - 1 if self.grid.east_edge else self.grid.ie + 2
+        idiff = ilast - ifirst + 1
+
+        jfirst = self.grid.js + 2 if self.grid.south_edge else self.grid.js - 1
+        jlast = self.grid.je - 1 if self.grid.north_edge else self.grid.je + 2
+        jdiff = jlast - jfirst + 1
+
+        js3 = npt + OFFSET if self.grid.south_edge else self.grid.jsd
+        je3 = ny - npt if self.grid.north_edge else self.grid.jed
+        jdiff3 = je3 - js3 + 1
+
+        self._set_tmps = FrozenStencil(
+            func=set_tmps,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(),
+        )
+
+        self._lagrange_interpolation_y_p1 = FrozenStencil(
+            func=lagrange_interpolation_y_p1,
+            origin=(is1, js1, 0),
+            domain=(ie1 - is1 + 1, je1 - js1 + 1, self.grid.npz),
+        )
+
+        self._lagrange_interpolation_x_p1 = FrozenStencil(
+            func=lagrange_interpolation_x_p1,
+            origin=(is2, js2, 0),
+            domain=(ie2 - is2 + 1, je2 - js2 + 1, self.grid.npz),
+        )
+
+        origin = self.grid.full_origin()
+        domain = self.grid.domain_shape_full()
+        ax_offsets = axis_offsets(self.grid, origin, domain)
+        if namelist.npx <= 13 and namelist.layout[0] > 1:
+            d2a2c_avg_offset = -1
+        else:
+            d2a2c_avg_offset = 3
+
+        self._avg_box = FrozenStencil(
+            func=avg_box,
+            externals={"D2A2C_AVG_OFFSET": d2a2c_avg_offset, **ax_offsets},
+            origin=origin,
+            domain=domain,
+        )
+
+        self._contravariant_components = FrozenStencil(
+            func=contravariant_components,
+            origin=(self.grid.is_ - 1 - id_, self.grid.js - 1 - id_, 0),
+            domain=(self.grid.nic + pad, self.grid.njc + pad, self.grid.npz),
+        )
+        origin_edges = self.grid.compute_origin(add=(-3, -3, 0))
+        domain_edges = self.grid.domain_shape_compute(add=(6, 6, 0))
+        ax_offsets_edges = axis_offsets(self.grid, origin_edges, domain_edges)
+        self._fill_corners_x = FrozenStencil(
+            func=fill_corners_x,
+            externals=ax_offsets_edges,
+            origin=origin_edges,
+            domain=domain_edges,
+        )
+
+        self._ut_main = FrozenStencil(
+            func=ut_main,
+            origin=(ifirst, j1, 0),
+            domain=(idiff, self.grid.njc + 2, self.grid.npz),
+        )
+
+        self._east_west_edges = FrozenStencil(
+            func=east_west_edges,
+            externals={
+                "i_end": ax_offsets_edges["i_end"],
+                "i_start": ax_offsets_edges["i_start"],
+                "local_je": ax_offsets_edges["local_je"],
+                "local_js": ax_offsets_edges["local_js"],
+            },
+            origin=origin_edges,
+            domain=domain_edges,
+        )
+
+        # Ydir:
+        self._fill_corners_y = FrozenStencil(
+            func=fill_corners_y,
+            externals={
+                **ax_offsets_edges,
+            },
+            origin=origin_edges,
+            domain=domain_edges,
+        )
+
+        self._north_south_edges = FrozenStencil(
+            func=north_south_edges,
+            externals={
+                "j_end": ax_offsets_edges["j_end"],
+                "j_start": ax_offsets_edges["j_start"],
+                "local_ie": ax_offsets_edges["local_ie"],
+                "local_is": ax_offsets_edges["local_is"],
+                "local_je": ax_offsets_edges["local_je"],
+                "local_js": ax_offsets_edges["local_js"],
+            },
+            origin=origin_edges,
+            domain=domain_edges,
+        )
+
+        self._vt_main = FrozenStencil(
+            func=vt_main,
+            origin=(i1, jfirst, 0),
+            domain=(self.grid.nic + 2, jdiff, self.grid.npz),
+        )
+
+    def __call__(self, uc, vc, u, v, ua, va, utc, vtc):
+        """
+        Calculate velocity vector from D-grid to A-grid to C-grid.
+
+        Args:
+            uc: C-grid x-velocity (inout)
+            vc: C-grid y-velocity (inout)
+            u: D-grid x-velocity (in)
+            v: D-grid y-velocity (in)
+            ua: A-grid x-velocity (inout)
+            va: A-grid y-velocity (inout)
+            utc: C-grid u * dx (inout)
+            vtc: C-grid v * dy (inout)
+        """
+        self._set_tmps(
+            self._utmp,
+            self._vtmp,
+            self._big_number,
+        )
+
+        self._lagrange_interpolation_y_p1(
+            u,
+            self._utmp,
+        )
+
+        self._lagrange_interpolation_x_p1(
+            v,
+            self._vtmp,
+        )
+
+        # tmp edges
+        self._avg_box(
             u,
             v,
-            utmp,
-            vtmp,
-            origin=(grid.isd, js3, 0),
-            domain=(npt + OFFSET - grid.isd, jdiff3, grid.npz),
+            self._utmp,
+            self._vtmp,
         )
-    if grid.east_edge:
-        avg_box(
-            u,
+
+        # contra-variant components at cell center
+        self._contravariant_components(
+            self._utmp,
+            self._vtmp,
+            self.grid.cosa_s,
+            self.grid.rsin2,
+            ua,
+            va,
+        )
+        # Fix the edges
+        # Xdir:
+        self._fill_corners_x(
+            self._utmp,
+            self._vtmp,
+            ua,
+            va,
+        )
+
+        self._ut_main(
+            self._utmp,
+            uc,
             v,
-            utmp,
-            vtmp,
-            origin=(nx + 1 - npt, js3, 0),
-            domain=(grid.ied - nx + npt, jdiff3, grid.npz),
+            self.grid.cosa_u,
+            self.grid.rsin_u,
+            utc,
         )
 
-    # contra-variant components at cell center
-    contravariant_components(
-        utmp,
-        vtmp,
-        grid.cosa_s,
-        grid.rsin2,
-        ua,
-        va,
-        origin=(grid.is_ - 1 - id_, grid.js - 1 - id_, 0),
-        domain=(grid.nic + pad, grid.njc + pad, grid.npz),
-    )
-    # Fix the edges
-    # Xdir:
-    fill_corners_x(
-        utmp,
-        vtmp,
-        ua,
-        va,
-        origin=grid.compute_origin(add=(-3, -3, 0)),
-        domain=grid.domain_shape_compute(add=(6, 6, 0)),
-    )
+        self._east_west_edges(
+            u,
+            ua,
+            uc,
+            utc,
+            self._utmp,
+            v,
+            self.grid.sin_sg1,
+            self.grid.sin_sg3,
+            self.grid.cosa_u,
+            self.grid.rsin_u,
+            self.grid.dxa,
+        )
 
-    ut_main(
-        utmp,
-        uc,
-        v,
-        grid.cosa_u,
-        grid.rsin_u,
-        utc,
-        origin=(ifirst, j1, 0),
-        domain=(idiff, grid.njc + 2, grid.npz),
-    )
+        # Ydir:
+        self._fill_corners_y(
+            self._utmp,
+            self._vtmp,
+            ua,
+            va,
+        )
 
-    east_west_edges(
-        u,
-        ua,
-        uc,
-        utc,
-        utmp,
-        v,
-        grid.sin_sg1,
-        grid.sin_sg3,
-        grid.cosa_u,
-        grid.rsin_u,
-        grid.dxa,
-        origin=grid.compute_origin(add=(-3, -3, 0)),
-        domain=grid.domain_shape_compute(add=(6, 6, 0)),
-    )
+        self._north_south_edges(
+            v,
+            va,
+            vc,
+            vtc,
+            self._vtmp,
+            u,
+            self.grid.sin_sg2,
+            self.grid.sin_sg4,
+            self.grid.cosa_v,
+            self.grid.rsin_v,
+            self.grid.dya,
+        )
 
-    # Ydir:
-    fill_corners_y(
-        utmp,
-        vtmp,
-        ua,
-        va,
-        origin=grid.compute_origin(add=(-3, -3, 0)),
-        domain=grid.domain_shape_compute(add=(6, 6, 0)),
-    )
-
-    north_south_edges(
-        v,
-        va,
-        vc,
-        vtc,
-        vtmp,
-        u,
-        grid.sin_sg2,
-        grid.sin_sg4,
-        grid.cosa_v,
-        grid.rsin_v,
-        grid.dya,
-        origin=grid.compute_origin(add=(-3, -3, 0)),
-        domain=grid.domain_shape_compute(add=(6, 6, 0)),
-    )
-
-    vt_main(
-        vtmp,
-        vc,
-        u,
-        grid.cosa_v,
-        grid.rsin_v,
-        vtc,
-        origin=(i1, jfirst, 0),
-        domain=(grid.nic + 2, jdiff, grid.npz),
-    )
+        self._vt_main(
+            self._vtmp,
+            vc,
+            u,
+            self.grid.cosa_v,
+            self.grid.rsin_v,
+            vtc,
+        )

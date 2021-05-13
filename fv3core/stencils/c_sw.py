@@ -8,9 +8,9 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core.stencils.d2a2c_vect as d2a2c
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
+from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from fv3core.utils import corners
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -317,6 +317,10 @@ class CGridShallowWaterDynamics:
         self.grid = grid
         self.namelist = namelist
         self._dord4 = True
+
+        self._D2A2CGrid_Vectors = DGrid2AGrid2CGridVectors(
+            self.grid, self.namelist, self._dord4
+        )
         grid_type = self.namelist.grid_type
         origin_halo1 = (self.grid.is_ - 1, self.grid.js - 1, 0)
         self.delpc = utils.make_storage_from_shape(
@@ -508,7 +512,7 @@ class CGridShallowWaterDynamics:
             self.delpc,
             self.ptc,
         )
-        d2a2c.compute(self._dord4, uc, vc, u, v, ua, va, ut, vt)
+        self._D2A2CGrid_Vectors(uc, vc, u, v, ua, va, ut, vt)
         if self.namelist.nord > 0:
             self._divergence_corner(
                 u,
