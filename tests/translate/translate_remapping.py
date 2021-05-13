@@ -111,5 +111,7 @@ class TranslateRemapping(TranslateFortranData2Py):
         wsd_2d = utils.make_storage_from_shape(inputs["wsd"].shape[0:2])
         wsd_2d[:, :] = inputs["wsd"][:, :, 0]
         inputs["wsd"] = wsd_2d
+        inputs["q_cld"] = inputs["tracers"]["qcld"]
         self.compute_func(**inputs)
+        inputs.pop("q_cld")
         return inputs

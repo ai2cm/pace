@@ -1,13 +1,14 @@
 import inspect
-from typing import Callable, Tuple
+from typing import Callable, Mapping, Tuple
 
 import numpy as np
 
 import fv3core.stencils.updatedzd
+from fv3gfs.util.quantity import Quantity
 
 
 def get_selective_class(
-    cls,
+    cls: type,
     selective_arg_names,
     origin_domain_func: Callable[..., Tuple[Tuple[int, ...], Tuple[int, ...]]],
 ):
@@ -64,7 +65,56 @@ def get_selective_class(
     return SelectivelyValidated
 
 
-def get_update_height_on_d_grid_selective_domain(
+def get_selective_tracer_advection(
+    cls: type,
+    origin_domain_func: Callable[..., Tuple[Tuple[int, ...], Tuple[int, ...]]],
+):
+    class SelectivelyValidatedTracerAdvection:
+        """
+        We have to treat tracers separately because they are a dictionary,
+        not a storage.
+        """
+
+        def __init__(self, *args, **kwargs):
+            self.wrapped = cls(*args, **kwargs)
+            origin, domain = origin_domain_func(self.wrapped)
+            self._validation_slice = tuple(
+                slice(start, start + n) for start, n in zip(origin, domain)
+            )
+            self._all_argument_names = tuple(
+                inspect.getfullargspec(self.wrapped).args[1:]
+            )
+            assert "self" not in self._all_argument_names
+
+        def __call__(self, *args, **kwargs):
+            kwargs.update(self._args_to_kwargs(args))
+            self.wrapped(**kwargs)
+            self._set_nans(kwargs["tracers"])
+
+        def _args_to_kwargs(self, args):
+            return dict(zip(self._all_argument_names, args))
+
+        def subset_output(self, varname: str, output: np.ndarray) -> np.ndarray:
+            """
+            Given an output array, return the slice of the array which we'd
+            like to validate against reference data
+            """
+            if varname == "tracers":
+                # tracers are still an array for this routine
+                output = output[self._validation_slice]
+            return output
+
+        def _set_nans(self, tracers: Mapping[str, Quantity]):
+            # tracers is a dict of Quantity for this routine
+            for quantity in tracers.values():
+                validation_data = np.copy(quantity.data[self._validation_slice])
+                quantity.data[:] = np.nan
+                quantity.data[self._validation_slice] = validation_data
+
+    return SelectivelyValidatedTracerAdvection
+
+
+def get_compute_domain(
     instance,
 ) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
     origin = instance.grid.compute_origin()
@@ -87,7 +137,12 @@ def enable_selective_validation():
     fv3core.stencils.updatedzd.UpdateHeightOnDGrid = get_selective_class(
         fv3core.stencils.updatedzd.UpdateHeightOnDGrid,
         ["height", "zh"],  # must include both function and savepoint names
-        get_update_height_on_d_grid_selective_domain,
+        get_compute_domain,
     )
     # make absolutely sure you don't write just the savepoint name, this would
     # selecively validate without making sure it's safe to do so
+
+    fv3core.stencils.tracer_2d_1l.TracerAdvection = get_selective_tracer_advection(
+        fv3core.stencils.tracer_2d_1l.TracerAdvection,
+        get_compute_domain,
+    )

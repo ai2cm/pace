@@ -1,9 +1,15 @@
+from typing import Optional
+
 import pytest
 
+import fv3core._config as spec
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
 from fv3core.testing import ParallelTranslateBaseSlicing
+
+
+ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.DynamicalCore.NQ]
 
 
 class TranslateFVDynamics(ParallelTranslateBaseSlicing):
@@ -275,13 +281,20 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         for qvar in utils.tracer_variables:
             self.ignore_near_zero_errors[qvar] = True
         self.ignore_near_zero_errors["q_con"] = True
+        self.dycore: Optional[fv_dynamics.DynamicalCore] = None
 
     def compute_parallel(self, inputs, communicator):
         inputs["comm"] = communicator
         state = self.state_from_inputs(inputs)
-        fv_dynamics.fv_dynamics(
-            state,
+        self.dycore = fv_dynamics.DynamicalCore(
             communicator,
+            spec.namelist,
+            state["atmosphere_hybrid_a_coordinate"],
+            state["atmosphere_hybrid_b_coordinate"],
+            state["surface_geopotential"],
+        )
+        self.dycore.step_dynamics(
+            state,
             inputs["consv_te"],
             inputs["do_adiabatic_init"],
             inputs["bdt"],
@@ -290,6 +303,10 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             inputs["ks"],
         )
         outputs = self.outputs_from_state(state)
+        for name in ADVECTED_TRACER_NAMES:
+            outputs[name] = self.dycore.tracer_advection.subset_output(
+                "tracers", outputs[name]
+            )
         return outputs
 
     def compute_sequential(self, *args, **kwargs):
@@ -297,3 +314,20 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             f"{self.__class__} only has a mpirun implementation, "
             "not running in mock-parallel"
         )
+
+    def subset_output(self, varname: str, output):
+        """
+        Given an output array, return the slice of the array which we'd
+        like to validate against reference data
+        """
+        if self.dycore is None:
+            raise RuntimeError(
+                "cannot call subset_output before calling compute_parallel "
+                "to initialize dycore"
+            )
+        if varname in ADVECTED_TRACER_NAMES:
+            return self.dycore.tracer_advection.subset_output(  # type: ignore
+                "tracers", output
+            )
+        else:
+            return output

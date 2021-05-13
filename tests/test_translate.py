@@ -360,7 +360,7 @@ def test_parallel_savepoint(
     caplog,
     python_regression,
     threshold_overrides,
-    xy_indices=False,
+    xy_indices=True,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")
     if python_regression and not testobj.python_regression:
@@ -392,7 +392,10 @@ def test_parallel_savepoint(
     ref_data = {}
     for varname in out_vars:
         ref_data[varname] = []
-        ref_data[varname].append(serializer.read(varname, savepoint_out))
+        new_ref_data = serializer.read(varname, savepoint_out)
+        if hasattr(testobj, "subset_output"):
+            new_ref_data = testobj.subset_output(varname, new_ref_data)
+        ref_data[varname].append(new_ref_data)
         ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
         with subtests.test(varname=varname):
             failing_names.append(varname)

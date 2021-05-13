@@ -10,7 +10,6 @@ import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import FrozenStencil
-from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
@@ -63,11 +62,11 @@ def cmax_multiply_by_frac(
     cyd: FloatField,
     yfx: FloatField,
     mfyd: FloatField,
-    nsplt: int,
+    n_split: int,
 ):
     """multiply all other inputs in-place by frac."""
     with computation(PARALLEL), interval(...):
-        frac = 1.0 / nsplt
+        frac = 1.0 / n_split
         cxd = cxd * frac
         xfx = xfx * frac
         mfxd = mfxd * frac
@@ -99,17 +98,6 @@ def dp_fluxadjustment(
         dp2 = dp1 + (mfx - mfx[1, 0, 0] + mfy - mfy[0, 1, 0]) * rarea
 
 
-def loop_temporaries_copy(
-    tmp_dp1_orig: FloatField,
-    q: FloatField,
-    dp1: FloatField,
-    tmp_qn2: FloatField,
-):
-    with computation(PARALLEL), interval(...):
-        dp1 = tmp_dp1_orig
-        tmp_qn2 = q
-
-
 @gtscript.function
 def adjustment(q, dp1, fx, fy, rarea, dp2):
     return (q * dp1 + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / dp2
@@ -127,37 +115,24 @@ def q_adjust(
         q = adjustment(q, dp1, fx, fy, rarea, dp2)
 
 
-def q_adjustments(
-    q: FloatField,
-    qset: FloatField,
-    dp1: FloatField,
-    fx: FloatField,
-    fy: FloatField,
-    rarea: FloatFieldIJ,
-    dp2: FloatField,
-    it: int,
-    nsplt: int,
-):
-    with computation(PARALLEL), interval(...):
-        if it < nsplt - 1:
-            q = adjustment(q, dp1, fx, fy, rarea, dp2)
-        else:
-            qset = adjustment(q, dp1, fx, fy, rarea, dp2)
+class TracerAdvection:
+    """
+    Performs horizontal advection on tracers.
 
+    Corresponds to tracer_2D_1L in the Fortran code.
+    """
 
-class Tracer2D1L:
     def __init__(self, comm: fv3gfs.util.CubedSphereCommunicator, namelist):
         self.comm = comm
         self.grid = spec.grid
-        self.do_halo_exchange = global_config.get_do_halo_exchange()
+        self._do_halo_exchange = global_config.get_do_halo_exchange()
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         origin = self.grid.compute_origin()
         self._tmp_xfx = utils.make_storage_from_shape(shape, origin)
         self._tmp_yfx = utils.make_storage_from_shape(shape, origin)
         self._tmp_fx = utils.make_storage_from_shape(shape, origin)
         self._tmp_fy = utils.make_storage_from_shape(shape, origin)
-        self._tmp_dp2 = utils.make_storage_from_shape(shape, origin)
-        self._tmp_dp1_orig = utils.make_storage_from_shape(shape, origin)
+        self._tmp_dp = utils.make_storage_from_shape(shape, origin)
         self._tmp_qn2 = self.grid.quantity_wrap(
             utils.make_storage_from_shape(shape, origin),
             units="kg/m^2",
@@ -183,20 +158,8 @@ class Tracer2D1L:
             domain=self.grid.domain_shape_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
         )
-        self._loop_temporaries_copy = FrozenStencil(
-            loop_temporaries_copy,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(),
-            externals=local_axis_offsets,
-        )
         self._dp_fluxadjustment = FrozenStencil(
             dp_fluxadjustment,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute(),
-            externals=local_axis_offsets,
-        )
-        self._q_adjustments = FrozenStencil(
-            q_adjustments,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(),
             externals=local_axis_offsets,
@@ -207,13 +170,13 @@ class Tracer2D1L:
             domain=self.grid.domain_shape_compute(),
             externals=local_axis_offsets,
         )
-        self.fvtp2d = FiniteVolumeTransport(namelist, namelist.hord_tr)
+        self.finite_volume_transport = FiniteVolumeTransport(namelist, namelist.hord_tr)
         # If use AllReduce, will need something like this:
         # self._tmp_cmax = utils.make_storage_from_shape(shape, origin)
         # self._cmax_1 = FrozenStencil(cmax_stencil1)
         # self._cmax_2 = FrozenStencil(cmax_stencil2)
 
-    def __call__(self, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt, nq):
+    def __call__(self, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt):
         # start HALO update on q (in dyn_core in fortran -- just has started when
         # this function is called...)
         self._flux_compute(
@@ -254,11 +217,11 @@ class Tracer2D1L:
         # # comm.Allreduce(cmax_flat, cmax_max_all_ranks, op=MPI.MAX)
 
         cmax_max_all_ranks = 2.0
-        nsplt = math.floor(1.0 + cmax_max_all_ranks)
+        n_split = math.floor(1.0 + cmax_max_all_ranks)
         # NOTE: cmax is not usually a single value, it varies with k, if return to
-        # that, make nsplt a column as well
+        # that, make n_split a column as well
 
-        if nsplt > 1.0:
+        if n_split > 1.0:
             self._cmax_multiply_by_frac(
                 cxd,
                 self._tmp_xfx,
@@ -266,93 +229,55 @@ class Tracer2D1L:
                 cyd,
                 self._tmp_yfx,
                 mfyd,
-                nsplt,
+                n_split,
             )
 
-        if self.do_halo_exchange:
-            reqs = {}
-            for qname in utils.tracer_variables[0:nq]:
-                q = tracers[qname + "_quantity"]
-                reqs[qname] = self.comm.start_halo_update(q, n_points=utils.halo)
+        reqs = []
+        if self._do_halo_exchange:
+            reqs.clear()
+            for q in tracers.values():
+                reqs.append(self.comm.start_halo_update(q, n_points=utils.halo))
+            for req in reqs:
+                req.wait()
 
-        # TODO: Revisit: the loops over q and nsplt have two inefficient options
-        # duplicating storages/stencil calls, return to this, maybe you have more
-        # options now, or maybe the one chosen here is the worse one.
+        dp2 = self._tmp_dp
 
-        copy_stencil(
-            dp1,
-            self._tmp_dp1_orig,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(),
-        )
-        for qname in utils.tracer_variables[0:nq]:
-            if self.do_halo_exchange:
-                reqs[qname].wait()
-            q = tracers[qname + "_quantity"]
-            self._loop_temporaries_copy(
-                self._tmp_dp1_orig,
-                q.storage,
+        for it in range(int(n_split)):
+            last_call = it == n_split - 1
+            self._dp_fluxadjustment(
                 dp1,
-                self._tmp_qn2.storage,
+                mfxd,
+                mfyd,
+                self.grid.rarea,
+                dp2,
             )
-            for it in range(int(nsplt)):
-                self._dp_fluxadjustment(
-                    dp1,
-                    mfxd,
-                    mfyd,
-                    self.grid.rarea,
-                    self._tmp_dp2,
+            for qname, q in tracers.items():
+                self.finite_volume_transport(
+                    q.storage,
+                    cxd,
+                    cyd,
+                    self._tmp_xfx,
+                    self._tmp_yfx,
+                    self._tmp_fx,
+                    self._tmp_fy,
+                    mfx=mfxd,
+                    mfy=mfyd,
                 )
-                if nsplt != 1:
-                    self.fvtp2d(
-                        self._tmp_qn2.storage,
-                        cxd,
-                        cyd,
-                        self._tmp_xfx,
-                        self._tmp_yfx,
-                        self._tmp_fx,
-                        self._tmp_fy,
-                        mfx=mfxd,
-                        mfy=mfyd,
-                    )
-                    self._q_adjustments(
-                        self._tmp_qn2.storage,
-                        q.storage,
-                        dp1,
-                        self._tmp_fx,
-                        self._tmp_fy,
-                        self.grid.rarea,
-                        self._tmp_dp2,
-                        it,
-                        nsplt,
-                    )
-                else:
-                    self.fvtp2d(
-                        q.storage,
-                        cxd,
-                        cyd,
-                        self._tmp_xfx,
-                        self._tmp_yfx,
-                        self._tmp_fx,
-                        self._tmp_fy,
-                        mfx=mfxd,
-                        mfy=mfyd,
-                    )
-                    self._q_adjust(
-                        q.storage,
-                        dp1,
-                        self._tmp_fx,
-                        self._tmp_fy,
-                        self.grid.rarea,
-                        self._tmp_dp2,
-                    )
+                self._q_adjust(
+                    q.storage,
+                    dp1,
+                    self._tmp_fx,
+                    self._tmp_fy,
+                    self.grid.rarea,
+                    dp2,
+                )
+            if not last_call:
+                if self._do_halo_exchange:
+                    reqs.clear()
+                    for q in tracers.values():
+                        reqs.append(self.comm.start_halo_update(q, n_points=utils.halo))
+                    for req in reqs:
+                        req.wait()
 
-                if it < nsplt - 1:
-                    copy_stencil(
-                        self._tmp_dp2,
-                        dp1,
-                        origin=self.grid.compute_origin(),
-                        domain=self.grid.domain_shape_compute(),
-                    )
-                    if self.do_halo_exchange:
-                        self.comm.halo_update(self._tmp_qn2, n_points=utils.halo)
+                # use variable assignment to avoid a data copy
+                dp1, dp2 = dp2, dp1

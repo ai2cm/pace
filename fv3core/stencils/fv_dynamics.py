@@ -10,12 +10,12 @@ import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import ArgSpec, FrozenStencil, get_namespace
+from fv3core.stencils import tracer_2d_1l
 from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
-from fv3core.stencils.tracer_2d_1l import Tracer2D1L
 from fv3core.utils.typing import FloatField, FloatFieldK
 
 
@@ -278,7 +278,7 @@ class DynamicalCore:
         self.namelist = namelist
         self.do_halo_exchange = global_config.get_do_halo_exchange()
 
-        self.tracer_advection = Tracer2D1L(comm, namelist)
+        self.tracer_advection = tracer_2d_1l.TracerAdvection(comm, namelist)
         self._ak = ak.storage
         self._bk = bk.storage
         self._phis = phis.storage
@@ -370,6 +370,11 @@ class DynamicalCore:
         timer: fv3gfs.util.NullTimer,
     ):
         state.__dict__.update(self._temporaries)
+        tracers = {}
+        for name in utils.tracer_variables[0 : DynamicalCore.NQ]:
+            tracers[name] = state.__dict__[name + "_quantity"]
+        tracer_storages = {name: quantity.storage for name, quantity in tracers.items()}
+
         state.ak = self._ak
         state.bk = self._bk
         last_step = False
@@ -386,7 +391,7 @@ class DynamicalCore:
         for n_map in range(state.k_split):
             state.n_map = n_map + 1
             last_step = n_map == state.k_split - 1
-            self._dyn(state, timer)
+            self._dyn(state, tracers, timer)
 
             if self.grid.npz > 4:
                 # nq is actually given by ncnst - pnats,
@@ -405,7 +410,7 @@ class DynamicalCore:
                         print("Remapping")
                 with timer.clock("Remapping"):
                     lagrangian_to_eulerian.compute(
-                        state.__dict__,
+                        tracer_storages,
                         state.pt,
                         state.delp,
                         state.delz,
@@ -417,6 +422,7 @@ class DynamicalCore:
                         state.va,
                         state.cappa,
                         state.q_con,
+                        state.qcld,
                         state.pkz,
                         state.pk,
                         state.pe,
@@ -456,7 +462,7 @@ class DynamicalCore:
             self._do_cubed_to_latlon,
         )
 
-    def _dyn(self, state, timer=fv3gfs.util.NullTimer()):
+    def _dyn(self, state, tracers, timer=fv3gfs.util.NullTimer()):
         copy_stencil(
             state.delp,
             state.dp1,
@@ -471,17 +477,16 @@ class DynamicalCore:
         if self.namelist.z_tracer:
             if __debug__:
                 if self.grid.rank == 0:
-                    print("Tracer2D1L")
+                    print("TracerAdvection")
             with timer.clock("TracerAdvection"):
                 self.tracer_advection(
-                    state.__dict__,
+                    tracers,
                     state.dp1,
                     state.mfxd,
                     state.mfyd,
                     state.cxd,
                     state.cyd,
                     state.mdt,
-                    DynamicalCore.NQ,
                 )
 
 

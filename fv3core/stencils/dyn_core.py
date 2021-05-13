@@ -261,6 +261,7 @@ class AcousticDynamics:
         if not namelist.hydrostatic:
             self._temporaries["pk3"][:] = HUGE_R
 
+        column_namelist = d_sw.get_column_namelist(namelist, self.grid.npz)
         if not namelist.hydrostatic:
             # To write lower dimensional storages, these need to be 3D
             # then converted to lower dimensional
@@ -289,18 +290,17 @@ class AcousticDynamics:
                 dp_ref_3d[0, 0, :], (dp_ref_3d.shape[2],), (0,)
             )
             self._zs = utils.make_storage_data(zs_3d[:, :, 0], zs_3d.shape[0:2], (0, 0))
-            column_namelist = d_sw.get_column_namelist(namelist, self.grid.npz)
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
                 self.grid, self.namelist, self._dp_ref, column_namelist, d_sw.k_bounds()
             )
-            self.dgrid_shallow_water_lagrangian_dynamics = (
-                d_sw.DGridShallowWaterLagrangianDynamics(namelist, column_namelist)
-            )
-            self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
-                self.grid, namelist
-            )
             self.riem_solver3 = RiemannSolver3(namelist)
             self.riem_solver_c = RiemannSolverC(namelist)
+        self.dgrid_shallow_water_lagrangian_dynamics = (
+            d_sw.DGridShallowWaterLagrangianDynamics(namelist, column_namelist)
+        )
+        self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
+            self.grid, namelist
+        )
 
         self._set_gz = FrozenStencil(
             set_gz,

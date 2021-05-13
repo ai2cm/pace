@@ -164,6 +164,7 @@ class MapSingle:
         return q1
 
 
+# TODO: move this class to the testing code, it is only used there
 class MapSingleFactory:
     _object_pool: Dict[Tuple[int, ...], MapSingle] = {}
     """Pool of MapSingle objects."""

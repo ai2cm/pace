@@ -33,6 +33,13 @@ class DummyClass:
     ],
 )
 def test_wrapped_class(all_arg_names, selective_arg_names, shape, origin, domain):
+    """
+    Tests behavior of the returned class from get_selective_class. Tests that it:
+        - sets the correct number of gridcells to NaN
+        - returns a validation subset that is the right shape, and has no nans
+        - subsets only the arguments it was told to, and leaves others untouched
+            with no nans
+    """
     origin_domain_func = MagicMock(return_value=(origin, domain))
     Wrapped = get_selective_class(DummyClass, selective_arg_names, origin_domain_func)
     kwargs = {name: np.zeros(shape) for name in all_arg_names}

@@ -1,9 +1,9 @@
 import pytest
 
 import fv3core._config as spec
+import fv3core.stencils.tracer_2d_1l
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
-from fv3core.stencils.tracer_2d_1l import Tracer2D1L
 from fv3core.testing import ParallelTranslate
 
 
@@ -36,24 +36,44 @@ class TranslateTracer2D1L(ParallelTranslate):
     def compute_parallel(self, inputs, communicator):
 
         self._base.make_storage_data_input_vars(inputs)
+        all_tracers = inputs["tracers"]
+        inputs["tracers"] = self.get_advected_tracer_dict(
+            inputs["tracers"], inputs.pop("nq")
+        )
+        self.tracer_advection = fv3core.stencils.tracer_2d_1l.TracerAdvection(
+            communicator, spec.namelist
+        )
+        self.tracer_advection(**inputs)
+        inputs[
+            "tracers"
+        ] = all_tracers  # some aren't advected, still need to be validated
+        # need to convert tracers dict to [x, y, z, n_tracer] array before subsetting
+        outputs = self._base.slice_output(inputs)
+        outputs["tracers"] = self.subset_output("tracers", outputs["tracers"])
+        return outputs
+
+    def get_advected_tracer_dict(self, all_tracers, nq):
+        all_tracers = {**all_tracers}  # make a new dict so we don't modify the input
         properties = self.inputs["tracers"]
         for name in utils.tracer_variables:
             self.grid.quantity_dict_update(
-                inputs["tracers"],
+                all_tracers,
                 name,
                 dims=properties["dims"],
                 units=properties["units"],
             )
-        self._base.compute_func = utils.cached_stencil_class(Tracer2D1L)(
-            communicator, spec.namelist, cache_key="regression-test"
-        )
-        self._base.compute_func(**inputs)
-        for name in utils.tracer_variables:
-            del inputs["tracers"][name + "_quantity"]
-        return self._base.slice_output(inputs)
+        tracer_names = utils.tracer_variables[:nq]
+        return {name: all_tracers[name + "_quantity"] for name in tracer_names}
 
     def compute_sequential(self, a, b):
         pytest.skip(
             f"{self.__class__} only has a mpirun implementation, "
             "not running in mock-parallel"
         )
+
+    def subset_output(self, varname: str, output):
+        """
+        Given an output array, return the slice of the array which we'd
+        like to validate against reference data
+        """
+        return self.tracer_advection.subset_output(varname, output)
