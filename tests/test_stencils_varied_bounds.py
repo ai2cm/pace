@@ -1,32 +1,28 @@
-import contextlib
-import unittest.mock
-
-import gt4py.gtscript
 import numpy as np
-import pytest
-from gt4py.gtscript import PARALLEL, computation, interval, horizontal, region
+from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.decorators
-from fv3core.decorators import FrozenStencil, StencilConfig, get_stencils_with_varied_bounds
+from fv3core.decorators import StencilConfig, get_stencils_with_varied_bounds
 from fv3core.utils.gt4py_utils import make_storage_from_shape_uncached
 from fv3core.utils.typing import FloatField
-
 
 
 def copy_stencil(q_in: FloatField, q_out: FloatField):
     with computation(PARALLEL), interval(...):
         q_out = q_in
-    
+
+
 def add_1_stencil(q: FloatField):
     with computation(PARALLEL), interval(...):
         qin = q
         q = qin + 1.0
 
+
 def add_1_in_region_stencil(q_in: FloatField, q_out: FloatField):
     from __externals__ import i_start
+
     with computation(PARALLEL), interval(...):
         q_out = q_in
-        with horizontal(region[i_start,:]):
+        with horizontal(region[i_start, :]):
             q_out = q_in + 1.0
 
 
@@ -38,6 +34,7 @@ def setup_data_vars():
     q_ref[:] = 1.0
     return q, q_ref
 
+
 def test_get_stencils_with_varied_bounds(backend):
     config = StencilConfig(
         backend=backend,
@@ -47,23 +44,21 @@ def test_get_stencils_with_varied_bounds(backend):
         device_sync=False,
     )
     origins = [(2, 2, 0), (1, 1, 0)]
-    domains= [(1, 1, 3), (2, 2, 3)]
+    domains = [(1, 1, 3), (2, 2, 3)]
     stencils = get_stencils_with_varied_bounds(
-        add_1_stencil,
-        origins,
-        domains,
-        stencil_config=config
-        )
-    assert(len(stencils) == len(origins))
+        add_1_stencil, origins, domains, stencil_config=config
+    )
+    assert len(stencils) == len(origins)
     q, q_ref = setup_data_vars()
     stencils[0](q)
-    q_ref[2:3, 2:3,:] = 2.0
+    q_ref[2:3, 2:3, :] = 2.0
     np.testing.assert_array_equal(q.data, q_ref.data)
     stencils[1](q)
-    q_ref[2:3, 2:3,:] = 3.0
+    q_ref[2:3, 2:3, :] = 3.0
     q_ref[1, 1:3, :] = 2.0
     q_ref[2:3, 1, :] = 2.0
     np.testing.assert_array_equal(q.data, q_ref.data)
+
 
 def test_get_stencils_with_varied_bounds_and_regions(backend):
 
@@ -75,13 +70,10 @@ def test_get_stencils_with_varied_bounds_and_regions(backend):
         device_sync=False,
     )
     origins = [(2, 2, 0), (1, 1, 0)]
-    domains= [(1, 1, 3), (2, 2, 3)]
+    domains = [(1, 1, 3), (2, 2, 3)]
     stencils = get_stencils_with_varied_bounds(
-        add_1_in_region_stencil,
-        origins,
-        domains,
-        stencil_config=config
-        )
+        add_1_in_region_stencil, origins, domains, stencil_config=config
+    )
     q, q_ref = setup_data_vars()
     stencils[0](q, q)
     q_ref[3, 2] = 2.0
