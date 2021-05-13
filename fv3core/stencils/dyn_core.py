@@ -340,7 +340,8 @@ class AcousticDynamics:
         )
 
         if self._do_del2cubed:
-            self._hyperdiffusion = HyperdiffusionDamping(self.grid)
+            nf_ke = min(3, self.namelist.nord + 1)
+            self._hyperdiffusion = HyperdiffusionDamping(self.grid, nf_ke)
         if self.namelist.rf_fast:
             self._rayleigh_damping = ray_fast.RayleighDamping(self.grid, self.namelist)
         self._compute_pkz_tempadjust = _initialize_temp_adjust_stencil(
@@ -663,14 +664,12 @@ class AcousticDynamics:
                         )
 
         if self._do_del2cubed:
-            nf_ke = min(3, self.namelist.nord + 1)
-
             if self.do_halo_exchange:
                 self.comm.halo_update(
                     state.heat_source_quantity, n_points=self.grid.halo
                 )
             cd = constants.CNST_0P20 * self.grid.da_min
-            self._hyperdiffusion(state.heat_source, nf_ke, cd)
+            self._hyperdiffusion(state.heat_source, cd)
             if not self.namelist.hydrostatic:
                 delt_time_factor = abs(dt * self.namelist.delt_max)
                 self._compute_pkz_tempadjust(

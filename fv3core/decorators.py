@@ -169,6 +169,37 @@ class FrozenStencil:
                 fields[write_field]._set_device_modified()
 
 
+def get_stencils_with_varied_bounds(
+    func: Callable[..., None],
+    origins: List[Index3D],
+    domains: List[Index3D],
+    stencil_config: Optional[StencilConfig] = None,
+    externals: Optional[Mapping[str, Any]] = None,
+) -> List[FrozenStencil]:
+    assert len(origins) == len(domains), (
+        "Lists of origins and domains need to have the same length, you provided "
+        + str(len(origins))
+        + " origins and "
+        + str(len(domains))
+        + " domains"
+    )
+    if externals is None:
+        externals = {}
+    stencils = []
+    for origin, domain in zip(origins, domains):
+        ax_offsets = fv3core.utils.grid.axis_offsets(spec.grid, origin, domain)
+        stencils.append(
+            FrozenStencil(
+                func,
+                origin=origin,
+                domain=domain,
+                stencil_config=stencil_config,
+                externals={**externals, **ax_offsets},
+            )
+        )
+    return stencils
+
+
 def get_written_fields(field_info) -> List[str]:
     """Returns the list of fields that are written.
 

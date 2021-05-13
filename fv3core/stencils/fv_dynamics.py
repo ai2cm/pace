@@ -121,7 +121,7 @@ def post_remap(
                 print("Del2Cubed")
         if global_config.get_do_halo_exchange():
             comm.halo_update(state.omga_quantity, n_points=utils.halo)
-        hyperdiffusion(state.omga, namelist.nf_omega, 0.18 * grid.da_min)
+        hyperdiffusion(state.omga, 0.18 * grid.da_min)
 
 
 def wrapup(
@@ -311,7 +311,7 @@ class DynamicalCore:
         self.acoustic_dynamics = AcousticDynamics(
             comm, namelist, self._ak, self._bk, self._pfull, self._phis
         )
-        self._hyperdiffusion = HyperdiffusionDamping(self.grid)
+        self._hyperdiffusion = HyperdiffusionDamping(self.grid, self.namelist.nf_omega)
         self._do_cubed_to_latlon = CubedToLatLon(self.grid, namelist)
 
         self._temporaries = fvdyn_temporaries(
