@@ -7,6 +7,7 @@ from datetime import datetime
 
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 if __name__ == "__main__":
@@ -36,6 +37,7 @@ if __name__ == "__main__":
     filters = config["filters"]
     backends = config["backends"]
     timing_plots = config["timing_plots"]
+    timing_bar_plots = config["timing_bar_plots"]
     memory_plots = config["memory_plots"]
 
     # collect and sort the data
@@ -48,7 +50,9 @@ if __name__ == "__main__":
                 with open(fullpath) as f:
                     data = json.load(f)
                     if filters in data["setup"]["dataset"]:
-                        if "memory_usage" in fullpath:
+                        if "summary" in fullpath:
+                            continue
+                        elif "memory_usage" in fullpath:
                             full_memory_data.append(data)
                         else:
                             full_timing_data.append(data)
@@ -142,12 +146,7 @@ if __name__ == "__main__":
                             for element in specific
                         ],
                         [
-                            element["times"][timer["name"]]["mean"]
-                            / (
-                                (element["setup"]["timesteps"] - 1)
-                                if plot_config["type"] == "per_timestep"
-                                else 1
-                            )
+                            np.median(element["times"][timer["name"]]["times"])
                             for element in specific
                         ],
                         timer["linestyle"],
@@ -155,7 +154,7 @@ if __name__ == "__main__":
                         label=label,
                         color=backend_config["color"],
                     )
-                    if plot_variance:
+                    if plot_config["plot_stddev"]:
                         plt.fill_between(
                             [
                                 datetime.strptime(
@@ -164,27 +163,22 @@ if __name__ == "__main__":
                                 for element in specific
                             ],
                             [
-                                element["times"][timer["name"]]["maximum"]
-                                / (
-                                    (element["setup"]["timesteps"] - 1)
-                                    if plot_config["type"] == "per_timestep"
-                                    else 1
+                                (
+                                    np.median(element["times"][timer["name"]]["times"])
+                                    + np.std(element["times"][timer["name"]]["times"])
                                 )
                                 for element in specific
                             ],
                             [
-                                element["times"][timer["name"]]["minimum"]
-                                / (
-                                    (element["setup"]["timesteps"] - 1)
-                                    if plot_config["type"] == "per_timestep"
-                                    else 1
+                                (
+                                    np.median(element["times"][timer["name"]]["times"])
+                                    - np.std(element["times"][timer["name"]]["times"])
                                 )
                                 for element in specific
                             ],
                             color=backend_config["color"],
                             alpha=0.2,
                         )
-
         ax = plt.gca()
         plt.gcf().autofmt_xdate(rotation=45, ha="right")
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%m/%d"))
@@ -206,3 +200,40 @@ if __name__ == "__main__":
         plt.grid(color="silver", alpha=0.4)
         plt.gcf().set_size_inches(8, 6)
         plt.savefig("history_" + plot_name + ".png", dpi=100)
+
+    for plot_name, plot_config in timing_bar_plots.items():
+        matplotlib.rcParams.update({"font.size": fontsize})
+        last_fortran = [
+            x for x in full_timing_data if x["setup"]["version"] == "fortran"
+        ][-1]
+        last_fortran_mainloop = np.median(last_fortran["times"]["mainloop"]["times"])
+        for backend in plot_config["backends"]:
+            plt.figure()
+            # Ys are mainloop median + fortran reference
+            specific = [
+                x for x in full_timing_data if x["setup"]["version"] == backend
+            ][-plot_config["run_to_go_back"] :]
+            mainloops_speedup = [
+                last_fortran_mainloop / np.median(x["times"]["mainloop"]["times"])
+                for x in specific
+            ]
+            ys = mainloops_speedup
+            # Xs are fake data + hash commits
+            xs = np.arange(plot_config["run_to_go_back"])
+            xs_hash = [x["setup"]["hash"][:6] for x in specific]
+            # plot
+            plt.bar(xs, ys)
+            plt.axhline(y=1, color="r", linestyle="--")
+            ax = plt.gca()
+            plt.xticks(xs, xs_hash, fontsize=fontsize)
+            plt.ylabel("Speed up factor")
+            plt.xlabel("Commit hashes (latest to the right)")
+            plt.yticks(fontsize=fontsize)
+            plt.title(
+                f"Speedup of {backend} vs Fortran on mainloop (last 3 runs)",
+                pad=20,
+            )
+            ax.set_facecolor("white")
+            plt.grid(color="silver", alpha=0.4)
+            plt.gcf().set_size_inches(8, 6)
+            plt.savefig(f"speedup_{plot_name}_{backend.replace('/', '_')}.png", dpi=100)

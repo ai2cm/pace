@@ -57,7 +57,7 @@ RANKS=6
 BENCHMARK_DIR=${ROOT_DIR}/examples/standalone/benchmarks
 DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}/${experiment}"
 ARTIFACT_ROOT="/project/s1053/performance/"
-TIMING_DIR="${ARTIFACT_ROOT}/fv3core_monitor/${backend}"
+TIMING_DIR="${ARTIFACT_ROOT}/fv3core_performance/${backend}"
 PROFILE_DIR="${ARTIFACT_ROOT}/fv3core_profile/${backend}"
 CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/${experiment}/${backend}"
 
