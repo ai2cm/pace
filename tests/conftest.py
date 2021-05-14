@@ -193,10 +193,13 @@ def sequential_savepoint_cases(metafunc, data_path):
     layout = fv3core._config.namelist.layout
     total_ranks = 6 * layout[0] * layout[1]
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
+
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
         grid = process_grid_savepoint(serializer, grid_savepoint, rank)
+        if rank == 0:
+            grid_rank0 = grid
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -212,6 +215,7 @@ def sequential_savepoint_cases(metafunc, data_path):
                     layout,
                 )
             )
+    fv3core._config.set_grid(grid_rank0)
     return return_list
 
 
@@ -232,7 +236,10 @@ def mock_parallel_savepoint_cases(metafunc, data_path):
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid_list.append(process_grid_savepoint(serializer, grid_savepoint, rank))
+        grid = process_grid_savepoint(serializer, grid_savepoint, rank)
+        grid_list.append(grid)
+        if rank == 0:
+            grid_rank0 = grid
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     for test_name in sorted(list(savepoint_names)):
         input_list = []
@@ -259,6 +266,7 @@ def mock_parallel_savepoint_cases(metafunc, data_path):
                 layout,
             )
         )
+    fv3core._config.set_grid(grid_rank0)
     return return_list
 
 
@@ -377,6 +385,7 @@ def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
             param_list.append(
                 get_param(case, testobj, savepoint_in, savepoint_out, i, max_call_count)
             )
+
     metafunc.parametrize(", ".join(arg_names), param_list)
 
 
