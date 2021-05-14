@@ -252,7 +252,7 @@ class AcousticDynamics:
         self._pfull = pfull
         self._nk_heat_dissipation = get_nk_heat_dissipation(namelist, self.grid)
         self.nonhydrostatic_pressure_gradient = (
-            nh_p_grad.NonHydrostaticPressureGradient()
+            nh_p_grad.NonHydrostaticPressureGradient(self.namelist.grid_type)
         )
         self._temporaries = dyncore_temporaries(
             self.grid.domain_shape_full(add=(1, 1, 1)), self.namelist, self.grid

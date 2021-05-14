@@ -394,16 +394,16 @@ class AGrid2BGridFourthOrder:
     """
 
     def __init__(
-        self, namelist, kstart: int = 0, nk: int = None, replace: bool = False
+        self, grid_type, kstart: int = 0, nk: int = None, replace: bool = False
     ):
         """
         Args:
-            namelist: model configuration
+            grid_type: integer representing the type of grid
             kstart: first klevel to compute on
             nk: number of k levels to compute
             replace: boolean, update qin to the B grid as well
         """
-        assert namelist.grid_type < 3
+        assert grid_type < 3
         self.grid = spec.grid
         self.replace = replace
         shape = self.grid.domain_shape_full(add=(1, 1, 1))

@@ -1,3 +1,4 @@
+import fv3core._config as spec
 import fv3core.stencils.nh_p_grad as NH_P_Grad
 from fv3core.testing import TranslateFortranData2Py
 
@@ -5,7 +6,9 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateNH_P_Grad(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = NH_P_Grad.NonHydrostaticPressureGradient()
+        self.compute_func = NH_P_Grad.NonHydrostaticPressureGradient(
+            spec.namelist.grid_type
+        )
         self.in_vars["data_vars"] = {
             "u": {},
             "v": {},

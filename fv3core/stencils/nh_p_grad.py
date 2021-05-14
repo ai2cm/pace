@@ -89,7 +89,7 @@ class NonHydrostaticPressureGradient:
     Fortran name is nh_p_grad
     """
 
-    def __init__(self):
+    def __init__(self, grid_type):
         grid = spec.grid
         self.orig = grid.compute_origin()
         self.domain_full_k = grid.domain_shape_compute(add=(1, 1, 0))
@@ -131,19 +131,19 @@ class NonHydrostaticPressureGradient:
             domain=self.v_domain,
         )
         self.a2b_k1 = AGrid2BGridFourthOrder(
-            spec.namelist,
+            grid_type,
             kstart=1,
             nk=self.nk,
             replace=True,
         )
         self.a2b_kbuffer = AGrid2BGridFourthOrder(
-            spec.namelist,
+            grid_type,
             kstart=0,
             nk=self.nk + 1,
             replace=True,
         )
         self.a2b_kstandard = AGrid2BGridFourthOrder(
-            spec.namelist,
+            grid_type,
             kstart=0,
             nk=self.nk,
             replace=False,

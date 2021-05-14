@@ -59,7 +59,7 @@ class CopyCorners:
                 },
             )
         else:
-            raise NotImplementedError()
+            raise ValueError("Direction must be either 'x' or 'y'")
 
     def __call__(self, field: FloatField):
         """
@@ -532,8 +532,65 @@ def copy_corners_y_stencil(q: FloatField):
             q = q[-3, -2, 0]
 
 
-@gtstencil
-def fill_corners_bgrid_x(q: FloatField):
+class FillCornersBGrid:
+    """
+    Helper-class to fill corners corresponding to the fortran function
+    fill_corners with BGRID=.true. and either FILL=YDir or FILL=YDIR
+    """
+
+    def __init__(
+        self, direction: str, temporary_field=None, origin=None, domain=None
+    ) -> None:
+        self.grid = spec.grid
+        """The grid for this stencil"""
+        if origin is None:
+            origin = self.grid.full_origin()
+        """The origin for the corner computation"""
+        if domain is None:
+            domain = self.grid.domain_shape_full()
+        """The full domain required to do corner computation everywhere"""
+
+        if temporary_field is not None:
+            self._corner_tmp = temporary_field
+        else:
+            self._corner_tmp = utils.make_storage_from_shape(
+                self.grid.domain_shape_full(add=(1, 1, 1)), origin=origin
+            )
+
+        self._copy_full_domain = FrozenStencil(
+            func=copy_defn,
+            origin=origin,
+            domain=domain,
+        )
+
+        """Stencil Wrapper to do the copy of the input field to the temporary field"""
+
+        ax_offsets = axis_offsets(self.grid, origin, domain)
+
+        if direction == "x":
+            self._fill_corners_bgrid = FrozenStencil(
+                func=fill_corners_bgrid_x_defn,
+                origin=origin,
+                domain=domain,
+                externals=ax_offsets,
+            )
+        elif direction == "y":
+            self._fill_corners_bgrid = FrozenStencil(
+                func=fill_corners_bgrid_y_defn,
+                origin=origin,
+                domain=domain,
+                externals=ax_offsets,
+            )
+
+        else:
+            raise ValueError("Direction must be either 'x' or 'y'")
+
+    def __call__(self, field: FloatField):
+        self._copy_full_domain(field, self._corner_tmp)
+        self._fill_corners_bgrid(self._corner_tmp, field)
+
+
+def fill_corners_bgrid_x_defn(q_in: FloatField, q_out: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
@@ -541,62 +598,61 @@ def fill_corners_bgrid_x(q: FloatField):
         with horizontal(
             region[i_start - 1, j_start - 1], region[i_end + 2, j_start - 1]
         ):
-            q = q[0, 2, 0]
+            q_out = q_in[0, 2, 0]
         with horizontal(
             region[i_start - 1, j_start - 2], region[i_end + 3, j_start - 1]
         ):
-            q = q[-1, 3, 0]
+            q_out = q_in[-1, 3, 0]
         with horizontal(
             region[i_start - 1, j_start - 3], region[i_end + 4, j_start - 1]
         ):
-            q = q[-2, 4, 0]
+            q_out = q_in[-2, 4, 0]
         with horizontal(
             region[i_start - 2, j_start - 1], region[i_end + 2, j_start - 2]
         ):
-            q = q[1, 3, 0]
+            q_out = q_in[1, 3, 0]
         with horizontal(
             region[i_start - 2, j_start - 2], region[i_end + 3, j_start - 2]
         ):
-            q = q[0, 4, 0]
+            q_out = q_in[0, 4, 0]
         with horizontal(
             region[i_start - 2, j_start - 3], region[i_end + 4, j_start - 2]
         ):
-            q = q[-1, 5, 0]
+            q_out = q_in[-1, 5, 0]
         with horizontal(
             region[i_start - 3, j_start - 1], region[i_end + 2, j_start - 3]
         ):
-            q = q[2, 4, 0]
+            q_out = q_in[2, 4, 0]
         with horizontal(
             region[i_start - 3, j_start - 2], region[i_end + 3, j_start - 3]
         ):
-            q = q[1, 5, 0]
+            q_out = q_in[1, 5, 0]
         with horizontal(
             region[i_start - 3, j_start - 3], region[i_end + 4, j_start - 3]
         ):
-            q = q[0, 6, 0]
+            q_out = q_in[0, 6, 0]
         # nw and ne corner
         with horizontal(region[i_start - 1, j_end + 2], region[i_end + 2, j_end + 2]):
-            q = q[0, -2, 0]
+            q_out = q_in[0, -2, 0]
         with horizontal(region[i_start - 1, j_end + 3], region[i_end + 3, j_end + 2]):
-            q = q[-1, -3, 0]
+            q_out = q_in[-1, -3, 0]
         with horizontal(region[i_start - 1, j_end + 4], region[i_end + 4, j_end + 2]):
-            q = q[-2, -4, 0]
+            q_out = q_in[-2, -4, 0]
         with horizontal(region[i_start - 2, j_end + 2], region[i_end + 2, j_end + 3]):
-            q = q[1, -3, 0]
+            q_out = q_in[1, -3, 0]
         with horizontal(region[i_start - 2, j_end + 3], region[i_end + 3, j_end + 3]):
-            q = q[0, -4, 0]
+            q_out = q_in[0, -4, 0]
         with horizontal(region[i_start - 2, j_end + 4], region[i_end + 4, j_end + 3]):
-            q = q[-1, -5, 0]
+            q_out = q_in[-1, -5, 0]
         with horizontal(region[i_start - 3, j_end + 2], region[i_end + 2, j_end + 4]):
-            q = q[2, -4, 0]
+            q_out = q_in[2, -4, 0]
         with horizontal(region[i_start - 3, j_end + 3], region[i_end + 3, j_end + 4]):
-            q = q[1, -5, 0]
+            q_out = q_in[1, -5, 0]
         with horizontal(region[i_start - 3, j_end + 4], region[i_end + 4, j_end + 4]):
-            q = q[0, -6, 0]
+            q_out = q_in[0, -6, 0]
 
 
-@gtstencil
-def fill_corners_bgrid_y(q: FloatField):
+def fill_corners_bgrid_y_defn(q_in: FloatField, q_out: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
@@ -604,58 +660,58 @@ def fill_corners_bgrid_y(q: FloatField):
         with horizontal(
             region[i_start - 1, j_start - 1], region[i_start - 1, j_end + 2]
         ):
-            q = q[2, 0, 0]
+            q_out = q_in[2, 0, 0]
         with horizontal(
             region[i_start - 1, j_start - 2], region[i_start - 2, j_end + 2]
         ):
-            q = q[3, 1, 0]
+            q_out = q_in[3, 1, 0]
         with horizontal(
             region[i_start - 1, j_start - 3], region[i_start - 3, j_end + 2]
         ):
-            q = q[4, 2, 0]
+            q_out = q_in[4, 2, 0]
         with horizontal(
             region[i_start - 2, j_start - 1], region[i_start - 1, j_end + 3]
         ):
-            q = q[3, -1, 0]
+            q_out = q_in[3, -1, 0]
         with horizontal(
             region[i_start - 2, j_start - 2], region[i_start - 2, j_end + 3]
         ):
-            q = q[4, 0, 0]
+            q_out = q_in[4, 0, 0]
         with horizontal(
             region[i_start - 2, j_start - 3], region[i_start - 3, j_end + 3]
         ):
-            q = q[5, 1, 0]
+            q_out = q_in[5, 1, 0]
         with horizontal(
             region[i_start - 3, j_start - 1], region[i_start - 1, j_end + 4]
         ):
-            q = q[4, -2, 0]
+            q_out = q_in[4, -2, 0]
         with horizontal(
             region[i_start - 3, j_start - 2], region[i_start - 2, j_end + 4]
         ):
-            q = q[5, -1, 0]
+            q_out = q_in[5, -1, 0]
         with horizontal(
             region[i_start - 3, j_start - 3], region[i_start - 3, j_end + 4]
         ):
-            q = q[6, 0, 0]
+            q_out = q_in[6, 0, 0]
         # se and ne corners
         with horizontal(region[i_end + 2, j_start - 1], region[i_end + 2, j_end + 2]):
-            q = q[-2, 0, 0]
+            q_out = q_in[-2, 0, 0]
         with horizontal(region[i_end + 2, j_start - 2], region[i_end + 3, j_end + 2]):
-            q = q[-3, 1, 0]
+            q_out = q_in[-3, 1, 0]
         with horizontal(region[i_end + 2, j_start - 3], region[i_end + 4, j_end + 2]):
-            q = q[-4, 2, 0]
+            q_out = q_in[-4, 2, 0]
         with horizontal(region[i_end + 3, j_start - 1], region[i_end + 2, j_end + 3]):
-            q = q[-3, -1, 0]
+            q_out = q_in[-3, -1, 0]
         with horizontal(region[i_end + 3, j_start - 2], region[i_end + 3, j_end + 3]):
-            q = q[-4, 0, 0]
+            q_out = q_in[-4, 0, 0]
         with horizontal(region[i_end + 3, j_start - 3], region[i_end + 4, j_end + 3]):
-            q = q[-5, 1, 0]
+            q_out = q_in[-5, 1, 0]
         with horizontal(region[i_end + 4, j_start - 1], region[i_end + 2, j_end + 4]):
-            q = q[-4, -2, 0]
+            q_out = q_in[-4, -2, 0]
         with horizontal(region[i_end + 4, j_start - 2], region[i_end + 3, j_end + 4]):
-            q = q[-5, -1, 0]
+            q_out = q_in[-5, -1, 0]
         with horizontal(region[i_end + 4, j_start - 3], region[i_end + 4, j_end + 4]):
-            q = q[-6, 0, 0]
+            q_out = q_in[-6, 0, 0]
 
 
 def fill_sw_corner_2d_agrid(q, i, j, direction, grid, kstart=0, nk=None):
@@ -703,8 +759,7 @@ def fill_corners_2d_agrid(q, grid, gridtype, direction="x"):
                 fill_ne_corner_2d_agrid(q, i, j, direction, grid)
 
 
-@gtstencil
-def fill_corners_dgrid(x: FloatField, y: FloatField, mysign: float):
+def fill_corners_dgrid_defn(x: FloatField, y: FloatField, mysign: float):
     from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):

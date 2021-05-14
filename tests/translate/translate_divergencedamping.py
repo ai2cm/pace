@@ -1,11 +1,11 @@
-import fv3core.stencils.divergence_damping as dd
+import fv3core._config as spec
+from fv3core.stencils.divergence_damping import DivergenceDamping
 from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslateDivergenceDamping(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = dd.compute
         self.in_vars["data_vars"] = {
             "u": {},
             "v": {},
@@ -30,5 +30,9 @@ class TranslateDivergenceDamping(TranslateFortranData2Py):
         }
         self.max_error = 3.0e-11
 
-    def compute(self, inputs):
-        return self.column_split_compute(inputs, {"nord": "nord_col", "d2_bg": "d2_bg"})
+    def compute_from_storage(self, inputs):
+        divdamp = DivergenceDamping(spec.namelist, inputs["nord_col"], inputs["d2_bg"])
+        del inputs["nord_col"]
+        del inputs["d2_bg"]
+        divdamp(**inputs)
+        return inputs
