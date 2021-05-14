@@ -82,3 +82,4 @@ if __name__ == "__main__":
             fullpath = os.path.join(subdir, file)
             if is_valid_file(fullpath):
                 analyze_file_at_path(fullpath)
+        break  # We only want to look at top directory
