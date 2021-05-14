@@ -17,7 +17,9 @@ except ModuleNotFoundError:
 def get_stencil_name(frame, event, args) -> str:
     """Get the name of the stencil from within a call to FrozenStencil.__call__"""
     name = getattr(
-        frame.f_locals["self"].func, "__name__", repr(frame.f_locals["self"].func)
+        frame.f_locals["self"].stencil_object,
+        "__name__",
+        repr(frame.f_locals["self"].stencil_object.options["name"]),
     )
     return f"{name}.__call__"
 

@@ -52,6 +52,11 @@ def parse_args():
         help="enable or disable the halo exchange",
     )
     parser.add_argument(
+        "--disable_json_dump",
+        action="store_true",
+        help="enable or disable json dump",
+    )
+    parser.add_argument(
         "--profile",
         action="store_true",
         help="enable performance profiling using cProfile",
@@ -107,7 +112,6 @@ if __name__ == "__main__":
     timer.start("total")
     with timer.clock("initialization"):
         args = parse_args()
-
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
 
@@ -215,17 +219,27 @@ if __name__ == "__main__":
     if profiler is not None:
         profiler.dump_stats(f"fv3core_{experiment_name}_{args.backend}_{rank}.prof")
 
-    # collect times and output simple statistics
-    comm.Barrier()
-    if not args.disable_halo_exchange:
+    # Timings
+    if not args.disable_json_dump:
+        # Collect times and output statistics in json
+        comm.Barrier()
         print("Gathering Times")
         experiment = set_experiment_info(
             experiment_name, args.time_step, args.backend, args.hash
         )
         gather_timing_statistics(timer, experiment, comm)
+        print(f"{experiment}")
         now = datetime.now()
         filename = now.strftime("%Y-%m-%d-%H-%M-%S")
         write_global_timings(experiment, filename, comm)
+    else:
+        # Print a brief summary of timings
+        # Dev Note: we especially do _not_ gather timings here to have a
+        # no-MPI-communication codepath
+        print(
+            f"Rank {rank} done. Total time: {timer.times['total']}."
+            f"Mainloop time: {timer.times['mainloop']}"
+        )
 
     if rank == 0:
         print("SUCCESS")

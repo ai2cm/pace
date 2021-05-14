@@ -11,6 +11,7 @@
 # $4: path to the data directory that should be run
 # $5: (optional) arguments to pass to python invocation
 # $6: (optional) arguments to pass to dynamics.py invocation
+# $7: (optional) true|false wraps an extra 2 timestep run in nsys
 
 # stop on all errors
 set -e
@@ -68,6 +69,7 @@ test -n "$4" || exitError 1004 ${LINENO} "must pass a data path"
 data_path="$4"
 py_args="$5"
 run_args="$6"
+DO_NSYS_RUN="$7"
 
 # get dependencies
 cd $ROOT_DIR
@@ -96,6 +98,9 @@ pip list
 if [ -d ./buildenv ] ; then rm -rf buildenv ; fi
 git clone https://github.com/VulcanClimateModeling/buildenv/
 cp ./buildenv/submit.daint.slurm run.daint.slurm
+if [ "${DO_NSYS_RUN}" == "true" ] ; then
+    cp ./buildenv/submit.daint.slurm run.nsys.daint.slurm
+fi
 
 if git rev-parse --git-dir > /dev/null 2>&1 ; then
   githash=`git rev-parse HEAD`
@@ -104,15 +109,16 @@ else
 fi
 
 echo "Configuration overview:"
-echo "    Root dir:         $ROOT_DIR"
-echo "    Timesteps:        $timesteps"
-echo "    Ranks:            $ranks"
-echo "    Backend:          $backend"
-echo "    Input data dir:   $data_path"
-echo "    Threads per rank: $NTHREADS"
-echo "    GIT hash:         $githash"
-echo "    Python arguments: $py_args"
-echo "    Run arguments:    $run_args"
+echo "    Root dir:          $ROOT_DIR"
+echo "    Timesteps:         $timesteps"
+echo "    Ranks:             $ranks"
+echo "    Backend:           $backend"
+echo "    Input data dir:    $data_path"
+echo "    Threads per rank:  $NTHREADS"
+echo "    GIT hash:          $githash"
+echo "    Python arguments:  $py_args"
+echo "    Run arguments:     $run_args"
+echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 split_path=(${data_path//\// })
 experiment=${split_path[-1]}
@@ -162,4 +168,35 @@ if [ $status1 -ne 0 -o $status2 -ne 0 ] ; then
 else
     echo "performance run sucessful"
 fi
+
+if [ "${DO_NSYS_RUN}" == "true" ] ; then
+    echo "submitting script to do performance run wrapped by nsys"
+    # Adapt batch script to run the code:
+    sed -i "s/<NAME>/standalone/g" run.nsys.daint.slurm
+    sed -i "s/<NTASKS>/$ranks/g" run.nsys.daint.slurm
+    sed -i "s/<NTASKSPERNODE>/1/g" run.nsys.daint.slurm
+    sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.nsys.daint.slurm
+    sed -i "s/<OUTFILE>/run.nsys.daint.out\n#SBATCH --hint=nomultithread/g" run.nsys.daint.slurm
+    sed -i "s/00:45:00/00:40:00/g" run.nsys.daint.slurm
+    sed -i "s/cscsci/normal/g" run.nsys.daint.slurm
+    sed -i "s/<G2G>/export PYTHONOPTIMIZE=TRUE/g" run.nsys.daint.slurm
+    sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python $ROOT_DIR/profiler/external_profiler.py examples/standalone/runfile/dynamics.py $data_path 2 $backend $githash $run_args --disable_json_dump#g" run.nsys.daint.slurm
+    # execute on a gpu node
+    set +e
+    res=$(sbatch -W -C gpu run.nsys.daint.slurm 2>&1)
+    status1=$?
+    grep -q SUCCESS run.nsys.daint.out
+    status2=$?
+    set -e
+    wait
+    echo "DONE WAITING ${status1} ${status2}"
+    if [ $status1 -ne 0 -o $status2 -ne 0 ] ; then
+        cleanupFailedJob "${res}" run.nsys.daint.out
+        echo "ERROR: performance run wrapped by nsys not sucessful"
+        exit 1
+    else
+        echo "performance run wrapped by nsys sucessful"
+    fi
+fi
+
 python examples/standalone/benchmarks/collect_memory_usage_data.py . $githash

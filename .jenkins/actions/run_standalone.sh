@@ -23,12 +23,17 @@ exitError()
 
 # check arguments
 DO_PROFILE="false"
+DO_NSYS_RUN="false"
 SAVE_CACHE="false"
 SAVE_TIMINGS="false"
 SAVE_ARTIFACTS="true"
 
 if [ "$1" == "profile" ] ; then
     DO_PROFILE="true"
+fi
+# Extra run in 'gtcuda' with nsys
+if [ "${DO_PROFILE}" == "true" ] && [ "${backend}" == "gtcuda" ] ; then
+    DO_NSYS_RUN="true"
 fi
 if [ "$1" == "build_cache" ] ; then
     SAVE_CACHE="true"
@@ -99,8 +104,7 @@ if [ "${DO_PROFILE}" == "true" ] ; then
 fi
 cmd="${BENCHMARK_DIR}/run_on_daint.sh ${TIMESTEPS} ${RANKS} ${backend} ${DATA_DIR}"
 echo "Run command: ${cmd} \"\" \"${profile}\""
-${cmd} "" "${profile}"
-
+${cmd} "" "${profile}" "${DO_NSYS_RUN}"
 echo "=== Post-processing ============================"
 
 # store timing artifacts
@@ -127,9 +131,16 @@ if [ "${DO_PROFILE}" == "true" ] ; then
     echo "Analyzing profiling results"
     ${BENCHMARK_DIR}/process_profiling.sh
     if [ "${SAVE_ARTIFACTS}" == "true" ] ; then
-        echo "Copying profiling information to ${PROFILE_DIR}"
+        echo "Copying profiling information to ${PROFILE_DIR}/prof/"
         cp $ROOT_DIR/*.prof ${PROFILE_DIR}/prof/
     fi
+fi
+
+# copy nsys results - cleaning the old ones first
+if [ "${DO_NSYS_RUN}" == "true" ] ; then
+    echo "Copying new nsys results to ${PROFILE_DIR}/nsys/"
+    rm -f ${PROFILE_DIR}/nsys/*.qdrep || true
+    cp $ROOT_DIR/*.qdrep ${PROFILE_DIR}/nsys/
 fi
 
 # remove venv (too many files!)
