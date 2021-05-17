@@ -5,7 +5,7 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, floor, interval,
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
-from fv3core.decorators import FrozenStencil, gtstencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import dim
 from fv3core.stencils.moist_cv import compute_pkz_func
 from fv3core.utils.typing import FloatField, FloatFieldIJ
@@ -535,7 +535,6 @@ def wqs1_fn_2(it, ap1, ta, den):
     return wqsat_wsq1(table2, des2, ap1, it, ta, den)
 
 
-@gtstencil
 def compute_q_tables(
     index: FloatField,
     tablew: FloatField,

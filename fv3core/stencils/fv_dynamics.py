@@ -4,7 +4,6 @@ from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core._config as spec
 import fv3core.stencils.moist_cv as moist_cv
-import fv3core.stencils.remapping as lagrangian_to_eulerian
 import fv3core.utils.global_config as global_config
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
@@ -16,6 +15,7 @@ from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
+from fv3core.stencils.remapping import Lagrangian_to_Eulerian
 from fv3core.utils.typing import FloatField, FloatFieldK
 
 
@@ -323,6 +323,10 @@ class DynamicalCore:
             self.grid, self.namelist
         )
 
+        self._lagrangian_to_eulerian_obj = Lagrangian_to_Eulerian(
+            self.grid, namelist, DynamicalCore.NQ, self._pfull
+        )
+
     def step_dynamics(
         self,
         state: Mapping[str, fv3gfs.util.Quantity],
@@ -409,7 +413,7 @@ class DynamicalCore:
                     if self.grid.rank == 0:
                         print("Remapping")
                 with timer.clock("Remapping"):
-                    lagrangian_to_eulerian.compute(
+                    self._lagrangian_to_eulerian_obj(
                         tracer_storages,
                         state.pt,
                         state.delp,
