@@ -297,10 +297,7 @@ if __name__ == "__main__":
         # Print a brief summary of timings
         # Dev Note: we especially do _not_ gather timings here to have a
         # no-MPI-communication codepath
-        print(
-            f"Rank {rank} done. Total time: {timer.times['total']}."
-            f"Mainloop time: {timer.times['mainloop']}"
-        )
+        print(f"Rank {rank} done. Total time: {timer.times['total']}.")
 
     if rank == 0:
         print("SUCCESS")
