@@ -1,6 +1,6 @@
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.remapping import Lagrangian_to_Eulerian
+from fv3core.stencils.remapping import LagrangianToEulerian
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -112,7 +112,7 @@ class TranslateRemapping(TranslateFortranData2Py):
         wsd_2d[:, :] = inputs["wsd"][:, :, 0]
         inputs["wsd"] = wsd_2d
         inputs["q_cld"] = inputs["tracers"]["qcld"]
-        l_to_e_obj = Lagrangian_to_Eulerian(
+        l_to_e_obj = LagrangianToEulerian(
             spec.grid, spec.namelist, inputs["nq"], inputs["pfull"]
         )
         l_to_e_obj(**inputs)

@@ -195,7 +195,11 @@ def sum_te(te: FloatField, te0_2d: FloatField):
             te0_2d = te0_2d[0, 0, -1] + te
 
 
-class Lagrangian_to_Eulerian:
+class LagrangianToEulerian:
+    """
+    Fortran name is Lagrangian_to_Eulerian
+    """
+
     def __init__(self, grid, namelist, nq, pfull):
         if namelist.kord_tm >= 0:
             raise Exception("map ppm, untested mode where kord_tm >= 0")
@@ -375,33 +379,33 @@ class Lagrangian_to_Eulerian:
         peln: Logarithm of interface pressure (inout)
         u: D-grid x-velocity (inout)
         v: D-grid y-velocity (inout)
-        w: vertical velocity (inout)
+        w: Vertical velocity (inout)
         ua: A-grid x-velocity (inout)
         va: A-grid y-velocity (inout)
         cappa: Power to raise pressure to (inout)
-        q_con: total condensate mixing ratio (inout)
-        q_cld:
+        q_con: Total condensate mixing ratio (inout)
+        q_cld: Cloud fraction (inout)
         pkz: Layer mean pressure raised to the power of Kappa (in)
-        pk: interface pressure raised to power of kappa, final acoustic value (inout)
-        pe: pressure at layer edges (inout)
-        hs: surface geopotential (in)
-        te0_2d:
-        ps: surface pressure (inout)
-        wsd:
+        pk: Interface pressure raised to power of kappa, final acoustic value (inout)
+        pe: Pressure at layer edges (inout)
+        hs: Surface geopotential (in)
+        te0_2d: Atmosphere total energy in columns (inout)
+        ps: Surface pressure (inout)
+        wsd: Vertical velocity of the lowest level (in)
         omga: Vertical pressure velocity (inout)
-        ak: (in)
-        bk (in)
-        pfull: (in)
-        dp1:
-        ptop: (in)
-        akap: (in)
-        zvir:
-        last_step
-        consv_te
-        mdt : remap time step (in)
-        bdt
-        do_adiabatic_init
-        nq: number of tracers (in)
+        ak: Atmosphere hybrid a coordinate (Pa) (in)
+        bk: Atmosphere hybrid b coordinate (dimensionless) (in)
+        pfull: Pressure full levels (in)
+        dp1: Pressure thickness before dyn_core (inout)
+        ptop: The pressure level at the top of atmosphere (in)
+        akap: Poisson constant (KAPPA) (in)
+        zvir: Constant (Rv/Rd-1) (in)
+        last_step: Flag for the last step of k-split remapping (in)
+        consv_te: If True, conserve total energy (in)
+        mdt : Remap time step (in)
+        bdt: Timestep (in)
+        do_adiabatic_init: If True, do adiabatic dynamics (in)
+        nq: Number of tracers (in)
 
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.
