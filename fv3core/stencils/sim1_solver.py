@@ -24,14 +24,6 @@ def sim1_solver(
     rdt: float,
     p_fac: float,
 ):
-    # TODO: We only want to bottom level of wsr, so this could be removed once
-    # wsr_top is a 2d field.
-    with computation(FORWARD):
-        with interval(0, 1):
-            wsr_top = wsr
-        with interval(1, None):
-            wsr_top = wsr_top[0, 0, -1]
-
     with computation(PARALLEL), interval(0, -1):
         pe = exp(gm * log(-dm / dz * constants.RDGAS * ptr)) - pm
         w1 = w
@@ -87,7 +79,7 @@ def sim1_solver(
             gam = aa / bet[0, 0, -1]
             bet = dm - (aa + p1 + aa * gam)
             w = (
-                dm * w1 + dt * (pp[0, 0, 1] - pp) - p1 * wsr_top - aa * w[0, 0, -1]
+                dm * w1 + dt * (pp[0, 0, 1] - pp) - p1 * wsr[0, 0] - aa * w[0, 0, -1]
             ) / bet
     with computation(BACKWARD), interval(0, -2):
         w = w - gam[0, 0, 1] * w[0, 0, 1]
