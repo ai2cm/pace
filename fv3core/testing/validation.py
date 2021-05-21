@@ -9,8 +9,9 @@ from fv3gfs.util.quantity import Quantity
 
 def get_selective_class(
     cls: type,
-    selective_arg_names,
-    origin_domain_func: Callable[..., Tuple[Tuple[int, ...], Tuple[int, ...]]],
+    name_to_origin_domain_function: Mapping[
+        str, Callable[..., Tuple[Tuple[int, ...], Tuple[int, ...]]]
+    ],
 ):
     """
     Convert a model class into one that sets nans on non-validated outputs,
@@ -27,16 +28,22 @@ def get_selective_class(
         """
 
         def __init__(self, *args, **kwargs):
+
             self.wrapped = cls(*args, **kwargs)
-            origin, domain = origin_domain_func(self.wrapped)
-            self._validation_slice = tuple(
-                slice(start, start + n) for start, n in zip(origin, domain)
-            )
+            self._validation_slice = {}
+
+            for arg_name, func in name_to_origin_domain_function.items():
+                variable_origin, variable_domain = func(self.wrapped)
+
+                self._validation_slice[arg_name] = tuple(
+                    slice(start, start + n)
+                    for start, n in zip(variable_origin, variable_domain)
+                )
+
             self._all_argument_names = tuple(
                 inspect.getfullargspec(self.wrapped).args[1:]
             )
             assert "self" not in self._all_argument_names
-            self._selective_argument_names = selective_arg_names
 
         def __call__(self, *args, **kwargs):
             kwargs.update(self._args_to_kwargs(args))
@@ -51,16 +58,18 @@ def get_selective_class(
             Given an output array, return the slice of the array which we'd
             like to validate against reference data
             """
-            if varname in self._selective_argument_names:
-                output = output[self._validation_slice]
+            if varname in self._validation_slice.keys():
+                output = output[self._validation_slice[varname]]
             return output
 
         def _set_nans(self, kwargs):
-            for name in set(kwargs.keys()).intersection(self._selective_argument_names):
-                array = kwargs[name]
-                validation_data = np.copy(array[self._validation_slice])
-                array[:] = np.nan
-                array[self._validation_slice] = validation_data
+            print(self._validation_slice)
+            for name, validation_slice in self._validation_slice.items():
+                if name in kwargs.keys():
+                    array = kwargs[name]
+                    validation_data = np.copy(array[validation_slice])
+                    array[:] = np.nan
+                    array[validation_slice] = validation_data
 
     return SelectivelyValidated
 
@@ -114,7 +123,7 @@ def get_selective_tracer_advection(
     return SelectivelyValidatedTracerAdvection
 
 
-def get_compute_domain(
+def get_compute_domain_k_interfaces(
     instance,
 ) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
     origin = instance.grid.compute_origin()
@@ -136,13 +145,15 @@ def enable_selective_validation():
     # note we have not implemented disabling selective validation once enabled
     fv3core.stencils.updatedzd.UpdateHeightOnDGrid = get_selective_class(
         fv3core.stencils.updatedzd.UpdateHeightOnDGrid,
-        ["height", "zh"],  # must include both function and savepoint names
-        get_compute_domain,
+        {
+            "height": get_compute_domain_k_interfaces,
+            "zh": get_compute_domain_k_interfaces,
+        },  # must include both function and savepoint names
     )
     # make absolutely sure you don't write just the savepoint name, this would
     # selecively validate without making sure it's safe to do so
 
     fv3core.stencils.tracer_2d_1l.TracerAdvection = get_selective_tracer_advection(
         fv3core.stencils.tracer_2d_1l.TracerAdvection,
-        get_compute_domain,
+        get_compute_domain_k_interfaces,
     )
