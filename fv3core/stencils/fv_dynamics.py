@@ -10,7 +10,7 @@ import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import ArgSpec, FrozenStencil, get_namespace
 from fv3core.stencils import tracer_2d_1l
-from fv3core.stencils.basic_operations import copy_stencil
+from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
@@ -308,6 +308,11 @@ class DynamicalCore:
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(),
         )
+        self._copy_stencil = FrozenStencil(
+            copy_defn,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(),
+        )
         self.acoustic_dynamics = AcousticDynamics(
             comm, namelist, self._ak, self._bk, self._pfull, self._phis
         )
@@ -467,11 +472,9 @@ class DynamicalCore:
         )
 
     def _dyn(self, state, tracers, timer=fv3gfs.util.NullTimer()):
-        copy_stencil(
+        self._copy_stencil(
             state.delp,
             state.dp1,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(),
         )
         if __debug__:
             if self.grid.rank == 0:
@@ -492,33 +495,3 @@ class DynamicalCore:
                     state.cyd,
                     state.mdt,
                 )
-
-
-def fv_dynamics(
-    state,
-    comm,
-    consv_te,
-    do_adiabatic_init,
-    timestep,
-    ptop,
-    n_split,
-    ks,
-    timer=fv3gfs.util.NullTimer(),
-):
-    dycore = utils.cached_stencil_class(DynamicalCore)(
-        comm,
-        spec.namelist,
-        state["atmosphere_hybrid_a_coordinate"],
-        state["atmosphere_hybrid_b_coordinate"],
-        state["surface_geopotential"],
-    )
-    dycore.step_dynamics(
-        state,
-        consv_te,
-        do_adiabatic_init,
-        timestep,
-        ptop,
-        n_split,
-        ks,
-        timer,
-    )

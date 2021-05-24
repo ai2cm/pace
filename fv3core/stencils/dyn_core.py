@@ -24,7 +24,6 @@ import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 import fv3gfs.util as fv3util
 from fv3core.decorators import FrozenStencil
-from fv3core.stencils.basic_operations import copy_stencil
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.pk3_halo import PK3Halo
@@ -85,6 +84,11 @@ def set_pem(delp: FloatField, pem: FloatField, ptop: float):
             pem[0, 0, 0] = ptop
         with interval(1, None):
             pem[0, 0, 0] = pem[0, 0, -1] + delp
+
+
+def compute_geopotential(zh: FloatField, gz: FloatField):
+    with computation(PARALLEL), interval(...):
+        gz = zh * constants.GRAV
 
 
 def p_grad_c_stencil(
@@ -295,6 +299,11 @@ class AcousticDynamics:
             )
             self.riem_solver3 = RiemannSolver3(namelist)
             self.riem_solver_c = RiemannSolverC(namelist)
+            self._compute_geopotential_stencil = FrozenStencil(
+                compute_geopotential,
+                origin=(self.grid.is_ - 2, self.grid.js - 2, 0),
+                domain=(self.grid.nic + 4, self.grid.njc + 4, self.grid.npz + 1),
+            )
         self.dgrid_shallow_water_lagrangian_dynamics = (
             d_sw.DGridShallowWaterLagrangianDynamics(namelist, column_namelist)
         )
@@ -349,6 +358,11 @@ class AcousticDynamics:
             self._nk_heat_dissipation,
         )
         self._pk3_halo = PK3Halo(self.grid)
+        self._copy_stencil = FrozenStencil(
+            basic.copy_defn,
+            origin=self.grid.full_origin(),
+            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
+        )
 
     def __call__(self, state):
         # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
@@ -470,18 +484,14 @@ class AcousticDynamics:
                 if it == 0:
                     if self.do_halo_exchange:
                         reqs["gz_quantity"].wait()
-                    copy_stencil(
+                    self._copy_stencil(
                         state.gz,
                         state.zh,
-                        origin=self.grid.full_origin(),
-                        domain=self.grid.domain_shape_full(add=(0, 0, 1)),
                     )
                 else:
-                    copy_stencil(
+                    self._copy_stencil(
                         state.zh,
                         state.gz,
-                        origin=self.grid.full_origin(),
-                        domain=self.grid.domain_shape_full(add=(0, 0, 1)),
                     )
             if not self.namelist.hydrostatic:
                 self.update_geopotential_height_on_c_grid(
@@ -616,12 +626,9 @@ class AcousticDynamics:
                     reqs["zh_quantity"].wait()
                     if self.grid.npx != self.grid.npy:
                         reqs["pkc_quantity"].wait()
-                basic.multiply_constant(
+                self._compute_geopotential_stencil(
                     state.zh,
                     state.gz,
-                    constants.GRAV,
-                    origin=(self.grid.is_ - 2, self.grid.js - 2, 0),
-                    domain=(self.grid.nic + 4, self.grid.njc + 4, self.grid.npz + 1),
                 )
                 if self.grid.npx == self.grid.npy and self.do_halo_exchange:
                     reqs["pkc_quantity"].wait()

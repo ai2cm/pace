@@ -4,6 +4,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import fv3core.utils.global_constants as constants
 from fv3core.decorators import FrozenStencil
 from fv3core.utils import corners, gt4py_utils
+from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -91,13 +92,27 @@ class UpdateGeopotentialHeightOnCGrid:
             largest_possible_shape,
             self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
         )
-
+        full_origin = self.grid.full_origin()
+        full_domain = self.grid.domain_shape_full(add=(0, 0, 1))
         self._double_copy_stencil = FrozenStencil(
             double_copy,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
+            origin=full_origin,
+            domain=full_domain,
         )
 
+        ax_offsets = axis_offsets(self.grid, full_origin, full_domain)
+        self._fill_corners_x_stencil = FrozenStencil(
+            corners.fill_corners_2cells_x_stencil,
+            externals=ax_offsets,
+            origin=full_origin,
+            domain=full_domain,
+        )
+        self._fill_corners_y_stencil = FrozenStencil(
+            corners.fill_corners_2cells_y_stencil,
+            externals=ax_offsets,
+            origin=full_origin,
+            domain=full_domain,
+        )
         self._update_dz_c = FrozenStencil(
             update_dz_c,
             origin=self.grid.compute_origin(add=(-1, -1, 0)),
@@ -129,15 +144,11 @@ class UpdateGeopotentialHeightOnCGrid:
         # once regions bug is fixed
         self._double_copy_stencil(gz, self._gz_x, self._gz_y)
 
-        corners.fill_corners_2cells_x_stencil(
+        self._fill_corners_x_stencil(
             self._gz_x,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
         )
-        corners.fill_corners_2cells_y_stencil(
+        self._fill_corners_y_stencil(
             self._gz_y,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
         )
 
         self._update_dz_c(

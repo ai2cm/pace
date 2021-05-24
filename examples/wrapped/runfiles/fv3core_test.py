@@ -256,11 +256,22 @@ if __name__ == "__main__":
     v_tendency.metadata.gt4py_backend = fv3core.get_backend()
 
     n_tracers = 6
+
+    state = wrapper.get_state(allocator=allocator, names=initial_names)
+    dycore = fv3core.DynamicalCore(
+        cube_comm,
+        spec.namelist,
+        state["atmosphere_hybrid_a_coordinate"],
+        state["atmosphere_hybrid_b_coordinate"],
+        state["surface_geopotential"],
+    )
+
     fvsubgridz = fv3core.FVSubgridZ(spec.namelist)
     # Step through time
     for i in range(wrapper.get_step_count()):
         print("STEP IS ", i)
-        state = wrapper.get_state(allocator=allocator, names=initial_names)
+        if i > 0:
+            state = wrapper.get_state(allocator=allocator, names=initial_names)
         state["turbulent_kinetic_energy"] = turbulent_kinetic_energy
         if i == 0:
             io.write_state(state, "instate_{0}.nc".format(rank))
@@ -272,9 +283,8 @@ if __name__ == "__main__":
             spec.namelist.npy,
         )
 
-        fv3core.fv_dynamics(
+        dycore.step_dynamics(
             state,
-            cube_comm,
             wrapper.flags.consv_te,
             wrapper.flags.do_adiabatic_init,
             dt_atmos,

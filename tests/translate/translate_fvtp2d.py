@@ -38,12 +38,11 @@ class TranslateFvTp2d(TranslateFortranData2Py):
         for optional_arg in ["mass", "mfx", "mfy"]:
             if optional_arg not in inputs:
                 inputs[optional_arg] = None
-        self.compute_func = utils.cached_stencil_class(FiniteVolumeTransport)(
+        self.compute_func = FiniteVolumeTransport(
             spec.namelist,
             int(inputs["hord"]),
             inputs.pop("nord"),
             inputs.pop("damp_c"),
-            cache_key="regression-test",
         )
         del inputs["hord"]
         inputs["x_area_flux"] = inputs.pop("xfx")

@@ -14,7 +14,24 @@ class TranslateFill4Corners(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        corners.fill_corners_cells(inputs["q4c"], "x" if inputs["dir"] == 1 else "y")
+        origin = self.grid.full_origin()
+        domain = self.grid.domain_shape_full()
+        axes_offsets = axis_offsets(self.grid, origin, domain)
+        if inputs["dir"] == 1:
+            stencil = FrozenStencil(
+                corners.fill_corners_2cells_x_stencil,
+                externals=axes_offsets,
+                origin=origin,
+                domain=domain,
+            )
+        elif inputs["dir"] == 2:
+            stencil = FrozenStencil(
+                corners.fill_corners_2cells_y_stencil,
+                externals=axes_offsets,
+                origin=origin,
+                domain=domain,
+            )
+        stencil(inputs["q4c"])
         return self.slice_output(inputs, {"q4c": inputs["q4c"]})
 
 

@@ -3,7 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil, gtstencil
+from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils.grid import axis_offsets
 from fv3core.utils.typing import FloatField
@@ -111,13 +111,11 @@ def fill_corners_2cells_mult_x(
     return q
 
 
-@gtstencil
 def fill_corners_2cells_x_stencil(q: FloatField):
     with computation(PARALLEL), interval(...):
         q = fill_corners_2cells_mult_x(q, q, 1.0, 1.0, 1.0, 1.0)
 
 
-@gtstencil
 def fill_corners_2cells_y_stencil(q: FloatField):
     with computation(PARALLEL), interval(...):
         q = fill_corners_2cells_mult_y(q, q, 1.0, 1.0, 1.0, 1.0)
@@ -248,46 +246,6 @@ def fill_corners_3cells_mult_y(
         q = ne_mult * q_corner[-3, -2, 0]
 
     return q
-
-
-def fill_corners_cells(q: FloatField, direction: str, num_fill: int = 2):
-    """
-    Fill corners of q from Python.
-
-    Corresponds to fill4corners in Fortran.
-
-    Args:
-        q (inout): Cell field
-        direction: Direction to fill. Either "x" or "y".
-        num_fill: Number of indices to fill
-    """
-
-    def definition(q: FloatField):
-        from __externals__ import func
-
-        with computation(PARALLEL), interval(...):
-            q = func(q, q, 1.0, 1.0, 1.0, 1.0)
-
-    if num_fill not in (2, 3):
-        raise ValueError("Only supports 2 <= num_fill <= 3")
-
-    if direction == "x":
-        func = (
-            fill_corners_2cells_mult_x if num_fill == 2 else fill_corners_3cells_mult_x
-        )
-        stencil = gtstencil(definition, externals={"func": func})
-    elif direction == "y":
-        func = (
-            fill_corners_2cells_mult_y if num_fill == 2 else fill_corners_3cells_mult_y
-        )
-        stencil = gtstencil(definition, externals={"func": func})
-    else:
-        raise ValueError("Direction not recognized. Specify either x or y")
-
-    extent = 3
-    origin = (spec.grid.is_ - extent, spec.grid.js - extent, 0)
-    domain = (spec.grid.nic + 2 * extent, spec.grid.njc + 2 * extent, q.shape[2])
-    stencil(q, origin=origin, domain=domain)
 
 
 def copy_corners_x_stencil_defn(q_in: FloatField, q_out: FloatField):
