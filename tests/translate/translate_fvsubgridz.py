@@ -1,5 +1,8 @@
+from types import SimpleNamespace
+
 import pytest
 
+import fv3core._config as spec
 import fv3core.stencils.fv_subgridz as fv_subgridz
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
@@ -114,12 +117,11 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             "units": "m/s**2",
         },
-        "nq": {"dims": []},
         "dt": {"dims": []},
     }
     outputs = inputs.copy()
 
-    for name in ("nq", "dt", "pe", "peln", "delp", "delz", "pkz"):
+    for name in ("dt", "pe", "peln", "delp", "delz", "pkz"):
         outputs.pop(name)
 
     def __init__(self, grids, *args, **kwargs):
@@ -172,8 +174,12 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
 
     def compute_parallel(self, inputs, communicator):
         state = self.state_from_inputs(inputs)
-        fv_subgridz.compute(state, inputs["nq"], inputs["dt"])
-        outputs = self.outputs_from_state(state)
+        fvsubgridz = fv_subgridz.FVSubgridZ(
+            spec.namelist,
+        )
+        state = SimpleNamespace(**state)
+        fvsubgridz(state, inputs["dt"])
+        outputs = self.outputs_from_state(state.__dict__)
         return outputs
 
     def compute_sequential(self, inputs_list, communicator_list):

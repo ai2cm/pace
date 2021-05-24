@@ -256,7 +256,7 @@ if __name__ == "__main__":
     v_tendency.metadata.gt4py_backend = fv3core.get_backend()
 
     n_tracers = 6
-
+    fvsubgridz = fv3core.FVSubgridZ(spec.namelist)
     # Step through time
     for i in range(wrapper.get_step_count()):
         print("STEP IS ", i)
@@ -285,7 +285,7 @@ if __name__ == "__main__":
         if spec.namelist.fv_sg_adj > 0:
             state["eastward_wind_tendency_due_to_physics"] = u_tendency
             state["northward_wind_tendency_due_to_physics"] = v_tendency
-            fv3core.fv_subgridz(state, n_tracers, dt_atmos)
+            fvsubgridz(state, dt_atmos)
 
         newstate = {}
         for name, quantity in state.items():

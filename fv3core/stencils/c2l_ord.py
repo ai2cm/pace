@@ -9,8 +9,6 @@ from fv3gfs.util import CubedSphereCommunicator
 from fv3gfs.util.quantity import Quantity
 
 
-sd = utils.sd
-
 C1 = 1.125
 C2 = -0.125
 
