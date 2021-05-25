@@ -8,7 +8,7 @@ FROM $FORTRAN_IMAGE as fortran_image
 FROM $ESMF_IMAGE as esmf_image
 FROM $FMS_IMAGE as fms_image
 FROM $SERIALBOX_IMAGE as serialbox_image
-from $ENVIRONMENT_IMAGE AS environment
+FROM $ENVIRONMENT_IMAGE as environment
 
 FROM environment as fv3core
 
@@ -16,7 +16,8 @@ RUN pip3 install --upgrade pip setuptools wheel && \
     ln -s /bin/python3 /bin/python && \
     ln -s /bin/pip3 /bin/pip
 
-COPY constraints.txt requirements.txt /
+COPY constraints.txt requirements.txt  /
+COPY requirements  /requirements
 RUN pip3 install -r /requirements.txt -c /constraints.txt
 
 COPY --from=serialbox_image /usr/local/serialbox /usr/local/serialbox
@@ -76,7 +77,7 @@ COPY --from=esmf_image /usr/local/esmf $ESMF_DIR
 COPY --from=fortran_image /FV3/ /external/fv3gfs-fortran/FV3/
 COPY --from=fortran_image /stochastic_physics/ /external/fv3gfs-fortran/stochastic_physics/
 
-COPY requirements_wrapper.txt /
+COPY requirements/requirements_wrapper.txt /
 RUN pip3 install -r /requirements_wrapper.txt -c /constraints.txt
 
 COPY external/fv3gfs-wrapper /external/fv3gfs-wrapper

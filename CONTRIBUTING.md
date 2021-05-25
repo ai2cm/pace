@@ -5,10 +5,10 @@ Contributors names will be added to [`CONTRIBUTORS.md`](https://github.com/Vulca
 
 ## Linting
 
-Dependencies for linting are maintained in `requirements_lint.txt`, and can be installed with:
+Dependencies for linting are maintained in `requirements/requirements_lint.txt`, and can be installed with:
 
 ```shell
-$ pip install -c constraints.txt -r requirements_lint.txt
+$ pip install -c constraints.txt -r requirements/requirements_lint.txt
 ```
 
 Correcting and checking your code complies with all requirements can be run with:

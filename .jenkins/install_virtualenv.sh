@@ -18,6 +18,6 @@ fv3core_dir=`dirname $0`/../
 (cd ${fv3core_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
 source ${virtualenv_path}/bin/activate
 python3 -m pip install ${fv3core_dir}/external/fv3gfs-util/
-python3 -m pip install $wheel_command -c ${fv3core_dir}/constraints.txt -r ${fv3core_dir}/requirements.txt
+python3 -m pip install $wheel_command -c ${fv3core_dir}/constraints.txt -r ${fv3core_dir}/requirements/requirements_daint.txt
 python3 -m pip install ${fv3core_dir}
 deactivate
