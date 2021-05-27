@@ -126,12 +126,12 @@ if [ "${SAVE_CACHE}" == "true" ] && [ "${SAVE_ARTIFACTS}" == "true" ] ; then
 fi
 rm -rf .gt_cache*
 
-# run analysis and store profiling artifacts
+# store profiling artifacts
 if [ "${DO_PROFILE}" == "true" ] ; then
     echo "Analyzing profiling results"
-    ${BENCHMARK_DIR}/process_profiling.sh
     if [ "${SAVE_ARTIFACTS}" == "true" ] ; then
         echo "Copying profiling information to ${PROFILE_DIR}/prof/"
+        rm -f ${PROFILE_DIR}/prof/*.prof || true
         cp $ROOT_DIR/*.prof ${PROFILE_DIR}/prof/
     fi
 fi
