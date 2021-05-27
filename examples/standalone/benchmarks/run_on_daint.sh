@@ -180,7 +180,7 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
     sed -i "s/00:45:00/00:40:00/g" run.nsys.daint.slurm
     sed -i "s/cscsci/normal/g" run.nsys.daint.slurm
     sed -i "s#<G2G>#module load nvidia-nsight-systems/2021.1.1.66-6c5c5cb\nexport PYTHONOPTIMIZE=TRUE#g" run.nsys.daint.slurm
-    sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python $ROOT_DIR/profiler/external_profiler.py examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
+    sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python $ROOT_DIR/profiler/external_profiler.py --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
     # execute on a gpu node
     set +e
     res=$(sbatch -W -C gpu run.nsys.daint.slurm 2>&1)
