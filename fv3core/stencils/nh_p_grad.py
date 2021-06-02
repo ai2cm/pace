@@ -7,15 +7,14 @@ from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
-def set_k0(pp: FloatField, pk3: FloatField, top_value: float):
-    with computation(PARALLEL), interval(...):
+def set_k0_and_calc_wk(
+    pp: FloatField, pk3: FloatField, wk: FloatField, top_value: float
+):
+    with computation(PARALLEL), interval(0, 1):
         pp[0, 0, 0] = 0.0
         pk3[0, 0, 0] = top_value
-
-
-def calc_wk(pk: FloatField, wk: FloatField):
     with computation(PARALLEL), interval(...):
-        wk = pk[0, 0, 1] - pk[0, 0, 0]
+        wk = pk3[0, 0, 1] - pk3[0, 0, 0]
 
 
 def calc_u(
@@ -107,14 +106,8 @@ class NonHydrostaticPressureGradient:
             grid.domain_shape_full(add=(0, 0, 1)), origin=self.orig
         )  # pp.shape
 
-        self._set_k0_stencil = FrozenStencil(
-            set_k0,
-            origin=self.orig,
-            domain=self.domain_k1,
-        )
-
-        self._calc_wk_stencil = FrozenStencil(
-            calc_wk,
+        self._set_k0_and_calc_wk_stencil = FrozenStencil(
+            set_k0_and_calc_wk,
             origin=self.orig,
             domain=self.domain_full_k,
         )
@@ -180,19 +173,13 @@ class NonHydrostaticPressureGradient:
         ptk = ptop ** akap
         top_value = ptk  # = peln1 if spec.namelist.use_logp else ptk
 
-        self._set_k0_stencil(
-            pp,
-            pk3,
-            top_value,
-        )
-
         self.a2b_k1(pp, self._tmp_wk1)
         self.a2b_k1(pk3, self._tmp_wk1)
 
         self.a2b_kbuffer(gz, self._tmp_wk1)
         self.a2b_kstandard(delp, self._tmp_wk1)
 
-        self._calc_wk_stencil(pk3, self._tmp_wk)
+        self._set_k0_and_calc_wk_stencil(pp, pk3, self._tmp_wk, top_value)
 
         self._calc_u_stencil(
             u,
