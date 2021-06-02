@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, interval, horizontal, region
+from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
@@ -15,10 +15,8 @@ from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 @gtscript.function
 def damp_tmp(q, da_min_c, d2_bg, dddmp):
-    tmpddd = dddmp * abs(q)
-    mintmp = 0.2 if 0.2 < tmpddd else tmpddd
-    maxd2 = d2_bg if d2_bg > mintmp else mintmp
-    damp = da_min_c * maxd2
+    mintmp = min(0.2, dddmp * abs(q))
+    damp = da_min_c * max(d2_bg, mintmp)
     return damp
 
 
@@ -358,6 +356,7 @@ class DivergenceDamping:
                 self.grid.divg_v,
                 uc,
             )
+
             if fillc:
                 self._fill_corners_dgrid_stencil(
                     vc,

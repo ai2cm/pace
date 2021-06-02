@@ -11,7 +11,7 @@ from fv3core.utils.typing import FloatField, FloatFieldIJ
 class TranslateD_SW(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.max_error = 3e-11
+        self.max_error = 6e-11
         column_namelist = d_sw.get_column_namelist(spec.namelist, grid.npz)
         self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(
             spec.namelist, column_namelist
