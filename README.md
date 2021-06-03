@@ -485,3 +485,11 @@ For `ParallelTranslate` objects:
   - The parent assumes a state object for tracking fields and methods exist for translating from inputs to a state object and extracting the output variables from the state. It is assumed that Quantity objects are needed in the model method in order to do halo updates.
   - `ParallelTranslate2Py` is a slight variation of this used for many of the parallel units that do not yet utilize a state object and relies on the specification of the same index metadata of the Translate classes
   - `ParallelTranslateBaseSlicing` makes use of the state but relies on the Translate object of self._base, a Translate class object, to align the data before making quantities, computing and comparing.
+
+### Debugging Tests
+
+Pytest can be configured to give you a pdb session when a test fails. To route this properly through docker, you can run:
+
+```bash
+TEST_ARGS="-v -s --pdb" RUN_FLAGS="--rm -it" make test
+```

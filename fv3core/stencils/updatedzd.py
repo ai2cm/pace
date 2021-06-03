@@ -210,8 +210,6 @@ class UpdateHeightOnDGrid:
         self._initialize_interpolation_constants()
         self._compile_stencils(namelist)
 
-        self.finite_volume_transport = FiniteVolumeTransport(namelist, namelist.hord_tm)
-
     def _allocate_temporary_storages(self):
         largest_possible_shape = self.grid.domain_shape_full(add=(1, 1, 1))
         self._crx_interface = utils.make_storage_from_shape(
@@ -283,7 +281,14 @@ class UpdateHeightOnDGrid:
         self.delnflux = DelnFluxNoSG(
             self._column_namelist["nord_v"], nk=self.grid.npz + 1
         )
-        self.finite_volume_transport = FiniteVolumeTransport(namelist, namelist.hord_tm)
+        self.finite_volume_transport = FiniteVolumeTransport(
+            grid_indexing=self.grid.grid_indexing,
+            dxa=self.grid.dxa,
+            dya=self.grid.dya,
+            area=self.grid.area,
+            grid_type=self.grid.grid_type,
+            hord=namelist.hord_tm,
+        )
 
     def __call__(
         self,

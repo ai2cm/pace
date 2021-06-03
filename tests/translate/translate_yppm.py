@@ -1,4 +1,3 @@
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils import yppm
 from fv3core.testing import TranslateFortranData2Py, TranslateGrid
@@ -20,6 +19,7 @@ class TranslateYPPM(TranslateFortranData2Py):
                 "jend": grid.je + 1,
             }
         }
+        self.grid = grid
 
     def ivars(self, inputs):
         inputs["ifirst"] += TranslateGrid.fpy_model_index_offset
@@ -34,8 +34,15 @@ class TranslateYPPM(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.process_inputs(inputs)
+        origin = self.grid.grid_indexing.origin_compute()
+        domain = self.grid.grid_indexing.domain_compute(add=(1, 1, 0))
         self.compute_func = yppm.YPiecewiseParabolic(
-            spec.namelist, int(inputs["jord"]), inputs["ifirst"], inputs["ilast"]
+            grid_indexing=self.grid.grid_indexing,
+            dya=self.grid.dya,
+            grid_type=self.grid.grid_type,
+            jord=int(inputs["jord"]),
+            origin=(inputs["ifirst"], origin[1], origin[2]),
+            domain=(inputs["ilast"] - inputs["ifirst"] + 1, domain[1], domain[2]),
         )
         self.compute_func(inputs["q"], inputs["c"], inputs["flux"])
         return self.slice_output(inputs)

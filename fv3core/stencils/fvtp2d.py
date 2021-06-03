@@ -1,13 +1,15 @@
+from typing import Optional
+
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core._config as spec
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.delnflux import DelnFlux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
+from fv3core.utils.grid import GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -80,16 +82,27 @@ class FiniteVolumeTransport:
     ONLY USE_SG=False compiler flag implements
     """
 
-    def __init__(self, namelist, hord, nord=None, damp_c=None):
-        self.grid = spec.grid
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        origin = self.grid.compute_origin()
-        self._tmp_q_i = utils.make_storage_from_shape(shape, origin)
-        self._tmp_q_j = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fx2 = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fy2 = utils.make_storage_from_shape(shape, origin)
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        dxa,
+        dya,
+        area,
+        grid_type: int,
+        hord,
+        nord=None,
+        damp_c=None,
+    ):
+        # use a shorter alias for grid_indexing here to avoid very verbose lines
+        idx = grid_indexing
+        self._area = area
+        origin = idx.origin_compute()
+        self._tmp_q_i = utils.make_storage_from_shape(idx.max_shape, origin)
+        self._tmp_q_j = utils.make_storage_from_shape(idx.max_shape, origin)
+        self._tmp_fx2 = utils.make_storage_from_shape(idx.max_shape, origin)
+        self._tmp_fy2 = utils.make_storage_from_shape(idx.max_shape, origin)
         self._corner_tmp = utils.make_storage_from_shape(
-            self.grid.domain_shape_full(add=(1, 1, 1)), origin=self.grid.full_origin()
+            idx.max_shape, origin=idx.origin_full()
         )
         """Temporary field to use for corner computation in both x and y direction"""
         self._nord = nord
@@ -98,33 +111,55 @@ class FiniteVolumeTransport:
         ord_inner = 8 if hord == 10 else hord
         self.stencil_q_i = FrozenStencil(
             q_i_stencil,
-            origin=self.grid.full_origin(add=(0, 3, 0)),
-            domain=self.grid.domain_shape_full(add=(0, -3, 1)),
+            origin=idx.origin_full(add=(0, 3, 0)),
+            domain=idx.domain_full(add=(0, -3, 1)),
         )
         self.stencil_q_j = FrozenStencil(
             q_j_stencil,
-            origin=self.grid.full_origin(add=(3, 0, 0)),
-            domain=self.grid.domain_shape_full(add=(-3, 0, 1)),
+            origin=idx.origin_full(add=(3, 0, 0)),
+            domain=idx.domain_full(add=(-3, 0, 1)),
         )
         self.stencil_transport_flux = FrozenStencil(
             transport_flux_xy,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute(add=(1, 1, 1)),
+            origin=idx.origin_compute(),
+            domain=idx.domain_compute(add=(1, 1, 1)),
         )
         if (self._nord is not None) and (self._damp_c is not None):
-            self.delnflux = DelnFlux(self._nord, self._damp_c)
+            self.delnflux: Optional[DelnFlux] = DelnFlux(self._nord, self._damp_c)
+        else:
+            self.delnflux = None
 
         self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
-            namelist, ord_inner, self.grid.jsd, self.grid.jed
+            grid_indexing=grid_indexing,
+            dxa=dxa,
+            grid_type=grid_type,
+            iord=ord_inner,
+            origin=idx.origin_compute(add=(0, -idx.n_halo, 0)),
+            domain=idx.domain_compute(add=(1, 1 + 2 * idx.n_halo, 1)),
         )
         self.y_piecewise_parabolic_inner = YPiecewiseParabolic(
-            namelist, ord_inner, self.grid.isd, self.grid.ied
+            grid_indexing=grid_indexing,
+            dya=dya,
+            grid_type=grid_type,
+            jord=ord_inner,
+            origin=idx.origin_compute(add=(-idx.n_halo, 0, 0)),
+            domain=idx.domain_compute(add=(1 + 2 * idx.n_halo, 1, 1)),
         )
         self.x_piecewise_parabolic_outer = XPiecewiseParabolic(
-            namelist, ord_outer, self.grid.js, self.grid.je
+            grid_indexing=grid_indexing,
+            dxa=dxa,
+            grid_type=grid_type,
+            iord=ord_outer,
+            origin=idx.origin_compute(),
+            domain=idx.domain_compute(add=(1, 1, 1)),
         )
         self.y_piecewise_parabolic_outer = YPiecewiseParabolic(
-            namelist, ord_outer, self.grid.is_, self.grid.ie
+            grid_indexing=grid_indexing,
+            dya=dya,
+            grid_type=grid_type,
+            jord=ord_outer,
+            origin=idx.origin_compute(),
+            domain=idx.domain_compute(add=(1, 1, 1)),
         )
 
         self._copy_corners_x: corners.CopyCorners = corners.CopyCorners(
@@ -165,14 +200,12 @@ class FiniteVolumeTransport:
             mfx: ???
             mfy: ???
         """
-        grid = self.grid
-
         self._copy_corners_y(q)
 
         self.y_piecewise_parabolic_inner(q, cry, self._tmp_fy2)
         self.stencil_q_i(
             q,
-            grid.area,
+            self._area,
             y_area_flux,
             self._tmp_fy2,
             self._tmp_q_i,
@@ -184,7 +217,7 @@ class FiniteVolumeTransport:
         self.x_piecewise_parabolic_inner(q, crx, self._tmp_fx2)
         self.stencil_q_j(
             q,
-            grid.area,
+            self._area,
             x_area_flux,
             self._tmp_fx2,
             self._tmp_q_j,
@@ -199,11 +232,7 @@ class FiniteVolumeTransport:
                 mfx,
                 mfy,
             )
-            if (
-                (mass is not None)
-                and (self._nord is not None)
-                and (self._damp_c is not None)
-            ):
+            if (mass is not None) and self.delnflux is not None:
                 self.delnflux(q, fx, fy, mass=mass)
         else:
             self.stencil_transport_flux(
@@ -214,5 +243,5 @@ class FiniteVolumeTransport:
                 x_area_flux,
                 y_area_flux,
             )
-            if (self._nord is not None) and (self._damp_c is not None):
+            if self.delnflux is not None:
                 self.delnflux(q, fx, fy)

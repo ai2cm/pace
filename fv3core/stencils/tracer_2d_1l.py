@@ -170,7 +170,14 @@ class TracerAdvection:
             domain=self.grid.domain_shape_compute(),
             externals=local_axis_offsets,
         )
-        self.finite_volume_transport = FiniteVolumeTransport(namelist, namelist.hord_tr)
+        self.finite_volume_transport = FiniteVolumeTransport(
+            grid_indexing=self.grid.grid_indexing,
+            dxa=self.grid.dxa,
+            dya=self.grid.dya,
+            area=self.grid.area,
+            grid_type=self.grid.grid_type,
+            hord=namelist.hord_tr,
+        )
         # If use AllReduce, will need something like this:
         # self._tmp_cmax = utils.make_storage_from_shape(shape, origin)
         # self._cmax_1 = FrozenStencil(cmax_stencil1)

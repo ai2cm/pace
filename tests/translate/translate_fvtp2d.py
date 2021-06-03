@@ -1,4 +1,3 @@
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.testing import TranslateFortranData2Py
@@ -39,10 +38,14 @@ class TranslateFvTp2d(TranslateFortranData2Py):
             if optional_arg not in inputs:
                 inputs[optional_arg] = None
         self.compute_func = FiniteVolumeTransport(
-            spec.namelist,
-            int(inputs["hord"]),
-            inputs.pop("nord"),
-            inputs.pop("damp_c"),
+            grid_indexing=self.grid.grid_indexing,
+            dxa=self.grid.dxa,
+            dya=self.grid.dya,
+            area=self.grid.area,
+            grid_type=self.grid.grid_type,
+            hord=int(inputs["hord"]),
+            nord=inputs.pop("nord"),
+            damp_c=inputs.pop("damp_c"),
         )
         del inputs["hord"]
         inputs["x_area_flux"] = inputs.pop("xfx")

@@ -9,11 +9,10 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core._config as spec
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import sign
-from fv3core.utils.grid import axis_offsets
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3core.utils.grid import GridIndexing
+from fv3core.utils.typing import FloatField, FloatFieldIJ, Index3D
 
 
 input_vars = ["q", "c"]
@@ -310,18 +309,26 @@ class YPiecewiseParabolic:
     Fortran name is yppm
     """
 
-    def __init__(self, namelist, jord, ifirst, ilast):
-        grid = spec.grid
-        assert namelist.grid_type < 3
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        dya,
+        grid_type: int,
+        jord,
+        origin: Index3D,
+        domain: Index3D,
+    ):
+        # Arguments come from:
+        # namelist.grid_type
+        # grid.dya
+        assert grid_type < 3
         if abs(jord) not in [5, 6, 7, 8]:
             raise NotImplementedError(
                 f"Unimplemented hord value, {jord}. "
                 "Currently only support hord={5, 6, 7, 8}"
             )
-        self._dya = grid.dya
-        origin = (ifirst, grid.js, 0)
-        domain = (ilast - ifirst + 1, grid.njc + 1, grid.npz + 1)
-        ax_offsets = axis_offsets(grid, origin, domain)
+        self._dya = dya
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         self._compute_flux_stencil = FrozenStencil(
             func=compute_y_flux,
             externals={

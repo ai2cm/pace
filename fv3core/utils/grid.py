@@ -1,5 +1,5 @@
 import functools
-from typing import Tuple
+from typing import Iterable, Mapping, Tuple, Union
 
 import numpy as np
 from gt4py import gtscript
@@ -8,6 +8,7 @@ import fv3core.utils.global_config as global_config
 import fv3gfs.util as fv3util
 
 from . import gt4py_utils as utils
+from .typing import Index3D
 
 
 class Grid:
@@ -366,14 +367,213 @@ class Grid:
         else:
             return 0, 0
 
+    @property
+    def grid_indexing(self) -> "GridIndexing":
+        return GridIndexing.from_legacy_grid(self)
+
+
+class GridIndexing:
+    """
+    Provides indices for cell-centered variables with halos.
+
+    These indices can be used with horizontal interface variables by adding 1
+    to the domain shape along any interface axis.
+    """
+
+    def __init__(
+        self,
+        origin: Index3D,
+        domain: Index3D,
+        n_halo: int,
+        south_edge: bool,
+        north_edge: bool,
+        west_edge: bool,
+        east_edge: bool,
+    ):
+        """
+        Initialize a grid indexing object.
+
+        Args:
+            origin: index of the compute domain origin for cell-centered variables
+            domain: size of the compute domain for cell-centered variables
+            n_halo: number of halo points
+            south_edge: whether the current rank is on the south edge of a tile
+            north_edge: whether the current rank is on the north edge of a tile
+            west_edge: whether the current rank is on the west edge of a tile
+            east_edge: whether the current rank is on the east edge of a tile
+        """
+        self.origin = origin
+        self.domain = domain
+        self.n_halo = n_halo
+        self.south_edge = south_edge
+        self.north_edge = north_edge
+        self.west_edge = west_edge
+        self.east_edge = east_edge
+
+    @classmethod
+    def from_sizer_and_communicator(
+        cls, sizer: fv3util.GridSizer, cube: fv3util.CubedSphereCommunicator
+    ) -> "GridIndexing":
+        # TODO: if this class is refactored to split off the *_edge booleans,
+        # this init routine can be refactored to require only a GridSizer
+        origin = sizer.get_origin([fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM])
+        domain = sizer.get_extent([fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM])
+        south_edge = cube.tile.on_tile_bottom(cube.rank)
+        north_edge = cube.tile.on_tile_top(cube.rank)
+        west_edge = cube.tile.on_tile_left(cube.rank)
+        east_edge = cube.tile.on_tile_right(cube.rank)
+        return cls(
+            origin=origin,
+            domain=domain,
+            n_halo=sizer.n_halo,
+            south_edge=south_edge,
+            north_edge=north_edge,
+            west_edge=west_edge,
+            east_edge=east_edge,
+        )
+
+    @classmethod
+    def from_legacy_grid(cls, grid: Grid) -> "GridIndexing":
+        return cls(
+            origin=grid.compute_origin(),
+            domain=grid.domain_shape_compute(),
+            n_halo=grid.halo,
+            south_edge=grid.south_edge,
+            north_edge=grid.north_edge,
+            west_edge=grid.west_edge,
+            east_edge=grid.east_edge,
+        )
+
+    @property
+    def max_shape(self):
+        """
+        Maximum required storage shape, corresponding to the shape of a cell-corner
+        variable with maximum halo points.
+
+        This should rarely be required, consider using appropriate calls to helper
+        methods that get the correct shape for your particular variable.
+        """
+        return self.domain_full(add=(1, 1, 1))
+
+    @property
+    def isc(self):
+        """start of the compute domain along the x-axis"""
+        return self.origin[0]
+
+    @property
+    def iec(self):
+        """end of the compute domain along the x-axis"""
+        return self.origin[0] + self.domain[0]
+
+    @property
+    def jsc(self):
+        """start of the compute domain along the y-axis"""
+        return self.origin[1]
+
+    @property
+    def jec(self):
+        """end of the compute domain along the y-axis"""
+        return self.origin[1] + self.domain[1]
+
+    @property
+    def ks(self):
+        """start of the data domain along the z-axis"""
+        return self.origin[2]
+
+    @property
+    def ke(self):
+        """end of the data domain along the z-axis"""
+        return self.origin[2] + self.domain[2]
+
+    @property
+    def isd(self):
+        """start of the full domain including halos along the x-axis"""
+        return self.origin[0] - self.n_halo
+
+    @property
+    def ied(self):
+        """end of the full domain including halos along the x-axis"""
+        return self.isd + self.domain[0] + 2 * self.n_halo
+
+    @property
+    def jsd(self):
+        """start of the full domain including halos along the y-axis"""
+        return self.origin[1] - self.n_halo
+
+    @property
+    def jed(self):
+        """end of the full domain including halos along the y-axis"""
+        return self.jsd + self.domain[1] + 2 * self.n_halo
+
+    def origin_full(self, add: Index3D = (0, 0, 0)):
+        """
+        Returns the origin of the full domain including halos, plus an optional offset.
+        """
+        return (self.isd + add[0], self.jsd + add[1], self.ks + add[2])
+
+    def origin_compute(self, add: Index3D = (0, 0, 0)):
+        """
+        Returns the origin of the compute domain, plus an optional offset
+        """
+        return (self.isc + add[0], self.jsc + add[1], self.ks + add[2])
+
+    def domain_full(self, add: Index3D = (0, 0, 0)):
+        """
+        Returns the shape of the full domain including halos, plus an optional offset.
+        """
+        return (
+            self.ied - self.isd + add[0],
+            self.jed - self.jsd + add[1],
+            self.ke - self.ks + add[2],
+        )
+
+    def domain_compute(self, add: Index3D = (0, 0, 0)):
+        """
+        Returns the shape of the compute domain, plus an optional offset.
+        """
+        return (
+            self.iec - self.isc + add[0],
+            self.jec - self.jsc + add[1],
+            self.ke - self.ks + add[2],
+        )
+
+    def axis_offsets(self, origin: Index3D, domain: Index3D):
+        return _grid_indexing_axis_offsets(self, origin, domain)
+
+
+# TODO: delete this routine in favor of grid_indexing.axis_offsets
+def axis_offsets(
+    grid: Union[Grid, GridIndexing],
+    origin: Iterable[int],
+    domain: Iterable[int],
+) -> Mapping[str, gtscript._AxisOffset]:
+    """Return the axis offsets relative to stencil compute domain.
+
+    Args:
+        grid: indexing data
+        origin: origin of a stencil's computation
+        domain: shape over which computation is being performed
+
+    Returns:
+        axis_offsets: Mapping from offset name to value. i_start, i_end, j_start, and
+            j_end indicate the offset to the edges of the tile face in each direction.
+            local_is, local_ie, local_js, and local_je indicate the offset to the
+            edges of the cell-centered compute domain in each direction.
+    """
+    origin = tuple(origin)
+    domain = tuple(domain)
+    if isinstance(grid, Grid):
+        return _old_grid_axis_offsets(grid, origin, domain)
+    else:
+        return _grid_indexing_axis_offsets(grid, origin, domain)
+
 
 @functools.lru_cache(maxsize=None)
-def axis_offsets(
+def _old_grid_axis_offsets(
     grid: Grid,
     origin: Tuple[int, ...],
     domain: Tuple[int, ...],
-):
-    """Return the axis offsets relative to stencil compute domain."""
+) -> Mapping[str, gtscript._AxisOffset]:
     if grid.west_edge:
         proc_offset = grid.is_ - grid.global_is
         origin_offset = grid.is_ - origin[0]
@@ -411,4 +611,46 @@ def axis_offsets(
         "local_js": gtscript.J[0] + grid.js - origin[1],
         "j_end": j_end,
         "local_je": gtscript.J[-1] + grid.je - origin[1] - domain[1] + 1,
+    }
+
+
+@functools.lru_cache(maxsize=None)
+def _grid_indexing_axis_offsets(
+    grid: GridIndexing,
+    origin: Tuple[int, ...],
+    domain: Tuple[int, ...],
+) -> Mapping[str, gtscript._AxisOffset]:
+    if grid.west_edge:
+        i_start = gtscript.I[0] + grid.origin[0] - origin[0]
+    else:
+        i_start = gtscript.I[0] - np.iinfo(np.int32).max
+
+    if grid.east_edge:
+        i_end = (
+            gtscript.I[-1] + (grid.origin[0] + grid.domain[0]) - (origin[0] + domain[0])
+        )
+    else:
+        i_end = gtscript.I[-1] + np.iinfo(np.int32).max
+
+    if grid.south_edge:
+        j_start = gtscript.J[0] + grid.origin[1] - origin[1]
+    else:
+        j_start = gtscript.J[0] - np.iinfo(np.int32).max
+
+    if grid.north_edge:
+        j_end = (
+            gtscript.J[-1] + (grid.origin[1] + grid.domain[1]) - (origin[1] + domain[1])
+        )
+    else:
+        j_end = gtscript.J[-1] + np.iinfo(np.int32).max
+
+    return {
+        "i_start": i_start,
+        "local_is": gtscript.I[0] + grid.isc - origin[0],
+        "i_end": i_end,
+        "local_ie": gtscript.I[-1] + grid.iec - origin[0] - domain[0] + 1,
+        "j_start": j_start,
+        "local_js": gtscript.J[0] + grid.jsc - origin[1],
+        "j_end": j_end,
+        "local_je": gtscript.J[-1] + grid.jec - origin[1] - domain[1] + 1,
     }

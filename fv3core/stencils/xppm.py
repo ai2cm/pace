@@ -9,12 +9,11 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core._config as spec
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils import yppm
 from fv3core.stencils.basic_operations import sign
-from fv3core.utils.grid import axis_offsets
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3core.utils.grid import GridIndexing
+from fv3core.utils.typing import FloatField, FloatFieldIJ, Index3D
 
 
 @gtscript.function
@@ -244,13 +243,21 @@ class XPiecewiseParabolic:
     Fortran name is xppm
     """
 
-    def __init__(self, namelist, iord, jfirst, jlast):
-        grid = spec.grid
-        assert namelist.grid_type < 3
-        self._dxa = grid.dxa
-        origin = (grid.is_, jfirst, 0)
-        domain = (grid.nic + 1, jlast - jfirst + 1, grid.npz + 1)
-        ax_offsets = axis_offsets(grid, origin, domain)
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        dxa,
+        grid_type: int,
+        iord,
+        origin: Index3D,
+        domain: Index3D,
+    ):
+        # Arguments come from:
+        # namelist.grid_type
+        # grid.dxa
+        assert grid_type < 3
+        self._dxa = dxa
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         self._compute_flux_stencil = FrozenStencil(
             func=compute_x_flux,
             externals={
