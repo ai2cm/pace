@@ -50,7 +50,7 @@ def _get_flux(
     return yppm.final_flux(courant, v, fx0, tmp)
 
 
-def _compute_stencil(
+def _ytp_v(
     courant: FloatField,
     v: FloatField,
     flux: FloatField,
@@ -111,7 +111,7 @@ class YTP_V:
         assert namelist.grid_type < 3
 
         self.stencil = FrozenStencil(
-            _compute_stencil,
+            _ytp_v,
             externals={
                 "jord": jord,
                 "mord": jord,

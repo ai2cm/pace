@@ -52,7 +52,7 @@ def _get_flux(
     return xppm.final_flux(courant, u, fx0, tmp)
 
 
-def _compute_stencil(
+def _xtp_u(
     courant: FloatField,
     u: FloatField,
     flux: FloatField,
@@ -113,7 +113,7 @@ class XTP_U:
         ax_offsets = axis_offsets(grid, self.origin, self.domain)
         assert namelist.grid_type < 3
         self.stencil = FrozenStencil(
-            _compute_stencil,
+            _xtp_u,
             externals={
                 "iord": iord,
                 "mord": iord,
