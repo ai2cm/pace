@@ -73,8 +73,7 @@ DO_NSYS_RUN="$7"
 
 # get dependencies
 cd $ROOT_DIR
-git submodule update --init external/fv3gfs-util external/daint_venv
-
+make update_submodules_venv
 # set GT4PY version
 cd $ROOT_DIR
 export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
@@ -91,7 +90,7 @@ source ./venv/bin/activate
 # install the local packages
 echo "install requirements..."
 pip install ./external/fv3gfs-util/
-pip install .
+pip install -e .
 pip list
 
 # set the environment
@@ -162,7 +161,9 @@ set -e
 wait
 echo "DONE WAITING ${status1} ${status2}"
 if [ $status1 -ne 0 -o $status2 -ne 0 ] ; then
-    cleanupFailedJob "${res}" run.daint.out
+    if [ ! -z "${BUILD_TAG}" ] ; then
+	cleanupFailedJob "${res}" run.daint.out
+    fi
     echo "ERROR: performance run not sucessful"
     exit 1
 else
@@ -191,7 +192,9 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
     wait
     echo "DONE WAITING ${status1} ${status2}"
     if [ $status1 -ne 0 -o $status2 -ne 0 ] ; then
-        cleanupFailedJob "${res}" run.nsys.daint.out
+	if [ ! -z "${BUILD_TAG}" ] ; then
+            cleanupFailedJob "${res}" run.nsys.daint.out
+	fi
         echo "ERROR: performance run wrapped by nsys not sucessful"
         exit 1
     else

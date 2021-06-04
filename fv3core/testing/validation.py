@@ -63,7 +63,6 @@ def get_selective_class(
             return output
 
         def _set_nans(self, kwargs):
-            print(self._validation_slice)
             for name, validation_slice in self._validation_slice.items():
                 if name in kwargs.keys():
                     array = kwargs[name]

@@ -215,13 +215,17 @@ While tests can work without these, it may be necessary for development to have 
 To add these to the local repository, run
 
 ```shell
-$ git submodule update --init --recursive
+$ make update_submodules_base
+```
+If running on Piz Daint, another submodule, daint_venv is needed. Instead run
+```shell
+$ make update_submodules_venv
 ```
 
-The submodule include:
+The submodules include:
 
 - `external/fv3gfs-util` - git@github.com:VulcanClimateModeling/fv3gfs-util.git
-
+- `external/daint_venv` -  git@github.com:VulcanClimateModeling/daint_venv.git
 
 ## Dockerfiles and building
 

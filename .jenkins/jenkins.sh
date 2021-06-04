@@ -122,11 +122,9 @@ if grep -q "fv_dynamics" <<< "${script}"; then
 fi
 
 module load daint-gpu
-module add "${installdir}/modulefiles/"
-module load gcloud
-
+module load ${installdir}/modulefiles/gcloud/303.0.0
 # get the test data version from the Makefile
-export FORTRAN_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
+export DATA_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
 if [ -z "${GT4PY_VERSION}" ]; then
     export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
 fi
@@ -136,13 +134,17 @@ if [ -z ${SCRATCH} ] ; then
 fi
 
 # Set the host data head directory location
-export TEST_DATA_DIR="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/${FORTRAN_VERSION}"
+export TEST_DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}"
+export TEST_DATA_DIR="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/${DATA_VERSION}"
 export FV3_STENCIL_REBUILD_FLAG=False
 # Set the host data location
 export TEST_DATA_HOST="${TEST_DATA_DIR}/${experiment}/"
 export EXPERIMENT=${experiment}
 if [ -z ${JENKINS_TAG} ]; then
-    export JENKINS_TAG=${JOB_NAME}-${BUILD_NUMBER}
+    export JENKINS_TAG=${JOB_NAME}${BUILD_NUMBER}
+    if [ -z ${JENKINS_TAG} ]; then
+	export JENKINS_TAG=test
+    fi
 fi
 export JENKINS_TAG=${JENKINS_TAG//[,=\/]/-}
 if [ ${#JENKINS_TAG} -gt 85 ]; then
@@ -153,22 +155,24 @@ echo "JENKINS TAG ${JENKINS_TAG}"
 
 if [ -z ${VIRTUALENV} ]; then
     echo "setting VIRTUALENV"
-    export VIRTUALENV=${WORKSPACE}/vcm_env_${JENKINS_TAG}
+    export VIRTUALENV=${envloc}/../venv_${JENKINS_TAG}
 fi
 
 if [ ${python_env} == "virtualenv" ]; then
     if [ -d ${VIRTUALENV} ]; then
 	echo "Using existing virtualenv ${VIRTUALENV}"
-	source ${VIRTUALENV}/bin/activate
     else
-	echo "virtualenv is not setup yet"
+	echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
+	export FV3CORE_INSTALL_FLAGS="-e"
+	${jenkins_dir}/install_virtualenv.sh ${VIRTUALENV}
     fi
+    source ${VIRTUALENV}/bin/activate
     if grep -q "parallel" <<< "${script}"; then
 	export MPIRUN_CALL="srun"
     fi
     export FV3_PATH="${envloc}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
-    export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:$PYTHONPATH
+    export PYTHONPATH=${installdir}/serialbox2_master/gnu/python:$PYTHONPATH
 fi
 
 G2G="false"

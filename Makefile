@@ -45,17 +45,22 @@ clean:
 	$(MAKE) -C external/fv3gfs-wrapper clean
 	$(MAKE) -C external/fv3gfs-fortran clean
 
-update_submodules:
+update_submodules_base:
 	if [ ! -f $(FV3UTIL_DIR)/requirements.txt  ]; then \
-		git submodule update --init external/fv3gfs-util external/daint_venv; \
+		git submodule update --init external/fv3gfs-util ; \
 	fi
+
+update_submodules_venv: update_submodules_base
+	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
+                git submodule update --init external/daint_venv; \
+        fi
 
 constraints.txt: requirements.txt requirements/requirements_wrapper.txt requirements/requirements_lint.txt
 	pip-compile $^ --output-file constraints.txt
 	sed -i '' '/^git+https/d' constraints.txt
 # Image build instructions have moved to docker/Makefile but are kept here for backwards-compatibility
 
-build_environment: update_submodules
+build_environment: update_submodules_base
 	$(MAKE) -C docker build_core_deps
 
 build_cuda_environment: build_environment
@@ -71,7 +76,7 @@ build_wrapped_environment:
 		--build-arg BASE_IMAGE=$(WRAPPER_IMAGE) \
 		.
 
-build: update_submodules
+build: update_submodules_base
 	if [ $(PULL) == True ]; then \
 		$(MAKE) pull_environment_if_needed; \
 	else \
@@ -79,7 +84,7 @@ build: update_submodules
 	fi
 	$(MAKE) -C docker fv3core_image
 
-build_wrapped: update_submodules
+build_wrapped: update_submodules_base
 	if [ $(PULL) == True ]; then \
 		$(MAKE) pull_wrapped_environment_if_needed; \
 	else \
@@ -154,10 +159,10 @@ dev_test_mpi: dev_tests_mpi
 dev_tests_mpi_host:
 	MOUNTS=$(DEV_MOUNTS) $(MAKE) run_tests_parallel_host
 
-tests_venv:
+tests_venv: update_submodules_venv
 	pip list && $(BASH_PREFIX) bash -c "$(PYTEST_SEQUENTIAL)"
 
-tests_venv_mpi:
+tests_venv_mpi: update_submodules_venv
 	pip list && $(BASH_PREFIX) bash -c "$(PYTEST_PARALLEL)"
 
 test_base:
@@ -205,7 +210,7 @@ gt4py_tests_gpu:
 	CUDA=y make build && \
         docker run --gpus all $(FV3CORE_IMAGE) python3 -m pytest -k "gtcuda or (not gtc)" -x gt4py/tests
 
-.PHONY: update_submodules build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
+.PHONY: update_submodules_base update_submodules_venv build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
 	 list_test_data_options pull_environment pull_test_data push_environment \
 	rebuild_environment reformat run_tests_sequential run_tests_parallel test_base test_base_parallel \
-	tests update_submodules push_core pull_core tar_core sarus_load_tar cleanup_remote
+	tests push_core pull_core tar_core sarus_load_tar cleanup_remote
