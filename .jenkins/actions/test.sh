@@ -66,9 +66,10 @@ if [ "${target}" == "gpu" ] ; then
     module unload cray-python
     module unload pycuda
     set -e
-    pip3 install cupy-cuda102
+    pip3 install -r requirements.txt -r requirements_gpu.txt -c constraints.txt .
+else
+    pip3 install -r requirements.txt -c constraints.txt .
 fi
-pip3 install .
 pytest --junitxml results.xml tests
 
 deactivate

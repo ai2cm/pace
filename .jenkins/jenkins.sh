@@ -53,7 +53,7 @@ test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 python3 -m venv venv
 . ./venv/bin/activate
 pip3 install --upgrade pip setuptools wheel
-pip3 install -r requirements.txt
+pip3 install -r requirements.txt -c constraints.txt
 
 set +e
 
