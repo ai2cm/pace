@@ -8,7 +8,7 @@ jobs:
     - image: circleci/python:3.7
     steps:
       - checkout
-      - run: sudo pip3 install tox
+      - run: sudo pip3 install tox -c constraints.txt
       - run: tox -e lint
 
   test_python:
@@ -23,7 +23,7 @@ jobs:
           command: |
             sudo apt-get update
             sudo apt-get install libopenmpi3
-            sudo pip3 install tox
+            sudo pip3 install tox -c constraints.txt
       - run:
           name: run tests
           command: |
