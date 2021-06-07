@@ -595,6 +595,7 @@ class RemapProfile:
         )
 
         if abs(self._kord) <= 16:
+            # TODO: These stencils could be combined once the backend can handle it
             self._apply_constraints(
                 self._q,
                 self._gam,

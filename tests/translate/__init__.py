@@ -6,8 +6,6 @@ from .translate_c_sw import (
     TranslateC_SW,
     TranslateCirculation_Cgrid,
     TranslateDivergenceCorner,
-    TranslateKE_C_SW,
-    TranslateTransportDelp,
     TranslateVorticityTransport_Cgrid,
 )
 from .translate_corners import (

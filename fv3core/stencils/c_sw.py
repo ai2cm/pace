@@ -69,7 +69,7 @@ def nonhydro_y_fluxes(delp: FloatField, pt: FloatField, w: FloatField, vtc: Floa
     return fy, fy1, fy2
 
 
-def transportdelp(
+def transportdelp_update_vorticity_and_kineticenergy(
     delp: FloatField,
     pt: FloatField,
     utc: FloatField,
@@ -79,8 +79,25 @@ def transportdelp(
     delpc: FloatField,
     ptc: FloatField,
     wc: FloatField,
+    ke: FloatField,
+    vort: FloatField,
+    ua: FloatField,
+    va: FloatField,
+    uc: FloatField,
+    vc: FloatField,
+    u: FloatField,
+    v: FloatField,
+    sin_sg1: FloatFieldIJ,
+    cos_sg1: FloatFieldIJ,
+    sin_sg2: FloatFieldIJ,
+    cos_sg2: FloatFieldIJ,
+    sin_sg3: FloatFieldIJ,
+    cos_sg3: FloatFieldIJ,
+    sin_sg4: FloatFieldIJ,
+    cos_sg4: FloatFieldIJ,
+    dt2: float,
 ):
-    """Transport delp.
+    """Transport delp then update vorticity and kinetic energy
 
     Args:
         delp: What is transported (input)
@@ -92,11 +109,18 @@ def transportdelp(
         delpc: Updated delp (output)
         ptc: Updated pt (output)
         wc: Updated w (output)
+        ke: kinetic energy (inout)
+        vort: vorticity (inout)
+        ua/uc/u: u wind on the a/c/d grid (in)
+        va/vc/v: v wind on the a/c/d grid (in)
+        sin_sg/cos_sg 1/2/3/4: variables that specify grid geometry grid (in)
+        dt2: length of half a timestep (in)
     """
 
-    from __externals__ import grid_type
+    from __externals__ import grid_type, i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
+        # transport delP
         compile_assert(grid_type < 3)
         # additional assumption (not grid.nested)
 
@@ -115,6 +139,25 @@ def transportdelp(
         delpc = delp + (fx1 - fx1[1, 0, 0] + fy1 - fy1[0, 1, 0]) * rarea
         ptc = (pt * delp + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / delpc
         wc = (w * delp + (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea) / delpc
+
+    with computation(PARALLEL), interval(...):
+        # update vorticity and kinetic energy
+        compile_assert(grid_type < 3)
+
+        ke = uc if ua > 0.0 else uc[1, 0, 0]
+        vort = vc if va > 0.0 else vc[0, 1, 0]
+
+        with horizontal(region[:, j_start - 1], region[:, j_end]):
+            vort = vort * sin_sg4 + u[0, 1, 0] * cos_sg4 if va <= 0.0 else vort
+        with horizontal(region[:, j_start], region[:, j_end + 1]):
+            vort = vort * sin_sg2 + u * cos_sg2 if va > 0.0 else vort
+
+        with horizontal(region[i_end, :], region[i_start - 1, :]):
+            ke = ke * sin_sg3 + v[1, 0, 0] * cos_sg3 if ua <= 0.0 else ke
+        with horizontal(region[i_end + 1, :], region[i_start, :]):
+            ke = ke * sin_sg1 + v * cos_sg1 if ua > 0.0 else ke
+
+        ke = 0.5 * dt2 * (ua * ke + va * vort)
 
 
 def divergence_corner(
@@ -212,46 +255,6 @@ def circulation_cgrid(
 
         with horizontal(region[i_end + 1, j_start], region[i_end + 1, j_end + 1]):
             vort_c -= fy[0, 0, 0]
-
-
-def update_vorticity_and_kinetic_energy(
-    ke: FloatField,
-    vort: FloatField,
-    ua: FloatField,
-    va: FloatField,
-    uc: FloatField,
-    vc: FloatField,
-    u: FloatField,
-    v: FloatField,
-    sin_sg1: FloatFieldIJ,
-    cos_sg1: FloatFieldIJ,
-    sin_sg2: FloatFieldIJ,
-    cos_sg2: FloatFieldIJ,
-    sin_sg3: FloatFieldIJ,
-    cos_sg3: FloatFieldIJ,
-    sin_sg4: FloatFieldIJ,
-    cos_sg4: FloatFieldIJ,
-    dt2: float,
-):
-    from __externals__ import grid_type, i_end, i_start, j_end, j_start
-
-    with computation(PARALLEL), interval(...):
-        compile_assert(grid_type < 3)
-
-        ke = uc if ua > 0.0 else uc[1, 0, 0]
-        vort = vc if va > 0.0 else vc[0, 1, 0]
-
-        with horizontal(region[:, j_start - 1], region[:, j_end]):
-            vort = vort * sin_sg4 + u[0, 1, 0] * cos_sg4 if va <= 0.0 else vort
-        with horizontal(region[:, j_start], region[:, j_end + 1]):
-            vort = vort * sin_sg2 + u * cos_sg2 if va > 0.0 else vort
-
-        with horizontal(region[i_end, :], region[i_start - 1, :]):
-            ke = ke * sin_sg3 + v[1, 0, 0] * cos_sg3 if ua <= 0.0 else ke
-        with horizontal(region[i_end + 1, :], region[i_start, :]):
-            ke = ke * sin_sg1 + v * cos_sg1 if ua > 0.0 else ke
-
-        ke = 0.5 * dt2 * (ua * ke + va * vort)
 
 
 def update_x_velocity(
@@ -369,26 +372,14 @@ class CGridShallowWaterDynamics:
         ax_offsets_transportdelp = axis_offsets(
             self.grid, geo_origin, domain_transportdelp
         )
-        self._transportdelp = FrozenStencil(
-            func=transportdelp,
+        self._transportdelp_updatevorticity_and_ke = FrozenStencil(
+            func=transportdelp_update_vorticity_and_kineticenergy,
             externals={
                 "grid_type": grid_type,
                 **ax_offsets_transportdelp,
             },
             origin=geo_origin,
             domain=(self.grid.nic + 2, self.grid.njc + 2, self.grid.npz),
-        )
-        origin_vort_ke = (self.grid.is_ - 1, self.grid.js - 1, 0)
-        domain_vort_ke = (self.grid.nic + 2, self.grid.njc + 2, self.grid.npz)
-        ax_offsets_vort_ke = axis_offsets(self.grid, origin_vort_ke, domain_vort_ke)
-        self._update_vorticity_and_kinetic_energy = FrozenStencil(
-            func=update_vorticity_and_kinetic_energy,
-            externals={
-                "grid_type": grid_type,
-                **ax_offsets_vort_ke,
-            },
-            origin=origin_vort_ke,
-            domain=domain_vort_ke,
         )
         self._circulation_cgrid = FrozenStencil(
             func=circulation_cgrid,
@@ -400,7 +391,7 @@ class CGridShallowWaterDynamics:
         )
         self._absolute_vorticity = FrozenStencil(
             func=absolute_vorticity,
-            origin=self.grid.compute_origin(),
+            origin=origin,
             domain=(self.grid.nic + 1, self.grid.njc + 1, self.grid.npz),
         )
 
@@ -546,7 +537,7 @@ class CGridShallowWaterDynamics:
             self.grid.sin_sg2,
             dt2,
         )
-        self._transportdelp(
+        self._transportdelp_updatevorticity_and_ke(
             delp,
             pt,
             ut,
@@ -556,8 +547,6 @@ class CGridShallowWaterDynamics:
             self.delpc,
             self.ptc,
             omga,
-        )
-        self._update_vorticity_and_kinetic_energy(
             self._ke,
             self._vort,
             ua,

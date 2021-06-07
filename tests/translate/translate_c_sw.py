@@ -1,5 +1,4 @@
 import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from fv3core.testing import TranslateFortranData2Py
 
@@ -42,40 +41,6 @@ class TranslateC_SW(TranslateFortranData2Py):
         self.make_storage_data_input_vars(inputs)
         delpc, ptc = self.compute_func(**inputs)
         return self.slice_output(inputs, {"delpcd": delpc, "ptcd": ptc})
-
-
-class TranslateTransportDelp(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
-        self.cgrid_sw_lagrangian_dynamics = CGridShallowWaterDynamics(
-            grid, spec.namelist
-        )
-        self.in_vars["data_vars"] = {
-            "delp": {},
-            "pt": {},
-            "utc": {},
-            "vtc": {},
-            "w": {},
-            "wc": {},
-        }
-        self.out_vars = {"delpc": {}, "ptc": {}, "wc": {}}
-
-    def compute(self, inputs):
-        self.make_storage_data_input_vars(inputs)
-        orig = (self.grid.is_ - 1, self.grid.js - 1, 0)
-        inputs["delpc"] = utils.make_storage_from_shape(
-            inputs["delp"].shape, origin=orig, init=True
-        )
-        inputs["ptc"] = utils.make_storage_from_shape(
-            inputs["pt"].shape, origin=orig, init=True
-        )
-        self.cgrid_sw_lagrangian_dynamics._transportdelp(
-            **inputs,
-            rarea=self.grid.rarea,
-        )
-        return self.slice_output(
-            inputs,
-        )
 
 
 class TranslateDivergenceCorner(TranslateFortranData2Py):
@@ -162,56 +127,6 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
             dyc=self.grid.dyc,
         )
         return self.slice_output({"vort_c": inputs["vort_c"]})
-
-
-class TranslateKE_C_SW(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
-        self.cgrid_sw_lagrangian_dynamics = CGridShallowWaterDynamics(
-            grid, spec.namelist
-        )
-        self.in_vars["data_vars"] = {
-            "uc": {},
-            "vc": {},
-            "u": {},
-            "v": {},
-            "ua": {},
-            "va": {},
-        }
-        self.in_vars["parameters"] = ["dt2"]
-        self.out_vars = {
-            "ke_c": {
-                "istart": grid.is_ - 1,
-                "iend": grid.ie + 1,
-                "jstart": grid.js - 1,
-                "jend": grid.je + 1,
-            },
-            "vort_c": {
-                "istart": grid.is_ - 1,
-                "iend": grid.ie + 1,
-                "jstart": grid.js - 1,
-                "jend": grid.je + 1,
-            },
-        }
-
-    def compute(self, inputs):
-        self.make_storage_data_input_vars(inputs)
-        ke = utils.make_storage_from_shape(inputs["uc"].shape)
-        vort = utils.make_storage_from_shape(inputs["vc"].shape)
-        self.cgrid_sw_lagrangian_dynamics._update_vorticity_and_kinetic_energy(
-            ke=ke,
-            vort=vort,
-            sin_sg1=self.grid.sin_sg1,
-            cos_sg1=self.grid.cos_sg1,
-            sin_sg2=self.grid.sin_sg2,
-            cos_sg2=self.grid.cos_sg2,
-            sin_sg3=self.grid.sin_sg3,
-            cos_sg3=self.grid.cos_sg3,
-            sin_sg4=self.grid.sin_sg4,
-            cos_sg4=self.grid.cos_sg4,
-            **inputs,
-        )
-        return self.slice_output(inputs, {"ke_c": ke, "vort_c": vort})
 
 
 class TranslateVorticityTransport_Cgrid(TranslateFortranData2Py):
