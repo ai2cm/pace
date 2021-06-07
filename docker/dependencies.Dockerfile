@@ -107,7 +107,7 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v3.17.3/cmake-3.17.3
     ./bootstrap && make -j4 && make install
 
 # Install headers from the Boost library
-RUN wget -q https://dl.bintray.com/boostorg/release/1.74.0/source/boost_1_74_0.tar.gz && \
+RUN wget -q https://boostorg.jfrog.io/artifactory/main/release/1.74.0/source/boost_1_74_0.tar.gz && \
     tar xzf boost_1_74_0.tar.gz && \
     cd boost_1_74_0 && \
     cp -r boost /usr/include/ && cd /
