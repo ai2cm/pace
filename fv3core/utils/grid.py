@@ -1,5 +1,5 @@
 import functools
-from typing import Iterable, Mapping, Tuple, Union
+from typing import Iterable, Mapping, Sequence, Tuple, Union
 
 import numpy as np
 from gt4py import gtscript
@@ -382,7 +382,6 @@ class GridIndexing:
 
     def __init__(
         self,
-        origin: Index3D,
         domain: Index3D,
         n_halo: int,
         south_edge: bool,
@@ -394,7 +393,6 @@ class GridIndexing:
         Initialize a grid indexing object.
 
         Args:
-            origin: index of the compute domain origin for cell-centered variables
             domain: size of the compute domain for cell-centered variables
             n_halo: number of halo points
             south_edge: whether the current rank is on the south edge of a tile
@@ -402,13 +400,20 @@ class GridIndexing:
             west_edge: whether the current rank is on the west edge of a tile
             east_edge: whether the current rank is on the east edge of a tile
         """
-        self.origin = origin
+        self.origin = (n_halo, n_halo, 0)
         self.domain = domain
         self.n_halo = n_halo
         self.south_edge = south_edge
         self.north_edge = north_edge
         self.west_edge = west_edge
         self.east_edge = east_edge
+        self._sizer = fv3util.SubtileGridSizer(
+            nx=self.domain[0],
+            ny=self.domain[1],
+            nz=self.domain[2],
+            n_halo=self.n_halo,
+            extra_dim_lengths={},
+        )
 
     @classmethod
     def from_sizer_and_communicator(
@@ -435,7 +440,6 @@ class GridIndexing:
     @classmethod
     def from_legacy_grid(cls, grid: Grid) -> "GridIndexing":
         return cls(
-            origin=grid.compute_origin(),
             domain=grid.domain_shape_compute(),
             n_halo=grid.halo,
             south_edge=grid.south_edge,
@@ -539,6 +543,53 @@ class GridIndexing:
 
     def axis_offsets(self, origin: Index3D, domain: Index3D):
         return _grid_indexing_axis_offsets(self, origin, domain)
+
+    def get_origin_domain(
+        self, dims: Sequence[str], halos: Sequence[int] = tuple()
+    ) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
+        """
+        Get the origin and domain for a computation that occurs over a certain grid
+        configuration (given by dims) and a certain number of halo points.
+
+        Args:
+            dims: dimension names, using dimension constants from fv3gfs.util
+            halos: number of halo points for each dimension, defaults to zero
+
+        Returns:
+            origin: origin of the computation
+            domain: shape of the computation
+        """
+        origin = list(self._sizer.get_origin(dims))
+        domain = list(self._sizer.get_extent(dims))
+        for i, n in enumerate(halos):
+            origin[i] -= n
+            domain[i] += 2 * n
+        return tuple(origin), tuple(domain)
+
+    def get_shape(
+        self, dims: Sequence[str], halos: Sequence[int] = tuple()
+    ) -> Tuple[int, ...]:
+        """
+        Get the storage shape required for an array with the given dimensions
+        which is accessed up to a given number of halo points.
+
+        Args:
+            dims: dimension names, using dimension constants from fv3gfs.util
+            halos: number of halo points for each dimension, defaults to zero
+
+        Returns:
+            origin: origin of the computation
+            domain: shape of the computation
+        """
+        shape = list(self._sizer.get_extent(dims))
+        for i, d in enumerate(dims):
+            # need n_halo points at the start of the domain, regardless of whether
+            # they are read, so that data is aligned in memory
+            if d in (fv3util.X_DIMS + fv3util.Y_DIMS):
+                shape[i] += self.n_halo
+        for i, n in enumerate(halos):
+            shape[i] += n
+        return tuple(shape)
 
 
 # TODO: delete this routine in favor of grid_indexing.axis_offsets

@@ -3,7 +3,6 @@ import fv3core.utils.grid
 
 
 mock_grid = fv3core.utils.grid.GridIndexing(
-    origin=(3, 3, 0),
     domain=(12, 12, 79),
     n_halo=3,
     south_edge=True,
