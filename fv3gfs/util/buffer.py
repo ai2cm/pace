@@ -68,7 +68,7 @@ class Buffer:
 
     def finalize_memory_transfer(self):
         """Finalize any memory transfer"""
-        device_synchronize(self.array)
+        device_synchronize()
 
     def assign_to(
         self,

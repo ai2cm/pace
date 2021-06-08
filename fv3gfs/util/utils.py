@@ -80,9 +80,9 @@ def safe_assign_array(
             raise
 
 
-def device_synchronize(array: Union[np.ndarray, Storage]):
+def device_synchronize():
     """Synchronize all memory communication"""
-    if cp and isinstance(array, cp.ndarray):
+    if cp:
         cp.cuda.runtime.deviceSynchronize()
 
 
