@@ -7,10 +7,11 @@ export TEST_ARGS="-v -s -rsx --backend=${BACKEND} "
 
 # sync the test data
 make get_test_data
+
 if [ ${python_env} == "virtualenv" ]; then
-     export TEST_ARGS="${TEST_ARGS} --junitxml=${jenkins_dir}/${XML_REPORT}"
-     BASH_PREFIX="srun" make tests_venv
+    export TEST_ARGS="${TEST_ARGS} --junitxml=${jenkins_dir}/${XML_REPORT}"
+    CONTAINER_CMD="srun" make tests savepoint_tests
 else
     export TEST_ARGS="${TEST_ARGS} --junitxml=/.jenkins/${XML_REPORT}"
-    make tests
+    VOLUMES="-v ${pwd}/.jenkins:/.jenkins" make tests savepoint_tests
 fi

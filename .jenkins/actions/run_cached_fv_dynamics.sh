@@ -19,4 +19,4 @@ if [ ! -d $(pwd)/.gt_cache_000000 ]; then
         find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/fv3core-cache-setup\/backend\/$BACKEND\/experiment\/$EXPNAME\/slave\/daint_submit|$(pwd)|g" {} +
     fi
 fi
-make tests_venv_mpi
+CONTAINER_CMD="" make savepoint_tests_mpi

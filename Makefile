@@ -9,12 +9,12 @@ DOCKER_BUILDKIT=1
 SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
+DEV ?=n
 NUM_RANKS ?=6
 VOLUMES ?=
-MOUNTS ?=
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
-BASH_PREFIX ?=
+TEST_ARGS ?=
 TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
 FV3UTIL_DIR=$(CWD)/external/fv3gfs-util
 
@@ -31,13 +31,16 @@ MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 BASE_INSTALL?=$(FV3)-install-serialbox
 DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/
 
-DEV_MOUNTS = '-v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) '
 TEST_TYPE=$(word 3, $(subst _, ,$(EXPERIMENT)))
-THRESH_ARGS=--threshold_overrides_file=$(FV3_PATH)/tests/translate/overrides/$(TEST_TYPE).yaml
-TEST_ARGS_USE=$(TEST_ARGS) $(THRESH_ARGS)
-PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS_USE) $(FV3_PATH)/tests
+THRESH_ARGS=--threshold_overrides_file=$(FV3_PATH)/tests/savepoint/translate/overrides/$(TEST_TYPE).yaml
+PYTEST_MAIN=pytest $(TEST_ARGS) $(FV3_PATH)/tests/main
+PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(FV3_PATH)/tests/savepoint
 # we can't rule out a deadlock if one test fails, so we must set maxfail=1 for parallel tests
-PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS_USE) -m parallel $(FV3_PATH)/tests
+PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(FV3_PATH)/tests/savepoint
+ifeq ($(DEV),y)
+	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util
+endif
+CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
 
 clean:
 	find . -name ""
@@ -126,17 +129,20 @@ cleanup_remote:
 
 # end of image build targets which have been moved to docker/Makefile
 
-tests: build
-	$(MAKE) get_test_data
-	$(MAKE) run_tests_sequential
-
 test: tests
 
-tests_mpi: build
-	$(MAKE) get_test_data
-	$(MAKE) run_tests_parallel
+tests:
+	PYTEST_CMD="$(PYTEST_MAIN)" $(MAKE) test_base
 
-test_mpi: tests_mpi
+savepoint_tests:
+	$(MAKE) get_test_data
+	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC)' \
+	PYTEST_CMD="$(PYTEST_SEQUENTIAL)" $(MAKE) test_base
+
+savepoint_tests_mpi:
+	$(MAKE) get_test_data
+	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC)' \
+	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
 
 dev:
 	docker run --rm -it \
@@ -148,38 +154,11 @@ dev:
 dev_wrapper:
 	$(MAKE) -C docker dev_wrapper
 
-dev_tests:
-	VOLUMES=$(DEV_MOUNTS) $(MAKE) test_base
-
-dev_tests_mpi:
-	VOLUMES=$(DEV_MOUNTS) $(MAKE) test_base_parallel
-
-dev_test_mpi: dev_tests_mpi
-
-dev_tests_mpi_host:
-	MOUNTS=$(DEV_MOUNTS) $(MAKE) run_tests_parallel_host
-
-tests_venv: update_submodules_venv
-	pip list && $(BASH_PREFIX) bash -c "$(PYTEST_SEQUENTIAL)"
-
-tests_venv_mpi: update_submodules_venv
-	pip list && $(BASH_PREFIX) bash -c "$(PYTEST_PARALLEL)"
-
 test_base:
-	$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(MOUNTS) $(CUDA_FLAGS) \
-	$(FV3CORE_IMAGE) bash -c "pip list && $(PYTEST_SEQUENTIAL)"
-
-test_base_parallel:
-	$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(MOUNTS) $(CUDA_FLAGS) $(FV3CORE_IMAGE) \
-	bash -c "pip list && $(PYTEST_PARALLEL)"
-
-run_tests_sequential:
-	VOLUMES='-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(CWD)/.jenkins:/.jenkins' \
-	$(MAKE) test_base
-
-run_tests_parallel:
-	VOLUMES='-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(CWD)/.jenkins:/.jenkins' \
-	$(MAKE) test_base_parallel
+ifneq ($(findstring docker,$(CONTAINER_CMD)),)
+	$(MAKE) build
+endif
+	$(CONTAINER_CMD) bash -c "pip list && $(PYTEST_CMD)"
 
 sync_test_data:
 	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)

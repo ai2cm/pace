@@ -16,7 +16,7 @@ Be sure to complete any required post-installation instructions (e.g. [for linux
 2.  You can build the image, download the data, and run the tests using:
 
 ```shell
-$ make tests
+$ make tests savepoint_tests savepoint_tests_mpi
 ```
 
 If you want to develop code, you should also install the linting requirements and git hooks locally
@@ -43,7 +43,7 @@ And the c12_6ranks_standard data will download into the `test_data` directory
 MPI parallel tests (that run that way to exercise halo updates in the model) can also be run with:
 
 ```shell
-$ make tests_mpi
+$ make savepoint_tests_mpi
 ```
 
 The environment image that the fv3core container uses is prebuilt and lives in the GCR. The above commands will by default pull this image before building the fv3core image and running the tests.
@@ -55,9 +55,8 @@ make build_environment
 
 or
 
-
 ```shell
-$ PULL=False make tests
+$ PULL=False make savepoint_tests
 ```
 
 which will execute the target `build_environment` for you before running the tests.
@@ -81,15 +80,15 @@ If you choose an experiment with a different number of ranks than 6, also set `N
 
 ## Testing interactively outside the container
 
-After `make tests` has been run at least once (or you have data in test_data and the docker image fv3core exists because `make build` has been run), you can iterate on code changes using
+After `make savepoint_tests` has been run at least once (or you have data in test_data and the docker image fv3core exists because `make build` has been run), you can iterate on code changes using
 
 ```shell
-$ make dev_tests
+$ DEV=y make savepoint_tests
 ```
-or for the parallel tests:
+or for the parallel or non-savepoint tests:
 
 ```shell
-$ make dev_tests_mpi
+$ DEV=y make tests savepoint_tests_mpi
 ```
 These will mount your current code into the fv3core container and run it rather than the code that was built when `make build` ran.
 
@@ -132,7 +131,7 @@ All of the make endpoints involved running tests can be prefixed with the `TEST_
 * `--data_path` - path to where you have the `Generator*.dat` and `*.json` serialization regression data. Defaults to current directory.
 
 * `--backend` - which backend to use for the computation. Defaults to numpy. Other options: gtmc, gtcuda, gtx86.
-* `--python_regression` - Run the tests that have Python based regression data. Only applies to running parallel tests (tests_mpi)
+* `--python_regression` - Run the tests that have Python based regression data. Only applies to running parallel tests (savepoint_tests_mpi)
 Pytest provides a lot of options, which you can see by `pytest --help`. Here are some
 common options for our tests, which you can add to `TEST_ARGS`:
 
@@ -164,9 +163,9 @@ $ git grep <stencil_name> <checkout of fv3gfs-fortran>
 
 2. Create a `translate` class from the serialized save-point data to a call to the stencil or function that calls the relevant stencil(s).
 
-These are usually named `tests/translate/translate_<lowercase name>`
+These are usually named `tests/savepoint/translate/translate_<lowercase name>`
 
-Import this class in the `tests/translate/__init__.py` file
+Import this class in the `tests/savepoint/translate/__init__.py` file
 
 3. Write a Python function wrapper that the translate function (created above) calls.
 
@@ -390,7 +389,7 @@ FV3Core is provided under the terms of the [GPLv3](https://www.gnu.org/licenses/
 # Development guidelines
 
 ## File structure / conventions
-The main functionality of the FV3 dynamical core, which has been ported from the Fortran version in the fv3gfs-fortran repo, is defined using GT4py stencils and python 'compute' functions in fv3core/stencils. The core is comprised of units of calculations defined for regression testing. These were initially generally separated into distinct files in fv3core/stencils with corresponding files in tests/translate/translate_<unit>.py defining the translation of variables from Fortran to Python. Exceptions exist in cases where topical and logical grouping allowed for code reuse. As refactors optimize the model, these units may be merged to occupy the same files and even methods/stencils, but the units should still be tested separately, unless determined to be redundant.
+The main functionality of the FV3 dynamical core, which has been ported from the Fortran version in the fv3gfs-fortran repo, is defined using GT4py stencils and python 'compute' functions in fv3core/stencils. The core is comprised of units of calculations defined for regression testing. These were initially generally separated into distinct files in fv3core/stencils with corresponding files in tests/savepoint/translate/translate_<unit>.py defining the translation of variables from Fortran to Python. Exceptions exist in cases where topical and logical grouping allowed for code reuse. As refactors optimize the model, these units may be merged to occupy the same files and even methods/stencils, but the units should still be tested separately, unless determined to be redundant.
 
 The core has most of its calculations happening in GT4py stencils, but there are still several instances of operations happening in Python directly, which will need to be replaced with GT4py code for optimal performance.
 
@@ -451,8 +450,7 @@ Generation of regression data occurs in the fv3gfs-fortran repo (https://github.
 
 where the name being assigned is the name the fv3core uses to identify the variable in the test code. When this name is not equal to the name of the variable, this was usually done to avoid conflicts with other parts of the code where the same name is used to reference a differently sized field.
 
-The majority of the logic for translating from data serialized from Fortran to something that can be used by Python, and the comparison of the results, is encompassed by the main Translate class in the tests/translate/translate.py file. Any units not involving a halo
-update can be run using this framework, while those that need to be run in parallel can look to the ParallelTranslate class as the parent class in tests/translate/parallel_translate.py. These parent classes provide generally useful operations for translating serialized data between Fortran and Python specifications, and for applying regression tests.
+The majority of the logic for translating from data serialized from Fortran to something that can be used by Python, and the comparison of the results, is encompassed by the main Translate class in the tests/savepoint/translate/translate.py file. Any units not involving a halo update can be run using this framework, while those that need to be run in parallel can look to the ParallelTranslate class as the parent class in tests/savepoint/translate/parallel_translate.py. These parent classes provide generally useful operations for translating serialized data between Fortran and Python specifications, and for applying regression tests.
 
 A new unit test can be defined as a new child class of one of these, with a naming convention of `Translate<Savepoint Name>` where `Savepoint Name` is the name used in the serialization statements in the Fortran code, without the `-In` and `-Out` part of the name. A translate class can usually be minimally specify the input and output fields. Then, in cases where the parent compute function is insuffient to handle the complexity of either the data translation or the compute function, the appropriate methods can be overridden.
 
@@ -495,5 +493,7 @@ For `ParallelTranslate` objects:
 Pytest can be configured to give you a pdb session when a test fails. To route this properly through docker, you can run:
 
 ```bash
-TEST_ARGS="-v -s --pdb" RUN_FLAGS="--rm -it" make test
+TEST_ARGS="-v -s --pdb" RUN_FLAGS="--rm -it" make tests
 ```
+
+This can be done with any pytest target, such as `make savepoint_tests` and `make savepoint_tests_mpi`.

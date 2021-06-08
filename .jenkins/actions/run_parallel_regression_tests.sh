@@ -8,7 +8,7 @@ export TEST_ARGS="-v -s -rsx --backend=${BACKEND} "
 make get_test_data
 
 if [ ${python_env} == "virtualenv" ]; then
-    make tests_venv_mpi
+    CONTAINER_CMD="" make savepoint_tests_mpi
 else
-    make tests_mpi
+    make savepoint_tests_mpi
 fi

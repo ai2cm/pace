@@ -17,7 +17,7 @@ export TEST_DATA_HOST="${TEST_DATA_DIR}/${EXPNAME}/"
 make get_test_data
 
 # Run the tests to generate the python regressions
-make tests_mpi TEST_ARGS="--python_regression --force-regen --backend=${BACKEND}" || true
+make savepoint_tests_mpi TEST_ARGS="--python_regression --force-regen --backend=${BACKEND}" || true
 sudo chown -R $USER:$USER ${python_data_dir}
 set -e
 EXPERIMENT=${exp_name} make push_python_regressions

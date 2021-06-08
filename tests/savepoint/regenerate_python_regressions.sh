@@ -31,7 +31,7 @@ for experiment in ${EXPERIMENTS} ; do
   fi
   for backend in ${BACKENDS} ; do
       echo "RUNNNING for backend ${backend}"
-      EXPERIMENT=${exp_name} make tests_mpi TEST_ARGS="--python_regression --force-regen --backend=${backend}" || true
+      EXPERIMENT=${exp_name} make savepoint_tests_mpi TEST_ARGS="--python_regression --force-regen --backend=${backend}" || true
   done
   sudo chown -R $USER:$USER ${python_data_dir}
   set -e

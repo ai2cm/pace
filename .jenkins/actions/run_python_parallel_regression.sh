@@ -7,29 +7,19 @@ ARGS="-v -s -rsx --backend=${BACKEND} "
 make get_test_data
 export TEST_ARGS="${ARGS} --which_modules=FVSubgridZ"
 if [ ${python_env} == "virtualenv" ]; then
-  make tests_venv_mpi
-else
-  make tests_mpi
+    export CONTAINER_CMD=""
 fi
 
 set +e
 export TEST_ARGS="${ARGS} --python_regression"
-if [ ${python_env} == "virtualenv" ]; then
-    make tests_venv_mpi
-else
-    make tests_mpi
-fi
+make savepoint_tests_mpi
+
 if [ $? -ne 0 ] ; then
     echo "PYTHON REGRESSIONS failed, looking for errors in the substeps:"
     set -e
     export TEST_ARGS="${ARGS}"
-    if [ ${python_env} == "virtualenv" ]; then
-	make tests_venv
-	make tests_venv_mpi
-    else
-	make tests
-	make tests_mpi
-    fi
+    make savepoint_tests
+    make savepoint_tests_mpi
     exit 1
 fi
 set -e
