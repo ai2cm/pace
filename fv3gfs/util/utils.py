@@ -8,6 +8,17 @@ try:
 except ImportError:
     cp = None
 
+# Run a deviceSynchronize() to check
+# that the GPU is present and ready to run
+if cp:
+    try:
+        cp.cuda.runtime.deviceSynchronize()
+        GPU_AVAILABLE = True
+    except cp.cuda.runtime.CUDARuntimeError:
+        GPU_AVAILABLE = False
+else:
+    GPU_AVAILABLE = False
+
 try:
     from gt4py.storage.storage import Storage
 except ImportError:
@@ -82,7 +93,7 @@ def safe_assign_array(
 
 def device_synchronize():
     """Synchronize all memory communication"""
-    if cp:
+    if GPU_AVAILABLE:
         cp.cuda.runtime.deviceSynchronize()
 
 
