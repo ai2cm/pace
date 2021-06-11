@@ -47,3 +47,19 @@ Lookup kernel name using `nsys` correlation id and the `sqlite` database
 Usage: `python nsys_id_kernel <NSYS_GENERATED.sqlite> <CORRELATION_ID> [--all]`
 
 Correlation id can be found on the tooltip when overring above a kernel in `nsys` ui.
+
+# `nsys` datbase mining
+
+`nsys` can generate a `sqlite` database from its internal `qdrep` format.
+
+This script is looking to mine data for _a single timestep_ of the dyncore. It will
+jump over the first timestep and record the second one.
+
+The database is mined for:
+* CUDA kernel cumulative time, median time, calls
+* Halo exchange exact time (if the `nsys` runs was done using the `external_profiler --nvtx` option)
+The script will print results and/or write CSV & plots.
+
+Usage: `nsys_mine.py <--csv> <--plots> <NSYS_GENERATED.sqlite>`
+* `<--csv>` will write down in .csv the results
+* `<--plots>` will plot the results (cumulative time, counts, median time, cumulative/call)

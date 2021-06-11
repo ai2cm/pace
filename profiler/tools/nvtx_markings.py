@@ -69,6 +69,16 @@ functions_desc = [
         "file": None,
         "name": "HaloEx: async vector",
     },  # Asynchroneous vector halo update
+    {
+        "fn": "wait",
+        "file": "fv3gfs/util/communicator.py",
+        "name": "HaloEx: unpack and wait",
+    },  # Halo update finish
+    {
+        "fn": "_device_synchronize",
+        "file": "fv3gfs/util/communicator.py",
+        "name": "Pre HaloEx",
+    },  # Synchronize all work prior to halo exchange
 ]
 
 
