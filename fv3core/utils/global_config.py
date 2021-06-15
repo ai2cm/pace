@@ -122,8 +122,11 @@ def get_stencil_config():
     )
 
 
-_BACKEND = None  # Options: numpy, gtx86, gtcuda, debug
-_REBUILD = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "True")
+# Options: numpy, gtx86, gtcuda, debug
+_BACKEND = None
+# If TRUE, all caches will bypassed and stencils recompiled
+# if FALSE, caches will be checked and rebuild if code changes
+_REBUILD = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "False")
 _FORMAT_SOURCE = getenv_bool("FV3_STENCIL_FORMAT_SOURCE", "False")
 _DO_HALO_EXCHANGE = True
 _VALIDATE_ARGS = True
