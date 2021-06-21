@@ -5,6 +5,7 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3gfs.util import Z_INTERFACE_DIM
 
 
 def set_k0_and_calc_wk(
@@ -90,6 +91,7 @@ class NonHydrostaticPressureGradient:
 
     def __init__(self, grid_type):
         grid = spec.grid
+        self.grid = spec.grid
         self.orig = grid.compute_origin()
         self.domain_full_k = grid.domain_shape_compute(add=(1, 1, 0))
         self.domain_k1 = (grid.nic + 1, grid.njc + 1, 1)
@@ -124,21 +126,50 @@ class NonHydrostaticPressureGradient:
             domain=self.v_domain,
         )
         self.a2b_k1 = AGrid2BGridFourthOrder(
+            self.grid.grid_indexing.restrict_vertical(k_start=1),
+            self.grid.agrid1,
+            self.grid.agrid2,
+            self.grid.bgrid1,
+            self.grid.bgrid2,
+            self.grid.dxa,
+            self.grid.dya,
+            self.grid.edge_n,
+            self.grid.edge_s,
+            self.grid.edge_e,
+            self.grid.edge_w,
             grid_type,
-            kstart=1,
-            nk=self.nk,
+            z_dim=Z_INTERFACE_DIM,
             replace=True,
         )
         self.a2b_kbuffer = AGrid2BGridFourthOrder(
+            self.grid.grid_indexing,
+            self.grid.agrid1,
+            self.grid.agrid2,
+            self.grid.bgrid1,
+            self.grid.bgrid2,
+            self.grid.dxa,
+            self.grid.dya,
+            self.grid.edge_n,
+            self.grid.edge_s,
+            self.grid.edge_e,
+            self.grid.edge_w,
             grid_type,
-            kstart=0,
-            nk=self.nk + 1,
+            z_dim=Z_INTERFACE_DIM,
             replace=True,
         )
         self.a2b_kstandard = AGrid2BGridFourthOrder(
+            self.grid.grid_indexing,
+            self.grid.agrid1,
+            self.grid.agrid2,
+            self.grid.bgrid1,
+            self.grid.bgrid2,
+            self.grid.dxa,
+            self.grid.dya,
+            self.grid.edge_n,
+            self.grid.edge_s,
+            self.grid.edge_e,
+            self.grid.edge_w,
             grid_type,
-            kstart=0,
-            nk=self.nk,
             replace=False,
         )
 

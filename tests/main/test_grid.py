@@ -451,6 +451,68 @@ def test_get_origin_domain(
 
 
 @pytest.mark.parametrize(
+    "n_halo, domain, dims, halos, origin_expected, domain_expected",
+    [
+        pytest.param(
+            3,
+            (4, 4, 7),
+            [X_DIM, Y_DIM, Z_DIM],
+            (0, 0, 0),
+            (3, 3, 0),
+            (4, 4, 7),
+            id="compute_domain",
+        ),
+        pytest.param(
+            3,
+            (4, 4, 7),
+            [X_DIM, Y_DIM, Z_DIM],
+            tuple(),
+            (3, 3, 0),
+            (4, 4, 7),
+            id="compute_domain_no_halo_arg",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    # edges shouldn't matter for this test, but let's make sure behaviors
+    # are all the same
+    "south_edge, north_edge, west_edge, east_edge",
+    [
+        pytest.param(True, True, True, True, id="all_edges"),
+        pytest.param(False, False, False, False, id="no_edges"),
+        pytest.param(True, False, False, True, id="southeast_corner"),
+    ],
+)
+def test_get_origin_domain_restricted_vertical(
+    n_halo: int,
+    domain: Index3D,
+    south_edge: bool,
+    north_edge: bool,
+    west_edge: bool,
+    east_edge: bool,
+    dims: Sequence[str],
+    halos: Sequence[int],
+    origin_expected: Sequence[int],
+    domain_expected: Sequence[int],
+):
+    k_start = 2
+    grid = fv3core.utils.grid.GridIndexing(
+        domain=domain,
+        n_halo=n_halo,
+        south_edge=south_edge,
+        north_edge=north_edge,
+        west_edge=west_edge,
+        east_edge=east_edge,
+    )
+    grid = grid.restrict_vertical(k_start=k_start)
+    origin_out, domain_out = grid.get_origin_domain(dims, halos)
+    assert origin_out[2] == origin_expected[2] + k_start
+    assert domain_out[2] == domain_expected[2] - k_start
+    assert origin_out[:2] == origin_expected[:2]
+    assert domain_out[:2] == domain_expected[:2]
+
+
+@pytest.mark.parametrize(
     "n_halo, domain, dims, halos, shape_expected",
     [
         pytest.param(
@@ -558,3 +620,185 @@ def test_get_shape(
     )
     shape_out = grid.get_shape(dims, halos)
     assert shape_out == shape_expected
+
+
+@pytest.mark.parametrize(
+    # edges shouldn't matter for this test, but let's make sure behaviors
+    # are all the same
+    "south_edge, north_edge, west_edge, east_edge",
+    [
+        pytest.param(True, True, True, True, id="all_edges"),
+        pytest.param(False, False, False, False, id="no_edges"),
+        pytest.param(True, False, False, True, id="southeast_corner"),
+    ],
+)
+@pytest.mark.parametrize("n_halo", [0, 2])
+def test_restrict_vertical_defaults(
+    n_halo, south_edge, north_edge, west_edge, east_edge
+):
+    domain = (3, 4, 10)
+    grid = fv3core.utils.grid.GridIndexing(
+        domain=domain,
+        n_halo=n_halo,
+        south_edge=south_edge,
+        north_edge=north_edge,
+        west_edge=west_edge,
+        east_edge=east_edge,
+    )
+    restricted = grid.restrict_vertical()
+    assert restricted.origin[2] == 0
+    assert restricted.domain[2] == 10
+
+
+@pytest.mark.parametrize(
+    # edges shouldn't matter for this test, but let's make sure behaviors
+    # are all the same
+    "south_edge, north_edge, west_edge, east_edge",
+    [
+        pytest.param(True, True, True, True, id="all_edges"),
+        pytest.param(False, False, False, False, id="no_edges"),
+        pytest.param(True, False, False, True, id="southeast_corner"),
+    ],
+)
+@pytest.mark.parametrize("n_halo", [0, 2])
+def test_restrict_vertical_default_domain(
+    n_halo, south_edge, north_edge, west_edge, east_edge
+):
+    domain = (3, 4, 10)
+    grid = fv3core.utils.grid.GridIndexing(
+        domain=domain,
+        n_halo=n_halo,
+        south_edge=south_edge,
+        north_edge=north_edge,
+        west_edge=west_edge,
+        east_edge=east_edge,
+    )
+    restricted = grid.restrict_vertical(k_start=2)
+    assert restricted.origin[2] == 2
+    assert restricted.domain[2] == 8
+
+
+@pytest.mark.parametrize(
+    # edges shouldn't matter for this test, but let's make sure behaviors
+    # are all the same
+    "south_edge, north_edge, west_edge, east_edge",
+    [
+        pytest.param(True, True, True, True, id="all_edges"),
+        pytest.param(False, False, False, False, id="no_edges"),
+        pytest.param(True, False, False, True, id="southeast_corner"),
+    ],
+)
+@pytest.mark.parametrize("n_halo", [0, 2])
+def test_restrict_vertical_max_shape(
+    n_halo, south_edge, north_edge, west_edge, east_edge
+):
+    domain = (3, 4, 10)
+    grid = fv3core.utils.grid.GridIndexing(
+        domain=domain,
+        n_halo=n_halo,
+        south_edge=south_edge,
+        north_edge=north_edge,
+        west_edge=west_edge,
+        east_edge=east_edge,
+    )
+    restricted = grid.restrict_vertical(k_start=2)
+    # max_shape should still include lowest points
+    assert restricted.max_shape == grid.max_shape
+
+
+@pytest.mark.parametrize(
+    # edges shouldn't matter for this test, but let's make sure behaviors
+    # are all the same
+    "south_edge, north_edge, west_edge, east_edge",
+    [
+        pytest.param(True, True, True, True, id="all_edges"),
+        pytest.param(False, False, False, False, id="no_edges"),
+        pytest.param(True, False, False, True, id="southeast_corner"),
+    ],
+)
+@pytest.mark.parametrize("n_halo", [0, 2])
+@pytest.mark.parametrize("k_start, nk", [(0, 10), (2, 8)])
+def test_restrict_vertical(
+    n_halo, south_edge, north_edge, west_edge, east_edge, k_start, nk
+):
+    domain = (3, 4, 10)
+    grid = fv3core.utils.grid.GridIndexing(
+        domain=domain,
+        n_halo=n_halo,
+        south_edge=south_edge,
+        north_edge=north_edge,
+        west_edge=west_edge,
+        east_edge=east_edge,
+    )
+    restricted = grid.restrict_vertical(k_start=k_start, nk=nk)
+    assert restricted.origin[2] == k_start
+    assert restricted.domain[2] == nk
+
+
+@pytest.mark.parametrize(
+    # edges shouldn't matter for this test, but let's make sure behaviors
+    # are all the same
+    "south_edge, north_edge, west_edge, east_edge",
+    [
+        pytest.param(True, True, True, True, id="all_edges"),
+        pytest.param(False, False, False, False, id="no_edges"),
+        pytest.param(True, False, False, True, id="southeast_corner"),
+    ],
+)
+@pytest.mark.parametrize("n_halo", [0, 2])
+@pytest.mark.parametrize("k_start, nk", [(0, 10), (2, 8)])
+@pytest.mark.parametrize("second_k_start, second_nk", [(0, 8), (2, 4)])
+def test_restrict_vertical_twice(
+    n_halo,
+    south_edge,
+    north_edge,
+    west_edge,
+    east_edge,
+    k_start,
+    nk,
+    second_k_start,
+    second_nk,
+):
+    domain = (3, 4, 10)
+    grid = fv3core.utils.grid.GridIndexing(
+        domain=domain,
+        n_halo=n_halo,
+        south_edge=south_edge,
+        north_edge=north_edge,
+        west_edge=west_edge,
+        east_edge=east_edge,
+    )
+    restricted = grid.restrict_vertical(k_start=k_start, nk=nk)
+    second_restricted = restricted.restrict_vertical(
+        k_start=second_k_start, nk=second_nk
+    )
+    assert second_restricted.origin[2] == k_start + second_k_start
+    assert second_restricted.domain[2] == second_nk
+
+
+@pytest.mark.parametrize(
+    # edges shouldn't matter for this test, but let's make sure behaviors
+    # are all the same
+    "south_edge, north_edge, west_edge, east_edge",
+    [
+        pytest.param(True, True, True, True, id="all_edges"),
+        pytest.param(False, False, False, False, id="no_edges"),
+        pytest.param(True, False, False, True, id="southeast_corner"),
+    ],
+)
+@pytest.mark.parametrize("n_halo", [0, 2])
+@pytest.mark.parametrize("k_start, nk", [(-2, 10), (2, 10)])
+def test_restrict_vertical_raises(
+    n_halo, south_edge, north_edge, west_edge, east_edge, k_start, nk
+):
+    domain = (3, 4, 10)
+    grid = fv3core.utils.grid.GridIndexing(
+        domain=domain,
+        n_halo=n_halo,
+        south_edge=south_edge,
+        north_edge=north_edge,
+        west_edge=west_edge,
+        east_edge=east_edge,
+    )
+    with pytest.raises(ValueError):
+        grid.restrict_vertical(k_start=k_start, nk=nk)

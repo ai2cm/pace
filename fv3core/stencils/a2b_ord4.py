@@ -11,12 +11,13 @@ from gt4py.gtscript import (
     sqrt,
 )
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils import axis_offsets
+from fv3core.utils.grid import GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
+from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 # comact 4-pt cubic interpolation
@@ -394,52 +395,74 @@ class AGrid2BGridFourthOrder:
     """
 
     def __init__(
-        self, grid_type, kstart: int = 0, nk: int = None, replace: bool = False
+        self,
+        grid_indexing: GridIndexing,
+        agrid1,
+        agrid2,
+        bgrid1,
+        bgrid2,
+        dxa,
+        dya,
+        edge_n,
+        edge_s,
+        edge_e,
+        edge_w,
+        grid_type,
+        z_dim=Z_DIM,
+        replace: bool = False,
     ):
         """
         Args:
+            grid_indexing: defines indices over which to perform conversion
             grid_type: integer representing the type of grid
-            kstart: first klevel to compute on
-            nk: number of k levels to compute
+            z_dim: defines whether vertical dimension is centered or staggered
             replace: boolean, update qin to the B grid as well
         """
         assert grid_type < 3
-        self.grid = spec.grid
+        self._idx: GridIndexing = grid_indexing
+        self._agrid1 = agrid1
+        self._agrid2 = agrid2
+        self._bgrid1 = bgrid1
+        self._bgrid2 = bgrid2
+        self._dxa = dxa
+        self._dya = dya
+        self._edge_n = edge_n
+        self._edge_s = edge_s
+        self._edge_e = edge_e
+        self._edge_w = edge_w
+
         self.replace = replace
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        full_origin = (self.grid.isd, self.grid.jsd, kstart)
 
-        self._tmp_qx = utils.make_storage_from_shape(shape)
-        self._tmp_qy = utils.make_storage_from_shape(shape)
-        self._tmp_qxx = utils.make_storage_from_shape(shape)
-        self._tmp_qyy = utils.make_storage_from_shape(shape)
+        self._tmp_qx = utils.make_storage_from_shape(self._idx.max_shape)
+        self._tmp_qy = utils.make_storage_from_shape(self._idx.max_shape)
+        self._tmp_qxx = utils.make_storage_from_shape(self._idx.max_shape)
+        self._tmp_qyy = utils.make_storage_from_shape(self._idx.max_shape)
 
-        if nk is None:
-            nk = self.grid.npz - kstart
-        corner_domain = (1, 1, nk)
+        _, (z_domain,) = self._idx.get_origin_domain([z_dim])
+        corner_domain = (1, 1, z_domain)
 
         self._sw_corner_stencil = FrozenStencil(
             _sw_corner,
-            origin=(self.grid.is_, self.grid.js, kstart),
+            origin=self._idx.origin_compute(),
             domain=corner_domain,
         )
         self._nw_corner_stencil = FrozenStencil(
             _nw_corner,
-            origin=(self.grid.ie + 1, self.grid.js, kstart),
+            origin=(self._idx.iec + 1, self._idx.jsc, self._idx.origin[2]),
             domain=corner_domain,
         )
         self._ne_corner_stencil = FrozenStencil(
             _ne_corner,
-            origin=(self.grid.ie + 1, self.grid.je + 1, kstart),
+            origin=(self._idx.iec + 1, self._idx.jec + 1, self._idx.origin[2]),
             domain=corner_domain,
         )
         self._se_corner_stencil = FrozenStencil(
             _se_corner,
-            origin=(self.grid.is_, self.grid.je + 1, kstart),
+            origin=(self._idx.isc, self._idx.jec + 1, self._idx.origin[2]),
             domain=corner_domain,
         )
-        js2 = self.grid.js + 1 if self.grid.south_edge else self.grid.js
-        je1 = self.grid.je if self.grid.north_edge else self.grid.je + 1
+        js2 = self._idx.jsc + 1 if self._idx.south_edge else self._idx.jsc
+        je1 = self._idx.jec if self._idx.north_edge else self._idx.jec + 1
         dj2 = je1 - js2 + 1
 
         # edge_w is singleton in the I-dimension to work around gt4py not yet
@@ -447,38 +470,52 @@ class AGrid2BGridFourthOrder:
         # edge_w, anything higher is outside its index range
         self._qout_x_edge_west = FrozenStencil(
             qout_x_edge,
-            origin={"_all_": (self.grid.is_, js2, kstart), "edge_w": (0, js2)},
-            domain=(1, dj2, nk),
+            origin={
+                "_all_": (self._idx.isc, js2, self._idx.origin[2]),
+                "edge_w": (0, js2),
+            },
+            domain=(1, dj2, z_domain),
         )
         self._qout_x_edge_east = FrozenStencil(
             qout_x_edge,
-            origin={"_all_": (self.grid.ie + 1, js2, kstart), "edge_w": (0, js2)},
-            domain=(1, dj2, nk),
+            origin={
+                "_all_": (self._idx.iec + 1, js2, self._idx.origin[2]),
+                "edge_w": (0, js2),
+            },
+            domain=(1, dj2, z_domain),
         )
 
-        is2 = self.grid.is_ + 1 if self.grid.west_edge else self.grid.is_
-        ie1 = self.grid.ie if self.grid.east_edge else self.grid.ie + 1
+        is2 = self._idx.isc + 1 if self._idx.west_edge else self._idx.isc
+        ie1 = self._idx.iec if self._idx.east_edge else self._idx.iec + 1
         di2 = ie1 - is2 + 1
         self._qout_y_edge_south = FrozenStencil(
-            qout_y_edge, origin=(is2, self.grid.js, kstart), domain=(di2, 1, nk)
+            qout_y_edge,
+            origin=(is2, self._idx.jsc, self._idx.origin[2]),
+            domain=(di2, 1, z_domain),
         )
         self._qout_y_edge_north = FrozenStencil(
-            qout_y_edge, origin=(is2, self.grid.je + 1, kstart), domain=(di2, 1, nk)
+            qout_y_edge,
+            origin=(is2, self._idx.jec + 1, self._idx.origin[2]),
+            domain=(di2, 1, z_domain),
         )
-        origin_x = (self.grid.is_, self.grid.js - 2, kstart)
-        domain_x = (self.grid.nic + 1, self.grid.njc + 4, nk)
+
+        origin_x, domain_x = self._idx.get_origin_domain(
+            dims=[X_INTERFACE_DIM, Y_DIM, z_dim], halos=(0, 2)
+        )
+
         ax_offsets_x = axis_offsets(
-            self.grid,
+            self._idx,
             origin_x,
             domain_x,
         )
         self._ppm_volume_mean_x_stencil = FrozenStencil(
             ppm_volume_mean_x, externals=ax_offsets_x, origin=origin_x, domain=domain_x
         )
-        origin_y = (self.grid.is_ - 2, self.grid.js, kstart)
-        domain_y = (self.grid.nic + 4, self.grid.njc + 1, nk)
+        origin_y, domain_y = self._idx.get_origin_domain(
+            dims=[X_DIM, Y_INTERFACE_DIM, z_dim], halos=(2, 0)
+        )
         ax_offsets_y = axis_offsets(
-            self.grid,
+            self._idx,
             origin_y,
             domain_y,
         )
@@ -486,25 +523,49 @@ class AGrid2BGridFourthOrder:
             ppm_volume_mean_y, externals=ax_offsets_y, origin=origin_y, domain=domain_y
         )
 
-        js = self.grid.js + 1 if self.grid.south_edge else self.grid.js
-        je = self.grid.je if self.grid.north_edge else self.grid.je + 1
-        is_ = self.grid.is_ + 1 if self.grid.west_edge else self.grid.is_
-        ie = self.grid.ie if self.grid.east_edge else self.grid.ie + 1
-        origin = (is_, js, kstart)
-        domain = (ie - is_ + 1, je - js + 1, nk)
+        origin, domain = self._idx.get_origin_domain(
+            dims=(X_INTERFACE_DIM, Y_INTERFACE_DIM, z_dim),
+        )
+        origin, domain = self._exclude_tile_edges(origin, domain)
+
         ax_offsets = axis_offsets(
-            self.grid,
+            self._idx,
             origin,
             domain,
         )
         self._a2b_interpolation_stencil = FrozenStencil(
             a2b_interpolation, externals=ax_offsets, origin=origin, domain=domain
         )
+        origin, domain = self._idx.get_origin_domain(
+            dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, z_dim]
+        )
         self._copy_stencil = FrozenStencil(
             copy_defn,
-            origin=(self.grid.is_, self.grid.js, kstart),
-            domain=(self.grid.nic + 1, self.grid.njc + 1, nk),
+            origin=origin,
+            domain=domain,
         )
+
+    def _exclude_tile_edges(self, origin, domain, dims=("x", "y")):
+        """
+        Args:
+            origin: origin for which to exclude tile edges
+            domain: domain for which to exclude tile edges
+            dims: dimensions on which to exclude tile edges,
+                can include "x" or "y" and defaults to both
+        """
+        origin, domain = list(origin), list(domain)
+        # don't compute last point in tile domain on each edge
+        if self._idx.south_edge and "y" in dims:
+            origin[1] += 1
+            domain[1] -= 1  # must adjust domain to keep endpoint the same
+        if self._idx.north_edge and "y" in dims:
+            domain[1] -= 1
+        if self._idx.west_edge and "x" in dims:
+            origin[0] += 1
+            domain[0] -= 1
+        if self._idx.east_edge and "x" in dims:
+            domain[0] -= 1
+        return tuple(origin), tuple(domain)
 
     def __call__(self, qin: FloatField, qout: FloatField):
         """Converts qin from A-grid to B-grid in qout.
@@ -517,47 +578,47 @@ class AGrid2BGridFourthOrder:
         self._sw_corner_stencil(
             qin,
             qout,
-            self.grid.agrid1,
-            self.grid.agrid2,
-            self.grid.bgrid1,
-            self.grid.bgrid2,
+            self._agrid1,
+            self._agrid2,
+            self._bgrid1,
+            self._bgrid2,
         )
 
         self._nw_corner_stencil(
             qin,
             qout,
-            self.grid.agrid1,
-            self.grid.agrid2,
-            self.grid.bgrid1,
-            self.grid.bgrid2,
+            self._agrid1,
+            self._agrid2,
+            self._bgrid1,
+            self._bgrid2,
         )
         self._ne_corner_stencil(
             qin,
             qout,
-            self.grid.agrid1,
-            self.grid.agrid2,
-            self.grid.bgrid1,
-            self.grid.bgrid2,
+            self._agrid1,
+            self._agrid2,
+            self._bgrid1,
+            self._bgrid2,
         )
         self._se_corner_stencil(
             qin,
             qout,
-            self.grid.agrid1,
-            self.grid.agrid2,
-            self.grid.bgrid1,
-            self.grid.bgrid2,
+            self._agrid1,
+            self._agrid2,
+            self._bgrid1,
+            self._bgrid2,
         )
 
         self._compute_qout_edges(qin, qout)
         self._ppm_volume_mean_x_stencil(
             qin,
             self._tmp_qx,
-            self.grid.dxa,
+            self._dxa,
         )
         self._ppm_volume_mean_y_stencil(
             qin,
             self._tmp_qy,
-            self.grid.dya,
+            self._dya,
         )
         self._a2b_interpolation_stencil(
             qout,
@@ -573,32 +634,32 @@ class AGrid2BGridFourthOrder:
             )
 
     def _compute_qout_edges(self, qin: FloatField, qout: FloatField):
-        if self.grid.west_edge:
+        if self._idx.west_edge:
             self._qout_x_edge_west(
                 qin,
-                self.grid.dxa,
-                self.grid.edge_w,
+                self._dxa,
+                self._edge_w,
                 qout,
             )
-        if self.grid.east_edge:
+        if self._idx.east_edge:
             self._qout_x_edge_east(
                 qin,
-                self.grid.dxa,
-                self.grid.edge_e,
+                self._dxa,
+                self._edge_e,
                 qout,
             )
 
-        if self.grid.south_edge:
+        if self._idx.south_edge:
             self._qout_y_edge_south(
                 qin,
-                self.grid.dya,
-                self.grid.edge_s,
+                self._dya,
+                self._edge_s,
                 qout,
             )
-        if self.grid.north_edge:
+        if self._idx.north_edge:
             self._qout_y_edge_north(
                 qin,
-                self.grid.dya,
-                self.grid.edge_n,
+                self._dya,
+                self._edge_n,
                 qout,
             )

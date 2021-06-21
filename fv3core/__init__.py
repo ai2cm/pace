@@ -1,4 +1,5 @@
 # flake8: noqa: F401
+from . import decorators
 from .stencils.fv_dynamics import DynamicalCore
 from .stencils.fv_subgridz import FVSubgridZ
 from .utils.global_config import (

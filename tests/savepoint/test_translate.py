@@ -181,6 +181,7 @@ def test_sequential_savepoint(
     subtests,
     caplog,
     threshold_overrides,
+    print_domains,
     xy_indices=True,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")
@@ -269,6 +270,7 @@ def test_mock_parallel_savepoint(
     subtests,
     caplog,
     threshold_overrides,
+    print_domains,
     xy_indices=False,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")
@@ -360,6 +362,7 @@ def test_parallel_savepoint(
     caplog,
     python_regression,
     threshold_overrides,
+    print_domains,
     xy_indices=True,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")

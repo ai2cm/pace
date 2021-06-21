@@ -1,5 +1,5 @@
 import functools
-from typing import Iterable, Mapping, Sequence, Tuple, Union
+from typing import Iterable, List, Mapping, Sequence, Tuple, Union
 
 import numpy as np
 from gt4py import gtscript
@@ -401,16 +401,24 @@ class GridIndexing:
             east_edge: whether the current rank is on the east edge of a tile
         """
         self.origin = (n_halo, n_halo, 0)
-        self.domain = domain
         self.n_halo = n_halo
+        self.domain = domain
         self.south_edge = south_edge
         self.north_edge = north_edge
         self.west_edge = west_edge
         self.east_edge = east_edge
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @domain.setter
+    def domain(self, domain):
+        self._domain = domain
         self._sizer = fv3util.SubtileGridSizer(
-            nx=self.domain[0],
-            ny=self.domain[1],
-            nz=self.domain[2],
+            nx=domain[0],
+            ny=domain[1],
+            nz=domain[2],
             n_halo=self.n_halo,
             extra_dim_lengths={},
         )
@@ -457,7 +465,9 @@ class GridIndexing:
         This should rarely be required, consider using appropriate calls to helper
         methods that get the correct shape for your particular variable.
         """
-        return self.domain_full(add=(1, 1, 1))
+        # need to add back origin as buffer points, what we're returning here
+        # isn't a domain - it's an array size
+        return self.domain_full(add=(1, 1, 1 + self.origin[2]))
 
     @property
     def isc(self):
@@ -466,8 +476,8 @@ class GridIndexing:
 
     @property
     def iec(self):
-        """end of the compute domain along the x-axis"""
-        return self.origin[0] + self.domain[0]
+        """last index of the compute domain along the x-axis"""
+        return self.origin[0] + self.domain[0] - 1
 
     @property
     def jsc(self):
@@ -476,18 +486,8 @@ class GridIndexing:
 
     @property
     def jec(self):
-        """end of the compute domain along the y-axis"""
-        return self.origin[1] + self.domain[1]
-
-    @property
-    def ks(self):
-        """start of the data domain along the z-axis"""
-        return self.origin[2]
-
-    @property
-    def ke(self):
-        """end of the data domain along the z-axis"""
-        return self.origin[2] + self.domain[2]
+        """last index of the compute domain along the y-axis"""
+        return self.origin[1] + self.domain[1] - 1
 
     @property
     def isd(self):
@@ -496,8 +496,8 @@ class GridIndexing:
 
     @property
     def ied(self):
-        """end of the full domain including halos along the x-axis"""
-        return self.isd + self.domain[0] + 2 * self.n_halo
+        """index of the last data point along the x-axis"""
+        return self.isd + self.domain[0] + 2 * self.n_halo - 1
 
     @property
     def jsd(self):
@@ -506,29 +506,45 @@ class GridIndexing:
 
     @property
     def jed(self):
-        """end of the full domain including halos along the y-axis"""
-        return self.jsd + self.domain[1] + 2 * self.n_halo
+        """index of the last data point along the y-axis"""
+        return self.jsd + self.domain[1] + 2 * self.n_halo - 1
+
+    @property
+    def nw_corner(self):
+        return self.north_edge and self.west_edge
+
+    @property
+    def sw_corner(self):
+        return self.south_edge and self.west_edge
+
+    @property
+    def ne_corner(self):
+        return self.north_edge and self.east_edge
+
+    @property
+    def se_corner(self):
+        return self.south_edge and self.east_edge
 
     def origin_full(self, add: Index3D = (0, 0, 0)):
         """
         Returns the origin of the full domain including halos, plus an optional offset.
         """
-        return (self.isd + add[0], self.jsd + add[1], self.ks + add[2])
+        return (self.isd + add[0], self.jsd + add[1], self.origin[2] + add[2])
 
     def origin_compute(self, add: Index3D = (0, 0, 0)):
         """
         Returns the origin of the compute domain, plus an optional offset
         """
-        return (self.isc + add[0], self.jsc + add[1], self.ks + add[2])
+        return (self.isc + add[0], self.jsc + add[1], self.origin[2] + add[2])
 
     def domain_full(self, add: Index3D = (0, 0, 0)):
         """
         Returns the shape of the full domain including halos, plus an optional offset.
         """
         return (
-            self.ied - self.isd + add[0],
-            self.jed - self.jsd + add[1],
-            self.ke - self.ks + add[2],
+            self.ied + 1 - self.isd + add[0],
+            self.jed + 1 - self.jsd + add[1],
+            self.domain[2] + add[2],
         )
 
     def domain_compute(self, add: Index3D = (0, 0, 0)):
@@ -536,9 +552,9 @@ class GridIndexing:
         Returns the shape of the compute domain, plus an optional offset.
         """
         return (
-            self.iec - self.isc + add[0],
-            self.jec - self.jsc + add[1],
-            self.ke - self.ks + add[2],
+            self.iec + 1 - self.isc + add[0],
+            self.jec + 1 - self.jsc + add[1],
+            self.domain[2] + add[2],
         )
 
     def axis_offsets(self, origin: Index3D, domain: Index3D):
@@ -559,12 +575,23 @@ class GridIndexing:
             origin: origin of the computation
             domain: shape of the computation
         """
-        origin = list(self._sizer.get_origin(dims))
+        origin = self._origin_from_dims(dims)
         domain = list(self._sizer.get_extent(dims))
         for i, n in enumerate(halos):
             origin[i] -= n
             domain[i] += 2 * n
         return tuple(origin), tuple(domain)
+
+    def _origin_from_dims(self, dims: Iterable[str]) -> List[int]:
+        return_origin = []
+        for dim in dims:
+            if dim in fv3util.X_DIMS:
+                return_origin.append(self.origin[0])
+            elif dim in fv3util.Y_DIMS:
+                return_origin.append(self.origin[1])
+            elif dim in fv3util.Z_DIMS:
+                return_origin.append(self.origin[2])
+        return return_origin
 
     def get_shape(
         self, dims: Sequence[str], halos: Sequence[int] = tuple()
@@ -590,6 +617,44 @@ class GridIndexing:
         for i, n in enumerate(halos):
             shape[i] += n
         return tuple(shape)
+
+    def restrict_vertical(self, k_start=0, nk=None) -> "GridIndexing":
+        """
+        Returns a copy of itself with modified vertical origin and domain.
+
+        Args:
+            k_start: offset to apply to current vertical origin, must be
+                greater than 0 and less than the size of the vertical domain
+            nk: new vertical domain size as a number of grid cells,
+                defaults to remaining grid cells in the current domain,
+                can be at most the size of the vertical domain minus k_start
+        """
+        if k_start < 0:
+            raise ValueError("k_start must be positive")
+        if k_start > self.domain[2]:
+            raise ValueError(
+                "k_start must be less than the number of vertical levels "
+                f"(received {k_start} for {self.domain[2]} vertical levels"
+            )
+        if nk is None:
+            nk = self.domain[2] - k_start
+        elif nk < 0:
+            raise ValueError("number of vertical levels should be positive")
+        elif nk > (self.domain[2] - k_start):
+            raise ValueError(
+                "nk can be at most the size of the vertical domain minus k_start"
+            )
+
+        new = GridIndexing(
+            self.domain[:2] + (nk,),
+            self.n_halo,
+            self.south_edge,
+            self.north_edge,
+            self.west_edge,
+            self.east_edge,
+        )
+        new.origin = self.origin[:2] + (self.origin[2] + k_start,)
+        return new
 
 
 # TODO: delete this routine in favor of grid_indexing.axis_offsets
