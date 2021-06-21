@@ -9,10 +9,9 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core._config as spec
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils import xppm, yppm
-from fv3core.utils.grid import axis_offsets
+from fv3core.utils.grid import GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -96,22 +95,21 @@ def _xtp_u(
 
 
 class XTP_U:
-    def __init__(self, namelist):
-        iord = spec.namelist.hord_mt
+    def __init__(
+        self, grid_indexing: GridIndexing, dx, dxa, rdx, grid_type: int, iord: int
+    ):
         if iord not in (5, 6, 7, 8):
             raise NotImplementedError(
                 "Currently xtp_v is only supported for hord_mt == 5,6,7,8"
             )
-        assert namelist.grid_type < 3
+        assert grid_type < 3
 
-        grid = spec.grid
-        self.origin = grid.compute_origin()
-        self.domain = grid.domain_shape_compute(add=(1, 1, 0))
-        self.dx = grid.dx
-        self.dxa = grid.dxa
-        self.rdx = grid.rdx
-        ax_offsets = axis_offsets(grid, self.origin, self.domain)
-        assert namelist.grid_type < 3
+        origin = grid_indexing.origin_compute()
+        domain = grid_indexing.domain_compute(add=(1, 1, 0))
+        self.dx = dx
+        self.dxa = dxa
+        self.rdx = rdx
+        ax_offsets = axis_offsets(grid_indexing, origin, domain)
         self.stencil = FrozenStencil(
             _xtp_u,
             externals={
@@ -120,8 +118,8 @@ class XTP_U:
                 "xt_minmax": False,
                 **ax_offsets,
             },
-            origin=self.origin,
-            domain=self.domain,
+            origin=origin,
+            domain=domain,
         )
 
     def __call__(self, c: FloatField, u: FloatField, flux: FloatField):

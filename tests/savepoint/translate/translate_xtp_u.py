@@ -12,6 +12,13 @@ class TranslateXTP_U(TranslateYTP_V):
         self.in_vars["data_vars"]["flux"]["serialname"] = "vb"
 
     def compute_from_storage(self, inputs):
-        xtp_obj = xtp_u.XTP_U(spec.namelist)
+        xtp_obj = xtp_u.XTP_U(
+            grid_indexing=spec.grid.grid_indexing,
+            dx=spec.grid.dx,
+            dxa=spec.grid.dxa,
+            rdx=spec.grid.rdx,
+            grid_type=spec.namelist.grid_type,
+            iord=spec.namelist.hord_mt,
+        )
         xtp_obj(inputs["c"], inputs["u"], inputs["flux"])
         return inputs
