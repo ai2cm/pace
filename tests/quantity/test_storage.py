@@ -72,6 +72,30 @@ def test_numpy(quantity, backend):
         assert quantity.np is np
 
 
+@pytest.mark.skipif(gt4py is None, reason="requires gt4py")
+def test_modifying_numpy_storage_modifies_view():
+    shape = (6, 6)
+    data = np.zeros(shape, dtype=float)
+    quantity = fv3gfs.util.Quantity(
+        data,
+        origin=(0, 0),
+        extent=shape,
+        dims=["dim1", "dim2"],
+        units="units",
+        gt4py_backend="numpy",
+    )
+    assert np.all(quantity.data == 0)
+    quantity.storage[0, 0] = 1
+    quantity.data[2, 2] = 5
+    quantity.storage[4, 4] = 3
+    assert quantity.view[0, 0] == 1
+    assert quantity.view[2, 2] == 5
+    assert quantity.view[4, 4] == 3
+    assert quantity.data[0, 0] == 1
+    assert quantity.storage[2, 2] == 5
+    assert quantity.data[4, 4] == 3
+
+
 @pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)
 def test_storage_exists(quantity, backend):
     if "numpy" in backend:
