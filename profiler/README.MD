@@ -28,6 +28,8 @@ compiled.
 
 Once ran the reproducer package all required files in a `repro_<STENCIL_NAME>_<TIMESTAMP>` folder.
 
+If multiple versions of the stencil are called the reproducer will extract all of them. To select the N-th single stencil version add `--call_number=N`.
+
 The reproducer will also write a `repro.py` script that runs a single computation of the stencil.
 
 Example command line: `python external_profiler.py --stencil=MY_STENCIL <TARGET PYTHON SCRIPT>.py <TARGET ARGS>`
@@ -63,3 +65,8 @@ The script will print results and/or write CSV & plots.
 Usage: `nsys_mine.py <--csv> <--plots> <NSYS_GENERATED.sqlite>`
 * `<--csv>` will write down in .csv the results
 * `<--plots>` will plot the results (cumulative time, counts, median time, cumulative/call)
+
+## TODO list:
+
+* json configuration
+* record all versions of a stencil then `exit()` from the program

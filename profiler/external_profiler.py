@@ -18,7 +18,7 @@ except ModuleNotFoundError:
 
 
 def parse_args():
-    usage = "usage: python %(prog)s <--nvtx> <--stencil=STENCIL_NAME> <CMD TO PROFILE>"
+    usage = "usage: python %(prog)s <--nvtx> <--stencil=STENCIL_NAME> <--call_number=N> <CMD TO PROFILE>"  # noqa: E501
     parser = ArgumentParser(usage=usage)
     parser.add_argument(
         "--nvtx",
@@ -31,6 +31,12 @@ def parse_args():
         action="store",
         help="create a small reproducer for the stencil",
     )
+    parser.add_argument(
+        "--call_number",
+        type=int,
+        default=0,
+        help="which stencil call to reproduce. If 0 or less, collects all calls",
+    )
     return parser.parse_known_args()
 
 
@@ -38,7 +44,7 @@ def profile_hook(frame, event, args):
     if cmd_line_args.nvtx and nvtx_markings.mark is not None:
         nvtx_markings.mark(frame, event, args)
     if cmd_line_args.stencil and stencil_reproducer.field_serialization is not None:
-        stencil_reproducer.field_serialization(frame, event, args)
+        _ = stencil_reproducer.field_serialization(frame, event, args)
 
 
 cmd_line_args = None
@@ -50,7 +56,9 @@ if __name__ == "__main__":
         print("WARNING: cupy isn't available, NVTX marking deactivated.")
         cmd_line_args.nvtx = False
     if cmd_line_args.stencil is not None:
-        stencil_reproducer.collect_stencil_candidate(cmd_line_args.stencil)
+        stencil_reproducer.collect_stencil_candidate(
+            cmd_line_args.stencil, cmd_line_args.call_number
+        )
     if cmd_line_args.nvtx or cmd_line_args.stencil:
         sys.setprofile(profile_hook)
     filename = unknown[0]

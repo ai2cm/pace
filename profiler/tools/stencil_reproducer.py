@@ -9,6 +9,8 @@ from typing import Dict, Tuple
 import numpy as np
 from gt4py import storage
 
+from fv3core.utils.mpi import MPI
+
 
 STENCIL_CANDIDATE_FOR_EXTRACT: Dict[str, Tuple[str, str]] = {}
 
@@ -17,9 +19,12 @@ def field_serialization(frame, event, args):
     """Serialize all fields from a stencil"""
     if event == "call" or event == "return":
         for stencil_key, stencil_info in STENCIL_CANDIDATE_FOR_EXTRACT.items():
+            # search for the stencil independent of the cache directory
+            # under {backend}/fv3core/decorators/{stencil}/
+            end_of_stencil_path = "/".join(stencil_info[0].split("/")[-5:])
             if (
                 frame.f_code.co_name == "run"
-                and stencil_info[0] == frame.f_code.co_filename
+                and end_of_stencil_path in frame.f_code.co_filename
             ):
                 print(f"[PROFILER] Pickling args of {stencil_key} @ event {event}")
                 if event == "call":
@@ -33,8 +38,13 @@ def field_serialization(frame, event, args):
                         continue
                     if isinstance(arg_value, storage.Storage):
                         arg_value.device_to_host()
+                        pickle_file = f"{stencil_info[1]}/data/{prefix}_{arg_key}.npz"
+                        if path.isfile(pickle_file):
+                            # TODO: sensible handling for args.call_number > 0
+                            print(f"already wrote to {pickle_file}, skipping...")
+                            return -1
                         np.savez_compressed(
-                            f"{stencil_info[1]}/data/{prefix}_{arg_key}.npz",
+                            pickle_file,
                             arg_value.data,
                         )
                     else:
@@ -42,9 +52,10 @@ def field_serialization(frame, event, args):
                 scalar_file = f"{stencil_info[1]}/data/{prefix}_scalars.pickled"
                 with open(scalar_file, "wb") as handle:
                     pickle.dump(scalars, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    return 0
 
 
-def collect_stencil_candidate(stencil_name):
+def collect_stencil_candidate(stencil_name, call_number):
     """Collect all stencils that correspond to `stencil_name`.
 
     Multiple stencils can be collected if compile time varaiables lead to multiple
@@ -59,25 +70,28 @@ def collect_stencil_candidate(stencil_name):
         fullpath = path.join(gt_cache_root, fname)
         if fname.startswith(".gt_cache") and path.isdir(fullpath):
             for root, _, filenames in walk(fullpath):
-                for py_wrapper_file in fnmatch.filter(
-                    filenames, f"{expected_py_wrapper_partialname}*.py"
+                for call_count, py_wrapper_file in enumerate(
+                    fnmatch.filter(filenames, f"{expected_py_wrapper_partialname}*.py")
                 ):
-                    print(f"...found candidate {path.join(root, py_wrapper_file)}")
-                    stencil_key = path.splitext(py_wrapper_file)[0]
-                    stencil_file_wrapper = path.join(root, py_wrapper_file)
-                    STENCIL_CANDIDATE_FOR_EXTRACT[stencil_key] = (
-                        stencil_file_wrapper,
-                        None,
-                    )
+                    if (call_number <= 0) or (call_count + 1 == call_number):
+                        print(f"...found candidate {path.join(root, py_wrapper_file)}")
+                        stencil_key = path.splitext(py_wrapper_file)[0]
+                        stencil_file_wrapper = path.join(root, py_wrapper_file)
+                        STENCIL_CANDIDATE_FOR_EXTRACT[stencil_key] = (
+                            stencil_file_wrapper,
+                            None,
+                        )
 
     # Raise an exception is the collection came back with no results
     if len(STENCIL_CANDIDATE_FOR_EXTRACT.items()) == 0:
         raise RuntimeError(f"[Profiler] not stencil collected for {stencil_name}")
 
     # Create the result dir
+    rank = MPI.COMM_WORLD.Get_rank()
     repro_dir = (
         f"{getcwd()}/repro_{stencil_name}_"
-        f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+        f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S_')}"
+        f"{rank}"
     )
     mkdir(repro_dir)
     # Copy required file for repro & prepare for args pickling
