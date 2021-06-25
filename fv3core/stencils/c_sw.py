@@ -322,7 +322,22 @@ class CGridShallowWaterDynamics:
         self._dord4 = True
 
         self._D2A2CGrid_Vectors = DGrid2AGrid2CGridVectors(
-            self.grid, self.namelist, self._dord4
+            self.grid.grid_indexing,
+            self.grid.cosa_s,
+            self.grid.cosa_u,
+            self.grid.cosa_v,
+            self.grid.rsin_u,
+            self.grid.rsin_v,
+            self.grid.rsin2,
+            self.grid.dxa,
+            self.grid.dya,
+            self.grid.sin_sg1,
+            self.grid.sin_sg2,
+            self.grid.sin_sg3,
+            self.grid.sin_sg4,
+            self.grid.nested,
+            self.namelist.grid_type,
+            self._dord4,
         )
         grid_type = self.namelist.grid_type
         origin_halo1 = (self.grid.is_ - 1, self.grid.js - 1, 0)

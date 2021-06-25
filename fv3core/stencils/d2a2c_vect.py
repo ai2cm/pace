@@ -1,12 +1,11 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
 from fv3core.utils import corners
-from fv3core.utils.grid import axis_offsets
+from fv3core.utils.grid import GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -14,10 +13,6 @@ c1 = -2.0 / 14.0
 c2 = 11.0 / 14.0
 c3 = 5.0 / 14.0
 OFFSET = 2
-
-
-def grid():
-    return spec.grid
 
 
 def set_tmps(utmp: FloatField, vtmp: FloatField, big_number: float):
@@ -382,72 +377,106 @@ class DGrid2AGrid2CGridVectors:
     Fortran name d2a2c_vect
     """
 
-    def __init__(self, grid, namelist, dord4):
-        if namelist.grid_type >= 3:
-            raise Exception("unimplemented grid_type >= 3")
-        self.grid = grid
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        cosa_s,
+        cosa_u,
+        cosa_v,
+        rsin_u,
+        rsin_v,
+        rsin2,
+        dxa,
+        dya,
+        sin_sg1,
+        sin_sg2,
+        sin_sg3,
+        sin_sg4,
+        nested: bool,
+        grid_type: int,
+        dord4: bool,
+    ):
+        self._cosa_s = cosa_s
+        self._cosa_u = cosa_u
+        self._cosa_v = cosa_v
+        self._rsin_u = rsin_u
+        self._rsin_v = rsin_v
+        self._rsin2 = rsin2
+        self._dxa = dxa
+        self._dya = dya
+        self._sin_sg1 = sin_sg1
+        self._sin_sg2 = sin_sg2
+        self._sin_sg3 = sin_sg3
+        self._sin_sg4 = sin_sg4
+
+        if grid_type >= 3:
+            raise NotImplementedError("unimplemented grid_type >= 3")
         self._big_number = 1e30  # 1e8 if 32 bit
-        nx = self.grid.ie + 1  # grid.npx + 2
-        ny = self.grid.je + 1  # grid.npy + 2
-        i1 = self.grid.is_ - 1
-        j1 = self.grid.js - 1
+        nx = grid_indexing.iec + 1  # grid.npx + 2
+        ny = grid_indexing.jec + 1  # grid.npy + 2
+        i1 = grid_indexing.isc - 1
+        j1 = grid_indexing.jsc - 1
         id_ = 1 if dord4 else 0
         pad = 2 + 2 * id_
-        npt = 4 if not self.grid.nested else 0
-        if npt > self.grid.nic - 1 or npt > self.grid.njc - 1:
+        npt = 4 if not nested else 0
+        if npt > grid_indexing.domain[0] - 1 or npt > grid_indexing.domain[1] - 1:
             npt = 0
         self._utmp = utils.make_storage_from_shape(
-            self.grid.domain_shape_full(add=(1, 1, 1)),
-            self.grid.full_origin(),
+            grid_indexing.max_shape,
+            grid_indexing.origin_full(),
         )
         self._vtmp = utils.make_storage_from_shape(
-            self.grid.domain_shape_full(add=(1, 1, 1)), self.grid.full_origin()
+            grid_indexing.max_shape, grid_indexing.origin_full()
         )
 
-        js1 = npt + OFFSET if self.grid.south_edge else self.grid.js - 1
-        je1 = ny - npt if self.grid.north_edge else self.grid.je + 1
-        is1 = npt + OFFSET if self.grid.west_edge else self.grid.isd
-        ie1 = nx - npt if self.grid.east_edge else self.grid.ied
+        js1 = npt + OFFSET if grid_indexing.south_edge else grid_indexing.jsc - 1
+        je1 = ny - npt if grid_indexing.north_edge else grid_indexing.jec + 1
+        is1 = npt + OFFSET if grid_indexing.west_edge else grid_indexing.isd
+        ie1 = nx - npt if grid_indexing.east_edge else grid_indexing.ied
 
-        is2 = npt + OFFSET if self.grid.west_edge else self.grid.is_ - 1
-        ie2 = nx - npt if self.grid.east_edge else self.grid.ie + 1
-        js2 = npt + OFFSET if self.grid.south_edge else self.grid.jsd
-        je2 = ny - npt if self.grid.north_edge else self.grid.jed
+        is2 = npt + OFFSET if grid_indexing.west_edge else grid_indexing.isc - 1
+        ie2 = nx - npt if grid_indexing.east_edge else grid_indexing.iec + 1
+        js2 = npt + OFFSET if grid_indexing.south_edge else grid_indexing.jsd
+        je2 = ny - npt if grid_indexing.north_edge else grid_indexing.jed
 
-        ifirst = self.grid.is_ + 2 if self.grid.west_edge else self.grid.is_ - 1
-        ilast = self.grid.ie - 1 if self.grid.east_edge else self.grid.ie + 2
+        ifirst = (
+            grid_indexing.isc + 2 if grid_indexing.west_edge else grid_indexing.isc - 1
+        )
+        ilast = (
+            grid_indexing.iec - 1 if grid_indexing.east_edge else grid_indexing.iec + 2
+        )
         idiff = ilast - ifirst + 1
 
-        jfirst = self.grid.js + 2 if self.grid.south_edge else self.grid.js - 1
-        jlast = self.grid.je - 1 if self.grid.north_edge else self.grid.je + 2
+        jfirst = (
+            grid_indexing.jsc + 2 if grid_indexing.south_edge else grid_indexing.jsc - 1
+        )
+        jlast = (
+            grid_indexing.jec - 1 if grid_indexing.north_edge else grid_indexing.jec + 2
+        )
         jdiff = jlast - jfirst + 1
-
-        js3 = npt + OFFSET if self.grid.south_edge else self.grid.jsd
-        je3 = ny - npt if self.grid.north_edge else self.grid.jed
-        jdiff3 = je3 - js3 + 1
 
         self._set_tmps = FrozenStencil(
             func=set_tmps,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(),
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(),
         )
 
         self._lagrange_interpolation_y_p1 = FrozenStencil(
             func=lagrange_interpolation_y_p1,
             origin=(is1, js1, 0),
-            domain=(ie1 - is1 + 1, je1 - js1 + 1, self.grid.npz),
+            domain=(ie1 - is1 + 1, je1 - js1 + 1, grid_indexing.domain[2]),
         )
 
         self._lagrange_interpolation_x_p1 = FrozenStencil(
             func=lagrange_interpolation_x_p1,
             origin=(is2, js2, 0),
-            domain=(ie2 - is2 + 1, je2 - js2 + 1, self.grid.npz),
+            domain=(ie2 - is2 + 1, je2 - js2 + 1, grid_indexing.domain[2]),
         )
 
-        origin = self.grid.full_origin()
-        domain = self.grid.domain_shape_full()
-        ax_offsets = axis_offsets(self.grid, origin, domain)
-        if namelist.npx <= 13 and namelist.layout[0] > 1:
+        origin = grid_indexing.origin_full()
+        domain = grid_indexing.domain_full()
+        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        if npt == 0:
             d2a2c_avg_offset = -1
         else:
             d2a2c_avg_offset = 3
@@ -461,12 +490,12 @@ class DGrid2AGrid2CGridVectors:
 
         self._contravariant_components = FrozenStencil(
             func=contravariant_components,
-            origin=(self.grid.is_ - 1 - id_, self.grid.js - 1 - id_, 0),
-            domain=(self.grid.nic + pad, self.grid.njc + pad, self.grid.npz),
+            origin=grid_indexing.origin_compute(add=(-1 - id_, -1 - id_, 0)),
+            domain=grid_indexing.domain_compute(add=(pad, pad, 0)),
         )
-        origin_edges = self.grid.compute_origin(add=(-3, -3, 0))
-        domain_edges = self.grid.domain_shape_compute(add=(6, 6, 0))
-        ax_offsets_edges = axis_offsets(self.grid, origin_edges, domain_edges)
+        origin_edges = grid_indexing.origin_compute(add=(-3, -3, 0))
+        domain_edges = grid_indexing.domain_compute(add=(6, 6, 0))
+        ax_offsets_edges = axis_offsets(grid_indexing, origin_edges, domain_edges)
         self._fill_corners_x = FrozenStencil(
             func=fill_corners_x,
             externals=ax_offsets_edges,
@@ -477,7 +506,7 @@ class DGrid2AGrid2CGridVectors:
         self._ut_main = FrozenStencil(
             func=ut_main,
             origin=(ifirst, j1, 0),
-            domain=(idiff, self.grid.njc + 2, self.grid.npz),
+            domain=(idiff, grid_indexing.domain[1] + 2, grid_indexing.domain[2]),
         )
 
         self._east_west_edges = FrozenStencil(
@@ -519,7 +548,7 @@ class DGrid2AGrid2CGridVectors:
         self._vt_main = FrozenStencil(
             func=vt_main,
             origin=(i1, jfirst, 0),
-            domain=(self.grid.nic + 2, jdiff, self.grid.npz),
+            domain=(grid_indexing.domain[0] + 2, jdiff, grid_indexing.domain[2]),
         )
 
     def __call__(self, uc, vc, u, v, ua, va, utc, vtc):
@@ -564,8 +593,8 @@ class DGrid2AGrid2CGridVectors:
         self._contravariant_components(
             self._utmp,
             self._vtmp,
-            self.grid.cosa_s,
-            self.grid.rsin2,
+            self._cosa_s,
+            self._rsin2,
             ua,
             va,
         )
@@ -582,8 +611,8 @@ class DGrid2AGrid2CGridVectors:
             self._utmp,
             uc,
             v,
-            self.grid.cosa_u,
-            self.grid.rsin_u,
+            self._cosa_u,
+            self._rsin_u,
             utc,
         )
 
@@ -594,11 +623,11 @@ class DGrid2AGrid2CGridVectors:
             utc,
             self._utmp,
             v,
-            self.grid.sin_sg1,
-            self.grid.sin_sg3,
-            self.grid.cosa_u,
-            self.grid.rsin_u,
-            self.grid.dxa,
+            self._sin_sg1,
+            self._sin_sg3,
+            self._cosa_u,
+            self._rsin_u,
+            self._dxa,
         )
 
         # Ydir:
@@ -616,18 +645,18 @@ class DGrid2AGrid2CGridVectors:
             vtc,
             self._vtmp,
             u,
-            self.grid.sin_sg2,
-            self.grid.sin_sg4,
-            self.grid.cosa_v,
-            self.grid.rsin_v,
-            self.grid.dya,
+            self._sin_sg2,
+            self._sin_sg4,
+            self._cosa_v,
+            self._rsin_v,
+            self._dya,
         )
 
         self._vt_main(
             self._vtmp,
             vc,
             u,
-            self.grid.cosa_v,
-            self.grid.rsin_v,
+            self._cosa_v,
+            self._rsin_v,
             vtc,
         )
