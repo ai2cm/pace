@@ -279,13 +279,22 @@ class UpdateHeightOnDGrid:
             domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
         )
         self.delnflux = DelnFluxNoSG(
-            self._column_namelist["nord_v"], nk=self.grid.npz + 1
+            self.grid.grid_indexing,
+            self.grid.del6_u,
+            self.grid.del6_v,
+            self.grid.rarea,
+            self._column_namelist["nord_v"],
+            nk=self.grid.npz + 1,
         )
         self.finite_volume_transport = FiniteVolumeTransport(
             grid_indexing=self.grid.grid_indexing,
             dxa=self.grid.dxa,
             dya=self.grid.dya,
             area=self.grid.area,
+            da_min=self.grid.da_min,
+            del6_u=self.grid.del6_u,
+            del6_v=self.grid.del6_v,
+            rarea=self.grid.rarea,
             grid_type=self.grid.grid_type,
             hord=namelist.hord_tm,
         )

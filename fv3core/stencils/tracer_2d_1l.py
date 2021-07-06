@@ -175,6 +175,10 @@ class TracerAdvection:
             dxa=self.grid.dxa,
             dya=self.grid.dya,
             area=self.grid.area,
+            da_min=self.grid.da_min,
+            del6_u=self.grid.del6_u,
+            del6_v=self.grid.del6_v,
+            rarea=self.grid.rarea,
             grid_type=self.grid.grid_type,
             hord=namelist.hord_tr,
         )

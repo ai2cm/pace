@@ -28,6 +28,12 @@ class TranslateDel6VtFlux(TranslateFortranData2Py):
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        self.compute_func = delnflux.DelnFluxNoSG(inputs.pop("nord_column"))
+        self.compute_func = delnflux.DelnFluxNoSG(
+            self.grid.grid_indexing,
+            self.grid.del6_u,
+            self.grid.del6_v,
+            self.grid.rarea,
+            inputs.pop("nord_column"),
+        )
         self.compute_func(**inputs)
         return self.slice_output(inputs)

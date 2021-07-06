@@ -543,13 +543,29 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_damp_3d = utils.make_storage_from_shape((1, 1, self.grid.npz))
         self._column_namelist = column_namelist
 
-        self.delnflux_nosg_w = DelnFluxNoSG(self._column_namelist["nord_w"])
-        self.delnflux_nosg_v = DelnFluxNoSG(self._column_namelist["nord_v"])
+        self.delnflux_nosg_w = DelnFluxNoSG(
+            self.grid.grid_indexing,
+            self.grid.del6_u,
+            self.grid.del6_v,
+            self.grid.rarea,
+            self._column_namelist["nord_w"],
+        )
+        self.delnflux_nosg_v = DelnFluxNoSG(
+            self.grid.grid_indexing,
+            self.grid.del6_u,
+            self.grid.del6_v,
+            self.grid.rarea,
+            self._column_namelist["nord_v"],
+        )
         self.fvtp2d_dp = FiniteVolumeTransport(
             grid_indexing=self.grid.grid_indexing,
             dxa=self.grid.dxa,
             dya=self.grid.dya,
             area=self.grid.area,
+            del6_u=self.grid.del6_u,
+            del6_v=self.grid.del6_v,
+            rarea=self.grid.rarea,
+            da_min=self.grid.da_min,
             grid_type=namelist.grid_type,
             hord=namelist.hord_dp,
             nord=self._column_namelist["nord_v"],
@@ -560,6 +576,10 @@ class DGridShallowWaterLagrangianDynamics:
             dxa=self.grid.dxa,
             dya=self.grid.dya,
             area=self.grid.area,
+            del6_u=self.grid.del6_u,
+            del6_v=self.grid.del6_v,
+            rarea=self.grid.rarea,
+            da_min=self.grid.da_min,
             grid_type=namelist.grid_type,
             hord=namelist.hord_dp,
             nord=self._column_namelist["nord_t"],
@@ -570,6 +590,10 @@ class DGridShallowWaterLagrangianDynamics:
             dxa=self.grid.dxa,
             dya=self.grid.dya,
             area=self.grid.area,
+            del6_u=self.grid.del6_u,
+            del6_v=self.grid.del6_v,
+            rarea=self.grid.rarea,
+            da_min=self.grid.da_min,
             grid_type=namelist.grid_type,
             hord=namelist.hord_vt,
             nord=self._column_namelist["nord_v"],
@@ -580,6 +604,10 @@ class DGridShallowWaterLagrangianDynamics:
             dxa=self.grid.dxa,
             dya=self.grid.dya,
             area=self.grid.area,
+            del6_u=self.grid.del6_u,
+            del6_v=self.grid.del6_v,
+            rarea=self.grid.rarea,
+            da_min=self.grid.da_min,
             grid_type=namelist.grid_type,
             hord=namelist.hord_tm,
             nord=self._column_namelist["nord_v"],
@@ -590,6 +618,10 @@ class DGridShallowWaterLagrangianDynamics:
             dxa=self.grid.dxa,
             dya=self.grid.dya,
             area=self.grid.area,
+            del6_u=self.grid.del6_u,
+            del6_v=self.grid.del6_v,
+            rarea=self.grid.rarea,
+            da_min=self.grid.da_min,
             grid_type=namelist.grid_type,
             hord=namelist.hord_vt,
         )

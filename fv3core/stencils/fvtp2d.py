@@ -88,6 +88,10 @@ class FiniteVolumeTransport:
         dxa,
         dya,
         area,
+        del6_u,
+        del6_v,
+        rarea,
+        da_min,
         grid_type: int,
         hord,
         nord=None,
@@ -125,7 +129,9 @@ class FiniteVolumeTransport:
             domain=idx.domain_compute(add=(1, 1, 1)),
         )
         if (self._nord is not None) and (self._damp_c is not None):
-            self.delnflux: Optional[DelnFlux] = DelnFlux(self._nord, self._damp_c)
+            self.delnflux: Optional[DelnFlux] = DelnFlux(
+                grid_indexing, del6_u, del6_v, rarea, da_min, self._nord, self._damp_c
+            )
         else:
             self.delnflux = None
 
