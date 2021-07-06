@@ -1,8 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core._config as spec
 from fv3core.decorators import FrozenStencil
-from fv3core.utils.grid import axis_offsets
+from fv3core.utils.grid import GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -360,15 +359,41 @@ class FiniteVolumeFluxPrep:
     Known in this repo as FxAdv,
     """
 
-    def __init__(self):
-        self.grid = spec.grid
-        origin = self.grid.full_origin()
-        domain = self.grid.domain_shape_full()
-        ax_offsets = axis_offsets(self.grid, origin, domain)
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        dx,
+        dy,
+        rdxa,
+        rdya,
+        cosa_u,
+        cosa_v,
+        rsin_u,
+        rsin_v,
+        sin_sg1,
+        sin_sg2,
+        sin_sg3,
+        sin_sg4,
+    ):
+        self._dx = dx
+        self._dy = dy
+        self._rdxa = rdxa
+        self._rdya = rdya
+        self._cosa_u = cosa_u
+        self._cosa_v = cosa_v
+        self._rsin_u = rsin_u
+        self._rsin_v = rsin_v
+        self._sin_sg1 = sin_sg1
+        self._sin_sg2 = sin_sg2
+        self._sin_sg3 = sin_sg3
+        self._sin_sg4 = sin_sg4
+        origin = grid_indexing.origin_full()
+        domain = grid_indexing.domain_full()
+        ax_offsets = axis_offsets(grid_indexing, origin, domain)
         kwargs = {"externals": ax_offsets, "origin": origin, "domain": domain}
-        origin_corners = self.grid.full_origin(add=(1, 1, 0))
-        domain_corners = self.grid.domain_shape_full(add=(-1, -1, 0))
-        corner_offsets = axis_offsets(self.grid, origin_corners, domain_corners)
+        origin_corners = grid_indexing.origin_full(add=(1, 1, 0))
+        domain_corners = grid_indexing.domain_full(add=(-1, -1, 0))
+        corner_offsets = axis_offsets(grid_indexing, origin_corners, domain_corners)
         kwargs_corners = {
             "externals": corner_offsets,
             "origin": origin_corners,
@@ -413,76 +438,73 @@ class FiniteVolumeFluxPrep:
             ut: temporary x-velocity transformed from C-grid to D-grid equiv(?) (inout)
             vt: temporary y-velocity transformed from C-grid to D-grid equiv(?) (inout)
             dt: acoustic timestep in seconds
-
-        Grid variable inputs:
-            cosa_u, cosa_v, rsin_u, rsin_v, sin_sg1,sin_sg2, sin_sg3, sin_sg4, dx, dy
         """
 
         self._main_ut_stencil(
             uc,
             vc,
-            self.grid.cosa_u,
-            self.grid.rsin_u,
+            self._cosa_u,
+            self._rsin_u,
             ut,
         )
         self._ut_y_edge_stencil(
             uc,
-            self.grid.sin_sg1,
-            self.grid.sin_sg3,
+            self._sin_sg1,
+            self._sin_sg3,
             ut,
             dt,
         )
         self._main_vt_stencil(
             uc,
             vc,
-            self.grid.cosa_v,
-            self.grid.rsin_v,
+            self._cosa_v,
+            self._rsin_v,
             vt,
         )
         self._vt_y_edge_stencil(
             vc,
-            self.grid.cosa_v,
+            self._cosa_v,
             ut,
             vt,
         )
         self._vt_x_edge_stencil(
             vc,
-            self.grid.sin_sg2,
-            self.grid.sin_sg4,
+            self._sin_sg2,
+            self._sin_sg4,
             vt,
             dt,
         )
         self._ut_x_edge_stencil(
             uc,
-            self.grid.cosa_u,
+            self._cosa_u,
             vt,
             ut,
         )
         self._ut_corners_stencil(
-            self.grid.cosa_u,
-            self.grid.cosa_v,
+            self._cosa_u,
+            self._cosa_v,
             uc,
             vc,
             ut,
             vt,
         )
         self._vt_corners_stencil(
-            self.grid.cosa_u,
-            self.grid.cosa_v,
+            self._cosa_u,
+            self._cosa_v,
             uc,
             vc,
             ut,
             vt,
         )
         self._fxadv_fluxes_stencil(
-            self.grid.sin_sg1,
-            self.grid.sin_sg2,
-            self.grid.sin_sg3,
-            self.grid.sin_sg4,
-            self.grid.rdxa,
-            self.grid.rdya,
-            self.grid.dy,
-            self.grid.dx,
+            self._sin_sg1,
+            self._sin_sg2,
+            self._sin_sg3,
+            self._sin_sg4,
+            self._rdxa,
+            self._rdya,
+            self._dy,
+            self._dx,
             crx,
             cry,
             x_area_flux,
