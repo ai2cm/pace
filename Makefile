@@ -156,7 +156,9 @@ dev_wrapper:
 
 test_base:
 ifneq ($(findstring docker,$(CONTAINER_CMD)),)
+    ifeq ($(DEV),n)
 	$(MAKE) build
+    endif
 endif
 	$(CONTAINER_CMD) bash -c "pip list && $(PYTEST_CMD)"
 
