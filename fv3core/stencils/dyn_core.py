@@ -120,25 +120,22 @@ def p_grad_c_stencil(
     Grid variable inputs:
         rdxc, rdyc
     """
-    from __externals__ import hydrostatic, local_ie, local_is, local_je, local_js
+    from __externals__ import hydrostatic
 
     with computation(PARALLEL), interval(...):
         if __INLINED(hydrostatic):
             wk = pkc[0, 0, 1] - pkc
         else:
             wk = delpc
-        # TODO for PGradC validation only, not necessary for DynCore
-        with horizontal(region[local_is : local_ie + 2, local_js : local_je + 1]):
-            uc = uc + dt2 * rdxc / (wk[-1, 0, 0] + wk) * (
-                (gz[-1, 0, 1] - gz) * (pkc[0, 0, 1] - pkc[-1, 0, 0])
-                + (gz[-1, 0, 0] - gz[0, 0, 1]) * (pkc[-1, 0, 1] - pkc)
-            )
-        # TODO for PGradC validation only, not necessary for DynCore
-        with horizontal(region[local_is : local_ie + 1, local_js : local_je + 2]):
-            vc = vc + dt2 * rdyc / (wk[0, -1, 0] + wk) * (
-                (gz[0, -1, 1] - gz) * (pkc[0, 0, 1] - pkc[0, -1, 0])
-                + (gz[0, -1, 0] - gz[0, 0, 1]) * (pkc[0, -1, 1] - pkc)
-            )
+        uc = uc + dt2 * rdxc / (wk[-1, 0, 0] + wk) * (
+            (gz[-1, 0, 1] - gz) * (pkc[0, 0, 1] - pkc[-1, 0, 0])
+            + (gz[-1, 0, 0] - gz[0, 0, 1]) * (pkc[-1, 0, 1] - pkc)
+        )
+
+        vc = vc + dt2 * rdyc / (wk[0, -1, 0] + wk) * (
+            (gz[0, -1, 1] - gz) * (pkc[0, 0, 1] - pkc[0, -1, 0])
+            + (gz[0, -1, 0] - gz[0, 0, 1]) * (pkc[0, -1, 1] - pkc)
+        )
 
 
 def get_nk_heat_dissipation(namelist, grid):
@@ -322,14 +319,11 @@ class AcousticDynamics:
             domain=self.grid.domain_shape_compute(add=(2, 2, 0)),
         )
 
-        pgradc_origin = self.grid.compute_origin()
-        pgradc_domain = self.grid.domain_shape_compute(add=(1, 1, 0))
-        ax_offsets = axis_offsets(self.grid, pgradc_origin, pgradc_domain)
         self._p_grad_c = FrozenStencil(
             p_grad_c_stencil,
-            origin=pgradc_origin,
-            domain=pgradc_domain,
-            externals={"hydrostatic": self.namelist.hydrostatic, **ax_offsets},
+            origin=self.grid.compute_origin(),
+            domain=self.grid.domain_shape_compute(add=(1, 1, 0)),
+            externals={"hydrostatic": self.namelist.hydrostatic},
         )
 
         self.update_geopotential_height_on_c_grid = (

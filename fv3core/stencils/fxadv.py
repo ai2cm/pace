@@ -136,6 +136,7 @@ def ut_corners(
     uc: FloatField,
     vc: FloatField,
     ut: FloatField,
+    ut_copy: FloatField,
     vt: FloatField,
 ):
 
@@ -167,7 +168,7 @@ def ut_corners(
                     + vc[-1, 0, 0]
                     - 0.25
                     * cosa_v[-1, 0]
-                    * (ut[-1, 0, 0] + ut[-1, -1, 0] + ut[0, -1, 0])
+                    * (ut_copy[-1, 0, 0] + ut_copy[-1, -1, 0] + ut_copy[0, -1, 0])
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v[-1, 1])
@@ -182,7 +183,9 @@ def ut_corners(
                     + vt
                     + vt[0, 1, 0]
                     + vc[-1, 1, 0]
-                    - 0.25 * cosa_v[-1, 1] * (ut[-1, 0, 0] + ut[-1, 1, 0] + ut[0, 1, 0])
+                    - 0.25
+                    * cosa_v[-1, 1]
+                    * (ut_copy[-1, 0, 0] + ut_copy[-1, 1, 0] + ut_copy[0, 1, 0])
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v)
@@ -196,7 +199,9 @@ def ut_corners(
                     + vt[-1, 1, 0]
                     + vt[-1, 0, 0]
                     + vc
-                    - 0.25 * cosa_v * (ut[1, 0, 0] + ut[1, -1, 0] + ut[0, -1, 0])
+                    - 0.25
+                    * cosa_v
+                    * (ut_copy[1, 0, 0] + ut_copy[1, -1, 0] + ut_copy[0, -1, 0])
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v[0, 1])
@@ -210,7 +215,9 @@ def ut_corners(
                     + vt[-1, 0, 0]
                     + vt[-1, 1, 0]
                     + vc[0, 1, 0]
-                    - 0.25 * cosa_v[0, 1] * (ut[1, 0, 0] + ut[1, 1, 0] + ut[0, 1, 0])
+                    - 0.25
+                    * cosa_v[0, 1]
+                    * (ut_copy[1, 0, 0] + ut_copy[1, 1, 0] + ut_copy[0, 1, 0])
                 )
             ) * damp
 
@@ -222,6 +229,7 @@ def vt_corners(
     vc: FloatField,
     ut: FloatField,
     vt: FloatField,
+    vt_copy: FloatField,
 ):
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -239,7 +247,7 @@ def vt_corners(
                     + uc[0, -1, 0]
                     - 0.25
                     * cosa_u[0, -1]
-                    * (vt[0, -1, 0] + vt[-1, -1, 0] + vt[-1, 0, 0])
+                    * (vt_copy[0, -1, 0] + vt_copy[-1, -1, 0] + vt_copy[-1, 0, 0])
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u[1, -1] * cosa_v)
@@ -253,7 +261,9 @@ def vt_corners(
                     + ut
                     + ut[1, 0, 0]
                     + uc[1, -1, 0]
-                    - 0.25 * cosa_u[1, -1] * (vt[0, -1, 0] + vt[1, -1, 0] + vt[1, 0, 0])
+                    - 0.25
+                    * cosa_u[1, -1]
+                    * (vt_copy[0, -1, 0] + vt_copy[1, -1, 0] + vt_copy[1, 0, 0])
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u[1, 0] * cosa_v)
@@ -267,7 +277,9 @@ def vt_corners(
                     + ut[0, -1, 0]
                     + ut[1, -1, 0]
                     + uc[1, 0, 0]
-                    - 0.25 * cosa_u[1, 0] * (vt[0, 1, 0] + vt[1, 1, 0] + vt[1, 0, 0])
+                    - 0.25
+                    * cosa_u[1, 0]
+                    * (vt_copy[0, 1, 0] + vt_copy[1, 1, 0] + vt_copy[1, 0, 0])
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v)
@@ -281,7 +293,9 @@ def vt_corners(
                     + ut[1, -1, 0]
                     + ut[0, -1, 0]
                     + uc
-                    - 0.25 * cosa_u * (vt[0, 1, 0] + vt[-1, 1, 0] + vt[-1, 0, 0])
+                    - 0.25
+                    * cosa_u
+                    * (vt_copy[0, 1, 0] + vt_copy[-1, 1, 0] + vt_copy[-1, 0, 0])
                 )
             ) * damp
 
@@ -480,20 +494,24 @@ class FiniteVolumeFluxPrep:
             vt,
             ut,
         )
+        # NOTE: this is aliasing memory
         self._ut_corners_stencil(
             self._cosa_u,
             self._cosa_v,
             uc,
             vc,
             ut,
+            ut,
             vt,
         )
+        # NOTE: this is aliasing memory
         self._vt_corners_stencil(
             self._cosa_u,
             self._cosa_v,
             uc,
             vc,
             ut,
+            vt,
             vt,
         )
         self._fxadv_fluxes_stencil(
