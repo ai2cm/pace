@@ -234,13 +234,26 @@ def compute_al(q: FloatField, dya: FloatFieldIJ):
 def bl_br_edges(bl, br, q, dya, al, dm):
     from __externals__ import j_end, j_start
 
+    #  dm_jord8plus(q: FloatField)
     with horizontal(region[:, j_start - 1]):
-        xt_bl = s14 * dm[0, -1, 0] + s11 * (q[0, -1, 0] - q) + q
+        # TODO(rheag) when possible
+        # dm_lower = dm_jord8plus(q[0, -1, 0])
+        xt = 0.25 * (q - q[0, -2, 0])
+        dqr = max(max(q[0, -1, 0], q[0, -2, 0]), q) - q[0, -1, 0]
+        dql = q[0, -1, 0] - min(min(q[0, -1, 0], q[0, -2, 0]), q)
+        dm_lower = sign(min(min(abs(xt), dqr), dql), xt)
+        xt_bl = s14 * dm_lower + s11 * (q[0, -1, 0] - q) + q
         xt_br = xt_dya_edge_0(q, dya)
 
     with horizontal(region[:, j_start]):
+        # TODO(rheag) when possible
+        # dm_upper = dm_jord8plus(q[0, 1, 0])
+        xt = 0.25 * (q[0, 2, 0] - q)
+        dqr = max(max(q[0, 1, 0], q), q[0, 2, 0]) - q[0, 1, 0]
+        dql = q[0, 1, 0] - min(min(q[0, 1, 0], q), q[0, 2, 0])
+        dm_upper = sign(min(min(abs(xt), dqr), dql), xt)
         xt_bl = xt_dya_edge_1(q, dya)
-        xt_br = s15 * q + s11 * q[0, 1, 0] - s14 * dm[0, 1, 0]
+        xt_br = s15 * q + s11 * q[0, 1, 0] - s14 * dm_upper
 
     with horizontal(region[:, j_start + 1]):
         xt_bl = s15 * q[0, -1, 0] + s11 * q - s14 * dm
@@ -251,12 +264,24 @@ def bl_br_edges(bl, br, q, dya, al, dm):
         xt_br = s15 * q[0, 1, 0] + s11 * q + s14 * dm
 
     with horizontal(region[:, j_end]):
-        xt_bl = s15 * q + s11 * q[0, -1, 0] + s14 * dm[0, -1, 0]
+        # TODO(rheag) when possible
+        # dm_lower_end = dm_jord8plus(q[0, -1, 0])
+        xt = 0.25 * (q - q[0, -2, 0])
+        dqr = max(max(q[0, -1, 0], q[0, -2, 0]), q) - q[0, -1, 0]
+        dql = q[0, -1, 0] - min(min(q[0, -1, 0], q[0, -2, 0]), q)
+        dm_lower_end = sign(min(min(abs(xt), dqr), dql), xt)
+        xt_bl = s15 * q + s11 * q[0, -1, 0] + s14 * dm_lower_end
         xt_br = xt_dya_edge_0(q, dya)
 
     with horizontal(region[:, j_end + 1]):
+        # TODO(rheag) when possible
+        # dm_upper_end = dm_jord8plus(q[0, 1, 0])
+        xt = 0.25 * (q[0, 2, 0] - q)
+        dqr = max(max(q[0, 1, 0], q), q[0, 2, 0]) - q[0, 1, 0]
+        dql = q[0, 1, 0] - min(min(q[0, 1, 0], q), q[0, 2, 0])
+        dm_upper_end = sign(min(min(abs(xt), dqr), dql), xt)
         xt_bl = xt_dya_edge_1(q, dya)
-        xt_br = s11 * (q[0, 1, 0] - q) - s14 * dm[0, 1, 0] + q
+        xt_br = s11 * (q[0, 1, 0] - q) - s14 * dm_upper_end + q
 
     with horizontal(
         region[:, j_start - 1 : j_start + 2], region[:, j_end - 1 : j_end + 2]

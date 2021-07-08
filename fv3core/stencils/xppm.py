@@ -172,12 +172,25 @@ def bl_br_edges(bl, br, q, dxa, al, dm):
     from __externals__ import i_end, i_start
 
     with horizontal(region[i_start - 1, :]):
-        xt_bl = yppm.s14 * dm[-1, 0, 0] + yppm.s11 * (q[-1, 0, 0] - q) + q
+        # TODO(rheag) when possible
+        # dm_left = dm_iord8plus(q[-1, 0, 0])
+        xt = 0.25 * (q - q[-2, 0, 0])
+        dqr = max(max(q[-1, 0, 0], q[-2, 0, 0]), q) - q[-1, 0, 0]
+        dql = q[-1, 0, 0] - min(min(q[-1, 0, 0], q[-2, 0, 0]), q)
+        dm_left = sign(min(min(abs(xt), dqr), dql), xt)
+        xt_bl = yppm.s14 * dm_left + yppm.s11 * (q[-1, 0, 0] - q) + q
         xt_br = xt_dxa_edge_0(q, dxa)
 
     with horizontal(region[i_start, :]):
+        # TODO(rheag) when possible
+        # dm_right = dm_iord8plus(q[1, 0, 0])
+        xt = 0.25 * (q[2, 0, 0] - q)
+        dqr = max(max(q[1, 0, 0], q), q[2, 0, 0]) - q[1, 0, 0]
+        dql = q[1, 0, 0] - min(min(q[1, 0, 0], q), q[2, 0, 0])
+        dm_right = sign(min(min(abs(xt), dqr), dql), xt)
+        xt_bl = yppm.s14 * dm_left + yppm.s11 * (q[-1, 0, 0] - q) + q
         xt_bl = xt_dxa_edge_1(q, dxa)
-        xt_br = yppm.s15 * q + yppm.s11 * q[1, 0, 0] - yppm.s14 * dm[1, 0, 0]
+        xt_br = yppm.s15 * q + yppm.s11 * q[1, 0, 0] - yppm.s14 * dm_right
 
     with horizontal(region[i_start + 1, :]):
         xt_bl = yppm.s15 * q[-1, 0, 0] + yppm.s11 * q - yppm.s14 * dm
@@ -188,12 +201,24 @@ def bl_br_edges(bl, br, q, dxa, al, dm):
         xt_br = yppm.s15 * q[1, 0, 0] + yppm.s11 * q + yppm.s14 * dm
 
     with horizontal(region[i_end, :]):
-        xt_bl = yppm.s15 * q + yppm.s11 * q[-1, 0, 0] + yppm.s14 * dm[-1, 0, 0]
+        # TODO(rheag) when possible
+        # dm_left_end = dm_iord8plus(q[-1, 0, 0])
+        xt = 0.25 * (q - q[-2, 0, 0])
+        dqr = max(max(q[-1, 0, 0], q[-2, 0, 0]), q) - q[-1, 0, 0]
+        dql = q[-1, 0, 0] - min(min(q[-1, 0, 0], q[-2, 0, 0]), q)
+        dm_left_end = sign(min(min(abs(xt), dqr), dql), xt)
+        xt_bl = yppm.s15 * q + yppm.s11 * q[-1, 0, 0] + yppm.s14 * dm_left_end
         xt_br = xt_dxa_edge_0(q, dxa)
 
     with horizontal(region[i_end + 1, :]):
+        # TODO(rheag) when possible
+        # dm_right_end = dm_iord8plus(q[1, 0, 0])
+        xt = 0.25 * (q[2, 0, 0] - q)
+        dqr = max(max(q[1, 0, 0], q), q[2, 0, 0]) - q[1, 0, 0]
+        dql = q[1, 0, 0] - min(min(q[1, 0, 0], q), q[2, 0, 0])
+        dm_right_end = sign(min(min(abs(xt), dqr), dql), xt)
         xt_bl = xt_dxa_edge_1(q, dxa)
-        xt_br = yppm.s11 * (q[1, 0, 0] - q) - yppm.s14 * dm[1, 0, 0] + q
+        xt_br = yppm.s11 * (q[1, 0, 0] - q) - yppm.s14 * dm_right_end + q
 
     with horizontal(
         region[i_start - 1 : i_start + 2, :], region[i_end - 1 : i_end + 2, :]
