@@ -5,8 +5,6 @@ import gt4py.gtscript as gtscript
 import gt4py.storage as gt_storage
 from config import *
 
-#sys.path.append("/home/chris/Documents/Code/physics_standalone/prsfv3/python")
-#sys.path.append("/home/chris/Documents/Code/physics_standalone/phifv3/python")
 import get_prs_fv3
 import get_phi_fv3
 
