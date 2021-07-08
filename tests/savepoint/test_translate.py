@@ -2,6 +2,7 @@ import contextlib
 import hashlib
 import logging
 import os
+from typing import Union
 
 import numpy as np
 import pytest
@@ -29,18 +30,35 @@ def compare_arr(computed_data, ref_data):
     return compare
 
 
-def success_array(computed_data, ref_data, eps, ignore_near_zero_errors, near_zero):
+def success_array(
+    computed_data: np.ndarray,
+    ref_data: np.ndarray,
+    eps: float,
+    ignore_near_zero_errors: Union[dict, bool],
+    near_zero: float,
+):
     success = np.logical_or(
         np.logical_and(np.isnan(computed_data), np.isnan(ref_data)),
         compare_arr(computed_data, ref_data) < eps,
     )
-    if ignore_near_zero_errors:
+    if isinstance(ignore_near_zero_errors, dict):
+        if ignore_near_zero_errors.keys():
+            near_zero = ignore_near_zero_errors["near_zero"]
+            success = np.logical_or(
+                success,
+                np.logical_and(
+                    np.abs(computed_data) < near_zero,
+                    np.abs(ref_data) < near_zero,
+                ),
+            )
+    elif ignore_near_zero_errors:
         success = np.logical_or(
             success,
             np.logical_and(
                 np.abs(computed_data) < near_zero, np.abs(ref_data) < near_zero
             ),
         )
+
     return success
 
 
@@ -148,9 +166,33 @@ def process_override(threshold_overrides, testobj, test_name, backend):
             if "near_zero" in match:
                 testobj.near_zero = float(match["near_zero"])
             if "ignore_near_zero_errors" in match:
-                testobj.ignore_near_zero_errors = {
-                    field: True for field in match["ignore_near_zero_errors"]
-                }
+                parsed_ignore_zero = match["ignore_near_zero_errors"]
+                if isinstance(parsed_ignore_zero, list):
+                    testobj.ignore_near_zero_errors = {
+                        field: True for field in match["ignore_near_zero_errors"]
+                    }
+                elif isinstance(parsed_ignore_zero, dict):
+                    testobj.ignore_near_zero_errors = {
+                        field: True for field in parsed_ignore_zero.keys()
+                    }
+                    for key in testobj.ignore_near_zero_errors.keys():
+                        testobj.ignore_near_zero_errors[key] = {}
+                        testobj.ignore_near_zero_errors[key]["near_zero"] = float(
+                            parsed_ignore_zero[key]
+                        )
+                    if "all_other_near_zero" in match:
+                        for key in testobj.out_vars.keys():
+                            if key not in testobj.ignore_near_zero_errors:
+                                testobj.ignore_near_zero_errors[key] = True
+                                testobj.ignore_near_zero_errors[key] = {}
+                                testobj.ignore_near_zero_errors[key][
+                                    "near_zero"
+                                ] = float(match["all_other_near_zero"])
+
+                else:
+                    raise TypeError(
+                        "ignore_near_zero_errors is either a list or a dict"
+                    )
         elif len(matches) > 1:
             raise Exception(
                 "misconfigured threshold overrides file, more than 1 specification for "

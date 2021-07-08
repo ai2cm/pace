@@ -145,7 +145,7 @@ common options for our tests, which you can add to `TEST_ARGS`:
 
 * `-m` - will let you run only certain groups of tests. For example, `-m=parallel` will run only parallel stencils, while `-m=sequential` will run only stencils that operate on one rank at a time.
 
-* `--threshold_overrides_file` - will read a yaml file with error thresholds specified for specific backend and platform (docker or metal) configurations, overriding the max_error thresholds defined in the Translate classes.
+* `--threshold_overrides_file` - will read a yaml file with error thresholds specified for specific backend and platform (docker or metal) configurations, overriding the max_error thresholds defined in the Translate classes. Format of the yaml file is described [here](tests/savepoint/translate/overrides/README.md).
 
 **NOTE:** FV3 is current assumed to be by default in a "development mode", where stencils are checked each time they execute for code changes (which can trigger regeneration). This process is somewhat expensive, so there is an option to put FV3 in a performance mode by telling it that stencils should not automatically be rebuilt:
 
