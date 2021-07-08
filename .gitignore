@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Data Directory
+c12_6ranks_baroclinic_dycore_microphysics/
+
+# gt_cache
+.gt_cache/
+python/.gt_cache/
