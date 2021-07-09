@@ -11,21 +11,54 @@ import physics_driver
 
 
 # Serialized Variables from GFSPhysicsDriver-In Savepoint
-IN_VARS_GFSPD = ["IPD_area", "IPD_gq0", "IPD_gt0", "IPD_gu0", "IPD_gv0", "IPD_kdt", 
-                 "IPD_levs", "IPD_lradar", "IPD_ntrac", "IPD_phii", 
-                 "IPD_prsi", "IPD_qgrs", "IPD_refl_10cm", "IPD_tgrs", "IPD_xlon"]
+IN_VARS_GFSPD = [
+    "IPD_area",
+    "IPD_gq0",
+    "IPD_gt0",
+    "IPD_gu0",
+    "IPD_gv0",
+    "IPD_kdt",
+    "IPD_levs",
+    "IPD_lradar",
+    "IPD_ntrac",
+    "IPD_phii",
+    "IPD_prsi",
+    "IPD_qgrs",
+    "IPD_refl_10cm",
+    "IPD_tgrs",
+    "IPD_xlon",
+]
 
 # Serialized Variables from GFSPhysicsDriver-Out Savepoint
 OUT_VARS_GFSPD = ["IPD_gq0", "IPD_gt0", "IPD_gu0", "IPD_gv0"]
 
 # Serialized Variables for inputs into get_prs_fv3
-IN_VARS_PRS = ["prs_ix", "prs_levs", "prs_ntrac", "prs_phii", "prs_prsi", "prs_tgrs", "prs_qgrs", "prs_del", "prs_del_gz"]
+IN_VARS_PRS = [
+    "prs_ix",
+    "prs_levs",
+    "prs_ntrac",
+    "prs_phii",
+    "prs_prsi",
+    "prs_tgrs",
+    "prs_qgrs",
+    "prs_del",
+    "prs_del_gz",
+]
 
 # Serialized Variables for outputs from get_prs_fv3
 OUT_VARS_PRS = ["prs_del", "prs_del_gz"]
 
 # Serialized Variables for inputs into get_phi_fv3
-IN_VARS_PHI = ["phi_del_gz", "phi_gq0", "phi_gt0", "phi_ix", "phi_levs", "phi_ntrac", "phi_phii", "phi_phil"]
+IN_VARS_PHI = [
+    "phi_del_gz",
+    "phi_gq0",
+    "phi_gt0",
+    "phi_ix",
+    "phi_levs",
+    "phi_ntrac",
+    "phi_phii",
+    "phi_phil",
+]
 
 # Serialized Variables for outputs from get_phi_fv3
 OUT_VARS_PHI = ["phi_del_gz", "phi_phii", "phi_phil"]
@@ -41,7 +74,13 @@ def data_dict_from_var_list(var_list, serializer, savepoint):
         # convert single element numpy arrays to scalars
         if data.size == 1:
             data = data.item()
-        d[var] = data
+            d[var] = data
+        elif len(data.shape) < 2:
+            d[var] = data
+        elif len(data.shape) == 2:
+            d[var] = data[:, ::-1]
+        else:
+            d[var] = data[:, ::-1, :]
     return d
 
 
@@ -68,7 +107,9 @@ for tile in range(6):
             continue
 
     serializer = ser.Serializer(
-        ser.OpenModeKind.Read, "c12_6ranks_baroclinic_dycore_microphysics", "Generator_rank" + str(tile)
+        ser.OpenModeKind.Read,
+        "c12_6ranks_baroclinic_dycore_microphysics",
+        "Generator_rank" + str(tile),
     )
 
     savepoints = serializer.savepoint_list()
@@ -102,7 +143,7 @@ for tile in range(6):
 
         #     # read serialized input data
         #     ref_data = data_dict_from_var_list(IN_VARS_PRS, serializer, sp)
-   
+
         #     compare_data(out_data_preprs, ref_data)
 
         # if sp.name.startswith("PrsFV3-Out"):
@@ -110,15 +151,15 @@ for tile in range(6):
 
         #     # read serialized input data
         #     ref_data = data_dict_from_var_list(OUT_VARS_PRS, serializer, sp)
-            
-        #     compare_data(out_data_postprs, ref_data)
+
+        #     compare_data(out_data_postphi, ref_data)
 
         # if sp.name.startswith("PhiFV3-In"):
         #     print("> running ", f"tile-{tile}", sp)
 
         #     # read serialized input data
         #     ref_data = data_dict_from_var_list(IN_VARS_PHI, serializer, sp)
-   
+
         #     compare_data(out_data_prephi, ref_data)
 
         if sp.name.startswith("PhiFV3-Out"):
@@ -126,5 +167,5 @@ for tile in range(6):
 
             # read serialized input data
             ref_data = data_dict_from_var_list(OUT_VARS_PHI, serializer, sp)
-   
+
             compare_data(out_data_postphi, ref_data)
