@@ -3,10 +3,10 @@ import numpy as np
 import gt4py
 import gt4py.gtscript as gtscript
 import gt4py.storage as gt_storage
-from config import *
-
-import get_prs_fv3
-import get_phi_fv3
+sys.path.append('../')
+from fv3gfsphysics.utils.global_config import *
+import fv3gfsphysics.stencils.get_prs_fv3 as get_prs_fv3
+import fv3gfsphysics.stencils.get_phi_fv3 as get_phi_fv3
 
 from gt4py.gtscript import (
     __INLINED,
