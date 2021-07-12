@@ -8,7 +8,7 @@ grav = 9.80665  # Acceleration due to gravity
 rgrav = 1.0 / grav  # Inverse of gravitational acceleration
 rdgas = 287.05  # Gas constant for dry air
 rvgas = 461.50  # Gas constant for water vapor
-
+con_fvirt = rvgas / rdgas - 1
 cp_air = 1004.6  # Heat capacity of dry air at constant pressure
 cp_vap = 4.0 * rvgas  # Heat capacity of water vapor at constant pressure
 cv_air = cp_air - rdgas  # Heat capacity of dry air at constant volume

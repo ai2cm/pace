@@ -7,10 +7,155 @@ from gt4py.gtscript import (
     interval,
 )
 from fv3gfsphysics.utils.global_config import *
-from fv3gfsphysics.utils.serialization import *
+from fv3gfsphysics.utils.microphysics_funcs import *
 import gt4py.gtscript as gtscript
+import gt4py as gt
 import math as mt
 from fv3gfsphysics.utils.global_constants import *
+from copy import deepcopy
+
+# [TODO:EW] This needs to be cleaned up
+INT_VARS = ["iie", "kke", "kbot", "seconds", "lradar", "reset"]
+FLT_VARS = [
+    "qv1",
+    "ql1",
+    "qr1",
+    "qg1",
+    "qa1",
+    "qn1",
+    "pt",
+    "uin",
+    "vin",
+    "dz",
+    "delp",
+    "area",
+    "dt_in",
+    "land",
+    "p123",
+    "qi",
+    "qs",
+    "qv_dt",
+    "ql_dt",
+    "qr_dt",
+    "qi_dt",
+    "qs_dt",
+    "qg_dt",
+    "qa_dt",
+    "pt_dt",
+    "w",
+    "udt",
+    "vdt",
+    "rain0",
+    "snow0",
+    "ice0",
+    "graupel0",
+    "refl",
+]
+
+
+def scale_dataset(data, factor):
+    divider = factor[0]
+    multiplier = factor[1]
+
+    do_divide = divider < 1.0
+
+    scaled_data = {}
+
+    for var in data:
+
+        data_var = data[var]
+        if isinstance(data_var, np.ndarray):
+            ndim = data_var.ndim
+        else:
+            ndim = 0
+
+        if ndim == 3:
+
+            if do_divide:
+                data_var = data_var[: DTYPE_INT(len(data_var) * divider), :, :]
+
+            scaled_data[var] = np.tile(data_var.data, (multiplier, 1, 1))
+
+        elif ndim == 2:
+
+            if do_divide:
+                data_var = data_var[: DTYPE_INT(len(data_var) * divider), :]
+
+            scaled_data[var] = np.tile(data_var.data, (multiplier, 1))
+
+        elif ndim == 1:
+
+            if do_divide:
+                data_var = data_var[: DTYPE_INT(len(data_var) * divider)]
+
+            scaled_data[var] = np.tile(data_var.data, multiplier)
+
+        elif ndim == 0:
+
+            if var == "iie":
+                scaled_data[var] = DTYPE_INT(data[var] * multiplier * divider)
+            else:
+                if var in INT_VARS:
+                    scaled_data[var] = DTYPE_INT(data[var])
+                elif var in FLT_VARS:
+                    scaled_data[var] = DTYPE_FLT(data[var])
+                else:
+                    scaled_data[var] = data[var]
+
+    return scaled_data
+
+
+def numpy_dict_to_gt4py_dict(np_dict):
+
+    shape = np_dict["qi1"].shape
+    gt4py_dict = {}
+
+    for var in np_dict:
+
+        data = np_dict[var]
+        if isinstance(data, np.ndarray):
+            ndim = data.ndim
+        else:
+            ndim = 0
+
+        if (ndim > 0) and (ndim <= 3) and (data.size >= 2):
+
+            reshaped_data = np.empty(shape)
+
+            if ndim == 1:  # 1D array (i-dimension)
+                reshaped_data[...] = data[:, np.newaxis, np.newaxis]
+            elif ndim == 2:  # 2D array (i-dimension, j-dimension)
+                reshaped_data[...] = data[:, :, np.newaxis]
+            elif ndim == 3:  # 3D array (i-dimension, j-dimension, k-dimension)
+                reshaped_data[...] = data[...]
+
+            dtype = DTYPE_INT if var in INT_VARS else DTYPE_FLT
+            gt4py_dict[var] = gt.storage.from_array(
+                reshaped_data, BACKEND, DEFAULT_ORIGIN, dtype=dtype
+            )
+
+        else:  # Scalars
+
+            gt4py_dict[var] = deepcopy(data)
+
+    return gt4py_dict
+
+
+def view_gt4py_storage(gt4py_dict):
+
+    np_dict = {}
+
+    for var in gt4py_dict:
+
+        data = gt4py_dict[var]
+
+        # ~ if not isinstance(data, np.ndarray): data.synchronize()
+        if BACKEND == "gtcuda":
+            data.synchronize()
+
+        np_dict[var] = data.view(np.ndarray)
+
+    return np_dict
 
 
 @gtscript.stencil(backend=BACKEND)
@@ -1946,39 +2091,38 @@ def gfdl_cloud_microphys_init():
 def run(input_data):
     gfdl_cloud_microphys_init()
     input_data = scale_dataset(input_data, (1.0, 1))
-    if BACKEND == "gtx86" or BACKEND == "gtcuda" or BACKEND == "numpy":
-        input_data = numpy_dict_to_gt4py_dict(input_data)
+    input_data = numpy_dict_to_gt4py_dict(input_data)
     hydrostatic = False
     phys_hydrostatic = True
     kks = 0
     ktop = 0
     # Scalar input values (-1 for indices, since ported from Fortran)
-    kke = input_data["kke"] - 1  # End of vertical dimension
-    kbot = input_data["kbot"] - 1  # Bottom of vertical compute domain
-    dt_in = input_data["dt_in"]  # Physics time step
+    kke = input_data["levs"] - 1  # End of vertical dimension
+    kbot = input_data["levs"] - 1  # Bottom of vertical compute domain
+    dt_in = input_data["dtp_in"]  # Physics time step
 
     # 2D input arrays
     area = input_data["area"]  # Cell area
     land = input_data["land"]  # Land fraction
-    rain = input_data["rain"]
-    snow = input_data["snow"]
-    ice = input_data["ice"]
-    graupel = input_data["graupel"]
+    rain = input_data["rain0"]
+    snow = input_data["snow0"]
+    ice = input_data["ice0"]
+    graupel = input_data["graupel0"]
 
     # 3D input arrays
     dz = input_data["dz"]
     delp = input_data["delp"]
     uin = input_data["uin"]
     vin = input_data["vin"]
-    qv = input_data["qv"]
-    ql = input_data["ql"]
-    qr = input_data["qr"]
-    qi = input_data["qi"]
-    qs = input_data["qs"]
-    qg = input_data["qg"]
-    qa = input_data["qa"]
-    qn = input_data["qn"]
-    p = input_data["p"]
+    qv = input_data["qv1"]
+    ql = input_data["ql1"]
+    qr = input_data["qr1"]
+    qi = input_data["qi1"]
+    qs = input_data["qs1"]
+    qg = input_data["qg1"]
+    qa = input_data["qa1"]
+    qn = input_data["qn1"]
+    p = input_data["p123"]
     pt = input_data["pt"]
     qv_dt = input_data["qv_dt"]
     ql_dt = input_data["ql_dt"]
@@ -1991,7 +2135,7 @@ def run(input_data):
     udt = input_data["udt"]
     vdt = input_data["vdt"]
     w = input_data["w"]
-    refl_10cm = input_data["refl_10cm"]
+    refl_10cm = input_data["refl"]
 
     # Common 3D shape of all gt4py storages
     shape = qi.shape
@@ -2435,8 +2579,8 @@ def run(input_data):
 
     output = view_gt4py_storage(
         {
-            "qi": qi[:, :, :],
-            "qs": qs[:, :, :],
+            "qi1": qi[:, :, :],
+            "qs1": qs[:, :, :],
             "qv_dt": qv_dt[:, :, :],
             "ql_dt": ql_dt[:, :, :],
             "qr_dt": qr_dt[:, :, :],
@@ -2448,11 +2592,11 @@ def run(input_data):
             "w": w[:, :, :],
             "udt": udt[:, :, :],
             "vdt": vdt[:, :, :],
-            "rain": rain[:, :, 0],
-            "snow": snow[:, :, 0],
-            "ice": ice[:, :, 0],
-            "graupel": graupel[:, :, 0],
-            "refl_10cm": refl_10cm[:, :, :],
+            "rain0": rain[:, :, 0],
+            "snow0": snow[:, :, 0],
+            "ice0": ice[:, :, 0],
+            "graupel0": graupel[:, :, 0],
+            "refl": refl_10cm[:, :, :],
         }
     )
     return output

@@ -9,9 +9,11 @@ sys.path.append(SERIALBOX_DIR + "/python")
 import serialbox as ser
 import physics_driver
 
-
+# from AtmosPhysDriverStatein-OUT
+OUT_VARS_APDS = ["IPD_vvl"]
 # Serialized Variables from GFSPhysicsDriver-In Savepoint
 IN_VARS_GFSPD = [
+    "IPD_dtp",
     "IPD_area",
     "IPD_gq0",
     "IPD_gt0",
@@ -27,6 +29,10 @@ IN_VARS_GFSPD = [
     "IPD_refl_10cm",
     "IPD_tgrs",
     "IPD_xlon",
+    "IPD_vvl",
+    "IPD_prsl",
+    "IPD_ugrs",
+    "IPD_vgrs",
 ]
 
 # Serialized Variables from GFSPhysicsDriver-Out Savepoint
@@ -63,6 +69,68 @@ IN_VARS_PHI = [
 # Serialized Variables for outputs from get_phi_fv3
 OUT_VARS_PHI = ["phi_del_gz", "phi_phii", "phi_phil"]
 
+IN_VARS_MICROPH = [
+    "mph_area",
+    "mph_delp",
+    "mph_dtp_in",
+    "mph_dz",
+    "mph_graupel0",
+    "mph_ice0",
+    "mph_im",
+    "mph_land",
+    "mph_levs",
+    "mph_lradar",
+    "mph_p123",
+    "mph_pt",
+    "mph_pt_dt",
+    "mph_qa1",
+    "mph_qa_dt",
+    "mph_qg1",
+    "mph_qg_dt",
+    "mph_qi1",
+    "mph_qi_dt",
+    "mph_ql1",
+    "mph_ql_dt",
+    "mph_qn1",
+    "mph_qr1",
+    "mph_qr_dt",
+    "mph_qs1",
+    "mph_qs_dt",
+    "mph_qv1",
+    "mph_qv_dt",
+    "mph_rain0",
+    "mph_refl",
+    "mph_reset",
+    "mph_seconds",
+    "mph_snow0",
+    "mph_udt",
+    "mph_uin",
+    "mph_vdt",
+    "mph_vin",
+    "mph_w",
+]
+
+OUT_VARS_MICROPH = [
+    "mph_graupel0",
+    "mph_ice0",
+    "mph_pt_dt",
+    "mph_qa_dt",
+    "mph_qg_dt",
+    "mph_qi1",
+    "mph_qi_dt",
+    "mph_ql_dt",
+    "mph_qr_dt",
+    "mph_qs1",
+    "mph_qs_dt",
+    "mph_qv_dt",
+    "mph_rain0",
+    "mph_refl",
+    "mph_snow0",
+    "mph_udt",
+    "mph_vdt",
+    "mph_w",
+]
+
 SELECT_SP = None
 # SELECT_SP = {"tile": 2, "savepoint": "satmedmfvdif-in-iter2-000000"}
 
@@ -89,12 +157,19 @@ def compare_data(exp_data, ref_data):
         ref_data.keys()
     ), "Entries of exp and ref dictionaries don't match"
     for key in ref_data:
+        print(key)
+        if isinstance(exp_data[key], np.ndarray):
+            if exp_data[key].shape != ref_data[key].shape:
+                exp_data[key] = physics_driver.storage_to_numpy(
+                    exp_data[key], (144, 79), True
+                )  # hard coding for now
+                exp_data[key] = exp_data[key][:, np.newaxis, :]
         ind = np.array(
             np.nonzero(~np.isclose(exp_data[key], ref_data[key], equal_nan=True))
         )
         if ind.size > 0:
             i = tuple(ind[:, 0])
-            print("FAIL at ", key, i, exp_data[key][i], ref_data[key][i])
+            print("FAIL at ", key, i)  # , exp_data[key][i], ref_data[key][i])
         # assert np.allclose(exp_data[key], ref_data[key], equal_nan=True), (
         #     "Data does not match for field " + key
         # )
@@ -162,10 +237,10 @@ for tile in range(6):
 
         #     compare_data(out_data_prephi, ref_data)
 
-        if sp.name.startswith("PhiFV3-Out"):
+        if sp.name.startswith("Microph-Out"):
             print("> running ", f"tile-{tile}", sp)
 
             # read serialized input data
-            ref_data = data_dict_from_var_list(OUT_VARS_PHI, serializer, sp)
+            ref_data = data_dict_from_var_list(OUT_VARS_MICROPH, serializer, sp)
 
             compare_data(out_data_postphi, ref_data)
