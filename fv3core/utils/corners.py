@@ -751,7 +751,6 @@ def fill_corners_dgrid_defn(x: FloatField, y: FloatField, mysign: float):
 
 @gtscript.function
 def corner_ke(
-    ke,
     u,
     v,
     ut,
@@ -764,7 +763,7 @@ def corner_ke(
 ):
     dt6 = dt / 6.0
 
-    ke = dt6 * (
+    return dt6 * (
         (ut[0, 0, 0] + ut[0, -1, 0]) * ((io1 + 1) * u[0, 0, 0] - (io1 * u[-1, 0, 0]))
         + (vt[0, 0, 0] + vt[-1, 0, 0]) * ((jo1 + 1) * v[0, 0, 0] - (jo1 * v[0, -1, 0]))
         + (
@@ -773,5 +772,3 @@ def corner_ke(
         )
         * ((io2 + 1) * u[0, 0, 0] - (io2 * u[-1, 0, 0]))
     )
-
-    return ke

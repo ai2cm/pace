@@ -89,13 +89,13 @@ def all_corners_ke(ke, u, v, ut, vt, dt):
 
     # Assumption: not __INLINED(grid.nested)
     with horizontal(region[i_start, j_start]):
-        ke = corners.corner_ke(ke, u, v, ut, vt, dt, 0, 0, -1, 1)
+        ke = corners.corner_ke(u, v, ut, vt, dt, 0, 0, -1, 1)
     with horizontal(region[i_end + 1, j_start]):
-        ke = corners.corner_ke(ke, u, v, ut, vt, dt, -1, 0, 0, -1)
+        ke = corners.corner_ke(u, v, ut, vt, dt, -1, 0, 0, -1)
     with horizontal(region[i_end + 1, j_end + 1]):
-        ke = corners.corner_ke(ke, u, v, ut, vt, dt, -1, -1, 0, 1)
+        ke = corners.corner_ke(u, v, ut, vt, dt, -1, -1, 0, 1)
     with horizontal(region[i_start, j_end + 1]):
-        ke = corners.corner_ke(ke, u, v, ut, vt, dt, 0, -1, -1, -1)
+        ke = corners.corner_ke(u, v, ut, vt, dt, 0, -1, -1, -1)
 
     return ke
 
@@ -333,7 +333,7 @@ def heat_source_from_vorticity_damping(
                 v = v - ut
 
 
-def ke_horizontal_vorticity(
+def update_ke(
     ke: FloatField,
     u: FloatField,
     v: FloatField,
@@ -341,15 +341,24 @@ def ke_horizontal_vorticity(
     vb: FloatField,
     ut: FloatField,
     vt: FloatField,
-    dx: FloatFieldIJ,
-    dy: FloatFieldIJ,
-    rarea: FloatFieldIJ,
-    vorticity: FloatField,
     dt: float,
 ):
     with computation(PARALLEL), interval(...):
         ke = ke_from_bwind(ke, ub, vb)
         ke = all_corners_ke(ke, u, v, ut, vt, dt)
+
+
+def update_horizontal_vorticity(
+    u: FloatField,
+    v: FloatField,
+    ut: FloatField,
+    vt: FloatField,
+    dx: FloatFieldIJ,
+    dy: FloatFieldIJ,
+    rarea: FloatFieldIJ,
+    vorticity: FloatField,
+):
+    with computation(PARALLEL), interval(...):
         vt = u * dx
         ut = v * dy
     # TODO(rheag). This computation is required because
@@ -730,9 +739,14 @@ class DGridShallowWaterLagrangianDynamics:
             origin=b_origin,
             domain=b_domain,
         )
-        self._ke_horizontal_vorticity_stencil = FrozenStencil(
-            ke_horizontal_vorticity,
+        self._update_ke_stencil = FrozenStencil(
+            update_ke,
             externals=ax_offsets_full,
+            origin=full_origin,
+            domain=full_domain,
+        )
+        self._update_horizontal_vorticity_stencil = FrozenStencil(
+            update_horizontal_vorticity,
             origin=full_origin,
             domain=full_domain,
         )
@@ -952,7 +966,7 @@ class DGridShallowWaterLagrangianDynamics:
 
         self.xtp_u(self._tmp_ub, u, self._tmp_vb)
 
-        self._ke_horizontal_vorticity_stencil(
+        self._update_ke_stencil(
             self._tmp_ke,
             u,
             v,
@@ -960,11 +974,18 @@ class DGridShallowWaterLagrangianDynamics:
             self._tmp_vb,
             self._tmp_ut,
             self._tmp_vt,
+            dt,
+        )
+
+        self._update_horizontal_vorticity_stencil(
+            u,
+            v,
+            self._tmp_ut,
+            self._tmp_vt,
             self.grid.dx,
             self.grid.dy,
             self.grid.rarea,
             self._tmp_wk,
-            dt,
         )
 
         # TODO if namelist.d_f3d and ROT3 unimplemeneted
