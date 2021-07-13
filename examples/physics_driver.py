@@ -40,7 +40,10 @@ def storage_to_numpy(gt_storage, array_dim, has_zero_padding):
             else:
                 np_tmp[:, :] = gt_storage[0 : array_dim[0], 0, 0 : array_dim[1]]
         elif len(array_dim) == 3:
-            np_tmp[:, :, :] = gt_storage[:, :, :]
+            if has_zero_padding:
+                np_tmp[:, :, :] = gt_storage[0:array_dim[0], 1:array_dim[1]+1, 0:array_dim[2]]
+            else:
+                np_tmp[:, :, :] = gt_storage[0:array_dim[0], 0:array_dim[1], 0:array_dim[2]]
     else:
         np_tmp = np.zeros(array_dim)
         np_tmp[:] = gt_storage[0:array_dim, 0, 0]
@@ -421,26 +424,22 @@ def physics_driver(
     mph_input["w"] = w
     mph_output = microphysics.run(mph_input)
     output = {}
-    OUT_VARS_MICROPH = [
-        "mph_graupel0",
-        "mph_ice0",
-        "mph_pt_dt",
-        "mph_qa_dt",
-        "mph_qg_dt",
-        "mph_qi1",
-        "mph_qi_dt",
-        "mph_ql_dt",
-        "mph_qr_dt",
-        "mph_qs1",
-        "mph_qs_dt",
-        "mph_qv_dt",
-        "mph_rain0",
-        "mph_refl",
-        "mph_snow0",
-        "mph_udt",
-        "mph_vdt",
-        "mph_w",
-    ]
-    for key in OUT_VARS_MICROPH:
-        output[key] = mph_output[key.split("mph_")[1]]
+
+    gq0[:,:,0] = qv1[:,0,:] + qv_dt[:,0,:] * dtp
+    gq0[:,:,1] = ql1[:,0,:] + ql_dt[:,0,:] * dtp
+    gq0[:,:,2] = qr1[:,0,:] + qr_dt[:,0,:] * dtp
+    gq0[:,:,3] = qi1[:,0,:] + qi_dt[:,0,:] * dtp
+    gq0[:,:,4] = qs1[:,0,:] + qs_dt[:,0,:] * dtp
+    gq0[:,:,5] = qg1[:,0,:] + qg_dt[:,0,:] * dtp
+    gq0[:,:,8] = qa1[:,0,:] + qa_dt[:,0,:] * dtp
+
+    # These computations could be put into a stencil
+    gt0[:,0,:] = gt0[:,0,:] + pt_dt[:,0,:] * dtp
+    gu0[:,0,:] = gu0[:,0,:] + udt[:,0,:] * dtp
+    gv0[:,0,:] = gv0[:,0,:] + vdt[:,0,:] * dtp
+
+    output["IPD_gq0"] = storage_to_numpy(gq0,(144,79,9),True)
+    output["IPD_gt0"] = storage_to_numpy(gt0,(144,79), True)
+    output["IPD_gu0"] = storage_to_numpy(gu0,(144,79), True)
+    output["IPD_gv0"] = storage_to_numpy(gv0,(144,79), True)
     return output

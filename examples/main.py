@@ -209,7 +209,7 @@ for tile in range(6):
             in_data = data_dict_from_var_list(IN_VARS_GFSPD, serializer, sp)
 
             # run Python version
-            out_data_postphi = physics_driver.run(in_data)
+            out_data = physics_driver.run(in_data)
 
             isready = True
 
@@ -237,10 +237,18 @@ for tile in range(6):
 
         #     compare_data(out_data_prephi, ref_data)
 
-        if sp.name.startswith("Microph-Out"):
+        # if sp.name.startswith("Microph-Out"):
+        #     print("> running ", f"tile-{tile}", sp)
+
+        #     # read serialized input data
+        #     ref_data = data_dict_from_var_list(OUT_VARS_MICROPH, serializer, sp)
+
+        #     compare_data(out_data_postphi, ref_data)
+
+        if sp.name.startswith("GFSPhysicsDriver-OUT"):
             print("> running ", f"tile-{tile}", sp)
 
             # read serialized input data
-            ref_data = data_dict_from_var_list(OUT_VARS_MICROPH, serializer, sp)
+            ref_data = data_dict_from_var_list(OUT_VARS_GFSPD, serializer, sp)
 
-            compare_data(out_data_postphi, ref_data)
+            compare_data(out_data, ref_data)
