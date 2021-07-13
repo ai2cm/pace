@@ -6,7 +6,7 @@ from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3core.utils.typing import BoolField, FloatField, FloatFieldIJ
 
 
 @gtscript.function
@@ -42,67 +42,78 @@ def constrain_interior(q, gam, a4):
 
 
 @gtscript.function
+def posdef_constraint_iv0(
+    a4_1: FloatField,
+    a4_2: FloatField,
+    a4_3: FloatField,
+    a4_4: FloatField,
+):
+    if a4_1 <= 0.0:
+        a4_2 = a4_1
+        a4_3 = a4_1
+        a4_4 = 0.0
+    else:
+        if (
+            abs(a4_3 - a4_2) < -a4_4
+            and (a4_1 + 0.25 * (a4_3 - a4_2) ** 2 / a4_4 + a4_4 * (1.0 / 12.0)) < 0.0
+        ):
+            if (a4_1 < a4_3) and (a4_1 < a4_2):
+                a4_3 = a4_1
+                a4_2 = a4_1
+                a4_4 = 0.0
+            elif a4_3 > a4_2:
+                a4_4 = 3.0 * (a4_2 - a4_1)
+                a4_3 = a4_2 - a4_4
+            else:
+                a4_4 = 3.0 * (a4_3 - a4_1)
+                a4_2 = a4_3 - a4_4
+    return a4_1, a4_2, a4_3, a4_4
+
+
+@gtscript.function
+def posdef_constraint_iv1(
+    a4_1: FloatField,
+    a4_2: FloatField,
+    a4_3: FloatField,
+    a4_4: FloatField,
+):
+    da1 = a4_3 - a4_2
+    da2 = da1 * da1
+    a6da = a4_4 * da1
+    if ((a4_1 - a4_2) * (a4_1 - a4_3)) >= 0.0:
+        a4_2 = a4_1
+        a4_3 = a4_1
+        a4_4 = 0.0
+    elif a6da < -1.0 * da2:
+        a4_4 = 3.0 * (a4_2 - a4_1)
+        a4_3 = a4_2 - a4_4
+    elif a6da > da2:
+        a4_4 = 3.0 * (a4_3 - a4_1)
+        a4_2 = a4_3 - a4_4
+    return a4_1, a4_2, a4_3, a4_4
+
+
+@gtscript.function
 def remap_constraint(
     a4_1: FloatField,
     a4_2: FloatField,
     a4_3: FloatField,
     a4_4: FloatField,
-    extm: FloatField,
-    iv: int,
+    extm: BoolField,
 ):
-    # posdef_constraint_iv0
-    if iv == 0:
-        if a4_1 <= 0.0:
-            a4_2 = a4_1
-            a4_3 = a4_1
-            a4_4 = 0.0
-        else:
-            if abs(a4_3 - a4_2) < -a4_4:
-                if (
-                    a4_1 + 0.25 * (a4_3 - a4_2) ** 2 / a4_4 + a4_4 * (1.0 / 12.0)
-                ) < 0.0:
-                    if (a4_1 < a4_3) and (a4_1 < a4_2):
-                        a4_3 = a4_1
-                        a4_2 = a4_1
-                        a4_4 = 0.0
-                    elif a4_3 > a4_2:
-                        a4_4 = 3.0 * (a4_2 - a4_1)
-                        a4_3 = a4_2 - a4_4
-                    else:
-                        a4_4 = 3.0 * (a4_3 - a4_1)
-                        a4_2 = a4_3 - a4_4
-    if iv == 1:
-        # posdef_constraint_iv1
-        da1 = a4_3 - a4_2
-        da2 = da1 * da1
-        a6da = a4_4 * da1
-        if ((a4_1 - a4_2) * (a4_1 - a4_3)) >= 0.0:
-            a4_2 = a4_1
-            a4_3 = a4_1
-            a4_4 = 0.0
-        else:
-            if a6da < -1.0 * da2:
-                a4_4 = 3.0 * (a4_2 - a4_1)
-                a4_3 = a4_2 - a4_4
-            elif a6da > da2:
-                a4_4 = 3.0 * (a4_3 - a4_1)
-                a4_2 = a4_3 - a4_4
-    # remap_constraint
-    if iv >= 2:
-        da1 = a4_3 - a4_2
-        da2 = da1 * da1
-        a6da = a4_4 * da1
-        if extm == 1:
-            a4_2 = a4_1
-            a4_3 = a4_1
-            a4_4 = 0.0
-        else:
-            if a6da < -da2:
-                a4_4 = 3.0 * (a4_2 - a4_1)
-                a4_3 = a4_2 - a4_4
-            elif a6da > da2:
-                a4_4 = 3.0 * (a4_3 - a4_1)
-                a4_2 = a4_3 - a4_4
+    da1 = a4_3 - a4_2
+    da2 = da1 * da1
+    a6da = a4_4 * da1
+    if extm:
+        a4_2 = a4_1
+        a4_3 = a4_1
+        a4_4 = 0.0
+    elif a6da < -da2:
+        a4_4 = 3.0 * (a4_2 - a4_1)
+        a4_3 = a4_2 - a4_4
+    elif a6da > da2:
+        a4_4 = 3.0 * (a4_3 - a4_1)
+        a4_2 = a4_3 - a4_4
     return a4_1, a4_2, a4_3, a4_4
 
 
@@ -119,24 +130,26 @@ def set_initial_vals(
 ):
     from __externals__ import iv, kord
 
-    with computation(PARALLEL), interval(0, 1):
-        # set top
-        if __INLINED(iv == -2):
-            # gam = 0.5
-            q = 1.5 * a4_1
-        else:
-            grid_ratio = delp[0, 0, 1] / delp
-            bet = grid_ratio * (grid_ratio + 0.5)
-            q = (
-                (grid_ratio + grid_ratio) * (grid_ratio + 1.0) * a4_1 + a4_1[0, 0, 1]
-            ) / bet
-            gam = (1.0 + grid_ratio * (grid_ratio + 1.5)) / bet
-    with computation(FORWARD), interval(1, 2):
-        if __INLINED(iv == -2):
-            gam = 0.5
-            grid_ratio = delp[0, 0, -1] / delp
-            bet = 2.0 + grid_ratio + grid_ratio - gam
-            q = (3.0 * (a4_1[0, 0, -1] + a4_1) - q[0, 0, -1]) / bet
+    with computation(FORWARD):
+        with interval(0, 1):
+            # set top
+            if __INLINED(iv == -2):
+                # gam = 0.5
+                q = 1.5 * a4_1
+            else:
+                grid_ratio = delp[0, 0, 1] / delp
+                bet = grid_ratio * (grid_ratio + 0.5)
+                q = (
+                    (grid_ratio + grid_ratio) * (grid_ratio + 1.0) * a4_1
+                    + a4_1[0, 0, 1]
+                ) / bet
+                gam = (1.0 + grid_ratio * (grid_ratio + 1.5)) / bet
+        with interval(1, 2):
+            if __INLINED(iv == -2):
+                gam = 0.5
+                grid_ratio = delp[0, 0, -1] / delp
+                bet = 2.0 + grid_ratio + grid_ratio - gam
+                q = (3.0 * (a4_1[0, 0, -1] + a4_1) - q[0, 0, -1]) / bet
     with computation(FORWARD), interval(1, -1):
         if __INLINED(iv != -2):
             # set middle
@@ -145,23 +158,22 @@ def set_initial_vals(
             q = (3.0 * (a4_1[0, 0, -1] + d4 * a4_1) - q[0, 0, -1]) / bet
             gam = d4 / bet
     with computation(FORWARD):
-        with interval(2, -2):
+        with interval(2, -1):
             if __INLINED(iv == -2):
-                # set middle
                 old_grid_ratio = delp[0, 0, -2] / delp[0, 0, -1]
                 old_bet = 2.0 + old_grid_ratio + old_grid_ratio - gam[0, 0, -1]
                 gam = old_grid_ratio / old_bet
                 grid_ratio = delp[0, 0, -1] / delp
+    with computation(FORWARD):
+        with interval(2, -2):
+            if __INLINED(iv == -2):
+                # set middle
                 bet = 2.0 + grid_ratio + grid_ratio - gam
                 q = (3.0 * (a4_1[0, 0, -1] + a4_1) - q[0, 0, -1]) / bet
                 # gam[0, 0, 1] = grid_ratio / bet
         with interval(-2, -1):
             if __INLINED(iv == -2):
                 # set bottom
-                old_grid_ratio = delp[0, 0, -2] / delp[0, 0, -1]
-                old_bet = 2.0 + old_grid_ratio + old_grid_ratio - gam[0, 0, -1]
-                gam = old_grid_ratio / old_bet
-                grid_ratio = delp[0, 0, -1] / delp
                 q = (3.0 * (a4_1[0, 0, -1] + a4_1) - grid_ratio * qs - q[0, 0, -1]) / (
                     2.0 + grid_ratio + grid_ratio - gam
                 )
@@ -186,17 +198,14 @@ def set_initial_vals(
         if __INLINED(iv == -2):
             q = q - gam[0, 0, 1] * q[0, 0, 1]
     # set_avals
-    with computation(PARALLEL):
-        with interval(0, -1):
-            if __INLINED(kord > 16):
-                a4_2 = q
-                a4_3 = q[0, 0, 1]
-                a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
-        with interval(-1, None):
-            if __INLINED(kord > 16):
-                a4_2 = q
-                a4_3 = q_bot
-                a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
+    with computation(PARALLEL), interval(...):
+        if __INLINED(kord > 16):
+            a4_2 = q
+            a4_3 = q[0, 0, 1]
+            a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
+    with computation(PARALLEL), interval(-1, None):
+        if __INLINED(kord > 16):
+            a4_3 = q_bot
 
 
 def apply_constraints(
@@ -206,9 +215,9 @@ def apply_constraints(
     a4_2: FloatField,
     a4_3: FloatField,
     a4_4: FloatField,
-    ext5: FloatField,
-    ext6: FloatField,
-    extm: FloatField,
+    ext5: BoolField,
+    ext6: BoolField,
+    extm: BoolField,
 ):
     from __externals__ import iv, kord
 
@@ -220,27 +229,36 @@ def apply_constraints(
         gam = a4_1 - a4_1_0
     with computation(PARALLEL), interval(1, 2):
         # do top
-        q = q if q < tmp else tmp
-        q = q if q > tmp2 else tmp2
+        if q >= tmp:
+            q = tmp
+        if q <= tmp2:
+            q = tmp2
     with computation(FORWARD):
         with interval(2, -1):
             # do middle
             if (gam[0, 0, -1] * gam[0, 0, 1]) > 0:
-                q = q if q < tmp else tmp
-                q = q if q > tmp2 else tmp2
+                if q >= tmp:
+                    q = tmp
+                if q <= tmp2:
+                    q = tmp2
             elif gam[0, 0, -1] > 0:
                 # there's a local maximum
-                q = q if q > tmp2 else tmp2
+                if q <= tmp2:
+                    q = tmp2
             else:
                 # there's a local minimum
-                q = q if q < tmp else tmp
+                if q >= tmp:
+                    q = tmp
                 if __INLINED(iv == 0):
-                    q = 0.0 if (q < 0.0) else q
+                    if q < 0.0:
+                        q = 0.0
             # q = constrain_interior(q, gam, a4_1)
         with interval(-1, None):
             # do bottom
-            q = q if q < tmp else tmp
-            q = q if q > tmp2 else tmp2
+            if q >= tmp:
+                q = tmp
+            if q <= tmp2:
+                q = tmp2
     with computation(PARALLEL), interval(...):
         # re-set a4_2 and a4_3
         a4_2 = q
@@ -270,9 +288,9 @@ def set_interpolation_coefficients(
     a4_2: FloatField,
     a4_3: FloatField,
     a4_4: FloatField,
-    ext5: FloatField,
-    ext6: FloatField,
-    extm: FloatField,
+    ext5: BoolField,
+    ext6: BoolField,
+    extm: BoolField,
     qmin: float,
 ):
     from __externals__ import iv, kord
@@ -280,17 +298,19 @@ def set_interpolation_coefficients(
     # set_top_as_iv0
     with computation(PARALLEL), interval(0, 1):
         if __INLINED(iv == 0):
-            a4_2 = a4_2 if a4_2 > 0.0 else 0.0
+            if a4_2 < 0.0:
+                a4_2 = 0.0
     with computation(PARALLEL), interval(0, 2):
         if __INLINED(iv == 0):
-            a4_4 = 3 * (2 * a4_1 - (a4_2 + a4_3))
+            a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
     # set_top_as_iv1
     with computation(PARALLEL), interval(0, 1):
         if __INLINED(iv == -1):
-            a4_2 = 0.0 if a4_2 * a4_1 <= 0.0 else a4_2
+            if a4_2 * a4_1 <= 0.0:
+                a4_2 = 0.0
     with computation(PARALLEL), interval(0, 2):
         if __INLINED(iv == -1):
-            a4_4 = 3 * (2 * a4_1 - (a4_2 + a4_3))
+            a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
     # set_top_as_iv2
     with computation(PARALLEL):
         with interval(0, 1):
@@ -300,7 +320,7 @@ def set_interpolation_coefficients(
                 a4_4 = 0.0
         with interval(1, 2):
             if __INLINED(iv == 2):
-                a4_4 = 3 * (2 * a4_1 - (a4_2 + a4_3))
+                a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
     # set_top_as_else
     with computation(PARALLEL), interval(0, 2):
         if __INLINED(iv < -1 or iv == 1 or iv > 2):
@@ -308,11 +328,9 @@ def set_interpolation_coefficients(
     with computation(PARALLEL):
         with interval(0, 1):
             if __INLINED(iv != 2):
-                a4_1, a4_2, a4_3, a4_4 = remap_constraint(
-                    a4_1, a4_2, a4_3, a4_4, extm, 1
-                )
+                a4_1, a4_2, a4_3, a4_4 = posdef_constraint_iv1(a4_1, a4_2, a4_3, a4_4)
         with interval(1, 2):
-            a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 2)
+            a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm)
 
     with computation(PARALLEL), interval(2, -2):
         # set_inner_as_kordsmall
@@ -366,9 +384,9 @@ def set_interpolation_coefficients(
             tmp_max = a4_2
             tmp_max0 = a4_1
             if (
-                (extm != 0.0 and extm[0, 0, -1] != 0.0)
-                or (extm != 0.0 and extm[0, 0, 1] != 0.0)
-                or (extm > 0.0 and (qmin > 0.0 and a4_1 < qmin))
+                (extm and extm[0, 0, -1])
+                or (extm and extm[0, 0, 1])
+                or (extm and (qmin > 0.0 and a4_1 < qmin))
             ):
                 a4_2 = a4_1
                 a4_3 = a4_1
@@ -457,30 +475,25 @@ def set_interpolation_coefficients(
             a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
         # remap_constraint
         if __INLINED(iv == 0):
-            a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 0)
-
-    # set_bottom_as_iv0
-    with computation(PARALLEL), interval(-1, None):
+            a4_1, a4_2, a4_3, a4_4 = posdef_constraint_iv0(a4_1, a4_2, a4_3, a4_4)
+    # set_bottom_as_iv0, set_bottom_as_iv1
+    # TODO(rheag) temporary workaround to gtc:gt:gpu bug
+    # this computation can get out of order with the one that follows
+    with computation(FORWARD), interval(-1, None):
         if __INLINED(iv == 0):
-            a4_3 = a4_3 if a4_3 > 0.0 else 0.0
-    # set_bottom_as_iv1
-    with computation(PARALLEL), interval(-1, None):
+            if a4_3 < 0.0:
+                a4_3 = 0.0
         if __INLINED(iv == -1):
-            a4_3 = 0.0 if a4_3 * a4_1 <= 0.0 else a4_3
+            if a4_3 * a4_1 <= 0.0:
+                a4_3 = 0.0
     with computation(PARALLEL), interval(-2, None):
-        # set_bottom_as_iv0
-        if __INLINED(iv == 0):
-            a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
-        # set_bottom_as_iv1
-        if __INLINED(iv == -1):
-            a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
-        # set_bottom_as_else
-        if __INLINED(iv > 0 or iv < -1):
-            a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
-    with computation(PARALLEL), interval(-2, -1):
-        a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 2)
-    with computation(PARALLEL), interval(-1, None):
-        a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm, 1)
+        # set_bottom_as_iv0, set_bottom_as_iv1, set_bottom_as_else
+        a4_4 = 3.0 * (2.0 * a4_1 - (a4_2 + a4_3))
+    with computation(FORWARD):
+        with interval(-2, -1):
+            a4_1, a4_2, a4_3, a4_4 = remap_constraint(a4_1, a4_2, a4_3, a4_4, extm)
+        with interval(-1, None):
+            a4_1, a4_2, a4_3, a4_4 = posdef_constraint_iv1(a4_1, a4_2, a4_3, a4_4)
 
 
 class RemapProfile:
@@ -522,14 +535,14 @@ class RemapProfile:
         self._q_bot: FloatField = utils.make_storage_from_shape(
             grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
         )
-        self._extm: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
+        self._extm: BoolField = utils.make_storage_from_shape(
+            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
         )
-        self._ext5: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
+        self._ext5: BoolField = utils.make_storage_from_shape(
+            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
         )
-        self._ext6: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
+        self._ext6: BoolField = utils.make_storage_from_shape(
+            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
         )
 
         i_extent: int = i2 - i1 + 1

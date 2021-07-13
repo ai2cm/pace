@@ -1,7 +1,7 @@
 import math
 
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, floor, interval, log
+from gt4py.gtscript import __INLINED, PARALLEL, computation, exp, floor, interval, log
 
 import fv3core._config as spec
 import fv3core.utils.global_constants as constants
@@ -607,9 +607,10 @@ def satadjust(
         tintqs,
     )
 
-    with computation(FORWARD), interval(1, None):
-        if hydrostatic:
-            delz = delz[0, 0, -1]
+    with computation(PARALLEL), interval(1, None):
+        if __INLINED(hydrostatic):
+            delz_0 = delz[0, 0, -1]
+            delz = delz_0
     with computation(PARALLEL), interval(...):
         q_liq = ql + qr
         q_sol = qi + qs + qg
@@ -618,18 +619,17 @@ def satadjust(
         t0 = pt1  # true temperature
         qpz = qpz + qv  # total_wat conserved in this routine
         # define air density based on hydrostatical property
-        den = (
-            dp / ((peln[0, 0, 1] - peln) * constants.RDGAS * pt)
-            if hydrostatic
-            else -dp / (constants.GRAV * delz)
-        )
+        if __INLINED(hydrostatic):
+            den = dp / ((peln[0, 0, 1] - peln) * constants.RDGAS * pt)
+        else:
+            den = -dp / (constants.GRAV * delz)
         # define heat capacity and latend heat coefficient
         mc_air = (1.0 - qpz) * c_air
         cvm = compute_cvm(mc_air, qv, c_vap, q_liq, q_sol)
         lhi, icp2 = update_latent_heat_coefficient_i(pt1, cvm)
         #  fix energy conservation
         if consv_te:
-            if hydrostatic:
+            if __INLINED(hydrostatic):
                 te0 = -c_air * t0
             else:
                 te0 = -cvm * t0
@@ -783,14 +783,14 @@ def satadjust(
         q_con = q_liq + q_sol
         tmp = 1.0 + zvir * qv
         pt = pt1 * tmp * (1.0 - q_con)
-        tmp = constants.RDGAS * tmp
+        tmp *= constants.RDGAS
         cappa = tmp / (tmp + cvm)
         #  fix negative graupel with available cloud ice
         if qg < 0:
             maxtmp = max(0.0, qi)
-            tmp = min(-qg, maxtmp)
-            qg = qg + tmp
-            qi = qi - tmp
+            mintmp = min(-qg, maxtmp)
+            qg = qg + mintmp
+            qi = qi - mintmp
         else:
             qg = qg
         #  autoconversion from cloud ice to snow
@@ -801,7 +801,7 @@ def satadjust(
             qs = qs + sink
         # fix energy conservation
         if consv_te:
-            if hydrostatic:
+            if __INLINED(hydrostatic):
                 te0 = dp * (te0 + c_air * pt1)
             else:
                 te0 = dp * (te0 + cvm * pt1)
@@ -853,7 +853,7 @@ def satadjust(
             dw = dw_ocean + (dw_land - dw_ocean) * mindw
             # "scale - aware" subgrid variability: 100 - km as the base
             dbl_sqrt_area = dw * (area ** 0.5 / 100.0e3) ** 0.5
-            maxtmp = 0.01 if 0.01 > dbl_sqrt_area else dbl_sqrt_area
+            maxtmp = max(0.01, dbl_sqrt_area)
             hvar = min(0.2, maxtmp)
             # partial cloudiness by pdf:
             # assuming subgrid linear distribution in horizontal; this is
@@ -892,7 +892,7 @@ def satadjust(
             else:
                 qa = 0.0
 
-        if not hydrostatic:
+        if __INLINED(not hydrostatic):
             pkz = compute_pkz_func(dp, delz, pt, cappa)
 
 

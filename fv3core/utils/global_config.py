@@ -63,6 +63,10 @@ def get_device_sync() -> bool:
     return _DEVICE_SYNC
 
 
+def is_gpu_backend() -> bool:
+    return get_backend().endswith("cuda") or get_backend().endswith("gpu")
+
+
 class StencilConfig(Hashable):
     def __init__(
         self,
@@ -107,7 +111,7 @@ class StencilConfig(Hashable):
             "rebuild": self.rebuild,
             "format_source": self.format_source,
         }
-        if "cuda" in self.backend:
+        if is_gpu_backend():
             kwargs["device_sync"] = self.device_sync
         return kwargs
 

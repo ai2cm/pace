@@ -301,7 +301,6 @@ def circulation_cgrid(
     with computation(PARALLEL), interval(...):
         fx = dxc * uc
         fy = dyc * vc
-
         # fx1 and fy1 are the shifted versions of fx and fy and are defined
         # because temporaries are not allowed to be accessed with offsets in regions.
         fx1 = dxc[0, -1] * uc[0, -1, 0]

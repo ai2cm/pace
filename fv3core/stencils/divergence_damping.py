@@ -221,6 +221,7 @@ class DivergenceDamping:
         self._stretched_grid = stretched_grid
         kstart = nonzero_nord_k
         nk = self._idx.domain[2] - kstart
+        self._do_zero_order = nonzero_nord_k > 0
         low_k_idx = self._idx.restrict_vertical(k_start=0, nk=nonzero_nord_k)
         high_k_idx = grid_indexing.restrict_vertical(k_start=nonzero_nord_k)
         self.a2b_ord4 = AGrid2BGridFourthOrder(
@@ -376,10 +377,10 @@ class DivergenceDamping:
         wk: FloatField,
         dt: float,
     ) -> None:
-
-        self.damping_zero_order(
-            u, v, va, ptc, vort, ua, vc, uc, delpc, ke, self._d2_bg_column, dt
-        )
+        if self._do_zero_order:
+            self.damping_zero_order(
+                u, v, va, ptc, vort, ua, vc, uc, delpc, ke, self._d2_bg_column, dt
+            )
         self._copy_computeplus(
             divg_d,
             delpc,

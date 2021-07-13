@@ -84,29 +84,6 @@ def flux_capacitor(
 
 
 @gtscript.function
-def horizontal_relative_vorticity_from_winds(u, v, ut, vt, dx, dy, rarea, vorticity):
-    """
-    Compute the area mean relative vorticity in the z-direction from the D-grid winds.
-
-    Args:
-        u (in): x-direction wind on D grid
-        v (in): y-direction wind on D grid
-        ut (out): u * dx
-        vt (out): v * dy
-        dx (in): gridcell width in x-direction
-        dy (in): gridcell width in y-direction
-        rarea (in): inverse of area
-        vorticity (out): area mean horizontal relative vorticity
-    """
-
-    vt = u * dx
-    ut = v * dy
-    vorticity = rarea * (vt - vt[0, 1, 0] - ut + ut[1, 0, 0])
-
-    return vt, ut, vorticity
-
-
-@gtscript.function
 def all_corners_ke(ke, u, v, ut, vt, dt):
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -320,7 +297,6 @@ def heat_source_from_vorticity_damping(
     from __externals__ import d_con, do_skeb, local_ie, local_is, local_je, local_js
 
     with computation(PARALLEL), interval(...):
-        # if (kinetic_energy_fraction_to_damp[0] > dcon_threshold) or do_skeb:
         heat_s = heat_source
         diss_e = dissipation_estimate
         ubt = (ub + vt) * rdx
@@ -374,9 +350,15 @@ def ke_horizontal_vorticity(
     with computation(PARALLEL), interval(...):
         ke = ke_from_bwind(ke, ub, vb)
         ke = all_corners_ke(ke, u, v, ut, vt, dt)
-        vt, ut, vorticity = horizontal_relative_vorticity_from_winds(
-            u, v, ut, vt, dx, dy, rarea, vorticity
-        )
+        vt = u * dx
+        ut = v * dy
+    # TODO(rheag). This computation is required because
+    # ut and vt are API fields. If the distinction
+    # is removed, so can this computation.
+    # Compute the area mean relative vorticity in the z-direction
+    # from the D-grid winds.
+    with computation(PARALLEL), interval(...):
+        vorticity = rarea * (vt - vt[0, 1, 0] - ut + ut[1, 0, 0])
 
 
 # Set the unique parameters for the smallest

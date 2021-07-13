@@ -28,11 +28,11 @@ def compute_pkz_tempadjust(
         pkz: Layer mean pressure raised to the power of Kappa (in)
         delta_time_factor: scaled time step (in)
     """
+    with computation(PARALLEL), interval(...):
+        pkz = exp(cappa / (1.0 - cappa) * log(constants.RDG * delp / delz * pt))
+        pkz = (constants.RDG * delp / delz * pt) ** (cappa / (1.0 - cappa))
+        dtmp = heat_source / (constants.CV_AIR * delp)
     with computation(PARALLEL):
-        with interval(...):
-            pkz = exp(cappa / (1.0 - cappa) * log(constants.RDG * delp / delz * pt))
-            pkz = (constants.RDG * delp / delz * pt) ** (cappa / (1.0 - cappa))
-            dtmp = heat_source / (constants.CV_AIR * delp)
         with interval(0, 1):
             deltmin = sign(min(delt_time_factor * 0.1, abs(dtmp)), dtmp)
             pt = pt + deltmin / pkz

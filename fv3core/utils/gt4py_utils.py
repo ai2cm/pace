@@ -463,7 +463,7 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
 
 
 def zeros(shape, dtype=Float):
-    storage_type = cp.ndarray if "cuda" in global_config.get_backend() else np.ndarray
+    storage_type = cp.ndarray if global_config.is_gpu_backend() else np.ndarray
     xp = cp if cp and storage_type is cp.ndarray else np
     return xp.zeros(shape)
 
@@ -547,5 +547,5 @@ def stack(tup, axis: int = 0, out=None):
 
 
 def device_sync() -> None:
-    if cp and "cuda" in global_config.get_backend():
+    if cp and global_config.is_gpu_backend():
         cp.cuda.Device(0).synchronize()
