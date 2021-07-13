@@ -14,7 +14,11 @@ class TranslateD_SW(TranslateFortranData2Py):
         self.max_error = 6e-11
         column_namelist = d_sw.get_column_namelist(spec.namelist, grid.npz)
         self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(
-            spec.namelist, column_namelist
+            spec.grid.grid_indexing,
+            spec.grid.grid_data,
+            spec.grid.damping_coefficients,
+            spec.namelist,
+            column_namelist,
         )
         self.in_vars["data_vars"] = {
             "uc": grid.x3d_domain_dict(),

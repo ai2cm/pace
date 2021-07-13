@@ -23,10 +23,8 @@ class TranslateDelnFlux(TranslateFortranData2Py):
         self.make_storage_data_input_vars(inputs)
         self.compute_func = delnflux.DelnFlux(
             self.grid.grid_indexing,
-            self.grid.del6_u,
-            self.grid.del6_v,
+            self.grid.damping_coefficients,
             self.grid.rarea,
-            self.grid.da_min,
             inputs.pop("nord_column"),
             inputs.pop("damp_c"),
         )

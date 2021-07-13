@@ -15,7 +15,7 @@ from gt4py.gtscript import (
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil, get_stencils_with_varied_bounds
-from fv3core.utils.grid import GridIndexing, axis_offsets
+from fv3core.utils.grid import DampingCoefficients, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
 
@@ -906,10 +906,8 @@ class DelnFlux:
     def __init__(
         self,
         grid_indexing: GridIndexing,
-        del6_u: FloatFieldIJ,
-        del6_v: FloatFieldIJ,
+        damping_coefficients: DampingCoefficients,
         rarea,
-        da_min,
         nord: FloatFieldK,
         damp_c: FloatFieldK,
     ):
@@ -954,11 +952,13 @@ class DelnFlux:
             diffusive_damp, origin=diffuse_origin, domain=extended_domain
         )
 
-        self._damping_factor_calculation(self._damp_3d, nord, damp_c, da_min)
+        self._damping_factor_calculation(
+            self._damp_3d, nord, damp_c, damping_coefficients.da_min
+        )
         self._damp = utils.make_storage_data(self._damp_3d[0, 0, :], (nk,), (0,))
 
         self.delnflux_nosg = DelnFluxNoSG(
-            grid_indexing, del6_u, del6_v, rarea, nord, nk=nk
+            grid_indexing, damping_coefficients, rarea, nord, nk=nk
         )
 
     def __call__(
@@ -1009,8 +1009,7 @@ class DelnFluxNoSG:
     def __init__(
         self,
         grid_indexing: GridIndexing,
-        del6_u: FloatFieldIJ,
-        del6_v: FloatFieldIJ,
+        damping_coefficients: DampingCoefficients,
         rarea,
         nord,
         nk: Optional[int] = None,
@@ -1021,8 +1020,8 @@ class DelnFluxNoSG:
         nord = 1:   del-4
         nord = 2:   del-6
         """
-        self._del6_u = del6_u
-        self._del6_v = del6_v
+        self._del6_u = damping_coefficients.del6_u
+        self._del6_v = damping_coefficients.del6_v
         self._rarea = rarea
         if max(nord[:]) > 3:
             raise ValueError("nord must be less than 3")

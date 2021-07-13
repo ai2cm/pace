@@ -11,7 +11,7 @@ from gt4py.gtscript import (
 
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils import xppm, yppm
-from fv3core.utils.grid import GridIndexing, axis_offsets
+from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -96,7 +96,11 @@ def _xtp_u(
 
 class XTP_U:
     def __init__(
-        self, grid_indexing: GridIndexing, dx, dxa, rdx, grid_type: int, iord: int
+        self,
+        grid_indexing: GridIndexing,
+        grid_data: GridData,
+        grid_type: int,
+        iord: int,
     ):
         if iord not in (5, 6, 7, 8):
             raise NotImplementedError(
@@ -106,9 +110,9 @@ class XTP_U:
 
         origin = grid_indexing.origin_compute()
         domain = grid_indexing.domain_compute(add=(1, 1, 0))
-        self.dx = dx
-        self.dxa = dxa
-        self.rdx = rdx
+        self._dx = grid_data.dx
+        self._dxa = grid_data.dxa
+        self._rdx = grid_data.rdx
         ax_offsets = axis_offsets(grid_indexing, origin, domain)
         self.stencil = FrozenStencil(
             _xtp_u,
@@ -135,7 +139,7 @@ class XTP_U:
             c,
             u,
             flux,
-            self.dx,
-            self.dxa,
-            self.rdx,
+            self._dx,
+            self._dxa,
+            self._rdx,
         )

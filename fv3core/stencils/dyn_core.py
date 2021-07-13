@@ -302,7 +302,13 @@ class AcousticDynamics:
                 domain=(self.grid.nic + 4, self.grid.njc + 4, self.grid.npz + 1),
             )
         self.dgrid_shallow_water_lagrangian_dynamics = (
-            d_sw.DGridShallowWaterLagrangianDynamics(namelist, column_namelist)
+            d_sw.DGridShallowWaterLagrangianDynamics(
+                self.grid.grid_indexing,
+                self.grid.grid_data,
+                self.grid.damping_coefficients,
+                namelist,
+                column_namelist,
+            )
         )
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
             self.grid, namelist

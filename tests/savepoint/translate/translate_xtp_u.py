@@ -13,10 +13,8 @@ class TranslateXTP_U(TranslateYTP_V):
 
     def compute_from_storage(self, inputs):
         xtp_obj = xtp_u.XTP_U(
-            grid_indexing=spec.grid.grid_indexing,
-            dx=spec.grid.dx,
-            dxa=spec.grid.dxa,
-            rdx=spec.grid.rdx,
+            grid_indexing=self.grid.grid_indexing,
+            grid_data=self.grid.grid_data,
             grid_type=spec.namelist.grid_type,
             iord=spec.namelist.hord_mt,
         )

@@ -172,13 +172,8 @@ class TracerAdvection:
         )
         self.finite_volume_transport = FiniteVolumeTransport(
             grid_indexing=self.grid.grid_indexing,
-            dxa=self.grid.dxa,
-            dya=self.grid.dya,
-            area=self.grid.area,
-            da_min=self.grid.da_min,
-            del6_u=self.grid.del6_u,
-            del6_v=self.grid.del6_v,
-            rarea=self.grid.rarea,
+            grid_data=self.grid.grid_data,
+            damping_coefficients=self.grid.damping_coefficients,
             grid_type=self.grid.grid_type,
             hord=namelist.hord_tr,
         )

@@ -1,7 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 from fv3core.decorators import FrozenStencil
-from fv3core.utils.grid import GridIndexing, axis_offsets
+from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -376,31 +376,20 @@ class FiniteVolumeFluxPrep:
     def __init__(
         self,
         grid_indexing: GridIndexing,
-        dx,
-        dy,
-        rdxa,
-        rdya,
-        cosa_u,
-        cosa_v,
-        rsin_u,
-        rsin_v,
-        sin_sg1,
-        sin_sg2,
-        sin_sg3,
-        sin_sg4,
+        grid_data: GridData,
     ):
-        self._dx = dx
-        self._dy = dy
-        self._rdxa = rdxa
-        self._rdya = rdya
-        self._cosa_u = cosa_u
-        self._cosa_v = cosa_v
-        self._rsin_u = rsin_u
-        self._rsin_v = rsin_v
-        self._sin_sg1 = sin_sg1
-        self._sin_sg2 = sin_sg2
-        self._sin_sg3 = sin_sg3
-        self._sin_sg4 = sin_sg4
+        self._dx = grid_data.dx
+        self._dy = grid_data.dy
+        self._rdxa = grid_data.rdxa
+        self._rdya = grid_data.rdya
+        self._cosa_u = grid_data.cosa_u
+        self._cosa_v = grid_data.cosa_v
+        self._rsin_u = grid_data.rsin_u
+        self._rsin_v = grid_data.rsin_v
+        self._sin_sg1 = grid_data.sin_sg1
+        self._sin_sg2 = grid_data.sin_sg2
+        self._sin_sg3 = grid_data.sin_sg3
+        self._sin_sg4 = grid_data.sin_sg4
         origin = grid_indexing.origin_full()
         domain = grid_indexing.domain_full()
         ax_offsets = axis_offsets(grid_indexing, origin, domain)

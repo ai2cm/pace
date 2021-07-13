@@ -20,7 +20,7 @@ from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import XTP_U
 from fv3core.stencils.ytp_v import YTP_V
-from fv3core.utils.grid import axis_offsets
+from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -496,7 +496,14 @@ class DGridShallowWaterLagrangianDynamics:
     Fortran name is the d_sw subroutine
     """
 
-    def __init__(self, namelist, column_namelist):
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        grid_data: GridData,
+        damping_coefficients: DampingCoefficients,
+        namelist,
+        column_namelist,
+    ):
         self.grid = spec.grid
         assert (
             namelist.grid_type < 3
@@ -535,147 +542,82 @@ class DGridShallowWaterLagrangianDynamics:
         self._column_namelist = column_namelist
 
         self.delnflux_nosg_w = DelnFluxNoSG(
-            self.grid.grid_indexing,
-            self.grid.del6_u,
-            self.grid.del6_v,
-            self.grid.rarea,
+            grid_indexing,
+            damping_coefficients,
+            grid_data.rarea,
             self._column_namelist["nord_w"],
         )
         self.delnflux_nosg_v = DelnFluxNoSG(
-            self.grid.grid_indexing,
-            self.grid.del6_u,
-            self.grid.del6_v,
-            self.grid.rarea,
+            grid_indexing,
+            damping_coefficients,
+            grid_data.rarea,
             self._column_namelist["nord_v"],
         )
         self.fvtp2d_dp = FiniteVolumeTransport(
-            grid_indexing=self.grid.grid_indexing,
-            dxa=self.grid.dxa,
-            dya=self.grid.dya,
-            area=self.grid.area,
-            del6_u=self.grid.del6_u,
-            del6_v=self.grid.del6_v,
-            rarea=self.grid.rarea,
-            da_min=self.grid.da_min,
+            grid_indexing=grid_indexing,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
             grid_type=namelist.grid_type,
             hord=namelist.hord_dp,
             nord=self._column_namelist["nord_v"],
             damp_c=self._column_namelist["damp_vt"],
         )
         self.fvtp2d_dp_t = FiniteVolumeTransport(
-            grid_indexing=self.grid.grid_indexing,
-            dxa=self.grid.dxa,
-            dya=self.grid.dya,
-            area=self.grid.area,
-            del6_u=self.grid.del6_u,
-            del6_v=self.grid.del6_v,
-            rarea=self.grid.rarea,
-            da_min=self.grid.da_min,
+            grid_indexing=grid_indexing,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
             grid_type=namelist.grid_type,
             hord=namelist.hord_dp,
             nord=self._column_namelist["nord_t"],
             damp_c=self._column_namelist["damp_t"],
         )
         self.fvtp2d_vt = FiniteVolumeTransport(
-            grid_indexing=self.grid.grid_indexing,
-            dxa=self.grid.dxa,
-            dya=self.grid.dya,
-            area=self.grid.area,
-            del6_u=self.grid.del6_u,
-            del6_v=self.grid.del6_v,
-            rarea=self.grid.rarea,
-            da_min=self.grid.da_min,
+            grid_indexing=grid_indexing,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
             grid_type=namelist.grid_type,
             hord=namelist.hord_vt,
             nord=self._column_namelist["nord_v"],
             damp_c=self._column_namelist["damp_vt"],
         )
         self.fvtp2d_tm = FiniteVolumeTransport(
-            grid_indexing=self.grid.grid_indexing,
-            dxa=self.grid.dxa,
-            dya=self.grid.dya,
-            area=self.grid.area,
-            del6_u=self.grid.del6_u,
-            del6_v=self.grid.del6_v,
-            rarea=self.grid.rarea,
-            da_min=self.grid.da_min,
+            grid_indexing=grid_indexing,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
             grid_type=namelist.grid_type,
             hord=namelist.hord_tm,
             nord=self._column_namelist["nord_v"],
             damp_c=self._column_namelist["damp_vt"],
         )
         self.fvtp2d_vt_nodelnflux = FiniteVolumeTransport(
-            grid_indexing=self.grid.grid_indexing,
-            dxa=self.grid.dxa,
-            dya=self.grid.dya,
-            area=self.grid.area,
-            del6_u=self.grid.del6_u,
-            del6_v=self.grid.del6_v,
-            rarea=self.grid.rarea,
-            da_min=self.grid.da_min,
+            grid_indexing=grid_indexing,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
             grid_type=namelist.grid_type,
             hord=namelist.hord_vt,
         )
         self.fv_prep = FiniteVolumeFluxPrep(
-            self.grid.grid_indexing,
-            self.grid.dx,
-            self.grid.dy,
-            self.grid.rdxa,
-            self.grid.rdya,
-            self.grid.cosa_u,
-            self.grid.cosa_v,
-            self.grid.rsin_u,
-            self.grid.rsin_v,
-            self.grid.sin_sg1,
-            self.grid.sin_sg2,
-            self.grid.sin_sg3,
-            self.grid.sin_sg4,
+            grid_indexing=grid_indexing,
+            grid_data=grid_data,
         )
         self.ytp_v = YTP_V(
-            grid_indexing=self.grid.grid_indexing,
-            dy=self.grid.dy,
-            dya=self.grid.dya,
-            rdy=self.grid.rdy,
+            grid_indexing=grid_indexing,
+            grid_data=grid_data,
             grid_type=namelist.grid_type,
             jord=namelist.hord_mt,
         )
         self.xtp_u = XTP_U(
-            grid_indexing=self.grid.grid_indexing,
-            dx=self.grid.dx,
-            dxa=self.grid.dxa,
-            rdx=self.grid.rdx,
+            grid_indexing=grid_indexing,
+            grid_data=grid_data,
             grid_type=namelist.grid_type,
             iord=namelist.hord_mt,
         )
         self.divergence_damping = DivergenceDamping(
-            self.grid.grid_indexing,
-            self.grid.agrid1,
-            self.grid.agrid2,
-            self.grid.bgrid1,
-            self.grid.bgrid2,
-            self.grid.dxa,
-            self.grid.dya,
-            self.grid.edge_n,
-            self.grid.edge_s,
-            self.grid.edge_e,
-            self.grid.edge_w,
+            grid_indexing,
+            grid_data,
+            damping_coefficients,
             self.grid.nested,
             self.grid.stretched_grid,
-            self.grid.da_min,
-            self.grid.da_min_c,
-            self.grid.divg_u,
-            self.grid.divg_v,
-            self.grid.rarea_c,
-            self.grid.sin_sg1,
-            self.grid.sin_sg2,
-            self.grid.sin_sg3,
-            self.grid.sin_sg4,
-            self.grid.cosa_u,
-            self.grid.cosa_v,
-            self.grid.sina_u,
-            self.grid.sina_v,
-            self.grid.dxc,
-            self.grid.dyc,
             spec.namelist.dddmp,
             spec.namelist.d4_bg,
             spec.namelist.nord,
@@ -761,7 +703,7 @@ class DGridShallowWaterLagrangianDynamics:
             self._tmp_damp_3d,
             self._column_namelist["nord_v"],
             self._column_namelist["damp_vt"],
-            self.grid.da_min_c,
+            damping_coefficients.da_min_c,
         )
         self._delnflux_damp_vt = utils.make_storage_data(
             self._tmp_damp_3d[0, 0, :], (self.grid.npz,), (0,)
@@ -771,7 +713,7 @@ class DGridShallowWaterLagrangianDynamics:
             self._tmp_damp_3d,
             self._column_namelist["nord_w"],
             self._column_namelist["damp_w"],
-            self.grid.da_min_c,
+            damping_coefficients.da_min_c,
         )
         self._delnflux_damp_w = utils.make_storage_data(
             self._tmp_damp_3d[0, 0, :], (self.grid.npz,), (0,)

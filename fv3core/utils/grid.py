@@ -1,3 +1,4 @@
+import dataclasses
 import functools
 from typing import Iterable, List, Mapping, Sequence, Tuple, Union
 
@@ -8,7 +9,7 @@ import fv3core.utils.global_config as global_config
 import fv3gfs.util as fv3util
 
 from . import gt4py_utils as utils
-from .typing import Index3D
+from .typing import FloatFieldIJ, FloatFieldK, Index3D
 
 
 class Grid:
@@ -345,15 +346,6 @@ class Grid:
         """Start of the full array including halo points (e.g. (0, 0, 0))"""
         return (self.isd + add[0], self.jsd + add[1], add[2])
 
-    def default_origin(self):
-        # This only exists as a reminder because devs might
-        # be used to writing "default origin"
-        # if it's no longer useful please delete this method
-        raise NotImplementedError(
-            "This has been renamed to `full_origin`, update your code!"
-        )
-
-    # TODO, expand to more cases
     def horizontal_starts_from_shape(self, shape):
         if shape[0:2] in [
             self.domain_shape_compute()[0:2],
@@ -370,6 +362,368 @@ class Grid:
     @property
     def grid_indexing(self) -> "GridIndexing":
         return GridIndexing.from_legacy_grid(self)
+
+    @property
+    def damping_coefficients(self) -> "DampingCoefficients":
+        return DampingCoefficients(
+            del6_u=self.del6_u,
+            del6_v=self.del6_v,
+            da_min=self.da_min,
+            da_min_c=self.da_min_c,
+        )
+
+    @property
+    def grid_data(self) -> "GridData":
+        horizontal = HorizontalGridData(
+            self.area,
+            self.rarea,
+            self.rarea_c,
+            self.dx,
+            self.dy,
+            self.dxc,
+            self.dyc,
+            self.dxa,
+            self.dya,
+            self.rdx,
+            self.rdy,
+            self.rdxc,
+            self.rdyc,
+            self.rdxa,
+            self.rdya,
+        )
+        vertical = VerticalGridData()
+        contravariant = ContravariantGridData(
+            self.cosa_u,
+            self.cosa_v,
+            self.cosa_s,
+            self.sina_u,
+            self.sina_v,
+            self.rsin_u,
+            self.rsin_v,
+            self.rsin2,
+        )
+        angle = AngleGridData(
+            self.sin_sg1,
+            self.sin_sg2,
+            self.sin_sg3,
+            self.sin_sg4,
+            self.cos_sg1,
+            self.cos_sg2,
+            self.cos_sg3,
+            self.cos_sg4,
+        )
+        return GridData(
+            horizontal_data=horizontal,
+            vertical_data=vertical,
+            contravariant_data=contravariant,
+            angle_data=angle,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
+class HorizontalGridData:
+    """
+    Terms defining the horizontal grid.
+    """
+
+    area: FloatFieldIJ
+    rarea: FloatFieldIJ
+    # TODO: refactor this to "area_c" and invert where used
+    rarea_c: FloatFieldIJ
+    dx: FloatFieldIJ
+    dy: FloatFieldIJ
+    dxc: FloatFieldIJ
+    dyc: FloatFieldIJ
+    dxa: FloatFieldIJ
+    dya: FloatFieldIJ
+    # TODO: refactor usages to invert "normal" versions instead
+    rdx: FloatFieldIJ
+    rdy: FloatFieldIJ
+    rdxc: FloatFieldIJ
+    rdyc: FloatFieldIJ
+    rdxa: FloatFieldIJ
+    rdya: FloatFieldIJ
+
+    @property
+    def lon(self) -> FloatFieldIJ:
+        raise NotImplementedError()
+
+    @property
+    def lat(self) -> FloatFieldIJ:
+        raise NotImplementedError()
+
+
+@dataclasses.dataclass(frozen=True)
+class VerticalGridData:
+    """
+    Terms defining the vertical grid.
+
+    Eulerian vertical grid is defined by p = ak + bk * p_ref
+    """
+
+    # TODO: refactor so we can init with this,
+    # instead of taking it as an argument to DynamicalCore
+    # we'll need to initialize this class for the physics
+    @property
+    def ptop(self) -> float:
+        """pressure at top of atmosphere"""
+        raise NotImplementedError()
+
+    @property
+    def p_ref(self) -> float:
+        """
+        reference pressure (Pa) used to define pressure at vertical interfaces,
+        where p = ak + bk * p_ref
+        """
+        raise NotImplementedError()
+
+    @property
+    def ak(self) -> FloatFieldK:
+        raise NotImplementedError()
+
+    @property
+    def bk(self) -> FloatFieldK:
+        raise NotImplementedError()
+
+
+@dataclasses.dataclass(frozen=True)
+class ContravariantGridData:
+    """
+    Grid variables used for converting vectors from covariant to
+    contravariant components.
+    """
+
+    cosa_u: FloatFieldIJ
+    cosa_v: FloatFieldIJ
+    cosa_s: FloatFieldIJ
+    sina_u: FloatFieldIJ
+    sina_v: FloatFieldIJ
+    rsin_u: FloatFieldIJ
+    rsin_v: FloatFieldIJ
+    rsin2: FloatFieldIJ
+
+
+@dataclasses.dataclass(frozen=True)
+class AngleGridData:
+    """
+    sin and cos of certain angles used in metric calculations.
+
+    Corresponds in the fortran code to sin_sg and cos_sg.
+    """
+
+    sin_sg1: FloatFieldIJ
+    sin_sg2: FloatFieldIJ
+    sin_sg3: FloatFieldIJ
+    sin_sg4: FloatFieldIJ
+    cos_sg1: FloatFieldIJ
+    cos_sg2: FloatFieldIJ
+    cos_sg3: FloatFieldIJ
+    cos_sg4: FloatFieldIJ
+
+
+@dataclasses.dataclass(frozen=True)
+class DampingCoefficients:
+    """
+    Terms used to compute damping coefficients.
+    """
+
+    del6_u: FloatFieldIJ
+    del6_v: FloatFieldIJ
+    da_min: float
+    da_min_c: float
+
+
+class GridData:
+    # TODO: add docstrings to remaining properties
+
+    def __init__(
+        self,
+        horizontal_data: HorizontalGridData,
+        vertical_data: VerticalGridData,
+        contravariant_data: ContravariantGridData,
+        angle_data: AngleGridData,
+    ):
+        self._horizontal_data = horizontal_data
+        self._vertical_data = vertical_data
+        self._contravariant_data = contravariant_data
+        self._angle_data = angle_data
+
+    @property
+    def lon(self):
+        """longitude"""
+        return self._horizontal_data.lon
+
+    @property
+    def lat(self):
+        """latitude"""
+        return self._horizontal_data.lat
+
+    @property
+    def area(self):
+        """Gridcell area"""
+        return self._horizontal_data.area
+
+    @property
+    def rarea(self):
+        """1 / area"""
+        return self._horizontal_data.rarea
+
+    @property
+    def rarea_c(self):
+        return self._horizontal_data.rarea_c
+
+    @property
+    def dx(self):
+        """distance between cell corners in x-direction"""
+        return self._horizontal_data.dx
+
+    @property
+    def dy(self):
+        """distance between cell corners in y-direction"""
+        return self._horizontal_data.dy
+
+    @property
+    def dxc(self):
+        """distance between gridcell centers in x-direction"""
+        return self._horizontal_data.dxc
+
+    @property
+    def dyc(self):
+        """distance between gridcell centers in y-direction"""
+        return self._horizontal_data.dyc
+
+    @property
+    def dxa(self):
+        """distance between centers of west and east edges of gridcell"""
+        return self._horizontal_data.dxa
+
+    @property
+    def dya(self):
+        """distance between centers of north and south edges of gridcell"""
+        return self._horizontal_data.dya
+
+    @property
+    def rdx(self):
+        """1 / dx"""
+        return self._horizontal_data.rdx
+
+    @property
+    def rdy(self):
+        """1 / dy"""
+        return self._horizontal_data.rdy
+
+    @property
+    def rdxc(self):
+        """1 / dxc"""
+        return self._horizontal_data.rdxc
+
+    @property
+    def rdyc(self):
+        """1 / dyc"""
+        return self._horizontal_data.rdyc
+
+    @property
+    def rdxa(self):
+        """1 / dxa"""
+        return self._horizontal_data.rdxa
+
+    @property
+    def rdya(self):
+        """1 / dya"""
+        return self._horizontal_data.rdya
+
+    @property
+    def ptop(self):
+        """pressure at top of atmosphere (Pa)"""
+        return self._vertical_data.ptop
+
+    @property
+    def p_ref(self) -> float:
+        """
+        reference pressure (Pa) used to define pressure at vertical interfaces,
+        where p = ak + bk * p_ref
+        """
+        return self._vertical_data.p_ref
+
+    @property
+    def ak(self):
+        """
+        constant used to define pressure at vertical interfaces,
+        where p = ak + bk * p_ref
+        """
+        return self._vertical_data.ak
+
+    @property
+    def bk(self):
+        """
+        constant used to define pressure at vertical interfaces,
+        where p = ak + bk * p_ref
+        """
+        return self._vertical_data.bk
+
+    @property
+    def cosa_u(self):
+        return self._contravariant_data.cosa_u
+
+    @property
+    def cosa_v(self):
+        return self._contravariant_data.cosa_v
+
+    @property
+    def cosa_s(self):
+        return self._contravariant_data.cosa_s
+
+    @property
+    def sina_u(self):
+        return self._contravariant_data.sina_u
+
+    @property
+    def sina_v(self):
+        return self._contravariant_data.sina_v
+
+    @property
+    def rsin_u(self):
+        return self._contravariant_data.rsin_u
+
+    @property
+    def rsin_v(self):
+        return self._contravariant_data.rsin_v
+
+    @property
+    def rsin2(self):
+        return self._contravariant_data.rsin2
+
+    @property
+    def sin_sg1(self):
+        return self._angle_data.sin_sg1
+
+    @property
+    def sin_sg2(self):
+        return self._angle_data.sin_sg2
+
+    @property
+    def sin_sg3(self):
+        return self._angle_data.sin_sg3
+
+    @property
+    def sin_sg4(self):
+        return self._angle_data.sin_sg4
+
+    @property
+    def cos_sg1(self):
+        return self._angle_data.cos_sg1
+
+    @property
+    def cos_sg2(self):
+        return self._angle_data.cos_sg2
+
+    @property
+    def cos_sg3(self):
+        return self._angle_data.cos_sg3
+
+    @property
+    def cos_sg4(self):
+        return self._angle_data.cos_sg4
 
 
 class GridIndexing:

@@ -11,11 +11,12 @@ from gt4py.gtscript import (
     sqrt,
 )
 
+import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils import axis_offsets
-from fv3core.utils.grid import GridIndexing
+from fv3core.utils.grid import GridData, GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
 from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
@@ -458,16 +459,7 @@ class AGrid2BGridFourthOrder:
     def __init__(
         self,
         grid_indexing: GridIndexing,
-        agrid1,
-        agrid2,
-        bgrid1,
-        bgrid2,
-        dxa,
-        dya,
-        edge_n,
-        edge_s,
-        edge_e,
-        edge_w,
+        grid_data: GridData,
         grid_type,
         z_dim=Z_DIM,
         replace: bool = False,
@@ -481,16 +473,18 @@ class AGrid2BGridFourthOrder:
         """
         assert grid_type < 3
         self._idx: GridIndexing = grid_indexing
-        self._agrid1 = agrid1
-        self._agrid2 = agrid2
-        self._bgrid1 = bgrid1
-        self._bgrid2 = bgrid2
-        self._dxa = dxa
-        self._dya = dya
-        self._edge_n = edge_n
-        self._edge_s = edge_s
-        self._edge_e = edge_e
-        self._edge_w = edge_w
+
+        self._dxa = grid_data.dxa
+        self._dya = grid_data.dya
+        # TODO: calculate these here based on grid_data
+        self._agrid1 = spec.grid.agrid1
+        self._agrid2 = spec.grid.agrid2
+        self._bgrid1 = spec.grid.bgrid1
+        self._bgrid2 = spec.grid.bgrid2
+        self._edge_n = spec.grid.edge_n
+        self._edge_s = spec.grid.edge_s
+        self._edge_e = spec.grid.edge_e
+        self._edge_w = spec.grid.edge_w
 
         self.replace = replace
 

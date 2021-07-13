@@ -1,12 +1,13 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
+import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil, get_stencils_with_varied_bounds
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
-from fv3core.utils.grid import GridIndexing, axis_offsets
+from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
@@ -149,33 +150,10 @@ class DivergenceDamping:
     def __init__(
         self,
         grid_indexing: GridIndexing,
-        agrid1,
-        agrid2,
-        bgrid1,
-        bgrid2,
-        dxa,
-        dya,
-        edge_n,
-        edge_s,
-        edge_e,
-        edge_w,
+        grid_data: GridData,
+        damping_coefficients: DampingCoefficients,
         nested: bool,
         stretched_grid: bool,
-        da_min,
-        da_min_c,
-        divg_u,
-        divg_v,
-        rarea_c,
-        sin_sg1,
-        sin_sg2,
-        sin_sg3,
-        sin_sg4,
-        cosa_u,
-        cosa_v,
-        sina_u,
-        sina_v,
-        dxc,
-        dyc,
         dddmp,
         d4_bg,
         nord,
@@ -189,23 +167,26 @@ class DivergenceDamping:
         # TODO: make dddmp a compile-time external, instead of runtime scalar
         self._dddmp = dddmp
         # TODO: make da_min_c a compile-time external, instead of runtime scalar
-        self._da_min_c = da_min_c
+        self._da_min_c = damping_coefficients.da_min_c
         self._grid_type = grid_type
         self._nord_column = nord_col
         self._d2_bg_column = d2_bg
-        self._divg_u = divg_u
-        self._divg_v = divg_v
-        self._rarea_c = rarea_c
-        self._sin_sg1 = sin_sg1
-        self._sin_sg2 = sin_sg2
-        self._sin_sg3 = sin_sg3
-        self._sin_sg4 = sin_sg4
-        self._cosa_u = cosa_u
-        self._cosa_v = cosa_v
-        self._sina_u = sina_u
-        self._sina_v = sina_v
-        self._dxc = dxc
-        self._dyc = dyc
+        self._rarea_c = grid_data.rarea_c
+        self._sin_sg1 = grid_data.sin_sg1
+        self._sin_sg2 = grid_data.sin_sg2
+        self._sin_sg3 = grid_data.sin_sg3
+        self._sin_sg4 = grid_data.sin_sg4
+        self._cosa_u = grid_data.cosa_u
+        self._cosa_v = grid_data.cosa_v
+        self._sina_u = grid_data.sina_u
+        self._sina_v = grid_data.sina_v
+        self._dxc = grid_data.dxc
+        self._dyc = grid_data.dyc
+
+        # TODO: calculate these locally based on grid_data
+        self._divg_u = spec.grid.divg_u
+        self._divg_v = spec.grid.divg_v
+
         nonzero_nord_k = 0
         self._nonzero_nord = int(nord)
         for k in range(len(self._nord_column)):
@@ -214,9 +195,11 @@ class DivergenceDamping:
                 self._nonzero_nord = int(self._nord_column[k])
                 break
         if stretched_grid:
-            self._dd8 = da_min * d4_bg ** (self._nonzero_nord + 1)
+            self._dd8 = damping_coefficients.da_min * d4_bg ** (self._nonzero_nord + 1)
         else:
-            self._dd8 = (da_min_c * d4_bg) ** (self._nonzero_nord + 1)
+            self._dd8 = (damping_coefficients.da_min_c * d4_bg) ** (
+                self._nonzero_nord + 1
+            )
         # TODO: make stretched_grid a compile-time external, instead of runtime scalar
         self._stretched_grid = stretched_grid
         kstart = nonzero_nord_k
@@ -225,18 +208,9 @@ class DivergenceDamping:
         low_k_idx = self._idx.restrict_vertical(k_start=0, nk=nonzero_nord_k)
         high_k_idx = grid_indexing.restrict_vertical(k_start=nonzero_nord_k)
         self.a2b_ord4 = AGrid2BGridFourthOrder(
-            high_k_idx,
-            agrid1,
-            agrid2,
-            bgrid1,
-            bgrid2,
-            dxa,
-            dya,
-            edge_n,
-            edge_s,
-            edge_e,
-            edge_w,
-            self._grid_type,
+            grid_indexing=high_k_idx,
+            grid_data=grid_data,
+            grid_type=self._grid_type,
             replace=False,
         )
 

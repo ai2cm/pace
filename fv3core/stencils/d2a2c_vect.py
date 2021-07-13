@@ -5,7 +5,7 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
 from fv3core.utils import corners
-from fv3core.utils.grid import GridIndexing, axis_offsets
+from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -380,34 +380,23 @@ class DGrid2AGrid2CGridVectors:
     def __init__(
         self,
         grid_indexing: GridIndexing,
-        cosa_s,
-        cosa_u,
-        cosa_v,
-        rsin_u,
-        rsin_v,
-        rsin2,
-        dxa,
-        dya,
-        sin_sg1,
-        sin_sg2,
-        sin_sg3,
-        sin_sg4,
+        grid_data: GridData,
         nested: bool,
         grid_type: int,
         dord4: bool,
     ):
-        self._cosa_s = cosa_s
-        self._cosa_u = cosa_u
-        self._cosa_v = cosa_v
-        self._rsin_u = rsin_u
-        self._rsin_v = rsin_v
-        self._rsin2 = rsin2
-        self._dxa = dxa
-        self._dya = dya
-        self._sin_sg1 = sin_sg1
-        self._sin_sg2 = sin_sg2
-        self._sin_sg3 = sin_sg3
-        self._sin_sg4 = sin_sg4
+        self._cosa_s = grid_data.cosa_s
+        self._cosa_u = grid_data.cosa_u
+        self._cosa_v = grid_data.cosa_v
+        self._rsin_u = grid_data.rsin_u
+        self._rsin_v = grid_data.rsin_v
+        self._rsin2 = grid_data.rsin2
+        self._dxa = grid_data.dxa
+        self._dya = grid_data.dya
+        self._sin_sg1 = grid_data.sin_sg1
+        self._sin_sg2 = grid_data.sin_sg2
+        self._sin_sg3 = grid_data.sin_sg3
+        self._sin_sg4 = grid_data.sin_sg4
 
         if grid_type >= 3:
             raise NotImplementedError("unimplemented grid_type >= 3")
