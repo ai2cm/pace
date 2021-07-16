@@ -216,7 +216,6 @@ def atmos_phys_driver_statein(state):
             qgrs[:, :, k, n] = qgrs[:, :, k, n] / prsl[:, :, k]
     prsik[:, :, -1] = np.log(prsi[:, :, -1])
     prsik[:, :, 0] = np.log(ptop)
-    # for k in range(npz - 1, -1, -1):
     dm = gt_storage.zeros(
         backend=BACKEND,
         dtype=FIELD_FLT,
@@ -277,4 +276,4 @@ for tile in range(6):
         if ind.size > 0:
             i = tuple(ind[:, 0])
             print("FAIL at ", key, i)
-            np.testing.assert_allclose(ref_data["IPD_prsl"], exp_data["prsl"])
+            np.testing.assert_allclose(ref_data["IPD_" + key], exp_data[key])
