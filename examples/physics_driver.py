@@ -41,9 +41,13 @@ def storage_to_numpy(gt_storage, array_dim, has_zero_padding):
                 np_tmp[:, :] = gt_storage[0 : array_dim[0], 0, 0 : array_dim[1]]
         elif len(array_dim) == 3:
             if has_zero_padding:
-                np_tmp[:, :, :] = gt_storage[0:array_dim[0], 1:array_dim[1]+1, 0:array_dim[2]]
+                np_tmp[:, :, :] = gt_storage[
+                    0 : array_dim[0], 1 : array_dim[1] + 1, 0 : array_dim[2]
+                ]
             else:
-                np_tmp[:, :, :] = gt_storage[0:array_dim[0], 0:array_dim[1], 0:array_dim[2]]
+                np_tmp[:, :, :] = gt_storage[
+                    0 : array_dim[0], 0 : array_dim[1], 0 : array_dim[2]
+                ]
     else:
         np_tmp = np.zeros(array_dim)
         np_tmp[:] = gt_storage[0:array_dim, 0, 0]
@@ -65,7 +69,6 @@ def run(in_dict):
         in_dict["IPD_prsi"],
         in_dict["IPD_qgrs"],
         in_dict["IPD_tgrs"],
-        in_dict["IPD_xlon"],
         in_dict["IPD_ntrac"],
         in_dict["IPD_gt0"],
         in_dict["IPD_gq0"],
@@ -90,7 +93,6 @@ def physics_driver(
     prsi,
     qgrs,
     tgrs,
-    xlon,
     ntrac,
     gt0,
     gq0,
@@ -104,8 +106,10 @@ def physics_driver(
     refl_10cm,
     full_shape,
 ):
-
-    ix = xlon.shape[0]
+    # dtp = spec.namelist.dt_atmos
+    # ntrac = state.nq_tot
+    # levs = spec.namelist.npz
+    ix = full_shape[0]
     im = ix
 
     phii = numpy_to_gt4py_storage_2D(phii, BACKEND, levs + 1)
@@ -425,21 +429,21 @@ def physics_driver(
     mph_output = microphysics.run(mph_input)
     output = {}
 
-    gq0[:,:,0] = qv1[:,0,:] + qv_dt[:,0,:] * dtp
-    gq0[:,:,1] = ql1[:,0,:] + ql_dt[:,0,:] * dtp
-    gq0[:,:,2] = qr1[:,0,:] + qr_dt[:,0,:] * dtp
-    gq0[:,:,3] = qi1[:,0,:] + qi_dt[:,0,:] * dtp
-    gq0[:,:,4] = qs1[:,0,:] + qs_dt[:,0,:] * dtp
-    gq0[:,:,5] = qg1[:,0,:] + qg_dt[:,0,:] * dtp
-    gq0[:,:,8] = qa1[:,0,:] + qa_dt[:,0,:] * dtp
+    gq0[:, :, 0] = qv1[:, 0, :] + qv_dt[:, 0, :] * dtp
+    gq0[:, :, 1] = ql1[:, 0, :] + ql_dt[:, 0, :] * dtp
+    gq0[:, :, 2] = qr1[:, 0, :] + qr_dt[:, 0, :] * dtp
+    gq0[:, :, 3] = qi1[:, 0, :] + qi_dt[:, 0, :] * dtp
+    gq0[:, :, 4] = qs1[:, 0, :] + qs_dt[:, 0, :] * dtp
+    gq0[:, :, 5] = qg1[:, 0, :] + qg_dt[:, 0, :] * dtp
+    gq0[:, :, 8] = qa1[:, 0, :] + qa_dt[:, 0, :] * dtp
 
     # These computations could be put into a stencil
-    gt0[:,0,:] = gt0[:,0,:] + pt_dt[:,0,:] * dtp
-    gu0[:,0,:] = gu0[:,0,:] + udt[:,0,:] * dtp
-    gv0[:,0,:] = gv0[:,0,:] + vdt[:,0,:] * dtp
+    gt0[:, 0, :] = gt0[:, 0, :] + pt_dt[:, 0, :] * dtp
+    gu0[:, 0, :] = gu0[:, 0, :] + udt[:, 0, :] * dtp
+    gv0[:, 0, :] = gv0[:, 0, :] + vdt[:, 0, :] * dtp
 
-    output["IPD_gq0"] = storage_to_numpy(gq0,(144,79,9),True)
-    output["IPD_gt0"] = storage_to_numpy(gt0,(144,79), True)
-    output["IPD_gu0"] = storage_to_numpy(gu0,(144,79), True)
-    output["IPD_gv0"] = storage_to_numpy(gv0,(144,79), True)
+    output["IPD_gq0"] = storage_to_numpy(gq0, (144, 79, 9), True)
+    output["IPD_gt0"] = storage_to_numpy(gt0, (144, 79), True)
+    output["IPD_gu0"] = storage_to_numpy(gu0, (144, 79), True)
+    output["IPD_gv0"] = storage_to_numpy(gv0, (144, 79), True)
     return output

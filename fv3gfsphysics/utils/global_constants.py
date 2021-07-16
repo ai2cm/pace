@@ -15,7 +15,7 @@ cv_air = cp_air - rdgas  # Heat capacity of dry air at constant volume
 cv_vap = 3.0 * rvgas  # Heat capacity of water vapor at constant volume
 c_ice = 1972.0  # Heat capacity of ice at -15 degrees Celsius
 c_liq = 4185.5  # Heat capacity of water at 15 degrees Celsius
-
+KAPPA = rdgas / cp_air
 eps = rdgas / rvgas
 
 t_ice = 273.16  # Freezing temperature
