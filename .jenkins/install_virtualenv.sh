@@ -8,6 +8,7 @@ exitError()
     exit $1
 }
 
+
 # check a virtualenv path has been provided
 test -n "$1" || exitError 1001 ${virtualenv_path} "must pass an argument"
 wheel_dir=/project/s1053/install/wheeldir
@@ -15,6 +16,9 @@ wheel_command="--find-links=$wheel_dir"
 make update_submodules_venv
 virtualenv_path=$1
 fv3core_dir=`dirname $0`/../
+if [ -z "${GT4PY_VERSION}" ]; then
+    export GT4PY_VERSION=`cat ${fv3core_dir}/GT4PY_VERSION.txt`
+fi
 (cd ${fv3core_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
 source ${virtualenv_path}/bin/activate
 # TODO: move this to daint_venv and update submodule

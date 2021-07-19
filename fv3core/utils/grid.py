@@ -1016,7 +1016,7 @@ def axis_offsets(
     grid: Union[Grid, GridIndexing],
     origin: Iterable[int],
     domain: Iterable[int],
-) -> Mapping[str, gtscript._AxisOffset]:
+) -> Mapping[str, gtscript.AxisIndex]:
     """Return the axis offsets relative to stencil compute domain.
 
     Args:
@@ -1043,7 +1043,7 @@ def _old_grid_axis_offsets(
     grid: Grid,
     origin: Tuple[int, ...],
     domain: Tuple[int, ...],
-) -> Mapping[str, gtscript._AxisOffset]:
+) -> Mapping[str, gtscript.AxisIndex]:
     if grid.west_edge:
         proc_offset = grid.is_ - grid.global_is
         origin_offset = grid.is_ - origin[0]
@@ -1089,7 +1089,7 @@ def _grid_indexing_axis_offsets(
     grid: GridIndexing,
     origin: Tuple[int, ...],
     domain: Tuple[int, ...],
-) -> Mapping[str, gtscript._AxisOffset]:
+) -> Mapping[str, gtscript.AxisIndex]:
     if grid.west_edge:
         i_start = gtscript.I[0] + grid.origin[0] - origin[0]
     else:
