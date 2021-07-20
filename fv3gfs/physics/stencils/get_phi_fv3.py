@@ -3,7 +3,7 @@ import gt4py
 import gt4py.gtscript as gtscript
 import gt4py.storage as gt_storage
 import timeit
-from fv3gfsphysics.utils.global_config import *
+from fv3gfs.physics.global_config import *
 
 from gt4py.gtscript import (
     __INLINED,

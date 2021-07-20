@@ -1,9 +1,8 @@
 import sys
 import numpy as np
 
-sys.path.append("../")
-from fv3gfsphysics.utils.global_config import *
-from fv3gfsphysics.utils.global_constants import *
+from fv3gfs.physics.global_config import *
+from fv3gfs.physics.global_constants import *
 from ser_savepoint_var import *
 
 SERIALBOX_DIR = "/usr/local/serialbox"
