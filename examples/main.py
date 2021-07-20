@@ -61,7 +61,7 @@ for tile in range(6):
 
     serializer = ser.Serializer(
         ser.OpenModeKind.Read,
-        "c12_6ranks_baroclinic_dycore_microphysics",
+        "../c12_6ranks_baroclinic_dycore_microphysics",
         "Generator_rank" + str(tile),
     )
 
@@ -90,6 +90,10 @@ for tile in range(6):
             out_data = physics_driver.run(in_data)
 
             isready = True
+
+        if sp.name.startswith("FVUpdatePhys-In"):
+            print("> running ", f"tile-{tile}", sp)
+            in_data = data_dict_from_var_list(IN_VARS_FVPHY, serializer, sp)
 
         # if sp.name.startswith("PrsFV3-In"):
         #     print("> running ", f"tile-{tile}", sp)
@@ -130,3 +134,11 @@ for tile in range(6):
             ref_data = data_dict_from_var_list(OUT_VARS_GFSPD, serializer, sp)
 
             compare_data(out_data, ref_data)
+
+        if sp.name.startswith("FVUpdatePhys-Out"):
+            print("> running ", f"tile-{tile}", sp)
+
+            # read serialized input data
+            ref_data = data_dict_from_var_list(OUT_VARS_FVPHY, serializer, sp)
+
+            #compare_data(out_data, ref_data)
