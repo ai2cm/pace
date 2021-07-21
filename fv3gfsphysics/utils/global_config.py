@@ -9,6 +9,7 @@ DTYPE_INT = np.int32
 FIELD_INT = gtscript.Field[DTYPE_INT]
 DTYPE_FLT = np.float64
 FIELD_FLT = gtscript.Field[DTYPE_FLT]
+FIELD_FLTIJ = gtscript.Field[gtscript.IJ, DTYPE_FLT]
 DEFAULT_ORIGIN = (0, 0, 0)
 
 # Path of serialbox directory
