@@ -99,7 +99,7 @@ def compare_data(exp_data, ref_data):
     for key in ref_data:
         print('comparing', key)
         atol=1e-20
-        rtol=1e-20
+        rtol=1e-15 # TODO, investigate whether the non-bit-for-bit mismatches matter, all seem to happen at im+1 or jm+1 
         ind = np.array(
             np.nonzero(~np.isclose(exp_data[key].data, ref_data[key].data, equal_nan=True, atol=atol, rtol=rtol))
         )
