@@ -106,7 +106,6 @@ def compare_data(exp_data, ref_data):
         if ind.size > 0:
             i = tuple(ind[:, 0])
             print("FAIL at ", key, i, exp_data[key][i], ref_data[key][i],  exp_data[key][i] - ref_data[key][i])
-        print("FAIL at ", exp_data[key][3,3,47], ref_data[key][3,3,47],  exp_data[key][3,3,47] - ref_data[key][3,3,47])
         for i in range(ref_data[key].shape[0]):
             for j in range(ref_data[key].shape[1]):
                 for k in range(ref_data[key].shape[2]):
@@ -216,27 +215,34 @@ def copy3_stencil(in_field1: FIELD_FLT, in_field2: FIELD_FLT, in_field3: FIELD_F
         out_field1 = in_field1
         out_field2 = in_field2
         out_field3 = in_field3
+
 @gtscript.stencil(backend=BACKEND)
-def update_dwind_stencil(
+def update_uwind_stencil(
     u: FIELD_FLT,
-    v: FIELD_FLT,
     es1_1: FIELD_FLTIJ,
     es2_1: FIELD_FLTIJ,
     es3_1: FIELD_FLTIJ,
-    ew1_2: FIELD_FLTIJ,
-    ew2_2: FIELD_FLTIJ,
-    ew3_2: FIELD_FLTIJ,
     ue_1:  FIELD_FLT,
     ue_2:  FIELD_FLT,
     ue_3:  FIELD_FLT,
+    dt5: float,
+):
+    with computation(PARALLEL), interval(...):
+        # is: ie; js:je+1
+        u = u + dt5 * (ue_1 * es1_1 + ue_2 * es2_1 + ue_3 * es3_1)
+
+@gtscript.stencil(backend=BACKEND)
+def update_vwind_stencil(
+    v: FIELD_FLT,
+    ew1_2: FIELD_FLTIJ,
+    ew2_2: FIELD_FLTIJ,
+    ew3_2: FIELD_FLTIJ,
     ve_1:  FIELD_FLT,
     ve_2:  FIELD_FLT,
     ve_3:  FIELD_FLT,
     dt5: float,
 ):
     with computation(PARALLEL), interval(...):
-        # is: ie; js:je+1
-        u = u + dt5 * (ue_1 * es1_1 + ue_2 * es2_1 + ue_3 * es3_1)
         # is: ie+1; js:je
         v = v + dt5 * (ve_1 * ew1_2 + ve_2 * ew2_2 + ve_3 * ew3_2)
 
@@ -338,22 +344,13 @@ def update_dwind_phys(data):
             if domain_upper[0] > 0:
                 update_dwind_x_edge_east_stencil(ue_1, ue_2, ue_3, ut_1, ut_2, ut_3, data["edge_vect_n"], origin=origin_upper, domain=domain_upper)
                 copy3_stencil(ut_1, ut_2, ut_3, ue_1, ue_2, ue_3, origin=origin_upper, domain=domain_upper)
-    update_dwind_stencil(data["u"], data["v"], data["es1_1"], data["es2_1"], data["es3_1"], data["ew1_2"],  data["ew2_2"],  data["ew3_2"], ue_1, ue_2, ue_3, ve_1, ve_2, ve_3, dt5, origin=(HALO, HALO, 0), domain=(data["nic"], data["njc"] + 1, data["npz"]))
+    update_uwind_stencil(data["u"], data["es1_1"], data["es2_1"], data["es3_1"], ue_1, ue_2, ue_3, dt5, origin=(HALO, HALO, 0), domain=(data["nic"], data["njc"] + 1, data["npz"]))
+    update_vwind_stencil(data["v"], data["ew1_2"],  data["ew2_2"],  data["ew3_2"], ve_1, ve_2, ve_3, dt5, origin=(HALO, HALO, 0), domain=(data["nic"]+1, data["njc"], data["npz"]))
 
-# "UpdateDWindsPhys-IN"
-# edge_vect_e, edge_vect_<n,s,w>
-# es, ew, ied, is, isd, je, jed, js, jsd, npx, npy, npz, regional,nested
-# vlat, vlon
-# u, v, u_dt, v_dt
 
-# UpdateDWindsPhys-OUT
-# u, v, u_dt, v_dt
 IN_VARS = ["u", "v", "u_dt", "v_dt", "npx", "npy", "vlat", "vlon", "es","ew", "edge_vect_e",  "edge_vect_w", "edge_vect_s",  "edge_vect_n"]
-# vlon(is_2d-2:ie_2d+2,js_2d-2:je_2d+2,3)
-# %ew(3,isd_2d:ied_2d+1,jsd_2d:jed_2d,  2)
-# %es(3,isd_2d:ied_2d  ,jsd_2d:jed_2d+1,2)
 
-OUT_VARS = ["u"]
+OUT_VARS = ["u", "v"]
 for tile in range(6):
 
     if SELECT_SP is not None:
