@@ -10,8 +10,10 @@ FIELD_INT = gtscript.Field[DTYPE_INT]
 DTYPE_FLT = np.float64
 FIELD_FLT = gtscript.Field[DTYPE_FLT]
 FIELD_FLTIJ = gtscript.Field[gtscript.IJ, DTYPE_FLT]
+FIELD_FLTI = gtscript.Field[gtscript.I, DTYPE_FLT]
+FIELD_FLTJ = gtscript.Field[gtscript.J, DTYPE_FLT]
 DEFAULT_ORIGIN = (0, 0, 0)
-
+HALO=3
 # Path of serialbox directory
 if IS_DOCKER:
     SERIALBOX_DIR = "/usr/local/serialbox"
