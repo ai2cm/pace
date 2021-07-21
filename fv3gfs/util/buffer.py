@@ -28,7 +28,7 @@ class Buffer:
         """Init a cacheable buffer.
 
         Args:
-            key: a cache key made out of tuple of allocator (behaving like np.empty), shape and dtype
+            key: a cache key made out of tuple of Allocator, shape and dtype
             array: ndarray of actual data
         """
         self._key = key
@@ -41,7 +41,7 @@ class Buffer:
         """Retrieve or insert then retrieve of buffer from cache.
 
         Args:
-            allocator: behaves like a np.empty function, used to allocate memory
+            allocator: used to allocate memory
             shape: shape of array
             dtype: type of array elements
         Return:
@@ -74,13 +74,20 @@ class Buffer:
         self,
         destination_array: np.ndarray,
         buffer_slice: IndexExpression = np.index_exp[:],
+        buffer_reshape: IndexExpression = None,
     ):
         """Assign internal array to destination_array.
 
         Args:
             destination_array: target ndarray
         """
-        safe_assign_array(destination_array, self.array[buffer_slice])
+        if buffer_reshape is None:
+            safe_assign_array(destination_array, self.array[buffer_slice])
+        else:
+            safe_assign_array(
+                destination_array,
+                np.reshape(self.array[buffer_slice], buffer_reshape, order="C"),
+            )
 
     def assign_from(
         self, source_array: np.ndarray, buffer_slice: IndexExpression = np.index_exp[:]
@@ -123,7 +130,7 @@ def send_buffer(
     being sent as data, copying into a recycled buffer array if necessary.
 
     Args:
-        allocator: a function behaving like numpy.empty
+        allocator: used to allocate memory
         array: a possibly non-contiguous array for which to provide a buffer
         timer: object to accumulate timings for "pack"
 
@@ -156,7 +163,7 @@ def recv_buffer(
     result into array if necessary.
 
     Args:
-        allocator: a function behaving like numpy.empty
+        allocator: used to allocate memory
         array: a possibly non-contiguous array for which to provide a buffer
         timer: object to accumulate timings for "unpack"
 

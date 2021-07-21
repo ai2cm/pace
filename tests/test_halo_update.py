@@ -1,3 +1,4 @@
+from fv3gfs.util.buffer import BUFFER_CACHE
 import pytest
 import fv3gfs.util
 import copy
@@ -305,12 +306,12 @@ def test_halo_update_timer(
     """
     test that halo update produces nonzero timings for all expected labels
     """
-    req_list = []
+    halo_updater_list = []
     for communicator, quantity in zip(communicator_list, zeros_quantity_list):
-        req = communicator.start_halo_update(quantity, n_points_update)
-        req_list.append(req)
-    for req in req_list:
-        req.wait()
+        halo_updater = communicator.start_halo_update(quantity, n_points_update)
+        halo_updater_list.append(halo_updater)
+    for halo_updater in halo_updater_list:
+        halo_updater.wait()
     required_times_keys = ("pack", "unpack", "Isend", "Irecv", "wait")
     for communicator in communicator_list:
         with subtests.test(rank=communicator.rank):
@@ -342,13 +343,13 @@ def test_depth_halo_update(
     x_index = sample_quantity.dims.index(x_dim)
     y_extent = sample_quantity.extent[y_index]
     x_extent = sample_quantity.extent[x_index]
-    req_list = []
+    halo_updater_list = []
     if 0 < n_points_update <= n_points:
         for communicator, quantity in zip(communicator_list, depth_quantity_list):
-            req = communicator.start_halo_update(quantity, n_points_update)
-            req_list.append(req)
-        for req in req_list:
-            req.wait()
+            halo_updater = communicator.start_halo_update(quantity, n_points_update)
+            halo_updater_list.append(halo_updater)
+        for halo_updater in halo_updater_list:
+            halo_updater.wait()
         for rank, quantity in enumerate(depth_quantity_list):
             with subtests.test(rank=rank, quantity=quantity):
                 for dim, extent in ((y_dim, y_extent), (x_dim, x_extent)):
@@ -411,13 +412,13 @@ def test_zeros_halo_update(
     ranks_per_tile,
 ):
     """test that zeros from adjacent domains get written over ones on local halo"""
-    req_list = []
+    halo_updater_list = []
     if 0 < n_points_update <= n_points:
         for communicator, quantity in zip(communicator_list, zeros_quantity_list):
-            req = communicator.start_halo_update(quantity, n_points_update)
-            req_list.append(req)
-        for req in req_list:
-            req.wait()
+            halo_updater = communicator.start_halo_update(quantity, n_points_update)
+            halo_updater_list.append(halo_updater)
+        for halo_updater in halo_updater_list:
+            halo_updater.wait()
         for rank, quantity in enumerate(zeros_quantity_list):
             boundaries = boundary_dict[rank % ranks_per_tile]
             for boundary in boundaries:
@@ -455,17 +456,17 @@ def test_zeros_vector_halo_update(
     x_list = zeros_quantity_list
     y_list = copy.deepcopy(x_list)
     if 0 < n_points_update <= n_points:
-        req_list = []
+        halo_updater_list = []
         for communicator, y_quantity, x_quantity in zip(
             communicator_list, y_list, x_list
         ):
-            req_list.append(
+            halo_updater_list.append(
                 communicator.start_vector_halo_update(
                     y_quantity, x_quantity, n_points_update
                 )
             )
-        for req in req_list:
-            req.wait()
+        for halo_updater in halo_updater_list:
+            halo_updater.wait()
         for rank, (y_quantity, x_quantity) in enumerate(zip(y_list, x_list)):
             boundaries = boundary_dict[rank % ranks_per_tile]
             for boundary in boundaries:
@@ -510,15 +511,15 @@ def test_vector_halo_update_timer(
     """
     x_list = zeros_quantity_list
     y_list = copy.deepcopy(x_list)
-    req_list = []
+    halo_updater_list = []
     for communicator, y_quantity, x_quantity in zip(communicator_list, y_list, x_list):
-        req_list.append(
+        halo_updater_list.append(
             communicator.start_vector_halo_update(
                 y_quantity, x_quantity, n_points_update
             )
         )
-    for req in req_list:
-        req.wait()
+    for halo_updater in halo_updater_list:
+        halo_updater.wait()
     required_times_keys = ("pack", "unpack", "Isend", "Irecv", "wait")
     for communicator in communicator_list:
         with subtests.test(rank=communicator.rank):
@@ -547,3 +548,89 @@ def get_horizontal_dims(dims):
     else:
         raise ValueError(f"no y dimension in {dims}")
     return y_dim, x_dim
+
+
+@pytest.mark.parametrize(
+    "layout, n_points, n_points_update, n_buffer",
+    [((1, 1), 2, "more", 0)],
+    indirect=True,
+)
+def test_halo_updater_stability(
+    zeros_quantity_list,
+    communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
+    """
+    Test that that halo_updater.start()/wait() is consistent through multiple execution.
+    Test the internal buffers are re-used properly and re-cached properly.
+    """
+    BUFFER_CACHE.clear()
+    halo_updaters = []
+    for communicator, quantity in zip(communicator_list, zeros_quantity_list):
+        specification = fv3gfs.util.QuantityHaloSpec(
+            n_points,
+            quantity.data.strides,
+            quantity.data.itemsize,
+            quantity.data.shape,
+            quantity.origin,
+            quantity.extent,
+            quantity.dims,
+            quantity.np,
+            quantity.metadata.dtype,
+        )
+        halo_updater = fv3gfs.util.HaloUpdater.from_scalar_specifications(
+            comm=communicator,
+            numpy_like_module=quantity.np,
+            specifications=[specification],
+            boundaries=communicator.boundaries.values(),
+            tag=0,
+        )
+        halo_updaters.append(halo_updater)
+
+    # Caches must be created before we run (e.g. cache line != 0
+    # and no caches in cache line since they are used)
+    assert len(BUFFER_CACHE) == 1
+    assert len(next(iter(BUFFER_CACHE.values()))) == 0
+
+    # First run
+    for halo_updater in halo_updaters:
+        halo_updater.start([quantity])
+    for halo_updater in halo_updaters:
+        halo_updater.wait()
+
+    # Copy the exchanged buffer and trigger multiple runs
+    # The buffer should stay stable since we are exchanging the same information
+    exchanged_once_quantity = copy.deepcopy(quantity)
+    for halo_updater in halo_updaters:
+        halo_updater.start([quantity])
+    for halo_updater in halo_updaters:
+        halo_updater.wait()
+    for halo_updater in halo_updaters:
+        halo_updater.start([quantity])
+    for halo_updater in halo_updaters:
+        halo_updater.wait()
+    assert (quantity.data == exchanged_once_quantity.data).all()
+
+    # All caches are still in use
+    assert len(BUFFER_CACHE) == 1
+    assert len(next(iter(BUFFER_CACHE.values()))) == 0
+
+    # Manually call finalize on the transfomers
+    # This should recache all the buffers
+    # DSL-816 will refactor that behavior out
+    for halo_updater in halo_updaters:
+        for transformer in halo_updater._transformers.values():
+            transformer.finalize()
+
+    # With the layout constrained we will have
+    # 6 (ranks) * 4 (boundaries) * 2 (send&recv) buffers recached.
+    assert len(BUFFER_CACHE) == 1
+    assert (
+        len(next(iter(BUFFER_CACHE.values())))
+        == len(communicator_list) * len(communicator.boundaries.values()) * 2
+    )
