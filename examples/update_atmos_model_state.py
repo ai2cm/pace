@@ -4,6 +4,10 @@ import gt4py
 import gt4py.gtscript as gtscript
 import gt4py.storage as gt_storage
 
+sys.path.append("../")
+from fv3gfsphysics.utils.global_config import *
+from fv3gfsphysics.utils.global_constants import *
+
 from gt4py.gtscript import (
     __INLINED,
     PARALLEL,
@@ -53,17 +57,56 @@ def run(in_dict):
     area = in_dict["IPD_area"]
     area = area[:, np.newaxis]
     shape = (144, 1, 80)  # hard coded for now
+    
+    # Note: Value of dt_atmos is in the namelist
+    dt_atmos = 255
+
+    # Value of dnats from fv_arrays.F90
+    dnats = 0
+
+    u_dt = np.zeros(in_dict["gu0"].shape)
+    v_dt = np.zeros(in_dict["gv0"].shape)
+    t_dt = np.zeros(in_dict["gt0"].shape)
+    delp = np.zeros(in_dict["gt0"].shape)
+
     out_dict = update_atmos_model_state(
-        in_dict["IPD_gq0"],
-        in_dict["IPD_gt0"],
-        in_dict["IPD_gu0"],
-        in_dict["IPD_gv0"],
+        in_dict["gq0"],
+        in_dict["gt0"],
+        in_dict["gu0"],
+        in_dict["gv0"],
+        in_dict["tgrs"],
+        in_dict["ugrs"],
+        in_dict["vgrs"],
+        in_dict["prsi"],
+        in_dict["delp"],
+
+        in_dict["qvapor"],
+        in_dict["qliquid"],
+        in_dict["qrain"],
+        in_dict["qsnow"],
+        in_dict["qice"],
+        in_dict["qgraupel"],
+        in_dict["qo3mr"],
+        in_dict["qsgs_tke"],
+        in_dict["qcld"],
+
+        t_dt,
+        u_dt,
+        v_dt,
+        in_dict["nq"],
+        dnats,
+        in_dict["nwat"],
+        dt_atmos,
         shape,
     )
 
     return out_dict
 
-def fill_gfs(im, km, pe2, q, q_min):
+def fill_gfs(pe2, q, q_min):
+
+    im = q.shape[0]
+    km = q.shape[1]
+
     dp = np.zeros((im,km))
 
     for k in range(km):
@@ -77,7 +120,7 @@ def fill_gfs(im, km, pe2, q, q_min):
                 q[i,k1] = q[i,k1] + (q[i,k] - q_min) * dp[i,k]/dp[i,k1]
                 q[i,k] = q_min
 
-    for k in range(km, 1, -1):
+    for k in range(km-1, 1, -1):
         k1 = k-1
         for i in range(im):
             if q[i,k] < 0.0:
@@ -86,73 +129,158 @@ def fill_gfs(im, km, pe2, q, q_min):
 
     return q
 
-def atmosphere_state_update(im,
-                            km,
-                            npz,
+def atmosphere_state_update(#im,
+                            #km,
+                            #npz,
                             gq0,
                             gt0,
                             gu0,
                             gv0,
-                            prsi,
-                            u_dt,
-                            v_dt,
-                            t_dt,
+                            tgrs,
                             ugrs,
                             vgrs,
-                            tgrs,     
-                            ii,
-                            jj,
+                            prsi,
+                            delp,
+
+                            q_0,
+                            q_1,
+                            q_2,
+                            q_3,
+                            q_4,
+                            q_5,
+                            q_6,
+                            q_7,
+                            q_8,
+
+                            t_dt,
+                            u_dt,
+                            v_dt,
+                            nq,
+                            dnats,
+                            nwat,
                             dt_atmos,
-                            flip_vc,
                             shape):
 
     # Need to figure out how to get the value of "nq"
-    # qwat = np.zeros(nq)
+    qwat = np.zeros(nq)
 
-    # nq_adv = nq - dnats
+    nq_adv = nq - dnats
 
     rdt = 1.0e0 / dt_atmos
 
-    gq0 = fill_gfs(im, km, prsi, gq0, 1.0e-9)
+    gq0[:,:,0] = fill_gfs(prsi, gq0[:,:,0], 1.0e-9)
+
+    im = gu0.shape[0]
+    npz = gu0.shape[1]
 
     for k in range(npz):
-        if flip_vc:
-            k1 = npz+1-k
-        else:
-            k1 = k
         for ix in range(im):
-            i = ii[ix]
-            j = jj[ix]
-            u_dt[i,j,k1] = u_dt[i,j,k1] + (gu0[ix,k] - ugrs[ix,k]) * rdt
-            v_dt[i,j,k1] = v_dt[i,j,k1] + (gv0[ix,k] - vgrs[ix,k]) * rdt
-            t_dt[i,j,k1] = t_dt[i,j,k1] + (gt0[ix,k] - tgrs[ix,k]) * rdt
+            u_dt[ix,k] = u_dt[ix,k] + (gu0[ix,k] - ugrs[ix,k]) * rdt
+            v_dt[ix,k] = v_dt[ix,k] + (gv0[ix,k] - vgrs[ix,k]) * rdt
+            t_dt[ix,k] = t_dt[ix,k] + (gt0[ix,k] - tgrs[ix,k]) * rdt
 
-            if flip_vc:
-                q0 = prsi[ix,k] - prsi[ix,k+1]
-            else:
-                q0 = prsi[ix,k+1] - prsi[ix,k]
-            #qwat[0:nq_adv] = q0 * gq0[ix,k,0:nq_adv]
+            # Note : Not quite sure if it's [k+1] - [k] or [k] - [k+1] for prsi
+            q0 = prsi[ix,k+1] - prsi[ix,k]
+            qwat[0:nq_adv] = q0 * gq0[ix,k,0:nq_adv]
+            qt = np.sum(qwat[:nwat])
 
+            # The sum of q values go up to nq_adv
+            q_sum = 0.0
 
-    return gq0, gt0, gu0, gv0
+            if 0 < nwat:
+                q_sum += q_0[ix, k]
+            if 1 < nwat:
+                q_sum += q_1[ix, k]
+            if 2 < nwat:
+                q_sum += q_2[ix, k]
+            if 3 < nwat:
+                q_sum += q_3[ix, k]
+            if 4 < nwat:
+                q_sum += q_4[ix, k]
+            if 5 < nwat:
+                q_sum += q_5[ix, k]
+            if 6 < nwat:
+                q_sum += q_6[ix, k]
+            if 7 < nwat:
+                q_sum += q_7[ix, k]
+            if 8 < nwat:
+                q_sum += q_8[ix, k]
 
-def update_atmos_model_state(im,
-                             km,
-                             npz,
+            q0 = delp[ix,k] * (1.0 - q_sum) + qt
+            delp[ix,k] = q0
+
+            q_0 = qwat[0]
+
+    return u_dt, v_dt, t_dt
+
+def update_atmos_model_state(#im,
+                             #km,
+                             #npz,
                              gq0,
                              gt0,
                              gu0,
                              gv0,
-                             prsi,
-                             u_dt,
-                             v_dt,
-                             t_dt,
+                             tgrs,
                              ugrs,
                              vgrs,
-                             tgrs,
-                             ii, jj,
+                             prsi,
+                             delp,
+
+                             q_0,
+                             q_1,
+                             q_2,
+                             q_3,
+                             q_4,
+                             q_5,
+                             q_6,
+                             q_7,
+                             q_8,
+
+                             t_dt,
+                             u_dt,
+                             v_dt,
+                             nq,
+                             dnats,
+                             nwat,
                              dt_atmos,
-                             flip_vc,
                              shape):
 
-    atmosphere_state_update(im,km, npz, gq0,gt0, gu0, gv0, prsi, u_dt, v_dt, t_dt, ugrs, vgrs, tgrs, ii, jj, dt_atmos,flip_vc,shape)
+    u_dt, v_dt, t_dt = atmosphere_state_update(#im,
+                                               #km, 
+                                               #npz, 
+                                               gq0,
+                                               gt0, 
+                                               gu0, 
+                                               gv0, 
+                                               tgrs,
+                                               ugrs, 
+                                               vgrs,
+                                               prsi, 
+                                               delp,
+
+                                               q_0,
+                                               q_1,
+                                               q_2,
+                                               q_3,
+                                               q_4,
+                                               q_5,
+                                               q_6,
+                                               q_7,
+                                               q_8,
+
+                                               t_dt, 
+                                               u_dt, 
+                                               v_dt,
+                                               nq,
+                                               dnats,
+                                               nwat,
+                                               dt_atmos,
+                                               shape)
+
+    out_dict = {}
+
+    out_dict["u_dt"] = u_dt
+    out_dict["v_dt"] = v_dt
+    out_dict["t_dt"] = t_dt
+
+    return out_dict

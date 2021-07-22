@@ -8,6 +8,7 @@ SERIALBOX_DIR = "/usr/local/serialbox"
 sys.path.append(SERIALBOX_DIR + "/python")
 import serialbox as ser
 import physics_driver
+import update_atmos_model_state
 from ser_savepoint_var import *
 
 SELECT_SP = None
@@ -76,6 +77,15 @@ for tile in range(6):
             ].replace("-in-", "-out-"):
                 continue
 
+        if sp.name.startswith("FVDynamics-In"):
+            in_data_fvd = data_dict_from_var_list(IN_VAR_DYNS, serializer, sp)
+
+        if sp.name.startswith("FVDynamics-Out"):
+            out_data_fvd = data_dict_from_var_list(OUT_VAR_DYNS, serializer, sp)
+
+        if sp.name.startswith("AtmosPhysDriverStatein-OUT"):
+            out_data_pds = data_dict_from_var_list(OUT_VAR_APDS, serializer, sp)
+
         if sp.name.startswith("GFSPhysicsDriver-IN"):
 
             if isready:
@@ -84,16 +94,50 @@ for tile in range(6):
             print("> running ", f"tile-{tile}", sp)
 
             # read serialized input data
-            in_data = data_dict_from_var_list(IN_VARS_GFSPD, serializer, sp)
+            in_data_pd = data_dict_from_var_list(IN_VARS_GFSPD, serializer, sp)
 
             # run Python version
-            out_data = physics_driver.run(in_data)
+            out_data_pd = physics_driver.run(in_data_pd)
 
             isready = True
 
         if sp.name.startswith("FVUpdatePhys-In"):
             print("> running ", f"tile-{tile}", sp)
-            in_data = data_dict_from_var_list(IN_VARS_FVPHY, serializer, sp)
+            # Note : The data from IN_VARS_FVPHY is for comparison purposes currently
+            ref_data = data_dict_from_var_list(IN_VARS_FVPHY, serializer, sp)
+
+            in_data = {}
+
+            # Adding previously read serialized data
+            in_data["prsi"]     = in_data_pd["IPD_prsi"]
+            in_data["tgrs"]     = in_data_pd["IPD_tgrs"]
+            in_data["ugrs"]     = in_data_pd["IPD_ugrs"]
+            in_data["vgrs"]     = in_data_pd["IPD_vgrs"]
+            in_data["IPD_area"] = in_data_pd["IPD_area"]
+
+            in_data["gq0"]  = out_data_pd["IPD_gq0"]
+            in_data["gt0"]  = out_data_pd["IPD_gt0"]
+            in_data["gu0"]  = out_data_pd["IPD_gu0"]
+            in_data["gv0"]  = out_data_pd["IPD_gv0"]
+
+            in_data["nq"]   = in_data_fvd["nq_tot"]
+            in_data["delp"] = np.reshape(out_data_fvd["delp"][3:-3,3:-3,:],(144,79))
+
+            in_data["nwat"] = out_data_pds["IPD_nwat"]
+
+            in_data["qvapor"]  = np.reshape(out_data_fvd["qvapor"][3:-3,3:-3,:],(144,79))
+            in_data["qliquid"] = np.reshape(out_data_fvd["qliquid"][3:-3,3:-3,:],(144,79))
+            in_data["qrain"]   = np.reshape(out_data_fvd["qrain"][3:-3,3:-3,:],(144,79))
+            in_data["qsnow"]   = np.reshape(out_data_fvd["qsnow"][3:-3,3:-3,:],(144,79))
+            in_data["qice"]    = np.reshape(out_data_fvd["qice"][3:-3,3:-3,:],(144,79))
+            in_data["qgraupel"]= np.reshape(out_data_fvd["qgraupel"][3:-3,3:-3,:],(144,79))
+            in_data["qo3mr"]   = np.reshape(out_data_fvd["qo3mr"][3:-3,3:-3,:],(144,79))
+            in_data["qsgs_tke"]= np.reshape(out_data_fvd["qsgs_tke"][3:-3,3:-3,:],(144,79))
+            in_data["qcld"]    = np.reshape(out_data_fvd["qcld"][3:-3,3:-3,:],(144,79))
+
+            out_data = update_atmos_model_state.run(in_data)
+
+            print("After update_atmos_model_state")
 
         # if sp.name.startswith("PrsFV3-In"):
         #     print("> running ", f"tile-{tile}", sp)
@@ -131,9 +175,9 @@ for tile in range(6):
             print("> running ", f"tile-{tile}", sp)
 
             # read serialized input data
-            ref_data = data_dict_from_var_list(OUT_VARS_GFSPD, serializer, sp)
+            ref_data_pd = data_dict_from_var_list(OUT_VARS_GFSPD, serializer, sp)
 
-            compare_data(out_data, ref_data)
+            compare_data(out_data_pd, ref_data_pd)
 
         if sp.name.startswith("FVUpdatePhys-Out"):
             print("> running ", f"tile-{tile}", sp)
