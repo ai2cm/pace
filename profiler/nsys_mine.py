@@ -24,14 +24,9 @@ FV3_STAGES = [
     "Tracer advection",
 ]  # TODO remap is not tagged in nvtx
 
-FV3_START_ASYNC_HALOS = [
-    "HaloEx: async scalar",
-    "HaloEx: async vector",
-]
+FV3_START_ASYNC_HALOS = ["HaloUpdater.start"]
 
-FV3_ASYNC_HALOS = FV3_START_ASYNC_HALOS + [
-    "HaloEx: unpack and wait",
-]
+FV3_ASYNC_HALOS = FV3_START_ASYNC_HALOS + ["HaloUpdater.wait"]
 
 FV3_NOT_HALOS = ["Pre HaloEx"]
 
@@ -47,7 +42,7 @@ def _count_calls_start_with_name(rows: List[str], index: int, target_name: str) 
 def _filter_cupy_out(rows: List[str], index: int) -> List[str]:
     hit = []
     for row in rows:
-        if row[index].startswith("cupy") or row[index].startswith("neg_f64"):
+        if row[index].startswith("cupy"):
             continue
         hit.append(row)
     return hit
@@ -231,7 +226,10 @@ if __name__ == "__main__":
             f"into the same directory.\n"
             f"The resulting file can be large.\n"
         )
-        status = os.system(f"nsys export -t sqlite -f on {cmd_line_args.database}")
+        status = os.system(
+            f"nsys export -t sqlite -f on {cmd_line_args.database}"
+            f" -o {cmd_line_args.database.replace('.qdrep', '.sqlite')}"
+        )
         if status != 0:
             print(
                 f"Something went wrong when converting {cmd_line_args.database}"
@@ -312,14 +310,17 @@ if __name__ == "__main__":
     cupy_copies_kernels_count = _count_calls_start_with_name(
         filtered_rows, KernelReportIndexing.NAME.value, "cupy"
     )
-    cupy_copies_kernels_count += _count_calls_start_with_name(
-        filtered_rows, KernelReportIndexing.NAME.value, "neg_f64"
-    )
     fv3_kernels_count = all_kernels_count - cupy_copies_kernels_count
     fv3_kernels = _filter_cupy_out(filtered_rows, KernelReportIndexing.NAME.value)
     assert fv3_kernels_count == len(fv3_kernels)
 
-    # Count unique kernel
+    # Cumulative time spend in kernel
+    total_gpu_kernel_time_in_ms = 0.0
+    for row in filtered_rows:
+        total_gpu_kernel_time_in_ms += row[KernelReportIndexing.DURATION.value]
+    total_gpu_kernel_time_in_ms /= 1.0e6
+
+    # Count unique kernel time
     unique_fv3_kernel_timings: Dict[str, List[Any]] = {}
     for row in fv3_kernels:
         name = row[KernelReportIndexing.NAME.value]
@@ -343,9 +344,27 @@ if __name__ == "__main__":
     )
 
     # Final summary print
+    percentage_of_kernel_time = (
+        total_gpu_kernel_time_in_ms / timestep_time_in_ms
+    ) * 100.0
+    percentage_of_python_overhead_time = (
+        (timestep_time_in_ms - total_gpu_kernel_time_in_ms) / timestep_time_in_ms
+    ) * 100.0
+    percentage_of_python_without_haloex_overhead_time = (
+        (timestep_time_in_ms - total_gpu_kernel_time_in_ms - halo_ex_time_in_ms)
+        / timestep_time_in_ms
+    ) * 100.0
     print(
-        f"==== SUMMARY ====\n"
+        "==== SUMMARY ====\n"
         f"Timestep time in ms: {timestep_time_in_ms:.2f}\n"
+        f"  GPU kernel time (all): {total_gpu_kernel_time_in_ms:.2f}"
+        f"({percentage_of_kernel_time:.2f}%)\n"
+        f"  CPU overhead (Timestep time-All GPU kernels time): "
+        f"{timestep_time_in_ms-total_gpu_kernel_time_in_ms:.2f}"
+        f"({percentage_of_python_overhead_time:.2f}%)\n"
+        f"  CPU overhead without halo ex: "
+        f"{timestep_time_in_ms-total_gpu_kernel_time_in_ms-halo_ex_time_in_ms:.2f}"
+        f"({percentage_of_python_without_haloex_overhead_time:.2f}%)\n"
         f"Unique kernels: {len(unique_fv3_kernel_timings)}\n"
         f"CUDA Kernel calls:\n"
         f"  FV3 {fv3_kernels_count}/{all_kernels_count}\n"
