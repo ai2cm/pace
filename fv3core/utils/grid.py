@@ -7,6 +7,7 @@ from gt4py import gtscript
 
 import fv3core.utils.global_config as global_config
 import fv3gfs.util as fv3util
+from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
 
 from . import gt4py_utils as utils
 from .typing import FloatFieldIJ, FloatFieldK, Index3D
@@ -358,6 +359,41 @@ class Grid:
             return self.is_ - 1, self.js - 1
         else:
             return 0, 0
+
+    def get_halo_update_spec(
+        self,
+        shape,
+        origin,
+        halo_points,
+        dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+    ) -> QuantityHaloSpec:
+        """Build memory specifications for the halo update."""
+
+        # TEMPORARY: we do a nasty temporary allocation here to read in the hardware
+        # memory layout. Further work in GT4PY will allow for deferred allocation
+        # which will give access to those information while making sure
+        # we don't allocate
+        # Refactor is filed in ticket DSL-820
+
+        temp_storage = utils.make_storage_from_shape(shape, origin)
+        temp_quantity = self.quantity_wrap(temp_storage, dims=dims)
+
+        spec = QuantityHaloSpec(
+            halo_points,
+            temp_quantity.data.strides,
+            temp_quantity.data.itemsize,
+            temp_quantity.data.shape,
+            temp_quantity.metadata.origin,
+            temp_quantity.metadata.extent,
+            temp_quantity.metadata.dims,
+            temp_quantity.np,
+            temp_quantity.metadata.dtype,
+        )
+
+        del temp_storage
+        del temp_quantity
+
+        return spec
 
     @property
     def grid_indexing(self) -> "GridIndexing":

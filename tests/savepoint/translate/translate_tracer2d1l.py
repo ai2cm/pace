@@ -1,6 +1,7 @@
 import pytest
 
 import fv3core._config as spec
+import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.stencils.tracer_2d_1l
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
@@ -41,7 +42,7 @@ class TranslateTracer2D1L(ParallelTranslate):
             inputs["tracers"], inputs.pop("nq")
         )
         self.tracer_advection = fv3core.stencils.tracer_2d_1l.TracerAdvection(
-            communicator, spec.namelist
+            communicator, spec.namelist, fv_dynamics.DynamicalCore.NQ
         )
         self.tracer_advection(**inputs)
         inputs[

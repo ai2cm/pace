@@ -122,7 +122,9 @@ class TracerAdvection:
     Corresponds to tracer_2D_1L in the Fortran code.
     """
 
-    def __init__(self, comm: fv3gfs.util.CubedSphereCommunicator, namelist):
+    def __init__(
+        self, comm: fv3gfs.util.CubedSphereCommunicator, namelist, tracers_count
+    ):
         self.comm = comm
         self.grid = spec.grid
         self._do_halo_exchange = global_config.get_do_halo_exchange()
@@ -182,6 +184,12 @@ class TracerAdvection:
         # self._cmax_1 = FrozenStencil(cmax_stencil1)
         # self._cmax_2 = FrozenStencil(cmax_stencil2)
 
+        # Setup halo updater for tracers
+        tracer_halo_spec = self.grid.get_halo_update_spec(shape, origin, utils.halo)
+        self._tracers_halo_updater = self.comm.get_scalar_halo_updater(
+            [tracer_halo_spec] * tracers_count
+        )
+
     def __call__(self, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt):
         # start HALO update on q (in dyn_core in fortran -- just has started when
         # this function is called...)
@@ -238,13 +246,8 @@ class TracerAdvection:
                 n_split,
             )
 
-        reqs = []
         if self._do_halo_exchange:
-            reqs.clear()
-            for q in tracers.values():
-                reqs.append(self.comm.start_halo_update(q, n_points=utils.halo))
-            for req in reqs:
-                req.wait()
+            self._tracers_halo_updater.update(tracers.values())
 
         dp2 = self._tmp_dp
 
@@ -279,11 +282,6 @@ class TracerAdvection:
                 )
             if not last_call:
                 if self._do_halo_exchange:
-                    reqs.clear()
-                    for q in tracers.values():
-                        reqs.append(self.comm.start_halo_update(q, n_points=utils.halo))
-                    for req in reqs:
-                        req.wait()
-
+                    self._tracers_halo_updater.update(tracers.values())
                 # use variable assignment to avoid a data copy
                 dp1, dp2 = dp2, dp1

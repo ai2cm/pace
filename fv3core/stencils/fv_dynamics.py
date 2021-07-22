@@ -17,6 +17,7 @@ from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
 from fv3core.utils.typing import FloatField, FloatFieldK
+from fv3gfs.util.halo_updater import HaloUpdater
 
 
 def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatField):
@@ -103,6 +104,7 @@ def post_remap(
     namelist,
     hyperdiffusion: HyperdiffusionDamping,
     set_omega_stencil: FrozenStencil,
+    omega_halo_updater: HaloUpdater,
 ):
     grid = grid
     if not namelist.hydrostatic:
@@ -120,7 +122,7 @@ def post_remap(
             if grid.rank == 0:
                 print("Del2Cubed")
         if global_config.get_do_halo_exchange():
-            comm.halo_update(state.omga_quantity, n_points=utils.halo)
+            omega_halo_updater.update([state.omga_quantity])
         hyperdiffusion(state.omga, 0.18 * grid.da_min)
 
 
@@ -278,7 +280,9 @@ class DynamicalCore:
         self.namelist = namelist
         self.do_halo_exchange = global_config.get_do_halo_exchange()
 
-        self.tracer_advection = tracer_2d_1l.TracerAdvection(comm, namelist)
+        self.tracer_advection = tracer_2d_1l.TracerAdvection(
+            comm, namelist, DynamicalCore.NQ
+        )
         self._ak = ak.storage
         self._bk = bk.storage
         self._phis = phis.storage
@@ -331,6 +335,18 @@ class DynamicalCore:
         self._lagrangian_to_eulerian_obj = LagrangianToEulerian(
             self.grid, namelist, DynamicalCore.NQ, self._pfull
         )
+
+        phis_spec = self.grid.get_halo_update_spec(
+            phis.data.shape, phis.origin, utils.halo, phis.dims
+        )
+        self._phis_halo_updater = self.comm.get_scalar_halo_updater([phis_spec])
+
+        full_xyz_spec = self.grid.get_halo_update_spec(
+            self.grid.domain_shape_full(add=(1, 1, 1)),
+            self.grid.compute_origin(),
+            utils.halo,
+        )
+        self._omega_halo_updater = self.comm.get_scalar_halo_updater([full_xyz_spec])
 
     def step_dynamics(
         self,
@@ -388,7 +404,7 @@ class DynamicalCore:
         state.bk = self._bk
         last_step = False
         if self.do_halo_exchange:
-            self.comm.halo_update(state.phis_quantity, n_points=utils.halo)
+            self._phis_halo_updater.update([state.phis_quantity])
         compute_preamble(
             state,
             self.grid,
@@ -462,6 +478,7 @@ class DynamicalCore:
                         self.namelist,
                         self._hyperdiffusion,
                         self._set_omega_stencil,
+                        self._omega_halo_updater,
                     )
         wrapup(
             state,
