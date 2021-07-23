@@ -724,8 +724,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                     RuntimeError("CUDA nvrtc failed")
                 else:
                     pack_scalar_f64_kernel(
-                        (blocks,),
                         (grid_x,),
+                        (blocks,),
                         (
                             quantity.data[:],  # source_array
                             cu_kernel_args.x_send_indices,  # indices
@@ -776,8 +776,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                     RuntimeError("CUDA nvrtc failed")
                 else:
                     pack_vector_f64_kernel(
-                        (blocks,),
                         (grid_x,),
+                        (blocks,),
                         (
                             quantity_x.data[:],  # source_array_x
                             quantity_y.data[:],  # source_array_y
@@ -842,8 +842,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                     RuntimeError("CUDA nvrtc failed")
                 else:
                     unpack_scalar_f64_kernel(
-                        (blocks,),
                         (grid_x,),
+                        (blocks,),
                         (
                             self._unpack_buffer.array,  # source_buffer
                             cu_kernel_args.x_recv_indices,  # indices
@@ -895,8 +895,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                     RuntimeError("CUDA nvrtc failed")
                 else:
                     unpack_vector_f64_kernel(
-                        (blocks,),
                         (grid_x,),
+                        (blocks,),
                         (
                             self._unpack_buffer.array,
                             cu_kernel_args.x_recv_indices,  # indices_x
