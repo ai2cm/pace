@@ -1,10 +1,3 @@
-import numpy as np
-from fv3gfs.util.quantity import Quantity
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.typing import FloatField, IntField, Int, Float
-import fv3gfs.util
-from fv3gfs.physics.global_constants import *
-from fv3gfs.physics.functions.microphysics_funcs import *
 from gt4py.gtscript import (
     PARALLEL,
     FORWARD,
@@ -13,68 +6,219 @@ from gt4py.gtscript import (
     horizontal,
     interval,
 )
-from fv3core.decorators import FrozenStencil
+from fv3gfs.physics.global_config import *
+from fv3gfs.physics.functions.microphysics_funcs import *
+import gt4py.gtscript as gtscript
+import gt4py as gt
+import math as mt
+import fv3gfs.util as fv3util
+from fv3gfs.physics.global_constants import *
+from copy import deepcopy
+
+# [TODO:EW] This needs to be cleaned up
+INT_VARS = ["iie", "kke", "kbot", "seconds", "lradar", "reset"]
+FLT_VARS = [
+    "qv1",
+    "ql1",
+    "qr1",
+    "qg1",
+    "qa1",
+    "qn1",
+    "pt",
+    "uin",
+    "vin",
+    "dz",
+    "delp",
+    "area",
+    "dt_in",
+    "land",
+    "p123",
+    "qi",
+    "qs",
+    "qv_dt",
+    "ql_dt",
+    "qr_dt",
+    "qi_dt",
+    "qs_dt",
+    "qg_dt",
+    "qa_dt",
+    "pt_dt",
+    "w",
+    "udt",
+    "vdt",
+    "rain0",
+    "snow0",
+    "ice0",
+    "graupel0",
+    "refl",
+]
 
 
+def scale_dataset(data, factor):
+    divider = factor[0]
+    multiplier = factor[1]
+
+    do_divide = divider < 1.0
+
+    scaled_data = {}
+
+    for var in data:
+
+        data_var = data[var]
+        if isinstance(data_var, np.ndarray):
+            ndim = data_var.ndim
+        else:
+            ndim = 0
+
+        if ndim == 3:
+
+            if do_divide:
+                data_var = data_var[: DTYPE_INT(len(data_var) * divider), :, :]
+
+            scaled_data[var] = np.tile(data_var.data, (multiplier, 1, 1))
+
+        elif ndim == 2:
+
+            if do_divide:
+                data_var = data_var[: DTYPE_INT(len(data_var) * divider), :]
+
+            scaled_data[var] = np.tile(data_var.data, (multiplier, 1))
+
+        elif ndim == 1:
+
+            if do_divide:
+                data_var = data_var[: DTYPE_INT(len(data_var) * divider)]
+
+            scaled_data[var] = np.tile(data_var.data, multiplier)
+
+        elif ndim == 0:
+
+            if var == "iie":
+                scaled_data[var] = DTYPE_INT(data[var] * multiplier * divider)
+            else:
+                if var in INT_VARS:
+                    scaled_data[var] = DTYPE_INT(data[var])
+                elif var in FLT_VARS:
+                    scaled_data[var] = DTYPE_FLT(data[var])
+                else:
+                    scaled_data[var] = data[var]
+
+    return scaled_data
+
+
+def numpy_dict_to_gt4py_dict(np_dict):
+
+    shape = np_dict["qi1"].shape
+    gt4py_dict = {}
+
+    for var in np_dict:
+
+        data = np_dict[var]
+        if isinstance(data, np.ndarray):
+            ndim = data.ndim
+        else:
+            ndim = 0
+
+        if (ndim > 0) and (ndim <= 3) and (data.size >= 2):
+
+            reshaped_data = np.empty(shape)
+
+            if ndim == 1:  # 1D array (i-dimension)
+                reshaped_data[...] = data[:, np.newaxis, np.newaxis]
+            elif ndim == 2:  # 2D array (i-dimension, j-dimension)
+                reshaped_data[...] = data[:, :, np.newaxis]
+            elif ndim == 3:  # 3D array (i-dimension, j-dimension, k-dimension)
+                reshaped_data[...] = data[...]
+
+            dtype = DTYPE_INT if var in INT_VARS else DTYPE_FLT
+            gt4py_dict[var] = gt.storage.from_array(
+                reshaped_data, BACKEND, DEFAULT_ORIGIN, dtype=dtype
+            )
+
+        else:  # Scalars
+
+            gt4py_dict[var] = deepcopy(data)
+
+    return gt4py_dict
+
+
+def view_gt4py_storage(gt4py_dict):
+
+    np_dict = {}
+
+    for var in gt4py_dict:
+
+        data = gt4py_dict[var]
+
+        # ~ if not isinstance(data, np.ndarray): data.synchronize()
+        if BACKEND == "gtcuda":
+            data.synchronize()
+
+        np_dict[var] = data.view(np.ndarray)
+
+    return np_dict
+
+
+@gtscript.stencil(backend=BACKEND)
 def fields_init(
-    land: FloatField,
-    area: FloatField,
-    h_var: FloatField,
-    rh_adj: FloatField,
-    rh_rain: FloatField,
-    graupel: FloatField,
-    ice: FloatField,
-    rain: FloatField,
-    snow: FloatField,
-    qa: FloatField,
-    qg: FloatField,
-    qi: FloatField,
-    ql: FloatField,
-    qn: FloatField,
-    qr: FloatField,
-    qs: FloatField,
-    qv: FloatField,
-    pt: FloatField,
-    delp: FloatField,
-    dz: FloatField,
-    qgz: FloatField,
-    qiz: FloatField,
-    qlz: FloatField,
-    qrz: FloatField,
-    qsz: FloatField,
-    qvz: FloatField,
-    tz: FloatField,
-    qi_dt: FloatField,
-    qs_dt: FloatField,
-    uin: FloatField,
-    vin: FloatField,
-    qa0: FloatField,
-    qg0: FloatField,
-    qi0: FloatField,
-    ql0: FloatField,
-    qr0: FloatField,
-    qs0: FloatField,
-    qv0: FloatField,
-    t0: FloatField,
-    dp0: FloatField,
-    den0: FloatField,
-    dz0: FloatField,
-    u0: FloatField,
-    v0: FloatField,
-    dp1: FloatField,
-    p1: FloatField,
-    u1: FloatField,
-    v1: FloatField,
-    ccn: FloatField,
-    c_praut: FloatField,
-    use_ccn: Int,
-    c_air: Float,
-    c_vap: Float,
-    d0_vap: Float,
-    lv00: Float,
-    dt_in: Float,
-    rdt: Float,
-    cpaut: Float,
+    land: FIELD_FLT,
+    area: FIELD_FLT,
+    h_var: FIELD_FLT,
+    rh_adj: FIELD_FLT,
+    rh_rain: FIELD_FLT,
+    graupel: FIELD_FLT,
+    ice: FIELD_FLT,
+    rain: FIELD_FLT,
+    snow: FIELD_FLT,
+    qa: FIELD_FLT,
+    qg: FIELD_FLT,
+    qi: FIELD_FLT,
+    ql: FIELD_FLT,
+    qn: FIELD_FLT,
+    qr: FIELD_FLT,
+    qs: FIELD_FLT,
+    qv: FIELD_FLT,
+    pt: FIELD_FLT,
+    delp: FIELD_FLT,
+    dz: FIELD_FLT,
+    qgz: FIELD_FLT,
+    qiz: FIELD_FLT,
+    qlz: FIELD_FLT,
+    qrz: FIELD_FLT,
+    qsz: FIELD_FLT,
+    qvz: FIELD_FLT,
+    tz: FIELD_FLT,
+    qi_dt: FIELD_FLT,
+    qs_dt: FIELD_FLT,
+    uin: FIELD_FLT,
+    vin: FIELD_FLT,
+    qa0: FIELD_FLT,
+    qg0: FIELD_FLT,
+    qi0: FIELD_FLT,
+    ql0: FIELD_FLT,
+    qr0: FIELD_FLT,
+    qs0: FIELD_FLT,
+    qv0: FIELD_FLT,
+    t0: FIELD_FLT,
+    dp0: FIELD_FLT,
+    den0: FIELD_FLT,
+    dz0: FIELD_FLT,
+    u0: FIELD_FLT,
+    v0: FIELD_FLT,
+    dp1: FIELD_FLT,
+    p1: FIELD_FLT,
+    u1: FIELD_FLT,
+    v1: FIELD_FLT,
+    ccn: FIELD_FLT,
+    c_praut: FIELD_FLT,
+    use_ccn: DTYPE_INT,
+    c_air: DTYPE_FLT,
+    c_vap: DTYPE_FLT,
+    d0_vap: DTYPE_FLT,
+    lv00: DTYPE_FLT,
+    dt_in: DTYPE_FLT,
+    rdt: DTYPE_FLT,
+    cpaut: DTYPE_FLT,
 ):
 
     with computation(PARALLEL), interval(...):
@@ -275,50 +419,51 @@ def fields_init(
                 qvz = qvz - dq / dp1
 
 
+@gtscript.stencil(backend=BACKEND)
 def warm_rain(
-    h_var: FloatField,
-    rain: FloatField,
-    qgz: FloatField,
-    qiz: FloatField,
-    qlz: FloatField,
-    qrz: FloatField,
-    qsz: FloatField,
-    qvz: FloatField,
-    tz: FloatField,
-    den: FloatField,
-    denfac: FloatField,
-    w: FloatField,
-    t0: FloatField,
-    den0: FloatField,
-    dz0: FloatField,
-    dz1: FloatField,
-    dp1: FloatField,
-    m1: FloatField,
-    vtrz: FloatField,
-    ccn: FloatField,
-    c_praut: FloatField,
-    m1_sol: FloatField,
-    m2_rain: FloatField,
-    m2_sol: FloatField,
-    is_first: Int,
-    do_sedi_w: Int,
-    p_nonhydro: Int,
-    use_ccn: Int,
-    c_air: Float,
-    c_vap: Float,
-    d0_vap: Float,
-    lv00: Float,
-    fac_rc: Float,
-    cracw: Float,
-    crevp_0: Float,
-    crevp_1: Float,
-    crevp_2: Float,
-    crevp_3: Float,
-    crevp_4: Float,
-    t_wfr: Float,
-    so3: Float,
-    dt_rain: Float,
-    zs: Float,
+    h_var: FIELD_FLT,
+    rain: FIELD_FLT,
+    qgz: FIELD_FLT,
+    qiz: FIELD_FLT,
+    qlz: FIELD_FLT,
+    qrz: FIELD_FLT,
+    qsz: FIELD_FLT,
+    qvz: FIELD_FLT,
+    tz: FIELD_FLT,
+    den: FIELD_FLT,
+    denfac: FIELD_FLT,
+    w: FIELD_FLT,
+    t0: FIELD_FLT,
+    den0: FIELD_FLT,
+    dz0: FIELD_FLT,
+    dz1: FIELD_FLT,
+    dp1: FIELD_FLT,
+    m1: FIELD_FLT,
+    vtrz: FIELD_FLT,
+    ccn: FIELD_FLT,
+    c_praut: FIELD_FLT,
+    m1_sol: FIELD_FLT,
+    m2_rain: FIELD_FLT,
+    m2_sol: FIELD_FLT,
+    is_first: DTYPE_INT,
+    do_sedi_w: DTYPE_INT,
+    p_nonhydro: DTYPE_INT,
+    use_ccn: DTYPE_INT,
+    c_air: DTYPE_FLT,
+    c_vap: DTYPE_FLT,
+    d0_vap: DTYPE_FLT,
+    lv00: DTYPE_FLT,
+    fac_rc: DTYPE_FLT,
+    cracw: DTYPE_FLT,
+    crevp_0: DTYPE_FLT,
+    crevp_1: DTYPE_FLT,
+    crevp_2: DTYPE_FLT,
+    crevp_3: DTYPE_FLT,
+    crevp_4: DTYPE_FLT,
+    t_wfr: DTYPE_FLT,
+    so3: DTYPE_FLT,
+    dt_rain: DTYPE_FLT,
+    zs: DTYPE_FLT,
 ):
 
     with computation(PARALLEL), interval(...):
@@ -715,34 +860,35 @@ def warm_rain(
             m1 = m1 + m1_rain + m1_sol
 
 
+@gtscript.stencil(backend=BACKEND)
 def sedimentation(
-    graupel: FloatField,
-    ice: FloatField,
-    rain: FloatField,
-    snow: FloatField,
-    qgz: FloatField,
-    qiz: FloatField,
-    qlz: FloatField,
-    qrz: FloatField,
-    qsz: FloatField,
-    qvz: FloatField,
-    tz: FloatField,
-    den: FloatField,
-    w: FloatField,
-    dz1: FloatField,
-    dp1: FloatField,
-    vtgz: FloatField,
-    vtsz: FloatField,
-    m1_sol: FloatField,
-    do_sedi_w: Int,
-    c_air: Float,
-    c_vap: Float,
-    d0_vap: Float,
-    lv00: Float,
-    log_10: Float,
-    zs: Float,
-    dts: Float,
-    fac_imlt: Float,
+    graupel: FIELD_FLT,
+    ice: FIELD_FLT,
+    rain: FIELD_FLT,
+    snow: FIELD_FLT,
+    qgz: FIELD_FLT,
+    qiz: FIELD_FLT,
+    qlz: FIELD_FLT,
+    qrz: FIELD_FLT,
+    qsz: FIELD_FLT,
+    qvz: FIELD_FLT,
+    tz: FIELD_FLT,
+    den: FIELD_FLT,
+    w: FIELD_FLT,
+    dz1: FIELD_FLT,
+    dp1: FIELD_FLT,
+    vtgz: FIELD_FLT,
+    vtsz: FIELD_FLT,
+    m1_sol: FIELD_FLT,
+    do_sedi_w: DTYPE_INT,
+    c_air: DTYPE_FLT,
+    c_vap: DTYPE_FLT,
+    d0_vap: DTYPE_FLT,
+    lv00: DTYPE_FLT,
+    log_10: DTYPE_FLT,
+    zs: DTYPE_FLT,
+    dts: DTYPE_FLT,
+    fac_imlt: DTYPE_FLT,
 ):
 
     with computation(PARALLEL), interval(...):
@@ -1399,76 +1545,77 @@ def sedimentation(
             ) / (cvn + c_ice * m1_sol)
 
 
+@gtscript.stencil(backend=BACKEND)
 def icloud(
-    h_var: FloatField,
-    rh_adj: FloatField,
-    rh_rain: FloatField,
-    qaz: FloatField,
-    qgz: FloatField,
-    qiz: FloatField,
-    qlz: FloatField,
-    qrz: FloatField,
-    qsz: FloatField,
-    qvz: FloatField,
-    tz: FloatField,
-    den: FloatField,
-    denfac: FloatField,
-    p1: FloatField,
-    vtgz: FloatField,
-    vtrz: FloatField,
-    vtsz: FloatField,
-    c_air: Float,
-    c_vap: Float,
-    d0_vap: Float,
-    lv00: Float,
-    cracs: Float,
-    csacr: Float,
-    cgacr: Float,
-    cgacs: Float,
-    acco_00: Float,
-    acco_01: Float,
-    acco_02: Float,
-    acco_03: Float,
-    acco_10: Float,
-    acco_11: Float,
-    acco_12: Float,
-    acco_13: Float,
-    acco_20: Float,
-    acco_21: Float,
-    acco_22: Float,
-    acco_23: Float,
-    csacw: Float,
-    csaci: Float,
-    cgacw: Float,
-    cgaci: Float,
-    cracw: Float,
-    cssub_0: Float,
-    cssub_1: Float,
-    cssub_2: Float,
-    cssub_3: Float,
-    cssub_4: Float,
-    cgfr_0: Float,
-    cgfr_1: Float,
-    csmlt_0: Float,
-    csmlt_1: Float,
-    csmlt_2: Float,
-    csmlt_3: Float,
-    csmlt_4: Float,
-    cgmlt_0: Float,
-    cgmlt_1: Float,
-    cgmlt_2: Float,
-    cgmlt_3: Float,
-    cgmlt_4: Float,
-    ces0: Float,
-    tice0: Float,
-    t_wfr: Float,
-    dts: Float,
-    rdts: Float,
-    fac_i2s: Float,
-    fac_g2v: Float,
-    fac_v2g: Float,
-    fac_imlt: Float,
-    fac_l2v: Float,
+    h_var: FIELD_FLT,
+    rh_adj: FIELD_FLT,
+    rh_rain: FIELD_FLT,
+    qaz: FIELD_FLT,
+    qgz: FIELD_FLT,
+    qiz: FIELD_FLT,
+    qlz: FIELD_FLT,
+    qrz: FIELD_FLT,
+    qsz: FIELD_FLT,
+    qvz: FIELD_FLT,
+    tz: FIELD_FLT,
+    den: FIELD_FLT,
+    denfac: FIELD_FLT,
+    p1: FIELD_FLT,
+    vtgz: FIELD_FLT,
+    vtrz: FIELD_FLT,
+    vtsz: FIELD_FLT,
+    c_air: DTYPE_FLT,
+    c_vap: DTYPE_FLT,
+    d0_vap: DTYPE_FLT,
+    lv00: DTYPE_FLT,
+    cracs: DTYPE_FLT,
+    csacr: DTYPE_FLT,
+    cgacr: DTYPE_FLT,
+    cgacs: DTYPE_FLT,
+    acco_00: DTYPE_FLT,
+    acco_01: DTYPE_FLT,
+    acco_02: DTYPE_FLT,
+    acco_03: DTYPE_FLT,
+    acco_10: DTYPE_FLT,
+    acco_11: DTYPE_FLT,
+    acco_12: DTYPE_FLT,
+    acco_13: DTYPE_FLT,
+    acco_20: DTYPE_FLT,
+    acco_21: DTYPE_FLT,
+    acco_22: DTYPE_FLT,
+    acco_23: DTYPE_FLT,
+    csacw: DTYPE_FLT,
+    csaci: DTYPE_FLT,
+    cgacw: DTYPE_FLT,
+    cgaci: DTYPE_FLT,
+    cracw: DTYPE_FLT,
+    cssub_0: DTYPE_FLT,
+    cssub_1: DTYPE_FLT,
+    cssub_2: DTYPE_FLT,
+    cssub_3: DTYPE_FLT,
+    cssub_4: DTYPE_FLT,
+    cgfr_0: DTYPE_FLT,
+    cgfr_1: DTYPE_FLT,
+    csmlt_0: DTYPE_FLT,
+    csmlt_1: DTYPE_FLT,
+    csmlt_2: DTYPE_FLT,
+    csmlt_3: DTYPE_FLT,
+    csmlt_4: DTYPE_FLT,
+    cgmlt_0: DTYPE_FLT,
+    cgmlt_1: DTYPE_FLT,
+    cgmlt_2: DTYPE_FLT,
+    cgmlt_3: DTYPE_FLT,
+    cgmlt_4: DTYPE_FLT,
+    ces0: DTYPE_FLT,
+    tice0: DTYPE_FLT,
+    t_wfr: DTYPE_FLT,
+    dts: DTYPE_FLT,
+    rdts: DTYPE_FLT,
+    fac_i2s: DTYPE_FLT,
+    fac_g2v: DTYPE_FLT,
+    fac_v2g: DTYPE_FLT,
+    fac_imlt: DTYPE_FLT,
+    fac_l2v: DTYPE_FLT,
 ):
 
     with computation(PARALLEL), interval(...):
@@ -1641,50 +1788,51 @@ def icloud(
         )
 
 
+@gtscript.stencil(backend=BACKEND)
 def fields_update(
-    graupel: FloatField,
-    ice: FloatField,
-    rain: FloatField,
-    snow: FloatField,
-    qaz: FloatField,
-    qgz: FloatField,
-    qiz: FloatField,
-    qlz: FloatField,
-    qrz: FloatField,
-    qsz: FloatField,
-    qvz: FloatField,
-    tz: FloatField,
-    udt: FloatField,
-    vdt: FloatField,
-    qa_dt: FloatField,
-    qg_dt: FloatField,
-    qi_dt: FloatField,
-    ql_dt: FloatField,
-    qr_dt: FloatField,
-    qs_dt: FloatField,
-    qv_dt: FloatField,
-    pt_dt: FloatField,
-    qa0: FloatField,
-    qg0: FloatField,
-    qi0: FloatField,
-    ql0: FloatField,
-    qr0: FloatField,
-    qs0: FloatField,
-    qv0: FloatField,
-    t0: FloatField,
-    dp0: FloatField,
-    u0: FloatField,
-    v0: FloatField,
-    dp1: FloatField,
-    u1: FloatField,
-    v1: FloatField,
-    m1: FloatField,
-    m2_rain: FloatField,
-    m2_sol: FloatField,
-    ntimes: Int,
-    c_air: Float,
-    c_vap: Float,
-    rdt: Float,
+    graupel: FIELD_FLT,
+    ice: FIELD_FLT,
+    rain: FIELD_FLT,
+    snow: FIELD_FLT,
+    qaz: FIELD_FLT,
+    qgz: FIELD_FLT,
+    qiz: FIELD_FLT,
+    qlz: FIELD_FLT,
+    qrz: FIELD_FLT,
+    qsz: FIELD_FLT,
+    qvz: FIELD_FLT,
+    tz: FIELD_FLT,
+    udt: FIELD_FLT,
+    vdt: FIELD_FLT,
+    qa_dt: FIELD_FLT,
+    qg_dt: FIELD_FLT,
+    qi_dt: FIELD_FLT,
+    ql_dt: FIELD_FLT,
+    qr_dt: FIELD_FLT,
+    qs_dt: FIELD_FLT,
+    qv_dt: FIELD_FLT,
+    pt_dt: FIELD_FLT,
+    qa0: FIELD_FLT,
+    qg0: FIELD_FLT,
+    qi0: FIELD_FLT,
+    ql0: FIELD_FLT,
+    qr0: FIELD_FLT,
+    qs0: FIELD_FLT,
+    qv0: FIELD_FLT,
+    t0: FIELD_FLT,
+    dp0: FIELD_FLT,
+    u0: FIELD_FLT,
+    v0: FIELD_FLT,
+    dp1: FIELD_FLT,
+    u1: FIELD_FLT,
+    v1: FIELD_FLT,
+    m1: FIELD_FLT,
+    m2_rain: FIELD_FLT,
+    m2_sol: FIELD_FLT,
+    ntimes: DTYPE_INT,
+    c_air: DTYPE_FLT,
+    c_vap: DTYPE_FLT,
+    rdt: DTYPE_FLT,
 ):
 
     with computation(PARALLEL), interval(...):
@@ -1754,328 +1902,705 @@ def fields_update(
         graupel = graupel * convt
 
 
-class MicrophysicsState:
-    def __init__(
-        self,
-        grid,
-        air_temperature: Quantity,
-        specific_humidity: Quantity,
-        cloud_water_mixing_ratio: Quantity,
-        rain_mixing_ratio: Quantity,
-        cloud_ice_mixing_ratio: Quantity,
-        snow_mixing_ratio: Quantity,
-        graupel_mixing_ratio: Quantity,
-        cloud_fraction: Quantity,
-        eastward_wind: Quantity,
-        northward_wind: Quantity,
-        pressure_thickness_of_atmospheric_layer: Quantity,
-        vertical_pressure_velocity: Quantity,
-    ):
-        self.grid = grid
-        self.air_temperature = air_temperature  # pt
-        self.specific_humidity = specific_humidity  # qvapor
-        self.cloud_water_mixing_ratio = cloud_water_mixing_ratio  # qliquid
-        self.rain_mixing_ratio = rain_mixing_ratio  # qrain
-        self.cloud_ice_mixing_ratio = cloud_ice_mixing_ratio  # qice
-        self.snow_mixing_ratio = snow_mixing_ratio  # qsnow
-        self.graupel_mixing_ratio = graupel_mixing_ratio  # qgraupel
-        self.cloud_fraction = cloud_fraction  # q
-        self.eastward_wind = eastward_wind  # ua
-        self.northward_wind = northward_wind  # va
-        self.pressure_thickness_of_atmospheric_layer = (
-            pressure_thickness_of_atmospheric_layer  # delp
+c_air = None
+c_vap = None
+d0_vap = None  # The same as dc_vap, except that cp_vap can be cp_vap or cv_vap
+lv00 = None  # The same as lv0, except that cp_vap can be cp_vap or cv_vap
+fac_rc = None
+cracs = None
+csacr = None
+cgacr = None
+cgacs = None
+acco = None
+csacw = None
+csaci = None
+cgacw = None
+cgaci = None
+cracw = None
+cssub = None
+crevp = None
+cgfr = None
+csmlt = None
+cgmlt = None
+ces0 = None
+log_10 = None
+tice0 = None
+t_wfr = None
+
+do_sedi_w = 1  # Transport of vertical motion in sedimentation
+do_setup = True  # Setup constants and parameters
+p_nonhydro = 0  # Perform hydrosatic adjustment on air density
+use_ccn = 1  # Must be true when prog_ccn is false
+
+
+def setupm():
+
+    # Global variables
+    global fac_rc
+    global cracs
+    global csacr
+    global cgacr
+    global cgacs
+    global acco
+    global csacw
+    global csaci
+    global cgacw
+    global cgaci
+    global cracw
+    global cssub
+    global crevp
+    global cgfr
+    global csmlt
+    global cgmlt
+    global ces0
+
+    gam263 = 1.456943
+    gam275 = 1.608355
+    gam290 = 1.827363
+    gam325 = 2.54925
+    gam350 = 3.323363
+    gam380 = 4.694155
+
+    # Intercept parameters
+    rnzs = 3.0e6
+    rnzr = 8.0e6
+    rnzg = 4.0e6
+
+    # Density parameters
+    acc = np.array([5.0, 2.0, 0.5])
+
+    pie = 4.0 * mt.atan(1.0)
+
+    # S. Klein's formular (eq 16) from am2
+    fac_rc = (4.0 / 3.0) * pie * rhor * rthresh ** 3
+
+    vdifu = 2.11e-5
+    tcond = 2.36e-2
+
+    visk = 1.259e-5
+    hlts = 2.8336e6
+    hltc = 2.5e6
+    hltf = 3.336e5
+
+    ch2o = 4.1855e3
+
+    pisq = pie * pie
+    scm3 = (visk / vdifu) ** (1.0 / 3.0)
+
+    cracs = pisq * rnzr * rnzs * rhos
+    csacr = pisq * rnzr * rnzs * rhor
+    cgacr = pisq * rnzr * rnzg * rhor
+    cgacs = pisq * rnzg * rnzs * rhos
+    cgacs = cgacs * c_pgacs
+
+    act = np.empty(8)
+    act[0] = pie * rnzs * rhos
+    act[1] = pie * rnzr * rhor
+    act[5] = pie * rnzg * rhog
+    act[2] = act[1]
+    act[3] = act[0]
+    act[4] = act[1]
+    act[6] = act[0]
+    act[7] = act[5]
+
+    acco = np.empty((3, 4))
+    for i in range(3):
+        for k in range(4):
+            acco[i, k] = acc[i] / (
+                act[2 * k] ** ((6 - i) * 0.25) * act[2 * k + 1] ** ((i + 1) * 0.25)
+            )
+
+    gcon = 40.74 * mt.sqrt(sfcrho)
+
+    # Decreasing csacw to reduce cloud water --- > snow
+    csacw = pie * rnzs * clin * gam325 / (4.0 * act[0] ** 0.8125)
+
+    craci = pie * rnzr * alin * gam380 / (4.0 * act[1] ** 0.95)
+    csaci = csacw * c_psaci
+
+    cgacw = pie * rnzg * gam350 * gcon / (4.0 * act[5] ** 0.875)
+
+    cgaci = cgacw * 0.05
+
+    cracw = craci
+    cracw = c_cracw * cracw
+
+    # Subl and revap: five constants for three separate processes
+    cssub = np.empty(5)
+    cssub[0] = 2.0 * pie * vdifu * tcond * rvgas * rnzs
+    cssub[1] = 0.78 / mt.sqrt(act[0])
+    cssub[2] = 0.31 * scm3 * gam263 * mt.sqrt(clin / visk) / act[0] ** 0.65625
+    cssub[3] = tcond * rvgas
+    cssub[4] = (hlts ** 2) * vdifu
+
+    cgsub = np.empty(5)
+    cgsub[0] = 2.0 * pie * vdifu * tcond * rvgas * rnzg
+    cgsub[1] = 0.78 / mt.sqrt(act[5])
+    cgsub[2] = 0.31 * scm3 * gam275 * mt.sqrt(gcon / visk) / act[5] ** 0.6875
+    cgsub[3] = cssub[3]
+    cgsub[4] = cssub[4]
+
+    crevp = np.empty(5)
+    crevp[0] = 2.0 * pie * vdifu * tcond * rvgas * rnzr
+    crevp[1] = 0.78 / mt.sqrt(act[1])
+    crevp[2] = 0.31 * scm3 * gam290 * mt.sqrt(alin / visk) / act[1] ** 0.725
+    crevp[3] = cssub[3]
+    crevp[4] = hltc ** 2 * vdifu
+
+    cgfr = np.empty(2)
+    cgfr[0] = 20.0e2 * pisq * rnzr * rhor / act[1] ** 1.75
+    cgfr[1] = 0.66
+
+    # smlt: five constants (lin et al. 1983)
+    csmlt = np.empty(5)
+    csmlt[0] = 2.0 * pie * tcond * rnzs / hltf
+    csmlt[1] = 2.0 * pie * vdifu * rnzs * hltc / hltf
+    csmlt[2] = cssub[1]
+    csmlt[3] = cssub[2]
+    csmlt[4] = ch2o / hltf
+
+    # gmlt: five constants
+    cgmlt = np.empty(5)
+    cgmlt[0] = 2.0 * pie * tcond * rnzg / hltf
+    cgmlt[1] = 2.0 * pie * vdifu * rnzg * hltc / hltf
+    cgmlt[2] = cgsub[1]
+    cgmlt[3] = cgsub[2]
+    cgmlt[4] = ch2o / hltf
+
+    es0 = 6.107799961e2  # ~6.1 mb
+    ces0 = eps * es0
+
+
+def gfdl_cloud_microphys_init():
+
+    # Global variables
+    global log_10
+    global tice0
+    global t_wfr
+
+    global do_setup
+
+    if do_setup:
+        setupm()
+        do_setup = False
+
+    log_10 = mt.log(10.0)
+    tice0 = tice - 0.01
+    t_wfr = tice - 40.0
+
+
+def run(input_data):
+    gfdl_cloud_microphys_init()
+    input_data = scale_dataset(input_data, (1.0, 1))
+    input_data = numpy_dict_to_gt4py_dict(input_data)
+    hydrostatic = False
+    phys_hydrostatic = True
+    kks = 0
+    ktop = 0
+    # Scalar input values (-1 for indices, since ported from Fortran)
+    kke = input_data["levs"] - 1  # End of vertical dimension
+    kbot = input_data["levs"] - 1  # Bottom of vertical compute domain
+    dt_in = input_data["dtp_in"]  # Physics time step
+
+    # 2D input arrays
+    area = input_data["area"]  # Cell area
+    land = input_data["land"]  # Land fraction
+    rain = input_data["rain0"]
+    snow = input_data["snow0"]
+    ice = input_data["ice0"]
+    graupel = input_data["graupel0"]
+
+    # 3D input arrays
+    dz = input_data["dz"]
+    delp = input_data["delp"]
+    uin = input_data["uin"]
+    vin = input_data["vin"]
+    qv = input_data["qv1"]
+    ql = input_data["ql1"]
+    qr = input_data["qr1"]
+    qi = input_data["qi1"]
+    qs = input_data["qs1"]
+    qg = input_data["qg1"]
+    qa = input_data["qa1"]
+    qn = input_data["qn1"]
+    p = input_data["p123"]
+    pt = input_data["pt"]
+    qv_dt = input_data["qv_dt"]
+    ql_dt = input_data["ql_dt"]
+    qr_dt = input_data["qr_dt"]
+    qi_dt = input_data["qi_dt"]
+    qs_dt = input_data["qs_dt"]
+    qg_dt = input_data["qg_dt"]
+    qa_dt = input_data["qa_dt"]
+    pt_dt = input_data["pt_dt"]
+    udt = input_data["udt"]
+    vdt = input_data["vdt"]
+    w = input_data["w"]
+    refl_10cm = input_data["refl"]
+
+    # Common 3D shape of all gt4py storages
+    shape = qi.shape
+
+    # 2D local arrays
+    h_var = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    rh_adj = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    rh_rain = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+
+    # 3D local arrays
+    qaz = gt.storage.zeros(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qgz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qiz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qlz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qrz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qsz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qvz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    den = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    denfac = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    tz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qa0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qg0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qi0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    ql0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qr0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qs0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    qv0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    t0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    dp0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    den0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    dz0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    u0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    v0 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    dz1 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    dp1 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    p1 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    u1 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    v1 = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    m1 = gt.storage.zeros(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    vtgz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    vtrz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    vtsz = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    ccn = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    c_praut = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    m1_sol = gt.storage.empty(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    m2_rain = gt.storage.zeros(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+    m2_sol = gt.storage.zeros(BACKEND, DEFAULT_ORIGIN, shape, dtype=DTYPE_FLT)
+
+    # Global variables
+    global c_air
+    global c_vap
+    global d0_vap
+    global lv00
+
+    global do_sedi_w
+    global p_nonhydro
+    global use_ccn
+
+    # Define start and end indices of the vertical dimensions
+    k_s = kks
+    k_e = kke - kks + 1
+
+    # Define heat capacity of dry air and water vapor based on
+    # hydrostatical property
+    if phys_hydrostatic or hydrostatic:
+
+        c_air = cp_air
+        c_vap = cp_vap
+        p_nonhydro = 0
+
+    else:
+
+        c_air = cv_air
+        c_vap = cv_vap
+        p_nonhydro = 1
+
+    d0_vap = c_vap - c_liq
+    lv00 = hlv0 - d0_vap * t_ice
+
+    if hydrostatic:
+        do_sedi_w = 0
+
+    # Define cloud microphysics sub time step
+    mpdt = np.minimum(dt_in, mp_time)
+    rdt = 1.0 / dt_in
+    ntimes = DTYPE_INT(round(dt_in / mpdt))
+
+    # Small time step
+    dts = dt_in / ntimes
+
+    dt_rain = dts * 0.5
+
+    # Calculate cloud condensation nuclei (ccn) based on klein eq. 15
+    cpaut = c_paut * 0.104 * grav / 1.717e-5
+
+    # Set use_ccn to false if prog_ccn is true
+    if prog_ccn == 1:
+        use_ccn = 0
+    exec_info = {}
+    ### Major cloud microphysics ###
+    fields_init(
+        land,
+        area,
+        h_var,
+        rh_adj,
+        rh_rain,
+        graupel,
+        ice,
+        rain,
+        snow,
+        qa,
+        qg,
+        qi,
+        ql,
+        qn,
+        qr,
+        qs,
+        qv,
+        pt,
+        delp,
+        dz,
+        qgz,
+        qiz,
+        qlz,
+        qrz,
+        qsz,
+        qvz,
+        tz,
+        qi_dt,
+        qs_dt,
+        uin,
+        vin,
+        qa0,
+        qg0,
+        qi0,
+        ql0,
+        qr0,
+        qs0,
+        qv0,
+        t0,
+        dp0,
+        den0,
+        dz0,
+        u0,
+        v0,
+        dp1,
+        p1,
+        u1,
+        v1,
+        ccn,
+        c_praut,
+        DTYPE_INT(use_ccn),
+        c_air,
+        c_vap,
+        d0_vap,
+        lv00,
+        dt_in,
+        rdt,
+        cpaut,
+        exec_info=exec_info,
+    )
+    so3 = 7.0 / 3.0
+
+    zs = 0.0
+
+    rdts = 1.0 / dts
+
+    if fast_sat_adj:
+        dt_evap = 0.5 * dts
+    else:
+        dt_evap = dts
+
+    # Define conversion scalar / factor
+    fac_i2s = 1.0 - mt.exp(-dts / tau_i2s)
+    fac_g2v = 1.0 - mt.exp(-dts / tau_g2v)
+    fac_v2g = 1.0 - mt.exp(-dts / tau_v2g)
+    fac_imlt = 1.0 - mt.exp(-0.5 * dts / tau_imlt)
+    fac_l2v = 1.0 - mt.exp(-dt_evap / tau_l2v)
+
+    for n in range(ntimes):
+
+        exec_info = {}
+
+        # Time-split warm rain processes: 1st pass
+        warm_rain(
+            h_var,
+            rain,
+            qgz,
+            qiz,
+            qlz,
+            qrz,
+            qsz,
+            qvz,
+            tz,
+            den,
+            denfac,
+            w,
+            t0,
+            den0,
+            dz0,
+            dz1,
+            dp1,
+            m1,
+            vtrz,
+            ccn,
+            c_praut,
+            m1_sol,
+            m2_rain,
+            m2_sol,
+            DTYPE_INT(1),
+            DTYPE_INT(do_sedi_w),
+            DTYPE_INT(p_nonhydro),
+            DTYPE_INT(use_ccn),
+            c_air,
+            c_vap,
+            d0_vap,
+            lv00,
+            fac_rc,
+            cracw,
+            crevp[0],
+            crevp[1],
+            crevp[2],
+            crevp[3],
+            crevp[4],
+            t_wfr,
+            so3,
+            dt_rain,
+            zs,
+            exec_info=exec_info,
         )
-        self.vertical_pressure_velocity = vertical_pressure_velocity  # omga
+        exec_info = {}
 
-        self.specific_humidity_tendency = self.make_quantity_from_storage()  # qv_dt
-        self.cloud_water_mixing_ratio_tendency = (
-            self.make_quantity_from_storage()
-        )  # ql_dt
-        self.rain_mixing_ratio_tendency = self.make_quantity_from_storage()  # qr_dt
-        self.cloud_ice_mixing_ratio_tendency = (
-            self.make_quantity_from_storage()
-        )  # qi_dt
-        self.snow_mixing_ratio_tendency = self.make_quantity_from_storage()  # qs_dt
-        self.graupel_mixing_ratio_tendency = self.make_quantity_from_storage()  # qg_dt
-        self.cloud_fraction_tendency = self.make_quantity_from_storage()  # qa_dt
-        self.eastward_wind_tendency = self.make_quantity_from_storage()  # udt
-        self.northward_wind_tendency = self.make_quantity_from_storage()  # vdt
-
-    def make_quantity_from_storage(self):
-        origin = self.grid.compute_origin()
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        return self.grid.make_quantity(storage)
-
-
-class Microphysics:
-    def __init__(self, grid, namelist, dt):
-        # [TODO]: many of the "constants" come from namelist, needs to be updated
-        self.gfdl_cloud_microphys_init()
-        self.grid = grid
-        self.namelist = namelist
-        origin = self.grid.compute_origin()
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
-
-        self._hydrostatic = self.namelist.hydrostatic
-        self._kke = self.grid.npz
-        self._kbot = self.grid.npz
-        self._k_s = 0
-        self._k_e = self._kke - self._k_s + 1
-        self._dt_atmos = self.namelist.dt_atmos
-        # Define heat capacity of dry air and water vapor based on
-        # hydrostatical property, [TODO] (EW): investigate why this is hard coded
-        self._c_air = cp_air
-        self._c_vap = cp_vap
-        self._p_nonhydro = 0
-        self._do_vap = self._c_vap - c_liq
-        self._lv00 = hlv0 - self._do_vap * t_ice
-        self._do_sedi_w = 0 if self._hydrostatic else 1
-        # Define cloud microphysics sub time step
-        self._mpdt = min(self._dt_atmos, mp_time)
-        self._rdt = 1.0 / self._dt_atmos
-        self._ntimes = Int(round(self._dt_atmos / self._mpdt))
-        # Small time step
-        self._dts = self._dt_atmos / self._ntimes
-        self._dt_rain = self._dts * 0.5
-        # Calculate cloud condensation nuclei (ccn) based on klein eq. 15
-        self._cpaut = c_paut * 0.104 * grav / 1.717e-5
-        self._use_ccn = 0 if prog_ccn == 1 else 1
-        self._area = self.grid.area
-        self._land = utils.make_storage_from_shape(shape[0:2], origin=origin, init=True)
-        self._rain = utils.make_storage_from_shape(shape[0:2], origin=origin, init=True)
-        self._graupel = utils.make_storage_from_shape(
-            shape[0:2], origin=origin, init=True
+        # Sedimentation of cloud ice, snow, and graupel
+        sedimentation(
+            graupel,
+            ice,
+            rain,
+            snow,
+            qgz,
+            qiz,
+            qlz,
+            qrz,
+            qsz,
+            qvz,
+            tz,
+            den,
+            w,
+            dz1,
+            dp1,
+            vtgz,
+            vtsz,
+            m1_sol,
+            DTYPE_INT(do_sedi_w),
+            c_air,
+            c_vap,
+            d0_vap,
+            lv00,
+            log_10,
+            zs,
+            dts,
+            fac_imlt,
+            exec_info=exec_info,
         )
-        self._ice = utils.make_storage_from_shape(shape[0:2], origin=origin, init=True)
-        self._snow = utils.make_storage_from_shape(shape[0:2], origin=origin, init=True)
+        exec_info = {}
 
-        self._p = utils.make_storage_from_shape(
-            shape, origin=origin, init=True
-        )  # related to dp in dycore, but modified
-        self._w = utils.make_storage_from_shape(
-            shape, origin=origin, init=True
-        )  # related to omga from dycore, but modified
-        # refl_10cm comes from Diag, not clear if this should be updated?
-        self.refl_10cm = utils.make_storage_from_shape(shape, origin=origin, init=True)
-
-        self._h_var = utils.make_storage_from_shape(shape[0:2], origin=origin)
-        self._rh_adj = utils.make_storage_from_shape(shape[0:2], origin=origin)
-        self._rh_rain = utils.make_storage_from_shape(shape[0:2], origin=origin)
-
-        self._qaz = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._qgz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qiz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qlz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qrz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qsz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qvz = utils.make_storage_from_shape(shape, origin=origin)
-        self._den = utils.make_storage_from_shape(shape, origin=origin)
-        self._denfac = utils.make_storage_from_shape(shape, origin=origin)
-        self._tz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qa0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qg0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qi0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._ql0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qr0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qs0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qv0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._t0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._dp0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._den0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._dz0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._u0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._v0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._dz1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._dp1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._p1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._u1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._v1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._m1 = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._vtgz = utils.make_storage_from_shape(shape, origin=origin)
-        self._vtrz = utils.make_storage_from_shape(shape, origin=origin)
-        self._vtsz = utils.make_storage_from_shape(shape, origin=origin)
-        self._ccn = utils.make_storage_from_shape(shape, origin=origin)
-        self._c_praut = utils.make_storage_from_shape(shape, origin=origin)
-        self._m1_sol = utils.make_storage_from_shape(shape, origin=origin)
-        self._m2_rain = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._m2_sol = utils.make_storage_from_shape(shape, origin=origin, init=True)
-
-        self._so3 = 7.0 / 3.0
-        self._zs = 0.0
-        self._rdts = 1.0 / self._dts
-        self._dt_evap = 0.5 * self._dts if fast_sat_adj else self._dts
-        self._fac_i2s = 1.0 - np.exp(-self._dts / tau_i2s)
-        self._fac_g2v = 1.0 - np.exp(-self._dts / tau_g2v)
-        self._fac_v2g = 1.0 - np.exp(-self._dts / tau_v2g)
-        self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / tau_imlt)
-        self._fac_l2v = 1.0 - np.exp(-self._dt_evap / tau_l2v)
-
-        self._fields_init = FrozenStencil(
-            func=fields_init,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(),
-        )
-        self._warm_rain = FrozenStencil(
-            func=warm_rain,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(),
-        )
-        self._sedimentation = FrozenStencil(
-            func=sedimentation,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(),
-        )
-        self._icloud = FrozenStencil(
-            func=icloud,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(),
-        )
-        self._fields_update = FrozenStencil(
-            func=fields_update,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(),
+        # Time-split warm rain processes: 2nd pass
+        warm_rain(
+            h_var,
+            rain,
+            qgz,
+            qiz,
+            qlz,
+            qrz,
+            qsz,
+            qvz,
+            tz,
+            den,
+            denfac,
+            w,
+            t0,
+            den0,
+            dz0,
+            dz1,
+            dp1,
+            m1,
+            vtrz,
+            ccn,
+            c_praut,
+            m1_sol,
+            m2_rain,
+            m2_sol,
+            DTYPE_INT(0),
+            DTYPE_INT(do_sedi_w),
+            DTYPE_INT(p_nonhydro),
+            DTYPE_INT(use_ccn),
+            c_air,
+            c_vap,
+            d0_vap,
+            lv00,
+            fac_rc,
+            cracw,
+            crevp[0],
+            crevp[1],
+            crevp[2],
+            crevp[3],
+            crevp[4],
+            t_wfr,
+            so3,
+            dt_rain,
+            zs,
+            exec_info=exec_info,
         )
 
-    def gfdl_cloud_microphys_init(self):
-        self.setupm()
-        self._log_10 = np.log(10.0)
-        self._tice0 = tice - 0.01
-        self._t_wfr = tice - 40.0
+        exec_info = {}
 
-    def setupm(self):
-        gam263 = 1.456943
-        gam275 = 1.608355
-        gam290 = 1.827363
-        gam325 = 2.54925
-        gam350 = 3.323363
-        gam380 = 4.694155
+        # Ice-phase microphysics
+        icloud(
+            h_var,
+            rh_adj,
+            rh_rain,
+            qaz,
+            qgz,
+            qiz,
+            qlz,
+            qrz,
+            qsz,
+            qvz,
+            tz,
+            den,
+            denfac,
+            p1,
+            vtgz,
+            vtrz,
+            vtsz,
+            c_air,
+            c_vap,
+            d0_vap,
+            lv00,
+            cracs,
+            csacr,
+            cgacr,
+            cgacs,
+            acco[0, 0],
+            acco[0, 1],
+            acco[0, 2],
+            acco[0, 3],
+            acco[1, 0],
+            acco[1, 1],
+            acco[1, 2],
+            acco[1, 3],
+            acco[2, 0],
+            acco[2, 1],
+            acco[2, 2],
+            acco[2, 3],
+            csacw,
+            csaci,
+            cgacw,
+            cgaci,
+            cracw,
+            cssub[0],
+            cssub[1],
+            cssub[2],
+            cssub[3],
+            cssub[4],
+            cgfr[0],
+            cgfr[1],
+            csmlt[0],
+            csmlt[1],
+            csmlt[2],
+            csmlt[3],
+            csmlt[4],
+            cgmlt[0],
+            cgmlt[1],
+            cgmlt[2],
+            cgmlt[3],
+            cgmlt[4],
+            ces0,
+            tice0,
+            t_wfr,
+            dts,
+            rdts,
+            fac_i2s,
+            fac_g2v,
+            fac_v2g,
+            fac_imlt,
+            fac_l2v,
+            exec_info=exec_info,
+        )
+        exec_info = {}
 
-        # Intercept parameters
-        rnzs = 3.0e6
-        rnzr = 8.0e6
-        rnzg = 4.0e6
+    exec_info = {}
+    fields_update(
+        graupel,
+        ice,
+        rain,
+        snow,
+        qaz,
+        qgz,
+        qiz,
+        qlz,
+        qrz,
+        qsz,
+        qvz,
+        tz,
+        udt,
+        vdt,
+        qa_dt,
+        qg_dt,
+        qi_dt,
+        ql_dt,
+        qr_dt,
+        qs_dt,
+        qv_dt,
+        pt_dt,
+        qa0,
+        qg0,
+        qi0,
+        ql0,
+        qr0,
+        qs0,
+        qv0,
+        t0,
+        dp0,
+        u0,
+        v0,
+        dp1,
+        u1,
+        v1,
+        m1,
+        m2_rain,
+        m2_sol,
+        ntimes,
+        c_air,
+        c_vap,
+        rdt,
+        exec_info=exec_info,
+    )
+    """
+    NOTE: Radar part missing (never executed since lradar is false)
+    """
 
-        # Density parameters
-        acc = np.array([5.0, 2.0, 0.5])
+    output = view_gt4py_storage(
+        {
+            "qi1": qi[:, :, :],
+            "qs1": qs[:, :, :],
+            "qv_dt": qv_dt[:, :, :],
+            "ql_dt": ql_dt[:, :, :],
+            "qr_dt": qr_dt[:, :, :],
+            "qi_dt": qi_dt[:, :, :],
+            "qs_dt": qs_dt[:, :, :],
+            "qg_dt": qg_dt[:, :, :],
+            "qa_dt": qa_dt[:, :, :],
+            "pt_dt": pt_dt[:, :, :],
+            "w": w[:, :, :],
+            "udt": udt[:, :, :],
+            "vdt": vdt[:, :, :],
+            "rain0": rain[:, :, 0],
+            "snow0": snow[:, :, 0],
+            "ice0": ice[:, :, 0],
+            "graupel0": graupel[:, :, 0],
+            "refl": refl_10cm[:, :, :],
+        }
+    )
+    return output
 
-        pie = 4.0 * np.arctan(1.0)
 
-        # S. Klein's formular (eq 16) from am2
-        fac_rc = (4.0 / 3.0) * pie * rhor * rthresh ** 3
 
-        vdifu = 2.11e-5
-        tcond = 2.36e-2
-
-        visk = 1.259e-5
-        hlts = 2.8336e6
-        hltc = 2.5e6
-        hltf = 3.336e5
-
-        ch2o = 4.1855e3
-
-        pisq = pie * pie
-        scm3 = (visk / vdifu) ** (1.0 / 3.0)
-
-        cracs = pisq * rnzr * rnzs * rhos
-        csacr = pisq * rnzr * rnzs * rhor
-        cgacr = pisq * rnzr * rnzg * rhor
-        cgacs = pisq * rnzg * rnzs * rhos
-        cgacs = cgacs * c_pgacs
-
-        act = np.empty(8)
-        act[0] = pie * rnzs * rhos
-        act[1] = pie * rnzr * rhor
-        act[5] = pie * rnzg * rhog
-        act[2] = act[1]
-        act[3] = act[0]
-        act[4] = act[1]
-        act[6] = act[0]
-        act[7] = act[5]
-
-        acco = np.empty((3, 4))
-        for i in range(3):
-            for k in range(4):
-                acco[i, k] = acc[i] / (
-                    act[2 * k] ** ((6 - i) * 0.25) * act[2 * k + 1] ** ((i + 1) * 0.25)
-                )
-
-        gcon = 40.74 * np.sqrt(sfcrho)
-
-        # Decreasing csacw to reduce cloud water --- > snow
-        csacw = pie * rnzs * clin * gam325 / (4.0 * act[0] ** 0.8125)
-
-        craci = pie * rnzr * alin * gam380 / (4.0 * act[1] ** 0.95)
-        csaci = csacw * c_psaci
-
-        cgacw = pie * rnzg * gam350 * gcon / (4.0 * act[5] ** 0.875)
-
-        cgaci = cgacw * 0.05
-
-        cracw = craci
-        cracw = c_cracw * cracw
-
-        # Subl and revap: five constants for three separate processes
-        cssub = np.empty(5)
-        cssub[0] = 2.0 * pie * vdifu * tcond * rvgas * rnzs
-        cssub[1] = 0.78 / np.sqrt(act[0])
-        cssub[2] = 0.31 * scm3 * gam263 * np.sqrt(clin / visk) / act[0] ** 0.65625
-        cssub[3] = tcond * rvgas
-        cssub[4] = (hlts ** 2) * vdifu
-
-        cgsub = np.empty(5)
-        cgsub[0] = 2.0 * pie * vdifu * tcond * rvgas * rnzg
-        cgsub[1] = 0.78 / np.sqrt(act[5])
-        cgsub[2] = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
-        cgsub[3] = cssub[3]
-        cgsub[4] = cssub[4]
-
-        crevp = np.empty(5)
-        crevp[0] = 2.0 * pie * vdifu * tcond * rvgas * rnzr
-        crevp[1] = 0.78 / np.sqrt(act[1])
-        crevp[2] = 0.31 * scm3 * gam290 * np.sqrt(alin / visk) / act[1] ** 0.725
-        crevp[3] = cssub[3]
-        crevp[4] = hltc ** 2 * vdifu
-
-        cgfr = np.empty(2)
-        cgfr[0] = 20.0e2 * pisq * rnzr * rhor / act[1] ** 1.75
-        cgfr[1] = 0.66
-
-        # smlt: five constants (lin et al. 1983)
-        csmlt = np.empty(5)
-        csmlt[0] = 2.0 * pie * tcond * rnzs / hltf
-        csmlt[1] = 2.0 * pie * vdifu * rnzs * hltc / hltf
-        csmlt[2] = cssub[1]
-        csmlt[3] = cssub[2]
-        csmlt[4] = ch2o / hltf
-
-        # gmlt: five constants
-        cgmlt = np.empty(5)
-        cgmlt[0] = 2.0 * pie * tcond * rnzg / hltf
-        cgmlt[1] = 2.0 * pie * vdifu * rnzg * hltc / hltf
-        cgmlt[2] = cgsub[1]
-        cgmlt[3] = cgsub[2]
-        cgmlt[4] = ch2o / hltf
-
-        es0 = 6.107799961e2  # ~6.1 mb
-        self._fac_rc = fac_rc
-
-        self._cracs = cracs
-        self._csacr = csacr
-        self._cgacr = cgacr
-        self._cgacs = cgacs
-        self._acco = acco
-        self._csacw = csacw
-        self._csaci = csaci
-        self._cgacw = cgacw
-        self._cgaci = cgaci
-        self._cracw = cracw
-        self._cssub = cssub
-        self._crevp = crevp
-        self._cgfr = cgfr
-        self._csmlt = csmlt
-        self._cgmlt = cgmlt
-        self._ces0 = eps * es0
-
-    def __call__(self, state: MicrophysicsState):
-        pass
