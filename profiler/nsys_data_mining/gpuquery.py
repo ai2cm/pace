@@ -2,6 +2,7 @@
 
 """ Taken from Nvidia Night Systems 2021.1.1 /reports. """
 
+from .nsys_sql_version import NsysSQLVersion
 from .nsysreport import Report
 
 
@@ -70,8 +71,7 @@ WITH
             recs
     ORDER BY start;
 """
-
-    query_kernel = """
+    query_kernel_template = """
         SELECT
             start AS "start",
             (end - start) AS "duration",
@@ -88,7 +88,7 @@ WITH
             NULL AS "srcmemkind",
             NULL AS "dstmemkind",
             NULL AS "memsetval",
-            printf('%s (%d)', gpu.name, deviceId) AS "device",
+            printf('%s (%d)', gpu.name, TPL_DEVICE_ID) AS "device",
             contextId AS "context",
             streamId AS "stream",
             dmn.value AS "name",
@@ -99,11 +99,11 @@ WITH
             StringIds AS dmn
             ON CUPTI_ACTIVITY_KIND_KERNEL.demangledName = dmn.id
         LEFT JOIN
-            TARGET_INFO_CUDA_GPU AS gpu
-            USING( deviceId )
+            TPL_GPU_INFO_TABLE AS gpu
+            USING( TPL_DEVICE_ID )
 """
 
-    query_memcpy = """
+    query_memcpy_template = """
         SELECT
             start AS "start",
             (end - start) AS "duration",
@@ -120,7 +120,7 @@ WITH
             msrck.name AS "srcmemkind",
             mdstk.name AS "dstmemkind",
             NULL AS "memsetval",
-            printf('%s (%d)', gpu.name, deviceId) AS "device",
+            printf('%s (%d)', gpu.name, TPL_DEVICE_ID) AS "device",
             contextId AS "context",
             streamId AS "stream",
             memopstr.name AS "name",
@@ -137,11 +137,11 @@ WITH
             MemKindStrs AS mdstk
             ON memcpy.dstKind = mdstk.id
         LEFT JOIN
-            TARGET_INFO_CUDA_GPU AS gpu
-            USING( deviceId )
+            TARGET_INFO_GPU AS gpu
+            USING( TPL_DEVICE_ID )
 """
 
-    query_memset = """
+    query_memset_template = """
         SELECT
             start AS "start",
             (end - start) AS "duration",
@@ -158,7 +158,7 @@ WITH
             mk.name AS "srcmemkind",
             NULL AS "dstmemkind",
             value AS "memsetval",
-            printf('%s (%d)', gpu.name, deviceId) AS "device",
+            printf('%s (%d)', gpu.name, TPL_DEVICE_ID) AS "device",
             contextId AS "context",
             streamId AS "stream",
             '[CUDA memset]' AS "name",
@@ -169,13 +169,37 @@ WITH
             MemKindStrs AS mk
             ON memset.memKind = mk.id
         LEFT JOIN
-            TARGET_INFO_CUDA_GPU AS gpu
-            USING( deviceId )
+            TPL_GPU_INFO_TABLE AS gpu
+            USING( TPL_DEVICE_ID )
 """
 
     query_union = """
         UNION ALL
 """
+
+    def __init__(self, dbfile, nsys_version, args):
+        if nsys_version == NsysSQLVersion.EARLY_2021:
+            TPL_DEVICE_ID = "deviceId"
+            TPL_GPU_INFO_TABLE = "TARGET_INFO_CUDA_GPU"
+        elif nsys_version == NsysSQLVersion.MID_2021:
+            TPL_DEVICE_ID = "id"
+            TPL_GPU_INFO_TABLE = "TARGET_INFO_GPU"
+        else:
+            raise NotImplementedError(
+                f"nsys SQL version {nsys_version} not implemented."
+            )
+
+        self._query_kernel = self.query_kernel_template.replace(
+            "TPL_DEVICE_ID", TPL_DEVICE_ID
+        ).replace("TPL_GPU_INFO_TABLE", TPL_GPU_INFO_TABLE)
+        self._query_memcpy = self.query_memcpy_template.replace(
+            "TPL_DEVICE_ID", TPL_DEVICE_ID
+        ).replace("TPL_GPU_INFO_TABLE", TPL_GPU_INFO_TABLE)
+        self._query_memset = self.query_memset_template.replace(
+            "TPL_DEVICE_ID", TPL_DEVICE_ID
+        ).replace("TPL_GPU_INFO_TABLE", TPL_GPU_INFO_TABLE)
+
+        super().__init__(dbfile, nsys_version, args=args)
 
     def setup(self):
         err = super().setup()
@@ -185,13 +209,13 @@ WITH
         sub_queries = []
 
         if self.table_exists("CUPTI_ACTIVITY_KIND_KERNEL"):
-            sub_queries.append(self.query_kernel)
+            sub_queries.append(self._query_kernel)
 
         if self.table_exists("CUPTI_ACTIVITY_KIND_MEMCPY"):
-            sub_queries.append(self.query_memcpy)
+            sub_queries.append(self._query_memcpy)
 
         if self.table_exists("CUPTI_ACTIVITY_KIND_MEMSET"):
-            sub_queries.append(self.query_memset)
+            sub_queries.append(self._query_memset)
 
         if len(sub_queries) == 0:
             return "{DBFILE} does not contain GPU trace data."

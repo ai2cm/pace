@@ -13,7 +13,9 @@ from typing import Any, Dict, List, Optional
 import matplotlib.pyplot as plot
 import numpy as np
 from nsys_data_mining.kernelquery import CUDAKernelTrace, KernelReportIndexing
+from nsys_data_mining.nsys_sql_version import get_nsys_sql_version
 from nsys_data_mining.nvtxquery import CUDANVTXTrace, NVTXReportIndexing
+from nsys_data_mining.synchronizequery import SyncReportIndexing, SyncTrace
 from tabulate import tabulate
 
 
@@ -24,9 +26,16 @@ FV3_STAGES = [
     "Tracer advection",
 ]  # TODO remap is not tagged in nvtx
 
-FV3_START_ASYNC_HALOS = ["HaloUpdater.start"]
+FV3_START_ASYNC_HALOS = [
+    "HaloUpdater.start",
+    "HaloEx: async scalar",
+    "HaloEx: async vector",
+]
 
-FV3_ASYNC_HALOS = FV3_START_ASYNC_HALOS + ["HaloUpdater.wait"]
+FV3_ASYNC_HALOS = FV3_START_ASYNC_HALOS + [
+    "HaloUpdater.wait",
+    "HaloEx: unpack and wait",
+]
 
 FV3_NOT_HALOS = ["Pre HaloEx"]
 
@@ -151,6 +160,7 @@ def _print_median_time_kernel_table(
         kernels.append([name, median, hits])
     kernels.sort(key=lambda x: x[1], reverse=True)
     table = tabulate(kernels, headers=["Name", "Time", "Count"], tablefmt="orgtbl")
+    print("\nMedian time per kernel")
     print(f"{table}")
     if write_csv:
         with open("median_time_kernel.csv", "w") as csvfile:
@@ -178,14 +188,20 @@ def _plot_total_call(fv3_kernel_timings: Dict[str, List[int]]):
 
 def _filter_kernel_name(kernels: List[Any]) -> List[Any]:
     """Filter the gridtools c++ kernel name to a readable name"""
-    # Run a query to convert the stencil generated string to a readable one
+    # Run a regex to convert the stencil generated string to a readable one
     approx_stencil_name_re = re.search(
-        "(?<=bound_functorIN)(.*)(?=___gtcuda)",
+        "(?<=bound_functor)(.*?)(?=_pyext)",
         kernels[KernelReportIndexing.NAME.value],
     )
     if approx_stencil_name_re is None:
         return kernels
-    approx_stencil_name = approx_stencil_name_re.group().lstrip("0123456789 ")
+    # Clean up & insert
+    approx_stencil_name = (
+        approx_stencil_name_re.groups()[0]
+        .lstrip("IN0123456789<")
+        .replace(" ", "")
+        .replace("____gtcuda", "")
+    )
     row_as_list = list(kernels)
     row_as_list[KernelReportIndexing.NAME.value] = approx_stencil_name
     return row_as_list
@@ -240,9 +256,16 @@ if __name__ == "__main__":
     else:
         raise RuntimeError("Cmd needs a '.sqlite' or '.qdrep'.")
 
+    # Determin NSYS _minimum_ version the sql DB has been generated with.
+    # We are using our own API version. See above.
+    # The SQL schema has evolved and this allow for cross-version code
+    nsys_version = get_nsys_sql_version(sql_db)
+    print(f"Mining on version {nsys_version}")
+
     # Extract kernel info & nvtx tagging
-    kernels_results = CUDAKernelTrace.Run(sql_db, sys.argv[:2])
-    nvtx_results = CUDANVTXTrace.Run(sql_db, sys.argv[:2])
+    kernels_results = CUDAKernelTrace.Run(sql_db, nsys_version, sys.argv[:2])
+    nvtx_results = CUDANVTXTrace.Run(sql_db, nsys_version, sys.argv[:2])
+    syncs_results = SyncTrace.Run(sql_db, nsys_version, sys.argv[:2])
 
     # Grab second mainloop timings
     skip_first_mainloop = True
@@ -258,6 +281,7 @@ if __name__ == "__main__":
                 break
     assert skip_first_mainloop is False and min_start != 0
     timestep_time_in_ms = (float(max_end) - float(min_start)) * 1.0e3
+    print(f"Mining timestep between {min_start} and {max_end}")
 
     # Gather HaloEx markers
     filtered_halo_nvtx = []
@@ -270,30 +294,41 @@ if __name__ == "__main__":
             filtered_halo_nvtx.append(row)
     # > Compute total halo time (including waiting for previous work to finish)
     total_halo_ex = 0
+    halo_tag_found = True
     for row in filtered_halo_nvtx:
         total_halo_ex += row[NVTXReportIndexing.DURATION.value]
+    if total_halo_ex == 0:
+        halo_tag_found = False
+        print("Could not calculate total halo")
     # > Substract the "non halo work" done under halo markings
-    total_non_halo_ex = 0
-    for row in nvtx_results:
-        if (
-            row[NVTXReportIndexing.TEXT.value] in FV3_NOT_HALOS
-            and min_start < row[NVTXReportIndexing.START.value]
-            and max_end > row[NVTXReportIndexing.END.value]
-        ):
-            total_non_halo_ex += row[NVTXReportIndexing.DURATION.value]
-    if total_halo_ex != 0 and total_non_halo_ex != 0:
+    if halo_tag_found:
+        total_non_halo_ex = 0
+        for row in nvtx_results:
+            if (
+                row[NVTXReportIndexing.TEXT.value] in FV3_NOT_HALOS
+                and min_start < row[NVTXReportIndexing.START.value]
+                and max_end > row[NVTXReportIndexing.END.value]
+            ):
+                total_non_halo_ex += row[NVTXReportIndexing.DURATION.value]
+        if total_non_halo_ex == 0:
+            print("Could not calculate total NON halo with nvtx reverting to syncs")
+            for sync_row in syncs_results:
+                if (
+                    min_start < sync_row[SyncReportIndexing.START.value]
+                    and max_end > sync_row[SyncReportIndexing.END.value]
+                ):
+                    total_non_halo_ex += sync_row[SyncReportIndexing.DURATION.value]
+            if total_non_halo_ex == 0:
+                raise RuntimeError("Could not calculate total NON halo")
         halo_ex_time_in_ms = (total_halo_ex - total_non_halo_ex) / 1e6
         # > Count all halos
         only_start_halo = 0
         for row in filtered_halo_nvtx:
             if row[NVTXReportIndexing.TEXT.value] in FV3_START_ASYNC_HALOS:
                 only_start_halo += 1
-    else:
-        # > No halo nvtx tags - can't calculate
-        halo_ex_time_in_ms = "Could not calculate"  # type: ignore
-        only_start_halo = "Could not calculate"  # type: ignore
 
-    # Filter the rows between - min_start/max_end
+    # Filter the rows between - min_start/max_end & aggregate
+    # the names
     filtered_rows = []
     for row in kernels_results:
         if row is None:
@@ -350,10 +385,26 @@ if __name__ == "__main__":
     percentage_of_python_overhead_time = (
         (timestep_time_in_ms - total_gpu_kernel_time_in_ms) / timestep_time_in_ms
     ) * 100.0
-    percentage_of_python_without_haloex_overhead_time = (
-        (timestep_time_in_ms - total_gpu_kernel_time_in_ms - halo_ex_time_in_ms)
-        / timestep_time_in_ms
-    ) * 100.0
+    if halo_tag_found:
+        percentage_of_python_without_haloex_overhead_time = (
+            (timestep_time_in_ms - total_gpu_kernel_time_in_ms - halo_ex_time_in_ms)
+            / timestep_time_in_ms
+        ) * 100.0
+        halo_overhead_text = (
+            f"  CPU overhead without halo ex:"
+            f"{timestep_time_in_ms-total_gpu_kernel_time_in_ms-halo_ex_time_in_ms:.2f}"
+            f"({percentage_of_python_without_haloex_overhead_time:.2f}%)\n"
+        )
+        halo_summary_text = (
+            f"Halo exchange:\n"
+            f"  count: {only_start_halo}\n"
+            f"  cumulative time: {halo_ex_time_in_ms:.2f}ms "
+            f"({( halo_ex_time_in_ms / timestep_time_in_ms )*100:.2f}%)\n"
+        )
+    else:
+        halo_overhead_text = "  CPU overhead without halo ex: no halo exchange data\n"
+        halo_summary_text = "Halo exchange: no halo exchange data\n"
+
     print(
         "==== SUMMARY ====\n"
         f"Timestep time in ms: {timestep_time_in_ms:.2f}\n"
@@ -362,15 +413,10 @@ if __name__ == "__main__":
         f"  CPU overhead (Timestep time-All GPU kernels time): "
         f"{timestep_time_in_ms-total_gpu_kernel_time_in_ms:.2f}"
         f"({percentage_of_python_overhead_time:.2f}%)\n"
-        f"  CPU overhead without halo ex: "
-        f"{timestep_time_in_ms-total_gpu_kernel_time_in_ms-halo_ex_time_in_ms:.2f}"
-        f"({percentage_of_python_without_haloex_overhead_time:.2f}%)\n"
+        f"{halo_overhead_text}"
         f"Unique kernels: {len(unique_fv3_kernel_timings)}\n"
         f"CUDA Kernel calls:\n"
         f"  FV3 {fv3_kernels_count}/{all_kernels_count}\n"
         f"  CUPY {cupy_copies_kernels_count}/{all_kernels_count}\n"
-        f"Halo exchange:\n"
-        f"  count: {only_start_halo}\n"
-        f"  cumulative time: {halo_ex_time_in_ms:.2f}ms "
-        f"({( halo_ex_time_in_ms / timestep_time_in_ms )*100:.2f}%)\n"
+        f"{halo_summary_text}"
     )
