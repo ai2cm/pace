@@ -14,7 +14,7 @@ from ser_savepoint_var import *
 SELECT_SP = None
 
 
-def data_dict_from_var_list(var_list, serializer, savepoint):
+def data_dict_from_var_list(var_list, serializer, savepoint, reverse_flag=True):
     d = {}
     for var in var_list:
         data = serializer.read(var, savepoint)
@@ -25,9 +25,15 @@ def data_dict_from_var_list(var_list, serializer, savepoint):
         elif len(data.shape) < 2:
             d[var] = data
         elif len(data.shape) == 2:
-            d[var] = data[:, ::-1]
+            if reverse_flag == True:
+                d[var] = data[:, ::-1]
+            else:
+                d[var] = data[:, :]
         else:
-            d[var] = data[:, ::-1, :]
+            if reverse_flag == True:
+                d[var] = data[:, ::-1, :]
+            else:
+                d[var] = data[:, :, :]
     return d
 
 
@@ -81,7 +87,7 @@ for tile in range(6):
             in_data_fvd = data_dict_from_var_list(IN_VAR_DYNS, serializer, sp)
 
         if sp.name.startswith("FVDynamics-Out"):
-            out_data_fvd = data_dict_from_var_list(OUT_VAR_DYNS, serializer, sp)
+            out_data_fvd = data_dict_from_var_list(OUT_VAR_DYNS, serializer, sp, False)
 
         if sp.name.startswith("AtmosPhysDriverStatein-OUT"):
             out_data_pds = data_dict_from_var_list(OUT_VAR_APDS, serializer, sp)
@@ -101,10 +107,22 @@ for tile in range(6):
 
             isready = True
 
+        if sp.name.startswith("FillGFS-IN"):
+
+            print("> running ", f"tile-{tile}", sp)
+
+            in_data_fillgfs = data_dict_from_var_list(IN_FILL_GFS, serializer, sp)
+
+        if sp.name.startswith("FillGFS-OUT"):
+            print("> running ", f"tile-{tile}", sp)
+
+            out_data_fillgfs = data_dict_from_var_list(["IPD_gq0"], serializer, sp)
+
         if sp.name.startswith("FVUpdatePhys-In"):
             print("> running ", f"tile-{tile}", sp)
             # Note : The data from IN_VARS_FVPHY is for comparison purposes currently
-            ref_data = data_dict_from_var_list(IN_VARS_FVPHY, serializer, sp)
+            #  ***Maybe do not need to reverse***
+            ref_data = data_dict_from_var_list(IN_VARS_FVPHY, serializer, sp,False)
 
             in_data = {}
 
@@ -120,7 +138,7 @@ for tile in range(6):
             in_data["gu0"]  = out_data_pd["IPD_gu0"]
             in_data["gv0"]  = out_data_pd["IPD_gv0"]
 
-            in_data["nq"]   = in_data_fvd["nq_tot"]
+            in_data["nq"]   = in_data_fvd["nq_tot"] - 1 # I think nq=8 since it's set in class DynamicalCore
             in_data["delp"] = np.reshape(out_data_fvd["delp"][3:-3,3:-3,:],(144,79))
 
             in_data["nwat"] = out_data_pds["IPD_nwat"]
@@ -135,9 +153,21 @@ for tile in range(6):
             in_data["qsgs_tke"]= np.reshape(out_data_fvd["qsgs_tke"][3:-3,3:-3,:],(144,79))
             in_data["qcld"]    = np.reshape(out_data_fvd["qcld"][3:-3,3:-3,:],(144,79))
 
+            in_data["gq0_check_in"]  = in_data_fillgfs["IPD_gq0"]
+            in_data["gq0_check_out"] = out_data_fillgfs["IPD_gq0"]
+            
             out_data = update_atmos_model_state.run(in_data)
 
             print("After update_atmos_model_state")
+
+            delp = np.reshape(ref_data["delp"][3:-3,3:-3,:],(144,79))
+            u_dt = np.reshape(ref_data["u_dt"][3:-3,3:-3,:],(144,79))
+            v_dt = np.reshape(ref_data["v_dt"][3:-3,3:-3,:],(144,79))
+            t_dt = np.reshape(ref_data["t_dt"],(144,79))
+            np.testing.assert_allclose(out_data["delp"],delp,atol=1e-8)
+            np.testing.assert_allclose(out_data["u_dt"],u_dt,atol=1e-8)
+            np.testing.assert_allclose(out_data["v_dt"],v_dt,atol=1e-8)
+            np.testing.assert_allclose(out_data["t_dt"],t_dt,atol=1e-8)
 
         # if sp.name.startswith("PrsFV3-In"):
         #     print("> running ", f"tile-{tile}", sp)
@@ -179,10 +209,12 @@ for tile in range(6):
 
             compare_data(out_data_pd, ref_data_pd)
 
-        if sp.name.startswith("FVUpdatePhys-Out"):
-            print("> running ", f"tile-{tile}", sp)
+            isready = False
 
-            # read serialized input data
-            ref_data = data_dict_from_var_list(OUT_VARS_FVPHY, serializer, sp)
+        # if sp.name.startswith("FVUpdatePhys-Out"):
+        #     print("> running ", f"tile-{tile}", sp)
 
-            #compare_data(out_data, ref_data)
+        #     # read serialized input data
+        #     ref_data = data_dict_from_var_list(OUT_VARS_FVPHY, serializer, sp)
+
+        #     #compare_data(out_data, ref_data)

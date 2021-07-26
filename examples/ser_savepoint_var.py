@@ -330,3 +330,8 @@ OUT_VAR_DYNS = [
     "vc",
     "w"
 ]
+
+IN_FILL_GFS = [
+    "IPD_gq0",
+    "nb"
+]
