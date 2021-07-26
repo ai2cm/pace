@@ -318,7 +318,14 @@ class DynamicalCore:
             domain=self.grid.domain_shape_full(),
         )
         self.acoustic_dynamics = AcousticDynamics(
-            comm, namelist, self._ak, self._bk, self._pfull, self._phis
+            comm,
+            self.grid.grid_indexing,
+            self.grid.grid_data,
+            self.namelist,
+            self._ak,
+            self._bk,
+            self._pfull,
+            self._phis,
         )
         self._hyperdiffusion = HyperdiffusionDamping(self.grid, self.namelist.nf_omega)
         self._do_cubed_to_latlon = CubedToLatLon(self.grid, namelist)

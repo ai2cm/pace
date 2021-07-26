@@ -1,3 +1,5 @@
+from typing import Dict, Sequence
+
 from gt4py.gtscript import (
     __INLINED,
     BACKWARD,
@@ -29,9 +31,9 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.pk3_halo import PK3Halo
 from fv3core.stencils.riem_solver3 import RiemannSolver3
 from fv3core.stencils.riem_solver_c import RiemannSolverC
-from fv3core.utils import Grid
-from fv3core.utils.grid import axis_offsets
+from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from fv3gfs.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
 
 HUGE_R = 1.0e40
@@ -138,71 +140,92 @@ def p_grad_c_stencil(
         )
 
 
-def get_nk_heat_dissipation(namelist, grid):
+def get_nk_heat_dissipation(
+    convert_ke: bool, vtdm4: float, d2_bg_k1: float, d2_bg_k2: float, npz: int
+) -> int:
     # determines whether to convert dissipated kinetic energy into heat in the full
     # column, not at all, or in 1 or 2 of the top of atmosphere sponge layers
-    if namelist.convert_ke or namelist.vtdm4 > 1.0e-4:
-        nk_heat_dissipation = grid.npz
+    if convert_ke or vtdm4 > 1.0e-4:
+        nk_heat_dissipation = npz
     else:
-        if namelist.d2_bg_k1 < 1.0e-3:
+        if d2_bg_k1 < 1.0e-3:
             nk_heat_dissipation = 0
         else:
-            if namelist.d2_bg_k2 < 1.0e-3:
+            if d2_bg_k2 < 1.0e-3:
                 nk_heat_dissipation = 1
             else:
                 nk_heat_dissipation = 2
     return nk_heat_dissipation
 
 
-def dyncore_temporaries(shape, namelist, grid):
-    tmps = {}
+def quantity_wrap(storage, dims: Sequence[str], grid_indexing: GridIndexing):
+    origin, extent = grid_indexing.get_origin_domain(dims)
+    return fv3gfs.util.Quantity(
+        storage,
+        dims=dims,
+        units="unknown",
+        origin=origin,
+        extent=extent,
+    )
+
+
+def dyncore_temporaries(grid_indexing: GridIndexing):
+    tmps: Dict[str, fv3gfs.util.Quantity] = {}
     utils.storage_dict(
         tmps,
         ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "divgd"],
-        shape,
-        grid.full_origin(),
+        grid_indexing.max_shape,
+        grid_indexing.origin_full(),
     )
     utils.storage_dict(
         tmps,
         ["ws3"],
-        shape[0:2],
-        grid.full_origin()[0:2],
+        grid_indexing.max_shape[0:2],
+        grid_indexing.origin_full()[0:2],
     )
     utils.storage_dict(
-        tmps, ["crx", "xfx"], shape, grid.compute_origin(add=(0, -grid.halo, 0))
-    )
-    utils.storage_dict(
-        tmps, ["cry", "yfx"], shape, grid.compute_origin(add=(-grid.halo, 0, 0))
-    )
-    grid.quantity_dict_update(
-        tmps, "heat_source", dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM]
-    )
-    for q in ["gz", "pkc", "zh"]:
-        grid.quantity_dict_update(
-            tmps, q, dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM]
-        )
-    grid.quantity_dict_update(
         tmps,
-        "divgd",
-        dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+        ["crx", "xfx"],
+        grid_indexing.max_shape,
+        grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
     )
+    utils.storage_dict(
+        tmps,
+        ["cry", "yfx"],
+        grid_indexing.max_shape,
+        grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
+    )
+    tmps["heat_source_quantity"] = quantity_wrap(
+        tmps["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
+    )
+    tmps["divgd_quantity"] = quantity_wrap(
+        tmps["divgd"],
+        dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+        grid_indexing=grid_indexing,
+    )
+    for name in ["gz", "pkc", "zh"]:
+        tmps[f"{name}_quantity"] = quantity_wrap(
+            tmps[name],
+            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
+            grid_indexing=grid_indexing,
+        )
 
     return tmps
 
 
-def _initialize_edge_pe_stencil(grid: Grid) -> FrozenStencil:
+def _initialize_edge_pe_stencil(grid_indexing: GridIndexing) -> FrozenStencil:
     """
     Returns the FrozenStencil object for the pe_halo stencil
     """
     ax_offsets_pe = axis_offsets(
-        grid,
-        grid.full_origin(),
-        grid.domain_shape_full(add=(0, 0, 1)),
+        grid_indexing,
+        grid_indexing.origin_full(),
+        grid_indexing.domain_full(add=(0, 0, 1)),
     )
     return FrozenStencil(
         pe_halo.edge_pe,
-        origin=grid.full_origin(),
-        domain=grid.domain_shape_full(add=(0, 0, 1)),
+        origin=grid_indexing.origin_full(),
+        domain=grid_indexing.domain_full(add=(0, 0, 1)),
         externals={**ax_offsets_pe},
     )
 
@@ -299,6 +322,8 @@ class AcousticDynamics:
     def __init__(
         self,
         comm: fv3gfs.util.CubedSphereCommunicator,
+        grid_indexing: GridIndexing,
+        grid_data: GridData,
         namelist,
         ak: FloatFieldK,
         bk: FloatFieldK,
@@ -321,32 +346,32 @@ class AcousticDynamics:
         self.grid = spec.grid
         self.do_halo_exchange = global_config.get_do_halo_exchange()
         self._pfull = pfull
-        self._nk_heat_dissipation = get_nk_heat_dissipation(namelist, self.grid)
+        self._nk_heat_dissipation = get_nk_heat_dissipation(
+            namelist.convert_ke,
+            namelist.vtdm4,
+            namelist.d2_bg_k1,
+            namelist.d2_bg_k2,
+            npz=grid_indexing.domain[2],
+        )
         self.nonhydrostatic_pressure_gradient = (
             nh_p_grad.NonHydrostaticPressureGradient(self.namelist.grid_type)
         )
-        self._temporaries = dyncore_temporaries(
-            self.grid.domain_shape_full(add=(1, 1, 1)), self.namelist, self.grid
-        )
+        self._temporaries = dyncore_temporaries(grid_indexing)
         self._temporaries["gz"][:] = HUGE_R
         if not namelist.hydrostatic:
             self._temporaries["pk3"][:] = HUGE_R
 
-        column_namelist = d_sw.get_column_namelist(namelist, self.grid.npz)
+        column_namelist = d_sw.get_column_namelist(namelist, grid_indexing.domain[2])
         if not namelist.hydrostatic:
             # To write lower dimensional storages, these need to be 3D
             # then converted to lower dimensional
-            dp_ref_3d = utils.make_storage_from_shape(
-                self.grid.domain_shape_full(add=(1, 1, 1)), self.grid.full_origin()
-            )
-            zs_3d = utils.make_storage_from_shape(
-                self.grid.domain_shape_full(add=(1, 1, 1)), self.grid.full_origin()
-            )
+            dp_ref_3d = utils.make_storage_from_shape(grid_indexing.max_shape)
+            zs_3d = utils.make_storage_from_shape(grid_indexing.max_shape)
 
             dp_ref_stencil = FrozenStencil(
                 dp_ref_compute,
-                origin=self.grid.full_origin(),
-                domain=self.grid.domain_shape_full(add=(0, 0, 1)),
+                origin=grid_indexing.origin_full(),
+                domain=grid_indexing.domain_full(add=(0, 0, 1)),
             )
             dp_ref_stencil(
                 ak,
@@ -362,43 +387,72 @@ class AcousticDynamics:
             )
             self._zs = utils.make_storage_data(zs_3d[:, :, 0], zs_3d.shape[0:2], (0, 0))
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
-                self.grid, self.namelist, self._dp_ref, column_namelist, d_sw.k_bounds()
+                self.grid.grid_indexing,
+                self.grid.damping_coefficients,
+                self.grid.grid_data,
+                self.grid.grid_type,
+                namelist.hord_tm,
+                self._dp_ref,
+                column_namelist,
+                d_sw.k_bounds(),
             )
             self.riem_solver3 = RiemannSolver3(namelist)
             self.riem_solver_c = RiemannSolverC(namelist)
+            origin, domain = grid_indexing.get_origin_domain(
+                [X_DIM, Y_DIM, Z_INTERFACE_DIM], halos=(2, 2)
+            )
             self._compute_geopotential_stencil = FrozenStencil(
                 compute_geopotential,
-                origin=(self.grid.is_ - 2, self.grid.js - 2, 0),
-                domain=(self.grid.nic + 4, self.grid.njc + 4, self.grid.npz + 1),
+                origin=origin,
+                domain=domain,
             )
         self.dgrid_shallow_water_lagrangian_dynamics = (
             d_sw.DGridShallowWaterLagrangianDynamics(
-                self.grid.grid_indexing,
-                self.grid.grid_data,
+                grid_indexing,
+                grid_data,
                 self.grid.damping_coefficients,
-                namelist,
                 column_namelist,
+                self.grid.nested,
+                self.grid.stretched_grid,
+                namelist.dddmp,
+                namelist.d4_bg,
+                namelist.nord,
+                namelist.grid_type,
+                d_ext=namelist.d_ext,
+                inline_q=namelist.inline_q,
+                hord_dp=namelist.hord_dp,
+                hord_tm=namelist.hord_tm,
+                hord_mt=namelist.hord_mt,
+                hord_vt=namelist.hord_vt,
+                do_f3d=namelist.do_f3d,
+                do_skeb=namelist.do_skeb,
+                d_con=namelist.d_con,
+                hydrostatic=namelist.hydrostatic,
             )
         )
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
-            self.grid, namelist
+            grid_indexing,
+            grid_data,
+            self.grid.nested,
+            namelist.grid_type,
+            namelist.nord,
         )
 
         self._set_gz = FrozenStencil(
             set_gz,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._set_pem = FrozenStencil(
             set_pem,
-            origin=self.grid.compute_origin(add=(-1, -1, 0)),
-            domain=self.grid.domain_shape_compute(add=(2, 2, 0)),
+            origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
+            domain=grid_indexing.domain_compute(add=(2, 2, 0)),
         )
 
         self._p_grad_c = FrozenStencil(
             p_grad_c_stencil,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute(add=(1, 1, 0)),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(add=(1, 1, 0)),
             externals={"hydrostatic": self.namelist.hydrostatic},
         )
 
@@ -408,10 +462,12 @@ class AcousticDynamics:
 
         self._zero_data = FrozenStencil(
             zero_data,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(),
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(),
         )
-        self._edge_pe_stencil: FrozenStencil = _initialize_edge_pe_stencil(self.grid)
+        self._edge_pe_stencil: FrozenStencil = _initialize_edge_pe_stencil(
+            grid_indexing
+        )
         """ The stencil object responsible for updading the interface pressure"""
 
         self._do_del2cubed = (

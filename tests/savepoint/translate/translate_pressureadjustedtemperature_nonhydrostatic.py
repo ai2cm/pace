@@ -9,7 +9,13 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslatePressureAdjustedTemperature_NonHydrostatic(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        n_adj = get_nk_heat_dissipation(spec.namelist, grid)
+        n_adj = get_nk_heat_dissipation(
+            spec.namelist.convert_ke,
+            spec.namelist.vtdm4,
+            spec.namelist.d2_bg_k1,
+            spec.namelist.d2_bg_k2,
+            npz=grid.grid_indexing.domain[2],
+        )
         self.compute_func = _initialize_temp_adjust_stencil(grid, n_adj)
         self.in_vars["data_vars"] = {
             "cappa": {},

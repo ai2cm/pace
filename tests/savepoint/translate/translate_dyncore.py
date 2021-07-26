@@ -115,8 +115,13 @@ class TranslateDynCore(ParallelTranslate2PyState):
         self.max_error = 2e-6
 
     def compute_parallel(self, inputs, communicator):
+        grid_data = spec.grid.grid_data
+        grid_data.ak = inputs["ak"]
+        grid_data.bk = inputs["bk"]
         self._base.compute_func = dyn_core.AcousticDynamics(
             communicator,
+            spec.grid.grid_indexing,
+            grid_data,
             spec.namelist,
             inputs["ak"],
             inputs["bk"],

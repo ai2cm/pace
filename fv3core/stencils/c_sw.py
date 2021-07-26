@@ -7,12 +7,14 @@ from gt4py.gtscript import (
     region,
 )
 
+import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from fv3core.utils import corners
-from fv3core.utils.grid import axis_offsets
+from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 def geoadjust_ut(
@@ -376,39 +378,48 @@ class CGridShallowWaterDynamics:
     Fortran name is c_sw
     """
 
-    def __init__(self, grid, namelist):
-        self.grid = grid
-        self.namelist = namelist
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        grid_data: GridData,
+        nested: bool,
+        grid_type: int,
+        nord: int,
+    ):
+        self.grid_data = grid_data
         self._dord4 = True
+        self._fC = spec.grid.fC
 
         self._D2A2CGrid_Vectors = DGrid2AGrid2CGridVectors(
-            self.grid.grid_indexing,
-            self.grid.grid_data,
-            self.grid.nested,
-            self.namelist.grid_type,
+            grid_indexing,
+            grid_data,
+            nested,
+            grid_type,
             self._dord4,
         )
-        grid_type = self.namelist.grid_type
-        origin_halo1 = (self.grid.is_ - 1, self.grid.js - 1, 0)
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        self.delpc = utils.make_storage_from_shape(shape, origin=origin_halo1)
-        self.ptc = utils.make_storage_from_shape(shape, origin=origin_halo1)
+        origin_halo1 = (grid_indexing.isc - 1, grid_indexing.jsc - 1, 0)
+        self.delpc = utils.make_storage_from_shape(
+            grid_indexing.max_shape, origin=origin_halo1
+        )
+        self.ptc = utils.make_storage_from_shape(
+            grid_indexing.max_shape, origin=origin_halo1
+        )
         self._initialize_delpc_ptc = FrozenStencil(
             func=initialize_delpc_ptc,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(),
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(),
         )
 
-        self._tmp_ke = utils.make_storage_from_shape(shape)
-        self._tmp_vort = utils.make_storage_from_shape(shape)
-        self._tmp_fx = utils.make_storage_from_shape(shape)
-        self._tmp_fx1 = utils.make_storage_from_shape(shape)
-        self._tmp_fx2 = utils.make_storage_from_shape(shape)
-        origin = self.grid.compute_origin()
-        domain = self.grid.domain_shape_compute(add=(1, 1, 0))
-        ax_offsets = axis_offsets(self.grid, origin, domain)
+        self._tmp_ke = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_vort = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_fx = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_fx1 = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_fx2 = utils.make_storage_from_shape(grid_indexing.max_shape)
+        origin = grid_indexing.origin_compute()
+        domain = grid_indexing.domain_compute(add=(1, 1, 0))
+        ax_offsets = axis_offsets(grid_indexing, origin, domain)
 
-        if self.namelist.nord > 0:
+        if nord > 0:
             self._divergence_corner = FrozenStencil(
                 func=divergence_corner,
                 externals={
@@ -417,20 +428,28 @@ class CGridShallowWaterDynamics:
                 origin=origin,
                 domain=domain,
             )
-        geo_origin = (self.grid.is_ - 1, self.grid.js - 1, 0)
+        else:
+            self._divergence_corner = None
+        origin, domain = grid_indexing.get_origin_domain(
+            [X_INTERFACE_DIM, Y_DIM, Z_DIM], halos=(1, 1)
+        )
         self._geoadjust_ut = FrozenStencil(
             func=geoadjust_ut,
-            origin=geo_origin,
-            domain=(self.grid.nic + 3, self.grid.njc + 2, self.grid.npz),
+            origin=origin,
+            domain=domain,
+        )
+        origin, domain = grid_indexing.get_origin_domain(
+            [X_DIM, Y_INTERFACE_DIM, Z_DIM], halos=(1, 1)
         )
         self._geoadjust_vt = FrozenStencil(
             func=geoadjust_vt,
-            origin=geo_origin,
-            domain=(self.grid.nic + 2, self.grid.njc + 3, self.grid.npz),
+            origin=origin,
+            domain=domain,
         )
-        origin_full = self.grid.full_origin()
-        domain_full = self.grid.domain_shape_full()
-        ax_offsets_full = axis_offsets(self.grid, origin_full, domain_full)
+
+        origin_full = grid_indexing.origin_full()
+        domain_full = grid_indexing.domain_full()
+        ax_offsets_full = axis_offsets(grid_indexing, origin_full, domain_full)
 
         self._fill_corners_x_delp_pt_w_stencil = FrozenStencil(
             fill_corners_delp_pt_w,
@@ -450,26 +469,33 @@ class CGridShallowWaterDynamics:
             origin=origin_full,
             domain=domain_full,
         )
+
+        origin, domain = grid_indexing.get_origin_domain(
+            [X_INTERFACE_DIM, Y_DIM, Z_DIM], halos=(1, 1)
+        )
         self._compute_nonhydro_fluxes_x_stencil = FrozenStencil(
             compute_nonhydro_fluxes_x,
-            origin=geo_origin,
-            domain=(self.grid.nic + 3, self.grid.njc + 2, self.grid.npz),
+            origin=origin,
+            domain=domain,
         )
 
-        domain_transportdelp = (self.grid.nic + 2, self.grid.njc + 2, self.grid.npz)
-        ax_offsets_transportdelp = axis_offsets(
-            self.grid, geo_origin, domain_transportdelp
+        origin, domain = grid_indexing.get_origin_domain(
+            [X_DIM, Y_DIM, Z_DIM], halos=(1, 1)
         )
-
+        ax_offsets_transportdelp = axis_offsets(grid_indexing, origin, domain)
         self._transportdelp_updatevorticity_and_ke = FrozenStencil(
             func=transportdelp_update_vorticity_and_kineticenergy,
             externals={
                 "grid_type": grid_type,
                 **ax_offsets_transportdelp,
             },
-            origin=geo_origin,
-            domain=domain_transportdelp,
+            origin=origin,
+            domain=domain,
         )
+        origin, domain = grid_indexing.get_origin_domain(
+            [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
+        )
+        ax_offsets = axis_offsets(grid_indexing, origin, domain)
         self._circulation_cgrid = FrozenStencil(
             func=circulation_cgrid,
             externals={
@@ -481,11 +507,13 @@ class CGridShallowWaterDynamics:
         self._absolute_vorticity = FrozenStencil(
             func=absolute_vorticity,
             origin=origin,
-            domain=(self.grid.nic + 1, self.grid.njc + 1, self.grid.npz),
+            domain=domain,
         )
 
-        domain_y = self.grid.domain_shape_compute(add=(0, 1, 0))
-        axis_offsets_y = axis_offsets(self.grid, origin, domain_y)
+        origin, domain = grid_indexing.get_origin_domain(
+            [X_DIM, Y_INTERFACE_DIM, Z_DIM]
+        )
+        axis_offsets_y = axis_offsets(grid_indexing, origin, domain)
         self._update_y_velocity = FrozenStencil(
             func=update_y_velocity,
             externals={
@@ -494,10 +522,12 @@ class CGridShallowWaterDynamics:
                 "j_end": axis_offsets_y["j_end"],
             },
             origin=origin,
-            domain=domain_y,
+            domain=domain,
         )
-        domain_x = self.grid.domain_shape_compute(add=(1, 0, 0))
-        axis_offsets_x = axis_offsets(self.grid, origin, domain_x)
+        origin, domain = grid_indexing.get_origin_domain(
+            [X_INTERFACE_DIM, Y_DIM, Z_DIM]
+        )
+        axis_offsets_x = axis_offsets(grid_indexing, origin, domain)
         self._update_x_velocity = FrozenStencil(
             func=update_x_velocity,
             externals={
@@ -506,7 +536,7 @@ class CGridShallowWaterDynamics:
                 "i_end": axis_offsets_x["i_end"],
             },
             origin=origin,
-            domain=domain_x,
+            domain=domain,
         )
 
     def _vorticitytransport_cgrid(
@@ -535,9 +565,9 @@ class CGridShallowWaterDynamics:
             ke_c,
             u,
             vc,
-            self.grid.cosa_v,
-            self.grid.sina_v,
-            self.grid.rdyc,
+            self.grid_data.cosa_v,
+            self.grid_data.sina_v,
+            self.grid_data.rdyc,
             dt2,
         )
         self._update_x_velocity(
@@ -545,9 +575,9 @@ class CGridShallowWaterDynamics:
             ke_c,
             v,
             uc,
-            self.grid.cosa_u,
-            self.grid.sina_u,
-            self.grid.rdxc,
+            self.grid_data.cosa_u,
+            self.grid_data.sina_u,
+            self.grid_data.rdxc,
             dt2,
         )
 
@@ -570,7 +600,6 @@ class CGridShallowWaterDynamics:
     ):
         """
         C-grid shallow water routine.
-
         Advances C-grid winds by half a time step.
         Args:
             delp: D-grid vertical delta in pressure (in)
@@ -593,37 +622,37 @@ class CGridShallowWaterDynamics:
             self.ptc,
         )
         self._D2A2CGrid_Vectors(uc, vc, u, v, ua, va, ut, vt)
-        if self.namelist.nord > 0:
+        if self._divergence_corner is not None:
             self._divergence_corner(
                 u,
                 v,
                 ua,
                 va,
-                self.grid.dxc,
-                self.grid.dyc,
-                self.grid.sin_sg1,
-                self.grid.sin_sg2,
-                self.grid.sin_sg3,
-                self.grid.sin_sg4,
-                self.grid.cos_sg1,
-                self.grid.cos_sg2,
-                self.grid.cos_sg3,
-                self.grid.cos_sg4,
-                self.grid.rarea_c,
+                self.grid_data.dxc,
+                self.grid_data.dyc,
+                self.grid_data.sin_sg1,
+                self.grid_data.sin_sg2,
+                self.grid_data.sin_sg3,
+                self.grid_data.sin_sg4,
+                self.grid_data.cos_sg1,
+                self.grid_data.cos_sg2,
+                self.grid_data.cos_sg3,
+                self.grid_data.cos_sg4,
+                self.grid_data.rarea_c,
                 divgd,
             )
         self._geoadjust_ut(
             ut,
-            self.grid.dy,
-            self.grid.sin_sg3,
-            self.grid.sin_sg1,
+            self.grid_data.dy,
+            self.grid_data.sin_sg3,
+            self.grid_data.sin_sg1,
             dt2,
         )
         self._geoadjust_vt(
             vt,
-            self.grid.dx,
-            self.grid.sin_sg4,
-            self.grid.sin_sg2,
+            self.grid_data.dx,
+            self.grid_data.sin_sg4,
+            self.grid_data.sin_sg2,
             dt2,
         )
 
@@ -638,7 +667,7 @@ class CGridShallowWaterDynamics:
             ut,
             vt,
             w,
-            self.grid.rarea,
+            self.grid_data.rarea,
             self.delpc,
             self.ptc,
             omga,
@@ -653,27 +682,27 @@ class CGridShallowWaterDynamics:
             self._tmp_fx,
             self._tmp_fx1,
             self._tmp_fx2,
-            self.grid.sin_sg1,
-            self.grid.cos_sg1,
-            self.grid.sin_sg2,
-            self.grid.cos_sg2,
-            self.grid.sin_sg3,
-            self.grid.cos_sg3,
-            self.grid.sin_sg4,
-            self.grid.cos_sg4,
+            self.grid_data.sin_sg1,
+            self.grid_data.cos_sg1,
+            self.grid_data.sin_sg2,
+            self.grid_data.cos_sg2,
+            self.grid_data.sin_sg3,
+            self.grid_data.cos_sg3,
+            self.grid_data.sin_sg4,
+            self.grid_data.cos_sg4,
             dt2,
         )
         self._circulation_cgrid(
             uc,
             vc,
-            self.grid.dxc,
-            self.grid.dyc,
+            self.grid_data.dxc,
+            self.grid_data.dyc,
             self._tmp_vort,
         )
         self._absolute_vorticity(
             self._tmp_vort,
-            self.grid.fC,
-            self.grid.rarea_c,
+            self._fC,
+            self.grid_data.rarea_c,
         )
         self._vorticitytransport_cgrid(uc, vc, self._tmp_vort, self._tmp_ke, v, u, dt2)
         return self.delpc, self.ptc

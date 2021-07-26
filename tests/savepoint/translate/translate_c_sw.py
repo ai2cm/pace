@@ -3,12 +3,20 @@ from fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from fv3core.testing import TranslateFortranData2Py
 
 
+def get_c_sw_instance(grid, namelist):
+    return CGridShallowWaterDynamics(
+        grid.grid_indexing,
+        grid.grid_data,
+        grid.nested,
+        namelist.grid_type,
+        namelist.nord,
+    )
+
+
 class TranslateC_SW(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
-            grid, spec.namelist
-        )
+        cgrid_shallow_water_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
         self.compute_func = cgrid_shallow_water_lagrangian_dynamics
         self.in_vars["data_vars"] = {
             "delp": {},
@@ -47,9 +55,7 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
         self.max_error = 2e-13
-        self.cgrid_sw_lagrangian_dynamics = CGridShallowWaterDynamics(
-            grid, spec.namelist
-        )
+        self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
         self.in_vars["data_vars"] = {
             "u": {
                 "istart": grid.isd,
@@ -99,9 +105,7 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
         self.max_error = 5e-13
-        self.cgrid_sw_lagrangian_dynamics = CGridShallowWaterDynamics(
-            grid, spec.namelist
-        )
+        self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
         self.in_vars["data_vars"] = {
             "uc": {},
             "vc": {},
@@ -134,7 +138,7 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
 class TranslateVorticityTransport_Cgrid(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        cgrid_sw_lagrangian_dynamics = CGridShallowWaterDynamics(grid, spec.namelist)
+        cgrid_sw_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
         self.compute_func = cgrid_sw_lagrangian_dynamics._vorticitytransport_cgrid
         self.in_vars["data_vars"] = {
             "uc": {},

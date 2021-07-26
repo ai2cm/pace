@@ -22,6 +22,7 @@ from fv3core.stencils.xtp_u import XTP_U
 from fv3core.stencils.ytp_v import YTP_V
 from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 dcon_threshold = 1e-5
@@ -501,16 +502,30 @@ class DGridShallowWaterLagrangianDynamics:
         grid_indexing: GridIndexing,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
-        namelist,
         column_namelist,
+        nested: bool,
+        stretched_grid: bool,
+        dddmp,
+        d4_bg,
+        nord: int,
+        grid_type: int,
+        hydrostatic,
+        d_ext: int,
+        inline_q: bool,
+        hord_dp: int,
+        hord_tm: int,
+        hord_mt: int,
+        hord_vt: int,
+        do_f3d: bool,
+        do_skeb: bool,
+        d_con,
     ):
-        self.grid = spec.grid
+        self._f0 = spec.grid.f0
+        self.grid = grid_data
+        assert grid_type < 3, "ubke and vbke only implemented for grid_type < 3"
+        assert not inline_q, "inline_q not yet implemented"
         assert (
-            namelist.grid_type < 3
-        ), "ubke and vbke only implemented for grid_type < 3"
-        assert not namelist.inline_q, "inline_q not yet implemented"
-        assert (
-            namelist.d_ext <= 0
+            d_ext <= 0
         ), "untested d_ext > 0. need to call a2b_ord2, not yet implemented"
         assert (column_namelist["damp_vt"] > dcon_threshold).all()
         # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
@@ -520,25 +535,25 @@ class DGridShallowWaterLagrangianDynamics:
         # only compute delnflux for k-levels where this is true
 
         # only compute for k-levels where this is true
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        origin = self.grid.compute_origin()
-        self.hydrostatic = namelist.hydrostatic
-        self._tmp_heat_s = utils.make_storage_from_shape(shape, origin)
-        self._tmp_ub = utils.make_storage_from_shape(shape, origin)
-        self._tmp_vb = utils.make_storage_from_shape(shape, origin)
-        self._tmp_ke = utils.make_storage_from_shape(shape, origin)
-        self._tmp_vort = utils.make_storage_from_shape(shape, origin)
-        self._tmp_ut = utils.make_storage_from_shape(shape, origin)
-        self._tmp_vt = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fx = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fy = utils.make_storage_from_shape(shape, origin)
-        self._tmp_gx = utils.make_storage_from_shape(shape, origin)
-        self._tmp_gy = utils.make_storage_from_shape(shape, origin)
-        self._tmp_dw = utils.make_storage_from_shape(shape, origin)
-        self._tmp_wk = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fx2 = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fy2 = utils.make_storage_from_shape(shape, origin)
-        self._tmp_damp_3d = utils.make_storage_from_shape((1, 1, self.grid.npz))
+        self.hydrostatic = hydrostatic
+        self._tmp_heat_s = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_ub = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_vb = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_ke = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_vort = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_ut = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_vt = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_fx = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_fy = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_gx = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_gy = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_dw = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_wk = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_fx2 = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_fy2 = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_damp_3d = utils.make_storage_from_shape(
+            (1, 1, grid_indexing.domain[2])
+        )
         self._column_namelist = column_namelist
 
         self.delnflux_nosg_w = DelnFluxNoSG(
@@ -557,8 +572,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=namelist.grid_type,
-            hord=namelist.hord_dp,
+            grid_type=grid_type,
+            hord=hord_dp,
             nord=self._column_namelist["nord_v"],
             damp_c=self._column_namelist["damp_vt"],
         )
@@ -566,8 +581,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=namelist.grid_type,
-            hord=namelist.hord_dp,
+            grid_type=grid_type,
+            hord=hord_dp,
             nord=self._column_namelist["nord_t"],
             damp_c=self._column_namelist["damp_t"],
         )
@@ -575,8 +590,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=namelist.grid_type,
-            hord=namelist.hord_vt,
+            grid_type=grid_type,
+            hord=hord_vt,
             nord=self._column_namelist["nord_v"],
             damp_c=self._column_namelist["damp_vt"],
         )
@@ -584,8 +599,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=namelist.grid_type,
-            hord=namelist.hord_tm,
+            grid_type=grid_type,
+            hord=hord_tm,
             nord=self._column_namelist["nord_v"],
             damp_c=self._column_namelist["damp_vt"],
         )
@@ -593,8 +608,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=namelist.grid_type,
-            hord=namelist.hord_vt,
+            grid_type=grid_type,
+            hord=hord_vt,
         )
         self.fv_prep = FiniteVolumeFluxPrep(
             grid_indexing=grid_indexing,
@@ -603,44 +618,48 @@ class DGridShallowWaterLagrangianDynamics:
         self.ytp_v = YTP_V(
             grid_indexing=grid_indexing,
             grid_data=grid_data,
-            grid_type=namelist.grid_type,
-            jord=namelist.hord_mt,
+            grid_type=grid_type,
+            jord=hord_mt,
         )
         self.xtp_u = XTP_U(
             grid_indexing=grid_indexing,
             grid_data=grid_data,
-            grid_type=namelist.grid_type,
-            iord=namelist.hord_mt,
+            grid_type=grid_type,
+            iord=hord_mt,
         )
         self.divergence_damping = DivergenceDamping(
             grid_indexing,
             grid_data,
             damping_coefficients,
-            self.grid.nested,
-            self.grid.stretched_grid,
-            spec.namelist.dddmp,
-            spec.namelist.d4_bg,
-            spec.namelist.nord,
-            spec.namelist.grid_type,
+            nested,
+            stretched_grid,
+            dddmp,
+            d4_bg,
+            nord,
+            grid_type,
             column_namelist["nord"],
             column_namelist["d2_divg"],
         )
-        full_origin = self.grid.full_origin()
-        full_domain = self.grid.domain_shape_full()
-        ax_offsets_full = axis_offsets(self.grid, full_origin, full_domain)
-        b_origin = self.grid.compute_origin()
-        b_domain = self.grid.domain_shape_compute(add=(1, 1, 0))
-        ax_offsets_b = axis_offsets(self.grid, b_origin, b_domain)
+        full_origin = grid_indexing.origin_full()
+        full_domain = grid_indexing.domain_full()
+        ax_offsets_full = axis_offsets(grid_indexing, full_origin, full_domain)
+        b_origin, b_domain = grid_indexing.get_origin_domain(
+            [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
+        )
+        ax_offsets_b = axis_offsets(grid_indexing, b_origin, b_domain)
         self._pressure_and_vbke_stencil = FrozenStencil(
             pressure_and_vbke,
-            externals={"inline_q": namelist.inline_q, **ax_offsets_b},
+            externals={"inline_q": inline_q, **ax_offsets_b},
             origin=b_origin,
             domain=b_domain,
         )
+        compute_origin, compute_domain = grid_indexing.get_origin_domain(
+            [X_DIM, Y_DIM, Z_DIM]
+        )
         self._flux_adjust_stencil = FrozenStencil(
             flux_adjust,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute(),
+            origin=compute_origin,
+            domain=compute_domain,
         )
         self._flux_capacitor_stencil = FrozenStencil(
             flux_capacitor, origin=full_origin, domain=full_domain
@@ -655,7 +674,7 @@ class DGridShallowWaterLagrangianDynamics:
             compute_vorticity,
             externals={
                 "radius": constants.RADIUS,
-                "do_f3d": namelist.do_f3d,
+                "do_f3d": do_f3d,
                 "hydrostatic": self.hydrostatic,
             },
             origin=full_origin,
@@ -663,19 +682,19 @@ class DGridShallowWaterLagrangianDynamics:
         )
         self._adjust_w_and_qcon_stencil = FrozenStencil(
             adjust_w_and_qcon,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute(),
+            origin=compute_origin,
+            domain=compute_domain,
         )
         self._heat_diss_stencil = FrozenStencil(
             heat_diss,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute(),
+            origin=compute_origin,
+            domain=compute_domain,
         )
         self._heat_source_from_vorticity_damping_stencil = FrozenStencil(
             heat_source_from_vorticity_damping,
             externals={
-                "do_skeb": namelist.do_skeb,
-                "d_con": namelist.d_con,
+                "do_skeb": do_skeb,
+                "d_con": d_con,
                 **ax_offsets_b,
             },
             origin=b_origin,
@@ -696,7 +715,7 @@ class DGridShallowWaterLagrangianDynamics:
             mult_ubke, externals=ax_offsets_b, origin=b_origin, domain=b_domain
         )
         self._damping_factor_calculation_stencil = FrozenStencil(
-            delnflux.calc_damp, origin=(0, 0, 0), domain=(1, 1, self.grid.npz)
+            delnflux.calc_damp, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
         )
 
         self._damping_factor_calculation_stencil(
@@ -706,7 +725,7 @@ class DGridShallowWaterLagrangianDynamics:
             damping_coefficients.da_min_c,
         )
         self._delnflux_damp_vt = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :], (self.grid.npz,), (0,)
+            self._tmp_damp_3d[0, 0, :], (grid_indexing.domain[2],), (0,)
         )
 
         self._damping_factor_calculation_stencil(
@@ -716,7 +735,7 @@ class DGridShallowWaterLagrangianDynamics:
             damping_coefficients.da_min_c,
         )
         self._delnflux_damp_w = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :], (self.grid.npz,), (0,)
+            self._tmp_damp_3d[0, 0, :], (grid_indexing.domain[2],), (0,)
         )
 
     def __call__(
@@ -955,7 +974,7 @@ class DGridShallowWaterLagrangianDynamics:
         )
 
         # Vorticity transport
-        self._compute_vorticity_stencil(self._tmp_wk, self.grid.f0, zh, self._tmp_vort)
+        self._compute_vorticity_stencil(self._tmp_wk, self._f0, zh, self._tmp_vort)
 
         self.fvtp2d_vt_nodelnflux(
             self._tmp_vort, crx, cry, xfx, yfx, self._tmp_fx, self._tmp_fy

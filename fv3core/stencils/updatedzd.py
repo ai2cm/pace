@@ -6,6 +6,7 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
+from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -187,7 +188,17 @@ class UpdateHeightOnDGrid:
     Fortran name is updatedzd.
     """
 
-    def __init__(self, grid, namelist, dp0: FloatFieldK, column_namelist, k_bounds):
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        damping_coefficients: DampingCoefficients,
+        grid_data: GridData,
+        grid_type: int,
+        hord_tm: int,
+        dp0: FloatFieldK,
+        column_namelist,
+        k_bounds,
+    ):
         """
         Args:
             grid: fv3core grid object
@@ -197,7 +208,8 @@ class UpdateHeightOnDGrid:
             column_namelist: ???
             k_bounds: ???
         """
-        self.grid = grid
+        self.grid_indexing = grid_indexing
+        self._area = grid_data.area
         self._column_namelist = column_namelist
         self._k_bounds = k_bounds  # d_sw.k_bounds()
         if any(
@@ -206,58 +218,88 @@ class UpdateHeightOnDGrid:
         ):
             raise NotImplementedError("damp <= 1e-5 in column_cols is untested")
         self._dp0 = dp0
-        self._allocate_temporary_storages()
-        self._initialize_interpolation_constants()
-        self._compile_stencils(namelist)
+        self._allocate_temporary_storages(grid_indexing)
+        self._initialize_interpolation_constants(grid_indexing)
 
-    def _allocate_temporary_storages(self):
-        largest_possible_shape = self.grid.domain_shape_full(add=(1, 1, 1))
+        self._interpolate_to_layer_interface = FrozenStencil(
+            cubic_spline_interpolation_from_layer_center_to_interfaces,
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(add=(0, 0, 1)),
+        )
+        self._apply_height_fluxes = FrozenStencil(
+            apply_height_fluxes,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(add=(0, 0, 1)),
+        )
+        self.delnflux = DelnFluxNoSG(
+            grid_indexing,
+            damping_coefficients,
+            grid_data.rarea,
+            self._column_namelist["nord_v"],
+            nk=grid_indexing.domain[2] + 1,
+        )
+        self.finite_volume_transport = FiniteVolumeTransport(
+            grid_indexing=grid_indexing,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
+            grid_type=grid_type,
+            hord=hord_tm,
+        )
+
+    def _allocate_temporary_storages(self, grid_indexing):
+        largest_possible_shape = grid_indexing.domain_full(add=(1, 1, 1))
         self._crx_interface = utils.make_storage_from_shape(
             largest_possible_shape,
-            self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
+            grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
         )
         self._cry_interface = utils.make_storage_from_shape(
             largest_possible_shape,
-            self.grid.compute_origin(add=(-self.grid.halo, 0, 0)),
+            grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
         )
         self._x_area_flux_interface = utils.make_storage_from_shape(
             largest_possible_shape,
-            self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
+            grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
         )
         self._y_area_flux_interface = utils.make_storage_from_shape(
             largest_possible_shape,
-            self.grid.compute_origin(add=(-self.grid.halo, 0, 0)),
+            grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
         )
         self._wk = utils.make_storage_from_shape(
-            largest_possible_shape, self.grid.full_origin()
+            largest_possible_shape, grid_indexing.origin_full()
         )
         self._height_x_diffusive_flux = utils.make_storage_from_shape(
-            largest_possible_shape, self.grid.full_origin()
+            largest_possible_shape, grid_indexing.origin_full()
         )
         self._height_y_diffusive_flux = utils.make_storage_from_shape(
-            largest_possible_shape, self.grid.full_origin()
+            largest_possible_shape, grid_indexing.origin_full()
         )
         self._fx = utils.make_storage_from_shape(
-            largest_possible_shape, self.grid.full_origin()
+            largest_possible_shape, grid_indexing.origin_full()
         )
         self._fy = utils.make_storage_from_shape(
-            largest_possible_shape, self.grid.full_origin()
+            largest_possible_shape, grid_indexing.origin_full()
         )
         self._zh_tmp = utils.make_storage_from_shape(
-            largest_possible_shape, self.grid.full_origin()
+            largest_possible_shape, grid_indexing.origin_full()
         )
 
-    def _initialize_interpolation_constants(self):
+    def _initialize_interpolation_constants(self, grid_indexing):
         # because stencils only work on 3D at the moment, need to compute in 3D
         # and then make these 1D
-        gk_3d = utils.make_storage_from_shape((1, 1, self.grid.npz + 1), (0, 0, 0))
-        gamma_3d = utils.make_storage_from_shape((1, 1, self.grid.npz + 1), (0, 0, 0))
-        beta_3d = utils.make_storage_from_shape((1, 1, self.grid.npz + 1), (0, 0, 0))
+        gk_3d = utils.make_storage_from_shape(
+            (1, 1, grid_indexing.domain[2] + 1), (0, 0, 0)
+        )
+        gamma_3d = utils.make_storage_from_shape(
+            (1, 1, grid_indexing.domain[2] + 1), (0, 0, 0)
+        )
+        beta_3d = utils.make_storage_from_shape(
+            (1, 1, grid_indexing.domain[2] + 1), (0, 0, 0)
+        )
 
         _cubic_spline_interpolation_constants = FrozenStencil(
             cubic_spline_interpolation_constants,
             origin=(0, 0, 0),
-            domain=(1, 1, self.grid.npz + 1),
+            domain=(1, 1, grid_indexing.domain[2] + 1),
         )
 
         _cubic_spline_interpolation_constants(self._dp0, gk_3d, beta_3d, gamma_3d)
@@ -265,32 +307,6 @@ class UpdateHeightOnDGrid:
         self._beta = utils.make_storage_data(beta_3d[0, 0, :], beta_3d.shape[2:], (0,))
         self._gamma = utils.make_storage_data(
             gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,)
-        )
-
-    def _compile_stencils(self, namelist):
-        self._interpolate_to_layer_interface = FrozenStencil(
-            cubic_spline_interpolation_from_layer_center_to_interfaces,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
-        )
-        self._apply_height_fluxes = FrozenStencil(
-            apply_height_fluxes,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
-        )
-        self.delnflux = DelnFluxNoSG(
-            self.grid.grid_indexing,
-            self.grid.damping_coefficients,
-            self.grid.rarea,
-            self._column_namelist["nord_v"],
-            nk=self.grid.npz + 1,
-        )
-        self.finite_volume_transport = FiniteVolumeTransport(
-            grid_indexing=self.grid.grid_indexing,
-            grid_data=self.grid.grid_data,
-            damping_coefficients=self.grid.damping_coefficients,
-            grid_type=self.grid.grid_type,
-            hord=namelist.hord_tm,
         )
 
     def __call__(
@@ -352,7 +368,7 @@ class UpdateHeightOnDGrid:
             self._wk,
         )
         self._apply_height_fluxes(
-            self.grid.area,
+            self._area,
             height,
             self._fx,
             self._fy,

@@ -125,8 +125,12 @@ def get_selective_tracer_advection(
 def get_compute_domain_k_interfaces(
     instance,
 ) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
-    origin = instance.grid.compute_origin()
-    domain = instance.grid.domain_shape_compute(add=(0, 0, 1))
+    try:
+        origin = instance.grid_indexing.origin_compute()
+        domain = instance.grid_indexing.domain_compute(add=(0, 0, 1))
+    except AttributeError:
+        origin = instance.grid.compute_origin()
+        domain = instance.grid.domain_shape_compute(add=(0, 0, 1))
     return origin, domain
 
 
