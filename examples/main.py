@@ -122,52 +122,72 @@ for tile in range(6):
             print("> running ", f"tile-{tile}", sp)
             # Note : The data from IN_VARS_FVPHY is for comparison purposes currently
             #  ***Maybe do not need to reverse***
-            ref_data = data_dict_from_var_list(IN_VARS_FVPHY, serializer, sp,False)
-
+            ref_data = data_dict_from_var_list(IN_VARS_FVPHY, serializer, sp, False)
             in_data = {}
 
             # Adding previously read serialized data
-            in_data["prsi"]     = in_data_pd["IPD_prsi"]
-            in_data["tgrs"]     = in_data_pd["IPD_tgrs"]
-            in_data["ugrs"]     = in_data_pd["IPD_ugrs"]
-            in_data["vgrs"]     = in_data_pd["IPD_vgrs"]
+            in_data["prsi"] = in_data_pd["IPD_prsi"]
+            in_data["tgrs"] = in_data_pd["IPD_tgrs"]
+            in_data["ugrs"] = in_data_pd["IPD_ugrs"]
+            in_data["vgrs"] = in_data_pd["IPD_vgrs"]
             in_data["IPD_area"] = in_data_pd["IPD_area"]
 
-            in_data["gq0"]  = out_data_pd["IPD_gq0"]
-            in_data["gt0"]  = out_data_pd["IPD_gt0"]
-            in_data["gu0"]  = out_data_pd["IPD_gu0"]
-            in_data["gv0"]  = out_data_pd["IPD_gv0"]
+            in_data["gq0"] = out_data_pd["IPD_gq0"]
+            in_data["gt0"] = out_data_pd["IPD_gt0"]
+            in_data["gu0"] = out_data_pd["IPD_gu0"]
+            in_data["gv0"] = out_data_pd["IPD_gv0"]
 
-            in_data["nq"]   = in_data_fvd["nq_tot"] - 1 # I think nq=8 since it's set in class DynamicalCore
-            in_data["delp"] = np.reshape(out_data_fvd["delp"][3:-3,3:-3,:],(144,79))
+            in_data["nq"] = (
+                in_data_fvd["nq_tot"] - 1
+            )  # I think nq=8 since it's set in class DynamicalCore
+            in_data["delp"] = np.reshape(
+                out_data_fvd["delp"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
 
             in_data["nwat"] = out_data_pds["IPD_nwat"]
 
-            in_data["qvapor"]  = np.reshape(out_data_fvd["qvapor"][3:-3,3:-3,:],(144,79))
-            in_data["qliquid"] = np.reshape(out_data_fvd["qliquid"][3:-3,3:-3,:],(144,79))
-            in_data["qrain"]   = np.reshape(out_data_fvd["qrain"][3:-3,3:-3,:],(144,79))
-            in_data["qsnow"]   = np.reshape(out_data_fvd["qsnow"][3:-3,3:-3,:],(144,79))
-            in_data["qice"]    = np.reshape(out_data_fvd["qice"][3:-3,3:-3,:],(144,79))
-            in_data["qgraupel"]= np.reshape(out_data_fvd["qgraupel"][3:-3,3:-3,:],(144,79))
-            in_data["qo3mr"]   = np.reshape(out_data_fvd["qo3mr"][3:-3,3:-3,:],(144,79))
-            in_data["qsgs_tke"]= np.reshape(out_data_fvd["qsgs_tke"][3:-3,3:-3,:],(144,79))
-            in_data["qcld"]    = np.reshape(out_data_fvd["qcld"][3:-3,3:-3,:],(144,79))
+            in_data["qvapor"] = np.reshape(
+                out_data_fvd["qvapor"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
+            in_data["qliquid"] = np.reshape(
+                out_data_fvd["qliquid"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
+            in_data["qrain"] = np.reshape(
+                out_data_fvd["qrain"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
+            in_data["qsnow"] = np.reshape(
+                out_data_fvd["qsnow"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
+            in_data["qice"] = np.reshape(
+                out_data_fvd["qice"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
+            in_data["qgraupel"] = np.reshape(
+                out_data_fvd["qgraupel"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
+            in_data["qo3mr"] = np.reshape(
+                out_data_fvd["qo3mr"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
+            in_data["qsgs_tke"] = np.reshape(
+                out_data_fvd["qsgs_tke"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
+            in_data["qcld"] = np.reshape(
+                out_data_fvd["qcld"][3:-3, 3:-3, :], (144, 79), order="F"
+            )
 
-            in_data["gq0_check_in"]  = in_data_fillgfs["IPD_gq0"]
+            in_data["gq0_check_in"] = in_data_fillgfs["IPD_gq0"]
             in_data["gq0_check_out"] = out_data_fillgfs["IPD_gq0"]
-            
+
             out_data = update_atmos_model_state.run(in_data)
 
             print("After update_atmos_model_state")
-
-            delp = np.reshape(ref_data["delp"][3:-3,3:-3,:],(144,79))
-            u_dt = np.reshape(ref_data["u_dt"][3:-3,3:-3,:],(144,79))
-            v_dt = np.reshape(ref_data["v_dt"][3:-3,3:-3,:],(144,79))
-            t_dt = np.reshape(ref_data["t_dt"],(144,79))
-            np.testing.assert_allclose(out_data["delp"],delp,atol=1e-8)
-            np.testing.assert_allclose(out_data["u_dt"],u_dt,atol=1e-8)
-            np.testing.assert_allclose(out_data["v_dt"],v_dt,atol=1e-8)
-            np.testing.assert_allclose(out_data["t_dt"],t_dt,atol=1e-8)
+            delp = np.reshape(ref_data["delp"][3:-3, 3:-3, :], (144, 79), order="F")
+            u_dt = np.reshape(ref_data["u_dt"][3:-3, 3:-3, :], (144, 79), order="F")
+            v_dt = np.reshape(ref_data["v_dt"][3:-3, 3:-3, :], (144, 79), order="F")
+            t_dt = np.reshape(ref_data["t_dt"], (144, 79), order="F")
+            np.testing.assert_allclose(out_data["delp"], delp, atol=1e-8, rtol=1e-5)
+            np.testing.assert_allclose(out_data["u_dt"], u_dt, atol=1e-8)
+            np.testing.assert_allclose(out_data["v_dt"], v_dt, atol=1e-8)
+            np.testing.assert_allclose(out_data["t_dt"], t_dt, atol=1e-8)
 
         # if sp.name.startswith("PrsFV3-In"):
         #     print("> running ", f"tile-{tile}", sp)
