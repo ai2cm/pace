@@ -1,7 +1,8 @@
+from gt4py import storage
 import numpy as np
 from fv3gfs.util.quantity import Quantity
 import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.typing import FloatField, IntField, Int, Float
+from fv3core.utils.typing import FloatField, IntField, Int, Float, FloatFieldIJ
 import fv3gfs.util
 from fv3gfs.physics.global_constants import *
 from fv3gfs.physics.functions.microphysics_funcs import *
@@ -18,7 +19,7 @@ from fv3core.decorators import FrozenStencil
 
 def fields_init(
     land: FloatField,
-    area: FloatField,
+    area: FloatFieldIJ,
     h_var: FloatField,
     rh_adj: FloatField,
     rh_rain: FloatField,
@@ -1769,6 +1770,7 @@ class MicrophysicsState:
         eastward_wind: Quantity,
         northward_wind: Quantity,
         pressure_thickness_of_atmospheric_layer: Quantity,
+        vertical_thickness_of_atmospheric_layer: Quantity,
         vertical_pressure_velocity: Quantity,
     ):
         self.grid = grid
@@ -1779,11 +1781,14 @@ class MicrophysicsState:
         self.cloud_ice_mixing_ratio = cloud_ice_mixing_ratio  # qice
         self.snow_mixing_ratio = snow_mixing_ratio  # qsnow
         self.graupel_mixing_ratio = graupel_mixing_ratio  # qgraupel
-        self.cloud_fraction = cloud_fraction  # q
+        self.cloud_fraction = cloud_fraction  # qa
         self.eastward_wind = eastward_wind  # ua
         self.northward_wind = northward_wind  # va
         self.pressure_thickness_of_atmospheric_layer = (
             pressure_thickness_of_atmospheric_layer  # delp
+        )
+        self.vertical_thickness_of_atmospheric_layer = (
+            vertical_thickness_of_atmospheric_layer  # delz
         )
         self.vertical_pressure_velocity = vertical_pressure_velocity  # omga
 
@@ -1801,15 +1806,103 @@ class MicrophysicsState:
         self.eastward_wind_tendency = self.make_quantity_from_storage()  # udt
         self.northward_wind_tendency = self.make_quantity_from_storage()  # vdt
 
-    def make_quantity_from_storage(self):
+    def make_quantity_from_storage(self) -> Quantity:
         origin = self.grid.compute_origin()
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
         return self.grid.make_quantity(storage)
 
+    @property
+    def pt(self):
+        return self.air_temperature.storage
+
+    @property
+    def qvapor(self):
+        return self.specific_humidity.storage
+
+    @property
+    def qliquid(self):
+        return self.cloud_water_mixing_ratio.storage
+
+    @property
+    def qrain(self):
+        return self.rain_mixing_ratio.storage
+
+    @property
+    def qice(self):
+        return self.cloud_ice_mixing_ratio.storage
+
+    @property
+    def qsnow(self):
+        return self.snow_mixing_ratio.storage
+
+    @property
+    def qgraupel(self):
+        return self.graupel_mixing_ratio.storage
+
+    @property
+    def qcld(self):
+        return self.cloud_fraction.storage
+
+    @property
+    def ua(self):
+        return self.eastward_wind.storage
+
+    @property
+    def va(self):
+        return self.northward_wind.storage
+
+    @property
+    def delp(self):
+        return self.pressure_thickness_of_atmospheric_layer.storage
+
+    @property
+    def delz(self):
+        return self.vertical_thickness_of_atmospheric_layer.storage
+
+    @property
+    def omga(self):
+        return self.vertical_pressure_velocity.storage
+
+    @property
+    def qv_dt(self):
+        return self.specific_humidity_tendency.storage
+
+    @property
+    def ql_dt(self):
+        return self.cloud_water_mixing_ratio_tendency.storage
+
+    @property
+    def qr_dt(self):
+        return self.rain_mixing_ratio_tendency.storage
+
+    @property
+    def qi_dt(self):
+        return self.cloud_ice_mixing_ratio_tendency.storage
+
+    @property
+    def qs_dt(self):
+        return self.snow_mixing_ratio_tendency.storage
+
+    @property
+    def qg_dt(self):
+        return self.graupel_mixing_ratio_tendency.storage
+
+    @property
+    def qa_dt(self):
+        return self.cloud_fraction_tendency.storage
+
+    @property
+    def udt(self):
+        return self.eastward_wind_tendency.storage
+
+    @property
+    def vdt(self):
+        return self.northward_wind_tendency.storage
+
 
 class Microphysics:
-    def __init__(self, grid, namelist, dt):
+    def __init__(self, grid, namelist):
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         self.gfdl_cloud_microphys_init()
         self.grid = grid
@@ -1828,8 +1921,8 @@ class Microphysics:
         self._c_air = cp_air
         self._c_vap = cp_vap
         self._p_nonhydro = 0
-        self._do_vap = self._c_vap - c_liq
-        self._lv00 = hlv0 - self._do_vap * t_ice
+        self._d0_vap = self._c_vap - c_liq
+        self._lv00 = hlv0 - self._d0_vap * t_ice
         self._do_sedi_w = 0 if self._hydrostatic else 1
         # Define cloud microphysics sub time step
         self._mpdt = min(self._dt_atmos, mp_time)
@@ -1842,13 +1935,11 @@ class Microphysics:
         self._cpaut = c_paut * 0.104 * grav / 1.717e-5
         self._use_ccn = 0 if prog_ccn == 1 else 1
         self._area = self.grid.area
-        self._land = utils.make_storage_from_shape(shape[0:2], origin=origin, init=True)
-        self._rain = utils.make_storage_from_shape(shape[0:2], origin=origin, init=True)
-        self._graupel = utils.make_storage_from_shape(
-            shape[0:2], origin=origin, init=True
-        )
-        self._ice = utils.make_storage_from_shape(shape[0:2], origin=origin, init=True)
-        self._snow = utils.make_storage_from_shape(shape[0:2], origin=origin, init=True)
+        self._land = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._rain = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._graupel = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._ice = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._snow = utils.make_storage_from_shape(shape, origin=origin, init=True)
 
         self._p = utils.make_storage_from_shape(
             shape, origin=origin, init=True
@@ -1859,10 +1950,11 @@ class Microphysics:
         # refl_10cm comes from Diag, not clear if this should be updated?
         self.refl_10cm = utils.make_storage_from_shape(shape, origin=origin, init=True)
 
-        self._h_var = utils.make_storage_from_shape(shape[0:2], origin=origin)
-        self._rh_adj = utils.make_storage_from_shape(shape[0:2], origin=origin)
-        self._rh_rain = utils.make_storage_from_shape(shape[0:2], origin=origin)
+        self._h_var = utils.make_storage_from_shape(shape, origin=origin)
+        self._rh_adj = utils.make_storage_from_shape(shape, origin=origin)
+        self._rh_rain = utils.make_storage_from_shape(shape, origin=origin)
 
+        self._qn = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._qaz = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._qgz = utils.make_storage_from_shape(shape, origin=origin)
         self._qiz = utils.make_storage_from_shape(shape, origin=origin)
@@ -2078,4 +2170,64 @@ class Microphysics:
         self._ces0 = eps * es0
 
     def __call__(self, state: MicrophysicsState):
-        pass
+        self._fields_init(
+            self._land,
+            self._area,
+            self._h_var,
+            self._rh_adj,
+            self._rh_rain,
+            self._graupel,
+            self._ice,
+            self._rain,
+            self._snow,
+            state.qcld,
+            state.qgraupel,
+            state.qice,
+            state.qliquid,
+            self._qn,
+            state.qrain,
+            state.qsnow,
+            state.qvapor,
+            state.pt,
+            state.delp,
+            state.delz,
+            self._qgz,
+            self._qiz,
+            self._qlz,
+            self._qrz,
+            self._qsz,
+            self._qvz,
+            self._tz,
+            state.qi_dt,
+            state.qs_dt,
+            state.ua,
+            state.va,
+            self._qa0,
+            self._qg0,
+            self._qi0,
+            self._ql0,
+            self._qr0,
+            self._qs0,
+            self._qv0,
+            self._t0,
+            self._dp0,
+            self._den0,
+            self._dz0,
+            self._u0,
+            self._v0,
+            self._dp1,
+            self._p1,
+            self._u1,
+            self._v1,
+            self._ccn,
+            self._c_praut,
+            Int(self._use_ccn),
+            self._c_air,
+            self._c_vap,
+            self._d0_vap,
+            self._lv00,
+            Float(self._dt_atmos),
+            self._rdt,
+            self._cpaut,
+        )
+        print("Microphysics")
