@@ -27,3 +27,18 @@ def get_prs_fv3_stencil(
         del_gz = (phii[0, 0, -1] - phii[0, 0, 0]) / (
             tgrs[0, 0, 0] * (1.0 + con_fvirt * max(0.0, qgrs[0, 0, 0]))
         )
+
+
+def get_prs_fv3(
+    phii: FIELD_FLT,
+    prsi: FIELD_FLT,
+    tgrs: FIELD_FLT,
+    qgrs: FIELD_FLT,
+    del_: FIELD_FLT,
+    del_gz: FIELD_FLT,
+):
+    with computation(PARALLEL), interval(1, None):
+        del_ = prsi[0, 0, 0] - prsi[0, 0, -1]
+        del_gz = (phii[0, 0, -1] - phii[0, 0, 0]) / (
+            tgrs[0, 0, 0] * (1.0 + con_fvirt * max(0.0, qgrs[0, 0, 0]))
+        )

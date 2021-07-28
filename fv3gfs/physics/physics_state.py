@@ -1,5 +1,8 @@
 from fv3gfs.physics.stencils.microphysics import MicrophysicsState
 from fv3core.decorators import ArgSpec, get_namespace
+from fv3gfs.util.quantity import Quantity
+import fv3core.utils.gt4py_utils as utils
+import copy
 
 
 class PhysicsState:
@@ -18,65 +21,55 @@ class PhysicsState:
             "delp", "pressure_thickness_of_atmospheric_layer", "Pa", intent="inout"
         ),
         ArgSpec("delz", "vertical_thickness_of_atmospheric_layer", "m", intent="inout"),
-        ArgSpec("peln", "logarithm_of_interface_pressure", "ln(Pa)", intent="inout"),
-        ArgSpec("u", "x_wind", "m/s", intent="inout"),
-        ArgSpec("v", "y_wind", "m/s", intent="inout"),
-        ArgSpec("w", "vertical_wind", "m/s", intent="inout"),
         ArgSpec("ua", "eastward_wind", "m/s", intent="inout"),
         ArgSpec("va", "northward_wind", "m/s", intent="inout"),
-        ArgSpec("uc", "x_wind_on_c_grid", "m/s", intent="inout"),
-        ArgSpec("vc", "y_wind_on_c_grid", "m/s", intent="inout"),
-        ArgSpec("q_con", "total_condensate_mixing_ratio", "kg/kg", intent="inout"),
-        ArgSpec("pe", "interface_pressure", "Pa", intent="inout"),
-        ArgSpec("phis", "surface_geopotential", "m^2 s^-2", intent="in"),
-        ArgSpec(
-            "pk",
-            "interface_pressure_raised_to_power_of_kappa",
-            "unknown",
-            intent="inout",
-        ),
-        ArgSpec(
-            "pkz",
-            "layer_mean_pressure_raised_to_power_of_kappa",
-            "unknown",
-            intent="inout",
-        ),
-        ArgSpec("ps", "surface_pressure", "Pa", intent="inout"),
+        ArgSpec("w", "vertical_wind", "m/s", intent="inout"),
         ArgSpec("omga", "vertical_pressure_velocity", "Pa/s", intent="inout"),
-        ArgSpec("ak", "atmosphere_hybrid_a_coordinate", "Pa", intent="in"),
-        ArgSpec("bk", "atmosphere_hybrid_b_coordinate", "", intent="in"),
-        ArgSpec("mfxd", "accumulated_x_mass_flux", "unknown", intent="inout"),
-        ArgSpec("mfyd", "accumulated_y_mass_flux", "unknown", intent="inout"),
-        ArgSpec("cxd", "accumulated_x_courant_number", "", intent="inout"),
-        ArgSpec("cyd", "accumulated_y_courant_number", "", intent="inout"),
-        ArgSpec(
-            "diss_estd",
-            "dissipation_estimate_from_heat_source",
-            "unknown",
-            intent="inout",
-        ),
     )
 
     def __init__(self, state, grid):
-        self.state = get_namespace(self.arg_specs, state)
+        self.physics_state = self.make_physics_state(state)
+        self.physics_state = get_namespace(self.arg_specs, self.physics_state)
         self.grid = grid
+
+    def make_physics_state(self, dycore_state):
+        phy_vars = [
+            "air_temperature",
+            "specific_humidity",
+            "cloud_water_mixing_ratio",
+            "rain_mixing_ratio",
+            "cloud_ice_mixing_ratio",
+            "snow_mixing_ratio",
+            "graupel_mixing_ratio",
+            "ozone_mixing_ratio",
+            "turbulent_kinetic_energy",
+            "cloud_fraction",
+            "eastward_wind",
+            "northward_wind",
+            "vertical_wind",
+            "pressure_thickness_of_atmospheric_layer",
+            "vertical_thickness_of_atmospheric_layer",
+            "vertical_pressure_velocity",
+        ]
+        phy_state = {key: copy.deepcopy(dycore_state[key]) for key in phy_vars}
+        return phy_state
 
     @property
     def microphysics(self) -> MicrophysicsState:
         microphysics_state = MicrophysicsState(
             self.grid,
-            self.state.pt_quantity,
-            self.state.qvapor_quantity,
-            self.state.qliquid_quantity,
-            self.state.qrain_quantity,
-            self.state.qice_quantity,
-            self.state.qsnow_quantity,
-            self.state.qgraupel_quantity,
-            self.state.qcld_quantity,
-            self.state.ua_quantity,
-            self.state.va_quantity,
-            self.state.delp_quantity,
-            self.state.delz_quantity,
-            self.state.omga_quantity,
+            self.physics_state.pt_quantity,
+            self.physics_state.qvapor_quantity,
+            self.physics_state.qliquid_quantity,
+            self.physics_state.qrain_quantity,
+            self.physics_state.qice_quantity,
+            self.physics_state.qsnow_quantity,
+            self.physics_state.qgraupel_quantity,
+            self.physics_state.qcld_quantity,
+            self.physics_state.ua_quantity,
+            self.physics_state.va_quantity,
+            self.physics_state.delp_quantity,
+            self.physics_state.delz_quantity,
+            self.physics_state.omga_quantity,
         )
         return microphysics_state

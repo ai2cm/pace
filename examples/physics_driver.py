@@ -165,7 +165,7 @@ def physics_driver(
     )
 
     # These copies can be done within a stencil
-    gt0 = tgrs
+    gt0 = tgrs  # + dtdt * dtp (tendencies from PBL and others)
     gq0 = qgrs
     gu0 = ugrs
     gv0 = vgrs

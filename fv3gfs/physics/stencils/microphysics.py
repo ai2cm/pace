@@ -1900,6 +1900,17 @@ class MicrophysicsState:
     def vdt(self):
         return self.northward_wind_tendency.storage
 
+    @property
+    def w(self):
+        w_calc = (
+            -self.omga
+            * (1.0 + con_fvirt * self.qvapor)
+            * self.pt
+            / self.delp
+            / (rdgas * rgrav)
+        )
+        return w_calc
+
 
 class Microphysics:
     def __init__(self, grid, namelist):
@@ -2003,6 +2014,7 @@ class Microphysics:
         self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / tau_imlt)
         self._fac_l2v = 1.0 - np.exp(-self._dt_evap / tau_l2v)
 
+        # TODO: origin should be (3,3,0)
         self._fields_init = FrozenStencil(
             func=fields_init,
             origin=self.grid.grid_indexing.origin_full(),
@@ -2230,4 +2242,51 @@ class Microphysics:
             self._rdt,
             self._cpaut,
         )
+
+        # for n in range(self._ntimes):
+        #     warm_rain(
+        #     self._h_var,
+        #     self._rain,
+        #     self._qgz,
+        #     self._qiz,
+        #     self._qlz,
+        #     self._qrz,
+        #     self._qsz,
+        #     self._qvz,
+        #     self._tz,
+        #     self._den,
+        #     self._denfac,
+        #     w,
+        #     self._t0,
+        #     self._den0,
+        #     self._dz0,
+        #     self._dz1,
+        #     self._dp1,
+        #     self._m1,
+        #     self._vtrz,
+        #     self._ccn,
+        #     self._c_praut,
+        #     self._m1_sol,
+        #     self._m2_rain,
+        #     self._m2_sol,
+        #     Int(1),
+        #     Int(self._do_sedi_w),
+        #     Int(self._p_nonhydro),
+        #     Int(self._use_ccn),
+        #     self._c_air,
+        #     self._c_vap,
+        #     self._d0_vap,
+        #     self._lv00,
+        #     self._fac_rc,
+        #     self._cracw,
+        #     self._crevp[0],
+        #     self._crevp[1],
+        #     self._crevp[2],
+        #     self._crevp[3],
+        #     self._crevp[4],
+        #     self._t_wfr,
+        #     self._so3,
+        #     self._dt_rain,
+        #     self._zs,
+        # )
         print("Microphysics")
