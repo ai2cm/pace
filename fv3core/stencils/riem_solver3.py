@@ -12,11 +12,11 @@ from gt4py.gtscript import (
     log,
 )
 
-import fv3core._config as spec
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.sim1_solver import Sim1Solver
+from fv3core.utils.grid import GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -108,20 +108,20 @@ class RiemannSolver3:
     Fortran subroutine Riem_Solver3
     """
 
-    def __init__(self, namelist):
-        grid = spec.grid
+    def __init__(self, grid_indexing: GridIndexing, p_fac, a_imp, use_logp, beta):
         self._sim1_solve = Sim1Solver(
-            namelist,
-            grid,
-            grid.is_,
-            grid.ie,
-            grid.js,
-            grid.je,
+            p_fac,
+            grid_indexing.isc,
+            grid_indexing.iec,
+            grid_indexing.jsc,
+            grid_indexing.jec,
+            grid_indexing.domain[2] + 1,
         )
-        assert namelist.a_imp > 0.999, "a_imp <= 0.999 is not implemented"
-        riemorigin = grid.compute_origin()
-        domain = grid.domain_shape_compute(add=(0, 0, 1))
-        shape = grid.domain_shape_full(add=(1, 1, 1))
+        if a_imp <= 0.999:
+            raise NotImplementedError("a_imp <= 0.999 is not implemented")
+        riemorigin = grid_indexing.origin_compute()
+        domain = grid_indexing.domain_compute(add=(0, 0, 1))
+        shape = grid_indexing.max_shape
         self._tmp_dm = utils.make_storage_from_shape(shape, riemorigin)
         self._tmp_pe_init = utils.make_storage_from_shape(shape, riemorigin)
         self._tmp_pm = utils.make_storage_from_shape(shape, riemorigin)
@@ -135,7 +135,7 @@ class RiemannSolver3:
         )
         self._finalize_stencil = FrozenStencil(
             finalize,
-            externals={"use_logp": namelist.use_logp, "beta": namelist.beta},
+            externals={"use_logp": use_logp, "beta": beta},
             origin=riemorigin,
             domain=domain,
         )

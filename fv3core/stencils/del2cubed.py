@@ -4,8 +4,9 @@ import fv3core._config as spec
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil, get_stencils_with_varied_bounds
-from fv3core.utils.grid import axis_offsets
+from fv3core.utils.grid import DampingCoefficients, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 #
@@ -75,21 +76,25 @@ class HyperdiffusionDamping:
     Fortran name is del2_cubed
     """
 
-    def __init__(self, grid, nmax: int):
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        damping_coefficients: DampingCoefficients,
+        rarea,
+        nmax: int,
+    ):
         """
         Args:
             grid: fv3core grid object
         """
-        self.grid = spec.grid
-        origin = self.grid.full_origin()
-        domain = self.grid.domain_shape_full()
+        self._del6_u = damping_coefficients.del6_u
+        self._del6_v = damping_coefficients.del6_v
+        self._rarea = rarea
+        origin = grid_indexing.origin_full()
+        domain = grid_indexing.domain_full()
         ax_offsets = axis_offsets(spec.grid, origin, domain)
-        self._fx = utils.make_storage_from_shape(
-            self.grid.domain_shape_full(add=(1, 1, 1)), origin=origin
-        )
-        self._fy = utils.make_storage_from_shape(
-            self.grid.domain_shape_full(add=(1, 1, 1)), origin=origin
-        )
+        self._fx = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._fy = utils.make_storage_from_shape(grid_indexing.max_shape)
 
         self._corner_fill = FrozenStencil(
             func=corner_fill,
@@ -104,14 +109,20 @@ class HyperdiffusionDamping:
         domains_x = []
         domains_y = []
         domains = []
-        for n in range(1, self._ntimes + 1):
-            nt = self._ntimes - n
-            origins.append((self.grid.is_ - nt, self.grid.js - nt, 0))
-            nx = self.grid.nic + 2 * nt
-            ny = self.grid.njc + 2 * nt
-            domains_x.append((nx + 1, ny, self.grid.npz))
-            domains_y.append((nx, ny + 1, self.grid.npz))
-            domains.append((nx, ny, self.grid.npz))
+        for n_halo in range(self._ntimes - 1, -1, -1):
+            origin, domain = grid_indexing.get_origin_domain(
+                [X_DIM, Y_DIM, Z_DIM], halos=(n_halo, n_halo)
+            )
+            _, domain_x = grid_indexing.get_origin_domain(
+                [X_INTERFACE_DIM, Y_DIM, Z_DIM], halos=(n_halo, n_halo)
+            )
+            _, domain_y = grid_indexing.get_origin_domain(
+                [X_DIM, Y_INTERFACE_DIM, Z_DIM], halos=(n_halo, n_halo)
+            )
+            origins.append(origin)
+            domains.append(domain)
+            domains_x.append(domain_x)
+            domains_y.append(domain_y)
         self._compute_zonal_flux = get_stencils_with_varied_bounds(
             compute_zonal_flux,
             origins,
@@ -154,7 +165,7 @@ class HyperdiffusionDamping:
             self._compute_zonal_flux[n](
                 self._fx,
                 qdel,
-                self.grid.del6_v,
+                self._del6_v,
             )
 
             if nt > 0:
@@ -163,13 +174,13 @@ class HyperdiffusionDamping:
             self._compute_meridional_flux[n](
                 self._fy,
                 qdel,
-                self.grid.del6_u,
+                self._del6_u,
             )
 
             # Update q values
             self._update_q[n](
                 qdel,
-                self.grid.rarea,
+                self._rarea,
                 self._fx,
                 self._fy,
                 cd,

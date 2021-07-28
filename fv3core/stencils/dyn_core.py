@@ -1,4 +1,4 @@
-from typing import Dict, Sequence
+from typing import Dict
 
 from gt4py.gtscript import (
     __INLINED,
@@ -31,7 +31,13 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.pk3_halo import PK3Halo
 from fv3core.stencils.riem_solver3 import RiemannSolver3
 from fv3core.stencils.riem_solver_c import RiemannSolverC
-from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
+from fv3core.utils.grid import (
+    DampingCoefficients,
+    GridData,
+    GridIndexing,
+    axis_offsets,
+    quantity_wrap,
+)
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 from fv3gfs.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
@@ -158,17 +164,6 @@ def get_nk_heat_dissipation(
     return nk_heat_dissipation
 
 
-def quantity_wrap(storage, dims: Sequence[str], grid_indexing: GridIndexing):
-    origin, extent = grid_indexing.get_origin_domain(dims)
-    return fv3gfs.util.Quantity(
-        storage,
-        dims=dims,
-        units="unknown",
-        origin=origin,
-        extent=extent,
-    )
-
-
 def dyncore_temporaries(grid_indexing: GridIndexing):
     tmps: Dict[str, fv3gfs.util.Quantity] = {}
     utils.storage_dict(
@@ -230,7 +225,7 @@ def _initialize_edge_pe_stencil(grid_indexing: GridIndexing) -> FrozenStencil:
     )
 
 
-def _initialize_temp_adjust_stencil(grid, n_adj):
+def _initialize_temp_adjust_stencil(grid_indexing: GridIndexing, n_adj):
     """
     Returns the FrozenStencil Object for the temperature_adjust stencil
     Args:
@@ -238,8 +233,8 @@ def _initialize_temp_adjust_stencil(grid, n_adj):
     """
     return FrozenStencil(
         temperature_adjust.compute_pkz_tempadjust,
-        origin=grid.compute_origin(),
-        domain=(grid.nic, grid.njc, n_adj),
+        origin=grid_indexing.origin_compute(),
+        domain=grid_indexing.restrict_vertical(nk=n_adj).domain_compute(),
     )
 
 
@@ -249,41 +244,43 @@ class AcousticDynamics:
     Peforms the Lagrangian acoustic dynamics described by Lin 2004
     """
 
-    class HaloUpdaters:
+    class _HaloUpdaters:
         """Encapsulate all HaloUpdater objects"""
 
-        def __init__(self, comm, grid, shape, origin):
+        def __init__(self, comm, grid_indexing):
+            origin = grid_indexing.origin_compute()
+            shape = grid_indexing.max_shape
             # Define the memory specification required
             # Those can be re-used as they are read-only descriptors
-            full_size_xyz_halo_spec = grid.get_halo_update_spec(
+            full_size_xyz_halo_spec = grid_indexing.get_quantity_halo_spec(
                 shape,
                 origin,
-                grid.halo,
                 dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+                n_halo=grid_indexing.n_halo,
             )
-            full_size_xyiz_halo_spec = grid.get_halo_update_spec(
+            full_size_xyiz_halo_spec = grid_indexing.get_quantity_halo_spec(
                 shape,
                 origin,
-                grid.halo,
                 dims=[fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+                n_halo=grid_indexing.n_halo,
             )
-            full_size_xiyz_halo_spec = grid.get_halo_update_spec(
+            full_size_xiyz_halo_spec = grid_indexing.get_quantity_halo_spec(
                 shape,
                 origin,
-                grid.halo,
                 dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+                n_halo=grid_indexing.n_halo,
             )
-            full_size_xyzi_halo_spec = grid.get_halo_update_spec(
+            full_size_xyzi_halo_spec = grid_indexing.get_quantity_halo_spec(
                 shape,
                 origin,
-                grid.halo,
                 dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
+                n_halo=grid_indexing.n_halo,
             )
-            full_size_xiyiz_halo_spec = grid.get_halo_update_spec(
+            full_size_xiyiz_halo_spec = grid_indexing.get_quantity_halo_spec(
                 shape,
                 origin,
-                grid.halo,
                 dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+                n_halo=grid_indexing.n_halo,
             )
 
             # Build the HaloUpdater. We could build one updater per specification group
@@ -305,12 +302,12 @@ class AcousticDynamics:
             self.zh = comm.get_scalar_halo_updater([full_size_xyzi_halo_spec])
             self.divgd = comm.get_scalar_halo_updater([full_size_xiyiz_halo_spec])
             self.heat_source = comm.get_scalar_halo_updater([full_size_xyz_halo_spec])
-            if grid.npx == grid.npy:
-                full_3Dfield_2pts_halo_spec = grid.get_halo_update_spec(
+            if grid_indexing.domain[0] == grid_indexing.domain[1]:
+                full_3Dfield_2pts_halo_spec = grid_indexing.get_quantity_halo_spec(
                     shape,
                     origin,
-                    2,
                     dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
+                    n_halo=2,
                 )
                 self.pkc = comm.get_scalar_halo_updater([full_3Dfield_2pts_halo_spec])
             else:
@@ -324,6 +321,10 @@ class AcousticDynamics:
         comm: fv3gfs.util.CubedSphereCommunicator,
         grid_indexing: GridIndexing,
         grid_data: GridData,
+        damping_coefficients: DampingCoefficients,
+        grid_type,
+        nested,
+        stretched_grid,
         namelist,
         ak: FloatFieldK,
         bk: FloatFieldK,
@@ -343,7 +344,8 @@ class AcousticDynamics:
         assert self.namelist.d_ext == 0, "d_ext != 0 is not implemented"
         assert self.namelist.beta == 0, "beta != 0 is not implemented"
         assert not self.namelist.use_logp, "use_logp=True is not implemented"
-        self.grid = spec.grid
+        self._da_min = damping_coefficients.da_min
+        self.grid_data = grid_data
         self.do_halo_exchange = global_config.get_do_halo_exchange()
         self._pfull = pfull
         self._nk_heat_dissipation = get_nk_heat_dissipation(
@@ -387,17 +389,23 @@ class AcousticDynamics:
             )
             self._zs = utils.make_storage_data(zs_3d[:, :, 0], zs_3d.shape[0:2], (0, 0))
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
-                self.grid.grid_indexing,
-                self.grid.damping_coefficients,
-                self.grid.grid_data,
-                self.grid.grid_type,
+                grid_indexing,
+                damping_coefficients,
+                grid_data,
+                grid_type,
                 namelist.hord_tm,
                 self._dp_ref,
                 column_namelist,
                 d_sw.k_bounds(),
             )
-            self.riem_solver3 = RiemannSolver3(namelist)
-            self.riem_solver_c = RiemannSolverC(namelist)
+            self.riem_solver3 = RiemannSolver3(
+                grid_indexing,
+                spec.namelist.p_fac,
+                spec.namelist.a_imp,
+                spec.namelist.use_logp,
+                spec.namelist.beta,
+            )
+            self.riem_solver_c = RiemannSolverC(grid_indexing, spec.namelist.p_fac)
             origin, domain = grid_indexing.get_origin_domain(
                 [X_DIM, Y_DIM, Z_INTERFACE_DIM], halos=(2, 2)
             )
@@ -410,10 +418,10 @@ class AcousticDynamics:
             d_sw.DGridShallowWaterLagrangianDynamics(
                 grid_indexing,
                 grid_data,
-                self.grid.damping_coefficients,
+                damping_coefficients,
                 column_namelist,
-                self.grid.nested,
-                self.grid.stretched_grid,
+                nested,
+                stretched_grid,
                 namelist.dddmp,
                 namelist.d4_bg,
                 namelist.nord,
@@ -433,7 +441,7 @@ class AcousticDynamics:
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
             grid_indexing,
             grid_data,
-            self.grid.nested,
+            nested,
             namelist.grid_type,
             namelist.nord,
         )
@@ -457,7 +465,7 @@ class AcousticDynamics:
         )
 
         self.update_geopotential_height_on_c_grid = (
-            updatedzc.UpdateGeopotentialHeightOnCGrid(self.grid)
+            updatedzc.UpdateGeopotentialHeightOnCGrid(grid_indexing, grid_data.area)
         )
 
         self._zero_data = FrozenStencil(
@@ -468,7 +476,7 @@ class AcousticDynamics:
         self._edge_pe_stencil: FrozenStencil = _initialize_edge_pe_stencil(
             grid_indexing
         )
-        """ The stencil object responsible for updading the interface pressure"""
+        """The stencil object responsible for updating the interface pressure"""
 
         self._do_del2cubed = (
             self._nk_heat_dissipation != 0 and self.namelist.d_con > 1.0e-5
@@ -476,26 +484,29 @@ class AcousticDynamics:
 
         if self._do_del2cubed:
             nf_ke = min(3, self.namelist.nord + 1)
-            self._hyperdiffusion = HyperdiffusionDamping(self.grid, nf_ke)
+            self._hyperdiffusion = HyperdiffusionDamping(
+                grid_indexing, damping_coefficients, grid_data.rarea, nf_ke
+            )
         if self.namelist.rf_fast:
-            self._rayleigh_damping = ray_fast.RayleighDamping(self.grid, self.namelist)
+            self._rayleigh_damping = ray_fast.RayleighDamping(
+                grid_indexing,
+                spec.namelist.rf_cutoff,
+                spec.namelist.tau,
+                spec.namelist.hydrostatic,
+            )
         self._compute_pkz_tempadjust = _initialize_temp_adjust_stencil(
-            self.grid,
+            grid_indexing,
             self._nk_heat_dissipation,
         )
-        self._pk3_halo = PK3Halo(self.grid)
+        self._pk3_halo = PK3Halo(grid_indexing)
         self._copy_stencil = FrozenStencil(
             basic.copy_defn,
-            origin=self.grid.full_origin(),
-            domain=self.grid.domain_shape_full(add=(0, 0, 1)),
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(add=(0, 0, 1)),
         )
 
         # Halo updaters
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        origin = self.grid.compute_origin()
-        self._halo_updaters = AcousticDynamics.HaloUpdaters(
-            self.comm, self.grid, shape, origin
-        )
+        self._halo_updaters = AcousticDynamics._HaloUpdaters(self.comm, grid_indexing)
 
     def __call__(self, state):
         # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
@@ -637,8 +648,8 @@ class AcousticDynamics:
                 )
 
             self._p_grad_c(
-                self.grid.rdxc,
-                self.grid.rdyc,
+                self.grid_data.rdxc,
+                self.grid_data.rdyc,
                 state.uc,
                 state.vc,
                 state.delpc,
@@ -739,13 +750,11 @@ class AcousticDynamics:
             if not self.namelist.hydrostatic:
                 if self.do_halo_exchange:
                     self._halo_updaters.zh.wait()
-                    if self.grid.npx != self.grid.npy:
-                        self._halo_updaters.pkc.wait()
                 self._compute_geopotential_stencil(
                     state.zh,
                     state.gz,
                 )
-                if self.grid.npx == self.grid.npy and self.do_halo_exchange:
+                if self.do_halo_exchange:
                     self._halo_updaters.pkc.wait()
 
                 self.nonhydrostatic_pressure_gradient(
@@ -788,7 +797,8 @@ class AcousticDynamics:
         if self._do_del2cubed:
             if self.do_halo_exchange:
                 self._halo_updaters.heat_source.update([state.heat_source_quantity])
-            cd = constants.CNST_0P20 * self.grid.da_min
+            # TODO: move dependence on da_min into init of hyperdiffusion class
+            cd = constants.CNST_0P20 * self._da_min
             self._hyperdiffusion(state.heat_source, cd)
             if not self.namelist.hydrostatic:
                 delt_time_factor = abs(dt * self.namelist.delt_max)

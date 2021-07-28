@@ -81,26 +81,26 @@ def update_dz_c(
 
 
 class UpdateGeopotentialHeightOnCGrid:
-    def __init__(self, grid):
-        self.grid = grid
-        largest_possible_shape = self.grid.domain_shape_full(add=(1, 1, 1))
+    def __init__(self, grid_indexing, area):
+        self._area = area
+        largest_possible_shape = grid_indexing.domain_full(add=(1, 1, 1))
         self._gz_x = gt4py_utils.make_storage_from_shape(
             largest_possible_shape,
-            self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
+            grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
         )
         self._gz_y = gt4py_utils.make_storage_from_shape(
             largest_possible_shape,
-            self.grid.compute_origin(add=(0, -self.grid.halo, 0)),
+            grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
         )
-        full_origin = self.grid.full_origin()
-        full_domain = self.grid.domain_shape_full(add=(0, 0, 1))
+        full_origin = grid_indexing.origin_full()
+        full_domain = grid_indexing.domain_full(add=(0, 0, 1))
         self._double_copy_stencil = FrozenStencil(
             double_copy,
             origin=full_origin,
             domain=full_domain,
         )
 
-        ax_offsets = axis_offsets(self.grid, full_origin, full_domain)
+        ax_offsets = axis_offsets(grid_indexing, full_origin, full_domain)
         self._fill_corners_x_stencil = FrozenStencil(
             corners.fill_corners_2cells_x_stencil,
             externals=ax_offsets,
@@ -115,8 +115,8 @@ class UpdateGeopotentialHeightOnCGrid:
         )
         self._update_dz_c = FrozenStencil(
             update_dz_c,
-            origin=self.grid.compute_origin(add=(-1, -1, 0)),
-            domain=self.grid.domain_shape_compute(add=(2, 2, 1)),
+            origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
+            domain=grid_indexing.domain_compute(add=(2, 2, 1)),
         )
 
     def __call__(
@@ -154,7 +154,7 @@ class UpdateGeopotentialHeightOnCGrid:
         self._update_dz_c(
             dp_ref,
             zs,
-            self.grid.area,
+            self._area,
             ut,
             vt,
             gz,

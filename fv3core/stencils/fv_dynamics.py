@@ -321,13 +321,22 @@ class DynamicalCore:
             comm,
             self.grid.grid_indexing,
             self.grid.grid_data,
+            self.grid.damping_coefficients,
+            self.grid.grid_type,
+            self.grid.nested,
+            self.grid.stretched_grid,
             self.namelist,
             self._ak,
             self._bk,
             self._pfull,
             self._phis,
         )
-        self._hyperdiffusion = HyperdiffusionDamping(self.grid, self.namelist.nf_omega)
+        self._hyperdiffusion = HyperdiffusionDamping(
+            self.grid.grid_indexing,
+            self.grid.damping_coefficients,
+            self.grid.rarea,
+            self.namelist.nf_omega,
+        )
         self._do_cubed_to_latlon = CubedToLatLon(self.grid, namelist)
 
         self._temporaries = fvdyn_temporaries(

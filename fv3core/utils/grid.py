@@ -6,7 +6,7 @@ import numpy as np
 from gt4py import gtscript
 
 import fv3core.utils.global_config as global_config
-import fv3gfs.util as fv3util
+import fv3gfs.util
 from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
 
 from . import gt4py_utils as utils
@@ -24,7 +24,7 @@ class Grid:
 
     def __init__(self, indices, shape_params, rank, layout, data_fields={}):
         self.rank = rank
-        self.partitioner = fv3util.TilePartitioner(layout)
+        self.partitioner = fv3gfs.util.TilePartitioner(layout)
         self.subtile_index = self.partitioner.subtile_index(self.rank)
         self.layout = layout
         for s in self.shape_params:
@@ -71,7 +71,7 @@ class Grid:
         if self._sizer is None:
             # in the future this should use from_namelist, when we have a non-flattened
             # namelist
-            self._sizer = fv3util.SubtileGridSizer.from_tile_params(
+            self._sizer = fv3gfs.util.SubtileGridSizer.from_tile_params(
                 nx_tile=self.npx - 1,
                 ny_tile=self.npy - 1,
                 nz=self.npz,
@@ -84,7 +84,7 @@ class Grid:
     @property
     def quantity_factory(self):
         if self._quantity_factory is None:
-            self._quantity_factory = fv3util.QuantityFactory.from_backend(
+            self._quantity_factory = fv3gfs.util.QuantityFactory.from_backend(
                 self.sizer, backend=global_config.get_backend()
             )
         return self._quantity_factory
@@ -92,7 +92,7 @@ class Grid:
     def make_quantity(
         self,
         array,
-        dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
         units="Unknown",
         origin=None,
         extent=None,
@@ -101,7 +101,7 @@ class Grid:
             origin = self.compute_origin()
         if extent is None:
             extent = self.domain_shape_compute()
-        return fv3util.Quantity(
+        return fv3gfs.util.Quantity(
             array, dims=dims, units=units, origin=origin, extent=extent
         )
 
@@ -109,7 +109,7 @@ class Grid:
         self,
         data_dict,
         varname,
-        dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
         units="Unknown",
     ):
         data_dict[varname + "_quantity"] = self.quantity_wrap(
@@ -117,11 +117,14 @@ class Grid:
         )
 
     def quantity_wrap(
-        self, data, dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], units="Unknown"
+        self,
+        data,
+        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+        units="Unknown",
     ):
         origin = self.sizer.get_origin(dims)
         extent = self.sizer.get_extent(dims)
-        return fv3util.Quantity(
+        return fv3gfs.util.Quantity(
             data, dims=dims, units=units, origin=origin, extent=extent
         )
 
@@ -365,35 +368,12 @@ class Grid:
         shape,
         origin,
         halo_points,
-        dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
     ) -> QuantityHaloSpec:
         """Build memory specifications for the halo update."""
-
-        # TEMPORARY: we do a nasty temporary allocation here to read in the hardware
-        # memory layout. Further work in GT4PY will allow for deferred allocation
-        # which will give access to those information while making sure
-        # we don't allocate
-        # Refactor is filed in ticket DSL-820
-
-        temp_storage = utils.make_storage_from_shape(shape, origin)
-        temp_quantity = self.quantity_wrap(temp_storage, dims=dims)
-
-        spec = QuantityHaloSpec(
-            halo_points,
-            temp_quantity.data.strides,
-            temp_quantity.data.itemsize,
-            temp_quantity.data.shape,
-            temp_quantity.metadata.origin,
-            temp_quantity.metadata.extent,
-            temp_quantity.metadata.dims,
-            temp_quantity.np,
-            temp_quantity.metadata.dtype,
+        return self.grid_indexing.get_quantity_halo_spec(
+            shape, origin, dims=dims, n_halo=halo_points
         )
-
-        del temp_storage
-        del temp_quantity
-
-        return spec
 
     @property
     def grid_indexing(self) -> "GridIndexing":
@@ -822,7 +802,7 @@ class GridIndexing:
     @domain.setter
     def domain(self, domain):
         self._domain = domain
-        self._sizer = fv3util.SubtileGridSizer(
+        self._sizer = fv3gfs.util.SubtileGridSizer(
             nx=domain[0],
             ny=domain[1],
             nz=domain[2],
@@ -832,12 +812,16 @@ class GridIndexing:
 
     @classmethod
     def from_sizer_and_communicator(
-        cls, sizer: fv3util.GridSizer, cube: fv3util.CubedSphereCommunicator
+        cls, sizer: fv3gfs.util.GridSizer, cube: fv3gfs.util.CubedSphereCommunicator
     ) -> "GridIndexing":
         # TODO: if this class is refactored to split off the *_edge booleans,
         # this init routine can be refactored to require only a GridSizer
-        origin = sizer.get_origin([fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM])
-        domain = sizer.get_extent([fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM])
+        origin = sizer.get_origin(
+            [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM]
+        )
+        domain = sizer.get_extent(
+            [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM]
+        )
         south_edge = cube.tile.on_tile_bottom(cube.rank)
         north_edge = cube.tile.on_tile_top(cube.rank)
         west_edge = cube.tile.on_tile_left(cube.rank)
@@ -992,11 +976,11 @@ class GridIndexing:
     def _origin_from_dims(self, dims: Iterable[str]) -> List[int]:
         return_origin = []
         for dim in dims:
-            if dim in fv3util.X_DIMS:
+            if dim in fv3gfs.util.X_DIMS:
                 return_origin.append(self.origin[0])
-            elif dim in fv3util.Y_DIMS:
+            elif dim in fv3gfs.util.Y_DIMS:
                 return_origin.append(self.origin[1])
-            elif dim in fv3util.Z_DIMS:
+            elif dim in fv3gfs.util.Z_DIMS:
                 return_origin.append(self.origin[2])
         return return_origin
 
@@ -1019,7 +1003,7 @@ class GridIndexing:
         for i, d in enumerate(dims):
             # need n_halo points at the start of the domain, regardless of whether
             # they are read, so that data is aligned in memory
-            if d in (fv3util.X_DIMS + fv3util.Y_DIMS):
+            if d in (fv3gfs.util.X_DIMS + fv3gfs.util.Y_DIMS):
                 shape[i] += self.n_halo
         for i, n in enumerate(halos):
             shape[i] += n
@@ -1062,6 +1046,61 @@ class GridIndexing:
         )
         new.origin = self.origin[:2] + (self.origin[2] + k_start,)
         return new
+
+    def get_quantity_halo_spec(
+        self,
+        shape: Tuple[int, ...],
+        origin: Tuple[int, ...],
+        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+        n_halo: Optional[int] = None,
+    ) -> QuantityHaloSpec:
+        """Build memory specifications for the halo update.
+
+        Args:
+            shape: the shape of the Quantity
+            origin: the origin of the compute domain
+            dims: dimensionality of the data
+            n_halo: number of halo points to update, defaults to self.n_halo
+        """
+
+        # TEMPORARY: we do a nasty temporary allocation here to read in the hardware
+        # memory layout. Further work in GT4PY will allow for deferred allocation
+        # which will give access to those information while making sure
+        # we don't allocate
+        # Refactor is filed in ticket DSL-820
+
+        temp_storage = utils.make_storage_from_shape(shape, origin)
+        temp_quantity = quantity_wrap(temp_storage, dims=dims, grid_indexing=self)
+        if n_halo is None:
+            n_halo = self.n_halo
+
+        spec = QuantityHaloSpec(
+            n_halo,
+            temp_quantity.data.strides,
+            temp_quantity.data.itemsize,
+            temp_quantity.data.shape,
+            temp_quantity.metadata.origin,
+            temp_quantity.metadata.extent,
+            temp_quantity.metadata.dims,
+            temp_quantity.np,
+            temp_quantity.metadata.dtype,
+        )
+
+        del temp_storage
+        del temp_quantity
+
+        return spec
+
+
+def quantity_wrap(storage, dims: Sequence[str], grid_indexing: GridIndexing):
+    origin, extent = grid_indexing.get_origin_domain(dims)
+    return fv3gfs.util.Quantity(
+        storage,
+        dims=dims,
+        units="unknown",
+        origin=origin,
+        extent=extent,
+    )
 
 
 # TODO: delete this routine in favor of grid_indexing.axis_offsets

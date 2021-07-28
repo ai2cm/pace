@@ -111,14 +111,14 @@ class Sim1Solver:
 
     # TODO: implement MOIST_CAPPA=false
 
-    def __init__(self, namelist, grid, istart, iend, jstart, jend):
-        self._pfac = namelist.p_fac
+    def __init__(self, p_fac, istart, iend, jstart, jend, nk):
+        self._pfac = p_fac
         nic = iend - istart + 1
         njc = jend - jstart + 1
         self._compute_sim1_solve = FrozenStencil(
             func=sim1_solver,
             origin=(istart, jstart, 0),
-            domain=(nic, njc, grid.npz + 1),
+            domain=(nic, njc, nk),
         )
 
     def __call__(

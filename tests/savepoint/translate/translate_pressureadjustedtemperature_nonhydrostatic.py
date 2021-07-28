@@ -16,7 +16,7 @@ class TranslatePressureAdjustedTemperature_NonHydrostatic(TranslateFortranData2P
             spec.namelist.d2_bg_k2,
             npz=grid.grid_indexing.domain[2],
         )
-        self.compute_func = _initialize_temp_adjust_stencil(grid, n_adj)
+        self.compute_func = _initialize_temp_adjust_stencil(grid.grid_indexing, n_adj)
         self.in_vars["data_vars"] = {
             "cappa": {},
             "delp": {},

@@ -14,7 +14,9 @@ from gt4py.gtscript import (
 import fv3core.utils.global_constants as constants
 from fv3core.decorators import FrozenStencil
 from fv3core.utils import axis_offsets
+from fv3core.utils.grid import GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldK
+from fv3gfs.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 SDAY = 86400.0
@@ -139,13 +141,15 @@ class RayleighDamping:
     Fotran name: ray_fast.
     """
 
-    def __init__(self, grid, namelist):
-        self._rf_cutoff = namelist.rf_cutoff
-        self._hydrostatic = namelist.hydrostatic
-        origin = grid.compute_origin()
-        domain = (grid.nic + 1, grid.njc + 1, grid.npz)
+    def __init__(self, grid_indexing: GridIndexing, rf_cutoff, tau, hydrostatic):
+        self._rf_cutoff = rf_cutoff
+        # TODO: make hydrostatic an external
+        self._hydrostatic = hydrostatic
+        origin, domain = grid_indexing.get_origin_domain(
+            [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
+        )
 
-        ax_offsets = axis_offsets(grid, origin, domain)
+        ax_offsets = axis_offsets(grid_indexing, origin, domain)
         local_axis_offsets = {}
         for axis_offset_name, axis_offset_value in ax_offsets.items():
             if "local" in axis_offset_name:
@@ -156,8 +160,8 @@ class RayleighDamping:
             origin=origin,
             domain=domain,
             externals={
-                "rf_cutoff": namelist.rf_cutoff,
-                "tau": namelist.tau,
+                "rf_cutoff": rf_cutoff,
+                "tau": tau,
                 **local_axis_offsets,
             },
         )
