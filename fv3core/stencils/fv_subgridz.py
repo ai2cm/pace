@@ -724,7 +724,7 @@ def finalize(
         qcld = q0_cld
 
 
-class FVSubgridZ:
+class DryConvectiveAdjustment:
     """
     Corresponds to fv_subgrid_z in Fortran's fv_sg module
     """

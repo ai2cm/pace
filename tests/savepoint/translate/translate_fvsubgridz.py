@@ -174,7 +174,7 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
 
     def compute_parallel(self, inputs, communicator):
         state = self.state_from_inputs(inputs)
-        fvsubgridz = fv_subgridz.FVSubgridZ(
+        fvsubgridz = fv_subgridz.DryConvectiveAdjustment(
             spec.namelist,
         )
         state = SimpleNamespace(**state)
