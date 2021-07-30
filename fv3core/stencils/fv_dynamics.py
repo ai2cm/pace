@@ -352,11 +352,6 @@ class DynamicalCore:
             self.grid, namelist, DynamicalCore.NQ, self._pfull
         )
 
-        phis_spec = self.grid.get_halo_update_spec(
-            phis.data.shape, phis.origin, utils.halo, phis.dims
-        )
-        self._phis_halo_updater = self.comm.get_scalar_halo_updater([phis_spec])
-
         full_xyz_spec = self.grid.get_halo_update_spec(
             self.grid.domain_shape_full(add=(1, 1, 1)),
             self.grid.compute_origin(),
@@ -419,8 +414,6 @@ class DynamicalCore:
         state.ak = self._ak
         state.bk = self._bk
         last_step = False
-        if self.do_halo_exchange:
-            self._phis_halo_updater.update([state.phis_quantity])
         compute_preamble(
             state,
             self.grid,
