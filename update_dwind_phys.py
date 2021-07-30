@@ -264,8 +264,8 @@ def read_index_var(index_var, savepoint):
     return int(serializer.read(index_var, savepoint)[0] + fortran2py_index_offset)
 def update_dwind_phys(data):
     dt5 = 0.5 * data["dt"]
-    im2 = int((data["npx"] - 1) / 2)
-    jm2 = int((data["npy"] - 1) / 2)
+    im2 = int((data["npx"] - 1) / 2) + 2
+    jm2 = int((data["npy"] - 1) / 2) + 2
     # assert grid_type < 3
     shape = data["u"].shape
     ue_1 =  make_storage_from_shape(shape)
@@ -284,61 +284,61 @@ def update_dwind_phys(data):
     
     # if grid.west_edge
     if data["is"]== HALO: 
-        if data["js"]< jm2:
+        if data["js"]<= jm2:
             je_lower = min(jm2, data["je"])
             origin_lower = (HALO, HALO, 0)
-            domain_lower = (1, je_lower - data["js"] + 3, data["npz"])
+            domain_lower = (1, je_lower - data["js"] + 1, data["npz"])
             if domain_lower[1] > 0:
                 update_dwind_y_edge_south_stencil(ve_1, ve_2, ve_3, vt_1, vt_2, vt_3, data["edge_vect_w"],origin=origin_lower, domain=domain_lower)
 
-        if data["je"]>= jm2:
-            js_upper = max(jm2+3, data["js"])
+        if data["je"]> jm2:
+            js_upper = max(jm2+1, data["js"])
             origin_upper = (HALO, js_upper, 0)
             domain_upper = (1, data["je"] - js_upper + 1, data["npz"])
           
             if domain_upper[1] > 0:
                 update_dwind_y_edge_north_stencil(ve_1, ve_2, ve_3, vt_1, vt_2, vt_3, data["edge_vect_w"], origin=origin_upper, domain=domain_upper)
                 copy3_stencil(vt_1, vt_2, vt_3, ve_1, ve_2, ve_3, origin=origin_upper, domain=domain_upper)
-        if data["js"] < jm2 and domain_lower[1] > 0:
+        if data["js"] <= jm2 and domain_lower[1] > 0:
             copy3_stencil(vt_1, vt_2, vt_3, ve_1, ve_2, ve_3, origin=origin_lower, domain=domain_lower)
 
     # if grid.east_edge
     if data["ie"] - 1 == data["npx"]:
         i_origin = max_shape[0] - HALO - 1
 
-        if data["js"] < jm2:
+        if data["js"] <= jm2:
             je_lower = min(jm2, data["je"])
             origin_lower = (i_origin, HALO, 0)
-            domain_lower = (1, je_lower - data["js"] + 3, data["npz"])
+            domain_lower = (1, je_lower - data["js"] + 1, data["npz"])
             if domain_lower[1] > 0:
                 update_dwind_y_edge_south_stencil(ve_1, ve_2, ve_3, vt_1, vt_2, vt_3, data["edge_vect_e"],origin=origin_lower, domain=domain_lower)
-        if data["je"]>= jm2:
-            js_upper = max(jm2+3, data["js"])
+        if data["je"]> jm2:
+            js_upper = max(jm2+1, data["js"])
             origin_upper = (i_origin, js_upper, 0)
             domain_upper = (1, data["je"] - js_upper + 1, data["npz"])
             if domain_upper[1] > 0:
                 update_dwind_y_edge_north_stencil(ve_1, ve_2, ve_3, vt_1, vt_2, vt_3, data["edge_vect_e"], origin=origin_upper, domain=domain_upper)
                 copy3_stencil(vt_1, vt_2, vt_3, ve_1, ve_2, ve_3, origin=origin_upper, domain=domain_upper)
-        if data["js"] < jm2 and domain_lower[1] > 0:
+        if data["js"] <= jm2 and domain_lower[1] > 0:
             copy3_stencil(vt_1, vt_2, vt_3, ve_1, ve_2, ve_3, origin=origin_lower, domain=domain_lower)
 
             
     # if grid.south_edge
     if data["js"]== HALO: 
-        if data["is"]< im2:
+        if data["is"]<= im2:
             ie_lower = min(im2, data["ie"])
             origin_lower = (HALO, HALO, 0)
-            domain_lower = (ie_lower - data["is"] + 3, 1, data["npz"])
+            domain_lower = (ie_lower - data["is"] + 1, 1, data["npz"])
             if domain_lower[0] > 0:
                 update_dwind_x_edge_west_stencil(ue_1, ue_2, ue_3, ut_1, ut_2, ut_3, data["edge_vect_s"],origin=origin_lower, domain=domain_lower)
-        if data["ie"]>= im2:
-            is_upper = max(im2+3, data["is"])
+        if data["ie"]> im2:
+            is_upper = max(im2+1, data["is"])
             origin_upper = (is_upper, HALO, 0)
             domain_upper = (data["ie"] - is_upper + 1, 1, data["npz"])
             if domain_upper[0] > 0:
                 update_dwind_x_edge_east_stencil(ue_1, ue_2, ue_3, ut_1, ut_2, ut_3, data["edge_vect_s"], origin=origin_upper, domain=domain_upper)
                 copy3_stencil(ut_1, ut_2, ut_3, ue_1, ue_2, ue_3, origin=origin_upper, domain=domain_upper)
-        if data["is"]< im2 and domain_lower[0] > 0:
+        if data["is"]<= im2 and domain_lower[0] > 0:
             copy3_stencil(ut_1, ut_2, ut_3, ue_1, ue_2, ue_3, origin=origin_lower, domain=domain_lower)
 
     # if grid.north_edge
@@ -347,12 +347,12 @@ def update_dwind_phys(data):
         if data["is"] < im2:
             ie_lower = min(im2, data["ie"])
             origin_lower = (HALO, j_origin, 0)
-            domain_lower = (ie_lower - data["is"] + 3, 1, data["npz"])
+            domain_lower = (ie_lower - data["is"] + 1, 1, data["npz"])
             if domain_lower[0] > 0:
                 update_dwind_x_edge_west_stencil(ue_1, ue_2, ue_3, ut_1, ut_2, ut_3, data["edge_vect_n"],origin=origin_lower, domain=domain_lower)
                
         if data["je"]>= jm2:
-            is_upper = max(im2+3, data["is"])
+            is_upper = max(im2+1, data["is"])
             origin_upper = (is_upper, j_origin, 0)
             domain_upper = (data["ie"] - is_upper + 1, 1, data["npz"])
             if domain_upper[0] > 0:
