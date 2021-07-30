@@ -84,8 +84,6 @@ def run(in_dict):
     q[:, :, 7] = in_dict["qsgs_tke"]
 
     out_dict = update_atmos_model_state(
-        in_dict["gq0_check_in"],
-        in_dict["gq0_check_out"],
         in_dict["gq0"],
         in_dict["gt0"],
         in_dict["gu0"],
@@ -116,20 +114,9 @@ def fill_gfs(pe2, q, q_min):
 
     dp = np.zeros((im, km))
 
-    # for k in range(km):
-    #     for i in range(im):
-    #         dp[i,k] = pe2[i,k] - pe2[i,k+1]
-
     for k in range(km - 1, -1, -1):
         for i in range(im):
             dp[i, k] = pe2[i, k + 1] - pe2[i, k]
-
-    # for k in range(km-1):
-    #     k1 = k+1
-    #     for i in range(im):
-    #         if q[i,k] < q_min:
-    #             q[i,k1] = q[i,k1] + (q[i,k] - q_min) * dp[i,k]/dp[i,k1]
-    #             q[i,k] = q_min
 
     for k in range(km - 1, 0, -1):
         k1 = k - 1
@@ -137,13 +124,6 @@ def fill_gfs(pe2, q, q_min):
             if q[i, k] < q_min:
                 q[i, k1] = q[i, k1] + (q[i, k] - q_min) * dp[i, k] / dp[i, k1]
                 q[i, k] = q_min
-
-    # for k in range(km-1, 1, -1):
-    #     k1 = k-1
-    #     for i in range(im):
-    #         if q[i,k] < 0.0:
-    #             q[i,k1] = q[i,k1] + q[i,k] * dp[i,k]/dp[i,k1]
-    #             q[i,k] = 0.0
 
     for k in range(km - 1):
         k1 = k + 1
@@ -156,8 +136,6 @@ def fill_gfs(pe2, q, q_min):
 
 
 def atmosphere_state_update(
-    gq0_check_in,
-    gq0_check_out,
     gq0,
     gt0,
     gu0,
@@ -182,17 +160,12 @@ def atmosphere_state_update(
 
     rdt = 1.0e0 / dt_atmos
 
-    np.testing.assert_allclose(gq0, gq0_check_in)
-
     gq0[:, :, 0] = fill_gfs(prsi, gq0[:, :, 0], 1.0e-9)
-
-    np.testing.assert_allclose(gq0, gq0_check_out)
 
     im = gu0.shape[0]
     npz = gu0.shape[1]
     qwat = np.zeros(nq)
-    # Does blen value matter for ix?
-    blen = 1
+    
     for k in range(npz):
         for ix in range(im):
             u_dt[ix, k] = u_dt[ix, k] + (gu0[ix, k] - ugrs[ix, k]) * rdt
@@ -212,8 +185,6 @@ def atmosphere_state_update(
 
 
 def update_atmos_model_state(
-    gq0_check_in,
-    gq0_check_out,
     gq0,
     gt0,
     gu0,
@@ -235,8 +206,6 @@ def update_atmos_model_state(
 ):
 
     (u_dt, v_dt, t_dt, delp, q) = atmosphere_state_update(
-        gq0_check_in,
-        gq0_check_out,
         gq0,
         gt0,
         gu0,
@@ -265,3 +234,18 @@ def update_atmos_model_state(
     out_dict["delp"] = delp
     out_dict["q"] = q
     return out_dict
+
+def fv_update_phys(dt, is_, ie, js, je, isd, ied, jsd, jed,
+                   u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz,
+                   phis, u_srf, v_srf, hydrostatic,
+                   u_dt, v_dt, t_dt,
+                   gridstruct, npx, npy, npz, 
+                   domain):
+
+    # Parameters from Fortran that're currently not implemented in Python
+    # ng, q_dt, q, qdiag, nq, ak, bk, ts, delz, moist_phys, Time, nudge
+    # lona, lata, flagstruct, neststruct, bd, ptop, physics_tendency_diag
+    # column_moistening_implied_by_nudging, q_dt
+    hydrostatic = False
+
+    return 0

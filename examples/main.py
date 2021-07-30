@@ -107,16 +107,16 @@ for tile in range(6):
 
             isready = True
 
-        if sp.name.startswith("FillGFS-IN"):
+        # if sp.name.startswith("FillGFS-IN"):
 
-            print("> running ", f"tile-{tile}", sp)
+        #     print("> running ", f"tile-{tile}", sp)
 
-            in_data_fillgfs = data_dict_from_var_list(IN_FILL_GFS, serializer, sp)
+        #     in_data_fillgfs = data_dict_from_var_list(IN_FILL_GFS, serializer, sp)
 
-        if sp.name.startswith("FillGFS-OUT"):
-            print("> running ", f"tile-{tile}", sp)
+        # if sp.name.startswith("FillGFS-OUT"):
+        #     print("> running ", f"tile-{tile}", sp)
 
-            out_data_fillgfs = data_dict_from_var_list(["IPD_gq0"], serializer, sp)
+        #     out_data_fillgfs = data_dict_from_var_list(["IPD_gq0"], serializer, sp)
 
         if sp.name.startswith("FVUpdatePhys-In"):
             print("> running ", f"tile-{tile}", sp)
@@ -174,9 +174,6 @@ for tile in range(6):
                 out_data_fvd["qcld"][3:-3, 3:-3, :], (144, 79), order="F"
             )
 
-            in_data["gq0_check_in"] = in_data_fillgfs["IPD_gq0"]
-            in_data["gq0_check_out"] = out_data_fillgfs["IPD_gq0"]
-
             out_data = update_atmos_model_state.run(in_data)
 
             print("After update_atmos_model_state")
@@ -184,7 +181,7 @@ for tile in range(6):
             u_dt = np.reshape(ref_data["u_dt"][3:-3, 3:-3, :], (144, 79), order="F")
             v_dt = np.reshape(ref_data["v_dt"][3:-3, 3:-3, :], (144, 79), order="F")
             t_dt = np.reshape(ref_data["t_dt"], (144, 79), order="F")
-            np.testing.assert_allclose(out_data["delp"], delp, atol=1e-8, rtol=1e-5)
+            np.testing.assert_allclose(out_data["delp"], delp)
             np.testing.assert_allclose(out_data["u_dt"], u_dt, atol=1e-8)
             np.testing.assert_allclose(out_data["v_dt"], v_dt, atol=1e-8)
             np.testing.assert_allclose(out_data["t_dt"], t_dt, atol=1e-8)
