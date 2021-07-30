@@ -99,13 +99,14 @@ def compare_data(exp_data, ref_data):
     for key in ref_data:
         print('comparing', key)
         atol=1e-20
-        rtol=1e-15 # TODO, investigate whether the non-bit-for-bit mismatches matter, all seem to happen at im+1 or jm+1 
+        rtol=1e-20
         ind = np.array(
             np.nonzero(~np.isclose(exp_data[key].data, ref_data[key].data, equal_nan=True, atol=atol, rtol=rtol))
         )
         if ind.size > 0:
             i = tuple(ind[:, 0])
             print("FAIL at ", key, i, exp_data[key][i], ref_data[key][i],  exp_data[key][i] - ref_data[key][i])
+        failcount = 0
         for i in range(ref_data[key].shape[0]):
             for j in range(ref_data[key].shape[1]):
                 for k in range(ref_data[key].shape[2]):
@@ -113,6 +114,9 @@ def compare_data(exp_data, ref_data):
                     val = exp_data[key][i,j,k]
                     if ref != val:
                         print(i,j,k, val, ref, val - ref)
+                        failcount +=1
+        if failcount > 0:
+            print("FAILED count", failcount)
         assert np.allclose(exp_data[key].data, ref_data[key].data, equal_nan=False, atol=atol, rtol=rtol), (
             "Data does not match for field " + key
         )
@@ -283,32 +287,33 @@ def update_dwind_phys(data):
         if data["js"]< jm2:
             je_lower = min(jm2, data["je"])
             origin_lower = (HALO, HALO, 0)
-           
-            domain_lower = (1, je_lower - data["js"] + 1, data["npz"])
+            domain_lower = (1, je_lower - data["js"] + 3, data["npz"])
             if domain_lower[1] > 0:
                 update_dwind_y_edge_south_stencil(ve_1, ve_2, ve_3, vt_1, vt_2, vt_3, data["edge_vect_w"],origin=origin_lower, domain=domain_lower)
-                copy3_stencil(vt_1, vt_2, vt_3, ve_1, ve_2, ve_3, origin=origin_lower, domain=domain_lower)
+
         if data["je"]>= jm2:
-            js_upper = max(jm2+2, data["js"])
-          
+            js_upper = max(jm2+3, data["js"])
             origin_upper = (HALO, js_upper, 0)
             domain_upper = (1, data["je"] - js_upper + 1, data["npz"])
           
             if domain_upper[1] > 0:
                 update_dwind_y_edge_north_stencil(ve_1, ve_2, ve_3, vt_1, vt_2, vt_3, data["edge_vect_w"], origin=origin_upper, domain=domain_upper)
                 copy3_stencil(vt_1, vt_2, vt_3, ve_1, ve_2, ve_3, origin=origin_upper, domain=domain_upper)
+        if data["js"] < jm2 and domain_lower[1] > 0:
+            copy3_stencil(vt_1, vt_2, vt_3, ve_1, ve_2, ve_3, origin=origin_lower, domain=domain_lower)
 
     # if grid.east_edge
     if data["ie"] - 1 == data["npx"]:
         i_origin = max_shape[0] - HALO - 1
+
         if data["js"] < jm2:
             je_lower = min(jm2, data["je"])
             origin_lower = (i_origin, HALO, 0)
-            domain_lower = (1, je_lower - data["js"] + 1, data["npz"])
+            domain_lower = (1, je_lower - data["js"] + 3, data["npz"])
             if domain_lower[1] > 0:
                 update_dwind_y_edge_south_stencil(ve_1, ve_2, ve_3, vt_1, vt_2, vt_3, data["edge_vect_e"],origin=origin_lower, domain=domain_lower)
         if data["je"]>= jm2:
-            js_upper = max(jm2+1, data["js"])
+            js_upper = max(jm2+3, data["js"])
             origin_upper = (i_origin, js_upper, 0)
             domain_upper = (1, data["je"] - js_upper + 1, data["npz"])
             if domain_upper[1] > 0:
@@ -316,17 +321,18 @@ def update_dwind_phys(data):
                 copy3_stencil(vt_1, vt_2, vt_3, ve_1, ve_2, ve_3, origin=origin_upper, domain=domain_upper)
         if data["js"] < jm2 and domain_lower[1] > 0:
             copy3_stencil(vt_1, vt_2, vt_3, ve_1, ve_2, ve_3, origin=origin_lower, domain=domain_lower)
+
             
     # if grid.south_edge
     if data["js"]== HALO: 
         if data["is"]< im2:
             ie_lower = min(im2, data["ie"])
             origin_lower = (HALO, HALO, 0)
-            domain_lower = (ie_lower - data["is"] + 1, 1, data["npz"])
+            domain_lower = (ie_lower - data["is"] + 3, 1, data["npz"])
             if domain_lower[0] > 0:
                 update_dwind_x_edge_west_stencil(ue_1, ue_2, ue_3, ut_1, ut_2, ut_3, data["edge_vect_s"],origin=origin_lower, domain=domain_lower)
         if data["ie"]>= im2:
-            is_upper = max(im2+1, data["is"])
+            is_upper = max(im2+3, data["is"])
             origin_upper = (is_upper, HALO, 0)
             domain_upper = (data["ie"] - is_upper + 1, 1, data["npz"])
             if domain_upper[0] > 0:
@@ -334,18 +340,19 @@ def update_dwind_phys(data):
                 copy3_stencil(ut_1, ut_2, ut_3, ue_1, ue_2, ue_3, origin=origin_upper, domain=domain_upper)
         if data["is"]< im2 and domain_lower[0] > 0:
             copy3_stencil(ut_1, ut_2, ut_3, ue_1, ue_2, ue_3, origin=origin_lower, domain=domain_lower)
+
     # if grid.north_edge
     if data["je"] - 1 == data["npy"]:
         j_origin = max_shape[1] - HALO - 1
         if data["is"] < im2:
             ie_lower = min(im2, data["ie"])
             origin_lower = (HALO, j_origin, 0)
-            domain_lower = (ie_lower - data["is"] + 1, 1, data["npz"])
+            domain_lower = (ie_lower - data["is"] + 3, 1, data["npz"])
             if domain_lower[0] > 0:
                 update_dwind_x_edge_west_stencil(ue_1, ue_2, ue_3, ut_1, ut_2, ut_3, data["edge_vect_n"],origin=origin_lower, domain=domain_lower)
                
         if data["je"]>= jm2:
-            is_upper = max(im2+1, data["is"])
+            is_upper = max(im2+3, data["is"])
             origin_upper = (is_upper, j_origin, 0)
             domain_upper = (data["ie"] - is_upper + 1, 1, data["npz"])
             if domain_upper[0] > 0:
@@ -368,7 +375,8 @@ for tile in range(6):
 
     serializer = ser.Serializer(
         ser.OpenModeKind.Read,
-        "c12_6ranks_baroclinic_dycore_microphysics",
+        #"c12_6ranks_baroclinic_dycore_microphysics",
+        "c48_6ranks_standard",
         "Generator_rank" + str(tile),
     )
     in_savepoint = serializer.get_savepoint("UpdateDWindsPhys-IN")[0]
