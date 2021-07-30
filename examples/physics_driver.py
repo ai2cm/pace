@@ -8,7 +8,7 @@ from fv3gfs.physics.global_config import *
 from fv3gfs.physics.global_constants import *
 import fv3gfs.physics.stencils.get_prs_fv3 as get_prs_fv3
 import fv3gfs.physics.stencils.get_phi_fv3 as get_phi_fv3
-import fv3gfs.physics.stencils.microphysics as microphysics
+import fv3gfs.physics.stencils.microphysics_standalone as microphysics
 
 from gt4py.gtscript import (
     __INLINED,
@@ -163,6 +163,15 @@ def physics_driver(
     get_prs_fv3.get_prs_fv3_stencil(
         phii, prsi, tgrs, qgrs_0, del_, del_gz, domain=full_shape
     )
+
+    debug = {}
+    debug["phii"] = phii
+    debug["prsi"] = prsi
+    debug["pt"] = tgrs
+    debug["qvapor"] = qgrs_0
+    debug["del"] = del_
+    debug["del_gz"] = del_gz
+    np.save("standalone_after_prsfv3.npy", debug)
 
     # These copies can be done within a stencil
     gt0 = tgrs  # + dtdt * dtp (tendencies from PBL and others)

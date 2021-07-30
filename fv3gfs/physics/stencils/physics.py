@@ -15,6 +15,7 @@ from gt4py.gtscript import (
     horizontal,
     interval,
 )
+import numpy as np  # used for debugging only
 
 # TODO: stencil not completed yet
 def atmos_phys_driver_statein(
@@ -62,10 +63,17 @@ class Physics:
         self.namelist = namelist
         origin = self.grid.compute_origin()
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
+        self.setup_statein()
         self._phii = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._psri = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._prsi = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._prsik = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._dm = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._dm = utils.make_storage_from_shape(
+            shape[0:2], origin=origin, init=True
+        )  # 2D for python, needs to be 3D for stencil
+        self._qmin = utils.make_storage_from_shape(
+            shape[0:2], origin=origin, init=True
+        )  # 2D for python, needs to be 3D for stencil
+        self._qmin[:, :] = 1.0e-10
         self._del = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._del_gz = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._phil = utils.make_storage_from_shape(shape, origin=origin, init=True)
@@ -96,12 +104,66 @@ class Physics:
         self._pk0inv = (1.0 / self._p00) ** KAPPA
 
     def prepare_physics_state(self, phy_state: PhysicsState):
-        pass
+        # this needs to turn into stencil
+        self._prsik[:, :, :] = 1.0e25
+        for k in range(self.grid.npz - 1, -1, -1):
+            self._phii[:, :, k] = (
+                self._phii[:, :, k + 1] - phy_state.delz[:, :, k] * grav
+            )
+        phy_state.qvapor = phy_state.qvapor * phy_state.delp
+        phy_state.qliquid = phy_state.qliquid * phy_state.delp
+        phy_state.qrain = phy_state.qrain * phy_state.delp
+        phy_state.qice = phy_state.qice * phy_state.delp
+        phy_state.qsnow = phy_state.qsnow * phy_state.delp
+        phy_state.qgraupel = phy_state.qgraupel * phy_state.delp
+        phy_state.qo3mr = phy_state.qo3mr * phy_state.delp
+        phy_state.qsgs_tke = phy_state.qsgs_tke * phy_state.delp
+        phy_state.delp = (
+            phy_state.delp
+            - phy_state.qliquid
+            - phy_state.qrain
+            - phy_state.qice
+            - phy_state.qsnow
+            - phy_state.qgraupel
+        )
+        self._prsi[:, :, 0] = self._ptop
+        for k in range(self.grid.npz):
+            self._prsi[:, :, k + 1] = self._prsi[:, :, k] + phy_state.delp[:, :, k]
+            self._prsik[:, :, k] = np.log(self._prsi[:, :, k])
+            phy_state.qvapor = phy_state.qvapor / phy_state.delp
+            phy_state.qliquid = phy_state.qliquid / phy_state.delp
+            phy_state.qrain = phy_state.qrain / phy_state.delp
+            phy_state.qice = phy_state.qice / phy_state.delp
+            phy_state.qsnow = phy_state.qsnow / phy_state.delp
+            phy_state.qgraupel = phy_state.qgraupel / phy_state.delp
+            phy_state.qo3mr = phy_state.qo3mr / phy_state.delp
+            phy_state.qsgs_tke = phy_state.qsgs_tke / phy_state.delp
+        self._prsik[:, :, -1] = np.log(self._prsi[:, :, -1])
+        self._prsik[:, :, 0] = np.log(self._ptop)
+        for k in range(self.grid.npz):
+            qgrs_rad = np.maximum(self._qmin, phy_state.qvapor[:, :, k])
+            rTv = rdgas * phy_state.pt[:, :, k] * (1.0 + con_fvirt * qgrs_rad)
+            self._dm[:, :] = phy_state.delp[:, :, k]
+            phy_state.delp[:, :, k] = (
+                self._dm * rTv / (self._phii[:, :, k] - self._phii[:, :, k + 1])
+            )
+            # if not hydrostatic, replaces it with hydrostatic pressure if violated
+            phy_state.delp[:, :, k] = np.minimum(
+                phy_state.delp[:, :, k], self._prsi[:, :, k + 1] - 0.01 * self._dm
+            )
+            phy_state.delp[:, :, k] = np.maximum(
+                phy_state.delp[:, :, k], self._prsi[:, :, k] + 0.01 * self._dm
+            )
 
-    def __call__(self, state: dict):
+        self._prsik[:, :, -1] = np.exp(KAPPA * self._prsik[:, :, -1]) * self._pk0inv
+        self._prsik[:, :, 0] = self._pktop
+        return phy_state
+
+    def __call__(self, state: dict, rank):
         self.setup_const_from_state(state)
         phy = PhysicsState(state, self.grid)
         physics_state = phy.physics_state
+        physics_state = self.prepare_physics_state(physics_state)
         self._get_prs_fv3(
             self._phii,
             self._prsi,
@@ -110,6 +172,14 @@ class Physics:
             self._del,
             self._del_gz,
         )
+        debug = {}
+        debug["phii"] = self._phii
+        debug["prsi"] = self._prsi
+        debug["pt"] = physics_state.pt
+        debug["qvapor"] = physics_state.qvapor
+        debug["del"] = self._del
+        debug["del_gz"] = self._del_gz
+        np.save("integrated_after_prsfv3_rank" + str(rank) + ".npy", debug)
         # If PBL is present, physics_state should be updated here
         self._get_phi_fv3(
             physics_state.pt, physics_state.qvapor, self._del_gz, self._phii, self._phil
