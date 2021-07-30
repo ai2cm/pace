@@ -137,5 +137,5 @@ c48**/
 *.npy
 
 # gt_cache
-.gt_cache/
+*.gt_cache*/
 python/.gt_cache/
