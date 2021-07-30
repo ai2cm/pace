@@ -1,4 +1,4 @@
-from fv3gfsphysics.utils.global_constants import *
+from fv3gfs.physics.global_constants import *
 from gt4py import gtscript
 
 

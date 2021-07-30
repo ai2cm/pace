@@ -130,7 +130,12 @@ dmypy.json
 
 # Data Directory
 c12_6ranks_baroclinic_dycore_microphysics/
+c12**/
+c48**/
+
+# temporary files
+*.npy
 
 # gt_cache
-.gt_cache/
+*.gt_cache*/
 python/.gt_cache/

@@ -6,12 +6,13 @@ from gt4py.gtscript import (
     horizontal,
     interval,
 )
-from fv3gfsphysics.utils.global_config import *
-from fv3gfsphysics.utils.microphysics_funcs import *
+from fv3gfs.physics.global_config import *
+from fv3gfs.physics.functions.microphysics_funcs import *
 import gt4py.gtscript as gtscript
 import gt4py as gt
 import math as mt
-from fv3gfsphysics.utils.global_constants import *
+import fv3gfs.util as fv3util
+from fv3gfs.physics.global_constants import *
 from copy import deepcopy
 
 # [TODO:EW] This needs to be cleaned up
@@ -2600,3 +2601,6 @@ def run(input_data):
         }
     )
     return output
+
+
+
