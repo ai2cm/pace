@@ -1,0 +1,9 @@
+[submodule "fv3core"]
+	path = fv3core
+	url = https://github.com/VulcanClimateModeling/fv3core.git
+[submodule "fv3gfs-util"]
+	path = fv3gfs-util
+	url = https://github.com/VulcanClimateModeling/fv3gfs-util.git
+[submodule "fv3gfs-physics"]
+	path = fv3gfs-physics
+	url = https://github.com/VulcanClimateModeling/fv3gfs-physics.git
