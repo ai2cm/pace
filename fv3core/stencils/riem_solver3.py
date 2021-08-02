@@ -14,6 +14,7 @@ from gt4py.gtscript import (
 
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+from fv3core._config import RiemannConfig
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.sim1_solver import Sim1Solver
 from fv3core.utils.grid import GridIndexing
@@ -108,16 +109,16 @@ class RiemannSolver3:
     Fortran subroutine Riem_Solver3
     """
 
-    def __init__(self, grid_indexing: GridIndexing, p_fac, a_imp, use_logp, beta):
+    def __init__(self, grid_indexing: GridIndexing, config: RiemannConfig):
         self._sim1_solve = Sim1Solver(
-            p_fac,
+            config.p_fac,
             grid_indexing.isc,
             grid_indexing.iec,
             grid_indexing.jsc,
             grid_indexing.jec,
             grid_indexing.domain[2] + 1,
         )
-        if a_imp <= 0.999:
+        if config.a_imp <= 0.999:
             raise NotImplementedError("a_imp <= 0.999 is not implemented")
         riemorigin = grid_indexing.origin_compute()
         domain = grid_indexing.domain_compute(add=(0, 0, 1))
@@ -135,7 +136,7 @@ class RiemannSolver3:
         )
         self._finalize_stencil = FrozenStencil(
             finalize,
-            externals={"use_logp": use_logp, "beta": beta},
+            externals={"use_logp": config.use_logp, "beta": config.beta},
             origin=riemorigin,
             domain=domain,
         )

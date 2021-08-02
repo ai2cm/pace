@@ -13,6 +13,7 @@ import fv3core.stencils.delnflux as delnflux
 import fv3core.utils.corners as corners
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+from fv3core._config import DGridShallowWaterLagrangianDynamicsConfig
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.divergence_damping import DivergenceDamping
@@ -393,7 +394,7 @@ def lowest_kvals(column, k, do_vort_damp):
     vorticity_damping_option(column, k, do_vort_damp)
 
 
-def get_column_namelist(namelist, npz):
+def get_column_namelist(config: DGridShallowWaterLagrangianDynamicsConfig, npz):
     """
     Generate a dictionary of columns that specify how parameters (such as nord, damp)
     used in several functions called by D_SW vary over the k-dimension.
@@ -421,28 +422,28 @@ def get_column_namelist(namelist, npz):
     for name in all_names:
         col[name] = utils.make_storage_from_shape((npz + 1,), (0,))
     for name in direct_namelist:
-        col[name][:] = getattr(namelist, name)
+        col[name][:] = getattr(config, name)
 
-    col["d2_divg"][:] = min(0.2, namelist.d2_bg)
+    col["d2_divg"][:] = min(0.2, config.d2_bg)
     col["nord_v"][:] = min(2, col["nord"][0])
     col["nord_w"][:] = col["nord_v"][0]
     col["nord_t"][:] = col["nord_v"][0]
-    if namelist.do_vort_damp:
-        col["damp_vt"][:] = namelist.vtdm4
+    if config.do_vort_damp:
+        col["damp_vt"][:] = config.vtdm4
     else:
         col["damp_vt"][:] = 0
     col["damp_w"][:] = col["damp_vt"][0]
     col["damp_t"][:] = col["damp_vt"][0]
-    if npz == 1 or namelist.n_sponge < 0:
-        col["d2_divg"][0] = namelist.d2_bg
+    if npz == 1 or config.n_sponge < 0:
+        col["d2_divg"][0] = config.d2_bg
     else:
-        col["d2_divg"][0] = max(0.01, namelist.d2_bg, namelist.d2_bg_k1)
-        lowest_kvals(col, 0, namelist.do_vort_damp)
-        if namelist.d2_bg_k2 > 0.01:
-            col["d2_divg"][1] = max(namelist.d2_bg, namelist.d2_bg_k2)
-            lowest_kvals(col, 1, namelist.do_vort_damp)
-        if namelist.d2_bg_k2 > 0.05:
-            col["d2_divg"][2] = max(namelist.d2_bg, 0.2 * namelist.d2_bg_k2)
+        col["d2_divg"][0] = max(0.01, config.d2_bg, config.d2_bg_k1)
+        lowest_kvals(col, 0, config.do_vort_damp)
+        if config.d2_bg_k2 > 0.01:
+            col["d2_divg"][1] = max(config.d2_bg, config.d2_bg_k2)
+            lowest_kvals(col, 1, config.do_vort_damp)
+        if config.d2_bg_k2 > 0.05:
+            col["d2_divg"][2] = max(config.d2_bg, 0.2 * config.d2_bg_k2)
             set_low_kvals(col, 2)
     return col
 
@@ -505,27 +506,28 @@ class DGridShallowWaterLagrangianDynamics:
         column_namelist,
         nested: bool,
         stretched_grid: bool,
-        dddmp,
-        d4_bg,
-        nord: int,
-        grid_type: int,
-        hydrostatic,
-        d_ext: int,
-        inline_q: bool,
-        hord_dp: int,
-        hord_tm: int,
-        hord_mt: int,
-        hord_vt: int,
-        do_f3d: bool,
-        do_skeb: bool,
-        d_con,
+        config: DGridShallowWaterLagrangianDynamicsConfig
+        # dddmp,
+        # d4_bg,
+        # nord: int,
+        # grid_type: int,
+        # hydrostatic,
+        # d_ext: int,
+        # inline_q: bool,
+        # hord_dp: int,
+        # hord_tm: int,
+        # hord_mt: int,
+        # hord_vt: int,
+        # do_f3d: bool,
+        # do_skeb: bool,
+        # d_con,
     ):
         self._f0 = spec.grid.f0
         self.grid = grid_data
-        assert grid_type < 3, "ubke and vbke only implemented for grid_type < 3"
-        assert not inline_q, "inline_q not yet implemented"
+        assert config.grid_type < 3, "ubke and vbke only implemented for grid_type < 3"
+        assert not config.inline_q, "inline_q not yet implemented"
         assert (
-            d_ext <= 0
+            config.d_ext <= 0
         ), "untested d_ext > 0. need to call a2b_ord2, not yet implemented"
         assert (column_namelist["damp_vt"] > dcon_threshold).all()
         # TODO: in theory, we should check if damp_vt > 1e-5 for each k-level and
@@ -535,7 +537,7 @@ class DGridShallowWaterLagrangianDynamics:
         # only compute delnflux for k-levels where this is true
 
         # only compute for k-levels where this is true
-        self.hydrostatic = hydrostatic
+        self.hydrostatic = config.hydrostatic
         self._tmp_heat_s = utils.make_storage_from_shape(grid_indexing.max_shape)
         self._tmp_ub = utils.make_storage_from_shape(grid_indexing.max_shape)
         self._tmp_vb = utils.make_storage_from_shape(grid_indexing.max_shape)
@@ -572,8 +574,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=grid_type,
-            hord=hord_dp,
+            grid_type=config.grid_type,
+            hord=config.hord_dp,
             nord=self._column_namelist["nord_v"],
             damp_c=self._column_namelist["damp_vt"],
         )
@@ -581,8 +583,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=grid_type,
-            hord=hord_dp,
+            grid_type=config.grid_type,
+            hord=config.hord_dp,
             nord=self._column_namelist["nord_t"],
             damp_c=self._column_namelist["damp_t"],
         )
@@ -590,8 +592,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=grid_type,
-            hord=hord_vt,
+            grid_type=config.grid_type,
+            hord=config.hord_vt,
             nord=self._column_namelist["nord_v"],
             damp_c=self._column_namelist["damp_vt"],
         )
@@ -599,8 +601,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=grid_type,
-            hord=hord_tm,
+            grid_type=config.grid_type,
+            hord=config.hord_tm,
             nord=self._column_namelist["nord_v"],
             damp_c=self._column_namelist["damp_vt"],
         )
@@ -608,8 +610,8 @@ class DGridShallowWaterLagrangianDynamics:
             grid_indexing=grid_indexing,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
-            grid_type=grid_type,
-            hord=hord_vt,
+            grid_type=config.grid_type,
+            hord=config.hord_vt,
         )
         self.fv_prep = FiniteVolumeFluxPrep(
             grid_indexing=grid_indexing,
@@ -618,14 +620,14 @@ class DGridShallowWaterLagrangianDynamics:
         self.ytp_v = YTP_V(
             grid_indexing=grid_indexing,
             grid_data=grid_data,
-            grid_type=grid_type,
-            jord=hord_mt,
+            grid_type=config.grid_type,
+            jord=config.hord_mt,
         )
         self.xtp_u = XTP_U(
             grid_indexing=grid_indexing,
             grid_data=grid_data,
-            grid_type=grid_type,
-            iord=hord_mt,
+            grid_type=config.grid_type,
+            iord=config.hord_mt,
         )
         self.divergence_damping = DivergenceDamping(
             grid_indexing,
@@ -633,10 +635,10 @@ class DGridShallowWaterLagrangianDynamics:
             damping_coefficients,
             nested,
             stretched_grid,
-            dddmp,
-            d4_bg,
-            nord,
-            grid_type,
+            config.dddmp,
+            config.d4_bg,
+            config.nord,
+            config.grid_type,
             column_namelist["nord"],
             column_namelist["d2_divg"],
         )
@@ -649,7 +651,7 @@ class DGridShallowWaterLagrangianDynamics:
         ax_offsets_b = axis_offsets(grid_indexing, b_origin, b_domain)
         self._pressure_and_vbke_stencil = FrozenStencil(
             pressure_and_vbke,
-            externals={"inline_q": inline_q, **ax_offsets_b},
+            externals={"inline_q": config.inline_q, **ax_offsets_b},
             origin=b_origin,
             domain=b_domain,
         )
@@ -674,7 +676,7 @@ class DGridShallowWaterLagrangianDynamics:
             compute_vorticity,
             externals={
                 "radius": constants.RADIUS,
-                "do_f3d": do_f3d,
+                "do_f3d": config.do_f3d,
                 "hydrostatic": self.hydrostatic,
             },
             origin=full_origin,
@@ -693,8 +695,8 @@ class DGridShallowWaterLagrangianDynamics:
         self._heat_source_from_vorticity_damping_stencil = FrozenStencil(
             heat_source_from_vorticity_damping,
             externals={
-                "do_skeb": do_skeb,
-                "d_con": d_con,
+                "do_skeb": config.do_skeb,
+                "d_con": config.d_con,
                 **ax_offsets_b,
             },
             origin=b_origin,

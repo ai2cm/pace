@@ -8,10 +8,12 @@ class TranslateRiem_Solver3(TranslateFortranData2Py):
         super().__init__(grid)
         self.compute_func = RiemannSolver3(
             self.grid.grid_indexing,
-            spec.namelist.p_fac,
-            spec.namelist.a_imp,
-            spec.namelist.use_logp,
-            spec.namelist.beta,
+            spec.RiemannConfig(
+                p_fac=spec.namelist.p_fac,
+                a_imp=spec.namelist.a_imp,
+                use_logp=spec.namelist.use_logp,
+                beta=spec.namelist.beta,
+            ),
         )
         self.in_vars["data_vars"] = {
             "cappa": {},

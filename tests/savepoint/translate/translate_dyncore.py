@@ -126,7 +126,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
             spec.grid.grid_type,
             spec.grid.nested,
             spec.grid.stretched_grid,
-            spec.namelist,
+            spec.namelist.acoustic_dynamics,
             inputs["ak"],
             inputs["bk"],
             inputs["pfull"],

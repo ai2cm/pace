@@ -325,7 +325,7 @@ class DynamicalCore:
             self.grid.grid_type,
             self.grid.nested,
             self.grid.stretched_grid,
-            self.namelist,
+            self.namelist.acoustic_dynamics,
             self._ak,
             self._bk,
             self._pfull,

@@ -10,10 +10,7 @@ class TranslatePressureAdjustedTemperature_NonHydrostatic(TranslateFortranData2P
     def __init__(self, grid):
         super().__init__(grid)
         n_adj = get_nk_heat_dissipation(
-            spec.namelist.convert_ke,
-            spec.namelist.vtdm4,
-            spec.namelist.d2_bg_k1,
-            spec.namelist.d2_bg_k2,
+            config=spec.namelist.acoustic_dynamics.d_grid_shallow_water,
             npz=grid.grid_indexing.domain[2],
         )
         self.compute_func = _initialize_temp_adjust_stencil(grid.grid_indexing, n_adj)

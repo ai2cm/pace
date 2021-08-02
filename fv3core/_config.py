@@ -73,6 +73,93 @@ DEFAULT_FLOAT = 0.0
 DEFAULT_BOOL = False
 
 
+@dataclasses.dataclass(frozen=True)
+class RiemannConfig:
+    p_fac: float
+    a_imp: float
+    use_logp: bool
+    beta: float
+
+
+@dataclasses.dataclass(frozen=True)
+class DGridShallowWaterLagrangianDynamicsConfig:
+
+    dddmp: float
+    d2_bg: float
+    d2_bg_k1: float
+    d2_bg_k2: float
+    d4_bg: float
+    ke_bg: float
+    nord: int
+    n_sponge: int
+    grid_type: int
+    d_ext: float
+    hord_dp: int
+    hord_tm: int
+    hord_mt: int
+    hord_vt: int
+    do_f3d: bool
+    do_skeb: bool
+    d_con: float
+    vtdm4: float
+    inline_q: bool
+    convert_ke: bool
+    do_vort_damp: bool
+    hydrostatic: bool
+
+
+@dataclasses.dataclass(frozen=True)
+class AcousticDynamicsConfig:
+
+    tau: float
+    k_split: int
+    n_split: int
+    m_split: int
+    delt_max: float
+    rf_cutoff: float
+    rf_fast: bool
+    breed_vortex_inline: bool
+    use_old_omega: bool
+    riemann: RiemannConfig
+    d_grid_shallow_water: DGridShallowWaterLagrangianDynamicsConfig
+
+    @property
+    def nord(self) -> int:
+        return self.d_grid_shallow_water.nord
+
+    @property
+    def grid_type(self) -> int:
+        return self.d_grid_shallow_water.grid_type
+
+    @property
+    def hydrostatic(self) -> bool:
+        return self.d_grid_shallow_water.hydrostatic
+
+    @property
+    def hord_tm(self) -> int:
+        return self.d_grid_shallow_water.hord_tm
+
+    @property
+    def p_fac(self) -> float:
+        return self.riemann.p_fac
+
+    @property
+    def d_ext(self) -> float:
+        return self.d_grid_shallow_water.d_ext
+
+    @property
+    def d_con(self) -> float:
+        return self.d_grid_shallow_water.d_con
+
+    @property
+    def beta(self) -> float:
+        return self.riemann.beta
+
+    @property
+    def use_logp(self) -> bool:
+        return self.riemann.use_logp
+
+
 @dataclasses.dataclass
 class Namelist:
     # data_set: Any
@@ -369,6 +456,58 @@ class Namelist:
     nf_omega: int = 1
     fv_sg_adj: int = -1
     n_sponge: int = 1
+
+    @property
+    def riemann(self) -> RiemannConfig:
+        return RiemannConfig(
+            p_fac=self.p_fac,
+            a_imp=self.a_imp,
+            use_logp=self.use_logp,
+            beta=self.beta,
+        )
+
+    @property
+    def d_grid_shallow_water(self) -> DGridShallowWaterLagrangianDynamicsConfig:
+        return DGridShallowWaterLagrangianDynamicsConfig(
+            dddmp=self.dddmp,
+            d2_bg=self.d2_bg,
+            d2_bg_k1=self.d2_bg_k1,
+            d2_bg_k2=self.d2_bg_k2,
+            d4_bg=self.d4_bg,
+            ke_bg=self.ke_bg,
+            nord=self.nord,
+            n_sponge=self.n_sponge,
+            grid_type=self.grid_type,
+            d_ext=self.d_ext,
+            inline_q=self.inline_q,
+            hord_dp=self.hord_dp,
+            hord_tm=self.hord_tm,
+            hord_mt=self.hord_mt,
+            hord_vt=self.hord_vt,
+            do_f3d=self.do_f3d,
+            do_skeb=self.do_skeb,
+            d_con=self.d_con,
+            vtdm4=self.vtdm4,
+            do_vort_damp=self.do_vort_damp,
+            hydrostatic=self.hydrostatic,
+            convert_ke=self.convert_ke,
+        )
+
+    @property
+    def acoustic_dynamics(self) -> AcousticDynamicsConfig:
+        return AcousticDynamicsConfig(
+            tau=self.tau,
+            k_split=self.k_split,
+            n_split=self.n_split,
+            m_split=self.m_split,
+            delt_max=self.delt_max,
+            rf_fast=self.rf_fast,
+            rf_cutoff=self.rf_cutoff,
+            breed_vortex_inline=self.breed_vortex_inline,
+            use_old_omega=self.use_old_omega,
+            riemann=self.riemann,
+            d_grid_shallow_water=self.d_grid_shallow_water,
+        )
 
 
 namelist = Namelist()
