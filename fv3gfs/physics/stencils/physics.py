@@ -82,12 +82,12 @@ class Physics:
         self._get_prs_fv3 = FrozenStencil(
             func=get_prs_fv3,
             origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(),
+            domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
         )
         self._get_phi_fv3 = FrozenStencil(
             func=get_phi_fv3,
             origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(),
+            domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
         )
 
         self._microphysics = Microphysics(grid, namelist)
@@ -130,14 +130,14 @@ class Physics:
         for k in range(self.grid.npz):
             self._prsi[:, :, k + 1] = self._prsi[:, :, k] + phy_state.delp[:, :, k]
             self._prsik[:, :, k] = np.log(self._prsi[:, :, k])
-            phy_state.qvapor = phy_state.qvapor / phy_state.delp
-            phy_state.qliquid = phy_state.qliquid / phy_state.delp
-            phy_state.qrain = phy_state.qrain / phy_state.delp
-            phy_state.qice = phy_state.qice / phy_state.delp
-            phy_state.qsnow = phy_state.qsnow / phy_state.delp
-            phy_state.qgraupel = phy_state.qgraupel / phy_state.delp
-            phy_state.qo3mr = phy_state.qo3mr / phy_state.delp
-            phy_state.qsgs_tke = phy_state.qsgs_tke / phy_state.delp
+        phy_state.qvapor = phy_state.qvapor / phy_state.delp
+        phy_state.qliquid = phy_state.qliquid / phy_state.delp
+        phy_state.qrain = phy_state.qrain / phy_state.delp
+        phy_state.qice = phy_state.qice / phy_state.delp
+        phy_state.qsnow = phy_state.qsnow / phy_state.delp
+        phy_state.qgraupel = phy_state.qgraupel / phy_state.delp
+        phy_state.qo3mr = phy_state.qo3mr / phy_state.delp
+        phy_state.qsgs_tke = phy_state.qsgs_tke / phy_state.delp
         self._prsik[:, :, -1] = np.log(self._prsi[:, :, -1])
         self._prsik[:, :, 0] = np.log(self._ptop)
         for k in range(self.grid.npz):
@@ -177,13 +177,21 @@ class Physics:
         debug["prsi"] = self._prsi
         debug["pt"] = physics_state.pt
         debug["qvapor"] = physics_state.qvapor
+        debug["delp"] = physics_state.delp
         debug["del"] = self._del
         debug["del_gz"] = self._del_gz
         np.save("integrated_after_prsfv3_rank" + str(rank) + ".npy", debug)
-        # If PBL is present, physics_state should be updated here
+        # If PBL scheme is present, physics_state should be updated here
         self._get_phi_fv3(
             physics_state.pt, physics_state.qvapor, self._del_gz, self._phii, self._phil
         )
+        debug = {}
+        debug["phii"] = self._phii
+        debug["phil"] = self._phil
+        debug["pt"] = physics_state.pt
+        debug["qvapor"] = physics_state.qvapor
+        debug["del_gz"] = self._del_gz
+        np.save("integrated_after_phifv3_rank" + str(rank) + ".npy", debug)
 
         for k in range(1, self.grid.npz + 1):  # (TODO) check if it goes from 1
             self._dz[:, :, k] = (self._phii[:, :, k] - self._phii[:, :, k - 1]) * rgrav
