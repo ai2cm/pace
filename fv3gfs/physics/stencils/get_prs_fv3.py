@@ -37,8 +37,9 @@ def get_prs_fv3(
     del_: FIELD_FLT,
     del_gz: FIELD_FLT,
 ):
-    with computation(PARALLEL), interval(1, None):
-        del_ = prsi[0, 0, 0] - prsi[0, 0, -1]
-        del_gz = (phii[0, 0, -1] - phii[0, 0, 0]) / (
+    # Passing with integration, but zero padding is different from fortran for del_gz
+    with computation(PARALLEL), interval(0, None):
+        del_ = prsi[0, 0, 1] - prsi[0, 0, 0]
+        del_gz = (phii[0, 0, 0] - phii[0, 0, 1]) / (
             tgrs[0, 0, 0] * (1.0 + con_fvirt * max(0.0, qgrs[0, 0, 0]))
         )
