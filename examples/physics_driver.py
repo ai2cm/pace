@@ -57,11 +57,12 @@ def storage_to_numpy(gt_storage, array_dim, has_zero_padding):
     return np_tmp
 
 
-def run(in_dict):
+def run(in_dict, tile):
     area = in_dict["IPD_area"]
     area = area[:, np.newaxis]
     shape = (144, 1, 80)  # hard coded for now
     out_dict = physics_driver(
+        tile,
         in_dict["IPD_dtp"],
         in_dict["IPD_levs"],
         in_dict["IPD_phii"],
@@ -86,6 +87,7 @@ def run(in_dict):
 
 
 def physics_driver(
+    tile,
     dtp,
     levs,
     phii,
@@ -171,7 +173,7 @@ def physics_driver(
     debug["qvapor"] = qgrs_0
     debug["del"] = del_
     debug["del_gz"] = del_gz
-    np.save("standalone_after_prsfv3.npy", debug)
+    np.save("standalone_after_prsfv3_rank_"+str(tile)+".npy", debug)
 
     # These copies can be done within a stencil
     gt0 = tgrs  # + dtdt * dtp (tendencies from PBL and others)
@@ -182,6 +184,14 @@ def physics_driver(
     gq_0[:, 0, 1:] = gq0[:, :, 0]
 
     get_phi_fv3.get_phi_fv3_stencil(gt0, gq_0, del_gz, phii, phil, domain=full_shape)
+
+    debug = {}
+    debug["phii"] = phii
+    debug["phil"] = phil
+    debug["pt"] = gt0
+    debug["qvapor"] = gq_0
+    debug["del_gz"] = del_gz
+    np.save("standalone_after_phifv3_rank_"+str(tile)+".npy", debug)
 
     land = gt_storage.zeros(
         backend=BACKEND,

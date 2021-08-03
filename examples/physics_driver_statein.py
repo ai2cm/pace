@@ -96,7 +96,7 @@ def long_to_short_name(state):
     return state_out
 
 
-def atmos_phys_driver_statein(state):
+def atmos_phys_driver_statein(state, tile):
     NQ = 8  # state.nq_tot - spec.namelist.dnats
     dnats = 1  # spec.namelist.dnats
     nwat = 6  # spec.namelist.nwat
@@ -207,6 +207,9 @@ def atmos_phys_driver_statein(state):
             - qgrs[:, :, :, 4]
             - qgrs[:, :, :, 5]
         )
+    # debug = {"delp": prsl}
+    # np.save("standalone_driver_statein_rank" + str(tile) + ".npy", debug)
+    # passed
     prsi[:, :, 0] = ptop
     for k in range(npz):
         prsi[:, :, k + 1] = prsi[:, :, k] + prsl[:, :, k]
@@ -232,6 +235,8 @@ def atmos_phys_driver_statein(state):
 
     prsik[:, :, -1] = np.exp(KAPPA * prsik[:, :, -1]) * pk0inv
     prsik[:, :, 0] = pktop
+    debug = {"delp": prsl, "prsik": prsik, "qvapor": qgrs[:, :, :, 0]}
+    np.save("standalone_driver_statein_rank" + str(tile) + ".npy", debug)
     # temporary transformation to match with fortran data
     output = {}
     output["tgrs"] = np.reshape(tgrs.data, (144, 80), order="F")[:, 0:79]
@@ -259,7 +264,7 @@ for tile in range(6):
         "Generator_rank" + str(tile),
     )
 
-    exp_data = atmos_phys_driver_statein(state)
+    exp_data = atmos_phys_driver_statein(state, tile)
     ref_data = data_dict_from_var_list(
         OUT_VAR_APDS,
         serializer,

@@ -87,7 +87,7 @@ for tile in range(6):
             in_data = data_dict_from_var_list(IN_VARS_GFSPD, serializer, sp)
 
             # run Python version
-            out_data = physics_driver.run(in_data)
+            out_data = physics_driver.run(in_data, tile)
 
             isready = True
 
