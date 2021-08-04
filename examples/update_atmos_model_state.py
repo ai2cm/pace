@@ -15,6 +15,15 @@ from gt4py.gtscript import (
     interval,
 )
 
+from mpi4py import MPI
+# Access fv3core
+sys.path.append("../../fv3core/")
+# import fv3core
+# import fv3core._config as spec
+# import fv3core.testing
+# import fv3core.utils.global_config as global_config
+# import fv3gfs.util as util
+
 
 def numpy_to_gt4py_storage_2D(arr, backend, k_depth):
     """convert numpy storage to gt4py storage"""
@@ -65,6 +74,9 @@ def run(in_dict):
 
     # Value of dnats from fv_arrays.F90
     dnats = 1  # namelist.dnats
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
 
     # *** Code used between physics_driver and fv_update_phys ***
 
@@ -253,10 +265,21 @@ def atmosphere_state_update(delp,
                             nwat,
 ):
 
-    fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
+    pe, peln, pk, ps, pt, u_srf, v_srf = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
                    phis, u_srf, v_srf, False, u_dt, v_dt, t_dt, False, 0,0,0,False,
                    qvapor, qliquid, qrain, qsnow, qice, qgraupel, nwat)
-    return 0
+
+    output = {}
+
+    output["pe"] = pe
+    output["ps"] = ps
+    output["peln"] = peln
+    output["pk"] = pk
+    output["pt"] = pt
+    output["u_srf"] = u_srf
+    output["v_srf"] = v_srf 
+
+    return output
 
 # *** Version of update_atmos_model_state to test code between physics_driver and fv_update_phys ***
 # def update_atmos_model_state(    
@@ -342,7 +365,7 @@ def update_atmos_model_state(delp,
                             dt_atmos,
                             nwat):
 
-    atmosphere_state_update(delp,
+    output = atmosphere_state_update(delp,
                             omga,
                             pe,
                             peln,
@@ -372,7 +395,7 @@ def update_atmos_model_state(delp,
                             va,
                             dt_atmos,
                             nwat)
-    return {}
+    return output
 
 def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
                    u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz,
@@ -400,22 +423,56 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     graupel = 5
     cld_amt = 8
 
-    for k in range(u.shape[2]):
+    is_ = int((ua.shape[0]-u_srf.shape[0]) / 2)
+    ie = u_srf.shape[0]+is_
+
+    js = int((ua.shape[1]-u_srf.shape[1]) / 2)
+    je = u_srf.shape[1]+js
+    npz = u.shape[2]
+
+    for k in range(npz):
         # For testing, hard code the range of j
-        for j in range(3,15):
+        for j in range(js,je):
+            # Note : There's already a GT4Py-ported version of moist_cv
             qc, cvm = moist_cv(j, k, nwat, qvapor, qliquid, qrain, qsnow, qice, qgraupel, 
                                qc, cvm)
-            # For testing, hard code the range of i
-            for i in range(3,15):
-                pt[i,j,k] = pt[i,j,k] + t_dt[i,j,k] * dt * con_cp/cvm[i-3]
-    return 0
+            
+            for i in range(is_,ie):
+                pt[i,j,k] = pt[i,j,k] + t_dt[i-3,j-3,k] * dt * con_cp/cvm[i-3]
 
+    # HALO EXCHANGES
+
+    for j in range(js,je):
+        for k in range(1,npz+1):
+            for i in range(is_,ie):
+                pe[i-2,k,j-2] = pe[i-2,k-1,j-2] + delp[i,j,k-1]
+                peln[i-3,k,j-3] = np.log(pe[i-2,k,j-2])
+                pk[i-3,j-3,k] = np.exp(KAPPA*peln[i-3,k,j-3])
+
+        for i in range(is_,ie):
+            ps[i,j] = pe[i-2,npz,j-2]
+            u_srf[i-3,j-3] = ua[i,j,npz-1]
+            v_srf[i-3,j-3] = va[i,j,npz-1]
+
+
+    # COMPLETE_GROUP_HALO_UPDATE
+
+    # UPDATE_DWINDS_PHYS
+
+    #CUBED_TO_LATLON
+    return pe, peln, pk, ps, pt, u_srf, v_srf
+
+# Note : There already exists a moist_cv stencil within fv3core
 def moist_cv(j, k, nwat, qvapor, qliquid, qrain, qsnow, qice, qgraupel, qd, cvm):
 
 
     # Note: Fortran code has a select case contruct to select how to 
     #       update qv, ql, qs, and qd.
     #       Currently we're only implementing case(6)
+
+    # qvapor, qliquid, qrain, qsnow, qice, and qgraupel have halo regions in i and j,
+    # so their index in i have to be incremented by 3 to account for the halo.  The j
+    # index as a input parameter already takes takes the halo into consideration
 
     for i in range(qd.shape[0]):
         qv = qvapor[i+3, j, k]

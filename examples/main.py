@@ -275,10 +275,15 @@ for tile in range(6):
 
             isready = False
 
-        # if sp.name.startswith("FVUpdatePhys-Out"):
-        #     print("> running ", f"tile-{tile}", sp)
+        if sp.name.startswith("FVUpdatePhys-Out"):
+            print("> running ", f"tile-{tile}", sp)
 
-        #     # read serialized input data
-        #     ref_data = data_dict_from_var_list(OUT_VARS_FVPHY, serializer, sp)
+            # read serialized input data
+            ref_data = data_dict_from_var_list(OUT_VARS_FVPHY, serializer, sp, False)
 
-        #     #compare_data(out_data, ref_data)
+            #compare_data(out_data_fup, ref_data)
+            np.testing.assert_allclose(out_data_fup["ps"],ref_data["ps"])
+            np.testing.assert_allclose(out_data_fup["pt"],ref_data["pt"])
+            np.testing.assert_allclose(out_data_fup["pe"],ref_data["pe"])
+            np.testing.assert_allclose(out_data_fup["peln"],ref_data["peln"])
+            np.testing.assert_allclose(out_data_fup["pk"],ref_data["pk"])
