@@ -1756,6 +1756,70 @@ def fields_update(
 
 
 class MicrophysicsState:
+    """
+    pt, qvapor, qrain, qice, qsnow, qgraupel, qcld, &
+    ua, va, delp, delz, omga: same as physics state
+    qv_dt: specific humidity tendency
+    ql_dt: cloud water mixing ratio tendency
+    qr_dt: rain water mixing ratio tendency
+    qi_dt: ice water mixing ratio tendency
+    qs_dt: snow mixing ratio tendency
+    qg_dt: graupel mixing ratio tendency
+    qa_dt: cloud fraction tendency
+    udt: eastard wind tendency
+    vdt: northward wind tendency
+    pt_dt: air temperature tendency
+    """
+
+    def __init__(
+        self,
+        pt: FloatField,
+        qvapor: FloatField,
+        qliquid: FloatField,
+        qrain: FloatField,
+        qice: FloatField,
+        qsnow: FloatField,
+        qgraupel: FloatField,
+        qcld: FloatField,
+        ua: FloatField,
+        va: FloatField,
+        delp: FloatField,
+        delz: FloatField,
+        omga: FloatField,
+        delprsi: FloatField,
+        wmp: FloatField,
+        dz: FloatField,
+        storage: FloatField,
+    ):
+        self.pt = pt
+        self.qvapor = qvapor
+        self.qliquid = qliquid
+        self.qrain = qrain
+        self.qice = qice
+        self.qsnow = qsnow
+        self.qgraupel = qgraupel
+        self.qcld = qcld
+        self.ua = ua
+        self.va = va
+        self.delp = delp
+        self.delz = delz
+        self.omga = omga
+        self.qv_dt = storage
+        self.ql_dt = storage
+        self.qr_dt = storage
+        self.qi_dt = storage
+        self.qs_dt = storage
+        self.qg_dt = storage
+        self.qa_dt = storage
+        self.udt = storage
+        self.vdt = storage
+        self.pt_dt = storage
+        self.delprsi = delprsi
+        self.wmp = wmp
+        self.dz = dz
+
+
+class MicrophysicsState_v0:
     def __init__(
         self,
         grid,
@@ -1769,9 +1833,11 @@ class MicrophysicsState:
         cloud_fraction: Quantity,
         eastward_wind: Quantity,
         northward_wind: Quantity,
-        pressure_thickness_of_atmospheric_layer: Quantity,
         vertical_thickness_of_atmospheric_layer: Quantity,
         vertical_pressure_velocity: Quantity,
+        geopotential_height_thickness: Quantity,
+        layer_mean_vertical_velocity_microph: Quantity,
+        pressure_thickness_of_atmospheric_layer: Quantity,
     ):
         self.grid = grid
         self.air_temperature = air_temperature  # pt
@@ -1791,7 +1857,10 @@ class MicrophysicsState:
             vertical_thickness_of_atmospheric_layer  # delz
         )
         self.vertical_pressure_velocity = vertical_pressure_velocity  # omga
-
+        self.geopotential_height_thickness = geopotential_height_thickness  # dz
+        self.layer_mean_vertical_velocity_microph = (
+            layer_mean_vertical_velocity_microph  # wmp
+        )
         self.specific_humidity_tendency = self.make_quantity_from_storage()  # qv_dt
         self.cloud_water_mixing_ratio_tendency = (
             self.make_quantity_from_storage()
@@ -1906,15 +1975,12 @@ class MicrophysicsState:
         return self.air_temperature_tendency.storage
 
     @property
-    def w(self):
-        w_calc = (
-            -self.omga
-            * (1.0 + con_fvirt * self.qvapor)
-            * self.pt
-            / self.delp
-            / (rdgas * rgrav)
-        )
-        return w_calc
+    def wmp(self):
+        return self.layer_mean_vertical_velocity_microph.storage
+
+    @property
+    def dz(self):
+        return self.geopotential_height_thickness.storage
 
 
 class Microphysics:
@@ -2186,7 +2252,16 @@ class Microphysics:
         self._cgmlt = cgmlt
         self._ces0 = eps * es0
 
-    def __call__(self, state: MicrophysicsState):
+    def __call__(self, state: MicrophysicsState, rank):
+        debug = {}
+        debug["area"] = self._area
+        debug["dz"] = state.dz
+        debug["w"] = state.wmp
+        debug["p123"] = state.delp
+        debug["delp"] = state.delprsi
+        debug["pt"] = state.pt
+        debug["pt_dt"] = state.pt_dt
+        np.save("integrated_before_microph_rank" + str(rank) + ".npy", debug)
         self._fields_init(
             self._land,
             self._area,
@@ -2261,7 +2336,7 @@ class Microphysics:
                 self._tz,
                 self._den,
                 self._denfac,
-                state.w,
+                state.wmp,
                 self._t0,
                 self._den0,
                 self._dz0,
@@ -2307,7 +2382,7 @@ class Microphysics:
                 self._qvz,
                 self._tz,
                 self._den,
-                state.w,
+                state.wmp,
                 self._dz1,
                 self._dp1,
                 self._vtgz,
@@ -2335,7 +2410,7 @@ class Microphysics:
                 self._tz,
                 self._den,
                 self._denfac,
-                state.w,
+                state.wmp,
                 self._t0,
                 self._den0,
                 self._dz0,
@@ -2485,3 +2560,16 @@ class Microphysics:
             self._rdt,
         )
         print("Microphysics")
+        debug = {
+            "qv_dt": state.qv_dt,
+            "ql_dt": state.ql_dt,
+            "qr_dt": state.qr_dt,
+            "qi_dt": state.qi_dt,
+            "qs_dt": state.qs_dt,
+            "qg_dt": state.qg_dt,
+            "qa_dt": state.qa_dt,
+            "pt_dt": state.pt_dt,
+            "udt": state.udt,
+            "vdt": state.vdt,
+        }
+        np.save("integrated_after_microph_rank_" + str(rank) + ".npy", debug)
