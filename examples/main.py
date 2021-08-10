@@ -68,7 +68,7 @@ for tile in range(6):
 
     serializer = ser.Serializer(
         ser.OpenModeKind.Read,
-        "../c12_6ranks_baroclinic_dycore_microphysics",
+        "c12_6ranks_baroclinic_dycore_microphysics",
         "Generator_rank" + str(tile),
     )
 
@@ -178,58 +178,60 @@ for tile in range(6):
                 out_data_fvd["qcld"][3:-3, 3:-3, :], (144, 79), order="F"
             )
 
+            out_data = update_atmos_model_state.run(in_data)
+
             # ********************************************************************
 
             # ***Input Data in fv_update_phys***
-            in_data_fup = {}
+            # in_data_fup = {}
 
-            in_data_fup["delp"]  = ref_data["delp"]
-            in_data_fup["omga"]  = ref_data["omga"]
-            in_data_fup["pe"]    = ref_data["pe"]
-            in_data_fup["peln"]  = ref_data["peln"]
-            in_data_fup["phis"]  = ref_data["phis"]
-            in_data_fup["pk"]    = ref_data["pk"]
-            in_data_fup["pkz"]   = ref_data["pkz"]
-            in_data_fup["ps"]    = ref_data["ps"]
-            in_data_fup["pt"]    = ref_data["pt"]
-            in_data_fup["q_con"] = ref_data["q_con"]
-            in_data_fup["qcld"]  = ref_data["qcld"]
+            # in_data_fup["delp"]  = ref_data["delp"]
+            # in_data_fup["omga"]  = ref_data["omga"]
+            # in_data_fup["pe"]    = ref_data["pe"]
+            # in_data_fup["peln"]  = ref_data["peln"]
+            # in_data_fup["phis"]  = ref_data["phis"]
+            # in_data_fup["pk"]    = ref_data["pk"]
+            # in_data_fup["pkz"]   = ref_data["pkz"]
+            # in_data_fup["ps"]    = ref_data["ps"]
+            # in_data_fup["pt"]    = ref_data["pt"]
+            # in_data_fup["q_con"] = ref_data["q_con"]
+            # in_data_fup["qcld"]  = ref_data["qcld"]
             
-            in_data_fup["qvapor"]   = ref_data["qvapor"]
-            in_data_fup["qliquid"]  = ref_data["qliquid"]
-            in_data_fup["qrain"]    = ref_data["qrain"]
-            in_data_fup["qsnow"]    = ref_data["qsnow"]
-            in_data_fup["qice"]     = ref_data["qice"]
-            in_data_fup["qgraupel"] = ref_data["qgraupel"]
-            in_data_fup["qo3mr"]    = ref_data["qo3mr"]
+            # in_data_fup["qvapor"]   = ref_data["qvapor"]
+            # in_data_fup["qliquid"]  = ref_data["qliquid"]
+            # in_data_fup["qrain"]    = ref_data["qrain"]
+            # in_data_fup["qsnow"]    = ref_data["qsnow"]
+            # in_data_fup["qice"]     = ref_data["qice"]
+            # in_data_fup["qgraupel"] = ref_data["qgraupel"]
+            # in_data_fup["qo3mr"]    = ref_data["qo3mr"]
 
-            in_data_fup["u"]     = ref_data["u"]
-            in_data_fup["v"]     = ref_data["v"]
-            in_data_fup["w"]     = ref_data["w"]
-            in_data_fup["t_dt"]  = ref_data["t_dt"]
-            in_data_fup["u_dt"]  = ref_data["u_dt"]
-            in_data_fup["v_dt"]  = ref_data["v_dt"]
+            # in_data_fup["u"]     = ref_data["u"]
+            # in_data_fup["v"]     = ref_data["v"]
+            # in_data_fup["w"]     = ref_data["w"]
+            # in_data_fup["t_dt"]  = ref_data["t_dt"]
+            # in_data_fup["u_dt"]  = ref_data["u_dt"]
+            # in_data_fup["v_dt"]  = ref_data["v_dt"]
 
-            in_data_fup["u_srf"] = ref_data["u_srf"]
-            in_data_fup["v_srf"] = ref_data["v_srf"]
-            in_data_fup["ua"]    = ref_data["ua"]
-            in_data_fup["va"]    = ref_data["va"]
+            # in_data_fup["u_srf"] = ref_data["u_srf"]
+            # in_data_fup["v_srf"] = ref_data["v_srf"]
+            # in_data_fup["ua"]    = ref_data["ua"]
+            # in_data_fup["va"]    = ref_data["va"]
 
-            in_data_fup["nwat"]  = out_data_pds["IPD_nwat"]
+            # in_data_fup["nwat"]  = out_data_pds["IPD_nwat"]
             
-            out_data_fup = update_atmos_model_state.run(in_data_fup)
+            # out_data_fup = update_atmos_model_state.run(in_data_fup)
 
             #***Verification Tests for code between physics_driver and fv_update_phys***
 
             # print("After update_atmos_model_state")
-            # delp = np.reshape(ref_data["delp"][3:-3, 3:-3, :], (144, 79), order="F")
-            # u_dt = np.reshape(ref_data["u_dt"][3:-3, 3:-3, :], (144, 79), order="F")
-            # v_dt = np.reshape(ref_data["v_dt"][3:-3, 3:-3, :], (144, 79), order="F")
-            # t_dt = np.reshape(ref_data["t_dt"], (144, 79), order="F")
-            # np.testing.assert_allclose(out_data["delp"], delp)
-            # np.testing.assert_allclose(out_data["u_dt"], u_dt, atol=1e-8)
-            # np.testing.assert_allclose(out_data["v_dt"], v_dt, atol=1e-8)
-            # np.testing.assert_allclose(out_data["t_dt"], t_dt, atol=1e-8)
+            delp = np.reshape(ref_data["delp"][3:-3, 3:-3, :], (144, 79), order="F")
+            u_dt = np.reshape(ref_data["u_dt"][3:-3, 3:-3, :], (144, 79), order="F")
+            v_dt = np.reshape(ref_data["v_dt"][3:-3, 3:-3, :], (144, 79), order="F")
+            t_dt = np.reshape(ref_data["t_dt"], (144, 79), order="F")
+            np.testing.assert_allclose(out_data["delp"], delp)
+            np.testing.assert_allclose(out_data["u_dt"], u_dt, atol=1e-8)
+            np.testing.assert_allclose(out_data["v_dt"], v_dt, atol=1e-8)
+            np.testing.assert_allclose(out_data["t_dt"], t_dt, atol=1e-8)
 
             #***************************************************************************
 
@@ -275,15 +277,15 @@ for tile in range(6):
 
             isready = False
 
-        if sp.name.startswith("FVUpdatePhys-Out"):
-            print("> running ", f"tile-{tile}", sp)
+        # if sp.name.startswith("FVUpdatePhys-Out"):
+        #     print("> running ", f"tile-{tile}", sp)
 
-            # read serialized input data
-            ref_data = data_dict_from_var_list(OUT_VARS_FVPHY, serializer, sp, False)
+        #     # read serialized input data
+        #     ref_data = data_dict_from_var_list(OUT_VARS_FVPHY, serializer, sp, False)
 
-            #compare_data(out_data_fup, ref_data)
-            np.testing.assert_allclose(out_data_fup["ps"],ref_data["ps"])
-            np.testing.assert_allclose(out_data_fup["pt"],ref_data["pt"])
-            np.testing.assert_allclose(out_data_fup["pe"],ref_data["pe"])
-            np.testing.assert_allclose(out_data_fup["peln"],ref_data["peln"])
-            np.testing.assert_allclose(out_data_fup["pk"],ref_data["pk"])
+        #     #compare_data(out_data_fup, ref_data)
+        #     np.testing.assert_allclose(out_data_fup["ps"],ref_data["ps"])
+        #     np.testing.assert_allclose(out_data_fup["pt"],ref_data["pt"])
+        #     np.testing.assert_allclose(out_data_fup["pe"],ref_data["pe"])
+        #     np.testing.assert_allclose(out_data_fup["peln"],ref_data["peln"])
+        #     np.testing.assert_allclose(out_data_fup["pk"],ref_data["pk"])

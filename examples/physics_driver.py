@@ -4,7 +4,7 @@ import gt4py
 import gt4py.gtscript as gtscript
 import gt4py.storage as gt_storage
 
-sys.path.append("../")
+sys.path.append(".")
 from fv3gfsphysics.utils.global_config import *
 from fv3gfsphysics.utils.global_constants import *
 import fv3gfsphysics.stencils.get_prs_fv3 as get_prs_fv3
