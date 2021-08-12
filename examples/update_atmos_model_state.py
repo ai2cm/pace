@@ -81,38 +81,10 @@ def run(in_dict):
     u_dt = np.zeros(in_dict["gu0"].shape)
     v_dt = np.zeros(in_dict["gv0"].shape)
     t_dt = np.zeros(in_dict["gt0"].shape)
-    
-    # u_dt = gt_storage.zeros(
-    #     backend=BACKEND,
-    #     dtype=FIELD_FLT,
-    #     shape=shape,
-    #     default_origin=(0, 0, 0),
-    # )
-
-    # v_dt = gt_storage.zeros(
-    #     backend=BACKEND,
-    #     dtype=FIELD_FLT,
-    #     shape=shape,
-    #     default_origin=(0, 0, 0),
-    # )
-
-    # t_dt = gt_storage.zeros(
-    #     backend=BACKEND,
-    #     dtype=FIELD_FLT,
-    #     shape=shape,
-    #     default_origin=(0, 0, 0),
-    # )
 
     q = np.zeros(
         (in_dict["qvapor"].shape[0], in_dict["qvapor"].shape[1], 8)
     )  # Assumption that there are 8 layers to q
-
-    # q = gt_storage.zeros(
-    #     backend=BACKEND,
-    #     dtype=FIELD_FLT,
-    #     shape=(shape[0], shape[2], 8),
-    #     default_origin=(0, 0, 0),
-    # )
 
     q[:, :, 0] = in_dict["qvapor"]
     q[:, :, 1] = in_dict["qliquid"]
@@ -122,19 +94,6 @@ def run(in_dict):
     q[:, :, 5] = in_dict["qgraupel"]
     q[:, :, 6] = in_dict["qo3mr"]
     q[:, :, 7] = in_dict["qsgs_tke"]
-
-    # gq0  = gt_storage.from_array(in_dict["gq0"], backend=BACKEND, default_origin=(0, 0, 0))
-    # Z = np.zeros((gq0.shape[0], 1, gq0.shape[2]))
-    # gq0 = np.concatenate((Z, gq0), axis=1)
-
-    # gt0  = numpy_to_gt4py_storage_2D(in_dict["gt0"], BACKEND, 80)
-    # gu0  = numpy_to_gt4py_storage_2D(in_dict["gu0"], BACKEND, 80)
-    # gv0  = numpy_to_gt4py_storage_2D(in_dict["gv0"], BACKEND, 80)
-    # tgrs = numpy_to_gt4py_storage_2D(in_dict["tgrs"], BACKEND, 80)
-    # ugrs = numpy_to_gt4py_storage_2D(in_dict["ugrs"], BACKEND, 80)
-    # vgrs = numpy_to_gt4py_storage_2D(in_dict["vgrs"], BACKEND, 80)
-    # prsi = numpy_to_gt4py_storage_2D(in_dict["prsi"], BACKEND, 80)
-    # delp = numpy_to_gt4py_storage_2D(in_dict["delp"], BACKEND, 80)
 
     out_dict = update_atmos_model_state(
         in_dict["gq0"],
@@ -269,6 +228,10 @@ def atmosphere_state_update(
 
             delp[ix, k] = q0
             q[ix, k, :nq_adv] = qwat[:nq_adv] / q0
+
+    # pe, peln, pk, ps, pt, u_srf, v_srf = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
+    #                phis, u_srf, v_srf, False, u_dt, v_dt, t_dt, False, 0,0,0,False,
+    #                qvapor, qliquid, qrain, qsnow, qice, qgraupel, nwat)
 
     return u_dt, v_dt, t_dt, delp, q
 

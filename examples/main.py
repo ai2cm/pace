@@ -183,7 +183,7 @@ for tile in range(6):
             # ********************************************************************
 
             # ***Input Data in fv_update_phys***
-            # in_data_fup = {}
+            in_data_fup = {}
 
             # in_data_fup["delp"]  = ref_data["delp"]
             # in_data_fup["omga"]  = ref_data["omga"]
@@ -197,13 +197,13 @@ for tile in range(6):
             # in_data_fup["q_con"] = ref_data["q_con"]
             # in_data_fup["qcld"]  = ref_data["qcld"]
             
-            # in_data_fup["qvapor"]   = ref_data["qvapor"]
-            # in_data_fup["qliquid"]  = ref_data["qliquid"]
-            # in_data_fup["qrain"]    = ref_data["qrain"]
-            # in_data_fup["qsnow"]    = ref_data["qsnow"]
-            # in_data_fup["qice"]     = ref_data["qice"]
-            # in_data_fup["qgraupel"] = ref_data["qgraupel"]
-            # in_data_fup["qo3mr"]    = ref_data["qo3mr"]
+            in_data_fup["qvapor"]   = ref_data["qvapor"]
+            in_data_fup["qliquid"]  = ref_data["qliquid"]
+            in_data_fup["qrain"]    = ref_data["qrain"]
+            in_data_fup["qsnow"]    = ref_data["qsnow"]
+            in_data_fup["qice"]     = ref_data["qice"]
+            in_data_fup["qgraupel"] = ref_data["qgraupel"]
+            in_data_fup["qo3mr"]    = ref_data["qo3mr"]
 
             # in_data_fup["u"]     = ref_data["u"]
             # in_data_fup["v"]     = ref_data["v"]
