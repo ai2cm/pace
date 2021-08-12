@@ -105,6 +105,20 @@ def run(in_dict):
         in_dict["vgrs"],
         in_dict["prsi"],
         in_dict["delp"],
+        in_dict["u"],
+        in_dict["v"],
+        in_dict["w"],
+        in_dict["pt"],
+        in_dict["ua"],
+        in_dict["va"],
+        in_dict["ps"],
+        in_dict["pe"],
+        in_dict["peln"],
+        in_dict["pk"],
+        in_dict["pkz"],
+        in_dict["phis"],
+        in_dict["u_srf"],
+        in_dict["v_srf"],
         q,
         t_dt,
         u_dt,
@@ -193,6 +207,7 @@ def atmosphere_state_update(
     vgrs,
     prsi,
     delp,
+    u, v, w, pt, ua, va, ps, pe, peln, pk, pkz, phis, u_srf, v_srf,
     q,
     t_dt,
     u_dt,
@@ -229,11 +244,14 @@ def atmosphere_state_update(
             delp[ix, k] = q0
             q[ix, k, :nq_adv] = qwat[:nq_adv] / q0
 
-    # pe, peln, pk, ps, pt, u_srf, v_srf = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
-    #                phis, u_srf, v_srf, False, u_dt, v_dt, t_dt, False, 0,0,0,False,
-    #                qvapor, qliquid, qrain, qsnow, qice, qgraupel, nwat)
+    # Note : pe has shape (14,80,14)
+    #        peln has shape(12,80,12)
 
-    return u_dt, v_dt, t_dt, delp, q
+    pe, peln, pk, ps, pt, u_srf, v_srf = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
+                   phis, u_srf, v_srf, False, u_dt, v_dt, t_dt, False, 0,0,0,False,
+                   q[:,:,0], q[:,:,1], q[:,:,2], q[:,:,3], q[:,:,4], q[:,:,5], nwat)
+
+    return u_dt, v_dt, t_dt, delp, q, pe, peln, pk, ps, pt, u_srf, v_srf
 
 
 # *** atmosphere_state_update that contains fv_update_phys ***
@@ -296,6 +314,20 @@ def update_atmos_model_state(
     vgrs,
     prsi,
     delp,
+    u,
+    v,
+    w,
+    pt,
+    ua,
+    va,
+    ps,
+    pe,
+    peln,
+    pk,
+    pkz,
+    phis,
+    u_srf,
+    v_srf,
     q,
     t_dt,
     u_dt,
@@ -307,7 +339,8 @@ def update_atmos_model_state(
     shape,
 ):
 
-    (u_dt, v_dt, t_dt, delp, q) = atmosphere_state_update(
+    (u_dt, v_dt, t_dt, delp, q,
+    pe, peln, pk, ps, pt, u_srf, v_srf) = atmosphere_state_update(
         gq0,
         gt0,
         gu0,
@@ -317,6 +350,20 @@ def update_atmos_model_state(
         vgrs,
         prsi,
         delp,
+        u,
+        v,
+        w,
+        pt,
+        ua,
+        va,
+        ps,
+        pe,
+        peln,
+        pk,
+        pkz,
+        phis,
+        u_srf,
+        v_srf,
         q,
         t_dt,
         u_dt,
@@ -335,6 +382,14 @@ def update_atmos_model_state(
     out_dict["t_dt"] = t_dt
     out_dict["delp"] = delp
     out_dict["q"] = q
+
+    out_dict["pe"] = pe
+    out_dict["ps"] = ps
+    out_dict["peln"] = peln
+    out_dict["pk"] = pk
+    out_dict["pt"] = pt
+    out_dict["u_srf"] = u_srf
+    out_dict["v_srf"] = v_srf 
 
     return out_dict
 
@@ -417,8 +472,10 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     # column_moistening_implied_by_nudging, q_dt
     hydrostatic = False
     con_cp = cp_air
-    cvm = np.zeros(pk.shape[0])
-    qc  = np.zeros(pk.shape[0])
+    # cvm = np.zeros(pk.shape[0])
+    # qc  = np.zeros(pk.shape[0])
+    cvm = np.zeros(12)
+    qc  = np.zeros(12)
 
     # Hard coded tracer indexes : Maybe dynamically set these later?
     sphum   = 0
@@ -429,36 +486,39 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     graupel = 5
     cld_amt = 8
 
-    is_ = int((ua.shape[0]-u_srf.shape[0]) / 2)
-    ie = u_srf.shape[0]+is_
+    # is_ = int((ua.shape[0]-u_srf.shape[0]) / 2)
+    # ie = u_srf.shape[0]+is_
 
-    js = int((ua.shape[1]-u_srf.shape[1]) / 2)
-    je = u_srf.shape[1]+js
-    npz = u.shape[2]
+    # js = int((ua.shape[1]-u_srf.shape[1]) / 2)
+    # je = u_srf.shape[1]+js
+    npz = u.shape[1]
 
     for k in range(npz):
         # For testing, hard code the range of j
-        for j in range(js,je):
+        #for j in range(js,je):
+        for j in range(12):
             # Note : There's already a GT4Py-ported version of moist_cv
             qc, cvm = moist_cv(j, k, nwat, qvapor, qliquid, qrain, qsnow, qice, qgraupel, 
                                qc, cvm)
             
-            for i in range(is_,ie):
-                pt[i,j,k] = pt[i,j,k] + t_dt[i-3,j-3,k] * dt * con_cp/cvm[i-3]
+            for i in range(12):
+                # pt[i,j,k] = pt[i,j,k] + t_dt[i-3,j-3,k] * dt * con_cp/cvm[i-3]
+                pt[j*12 + i ,k] = pt[j*12 + i,k] + t_dt[j*12 + i,k] * dt * con_cp/cvm[i-3]
+
 
     # HALO EXCHANGES
 
-    for j in range(js,je):
+    for j in range(12):
         for k in range(1,npz+1):
-            for i in range(is_,ie):
-                pe[i-2,k,j-2] = pe[i-2,k-1,j-2] + delp[i,j,k-1]
-                peln[i-3,k,j-3] = np.log(pe[i-2,k,j-2])
-                pk[i-3,j-3,k] = np.exp(KAPPA*peln[i-3,k,j-3])
+            for i in range(12):
+                pe[i+1,k,j+1] = pe[i+1,k-1,j+1] + delp[12*j + i,k-1]
+                peln[i,k,j] = np.log(pe[i+1,k,j+1])
+                pk[12*j + i,k] = np.exp(KAPPA*peln[i,k,j])
 
-        for i in range(is_,ie):
-            ps[i,j] = pe[i-2,npz,j-2]
-            u_srf[i-3,j-3] = ua[i,j,npz-1]
-            v_srf[i-3,j-3] = va[i,j,npz-1]
+        for i in range(12):
+            ps[12*j + i] = pe[i+1,npz,j+1]
+            u_srf[12*j + i] = ua[12*j + i,npz-1]
+            v_srf[12*j + i] = va[12*j + i,npz-1]
 
 
     # COMPLETE_GROUP_HALO_UPDATE
@@ -480,10 +540,17 @@ def moist_cv(j, k, nwat, qvapor, qliquid, qrain, qsnow, qice, qgraupel, qd, cvm)
     # so their index in i have to be incremented by 3 to account for the halo.  The j
     # index as a input parameter already takes takes the halo into consideration
 
-    for i in range(qd.shape[0]):
-        qv = qvapor[i+3, j, k]
-        ql = qliquid[i+3, j, k] + qrain[i+3, j, k]
-        qs = qice[i+3, j, k] + qsnow[i+3, j, k] + qgraupel[i+3, j, k]
+    # for i in range(qd.shape[0]):
+    #     qv = qvapor[i+3, j, k]
+    #     ql = qliquid[i+3, j, k] + qrain[i+3, j, k]
+    #     qs = qice[i+3, j, k] + qsnow[i+3, j, k] + qgraupel[i+3, j, k]
+    #     qd[i] = ql + qs
+    #     cvm[i] = (1.0 - (qv + qd[i])) * cv_air + qv * cv_vap + ql * c_liq + qs * c_ice
+
+    for i in range(12):
+        qv = qvapor[j*12 + i, k]
+        ql = qliquid[j*12 + i, k] + qrain[j*12 + i, k]
+        qs = qice[j*12+i, k] + qsnow[j*12 + i, k] + qgraupel[j*12 + i, k]
         qd[i] = ql + qs
         cvm[i] = (1.0 - (qv + qd[i])) * cv_air + qv * cv_vap + ql * c_liq + qs * c_ice
 
