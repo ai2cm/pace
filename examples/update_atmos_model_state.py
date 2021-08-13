@@ -161,7 +161,6 @@ def fill_gfs(pe2, q, q_min):
     return q
 
 
-# *** Version of atmosphere_state_update that executes code between physics_driver and fv_update_phys ***
 def atmosphere_state_update(
     gq0, gt0, gu0, gv0,
     tgrs, ugrs, vgrs, prsi,

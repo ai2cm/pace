@@ -108,12 +108,14 @@ for tile in range(6):
 
             isready = True
 
+        # Note : Only available in 10 Day C12 dataset
         if sp.name.startswith("FillGFS-IN"):
 
             print("> running ", f"tile-{tile}", sp)
 
             in_data_fillgfs = data_dict_from_var_list(IN_FILL_GFS, serializer, sp)
 
+        # Note : Only available in 10 Day C12 dataset
         if sp.name.startswith("FillGFS-OUT"):
             print("> running ", f"tile-{tile}", sp)
 
@@ -141,7 +143,7 @@ for tile in range(6):
             # in_data["gu0"] = out_data_pd["IPD_gu0"]
             # in_data["gv0"] = out_data_pd["IPD_gv0"]
 
-            in_data["gq0"] = in_data_fillgfs["IPD_gq0"]
+            in_data["gq0"] = ref_data_pd["IPD_gq0"]
             in_data["gt0"] = ref_data_pd["IPD_gt0"]
             in_data["gu0"] = ref_data_pd["IPD_gu0"]
             in_data["gv0"] = ref_data_pd["IPD_gv0"]            
@@ -219,14 +221,14 @@ for tile in range(6):
             np.testing.assert_allclose(out_data["delp"], delp)
             np.testing.assert_allclose(out_data["u_dt"], u_dt, atol=1e-8)
             np.testing.assert_allclose(out_data["v_dt"], v_dt, atol=1e-8)
-            np.testing.assert_allclose(out_data["t_dt"], t_dt, atol=1e-8)
+            np.testing.assert_allclose(out_data["t_dt"], t_dt, atol=1e-5)
             
-            # np.testing.assert_allclose(out_data["q"][:,:,0], qvapor)
-            # np.testing.assert_allclose(out_data["q"][:,:,1], qliquid)
-            # np.testing.assert_allclose(out_data["q"][:,:,2], qrain)
-            # np.testing.assert_allclose(out_data["q"][:,:,3], qsnow)
-            # np.testing.assert_allclose(out_data["q"][:,:,4], qice, atol=1e-8)
-            # np.testing.assert_allclose(out_data["q"][:,:,5], qgraupel)
+            np.testing.assert_allclose(out_data["q"][:,:,0], qvapor)
+            np.testing.assert_allclose(out_data["q"][:,:,1], qliquid)
+            np.testing.assert_allclose(out_data["q"][:,:,2], qrain)
+            np.testing.assert_allclose(out_data["q"][:,:,3], qsnow, atol=1e-5)
+            np.testing.assert_allclose(out_data["q"][:,:,4], qice, atol=1e-5)
+            np.testing.assert_allclose(out_data["q"][:,:,5], qgraupel)
 
 
             #***************************************************************************
