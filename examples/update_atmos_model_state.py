@@ -76,15 +76,21 @@ def run(in_dict):
     # Value of dnats from fv_arrays.F90
     dnats = 1  # namelist.dnats
 
-    # *** Code used between physics_driver and fv_update_phys ***
+    # u_dt = np.zeros(in_dict["gu0"].shape)
+    # v_dt = np.zeros(in_dict["gv0"].shape)
+    # t_dt = np.zeros(in_dict["gt0"].shape)
 
-    u_dt = np.zeros(in_dict["gu0"].shape)
-    v_dt = np.zeros(in_dict["gv0"].shape)
-    t_dt = np.zeros(in_dict["gt0"].shape)
+    u_dt = gt_storage.zeros(BACKEND, default_origin=(0,0,0),shape=in_dict["gu0"].shape, dtype=DTYPE_FLT)
+    v_dt = gt_storage.zeros(BACKEND, default_origin=(0,0,0),shape=in_dict["gv0"].shape, dtype=DTYPE_FLT)
+    t_dt = gt_storage.zeros(BACKEND, default_origin=(0,0,0),shape=in_dict["gt0"].shape, dtype=DTYPE_FLT)
 
     q = np.zeros(
         (in_dict["qvapor"].shape[0], in_dict["qvapor"].shape[1], 8)
     )  # Assumption that there are 8 layers to q
+
+    q = gt_storage.zeros(BACKEND, default_origin=(0,0,0),
+                         shape=(in_dict["qvapor"].shape[0], in_dict["qvapor"].shape[1], 8), 
+                         dtype=DTYPE_FLT)
 
     q[:, :, 0] = in_dict["qvapor"]
     q[:, :, 1] = in_dict["qliquid"]
@@ -95,40 +101,78 @@ def run(in_dict):
     q[:, :, 6] = in_dict["qo3mr"]
     q[:, :, 7] = in_dict["qsgs_tke"]
 
-    out_dict = update_atmos_model_state(
-        in_dict["gq0"],
-        in_dict["gt0"],
-        in_dict["gu0"],
-        in_dict["gv0"],
-        in_dict["tgrs"],
-        in_dict["ugrs"],
-        in_dict["vgrs"],
-        in_dict["prsi"],
-        in_dict["delp"],
-        in_dict["u"],
-        in_dict["v"],
-        in_dict["w"],
-        in_dict["pt"],
-        in_dict["ua"],
-        in_dict["va"],
-        in_dict["ps"],
-        in_dict["pe"],
-        in_dict["peln"],
-        in_dict["pk"],
-        in_dict["pkz"],
-        in_dict["phis"],
-        in_dict["u_srf"],
-        in_dict["v_srf"],
+    gq0   = gt_storage.from_array(in_dict["gq0"],  backend=BACKEND, default_origin=(0, 0, 0))
+    gt0   = gt_storage.from_array(in_dict["gt0"],  backend=BACKEND, default_origin=(0, 0, 0))
+    gu0   = gt_storage.from_array(in_dict["gu0"],  backend=BACKEND, default_origin=(0, 0, 0))
+    gv0   = gt_storage.from_array(in_dict["gv0"],  backend=BACKEND, default_origin=(0, 0, 0))
+    tgrs  = gt_storage.from_array(in_dict["tgrs"], backend=BACKEND, default_origin=(0, 0, 0))
+    ugrs  = gt_storage.from_array(in_dict["ugrs"], backend=BACKEND, default_origin=(0, 0, 0))
+    vgrs  = gt_storage.from_array(in_dict["vgrs"], backend=BACKEND, default_origin=(0, 0, 0))
+    prsi  = gt_storage.from_array(in_dict["prsi"], backend=BACKEND, default_origin=(0, 0, 0))
+    delp  = gt_storage.from_array(in_dict["delp"], backend=BACKEND, default_origin=(0, 0, 0))
+    u     = gt_storage.from_array(in_dict["u"],    backend=BACKEND, default_origin=(0, 0, 0))
+    v     = gt_storage.from_array(in_dict["v"],    backend=BACKEND, default_origin=(0, 0, 0))
+    w     = gt_storage.from_array(in_dict["w"],    backend=BACKEND, default_origin=(0, 0, 0))
+    pt    = gt_storage.from_array(in_dict["pt"],   backend=BACKEND, default_origin=(0, 0, 0))
+    ua    = gt_storage.from_array(in_dict["ua"],   backend=BACKEND, default_origin=(0, 0, 0))
+    va    = gt_storage.from_array(in_dict["va"],   backend=BACKEND, default_origin=(0, 0, 0))
+    ps    = gt_storage.from_array(in_dict["ps"],   backend=BACKEND, default_origin=(0, 0, 0))
+    pe    = gt_storage.from_array(in_dict["pe"],   backend=BACKEND, default_origin=(0, 0, 0))
+    peln  = gt_storage.from_array(in_dict["peln"], backend=BACKEND, default_origin=(0, 0, 0))
+    pk    = gt_storage.from_array(in_dict["pk"],   backend=BACKEND, default_origin=(0, 0, 0))
+    pkz   = gt_storage.from_array(in_dict["pkz"],  backend=BACKEND, default_origin=(0, 0, 0))
+    phis  = gt_storage.from_array(in_dict["phis"], backend=BACKEND, default_origin=(0, 0, 0))
+    u_srf = gt_storage.from_array(in_dict["u_srf"],backend=BACKEND, default_origin=(0, 0, 0))
+    v_srf = gt_storage.from_array(in_dict["v_srf"],backend=BACKEND, default_origin=(0, 0, 0))
+
+    out_dict_atmos = update_atmos_model_state(
+        gq0, gt0, gu0, gv0,
+        tgrs, ugrs, vgrs,
+        prsi, delp,
+        u, v, w,
+        pt,
+        ua, va,
+        ps, pe, peln, pk, pkz, phis,
+        u_srf, v_srf,
         q,
-        t_dt,
-        u_dt,
-        v_dt,
-        in_dict["nq"],
-        dnats,
-        in_dict["nwat"],
-        dt_atmos,
+        t_dt, u_dt, v_dt,
+        in_dict["nq"], dnats, in_dict["nwat"], dt_atmos,
         shape,
     )
+
+    delp = np.zeros(out_dict_atmos["delp"].shape)
+    delp[:,:] = out_dict_atmos["delp"][:,:]
+    u_dt = np.zeros(out_dict_atmos["u_dt"].shape)
+    u_dt[:,:] = out_dict_atmos["u_dt"][:,:]
+    v_dt = np.zeros(out_dict_atmos["v_dt"].shape)
+    v_dt[:,:] = out_dict_atmos["v_dt"][:,:]
+    t_dt = np.zeros(out_dict_atmos["t_dt"].shape)
+    t_dt[:,:] = out_dict_atmos["t_dt"][:,:]
+    q = np.zeros(out_dict_atmos["q"].shape)
+    q[:,:,:] = out_dict_atmos["q"][:,:,:]
+    ps = np.zeros(out_dict_atmos["ps"].shape)
+    ps[:] = out_dict_atmos["ps"][:]
+    pt = np.zeros(out_dict_atmos["pt"].shape)
+    pt[:,:] = out_dict_atmos["pt"][:,:]
+    pe = np.zeros(out_dict_atmos["pe"].shape)
+    pe[:,:] = out_dict_atmos["pe"][:,:]
+    peln = np.zeros(out_dict_atmos["peln"].shape)
+    peln[:,:] = out_dict_atmos["peln"][:,:]
+    pk = np.zeros(out_dict_atmos["pk"].shape)
+    pk[:,:] = out_dict_atmos["pk"][:,:]
+
+    out_dict = {}
+
+    out_dict["delp"] = delp
+    out_dict["u_dt"] = u_dt
+    out_dict["v_dt"] = v_dt
+    out_dict["t_dt"] = t_dt
+    out_dict["q"] = q
+    out_dict["ps"] = ps
+    out_dict["pt"] = pt
+    out_dict["pe"] = pe
+    out_dict["peln"] = peln
+    out_dict["pk"] = pk
 
     return out_dict
 
@@ -306,7 +350,10 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
                 pt[j*12 + i ,k] = pt[j*12 + i,k] + t_dt[j*12 + i,k] * dt * con_cp/cvm[i-3]
 
 
-    # HALO EXCHANGES
+    # u_dt_quan = grid.make_quantity(u_dt)
+    # v_dt_quan = grid.make_quantity(v_dt)
+
+    # req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
 
     for j in range(12):
         for k in range(1,npz+1):
@@ -321,7 +368,7 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
             v_srf[12*j + i] = va[12*j + i,npz-1]
 
 
-    # COMPLETE_GROUP_HALO_UPDATE
+    # req.wait()
 
     # UPDATE_DWINDS_PHYS
 
