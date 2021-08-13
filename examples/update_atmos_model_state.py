@@ -130,41 +130,6 @@ def run(in_dict):
         shape,
     )
 
-    #************************************************************
-
-    # out_dict = update_atmos_model_state(
-    #         in_dict["delp"],
-    #         in_dict["omga"],
-    #         in_dict["pe"],
-    #         in_dict["peln"],
-    #         in_dict["phis"],
-    #         in_dict["pk"],
-    #         in_dict["pkz"],
-    #         in_dict["ps"],
-    #         in_dict["pt"],
-    #         in_dict["q_con"],
-    #         in_dict["qcld"],
-    #         in_dict["qvapor"],
-    #         in_dict["qliquid"],
-    #         in_dict["qrain"],
-    #         in_dict["qsnow"],
-    #         in_dict["qice"],
-    #         in_dict["qgraupel"],
-    #         in_dict["qo3mr"],
-    #         in_dict["u"],
-    #         in_dict["v"],
-    #         in_dict["w"],
-    #         in_dict["t_dt"],
-    #         in_dict["u_dt"],
-    #         in_dict["v_dt"],
-    #         in_dict["u_srf"],
-    #         in_dict["v_srf"],
-    #         in_dict["ua"],
-    #         in_dict["va"],
-    #         dt_atmos,
-    #         in_dict["nwat"]
-    # )
-
     return out_dict
 
 
@@ -198,24 +163,17 @@ def fill_gfs(pe2, q, q_min):
 
 # *** Version of atmosphere_state_update that executes code between physics_driver and fv_update_phys ***
 def atmosphere_state_update(
-    gq0,
-    gt0,
-    gu0,
-    gv0,
-    tgrs,
-    ugrs,
-    vgrs,
-    prsi,
+    gq0, gt0, gu0, gv0,
+    tgrs, ugrs, vgrs, prsi,
     delp,
-    u, v, w, pt, ua, va, ps, pe, peln, pk, pkz, phis, u_srf, v_srf,
+    u, v, w, 
+    pt, 
+    ua, va, ps, 
+    pe, peln, pk, pkz, phis, 
+    u_srf, v_srf,
     q,
-    t_dt,
-    u_dt,
-    v_dt,
-    nq,
-    dnats,
-    nwat,
-    dt_atmos,
+    t_dt, u_dt, v_dt,
+    nq, dnats, nwat, dt_atmos,
     shape,
 ):
 
@@ -253,125 +211,33 @@ def atmosphere_state_update(
 
     return u_dt, v_dt, t_dt, delp, q, pe, peln, pk, ps, pt, u_srf, v_srf
 
-
-# *** atmosphere_state_update that contains fv_update_phys ***
-# def atmosphere_state_update(delp,
-#                             omga,
-#                             pe,
-#                             peln,
-#                             phis,
-#                             pk,
-#                             pkz,
-#                             ps,
-#                             pt,
-#                             q_con,
-#                             qcld,
-#                             qvapor,
-#                             qliquid,
-#                             qrain,
-#                             qsnow,
-#                             qice,
-#                             qgraupel,
-#                             qo3mr,
-#                             u,
-#                             v,
-#                             w,
-#                             t_dt,
-#                             u_dt,
-#                             v_dt,
-#                             u_srf,
-#                             v_srf,
-#                             ua,
-#                             va,
-#                             dt_atmos,
-#                             nwat,
-# ):
-
-#     pe, peln, pk, ps, pt, u_srf, v_srf = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
-#                    phis, u_srf, v_srf, False, u_dt, v_dt, t_dt, False, 0,0,0,False,
-#                    qvapor, qliquid, qrain, qsnow, qice, qgraupel, nwat)
-
-#     output = {}
-
-#     output["pe"] = pe
-#     output["ps"] = ps
-#     output["peln"] = peln
-#     output["pk"] = pk
-#     output["pt"] = pt
-#     output["u_srf"] = u_srf
-#     output["v_srf"] = v_srf 
-
-#     return output
-
 # *** Version of update_atmos_model_state to test code between physics_driver and fv_update_phys ***
 def update_atmos_model_state(    
-    gq0,
-    gt0,
-    gu0,
-    gv0,
-    tgrs,
-    ugrs,
-    vgrs,
-    prsi,
+    gq0, gt0, gu0, gv0,
+    tgrs, ugrs, vgrs, prsi,
     delp,
-    u,
-    v,
-    w,
-    pt,
-    ua,
-    va,
-    ps,
-    pe,
-    peln,
-    pk,
-    pkz,
-    phis,
-    u_srf,
-    v_srf,
+    u, v, w,
+    pt, ua, va,
+    ps, pe, peln, pk, pkz, phis,
+    u_srf, v_srf,
     q,
-    t_dt,
-    u_dt,
-    v_dt,
-    nq,
-    dnats,
-    nwat,
-    dt_atmos,
+    t_dt, u_dt, v_dt,
+    nq, dnats, nwat, dt_atmos,
     shape,
 ):
 
     (u_dt, v_dt, t_dt, delp, q,
     pe, peln, pk, ps, pt, u_srf, v_srf) = atmosphere_state_update(
-        gq0,
-        gt0,
-        gu0,
-        gv0,
-        tgrs,
-        ugrs,
-        vgrs,
-        prsi,
+        gq0, gt0, gu0, gv0,
+        tgrs, ugrs, vgrs, prsi,
         delp,
-        u,
-        v,
-        w,
-        pt,
-        ua,
-        va,
-        ps,
-        pe,
-        peln,
-        pk,
-        pkz,
-        phis,
-        u_srf,
-        v_srf,
+        u, v, w,
+        pt, ua, va,
+        ps, pe, peln, pk, pkz, phis,
+        u_srf, v_srf,
         q,
-        t_dt,
-        u_dt,
-        v_dt,
-        nq,
-        dnats,
-        nwat,
-        dt_atmos,
+        t_dt, u_dt, v_dt,
+        nq, dnats, nwat, dt_atmos,
         shape,
     )
 
@@ -392,71 +258,6 @@ def update_atmos_model_state(
     out_dict["v_srf"] = v_srf 
 
     return out_dict
-
-
-# *** update_atmos_model_state that runs with fv_update_state***
-# def update_atmos_model_state(delp,
-#                             omga,
-#                             pe,
-#                             peln,
-#                             phis,
-#                             pk,
-#                             pkz,
-#                             ps,
-#                             pt,
-#                             q_con,
-#                             qcld,
-#                             qvapor,
-#                             qliquid,
-#                             qrain,
-#                             qsnow,
-#                             qice,
-#                             qgraupel,
-#                             qo3mr,
-#                             u,
-#                             v,
-#                             w,
-#                             t_dt,
-#                             u_dt,
-#                             v_dt,
-#                             u_srf,
-#                             v_srf,
-#                             ua,
-#                             va,
-#                             dt_atmos,
-#                             nwat):
-
-#     output = atmosphere_state_update(delp,
-#                             omga,
-#                             pe,
-#                             peln,
-#                             phis,
-#                             pk,
-#                             pkz,
-#                             ps,
-#                             pt,
-#                             q_con,
-#                             qcld,
-#                             qvapor,
-#                             qliquid,
-#                             qrain,
-#                             qsnow,
-#                             qice,
-#                             qgraupel,
-#                             qo3mr,
-#                             u,
-#                             v,
-#                             w,
-#                             t_dt,
-#                             u_dt,
-#                             v_dt,
-#                             u_srf,
-#                             v_srf,
-#                             ua,
-#                             va,
-#                             dt_atmos,
-#                             nwat)
-#     return output
 
 def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
                    u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz,
@@ -536,6 +337,8 @@ def moist_cv(j, k, nwat, qvapor, qliquid, qrain, qsnow, qice, qgraupel, qd, cvm)
     #       update qv, ql, qs, and qd.
     #       Currently we're only implementing case(6)
 
+    # $$$ Previous moist_cv implementation $$$
+
     # qvapor, qliquid, qrain, qsnow, qice, and qgraupel have halo regions in i and j,
     # so their index in i have to be incremented by 3 to account for the halo.  The j
     # index as a input parameter already takes takes the halo into consideration
@@ -546,6 +349,8 @@ def moist_cv(j, k, nwat, qvapor, qliquid, qrain, qsnow, qice, qgraupel, qd, cvm)
     #     qs = qice[i+3, j, k] + qsnow[i+3, j, k] + qgraupel[i+3, j, k]
     #     qd[i] = ql + qs
     #     cvm[i] = (1.0 - (qv + qd[i])) * cv_air + qv * cv_vap + ql * c_liq + qs * c_ice
+
+    # $$$$$$
 
     for i in range(12):
         qv = qvapor[j*12 + i, k]
