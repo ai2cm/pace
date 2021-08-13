@@ -68,6 +68,9 @@ def compare_data(exp_data, ref_data):
 
 comm = MPI.COMM_WORLD    
 rank = comm.Get_rank()
+
+spec.set_namelist("c12_6ranks_baroclinic_dycore_microphysics_day_10/input.nml")
+global_config.set_do_halo_exchange(True)
 layout = spec.namelist.layout
 partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
 communicator = util.CubedSphereCommunicator(comm, partitioner)

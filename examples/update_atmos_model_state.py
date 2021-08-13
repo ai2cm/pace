@@ -353,7 +353,7 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     # u_dt_np = np.zeros(u_dt.shape)
     # u_dt_np[:,:] = u_dt[:,:]
 
-    # u_dt_quan = grid.make_quantity(u_dt)
+    u_dt_quan = grid.make_quantity(u_dt)
     # v_dt_quan = grid.make_quantity(v_dt)
 
     # req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
