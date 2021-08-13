@@ -65,7 +65,7 @@ def storage_to_numpy(gt_storage, array_dim, has_zero_padding):
     return np_tmp
 
 
-def run(in_dict):
+def run(in_dict, grid, comm):
     # area = in_dict["IPD_area"]
     # area = area[:, np.newaxis]
     shape = (144, 1, 80)  # hard coded for now

@@ -216,7 +216,7 @@ for sp in savepoints:
         in_data["u_srf"] = np.reshape(ref_data["u_srf"],(144), order="F")
         in_data["v_srf"] = np.reshape(ref_data["v_srf"],(144), order="F")
 
-        out_data = update_atmos_model_state.run(in_data)
+        out_data = update_atmos_model_state.run(in_data, spec.grid, communicator)
 
         # print("After update_atmos_model_state")
 
