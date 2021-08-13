@@ -137,7 +137,7 @@ def run(in_dict, grid, comm):
         q,
         t_dt, u_dt, v_dt,
         in_dict["nq"], dnats, in_dict["nwat"], dt_atmos,
-        shape,
+        shape, grid, comm,
     )
 
     delp = np.zeros(out_dict_atmos["delp"].shape)
@@ -217,7 +217,7 @@ def atmosphere_state_update(
     q,
     t_dt, u_dt, v_dt,
     nq, dnats, nwat, dt_atmos,
-    shape,
+    shape, grid, comm,
 ):
 
     nq_adv = nq - dnats
@@ -250,7 +250,7 @@ def atmosphere_state_update(
 
     pe, peln, pk, ps, pt, u_srf, v_srf = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
                    phis, u_srf, v_srf, False, u_dt, v_dt, t_dt, False, 0,0,0,False,
-                   q[:,:,0], q[:,:,1], q[:,:,2], q[:,:,3], q[:,:,4], q[:,:,5], nwat)
+                   q[:,:,0], q[:,:,1], q[:,:,2], q[:,:,3], q[:,:,4], q[:,:,5], nwat, grid, comm,)
 
     return u_dt, v_dt, t_dt, delp, q, pe, peln, pk, ps, pt, u_srf, v_srf
 
@@ -266,7 +266,7 @@ def update_atmos_model_state(
     q,
     t_dt, u_dt, v_dt,
     nq, dnats, nwat, dt_atmos,
-    shape,
+    shape, grid, comm,
 ):
 
     (u_dt, v_dt, t_dt, delp, q,
@@ -281,7 +281,7 @@ def update_atmos_model_state(
         q,
         t_dt, u_dt, v_dt,
         nq, dnats, nwat, dt_atmos,
-        shape,
+        shape, grid, comm,
     )
 
     out_dict = {}
@@ -308,7 +308,8 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
                    u_dt, v_dt, t_dt,
                    gridstruct, npx, npy, npz, 
                    domain,
-                   qvapor, qliquid, qrain, qsnow, qice, qgraupel, nwat):
+                   qvapor, qliquid, qrain, qsnow, qice, qgraupel, nwat,
+                   grid, comm):
 
     # Parameters from Fortran that're currently not implemented in Python
     # ng, q_dt, q, qdiag, nq, ak, bk, ts, delz, moist_phys, Time, nudge
@@ -349,6 +350,8 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
                 # pt[i,j,k] = pt[i,j,k] + t_dt[i-3,j-3,k] * dt * con_cp/cvm[i-3]
                 pt[j*12 + i ,k] = pt[j*12 + i,k] + t_dt[j*12 + i,k] * dt * con_cp/cvm[i-3]
 
+    # u_dt_np = np.zeros(u_dt.shape)
+    # u_dt_np[:,:] = u_dt[:,:]
 
     # u_dt_quan = grid.make_quantity(u_dt)
     # v_dt_quan = grid.make_quantity(v_dt)
