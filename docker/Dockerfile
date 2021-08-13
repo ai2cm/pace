@@ -48,6 +48,15 @@ COPY tests /fv3core/tests
 COPY setup.py setup.cfg README.md /fv3core/
 COPY docker/entrypoint.sh /entrypoint.sh
 
+# Docker hard limits shared memory usage. MPICH for oversubscribed situation
+# uses shared mem for most of its comunication operations,
+# which leads to a sigbus crash.
+# Both of those (for version <3.2 and >3.2) will force mpich to go
+# through the network stack instead of using the shared nemory
+# The cost is a slower runtime
+ENV MPIR_CVAR_NOLOCAL=1
+ENV MPIR_CVAR_CH3_NOLOCAL=1
+
 RUN chmod +x /entrypoint.sh && \
     /entrypoint.sh
 
