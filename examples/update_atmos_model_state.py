@@ -68,7 +68,7 @@ def storage_to_numpy(gt_storage, array_dim, has_zero_padding):
 def run(in_dict, grid, comm):
     # area = in_dict["IPD_area"]
     # area = area[:, np.newaxis]
-    shape = (144, 1, 80)  # hard coded for now
+    shape = (19, 19, 80)  # hard coded for now
 
     # Note: Value of dt_atmos is in the namelist
     dt_atmos = 255
@@ -79,6 +79,16 @@ def run(in_dict, grid, comm):
     # u_dt = np.zeros(in_dict["gu0"].shape)
     # v_dt = np.zeros(in_dict["gv0"].shape)
     # t_dt = np.zeros(in_dict["gt0"].shape)
+
+    u = gt_storage.zeros(BACKEND, default_origin=(0,0,0), shape=shape, dtype=DTYPE_FLT)
+    u[0:in_dict["u"].shape[0],
+      0:in_dict["u"].shape[1],
+      0:in_dict["u"].shape[2]] = in_dict["u"][:,:,:]
+
+    v = gt_storage.zeros(BACKEND, default_origin=(0,0,0), shape=shape, dtype=DTYPE_FLT)
+    v[0:in_dict["v"].shape[0],
+      0:in_dict["v"].shape[1],
+      0:in_dict["v"].shape[2]] = in_dict["v"][:,:,:]
 
     u_dt = gt_storage.zeros(BACKEND, default_origin=(0,0,0),shape=in_dict["gu0"].shape, dtype=DTYPE_FLT)
     v_dt = gt_storage.zeros(BACKEND, default_origin=(0,0,0),shape=in_dict["gv0"].shape, dtype=DTYPE_FLT)
@@ -110,8 +120,9 @@ def run(in_dict, grid, comm):
     vgrs  = gt_storage.from_array(in_dict["vgrs"], backend=BACKEND, default_origin=(0, 0, 0))
     prsi  = gt_storage.from_array(in_dict["prsi"], backend=BACKEND, default_origin=(0, 0, 0))
     delp  = gt_storage.from_array(in_dict["delp"], backend=BACKEND, default_origin=(0, 0, 0))
-    u     = gt_storage.from_array(in_dict["u"],    backend=BACKEND, default_origin=(0, 0, 0))
-    v     = gt_storage.from_array(in_dict["v"],    backend=BACKEND, default_origin=(0, 0, 0))
+    # u     = gt_storage.from_array(in_dict["u"],    backend=BACKEND, default_origin=(0, 0, 0))
+    # v     = gt_storage.from_array(in_dict["v"],    backend=BACKEND, default_origin=(0, 0, 0))
+
     w     = gt_storage.from_array(in_dict["w"],    backend=BACKEND, default_origin=(0, 0, 0))
     pt    = gt_storage.from_array(in_dict["pt"],   backend=BACKEND, default_origin=(0, 0, 0))
     ua    = gt_storage.from_array(in_dict["ua"],   backend=BACKEND, default_origin=(0, 0, 0))
@@ -336,7 +347,7 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
 
     # js = int((ua.shape[1]-u_srf.shape[1]) / 2)
     # je = u_srf.shape[1]+js
-    npz = u.shape[1]
+    npz = 79
 
     for k in range(npz):
         # For testing, hard code the range of j
@@ -350,13 +361,20 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
                 # pt[i,j,k] = pt[i,j,k] + t_dt[i-3,j-3,k] * dt * con_cp/cvm[i-3]
                 pt[j*12 + i ,k] = pt[j*12 + i,k] + t_dt[j*12 + i,k] * dt * con_cp/cvm[i-3]
 
-    # u_dt_np = np.zeros(u_dt.shape)
-    # u_dt_np[:,:] = u_dt[:,:]
+    u_dt_q = gt_storage.zeros(BACKEND, default_origin=(0,0,0), shape=(19,19,80), dtype=DTYPE_FLT)
+    v_dt_q = gt_storage.zeros(BACKEND, default_origin=(0,0,0), shape=(19,19,80), dtype=DTYPE_FLT)
+    for k in range(npz):
+        for i in range(u_dt.shape[0]):
+            i1 = 3 + np.mod(i,12)
+            j1 = 3 + int(i/12)
+            # print(i1, j1)
+            u_dt_q[i1,j1,k] = u_dt[i,k]
+            v_dt_q[i1,j1,k] = v_dt[i,k]
 
-    u_dt_quan = grid.make_quantity(u_dt)
-    # v_dt_quan = grid.make_quantity(v_dt)
+    u_dt_quan = grid.make_quantity(u_dt_q)
+    v_dt_quan = grid.make_quantity(v_dt_q)
 
-    # req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
+    req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
 
     for j in range(12):
         for k in range(1,npz+1):
@@ -371,7 +389,7 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
             v_srf[12*j + i] = va[12*j + i,npz-1]
 
 
-    # req.wait()
+    req.wait()
 
     # UPDATE_DWINDS_PHYS
 

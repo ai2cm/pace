@@ -652,8 +652,8 @@ for tile in range(6):
 
     serializer = ser.Serializer(
         ser.OpenModeKind.Read,
-        # "c12_6ranks_baroclinic_dycore_microphysics",
-        "c48_6ranks_standard",
+        "c12_6ranks_baroclinic_dycore_microphysics",
+        #"c48_6ranks_standard",
         "Generator_rank" + str(tile),
     )
     in_savepoint = serializer.get_savepoint("UpdateDWindsPhys-IN")[0]

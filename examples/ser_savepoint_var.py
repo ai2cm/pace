@@ -335,3 +335,20 @@ IN_FILL_GFS = [
     "IPD_gq0",
     "nb"
 ]
+
+IN_VARS_UDWINDSPHYS = [
+    "u",
+    "v",
+    "u_dt",
+    "v_dt",
+    "npx",
+    "npy",
+    "vlat",
+    "vlon",
+    "es",
+    "ew",
+    "edge_vect_e",
+    "edge_vect_w",
+    "edge_vect_s",
+    "edge_vect_n",
+]

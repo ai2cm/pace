@@ -202,8 +202,10 @@ for sp in savepoints:
             out_data_fvd["qcld"][3:-3, 3:-3, :], (144, 79), order="F"
         )
 
-        in_data["u"]     = np.reshape(ref_data["u"][3:-3, 3:-4,:], (144,79), order="F")
-        in_data["v"]     = np.reshape(ref_data["v"][3:-4, 3:-3,:], (144,79), order="F")
+        # in_data["u"]     = np.reshape(ref_data["u"][3:-3, 3:-4,:], (144,79), order="F")
+        # in_data["v"]     = np.reshape(ref_data["v"][3:-4, 3:-3,:], (144,79), order="F")
+        in_data["u"]     = ref_data["u"]
+        in_data["v"]     = ref_data["v"]
         in_data["w"]     = np.reshape(ref_data["w"][3:-3, 3:-3,:], (144,79), order="F")
 
         in_data["pt"]    = np.reshape(ref_data["pt"][3:-3, 3:-3,:], (144,79), order="F")
@@ -308,3 +310,8 @@ for sp in savepoints:
         np.testing.assert_allclose(out_data["pe"],ref_data["pe"])
         np.testing.assert_allclose(out_data["peln"],ref_data["peln"])
         np.testing.assert_allclose(out_data["pk"],pk)
+
+    if sp.name.startswith("UpdateDWindsPhys-IN"):
+        print("> running ", f"tile-{tile}", sp)
+        # read serialized input data
+        ref_data_dwind_in = data_dict_from_var_list(IN_VARS_UDWINDSPHYS, serializer, sp, False)
