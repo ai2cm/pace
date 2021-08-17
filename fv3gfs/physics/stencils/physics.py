@@ -18,7 +18,7 @@ from gt4py.gtscript import (
 import numpy as np  # used for debugging only
 from fv3core.stencils.fv_dynamics import DynamicalCore  # need argspecs for state
 
-# [TODO] stencil not passing yet, possibly a bug in the standalone version
+
 def atmos_phys_driver_statein(
     prsik: FloatField,
     phii: FloatField,
@@ -83,10 +83,10 @@ def atmos_phys_driver_statein(
         qmin = 1.0e-10  # set it here since externals cannot be 2D
         qgrs_rad = max(qmin, qvapor)
         rTv = rdgas * pt * (1.0 + con_fvirt * qgrs_rad)
-        dm = delp  # is it safe to have dm as temporary?
+        dm = delp[0, 0, 0]
         delp = dm * rTv / (phii[0, 0, 0] - phii[0, 0, 1])
         delp = min(delp, prsi[0, 0, 1] - 0.01 * dm)
-        delp = min(delp, prsi + 0.01 * dm)
+        delp = max(delp, prsi + 0.01 * dm)
 
     with computation(PARALLEL), interval(-1, None):
         prsik = exp(KAPPA * prsik) * pk0inv
@@ -232,25 +232,45 @@ class Physics:
         storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
         state = get_namespace(DynamicalCore.arg_specs, state)
         physics_state = PhysicsState.from_dycore_state(state, storage)
-        physics_state = self.prepare_physics_state(physics_state)
-        # self._atmos_phys_driver_statein(
-        #     self._prsik,
-        #     physics_state.phii,
-        #     self._prsi,
-        #     physics_state.delz,
-        #     physics_state.delp,
-        #     physics_state.qvapor,
-        #     physics_state.qliquid,
-        #     physics_state.qrain,
-        #     physics_state.qice,
-        #     physics_state.qsnow,
-        #     physics_state.qgraupel,
-        #     physics_state.qo3mr,
-        #     physics_state.qsgs_tke,
-        #     physics_state.qcld,
-        #     physics_state.pt,
-        #     self._dm3d,
-        # )
+        # physics_state = self.prepare_physics_state(physics_state)
+        self._atmos_phys_driver_statein(
+            self._prsik,
+            physics_state.phii,
+            self._prsi,
+            physics_state.delz,
+            physics_state.delp,
+            physics_state.qvapor,
+            physics_state.qliquid,
+            physics_state.qrain,
+            physics_state.qice,
+            physics_state.qsnow,
+            physics_state.qgraupel,
+            physics_state.qo3mr,
+            physics_state.qsgs_tke,
+            physics_state.qcld,
+            physics_state.pt,
+            self._dm3d,
+        )
+        debug = {}
+        debug["prsik"] = self._prsik
+        debug["phii"] = physics_state.phii
+        debug["prsi"] = self._prsi
+        debug["delz"] = physics_state.delz
+        debug["delp"] = physics_state.delp
+        debug["qvapor"] = physics_state.qvapor
+        debug["qliquid"] = physics_state.qliquid
+        debug["qrain"] = physics_state.qrain
+        debug["qice"] = physics_state.qice
+        debug["qsnow"] = physics_state.qsnow
+        debug["qgraupel"] = physics_state.qgraupel
+        debug["qo3mr"] = physics_state.qo3mr
+        debug["qsgs_tke"] = physics_state.qsgs_tke
+        debug["qcld"] = physics_state.qcld
+        debug["pt"] = physics_state.pt
+        np.save(
+            "integrated_after_prep_physics_stencil_rank_" + str(rank) + ".npy", debug
+        )
+
         self._get_prs_fv3(
             physics_state.phii,
             self._prsi,
