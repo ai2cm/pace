@@ -30,11 +30,11 @@ fv3core.set_rebuild(False)
 fv3core.set_validate_args(False)
 global_config.set_do_halo_exchange(True)
 
-spec.set_namelist("c12_6ranks_baroclinic_dycore_microphysics/input.nml")
+spec.set_namelist("c12_6ranks_baroclinic_dycore_microphysics_day_10/input.nml")
 
 experiment_name = yaml.safe_load(
     open(
-        "c12_6ranks_baroclinic_dycore_microphysics/input.yml",
+        "c12_6ranks_baroclinic_dycore_microphysics_day_10/input.yml",
         "r",
     )
 )["experiment_name"]
@@ -42,7 +42,7 @@ experiment_name = yaml.safe_load(
 # set up of helper structures
 serializer = serialbox.Serializer(
     serialbox.OpenModeKind.Read,
-    "c12_6ranks_baroclinic_dycore_microphysics",
+    "c12_6ranks_baroclinic_dycore_microphysics_day_10",
     "Generator_rank" + str(rank),
 )
 cube_comm = util.CubedSphereCommunicator(
@@ -98,6 +98,9 @@ dycore.step_dynamics(
 #     if isinstance(var, util.Quantity):
 #         full_state[key] = state[key]
 # np.save("Integrated_full_state_rank" + str(rank) + ".npy", full_state)
+# state = np.load(
+#     "Integrated_full_state_rank" + str(rank) + ".npy", allow_pickle=True
+# ).item()
 fv3core.set_rebuild(True)
 phy = Physics(grid, spec.namelist)
 phy(state, rank)

@@ -121,15 +121,7 @@ class Physics:
         self._pk0inv = (1.0 / self._p00) ** KAPPA
         self._prsi = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._prsik = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._dm = utils.make_storage_from_shape(
-            shape[0:2], origin=origin, init=True
-        )  # 2D for python, needs to be 3D for stencil
         self._dm3d = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._qmin = utils.make_storage_from_shape(
-            shape[0:2], origin=origin, init=True
-        )  # 2D for python, needs to be 3D for stencil
-        self._qmin[:, :] = 1.0e-10
-        # self._del = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._del_gz = utils.make_storage_from_shape(shape, origin=origin, init=True)
 
         self._get_prs_fv3 = FrozenStencil(
@@ -151,7 +143,6 @@ class Physics:
                 "ptop": self._ptop,
                 "pk0inv": self._pk0inv,
                 "pktop": self._pktop,
-                # "qmin": self._qmin, [TODO] cannot pass 2D variable
             },
         )
         self._prepare_microphysics = FrozenStencil(
@@ -172,79 +163,6 @@ class Physics:
         self._pktop = (self._ptop / self._p00) ** KAPPA
         self._pk0inv = (1.0 / self._p00) ** KAPPA
 
-    def prepare_physics_state(self, phy_state: PhysicsState):
-        # this is the striaght python version of atmos_phys_driver_statein stencil
-        self._prsik[:, :, :] = 1.0e25
-        for k in range(self.grid.npz - 1, -1, -1):
-            phy_state.phii[:, :, k] = (
-                phy_state.phii[:, :, k + 1] - phy_state.delz[:, :, k] * grav
-            )
-        phy_state.qvapor = phy_state.qvapor * phy_state.delp
-        phy_state.qliquid = phy_state.qliquid * phy_state.delp
-        phy_state.qrain = phy_state.qrain * phy_state.delp
-        phy_state.qice = phy_state.qice * phy_state.delp
-        phy_state.qsnow = phy_state.qsnow * phy_state.delp
-        phy_state.qgraupel = phy_state.qgraupel * phy_state.delp
-        phy_state.qo3mr = phy_state.qo3mr * phy_state.delp
-        phy_state.qsgs_tke = phy_state.qsgs_tke * phy_state.delp
-        phy_state.delp = (
-            phy_state.delp
-            - phy_state.qliquid
-            - phy_state.qrain
-            - phy_state.qice
-            - phy_state.qsnow
-            - phy_state.qgraupel
-        )
-        self._prsi[:, :, 0] = self._ptop
-        for k in range(1, self.grid.npz + 1):
-            self._prsi[:, :, k] = self._prsi[:, :, k - 1] + phy_state.delp[:, :, k - 1]
-        for k in range(self.grid.npz):
-            self._prsik[:, :, k] = np.log(self._prsi[:, :, k])
-        phy_state.qvapor = phy_state.qvapor / phy_state.delp
-        phy_state.qliquid = phy_state.qliquid / phy_state.delp
-        phy_state.qrain = phy_state.qrain / phy_state.delp
-        phy_state.qice = phy_state.qice / phy_state.delp
-        phy_state.qsnow = phy_state.qsnow / phy_state.delp
-        phy_state.qgraupel = phy_state.qgraupel / phy_state.delp
-        phy_state.qo3mr = phy_state.qo3mr / phy_state.delp
-        phy_state.qsgs_tke = phy_state.qsgs_tke / phy_state.delp
-        self._prsik[:, :, -1] = np.log(self._prsi[:, :, -1])
-        self._prsik[:, :, 0] = np.log(self._ptop)
-        for k in range(self.grid.npz):
-            qgrs_rad = np.maximum(self._qmin, phy_state.qvapor[:, :, k])
-            rTv = rdgas * phy_state.pt[:, :, k] * (1.0 + con_fvirt * qgrs_rad)
-            self._dm[:, :] = phy_state.delp[:, :, k]
-            phy_state.delp[:, :, k] = (
-                self._dm * rTv / (phy_state.phii[:, :, k] - phy_state.phii[:, :, k + 1])
-            )
-            # if not hydrostatic, replaces it with hydrostatic pressure if violated
-            phy_state.delp[:, :, k] = np.minimum(
-                phy_state.delp[:, :, k], self._prsi[:, :, k + 1] - 0.01 * self._dm
-            )
-            phy_state.delp[:, :, k] = np.maximum(
-                phy_state.delp[:, :, k], self._prsi[:, :, k] + 0.01 * self._dm
-            )
-
-        self._prsik[:, :, -1] = np.exp(KAPPA * self._prsik[:, :, -1]) * self._pk0inv
-        self._prsik[:, :, 0] = self._pktop
-        return phy_state
-
-    def pre_process_microphysics(self, physics_state: PhysicsState):
-        # this is the straight python version of prepare microphysics stencil
-        for k in range(0, self.grid.npz):  # (TODO) check if it goes from 1
-            physics_state.dz[:, :, k] = (
-                physics_state.phii[:, :, k + 1] - physics_state.phii[:, :, k]
-            ) * rgrav
-
-        physics_state.wmp[:, :, :] = (
-            -physics_state.omga
-            * (1.0 + con_fvirt * physics_state.qvapor)
-            * physics_state.pt
-            / physics_state.delp
-            * (rdgas * rgrav)
-        )
-        return physics_state
-
     def __call__(self, state: dict, rank):
         self.setup_const_from_state(state)
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
@@ -252,7 +170,6 @@ class Physics:
         storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
         state = get_namespace(DynamicalCore.arg_specs, state)
         physics_state = PhysicsState.from_dycore_state(state, storage)
-        # physics_state = self.prepare_physics_state(physics_state)
         self._atmos_phys_driver_statein(
             self._prsik,
             physics_state.phii,
@@ -323,7 +240,6 @@ class Physics:
         debug["qvapor"] = physics_state.qvapor
         debug["del_gz"] = self._del_gz
         np.save("integrated_after_phifv3_rank_" + str(rank) + ".npy", debug)
-        # physics_state = self.pre_process_microphysics(physics_state)
         self._prepare_microphysics(
             physics_state.dz,
             physics_state.phii,
