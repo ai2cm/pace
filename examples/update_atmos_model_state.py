@@ -374,7 +374,7 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     u_dt_quan = grid.make_quantity(u_dt_q)
     v_dt_quan = grid.make_quantity(v_dt_q)
 
-    req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
+    # req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
 
     for j in range(12):
         for k in range(1,npz+1):
@@ -389,7 +389,10 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
             v_srf[12*j + i] = va[12*j + i,npz-1]
 
 
-    req.wait()
+    # req.wait()
+
+    u_dt_q[:,:,:] = u_dt_quan.storage[:,:,:]
+    v_dt_q[:,:,:] = v_dt_quan.storage[:,:,:]
 
     # UPDATE_DWINDS_PHYS
 

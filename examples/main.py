@@ -9,6 +9,7 @@ sys.path.append(SERIALBOX_DIR + "/python")
 import serialbox as ser
 import physics_driver
 import update_atmos_model_state
+import fv3gfs.physics.stencils.update_dwind_phys as udp
 
 import fv3core._config as spec
 import fv3core.utils.global_config as global_config
@@ -69,7 +70,7 @@ def compare_data(exp_data, ref_data):
 comm = MPI.COMM_WORLD    
 rank = comm.Get_rank()
 
-spec.set_namelist("c12_6ranks_baroclinic_dycore_microphysics_day_10/input.nml")
+spec.set_namelist("c12_6ranks_baroclinic_dycore_microphysics/input.nml")
 global_config.set_do_halo_exchange(True)
 layout = spec.namelist.layout
 partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
@@ -85,8 +86,8 @@ tile = rank
 
 serializer = ser.Serializer(
     ser.OpenModeKind.Read,
-    #"c12_6ranks_baroclinic_dycore_microphysics",
-    "c12_6ranks_baroclinic_dycore_microphysics_day_10",
+    "c12_6ranks_baroclinic_dycore_microphysics",
+    #"c12_6ranks_baroclinic_dycore_microphysics_day_10",
     "Generator_rank" + str(tile),
 )
 
@@ -125,18 +126,18 @@ for sp in savepoints:
 
         isready = True
 
-    # Note : Only available in 10 Day C12 dataset
-    if sp.name.startswith("FillGFS-IN"):
+    # # Note : Only available in 10 Day C12 dataset
+    # if sp.name.startswith("FillGFS-IN"):
 
-        print("> running ", f"tile-{tile}", sp)
+    #     print("> running ", f"tile-{tile}", sp)
 
-        in_data_fillgfs = data_dict_from_var_list(IN_FILL_GFS, serializer, sp)
+    #     in_data_fillgfs = data_dict_from_var_list(IN_FILL_GFS, serializer, sp)
 
-    # Note : Only available in 10 Day C12 dataset
-    if sp.name.startswith("FillGFS-OUT"):
-        print("> running ", f"tile-{tile}", sp)
+    # # Note : Only available in 10 Day C12 dataset
+    # if sp.name.startswith("FillGFS-OUT"):
+    #     print("> running ", f"tile-{tile}", sp)
 
-        out_data_fillgfs = data_dict_from_var_list(["IPD_gq0"], serializer, sp)
+    #     out_data_fillgfs = data_dict_from_var_list(["IPD_gq0"], serializer, sp)
 
     if sp.name.startswith("FVUpdatePhys-In"):
         print("> running ", f"tile-{tile}", sp)
@@ -220,6 +221,40 @@ for sp in savepoints:
         in_data["phis"]  = np.reshape(ref_data["phis"][3:-3, 3:-3], (144), order="F")
         in_data["u_srf"] = np.reshape(ref_data["u_srf"],(144), order="F")
         in_data["v_srf"] = np.reshape(ref_data["v_srf"],(144), order="F")
+
+
+        in_savepoint_dwind = serializer.get_savepoint("UpdateDWindsPhys-IN")[0]
+        fortran2py_index_offset = 2
+        index_data = {}
+        for index_var in ["isd", "ied", "jsd", "jed", "is", "js", "je", "npz"]:
+            index_data[index_var] = udp.read_index_var(index_var, in_savepoint_dwind)
+
+        max_shape = (
+            index_data["ied"] - index_data["isd"] + 2,
+            index_data["jed"] - index_data["jsd"] + 2,
+            index_data["npz"] + 1,
+        )
+
+        start_indices = {
+        "vlon": (index_data["isd"] + 1, index_data["jsd"] + 1),
+        "vlat": (index_data["isd"] + 1, index_data["jsd"] + 1),
+        }
+        axes = {"edge_vect_s": 0, "edge_vect_n": 0, "edge_vect_w": 1, "edge_vect_e": 1}
+        # read serialized input data
+        in_data_uwindsphys = udp.storage_dict_from_var_list(
+            IN_VARS_UDWINDSPHYS, serializer, in_savepoint_dwind, max_shape, start_indices, axes
+        )
+
+        in_data_uwindsphys.update(index_data)
+
+        # TODO, put ie in savepoint data or move to code with a grid
+        # this is only valid for 6 ranks:
+        in_data_uwindsphys["ie"] = in_data_uwindsphys["je"]
+        in_data_uwindsphys["dt"] = 225.0
+        in_data_uwindsphys["nic"] = in_data_uwindsphys["ie"] - in_data_uwindsphys["is"] + 1
+        in_data_uwindsphys["njc"] = in_data_uwindsphys["je"] - in_data_uwindsphys["js"] + 1
+        in_data_uwindsphys["npx"] = int(in_data_uwindsphys["npx"])
+        in_data_uwindsphys["npy"] = int(in_data_uwindsphys["npy"])
 
         out_data = update_atmos_model_state.run(in_data, spec.grid, communicator)
 
@@ -310,8 +345,3 @@ for sp in savepoints:
         np.testing.assert_allclose(out_data["pe"],ref_data["pe"])
         np.testing.assert_allclose(out_data["peln"],ref_data["peln"])
         np.testing.assert_allclose(out_data["pk"],pk)
-
-    if sp.name.startswith("UpdateDWindsPhys-IN"):
-        print("> running ", f"tile-{tile}", sp)
-        # read serialized input data
-        ref_data_dwind_in = data_dict_from_var_list(IN_VARS_UDWINDSPHYS, serializer, sp, False)
