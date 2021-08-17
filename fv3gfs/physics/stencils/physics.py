@@ -18,7 +18,7 @@ from gt4py.gtscript import (
 import numpy as np  # used for debugging only
 from fv3core.stencils.fv_dynamics import DynamicalCore  # need argspecs for state
 
-
+# [TODO] stencil not passing yet, possibly a bug in the standalone version
 def atmos_phys_driver_statein(
     prsik: FloatField,
     phii: FloatField,
@@ -35,6 +35,7 @@ def atmos_phys_driver_statein(
     qsgs_tke: FloatField,
     qcld: FloatField,
     pt: FloatField,
+    dm: FloatField,
 ):
     from __externals__ import nwat, ptop, pk0inv, pktop
 
@@ -73,7 +74,7 @@ def atmos_phys_driver_statein(
         qsgs_tke = qsgs_tke / delp
 
     with computation(PARALLEL), interval(-1, None):
-        prsik = log(prsi[0, 0, -1])
+        prsik = log(prsi)
 
     with computation(PARALLEL), interval(0, 1):
         prsik = log(ptop)
@@ -82,7 +83,7 @@ def atmos_phys_driver_statein(
         qmin = 1.0e-10  # set it here since externals cannot be 2D
         qgrs_rad = max(qmin, qvapor)
         rTv = rdgas * pt * (1.0 + con_fvirt * qgrs_rad)
-        dm = delp
+        dm = delp  # is it safe to have dm as temporary?
         delp = dm * rTv / (phii[0, 0, 0] - phii[0, 0, 1])
         delp = min(delp, prsi[0, 0, 1] - 0.01 * dm)
         delp = min(delp, prsi + 0.01 * dm)
@@ -109,6 +110,7 @@ class Physics:
         self._dm = utils.make_storage_from_shape(
             shape[0:2], origin=origin, init=True
         )  # 2D for python, needs to be 3D for stencil
+        self._dm3d = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._qmin = utils.make_storage_from_shape(
             shape[0:2], origin=origin, init=True
         )  # 2D for python, needs to be 3D for stencil
@@ -128,8 +130,8 @@ class Physics:
         )
         self._atmos_phys_driver_statein = FrozenStencil(
             func=atmos_phys_driver_statein,
-            origin=grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=self.grid.grid_indexing.origin_compute(),
+            domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
             externals={
                 "nwat": self._nwat,
                 "ptop": self._ptop,
@@ -230,24 +232,25 @@ class Physics:
         storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
         state = get_namespace(DynamicalCore.arg_specs, state)
         physics_state = PhysicsState.from_dycore_state(state, storage)
-        # physics_state = self.prepare_physics_state(physics_state)
-        self._atmos_phys_driver_statein(
-            self._prsik,
-            physics_state.phii,
-            self._prsi,
-            physics_state.delz,
-            physics_state.delp,
-            physics_state.qvapor,
-            physics_state.qliquid,
-            physics_state.qrain,
-            physics_state.qice,
-            physics_state.qsnow,
-            physics_state.qgraupel,
-            physics_state.qo3mr,
-            physics_state.qsgs_tke,
-            physics_state.qcld,
-            physics_state.pt,
-        )
+        physics_state = self.prepare_physics_state(physics_state)
+        # self._atmos_phys_driver_statein(
+        #     self._prsik,
+        #     physics_state.phii,
+        #     self._prsi,
+        #     physics_state.delz,
+        #     physics_state.delp,
+        #     physics_state.qvapor,
+        #     physics_state.qliquid,
+        #     physics_state.qrain,
+        #     physics_state.qice,
+        #     physics_state.qsnow,
+        #     physics_state.qgraupel,
+        #     physics_state.qo3mr,
+        #     physics_state.qsgs_tke,
+        #     physics_state.qcld,
+        #     physics_state.pt,
+        #     self._dm3d,
+        # )
         self._get_prs_fv3(
             physics_state.phii,
             self._prsi,
@@ -264,7 +267,7 @@ class Physics:
         debug["delp"] = physics_state.delp
         debug["del"] = physics_state.delprsi
         debug["del_gz"] = self._del_gz
-        np.save("integrated_after_prsfv3_rank" + str(rank) + ".npy", debug)
+        np.save("integrated_after_prsfv3_rank_" + str(rank) + ".npy", debug)
         # If PBL scheme is present, physics_state should be updated here
         self._get_phi_fv3(
             physics_state.pt,
@@ -279,6 +282,6 @@ class Physics:
         debug["pt"] = physics_state.pt
         debug["qvapor"] = physics_state.qvapor
         debug["del_gz"] = self._del_gz
-        np.save("integrated_after_phifv3_rank" + str(rank) + ".npy", debug)
+        np.save("integrated_after_phifv3_rank_" + str(rank) + ".npy", debug)
         physics_state = self.pre_process_microphysics(physics_state)
         self._microphysics(physics_state.microphysics(storage), rank)
