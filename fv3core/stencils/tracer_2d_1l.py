@@ -6,7 +6,6 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import fv3core._config as spec
 import fv3core.stencils.fxadv
 import fv3core.utils
-import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import FrozenStencil
@@ -127,7 +126,6 @@ class TracerAdvection:
     ):
         self.comm = comm
         self.grid = spec.grid
-        self._do_halo_exchange = global_config.get_do_halo_exchange()
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         origin = self.grid.compute_origin()
         self._tmp_xfx = utils.make_storage_from_shape(shape, origin)
@@ -246,8 +244,7 @@ class TracerAdvection:
                 n_split,
             )
 
-        if self._do_halo_exchange:
-            self._tracers_halo_updater.update(tracers.values())
+        self._tracers_halo_updater.update(tracers.values())
 
         dp2 = self._tmp_dp
 
@@ -281,7 +278,6 @@ class TracerAdvection:
                     dp2,
                 )
             if not last_call:
-                if self._do_halo_exchange:
-                    self._tracers_halo_updater.update(tracers.values())
+                self._tracers_halo_updater.update(tracers.values())
                 # use variable assignment to avoid a data copy
                 dp1, dp2 = dp2, dp1

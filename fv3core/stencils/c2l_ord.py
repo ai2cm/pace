@@ -1,6 +1,5 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3core.utils.grid import axis_offsets
@@ -75,7 +74,7 @@ class CubedToLatLon:
     Fortan name is c2l_ord2
     """
 
-    def __init__(self, grid, namelist, do_halo_update=None):
+    def __init__(self, grid, namelist):
         """
         Initializes stencils to use either 2nd or 4th order of interpolation
         based on namelist setting
@@ -86,10 +85,6 @@ class CubedToLatLon:
             do_halo_update: Optional. If passed, overrides global halo exchange flag
                             and performs a halo update on u and v
         """
-        if do_halo_update is not None:
-            self._do_halo_update = do_halo_update
-        else:
-            self._do_halo_update = global_config.get_do_halo_exchange()
         self._do_ord4 = True
         self.grid = grid
         if namelist.c2l_ord == 2:
@@ -133,7 +128,7 @@ class CubedToLatLon:
             va: y-wind on A-grid (out)
             comm: Cubed-sphere communicator
         """
-        if self._do_halo_update and self._do_ord4:
+        if self._do_ord4:
             comm.vector_halo_update(u, v, n_points=self.grid.halo)
         self._compute_cubed_to_latlon(
             u.storage,

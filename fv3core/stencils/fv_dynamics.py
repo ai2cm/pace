@@ -4,7 +4,6 @@ from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core._config as spec
 import fv3core.stencils.moist_cv as moist_cv
-import fv3core.utils.global_config as global_config
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
@@ -121,8 +120,7 @@ def post_remap(
         if __debug__:
             if grid.rank == 0:
                 print("Del2Cubed")
-        if global_config.get_do_halo_exchange():
-            omega_halo_updater.update([state.omga_quantity])
+        omega_halo_updater.update([state.omga_quantity])
         hyperdiffusion(state.omga, 0.18 * grid.da_min)
 
 
@@ -278,7 +276,6 @@ class DynamicalCore:
         self.comm = comm
         self.grid = spec.grid
         self.namelist = namelist
-        self.do_halo_exchange = global_config.get_do_halo_exchange()
 
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
             comm, namelist, DynamicalCore.NQ

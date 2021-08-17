@@ -14,15 +14,12 @@ from mpi4py import MPI
 import fv3core
 import fv3core._config as spec
 import fv3core.testing
-import fv3core.utils.global_config as global_config
 import fv3gfs.util as util
+from fv3core.utils.null_comm import NullComm
 
 
 def parse_args() -> Namespace:
-    usage = (
-        "usage: python %(prog)s <data_dir> <timesteps> <backend> <hash> <halo_exchange>"
-    )
-    parser = ArgumentParser(usage=usage)
+    parser = ArgumentParser()
 
     parser.add_argument(
         "data_dir",
@@ -40,7 +37,7 @@ def parse_args() -> Namespace:
         "backend",
         type=str,
         action="store",
-        help="path to the namelist",
+        help="gt4py backend to use",
     )
     parser.add_argument(
         "hash",
@@ -182,7 +179,6 @@ if __name__ == "__main__":
         fv3core.set_backend(args.backend)
         fv3core.set_rebuild(False)
         fv3core.set_validate_args(False)
-        global_config.set_do_halo_exchange(not args.disable_halo_exchange)
 
         spec.set_namelist(args.data_dir + "/input.nml")
 
@@ -199,10 +195,10 @@ if __name__ == "__main__":
             args.data_dir,
             "Generator_rank" + str(rank),
         )
-        cube_comm = util.CubedSphereCommunicator(
-            comm,
-            util.CubedSpherePartitioner(util.TilePartitioner(spec.namelist.layout)),
-        )
+        if args.disable_halo_exchange:
+            mpi_comm = NullComm(MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
+        else:
+            mpi_comm = MPI.COMM_WORLD
 
         # get grid from serialized data
         grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
@@ -218,7 +214,7 @@ if __name__ == "__main__":
         # set up grid-dependent helper structures
         layout = spec.namelist.layout
         partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
-        communicator = util.CubedSphereCommunicator(comm, partitioner)
+        communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
 
         # create a state from serialized data
         savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
@@ -289,9 +285,9 @@ if __name__ == "__main__":
     # Timings
     if not args.disable_json_dump:
         # Collect times and output statistics in json
-        comm.Barrier()
+        MPI.COMM_WORLD.Barrier()
         collect_data_and_write_to_file(
-            args, comm, hits_per_step, times_per_step, experiment_name
+            args, MPI.COMM_WORLD, hits_per_step, times_per_step, experiment_name
         )
     else:
         # Print a brief summary of timings
