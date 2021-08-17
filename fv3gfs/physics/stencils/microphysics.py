@@ -15,6 +15,7 @@ from gt4py.gtscript import (
     interval,
 )
 from fv3core.decorators import FrozenStencil
+import copy
 
 
 def fields_init(
@@ -1844,16 +1845,16 @@ class MicrophysicsState:
         self.delp = delp
         self.delz = delz
         self.omga = omga
-        self.qv_dt = storage
-        self.ql_dt = storage
-        self.qr_dt = storage
-        self.qi_dt = storage
-        self.qs_dt = storage
-        self.qg_dt = storage
-        self.qa_dt = storage
-        self.udt = storage
-        self.vdt = storage
-        self.pt_dt = storage
+        self.qv_dt = copy.deepcopy(storage)
+        self.ql_dt = copy.deepcopy(storage)
+        self.qr_dt = copy.deepcopy(storage)
+        self.qi_dt = copy.deepcopy(storage)
+        self.qs_dt = copy.deepcopy(storage)
+        self.qg_dt = copy.deepcopy(storage)
+        self.qa_dt = copy.deepcopy(storage)
+        self.udt = copy.deepcopy(storage)
+        self.vdt = copy.deepcopy(storage)
+        self.pt_dt = copy.deepcopy(storage)
         self.delprsi = delprsi
         self.wmp = wmp
         self.dz = dz
@@ -2114,18 +2115,6 @@ class Microphysics:
         self._m1_sol = utils.make_storage_from_shape(shape, origin=origin)
         self._m2_rain = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._m2_sol = utils.make_storage_from_shape(shape, origin=origin, init=True)
-
-        # Testing to see if regular storages can be written:
-        self._qv_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._ql_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._qr_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._qi_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._qs_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._qg_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._qa_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._pt_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._udt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._vdt = utils.make_storage_from_shape(shape, origin=origin, init=True)
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0
@@ -2588,16 +2577,16 @@ class Microphysics:
             self._qsz,
             self._qvz,
             self._tz,
-            self._udt,  # state.udt,
-            self._vdt,  # state.vdt,
-            self._qa_dt,  # state.qa_dt,
-            self._qg_dt,  # state.qg_dt,
-            self._qi_dt,  # state.qi_dt,
-            self._ql_dt,  # state.ql_dt,
-            self._qr_dt,  # state.qr_dt,
-            self._qs_dt,  # state.qs_dt,
+            state.udt,
+            state.vdt,
+            state.qa_dt,
+            state.qg_dt,
+            state.qi_dt,
+            state.ql_dt,
+            state.qr_dt,
+            state.qs_dt,
             state.qv_dt,
-            self._pt_dt,  # state.pt_dt,
+            state.pt_dt,
             self._qa0,
             self._qg0,
             self._qi0,
@@ -2623,14 +2612,14 @@ class Microphysics:
         print("Microphysics")
         debug = {
             "qv_dt": state.qv_dt,
-            "ql_dt": self._ql_dt,
-            "qr_dt": self._qr_dt,
-            "qi_dt": self._qi_dt,
-            "qs_dt": self._qs_dt,
-            "qg_dt": self._qg_dt,
-            "qa_dt": self._qa_dt,
-            "pt_dt": self._pt_dt,
-            "udt": self._udt,
-            "vdt": self._vdt,
+            "ql_dt": state.ql_dt,
+            "qr_dt": state.qr_dt,
+            "qi_dt": state.qi_dt,
+            "qs_dt": state.qs_dt,
+            "qg_dt": state.qg_dt,
+            "qa_dt": state.qa_dt,
+            "pt_dt": state.pt_dt,
+            "udt": state.udt,
+            "vdt": state.vdt,
         }
         np.save("integrated_after_microph_rank_" + str(rank) + ".npy", debug)
