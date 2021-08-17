@@ -95,6 +95,20 @@ def atmos_phys_driver_statein(
         prsik = pktop
 
 
+def prepare_microphysics(
+    dz: FloatField,
+    phii: FloatField,
+    wmp: FloatField,
+    omga: FloatField,
+    qvapor: FloatField,
+    pt: FloatField,
+    delp: FloatField,
+):
+    with computation(BACKWARD), interval(...):
+        dz = (phii[0, 0, 1] - phii[0, 0, 0]) * rgrav
+        wmp = -omga * (1.0 + con_fvirt * qvapor) * pt / delp * (rdgas * rgrav)
+
+
 class Physics:
     def __init__(self, grid, namelist):
         self.grid = grid
@@ -139,6 +153,11 @@ class Physics:
                 "pktop": self._pktop,
                 # "qmin": self._qmin, [TODO] cannot pass 2D variable
             },
+        )
+        self._prepare_microphysics = FrozenStencil(
+            func=prepare_microphysics,
+            origin=self.grid.grid_indexing.origin_compute(),
+            domain=self.grid.grid_indexing.domain_compute(),
         )
         self._microphysics = Microphysics(grid, namelist)
 
@@ -211,6 +230,7 @@ class Physics:
         return phy_state
 
     def pre_process_microphysics(self, physics_state: PhysicsState):
+        # this is the straight python version of prepare microphysics stencil
         for k in range(0, self.grid.npz):  # (TODO) check if it goes from 1
             physics_state.dz[:, :, k] = (
                 physics_state.phii[:, :, k + 1] - physics_state.phii[:, :, k]
@@ -303,5 +323,14 @@ class Physics:
         debug["qvapor"] = physics_state.qvapor
         debug["del_gz"] = self._del_gz
         np.save("integrated_after_phifv3_rank_" + str(rank) + ".npy", debug)
-        physics_state = self.pre_process_microphysics(physics_state)
+        # physics_state = self.pre_process_microphysics(physics_state)
+        self._prepare_microphysics(
+            physics_state.dz,
+            physics_state.phii,
+            physics_state.wmp,
+            physics_state.omga,
+            physics_state.qvapor,
+            physics_state.pt,
+            physics_state.delp,
+        )
         self._microphysics(physics_state.microphysics(storage), rank)
