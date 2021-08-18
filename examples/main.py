@@ -70,7 +70,10 @@ def compare_data(exp_data, ref_data):
 comm = MPI.COMM_WORLD    
 rank = comm.Get_rank()
 
-spec.set_namelist("c12_6ranks_baroclinic_dycore_microphysics/input.nml")
+#data_dir = "c12_6ranks_baroclinic_dycore_microphysics"
+data_dir = "c12_6ranks_baroclinic_dycore_microphysics_day_10"
+
+spec.set_namelist(data_dir + "/input.nml")
 global_config.set_do_halo_exchange(True)
 layout = spec.namelist.layout
 partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
@@ -86,8 +89,7 @@ tile = rank
 
 serializer = ser.Serializer(
     ser.OpenModeKind.Read,
-    "c12_6ranks_baroclinic_dycore_microphysics",
-    #"c12_6ranks_baroclinic_dycore_microphysics_day_10",
+    data_dir,
     "Generator_rank" + str(tile),
 )
 
@@ -286,13 +288,29 @@ for sp in savepoints:
         np.testing.assert_allclose(out_data["q"][:,:,4], qice, atol=1e-5)
         np.testing.assert_allclose(out_data["q"][:,:,5], qgraupel)
 
+        out_savepoint = serializer.get_savepoint("UpdateDWindsPhys-OUT")[0]
+        ref_data_udp_out = udp.storage_dict_from_var_list(
+           ["u","v"], serializer, out_savepoint, max_shape, start_indices, axes
+        )
+        u_ref = np.zeros(ref_data_udp_out["u"].shape)
+        v_ref = np.zeros(ref_data_udp_out["v"].shape)
+        u_ref[:,:,:] = ref_data_udp_out["u"][:,:,:]
+        v_ref[:,:,:] = ref_data_udp_out["v"][:,:,:]
+        np.testing.assert_allclose(out_data['u'], u_ref,atol=1e-6)
+        np.testing.assert_allclose(out_data['v'], v_ref,atol=1e-6)
 
-        u_dt_ref = np.zeros(in_data_uwindsphys['u_dt'].shape)
-        u_dt_ref[:,:,:] = in_data_uwindsphys['u_dt'][:,:,:]
-        v_dt_ref = np.zeros(in_data_uwindsphys['v_dt'].shape)
-        v_dt_ref[:,:,:] = in_data_uwindsphys['u_dt'][:,:,:]
-        np.testing.assert_allclose(out_data['u_dt'], v_dt_ref[:,:,:80],atol=1e-8)
-        np.testing.assert_allclose(out_data['v_dt'], u_dt_ref[:,:,:80],atol=1e-8)
+        # Note : Verification of u_dt and v_dt should be done before call to update_dwind_phys
+        #        Trying to verify after update_dwind_phys may result in unmatched data from 
+        #        in_data_uwindsphys savepoint.
+        # u_dt_ref = np.zeros(in_data_uwindsphys['u_dt'].shape)
+        # u_dt_ref[:,:,:] = in_data_uwindsphys['u_dt'][:,:,:]
+        # v_dt_ref = np.zeros(in_data_uwindsphys['v_dt'].shape)
+        # v_dt_ref[:,:,:] = in_data_uwindsphys['u_dt'][:,:,:]
+        # np.testing.assert_allclose(out_data['u_dt'], v_dt_ref,atol=1e-8)
+        # np.testing.assert_allclose(out_data['v_dt'], u_dt_ref,atol=1e-8)
+
+
+
         #***************************************************************************
 
     # if sp.name.startswith("PrsFV3-In"):

@@ -69,7 +69,7 @@ def storage_to_numpy(gt_storage, array_dim, has_zero_padding):
 def run(in_dict, in_dict_udp, grid, comm):
     # area = in_dict["IPD_area"]
     # area = area[:, np.newaxis]
-    shape = (19, 19, 80)  # hard coded for now
+    shape = (19, 19, 82)  # hard coded for now
 
     # Note: Value of dt_atmos is in the namelist
     dt_atmos = 255
@@ -174,6 +174,11 @@ def run(in_dict, in_dict_udp, grid, comm):
     pk = np.zeros(out_dict_atmos["pk"].shape)
     pk[:,:] = out_dict_atmos["pk"][:,:]
 
+    u = np.zeros(out_dict_atmos["u"].shape)
+    u[:,:,:] = out_dict_atmos['u'][:,:,:]
+    v = np.zeros(out_dict_atmos["v"].shape)
+    v[:,:,:] = out_dict_atmos['v'][:,:,:]
+
     out_dict = {}
 
     out_dict["delp"] = delp
@@ -186,6 +191,8 @@ def run(in_dict, in_dict_udp, grid, comm):
     out_dict["pe"] = pe
     out_dict["peln"] = peln
     out_dict["pk"] = pk
+    out_dict["u"] = u
+    out_dict["v"] = v
 
     return out_dict
 
@@ -262,12 +269,12 @@ def atmosphere_state_update(
     # Note : pe has shape (14,80,14)
     #        peln has shape(12,80,12)
 
-    pe, peln, pk, ps, pt, u_srf, v_srf, u_dt, v_dt = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
+    pe, peln, pk, ps, pt, u_srf, v_srf, u_dt, v_dt, u, v = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
                    phis, u_srf, v_srf, False, u_dt, v_dt, t_dt, False, 0,0,0,False,
                    q[:,:,0], q[:,:,1], q[:,:,2], q[:,:,3], q[:,:,4], q[:,:,5], nwat, grid, comm,
                    in_dict_udp,)
 
-    return u_dt, v_dt, t_dt, delp, q, pe, peln, pk, ps, pt, u_srf, v_srf
+    return u_dt, v_dt, t_dt, delp, q, pe, peln, pk, ps, pt, u_srf, v_srf, u, v,
 
 # *** Version of update_atmos_model_state to test code between physics_driver and fv_update_phys ***
 def update_atmos_model_state(    
@@ -286,7 +293,7 @@ def update_atmos_model_state(
 ):
 
     (u_dt, v_dt, t_dt, delp, q,
-    pe, peln, pk, ps, pt, u_srf, v_srf) = atmosphere_state_update(
+    pe, peln, pk, ps, pt, u_srf, v_srf, u, v,) = atmosphere_state_update(
         gq0, gt0, gu0, gv0,
         tgrs, ugrs, vgrs, prsi,
         delp,
@@ -316,6 +323,9 @@ def update_atmos_model_state(
     out_dict["pt"] = pt
     out_dict["u_srf"] = u_srf
     out_dict["v_srf"] = v_srf 
+
+    out_dict["u"] = u
+    out_dict["v"] = v
 
     return out_dict
 
@@ -368,8 +378,9 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
                 # pt[i,j,k] = pt[i,j,k] + t_dt[i-3,j-3,k] * dt * con_cp/cvm[i-3]
                 pt[j*12 + i ,k] = pt[j*12 + i,k] + t_dt[j*12 + i,k] * dt * con_cp/cvm[i-3]
 
-    u_dt_q = gt_storage.zeros(BACKEND, default_origin=(0,0,0), shape=(19,19,80), dtype=DTYPE_FLT)
-    v_dt_q = gt_storage.zeros(BACKEND, default_origin=(0,0,0), shape=(19,19,80), dtype=DTYPE_FLT)
+    # Note : The shape of these u_dt and v_dt storages is based on C12 dataset
+    u_dt_q = gt_storage.zeros(BACKEND, default_origin=(0,0,0), shape=(19,19,82), dtype=DTYPE_FLT)
+    v_dt_q = gt_storage.zeros(BACKEND, default_origin=(0,0,0), shape=(19,19,82), dtype=DTYPE_FLT)
     for k in range(npz):
         for i in range(u_dt.shape[0]):
             i1 = 3 + np.mod(i,12)
@@ -381,6 +392,9 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     u_dt_quan = grid.make_quantity(u_dt_q)
     v_dt_quan = grid.make_quantity(v_dt_q)
 
+    # Note : This is the "easy all encompassing" halo exchange for testing purposes
+    # For the OOP version, there should be a comm.get_scalar_halo_updater object
+    # that's used for the halo update
     req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
 
     for j in range(12):
@@ -401,10 +415,15 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     u_dt_q[:,:,:] = u_dt_quan.storage[:,:,:]
     v_dt_q[:,:,:] = v_dt_quan.storage[:,:,:]
 
+    in_dict_udp["u_dt"] = u_dt_q
+    in_dict_udp["v_dt"] = v_dt_q
+    in_dict_udp["u"] = u
+    in_dict_udp["v"] = v
+
     udp.update_dwind_phys(in_dict_udp)
 
-    #CUBED_TO_LATLON
-    return pe, peln, pk, ps, pt, u_srf, v_srf, u_dt_q, v_dt_q
+    #CUBED_TO_LATLON : Based on code coverage, c2l_ord4 is called 
+    return pe, peln, pk, ps, pt, u_srf, v_srf, in_dict_udp["u_dt"], in_dict_udp["v_dt"], in_dict_udp["u"], in_dict_udp["v"]
 
 # Note : There already exists a moist_cv stencil within fv3core
 def moist_cv(j, k, nwat, qvapor, qliquid, qrain, qsnow, qice, qgraupel, qd, cvm):
