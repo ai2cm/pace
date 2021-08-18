@@ -31,6 +31,7 @@ class PhysicsState:
         phii: interface_geopotential_height
         phil: layer_geopotential_height
         dz: geopotential_height_thickness
+        *_t1: respective dynamical core variables marched by 1 time step
     Microphysics:
         wmp: layer_mean_vertical_velocity_microph
     """
