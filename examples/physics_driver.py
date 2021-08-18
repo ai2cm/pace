@@ -173,7 +173,8 @@ def physics_driver(
     debug["qvapor"] = qgrs_0
     debug["del"] = del_
     debug["del_gz"] = del_gz
-    np.save("standalone_after_prsfv3_rank_"+str(tile)+".npy", debug)
+    debug["delp"] = prsl
+    np.save("standalone_after_prsfv3_rank_" + str(tile) + ".npy", debug)
 
     # These copies can be done within a stencil
     gt0 = tgrs  # + dtdt * dtp (tendencies from PBL and others)
@@ -191,7 +192,7 @@ def physics_driver(
     debug["pt"] = gt0
     debug["qvapor"] = gq_0
     debug["del_gz"] = del_gz
-    np.save("standalone_after_phifv3_rank_"+str(tile)+".npy", debug)
+    np.save("standalone_after_phifv3_rank_" + str(tile) + ".npy", debug)
 
     land = gt_storage.zeros(
         backend=BACKEND,
@@ -405,6 +406,13 @@ def physics_driver(
         dz[:, :, k] = (phii[:, :, k] - phii[:, :, k - 1]) * rgrav
     p123[:, :, :] = prsl
     refl[:, :, :] = refl_10cm
+    debug = {}
+    debug["omga"] = vvl
+    debug["qv1"] = qv1
+    debug["gt0"] = gt0
+    debug["prsl"] = prsl
+    debug["w"] = w
+    np.save("standalone_before_wcalc_rank_" + str(tile) + ".npy", debug)
     mph_input = {}
     mph_input["area"] = area
     mph_input["delp"] = delp
@@ -444,21 +452,34 @@ def physics_driver(
     mph_input["vdt"] = vdt
     mph_input["vin"] = vin
     mph_input["w"] = w
-    mph_output = microphysics.run(mph_input)
+    np.save("standalone_before_microph_rank_" + str(tile) + ".npy", mph_input)
+    mph_output = microphysics.run(mph_input, tile)
+    debug = {}
+    debug["qv_dt"] = mph_output["qv_dt"]
+    debug["ql_dt"] = mph_output["ql_dt"]
+    debug["qr_dt"] = mph_output["qr_dt"]
+    debug["qi_dt"] = mph_output["qi_dt"]
+    debug["qs_dt"] = mph_output["qs_dt"]
+    debug["qg_dt"] = mph_output["qg_dt"]
+    debug["qa_dt"] = mph_output["qa_dt"]
+    debug["pt_dt"] = mph_output["pt_dt"]
+    debug["udt"] = mph_output["udt"]
+    debug["vdt"] = mph_output["vdt"]
+    np.save("standalone_after_microph_rank_" + str(tile) + ".npy", debug)
     output = {}
 
-    gq0[:, :, 0] = qv1[:, 0, :] + qv_dt[:, 0, :] * dtp
-    gq0[:, :, 1] = ql1[:, 0, :] + ql_dt[:, 0, :] * dtp
-    gq0[:, :, 2] = qr1[:, 0, :] + qr_dt[:, 0, :] * dtp
-    gq0[:, :, 3] = qi1[:, 0, :] + qi_dt[:, 0, :] * dtp
-    gq0[:, :, 4] = qs1[:, 0, :] + qs_dt[:, 0, :] * dtp
-    gq0[:, :, 5] = qg1[:, 0, :] + qg_dt[:, 0, :] * dtp
-    gq0[:, :, 8] = qa1[:, 0, :] + qa_dt[:, 0, :] * dtp
+    gq0[:, :, 0] = qv1[:, 0, :] + mph_output["qv_dt"][:, 0, :] * dtp
+    gq0[:, :, 1] = ql1[:, 0, :] + mph_output["ql_dt"][:, 0, :] * dtp
+    gq0[:, :, 2] = qr1[:, 0, :] + mph_output["qr_dt"][:, 0, :] * dtp
+    gq0[:, :, 3] = qi1[:, 0, :] + mph_output["qi_dt"][:, 0, :] * dtp
+    gq0[:, :, 4] = qs1[:, 0, :] + mph_output["qs_dt"][:, 0, :] * dtp
+    gq0[:, :, 5] = qg1[:, 0, :] + mph_output["qg_dt"][:, 0, :] * dtp
+    gq0[:, :, 8] = qa1[:, 0, :] + mph_output["qa_dt"][:, 0, :] * dtp
 
     # These computations could be put into a stencil
-    gt0[:, 0, :] = gt0[:, 0, :] + pt_dt[:, 0, :] * dtp
-    gu0[:, 0, :] = gu0[:, 0, :] + udt[:, 0, :] * dtp
-    gv0[:, 0, :] = gv0[:, 0, :] + vdt[:, 0, :] * dtp
+    gt0[:, 0, :] = gt0[:, 0, :] + mph_output["pt_dt"][:, 0, :] * dtp
+    gu0[:, 0, :] = gu0[:, 0, :] + mph_output["udt"][:, 0, :] * dtp
+    gv0[:, 0, :] = gv0[:, 0, :] + mph_output["vdt"][:, 0, :] * dtp
 
     output["IPD_gq0"] = storage_to_numpy(gq0, (144, 79, 9), True)
     output["IPD_gt0"] = storage_to_numpy(gt0, (144, 79), True)
