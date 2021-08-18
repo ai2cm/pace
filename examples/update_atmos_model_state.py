@@ -3,6 +3,7 @@ import numpy as np
 import gt4py
 import gt4py.gtscript as gtscript
 import gt4py.storage as gt_storage
+import fv3gfs.physics.stencils.update_dwind_phys as udp
 
 sys.path.append("../")
 from fv3gfsphysics.utils.global_config import *
@@ -65,7 +66,7 @@ def storage_to_numpy(gt_storage, array_dim, has_zero_padding):
     return np_tmp
 
 
-def run(in_dict, grid, comm):
+def run(in_dict, in_dict_udp, grid, comm):
     # area = in_dict["IPD_area"]
     # area = area[:, np.newaxis]
     shape = (19, 19, 80)  # hard coded for now
@@ -149,14 +150,15 @@ def run(in_dict, grid, comm):
         t_dt, u_dt, v_dt,
         in_dict["nq"], dnats, in_dict["nwat"], dt_atmos,
         shape, grid, comm,
+        in_dict_udp,
     )
 
     delp = np.zeros(out_dict_atmos["delp"].shape)
     delp[:,:] = out_dict_atmos["delp"][:,:]
     u_dt = np.zeros(out_dict_atmos["u_dt"].shape)
-    u_dt[:,:] = out_dict_atmos["u_dt"][:,:]
+    u_dt[:,:] = out_dict_atmos["u_dt"][:,:,:]
     v_dt = np.zeros(out_dict_atmos["v_dt"].shape)
-    v_dt[:,:] = out_dict_atmos["v_dt"][:,:]
+    v_dt[:,:] = out_dict_atmos["v_dt"][:,:,:]
     t_dt = np.zeros(out_dict_atmos["t_dt"].shape)
     t_dt[:,:] = out_dict_atmos["t_dt"][:,:]
     q = np.zeros(out_dict_atmos["q"].shape)
@@ -229,6 +231,7 @@ def atmosphere_state_update(
     t_dt, u_dt, v_dt,
     nq, dnats, nwat, dt_atmos,
     shape, grid, comm,
+    in_dict_udp,
 ):
 
     nq_adv = nq - dnats
@@ -259,9 +262,10 @@ def atmosphere_state_update(
     # Note : pe has shape (14,80,14)
     #        peln has shape(12,80,12)
 
-    pe, peln, pk, ps, pt, u_srf, v_srf = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
+    pe, peln, pk, ps, pt, u_srf, v_srf, u_dt, v_dt = fv_update_phys(dt_atmos, u, v, w, delp, pt, ua, va, ps, pe, peln, pk, pkz, 
                    phis, u_srf, v_srf, False, u_dt, v_dt, t_dt, False, 0,0,0,False,
-                   q[:,:,0], q[:,:,1], q[:,:,2], q[:,:,3], q[:,:,4], q[:,:,5], nwat, grid, comm,)
+                   q[:,:,0], q[:,:,1], q[:,:,2], q[:,:,3], q[:,:,4], q[:,:,5], nwat, grid, comm,
+                   in_dict_udp,)
 
     return u_dt, v_dt, t_dt, delp, q, pe, peln, pk, ps, pt, u_srf, v_srf
 
@@ -278,6 +282,7 @@ def update_atmos_model_state(
     t_dt, u_dt, v_dt,
     nq, dnats, nwat, dt_atmos,
     shape, grid, comm,
+    in_dict_udp,
 ):
 
     (u_dt, v_dt, t_dt, delp, q,
@@ -293,6 +298,7 @@ def update_atmos_model_state(
         t_dt, u_dt, v_dt,
         nq, dnats, nwat, dt_atmos,
         shape, grid, comm,
+        in_dict_udp,
     )
 
     out_dict = {}
@@ -320,7 +326,8 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
                    gridstruct, npx, npy, npz, 
                    domain,
                    qvapor, qliquid, qrain, qsnow, qice, qgraupel, nwat,
-                   grid, comm):
+                   grid, comm,
+                   in_dict_udp):
 
     # Parameters from Fortran that're currently not implemented in Python
     # ng, q_dt, q, qdiag, nq, ak, bk, ts, delz, moist_phys, Time, nudge
@@ -374,7 +381,7 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     u_dt_quan = grid.make_quantity(u_dt_q)
     v_dt_quan = grid.make_quantity(v_dt_q)
 
-    # req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
+    req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
 
     for j in range(12):
         for k in range(1,npz+1):
@@ -389,15 +396,15 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
             v_srf[12*j + i] = va[12*j + i,npz-1]
 
 
-    # req.wait()
+    req.wait()
 
     u_dt_q[:,:,:] = u_dt_quan.storage[:,:,:]
     v_dt_q[:,:,:] = v_dt_quan.storage[:,:,:]
 
-    # UPDATE_DWINDS_PHYS
+    udp.update_dwind_phys(in_dict_udp)
 
     #CUBED_TO_LATLON
-    return pe, peln, pk, ps, pt, u_srf, v_srf
+    return pe, peln, pk, ps, pt, u_srf, v_srf, u_dt_q, v_dt_q
 
 # Note : There already exists a moist_cv stencil within fv3core
 def moist_cv(j, k, nwat, qvapor, qliquid, qrain, qsnow, qice, qgraupel, qd, cvm):

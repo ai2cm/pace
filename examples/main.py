@@ -227,7 +227,7 @@ for sp in savepoints:
         fortran2py_index_offset = 2
         index_data = {}
         for index_var in ["isd", "ied", "jsd", "jed", "is", "js", "je", "npz"]:
-            index_data[index_var] = udp.read_index_var(index_var, in_savepoint_dwind)
+            index_data[index_var] = udp.read_index_var(index_var, in_savepoint_dwind, serializer)
 
         max_shape = (
             index_data["ied"] - index_data["isd"] + 2,
@@ -242,7 +242,8 @@ for sp in savepoints:
         axes = {"edge_vect_s": 0, "edge_vect_n": 0, "edge_vect_w": 1, "edge_vect_e": 1}
         # read serialized input data
         in_data_uwindsphys = udp.storage_dict_from_var_list(
-            IN_VARS_UDWINDSPHYS, serializer, in_savepoint_dwind, max_shape, start_indices, axes
+            #IN_VARS_UDWINDSPHYS, serializer, in_savepoint_dwind, max_shape, start_indices, axes
+            IN_VARS_UDWINDSPHYS,serializer,in_savepoint_dwind,max_shape,start_indices, axes,
         )
 
         in_data_uwindsphys.update(index_data)
@@ -255,14 +256,15 @@ for sp in savepoints:
         in_data_uwindsphys["njc"] = in_data_uwindsphys["je"] - in_data_uwindsphys["js"] + 1
         in_data_uwindsphys["npx"] = int(in_data_uwindsphys["npx"])
         in_data_uwindsphys["npy"] = int(in_data_uwindsphys["npy"])
+        in_data_uwindsphys["max_shape"] = max_shape
 
-        out_data = update_atmos_model_state.run(in_data, spec.grid, communicator)
+        out_data = update_atmos_model_state.run(in_data, in_data_uwindsphys, spec.grid, communicator)
 
         # print("After update_atmos_model_state")
 
         delp = np.reshape(ref_data["delp"][3:-3, 3:-3, :], (144, 79), order="F")
-        u_dt = np.reshape(ref_data["u_dt"][3:-3, 3:-3, :], (144, 79), order="F")
-        v_dt = np.reshape(ref_data["v_dt"][3:-3, 3:-3, :], (144, 79), order="F")
+        # u_dt = np.reshape(ref_data["u_dt"][3:-3, 3:-3, :], (144, 79), order="F")
+        # v_dt = np.reshape(ref_data["v_dt"][3:-3, 3:-3, :], (144, 79), order="F")
         t_dt = np.reshape(ref_data["t_dt"], (144, 79), order="F")
 
         qvapor = np.reshape(ref_data["qvapor"][3:-3, 3:-3, :], (144, 79), order="F")
@@ -273,8 +275,8 @@ for sp in savepoints:
         qgraupel = np.reshape(ref_data["qgraupel"][3:-3, 3:-3, :], (144, 79), order="F")
 
         np.testing.assert_allclose(out_data["delp"], delp)
-        np.testing.assert_allclose(out_data["u_dt"], u_dt, atol=1e-8)
-        np.testing.assert_allclose(out_data["v_dt"], v_dt, atol=1e-8)
+        # np.testing.assert_allclose(out_data["u_dt"], u_dt, atol=1e-8)
+        # np.testing.assert_allclose(out_data["v_dt"], v_dt, atol=1e-8)
         np.testing.assert_allclose(out_data["t_dt"], t_dt, atol=1e-5)
         
         np.testing.assert_allclose(out_data["q"][:,:,0], qvapor)
@@ -285,6 +287,12 @@ for sp in savepoints:
         np.testing.assert_allclose(out_data["q"][:,:,5], qgraupel)
 
 
+        u_dt_ref = np.zeros(in_data_uwindsphys['u_dt'].shape)
+        u_dt_ref[:,:,:] = in_data_uwindsphys['u_dt'][:,:,:]
+        v_dt_ref = np.zeros(in_data_uwindsphys['v_dt'].shape)
+        v_dt_ref[:,:,:] = in_data_uwindsphys['u_dt'][:,:,:]
+        np.testing.assert_allclose(out_data['u_dt'], v_dt_ref[:,:,:80],atol=1e-8)
+        np.testing.assert_allclose(out_data['v_dt'], u_dt_ref[:,:,:80],atol=1e-8)
         #***************************************************************************
 
     # if sp.name.startswith("PrsFV3-In"):

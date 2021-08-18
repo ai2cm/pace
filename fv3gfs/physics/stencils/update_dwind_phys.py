@@ -58,7 +58,7 @@ def add_composite_evar_storage(d, var, data4d, max_shape, start_indices):
             )
 
 
-def edge_vector_storage(d, var, axis):
+def edge_vector_storage(d, var, axis, max_shape):
     if axis == 1:
         default_origin = (0, 0)
         d[var] = d[var][np.newaxis, ...]
@@ -98,7 +98,7 @@ def storage_dict_from_var_list(
             d[var] = np.zeros(max_shape[axis])
             d[var][start1 : start1 + size1] = data
             if "edge_vect" in var:
-                edge_vector_storage(d, var, axis)
+                edge_vector_storage(d, var, axis, max_shape)
                 continue
         elif len(data.shape) == 2:
             d[var] = np.zeros(max_shape[0:2])
@@ -329,7 +329,7 @@ def make_storage_from_shape(shape):
     )
 
 
-def read_index_var(index_var, savepoint):
+def read_index_var(index_var, savepoint, serializer):
     fortran2py_index_offset = 2
     return int(serializer.read(index_var, savepoint)[0] + fortran2py_index_offset)
 
@@ -352,6 +352,8 @@ def update_dwind_phys(data):
     vt_1 = make_storage_from_shape(shape)
     vt_2 = make_storage_from_shape(shape)
     vt_3 = make_storage_from_shape(shape)
+
+    max_shape = data["max_shape"]
     update_dwind_prep_stencil(
         data["u_dt"],
         data["v_dt"],
@@ -663,7 +665,7 @@ def update_dwind_phys(data):
 #     fortran2py_index_offset = 2
 #     index_data = {}
 #     for index_var in ["isd", "ied", "jsd", "jed", "is", "js", "je", "npz"]:
-#         index_data[index_var] = read_index_var(index_var, in_savepoint)
+#         index_data[index_var] = read_index_var(index_var, in_savepoint, serializer)
 #     max_shape = (
 #         index_data["ied"] - index_data["isd"] + 2,
 #         index_data["jed"] - index_data["jsd"] + 2,
@@ -688,12 +690,12 @@ def update_dwind_phys(data):
 #     in_data["npx"] = int(in_data["npx"])
 #     in_data["npy"] = int(in_data["npy"])
 
-#     # run Python version
-#     update_dwind_phys(in_data)
-#     out_data = {key: value for key, value in in_data.items() if key in OUT_VARS}
-#     # read serialized output data
-#     ref_data = storage_dict_from_var_list(
-#         OUT_VARS, serializer, out_savepoint, max_shape, start_indices, axes
-#     )
-#     compare_data(out_data, ref_data)
-#     print("SUCCESS tile", tile)
+    # # run Python version
+    # update_dwind_phys(in_data)
+    # out_data = {key: value for key, value in in_data.items() if key in OUT_VARS}
+    # # read serialized output data
+    # ref_data = storage_dict_from_var_list(
+    #     OUT_VARS, serializer, out_savepoint, max_shape, start_indices, axes
+    # )
+    # compare_data(out_data, ref_data)
+    # print("SUCCESS tile", tile)
