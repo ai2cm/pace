@@ -54,7 +54,7 @@ class TranslateC_SW(TranslateFortranData2Py):
 class TranslateDivergenceCorner(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.max_error = 2e-13
+        self.max_error = 9e-10
         self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
         self.in_vars["data_vars"] = {
             "u": {
@@ -104,7 +104,7 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
 class TranslateCirculation_Cgrid(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.max_error = 5e-13
+        self.max_error = 5e-9
         self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
         self.in_vars["data_vars"] = {
             "uc": {},
