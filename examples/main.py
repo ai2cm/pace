@@ -47,7 +47,7 @@ def compare_data(exp_data, ref_data):
         )
         if ind.size > 0:
             i = tuple(ind[:, 0])
-            print("FAIL at ", key, i)  # , exp_data[key][i], ref_data[key][i])
+            print("FAIL at ", key, i, exp_data[key][i], ref_data[key][i])
         # assert np.allclose(exp_data[key], ref_data[key], equal_nan=True), (
         #     "Data does not match for field " + key
         # )
@@ -61,7 +61,7 @@ for tile in range(6):
 
     serializer = ser.Serializer(
         ser.OpenModeKind.Read,
-        "c12_6ranks_baroclinic_dycore_microphysics",
+        "c12_6ranks_baroclinic_dycore_microphysics_day_10",
         "Generator_rank" + str(tile),
     )
 
@@ -115,13 +115,25 @@ for tile in range(6):
 
         #     compare_data(out_data_prephi, ref_data)
 
+        # if sp.name.startswith("Microph-In"):
+        #     print("> running ", f"tile-{tile}", sp)
+
+        #     # read serialized input data
+        #     ref_data = data_dict_from_var_list(IN_VARS_MICROPH, serializer, sp)
+        #     ref_data_rename = {}
+        #     for key in ref_data.keys():
+        #         ref_data_rename[key.replace("mph_", "")] = ref_data[key]
+        #     compare_data(out_data, ref_data_rename)
+
         # if sp.name.startswith("Microph-Out"):
         #     print("> running ", f"tile-{tile}", sp)
 
         #     # read serialized input data
         #     ref_data = data_dict_from_var_list(OUT_VARS_MICROPH, serializer, sp)
-
-        #     compare_data(out_data_postphi, ref_data)
+        #     ref_data_rename = {}
+        #     for key in ref_data.keys():
+        #         ref_data_rename[key.replace("mph_", "")] = ref_data[key]
+        #     compare_data(out_data, ref_data_rename)
 
         if sp.name.startswith("GFSPhysicsDriver-OUT"):
             print("> running ", f"tile-{tile}", sp)

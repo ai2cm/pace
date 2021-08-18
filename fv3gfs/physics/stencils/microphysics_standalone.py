@@ -2129,7 +2129,7 @@ def gfdl_cloud_microphys_init():
     t_wfr = tice - 40.0
 
 
-def run(input_data):
+def run(input_data, tile):
     gfdl_cloud_microphys_init()
     input_data = scale_dataset(input_data, (1.0, 1))
     input_data = numpy_dict_to_gt4py_dict(input_data)
@@ -2342,6 +2342,68 @@ def run(input_data):
         origin=origin,
         domain=domain,
     )
+    debug1 = {
+        "land": land,
+        "area": area,
+        "h_var": h_var,
+        "rh_adj": rh_adj,
+        "rh_rain": rh_rain,
+        "graupel": graupel,
+        "ice": ice,
+        "rain": rain,
+        "snow": snow,
+        "qa": qa,
+        "qg": qg,
+        "qi": qi,
+        "ql": ql,
+        "qn": qn,
+        "qr": qr,
+        "qs": qs,
+        "qv": qv,
+        "pt": pt,
+        "delp": delp,
+        "dz": dz,
+        "qgz": qgz,
+        "qiz": qiz,
+        "qlz": qlz,
+        "qrz": qrz,
+        "qsz": qsz,
+        "qvz": qvz,
+        "tz": tz,
+        "qi_dt": qi_dt,
+        "qs_dt": qs_dt,
+        "uin": uin,
+        "vin": vin,
+        "qa0": qa0,
+        "qg0": qg0,
+        "qi0": qi0,
+        "ql0": ql0,
+        "qr0": qr0,
+        "qs0": qs0,
+        "qv0": qv0,
+        "t0": t0,
+        "dp0": dp0,
+        "den0": den0,
+        "dz0": dz0,
+        "u0": u0,
+        "v0": v0,
+        "dp1": dp1,
+        "p1": p1,
+        "u1": u1,
+        "v1": v1,
+        "ccn": ccn,
+        "c_praut": c_praut,
+        "use_ccn": DTYPE_INT(use_ccn),
+        "c_air": c_air,
+        "c_vap": c_vap,
+        "d0_vap": d0_vap,
+        "lv00": lv00,
+        "dt_in": dt_in,
+        "rdt": rdt,
+        "cpaut": cpaut,
+    }
+    np.save("standalone_after_fields_init_rank_" + str(tile) + ".npy", debug1)
+
     so3 = 7.0 / 3.0
 
     zs = 0.0

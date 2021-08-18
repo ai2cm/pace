@@ -480,9 +480,21 @@ def physics_driver(
     gt0[:, 0, :] = gt0[:, 0, :] + mph_output["pt_dt"][:, 0, :] * dtp
     gu0[:, 0, :] = gu0[:, 0, :] + mph_output["udt"][:, 0, :] * dtp
     gv0[:, 0, :] = gv0[:, 0, :] + mph_output["vdt"][:, 0, :] * dtp
-
+    debug = {}
+    debug["IPD_gt0"] = gt0
+    debug["IPD_gu0"] = gu0
+    debug["IPD_gv0"] = gv0
+    debug["qv_t1"] = gq0[:, :, 0][:, np.newaxis, :]
+    debug["ql_t1"] = gq0[:, :, 1][:, np.newaxis, :]
+    debug["qr_t1"] = gq0[:, :, 2][:, np.newaxis, :]
+    debug["qi_t1"] = gq0[:, :, 3][:, np.newaxis, :]
+    debug["qs_t1"] = gq0[:, :, 4][:, np.newaxis, :]
+    debug["qg_t1"] = gq0[:, :, 5][:, np.newaxis, :]
+    debug["qa_t1"] = gq0[:, :, 8][:, np.newaxis, :]
+    np.save("standalone_after_physics_driver_rank_" + str(tile) + ".npy", debug)
     output["IPD_gq0"] = storage_to_numpy(gq0, (144, 79, 9), True)
     output["IPD_gt0"] = storage_to_numpy(gt0, (144, 79), True)
     output["IPD_gu0"] = storage_to_numpy(gu0, (144, 79), True)
     output["IPD_gv0"] = storage_to_numpy(gv0, (144, 79), True)
+
     return output

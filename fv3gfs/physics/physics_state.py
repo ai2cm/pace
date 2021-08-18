@@ -56,6 +56,16 @@ class PhysicsState:
     phil: FloatField
     dz: FloatField
     wmp: FloatField
+    qvapor_t1: FloatField
+    qliquid_t1: FloatField
+    qrain_t1: FloatField
+    qsnow_t1: FloatField
+    qice_t1: FloatField
+    qgraupel_t1: FloatField
+    qcld_t1: FloatField
+    pt_t1: FloatField
+    ua_t1: FloatField
+    va_t1: FloatField
 
     @classmethod
     def from_dycore_state(cls, state, storage: FloatField) -> "PhysicsState":
@@ -63,6 +73,7 @@ class PhysicsState:
         Constructor for PhysicsState when using dynamical core state
         storage: storage for variables not in dycore
         """
+        # [TODO] we may want to use a copy from dycore instead of using the same storages
         return cls(
             qvapor=state.qvapor,
             qliquid=state.qliquid,
@@ -85,6 +96,16 @@ class PhysicsState:
             phil=copy.deepcopy(storage),
             dz=copy.deepcopy(storage),
             wmp=copy.deepcopy(storage),
+            qvapor_t1=copy.deepcopy(storage),
+            qliquid_t1=copy.deepcopy(storage),
+            qrain_t1=copy.deepcopy(storage),
+            qsnow_t1=copy.deepcopy(storage),
+            qice_t1=copy.deepcopy(storage),
+            qgraupel_t1=copy.deepcopy(storage),
+            qcld_t1=copy.deepcopy(storage),
+            pt_t1=copy.deepcopy(storage),
+            ua_t1=copy.deepcopy(storage),
+            va_t1=copy.deepcopy(storage),
         )
 
     def microphysics(self, storage) -> MicrophysicsState:

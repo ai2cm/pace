@@ -4,9 +4,9 @@ from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics, MicrophysicsState
 from fv3gfs.physics.global_constants import *
 import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.typing import FloatField
+from fv3core.utils.typing import FloatField, Float
 from fv3core.decorators import FrozenStencil, get_namespace
-from gt4py.gtscript import PARALLEL, computation
+import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
     PARALLEL,
     FORWARD,
@@ -109,6 +109,57 @@ def prepare_microphysics(
         wmp = -omga * (1.0 + con_fvirt * qvapor) * pt / delp * (rdgas * rgrav)
 
 
+@gtscript.function
+def forward_euler(q_t0, q_dt, dt):
+    return q_t0 + q_dt * dt
+
+
+def update_physics_state_with_tendencies(
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qice: FloatField,
+    qsnow: FloatField,
+    qgraupel: FloatField,
+    qcld: FloatField,
+    pt: FloatField,
+    ua: FloatField,
+    va: FloatField,
+    qv_dt: FloatField,
+    ql_dt: FloatField,
+    qr_dt: FloatField,
+    qi_dt: FloatField,
+    qs_dt: FloatField,
+    qg_dt: FloatField,
+    qa_dt: FloatField,
+    pt_dt: FloatField,
+    udt: FloatField,
+    vdt: FloatField,
+    qvapor_t1: FloatField,
+    qliquid_t1: FloatField,
+    qrain_t1: FloatField,
+    qice_t1: FloatField,
+    qsnow_t1: FloatField,
+    qgraupel_t1: FloatField,
+    qcld_t1: FloatField,
+    pt_t1: FloatField,
+    ua_t1: FloatField,
+    va_t1: FloatField,
+    dt: Float,
+):
+    with computation(PARALLEL), interval(...):
+        qvapor_t1 = forward_euler(qvapor, qv_dt, dt)
+        qliquid_t1 = forward_euler(qliquid, ql_dt, dt)
+        qrain_t1 = forward_euler(qrain, qr_dt, dt)
+        qice_t1 = forward_euler(qice, qi_dt, dt)
+        qsnow_t1 = forward_euler(qsnow, qs_dt, dt)
+        qgraupel_t1 = forward_euler(qgraupel, qg_dt, dt)
+        qcld_t1 = forward_euler(qcld, qa_dt, dt)
+        pt_t1 = forward_euler(pt, pt_dt, dt)
+        ua_t1 = forward_euler(ua, udt, dt)
+        va_t1 = forward_euler(va, vdt, dt)
+
+
 class Physics:
     def __init__(self, grid, namelist):
         self.grid = grid
@@ -116,6 +167,7 @@ class Physics:
         origin = self.grid.compute_origin()
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         self.setup_statein()
+        self._dt_atmos = self.namelist.dt_atmos
         self._ptop = 300.0  # hard coded before we can call ak from grid: state["ak"][0]
         self._pktop = (self._ptop / self._p00) ** KAPPA
         self._pk0inv = (1.0 / self._p00) ** KAPPA
@@ -147,6 +199,11 @@ class Physics:
         )
         self._prepare_microphysics = FrozenStencil(
             func=prepare_microphysics,
+            origin=self.grid.grid_indexing.origin_compute(),
+            domain=self.grid.grid_indexing.domain_compute(),
+        )
+        self._update_physics_state_with_tendencies = FrozenStencil(
+            func=update_physics_state_with_tendencies,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(),
         )
@@ -249,4 +306,51 @@ class Physics:
             physics_state.pt,
             physics_state.delp,
         )
-        self._microphysics(physics_state.microphysics(storage), rank)
+        microph_state = physics_state.microphysics(storage)
+        self._microphysics(microph_state, rank)
+        # Fortran uses IPD interface, here we use var_t1 to denote the updated field
+        self._update_physics_state_with_tendencies(
+            physics_state.qvapor,
+            physics_state.qliquid,
+            physics_state.qrain,
+            physics_state.qice,
+            physics_state.qsnow,
+            physics_state.qgraupel,
+            physics_state.qcld,
+            physics_state.pt,
+            physics_state.ua,
+            physics_state.va,
+            microph_state.qv_dt,
+            microph_state.ql_dt,
+            microph_state.qr_dt,
+            microph_state.qi_dt,
+            microph_state.qs_dt,
+            microph_state.qg_dt,
+            microph_state.qa_dt,
+            microph_state.pt_dt,
+            microph_state.udt,
+            microph_state.vdt,
+            physics_state.qvapor_t1,
+            physics_state.qliquid_t1,
+            physics_state.qrain_t1,
+            physics_state.qice_t1,
+            physics_state.qsnow_t1,
+            physics_state.qgraupel_t1,
+            physics_state.qcld_t1,
+            physics_state.pt_t1,
+            physics_state.ua_t1,
+            physics_state.va_t1,
+            self._dt_atmos,
+        )
+        debug = {}
+        debug["IPD_gt0"] = physics_state.pt_t1
+        debug["IPD_gu0"] = physics_state.ua_t1
+        debug["IPD_gv0"] = physics_state.va_t1
+        debug["qv_t1"] = physics_state.qvapor_t1
+        debug["ql_t1"] = physics_state.qliquid_t1
+        debug["qr_t1"] = physics_state.qrain_t1
+        debug["qi_t1"] = physics_state.qice_t1
+        debug["qs_t1"] = physics_state.qsnow_t1
+        debug["qg_t1"] = physics_state.qgraupel_t1
+        debug["qa_t1"] = physics_state.qcld_t1
+        np.save("integrated_after_physics_driver_rank_" + str(rank) + ".npy", debug)
