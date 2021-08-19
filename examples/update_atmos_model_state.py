@@ -6,14 +6,16 @@ import gt4py.storage as gt_storage
 import fv3gfs.physics.stencils.update_dwind_phys as udp
 
 sys.path.append("../")
-from fv3gfsphysics.utils.global_config import *
 from fv3gfsphysics.utils.global_constants import *
+from fv3gfs.physics.global_config import *
 
 from gt4py.gtscript import (
     __INLINED,
     PARALLEL,
     computation,
     interval,
+    horizontal,
+    region,
 )
 
 from mpi4py import MPI
@@ -66,13 +68,13 @@ def storage_to_numpy(gt_storage, array_dim, has_zero_padding):
     return np_tmp
 
 
-def run(in_dict, in_dict_udp, grid, comm):
+def run(in_dict, in_dict_udp, in_dict_grid, grid, comm):
     # area = in_dict["IPD_area"]
     # area = area[:, np.newaxis]
     shape = (19, 19, 82)  # hard coded for now
 
     # Note: Value of dt_atmos is in the namelist
-    dt_atmos = 255
+    dt_atmos = 225
 
     # Value of dnats from fv_arrays.F90
     dnats = 1  # namelist.dnats
@@ -136,6 +138,26 @@ def run(in_dict, in_dict_udp, grid, comm):
     phis  = gt_storage.from_array(in_dict["phis"], backend=BACKEND, default_origin=(0, 0, 0))
     u_srf = gt_storage.from_array(in_dict["u_srf"],backend=BACKEND, default_origin=(0, 0, 0))
     v_srf = gt_storage.from_array(in_dict["v_srf"],backend=BACKEND, default_origin=(0, 0, 0))
+
+
+    dx_size = max(in_dict_grid["dx"].shape)
+    dx = gt_storage.zeros(backend=BACKEND, dtype=DTYPE_FLT, shape=(dx_size, dx_size), default_origin=(0,0,0))
+    dx[:-1,:] = in_dict_grid["dx"][:,:]
+
+    dy_size = max(in_dict_grid["dy"].shape)
+    dy = gt_storage.zeros(backend=BACKEND, dtype=DTYPE_FLT, shape=(dy_size, dy_size), default_origin=(0,0,0))
+    dy[:,:-1] = in_dict_grid["dy"][:,:]
+
+    a11 = gt_storage.zeros(backend=BACKEND, dtype=DTYPE_FLT, shape=(dx_size, dx_size), default_origin=(0,0,0))
+    a12 = gt_storage.zeros(backend=BACKEND, dtype=DTYPE_FLT, shape=(dx_size, dx_size), default_origin=(0,0,0))
+    a21 = gt_storage.zeros(backend=BACKEND, dtype=DTYPE_FLT, shape=(dx_size, dx_size), default_origin=(0,0,0))
+    a22 = gt_storage.zeros(backend=BACKEND, dtype=DTYPE_FLT, shape=(dx_size, dx_size), default_origin=(0,0,0))
+
+    a11[2:16, 2:16] = in_dict_grid["a11"][:,:]
+    a12[2:16, 2:16] = in_dict_grid["a12"][:,:]
+    a21[2:16, 2:16] = in_dict_grid["a21"][:,:]
+    a22[2:16, 2:16] = in_dict_grid["a22"][:,:]
+
 
     out_dict_atmos = update_atmos_model_state(
         gq0, gt0, gu0, gv0,
@@ -395,7 +417,7 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     # Note : This is the "easy all encompassing" halo exchange for testing purposes
     # For the OOP version, there should be a comm.get_scalar_halo_updater object
     # that's used for the halo update
-    req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
+    #req = comm.start_halo_update([u_dt_quan, v_dt_quan], 1)
 
     for j in range(12):
         for k in range(1,npz+1):
@@ -410,7 +432,7 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
             v_srf[12*j + i] = va[12*j + i,npz-1]
 
 
-    req.wait()
+    #req.wait()
 
     u_dt_q[:,:,:] = u_dt_quan.storage[:,:,:]
     v_dt_q[:,:,:] = v_dt_quan.storage[:,:,:]
@@ -423,6 +445,21 @@ def fv_update_phys(dt, #is_, ie, js, je, isd, ied, jsd, jed,
     udp.update_dwind_phys(in_dict_udp)
 
     #CUBED_TO_LATLON : Based on code coverage, c2l_ord4 is called 
+    
+    # There's a halo exchange between u and v first
+    # Routine below is copied from c2l_ord.py
+    # The OOP version may simply use the CubedToLatLon object
+    u_quan = grid.make_quantity(u)
+    v_quan = grid.make_quantity(v)
+
+    # This halo exchanged is copied from c2l_ord.py
+    #comm.vector_halo_update(u_quan, v_quan, n_points=3) # Assuming n_points is 3 for now
+    
+
+    # This is followed by a call to ord4_transform
+    # ord4_transform needs its regions indices (i_start, i_end, j_start, j_end)
+
+
     return pe, peln, pk, ps, pt, u_srf, v_srf, in_dict_udp["u_dt"], in_dict_udp["v_dt"], in_dict_udp["u"], in_dict_udp["v"]
 
 # Note : There already exists a moist_cv stencil within fv3core
@@ -456,3 +493,39 @@ def moist_cv(j, k, nwat, qvapor, qliquid, qrain, qsnow, qice, qgraupel, qd, cvm)
         cvm[i] = (1.0 - (qv + qd[i])) * cv_air + qv * cv_vap + ql * c_liq + qs * c_ice
 
     return qd, cvm
+
+C1 = 1.125
+C2 = -0.125
+
+# @gtscript.stencil(backend=BACKEND)
+# def ord4_transform(
+#     u: FIELD_FLT,
+#     v: FIELD_FLT,
+#     dx: FIELD_FLTIJ,
+#     dy: FIELD_FLTIJ,
+#     a11: FIELD_FLTIJ,
+#     a12: FIELD_FLTIJ,
+#     a21: FIELD_FLTIJ,
+#     a22: FIELD_FLTIJ,
+#     ua: FIELD_FLT,
+#     va: FIELD_FLT,
+# ):
+#     with computation(PARALLEL), interval(...):
+#         #from __externals__ import i_end, i_start, j_end, j_start
+
+#         utmp = C2 * (u[0, -1, 0] + u[0, 2, 0]) + C1 * (u + u[0, 1, 0])
+#         vtmp = C2 * (v[-1, 0, 0] + v[2, 0, 0]) + C1 * (v + v[1, 0, 0])
+
+#         # south/north edge
+#         with horizontal(region[:, j_start], region[:, j_end]):
+#             vtmp = 2.0 * ((v * dy) + (v[1, 0, 0] * dy[1, 0])) / (dy + dy[1, 0])
+#             utmp = 2.0 * (u * dx + u[0, 1, 0] * dx[0, 1]) / (dx + dx[0, 1])
+
+#         # west/east edge
+#         with horizontal(region[i_start, :], region[i_end, :]):
+#             utmp = 2.0 * ((u * dx) + (u[0, 1, 0] * dx[0, 1])) / (dx + dx[0, 1])
+#             vtmp = 2.0 * ((v * dy) + (v[1, 0, 0] * dy[1, 0])) / (dy + dy[1, 0])
+
+#         # Transform local a-grid winds into latitude-longitude coordinates
+#         ua = a11 * utmp + a12 * vtmp
+#         va = a21 * utmp + a22 * vtmp

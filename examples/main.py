@@ -260,7 +260,10 @@ for sp in savepoints:
         in_data_uwindsphys["npy"] = int(in_data_uwindsphys["npy"])
         in_data_uwindsphys["max_shape"] = max_shape
 
-        out_data = update_atmos_model_state.run(in_data, in_data_uwindsphys, spec.grid, communicator)
+        in_savepoint_grid_info = serializer.get_savepoint("Grid-Info")[0]
+        in_data_grid = data_dict_from_var_list(["dx", "dy", "a11", "a12", "a21", "a22", "ie", "ied", "is_", "isd", "je", "jed", "js", "jsd"], serializer, in_savepoint_grid_info, False)
+
+        out_data = update_atmos_model_state.run(in_data, in_data_uwindsphys, in_data_grid, spec.grid, communicator)
 
         # print("After update_atmos_model_state")
 
@@ -296,8 +299,8 @@ for sp in savepoints:
         v_ref = np.zeros(ref_data_udp_out["v"].shape)
         u_ref[:,:,:] = ref_data_udp_out["u"][:,:,:]
         v_ref[:,:,:] = ref_data_udp_out["v"][:,:,:]
-        np.testing.assert_allclose(out_data['u'], u_ref,atol=1e-6)
-        np.testing.assert_allclose(out_data['v'], v_ref,atol=1e-6)
+        np.testing.assert_allclose(out_data['u'], u_ref,atol=1e-7)
+        np.testing.assert_allclose(out_data['v'], v_ref,atol=1e-7)
 
         # Note : Verification of u_dt and v_dt should be done before call to update_dwind_phys
         #        Trying to verify after update_dwind_phys may result in unmatched data from 
