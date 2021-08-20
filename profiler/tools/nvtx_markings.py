@@ -4,6 +4,18 @@ except ModuleNotFoundError:
     cp = None
 
 
+def get_class_from_frame(frame):
+    try:
+        class_name = frame.f_locals["self"].__class__.__name__
+    except KeyError:
+        class_name = "Err: not an object"
+    return class_name
+
+
+def get_object_wrapper_name(frame, event, args) -> str:
+    return get_class_from_frame(frame)
+
+
 def get_stencil_name(frame, event, args) -> str:
     """Get the name of the stencil from within a call to FrozenStencil.__call__"""
     name = getattr(
@@ -34,17 +46,6 @@ functions_desc = [
         "name": get_stencil_name,
     },  # All call from StencilX decorators
     {
-        "fn": "__call__",
-        "file": "fv3core/stencils/dyn_core.py",
-        "name": "Acoustic timestep",
-    },
-    {
-        "fn": "__call__",
-        "file": "fv3core/stencils/tracer_2d_1l.py",
-        "name": "Tracer advection",
-    },
-    {"fn": "compute", "file": "fv3core/stencils/remapping.py", "name": "Remapping"},
-    {
         "fn": "step_dynamics",
         "file": "fv3core/stencils/fv_dynamics.py",
         "name": get_name_from_frame,
@@ -73,6 +74,11 @@ functions_desc = [
         "fn": "synchronize",
         "file": "fv3gfs/util/halo_data_transformer.py",
         "name": "HaloDataTrf.synchronize",
+    },
+    {
+        "fn": "__call__",
+        "file": "fv3core/stencils/",
+        "name": get_object_wrapper_name,
     },
 ]
 
