@@ -652,8 +652,7 @@ for tile in range(6):
 
     serializer = ser.Serializer(
         ser.OpenModeKind.Read,
-        # "c12_6ranks_baroclinic_dycore_microphysics",
-        "c48_6ranks_standard",
+        "../../../examples/c12_6ranks_baroclinic_dycore_microphysics_day_10",
         "Generator_rank" + str(tile),
     )
     in_savepoint = serializer.get_savepoint("UpdateDWindsPhys-IN")[0]
@@ -662,8 +661,9 @@ for tile in range(6):
     print("> running ", f"tile-{tile}", in_savepoint)
     fortran2py_index_offset = 2
     index_data = {}
-    for index_var in ["isd", "ied", "jsd", "jed", "is", "js", "je", "npz"]:
+    for index_var in ["isd", "ied", "jsd", "jed", "is", "js", "je"]:
         index_data[index_var] = read_index_var(index_var, in_savepoint)
+    index_data["npz"] = serializer.read("npz", in_savepoint)[0]
     max_shape = (
         index_data["ied"] - index_data["isd"] + 2,
         index_data["jed"] - index_data["jsd"] + 2,
