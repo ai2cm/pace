@@ -193,62 +193,62 @@ OUT_VAR_APDS = [
     "IPD_vvl",
 ]
 
-IN_VARS_FVPHY = [ 
-     "delp", 
-     "omga", 
-     "pe", 
-     "peln", 
-     "phis", 
-     "pk", 
-     "pkz", 
-     "ps", 
-     "pt", 
-     "q_con", 
-     "qcld", 
-     "qgraupel", 
-     "qice", 
-     "qliquid", 
-     "qo3mr", 
-     "qrain", 
-     "qsnow", 
-     "qvapor", 
-     "t_dt", 
-     "u", 
-     "u_dt", 
-     "u_srf", 
-     "ua", 
-     "v", 
-     "v_dt", 
-     "v_srf", 
-     "va", 
-     "w" 
-] 
+IN_VARS_FVPHY = [
+    "delp",
+    "omga",
+    "pe",
+    "peln",
+    "phis",
+    "pk",
+    "pkz",
+    "ps",
+    "pt",
+    "q_con",
+    "qcld",
+    "qgraupel",
+    "qice",
+    "qliquid",
+    "qo3mr",
+    "qrain",
+    "qsnow",
+    "qvapor",
+    "t_dt",
+    "u",
+    "u_dt",
+    "u_srf",
+    "ua",
+    "v",
+    "v_dt",
+    "v_srf",
+    "va",
+    "w",
+]
 
-OUT_VARS_FVPHY = [ 
-     "delp", 
-     "omga", 
-     "pe", 
-     "peln", 
-     "phis", 
-     "pk", 
-     "pkz", 
-     "ps", 
-     "pt", 
-     "q_con", 
-     "qcld", 
-     "qgraupel", 
-     "qice", 
-     "qliquid", 
-     "qo3mr", 
-     "qrain", 
-     "qsnow", 
-     "qvapor", 
-     "u", 
-     "ua", 
-     "v", 
-     "va", 
-     "w" 
-] 
+OUT_VARS_FVPHY = [
+    "delp",
+    "omga",
+    "pe",
+    "peln",
+    "phis",
+    "pk",
+    "pkz",
+    "ps",
+    "pt",
+    "q_con",
+    "qcld",
+    "qgraupel",
+    "qice",
+    "qliquid",
+    "qo3mr",
+    "qrain",
+    "qsnow",
+    "qvapor",
+    "u",
+    "ua",
+    "v",
+    "va",
+    "w",
+]
 
 IN_VAR_DYNS = [
     "ak",
@@ -293,7 +293,7 @@ IN_VAR_DYNS = [
     "va",
     "vc",
     "w",
-    "zvir"
+    "zvir",
 ]
 
 OUT_VAR_DYNS = [
@@ -328,13 +328,10 @@ OUT_VAR_DYNS = [
     "v",
     "va",
     "vc",
-    "w"
+    "w",
 ]
 
-IN_FILL_GFS = [
-    "IPD_gq0",
-    "nb"
-]
+IN_FILL_GFS = ["IPD_gq0", "nb"]
 
 IN_VARS_UDWINDSPHYS = [
     "u",

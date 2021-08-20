@@ -329,7 +329,7 @@ def make_storage_from_shape(shape):
     )
 
 
-def read_index_var(index_var, savepoint):
+def read_index_var(index_var, savepoint, serializer):
     fortran2py_index_offset = 2
     return int(serializer.read(index_var, savepoint)[0] + fortran2py_index_offset)
 
@@ -644,7 +644,7 @@ IN_VARS = [
 ]
 
 OUT_VARS = ["u", "v"]
-for tile in range(6):
+for tile in range(1):
 
     if SELECT_SP is not None:
         if tile != SELECT_SP["tile"]:
@@ -652,7 +652,7 @@ for tile in range(6):
 
     serializer = ser.Serializer(
         ser.OpenModeKind.Read,
-        "../../../examples/c12_6ranks_baroclinic_dycore_microphysics_day_10",
+        "c12_6ranks_baroclinic_dycore_microphysics_day_10",
         "Generator_rank" + str(tile),
     )
     in_savepoint = serializer.get_savepoint("UpdateDWindsPhys-IN")[0]
@@ -661,8 +661,8 @@ for tile in range(6):
     print("> running ", f"tile-{tile}", in_savepoint)
     fortran2py_index_offset = 2
     index_data = {}
-    for index_var in ["isd", "ied", "jsd", "jed", "is", "js", "je"]:
-        index_data[index_var] = read_index_var(index_var, in_savepoint)
+    for index_var in ["isd", "ied", "jsd", "jed", "is", "ie", "js", "je"]:
+        index_data[index_var] = read_index_var(index_var, in_savepoint, serializer)
     index_data["npz"] = serializer.read("npz", in_savepoint)[0]
     max_shape = (
         index_data["ied"] - index_data["isd"] + 2,
@@ -679,21 +679,19 @@ for tile in range(6):
         IN_VARS, serializer, in_savepoint, max_shape, start_indices, axes
     )
     in_data.update(index_data)
-    # TODO, put ie in savepoint data or move to code with a grid
-    # this is only valid for 6 ranks:
-    in_data["ie"] = in_data["je"]
+
     in_data["dt"] = 225.0
     in_data["nic"] = in_data["ie"] - in_data["is"] + 1
     in_data["njc"] = in_data["je"] - in_data["js"] + 1
     in_data["npx"] = int(in_data["npx"])
     in_data["npy"] = int(in_data["npy"])
 
-    # run Python version
-    update_dwind_phys(in_data)
-    out_data = {key: value for key, value in in_data.items() if key in OUT_VARS}
-    # read serialized output data
-    ref_data = storage_dict_from_var_list(
-        OUT_VARS, serializer, out_savepoint, max_shape, start_indices, axes
-    )
-    compare_data(out_data, ref_data)
-    print("SUCCESS tile", tile)
+    # # run Python version
+    # update_dwind_phys(in_data)
+    # out_data = {key: value for key, value in in_data.items() if key in OUT_VARS}
+    # # read serialized output data
+    # ref_data = storage_dict_from_var_list(
+    #     OUT_VARS, serializer, out_savepoint, max_shape, start_indices, axes
+    # )
+    # compare_data(out_data, ref_data)
+    # print("SUCCESS tile", tile)

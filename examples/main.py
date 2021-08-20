@@ -67,10 +67,11 @@ def compare_data(exp_data, ref_data):
         #     "Data does not match for field " + key
         # )
 
-comm = MPI.COMM_WORLD    
+
+comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
-#data_dir = "c12_6ranks_baroclinic_dycore_microphysics"
+# data_dir = "c12_6ranks_baroclinic_dycore_microphysics"
 data_dir = "c12_6ranks_baroclinic_dycore_microphysics_day_10"
 
 spec.set_namelist(data_dir + "/input.nml")
@@ -129,7 +130,7 @@ for sp in savepoints:
         in_data_pd = data_dict_from_var_list(IN_VARS_GFSPD, serializer, sp)
 
         # run Python version
-        out_data_pd = physics_driver.run(in_data_pd)
+        out_data_pd = physics_driver.run(in_data_pd, tile)
 
         isready = True
 
@@ -161,17 +162,10 @@ for sp in savepoints:
         in_data["vgrs"] = in_data_pd["IPD_vgrs"]
         in_data["IPD_area"] = in_data_pd["IPD_area"]
 
-        # Note : Currently microphysics doesn't verify with the c12 10 day data, so these outputs
-        #        cannot be used for verification purposes
-        # in_data["gq0"] = out_data_pd["IPD_gq0"]
-        # in_data["gt0"] = out_data_pd["IPD_gt0"]
-        # in_data["gu0"] = out_data_pd["IPD_gu0"]
-        # in_data["gv0"] = out_data_pd["IPD_gv0"]
-
-        in_data["gq0"] = ref_data_pd["IPD_gq0"]
-        in_data["gt0"] = ref_data_pd["IPD_gt0"]
-        in_data["gu0"] = ref_data_pd["IPD_gu0"]
-        in_data["gv0"] = ref_data_pd["IPD_gv0"]            
+        in_data["gq0"] = out_data_pd["IPD_gq0"]
+        in_data["gt0"] = out_data_pd["IPD_gt0"]
+        in_data["gu0"] = out_data_pd["IPD_gu0"]
+        in_data["gv0"] = out_data_pd["IPD_gv0"]
 
         in_data["nq"] = (
             in_data_fvd["nq_tot"] - 1
@@ -212,30 +206,31 @@ for sp in savepoints:
 
         # in_data["u"]     = np.reshape(ref_data["u"][3:-3, 3:-4,:], (144,79), order="F")
         # in_data["v"]     = np.reshape(ref_data["v"][3:-4, 3:-3,:], (144,79), order="F")
-        in_data["u"]     = ref_data["u"]
-        in_data["v"]     = ref_data["v"]
-        in_data["w"]     = np.reshape(ref_data["w"][3:-3, 3:-3,:], (144,79), order="F")
+        in_data["u"] = ref_data["u"]
+        in_data["v"] = ref_data["v"]
+        in_data["w"] = np.reshape(ref_data["w"][3:-3, 3:-3, :], (144, 79), order="F")
 
-        in_data["pt"]    = np.reshape(ref_data["pt"][3:-3, 3:-3,:], (144,79), order="F")
-        in_data["ua"]    = np.reshape(ref_data["ua"][3:-3, 3:-3,:], (144,79), order="F")
-        in_data["va"]    = np.reshape(ref_data["va"][3:-3, 3:-3,:], (144,79), order="F")
+        in_data["pt"] = np.reshape(ref_data["pt"][3:-3, 3:-3, :], (144, 79), order="F")
+        in_data["ua"] = np.reshape(ref_data["ua"][3:-3, 3:-3, :], (144, 79), order="F")
+        in_data["va"] = np.reshape(ref_data["va"][3:-3, 3:-3, :], (144, 79), order="F")
 
-        in_data["ps"]    = np.reshape(ref_data["ps"][3:-3, 3:-3], (144), order="F")
-        in_data["pe"]    = ref_data["pe"]
-        in_data["peln"]  = ref_data["peln"]
-        in_data["pk"]    = np.reshape(ref_data["pk"], (144,80), order="F")
-        in_data["pkz"]   = np.reshape(ref_data["pkz"], (144, 79), order="F")
-        in_data["phis"]  = np.reshape(ref_data["phis"][3:-3, 3:-3], (144), order="F")
-        in_data["u_srf"] = np.reshape(ref_data["u_srf"],(144), order="F")
-        in_data["v_srf"] = np.reshape(ref_data["v_srf"],(144), order="F")
-
+        in_data["ps"] = np.reshape(ref_data["ps"][3:-3, 3:-3], (144), order="F")
+        in_data["pe"] = ref_data["pe"]
+        in_data["peln"] = ref_data["peln"]
+        in_data["pk"] = np.reshape(ref_data["pk"], (144, 80), order="F")
+        in_data["pkz"] = np.reshape(ref_data["pkz"], (144, 79), order="F")
+        in_data["phis"] = np.reshape(ref_data["phis"][3:-3, 3:-3], (144), order="F")
+        in_data["u_srf"] = np.reshape(ref_data["u_srf"], (144), order="F")
+        in_data["v_srf"] = np.reshape(ref_data["v_srf"], (144), order="F")
 
         in_savepoint_dwind = serializer.get_savepoint("UpdateDWindsPhys-IN")[0]
         fortran2py_index_offset = 2
         index_data = {}
-        for index_var in ["isd", "ied", "jsd", "jed", "is", "js", "je", "npz"]:
-            index_data[index_var] = udp.read_index_var(index_var, in_savepoint_dwind, serializer)
-
+        for index_var in ["isd", "ied", "jsd", "jed", "is", "ie", "js", "je"]:
+            index_data[index_var] = udp.read_index_var(
+                index_var, in_savepoint_dwind, serializer
+            )
+        index_data["npz"] = serializer.read("npz", in_savepoint_dwind)[0]
         max_shape = (
             index_data["ied"] - index_data["isd"] + 2,
             index_data["jed"] - index_data["jsd"] + 2,
@@ -243,33 +238,62 @@ for sp in savepoints:
         )
 
         start_indices = {
-        "vlon": (index_data["isd"] + 1, index_data["jsd"] + 1),
-        "vlat": (index_data["isd"] + 1, index_data["jsd"] + 1),
+            "vlon": (index_data["isd"] + 1, index_data["jsd"] + 1),
+            "vlat": (index_data["isd"] + 1, index_data["jsd"] + 1),
         }
         axes = {"edge_vect_s": 0, "edge_vect_n": 0, "edge_vect_w": 1, "edge_vect_e": 1}
         # read serialized input data
         in_data_uwindsphys = udp.storage_dict_from_var_list(
-            #IN_VARS_UDWINDSPHYS, serializer, in_savepoint_dwind, max_shape, start_indices, axes
-            IN_VARS_UDWINDSPHYS,serializer,in_savepoint_dwind,max_shape,start_indices, axes,
+            # IN_VARS_UDWINDSPHYS, serializer, in_savepoint_dwind, max_shape, start_indices, axes
+            IN_VARS_UDWINDSPHYS,
+            serializer,
+            in_savepoint_dwind,
+            max_shape,
+            start_indices,
+            axes,
         )
 
         in_data_uwindsphys.update(index_data)
 
-        # TODO, put ie in savepoint data or move to code with a grid
-        # this is only valid for 6 ranks:
-        in_data_uwindsphys["ie"] = in_data_uwindsphys["je"]
         in_data_uwindsphys["dt"] = 225.0
-        in_data_uwindsphys["nic"] = in_data_uwindsphys["ie"] - in_data_uwindsphys["is"] + 1
-        in_data_uwindsphys["njc"] = in_data_uwindsphys["je"] - in_data_uwindsphys["js"] + 1
+        in_data_uwindsphys["nic"] = (
+            in_data_uwindsphys["ie"] - in_data_uwindsphys["is"] + 1
+        )
+        in_data_uwindsphys["njc"] = (
+            in_data_uwindsphys["je"] - in_data_uwindsphys["js"] + 1
+        )
         in_data_uwindsphys["npx"] = int(in_data_uwindsphys["npx"])
         in_data_uwindsphys["npy"] = int(in_data_uwindsphys["npy"])
         in_data_uwindsphys["max_shape"] = max_shape
 
         in_savepoint_grid_info = serializer.get_savepoint("Grid-Info")[0]
-        in_data_grid = data_dict_from_var_list(["dx", "dy", "a11", "a12", "a21", "a22", "ie", 
-            "ied", "is_", "isd", "je", "jed", "js", "jsd", "npx", "npy"], serializer, in_savepoint_grid_info, False)
+        in_data_grid = data_dict_from_var_list(
+            [
+                "dx",
+                "dy",
+                "a11",
+                "a12",
+                "a21",
+                "a22",
+                "ie",
+                "ied",
+                "is_",
+                "isd",
+                "je",
+                "jed",
+                "js",
+                "jsd",
+                "npx",
+                "npy",
+            ],
+            serializer,
+            in_savepoint_grid_info,
+            False,
+        )
 
-        out_data = update_atmos_model_state.run(in_data, in_data_uwindsphys, in_data_grid, spec.grid, communicator)
+        out_data = update_atmos_model_state.run(
+            in_data, in_data_uwindsphys, in_data_grid, spec.grid, communicator
+        )
 
         # print("After update_atmos_model_state")
 
@@ -289,101 +313,24 @@ for sp in savepoints:
         # np.testing.assert_allclose(out_data["u_dt"], u_dt, atol=1e-8)
         # np.testing.assert_allclose(out_data["v_dt"], v_dt, atol=1e-8)
         np.testing.assert_allclose(out_data["t_dt"], t_dt, atol=1e-5)
-        
-        np.testing.assert_allclose(out_data["q"][:,:,0], qvapor)
-        np.testing.assert_allclose(out_data["q"][:,:,1], qliquid)
-        np.testing.assert_allclose(out_data["q"][:,:,2], qrain)
-        np.testing.assert_allclose(out_data["q"][:,:,3], qsnow, atol=1e-5)
-        np.testing.assert_allclose(out_data["q"][:,:,4], qice, atol=1e-5)
-        np.testing.assert_allclose(out_data["q"][:,:,5], qgraupel)
+
+        np.testing.assert_allclose(out_data["q"][:, :, 0], qvapor)
+        np.testing.assert_allclose(out_data["q"][:, :, 1], qliquid)
+        np.testing.assert_allclose(out_data["q"][:, :, 2], qrain)
+        np.testing.assert_allclose(out_data["q"][:, :, 3], qsnow, atol=1e-5)
+        np.testing.assert_allclose(out_data["q"][:, :, 4], qice, atol=1e-5)
+        np.testing.assert_allclose(out_data["q"][:, :, 5], qgraupel)
 
         out_savepoint = serializer.get_savepoint("UpdateDWindsPhys-OUT")[0]
         ref_data_udp_out = udp.storage_dict_from_var_list(
-           ["u","v"], serializer, out_savepoint, max_shape, start_indices, axes
+            ["u", "v"], serializer, out_savepoint, max_shape, start_indices, axes
         )
         u_ref = np.zeros(ref_data_udp_out["u"].shape)
         v_ref = np.zeros(ref_data_udp_out["v"].shape)
-        u_ref[:,:,:] = ref_data_udp_out["u"][:,:,:]
-        v_ref[:,:,:] = ref_data_udp_out["v"][:,:,:]
-        np.testing.assert_allclose(out_data['u'], u_ref,atol=1e-6)
-        np.testing.assert_allclose(out_data['v'], v_ref,atol=1e-6)
-
-        # Note : Verification of u_dt and v_dt should be done before call to update_dwind_phys
-        #        Trying to verify after update_dwind_phys may result in unmatched data from 
-        #        in_data_uwindsphys savepoint.
-        # u_dt_ref = np.zeros(in_data_uwindsphys['u_dt'].shape)
-        # u_dt_ref[:,:,:] = in_data_uwindsphys['u_dt'][:,:,:]
-        # v_dt_ref = np.zeros(in_data_uwindsphys['v_dt'].shape)
-        # v_dt_ref[:,:,:] = in_data_uwindsphys['u_dt'][:,:,:]
-        # np.testing.assert_allclose(out_data['u_dt'], v_dt_ref,atol=1e-8)
-        # np.testing.assert_allclose(out_data['v_dt'], u_dt_ref,atol=1e-8)
-
-
-
-        #***************************************************************************
-
-    # if sp.name.startswith("PrsFV3-In"):
-    #     print("> running ", f"tile-{tile}", sp)
-
-    #     # read serialized input data
-    #     ref_data = data_dict_from_var_list(IN_VARS_PRS, serializer, sp)
-
-    #     compare_data(out_data_preprs, ref_data)
-
-            # run Python version
-        out_data = physics_driver.run(in_data, tile)
-    # if sp.name.startswith("PrsFV3-Out"):
-    #     print("> running ", f"tile-{tile}", sp)
-
-    #     # read serialized input data
-    #     ref_data = data_dict_from_var_list(OUT_VARS_PRS, serializer, sp)
-
-    #     compare_data(out_data_postphi, ref_data)
-
-    # if sp.name.startswith("PhiFV3-In"):
-    #     print("> running ", f"tile-{tile}", sp)
-
-    #     # read serialized input data
-    #     ref_data = data_dict_from_var_list(IN_VARS_PHI, serializer, sp)
-
-    #     compare_data(out_data_prephi, ref_data)
-
-    # if sp.name.startswith("Microph-Out"):
-    #     print("> running ", f"tile-{tile}", sp)
-
-    #     # read serialized input data
-    #     ref_data = data_dict_from_var_list(OUT_VARS_MICROPH, serializer, sp)
-
-    #     compare_data(out_data_postphi, ref_data)
-
-    if sp.name.startswith("GFSPhysicsDriver-OUT"):
-        print("> running ", f"tile-{tile}", sp)
-
-        # read serialized input data
-        ref_data_pd = data_dict_from_var_list(OUT_VARS_GFSPD, serializer, sp)
-
-        # if sp.name.startswith("Microph-In"):
-        #     print("> running ", f"tile-{tile}", sp)
-
-        #     # read serialized input data
-        #     ref_data = data_dict_from_var_list(IN_VARS_MICROPH, serializer, sp)
-        #     ref_data_rename = {}
-        #     for key in ref_data.keys():
-        #         ref_data_rename[key.replace("mph_", "")] = ref_data[key]
-        #     compare_data(out_data, ref_data_rename)
-
-        # if sp.name.startswith("Microph-Out"):
-        #     print("> running ", f"tile-{tile}", sp)
-
-        #     # read serialized input data
-        #     ref_data = data_dict_from_var_list(OUT_VARS_MICROPH, serializer, sp)
-        #     ref_data_rename = {}
-        #     for key in ref_data.keys():
-        #         ref_data_rename[key.replace("mph_", "")] = ref_data[key]
-        #     compare_data(out_data, ref_data_rename)
-        compare_data(out_data_pd, ref_data_pd)
-
-        isready = False
+        u_ref[:, :, :] = ref_data_udp_out["u"][:, :, :]
+        v_ref[:, :, :] = ref_data_udp_out["v"][:, :, :]
+        np.testing.assert_allclose(out_data["u"], u_ref, atol=1e-6)
+        np.testing.assert_allclose(out_data["v"], v_ref, atol=1e-6)
 
     if sp.name.startswith("FVUpdatePhys-Out"):
         print("> running ", f"tile-{tile}", sp)
@@ -392,12 +339,14 @@ for sp in savepoints:
         ref_data = data_dict_from_var_list(OUT_VARS_FVPHY, serializer, sp, False)
 
         ps = np.reshape(ref_data["ps"][3:-3, 3:-3], (144), order="F")
-        pt = np.reshape(ref_data["pt"][3:-3, 3:-3,:], (144,79), order="F")
-        pk = np.reshape(ref_data["pk"], (144,80), order="F")
+        pt = np.reshape(ref_data["pt"][3:-3, 3:-3, :], (144, 79), order="F")
+        pk = np.reshape(ref_data["pk"], (144, 80), order="F")
 
-        #compare_data(out_data_fup, ref_data)
-        np.testing.assert_allclose(out_data["ps"],ps)
-        np.testing.assert_allclose(out_data["pt"],pt,atol=1e-4) # There's ONE number in the C12 10 Day dataset that won't verify without atol being set
-        np.testing.assert_allclose(out_data["pe"],ref_data["pe"])
-        np.testing.assert_allclose(out_data["peln"],ref_data["peln"])
-        np.testing.assert_allclose(out_data["pk"],pk)
+        # compare_data(out_data_fup, ref_data)
+        np.testing.assert_allclose(out_data["ps"], ps)
+        np.testing.assert_allclose(
+            out_data["pt"], pt, atol=1e-4
+        )  # There's ONE number in the C12 10 Day dataset that won't verify without atol being set
+        np.testing.assert_allclose(out_data["pe"], ref_data["pe"])
+        np.testing.assert_allclose(out_data["peln"], ref_data["peln"])
+        np.testing.assert_allclose(out_data["pk"], pk)
