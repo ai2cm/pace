@@ -406,13 +406,6 @@ def physics_driver(
         dz[:, :, k] = (phii[:, :, k] - phii[:, :, k - 1]) * rgrav
     p123[:, :, :] = prsl
     refl[:, :, :] = refl_10cm
-    debug = {}
-    debug["omga"] = vvl
-    debug["qv1"] = qv1
-    debug["gt0"] = gt0
-    debug["prsl"] = prsl
-    debug["w"] = w
-    np.save("standalone_before_wcalc_rank_" + str(tile) + ".npy", debug)
     mph_input = {}
     mph_input["area"] = area
     mph_input["delp"] = delp

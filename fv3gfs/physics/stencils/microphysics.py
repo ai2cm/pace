@@ -1900,15 +1900,6 @@ class Microphysics:
         self._ice = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._snow = utils.make_storage_from_shape(shape, origin=origin, init=True)
 
-        self._p = utils.make_storage_from_shape(
-            shape, origin=origin, init=True
-        )  # related to dp in dycore, but modified
-        self._w = utils.make_storage_from_shape(
-            shape, origin=origin, init=True
-        )  # related to omga from dycore, but modified
-        # refl_10cm comes from Diag, not clear if this should be updated?
-        self.refl_10cm = utils.make_storage_from_shape(shape, origin=origin, init=True)
-
         self._h_var = utils.make_storage_from_shape(shape, origin=origin)
         self._rh_adj = utils.make_storage_from_shape(shape, origin=origin)
         self._rh_rain = utils.make_storage_from_shape(shape, origin=origin)
@@ -1962,7 +1953,6 @@ class Microphysics:
         self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / tau_imlt)
         self._fac_l2v = 1.0 - np.exp(-self._dt_evap / tau_l2v)
 
-        # TODO: origin should be (3,3,0)
         self._fields_init = FrozenStencil(
             func=fields_init,
             origin=self.grid.grid_indexing.origin_compute(),
@@ -2129,25 +2119,7 @@ class Microphysics:
         self._cgmlt = cgmlt
         self._ces0 = eps * es0
 
-    def __call__(self, state: MicrophysicsState, rank):
-        debug = {}
-        debug["area"] = self._area
-        debug["dz"] = state.dz
-        debug["w"] = state.wmp
-        debug["p123"] = state.delp
-        debug["delp"] = state.delprsi
-        debug["pt"] = state.pt
-        debug["pt_dt"] = state.pt_dt
-        debug["qa1"] = state.qcld
-        debug["qg1"] = state.qgraupel
-        debug["qi1"] = state.qice
-        debug["ql1"] = state.qliquid
-        debug["qr1"] = state.qrain
-        debug["qs1"] = state.qsnow
-        debug["qv1"] = state.qvapor
-        debug["uin"] = state.ua
-        debug["vin"] = state.va
-        np.save("integrated_before_microph_rank_" + str(rank) + ".npy", debug)
+    def __call__(self, state: MicrophysicsState):
         self._fields_init(
             self._land,
             self._area,
@@ -2446,16 +2418,3 @@ class Microphysics:
             self._rdt,
         )
         print("Microphysics")
-        debug = {
-            "qv_dt": state.qv_dt,
-            "ql_dt": state.ql_dt,
-            "qr_dt": state.qr_dt,
-            "qi_dt": state.qi_dt,
-            "qs_dt": state.qs_dt,
-            "qg_dt": state.qg_dt,
-            "qa_dt": state.qa_dt,
-            "pt_dt": state.pt_dt,
-            "udt": state.udt,
-            "vdt": state.vdt,
-        }
-        np.save("integrated_after_microph_rank_" + str(rank) + ".npy", debug)

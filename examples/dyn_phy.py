@@ -90,17 +90,5 @@ dycore.step_dynamics(
     input_data["ks"],
 )
 
-# full_state = {}
-# for key in state.keys():
-#     var = state[key]
-#     if isinstance(var, gt4py.storage.storage.CPUStorage):
-#         full_state[key] = state[key]
-#     if isinstance(var, util.Quantity):
-#         full_state[key] = state[key]
-# np.save("Integrated_full_state_rank" + str(rank) + ".npy", full_state)
-# state = np.load(
-#     "Integrated_full_state_rank" + str(rank) + ".npy", allow_pickle=True
-# ).item()
-fv3core.set_rebuild(True)
 phy = Physics(grid, spec.namelist)
 phy(state, rank)

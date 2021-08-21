@@ -245,26 +245,6 @@ class Physics:
             physics_state.pt,
             self._dm3d,
         )
-        debug = {}
-        debug["prsik"] = self._prsik
-        debug["phii"] = physics_state.phii
-        debug["prsi"] = self._prsi
-        debug["delz"] = physics_state.delz
-        debug["delp"] = physics_state.delp
-        debug["qvapor"] = physics_state.qvapor
-        debug["qliquid"] = physics_state.qliquid
-        debug["qrain"] = physics_state.qrain
-        debug["qice"] = physics_state.qice
-        debug["qsnow"] = physics_state.qsnow
-        debug["qgraupel"] = physics_state.qgraupel
-        debug["qo3mr"] = physics_state.qo3mr
-        debug["qsgs_tke"] = physics_state.qsgs_tke
-        debug["qcld"] = physics_state.qcld
-        debug["pt"] = physics_state.pt
-        np.save(
-            "integrated_after_prep_physics_stencil_rank_" + str(rank) + ".npy", debug
-        )
-
         self._get_prs_fv3(
             physics_state.phii,
             self._prsi,
@@ -273,15 +253,6 @@ class Physics:
             physics_state.delprsi,
             self._del_gz,
         )
-        debug = {}
-        debug["phii"] = physics_state.phii
-        debug["prsi"] = self._prsi
-        debug["pt"] = physics_state.pt
-        debug["qvapor"] = physics_state.qvapor
-        debug["delp"] = physics_state.delp
-        debug["del"] = physics_state.delprsi
-        debug["del_gz"] = self._del_gz
-        np.save("integrated_after_prsfv3_rank_" + str(rank) + ".npy", debug)
         # If PBL scheme is present, physics_state should be updated here
         self._get_phi_fv3(
             physics_state.pt,
@@ -290,13 +261,6 @@ class Physics:
             physics_state.phii,
             physics_state.phil,
         )
-        debug = {}
-        debug["phii"] = physics_state.phii
-        debug["phil"] = physics_state.phil
-        debug["pt"] = physics_state.pt
-        debug["qvapor"] = physics_state.qvapor
-        debug["del_gz"] = self._del_gz
-        np.save("integrated_after_phifv3_rank_" + str(rank) + ".npy", debug)
         self._prepare_microphysics(
             physics_state.dz,
             physics_state.phii,
@@ -307,7 +271,7 @@ class Physics:
             physics_state.delp,
         )
         microph_state = physics_state.microphysics(storage)
-        self._microphysics(microph_state, rank)
+        self._microphysics(microph_state)
         # Fortran uses IPD interface, here we use var_t1 to denote the updated field
         self._update_physics_state_with_tendencies(
             physics_state.qvapor,
@@ -342,6 +306,7 @@ class Physics:
             physics_state.va_t1,
             self._dt_atmos,
         )
+        # The following variables can be verified after update_atmos_radiation_physics savepoint
         debug = {}
         debug["IPD_gt0"] = physics_state.pt_t1
         debug["IPD_gu0"] = physics_state.ua_t1
