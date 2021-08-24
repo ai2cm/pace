@@ -1,8 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
+import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
-from fv3core.utils.grid import axis_offsets
+from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.util import CubedSphereCommunicator
 from fv3gfs.util.quantity import Quantity
@@ -74,34 +75,35 @@ class CubedToLatLon:
     Fortan name is c2l_ord2
     """
 
-    def __init__(self, grid, namelist):
+    def __init__(self, grid_indexing: GridIndexing, grid_data: GridData, order: int):
         """
         Initializes stencils to use either 2nd or 4th order of interpolation
         based on namelist setting
         Args:
-            grid: fv3core grid object
-            namelist:
-                c2l_ord: Order of interpolation
-            do_halo_update: Optional. If passed, overrides global halo exchange flag
-                            and performs a halo update on u and v
+            grid_indexing: fv3core grid indexing object
+            grid_data: object with metric terms
+            order: Order of interpolation, must be 2 or 4
         """
-        self._do_ord4 = True
-        self.grid = grid
-        if namelist.c2l_ord == 2:
+        self._n_halo = grid_indexing.n_halo
+        self._dx = grid_data.dx
+        self._dy = grid_data.dy
+        # TODO: define these based on data from grid_data
+        self._a11 = spec.grid.a11
+        self._a12 = spec.grid.a12
+        self._a21 = spec.grid.a21
+        self._a22 = spec.grid.a22
+        if order == 2:
             self._do_ord4 = False
             self._compute_cubed_to_latlon = FrozenStencil(
                 func=c2l_ord2,
-                origin=self.grid.compute_origin(
-                    add=(-1, -1, 0) if self._do_halo_update else (0, 0, 0)
-                ),
-                domain=self.grid.domain_shape_compute(
-                    add=(2, 2, 0) if self._do_halo_update else (0, 0, 0)
-                ),
+                origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
+                domain=grid_indexing.domain_compute(add=(2, 2, 0)),
             )
         else:
-            origin = self.grid.compute_origin()
-            domain = self.grid.domain_shape_compute()
-            ax_offsets = axis_offsets(self.grid, origin, domain)
+            self._do_ord4 = True
+            origin = grid_indexing.origin_compute()
+            domain = grid_indexing.domain_compute()
+            ax_offsets = axis_offsets(grid_indexing, origin, domain)
             self._compute_cubed_to_latlon = FrozenStencil(
                 func=ord4_transform,
                 externals={
@@ -129,16 +131,16 @@ class CubedToLatLon:
             comm: Cubed-sphere communicator
         """
         if self._do_ord4:
-            comm.vector_halo_update(u, v, n_points=self.grid.halo)
+            comm.vector_halo_update(u, v, n_points=self._n_halo)
         self._compute_cubed_to_latlon(
             u.storage,
             v.storage,
-            self.grid.dx,
-            self.grid.dy,
-            self.grid.a11,
-            self.grid.a12,
-            self.grid.a21,
-            self.grid.a22,
+            self._dx,
+            self._dy,
+            self._a11,
+            self._a12,
+            self._a21,
+            self._a22,
             ua,
             va,
         )

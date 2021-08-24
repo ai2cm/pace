@@ -19,7 +19,10 @@ class TranslateCubedToLatLon(ParallelTranslate2Py):
     def __init__(self, grids):
         super().__init__(grids)
         grid = grids[0]
-        self._base.compute_func = CubedToLatLon(grid, spec.namelist)
+        spec.set_grid(grid)
+        self._base.compute_func = CubedToLatLon(
+            grid.grid_indexing, grid.grid_data, order=spec.namelist.c2l_ord
+        )
         self._base.in_vars["data_vars"] = {"u": {}, "v": {}, "ua": {}, "va": {}}
         self._base.out_vars = {
             "ua": {},

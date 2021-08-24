@@ -3,11 +3,12 @@ import math
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, PARALLEL, computation, exp, floor, interval, log
 
-import fv3core._config as spec
 import fv3core.utils.global_constants as constants
+from fv3core._config import SatAdjustConfig
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import dim
 from fv3core.stencils.moist_cv import compute_pkz_func
+from fv3core.utils.grid import GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -897,33 +898,39 @@ def satadjust(
 
 
 class SatAdjust3d:
-    def __init__(self, kmp):
-        self.grid = spec.grid
-        self.namelist = spec.namelist
+    def __init__(
+        self, grid_indexing: GridIndexing, config: SatAdjustConfig, area_64, kmp
+    ):
+        self._config = config
+        self._area_64 = area_64
 
         self._satadjust_stencil = FrozenStencil(
             func=satadjust,
             externals={
-                "hydrostatic": self.namelist.hydrostatic,
-                "rad_snow": self.namelist.rad_snow,
-                "rad_rain": self.namelist.rad_rain,
-                "rad_graupel": self.namelist.rad_graupel,
-                "tintqs": self.namelist.tintqs,
-                "sat_adj0": self.namelist.sat_adj0,
-                "ql_gen": self.namelist.ql_gen,
-                "qs_mlt": self.namelist.qs_mlt,
-                "ql0_max": self.namelist.ql0_max,
-                "t_sub": self.namelist.t_sub,
-                "qi_gen": self.namelist.qi_gen,
-                "qi_lim": self.namelist.qi_lim,
-                "qi0_max": self.namelist.qi0_max,
-                "dw_ocean": self.namelist.dw_ocean,
-                "dw_land": self.namelist.dw_land,
-                "icloud_f": self.namelist.icloud_f,
-                "cld_min": self.namelist.cld_min,
+                "hydrostatic": self._config.hydrostatic,
+                "rad_snow": self._config.rad_snow,
+                "rad_rain": self._config.rad_rain,
+                "rad_graupel": self._config.rad_graupel,
+                "tintqs": self._config.tintqs,
+                "sat_adj0": self._config.sat_adj0,
+                "ql_gen": self._config.ql_gen,
+                "qs_mlt": self._config.qs_mlt,
+                "ql0_max": self._config.ql0_max,
+                "t_sub": self._config.t_sub,
+                "qi_gen": self._config.qi_gen,
+                "qi_lim": self._config.qi_lim,
+                "qi0_max": self._config.qi0_max,
+                "dw_ocean": self._config.dw_ocean,
+                "dw_land": self._config.dw_land,
+                "icloud_f": self._config.icloud_f,
+                "cld_min": self._config.cld_min,
             },
-            origin=(self.grid.is_, self.grid.js, kmp),
-            domain=(self.grid.nic, self.grid.njc, (self.grid.npz - kmp)),
+            origin=(grid_indexing.isc, grid_indexing.jsc, kmp),
+            domain=(
+                grid_indexing.domain[0],
+                grid_indexing.domain[1],
+                (grid_indexing.domain[2] - kmp),
+            ),
         )
 
     def __call__(
@@ -953,21 +960,21 @@ class SatAdjust3d:
     ):
         sdt = 0.5 * mdt  # half remapping time step
         # define conversion scalar / factor
-        fac_i2s = 1.0 - math.exp(-mdt / self.namelist.tau_i2s)
-        fac_v2l = 1.0 - math.exp(-sdt / self.namelist.tau_v2l)
-        fac_r2g = 1.0 - math.exp(-mdt / self.namelist.tau_r2g)
-        fac_l2r = 1.0 - math.exp(-mdt / self.namelist.tau_l2r)
+        fac_i2s = 1.0 - math.exp(-mdt / self._config.tau_i2s)
+        fac_v2l = 1.0 - math.exp(-sdt / self._config.tau_v2l)
+        fac_r2g = 1.0 - math.exp(-mdt / self._config.tau_r2g)
+        fac_l2r = 1.0 - math.exp(-mdt / self._config.tau_l2r)
 
-        fac_l2v = 1.0 - math.exp(-sdt / self.namelist.tau_l2v)
-        fac_l2v = min(self.namelist.sat_adj0, fac_l2v)
+        fac_l2v = 1.0 - math.exp(-sdt / self._config.tau_l2v)
+        fac_l2v = min(self._config.sat_adj0, fac_l2v)
 
-        fac_imlt = 1.0 - math.exp(-sdt / self.namelist.tau_imlt)
-        fac_smlt = 1.0 - math.exp(-mdt / self.namelist.tau_smlt)
+        fac_imlt = 1.0 - math.exp(-sdt / self._config.tau_imlt)
+        fac_smlt = 1.0 - math.exp(-mdt / self._config.tau_smlt)
 
         # define heat capacity of dry air and water vapor based on hydrostatical
         # property
 
-        if self.namelist.hydrostatic:
+        if self._config.hydrostatic:
             c_air = constants.CP_AIR
             c_vap = constants.CP_VAP
         else:
@@ -994,7 +1001,7 @@ class SatAdjust3d:
             te,
             q_con,
             qcld,
-            self.grid.area_64,
+            self._area_64,
             hs,
             pkz,
             sdt,

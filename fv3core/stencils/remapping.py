@@ -16,6 +16,7 @@ from gt4py.gtscript import (
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+from fv3core._config import RemappingConfig
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import adjust_divide_stencil
 from fv3core.stencils.map_single import MapSingle
@@ -206,19 +207,22 @@ class LagrangianToEulerian:
     Fortran name is Lagrangian_to_Eulerian
     """
 
-    def __init__(self, grid, namelist, nq, pfull):
-        if namelist.kord_tm >= 0:
-            raise Exception("map ppm, untested mode where kord_tm >= 0")
-
-        hydrostatic = namelist.hydrostatic
+    def __init__(self, grid_indexing, config: RemappingConfig, area_64, nq, pfull):
+        if config.kord_tm >= 0:
+            raise NotImplementedError("map ppm, untested mode where kord_tm >= 0")
+        hydrostatic = config.hydrostatic
         if hydrostatic:
-            raise Exception("Hydrostatic is not implemented")
+            raise NotImplementedError("Hydrostatic is not implemented")
 
-        shape_kplus = grid.domain_shape_full(add=(0, 0, 1))
+        shape_kplus = grid_indexing.domain_full(add=(0, 0, 1))
         self._t_min = 184.0
         self._nq = nq
         # do_omega = hydrostatic and last_step # TODO pull into inputs
-        self._domain_jextra = (grid.nic, grid.njc + 1, grid.npz + 1)
+        self._domain_jextra = (
+            grid_indexing.domain[0],
+            grid_indexing.domain[1] + 1,
+            grid_indexing.domain[2] + 1,
+        )
 
         self._pe1 = utils.make_storage_from_shape(shape_kplus)
         self._pe2 = utils.make_storage_from_shape(shape_kplus)
@@ -228,118 +232,177 @@ class LagrangianToEulerian:
         self._pe3 = utils.make_storage_from_shape(shape_kplus)
 
         self._gz: FloatField = utils.make_storage_from_shape(
-            shape_kplus, grid.compute_origin()
+            shape_kplus, grid_indexing.origin_compute()
         )
         self._cvm: FloatField = utils.make_storage_from_shape(
-            shape_kplus, grid.compute_origin()
+            shape_kplus, grid_indexing.origin_compute()
         )
 
         self._init_pe = FrozenStencil(
-            init_pe, origin=grid.compute_origin(), domain=self._domain_jextra
+            init_pe, origin=grid_indexing.origin_compute(), domain=self._domain_jextra
         )
 
         self._moist_cv_pt_pressure = FrozenStencil(
             moist_cv_pt_pressure,
-            externals={"kord_tm": namelist.kord_tm, "hydrostatic": hydrostatic},
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(add=(0, 0, 1)),
+            externals={"kord_tm": config.kord_tm, "hydrostatic": hydrostatic},
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._moist_cv_pkz = FrozenStencil(
             moist_cv.moist_pkz,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
 
         self._pn2_pk_delp = FrozenStencil(
             pn2_pk_delp,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
 
-        self._kord_tm = abs(namelist.kord_tm)
+        self._kord_tm = abs(config.kord_tm)
         self._map_single_pt = MapSingle(
-            self._kord_tm, 1, grid.is_, grid.ie, grid.js, grid.je
+            grid_indexing,
+            self._kord_tm,
+            1,
+            grid_indexing.isc,
+            grid_indexing.iec,
+            grid_indexing.jsc,
+            grid_indexing.jec,
         )
 
         self._mapn_tracer = MapNTracer(
-            abs(namelist.kord_tr), nq, grid.is_, grid.ie, grid.js, grid.je
+            grid_indexing,
+            abs(config.kord_tr),
+            nq,
+            grid_indexing.isc,
+            grid_indexing.iec,
+            grid_indexing.jsc,
+            grid_indexing.jec,
+            fill=config.fill,
         )
 
-        self._kord_wz = namelist.kord_wz
+        self._kord_wz = config.kord_wz
         self._map_single_w = MapSingle(
-            self._kord_wz, -2, grid.is_, grid.ie, grid.js, grid.je
+            grid_indexing,
+            self._kord_wz,
+            -2,
+            grid_indexing.isc,
+            grid_indexing.iec,
+            grid_indexing.jsc,
+            grid_indexing.jec,
         )
         self._map_single_delz = MapSingle(
-            self._kord_wz, 1, grid.is_, grid.ie, grid.js, grid.je
+            grid_indexing,
+            self._kord_wz,
+            1,
+            grid_indexing.isc,
+            grid_indexing.iec,
+            grid_indexing.jsc,
+            grid_indexing.jec,
         )
 
         self._undo_delz_adjust_and_copy_peln = FrozenStencil(
             undo_delz_adjust_and_copy_peln,
-            origin=grid.compute_origin(),
-            domain=(grid.nic, grid.njc, grid.npz + 1),
+            origin=grid_indexing.origin_compute(),
+            domain=(
+                grid_indexing.domain[0],
+                grid_indexing.domain[1],
+                grid_indexing.domain[2] + 1,
+            ),
         )
 
         self._pressures_mapu = FrozenStencil(
-            pressures_mapu, origin=grid.compute_origin(), domain=self._domain_jextra
+            pressures_mapu,
+            origin=grid_indexing.origin_compute(),
+            domain=self._domain_jextra,
         )
 
-        self._kord_mt = namelist.kord_mt
+        self._kord_mt = config.kord_mt
         self._map_single_u = MapSingle(
-            self._kord_mt, -1, grid.is_, grid.ie, grid.js, grid.je + 1
+            grid_indexing,
+            self._kord_mt,
+            -1,
+            grid_indexing.isc,
+            grid_indexing.iec,
+            grid_indexing.jsc,
+            grid_indexing.jec + 1,
         )
 
         self._pressures_mapv = FrozenStencil(
             pressures_mapv,
-            origin=grid.compute_origin(),
-            domain=(grid.nic + 1, grid.njc, grid.npz + 1),
+            origin=grid_indexing.origin_compute(),
+            domain=(
+                grid_indexing.domain[0] + 1,
+                grid_indexing.domain[1],
+                grid_indexing.domain[2] + 1,
+            ),
         )
 
         self._map_single_v = MapSingle(
-            self._kord_mt, -1, grid.is_, grid.ie + 1, grid.js, grid.je
+            grid_indexing,
+            self._kord_mt,
+            -1,
+            grid_indexing.isc,
+            grid_indexing.iec + 1,
+            grid_indexing.jsc,
+            grid_indexing.jec,
         )
 
         ax_offsets_jextra = axis_offsets(
-            grid, grid.compute_origin(), grid.domain_shape_compute(add=(0, 1, 0))
+            grid_indexing,
+            grid_indexing.origin_compute(),
+            grid_indexing.domain_compute(add=(0, 1, 0)),
         )
         self._update_ua = FrozenStencil(
             update_ua,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(add=(0, 1, 0)),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(add=(0, 1, 0)),
             externals={**ax_offsets_jextra},
         )
 
         self._copy_from_below_stencil = FrozenStencil(
             copy_from_below,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
 
         self._moist_cv_last_step_stencil = FrozenStencil(
             moist_pt_last_step,
-            origin=(grid.is_, grid.js, 0),
-            domain=(grid.nic, grid.njc, grid.npz + 1),
+            origin=(grid_indexing.isc, grid_indexing.jsc, 0),
+            domain=(
+                grid_indexing.domain[0],
+                grid_indexing.domain[1],
+                grid_indexing.domain[2] + 1,
+            ),
         )
 
         self._basic_adjust_divide_stencil = FrozenStencil(
             adjust_divide_stencil,
-            origin=grid.compute_origin(),
-            domain=grid.domain_shape_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
 
-        self._do_sat_adjust = namelist.do_sat_adj
+        self._do_sat_adjust = config.do_sat_adj
 
-        self.kmp = grid.npz - 1
+        self.kmp = grid_indexing.domain[2] - 1
         for k in range(pfull.shape[0]):
             if pfull[k] > 10.0e2:
                 self.kmp = k
                 break
 
-        self._saturation_adjustment = SatAdjust3d(self.kmp)
+        self._saturation_adjustment = SatAdjust3d(
+            grid_indexing, config.sat_adjust, area_64, self.kmp
+        )
 
         self._sum_te_stencil = FrozenStencil(
             sum_te,
-            origin=(grid.is_, grid.js, self.kmp),
-            domain=(grid.nic, grid.njc, grid.npz - self.kmp),
+            origin=(grid_indexing.isc, grid_indexing.jsc, self.kmp),
+            domain=(
+                grid_indexing.domain[0],
+                grid_indexing.domain[1],
+                grid_indexing.domain[2] - self.kmp,
+            ),
         )
 
     def __call__(
@@ -458,7 +521,7 @@ class LagrangianToEulerian:
 
         self._undo_delz_adjust_and_copy_peln(delp, delz, peln, self._pe0, self._pn2)
         # if do_omega:  # NOTE untested
-        #    pe3 = copy(omga, origin=(grid.is_, grid.js, 1))
+        #    pe3 = copy(omga, origin=(grid_indexing.isc, grid_indexing.jsc, 1))
 
         self._moist_cv_pkz(
             tracers["qvapor"],

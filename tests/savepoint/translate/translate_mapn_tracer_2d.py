@@ -42,12 +42,14 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
         )
         inputs["kord"] = abs(spec.namelist.kord_tr)
         self.compute_func = MapN_Tracer.MapNTracer(
+            self.grid.grid_indexing,
             inputs.pop("kord"),
             inputs.pop("nq"),
             inputs.pop("i1"),
             inputs.pop("i2"),
             inputs.pop("j1"),
             inputs.pop("j2"),
+            fill=spec.namelist.fill,
         )
         self.compute_func(**inputs)
         return self.slice_output(inputs)

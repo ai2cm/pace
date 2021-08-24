@@ -1,8 +1,12 @@
 import numpy as np
 
 import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.map_single import MapSingleFactory
-from fv3core.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
+from fv3core.testing import (
+    MapSingleFactory,
+    TranslateFortranData2Py,
+    TranslateGrid,
+    pad_field_in_j,
+)
 
 
 class TranslateSingleJ(TranslateFortranData2Py):

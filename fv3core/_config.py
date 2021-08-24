@@ -74,6 +74,49 @@ DEFAULT_BOOL = False
 
 
 @dataclasses.dataclass(frozen=True)
+class SatAdjustConfig:
+    hydrostatic: bool
+    rad_snow: bool
+    rad_rain: bool
+    rad_graupel: bool
+    tintqs: bool
+    sat_adj0: float
+    ql_gen: float
+    qs_mlt: float
+    ql0_max: float
+    t_sub: float
+    qi_gen: float
+    qi_lim: float
+    qi0_max: float
+    dw_ocean: float
+    dw_land: float
+    icloud_f: int
+    cld_min: float
+    tau_i2s: float
+    tau_v2l: float
+    tau_r2g: float
+    tau_l2r: float
+    tau_l2v: float
+    tau_imlt: float
+    tau_smlt: float
+
+
+@dataclasses.dataclass(frozen=True)
+class RemappingConfig:
+    fill: bool
+    kord_tm: int
+    kord_tr: int
+    kord_wz: int
+    kord_mt: int
+    do_sat_adj: bool
+    sat_adjust: SatAdjustConfig
+
+    @property
+    def hydrostatic(self) -> bool:
+        return self.sat_adjust.hydrostatic
+
+
+@dataclasses.dataclass(frozen=True)
 class RiemannConfig:
     p_fac: float
     a_imp: float
@@ -509,6 +552,47 @@ class Namelist:
             d_grid_shallow_water=self.d_grid_shallow_water,
         )
 
+    @property
+    def sat_adjust(self) -> SatAdjustConfig:
+        return SatAdjustConfig(
+            hydrostatic=self.hydrostatic,
+            rad_snow=self.rad_snow,
+            rad_rain=self.rad_rain,
+            rad_graupel=self.rad_graupel,
+            tintqs=self.tintqs,
+            sat_adj0=self.sat_adj0,
+            ql_gen=self.ql_gen,
+            qs_mlt=self.qs_mlt,
+            ql0_max=self.ql0_max,
+            t_sub=self.t_sub,
+            qi_gen=self.qi_gen,
+            qi_lim=self.qi_lim,
+            qi0_max=self.qi0_max,
+            dw_ocean=self.dw_ocean,
+            dw_land=self.dw_land,
+            icloud_f=self.icloud_f,
+            cld_min=self.cld_min,
+            tau_i2s=self.tau_i2s,
+            tau_v2l=self.tau_v2l,
+            tau_r2g=self.tau_r2g,
+            tau_l2r=self.tau_l2r,
+            tau_l2v=self.tau_l2v,
+            tau_imlt=self.tau_imlt,
+            tau_smlt=self.tau_smlt,
+        )
+
+    @property
+    def remapping(self) -> RemappingConfig:
+        return RemappingConfig(
+            fill=self.fill,
+            kord_tm=self.kord_tm,
+            kord_tr=self.kord_tr,
+            kord_wz=self.kord_wz,
+            kord_mt=self.kord_mt,
+            do_sat_adj=self.do_sat_adj,
+            sat_adjust=self.sat_adjust,
+        )
+
 
 namelist = Namelist()
 
@@ -523,7 +607,7 @@ def namelist_to_flatish_dict(nml_input):
         if isinstance(value, dict):
             for subkey, subvalue in value.items():
                 if subkey in flatter_namelist:
-                    raise Exception(
+                    raise ValueError(
                         "Cannot flatten this namelist, duplicate keys: " + subkey
                     )
                 flatter_namelist[subkey] = subvalue

@@ -1,5 +1,6 @@
 # flake8: noqa: F401
 from . import parallel_translate, translate
+from .map_single import MapSingleFactory
 from .parallel_translate import (
     ParallelTranslate,
     ParallelTranslate2Py,

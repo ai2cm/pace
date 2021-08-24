@@ -359,7 +359,9 @@ class AcousticDynamics:
             npz=grid_indexing.domain[2],
         )
         self.nonhydrostatic_pressure_gradient = (
-            nh_p_grad.NonHydrostaticPressureGradient(config.grid_type)
+            nh_p_grad.NonHydrostaticPressureGradient(
+                grid_indexing, grid_data, config.grid_type
+            )
         )
         self._temporaries = dyncore_temporaries(grid_indexing)
         self._temporaries["gz"][:] = HUGE_R

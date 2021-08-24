@@ -3,9 +3,9 @@ from typing import Tuple
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
+from fv3core.utils.grid import GridIndexing
 from fv3core.utils.typing import BoolField, FloatField, FloatFieldIJ
 
 
@@ -503,6 +503,7 @@ class RemapProfile:
 
     def __init__(
         self,
+        grid_indexing: GridIndexing,
         kord: int,
         iv: int,
         i1: int,
@@ -513,6 +514,7 @@ class RemapProfile:
         """
         The constraints on the spline are set by kord and iv.
         Arguments:
+            grid_indexing
             kord: ???
             iv: ???
             i1: The first i-element to compute on
@@ -521,28 +523,27 @@ class RemapProfile:
             j2: The last j-element to compute on
         """
         assert kord <= 10, f"kord {kord} not implemented."
-        grid = spec.grid
-        full_orig: Tuple[int] = grid.full_origin()
-        km: int = grid.npz
+        full_orig: Tuple[int] = grid_indexing.origin_full()
+        km: int = grid_indexing.domain[2]
         self._kord = kord
 
         self._gam: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
+            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig
         )
         self._q: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
+            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig
         )
         self._q_bot: FloatField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig
+            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig
         )
         self._extm: BoolField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
+            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
         )
         self._ext5: BoolField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
+            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
         )
         self._ext6: BoolField = utils.make_storage_from_shape(
-            grid.domain_shape_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
+            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
         )
 
         i_extent: int = i2 - i1 + 1

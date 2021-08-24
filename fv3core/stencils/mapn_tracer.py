@@ -1,9 +1,9 @@
 from typing import Dict
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils.fillz import FillNegativeTracerValues
 from fv3core.stencils.map_single import MapSingle
+from fv3core.utils.grid import GridIndexing
 from fv3core.utils.typing import FloatField
 
 
@@ -12,32 +12,41 @@ class MapNTracer:
     Fortran code is mapn_tracer, test class is MapN_Tracer_2d
     """
 
-    def __init__(self, kord: int, nq: int, i1: int, i2: int, j1: int, j2: int):
-        grid = spec.grid
-        namelist = spec.namelist
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        kord: int,
+        nq: int,
+        i1: int,
+        i2: int,
+        j1: int,
+        j2: int,
+        fill: bool,
+    ):
         self._origin = (i1, j1, 0)
         self._domain = ()
-        self._nk = grid.npz
+        self._nk = grid_indexing.domain[2]
         self._nq = nq
         self._i1 = i1
         self._i2 = i2
         self._j1 = j1
         self._j2 = j2
         self._qs = utils.make_storage_from_shape(
-            (grid.npx, grid.npy, self._nk + 1), origin=(0, 0, 0)
+            grid_indexing.max_shape, origin=(0, 0, 0)
         )
 
         kord_tracer = [kord] * self._nq
         kord_tracer[5] = 9  # qcld
 
         self._list_of_remap_objects = [
-            MapSingle(kord_tracer[i], 0, i1, i2, j1, j2)
+            MapSingle(grid_indexing, kord_tracer[i], 0, i1, i2, j1, j2)
             for i in range(len(kord_tracer))
         ]
 
-        if namelist.fill:
+        if fill:
             self._fill_negative_tracers = True
             self._fillz = FillNegativeTracerValues(
+                grid_indexing,
                 self._list_of_remap_objects[0].i_extent,
                 self._list_of_remap_objects[0].j_extent,
                 self._nk,
