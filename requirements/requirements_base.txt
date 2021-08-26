@@ -1,0 +1,43 @@
+f90nml
+pytest-xdist
+pytest-dependency
+pytest
+pytest-cov
+pytest-subtests
+pytest-profiling
+xarray
+numpy
+zarr
+cftime
+pip-tools
+wheel
+netCDF4
+hypothesis
+scipy
+pytest-regressions
+gitpython
+git+https://github.com/VulcanClimateModeling/fv3config.git@a0799928824a4f10617cf4615e8837c81ccb1f2d
+
+# GT4Py Tests
+clang-format
+factory-boy
+pytest-factoryboy
+pytest-cache
+pytest-cov
+
+# fv3gfs-util
+bump2version
+flake8==3.8.4
+mypy==0.790
+tox
+coverage
+appdirs>=1.4.0
+sphinx_rtd_theme
+gcsfs>=0.7.0
+google-cloud-storage
+black==19.10b0
+numcodecs==0.7.2 #pin for gt4py, h5py and py3.6 to agree
+h5py==2.10.0 #pin for gt4py, h5py and py3.6 to agree
+h5netcdf
+dask==2021.03.0 #py3.6 - last supported version
+toolz
