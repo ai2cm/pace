@@ -93,8 +93,8 @@ get_test_data:
 	[ "$$(gsutil cat $(DATA_BUCKET)md5sums.txt)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
 	rm -rf $(TEST_DATA_HOST) && \
 	$(MAKE) sync_test_data && \
-	$(MAKE) unpack_test_data ;\
-	ln -s $(TEST_DATA_HOST) fv3core/test_data/.
+	$(MAKE) unpack_test_data &&\
+	ln -s $(TEST_DATA_HOST) fv3core/test_data/. ;\
 	fi
 
 sync_test_data:
