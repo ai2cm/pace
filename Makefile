@@ -87,3 +87,20 @@ savepoint_tests_mpi:
 
 constraints.txt: requirements.txt requirements/requirements_wrapper.txt requirements/requirements_lint.txt
 	pip-compile $^ --output-file constraints.txt
+
+get_test_data:
+	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
+	[ "$$(gsutil cat $(DATA_BUCKET)md5sums.txt)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
+	rm -rf $(TEST_DATA_HOST) && \
+	$(MAKE) sync_test_data && \
+	$(MAKE) unpack_test_data ;\
+	ln -s $(TEST_DATA_HOST) fv3core/test_data/.
+	fi
+
+sync_test_data:
+	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)
+
+unpack_test_data:
+	if [ -f $(TEST_DATA_TARPATH) ]; then \
+	cd $(TEST_DATA_HOST) && tar -xf $(TEST_DATA_TARFILE) && \
+	rm $(TEST_DATA_TARFILE); fi
