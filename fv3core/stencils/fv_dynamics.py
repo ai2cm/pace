@@ -8,7 +8,7 @@ import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import ArgSpec, FrozenStencil, get_namespace
-from fv3core.stencils import tracer_2d_1l
+from fv3core.stencils import fvtp2d, tracer_2d_1l
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
@@ -277,8 +277,15 @@ class DynamicalCore:
         self.grid = spec.grid
         self.namelist = namelist
 
+        tracer_transport = fvtp2d.FiniteVolumeTransport(
+            grid_indexing=spec.grid.grid_indexing,
+            grid_data=spec.grid.grid_data,
+            damping_coefficients=spec.grid.damping_coefficients,
+            grid_type=spec.grid.grid_type,
+            hord=spec.namelist.hord_tr,
+        )
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
-            comm, namelist, DynamicalCore.NQ
+            spec.grid.grid_indexing, tracer_transport, comm, DynamicalCore.NQ
         )
         self._ak = ak.storage
         self._bk = bk.storage
