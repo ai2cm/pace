@@ -2,13 +2,13 @@
 
 import copy
 import json
+import os
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from typing import Any, Dict, List
 
 import numpy as np
 import serialbox
-import yaml
 from mpi4py import MPI
 
 import fv3core
@@ -182,12 +182,7 @@ if __name__ == "__main__":
 
         spec.set_namelist(args.data_dir + "/input.nml")
 
-        experiment_name = yaml.safe_load(
-            open(
-                args.data_dir + "/input.yml",
-                "r",
-            )
-        )["experiment_name"]
+        experiment_name = os.path.basename(os.path.normpath(args.data_dir))
 
         # set up of helper structures
         serializer = serialbox.Serializer(

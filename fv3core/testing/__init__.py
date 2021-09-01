@@ -13,5 +13,6 @@ from .translate import (
     pad_field_in_j,
     read_serialized_data,
 )
+from .translate_dyncore import TranslateDynCore
 from .translate_fvdynamics import TranslateFVDynamics
 from .validation import enable_selective_validation
