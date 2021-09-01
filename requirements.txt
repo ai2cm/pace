@@ -1,1 +1,2 @@
 -r fv3core/requirements/requirements_container.txt
+-r fv3gfs-physics/requirements.txt

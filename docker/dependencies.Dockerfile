@@ -11,9 +11,7 @@ RUN apt-get update && apt-get install -y \
     g++ \
     gfortran \
     make
-#RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 8 && \
-#    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 8 && \
-#    update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-8 8
+
 RUN wget -q http://www.mpich.org/static/downloads/3.1.4/mpich-3.1.4.tar.gz && \
     tar xzf mpich-3.1.4.tar.gz && \
     cd mpich-3.1.4 && \
@@ -26,7 +24,7 @@ COPY --from=fv3gfs-mpi-install /mpich-3.1.4 /mpich-3.1.4
 
 FROM $MPI_IMAGE AS mpi_image
 
-FROM $BASE_IMAGE_ENV AS fv3core-environment
+FROM $BASE_IMAGE_ENV AS fv3gfs-environment
 ENV DEBIAN_FRONTEND=noninteractive TZ=US/Pacific
 RUN apt-get update && apt-get install -y  --no-install-recommends \
     curl \
@@ -65,9 +63,7 @@ RUN apt-get update && apt-get install -y  --no-install-recommends \
     tk-dev \
     libffi-dev \
     liblzma-dev
-#RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 8 && \
-#    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 8 && \
-#    update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-8 8
+
 ARG PYVERSION=3.8.2
 RUN curl https://pyenv.run | bash
 ENV PYENV_ROOT /root/.pyenv

@@ -12,6 +12,7 @@ RUN pip3 install --upgrade pip setuptools wheel && \
 
 COPY constraints.txt requirements.txt  /
 COPY fv3core/requirements  /fv3core/requirements
+COPY fv3gfs-physics/requirements.txt /fv3gfs-physics/requirements.txt
 RUN pip3 install -r /requirements.txt -c /constraints.txt
 
 COPY --from=serialbox_image /usr/local/serialbox /usr/local/serialbox
