@@ -1,12 +1,10 @@
 include docker/Makefile.image_names
 
-EXPERIMENT ?=c12_6ranks_standard
 DOCKER_BUILDKIT=1
 SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
 CONTAINER_ENGINE ?=docker
-TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
 FV3UTIL_DIR=$(CWD)/fv3gfs-util
 
 FV3=fv3core
@@ -33,7 +31,6 @@ pull_environment_if_needed:
 dev:
 	docker run --rm -it \
 		--network host \
-		-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) \
 		-v $(CWD):/port_dev \
 		$(FV3GFS_IMAGE) bash
 

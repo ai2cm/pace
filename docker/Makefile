@@ -41,11 +41,8 @@ fv3gfs_image: get_gt4py
 
 build_core_deps: ## build container images of dependencies
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(MPI_IMAGE) $(BUILD_ARGS) --target fv3gfs-mpi ../external/fv3gfs-fortran
-	$(MAKE) build_core_env
-	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(SERIALBOX_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment-serialbox .
-
-build_core_env:
-	 docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(ENVIRONMENT_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment .
+	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(ENVIRONMENT_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment .
+	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(SERIALBOX_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment-serialbox .	 
 
 push_deps: ## push container images of dependencies to GCP
 	for IMAGE in $(DEPS_IMAGES); \
