@@ -4,10 +4,7 @@ VERSION = v0.3.0
 GCR_URL ?= us.gcr.io/vcm-ml
 CUDA ?= n
 TEST_ARGS ?=-v -s -rsx
-FORTRAN_NAME = fv3core-build-fortran
-WRAPPER_NAME = fv3core-build-wrapper
 FV3GFS_NAME = fv3gfs-integration
-FV3GFS_WRAPPER_NAME = fv3core-wrapper
 
 DEPENDENCIES_DOCKERFILE = dependencies.Dockerfile
 FV3GFS_DOCKERFILE = Dockerfile
@@ -44,15 +41,9 @@ BUILD_ARGS += --network host --build-arg BASE_IMAGE=$(BASE_IMAGE)  --build-arg B
 # dependency image names, update sha to update version
 TAG_SRC=$(VERSION)-srcfiles
 MPI_IMAGE ?= $(GCR_URL)/mpi-build:$(TAG_SRC)
-FMS_IMAGE ?= $(GCR_URL)/fms-build:$(TAG_SRC)
-ESMF_IMAGE ?= $(GCR_URL)/esmf-build:$(TAG_SRC)
 SERIALBOX_IMAGE ?= $(GCR_URL)/serialbox-build:$(TAG_SRC)
 ENVIRONMENT_IMAGE ?= $(GCR_URL)/fv3core-environment:$(TAG_NAME)
 
 # built image names
 JENKINS_TAG ?=
-FORTRAN_IMAGE = $(GCR_URL)/$(FORTRAN_NAME):$(TAG_NAME)$(JENKINS_TAG)
-WRAPPER_IMAGE = $(GCR_URL)/$(WRAPPER_NAME):$(TAG_NAME)$(JENKINS_TAG)
 FV3GFS_IMAGE ?= $(GCR_URL)/$(FV3GFS_NAME):$(TAG_NAME)$(JENKINS_TAG)
-SARUS_FV3CORE_IMAGE ?= fv3core-$(TAG_NAME)$(JENKINS_TAG)
-FV3GFS_WRAPPER_IMAGE ?= $(GCR_URL)/$(FV3GFS_WRAPPER_NAME):$(TAG_NAME)$(JENKINS_TAG)
