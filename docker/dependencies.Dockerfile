@@ -80,7 +80,7 @@ RUN cd /mpich-3.1.4 && make install && ldconfig && rm -rf /mpich-3.1.4
 ##
 ## Setup environment for Serialbox
 ##---------------------------------------------------------------------------------
-FROM fv3core-environment as fv3core-environment-serialbox-install
+FROM fv3gfs-environment as fv3gfs-environment-serialbox-install
 # set TZ
 ENV DEBIAN_FRONTEND=noninteractive TZ=US/Pacific
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -115,5 +115,5 @@ RUN git clone -b v2.6.0 --depth 1 https://github.com/GridTools/serialbox.git /us
     cmake --build build/ -j $(nproc) --target install
 
 FROM busybox as fv3gfs-environment-serialbox
-COPY --from=fv3core-environment-serialbox-install /usr/local/serialbox /usr/local/serialbox
-COPY --from=fv3core-environment-serialbox-install /usr/include/boost /usr/include/boost
+COPY --from=fv3gfs-environment-serialbox-install /usr/local/serialbox /usr/local/serialbox
+COPY --from=fv3gfs-environment-serialbox-install /usr/include/boost /usr/include/boost

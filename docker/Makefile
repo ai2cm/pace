@@ -43,7 +43,7 @@ fv3gfs_image: get_gt4py
 		-t $(FV3GFS_IMAGE) \
 		--target=$(FV3GFS_TARGET) \
 		..
-		
+
 build_deps: ## build container images of dependencies
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(MPI_IMAGE) $(BUILD_ARGS) --target fv3gfs-mpi .
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(ENVIRONMENT_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment .
