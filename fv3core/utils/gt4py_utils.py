@@ -17,8 +17,6 @@ try:
 except ImportError:
     cp = None
 
-logger = logging.getLogger("fv3ser")
-
 # If True, automatically transfers memory between CPU and GPU (see gt4py.storage)
 managed_memory = True
 
@@ -40,7 +38,7 @@ tracer_variables = [
 ]
 
 # Logger instance
-logger = logging.getLogger("fv3ser")
+logger = logging.getLogger("fv3core")
 
 
 # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2

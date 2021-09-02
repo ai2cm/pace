@@ -1,5 +1,12 @@
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
+from gt4py.gtscript import (
+    __INLINED,
+    PARALLEL,
+    computation,
+    horizontal,
+    interval,
+    region,
+)
 
 import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
@@ -123,9 +130,8 @@ def redo_divg_d(
     vc: FloatField,
     divg_d: FloatField,
     adjustment_factor: FloatFieldIJ,
-    skip_adjustment: bool,
 ):
-    from __externals__ import i_end, i_start, j_end, j_start
+    from __externals__ import do_adjustment, i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
         divg_d = uc[0, -1, 0] - uc + vc[-1, 0, 0] - vc
@@ -133,7 +139,7 @@ def redo_divg_d(
             divg_d = vc[-1, 0, 0] - vc - uc
         with horizontal(region[i_start, j_end + 1], region[i_end + 1, j_end + 1]):
             divg_d = uc[0, -1, 0] + vc[-1, 0, 0] - vc
-        if not skip_adjustment:
+        if __INLINED(do_adjustment):
             divg_d = divg_d * adjustment_factor
 
 
@@ -200,8 +206,6 @@ class DivergenceDamping:
             self._dd8 = (damping_coefficients.da_min_c * d4_bg) ** (
                 self._nonzero_nord + 1
             )
-        # TODO: make stretched_grid a compile-time external, instead of runtime scalar
-        self._stretched_grid = stretched_grid
         kstart = nonzero_nord_k
         nk = self._idx.domain[2] - kstart
         self._do_zero_order = nonzero_nord_k > 0
@@ -287,7 +291,10 @@ class DivergenceDamping:
         )
 
         self._redo_divg_d_stencils = get_stencils_with_varied_bounds(
-            redo_divg_d, origins=origins, domains=domains
+            redo_divg_d,
+            origins=origins,
+            domains=domains,
+            externals={"do_adjustment": not stretched_grid},
         )
 
         origin, domain = high_k_idx.get_origin_domain(
@@ -355,10 +362,7 @@ class DivergenceDamping:
             self.damping_zero_order(
                 u, v, va, ptc, vort, ua, vc, uc, delpc, ke, self._d2_bg_column, dt
             )
-        self._copy_computeplus(
-            divg_d,
-            delpc,
-        )
+        self._copy_computeplus(divg_d, delpc)
         for n in range(self._nonzero_nord):
             fillc = (
                 (n + 1 != self._nonzero_nord)
@@ -371,33 +375,16 @@ class DivergenceDamping:
                 )
             )
             if fillc:
-                self.fill_corners_bgrid_x(
-                    divg_d,
-                )
-            self._vc_from_divg_stencils[n](
-                divg_d,
-                self._divg_u,
-                vc,
-            )
+                self.fill_corners_bgrid_x(divg_d)
+            self._vc_from_divg_stencils[n](divg_d, self._divg_u, vc)
             if fillc:
-                self.fill_corners_bgrid_y(
-                    divg_d,
-                )
-            self._uc_from_divg_stencils[n](
-                divg_d,
-                self._divg_v,
-                uc,
-            )
+                self.fill_corners_bgrid_y(divg_d)
+            self._uc_from_divg_stencils[n](divg_d, self._divg_v, uc)
 
+            # TODO(eddied): We pass the same fields 2x to avoid GTC validation errors
             if fillc:
-                self._fill_corners_dgrid_stencil(
-                    vc,
-                    uc,
-                    -1.0,
-                )
-            self._redo_divg_d_stencils[n](
-                uc, vc, divg_d, self._rarea_c, self._stretched_grid
-            )
+                self._fill_corners_dgrid_stencil(vc, vc, uc, uc, -1.0)
+            self._redo_divg_d_stencils[n](uc, vc, divg_d, self._rarea_c)
 
         self.vorticity_calc(wk, vort, delpc, dt)
         self._damping_nord_highorder_stencil(

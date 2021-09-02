@@ -249,14 +249,15 @@ def test_sequential_savepoint(
             ref_data = testobj.subset_output(varname, ref_data)
         with subtests.test(varname=varname):
             failing_names.append(varname)
+            output_data = gt_utils.asarray(output[varname])
             assert success(
-                output[varname],
+                output_data,
                 ref_data,
                 testobj.max_error,
                 ignore_near_zero,
                 testobj.near_zero,
             ), sample_wherefail(
-                output[varname],
+                output_data,
                 ref_data,
                 testobj.max_error,
                 print_failures,
@@ -342,15 +343,16 @@ def test_mock_parallel_savepoint(
                 zip(savepoint_out_list, serializer_list, output_list)
             ):
                 with _subtest(failing_ranks, subtests, varname=varname, rank=rank):
+                    output_data = gt_utils.asarray(output[varname])
                     ref_data[varname].append(serializer.read(varname, savepoint_out))
                     assert success(
-                        gt_utils.asarray(output[varname]),
+                        output_data,
                         ref_data[varname][-1],
                         testobj.max_error,
                         ignore_near_zero,
                         testobj.near_zero,
                     ), sample_wherefail(
-                        output[varname],
+                        output_data,
                         ref_data[varname][-1],
                         testobj.max_error,
                         print_failures,
@@ -445,14 +447,15 @@ def test_parallel_savepoint(
         ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
         with subtests.test(varname=varname):
             failing_names.append(varname)
+            output_data = gt_utils.asarray(output[varname])
             assert success(
-                output[varname],
+                output_data,
                 ref_data[varname][0],
                 testobj.max_error,
                 ignore_near_zero,
                 testobj.near_zero,
             ), sample_wherefail(
-                output[varname],
+                output_data,
                 ref_data[varname][0],
                 testobj.max_error,
                 print_failures,

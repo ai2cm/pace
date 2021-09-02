@@ -30,11 +30,9 @@ def lagrangian_contributions(
     lev: IntFieldIJ,
 ):
     with computation(FORWARD), interval(...):
-        v_pe2 = pe2
-        v_pe1 = pe1[0, 0, lev]
-        pl = (v_pe2 - v_pe1) / dp1[0, 0, lev]
+        pl = (pe2 - pe1[0, 0, lev]) / dp1[0, 0, lev]
         if pe2[0, 0, 1] <= pe1[0, 0, lev + 1]:
-            pr = (pe2[0, 0, 1] - v_pe1) / dp1[0, 0, lev]
+            pr = (pe2[0, 0, 1] - pe1[0, 0, lev]) / dp1[0, 0, lev]
             q = (
                 q4_2[0, 0, lev]
                 + 0.5

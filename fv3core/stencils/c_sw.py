@@ -49,16 +49,19 @@ def absolute_vorticity(vort: FloatField, fC: FloatFieldIJ, rarea_c: FloatFieldIJ
 
 
 def fill_corners_delp_pt_w(
-    delp: FloatField,
-    pt: FloatField,
-    w: FloatField,
+    delp_in: FloatField,
+    pt_in: FloatField,
+    w_in: FloatField,
+    delp_out: FloatField,
+    pt_out: FloatField,
+    w_out: FloatField,
 ):
     from __externals__ import fill_corners_func
 
     with computation(PARALLEL), interval(...):
-        delp = fill_corners_func(delp)
-        pt = fill_corners_func(pt)
-        w = fill_corners_func(w)
+        delp_out = fill_corners_func(delp_in)
+        pt_out = fill_corners_func(pt_in)
+        w_out = fill_corners_func(w_in)
 
 
 def compute_nonhydro_fluxes_x(
@@ -240,7 +243,7 @@ def divergence_corner(
         # in the future we could use gtscript functions when they support shifts
 
         with horizontal(region[i_start, :], region[i_end + 1, :]):
-            vf = v * dxc * 0.5 * (sin_sg3[-1, 0] + sin_sg1)
+            vf0 = v * dxc * 0.5 * (sin_sg3[-1, 0] + sin_sg1)
             vf1 = v[0, -1, 0] * dxc[0, -1] * 0.5 * (sin_sg3[-1, -1] + sin_sg1[0, -1])
             uf1 = (
                 (
@@ -253,10 +256,10 @@ def divergence_corner(
                 * 0.5
                 * (sin_sg4[-1, -1] + sin_sg2[-1, 0])
             )
-            divg_d = (vf1 - vf + uf1 - uf) * rarea_c
+            divg_d = (vf1 - vf0 + uf1 - uf) * rarea_c
 
         with horizontal(region[:, j_start], region[:, j_end + 1]):
-            uf = u * dyc * 0.5 * (sin_sg4[0, -1] + sin_sg2)
+            uf0 = u * dyc * 0.5 * (sin_sg4[0, -1] + sin_sg2)
             uf1 = u[-1, 0, 0] * dyc[-1, 0] * 0.5 * (sin_sg4[-1, -1] + sin_sg2[-1, 0])
             vf1 = (
                 (
@@ -269,19 +272,19 @@ def divergence_corner(
                 * 0.5
                 * (sin_sg3[-1, -1] + sin_sg1[0, -1])
             )
-            divg_d = (vf1 - vf + uf1 - uf) * rarea_c
+            divg_d = (vf1 - vf + uf1 - uf0) * rarea_c
 
         with horizontal(region[i_start, j_start], region[i_end + 1, j_start]):
-            vf = v * dxc * 0.5 * (sin_sg3[-1, 0] + sin_sg1)
-            uf = u * dyc * 0.5 * (sin_sg4[0, -1] + sin_sg2)
             uf1 = u[-1, 0, 0] * dyc[-1, 0] * 0.5 * (sin_sg4[-1, -1] + sin_sg2[-1, 0])
-            divg_d = (-vf + uf1 - uf) * rarea_c
+            vf0 = v * dxc * 0.5 * (sin_sg3[-1, 0] + sin_sg1)
+            uf0 = u * dyc * 0.5 * (sin_sg4[0, -1] + sin_sg2)
+            divg_d = (-vf0 + uf1 - uf0) * rarea_c
 
         with horizontal(region[i_end + 1, j_end + 1], region[i_start, j_end + 1]):
             vf1 = v[0, -1, 0] * dxc[0, -1] * 0.5 * (sin_sg3[-1, -1] + sin_sg1[0, -1])
             uf1 = u[-1, 0, 0] * dyc[-1, 0] * 0.5 * (sin_sg4[-1, -1] + sin_sg2[-1, 0])
-            uf = u * dyc * 0.5 * (sin_sg4[0, -1] + sin_sg2)
-            divg_d = (vf1 + uf1 - uf) * rarea_c
+            uf0 = u * dyc * 0.5 * (sin_sg4[0, -1] + sin_sg2)
+            divg_d = (vf1 + uf1 - uf0) * rarea_c
 
         # ---------
 
@@ -422,9 +425,7 @@ class CGridShallowWaterDynamics:
         if nord > 0:
             self._divergence_corner = FrozenStencil(
                 func=divergence_corner,
-                externals={
-                    **ax_offsets,
-                },
+                externals=ax_offsets,
                 origin=origin,
                 domain=domain,
             )
@@ -656,11 +657,12 @@ class CGridShallowWaterDynamics:
             dt2,
         )
 
-        self._fill_corners_x_delp_pt_w_stencil(delp, pt, w)
+        # TODO(eddied): We pass the same fields 2x to avoid GTC validation errors
+        self._fill_corners_x_delp_pt_w_stencil(delp, pt, w, delp, pt, w)
         self._compute_nonhydro_fluxes_x_stencil(
             delp, pt, ut, w, self._tmp_fx, self._tmp_fx1, self._tmp_fx2
         )
-        self._fill_corners_y_delp_pt_w_stencil(delp, pt, w)
+        self._fill_corners_y_delp_pt_w_stencil(delp, pt, w, delp, pt, w)
         self._transportdelp_updatevorticity_and_ke(
             delp,
             pt,

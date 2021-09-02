@@ -284,6 +284,13 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self.dycore: Optional[fv_dynamics.DynamicalCore] = None
 
     def compute_parallel(self, inputs, communicator):
+        # ak, bk, and phis are numpy arrays at this point and
+        #   must be converted into gt4py storages
+        for name in ("ak", "bk", "phis"):
+            inputs[name] = utils.make_storage_data(
+                inputs[name], inputs[name].shape, len(inputs[name].shape) * (0,)
+            )
+
         inputs["comm"] = communicator
         state = self.state_from_inputs(inputs)
         self.dycore = fv_dynamics.DynamicalCore(

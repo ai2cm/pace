@@ -173,14 +173,16 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
             self.ignore_near_zero_errors[qvar] = True
 
     def compute_parallel(self, inputs, communicator):
-        state = self.state_from_inputs(inputs)
-        fvsubgridz = fv_subgridz.DryConvectiveAdjustment(
-            spec.namelist,
+        pytest.skip(
+            f"{self.__class__} not running in parallel due to out of memory"
+            f"during compilation using the gtc:gt:gpu backend"
         )
-        state = SimpleNamespace(**state)
-        fvsubgridz(state, inputs["dt"])
-        outputs = self.outputs_from_state(state.__dict__)
-        return outputs
 
     def compute_sequential(self, inputs_list, communicator_list):
-        pytest.skip(f"{self.__class__} not running in mock-parallel")
+        state_list = self.state_list_from_inputs_list(inputs_list)
+        for state, grid in zip(state_list, self.rank_grids):
+            state_namespace = SimpleNamespace(**state)
+            spec.set_grid(grid)
+            fvsubgridz = fv_subgridz.DryConvectiveAdjustment(spec.namelist)
+            fvsubgridz(state_namespace, state_namespace.dt)
+        return self.outputs_list_from_state_list(state_list)

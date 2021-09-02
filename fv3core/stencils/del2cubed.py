@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
+from gt4py.gtscript import FORWARD, PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.utils.corners as corners
@@ -37,38 +37,38 @@ def update_q(
 #
 # Stencil that copies/fills in the appropriate corner values for qdel
 # ------------------------------------------------------------------------
-def corner_fill(q: FloatField):
+def corner_fill(q_in: FloatField, q_out: FloatField):
     from __externals__ import i_end, i_start, j_end, j_start
 
     # Fills the same scalar value into three locations in q for each corner
-    with computation(PARALLEL), interval(...):
-        with horizontal(region[i_start, j_start]):
-            q = (q[0, 0, 0] + q[-1, 0, 0] + q[0, -1, 0]) * (1.0 / 3.0)
-        with horizontal(region[i_start - 1, j_start]):
-            q = q[1, 0, 0]
-        with horizontal(region[i_start, j_start - 1]):
-            q = q[0, 1, 0]
+    # TODO(eddied): Alternating computations prevents improper fusion in the toolchain
+    with computation(PARALLEL), interval(...), horizontal(region[i_start, j_start]):
+        q_out = (q_in[0, 0, 0] + q_in[-1, 0, 0] + q_in[0, -1, 0]) * (1.0 / 3.0)
+    with computation(FORWARD), interval(...), horizontal(region[i_start - 1, j_start]):
+        q_out = q_in[1, 0, 0]
+    with computation(PARALLEL), interval(...), horizontal(region[i_start, j_start - 1]):
+        q_out = q_in[0, 1, 0]
 
-        with horizontal(region[i_end, j_start]):
-            q = (q[0, 0, 0] + q[1, 0, 0] + q[0, -1, 0]) * (1.0 / 3.0)
-        with horizontal(region[i_end + 1, j_start]):
-            q = q[-1, 0, 0]
-        with horizontal(region[i_end, j_start - 1]):
-            q = q[0, 1, 0]
+    with computation(FORWARD), interval(...), horizontal(region[i_end, j_start]):
+        q_out = (q_in[0, 0, 0] + q_in[1, 0, 0] + q_in[0, -1, 0]) * (1.0 / 3.0)
+    with computation(PARALLEL), interval(...), horizontal(region[i_end + 1, j_start]):
+        q_out = q_in[-1, 0, 0]
+    with computation(FORWARD), interval(...), horizontal(region[i_end, j_start - 1]):
+        q_out = q_in[0, 1, 0]
 
-        with horizontal(region[i_end, j_end]):
-            q = (q[0, 0, 0] + q[1, 0, 0] + q[0, 1, 0]) * (1.0 / 3.0)
-        with horizontal(region[i_end + 1, j_end]):
-            q = q[-1, 0, 0]
-        with horizontal(region[i_end, j_end + 1]):
-            q = q[0, -1, 0]
+    with computation(PARALLEL), interval(...), horizontal(region[i_end, j_end]):
+        q_out = (q_in[0, 0, 0] + q_in[1, 0, 0] + q_in[0, 1, 0]) * (1.0 / 3.0)
+    with computation(FORWARD), interval(...), horizontal(region[i_end + 1, j_end]):
+        q_out = q_in[-1, 0, 0]
+    with computation(PARALLEL), interval(...), horizontal(region[i_end, j_end + 1]):
+        q_out = q_in[0, -1, 0]
 
-        with horizontal(region[i_start, j_end]):
-            q = (q[0, 0, 0] + q[-1, 0, 0] + q[0, 1, 0]) * (1.0 / 3.0)
-        with horizontal(region[i_start - 1, j_end]):
-            q = q[1, 0, 0]
-        with horizontal(region[i_start, j_end + 1]):
-            q = q[0, -1, 0]
+    with computation(FORWARD), interval(...), horizontal(region[i_start, j_end]):
+        q_out = (q_in[0, 0, 0] + q_in[-1, 0, 0] + q_in[0, 1, 0]) * (1.0 / 3.0)
+    with computation(PARALLEL), interval(...), horizontal(region[i_start - 1, j_end]):
+        q_out = q_in[1, 0, 0]
+    with computation(FORWARD), interval(...), horizontal(region[i_start, j_end + 1]):
+        q_out = q_in[0, -1, 0]
 
 
 class HyperdiffusionDamping:
@@ -98,9 +98,7 @@ class HyperdiffusionDamping:
 
         self._corner_fill = FrozenStencil(
             func=corner_fill,
-            externals={
-                **ax_offsets,
-            },
+            externals=ax_offsets,
             origin=origin,
             domain=domain,
         )
@@ -157,7 +155,8 @@ class HyperdiffusionDamping:
         for n in range(self._ntimes):
             nt = self._ntimes - (n + 1)
             # Fill in appropriate corner values
-            self._corner_fill(qdel)
+            # TODO(eddied): We pass the same field 2x to avoid GTC validation errors
+            self._corner_fill(qdel, qdel)
 
             if nt > 0:
                 self._copy_corners_x(qdel)

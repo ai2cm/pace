@@ -1,5 +1,6 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
+    __INLINED,
     BACKWARD,
     FORWARD,
     PARALLEL,
@@ -55,9 +56,8 @@ def ray_fast_wind_compute(
     ptop: float,
     rf_cutoff_nudge: float,
     ks: int,
-    hydrostatic: bool,
 ):
-    from __externals__ import local_ie, local_je, rf_cutoff, tau
+    from __externals__ import hydrostatic, local_ie, local_je, rf_cutoff, tau
 
     # dm_stencil
     with computation(PARALLEL), interval(...):
@@ -123,8 +123,9 @@ def ray_fast_wind_compute(
     # ray_fast_w
     with computation(PARALLEL), interval(...):
         with horizontal(region[: local_ie + 1, : local_je + 1]):
-            if not hydrostatic and pfull < rf_cutoff:
-                w *= rf
+            if __INLINED(not hydrostatic):
+                if pfull < rf_cutoff:
+                    w *= rf
 
 
 class RayleighDamping:
@@ -143,8 +144,6 @@ class RayleighDamping:
 
     def __init__(self, grid_indexing: GridIndexing, rf_cutoff, tau, hydrostatic):
         self._rf_cutoff = rf_cutoff
-        # TODO: make hydrostatic an external
-        self._hydrostatic = hydrostatic
         origin, domain = grid_indexing.get_origin_domain(
             [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
         )
@@ -160,6 +159,7 @@ class RayleighDamping:
             origin=origin,
             domain=domain,
             externals={
+                "hydrostatic": hydrostatic,
                 "rf_cutoff": rf_cutoff,
                 "tau": tau,
                 **local_axis_offsets,
@@ -189,5 +189,4 @@ class RayleighDamping:
             ptop,
             rf_cutoff_nudge,
             ks,
-            self._hydrostatic,
         )

@@ -85,7 +85,7 @@ class ParallelTranslate:
             output_slice = _serialize_slice(
                 state[standard_name], properties.get("n_halo", utils.halo)
             )
-            return_dict[name] = state[standard_name].data[output_slice]
+            return_dict[name] = np.asarray(state[standard_name].storage)[output_slice]
         return return_dict
 
     @property

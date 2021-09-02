@@ -61,7 +61,6 @@ def east_west_edges(
         with horizontal(region[i_start - 1, local_js - 1 : local_je + 2]):
             uc = vol_conserv_cubic_interp_func_x(utmp)
 
-        faketmp = 0  # noqa
         with horizontal(region[i_start, local_js - 1 : local_je + 2]):
             utc = edge_interpolate4_x(ua, dxa)
             uc = utc * sin_sg3[-1, 0] if utc > 0 else utc * sin_sg1
@@ -109,7 +108,6 @@ def north_south_edges(
     from __externals__ import j_end, j_start, local_ie, local_is, local_je, local_js
 
     with computation(PARALLEL), interval(...):
-        faketmp = 0  # noqa
         with horizontal(
             region[local_is - 1 : local_ie + 2, local_js - 1 : local_je + 3]
         ):

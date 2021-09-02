@@ -1141,28 +1141,28 @@ def _old_grid_axis_offsets(
         origin_offset = grid.is_ - origin[0]
         i_start = gtscript.I[0] + proc_offset + origin_offset
     else:
-        i_start = gtscript.I[0] - np.iinfo(np.int32).max
+        i_start = gtscript.I[0] - np.iinfo(np.int16).max
 
     if grid.east_edge:
         proc_offset = grid.npx + grid.halo - 2 - grid.global_is
         endpt_offset = (grid.is_ - origin[0]) - domain[0] + 1
         i_end = gtscript.I[-1] + proc_offset + endpt_offset
     else:
-        i_end = gtscript.I[-1] + np.iinfo(np.int32).max
+        i_end = gtscript.I[-1] + np.iinfo(np.int16).max
 
     if grid.south_edge:
         proc_offset = grid.js - grid.global_js
         origin_offset = grid.js - origin[1]
         j_start = gtscript.J[0] + proc_offset + origin_offset
     else:
-        j_start = gtscript.J[0] - np.iinfo(np.int32).max
+        j_start = gtscript.J[0] - np.iinfo(np.int16).max
 
     if grid.north_edge:
         proc_offset = grid.npy + grid.halo - 2 - grid.global_js
         endpt_offset = (grid.js - origin[1]) - domain[1] + 1
         j_end = gtscript.J[-1] + proc_offset + endpt_offset
     else:
-        j_end = gtscript.J[-1] + np.iinfo(np.int32).max
+        j_end = gtscript.J[-1] + np.iinfo(np.int16).max
 
     return {
         "i_start": i_start,
@@ -1185,26 +1185,26 @@ def _grid_indexing_axis_offsets(
     if grid.west_edge:
         i_start = gtscript.I[0] + grid.origin[0] - origin[0]
     else:
-        i_start = gtscript.I[0] - np.iinfo(np.int32).max
+        i_start = gtscript.I[0] - np.iinfo(np.int16).max
 
     if grid.east_edge:
         i_end = (
             gtscript.I[-1] + (grid.origin[0] + grid.domain[0]) - (origin[0] + domain[0])
         )
     else:
-        i_end = gtscript.I[-1] + np.iinfo(np.int32).max
+        i_end = gtscript.I[-1] + np.iinfo(np.int16).max
 
     if grid.south_edge:
         j_start = gtscript.J[0] + grid.origin[1] - origin[1]
     else:
-        j_start = gtscript.J[0] - np.iinfo(np.int32).max
+        j_start = gtscript.J[0] - np.iinfo(np.int16).max
 
     if grid.north_edge:
         j_end = (
             gtscript.J[-1] + (grid.origin[1] + grid.domain[1]) - (origin[1] + domain[1])
         )
     else:
-        j_end = gtscript.J[-1] + np.iinfo(np.int32).max
+        j_end = gtscript.J[-1] + np.iinfo(np.int16).max
 
     return {
         "i_start": i_start,
