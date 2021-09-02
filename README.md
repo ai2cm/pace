@@ -11,13 +11,12 @@ Currently, we only support tests in the dynamical core and util.
 
 ### Dynamical core tests
 
-To run dynamical core tests, first get the test data from inside `fv3core` or `fv3gfs-physics` folder, then link the data at the top level and build `fv3gfs-integration` docker image.
+To run dynamical core tests, first get the test data from inside `fv3core` or `fv3gfs-physics` folder, then build `fv3gfs-integration` docker image at the top level.
 
 ```shell
 $ cd fv3core
 $ make get_test_data
 $ cd ../
-$ make link_fv3core_test_data
 $ make build
 ```
 
@@ -29,13 +28,13 @@ $ make dev
 Then in the container, dynamical core serial tests can be run:
 
 ```shell
-$ pytest -v -s --data_path=/test_data/ /port_dev/fv3core/tests
+$ pytest -v -s --data_path=/port_dev/fv3core/test_data/c12_6ranks_standard/ /port_dev/fv3core/tests
 ```
 
 For parallel tests:
 
 ```shell
-$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/test_data/ /port_dev/fv3core/tests
+$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/port_dev/fv3core/test_data/c12_6ranks_standard/ /port_dev/fv3core/tests
 ```
 
 Additional test options are described under `fv3core` documentation.

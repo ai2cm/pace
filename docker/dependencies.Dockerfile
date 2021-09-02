@@ -11,9 +11,6 @@ RUN apt-get update && apt-get install -y \
     g++ \
     gfortran \
     make
-#RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 8 && \
-#    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 8 && \
-#    update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-8 8
 RUN wget -q http://www.mpich.org/static/downloads/3.1.4/mpich-3.1.4.tar.gz && \
     tar xzf mpich-3.1.4.tar.gz && \
     cd mpich-3.1.4 && \
@@ -26,7 +23,7 @@ COPY --from=fv3gfs-mpi-install /mpich-3.1.4 /mpich-3.1.4
 
 FROM $MPI_IMAGE AS mpi_image
 
-FROM $BASE_IMAGE_ENV AS fv3core-environment
+FROM $BASE_IMAGE_ENV AS fv3gfs-environment
 ENV DEBIAN_FRONTEND=noninteractive TZ=US/Pacific
 RUN apt-get update && apt-get install -y  --no-install-recommends \
     curl \
@@ -65,9 +62,6 @@ RUN apt-get update && apt-get install -y  --no-install-recommends \
     tk-dev \
     libffi-dev \
     liblzma-dev
-#RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 8 && \
-#    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 8 && \
-#    update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-8 8
 ARG PYVERSION=3.8.2
 RUN curl https://pyenv.run | bash
 ENV PYENV_ROOT /root/.pyenv
@@ -84,7 +78,7 @@ RUN cd /mpich-3.1.4 && make install && ldconfig && rm -rf /mpich-3.1.4
 ##
 ## Setup environment for Serialbox
 ##---------------------------------------------------------------------------------
-FROM fv3core-environment as fv3core-environment-serialbox-install
+FROM fv3gfs-environment as fv3gfs-environment-serialbox-install
 # set TZ
 ENV DEBIAN_FRONTEND=noninteractive TZ=US/Pacific
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -119,5 +113,5 @@ RUN git clone -b v2.6.0 --depth 1 https://github.com/GridTools/serialbox.git /us
     cmake --build build/ -j $(nproc) --target install
 
 FROM busybox as fv3gfs-environment-serialbox
-COPY --from=fv3core-environment-serialbox-install /usr/local/serialbox /usr/local/serialbox
-COPY --from=fv3core-environment-serialbox-install /usr/include/boost /usr/include/boost
+COPY --from=fv3gfs-environment-serialbox-install /usr/local/serialbox /usr/local/serialbox
+COPY --from=fv3gfs-environment-serialbox-install /usr/include/boost /usr/include/boost

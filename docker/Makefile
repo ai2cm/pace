@@ -14,9 +14,9 @@ BUILD_ARGS += \
 	--build-arg ENV_CUDA_PATH=$(ENV_CUDA_PATH)
 
 
-CORE_DEPS_IMAGES = $(SERIALBOX_IMAGE) $(ENVIRONMENT_IMAGE)
-DEPS_IMAGES ?= $(CORE_DEPS_IMAGES) $(MPI_IMAGE)
+DEPS_IMAGES = $(SERIALBOX_IMAGE) $(ENVIRONMENT_IMAGE) $(MPI_IMAGE)
 GT4PY_VERSION ?= `cat ../GT4PY_VERSION.txt`
+PULL ?=True
 
 build: fv3gfs_image
 
@@ -32,6 +32,11 @@ get_gt4py:
 
  ## build production container image
 fv3gfs_image: get_gt4py
+	if [ $(PULL) == True ]; then \
+		$(MAKE) pull_deps_if_needed; \
+	else \
+		$(MAKE) build_deps; \
+	fi
 	DOCKER_BUILDKIT=1 docker build \
 		$(BUILD_ARGS) \
 		-f $(FV3GFS_DOCKERFILE) \
@@ -39,13 +44,10 @@ fv3gfs_image: get_gt4py
 		--target=$(FV3GFS_TARGET) \
 		..
 
-build_core_deps: ## build container images of dependencies
-	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(MPI_IMAGE) $(BUILD_ARGS) --target fv3gfs-mpi ../external/fv3gfs-fortran
-	$(MAKE) build_core_env
+build_deps: ## build container images of dependencies
+	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(MPI_IMAGE) $(BUILD_ARGS) --target fv3gfs-mpi .
+	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(ENVIRONMENT_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment .
 	docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(SERIALBOX_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment-serialbox .
-
-build_core_env:
-	 docker build -f $(DEPENDENCIES_DOCKERFILE) -t $(ENVIRONMENT_IMAGE) $(BUILD_ARGS) --target fv3gfs-environment .
 
 push_deps: ## push container images of dependencies to GCP
 	for IMAGE in $(DEPS_IMAGES); \
@@ -61,9 +63,6 @@ pull_deps: ## pull container images of dependencies from GCP (for faster builds)
 		docker pull $$IMAGE; \
 	done
 
-pull_core_deps:
-	DEPS_IMAGES="$(CORE_DEPS_IMAGES)" make pull_deps
-
 pull_deps_if_needed: ## pull images of any are missing
 	for IMAGE in $(DEPS_IMAGES); \
 	do \
@@ -71,9 +70,6 @@ pull_deps_if_needed: ## pull images of any are missing
 			docker pull $$IMAGE; \
 		fi; \
 	done
-
-pull_core_deps_if_needed:
-	DEPS_IMAGES="$(CORE_DEPS_IMAGES)" make pull_deps_if_needed
 
 clean_deps: ## pull container images of dependencies from GCP (for faster builds)
 	docker rmi $(DEPS_IMAGES)
