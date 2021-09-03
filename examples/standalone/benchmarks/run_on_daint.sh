@@ -65,6 +65,7 @@ test -n "$2" || exitError 1002 ${LINENO} "must pass a number of ranks"
 ranks="$2"
 test -n "$3" || exitError 1003 ${LINENO} "must pass a backend"
 backend="$3"
+sanitized_backend=`echo $2 | sed 's/:/_/g'` #sanitize the backend from any ':'
 test -n "$4" || exitError 1004 ${LINENO} "must pass a data path"
 data_path="$4"
 py_args="$5"
@@ -124,7 +125,7 @@ experiment=${split_path[-1]}
 sample_cache=.gt_cache_000000
 
 if [ ! -d $(pwd)/${sample_cache} ] ; then
-    premade_caches=/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$backend
+    premade_caches=/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$sanitized_backend
     if [ -d ${premade_caches}/${sample_cache} ] ; then
 	 version_file=${premade_caches}/GT4PY_VERSION.txt
 	 if [ -f ${version_file} ]; then
@@ -135,7 +136,7 @@ if [ ! -d $(pwd)/${sample_cache} ] ; then
 	 if [ "$version" == "$GT4PY_VERSION" ]; then
 	     echo "copying premade GT4Py caches"
              cp -r ${premade_caches}/.gt_cache_0000* .
-             find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/fv3core-cache-setup\/backend\/$backend\/experiment\/$experiment\/slave\/daint_submit|$(pwd)|g" {} +
+             find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/fv3core-cache-setup\/backend\/$sanitized_backend\/experiment\/$experiment\/slave\/daint_submit|$(pwd)|g" {} +
 	 fi
    fi
 fi
@@ -147,7 +148,7 @@ sed -i "s/<NTASKS>/$ranks/g" run.daint.slurm
 sed -i "s/<NTASKSPERNODE>/1/g" run.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
 sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
-sed -i "s/00:45:00/01:10:00/g" run.daint.slurm
+sed -i "s/00:45:00/03:15:00/g" run.daint.slurm
 sed -i "s/cscsci/normal/g" run.daint.slurm
 sed -i "s/<G2G>/export PYTHONOPTIMIZE=TRUE/g" run.daint.slurm
 sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox2_master/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm

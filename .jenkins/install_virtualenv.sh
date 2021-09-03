@@ -21,8 +21,6 @@ if [ -z "${GT4PY_VERSION}" ]; then
 fi
 (cd ${fv3core_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
 source ${virtualenv_path}/bin/activate
-# TODO: move this to daint_venv and update submodule
-python -m gt4py.gt_src_manager install -m 2
 python3 -m pip install ${fv3core_dir}/external/fv3gfs-util/
 python3 -m pip install $wheel_command -c ${fv3core_dir}/constraints.txt -r ${fv3core_dir}/requirements/requirements_daint.txt
 python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${fv3core_dir}

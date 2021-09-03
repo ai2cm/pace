@@ -7,7 +7,6 @@ from typing import Union
 import numpy as np
 import pytest
 import serialbox as ser
-import xarray as xr
 
 import fv3core._config
 import fv3core.utils.global_config as config
@@ -489,6 +488,8 @@ def _subtest(failure_list, subtests, **kwargs):
 def save_netcdf(
     testobj, inputs_list, output_list, ref_data, failing_names, out_filename
 ):
+    import xarray as xr
+
     data_vars = {}
     for i, varname in enumerate(failing_names):
         dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
