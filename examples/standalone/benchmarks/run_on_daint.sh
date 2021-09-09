@@ -84,14 +84,9 @@ echo "creating the venv"
 if [ -d ./venv ] ; then rm -rf venv ; fi
 cd $ROOT_DIR/external/daint_venv/
 if [ -d ./gt4py ] ; then rm -rf gt4py ; fi
-./install.sh $ROOT_DIR/venv
 cd $ROOT_DIR
+$ROOT_DIR/.jenkins/install_virtualenv.sh venv
 source ./venv/bin/activate
-
-# install the local packages
-echo "install requirements..."
-pip install ./external/fv3gfs-util/
-pip install -e .
 pip list
 
 # set the environment
