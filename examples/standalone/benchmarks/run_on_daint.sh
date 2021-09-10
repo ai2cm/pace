@@ -65,7 +65,7 @@ test -n "$2" || exitError 1002 ${LINENO} "must pass a number of ranks"
 ranks="$2"
 test -n "$3" || exitError 1003 ${LINENO} "must pass a backend"
 backend="$3"
-sanitized_backend=`echo $2 | sed 's/:/_/g'` #sanitize the backend from any ':'
+sanitized_backend=`echo $backend | sed 's/:/_/g'` #sanitize the backend from any ':'
 test -n "$4" || exitError 1004 ${LINENO} "must pass a data path"
 data_path="$4"
 py_args="$5"
@@ -119,24 +119,25 @@ split_path=(${data_path//\// })
 experiment=${split_path[-1]}
 sample_cache=.gt_cache_000000
 
+echo "Attempting to use precomputed cache"
 if [ ! -d $(pwd)/${sample_cache} ] ; then
     premade_caches=/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$sanitized_backend
     if [ -d ${premade_caches}/${sample_cache} ] ; then
-	 version_file=${premade_caches}/GT4PY_VERSION.txt
-	 if [ -f ${version_file} ]; then
-             version=`cat ${version_file}`
-	 else
-             version=""
-	 fi
-	 if [ "$version" == "$GT4PY_VERSION" ]; then
-	     echo "copying premade GT4Py caches"
-             cp -r ${premade_caches}/.gt_cache_0000* .
-             find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/fv3core-cache-setup\/backend\/$sanitized_backend\/experiment\/$experiment\/slave\/daint_submit|$(pwd)|g" {} +
-	 fi
+	    version_file=${premade_caches}/GT4PY_VERSION.txt
+	    if [ -f ${version_file} ]; then
+            version=`cat ${version_file}`
+	    else
+            version=""
+	    fi
+	    if [ "$version" == "$GT4PY_VERSION" ]; then
+	        echo "Copying premade GT4Py caches"
+            cp -r ${premade_caches}/.gt_cache_0000* .
+            find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/fv3core-cache-setup\/backend\/$sanitized_backend\/experiment\/$experiment\/slave\/daint_submit|$(pwd)|g" {} +
+	    fi
    fi
 fi
 
-echo "submitting script to do performance run"
+echo "Submitting script to do performance run"
 # Adapt batch script to run the code:
 sed -i "s/<NAME>/standalone/g" run.daint.slurm
 sed -i "s/<NTASKS>/$ranks/g" run.daint.slurm
