@@ -85,7 +85,7 @@ if [ -d ./venv ] ; then rm -rf venv ; fi
 cd $ROOT_DIR/external/daint_venv/
 if [ -d ./gt4py ] ; then rm -rf gt4py ; fi
 cd $ROOT_DIR
-$ROOT_DIR/.jenkins/install_virtualenv.sh venv
+$ROOT_DIR/.jenkins/install_virtualenv.sh $ROOT_DIR/venv
 source ./venv/bin/activate
 pip list
 
