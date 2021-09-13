@@ -50,7 +50,7 @@ function cleanupFailedJob {
     if [[ ! $status == *"COMPLETED"* ]]; then
         echo ${status}
         echo `cat ${jobout}`
-        rm -rf .gt_cache_0000*
+        rm -rf .gt_cache*
         pip list
         deactivate
         rm -rf venv
@@ -117,7 +117,7 @@ echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 split_path=(${data_path//\// })
 experiment=${split_path[-1]}
-sample_cache=.gt_cache_000000
+sample_cache=.gt_cache
 
 echo "Attempting to use precomputed cache"
 if [ ! -d $(pwd)/${sample_cache} ] ; then
@@ -131,7 +131,7 @@ if [ ! -d $(pwd)/${sample_cache} ] ; then
 	    fi
 	    if [ "$version" == "$GT4PY_VERSION" ]; then
 	        echo "Copying premade GT4Py caches"
-            cp -r ${premade_caches}/.gt_cache_0000* .
+            cp -r ${premade_caches}/.gt_cache* .
             find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/fv3core-cache-setup\/backend\/$sanitized_backend\/experiment\/$experiment\/slave\/daint_submit|$(pwd)|g" {} +
 	    fi
    fi

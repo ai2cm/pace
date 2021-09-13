@@ -2,13 +2,11 @@ import logging
 from functools import wraps
 from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
 
-import gt4py as gt
 import gt4py.storage as gt_storage
 import numpy as np
 
 import fv3core._config as spec
 import fv3core.utils.global_config as global_config
-from fv3core.utils.mpi import MPI
 from fv3core.utils.typing import DTypes, Field, Float
 
 
@@ -39,13 +37,6 @@ tracer_variables = [
 
 # Logger instance
 logger = logging.getLogger("fv3core")
-
-
-# 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
-if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-    gt.config.cache_settings["dir_name"] = ".gt_cache_{:0>6d}".format(
-        MPI.COMM_WORLD.Get_rank()
-    )
 
 
 # TODO remove when using quantities throughout model
