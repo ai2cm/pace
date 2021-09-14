@@ -207,7 +207,7 @@ def future_stencil(
 
     def _decorator(func):
         device_sync = kwargs.pop("device_sync", None)
-        backend_opts = {"device_sync": device_sync} if device_sync else {}
+        backend_opts = {"device_sync": device_sync} if device_sync is not None else {}
         builder = (
             StencilBuilder(func)
             .with_backend(backend)
