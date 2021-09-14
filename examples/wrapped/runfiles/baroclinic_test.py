@@ -276,7 +276,13 @@ if __name__ == "__main__":
         state["atmosphere_hybrid_b_coordinate"],
         state["surface_geopotential"],
     )
-    fvsubgridz = fv3core.DryConvectiveAdjustment(spec.namelist)
+    fvsubgridz = fv3core.DryConvectiveAdjustment(
+        spec.grid.grid_indexing,
+        spec.namelist.nwat,
+        spec.namelist.fv_sg_adj,
+        spec.namelist.n_sponge,
+        spec.namelist.hydrostatic,
+    )
     # Step through time
     for i in range(wrapper.get_step_count()):
         print("STEP IS ", i)

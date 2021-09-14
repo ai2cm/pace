@@ -3,7 +3,6 @@ from typing import Mapping
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, PARALLEL, computation, interval
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import ArgSpec, FrozenStencil
@@ -761,37 +760,44 @@ class DryConvectiveAdjustment:
         ),
     )
 
-    def __init__(self, namelist):
-        self.grid = spec.grid
-        self.namelist = namelist
-        assert (
-            not self.namelist.hydrostatic
-        ), "Hydrostatic not implemented for fv_subgridz"
-        self._k_sponge = self.namelist.n_sponge
+    def __init__(
+        self,
+        grid_indexing,
+        nwat: int,
+        fv_sg_adj: float,
+        n_sponge: int,
+        hydrostatic: bool,
+    ):
+        assert not hydrostatic, "Hydrostatic not implemented for fv_subgridz"
+        self._k_sponge = n_sponge
         if self._k_sponge is not None:
             if self._k_sponge < 3:
                 return
         else:
-            self._k_sponge = self.grid.npz
-        if self._k_sponge < min(self.grid.npz, 24):
+            self._k_sponge = grid_indexing.domain[2]
+        if self._k_sponge < min(grid_indexing.domain[2], 24):
             t_max = T2_MAX
         else:
             t_max = T3_MAX
-        if self.namelist.nwat == 0:
+        if nwat == 0:
             xvir = 0.0
         else:
             xvir = ZVIR
         self._m = 3
-        self._fv_sg_adj = float(spec.namelist.fv_sg_adj)
-        self._is = self.grid.is_
-        self._js = self.grid.js
-        kbot_domain = (self.grid.nic, self.grid.njc, self._k_sponge)
-        origin = self.grid.compute_origin()
+        self._fv_sg_adj = float(fv_sg_adj)
+        self._is = grid_indexing.isc
+        self._js = grid_indexing.jsc
+        kbot_domain = (grid_indexing.domain[0], grid_indexing.domain[1], self._k_sponge)
+        origin = grid_indexing.origin_compute()
 
         self._init_stencil = FrozenStencil(
             init,
             origin=origin,
-            domain=(self.grid.nic, self.grid.njc, self._k_sponge + 1),
+            domain=(
+                grid_indexing.domain[0],
+                grid_indexing.domain[1],
+                self._k_sponge + 1,
+            ),
         )
         self._m_loop_stencil = FrozenStencil(
             m_loop,
@@ -802,13 +808,13 @@ class DryConvectiveAdjustment:
         self._finalize_stencil = FrozenStencil(
             finalize,
             externals={
-                "hydrostatic": self.namelist.hydrostatic,
-                "fv_sg_adj": self.namelist.fv_sg_adj,
+                "hydrostatic": hydrostatic,
+                "fv_sg_adj": fv_sg_adj,
             },
             origin=origin,
             domain=kbot_domain,
         )
-        shape = self.grid.domain_shape_full(add=(1, 1, 0))
+        shape = grid_indexing.domain_full(add=(1, 1, 0))
         self._q0 = {}
         for tracername in utils.tracer_variables:
             self._q0[tracername] = utils.make_storage_from_shape(shape)
