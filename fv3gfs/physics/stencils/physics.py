@@ -160,6 +160,29 @@ def update_physics_state_with_tendencies(
         va_t1 = forward_euler(va, vdt, dt)
 
 
+def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
+
+    with computation(BACKWARD), interval(0, -3):
+        if q[0, 0, 1] < q_min:
+            q = q[0, 0, 0] + (q[0, 0, 1] - q_min) * (pe[0, 0, 2] - pe[0, 0, 1]) / (
+                pe[0, 0, 1] - pe[0, 0, 0]
+            )
+
+    with computation(BACKWARD), interval(1, -3):
+        if q[0, 0, 0] < q_min:
+            q = q_min
+
+    with computation(FORWARD), interval(1, -2):
+        if q[0, 0, -1] < 0.0:
+            q = q[0, 0, 0] + q[0, 0, -1] * (pe[0, 0, 0] - pe[0, 0, -1]) / (
+                pe[0, 0, 1] - pe[0, 0, 0]
+            )
+
+    with computation(FORWARD), interval(0, -2):
+        if q[0, 0, 0] < 0.0:
+            q = 0.0
+
+
 class Physics:
     def __init__(self, grid, namelist):
         self.grid = grid
@@ -227,6 +250,24 @@ class Physics:
         storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
         state = get_namespace(DynamicalCore.arg_specs, state)
         physics_state = PhysicsState.from_dycore_state(state, storage)
+        debug = {}
+        debug["prsik"] = self._prsik
+        debug["phii"] = physics_state.phii
+        debug["prsi"] = self._prsi
+        debug["delz"] = physics_state.delz
+        debug["delp"] = physics_state.delp
+        debug["qvapor"] = physics_state.qvapor
+        debug["qliquid"] = physics_state.qliquid
+        debug["qrain"] = physics_state.qrain
+        debug["qice"] = physics_state.qice
+        debug["qsnow"] = physics_state.qsnow
+        debug["qgraupel"] = physics_state.qgraupel
+        debug["qo3mr"] = physics_state.qo3mr
+        debug["qcld"] = physics_state.qcld
+        debug["pt"] = physics_state.pt
+        np.save(
+            "integrated_before_atmos_phys_statein_rank_" + str(rank) + ".npy", debug
+        )
         self._atmos_phys_driver_statein(
             self._prsik,
             physics_state.phii,
