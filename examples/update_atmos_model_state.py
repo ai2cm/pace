@@ -308,32 +308,26 @@ def run(in_dict, in_dict_udp, in_dict_grid, grid, comm):
     return out_dict
 
 
-def fill_gfs(pe2, q, q_min):
+@gtscript.stencil(backend=BACKEND)
+def fill_gfs(pe2 : FIELD_FLT,
+             q   : FIELD_FLT,
+             q_min: float):
 
-    im = q.shape[0]
-    km = q.shape[1]
+    with computation(BACKWARD), interval(0,-3):
+        if q[0,0,1] < q_min:
+            q = q[0,0,0] + (q[0,0,1] - q_min) * (pe2[0,0,2] - pe2[0,0,1]) / (pe2[0,0,1] - pe2[0,0,0])
 
-    dp = np.zeros((im, km))
+    with computation(BACKWARD), interval(1,-3):
+        if q[0,0,0] < q_min:
+            q = q_min
 
-    for k in range(km - 1, -1, -1):
-        for i in range(im):
-            dp[i, k] = pe2[i, k + 1] - pe2[i, k]
+    with computation(FORWARD), interval(1,-2):
+        if q[0,0,-1] < 0.0:
+            q = q[0,0,0] + q[0,0,-1] * (pe2[0,0,0] - pe2[0,0,-1]) / (pe2[0,0,1] - pe2[0,0,0])
 
-    for k in range(km - 1, 0, -1):
-        k1 = k - 1
-        for i in range(im):
-            if q[i, k] < q_min:
-                q[i, k1] = q[i, k1] + (q[i, k] - q_min) * dp[i, k] / dp[i, k1]
-                q[i, k] = q_min
-
-    for k in range(km - 1):
-        k1 = k + 1
-        for i in range(im):
-            if q[i, k] < 0.0:
-                q[i, k1] = q[i, k1] + q[i, k] * dp[i, k] / dp[i, k1]
-                q[i, k] = 0.0
-
-    return q
+    with computation(FORWARD), interval(0,-2):
+        if q[0,0,0] < 0.0:
+            q = 0.0
 
 
 def atmosphere_state_update(
@@ -378,7 +372,22 @@ def atmosphere_state_update(
 
     rdt = 1.0e0 / dt_atmos
 
-    gq0[:, :, 0] = fill_gfs(prsi, gq0[:, :, 0], 1.0e-9)
+    # *** Inelegant code that sets up data for fill_gfs stencil computation ***
+    # *** Reshape prsi and gq0 so that the i-dimension data is expanded in the i and j dimension
+    gq0_temp = gt_storage.zeros(backend=BACKEND, dtype=DTYPE_FLT,shape=(12,12,80), default_origin=(0,0,0))
+    gq0_temp[:,:,:79] = np.reshape(gq0[:,:,0],(12,12,79), order='F')
+    prsi_temp = gt_storage.from_array(np.reshape(prsi,(12,12,80), order='F'),
+                                      backend=BACKEND, 
+                                      dtype=DTYPE_FLT,
+                                      default_origin=(0,0,0))
+
+    fill_gfs(prsi_temp, gq0_temp, 1.0e-9)
+    
+    gq0_temp2 = np.zeros((12,12,80))
+    gq0_temp2[:,:,:] = gq0_temp[:,:,:]
+    gq0_temp2 = np.reshape(gq0_temp2,(144,80), order='F')
+    gq0[:,:,0] = gq0_temp2[:,:-1]
+    # ***
 
     im = gu0.shape[0]
     npz = gu0.shape[1]
