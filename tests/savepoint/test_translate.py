@@ -268,7 +268,6 @@ def test_sequential_savepoint(
             passing_names.append(failing_names.pop())
     assert failing_names == [], f"only the following variables passed: {passing_names}"
     assert len(passing_names) > 0, "No tests passed"
-    print(f"The following variables passed: {passing_names}")
 
 
 def get_serializer(data_path, rank):
