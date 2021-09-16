@@ -35,3 +35,7 @@ DivergenceDamping:
     ignore_near_zero_errors:
       vort: 6e-8
       delpc: 1e-15
+
+GFSPhysicsDriver:
+  - backend: numpy
+    max_error: 1e-10
