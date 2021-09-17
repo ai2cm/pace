@@ -190,7 +190,7 @@ class Physics:
         origin = self.grid.compute_origin()
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         self.setup_statein()
-        self._dt_atmos = self.namelist.dt_atmos
+        self._dt_atmos = Float(self.namelist.dt_atmos)
         self._ptop = 300.0  # hard coded before we can call ak from grid: state["ak"][0]
         self._pktop = (self._ptop / self._p00) ** KAPPA
         self._pk0inv = (1.0 / self._p00) ** KAPPA
@@ -250,24 +250,6 @@ class Physics:
         storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
         state = get_namespace(DynamicalCore.arg_specs, state)
         physics_state = PhysicsState.from_dycore_state(state, storage)
-        debug = {}
-        debug["prsik"] = self._prsik
-        debug["phii"] = physics_state.phii
-        debug["prsi"] = self._prsi
-        debug["delz"] = physics_state.delz
-        debug["delp"] = physics_state.delp
-        debug["qvapor"] = physics_state.qvapor
-        debug["qliquid"] = physics_state.qliquid
-        debug["qrain"] = physics_state.qrain
-        debug["qice"] = physics_state.qice
-        debug["qsnow"] = physics_state.qsnow
-        debug["qgraupel"] = physics_state.qgraupel
-        debug["qo3mr"] = physics_state.qo3mr
-        debug["qcld"] = physics_state.qcld
-        debug["pt"] = physics_state.pt
-        np.save(
-            "integrated_before_atmos_phys_statein_rank_" + str(rank) + ".npy", debug
-        )
         self._atmos_phys_driver_statein(
             self._prsik,
             physics_state.phii,
@@ -347,16 +329,3 @@ class Physics:
             physics_state.va_t1,
             self._dt_atmos,
         )
-        # The following variables can be verified after update_atmos_radiation_physics savepoint
-        debug = {}
-        debug["IPD_gt0"] = physics_state.pt_t1
-        debug["IPD_gu0"] = physics_state.ua_t1
-        debug["IPD_gv0"] = physics_state.va_t1
-        debug["qv_t1"] = physics_state.qvapor_t1
-        debug["ql_t1"] = physics_state.qliquid_t1
-        debug["qr_t1"] = physics_state.qrain_t1
-        debug["qi_t1"] = physics_state.qice_t1
-        debug["qs_t1"] = physics_state.qsnow_t1
-        debug["qg_t1"] = physics_state.qgraupel_t1
-        debug["qa_t1"] = physics_state.qcld_t1
-        np.save("integrated_after_physics_driver_rank_" + str(rank) + ".npy", debug)

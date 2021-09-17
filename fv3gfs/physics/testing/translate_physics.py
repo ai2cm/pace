@@ -30,6 +30,23 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             rearranged = np.roll(rearranged, -1, axis=-1)
         return rearranged
 
+    def read_microphysics_serialized_data(self, serializer, savepoint, variable):
+        data = serializer.read(variable, savepoint)
+        if isinstance(data, np.ndarray):
+            n_dim = len(data.shape)
+            cn = int(np.sqrt(data.shape[0]))
+            npz = data.shape[-1]
+            if n_dim == 3:
+                var_reshape = np.reshape(data[:, 0, :], (cn, cn, npz))
+                rearranged = var_reshape[:, :, :]
+            elif len(data.flatten()) == 1:
+                rearranged = data[0]
+            else:
+                raise NotImplementedError("Data dimension not supported")
+        else:
+            return data
+        return rearranged
+
     def read_dycore_serialized_data(self, serializer, savepoint, variable):
         data = serializer.read(variable, savepoint)
         if len(data.flatten()) == 1:
@@ -46,8 +63,13 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             else:
                 serialname = varname
             dycore_format = info["dycore"] if "dycore" in info else False
+            microph_format = info["microph"] if "microph" in info else False
             if dycore_format:
                 input_data[serialname] = self.read_dycore_serialized_data(
+                    serializer, savepoint, serialname
+                )
+            elif microph_format:
+                input_data[serialname] = self.read_microphysics_serialized_data(
                     serializer, savepoint, serialname
                 )
             else:

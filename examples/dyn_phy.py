@@ -30,24 +30,20 @@ fv3core.set_rebuild(False)
 fv3core.set_validate_args(False)
 global_config.set_do_halo_exchange(True)
 
-spec.set_namelist("c12_6ranks_baroclinic_dycore_microphysics_day_10/input.nml")
+spec.set_namelist("c12_6ranks_baroclinic_dycore_microphysics/input.nml")
 
 experiment_name = yaml.safe_load(
-    open(
-        "c12_6ranks_baroclinic_dycore_microphysics_day_10/input.yml",
-        "r",
-    )
+    open("c12_6ranks_baroclinic_dycore_microphysics/input.yml", "r",)
 )["experiment_name"]
 
 # set up of helper structures
 serializer = serialbox.Serializer(
     serialbox.OpenModeKind.Read,
-    "c12_6ranks_baroclinic_dycore_microphysics_day_10",
+    "c12_6ranks_baroclinic_dycore_microphysics",
     "Generator_rank" + str(rank),
 )
 cube_comm = util.CubedSphereCommunicator(
-    comm,
-    util.CubedSpherePartitioner(util.TilePartitioner(spec.namelist.layout)),
+    comm, util.CubedSpherePartitioner(util.TilePartitioner(spec.namelist.layout)),
 )
 
 # get grid from serialized data
