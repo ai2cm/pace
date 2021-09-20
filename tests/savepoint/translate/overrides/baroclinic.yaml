@@ -39,7 +39,16 @@ DivergenceDamping:
 GFSPhysicsDriver:
   - backend: numpy
     max_error: 1e-10
+  - backend: gtx86
+    max_error: 1e-10
   
 Microph:
   - backend: numpy
     max_error: 1e-10
+  - backend: gtx86
+    max_error: 1e-12
+
+FillGFS:
+  - backend: gtx86
+    ignore_near_zero_errors:
+      IPD_qvapor: 9.9e-8
