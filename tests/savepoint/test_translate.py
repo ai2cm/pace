@@ -385,7 +385,7 @@ def hash_result_data(result, data_keys):
 
 @pytest.mark.parallel
 @pytest.mark.skipif(
-    MPI is not None and MPI.COMM_WORLD.Get_size() == 1,
+    MPI is None or MPI.COMM_WORLD.Get_size() == 1,
     reason="Not running in parallel with mpi",
 )
 def test_parallel_savepoint(

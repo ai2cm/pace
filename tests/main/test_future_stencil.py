@@ -59,7 +59,7 @@ def test_future_stencil(backend: str, rebuild: bool, use_wrapper: bool):
             self.stencil_object(*args, **kwargs)
 
     set_backend(backend)
-    FutureStencil.clear()
+    StencilTable.clear()
 
     origin = (1, 1, 0)
     domain = (2, 2, 3)
@@ -90,7 +90,7 @@ def test_future_stencil(backend: str, rebuild: bool, use_wrapper: bool):
 
 @pytest.mark.parallel
 @pytest.mark.skipif(
-    MPI is not None and MPI.COMM_WORLD.Get_size() == 1,
+    MPI is None or MPI.COMM_WORLD.Get_size() == 1,
     reason="Not running in parallel with mpi",
 )
 def test_distributed_table():
@@ -119,7 +119,7 @@ def test_distributed_table():
 
 @pytest.mark.parallel
 @pytest.mark.skipif(
-    MPI is not None and MPI.COMM_WORLD.Get_size() == 1,
+    MPI is None or MPI.COMM_WORLD.Get_size() == 1,
     reason="Not running in parallel with mpi",
 )
 def test_one_sided_mpi():
@@ -152,7 +152,7 @@ def test_one_sided_mpi():
 
 @pytest.mark.parallel
 @pytest.mark.skipif(
-    MPI is not None and MPI.COMM_WORLD.Get_size() == 1,
+    MPI is None or MPI.COMM_WORLD.Get_size() == 1,
     reason="Not running in parallel with mpi",
 )
 def test_rank_adder_numpy():
@@ -161,7 +161,7 @@ def test_rank_adder_numpy():
 
 @pytest.mark.parallel
 @pytest.mark.skipif(
-    MPI is not None and MPI.COMM_WORLD.Get_size() == 1,
+    MPI is None or MPI.COMM_WORLD.Get_size() == 1,
     reason="Not running in parallel with mpi",
 )
 def test_rank_adder_gridtools():
@@ -172,7 +172,7 @@ def run_rank_adder_test(backend: str, rebuild: bool):
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     set_backend(backend)
-    FutureStencil.clear()
+    StencilTable.clear()
 
     origin = (0, 0, 0)
     domain = (1, 1, size)
