@@ -170,18 +170,18 @@ class AGrid2DGridPhysics:
         self._im2 = int((self.grid.npx - 1) / 2) + 2
         self._jm2 = int((self.grid.npy - 1) / 2) + 2
         shape = self.grid.grid_indexing.max_shape
-        self._ue_1 = utils.make_storage_from_shape(shape)
-        self._ue_2 = utils.make_storage_from_shape(shape)
-        self._ue_3 = utils.make_storage_from_shape(shape)
-        self._ut_1 = utils.make_storage_from_shape(shape)
-        self._ut_2 = utils.make_storage_from_shape(shape)
-        self._ut_3 = utils.make_storage_from_shape(shape)
-        self._ve_1 = utils.make_storage_from_shape(shape)
-        self._ve_2 = utils.make_storage_from_shape(shape)
-        self._ve_3 = utils.make_storage_from_shape(shape)
-        self._vt_1 = utils.make_storage_from_shape(shape)
-        self._vt_2 = utils.make_storage_from_shape(shape)
-        self._vt_3 = utils.make_storage_from_shape(shape)
+        self._ue_1 = utils.make_storage_from_shape(shape, init=True)
+        self._ue_2 = utils.make_storage_from_shape(shape, init=True)
+        self._ue_3 = utils.make_storage_from_shape(shape, init=True)
+        self._ut_1 = utils.make_storage_from_shape(shape, init=True)
+        self._ut_2 = utils.make_storage_from_shape(shape, init=True)
+        self._ut_3 = utils.make_storage_from_shape(shape, init=True)
+        self._ve_1 = utils.make_storage_from_shape(shape, init=True)
+        self._ve_2 = utils.make_storage_from_shape(shape, init=True)
+        self._ve_3 = utils.make_storage_from_shape(shape, init=True)
+        self._vt_1 = utils.make_storage_from_shape(shape, init=True)
+        self._vt_2 = utils.make_storage_from_shape(shape, init=True)
+        self._vt_3 = utils.make_storage_from_shape(shape, init=True)
         self._update_dwind_prep_stencil = FrozenStencil(
             update_dwind_prep_stencil,
             origin=(self.grid.halo - 1, self.grid.halo - 1, 0),
@@ -262,7 +262,7 @@ class AGrid2DGridPhysics:
                     )
             if self.grid.js <= self._jm2 and self._domain_lower_east[1] > 0:
                 self._copy3_stencil4 = FrozenStencil(
-                    copy3_stencil, origin=origin_lower, domain=self.domain_lower_east
+                    copy3_stencil, origin=origin_lower, domain=self._domain_lower_east
                 )
         if self.grid.south_edge:
             ie_lower = min(self._im2, self.grid.ie)
@@ -315,7 +315,7 @@ class AGrid2DGridPhysics:
                         origin=origin_lower,
                         domain=self._domain_lower_north,
                     )
-            if self.je >= self._jm2:
+            if self.grid.je >= self._jm2:
                 is_upper = max(self._im2 + 1, self.grid.is_)
                 origin_upper = (is_upper, j_origin, 0)
                 self._domain_upper_noth = (
