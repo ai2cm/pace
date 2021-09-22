@@ -54,3 +54,9 @@ FillGFS:
   - backend: gtx86
     ignore_near_zero_errors:
       IPD_qvapor: 9.9e-8
+
+UpdateDWindsPhys:
+  - backend: numpy
+    max_error: 1e-6
+  - backend: gtx86
+    max_error: 1e-6
