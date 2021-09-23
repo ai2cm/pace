@@ -279,9 +279,6 @@ class UpdateHeightOnDGrid:
         self._fy = utils.make_storage_from_shape(
             largest_possible_shape, grid_indexing.origin_full()
         )
-        self._zh_tmp = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full()
-        )
 
     def _initialize_interpolation_constants(self, grid_indexing):
         # because stencils only work on 3D at the moment, need to compute in 3D

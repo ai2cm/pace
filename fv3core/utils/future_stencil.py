@@ -254,8 +254,12 @@ def future_stencil(
     """
 
     def _decorator(func):
-        device_sync = kwargs.pop("device_sync", None)
-        backend_opts = {"device_sync": device_sync} if device_sync is not None else {}
+        # Move backend options to `backend_opts`
+        backend_opts: Dict[str, Any] = {}
+        for backend_opt in ("device_sync", "skip_passes"):
+            if backend_opt in kwargs:
+                backend_opts[backend_opt] = kwargs.pop(backend_opt)
+
         builder = (
             StencilBuilder(func)
             .with_backend(backend)

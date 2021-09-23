@@ -58,6 +58,10 @@ def is_gpu_backend() -> bool:
     return get_backend().endswith("cuda") or get_backend().endswith("gpu")
 
 
+def is_gtc_backend() -> bool:
+    return get_backend().startswith("gtc")
+
+
 class StencilConfig(Hashable):
     def __init__(
         self,
