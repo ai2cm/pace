@@ -13,6 +13,7 @@ def backend(pytestconfig):
 def pytest_addoption(parser):
     parser.addoption("--backend", action="store", default="numpy")
     parser.addoption("--which_modules", action="store")
+    parser.addoption("--which_rank", action="store")
     parser.addoption("--skip_modules", action="store")
     parser.addoption("--print_failures", action="store_true")
     parser.addoption("--failure_stride", action="store", default=1)

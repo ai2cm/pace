@@ -168,6 +168,15 @@ def get_parallel_savepoint_names(metafunc, data_path):
     return parallel_names
 
 
+def get_ranks(metafunc, layout):
+    only_rank = metafunc.config.getoption("which_rank")
+    if only_rank is None:
+        total_ranks = 6 * layout[0] * layout[1]
+        return range(total_ranks)
+    else:
+        return [int(only_rank)]
+
+
 SavepointCase = collections.namedtuple(
     "SavepointCase",
     [
@@ -185,15 +194,13 @@ SavepointCase = collections.namedtuple(
 def sequential_savepoint_cases(metafunc, data_path):
     return_list = []
     layout = fv3core._config.namelist.layout
-    total_ranks = 6 * layout[0] * layout[1]
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
+    ranks = get_ranks(metafunc, layout)
 
-    for rank in range(total_ranks):
+    for rank in ranks:
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
         grid = process_grid_savepoint(serializer, grid_savepoint, rank)
-        if rank == 0:
-            grid_rank0 = grid
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -209,7 +216,13 @@ def sequential_savepoint_cases(metafunc, data_path):
                     layout,
                 )
             )
+
+    # Set the grid to rank 0's data
+    serializer = get_serializer(data_path, 0)
+    grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
+    grid_rank0 = process_grid_savepoint(serializer, grid_savepoint, 0)
     fv3core._config.set_grid(grid_rank0)
+
     return return_list
 
 
@@ -365,6 +378,7 @@ def generate_parallel_stencil_tests(metafunc):
 
 def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
     param_list = []
+    only_one_rank = metafunc.config.getoption("which_rank") is not None
     for case in savepoint_cases:
         original_grid = fv3core._config.grid
         try:
@@ -377,7 +391,15 @@ def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
             zip(case.input_savepoints, case.output_savepoints)
         ):
             param_list.append(
-                get_param(case, testobj, savepoint_in, savepoint_out, i, max_call_count)
+                get_param(
+                    case,
+                    testobj,
+                    savepoint_in,
+                    savepoint_out,
+                    i,
+                    max_call_count,
+                    only_one_rank,
+                )
             )
 
     metafunc.parametrize(", ".join(arg_names), param_list)
@@ -401,8 +423,25 @@ def get_parallel_param(
 
 
 def get_parallel_mock_param(
-    case, testobj, savepoint_in_list, savepoint_out_list, call_count, max_call_count
+    case,
+    testobj,
+    savepoint_in_list,
+    savepoint_out_list,
+    call_count,
+    max_call_count,
+    only_one_rank,
 ):
+    dependency = (
+        pytest.mark.dependency()
+        if only_one_rank
+        else pytest.mark.dependency(
+            name=f"{case.test_name}-{call_count}",
+            depends=[
+                f"{case.test_name}-{lower_count}"
+                for lower_count in range(0, call_count)
+            ],
+        )
+    )
     return pytest.param(
         testobj,
         case.test_name,
@@ -415,30 +454,23 @@ def get_parallel_mock_param(
         case.grid,
         case.layout,
         id=f"{case.test_name}-call_count={call_count}",
-        marks=pytest.mark.dependency(
-            name=f"{case.test_name}-{call_count}",
-            depends=[
-                f"{case.test_name}-{lower_count}"
-                for lower_count in range(0, call_count)
-            ],
-        ),
+        marks=dependency,
     )
 
 
 def get_sequential_param(
-    case, testobj, savepoint_in, savepoint_out, call_count, max_call_count
+    case,
+    testobj,
+    savepoint_in,
+    savepoint_out,
+    call_count,
+    max_call_count,
+    only_one_rank,
 ):
-    return pytest.param(
-        testobj,
-        case.test_name,
-        # serializer repr is very verbose, and not all that useful, so we hide it here
-        ReplaceRepr(case.serializer, f"<Serializer for rank {case.rank}>"),
-        savepoint_in,
-        savepoint_out,
-        case.rank,
-        case.grid,
-        id=f"{case.test_name}-rank={case.rank}-call_count={call_count}",
-        marks=pytest.mark.dependency(
+    dependency = (
+        pytest.mark.dependency()
+        if only_one_rank
+        else pytest.mark.dependency(
             name=f"{case.test_name}-{case.rank}-{call_count}",
             depends=[
                 f"{case.test_name}-{lower_rank}-{count}"
@@ -449,7 +481,19 @@ def get_sequential_param(
                 f"{case.test_name}-{case.rank}-{lower_count}"
                 for lower_count in range(0, call_count)
             ],
-        ),
+        )
+    )
+    return pytest.param(
+        testobj,
+        case.test_name,
+        # serializer repr is very verbose, and not all that useful, so we hide it here
+        ReplaceRepr(case.serializer, f"<Serializer for rank {case.rank}>"),
+        savepoint_in,
+        savepoint_out,
+        case.rank,
+        case.grid,
+        id=f"{case.test_name}-rank={case.rank}-call_count={call_count}",
+        marks=dependency,
     )
 
 
