@@ -7,18 +7,22 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
 
-    def read_physics_serialized_data(self, serializer, savepoint, variable, roll_zero):
+    def read_physics_serialized_data(
+        self, serializer, savepoint, variable, roll_zero, index_order
+    ):
         data = serializer.read(variable, savepoint)
         if isinstance(data, np.ndarray):
             n_dim = len(data.shape)
             cn = int(np.sqrt(data.shape[0]))
             if n_dim == 2:
-                var_reshape = np.reshape(data, (cn, cn, data.shape[1]))
+                var_reshape = np.reshape(
+                    data, (cn, cn, data.shape[1]), order=index_order
+                )
                 rearranged = var_reshape[:, :, ::-1]
             elif n_dim == 3:
                 npz = data.shape[1]
                 n_trac = data.shape[2]
-                var_reshape = np.reshape(data, (cn, cn, npz, n_trac))
+                var_reshape = np.reshape(data, (cn, cn, npz, n_trac), order=index_order)
                 rearranged = var_reshape[:, :, ::-1, :]
             elif len(data.flatten()) == 1:
                 rearranged = data[0]
@@ -158,7 +162,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
 
     def collect_input_data(self, serializer, savepoint):
         input_data = {}
-        for varname in [*self.in_vars["data_vars"]] + self.in_vars["parameters"]:
+        for varname in [*self.in_vars["data_vars"]]:
             info = self.in_vars["data_vars"][varname]
             roll_zero = info["in_roll_zero"] if "in_roll_zero" in info else False
             if "serialname" in info:
@@ -168,6 +172,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             dycore_format = info["dycore"] if "dycore" in info else False
             microph_format = info["microph"] if "microph" in info else False
             dwind_format = info["dwind"] if "dwind" in info else False
+            index_order = info["order"] if "order" in info else "C"
             if dycore_format:
                 input_data[serialname] = self.read_dycore_serialized_data(
                     serializer, savepoint, serialname
@@ -184,8 +189,12 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                     input_data[dvar] = dwind_data_dict[dvar]
             else:
                 input_data[serialname] = self.read_physics_serialized_data(
-                    serializer, savepoint, serialname, roll_zero
+                    serializer, savepoint, serialname, roll_zero, index_order
                 )
+        for varname in self.in_vars["parameters"]:
+            input_data[varname] = self.read_dycore_serialized_data(
+                serializer, savepoint, varname
+            )
         return input_data
 
     def slice_output(self, inputs, out_data=None):
@@ -208,24 +217,33 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 k_length = info["kend"] if "kend" in info else npz
                 roll_zero = info["out_roll_zero"] if "out_roll_zero" in info else False
                 index_order = info["order"] if "order" in info else "C"
+                dycore = info["dycore"] if "dycore" in info else False
                 data_result.synchronize()
-                ds = self.grid.compute_dict()
-                ds.update(info)
                 if n_dim == 3:
+                    if compute_domain:
+                        ds = self.grid.compute_dict()
+                    else:
+                        ds = self.grid.default_domain_dict()
+                    ds.update(info)
                     ij_slice = self.grid.slice_dict(ds)
                     data_compute = np.asarray(data_result)[
                         ij_slice[0], ij_slice[1], :,
                     ]
-                    data_compute = np.reshape(
-                        data_compute, (cn2, npz), order=index_order
-                    )
-                    if k_length < npz:
-                        out[serialname] = data_compute[:, ::-1][:, 1:]
+                    if dycore:
+                        if k_length < npz:
+                            data_compute = data_compute[:, :, 0:-1]
+                        out[serialname] = data_compute
                     else:
-                        if roll_zero:
-                            out[serialname] = np.roll(data_compute[:, ::-1], -1)
+                        data_compute = np.reshape(
+                            data_compute, (cn2, npz), order=index_order
+                        )
+                        if k_length < npz:
+                            out[serialname] = data_compute[:, ::-1][:, 1:]
                         else:
-                            out[serialname] = data_compute[:, ::-1]
+                            if roll_zero:
+                                out[serialname] = np.roll(data_compute[:, ::-1], -1)
+                            else:
+                                out[serialname] = data_compute[:, ::-1]
                 else:
                     raise NotImplementedError("Output data dimension not supported")
         return out
