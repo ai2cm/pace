@@ -406,8 +406,17 @@ def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
 
 
 def get_parallel_param(
-    case, testobj, savepoint_in, savepoint_out, call_count, max_call_count
+    case,
+    testobj,
+    savepoint_in,
+    savepoint_out,
+    call_count,
+    max_call_count,
+    only_one_rank,
 ):
+    if only_one_rank is not None:
+        raise RuntimeError("Cannot use --which_rank with parallel tests.")
+
     test_case = f"{case.test_name}-rank={case.rank}--call_count={call_count}"
     return pytest.param(
         testobj,
@@ -431,17 +440,9 @@ def get_parallel_mock_param(
     max_call_count,
     only_one_rank,
 ):
-    dependency = (
-        pytest.mark.dependency()
-        if only_one_rank
-        else pytest.mark.dependency(
-            name=f"{case.test_name}-{call_count}",
-            depends=[
-                f"{case.test_name}-{lower_count}"
-                for lower_count in range(0, call_count)
-            ],
-        )
-    )
+    if only_one_rank is not None:
+        raise RuntimeError("Cannot use --which_rank with parallel tests.")
+
     return pytest.param(
         testobj,
         case.test_name,
@@ -454,7 +455,13 @@ def get_parallel_mock_param(
         case.grid,
         case.layout,
         id=f"{case.test_name}-call_count={call_count}",
-        marks=dependency,
+        marks=pytest.mark.dependency(
+            name=f"{case.test_name}-{call_count}",
+            depends=[
+                f"{case.test_name}-{lower_count}"
+                for lower_count in range(0, call_count)
+            ],
+        ),
     )
 
 
