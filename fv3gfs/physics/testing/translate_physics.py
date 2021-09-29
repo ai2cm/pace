@@ -213,13 +213,13 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 data_result = out_data[var]
                 n_dim = len(data_result.shape)
                 cn2 = int(data_result.shape[0] - self.grid.halo * 2 - 1) ** 2
-                npz = data_result.shape[2]
-                k_length = info["kend"] if "kend" in info else npz
                 roll_zero = info["out_roll_zero"] if "out_roll_zero" in info else False
                 index_order = info["order"] if "order" in info else "C"
                 dycore = info["dycore"] if "dycore" in info else False
                 data_result.synchronize()
                 if n_dim == 3:
+                    npz = data_result.shape[2]
+                    k_length = info["kend"] if "kend" in info else npz
                     if compute_domain:
                         ds = self.grid.compute_dict()
                     else:
@@ -244,6 +244,15 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                                 out[serialname] = np.roll(data_compute[:, ::-1], -1)
                             else:
                                 out[serialname] = data_compute[:, ::-1]
+                elif n_dim == 2:
+                    if compute_domain:
+                        ds = self.grid.compute_dict()
+                    else:
+                        ds = self.grid.default_domain_dict()
+                    ds.update(info)
+                    ij_slice = self.grid.slice_dict(ds)
+                    data_compute = np.asarray(data_result)[ij_slice[0], ij_slice[1]]
+                    out[serialname] = data_compute
                 else:
                     raise NotImplementedError("Output data dimension not supported")
         return out
