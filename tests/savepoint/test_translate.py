@@ -31,7 +31,7 @@ def compare_arr(computed_data, ref_data):
     return compare
 
 
-def compare_atom(computed_data: np.float64, ref_data: np.float64) -> np.float64:
+def compare_scalar(computed_data: np.float64, ref_data: np.float64) -> np.float64:
     denom = np.abs(ref_data) + np.abs(computed_data)
     if denom == 0:
         return 0.0
@@ -109,11 +109,13 @@ def sample_wherefail(
     if print_failures:
         for b in range(0, bad_indices_count, failure_stride):
             full_index = [f[b] for f in found_indices]
+            abs_err = abs(computed_failures[b] - reference_failures[b])
+            metric_err = compare_scalar(computed_failures[b], reference_failures[b])
             return_strings.append(
                 f"index: {full_index}, computed {computed_failures[b]}, "
                 f"reference {reference_failures[b]}, "
-                f"absolute diff {abs(computed_failures[b] - reference_failures[b]):.3e}, "
-                f"metric diff: {compare_atom(computed_failures[b], reference_failures[b]):.3e}"
+                f"absolute diff {abs_err:.3e}, "
+                f"metric diff: {metric_err:.3e}"
             )
 
     # Determine worst result
@@ -121,7 +123,7 @@ def sample_wherefail(
     worst_idx = 0
     worst_full_idx = 0
     for b in range(0, bad_indices_count, failure_stride):
-        err = compare_atom(computed_failures[b], reference_failures[b])
+        err = compare_scalar(computed_failures[b], reference_failures[b])
         if worst_err < err:
             worst_err = err
             worst_idx = b
@@ -129,14 +131,18 @@ def sample_wherefail(
 
     # Summary and worst result
     fullcount = len(ref_data.flatten())
+    abs_err = abs(computed_failures[worst_idx] - reference_failures[worst_idx])
+    metric_err = compare_scalar(
+        computed_failures[worst_idx], reference_failures[worst_idx]
+    )
     return_strings.append(
         f"Failed count: {bad_indices_count}/{fullcount} "
         f"({round(100.0 * (bad_indices_count / fullcount), 2)}%),\n"
         f"Worst failed index {worst_full_idx}\n"
         f"\tcomputed:{computed_failures[worst_idx]}\n"
         f"\treference: {reference_failures[worst_idx]}\n"
-        f"\tabsolute diff: {abs(computed_failures[worst_idx] - reference_failures[worst_idx]):.3e}\n"
-        f"\tmetric diff: {compare_atom(computed_failures[worst_idx], reference_failures[worst_idx]):.3e}\n"
+        f"\tabsolute diff: {abs_err:.3e}\n"
+        f"\tmetric diff: {metric_err:.3e}\n"
     )
 
     if xy_indices:
