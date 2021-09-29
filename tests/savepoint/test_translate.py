@@ -32,11 +32,8 @@ def compare_arr(computed_data, ref_data):
 
 
 def compare_scalar(computed_data: np.float64, ref_data: np.float64) -> np.float64:
-    denom = np.abs(ref_data) + np.abs(computed_data)
-    if denom == 0:
-        return 0.0
-    else:
-        return 2.0 * np.abs(computed_data - ref_data) / denom
+    err_as_array = compare_arr(np.atleast_1d(computed_data), np.atleast_1d(ref_data))
+    return err_as_array[0]
 
 
 def success_array(
@@ -119,28 +116,19 @@ def sample_wherefail(
             )
 
     # Determine worst result
-    worst_err = 0
-    worst_idx = 0
-    worst_full_idx = 0
-    for b in range(0, bad_indices_count, failure_stride):
-        err = compare_scalar(computed_failures[b], reference_failures[b])
-        if worst_err < err:
-            worst_err = err
-            worst_idx = b
-            worst_full_idx = [f[b] for f in found_indices]
+    err = compare_arr(computed_data, ref_data)
+    worst_full_idx = np.unravel_index(np.argmax(err, axis=None), err.shape)
 
     # Summary and worst result
     fullcount = len(ref_data.flatten())
-    abs_err = abs(computed_failures[worst_idx] - reference_failures[worst_idx])
-    metric_err = compare_scalar(
-        computed_failures[worst_idx], reference_failures[worst_idx]
-    )
+    abs_err = abs(computed_data[worst_full_idx] - ref_data[worst_full_idx])
+    metric_err = compare_scalar(computed_data[worst_full_idx], ref_data[worst_full_idx])
     return_strings.append(
         f"Failed count: {bad_indices_count}/{fullcount} "
         f"({round(100.0 * (bad_indices_count / fullcount), 2)}%),\n"
         f"Worst failed index {worst_full_idx}\n"
-        f"\tcomputed:{computed_failures[worst_idx]}\n"
-        f"\treference: {reference_failures[worst_idx]}\n"
+        f"\tcomputed:{computed_data[worst_full_idx]}\n"
+        f"\treference: {ref_data[worst_full_idx]}\n"
         f"\tabsolute diff: {abs_err:.3e}\n"
         f"\tmetric diff: {metric_err:.3e}\n"
     )
