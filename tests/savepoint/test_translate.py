@@ -121,7 +121,7 @@ def sample_wherefail(
     worst_idx = 0
     worst_full_idx = 0
     for b in range(0, bad_indices_count, failure_stride):
-        err = compare_atom(computed_failures[0], reference_failures[0])
+        err = compare_atom(computed_failures[b], reference_failures[b])
         if worst_err < err:
             worst_err = err
             worst_idx = b
