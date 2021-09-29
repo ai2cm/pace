@@ -112,8 +112,8 @@ def sample_wherefail(
             return_strings.append(
                 f"index: {full_index}, computed {computed_failures[b]}, "
                 f"reference {reference_failures[b]}, "
-                f"absolute diff {abs(computed_failures[b] - reference_failures[b])}, "
-                f"metric diff: {compare_atom(computed_failures[b], reference_failures[b])}"
+                f"absolute diff {abs(computed_failures[b] - reference_failures[b]):.3e}, "
+                f"metric diff: {compare_atom(computed_failures[b], reference_failures[b]):.3e}"
             )
 
     # Determine worst result
@@ -135,8 +135,8 @@ def sample_wherefail(
         f"Worst failed index {worst_full_idx}\n"
         f"\tcomputed:{computed_failures[worst_idx]}\n"
         f"\treference: {reference_failures[worst_idx]}\n"
-        f"\tabsolute diff: {abs(computed_failures[worst_idx] - reference_failures[worst_idx])}\n"
-        f"\tmetric diff: {compare_atom(computed_failures[worst_idx], reference_failures[worst_idx])}\n"
+        f"\tabsolute diff: {abs(computed_failures[worst_idx] - reference_failures[worst_idx]):.3e}\n"
+        f"\tmetric diff: {compare_atom(computed_failures[worst_idx], reference_failures[worst_idx]):.3e}\n"
     )
 
     if xy_indices:
