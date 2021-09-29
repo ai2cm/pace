@@ -160,29 +160,6 @@ def update_physics_state_with_tendencies(
         va_t1 = forward_euler(va, vdt, dt)
 
 
-def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
-
-    with computation(BACKWARD), interval(0, -3):
-        if q[0, 0, 1] < q_min:
-            q = q[0, 0, 0] + (q[0, 0, 1] - q_min) * (pe[0, 0, 2] - pe[0, 0, 1]) / (
-                pe[0, 0, 1] - pe[0, 0, 0]
-            )
-
-    with computation(BACKWARD), interval(1, -3):
-        if q[0, 0, 0] < q_min:
-            q = q_min
-
-    with computation(FORWARD), interval(1, -2):
-        if q[0, 0, -1] < 0.0:
-            q = q[0, 0, 0] + q[0, 0, -1] * (pe[0, 0, 0] - pe[0, 0, -1]) / (
-                pe[0, 0, 1] - pe[0, 0, 0]
-            )
-
-    with computation(FORWARD), interval(0, -2):
-        if q[0, 0, 0] < 0.0:
-            q = 0.0
-
-
 class Physics:
     def __init__(self, grid, namelist):
         self.grid = grid

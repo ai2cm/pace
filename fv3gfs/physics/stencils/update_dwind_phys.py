@@ -13,7 +13,6 @@ from fv3core.utils.typing import (
 )
 import fv3gfs.util
 from fv3gfs.physics.global_constants import *
-from fv3gfs.physics.functions.microphysics_funcs import *
 from gt4py.gtscript import (
     PARALLEL,
     FORWARD,
