@@ -18,6 +18,7 @@ from gt4py.gtscript import (
     exp,
     log,
 )
+import gt4py.gtscript as gtscript
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import (
     FrozenStencil,
@@ -28,6 +29,7 @@ from fv3core.stencils.c2l_ord import CubedToLatLon
 import fv3core.utils.global_config as global_config
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir
+@gtscript.function
 def moist_cvm(qvapor, gz, ql, qs):
     cvm = (1.0 - (qvapor + gz)) * cv_air + qvapor * cv_vap + ql * c_liq + qs * c_ice
     return cvm
@@ -93,7 +95,7 @@ class ApplyPhysics2Dycore:
         self.namelist = namelist
         self.do_halo_exchange = global_config.get_do_halo_exchange()
         self.comm = comm
-        self._dt = self.namelist.dt_atmos
+        self._dt = Float(self.namelist.dt_atmos)
         self._moist_cv = FrozenStencil(
             moist_cv,
             origin=self.grid.compute_origin(),
@@ -106,8 +108,8 @@ class ApplyPhysics2Dycore:
         )
         self._AGrid2DGridPhysics = AGrid2DGridPhysics(self.grid, self.namelist)
         self._do_cubed_to_latlon = CubedToLatLon(self.grid, namelist)
-        origin = self.grid_indexing.origin_compute()
-        shape = self.grid_indexing.max_shape
+        origin = self.grid.grid_indexing.origin_compute()
+        shape = self.grid.grid_indexing.max_shape
         full_size_xyiz_halo_spec = self.grid.grid_indexing.get_quantity_halo_spec(
             shape,
             origin,
@@ -120,12 +122,16 @@ class ApplyPhysics2Dycore:
             dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             n_halo=self.grid.grid_indexing.n_halo,
         )
-        self._uvdt_halo_updater = self.comm.vector_halo_updater(
+        self._uvdt_halo_updater = self.comm.get_vector_halo_updater(
             [full_size_xyiz_halo_spec], [full_size_xiyz_halo_spec]
         )
         # TODO: check if we actually need surface winds
-        self._u_srf = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._v_srf = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._u_srf = utils.make_storage_from_shape(
+            shape[0:2], origin=origin, init=True
+        )
+        self._v_srf = utils.make_storage_from_shape(
+            shape[0:2], origin=origin, init=True
+        )
 
     def __call__(
         self,
@@ -154,6 +160,7 @@ class ApplyPhysics2Dycore:
         self._moist_cv(
             state.qvapor,
             state.qliquid,
+            state.qrain,
             state.qsnow,
             state.qice,
             state.qgraupel,
