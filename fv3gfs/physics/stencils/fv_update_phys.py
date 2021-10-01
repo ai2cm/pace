@@ -110,20 +110,14 @@ class ApplyPhysics2Dycore:
         self._do_cubed_to_latlon = CubedToLatLon(self.grid, namelist)
         origin = self.grid.grid_indexing.origin_compute()
         shape = self.grid.grid_indexing.max_shape
-        full_size_xyiz_halo_spec = self.grid.grid_indexing.get_quantity_halo_spec(
-            shape,
-            origin,
-            dims=[fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
-            n_halo=self.grid.grid_indexing.n_halo,
+        full_3Dfield_1pts_halo_spec = self.grid.grid_indexing.get_quantity_halo_spec(
+            shape, origin, dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], n_halo=1,
         )
-        full_size_xiyz_halo_spec = self.grid.grid_indexing.get_quantity_halo_spec(
-            shape,
-            origin,
-            dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
-            n_halo=self.grid.grid_indexing.n_halo,
+        self._udt_halo_updater = self.comm.get_scalar_halo_updater(
+            [full_3Dfield_1pts_halo_spec]
         )
-        self._uvdt_halo_updater = self.comm.get_vector_halo_updater(
-            [full_size_xyiz_halo_spec], [full_size_xiyz_halo_spec]
+        self._vdt_halo_updater = self.comm.get_scalar_halo_updater(
+            [full_3Dfield_1pts_halo_spec]
         )
         # TODO: check if we actually need surface winds
         self._u_srf = utils.make_storage_from_shape(
@@ -172,7 +166,8 @@ class ApplyPhysics2Dycore:
         if self.do_halo_exchange:
             u_dt_quantity = self.grid.make_quantity(u_dt)
             v_dt_quantity = self.grid.make_quantity(v_dt)
-            self._uvdt_halo_updater.start([u_dt_quantity], [v_dt_quantity])
+            self._udt_halo_updater.start([u_dt_quantity])
+            self._vdt_halo_updater.start([v_dt_quantity])
         self._update_pressure_and_surface_winds(
             state.pe,
             state.delp,
@@ -186,7 +181,8 @@ class ApplyPhysics2Dycore:
             self._v_srf,
         )
         if self.do_halo_exchange:
-            self._uvdt_halo_updater.wait()
+            self._udt_halo_updater.wait()
+            self._vdt_halo_updater.wait()
             u_dt = u_dt_quantity.storage
             v_dt = v_dt_quantity.storage
         self._AGrid2DGridPhysics(
