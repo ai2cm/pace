@@ -184,7 +184,7 @@ class AGrid2DGridPhysics:
         self._update_dwind_prep_stencil = FrozenStencil(
             update_dwind_prep_stencil,
             origin=(self.grid.halo - 1, self.grid.halo - 1, 0),
-            domain=(self.grid.nic+2, self.grid.njc+2, self.grid.npz),
+            domain=(self.grid.nic, self.grid.njc, self.grid.npz),
         )
         if self.grid.west_edge:
             je_lower = min(self._jm2, self.grid.je)
