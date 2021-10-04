@@ -73,17 +73,6 @@ FillGFS:
     ignore_near_zero_errors:
       IPD_qvapor: 9.9e-8
 
-UpdateDWindsPhys:
-  - backend: numpy
-    max_error: 1e-6
-  - backend: gtx86
-    max_error: 1e-6
-  - backend: gtcuda
-    max_error: 1e-6
-  - backend: gtc:gt:gpu
-    max_error: 1e-6
-  - backend: gtc:cuda
-    max_error: 1e-6
 
 FVUpdatePhys:
   - backend: numpy
