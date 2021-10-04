@@ -84,3 +84,7 @@ UpdateDWindsPhys:
     max_error: 1e-6
   - backend: gtc:cuda
     max_error: 1e-6
+
+FVUpdatePhys:
+  - backend: numpy
+    max_error: 4e-5
