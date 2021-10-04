@@ -44,7 +44,7 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         del inputs["ew3_1"]
         self.compute_func(**inputs)
         out = {}
-        out["u"] = inputs["u"][0:-1, :, 0:-1]
-        out["v"] = inputs["v"][:, 0:-1, 0:-1]
+        out["u"] = inputs["u"].data[0:-1, :, 0:-1]
+        out["v"] = inputs["v"].data[:, 0:-1, 0:-1]
         return out
 
