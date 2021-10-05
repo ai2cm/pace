@@ -186,7 +186,7 @@ if [ ${python_env} == "virtualenv" ]; then
     fi
     export FV3_PATH="${envloc}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
-    export PYTHONPATH=${installdir}/serialbox2_master/gnu/python:$PYTHONPATH
+    export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi
 
 G2G="false"
