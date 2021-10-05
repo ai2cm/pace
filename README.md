@@ -7,7 +7,7 @@ FV3GFS-integration is the top level directory that includes the FV3 dynamical co
 
 ## Getting started
 
-Currently, we only support tests in the dynamical core and util. 
+Currently, we support tests in the dynamical core, physics, and util. 
 
 ### Dynamical core tests
 
@@ -38,6 +38,23 @@ $ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/port_de
 ```
 
 Additional test options are described under `fv3core` documentation.
+
+### Physics tests
+
+Currently, the only supported test case is `c12_6ranks_baroclinic_dycore_microphysics`(vcm-fv3gfs-serialized-regression-data/integration-7.2.5/c12_6ranks_baroclinic_dycore_microphysics). 
+
+In the container, physics tests can be run:
+
+```shell
+$ pytest -v -s --data_path=/port_dev/fv3core/test_data/c12_6ranks_baroclinic_dycore_microphysics/ /port_dev/tests --threshold_overrides_file=/port_dev/tests/savepoint/translate/overrides/baroclinic.yaml
+```
+
+For parallel tests:
+
+```shell
+$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/port_dev/fv3core/test_data/c12_6ranks_baroclinic_dycore_microphysics/ /port_dev/tests --threshold_overrides_file=/port_dev/tests/savepoint/translate/overrides/baroclinic.yaml
+```
+
 
 ### Util tests
 
