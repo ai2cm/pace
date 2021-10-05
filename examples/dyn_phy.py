@@ -75,7 +75,7 @@ dycore = fv3core.DynamicalCore(
     state["atmosphere_hybrid_b_coordinate"],
     state["surface_geopotential"],
 )
-
+phy = Physics(grid, spec.namelist)
 dycore.step_dynamics(
     state,
     input_data["consv_te"],
@@ -85,6 +85,4 @@ dycore.step_dynamics(
     input_data["n_split"],
     input_data["ks"],
 )
-
-phy = Physics(grid, spec.namelist)
-phy(state, rank)
+phy(state)

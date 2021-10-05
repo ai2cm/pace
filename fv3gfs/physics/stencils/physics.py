@@ -220,7 +220,7 @@ class Physics:
         self._pktop = (self._ptop / self._p00) ** KAPPA
         self._pk0inv = (1.0 / self._p00) ** KAPPA
 
-    def __call__(self, state: dict, rank):
+    def __call__(self, state: dict):
         self.setup_const_from_state(state)
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         origin = self.grid.compute_origin()
