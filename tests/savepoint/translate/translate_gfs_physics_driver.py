@@ -6,6 +6,8 @@ from fv3core.decorators import FrozenStencil
 import numpy as np
 import copy
 from fv3core.utils.typing import Float
+from mpi4py import MPI
+import fv3gfs.util as util
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
@@ -74,7 +76,12 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         inputs["ua_t1"] = copy.deepcopy(storage)
         inputs["va_t1"] = copy.deepcopy(storage)
         physics_state = PhysicsState(**inputs)
-        physics = Physics(self.grid, spec.namelist)
+        # make mock communicator, this is not used but needs to be pass as type CubedSphereCommunicator
+        comm = MPI.COMM_WORLD
+        layout = [1, 1]
+        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
+        communicator = util.CubedSphereCommunicator(comm, partitioner)
+        physics = Physics(self.grid, spec.namelist, communicator)
         physics._atmos_phys_driver_statein(
             physics._prsik,
             physics_state.phii,
