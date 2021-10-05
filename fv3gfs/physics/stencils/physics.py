@@ -177,7 +177,7 @@ class Physics:
         self._prsik = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._dm3d = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._del_gz = utils.make_storage_from_shape(shape, origin=origin, init=True)
-
+        self._storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._get_prs_fv3 = FrozenStencil(
             func=get_prs_fv3,
             origin=self.grid.grid_indexing.origin_full(),
@@ -225,11 +225,8 @@ class Physics:
 
     def __call__(self, state: dict):
         self.setup_const_from_state(state)
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        origin = self.grid.compute_origin()
-        storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
         state = get_namespace(DynamicalCore.arg_specs, state)
-        physics_state = PhysicsState.from_dycore_state(state, storage)
+        physics_state = PhysicsState.from_dycore_state(state, self._storage)
         self._atmos_phys_driver_statein(
             self._prsik,
             physics_state.phii,
