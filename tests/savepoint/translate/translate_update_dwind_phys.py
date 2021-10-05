@@ -47,8 +47,8 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         # Use np.index_exp notation to circumvent limitation on multi-dim
         # slicing in cupy. Two below lines are equivalent to
         #  > out["u"] = inputs["u"].data[0:-1, :, 0:-1]
-        u_slice = np.index_exp[0:-1, :, 0:-1]
+        u_slice = np.index_exp[self.grid.y3d_domain_interface()]
         out["u"] = inputs["u"].__getitem__(u_slice)
-        v_slice = np.index_exp[:, 0:-1, 0:-1]
+        v_slice = np.index_exp[self.grid.x3d_domain_interface()]
         out["v"] = inputs["v"].__getitem__(v_slice)
         return out
