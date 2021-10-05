@@ -43,6 +43,12 @@ GFSPhysicsDriver:
     max_error: 1e-10
   - backend: gtc:gt:cpu_ifirst
     max_error: 1e-10
+  - backend: gtc:cuda
+    cuda_no_fma: true
+  - backend: gtc:gt:gpu
+    cuda_no_fma: true
+  - backend: gtcuda
+    cuda_no_fma: true
 
 # On GPU u/v wind tendencies seems to diverge in computation from numpy/fortran
 # equivalent due to the use of fused multiply-add in the update stencil.
