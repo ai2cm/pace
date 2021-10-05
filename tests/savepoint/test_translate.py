@@ -14,7 +14,7 @@ import fv3core.utils.global_config as config
 import fv3core.utils.gt4py_utils as gt_utils
 import fv3gfs.util as fv3util
 from fv3core.utils.mpi import MPI
-
+from gt4py.config import build_settings as gt4py_build_settings
 
 # this only matters for manually-added print statements
 np.set_printoptions(threshold=4096)
@@ -211,6 +211,10 @@ def process_override(threshold_overrides, testobj, test_name, backend):
                     raise TypeError(
                         "ignore_near_zero_errors is either a list or a dict"
                     )
+            if "cuda_no_fma" in match:
+                gt4py_build_settings["extra_compile_args"]["nvcc"].append(
+                    "--fmad=false"
+                )
         elif len(matches) > 1:
             raise Exception(
                 "misconfigured threshold overrides file, more than 1 specification for "
@@ -220,6 +224,28 @@ def process_override(threshold_overrides, testobj, test_name, backend):
                 + ", platform="
                 + platform()
             )
+
+
+def reset_override(threshold_overrides, test_name, backend):
+    """Undo changes done in process override that would bleed to other tests"""
+    override = threshold_overrides.get(test_name, None)
+    if override is not None:
+        for spec in override:
+            if "platform" not in spec:
+                spec["platform"] = platform()
+            if "backend" not in spec:
+                spec["backend"] = backend
+        matches = [
+            spec
+            for spec in override
+            if spec["backend"] == backend and spec["platform"] == platform()
+        ]
+        if len(matches) == 1:
+            match = matches[0]
+            if "cuda_no_fma" in match:
+                gt4py_build_settings["extra_compile_args"]["nvcc"].remove(
+                    "--fmad=false"
+                )
 
 
 @pytest.mark.sequential
@@ -284,6 +310,8 @@ def test_sequential_savepoint(
                 xy_indices=xy_indices,
             )
             passing_names.append(failing_names.pop())
+    if threshold_overrides is not None:
+        reset_override(threshold_overrides, test_name, backend)
     assert failing_names == [], f"only the following variables passed: {passing_names}"
     assert len(passing_names) > 0, "No tests passed"
 
@@ -378,6 +406,8 @@ def test_mock_parallel_savepoint(
                         xy_indices,
                     )
             assert failing_ranks == []
+    if threshold_overrides is not None:
+        reset_override(threshold_overrides, test_name, backend)
     failing_names = [item["varname"] for item in failing_names]
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
@@ -449,6 +479,8 @@ def test_parallel_savepoint(
             hash_result_data(output, out_vars),
             fullpath=os.path.join(data_path, filename),
         )
+        if threshold_overrides is not None:
+            reset_override(threshold_overrides, test_name, backend)
         return
     failing_names = []
     passing_names = []
@@ -480,6 +512,8 @@ def test_parallel_savepoint(
                 xy_indices,
             )
             passing_names.append(failing_names.pop())
+    if threshold_overrides is not None:
+        reset_override(threshold_overrides, test_name, backend)
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{test_name}-{grid[0].rank}.nc")
         try:

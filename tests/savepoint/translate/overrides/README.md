@@ -43,3 +43,16 @@ Override yaml file should have one of the following formats:
 ```
 
 where fields other than `var1` and `var2` will use `global_value`.
+
+## [optional] Deactivate fused multiply-add (FMA) on CUDA device
+Due to potential arithmetic difference between x86-64 and CUDA architecture on
+multiply-add operations, you can deactivate it on CUDA. FMA are not _incorrect_ and 
+are faster to compute and therefore should be retain for production code.
+
+WARNING: This will require a recompile, make sure caches are not already set.
+
+```Stencil_name:
+ - backend: <backend>
+   no_cuda_fms: true
+    ...
+```
