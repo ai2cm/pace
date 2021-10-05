@@ -346,19 +346,20 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             extra_grid_info["ew3_2"],
         )
         out = {}
-        out["qvapor"] = state.qvapor[0:-1, 0:-1, 0:-1]
-        out["qliquid"] = state.qliquid[0:-1, 0:-1, 0:-1]
-        out["qice"] = state.qice[0:-1, 0:-1, 0:-1]
-        out["qrain"] = state.qrain[0:-1, 0:-1, 0:-1]
-        out["qsnow"] = state.qsnow[0:-1, 0:-1, 0:-1]
-        out["qgraupel"] = state.qgraupel[0:-1, 0:-1, 0:-1]
-        out["pt"] = state.pt[0:-1, 0:-1, 0:-1]
+        ds = self.grid.default_domain_dict()
+        out["qvapor"] = state.qvapor[self.grid.slice_dict(ds)]
+        out["qliquid"] = state.qliquid[self.grid.slice_dict(ds)]
+        out["qice"] = state.qice[self.grid.slice_dict(ds)]
+        out["qrain"] = state.qrain[self.grid.slice_dict(ds)]
+        out["qsnow"] = state.qsnow[self.grid.slice_dict(ds)]
+        out["qgraupel"] = state.qgraupel[self.grid.slice_dict(ds)]
+        out["pt"] = state.pt[self.grid.slice_dict(ds)]
         state.u.synchronize()
         state.v.synchronize()
         state.ua.synchronize()
         state.va.synchronize()
-        out["u"] = np.asarray(state.u)[0:-1, :, 0:-1]
-        out["v"] = np.asarray(state.v)[:, 0:-1, 0:-1]
-        out["ua"] = np.asarray(state.ua)[0:-1, 0:-1, 0:-1]
-        out["va"] = np.asarray(state.va)[0:-1, 0:-1, 0:-1]
+        out["u"] = np.asarray(state.u)[self.grid.y3d_domain_interface()]
+        out["v"] = np.asarray(state.v)[self.grid.x3d_domain_interface()]
+        out["ua"] = np.asarray(state.ua)[self.grid.slice_dict(ds)]
+        out["va"] = np.asarray(state.va)[self.grid.slice_dict(ds)]
         return out
