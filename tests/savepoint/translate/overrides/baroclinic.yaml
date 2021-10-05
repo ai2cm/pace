@@ -44,10 +44,9 @@ GFSPhysicsDriver:
   - backend: gtc:gt:cpu_ifirst
     max_error: 1e-10
 
-# On GPU u/v wind tendencies seems to diverge in computation from numpy equivalent.
-# Because they are added to u/v in the dycore and their error magnitude (<e-8) is small in regards to 
-# wind magnitude overall (0-3), we have a "high" threshold.
-# Arithmetic GPU bug logged in: DSL-1019
+# On GPU u/v wind tendencies seems to diverge in computation from numpy/fortran
+# equivalent due to the use of fused multiply-add in the update stencil.
+# For validation we deactivate it (for validation only!)
 Microph:
   - backend: numpy
     max_error: 1e-10
@@ -55,19 +54,13 @@ Microph:
     max_error: 1e-12
   - backend: gtc:gt:cpu_ifirst
     max_error: 1e-12
-  - backend: gtcuda
-    ignore_near_zero_errors:
-      mph_udt: 3e-8
-      mph_vdt: 3e-8
   - backend: gtc:cuda
-    ignore_near_zero_errors:
-      mph_udt: 3e-8
-      mph_vdt: 3e-8
+    cuda_no_fma: true
+  - backend: gtcuda
+    cuda_no_fma: true
   - backend: gtc:gt:gpu
-    ignore_near_zero_errors:
-      mph_udt: 3e-8
-      mph_vdt: 3e-8
-
+    cuda_no_fma: true
+  
 FillGFS:
   - backend: gtx86
     ignore_near_zero_errors:
