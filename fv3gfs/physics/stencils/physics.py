@@ -2,7 +2,9 @@ from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics, MicrophysicsState
+from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
 from fv3gfs.physics.global_constants import *
+import fv3gfs.util
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.typing import FloatField, Float
 from fv3core.decorators import FrozenStencil, get_namespace
@@ -161,7 +163,7 @@ def update_physics_state_with_tendencies(
 
 
 class Physics:
-    def __init__(self, grid, namelist):
+    def __init__(self, grid, namelist, comm: fv3gfs.util.CubedSphereCommunicator):
         self.grid = grid
         self.namelist = namelist
         origin = self.grid.compute_origin()
@@ -208,6 +210,7 @@ class Physics:
             domain=self.grid.grid_indexing.domain_compute(),
         )
         self._microphysics = Microphysics(grid, namelist)
+        self._update_atmos_state = UpdateAtmosphereState(grid, namelist, comm)
 
     def setup_statein(self):
         self._NQ = 8  # state.nq_tot - spec.namelist.dnats
@@ -306,3 +309,5 @@ class Physics:
             physics_state.va_t1,
             self._dt_atmos,
         )
+        # [TODO]: allow update_atmos_state call when grid variables are ready
+        # self._update_atmos_state(state, physics_state, self._prsi, ...)

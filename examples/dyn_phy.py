@@ -19,8 +19,6 @@ import fv3core.utils.global_config as global_config
 import fv3gfs.util as util
 import gt4py
 
-from fv3gfs.physics.physics_state import PhysicsState
-from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import Physics
 
 comm = MPI.COMM_WORLD
@@ -75,7 +73,7 @@ dycore = fv3core.DynamicalCore(
     state["atmosphere_hybrid_b_coordinate"],
     state["surface_geopotential"],
 )
-phy = Physics(grid, spec.namelist)
+phy = Physics(grid, spec.namelist, communicator)
 dycore.step_dynamics(
     state,
     input_data["consv_te"],

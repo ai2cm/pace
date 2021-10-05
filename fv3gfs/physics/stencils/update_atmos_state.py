@@ -1,5 +1,7 @@
 from fv3gfs.physics.global_constants import *
 from fv3gfs.physics.physics_state import PhysicsState
+from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
+import fv3gfs.util
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.typing import FloatField, Float, FloatFieldIJ, FloatFieldI
 from fv3core.decorators import FrozenStencil
@@ -97,7 +99,7 @@ class UpdateAtmosphereState:
     This is an API to apply tendencies and compute a consistent prognostic state.
     """
 
-    def __init__(self, grid, namelist):
+    def __init__(self, grid, namelist, comm: fv3gfs.util.CubedSphereCommunicator):
         self.grid = grid
         self.namelist = namelist
         origin = self.grid.compute_origin()
@@ -116,7 +118,7 @@ class UpdateAtmosphereState:
         self._u_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._v_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._pt_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        # self._apply_physics2dycore = ApplyPhysics2Dycore(self.grid, self.namelist, comm)
+        self._apply_physics2dycore = ApplyPhysics2Dycore(self.grid, self.namelist, comm)
 
     def __call__(
         self,
