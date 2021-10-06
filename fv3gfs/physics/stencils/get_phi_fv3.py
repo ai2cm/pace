@@ -15,6 +15,7 @@ from gt4py.gtscript import (
 )
 
 # GTC backends require a to skip DaCe merge optimisation
+# TODO: check with GT4Py version > 36
 if BACKEND.startswith("gtc"):
     stencil_decorator = gtscript.stencil(
         backend=BACKEND, skip_passes=("graph_merge_horizontal_executions",)
