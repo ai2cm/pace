@@ -321,7 +321,7 @@ class FutureStencil:
     def field_info(self) -> Dict[str, FieldInfo]:
         return self.stencil_object.field_info
 
-    def _delay(self, factor: float = 0.25) -> float:
+    def _delay(self, factor: float = 0.4) -> float:
         delay_time = self._sleep_time * float(self._node_id) * factor
         time.sleep(delay_time)
         return delay_time
@@ -329,6 +329,7 @@ class FutureStencil:
     def _compile_stencil(self, stencil_id: int) -> Callable:
         # Stencil not yet compiled or in progress so claim it...
         self._id_table[stencil_id] = self._node_id
+        self._delay()
         stencil_class = self._builder.backend.generate()
         self._id_table.set_done(stencil_id)
 
