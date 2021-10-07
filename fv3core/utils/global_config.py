@@ -1,3 +1,4 @@
+import functools
 import hashlib
 import os
 from collections.abc import Hashable
@@ -32,6 +33,7 @@ def set_validate_args(new_validate_args: bool):
 
 
 # Set to "False" to skip validating gt4py stencil arguments
+@functools.lru_cache(maxsize=None)
 def get_validate_args() -> bool:
     return _VALIDATE_ARGS
 
@@ -54,10 +56,12 @@ def get_device_sync() -> bool:
     return _DEVICE_SYNC
 
 
+@functools.lru_cache(maxsize=None)
 def is_gpu_backend() -> bool:
     return get_backend().endswith("cuda") or get_backend().endswith("gpu")
 
 
+@functools.lru_cache(maxsize=None)
 def is_gtc_backend() -> bool:
     return get_backend().startswith("gtc")
 

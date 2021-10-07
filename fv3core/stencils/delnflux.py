@@ -12,7 +12,6 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil, get_stencils_with_varied_bounds
 from fv3core.utils.grid import DampingCoefficients, GridIndexing, axis_offsets
@@ -1149,11 +1148,6 @@ class DelnFluxNoSG:
             origin=corner_origin,
             domain=corner_domain,
         )
-        self._copy_full_domain = FrozenStencil(
-            func=corners.copy_defn,
-            origin=corner_origin,
-            domain=corner_domain,
-        )
 
     def __call__(self, q, fx2, fy2, damp_c, d2, mass=None):
         """
@@ -1173,18 +1167,11 @@ class DelnFluxNoSG:
         else:
             self._copy_stencil_interval(q, d2)
 
-        self._copy_full_domain(d2, self._corner_tmp)
-        self._copy_corners_x_nord(
-            self._corner_tmp,
-            d2,
-        )
+        self._copy_corners_x_nord(d2, d2)
 
         self._fx_calc_stencil(d2, self._del6_v, fx2)
 
-        self._copy_corners_y_nord(
-            self._corner_tmp,
-            d2,
-        )
+        self._copy_corners_y_nord(d2, d2)
 
         self._fy_calc_stencil(d2, self._del6_u, fy2)
 
@@ -1196,11 +1183,7 @@ class DelnFluxNoSG:
                 d2,
             )
 
-            self._copy_full_domain(d2, self._corner_tmp)
-            self._copy_corners_x_nord(
-                self._corner_tmp,
-                d2,
-            )
+            self._copy_corners_x_nord(d2, d2)
 
             self._column_conditional_fx_calculation[n](
                 d2,
@@ -1208,10 +1191,7 @@ class DelnFluxNoSG:
                 fx2,
             )
 
-            self._copy_corners_y_nord(
-                self._corner_tmp,
-                d2,
-            )
+            self._copy_corners_y_nord(d2, d2)
 
             self._column_conditional_fy_calculation[n](
                 d2,

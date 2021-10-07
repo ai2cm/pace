@@ -20,7 +20,7 @@ def fix_tracer(
     sum1: FloatFieldIJ,
 ):
     # reset fields
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, 1):
         zfix = 0
         sum0 = 0.0
         sum1 = 0.0

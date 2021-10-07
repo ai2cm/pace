@@ -100,9 +100,6 @@ class FiniteVolumeTransport:
         self._tmp_q_j = utils.make_storage_from_shape(idx.max_shape, origin)
         self._tmp_fx2 = utils.make_storage_from_shape(idx.max_shape, origin)
         self._tmp_fy2 = utils.make_storage_from_shape(idx.max_shape, origin)
-        self._corner_tmp = utils.make_storage_from_shape(
-            idx.max_shape, origin=idx.origin_full()
-        )
         """Temporary field to use for corner computation in both x and y direction"""
         self._nord = nord
         self._damp_c = damp_c
@@ -167,14 +164,10 @@ class FiniteVolumeTransport:
             domain=idx.domain_compute(add=(1, 1, 1)),
         )
 
-        self._copy_corners_x: corners.CopyCorners = corners.CopyCorners(
-            "x", self._corner_tmp
-        )
+        self._copy_corners_x: corners.CopyCorners = corners.CopyCorners("x")
         """Stencil responsible for doing corners updates in x-direction."""
 
-        self._copy_corners_y: corners.CopyCorners = corners.CopyCorners(
-            "y", self._corner_tmp
-        )
+        self._copy_corners_y: corners.CopyCorners = corners.CopyCorners("y")
         """Stencil responsible for doing corners updates in y-direction."""
 
     def __call__(

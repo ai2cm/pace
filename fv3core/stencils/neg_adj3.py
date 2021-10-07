@@ -92,7 +92,7 @@ def fix_negative_liq(qvapor, qice, qsnow, qgraupel, qrain, qliquid, pt, lcpk, ic
 
 
 def fillq(q: FloatField, dp: FloatField, sum1: FloatFieldIJ, sum2: FloatFieldIJ):
-    with computation(FORWARD), interval(...):
+    with computation(FORWARD), interval(0, 1):
         # reset accumulating fields
         sum1 = 0.0
         sum2 = 0.0
