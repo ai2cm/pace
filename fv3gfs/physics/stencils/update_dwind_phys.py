@@ -162,7 +162,7 @@ class AGrid2DGridPhysics:
     Fortran name is update_dwinds_phys
     """
 
-    def __init__(self, grid, namelist):
+    def __init__(self, grid, namelist, grid_info):
         self.grid = grid
         self.namelist = namelist
         self._dt5 = 0.5 * self.namelist.dt_atmos
@@ -184,7 +184,7 @@ class AGrid2DGridPhysics:
         self._update_dwind_prep_stencil = FrozenStencil(
             update_dwind_prep_stencil,
             origin=(self.grid.halo - 1, self.grid.halo - 1, 0),
-            domain=(self.grid.nic+2, self.grid.njc+2, self.grid.npz),
+            domain=(self.grid.nic + 2, self.grid.njc + 2, self.grid.npz),
         )
         if self.grid.west_edge:
             je_lower = self.grid.global_to_local_y(min(self._jm2, self.grid.global_je))
@@ -202,7 +202,9 @@ class AGrid2DGridPhysics:
                         domain=self._domain_lower_west,
                     )
             if self.grid.global_je > self._jm2:
-                js_upper =  self.grid.global_to_local_y(max(self._jm2 + 1, self.grid.global_js))
+                js_upper = self.grid.global_to_local_y(
+                    max(self._jm2 + 1, self.grid.global_js)
+                )
                 origin_upper = (self.grid.halo, js_upper, 0)
                 self._domain_upper_west = (
                     1,
@@ -240,9 +242,11 @@ class AGrid2DGridPhysics:
                         origin=origin_lower,
                         domain=self._domain_lower_east,
                     )
-                   
+
             if self.grid.global_je > self._jm2:
-                js_upper = self.grid.global_to_local_y(max(self._jm2 + 1, self.grid.global_js))
+                js_upper = self.grid.global_to_local_y(
+                    max(self._jm2 + 1, self.grid.global_js)
+                )
                 origin_upper = (i_origin, js_upper, 0)
                 self._domain_upper_east = (
                     1,
@@ -280,7 +284,9 @@ class AGrid2DGridPhysics:
                         domain=self._domain_lower_south,
                     )
             if self.grid.global_ie > self._im2:
-                is_upper =  self.grid.global_to_local_x(max(self._im2 + 1, self.grid.global_is))
+                is_upper = self.grid.global_to_local_x(
+                    max(self._im2 + 1, self.grid.global_is)
+                )
                 origin_upper = (is_upper, self.grid.halo, 0)
                 self._domain_upper_south = (
                     self.grid.ie - is_upper + 1,
@@ -301,7 +307,7 @@ class AGrid2DGridPhysics:
                 )
         if self.grid.north_edge:
             j_origin = shape[1] - self.grid.halo - 1
-            ie_lower =  self.grid.global_to_local_x(min(self._im2, self.grid.global_ie))
+            ie_lower = self.grid.global_to_local_x(min(self._im2, self.grid.global_ie))
             origin_lower = (self.grid.halo, j_origin, 0)
             self._domain_lower_north = (
                 ie_lower - self.grid.is_ + 1,
@@ -316,7 +322,9 @@ class AGrid2DGridPhysics:
                         domain=self._domain_lower_north,
                     )
             if self.grid.global_ie >= self._im2:
-                is_upper =  self.grid.global_to_local_x(max(self._im2 + 1, self.grid.global_is))
+                is_upper = self.grid.global_to_local_x(
+                    max(self._im2 + 1, self.grid.global_is)
+                )
                 origin_upper = (is_upper, j_origin, 0)
                 self._domain_upper_north = (
                     self.grid.ie - is_upper + 1,
@@ -349,12 +357,22 @@ class AGrid2DGridPhysics:
             domain=(self.grid.nic + 1, self.grid.njc, self.grid.npz),
         )
         # [TODO] The following is waiting on grid code vlat and vlon
-        # self._vlon1
-        # self._vlon2
-        # self._vlon3
-        # self._vlat1
-        # self._vlat2
-        # self._vlat3
+        self._vlon1 = grid_info["vlon1"]
+        self._vlon2 = grid_info["vlon2"]
+        self._vlon3 = grid_info["vlon3"]
+        self._vlat1 = grid_info["vlat1"]
+        self._vlat2 = grid_info["vlat2"]
+        self._vlat3 = grid_info["vlat3"]
+        self._edge_vect_w = grid_info["edge_vect_w"]
+        self._edge_vect_e = grid_info["edge_vect_e"]
+        self._edge_vect_s = grid_info["edge_vect_s"]
+        self._edge_vect_n = grid_info["edge_vect_n"]
+        self._es1_1 = grid_info["es1_1"]
+        self._es2_1 = grid_info["es2_1"]
+        self._es3_1 = grid_info["es3_1"]
+        self._ew1_2 = grid_info["ew1_2"]
+        self._ew2_2 = grid_info["ew2_2"]
+        self._ew3_2 = grid_info["ew3_2"]
 
     def __call__(
         self,
@@ -362,22 +380,22 @@ class AGrid2DGridPhysics:
         v: FloatField,
         u_dt: FloatField,
         v_dt: FloatField,
-        vlon1: FloatFieldIJ,
-        vlon2: FloatFieldIJ,
-        vlon3: FloatFieldIJ,
-        vlat1: FloatFieldIJ,
-        vlat2: FloatFieldIJ,
-        vlat3: FloatFieldIJ,
-        edge_vect_w: FloatFieldIJ,
-        edge_vect_e: FloatFieldIJ,
-        edge_vect_s: FloatFieldI,
-        edge_vect_n: FloatFieldI,
-        es1_1: FloatFieldIJ,
-        es2_1: FloatFieldIJ,
-        es3_1: FloatFieldIJ,
-        ew1_2: FloatFieldIJ,
-        ew2_2: FloatFieldIJ,
-        ew3_2: FloatFieldIJ,
+        # vlon1: FloatFieldIJ,
+        # vlon2: FloatFieldIJ,
+        # vlon3: FloatFieldIJ,
+        # vlat1: FloatFieldIJ,
+        # vlat2: FloatFieldIJ,
+        # vlat3: FloatFieldIJ,
+        # edge_vect_w: FloatFieldIJ,
+        # edge_vect_e: FloatFieldIJ,
+        # edge_vect_s: FloatFieldI,
+        # edge_vect_n: FloatFieldI,
+        # es1_1: FloatFieldIJ,
+        # es2_1: FloatFieldIJ,
+        # es3_1: FloatFieldIJ,
+        # ew1_2: FloatFieldIJ,
+        # ew2_2: FloatFieldIJ,
+        # ew3_2: FloatFieldIJ,
     ):
         """
         Transforms the wind tendencies from A grid to D grid for the final update
@@ -385,12 +403,12 @@ class AGrid2DGridPhysics:
         self._update_dwind_prep_stencil(
             u_dt,
             v_dt,
-            vlon1,
-            vlon2,
-            vlon3,
-            vlat1,
-            vlat2,
-            vlat3,
+            self._vlon1,
+            self._vlon2,
+            self._vlon3,
+            self._vlat1,
+            self._vlat2,
+            self._vlat3,
             self._ue_1,
             self._ue_2,
             self._ue_3,
@@ -408,7 +426,7 @@ class AGrid2DGridPhysics:
                         self._vt_1,
                         self._vt_2,
                         self._vt_3,
-                        edge_vect_w,
+                        self._edge_vect_w,
                     )
             if self.grid.global_je > self._jm2:
                 if self._domain_upper_west[1] > 0:
@@ -419,7 +437,7 @@ class AGrid2DGridPhysics:
                         self._vt_1,
                         self._vt_2,
                         self._vt_3,
-                        edge_vect_w,
+                        self._edge_vect_w,
                     )
                     self._copy3_stencil1(
                         self._vt_1,
@@ -448,7 +466,7 @@ class AGrid2DGridPhysics:
                         self._vt_1,
                         self._vt_2,
                         self._vt_3,
-                        edge_vect_e,
+                        self._edge_vect_e,
                     )
             if self.grid.global_je > self._jm2:
                 if self._domain_upper_east[1] > 0:
@@ -459,7 +477,7 @@ class AGrid2DGridPhysics:
                         self._vt_1,
                         self._vt_2,
                         self._vt_3,
-                        edge_vect_e,
+                        self._edge_vect_e,
                     )
                     self._copy3_stencil3(
                         self._vt_1,
@@ -488,7 +506,7 @@ class AGrid2DGridPhysics:
                         self._ut_1,
                         self._ut_2,
                         self._ut_3,
-                        edge_vect_s,
+                        self._edge_vect_s,
                     )
             if self.grid.global_ie > self._im2:
                 if self._domain_upper_south:
@@ -499,7 +517,7 @@ class AGrid2DGridPhysics:
                         self._ut_1,
                         self._ut_2,
                         self._ut_3,
-                        edge_vect_s,
+                        self._edge_vect_s,
                     )
                     self._copy3_stencil5(
                         self._ut_1,
@@ -528,7 +546,7 @@ class AGrid2DGridPhysics:
                         self._ut_1,
                         self._ut_2,
                         self._ut_3,
-                        edge_vect_n,
+                        self._edge_vect_n,
                     )
             if self.grid.global_ie >= self._im2:
                 if self._domain_upper_north[0] > 0:
@@ -539,7 +557,7 @@ class AGrid2DGridPhysics:
                         self._ut_1,
                         self._ut_2,
                         self._ut_3,
-                        edge_vect_n,
+                        self._edge_vect_n,
                     )
                     self._copy3_stencil7(
                         self._ut_1,
@@ -559,8 +577,22 @@ class AGrid2DGridPhysics:
                     self._ue_3,
                 )
         self._update_uwind_stencil(
-            u, es1_1, es2_1, es3_1, self._ue_1, self._ue_2, self._ue_3, self._dt5
+            u,
+            self._es1_1,
+            self._es2_1,
+            self._es3_1,
+            self._ue_1,
+            self._ue_2,
+            self._ue_3,
+            self._dt5,
         )
         self._update_vwind_stencil(
-            v, ew1_2, ew2_2, ew3_2, self._ve_1, self._ve_2, self._ve_3, self._dt5
+            v,
+            self._ew1_2,
+            self._ew2_2,
+            self._ew3_2,
+            self._ve_1,
+            self._ve_2,
+            self._ve_3,
+            self._dt5,
         )

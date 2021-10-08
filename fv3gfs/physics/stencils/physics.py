@@ -163,7 +163,9 @@ def update_physics_state_with_tendencies(
 
 
 class Physics:
-    def __init__(self, grid, namelist, comm: fv3gfs.util.CubedSphereCommunicator):
+    def __init__(
+        self, grid, namelist, comm: fv3gfs.util.CubedSphereCommunicator, grid_info
+    ):
         self.grid = grid
         self.namelist = namelist
         origin = self.grid.compute_origin()
@@ -210,7 +212,9 @@ class Physics:
             domain=self.grid.grid_indexing.domain_compute(),
         )
         self._microphysics = Microphysics(grid, namelist)
-        self._update_atmos_state = UpdateAtmosphereState(grid, namelist, comm)
+        self._update_atmos_state = UpdateAtmosphereState(
+            grid, namelist, comm, grid_info
+        )
 
     def setup_statein(self):
         self._NQ = 8  # state.nq_tot - spec.namelist.dnats
@@ -270,7 +274,7 @@ class Physics:
             physics_state.pt,
             physics_state.delp,
         )
-        microph_state = physics_state.microphysics(storage)
+        microph_state = physics_state.microphysics(self._storage)
         self._microphysics(microph_state)
         # Fortran uses IPD interface, here we use var_t1 to denote the updated field
         self._update_physics_state_with_tendencies(
@@ -307,4 +311,5 @@ class Physics:
             self._dt_atmos,
         )
         # [TODO]: allow update_atmos_state call when grid variables are ready
-        # self._update_atmos_state(state, physics_state, self._prsi, ...)
+        self._update_atmos_state(state, physics_state, self._prsi)
+
