@@ -256,7 +256,7 @@ def future_stencil(
     def _decorator(func):
         # Move backend options to `backend_opts`
         backend_opts: Dict[str, Any] = {}
-        for backend_opt in ("device_sync", "skip_passes"):
+        for backend_opt in ("device_sync", "skip_passes", "verbose"):
             if backend_opt in kwargs:
                 backend_opts[backend_opt] = kwargs.pop(backend_opt)
 

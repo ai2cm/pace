@@ -1,7 +1,12 @@
 import functools
 import hashlib
 import os
+import re
 from collections.abc import Hashable
+from importlib import resources
+from typing import Any, Dict, Optional
+
+import yaml
 
 
 def getenv_bool(name: str, default: str) -> bool:
@@ -12,6 +17,8 @@ def getenv_bool(name: str, default: str) -> bool:
 def set_backend(new_backend: str):
     global _BACKEND
     _BACKEND = new_backend
+    for function in (is_gpu_backend, is_gtc_backend):
+        function.cache_clear()
 
 
 def get_backend() -> str:
@@ -38,24 +45,6 @@ def get_validate_args() -> bool:
     return _VALIDATE_ARGS
 
 
-def set_format_source(flag: bool):
-    global _FORMAT_SOURCE
-    _FORMAT_SOURCE = flag
-
-
-def get_format_source() -> bool:
-    return _FORMAT_SOURCE
-
-
-def set_device_sync(flag: bool):
-    global _DEVICE_SYNC
-    _DEVICE_SYNC = flag
-
-
-def get_device_sync() -> bool:
-    return _DEVICE_SYNC
-
-
 @functools.lru_cache(maxsize=None)
 def is_gpu_backend() -> bool:
     return get_backend().endswith("cuda") or get_backend().endswith("gpu")
@@ -66,20 +55,30 @@ def is_gtc_backend() -> bool:
     return get_backend().startswith("gtc")
 
 
+def read_backend_options_file():
+    file = resources.open_binary("fv3core", "gt4py_options.yml")
+    if file:
+        options = yaml.safe_load(file)
+        file.close()
+        return options
+    raise FileNotFoundError("config file 'fv3core/gt4py_options.yml' not found")
+
+
 class StencilConfig(Hashable):
+    _all_backend_opts: Optional[Dict[str, Any]] = None
+
     def __init__(
         self,
         backend: str,
         rebuild: bool,
         validate_args: bool,
-        format_source: bool,
-        device_sync: bool,
+        format_source: Optional[bool] = None,
+        device_sync: Optional[bool] = None,
     ):
         self.backend = backend
         self.rebuild = rebuild
         self.validate_args = validate_args
-        self.format_source = format_source
-        self.device_sync = device_sync
+        self.backend_opts = self._get_backend_opts(device_sync, format_source)
         self._hash = self._compute_hash()
 
     def _compute_hash(self):
@@ -88,9 +87,11 @@ class StencilConfig(Hashable):
         for attr in (
             self.rebuild,
             self.validate_args,
-            self.format_source,
-            self.device_sync,
+            self.backend_opts["format_source"],
         ):
+            md5.update(bytes(attr))
+        attr = self.backend_opts.get("device_sync", None)
+        if attr:
             md5.update(bytes(attr))
         return int(md5.hexdigest(), base=16)
 
@@ -103,15 +104,37 @@ class StencilConfig(Hashable):
         except AttributeError:
             return False
 
+    def _get_backend_opts(
+        self,
+        device_sync: Optional[bool] = None,
+        format_source: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        if not StencilConfig._all_backend_opts:
+            StencilConfig._all_backend_opts = read_backend_options_file()
+        all_backend_opts: Dict[str, Any] = StencilConfig._all_backend_opts
+
+        backend_opts: Dict[str, Any] = {}
+        for name, option in all_backend_opts.items():
+            using_option_backend = re.match(option.get("backend", ""), get_backend())
+            if "backend" not in option or using_option_backend:
+                backend_opts[name] = option["value"]
+
+        if device_sync is not None:
+            backend_opts["device_sync"] = device_sync
+        if format_source is not None:
+            backend_opts["format_source"] = format_source
+
+        return backend_opts
+
     @property
     def stencil_kwargs(self):
         kwargs = {
             "backend": self.backend,
             "rebuild": self.rebuild,
-            "format_source": self.format_source,
+            **self.backend_opts,
         }
-        if is_gpu_backend():
-            kwargs["device_sync"] = self.device_sync
+        if not is_gpu_backend():
+            kwargs.pop("device_sync", None)
         return kwargs
 
 
@@ -120,16 +143,12 @@ def get_stencil_config():
         backend=get_backend(),
         rebuild=get_rebuild(),
         validate_args=get_validate_args(),
-        format_source=get_format_source(),
-        device_sync=get_device_sync(),
     )
 
 
 # Options: numpy, gtx86, gtcuda, debug
-_BACKEND = None
+_BACKEND: Optional[str] = None
 # If TRUE, all caches will bypassed and stencils recompiled
 # if FALSE, caches will be checked and rebuild if code changes
-_REBUILD = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "False")
-_FORMAT_SOURCE = getenv_bool("FV3_STENCIL_FORMAT_SOURCE", "False")
-_VALIDATE_ARGS = True
-_DEVICE_SYNC = False
+_REBUILD: bool = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "False")
+_VALIDATE_ARGS: bool = True

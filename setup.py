@@ -40,6 +40,7 @@ setup(
     keywords="fv3core",
     name="fv3core",
     packages=find_packages(include=["fv3core", "fv3core.*"]),
+    package_data={"fv3core": ["fv3core/*.yml"]},
     setup_requires=[],
     test_suite="tests",
     tests_require=test_requirements,

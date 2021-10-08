@@ -790,6 +790,7 @@ class DryConvectiveAdjustment:
         kbot_domain = (grid_indexing.domain[0], grid_indexing.domain[1], self._k_sponge)
         origin = grid_indexing.origin_compute()
 
+        # TODO(eddied): Applying the `KCacheDetection` pass causes validation to fail
         self._init_stencil = FrozenStencil(
             init,
             origin=origin,

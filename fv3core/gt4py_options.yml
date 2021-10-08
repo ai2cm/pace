@@ -1,0 +1,12 @@
+device_sync:
+  backend: .*(gpu|cuda)$
+  value: false
+format_source:
+  value: false
+skip_passes:
+  backend: ^gtc:(gt|cuda)
+  value:
+  - graph_merge_horizontal_executions
+verbose:
+  backend: ^gtc:(gt|cuda)
+  value: false

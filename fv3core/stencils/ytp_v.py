@@ -112,6 +112,7 @@ class YTP_V:
         self._rdy = grid_data.rdy
         ax_offsets = axis_offsets(grid_indexing, origin, domain)
 
+        # TODO(eddied): Applying the `GreedyMerging` pass causes illegal memory error
         self.stencil = FrozenStencil(
             _ytp_v,
             externals={
