@@ -28,7 +28,6 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
             "u": {"dwind": True, "kend": grid.npz - 1},
             "v": {"dwind": True, "kend": grid.npz - 1},
         }
-        self.compute_func = AGrid2DGridPhysics(self.grid, spec.namelist)
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -42,6 +41,28 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         del inputs["ew1_1"]
         del inputs["ew2_1"]
         del inputs["ew3_1"]
+        grid_names = [
+            "vlon1",
+            "vlon2",
+            "vlon3",
+            "vlat1",
+            "vlat2",
+            "vlat3",
+            "edge_vect_w",
+            "edge_vect_e",
+            "edge_vect_s",
+            "edge_vect_n",
+            "es1_1",
+            "es2_1",
+            "es3_1",
+            "ew1_2",
+            "ew2_2",
+            "ew3_2",
+        ]
+        grid_info = {}
+        for var in grid_names:
+            grid_info[var] = inputs.pop(var)
+        self.compute_func = AGrid2DGridPhysics(self.grid, spec.namelist, grid_info)
         self.compute_func(**inputs)
         out = {}
         out["u"] = np.asarray(inputs["u"])[self.grid.y3d_domain_interface()]
