@@ -375,27 +375,7 @@ class AGrid2DGridPhysics:
         self._ew3_2 = grid_info["ew3_2"]
 
     def __call__(
-        self,
-        u: FloatField,
-        v: FloatField,
-        u_dt: FloatField,
-        v_dt: FloatField,
-        # vlon1: FloatFieldIJ,
-        # vlon2: FloatFieldIJ,
-        # vlon3: FloatFieldIJ,
-        # vlat1: FloatFieldIJ,
-        # vlat2: FloatFieldIJ,
-        # vlat3: FloatFieldIJ,
-        # edge_vect_w: FloatFieldIJ,
-        # edge_vect_e: FloatFieldIJ,
-        # edge_vect_s: FloatFieldI,
-        # edge_vect_n: FloatFieldI,
-        # es1_1: FloatFieldIJ,
-        # es2_1: FloatFieldIJ,
-        # es3_1: FloatFieldIJ,
-        # ew1_2: FloatFieldIJ,
-        # ew2_2: FloatFieldIJ,
-        # ew3_2: FloatFieldIJ,
+        self, u: FloatField, v: FloatField, u_dt: FloatField, v_dt: FloatField,
     ):
         """
         Transforms the wind tendencies from A grid to D grid for the final update
