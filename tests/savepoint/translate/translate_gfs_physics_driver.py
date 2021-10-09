@@ -81,7 +81,24 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         layout = [1, 1]
         partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
         communicator = util.CubedSphereCommunicator(comm, partitioner)
-        physics = Physics(self.grid, spec.namelist, communicator)
+        grid_info = {}  # pass empty grid info, they are not in used for this test
+        grid_info["vlon1"] = 0
+        grid_info["vlon2"] = 0
+        grid_info["vlon3"] = 0
+        grid_info["vlat1"] = 0
+        grid_info["vlat2"] = 0
+        grid_info["vlat3"] = 0
+        grid_info["edge_vect_w"] = 0
+        grid_info["edge_vect_e"] = 0
+        grid_info["edge_vect_s"] = 0
+        grid_info["edge_vect_n"] = 0
+        grid_info["es1_1"] = 0
+        grid_info["es2_1"] = 0
+        grid_info["es3_1"] = 0
+        grid_info["ew1_2"] = 0
+        grid_info["ew2_2"] = 0
+        grid_info["ew3_2"] = 0
+        physics = Physics(self.grid, spec.namelist, communicator, grid_info)
         physics._atmos_phys_driver_statein(
             physics._prsik,
             physics_state.phii,
