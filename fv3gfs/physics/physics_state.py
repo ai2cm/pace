@@ -74,24 +74,25 @@ class PhysicsState:
         Constructor for PhysicsState when using dynamical core state
         storage: storage for variables not in dycore
         """
-        # [TODO] we may want to use a copy from dycore instead of using the same storages
+        # [TODO] using a copy here because variables definition change inside physics
+        # we should copy only the variables that will be updated
         return cls(
-            qvapor=state.qvapor,
-            qliquid=state.qliquid,
-            qrain=state.qrain,
-            qsnow=state.qsnow,
-            qice=state.qice,
-            qgraupel=state.qgraupel,
-            qo3mr=state.qo3mr,
-            qsgs_tke=state.qsgs_tke,
-            qcld=state.qcld,
-            pt=state.pt,
-            delp=state.delp,
-            delz=state.delz,
-            ua=state.ua,
-            va=state.va,
-            w=state.w,
-            omga=state.omga,
+            qvapor=copy.deepcopy(state.qvapor),
+            qliquid=copy.deepcopy(state.qliquid),
+            qrain=copy.deepcopy(state.qrain),
+            qsnow=copy.deepcopy(state.qsnow),
+            qice=copy.deepcopy(state.qice),
+            qgraupel=copy.deepcopy(state.qgraupel),
+            qo3mr=copy.deepcopy(state.qo3mr),
+            qsgs_tke=copy.deepcopy(state.qsgs_tke),
+            qcld=copy.deepcopy(state.qcld),
+            pt=copy.deepcopy(state.pt),
+            delp=copy.deepcopy(state.delp),
+            delz=copy.deepcopy(state.delz),
+            ua=copy.deepcopy(state.ua),
+            va=copy.deepcopy(state.va),
+            w=copy.deepcopy(state.w),
+            omga=copy.deepcopy(state.omga),
             delprsi=copy.deepcopy(storage),
             phii=copy.deepcopy(storage),
             phil=copy.deepcopy(storage),

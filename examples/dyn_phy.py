@@ -2,7 +2,6 @@ import sys
 
 sys.path.append("/usr/local/serialbox/python/")
 import serialbox
-import copy
 import json
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
@@ -18,27 +17,28 @@ import fv3core.testing
 import fv3core.utils.global_config as global_config
 import fv3gfs.util as util
 import gt4py
-
 from fv3gfs.physics.stencils.physics import Physics
+
+# Reuse infrastructure to read in grid variables
+# add path to integration test to reuse existing grid logic
+sys.path.append("/port_dev/tests/savepoint/translate/")
+from translate_update_dwind_phys import TranslateUpdateDWindsPhys
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 fv3core.set_backend("numpy")
 fv3core.set_rebuild(False)
 fv3core.set_validate_args(False)
-global_config.set_do_halo_exchange(True)
+case_name = "c12_6ranks_baroclinic_dycore_microphysics"
+spec.set_namelist(case_name + "/input.nml")
 
-spec.set_namelist("c12_6ranks_baroclinic_dycore_microphysics/input.nml")
-
-experiment_name = yaml.safe_load(
-    open("c12_6ranks_baroclinic_dycore_microphysics/input.yml", "r",)
-)["experiment_name"]
+experiment_name = yaml.safe_load(open(case_name + "/input.yml", "r",))[
+    "experiment_name"
+]
 
 # set up of helper structures
 serializer = serialbox.Serializer(
-    serialbox.OpenModeKind.Read,
-    "c12_6ranks_baroclinic_dycore_microphysics",
-    "Generator_rank" + str(rank),
+    serialbox.OpenModeKind.Read, case_name, "Generator_rank" + str(rank),
 )
 cube_comm = util.CubedSphereCommunicator(
     comm, util.CubedSpherePartitioner(util.TilePartitioner(spec.namelist.layout)),
@@ -55,7 +55,7 @@ for field in grid_fields:
 grid = fv3core.testing.TranslateGrid(grid_data, rank).python_grid()
 spec.set_grid(grid)
 
-# set up grid-dependent helper structures
+# set up domain decomposition
 layout = spec.namelist.layout
 partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
 communicator = util.CubedSphereCommunicator(comm, partitioner)
@@ -66,6 +66,12 @@ driver_object = fv3core.testing.TranslateFVDynamics([grid])
 input_data = driver_object.collect_input_data(serializer, savepoint_in)
 input_data["comm"] = communicator
 state = driver_object.state_from_inputs(input_data)
+
+dwind = TranslateUpdateDWindsPhys(grid)
+missing_grid_info = dwind.collect_input_data(
+    serializer, serializer.get_savepoint("UpdateDWindsPhys-In")[0]
+)
+
 dycore = fv3core.DynamicalCore(
     communicator,
     spec.namelist,
@@ -73,7 +79,7 @@ dycore = fv3core.DynamicalCore(
     state["atmosphere_hybrid_b_coordinate"],
     state["surface_geopotential"],
 )
-phy = Physics(grid, spec.namelist, communicator)
+step_physics = Physics(grid, spec.namelist, communicator, missing_grid_info)
 dycore.step_dynamics(
     state,
     input_data["consv_te"],
@@ -83,4 +89,4 @@ dycore.step_dynamics(
     input_data["n_split"],
     input_data["ks"],
 )
-phy(state)
+step_physics(state)

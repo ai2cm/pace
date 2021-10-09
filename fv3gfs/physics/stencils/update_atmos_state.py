@@ -130,7 +130,7 @@ class UpdateAtmosphereState:
         phy_state: PhysicsState,
         prsi: FloatField,  # consider pushing this into physics_state
     ):
-        self._fill_GFS(prsi, phy_state.qvapor, 1.0e-9)
+        self._fill_GFS(prsi, phy_state.qvapor_t1, 1.0e-9)
         self._prepare_tendencies_and_update_tracers(
             self._u_dt,
             self._v_dt,
@@ -157,6 +157,6 @@ class UpdateAtmosphereState:
             dycore_state.delp,
             self._rdt,
         )
-        dycore_qvapor = self._apply_physics2dycore(
+        self._apply_physics2dycore(
             dycore_state, self._u_dt, self._v_dt, self._pt_dt,
         )
