@@ -179,7 +179,9 @@ class Physics:
         self._prsik = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._dm3d = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._del_gz = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._storage = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._full_zero_storage = utils.make_storage_from_shape(
+            shape, origin=origin, init=True
+        )
         self._get_prs_fv3 = FrozenStencil(
             func=get_prs_fv3,
             origin=self.grid.grid_indexing.origin_full(),
@@ -230,7 +232,7 @@ class Physics:
     def __call__(self, state: dict):
         self.setup_const_from_state(state)
         state = get_namespace(DynamicalCore.arg_specs, state)
-        physics_state = PhysicsState.from_dycore_state(state, self._storage)
+        physics_state = PhysicsState.from_dycore_state(state, self._full_zero_storage)
         self._atmos_phys_driver_statein(
             self._prsik,
             physics_state.phii,
@@ -274,7 +276,7 @@ class Physics:
             physics_state.pt,
             physics_state.delp,
         )
-        microph_state = physics_state.microphysics(self._storage)
+        microph_state = physics_state.microphysics(self._full_zero_storage)
         self._microphysics(microph_state)
         # Fortran uses IPD interface, here we use var_t1 to denote the updated field
         self._update_physics_state_with_tendencies(

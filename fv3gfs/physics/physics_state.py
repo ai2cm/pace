@@ -110,9 +110,9 @@ class PhysicsState:
             va_t1=copy.deepcopy(storage),
         )
 
-    def microphysics(self, storage) -> MicrophysicsState:
+    def microphysics(self, tendency_storage) -> MicrophysicsState:
         """
-        storage: storage for variables not in PhysicsState
+        tendency_storage: storage for tendency variables not in PhysicsState
         """
         return MicrophysicsState(
             pt=self.pt,
@@ -131,5 +131,5 @@ class PhysicsState:
             delprsi=self.delprsi,
             wmp=self.wmp,
             dz=self.dz,
-            storage=storage,
+            tendency_storage=tendency_storage,
         )

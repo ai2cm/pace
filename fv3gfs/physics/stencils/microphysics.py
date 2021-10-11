@@ -1830,7 +1830,7 @@ class MicrophysicsState:
         delprsi: FloatField,
         wmp: FloatField,
         dz: FloatField,
-        storage: FloatField,
+        tendency_storage: FloatField,
     ):
         self.pt = pt
         self.qvapor = qvapor
@@ -1845,16 +1845,16 @@ class MicrophysicsState:
         self.delp = delp
         self.delz = delz
         self.omga = omga
-        self.qv_dt = copy.deepcopy(storage)
-        self.ql_dt = copy.deepcopy(storage)
-        self.qr_dt = copy.deepcopy(storage)
-        self.qi_dt = copy.deepcopy(storage)
-        self.qs_dt = copy.deepcopy(storage)
-        self.qg_dt = copy.deepcopy(storage)
-        self.qa_dt = copy.deepcopy(storage)
-        self.udt = copy.deepcopy(storage)
-        self.vdt = copy.deepcopy(storage)
-        self.pt_dt = copy.deepcopy(storage)
+        self.qv_dt = copy.deepcopy(tendency_storage)
+        self.ql_dt = copy.deepcopy(tendency_storage)
+        self.qr_dt = copy.deepcopy(tendency_storage)
+        self.qi_dt = copy.deepcopy(tendency_storage)
+        self.qs_dt = copy.deepcopy(tendency_storage)
+        self.qg_dt = copy.deepcopy(tendency_storage)
+        self.qa_dt = copy.deepcopy(tendency_storage)
+        self.udt = copy.deepcopy(tendency_storage)
+        self.vdt = copy.deepcopy(tendency_storage)
+        self.pt_dt = copy.deepcopy(tendency_storage)
         self.delprsi = delprsi
         self.wmp = wmp
         self.dz = dz
