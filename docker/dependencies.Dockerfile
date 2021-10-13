@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y \
     g++ \
     gfortran \
     make
-
 RUN wget -q http://www.mpich.org/static/downloads/3.1.4/mpich-3.1.4.tar.gz && \
     tar xzf mpich-3.1.4.tar.gz && \
     cd mpich-3.1.4 && \
@@ -63,7 +62,6 @@ RUN apt-get update && apt-get install -y  --no-install-recommends \
     tk-dev \
     libffi-dev \
     liblzma-dev
-
 ARG PYVERSION=3.8.2
 RUN curl https://pyenv.run | bash
 ENV PYENV_ROOT /root/.pyenv
