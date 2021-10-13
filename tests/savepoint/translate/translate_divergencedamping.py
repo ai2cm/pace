@@ -1,5 +1,7 @@
+from typing import Optional
+
 import fv3core._config as spec
-from fv3core.stencils.divergence_damping import DivergenceDamping
+import fv3core.stencils.divergence_damping
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -10,8 +12,8 @@ class TranslateDivergenceDamping(TranslateFortranData2Py):
             "u": {},
             "v": {},
             "va": {},
-            "ptc": {},
-            "vort": {},
+            "u_contra_dyc": {"serialname": "ptc"},
+            "v_contra_dxc": {"serialname": "vort"},
             "ua": {},
             "divg_d": {},
             "vc": {},
@@ -24,14 +26,17 @@ class TranslateDivergenceDamping(TranslateFortranData2Py):
         }
         self.in_vars["parameters"] = ["dt"]
         self.out_vars = {
-            "vort": {},
+            "v_contra_dxc": {"serialname": "vort"},
             "ke": {"iend": grid.ied + 1, "jend": grid.jed + 1},
             "delpc": {},
         }
         self.max_error = 3.0e-11
+        self.divdamp: Optional[
+            fv3core.stencils.divergence_damping.DivergenceDamping
+        ] = None
 
     def compute_from_storage(self, inputs):
-        divdamp = DivergenceDamping(
+        self.divdamp = fv3core.stencils.divergence_damping.DivergenceDamping(
             self.grid.grid_indexing,
             self.grid.grid_data,
             self.grid.damping_coefficients,
@@ -46,5 +51,18 @@ class TranslateDivergenceDamping(TranslateFortranData2Py):
         )
         del inputs["nord_col"]
         del inputs["d2_bg"]
-        divdamp(**inputs)
+        self.divdamp(**inputs)
+        inputs["v_contra_dxc"] = self.subset_output(
+            "v_contra_dxc", inputs["v_contra_dxc"]
+        )
         return inputs
+
+    def subset_output(self, varname: str, output):
+        """
+        Given an output array, return the slice of the array which we'd
+        like to validate against reference data
+        """
+        if self.divdamp is None:
+            raise RuntimeError("must call compute_from_storage before subset_output")
+        else:
+            return self.divdamp.subset_output(varname, output)  # type: ignore

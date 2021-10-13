@@ -730,28 +730,3 @@ def fill_corners_dgrid_defn(
             x_out = y_in[1, 5, 0]
         with horizontal(region[i_end + 4, j_start - 3]):
             y_out = x_in[-6, 0, 0]
-
-
-@gtscript.function
-def corner_ke(
-    u,
-    v,
-    ut,
-    vt,
-    dt,
-    io1,
-    jo1,
-    io2,
-    vsign,
-):
-    dt6 = dt / 6.0
-
-    return dt6 * (
-        (ut[0, 0, 0] + ut[0, -1, 0]) * ((io1 + 1) * u[0, 0, 0] - (io1 * u[-1, 0, 0]))
-        + (vt[0, 0, 0] + vt[-1, 0, 0]) * ((jo1 + 1) * v[0, 0, 0] - (jo1 * v[0, -1, 0]))
-        + (
-            ((jo1 + 1) * ut[0, 0, 0] - (jo1 * ut[0, -1, 0]))
-            + vsign * ((io1 + 1) * vt[0, 0, 0] - (io1 * vt[-1, 0, 0]))
-        )
-        * ((io2 + 1) * u[0, 0, 0] - (io2 * u[-1, 0, 0]))
-    )

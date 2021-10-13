@@ -1151,14 +1151,17 @@ class DelnFluxNoSG:
 
     def __call__(self, q, fx2, fy2, damp_c, d2, mass=None):
         """
-        Applies del-n damping to fluxes, where n is set by nord.
+        Computes flux fields which would apply del-n damping to q,
+        where n is set by nord.
+
+        TODO: confirm what these args are.
 
         Args:
             q: Field for which to calculate damped fluxes (in)
-            fx2: diffusive x-flux on A grid (in/out)
-            fy2: diffusive y-flux on A grid (in/out)
+            fx2: ? x-flux on A grid to be damped (out)
+            fy2: ? y-flux on A grid to be damped (out)
             damp_c: damping coefficient for q (in)
-            d2: A damped copy of the q field (in)
+            d2: ? a damped copy of the q field (in)
             mass: Mass to weight the diffusive flux by (in)
         """
 

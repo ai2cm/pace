@@ -562,7 +562,7 @@ class LagrangianToEulerian:
                     "because that would trigger an allReduce"
                 )
             elif consv_te < -constants.CONSV_MIN:
-                raise Exception(
+                raise NotImplementedError(
                     "Unimplemented/untested case consv("
                     + str(consv_te)
                     + ")  < -CONSV_MIN("

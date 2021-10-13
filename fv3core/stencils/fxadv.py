@@ -1,89 +1,107 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 from fv3core.decorators import FrozenStencil
+from fv3core.stencils.d2a2c_vect import contravariant
 from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 # TODO: the mix of local and global regions is strange here
 # it's a workaround to specify DON'T do this calculation if on the tile edge
-def main_ut(
+def main_uc_contra(
     uc: FloatField,
     vc: FloatField,
     cosa_u: FloatFieldIJ,
     rsin_u: FloatFieldIJ,
-    ut: FloatField,
+    uc_contra: FloatField,
 ):
+    """
+    Args:
+        uc: covariant c-grid x-wind (in)
+        vc: covariant c-grid y-wind (in)
+        cosa_u: ??? (in)
+        rsin_u: ??? (in)
+        uc_contra: contravariant c-grid x-wind (out)
+    """
     from __externals__ import j_end, j_start, local_ie, local_is
 
     with computation(PARALLEL), interval(...):
-        utmp = ut
+        utmp = uc_contra
         with horizontal(region[local_is - 1 : local_ie + 3, :]):
-            ut = (
-                uc - 0.25 * cosa_u * (vc[-1, 0, 0] + vc + vc[-1, 1, 0] + vc[0, 1, 0])
-            ) * rsin_u
+            # for C-grid, v must be regridded to lie at the same point as u
+            v = 0.25 * (vc[-1, 0, 0] + vc + vc[-1, 1, 0] + vc[0, 1, 0])
+            uc_contra = contravariant(uc, v, cosa_u, rsin_u)
         with horizontal(
             region[:, j_start - 1 : j_start + 1], region[:, j_end : j_end + 2]
         ):
-            ut = utmp
+            uc_contra = utmp
 
 
 # TODO: the mix of local and global regions is strange here
 # it's a workaround to specify DON'T do this calculation if on the tile edge
-def main_vt(
+def main_vc_contra(
     uc: FloatField,
     vc: FloatField,
     cosa_v: FloatFieldIJ,
     rsin_v: FloatFieldIJ,
-    vt: FloatField,
+    vc_contra: FloatField,
 ):
     from __externals__ import j_end, j_start, local_je, local_js
 
     with computation(PARALLEL), interval(...):
-        vtmp = vt
+        vtmp = vc_contra
         with horizontal(region[:, local_js - 1 : local_je + 3]):
-            vt = (
-                vc - 0.25 * cosa_v * (uc[0, -1, 0] + uc[1, -1, 0] + uc + uc[1, 0, 0])
-            ) * rsin_v
+            # for C-grid, u must be regridded to lie at same point as v
+            u = 0.25 * (uc[0, -1, 0] + uc[1, -1, 0] + uc + uc[1, 0, 0])
+            vc_contra = contravariant(vc, u, cosa_v, rsin_v)
         with horizontal(region[:, j_start], region[:, j_end + 1]):
-            vt = vtmp
+            vc_contra = vtmp
 
 
-def ut_y_edge(
+def uc_contra_y_edge(
     uc: FloatField,
     sin_sg1: FloatFieldIJ,
     sin_sg3: FloatFieldIJ,
-    ut: FloatField,
-    dt: float,
+    uc_contra: FloatField,
 ):
     from __externals__ import i_end, i_start
 
     with computation(PARALLEL), interval(...):
         with horizontal(region[i_start, :], region[i_end + 1, :]):
-            ut = (uc / sin_sg3[-1, 0]) if (uc * dt > 0) else (uc / sin_sg1)
+            uc_contra = (uc / sin_sg3[-1, 0]) if (uc > 0) else (uc / sin_sg1)
 
 
-def ut_x_edge(uc: FloatField, cosa_u: FloatFieldIJ, vt: FloatField, ut: FloatField):
+def uc_contra_x_edge(
+    uc: FloatField, cosa_u: FloatFieldIJ, vc_contra: FloatField, uc_contra: FloatField
+):
     from __externals__ import i_end, i_start, j_end, j_start, local_ie, local_is
 
     with computation(PARALLEL), interval(...):
         # TODO: parallel to what done for the vt_y_edge section
-        utmp = ut
+        utmp = uc_contra
         with horizontal(
             region[local_is : local_ie + 2, j_start - 1 : j_start + 1],
             region[local_is : local_ie + 2, j_end : j_end + 2],
         ):
-            ut = uc - 0.25 * cosa_u * (vt[-1, 0, 0] + vt + vt[-1, 1, 0] + vt[0, 1, 0])
+            v_contra = 0.25 * (
+                vc_contra[-1, 0, 0]
+                + vc_contra
+                + vc_contra[-1, 1, 0]
+                + vc_contra[0, 1, 0]
+            )
+            uc_contra = contravariant(uc, v_contra, cosa_u, 1.0)
         with horizontal(
             region[i_start : i_start + 2, j_start - 1 : j_start + 1],
             region[i_start : i_start + 2, j_end : j_end + 2],
             region[i_end : i_end + 2, j_start - 1 : j_start + 1],
             region[i_end : i_end + 2, j_end : j_end + 2],
         ):
-            ut = utmp
+            uc_contra = utmp
 
 
-def vt_y_edge(vc: FloatField, cosa_v: FloatFieldIJ, ut: FloatField, vt: FloatField):
+def vc_contra_y_edge(
+    vc: FloatField, cosa_v: FloatFieldIJ, uc_contra: FloatField, vc_contra: FloatField
+):
     from __externals__ import i_end, i_start, j_end, j_start, local_je, local_js
 
     # This works for 6 ranks, but not 54:
@@ -101,45 +119,49 @@ def vt_y_edge(vc: FloatField, cosa_v: FloatFieldIJ, ut: FloatField, vt: FloatFie
     # rank 3, 4, 5: local_js:local_je + 2
     # rank 6, 7, 8: local_js:local_je
     with computation(PARALLEL), interval(...):
-        vtmp = vt
+        vtmp = vc_contra
         with horizontal(
             region[i_start - 1 : i_start + 1, local_js : local_je + 2],
             region[i_end : i_end + 2, local_js : local_je + 2],
         ):
-            vt = vc - 0.25 * cosa_v * (ut[0, -1, 0] + ut[1, -1, 0] + ut + ut[1, 0, 0])
+            u_contra = 0.25 * (
+                uc_contra[0, -1, 0]
+                + uc_contra[1, -1, 0]
+                + uc_contra
+                + uc_contra[1, 0, 0]
+            )
+            vc_contra = contravariant(vc, u_contra, cosa_v, 1.0)
         with horizontal(
             region[i_start - 1 : i_start + 1, j_start : j_start + 2],
             region[i_end : i_end + 2, j_start : j_start + 2],
             region[i_start - 1 : i_start + 1, j_end : j_end + 2],
             region[i_end : i_end + 2, j_end : j_end + 2],
         ):
-            vt = vtmp
+            vc_contra = vtmp
 
 
-def vt_x_edge(
+def vc_contra_x_edge(
     vc: FloatField,
     sin_sg2: FloatFieldIJ,
     sin_sg4: FloatFieldIJ,
-    vt: FloatField,
-    dt: float,
+    vc_contra: FloatField,
 ):
     from __externals__ import j_end, j_start
 
     with computation(PARALLEL), interval(...):
         with horizontal(region[:, j_start], region[:, j_end + 1]):
-            vt = (vc / sin_sg4[0, -1]) if (vc * dt > 0) else (vc / sin_sg2)
+            vc_contra = (vc / sin_sg4[0, -1]) if (vc > 0) else (vc / sin_sg2)
 
 
-def ut_corners(
+def uc_contra_corners(
     cosa_u: FloatFieldIJ,
     cosa_v: FloatFieldIJ,
     uc: FloatField,
     vc: FloatField,
-    ut: FloatField,
-    ut_copy: FloatField,
-    vt: FloatField,
+    uc_contra: FloatField,
+    uc_contra_copy: FloatField,
+    vc_contra: FloatField,
 ):
-
     """
     The following code (and vt_corners) solves a 2x2 system to
     get the interior parallel-to-edge uc,vc values near the corners
@@ -157,86 +179,102 @@ def ut_corners(
     with computation(PARALLEL), interval(...):
         damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v[-1, 0])
         with horizontal(region[i_start + 1, j_start - 1], region[i_start + 1, j_end]):
-            ut = (
+            uc_contra = (
                 uc
                 - 0.25
                 * cosa_u
                 * (
-                    vt[-1, 1, 0]
-                    + vt[0, 1, 0]
-                    + vt
+                    vc_contra[-1, 1, 0]
+                    + vc_contra[0, 1, 0]
+                    + vc_contra
                     + vc[-1, 0, 0]
                     - 0.25
                     * cosa_v[-1, 0]
-                    * (ut_copy[-1, 0, 0] + ut_copy[-1, -1, 0] + ut_copy[0, -1, 0])
+                    * (
+                        uc_contra_copy[-1, 0, 0]
+                        + uc_contra_copy[-1, -1, 0]
+                        + uc_contra_copy[0, -1, 0]
+                    )
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v[-1, 1])
         with horizontal(region[i_start + 1, j_start], region[i_start + 1, j_end + 1]):
             damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v[-1, 1])
-            ut = (
+            uc_contra = (
                 uc
                 - 0.25
                 * cosa_u
                 * (
-                    vt[-1, 0, 0]
-                    + vt
-                    + vt[0, 1, 0]
+                    vc_contra[-1, 0, 0]
+                    + vc_contra
+                    + vc_contra[0, 1, 0]
                     + vc[-1, 1, 0]
                     - 0.25
                     * cosa_v[-1, 1]
-                    * (ut_copy[-1, 0, 0] + ut_copy[-1, 1, 0] + ut_copy[0, 1, 0])
+                    * (
+                        uc_contra_copy[-1, 0, 0]
+                        + uc_contra_copy[-1, 1, 0]
+                        + uc_contra_copy[0, 1, 0]
+                    )
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v)
         with horizontal(region[i_end, j_start - 1], region[i_end, j_end]):
-            ut = (
+            uc_contra = (
                 uc
                 - 0.25
                 * cosa_u
                 * (
-                    vt[0, 1, 0]
-                    + vt[-1, 1, 0]
-                    + vt[-1, 0, 0]
+                    vc_contra[0, 1, 0]
+                    + vc_contra[-1, 1, 0]
+                    + vc_contra[-1, 0, 0]
                     + vc
                     - 0.25
                     * cosa_v
-                    * (ut_copy[1, 0, 0] + ut_copy[1, -1, 0] + ut_copy[0, -1, 0])
+                    * (
+                        uc_contra_copy[1, 0, 0]
+                        + uc_contra_copy[1, -1, 0]
+                        + uc_contra_copy[0, -1, 0]
+                    )
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v[0, 1])
         with horizontal(region[i_end, j_start], region[i_end, j_end + 1]):
-            ut = (
+            uc_contra = (
                 uc
                 - 0.25
                 * cosa_u
                 * (
-                    vt
-                    + vt[-1, 0, 0]
-                    + vt[-1, 1, 0]
+                    vc_contra
+                    + vc_contra[-1, 0, 0]
+                    + vc_contra[-1, 1, 0]
                     + vc[0, 1, 0]
                     - 0.25
                     * cosa_v[0, 1]
-                    * (ut_copy[1, 0, 0] + ut_copy[1, 1, 0] + ut_copy[0, 1, 0])
+                    * (
+                        uc_contra_copy[1, 0, 0]
+                        + uc_contra_copy[1, 1, 0]
+                        + uc_contra_copy[0, 1, 0]
+                    )
                 )
             ) * damp
 
 
-def vt_corners(
+def vc_contra_corners(
     cosa_u: FloatFieldIJ,
     cosa_v: FloatFieldIJ,
     uc: FloatField,
     vc: FloatField,
     ut: FloatField,
-    vt: FloatField,
-    vt_copy: FloatField,
+    vc_contra: FloatField,
+    vc_contra_copy: FloatField,
 ):
     from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
         damp = 1.0 / (1.0 - 0.0625 * cosa_u[0, -1] * cosa_v)
         with horizontal(region[i_start - 1, j_start + 1], region[i_end, j_start + 1]):
-            vt = (
+            vc_contra = (
                 vc
                 - 0.25
                 * cosa_v
@@ -247,12 +285,16 @@ def vt_corners(
                     + uc[0, -1, 0]
                     - 0.25
                     * cosa_u[0, -1]
-                    * (vt_copy[0, -1, 0] + vt_copy[-1, -1, 0] + vt_copy[-1, 0, 0])
+                    * (
+                        vc_contra_copy[0, -1, 0]
+                        + vc_contra_copy[-1, -1, 0]
+                        + vc_contra_copy[-1, 0, 0]
+                    )
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u[1, -1] * cosa_v)
         with horizontal(region[i_start, j_start + 1], region[i_end + 1, j_start + 1]):
-            vt = (
+            vc_contra = (
                 vc
                 - 0.25
                 * cosa_v
@@ -263,12 +305,16 @@ def vt_corners(
                     + uc[1, -1, 0]
                     - 0.25
                     * cosa_u[1, -1]
-                    * (vt_copy[0, -1, 0] + vt_copy[1, -1, 0] + vt_copy[1, 0, 0])
+                    * (
+                        vc_contra_copy[0, -1, 0]
+                        + vc_contra_copy[1, -1, 0]
+                        + vc_contra_copy[1, 0, 0]
+                    )
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u[1, 0] * cosa_v)
         with horizontal(region[i_end + 1, j_end], region[i_start, j_end]):
-            vt = (
+            vc_contra = (
                 vc
                 - 0.25
                 * cosa_v
@@ -279,12 +325,16 @@ def vt_corners(
                     + uc[1, 0, 0]
                     - 0.25
                     * cosa_u[1, 0]
-                    * (vt_copy[0, 1, 0] + vt_copy[1, 1, 0] + vt_copy[1, 0, 0])
+                    * (
+                        vc_contra_copy[0, 1, 0]
+                        + vc_contra_copy[1, 1, 0]
+                        + vc_contra_copy[1, 0, 0]
+                    )
                 )
             ) * damp
         damp = 1.0 / (1.0 - 0.0625 * cosa_u * cosa_v)
         with horizontal(region[i_end, j_end], region[i_start - 1, j_end]):
-            vt = (
+            vc_contra = (
                 vc
                 - 0.25
                 * cosa_v
@@ -295,7 +345,11 @@ def vt_corners(
                     + uc
                     - 0.25
                     * cosa_u
-                    * (vt_copy[0, 1, 0] + vt_copy[-1, 1, 0] + vt_copy[-1, 0, 0])
+                    * (
+                        vc_contra_copy[0, 1, 0]
+                        + vc_contra_copy[-1, 1, 0]
+                        + vc_contra_copy[-1, 0, 0]
+                    )
                 )
             ) * damp
 
@@ -342,14 +396,14 @@ def fxadv_fluxes_stencil(
     cry: FloatField,
     x_area_flux: FloatField,
     y_area_flux: FloatField,
-    ut: FloatField,
-    vt: FloatField,
+    uc_contra: FloatField,
+    vc_contra: FloatField,
     dt: float,
 ):
     from __externals__ import local_ie, local_is, local_je, local_js
 
     with computation(PARALLEL), interval(...):
-        prod = dt * ut
+        prod = dt * uc_contra
         with horizontal(region[local_is : local_ie + 2, :]):
             if prod > 0:
                 crx = prod * rdxa[-1, 0]
@@ -357,7 +411,7 @@ def fxadv_fluxes_stencil(
             else:
                 crx = prod * rdxa
                 x_area_flux = dy * prod * sin_sg1
-        prod = dt * vt
+        prod = dt * vc_contra
         with horizontal(region[:, local_js : local_je + 2]):
             if prod > 0:
                 cry = prod * rdya[0, -1]
@@ -402,14 +456,18 @@ class FiniteVolumeFluxPrep:
             "origin": origin_corners,
             "domain": domain_corners,
         }
-        self._main_ut_stencil = FrozenStencil(main_ut, **kwargs)
-        self._main_vt_stencil = FrozenStencil(main_vt, **kwargs)
-        self._ut_y_edge_stencil = FrozenStencil(ut_y_edge, **kwargs)
-        self._vt_y_edge_stencil = FrozenStencil(vt_y_edge, **kwargs)
-        self._ut_x_edge_stencil = FrozenStencil(ut_x_edge, **kwargs)
-        self._vt_x_edge_stencil = FrozenStencil(vt_x_edge, **kwargs)
-        self._ut_corners_stencil = FrozenStencil(ut_corners, **kwargs_corners)
-        self._vt_corners_stencil = FrozenStencil(vt_corners, **kwargs_corners)
+        self._main_uc_contra_stencil = FrozenStencil(main_uc_contra, **kwargs)
+        self._main_vc_contra_stencil = FrozenStencil(main_vc_contra, **kwargs)
+        self._uc_contra_y_edge_stencil = FrozenStencil(uc_contra_y_edge, **kwargs)
+        self._vc_contra_y_edge_stencil = FrozenStencil(vc_contra_y_edge, **kwargs)
+        self._uc_contra_x_edge_stencil = FrozenStencil(uc_contra_x_edge, **kwargs)
+        self._vc_contra_x_edge_stencil = FrozenStencil(vc_contra_x_edge, **kwargs)
+        self._uc_contra_corners_stencil = FrozenStencil(
+            uc_contra_corners, **kwargs_corners
+        )
+        self._vc_contra_corners_stencil = FrozenStencil(
+            vc_contra_corners, **kwargs_corners
+        )
         self._fxadv_fluxes_stencil = FrozenStencil(fxadv_fluxes_stencil, **kwargs)
 
     def __call__(
@@ -420,8 +478,8 @@ class FiniteVolumeFluxPrep:
         cry,
         x_area_flux,
         y_area_flux,
-        ut,
-        vt,
+        uc_contra,
+        vc_contra,
         dt,
     ):
         """
@@ -432,76 +490,66 @@ class FiniteVolumeFluxPrep:
         Lin, 2007, that get consumed by fvtp2d and ppm methods.
 
         Args:
-            uc: x-velocity on the C-grid (in)
-            vc: y-velocity on the C-grid (in)
+            uc: covariant x-velocity on the C-grid (in)
+            vc: covariant y-velocity on the C-grid (in)
             crx: Courant number, x direction(inout)
             cry: Courant number, y direction(inout)
             x_area_flux: flux of area in x-direction, in units of m^2 (inout)
             y_area_flux: flux of area in y-direction, in units of m^2 (inout)
-            ut: temporary x-velocity transformed from C-grid to D-grid equiv(?) (inout)
-            vt: temporary y-velocity transformed from C-grid to D-grid equiv(?) (inout)
+            uc_contra: contravariant x-velocity on C-grid (out)
+            vc_contra: contravariant y-velocity on C-grid (out)
             dt: acoustic timestep in seconds
         """
 
-        self._main_ut_stencil(
+        # in the original Fortran code, uc_contra is named ut and vc_contra is vt
+
+        self._main_uc_contra_stencil(
             uc,
             vc,
             self._cosa_u,
             self._rsin_u,
-            ut,
+            uc_contra,
         )
-        self._ut_y_edge_stencil(
-            uc,
-            self._sin_sg1,
-            self._sin_sg3,
-            ut,
-            dt,
-        )
-        self._main_vt_stencil(
+        self._uc_contra_y_edge_stencil(uc, self._sin_sg1, self._sin_sg3, uc_contra)
+        self._main_vc_contra_stencil(
             uc,
             vc,
             self._cosa_v,
             self._rsin_v,
-            vt,
+            vc_contra,
         )
-        self._vt_y_edge_stencil(
+        self._vc_contra_y_edge_stencil(
             vc,
             self._cosa_v,
-            ut,
-            vt,
+            uc_contra,
+            vc_contra,
         )
-        self._vt_x_edge_stencil(
-            vc,
-            self._sin_sg2,
-            self._sin_sg4,
-            vt,
-            dt,
-        )
-        self._ut_x_edge_stencil(
+        self._vc_contra_x_edge_stencil(vc, self._sin_sg2, self._sin_sg4, vc_contra)
+        self._uc_contra_x_edge_stencil(
             uc,
             self._cosa_u,
-            vt,
-            ut,
+            vc_contra,
+            uc_contra,
         )
         # NOTE: this is aliasing memory
-        self._ut_corners_stencil(
+        self._uc_contra_corners_stencil(
             self._cosa_u,
             self._cosa_v,
             uc,
             vc,
-            ut,
-            ut,
-            vt,
+            uc_contra,
+            uc_contra,
+            vc_contra,
         )
         # NOTE: this is aliasing memory
-        self._vt_corners_stencil(
+        self._vc_contra_corners_stencil(
             self._cosa_u,
             self._cosa_v,
             uc,
             vc,
-            ut,
-            vt,
-            vt,
+            uc_contra,
+            vc_contra,
+            vc_contra,
         )
         self._fxadv_fluxes_stencil(
             self._sin_sg1,
@@ -516,8 +564,8 @@ class FiniteVolumeFluxPrep:
             cry,
             x_area_flux,
             y_area_flux,
-            ut,
-            vt,
+            uc_contra,
+            vc_contra,
             dt,
         )
 

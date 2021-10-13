@@ -53,7 +53,7 @@ class TranslateTracer2D1L(ParallelTranslate):
             self.grid.grid_indexing,
             transport,
             communicator,
-            fv_dynamics.DynamicalCore.NQ,
+            fv_dynamics.NQ,
         )
         self.tracer_advection(**inputs)
         inputs[

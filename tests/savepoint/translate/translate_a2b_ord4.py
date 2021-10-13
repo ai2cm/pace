@@ -25,5 +25,5 @@ class TranslateA2B_Ord4(TranslateFortranData2Py):
             inputs["nord_col"],
         )
         del inputs["nord_col"]
-        divdamp.vorticity_calc(**inputs)
+        divdamp._vorticity_calc(**inputs)
         return inputs

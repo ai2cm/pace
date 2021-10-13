@@ -3,7 +3,9 @@ from typing import Callable, Mapping, Tuple
 
 import numpy as np
 
+import fv3core.stencils.divergence_damping
 import fv3core.stencils.updatedzd
+from fv3gfs.util.constants import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from fv3gfs.util.quantity import Quantity
 
 
@@ -39,11 +41,13 @@ def get_selective_class(
                     slice(start, start + n)
                     for start, n in zip(variable_origin, variable_domain)
                 )
-
-            self._all_argument_names = tuple(
-                inspect.getfullargspec(self.wrapped).args[1:]
-            )
-            assert "self" not in self._all_argument_names
+            try:
+                self._all_argument_names = tuple(
+                    inspect.getfullargspec(self.wrapped).args[1:]
+                )
+                assert "self" not in self._all_argument_names
+            except TypeError:  # wrapped object is not callable
+                self._all_argument_names = None
 
         def __call__(self, *args, **kwargs):
             kwargs.update(self._args_to_kwargs(args))
@@ -52,6 +56,10 @@ def get_selective_class(
 
         def _args_to_kwargs(self, args):
             return dict(zip(self._all_argument_names, args))
+
+        @property
+        def selective_names(self):
+            return tuple(self._validation_slice.keys())
 
         def subset_output(self, varname: str, output: np.ndarray) -> np.ndarray:
             """
@@ -69,6 +77,11 @@ def get_selective_class(
                     validation_data = np.copy(array[validation_slice])
                     array[:] = np.nan
                     array[validation_slice] = validation_data
+
+        def __getattr__(self, name):
+            # if SelectivelyValidated doesn't have an attribute, this is called
+            # which gets the attribute from the wrapped instance/class
+            return getattr(self.wrapped, name)
 
     return SelectivelyValidated
 
@@ -95,7 +108,8 @@ def get_selective_tracer_advection(
             assert "self" not in self._all_argument_names
 
         def __call__(self, *args, **kwargs):
-            kwargs.update(self._args_to_kwargs(args))
+            if self._all_argument_names is not None:
+                kwargs.update(self._args_to_kwargs(args))
             self.wrapped(**kwargs)
             self._set_nans(kwargs["tracers"])
 
@@ -134,6 +148,13 @@ def get_compute_domain_k_interfaces(
     return origin, domain
 
 
+def get_domain_func(dims):
+    def domain_func(instance):
+        return instance.grid_indexing.get_origin_domain(dims)
+
+    return domain_func
+
+
 def enable_selective_validation():
     """
     Replaces certain function-classes with wrapped versions that set data we aren't
@@ -151,7 +172,7 @@ def enable_selective_validation():
         {
             "height": get_compute_domain_k_interfaces,
             "zh": get_compute_domain_k_interfaces,
-        },  # must include both function and savepoint names
+        },  # must include both function argument and savepoint names
     )
     # make absolutely sure you don't write just the savepoint name, this would
     # selecively validate without making sure it's safe to do so
@@ -159,4 +180,27 @@ def enable_selective_validation():
     fv3core.stencils.tracer_2d_1l.TracerAdvection = get_selective_tracer_advection(
         fv3core.stencils.tracer_2d_1l.TracerAdvection,
         get_compute_domain_k_interfaces,
+    )
+
+    fv3core.stencils.divergence_damping.DivergenceDamping = get_selective_class(
+        fv3core.stencils.divergence_damping.DivergenceDamping,
+        {
+            "v_contra_dxc": get_domain_func([X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]),
+            "vort": get_domain_func([X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]),
+        },  # must include both function argument and savepoint names
+    )
+    cell_center_func = get_domain_func([X_DIM, Y_DIM, Z_DIM])
+    fv3core.stencils.fv_dynamics.DynamicalCore = get_selective_class(
+        fv3core.stencils.fv_dynamics.DynamicalCore,
+        {
+            "qsnow": cell_center_func,
+            "va": cell_center_func,
+            "qcld": cell_center_func,
+            "qice": cell_center_func,
+            "v": get_domain_func([X_INTERFACE_DIM, Y_DIM, Z_DIM]),
+            "qliquid": cell_center_func,
+            "ua": cell_center_func,
+            "q_con": cell_center_func,
+            "u": get_domain_func([X_DIM, Y_INTERFACE_DIM, Z_DIM]),
+        },
     )

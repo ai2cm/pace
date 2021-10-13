@@ -9,7 +9,7 @@ import fv3gfs.util as fv3util
 from fv3core.testing import ParallelTranslateBaseSlicing
 
 
-ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.DynamicalCore.NQ]
+ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]
 
 
 class TranslateFVDynamics(ParallelTranslateBaseSlicing):
@@ -310,10 +310,8 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             inputs["ks"],
         )
         outputs = self.outputs_from_state(state)
-        for name in ADVECTED_TRACER_NAMES:
-            outputs[name] = self.dycore.tracer_advection.subset_output(
-                "tracers", outputs[name]
-            )
+        for name, value in outputs.items():
+            outputs[name] = self.subset_output(name, value)
         return outputs
 
     def compute_sequential(self, *args, **kwargs):
@@ -332,9 +330,12 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
                 "cannot call subset_output before calling compute_parallel "
                 "to initialize dycore"
             )
-        if varname in ADVECTED_TRACER_NAMES:
-            return self.dycore.tracer_advection.subset_output(  # type: ignore
+        elif varname in self.dycore.selective_names:  # type: ignore
+            return_value = self.dycore.subset_output(varname, output)  # type: ignore
+        elif varname in ADVECTED_TRACER_NAMES:
+            return_value = self.dycore.tracer_advection.subset_output(  # type: ignore
                 "tracers", output
             )
         else:
-            return output
+            return_value = output
+        return return_value

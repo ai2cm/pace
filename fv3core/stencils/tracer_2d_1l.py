@@ -275,8 +275,8 @@ class TracerAdvection:
                     self._tmp_yfx,
                     self._tmp_fx,
                     self._tmp_fy,
-                    mfx=mfxd,
-                    mfy=mfyd,
+                    x_mass_flux=mfxd,
+                    y_mass_flux=mfyd,
                 )
                 self._q_adjust(
                     q.storage,

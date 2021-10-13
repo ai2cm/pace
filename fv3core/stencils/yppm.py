@@ -10,37 +10,34 @@ from gt4py.gtscript import (
 )
 
 from fv3core.decorators import FrozenStencil
+from fv3core.stencils import ppm
 from fv3core.stencils.basic_operations import sign
 from fv3core.utils.grid import GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldIJ, Index3D
 
 
-input_vars = ["q", "c"]
-inputs_params = ["jord", "ifirst", "ilast"]
-output_vars = ["flux"]
-
-# volume-conserving cubic with 2nd drv=0 at end point:
-# non-monotonic
-c1 = -2.0 / 14.0
-c2 = 11.0 / 14.0
-c3 = 5.0 / 14.0
-
-# PPM volume mean form
-p1 = 7.0 / 12.0
-p2 = -1.0 / 12.0
-
-s11 = 11.0 / 14.0
-s14 = 4.0 / 7.0
-s15 = 3.0 / 14.0
-
-
 @gtscript.function
-def final_flux(courant, q, fx1, tmp):
-    return q[0, -1, 0] + fx1 * tmp if courant > 0.0 else q + fx1 * tmp
+def apply_flux(courant, q, fx1, mask):
+    """
+    Args:
+        courant: any value whose sign is the same as the sign of
+            the y-wind on cell corners
+        q: scalar being transported, on y-centers
+        fx1: flux of q in units of q, on y-interfaces
+        mask: fx1 is multiplied by this before being applied
+    """
+    return q[0, -1, 0] + fx1 * mask if courant > 0.0 else q + fx1 * mask
 
 
 @gtscript.function
 def fx1_fn(courant, br, b0, bl):
+    """
+    Args:
+        courant: courant number, v * dt / dy (unitless)
+        br: ???
+        b0: br + bl
+        bl: ???
+    """
     if courant > 0.0:
         ret = (1.0 - courant) * (br[0, -1, 0] - courant * b0[0, -1, 0])
     else:
@@ -49,20 +46,20 @@ def fx1_fn(courant, br, b0, bl):
 
 
 @gtscript.function
-def get_tmp(bl, b0, br):
+def get_advection_mask(bl, b0, br):
     from __externals__ import mord
 
-    if mord == 5:
+    if __INLINED(mord == 5):
         smt5 = bl * br < 0
     else:
         smt5 = (3.0 * abs(b0)) < abs(bl - br)
 
     if smt5[0, -1, 0] or smt5[0, 0, 0]:
-        tmp = 1.0
+        advection_mask = 1.0
     else:
-        tmp = 0.0
+        advection_mask = 0.0
 
-    return tmp
+    return advection_mask
 
 
 @gtscript.function
@@ -71,9 +68,9 @@ def get_flux(q: FloatField, courant: FloatField, al: FloatField):
     br = al[0, 1, 0] - q[0, 0, 0]
     b0 = bl + br
 
-    tmp = get_tmp(bl, b0, br)
+    advection_mask = get_advection_mask(bl, b0, br)
     fx1 = fx1_fn(courant, br, b0, bl)
-    return final_flux(courant, q, fx1, tmp)
+    return apply_flux(courant, q, fx1, advection_mask)  # noqa
 
 
 @gtscript.function
@@ -82,15 +79,15 @@ def get_flux_ord8plus(
 ):
     b0 = bl + br
     fx1 = fx1_fn(courant, br, b0, bl)
-    return final_flux(courant, q, fx1, 1.0)
+    return apply_flux(courant, q, fx1, 1.0)
 
 
 @gtscript.function
 def dm_jord8plus(q: FloatField):
-    xt = 0.25 * (q[0, 1, 0] - q[0, -1, 0])
+    yt = 0.25 * (q[0, 1, 0] - q[0, -1, 0])
     dqr = max(max(q, q[0, -1, 0]), q[0, 1, 0]) - q
     dql = q - min(min(q, q[0, -1, 0]), q[0, 1, 0])
-    return sign(min(min(abs(xt), dqr), dql), xt)
+    return sign(min(min(abs(yt), dqr), dql), yt)
 
 
 @gtscript.function
@@ -100,16 +97,14 @@ def al_jord8plus(q: FloatField, dm: FloatField):
 
 @gtscript.function
 def blbr_jord8(q: FloatField, al: FloatField, dm: FloatField):
-    xt = 2.0 * dm
-    aldiff = al - q
-    aldiffj = al[0, 1, 0] - q
-    bl = -1.0 * sign(min(abs(xt), abs(aldiff)), xt)
-    br = sign(min(abs(xt), abs(aldiffj)), xt)
+    yt = 2.0 * dm
+    bl = -1.0 * sign(min(abs(yt), abs(al - q)), yt)
+    br = sign(min(abs(yt), abs(al[0, 1, 0] - q)), yt)
     return bl, br
 
 
 @gtscript.function
-def xt_dya_edge_0_base(q: FloatField, dya: FloatFieldIJ):
+def yt_dya_edge_0_base(q, dya):
     return 0.5 * (
         ((2.0 * dya + dya[0, -1]) * q - dya * q[0, -1, 0]) / (dya[0, -1] + dya)
         + ((2.0 * dya[0, 1] + dya[0, 2]) * q[0, 1, 0] - dya[0, 1] * q[0, 2, 0])
@@ -118,7 +113,7 @@ def xt_dya_edge_0_base(q: FloatField, dya: FloatFieldIJ):
 
 
 @gtscript.function
-def xt_dya_edge_1_base(q: FloatField, dya: FloatFieldIJ):
+def yt_dya_edge_1_base(q, dya):
     return 0.5 * (
         ((2.0 * dya[0, -1] + dya[0, -2]) * q[0, -1, 0] - dya[0, -1] * q[0, -2, 0])
         / (dya[0, -2] + dya[0, -1])
@@ -127,68 +122,27 @@ def xt_dya_edge_1_base(q: FloatField, dya: FloatFieldIJ):
 
 
 @gtscript.function
-def xt_dya_edge_0(q, dya):
-    from __externals__ import xt_minmax
+def yt_dya_edge_0(q, dya):
+    from __externals__ import yt_minmax
 
-    xt = xt_dya_edge_0_base(q, dya)
-    if __INLINED(xt_minmax):
+    yt = yt_dya_edge_0_base(q, dya)
+    if __INLINED(yt_minmax):
         minq = min(min(min(q[0, -1, 0], q), q[0, 1, 0]), q[0, 2, 0])
         maxq = max(max(max(q[0, -1, 0], q), q[0, 1, 0]), q[0, 2, 0])
-        xt = min(max(xt, minq), maxq)
-    return xt
+        yt = min(max(yt, minq), maxq)
+    return yt
 
 
 @gtscript.function
-def xt_dya_edge_1(q, dya):
-    from __externals__ import xt_minmax
+def yt_dya_edge_1(q, dya):
+    from __externals__ import yt_minmax
 
-    xt = xt_dya_edge_1_base(q, dya)
-    if __INLINED(xt_minmax):
+    yt = yt_dya_edge_1_base(q, dya)
+    if __INLINED(yt_minmax):
         minq = min(min(min(q[0, -2, 0], q[0, -1, 0]), q), q[0, 1, 0])
         maxq = max(max(max(q[0, -2, 0], q[0, -1, 0]), q), q[0, 1, 0])
-        xt = min(max(xt, minq), maxq)
-    return xt
-
-
-@gtscript.function
-def pert_ppm_positive_definite_constraint_fcn(
-    a0: FloatField, al: FloatField, ar: FloatField
-):
-    if a0 <= 0.0:
-        al = 0.0
-        ar = 0.0
-    else:
-        a4 = -3.0 * (ar + al)
-        da1 = ar - al
-        if abs(da1) < -a4:
-            fmin = a0 + 0.25 / a4 * da1 ** 2 + a4 * (1.0 / 12.0)
-            if fmin < 0.0:
-                if ar > 0.0 and al > 0.0:
-                    ar = 0.0
-                    al = 0.0
-                elif da1 > 0.0:
-                    ar = -2.0 * al
-            else:
-                al = -2.0 * ar
-
-    return al, ar
-
-
-@gtscript.function
-def pert_ppm_standard_constraint_fcn(a0: FloatField, al: FloatField, ar: FloatField):
-    if al * ar < 0.0:
-        da1 = al - ar
-        da2 = da1 ** 2
-        a6da = 3.0 * (al + ar) * da1
-        if a6da < -da2:
-            ar = -2.0 * al
-        elif a6da > da2:
-            al = -2.0 * ar
-    else:
-        # effect of dm=0 included here
-        al = 0.0
-        ar = 0.0
-    return al, ar
+        yt = min(max(yt, minq), maxq)
+    return yt
 
 
 @gtscript.function
@@ -197,25 +151,24 @@ def compute_al(q: FloatField, dya: FloatFieldIJ):
     Interpolate q at interface.
 
     Inputs:
-        q: Transported scalar
+        q: transported scalar centered along the y-direction
         dya: dy on A-grid (?)
 
     Returns:
-        Interpolated quantity
+        q interpolated to y-interfaces
     """
     from __externals__ import j_end, j_start, jord
 
     compile_assert(jord < 8)
 
-    al = p1 * (q[0, -1, 0] + q) + p2 * (q[0, -2, 0] + q[0, 1, 0])
+    al = ppm.p1 * (q[0, -1, 0] + q) + ppm.p2 * (q[0, -2, 0] + q[0, 1, 0])
 
     if __INLINED(jord < 0):
         compile_assert(False)
         al = max(al, 0.0)
 
     with horizontal(region[:, j_start - 1], region[:, j_end]):
-        al = c1 * q[0, -2, 0] + c2 * q[0, -1, 0] + c3 * q
-
+        al = ppm.c1 * q[0, -2, 0] + ppm.c2 * q[0, -1, 0] + ppm.c3 * q
     with horizontal(region[:, j_start], region[:, j_end + 1]):
         al = 0.5 * (
             ((2.0 * dya[0, -1] + dya[0, -2]) * q[0, -1, 0] - dya[0, -1] * q[0, -2, 0])
@@ -223,9 +176,8 @@ def compute_al(q: FloatField, dya: FloatFieldIJ):
             + ((2.0 * dya[0, 0] + dya[0, 1]) * q[0, 0, 0] - dya[0, 0] * q[0, 1, 0])
             / (dya[0, 0] + dya[0, 1])
         )
-
     with horizontal(region[:, j_start + 1], region[:, j_end + 2]):
-        al = c3 * q[0, -1, 0] + c2 * q[0, 0, 0] + c1 * q[0, 1, 0]
+        al = ppm.c3 * q[0, -1, 0] + ppm.c2 * q[0, 0, 0] + ppm.c1 * q[0, 1, 0]
 
     return al
 
@@ -235,62 +187,62 @@ def bl_br_edges(bl, br, q, dya, al, dm):
     from __externals__ import j_end, j_start
 
     # TODO(eddied): This temporary prevents race conditions in regions
-    al_jp1 = al[0, 1, 0]
+    al_ip1 = al[0, 1, 0]
 
-    #  dm_jord8plus(q: FloatField)
     with horizontal(region[:, j_start - 1]):
         # TODO(rheag) when possible
-        # dm_lower = dm_jord8plus(q[0, -1, 0])
-        xt = 0.25 * (q - q[0, -2, 0])
+        # dm_left = dm_jord8plus(q[0, -1, 0])
+        yt = 0.25 * (q - q[0, -2, 0])
         dqr = max(max(q[0, -1, 0], q[0, -2, 0]), q) - q[0, -1, 0]
         dql = q[0, -1, 0] - min(min(q[0, -1, 0], q[0, -2, 0]), q)
-        dm_lower = sign(min(min(abs(xt), dqr), dql), xt)
-        xt_bl = s14 * dm_lower + s11 * (q[0, -1, 0] - q) + q
-        xt_br = xt_dya_edge_0(q, dya)
+        dm_left = sign(min(min(abs(yt), dqr), dql), yt)
+        yt_bl = ppm.s14 * dm_left + ppm.s11 * (q[0, -1, 0] - q) + q
+        yt_br = yt_dya_edge_0(q, dya)
 
     with horizontal(region[:, j_start]):
         # TODO(rheag) when possible
-        # dm_upper = dm_jord8plus(q[0, 1, 0])
-        xt = 0.25 * (q[0, 2, 0] - q)
+        # dm_right = dm_jord8plus(q[0, 1, 0])
+        yt = 0.25 * (q[0, 2, 0] - q)
         dqr = max(max(q[0, 1, 0], q), q[0, 2, 0]) - q[0, 1, 0]
         dql = q[0, 1, 0] - min(min(q[0, 1, 0], q), q[0, 2, 0])
-        dm_upper = sign(min(min(abs(xt), dqr), dql), xt)
-        xt_bl = xt_dya_edge_1(q, dya)
-        xt_br = s15 * q + s11 * q[0, 1, 0] - s14 * dm_upper
+        dm_right = sign(min(min(abs(yt), dqr), dql), yt)
+        yt_bl = ppm.s14 * dm_left + ppm.s11 * (q[0, -1, 0] - q) + q
+        yt_bl = yt_dya_edge_1(q, dya)
+        yt_br = ppm.s15 * q + ppm.s11 * q[0, 1, 0] - ppm.s14 * dm_right
 
     with horizontal(region[:, j_start + 1]):
-        xt_bl = s15 * q[0, -1, 0] + s11 * q - s14 * dm
-        xt_br = al_jp1
+        yt_bl = ppm.s15 * q[0, -1, 0] + ppm.s11 * q - ppm.s14 * dm
+        yt_br = al_ip1
 
     with horizontal(region[:, j_end - 1]):
-        xt_bl = al
-        xt_br = s15 * q[0, 1, 0] + s11 * q + s14 * dm
+        yt_bl = al
+        yt_br = ppm.s15 * q[0, 1, 0] + ppm.s11 * q + ppm.s14 * dm
 
     with horizontal(region[:, j_end]):
         # TODO(rheag) when possible
-        # dm_lower_end = dm_jord8plus(q[0, -1, 0])
-        xt = 0.25 * (q - q[0, -2, 0])
+        # dm_left_end = dm_jord8plus(q[0, -1, 0])
+        yt = 0.25 * (q - q[0, -2, 0])
         dqr = max(max(q[0, -1, 0], q[0, -2, 0]), q) - q[0, -1, 0]
         dql = q[0, -1, 0] - min(min(q[0, -1, 0], q[0, -2, 0]), q)
-        dm_lower_end = sign(min(min(abs(xt), dqr), dql), xt)
-        xt_bl = s15 * q + s11 * q[0, -1, 0] + s14 * dm_lower_end
-        xt_br = xt_dya_edge_0(q, dya)
+        dm_left_end = sign(min(min(abs(yt), dqr), dql), yt)
+        yt_bl = ppm.s15 * q + ppm.s11 * q[0, -1, 0] + ppm.s14 * dm_left_end
+        yt_br = yt_dya_edge_0(q, dya)
 
     with horizontal(region[:, j_end + 1]):
         # TODO(rheag) when possible
-        # dm_upper_end = dm_jord8plus(q[0, 1, 0])
-        xt = 0.25 * (q[0, 2, 0] - q)
+        # dm_right_end = dm_jord8plus(q[0, 1, 0])
+        yt = 0.25 * (q[0, 2, 0] - q)
         dqr = max(max(q[0, 1, 0], q), q[0, 2, 0]) - q[0, 1, 0]
         dql = q[0, 1, 0] - min(min(q[0, 1, 0], q), q[0, 2, 0])
-        dm_upper_end = sign(min(min(abs(xt), dqr), dql), xt)
-        xt_bl = xt_dya_edge_1(q, dya)
-        xt_br = s11 * (q[0, 1, 0] - q) - s14 * dm_upper_end + q
+        dm_right_end = sign(min(min(abs(yt), dqr), dql), yt)
+        yt_bl = yt_dya_edge_1(q, dya)
+        yt_br = ppm.s11 * (q[0, 1, 0] - q) - ppm.s14 * dm_right_end + q
 
     with horizontal(
         region[:, j_start - 1 : j_start + 2], region[:, j_end - 1 : j_end + 2]
     ):
-        bl = xt_bl - q
-        br = xt_br - q
+        bl = yt_bl - q
+        br = yt_br - q
 
     return bl, br
 
@@ -298,9 +250,6 @@ def bl_br_edges(bl, br, q, dya, al, dm):
 @gtscript.function
 def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
     from __externals__ import j_end, j_start, jord
-
-    bl = 0.0
-    br = 0.0
 
     dm = dm_jord8plus(q)
     al = al_jord8plus(q, dm)
@@ -313,7 +262,7 @@ def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
     with horizontal(
         region[:, j_start - 1 : j_start + 2], region[:, j_end - 1 : j_end + 2]
     ):
-        bl, br = pert_ppm_standard_constraint_fcn(q, bl, br)
+        bl, br = ppm.pert_ppm_standard_constraint_fcn(q, bl, br)
 
     return bl, br
 
@@ -334,7 +283,7 @@ def compute_y_flux(
 
 class YPiecewiseParabolic:
     """
-    Fortran name is yppm
+    Fortran name is xppm
     """
 
     def __init__(
@@ -350,11 +299,6 @@ class YPiecewiseParabolic:
         # namelist.grid_type
         # grid.dya
         assert grid_type < 3
-        if abs(jord) not in [5, 6, 7, 8]:
-            raise NotImplementedError(
-                f"Unimplemented hord value, {jord}. "
-                "Currently only support hord={5, 6, 7, 8}"
-            )
         self._dya = dya
         ax_offsets = grid_indexing.axis_offsets(origin, domain)
         self._compute_flux_stencil = FrozenStencil(
@@ -362,7 +306,7 @@ class YPiecewiseParabolic:
             externals={
                 "jord": jord,
                 "mord": abs(jord),
-                "xt_minmax": True,
+                "yt_minmax": True,
                 "j_start": ax_offsets["j_start"],
                 "j_end": ax_offsets["j_end"],
             },
@@ -370,16 +314,36 @@ class YPiecewiseParabolic:
             domain=domain,
         )
 
-    def __call__(self, q: FloatField, c: FloatField, flux: FloatField):
+    def __call__(
+        self,
+        q_in: FloatField,
+        c: FloatField,
+        q_mean_advected_through_y_interface: FloatField,
+    ):
         """
-        Compute y-flux using the PPM method.
+        Determine the mean value of q_in to be advected along y-interfaces.
+
+        This is done by integrating a piecewise-parabolic svbgrid reconstruction
+        of q_in along the y-direction over the segment of gridcell which
+        will be advected.
+
+        Multiplying this mean value by the area to be advected through the interface
+        would give the flux of q through that interface.
 
         Args:
-            q (in): Transported scalar
-            c (in): Courant number
-            flux (out): Flux
-            ifirst: Starting index of the I-dir compute domain
-            ilast: Final index of the I-dir compute domain
+            q_in (in): scalar to be integrated
+            c (in): Courant number (v*dt/dy) in y-direction defined on y-interfaces,
+                indicates the fraction of the adjacent grid cell which will be
+                advected through the interface in one timestep
+            q_mean_advected_through_y_interface (out): defined on y-interfaces.
+                mean value of scalar within the segment of gridcell to be advected
+                through that interface in one timestep, in units of q_in
         """
-
-        self._compute_flux_stencil(q, c, self._dya, flux)
+        # in the Fortran version of this code, "x_advection" routines
+        # were called "get_flux", while the routine which got the flux was called
+        # fx1_fn. The final value was called yflux instead of q_out.
+        self._compute_flux_stencil(
+            q_in, c, self._dya, q_mean_advected_through_y_interface
+        )
+        # bl and br are "edge perturbation values" as in equation 4.1
+        # of the FV3 documentation

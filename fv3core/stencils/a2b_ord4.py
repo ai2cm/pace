@@ -623,10 +623,12 @@ class AGrid2BGridFourthOrder:
     def __call__(self, qin: FloatField, qout: FloatField):
         """Converts qin from A-grid to B-grid in qout.
         In some cases, qin is also updated to the B grid.
+
         Args:
-        qin: Input on A-grid (inout)
-        qout: Output on B-grid (inout)
+            qin: Input on A-grid (inout)
+            qout: Output on B-grid (inout)
         """
+        # TODO: update docstring saying in what cases qin gets updated
 
         self._sw_corner_stencil(
             qin,
