@@ -1,10 +1,12 @@
+from typing import Sequence
+
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
-from fv3core.utils.grid import axis_offsets
+from fv3core.utils.grid import GridIndexing, axis_offsets
 from fv3core.utils.typing import FloatField
 
 
@@ -52,6 +54,61 @@ class CopyCorners:
         in the dirction specified initialization of the instance of this class.
         """
         self._copy_corners(field, field)
+
+
+class CopyCornersXY:
+    """
+    Helper-class to copy corners corresponding to the Fortran functions
+    copy_corners_x and copy_corners_y
+    """
+
+    def __init__(
+        self,
+        grid_indexing: GridIndexing,
+        dims: Sequence[str],
+        y_field,
+    ) -> None:
+        """
+        Args:
+            grid_indexing: information about the grid sizing
+            dims: dimensionality of the data to be copied
+            y_field: 3D gt4py storage to use for y-differenceable field
+                (x-differenceable field uses same memory as base field)
+        """
+        origin, domain = grid_indexing.get_origin_domain(
+            dims=dims, halos=(grid_indexing.n_halo, grid_indexing.n_halo)
+        )
+
+        self._y_field = y_field
+
+        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        self._copy_corners_xy = FrozenStencil(
+            func=copy_corners_xy_stencil_defn,
+            origin=origin,
+            domain=domain,
+            externals={
+                **ax_offsets,
+            },
+        )
+
+    def __call__(self, field: FloatField):
+        """
+        Fills cell quantity field using corners from itself.
+
+        Args:
+            field: field to fill corners
+
+        Returns:
+            x_differenceable: input field, updated so it can be differenced
+                in x-direction
+            y_differenceable: copy of input field which can be differenced
+                in y-direction
+        """
+        # we could avoid aliasing field for the x-differenceable output, but this
+        # requires selectively validating the halos, since the Fortran code does the
+        # final (x-direction) corners copy directly on the base field
+        self._copy_corners_xy(field, field, self._y_field)
+        return field, self._y_field
 
 
 @gtscript.function
@@ -350,6 +407,124 @@ def copy_corners_y_stencil_defn(q_in: FloatField, q_out: FloatField):
             q_out = q_in[-2, -1, 0]
         with horizontal(region[i_end + 3, j_start - 1], region[i_end + 1, j_end + 3]):
             q_out = q_in[-3, -2, 0]
+
+
+def copy_corners_xy_stencil_defn(
+    q_in: FloatField, q_out_x: FloatField, q_out_y: FloatField
+):
+    from __externals__ import i_end, i_start, j_end, j_start
+
+    with computation(PARALLEL), interval(...):
+        q_out_x = q_in
+        q_out_y = q_in
+        with horizontal(
+            region[i_start - 3, j_start - 3], region[i_end + 3, j_start - 3]
+        ):
+            q_out_x = q_in[0, 5, 0]
+        with horizontal(
+            region[i_start - 2, j_start - 3], region[i_end + 3, j_start - 2]
+        ):
+            q_out_x = q_in[-1, 4, 0]
+        with horizontal(
+            region[i_start - 1, j_start - 3], region[i_end + 3, j_start - 1]
+        ):
+            q_out_x = q_in[-2, 3, 0]
+        with horizontal(
+            region[i_start - 3, j_start - 2], region[i_end + 2, j_start - 3]
+        ):
+            q_out_x = q_in[1, 4, 0]
+        with horizontal(
+            region[i_start - 2, j_start - 2], region[i_end + 2, j_start - 2]
+        ):
+            q_out_x = q_in[0, 3, 0]
+        with horizontal(
+            region[i_start - 1, j_start - 2], region[i_end + 2, j_start - 1]
+        ):
+            q_out_x = q_in[-1, 2, 0]
+        with horizontal(
+            region[i_start - 3, j_start - 1], region[i_end + 1, j_start - 3]
+        ):
+            q_out_x = q_in[2, 3, 0]
+        with horizontal(
+            region[i_start - 2, j_start - 1], region[i_end + 1, j_start - 2]
+        ):
+            q_out_x = q_in[1, 2, 0]
+        with horizontal(
+            region[i_start - 1, j_start - 1], region[i_end + 1, j_start - 1]
+        ):
+            q_out_x = q_in[0, 1, 0]
+        with horizontal(region[i_start - 3, j_end + 1], region[i_end + 1, j_end + 3]):
+            q_out_x = q_in[2, -3, 0]
+        with horizontal(region[i_start - 2, j_end + 1], region[i_end + 1, j_end + 2]):
+            q_out_x = q_in[1, -2, 0]
+        with horizontal(region[i_start - 1, j_end + 1], region[i_end + 1, j_end + 1]):
+            q_out_x = q_in[0, -1, 0]
+        with horizontal(region[i_start - 3, j_end + 2], region[i_end + 2, j_end + 3]):
+            q_out_x = q_in[1, -4, 0]
+        with horizontal(region[i_start - 2, j_end + 2], region[i_end + 2, j_end + 2]):
+            q_out_x = q_in[0, -3, 0]
+        with horizontal(region[i_start - 1, j_end + 2], region[i_end + 2, j_end + 1]):
+            q_out_x = q_in[-1, -2, 0]
+        with horizontal(region[i_start - 3, j_end + 3], region[i_end + 3, j_end + 3]):
+            q_out_x = q_in[0, -5, 0]
+        with horizontal(region[i_start - 2, j_end + 3], region[i_end + 3, j_end + 2]):
+            q_out_x = q_in[-1, -4, 0]
+        with horizontal(region[i_start - 1, j_end + 3], region[i_end + 3, j_end + 1]):
+            q_out_x = q_in[-2, -3, 0]
+        with horizontal(
+            region[i_start - 3, j_start - 3], region[i_start - 3, j_end + 3]
+        ):
+            q_out_y = q_in[5, 0, 0]
+        with horizontal(
+            region[i_start - 2, j_start - 3], region[i_start - 3, j_end + 2]
+        ):
+            q_out_y = q_in[4, 1, 0]
+        with horizontal(
+            region[i_start - 1, j_start - 3], region[i_start - 3, j_end + 1]
+        ):
+            q_out_y = q_in[3, 2, 0]
+        with horizontal(
+            region[i_start - 3, j_start - 2], region[i_start - 2, j_end + 3]
+        ):
+            q_out_y = q_in[4, -1, 0]
+        with horizontal(
+            region[i_start - 2, j_start - 2], region[i_start - 2, j_end + 2]
+        ):
+            q_out_y = q_in[3, 0, 0]
+        with horizontal(
+            region[i_start - 1, j_start - 2], region[i_start - 2, j_end + 1]
+        ):
+            q_out_y = q_in[2, 1, 0]
+        with horizontal(
+            region[i_start - 3, j_start - 1], region[i_start - 1, j_end + 3]
+        ):
+            q_out_y = q_in[3, -2, 0]
+        with horizontal(
+            region[i_start - 2, j_start - 1], region[i_start - 1, j_end + 2]
+        ):
+            q_out_y = q_in[2, -1, 0]
+        with horizontal(
+            region[i_start - 1, j_start - 1], region[i_start - 1, j_end + 1]
+        ):
+            q_out_y = q_in[1, 0, 0]
+        with horizontal(region[i_end + 1, j_start - 3], region[i_end + 3, j_end + 1]):
+            q_out_y = q_in[-3, 2, 0]
+        with horizontal(region[i_end + 2, j_start - 3], region[i_end + 3, j_end + 2]):
+            q_out_y = q_in[-4, 1, 0]
+        with horizontal(region[i_end + 3, j_start - 3], region[i_end + 3, j_end + 3]):
+            q_out_y = q_in[-5, 0, 0]
+        with horizontal(region[i_end + 1, j_start - 2], region[i_end + 2, j_end + 1]):
+            q_out_y = q_in[-2, 1, 0]
+        with horizontal(region[i_end + 2, j_start - 2], region[i_end + 2, j_end + 2]):
+            q_out_y = q_in[-3, 0, 0]
+        with horizontal(region[i_end + 3, j_start - 2], region[i_end + 2, j_end + 3]):
+            q_out_y = q_in[-4, -1, 0]
+        with horizontal(region[i_end + 1, j_start - 1], region[i_end + 1, j_end + 1]):
+            q_out_y = q_in[-1, 0, 0]
+        with horizontal(region[i_end + 2, j_start - 1], region[i_end + 1, j_end + 2]):
+            q_out_y = q_in[-2, -1, 0]
+        with horizontal(region[i_end + 3, j_start - 1], region[i_end + 1, j_end + 3]):
+            q_out_y = q_in[-3, -2, 0]
 
 
 class FillCornersBGrid:

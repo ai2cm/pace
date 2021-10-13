@@ -3,9 +3,13 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util
 from fv3core.decorators import FrozenStencil
 from fv3core.stencils.delnflux import DelnFluxNoSG
-from fv3core.stencils.fvtp2d import FiniteVolumeTransport
+from fv3core.stencils.fvtp2d import (
+    FiniteVolumeTransport,
+    PreAllocatedCopiedCornersFactory,
+)
 from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
@@ -305,6 +309,11 @@ class UpdateHeightOnDGrid:
         self._gamma = utils.make_storage_data(
             gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,)
         )
+        self._copy_corners = PreAllocatedCopiedCornersFactory(
+            grid_indexing=grid_indexing,
+            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_INTERFACE_DIM],
+            y_temporary=None,
+        )
 
     def __call__(
         self,
@@ -346,7 +355,7 @@ class UpdateHeightOnDGrid:
             y_area_flux, self._y_area_flux_interface, self._gk, self._beta, self._gamma
         )
         self.finite_volume_transport(
-            height,
+            self._copy_corners(height),
             self._crx_interface,
             self._cry_interface,
             self._x_area_flux_interface,

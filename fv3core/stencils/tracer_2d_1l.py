@@ -9,7 +9,10 @@ import fv3core.utils
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import FrozenStencil
-from fv3core.stencils.fvtp2d import FiniteVolumeTransport
+from fv3core.stencils.fvtp2d import (
+    FiniteVolumeTransport,
+    PreAllocatedCopiedCornersFactory,
+)
 from fv3core.utils.grid import GridIndexing
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
@@ -187,6 +190,11 @@ class TracerAdvection:
         self._tracers_halo_updater = self.comm.get_scalar_halo_updater(
             [tracer_halo_spec] * tracer_count
         )
+        self._copy_corners = PreAllocatedCopiedCornersFactory(
+            grid_indexing=grid_indexing,
+            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            y_temporary=None,
+        )
 
     def __call__(self, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt):
         if len(tracers) != self._tracer_count:
@@ -268,7 +276,7 @@ class TracerAdvection:
             )
             for q in tracers.values():
                 self.finite_volume_transport(
-                    q.storage,
+                    self._copy_corners(q.storage),
                     cxd,
                     cyd,
                     self._tmp_xfx,
