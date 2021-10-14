@@ -70,7 +70,7 @@ state = driver_object.state_from_inputs(input_data)
 # read in missing grid info for physics - this will be removed
 dwind = TranslateUpdateDWindsPhys(grid)
 missing_grid_info = dwind.collect_input_data(
-    serializer, serializer.get_savepoint("UpdateDWindsPhys-In")[0]
+    serializer, serializer.get_savepoint("FVUpdatePhys-In")[0]
 )
 
 # initialize dynamical core and physics objects
@@ -83,13 +83,37 @@ dycore = fv3core.DynamicalCore(
 )
 step_physics = Physics(grid, spec.namelist, communicator, missing_grid_info)
 
-dycore.step_dynamics(
-    state,
-    input_data["consv_te"],
-    input_data["do_adiabatic_init"],
-    input_data["bdt"],
-    input_data["ptop"],
-    input_data["n_split"],
-    input_data["ks"],
-)
-step_physics(state)
+for t in range(1, 101):
+    dycore.step_dynamics(
+        state,
+        input_data["consv_te"],
+        input_data["do_adiabatic_init"],
+        input_data["bdt"],
+        input_data["ptop"],
+        input_data["n_split"],
+        input_data["ks"],
+    )
+    step_physics(state)
+    if t % 5 == 0:
+        comm.Barrier()
+        output_vars = [
+            "u",
+            "v",
+            "ua",
+            "va",
+            "pt",
+            "delp",
+            "qvapor",
+            "qliquid",
+            "qice",
+            "qrain",
+            "qsnow",
+            "qgraupel",
+        ]
+        output = {}
+
+        for key in output_vars:
+            state[key].synchronize()
+            output[key] = np.asarray(state[key])
+        np.save("pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npy", output)
+
