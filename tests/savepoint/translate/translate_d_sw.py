@@ -20,7 +20,7 @@ class TranslateD_SW(TranslateFortranData2Py):
             column_namelist,
             nested=spec.grid.nested,
             stretched_grid=spec.grid.stretched_grid,
-            config=spec.namelist.acoustic_dynamics.d_grid_shallow_water,
+            config=spec.namelist.dynamical_core.acoustic_dynamics.d_grid_shallow_water,
         )
         self.in_vars["data_vars"] = {
             "uc": grid.x3d_domain_dict(),

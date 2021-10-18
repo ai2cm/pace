@@ -391,21 +391,22 @@ class Grid:
     @property
     def grid_data(self) -> "GridData":
         horizontal = HorizontalGridData(
-            self.area,
-            self.rarea,
-            self.rarea_c,
-            self.dx,
-            self.dy,
-            self.dxc,
-            self.dyc,
-            self.dxa,
-            self.dya,
-            self.rdx,
-            self.rdy,
-            self.rdxc,
-            self.rdyc,
-            self.rdxa,
-            self.rdya,
+            area=self.area,
+            area_64=self.area_64,
+            rarea=self.rarea,
+            rarea_c=self.rarea_c,
+            dx=self.dx,
+            dy=self.dy,
+            dxc=self.dxc,
+            dyc=self.dyc,
+            dxa=self.dxa,
+            dya=self.dya,
+            rdx=self.rdx,
+            rdy=self.rdy,
+            rdxc=self.rdxc,
+            rdyc=self.rdyc,
+            rdxa=self.rdxa,
+            rdya=self.rdya,
         )
         vertical = VerticalGridData()
         contravariant = ContravariantGridData(
@@ -445,6 +446,7 @@ class HorizontalGridData:
     """
 
     area: FloatFieldIJ
+    area_64: FloatFieldIJ
     rarea: FloatFieldIJ
     # TODO: refactor this to "area_c" and invert where used
     rarea_c: FloatFieldIJ
@@ -575,6 +577,11 @@ class GridData:
     def area(self):
         """Gridcell area"""
         return self._horizontal_data.area
+
+    @property
+    def area_64(self):
+        """Gridcell area (64-bit)"""
+        return self._horizontal_data.area_64
 
     @property
     def rarea(self):

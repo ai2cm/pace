@@ -260,11 +260,14 @@ if __name__ == "__main__":
     state = wrapper.get_state(allocator=allocator, names=initial_names)
     cube_comm.halo_update(state["surface_geopotential"])
     dycore = fv3core.DynamicalCore(
-        cube_comm,
-        spec.namelist,
-        state["atmosphere_hybrid_a_coordinate"],
-        state["atmosphere_hybrid_b_coordinate"],
-        state["surface_geopotential"],
+        comm=cube_comm,
+        grid_data=spec.grid.grid_data,
+        grid_indexing=spec.grid.grid_indexing,
+        damping_coefficients=spec.grid.damping_coefficients,
+        config=spec.namelist.dynamical_core,
+        ak=state["atmosphere_hybrid_a_coordinate"],
+        bk=state["atmosphere_hybrid_b_coordinate"],
+        phis=state["surface_geopotential"],
     )
 
     fvsubgridz = fv3core.DryConvectiveAdjustment(

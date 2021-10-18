@@ -114,7 +114,7 @@ class TranslateRemapping(TranslateFortranData2Py):
         inputs["q_cld"] = inputs["tracers"]["qcld"]
         l_to_e_obj = LagrangianToEulerian(
             spec.grid.grid_indexing,
-            spec.namelist,
+            spec.namelist.dynamical_core.remapping,
             spec.grid.area_64,
             inputs["nq"],
             inputs["pfull"],

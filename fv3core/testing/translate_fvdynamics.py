@@ -294,11 +294,14 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         inputs["comm"] = communicator
         state = self.state_from_inputs(inputs)
         self.dycore = fv_dynamics.DynamicalCore(
-            communicator,
-            spec.namelist,
-            state["atmosphere_hybrid_a_coordinate"],
-            state["atmosphere_hybrid_b_coordinate"],
-            state["surface_geopotential"],
+            comm=communicator,
+            grid_data=spec.grid.grid_data,
+            grid_indexing=spec.grid.grid_indexing,
+            damping_coefficients=spec.grid.damping_coefficients,
+            config=spec.namelist.dynamical_core,
+            ak=state["atmosphere_hybrid_a_coordinate"],
+            bk=state["atmosphere_hybrid_b_coordinate"],
+            phis=state["surface_geopotential"],
         )
         self.dycore.step_dynamics(
             state,

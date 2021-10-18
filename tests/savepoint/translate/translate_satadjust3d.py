@@ -58,7 +58,7 @@ class TranslateSatAdjust3d(TranslateFortranData2Py):
         inputs["kmp"] -= 1
         satadjust3d_obj = SatAdjust3d(
             self.grid.grid_indexing,
-            spec.namelist.sat_adjust,
+            spec.namelist.dynamical_core.sat_adjust,
             self.grid.area_64,
             inputs["kmp"],
         )

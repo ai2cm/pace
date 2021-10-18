@@ -39,11 +39,6 @@ tracer_variables = [
 logger = logging.getLogger("fv3core")
 
 
-# TODO remove when using quantities throughout model
-def quantity_name(name):
-    return name + "_quantity"
-
-
 def mark_untested(msg="This is not tested"):
     def inner(func) -> Callable[..., Any]:
         @wraps(func)

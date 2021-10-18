@@ -168,7 +168,7 @@ def driver(
             grid.grid_type,
             grid.nested,
             grid.stretched_grid,
-            spec.namelist.acoustic_dynamics,
+            spec.namelist.dynamical_core.acoustic_dynamics,
             input_data["ak"],
             input_data["bk"],
             input_data["pfull"],

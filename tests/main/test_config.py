@@ -13,7 +13,7 @@ CONFIG_CLASSES = [
     fv3core._config.AcousticDynamicsConfig,
     fv3core._config.RiemannConfig,
     fv3core._config.DGridShallowWaterLagrangianDynamicsConfig,
-    fv3core._config.Namelist,
+    fv3core._config.DynamicalCoreConfig,
 ]
 
 
@@ -57,6 +57,16 @@ def assert_types_match(classes):
                 types[name].add(
                     typing.get_type_hints(attr.fget).get("return", typing.Any)
                 )
+    assert not any(len(type_list) > 1 for type_list in types.values()), {
+        key: value for key, value in types.items() if len(value) > 1
+    }
+
+
+def assert_defaults_match(classes):
+    types = collections.defaultdict(set)
+    for cls in classes:
+        for name, field in cls.__dataclass_fields__.items():
+            types[name].add(field.default)
     assert not any(len(type_list) > 1 for type_list in types.values()), {
         key: value for key, value in types.items() if len(value) > 1
     }

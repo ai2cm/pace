@@ -10,60 +10,69 @@ from fv3core.utils.grid import Grid
 
 grid = None
 
-# Global set of namelist defaults
-namelist_defaults = {
-    "grid_type": 0,
-    "do_f3d": False,
-    "inline_q": False,
-    "do_skeb": False,  # save dissipation estimate
-    "use_logp": False,
-    "moist_phys": True,
-    "check_negative": False,
+# Global set of namelist defaults, attached to class for namespacing and static typing
+class NamelistDefaults:
+    layout = (1, 1)
+    grid_type = 0
+    do_f3d = False
+    inline_q = False
+    do_skeb = False  # save dissipation estimate
+    use_logp = False
+    moist_phys = True
+    check_negative = False
     # gfdl_cloud_mucrophys.F90
-    "tau_r2g": 900.0,  # rain freezing during fast_sat
-    "tau_smlt": 900.0,  # snow melting
-    "tau_g2r": 600.0,  # graupel melting to rain
-    "tau_imlt": 600.0,  # cloud ice melting
-    "tau_i2s": 1000.0,  # cloud ice to snow auto - conversion
-    "tau_l2r": 900.0,  # cloud water to rain auto - conversion
-    "tau_g2v": 900.0,  # graupel sublimation
-    "tau_v2g": 21600.0,  # graupel deposition -- make it a slow process
-    "sat_adj0": 0.90,  # adjustment factor (0: no, 1: full) during fast_sat_adj
-    "ql_gen": 1.0e-3,  # max new cloud water during remapping step if fast_sat_adj = .t.
-    "ql_mlt": 2.0e-3,  # max value of cloud water allowed from melted cloud ice
-    "qs_mlt": 1.0e-6,  # max cloud water due to snow melt
-    "ql0_max": 2.0e-3,  # max cloud water value (auto converted to rain)
-    "t_sub": 184.0,  # min temp for sublimation of cloud ice
-    "qi_gen": 1.82e-6,  # max cloud ice generation during remapping step
-    "qi_lim": 1.0,  # cloud ice limiter to prevent large ice build up
-    "qi0_max": 1.0e-4,  # max cloud ice value (by other sources)
-    "rad_snow": True,  # consider snow in cloud fraciton calculation
-    "rad_rain": True,  # consider rain in cloud fraction calculation
-    "rad_graupel": True,  # consider graupel in cloud fraction calculation
-    "tintqs": False,  # use temperature in the saturation mixing in PDF
-    "dw_ocean": 0.10,  # base value for ocean
-    "dw_land": 0.20,  # base value for subgrid deviation / variability over land
+    tau_r2g = 900.0  # rain freezing during fast_sat
+    tau_smlt = 900.0  # snow melting
+    tau_g2r = 600.0  # graupel melting to rain
+    tau_imlt = 600.0  # cloud ice melting
+    tau_i2s = 1000.0  # cloud ice to snow auto - conversion
+    tau_l2r = 900.0  # cloud water to rain auto - conversion
+    tau_g2v = 900.0  # graupel sublimation
+    tau_v2g = 21600.0  # graupel deposition -- make it a slow process
+    sat_adj0 = 0.90  # adjustment factor (0: no, 1: full) during fast_sat_adj
+    ql_gen = 1.0e-3  # max new cloud water during remapping step if fast_sat_adj = .t.
+    ql_mlt = 2.0e-3  # max value of cloud water allowed from melted cloud ice
+    qs_mlt = 1.0e-6  # max cloud water due to snow melt
+    ql0_max = 2.0e-3  # max cloud water value (auto converted to rain)
+    t_sub = 184.0  # min temp for sublimation of cloud ice
+    qi_gen = 1.82e-6  # max cloud ice generation during remapping step
+    qi_lim = 1.0  # cloud ice limiter to prevent large ice build up
+    qi0_max = 1.0e-4  # max cloud ice value (by other sources)
+    rad_snow = True  # consider snow in cloud fraciton calculation
+    rad_rain = True  # consider rain in cloud fraction calculation
+    rad_graupel = True  # consider graupel in cloud fraction calculation
+    tintqs = False  # use temperature in the saturation mixing in PDF
+    dw_ocean = 0.10  # base value for ocean
+    dw_land = 0.20  # base value for subgrid deviation / variability over land
     # cloud scheme 0 - ?
     # 1: old fvgfs gfdl) mp implementation
     # 2: binary cloud scheme (0 / 1)
-    "icloud_f": 0,
-    "cld_min": 0.05,  # !< minimum cloud fraction
-    "tau_l2v": 300.0,  # cloud water to water vapor (evaporation)
-    "tau_v2l": 150.0,  # water vapor to cloud water (condensation)
-    "c2l_ord": 4,
-    "regional": False,
-    "m_split": 0,
-    "convert_ke": False,
-    "breed_vortex_inline": False,
-    "use_old_omega": True,
-    "use_logp": False,
-    "RF_fast": False,
-    "p_ref": 1e5,  # Surface pressure used to construct a horizontally-uniform reference
-    "adiabatic": False,
-    "nf_omega": 1,
-    "fv_sg_adj": -1,
-    "n_sponge": 1,
-}
+    icloud_f = 0
+    cld_min = 0.05  # !< minimum cloud fraction
+    tau_l2v = 300.0  # cloud water to water vapor (evaporation)
+    tau_v2l = 150.0  # water vapor to cloud water (condensation)
+    c2l_ord = 4
+    regional = False
+    m_split = 0
+    convert_ke = False
+    breed_vortex_inline = False
+    use_old_omega = True
+    use_logp = False
+    rf_fast = False
+    p_ref = 1e5  # Surface pressure used to construct a horizontally-uniform reference
+    adiabatic = False
+    nf_omega = 1
+    fv_sg_adj = -1
+    n_sponge = 1
+
+    @classmethod
+    def as_dict(cls):
+        return {
+            name: default
+            for name, default in cls.__dict__.items()
+            if not name.startswith("_")
+        }
+
 
 # we need defaults for everything because of global state, these non-sensical defaults
 # can be removed when global state is no longer used
@@ -201,6 +210,224 @@ class AcousticDynamicsConfig:
     @property
     def use_logp(self) -> bool:
         return self.riemann.use_logp
+
+
+@dataclasses.dataclass
+class DynamicalCoreConfig:
+    dt_atmos: int
+    a_imp: float
+    beta: float
+    consv_te: bool
+    d2_bg: float
+    d2_bg_k1: float
+    d2_bg_k2: float
+    d4_bg: float
+    d_con: float
+    d_ext: float
+    dddmp: float
+    delt_max: float
+    do_sat_adj: bool
+    do_vort_damp: bool
+    fill: bool
+    hord_dp: int
+    hord_mt: int
+    hord_tm: int
+    hord_tr: int
+    hord_vt: int
+    hydrostatic: bool
+    k_split: int
+    ke_bg: float
+    kord_mt: int
+    kord_tm: int
+    kord_tr: int
+    kord_wz: int
+    n_split: int
+    nord: int
+    npx: int
+    npy: int
+    npz: int
+    ntiles: int
+    nwat: int
+    p_fac: float
+    rf_cutoff: float
+    tau: float
+    vtdm4: float
+    z_tracer: bool
+    do_qa: bool
+    layout: Tuple[int, int] = NamelistDefaults.layout
+    grid_type: int = NamelistDefaults.grid_type
+    do_f3d: bool = NamelistDefaults.do_f3d
+    inline_q: bool = NamelistDefaults.inline_q
+    do_skeb: bool = NamelistDefaults.do_skeb  # save dissipation estimate
+    use_logp: bool = NamelistDefaults.use_logp
+    moist_phys: bool = NamelistDefaults.moist_phys
+    check_negative: bool = NamelistDefaults.check_negative
+    # gfdl_cloud_microphys.F90
+    tau_r2g: float = NamelistDefaults.tau_r2g  # rain freezing during fast_sat
+    tau_smlt: float = NamelistDefaults.tau_smlt  # snow melting
+    tau_g2r: float = NamelistDefaults.tau_g2r  # graupel melting to rain
+    tau_imlt: float = NamelistDefaults.tau_imlt  # cloud ice melting
+    tau_i2s: float = NamelistDefaults.tau_i2s  # cloud ice to snow auto - conversion
+    tau_l2r: float = NamelistDefaults.tau_l2r  # cloud water to rain auto - conversion
+    tau_g2v: float = NamelistDefaults.tau_g2v  # graupel sublimation
+    tau_v2g: float = (
+        NamelistDefaults.tau_v2g
+    )  # graupel deposition -- make it a slow process
+    sat_adj0: float = (
+        NamelistDefaults.sat_adj0
+    )  # adjustment factor (0: no 1: full) during fast_sat_adj
+    ql_gen: float = (
+        1.0e-3  # max new cloud water during remapping step if fast_sat_adj = .t.
+    )
+    ql_mlt: float = (
+        NamelistDefaults.ql_mlt
+    )  # max value of cloud water allowed from melted cloud ice
+    qs_mlt: float = NamelistDefaults.qs_mlt  # max cloud water due to snow melt
+    ql0_max: float = (
+        NamelistDefaults.ql0_max
+    )  # max cloud water value (auto converted to rain)
+    t_sub: float = NamelistDefaults.t_sub  # min temp for sublimation of cloud ice
+    qi_gen: float = (
+        NamelistDefaults.qi_gen
+    )  # max cloud ice generation during remapping step
+    qi_lim: float = (
+        NamelistDefaults.qi_lim
+    )  # cloud ice limiter to prevent large ice build up
+    qi0_max: float = NamelistDefaults.qi0_max  # max cloud ice value (by other sources)
+    rad_snow: bool = (
+        NamelistDefaults.rad_snow
+    )  # consider snow in cloud fraction calculation
+    rad_rain: bool = (
+        NamelistDefaults.rad_rain
+    )  # consider rain in cloud fraction calculation
+    rad_graupel: bool = (
+        NamelistDefaults.rad_graupel
+    )  # consider graupel in cloud fraction calculation
+    tintqs: bool = (
+        NamelistDefaults.tintqs
+    )  # use temperature in the saturation mixing in PDF
+    dw_ocean: float = NamelistDefaults.dw_ocean  # base value for ocean
+    dw_land: float = (
+        NamelistDefaults.dw_land
+    )  # base value for subgrid deviation / variability over land
+    # cloud scheme 0 - ?
+    # 1: old fvgfs gfdl) mp implementation
+    # 2: binary cloud scheme (0 / 1)
+    icloud_f: int = NamelistDefaults.icloud_f
+    cld_min: float = NamelistDefaults.cld_min  # !< minimum cloud fraction
+    tau_l2v: float = (
+        NamelistDefaults.tau_l2v
+    )  # cloud water to water vapor (evaporation)
+    tau_v2l: float = (
+        NamelistDefaults.tau_v2l
+    )  # water vapor to cloud water (condensation)
+    c2l_ord: int = NamelistDefaults.c2l_ord
+    regional: bool = NamelistDefaults.regional
+    m_split: int = NamelistDefaults.m_split
+    convert_ke: bool = NamelistDefaults.convert_ke
+    breed_vortex_inline: bool = NamelistDefaults.breed_vortex_inline
+    use_old_omega: bool = NamelistDefaults.use_old_omega
+    rf_fast: bool = NamelistDefaults.rf_fast
+    p_ref: float = (
+        NamelistDefaults.p_ref
+    )  # Surface pressure used to construct a horizontally-uniform reference
+    adiabatic: bool = NamelistDefaults.adiabatic
+    nf_omega: int = NamelistDefaults.nf_omega
+    fv_sg_adj: int = NamelistDefaults.fv_sg_adj
+    n_sponge: int = NamelistDefaults.n_sponge
+
+    @property
+    def riemann(self) -> RiemannConfig:
+        return RiemannConfig(
+            p_fac=self.p_fac,
+            a_imp=self.a_imp,
+            use_logp=self.use_logp,
+            beta=self.beta,
+        )
+
+    @property
+    def d_grid_shallow_water(self) -> DGridShallowWaterLagrangianDynamicsConfig:
+        return DGridShallowWaterLagrangianDynamicsConfig(
+            dddmp=self.dddmp,
+            d2_bg=self.d2_bg,
+            d2_bg_k1=self.d2_bg_k1,
+            d2_bg_k2=self.d2_bg_k2,
+            d4_bg=self.d4_bg,
+            ke_bg=self.ke_bg,
+            nord=self.nord,
+            n_sponge=self.n_sponge,
+            grid_type=self.grid_type,
+            d_ext=self.d_ext,
+            inline_q=self.inline_q,
+            hord_dp=self.hord_dp,
+            hord_tm=self.hord_tm,
+            hord_mt=self.hord_mt,
+            hord_vt=self.hord_vt,
+            do_f3d=self.do_f3d,
+            do_skeb=self.do_skeb,
+            d_con=self.d_con,
+            vtdm4=self.vtdm4,
+            do_vort_damp=self.do_vort_damp,
+            hydrostatic=self.hydrostatic,
+            convert_ke=self.convert_ke,
+        )
+
+    @property
+    def acoustic_dynamics(self) -> AcousticDynamicsConfig:
+        return AcousticDynamicsConfig(
+            tau=self.tau,
+            k_split=self.k_split,
+            n_split=self.n_split,
+            m_split=self.m_split,
+            delt_max=self.delt_max,
+            rf_fast=self.rf_fast,
+            rf_cutoff=self.rf_cutoff,
+            breed_vortex_inline=self.breed_vortex_inline,
+            use_old_omega=self.use_old_omega,
+            riemann=self.riemann,
+            d_grid_shallow_water=self.d_grid_shallow_water,
+        )
+
+    @property
+    def sat_adjust(self) -> SatAdjustConfig:
+        return SatAdjustConfig(
+            hydrostatic=self.hydrostatic,
+            rad_snow=self.rad_snow,
+            rad_rain=self.rad_rain,
+            rad_graupel=self.rad_graupel,
+            tintqs=self.tintqs,
+            sat_adj0=self.sat_adj0,
+            ql_gen=self.ql_gen,
+            qs_mlt=self.qs_mlt,
+            ql0_max=self.ql0_max,
+            t_sub=self.t_sub,
+            qi_gen=self.qi_gen,
+            qi_lim=self.qi_lim,
+            qi0_max=self.qi0_max,
+            dw_ocean=self.dw_ocean,
+            dw_land=self.dw_land,
+            icloud_f=self.icloud_f,
+            cld_min=self.cld_min,
+            tau_i2s=self.tau_i2s,
+            tau_v2l=self.tau_v2l,
+            tau_r2g=self.tau_r2g,
+            tau_l2r=self.tau_l2r,
+            tau_l2v=self.tau_l2v,
+            tau_imlt=self.tau_imlt,
+            tau_smlt=self.tau_smlt,
+        )
+
+    @property
+    def remapping(self) -> RemappingConfig:
+        return RemappingConfig(
+            fill=self.fill,
+            kord_tm=self.kord_tm,
+            kord_tr=self.kord_tr,
+            kord_wz=self.kord_wz,
+            kord_mt=self.kord_mt,
+            do_sat_adj=self.do_sat_adj,
+            sat_adjust=self.sat_adjust,
+        )
 
 
 @dataclasses.dataclass
@@ -445,152 +672,175 @@ class Namelist:
     # fvmnl: Any
     # fvmxl: Any
     # ldebug: Any
-    grid_type: int = 0
-    do_f3d: bool = False
-    inline_q: bool = False
-    do_skeb: bool = False  # save dissipation estimate
-    use_logp: bool = False
-    moist_phys: bool = True
-    check_negative: bool = False
+    grid_type: int = NamelistDefaults.grid_type
+    do_f3d: bool = NamelistDefaults.do_f3d
+    inline_q: bool = NamelistDefaults.inline_q
+    do_skeb: bool = NamelistDefaults.do_skeb  # save dissipation estimate
+    use_logp: bool = NamelistDefaults.use_logp
+    moist_phys: bool = NamelistDefaults.moist_phys
+    check_negative: bool = NamelistDefaults.check_negative
     # gfdl_cloud_microphys.F90
-    tau_r2g: float = 900.0  # rain freezing during fast_sat
-    tau_smlt: float = 900.0  # snow melting
-    tau_g2r: float = 600.0  # graupel melting to rain
-    tau_imlt: float = 600.0  # cloud ice melting
-    tau_i2s: float = 1000.0  # cloud ice to snow auto - conversion
-    tau_l2r: float = 900.0  # cloud water to rain auto - conversion
-    tau_g2v: float = 900.0  # graupel sublimation
-    tau_v2g: float = 21600.0  # graupel deposition -- make it a slow process
-    sat_adj0: float = 0.90  # adjustment factor (0: no 1: full) during fast_sat_adj
+    tau_r2g: float = NamelistDefaults.tau_r2g  # rain freezing during fast_sat
+    tau_smlt: float = NamelistDefaults.tau_smlt  # snow melting
+    tau_g2r: float = NamelistDefaults.tau_g2r  # graupel melting to rain
+    tau_imlt: float = NamelistDefaults.tau_imlt  # cloud ice melting
+    tau_i2s: float = NamelistDefaults.tau_i2s  # cloud ice to snow auto - conversion
+    tau_l2r: float = NamelistDefaults.tau_l2r  # cloud water to rain auto - conversion
+    tau_g2v: float = NamelistDefaults.tau_g2v  # graupel sublimation
+    tau_v2g: float = (
+        NamelistDefaults.tau_v2g
+    )  # graupel deposition -- make it a slow process
+    sat_adj0: float = (
+        NamelistDefaults.sat_adj0
+    )  # adjustment factor (0: no 1: full) during fast_sat_adj
     ql_gen: float = (
         1.0e-3  # max new cloud water during remapping step if fast_sat_adj = .t.
     )
-    ql_mlt: float = 2.0e-3  # max value of cloud water allowed from melted cloud ice
-    qs_mlt: float = 1.0e-6  # max cloud water due to snow melt
-    ql0_max: float = 2.0e-3  # max cloud water value (auto converted to rain)
-    t_sub: float = 184.0  # min temp for sublimation of cloud ice
-    qi_gen: float = 1.82e-6  # max cloud ice generation during remapping step
-    qi_lim: float = 1.0  # cloud ice limiter to prevent large ice build up
-    qi0_max: float = 1.0e-4  # max cloud ice value (by other sources)
-    rad_snow: bool = True  # consider snow in cloud fraciton calculation
-    rad_rain: bool = True  # consider rain in cloud fraction calculation
-    rad_graupel: bool = True  # consider graupel in cloud fraction calculation
-    tintqs: bool = False  # use temperature in the saturation mixing in PDF
-    dw_ocean: float = 0.10  # base value for ocean
-    dw_land: float = 0.20  # base value for subgrid deviation / variability over land
+    ql_mlt: float = (
+        NamelistDefaults.ql_mlt
+    )  # max value of cloud water allowed from melted cloud ice
+    qs_mlt: float = NamelistDefaults.qs_mlt  # max cloud water due to snow melt
+    ql0_max: float = (
+        NamelistDefaults.ql0_max
+    )  # max cloud water value (auto converted to rain)
+    t_sub: float = NamelistDefaults.t_sub  # min temp for sublimation of cloud ice
+    qi_gen: float = (
+        NamelistDefaults.qi_gen
+    )  # max cloud ice generation during remapping step
+    qi_lim: float = (
+        NamelistDefaults.qi_lim
+    )  # cloud ice limiter to prevent large ice build up
+    qi0_max: float = NamelistDefaults.qi0_max  # max cloud ice value (by other sources)
+    rad_snow: bool = (
+        NamelistDefaults.rad_snow
+    )  # consider snow in cloud fraction calculation
+    rad_rain: bool = (
+        NamelistDefaults.rad_rain
+    )  # consider rain in cloud fraction calculation
+    rad_graupel: bool = (
+        NamelistDefaults.rad_graupel
+    )  # consider graupel in cloud fraction calculation
+    tintqs: bool = (
+        NamelistDefaults.tintqs
+    )  # use temperature in the saturation mixing in PDF
+    dw_ocean: float = NamelistDefaults.dw_ocean  # base value for ocean
+    dw_land: float = (
+        NamelistDefaults.dw_land
+    )  # base value for subgrid deviation / variability over land
     # cloud scheme 0 - ?
     # 1: old fvgfs gfdl) mp implementation
     # 2: binary cloud scheme (0 / 1)
-    icloud_f: int = 0
-    cld_min: float = 0.05  # !< minimum cloud fraction
-    tau_l2v: float = 300.0  # cloud water to water vapor (evaporation)
-    tau_v2l: float = 150.0  # water vapor to cloud water (condensation)
-    c2l_ord: int = 4
-    regional: bool = False
-    m_split: int = 0
-    convert_ke: bool = False
-    breed_vortex_inline: bool = False
-    use_old_omega: bool = True
-    rf_fast: bool = False
+    icloud_f: int = NamelistDefaults.icloud_f
+    cld_min: float = NamelistDefaults.cld_min  # !< minimum cloud fraction
+    tau_l2v: float = (
+        NamelistDefaults.tau_l2v
+    )  # cloud water to water vapor (evaporation)
+    tau_v2l: float = (
+        NamelistDefaults.tau_v2l
+    )  # water vapor to cloud water (condensation)
+    c2l_ord: int = NamelistDefaults.c2l_ord
+    regional: bool = NamelistDefaults.regional
+    m_split: int = NamelistDefaults.m_split
+    convert_ke: bool = NamelistDefaults.convert_ke
+    breed_vortex_inline: bool = NamelistDefaults.breed_vortex_inline
+    use_old_omega: bool = NamelistDefaults.use_old_omega
+    rf_fast: bool = NamelistDefaults.rf_fast
     p_ref: float = (
-        1e5  # Surface pressure used to construct a horizontally-uniform reference
-    )
-    adiabatic: bool = False
-    nf_omega: int = 1
-    fv_sg_adj: int = -1
-    n_sponge: int = 1
+        NamelistDefaults.p_ref
+    )  # Surface pressure used to construct a horizontally-uniform reference
+    adiabatic: bool = NamelistDefaults.adiabatic
+    nf_omega: int = NamelistDefaults.nf_omega
+    fv_sg_adj: int = NamelistDefaults.fv_sg_adj
+    n_sponge: int = NamelistDefaults.n_sponge
 
     @property
-    def riemann(self) -> RiemannConfig:
-        return RiemannConfig(
-            p_fac=self.p_fac,
+    def dynamical_core(self) -> DynamicalCoreConfig:
+        return DynamicalCoreConfig(
+            dt_atmos=self.dt_atmos,
             a_imp=self.a_imp,
-            use_logp=self.use_logp,
             beta=self.beta,
-        )
-
-    @property
-    def d_grid_shallow_water(self) -> DGridShallowWaterLagrangianDynamicsConfig:
-        return DGridShallowWaterLagrangianDynamicsConfig(
-            dddmp=self.dddmp,
+            consv_te=self.consv_te,
             d2_bg=self.d2_bg,
             d2_bg_k1=self.d2_bg_k1,
             d2_bg_k2=self.d2_bg_k2,
             d4_bg=self.d4_bg,
-            ke_bg=self.ke_bg,
-            nord=self.nord,
-            n_sponge=self.n_sponge,
-            grid_type=self.grid_type,
-            d_ext=self.d_ext,
-            inline_q=self.inline_q,
-            hord_dp=self.hord_dp,
-            hord_tm=self.hord_tm,
-            hord_mt=self.hord_mt,
-            hord_vt=self.hord_vt,
-            do_f3d=self.do_f3d,
-            do_skeb=self.do_skeb,
             d_con=self.d_con,
-            vtdm4=self.vtdm4,
-            do_vort_damp=self.do_vort_damp,
-            hydrostatic=self.hydrostatic,
-            convert_ke=self.convert_ke,
-        )
-
-    @property
-    def acoustic_dynamics(self) -> AcousticDynamicsConfig:
-        return AcousticDynamicsConfig(
-            tau=self.tau,
-            k_split=self.k_split,
-            n_split=self.n_split,
-            m_split=self.m_split,
+            d_ext=self.d_ext,
+            dddmp=self.dddmp,
             delt_max=self.delt_max,
-            rf_fast=self.rf_fast,
-            rf_cutoff=self.rf_cutoff,
-            breed_vortex_inline=self.breed_vortex_inline,
-            use_old_omega=self.use_old_omega,
-            riemann=self.riemann,
-            d_grid_shallow_water=self.d_grid_shallow_water,
-        )
-
-    @property
-    def sat_adjust(self) -> SatAdjustConfig:
-        return SatAdjustConfig(
+            do_sat_adj=self.do_sat_adj,
+            do_vort_damp=self.do_vort_damp,
+            fill=self.fill,
+            hord_dp=self.hord_dp,
+            hord_mt=self.hord_mt,
+            hord_tm=self.hord_tm,
+            hord_tr=self.hord_tr,
+            hord_vt=self.hord_vt,
             hydrostatic=self.hydrostatic,
-            rad_snow=self.rad_snow,
-            rad_rain=self.rad_rain,
-            rad_graupel=self.rad_graupel,
-            tintqs=self.tintqs,
+            k_split=self.k_split,
+            ke_bg=self.ke_bg,
+            kord_mt=self.kord_mt,
+            kord_tm=self.kord_tm,
+            kord_tr=self.kord_tr,
+            kord_wz=self.kord_wz,
+            n_split=self.n_split,
+            nord=self.nord,
+            npx=self.npx,
+            npy=self.npy,
+            npz=self.npz,
+            ntiles=self.ntiles,
+            nwat=self.nwat,
+            p_fac=self.p_fac,
+            rf_cutoff=self.rf_cutoff,
+            tau=self.tau,
+            vtdm4=self.vtdm4,
+            z_tracer=self.z_tracer,
+            do_qa=self.do_qa,
+            layout=self.layout,
+            grid_type=self.grid_type,
+            do_f3d=self.do_f3d,
+            inline_q=self.inline_q,
+            do_skeb=self.do_skeb,
+            check_negative=self.check_negative,
+            tau_r2g=self.tau_r2g,
+            tau_smlt=self.tau_smlt,
+            tau_g2r=self.tau_g2r,
+            tau_imlt=self.tau_imlt,
+            tau_i2s=self.tau_i2s,
+            tau_l2r=self.tau_l2r,
+            tau_g2v=self.tau_g2v,
+            tau_v2g=self.tau_v2g,
             sat_adj0=self.sat_adj0,
             ql_gen=self.ql_gen,
+            ql_mlt=self.ql_mlt,
             qs_mlt=self.qs_mlt,
             ql0_max=self.ql0_max,
             t_sub=self.t_sub,
             qi_gen=self.qi_gen,
             qi_lim=self.qi_lim,
             qi0_max=self.qi0_max,
+            rad_snow=self.rad_snow,
+            rad_rain=self.rad_rain,
+            rad_graupel=self.rad_graupel,
+            tintqs=self.tintqs,
             dw_ocean=self.dw_ocean,
             dw_land=self.dw_land,
             icloud_f=self.icloud_f,
             cld_min=self.cld_min,
-            tau_i2s=self.tau_i2s,
-            tau_v2l=self.tau_v2l,
-            tau_r2g=self.tau_r2g,
-            tau_l2r=self.tau_l2r,
             tau_l2v=self.tau_l2v,
-            tau_imlt=self.tau_imlt,
-            tau_smlt=self.tau_smlt,
-        )
-
-    @property
-    def remapping(self) -> RemappingConfig:
-        return RemappingConfig(
-            fill=self.fill,
-            kord_tm=self.kord_tm,
-            kord_tr=self.kord_tr,
-            kord_wz=self.kord_wz,
-            kord_mt=self.kord_mt,
-            do_sat_adj=self.do_sat_adj,
-            sat_adjust=self.sat_adjust,
+            tau_v2l=self.tau_v2l,
+            c2l_ord=self.c2l_ord,
+            regional=self.regional,
+            m_split=self.m_split,
+            convert_ke=self.convert_ke,
+            breed_vortex_inline=self.breed_vortex_inline,
+            use_old_omega=self.use_old_omega,
+            rf_fast=self.rf_fast,
+            p_ref=self.p_ref,
+            adiabatic=self.adiabatic,
+            nf_omega=self.nf_omega,
+            fv_sg_adj=self.fv_sg_adj,
+            n_sponge=self.n_sponge,
         )
 
 
@@ -652,7 +902,7 @@ def set_namelist(filename):
         filename (str): Input file.
     """
     global grid
-    namelist_dict = namelist_defaults.copy()
+    namelist_dict = NamelistDefaults.as_dict()
     namelist_dict.update(namelist_to_flatish_dict(f90nml.read(filename).items()))
     for name, value in namelist_dict.items():
         setattr(namelist, name, value)
