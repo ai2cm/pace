@@ -51,6 +51,8 @@ def get_delpc(
 ):
     from __externals__ import i_end, i_start, j_end, j_start
 
+    # in the Fortran, u_contra_dyc is called ke and v_contra_dxc is called vort
+
     with computation(PARALLEL), interval(...):
         # TODO: why does vc_from_va sometimes have different sign than vc?
         vc_from_va = 0.5 * (va[0, -1, 0] + va)

@@ -30,7 +30,7 @@ class TranslateDivergenceDamping(TranslateFortranData2Py):
             "ke": {"iend": grid.ied + 1, "jend": grid.jed + 1},
             "delpc": {},
         }
-        self.max_error = 3.0e-11
+        self.max_error = 1.4e-10
         self.divdamp: Optional[
             fv3core.stencils.divergence_damping.DivergenceDamping
         ] = None
