@@ -75,11 +75,14 @@ missing_grid_info = dwind.collect_input_data(
 
 # initialize dynamical core and physics objects
 dycore = fv3core.DynamicalCore(
-    communicator,
-    spec.namelist,
-    state["atmosphere_hybrid_a_coordinate"],
-    state["atmosphere_hybrid_b_coordinate"],
-    state["surface_geopotential"],
+    comm=communicator,
+    grid_data=spec.grid.grid_data,
+    grid_indexing=spec.grid.grid_indexing,
+    damping_coefficients=spec.grid.damping_coefficients,
+    config=spec.namelist.dynamical_core,
+    ak=state["atmosphere_hybrid_a_coordinate"],
+    bk=state["atmosphere_hybrid_b_coordinate"],
+    phis=state["surface_geopotential"],
 )
 step_physics = Physics(grid, spec.namelist, communicator, missing_grid_info)
 
