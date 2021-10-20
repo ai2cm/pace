@@ -72,6 +72,15 @@ echo "PYTHON env ${python_env}"
 # get root directory of where jenkins.sh is sitting
 export jenkins_dir=`dirname $0`
 
+
+if [ -z "${GT4PY_VERSION}" ]; then
+    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
+fi
+# If the backend is a GTC backend we fetch the caches
+if [[ $backend != *numpy* ]];then
+    . ${jenkins_dir}/actions/fetch_caches.sh $backend $experiment
+fi
+
 # load machine dependent environment
 if [ ! -f ${envloc}/env/env.${host}.sh ] ; then
     exitError 1202 ${LINENO} "could not find ${envloc}/env/env.${host}.sh"
@@ -96,6 +105,12 @@ if [ -f ${scheduler_script} ] ; then
     fi
 fi
 
+
+# if the environment variable is set to long_job we skip timing restrictions:
+if [ -v LONG_EXECUTION ]; then
+    sed -i 's|00:45:00|03:30:00|g' ${scheduler_script}
+fi
+
 # if this is a parallel job and the number of ranks is specified in the experiment argument, set NUM_RANKS
 # and update the scheduler script if there is one
 if grep -q "parallel" <<< "${script}"; then
@@ -104,8 +119,10 @@ if grep -q "parallel" <<< "${script}"; then
 	echo "Setting NUM_RANKS=${NUM_RANKS}"
 	if grep -q "cuda\|gpu" <<< "${backend}" ; then
 	    export MPICH_RDMA_ENABLED_CUDA=1
+        export CRAY_CUDA_MPS=1
 	else
 	    export MPICH_RDMA_ENABLED_CUDA=0
+        export CRAY_CUDA_MPS=0
 	fi
 	if [ -f ${scheduler_script} ] ; then
 	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
@@ -127,6 +144,7 @@ if grep -q "fv_dynamics" <<< "${script}"; then
 	    export CRAY_CUDA_MPS=1
 	else
 	    export MPICH_RDMA_ENABLED_CUDA=0
+        export CRAY_CUDA_MPS=0
 	fi
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${scheduler_script}
     sed -i 's|00:45:00|03:30:00|g' ${scheduler_script}
@@ -139,9 +157,7 @@ module load daint-gpu
 module load ${installdir}/modulefiles/gcloud/303.0.0
 # get the test data version from the Makefile
 export DATA_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
-fi
+
 # Set the SCRATCH directory to the working directory if not set (e.g. for running on gce)
 if [ -z ${SCRATCH} ] ; then
     export SCRATCH=`pwd`
@@ -210,8 +226,10 @@ if grep -q "fv_dynamics" <<< "${script}"; then
     export CRAY_CUDA_MPS=0
 	if grep -q "cuda\|gpu" <<< "${backend}" ; then
 	    export MPICH_RDMA_ENABLED_CUDA=1
+        export CRAY_CUDA_MPS=1
 	else
 	    export MPICH_RDMA_ENABLED_CUDA=0
+        export CRAY_CUDA_MPS=0
 	fi
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${run_timing_script}
     sed -i 's|00:45:00|00:15:00|g' ${run_timing_script}
