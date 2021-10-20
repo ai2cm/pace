@@ -9,6 +9,9 @@ FV3GFS-integration is the top level directory that includes the FV3 dynamical co
 
 Currently, we support tests in the dynamical core, physics, and util. 
 
+![Graph of interdependencies of Pace modules](./dependencies.svg)
+<img src="./dependencies.svg">
+
 ### Dynamical core tests
 
 To run dynamical core tests, first get the test data from inside `fv3core` or `fv3gfs-physics` folder, then build `fv3gfs-integration` docker image at the top level.
