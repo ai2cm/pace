@@ -1,0 +1,18 @@
+digraph {
+  Pace [shape=box]
+  fv3core [shape=oval]
+  driver [shape=oval]
+  physics [shape=oval]
+  util [shape=oval]
+  
+  Pace -> fv3core
+  Pace -> physics
+  Pace -> util
+  Pace -> driver
+  driver -> fv3core
+  driver -> physics
+  driver -> util
+  fv3core -> util
+  physics -> util
+
+}
