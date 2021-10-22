@@ -145,3 +145,5 @@ gt4py/
 examples/wrapped/output/
 examples/wrapped/plots/
 plot_output/
+profiling_results/
+model_output/
