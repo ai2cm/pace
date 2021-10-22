@@ -77,7 +77,9 @@ cd $ROOT_DIR
 make update_submodules_venv
 # set GT4PY version
 cd $ROOT_DIR
-export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
+if [ -z "${GT4PY_VERSION}" ]; then
+    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
+fi
 
 # set up the virtual environment
 echo "creating the venv"
@@ -119,22 +121,23 @@ split_path=(${data_path//\// })
 experiment=${split_path[-1]}
 sample_cache=.gt_cache
 
-echo "Attempting to use precomputed cache"
-if [ ! -d $(pwd)/${sample_cache} ] ; then
-    premade_caches=/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$sanitized_backend
-    if [ -d ${premade_caches}/${sample_cache} ] ; then
-	    version_file=${premade_caches}/GT4PY_VERSION.txt
-	    if [ -f ${version_file} ]; then
-            version=`cat ${version_file}`
-	    else
-            version=""
-	    fi
-	    if [ "$version" == "$GT4PY_VERSION" ]; then
-	        echo "Copying premade GT4Py caches"
-            cp -r ${premade_caches}/.gt_cache* .
-            find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/fv3core-cache-setup\/backend\/$sanitized_backend\/experiment\/$experiment\/slave\/daint_submit|$(pwd)|g" {} +
-	    fi
-   fi
+if [ ! -d $(pwd)/.gt_cache ]; then
+    echo "Attempting to use precomputed cache"
+    if [ ! -d $(pwd)/${sample_cache} ] ; then
+        premade_caches=/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$sanitized_backend
+        if [ -d ${premade_caches}/${sample_cache} ] ; then
+            version_file=${premade_caches}/GT4PY_VERSION.txt
+            if [ -f ${version_file} ]; then
+                version=`cat ${version_file}`
+            else
+                version=""
+            fi
+            if [ "$version" == "$GT4PY_VERSION" ]; then
+                cp -r ${premade_caches}/.gt_cache .
+                find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/gtc_cache_setup\/backend\/${SANITIZED_BACKEND}\/experiment\/${EXPNAME}\/slave\/daint_submit|$(pwd)|g" {} +
+            fi
+        fi
+    fi
 fi
 
 echo "Submitting script to do performance run"

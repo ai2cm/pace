@@ -108,6 +108,16 @@ echo "Perf. artifact directory:     ${TIMING_DIR}"
 echo "Profile artifact directory:   ${PROFILE_DIR}"
 echo "Cache directory:              ${CACHE_DIR}"
 
+
+if [ -z "${GT4PY_VERSION}" ]; then
+    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
+fi
+
+# If the backend is a GTC backend we fetch the caches
+if [[ $backend != *numpy* ]];then
+    . ${ROOT_DIR}/.jenkins/actions/fetch_caches.sh $backend $experiment
+fi
+
 # run standalone
 echo "=== Running standalone ========================="
 if [ "${DO_PROFILE}" == "true" ] ; then
