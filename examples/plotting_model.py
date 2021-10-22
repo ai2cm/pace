@@ -75,70 +75,89 @@ def load_data_column_sum(
     return lat, lon, fortran_sum, pace_sum
 
 
-start = time.time()
+if __name__ == "__main__":
 
-config = {
-    "qrain": {"fortran_name": "rainwat", "vmin": 0, "vmax": 0.004},
-    "ua": {"fortran_name": "ucomp", "vmin": "op", "vmax": "op"},
-}
+    start = time.time()
 
-experiment = "ua"
-timesteps = np.arange(5, 171, 5)
+    # Configuration for plots.
+    # "minmax": will be scaled to the min/max value of the field
+    config = {
+        "qrain": {"fortran_name": "rainwat", "vmin": 0, "vmax": 0.004},
+        "ua": {"fortran_name": "ucomp", "vmin": "minmax", "vmax": "minmax"},
+    }
 
-fortran_path = "/home/floriand/vulcan/model_data/c128_baroclinic_400steps/fortran/"
-pace_path = "/home/floriand/vulcan/model_data/c128_baroclinic_400steps/python/"
-lat, lon, fortran_sum, pace_sum = load_data_column_sum(
-    fortran_path, config[experiment]["fortran_name"], pace_path, experiment, timesteps
-)
+    # Chose experiments and timesteps
+    experiment = "ua"
+    timesteps = np.arange(5, 171, 5)
 
-# vmin = fortran_sum[fortran_index, :, :, :].min()
-# vmax = np.percentile(fortran_sum[fortran_index, :, :, :], 99.9)
-if config[experiment]["vmin"] == "op":
-    vmin = fortran_sum[:, :, :, :].min()
-    vmax = fortran_sum[:, :, :, :].max()
-else:
-    vmin = config[experiment]["vmin"]
-    vmax = config[experiment]["vmax"]
-
-for ts in timesteps:
-
-    fig, ax = plt.subplots(1, 2, subplot_kw={"projection": ccrs.Robinson()})
-    fortran_index = int(ts / 5)
-
-    h = pcolormesh_cube(
-        lat,
-        lon,
-        fortran_sum[fortran_index, :, :, :],
-        vmin=vmin,
-        vmax=vmax,
-        cmap=plt.cm.viridis,
-        ax=ax[0],
-        edgecolor=None,
-        linewidth=0.01,
+    # Data path  to load
+    fortran_path = "/home/floriand/vulcan/model_data/c128_baroclinic_400steps/fortran/"
+    pace_path = (
+        "/home/floriand/vulcan/model_data/c128_baroclinic_400steps/python/dycore_phys/"
     )
-    ax[0].set_title(
-        "Fortran " + config[experiment]["fortran_name"] + " ts=" + str(ts + 1)
+
+    # Loading data
+    lat, lon, fortran_sum, pace_sum = load_data_column_sum(
+        fortran_path,
+        config[experiment]["fortran_name"],
+        pace_path,
+        experiment,
+        timesteps,
     )
-    plt.colorbar(h, ax=ax[0], label="", orientation="horizontal")
 
-    pace_index = int(ts / 5) - 1
-    h = pcolormesh_cube(
-        lat,
-        lon,
-        pace_sum[pace_index, :, :, :],
-        vmin=vmin,
-        vmax=vmax,
-        cmap=plt.cm.viridis,
-        ax=ax[1],
-        edgecolor=None,
-        linewidth=0.01,
-    )
-    ax[1].set_title("Python " + experiment + " ts=" + str(ts + 1))
-    plt.colorbar(h, ax=ax[1], label="", orientation="horizontal")
+    # Finding scale bounds for the plots
+    if config[experiment]["vmin"] == "minmax":
+        vmin = min(fortran_sum[:, :, :, :].min(), pace_sum[:, :, :, :].min())
+    else:
+        vmin = config[experiment]["vmin"]
+    if config[experiment]["vmax"] == "minmax":
+        vmax = max(fortran_sum[:, :, :, :].max(), pace_sum[:, :, :, :].max())
+    else:
+        vmax = config[experiment]["vmax"]
 
-    fig.set_size_inches([10, 4])
+    # For each timesteps - about a fortran vs pace plot
+    for ts in timesteps:
 
-    plt.savefig(f"./plot_output/model_{ts:04d}.png")
-    plt.close(fig)
+        fig, ax = plt.subplots(1, 2, subplot_kw={"projection": ccrs.Robinson()})
+        fortran_index = int(ts / 5)
 
-print(f"Done {time.time() - start}s")
+        # Fortran cube sphere plot
+        h = pcolormesh_cube(
+            lat,
+            lon,
+            fortran_sum[fortran_index, :, :, :],
+            vmin=vmin,
+            vmax=vmax,
+            cmap=plt.cm.viridis,
+            ax=ax[0],
+            edgecolor=None,
+            linewidth=0.01,
+        )
+        ax[0].set_title(
+            "Fortran " + config[experiment]["fortran_name"] + " ts=" + str(ts + 1)
+        )
+        plt.colorbar(h, ax=ax[0], label="", orientation="horizontal")
+
+        # Pace cube sphere plot
+        pace_index = int(ts / 5) - 1
+        h = pcolormesh_cube(
+            lat,
+            lon,
+            pace_sum[pace_index, :, :, :],
+            vmin=vmin,
+            vmax=vmax,
+            cmap=plt.cm.viridis,
+            ax=ax[1],
+            edgecolor=None,
+            linewidth=0.01,
+        )
+        ax[1].set_title("Python " + experiment + " ts=" + str(ts + 1))
+        plt.colorbar(h, ax=ax[1], label="", orientation="horizontal")
+
+        fig.set_size_inches([10, 4])
+
+        # Save the dual plot
+        plt.savefig(f"./plot_output/model_{ts:04d}.png")
+        plt.close(fig)
+
+    print(f"Done {time.time() - start}s")
