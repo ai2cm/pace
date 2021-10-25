@@ -6,6 +6,7 @@ CWD=$(shell pwd)
 PULL ?=True
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
+CHECK_CHANGED_SCRIPT=python changed_from_main.py
 
 
 build:
@@ -18,7 +19,9 @@ dev:
 		$(FV3GFS_IMAGE) bash
 
 test_util:
-	$(MAKE) -C fv3gfs-util test
+	if [ $(shell $(CHECK_CHANGED_SCRIPT) fv3gfs-util) = true ]; then \
+		$(MAKE) -C fv3gfs-util test; \
+	fi
 	
 savepoint_tests:
 	$(MAKE) -C fv3core savepoint_tests
