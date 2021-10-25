@@ -48,8 +48,8 @@ def parse_args():
         description=(
             "Determines whether one of the projects in the repo or any of its "
             "dependencies are different from the version on the `main` branch. "
-            "Exits with code 1 (bash false) if the subdirectory and its dependencies are "
-            "unchanged, or 0 (bash true) if they have changed."
+            "Prints \"false\" if the subdirectory and its dependencies are "
+            "unchanged, or \"true\" if they have changed."
         )
     )
     parser.add_argument(
@@ -62,7 +62,6 @@ def unstaged_files(dirname) -> bool:
     result = subprocess.check_output(
         ["git", "ls-files", "--other", "--directory", "--exclude-standard", dirname]
     )
-    print(dirname, "unstaged", result, len(result))
     return len(result) > 0
 
 
@@ -70,7 +69,6 @@ def staged_files_changed(dirname) -> bool:
     result = subprocess.check_output(
         ["git", "diff", "main", dirname]
     )
-    print(dirname, "staged", result, len(result))
     return len(result) > 0
 
 
@@ -81,9 +79,11 @@ def changed(dirname) -> bool:
 if __name__ == '__main__':
     args = parse_args()
     if changed(args.project_name):
-        sys.exit(0)
+        print("true")
     else:
         for dependency_subdir in SUBDIR_DEPENDENCIES[args.project_name]:
             if changed(dependency_subdir):
-                sys.exit(0)
-    sys.exit(1)
+                print("true")
+                break
+        else:
+            print("false")
