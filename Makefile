@@ -26,8 +26,8 @@ savepoint_tests:
 savepoint_tests_mpi:
 	$(MAKE) -C fv3core savepoint_tests_mpi
 
-dependencies.svg:
-	dot -Tsvg dependencies.dot -o $@
+dependencies.svg: dependencies.dot
+	dot -Tsvg $< -o $@
 
 constraints.txt: fv3core/requirements.txt fv3core/requirements/requirements_wrapper.txt fv3core/requirements/requirements_lint.txt fv3gfs-util/requirements.txt fv3gfs-physics/requirements.txt
 	pip-compile $^ --output-file constraints.txt
