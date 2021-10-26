@@ -67,7 +67,6 @@ def success_array(
                 np.abs(computed_data) < near_zero, np.abs(ref_data) < near_zero
             ),
         )
-
     return success
 
 
@@ -106,34 +105,35 @@ def sample_wherefail(
     # List all errors
     return_strings = []
     bad_indices_count = len(found_indices[0])
-    if print_failures:
-        for b in range(0, bad_indices_count, failure_stride):
-            full_index = [f[b] for f in found_indices]
-            abs_err = abs(computed_failures[b] - reference_failures[b])
-            metric_err = compare_scalar(computed_failures[b], reference_failures[b])
+    # Determine worst result
+    worst_metric_err = 0.0
+    for b in range(bad_indices_count):
+        full_index = [f[b] for f in found_indices]
+        metric_err = compare_scalar(computed_failures[b], reference_failures[b])
+        abs_err = abs(computed_failures[b] - reference_failures[b])
+        if print_failures and b % failure_stride == 0:
             return_strings.append(
                 f"index: {full_index}, computed {computed_failures[b]}, "
                 f"reference {reference_failures[b]}, "
                 f"absolute diff {abs_err:.3e}, "
                 f"metric diff: {metric_err:.3e}"
             )
-
-    # Determine worst result
-    err = compare_arr(computed_data, ref_data)
-    worst_full_idx = np.unravel_index(np.argmax(err, axis=None), err.shape)
-
+        if metric_err > worst_metric_err:
+            worst_metric_err = metric_err
+            worst_full_idx = full_index
+            worst_abs_err = abs_err
+            computed_worst = computed_failures[b]
+            reference_worst = reference_failures[b]
     # Summary and worst result
     fullcount = len(ref_data.flatten())
-    abs_err = abs(computed_data[worst_full_idx] - ref_data[worst_full_idx])
-    metric_err = compare_scalar(computed_data[worst_full_idx], ref_data[worst_full_idx])
     return_strings.append(
         f"Failed count: {bad_indices_count}/{fullcount} "
         f"({round(100.0 * (bad_indices_count / fullcount), 2)}%),\n"
         f"Worst failed index {worst_full_idx}\n"
-        f"\tcomputed:{computed_data[worst_full_idx]}\n"
-        f"\treference: {ref_data[worst_full_idx]}\n"
-        f"\tabsolute diff: {abs_err:.3e}\n"
-        f"\tmetric diff: {metric_err:.3e}\n"
+        f"\tcomputed:{computed_worst}\n"
+        f"\treference: {reference_worst}\n"
+        f"\tabsolute diff: {worst_abs_err:.3e}\n"
+        f"\tmetric diff: {worst_metric_err:.3e}\n"
     )
 
     if xy_indices:
