@@ -78,7 +78,7 @@ quantity_factory = util.QuantityFactory.from_backend(
     sizer, backend=backend
 )
 # TODO use MetricTerms created grid for grid_data
-new_grid = MetricTerms(quantity_factory=quantity_factory, communicator=communicator)
+#new_grid = MetricTerms(quantity_factory=quantity_factory, communicator=communicator)
 
 ## create a state from serialized data
 #savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
@@ -93,7 +93,12 @@ missing_grid_info = dwind.collect_input_data(
     serializer, serializer.get_savepoint("FVUpdatePhys-In")[0]
 )
 #state = ModelState.init_baroclinic(quantity_factory, test_case=13)
-state = ModelState.init_from_serialized_data(serializer, grid, quantity_factory)
+#state = ModelState.init_from_serialized_data(serializer, grid, quantity_factory)
+state = ModelState.init_empty(quantity_factory)
+# TODO
+do_adiabatic_init = False
+# TODO derive from namelist
+bdt = 225.0
 # initialize dynamical core and physics objects
 dycore = fv3core.DynamicalCore(
     comm=communicator,
@@ -101,20 +106,20 @@ dycore = fv3core.DynamicalCore(
     grid_indexing=grid.grid_indexing,
     damping_coefficients=grid.damping_coefficients,
     config=namelist.dynamical_core,
-    ak=new_grid.ak, #state["atmosphere_hybrid_a_coordinate"],
-    bk=new_grid.bk, #state["atmosphere_hybrid_b_coordinate"],
+    ak=state.ak_quantity,#new_grid.ak, #state["atmosphere_hybrid_a_coordinate"],
+    bk=state.bk_quantity, #new_grid.bk, #state["atmosphere_hybrid_b_coordinate"],
     phis=state.phis_quantity, #state["surface_geopotential"],
-    ptop = new_grid.ptop,
-    ks = new_grid.ks
+    ptop = 300.0, #new_grid.ptop,
+    ks = 18, #new_grid.ks
 )
 
-step_physics = Physics(grid, namelist, communicator, missing_grid_info,  new_grid.ptop)
+step_physics = Physics(grid, namelist, communicator, missing_grid_info,  300.0)#new_grid.ptop)
 
 for t in range(1, 10):
     dycore.step_dynamics(
         state,
-        state.do_adiabatic_init,
-        state.bdt,  
+        do_adiabatic_init,
+        bdt,  
     )
     step_physics(state)
     if t % 5 == 0:

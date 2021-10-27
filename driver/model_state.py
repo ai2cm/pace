@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, InitVar
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 import copy
 import fv3core
@@ -18,9 +18,9 @@ class DycoreState:
     delp: FloatField = field(metadata={"name": "pressure_thickness_of_atmospheric_layer", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "Pa", "intent":"inout"})
     delz: FloatField = field(metadata={"name": "vertical_thickness_of_atmospheric_layer", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "m", "intent":"inout"}) 
     ps: FloatFieldIJ = field(metadata={"name": "surface_pressure","dims": [fv3util.X_DIM, fv3util.Y_DIM], "units": "Pa", "intent":"inout"})
-    pe: FloatField = field(metadata={"name": "interface_pressure", "dims": [fv3util.X_DIM, fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM], "units": "Pa","n_halo": 1, "intent":"inout"}) 
+    pe: FloatField = field(metadata={"name": "interface_pressure", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM], "units": "Pa","n_halo": 1, "intent":"inout"}) 
     pt: FloatField = field(metadata={"name": "air_temperature", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "degK", "intent":"inout"})
-    peln: FloatField = field(metadata={"name": "logarithm_of_interface_pressure", "dims": [fv3util.X_DIM, fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM], "units": "ln(Pa)", "n_halo": 0, "intent":"inout"}) 
+    peln: FloatField = field(metadata={"name": "logarithm_of_interface_pressure", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM,], "units": "ln(Pa)", "n_halo": 0, "intent":"inout"}) 
     pk: FloatField = field(metadata={"name": "interface_pressure_raised_to_power_of_kappa", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM], "units": "unknown", "n_halo": 0, "intent":"inout"})
     pkz: FloatField = field(metadata={"name": "layer_mean_pressure_raised_to_power_of_kappa", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],"units": "unknown", "n_halo": 0, "intent":"inout"})
     qvapor: FloatField = field(metadata={"name": "specific_humidity", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "kg/kg"})
@@ -39,27 +39,38 @@ class DycoreState:
     cxd: FloatField = field(metadata={"name": "accumulated_x_courant_number", "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "","n_halo": (0, 3), "intent":"inout"}) 
     cyd: FloatField = field(metadata={"name": "accumulated_y_courant_number", "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM], "units": "", "n_halo": (3, 0), "intent":"inout"}) 
     diss_estd: FloatField = field(metadata={"name": "dissipation_estimate_from_heat_source", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "unknown", "intent":"inout"})
-    phis: FloatField = field(metadata={"name": "surface_geopotential", "units": "m^2 s^-2", "dims": [fv3util.X_DIM, fv3util.Y_DIM], "intent":"in"}) 
-    quantity_factory: fv3util.QuantityFactory
+    phis: FloatField = field(metadata={"name": "surface_geopotential", "units": "m^2 s^-2", "dims": [fv3util.X_DIM, fv3util.Y_DIM], "intent":"in"})
+    ak: FloatField = field(metadata={"name": "atmosphere_hybrid_a_coordinate", "units": "m^2 s^-2", "dims": [fv3util.Z_DIM], "intent":"in"})
+    bk: FloatField = field(metadata={"name": "atmosphere_hybrid_b_coordinate", "units": "m^2 s^-2", "dims": [fv3util.Z_DIM], "intent":"in"}) 
+    quantity_factory: InitVar[fv3util.QuantityFactory]
     do_adiabatic_init: bool = field(default=False)
     bdt: float = field(default=0.0)
     mdt: float = field(default=0.0)
 
-    def __post_init__(self):
+    def __post_init__(self, quantity_factory):
         # creating quantities around the storages
         # TODO, when dycore and physics use quantities everywhere
         # change fields to be quantities and remove this extra processing
         for field in fields(self):
-            if len(field.metadata.keys()) > 0:
+            if "dims" in field.metadata.keys():
                 dims = field.metadata["dims"]
                 quantity = fv3util.Quantity(
                     getattr(self, field.name),
                     dims,
                     field.metadata["units"],
-                    origin=self.quantity_factory._sizer.get_origin(dims),
-                    extent=self.quantity_factory._sizer.get_extent(dims),
+                    origin=quantity_factory._sizer.get_origin(dims),
+                    extent=quantity_factory._sizer.get_extent(dims),
                 )
                 setattr(self, field.name + '_quantity', quantity)
+    @classmethod
+    def init_empty(cls, quantity_factory):
+        initial_storages = {}
+        for field in fields(cls):
+            if "dims" in field.metadata.keys():
+                initial_storages[field.name] = quantity_factory.zeros(field.metadata["dims"], field.metadata["units"], dtype=float).storage
+                print('what', field.name,  initial_storages[field.name].shape)
+        return cls(**initial_storages, quantity_factory=quantity_factory)
+    
     def __getitem__(self, item):
         return getattr(self, item)
 
@@ -213,9 +224,9 @@ class ModelState:
     delp: FloatField = field(metadata={"name": "pressure_thickness_of_atmospheric_layer", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "Pa", "intent":"inout"})
     delz: FloatField = field(metadata={"name": "vertical_thickness_of_atmospheric_layer", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "m", "intent":"inout"}) 
     ps: FloatFieldIJ = field(metadata={"name": "surface_pressure","dims": [fv3util.X_DIM, fv3util.Y_DIM], "units": "Pa", "intent":"inout"})
-    pe: FloatField = field(metadata={"name": "interface_pressure", "dims": [fv3util.X_DIM, fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM], "units": "Pa","n_halo": 1, "intent":"inout"}) 
+    pe: FloatField = field(metadata={"name": "interface_pressure", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM], "units": "Pa","n_halo": 1, "intent":"inout"}) 
     pt: FloatField = field(metadata={"name": "air_temperature", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "degK", "intent":"inout"})
-    peln: FloatField = field(metadata={"name": "logarithm_of_interface_pressure", "dims": [fv3util.X_DIM, fv3util.Z_INTERFACE_DIM, fv3util.Y_DIM], "units": "ln(Pa)", "n_halo": 0, "intent":"inout"}) 
+    peln: FloatField = field(metadata={"name": "logarithm_of_interface_pressure", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM,], "units": "ln(Pa)", "n_halo": 0, "intent":"inout"}) 
     pk: FloatField = field(metadata={"name": "interface_pressure_raised_to_power_of_kappa", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM], "units": "unknown", "n_halo": 0, "intent":"inout"})
     pkz: FloatField = field(metadata={"name": "layer_mean_pressure_raised_to_power_of_kappa", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],"units": "unknown", "n_halo": 0, "intent":"inout"})
     qvapor: FloatField = field(metadata={"name": "specific_humidity", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "kg/kg"})
@@ -234,8 +245,10 @@ class ModelState:
     cxd: FloatField = field(metadata={"name": "accumulated_x_courant_number", "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "","n_halo": (0, 3), "intent":"inout"}) 
     cyd: FloatField = field(metadata={"name": "accumulated_y_courant_number", "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM], "units": "", "n_halo": (3, 0), "intent":"inout"}) 
     diss_estd: FloatField = field(metadata={"name": "dissipation_estimate_from_heat_source", "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "unknown", "intent":"inout"})
-    phis: FloatField = field(metadata={"name": "surface_geopotential", "units": "m^2 s^-2", "dims": [fv3util.X_DIM, fv3util.Y_DIM], "intent":"in"}) 
-    quantity_factory: fv3util.QuantityFactory
+    phis: FloatField = field(metadata={"name": "surface_geopotential", "units": "m^2 s^-2", "dims": [fv3util.X_DIM, fv3util.Y_DIM], "intent":"in"})
+    ak: FloatField = field(metadata={"name": "atmosphere_hybrid_a_coordinate", "units": "m^2 s^-2", "dims": [fv3util.Z_DIM], "intent":"in"})
+    bk: FloatField = field(metadata={"name": "atmosphere_hybrid_b_coordinate", "units": "m^2 s^-2", "dims": [fv3util.Z_DIM], "intent":"in"}) 
+    quantity_factory: InitVar[fv3util.QuantityFactory]
     do_adiabatic_init: bool = field(default=False)
     bdt: float = field(default=0.0)
     mdt: float = field(default=0.0)
@@ -255,25 +268,31 @@ class ModelState:
     def physics_state(self) ->PhysicsState:
         return PhysicsState()
 
-    def __post_init__(self):
+    def __post_init__(self, quantity_factory):
         # creating quantities around the storages
         # TODO, when dycore and physics use quantities everywhere
         # change fields to be quantities and remove this extra processing
         for field in fields(self):
-            if len(field.metadata.keys()) > 0:
-                print('yikes', field.name, field.metadata)
+            if "dims" in field.metadata.keys():
                 dims = field.metadata["dims"]
                 quantity = fv3util.Quantity(
                     getattr(self, field.name),
                     dims,
                     field.metadata["units"],
-                    origin=self.quantity_factory._sizer.get_origin(dims),
-                    extent=self.quantity_factory._sizer.get_extent(dims),
+                    origin=quantity_factory._sizer.get_origin(dims),
+                    extent=quantity_factory._sizer.get_extent(dims),
                 )
                 setattr(self, field.name + '_quantity', quantity)
-        # quantity = self.getattr(name)
-        # self.setattr(name.replace('_quantity', ''), quantity.storage)
-
+    @classmethod
+    def init_empty(cls, quantity_factory):
+        initial_storages = {}
+        for field in fields(cls):
+            if "dims" in field.metadata.keys():
+                initial_storages[field.name] = quantity_factory.zeros(field.metadata["dims"], field.metadata["units"], dtype=float).storage
+                print('what', field.name,  initial_storages[field.name].shape)
+        return cls(**initial_storages, quantity_factory=quantity_factory)
+    
+            
     @classmethod
     def init_from_serialized_data(cls, serializer, grid, quantity_factory):
         savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
@@ -281,13 +300,10 @@ class ModelState:
         input_data = driver_object.collect_input_data(serializer, savepoint_in)
         # making just storages for the moment, revisit if making them all quantities (maybe use state_from_inputs)
         driver_object._base.make_storage_data_input_vars(input_data)
-        input_data['quantity_factory'] = quantity_factory
         # used for the translate test as inputs, but are generated by the MetricsTerms class and are not part of this data class
-        for delvar in ["ak", "bk", "ptop", "ks"]:
+        for delvar in ["ptop", "ks"]:
             del input_data[delvar]
-
-        #return cls(**driver_object.state_from_inputs(input_data))
-        return cls(**input_data)
+        return cls(**input_data, quantity_factory=quantity_factory)
 """
     @classmethod
     def init_baroclinic(cls, quantity_factory, test_case=13):
@@ -304,6 +320,7 @@ class ModelState:
         #            origin=grid.sizer.get_origin(dims),
         #            extent=grid.sizer.get_extent(dims),
         #        )
+        return cls(**input_data, quantity_factory=quantity_factory)
 """
         
 """
