@@ -17,13 +17,13 @@ import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core._config import RemappingConfig
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import adjust_divide_stencil
 from fv3core.stencils.map_single import MapSingle
 from fv3core.stencils.mapn_tracer import MapNTracer
 from fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
 from fv3core.utils.grid import axis_offsets
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -207,7 +207,15 @@ class LagrangianToEulerian:
     Fortran name is Lagrangian_to_Eulerian
     """
 
-    def __init__(self, grid_indexing, config: RemappingConfig, area_64, nq, pfull):
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        config: RemappingConfig,
+        area_64,
+        nq,
+        pfull,
+    ):
+        grid_indexing = stencil_factory.grid_indexing
         if config.kord_tm >= 0:
             raise NotImplementedError("map ppm, untested mode where kord_tm >= 0")
         hydrostatic = config.hydrostatic
@@ -238,23 +246,23 @@ class LagrangianToEulerian:
             shape_kplus, grid_indexing.origin_compute()
         )
 
-        self._init_pe = FrozenStencil(
+        self._init_pe = stencil_factory.from_origin_domain(
             init_pe, origin=grid_indexing.origin_compute(), domain=self._domain_jextra
         )
 
-        self._moist_cv_pt_pressure = FrozenStencil(
+        self._moist_cv_pt_pressure = stencil_factory.from_origin_domain(
             moist_cv_pt_pressure,
             externals={"kord_tm": config.kord_tm, "hydrostatic": hydrostatic},
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
-        self._moist_cv_pkz = FrozenStencil(
+        self._moist_cv_pkz = stencil_factory.from_origin_domain(
             moist_cv.moist_pkz,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
 
-        self._pn2_pk_delp = FrozenStencil(
+        self._pn2_pk_delp = stencil_factory.from_origin_domain(
             pn2_pk_delp,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
@@ -262,7 +270,7 @@ class LagrangianToEulerian:
 
         self._kord_tm = abs(config.kord_tm)
         self._map_single_pt = MapSingle(
-            grid_indexing,
+            stencil_factory,
             self._kord_tm,
             1,
             grid_indexing.isc,
@@ -272,7 +280,7 @@ class LagrangianToEulerian:
         )
 
         self._mapn_tracer = MapNTracer(
-            grid_indexing,
+            stencil_factory,
             abs(config.kord_tr),
             nq,
             grid_indexing.isc,
@@ -284,7 +292,7 @@ class LagrangianToEulerian:
 
         self._kord_wz = config.kord_wz
         self._map_single_w = MapSingle(
-            grid_indexing,
+            stencil_factory,
             self._kord_wz,
             -2,
             grid_indexing.isc,
@@ -293,7 +301,7 @@ class LagrangianToEulerian:
             grid_indexing.jec,
         )
         self._map_single_delz = MapSingle(
-            grid_indexing,
+            stencil_factory,
             self._kord_wz,
             1,
             grid_indexing.isc,
@@ -302,7 +310,7 @@ class LagrangianToEulerian:
             grid_indexing.jec,
         )
 
-        self._undo_delz_adjust_and_copy_peln = FrozenStencil(
+        self._undo_delz_adjust_and_copy_peln = stencil_factory.from_origin_domain(
             undo_delz_adjust_and_copy_peln,
             origin=grid_indexing.origin_compute(),
             domain=(
@@ -312,7 +320,7 @@ class LagrangianToEulerian:
             ),
         )
 
-        self._pressures_mapu = FrozenStencil(
+        self._pressures_mapu = stencil_factory.from_origin_domain(
             pressures_mapu,
             origin=grid_indexing.origin_compute(),
             domain=self._domain_jextra,
@@ -320,7 +328,7 @@ class LagrangianToEulerian:
 
         self._kord_mt = config.kord_mt
         self._map_single_u = MapSingle(
-            grid_indexing,
+            stencil_factory,
             self._kord_mt,
             -1,
             grid_indexing.isc,
@@ -329,7 +337,7 @@ class LagrangianToEulerian:
             grid_indexing.jec + 1,
         )
 
-        self._pressures_mapv = FrozenStencil(
+        self._pressures_mapv = stencil_factory.from_origin_domain(
             pressures_mapv,
             origin=grid_indexing.origin_compute(),
             domain=(
@@ -340,7 +348,7 @@ class LagrangianToEulerian:
         )
 
         self._map_single_v = MapSingle(
-            grid_indexing,
+            stencil_factory,
             self._kord_mt,
             -1,
             grid_indexing.isc,
@@ -354,20 +362,20 @@ class LagrangianToEulerian:
             grid_indexing.origin_compute(),
             grid_indexing.domain_compute(add=(0, 1, 0)),
         )
-        self._update_ua = FrozenStencil(
+        self._update_ua = stencil_factory.from_origin_domain(
             update_ua,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 1, 0)),
             externals={**ax_offsets_jextra},
         )
 
-        self._copy_from_below_stencil = FrozenStencil(
+        self._copy_from_below_stencil = stencil_factory.from_origin_domain(
             copy_from_below,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
 
-        self._moist_cv_last_step_stencil = FrozenStencil(
+        self._moist_cv_last_step_stencil = stencil_factory.from_origin_domain(
             moist_pt_last_step,
             origin=(grid_indexing.isc, grid_indexing.jsc, 0),
             domain=(
@@ -377,7 +385,7 @@ class LagrangianToEulerian:
             ),
         )
 
-        self._basic_adjust_divide_stencil = FrozenStencil(
+        self._basic_adjust_divide_stencil = stencil_factory.from_origin_domain(
             adjust_divide_stencil,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
@@ -392,10 +400,10 @@ class LagrangianToEulerian:
                 break
 
         self._saturation_adjustment = SatAdjust3d(
-            grid_indexing, config.sat_adjust, area_64, self.kmp
+            stencil_factory, config.sat_adjust, area_64, self.kmp
         )
 
-        self._sum_te_stencil = FrozenStencil(
+        self._sum_te_stencil = stencil_factory.from_origin_domain(
             sum_te,
             origin=(grid_indexing.isc, grid_indexing.jsc, self.kmp),
             domain=(

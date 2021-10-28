@@ -1,8 +1,6 @@
 import fv3core._config as spec
-from fv3core.stencils.dyn_core import (
-    _initialize_temp_adjust_stencil,
-    get_nk_heat_dissipation,
-)
+from fv3core.stencils import temperature_adjust
+from fv3core.stencils.dyn_core import get_nk_heat_dissipation
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -13,7 +11,11 @@ class TranslatePressureAdjustedTemperature_NonHydrostatic(TranslateFortranData2P
             config=spec.namelist.dynamical_core.acoustic_dynamics.d_grid_shallow_water,
             npz=grid.grid_indexing.domain[2],
         )
-        self.compute_func = _initialize_temp_adjust_stencil(grid.grid_indexing, n_adj)
+        self.compute_func = self.grid.stencil_factory.from_origin_domain(
+            temperature_adjust.compute_pkz_tempadjust,
+            origin=grid.grid_indexing.origin_compute(),
+            domain=grid.grid_indexing.restrict_vertical(nk=n_adj).domain_compute(),
+        )
         self.in_vars["data_vars"] = {
             "cappa": {},
             "delp": {},

@@ -1,12 +1,12 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core._config as spec
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil, get_stencils_with_varied_bounds
+from fv3core.decorators import get_stencils_with_varied_bounds
 from fv3core.stencils.basic_operations import copy_defn
-from fv3core.utils.grid import DampingCoefficients, GridIndexing, axis_offsets
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3core.utils.grid import DampingCoefficients
+from fv3core.utils.stencil import StencilFactory
+from fv3core.utils.typing import FloatField, FloatFieldIJ, cast_to_index3d
 from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
@@ -82,7 +82,7 @@ class HyperdiffusionDamping:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         damping_coefficients: DampingCoefficients,
         rarea,
         nmax: int,
@@ -91,21 +91,24 @@ class HyperdiffusionDamping:
         Args:
             grid: fv3core grid object
         """
+        grid_indexing = stencil_factory.grid_indexing
         self._del6_u = damping_coefficients.del6_u
         self._del6_v = damping_coefficients.del6_v
         self._rarea = rarea
-        origin = grid_indexing.origin_full()
-        domain = grid_indexing.domain_full()
-        ax_offsets = axis_offsets(spec.grid, origin, domain)
         self._fx = utils.make_storage_from_shape(grid_indexing.max_shape)
         self._fy = utils.make_storage_from_shape(grid_indexing.max_shape)
         self._q = utils.make_storage_from_shape(grid_indexing.max_shape)
 
-        self._corner_fill = FrozenStencil(
-            func=corner_fill, origin=origin, domain=domain, externals=ax_offsets
+        self._corner_fill = stencil_factory.from_dims_halo(
+            func=corner_fill,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
         )
-
-        self._copy_stencil = FrozenStencil(func=copy_defn, origin=origin, domain=domain)
+        self._copy_stencil = stencil_factory.from_dims_halo(
+            func=copy_defn,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
+        )
 
         self._ntimes = min(3, nmax)
         origins = []
@@ -122,30 +125,28 @@ class HyperdiffusionDamping:
             _, domain_y = grid_indexing.get_origin_domain(
                 [X_DIM, Y_INTERFACE_DIM, Z_DIM], halos=(n_halo, n_halo)
             )
-            origins.append(origin)
-            domains.append(domain)
-            domains_x.append(domain_x)
-            domains_y.append(domain_y)
+            origins.append(cast_to_index3d(origin))
+            domains.append(cast_to_index3d(domain))
+            domains_x.append(cast_to_index3d(domain_x))
+            domains_y.append(cast_to_index3d(domain_y))
 
         self._compute_zonal_flux = get_stencils_with_varied_bounds(
-            compute_zonal_flux,
-            origins,
-            domains_x,
+            compute_zonal_flux, origins, domains_x, stencil_factory=stencil_factory
         )
         self._compute_meridional_flux = get_stencils_with_varied_bounds(
-            compute_meridional_flux,
-            origins,
-            domains_y,
+            compute_meridional_flux, origins, domains_y, stencil_factory=stencil_factory
         )
         self._update_q = get_stencils_with_varied_bounds(
-            update_q,
-            origins,
-            domains,
+            update_q, origins, domains, stencil_factory=stencil_factory
         )
 
-        self._copy_corners_x: corners.CopyCorners = corners.CopyCorners("x")
+        self._copy_corners_x: corners.CopyCorners = corners.CopyCorners(
+            direction="x", stencil_factory=stencil_factory
+        )
         """Stencil responsible for doing corners updates in x-direction."""
-        self._copy_corners_y: corners.CopyCorners = corners.CopyCorners("y")
+        self._copy_corners_y: corners.CopyCorners = corners.CopyCorners(
+            direction="y", stencil_factory=stencil_factory
+        )
         """Stencil responsible for doing corners updates in y-direction."""
 
     def __call__(self, qdel: FloatField, cd: float):

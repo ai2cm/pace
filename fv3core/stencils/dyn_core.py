@@ -24,7 +24,6 @@ import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 import fv3gfs.util as fv3util
 from fv3core._config import AcousticDynamicsConfig
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.pk3_halo import PK3Halo
@@ -37,6 +36,7 @@ from fv3core.utils.grid import (
     axis_offsets,
     quantity_wrap,
 )
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 from fv3gfs.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
@@ -207,36 +207,6 @@ def dyncore_temporaries(grid_indexing: GridIndexing):
     return tmps
 
 
-def _initialize_edge_pe_stencil(grid_indexing: GridIndexing) -> FrozenStencil:
-    """
-    Returns the FrozenStencil object for the pe_halo stencil
-    """
-    ax_offsets_pe = axis_offsets(
-        grid_indexing,
-        grid_indexing.origin_full(),
-        grid_indexing.domain_full(add=(0, 0, 1)),
-    )
-    return FrozenStencil(
-        pe_halo.edge_pe,
-        origin=grid_indexing.origin_full(),
-        domain=grid_indexing.domain_full(add=(0, 0, 1)),
-        externals={**ax_offsets_pe},
-    )
-
-
-def _initialize_temp_adjust_stencil(grid_indexing: GridIndexing, n_adj):
-    """
-    Returns the FrozenStencil Object for the temperature_adjust stencil
-    Args:
-        n_adj: Number of vertical levels to adjust temperature on
-    """
-    return FrozenStencil(
-        temperature_adjust.compute_pkz_tempadjust,
-        origin=grid_indexing.origin_compute(),
-        domain=grid_indexing.restrict_vertical(nk=n_adj).domain_compute(),
-    )
-
-
 class AcousticDynamics:
     """
     Fortran name is dyn_core
@@ -318,7 +288,7 @@ class AcousticDynamics:
     def __init__(
         self,
         comm: fv3gfs.util.CubedSphereCommunicator,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
         grid_type,
@@ -334,7 +304,7 @@ class AcousticDynamics:
         """
         Args:
             comm: object for cubed sphere inter-process communication
-            grid_indexing: indexing data
+            stencil_factory: creates stencils
             grid_data: metric terms defining the grid
             damping_coefficients: damping configuration
             grid_type: ???
@@ -346,6 +316,7 @@ class AcousticDynamics:
             pfull: atmospheric Eulerian grid reference pressure (Pa)
             phis: surface geopotential height
         """
+        grid_indexing = stencil_factory.grid_indexing
         self.comm = comm
         self.config = config
         assert config.d_ext == 0, "d_ext != 0 is not implemented"
@@ -360,7 +331,7 @@ class AcousticDynamics:
         )
         self.nonhydrostatic_pressure_gradient = (
             nh_p_grad.NonHydrostaticPressureGradient(
-                grid_indexing, grid_data, config.grid_type
+                stencil_factory, grid_data, config.grid_type
             )
         )
         self._temporaries = dyncore_temporaries(grid_indexing)
@@ -377,7 +348,7 @@ class AcousticDynamics:
             dp_ref_3d = utils.make_storage_from_shape(grid_indexing.max_shape)
             zs_3d = utils.make_storage_from_shape(grid_indexing.max_shape)
 
-            dp_ref_stencil = FrozenStencil(
+            dp_ref_stencil = stencil_factory.from_origin_domain(
                 dp_ref_compute,
                 origin=grid_indexing.origin_full(),
                 domain=grid_indexing.domain_full(add=(0, 0, 1)),
@@ -396,7 +367,7 @@ class AcousticDynamics:
             )
             self._zs = utils.make_storage_data(zs_3d[:, :, 0], zs_3d.shape[0:2], (0, 0))
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
-                grid_indexing,
+                stencil_factory,
                 damping_coefficients,
                 grid_data,
                 grid_type,
@@ -405,19 +376,19 @@ class AcousticDynamics:
                 column_namelist,
                 d_sw.k_bounds(),
             )
-            self.riem_solver3 = RiemannSolver3(grid_indexing, config.riemann)
-            self.riem_solver_c = RiemannSolverC(grid_indexing, p_fac=config.p_fac)
+            self.riem_solver3 = RiemannSolver3(stencil_factory, config.riemann)
+            self.riem_solver_c = RiemannSolverC(stencil_factory, p_fac=config.p_fac)
             origin, domain = grid_indexing.get_origin_domain(
                 [X_DIM, Y_DIM, Z_INTERFACE_DIM], halos=(2, 2)
             )
-            self._compute_geopotential_stencil = FrozenStencil(
+            self._compute_geopotential_stencil = stencil_factory.from_origin_domain(
                 compute_geopotential,
                 origin=origin,
                 domain=domain,
             )
         self.dgrid_shallow_water_lagrangian_dynamics = (
             d_sw.DGridShallowWaterLagrangianDynamics(
-                grid_indexing,
+                stencil_factory,
                 grid_data,
                 damping_coefficients,
                 column_namelist,
@@ -427,25 +398,25 @@ class AcousticDynamics:
             )
         )
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
-            grid_indexing,
+            stencil_factory,
             grid_data,
             nested,
             config.grid_type,
             config.nord,
         )
 
-        self._set_gz = FrozenStencil(
+        self._set_gz = stencil_factory.from_origin_domain(
             set_gz,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
-        self._set_pem = FrozenStencil(
+        self._set_pem = stencil_factory.from_origin_domain(
             set_pem,
             origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
             domain=grid_indexing.domain_compute(add=(2, 2, 0)),
         )
 
-        self._p_grad_c = FrozenStencil(
+        self._p_grad_c = stencil_factory.from_origin_domain(
             p_grad_c_stencil,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(1, 1, 0)),
@@ -453,16 +424,24 @@ class AcousticDynamics:
         )
 
         self.update_geopotential_height_on_c_grid = (
-            updatedzc.UpdateGeopotentialHeightOnCGrid(grid_indexing, grid_data.area)
+            updatedzc.UpdateGeopotentialHeightOnCGrid(stencil_factory, grid_data.area)
         )
 
-        self._zero_data = FrozenStencil(
+        self._zero_data = stencil_factory.from_origin_domain(
             zero_data,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(),
         )
-        self._edge_pe_stencil: FrozenStencil = _initialize_edge_pe_stencil(
-            grid_indexing
+        ax_offsets_pe = axis_offsets(
+            grid_indexing,
+            grid_indexing.origin_full(),
+            grid_indexing.domain_full(add=(0, 0, 1)),
+        )
+        self._edge_pe_stencil = stencil_factory.from_origin_domain(
+            pe_halo.edge_pe,
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(add=(0, 0, 1)),
+            externals={**ax_offsets_pe},
         )
         """The stencil object responsible for updating the interface pressure"""
 
@@ -471,21 +450,24 @@ class AcousticDynamics:
         if self._do_del2cubed:
             nf_ke = min(3, config.nord + 1)
             self._hyperdiffusion = HyperdiffusionDamping(
-                grid_indexing, damping_coefficients, grid_data.rarea, nmax=nf_ke
+                stencil_factory, damping_coefficients, grid_data.rarea, nmax=nf_ke
             )
         if config.rf_fast:
             self._rayleigh_damping = ray_fast.RayleighDamping(
-                grid_indexing,
+                stencil_factory,
                 rf_cutoff=config.rf_cutoff,
                 tau=config.tau,
                 hydrostatic=config.hydrostatic,
             )
-        self._compute_pkz_tempadjust = _initialize_temp_adjust_stencil(
-            grid_indexing,
-            self._nk_heat_dissipation,
+        self._compute_pkz_tempadjust = stencil_factory.from_origin_domain(
+            temperature_adjust.compute_pkz_tempadjust,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.restrict_vertical(
+                nk=self._nk_heat_dissipation
+            ).domain_compute(),
         )
-        self._pk3_halo = PK3Halo(grid_indexing)
-        self._copy_stencil = FrozenStencil(
+        self._pk3_halo = PK3Halo(stencil_factory)
+        self._copy_stencil = stencil_factory.from_origin_domain(
             basic.copy_defn,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(0, 0, 1)),

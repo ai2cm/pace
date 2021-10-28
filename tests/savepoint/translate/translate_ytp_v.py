@@ -2,9 +2,9 @@ from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
 import fv3core.stencils.ytp_v as ytp_v
-from fv3core.decorators import FrozenStencil
 from fv3core.testing import TranslateFortranData2Py
-from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
+from fv3core.utils.grid import GridData, axis_offsets
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -23,7 +23,7 @@ def ytp_v_stencil_defn(
 class YTP_V:
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         grid_data: GridData,
         grid_type: int,
         jord: int,
@@ -33,6 +33,7 @@ class YTP_V:
                 "Currently ytp_v is only supported for hord_mt == 5,6,7,8"
             )
         assert grid_type < 3
+        grid_indexing = stencil_factory.grid_indexing
 
         origin = grid_indexing.origin_compute()
         domain = grid_indexing.domain_compute(add=(1, 1, 0))
@@ -41,7 +42,7 @@ class YTP_V:
         self._rdy = grid_data.rdy
         ax_offsets = axis_offsets(grid_indexing, origin, domain)
 
-        self.stencil = FrozenStencil(
+        self.stencil = stencil_factory.from_origin_domain(
             ytp_v_stencil_defn,
             externals={
                 "jord": jord,
@@ -80,7 +81,7 @@ class TranslateYTP_V(TranslateFortranData2Py):
 
     def compute_from_storage(self, inputs):
         ytp_obj = YTP_V(
-            grid_indexing=self.grid.grid_indexing,
+            stencil_factory=self.grid.stencil_factory,
             grid_data=self.grid.grid_data,
             grid_type=spec.namelist.grid_type,
             jord=spec.namelist.hord_mt,

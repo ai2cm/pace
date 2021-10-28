@@ -8,12 +8,11 @@ import fv3core.stencils.fxadv
 import fv3core.utils
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
 )
-from fv3core.utils.grid import GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -127,11 +126,12 @@ class TracerAdvection:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         transport: FiniteVolumeTransport,
         comm: fv3gfs.util.CubedSphereCommunicator,
         tracer_count,
     ):
+        grid_indexing = stencil_factory.grid_indexing
         self._tracer_count = tracer_count
         self.comm = comm
         self.grid = spec.grid
@@ -155,25 +155,25 @@ class TracerAdvection:
             if "local" in axis_offset_name:
                 local_axis_offsets[axis_offset_name] = axis_offset_value
 
-        self._flux_compute = FrozenStencil(
+        self._flux_compute = stencil_factory.from_origin_domain(
             flux_compute,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
         )
-        self._cmax_multiply_by_frac = FrozenStencil(
+        self._cmax_multiply_by_frac = stencil_factory.from_origin_domain(
             cmax_multiply_by_frac,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(1, 1, 0)),
             externals=local_axis_offsets,
         )
-        self._dp_fluxadjustment = FrozenStencil(
+        self._dp_fluxadjustment = stencil_factory.from_origin_domain(
             dp_fluxadjustment,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
             externals=local_axis_offsets,
         )
-        self._q_adjust = FrozenStencil(
+        self._q_adjust = stencil_factory.from_origin_domain(
             q_adjust,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
@@ -182,8 +182,8 @@ class TracerAdvection:
         self.finite_volume_transport: FiniteVolumeTransport = transport
         # If use AllReduce, will need something like this:
         # self._tmp_cmax = utils.make_storage_from_shape(shape, origin)
-        # self._cmax_1 = FrozenStencil(cmax_stencil1)
-        # self._cmax_2 = FrozenStencil(cmax_stencil2)
+        # self._cmax_1 = stencil_factory.from_origin_domain(cmax_stencil1)
+        # self._cmax_2 = stencil_factory.from_origin_domain(cmax_stencil2)
 
         # Setup halo updater for tracers
         tracer_halo_spec = self.grid.get_halo_update_spec(shape, origin, utils.halo)
@@ -191,7 +191,7 @@ class TracerAdvection:
             [tracer_halo_spec] * tracer_count
         )
         self._copy_corners = PreAllocatedCopiedCornersFactory(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
             y_temporary=None,
         )

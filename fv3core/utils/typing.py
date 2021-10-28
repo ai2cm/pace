@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Tuple, Union, cast
 
 import gt4py.gtscript as gtscript
 import numpy as np
@@ -36,3 +36,9 @@ IntFieldIJ = Field[gtscript.IJ, Int]
 BoolField = Field[gtscript.IJK, Bool]
 
 Index3D = Tuple[int, int, int]
+
+
+def cast_to_index3d(val: Tuple[int, ...]) -> Index3D:
+    if len(val) != 3:
+        raise ValueError(f"expected 3d index, received {val}")
+    return cast(Index3D, val)

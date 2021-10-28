@@ -3,11 +3,17 @@ from typing import Sequence
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
-from fv3core.utils.grid import GridIndexing, axis_offsets
+from fv3core.utils.grid import axis_offsets
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField
+from fv3gfs.util.constants import (
+    X_DIM,
+    X_INTERFACE_DIM,
+    Y_DIM,
+    Y_INTERFACE_DIM,
+    Z_INTERFACE_DIM,
+)
 
 
 class CopyCorners:
@@ -16,19 +22,18 @@ class CopyCorners:
     copy_corners_x or copy_corners_y respectively
     """
 
-    def __init__(self, direction: str) -> None:
-        self.grid = spec.grid
+    def __init__(self, direction: str, stencil_factory: StencilFactory) -> None:
         """The grid for this stencil"""
+        grid_indexing = stencil_factory.grid_indexing
 
-        origin = self.grid.full_origin()
-        """The origin for the corner computation"""
+        n_halo = grid_indexing.n_halo
+        origin, domain = grid_indexing.get_origin_domain(
+            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], halos=(n_halo, n_halo)
+        )
 
-        domain = self.grid.domain_shape_full(add=(0, 0, 1))
-        """The full domain required to do corner computation everywhere"""
-
-        ax_offsets = axis_offsets(spec.grid, origin, domain)
+        ax_offsets = axis_offsets(grid_indexing, origin, domain)
         if direction == "x":
-            self._copy_corners = FrozenStencil(
+            self._copy_corners = stencil_factory.from_origin_domain(
                 func=copy_corners_x_stencil_defn,
                 origin=origin,
                 domain=domain,
@@ -37,7 +42,7 @@ class CopyCorners:
                 },
             )
         elif direction == "y":
-            self._copy_corners = FrozenStencil(
+            self._copy_corners = stencil_factory.from_origin_domain(
                 func=copy_corners_y_stencil_defn,
                 origin=origin,
                 domain=domain,
@@ -64,17 +69,18 @@ class CopyCornersXY:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         dims: Sequence[str],
         y_field,
     ) -> None:
         """
         Args:
-            grid_indexing: information about the grid sizing
+            stencil_factory: creates stencils
             dims: dimensionality of the data to be copied
             y_field: 3D gt4py storage to use for y-differenceable field
                 (x-differenceable field uses same memory as base field)
         """
+        grid_indexing = stencil_factory.grid_indexing
         origin, domain = grid_indexing.get_origin_domain(
             dims=dims, halos=(grid_indexing.n_halo, grid_indexing.n_halo)
         )
@@ -82,7 +88,7 @@ class CopyCornersXY:
         self._y_field = y_field
 
         ax_offsets = axis_offsets(grid_indexing, origin, domain)
-        self._copy_corners_xy = FrozenStencil(
+        self._copy_corners_xy = stencil_factory.from_origin_domain(
             func=copy_corners_xy_stencil_defn,
             origin=origin,
             domain=domain,
@@ -534,45 +540,49 @@ class FillCornersBGrid:
     """
 
     def __init__(
-        self, direction: str, temporary_field=None, origin=None, domain=None
+        self,
+        direction: str,
+        stencil_factory: StencilFactory,
+        temporary_field=None,
+        origin=None,
+        domain=None,
     ) -> None:
-        self.grid = spec.grid
-        """The grid for this stencil"""
+
+        n_halo = stencil_factory.grid_indexing.n_halo
+        (
+            default_origin,
+            default_domain,
+        ) = stencil_factory.grid_indexing.get_origin_domain(
+            dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_INTERFACE_DIM],
+            halos=(n_halo, n_halo),
+        )
+
         if origin is None:
-            origin = self.grid.full_origin()
+            origin = default_origin
         """The origin for the corner computation"""
         if domain is None:
-            domain = self.grid.domain_shape_full()
+            domain = default_domain
         """The full domain required to do corner computation everywhere"""
 
         if temporary_field is not None:
             self._corner_tmp = temporary_field
         else:
             self._corner_tmp = utils.make_storage_from_shape(
-                self.grid.domain_shape_full(add=(1, 1, 1)), origin=origin
+                stencil_factory.grid_indexing.max_shape, origin=origin
             )
-
-        """Stencil Wrapper to do the copy of the input field to the temporary field"""
-
-        ax_offsets = axis_offsets(self.grid, origin, domain)
 
         if direction == "x":
-            self._fill_corners_bgrid = FrozenStencil(
-                func=fill_corners_bgrid_x_defn,
-                origin=origin,
-                domain=domain,
-                externals=ax_offsets,
-            )
+            defn = fill_corners_bgrid_x_defn
         elif direction == "y":
-            self._fill_corners_bgrid = FrozenStencil(
-                func=fill_corners_bgrid_y_defn,
-                origin=origin,
-                domain=domain,
-                externals=ax_offsets,
-            )
-
+            defn = fill_corners_bgrid_y_defn
         else:
             raise ValueError("Direction must be either 'x' or 'y'")
+        externals = axis_offsets(
+            stencil_factory.grid_indexing, origin=origin, domain=domain
+        )
+        self._fill_corners_bgrid = stencil_factory.from_origin_domain(
+            func=defn, origin=origin, domain=domain, externals=externals
+        )
 
     def __call__(self, field: FloatField):
         self._fill_corners_bgrid(field, field)

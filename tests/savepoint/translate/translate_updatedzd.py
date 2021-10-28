@@ -45,7 +45,7 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         self.updatedzd = fv3core.stencils.updatedzd.UpdateHeightOnDGrid(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.grid_data,
             self.grid.grid_type,

@@ -1,9 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
-from fv3core.utils.grid import GridData, GridIndexing
+from fv3core.utils.grid import GridData
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.util import Z_INTERFACE_DIM
 
@@ -89,7 +89,8 @@ class NonHydrostaticPressureGradient:
     Fortran name is nh_p_grad
     """
 
-    def __init__(self, grid_indexing: GridIndexing, grid_data: GridData, grid_type):
+    def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, grid_type):
+        grid_indexing = stencil_factory.grid_indexing
         self.orig = grid_indexing.origin_compute()
         domain_full_k = grid_indexing.domain_compute(add=(1, 1, 0))
         u_domain = grid_indexing.domain_compute(add=(0, 1, 0))
@@ -105,39 +106,39 @@ class NonHydrostaticPressureGradient:
             grid_indexing.domain_full(add=(0, 0, 1)), origin=self.orig
         )  # pp.shape
 
-        self._set_k0_and_calc_wk_stencil = FrozenStencil(
+        self._set_k0_and_calc_wk_stencil = stencil_factory.from_origin_domain(
             set_k0_and_calc_wk,
             origin=self.orig,
             domain=domain_full_k,
         )
 
-        self._calc_u_stencil = FrozenStencil(
+        self._calc_u_stencil = stencil_factory.from_origin_domain(
             calc_u,
             origin=self.orig,
             domain=u_domain,
         )
 
-        self._calc_v_stencil = FrozenStencil(
+        self._calc_v_stencil = stencil_factory.from_origin_domain(
             calc_v,
             origin=self.orig,
             domain=v_domain,
         )
         self.a2b_k1 = AGrid2BGridFourthOrder(
-            grid_indexing.restrict_vertical(k_start=1),
+            stencil_factory.restrict_vertical(k_start=1),
             grid_data,
             grid_type,
             z_dim=Z_INTERFACE_DIM,
             replace=True,
         )
         self.a2b_kbuffer = AGrid2BGridFourthOrder(
-            grid_indexing,
+            stencil_factory,
             grid_data,
             grid_type,
             z_dim=Z_INTERFACE_DIM,
             replace=True,
         )
         self.a2b_kstandard = AGrid2BGridFourthOrder(
-            grid_indexing,
+            stencil_factory,
             grid_data,
             grid_type,
             replace=False,

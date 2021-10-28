@@ -6,11 +6,11 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.delnflux import DelnFlux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
-from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing
+from fv3core.utils.grid import DampingCoefficients, GridData
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -119,14 +119,14 @@ class PreAllocatedCopiedCornersFactory:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         *,
         dims: Sequence[str],
         y_temporary: FloatField,
     ):
         """
         Args:
-            grid_indexing: information about grid size
+            stencil_factory: creates stencils
             dims: dimensionality of data to be copied
             y_temporary: if given, storage to use for y-differenceable field
                 (x-differenceable field uses same memory as base storage),
@@ -134,11 +134,11 @@ class PreAllocatedCopiedCornersFactory:
         """
         if y_temporary is None:
             y_temporary = utils.make_storage_from_shape(
-                grid_indexing.max_shape,
-                origin=grid_indexing.origin_compute(),
+                stencil_factory.grid_indexing.max_shape,
+                origin=stencil_factory.grid_indexing.origin_compute(),
             )
         self._copy_corners_xy = corners.CopyCornersXY(
-            grid_indexing, dims, y_field=y_temporary
+            stencil_factory, dims, y_field=y_temporary
         )
 
     def __call__(self, field: FloatFieldIJ) -> CopiedCorners:
@@ -157,7 +157,7 @@ class FiniteVolumeTransport:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
         grid_type: int,
@@ -166,7 +166,7 @@ class FiniteVolumeTransport:
         damp_c=None,
     ):
         # use a shorter alias for grid_indexing here to avoid very verbose lines
-        idx = grid_indexing
+        idx = stencil_factory.grid_indexing
         self._area = grid_data.area
         origin = idx.origin_compute()
         self._q_advected_y = utils.make_storage_from_shape(idx.max_shape, origin)
@@ -187,34 +187,34 @@ class FiniteVolumeTransport:
         self._damp_c = damp_c
         ord_outer = hord
         ord_inner = 8 if hord == 10 else hord
-        self.q_i_stencil = FrozenStencil(
+        self.q_i_stencil = stencil_factory.from_origin_domain(
             q_i_stencil,
             origin=idx.origin_full(add=(0, 3, 0)),
             domain=idx.domain_full(add=(0, -3, 1)),
         )
-        self.q_j_stencil = FrozenStencil(
+        self.q_j_stencil = stencil_factory.from_origin_domain(
             q_j_stencil,
             origin=idx.origin_full(add=(3, 0, 0)),
             domain=idx.domain_full(add=(-3, 0, 1)),
         )
-        self.stencil_transport_flux = FrozenStencil(
+        self.stencil_transport_flux = stencil_factory.from_origin_domain(
             final_fluxes,
             origin=idx.origin_compute(),
             domain=idx.domain_compute(add=(1, 1, 1)),
         )
         if (self._nord is not None) and (self._damp_c is not None):
             self.delnflux: Optional[DelnFlux] = DelnFlux(
-                grid_indexing,
-                damping_coefficients,
-                grid_data.rarea,
-                self._nord,
-                self._damp_c,
+                stencil_factory=stencil_factory,
+                damping_coefficients=damping_coefficients,
+                rarea=grid_data.rarea,
+                nord=self._nord,
+                damp_c=self._damp_c,
             )
         else:
             self.delnflux = None
 
         self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             dxa=grid_data.dxa,
             grid_type=grid_type,
             iord=ord_inner,
@@ -222,7 +222,7 @@ class FiniteVolumeTransport:
             domain=idx.domain_compute(add=(1, 1 + 2 * idx.n_halo, 1)),
         )
         self.y_piecewise_parabolic_inner = YPiecewiseParabolic(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             dya=grid_data.dya,
             grid_type=grid_type,
             jord=ord_inner,
@@ -230,7 +230,7 @@ class FiniteVolumeTransport:
             domain=idx.domain_compute(add=(1 + 2 * idx.n_halo, 1, 1)),
         )
         self.x_piecewise_parabolic_outer = XPiecewiseParabolic(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             dxa=grid_data.dxa,
             grid_type=grid_type,
             iord=ord_outer,
@@ -238,7 +238,7 @@ class FiniteVolumeTransport:
             domain=idx.domain_compute(add=(1, 1, 1)),
         )
         self.y_piecewise_parabolic_outer = YPiecewiseParabolic(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             dya=grid_data.dya,
             grid_type=grid_type,
             jord=ord_outer,

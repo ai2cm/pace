@@ -1,6 +1,6 @@
 import dataclasses
 import functools
-from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from gt4py import gtscript
@@ -10,7 +10,8 @@ import fv3gfs.util
 from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
 
 from . import gt4py_utils as utils
-from .typing import FloatFieldIJ, Index3D
+from .stencil import GridIndexing, StencilConfig, StencilFactory
+from .typing import FloatFieldIJ
 
 
 class Grid:
@@ -377,7 +378,25 @@ class Grid:
 
     @property
     def grid_indexing(self) -> "GridIndexing":
-        return GridIndexing.from_legacy_grid(self)
+        return GridIndexing(
+            domain=self.domain_shape_compute(),
+            n_halo=self.halo,
+            south_edge=self.south_edge,
+            north_edge=self.north_edge,
+            west_edge=self.west_edge,
+            east_edge=self.east_edge,
+        )
+
+    @property
+    def stencil_factory(self) -> "StencilFactory":
+        return StencilFactory(
+            config=StencilConfig(
+                backend=global_config.get_backend(),
+                rebuild=global_config.get_rebuild(),
+                validate_args=global_config.get_validate_args(),
+            ),
+            grid_indexing=self.grid_indexing,
+        )
 
     @property
     def damping_coefficients(self) -> "DampingCoefficients":
@@ -766,339 +785,6 @@ class GridData:
         return self._angle_data.cos_sg4
 
 
-class GridIndexing:
-    """
-    Provides indices for cell-centered variables with halos.
-
-    These indices can be used with horizontal interface variables by adding 1
-    to the domain shape along any interface axis.
-    """
-
-    def __init__(
-        self,
-        domain: Index3D,
-        n_halo: int,
-        south_edge: bool,
-        north_edge: bool,
-        west_edge: bool,
-        east_edge: bool,
-    ):
-        """
-        Initialize a grid indexing object.
-
-        Args:
-            domain: size of the compute domain for cell-centered variables
-            n_halo: number of halo points
-            south_edge: whether the current rank is on the south edge of a tile
-            north_edge: whether the current rank is on the north edge of a tile
-            west_edge: whether the current rank is on the west edge of a tile
-            east_edge: whether the current rank is on the east edge of a tile
-        """
-        self.origin = (n_halo, n_halo, 0)
-        self.n_halo = n_halo
-        self.domain = domain
-        self.south_edge = south_edge
-        self.north_edge = north_edge
-        self.west_edge = west_edge
-        self.east_edge = east_edge
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @domain.setter
-    def domain(self, domain):
-        self._domain = domain
-        self._sizer = fv3gfs.util.SubtileGridSizer(
-            nx=domain[0],
-            ny=domain[1],
-            nz=domain[2],
-            n_halo=self.n_halo,
-            extra_dim_lengths={},
-        )
-
-    @classmethod
-    def from_sizer_and_communicator(
-        cls, sizer: fv3gfs.util.GridSizer, cube: fv3gfs.util.CubedSphereCommunicator
-    ) -> "GridIndexing":
-        # TODO: if this class is refactored to split off the *_edge booleans,
-        # this init routine can be refactored to require only a GridSizer
-        origin = sizer.get_origin(
-            [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM]
-        )
-        domain = sizer.get_extent(
-            [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM]
-        )
-        south_edge = cube.tile.on_tile_bottom(cube.rank)
-        north_edge = cube.tile.on_tile_top(cube.rank)
-        west_edge = cube.tile.on_tile_left(cube.rank)
-        east_edge = cube.tile.on_tile_right(cube.rank)
-        return cls(
-            origin=origin,
-            domain=domain,
-            n_halo=sizer.n_halo,
-            south_edge=south_edge,
-            north_edge=north_edge,
-            west_edge=west_edge,
-            east_edge=east_edge,
-        )
-
-    @classmethod
-    def from_legacy_grid(cls, grid: Grid) -> "GridIndexing":
-        return cls(
-            domain=grid.domain_shape_compute(),
-            n_halo=grid.halo,
-            south_edge=grid.south_edge,
-            north_edge=grid.north_edge,
-            west_edge=grid.west_edge,
-            east_edge=grid.east_edge,
-        )
-
-    @property
-    def max_shape(self):
-        """
-        Maximum required storage shape, corresponding to the shape of a cell-corner
-        variable with maximum halo points.
-
-        This should rarely be required, consider using appropriate calls to helper
-        methods that get the correct shape for your particular variable.
-        """
-        # need to add back origin as buffer points, what we're returning here
-        # isn't a domain - it's an array size
-        return self.domain_full(add=(1, 1, 1 + self.origin[2]))
-
-    @property
-    def isc(self):
-        """start of the compute domain along the x-axis"""
-        return self.origin[0]
-
-    @property
-    def iec(self):
-        """last index of the compute domain along the x-axis"""
-        return self.origin[0] + self.domain[0] - 1
-
-    @property
-    def jsc(self):
-        """start of the compute domain along the y-axis"""
-        return self.origin[1]
-
-    @property
-    def jec(self):
-        """last index of the compute domain along the y-axis"""
-        return self.origin[1] + self.domain[1] - 1
-
-    @property
-    def isd(self):
-        """start of the full domain including halos along the x-axis"""
-        return self.origin[0] - self.n_halo
-
-    @property
-    def ied(self):
-        """index of the last data point along the x-axis"""
-        return self.isd + self.domain[0] + 2 * self.n_halo - 1
-
-    @property
-    def jsd(self):
-        """start of the full domain including halos along the y-axis"""
-        return self.origin[1] - self.n_halo
-
-    @property
-    def jed(self):
-        """index of the last data point along the y-axis"""
-        return self.jsd + self.domain[1] + 2 * self.n_halo - 1
-
-    @property
-    def nw_corner(self):
-        return self.north_edge and self.west_edge
-
-    @property
-    def sw_corner(self):
-        return self.south_edge and self.west_edge
-
-    @property
-    def ne_corner(self):
-        return self.north_edge and self.east_edge
-
-    @property
-    def se_corner(self):
-        return self.south_edge and self.east_edge
-
-    def origin_full(self, add: Index3D = (0, 0, 0)):
-        """
-        Returns the origin of the full domain including halos, plus an optional offset.
-        """
-        return (self.isd + add[0], self.jsd + add[1], self.origin[2] + add[2])
-
-    def origin_compute(self, add: Index3D = (0, 0, 0)):
-        """
-        Returns the origin of the compute domain, plus an optional offset
-        """
-        return (self.isc + add[0], self.jsc + add[1], self.origin[2] + add[2])
-
-    def domain_full(self, add: Index3D = (0, 0, 0)):
-        """
-        Returns the shape of the full domain including halos, plus an optional offset.
-        """
-        return (
-            self.ied + 1 - self.isd + add[0],
-            self.jed + 1 - self.jsd + add[1],
-            self.domain[2] + add[2],
-        )
-
-    def domain_compute(self, add: Index3D = (0, 0, 0)):
-        """
-        Returns the shape of the compute domain, plus an optional offset.
-        """
-        return (
-            self.iec + 1 - self.isc + add[0],
-            self.jec + 1 - self.jsc + add[1],
-            self.domain[2] + add[2],
-        )
-
-    def axis_offsets(self, origin: Index3D, domain: Index3D):
-        return _grid_indexing_axis_offsets(self, origin, domain)
-
-    def get_origin_domain(
-        self, dims: Sequence[str], halos: Sequence[int] = tuple()
-    ) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
-        """
-        Get the origin and domain for a computation that occurs over a certain grid
-        configuration (given by dims) and a certain number of halo points.
-
-        Args:
-            dims: dimension names, using dimension constants from fv3gfs.util
-            halos: number of halo points for each dimension, defaults to zero
-
-        Returns:
-            origin: origin of the computation
-            domain: shape of the computation
-        """
-        origin = self._origin_from_dims(dims)
-        domain = list(self._sizer.get_extent(dims))
-        for i, n in enumerate(halos):
-            origin[i] -= n
-            domain[i] += 2 * n
-        return tuple(origin), tuple(domain)
-
-    def _origin_from_dims(self, dims: Iterable[str]) -> List[int]:
-        return_origin = []
-        for dim in dims:
-            if dim in fv3gfs.util.X_DIMS:
-                return_origin.append(self.origin[0])
-            elif dim in fv3gfs.util.Y_DIMS:
-                return_origin.append(self.origin[1])
-            elif dim in fv3gfs.util.Z_DIMS:
-                return_origin.append(self.origin[2])
-        return return_origin
-
-    def get_shape(
-        self, dims: Sequence[str], halos: Sequence[int] = tuple()
-    ) -> Tuple[int, ...]:
-        """
-        Get the storage shape required for an array with the given dimensions
-        which is accessed up to a given number of halo points.
-
-        Args:
-            dims: dimension names, using dimension constants from fv3gfs.util
-            halos: number of halo points for each dimension, defaults to zero
-
-        Returns:
-            origin: origin of the computation
-            domain: shape of the computation
-        """
-        shape = list(self._sizer.get_extent(dims))
-        for i, d in enumerate(dims):
-            # need n_halo points at the start of the domain, regardless of whether
-            # they are read, so that data is aligned in memory
-            if d in (fv3gfs.util.X_DIMS + fv3gfs.util.Y_DIMS):
-                shape[i] += self.n_halo
-        for i, n in enumerate(halos):
-            shape[i] += n
-        return tuple(shape)
-
-    def restrict_vertical(self, k_start=0, nk=None) -> "GridIndexing":
-        """
-        Returns a copy of itself with modified vertical origin and domain.
-
-        Args:
-            k_start: offset to apply to current vertical origin, must be
-                greater than 0 and less than the size of the vertical domain
-            nk: new vertical domain size as a number of grid cells,
-                defaults to remaining grid cells in the current domain,
-                can be at most the size of the vertical domain minus k_start
-        """
-        if k_start < 0:
-            raise ValueError("k_start must be positive")
-        if k_start > self.domain[2]:
-            raise ValueError(
-                "k_start must be less than the number of vertical levels "
-                f"(received {k_start} for {self.domain[2]} vertical levels"
-            )
-        if nk is None:
-            nk = self.domain[2] - k_start
-        elif nk < 0:
-            raise ValueError("number of vertical levels should be positive")
-        elif nk > (self.domain[2] - k_start):
-            raise ValueError(
-                "nk can be at most the size of the vertical domain minus k_start"
-            )
-
-        new = GridIndexing(
-            self.domain[:2] + (nk,),
-            self.n_halo,
-            self.south_edge,
-            self.north_edge,
-            self.west_edge,
-            self.east_edge,
-        )
-        new.origin = self.origin[:2] + (self.origin[2] + k_start,)
-        return new
-
-    def get_quantity_halo_spec(
-        self,
-        shape: Tuple[int, ...],
-        origin: Tuple[int, ...],
-        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
-        n_halo: Optional[int] = None,
-    ) -> QuantityHaloSpec:
-        """Build memory specifications for the halo update.
-
-        Args:
-            shape: the shape of the Quantity
-            origin: the origin of the compute domain
-            dims: dimensionality of the data
-            n_halo: number of halo points to update, defaults to self.n_halo
-        """
-
-        # TEMPORARY: we do a nasty temporary allocation here to read in the hardware
-        # memory layout. Further work in GT4PY will allow for deferred allocation
-        # which will give access to those information while making sure
-        # we don't allocate
-        # Refactor is filed in ticket DSL-820
-
-        temp_storage = utils.make_storage_from_shape(shape, origin)
-        temp_quantity = quantity_wrap(temp_storage, dims=dims, grid_indexing=self)
-        if n_halo is None:
-            n_halo = self.n_halo
-
-        spec = QuantityHaloSpec(
-            n_halo,
-            temp_quantity.data.strides,
-            temp_quantity.data.itemsize,
-            temp_quantity.data.shape,
-            temp_quantity.metadata.origin,
-            temp_quantity.metadata.extent,
-            temp_quantity.metadata.dims,
-            temp_quantity.np,
-            temp_quantity.metadata.dtype,
-        )
-
-        del temp_storage
-        del temp_quantity
-
-        return spec
-
-
 def quantity_wrap(storage, dims: Sequence[str], grid_indexing: GridIndexing):
     origin, extent = grid_indexing.get_origin_domain(dims)
     return fv3gfs.util.Quantity(
@@ -1189,37 +875,4 @@ def _grid_indexing_axis_offsets(
     origin: Tuple[int, ...],
     domain: Tuple[int, ...],
 ) -> Mapping[str, gtscript.AxisIndex]:
-    if grid.west_edge:
-        i_start = gtscript.I[0] + grid.origin[0] - origin[0]
-    else:
-        i_start = gtscript.I[0] - np.iinfo(np.int16).max
-
-    if grid.east_edge:
-        i_end = (
-            gtscript.I[-1] + (grid.origin[0] + grid.domain[0]) - (origin[0] + domain[0])
-        )
-    else:
-        i_end = gtscript.I[-1] + np.iinfo(np.int16).max
-
-    if grid.south_edge:
-        j_start = gtscript.J[0] + grid.origin[1] - origin[1]
-    else:
-        j_start = gtscript.J[0] - np.iinfo(np.int16).max
-
-    if grid.north_edge:
-        j_end = (
-            gtscript.J[-1] + (grid.origin[1] + grid.domain[1]) - (origin[1] + domain[1])
-        )
-    else:
-        j_end = gtscript.J[-1] + np.iinfo(np.int16).max
-
-    return {
-        "i_start": i_start,
-        "local_is": gtscript.I[0] + grid.isc - origin[0],
-        "i_end": i_end,
-        "local_ie": gtscript.I[-1] + grid.iec - origin[0] - domain[0] + 1,
-        "j_start": j_start,
-        "local_js": gtscript.J[0] + grid.jsc - origin[1],
-        "j_end": j_end,
-        "local_je": gtscript.J[-1] + grid.jec - origin[1] - domain[1] + 1,
-    }
+    return grid.axis_offsets(origin=origin, domain=domain)

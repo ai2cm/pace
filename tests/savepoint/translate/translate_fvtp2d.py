@@ -46,7 +46,7 @@ class TranslateFvTp2d(TranslateFortranData2Py):
             if optional_arg not in inputs:
                 inputs[optional_arg] = None
         self.compute_func = FiniteVolumeTransport(
-            grid_indexing=self.grid.grid_indexing,
+            stencil_factory=self.grid.stencil_factory,
             grid_data=self.grid.grid_data,
             damping_coefficients=self.grid.damping_coefficients,
             grid_type=self.grid.grid_type,
@@ -57,7 +57,7 @@ class TranslateFvTp2d(TranslateFortranData2Py):
         del inputs["hord"]
         q_storage = inputs["q"]
         factory = PreAllocatedCopiedCornersFactory(
-            self.grid.grid_indexing, dims=[X_DIM, Y_DIM, Z_DIM], y_temporary=None
+            self.grid.stencil_factory, dims=[X_DIM, Y_DIM, Z_DIM], y_temporary=None
         )
         inputs["q"] = factory(q_storage)
         self.compute_func(**inputs)

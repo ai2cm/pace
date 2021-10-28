@@ -21,7 +21,7 @@ class TranslateCubedToLatLon(ParallelTranslate2Py):
         grid = grids[0]
         spec.set_grid(grid)
         self._base.compute_func = CubedToLatLon(
-            grid.grid_indexing, grid.grid_data, order=spec.namelist.c2l_ord
+            grid.stencil_factory, grid.grid_data, order=spec.namelist.c2l_ord
         )
         self._base.in_vars["data_vars"] = {"u": {}, "v": {}, "ua": {}, "va": {}}
         self._base.out_vars = {

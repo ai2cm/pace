@@ -13,9 +13,8 @@ from gt4py.gtscript import (
 )
 
 import fv3core.utils.global_constants as constants
-from fv3core.decorators import FrozenStencil
 from fv3core.utils import axis_offsets
-from fv3core.utils.grid import GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldK
 from fv3gfs.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
 
@@ -142,7 +141,8 @@ class RayleighDamping:
     Fotran name: ray_fast.
     """
 
-    def __init__(self, grid_indexing: GridIndexing, rf_cutoff, tau, hydrostatic):
+    def __init__(self, stencil_factory: StencilFactory, rf_cutoff, tau, hydrostatic):
+        grid_indexing = stencil_factory.grid_indexing
         self._rf_cutoff = rf_cutoff
         origin, domain = grid_indexing.get_origin_domain(
             [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
@@ -154,7 +154,7 @@ class RayleighDamping:
             if "local" in axis_offset_name:
                 local_axis_offsets[axis_offset_name] = axis_offset_value
 
-        self._ray_fast_wind_compute = FrozenStencil(
+        self._ray_fast_wind_compute = stencil_factory.from_origin_domain(
             ray_fast_wind_compute,
             origin=origin,
             domain=domain,

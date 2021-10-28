@@ -6,7 +6,7 @@ class TranslateUpdateDzC(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
         update_gz_on_c_grid = updatedzc.UpdateGeopotentialHeightOnCGrid(
-            grid.grid_indexing, grid.area
+            grid.stencil_factory, grid.area
         )
 
         def compute(**kwargs):

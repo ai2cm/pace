@@ -4,8 +4,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
-from fv3core.utils.grid import GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import BoolField, FloatField, FloatFieldIJ
 
 
@@ -503,7 +502,7 @@ class RemapProfile:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         kord: int,
         iv: int,
         i1: int,
@@ -514,7 +513,7 @@ class RemapProfile:
         """
         The constraints on the spline are set by kord and iv.
         Arguments:
-            grid_indexing
+            stencil_factory
             kord: ???
             iv: ???
             i1: The first i-element to compute on
@@ -523,6 +522,7 @@ class RemapProfile:
             j2: The last j-element to compute on
         """
         assert kord <= 10, f"kord {kord} not implemented."
+        grid_indexing = stencil_factory.grid_indexing
         full_orig: Tuple[int] = grid_indexing.origin_full()
         km: int = grid_indexing.domain[2]
         self._kord = kord
@@ -552,21 +552,21 @@ class RemapProfile:
         domain: Tuple[int, int, int] = (i_extent, j_extent, km)
         domain_extend: Tuple[int, int, int] = (i_extent, j_extent, km + 1)
 
-        self._set_initial_values = FrozenStencil(
+        self._set_initial_values = stencil_factory.from_origin_domain(
             func=set_initial_vals,
             externals={"iv": iv, "kord": abs(kord)},
             origin=origin,
             domain=domain_extend,
         )
 
-        self._apply_constraints = FrozenStencil(
+        self._apply_constraints = stencil_factory.from_origin_domain(
             func=apply_constraints,
             externals={"iv": iv, "kord": abs(kord)},
             origin=origin,
             domain=domain,
         )
 
-        self._set_interpolation_coefficients = FrozenStencil(
+        self._set_interpolation_coefficients = stencil_factory.from_origin_domain(
             func=set_interpolation_coefficients,
             externals={"iv": iv, "kord": abs(kord)},
             origin=origin,

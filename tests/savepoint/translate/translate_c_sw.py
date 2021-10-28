@@ -5,7 +5,7 @@ from fv3core.testing import TranslateFortranData2Py
 
 def get_c_sw_instance(grid, namelist):
     return CGridShallowWaterDynamics(
-        grid.grid_indexing,
+        grid.stencil_factory,
         grid.grid_data,
         grid.nested,
         namelist.grid_type,

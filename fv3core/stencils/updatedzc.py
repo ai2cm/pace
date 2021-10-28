@@ -2,9 +2,9 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.global_constants as constants
-from fv3core.decorators import FrozenStencil
 from fv3core.utils import corners, gt4py_utils
 from fv3core.utils.grid import axis_offsets
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -81,7 +81,8 @@ def update_dz_c(
 
 
 class UpdateGeopotentialHeightOnCGrid:
-    def __init__(self, grid_indexing, area):
+    def __init__(self, stencil_factory: StencilFactory, area):
+        grid_indexing = stencil_factory.grid_indexing
         self._area = area
         largest_possible_shape = grid_indexing.domain_full(add=(1, 1, 1))
         self._gz_x = gt4py_utils.make_storage_from_shape(
@@ -94,26 +95,26 @@ class UpdateGeopotentialHeightOnCGrid:
         )
         full_origin = grid_indexing.origin_full()
         full_domain = grid_indexing.domain_full(add=(0, 0, 1))
-        self._double_copy_stencil = FrozenStencil(
+        self._double_copy_stencil = stencil_factory.from_origin_domain(
             double_copy,
             origin=full_origin,
             domain=full_domain,
         )
 
         ax_offsets = axis_offsets(grid_indexing, full_origin, full_domain)
-        self._fill_corners_x_stencil = FrozenStencil(
+        self._fill_corners_x_stencil = stencil_factory.from_origin_domain(
             corners.fill_corners_2cells_x_stencil,
             externals=ax_offsets,
             origin=full_origin,
             domain=full_domain,
         )
-        self._fill_corners_y_stencil = FrozenStencil(
+        self._fill_corners_y_stencil = stencil_factory.from_origin_domain(
             corners.fill_corners_2cells_y_stencil,
             externals=ax_offsets,
             origin=full_origin,
             domain=full_domain,
         )
-        self._update_dz_c = FrozenStencil(
+        self._update_dz_c = stencil_factory.from_origin_domain(
             update_dz_c,
             origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
             domain=grid_indexing.domain_compute(add=(2, 2, 1)),

@@ -15,9 +15,8 @@ from gt4py.gtscript import (
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core._config import RiemannConfig
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.sim1_solver import Sim1Solver
-from fv3core.utils.grid import GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -109,8 +108,10 @@ class RiemannSolver3:
     Fortran subroutine Riem_Solver3
     """
 
-    def __init__(self, grid_indexing: GridIndexing, config: RiemannConfig):
+    def __init__(self, stencil_factory: StencilFactory, config: RiemannConfig):
+        grid_indexing = stencil_factory.grid_indexing
         self._sim1_solve = Sim1Solver(
+            stencil_factory,
             config.p_fac,
             grid_indexing.isc,
             grid_indexing.iec,
@@ -129,12 +130,12 @@ class RiemannSolver3:
         self._tmp_pem = utils.make_storage_from_shape(shape, riemorigin)
         self._tmp_peln_run = utils.make_storage_from_shape(shape, riemorigin)
         self._tmp_gm = utils.make_storage_from_shape(shape, riemorigin)
-        self._precompute_stencil = FrozenStencil(
+        self._precompute_stencil = stencil_factory.from_origin_domain(
             precompute,
             origin=riemorigin,
             domain=domain,
         )
-        self._finalize_stencil = FrozenStencil(
+        self._finalize_stencil = stencil_factory.from_origin_domain(
             finalize,
             externals={"use_logp": config.use_logp, "beta": config.beta},
             origin=riemorigin,

@@ -2,7 +2,6 @@ import numpy as np
 
 import fv3core.stencils.saturation_adjustment as satadjust
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -19,7 +18,7 @@ class TranslateQSInit(TranslateFortranData2Py):
         self.out_vars = self.in_vars["data_vars"]
         self.maxshape = (1, 1, satadjust.QS_LENGTH)
         self.write_vars = list(self.in_vars["data_vars"].keys())
-        self._compute_q_tables_stencil = FrozenStencil(
+        self._compute_q_tables_stencil = self.grid.stencil_factory.from_origin_domain(
             satadjust.compute_q_tables, origin=(0, 0, 0), domain=self.maxshape
         )
 

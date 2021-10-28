@@ -2,11 +2,12 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
 from fv3core.utils import corners
-from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
+from fv3core.utils.grid import GridData, axis_offsets
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
 
 
 c1 = -2.0 / 14.0
@@ -377,12 +378,13 @@ class DGrid2AGrid2CGridVectors:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         grid_data: GridData,
         nested: bool,
         grid_type: int,
         dord4: bool,
     ):
+        grid_indexing = stencil_factory.grid_indexing
         self._cosa_s = grid_data.cosa_s
         self._cosa_u = grid_data.cosa_u
         self._cosa_v = grid_data.cosa_v
@@ -442,19 +444,19 @@ class DGrid2AGrid2CGridVectors:
         )
         jdiff = jlast - jfirst + 1
 
-        self._set_tmps = FrozenStencil(
+        self._set_tmps = stencil_factory.from_dims_halo(
             func=set_tmps,
-            origin=grid_indexing.origin_full(),
-            domain=grid_indexing.domain_full(),
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
         )
 
-        self._lagrange_interpolation_y_p1 = FrozenStencil(
+        self._lagrange_interpolation_y_p1 = stencil_factory.from_origin_domain(
             func=lagrange_interpolation_y_p1,
             origin=(is1, js1, 0),
             domain=(ie1 - is1 + 1, je1 - js1 + 1, grid_indexing.domain[2]),
         )
 
-        self._lagrange_interpolation_x_p1 = FrozenStencil(
+        self._lagrange_interpolation_x_p1 = stencil_factory.from_origin_domain(
             func=lagrange_interpolation_x_p1,
             origin=(is2, js2, 0),
             domain=(ie2 - is2 + 1, je2 - js2 + 1, grid_indexing.domain[2]),
@@ -468,14 +470,14 @@ class DGrid2AGrid2CGridVectors:
         else:
             d2a2c_avg_offset = 3
 
-        self._avg_box = FrozenStencil(
+        self._avg_box = stencil_factory.from_dims_halo(
             func=avg_box,
-            externals={"D2A2C_AVG_OFFSET": d2a2c_avg_offset, **ax_offsets},
-            origin=origin,
-            domain=domain,
+            externals={"D2A2C_AVG_OFFSET": d2a2c_avg_offset},
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
         )
 
-        self._contravariant_components = FrozenStencil(
+        self._contravariant_components = stencil_factory.from_origin_domain(
             func=contravariant_components,
             origin=grid_indexing.origin_compute(add=(-1 - id_, -1 - id_, 0)),
             domain=grid_indexing.domain_compute(add=(pad, pad, 0)),
@@ -483,20 +485,20 @@ class DGrid2AGrid2CGridVectors:
         origin_edges = grid_indexing.origin_compute(add=(-3, -3, 0))
         domain_edges = grid_indexing.domain_compute(add=(6, 6, 0))
         ax_offsets_edges = axis_offsets(grid_indexing, origin_edges, domain_edges)
-        self._fill_corners_x = FrozenStencil(
+        self._fill_corners_x = stencil_factory.from_origin_domain(
             func=fill_corners_x,
             externals=ax_offsets_edges,
             origin=origin_edges,
             domain=domain_edges,
         )
 
-        self._ut_main = FrozenStencil(
+        self._ut_main = stencil_factory.from_origin_domain(
             func=ut_main,
             origin=(ifirst, j1, 0),
             domain=(idiff, grid_indexing.domain[1] + 2, grid_indexing.domain[2]),
         )
 
-        self._east_west_edges = FrozenStencil(
+        self._east_west_edges = stencil_factory.from_origin_domain(
             func=east_west_edges,
             externals={
                 "i_end": ax_offsets_edges["i_end"],
@@ -509,7 +511,7 @@ class DGrid2AGrid2CGridVectors:
         )
 
         # Ydir:
-        self._fill_corners_y = FrozenStencil(
+        self._fill_corners_y = stencil_factory.from_origin_domain(
             func=fill_corners_y,
             externals={
                 **ax_offsets_edges,
@@ -518,7 +520,7 @@ class DGrid2AGrid2CGridVectors:
             domain=domain_edges,
         )
 
-        self._north_south_edges = FrozenStencil(
+        self._north_south_edges = stencil_factory.from_origin_domain(
             func=north_south_edges,
             externals={
                 "j_end": ax_offsets_edges["j_end"],
@@ -532,7 +534,7 @@ class DGrid2AGrid2CGridVectors:
             domain=domain_edges,
         )
 
-        self._vt_main = FrozenStencil(
+        self._vt_main = stencil_factory.from_origin_domain(
             func=vt_main,
             origin=(i1, jfirst, 0),
             domain=(grid_indexing.domain[0] + 2, jdiff, grid_indexing.domain[2]),

@@ -3,7 +3,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -297,11 +297,11 @@ class AdjustNegativeTracerMixingRatio:
 
     def __init__(
         self,
-        grid_indexing,
+        stencil_factory: StencilFactory,
         check_negative: bool,
         hydrostatic: bool,
     ):
-
+        grid_indexing = stencil_factory.grid_indexing
         shape_ij = grid_indexing.domain_full(add=(1, 1, 0))[:2]
         self._sum1 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
         self._sum2 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
@@ -316,22 +316,22 @@ class AdjustNegativeTracerMixingRatio:
             self._d0_vap = constants.CV_VAP - constants.C_LIQ
         self._lv00 = constants.HLV - self._d0_vap * constants.TICE
 
-        self._fix_neg_water = FrozenStencil(
+        self._fix_neg_water = stencil_factory.from_origin_domain(
             func=fix_neg_water,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
-        self._fillq = FrozenStencil(
+        self._fillq = stencil_factory.from_origin_domain(
             func=fillq,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
-        self._fix_water_vapor_down = FrozenStencil(
+        self._fix_water_vapor_down = stencil_factory.from_origin_domain(
             func=fix_water_vapor_down,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
-        self._fix_neg_cloud = FrozenStencil(
+        self._fix_neg_cloud = stencil_factory.from_origin_domain(
             func=fix_neg_cloud,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),

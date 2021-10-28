@@ -5,10 +5,9 @@ from gt4py.gtscript import __INLINED, PARALLEL, computation, exp, floor, interva
 
 import fv3core.utils.global_constants as constants
 from fv3core._config import SatAdjustConfig
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import dim
 from fv3core.stencils.moist_cv import compute_pkz_func
-from fv3core.utils.grid import GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -899,12 +898,13 @@ def satadjust(
 
 class SatAdjust3d:
     def __init__(
-        self, grid_indexing: GridIndexing, config: SatAdjustConfig, area_64, kmp
+        self, stencil_factory: StencilFactory, config: SatAdjustConfig, area_64, kmp
     ):
+        grid_indexing = stencil_factory.grid_indexing
         self._config = config
         self._area_64 = area_64
 
-        self._satadjust_stencil = FrozenStencil(
+        self._satadjust_stencil = stencil_factory.from_origin_domain(
             func=satadjust,
             externals={
                 "hydrostatic": self._config.hydrostatic,

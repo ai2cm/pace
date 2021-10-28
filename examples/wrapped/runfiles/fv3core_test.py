@@ -262,7 +262,7 @@ if __name__ == "__main__":
     dycore = fv3core.DynamicalCore(
         comm=cube_comm,
         grid_data=spec.grid.grid_data,
-        grid_indexing=spec.grid.grid_indexing,
+        stencil_factory=spec.grid.stencil_factory,
         damping_coefficients=spec.grid.damping_coefficients,
         config=spec.namelist.dynamical_core,
         ak=state["atmosphere_hybrid_a_coordinate"],

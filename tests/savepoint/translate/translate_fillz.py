@@ -56,7 +56,7 @@ class TranslateFillz(TranslateFortranData2Py):
                     pad_field_in_j(value, self.grid.njd)
                 )
         run_fillz = fillz.FillNegativeTracerValues(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             inputs.pop("im"),
             inputs.pop("jm"),
             inputs.pop("km"),

@@ -36,7 +36,7 @@ class TranslateXPPM(TranslateFortranData2Py):
         origin = self.grid.grid_indexing.origin_compute()
         domain = self.grid.grid_indexing.domain_compute(add=(1, 1, 0))
         self.compute_func = xppm.XPiecewiseParabolic(
-            grid_indexing=self.grid.grid_indexing,
+            stencil_factory=self.grid.stencil_factory,
             dxa=self.grid.dxa,
             grid_type=self.grid.grid_type,
             iord=int(inputs["iord"]),

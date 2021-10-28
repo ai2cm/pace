@@ -4,13 +4,13 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
 )
 from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
@@ -194,7 +194,7 @@ class UpdateHeightOnDGrid:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         damping_coefficients: DampingCoefficients,
         grid_data: GridData,
         grid_type: int,
@@ -212,6 +212,7 @@ class UpdateHeightOnDGrid:
             column_namelist: ???
             k_bounds: ???
         """
+        grid_indexing = stencil_factory.grid_indexing
         self.grid_indexing = grid_indexing
         self._area = grid_data.area
         self._column_namelist = column_namelist
@@ -223,27 +224,29 @@ class UpdateHeightOnDGrid:
             raise NotImplementedError("damp <= 1e-5 in column_cols is untested")
         self._dp0 = dp0
         self._allocate_temporary_storages(grid_indexing)
-        self._initialize_interpolation_constants(grid_indexing)
+        self._initialize_interpolation_constants(
+            stencil_factory=stencil_factory, grid_indexing=grid_indexing
+        )
 
-        self._interpolate_to_layer_interface = FrozenStencil(
+        self._interpolate_to_layer_interface = stencil_factory.from_origin_domain(
             cubic_spline_interpolation_from_layer_center_to_interfaces,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(0, 0, 1)),
         )
-        self._apply_height_fluxes = FrozenStencil(
+        self._apply_height_fluxes = stencil_factory.from_origin_domain(
             apply_height_fluxes,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self.delnflux = DelnFluxNoSG(
-            grid_indexing,
+            stencil_factory,
             damping_coefficients,
             grid_data.rarea,
             self._column_namelist["nord_v"],
             nk=grid_indexing.domain[2] + 1,
         )
         self.finite_volume_transport = FiniteVolumeTransport(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=grid_type,
@@ -284,7 +287,9 @@ class UpdateHeightOnDGrid:
             largest_possible_shape, grid_indexing.origin_full()
         )
 
-    def _initialize_interpolation_constants(self, grid_indexing):
+    def _initialize_interpolation_constants(
+        self, stencil_factory: StencilFactory, grid_indexing: GridIndexing
+    ):
         # because stencils only work on 3D at the moment, need to compute in 3D
         # and then make these 1D
         gk_3d = utils.make_storage_from_shape(
@@ -297,7 +302,7 @@ class UpdateHeightOnDGrid:
             (1, 1, grid_indexing.domain[2] + 1), (0, 0, 0)
         )
 
-        _cubic_spline_interpolation_constants = FrozenStencil(
+        _cubic_spline_interpolation_constants = stencil_factory.from_origin_domain(
             cubic_spline_interpolation_constants,
             origin=(0, 0, 0),
             domain=(1, 1, grid_indexing.domain[2] + 1),
@@ -310,7 +315,7 @@ class UpdateHeightOnDGrid:
             gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,)
         )
         self._copy_corners = PreAllocatedCopiedCornersFactory(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_INTERFACE_DIM],
             y_temporary=None,
         )

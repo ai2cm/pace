@@ -13,10 +13,12 @@ from gt4py.gtscript import (
 )
 
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil, get_stencils_with_varied_bounds
-from fv3core.utils.grid import DampingCoefficients, GridIndexing, axis_offsets
+from fv3core.decorators import get_stencils_with_varied_bounds
+from fv3core.utils.grid import DampingCoefficients, axis_offsets
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
+from fv3gfs.util.constants import X_INTERFACE_DIM, Y_INTERFACE_DIM
 
 
 def calc_damp(damp4: FloatField, nord: FloatFieldK, damp_c: FloatFieldK, da_min: float):
@@ -904,7 +906,7 @@ class DelnFlux:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         damping_coefficients: DampingCoefficients,
         rarea,
         nord: FloatFieldK,
@@ -925,7 +927,7 @@ class DelnFlux:
             raise NotImplementedError(
                 "damp_c currently must be always greater than 10^-4 for delnflux"
             )
-
+        grid_indexing = stencil_factory.grid_indexing
         nk = grid_indexing.domain[2]
         self._origin = grid_indexing.origin_full()
 
@@ -938,26 +940,24 @@ class DelnFlux:
         self._fy2 = utils.make_storage_from_shape(shape)
         self._d2 = utils.make_storage_from_shape(grid_indexing.domain_full())
 
-        diffuse_origin = grid_indexing.origin_compute()
-        extended_domain = grid_indexing.domain_compute(add=(1, 1, 0))
-
-        self._damping_factor_calculation = FrozenStencil(
+        damping_factor_calculation = stencil_factory.from_origin_domain(
             calc_damp, origin=(0, 0, 0), domain=k_shape
         )
-        self._add_diffusive_stencil = FrozenStencil(
-            add_diffusive_component, origin=diffuse_origin, domain=extended_domain
+        self._add_diffusive_stencil = stencil_factory.from_dims_halo(
+            func=add_diffusive_component,
+            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
         )
-        self._diffusive_damp_stencil = FrozenStencil(
-            diffusive_damp, origin=diffuse_origin, domain=extended_domain
+        self._diffusive_damp_stencil = stencil_factory.from_dims_halo(
+            func=diffusive_damp, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
         )
 
-        self._damping_factor_calculation(
+        damping_factor_calculation(
             self._damp_3d, nord, damp_c, damping_coefficients.da_min
         )
         self._damp = utils.make_storage_data(self._damp_3d[0, 0, :], (nk,), (0,))
 
         self.delnflux_nosg = DelnFluxNoSG(
-            grid_indexing, damping_coefficients, rarea, nord, nk=nk
+            stencil_factory, damping_coefficients, rarea, nord, nk=nk
         )
 
     def __call__(
@@ -1007,7 +1007,7 @@ class DelnFluxNoSG:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         damping_coefficients: DampingCoefficients,
         rarea,
         nord,
@@ -1019,6 +1019,7 @@ class DelnFluxNoSG:
         nord = 1:   del-4
         nord = 2:   del-6
         """
+        grid_indexing = stencil_factory.grid_indexing
         self._del6_u = damping_coefficients.del6_u
         self._del6_v = damping_coefficients.del6_v
         self._rarea = rarea
@@ -1076,7 +1077,7 @@ class DelnFluxNoSG:
             "nord3": nord[3],
         }
 
-        self._d2_damp = FrozenStencil(
+        self._d2_damp = stencil_factory.from_origin_domain(
             d2_damp_interval,
             externals={
                 **nord_dictionary,
@@ -1086,7 +1087,7 @@ class DelnFluxNoSG:
             domain=domain_d2,
         )
 
-        self._copy_stencil_interval = FrozenStencil(
+        self._copy_stencil_interval = stencil_factory.from_origin_domain(
             copy_stencil_interval,
             externals={
                 **nord_dictionary,
@@ -1100,27 +1101,30 @@ class DelnFluxNoSG:
             d2_highorder_stencil,
             origins_d2,
             domains_d2,
+            stencil_factory=stencil_factory,
             externals={**nord_dictionary},
         )
         self._column_conditional_fx_calculation = get_stencils_with_varied_bounds(
             fx_calc_stencil_column,
             origins_flux,
             domains_fx,
+            stencil_factory=stencil_factory,
             externals={**nord_dictionary},
         )
         self._column_conditional_fy_calculation = get_stencils_with_varied_bounds(
             fy_calc_stencil_column,
             origins_flux,
             domains_fy,
+            stencil_factory=stencil_factory,
             externals={**nord_dictionary},
         )
-        self._fx_calc_stencil = FrozenStencil(
+        self._fx_calc_stencil = stencil_factory.from_origin_domain(
             fx_calc_stencil_nord,
             externals={**fx_ax_offsets, **nord_dictionary},
             origin=fx_origin,
             domain=(f1_nx, f1_ny, nk),
         )
-        self._fy_calc_stencil = FrozenStencil(
+        self._fy_calc_stencil = stencil_factory.from_origin_domain(
             fy_calc_stencil_nord,
             externals={**fy_ax_offsets, **nord_dictionary},
             origin=fx_origin,
@@ -1136,13 +1140,13 @@ class DelnFluxNoSG:
         self._corner_tmp = utils.make_storage_from_shape(
             corner_domain, origin=corner_origin
         )
-        self._copy_corners_x_nord = FrozenStencil(
+        self._copy_corners_x_nord = stencil_factory.from_origin_domain(
             copy_corners_x_nord,
             externals={**corner_axis_offsets, **nord_dictionary},
             origin=corner_origin,
             domain=corner_domain,
         )
-        self._copy_corners_y_nord = FrozenStencil(
+        self._copy_corners_y_nord = stencil_factory.from_origin_domain(
             copy_corners_y_nord,
             externals={**corner_axis_offsets, **nord_dictionary},
             origin=corner_origin,

@@ -1,5 +1,4 @@
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
 from fv3core.testing import TranslateFortranData2Py
 from fv3core.utils import corners
 from fv3core.utils.grid import axis_offsets
@@ -18,14 +17,14 @@ class TranslateFill4Corners(TranslateFortranData2Py):
         domain = self.grid.domain_shape_full()
         axes_offsets = axis_offsets(self.grid, origin, domain)
         if inputs["dir"] == 1:
-            stencil = FrozenStencil(
+            stencil = self.grid.stencil_factory.from_origin_domain(
                 corners.fill_corners_2cells_x_stencil,
                 externals=axes_offsets,
                 origin=origin,
                 domain=domain,
             )
         elif inputs["dir"] == 2:
-            stencil = FrozenStencil(
+            stencil = self.grid.stencil_factory.from_origin_domain(
                 corners.fill_corners_2cells_y_stencil,
                 externals=axes_offsets,
                 origin=origin,
@@ -52,7 +51,10 @@ class TranslateFillCorners(TranslateFortranData2Py):
                 domain = (self.grid.nid + 1, self.grid.njd + 1, len(ki))
                 if inputs["dir"] == 1:
                     fill_corners = corners.FillCornersBGrid(
-                        "x", origin=origin, domain=domain
+                        "x",
+                        origin=origin,
+                        domain=domain,
+                        stencil_factory=self.grid.stencil_factory,
                     )
 
                     fill_corners(
@@ -60,7 +62,10 @@ class TranslateFillCorners(TranslateFortranData2Py):
                     )
                 elif inputs["dir"] == 2:
                     fill_corners = corners.FillCornersBGrid(
-                        "y", origin=origin, domain=domain
+                        "y",
+                        origin=origin,
+                        domain=domain,
+                        stencil_factory=self.grid.stencil_factory,
                     )
                     fill_corners(
                         inputs["divg_d"],
@@ -76,8 +81,12 @@ class TranslateCopyCorners(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {"q": {}}
         self.in_vars["parameters"] = ["dir"]
         self.out_vars = {"q": {}}
-        self._copy_corners_x = corners.CopyCorners("x")
-        self._copy_corners_y = corners.CopyCorners("y")
+        self._copy_corners_x = corners.CopyCorners(
+            "x", stencil_factory=self.grid.stencil_factory
+        )
+        self._copy_corners_y = corners.CopyCorners(
+            "y", stencil_factory=self.grid.stencil_factory
+        )
 
     def compute_from_storage(self, inputs):
         if inputs["dir"] == 1:
@@ -103,8 +112,8 @@ class TranslateFillCornersVector(TranslateFortranData2Py):
                 ki = [k for k in range(self.grid.npz) if nord_column[0, 0, k] == nord]
                 origin = (self.grid.isd, self.grid.jsd, ki[0])
                 domain = (self.grid.nid + 1, self.grid.njd + 1, len(ki))
-                axes_offsets = axis_offsets(self.grid, origin, domain)
-                vector_corner_fill = FrozenStencil(
+                axes_offsets = axis_offsets(self.grid.grid_indexing, origin, domain)
+                vector_corner_fill = self.grid.stencil_factory.from_origin_domain(
                     corners.fill_corners_dgrid_defn,
                     externals=axes_offsets,
                     origin=origin,

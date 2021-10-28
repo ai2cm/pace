@@ -5,7 +5,7 @@ from gt4py.gtscript import __INLINED, BACKWARD, PARALLEL, computation, interval
 
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
-from fv3core.decorators import ArgSpec, FrozenStencil
+from fv3core.decorators import ArgSpec
 from fv3core.stencils.basic_operations import dim
 from fv3core.utils.global_constants import (
     C_ICE,
@@ -18,6 +18,7 @@ from fv3core.utils.global_constants import (
     RDGAS,
     ZVIR,
 )
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField
 
 
@@ -762,13 +763,14 @@ class DryConvectiveAdjustment:
 
     def __init__(
         self,
-        grid_indexing,
+        stencil_factory: StencilFactory,
         nwat: int,
         fv_sg_adj: float,
         n_sponge: int,
         hydrostatic: bool,
     ):
         assert not hydrostatic, "Hydrostatic not implemented for fv_subgridz"
+        grid_indexing = stencil_factory.grid_indexing
         self._k_sponge = n_sponge
         if self._k_sponge is not None:
             if self._k_sponge < 3:
@@ -791,7 +793,7 @@ class DryConvectiveAdjustment:
         origin = grid_indexing.origin_compute()
 
         # TODO(eddied): Applying the `KCacheDetection` pass causes validation to fail
-        self._init_stencil = FrozenStencil(
+        self._init_stencil = stencil_factory.from_origin_domain(
             init,
             origin=origin,
             domain=(
@@ -801,13 +803,13 @@ class DryConvectiveAdjustment:
             ),
             skip_passes=("KCacheDetection",),
         )
-        self._m_loop_stencil = FrozenStencil(
+        self._m_loop_stencil = stencil_factory.from_origin_domain(
             m_loop,
             externals={"t_max": t_max, "xvir": xvir},
             origin=origin,
             domain=kbot_domain,
         )
-        self._finalize_stencil = FrozenStencil(
+        self._finalize_stencil = stencil_factory.from_origin_domain(
             finalize,
             externals={
                 "hydrostatic": hydrostatic,

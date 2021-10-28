@@ -22,7 +22,7 @@ class TranslateDelnFlux(TranslateFortranData2Py):
             inputs["mass"] = None
         self.make_storage_data_input_vars(inputs)
         self.compute_func = delnflux.DelnFlux(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.rarea,
             inputs.pop("nord_column"),

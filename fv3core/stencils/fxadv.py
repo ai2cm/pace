@@ -1,8 +1,8 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.d2a2c_vect import contravariant
-from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
+from fv3core.utils.grid import GridData, axis_offsets
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -429,9 +429,10 @@ class FiniteVolumeFluxPrep:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         grid_data: GridData,
     ):
+        grid_indexing = stencil_factory.grid_indexing
         self._dx = grid_data.dx
         self._dy = grid_data.dy
         self._rdxa = grid_data.rdxa
@@ -456,19 +457,33 @@ class FiniteVolumeFluxPrep:
             "origin": origin_corners,
             "domain": domain_corners,
         }
-        self._main_uc_contra_stencil = FrozenStencil(main_uc_contra, **kwargs)
-        self._main_vc_contra_stencil = FrozenStencil(main_vc_contra, **kwargs)
-        self._uc_contra_y_edge_stencil = FrozenStencil(uc_contra_y_edge, **kwargs)
-        self._vc_contra_y_edge_stencil = FrozenStencil(vc_contra_y_edge, **kwargs)
-        self._uc_contra_x_edge_stencil = FrozenStencil(uc_contra_x_edge, **kwargs)
-        self._vc_contra_x_edge_stencil = FrozenStencil(vc_contra_x_edge, **kwargs)
-        self._uc_contra_corners_stencil = FrozenStencil(
+        self._main_uc_contra_stencil = stencil_factory.from_origin_domain(
+            main_uc_contra, **kwargs
+        )
+        self._main_vc_contra_stencil = stencil_factory.from_origin_domain(
+            main_vc_contra, **kwargs
+        )
+        self._uc_contra_y_edge_stencil = stencil_factory.from_origin_domain(
+            uc_contra_y_edge, **kwargs
+        )
+        self._vc_contra_y_edge_stencil = stencil_factory.from_origin_domain(
+            vc_contra_y_edge, **kwargs
+        )
+        self._uc_contra_x_edge_stencil = stencil_factory.from_origin_domain(
+            uc_contra_x_edge, **kwargs
+        )
+        self._vc_contra_x_edge_stencil = stencil_factory.from_origin_domain(
+            vc_contra_x_edge, **kwargs
+        )
+        self._uc_contra_corners_stencil = stencil_factory.from_origin_domain(
             uc_contra_corners, **kwargs_corners
         )
-        self._vc_contra_corners_stencil = FrozenStencil(
+        self._vc_contra_corners_stencil = stencil_factory.from_origin_domain(
             vc_contra_corners, **kwargs_corners
         )
-        self._fxadv_fluxes_stencil = FrozenStencil(fxadv_fluxes_stencil, **kwargs)
+        self._fxadv_fluxes_stencil = stencil_factory.from_origin_domain(
+            fxadv_fluxes_stencil, **kwargs
+        )
 
     def __call__(
         self,

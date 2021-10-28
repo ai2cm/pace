@@ -14,6 +14,6 @@ class MapSingleFactory:
         key_tuple = (kord, mode, i1, i2, j1, j2)
         if key_tuple not in self._object_pool:
             self._object_pool[key_tuple] = MapSingle(
-                spec.grid.grid_indexing, *key_tuple
+                spec.grid.stencil_factory, *key_tuple
             )
         return self._object_pool[key_tuple](*args, **kwargs)

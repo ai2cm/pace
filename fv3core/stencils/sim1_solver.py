@@ -3,7 +3,7 @@ import typing
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core.utils.global_constants as constants
-from fv3core.decorators import FrozenStencil
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -111,11 +111,13 @@ class Sim1Solver:
 
     # TODO: implement MOIST_CAPPA=false
 
-    def __init__(self, p_fac, istart, iend, jstart, jend, nk):
+    def __init__(
+        self, stencil_factory: StencilFactory, p_fac, istart, iend, jstart, jend, nk
+    ):
         self._pfac = p_fac
         nic = iend - istart + 1
         njc = jend - jstart + 1
-        self._compute_sim1_solve = FrozenStencil(
+        self._compute_sim1_solve = stencil_factory.from_origin_domain(
             func=sim1_solver,
             origin=(istart, jstart, 0),
             domain=(nic, njc, nk),

@@ -12,7 +12,7 @@ class TranslateA2B_Ord4(TranslateFortranData2Py):
 
     def compute_from_storage(self, inputs):
         divdamp = DivergenceDamping(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             self.grid.grid_data,
             self.grid.damping_coefficients,
             self.grid.nested,

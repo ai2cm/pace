@@ -57,7 +57,7 @@ class TranslateSatAdjust3d(TranslateFortranData2Py):
     def compute_from_storage(self, inputs):
         inputs["kmp"] -= 1
         satadjust3d_obj = SatAdjust3d(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             spec.namelist.dynamical_core.sat_adjust,
             self.grid.area_64,
             inputs["kmp"],

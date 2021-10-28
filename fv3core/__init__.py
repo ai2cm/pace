@@ -10,3 +10,4 @@ from .utils.global_config import (
     set_rebuild,
     set_validate_args,
 )
+from .utils.stencil import StencilConfig, StencilFactory

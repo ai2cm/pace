@@ -13,10 +13,10 @@ from gt4py.gtscript import (
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils import axis_offsets
 from fv3core.utils.grid import GridData, GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
 from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
@@ -458,7 +458,7 @@ class AGrid2BGridFourthOrder:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         grid_data: GridData,
         grid_type,
         z_dim=Z_DIM,
@@ -466,13 +466,13 @@ class AGrid2BGridFourthOrder:
     ):
         """
         Args:
-            grid_indexing: defines indices over which to perform conversion
+            stencil_factory: creates gt4py stencils
             grid_type: integer representing the type of grid
             z_dim: defines whether vertical dimension is centered or staggered
             replace: boolean, update qin to the B grid as well
         """
         assert grid_type < 3
-        self._idx: GridIndexing = grid_indexing
+        self._idx: GridIndexing = stencil_factory.grid_indexing
 
         self._dxa = grid_data.dxa
         self._dya = grid_data.dya
@@ -494,22 +494,22 @@ class AGrid2BGridFourthOrder:
         _, (z_domain,) = self._idx.get_origin_domain([z_dim])
         corner_domain = (1, 1, z_domain)
 
-        self._sw_corner_stencil = FrozenStencil(
+        self._sw_corner_stencil = stencil_factory.from_origin_domain(
             _sw_corner,
             origin=self._idx.origin_compute(),
             domain=corner_domain,
         )
-        self._nw_corner_stencil = FrozenStencil(
+        self._nw_corner_stencil = stencil_factory.from_origin_domain(
             _nw_corner,
             origin=(self._idx.iec + 1, self._idx.jsc, self._idx.origin[2]),
             domain=corner_domain,
         )
-        self._ne_corner_stencil = FrozenStencil(
+        self._ne_corner_stencil = stencil_factory.from_origin_domain(
             _ne_corner,
             origin=(self._idx.iec + 1, self._idx.jec + 1, self._idx.origin[2]),
             domain=corner_domain,
         )
-        self._se_corner_stencil = FrozenStencil(
+        self._se_corner_stencil = stencil_factory.from_origin_domain(
             _se_corner,
             origin=(self._idx.isc, self._idx.jec + 1, self._idx.origin[2]),
             domain=corner_domain,
@@ -521,7 +521,7 @@ class AGrid2BGridFourthOrder:
         # edge_w is singleton in the I-dimension to work around gt4py not yet
         # supporting J-fields. As a result, the origin has to be zero for
         # edge_w, anything higher is outside its index range
-        self._qout_x_edge_west = FrozenStencil(
+        self._qout_x_edge_west = stencil_factory.from_origin_domain(
             qout_x_edge,
             origin={
                 "_all_": (self._idx.isc, js2, self._idx.origin[2]),
@@ -529,7 +529,7 @@ class AGrid2BGridFourthOrder:
             },
             domain=(1, dj2, z_domain),
         )
-        self._qout_x_edge_east = FrozenStencil(
+        self._qout_x_edge_east = stencil_factory.from_origin_domain(
             qout_x_edge,
             origin={
                 "_all_": (self._idx.iec + 1, js2, self._idx.origin[2]),
@@ -541,39 +541,27 @@ class AGrid2BGridFourthOrder:
         is2 = self._idx.isc + 1 if self._idx.west_edge else self._idx.isc
         ie1 = self._idx.iec if self._idx.east_edge else self._idx.iec + 1
         di2 = ie1 - is2 + 1
-        self._qout_y_edge_south = FrozenStencil(
+        self._qout_y_edge_south = stencil_factory.from_origin_domain(
             qout_y_edge,
             origin=(is2, self._idx.jsc, self._idx.origin[2]),
             domain=(di2, 1, z_domain),
         )
-        self._qout_y_edge_north = FrozenStencil(
+        self._qout_y_edge_north = stencil_factory.from_origin_domain(
             qout_y_edge,
             origin=(is2, self._idx.jec + 1, self._idx.origin[2]),
             domain=(di2, 1, z_domain),
         )
 
-        origin_x, domain_x = self._idx.get_origin_domain(
-            dims=[X_INTERFACE_DIM, Y_DIM, z_dim], halos=(0, 2)
+        self._ppm_volume_mean_x_stencil = stencil_factory.from_dims_halo(
+            ppm_volume_mean_x,
+            compute_dims=[X_INTERFACE_DIM, Y_DIM, z_dim],
+            compute_halos=(0, 2),
         )
 
-        ax_offsets_x = axis_offsets(
-            self._idx,
-            origin_x,
-            domain_x,
-        )
-        self._ppm_volume_mean_x_stencil = FrozenStencil(
-            ppm_volume_mean_x, externals=ax_offsets_x, origin=origin_x, domain=domain_x
-        )
-        origin_y, domain_y = self._idx.get_origin_domain(
-            dims=[X_DIM, Y_INTERFACE_DIM, z_dim], halos=(2, 0)
-        )
-        ax_offsets_y = axis_offsets(
-            self._idx,
-            origin_y,
-            domain_y,
-        )
-        self._ppm_volume_mean_y_stencil = FrozenStencil(
-            ppm_volume_mean_y, externals=ax_offsets_y, origin=origin_y, domain=domain_y
+        self._ppm_volume_mean_y_stencil = stencil_factory.from_dims_halo(
+            ppm_volume_mean_y,
+            compute_dims=[X_DIM, Y_INTERFACE_DIM, z_dim],
+            compute_halos=(2, 0),
         )
 
         origin, domain = self._idx.get_origin_domain(
@@ -586,16 +574,11 @@ class AGrid2BGridFourthOrder:
             origin,
             domain,
         )
-        self._a2b_interpolation_stencil = FrozenStencil(
+        self._a2b_interpolation_stencil = stencil_factory.from_origin_domain(
             a2b_interpolation, externals=ax_offsets, origin=origin, domain=domain
         )
-        origin, domain = self._idx.get_origin_domain(
-            dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, z_dim]
-        )
-        self._copy_stencil = FrozenStencil(
-            copy_defn,
-            origin=origin,
-            domain=domain,
+        self._copy_stencil = stencil_factory.from_dims_halo(
+            copy_defn, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, z_dim]
         )
 
     def _exclude_tile_edges(self, origin, domain, dims=("x", "y")):

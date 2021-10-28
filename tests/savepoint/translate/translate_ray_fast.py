@@ -7,7 +7,7 @@ class TranslateRay_Fast(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
         self.compute_func = RayleighDamping(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             spec.namelist.rf_cutoff,
             spec.namelist.tau,
             spec.namelist.hydrostatic,

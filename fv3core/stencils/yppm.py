@@ -9,10 +9,9 @@ from gt4py.gtscript import (
     region,
 )
 
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils import ppm
 from fv3core.stencils.basic_operations import sign
-from fv3core.utils.grid import GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, Index3D
 
 
@@ -288,7 +287,7 @@ class YPiecewiseParabolic:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         dya,
         grid_type: int,
         jord,
@@ -300,8 +299,8 @@ class YPiecewiseParabolic:
         # grid.dya
         assert grid_type < 3
         self._dya = dya
-        ax_offsets = grid_indexing.axis_offsets(origin, domain)
-        self._compute_flux_stencil = FrozenStencil(
+        ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
+        self._compute_flux_stencil = stencil_factory.from_origin_domain(
             func=compute_y_flux,
             externals={
                 "jord": jord,

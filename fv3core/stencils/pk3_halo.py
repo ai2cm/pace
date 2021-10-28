@@ -1,8 +1,8 @@
 from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
-from fv3core.utils.grid import GridIndexing, axis_offsets
+from fv3core.utils.grid import axis_offsets
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
@@ -38,11 +38,12 @@ class PK3Halo:
     Fortran name is pk3_halo
     """
 
-    def __init__(self, grid_indexing: GridIndexing):
+    def __init__(self, stencil_factory: StencilFactory):
+        grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_full()
         domain = grid_indexing.domain_full(add=(0, 0, 1))
         ax_offsets = axis_offsets(grid_indexing, origin, domain)
-        self._edge_pe_update = FrozenStencil(
+        self._edge_pe_update = stencil_factory.from_origin_domain(
             func=edge_pe_update,
             externals={
                 **ax_offsets,

@@ -4,8 +4,7 @@ from typing import Any, Dict
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
-from fv3core.utils.grid import GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
@@ -108,18 +107,20 @@ class FillNegativeTracerValues:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         im: int,
         jm: int,
         km: int,
         nq: int,
     ):
         self._nq = nq
-        self._fix_tracer_stencil = FrozenStencil(
-            fix_tracer, origin=grid_indexing.origin_compute(), domain=(im, jm, km)
+        self._fix_tracer_stencil = stencil_factory.from_origin_domain(
+            fix_tracer,
+            origin=stencil_factory.grid_indexing.origin_compute(),
+            domain=(im, jm, km),
         )
 
-        shape = grid_indexing.domain_full(add=(1, 1, 1))
+        shape = stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
         shape_ij = shape[0:2]
 
         self._dm = utils.make_storage_from_shape(shape, origin=(0, 0, 0))

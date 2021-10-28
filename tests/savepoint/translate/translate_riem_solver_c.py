@@ -6,7 +6,9 @@ from fv3core.testing import TranslateFortranData2Py
 class TranslateRiem_Solver_C(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
-        self.compute_func = RiemannSolverC(self.grid.grid_indexing, spec.namelist.p_fac)
+        self.compute_func = RiemannSolverC(
+            self.grid.stencil_factory, spec.namelist.p_fac
+        )
         self.in_vars["data_vars"] = {
             "cappa": {},
             "hs": {},

@@ -8,7 +8,7 @@ class TranslateD2A2C_Vect(TranslateFortranData2Py):
         super().__init__(grid)
         dord4 = True
         self.compute_func = DGrid2AGrid2CGridVectors(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             self.grid.grid_data,
             self.grid.nested,
             spec.namelist.grid_type,

@@ -1,8 +1,9 @@
 import numpy as np
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-from fv3core.decorators import StencilConfig, get_stencils_with_varied_bounds
+from fv3core.decorators import get_stencils_with_varied_bounds
 from fv3core.utils.gt4py_utils import make_storage_from_shape_uncached
+from fv3core.utils.stencil import GridIndexing, StencilConfig, StencilFactory
 from fv3core.utils.typing import FloatField
 
 
@@ -35,7 +36,7 @@ def setup_data_vars():
     return q, q_ref
 
 
-def test_get_stencils_with_varied_bounds(backend):
+def get_stencil_factory(backend) -> StencilFactory:
     config = StencilConfig(
         backend=backend,
         rebuild=False,
@@ -43,10 +44,23 @@ def test_get_stencils_with_varied_bounds(backend):
         format_source=False,
         device_sync=False,
     )
+    indexing = GridIndexing(
+        domain=(12, 12, 79),
+        n_halo=3,
+        south_edge=False,
+        north_edge=False,
+        west_edge=False,
+        east_edge=False,
+    )
+    return StencilFactory(config=config, grid_indexing=indexing)
+
+
+def test_get_stencils_with_varied_bounds(backend):
     origins = [(2, 2, 0), (1, 1, 0)]
     domains = [(1, 1, 3), (2, 2, 3)]
+    factory = get_stencil_factory(backend)
     stencils = get_stencils_with_varied_bounds(
-        add_1_stencil, origins, domains, stencil_config=config
+        add_1_stencil, origins, domains, stencil_factory=factory
     )
     assert len(stencils) == len(origins)
     q, q_ref = setup_data_vars()
@@ -61,21 +75,14 @@ def test_get_stencils_with_varied_bounds(backend):
 
 
 def test_get_stencils_with_varied_bounds_and_regions(backend):
-
-    config = StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
-        format_source=False,
-        device_sync=False,
-    )
+    factory = get_stencil_factory(backend)
     origins = [(3, 3, 0), (2, 2, 0)]
     domains = [(1, 1, 3), (2, 2, 3)]
     stencils = get_stencils_with_varied_bounds(
         add_1_in_region_stencil,
         origins,
         domains,
-        stencil_config=config,
+        stencil_factory=factory,
     )
     q, q_ref = setup_data_vars()
     stencils[0](q, q)

@@ -2,12 +2,10 @@ from typing import Optional
 
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.remap_profile import RemapProfile
-from fv3core.utils.grid import GridIndexing
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
@@ -75,7 +73,7 @@ class MapSingle:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         kord: int,
         mode: int,
         i1: int,
@@ -84,7 +82,7 @@ class MapSingle:
         j2: int,
     ):
         # TODO: consider refactoring to take in origin and domain
-        grid = spec.grid
+        grid_indexing = stencil_factory.grid_indexing
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
 
@@ -105,15 +103,17 @@ class MapSingle:
         origin = (i1, j1, 0)
         domain = (*self._extents, grid_indexing.domain[2])
 
-        self._lagrangian_contributions = FrozenStencil(
+        self._lagrangian_contributions = stencil_factory.from_origin_domain(
             lagrangian_contributions,
             origin=origin,
             domain=domain,
         )
-        self._remap_profile = RemapProfile(grid_indexing, kord, mode, i1, i2, j1, j2)
+        self._remap_profile = RemapProfile(stencil_factory, kord, mode, i1, i2, j1, j2)
 
-        self._set_dp = FrozenStencil(set_dp, origin=origin, domain=domain)
-        self._copy_stencil = FrozenStencil(
+        self._set_dp = stencil_factory.from_origin_domain(
+            set_dp, origin=origin, domain=domain
+        )
+        self._copy_stencil = stencil_factory.from_origin_domain(
             copy_defn,
             origin=(0, 0, 0),
             domain=grid_indexing.domain_full(),

@@ -113,7 +113,7 @@ class TranslateRemapping(TranslateFortranData2Py):
         inputs["wsd"] = wsd_2d
         inputs["q_cld"] = inputs["tracers"]["qcld"]
         l_to_e_obj = LagrangianToEulerian(
-            spec.grid.grid_indexing,
+            spec.grid.stencil_factory,
             spec.namelist.dynamical_core.remapping,
             spec.grid.area_64,
             inputs["nq"],

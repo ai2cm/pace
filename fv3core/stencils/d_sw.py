@@ -13,7 +13,6 @@ import fv3core.stencils.delnflux as delnflux
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core._config import DGridShallowWaterLagrangianDynamicsConfig
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.d2a2c_vect import contravariant
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.divergence_damping import DivergenceDamping
@@ -24,7 +23,8 @@ from fv3core.stencils.fvtp2d import (
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import advect_u_along_x
 from fv3core.stencils.ytp_v import advect_v_along_y
-from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing, axis_offsets
+from fv3core.utils.grid import DampingCoefficients, GridData
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 from fv3gfs.util import (
     X_DIM,
@@ -610,7 +610,7 @@ class DGridShallowWaterLagrangianDynamics:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,
         column_namelist,
@@ -620,7 +620,7 @@ class DGridShallowWaterLagrangianDynamics:
     ):
         self._f0 = spec.grid.f0
         self.grid = grid_data
-        self.grid_indexing = grid_indexing
+        self.grid_indexing = stencil_factory.grid_indexing
         assert config.grid_type < 3, "ubke and vbke only implemented for grid_type < 3"
         assert not config.inline_q, "inline_q not yet implemented"
         assert (
@@ -635,46 +635,46 @@ class DGridShallowWaterLagrangianDynamics:
 
         # only compute for k-levels where this is true
         self.hydrostatic = config.hydrostatic
-        self._tmp_heat_s = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._vort_x_delta = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._vort_y_delta = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_ke = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_vort = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._uc_contra = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._vc_contra = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_ut = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_vt = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_fx = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_fy = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_gx = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_gy = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_dw = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_wk = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_fx2 = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_fy2 = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._tmp_heat_s = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._vort_x_delta = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._vort_y_delta = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_ke = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_vort = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._uc_contra = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._vc_contra = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_ut = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_vt = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_fx = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_fy = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_gx = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_gy = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_dw = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_wk = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_fx2 = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._tmp_fy2 = utils.make_storage_from_shape(self.grid_indexing.max_shape)
         self._tmp_damp_3d = utils.make_storage_from_shape(
-            (1, 1, grid_indexing.domain[2])
+            (1, 1, self.grid_indexing.domain[2])
         )
-        self._advected_u = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._advected_v = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._ub_contra = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._vb_contra = utils.make_storage_from_shape(grid_indexing.max_shape)
+        self._advected_u = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._advected_v = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._ub_contra = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._vb_contra = utils.make_storage_from_shape(self.grid_indexing.max_shape)
         self._column_namelist = column_namelist
 
         self.delnflux_nosg_w = DelnFluxNoSG(
-            grid_indexing,
+            stencil_factory,
             damping_coefficients,
             grid_data.rarea,
             self._column_namelist["nord_w"],
         )
         self.delnflux_nosg_v = DelnFluxNoSG(
-            grid_indexing,
+            stencil_factory,
             damping_coefficients,
             grid_data.rarea,
             self._column_namelist["nord_v"],
         )
         self.fvtp2d_dp = FiniteVolumeTransport(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -683,7 +683,7 @@ class DGridShallowWaterLagrangianDynamics:
             damp_c=self._column_namelist["damp_vt"],
         )
         self.fvtp2d_dp_t = FiniteVolumeTransport(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -692,7 +692,7 @@ class DGridShallowWaterLagrangianDynamics:
             damp_c=self._column_namelist["damp_t"],
         )
         self.fvtp2d_tm = FiniteVolumeTransport(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
@@ -701,18 +701,18 @@ class DGridShallowWaterLagrangianDynamics:
             damp_c=self._column_namelist["damp_vt"],
         )
         self.fvtp2d_vt_nodelnflux = FiniteVolumeTransport(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             grid_data=grid_data,
             damping_coefficients=damping_coefficients,
             grid_type=config.grid_type,
             hord=config.hord_vt,
         )
         self.fv_prep = FiniteVolumeFluxPrep(
-            grid_indexing=grid_indexing,
+            stencil_factory=stencil_factory,
             grid_data=grid_data,
         )
         self.divergence_damping = DivergenceDamping(
-            grid_indexing,
+            stencil_factory,
             grid_data,
             damping_coefficients,
             nested,
@@ -724,137 +724,120 @@ class DGridShallowWaterLagrangianDynamics:
             column_namelist["nord"],
             column_namelist["d2_divg"],
         )
-        full_origin = grid_indexing.origin_full()
-        full_domain = grid_indexing.domain_full()
-        b_origin, b_domain = grid_indexing.get_origin_domain(
-            [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
-        )
-        ax_offsets_b = axis_offsets(grid_indexing, b_origin, b_domain)
-        self._apply_pt_delp_fluxes = FrozenStencil(
-            apply_pt_delp_fluxes_stencil_defn,
+
+        self._apply_pt_delp_fluxes = stencil_factory.from_dims_halo(
+            func=apply_pt_delp_fluxes_stencil_defn,
+            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             externals={
                 "inline_q": config.inline_q,
-                **ax_offsets_b,
             },
-            origin=b_origin,
-            domain=b_domain,
         )
-        self._kinetic_energy_update_part_1 = FrozenStencil(
-            kinetic_energy_update_part_1,
+        self._kinetic_energy_update_part_1 = stencil_factory.from_dims_halo(
+            func=kinetic_energy_update_part_1,
+            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             externals={
                 "iord": config.hord_mt,
                 "jord": config.hord_mt,
                 "mord": config.hord_mt,
                 "xt_minmax": False,
                 "yt_minmax": False,
-                **ax_offsets_b,
             },
-            origin=b_origin,
-            domain=b_domain,
             skip_passes=("GreedyMerging",),
         )
-        self._kinetic_energy_update_part_2 = FrozenStencil(
-            kinetic_energy_update_part_2,
+        self._kinetic_energy_update_part_2 = stencil_factory.from_dims_halo(
+            func=kinetic_energy_update_part_2,
+            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             externals={
                 "iord": config.hord_mt,
                 "jord": config.hord_mt,
                 "mord": config.hord_mt,
                 "xt_minmax": False,
                 "yt_minmax": False,
-                **ax_offsets_b,
             },
-            origin=b_origin,
-            domain=b_domain,
+            skip_passes=("GreedyMerging",),
         )
-        compute_origin, compute_domain = grid_indexing.get_origin_domain(
-            [X_DIM, Y_DIM, Z_DIM]
+        self._flux_adjust_stencil = stencil_factory.from_dims_halo(
+            func=flux_adjust, compute_dims=[X_DIM, Y_DIM, Z_DIM]
         )
-        self._flux_adjust_stencil = FrozenStencil(
-            flux_adjust,
-            origin=compute_origin,
-            domain=compute_domain,
+        self._flux_capacitor_stencil = stencil_factory.from_dims_halo(
+            func=flux_capacitor,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
         )
-        self._flux_capacitor_stencil = FrozenStencil(
-            flux_capacitor, origin=full_origin, domain=full_domain
+        self._vort_differencing_stencil = stencil_factory.from_dims_halo(
+            func=vort_differencing,
+            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
         )
-        self._vort_differencing_stencil = FrozenStencil(
-            vort_differencing,
-            externals=ax_offsets_b,
-            origin=b_origin,
-            domain=b_domain,
+        self._u_and_v_from_ke_stencil = stencil_factory.from_dims_halo(
+            func=u_and_v_from_ke, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
         )
-        self._u_and_v_from_ke_stencil = FrozenStencil(
-            u_and_v_from_ke, externals=ax_offsets_b, origin=b_origin, domain=b_domain
-        )
-        self._compute_vort_stencil = FrozenStencil(
-            compute_vort,
+        self._compute_vort_stencil = stencil_factory.from_dims_halo(
+            func=compute_vort,
             externals={
                 "radius": constants.RADIUS,
                 "do_f3d": config.do_f3d,
                 "hydrostatic": self.hydrostatic,
             },
-            origin=full_origin,
-            domain=full_domain,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
         )
-        self._adjust_w_and_qcon_stencil = FrozenStencil(
-            adjust_w_and_qcon,
-            origin=compute_origin,
-            domain=compute_domain,
+        self._adjust_w_and_qcon_stencil = stencil_factory.from_dims_halo(
+            func=adjust_w_and_qcon,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._heat_diss_stencil = FrozenStencil(
-            heat_diss,
-            origin=compute_origin,
-            domain=compute_domain,
+        self._heat_diss_stencil = stencil_factory.from_dims_halo(
+            func=heat_diss,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-        self._heat_source_from_vorticity_damping_stencil = FrozenStencil(
-            heat_source_from_vorticity_damping,
-            externals={
-                "do_skeb": config.do_skeb,
-                "d_con": config.d_con,
-                **ax_offsets_b,
-            },
-            origin=b_origin,
-            domain=b_domain,
+        self._heat_source_from_vorticity_damping_stencil = (
+            stencil_factory.from_dims_halo(
+                func=heat_source_from_vorticity_damping,
+                compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
+                externals={
+                    "do_skeb": config.do_skeb,
+                    "d_con": config.d_con,
+                },
+            )
         )
-        self._compute_vorticity_stencil = FrozenStencil(
+        self._compute_vorticity_stencil = stencil_factory.from_dims_halo(
             compute_vorticity,
-            origin=full_origin,
-            domain=full_domain,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
         )
-        self._update_u_and_v_stencil = FrozenStencil(
-            update_u_and_v,
-            externals=ax_offsets_b,
-            origin=b_origin,
-            domain=b_domain,
+        self._update_u_and_v_stencil = stencil_factory.from_dims_halo(
+            update_u_and_v, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
         )
-        self._damping_factor_calculation_stencil = FrozenStencil(
-            delnflux.calc_damp, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
+        damping_factor_calculation_stencil = stencil_factory.from_origin_domain(
+            delnflux.calc_damp,
+            origin=(0, 0, 0),
+            domain=(1, 1, stencil_factory.grid_indexing.domain[2]),
         )
-
-        self._damping_factor_calculation_stencil(
+        damping_factor_calculation_stencil(
             self._tmp_damp_3d,
             self._column_namelist["nord_v"],
             self._column_namelist["damp_vt"],
             damping_coefficients.da_min_c,
         )
         self._delnflux_damp_vt = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :], (grid_indexing.domain[2],), (0,)
+            self._tmp_damp_3d[0, 0, :], (self.grid_indexing.domain[2],), (0,)
         )
 
-        self._damping_factor_calculation_stencil(
+        damping_factor_calculation_stencil(
             self._tmp_damp_3d,
             self._column_namelist["nord_w"],
             self._column_namelist["damp_w"],
             damping_coefficients.da_min_c,
         )
         self._delnflux_damp_w = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :], (grid_indexing.domain[2],), (0,)
+            self._tmp_damp_3d[0, 0, :], (self.grid_indexing.domain[2],), (0,)
         )
         y_temporary = utils.make_storage_from_shape(
-            shape=grid_indexing.max_shape, origin=grid_indexing.origin
+            shape=self.grid_indexing.max_shape, origin=self.grid_indexing.origin
         )
         self._copy_corners = PreAllocatedCopiedCornersFactory(
-            grid_indexing, dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], y_temporary=y_temporary
+            stencil_factory,
+            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
+            y_temporary=y_temporary,
         )
 
     def __call__(

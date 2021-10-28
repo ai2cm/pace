@@ -9,10 +9,10 @@ from gt4py.gtscript import (
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import FrozenStencil
 from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from fv3core.utils import corners
-from fv3core.utils.grid import GridData, GridIndexing, axis_offsets
+from fv3core.utils.grid import GridData
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
@@ -383,18 +383,19 @@ class CGridShallowWaterDynamics:
 
     def __init__(
         self,
-        grid_indexing: GridIndexing,
+        stencil_factory: StencilFactory,
         grid_data: GridData,
         nested: bool,
         grid_type: int,
         nord: int,
     ):
+        grid_indexing = stencil_factory.grid_indexing
         self.grid_data = grid_data
         self._dord4 = True
         self._fC = spec.grid.fC
 
         self._D2A2CGrid_Vectors = DGrid2AGrid2CGridVectors(
-            grid_indexing,
+            stencil_factory,
             grid_data,
             nested,
             grid_type,
@@ -407,10 +408,10 @@ class CGridShallowWaterDynamics:
         self.ptc = utils.make_storage_from_shape(
             grid_indexing.max_shape, origin=origin_halo1
         )
-        self._initialize_delpc_ptc = FrozenStencil(
-            func=initialize_delpc_ptc,
-            origin=grid_indexing.origin_full(),
-            domain=grid_indexing.domain_full(),
+        self._initialize_delpc_ptc = stencil_factory.from_dims_halo(
+            initialize_delpc_ptc,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
         )
 
         self._tmp_ke = utils.make_storage_from_shape(grid_indexing.max_shape)
@@ -418,126 +419,74 @@ class CGridShallowWaterDynamics:
         self._tmp_fx = utils.make_storage_from_shape(grid_indexing.max_shape)
         self._tmp_fx1 = utils.make_storage_from_shape(grid_indexing.max_shape)
         self._tmp_fx2 = utils.make_storage_from_shape(grid_indexing.max_shape)
-        origin = grid_indexing.origin_compute()
-        domain = grid_indexing.domain_compute(add=(1, 1, 0))
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
 
         if nord > 0:
-            self._divergence_corner = FrozenStencil(
+            self._divergence_corner = stencil_factory.from_dims_halo(
                 func=divergence_corner,
-                externals=ax_offsets,
-                origin=origin,
-                domain=domain,
+                compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             )
         else:
             self._divergence_corner = None
-        origin, domain = grid_indexing.get_origin_domain(
-            [X_INTERFACE_DIM, Y_DIM, Z_DIM], halos=(1, 1)
-        )
-        self._geoadjust_ut = FrozenStencil(
+
+        self._geoadjust_ut = stencil_factory.from_dims_halo(
             func=geoadjust_ut,
-            origin=origin,
-            domain=domain,
+            compute_dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
+            compute_halos=(1, 1),
         )
-        origin, domain = grid_indexing.get_origin_domain(
-            [X_DIM, Y_INTERFACE_DIM, Z_DIM], halos=(1, 1)
-        )
-        self._geoadjust_vt = FrozenStencil(
+
+        self._geoadjust_vt = stencil_factory.from_dims_halo(
             func=geoadjust_vt,
-            origin=origin,
-            domain=domain,
+            compute_dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM],
+            compute_halos=(1, 1),
         )
 
-        origin_full = grid_indexing.origin_full()
-        domain_full = grid_indexing.domain_full()
-        ax_offsets_full = axis_offsets(grid_indexing, origin_full, domain_full)
-
-        self._fill_corners_x_delp_pt_w_stencil = FrozenStencil(
+        self._fill_corners_x_delp_pt_w_stencil = stencil_factory.from_dims_halo(
             fill_corners_delp_pt_w,
-            externals={
-                "fill_corners_func": corners.fill_corners_2cells_x,
-                **ax_offsets_full,
-            },
-            origin=origin_full,
-            domain=domain_full,
+            externals={"fill_corners_func": corners.fill_corners_2cells_x},
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
         )
-        self._fill_corners_y_delp_pt_w_stencil = FrozenStencil(
+        self._fill_corners_y_delp_pt_w_stencil = stencil_factory.from_dims_halo(
             fill_corners_delp_pt_w,
-            externals={
-                "fill_corners_func": corners.fill_corners_2cells_y,
-                **ax_offsets_full,
-            },
-            origin=origin_full,
-            domain=domain_full,
+            externals={"fill_corners_func": corners.fill_corners_2cells_y},
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
         )
 
-        origin, domain = grid_indexing.get_origin_domain(
-            [X_INTERFACE_DIM, Y_DIM, Z_DIM], halos=(1, 1)
-        )
-        self._compute_nonhydro_fluxes_x_stencil = FrozenStencil(
+        self._compute_nonhydro_fluxes_x_stencil = stencil_factory.from_dims_halo(
             compute_nonhydro_fluxes_x,
-            origin=origin,
-            domain=domain,
+            compute_dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
+            compute_halos=(1, 1),
         )
 
-        origin, domain = grid_indexing.get_origin_domain(
-            [X_DIM, Y_DIM, Z_DIM], halos=(1, 1)
-        )
-        ax_offsets_transportdelp = axis_offsets(grid_indexing, origin, domain)
-        self._transportdelp_updatevorticity_and_ke = FrozenStencil(
+        self._transportdelp_updatevorticity_and_ke = stencil_factory.from_dims_halo(
             func=transportdelp_update_vorticity_and_kineticenergy,
-            externals={
-                "grid_type": grid_type,
-                **ax_offsets_transportdelp,
-            },
-            origin=origin,
-            domain=domain,
-        )
-        origin, domain = grid_indexing.get_origin_domain(
-            [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
-        )
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
-        self._circulation_cgrid = FrozenStencil(
-            func=circulation_cgrid,
-            externals={
-                **ax_offsets,
-            },
-            origin=origin,
-            domain=domain,
-        )
-        self._absolute_vorticity = FrozenStencil(
-            func=absolute_vorticity,
-            origin=origin,
-            domain=domain,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(1, 1),
+            externals={"grid_type": grid_type},
         )
 
-        origin, domain = grid_indexing.get_origin_domain(
-            [X_DIM, Y_INTERFACE_DIM, Z_DIM]
+        self._circulation_cgrid = stencil_factory.from_dims_halo(
+            func=circulation_cgrid,
+            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
         )
-        axis_offsets_y = axis_offsets(grid_indexing, origin, domain)
-        self._update_y_velocity = FrozenStencil(
+        self._absolute_vorticity = stencil_factory.from_dims_halo(
+            func=absolute_vorticity,
+            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
+        )
+
+        self._update_y_velocity = stencil_factory.from_dims_halo(
             func=update_y_velocity,
+            compute_dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM],
             externals={
                 "grid_type": grid_type,
-                "j_start": axis_offsets_y["j_start"],
-                "j_end": axis_offsets_y["j_end"],
             },
-            origin=origin,
-            domain=domain,
         )
-        origin, domain = grid_indexing.get_origin_domain(
-            [X_INTERFACE_DIM, Y_DIM, Z_DIM]
-        )
-        axis_offsets_x = axis_offsets(grid_indexing, origin, domain)
-        self._update_x_velocity = FrozenStencil(
+
+        self._update_x_velocity = stencil_factory.from_dims_halo(
             func=update_x_velocity,
-            externals={
-                "grid_type": grid_type,
-                "i_start": axis_offsets_x["i_start"],
-                "i_end": axis_offsets_x["i_end"],
-            },
-            origin=origin,
-            domain=domain,
+            compute_dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
+            externals={"grid_type": grid_type},
         )
 
     def _vorticitytransport_cgrid(

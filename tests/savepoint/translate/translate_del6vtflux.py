@@ -29,7 +29,7 @@ class TranslateDel6VtFlux(TranslateFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         self.compute_func = delnflux.DelnFluxNoSG(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.rarea,
             inputs.pop("nord_column"),

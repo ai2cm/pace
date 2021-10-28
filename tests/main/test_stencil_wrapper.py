@@ -1,17 +1,15 @@
 import contextlib
 import unittest.mock
-from importlib import resources
 
 import gt4py.gtscript
 import numpy as np
 import pytest
-import yaml
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3core.decorators
-from fv3core.decorators import FrozenStencil, StencilConfig
+from fv3core import StencilConfig
 from fv3core.utils.global_config import set_backend
 from fv3core.utils.gt4py_utils import make_storage_from_shape_uncached
+from fv3core.utils.stencil import FrozenStencil
 from fv3core.utils.typing import FloatField
 
 
@@ -84,7 +82,7 @@ class MockFieldInfo:
     ],
 )
 def test_compute_field_origins(field_info, origin, field_origins):
-    result = fv3core.decorators.compute_field_origins(field_info, origin)
+    result = FrozenStencil._compute_field_origins(field_info, origin)
     assert result == field_origins
 
 
@@ -238,277 +236,13 @@ def test_frozen_field_after_parameter(backend):
         format_source=False,
         device_sync=False,
     )
-    result = FrozenStencil(
+    FrozenStencil(
         field_after_parameter_stencil,
         origin=(0, 0, 0),
         domain=(3, 3, 3),
         stencil_config=config,
         externals={},
     )
-
-
-@pytest.mark.parametrize("validate_args", [True, False])
-@pytest.mark.parametrize("device_sync", [True])
-@pytest.mark.parametrize("rebuild", [False])
-@pytest.mark.parametrize("format_source", [False])
-def test_copy_non_frozen_stencil(
-    backend: str,
-    rebuild: bool,
-    validate_args: bool,
-    format_source: bool,
-    device_sync: bool,
-):
-    config = StencilConfig(
-        backend=backend,
-        rebuild=rebuild,
-        validate_args=validate_args,
-        format_source=format_source,
-        device_sync=device_sync,
-    )
-    stencil = fv3core.decorators.gtstencil(
-        copy_stencil,
-        stencil_config=config,
-        externals={},
-    )
-    q_in = make_storage_from_shape_uncached((3, 3, 3))
-    q_in[:] = 1.0
-    q_out = make_storage_from_shape_uncached((3, 3, 3))
-    q_out[:] = 2.0
-    stencil(
-        q_in,
-        q_out,
-        origin=(0, 0, 0),
-        domain=(3, 3, 3),
-    )
-    np.testing.assert_array_equal(q_in, q_out)
-
-
-@pytest.mark.parametrize("validate_args", [False])
-@pytest.mark.parametrize("device_sync", [True])
-@pytest.mark.parametrize("rebuild", [True])
-@pytest.mark.parametrize("format_source", [False])
-def test_gtscript_with_origin_and_domain_gives_frozen_stencil(
-    backend: str,
-    rebuild: bool,
-    validate_args: bool,
-    format_source: bool,
-    device_sync: bool,
-):
-    config = StencilConfig(
-        backend=backend,
-        rebuild=rebuild,
-        validate_args=validate_args,
-        format_source=format_source,
-        device_sync=device_sync,
-    )
-    stencil = fv3core.decorators.gtstencil(
-        copy_stencil,
-        origin=(0, 0, 0),
-        domain=(3, 3, 3),
-        stencil_config=config,
-        externals={},
-    )
-    assert isinstance(stencil, FrozenStencil)
-
-
-@pytest.mark.parametrize("validate_args", [True, False])
-@pytest.mark.parametrize("device_sync", [True])
-@pytest.mark.parametrize("rebuild", [False, True])  # even if rebuild=True for gt4py
-@pytest.mark.parametrize("format_source", [False])
-def test_gtscript_with_origin_and_domain_does_not_rebuild(
-    backend: str,
-    rebuild: bool,
-    validate_args: bool,
-    format_source: bool,
-    device_sync: bool,
-):
-    config = StencilConfig(
-        backend=backend,
-        rebuild=rebuild,
-        validate_args=validate_args,
-        format_source=format_source,
-        device_sync=device_sync,
-    )
-    stencil = fv3core.decorators.gtstencil(
-        copy_stencil,
-        origin=(0, 0, 0),
-        domain=(3, 3, 3),
-        stencil_config=config,
-        externals={},
-    )
-    stencil_object = FrozenStencil(
-        copy_stencil,
-        origin=(0, 0, 0),
-        domain=(3, 3, 3),
-        stencil_config=config,
-        externals={},
-    ).stencil_object
-    mock_stencil = unittest.mock.MagicMock(return_value=stencil_object)
-    q_in = make_storage_from_shape_uncached((3, 3, 3))
-    q_out = make_storage_from_shape_uncached((3, 3, 3))
-    with mock_gtscript_stencil(mock_stencil):
-        stencil(
-            q_in,
-            q_out,
-        )
-    assert mock_stencil.call_count == 0
-
-
-@pytest.mark.parametrize("validate_args", [True, False])
-@pytest.mark.parametrize("device_sync", [True])
-@pytest.mark.parametrize("rebuild", [False, True])  # even if rebuild=True for gt4py
-@pytest.mark.parametrize("format_source", [False])
-def test_copy_non_frozen_stencil_does_not_rebuild(
-    backend: str,
-    rebuild: bool,
-    validate_args: bool,
-    format_source: bool,
-    device_sync: bool,
-):
-    config = StencilConfig(
-        backend=backend,
-        rebuild=rebuild,
-        validate_args=validate_args,
-        format_source=format_source,
-        device_sync=device_sync,
-    )
-    stencil = fv3core.decorators.gtstencil(
-        copy_stencil,
-        stencil_config=config,
-        externals={},
-    )
-    stencil_object = FrozenStencil(
-        copy_stencil,
-        origin=(0, 0, 0),
-        domain=(3, 3, 3),
-        stencil_config=config,
-        externals={},
-    ).stencil_object
-    mock_stencil = unittest.mock.MagicMock(return_value=stencil_object)
-    q_in = make_storage_from_shape_uncached((3, 3, 3))
-    q_out = make_storage_from_shape_uncached((3, 3, 3))
-    with mock_gtscript_stencil(mock_stencil):
-        stencil(
-            q_in,
-            q_out,
-            origin=(0, 0, 0),
-            domain=(3, 3, 3),
-        )
-        mock_stencil.assert_called_once()
-        stencil(
-            q_in,
-            q_out,
-            origin=(0, 0, 0),
-            domain=(3, 3, 3),
-        )
-        mock_stencil.assert_called_once()
-
-
-@pytest.mark.parametrize("validate_args", [True, False])
-@pytest.mark.parametrize("device_sync", [True])
-@pytest.mark.parametrize("rebuild", [False, True])  # even if rebuild=True for gt4py
-@pytest.mark.parametrize("format_source", [False])
-def test_copy_non_frozen_stencil_rebuilds_for_new_origin(
-    backend: str,
-    rebuild: bool,
-    validate_args: bool,
-    format_source: bool,
-    device_sync: bool,
-):
-    config = StencilConfig(
-        backend=backend,
-        rebuild=rebuild,
-        validate_args=validate_args,
-        format_source=format_source,
-        device_sync=device_sync,
-    )
-    stencil = fv3core.decorators.gtstencil(
-        copy_stencil,
-        stencil_config=config,
-        externals={},
-    )
-    stencil_object = FrozenStencil(
-        copy_stencil,
-        origin=(0, 0, 0),
-        domain=(3, 3, 3),
-        stencil_config=config,
-        externals={},
-    ).stencil_object
-    mock_stencil = unittest.mock.MagicMock(return_value=stencil_object)
-    q_in = make_storage_from_shape_uncached((3, 3, 3))
-    q_out = make_storage_from_shape_uncached((3, 3, 3))
-    with mock_gtscript_stencil(mock_stencil):
-        stencil(
-            q_in,
-            q_out,
-            origin=(0, 0, 0),
-            domain=(2, 2, 2),
-        )
-        stencil(
-            q_in,
-            q_out,
-            origin=(1, 1, 1),
-            domain=(2, 2, 2),
-        )
-    assert mock_stencil.call_count == 2
-
-
-@pytest.mark.parametrize("validate_args", [True, False])
-@pytest.mark.parametrize("device_sync", [True])
-@pytest.mark.parametrize("rebuild", [False, True])  # even if rebuild=True for gt4py
-@pytest.mark.parametrize("format_source", [False])
-def test_copy_non_frozen_stencil_rebuilds_for_new_domain(
-    backend: str,
-    rebuild: bool,
-    validate_args: bool,
-    format_source: bool,
-    device_sync: bool,
-):
-    config = StencilConfig(
-        backend=backend,
-        rebuild=rebuild,
-        validate_args=validate_args,
-        format_source=format_source,
-        device_sync=device_sync,
-    )
-    stencil = fv3core.decorators.gtstencil(
-        copy_stencil,
-        stencil_config=config,
-        externals={},
-    )
-    stencil_object = FrozenStencil(
-        copy_stencil,
-        origin=(0, 0, 0),
-        domain=(3, 3, 3),
-        stencil_config=config,
-        externals={},
-    ).stencil_object
-    mock_stencil = unittest.mock.MagicMock(return_value=stencil_object)
-    q_in = make_storage_from_shape_uncached((3, 3, 3))
-    q_out = make_storage_from_shape_uncached((3, 3, 3))
-    with mock_gtscript_stencil(mock_stencil):
-        stencil(
-            q_in,
-            q_out,
-            origin=(0, 0, 0),
-            domain=(2, 2, 2),
-        )
-        stencil(
-            q_in,
-            q_out,
-            origin=(0, 0, 0),
-            domain=(3, 3, 3),
-        )
-    assert mock_stencil.call_count == 2
-
-
-def test_import_gt4py_options():
-    file = resources.open_binary("fv3core", "gt4py_options.yml")
-    assert file is not None
-
-    options = yaml.safe_load(file)
-    file.close()
-    assert options
 
 
 @pytest.mark.parametrize("backend", ("numpy", "gtc:cuda"))

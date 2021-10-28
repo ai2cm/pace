@@ -11,7 +11,7 @@ class TranslateDel2Cubed(TranslateFortranData2Py):
 
     def compute_from_storage(self, inputs):
         hyperdiffusion = HyperdiffusionDamping(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.rarea,
             inputs.pop("nmax"),

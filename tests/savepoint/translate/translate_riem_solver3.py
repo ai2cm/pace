@@ -7,7 +7,7 @@ class TranslateRiem_Solver3(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
         self.compute_func = RiemannSolver3(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             spec.RiemannConfig(
                 p_fac=spec.namelist.p_fac,
                 a_imp=spec.namelist.a_imp,

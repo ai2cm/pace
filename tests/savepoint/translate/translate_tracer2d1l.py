@@ -43,14 +43,14 @@ class TranslateTracer2D1L(ParallelTranslate):
             inputs["tracers"], inputs.pop("nq")
         )
         transport = fv3core.stencils.fvtp2d.FiniteVolumeTransport(
-            grid_indexing=spec.grid.grid_indexing,
+            stencil_factory=spec.grid.stencil_factory,
             grid_data=spec.grid.grid_data,
             damping_coefficients=spec.grid.damping_coefficients,
             grid_type=spec.grid.grid_type,
             hord=spec.namelist.hord_tr,
         )
         self.tracer_advection = fv3core.stencils.tracer_2d_1l.TracerAdvection(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             transport,
             communicator,
             fv_dynamics.NQ,

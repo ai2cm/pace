@@ -10,7 +10,7 @@ class TranslateFxAdv(TranslateFortranData2Py):
         vtinfo = grid.y3d_domain_dict()
         vtinfo["serialname"] = "vt"
         self.compute_func = FiniteVolumeFluxPrep(
-            self.grid.grid_indexing,
+            self.grid.stencil_factory,
             self.grid.grid_data,
         )
         self.in_vars["data_vars"] = {
