@@ -93,8 +93,8 @@ missing_grid_info = dwind.collect_input_data(
     serializer, serializer.get_savepoint("FVUpdatePhys-In")[0]
 )
 #state = ModelState.init_baroclinic(quantity_factory, test_case=13)
-#state = ModelState.init_from_serialized_data(serializer, grid, quantity_factory)
-state = ModelState.init_empty(quantity_factory)
+state = ModelState.init_from_serialized_data(serializer, grid, quantity_factory,  namelist, communicator, missing_grid_info)
+#state = ModelState.init_empty(quantity_factory)
 # TODO
 do_adiabatic_init = False
 # TODO derive from namelist
@@ -106,22 +106,24 @@ dycore = fv3core.DynamicalCore(
     grid_indexing=grid.grid_indexing,
     damping_coefficients=grid.damping_coefficients,
     config=namelist.dynamical_core,
-    ak=state.ak_quantity,#new_grid.ak, #state["atmosphere_hybrid_a_coordinate"],
-    bk=state.bk_quantity, #new_grid.bk, #state["atmosphere_hybrid_b_coordinate"],
-    phis=state.phis_quantity, #state["surface_geopotential"],
+    ak=state.dycore_state.ak_quantity,#new_grid.ak, #state["atmosphere_hybrid_a_coordinate"],
+    bk=state.dycore_state.bk_quantity, #new_grid.bk, #state["atmosphere_hybrid_b_coordinate"],
+    phis=state.dycore_state.phis_quantity, #state["surface_geopotential"],
     ptop = 300.0, #new_grid.ptop,
     ks = 18, #new_grid.ks
 )
 
-step_physics = Physics(grid, namelist, communicator, missing_grid_info,  300.0)#new_grid.ptop)
+step_physics = Physics(grid, namelist, 300.0)#new_grid.ptop)
 
 for t in range(1, 10):
     dycore.step_dynamics(
-        state,
+        state.dycore_state,
         do_adiabatic_init,
         bdt,  
     )
-    step_physics(state)
+    state.copy_from_dycore_to_physics()
+    step_physics(state.physics_state)
+    state.update_dycore_state()
     if t % 5 == 0:
         comm.Barrier()
         output_vars = [
@@ -141,7 +143,7 @@ for t in range(1, 10):
         output = {}
 
         for key in output_vars:
-            getattr(state, key).synchronize()
-            output[key] = np.asarray(getattr(state, key))
+            getattr(state.dycore_state, key).synchronize()
+            output[key] = np.asarray(getattr(state.dycore_state, key))
         np.save("pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npy", output)
 
