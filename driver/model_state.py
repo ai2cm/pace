@@ -70,7 +70,6 @@ class DycoreState:
         for field in fields(cls):
             if "dims" in field.metadata.keys():
                 initial_storages[field.name] = quantity_factory.zeros(field.metadata["dims"], field.metadata["units"], dtype=float).storage
-                print('what', field.name,  initial_storages[field.name].shape)
         return cls(**initial_storages, quantity_factory=quantity_factory)
     
     @classmethod
@@ -84,24 +83,7 @@ class DycoreState:
         for delvar in ["ptop", "ks"]:
             del input_data[delvar]
         return cls(**input_data, quantity_factory=quantity_factory)
-    """
-    @classmethod
-    def init_baroclinic(cls, quantity_factory, test_case=13):
-        numpy_state = baroclinic_initialization.compute()
-        make_quantities
-        make_storages
-        #self._quantity_factory.zeros(
-        #    [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM], "radians", dtype=float
-        #)
-        #fv3util.Quantity(
-        #            input_data,
-        #            dims,
-        #            properties["units"],
-        #            origin=grid.sizer.get_origin(dims),
-        #            extent=grid.sizer.get_extent(dims),
-        #        )
-        return cls(**input_data, quantity_factory=quantity_factory)
-    """
+        
     def __getitem__(self, item):
         return getattr(self, item)
 
@@ -193,8 +175,8 @@ class ModelState:
         )
    
     @classmethod
-    def init_empty(cls, quantity_factory,  grid, namelist, comm, grid_info):
-         dycore_state = DycoreState.init_empty(serializer,quantity_factory)
+    def init_empty(cls, grid, quantity_factory,  namelist, comm, grid_info):
+         dycore_state = DycoreState.init_empty(quantity_factory)
          physics_state = PhysicsState.init_empty(quantity_factory)
          # If copy gets removed
          # physics_state = PhysicsState.init_from_dycore(quantity_factory, dycore_state)
@@ -206,7 +188,14 @@ class ModelState:
         physics_state = PhysicsState.init_empty(quantity_factory)
         return cls(dycore_state, physics_state,  quantity_factory, grid, namelist, comm, grid_info)
 
-    def copy_from_dycore_to_physics(self):
+    @classmethod
+    def init_from_dycore_state(cls, dycore_state: DycoreState, grid, quantity_factory: fv3util.QuantityFactory, namelist, comm, grid_info):
+        physics_state = PhysicsState.init_empty(quantity_factory)
+        # If copy gets removed
+        # physics_state = PhysicsState.init_from_dycore(quantity_factory, dycore_state)
+        return cls(dycore_state, physics_state,  quantity_factory, grid, namelist, comm, grid_info)
+    
+    def update_physics_inputs_state(self):
         self.state_updater.copy_from_dycore_to_physics(self.dycore_state, self.physics_state)
 
     def update_dycore_state(self):

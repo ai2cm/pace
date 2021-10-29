@@ -21,6 +21,7 @@ from fv3gfs.physics.stencils.physics import Physics
 from model_state import ModelState
 from fv3gfs.util.constants import N_HALO_DEFAULT
 from fv3core.grid import MetricTerms
+from baroclinic_initialization import InitBaroclinic
 # TODO move to utils
 #from fv3core.utils.global_constants import LON_OR_LAT_DIM
 LON_OR_LAT_DIM = "lon_or_lat"
@@ -92,9 +93,17 @@ dwind = TranslateUpdateDWindsPhys(grid)
 missing_grid_info = dwind.collect_input_data(
     serializer, serializer.get_savepoint("FVUpdatePhys-In")[0]
 )
-#state = ModelState.init_baroclinic(quantity_factory, test_case=13)
-state = ModelState.init_from_serialized_data(serializer, grid, quantity_factory,  namelist, communicator, missing_grid_info)
-#state = ModelState.init_empty(quantity_factory)
+init_mode = 'serialized_data'
+if init_mode == 'baroclinic':
+    # baroclinic intialization option
+    dycore_state = InitBaroclinic.init_empty()
+    dycore_state.baroclinic_initiaization()#new_grid.ak, new_grid.bk)
+    state = ModelState.init_from_dycore_state(dycore_state, grid, quantity_factory, namelist, communicator, missing_grid_info)
+if init_mode == 'serialized_data':
+    # initialize from serialized data
+    state = ModelState.init_from_serialized_data(serializer, grid, quantity_factory,  namelist, communicator, missing_grid_info)
+if init_mode == 'empty':
+    state = ModelState.init_empty(grid, quantity_factory, namelist, communicator, missing_grid_info)
 # TODO
 do_adiabatic_init = False
 # TODO derive from namelist
@@ -121,7 +130,7 @@ for t in range(1, 10):
         do_adiabatic_init,
         bdt,  
     )
-    state.copy_from_dycore_to_physics()
+    state.update_physics_inputs_state()
     step_physics(state.physics_state)
     state.update_dycore_state()
     if t % 5 == 0:
