@@ -127,17 +127,12 @@ dycore = fv3core.DynamicalCore(
     ks = new_grid.ks
 )
 
-step_physics = Physics(grid, namelist, 300.0)#new_grid.ptop)
+physics = Physics(grid, namelist, 300.0)#new_grid.ptop)
 
 for t in range(1, 10):
-    dycore.step_dynamics(
-        state.dycore_state,
-        do_adiabatic_init,
-        bdt,  
-    )
-    state.update_physics_inputs_state()
-    step_physics(state.physics_state)
-    state.update_dycore_state()
+    state.step_dynamics(dycore, do_adiabatic_init, bdt)
+    state.step_physics(physics)
+
     if t % 5 == 0:
         comm.Barrier()
         output_vars = [

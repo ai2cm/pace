@@ -5,6 +5,8 @@ import fv3core
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.microphysics import MicrophysicsState
 from fv3core.dycore_state import DycoreState
+from fv3core import DynamicalCore
+from fv3gfs.physics.stencils.physics import Physics
 from stencil_functions import copy_fields_in, fill_gfs, prepare_tendencies_and_update_tracers
 from fv_update_phys import ApplyPhysics2Dycore
 import fv3gfs.util as fv3util 
@@ -53,6 +55,17 @@ class ModelState:
     def update_dycore_state(self):
         self.state_updater(self.dycore_state, self.physics_state)
 
+    def step_physics(self, physics: Physics):
+        self.update_physics_inputs_state()
+        physics(self.physics_state)
+        self.update_dycore_state()
+
+    def step_dynamics(self, dycore: DynamicalCore, do_adiabatic_init: bool, bdt: float):
+        dycore.step_dynamics(
+            self.dycore_state,
+            do_adiabatic_init,
+            bdt,  
+        )
 
 class UpdateAtmosphereState:
     """Fortran name is atmosphere_state_update
