@@ -18,7 +18,7 @@ import fv3core.utils.global_config as global_config
 import fv3gfs.util as util
 import gt4py
 from fv3gfs.physics.stencils.physics import Physics
-from model_state import ModelState
+from model_state import ModelState, DycoreState
 from fv3gfs.util.constants import N_HALO_DEFAULT
 from fv3core.grid import MetricTerms
 from baroclinic_initialization import InitBaroclinic
@@ -79,7 +79,7 @@ quantity_factory = util.QuantityFactory.from_backend(
     sizer, backend=backend
 )
 # TODO use MetricTerms created grid for grid_data
-#new_grid = MetricTerms(quantity_factory=quantity_factory, communicator=communicator)
+new_grid = MetricTerms(quantity_factory=quantity_factory, communicator=communicator)
 
 ## create a state from serialized data
 #savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
@@ -94,16 +94,21 @@ missing_grid_info = dwind.collect_input_data(
     serializer, serializer.get_savepoint("FVUpdatePhys-In")[0]
 )
 init_mode = 'serialized_data'
-if init_mode == 'baroclinic':
-    # baroclinic intialization option
-    dycore_state = InitBaroclinic.init_empty()
-    dycore_state.baroclinic_initiaization()#new_grid.ak, new_grid.bk)
-    state = ModelState.init_from_dycore_state(dycore_state, grid, quantity_factory, namelist, communicator, missing_grid_info)
+
 if init_mode == 'serialized_data':
     # initialize from serialized data
     state = ModelState.init_from_serialized_data(serializer, grid, quantity_factory,  namelist, communicator, missing_grid_info)
 if init_mode == 'empty':
     state = ModelState.init_empty(grid, quantity_factory, namelist, communicator, missing_grid_info)
+if init_mode == 'baroclinic_dataclass':
+    # baroclinic intialization option
+    dycore_state = InitBaroclinic.init_empty() # e.g. class InitBaroclinic(DycoreState)
+    dycore_state.baroclinic_initialization()
+    state = ModelState.init_from_dycore_state(dycore_state, grid, quantity_factory, namelist, communicator, missing_grid_info)
+if init_mode == 'baroclinic_numpy':
+    # baroclinic intialization option
+    numpy_arrays = compute_baroclinic_initialization(fields(DycoreState))
+    state = ModelState.init_from_numpy_arrays(numpy_arrays, grid, quantity_factory, namelist, communicator, missing_grid_info)
 # TODO
 do_adiabatic_init = False
 # TODO derive from namelist
@@ -115,11 +120,11 @@ dycore = fv3core.DynamicalCore(
     grid_indexing=grid.grid_indexing,
     damping_coefficients=grid.damping_coefficients,
     config=namelist.dynamical_core,
-    ak=state.dycore_state.ak_quantity,#new_grid.ak, #state["atmosphere_hybrid_a_coordinate"],
-    bk=state.dycore_state.bk_quantity, #new_grid.bk, #state["atmosphere_hybrid_b_coordinate"],
+    ak=new_grid.ak,
+    bk=new_grid.bk,
     phis=state.dycore_state.phis_quantity, #state["surface_geopotential"],
-    ptop = 300.0, #new_grid.ptop,
-    ks = 18, #new_grid.ks
+    ptop = new_grid.ptop,
+    ks = new_grid.ks
 )
 
 step_physics = Physics(grid, namelist, 300.0)#new_grid.ptop)
