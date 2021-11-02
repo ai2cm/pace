@@ -81,12 +81,6 @@ quantity_factory = util.QuantityFactory.from_backend(
 # TODO use MetricTerms created grid for grid_data
 new_grid = MetricTerms(quantity_factory=quantity_factory, communicator=communicator)
 
-## create a state from serialized data
-#savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
-#driver_object = fv3core.testing.TranslateFVDynamics([grid])
-#input_data = driver_object.collect_input_data(serializer, savepoint_in)
-#input_data["comm"] = communicator
-#state = driver_object.state_from_inputs(input_data)
 
 # read in missing grid info for physics - this will be removed
 dwind = TranslateUpdateDWindsPhys(grid)
