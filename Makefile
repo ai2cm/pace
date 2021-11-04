@@ -6,7 +6,7 @@ CWD=$(shell pwd)
 PULL ?=True
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
-CHECK_CHANGED_SCRIPT=python changed_from_main.py
+CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 
 
 build:

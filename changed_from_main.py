@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 This script determines whether one of the projects in the repo or any of its
 dependencies are different from the version on the `main` branch.
