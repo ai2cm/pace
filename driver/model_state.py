@@ -1,7 +1,5 @@
-from dataclasses import dataclass, field, fields, InitVar
+from dataclasses import fields
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK, Float
-import copy
-import fv3core
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.microphysics import MicrophysicsState
 from fv3core.dycore_state import DycoreState
@@ -29,12 +27,26 @@ class ModelState:
          # If copy gets removed
          # physics_state = PhysicsState.init_from_dycore(quantity_factory, dycore_state)
          return cls(dycore_state, physics_state,  quantity_factory, grid, namelist, comm, grid_info)
-             
+
+
+    #intended for the case of not copying from physics to dycore, reusing the same variables in the dycore and physics
+    @classmethod
+    def init_physics_from_dycore(cls, quantity_factory: fv3util.QuantityFactory, dycore_state: DycoreState):
+        initial_storages = {}
+        dycore_fields = fields(DycoreState)
+        for field in fields(PhysicsState):
+            if field.metadata["from_dycore"]:
+                initial_storages[field.name] = getattr(dycore_state, field.name)
+            else:
+                initial_storages[field.name] = quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],  field.metadata["units"], dtype=float).storage
+        return PhysicsState(**initial_storages, quantity_factory=quantity_factory)
+ 
     @classmethod
     def init_from_dycore_state(cls, dycore_state: DycoreState, grid, quantity_factory: fv3util.QuantityFactory, namelist, comm, grid_info):
         physics_state = PhysicsState.init_empty(quantity_factory)
+        
         # If copy gets removed
-        # physics_state = PhysicsState.init_from_dycore(quantity_factory, dycore_state)
+        # physics_state = cls.init_physics_from_dycore(quantity_factory, dycore_state)
         return cls(dycore_state, physics_state,  quantity_factory, grid, namelist, comm, grid_info)
 
 
@@ -147,7 +159,7 @@ class UpdateAtmosphereState:
     # TODO -- we can probably use the dycore state and not copy
     # check if any of these are modified internally that
     # are fields that are not then overwritten as a last step
-    def copy_from_dycore_to_physics(self, dycore_state, physics_state):
+    def copy_from_dycore_to_physics(self, dycore_state: DycoreState, physics_state: PhysicsState):
         self._copy_fields_in(
             dycore_state.qvapor,
             dycore_state.qliquid,
