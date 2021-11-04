@@ -29,26 +29,31 @@ class ModelState:
          # If copy gets removed
          # physics_state = PhysicsState.init_from_dycore(quantity_factory, dycore_state)
          return cls(dycore_state, physics_state,  quantity_factory, grid, namelist, comm, grid_info)
-    
-    @classmethod
-    def init_from_serialized_data(cls, serializer, grid, quantity_factory: fv3util.QuantityFactory, namelist, comm, grid_info):
-        dycore_state = DycoreState.init_from_serialized_data(serializer, grid, quantity_factory)
-        physics_state = PhysicsState.init_empty(quantity_factory)
-        return cls(dycore_state, physics_state,  quantity_factory, grid, namelist, comm, grid_info)
-
-    @classmethod
-    def init_from_numpy_arrays(cls, dict_of_numpy_arrays, grid, quantity_factory: fv3util.QuantityFactory, namelist, comm, grid_info):
-        dycore_state = DycoreState.init_numpy_arrays(dict_of_numpy_arrays, quantity_factory)
-        physics_state = PhysicsState.init_empty(quantity_factory)
-        return cls(dycore_state, physics_state,  quantity_factory, grid, namelist, comm, grid_info)
-
+             
     @classmethod
     def init_from_dycore_state(cls, dycore_state: DycoreState, grid, quantity_factory: fv3util.QuantityFactory, namelist, comm, grid_info):
         physics_state = PhysicsState.init_empty(quantity_factory)
         # If copy gets removed
         # physics_state = PhysicsState.init_from_dycore(quantity_factory, dycore_state)
         return cls(dycore_state, physics_state,  quantity_factory, grid, namelist, comm, grid_info)
-    
+
+
+    @classmethod
+    def init_from_serialized_data(cls, serializer, grid, quantity_factory: fv3util.QuantityFactory, namelist, comm, grid_info):
+        dycore_state = DycoreState.init_from_serialized_data(serializer, grid, quantity_factory)
+        return cls.init_from_dycore_state(dycore_state, grid, quantity_factory, namelist, comm, grid_info)
+
+    @classmethod
+    def init_from_numpy_arrays(cls, dict_of_numpy_arrays, grid, quantity_factory: fv3util.QuantityFactory, namelist, comm, grid_info):
+        dycore_state = DycoreState.init_from_numpy_arrays(dict_of_numpy_arrays, quantity_factory)
+        return cls.init_from_dycore_state(dycore_state, grid, quantity_factory, namelist, comm, grid_info)
+
+
+    @classmethod
+    def init_from_quantities(cls, dict_of_quantities, grid, quantity_factory: fv3util.QuantityFactory, namelist, comm, grid_info):
+        dycore_state = DycoreState.init_from_quantities(dict_of_quantities)
+        return cls.init_from_dycore_state(dycore_state, grid, quantity_factory, namelist, comm, grid_info)
+
     def update_physics_inputs_state(self):
         self.state_updater.copy_from_dycore_to_physics(self.dycore_state, self.physics_state)
 
