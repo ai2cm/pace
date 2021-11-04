@@ -1,14 +1,20 @@
+# this dotfile is used as a reference source for project dependencies
+# each folder entry must have a "label" equal to its directory name
+#
+# If you update this file, please re-generate the svg with `make dependencies.svg`
+# and commit it to the repository
+
 digraph {
-  Pace [shape=box]
-  fv3core [shape=oval]
-  driver [shape=oval]
-  physics [shape=oval]
-  util [shape=oval]
+  pace [shape=box]
+  fv3core [shape=oval, label="fv3core"]
+  driver [shape=oval, label="driver"]
+  physics [shape=oval, label="fv3gfs-physics"]
+  util [shape=oval, label="fv3gfs-util"]
   
-  Pace -> fv3core
-  Pace -> physics
-  Pace -> util
-  Pace -> driver
+  pace -> fv3core
+  pace -> physics
+  pace -> util
+  pace -> driver
   driver -> fv3core
   driver -> physics
   driver -> util

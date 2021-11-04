@@ -6,6 +6,7 @@ CWD=$(shell pwd)
 PULL ?=True
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
+CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 
 
 build:
@@ -18,16 +19,18 @@ dev:
 		$(FV3GFS_IMAGE) bash
 
 test_util:
-	$(MAKE) -C fv3gfs-util test
+	if [ $(shell $(CHECK_CHANGED_SCRIPT) fv3gfs-util) != false ]; then \
+		$(MAKE) -C fv3gfs-util test; \
+	fi
 	
 savepoint_tests:
-	$(MAKE) -C fv3core savepoint_tests
+	$(MAKE) -C fv3core $@
 
 savepoint_tests_mpi:
-	$(MAKE) -C fv3core savepoint_tests_mpi
+	$(MAKE) -C fv3core $@
 
-dependencies.svg:
-	dot -Tsvg dependencies.dot -o $@
+dependencies.svg: dependencies.dot
+	dot -Tsvg $< -o $@
 
 constraints.txt: fv3core/requirements.txt fv3core/requirements/requirements_wrapper.txt fv3core/requirements/requirements_lint.txt fv3gfs-util/requirements.txt fv3gfs-physics/requirements.txt
 	pip-compile $^ --output-file constraints.txt
