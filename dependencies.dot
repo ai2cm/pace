@@ -1,5 +1,9 @@
 # this dotfile is used as a reference source for project dependencies
 # each folder entry must have a "label" equal to its directory name
+#
+# If you update this file, please re-generate the svg with `make dependencies.svg`
+# and commit it to the repository
+
 digraph {
   pace [shape=box]
   fv3core [shape=oval, label="fv3core"]

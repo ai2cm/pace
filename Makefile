@@ -19,15 +19,15 @@ dev:
 		$(FV3GFS_IMAGE) bash
 
 test_util:
-	if [ $(shell $(CHECK_CHANGED_SCRIPT) fv3gfs-util) = true ]; then \
+	if [ $(shell $(CHECK_CHANGED_SCRIPT) fv3gfs-util) != false ]; then \
 		$(MAKE) -C fv3gfs-util test; \
 	fi
 	
 savepoint_tests:
-	$(MAKE) -C fv3core savepoint_tests
+	$(MAKE) -C fv3core $@
 
 savepoint_tests_mpi:
-	$(MAKE) -C fv3core savepoint_tests_mpi
+	$(MAKE) -C fv3core $@
 
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
