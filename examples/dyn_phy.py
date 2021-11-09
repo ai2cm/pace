@@ -1,4 +1,5 @@
 import sys
+from types import DynamicClassAttribute
 
 # Use this to add non-installed seriablox path
 # sys.path.append("/usr/local/serialbox/python/")
@@ -25,19 +26,30 @@ import click
 
 import time
 
+MODEL_OUT_DIR = "./model_output"
+
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
+
 def print_for_rank0(msg: str):
-    '''Only prints when rank is 0. Flush immediately.''' 
+    """Only prints when rank is 0. Flush immediately."""
     if rank == 0:
         print(f"[R{rank}]{msg}", flush=True)
+
+
+class DeactivatedDycore:
+    def __init__(self) -> None:
+        pass
+
+    def step_dynamics(*args, **kwargs):
+        pass
 
 
 # Reuse infrastructure to read in grid variables
 # add path to integration test to reuse existing grid logic
 sys.path.append(
-    "/scratch/snx3000/fdeconic/fv3gfs-integration/tests/savepoint/translate/"
+    "/home/floriand/vulcan/git/fv3gfs-integration/tests/savepoint/translate/"
 )
 from translate_update_dwind_phys import TranslateUpdateDWindsPhys
 
@@ -46,10 +58,12 @@ from translate_update_dwind_phys import TranslateUpdateDWindsPhys
 @click.argument("data_directory", required=True, nargs=1)
 @click.argument("time_steps", required=True, default="10")
 @click.argument("backend", required=True, default="numpy")
+@click.option("--run-dycore/--skip-dycore", default=True)
 def driver(
     data_directory: str,
     time_steps: str,
     backend: str,
+    run_dycore: bool,
 ):
     print_for_rank0(f"Running {data_directory} on {backend}")
     print_for_rank0(f"Init & timestep 0")
@@ -61,7 +75,7 @@ def driver(
     fv3core.set_rebuild(False)
     fv3core.set_validate_args(False)
     spec.set_namelist(data_directory + "/input.nml")
-    
+
     # set up of helper structures
     serializer = serialbox.Serializer(
         serialbox.OpenModeKind.Read,
@@ -99,21 +113,24 @@ def driver(
     )
 
     # initialize dynamical core and physics objects
-    dycore = fv3core.DynamicalCore(
-        comm=communicator,
-        grid_data=spec.grid.grid_data,
-        grid_indexing=spec.grid.grid_indexing,
-        damping_coefficients=spec.grid.damping_coefficients,
-        config=spec.namelist.dynamical_core,
-        ak=state["atmosphere_hybrid_a_coordinate"],
-        bk=state["atmosphere_hybrid_b_coordinate"],
-        phis=state["surface_geopotential"],
-    )
+    if run_dycore:
+        dycore = fv3core.DynamicalCore(
+            comm=communicator,
+            grid_data=spec.grid.grid_data,
+            grid_indexing=spec.grid.grid_indexing,
+            damping_coefficients=spec.grid.damping_coefficients,
+            config=spec.namelist.dynamical_core,
+            ak=state["atmosphere_hybrid_a_coordinate"],
+            bk=state["atmosphere_hybrid_b_coordinate"],
+            phis=state["surface_geopotential"],
+        )
+    else:
+        dycore = DeactivatedDycore()
     step_physics = Physics(grid, spec.namelist, communicator, missing_grid_info)
 
     print_for_rank0(f"Init & timestep 0 done in {time.time() - start}s ")
 
-    for t in range(1, int(time_steps)+1):
+    for t in range(1, int(time_steps) + 1):
         if rank == 0:
             start = time.time()
         dycore.step_dynamics(
@@ -141,7 +158,7 @@ def driver(
                 state[key].synchronize()
                 output[key] = np.asarray(state[key])
             np.savez_compressed(
-                "model_output/pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npz",
+                f"{MODEL_OUT_DIR}/pace_output_t_{str(t)}_rank_{str(rank)}.npz",
                 output,
             )
             print_for_rank0(f"I/O at timestep {t} done in {time.time() - io_start}s")
@@ -150,4 +167,7 @@ def driver(
 
 
 if __name__ == "__main__":
+    from pathlib import Path
+
+    Path(MODEL_OUT_DIR).mkdir(parents=True, exist_ok=True)
     driver()
