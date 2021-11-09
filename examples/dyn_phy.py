@@ -50,10 +50,7 @@ from translate_update_dwind_phys import TranslateUpdateDWindsPhys  # noqa
 @click.argument("backend", required=True, default="numpy")
 @click.option("--run-dycore/--skip-dycore", default=True)
 def driver(
-    data_directory: str,
-    time_steps: str,
-    backend: str,
-    run_dycore: bool,
+    data_directory: str, time_steps: str, backend: str, run_dycore: bool,
 ):
     print_for_rank0(f"Running {data_directory} on {backend}")
     print_for_rank0("Init & timestep 0")
@@ -68,9 +65,7 @@ def driver(
 
     # set up of helper structures
     serializer = serialbox.Serializer(
-        serialbox.OpenModeKind.Read,
-        data_directory,
-        "Generator_rank" + str(rank),
+        serialbox.OpenModeKind.Read, data_directory, "Generator_rank" + str(rank),
     )
 
     # get grid from serialized data
@@ -148,8 +143,7 @@ def driver(
                 state[key].synchronize()
                 output[key] = np.asarray(state[key])
             np.savez_compressed(
-                f"{MODEL_OUT_DIR}/pace_output_t_{str(t)}_rank_{str(rank)}.npz",
-                output,
+                f"{MODEL_OUT_DIR}/pace_output_t_{str(t)}_rank_{str(rank)}.npz", output,
             )
             print_for_rank0(f"I/O at timestep {t} done in {time.time() - io_start}s")
         else:
