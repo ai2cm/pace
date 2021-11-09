@@ -301,7 +301,11 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         for key in ["u_dt", "v_dt", "t_dt"]:
             tendencies[key] = inputs.pop(key)
         self._base.compute_func = ApplyPhysics2Dycore(
-            self.grid, spec.namelist, communicator, extra_grid_info
+            self.grid.stencil_factory,
+            self.grid,
+            spec.namelist,
+            communicator,
+            extra_grid_info,
         )
         state = DycoreState(**inputs)
         dims_u = [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM]

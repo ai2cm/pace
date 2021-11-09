@@ -3,7 +3,6 @@ from fv3gfs.physics.stencils.update_atmos_state import (
 )
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
 import numpy as np
 import copy
 
@@ -54,7 +53,7 @@ class TranslatePhysUpdateTracers(TranslatePhysicsFortranData2Py):
             "qice_t0": {"dycore": True, "kend": grid.npz - 1, "compute": False},
             "qgraupel_t0": {"dycore": True, "kend": grid.npz - 1, "compute": False},
         }
-        self.compute_func = FrozenStencil(
+        self.compute_func = grid.stencil_factory.from_origin_domain(
             prepare_tendencies_and_update_tracers,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),

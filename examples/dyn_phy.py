@@ -77,16 +77,18 @@ missing_grid_info = dwind.collect_input_data(
 dycore = fv3core.DynamicalCore(
     comm=communicator,
     grid_data=spec.grid.grid_data,
-    grid_indexing=spec.grid.grid_indexing,
+    stencil_factory=spec.grid.stencil_factory,
     damping_coefficients=spec.grid.damping_coefficients,
     config=spec.namelist.dynamical_core,
     ak=state["atmosphere_hybrid_a_coordinate"],
     bk=state["atmosphere_hybrid_b_coordinate"],
     phis=state["surface_geopotential"],
 )
-step_physics = Physics(grid, spec.namelist, communicator, missing_grid_info)
+step_physics = Physics(
+    spec.grid.stencil_factory, grid, spec.namelist, communicator, missing_grid_info
+)
 
-for t in range(1, 101):
+for t in range(1, 2):
     dycore.step_dynamics(
         state,
         input_data["consv_te"],
@@ -97,26 +99,26 @@ for t in range(1, 101):
         input_data["ks"],
     )
     step_physics(state)
-    if t % 5 == 0:
-        comm.Barrier()
-        output_vars = [
-            "u",
-            "v",
-            "ua",
-            "va",
-            "pt",
-            "delp",
-            "qvapor",
-            "qliquid",
-            "qice",
-            "qrain",
-            "qsnow",
-            "qgraupel",
-        ]
-        output = {}
+    # if t % 5 == 0:
+    #     comm.Barrier()
+    #     output_vars = [
+    #         "u",
+    #         "v",
+    #         "ua",
+    #         "va",
+    #         "pt",
+    #         "delp",
+    #         "qvapor",
+    #         "qliquid",
+    #         "qice",
+    #         "qrain",
+    #         "qsnow",
+    #         "qgraupel",
+    #     ]
+    #     output = {}
 
-        for key in output_vars:
-            state[key].synchronize()
-            output[key] = np.asarray(state[key])
-        np.save("pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npy", output)
+    #     for key in output_vars:
+    #         state[key].synchronize()
+    #         output[key] = np.asarray(state[key])
+    #     np.save("pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npy", output)
 

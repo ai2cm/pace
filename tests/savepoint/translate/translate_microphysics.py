@@ -3,7 +3,6 @@ from fv3gfs.physics.stencils.physics import PhysicsState
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 import fv3core.utils.gt4py_utils as utils
 import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
 import copy
 import numpy as np
 
@@ -67,7 +66,7 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         inputs["va_t1"] = copy.deepcopy(storage)
         inputs["omga"] = copy.deepcopy(storage)
         physics_state = PhysicsState(**inputs)
-        microph = Microphysics(self.grid, spec.namelist)
+        microph = Microphysics(self.grid.stencil_factory, self.grid, spec.namelist)
         microph_state = physics_state.microphysics(storage)
         microph(microph_state)
         inputs["pt_dt"] = microph_state.pt_dt

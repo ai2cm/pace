@@ -1,7 +1,6 @@
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
 
 
 class TranslatePhiFV3(TranslatePhysicsFortranData2Py):
@@ -24,7 +23,7 @@ class TranslatePhiFV3(TranslatePhysicsFortranData2Py):
             "phii": self.in_vars["data_vars"]["phii"],
             "phil": self.in_vars["data_vars"]["phil"],
         }
-        self.compute_func = FrozenStencil(
+        self.compute_func = grid.stencil_factory.from_origin_domain(
             get_phi_fv3,
             origin=self.grid.grid_indexing.origin_full(),
             domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),

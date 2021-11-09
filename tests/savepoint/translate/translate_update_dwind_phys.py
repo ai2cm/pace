@@ -1,7 +1,6 @@
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
 import numpy as np
 import fv3core.utils.gt4py_utils as utils
 
@@ -62,7 +61,9 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         grid_info = {}
         for var in grid_names:
             grid_info[var] = inputs.pop(var)
-        self.compute_func = AGrid2DGridPhysics(self.grid, spec.namelist, grid_info)
+        self.compute_func = AGrid2DGridPhysics(
+            self.grid.stencil_factory, self.grid, spec.namelist, grid_info
+        )
         self.compute_func(**inputs)
         out = {}
         out["u"] = np.asarray(inputs["u"])[self.grid.y3d_domain_interface()]

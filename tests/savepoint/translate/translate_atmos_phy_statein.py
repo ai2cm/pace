@@ -1,7 +1,6 @@
 from fv3gfs.physics.stencils.physics import atmos_phys_driver_statein
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.global_constants import KAPPA
 import fv3core.utils.gt4py_utils as utils
 import numpy as np
@@ -50,7 +49,7 @@ class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
                 "order": "F",
             },
         }
-        self.compute_func = FrozenStencil(
+        self.compute_func = grid.stencil_factory.from_origin_domain(
             atmos_phys_driver_statein,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),

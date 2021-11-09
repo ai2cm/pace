@@ -2,7 +2,6 @@ from fv3gfs.physics.stencils.physics import Physics, PhysicsState
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 import fv3core.utils.gt4py_utils as utils
 import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
 import numpy as np
 import copy
 from fv3core.utils.typing import Float
@@ -98,7 +97,9 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         grid_info["ew1_2"] = 0
         grid_info["ew2_2"] = 0
         grid_info["ew3_2"] = 0
-        physics = Physics(self.grid, spec.namelist, communicator, grid_info)
+        physics = Physics(
+            self.grid.stencil_factory, self.grid, spec.namelist, communicator, grid_info
+        )
         physics._atmos_phys_driver_statein(
             physics._prsik,
             physics_state.phii,
