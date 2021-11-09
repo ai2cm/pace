@@ -91,10 +91,8 @@ if __name__ == "__main__":
     timesteps = np.arange(5, 171, 5)
 
     # Data path  to load
-    fortran_path = "/home/floriand/vulcan/model_data/c128_baroclinic_400steps/fortran/"
-    pace_path = (
-        "/home/floriand/vulcan/model_data/c128_baroclinic_400steps/python/dycore_phys/"
-    )
+    fortran_path = "/path/to/c128_baroclinic_400steps/fortran/"
+    pace_path = "/path/to/c128_baroclinic_400steps/pace/"
 
     # Loading data
     lat, lon, fortran_sum, pace_sum = load_data_column_sum(

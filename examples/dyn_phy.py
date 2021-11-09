@@ -167,7 +167,9 @@ def driver(
 
 
 if __name__ == "__main__":
+    # Make sure the model output directory exists
     from pathlib import Path
 
     Path(MODEL_OUT_DIR).mkdir(parents=True, exist_ok=True)
+    # Run the experiment
     driver()
