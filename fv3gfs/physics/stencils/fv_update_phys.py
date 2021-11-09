@@ -20,9 +20,9 @@ from gt4py.gtscript import (
 )
 import gt4py.gtscript as gtscript
 import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import (
-    FrozenStencil,
-)  # TODO: we don't want to import from fv3core
+from fv3core.utils.stencil import StencilFactory
+
+# TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 import fv3gfs.util as fv3util
 from fv3core.stencils.c2l_ord import CubedToLatLon
@@ -89,27 +89,32 @@ class ApplyPhysics2Dycore:
     """
 
     def __init__(
-        self, grid, namelist, comm: fv3gfs.util.CubedSphereCommunicator, grid_info,
+        self,
+        stencil_factory: StencilFactory,
+        grid,
+        namelist,
+        comm: fv3gfs.util.CubedSphereCommunicator,
+        grid_info,
     ):
         self.grid = grid
         self.namelist = namelist
         self.comm = comm
         self._dt = Float(self.namelist.dt_atmos)
-        self._moist_cv = FrozenStencil(
+        self._moist_cv = stencil_factory.from_origin_domain(
             moist_cv,
             origin=self.grid.compute_origin(),
             domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
         )
-        self._update_pressure_and_surface_winds = FrozenStencil(
+        self._update_pressure_and_surface_winds = stencil_factory.from_origin_domain(
             update_pressure_and_surface_winds,
             origin=self.grid.compute_origin(),
             domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._AGrid2DGridPhysics = AGrid2DGridPhysics(
-            self.grid, self.namelist, grid_info
+            stencil_factory, self.grid, self.namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
-            self.grid.grid_indexing, self.grid.grid_data, order=namelist.c2l_ord
+            stencil_factory, self.grid.grid_data, order=namelist.c2l_ord,
         )
         origin = self.grid.grid_indexing.origin_compute()
         shape = self.grid.grid_indexing.max_shape

@@ -14,7 +14,7 @@ from gt4py.gtscript import (
     horizontal,
     interval,
 )
-from fv3core.decorators import FrozenStencil
+from fv3core.utils.stencil import StencilFactory
 import copy
 
 
@@ -1861,7 +1861,7 @@ class MicrophysicsState:
 
 
 class Microphysics:
-    def __init__(self, grid, namelist):
+    def __init__(self, stencil_factory: StencilFactory, grid, namelist):
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         self.gfdl_cloud_microphys_init()
         self.grid = grid
@@ -1953,27 +1953,27 @@ class Microphysics:
         self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / tau_imlt)
         self._fac_l2v = 1.0 - np.exp(-self._dt_evap / tau_l2v)
 
-        self._fields_init = FrozenStencil(
+        self._fields_init = stencil_factory.from_origin_domain(
             func=fields_init,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(),
         )
-        self._warm_rain = FrozenStencil(
+        self._warm_rain = stencil_factory.from_origin_domain(
             func=warm_rain,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(),
         )
-        self._sedimentation = FrozenStencil(
+        self._sedimentation = stencil_factory.from_origin_domain(
             func=sedimentation,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(),
         )
-        self._icloud = FrozenStencil(
+        self._icloud = stencil_factory.from_origin_domain(
             func=icloud,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(),
         )
-        self._fields_update = FrozenStencil(
+        self._fields_update = stencil_factory.from_origin_domain(
             func=fields_update,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(),
