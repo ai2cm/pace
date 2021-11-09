@@ -99,26 +99,26 @@ for t in range(1, 2):
         input_data["ks"],
     )
     step_physics(state)
-    # if t % 5 == 0:
-    #     comm.Barrier()
-    #     output_vars = [
-    #         "u",
-    #         "v",
-    #         "ua",
-    #         "va",
-    #         "pt",
-    #         "delp",
-    #         "qvapor",
-    #         "qliquid",
-    #         "qice",
-    #         "qrain",
-    #         "qsnow",
-    #         "qgraupel",
-    #     ]
-    #     output = {}
+    if t % 5 == 0:
+        comm.Barrier()
+        output_vars = [
+            "u",
+            "v",
+            "ua",
+            "va",
+            "pt",
+            "delp",
+            "qvapor",
+            "qliquid",
+            "qice",
+            "qrain",
+            "qsnow",
+            "qgraupel",
+        ]
+        output = {}
 
-    #     for key in output_vars:
-    #         state[key].synchronize()
-    #         output[key] = np.asarray(state[key])
-    #     np.save("pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npy", output)
+        for key in output_vars:
+            state[key].synchronize()
+            output[key] = np.asarray(state[key])
+        np.save("pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npy", output)
 
