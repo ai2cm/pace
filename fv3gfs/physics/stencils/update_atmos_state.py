@@ -4,7 +4,7 @@ from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
 import fv3gfs.util
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.typing import FloatField, Float, FloatFieldIJ, FloatFieldI
-from fv3core.decorators import FrozenStencil
+from fv3core.utils.stencil import StencilFactory
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
     PARALLEL,
@@ -100,19 +100,24 @@ class UpdateAtmosphereState:
     """
 
     def __init__(
-        self, grid, namelist, comm: fv3gfs.util.CubedSphereCommunicator, grid_info
+        self,
+        stencil_factory: StencilFactory,
+        grid,
+        namelist,
+        comm: fv3gfs.util.CubedSphereCommunicator,
+        grid_info,
     ):
         self.grid = grid
         self.namelist = namelist
         origin = self.grid.compute_origin()
         shape = self.grid.domain_shape_full(add=(1, 1, 1))
         self._rdt = 1.0 / Float(self.namelist.dt_atmos)
-        self._fill_GFS = FrozenStencil(
+        self._fill_GFS = stencil_factory.from_origin_domain(
             fill_gfs,
             origin=self.grid.grid_indexing.origin_full(),
             domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
         )
-        self._prepare_tendencies_and_update_tracers = FrozenStencil(
+        self._prepare_tendencies_and_update_tracers = stencil_factory.from_origin_domain(
             prepare_tendencies_and_update_tracers,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
@@ -121,7 +126,7 @@ class UpdateAtmosphereState:
         self._v_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._pt_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._apply_physics2dycore = ApplyPhysics2Dycore(
-            self.grid, self.namelist, comm, grid_info
+            stencil_factory, self.grid, self.namelist, comm, grid_info
         )
 
     def __call__(

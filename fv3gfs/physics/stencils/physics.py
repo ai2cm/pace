@@ -6,8 +6,9 @@ from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
 from fv3gfs.physics.global_constants import *
 import fv3gfs.util
 import fv3core.utils.gt4py_utils as utils
+from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, Float
-from fv3core.decorators import FrozenStencil, get_namespace
+from fv3core.decorators import get_namespace
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
     PARALLEL,
@@ -164,7 +165,12 @@ def update_physics_state_with_tendencies(
 
 class Physics:
     def __init__(
-        self, grid, namelist, comm: fv3gfs.util.CubedSphereCommunicator, grid_info
+        self,
+        stencil_factory: StencilFactory,
+        grid,
+        namelist,
+        comm: fv3gfs.util.CubedSphereCommunicator,
+        grid_info,
     ):
         self.grid = grid
         self.namelist = namelist
@@ -182,17 +188,17 @@ class Physics:
         self._full_zero_storage = utils.make_storage_from_shape(
             shape, origin=origin, init=True
         )
-        self._get_prs_fv3 = FrozenStencil(
+        self._get_prs_fv3 = stencil_factory.from_origin_domain(
             func=get_prs_fv3,
             origin=self.grid.grid_indexing.origin_full(),
             domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
         )
-        self._get_phi_fv3 = FrozenStencil(
+        self._get_phi_fv3 = stencil_factory.from_origin_domain(
             func=get_phi_fv3,
             origin=self.grid.grid_indexing.origin_full(),
             domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
         )
-        self._atmos_phys_driver_statein = FrozenStencil(
+        self._atmos_phys_driver_statein = stencil_factory.from_origin_domain(
             func=atmos_phys_driver_statein,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
@@ -203,19 +209,19 @@ class Physics:
                 "pktop": self._pktop,
             },
         )
-        self._prepare_microphysics = FrozenStencil(
+        self._prepare_microphysics = stencil_factory.from_origin_domain(
             func=prepare_microphysics,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(),
         )
-        self._update_physics_state_with_tendencies = FrozenStencil(
+        self._update_physics_state_with_tendencies = stencil_factory.from_origin_domain(
             func=update_physics_state_with_tendencies,
             origin=self.grid.grid_indexing.origin_compute(),
             domain=self.grid.grid_indexing.domain_compute(),
         )
-        self._microphysics = Microphysics(grid, namelist)
+        self._microphysics = Microphysics(stencil_factory, grid, namelist)
         self._update_atmos_state = UpdateAtmosphereState(
-            grid, namelist, comm, grid_info
+            stencil_factory, grid, namelist, comm, grid_info
         )
 
     def setup_statein(self):
