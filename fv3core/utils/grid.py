@@ -14,6 +14,15 @@ from .stencil import GridIndexing, StencilConfig, StencilFactory
 from .typing import FloatFieldIJ
 
 
+# grid constants
+# TODO: move these into the fv3core.grid namespace
+LON_OR_LAT_DIM = "lon_or_lat"
+TILE_DIM = "tile"
+CARTESIAN_DIM = "xyz_direction"
+N_TILES = 6
+RIGHT_HAND_GRID = False
+
+
 class Grid:
     # indices = ["is_", "ie", "isd", "ied", "js", "je", "jsd", "jed"]
     index_pairs = [("is_", "js"), ("ie", "je"), ("isd", "jsd"), ("ied", "jed")]
@@ -77,7 +86,11 @@ class Grid:
                 ny_tile=self.npy - 1,
                 nz=self.npz,
                 n_halo=self.halo,
-                extra_dim_lengths={},
+                extra_dim_lengths={
+                    LON_OR_LAT_DIM: 2,
+                    TILE_DIM: 6,
+                    CARTESIAN_DIM: 3,
+                },
                 layout=self.layout,
             )
         return self._sizer

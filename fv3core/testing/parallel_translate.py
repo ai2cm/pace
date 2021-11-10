@@ -82,10 +82,21 @@ class ParallelTranslate:
             return return_dict
         for name, properties in self.outputs.items():
             standard_name = properties["name"]
-            output_slice = _serialize_slice(
-                state[standard_name], properties.get("n_halo", utils.halo)
-            )
-            return_dict[name] = np.asarray(state[standard_name].storage)[output_slice]
+            if name in self._base.in_vars["data_vars"].keys():
+                if "kaxis" in self._base.in_vars["data_vars"][name].keys():
+                    kaxis = int(self._base.in_vars["data_vars"][name]["kaxis"])
+                    dims = list(state[standard_name].dims)
+                    dims.insert(kaxis, dims.pop(-1))
+                    state[standard_name] = state[standard_name].transpose(dims)
+            if len(properties["dims"]) > 0:
+                output_slice = _serialize_slice(
+                    state[standard_name], properties.get("n_halo", utils.halo)
+                )
+                return_dict[name] = utils.asarray(
+                    state[standard_name].data[output_slice]
+                )
+            else:
+                return_dict[name] = state[standard_name]
         return return_dict
 
     @property
@@ -107,7 +118,7 @@ class ParallelTranslate:
 
     def compute_parallel(self, inputs, communicator):
         """Compute the outputs using one communicator operating in parallel."""
-        self.compute_sequential(self, [inputs], [communicator])
+        self.compute_sequential([inputs], [communicator])
 
 
 class ParallelTranslateBaseSlicing(ParallelTranslate):
@@ -149,6 +160,50 @@ def _serialize_slice(quantity, n_halo, real_dims=None):
         else:
             slice_list.append(-1)
     return tuple(slice_list)
+
+
+class ParallelTranslateGrid(ParallelTranslate):
+    """
+    Translation class which only uses quantity factory for initialization, to
+    support some non-standard array dimension layouts not supported by the
+    TranslateFortranData2Py initializers.
+    """
+
+    def state_from_inputs(self, inputs: dict, grid=None) -> dict:
+        if grid is None:
+            grid = self.grid
+        state = {}
+        for name, properties in self.inputs.items():
+            standard_name = properties.get("name", name)
+            if len(properties["dims"]) > 0:
+                state[standard_name] = grid.quantity_factory.empty(
+                    properties["dims"], properties["units"], dtype=inputs[name].dtype
+                )
+                input_slice = _serialize_slice(
+                    state[standard_name], properties.get("n_halo", utils.halo)
+                )
+                if len(properties["dims"]) > 0:
+                    state[standard_name].data[input_slice] = utils.asarray(
+                        inputs[name], to_type=type(state[standard_name].data)
+                    )
+                else:
+                    state[standard_name].data[:] = inputs[name]
+                if name in self._base.in_vars["data_vars"].keys():
+                    if "kaxis" in self._base.in_vars["data_vars"][name].keys():
+                        kaxis = int(self._base.in_vars["data_vars"][name]["kaxis"])
+                        dims = list(state[standard_name].dims)
+                        k_dim = dims.pop(kaxis)
+                        dims.insert(len(dims), k_dim)
+                        state[standard_name] = state[standard_name].transpose(dims)
+            else:
+                state[standard_name] = inputs[name]
+        return state
+
+    def compute_sequential(self, *args, **kwargs):
+        pytest.skip(
+            f"{self.__class__} only has a mpirun implementation, "
+            "not running in mock-parallel"
+        )
 
 
 class ParallelTranslate2Py(ParallelTranslate):

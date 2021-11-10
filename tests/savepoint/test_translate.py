@@ -288,6 +288,14 @@ def test_sequential_savepoint(
                 xy_indices=xy_indices,
             )
             passing_names.append(failing_names.pop())
+    if len(failing_names) > 0:
+        out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
+        try:
+            save_netcdf(
+                testobj, [input_data], [output], ref_data, failing_names, out_filename
+            )
+        except Exception as error:
+            print(f"TestSequential SaveNetCDF Error: {error}")
     assert failing_names == [], f"only the following variables passed: {passing_names}"
     assert len(passing_names) > 0, "No tests passed"
 
@@ -391,7 +399,7 @@ def test_mock_parallel_savepoint(
                 testobj, inputs_list, output_list, ref_data, failing_names, out_filename
             )
         except Exception as error:
-            print(error)
+            print(f"TestMockParallel SaveNetCDF Error: {error}")
     assert failing_names == [], f"names tested: {list(testobj.outputs.keys())}"
 
 
@@ -493,7 +501,7 @@ def test_parallel_savepoint(
                 testobj, [input_data], [output], ref_data, failing_names, out_filename
             )
         except Exception as error:
-            print(error)
+            print(f"TestParallel SaveNetCDF Error: {error}")
     assert failing_names == [], f"only the following variables passed: {passing_names}"
     assert len(passing_names) > 0, "No tests passed"
 
@@ -515,11 +523,14 @@ def save_netcdf(
     for i, varname in enumerate(failing_names):
         dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
         attrs = {"units": testobj.outputs[varname]["units"]}
-        data_vars[f"{varname}_in"] = xr.DataArray(
-            np.stack([in_data[varname] for in_data in inputs_list]),
-            dims=("rank",) + tuple(dims),
-            attrs=attrs,
-        )
+        try:
+            data_vars[f"{varname}_in"] = xr.DataArray(
+                np.stack([in_data[varname] for in_data in inputs_list]),
+                dims=("rank",) + tuple(dims),
+                attrs=attrs,
+            )
+        except KeyError as error:
+            print(f"No input data found for {error}")
         data_vars[f"{varname}_ref"] = xr.DataArray(
             np.stack(ref_data[varname]), dims=("rank",) + tuple(dims), attrs=attrs
         )
@@ -532,4 +543,5 @@ def save_netcdf(
             data_vars[f"{varname}_ref"] - data_vars[f"{varname}_out"]
         )
         data_vars[f"{varname}_error"].attrs = attrs
+    print(f"File saved to {out_filename}")
     xr.Dataset(data_vars=data_vars).to_netcdf(out_filename)

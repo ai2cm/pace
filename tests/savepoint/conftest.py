@@ -177,6 +177,11 @@ def get_ranks(metafunc, layout):
         return [int(only_rank)]
 
 
+def _has_savepoints(input_savepoints, output_savepoints) -> bool:
+    savepoints_exist = not (len(input_savepoints) == 0 and len(output_savepoints) == 0)
+    return savepoints_exist
+
+
 SavepointCase = collections.namedtuple(
     "SavepointCase",
     [
@@ -204,18 +209,19 @@ def sequential_savepoint_cases(metafunc, data_path):
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
-            check_savepoint_counts(test_name, input_savepoints, output_savepoints)
-            return_list.append(
-                SavepointCase(
-                    test_name,
-                    rank,
-                    serializer,
-                    input_savepoints,
-                    output_savepoints,
-                    grid,
-                    layout,
+            if _has_savepoints(input_savepoints, output_savepoints):
+                check_savepoint_counts(test_name, input_savepoints, output_savepoints)
+                return_list.append(
+                    SavepointCase(
+                        test_name,
+                        rank,
+                        serializer,
+                        input_savepoints,
+                        output_savepoints,
+                        grid,
+                        layout,
+                    )
                 )
-            )
 
     if len(ranks) > 1:
         # Set the grid to rank 0's data
@@ -258,9 +264,10 @@ def mock_parallel_savepoint_cases(metafunc, data_path):
             serializer_list.append(serializer)
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
-            check_savepoint_counts(test_name, input_savepoints, output_savepoints)
-            input_list.append(input_savepoints)
-            output_list.append(output_savepoints)
+            if _has_savepoints(input_savepoints, output_savepoints):
+                check_savepoint_counts(test_name, input_savepoints, output_savepoints)
+                input_list.append(input_savepoints)
+                output_list.append(output_savepoints)
         return_list.append(
             SavepointCase(
                 test_name,
@@ -288,7 +295,8 @@ def parallel_savepoint_cases(metafunc, data_path, mpi_rank):
     for test_name in sorted(list(savepoint_names)):
         input_savepoints = serializer.get_savepoint(f"{test_name}-In")
         output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
-        check_savepoint_counts(test_name, input_savepoints, output_savepoints)
+        if _has_savepoints(input_savepoints, output_savepoints):
+            check_savepoint_counts(test_name, input_savepoints, output_savepoints)
         return_list.append(
             SavepointCase(
                 test_name,

@@ -3,7 +3,7 @@ include docker/Makefile.image_names
 GCR_URL = us.gcr.io/vcm-ml
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_standard
-FORTRAN_SERIALIZED_DATA_VERSION=7.2.5
+FORTRAN_SERIALIZED_DATA_VERSION=7.2.6
 WRAPPER_IMAGE = us.gcr.io/vcm-ml/fv3gfs-wrapper:gnu9-mpich314-nocuda
 DOCKER_BUILDKIT=1
 SHELL=/bin/bash
