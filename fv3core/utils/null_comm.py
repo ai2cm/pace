@@ -1,3 +1,6 @@
+from typing import Any, Mapping
+
+
 class NullAsyncResult:
     def __init__(self, recvbuf=None):
         self._recvbuf = recvbuf
@@ -24,6 +27,7 @@ class NullComm:
         self.rank = rank
         self.total_ranks = total_ranks
         self._fill_value = fill_value
+        self._split_comms: Mapping[Any, NullComm] = {}
 
     def __repr__(self):
         return f"NullComm(rank={self.rank}, total_ranks={self.total_ranks})"
@@ -59,3 +63,18 @@ class NullComm:
 
     def Irecv(self, recvbuf, source, **kwargs):
         return NullAsyncResult(recvbuf)
+
+    def Split(self, color, key):
+        # key argument is ignored, assumes we're calling the ranks from least to
+        # greatest when mocking Split
+        self._split_comms[color] = self._split_comms.get(color, [])
+        rank = len(self._split_comms[color])
+        total_ranks = rank + 1
+        new_comm = NullComm(
+            rank=rank, total_ranks=total_ranks, fill_value=self._fill_value
+        )
+        for comm in self._split_comms[color]:
+            # won't know how many ranks there are until everything is split
+            comm.total_ranks = total_ranks
+        self._split_comms[color].append(new_comm)
+        return new_comm
