@@ -507,10 +507,10 @@ class FiniteVolumeFluxPrep:
         Args:
             uc: covariant x-velocity on the C-grid (in)
             vc: covariant y-velocity on the C-grid (in)
-            crx: Courant number, x direction(inout)
-            cry: Courant number, y direction(inout)
-            x_area_flux: flux of area in x-direction, in units of m^2 (inout)
-            y_area_flux: flux of area in y-direction, in units of m^2 (inout)
+            crx: Courant number, x direction (out)
+            cry: Courant number, y direction (out)
+            x_area_flux: flux of area in x-direction, in units of m^2 (out)
+            y_area_flux: flux of area in y-direction, in units of m^2 (out)
             uc_contra: contravariant x-velocity on C-grid (out)
             vc_contra: contravariant y-velocity on C-grid (out)
             dt: acoustic timestep in seconds
