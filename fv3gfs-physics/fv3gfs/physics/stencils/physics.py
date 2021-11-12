@@ -1,25 +1,26 @@
+import gt4py.gtscript as gtscript
+import numpy as np  # used for debugging only
+from gt4py.gtscript import (
+    BACKWARD,
+    FORWARD,
+    PARALLEL,
+    computation,
+    horizontal,
+    interval,
+)
+
+import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util
+from fv3core.decorators import get_namespace
+from fv3core.stencils.fv_dynamics import DynamicalCore  # need argspecs for state
+from fv3core.utils.stencil import StencilFactory
+from fv3core.utils.typing import Float, FloatField
+from fv3gfs.physics.global_constants import *
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics, MicrophysicsState
 from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
-from fv3gfs.physics.global_constants import *
-import fv3gfs.util
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, Float
-from fv3core.decorators import get_namespace
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import (
-    PARALLEL,
-    FORWARD,
-    BACKWARD,
-    computation,
-    horizontal,
-    interval,
-)
-import numpy as np  # used for debugging only
-from fv3core.stencils.fv_dynamics import DynamicalCore  # need argspecs for state
 
 
 def atmos_phys_driver_statein(
@@ -40,7 +41,7 @@ def atmos_phys_driver_statein(
     pt: FloatField,
     dm: FloatField,
 ):
-    from __externals__ import nwat, ptop, pk0inv, pktop
+    from __externals__ import nwat, pk0inv, pktop, ptop
 
     with computation(BACKWARD), interval(0, -1):
         phii = phii[0, 0, 1] - delz * grav
@@ -320,4 +321,3 @@ class Physics:
         )
         # [TODO]: allow update_atmos_state call when grid variables are ready
         self._update_atmos_state(state, physics_state, self._prsi)
-

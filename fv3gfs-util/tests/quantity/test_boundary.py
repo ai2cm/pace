@@ -1,6 +1,7 @@
-import pytest
-import fv3gfs.util
 import numpy as np
+import pytest
+
+import fv3gfs.util
 from fv3gfs.util._boundary_utils import _shift_boundary_slice, get_boundary_slice
 
 

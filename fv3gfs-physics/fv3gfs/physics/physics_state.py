@@ -1,7 +1,7 @@
-import dataclasses
-from fv3core.utils.typing import FloatField, FloatFieldIJ
 import copy
+import dataclasses
 
+from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.physics.stencils.microphysics import MicrophysicsState
 
 

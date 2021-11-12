@@ -1,6 +1,7 @@
-from .quantity import Quantity
 from datetime import timedelta
 from typing import Mapping
+
+from .quantity import Quantity
 
 
 def apply_nudging(

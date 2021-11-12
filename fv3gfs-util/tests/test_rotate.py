@@ -1,6 +1,7 @@
-import fv3gfs.util.rotate
-import pytest
 import numpy as np
+import pytest
+
+import fv3gfs.util.rotate
 
 
 @pytest.fixture

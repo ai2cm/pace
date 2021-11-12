@@ -1,19 +1,20 @@
-from fv3gfs.physics.global_constants import *
-from fv3gfs.physics.physics_state import PhysicsState
-from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
-import fv3gfs.util
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.typing import FloatField, Float, FloatFieldIJ, FloatFieldI
-from fv3core.utils.stencil import StencilFactory
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
-    PARALLEL,
-    FORWARD,
     BACKWARD,
+    FORWARD,
+    PARALLEL,
     computation,
     horizontal,
     interval,
 )
+
+import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util
+from fv3core.utils.stencil import StencilFactory
+from fv3core.utils.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
+from fv3gfs.physics.global_constants import *
+from fv3gfs.physics.physics_state import PhysicsState
+from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
 
 
 def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
@@ -117,10 +118,12 @@ class UpdateAtmosphereState:
             origin=self.grid.grid_indexing.origin_full(),
             domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
         )
-        self._prepare_tendencies_and_update_tracers = stencil_factory.from_origin_domain(
-            prepare_tendencies_and_update_tracers,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
+        self._prepare_tendencies_and_update_tracers = (
+            stencil_factory.from_origin_domain(
+                prepare_tendencies_and_update_tracers,
+                origin=self.grid.grid_indexing.origin_compute(),
+                domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
+            )
         )
         self._u_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._v_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
@@ -163,5 +166,8 @@ class UpdateAtmosphereState:
             self._rdt,
         )
         self._apply_physics2dycore(
-            dycore_state, self._u_dt, self._v_dt, self._pt_dt,
+            dycore_state,
+            self._u_dt,
+            self._v_dt,
+            self._pt_dt,
         )

@@ -1,14 +1,16 @@
 from collections import defaultdict
-from .types import NumpyModule, AsyncRequest
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple
+
+from ._timing import NullTimer, Timer
+from .boundary import Boundary
 from .halo_data_transformer import (
     HaloDataTransformer,
     HaloExchangeSpec,
     QuantityHaloSpec,
 )
-from ._timing import Timer, NullTimer
-from .boundary import Boundary
-from typing import Dict, Iterable, List, Optional, TYPE_CHECKING, Tuple
 from .quantity import Quantity
+from .types import AsyncRequest, NumpyModule
+
 
 if TYPE_CHECKING:
     from .communicator import Communicator
@@ -36,7 +38,7 @@ class HaloUpdater:
         timer: Timer,
     ):
         """Build the updater.
-        
+
         Args:
             comm: communicator responsible for send/recv commands.
             tag: network tag to be used for communication
@@ -56,7 +58,7 @@ class HaloUpdater:
 
     def force_finalize_on_wait(self):
         """HaloDataTransformer are finalized after a wait call
-        
+
         This is a temporary fix. See DSL-816 which will remove self._finalize_on_wait.
         """
         self._finalize_on_wait = True

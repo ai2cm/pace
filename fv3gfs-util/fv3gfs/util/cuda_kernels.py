@@ -21,7 +21,7 @@ pack_scalar_f64_kernel = (
             {
                 return;
             }
-            
+
             o_destinationBuffer[i_offset+tid] = i_sourceArray[i_indexes[tid]];
         }
 
@@ -30,7 +30,7 @@ pack_scalar_f64_kernel = (
     )
 )
 """Pack into o_destinationBuffer data from i_sourceArray.
-    
+
     The indexation into i_sourceArray is stored in i_indexes.
     i_offset is the offset in the destination buffer.
     i_nIndex allows to protect from out-of-bound read in kernel.
@@ -54,7 +54,7 @@ unpack_scalar_f64_kernel = (
                 int tid = blockDim.x * blockIdx.x + threadIdx.x;
                 if (tid>=i_nIndex)
                     return;
-                
+
                 o_destinationArray[i_indexes[tid]] = i_sourceBuffer[i_offset+tid];
             }
 
@@ -125,7 +125,7 @@ pack_vector_f64_kernel = (
             else
                 o_destinationBuffer[i_offset+tid] = i_sourceArrayX[i_indexesX[tid-i_nIndexY]];
         }
-        
+
     }
 
     """,
@@ -133,7 +133,7 @@ pack_vector_f64_kernel = (
     )
 )
 """Pack into o_destinationBuffer data from i_sourceArrayX/Y.
-    
+
     The indexation into i_sourceArrayX/Y is stored in i_indexesX/Y.
     i_offset is the offset in the destination buffer.
     i_nIndexX/Y allows to protect from out-of-bound read in kernel.
@@ -159,7 +159,7 @@ unpack_vector_f64_kernel = (
                             double* o_destinationArrayY)
         {
             int tid = blockDim.x * blockIdx.x + threadIdx.x;
-            
+
             if (tid<i_nIndexX)
                 o_destinationArrayX[i_indexesX[tid]] = i_sourceBuffer[i_offset+tid];
             else if (tid<i_nIndexX+i_nIndexY)
@@ -171,7 +171,7 @@ unpack_vector_f64_kernel = (
     )
 )
 """Unpack into o_destinationArrayX/Y data from i_sourceBuffer.
-    
+
     The indexation into o_destinationArrayX/Y is stored in i_indexesX/Y.
     i_offset is the offset in the source buffer.
     i_nIndexX/Y allows to protect from out-of-bound read in kernel.

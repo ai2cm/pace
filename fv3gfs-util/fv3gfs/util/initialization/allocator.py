@@ -1,6 +1,8 @@
 from typing import Callable, Sequence
+
 from ..quantity import Quantity
 from .sizer import SubtileGridSizer
+
 
 try:
     import gt4py
@@ -65,4 +67,10 @@ class QuantityFactory:
             data = allocator(shape, dtype=dtype, default_origin=origin)
         except TypeError:
             data = allocator(shape, dtype=dtype)
-        return Quantity(data, dims=dims, units=units, origin=origin, extent=extent,)
+        return Quantity(
+            data,
+            dims=dims,
+            units=units,
+            origin=origin,
+            extent=extent,
+        )

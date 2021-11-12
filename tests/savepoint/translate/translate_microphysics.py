@@ -1,11 +1,12 @@
+import copy
+
+import numpy as np
+
+import fv3core._config as spec
+import fv3core.utils.gt4py_utils as utils
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core.utils.gt4py_utils as utils
-import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
-import copy
-import numpy as np
 
 
 class TranslateMicroph(TranslatePhysicsFortranData2Py):
@@ -85,4 +86,3 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         for key in out.keys():  # fortran data has dimension 1 in the 2nd axis
             out[key] = out[key][:, np.newaxis, ::-1]
         return out
-

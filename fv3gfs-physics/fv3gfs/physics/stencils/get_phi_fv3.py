@@ -1,18 +1,13 @@
-import numpy as np
+import timeit
+
 import gt4py
 import gt4py.gtscript as gtscript
 import gt4py.storage as gt_storage
-import timeit
+import numpy as np
+from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
+
 from fv3gfs.physics.global_config import *
 
-from gt4py.gtscript import (
-    PARALLEL,
-    __INLINED,
-    FORWARD,
-    BACKWARD,
-    computation,
-    interval,
-)
 
 # GTC backends require a to skip DaCe merge optimisation
 # TODO: check with GT4Py version > 36

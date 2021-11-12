@@ -2,11 +2,14 @@
 
 Those test use halo_update but are separated from the entire
 """
-import pytest
-import numpy as np
-import fv3gfs.util
 import contextlib
 import functools
+
+import numpy as np
+import pytest
+
+import fv3gfs.util
+
 
 try:
     import cupy as cp
@@ -115,7 +118,11 @@ def test_halo_update_only_communicate_on_gpu(backend, gpu_communicators):
         dims = (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM)
         data = cp.ones(shape, dtype=float)
         quantity = fv3gfs.util.Quantity(
-            data, dims=dims, units="m", origin=(3, 3, 1), extent=(3, 3, 1),
+            data,
+            dims=dims,
+            units="m",
+            origin=(3, 3, 1),
+            extent=(3, 3, 1),
         )
         halo_updater_list = []
         for communicator in gpu_communicators:
@@ -138,7 +145,11 @@ def test_halo_update_communicate_though_cpu(backend, cpu_communicators):
         data = cp.ones(shape, dtype=float)
         quantity = fv3gfs.util.Quantity(
             data,
-            dims=(fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM,),
+            dims=(
+                fv3gfs.util.X_DIM,
+                fv3gfs.util.Y_DIM,
+                fv3gfs.util.Z_DIM,
+            ),
             units="m",
             origin=(3, 3, 0),
             extent=(3, 3, 0),

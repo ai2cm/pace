@@ -59,4 +59,3 @@ loading the data on a single processor per tile and then distribute the data to 
 processes on the same tile. This may cause out-of-memory errors, which can be mitigated
 in a couple different ways through changes to the code base (e.g. loading a subset of
 the variables or levels at a time before distributing across ranks).
-

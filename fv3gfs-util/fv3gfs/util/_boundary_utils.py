@@ -1,6 +1,7 @@
-from typing import Union
-from . import constants
 import functools
+from typing import Union
+
+from . import constants
 from ._exceptions import OutOfBoundsError
 
 

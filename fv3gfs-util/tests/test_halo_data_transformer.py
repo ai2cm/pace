@@ -1,31 +1,34 @@
+import copy
+from typing import Tuple
+
 import pytest
+
 from fv3gfs.util import (
-    Quantity,
-    X_DIM,
-    Y_DIM,
-    Z_DIM,
-    Y_INTERFACE_DIM,
-    X_INTERFACE_DIM,
-    Z_INTERFACE_DIM,
-    _boundary_utils,
+    EAST,
     NORTH,
+    NORTHEAST,
     NORTHWEST,
-    WEST,
-    SOUTHWEST,
     SOUTH,
     SOUTHEAST,
-    EAST,
-    NORTHEAST,
+    SOUTHWEST,
+    WEST,
+    X_DIM,
+    X_INTERFACE_DIM,
+    Y_DIM,
+    Y_INTERFACE_DIM,
+    Z_DIM,
+    Z_INTERFACE_DIM,
+    Quantity,
+    _boundary_utils,
 )
+from fv3gfs.util.buffer import Buffer
 from fv3gfs.util.halo_data_transformer import (
     HaloDataTransformer,
     HaloExchangeSpec,
     QuantityHaloSpec,
 )
-from fv3gfs.util.buffer import Buffer
 from fv3gfs.util.rotate import rotate_scalar_data, rotate_vector_data
-import copy
-from typing import Tuple
+
 
 try:
     import cupy as cp
@@ -93,18 +96,33 @@ def origin(n_halos, dims, n_buffer):
     params=[
         pytest.param((Y_DIM, X_DIM), id="center"),
         pytest.param((Z_DIM, Y_DIM, X_DIM), id="center_3d"),
-        pytest.param((X_DIM, Y_DIM, Z_DIM), id="center_3d_reverse",),
-        pytest.param((X_DIM, Z_DIM, Y_DIM), id="center_3d_shuffle",),
+        pytest.param(
+            (X_DIM, Y_DIM, Z_DIM),
+            id="center_3d_reverse",
+        ),
+        pytest.param(
+            (X_DIM, Z_DIM, Y_DIM),
+            id="center_3d_shuffle",
+        ),
         pytest.param((Y_INTERFACE_DIM, X_INTERFACE_DIM), id="interface"),
         pytest.param(
-            (Z_INTERFACE_DIM, Y_INTERFACE_DIM, X_INTERFACE_DIM,), id="interface_3d",
+            (
+                Z_INTERFACE_DIM,
+                Y_INTERFACE_DIM,
+                X_INTERFACE_DIM,
+            ),
+            id="interface_3d",
         ),
     ]
 )
 def dims(request, fast):
     if fast and request.param in (
         (X_DIM, Y_DIM, Z_DIM),
-        (Z_INTERFACE_DIM, Y_INTERFACE_DIM, X_INTERFACE_DIM,),
+        (
+            Z_INTERFACE_DIM,
+            Y_INTERFACE_DIM,
+            X_INTERFACE_DIM,
+        ),
     ):
         pytest.skip("running in fast mode")
     return request.param

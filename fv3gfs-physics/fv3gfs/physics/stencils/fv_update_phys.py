@@ -1,32 +1,29 @@
-from fv3gfs.util.quantity import Quantity
-from fv3core.utils.typing import (
-    FloatField,
-    FloatFieldIJ,
-    FloatFieldI,
-    Float,
-)
-import fv3gfs.util
-from fv3gfs.physics.global_constants import *
+import gt4py.gtscript as gtscript
 from gt4py.gtscript import (
-    PARALLEL,
-    FORWARD,
     BACKWARD,
+    FORWARD,
+    PARALLEL,
     computation,
+    exp,
     horizontal,
     interval,
-    region,
-    exp,
     log,
+    region,
 )
-import gt4py.gtscript as gtscript
+
+import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util
+import fv3gfs.util as fv3util
+from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.utils.stencil import StencilFactory
+from fv3core.utils.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
+from fv3gfs.physics.global_constants import *
 
 # TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
-import fv3gfs.util as fv3util
-from fv3core.stencils.c2l_ord import CubedToLatLon
-import fv3core.utils.global_config as global_config
+from fv3gfs.util.quantity import Quantity
+
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir
 @gtscript.function
@@ -84,7 +81,7 @@ def update_pressure_and_surface_winds(
 class ApplyPhysics2Dycore:
     """
     Fortran name is fv_update_phys
-    Apply the physics tendencies (u_dt, v_dt, t_dt, q_dt) consistent with 
+    Apply the physics tendencies (u_dt, v_dt, t_dt, q_dt) consistent with
     the FV3 discretization and definition of the prognostic variables
     """
 
@@ -114,12 +111,17 @@ class ApplyPhysics2Dycore:
             stencil_factory, self.grid, self.namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
-            stencil_factory, self.grid.grid_data, order=namelist.c2l_ord,
+            stencil_factory,
+            self.grid.grid_data,
+            order=namelist.c2l_ord,
         )
         origin = self.grid.grid_indexing.origin_compute()
         shape = self.grid.grid_indexing.max_shape
         full_3Dfield_1pts_halo_spec = self.grid.grid_indexing.get_quantity_halo_spec(
-            shape, origin, dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], n_halo=1,
+            shape,
+            origin,
+            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            n_halo=1,
         )
         self._udt_halo_updater = self.comm.get_scalar_halo_updater(
             [full_3Dfield_1pts_halo_spec]
@@ -136,7 +138,11 @@ class ApplyPhysics2Dycore:
         )
 
     def __call__(
-        self, state, u_dt: FloatField, v_dt: FloatField, t_dt: FloatField,
+        self,
+        state,
+        u_dt: FloatField,
+        v_dt: FloatField,
+        t_dt: FloatField,
     ):
         self._moist_cv(
             state.qvapor,
@@ -173,5 +179,9 @@ class ApplyPhysics2Dycore:
         v_dt = v_dt_quantity.storage
         self._AGrid2DGridPhysics(state.u, state.v, u_dt, v_dt)
         self._do_cubed_to_latlon(
-            state.u_quantity, state.v_quantity, state.ua, state.va, self.comm,
+            state.u_quantity,
+            state.v_quantity,
+            state.ua,
+            state.va,
+            self.comm,
         )

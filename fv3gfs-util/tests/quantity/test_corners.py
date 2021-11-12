@@ -1,6 +1,7 @@
-import pytest
-import fv3gfs.util
 import numpy as np
+import pytest
+
+import fv3gfs.util
 
 
 @pytest.fixture

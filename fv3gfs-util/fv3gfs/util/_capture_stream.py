@@ -1,7 +1,7 @@
 import contextlib
-import tempfile
-import os
 import io
+import os
+import tempfile
 
 
 @contextlib.contextmanager

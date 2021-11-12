@@ -1,21 +1,26 @@
 import tempfile
 
+
 try:
     import zarr
 except ModuleNotFoundError:
     zarr = None
-import cftime
 from datetime import timedelta
+
+import cftime
 import pytest
+
 
 try:
     import xarray as xr
 except ModuleNotFoundError:
     xr = None
 import copy
-import fv3gfs.util
 import logging
+
+import fv3gfs.util
 from fv3gfs.util.testing import DummyComm
+
 
 requires_zarr = pytest.mark.skipif(zarr is None, reason="zarr is not installed")
 
@@ -83,22 +88,30 @@ def base_state(request, nz, ny, nx, numpy):
     elif request.param == "one_var_2d":
         return {
             "var1": fv3gfs.util.Quantity(
-                numpy.ones([ny, nx]), dims=("y", "x"), units="m",
+                numpy.ones([ny, nx]),
+                dims=("y", "x"),
+                units="m",
             )
         }
     elif request.param == "one_var_3d":
         return {
             "var1": fv3gfs.util.Quantity(
-                numpy.ones([nz, ny, nx]), dims=("z", "y", "x"), units="m",
+                numpy.ones([nz, ny, nx]),
+                dims=("z", "y", "x"),
+                units="m",
             )
         }
     elif request.param == "two_vars":
         return {
             "var1": fv3gfs.util.Quantity(
-                numpy.ones([ny, nx]), dims=("y", "x"), units="m",
+                numpy.ones([ny, nx]),
+                dims=("y", "x"),
+                units="m",
             ),
             "var2": fv3gfs.util.Quantity(
-                numpy.ones([nz, ny, nx]), dims=("z", "y", "x"), units="degK",
+                numpy.ones([nz, ny, nx]),
+                dims=("z", "y", "x"),
+                units="degK",
             ),
         }
     else:
@@ -228,7 +241,9 @@ def test_monitor_file_store_multi_rank_state(
             state = {
                 "time": time + i_t * timestep,
                 "var1": fv3gfs.util.Quantity(
-                    numpy.ones([nz, ny_rank, nx_rank]), dims=dims, units=units,
+                    numpy.ones([nz, ny_rank, nx_rank]),
+                    dims=dims,
+                    units=units,
                 ),
             }
             monitor_list[rank].store(state)

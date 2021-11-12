@@ -37,5 +37,5 @@ srun python examples/dyn_phy.py \
 #         examples/dyn_phy.py \
 #         ./test_data/c128_6ranks_baroclinic_dycore_microphysics/ \
 #         15 gtc:cuda
-        
+
 ########################################################

@@ -1,20 +1,23 @@
+import abc
 from dataclasses import dataclass
-from .buffer import Buffer
-from .quantity import Quantity
-from .types import NumpyModule
-from typing import List, Tuple, Optional, Dict, Any, Sequence
 from enum import Enum
-from .rotate import rotate_scalar_data, rotate_vector_data
-from .utils import device_synchronize
-import numpy as np
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 from uuid import UUID, uuid1
+
+import numpy as np
+
+from .buffer import Buffer
 from .cuda_kernels import (
     pack_scalar_f64_kernel,
     pack_vector_f64_kernel,
     unpack_scalar_f64_kernel,
     unpack_vector_f64_kernel,
 )
-import abc
+from .quantity import Quantity
+from .rotate import rotate_scalar_data, rotate_vector_data
+from .types import NumpyModule
+from .utils import device_synchronize
+
 
 try:
     import cupy as cp
@@ -75,7 +78,7 @@ def _build_flatten_indices(
     rotation: int,
 ) -> "cp.ndarray":
     """Build an array of indexing from a slice & memory description to build an indexation into the "flatten" memory.
-    
+
     Go from a memory layout (strides, itemsize, shape) and slices into it to a
     single array of indices. We leverage numpy iterator and calculate from the multi_index
     using memory layout the index into the original memory buffer.
@@ -92,7 +95,10 @@ def _build_flatten_indices(
 
     # Flatten the index into an indices array
     with np.nditer(
-        arr_indices, flags=["multi_index"], op_flags=["writeonly"], order="K",
+        arr_indices,
+        flags=["multi_index"],
+        op_flags=["writeonly"],
+        order="K",
     ) as it:
         for array_value in it:
             offset = sum(np.array(it.multi_index) * strides) // itemsize
@@ -124,7 +130,7 @@ def _slices_size(slices: Tuple[slice, ...]) -> int:
 @dataclass
 class HaloExchangeSpec:
     """Memory description of the data exchanged.
-    
+
     The data stored here target a single exchange, with an optional
     rotation to give prior to pack. Slices are tupled following the
     convention of one slice per dimension
@@ -180,7 +186,7 @@ class HaloDataTransformer(abc.ABC):
     - call async_unpack(quantities) to start unpacking
     - call synchronize() to finish all the unpacking operations and make sure the quantities
       passed in async_unpack have been updated.
-    
+
     The class will hold onto the buffers up until deletion, where they will be returned to an
     internal buffer pool.
     """
@@ -328,15 +334,15 @@ class HaloDataTransformer(abc.ABC):
         quantities_y: Optional[List[Quantity]] = None,
     ):
         """Pack all given quantities into a single send Buffer.
-        
+
         Does not guarantee the buffer returned by `get_unpack_buffer` has
         received data, doing so requires calling `synchronize`.
         Reaching for the buffer via get_pack_buffer() will call synchronize().
-        
+
         Args:
             quantities_x: scalar or vector x-component quantities to pack,
                 if one is vector they must all be vector
-        
+
             quantities_y: if quantities are vector, the y-component
                 quantities.
         """
@@ -349,11 +355,11 @@ class HaloDataTransformer(abc.ABC):
         quantities_y: Optional[List[Quantity]] = None,
     ):
         """Unpack the buffer into destination quantities.
-        
+
         Does not guarantee the buffer returned by `get_unpack_buffer` has
         received data, doing so requires calling `synchronize`.
         Reaching for the buffer via get_unpack_buffer() will call synchronize().
-        
+
         Args:
             quantities_x: scalar or vector x-component quantities to be unpacked into,
                 if one is vector they must all be vector
@@ -443,9 +449,12 @@ class HaloDataTransformerCPU(HaloDataTransformer):
         assert len(quantities_y) == len(quantities_x)
         assert len(self._infos_x) == len(self._infos_y)
         offset = 0
-        for quantity_x, quantity_y, info_x, info_y, in zip(
-            quantities_x, quantities_y, self._infos_x, self._infos_y
-        ):
+        for (
+            quantity_x,
+            quantity_y,
+            info_x,
+            info_y,
+        ) in zip(quantities_x, quantities_y, self._infos_x, self._infos_y):
             # sending data across the boundary will rotate the data
             # n_clockwise_rotations times, due to the difference in axis orientation
             # Thus we rotate that number of times counterclockwise before sending,
@@ -583,7 +592,10 @@ class HaloDataTransformerGPU(HaloDataTransformer):
         )
 
     def _flatten_indices(
-        self, exchange_data: HaloExchangeSpec, slices: Tuple[slice], rotate: bool,
+        self,
+        exchange_data: HaloExchangeSpec,
+        slices: Tuple[slice],
+        rotate: bool,
     ) -> "cp.ndarray":
         """Extract a flat array of indices from the memory layout and the slice.
 
@@ -678,7 +690,7 @@ class HaloDataTransformerGPU(HaloDataTransformer):
         quantities_y: Optional[List[Quantity]] = None,
     ):
         """Pack the quantities into a single buffer via streamed cuda kernels
-        
+
         Writes into self._pack_buffer using self._x_infos and self._y_infos
         to read the offsets and sizes per quantity.
 
@@ -755,9 +767,12 @@ class HaloDataTransformerGPU(HaloDataTransformer):
         assert len(self._infos_x) == len(self._infos_y)
         assert len(quantities_x) == len(quantities_y)
         offset = 0
-        for quantity_x, quantity_y, info_x, info_y, in zip(
-            quantities_x, quantities_y, self._infos_x, self._infos_y
-        ):
+        for (
+            quantity_x,
+            quantity_y,
+            info_x,
+            info_y,
+        ) in zip(quantities_x, quantities_y, self._infos_x, self._infos_y):
             cu_kernel_args = self._cu_kernel_args[info_x._id]
 
             # Use private stream
@@ -800,7 +815,7 @@ class HaloDataTransformerGPU(HaloDataTransformer):
         quantities_y: Optional[List[Quantity]] = None,
     ):
         """Unpack the quantities from a single buffer via streamed cuda kernels
-        
+
         Reads from self._unpack_buffer using self._x_infos and self._y_infos
         to read the offsets and sizes per quantity.
 
@@ -873,9 +888,12 @@ class HaloDataTransformerGPU(HaloDataTransformer):
         assert len(self._infos_x) == len(self._infos_y)
         assert len(quantities_x) == len(quantities_y)
         offset = 0
-        for quantity_x, quantity_y, info_x, info_y, in zip(
-            quantities_x, quantities_y, self._infos_x, self._infos_y
-        ):
+        for (
+            quantity_x,
+            quantity_y,
+            info_x,
+            info_y,
+        ) in zip(quantities_x, quantities_y, self._infos_x, self._infos_y):
             # We only have writte a f64 kernel
             if quantity_x.metadata.dtype != np.float64:
                 raise RuntimeError(f"Kernel requires f64 given {np.float64}")

@@ -1,7 +1,7 @@
 import contextlib
-from typing import Mapping
-from timeit import default_timer as time
 import warnings
+from timeit import default_timer as time
+from typing import Mapping
 
 
 class Timer:

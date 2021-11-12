@@ -66,7 +66,7 @@ Microph:
     cuda_no_fma: true
   - backend: gtc:gt:gpu
     cuda_no_fma: true
-  
+
 FillGFS:
   - backend: gtx86
     ignore_near_zero_errors:

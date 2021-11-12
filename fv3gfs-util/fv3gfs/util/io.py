@@ -1,14 +1,16 @@
-import cftime
-from . import _xarray as xr
 from typing import TextIO
-from .time import FMS_TO_CFTIME_TYPE
+
+import cftime
+
+from . import _xarray as xr
 from . import filesystem
 from .quantity import Quantity
+from .time import FMS_TO_CFTIME_TYPE
 
 
 def write_state(state: dict, filename: str) -> None:
     """Write a model state to a NetCDF file.
-    
+
     Args:
         state: a model state dictionary
         filename: local or remote location to write the NetCDF file
@@ -37,7 +39,7 @@ def _extract_time(value: xr.DataArray) -> cftime.datetime:
 
 def read_state(filename: str) -> dict:
     """Read a model state from a NetCDF file.
-    
+
     Args:
         filename: local or remote location of the NetCDF file
 

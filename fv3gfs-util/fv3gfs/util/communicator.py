@@ -1,17 +1,20 @@
-from .halo_data_transformer import QuantityHaloSpec
-from typing import Tuple, Mapping, Optional, Sequence, cast, List, Union
-from .quantity import Quantity, QuantityMetadata
-from .partitioner import CubedSpherePartitioner, TilePartitioner, Partitioner
+import logging
+from typing import List, Mapping, Optional, Sequence, Tuple, Union, cast
+
+import numpy as np
+
 from . import constants
+from ._timing import NullTimer, Timer
 from .boundary import Boundary
+from .buffer import Buffer, array_buffer, recv_buffer, send_buffer
+from .halo_data_transformer import QuantityHaloSpec
+from .halo_updater import HaloUpdater
+from .partitioner import CubedSpherePartitioner, Partitioner, TilePartitioner
+from .quantity import Quantity, QuantityMetadata
 from .rotate import rotate_scalar_data
-from .buffer import array_buffer, send_buffer, recv_buffer, Buffer
-from ._timing import Timer, NullTimer
 from .types import AsyncRequest, NumpyModule
 from .utils import device_synchronize
-from .halo_updater import HaloUpdater
-import logging
-import numpy as np
+
 
 __all__ = [
     "TileCommunicator",
@@ -166,7 +169,10 @@ class Communicator:
                 )
         else:
             self._Scatter(
-                metadata.np, None, recv_quantity.view[:], root=constants.ROOT_RANK,
+                metadata.np,
+                None,
+                recv_quantity.view[:],
+                root=constants.ROOT_RANK,
             )
         return recv_quantity
 
@@ -242,7 +248,10 @@ class Communicator:
                 result = recv_quantity
         else:
             self._Gather(
-                send_quantity.np, send_quantity.view[:], None, root=constants.ROOT_RANK,
+                send_quantity.np,
+                send_quantity.view[:],
+                None,
+                root=constants.ROOT_RANK,
             )
             result = None
         return result
@@ -750,7 +759,10 @@ class CubedSphereCommunicator(Communicator):
         return (recv_request, buffer, out_array)
 
     def finish_vector_halo_update(
-        self, x_quantity: Quantity, y_quantity: Quantity, n_points: int,
+        self,
+        x_quantity: Quantity,
+        y_quantity: Quantity,
+        n_points: int,
     ):
         """Deprecated, do not use."""
         raise NotImplementedError(

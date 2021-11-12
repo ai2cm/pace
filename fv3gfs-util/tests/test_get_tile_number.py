@@ -1,5 +1,6 @@
-from fv3gfs.util import get_tile_number
 import pytest
+
+from fv3gfs.util import get_tile_number
 
 
 @pytest.mark.cpu_only

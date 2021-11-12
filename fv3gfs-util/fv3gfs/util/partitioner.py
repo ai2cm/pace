@@ -1,22 +1,25 @@
-from typing import Tuple, Callable, Iterable, Optional, Union, cast, Sequence
-import copy
 import abc
-import functools
+import copy
 import dataclasses
+import functools
+from typing import Callable, Iterable, Optional, Sequence, Tuple, Union, cast
+
+import numpy as np
+
+from . import boundary as bd
 from . import constants, utils
 from .constants import (
-    NORTH,
-    SOUTH,
-    WEST,
     EAST,
-    NORTHWEST,
+    NORTH,
     NORTHEAST,
-    SOUTHWEST,
+    NORTHWEST,
+    SOUTH,
     SOUTHEAST,
+    SOUTHWEST,
+    WEST,
 )
-import numpy as np
-from . import boundary as bd
 from .quantity import QuantityMetadata
+
 
 BOUNDARY_CACHE_SIZE = None
 
@@ -36,7 +39,7 @@ def get_tile_index(rank: int, total_ranks: int) -> int:
 
 def get_tile_number(tile_rank: int, total_ranks: int) -> int:
     """Deprecated: use get_tile_index.
-    
+
     Returns the tile number for a given rank and total number of ranks.
     """
     FutureWarning(
@@ -102,10 +105,10 @@ class Partitioner(abc.ABC):
 
 class TilePartitioner(Partitioner):
     def __init__(
-        self, layout: Tuple[int, int],
+        self,
+        layout: Tuple[int, int],
     ):
-        """Create an object for fv3gfs tile decomposition.
-        """
+        """Create an object for fv3gfs tile decomposition."""
         self.layout = layout
 
     @classmethod
@@ -312,7 +315,7 @@ def _get_corner(
 class CubedSpherePartitioner(Partitioner):
     def __init__(self, tile: TilePartitioner):
         """Create an object for fv3gfs cubed-sphere domain decomposition.
-        
+
         Args:
             tile: partitioner for the cube faces
         """

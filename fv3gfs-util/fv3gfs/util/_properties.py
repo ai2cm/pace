@@ -1,13 +1,15 @@
-from typing import Mapping, Union, Iterable
+from typing import Iterable, Mapping, Union
+
 from .constants import (
     X_DIM,
-    Y_DIM,
-    Z_DIM,
     X_INTERFACE_DIM,
+    Y_DIM,
     Y_INTERFACE_DIM,
+    Z_DIM,
     Z_INTERFACE_DIM,
     Z_SOIL_DIM,
 )
+
 
 RestartProperties = Mapping[str, Mapping[str, Union[str, Iterable[str]]]]
 RESTART_PROPERTIES: RestartProperties = {

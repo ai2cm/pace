@@ -1,8 +1,10 @@
 import dataclasses
-from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
-from .quantity import Quantity
-from ._boundary_utils import get_boundary_slice
 from typing import Tuple
+
+from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
+
+from ._boundary_utils import get_boundary_slice
+from .quantity import Quantity
 
 
 @dataclasses.dataclass
@@ -42,7 +44,7 @@ class Boundary:
         Args:
             specification: data specifications for the halo. Including shape
             and number of halo points.
-        
+
         Returns:
             A tuple of slices (one per dimensions)
         """
@@ -54,7 +56,7 @@ class Boundary:
         Args:
             quantity: quantity for which to return slices
             n_points: the width of boundary to include
-        
+
         Returns:
             A tuple of slices (one per dimensions)
         """
@@ -62,7 +64,7 @@ class Boundary:
 
     def _slice(self, specification: QuantityHaloSpec, interior: bool) -> Tuple[slice]:
         """Returns a tuple of slices (one per dimensions) indexing the data to be exchange.
-        
+
         Args:
             specification: memory information on this halo, including halo size
 

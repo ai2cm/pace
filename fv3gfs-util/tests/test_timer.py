@@ -1,6 +1,8 @@
-from fv3gfs.util import Timer, NullTimer
-import pytest
 import time
+
+import pytest
+
+from fv3gfs.util import NullTimer, Timer
 
 
 @pytest.fixture

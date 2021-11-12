@@ -1,10 +1,10 @@
-from fv3gfs.physics.stencils.physics import atmos_phys_driver_statein
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core._config as spec
+import numpy as np
+
+import fv3core.utils.gt4py_utils as utils
 from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.global_constants import KAPPA
-import fv3core.utils.gt4py_utils as utils
-import numpy as np
+from fv3gfs.physics.stencils.physics import atmos_phys_driver_statein
+from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
 
 class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
@@ -56,7 +56,8 @@ class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
             domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
             externals={
                 "nwat": 6,
-                "ptop": 300,  # hard coded before we can call ak from grid: state["ak"][0]
+                "ptop": 300,  # hard coded before we can call
+                # ak from grid: state["ak"][0]
                 "pk0inv": (1.0 / 1.0e5) ** KAPPA,
                 "pktop": (300.0 / 1.0e5) ** KAPPA,
             },

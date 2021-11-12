@@ -21,9 +21,11 @@
 import os
 import sys
 
+
 sys.path.insert(0, os.path.abspath(".."))
 
 import fv3gfs.util  # noqa
+
 
 # -- General configuration ---------------------------------------------
 
@@ -52,9 +54,9 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = u"fv3gfs-util"
-copyright = u"2019, Vulcan Technologies, LLC"
-author = u"Vulcan Technologies, LLC"
+project = "fv3gfs-util"
+copyright = "2019, Vulcan Technologies, LLC"
+author = "Vulcan Technologies, LLC"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
@@ -100,7 +102,7 @@ html_theme = "sphinx_rtd_theme"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = []  # type: ignore
 
 
 # -- Options for HTMLHelp output ---------------------------------------
@@ -111,7 +113,7 @@ htmlhelp_basename = "fv3gfs-util-doc"
 
 # -- Options for LaTeX output ------------------------------------------
 
-latex_elements = {
+latex_elements = {  # type: ignore
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
@@ -133,8 +135,8 @@ latex_documents = [
     (
         master_doc,
         "fv3gfs-util.tex",
-        u"fv3gfs-util Documentation",
-        u"Vulcan Technologies, LLC",
+        "fv3gfs-util Documentation",
+        "Vulcan Technologies, LLC",
         "manual",
     ),
 ]
@@ -144,7 +146,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "fv3gfs-util", u"fv3gfs-util Documentation", [author], 1)]
+man_pages = [(master_doc, "fv3gfs-util", "fv3gfs-util Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------
@@ -156,7 +158,7 @@ texinfo_documents = [
     (
         master_doc,
         "fv3gfs-util",
-        u"fv3gfs-util Documentation",
+        "fv3gfs-util Documentation",
         author,
         "fv3gfs-util",
         "Python toolkit for the FV3GFS global climate model.",

@@ -1,5 +1,6 @@
-from fv3gfs.physics.global_constants import *
 from gt4py import gtscript
+
+from fv3gfs.physics.global_constants import *
 
 
 @gtscript.function

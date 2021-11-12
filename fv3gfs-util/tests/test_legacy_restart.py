@@ -1,6 +1,8 @@
 import os
 import tempfile
+
 import cftime
+
 
 try:
     import xarray as xr
@@ -8,9 +10,11 @@ except ModuleNotFoundError:
     xr = None
 import numpy as np
 import pytest
+
 import fv3gfs.util
 import fv3gfs.util._legacy_restart
 from fv3gfs.util.testing import DummyComm
+
 
 requires_xarray = pytest.mark.skipif(xr is None, reason="xarray is not installed")
 
@@ -285,9 +289,17 @@ def test_apply_dims(data_array, new_dims, result_dims):
 @pytest.mark.parametrize(
     "old_dict, key_mapping, new_dict",
     [
-        pytest.param({}, {}, {}, id="empty_dict",),
         pytest.param(
-            {"key1": 1, "key2": 2}, {}, {"key1": 1, "key2": 2}, id="empty_map",
+            {},
+            {},
+            {},
+            id="empty_dict",
+        ),
+        pytest.param(
+            {"key1": 1, "key2": 2},
+            {},
+            {"key1": 1, "key2": 2},
+            id="empty_map",
         ),
         pytest.param(
             {"key1": 1, "key2": 2},
@@ -318,10 +330,30 @@ def test_map_keys(old_dict, key_mapping, new_dict):
 @pytest.mark.parametrize(
     "rank, total_ranks, suffix",
     [
-        pytest.param(0, 6, ".tile1.nc", id="first_tile",),
-        pytest.param(2, 6, ".tile3.nc", id="third_tile",),
-        pytest.param(2, 24, ".tile1.nc.0002", id="third_subtile",),
-        pytest.param(6, 24, ".tile2.nc.0002", id="third_subtile_second_tile",),
+        pytest.param(
+            0,
+            6,
+            ".tile1.nc",
+            id="first_tile",
+        ),
+        pytest.param(
+            2,
+            6,
+            ".tile3.nc",
+            id="third_tile",
+        ),
+        pytest.param(
+            2,
+            24,
+            ".tile1.nc.0002",
+            id="third_subtile",
+        ),
+        pytest.param(
+            6,
+            24,
+            ".tile2.nc.0002",
+            id="third_subtile_second_tile",
+        ),
     ],
 )
 @pytest.mark.cpu_only

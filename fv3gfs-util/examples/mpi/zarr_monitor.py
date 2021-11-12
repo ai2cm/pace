@@ -1,9 +1,12 @@
-import fv3gfs.util
-from mpi4py import MPI
-import numpy as np
 from datetime import timedelta
+
 import cftime
+import numpy as np
 import zarr
+from mpi4py import MPI
+
+import fv3gfs.util
+
 
 OUTPUT_PATH = "output/zarr_monitor.zarr"
 

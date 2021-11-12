@@ -1,6 +1,8 @@
 import os
+
 import numpy as np
 from gt4py import gtscript
+
 
 BACKEND = str(os.getenv("BACKEND")) if ("BACKEND" in os.environ) else "numpy"
 REBUILD = (os.getenv("REBUILD") == "True") if ("REBUILD" in os.environ) else True

@@ -1,7 +1,9 @@
-import pytest
-import fv3gfs.util
 import copy
+
+import pytest
 from mpi_comm import MPI
+
+import fv3gfs.util
 
 
 @pytest.fixture
@@ -163,7 +165,8 @@ def extent(n_points, dims, nz, ny, nx):
 @pytest.fixture()
 def communicator(cube_partitioner):
     return fv3gfs.util.CubedSphereCommunicator(
-        comm=MPI.COMM_WORLD, partitioner=cube_partitioner,
+        comm=MPI.COMM_WORLD,
+        partitioner=cube_partitioner,
     )
 
 
@@ -264,7 +267,11 @@ def depth_quantity(
                 pos[i] = origin[i] + extent[i] + n_outside - 1
                 data[tuple(pos)] = numpy.nan
     quantity = fv3gfs.util.Quantity(
-        data, dims=dims, units=units, origin=origin, extent=extent,
+        data,
+        dims=dims,
+        units=units,
+        origin=origin,
+        extent=extent,
     )
     return quantity
 
@@ -310,7 +317,11 @@ def zeros_quantity(dims, units, origin, extent, shape, numpy, dtype):
     outside of it."""
     data = numpy.ones(shape, dtype=dtype)
     quantity = fv3gfs.util.Quantity(
-        data, dims=dims, units=units, origin=origin, extent=extent,
+        data,
+        dims=dims,
+        units=units,
+        origin=origin,
+        extent=extent,
     )
     quantity.view[:] = 0.0
     return quantity

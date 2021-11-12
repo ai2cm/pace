@@ -1,11 +1,13 @@
-from typing import Tuple, Iterable, Dict, Union, Sequence, cast
-import warnings
 import dataclasses
+import warnings
+from typing import Dict, Iterable, Sequence, Tuple, Union, cast
+
 import numpy as np
-from . import _xarray
-from ._boundary_utils import shift_boundary_slice_tuple, bound_default_slice
-from . import constants
+
+from . import _xarray, constants
+from ._boundary_utils import bound_default_slice, shift_boundary_slice_tuple
 from .types import NumpyModule
+
 
 try:
     import cupy
@@ -95,7 +97,7 @@ class BoundaryArrayView:
     def sel(self, **kwargs: Union[slice, int]) -> np.ndarray:
         """Convenience method to perform indexing using dimension names
         without knowing dimension order.
-        
+
         Args:
             **kwargs: slice/index to retrieve for a given dimension name
 
@@ -366,7 +368,7 @@ class Quantity:
     def sel(self, **kwargs: Union[slice, int]) -> np.ndarray:
         """Convenience method to perform indexing on `view` using dimension names
         without knowing dimension order.
-        
+
         Args:
             **kwargs: slice/index to retrieve for a given dimension name
 
@@ -486,10 +488,10 @@ class Quantity:
         cell centers or interfaces, the API supports giving a list of dimension names
         for dimensions. For example, to re-order to X-Y-Z dimensions regardless of the
         grid the variable is on, one could do:
-        
+
         >>> from fv3gfs.util import X_DIMS, Y_DIMS, Z_DIMS
         >>> transposed_quantity = quantity.transpose([X_DIMS, Y_DIMS, Z_DIMS])
-        
+
         Args:
             target_dims: a list of output dimensions. Instead of a single dimension
                 name, an iterable of dimensions can be used instead for any entries.

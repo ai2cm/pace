@@ -1,7 +1,8 @@
-import sys
-import pytest
-import os
 import ctypes
+import os
+import sys
+
+import pytest
 
 from fv3gfs.util import capture_stream
 

@@ -1,11 +1,16 @@
 import numpy as np
 import pytest
+
 import fv3gfs.util
 
 
 @pytest.fixture
 def quantity(request):
-    return fv3gfs.util.Quantity(request.param[0], dims=request.param[1], units="units",)
+    return fv3gfs.util.Quantity(
+        request.param[0],
+        dims=request.param[1],
+        units="units",
+    )
 
 
 # edge views were implemented but not enabled, since the API is not yet needed and

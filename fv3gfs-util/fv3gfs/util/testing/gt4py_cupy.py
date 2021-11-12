@@ -8,7 +8,8 @@ try:
 except ImportError:
     cupy = None
 import numpy
-from .gt4py_numpy import inject_storage_methods, inject_attrs
+
+from .gt4py_numpy import inject_attrs, inject_storage_methods
 
 
 if cupy is not None:

@@ -1,5 +1,6 @@
-import logging
 import copy
+import logging
+
 from ..utils import ensure_contiguous, safe_assign_array
 
 

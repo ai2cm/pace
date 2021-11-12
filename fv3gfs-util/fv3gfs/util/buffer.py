@@ -1,15 +1,18 @@
-from typing import Callable, Generator, Iterable, Optional, Dict, Tuple, List
-from ._timing import Timer, NullTimer
+import contextlib
+from typing import Callable, Dict, Generator, Iterable, List, Optional, Tuple
+
 import numpy as np
 from numpy.lib.index_tricks import IndexExpression
-import contextlib
+
+from ._timing import NullTimer, Timer
+from .types import Allocator
 from .utils import (
+    device_synchronize,
     is_c_contiguous,
     safe_assign_array,
-    device_synchronize,
     safe_mpi_allocate,
 )
-from .types import Allocator
+
 
 BufferKey = Tuple[Callable, Iterable[int], type]
 BUFFER_CACHE: Dict[BufferKey, List["Buffer"]] = {}
@@ -124,7 +127,9 @@ def array_buffer(
 
 @contextlib.contextmanager
 def send_buffer(
-    allocator: Callable, array: np.ndarray, timer: Optional[Timer] = None,
+    allocator: Callable,
+    array: np.ndarray,
+    timer: Optional[Timer] = None,
 ) -> np.ndarray:
     """A context manager ensuring that `array` is contiguous in a context where it is
     being sent as data, copying into a recycled buffer array if necessary.
@@ -156,7 +161,9 @@ def send_buffer(
 
 @contextlib.contextmanager
 def recv_buffer(
-    allocator: Callable, array: np.ndarray, timer: Optional[Timer] = None,
+    allocator: Callable,
+    array: np.ndarray,
+    timer: Optional[Timer] = None,
 ) -> np.ndarray:
     """A context manager ensuring that array is contiguous in a context where it is
     being used to receive data, using a recycled buffer array and then copying the

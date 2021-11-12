@@ -1,12 +1,13 @@
-from typing import Iterable, BinaryIO, Generator
-import os
-from . import _xarray as xr
 import copy
-from ._properties import RestartProperties, RESTART_PROPERTIES
-from . import io, filesystem, constants
-from .quantity import Quantity
-from .partitioner import get_tile_index
+import os
+from typing import BinaryIO, Generator, Iterable
+
+from . import _xarray as xr
+from . import constants, filesystem, io
+from ._properties import RESTART_PROPERTIES, RestartProperties
 from .communicator import CubedSphereCommunicator
+from .partitioner import get_tile_index
+from .quantity import Quantity
 
 
 __all__ = ["open_restart"]

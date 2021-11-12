@@ -1,9 +1,10 @@
-import xarray as xr
+import time
+
 import numpy as np
-from matplotlib import pyplot as plt
+import xarray as xr
 from cartopy import crs as ccrs
 from fv3viz import pcolormesh_cube
-import time
+from matplotlib import pyplot as plt
 
 
 def gather_fortran_data_column_sum(path, total_ranks, cn, var):
@@ -34,9 +35,12 @@ def gather_fortran_data_column_sum(path, total_ranks, cn, var):
 
 
 def gather_python_data_column_sum(path, total_ranks, cn, var, ts_list):
-    """Gather Python output
+    """
+    Gather Python output
     Assuming the fileout has this format: pace_output_t_%TS_rank_%RANK.npy
-    where %TS is the number of timesteps since the beginning, %RANK is the tile number starting from 0
+    where %TS is the number of timesteps since the beginning,
+    %RANK is the tile number starting from 0.
+
     Args:
         path: direcotry to Fortran output files
         total_ranks: total number of ranks (e.g., 6, 54)
@@ -67,7 +71,8 @@ def load_data_column_sum(
     pace_sum = gather_python_data_column_sum(
         pace_data_path, 6, 128, pace_varname, timesteps
     )
-    # Fortran data are stored here: gs://vcm-fv3gfs-data/time_series_data/c128_baroclinic_400steps
+    # Fortran data are stored here:
+    # gs://vcm-fv3gfs-data/time_series_data/c128_baroclinic_400steps
     lat, lon, fortran_sum = gather_fortran_data_column_sum(
         fortran_data_path, 6, 128, fortran_varname
     )

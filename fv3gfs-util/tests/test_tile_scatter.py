@@ -1,6 +1,7 @@
 import pytest
-from fv3gfs.util.testing import DummyComm
+
 import fv3gfs.util
+from fv3gfs.util.testing import DummyComm
 
 
 def rank_scatter_results(communicator_list, quantity):

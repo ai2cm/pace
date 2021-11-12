@@ -1,7 +1,10 @@
-from typing import Union, Sequence, TypeVar, Tuple, Iterable
-from .types import Allocator
-from . import constants
+from typing import Iterable, Sequence, Tuple, TypeVar, Union
+
 import numpy as np
+
+from . import constants
+from .types import Allocator
+
 
 try:
     import cupy as cp
@@ -73,7 +76,7 @@ def safe_assign_array(
     to_array: Union[np.ndarray, Storage], from_array: Union[np.ndarray, Storage]
 ):
     """Failproof assignment for array on different devices.
-    
+
     The memory will be downloaded/uploaded from GPU if need be.
 
     Args:
@@ -101,7 +104,7 @@ def safe_mpi_allocate(
     allocator: Allocator, shape: Iterable[int], dtype: type
 ) -> np.ndarray:
     """Make sure the allocation use an allocator that works with MPI
-    
+
     For G2G transfer, MPICH requires the allocation to not be done with managed
     memory. Since we can't know what state `cupy` is in with switch for the default
     pooled allocator.

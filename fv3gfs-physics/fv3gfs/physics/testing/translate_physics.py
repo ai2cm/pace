@@ -1,6 +1,7 @@
-from fv3core.testing import TranslateFortranData2Py
 import numpy as np
+
 import fv3core.utils.gt4py_utils as utils
+from fv3core.testing import TranslateFortranData2Py
 
 
 class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
@@ -87,7 +88,9 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                     data4d[s, :, :, t]
                 )
                 d[var + str(s + 1) + "_" + str(t + 1)] = utils.make_storage_data(
-                    data=buffer, origin=(start1, start2), shape=max_shape[0:2],
+                    data=buffer,
+                    origin=(start1, start2),
+                    shape=max_shape[0:2],
                 )
         d[var] = utils.make_storage_from_shape(
             shape=max_shape[0:2], origin=(start1, start2), init=True
@@ -103,7 +106,9 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
         if axis == 0:
             default_origin = (0,)
         d[var] = utils.make_storage_data(
-            data=d[var], origin=default_origin, shape=d[var].shape,
+            data=d[var],
+            origin=default_origin,
+            shape=d[var].shape,
         )
 
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
@@ -227,7 +232,9 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                     ds.update(info)
                     ij_slice = self.grid.slice_dict(ds)
                     data_compute = np.asarray(data_result)[
-                        ij_slice[0], ij_slice[1], :,
+                        ij_slice[0],
+                        ij_slice[1],
+                        :,
                     ]
                     if dycore:
                         if k_length < npz:

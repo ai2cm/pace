@@ -1,16 +1,12 @@
-import numpy as np
+import timeit
+
 import gt4py
 import gt4py.gtscript as gtscript
 import gt4py.storage as gt_storage
-import timeit
-from fv3gfs.physics.global_config import *
+import numpy as np
+from gt4py.gtscript import __INLINED, PARALLEL, computation, interval
 
-from gt4py.gtscript import (
-    __INLINED,
-    PARALLEL,
-    computation,
-    interval,
-)
+from fv3gfs.physics.global_config import *
 
 
 @gtscript.stencil(backend=BACKEND)

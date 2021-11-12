@@ -1,7 +1,10 @@
-from setuptools import setup, find_namespace_packages
 import sys
+from typing import List
 
-setup_requirements = []
+from setuptools import find_namespace_packages, setup
+
+
+setup_requirements: List[str] = []
 
 requirements = [
     "cftime>=1.2.1",
@@ -12,7 +15,7 @@ requirements = [
 if sys.version_info.major == 3 and sys.version_info.minor == 6:
     requirements.append("dataclasses")
 
-test_requirements = []
+test_requirements: List[str] = []
 
 with open("README.md") as readme_file:
     readme = readme_file.read()

@@ -1,30 +1,20 @@
 import sys
-from types import DynamicClassAttribute
+import time
+
+import click
 
 # Use this to add non-installed seriablox path
 # sys.path.append("/usr/local/serialbox/python/")
 import numpy as np
 import serialbox
-import json
-from argparse import ArgumentParser, Namespace
-from datetime import datetime
-from typing import Any, Dict, List
-
-import cupy as cp
-import yaml
 from mpi4py import MPI
 
 import fv3core
 import fv3core._config as spec
 import fv3core.testing
-import fv3core.utils.global_config as global_config
 import fv3gfs.util as util
-import gt4py
 from fv3gfs.physics.stencils.physics import Physics
 
-import click
-
-import time
 
 MODEL_OUT_DIR = "./model_output"
 
@@ -51,7 +41,7 @@ class DeactivatedDycore:
 sys.path.append(
     "/home/floriand/vulcan/git/fv3gfs-integration/tests/savepoint/translate/"
 )
-from translate_update_dwind_phys import TranslateUpdateDWindsPhys
+from translate_update_dwind_phys import TranslateUpdateDWindsPhys  # noqa
 
 
 @click.command()
@@ -66,7 +56,7 @@ def driver(
     run_dycore: bool,
 ):
     print_for_rank0(f"Running {data_directory} on {backend}")
-    print_for_rank0(f"Init & timestep 0")
+    print_for_rank0("Init & timestep 0")
     start = 0
     if rank == 0:
         start = time.time()

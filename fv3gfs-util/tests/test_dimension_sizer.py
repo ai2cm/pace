@@ -1,6 +1,8 @@
-import pytest
-import fv3gfs.util
 from collections import namedtuple
+
+import pytest
+
+import fv3gfs.util
 
 
 @pytest.fixture(params=[48, 96])
@@ -133,7 +135,10 @@ def dim_case(request, nx, ny, nz):
         return DimCase((fv3gfs.util.Z_INTERFACE_DIM,), (0,), (nz + 1,), (nz + 1,))
     elif request.param == "x_y":
         return DimCase(
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM,),
+            (
+                fv3gfs.util.X_DIM,
+                fv3gfs.util.Y_DIM,
+            ),
             (fv3gfs.util.N_HALO_DEFAULT, fv3gfs.util.N_HALO_DEFAULT),
             (nx, ny),
             (
@@ -143,7 +148,11 @@ def dim_case(request, nx, ny, nz):
         )
     elif request.param == "z_y_x":
         return DimCase(
-            (fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM,),
+            (
+                fv3gfs.util.Z_DIM,
+                fv3gfs.util.Y_DIM,
+                fv3gfs.util.X_DIM,
+            ),
             (0, fv3gfs.util.N_HALO_DEFAULT, fv3gfs.util.N_HALO_DEFAULT),
             (nz, ny, nx),
             (

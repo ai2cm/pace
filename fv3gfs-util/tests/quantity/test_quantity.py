@@ -1,7 +1,9 @@
-import pytest
 import numpy as np
+import pytest
+
 import fv3gfs.util
 import fv3gfs.util.quantity
+
 
 try:
     import xarray as xr
@@ -190,12 +192,48 @@ def test_compute_view_edit_all_domain(quantity, n_halo, n_dims, extent_1d):
     [
         pytest.param(slice(0, 1), 0, 1, slice(0, 1), id="zero_shift"),
         pytest.param(slice(None, None), 1, 1, slice(None, None), id="shift_none_slice"),
-        pytest.param(slice(None, 5), -1, 5, slice(None, 4), id="shift_none_start",),
-        pytest.param(slice(-3, None), 0, 5, slice(2, None), id="negative_start",),
-        pytest.param(slice(-3, None), 1, 5, slice(3, None), id="shift_negative_start",),
-        pytest.param(slice(None, -1), 0, 5, slice(None, 4), id="negative_end",),
-        pytest.param(slice(0, -1), 0, 5, slice(0, 4), id="negative_end_with_none",),
-        pytest.param(slice(2, -2), 1, 5, slice(3, 4), id="shift_negative_end",),
+        pytest.param(
+            slice(None, 5),
+            -1,
+            5,
+            slice(None, 4),
+            id="shift_none_start",
+        ),
+        pytest.param(
+            slice(-3, None),
+            0,
+            5,
+            slice(2, None),
+            id="negative_start",
+        ),
+        pytest.param(
+            slice(-3, None),
+            1,
+            5,
+            slice(3, None),
+            id="shift_negative_start",
+        ),
+        pytest.param(
+            slice(None, -1),
+            0,
+            5,
+            slice(None, 4),
+            id="negative_end",
+        ),
+        pytest.param(
+            slice(0, -1),
+            0,
+            5,
+            slice(0, 4),
+            id="negative_end_with_none",
+        ),
+        pytest.param(
+            slice(2, -2),
+            1,
+            5,
+            slice(3, 4),
+            id="shift_negative_end",
+        ),
     ],
 )
 def test_shift_slice(slice_in, shift, extent, slice_out):
@@ -206,10 +244,20 @@ def test_shift_slice(slice_in, shift, extent, slice_out):
 @pytest.mark.parametrize(
     "quantity",
     [
-        fv3gfs.util.Quantity(np.array(5), dims=[], units="",),
-        fv3gfs.util.Quantity(np.array([1, 2, 3]), dims=["dimension"], units="degK",),
         fv3gfs.util.Quantity(
-            np.random.randn(3, 2, 4), dims=["dim1", "dim_2", "dimension_3"], units="m",
+            np.array(5),
+            dims=[],
+            units="",
+        ),
+        fv3gfs.util.Quantity(
+            np.array([1, 2, 3]),
+            dims=["dimension"],
+            units="degK",
+        ),
+        fv3gfs.util.Quantity(
+            np.random.randn(3, 2, 4),
+            dims=["dim1", "dim_2", "dimension_3"],
+            units="m",
         ),
         fv3gfs.util.Quantity(
             np.random.randn(8, 6, 6),

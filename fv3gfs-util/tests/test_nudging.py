@@ -1,7 +1,9 @@
-import fv3gfs.util
-from datetime import timedelta
-import pytest
 import copy
+from datetime import timedelta
+
+import pytest
+
+import fv3gfs.util
 
 
 @pytest.fixture(params=["empty", "one_var", "two_vars"])
@@ -10,12 +12,24 @@ def state(request, numpy):
         return {}
     elif request.param == "one_var":
         return {
-            "var1": fv3gfs.util.Quantity(numpy.ones([5]), dims=["dim1"], units="m",)
+            "var1": fv3gfs.util.Quantity(
+                numpy.ones([5]),
+                dims=["dim1"],
+                units="m",
+            )
         }
     elif request.param == "two_vars":
         return {
-            "var1": fv3gfs.util.Quantity(numpy.ones([5]), dims=["dim1"], units="m",),
-            "var2": fv3gfs.util.Quantity(numpy.ones([5]), dims=["dim_2"], units="m",),
+            "var1": fv3gfs.util.Quantity(
+                numpy.ones([5]),
+                dims=["dim1"],
+                units="m",
+            ),
+            "var2": fv3gfs.util.Quantity(
+                numpy.ones([5]),
+                dims=["dim_2"],
+                units="m",
+            ),
         }
     else:
         raise NotImplementedError()
@@ -33,7 +47,9 @@ def reference_state(reference_difference, state, numpy):
     elif reference_difference == "extra_var":
         reference_state = copy.deepcopy(state)
         reference_state["extra_var"] = fv3gfs.util.Quantity(
-            numpy.ones([5]), dims=["dim1"], units="m",
+            numpy.ones([5]),
+            dims=["dim1"],
+            units="m",
         )
     elif reference_difference == "plus_one":
         reference_state = copy.deepcopy(state)

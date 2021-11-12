@@ -7,7 +7,7 @@ FV3GFS-integration is the top level directory that includes the FV3 dynamical co
 
 ## Getting started
 
-Currently, we support tests in the dynamical core, physics, and util. 
+Currently, we support tests in the dynamical core, physics, and util.
 
 This git repository is laid out as a mono-repo, containing multiple independent projects. Because of this, it is important not to introduce unintended dependencies between projects. The graph below indicates a project depends on another by an arrow pointing from the parent project to its dependency. For example, the tests for fv3core should be able to run with only files contained under the fv3core and util projects, and should not access any files in the driver or physics packages. Only the top-level tests in Pace are allowed to read all files.
 
@@ -45,7 +45,7 @@ Additional test options are described under `fv3core` documentation.
 
 ### Physics tests
 
-Currently, the only supported test case is `c12_6ranks_baroclinic_dycore_microphysics`(vcm-fv3gfs-serialized-regression-data/integration-7.2.5/c12_6ranks_baroclinic_dycore_microphysics). 
+Currently, the only supported test case is `c12_6ranks_baroclinic_dycore_microphysics`(vcm-fv3gfs-serialized-regression-data/integration-7.2.5/c12_6ranks_baroclinic_dycore_microphysics).
 
 In the container, physics tests can be run:
 
@@ -65,5 +65,5 @@ $ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/port_de
 Inside the container, util tests can be run from `/port_dev`:
 ```shell
 $ cd /port_dev
-$ make test_util 
+$ make test_util
 ```

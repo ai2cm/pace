@@ -1,6 +1,7 @@
 import pytest
-import fv3gfs.util
 from mpi_comm import MPI
+
+import fv3gfs.util
 
 
 worker_function_list = []

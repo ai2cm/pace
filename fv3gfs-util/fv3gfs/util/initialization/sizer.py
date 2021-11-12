@@ -1,7 +1,8 @@
 import dataclasses
-from typing import Tuple, Dict, Sequence, Iterable
-from ..constants import N_HALO_DEFAULT
+from typing import Dict, Iterable, Sequence, Tuple
+
 from .. import constants
+from ..constants import N_HALO_DEFAULT
 from ..partitioner import TilePartitioner
 
 
@@ -76,7 +77,7 @@ class SubtileGridSizer(GridSizer):
         tile_rank: int = 0,
     ):
         """Create a SubtileGridSizer from a Fortran namelist.
-        
+
         Args:
             namelist: A namelist for the fv3gfs fortran model
             tile_partitioner (optional): a partitioner to use for segmenting the tile.

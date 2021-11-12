@@ -31,8 +31,8 @@ Once you have a copy of the source, you can install it in develop mode with:
 
 The `-e` flag will set up the directory so that python uses the local folder including
 any modifications, instead of copying the sources to an installation directory. This
-is very useful for development. The `-r requirements.txt` will install extra packages 
-useful for test, lint & other development requirements. The `-r requirements_gpu.txt` 
+is very useful for development. The `-r requirements.txt` will install extra packages
+useful for test, lint & other development requirements. The `-r requirements_gpu.txt`
 will install required packages for GPU compatibility.
 The `-c constraints.txt` is optional, but will ensure the package versions you use are ones we have tested against.
 

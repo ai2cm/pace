@@ -1,5 +1,7 @@
-from typing import Iterable, TypeVar, Tuple
+from typing import Iterable, Tuple, TypeVar
+
 from typing_extensions import Protocol
+
 
 Array = TypeVar("Array")
 

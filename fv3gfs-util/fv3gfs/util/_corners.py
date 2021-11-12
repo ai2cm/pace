@@ -72,11 +72,13 @@ shown earlier.
 147SSS
 
 """
-from .quantity import Quantity
-from .partitioner import TilePartitioner
 from typing import Sequence
+
 from typing_extensions import Literal
+
 from . import constants
+from .partitioner import TilePartitioner
+from .quantity import Quantity
 
 
 def fill_scalar_corners(
