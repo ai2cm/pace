@@ -1,0 +1,5 @@
+# includes _additional_ dependencies for the wrapper, also needs requirements.txt
+pkgconfig
+jinja2
+fsspec
+gcsfs

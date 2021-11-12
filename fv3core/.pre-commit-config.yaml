@@ -1,0 +1,35 @@
+repos:
+-   repo: https://github.com/psf/black
+    rev: 20.8b1
+    hooks:
+    -   id: black
+
+-   repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.4.2
+    hooks:
+    - id: isort
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.812
+    hooks:
+    - id: mypy
+      args: [
+          --no-strict-optional,
+          --ignore-missing-imports,
+          --follow-imports, skip  # needed so we only test enabled files
+        ]
+      exclude: |
+        (?x)^(
+        fv3core/utils/grid.py |
+        fv3core/utils/gt4py_utils.py |
+        fv3core/stencils/fv_subgridz.py |
+        )$
+
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+    - id: check-toml
+    - id: check-yaml
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+    - id: flake8
