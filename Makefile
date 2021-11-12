@@ -22,7 +22,7 @@ test_util:
 	if [ $(shell $(CHECK_CHANGED_SCRIPT) fv3gfs-util) != false ]; then \
 		$(MAKE) -C fv3gfs-util test; \
 	fi
-	
+
 savepoint_tests:
 	$(MAKE) -C fv3core $@
 

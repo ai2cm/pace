@@ -8,13 +8,14 @@ import numpy as np
 import pytest
 import serialbox as ser
 import xarray as xr
+from gt4py.config import build_settings as gt4py_build_settings
 
 import fv3core._config
 import fv3core.utils.global_config as config
 import fv3core.utils.gt4py_utils as gt_utils
 import fv3gfs.util as fv3util
 from fv3core.utils.mpi import MPI
-from gt4py.config import build_settings as gt4py_build_settings
+
 
 # this only matters for manually-added print statements
 np.set_printoptions(threshold=4096)

@@ -1,6 +1,8 @@
-from PIL import Image
 from os import listdir
 from os.path import isfile, join
+
+from PIL import Image
+
 
 onlyfiles = [f for f in listdir("./plot_output") if isfile(join("./plot_output", f))]
 onlyfiles.sort()

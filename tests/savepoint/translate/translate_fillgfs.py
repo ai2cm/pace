@@ -1,8 +1,6 @@
+from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.stencils.update_atmos_state import fill_gfs
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
-import numpy as np
 
 
 class TranslateFillGFS(TranslatePhysicsFortranData2Py):
@@ -28,4 +26,3 @@ class TranslateFillGFS(TranslatePhysicsFortranData2Py):
         inputs["q_min"] = 1.0e-9
         self.compute_func(**inputs)
         return self.slice_output(inputs)
-

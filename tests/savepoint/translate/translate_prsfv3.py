@@ -1,7 +1,6 @@
+from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
 
 
 class TranslatePrsFV3(TranslatePhysicsFortranData2Py):
@@ -31,4 +30,3 @@ class TranslatePrsFV3(TranslatePhysicsFortranData2Py):
         inputs["qgrs"] = inputs["qgrs"]["qvapor"]
         self.compute_func(**inputs)
         return self.slice_output(inputs)
-

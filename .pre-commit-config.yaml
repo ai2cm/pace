@@ -1,0 +1,74 @@
+repos:
+-   repo: https://github.com/psf/black
+    rev: 20.8b1
+    hooks:
+    -   id: black
+
+-   repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.4.2
+    hooks:
+    - id: isort
+      args: ["--profile", "black"]
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.812
+    hooks:
+    - id: mypy
+      args: [
+          --no-strict-optional,
+          --ignore-missing-imports,
+          --follow-imports, skip  # needed so we only test enabled files
+        ]
+      files: fv3core
+      exclude: |
+        (?x)^(
+        fv3core/fv3core/utils/grid.py |
+        fv3core/fv3core/utils/gt4py_utils.py |
+        fv3core/fv3core/stencils/fv_subgridz.py |
+        )$
+    - id: mypy
+      args: [
+          --no-strict-optional,
+          --ignore-missing-imports,
+          --follow-imports, skip  # needed so we only test enabled files
+        ]
+      files: fv3gfs-util
+    # - id: mypy
+    #   args: [
+    #       --no-strict-optional,
+    #       --ignore-missing-imports,
+    #       --follow-imports, skip  # needed so we only test enabled files
+    #     ]
+    #   files: fv3gfs-physics
+
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+    - id: check-toml
+    - id: check-yaml
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.9
+    hooks:
+    - id: flake8
+      name: flake8
+      language_version: python3
+      args: [--config, setup.cfg]
+      exclude: |
+        (?x)^(
+        .*/__init__.py |
+        fv3gfs-physics/.* |
+        fv3gfs-util/.*
+        )$
+    - id: flake8
+      name: flake8 __init__.py files
+      files: "__init__.py"
+      # ignore unused import error in __init__.py files
+      args: ["--ignore=F401,E203", --config, setup.cfg]
+      exclude: |
+        (?x)^(
+        fv3gfs-physics/.* |
+        fv3gfs-util/.*
+        )$

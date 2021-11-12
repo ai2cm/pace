@@ -1,13 +1,13 @@
+import copy
+
+from mpi4py import MPI
+
+import fv3core._config as spec
+import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util as util
+from fv3core.utils.typing import Float
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core.utils.gt4py_utils as utils
-import fv3core._config as spec
-from fv3core.decorators import FrozenStencil
-import numpy as np
-import copy
-from fv3core.utils.typing import Float
-from mpi4py import MPI
-import fv3gfs.util as util
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
@@ -33,24 +33,56 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             "omga": {"dycore": True},
         }
         self.out_vars = {
-            "gt0": {"serialname": "IPD_gt0", "kend": grid.npz - 1, "order": "F",},
-            "gu0": {"serialname": "IPD_gu0", "kend": grid.npz - 1, "order": "F",},
-            "gv0": {"serialname": "IPD_gv0", "kend": grid.npz - 1, "order": "F",},
-            "qvapor": {"serialname": "IPD_qvapor", "kend": grid.npz - 1, "order": "F",},
+            "gt0": {
+                "serialname": "IPD_gt0",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "gu0": {
+                "serialname": "IPD_gu0",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "gv0": {
+                "serialname": "IPD_gv0",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "qvapor": {
+                "serialname": "IPD_qvapor",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
             "qliquid": {
                 "serialname": "IPD_qliquid",
                 "kend": grid.npz - 1,
                 "order": "F",
             },
-            "qrain": {"serialname": "IPD_rain", "kend": grid.npz - 1, "order": "F",},
-            "qice": {"serialname": "IPD_qice", "kend": grid.npz - 1, "order": "F",},
-            "qsnow": {"serialname": "IPD_snow", "kend": grid.npz - 1, "order": "F",},
+            "qrain": {
+                "serialname": "IPD_rain",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "qice": {
+                "serialname": "IPD_qice",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "qsnow": {
+                "serialname": "IPD_snow",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
             "qgraupel": {
                 "serialname": "IPD_qgraupel",
                 "kend": grid.npz - 1,
                 "order": "F",
             },
-            "qcld": {"serialname": "IPD_qcld", "kend": grid.npz - 1, "order": "F",},
+            "qcld": {
+                "serialname": "IPD_qcld",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
         }
 
     def compute(self, inputs):
@@ -76,7 +108,8 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         inputs["ua_t1"] = copy.deepcopy(storage)
         inputs["va_t1"] = copy.deepcopy(storage)
         physics_state = PhysicsState(**inputs)
-        # make mock communicator, this is not used but needs to be pass as type CubedSphereCommunicator
+        # make mock communicator, this is not used
+        # but needs to be passed as type CubedSphereCommunicator
         comm = MPI.COMM_WORLD
         layout = [1, 1]
         partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
@@ -189,4 +222,3 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         inputs["qgraupel"] = physics_state.qgraupel_t1
         inputs["qcld"] = physics_state.qcld_t1
         return self.slice_output(inputs)
-

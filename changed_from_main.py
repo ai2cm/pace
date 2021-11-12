@@ -8,8 +8,8 @@ This is useful for running tests only on projects that have changed.
 This script should depend only on Python 3.6+ standard libraries.
 """
 import argparse
-import re
 import os
+import re
 import subprocess
 from typing import Any, Dict, Set
 
@@ -60,12 +60,15 @@ def parse_args(subdir_dependencies: Dict[str, Any]):
         description=(
             "Determines whether one of the projects in the repo or any of its "
             "dependencies are different from the version on the `main` branch. "
-            "Prints \"false\" if the subdirectory and its dependencies are "
-            "unchanged, or \"true\" if they have changed."
+            'Prints "false" if the subdirectory and its dependencies are '
+            'unchanged, or "true" if they have changed.'
         )
     )
     parser.add_argument(
-        "project_name", type=str, help="subdirectory name of project to check", choices=subdir_dependencies.keys()
+        "project_name",
+        type=str,
+        help="subdirectory name of project to check",
+        choices=subdir_dependencies.keys(),
     )
     return parser.parse_args()
 
@@ -78,9 +81,7 @@ def unstaged_files(dirname) -> bool:
 
 
 def staged_files_changed(dirname) -> bool:
-    result = subprocess.check_output(
-        ["git", "diff", "main", dirname]
-    )
+    result = subprocess.check_output(["git", "diff", "main", dirname])
     return len(result) > 0
 
 
@@ -88,7 +89,7 @@ def changed(dirname) -> bool:
     return unstaged_files(dirname) or staged_files_changed(dirname)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     subdir_dependencies = get_dependencies()
     args = parse_args(subdir_dependencies)
     if changed(args.project_name):

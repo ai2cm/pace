@@ -1,0 +1,568 @@
+accumulated_x_courant_number:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: cx
+  units: ''
+accumulated_x_mass_flux:
+  dims:
+  - z
+  - y
+  - x_interface
+  restart_name: mfx
+  units: unknown
+accumulated_y_courant_number:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: cy
+  units: unknown
+accumulated_y_mass_flux:
+  dims:
+  - z
+  - y_interface
+  - x
+  restart_name: mfy
+  units: unknown
+air_temperature:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: T
+  units: degK
+air_temperature_after_physics:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: gt0
+  units: K
+air_temperature_at_2m:
+  dims:
+  - y
+  - x
+  restart_name: t2m
+  units: degK
+area_of_grid_cell:
+  dims:
+  - y
+  - x
+  restart_name: area
+  units: m^2
+atmosphere_hybrid_a_coordinate:
+  dims:
+  - z_interface
+  restart_name: ak
+  units: Pa
+atmosphere_hybrid_b_coordinate:
+  dims:
+  - z_interface
+  restart_name: bk
+  units: ''
+canopy_water:
+  dims:
+  - y
+  - x
+  restart_name: canopy
+  units: unknown
+clear_sky_downward_longwave_flux_at_surface:
+  dims:
+  - y
+  - x
+  fortran_subname: dnfx0
+  restart_name: sfcflw
+  units: W/m^2
+clear_sky_downward_shortwave_flux_at_surface:
+  dims:
+  - y
+  - x
+  fortran_subname: dnfx0
+  restart_name: sfcfsw
+  units: W/m^2
+clear_sky_upward_longwave_flux_at_surface:
+  dims:
+  - y
+  - x
+  fortran_subname: upfx0
+  restart_name: sfcflw
+  units: W/m^2
+clear_sky_upward_longwave_flux_at_top_of_atmosphere:
+  dims:
+  - y
+  - x
+  fortran_subname: upfx0
+  restart_name: topflw
+  units: W/m^2
+clear_sky_upward_shortwave_flux_at_surface:
+  dims:
+  - y
+  - x
+  fortran_subname: upfx0
+  restart_name: sfcfsw
+  units: W/m^2
+clear_sky_upward_shortwave_flux_at_top_of_atmosphere:
+  dims:
+  - y
+  - x
+  fortran_subname: upfx0
+  restart_name: topfsw
+  units: W/m^2
+convective_cloud_bottom_pressure:
+  dims:
+  - y
+  - x
+  restart_name: cvb
+  units: Pa
+convective_cloud_fraction:
+  dims:
+  - y
+  - x
+  restart_name: cv
+  units: ''
+convective_cloud_top_pressure:
+  dims:
+  - y
+  - x
+  restart_name: cvt
+  units: Pa
+deep_soil_temperature:
+  dims:
+  - y
+  - x
+  restart_name: tg3
+  units: degK
+dissipation_estimate_from_heat_source:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: diss_est
+  units: unknown
+eastward_wind:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: ua
+  units: m/s
+eastward_wind_after_physics:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: gu0
+  units: m/s
+eastward_wind_at_surface:
+  dims:
+  - y
+  - x
+  restart_name: u_srf
+  units: m/s
+fh_parameter:
+  description: used in PBL scheme
+  dims:
+  - y
+  - x
+  restart_name: ffhh
+  units: unknown
+fm_at_10m:
+  description: Ratio of sigma level 1 wind and 10m wind
+  dims:
+  - y
+  - x
+  restart_name: f10m
+  units: unknown
+fm_parameter:
+  description: used in PBL scheme
+  dims:
+  - y
+  - x
+  restart_name: ffmm
+  units: unknown
+fractional_coverage_with_strong_cosz_dependency:
+  dims:
+  - y
+  - x
+  restart_name: facsf
+  units: ''
+fractional_coverage_with_weak_cosz_dependency:
+  dims:
+  - y
+  - x
+  restart_name: facwf
+  units: ''
+friction_velocity:
+  dims:
+  - y
+  - x
+  restart_name: uustar
+  units: m/s
+ice_fraction_over_open_water:
+  dims:
+  - y
+  - x
+  restart_name: fice
+  units: ''
+interface_pressure:
+  dims:
+  - y
+  - z_interface
+  - x
+  restart_name: pe
+  units: Pa
+interface_pressure_raised_to_power_of_kappa:
+  dims:
+  - z_interface
+  - y
+  - x
+  restart_name: pk
+  units: unknown
+land_sea_mask:
+  description: sea=0, land=1, sea-ice=2
+  dims:
+  - y
+  - x
+  restart_name: slmsk
+  units: ''
+latent_heat_flux:
+  dims:
+  - y
+  - x
+  restart_name: dqsfci
+  units: W/m^2
+latitude:
+  dims:
+  - y
+  - x
+  restart_name: xlat
+  units: radians
+layer_mean_pressure_raised_to_power_of_kappa:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: pkz
+  units: unknown
+liquid_soil_moisture:
+  dims:
+  - z_soil
+  - y
+  - x
+  restart_name: slc
+  units: unknown
+logarithm_of_interface_pressure:
+  dims:
+  - y
+  - z_interface
+  - x
+  restart_name: peln
+  units: ln(Pa)
+longitude:
+  dims:
+  - y
+  - x
+  restart_name: xlon
+  units: radians
+maximum_fractional_coverage_of_green_vegetation:
+  dims:
+  - y
+  - x
+  restart_name: shdmax
+  units: ''
+maximum_snow_albedo_in_fraction:
+  dims:
+  - y
+  - x
+  restart_name: snoalb
+  units: ''
+mean_cos_zenith_angle:
+  dims:
+  - y
+  - x
+  restart_name: coszen
+  units: ''
+mean_near_infrared_albedo_with_strong_cosz_dependency:
+  dims:
+  - y
+  - x
+  restart_name: alnsf
+  units: ''
+mean_near_infrared_albedo_with_weak_cosz_dependency:
+  dims:
+  - y
+  - x
+  restart_name: alnwf
+  units: ''
+mean_visible_albedo_with_strong_cosz_dependency:
+  dims:
+  - y
+  - x
+  restart_name: alvsf
+  units: ''
+mean_visible_albedo_with_weak_cosz_dependency:
+  dims:
+  - y
+  - x
+  restart_name: alvwf
+  units: ''
+minimum_fractional_coverage_of_green_vegetation:
+  dims:
+  - y
+  - x
+  restart_name: shdmin
+  units: ''
+northward_wind:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: va
+  units: m/s
+northward_wind_after_physics:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: gv0
+  units: m/s
+northward_wind_at_surface:
+  dims:
+  - y
+  - x
+  restart_name: v_srf
+  units: m/s
+pressure_thickness_of_atmospheric_layer:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: delp
+  units: Pa
+sea_ice_thickness:
+  dims:
+  - y
+  - x
+  restart_name: hice
+  units: unknown
+sensible_heat_flux:
+  dims:
+  - y
+  - x
+  restart_name: dtsfci
+  units: W/m^2
+snow_cover_in_fraction:
+  dims:
+  - y
+  - x
+  restart_name: sncovr
+  units: ''
+snow_depth_water_equivalent:
+  dims:
+  - y
+  - x
+  restart_name: snwdph
+  units: mm
+snow_rain_flag:
+  description: snow/rain flag for precipitation
+  dims:
+  - y
+  - x
+  restart_name: srflag
+  units: ''
+soil_temperature:
+  dims:
+  - z_soil
+  - y
+  - x
+  restart_name: stc
+  units: degK
+soil_type:
+  dims:
+  - y
+  - x
+  restart_name: stype
+  units: ''
+specific_humidity_at_2m:
+  dims:
+  - y
+  - x
+  restart_name: q2m
+  units: kg/kg
+surface_geopotential:
+  dims:
+  - y
+  - x
+  restart_name: phis
+  units: m^2 s^-2
+surface_pressure:
+  dims:
+  - y
+  - x
+  restart_name: ps
+  units: Pa
+surface_roughness:
+  dims:
+  - y
+  - x
+  restart_name: zorl
+  units: cm
+surface_slope_type:
+  description: used in land surface model
+  dims:
+  - y
+  - x
+  restart_name: slope
+  units: ''
+surface_temperature:
+  description: surface skin temperature
+  dims:
+  - y
+  - x
+  restart_name: tsea
+  units: degK
+surface_temperature_over_ice_fraction:
+  dims:
+  - y
+  - x
+  restart_name: tisfc
+  units: degK
+total_condensate_mixing_ratio:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: q_con
+  units: kg/kg
+total_precipitation:
+  dims:
+  - y
+  - x
+  restart_name: tprcp
+  units: m
+total_sky_downward_longwave_flux_at_surface:
+  dims:
+  - y
+  - x
+  fortran_subname: dnfxc
+  restart_name: sfcflw
+  units: W/m^2
+total_sky_downward_shortwave_flux_at_surface:
+  dims:
+  - y
+  - x
+  fortran_subname: dnfxc
+  restart_name: sfcfsw
+  units: W/m^2
+total_sky_downward_shortwave_flux_at_top_of_atmosphere:
+  dims:
+  - y
+  - x
+  fortran_subname: dnfxc
+  restart_name: topfsw
+  units: W/m^2
+total_sky_upward_longwave_flux_at_surface:
+  dims:
+  - y
+  - x
+  fortran_subname: upfxc
+  restart_name: sfcflw
+  units: W/m^2
+total_sky_upward_longwave_flux_at_top_of_atmosphere:
+  dims:
+  - y
+  - x
+  fortran_subname: upfxc
+  restart_name: topflw
+  units: W/m^2
+total_sky_upward_shortwave_flux_at_surface:
+  dims:
+  - y
+  - x
+  fortran_subname: upfxc
+  restart_name: sfcfsw
+  units: W/m^2
+total_sky_upward_shortwave_flux_at_top_of_atmosphere:
+  dims:
+  - y
+  - x
+  fortran_subname: upfxc
+  restart_name: topfsw
+  units: W/m^2
+total_soil_moisture:
+  dims:
+  - z_soil
+  - y
+  - x
+  restart_name: smc
+  units: unknown
+vegetation_fraction:
+  dims:
+  - y
+  - x
+  restart_name: vfrac
+  units: ''
+vegetation_type:
+  dims:
+  - y
+  - x
+  restart_name: vtype
+  units: ''
+vertical_pressure_velocity:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: omga
+  units: Pa/s
+vertical_thickness_of_atmospheric_layer:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: DZ
+  units: m
+vertical_wind:
+  dims:
+  - z
+  - y
+  - x
+  restart_name: W
+  units: m/s
+water_equivalent_of_accumulated_snow_depth:
+  description: weasd in Fortran code, over land and sea ice only
+  dims:
+  - y
+  - x
+  restart_name: sheleg
+  units: kg/m^2
+x_wind:
+  dims:
+  - z
+  - y_interface
+  - x
+  restart_name: u
+  units: m/s
+x_wind_on_c_grid:
+  dims:
+  - z
+  - y
+  - x_interface
+  restart_name: uc
+  units: m/s
+y_wind:
+  dims:
+  - z
+  - y
+  - x_interface
+  restart_name: v
+  units: m/s
+y_wind_on_c_grid:
+  dims:
+  - z
+  - y_interface
+  - x
+  restart_name: vc
+  units: m/s
