@@ -132,7 +132,7 @@ class MapSingle:
         q1: FloatField,
         pe1: FloatField,
         pe2: FloatField,
-        qs: Optional["FloatFieldIJ"] = None,
+        qs: Optional[FloatFieldIJ] = None,
         qmin: float = 0.0,
     ):
         """

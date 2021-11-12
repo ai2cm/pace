@@ -86,7 +86,7 @@ class TranslateFortranData2Py:
         names_4d: Optional[List[str]] = None,
         read_only: bool = False,
         full_shape: bool = False,
-    ) -> Dict[str, "Field"]:
+    ) -> Dict[str, Field]:
         use_shape = list(self.maxshape)
         if dummy_axes:
             for axis in dummy_axes:
