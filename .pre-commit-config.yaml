@@ -1,11 +1,11 @@
 repos:
 -   repo: https://github.com/psf/black
-    rev: 21.10b0
+    rev: 20.8b1
     hooks:
     -   id: black
 
 -   repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.9.3
+    rev: v5.4.2
     hooks:
     - id: isort
       args: ["--profile", "black"]
@@ -42,7 +42,7 @@ repos:
     #   files: fv3gfs-physics
 
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v2.3.0
     hooks:
     - id: check-toml
     - id: check-yaml
@@ -50,7 +50,7 @@ repos:
     - id: trailing-whitespace
 
 -   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.2
+    rev: 3.7.9
     hooks:
     - id: flake8
       name: flake8
