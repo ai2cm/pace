@@ -54,12 +54,12 @@ full_fortran_image:
 
  ## build production container image
 fv3core_image: get_gt4py
-	DOCKER_BUILDKIT=1 docker build \
+	DOCKER_BUILDKIT=1 ./concrete_externals.sh "docker build \
 		$(BUILD_ARGS) \
 		-f $(FV3CORE_DOCKERFILE) \
 		-t $(FV3CORE_IMAGE) \
 		--target=$(FV3CORE_TARGET) \
-		..
+		.."
 
 fv3core_wrapper_image: fortran_image
 	FV3CORE_TARGET=fv3core_wrapper FV3CORE_IMAGE=$(FV3CORE_WRAPPER_IMAGE) $(MAKE) fv3core_image

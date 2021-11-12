@@ -6,7 +6,7 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.remap_profile import RemapProfile
 from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ
+from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
 
 
 def set_dp(dp1: FloatField, pe1: FloatField, lev: IntFieldIJ):
@@ -132,7 +132,7 @@ class MapSingle:
         q1: FloatField,
         pe1: FloatField,
         pe2: FloatField,
-        qs: Optional[FloatFieldIJ] = None,
+        qs: Optional["FloatFieldIJ"] = None,
         qmin: float = 0.0,
     ):
         """

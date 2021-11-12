@@ -45,7 +45,7 @@ ENV FV3_STENCIL_REBUILD_FLAG=False
 COPY external/fv3gfs-util/ /external/fv3gfs-util/
 COPY fv3core /fv3core/fv3core
 COPY tests /fv3core/tests
-COPY setup.py setup.cfg README.md /fv3core/
+COPY setup.py README.md /fv3core/
 COPY docker/entrypoint.sh /entrypoint.sh
 
 # Docker hard limits shared memory usage. MPICH for oversubscribed situation

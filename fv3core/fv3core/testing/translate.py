@@ -6,7 +6,7 @@ import numpy as np
 import fv3core._config
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.grid import Grid
-from fv3core.utils.typing import Field
+from fv3core.utils.typing import Field  # noqa: F401
 
 
 logger = logging.getLogger("fv3ser")
@@ -86,7 +86,7 @@ class TranslateFortranData2Py:
         names_4d: Optional[List[str]] = None,
         read_only: bool = False,
         full_shape: bool = False,
-    ) -> Dict[str, Field]:
+    ) -> Dict[str, "Field"]:
         use_shape = list(self.maxshape)
         if dummy_axes:
             for axis in dummy_axes:
