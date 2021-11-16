@@ -924,12 +924,9 @@ class TranslateTrigSg(ParallelTranslateGrid):
 
 
 class TranslateAAMCorrection(ParallelTranslateGrid):
-    # NOTE THIS TESTS is DISABLED
-    # TODO investiage failures on c48_6ranks_standard
-    # to enable, import in translate/__init__.py file
     def __init__(self, rank_grids):
         super().__init__(rank_grids)
-        self.max_error = 3e-14
+        self.max_error = 1e-14
         self.near_zero = 1e-14
         self.ignore_near_zero_errors = {"l2c_v": True, "l2c_u": True}
 
