@@ -305,6 +305,7 @@ class DynamicalCore:
         self._ak = grid_data.ak
         self._bk = grid_data.bk
         self._phis = phis.storage
+        self._ptop = self.grid_data.ptop
         pfull_stencil = stencil_factory.from_origin_domain(
             init_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
         )
@@ -413,10 +414,8 @@ class DynamicalCore:
                 "bdt": timestep,
                 "mdt": timestep / self.config.k_split,
                 "do_adiabatic_init": do_adiabatic_init,
-                "ptop": self.grid_data.ptop,
                 "n_split": n_split,
                 "k_split": self.config.k_split,
-                "ks": self.grid_data.ks,
             }
         )
         self._compute(state, timer)
@@ -490,7 +489,7 @@ class DynamicalCore:
                         self._bk,
                         self._pfull,
                         state.dp1,
-                        state.ptop,
+                        self._ptop,
                         constants.KAPPA,
                         constants.ZVIR,
                         last_step,
