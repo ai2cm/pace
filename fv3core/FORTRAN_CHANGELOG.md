@@ -13,3 +13,4 @@ d_sw:
 - renamed one of the usages of ub/vb to vort_x_delta and vort_y_delta, where they hold x and y finite differences of the vort variable
 - renamed first usage of ptc to u_contra_dyc and first usage of vort to v_contra_dxc
 - in xppm/yppm routines, separated "courant" which was b-wind * dt into dt (timestep) and ub_contra/vb_contra
+- a2b_ord4 uses lon for the Fortran code's `grid(:, :, 1)` and lat for `grid(:, :, 2)`, and similarly lon_agrid/lat_agrid for the components of the Fortran code's agrid variable. 
