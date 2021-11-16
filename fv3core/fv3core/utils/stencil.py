@@ -17,6 +17,7 @@ from typing import (
 )
 
 import gt4py
+import numpy
 import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
@@ -28,6 +29,12 @@ from fv3core.utils.typing import Index3D, cast_to_index3d
 from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
 
 from .gt4py_utils import make_storage_from_shape
+
+
+try:
+    import cupy
+except ImportError:
+    cupy = np
 
 
 class StencilConfig(Hashable):
@@ -119,6 +126,13 @@ class StencilConfig(Hashable):
     @property
     def is_gtc_backend(self) -> bool:
         return self.backend.startswith("gtc")
+
+    @property
+    def np(self):
+        if self.is_gpu_backend:
+            return cupy
+        else:
+            return numpy
 
 
 class FrozenStencil:
@@ -454,7 +468,11 @@ class GridIndexing:
             self.domain[2] + add[2],
         )
 
-    def axis_offsets(self, origin: Index3D, domain: Index3D) -> Dict[str, Any]:
+    def axis_offsets(
+        self,
+        origin: Tuple[int, ...],
+        domain: Tuple[int, ...],
+    ) -> Dict[str, Any]:
         if self.west_edge:
             i_start = gtscript.I[0] + self.origin[0] - origin[0]
         else:

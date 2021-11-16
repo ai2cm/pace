@@ -7,8 +7,13 @@ from fv3core.utils.corners import (
     fill_corners_cgrid,
     fill_corners_dgrid,
 )
-from fv3core.utils.global_constants import PI, RADIUS
-from fv3core.utils.grid import CARTESIAN_DIM, LON_OR_LAT_DIM, TILE_DIM
+from fv3core.utils.global_constants import (
+    CARTESIAN_DIM,
+    LON_OR_LAT_DIM,
+    PI,
+    RADIUS,
+    TILE_DIM,
+)
 from fv3core.utils.gt4py_utils import asarray
 from fv3core.utils.stencil import GridIndexing
 from fv3gfs.util.constants import N_HALO_DEFAULT
@@ -24,7 +29,6 @@ from .geometry import (
     calculate_supergrid_cos_sin,
     calculate_trig_uv,
     calculate_xy_unit_vectors,
-    edge_factors,
     efactor_a2c_v,
     get_center_vector,
     supergrid_corner_fix,
@@ -234,6 +238,42 @@ class MetricTerms:
         the longitudes and latitudes of the cell centers
         """
         return self._agrid
+
+    @property
+    def lon(self):
+        return fv3util.Quantity(
+            data=self.grid.data[:, :, 0],
+            dims=self.grid.dims[0:2],
+            units=self.grid.units,
+            gt4py_backend=self.grid.gt4py_backend,
+        )
+
+    @property
+    def lat(self):
+        return fv3util.Quantity(
+            data=self.grid.data[:, :, 1],
+            dims=self.grid.dims[0:2],
+            units=self.grid.units,
+            gt4py_backend=self.grid.gt4py_backend,
+        )
+
+    @property
+    def lon_agrid(self):
+        return fv3util.Quantity(
+            data=self.agrid.data[:, :, 0],
+            dims=self.agrid.dims[0:2],
+            units=self.agrid.units,
+            gt4py_backend=self.agrid.gt4py_backend,
+        )
+
+    @property
+    def lat_agrid(self):
+        return fv3util.Quantity(
+            data=self.agrid.data[:, :, 1],
+            dims=self.agrid.dims[0:2],
+            units=self.agrid.units,
+            gt4py_backend=self.agrid.gt4py_backend,
+        )
 
     @property
     def dx(self):
@@ -970,62 +1010,6 @@ class MetricTerms:
         return self._a22
 
     @property
-    def edge_w(self):
-        """
-        factor to interpolate scalars from a to c grid at the western grid edge
-        """
-        if self._edge_w is None:
-            (
-                self._edge_w,
-                self._edge_e,
-                self._edge_s,
-                self._edge_n,
-            ) = self._calculate_edge_factors()
-        return self._edge_w
-
-    @property
-    def edge_e(self):
-        """
-        factor to interpolate scalars from a to c grid at the eastern grid edge
-        """
-        if self._edge_e is None:
-            (
-                self._edge_w,
-                self._edge_e,
-                self._edge_s,
-                self._edge_n,
-            ) = self._calculate_edge_factors()
-        return self._edge_e
-
-    @property
-    def edge_s(self):
-        """
-        factor to interpolate scalars from a to c grid at the southern grid edge
-        """
-        if self._edge_s is None:
-            (
-                self._edge_w,
-                self._edge_e,
-                self._edge_s,
-                self._edge_n,
-            ) = self._calculate_edge_factors()
-        return self._edge_s
-
-    @property
-    def edge_n(self):
-        """
-        factor to interpolate scalars from a to c grid at the northern grid edge
-        """
-        if self._edge_n is None:
-            (
-                self._edge_w,
-                self._edge_e,
-                self._edge_s,
-                self._edge_n,
-            ) = self._calculate_edge_factors()
-        return self._edge_n
-
-    @property
     def edge_vect_w(self):
         """
         factor to interpolate vectors from a to c grid at the western grid edge
@@ -1164,56 +1148,96 @@ class MetricTerms:
         """
         1/cell area
         """
-        return 1.0 / self.area
+        return fv3util.Quantity(
+            data=1.0 / self.area.data,
+            dims=self.area.dims,
+            units="m^-1",
+            gt4py_backend=self.area.gt4py_backend,
+        )
 
     @cached_property
     def rarea_c(self):
         """
         1/cgrid cell area
         """
-        return 1.0 / self.area_c
+        return fv3util.Quantity(
+            data=1.0 / self.area_c.data,
+            dims=self.area_c.dims,
+            units="m^-1",
+            gt4py_backend=self.area_c.gt4py_backend,
+        )
 
     @cached_property
     def rdx(self):
         """
         1/dx
         """
-        return 1.0 / self.dx
+        return fv3util.Quantity(
+            data=1.0 / self.dx.data,
+            dims=self.dx.dims,
+            units="m^-1",
+            gt4py_backend=self.dx.gt4py_backend,
+        )
 
     @cached_property
     def rdy(self):
         """
         1/dy
         """
-        return 1.0 / self.dy
+        return fv3util.Quantity(
+            data=1.0 / self.dy.data,
+            dims=self.dy.dims,
+            units="m^-1",
+            gt4py_backend=self.dy.gt4py_backend,
+        )
 
     @cached_property
     def rdxa(self):
         """
         1/dxa
         """
-        return 1.0 / self.dxa
+        return fv3util.Quantity(
+            data=1.0 / self.dxa.data,
+            dims=self.dxa.dims,
+            units="m^-1",
+            gt4py_backend=self.dxa.gt4py_backend,
+        )
 
     @cached_property
     def rdya(self):
         """
         1/dya
         """
-        return 1.0 / self.dya
+        return fv3util.Quantity(
+            data=1.0 / self.dya.data,
+            dims=self.dya.dims,
+            units="m^-1",
+            gt4py_backend=self.dya.gt4py_backend,
+        )
 
     @cached_property
     def rdxc(self):
         """
         1/dxc
         """
-        return 1.0 / self.dxc
+        return fv3util.Quantity(
+            data=1.0 / self.dxc.data,
+            dims=self.dxc.dims,
+            units="m^-1",
+            gt4py_backend=self.dxc.gt4py_backend,
+        )
 
     @cached_property
     def rdyc(self):
         """
         1/dyc
         """
-        return 1.0 / self.dyc
+        return fv3util.Quantity(
+            data=1.0 / self.dyc.data,
+            dims=self.dyc.dims,
+            units="m^-1",
+            gt4py_backend=self.dyc.gt4py_backend,
+        )
 
     def _init_dgrid(self):
 
@@ -2074,29 +2098,6 @@ class MetricTerms:
         )
         return a11, a12, a21, a22
 
-    def _calculate_edge_factors(self):
-        nhalo = self._halo
-        edge_s = self._quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
-        edge_n = self._quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
-        edge_e = self._quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
-        edge_w = self._quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
-        (
-            edge_w.data[nhalo:-nhalo],
-            edge_e.data[nhalo:-nhalo],
-            edge_s.data[nhalo:-nhalo],
-            edge_n.data[nhalo:-nhalo],
-        ) = edge_factors(
-            self.gridvar,
-            self.agrid.data[:-1, :-1],
-            self._grid_type,
-            nhalo,
-            self._tile_partitioner,
-            self._rank,
-            RADIUS,
-            self._np,
-        )
-        return edge_w, edge_e, edge_s, edge_n
-
     def _calculate_edge_a2c_vect_factors(self):
         edge_vect_s = self._quantity_factory.zeros([fv3util.X_DIM], "")
         edge_vect_n = self._quantity_factory.zeros([fv3util.X_DIM], "")
@@ -2120,11 +2121,10 @@ class MetricTerms:
         return edge_vect_w, edge_vect_e, edge_vect_s, edge_vect_n
 
     def _reduce_global_area_minmaxes(self):
-        min_area = self._np.min(self.area.view[:])
-        max_area = self._np.max(self.area.view[:])
-        min_area_c = self._np.min(self.area_c.view[:])
-        max_area_c = self._np.max(self.area_c.view[:])
-
+        min_area = self._np.min(self.area.storage[3:-4, 3:-4])[()]
+        max_area = self._np.max(self.area.storage[3:-4, 3:-4])[()]
+        min_area_c = self._np.min(self.area_c.storage[3:-4, 3:-4])[()]
+        max_area_c = self._np.max(self.area_c.storage[3:-4, 3:-4])[()]
         try:
             self._da_min = self._comm.comm.allreduce(min_area, min)
             self._da_max = self._comm.comm.allreduce(max_area, max)

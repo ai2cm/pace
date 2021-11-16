@@ -235,8 +235,6 @@ class DynamicalCore:
         ),
         ArgSpec("ps", "surface_pressure", "Pa", intent="inout"),
         ArgSpec("omga", "vertical_pressure_velocity", "Pa/s", intent="inout"),
-        ArgSpec("ak", "atmosphere_hybrid_a_coordinate", "Pa", intent="in"),
-        ArgSpec("bk", "atmosphere_hybrid_b_coordinate", "", intent="in"),
         ArgSpec("mfxd", "accumulated_x_mass_flux", "unknown", intent="inout"),
         ArgSpec("mfyd", "accumulated_y_mass_flux", "unknown", intent="inout"),
         ArgSpec("cxd", "accumulated_x_courant_number", "", intent="inout"),
@@ -256,8 +254,6 @@ class DynamicalCore:
         stencil_factory: StencilFactory,
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
-        ak: fv3gfs.util.Quantity,
-        bk: fv3gfs.util.Quantity,
         phis: fv3gfs.util.Quantity,
     ):
         """
@@ -268,8 +264,6 @@ class DynamicalCore:
             damping_coefficients: damping configuration/constants
             config: configuration of dynamical core, for example as would be set by
                 the namelist in the Fortran model
-            ak: atmosphere hybrid a coordinate (Pa)
-            bk: atmosphere hybrid b coordinate (dimensionless)
             phis: surface geopotential height
         """
         # nested and stretched_grid are options in the Fortran code which we
@@ -306,10 +300,10 @@ class DynamicalCore:
             hord=config.hord_tr,
         )
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
-            stencil_factory, tracer_transport, comm, NQ
+            stencil_factory, tracer_transport, self.grid_data, comm, NQ
         )
-        self._ak = ak.storage
-        self._bk = bk.storage
+        self._ak = grid_data.ak
+        self._bk = grid_data.bk
         self._phis = phis.storage
         pfull_stencil = stencil_factory.from_origin_domain(
             init_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
@@ -351,8 +345,6 @@ class DynamicalCore:
             nested,
             stretched_grid,
             self.config.acoustic_dynamics,
-            self._ak,
-            self._bk,
             self._pfull,
             self._phis,
         )
@@ -399,9 +391,7 @@ class DynamicalCore:
         conserve_total_energy: bool,
         do_adiabatic_init: bool,
         timestep: float,
-        ptop,
         n_split: int,
-        ks: int,
         timer: fv3gfs.util.Timer = fv3gfs.util.NullTimer(),
     ):
         """
@@ -413,10 +403,7 @@ class DynamicalCore:
             do_adiabatic_init: if True, do adiabatic dynamics. Used
                 for model initialization.
             timestep: time to progress forward in seconds
-            ptop: pressure at top of atmosphere
             n_split: number of acoustic timesteps per remapping timestep
-            ks: the lowest index (highest layer) for which rayleigh friction
-                and other rayleigh computations are done
             timer: if given, use for timing model execution
         """
         state = get_namespace(self.arg_specs, state)
@@ -426,10 +413,10 @@ class DynamicalCore:
                 "bdt": timestep,
                 "mdt": timestep / self.config.k_split,
                 "do_adiabatic_init": do_adiabatic_init,
-                "ptop": ptop,
+                "ptop": self.grid_data.ptop,
                 "n_split": n_split,
                 "k_split": self.config.k_split,
-                "ks": ks,
+                "ks": self.grid_data.ks,
             }
         )
         self._compute(state, timer)

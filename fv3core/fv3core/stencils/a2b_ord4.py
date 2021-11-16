@@ -11,10 +11,11 @@ from gt4py.gtscript import (
     sqrt,
 )
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
+from fv3core.grid.gnomonic import great_circle_distance_lon_lat, lon_lat_midpoint
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils import axis_offsets
+from fv3core.utils.global_constants import RADIUS
 from fv3core.utils.grid import GridData, GridIndexing
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
@@ -61,40 +62,40 @@ def _sw_corner(
     qin: FloatField,
     qout: FloatField,
     tmp_qout_edges: FloatField,
-    agrid1: FloatFieldIJ,
-    agrid2: FloatFieldIJ,
-    bgrid1: FloatFieldIJ,
-    bgrid2: FloatFieldIJ,
+    lon_agrid: FloatFieldIJ,
+    lat_agrid: FloatFieldIJ,
+    lon: FloatFieldIJ,
+    lat: FloatFieldIJ,
 ):
 
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, 0],
-            agrid2[0, 0],
-            agrid1[1, 1],
-            agrid2[1, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, 0],
+            lat_agrid[0, 0],
+            lon_agrid[1, 1],
+            lat_agrid[1, 1],
             qin[0, 0, 0],
             qin[1, 1, 0],
         )
         ec2 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, 0],
-            agrid2[-1, 0],
-            agrid1[-2, 1],
-            agrid2[-2, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, 0],
+            lat_agrid[-1, 0],
+            lon_agrid[-2, 1],
+            lat_agrid[-2, 1],
             qin[-1, 0, 0],
             qin[-2, 1, 0],
         )
         ec3 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, -1],
-            agrid2[0, -1],
-            agrid1[1, -2],
-            agrid2[1, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, -1],
+            lat_agrid[0, -1],
+            lon_agrid[1, -2],
+            lat_agrid[1, -2],
             qin[0, -1, 0],
             qin[1, -2, 0],
         )
@@ -107,39 +108,39 @@ def _nw_corner(
     qin: FloatField,
     qout: FloatField,
     tmp_qout_edges: FloatField,
-    agrid1: FloatFieldIJ,
-    agrid2: FloatFieldIJ,
-    bgrid1: FloatFieldIJ,
-    bgrid2: FloatFieldIJ,
+    lon_agrid: FloatFieldIJ,
+    lat_agrid: FloatFieldIJ,
+    lon: FloatFieldIJ,
+    lat: FloatFieldIJ,
 ):
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, 0],
-            agrid2[-1, 0],
-            agrid1[-2, 1],
-            agrid2[-2, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, 0],
+            lat_agrid[-1, 0],
+            lon_agrid[-2, 1],
+            lat_agrid[-2, 1],
             qin[-1, 0, 0],
             qin[-2, 1, 0],
         )
         ec2 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, -1],
-            agrid2[-1, -1],
-            agrid1[-2, -2],
-            agrid2[-2, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, -1],
+            lat_agrid[-1, -1],
+            lon_agrid[-2, -2],
+            lat_agrid[-2, -2],
             qin[-1, -1, 0],
             qin[-2, -2, 0],
         )
         ec3 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, 0],
-            agrid2[0, 0],
-            agrid1[1, 1],
-            agrid2[1, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, 0],
+            lat_agrid[0, 0],
+            lon_agrid[1, 1],
+            lat_agrid[1, 1],
             qin[0, 0, 0],
             qin[1, 1, 0],
         )
@@ -151,39 +152,39 @@ def _ne_corner(
     qin: FloatField,
     qout: FloatField,
     tmp_qout_edges: FloatField,
-    agrid1: FloatFieldIJ,
-    agrid2: FloatFieldIJ,
-    bgrid1: FloatFieldIJ,
-    bgrid2: FloatFieldIJ,
+    lon_agrid: FloatFieldIJ,
+    lat_agrid: FloatFieldIJ,
+    lon: FloatFieldIJ,
+    lat: FloatFieldIJ,
 ):
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, -1],
-            agrid2[-1, -1],
-            agrid1[-2, -2],
-            agrid2[-2, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, -1],
+            lat_agrid[-1, -1],
+            lon_agrid[-2, -2],
+            lat_agrid[-2, -2],
             qin[-1, -1, 0],
             qin[-2, -2, 0],
         )
         ec2 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, -1],
-            agrid2[0, -1],
-            agrid1[1, -2],
-            agrid2[1, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, -1],
+            lat_agrid[0, -1],
+            lon_agrid[1, -2],
+            lat_agrid[1, -2],
             qin[0, -1, 0],
             qin[1, -2, 0],
         )
         ec3 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, 0],
-            agrid2[-1, 0],
-            agrid1[-2, 1],
-            agrid2[-2, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, 0],
+            lat_agrid[-1, 0],
+            lon_agrid[-2, 1],
+            lat_agrid[-2, 1],
             qin[-1, 0, 0],
             qin[-2, 1, 0],
         )
@@ -195,39 +196,39 @@ def _se_corner(
     qin: FloatField,
     qout: FloatField,
     tmp_qout_edges: FloatField,
-    agrid1: FloatFieldIJ,
-    agrid2: FloatFieldIJ,
-    bgrid1: FloatFieldIJ,
-    bgrid2: FloatFieldIJ,
+    lon_agrid: FloatFieldIJ,
+    lat_agrid: FloatFieldIJ,
+    lon: FloatFieldIJ,
+    lat: FloatFieldIJ,
 ):
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, -1],
-            agrid2[0, -1],
-            agrid1[1, -2],
-            agrid2[1, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, -1],
+            lat_agrid[0, -1],
+            lon_agrid[1, -2],
+            lat_agrid[1, -2],
             qin[0, -1, 0],
             qin[1, -2, 0],
         )
         ec2 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, -1],
-            agrid2[-1, -1],
-            agrid1[-2, -2],
-            agrid2[-2, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, -1],
+            lat_agrid[-1, -1],
+            lon_agrid[-2, -2],
+            lat_agrid[-2, -2],
             qin[-1, -1, 0],
             qin[-2, -2, 0],
         )
         ec3 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, 0],
-            agrid2[0, 0],
-            agrid1[1, 1],
-            agrid2[1, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, 0],
+            lat_agrid[0, 0],
+            lon_agrid[1, 1],
+            lat_agrid[1, 1],
             qin[0, 0, 0],
             qin[1, 1, 0],
         )
@@ -473,18 +474,21 @@ class AGrid2BGridFourthOrder:
         """
         assert grid_type < 3
         self._idx: GridIndexing = stencil_factory.grid_indexing
-
+        self._stencil_config = stencil_factory.config
         self._dxa = grid_data.dxa
         self._dya = grid_data.dya
-        # TODO: calculate these here based on grid_data
-        self._agrid1 = spec.grid.agrid1
-        self._agrid2 = spec.grid.agrid2
-        self._bgrid1 = spec.grid.bgrid1
-        self._bgrid2 = spec.grid.bgrid2
-        self._edge_n = spec.grid.edge_n
-        self._edge_s = spec.grid.edge_s
-        self._edge_e = spec.grid.edge_e
-        self._edge_w = spec.grid.edge_w
+
+        self._lon_agrid = grid_data.lon_agrid
+        self._lat_agrid = grid_data.lat_agrid
+        self._lon = grid_data.lon
+        self._lat = grid_data.lat
+
+        (
+            self._edge_n,
+            self._edge_s,
+            self._edge_e,
+            self._edge_w,
+        ) = self.calculate_edge_factors()
 
         self.replace = replace
 
@@ -581,6 +585,106 @@ class AGrid2BGridFourthOrder:
             copy_defn, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, z_dim]
         )
 
+    def set_west_edge_factor(self, lon, lat, lon_agrid, lat_agrid, jstart, jend):
+        nhalo = self._idx.n_halo
+        py0, py1 = lon_lat_midpoint(
+            lon_agrid[nhalo - 1, jstart - 1 : jend],
+            lon_agrid[nhalo, jstart - 1 : jend],
+            lat_agrid[nhalo - 1, jstart - 1 : jend],
+            lat_agrid[nhalo, jstart - 1 : jend],
+            self._stencil_config.np,
+        )
+
+        d1 = great_circle_distance_lon_lat(
+            py0[:-1],
+            lon[nhalo, jstart:jend],
+            py1[:-1],
+            lat[nhalo, jstart:jend],
+            RADIUS,
+            self._stencil_config.np,
+        )
+        d2 = great_circle_distance_lon_lat(
+            py0[1:],
+            lon[nhalo, jstart:jend],
+            py1[1:],
+            lat[nhalo, jstart:jend],
+            RADIUS,
+            self._stencil_config.np,
+        )
+        west_edge_factor = d2 / (d1 + d2)
+        return west_edge_factor
+
+    def set_east_edge_factor(self, jstart, jend):
+        return self.set_west_edge_factor(
+            self._lon[::-1, :],
+            self._lat[::-1, :],
+            self._lon_agrid[:-1, :-1][::-1, :],
+            self._lat_agrid[:-1, :-1][::-1, :],
+            jstart,
+            jend,
+        )
+
+    def set_south_edge_factor(self, jstart, jend):
+        return self.set_west_edge_factor(
+            self._lon.transpose([1, 0]),
+            self._lat.transpose([1, 0]),
+            self._lon_agrid.transpose([1, 0]),
+            self._lat_agrid.transpose([1, 0]),
+            jstart,
+            jend,
+        )
+
+    def set_north_edge_factor(self, jstart, jend):
+        return self.set_west_edge_factor(
+            self._lon[:, ::-1].transpose([1, 0]),
+            self._lat[:, ::-1].transpose([1, 0]),
+            self._lon_agrid[:-1, :-1][:, ::-1].transpose([1, 0]),
+            self._lat_agrid[:-1, :-1][:, ::-1].transpose([1, 0]),
+            jstart,
+            jend,
+        )
+
+    def calculate_edge_factors(self):
+        nhalo = self._idx.n_halo
+        big_number = 1.0e8
+        edge_n = self._stencil_config.np.zeros(self._idx.max_shape[0]) + big_number
+        edge_s = self._stencil_config.np.zeros(self._idx.max_shape[0]) + big_number
+        edge_e = self._stencil_config.np.zeros(self._idx.max_shape[1]) + big_number
+        edge_w = self._stencil_config.np.zeros(self._idx.max_shape[1]) + big_number
+
+        if self._idx.south_edge:
+            jstart = self._idx.jsc + 1
+        else:
+            jstart = self._idx.jsc
+        if self._idx.north_edge:
+            jend = self._idx.jec + 1
+        else:
+            jend = self._idx.jec + 2
+        if self._idx.west_edge:
+            istart = self._idx.isc + 1
+        else:
+            istart = self._idx.isc
+        if self._idx.east_edge:
+            iend = self._idx.iec + 1
+        else:
+            iend = self._idx.iec + 2
+        if self._idx.west_edge:
+            edge_w[jstart:jend] = self.set_west_edge_factor(
+                self._lon, self._lat, self._lon_agrid, self._lat_agrid, jstart, jend
+            )
+        if self._idx.east_edge:
+            edge_e[jstart:jend] = self.set_east_edge_factor(jstart, jend)
+        if self._idx.south_edge:
+            edge_s[istart:iend] = self.set_south_edge_factor(istart, iend)
+        if self._idx.north_edge:
+            edge_n[istart:iend] = self.set_north_edge_factor(istart, iend)
+        edge_n = utils.make_storage_data(edge_n, (self._idx.max_shape[0],), axis=0)
+        edge_s = utils.make_storage_data(edge_s, (self._idx.max_shape[0],), axis=0)
+        edge_e = utils.make_storage_data(edge_e, (1, self._idx.max_shape[1]), axis=1)
+        edge_w = utils.make_storage_data(edge_w, (1, self._idx.max_shape[1]), axis=1)
+
+        return edge_n, edge_s, edge_e, edge_w
+
     def _exclude_tile_edges(self, origin, domain, dims=("x", "y")):
         """
         Args:
@@ -617,38 +721,38 @@ class AGrid2BGridFourthOrder:
             qin,
             qout,
             self._tmp_qout_edges,
-            self._agrid1,
-            self._agrid2,
-            self._bgrid1,
-            self._bgrid2,
+            self._lon_agrid,
+            self._lat_agrid,
+            self._lon,
+            self._lat,
         )
 
         self._nw_corner_stencil(
             qin,
             qout,
             self._tmp_qout_edges,
-            self._agrid1,
-            self._agrid2,
-            self._bgrid1,
-            self._bgrid2,
+            self._lon_agrid,
+            self._lat_agrid,
+            self._lon,
+            self._lat,
         )
         self._ne_corner_stencil(
             qin,
             qout,
             self._tmp_qout_edges,
-            self._agrid1,
-            self._agrid2,
-            self._bgrid1,
-            self._bgrid2,
+            self._lon_agrid,
+            self._lat_agrid,
+            self._lon,
+            self._lat,
         )
         self._se_corner_stencil(
             qin,
             qout,
             self._tmp_qout_edges,
-            self._agrid1,
-            self._agrid2,
-            self._bgrid1,
-            self._bgrid2,
+            self._lon_agrid,
+            self._lat_agrid,
+            self._lon,
+            self._lat,
         )
 
         self._compute_qout_edges(qin, qout)

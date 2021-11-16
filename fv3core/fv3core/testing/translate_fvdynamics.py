@@ -14,6 +14,7 @@ ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]
 
 class TranslateFVDynamics(ParallelTranslateBaseSlicing):
     python_regression = True
+    compute_grid_option = True
     inputs = {
         "q_con": {
             "name": "total_condensate_mixing_ratio",
@@ -194,25 +195,14 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "units": "Pa/s",
         },
         "do_adiabatic_init": {"dims": []},
-        "consv_te": {"dims": []},
         "bdt": {"dims": []},
         "ptop": {"dims": []},
-        "n_split": {"dims": []},
         "ks": {"dims": []},
     }
 
     outputs = inputs.copy()
 
-    for name in (
-        "do_adiabatic_init",
-        "consv_te",
-        "bdt",
-        "ptop",
-        "n_split",
-        "ak",
-        "bk",
-        "ks",
-    ):
+    for name in ("do_adiabatic_init", "bdt", "ak", "bk", "ks", "ptop"):
         outputs.pop(name)
 
     def __init__(self, grids, *args, **kwargs):
@@ -260,8 +250,6 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "va": {},
             "uc": grid.x3d_domain_dict(),
             "vc": grid.y3d_domain_dict(),
-            "ak": {},
-            "bk": {},
             "mfxd": grid.x3d_compute_dict(),
             "mfyd": grid.y3d_compute_dict(),
             "cxd": grid.x3d_compute_domain_y_dict(),
@@ -270,8 +258,6 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         }
 
         self._base.out_vars = self._base.in_vars["data_vars"].copy()
-        for var in ["ak", "bk"]:
-            self._base.out_vars.pop(var)
         self._base.out_vars["ps"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
         self._base.out_vars["phis"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
 
@@ -284,33 +270,34 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self.dycore: Optional[fv_dynamics.DynamicalCore] = None
 
     def compute_parallel(self, inputs, communicator):
-        # ak, bk, and phis are numpy arrays at this point and
-        #   must be converted into gt4py storages
         for name in ("ak", "bk", "phis"):
             inputs[name] = utils.make_storage_data(
                 inputs[name], inputs[name].shape, len(inputs[name].shape) * (0,)
             )
+        grid_data = spec.grid.grid_data
+        # These aren't in the Grid-Info savepoint, but are in the generated grid
+        if grid_data.ak is None or grid_data.bk is None:
+            grid_data.ak = inputs["ak"]
+            grid_data.bk = inputs["bk"]
+            grid_data.ptop = inputs["ptop"]
+            grid_data.ks = inputs["ks"]
 
-        inputs["comm"] = communicator
         state = self.state_from_inputs(inputs)
+
         self.dycore = fv_dynamics.DynamicalCore(
             comm=communicator,
-            grid_data=spec.grid.grid_data,
+            grid_data=grid_data,  # grid_data,
             stencil_factory=spec.grid.stencil_factory,
-            damping_coefficients=spec.grid.damping_coefficients,
+            damping_coefficients=spec.grid.damping_coefficients,  # damping_data,
             config=spec.namelist.dynamical_core,
-            ak=state["atmosphere_hybrid_a_coordinate"],
-            bk=state["atmosphere_hybrid_b_coordinate"],
             phis=state["surface_geopotential"],
         )
         self.dycore.step_dynamics(
             state,
-            inputs["consv_te"],
+            spec.namelist.consv_te,
             inputs["do_adiabatic_init"],
             inputs["bdt"],
-            inputs["ptop"],
-            inputs["n_split"],
-            inputs["ks"],
+            spec.namelist.n_split,
         )
         outputs = self.outputs_from_state(state)
         for name, value in outputs.items():

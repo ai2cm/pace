@@ -9,6 +9,8 @@ class TranslateA2B_Ord4(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {"wk": {}, "vort": {}, "delpc": {}, "nord_col": {}}
         self.in_vars["parameters"] = ["dt"]
         self.out_vars = {"wk": {}, "vort": {}}
+        # Due to computing edge factors internally
+        self.max_error = 1e-13
 
     def compute_from_storage(self, inputs):
         divdamp = DivergenceDamping(

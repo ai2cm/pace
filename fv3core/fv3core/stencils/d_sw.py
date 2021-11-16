@@ -8,11 +8,11 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core._config as spec
 import fv3core.stencils.delnflux as delnflux
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
 from fv3core._config import DGridShallowWaterLagrangianDynamicsConfig
+from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from fv3core.stencils.d2a2c_vect import contravariant
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.divergence_damping import DivergenceDamping
@@ -37,15 +37,6 @@ from fv3gfs.util import (
 
 
 dcon_threshold = 1e-5
-
-# NOTE leaving the refrence to spec.grid here on purpose
-# k_bounds should be refactored out of existence
-def k_bounds():
-    # UpdatedzD needs to go one k level higher than D_SW, to the buffer point that
-    # usually isn't used. To reuse the same 'column_namelist' and remove the
-    # specification of 'kstart' and 'nk in many methods, we just make all of the
-    # column namelist calculations go to the top of the array
-    return [[0, 1], [1, 1], [2, 1], [3, spec.grid.npz - 2]]
 
 
 @gtscript.function
@@ -514,14 +505,6 @@ def get_column_namelist(config: DGridShallowWaterLagrangianDynamicsConfig, npz):
     Generate a dictionary of columns that specify how parameters (such as nord, damp)
     used in several functions called by D_SW vary over the k-dimension.
 
-    In a near-future PR, the need for this will disappear as we refactor
-    individual modules to apply this parameter variation explicitly in the
-    stencils themselves. If it doesn't, we should compute it only in the init phase.
-    The unique set of all column parameters is specified by k_bounds. For each k range
-    as specified by (kstart, nk) this sets what several different parameters are.
-    It previously was a dictionary with the k value as the key, the value being another
-    dictionary of values, but this did not work when we removed the k loop from some
-    modules and instead wanted to push the whole column ingestion down a level.
     """
     direct_namelist = ["ke_bg", "d_con", "nord"]
     all_names = direct_namelist + [
@@ -603,6 +586,19 @@ def interpolate_uc_vc_to_cell_corners(
     return ub_contra, vb_contra
 
 
+def compute_f0(
+    stencil_factory: StencilFactory, lon_agrid: FloatFieldIJ, lat_agrid: FloatFieldIJ
+):
+    f0 = utils.make_storage_from_shape(lon_agrid.shape)
+    f0_stencil = stencil_factory.from_dims_halo(
+        compute_coriolis_parameter_defn,
+        compute_dims=[X_DIM, Y_DIM, Z_DIM],
+        compute_halos=(3, 3),
+    )
+    f0_stencil(f0, lon_agrid, lat_agrid, 0.0)
+    return f0
+
+
 class DGridShallowWaterLagrangianDynamics:
     """
     Fortran name is the d_sw subroutine
@@ -618,8 +614,11 @@ class DGridShallowWaterLagrangianDynamics:
         stretched_grid: bool,
         config: DGridShallowWaterLagrangianDynamicsConfig,
     ):
-        self._f0 = spec.grid.f0
-        self.grid = grid_data
+        self.grid_data = grid_data
+        self._f0 = compute_f0(
+            stencil_factory, self.grid_data.lon_agrid, self.grid_data.lat_agrid
+        )
+
         self.grid_indexing = stencil_factory.grid_indexing
         assert config.grid_type < 3, "ubke and vbke only implemented for grid_type < 3"
         assert not config.inline_q, "inline_q not yet implemented"
@@ -935,7 +934,7 @@ class DGridShallowWaterLagrangianDynamics:
                 self._tmp_fx2,
                 self._tmp_fy2,
                 w,
-                self.grid.rarea,
+                self.grid_data.rarea,
                 self._tmp_heat_s,
                 diss_est,
                 self._tmp_dw,
@@ -961,7 +960,7 @@ class DGridShallowWaterLagrangianDynamics:
                 delp,
                 self._tmp_gx,
                 self._tmp_gy,
-                self.grid.rarea,
+                self.grid_data.rarea,
             )
         # Fortran: #ifdef USE_COND
         self.fvtp2d_dp_t(
@@ -978,7 +977,7 @@ class DGridShallowWaterLagrangianDynamics:
         )
 
         self._flux_adjust_stencil(
-            q_con, delp, self._tmp_gx, self._tmp_gy, self.grid.rarea
+            q_con, delp, self._tmp_gx, self._tmp_gy, self.grid_data.rarea
         )
 
         # Fortran #endif //USE_COND
@@ -998,7 +997,7 @@ class DGridShallowWaterLagrangianDynamics:
         self._apply_pt_delp_fluxes(
             gx=self._tmp_gx,
             gy=self._tmp_gy,
-            rarea=self.grid.rarea,
+            rarea=self.grid_data.rarea,
             fx=self._tmp_fx,
             fy=self._tmp_fy,
             pt=pt,
@@ -1007,18 +1006,18 @@ class DGridShallowWaterLagrangianDynamics:
         self._kinetic_energy_update_part_1(
             vc=vc,
             uc=uc,
-            cosa=self.grid.cosa,
-            rsina=self.grid.rsina,
+            cosa=self.grid_data.cosa,
+            rsina=self.grid_data.rsina,
             v=v,
             vc_contra=self._vc_contra,
             u=u,
             uc_contra=self._uc_contra,
-            dx=self.grid.dx,
-            dxa=self.grid.dxa,
-            rdx=self.grid.rdx,
-            dy=self.grid.dy,
-            dya=self.grid.dya,
-            rdy=self.grid.rdy,
+            dx=self.grid_data.dx,
+            dxa=self.grid_data.dxa,
+            rdx=self.grid_data.rdx,
+            dy=self.grid_data.dy,
+            dya=self.grid_data.dya,
+            rdy=self.grid_data.rdy,
             ub_contra=self._ub_contra,
             vb_contra=self._vb_contra,
             advected_u=self._advected_u,
@@ -1041,9 +1040,9 @@ class DGridShallowWaterLagrangianDynamics:
         self._compute_vorticity_stencil(
             u,
             v,
-            self.grid.dx,
-            self.grid.dy,
-            self.grid.rarea,
+            self.grid_data.dx,
+            self.grid_data.dy,
+            self.grid_data.rarea,
             self._tmp_wk,
         )
 
@@ -1092,7 +1091,13 @@ class DGridShallowWaterLagrangianDynamics:
         # unless before this point u has units of speed divided by distance
         # and is not the x-wind?
         self._u_and_v_from_ke_stencil(
-            self._tmp_ke, self._tmp_fx, self._tmp_fy, u, v, self.grid.dx, self.grid.dy
+            self._tmp_ke,
+            self._tmp_fx,
+            self._tmp_fy,
+            u,
+            v,
+            self.grid_data.dx,
+            self.grid_data.dy,
         )
 
         self.delnflux_nosg_v(
@@ -1112,10 +1117,10 @@ class DGridShallowWaterLagrangianDynamics:
             u,
             v,
             delp,
-            self.grid.rsin2,
-            self.grid.cosa_s,
-            self.grid.rdx,
-            self.grid.rdy,
+            self.grid_data.rsin2,
+            self.grid_data.cosa_s,
+            self.grid_data.rdx,
+            self.grid_data.rdy,
             self._tmp_heat_s,
             heat_source,
             diss_est,
