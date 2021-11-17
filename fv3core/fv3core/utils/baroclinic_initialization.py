@@ -124,21 +124,12 @@ def cell_average_nine_components(component_function, component_args, lat, lat_ag
     return cell_average_nine_point(pt1, pt2, pt3, pt4, pt5, pt6, pt7, pt8, pt9)
 
 
-def initialize_nonhydrostatic_delz(delz, pt, peln, islice, jslice):
-    """
-    For the FV3 model, geopotential is computed each timestep but is not part of the intial state
-    Here we compute nonhydrostatic delz describing the thickness of each vertical layer
-    Thus equations 8 and 9 and 7 above the surface in Jablonowski & Williamson Baroclinic
-    are not computed.
-    Here delz 
-    """
-    upper = (islice, jslice, slice(0,-1))
-    lower = (islice, jslice, slice(1, None))
-    delz[:] = 1.e30
-    delz[upper] = constants.RDGAS/constants.GRAV * pt[upper]*(peln[upper]-peln[lower])
+
+def initialize_delz(pt, peln):
+    return constants.RDG * pt[:, :, :-1] * (peln[:, :, 1:] - peln[:, :, :-1])
 
 
-def nonadiabatic_moisture_adjusted_temperature(pt, qvapor):
+def moisture_adjusted_temperature(pt, qvapor):
     """
     Update initial temperature to include water vapor contribution
     """
@@ -185,14 +176,13 @@ def baroclinic_initialization(peln, qvapor, delp, u, v, pt, phis, delz, w, eta, 
         w[:] = 1.e30
         # vertical velocity is set to 0 for nonhydrostatic setups
         w[slice_3d] = 0.0
-        initialize_nonhydrostatic_delz(delz, pt, peln, islice, jslice)
+        delz[:] = 1e30
+        delz[islice, jslice, :-1] = initialize_delz(pt[slice_3d], peln[slice_3d])
         
     if not adiabatic:
-        pt[slice_3d] = nonadiabatic_moisture_adjusted_temperature(pt[slice_3d], qvapor[slice_3d])
+        pt[slice_3d] = moisture_adjusted_temperature(pt[slice_3d], qvapor[slice_3d])
 
 
-def initialize_delz(pt, peln):
-    return constants.RDG * pt[:, :, :-1] * (peln[:, :, 1:] - peln[:, :, :-1])
 
 def initialize_pkz_moist(delp, pt, qvapor, delz):
      return np.exp(constants.KAPPA * np.log(constants.RDG * delp[:, :, :-1] * pt[:, :, :-1] * (1. + constants.ZVIR * qvapor[:, :, :-1]) / delz[:, :, :-1]))
@@ -223,7 +213,7 @@ def p_var(delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_
     if not hydrostatic:
         if make_nh:
             delz[:]= 1.e25
-            delz[islice, jslice, :-1] = initialize_delz(pt[slice_3d], peln[slice_3d]) 
+            delz[islice, jslice, :-1] = initialize_delz(pt[slice_3d], peln[slice_3d])
         if moist_phys:
             pkz[islice, jslice, :-1] = initialize_pkz_moist(delp[slice_3d], pt[slice_3d], qvapor[slice_3d], delz[slice_3d])
         else:
@@ -244,7 +234,7 @@ def init_case(ua, va, uc, vc, eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, a
     vc[:] = 1e30
     setup_pressure_fields(eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, ak, bk, ptop, lat_agrid=lat_agrid[:-1, :-1], adiabatic=adiabatic)
     baroclinic_initialization(peln, qvapor, delp, u, v, pt, phis, delz, w, eta, eta_v,  lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, ptop, adiabatic, hydrostatic)
-    p_var( delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_nh=(not hydrostatic), hydrostatic=hydrostatic)
+    p_var(delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_nh=(not hydrostatic), hydrostatic=hydrostatic)
   
     # halo update phis
     # halo update u and v
