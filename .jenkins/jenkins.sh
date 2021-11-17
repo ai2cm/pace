@@ -178,14 +178,14 @@ if [ ${python_env} == "virtualenv" ]; then
 	echo "Using existing virtualenv ${VIRTUALENV}"
     else
 	echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
-	export FV3CORE_INSTALL_FLAGS="-e"
+	export PACE_INSTALL_FLAGS="-e"
 	${jenkins_dir}/install_virtualenv.sh ${VIRTUALENV}
     fi
     source ${VIRTUALENV}/bin/activate
     if grep -q "parallel" <<< "${script}"; then
 	export MPIRUN_CALL="srun"
     fi
-    export FV3_PATH="${envloc}/../"
+    export pace_PATH="${envloc}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
     export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi

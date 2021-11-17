@@ -94,3 +94,8 @@ physics_savepoint_tests_mpi:
 	$(MAKE) get_test_data
 	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)' \
 	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
+
+update_submodules_venv: update_submodules_base
+	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
+                git submodule update --init external/daint_venv; \
+        fi
