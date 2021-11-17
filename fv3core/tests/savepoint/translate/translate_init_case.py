@@ -224,7 +224,7 @@ class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
                  
         self.in_vars["parameters"] = ["ptop"]
         self.out_vars = {}
-        for var in ["delz", "delp", "ps", "pe", "peln", "pk", "pkz"]:
+        for var in ["delz", "delp", "ps", "peln"]:
             self.out_vars[var] =  self.in_vars["data_vars"][var]
         
     def compute(self, inputs):
