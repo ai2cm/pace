@@ -2,10 +2,17 @@ import numpy as np
 import math
 from fv3core.grid import lon_lat_midpoint, great_circle_distance_lon_lat
 import fv3core.utils.global_constants as constants
+
+"""
+  Functions for computing components of a baroclinic perturbation test case, by 
+  Jablonowski & Williamson Baroclinic test case Perturbation. JRMS2006
+  and additional computations depicted in DCMIP2016 Test Case Documentation
+  JRMS2006 equations 3, 8, 9, 12, 13 are not present here
+"""
 # maximum windspeed amplitude - close to windspeed of zonal-mean time-mean jet stream in troposphere
-u0 = 35.0
-# indicates perturbation location 20E, 40N
-pcen = [math.pi / 9.0, 2.0 * math.pi / 9.0]
+u0 = 35.0 # From Table VI of DCMIP2016
+# [lon, lat] of zonal wind perturbation centerpoint at 20E, 40N
+pcen = [math.pi / 9.0, 2.0 * math.pi / 9.0] # From Table VI of DCMIP2016
 u1 = 1.0
 pt0 = 0.0
 eta_0 = 0.252
@@ -13,17 +20,12 @@ eta_s = 1.0 # surface level
 eta_t = 0.2 # tropopause
 t_0 = 288.0
 delta_t = 480000.0
-lapse_rate = 0.005
-
+lapse_rate = 0.005 # From Table VI of DCMIP2016
+surface_pressure = 1.e5 # units of (Pa), from Table VI of DCMIP2016
 # RADIUS = 6.3712e6 in fv3 vs Jabowski paper  6.371229 1e6
 R = constants.RADIUS / 10.0 # specifically for test case == 13, otherwise R = 1
 
-"""
-  Functions for computing components of a baroclinic perturbation test case, by 
-  Jablonowski & Williamson Baroclinic test case Perturbation. JRMS2006
-  and additional computations depicted in DCMIP2016 Tes Case Documentation
-  JRMS2006 eqautions 3, 8, 9, 12, 13 are not represented
-"""
+
 
 def vertical_coordinate(eta_value):
     """
@@ -37,7 +39,7 @@ def compute_eta(eta, eta_v, ak, bk):
     Equation (1) JRMS2006
     eta is the vertical coordinate and eta_v is an auxiliary vertical coordinate
     """
-    eta[:-1] = 0.5 * ((ak[:-1] + ak[1:])/1.e5 + bk[:-1] + bk[1:])
+    eta[:-1] = 0.5 * ((ak[:-1] + ak[1:])/surface_pressure + bk[:-1] + bk[1:])
     eta_v[:-1] = vertical_coordinate(eta[:-1])
 
 
@@ -101,9 +103,24 @@ def geopotential_perturbation(lat, eta_value):
 def surface_geopotential_perturbation(lat):
     """
     From JRMS2006:
-    * 'In hydrostatic models with pressure-based vertical coordinates, it's only necessary to initialize 
-    surface geopotential.'
+    * 'In hydrostatic models with pressure-based vertical coordinates, it's
+       only necessary to initialize surface geopotential.'
     * 'balances the non-zero zonal wind at the surface with surface elevation zs' 
     """
     surface_level = vertical_coordinate(eta_s)
     return geopotential_perturbation(lat, surface_level)
+
+def specific_humidity(delp, peln, lat_agrid, qvapor):
+    """
+    Compute specific humidity using the DCMPI2016 equation 18 and relevant constants
+    """
+    #  Specific humidity vertical pressure width parameter (Pa)
+    pw = 34000.
+    # Maximum specific humidity amplitude (kg/kg) for the Idealized Tropical Cyclone test
+    # TODO: should we be using 0.018, the baroclinic wave test instead?
+    q0 = 0.021
+    # In equation 18 of DCMPI2016, ptmp is pressure - surface pressure
+    # TODO why do we use dp/(d(log(p))) for 'pressure'?
+    ptmp = delp[:, :, :-1]/(peln[:, :, 1:]-peln[:, :, :-1]) - surface_pressure
+    # Similar to equation 18 of DCMIP2016 without a cutoff at tropopause
+    qvapor[:, :, :-1] = q0 * np.exp(-(lat_agrid[:, :, None] / pcen[1])**4.) * np.exp(-(ptmp/pw)**2.)

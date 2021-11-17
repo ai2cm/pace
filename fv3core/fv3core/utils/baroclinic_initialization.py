@@ -19,27 +19,25 @@ def horizontal_compute_shape(full_array):
     
 def setup_pressure_fields(eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, ak, bk, ptop, lat_agrid, adiabatic):
     nx, ny = horizontal_compute_shape(delp)
-    ps[:] = 100000.0
-    cmps_x = slice(nhalo,  nhalo + nx)
-    cmps_y = slice(nhalo,  nhalo + ny)
+    islice = slice(nhalo, nhalo + nx)
+    jslice = slice(nhalo, nhalo + ny)
+    ps[:] = jablonowski_init.surface_pressure
 
-    delp[cmps_x, cmps_y, :-1] = ak[None, None, 1:] - ak[None, None, :-1] + ps[cmps_x, cmps_y, None] * (bk[None, None, 1:] - bk[None, None, :-1])
+    delp[islice, jslice, :-1] = ak[None, None, 1:] - ak[None, None, :-1] + ps[islice, jslice, None] * (bk[None, None, 1:] - bk[None, None, :-1])
 
-    pe[cmps_x, cmps_y, 0] = ptop
-    peln[cmps_x, cmps_y, 0] = math.log(ptop)
-    pk[cmps_x, cmps_y, 0] = ptop**constants.KAPPA
+    pe[islice, jslice, 0] = ptop
+    peln[islice, jslice, 0] = math.log(ptop)
+    pk[islice, jslice, 0] = ptop**constants.KAPPA
     for k in range(1, pe.shape[2]):
-        pe[cmps_x, cmps_y, k] = pe[cmps_x, cmps_y, k - 1] + delp[cmps_x, cmps_y, k - 1]
-    pk[cmps_x, cmps_y, 1:] = np.exp(constants.KAPPA * np.log(pe[cmps_x, cmps_y, 1:]))
-    peln[cmps_x, cmps_y, 1:]  = np.log(pe[cmps_x, cmps_y, 1:])
-    pkz[cmps_x, cmps_y, :-1] = (pk[cmps_x, cmps_y, 1:] - pk[cmps_x, cmps_y, :-1]) / (constants.KAPPA * (peln[cmps_x, cmps_y, 1:] - peln[cmps_x, cmps_y, :-1]))
+        pe[islice, jslice, k] = pe[islice, jslice, k - 1] + delp[islice, jslice, k - 1]
+    pk[islice, jslice, 1:] = np.exp(constants.KAPPA * np.log(pe[islice, jslice, 1:]))
+    peln[islice, jslice, 1:]  = np.log(pe[islice, jslice, 1:])
+    pkz[islice, jslice, :-1] = (pk[islice, jslice, 1:] - pk[islice, jslice, :-1]) / (constants.KAPPA * (peln[islice, jslice, 1:] - peln[islice, jslice, :-1]))
     
     jablonowski_init.compute_eta(eta, eta_v, ak, bk)
 
-    if not adiabatic:
-        
-        ptmp = delp[cmps_x, cmps_y, :-1]/(peln[cmps_x, cmps_y, 1:]-peln[cmps_x, cmps_y, :-1]) - 100000.
-        qvapor[cmps_x, cmps_y, :-1] = 0.021*np.exp(-(lat_agrid[cmps_x, cmps_y, None] / pcen[1])**4.) * np.exp(-(ptmp/34000.)**2.)
+    if not adiabatic:        
+        jablonowski_init.specific_humidity(delp[islice, jslice, :], peln[islice, jslice, :], lat_agrid[islice, jslice], qvapor[islice, jslice, :])
 
   
 

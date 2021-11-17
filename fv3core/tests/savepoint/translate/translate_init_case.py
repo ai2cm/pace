@@ -84,10 +84,10 @@ class TranslateInitCase(TranslateFortranData2Py):
             inputs[zvar] = np.zeros(self.grid.npz+1)
         namelist = spec.namelist
         grid_vars = {
-            "longitude":self.grid.bgrid1.data,
-            "latitude": self.grid.bgrid2.data,
-            "longitude_agrid" : self.grid.agrid1.data,
-            "latitude_agrid" : self.grid.agrid2.data,
+            "lon":self.grid.bgrid1.data,
+            "lat": self.grid.bgrid2.data,
+            "lon_agrid" : self.grid.agrid1.data,
+            "lat_agrid" : self.grid.agrid2.data,
             "ee1": self.grid.ee1.data,
             "ee2": self.grid.ee2.data,
             "es1": self.grid.es1.data,
@@ -145,7 +145,7 @@ class TranslateInitPreJab(TranslateFortranData2Py):
         inputs["ps"] = np.zeros(full_shape[0:2])
         for zvar in ["eta", "eta_v"]:
             inputs[zvar] = np.zeros(self.grid.npz+1)
-        baroclinic_init.setup_pressure_fields(**inputs, latitude_agrid=self.grid.agrid2.data[:-1, :-1], adiabatic=spec.namelist.adiabatic)
+        baroclinic_init.setup_pressure_fields(**inputs, lat_agrid=self.grid.agrid2.data[:-1, :-1], adiabatic=spec.namelist.adiabatic)
         return self.slice_output(inputs)
 
 class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
