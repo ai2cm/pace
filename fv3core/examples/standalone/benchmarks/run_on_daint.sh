@@ -134,7 +134,7 @@ if [ ! -d $(pwd)/.gt_cache ]; then
             fi
             if [ "$version" == "$GT4PY_VERSION" ]; then
                 cp -r ${premade_caches}/.gt_cache .
-                find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/gtc_cache_setup\/backend\/${SANITIZED_BACKEND}\/experiment\/${EXPNAME}\/slave\/daint_submit|$(pwd)|g" {} +
+                find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/gtc_cache_setup\/backend\/${SANITIZED_BACKEND}\/experiment\/${EXPNAME}\/slave\/daint_submit/fv3core|$(pwd)|g" {} +
             fi
         fi
     fi

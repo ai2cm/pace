@@ -6,10 +6,11 @@ import numpy as np
 import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
 
+import fv3gfs.util
 from fv3core import StencilConfig
 from fv3core.utils.global_config import set_backend
 from fv3core.utils.gt4py_utils import make_storage_from_shape_uncached
-from fv3core.utils.stencil import FrozenStencil
+from fv3core.utils.stencil import FrozenStencil, _convert_quantities_to_storage
 from fv3core.utils.typing import FloatField
 
 
@@ -272,3 +273,55 @@ def test_backend_options(
         validate_args=validate_args,
     ).stencil_kwargs
     assert stencil_kwargs == expected_options[backend]
+
+
+def get_mock_quantity():
+    return unittest.mock.MagicMock(spec=fv3gfs.util.Quantity)
+
+
+def test_convert_quantities_to_storage_no_args():
+    args = []
+    kwargs = {}
+    _convert_quantities_to_storage(args, kwargs)
+    assert len(args) == 0
+    assert len(kwargs) == 0
+
+
+def test_convert_quantities_to_storage_one_arg_quantity():
+    quantity = get_mock_quantity()
+    args = [quantity]
+    kwargs = {}
+    _convert_quantities_to_storage(args, kwargs)
+    assert len(args) == 1
+    assert args[0] == quantity.storage
+    assert len(kwargs) == 0
+
+
+def test_convert_quantities_to_storage_one_kwarg_quantity():
+    quantity = get_mock_quantity()
+    args = []
+    kwargs = {"val": quantity}
+    _convert_quantities_to_storage(args, kwargs)
+    assert len(args) == 0
+    assert len(kwargs) == 1
+    assert kwargs["val"] == quantity.storage
+
+
+def test_convert_quantities_to_storage_one_arg_nonquantity():
+    non_quantity = unittest.mock.MagicMock(spec=tuple)
+    args = [non_quantity]
+    kwargs = {}
+    _convert_quantities_to_storage(args, kwargs)
+    assert len(args) == 1
+    assert args[0] == non_quantity
+    assert len(kwargs) == 0
+
+
+def test_convert_quantities_to_storage_one_kwarg_non_quantity():
+    non_quantity = unittest.mock.MagicMock(spec=tuple)
+    args = []
+    kwargs = {"val": non_quantity}
+    _convert_quantities_to_storage(args, kwargs)
+    assert len(args) == 0
+    assert len(kwargs) == 1
+    assert kwargs["val"] == non_quantity
