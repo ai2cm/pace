@@ -174,7 +174,7 @@ def baroclinic_initialization(peln, qvapor, delp, u, v, pt, phis, delz, w, eta, 
 def p_var(delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_nh, hydrostatic=False,  adjust_dry_mass=False):
     """
     Computes auxiliary pressure variables for a hydrostatic state.
-    The variables are: surfce, interface, layer-mean pressure, exener function
+    The variables are: surface, interface, layer-mean pressure, exner function
     Given (ptop, delp) computes (ps, pk, pe, peln, pkz)
     """
     assert(not adjust_dry_mass)
@@ -209,20 +209,19 @@ def p_var(delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_
         else:
             pkz[islice, jslice, :-1] = np.exp(constants.KAPPA * np.log(constants.RDG * delp[islice, jslice, :-1] * pt[islice, jslice, :-1] / delz[islice, jslice, :-1]))
             
-def init_case(eta, eta_v, delp, fC, f0, ps, pe, peln, pk, pkz, qvapor, ak, bk, ptop, u, v, pt, phis, delz, w,  lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, adiabatic, hydrostatic, moist_phys): 
-    nx, ny = horizontal_compute_shape(delp)
+def init_case(ua, va, uc, vc, eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, ak, bk, ptop, u, v, pt, phis, delz, w,  lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, adiabatic, hydrostatic, moist_phys): 
+    nx, ny = horizontal_compute_shape(delp)  
     delp[:] = 1e30
     delp[:nhalo, :nhalo] = 0.0
     delp[:nhalo, nhalo + ny:] = 0.0
     delp[nhalo + nx:, :nhalo] = 0.0
     delp[nhalo + nx:,  nhalo + ny:] = 0.0
-    alpha = 0.0
-    fC[:, :] = 2. * constants.OMEGA * (-1.*np.cos(lon) * np.cos(lat) * np.sin(alpha) + np.sin(lat) * np.cos(alpha) )	
-    f0[:-1, :-1] = 2. * constants.OMEGA * (-1. * np.cos(lon_agrid[:-1, :-1]) * np.cos(lat_agrid[:-1, :-1]) * np.sin(alpha) + np.sin(lat_agrid[:-1, :-1])*np.cos(alpha) )
-    # halo update f0
-    # fill_corners(f0, ydir)
     pe[:] = 0.0
     pt[:] = 1.0
+    ua[:] = 1e35
+    va[:] = 1e35
+    uc[:] = 1e30
+    vc[:] = 1e30
     setup_pressure_fields(eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, ak, bk, ptop, lat_agrid=lat_agrid[:-1, :-1], adiabatic=adiabatic)
     baroclinic_initialization(peln, qvapor, delp, u, v, pt, phis, delz, w, eta, eta_v,  lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, ptop, adiabatic, hydrostatic)
     p_var( delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_nh=(not hydrostatic), hydrostatic=hydrostatic)

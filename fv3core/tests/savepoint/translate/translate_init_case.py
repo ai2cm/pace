@@ -3,44 +3,30 @@ import fv3core.utils.baroclinic_initialization as baroclinic_init
 from fv3core.testing import TranslateFortranData2Py, ParallelTranslate
 import numpy as np
 import fv3core._config as spec
+import fv3core.stencils.fv_dynamics as fv_dynamics
+import fv3core.utils.gt4py_utils as utils
+
 class TranslateInitCase(TranslateFortranData2Py):
     
     def __init__(self, grid):
         super().__init__(grid)
         self.in_vars["data_vars"] = {
-            #"u": {},
-            #"v": {},
-            #"uc": {},
-            #"vc": {},
-            #"ua": {},
-            #"va": {},
-            #"w": {},
-            #"pt": {},
-            #"delp": {},
-            #"q4d": {},
-            #"phis":{},
-            #"ps": {},
-            #"delz": {},
             "ak": {},
             "bk": {},
-            #"pe": {"istart": grid.is_ - 1, "jstart": grid.js - 1, "kaxis": 1},
-            #"peln": {"istart": grid.is_, "jstart": grid.js, "kaxis": 1},
-            #"pk": grid.compute_buffer_k_dict(),
-            #"ze0": grid.compute_dict(),
-         
+        
         }
         self.in_vars["parameters"] = ["ptop"]
         self.out_vars = {
             "u": grid.y3d_domain_dict(),
             "v": grid.x3d_domain_dict(),
-            #"uc": grid.x3d_domain_dict(),
-            #"vc": grid.y3d_domain_dict(),
-            #"ua": {},
-            #"va": {},
+            "uc": grid.x3d_domain_dict(),
+            "vc": grid.y3d_domain_dict(),
+            "ua": {},
+            "va": {},
             "w": {},
             "pt": {},
             "delp": {},
-            #"q4d": {},
+            "q4d": {},
             "phis": {},
             "delz": {},
             "ps": {"kstart": grid.npz, "kend": grid.npz},
@@ -62,23 +48,17 @@ class TranslateInitCase(TranslateFortranData2Py):
             },
             "pk": grid.compute_buffer_k_dict(),
             "pkz": grid.compute_dict(),
-            "fC": { "iend": grid.ied + 1, "jend": grid.jed + 1,"kstart": grid.npz, "kend": grid.npz},
-            "f0": {"kstart": grid.npz, "kend": grid.npz},
         }
         self.ignore_near_zero_errors = {}
         for var in ['u', 'v']:
             self.ignore_near_zero_errors[var] = {'near_zero': 1e-13}
     def compute(self, inputs):
-        #self.make_storage_data_input_vars(inputs)
-        #baroclinic_init(inputs["ak"], inputs["bk"], self.grid)
-        #return self.slice_output(inputs)
-        #return inputs
-        #for v in  self.in_vars["data_vars"]:
-        #    inputs[v] = inputs[v].data
+      
+
         full_shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        for variable in ["qvapor", "pe", "peln", "pk", "pkz", "pt", "delz", "w", "u", "v", "delp"]:
+        for variable in ["qvapor", "pe", "peln", "pk", "pkz", "pt", "delz", "w", "u", "v", "delp", "ua", "va", "uc", "vc"]:
             inputs[variable] = np.zeros(full_shape)
-        for var2d in ["ps", "phis", "fC", "f0"]:
+        for var2d in ["ps", "phis"]:
             inputs[var2d] = np.zeros(full_shape[0:2])
         for zvar in ["eta", "eta_v"]:
             inputs[zvar] = np.zeros(self.grid.npz+1)
@@ -95,6 +75,11 @@ class TranslateInitCase(TranslateFortranData2Py):
         }
     
         baroclinic_init.init_case(**inputs, **grid_vars, adiabatic=namelist.adiabatic, hydrostatic=namelist.hydrostatic, moist_phys=namelist.moist_phys)
+        inputs["q4d"] = {}
+        for tracer in utils.tracer_variables:
+            inputs["q4d"][tracer] = np.zeros(full_shape)
+        inputs["q4d"]["qvapor"][:] = inputs["qvapor"][:]
+
         return self.slice_output(inputs)
 
 class TranslateInitPreJab(TranslateFortranData2Py):
