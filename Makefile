@@ -9,6 +9,7 @@ VOLUMES ?=
 NUM_RANKS ?=6
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
+TEST_ARGS ?=
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 
