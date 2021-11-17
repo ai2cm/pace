@@ -195,10 +195,10 @@ class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
             inputs[var2d] = np.zeros(full_shape[0:2])
         
         grid_vars = {
-            "longitude":self.grid.bgrid1.data,
-            "latitude": self.grid.bgrid2.data,
-            "longitude_agrid" : self.grid.agrid1.data,
-            "latitude_agrid" : self.grid.agrid2.data,
+            "lon":self.grid.bgrid1.data,
+            "lat": self.grid.bgrid2.data,
+            "lon_agrid" : self.grid.agrid1.data,
+            "lat_agrid" : self.grid.agrid2.data,
             "ee1": self.grid.ee1.data,
             "ee2": self.grid.ee2.data,
             "es1": self.grid.es1.data,

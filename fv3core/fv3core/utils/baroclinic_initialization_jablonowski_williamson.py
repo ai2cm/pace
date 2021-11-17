@@ -41,15 +41,15 @@ def compute_eta(eta, eta_v, ak, bk):
     eta_v[:-1] = vertical_coordinate(eta[:-1])
 
 
-def zonal_wind(eta_v, latitude):
+def zonal_wind(eta_v, lat):
     """
     Equation (2) JRMS2006
     Returns the zonal wind u
     """
-    return u0 * np.cos(eta_v[:])**(3.0/2.0) * np.sin(2.0 * latitude[:, :, None])**2.0
+    return u0 * np.cos(eta_v[:])**(3.0/2.0) * np.sin(2.0 * lat[:, :, None])**2.0
 
 
-def apply_perturbation(u_component, up, longitude, latitude):
+def apply_perturbation(u_component, up, lon, lat):
     """
     Apply a Gaussian perturbation to intiate a baroclinic wave in JRMS2006
     up is the maximum amplitude of the perturbation
@@ -57,7 +57,7 @@ def apply_perturbation(u_component, up, longitude, latitude):
     """
     r = np.zeros((u_component.shape[0], u_component.shape[1], 1))
     # Equation (11), distance from perturbation at 20E, 40N in JRMS2006
-    r = great_circle_distance_lon_lat(pcen[0], longitude,  pcen[1], latitude, constants.RADIUS, np)[:, :, None]
+    r = great_circle_distance_lon_lat(pcen[0], lon,  pcen[1], lat, constants.RADIUS, np)[:, :, None]
     r3d = np.repeat(r, u_component.shape[2], axis=2)
     near_perturbation = ((r3d/R)**2.0 < 40.0)
     # Equation(10) in JRMS2006 perturbation applied to u_component
@@ -65,9 +65,9 @@ def apply_perturbation(u_component, up, longitude, latitude):
     u_component[near_perturbation] = u_component[near_perturbation] + up * np.exp(-(r3d[near_perturbation]/R)**2.0)
 
     
-def baroclinic_perturbed_zonal_wind(eta_v, longitude, latitude):
-    u = zonal_wind(eta_v, latitude)
-    apply_perturbation(u, u1, longitude, latitude)
+def baroclinic_perturbed_zonal_wind(eta_v, lon, lat):
+    u = zonal_wind(eta_v, lat)
+    apply_perturbation(u, u1, lon, lat)
     return u
 
 
@@ -82,23 +82,23 @@ def horizontally_averaged_temperature(eta):
     return t_mean
 
 
-def temperature(eta, eta_v, t_mean, latitude):
+def temperature(eta, eta_v, t_mean, lat):
     """
     Equation (6)JRMS2006
     The total temperature distribution from the horizontal-mean temperature and a horizontal variation at each level
     """
-    lat = latitude[:, :, None]
+    lat = lat[:, :, None]
     return t_mean + 0.75*(eta[:] * math.pi * u0 / constants. RDGAS) * np.sin(eta_v[:])*np.sqrt(np.cos(eta_v[:])) * (( -2.0 * (np.sin(lat)**6.0) *(np.cos(lat)**2.0 + 1.0/3.0) + 10.0/63.0 ) *2.0*u0*np.cos(eta_v[:])**(3.0/2.0) + ((8.0/5.0)*(np.cos(lat)**3.0)*(np.sin(lat)**2.0 + 2.0/3.0) - math.pi/4.0 ) * constants.RADIUS * constants.OMEGA )
 
 
-def geopotential_perturbation(latitude, eta_value):
+def geopotential_perturbation(lat, eta_value):
     """
     Equation (7) JRMS2006, just the perturbation component
     """
     u_comp = u0 * (np.cos(eta_value)**(3.0/2.0))
-    return  u_comp * (( -2.0*(np.sin(latitude)**6.0) * (np.cos(latitude)**2.0 + 1.0/3.0) + 10.0/63.0 ) * u_comp + ((8.0/5.0)*(np.cos(latitude)**3.0)*(np.sin(latitude)**2.0 + 2.0/3.0) - math.pi/4.0 )*constants.RADIUS * constants.OMEGA)
+    return  u_comp * (( -2.0*(np.sin(lat)**6.0) * (np.cos(lat)**2.0 + 1.0/3.0) + 10.0/63.0 ) * u_comp + ((8.0/5.0)*(np.cos(lat)**3.0)*(np.sin(lat)**2.0 + 2.0/3.0) - math.pi/4.0 )*constants.RADIUS * constants.OMEGA)
 
-def surface_geopotential_perturbation(latitude):
+def surface_geopotential_perturbation(lat):
     """
     From JRMS2006:
     * 'In hydrostatic models with pressure-based vertical coordinates, it's only necessary to initialize 
@@ -106,4 +106,4 @@ def surface_geopotential_perturbation(latitude):
     * 'balances the non-zero zonal wind at the surface with surface elevation zs' 
     """
     surface_level = vertical_coordinate(eta_s)
-    return geopotential_perturbation(latitude, surface_level)
+    return geopotential_perturbation(lat, surface_level)
