@@ -226,13 +226,15 @@ class TranslateFortranData2Py:
                 )
                 for varname, data_element in data_result.items():
                     index = names_4d.index(varname)
-                    data_element.synchronize()
+                    if hasattr(data_element, 'synchronize'):
+                        data_element.synchronize()
                     var4d[:, :, :, index] = np.squeeze(
                         np.asarray(data_element)[self.grid.slice_dict(ds)]
                     )
                 out[serialname] = var4d
             else:
-                data_result.synchronize()
+                if hasattr(data_result, 'synchronize'):
+                    data_result.synchronize()
                 slice_tuple = self.grid.slice_dict(ds, len(data_result.shape))
                 out[serialname] = np.squeeze(np.asarray(data_result)[slice_tuple])
             if "kaxis" in info:
@@ -258,6 +260,7 @@ class TranslateGrid:
     fpy_index_offset = -1
     composite_grid_vars = ["sin_sg", "cos_sg"]
     edge_var_axis = {"edge_w": 1, "edge_e": 1, "edge_s": 0, "edge_n": 0}
+    ee_vars = ['ee1', 'ee2', 'ew1', 'ew2', 'es1', 'es2']
     # Super (composite) grid
     #     9---4---8
     #     |       |
@@ -293,6 +296,10 @@ class TranslateGrid:
             if k in self.data:
                 self.make_composite_var_storage(k, self.data[k], shape)
                 del self.data[k]
+        for k in TranslateGrid.ee_vars:
+            if k in self.data:
+                self.data[k] = np.moveaxis(self.data[k], 0, 2)
+                self.data[k] = utils.make_storage_data(self.data[k], (shape[0], shape[1], 3), origin=(0, 0, 0))
         for k, axis in TranslateGrid.edge_var_axis.items():
             if k in self.data:
                 self.data[k] = utils.make_storage_data(
