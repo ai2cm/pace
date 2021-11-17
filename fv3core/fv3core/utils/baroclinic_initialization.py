@@ -24,15 +24,17 @@ def setup_pressure_fields(eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, ak, b
     ps[:] = jablonowski_init.surface_pressure
 
     delp[islice, jslice, :-1] = ak[None, None, 1:] - ak[None, None, :-1] + ps[islice, jslice, None] * (bk[None, None, 1:] - bk[None, None, :-1])
-
-    pe[islice, jslice, 0] = ptop
-    peln[islice, jslice, 0] = math.log(ptop)
-    pk[islice, jslice, 0] = ptop**constants.KAPPA
+    top = (islice, jslice, 0)
+    pe[top] = ptop
+    peln[top] = math.log(ptop)
+    pk[top] = ptop**constants.KAPPA
     for k in range(1, pe.shape[2]):
         pe[islice, jslice, k] = pe[islice, jslice, k - 1] + delp[islice, jslice, k - 1]
-    pk[islice, jslice, 1:] = np.exp(constants.KAPPA * np.log(pe[islice, jslice, 1:]))
-    peln[islice, jslice, 1:]  = np.log(pe[islice, jslice, 1:])
-    pkz[islice, jslice, :-1] = (pk[islice, jslice, 1:] - pk[islice, jslice, :-1]) / (constants.KAPPA * (peln[islice, jslice, 1:] - peln[islice, jslice, :-1]))
+    upper = (islice, jslice, slice(0, -1))
+    lower = (islice, jslice, slice(1, None))
+    pk[lower] = np.exp(constants.KAPPA * np.log(pe[lower]))
+    peln[lower]  = np.log(pe[lower])
+    pkz[upper] = (pk[lower] - pk[upper]) / (constants.KAPPA * (peln[lower] - peln[upper]))
     
     jablonowski_init.compute_eta(eta, eta_v, ak, bk)
 
@@ -59,19 +61,19 @@ def initialize_zonal_wind(u, eta, eta_v, lon, lat, east_grid_vector_component, c
     shape = u.shape
     uu1 = wind_component_calc(shape, eta_v, lon, lat,  east_grid_vector_component, islice, islice, jslice, jslice_grid)
     uu3 = wind_component_calc(shape, eta_v, lon, lat,  east_grid_vector_component, islice, islice_grid, jslice, jslice)
-    lower_slice = (slice(None),) * axis + (slice(0, -1),) 
-    upper_slice = (slice(None),) * axis + (slice(1, None),)
-    pa1, pa2 = lon_lat_midpoint(lon[lower_slice], lon[upper_slice], lat[lower_slice], lat[upper_slice], np)
+    upper = (slice(None),) * axis + (slice(0, -1),) 
+    lower = (slice(None),) * axis + (slice(1, None),)
+    pa1, pa2 = lon_lat_midpoint(lon[upper], lon[lower], lat[upper], lat[lower], np)
     uu2 = wind_component_calc(shape, eta_v, pa1, pa2, center_grid_vector_component,islice, islice, jslice, jslice)
     u[islice, jslice,:] = 0.25 * (uu1 + 2.0 * uu2 + uu3)[islice, jslice,:]
 
 
 def compute_grid_edge_midpoint_latitude_components(lon, lat):
-    _, lat_avg_x_lower = lon_lat_midpoint(lon[0:-1, :], lon[1:, :], lat[0:-1, :], lat[1:, :], np)
-    _, lat_avg_y_right = lon_lat_midpoint(lon[1:, 0:-1], lon[1:, 1:], lat[1:, 0:-1], lat[1:, 1:], np)
-    _, lat_avg_x_upper = lon_lat_midpoint(lon[0:-1, 1:], lon[1:, 1:], lat[0:-1, 1:], lat[1:, 1:], np)
-    _, lat_avg_y_left  = lon_lat_midpoint(lon[:, 0:-1], lon[:, 1:], lat[:, 0:-1], lat[:, 1:], np)
-    return  lat_avg_x_lower, lat_avg_y_right, lat_avg_x_upper,  lat_avg_y_left
+    _, lat_avg_x_south = lon_lat_midpoint(lon[0:-1, :], lon[1:, :], lat[0:-1, :], lat[1:, :], np)
+    _, lat_avg_y_east = lon_lat_midpoint(lon[1:, 0:-1], lon[1:, 1:], lat[1:, 0:-1], lat[1:, 1:], np)
+    _, lat_avg_x_north = lon_lat_midpoint(lon[0:-1, 1:], lon[1:, 1:], lat[0:-1, 1:], lat[1:, 1:], np)
+    _, lat_avg_y_west  = lon_lat_midpoint(lon[:, 0:-1], lon[:, 1:], lat[:, 0:-1], lat[:, 1:], np)
+    return  lat_avg_x_south, lat_avg_y_east, lat_avg_x_north,  lat_avg_y_west
 
 def cell_average_nine_point(pt1, pt2, pt3, pt4, pt5, pt6, pt7, pt8, pt9):
     """
@@ -107,10 +109,10 @@ def initialize_nonhydrostatic_delz(delz, pt, peln, islice, jslice):
     are not computed.
     Here delz 
     """
-    upper_slice = (islice, jslice, slice(0,-1))
-    lower_slice = (islice, jslice, slice(1, None))
+    upper = (islice, jslice, slice(0,-1))
+    lower = (islice, jslice, slice(1, None))
     delz[:] = 1.e30
-    delz[upper_slice] = constants.RDGAS/constants.GRAV * pt[upper_slice]*(peln[upper_slice]-peln[lower_slice])
+    delz[upper] = constants.RDGAS/constants.GRAV * pt[upper]*(peln[upper]-peln[lower])
 
 
 def nonadiabatic_moisture_adjusted_temperature(pt, qvapor, slice_3d):
@@ -171,6 +173,15 @@ def baroclinic_initialization(peln, qvapor, delp, u, v, pt, phis, delz, w, eta, 
         nonadiabatic_moisture_adjusted_temperature(pt, qvapor, slice_3d)
 
 
+def compute_delz(pt, peln):
+    return constants.RDG * pt[:, :, :-1] * (peln[:, :, 1:] - peln[:, :, :-1])
+
+def compute_pkz_moist(delp, pt, qvapor, delz):
+     return np.exp(constants.KAPPA * np.log(constants.RDG * delp[:, :, :-1] * pt[:, :, :-1] * (1. + constants.ZVIR * qvapor[:, :, :-1]) / delz[:, :, :-1]))
+
+def compute_pkz_dry(delp, pt, delz):
+    return np.exp(constants.KAPPA * np.log(constants.RDG * delp[:, :, :-1] * pt[:, :, :-1] / delz[:, :, :-1]))
+
 def p_var(delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_nh, hydrostatic=False,  adjust_dry_mass=False):
     """
     Computes auxiliary pressure variables for a hydrostatic state.
@@ -203,11 +214,11 @@ def p_var(delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_
     if not hydrostatic:
         if make_nh:
             delz[:]= 1.e25
-            delz[islice, jslice, :-1] = constants.RDG * pt[islice, jslice, :-1] * (peln[islice, jslice, 1:] - peln[islice, jslice, :-1])
+            delz[islice, jslice, :-1] = compute_delz(pt[islice, jslice,:], peln[islice, jslice,:]) 
         if moist_phys:
-            pkz[islice, jslice, :-1] = np.exp(constants.KAPPA * np.log(constants.RDG * delp[islice, jslice, :-1] * pt[islice, jslice, :-1] * (1. + constants.ZVIR * qvapor[islice, jslice, :-1]) / delz[islice, jslice, :-1]))
+            pkz[islice, jslice, :-1] = compute_pkz_moist(delp[islice, jslice,:], pt[islice, jslice,:], qvapor[islice, jslice,:], delz[islice, jslice,:])
         else:
-            pkz[islice, jslice, :-1] = np.exp(constants.KAPPA * np.log(constants.RDG * delp[islice, jslice, :-1] * pt[islice, jslice, :-1] / delz[islice, jslice, :-1]))
+            pkz[islice, jslice, :-1] = compute_pkz_dry(delp[islice, jslice,:], pt[islice, jslice,:], delz[islice, jslice,:])
             
 def init_case(ua, va, uc, vc, eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, ak, bk, ptop, u, v, pt, phis, delz, w,  lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, adiabatic, hydrostatic, moist_phys): 
     nx, ny = horizontal_compute_shape(delp)  
