@@ -83,13 +83,14 @@ class TranslateInitCase(TranslateFortranData2Py):
 
         return self.slice_output(inputs)
     
-def make_sliced_inputs_dict(inputs, grid):
+def make_sliced_inputs_dict(inputs, slice_2d):
     sliced_inputs = {}
     for k, v in inputs.items():
         if isinstance(v, np.ndarray) and len(v.shape) > 1:
-            slices = grid.compute_interface()[0:2]
             if len(v.shape) == 3:
-                slices = (*slices,slice(None))
+                slices = (*slice_2d,slice(None))
+            if len(v.shape) == 2:
+                slices =  slice_2d
             sliced_inputs[k] = inputs[k][slices]        
         else:
             sliced_inputs[k] = inputs[k]
@@ -144,7 +145,7 @@ class TranslateInitPreJab(TranslateFortranData2Py):
         for zvar in ["eta", "eta_v"]:
             inputs[zvar] = np.zeros(self.grid.npz+1)
         inputs["ps"][:] = jablonowski_init.surface_pressure
-        sliced_inputs = make_sliced_inputs_dict(inputs, self.grid)
+        sliced_inputs = make_sliced_inputs_dict(inputs, self.grid.compute_interface()[0:2])
        
         baroclinic_init.setup_pressure_fields(**sliced_inputs, lat_agrid=self.grid.agrid2.data[self.grid.compute_interface()[0:2]], adiabatic=spec.namelist.adiabatic)
         return self.slice_output(inputs)
@@ -194,20 +195,24 @@ class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
             inputs[variable] = np.zeros(full_shape)
         for var2d in ["phis"]:
             inputs[var2d] = np.zeros(full_shape[0:2])
+        
+        slice_2d = (slice(self.grid.is_, self.grid.ie+2), slice(self.grid.js, self.grid.je+2))
         grid_vars = {
-            "lon":self.grid.bgrid1.data,
-            "lat": self.grid.bgrid2.data,
-            "lon_agrid" : self.grid.agrid1.data,
-            "lat_agrid" : self.grid.agrid2.data,
-            "ee1": self.grid.ee1.data,
-            "ee2": self.grid.ee2.data,
-            "es1": self.grid.es1.data,
-            "ew2": self.grid.ew2.data
+            "lon":self.grid.bgrid1.data[slice_2d],
+            "lat": self.grid.bgrid2.data[slice_2d],
+            "lon_agrid" : self.grid.agrid1.data[slice_2d],
+            "lat_agrid" : self.grid.agrid2.data[slice_2d],
+            "ee1": self.grid.ee1.data[slice_2d],
+            "ee2": self.grid.ee2.data[slice_2d],
+            "es1": self.grid.es1.data[slice_2d],
+            "ew2": self.grid.ew2.data[slice_2d]
         }
         inputs["w"][:] = 1e30
         inputs["delz"][:] =  1e30
         inputs["pt"][:] = 1.0
-        baroclinic_init.baroclinic_initialization(**inputs, **grid_vars, adiabatic=spec.namelist.adiabatic,hydrostatic=spec.namelist.hydrostatic)
+        inputs["phis"][:] =  1.e25
+        sliced_inputs = make_sliced_inputs_dict(inputs, slice_2d)
+        baroclinic_init.baroclinic_initialization(**sliced_inputs, **grid_vars, adiabatic=spec.namelist.adiabatic,hydrostatic=spec.namelist.hydrostatic)
         return self.slice_output(inputs)
 
 class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
@@ -253,7 +258,7 @@ class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
     
         namelist = spec.namelist
         inputs["delz"][:]= 1.e25
-        sliced_inputs = make_sliced_inputs_dict(inputs, self.grid)
+        sliced_inputs = make_sliced_inputs_dict(inputs, self.grid.compute_interface()[0:2])
         baroclinic_init.p_var(**sliced_inputs, moist_phys=namelist.moist_phys, make_nh=(not namelist.hydrostatic), hydrostatic=namelist.hydrostatic)
         return self.slice_output(inputs)
 

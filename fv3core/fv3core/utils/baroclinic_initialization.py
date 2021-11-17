@@ -8,20 +8,6 @@ nhalo = fv3util.N_HALO_DEFAULT
 ptop_min = 1e-8
 pcen = [math.pi / 9.0, 2.0 * math.pi / 9.0]
 
-def horizontal_compute_shape(full_array_shape):
-    full_nx, full_ny, _ = full_array_shape
-    nx = full_nx - 2*  nhalo - 1
-    ny = full_ny - 2 * nhalo - 1
-    return nx, ny
-
-def compute_slices(full_array_shape):
-    nx, ny = horizontal_compute_shape(full_array_shape)
-    islice = slice(nhalo, nhalo + nx)
-    jslice = slice(nhalo, nhalo + ny)
-    slice_3d = (islice, jslice, slice(None))
-    slice_2d = (islice, jslice)
-    return islice, jslice, slice_3d, slice_2d
-
 
 def initialize_delp(ps, ak, bk):
     return  ak[None, None, 1:] - ak[None, None, :-1] + ps[:, :, None] * (bk[None, None, 1:] - bk[None, None, :-1])
@@ -133,45 +119,45 @@ def moisture_adjusted_temperature(pt, qvapor):
     
 def baroclinic_initialization(peln, qvapor, delp, u, v, pt, phis, delz, w, eta, eta_v, lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, ptop, adiabatic, hydrostatic):
 
-    islice, jslice, slice_3d, slice_2d = compute_slices(delp.shape)
-    nx, ny = horizontal_compute_shape(delp.shape)
+    nx = delp.shape[0] - 1
+    ny = delp.shape[1] - 1
+
     # Equation (2) for v
     # Although meridional wind is 0 in this scheme
     # on the cubed sphere grid, v is not 0 on every tile
     initialize_zonal_wind(v, eta, eta_v, lon, lat,
                           east_grid_vector_component=ee2,
                           center_grid_vector_component=ew2,
-                          islice=slice(nhalo, nhalo + nx + 1),
-                          islice_grid=slice(nhalo, nhalo + nx + 1),
-                          jslice=slice(nhalo, nhalo + ny),
-                          jslice_grid=slice(nhalo + 1, nhalo + ny + 1),
+                          islice=slice(0, nx + 1),
+                          islice_grid=slice(0,  nx + 1),
+                          jslice=slice(0, ny),
+                          jslice_grid=slice(1, ny + 1),
                           axis=1)
 
     initialize_zonal_wind(u, eta, eta_v, lon, lat,
                           east_grid_vector_component=ee1,
                           center_grid_vector_component=es1,
-                          islice=slice(nhalo, nhalo + nx),
-                          islice_grid=slice(nhalo + 1, nhalo + nx + 1),
-                          jslice=slice(nhalo, nhalo + ny + 1),
-                          jslice_grid=slice(nhalo, nhalo + ny + 1),
+                          islice=slice(0, nx),
+                          islice_grid=slice(1,  nx + 1),
+                          jslice=slice(0, ny + 1),
+                          jslice_grid=slice(0,  ny + 1),
                           axis=0)
     
     # Compute cell lats in the midpoint of each cell edge
     lat2, lat3, lat4, lat5 =  compute_grid_edge_midpoint_latitude_components(lon, lat)
-   
+    slice_3d = (slice(0, nx), slice(0, ny), slice(None))
+    slice_2d = (slice(0, nx), slice(0, ny))
     # initialize temperature
     t_mean = jablonowski_init.horizontally_averaged_temperature(eta)
     pt[slice_3d] = cell_average_nine_components(jablonowski_init.temperature, [eta, eta_v, t_mean], lat, lat_agrid, lat2, lat3, lat4, lat5, slice_2d)
 
     # initialize surface geopotential
-    phis[:] =  1.e25
     phis[slice_2d] = cell_average_nine_components(jablonowski_init.surface_geopotential_perturbation, [], lat, lat_agrid, lat2, lat3, lat4, lat5, slice_2d)
     
     if not hydrostatic:
-        w[:] = 1.e30
         # vertical velocity is set to 0 for nonhydrostatic setups
         w[slice_3d] = 0.0
-        delz[islice, jslice, :-1] = initialize_delz(pt[slice_3d], peln[slice_3d])
+        delz[:nx, :ny, :-1] = initialize_delz(pt[slice_3d], peln[slice_3d])
         
     if not adiabatic:
         pt[slice_3d] = moisture_adjusted_temperature(pt[slice_3d], qvapor[slice_3d])
@@ -211,6 +197,22 @@ def p_var(delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_
             pkz[:, :, :-1] = initialize_pkz_moist(delp, pt, qvapor, delz)
         else:
             pkz[:, :, :-1] = initialize_pkz_dry(delp, pt, delz)
+
+
+
+def horizontal_compute_shape(full_array_shape):
+    full_nx, full_ny, _ = full_array_shape
+    nx = full_nx - 2*  nhalo - 1
+    ny = full_ny - 2 * nhalo - 1
+    return nx, ny
+
+def compute_slices(nx, ny):
+    islice = slice(nhalo, nhalo + nx)
+    jslice = slice(nhalo, nhalo + ny)
+    slice_3d = (islice, jslice, slice(None))
+    slice_2d = (islice, jslice)
+    return islice, jslice, slice_3d, slice_2d
+
             
 def init_case(ua, va, uc, vc, eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, ak, bk, ptop, u, v, pt, phis, delz, w,  lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, adiabatic, hydrostatic, moist_phys): 
     nx, ny = horizontal_compute_shape(delp.shape)  
@@ -226,10 +228,13 @@ def init_case(ua, va, uc, vc, eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, a
     uc[:] = 1e30
     vc[:] = 1e30
     delz[:]= 1.e25
+    w[:] = 1.e30
+    phis[:] =  1.e25
     ps[:] = jablonowski_init.surface_pressure
-    islice, jslice, slice_3d, slice_2d = compute_slices(delp.shape)
+    islice, jslice, slice_3d, slice_2d = compute_slices(nx, ny)
+    isliceb, jsliceb, slice_3db, slice_2db = compute_slices(nx + 1, ny+ 1)
     setup_pressure_fields(eta, eta_v, delp[slice_3d], ps[slice_2d], pe[slice_3d], peln[slice_3d], pk[slice_3d], pkz[slice_3d], qvapor[slice_3d], ak, bk, ptop, lat_agrid=lat_agrid[:-1, :-1][slice_2d], adiabatic=adiabatic)
-    baroclinic_initialization(peln, qvapor, delp, u, v, pt, phis, delz, w, eta, eta_v,  lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, ptop, adiabatic, hydrostatic)
+    baroclinic_initialization(peln[slice_3db], qvapor[slice_3db], delp[slice_3db], u[slice_3db], v[slice_3db], pt[slice_3db], phis[slice_2db], delz[slice_3db], w[slice_3db], eta, eta_v,  lon[slice_2db], lat[slice_2db], lon_agrid[slice_2db], lat_agrid[slice_2db], ee1[slice_3db], ee2[slice_3db], es1[slice_3db], ew2[slice_3db], ptop, adiabatic, hydrostatic)
   
     p_var(delp[slice_3d], delz[slice_3d], pt[slice_3d], ps[slice_2d], qvapor[slice_3d], pe[slice_3d], peln[slice_3d], pk[slice_3d], pkz[slice_3d], ptop, moist_phys, make_nh=(not hydrostatic), hydrostatic=hydrostatic)
   
