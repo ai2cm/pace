@@ -1,9 +1,3 @@
-from fv3gfs.physics.stencils.fv_update_phys import update_pressure_and_surface_winds
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core._config as spec
-import numpy as np
-import copy
-from fv3core.utils.grid import axis_offsets
 from fv3gfs.physics.global_constants import KAPPA
 from fv3gfs.physics.stencils.fv_update_phys import update_pressure_and_surface_winds
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
@@ -14,8 +8,12 @@ class TranslatePhysUpdatePressureSurfaceWinds(TranslatePhysicsFortranData2Py):
         super().__init__(grid)
         self.in_vars["data_vars"] = {
             "peln": {"dycore": True, "istart": grid.is_, "jstart": grid.js, "kaxis": 1},
-            "pk": {"dycore": True,},
-            "delp": {"dycore": True,},
+            "pk": {
+                "dycore": True,
+            },
+            "delp": {
+                "dycore": True,
+            },
             "pe": {
                 "dycore": True,
                 "istart": grid.is_ - 1,
@@ -23,10 +21,18 @@ class TranslatePhysUpdatePressureSurfaceWinds(TranslatePhysicsFortranData2Py):
                 "kaxis": 1,
             },
             "ps": {"dycore": True},
-            "ua": {"dycore": True,},
-            "va": {"dycore": True,},
-            "u_srf": {"dycore": True,},
-            "v_srf": {"dycore": True,},
+            "ua": {
+                "dycore": True,
+            },
+            "va": {
+                "dycore": True,
+            },
+            "u_srf": {
+                "dycore": True,
+            },
+            "v_srf": {
+                "dycore": True,
+            },
         }
 
         self.out_vars = {

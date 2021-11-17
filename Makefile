@@ -83,7 +83,7 @@ ifneq ($(findstring docker,$(CONTAINER_CMD)),)
     endif
 endif
 	$(CONTAINER_CMD) bash -c "pip list && $(PYTEST_CMD)"
-	
+
 physics_savepoint_tests:
 	$(MAKE) get_test_data
 	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)' \

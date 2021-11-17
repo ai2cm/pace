@@ -1,11 +1,9 @@
-from fv3gfs.physics.stencils.physics import atmos_phys_driver_statein
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core._config as spec
+import numpy as np
+
+import fv3core.utils.gt4py_utils as utils
 from fv3gfs.physics.global_constants import KAPPA
 from fv3gfs.physics.stencils.physics import atmos_phys_driver_statein
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core.utils.gt4py_utils as utils
-import numpy as np
 
 
 class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):

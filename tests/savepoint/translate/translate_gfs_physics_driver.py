@@ -1,8 +1,3 @@
-from fv3gfs.physics.stencils.physics import Physics, PhysicsState
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core.utils.gt4py_utils as utils
-import fv3core._config as spec
-import numpy as np
 import copy
 
 from mpi4py import MPI
@@ -38,24 +33,56 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             "omga": {"dycore": True},
         }
         self.out_vars = {
-            "gt0": {"serialname": "IPD_gt0", "kend": grid.npz - 1, "order": "F",},
-            "gu0": {"serialname": "IPD_gu0", "kend": grid.npz - 1, "order": "F",},
-            "gv0": {"serialname": "IPD_gv0", "kend": grid.npz - 1, "order": "F",},
-            "qvapor": {"serialname": "IPD_qvapor", "kend": grid.npz - 1, "order": "F",},
+            "gt0": {
+                "serialname": "IPD_gt0",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "gu0": {
+                "serialname": "IPD_gu0",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "gv0": {
+                "serialname": "IPD_gv0",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "qvapor": {
+                "serialname": "IPD_qvapor",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
             "qliquid": {
                 "serialname": "IPD_qliquid",
                 "kend": grid.npz - 1,
                 "order": "F",
             },
-            "qrain": {"serialname": "IPD_rain", "kend": grid.npz - 1, "order": "F",},
-            "qice": {"serialname": "IPD_qice", "kend": grid.npz - 1, "order": "F",},
-            "qsnow": {"serialname": "IPD_snow", "kend": grid.npz - 1, "order": "F",},
+            "qrain": {
+                "serialname": "IPD_rain",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "qice": {
+                "serialname": "IPD_qice",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
+            "qsnow": {
+                "serialname": "IPD_snow",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
             "qgraupel": {
                 "serialname": "IPD_qgraupel",
                 "kend": grid.npz - 1,
                 "order": "F",
             },
-            "qcld": {"serialname": "IPD_qcld", "kend": grid.npz - 1, "order": "F",},
+            "qcld": {
+                "serialname": "IPD_qcld",
+                "kend": grid.npz - 1,
+                "order": "F",
+            },
         }
 
     def compute(self, inputs):

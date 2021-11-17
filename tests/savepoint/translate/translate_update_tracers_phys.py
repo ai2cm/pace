@@ -1,11 +1,7 @@
-from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.stencils.update_atmos_state import (
     prepare_tendencies_and_update_tracers,
 )
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
-import fv3core._config as spec
-import numpy as np
-import copy
 
 
 class TranslatePhysUpdateTracers(TranslatePhysicsFortranData2Py):
@@ -38,9 +34,21 @@ class TranslatePhysUpdateTracers(TranslatePhysicsFortranData2Py):
         }
         self.in_vars["parameters"] = ["rdt"]
         self.out_vars = {
-            "u_dt": {"dycore": True, "compute": False, "kend": grid.npz - 1,},
-            "v_dt": {"dycore": True, "compute": False, "kend": grid.npz - 1,},
-            "pt_dt": {"serialname": "t_dt", "dycore": True, "kend": grid.npz - 1,},
+            "u_dt": {
+                "dycore": True,
+                "compute": False,
+                "kend": grid.npz - 1,
+            },
+            "v_dt": {
+                "dycore": True,
+                "compute": False,
+                "kend": grid.npz - 1,
+            },
+            "pt_dt": {
+                "serialname": "t_dt",
+                "dycore": True,
+                "kend": grid.npz - 1,
+            },
             "delp": {
                 "dycore": True,
                 "kend": grid.npz - 1,
