@@ -36,7 +36,7 @@ endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3GFS_IMAGE)
 
 build:
-	PULL=PULL $(MAKE) -C docker fv3gfs_image
+	PULL=$(PULL) $(MAKE) -C docker fv3gfs_image
 
 dev:
 	docker run --rm -it \

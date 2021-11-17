@@ -16,7 +16,6 @@ BUILD_ARGS += \
 
 DEPS_IMAGES = $(SERIALBOX_IMAGE) $(ENVIRONMENT_IMAGE) $(MPI_IMAGE)
 GT4PY_VERSION ?= `cat ../GT4PY_VERSION.txt`
-PULL ?=True
 
 build: fv3gfs_image
 
