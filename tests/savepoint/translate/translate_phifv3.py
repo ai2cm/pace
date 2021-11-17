@@ -1,4 +1,3 @@
-from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 import fv3core._config as spec

@@ -1,4 +1,3 @@
-from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.stencils.update_atmos_state import fill_gfs
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 import fv3core._config as spec
