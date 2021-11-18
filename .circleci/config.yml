@@ -68,3 +68,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - test_fv3core:
+          filters:
+            tags:
+              only: /^v.*/
