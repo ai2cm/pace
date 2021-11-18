@@ -22,7 +22,7 @@ jobs:
     steps:
       - checkout
       - run:
-          name: install MPI
+          name: install tox and MPI
           command: |
             if [ $(python changed_from_main.py fv3gfs-util) != false ]; then
               sudo apt-get update
@@ -38,13 +38,13 @@ jobs:
 
   test_fv3core:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.8
     working_directory: ~/repo
 
     steps:
       - checkout
       - run:
-          name: install MPI
+          name: install tox
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
               sudo pip3 install tox -c constraints.txt
