@@ -29,6 +29,7 @@ from .geometry import (
     calculate_supergrid_cos_sin,
     calculate_trig_uv,
     calculate_xy_unit_vectors,
+    edge_factors,
     efactor_a2c_v,
     get_center_vector,
     supergrid_corner_fix,
@@ -1008,6 +1009,62 @@ class MetricTerms:
         if self._a22 is None:
             self._a11, self._a12, self._a21, self._a22 = self._calculate_grid_a()
         return self._a22
+
+    @property
+    def edge_w(self):
+        """
+        factor to interpolate scalars from a to c grid at the western grid edge
+        """
+        if self._edge_w is None:
+            (
+                self._edge_w,
+                self._edge_e,
+                self._edge_s,
+                self._edge_n,
+            ) = self._calculate_edge_factors()
+        return self._edge_w
+
+    @property
+    def edge_e(self):
+        """
+        factor to interpolate scalars from a to c grid at the eastern grid edge
+        """
+        if self._edge_e is None:
+            (
+                self._edge_w,
+                self._edge_e,
+                self._edge_s,
+                self._edge_n,
+            ) = self._calculate_edge_factors()
+        return self._edge_e
+
+    @property
+    def edge_s(self):
+        """
+        factor to interpolate scalars from a to c grid at the southern grid edge
+        """
+        if self._edge_s is None:
+            (
+                self._edge_w,
+                self._edge_e,
+                self._edge_s,
+                self._edge_n,
+            ) = self._calculate_edge_factors()
+        return self._edge_s
+
+    @property
+    def edge_n(self):
+        """
+        factor to interpolate scalars from a to c grid at the northern grid edge
+        """
+        if self._edge_n is None:
+            (
+                self._edge_w,
+                self._edge_e,
+                self._edge_s,
+                self._edge_n,
+            ) = self._calculate_edge_factors()
+        return self._edge_n
 
     @property
     def edge_vect_w(self):
@@ -2097,6 +2154,29 @@ class MetricTerms:
             self.sin_sg5.data[:-1, :-1],
         )
         return a11, a12, a21, a22
+
+    def _calculate_edge_factors(self):
+        nhalo = self._halo
+        edge_s = self._quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
+        edge_n = self._quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
+        edge_e = self._quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
+        edge_w = self._quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
+        (
+            edge_w.data[nhalo:-nhalo],
+            edge_e.data[nhalo:-nhalo],
+            edge_s.data[nhalo:-nhalo],
+            edge_n.data[nhalo:-nhalo],
+        ) = edge_factors(
+            self.gridvar,
+            self.agrid.data[:-1, :-1],
+            self._grid_type,
+            nhalo,
+            self._tile_partitioner,
+            self._rank,
+            RADIUS,
+            self._np,
+        )
+        return edge_w, edge_e, edge_s, edge_n
 
     def _calculate_edge_a2c_vect_factors(self):
         edge_vect_s = self._quantity_factory.zeros([fv3util.X_DIM], "")

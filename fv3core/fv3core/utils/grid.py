@@ -13,7 +13,7 @@ from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
 
 from . import gt4py_utils as utils
 from .stencil import GridIndexing, StencilConfig, StencilFactory
-from .typing import FloatFieldIJ
+from .typing import FloatFieldI, FloatFieldIJ
 
 
 class Grid:
@@ -452,6 +452,10 @@ class Grid:
             a12=self.a12,
             a21=self.a21,
             a22=self.a22,
+            edge_w=self.edge_w,
+            edge_e=self.edge_e,
+            edge_s=self.edge_s,
+            edge_n=self.edge_n,
         )
         vertical = VerticalGridData(ptop=-1.0e7, ks=-1)
         contravariant = ContravariantGridData(
@@ -529,6 +533,10 @@ class HorizontalGridData:
     a12: FloatFieldIJ
     a21: FloatFieldIJ
     a22: FloatFieldIJ
+    edge_w: FloatFieldIJ
+    edge_e: FloatFieldIJ
+    edge_s: FloatFieldI
+    edge_n: FloatFieldI
 
 
 @dataclasses.dataclass
@@ -633,6 +641,16 @@ class GridData:
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
+        # TODO fix <Quantity>.storage mask for FieldI
+        shape = metric_terms.lon.data.shape
+        edge_n = utils.make_storage_data(metric_terms.edge_n.data, (shape[0],), axis=0)
+        edge_s = utils.make_storage_data(metric_terms.edge_s.data, (shape[0],), axis=0)
+        edge_e = utils.make_storage_data(
+            metric_terms.edge_e.data, (1, shape[1]), axis=1
+        )
+        edge_w = utils.make_storage_data(
+            metric_terms.edge_w.data, (1, shape[1]), axis=1
+        )
 
         horizontal_data = HorizontalGridData(
             lon=metric_terms.lon.storage,
@@ -659,6 +677,10 @@ class GridData:
             a12=metric_terms.a12.storage,
             a21=metric_terms.a21.storage,
             a22=metric_terms.a22.storage,
+            edge_w=edge_w,
+            edge_e=edge_e,
+            edge_s=edge_s,
+            edge_n=edge_n,
         )
         ak = metric_terms.ak.data
         bk = metric_terms.bk.data
@@ -809,6 +831,22 @@ class GridData:
     @property
     def a22(self):
         return self._horizontal_data.a22
+
+    @property
+    def edge_w(self):
+        return self._horizontal_data.edge_w
+
+    @property
+    def edge_e(self):
+        return self._horizontal_data.edge_e
+
+    @property
+    def edge_s(self):
+        return self._horizontal_data.edge_s
+
+    @property
+    def edge_n(self):
+        return self._horizontal_data.edge_n
 
     @property
     def p_ref(self) -> float:
