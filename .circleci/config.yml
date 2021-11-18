@@ -11,10 +11,10 @@ jobs:
       - run:
           name: run linting
           command: |
-            if [ python changed_from_main.py fv3gfs-util != false ]; then
+            bash -c "if [ python changed_from_main.py fv3gfs-util != false ]; then
               sudo pip3 install tox -c constraints.txt
               cd fv3gfs-util && tox -e lint
-            fi
+            fi"
 
   test_python:
     docker:
@@ -26,17 +26,17 @@ jobs:
       - run:
           name: install MPI
           command: |
-            if [ python changed_from_main.py fv3gfs-util != false ]; then
+            bash -c "if [ python changed_from_main.py fv3gfs-util != false ]; then
               sudo apt-get update
               sudo apt-get install libopenmpi3
               sudo pip3 install tox -c constraints.txt
-            fi
+            fi"
       - run:
           name: run tests
           command: |
-            if [ python changed_from_main.py fv3gfs-util != false ]; then
+            bash -c "if [ python changed_from_main.py fv3gfs-util != false ]; then
               cd fv3gfs-util && tox -e test -e test_no_extras
-            fi
+            fi"
 
 
 workflows:
