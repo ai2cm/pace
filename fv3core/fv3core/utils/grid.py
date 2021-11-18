@@ -8,7 +8,6 @@ from gt4py import gtscript
 import fv3core.utils.global_config as global_config
 import fv3gfs.util
 from fv3core.grid import MetricTerms
-from fv3core.utils.global_constants import CARTESIAN_DIM, LON_OR_LAT_DIM, TILE_DIM
 from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
 
 from . import gt4py_utils as utils
@@ -82,9 +81,9 @@ class Grid:
                 nz=self.npz,
                 n_halo=self.halo,
                 extra_dim_lengths={
-                    LON_OR_LAT_DIM: 2,
-                    TILE_DIM: 6,
-                    CARTESIAN_DIM: 3,
+                    MetricTerms.LON_OR_LAT_DIM: 2,
+                    MetricTerms.TILE_DIM: 6,
+                    MetricTerms.CARTESIAN_DIM: 3,
                 },
                 layout=self.layout,
             )

@@ -7,13 +7,7 @@ from fv3core.utils.corners import (
     fill_corners_cgrid,
     fill_corners_dgrid,
 )
-from fv3core.utils.global_constants import (
-    CARTESIAN_DIM,
-    LON_OR_LAT_DIM,
-    PI,
-    RADIUS,
-    TILE_DIM,
-)
+from fv3core.utils.global_constants import PI, RADIUS
 from fv3core.utils.gt4py_utils import asarray
 from fv3core.utils.stencil import GridIndexing
 from fv3gfs.util.constants import N_HALO_DEFAULT
@@ -69,6 +63,12 @@ def cached_property(func):
 # corners use sizer + partitioner rather than GridIndexer,
 # have to refactor fv3core calls to corners to do this as well
 class MetricTerms:
+    LON_OR_LAT_DIM = "lon_or_lat"
+    TILE_DIM = "tile"
+    CARTESIAN_DIM = "xyz_direction"
+    N_TILES = 6
+    RIGHT_HAND_GRID = False
+
     def __init__(
         self,
         *,
@@ -85,9 +85,9 @@ class MetricTerms:
         self._rank = self._comm.rank
         self._quantity_factory = quantity_factory
         self._quantity_factory._sizer.extra_dim_lenths = {
-            LON_OR_LAT_DIM: 2,
-            TILE_DIM: 6,
-            CARTESIAN_DIM: 3,
+            self.LON_OR_LAT_DIM: 2,
+            self.TILE_DIM: 6,
+            self.CARTESIAN_DIM: 3,
         }
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
             self._quantity_factory._sizer, self._comm
@@ -95,7 +95,7 @@ class MetricTerms:
         self._grid_dims = [
             fv3util.X_INTERFACE_DIM,
             fv3util.Y_INTERFACE_DIM,
-            LON_OR_LAT_DIM,
+            self.LON_OR_LAT_DIM,
         ]
         self._grid = self._quantity_factory.zeros(
             self._grid_dims,
@@ -107,7 +107,7 @@ class MetricTerms:
         self._npy = npy
         self._npz = self._quantity_factory._sizer.get_extent(fv3util.Z_DIM)[0]
         self._agrid = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM], "radians", dtype=float
+            [fv3util.X_DIM, fv3util.Y_DIM, self.LON_OR_LAT_DIM], "radians", dtype=float
         )
         self._np = self._grid.np
         self._dx = None
@@ -204,7 +204,11 @@ class MetricTerms:
             ny_tile=npy - 1,
             nz=npz,
             n_halo=N_HALO_DEFAULT,
-            extra_dim_lengths={LON_OR_LAT_DIM: 2, TILE_DIM: 6, CARTESIAN_DIM: 3},
+            extra_dim_lengths={
+                cls.LON_OR_LAT_DIM: 2,
+                cls.TILE_DIM: 6,
+                cls.CARTESIAN_DIM: 3,
+            },
             layout=communicator.partitioner.tile.layout,
         )
         quantity_factory = fv3util.QuantityFactory.from_backend(sizer, backend=backend)
@@ -1423,6 +1427,7 @@ class MetricTerms:
             global_js=section_global_js,
             ng=self._halo,
             np=self._grid.np,
+            right_hand_grid=self.RIGHT_HAND_GRID,
         )
         # Shift the corner away from Japan
         # This will result in the corner close to east coast of China
@@ -1664,10 +1669,10 @@ class MetricTerms:
 
     def _calculate_center_vectors(self):
         ec1 = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ec2 = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ec1.data[:] = self._np.nan
         ec2.data[:] = self._np.nan
@@ -1683,10 +1688,10 @@ class MetricTerms:
 
     def _calculate_vectors_west(self):
         ew1 = self._quantity_factory.zeros(
-            [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ew2 = self._quantity_factory.zeros(
-            [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ew1.data[:] = self._np.nan
         ew2.data[:] = self._np.nan
@@ -1703,10 +1708,10 @@ class MetricTerms:
 
     def _calculate_vectors_south(self):
         es1 = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         es2 = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         es1.data[:] = self._np.nan
         es2.data[:] = self._np.nan
@@ -1993,10 +1998,10 @@ class MetricTerms:
 
     def _calculate_xy_unit_vectors(self):
         ee1 = self._quantity_factory.zeros(
-            [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         ee2 = self._quantity_factory.zeros(
-            [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         ee1.data[:] = self._np.nan
         ee2.data[:] = self._np.nan
@@ -2106,10 +2111,10 @@ class MetricTerms:
 
     def _calculate_unit_vectors_lonlat(self):
         vlon = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         vlat = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
 
         vlon.data[:-1, :-1], vlat.data[:-1, :-1] = unit_vector_lonlat(
