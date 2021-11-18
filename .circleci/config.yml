@@ -68,7 +68,7 @@ jobs:
       - save_cache:
           key: v1-{{ checksum "fv3core/tox.ini" }}-{{ checksum "fv3core/constraints.txt" }}
           paths:
-            - .tox
+            - fv3core/.tox
 
 workflows:
   version: 2
