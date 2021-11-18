@@ -589,7 +589,7 @@ def interpolate_uc_vc_to_cell_corners(
 def compute_f0(
     stencil_factory: StencilFactory, lon_agrid: FloatFieldIJ, lat_agrid: FloatFieldIJ
 ):
-     """
+    """
     Compute the coriolis parameter on the D-grid
     """
     f0 = utils.make_storage_from_shape(lon_agrid.shape)

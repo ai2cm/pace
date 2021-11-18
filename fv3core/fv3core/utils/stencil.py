@@ -17,7 +17,6 @@ from typing import (
 )
 
 import gt4py
-import numpy
 import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage

@@ -38,6 +38,7 @@ def initialize_serializer(data_directory: str, rank: int = 0) -> serialbox.Seria
         "Generator_rank" + str(rank),
     )
 
+
 # Only used if reading the grid from savepoints on disk
 # Default is to generate abaroclinic initialization
 def read_grid(serializer: serialbox.Serializer, rank: int = 0) -> Grid:
