@@ -8,11 +8,18 @@ jobs:
     - image: circleci/python:3.7
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - v1-{{ checksum ".pre-commit-config.yaml" }}
       - run:
           name: run linting
           command: |
             sudo pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
+      - save_cache:
+          key: v1-{{ checksum ".pre-commit-config.yaml" }}
+          paths:
+            - ~/.cache/pre-commit
 
   test_util:
     docker:
