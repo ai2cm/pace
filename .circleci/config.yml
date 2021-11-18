@@ -15,7 +15,7 @@ jobs:
           name: run linting
           command: |
             python3 -m venv venv
-            . venv/bin activate
+            . venv/bin/activate
             sudo pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
       - save_cache:
@@ -41,7 +41,7 @@ jobs:
               sudo apt-get update
               sudo apt-get install libopenmpi3 libopenmpi-dev
               python3 -m venv fv3gfs-util/venv
-              . fv3gfs-util/venv/bin activate
+              . fv3gfs-util/venv/bin/activate
               sudo pip3 install tox -c fv3gfs-util/constraints.txt
             fi
       - run:
@@ -71,7 +71,7 @@ jobs:
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
               python3 -m venv fv3core/venv
-              . fv3core/venv/bin activate
+              . fv3core/venv/bin/activate
               sudo pip3 install tox -c fv3core/constraints.txt
             fi
       - run:
