@@ -1,0 +1,53 @@
+version: 2.1
+orbs:
+  gcp-gcr: circleci/gcp-gcr@0.6.1
+jobs:
+
+  lint:
+    docker:
+    - image: circleci/python:3.7
+    steps:
+      - checkout
+      - run:
+        name: run linting
+        command: |
+          if [ python changed_from_main.py fv3gfs-util != false ]; then
+            sudo pip3 install tox -c constraints.txt
+            cd fv3gfs-util && tox -e lint
+          fi
+
+  test_python:
+    docker:
+      - image: circleci/python:3.7
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+      - run:
+          name: install MPI
+          command: |
+            if [ python changed_from_main.py fv3gfs-util != false ]; then
+              sudo apt-get update
+              sudo apt-get install libopenmpi3
+              sudo pip3 install tox -c constraints.txt
+            fi
+      - run:
+          name: run tests
+          command: |
+            if [ python changed_from_main.py fv3gfs-util != false ]; then
+              cd fv3gfs-util && tox -e test -e test_no_extras
+            fi
+
+
+workflows:
+  version: 2
+  tagged-build:
+    jobs:
+      - lint:
+          filters:
+            tags:
+              only: /^v.*/
+      - test_python:
+          filters:
+            tags:
+              only: /^v.*/
