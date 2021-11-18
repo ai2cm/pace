@@ -127,13 +127,6 @@ class StencilConfig(Hashable):
     def is_gtc_backend(self) -> bool:
         return self.backend.startswith("gtc")
 
-    @property
-    def np(self):
-        if self.is_gpu_backend:
-            return cupy
-        else:
-            return numpy
-
 
 class FrozenStencil:
     """
