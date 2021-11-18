@@ -49,12 +49,19 @@ jobs:
             if [ $(python changed_from_main.py fv3core) != false ]; then
               sudo pip3 install tox -c constraints.txt
             fi
+      - restore_cache:
+          keys:
+            - v1-{{ checksum "fv3core/tox.ini" }}-{{ checksum "fv3core/constraints.txt" }}
       - run:
           name: run tests
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
               cd fv3core && tox -e test
             fi
+      - save_cache:
+          key: v1-{{ checksum "fv3core/tox.ini" }}-{{ checksum "fv3core/constraints.txt" }}
+          paths:
+            - .tox
 
 workflows:
   version: 2
