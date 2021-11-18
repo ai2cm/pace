@@ -594,12 +594,12 @@ class AcousticDynamics:
                 )
                 self.riem_solver_c(
                     dt2,
-                    state.cappa,
+                    state.cappa_quantity,
                     state.ptop,
                     state.phis,
                     state.ws3,
                     state.ptc,
-                    state.q_con,
+                    state.q_con_quantity,
                     state.delpc,
                     state.gz,
                     state.pkc,
