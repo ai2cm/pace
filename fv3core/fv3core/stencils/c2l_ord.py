@@ -90,7 +90,11 @@ class CubedToLatLon:
         self._n_halo = grid_indexing.n_halo
         self._dx = grid_data.dx
         self._dy = grid_data.dy
-        # TODO: define these based on data from grid_data
+
+        # TODO: maybe compute locally a* variables
+        # They depend on z* and sin_sg5, which
+        # currently aren't in GridData but are used
+        # in other parts of the model and might be added.
         self._a11 = grid_data.a11
         self._a12 = grid_data.a12
         self._a21 = grid_data.a21
