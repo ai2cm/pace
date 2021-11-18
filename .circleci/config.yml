@@ -9,12 +9,12 @@ jobs:
     steps:
       - checkout
       - run:
-        name: run linting
-        command: |
-          if [ python changed_from_main.py fv3gfs-util != false ]; then
-            sudo pip3 install tox -c constraints.txt
-            cd fv3gfs-util && tox -e lint
-          fi
+          name: run linting
+          command: |
+            if [ python changed_from_main.py fv3gfs-util != false ]; then
+              sudo pip3 install tox -c constraints.txt
+              cd fv3gfs-util && tox -e lint
+            fi
 
   test_python:
     docker:
