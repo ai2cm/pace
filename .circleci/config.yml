@@ -14,7 +14,7 @@ jobs:
             sudo pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
 
-  test_python:
+  test_util:
     docker:
       - image: circleci/python:3.7
     working_directory: ~/repo
@@ -36,6 +36,25 @@ jobs:
               cd fv3gfs-util && tox -e test -e test_no_extras
             fi
 
+  test_fv3core:
+    docker:
+      - image: circleci/python:3.7
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+      - run:
+          name: install MPI
+          command: |
+            if [ $(python changed_from_main.py fv3core) != false ]; then
+              sudo pip3 install tox -c constraints.txt
+            fi
+      - run:
+          name: run tests
+          command: |
+            if [ $(python changed_from_main.py fv3core) != false ]; then
+              cd fv3core && tox -e test
+            fi
 
 workflows:
   version: 2
@@ -45,7 +64,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - test_python:
+      - test_util:
           filters:
             tags:
               only: /^v.*/
