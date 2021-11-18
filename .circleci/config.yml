@@ -26,7 +26,7 @@ jobs:
           command: |
             if [ $(python changed_from_main.py fv3gfs-util) != false ]; then
               sudo apt-get update
-              sudo apt-get install libopenmpi3
+              sudo apt-get install libopenmpi3 libopenmpi-dev
               sudo pip3 install tox -c constraints.txt
             fi
       - run:
