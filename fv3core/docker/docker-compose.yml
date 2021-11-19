@@ -7,4 +7,5 @@ services:
     volumes:
       - ../external/fv3gfs-util:/external/fv3gfs-util
       - ../external/fv3gfs-wrapper:/external/fv3gfs-wrapper
+      - ../external/shared:/external/shared
       - ..:/fv3core

@@ -42,6 +42,7 @@ ENV FV3_STENCIL_REBUILD_FLAG=False
 ###
 ### Copy over necessary source and configuration files
 ###
+COPY external/shared/ /external/shared/
 COPY external/fv3gfs-util/ /external/fv3gfs-util/
 COPY fv3core /fv3core/fv3core
 COPY tests /fv3core/tests
@@ -89,5 +90,4 @@ COPY requirements/requirements_wrapper.txt /
 RUN pip3 install -r /requirements_wrapper.txt -c /constraints.txt
 
 COPY external/fv3gfs-wrapper /external/fv3gfs-wrapper
-
 RUN /entrypoint.sh

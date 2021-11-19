@@ -91,6 +91,7 @@ class CubedToLatLon:
         self._n_halo = grid_indexing.n_halo
         self._dx = grid_data.dx
         self._dy = grid_data.dy
+
         # TODO: define these based on data from grid_data
         self._a11 = spec.grid.a11
         self._a12 = spec.grid.a12
