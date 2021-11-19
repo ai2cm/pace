@@ -3,7 +3,7 @@
 include Makefile.image_names
 
 DOCKER_BUILDKIT=1
-GT4PY_DIR=../gt4py
+GT4PY_DIR=../external/gt4py
 BUILD_ARGS += \
 	--network host \
 	--build-arg MPI_IMAGE=$(MPI_IMAGE) \
@@ -23,12 +23,7 @@ build: fv3gfs_image
 .PHONY: dev fv3gfs_image build build_deps push_deps pull_deps get_gt4py
 
 get_gt4py:
-	if [ ! -f ${GT4PY_DIR}/pyproject.toml ]  || \
-	[ "$(shell cd ${GT4PY_DIR} && git describe --tags )" != "${GT4PY_VERSION}"  ]; then \
-                rm -rf ${GT4PY_DIR} && \
-	  	git clone https://github.com/VulcanClimateModeling/gt4py.git ${GT4PY_DIR} && \
-	  	cd ${GT4PY_DIR} && git checkout ${GT4PY_VERSION};\
-	fi
+	git submodule update --init $(GT4PY_DIR)
 
  ## build production container image
 fv3gfs_image: get_gt4py
