@@ -32,7 +32,7 @@ get_gt4py:
 
  ## build production container image
 fv3gfs_image: get_gt4py
-	if [ $(PULL) == True ]; then \
+	if [ $(PULL) = True ]; then \
 		$(MAKE) pull_deps_if_needed; \
 	else \
 		$(MAKE) build_deps; \

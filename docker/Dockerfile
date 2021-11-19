@@ -40,6 +40,7 @@ ENV FV3_STENCIL_REBUILD_FLAG=False
 COPY fv3gfs-util/ fv3gfs-util/
 COPY fv3core fv3core/
 COPY fv3gfs-physics fv3gfs-physics/
+COPY shared shared/
 COPY docker/entrypoint.sh /entrypoint.sh
 
 # Docker hard limits shared memory usage. MPICH for oversubscribed situation

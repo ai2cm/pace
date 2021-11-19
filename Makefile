@@ -10,7 +10,7 @@ CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 
 
 build:
-	PULL=PULL $(MAKE) -C docker fv3gfs_image
+	PULL=$(PULL) $(MAKE) -C docker fv3gfs_image
 
 dev:
 	docker run --rm -it \
