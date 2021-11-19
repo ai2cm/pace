@@ -15,7 +15,7 @@ fi
 # run tests
 echo "restoring cache"
 
-UTIL_DIR=$SCRIPT_DIR/../fv3gfs-util
+UTIL_DIR=$SCRIPT_DIR/..
 
 cache_key=v1-util-$($SCRIPT_DIR/checksum.sh $SCRIPT_DIR/test_util.sh $UTIL_DIR/requirements.txt $UTIL_DIR/requirements_gpu.txt $UTIL_DIR/constraints.txt)-$target
 
