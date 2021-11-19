@@ -32,7 +32,7 @@ setup(
     tests_require=test_requirements,
     name="pace-shared",
     license="BSD license",
-    packages=find_namespace_packages(include=["pace.shared.*"]),
+    packages=find_namespace_packages(include=["pace.stencils.*"]),
     include_package_data=True,
     url="https://github.com/ai2cm/pace",
     version="0.1.0",
