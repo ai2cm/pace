@@ -1,4 +1,4 @@
-
+SHELL := /bin/bash
 # setup (use XXX=<value> make <target> to override)
 include Makefile.image_names
 
@@ -16,6 +16,7 @@ BUILD_ARGS += \
 
 DEPS_IMAGES = $(SERIALBOX_IMAGE) $(ENVIRONMENT_IMAGE) $(MPI_IMAGE)
 GT4PY_VERSION ?= `cat ../GT4PY_VERSION.txt`
+PULL ?=True
 
 build: fv3gfs_image
 
@@ -31,7 +32,7 @@ get_gt4py:
 
  ## build production container image
 fv3gfs_image: get_gt4py
-	if [ $(PULL) = True ]; then \
+	if [ $(PULL) == True ]; then \
 		$(MAKE) pull_deps_if_needed; \
 	else \
 		$(MAKE) build_deps; \

@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 include docker/Makefile.image_names
 
 DOCKER_BUILDKIT=1
