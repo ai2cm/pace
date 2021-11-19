@@ -1,4 +1,3 @@
-from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.global_constants import KAPPA
 from fv3gfs.physics.stencils.fv_update_phys import update_pressure_and_surface_winds
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
@@ -44,7 +43,7 @@ class TranslatePhysUpdatePressureSurfaceWinds(TranslatePhysicsFortranData2Py):
         }
         origin = self.grid.grid_indexing.origin_compute()
         domain = self.grid.grid_indexing.domain_compute(add=(0, 0, 1))
-        self.compute_func = FrozenStencil(
+        self.compute_func = grid.stencil_factory.from_origin_domain(
             update_pressure_and_surface_winds, origin=origin, domain=domain
         )
 
