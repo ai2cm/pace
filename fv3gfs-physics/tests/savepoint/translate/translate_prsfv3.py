@@ -1,4 +1,3 @@
-from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
@@ -19,7 +18,7 @@ class TranslatePrsFV3(TranslatePhysicsFortranData2Py):
             "del_": self.in_vars["data_vars"]["del_"],
             "del_gz": self.in_vars["data_vars"]["del_gz"],
         }
-        self.compute_func = FrozenStencil(
+        self.compute_func = grid.stencil_factory.from_origin_domain(
             get_prs_fv3,
             origin=self.grid.grid_indexing.origin_full(),
             domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
