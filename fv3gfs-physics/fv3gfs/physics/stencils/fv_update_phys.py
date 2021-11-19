@@ -10,6 +10,7 @@ from gt4py.gtscript import (
     log,
     region,
 )
+from pace.stencils.c2l_ord import CubedToLatLon
 
 import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
@@ -22,7 +23,6 @@ from fv3gfs.physics.global_constants import *
 # TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from fv3gfs.util.quantity import Quantity
-from pace.stencils.c2l_ord import CubedToLatLon
 
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir
