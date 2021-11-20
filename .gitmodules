@@ -10,3 +10,6 @@
 [submodule "external/fv3gfs-wrapper"]
 	path = external/fv3gfs-wrapper
 	url = git@github.com:ai2cm/fv3gfs-wrapper.git
+[submodule "external/serialbox"]
+	path = external/serialbox
+	url = git@github.com:ai2cm/serialbox.git

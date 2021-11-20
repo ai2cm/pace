@@ -16,10 +16,12 @@ hypothesis
 scipy
 pytest-regressions
 gitpython
+mpi4py>=3.1.2
 git+https://github.com/VulcanClimateModeling/fv3config.git@a0799928824a4f10617cf4615e8837c81ccb1f2d
+serialbox
 
 # GT4Py Tests
-clang-format
+# clang-format
 factory-boy
 pytest-factoryboy
 pytest-cache

@@ -19,7 +19,7 @@ TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
 FV3UTIL_DIR=$(CWD)/external/fv3gfs-util
 
 FV3=fv3core
-FV3_PATH ?=/$(FV3)
+FV3_PATH ?=$(CWD)
 
 TEST_DATA_RUN_LOC ?=/test_data
 PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
@@ -160,6 +160,7 @@ ifneq ($(findstring docker,$(CONTAINER_CMD)),)
 	$(MAKE) build
     endif
 endif
+	echo $(PYTEST_CMD)
 	$(CONTAINER_CMD) bash -c "pip list && $(PYTEST_CMD)"
 
 sync_test_data:
