@@ -1,4 +1,4 @@
-
+SHELL := /bin/bash
 # setup (use XXX=<value> make <target> to override)
 include Makefile.image_names
 
@@ -26,7 +26,7 @@ get_gt4py:
 	if [ ! -f ${GT4PY_DIR}/pyproject.toml ]  || \
 	[ "$(shell cd ${GT4PY_DIR} && git describe --tags )" != "${GT4PY_VERSION}"  ]; then \
                 rm -rf ${GT4PY_DIR} && \
-	  	git clone https://github.com/VulcanClimateModeling/gt4py.git ${GT4PY_DIR} && \
+	  	git clone https://github.com/ai2cm/gt4py.git ${GT4PY_DIR} && \
 	  	cd ${GT4PY_DIR} && git checkout ${GT4PY_VERSION};\
 	fi
 

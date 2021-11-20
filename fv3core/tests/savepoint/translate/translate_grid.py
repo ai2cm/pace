@@ -1,5 +1,6 @@
 from typing import Any, Dict
 
+import numpy as np
 import pytest
 
 import fv3core._config as spec
@@ -50,20 +51,19 @@ class TranslateGnomonicGrids(ParallelTranslateGrid):
 
     def compute_sequential(self, inputs_list, communicator_list):
         outputs = []
+        self.max_error = 2e-14
         for inputs in inputs_list:
             outputs.append(self.compute(inputs))
         return outputs
 
     def compute(self, inputs):
-        state = self.state_from_inputs(inputs)
         gnomonic_grid(
             self.grid.grid_type,
-            state["longitude_on_cell_corners"].view[:],
-            state["latitude_on_cell_corners"].view[:],
-            state["longitude_on_cell_corners"].np,
+            inputs["lon"],
+            inputs["lat"],
+            np,
         )
-        outputs = self.outputs_from_state(state)
-        return outputs
+        return inputs
 
 
 class TranslateMirrorGrid(ParallelTranslateGrid):
@@ -109,16 +109,14 @@ class TranslateMirrorGrid(ParallelTranslateGrid):
         return outputs
 
     def compute(self, inputs):
-        state = self.state_from_inputs(inputs)
         global_mirror_grid(
-            state["grid_global"].data,
-            state["n_ghost"],
-            state["npx"],
-            state["npy"],
-            state["grid_global"].np,
+            inputs["master_grid_global"],
+            self.inputs["master_grid_global"]["n_halo"],
+            inputs["master_npx"],
+            inputs["master_npy"],
+            np,
         )
-        outputs = self.outputs_from_state(state)
-        return outputs
+        return inputs
 
 
 class TranslateGridAreas(ParallelTranslateGrid):
@@ -926,6 +924,10 @@ class TranslateTrigSg(ParallelTranslateGrid):
 
 
 class TranslateAAMCorrection(ParallelTranslateGrid):
+    # TODO: THIS IS DISABLED because it fails on
+    # c48 and c128 with large relative errors, investigate!
+    # these values are super tiny, so ignore_near_zero
+    # will eliminate most points getting tested.
     def __init__(self, rank_grids):
         super().__init__(rank_grids)
         self.max_error = 1e-14
