@@ -924,6 +924,10 @@ class TranslateTrigSg(ParallelTranslateGrid):
 
 
 class TranslateAAMCorrection(ParallelTranslateGrid):
+    # TODO: THIS IS DISABLED because it fails on
+    # c48 and c128 with large relative errors, investigate!
+    # these values are super tiny, so ignore_near_zero
+    # will eliminate most points getting tested.
     def __init__(self, rank_grids):
         super().__init__(rank_grids)
         self.max_error = 1e-14
