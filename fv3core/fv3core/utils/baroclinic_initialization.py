@@ -37,16 +37,6 @@ def initialize_kappa_pressures(pe, peln, ptop):
     pkz[:, :, :-1] = (pk[:, :, 1:] - pk[:, :, :-1]) / (constants.KAPPA * (peln[:, :, 1:] - peln[:, :, :-1]))
     return pk, pkz
 
-def setup_pressure_fields(eta, eta_v, delp, ps, pe, peln, pk, pkz, qvapor, ak, bk, ptop, lat_agrid, adiabatic):
-    delp[:, :, :-1] = initialize_delp(ps, ak, bk)
-    pe[:] = initialize_edge_pressure(delp, ptop)
-    peln[:] = initialize_log_pressure_interfaces(pe, ptop)
-    pk[:], pkz[:] = initialize_kappa_pressures(pe, peln, ptop)
-    jablonowski_init.compute_eta(eta, eta_v, ak, bk)
-
-    if not adiabatic:        
-        jablonowski_init.specific_humidity(delp, peln, lat_agrid, qvapor)
-
   
 
 def local_coordinate_transformation(u_component, lon, grid_vector_component):
@@ -117,11 +107,27 @@ def moisture_adjusted_temperature(pt, qvapor):
     Update initial temperature to include water vapor contribution
     """
     return pt/(1. + constants.ZVIR * qvapor)
-    
-def baroclinic_initialization(eta, eta_v, peln, qvapor, delp, u, v, pt, phis, delz, w, lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, ptop, adiabatic, hydrostatic):
 
-    nx = delp.shape[0] - 1
-    ny = delp.shape[1] - 1
+def setup_pressure_fields(eta, eta_v, delp, ps, pe, peln, pk, pkz, ak, bk, ptop, lat_agrid, adiabatic):
+    ps[:] = jablonowski_init.surface_pressure
+    delp[:, :, :-1] = initialize_delp(ps, ak, bk)
+    pe[:] = initialize_edge_pressure(delp, ptop)
+    peln[:] = initialize_log_pressure_interfaces(pe, ptop)
+    pk[:], pkz[:] = initialize_kappa_pressures(pe, peln, ptop)
+    eta[:-1], eta_v[:-1] = jablonowski_init.compute_eta(ak, bk)
+
+def baroclinic_initialization(eta, eta_v, peln, qvapor, delp, u, v, pt, phis, delz, w, lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, ptop, adiabatic, hydrostatic, nx, ny):
+    """
+    Calls methods that compute initial state via the Jablonowski perturbation test case
+    Transforms results to the cubed sphere grid
+    Creates an initial baroclinic state for u(x-wind), v(y-wind), pt(temperature), phis(surface geopotential)
+    w (vertical windspeed) and delz (vertical coordinate layer width)
+
+    Inputs lon, lat, lon_agrid, lat_agrid, ee1, ee2, es1, ew2, ptop are defined by the grid
+           and can be computed using an instance of the MetricTerms class. 
+    Inputs eta and eta_v are vertical coordinate columns derived from the ak and bk variables, also 
+          found in the Metric Terms class. 
+    """
 
     # Equation (2) for v
     # Although meridional wind is 0 in this scheme
@@ -143,7 +149,7 @@ def baroclinic_initialization(eta, eta_v, peln, qvapor, delp, u, v, pt, phis, de
                           jslice=slice(0, ny + 1),
                           jslice_grid=slice(0,  ny + 1),
                           axis=0)
-    
+   
     # Compute cell lats in the midpoint of each cell edge
     lat2, lat3, lat4, lat5 =  compute_grid_edge_midpoint_latitude_components(lon, lat)
     slice_3d = (slice(0, nx), slice(0, ny), slice(None))
@@ -159,8 +165,9 @@ def baroclinic_initialization(eta, eta_v, peln, qvapor, delp, u, v, pt, phis, de
         # vertical velocity is set to 0 for nonhydrostatic setups
         w[slice_3d] = 0.0
         delz[:nx, :ny, :-1] = initialize_delz(pt[slice_3d], peln[slice_3d])
-        
-    if not adiabatic:
+
+    if not adiabatic:        
+        qvapor[:nx, :ny, :-1] = jablonowski_init.specific_humidity(delp[slice_3d], peln[slice_3d], lat_agrid[slice_2d])
         pt[slice_3d] = moisture_adjusted_temperature(pt[slice_3d], qvapor[slice_3d])
 
 
@@ -202,7 +209,7 @@ def p_var(delp, delz, pt, ps, qvapor, pe, peln, pk, pkz, ptop, moist_phys, make_
 
 def compute_shape(full_array_shape):
     full_nx, full_ny, nz = full_array_shape
-    nx = full_nx - 2*  nhalo - 1
+    nx = full_nx - 2 *  nhalo - 1
     ny = full_ny - 2 * nhalo - 1
     return nx, ny, nz
 
@@ -235,10 +242,13 @@ def init_baroclinic_state(state, grid_data, adiabatic, hydrostatic, moist_phys, 
     eta_v = np.zeros(nz)
     islice, jslice, slice_3d, slice_2d = compute_slices(nx, ny)
     isliceb, jsliceb, slice_3db, slice_2db = compute_slices(nx + 1, ny+ 1)
-    setup_pressure_fields(eta, eta_v, state.delp.data[slice_3d], state.ps.data[slice_2d], state.pe.data[slice_3d], state.peln.data[slice_3d], state.pk.data[slice_3d], state.pkz.data[slice_3d], state.qvapor.data[slice_3d], grid_data.ak, grid_data.bk, grid_data.ptop, lat_agrid=grid_data.lat_agrid.data[:-1, :-1][slice_2d], adiabatic=adiabatic)
-    baroclinic_initialization(eta, eta_v, state.peln.data[slice_3db], state.qvapor.data[slice_3db], state.delp.data[slice_3db], state.u.data[slice_3db], state.v.data[slice_3db], state.pt.data[slice_3db], state.phis.data[slice_2db], state.delz.data[slice_3db], state.w.data[slice_3db], grid_data.lon.data[slice_2db], grid_data.lat.data[slice_2db], grid_data.lon_agrid.data[slice_2db], grid_data.lat_agrid.data[slice_2db], grid_data.ee1.data[slice_3db], grid_data.ee2.data[slice_3db], grid_data.es1.data[slice_3db], grid_data.ew2.data[slice_3db], grid_data.ptop, adiabatic, hydrostatic)
+    setup_pressure_fields(eta, eta_v, state.delp.data[slice_3d], state.ps.data[slice_2d], state.pe.data[slice_3d], state.peln.data[slice_3d], state.pk.data[slice_3d], state.pkz.data[slice_3d], grid_data.ak, grid_data.bk, grid_data.ptop, lat_agrid=grid_data.lat_agrid.data[slice_2d], adiabatic=adiabatic)
+    baroclinic_initialization(eta, eta_v, state.peln.data[slice_3db], state.qvapor.data[slice_3db], state.delp.data[slice_3db], state.u.data[slice_3db], state.v.data[slice_3db], state.pt.data[slice_3db], state.phis.data[slice_2db], state.delz.data[slice_3db], state.w.data[slice_3db], grid_data.lon.data[slice_2db], grid_data.lat.data[slice_2db], grid_data.lon_agrid.data[slice_2db], grid_data.lat_agrid.data[slice_2db], grid_data.ee1.data[slice_3db], grid_data.ee2.data[slice_3db], grid_data.es1.data[slice_3db], grid_data.ew2.data[slice_3db], grid_data.ptop, adiabatic, hydrostatic, nx, ny)
   
     p_var(state.delp.data[slice_3d], state.delz.data[slice_3d], state.pt.data[slice_3d], state.ps.data[slice_2d], state.qvapor.data[slice_3d], state.pe.data[slice_3d], state.peln.data[slice_3d], state.pk.data[slice_3d], state.pkz.data[slice_3d], grid_data.ptop, moist_phys, make_nh=(not hydrostatic), hydrostatic=hydrostatic)
     
     comm.halo_update(state.phis, n_points=nhalo)
+   
     comm.vector_halo_update(state.u, state.v, n_points=nhalo)
+
+   

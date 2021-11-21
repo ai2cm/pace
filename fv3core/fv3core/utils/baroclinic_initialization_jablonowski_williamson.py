@@ -7,9 +7,10 @@ import fv3core.utils.global_constants as constants
   Functions for computing components of a baroclinic perturbation test case, by 
   Jablonowski & Williamson Baroclinic test case Perturbation. JRMS2006
   and additional computations depicted in DCMIP2016 Test Case Documentation
-  JRMS2006 equations 3, 8, 9, 12, 13 are not present here
+  JRMS2006 equations 3, 8, 9, 12, 13 are not computed here
 """
-# maximum windspeed amplitude - close to windspeed of zonal-mean time-mean jet stream in troposphere
+# maximum windspeed amplitude - close to windspeed of zonal-mean time-mean
+# jet stream in troposphere
 u0 = 35.0 # From Table VI of DCMIP2016
 # [lon, lat] of zonal wind perturbation centerpoint at 20E, 40N
 pcen = [math.pi / 9.0, 2.0 * math.pi / 9.0] # From Table VI of DCMIP2016
@@ -22,9 +23,8 @@ t_0 = 288.0
 delta_t = 480000.0
 lapse_rate = 0.005 # From Table VI of DCMIP2016
 surface_pressure = 1.e5 # units of (Pa), from Table VI of DCMIP2016
-# RADIUS = 6.3712e6 in fv3 vs Jabowski paper  6.371229 1e6
-R = constants.RADIUS / 10.0 # specifically for test case == 13, otherwise R = 1
-
+# NOTE RADIUS = 6.3712e6 in FV3 vs Jabowski paper 6.371229e6
+R = constants.RADIUS / 10.0 # Perturbation radiusfor test case 13
 
 
 def vertical_coordinate(eta_value):
@@ -34,13 +34,15 @@ def vertical_coordinate(eta_value):
     """
     return (eta_value - eta_0) * math.pi * 0.5
 
-def compute_eta(eta, eta_v, ak, bk):
+
+def compute_eta(ak, bk):
     """
     Equation (1) JRMS2006
     eta is the vertical coordinate and eta_v is an auxiliary vertical coordinate
     """
-    eta[:-1] = 0.5 * ((ak[:-1] + ak[1:])/surface_pressure + bk[:-1] + bk[1:])
-    eta_v[:-1] = vertical_coordinate(eta[:-1])
+    eta = 0.5 * ((ak[:-1] + ak[1:])/surface_pressure + bk[:-1] + bk[1:])
+    eta_v = vertical_coordinate(eta)
+    return eta, eta_v
 
 
 def zonal_wind(eta_v, lat):
@@ -100,6 +102,7 @@ def geopotential_perturbation(lat, eta_value):
     u_comp = u0 * (np.cos(eta_value)**(3.0/2.0))
     return  u_comp * (( -2.0*(np.sin(lat)**6.0) * (np.cos(lat)**2.0 + 1.0/3.0) + 10.0/63.0 ) * u_comp + ((8.0/5.0)*(np.cos(lat)**3.0)*(np.sin(lat)**2.0 + 2.0/3.0) - math.pi/4.0 )*constants.RADIUS * constants.OMEGA)
 
+
 def surface_geopotential_perturbation(lat):
     """
     From JRMS2006:
@@ -110,7 +113,8 @@ def surface_geopotential_perturbation(lat):
     surface_level = vertical_coordinate(eta_s)
     return geopotential_perturbation(lat, surface_level)
 
-def specific_humidity(delp, peln, lat_agrid, qvapor):
+
+def specific_humidity(delp, peln, lat_agrid):
     """
     Compute specific humidity using the DCMPI2016 equation 18 and relevant constants
     """
@@ -123,4 +127,4 @@ def specific_humidity(delp, peln, lat_agrid, qvapor):
     # TODO why do we use dp/(d(log(p))) for 'pressure'?
     ptmp = delp[:, :, :-1]/(peln[:, :, 1:]-peln[:, :, :-1]) - surface_pressure
     # Similar to equation 18 of DCMIP2016 without a cutoff at tropopause
-    qvapor[:, :, :-1] = q0 * np.exp(-(lat_agrid[:, :, None] / pcen[1])**4.) * np.exp(-(ptmp/pw)**2.)
+    return q0 * np.exp(-(lat_agrid[:, :, None] / pcen[1])**4.) * np.exp(-(ptmp/pw)**2.)

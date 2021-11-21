@@ -159,9 +159,10 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
             "pk": grid.compute_buffer_k_dict(),
             "pkz": grid.compute_dict(),
         }
+        self.max_error = 2e-14
         self.ignore_near_zero_errors = {}
         for var in ['u', 'v']:
-            self.ignore_near_zero_errors[var] = {'near_zero': 1e-13}
+            self.ignore_near_zero_errors[var] = {'near_zero': 2e-13}
 
     def compute_sequential(self, *args, **kwargs):
         pytest.skip(
@@ -187,11 +188,11 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
 
     
     def compute_parallel(self, inputs, communicator):
+       
         grid_data_dict= self.state_from_inputs(inputs)
 
         state = {}
         full_shape = (*self.grid.domain_shape_full(add=(1, 1, 1)), fv_dynamics.NQ)
-        #for variable in ["qvapor", "pe", "peln", "pk", "pkz", "pt", "delz", "w", "u", "v", "delp", "ua", "va", "uc", "vc"]:
         for variable, properties in self.outputs.items():
             dims = properties["dims"]
             state[variable] = fv3util.Quantity(
@@ -217,6 +218,7 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
             state[tracer]=state["q4d"][tracer]
         state =  types.SimpleNamespace(**state)
         namelist = spec.namelist
+       
         grid_vars = {
             "lon":self.grid.bgrid1,
             "lat": self.grid.bgrid2,
@@ -371,7 +373,7 @@ class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
         inputs["pt"][:] = 1.0
         inputs["phis"][:] =  1.e25
         sliced_inputs = make_sliced_inputs_dict(inputs, slice_2d)
-        baroclinic_init.baroclinic_initialization(**sliced_inputs, **grid_vars, adiabatic=spec.namelist.adiabatic,hydrostatic=spec.namelist.hydrostatic)
+        baroclinic_init.baroclinic_initialization(**sliced_inputs, **grid_vars, adiabatic=spec.namelist.adiabatic,hydrostatic=spec.namelist.hydrostatic,nx=self.grid.nic, ny=self.grid.njc)
         return self.slice_output(inputs)
 
 class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
