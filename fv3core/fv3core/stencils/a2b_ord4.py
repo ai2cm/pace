@@ -12,10 +12,8 @@ from gt4py.gtscript import (
 )
 
 import fv3core.utils.gt4py_utils as utils
-from fv3core.grid.gnomonic import great_circle_distance_lon_lat, lon_lat_midpoint
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils import axis_offsets
-from fv3core.utils.global_constants import RADIUS
 from fv3core.utils.grid import GridData, GridIndexing
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
@@ -482,13 +480,12 @@ class AGrid2BGridFourthOrder:
         self._lat_agrid = grid_data.lat_agrid
         self._lon = grid_data.lon
         self._lat = grid_data.lat
-
-        (
-            self._edge_n,
-            self._edge_s,
-            self._edge_e,
-            self._edge_w,
-        ) = self.calculate_edge_factors()
+        # TODO: maybe compute locally edge_* variables
+        # This is the only place the model uses them
+        self._edge_w = grid_data.edge_w
+        self._edge_e = grid_data.edge_e
+        self._edge_s = grid_data.edge_s
+        self._edge_n = grid_data.edge_n
 
         self.replace = replace
 
@@ -584,106 +581,6 @@ class AGrid2BGridFourthOrder:
         self._copy_stencil = stencil_factory.from_dims_halo(
             copy_defn, compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, z_dim]
         )
-
-    def set_west_edge_factor(self, lon, lat, lon_agrid, lat_agrid, jstart, jend):
-        nhalo = self._idx.n_halo
-        py0, py1 = lon_lat_midpoint(
-            lon_agrid[nhalo - 1, jstart - 1 : jend],
-            lon_agrid[nhalo, jstart - 1 : jend],
-            lat_agrid[nhalo - 1, jstart - 1 : jend],
-            lat_agrid[nhalo, jstart - 1 : jend],
-            self._stencil_config.np,
-        )
-
-        d1 = great_circle_distance_lon_lat(
-            py0[:-1],
-            lon[nhalo, jstart:jend],
-            py1[:-1],
-            lat[nhalo, jstart:jend],
-            RADIUS,
-            self._stencil_config.np,
-        )
-        d2 = great_circle_distance_lon_lat(
-            py0[1:],
-            lon[nhalo, jstart:jend],
-            py1[1:],
-            lat[nhalo, jstart:jend],
-            RADIUS,
-            self._stencil_config.np,
-        )
-        west_edge_factor = d2 / (d1 + d2)
-        return west_edge_factor
-
-    def set_east_edge_factor(self, jstart, jend):
-        return self.set_west_edge_factor(
-            self._lon[::-1, :],
-            self._lat[::-1, :],
-            self._lon_agrid[:-1, :-1][::-1, :],
-            self._lat_agrid[:-1, :-1][::-1, :],
-            jstart,
-            jend,
-        )
-
-    def set_south_edge_factor(self, jstart, jend):
-        return self.set_west_edge_factor(
-            self._lon.transpose([1, 0]),
-            self._lat.transpose([1, 0]),
-            self._lon_agrid.transpose([1, 0]),
-            self._lat_agrid.transpose([1, 0]),
-            jstart,
-            jend,
-        )
-
-    def set_north_edge_factor(self, jstart, jend):
-        return self.set_west_edge_factor(
-            self._lon[:, ::-1].transpose([1, 0]),
-            self._lat[:, ::-1].transpose([1, 0]),
-            self._lon_agrid[:-1, :-1][:, ::-1].transpose([1, 0]),
-            self._lat_agrid[:-1, :-1][:, ::-1].transpose([1, 0]),
-            jstart,
-            jend,
-        )
-
-    def calculate_edge_factors(self):
-        nhalo = self._idx.n_halo
-        big_number = 1.0e8
-        edge_n = self._stencil_config.np.zeros(self._idx.max_shape[0]) + big_number
-        edge_s = self._stencil_config.np.zeros(self._idx.max_shape[0]) + big_number
-        edge_e = self._stencil_config.np.zeros(self._idx.max_shape[1]) + big_number
-        edge_w = self._stencil_config.np.zeros(self._idx.max_shape[1]) + big_number
-
-        if self._idx.south_edge:
-            jstart = self._idx.jsc + 1
-        else:
-            jstart = self._idx.jsc
-        if self._idx.north_edge:
-            jend = self._idx.jec + 1
-        else:
-            jend = self._idx.jec + 2
-        if self._idx.west_edge:
-            istart = self._idx.isc + 1
-        else:
-            istart = self._idx.isc
-        if self._idx.east_edge:
-            iend = self._idx.iec + 1
-        else:
-            iend = self._idx.iec + 2
-        if self._idx.west_edge:
-            edge_w[jstart:jend] = self.set_west_edge_factor(
-                self._lon, self._lat, self._lon_agrid, self._lat_agrid, jstart, jend
-            )
-        if self._idx.east_edge:
-            edge_e[jstart:jend] = self.set_east_edge_factor(jstart, jend)
-        if self._idx.south_edge:
-            edge_s[istart:iend] = self.set_south_edge_factor(istart, iend)
-        if self._idx.north_edge:
-            edge_n[istart:iend] = self.set_north_edge_factor(istart, iend)
-        edge_n = utils.make_storage_data(edge_n, (self._idx.max_shape[0],), axis=0)
-        edge_s = utils.make_storage_data(edge_s, (self._idx.max_shape[0],), axis=0)
-        edge_e = utils.make_storage_data(edge_e, (1, self._idx.max_shape[1]), axis=1)
-        edge_w = utils.make_storage_data(edge_w, (1, self._idx.max_shape[1]), axis=1)
-
-        return edge_n, edge_s, edge_e, edge_w
 
     def _exclude_tile_edges(self, origin, domain, dims=("x", "y")):
         """

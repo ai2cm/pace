@@ -377,6 +377,9 @@ def initialize_delpc_ptc(delpc: FloatField, ptc: FloatField):
 
 
 def compute_fC(stencil_factory: StencilFactory, lon: FloatFieldIJ, lat: FloatFieldIJ):
+    """
+    Compute the coriolis parameter on the C-grid
+    """
     fC = utils.make_storage_from_shape(lon.shape)
     fC_stencil = stencil_factory.from_dims_halo(
         compute_coriolis_parameter_defn,

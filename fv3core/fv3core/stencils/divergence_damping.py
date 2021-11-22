@@ -195,6 +195,9 @@ class DivergenceDamping:
         self._sina_v = grid_data.sina_v
         self._dxc = grid_data.dxc
         self._dyc = grid_data.dyc
+        # TODO: maybe compute locally divg_* grid variables
+        # They parallel the del6_* variables a lot
+        # so may want to pair together if you move
         self._divg_u = damping_coefficients.divg_u
         self._divg_v = damping_coefficients.divg_v
 

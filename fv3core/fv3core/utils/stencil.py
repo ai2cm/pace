@@ -17,7 +17,6 @@ from typing import (
 )
 
 import gt4py
-import numpy
 import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
@@ -127,13 +126,6 @@ class StencilConfig(Hashable):
     def is_gtc_backend(self) -> bool:
         return self.backend.startswith("gtc")
 
-    @property
-    def np(self):
-        if self.is_gpu_backend:
-            return cupy
-        else:
-            return numpy
-
 
 class FrozenStencil:
     """
@@ -215,6 +207,9 @@ class FrozenStencil:
         *args,
         **kwargs,
     ) -> None:
+        args_list = list(args)
+        _convert_quantities_to_storage(args_list, kwargs)
+        args = tuple(args_list)
         if self.stencil_config.validate_args:
             if __debug__ and "origin" in kwargs:
                 raise TypeError("origin cannot be passed to FrozenStencil call")
@@ -289,6 +284,19 @@ class FrozenStencil:
             and bool(field_info[field_name].access & gt4py.definitions.AccessKind.WRITE)
         ]
         return write_fields
+
+
+def _convert_quantities_to_storage(args, kwargs):
+    for i, arg in enumerate(args):
+        try:
+            args[i] = arg.storage
+        except AttributeError:
+            pass
+    for name, arg in kwargs.items():
+        try:
+            kwargs[name] = arg.storage
+        except AttributeError:
+            pass
 
 
 class GridIndexing:

@@ -286,9 +286,9 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
 
         self.dycore = fv_dynamics.DynamicalCore(
             comm=communicator,
-            grid_data=grid_data,  # grid_data,
+            grid_data=grid_data,
             stencil_factory=spec.grid.stencil_factory,
-            damping_coefficients=spec.grid.damping_coefficients,  # damping_data,
+            damping_coefficients=spec.grid.damping_coefficients,
             config=spec.namelist.dynamical_core,
             phis=state["surface_geopotential"],
         )
