@@ -61,7 +61,9 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         grid_info = {}
         for var in grid_names:
             grid_info[var] = inputs.pop(var)
-        self.compute_func = AGrid2DGridPhysics(self.grid, spec.namelist, grid_info)
+        self.compute_func = AGrid2DGridPhysics(
+            self.grid.stencil_factory, self.grid, spec.namelist, grid_info
+        )
         self.compute_func(**inputs)
         out = {}
         out["u"] = np.asarray(inputs["u"])[self.grid.y3d_domain_interface()]

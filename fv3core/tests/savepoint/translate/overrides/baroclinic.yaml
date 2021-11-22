@@ -35,3 +35,12 @@ DivergenceDamping:
     ignore_near_zero_errors:
       vort: 6e-8
       delpc: 1e-15
+
+DivgDel6:
+ - max_error: 3e-13 # 48_6ranks
+
+DxDy:
+ - max_error: 2e-13 # 48_6ranks
+
+EdgeFactors:
+ - max_error: 2e-12 # 48_6ranks
