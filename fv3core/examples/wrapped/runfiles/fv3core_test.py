@@ -265,8 +265,6 @@ if __name__ == "__main__":
         stencil_factory=spec.grid.stencil_factory,
         damping_coefficients=spec.grid.damping_coefficients,
         config=spec.namelist.dynamical_core,
-        ak=state["atmosphere_hybrid_a_coordinate"],
-        bk=state["atmosphere_hybrid_b_coordinate"],
         phis=state["surface_geopotential"],
     )
 
@@ -298,9 +296,7 @@ if __name__ == "__main__":
             wrapper.flags.consv_te,
             wrapper.flags.do_adiabatic_init,
             dt_atmos,
-            wrapper.flags.ptop,
             wrapper.flags.n_split,
-            wrapper.flags.ks,
         )
         if spec.namelist.fv_sg_adj > 0:
             state["eastward_wind_tendency_due_to_physics"] = u_tendency

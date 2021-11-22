@@ -30,6 +30,12 @@ from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
 from .gt4py_utils import make_storage_from_shape
 
 
+try:
+    import cupy
+except ImportError:
+    cupy = np
+
+
 class StencilConfig(Hashable):
     _all_backend_opts: Optional[Dict[str, Any]] = {
         "device_sync": {
@@ -470,7 +476,11 @@ class GridIndexing:
             self.domain[2] + add[2],
         )
 
-    def axis_offsets(self, origin: Index3D, domain: Index3D) -> Dict[str, Any]:
+    def axis_offsets(
+        self,
+        origin: Tuple[int, ...],
+        domain: Tuple[int, ...],
+    ) -> Dict[str, Any]:
         if self.west_edge:
             i_start = gtscript.I[0] + self.origin[0] - origin[0]
         else:
