@@ -26,4 +26,5 @@ python3 -m pip install ${pace_dir}/fv3gfs-util/
 python3 -m pip install $wheel_command -c ${pace_dir}/constraints.txt -r fv3core/requirements/requirements_daint.txt
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/fv3core/
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/fv3gfs-physics/
+python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/shared/
 deactivate
