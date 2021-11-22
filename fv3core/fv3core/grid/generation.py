@@ -73,6 +73,7 @@ class MetricTerms:
     ):
         assert grid_type < 3
         self._grid_type = grid_type
+        self._non_ortho = True if grid_type < 3 else False
         self._halo = N_HALO_DEFAULT
         self._comm = communicator
         self._partitioner = self._comm.partitioner
@@ -2110,7 +2111,6 @@ class MetricTerms:
         ) = efactor_a2c_v(
             self.gridvar,
             self.agrid.data[:-1, :-1],
-            self._grid_type,
             self._halo,
             self._tile_partitioner,
             self._rank,
