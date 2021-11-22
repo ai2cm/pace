@@ -9,7 +9,6 @@ import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
 from fv3core.grid import MetricTerms, set_hybrid_pressure_coefficients
 from fv3core.grid.global_setup import global_mirror_grid, gnomonic_grid
-from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.testing.parallel_translate import ParallelTranslateGrid
 
 
@@ -1695,19 +1694,9 @@ class TranslateEdgeFactors(ParallelTranslateGrid):
         in_state = self.state_from_inputs(inputs)
         grid_generator._grid.data[:] = in_state["grid"].data[:]
         grid_generator._agrid.data[:] = in_state["agrid"].data[:]
-        a2b = AGrid2BGridFourthOrder(
-            spec.grid.stencil_factory, spec.grid.grid_data, namelist.grid_type
-        )
         state = {}
         for metric_term, metadata in self.outputs.items():
-            if "vect" in metric_term:
-                state[metadata["name"]] = getattr(grid_generator, metric_term)
-            else:
-                qnp = in_state[metric_term].np
-                in_state[metric_term].data[:] = qnp.squeeze(
-                    qnp.asarray(getattr(a2b, "_" + metric_term).data[:])
-                )
-                state[metadata["name"]] = in_state[metric_term]
+            state[metadata["name"]] = getattr(grid_generator, metric_term)
 
         return self.outputs_from_state(state)
 
