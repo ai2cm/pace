@@ -36,7 +36,7 @@ else
     pip3 install -r $UTIL_DIR/requirements.txt -c $UTIL_DIR/constraints.txt -e $UTIL_DIR
 fi
 
-# pytest --junitxml results.xml $UTIL_DIR/tests
+pytest --junitxml results.xml $UTIL_DIR/tests
 
 echo "saving cache"
 
