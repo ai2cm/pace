@@ -1224,7 +1224,7 @@ class MetricTerms:
         return fv3util.Quantity(
             data=1.0 / self.area_c.data,
             dims=self.area_c.dims,
-            units="m^-1",
+            units="m^-2",
             gt4py_backend=self.area_c.gt4py_backend,
         )
 
