@@ -49,9 +49,12 @@ class TranslateTracer2D1L(ParallelTranslate):
             grid_type=spec.grid.grid_type,
             hord=spec.namelist.hord_tr,
         )
+        namelist = spec.namelist
+
         self.tracer_advection = fv3core.stencils.tracer_2d_1l.TracerAdvection(
             self.grid.stencil_factory,
             transport,
+            spec.grid.grid_data,
             communicator,
             fv_dynamics.NQ,
         )

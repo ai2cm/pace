@@ -4,7 +4,6 @@ from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.grid import axis_offsets
 from fv3core.utils.stencil import GridIndexing, StencilFactory
 from fv3core.utils.typing import FloatField
 from fv3gfs.util.constants import (
@@ -31,7 +30,7 @@ class CopyCorners:
             dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM], halos=(n_halo, n_halo)
         )
 
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         if direction == "x":
             self._copy_corners = stencil_factory.from_origin_domain(
                 func=copy_corners_x_stencil_defn,
@@ -87,7 +86,7 @@ class CopyCornersXY:
 
         self._y_field = y_field
 
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         self._copy_corners_xy = stencil_factory.from_origin_domain(
             func=copy_corners_xy_stencil_defn,
             origin=origin,
@@ -584,8 +583,8 @@ class FillCornersBGrid:
             defn = fill_corners_bgrid_y_defn
         else:
             raise ValueError("Direction must be either 'x' or 'y'")
-        externals = axis_offsets(
-            stencil_factory.grid_indexing, origin=origin, domain=domain
+        externals = stencil_factory.grid_indexing.axis_offsets(
+            origin=origin, domain=domain
         )
         self._fill_corners_bgrid = stencil_factory.from_origin_domain(
             func=defn, origin=origin, domain=domain, externals=externals
