@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 
-import fv3core.utils.baroclinic_initialization_jablonowski_williamson as jablo_init
+import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import fv3core.utils.global_constants as constants
 import fv3gfs.util as fv3util
 from fv3core.grid import lon_lat_midpoint

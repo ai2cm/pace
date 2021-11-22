@@ -6,8 +6,8 @@ import pytest
 
 import fv3core._config as spec
 import fv3core.stencils.fv_dynamics as fv_dynamics
-import fv3core.utils.baroclinic_initialization as baroclinic_init
-import fv3core.utils.baroclinic_initialization_jablonowski_williamson as jablo_init
+import fv3core.initialization.baroclinic as baroclinic_init
+import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
