@@ -11,7 +11,6 @@ from gt4py.gtscript import (
     sqrt,
 )
 
-import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils import axis_offsets
@@ -61,40 +60,40 @@ def _sw_corner(
     qin: FloatField,
     qout: FloatField,
     tmp_qout_edges: FloatField,
-    agrid1: FloatFieldIJ,
-    agrid2: FloatFieldIJ,
-    bgrid1: FloatFieldIJ,
-    bgrid2: FloatFieldIJ,
+    lon_agrid: FloatFieldIJ,
+    lat_agrid: FloatFieldIJ,
+    lon: FloatFieldIJ,
+    lat: FloatFieldIJ,
 ):
 
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, 0],
-            agrid2[0, 0],
-            agrid1[1, 1],
-            agrid2[1, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, 0],
+            lat_agrid[0, 0],
+            lon_agrid[1, 1],
+            lat_agrid[1, 1],
             qin[0, 0, 0],
             qin[1, 1, 0],
         )
         ec2 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, 0],
-            agrid2[-1, 0],
-            agrid1[-2, 1],
-            agrid2[-2, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, 0],
+            lat_agrid[-1, 0],
+            lon_agrid[-2, 1],
+            lat_agrid[-2, 1],
             qin[-1, 0, 0],
             qin[-2, 1, 0],
         )
         ec3 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, -1],
-            agrid2[0, -1],
-            agrid1[1, -2],
-            agrid2[1, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, -1],
+            lat_agrid[0, -1],
+            lon_agrid[1, -2],
+            lat_agrid[1, -2],
             qin[0, -1, 0],
             qin[1, -2, 0],
         )
@@ -107,39 +106,39 @@ def _nw_corner(
     qin: FloatField,
     qout: FloatField,
     tmp_qout_edges: FloatField,
-    agrid1: FloatFieldIJ,
-    agrid2: FloatFieldIJ,
-    bgrid1: FloatFieldIJ,
-    bgrid2: FloatFieldIJ,
+    lon_agrid: FloatFieldIJ,
+    lat_agrid: FloatFieldIJ,
+    lon: FloatFieldIJ,
+    lat: FloatFieldIJ,
 ):
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, 0],
-            agrid2[-1, 0],
-            agrid1[-2, 1],
-            agrid2[-2, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, 0],
+            lat_agrid[-1, 0],
+            lon_agrid[-2, 1],
+            lat_agrid[-2, 1],
             qin[-1, 0, 0],
             qin[-2, 1, 0],
         )
         ec2 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, -1],
-            agrid2[-1, -1],
-            agrid1[-2, -2],
-            agrid2[-2, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, -1],
+            lat_agrid[-1, -1],
+            lon_agrid[-2, -2],
+            lat_agrid[-2, -2],
             qin[-1, -1, 0],
             qin[-2, -2, 0],
         )
         ec3 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, 0],
-            agrid2[0, 0],
-            agrid1[1, 1],
-            agrid2[1, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, 0],
+            lat_agrid[0, 0],
+            lon_agrid[1, 1],
+            lat_agrid[1, 1],
             qin[0, 0, 0],
             qin[1, 1, 0],
         )
@@ -151,39 +150,39 @@ def _ne_corner(
     qin: FloatField,
     qout: FloatField,
     tmp_qout_edges: FloatField,
-    agrid1: FloatFieldIJ,
-    agrid2: FloatFieldIJ,
-    bgrid1: FloatFieldIJ,
-    bgrid2: FloatFieldIJ,
+    lon_agrid: FloatFieldIJ,
+    lat_agrid: FloatFieldIJ,
+    lon: FloatFieldIJ,
+    lat: FloatFieldIJ,
 ):
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, -1],
-            agrid2[-1, -1],
-            agrid1[-2, -2],
-            agrid2[-2, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, -1],
+            lat_agrid[-1, -1],
+            lon_agrid[-2, -2],
+            lat_agrid[-2, -2],
             qin[-1, -1, 0],
             qin[-2, -2, 0],
         )
         ec2 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, -1],
-            agrid2[0, -1],
-            agrid1[1, -2],
-            agrid2[1, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, -1],
+            lat_agrid[0, -1],
+            lon_agrid[1, -2],
+            lat_agrid[1, -2],
             qin[0, -1, 0],
             qin[1, -2, 0],
         )
         ec3 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, 0],
-            agrid2[-1, 0],
-            agrid1[-2, 1],
-            agrid2[-2, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, 0],
+            lat_agrid[-1, 0],
+            lon_agrid[-2, 1],
+            lat_agrid[-2, 1],
             qin[-1, 0, 0],
             qin[-2, 1, 0],
         )
@@ -195,39 +194,39 @@ def _se_corner(
     qin: FloatField,
     qout: FloatField,
     tmp_qout_edges: FloatField,
-    agrid1: FloatFieldIJ,
-    agrid2: FloatFieldIJ,
-    bgrid1: FloatFieldIJ,
-    bgrid2: FloatFieldIJ,
+    lon_agrid: FloatFieldIJ,
+    lat_agrid: FloatFieldIJ,
+    lon: FloatFieldIJ,
+    lat: FloatFieldIJ,
 ):
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, -1],
-            agrid2[0, -1],
-            agrid1[1, -2],
-            agrid2[1, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, -1],
+            lat_agrid[0, -1],
+            lon_agrid[1, -2],
+            lat_agrid[1, -2],
             qin[0, -1, 0],
             qin[1, -2, 0],
         )
         ec2 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[-1, -1],
-            agrid2[-1, -1],
-            agrid1[-2, -2],
-            agrid2[-2, -2],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[-1, -1],
+            lat_agrid[-1, -1],
+            lon_agrid[-2, -2],
+            lat_agrid[-2, -2],
             qin[-1, -1, 0],
             qin[-2, -2, 0],
         )
         ec3 = extrap_corner(
-            bgrid1[0, 0],
-            bgrid2[0, 0],
-            agrid1[0, 0],
-            agrid2[0, 0],
-            agrid1[1, 1],
-            agrid2[1, 1],
+            lon[0, 0],
+            lat[0, 0],
+            lon_agrid[0, 0],
+            lat_agrid[0, 0],
+            lon_agrid[1, 1],
+            lat_agrid[1, 1],
             qin[0, 0, 0],
             qin[1, 1, 0],
         )
@@ -473,18 +472,20 @@ class AGrid2BGridFourthOrder:
         """
         assert grid_type < 3
         self._idx: GridIndexing = stencil_factory.grid_indexing
-
+        self._stencil_config = stencil_factory.config
         self._dxa = grid_data.dxa
         self._dya = grid_data.dya
-        # TODO: calculate these here based on grid_data
-        self._agrid1 = spec.grid.agrid1
-        self._agrid2 = spec.grid.agrid2
-        self._bgrid1 = spec.grid.bgrid1
-        self._bgrid2 = spec.grid.bgrid2
-        self._edge_n = spec.grid.edge_n
-        self._edge_s = spec.grid.edge_s
-        self._edge_e = spec.grid.edge_e
-        self._edge_w = spec.grid.edge_w
+
+        self._lon_agrid = grid_data.lon_agrid
+        self._lat_agrid = grid_data.lat_agrid
+        self._lon = grid_data.lon
+        self._lat = grid_data.lat
+        # TODO: maybe compute locally edge_* variables
+        # This is the only place the model uses them
+        self._edge_w = grid_data.edge_w
+        self._edge_e = grid_data.edge_e
+        self._edge_s = grid_data.edge_s
+        self._edge_n = grid_data.edge_n
 
         self.replace = replace
 
@@ -617,38 +618,38 @@ class AGrid2BGridFourthOrder:
             qin,
             qout,
             self._tmp_qout_edges,
-            self._agrid1,
-            self._agrid2,
-            self._bgrid1,
-            self._bgrid2,
+            self._lon_agrid,
+            self._lat_agrid,
+            self._lon,
+            self._lat,
         )
 
         self._nw_corner_stencil(
             qin,
             qout,
             self._tmp_qout_edges,
-            self._agrid1,
-            self._agrid2,
-            self._bgrid1,
-            self._bgrid2,
+            self._lon_agrid,
+            self._lat_agrid,
+            self._lon,
+            self._lat,
         )
         self._ne_corner_stencil(
             qin,
             qout,
             self._tmp_qout_edges,
-            self._agrid1,
-            self._agrid2,
-            self._bgrid1,
-            self._bgrid2,
+            self._lon_agrid,
+            self._lat_agrid,
+            self._lon,
+            self._lat,
         )
         self._se_corner_stencil(
             qin,
             qout,
             self._tmp_qout_edges,
-            self._agrid1,
-            self._agrid2,
-            self._bgrid1,
-            self._bgrid2,
+            self._lon_agrid,
+            self._lat_agrid,
+            self._lon,
+            self._lat,
         )
 
         self._compute_qout_edges(qin, qout)

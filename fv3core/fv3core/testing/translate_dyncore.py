@@ -124,8 +124,11 @@ class TranslateDynCore(ParallelTranslate2PyState):
             )
 
         grid_data = spec.grid.grid_data
-        grid_data.ak = inputs["ak"]
-        grid_data.bk = inputs["bk"]
+        if grid_data.ak is None or grid_data.bk is None:
+            grid_data.ak = inputs["ak"]
+            grid_data.bk = inputs["bk"]
+            grid_data.ptop = inputs["ptop"]
+            grid_data.ks = inputs["ks"]
         self._base.compute_func = dyn_core.AcousticDynamics(
             communicator,
             spec.grid.stencil_factory,
@@ -135,8 +138,6 @@ class TranslateDynCore(ParallelTranslate2PyState):
             spec.grid.nested,
             spec.grid.stretched_grid,
             spec.namelist.dynamical_core.acoustic_dynamics,
-            inputs["ak"],
-            inputs["bk"],
             inputs["pfull"],
             inputs["phis"],
         )
