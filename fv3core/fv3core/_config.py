@@ -866,8 +866,6 @@ def namelist_to_flatish_dict(nml_input):
     return flatter_namelist
 
 
-# TODO: Before this can be used, we need to write a module to make the grid data
-# from files on disk and call it
 def make_grid_from_namelist(namelist, rank):
     shape_params = {}
     for narg in ["npx", "npy", "npz"]:
@@ -883,6 +881,18 @@ def make_grid_from_namelist(namelist, rank):
         "je": namelist.npy + utils.halo - 2,
     }
     return Grid(indices, shape_params, rank, namelist.layout)
+
+
+def make_grid_with_data_from_namelist(namelist, communicator, backend):
+    grid = make_grid_from_namelist(namelist, communicator.rank)
+    grid.make_grid_data(
+        npx=namelist.npx,
+        npy=namelist.npy,
+        npz=namelist.npz,
+        communicator=communicator,
+        backend=backend,
+    )
+    return grid
 
 
 def set_grid(in_grid):

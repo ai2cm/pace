@@ -1,6 +1,6 @@
 import sys
 
-from setuptools import find_packages, setup
+from setuptools import find_namespace_packages, setup
 
 
 with open("README.md", encoding="utf-8") as readme_file:
@@ -38,7 +38,7 @@ setup(
     include_package_data=True,
     keywords="fv3gfs-physics",
     name="fv3gfs-physics",
-    packages=find_packages(include=["fv3gfs.*"]),
+    packages=find_namespace_packages(include=["fv3gfs.*"]),
     setup_requires=[],
     test_suite="tests",
     tests_require=test_requirements,
