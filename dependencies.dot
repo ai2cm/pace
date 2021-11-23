@@ -21,5 +21,7 @@ digraph {
   fv3core -> util
   physics -> util
   physics -> fv3core
+  fv3core -> shared
+  physics -> shared
 
 }
