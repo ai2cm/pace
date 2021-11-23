@@ -128,6 +128,7 @@ class TracerAdvection:
         self,
         stencil_factory: StencilFactory,
         transport: FiniteVolumeTransport,
+        grid_data,
         comm: fv3gfs.util.CubedSphereCommunicator,
         tracer_count,
     ):
@@ -135,6 +136,7 @@ class TracerAdvection:
         self._tracer_count = tracer_count
         self.comm = comm
         self.grid = spec.grid
+        self.grid_data = grid_data
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
         self._tmp_xfx = utils.make_storage_from_shape(shape, origin)
@@ -207,14 +209,14 @@ class TracerAdvection:
         self._flux_compute(
             cxd,
             cyd,
-            self.grid.dxa,
-            self.grid.dya,
-            self.grid.dx,
-            self.grid.dy,
-            self.grid.sin_sg1,
-            self.grid.sin_sg2,
-            self.grid.sin_sg3,
-            self.grid.sin_sg4,
+            self.grid_data.dxa,
+            self.grid_data.dya,
+            self.grid_data.dx,
+            self.grid_data.dy,
+            self.grid_data.sin_sg1,
+            self.grid_data.sin_sg2,
+            self.grid_data.sin_sg3,
+            self.grid_data.sin_sg4,
             self._tmp_xfx,
             self._tmp_yfx,
         )
@@ -271,7 +273,7 @@ class TracerAdvection:
                 dp1,
                 mfxd,
                 mfyd,
-                self.grid.rarea,
+                self.grid_data.rarea,
                 dp2,
             )
             for q in tracers.values():
@@ -291,7 +293,7 @@ class TracerAdvection:
                     dp1,
                     self._tmp_fx,
                     self._tmp_fy,
-                    self.grid.rarea,
+                    self.grid_data.rarea,
                     dp2,
                 )
             if not last_call:

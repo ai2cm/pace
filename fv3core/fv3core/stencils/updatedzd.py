@@ -201,7 +201,6 @@ class UpdateHeightOnDGrid:
         hord_tm: int,
         dp0: FloatFieldK,
         column_namelist,
-        k_bounds,
     ):
         """
         Args:
@@ -209,18 +208,13 @@ class UpdateHeightOnDGrid:
             namelist: flattened fv3gfs namelist
             dp0: air pressure on interface levels, reference pressure
                 can be used as an approximation
-            column_namelist: ???
-            k_bounds: ???
+            column_namelist: dictionary of parameter columns
         """
         grid_indexing = stencil_factory.grid_indexing
         self.grid_indexing = grid_indexing
         self._area = grid_data.area
         self._column_namelist = column_namelist
-        self._k_bounds = k_bounds  # d_sw.k_bounds()
-        if any(
-            column_namelist["damp_vt"][kstart] <= 1e-5
-            for kstart in range(len(k_bounds))
-        ):
+        if any(column_namelist["damp_vt"] <= 1e-5):
             raise NotImplementedError("damp <= 1e-5 in column_cols is untested")
         self._dp0 = dp0
         self._allocate_temporary_storages(grid_indexing)

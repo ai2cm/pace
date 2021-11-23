@@ -39,6 +39,8 @@ def initialize_serializer(data_directory: str, rank: int = 0) -> serialbox.Seria
     )
 
 
+# Only used if reading the grid from savepoints on disk
+# Default is to generate a baroclinic initialization
 def read_grid(serializer: serialbox.Serializer, rank: int = 0) -> Grid:
     """Uses the serializer to generate a Grid object from serialized data"""
     grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
@@ -155,7 +157,9 @@ def driver(
         serializer = initialize_serializer(data_directory)
         initialize_fv3core(backend, disable_halo_exchange)
         mpi_comm, communicator = set_up_communicator(disable_halo_exchange)
-        grid = read_grid(serializer)
+        grid = spec.make_grid_with_data_from_namelist(
+            spec.namelist, communicator, backend
+        )
         spec.set_grid(grid)
 
         input_data = read_input_data(grid, serializer)
@@ -169,8 +173,6 @@ def driver(
             grid.nested,
             grid.stretched_grid,
             spec.namelist.dynamical_core.acoustic_dynamics,
-            input_data["ak"],
-            input_data["bk"],
             input_data["pfull"],
             input_data["phis"],
         )

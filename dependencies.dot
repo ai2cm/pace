@@ -20,5 +20,6 @@ digraph {
   driver -> util
   fv3core -> util
   physics -> util
+  physics -> fv3core
 
 }

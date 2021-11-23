@@ -1,4 +1,3 @@
-from fv3core.decorators import FrozenStencil
 from fv3gfs.physics.stencils.update_atmos_state import fill_gfs
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
@@ -14,7 +13,7 @@ class TranslateFillGFS(TranslatePhysicsFortranData2Py):
         self.out_vars = {
             "q": {"serialname": "IPD_qvapor", "kend": grid.npz - 1},
         }
-        self.compute_func = FrozenStencil(
+        self.compute_func = grid.stencil_factory.from_origin_domain(
             fill_gfs,
             origin=self.grid.grid_indexing.origin_full(),
             domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),

@@ -8,7 +8,6 @@ from fv3core.utils.corners import (
     fill_corners_dgrid,
 )
 from fv3core.utils.global_constants import PI, RADIUS
-from fv3core.utils.grid import CARTESIAN_DIM, LON_OR_LAT_DIM, TILE_DIM
 from fv3core.utils.gt4py_utils import asarray
 from fv3core.utils.stencil import GridIndexing
 from fv3gfs.util.constants import N_HALO_DEFAULT
@@ -64,6 +63,12 @@ def cached_property(func):
 # corners use sizer + partitioner rather than GridIndexer,
 # have to refactor fv3core calls to corners to do this as well
 class MetricTerms:
+    LON_OR_LAT_DIM = "lon_or_lat"
+    TILE_DIM = "tile"
+    CARTESIAN_DIM = "xyz_direction"
+    N_TILES = 6
+    RIGHT_HAND_GRID = False
+
     def __init__(
         self,
         *,
@@ -80,9 +85,9 @@ class MetricTerms:
         self._rank = self._comm.rank
         self._quantity_factory = quantity_factory
         self._quantity_factory._sizer.extra_dim_lenths = {
-            LON_OR_LAT_DIM: 2,
-            TILE_DIM: 6,
-            CARTESIAN_DIM: 3,
+            self.LON_OR_LAT_DIM: 2,
+            self.TILE_DIM: 6,
+            self.CARTESIAN_DIM: 3,
         }
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
             self._quantity_factory._sizer, self._comm
@@ -90,7 +95,7 @@ class MetricTerms:
         self._grid_dims = [
             fv3util.X_INTERFACE_DIM,
             fv3util.Y_INTERFACE_DIM,
-            LON_OR_LAT_DIM,
+            self.LON_OR_LAT_DIM,
         ]
         self._grid = self._quantity_factory.zeros(
             self._grid_dims,
@@ -102,7 +107,7 @@ class MetricTerms:
         self._npy = npy
         self._npz = self._quantity_factory._sizer.get_extent(fv3util.Z_DIM)[0]
         self._agrid = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM], "radians", dtype=float
+            [fv3util.X_DIM, fv3util.Y_DIM, self.LON_OR_LAT_DIM], "radians", dtype=float
         )
         self._np = self._grid.np
         self._dx = None
@@ -199,7 +204,11 @@ class MetricTerms:
             ny_tile=npy - 1,
             nz=npz,
             n_halo=N_HALO_DEFAULT,
-            extra_dim_lengths={LON_OR_LAT_DIM: 2, TILE_DIM: 6, CARTESIAN_DIM: 3},
+            extra_dim_lengths={
+                cls.LON_OR_LAT_DIM: 2,
+                cls.TILE_DIM: 6,
+                cls.CARTESIAN_DIM: 3,
+            },
             layout=communicator.partitioner.tile.layout,
         )
         quantity_factory = fv3util.QuantityFactory.from_backend(sizer, backend=backend)
@@ -234,6 +243,42 @@ class MetricTerms:
         the longitudes and latitudes of the cell centers
         """
         return self._agrid
+
+    @property
+    def lon(self):
+        return fv3util.Quantity(
+            data=self.grid.data[:, :, 0],
+            dims=self.grid.dims[0:2],
+            units=self.grid.units,
+            gt4py_backend=self.grid.gt4py_backend,
+        )
+
+    @property
+    def lat(self):
+        return fv3util.Quantity(
+            data=self.grid.data[:, :, 1],
+            dims=self.grid.dims[0:2],
+            units=self.grid.units,
+            gt4py_backend=self.grid.gt4py_backend,
+        )
+
+    @property
+    def lon_agrid(self):
+        return fv3util.Quantity(
+            data=self.agrid.data[:, :, 0],
+            dims=self.agrid.dims[0:2],
+            units=self.agrid.units,
+            gt4py_backend=self.agrid.gt4py_backend,
+        )
+
+    @property
+    def lat_agrid(self):
+        return fv3util.Quantity(
+            data=self.agrid.data[:, :, 1],
+            dims=self.agrid.dims[0:2],
+            units=self.agrid.units,
+            gt4py_backend=self.agrid.gt4py_backend,
+        )
 
     @property
     def dx(self):
@@ -1164,56 +1209,96 @@ class MetricTerms:
         """
         1/cell area
         """
-        return 1.0 / self.area
+        return fv3util.Quantity(
+            data=1.0 / self.area.data,
+            dims=self.area.dims,
+            units="m^-2",
+            gt4py_backend=self.area.gt4py_backend,
+        )
 
     @cached_property
     def rarea_c(self):
         """
         1/cgrid cell area
         """
-        return 1.0 / self.area_c
+        return fv3util.Quantity(
+            data=1.0 / self.area_c.data,
+            dims=self.area_c.dims,
+            units="m^-2",
+            gt4py_backend=self.area_c.gt4py_backend,
+        )
 
     @cached_property
     def rdx(self):
         """
         1/dx
         """
-        return 1.0 / self.dx
+        return fv3util.Quantity(
+            data=1.0 / self.dx.data,
+            dims=self.dx.dims,
+            units="m^-1",
+            gt4py_backend=self.dx.gt4py_backend,
+        )
 
     @cached_property
     def rdy(self):
         """
         1/dy
         """
-        return 1.0 / self.dy
+        return fv3util.Quantity(
+            data=1.0 / self.dy.data,
+            dims=self.dy.dims,
+            units="m^-1",
+            gt4py_backend=self.dy.gt4py_backend,
+        )
 
     @cached_property
     def rdxa(self):
         """
         1/dxa
         """
-        return 1.0 / self.dxa
+        return fv3util.Quantity(
+            data=1.0 / self.dxa.data,
+            dims=self.dxa.dims,
+            units="m^-1",
+            gt4py_backend=self.dxa.gt4py_backend,
+        )
 
     @cached_property
     def rdya(self):
         """
         1/dya
         """
-        return 1.0 / self.dya
+        return fv3util.Quantity(
+            data=1.0 / self.dya.data,
+            dims=self.dya.dims,
+            units="m^-1",
+            gt4py_backend=self.dya.gt4py_backend,
+        )
 
     @cached_property
     def rdxc(self):
         """
         1/dxc
         """
-        return 1.0 / self.dxc
+        return fv3util.Quantity(
+            data=1.0 / self.dxc.data,
+            dims=self.dxc.dims,
+            units="m^-1",
+            gt4py_backend=self.dxc.gt4py_backend,
+        )
 
     @cached_property
     def rdyc(self):
         """
         1/dyc
         """
-        return 1.0 / self.dyc
+        return fv3util.Quantity(
+            data=1.0 / self.dyc.data,
+            dims=self.dyc.dims,
+            units="m^-1",
+            gt4py_backend=self.dyc.gt4py_backend,
+        )
 
     def _init_dgrid(self):
 
@@ -1342,6 +1427,7 @@ class MetricTerms:
             global_js=section_global_js,
             ng=self._halo,
             np=self._grid.np,
+            right_hand_grid=self.RIGHT_HAND_GRID,
         )
         # Shift the corner away from Japan
         # This will result in the corner close to east coast of China
@@ -1583,10 +1669,10 @@ class MetricTerms:
 
     def _calculate_center_vectors(self):
         ec1 = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ec2 = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ec1.data[:] = self._np.nan
         ec2.data[:] = self._np.nan
@@ -1602,10 +1688,10 @@ class MetricTerms:
 
     def _calculate_vectors_west(self):
         ew1 = self._quantity_factory.zeros(
-            [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ew2 = self._quantity_factory.zeros(
-            [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ew1.data[:] = self._np.nan
         ew2.data[:] = self._np.nan
@@ -1622,10 +1708,10 @@ class MetricTerms:
 
     def _calculate_vectors_south(self):
         es1 = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         es2 = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         es1.data[:] = self._np.nan
         es2.data[:] = self._np.nan
@@ -1912,10 +1998,10 @@ class MetricTerms:
 
     def _calculate_xy_unit_vectors(self):
         ee1 = self._quantity_factory.zeros(
-            [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         ee2 = self._quantity_factory.zeros(
-            [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         ee1.data[:] = self._np.nan
         ee2.data[:] = self._np.nan
@@ -2025,10 +2111,10 @@ class MetricTerms:
 
     def _calculate_unit_vectors_lonlat(self):
         vlon = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         vlat = self._quantity_factory.zeros(
-            [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM], ""
+            [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
 
         vlon.data[:-1, :-1], vlat.data[:-1, :-1] = unit_vector_lonlat(
@@ -2120,11 +2206,10 @@ class MetricTerms:
         return edge_vect_w, edge_vect_e, edge_vect_s, edge_vect_n
 
     def _reduce_global_area_minmaxes(self):
-        min_area = self._np.min(self.area.view[:])
-        max_area = self._np.max(self.area.view[:])
-        min_area_c = self._np.min(self.area_c.view[:])
-        max_area_c = self._np.max(self.area_c.view[:])
-
+        min_area = self._np.min(self.area.storage[3:-4, 3:-4])[()]
+        max_area = self._np.max(self.area.storage[3:-4, 3:-4])[()]
+        min_area_c = self._np.min(self.area_c.storage[3:-4, 3:-4])[()]
+        max_area_c = self._np.max(self.area_c.storage[3:-4, 3:-4])[()]
         try:
             self._da_min = self._comm.comm.allreduce(min_area, min)
             self._da_max = self._comm.comm.allreduce(max_area, max)
