@@ -47,7 +47,7 @@ def setup_data_vars():
     MPI is not None and MPI.COMM_WORLD.Get_size() > 1,
     reason="Running in parallel with mpi",
 )
-@pytest.mark.parametrize("backend", ("numpy", "gtx86"))
+@pytest.mark.parametrize("backend", ("numpy",))
 @pytest.mark.parametrize("rebuild", (True, False))
 @pytest.mark.parametrize("use_wrapper", (True, False))
 def test_future_stencil(backend: str, rebuild: bool, use_wrapper: bool):
