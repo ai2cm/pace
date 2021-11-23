@@ -5,7 +5,8 @@ import numpy as np
 import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import fv3core.utils.global_constants as constants
 import fv3gfs.util as fv3util
-from fv3core.grid import lon_lat_midpoint
+from fv3core.grid import MetricTerms, lon_lat_midpoint
+from fv3core.initialization.dycore_state import DycoreState
 
 
 nhalo = fv3util.N_HALO_DEFAULT
@@ -371,7 +372,6 @@ def p_var(
     qvapor,
     pe,
     peln,
-    pk,
     pkz,
     ptop,
     moist_phys,
@@ -381,8 +381,10 @@ def p_var(
 ):
     """
     Computes auxiliary pressure variables for a hydrostatic state.
-    The variables are: surface, interface, layer-mean pressure, exner function
-    Given (ptop, delp) computes (ps, pk, pe, peln, pkz)
+
+    The Fortran code also recomputes some more pressure variables,
+    pe, pk, but since these are already done in setup_pressure_fields
+    we don't duplicate them here
     """
     assert not adjust_dry_mass
     assert not hydrostatic
@@ -399,10 +401,11 @@ def p_var(
             pkz[:, :, :-1] = initialize_pkz_dry(delp, pt, delz)
 
 
-def compute_shape(full_array_shape):
-    full_nx, full_ny, nz = full_array_shape
-    nx = full_nx - 2 * nhalo - 1
-    ny = full_ny - 2 * nhalo - 1
+# TODO: maybe extract from quantity related objects
+def local_compute_size(data_array_shape):
+    nx = data_array_shape[0] - 2 * nhalo - 1
+    ny = data_array_shape[1] - 2 * nhalo - 1
+    nz = data_array_shape[2]
     return nx, ny, nz
 
 
@@ -414,8 +417,21 @@ def compute_slices(nx, ny):
     return islice, jslice, slice_3d, slice_2d
 
 
-def init_baroclinic_state(state, grid_data, adiabatic, hydrostatic, moist_phys, comm):
-    nx, ny, nz = compute_shape(state.delp.data.shape)
+def init_baroclinic_state(
+    metric_terms: MetricTerms,
+    adiabatic: bool,
+    hydrostatic: bool,
+    moist_phys: bool,
+    comm: fv3util.CubedSphereCommunicator,
+):
+    """
+    Create a DycoreState object with quantities initialized to the Jablonowski &
+    Williamson baroclinic test case perturbation applied to the cubed sphere grid.
+    """
+
+    state = DycoreState.init_empty(metric_terms.quantity_factory)
+    nx, ny, nz = local_compute_size(state.delp.data.shape)
+    # Initializing to values the Fortran does for easy comparison
     state.delp.data[:] = 1e30
     state.delp.data[:nhalo, :nhalo] = 0.0
     state.delp.data[:nhalo, nhalo + ny :] = 0.0
@@ -434,65 +450,73 @@ def init_baroclinic_state(state, grid_data, adiabatic, hydrostatic, moist_phys, 
     eta = np.zeros(nz)
     eta_v = np.zeros(nz)
     islice, jslice, slice_3d, slice_2d = compute_slices(nx, ny)
+    # Slices with extra buffer points in the horizontal dimension
+    # to accomodate averaging over shifted calculations on the grid
     isliceb, jsliceb, slice_3db, slice_2db = compute_slices(nx + 1, ny + 1)
+
+    # TODO: It would be neat to use <quantity>.view here rather than slices
+    # But doesn't work with all numpy operations, would need to either
+    # support some features or change the calculations
     setup_pressure_fields(
-        eta,
-        eta_v,
-        state.delp.data[slice_3d],
-        state.ps.data[slice_2d],
-        state.pe.data[slice_3d],
-        state.peln.data[slice_3d],
-        state.pk.data[slice_3d],
-        state.pkz.data[slice_3d],
-        grid_data.ak,
-        grid_data.bk,
-        grid_data.ptop,
-        lat_agrid=grid_data.lat_agrid.data[slice_2d],
+        eta=eta,
+        eta_v=eta_v,
+        delp=state.delp.data[slice_3d],
+        ps=state.ps.data[slice_2d],
+        pe=state.pe.data[slice_3d],
+        peln=state.peln.data[slice_3d],
+        pk=state.pk.data[slice_3d],
+        pkz=state.pkz.data[slice_3d],
+        ak=metric_terms.ak.data,
+        bk=metric_terms.bk.data,
+        ptop=metric_terms.ptop,
+        lat_agrid=metric_terms.lat_agrid.data[slice_2d],
         adiabatic=adiabatic,
     )
     baroclinic_initialization(
-        eta,
-        eta_v,
-        state.peln.data[slice_3db],
-        state.qvapor.data[slice_3db],
-        state.delp.data[slice_3db],
-        state.u.data[slice_3db],
-        state.v.data[slice_3db],
-        state.pt.data[slice_3db],
-        state.phis.data[slice_2db],
-        state.delz.data[slice_3db],
-        state.w.data[slice_3db],
-        grid_data.lon.data[slice_2db],
-        grid_data.lat.data[slice_2db],
-        grid_data.lon_agrid.data[slice_2db],
-        grid_data.lat_agrid.data[slice_2db],
-        grid_data.ee1.data[slice_3db],
-        grid_data.ee2.data[slice_3db],
-        grid_data.es1.data[slice_3db],
-        grid_data.ew2.data[slice_3db],
-        grid_data.ptop,
-        adiabatic,
-        hydrostatic,
-        nx,
-        ny,
+        eta=eta,
+        eta_v=eta_v,
+        peln=state.peln.data[slice_3db],
+        qvapor=state.qvapor.data[slice_3db],
+        delp=state.delp.data[slice_3db],
+        u=state.u.data[slice_3db],
+        v=state.v.data[slice_3db],
+        pt=state.pt.data[slice_3db],
+        phis=state.phis.data[slice_2db],
+        delz=state.delz.data[slice_3db],
+        w=state.w.data[slice_3db],
+        lon=metric_terms.lon.data[slice_2db],
+        lat=metric_terms.lat.data[slice_2db],
+        lon_agrid=metric_terms.lon_agrid.data[slice_2db],
+        lat_agrid=metric_terms.lat_agrid.data[slice_2db],
+        ee1=metric_terms.ee1.data[slice_3db],
+        ee2=metric_terms.ee2.data[slice_3db],
+        es1=metric_terms.es1.data[slice_3db],
+        ew2=metric_terms.ew2.data[slice_3db],
+        ptop=metric_terms.ptop,
+        adiabatic=adiabatic,
+        hydrostatic=hydrostatic,
+        nx=nx,
+        ny=ny,
     )
 
     p_var(
-        state.delp.data[slice_3d],
-        state.delz.data[slice_3d],
-        state.pt.data[slice_3d],
-        state.ps.data[slice_2d],
-        state.qvapor.data[slice_3d],
-        state.pe.data[slice_3d],
-        state.peln.data[slice_3d],
-        state.pk.data[slice_3d],
-        state.pkz.data[slice_3d],
-        grid_data.ptop,
-        moist_phys,
+        delp=state.delp.data[slice_3d],
+        delz=state.delz.data[slice_3d],
+        pt=state.pt.data[slice_3d],
+        ps=state.ps.data[slice_2d],
+        qvapor=state.qvapor.data[slice_3d],
+        pe=state.pe.data[slice_3d],
+        peln=state.peln.data[slice_3d],
+        pkz=state.pkz.data[slice_3d],
+        ptop=metric_terms.ptop,
+        moist_phys=moist_phys,
         make_nh=(not hydrostatic),
         hydrostatic=hydrostatic,
     )
+    # TODO: when the dycore state is updated to only include
+    # quantities and no storages, remove the "_quantity" from phis, u and v
+    comm.halo_update(state.phis_quantity, n_points=nhalo)
 
-    comm.halo_update(state.phis, n_points=nhalo)
+    comm.vector_halo_update(state.u_quantity, state.v_quantity, n_points=nhalo)
 
-    comm.vector_halo_update(state.u, state.v, n_points=nhalo)
+    return state

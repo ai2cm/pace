@@ -1,35 +1,22 @@
-import types
 from typing import Any, Dict
 
 import numpy as np
 import pytest
 
 import fv3core._config as spec
-import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
+import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.utils.global_config as global_config
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
+from fv3core.grid import MetricTerms
 from fv3core.testing import ParallelTranslateBaseSlicing, TranslateFortranData2Py
 from fv3core.utils.grid import TRACER_DIM
 
 
 class TranslateInitCase(ParallelTranslateBaseSlicing):
 
-    inputs = {
-        "ak": {
-            "name": "atmosphere_hybrid_a_coordinate",
-            "dims": [fv3util.Z_INTERFACE_DIM],
-            "units": "Pa",
-        },
-        "bk": {
-            "name": "atmosphere_hybrid_b_coordinate",
-            "dims": [fv3util.Z_INTERFACE_DIM],
-            "units": "",
-        },
-        "ptop": {"dims": []},
-    }
     outputs: Dict[str, Any] = {
         "u": {
             "name": "x_wind",
@@ -125,10 +112,7 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
     def __init__(self, grid_list):
         super().__init__(grid_list)
         grid = grid_list[0]
-        self._base.in_vars["data_vars"] = {
-            "ak": {},
-            "bk": {},
-        }
+        self._base.in_vars["data_vars"] = {}
         self._base.in_vars["parameters"] = ["ptop"]
         self._base.out_vars = {
             "u": grid.y3d_domain_dict(),
@@ -163,7 +147,7 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
             "pk": grid.compute_buffer_k_dict(),
             "pkz": grid.compute_dict(),
         }
-        self.max_error = 2e-14
+        self.max_error = 6e-14
         self.ignore_near_zero_errors = {}
         for var in ["u", "v"]:
             self.ignore_near_zero_errors[var] = {"near_zero": 2e-13}
@@ -191,9 +175,6 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
         return outputs
 
     def compute_parallel(self, inputs, communicator):
-
-        grid_data_dict = self.state_from_inputs(inputs)
-
         state = {}
         full_shape = (*self.grid.domain_shape_full(add=(1, 1, 1)), fv_dynamics.NQ)
         for variable, properties in self.outputs.items():
@@ -207,41 +188,27 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
                 gt4py_backend=global_config.get_backend(),
             )
 
-        tracer_properties = self.outputs["q4d"]
-        tracer_dims = tracer_properties["dims"][0:3]
-        state["q4d"] = {}
-        for tracer in utils.tracer_variables:
-            state["q4d"][tracer] = fv3util.Quantity(
-                np.zeros(full_shape[0 : len(tracer_dims)]),
-                tracer_dims,
-                properties["units"],
-                origin=self.grid.sizer.get_origin(tracer_dims),
-                extent=self.grid.sizer.get_extent(tracer_dims),
-            )
-            state[tracer] = state["q4d"][tracer]
-        state = types.SimpleNamespace(**state)
         namelist = spec.namelist
 
-        grid_data = self.grid.grid_data
-        # These are in GridData, but use the serialized inputs here
-        grid_data.ak = grid_data_dict["ak"]
-        grid_data.bk = grid_data_dict["bk"]
-        grid_data.ptop = grid_data_dict["ptop"]
-        # These are computed in MetricTerms, but not passed to GridData
-        # corner unit vectors
-        grid_data.ee1 = self.grid.ee1
-        grid_data.ee2 = self.grid.ee2
-        grid_data.es1 = self.grid.es1
-        grid_data.ew2 = self.grid.ew2
-        baroclinic_init.init_baroclinic_state(
-            state,
-            grid_data,
+        metric_terms = MetricTerms.from_tile_sizing(
+            npx=namelist.npx,
+            npy=namelist.npy,
+            npz=namelist.npz,
+            communicator=communicator,
+            backend=global_config.get_backend(),
+        )
+
+        state = baroclinic_init.init_baroclinic_state(
+            metric_terms=metric_terms,
             adiabatic=namelist.adiabatic,
             hydrostatic=namelist.hydrostatic,
             moist_phys=namelist.moist_phys,
             comm=communicator,
         )
 
+        state.q4d = {}
+        for tracer in utils.tracer_variables:
+            state.q4d[tracer] = getattr(state, tracer)
         return self.outputs_from_state(state.__dict__)
 
 
@@ -413,7 +380,6 @@ class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
                 "kend": grid.npz,
                 "kaxis": 1,
             },
-            "pk": grid.compute_buffer_k_dict(),
             "pkz": grid.compute_dict(),
         }
 
