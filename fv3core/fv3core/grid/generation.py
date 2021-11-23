@@ -13,6 +13,7 @@ from fv3core.utils.gt4py_utils import asarray
 from fv3core.utils.stencil import GridIndexing
 from fv3gfs.util.constants import N_HALO_DEFAULT
 
+from .cartesian import setup_cartesian_grid
 from .eta import set_hybrid_pressure_coefficients
 from .geometry import (
     calc_unit_vector_south,
@@ -181,6 +182,9 @@ class MetricTerms:
         self._da_max = None
         self._da_min_c = None
         self._da_max_c = None
+
+        if grid_type == 4:
+            self._init_single_tile()
 
         self._init_dgrid()
         self._init_agrid()
@@ -1520,54 +1524,65 @@ class MetricTerms:
         area = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m^2")
         area.data[:, :] = -1.0e8
 
-        area.data[3:-4, 3:-4] = get_area(
-            self._grid.data[3:-3, 3:-3, 0],
-            self._grid.data[3:-3, 3:-3, 1],
-            RADIUS,
-            self._np,
-        )
-        self._comm.halo_update(area, n_points=self._halo)
+        if self._grid_type <= 3:
+            area.data[3:-4, 3:-4] = get_area(
+                self._grid.data[3:-3, 3:-3, 0],
+                self._grid.data[3:-3, 3:-3, 1],
+                RADIUS,
+                self._np,
+            )
+            self._comm.halo_update(area, n_points=self._halo)
+        elif self._grid_type == 4:
+            area.data[:, :] = self.dx_agrid.data[:, :] * self.dy_agrid.data[:, :]
+        else:
+            raise NotImplementedError("Grid type must be 4 or less")
         return area
 
     def _compute_area_c(self):
         area_cgrid = self._quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], "m^2"
         )
-        area_cgrid.data[3:-3, 3:-3] = get_area(
-            self._agrid.data[2:-3, 2:-3, 0],
-            self._agrid.data[2:-3, 2:-3, 1],
-            RADIUS,
-            self._np,
-        )
-        # TODO -- this does not seem to matter? running with or without does
-        # not change whether it validates
-        set_corner_area_to_triangle_area(
-            lon=self._agrid.data[2:-3, 2:-3, 0],
-            lat=self._agrid.data[2:-3, 2:-3, 1],
-            area=area_cgrid.data[3:-3, 3:-3],
-            tile_partitioner=self._tile_partitioner,
-            rank=self._rank,
-            radius=RADIUS,
-            np=self._np,
-        )
+        if self._grid_type <= 3:
+            area_cgrid.data[3:-3, 3:-3] = get_area(
+                self._agrid.data[2:-3, 2:-3, 0],
+                self._agrid.data[2:-3, 2:-3, 1],
+                RADIUS,
+                self._np,
+            )
+            # TODO -- this does not seem to matter? running with or without does
+            # not change whether it validates
+            set_corner_area_to_triangle_area(
+                lon=self._agrid.data[2:-3, 2:-3, 0],
+                lat=self._agrid.data[2:-3, 2:-3, 1],
+                area=area_cgrid.data[3:-3, 3:-3],
+                tile_partitioner=self._tile_partitioner,
+                rank=self._rank,
+                radius=RADIUS,
+                np=self._np,
+            )
 
-        set_c_grid_tile_border_area(
-            self._dgrid_xyz[2:-2, 2:-2, :],
-            self._agrid_xyz[2:-2, 2:-2, :],
-            RADIUS,
-            area_cgrid.data[3:-3, 3:-3],
-            self._tile_partitioner,
-            self._rank,
-            self._np,
-        )
-        self._comm.halo_update(area_cgrid, n_points=self._halo)
+            set_c_grid_tile_border_area(
+                self._dgrid_xyz[2:-2, 2:-2, :],
+                self._agrid_xyz[2:-2, 2:-2, :],
+                RADIUS,
+                area_cgrid.data[3:-3, 3:-3],
+                self._tile_partitioner,
+                self._rank,
+                self._np,
+            )
+            self._comm.halo_update(area_cgrid, n_points=self._halo)
 
-        fill_corners_2d(
-            area_cgrid.data[:, :, None],
-            self._grid_indexing,
-            gridtype="B",
-            direction="x",
-        )
+            fill_corners_2d(
+                area_cgrid.data[:, :, None],
+                self._grid_indexing,
+                gridtype="B",
+                direction="x",
+            )
+        elif self._grid_type == 4:
+            area_cgrid.data[:, :] = self.dxc.data[0, 0] * self.dyc.data[0, 0]
+        else:
+            raise NotImplementedError("Grid type must be 4 or less")
+
         return area_cgrid
 
     def _set_hybrid_pressure_coefficients(self):
@@ -2135,3 +2150,44 @@ class MetricTerms:
             self._da_max = max_area
             self._da_min_c = min_area_c
             self._da_max_c = max_area_c
+
+    def _init_single_tile(self):
+        deglat = 90.0  # TODO: Revisit and actually define
+        grid_longitudes, grid_latitudes = setup_cartesian_grid(
+            self._npx, self._npy, deglat, self._np
+        )
+        dx_const = 10.0e6 / (self._npx - 1)
+        dy_const = 10.0e6 / (
+            self._npy - 1
+        )  # TODO: Revisit these and actually define them
+
+        dx = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], "m")
+        dx.data[:, :] = dx_const
+        dy = self._quantity_factory.zeros([fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], "m")
+        dy.data[:, :] = dy_const
+
+        dx_agrid = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m")
+        dx_agrid.data[:, :] = dx_const
+        dy_agrid = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m")
+        dy_agrid.data[:, :] = dy_const
+
+        dx_center = self._quantity_factory.zeros(
+            [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], "m"
+        )
+        dx_center.data[:, :] = dx_const
+        dy_center = self._quantity_factory.zeros(
+            [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], "m"
+        )
+        dy_center.data[:, :] = dy_const
+
+        area = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m^2")
+        area.data[:, :] = dx_const * dy_const
+
+        self._dx = dx
+        self._dy = dy
+        self._dx_agrid = dx_agrid
+        self._dy_agrid = dy_agrid
+        self._dx_center = dx_center
+        self._dy_center = dy_center
+
+        self._area = area
