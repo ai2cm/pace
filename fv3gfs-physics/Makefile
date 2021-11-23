@@ -30,7 +30,7 @@ THRESH_ARGS=--threshold_overrides_file=$(pace_PATH)/tests/savepoint/translate/ov
 PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(pace_PATH)/tests/savepoint
 PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(pace_PATH)/tests/savepoint
 ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD)/../fv3core:/fv3core -v $(CWD)/../fv3gfs-physics:/fv3gfs-physics -v $(CWD)/tests:/$(pace)/tests -v $(FV3UTIL_DIR):/fv3gfs-util
+	VOLUMES += -v $(CWD)/../fv3core:/fv3core -v $(CWD)/../fv3gfs-physics:/fv3gfs-physics -v $(CWD)/../shared:/shared -v $(CWD)/tests:/$(pace)/tests -v $(FV3UTIL_DIR):/fv3gfs-util
 endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3GFS_IMAGE)
 
