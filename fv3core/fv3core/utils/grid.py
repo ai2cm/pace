@@ -14,7 +14,7 @@ from . import gt4py_utils as utils
 from .stencil import GridIndexing, StencilConfig, StencilFactory
 from .typing import FloatFieldI, FloatFieldIJ
 
-
+TRACER_DIM="tracers"
 class Grid:
     # indices = ["is_", "ie", "isd", "ied", "js", "je", "jsd", "jed"]
     index_pairs = [("is_", "js"), ("ie", "je"), ("isd", "jsd"), ("ied", "jed")]
@@ -84,6 +84,7 @@ class Grid:
                     MetricTerms.LON_OR_LAT_DIM: 2,
                     MetricTerms.TILE_DIM: 6,
                     MetricTerms.CARTESIAN_DIM: 3,
+                    TRACER_DIM: len(utils.tracer_variables)
                 },
                 layout=self.layout,
             )
