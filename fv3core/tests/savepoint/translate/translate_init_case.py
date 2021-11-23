@@ -14,6 +14,7 @@ from fv3core.grid import MetricTerms
 from fv3core.testing import ParallelTranslateBaseSlicing, TranslateFortranData2Py
 from fv3core.utils.grid import TRACER_DIM
 
+
 class TranslateInitCase(ParallelTranslateBaseSlicing):
 
     outputs: Dict[str, Any] = {
