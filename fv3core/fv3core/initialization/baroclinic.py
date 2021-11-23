@@ -180,10 +180,22 @@ def cell_average_nine_components(
     grid_slice,
 ):
     """
-    Componet 9 cell components of a variable, calling a component_function
-    definiting the equation with component_args (arguments unique to that
-    component_function), and precomputed lat arrays
+    Outputs the weighted average of a field that is a function of latitude,
+    averaging over the 9 points on the corners, edges, and center of each
+    gridcell.
+    
+    Args:
+        component_function: callable taking in an array of latitude and
+            returning an output array
+        component_args: arguments to pass on to component_function,
+            should not be a function of latitude
+        lon: longitude array, defined on cell corners
+        lat: latitude array, defined on cell corners
+        lat_agrid: latitude array, defined on cell centers
+        grid_slice: tuple of x-domain and y-domain slices defining the compute domain
+            for cell-centered variables
     """
+    # this weighting is done to reproduce the behavior of the Fortran code
     # Compute cell lats in the midpoint of each cell edge
     lat2, lat3, lat4, lat5 = compute_grid_edge_midpoint_latitude_components(lon, lat)
     pt1 = component_function(*component_args, lat=lat_agrid[grid_slice])
