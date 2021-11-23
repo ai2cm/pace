@@ -1044,7 +1044,6 @@ class DelnFluxNoSG:
 
         if nk <= 3:
             raise NotImplementedError("nk must be more than 3 for DelnFluxNoSG")
-        self._k_bounds = [1, 1, 1, nk - 3]
 
         preamble_ax_offsets = axis_offsets(grid_indexing, origin_d2, domain_d2)
         fx_ax_offsets = axis_offsets(grid_indexing, fx_origin, (f1_nx, f1_ny, nk))

@@ -285,10 +285,24 @@ def mock_parallel_savepoint_cases(metafunc, data_path):
     return return_list
 
 
+def compute_grid_data(metafunc, grid):
+    backend = metafunc.config.getoption("backend")
+    namelist = fv3core._config.namelist
+    grid.make_grid_data(
+        npx=namelist.npx,
+        npy=namelist.npy,
+        npz=namelist.npz,
+        communicator=get_communicator(MPI.COMM_WORLD, namelist.layout),
+        backend=backend,
+    )
+
+
 def parallel_savepoint_cases(metafunc, data_path, mpi_rank):
     serializer = get_serializer(data_path, mpi_rank)
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
     grid = process_grid_savepoint(serializer, grid_savepoint, mpi_rank)
+    if metafunc.config.getoption("compute_grid"):
+        compute_grid_data(metafunc, grid)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     return_list = []
     layout = fv3core._config.namelist.layout
@@ -565,3 +579,8 @@ def print_domains(pytestconfig):
 @pytest.fixture()
 def python_regression(pytestconfig):
     return pytestconfig.getoption("python_regression")
+
+
+@pytest.fixture()
+def compute_grid(pytestconfig):
+    return pytestconfig.getoption("compute_grid")
