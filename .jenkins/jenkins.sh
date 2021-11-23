@@ -185,7 +185,7 @@ if [ ${python_env} == "virtualenv" ]; then
     if grep -q "parallel" <<< "${script}"; then
 	export MPIRUN_CALL="srun"
     fi
-    export pace_PATH="${envloc}/../fv3gfs-physics/"
+    export PACE_PATH="${envloc}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
     export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi
