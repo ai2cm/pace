@@ -1,5 +1,5 @@
 f90nml
-pytest-xdist<2
+pytest-xdist<2  # last version that works with pytest 5
 pytest-dependency
 pytest
 pytest-cov
