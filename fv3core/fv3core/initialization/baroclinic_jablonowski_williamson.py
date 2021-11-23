@@ -20,8 +20,8 @@ pcen = [math.pi / 9.0, 2.0 * math.pi / 9.0]  # From Table VI of DCMIP2016
 u1 = 1.0
 pt0 = 0.0
 eta_0 = 0.252
-eta_s = 1.0  # surface level
-eta_t = 0.2  # tropopause
+eta_surface = 1.0
+eta_tropopause = 0.2
 t_0 = 288.0
 delta_t = 480000.0
 lapse_rate = 0.005  # From Table VI of DCMIP2016
@@ -89,8 +89,9 @@ def horizontally_averaged_temperature(eta):
     # for troposphere:
     t_mean = t_0 * eta[:] ** (constants.RDGAS * lapse_rate / constants.GRAV)
     # above troposphere
-    t_mean[eta_t > eta] = (
-        t_mean[eta_t > eta] + delta_t * (eta_t - eta[eta_t > eta]) ** 5.0
+    t_mean[eta_tropopause > eta] = (
+        t_mean[eta_tropopause > eta]
+        + delta_t * (eta_tropopause - eta[eta_tropopause > eta]) ** 5.0
     )
     return t_mean
 
@@ -142,7 +143,7 @@ def surface_geopotential_perturbation(lat):
        only necessary to initialize surface geopotential.'
     * 'balances the non-zero zonal wind at the surface with surface elevation zs'
     """
-    surface_level = vertical_coordinate(eta_s)
+    surface_level = vertical_coordinate(eta_surface)
     return geopotential_perturbation(lat, surface_level)
 
 

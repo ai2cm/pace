@@ -404,6 +404,5 @@ class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
             **sliced_inputs,
             moist_phys=namelist.moist_phys,
             make_nh=(not namelist.hydrostatic),
-            hydrostatic=namelist.hydrostatic,
         )
         return self.slice_output(inputs)

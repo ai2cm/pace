@@ -235,7 +235,7 @@ class Physics:
         self._pktop = (self._ptop / self._p00) ** KAPPA
         self._pk0inv = (1.0 / self._p00) ** KAPPA
 
-    def __call__(self,  state: DycoreState, ptop: float):
+    def __call__(self, state: DycoreState, ptop: float):
         self.setup_const_from_ptop(ptop)
         physics_state = PhysicsState.from_dycore_state(state, self._full_zero_storage)
         self._atmos_phys_driver_statein(

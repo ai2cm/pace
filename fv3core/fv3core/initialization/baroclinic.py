@@ -174,12 +174,9 @@ def cell_average_nine_point(pt1, pt2, pt3, pt4, pt5, pt6, pt7, pt8, pt9):
 def cell_average_nine_components(
     component_function,
     component_args,
+    lon,
     lat,
     lat_agrid,
-    lat2,
-    lat3,
-    lat4,
-    lat5,
     grid_slice,
 ):
     """
@@ -187,6 +184,8 @@ def cell_average_nine_components(
     definiting the equation with component_args (arguments unique to that
     component_function), and precomputed lat arrays
     """
+    # Compute cell lats in the midpoint of each cell edge
+    lat2, lat3, lat4, lat5 = compute_grid_edge_midpoint_latitude_components(lon, lat)
     pt1 = component_function(*component_args, lat=lat_agrid[grid_slice])
     pt2 = component_function(*component_args, lat=lat2[grid_slice])
     pt3 = component_function(*component_args, lat=lat3[grid_slice])
@@ -293,8 +292,6 @@ def baroclinic_initialization(
         axis=0,
     )
 
-    # Compute cell lats in the midpoint of each cell edge
-    lat2, lat3, lat4, lat5 = compute_grid_edge_midpoint_latitude_components(lon, lat)
     slice_3d = (slice(0, nx), slice(0, ny), slice(None))
     slice_2d = (slice(0, nx), slice(0, ny))
     # initialize temperature
@@ -302,12 +299,9 @@ def baroclinic_initialization(
     pt[slice_3d] = cell_average_nine_components(
         jablo_init.temperature,
         [eta, eta_v, t_mean],
+        lon,
         lat,
         lat_agrid,
-        lat2,
-        lat3,
-        lat4,
-        lat5,
         slice_2d,
     )
 
@@ -315,12 +309,9 @@ def baroclinic_initialization(
     phis[slice_2d] = cell_average_nine_components(
         jablo_init.surface_geopotential_perturbation,
         [],
+        lon,
         lat,
         lat_agrid,
-        lat2,
-        lat3,
-        lat4,
-        lat5,
         slice_2d,
     )
 
@@ -376,8 +367,6 @@ def p_var(
     ptop,
     moist_phys,
     make_nh,
-    hydrostatic=False,
-    adjust_dry_mass=False,
 ):
     """
     Computes auxiliary pressure variables for a hydrostatic state.
@@ -386,19 +375,16 @@ def p_var(
     pe, pk, but since these are already done in setup_pressure_fields
     we don't duplicate them here
     """
-    assert not adjust_dry_mass
-    assert not hydrostatic
 
     ps[:] = pe[:, :, -1]
     fix_top_log_edge_pressure(peln, ptop)
 
-    if not hydrostatic:
-        if make_nh:
-            delz[:, :, :-1] = initialize_delz(pt, peln)
-        if moist_phys:
-            pkz[:, :, :-1] = initialize_pkz_moist(delp, pt, qvapor, delz)
-        else:
-            pkz[:, :, :-1] = initialize_pkz_dry(delp, pt, delz)
+    if make_nh:
+        delz[:, :, :-1] = initialize_delz(pt, peln)
+    if moist_phys:
+        pkz[:, :, :-1] = initialize_pkz_moist(delp, pt, qvapor, delz)
+    else:
+        pkz[:, :, :-1] = initialize_pkz_dry(delp, pt, delz)
 
 
 # TODO: maybe extract from quantity related objects
@@ -452,7 +438,7 @@ def init_baroclinic_state(
     islice, jslice, slice_3d, slice_2d = compute_slices(nx, ny)
     # Slices with extra buffer points in the horizontal dimension
     # to accomodate averaging over shifted calculations on the grid
-    isliceb, jsliceb, slice_3db, slice_2db = compute_slices(nx + 1, ny + 1)
+    _, _, slice_3d_buffer, slice_2d_buffer = compute_slices(nx + 1, ny + 1)
 
     # TODO: It would be neat to use <quantity>.view here rather than slices
     # But doesn't work with all numpy operations, would need to either
@@ -475,23 +461,23 @@ def init_baroclinic_state(
     baroclinic_initialization(
         eta=eta,
         eta_v=eta_v,
-        peln=state.peln.data[slice_3db],
-        qvapor=state.qvapor.data[slice_3db],
-        delp=state.delp.data[slice_3db],
-        u=state.u.data[slice_3db],
-        v=state.v.data[slice_3db],
-        pt=state.pt.data[slice_3db],
-        phis=state.phis.data[slice_2db],
-        delz=state.delz.data[slice_3db],
-        w=state.w.data[slice_3db],
-        lon=metric_terms.lon.data[slice_2db],
-        lat=metric_terms.lat.data[slice_2db],
-        lon_agrid=metric_terms.lon_agrid.data[slice_2db],
-        lat_agrid=metric_terms.lat_agrid.data[slice_2db],
-        ee1=metric_terms.ee1.data[slice_3db],
-        ee2=metric_terms.ee2.data[slice_3db],
-        es1=metric_terms.es1.data[slice_3db],
-        ew2=metric_terms.ew2.data[slice_3db],
+        peln=state.peln.data[slice_3d_buffer],
+        qvapor=state.qvapor.data[slice_3d_buffer],
+        delp=state.delp.data[slice_3d_buffer],
+        u=state.u.data[slice_3d_buffer],
+        v=state.v.data[slice_3d_buffer],
+        pt=state.pt.data[slice_3d_buffer],
+        phis=state.phis.data[slice_2d_buffer],
+        delz=state.delz.data[slice_3d_buffer],
+        w=state.w.data[slice_3d_buffer],
+        lon=metric_terms.lon.data[slice_2d_buffer],
+        lat=metric_terms.lat.data[slice_2d_buffer],
+        lon_agrid=metric_terms.lon_agrid.data[slice_2d_buffer],
+        lat_agrid=metric_terms.lat_agrid.data[slice_2d_buffer],
+        ee1=metric_terms.ee1.data[slice_3d_buffer],
+        ee2=metric_terms.ee2.data[slice_3d_buffer],
+        es1=metric_terms.es1.data[slice_3d_buffer],
+        ew2=metric_terms.ew2.data[slice_3d_buffer],
         ptop=metric_terms.ptop,
         adiabatic=adiabatic,
         hydrostatic=hydrostatic,
@@ -511,10 +497,8 @@ def init_baroclinic_state(
         ptop=metric_terms.ptop,
         moist_phys=moist_phys,
         make_nh=(not hydrostatic),
-        hydrostatic=hydrostatic,
     )
-    # TODO: when the dycore state is updated to only include
-    # quantities and no storages, remove the "_quantity" from phis, u and v
+
     comm.halo_update(state.phis_quantity, n_points=nhalo)
 
     comm.vector_halo_update(state.u_quantity, state.v_quantity, n_points=nhalo)

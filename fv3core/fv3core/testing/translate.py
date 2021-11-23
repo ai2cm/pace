@@ -292,38 +292,38 @@ class TranslateGrid:
 
     def make_grid_storage(self, pygrid):
         shape = pygrid.domain_shape_full(add=(1, 1, 1))
-        for k in TranslateGrid.composite_grid_vars:
-            if k in self.data:
-                self.make_composite_var_storage(k, self.data[k], shape)
-                del self.data[k]
-        for k in TranslateGrid.ee_vars:
-            if k in self.data:
-                self.data[k] = np.moveaxis(self.data[k], 0, 2)
-                self.data[k] = utils.make_storage_data(
-                    self.data[k], (shape[0], shape[1], 3), origin=(0, 0, 0)
+        for key in TranslateGrid.composite_grid_vars:
+            if key in self.data:
+                self.make_composite_var_storage(key, self.data[key], shape)
+                del self.data[key]
+        for key in TranslateGrid.ee_vars:
+            if key in self.data:
+                self.data[key] = np.moveaxis(self.data[key], 0, 2)
+                self.data[key] = utils.make_storage_data(
+                    self.data[key], (shape[0], shape[1], 3), origin=(0, 0, 0)
                 )
-        for k, axis in TranslateGrid.edge_var_axis.items():
-            if k in self.data:
-                self.data[k] = utils.make_storage_data(
-                    self.data[k],
+        for key, axis in TranslateGrid.edge_var_axis.items():
+            if key in self.data:
+                self.data[key] = utils.make_storage_data(
+                    self.data[key],
                     shape,
                     start=(0, 0, pygrid.halo),
                     axis=axis,
                     read_only=True,
                 )
-        for k, v in self.data.items():
-            if type(v) is np.ndarray:
+        for key, value in self.data.items():
+            if type(value) is np.ndarray:
                 # TODO: when grid initialization model exists, may want to use
                 # it to inform this
-                istart, jstart = pygrid.horizontal_starts_from_shape(v.shape)
+                istart, jstart = pygrid.horizontal_starts_from_shape(value.shape)
                 logger.debug(
                     "Storage for Grid variable {}, {}, {}, {}".format(
-                        k, istart, jstart, v.shape
+                        key, istart, jstart, value.shape
                     )
                 )
                 origin = (istart, jstart, 0)
-                self.data[k] = utils.make_storage_data(
-                    v, shape, origin=origin, start=origin, read_only=True
+                self.data[key] = utils.make_storage_data(
+                    value, shape, origin=origin, start=origin, read_only=True
                 )
 
     def python_grid(self):
