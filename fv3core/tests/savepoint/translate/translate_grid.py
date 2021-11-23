@@ -10,7 +10,6 @@ import fv3gfs.util as fv3util
 from fv3core.grid import MetricTerms, set_hybrid_pressure_coefficients
 from fv3core.grid.global_setup import global_mirror_grid, gnomonic_grid
 from fv3core.testing.parallel_translate import ParallelTranslateGrid
-from fv3core.utils.grid import CARTESIAN_DIM, LON_OR_LAT_DIM, TILE_DIM
 
 
 class TranslateGnomonicGrids(ParallelTranslateGrid):
@@ -74,8 +73,8 @@ class TranslateMirrorGrid(ParallelTranslateGrid):
             "dims": [
                 fv3util.X_INTERFACE_DIM,
                 fv3util.Y_INTERFACE_DIM,
-                LON_OR_LAT_DIM,
-                TILE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+                MetricTerms.TILE_DIM,
             ],
             "units": "radians",
             "n_halo": 3,
@@ -90,8 +89,8 @@ class TranslateMirrorGrid(ParallelTranslateGrid):
             "dims": [
                 fv3util.X_INTERFACE_DIM,
                 fv3util.Y_INTERFACE_DIM,
-                LON_OR_LAT_DIM,
-                TILE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+                MetricTerms.TILE_DIM,
             ],
             "units": "radians",
             "n_halo": 3,
@@ -115,6 +114,7 @@ class TranslateMirrorGrid(ParallelTranslateGrid):
             inputs["master_npx"],
             inputs["master_npy"],
             np,
+            MetricTerms.RIGHT_HAND_GRID,
         )
         return inputs
 
@@ -129,12 +129,16 @@ class TranslateGridAreas(ParallelTranslateGrid):
     inputs = {
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
         "agrid": {
             "name": "agrid",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.LON_OR_LAT_DIM],
             "units": "radians",
         },
         "area": {
@@ -229,8 +233,8 @@ class TranslateGridGrid(ParallelTranslateGrid):
             "dims": [
                 fv3util.X_INTERFACE_DIM,
                 fv3util.Y_INTERFACE_DIM,
-                LON_OR_LAT_DIM,
-                TILE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+                MetricTerms.TILE_DIM,
             ],
             "units": "radians",
         }
@@ -238,7 +242,11 @@ class TranslateGridGrid(ParallelTranslateGrid):
     outputs = {
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
     }
@@ -273,7 +281,11 @@ class TranslateDxDy(ParallelTranslateGrid):
     inputs = {
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
     }
@@ -316,24 +328,32 @@ class TranslateAGrid(ParallelTranslateGrid):
     inputs = {
         "agrid": {
             "name": "agrid",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.LON_OR_LAT_DIM],
             "units": "radians",
         },
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
     }
     outputs = {
         "agrid": {
             "name": "agrid",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.LON_OR_LAT_DIM],
             "units": "radians",
         },
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
     }
@@ -388,12 +408,16 @@ class TranslateInitGrid(ParallelTranslateGrid):
     outputs: Dict[str, Any] = {
         "gridvar": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
         "agrid": {
             "name": "agrid",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.LON_OR_LAT_DIM],
             "units": "radians",
         },
         "area": {
@@ -575,74 +599,78 @@ class TranslateUtilVectors(ParallelTranslateGrid):
     inputs: Dict[str, Any] = {
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
         "agrid": {
             "name": "agrid",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.LON_OR_LAT_DIM],
             "units": "radians",
         },
         "ec1": {
             "name": "ec1",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ec2": {
             "name": "ec2",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ew1": {
             "name": "ew1",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ew2": {
             "name": "ew2",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "es1": {
             "name": "es1",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
             "units": "",
         },
         "es2": {
             "name": "es2",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
             "units": "",
         },
     }
     outputs: Dict[str, Any] = {
         "ec1": {
             "name": "ec1",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ec2": {
             "name": "ec2",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ew1": {
             "name": "ew1",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ew2": {
             "name": "ew2",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "es1": {
             "name": "es1",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
             "units": "",
         },
         "es2": {
             "name": "es2",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
             "units": "",
         },
     }
@@ -700,12 +728,16 @@ class TranslateTrigSg(ParallelTranslateGrid):
     inputs: Dict[str, Any] = {
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "",
         },
         "agrid": {
             "name": "agrid",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.LON_OR_LAT_DIM],
             "units": "radians",
         },
         "cos_sg1": {
@@ -800,12 +832,12 @@ class TranslateTrigSg(ParallelTranslateGrid):
         },
         "ec1": {
             "name": "ec1",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ec2": {
             "name": "ec2",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
     }
@@ -937,7 +969,11 @@ class TranslateAAMCorrection(ParallelTranslateGrid):
     inputs: Dict[str, Any] = {
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
         "l2c_v": {
@@ -1006,7 +1042,11 @@ class TranslateDerivedTrig(ParallelTranslateGrid):
     inputs: Dict[str, Any] = {
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
         "cos_sg1": {
@@ -1101,12 +1141,20 @@ class TranslateDerivedTrig(ParallelTranslateGrid):
         },
         "ee1": {
             "name": "ee1",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [
+                MetricTerms.CARTESIAN_DIM,
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+            ],
             "units": "",
         },
         "ee2": {
             "name": "ee2",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [
+                MetricTerms.CARTESIAN_DIM,
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+            ],
             "units": "",
         },
         "cosa_u": {
@@ -1165,12 +1213,20 @@ class TranslateDerivedTrig(ParallelTranslateGrid):
     outputs: Dict[str, Any] = {
         "ee1": {
             "name": "ee1",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [
+                MetricTerms.CARTESIAN_DIM,
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+            ],
             "units": "",
         },
         "ee2": {
             "name": "ee2",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [
+                MetricTerms.CARTESIAN_DIM,
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+            ],
             "units": "",
         },
         "cosa_u": {
@@ -1410,17 +1466,17 @@ class TranslateInitCubedtoLatLon(ParallelTranslateGrid):
     inputs: Dict[str, Any] = {
         "agrid": {
             "name": "agrid",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.LON_OR_LAT_DIM],
             "units": "radians",
         },
         "ec1": {
             "name": "ec1",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ec2": {
             "name": "ec2",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "sin_sg5": {
@@ -1432,13 +1488,13 @@ class TranslateInitCubedtoLatLon(ParallelTranslateGrid):
     outputs: Dict[str, Any] = {
         "vlon": {
             "name": "vlon",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.CARTESIAN_DIM],
             "units": "",
             "n_halo": 2,
         },
         "vlat": {
             "name": "vlat",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.CARTESIAN_DIM],
             "units": "",
             "n_halo": 2,
         },
@@ -1521,12 +1577,16 @@ class TranslateEdgeFactors(ParallelTranslateGrid):
     inputs: Dict[str, Any] = {
         "grid": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
         "agrid": {
             "name": "agrid",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.LON_OR_LAT_DIM],
             "units": "radians",
         },
         "edge_s": {
@@ -1637,6 +1697,7 @@ class TranslateEdgeFactors(ParallelTranslateGrid):
         state = {}
         for metric_term, metadata in self.outputs.items():
             state[metadata["name"]] = getattr(grid_generator, metric_term)
+
         return self.outputs_from_state(state)
 
 
@@ -1701,12 +1762,16 @@ class TranslateInitGridUtils(ParallelTranslateGrid):
     inputs: Dict[str, Any] = {
         "gridvar": {
             "name": "grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, LON_OR_LAT_DIM],
+            "dims": [
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+                MetricTerms.LON_OR_LAT_DIM,
+            ],
             "units": "radians",
         },
         "agrid": {
             "name": "agrid",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, LON_OR_LAT_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.LON_OR_LAT_DIM],
             "units": "radians",
         },
         "area": {
@@ -1778,32 +1843,32 @@ class TranslateInitGridUtils(ParallelTranslateGrid):
         },
         "ec1": {
             "name": "ec1",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ec2": {
             "name": "ec2",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ew1": {
             "name": "ew1",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "ew2": {
             "name": "ew2",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_DIM],
             "units": "",
         },
         "es1": {
             "name": "es1",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
             "units": "",
         },
         "es2": {
             "name": "es2",
-            "dims": [CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [MetricTerms.CARTESIAN_DIM, fv3util.X_DIM, fv3util.Y_INTERFACE_DIM],
             "units": "",
         },
         "cos_sg1": {
@@ -1910,12 +1975,20 @@ class TranslateInitGridUtils(ParallelTranslateGrid):
         },
         "ee1": {
             "name": "ee1",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [
+                MetricTerms.CARTESIAN_DIM,
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+            ],
             "units": "",
         },
         "ee2": {
             "name": "ee2",
-            "dims": [CARTESIAN_DIM, fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM],
+            "dims": [
+                MetricTerms.CARTESIAN_DIM,
+                fv3util.X_INTERFACE_DIM,
+                fv3util.Y_INTERFACE_DIM,
+            ],
             "units": "",
         },
         "cosa_u": {
@@ -1992,13 +2065,13 @@ class TranslateInitGridUtils(ParallelTranslateGrid):
         },
         "vlon": {
             "name": "vlon",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.CARTESIAN_DIM],
             "units": "",
             "n_halo": 2,
         },
         "vlat": {
             "name": "vlat",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, CARTESIAN_DIM],
+            "dims": [fv3util.X_DIM, fv3util.Y_DIM, MetricTerms.CARTESIAN_DIM],
             "units": "",
             "n_halo": 2,
         },
@@ -2049,30 +2122,6 @@ class TranslateInitGridUtils(ParallelTranslateGrid):
             "dims": [fv3util.X_DIM, fv3util.Y_DIM],
             "units": "",
             "n_halo": 1,
-        },
-        "edge_s": {
-            "name": "edge_s",
-            "dims": [fv3util.X_INTERFACE_DIM],
-            "units": "",
-            "n_halo": 0,
-        },
-        "edge_n": {
-            "name": "edge_n",
-            "dims": [fv3util.X_INTERFACE_DIM],
-            "units": "",
-            "n_halo": 0,
-        },
-        "edge_e": {
-            "name": "edge_e",
-            "dims": [fv3util.Y_INTERFACE_DIM],
-            "units": "",
-            "n_halo": 0,
-        },
-        "edge_w": {
-            "name": "edge_w",
-            "dims": [fv3util.Y_INTERFACE_DIM],
-            "units": "",
-            "n_halo": 0,
         },
         "edge_vect_s": {
             "name": "edge_vect_s",
