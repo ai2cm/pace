@@ -12,7 +12,7 @@ from gt4py.gtscript import (
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 from fv3core.decorators import get_namespace
-from fv3core.stencils.fv_dynamics import DynamicalCore  # need argspecs for state
+from fv3core.initialization.dycore_state import DycoreState
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField
 from fv3gfs.physics.global_constants import *
@@ -231,14 +231,12 @@ class Physics:
         self._nwat = 6  # spec.namelist.nwat
         self._p00 = 1.0e5
 
-    def setup_const_from_state(self, state: dict):
-        self._ptop = state["ak"][0]
+    def setup_const_from_ptop(self, ptop: float):
         self._pktop = (self._ptop / self._p00) ** KAPPA
         self._pk0inv = (1.0 / self._p00) ** KAPPA
 
-    def __call__(self, state: dict):
-        self.setup_const_from_state(state)
-        state = get_namespace(DynamicalCore.arg_specs, state)
+    def __call__(self,  state: DycoreState, ptop: float):
+        self.setup_const_from_ptop(ptop)
         physics_state = PhysicsState.from_dycore_state(state, self._full_zero_storage)
         self._atmos_phys_driver_statein(
             self._prsik,
