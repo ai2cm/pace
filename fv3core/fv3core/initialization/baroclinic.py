@@ -177,13 +177,12 @@ def cell_average_nine_components(
     lon,
     lat,
     lat_agrid,
-    grid_slice,
 ):
     """
     Outputs the weighted average of a field that is a function of latitude,
     averaging over the 9 points on the corners, edges, and center of each
     gridcell.
-    
+
     Args:
         component_function: callable taking in an array of latitude and
             returning an output array
@@ -192,21 +191,19 @@ def cell_average_nine_components(
         lon: longitude array, defined on cell corners
         lat: latitude array, defined on cell corners
         lat_agrid: latitude array, defined on cell centers
-        grid_slice: tuple of x-domain and y-domain slices defining the compute domain
-            for cell-centered variables
     """
     # this weighting is done to reproduce the behavior of the Fortran code
     # Compute cell lats in the midpoint of each cell edge
     lat2, lat3, lat4, lat5 = compute_grid_edge_midpoint_latitude_components(lon, lat)
-    pt1 = component_function(*component_args, lat=lat_agrid[grid_slice])
-    pt2 = component_function(*component_args, lat=lat2[grid_slice])
-    pt3 = component_function(*component_args, lat=lat3[grid_slice])
-    pt4 = component_function(*component_args, lat=lat4[grid_slice])
-    pt5 = component_function(*component_args, lat=lat5[grid_slice])
-    pt6 = component_function(*component_args, lat=lat[grid_slice])
-    pt7 = component_function(*component_args, lat=lat[1:, :][grid_slice])
-    pt8 = component_function(*component_args, lat=lat[1:, 1:][grid_slice])
-    pt9 = component_function(*component_args, lat=lat[:, 1:][grid_slice])
+    pt1 = component_function(*component_args, lat=lat_agrid)
+    pt2 = component_function(*component_args, lat=lat2[:, :-1])
+    pt3 = component_function(*component_args, lat=lat3)
+    pt4 = component_function(*component_args, lat=lat4)
+    pt5 = component_function(*component_args, lat=lat5[:-1, :])
+    pt6 = component_function(*component_args, lat=lat[:-1, :-1])
+    pt7 = component_function(*component_args, lat=lat[1:, :-1])
+    pt8 = component_function(*component_args, lat=lat[1:, 1:])
+    pt9 = component_function(*component_args, lat=lat[:-1, 1:])
     return cell_average_nine_point(pt1, pt2, pt3, pt4, pt5, pt6, pt7, pt8, pt9)
 
 
@@ -306,25 +303,24 @@ def baroclinic_initialization(
 
     slice_3d = (slice(0, nx), slice(0, ny), slice(None))
     slice_2d = (slice(0, nx), slice(0, ny))
+    slice_2d_buffer = (slice(0, nx + 1), slice(0, ny + 1))
     # initialize temperature
     t_mean = jablo_init.horizontally_averaged_temperature(eta)
     pt[slice_3d] = cell_average_nine_components(
         jablo_init.temperature,
         [eta, eta_v, t_mean],
-        lon,
-        lat,
-        lat_agrid,
-        slice_2d,
+        lon[slice_2d_buffer],
+        lat[slice_2d_buffer],
+        lat_agrid[slice_2d],
     )
 
     # initialize surface geopotential
     phis[slice_2d] = cell_average_nine_components(
         jablo_init.surface_geopotential_perturbation,
         [],
-        lon,
-        lat,
-        lat_agrid,
-        slice_2d,
+        lon[slice_2d_buffer],
+        lat[slice_2d_buffer],
+        lat_agrid[slice_2d],
     )
 
     if not hydrostatic:
