@@ -128,3 +128,31 @@ DxDy:
 
 EdgeFactors:
  - max_error: 2e-12 # 48_6ranks
+
+DerivedTrig:
+ - max_error: 2e-11 # 48_6ranks
+
+GridAreas:
+ - max_error: 7e-12 # 48_6ranks
+
+GridGrid:
+ - max_error: 6e-13 # 48_6ranks
+
+InitGrid:
+ - max_error: 7e-12 # 48_6ranks
+
+InitGridUtils:
+ - max_error: 2e-7 # 48_6ranks
+   near_zero: 2e-13
+
+TrigSg:
+  - max_error: 2e-7 # 48_6ranks
+    near_zero: 1e-12
+    ignore_near_zero_errors:
+      - cos_sg6
+      - cos_sg7
+      - cos_sg8
+      - cos_sg9
+
+UtilVectors:
+  - max_error: 2e-10 # 48_6ranks

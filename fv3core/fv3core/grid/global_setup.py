@@ -1,7 +1,7 @@
 import math
 
 from ..utils.global_constants import PI, RADIUS
-from ..utils.grid import N_TILES
+from .generation import MetricTerms
 from .gnomonic import (
     _cart_to_latlon,
     _check_shapes,
@@ -88,7 +88,9 @@ def global_gnomonic_ed(lon, lat, np):
 
 # A tile global version of mirror_grid
 # Closer to the Fortran code
-def global_mirror_grid(grid_global, ng: int, npx: int, npy: int, np):
+def global_mirror_grid(
+    grid_global, ng: int, npx: int, npy: int, np, right_hand_grid: bool
+):
     """
     Mirrors and rotates all tiles of a lon/lat grid to the correct orientation.
     The tiles must then be partitioned onto the appropriate ranks.
@@ -148,7 +150,7 @@ def global_mirror_grid(grid_global, ng: int, npx: int, npy: int, np):
 
     i_mid = (npx - 1) // 2
     j_mid = (npy - 1) // 2
-    for nreg in range(1, N_TILES):
+    for nreg in range(1, MetricTerms.N_TILES):
         for j in range(0, npy):
             x1 = grid_global[ng : ng + npx, ng + j, 0, 0]
             y1 = grid_global[ng : ng + npx, ng + j, 1, 0]
@@ -157,16 +159,34 @@ def global_mirror_grid(grid_global, ng: int, npx: int, npy: int, np):
             if nreg == 1:
                 ang = -90.0
                 x2, y2, z2 = _rot_3d(
-                    3, [x1, y1, z1], ang, np, degrees=True, convert=True
+                    3,
+                    [x1, y1, z1],
+                    ang,
+                    np,
+                    right_hand_grid,
+                    degrees=True,
+                    convert=True,
                 )
             elif nreg == 2:
                 ang = -90.0
                 x2, y2, z2 = _rot_3d(
-                    3, [x1, y1, z1], ang, np, degrees=True, convert=True
+                    3,
+                    [x1, y1, z1],
+                    ang,
+                    np,
+                    right_hand_grid,
+                    degrees=True,
+                    convert=True,
                 )
                 ang = 90.0
                 x2, y2, z2 = _rot_3d(
-                    1, [x2, y2, z2], ang, np, degrees=True, convert=True
+                    1,
+                    [x2, y2, z2],
+                    ang,
+                    np,
+                    right_hand_grid,
+                    degrees=True,
+                    convert=True,
                 )
                 # force North Pole and dateline/Greenwich-Meridian consistency
                 if npx % 2 != 0:
@@ -179,11 +199,23 @@ def global_mirror_grid(grid_global, ng: int, npx: int, npy: int, np):
             elif nreg == 3:
                 ang = -180.0
                 x2, y2, z2 = _rot_3d(
-                    3, [x1, y1, z1], ang, np, degrees=True, convert=True
+                    3,
+                    [x1, y1, z1],
+                    ang,
+                    np,
+                    right_hand_grid,
+                    degrees=True,
+                    convert=True,
                 )
                 ang = 90.0
                 x2, y2, z2 = _rot_3d(
-                    1, [x2, y2, z2], ang, np, degrees=True, convert=True
+                    1,
+                    [x2, y2, z2],
+                    ang,
+                    np,
+                    right_hand_grid,
+                    degrees=True,
+                    convert=True,
                 )
                 # force dateline/Greenwich-Meridian consistency
                 if npx % 2 != 0:
@@ -192,20 +224,44 @@ def global_mirror_grid(grid_global, ng: int, npx: int, npy: int, np):
             elif nreg == 4:
                 ang = 90.0
                 x2, y2, z2 = _rot_3d(
-                    3, [x1, y1, z1], ang, np, degrees=True, convert=True
+                    3,
+                    [x1, y1, z1],
+                    ang,
+                    np,
+                    right_hand_grid,
+                    degrees=True,
+                    convert=True,
                 )
                 ang = 90.0
                 x2, y2, z2 = _rot_3d(
-                    2, [x2, y2, z2], ang, np, degrees=True, convert=True
+                    2,
+                    [x2, y2, z2],
+                    ang,
+                    np,
+                    right_hand_grid,
+                    degrees=True,
+                    convert=True,
                 )
             elif nreg == 5:
                 ang = 90.0
                 x2, y2, z2 = _rot_3d(
-                    2, [x1, y1, z1], ang, np, degrees=True, convert=True
+                    2,
+                    [x1, y1, z1],
+                    ang,
+                    np,
+                    right_hand_grid,
+                    degrees=True,
+                    convert=True,
                 )
                 ang = 0.0
                 x2, y2, z2 = _rot_3d(
-                    3, [x2, y2, z2], ang, np, degrees=True, convert=True
+                    3,
+                    [x2, y2, z2],
+                    ang,
+                    np,
+                    right_hand_grid,
+                    degrees=True,
+                    convert=True,
                 )
                 # force South Pole and dateline/Greenwich-Meridian consistency
                 if npx % 2 != 0:
