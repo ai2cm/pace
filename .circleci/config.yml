@@ -8,8 +8,11 @@ jobs:
     - image: circleci/python:3.7
     steps:
       - checkout
-      - run: sudo pip3 install tox -c constraints.txt
-      - run: tox -e lint
+      - run:
+          name: run linting
+          command: |
+            sudo pip3 install pre-commit -c constraints.txt
+            pre-commit run --all-files
 
   test_python:
     docker:
@@ -21,13 +24,17 @@ jobs:
       - run:
           name: install MPI
           command: |
-            sudo apt-get update
-            sudo apt-get install libopenmpi3
-            sudo pip3 install tox -c constraints.txt
+            if [ $(python changed_from_main.py fv3gfs-util) != false ]; then
+              sudo apt-get update
+              sudo apt-get install libopenmpi3 libopenmpi-dev
+              sudo pip3 install tox -c constraints.txt
+            fi
       - run:
           name: run tests
           command: |
-            tox -e test -e test_no_extras
+            if [ $(python changed_from_main.py fv3gfs-util) != false ]; then
+              cd fv3gfs-util && tox -e test -e test_no_extras
+            fi
 
 
 workflows:

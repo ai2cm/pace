@@ -40,7 +40,7 @@ def initialize_serializer(data_directory: str, rank: int = 0) -> serialbox.Seria
 
 
 # Only used if reading the grid from savepoints on disk
-# Default is to generate abaroclinic initialization
+# Default is to generate a baroclinic initialization
 def read_grid(serializer: serialbox.Serializer, rank: int = 0) -> Grid:
     """Uses the serializer to generate a Grid object from serialized data"""
     grid_savepoint = serializer.get_savepoint("Grid-Info")[0]

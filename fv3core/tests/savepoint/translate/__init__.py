@@ -33,7 +33,6 @@ from .translate_fvsubgridz import TranslateFVSubgridZ
 from .translate_fvtp2d import TranslateFvTp2d, TranslateFvTp2d_2
 from .translate_fxadv import TranslateFxAdv
 from .translate_grid import (
-    TranslateAAMCorrection,
     TranslateAGrid,
     TranslateDerivedTrig,
     TranslateDivgDel6,

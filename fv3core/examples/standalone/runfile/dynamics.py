@@ -213,6 +213,11 @@ if __name__ == "__main__":
         # set up grid-dependent helper structures
         partitioner = util.CubedSpherePartitioner(util.TilePartitioner(namelist.layout))
         communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
+        # generate the grid
+        grid = spec.make_grid_with_data_from_namelist(
+            namelist, communicator, args.backend
+        )
+        spec.set_grid(grid)
 
         # TODO remove this creation of the legacy grid once everything that
         # references it is updated or removed
