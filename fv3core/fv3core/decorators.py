@@ -4,12 +4,10 @@ import functools
 import types
 from typing import Any, Callable, List, Mapping, Optional
 
-import fv3core
 import fv3core._config as spec
-import fv3core.utils
-import fv3core.utils.grid
-from fv3core.utils.stencil import FrozenStencil, StencilFactory
-from fv3core.utils.typing import Index3D
+import fv3gfs.util.grid
+from fv3gfs.util.pace.typing import Index3D
+from fv3gfs.util.stencil import FrozenStencil, StencilFactory
 
 
 ArgSpec = collections.namedtuple(
@@ -76,7 +74,7 @@ def get_stencils_with_varied_bounds(
         externals = {}
     stencils = []
     for origin, domain in zip(origins, domains):
-        ax_offsets = fv3core.utils.grid.axis_offsets(spec.grid, origin, domain)
+        ax_offsets = fv3gfs.util.grid.axis_offsets(spec.grid, origin, domain)
         stencils.append(
             stencil_factory.from_origin_domain(
                 func,

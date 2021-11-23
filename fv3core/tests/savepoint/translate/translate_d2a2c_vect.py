@@ -1,6 +1,6 @@
 import fv3core._config as spec
-from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from fv3core.testing import TranslateFortranData2Py
+from fv3gfs.util.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 
 
 class TranslateD2A2C_Vect(TranslateFortranData2Py):

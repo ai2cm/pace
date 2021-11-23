@@ -3,8 +3,8 @@ from typing import Callable, Mapping, Tuple
 
 import numpy as np
 
-import fv3core.stencils.divergence_damping
-import fv3core.stencils.updatedzd
+import fv3gfs.util.stencils.divergence_damping
+import fv3gfs.util.stencils.updatedzd
 from fv3gfs.util.constants import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from fv3gfs.util.quantity import Quantity
 
@@ -167,8 +167,8 @@ def enable_selective_validation():
     # to enable selective validation for a new class, add a new monkeypatch
     # this should require only a new function for (origin, domain)
     # note we have not implemented disabling selective validation once enabled
-    fv3core.stencils.updatedzd.UpdateHeightOnDGrid = get_selective_class(
-        fv3core.stencils.updatedzd.UpdateHeightOnDGrid,
+    fv3gfs.util.stencils.updatedzd.UpdateHeightOnDGrid = get_selective_class(
+        fv3gfs.util.stencils.updatedzd.UpdateHeightOnDGrid,
         {
             "height": get_compute_domain_k_interfaces,
             "zh": get_compute_domain_k_interfaces,
@@ -177,21 +177,21 @@ def enable_selective_validation():
     # make absolutely sure you don't write just the savepoint name, this would
     # selecively validate without making sure it's safe to do so
 
-    fv3core.stencils.tracer_2d_1l.TracerAdvection = get_selective_tracer_advection(
-        fv3core.stencils.tracer_2d_1l.TracerAdvection,
+    fv3gfs.util.stencils.tracer_2d_1l.TracerAdvection = get_selective_tracer_advection(
+        fv3gfs.util.stencils.tracer_2d_1l.TracerAdvection,
         get_compute_domain_k_interfaces,
     )
 
-    fv3core.stencils.divergence_damping.DivergenceDamping = get_selective_class(
-        fv3core.stencils.divergence_damping.DivergenceDamping,
+    fv3gfs.util.stencils.divergence_damping.DivergenceDamping = get_selective_class(
+        fv3gfs.util.stencils.divergence_damping.DivergenceDamping,
         {
             "v_contra_dxc": get_domain_func([X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]),
             "vort": get_domain_func([X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]),
         },  # must include both function argument and savepoint names
     )
     cell_center_func = get_domain_func([X_DIM, Y_DIM, Z_DIM])
-    fv3core.stencils.fv_dynamics.DynamicalCore = get_selective_class(
-        fv3core.stencils.fv_dynamics.DynamicalCore,
+    fv3gfs.util.stencils.fv_dynamics.DynamicalCore = get_selective_class(
+        fv3gfs.util.stencils.fv_dynamics.DynamicalCore,
         {
             "qsnow": cell_center_func,
             "va": cell_center_func,

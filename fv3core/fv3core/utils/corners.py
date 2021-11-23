@@ -3,9 +3,7 @@ from typing import Sequence
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.stencil import GridIndexing, StencilFactory
-from fv3core.utils.typing import FloatField
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3gfs.util.constants import (
     X_DIM,
     X_INTERFACE_DIM,
@@ -13,6 +11,8 @@ from fv3gfs.util.constants import (
     Y_INTERFACE_DIM,
     Z_INTERFACE_DIM,
 )
+from fv3gfs.util.pace.typing import FloatField
+from fv3gfs.util.stencil import GridIndexing, StencilFactory
 
 
 class CopyCorners:

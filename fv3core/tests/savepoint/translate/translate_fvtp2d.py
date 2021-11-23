@@ -1,10 +1,10 @@
-import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.fvtp2d import (
+import fv3gfs.util.pace.gt4py_utils as utils
+from fv3core.testing import TranslateFortranData2Py
+from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
+from fv3gfs.util.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
 )
-from fv3core.testing import TranslateFortranData2Py
-from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
 
 
 class TranslateFvTp2d(TranslateFortranData2Py):

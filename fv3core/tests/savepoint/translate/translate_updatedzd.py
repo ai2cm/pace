@@ -1,9 +1,9 @@
 import numpy as np
 
 import fv3core._config as spec
-import fv3core.stencils.updatedzd
-from fv3core.stencils import d_sw
+import fv3gfs.util.stencils.updatedzd
 from fv3core.testing import TranslateFortranData2Py
+from fv3gfs.util.stencils import d_sw
 
 
 class TranslateUpdateDzD(TranslateFortranData2Py):
@@ -44,7 +44,7 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
-        self.updatedzd = fv3core.stencils.updatedzd.UpdateHeightOnDGrid(
+        self.updatedzd = fv3gfs.util.stencils.updatedzd.UpdateHeightOnDGrid(
             self.grid.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.grid_data,

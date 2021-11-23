@@ -1,6 +1,6 @@
-import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils import yppm
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3core.testing import TranslateFortranData2Py, TranslateGrid
+from fv3gfs.util.stencils import yppm
 
 
 class TranslateYPPM(TranslateFortranData2Py):

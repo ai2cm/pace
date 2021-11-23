@@ -1,10 +1,10 @@
 from typing import Dict
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.fillz import FillNegativeTracerValues
-from fv3core.stencils.map_single import MapSingle
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField
+import fv3gfs.util.pace.gt4py_utils as utils
+from fv3gfs.util.pace.typing import FloatField
+from fv3gfs.util.stencil import StencilFactory
+from fv3gfs.util.stencils.fillz import FillNegativeTracerValues
+from fv3gfs.util.stencils.map_single import MapSingle
 
 
 class MapNTracer:

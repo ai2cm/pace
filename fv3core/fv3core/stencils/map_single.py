@@ -2,11 +2,11 @@ from typing import Optional
 
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.basic_operations import copy_defn
-from fv3core.stencils.remap_profile import RemapProfile
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
+import fv3gfs.util.pace.gt4py_utils as utils
+from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
+from fv3gfs.util.stencil import StencilFactory
+from fv3gfs.util.stencils.basic_operations import copy_defn
+from fv3gfs.util.stencils.remap_profile import RemapProfile
 
 
 def set_dp(dp1: FloatField, pe1: FloatField, lev: IntFieldIJ):

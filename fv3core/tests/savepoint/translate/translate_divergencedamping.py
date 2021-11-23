@@ -1,7 +1,7 @@
 from typing import Optional
 
 import fv3core._config as spec
-import fv3core.stencils.divergence_damping
+import fv3gfs.util.stencils.divergence_damping
 from fv3core.testing import TranslateFortranData2Py
 
 
@@ -32,11 +32,11 @@ class TranslateDivergenceDamping(TranslateFortranData2Py):
         }
         self.max_error = 1.4e-10
         self.divdamp: Optional[
-            fv3core.stencils.divergence_damping.DivergenceDamping
+            fv3gfs.util.stencils.divergence_damping.DivergenceDamping
         ] = None
 
     def compute_from_storage(self, inputs):
-        self.divdamp = fv3core.stencils.divergence_damping.DivergenceDamping(
+        self.divdamp = fv3gfs.util.stencils.divergence_damping.DivergenceDamping(
             self.grid.stencil_factory,
             self.grid.grid_data,
             self.grid.damping_coefficients,

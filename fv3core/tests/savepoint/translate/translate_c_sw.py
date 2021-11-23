@@ -1,6 +1,6 @@
 import fv3core._config as spec
-from fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from fv3core.testing import TranslateFortranData2Py
+from fv3gfs.util.stencils.c_sw import CGridShallowWaterDynamics
 
 
 def get_c_sw_instance(grid, namelist):

@@ -1,4 +1,4 @@
-import fv3core.stencils.delnflux as delnflux
+import fv3gfs.util.stencils.delnflux as delnflux
 from fv3core.testing import TranslateFortranData2Py
 
 

@@ -3,11 +3,11 @@ import copy
 from mpi4py import MPI
 
 import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as util
-from fv3core.utils.typing import Float
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+from fv3gfs.util.pace.typing import Float
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):

@@ -6,8 +6,8 @@ import gt4py.storage as gt_storage
 import numpy as np
 
 import fv3core._config as spec
-import fv3core.utils.global_config as global_config
-from fv3core.utils.typing import DTypes, Field, Float
+import fv3gfs.util.pace.global_config as global_config
+from fv3gfs.util.pace.typing import DTypes, Field, Float
 
 
 try:

@@ -11,17 +11,17 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core.utils.global_config as global_config
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
 import fv3gfs.util as fv3util
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
+import fv3gfs.util.global_config as global_config
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3gfs.physics.global_constants import *
 
 # TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
+from fv3gfs.util.pace.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
 from fv3gfs.util.quantity import Quantity
+from fv3gfs.util.stencil import StencilFactory
 from pace.stencils.c2l_ord import CubedToLatLon
 
 

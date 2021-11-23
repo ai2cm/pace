@@ -4,12 +4,12 @@ import numpy as np
 import pytest
 
 import fv3core._config as spec
-import fv3core.utils.global_config as global_config
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
-from fv3core.grid import MetricTerms, set_hybrid_pressure_coefficients
-from fv3core.grid.global_setup import global_mirror_grid, gnomonic_grid
+import fv3gfs.util.global_config as global_config
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3core.testing.parallel_translate import ParallelTranslateGrid
+from fv3gfs.util.grid import MetricTerms, set_hybrid_pressure_coefficients
+from fv3gfs.util.grid.global_setup import global_mirror_grid, gnomonic_grid
 
 
 class TranslateGnomonicGrids(ParallelTranslateGrid):

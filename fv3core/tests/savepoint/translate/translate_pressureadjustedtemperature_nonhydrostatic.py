@@ -1,7 +1,7 @@
 import fv3core._config as spec
-from fv3core.stencils import temperature_adjust
-from fv3core.stencils.dyn_core import get_nk_heat_dissipation
 from fv3core.testing import TranslateFortranData2Py
+from fv3gfs.util.stencils import temperature_adjust
+from fv3gfs.util.stencils.dyn_core import get_nk_heat_dissipation
 
 
 class TranslatePressureAdjustedTemperature_NonHydrostatic(TranslateFortranData2Py):

@@ -1,4 +1,4 @@
-from ..utils.global_constants import PI, RADIUS
+from fv3core.utils.global_constants import PI, RADIUS
 
 
 __all__ = ["mirror_grid"]

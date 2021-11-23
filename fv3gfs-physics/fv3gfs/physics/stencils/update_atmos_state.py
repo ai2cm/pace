@@ -8,13 +8,13 @@ from gt4py.gtscript import (
     interval,
 )
 
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3gfs.physics.global_constants import *
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
+from fv3gfs.util.pace.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
+from fv3gfs.util.stencil import StencilFactory
 
 
 def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):

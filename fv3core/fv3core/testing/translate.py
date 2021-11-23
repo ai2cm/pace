@@ -4,9 +4,9 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 import fv3core._config
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.grid import Grid
-from fv3core.utils.typing import Field  # noqa: F401
+import fv3gfs.util.pace.gt4py_utils as utils
+from fv3gfs.util.grid import Grid
+from fv3gfs.util.pace.typing import Field  # noqa: F401
 
 
 logger = logging.getLogger("fv3ser")

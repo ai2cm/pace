@@ -1,5 +1,5 @@
 import fv3core._config as spec
-import fv3core.stencils.nh_p_grad as NH_P_Grad
+import fv3gfs.util.stencils.nh_p_grad as NH_P_Grad
 from fv3core.testing import TranslateFortranData2Py
 
 

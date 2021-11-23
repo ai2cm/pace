@@ -3,9 +3,9 @@ from typing import Optional
 import pytest
 
 import fv3core._config as spec
-import fv3core.stencils.fv_dynamics as fv_dynamics
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
+import fv3gfs.util.pace.gt4py_utils as utils
+import fv3gfs.util.stencils.fv_dynamics as fv_dynamics
 from fv3core.testing import ParallelTranslateBaseSlicing
 
 

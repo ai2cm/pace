@@ -1,6 +1,6 @@
 import fv3core._config as spec
-from fv3core.stencils.ray_fast import RayleighDamping
 from fv3core.testing import TranslateFortranData2Py
+from fv3gfs.util.stencils.ray_fast import RayleighDamping
 
 
 class TranslateRay_Fast(TranslateFortranData2Py):

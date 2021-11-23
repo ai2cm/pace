@@ -1,7 +1,7 @@
 import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3core.testing import TranslateFortranData2Py
+from fv3gfs.util.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 
 
 class TranslateNeg_Adj3(TranslateFortranData2Py):

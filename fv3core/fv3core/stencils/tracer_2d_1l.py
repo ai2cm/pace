@@ -4,16 +4,15 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core._config as spec
-import fv3core.stencils.fxadv
-import fv3core.utils
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
-from fv3core.stencils.fvtp2d import (
+import fv3gfs.util.pace.gt4py_utils as utils
+import fv3gfs.util.stencils.fxadv
+from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
+from fv3gfs.util.stencil import StencilFactory
+from fv3gfs.util.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
 )
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
 
 
 @gtscript.function
@@ -149,7 +148,7 @@ class TracerAdvection:
             units="kg/m^2",
         )
 
-        ax_offsets = fv3core.utils.axis_offsets(
+        ax_offsets = fv3gfs.util.axis_offsets(
             self.grid, grid_indexing.origin_full(), grid_indexing.domain_full()
         )
         local_axis_offsets = {}

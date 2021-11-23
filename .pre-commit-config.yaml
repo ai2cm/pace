@@ -22,8 +22,6 @@ repos:
       files: fv3core
       exclude: |
         (?x)^(
-        fv3core/fv3core/utils/grid.py |
-        fv3core/fv3core/utils/gt4py_utils.py |
         fv3core/fv3core/stencils/fv_subgridz.py |
         )$
     - id: mypy
@@ -33,6 +31,11 @@ repos:
           --follow-imports, skip  # needed so we only test enabled files
         ]
       files: fv3gfs-util
+      exclude: |
+        (?x)^(
+        fv3gfs-util/fv3gfs/util/pace/grid.py |
+        fv3gfs-util/fv3gfs/util/pace/gt4py_utils.py |
+        )$
     # - id: mypy
     #   args: [
     #       --no-strict-optional,

@@ -1,8 +1,8 @@
 import fv3core
-import fv3core.utils.grid
+import fv3gfs.util.grid
 
 
-mock_grid = fv3core.utils.grid.GridIndexing(
+mock_grid = fv3gfs.util.grid.GridIndexing(
     domain=(12, 12, 79),
     n_halo=3,
     south_edge=True,

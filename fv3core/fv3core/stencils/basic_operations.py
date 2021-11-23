@@ -2,7 +2,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, cos, interval, sin
 
 from fv3core.utils.global_constants import OMEGA
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
 
 
 def copy_defn(q_in: FloatField, q_out: FloatField):

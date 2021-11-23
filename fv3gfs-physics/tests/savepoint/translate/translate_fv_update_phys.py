@@ -3,11 +3,11 @@ import dataclasses
 import numpy as np
 
 import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3core.testing import ParallelTranslate2Py
-from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
+from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
 
 
 @dataclasses.dataclass()

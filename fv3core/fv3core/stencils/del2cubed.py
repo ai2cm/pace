@@ -1,13 +1,13 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core.utils.corners as corners
-import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3core.decorators import get_stencils_with_varied_bounds
-from fv3core.stencils.basic_operations import copy_defn
-from fv3core.utils.grid import DampingCoefficients
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, cast_to_index3d
 from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from fv3gfs.util.grid import DampingCoefficients
+from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ, cast_to_index3d
+from fv3gfs.util.stencil import StencilFactory
+from fv3gfs.util.stencils.basic_operations import copy_defn
 
 
 #

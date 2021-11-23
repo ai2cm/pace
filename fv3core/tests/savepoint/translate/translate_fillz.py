@@ -1,7 +1,7 @@
 import numpy as np
 
-import fv3core.stencils.fillz as fillz
-import fv3core.utils.gt4py_utils as utils
+import fv3gfs.util.pace.gt4py_utils as utils
+import fv3gfs.util.stencils.fillz as fillz
 from fv3core.testing import TranslateFortranData2Py, pad_field_in_j
 
 

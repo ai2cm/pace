@@ -9,10 +9,10 @@ import yaml
 import fv3core
 import fv3core._config
 import fv3core.testing
-import fv3core.utils.gt4py_utils
 import fv3gfs.util as fv3util
+import fv3gfs.util.pace.gt4py_utils
 from fv3core.testing import ParallelTranslate, TranslateGrid
-from fv3core.utils.mpi import MPI
+from fv3gfs.util.pace.mpi import MPI
 
 from . import translate
 

@@ -7,14 +7,14 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
-from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3core.utils import corners
-from fv3core.utils.grid import GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from fv3gfs.util.grid import GridData
+from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
+from fv3gfs.util.stencil import StencilFactory
+from fv3gfs.util.stencils.basic_operations import compute_coriolis_parameter_defn
+from fv3gfs.util.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 
 
 def geoadjust_ut(

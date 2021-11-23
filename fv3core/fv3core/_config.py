@@ -4,8 +4,8 @@ from typing import Tuple
 
 import f90nml
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.grid import Grid
+import fv3gfs.util.pace.gt4py_utils as utils
+from fv3gfs.util.grid import Grid
 
 
 grid = None

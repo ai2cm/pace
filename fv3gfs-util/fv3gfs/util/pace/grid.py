@@ -5,9 +5,9 @@ from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple, Union
 import numpy as np
 from gt4py import gtscript
 
-import fv3core.utils.global_config as global_config
 import fv3gfs.util
-from fv3core.grid import MetricTerms
+import fv3gfs.util.pace.global_config as global_config
+from fv3gfs.util.grid import MetricTerms
 from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
 
 from . import gt4py_utils as utils

@@ -22,10 +22,10 @@ from gt4py import gtscript
 from gt4py.storage.storage import Storage
 
 import fv3gfs.util
-from fv3core.utils.future_stencil import future_stencil
-from fv3core.utils.mpi import MPI
-from fv3core.utils.typing import Index3D, cast_to_index3d
 from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
+from fv3gfs.util.pace.future_stencil import future_stencil
+from fv3gfs.util.pace.mpi import MPI
+from fv3gfs.util.pace.typing import Index3D, cast_to_index3d
 
 from .gt4py_utils import make_storage_from_shape
 

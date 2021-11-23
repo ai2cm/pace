@@ -1,11 +1,11 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3core.stencils.ytp_v as ytp_v
+import fv3gfs.util.stencils.ytp_v as ytp_v
 from fv3core.testing import TranslateFortranData2Py
-from fv3core.utils.grid import GridData, axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3gfs.util.grid import GridData, axis_offsets
+from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
+from fv3gfs.util.stencil import StencilFactory
 
 
 def ytp_v_stencil_defn(
