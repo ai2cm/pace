@@ -311,7 +311,7 @@ class DycoreState:
     def init_from_numpy_arrays(cls, dict_of_numpy_arrays, quantity_factory):
         state = cls.init_empty(quantity_factory)
         field_names = [_field.name for _field in fields(cls)]
-        for variable_name, data in dict_of_numpy_arrays:
+        for variable_name, data in dict_of_numpy_arrays.items():
             if variable_name not in field_names:
                 raise KeyError(
                     variable_name + " is provided, but not part of the dycore state"
@@ -328,7 +328,7 @@ class DycoreState:
     @classmethod
     def init_from_quantities(cls, dict_of_quantities):
         field_names = [field.name for field in fields(cls)]
-        for variable_name, data in dict_of_quantities:
+        for variable_name, data in dict_of_quantities.items():
             if variable_name not in field_names:
                 raise KeyError(
                     variable_name + " is provided, but not part of the dycore state"
@@ -343,7 +343,7 @@ class DycoreState:
                 raise TypeError(
                     field_name
                     + " is not a Quantity, but instead a "
-                    + type(dict_of_quantities[field_name])
+                    + str(type(dict_of_quantities[field_name]))
                 )
         for _field in fields(cls):
             for varcheck in ["units", "dims"]:
