@@ -37,10 +37,64 @@ DivergenceDamping:
       delpc: 1e-15
 
 DivgDel6:
- - max_error: 3e-13 # 48_6ranks
+ - max_error: 3e-12 # 48_6ranks
 
 DxDy:
- - max_error: 2e-13 # 48_6ranks
+ - max_error: 4e-13 # 48_6ranks
 
 EdgeFactors:
+ - max_error: 3e-11 # 48_6ranks
+
+DerivedTrig:
+ - max_error: 7e-11 # 48_6ranks
+
+GridAreas:
+ - max_error: 5e-11 # 48_6ranks
+
+GridGrid:
  - max_error: 2e-12 # 48_6ranks
+
+InitGrid:
+ - max_error: 5e-11 # 48_6ranks
+
+InitGridUtils:
+ - max_error: 5e-6 # 48_6ranks
+   near_zero: 5e-8
+   ignore_near_zero_errors:
+      - l2c_v
+      - l2c_u
+      - ee1
+      - ee2
+      - ew1
+      - ew2 
+      - es1
+      - es2
+      - cos_sg1
+      - cos_sg2
+      - cos_sg3
+      - cos_sg4
+      - cos_sg5
+      - cos_sg6
+      - cos_sg7
+      - cos_sg8
+      - cos_sg9
+      - cosa
+      - cosa_u
+      - cosa_v
+
+TrigSg:
+  - max_error: 2e-6 # 48_6ranks
+    near_zero: 1e-7
+    ignore_near_zero_errors:
+      - cos_sg1
+      - cos_sg2
+      - cos_sg3
+      - cos_sg4
+      - cos_sg6
+      - cos_sg7
+      - cos_sg8
+      - cos_sg9
+
+UtilVectors:
+  - max_error: 5e-10 # 48_6ranks
+    near_zero: 1e-13
