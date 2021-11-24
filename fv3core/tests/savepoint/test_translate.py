@@ -10,7 +10,7 @@ import serialbox as ser
 
 import fv3core._config
 import fv3gfs.util as fv3util
-import fv3gfs.util.global_config as config
+import fv3gfs.util.pace.global_config as config
 import fv3gfs.util.pace.gt4py_utils as gt_utils
 from fv3gfs.util.pace.mpi import MPI
 

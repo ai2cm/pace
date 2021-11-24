@@ -4,8 +4,8 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3gfs.util.pace.gt4py_utils as utils
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import BoolField, FloatField, FloatFieldIJ
-from fv3gfs.util.stencil import StencilFactory
 
 
 @gtscript.function

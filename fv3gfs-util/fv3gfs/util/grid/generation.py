@@ -10,7 +10,7 @@ from fv3core.utils.corners import (
 from fv3core.utils.global_constants import PI, RADIUS
 from fv3gfs.util.constants import N_HALO_DEFAULT
 from fv3gfs.util.pace.gt4py_utils import asarray
-from fv3gfs.util.stencil import GridIndexing
+from fv3gfs.util.pace.stencil import GridIndexing
 
 from .eta import set_hybrid_pressure_coefficients
 from .geometry import (

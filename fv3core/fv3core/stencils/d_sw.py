@@ -8,10 +8,21 @@ from gt4py.gtscript import (
     region,
 )
 
+import fv3core.stencils.delnflux as delnflux
 import fv3core.utils.global_constants as constants
 import fv3gfs.util.pace.gt4py_utils as utils
-import fv3gfs.util.stencils.delnflux as delnflux
 from fv3core._config import DGridShallowWaterLagrangianDynamicsConfig
+from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
+from fv3core.stencils.d2a2c_vect import contravariant
+from fv3core.stencils.delnflux import DelnFluxNoSG
+from fv3core.stencils.divergence_damping import DivergenceDamping
+from fv3core.stencils.fvtp2d import (
+    FiniteVolumeTransport,
+    PreAllocatedCopiedCornersFactory,
+)
+from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
+from fv3core.stencils.xtp_u import advect_u_along_x
+from fv3core.stencils.ytp_v import advect_v_along_y
 from fv3gfs.util import (
     X_DIM,
     X_INTERFACE_DIM,
@@ -20,20 +31,9 @@ from fv3gfs.util import (
     Z_DIM,
     Z_INTERFACE_DIM,
 )
-from fv3gfs.util.grid import DampingCoefficients, GridData
+from fv3gfs.util.pace.grid import DampingCoefficients, GridData
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util.stencil import StencilFactory
-from fv3gfs.util.stencils.basic_operations import compute_coriolis_parameter_defn
-from fv3gfs.util.stencils.d2a2c_vect import contravariant
-from fv3gfs.util.stencils.delnflux import DelnFluxNoSG
-from fv3gfs.util.stencils.divergence_damping import DivergenceDamping
-from fv3gfs.util.stencils.fvtp2d import (
-    FiniteVolumeTransport,
-    PreAllocatedCopiedCornersFactory,
-)
-from fv3gfs.util.stencils.fxadv import FiniteVolumeFluxPrep
-from fv3gfs.util.stencils.xtp_u import advect_u_along_x
-from fv3gfs.util.stencils.ytp_v import advect_v_along_y
 
 
 dcon_threshold = 1e-5

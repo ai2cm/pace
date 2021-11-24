@@ -1,6 +1,6 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3gfs.util.stencils.moist_cv as moist_cv
+import fv3core.stencils.moist_cv as moist_cv
 from fv3core.testing import TranslateFortranData2Py, pad_field_in_j
 from fv3gfs.util.pace.typing import FloatField
 

@@ -45,7 +45,6 @@ from .halo_updater import HaloUpdater
 from .initialization import GridSizer, QuantityFactory, SubtileGridSizer
 from .io import read_state, write_state
 from .nudging import apply_nudging, get_nudging_tendencies
-from .pace.grid import Grid, axis_offsets
 from .partitioner import (
     CubedSpherePartitioner,
     TilePartitioner,

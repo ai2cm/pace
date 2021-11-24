@@ -1,9 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core._config as spec
-import fv3gfs.util.stencils.d_sw as d_sw
+import fv3core.stencils.d_sw as d_sw
 from fv3core.testing import TranslateFortranData2Py
-from fv3gfs.util.grid import axis_offsets
+from fv3gfs.util.pace.grid import axis_offsets
 from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
 
 

@@ -6,8 +6,8 @@ from typing import Any, Callable, List, Mapping, Optional
 
 import fv3core._config as spec
 import fv3gfs.util.grid
+from fv3gfs.util.pace.stencil import FrozenStencil, StencilFactory
 from fv3gfs.util.pace.typing import Index3D
-from fv3gfs.util.stencil import FrozenStencil, StencilFactory
 
 
 ArgSpec = collections.namedtuple(
@@ -74,7 +74,7 @@ def get_stencils_with_varied_bounds(
         externals = {}
     stencils = []
     for origin, domain in zip(origins, domains):
-        ax_offsets = fv3gfs.util.grid.axis_offsets(spec.grid, origin, domain)
+        ax_offsets = fv3gfs.util.pace.axis_offsets(spec.grid, origin, domain)
         stencils.append(
             stencil_factory.from_origin_domain(
                 func,

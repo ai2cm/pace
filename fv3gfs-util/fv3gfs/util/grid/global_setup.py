@@ -1,6 +1,10 @@
 import math
 
-from ..utils.global_constants import PI, RADIUS
+from fv3core.utils.global_constants import (  # this needs to be moved outside fv3core
+    PI,
+    RADIUS,
+)
+
 from .generation import MetricTerms
 from .gnomonic import (
     _cart_to_latlon,

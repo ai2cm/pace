@@ -11,9 +11,9 @@ import fv3core
 import fv3core._config as spec
 import fv3core.testing
 import fv3gfs.util as util
+from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.utils.null_comm import NullComm
-from fv3gfs.util.grid import Grid
-from fv3gfs.util.stencils.dyn_core import AcousticDynamics
+from fv3gfs.util.pace.grid import Grid
 
 
 try:

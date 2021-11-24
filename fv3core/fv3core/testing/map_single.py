@@ -1,7 +1,7 @@
 from typing import Dict, Tuple
 
 import fv3core._config as spec
-from fv3gfs.util.stencils.map_single import MapSingle
+from fv3core.stencils.map_single import MapSingle
 
 
 class MapSingleFactory:

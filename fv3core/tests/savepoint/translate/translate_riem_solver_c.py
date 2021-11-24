@@ -1,6 +1,6 @@
 import fv3core._config as spec
+from fv3core.stencils.riem_solver_c import RiemannSolverC
 from fv3core.testing import TranslateFortranData2Py
-from fv3gfs.util.stencils.riem_solver_c import RiemannSolverC
 
 
 class TranslateRiem_Solver_C(TranslateFortranData2Py):

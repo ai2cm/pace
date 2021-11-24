@@ -1,4 +1,4 @@
-import fv3gfs.util.stencils.updatedzc as updatedzc
+import fv3core.stencils.updatedzc as updatedzc
 from fv3core.testing import TranslateFortranData2Py
 
 

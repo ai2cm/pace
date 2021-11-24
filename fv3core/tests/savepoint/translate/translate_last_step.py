@@ -1,4 +1,4 @@
-import fv3gfs.util.stencils.moist_cv as moist_cv
+import fv3core.stencils.moist_cv as moist_cv
 from fv3core.testing import TranslateFortranData2Py
 
 

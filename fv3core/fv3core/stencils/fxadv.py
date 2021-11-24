@@ -1,9 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-from fv3gfs.util.grid import GridData, axis_offsets
+from fv3core.stencils.d2a2c_vect import contravariant
+from fv3gfs.util.pace.grid import GridData, axis_offsets
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
-from fv3gfs.util.stencil import StencilFactory
-from fv3gfs.util.stencils.d2a2c_vect import contravariant
 
 
 # TODO: the mix of local and global regions is strange here

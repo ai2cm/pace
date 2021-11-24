@@ -7,12 +7,12 @@ import fv3core._config as spec
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import fv3core.stencils.fv_dynamics as fv_dynamics
-import fv3core.utils.global_config as global_config
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
-from fv3core.grid import MetricTerms
+import fv3gfs.util.pace.global_config as global_config
+import fv3gfs.util.pace.gt4py_utils as utils
 from fv3core.testing import ParallelTranslateBaseSlicing, TranslateFortranData2Py
-from fv3core.utils.grid import TRACER_DIM
+from fv3gfs.util.grid import MetricTerms
+from fv3gfs.util.pace.grid import TRACER_DIM
 
 
 class TranslateInitCase(ParallelTranslateBaseSlicing):

@@ -1,5 +1,5 @@
+from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.testing import TranslateFortranData2Py
-from fv3gfs.util.stencils.del2cubed import HyperdiffusionDamping
 
 
 class TranslateDel2Cubed(TranslateFortranData2Py):

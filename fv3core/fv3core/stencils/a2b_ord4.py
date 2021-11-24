@@ -12,18 +12,11 @@ from gt4py.gtscript import (
 )
 
 import fv3gfs.util.pace.gt4py_utils as utils
-from fv3gfs.util import (
-    X_DIM,
-    X_INTERFACE_DIM,
-    Y_DIM,
-    Y_INTERFACE_DIM,
-    Z_DIM,
-    axis_offsets,
-)
-from fv3gfs.util.grid import GridData, GridIndexing
+from fv3core.stencils.basic_operations import copy_defn
+from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from fv3gfs.util.pace.grid import GridData, GridIndexing, axis_offsets
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import FloatField, FloatFieldI, FloatFieldIJ
-from fv3gfs.util.stencil import StencilFactory
-from fv3gfs.util.stencils.basic_operations import copy_defn
 
 
 # comact 4-pt cubic interpolation

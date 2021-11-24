@@ -5,7 +5,7 @@ import numpy as np
 
 import fv3core._config
 import fv3gfs.util.pace.gt4py_utils as utils
-from fv3gfs.util.grid import Grid
+from fv3gfs.util.pace.grid import Grid
 from fv3gfs.util.pace.typing import Field  # noqa: F401
 
 

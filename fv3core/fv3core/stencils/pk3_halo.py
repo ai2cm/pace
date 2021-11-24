@@ -1,13 +1,13 @@
 from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
 import fv3gfs.util.pace.gt4py_utils as utils
-from fv3gfs.util.grid import axis_offsets
+from fv3gfs.util.pace.grid import axis_offsets
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
-from fv3gfs.util.stencil import StencilFactory
 
 
 # TODO merge with pe_halo? reuse partials?
-# NOTE: This is different from fv3gfs.util.stencils.pe_halo.edge_pe
+# NOTE: This is different from fv3core.stencils.pe_halo.edge_pe
 def edge_pe_update(
     pe: FloatFieldIJ, delp: FloatField, pk3: FloatField, ptop: float, akap: float
 ):

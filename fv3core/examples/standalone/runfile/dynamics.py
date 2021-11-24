@@ -12,8 +12,8 @@ import serialbox
 from mpi4py import MPI
 
 import fv3core.initialization.baroclinic as baroclinic_init
-from fv3core.grid import MetricTerms
 from fv3core.utils.grid import DampingCoefficients, GridData
+from fv3gfs.util.grid import MetricTerms
 
 
 # Dev note: the GTC toolchain fails if xarray is imported after gt4py

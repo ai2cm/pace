@@ -1,7 +1,7 @@
 import numpy as np
 
+import fv3core.stencils.remap_profile as profile
 import fv3gfs.util.pace.gt4py_utils as utils
-import fv3gfs.util.stencils.remap_profile as profile
 from fv3core.testing import TranslateFortranData2Py
 
 

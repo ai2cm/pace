@@ -1,7 +1,7 @@
 import fv3gfs.util.pace.gt4py_utils as utils
 from fv3core.testing import TranslateFortranData2Py
 from fv3core.utils import corners
-from fv3gfs.util.grid import axis_offsets
+from fv3gfs.util.pace.grid import axis_offsets
 
 
 class TranslateFill4Corners(TranslateFortranData2Py):

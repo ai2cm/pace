@@ -15,9 +15,9 @@ import fv3gfs.util
 import fv3gfs.util.pace.gt4py_utils as utils
 from fv3gfs.physics.functions.microphysics_funcs import *
 from fv3gfs.physics.global_constants import *
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import Float, FloatField, FloatFieldIJ, Int, IntField
 from fv3gfs.util.quantity import Quantity
-from fv3gfs.util.stencil import StencilFactory
 
 
 def fields_init(

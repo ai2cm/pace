@@ -3,10 +3,10 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.global_constants as constants
 from fv3core.utils import corners
-from fv3gfs.util.grid import axis_offsets
 from fv3gfs.util.pace import gt4py_utils
+from fv3gfs.util.pace.grid import axis_offsets
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util.stencil import StencilFactory
 
 
 DZ_MIN = constants.DZ_MIN

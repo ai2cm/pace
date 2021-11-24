@@ -3,8 +3,8 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.global_constants as constants
 import fv3gfs.util.pace.gt4py_utils as utils
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
-from fv3gfs.util.stencil import StencilFactory
 
 
 ZVIR = constants.RVGAS / constants.RDGAS - 1.0

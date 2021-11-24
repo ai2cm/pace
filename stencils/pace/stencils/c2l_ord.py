@@ -3,10 +3,10 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import fv3gfs.util.pace.gt4py_utils as utils
 from fv3gfs.util import CubedSphereCommunicator
 from fv3gfs.util.constants import X_DIM, Y_DIM, Z_DIM
-from fv3gfs.util.grid import GridData
+from fv3gfs.util.pace.grid import GridData
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
 from fv3gfs.util.quantity import Quantity
-from fv3gfs.util.stencil import StencilFactory
 
 
 C1 = 1.125

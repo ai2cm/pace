@@ -1,7 +1,7 @@
 import fv3core._config as spec
 import fv3gfs.util.pace.gt4py_utils as utils
+from fv3core.stencils.remapping import LagrangianToEulerian
 from fv3core.testing import TranslateFortranData2Py
-from fv3gfs.util.stencils.remapping import LagrangianToEulerian
 
 
 class TranslateRemapping(TranslateFortranData2Py):

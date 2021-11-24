@@ -4,14 +4,14 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import fv3core.utils.global_constants as constants
 import fv3gfs.util
 import fv3gfs.util.pace.gt4py_utils as utils
-from fv3gfs.util.grid import DampingCoefficients, GridData, GridIndexing
-from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util.stencil import StencilFactory
-from fv3gfs.util.stencils.delnflux import DelnFluxNoSG
-from fv3gfs.util.stencils.fvtp2d import (
+from fv3core.stencils.delnflux import DelnFluxNoSG
+from fv3core.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
 )
+from fv3gfs.util.pace.grid import DampingCoefficients, GridData, GridIndexing
+from fv3gfs.util.pace.stencil import StencilFactory
+from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
 DZ_MIN = constants.DZ_MIN

@@ -5,7 +5,7 @@ from typing import Tuple
 import f90nml
 
 import fv3gfs.util.pace.gt4py_utils as utils
-from fv3gfs.util.grid import Grid
+from fv3gfs.util.pace import Grid
 
 
 grid = None

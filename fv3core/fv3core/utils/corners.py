@@ -11,8 +11,8 @@ from fv3gfs.util.constants import (
     Y_INTERFACE_DIM,
     Z_INTERFACE_DIM,
 )
+from fv3gfs.util.pace.stencil import GridIndexing, StencilFactory
 from fv3gfs.util.pace.typing import FloatField
-from fv3gfs.util.stencil import GridIndexing, StencilFactory
 
 
 class CopyCorners:

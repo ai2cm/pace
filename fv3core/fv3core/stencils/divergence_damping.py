@@ -8,16 +8,16 @@ from gt4py.gtscript import (
     region,
 )
 
+import fv3core.stencils.basic_operations as basic
 import fv3core.utils.corners as corners
 import fv3gfs.util.pace.gt4py_utils as utils
-import fv3gfs.util.stencils.basic_operations as basic
 from fv3core.decorators import get_stencils_with_varied_bounds
+from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
+from fv3core.stencils.d2a2c_vect import contravariant
 from fv3gfs.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
-from fv3gfs.util.grid import DampingCoefficients, GridData
+from fv3gfs.util.pace.grid import DampingCoefficients, GridData
+from fv3gfs.util.pace.stencil import StencilFactory
 from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util.stencil import StencilFactory
-from fv3gfs.util.stencils.a2b_ord4 import AGrid2BGridFourthOrder
-from fv3gfs.util.stencils.d2a2c_vect import contravariant
 
 
 @gtscript.function

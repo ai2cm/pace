@@ -1,5 +1,5 @@
 import fv3core._config as spec
-import fv3gfs.util.stencils.mapn_tracer as MapN_Tracer
+import fv3core.stencils.mapn_tracer as MapN_Tracer
 from fv3core.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
 
 

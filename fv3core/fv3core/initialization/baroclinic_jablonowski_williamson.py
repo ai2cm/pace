@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 import fv3core.utils.global_constants as constants
-from fv3core.grid import great_circle_distance_lon_lat
+from fv3gfs.util.grid import great_circle_distance_lon_lat
 
 
 """

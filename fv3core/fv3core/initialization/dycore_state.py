@@ -2,7 +2,7 @@ from dataclasses import InitVar, dataclass, field, fields
 from typing import Optional
 
 import fv3gfs.util as fv3util
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from fv3gfs.util.pace.typing import FloatField, FloatFieldIJ
 
 
 @dataclass()
