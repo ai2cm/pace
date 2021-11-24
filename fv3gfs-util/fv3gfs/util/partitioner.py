@@ -19,6 +19,7 @@ from .constants import (
     WEST,
 )
 from .quantity import QuantityMetadata
+from math import ceil, floor
 
 
 BOUNDARY_CACHE_SIZE = None
@@ -107,9 +108,11 @@ class TilePartitioner(Partitioner):
     def __init__(
         self,
         layout: Tuple[int, int],
+        edge_tile_ratio: float = 1.0,
     ):
         """Create an object for fv3gfs tile decomposition."""
         self.layout = layout
+        self.edge_tile_ratio = edge_tile_ratio
 
     @classmethod
     def from_namelist(cls, namelist):
@@ -177,6 +180,7 @@ class TilePartitioner(Partitioner):
             global_extent,
             self.layout,
             self.subtile_index(rank),
+            self.edge_tile_ratio,
             overlap=overlap,
         )
 
@@ -610,7 +614,7 @@ class CubedSpherePartitioner(Partitioner):
                 "first dimension, got dims {cube_metadata.dims}"
             )
         i_tile = self.tile_index(rank)
-        return (i_tile,) + subtile_slice(
+        return (i_tile,) + self.tile.subtile_slice(
             global_dims[1:],
             global_extent[1:],
             self.layout,
@@ -723,24 +727,49 @@ def tile_extent_from_rank_metadata(
 
 
 def rank_extent_from_tile_metadata(
-    dims: Sequence[str], tile_extent: Sequence[int], layout: Tuple[int, int]
-) -> Tuple[int, ...]:
+    dims: Sequence[str], tile_extent: Sequence[int], subtile_index: Tuple[int, int],
+    layout: Tuple[int, int], edge_tile_ratio: float = 1.0) -> Tuple[int, ...]:
     """
-    Returns the extent of a rank given data about a tile, and the tile
+    Returns the extent of a given rank given data about a tile, and the tile
     layout.
 
     Args:
         dims: dimension names
-        rank_extent: the extent of a tile
+        tile_extent: the extent of a tile
+        subtile_index: the (y, x) position of the rank on the tile
         layout: the (y, x) number of ranks along each tile axis
+        edge_tile_ratio (optional): ratio between interior and boundary tile sizes.
+            Assumes full integer divisibility for both interior 
+            and boundary tile sizes.
 
     Returns:
-        rank_extent: the extent of one rank
+        rank_extent: the extent of a given rank
+        tile_ratios: exact ratios of boundary:interior tile sizes for all dimensions 
     """
-    layout_factors = 1 / np.asarray(
+
+    layout_factors = np.asarray(
         utils.list_by_dims(dims, layout, non_horizontal_value=1)
     )
-    return extent_from_metadata(dims, tile_extent, layout_factors)
+    
+    ratio_factors = []
+    tile_ratios = []
+    for dim, subtile_count, dim_extent in zip(dims, layout_factors, tile_extent):
+        if subtile_count >= 3 and dim not in constants.Z_DIMS: # only do shrinked edges in x,y and if there is interior
+            if dim in constants.INTERFACE_DIMS:
+                dim_extent = dim_extent-1
+            subtile_size_factor = normal_round(dim_extent/ (subtile_count + 2. * (edge_tile_ratio - 1.))) / dim_extent
+            tile_ratio = round((.5-(subtile_count/2-1)*subtile_size_factor)/subtile_size_factor,3)
+            if dim in constants.Y_DIMS and (subtile_index[0] == 0 or subtile_index[0] == subtile_count-1):
+                subtile_size_factor = subtile_size_factor * tile_ratio
+            elif dim in constants.X_DIMS and (subtile_index[1] == 0 or subtile_index[1] == subtile_count-1):
+                subtile_size_factor = subtile_size_factor * tile_ratio
+            ratio_factors.append(subtile_size_factor)
+            tile_ratios.append(tile_ratio)
+        else:
+            ratio_factors.append(1./subtile_count)
+            tile_ratios.append(1.)
+            
+    return extent_from_metadata(dims, tile_extent, np.asarray(ratio_factors)), tile_ratios
 
 
 def extent_from_metadata(
@@ -753,7 +782,7 @@ def extent_from_metadata(
         else:
             add_extent = 0
         tile_extent = (rank_extent + add_extent) * layout_factor - add_extent
-        return_extents.append(int(tile_extent))  # layout_factor is float, need to cast
+        return_extents.append(normal_round(tile_extent))  # layout_factor is float, need to cast
     return tuple(return_extents)
 
 
@@ -761,6 +790,7 @@ def extent_from_metadata(
 class _IndexData1D:
     dim: str
     extent: int
+    edge_tile_ratio: float
     i_subtile: int
     n_ranks: int
 
@@ -780,9 +810,9 @@ class _IndexData1D:
         return self.i_subtile == self.n_ranks - 1
 
 
-def _index_generator(dims, tile_extent, subtile_index, horizontal_layout):
-    subtile_extent = rank_extent_from_tile_metadata(
-        dims, tile_extent, horizontal_layout
+def _index_generator(dims, tile_extent, subtile_index, horizontal_layout, edge_tile_ratio):
+    subtile_extent, tile_ratios = rank_extent_from_tile_metadata(
+        dims, tile_extent, subtile_index, horizontal_layout, edge_tile_ratio
     )
     quantity_layout = utils.list_by_dims(
         dims, horizontal_layout, non_horizontal_value=1
@@ -790,10 +820,10 @@ def _index_generator(dims, tile_extent, subtile_index, horizontal_layout):
     quantity_subtile_index = utils.list_by_dims(
         dims, subtile_index, non_horizontal_value=0
     )
-    for dim, extent, i_subtile, n_ranks in zip(
-        dims, subtile_extent, quantity_subtile_index, quantity_layout
+    for dim, extent, edge_tile_ratio, i_subtile, n_ranks in zip(
+        dims, subtile_extent, tile_ratios, quantity_subtile_index, quantity_layout
     ):
-        yield _IndexData1D(dim, extent, i_subtile, n_ranks)
+        yield _IndexData1D(dim, extent, edge_tile_ratio, i_subtile, n_ranks)
 
 
 def subtile_slice(
@@ -801,6 +831,7 @@ def subtile_slice(
     global_extent: Iterable[int],
     layout: Tuple[int, int],
     subtile_index: Tuple[int, int],
+    edge_tile_ratio: float = 1.0,
     overlap: bool = False,
 ) -> Tuple[slice, ...]:
     """
@@ -812,17 +843,32 @@ def subtile_slice(
         global_extent: size of the tile or cube's computational domain
         layout: the (y, x) number of ranks along each tile axis
         subtile_index: the (y, x) position of the rank on the tile
+        edge_tile_ratio: ratio between interior and boundary tile sizes.
+            Assumes full integer divisibility for both interior 
+            and boundary tile sizes.
         overlap: whether to assign regions which belong to multiple ranks
             to both ranks, or only to the higher rank (default)
     """
     return_list = []
     # discard last index for interface variables, unless you're the last rank
     # done so that only one rank is responsible for the shared interface point
-    for index in _index_generator(dims, global_extent, subtile_index, layout):
-        start = index.i_subtile * index.base_extent
+    for index in _index_generator(dims, global_extent, 
+                    subtile_index, layout, edge_tile_ratio):
+        if index.i_subtile == 0 or index.n_ranks < 3:
+            start = index.i_subtile * index.base_extent 
+        elif index.is_end_index:
+            start = normal_round((1 + (index.i_subtile - 1) / index.edge_tile_ratio) * index.base_extent)
+        else:
+            start = normal_round((index.i_subtile - 1 + index.edge_tile_ratio) * index.base_extent)
         if index.is_end_index or overlap:
             end = start + index.extent
         else:
             end = start + index.base_extent
-        return_list.append(slice(start, end))
+        return_list.append(slice(int(start), int(end)))
     return tuple(return_list)
+
+def normal_round(n):
+    "Needed to get around IEEE754 half-to-even rounding. Will not work with negative numbers."
+    if n - floor(n) < 0.5:
+        return floor(n)
+    return ceil(n)
