@@ -30,7 +30,7 @@ setup(
     install_requires=requirements,
     setup_requires=setup_requirements,
     tests_require=test_requirements,
-    name="pace-shared",
+    name="pace-stencils",
     license="BSD license",
     packages=find_namespace_packages(include=["pace.stencils.*"]),
     include_package_data=True,
