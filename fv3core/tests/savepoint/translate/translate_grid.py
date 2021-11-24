@@ -5,8 +5,9 @@ import pytest
 
 import fv3core._config as spec
 import fv3gfs.util as fv3util
-import fv3gfs.util.global_config as global_config
+import fv3gfs.util.pace.global_config as global_config
 import fv3gfs.util.pace.gt4py_utils as utils
+from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.testing.parallel_translate import ParallelTranslateGrid
 from fv3gfs.util.grid import MetricTerms, set_hybrid_pressure_coefficients
 from fv3gfs.util.grid.global_setup import global_mirror_grid, gnomonic_grid
@@ -1694,6 +1695,9 @@ class TranslateEdgeFactors(ParallelTranslateGrid):
         in_state = self.state_from_inputs(inputs)
         grid_generator._grid.data[:] = in_state["grid"].data[:]
         grid_generator._agrid.data[:] = in_state["agrid"].data[:]
+        a2b = AGrid2BGridFourthOrder(
+            spec.grid.stencil_factory, spec.grid.grid_data, namelist.grid_type
+        )
         state = {}
         for metric_term, metadata in self.outputs.items():
             state[metadata["name"]] = getattr(grid_generator, metric_term)

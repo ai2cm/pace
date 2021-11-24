@@ -1,6 +1,4 @@
 version: 2.1
-orbs:
-  gcp-gcr: circleci/gcp-gcr@0.6.1
 jobs:
 
   lint:
@@ -8,26 +6,41 @@ jobs:
     - image: circleci/python:3.7
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - v1-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
       - run:
           name: run linting
           command: |
+            python3 -m venv venv
+            . venv/bin/activate
             sudo pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
+      - save_cache:
+          key: v1-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
+          paths:
+            - ~/.cache/pre-commit
+            - venv
 
-  test_python:
+  test_util:
     docker:
       - image: circleci/python:3.7
     working_directory: ~/repo
 
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - v1-{{ checksum "fv3gfs-util/tox.ini" }}-{{ checksum "fv3gfs-util/constraints.txt" }}
       - run:
-          name: install MPI
+          name: install tox and MPI
           command: |
             if [ $(python changed_from_main.py fv3gfs-util) != false ]; then
               sudo apt-get update
               sudo apt-get install libopenmpi3 libopenmpi-dev
-              sudo pip3 install tox -c constraints.txt
+              python3 -m venv fv3gfs-util/venv
+              . fv3gfs-util/venv/bin/activate
+              sudo pip3 install tox -c fv3gfs-util/constraints.txt
             fi
       - run:
           name: run tests
@@ -35,7 +48,41 @@ jobs:
             if [ $(python changed_from_main.py fv3gfs-util) != false ]; then
               cd fv3gfs-util && tox -e test -e test_no_extras
             fi
+      - save_cache:
+          key: v1-{{ checksum "fv3gfs-util/tox.ini" }}-{{ checksum "fv3gfs-util/constraints.txt" }}
+          paths:
+            - fv3gfs-util/.tox
+            - fv3gfs-util/venv
 
+  test_fv3core:
+    docker:
+      - image: circleci/python:3.8
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "fv3core/constraints.txt" }}
+      - run:
+          name: install tox
+          command: |
+            if [ $(python changed_from_main.py fv3core) != false ]; then
+              python3 -m venv fv3core/venv
+              . fv3core/venv/bin/activate
+              sudo pip3 install tox -c fv3core/constraints.txt
+            fi
+      - run:
+          name: run tests
+          command: |
+            if [ $(python changed_from_main.py fv3core) != false ]; then
+              cd fv3core && tox -e test
+            fi
+      - save_cache:
+          key: v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "fv3core/constraints.txt" }}
+          paths:
+            - fv3core/.tox
+            - fv3core/venv
 
 workflows:
   version: 2
@@ -45,7 +92,11 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - test_python:
+      - test_util:
+          filters:
+            tags:
+              only: /^v.*/
+      - test_fv3core:
           filters:
             tags:
               only: /^v.*/

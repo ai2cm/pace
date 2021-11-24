@@ -42,7 +42,7 @@ ENV FV3_STENCIL_REBUILD_FLAG=False
 ###
 ### Copy over necessary source and configuration files
 ###
-COPY external/shared/ /external/shared/
+COPY external/stencils/ /external/stencils/
 COPY external/fv3gfs-util/ /external/fv3gfs-util/
 COPY fv3core /fv3core/fv3core
 COPY tests /fv3core/tests
