@@ -183,7 +183,7 @@ class BoundedArrayView:
         if len(index) > len(self._dims):
             raise IndexError(
                 f"{len(index)} is too many indices for a "
-                f"{len(self.dims)}-dimensional quantity"
+                f"{len(self._dims)}-dimensional quantity"
             )
         index = fill_index(index, len(self._data.shape))
         shifted_index = []
