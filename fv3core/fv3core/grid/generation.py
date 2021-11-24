@@ -42,7 +42,9 @@ from .gnomonic import (
     set_tile_border_dyc,
 )
 from .mirror import mirror_grid
-#TODO: when every environment in python3.8, replace
+
+
+# TODO: when every environment in python3.8, replace
 # @property
 # @functools.lru_cache()
 # with @cached_property
@@ -176,7 +178,6 @@ class MetricTerms:
 
         self._init_dgrid()
         self._init_agrid()
-
 
     @classmethod
     def from_tile_sizing(
@@ -1159,7 +1160,7 @@ class MetricTerms:
             self._reduce_global_area_minmaxes()
         return self._da_max_c
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def area(self):
         """
@@ -1167,7 +1168,7 @@ class MetricTerms:
         """
         return self._compute_area()
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def area_c(self):
         """
@@ -1175,7 +1176,7 @@ class MetricTerms:
         """
         return self._compute_area_c()
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def _dgrid_xyz(self):
         """
@@ -1185,7 +1186,7 @@ class MetricTerms:
             self._grid.data[:, :, 0], self._grid.data[:, :, 1], self._np
         )
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def _agrid_xyz(self):
         """
@@ -1197,7 +1198,7 @@ class MetricTerms:
             self._np,
         )
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def rarea(self):
         """
@@ -1210,7 +1211,7 @@ class MetricTerms:
             gt4py_backend=self.area.gt4py_backend,
         )
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def rarea_c(self):
         """
@@ -1223,7 +1224,7 @@ class MetricTerms:
             gt4py_backend=self.area_c.gt4py_backend,
         )
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def rdx(self):
         """
@@ -1236,7 +1237,7 @@ class MetricTerms:
             gt4py_backend=self.dx.gt4py_backend,
         )
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def rdy(self):
         """
@@ -1249,7 +1250,7 @@ class MetricTerms:
             gt4py_backend=self.dy.gt4py_backend,
         )
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def rdxa(self):
         """
@@ -1262,7 +1263,7 @@ class MetricTerms:
             gt4py_backend=self.dxa.gt4py_backend,
         )
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def rdya(self):
         """
@@ -1275,7 +1276,7 @@ class MetricTerms:
             gt4py_backend=self.dya.gt4py_backend,
         )
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def rdxc(self):
         """
@@ -1288,7 +1289,7 @@ class MetricTerms:
             gt4py_backend=self.dxc.gt4py_backend,
         )
 
-    @property
+    @property  # type: ignore
     @functools.lru_cache()
     def rdyc(self):
         """
