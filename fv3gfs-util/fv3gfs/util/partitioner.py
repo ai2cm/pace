@@ -727,8 +727,8 @@ def tile_extent_from_rank_metadata(
 
 
 def rank_extent_from_tile_metadata(
-    dims: Sequence[str], tile_extent: Sequence[int], subtile_index: Tuple[int, int],
-    layout: Tuple[int, int], edge_tile_ratio: float = 1.0) -> Tuple[int, ...]:
+        dims: Sequence[str], tile_extent: Sequence[int], subtile_index: Tuple[int, int],
+        layout: Tuple[int, int], edge_tile_ratio: float = 1.0) -> Tuple[int, ...]:
     """
     Returns the extent of a given rank given data about a tile, and the tile
     layout.
@@ -750,25 +750,25 @@ def rank_extent_from_tile_metadata(
     layout_factors = np.asarray(
         utils.list_by_dims(dims, layout, non_horizontal_value=1)
     )
-    
+
     ratio_factors = []
     tile_ratios = []
     for dim, subtile_count, dim_extent in zip(dims, layout_factors, tile_extent):
-        if subtile_count >= 3 and dim not in constants.Z_DIMS: # only do shrinked edges in x,y and if there is interior
+        if subtile_count >= 3 and dim not in constants.Z_DIMS:  # only do shrinked edges in x,y and if there is interior
             if dim in constants.INTERFACE_DIMS:
-                dim_extent = dim_extent-1
-            subtile_size_factor = normal_round(dim_extent/ (subtile_count + 2. * (edge_tile_ratio - 1.))) / dim_extent
-            tile_ratio = round((.5-(subtile_count/2-1)*subtile_size_factor)/subtile_size_factor,3)
-            if dim in constants.Y_DIMS and (subtile_index[0] == 0 or subtile_index[0] == subtile_count-1):
+                dim_extent = dim_extent - 1
+            subtile_size_factor = normal_round(dim_extent / (subtile_count + 2. * (edge_tile_ratio - 1.))) / dim_extent
+            tile_ratio = round((.5 - (subtile_count / 2. - 1.) * subtile_size_factor) / subtile_size_factor, 3)
+            if dim in constants.Y_DIMS and (subtile_index[0] == 0 or subtile_index[0] == subtile_count - 1):
                 subtile_size_factor = subtile_size_factor * tile_ratio
-            elif dim in constants.X_DIMS and (subtile_index[1] == 0 or subtile_index[1] == subtile_count-1):
+            elif dim in constants.X_DIMS and (subtile_index[1] == 0 or subtile_index[1] == subtile_count - 1):
                 subtile_size_factor = subtile_size_factor * tile_ratio
             ratio_factors.append(subtile_size_factor)
             tile_ratios.append(tile_ratio)
         else:
-            ratio_factors.append(1./subtile_count)
+            ratio_factors.append(1. / subtile_count)
             tile_ratios.append(1.)
-            
+
     return extent_from_metadata(dims, tile_extent, np.asarray(ratio_factors)), tile_ratios
 
 
@@ -852,10 +852,10 @@ def subtile_slice(
     return_list = []
     # discard last index for interface variables, unless you're the last rank
     # done so that only one rank is responsible for the shared interface point
-    for index in _index_generator(dims, global_extent, 
-                    subtile_index, layout, edge_tile_ratio):
+    for index in _index_generator(dims, global_extent,
+                                  subtile_index, layout, edge_tile_ratio):
         if index.i_subtile == 0 or index.n_ranks < 3:
-            start = index.i_subtile * index.base_extent 
+            start = index.i_subtile * index.base_extent
         elif index.is_end_index:
             start = normal_round((1 + (index.i_subtile - 1) / index.edge_tile_ratio) * index.base_extent)
         else:
@@ -866,6 +866,7 @@ def subtile_slice(
             end = start + index.base_extent
         return_list.append(slice(int(start), int(end)))
     return tuple(return_list)
+
 
 def normal_round(n):
     "Needed to get around IEEE754 half-to-even rounding. Will not work with negative numbers."

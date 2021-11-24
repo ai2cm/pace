@@ -327,7 +327,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             False,
             0.5,
             id="36_rank_topleft_no_overlap_rectangle_layout_half_edge_tiles_3d",
-        ), 
+        ),
         pytest.param(
             [fv3gfs.util.Z_INTERFACE_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
             (5, 4, 4),
@@ -405,7 +405,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             0,
             (slice(0, 5), slice(0, 1), slice(0, 1)),
             False,
-            float(1/6),
+            float(1 / 6),
             id="54_rank_botleft_right_no_overlap_square_layout_sixth_edge_tiles_3d",
         ),
         pytest.param(
@@ -415,7 +415,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             1,
             (slice(0, 5), slice(0, 1), slice(1, 7)),
             False,
-            float(1/6),
+            float(1 / 6),
             id="54_rank_botmid_right_no_overlap_square_layout_sixth_edge_tiles_3d",
         ),
         pytest.param(
@@ -425,7 +425,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             4,
             (slice(0, 5), slice(1, 7), slice(1, 7)),
             False,
-            float(1/6),
+            float(1 / 6),
             id="54_rank_midmid_right_no_overlap_square_layout_sixth_edge_tiles_3d",
         ),
         pytest.param(
@@ -435,7 +435,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             5,
             (slice(0, 5), slice(1, 7), slice(7, 8)),
             False,
-            float(1/6),
+            float(1 / 6),
             id="54_rank_midright_right_no_overlap_square_layout_sixth_edge_tiles_3d",
         ),
         pytest.param(
@@ -445,7 +445,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             8,
             (slice(0, 5), slice(7, 8), slice(7, 8)),
             False,
-            float(1/6),
+            float(1 / 6),
             id="54_rank_topright_right_no_overlap_square_layout_half_edge_tiles_3d",
         ),
         pytest.param(
@@ -455,7 +455,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             0,
             (slice(0, 5), slice(0, 2), slice(0, 2)),
             False,
-            float(1/3),
+            float(1 / 3),
             id="96_rank_farbotfarleft_right_no_overlap_square_layout_third_edge_tiles_3d",
         ),
         pytest.param(
@@ -465,7 +465,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             1,
             (slice(0, 5), slice(0, 2), slice(2, 8)),
             False,
-            float(1/3),
+            float(1 / 3),
             id="96_rank_farbotcloseleft_right_no_overlap_square_layout_third_edge_tiles_3d",
         ),
         pytest.param(
@@ -475,7 +475,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             6,
             (slice(0, 5), slice(2, 8), slice(8, 14)),
             False,
-            float(1/3),
+            float(1 / 3),
             id="96_rank_closebotcloseright_right_no_overlap_square_layout_third_edge_tiles_3d",
         ),
         pytest.param(
@@ -485,7 +485,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             14,
             (slice(0, 5), slice(14, 16), slice(8, 14)),
             False,
-            float(1/3),
+            float(1 / 3),
             id="96_rank_fartopcloseright_right_no_overlap_square_layout_third_edge_tiles_3d",
         ),
         pytest.param(
@@ -493,7 +493,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (13, 13),
             (2, 4),
             1,
-            (slice(0, 7), slice(3,7)),
+            (slice(0, 7), slice(3, 7)),
             True,
             1.0,
             id="48_rank_botcloseleft_interface_right_overlap",
@@ -503,7 +503,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (13, 13),
             (2, 4),
             1,
-            (slice(0, 7), slice(2,7)),
+            (slice(0, 7), slice(2, 7)),
             True,
             0.5,
             id="48_rank_botcloseleft_interface_right_overlap_half_edge",
@@ -513,7 +513,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (13, 13),
             (2, 4),
             7,
-            (slice(6, 13), slice(10,13)),
+            (slice(6, 13), slice(10, 13)),
             True,
             0.5,
             id="48_rank_topfarright_interface_right_overlap_half_edge",
@@ -523,7 +523,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (12, 12),
             (2, 4),
             0,
-            (slice(0, 6), slice(0,2)),
+            (slice(0, 6), slice(0, 2)),
             True,
             0.5,
             id="48_rank_botfarleft_right_overlap_half_edge",
@@ -532,7 +532,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
 )
 @pytest.mark.cpu_only
 def test_subtile_slice(
-    array_dims, tile_extent, layout, 
+    array_dims, tile_extent, layout,
     rank, subtile_slice, overlap, edge_tile_ratio
 ):
     partitioner = fv3gfs.util.TilePartitioner(layout, edge_tile_ratio)
