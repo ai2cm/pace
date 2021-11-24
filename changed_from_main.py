@@ -90,14 +90,17 @@ def changed(dirname) -> bool:
 
 
 if __name__ == "__main__":
-    subdir_dependencies = get_dependencies()
-    args = parse_args(subdir_dependencies)
-    if changed(args.project_name):
-        print("true")
-    else:
-        for dependency_subdir in subdir_dependencies[args.project_name]:
-            if changed(dependency_subdir):
-                print("true")
-                break
+    try:
+        subdir_dependencies = get_dependencies()
+        args = parse_args(subdir_dependencies)
+        if changed(args.project_name):
+            print("true")
         else:
-            print("false")
+            for dependency_subdir in subdir_dependencies[args.project_name]:
+                if changed(dependency_subdir):
+                    print("true")
+                    break
+            else:
+                print("false")
+    except Exception as err:
+        print("Setting result to error due to: ", err)
