@@ -1,15 +1,5 @@
 import gt4py.gtscript as gtscript
-from gt4py.gtscript import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    exp,
-    horizontal,
-    interval,
-    log,
-    region,
-)
+from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3gfs.util
 import fv3gfs.util as fv3util
