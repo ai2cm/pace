@@ -133,7 +133,7 @@ DerivedTrig:
  - max_error: 2e-11 # 48_6ranks
 
 GridAreas:
- - max_error: 7e-12 # 48_6ranks
+ - max_error: 9e-12 # 48_6ranks
 
 GridGrid:
  - max_error: 6e-13 # 48_6ranks
