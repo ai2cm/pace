@@ -83,21 +83,21 @@ class MetricTerms:
         self._partitioner = self._comm.partitioner
         self._tile_partitioner = self._partitioner.tile
         self._rank = self._comm.rank
-        self._quantity_factory = quantity_factory
-        self._quantity_factory._sizer.extra_dim_lenths = {
+        self.quantity_factory = quantity_factory
+        self.quantity_factory._sizer.extra_dim_lenths = {
             self.LON_OR_LAT_DIM: 2,
             self.TILE_DIM: 6,
             self.CARTESIAN_DIM: 3,
         }
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
-            self._quantity_factory._sizer, self._comm
+            self.quantity_factory._sizer, self._comm
         )
         self._grid_dims = [
             fv3util.X_INTERFACE_DIM,
             fv3util.Y_INTERFACE_DIM,
             self.LON_OR_LAT_DIM,
         ]
-        self._grid = self._quantity_factory.zeros(
+        self._grid = self.quantity_factory.zeros(
             self._grid_dims,
             "radians",
             dtype=float,
@@ -105,8 +105,8 @@ class MetricTerms:
         npx, npy, ndims = self._tile_partitioner.global_extent(self._grid)
         self._npx = npx
         self._npy = npy
-        self._npz = self._quantity_factory._sizer.get_extent(fv3util.Z_DIM)[0]
-        self._agrid = self._quantity_factory.zeros(
+        self._npz = self.quantity_factory._sizer.get_extent(fv3util.Z_DIM)[0]
+        self._agrid = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_DIM, self.LON_OR_LAT_DIM], "radians", dtype=float
         )
         self._np = self._grid.np
@@ -1302,17 +1302,17 @@ class MetricTerms:
 
     def _init_dgrid(self):
 
-        grid_mirror_ew = self._quantity_factory.zeros(
+        grid_mirror_ew = self.quantity_factory.zeros(
             self._grid_dims,
             "radians",
             dtype=float,
         )
-        grid_mirror_ns = self._quantity_factory.zeros(
+        grid_mirror_ns = self.quantity_factory.zeros(
             self._grid_dims,
             "radians",
             dtype=float,
         )
-        grid_mirror_diag = self._quantity_factory.zeros(
+        grid_mirror_diag = self.quantity_factory.zeros(
             self._grid_dims,
             "radians",
             dtype=float,
@@ -1468,7 +1468,7 @@ class MetricTerms:
         )
 
     def _compute_dxdy(self):
-        dx = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], "m")
+        dx = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], "m")
 
         dx.view[:, :] = great_circle_distance_along_axis(
             self._grid.view[:, :, 0],
@@ -1477,7 +1477,7 @@ class MetricTerms:
             self._np,
             axis=0,
         )
-        dy = self._quantity_factory.zeros([fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], "m")
+        dy = self.quantity_factory.zeros([fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], "m")
         dy.view[:, :] = great_circle_distance_along_axis(
             self._grid.view[:, :, 0],
             self._grid.view[:, :, 1],
@@ -1503,8 +1503,8 @@ class MetricTerms:
 
     def _compute_dxdy_agrid(self):
 
-        dx_agrid = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m")
-        dy_agrid = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m")
+        dx_agrid = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m")
+        dy_agrid = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m")
         lon, lat = self._grid.data[:, :, 0], self._grid.data[:, :, 1]
         lon_y_center, lat_y_center = lon_lat_midpoint(
             lon[:, :-1], lon[:, 1:], lat[:, :-1], lat[:, 1:], self._np
@@ -1538,10 +1538,10 @@ class MetricTerms:
         return dx_agrid, dy_agrid
 
     def _compute_dxdy_center(self):
-        dx_center = self._quantity_factory.zeros(
+        dx_center = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], "m"
         )
-        dy_center = self._quantity_factory.zeros(
+        dy_center = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], "m"
         )
 
@@ -1602,7 +1602,7 @@ class MetricTerms:
         return dx_center, dy_center
 
     def _compute_area(self):
-        area = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m^2")
+        area = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "m^2")
         area.data[:, :] = -1.0e8
 
         area.data[3:-4, 3:-4] = get_area(
@@ -1615,7 +1615,7 @@ class MetricTerms:
         return area
 
     def _compute_area_c(self):
-        area_cgrid = self._quantity_factory.zeros(
+        area_cgrid = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], "m^2"
         )
         area_cgrid.data[3:-3, 3:-3] = get_area(
@@ -1656,10 +1656,10 @@ class MetricTerms:
         return area_cgrid
 
     def _set_hybrid_pressure_coefficients(self):
-        ks = self._quantity_factory.zeros([], "")
-        ptop = self._quantity_factory.zeros([], "mb")
-        ak = self._quantity_factory.zeros([fv3util.Z_INTERFACE_DIM], "mb")
-        bk = self._quantity_factory.zeros([fv3util.Z_INTERFACE_DIM], "")
+        ks = self.quantity_factory.zeros([], "")
+        ptop = self.quantity_factory.zeros([], "mb")
+        ak = self.quantity_factory.zeros([fv3util.Z_INTERFACE_DIM], "mb")
+        bk = self.quantity_factory.zeros([fv3util.Z_INTERFACE_DIM], "")
         pressure_coefficients = set_hybrid_pressure_coefficients(self._npz)
         ks = pressure_coefficients.ks
         ptop = pressure_coefficients.ptop
@@ -1668,10 +1668,10 @@ class MetricTerms:
         return ks, ptop, ak, bk
 
     def _calculate_center_vectors(self):
-        ec1 = self._quantity_factory.zeros(
+        ec1 = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
-        ec2 = self._quantity_factory.zeros(
+        ec2 = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ec1.data[:] = self._np.nan
@@ -1687,10 +1687,10 @@ class MetricTerms:
         return ec1, ec2
 
     def _calculate_vectors_west(self):
-        ew1 = self._quantity_factory.zeros(
+        ew1 = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
-        ew2 = self._quantity_factory.zeros(
+        ew2 = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
         ew1.data[:] = self._np.nan
@@ -1707,10 +1707,10 @@ class MetricTerms:
         return ew1, ew2
 
     def _calculate_vectors_south(self):
-        es1 = self._quantity_factory.zeros(
+        es1 = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
-        es2 = self._quantity_factory.zeros(
+        es2 = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         es1.data[:] = self._np.nan
@@ -1727,33 +1727,33 @@ class MetricTerms:
         return es1, es2
 
     def _calculate_more_trig_terms(self, cos_sg, sin_sg):
-        cosa_u = self._quantity_factory.zeros(
+        cosa_u = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        cosa_v = self._quantity_factory.zeros(
+        cosa_v = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        cosa_s = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        sina_u = self._quantity_factory.zeros(
+        cosa_s = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        sina_u = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        sina_v = self._quantity_factory.zeros(
+        sina_v = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        rsin_u = self._quantity_factory.zeros(
+        rsin_u = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        rsin_v = self._quantity_factory.zeros(
+        rsin_v = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        rsina = self._quantity_factory.zeros(
+        rsina = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        rsin2 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        cosa = self._quantity_factory.zeros(
+        rsin2 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        cosa = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        sina = self._quantity_factory.zeros(
+        sina = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
         (
@@ -1793,33 +1793,33 @@ class MetricTerms:
 
     def _init_cell_trigonometry(self):
 
-        self._cosa_u = self._quantity_factory.zeros(
+        self._cosa_u = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        self._cosa_v = self._quantity_factory.zeros(
+        self._cosa_v = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._cosa_s = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        self._sina_u = self._quantity_factory.zeros(
+        self._cosa_s = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        self._sina_u = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        self._sina_v = self._quantity_factory.zeros(
+        self._sina_v = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._rsin_u = self._quantity_factory.zeros(
+        self._rsin_u = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        self._rsin_v = self._quantity_factory.zeros(
+        self._rsin_v = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._rsina = self._quantity_factory.zeros(
+        self._rsina = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._rsin2 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        self._cosa = self._quantity_factory.zeros(
+        self._rsin2 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        self._cosa = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._sina = self._quantity_factory.zeros(
+        self._sina = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
 
@@ -1871,11 +1871,11 @@ class MetricTerms:
 
         supergrid_trig = {}
         for i in range(1, 10):
-            supergrid_trig[f"cos_sg{i}"] = self._quantity_factory.zeros(
+            supergrid_trig[f"cos_sg{i}"] = self.quantity_factory.zeros(
                 [fv3util.X_DIM, fv3util.Y_DIM], ""
             )
             supergrid_trig[f"cos_sg{i}"].data[:-1, :-1] = cos_sg[:, :, i - 1]
-            supergrid_trig[f"sin_sg{i}"] = self._quantity_factory.zeros(
+            supergrid_trig[f"sin_sg{i}"] = self.quantity_factory.zeros(
                 [fv3util.X_DIM, fv3util.Y_DIM], ""
             )
             supergrid_trig[f"sin_sg{i}"].data[:-1, :-1] = sin_sg[:, :, i - 1]
@@ -1904,33 +1904,33 @@ class MetricTerms:
         As _calculate_derived_trig_terms_for_testing but updates trig attributes
         in-place without the halo updates. For use only in validation tests.
         """
-        self._cosa_u = self._quantity_factory.zeros(
+        self._cosa_u = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        self._cosa_v = self._quantity_factory.zeros(
+        self._cosa_v = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._cosa_s = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        self._sina_u = self._quantity_factory.zeros(
+        self._cosa_s = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        self._sina_u = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        self._sina_v = self._quantity_factory.zeros(
+        self._sina_v = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._rsin_u = self._quantity_factory.zeros(
+        self._rsin_u = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        self._rsin_v = self._quantity_factory.zeros(
+        self._rsin_v = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._rsina = self._quantity_factory.zeros(
+        self._rsina = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._rsin2 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        self._cosa = self._quantity_factory.zeros(
+        self._rsin2 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        self._cosa = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        self._sina = self._quantity_factory.zeros(
+        self._sina = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
 
@@ -1984,10 +1984,10 @@ class MetricTerms:
         )
 
     def _calculate_latlon_momentum_correction(self):
-        l2c_v = self._quantity_factory.zeros(
+        l2c_v = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        l2c_u = self._quantity_factory.zeros(
+        l2c_u = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
         (
@@ -1997,10 +1997,10 @@ class MetricTerms:
         return l2c_v, l2c_u
 
     def _calculate_xy_unit_vectors(self):
-        ee1 = self._quantity_factory.zeros(
+        ee1 = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
-        ee2 = self._quantity_factory.zeros(
+        ee2 = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, self.CARTESIAN_DIM], ""
         )
         ee1.data[:] = self._np.nan
@@ -2014,16 +2014,16 @@ class MetricTerms:
         return ee1, ee2
 
     def _calculate_divg_del6(self):
-        del6_u = self._quantity_factory.zeros(
+        del6_u = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        del6_v = self._quantity_factory.zeros(
+        del6_v = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        divg_u = self._quantity_factory.zeros(
+        divg_u = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        divg_v = self._quantity_factory.zeros(
+        divg_v = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
         sin_sg = [
@@ -2067,16 +2067,16 @@ class MetricTerms:
         As _calculate_divg_del6 but updates self.divg and self.del6 attributes
         in-place without the halo updates. For use only in validation tests.
         """
-        del6_u = self._quantity_factory.zeros(
+        del6_u = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        del6_v = self._quantity_factory.zeros(
+        del6_v = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
-        divg_u = self._quantity_factory.zeros(
+        divg_u = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], ""
         )
-        divg_v = self._quantity_factory.zeros(
+        divg_v = self.quantity_factory.zeros(
             [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM], ""
         )
         sin_sg = [
@@ -2110,10 +2110,10 @@ class MetricTerms:
         self._del6_u = del6_u
 
     def _calculate_unit_vectors_lonlat(self):
-        vlon = self._quantity_factory.zeros(
+        vlon = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
-        vlat = self._quantity_factory.zeros(
+        vlat = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_DIM, self.CARTESIAN_DIM], ""
         )
 
@@ -2123,10 +2123,10 @@ class MetricTerms:
         return vlon, vlat
 
     def _calculate_grid_z(self):
-        z11 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        z12 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        z21 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        z22 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        z11 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        z12 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        z21 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        z22 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
         (
             z11.data[:-1, :-1],
             z12.data[:-1, :-1],
@@ -2142,10 +2142,10 @@ class MetricTerms:
         return z11, z12, z21, z22
 
     def _calculate_grid_a(self):
-        a11 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        a12 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        a21 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
-        a22 = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        a11 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        a12 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        a21 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
+        a22 = self.quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM], "")
         (
             a11.data[:-1, :-1],
             a12.data[:-1, :-1],
@@ -2162,10 +2162,10 @@ class MetricTerms:
 
     def _calculate_edge_factors(self):
         nhalo = self._halo
-        edge_s = self._quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
-        edge_n = self._quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
-        edge_e = self._quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
-        edge_w = self._quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
+        edge_s = self.quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
+        edge_n = self.quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
+        edge_e = self.quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
+        edge_w = self.quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
         (
             edge_w.data[nhalo:-nhalo],
             edge_e.data[nhalo:-nhalo],
@@ -2184,10 +2184,10 @@ class MetricTerms:
         return edge_w, edge_e, edge_s, edge_n
 
     def _calculate_edge_a2c_vect_factors(self):
-        edge_vect_s = self._quantity_factory.zeros([fv3util.X_DIM], "")
-        edge_vect_n = self._quantity_factory.zeros([fv3util.X_DIM], "")
-        edge_vect_e = self._quantity_factory.zeros([fv3util.Y_DIM], "")
-        edge_vect_w = self._quantity_factory.zeros([fv3util.Y_DIM], "")
+        edge_vect_s = self.quantity_factory.zeros([fv3util.X_DIM], "")
+        edge_vect_n = self.quantity_factory.zeros([fv3util.X_DIM], "")
+        edge_vect_e = self.quantity_factory.zeros([fv3util.Y_DIM], "")
+        edge_vect_w = self.quantity_factory.zeros([fv3util.Y_DIM], "")
         (
             edge_vect_w.data[:-1],
             edge_vect_e.data[:-1],
