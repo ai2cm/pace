@@ -145,6 +145,10 @@ InitGridUtils:
  - max_error: 2e-7 # 48_6ranks
    near_zero: 2e-13
 
+InitCubedToLatLon:
+ - max_error: 9e-13 # 48_6ranks
+   platform: metal
+ 
 TrigSg:
   - max_error: 2e-7 # 48_6ranks
     near_zero: 1e-12
