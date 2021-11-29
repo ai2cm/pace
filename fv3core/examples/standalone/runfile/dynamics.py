@@ -11,6 +11,10 @@ import numpy as np
 import serialbox
 from mpi4py import MPI
 
+import fv3core.initialization.baroclinic as baroclinic_init
+from fv3core.grid import MetricTerms
+from fv3core.utils.grid import DampingCoefficients, GridData
+
 
 # Dev note: the GTC toolchain fails if xarray is imported after gt4py
 # fv3gfs.util imports xarray if it's available in the env.
@@ -215,20 +219,43 @@ if __name__ == "__main__":
         )
         spec.set_grid(grid)
 
-        # create a state from serialized data
-        savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
-        driver_object = fv3core.testing.TranslateFVDynamics([grid])
-        input_data = driver_object.collect_input_data(serializer, savepoint_in)
-        input_data["comm"] = communicator
-        state = driver_object.state_from_inputs(input_data)
+        # TODO remove this creation of the legacy grid once everything that
+        # references it is updated or removed
+        grid = spec.make_grid_from_namelist(namelist, communicator.rank)
+        spec.set_grid(grid)
+
+        metric_terms = MetricTerms.from_tile_sizing(
+            npx=namelist.npx,
+            npy=namelist.npy,
+            npz=namelist.npz,
+            communicator=communicator,
+            backend=args.backend,
+        )
+
+        # create an initial state from the Jablonowski & Williamson Baroclinic
+        # test case perturbation. JRMS2006
+        state = baroclinic_init.init_baroclinic_state(
+            metric_terms,
+            adiabatic=namelist.adiabatic,
+            hydrostatic=namelist.hydrostatic,
+            moist_phys=namelist.moist_phys,
+            comm=communicator,
+        )
+
         dycore = fv3core.DynamicalCore(
             comm=communicator,
-            grid_data=grid.grid_data,
+            grid_data=GridData.new_from_metric_terms(metric_terms),
             stencil_factory=grid.stencil_factory,
-            damping_coefficients=grid.damping_coefficients,
+            damping_coefficients=DampingCoefficients.new_from_metric_terms(
+                metric_terms
+            ),
             config=spec.namelist.dynamical_core,
-            phis=state["surface_geopotential"],
+            phis=state.phis_quantity,
         )
+        # TODO include functionality that uses and changes this
+        do_adiabatic_init = False
+        # TODO compute from namelist
+        bdt = 225.0
 
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
@@ -238,8 +265,8 @@ if __name__ == "__main__":
         dycore.step_dynamics(
             state,
             namelist.consv_te,
-            input_data["do_adiabatic_init"],
-            input_data["bdt"],
+            do_adiabatic_init,
+            bdt,
             namelist.n_split,
         )
 
@@ -258,8 +285,8 @@ if __name__ == "__main__":
             dycore.step_dynamics(
                 state,
                 namelist.consv_te,
-                input_data["do_adiabatic_init"],
-                input_data["bdt"],
+                do_adiabatic_init,
+                bdt,
                 namelist.n_split,
                 timestep_timer,
             )
