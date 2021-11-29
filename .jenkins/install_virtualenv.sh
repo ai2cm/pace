@@ -22,9 +22,10 @@ if [ -z "${GT4PY_VERSION}" ]; then
 fi
 (cd ${pace_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
 source ${virtualenv_path}/bin/activate
-python3 -m pip install -e ${pace_dir}/fv3gfs-util/
-python3 -m pip install $wheel_command -c ${pace_dir}/constraints.txt -r fv3core/requirements/requirements_daint.txt
-python3 -m pip install -e ${pace_dir}/fv3core/
-python3 -m pip install -e ${pace_dir}/fv3gfs-physics/
-python3 -m pip install -e ${pace_dir}/stencils/
+pip install -e ${pace_dir}/fv3gfs-util/
+pip install $wheel_command -c ${pace_dir}/constraints.txt -r fv3core/requirements/requirements_daint.txt
+pip install -e ${pace_dir}/fv3core/
+pip install -e ${pace_dir}/fv3gfs-physics/
+pip install -e ${pace_dir}/stencils/
+pip list
 deactivate
