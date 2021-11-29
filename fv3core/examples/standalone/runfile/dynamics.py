@@ -245,7 +245,7 @@ if __name__ == "__main__":
                 metric_terms
             ),
             config=spec.namelist.dynamical_core,
-            phis=state.phis_quantity,
+            phis=state.phis,
         )
         # TODO include functionality that uses and changes this
         do_adiabatic_init = False
