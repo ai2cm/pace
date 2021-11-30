@@ -9,7 +9,6 @@ from fv3core.decorators import FrozenStencil
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.stencils import fvtp2d, tracer_2d_1l
 from fv3core.stencils.basic_operations import copy_defn
-from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
@@ -19,6 +18,7 @@ from fv3core.utils.grid import DampingCoefficients, GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
 from fv3gfs.util.halo_updater import HaloUpdater
+from pace.stencils.c2l_ord import CubedToLatLon
 
 
 # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
