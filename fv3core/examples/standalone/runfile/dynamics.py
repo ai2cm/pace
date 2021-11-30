@@ -2,13 +2,11 @@
 
 import copy
 import json
-import os
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from typing import Any, Dict, List
 
 import numpy as np
-import serialbox
 from mpi4py import MPI
 
 import fv3core.initialization.baroclinic as baroclinic_init
@@ -36,10 +34,16 @@ def parse_args() -> Namespace:
     parser = ArgumentParser()
 
     parser.add_argument(
-        "data_dir",
+        "namelist_file",
         type=str,
         action="store",
-        help="directory containing data to run with",
+        help="namelist configuration for model run",
+    )
+    parser.add_argument(
+        "experiment_name",
+        type=str,
+        action="store",
+        help="name of experiment",
     )
     parser.add_argument(
         "time_step",
@@ -194,16 +198,10 @@ if __name__ == "__main__":
         fv3core.set_rebuild(False)
         fv3core.set_validate_args(False)
 
-        spec.set_namelist(args.data_dir + "/input.nml")
+        spec.set_namelist(args.namelist_file)
 
-        experiment_name = os.path.basename(os.path.normpath(args.data_dir))
+        experiment_name = args.experiment_name
 
-        # set up of helper structures
-        serializer = serialbox.Serializer(
-            serialbox.OpenModeKind.Read,
-            args.data_dir,
-            "Generator_rank" + str(rank),
-        )
         if args.disable_halo_exchange:
             mpi_comm = NullComm(MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
         else:

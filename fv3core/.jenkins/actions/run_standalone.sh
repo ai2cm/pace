@@ -53,9 +53,10 @@ SCRIPTPATH=`dirname $SCRIPT`
 ROOT_DIR="$(dirname "$(dirname "$SCRIPTPATH")")"
 DATA_VERSION=`grep 'FORTRAN_SERIALIZED_DATA_VERSION *=' ${ROOT_DIR}/Makefile | cut -d '=' -f 2`
 TIMESTEPS=60
-RANKS=6
+# Could parse from namelist, ranks = 6 * layout[0] * layout[1]
+RANKS=`echo ${experiment} | grep -o -E '[0-9]+ranks' | grep -o -E '[0-9]+'`
 BENCHMARK_DIR=${ROOT_DIR}/examples/standalone/benchmarks
-DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}/${experiment}"
+NAMELIST="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}/${experiment}/input.nml"
 ARTIFACT_ROOT="/project/s1053/performance/"
 TIMING_DIR="${ARTIFACT_ROOT}/fv3core_performance/${backend}"
 PROFILE_DIR="${ARTIFACT_ROOT}/fv3core_profile/${backend}"
@@ -65,8 +66,8 @@ CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/${experiment}/
 # check sanity of environment
 test -n "${experiment}" || exitError 1001 ${LINENO} "experiment is not defined"
 test -n "${backend}" || exitError 1002 ${LINENO} "backend is not defined"
-if [ ! -d "${DATA_DIR}" ] ; then
-    exitError 1003 ${LINENO} "test data directory ${DATA_DIR} does not exist"
+if [ ! -f "${NAMELIST}" ] ; then
+    exitError 1003 ${LINENO} "namelist ${NAMELIST} does not exist"
 fi
 if [ ! -d "${ARTIFACT_ROOT}" ] ; then
     exitError 1004 ${LINENO} "Artifact directory ${ARTIFACT_ROOT} does not exist"
@@ -103,7 +104,7 @@ echo "Data version:                 ${DATA_VERSION}"
 echo "Timesteps:                    ${TIMESTEPS}"
 echo "Ranks:                        ${RANKS}"
 echo "Benchmark directory:          ${BENCHMARK_DIR}"
-echo "Data directory:               ${DATA_DIR}"
+echo "Namelist:                     ${NAMELIST}"
 echo "Perf. artifact directory:     ${TIMING_DIR}"
 echo "Profile artifact directory:   ${PROFILE_DIR}"
 echo "Cache directory:              ${CACHE_DIR}"
@@ -123,7 +124,7 @@ echo "=== Running standalone ========================="
 if [ "${DO_PROFILE}" == "true" ] ; then
     profile="--profile"
 fi
-cmd="${BENCHMARK_DIR}/run_on_daint.sh ${TIMESTEPS} ${RANKS} ${backend} ${DATA_DIR}"
+cmd="${BENCHMARK_DIR}/run_on_daint.sh ${TIMESTEPS} ${RANKS} ${backend} ${NAMELIST} ${experiment}"
 echo "Run command: ${cmd} \"\" \"${profile}\""
 ${cmd} "" "${profile}" "${DO_NSYS_RUN}"
 echo "=== Post-processing ============================"
