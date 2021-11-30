@@ -52,7 +52,6 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
             spec.namelist.hord_tm,
             inputs.pop("dp0"),
             d_sw.get_column_namelist(spec.namelist, self.grid.npz),
-            d_sw.k_bounds(),
         )
         self.updatedzd(**inputs)
         outputs = self.slice_output(inputs)

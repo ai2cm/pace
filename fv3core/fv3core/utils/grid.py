@@ -7,20 +7,15 @@ from gt4py import gtscript
 
 import fv3core.utils.global_config as global_config
 import fv3gfs.util
+from fv3core.grid import MetricTerms
 from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
 
 from . import gt4py_utils as utils
 from .stencil import GridIndexing, StencilConfig, StencilFactory
-from .typing import FloatFieldIJ
+from .typing import FloatFieldI, FloatFieldIJ
 
 
-# grid constants
-# TODO: move these into the fv3core.grid namespace
-LON_OR_LAT_DIM = "lon_or_lat"
-TILE_DIM = "tile"
-CARTESIAN_DIM = "xyz_direction"
-N_TILES = 6
-RIGHT_HAND_GRID = False
+TRACER_DIM = "tracers"
 
 
 class Grid:
@@ -75,6 +70,8 @@ class Grid:
         self.add_data(data_fields)
         self._sizer = None
         self._quantity_factory = None
+        self._grid_data = None
+        self._damping_coefficients = None
 
     @property
     def sizer(self):
@@ -87,9 +84,10 @@ class Grid:
                 nz=self.npz,
                 n_halo=self.halo,
                 extra_dim_lengths={
-                    LON_OR_LAT_DIM: 2,
-                    TILE_DIM: 6,
-                    CARTESIAN_DIM: 3,
+                    MetricTerms.LON_OR_LAT_DIM: 2,
+                    MetricTerms.TILE_DIM: 6,
+                    MetricTerms.CARTESIAN_DIM: 3,
+                    TRACER_DIM: len(utils.tracer_variables),
                 },
                 layout=self.layout,
             )
@@ -413,16 +411,30 @@ class Grid:
 
     @property
     def damping_coefficients(self) -> "DampingCoefficients":
-        return DampingCoefficients(
+        if self._damping_coefficients is not None:
+            return self._damping_coefficients
+        self._damping_coefficients = DampingCoefficients(
+            divg_u=self.divg_u,
+            divg_v=self.divg_v,
             del6_u=self.del6_u,
             del6_v=self.del6_v,
             da_min=self.da_min,
             da_min_c=self.da_min_c,
         )
+        return self._damping_coefficients
+
+    def set_damping_coefficients(self, damping_coefficients: "DampingCoefficients"):
+        self._damping_coefficients = damping_coefficients
 
     @property
     def grid_data(self) -> "GridData":
+        if self._grid_data is not None:
+            return self._grid_data
         horizontal = HorizontalGridData(
+            lon=self.bgrid1,
+            lat=self.bgrid2,
+            lon_agrid=self.agrid1,
+            lat_agrid=self.agrid2,
             area=self.area,
             area_64=self.area_64,
             rarea=self.rarea,
@@ -439,8 +451,16 @@ class Grid:
             rdyc=self.rdyc,
             rdxa=self.rdxa,
             rdya=self.rdya,
+            a11=self.a11,
+            a12=self.a12,
+            a21=self.a21,
+            a22=self.a22,
+            edge_w=self.edge_w,
+            edge_e=self.edge_e,
+            edge_s=self.edge_s,
+            edge_n=self.edge_n,
         )
-        vertical = VerticalGridData()
+        vertical = VerticalGridData(ptop=-1.0e7, ks=-1)
         contravariant = ContravariantGridData(
             self.cosa,
             self.cosa_u,
@@ -463,11 +483,24 @@ class Grid:
             self.cos_sg3,
             self.cos_sg4,
         )
-        return GridData(
+        self._grid_data = GridData(
             horizontal_data=horizontal,
             vertical_data=vertical,
             contravariant_data=contravariant,
             angle_data=angle,
+        )
+        return self._grid_data
+
+    def set_grid_data(self, grid_data: "GridData"):
+        self._grid_data = grid_data
+
+    def make_grid_data(self, npx, npy, npz, communicator, backend):
+        metric_terms = MetricTerms.from_tile_sizing(
+            npx=npx, npy=npy, npz=npz, communicator=communicator, backend=backend
+        )
+        self.set_grid_data(GridData.new_from_metric_terms(metric_terms))
+        self.set_damping_coefficients(
+            DampingCoefficients.new_from_metric_terms(metric_terms)
         )
 
 
@@ -477,6 +510,10 @@ class HorizontalGridData:
     Terms defining the horizontal grid.
     """
 
+    lon: FloatFieldIJ
+    lat: FloatFieldIJ
+    lon_agrid: FloatFieldIJ
+    lat_agrid: FloatFieldIJ
     area: FloatFieldIJ
     area_64: FloatFieldIJ
     rarea: FloatFieldIJ
@@ -495,14 +532,14 @@ class HorizontalGridData:
     rdyc: FloatFieldIJ
     rdxa: FloatFieldIJ
     rdya: FloatFieldIJ
-
-    @property
-    def lon(self) -> FloatFieldIJ:
-        raise NotImplementedError()
-
-    @property
-    def lat(self) -> FloatFieldIJ:
-        raise NotImplementedError()
+    a11: FloatFieldIJ
+    a12: FloatFieldIJ
+    a21: FloatFieldIJ
+    a22: FloatFieldIJ
+    edge_w: FloatFieldIJ
+    edge_e: FloatFieldIJ
+    edge_s: FloatFieldI
+    edge_n: FloatFieldI
 
 
 @dataclasses.dataclass
@@ -514,21 +551,18 @@ class VerticalGridData:
     """
 
     # TODO: make these non-optional, make FloatFieldK a true type and use it
+    ptop: float
+    ks: int
     ak: Optional[Any] = None
     bk: Optional[Any] = None
     p_ref: Optional[Any] = None
     """
     reference pressure (Pa) used to define pressure at vertical interfaces,
     where p = ak + bk * p_ref
-    """
+    ptop is the top of the atmosphere and ks is the lowest index (highest layer) for
+    which rayleigh friction
 
-    # TODO: refactor so we can init with this,
-    # instead of taking it as an argument to DynamicalCore
-    # we'll need to initialize this class for the physics
-    @property
-    def ptop(self) -> float:
-        """pressure at top of atmosphere"""
-        raise NotImplementedError()
+    """
 
 
 @dataclasses.dataclass(frozen=True)
@@ -574,10 +608,23 @@ class DampingCoefficients:
     Terms used to compute damping coefficients.
     """
 
+    divg_u: FloatFieldIJ
+    divg_v: FloatFieldIJ
     del6_u: FloatFieldIJ
     del6_v: FloatFieldIJ
     da_min: float
     da_min_c: float
+
+    @classmethod
+    def new_from_metric_terms(cls, metric_terms: MetricTerms):
+        return cls(
+            divg_u=metric_terms.divg_u.storage,
+            divg_v=metric_terms.divg_v.storage,
+            del6_u=metric_terms.del6_u.storage,
+            del6_v=metric_terms.del6_v.storage,
+            da_min=metric_terms.da_min,
+            da_min_c=metric_terms.da_min_c,
+        )
 
 
 class GridData:
@@ -595,15 +642,103 @@ class GridData:
         self._contravariant_data = contravariant_data
         self._angle_data = angle_data
 
+    @classmethod
+    def new_from_metric_terms(cls, metric_terms: MetricTerms):
+        # TODO fix <Quantity>.storage mask for FieldI
+        shape = metric_terms.lon.data.shape
+        edge_n = utils.make_storage_data(metric_terms.edge_n.data, (shape[0],), axis=0)
+        edge_s = utils.make_storage_data(metric_terms.edge_s.data, (shape[0],), axis=0)
+        edge_e = utils.make_storage_data(
+            metric_terms.edge_e.data, (1, shape[1]), axis=1
+        )
+        edge_w = utils.make_storage_data(
+            metric_terms.edge_w.data, (1, shape[1]), axis=1
+        )
+
+        horizontal_data = HorizontalGridData(
+            lon=metric_terms.lon.storage,
+            lat=metric_terms.lat.storage,
+            lon_agrid=metric_terms.lon_agrid.storage,
+            lat_agrid=metric_terms.lat_agrid.storage,
+            area=metric_terms.area.storage,
+            area_64=metric_terms.area.storage,
+            rarea=metric_terms.rarea.storage,
+            rarea_c=metric_terms.rarea_c.storage,
+            dx=metric_terms.dx.storage,
+            dy=metric_terms.dy.storage,
+            dxc=metric_terms.dxc.storage,
+            dyc=metric_terms.dyc.storage,
+            dxa=metric_terms.dxa.storage,
+            dya=metric_terms.dya.storage,
+            rdx=metric_terms.rdx.storage,
+            rdy=metric_terms.rdy.storage,
+            rdxc=metric_terms.rdxc.storage,
+            rdyc=metric_terms.rdyc.storage,
+            rdxa=metric_terms.rdxa.storage,
+            rdya=metric_terms.rdya.storage,
+            a11=metric_terms.a11.storage,
+            a12=metric_terms.a12.storage,
+            a21=metric_terms.a21.storage,
+            a22=metric_terms.a22.storage,
+            edge_w=edge_w,
+            edge_e=edge_e,
+            edge_s=edge_s,
+            edge_n=edge_n,
+        )
+        ak = metric_terms.ak.data
+        bk = metric_terms.bk.data
+        # TODO fix <Quantity>.storage mask for FieldK
+        ak = utils.make_storage_data(ak, ak.shape, len(ak.shape) * (0,))
+        bk = utils.make_storage_data(bk, bk.shape, len(bk.shape) * (0,))
+        vertical_data = VerticalGridData(
+            ak=ak,
+            bk=bk,
+            ptop=metric_terms.ptop,
+            ks=metric_terms.ks,
+        )
+        contravariant_data = ContravariantGridData(
+            cosa=metric_terms.cosa.storage,
+            cosa_u=metric_terms.cosa_u.storage,
+            cosa_v=metric_terms.cosa_v.storage,
+            cosa_s=metric_terms.cosa_s.storage,
+            sina_u=metric_terms.sina_u.storage,
+            sina_v=metric_terms.sina_v.storage,
+            rsina=metric_terms.rsina.storage,
+            rsin_u=metric_terms.rsin_u.storage,
+            rsin_v=metric_terms.rsin_v.storage,
+            rsin2=metric_terms.rsin2.storage,
+        )
+        angle_data = AngleGridData(
+            sin_sg1=metric_terms.sin_sg1.storage,
+            sin_sg2=metric_terms.sin_sg2.storage,
+            sin_sg3=metric_terms.sin_sg3.storage,
+            sin_sg4=metric_terms.sin_sg4.storage,
+            cos_sg1=metric_terms.cos_sg1.storage,
+            cos_sg2=metric_terms.cos_sg2.storage,
+            cos_sg3=metric_terms.cos_sg3.storage,
+            cos_sg4=metric_terms.cos_sg4.storage,
+        )
+        return cls(horizontal_data, vertical_data, contravariant_data, angle_data)
+
     @property
     def lon(self):
-        """longitude"""
+        """longitude of cell corners"""
         return self._horizontal_data.lon
 
     @property
     def lat(self):
-        """latitude"""
+        """latitude of cell corners"""
         return self._horizontal_data.lat
+
+    @property
+    def lon_agrid(self):
+        """longitude on the A-grid (cell centers)"""
+        return self._horizontal_data.lon_agrid
+
+    @property
+    def lat_agrid(self):
+        """latitude on the A-grid (cell centers)"""
+        return self._horizontal_data.lat_agrid
 
     @property
     def area(self):
@@ -685,9 +820,36 @@ class GridData:
         return self._horizontal_data.rdya
 
     @property
-    def ptop(self):
-        """pressure at top of atmosphere (Pa)"""
-        return self._vertical_data.ptop
+    def a11(self):
+        return self._horizontal_data.a11
+
+    @property
+    def a12(self):
+        return self._horizontal_data.a12
+
+    @property
+    def a21(self):
+        return self._horizontal_data.a21
+
+    @property
+    def a22(self):
+        return self._horizontal_data.a22
+
+    @property
+    def edge_w(self):
+        return self._horizontal_data.edge_w
+
+    @property
+    def edge_e(self):
+        return self._horizontal_data.edge_e
+
+    @property
+    def edge_s(self):
+        return self._horizontal_data.edge_s
+
+    @property
+    def edge_n(self):
+        return self._horizontal_data.edge_n
 
     @property
     def p_ref(self) -> float:
@@ -724,6 +886,23 @@ class GridData:
     @bk.setter
     def bk(self, value):
         self._vertical_data.bk = value
+
+    @property
+    def ks(self):
+        return self._vertical_data.ks
+
+    @ks.setter
+    def ks(self, value):
+        self._vertical_data.ks = value
+
+    @property
+    def ptop(self):
+        """pressure at top of atmosphere (Pa)"""
+        return self._vertical_data.ptop
+
+    @ptop.setter
+    def ptop(self, value):
+        self._vertical_data.ptop = value
 
     @property
     def cosa(self):

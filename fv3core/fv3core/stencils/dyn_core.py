@@ -295,9 +295,6 @@ class AcousticDynamics:
         nested,
         stretched_grid,
         config: AcousticDynamicsConfig,
-        # TODO: move ak, bk, pfull, and phis into GridData
-        ak: FloatFieldK,
-        bk: FloatFieldK,
         pfull: FloatFieldK,
         phis: FloatFieldIJ,
     ):
@@ -311,8 +308,6 @@ class AcousticDynamics:
             nested: ???
             stretched_grid: ???
             config: configuration settings
-            ak: atmosphere hybrid a coordinate (Pa)
-            bk: atmosphere hybrid b coordinate (dimensionless)
             pfull: atmospheric Eulerian grid reference pressure (Pa)
             phis: surface geopotential height
         """
@@ -324,6 +319,8 @@ class AcousticDynamics:
         assert not config.use_logp, "use_logp=True is not implemented"
         self._da_min = damping_coefficients.da_min
         self.grid_data = grid_data
+        self._ptop = self.grid_data.ptop
+        self._ks = self.grid_data.ks
         self._pfull = pfull
         self._nk_heat_dissipation = get_nk_heat_dissipation(
             config.d_grid_shallow_water,
@@ -354,8 +351,8 @@ class AcousticDynamics:
                 domain=grid_indexing.domain_full(add=(0, 0, 1)),
             )
             dp_ref_stencil(
-                ak,
-                bk,
+                self.grid_data.ak,
+                self.grid_data.bk,
                 phis,
                 dp_ref_3d,
                 zs_3d,
@@ -374,7 +371,6 @@ class AcousticDynamics:
                 config.hord_tm,
                 self._dp_ref,
                 column_namelist,
-                d_sw.k_bounds(),
             )
             self.riem_solver3 = RiemannSolver3(stencil_factory, config.riemann)
             self.riem_solver_c = RiemannSolverC(stencil_factory, p_fac=config.p_fac)
@@ -550,7 +546,7 @@ class AcousticDynamics:
                     self._set_pem(
                         state.delp,
                         state.pem,
-                        state.ptop,
+                        self._ptop,
                     )
             self._halo_updaters.u__v.wait()
             if not self.config.hydrostatic:
@@ -594,12 +590,12 @@ class AcousticDynamics:
                 )
                 self.riem_solver_c(
                     dt2,
-                    state.cappa,
-                    state.ptop,
+                    state.cappa_quantity,
+                    self._ptop,
                     state.phis,
                     state.ws3,
                     state.ptc,
-                    state.q_con,
+                    state.q_con_quantity,
                     state.delpc,
                     state.gz,
                     state.pkc,
@@ -675,7 +671,7 @@ class AcousticDynamics:
                     remap_step,
                     dt,
                     state.cappa,
-                    state.ptop,
+                    self._ptop,
                     self._zs,
                     state.wsd,
                     state.delz,
@@ -694,13 +690,13 @@ class AcousticDynamics:
                 self._halo_updaters.zh.start([state.zh_quantity])
                 self._halo_updaters.pkc.start([state.pkc_quantity])
                 if remap_step:
-                    self._edge_pe_stencil(state.pe, state.delp, state.ptop)
+                    self._edge_pe_stencil(state.pe, state.delp, self._ptop)
                 if self.config.use_logp:
                     raise NotImplementedError(
                         "unimplemented namelist option use_logp=True"
                     )
                 else:
-                    self._pk3_halo(state.pk3, state.delp, state.ptop, akap)
+                    self._pk3_halo(state.pk3, state.delp, self._ptop, akap)
             if not self.config.hydrostatic:
                 self._halo_updaters.zh.wait()
                 self._compute_geopotential_stencil(
@@ -717,7 +713,7 @@ class AcousticDynamics:
                     state.pk3,
                     state.delp,
                     dt,
-                    state.ptop,
+                    self._ptop,
                     akap,
                 )
 
@@ -731,8 +727,8 @@ class AcousticDynamics:
                     self._dp_ref,
                     self._pfull,
                     dt,
-                    state.ptop,
-                    state.ks,
+                    self._ptop,
+                    self._ks,
                 )
 
             if it != n_split - 1:

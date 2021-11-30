@@ -11,6 +11,10 @@ import numpy as np
 import serialbox
 from mpi4py import MPI
 
+import fv3core.initialization.baroclinic as baroclinic_init
+from fv3core.grid import MetricTerms
+from fv3core.utils.grid import DampingCoefficients, GridData
+
 
 # Dev note: the GTC toolchain fails if xarray is imported after gt4py
 # fv3gfs.util imports xarray if it's available in the env.
@@ -205,38 +209,53 @@ if __name__ == "__main__":
         else:
             mpi_comm = MPI.COMM_WORLD
 
-        # get grid from serialized data
-        grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
-        grid_data = {}
-        grid_fields = serializer.fields_at_savepoint(grid_savepoint)
-        for field in grid_fields:
-            grid_data[field] = serializer.read(field, grid_savepoint)
-            if len(grid_data[field].flatten()) == 1:
-                grid_data[field] = grid_data[field][0]
-        grid = fv3core.testing.TranslateGrid(grid_data, rank).python_grid()
+        namelist = spec.namelist
+        # set up grid-dependent helper structures
+        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(namelist.layout))
+        communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
+        # generate the grid
+        grid = spec.make_grid_with_data_from_namelist(
+            namelist, communicator, args.backend
+        )
         spec.set_grid(grid)
 
-        # set up grid-dependent helper structures
-        layout = spec.namelist.layout
-        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
-        communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
+        # TODO remove this creation of the legacy grid once everything that
+        # references it is updated or removed
+        grid = spec.make_grid_from_namelist(namelist, communicator.rank)
+        spec.set_grid(grid)
 
-        # create a state from serialized data
-        savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
-        driver_object = fv3core.testing.TranslateFVDynamics([grid])
-        input_data = driver_object.collect_input_data(serializer, savepoint_in)
-        input_data["comm"] = communicator
-        state = driver_object.state_from_inputs(input_data)
+        metric_terms = MetricTerms.from_tile_sizing(
+            npx=namelist.npx,
+            npy=namelist.npy,
+            npz=namelist.npz,
+            communicator=communicator,
+            backend=args.backend,
+        )
+
+        # create an initial state from the Jablonowski & Williamson Baroclinic
+        # test case perturbation. JRMS2006
+        state = baroclinic_init.init_baroclinic_state(
+            metric_terms,
+            adiabatic=namelist.adiabatic,
+            hydrostatic=namelist.hydrostatic,
+            moist_phys=namelist.moist_phys,
+            comm=communicator,
+        )
+
         dycore = fv3core.DynamicalCore(
             comm=communicator,
-            grid_data=spec.grid.grid_data,
-            stencil_factory=spec.grid.stencil_factory,
-            damping_coefficients=spec.grid.damping_coefficients,
+            grid_data=GridData.new_from_metric_terms(metric_terms),
+            stencil_factory=grid.stencil_factory,
+            damping_coefficients=DampingCoefficients.new_from_metric_terms(
+                metric_terms
+            ),
             config=spec.namelist.dynamical_core,
-            ak=state["atmosphere_hybrid_a_coordinate"],
-            bk=state["atmosphere_hybrid_b_coordinate"],
-            phis=state["surface_geopotential"],
+            phis=state.phis_quantity,
         )
+        # TODO include functionality that uses and changes this
+        do_adiabatic_init = False
+        # TODO compute from namelist
+        bdt = 225.0
 
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
@@ -245,12 +264,10 @@ if __name__ == "__main__":
             print("timestep 1")
         dycore.step_dynamics(
             state,
-            input_data["consv_te"],
-            input_data["do_adiabatic_init"],
-            input_data["bdt"],
-            input_data["ptop"],
-            input_data["n_split"],
-            input_data["ks"],
+            namelist.consv_te,
+            do_adiabatic_init,
+            bdt,
+            namelist.n_split,
         )
 
     if profiler is not None:
@@ -267,12 +284,10 @@ if __name__ == "__main__":
                 print(f"timestep {i+2}")
             dycore.step_dynamics(
                 state,
-                input_data["consv_te"],
-                input_data["do_adiabatic_init"],
-                input_data["bdt"],
-                input_data["ptop"],
-                input_data["n_split"],
-                input_data["ks"],
+                namelist.consv_te,
+                do_adiabatic_init,
+                bdt,
+                namelist.n_split,
                 timestep_timer,
             )
         times_per_step.append(timestep_timer.times)
