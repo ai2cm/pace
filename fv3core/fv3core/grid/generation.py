@@ -76,8 +76,11 @@ class MetricTerms:
         quantity_factory: fv3util.QuantityFactory,
         communicator: fv3util.Communicator,
         grid_type: int = 0,
+        dx_const: float = 2000.0,
+        dy_const: float = 2000.0,
+        deglat: float = 0.0,
     ):
-        assert grid_type < 3
+        # assert grid_type < 3
         self._grid_type = grid_type
         self._non_ortho = True if grid_type < 3 else False
         self._halo = N_HALO_DEFAULT
@@ -188,6 +191,9 @@ class MetricTerms:
         self._da_min_c = None
         self._da_max_c = None
 
+        self._dx_const = dx_const
+        self._dy_const = dy_const
+        self._deglat = deglat
         if grid_type == 4:
             self._init_single_tile()
 
@@ -203,6 +209,9 @@ class MetricTerms:
         communicator: fv3util.Communicator,
         backend: str,
         grid_type: int = 0,
+        dx_const: float = 2000.0,
+        dy_const: float = 2000.0,
+        deglat: float = 0.0,
     ) -> "MetricTerms":
         sizer = fv3util.SubtileGridSizer.from_tile_params(
             nx_tile=npx - 1,
@@ -221,6 +230,9 @@ class MetricTerms:
             quantity_factory=quantity_factory,
             communicator=communicator,
             grid_type=grid_type,
+            dx_const=dx_const,
+            dy_const=dy_const,
+            deglat=deglat,
         )
 
     @property
@@ -2237,14 +2249,12 @@ class MetricTerms:
             self._da_max_c = max_area_c
 
     def _init_single_tile(self):
-        deglat = 90.0  # TODO: Revisit and actually define
+        deglat = self._deglat
         grid_longitudes, grid_latitudes = setup_cartesian_grid(
             self._npx, self._npy, deglat, self._np
         )
-        dx_const = 10.0e6 / (self._npx - 1)
-        dy_const = 10.0e6 / (
-            self._npy - 1
-        )  # TODO: Revisit these and actually define them
+        dx_const = self._dx_const
+        dy_const = self._dy_const
 
         dx = self._quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_INTERFACE_DIM], "m")
         dx.data[:, :] = dx_const
