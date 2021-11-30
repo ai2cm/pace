@@ -18,6 +18,7 @@ class ParallelTranslate:
     near_zero = TranslateFortranData2Py.near_zero
     python_regression = False
     compute_grid_option = False
+    tests_grid = False
     inputs: Dict[str, Any] = {}
     outputs: Dict[str, Any] = {}
 
@@ -169,6 +170,8 @@ class ParallelTranslateGrid(ParallelTranslate):
     support some non-standard array dimension layouts not supported by the
     TranslateFortranData2Py initializers.
     """
+
+    tests_grid = True
 
     def state_from_inputs(self, inputs: dict, grid=None) -> dict:
         if grid is None:

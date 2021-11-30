@@ -584,3 +584,8 @@ def python_regression(pytestconfig):
 @pytest.fixture()
 def compute_grid(pytestconfig):
     return pytestconfig.getoption("compute_grid")
+
+
+@pytest.fixture()
+def test_grid(pytestconfig):
+    return pytestconfig.getoption("test_grid")
