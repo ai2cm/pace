@@ -108,11 +108,11 @@ class TilePartitioner(Partitioner):
     def __init__(
         self,
         layout: Tuple[int, int],
-        edge_tile_ratio: float = 1.0,
+        edge_interior_ratio: float = 1.0,
     ):
         """Create an object for fv3gfs tile decomposition."""
         self.layout = layout
-        self.edge_tile_ratio = edge_tile_ratio
+        self.edge_interior_ratio = edge_interior_ratio
 
     @classmethod
     def from_namelist(cls, namelist):
@@ -152,9 +152,9 @@ class TilePartitioner(Partitioner):
 
     def subtile_slice(
         self,
-        rank: int,
         global_dims: Sequence[str],
         global_extent: Sequence[int],
+        rank: int,
         overlap: bool = False,
     ) -> Tuple[slice, ...]:
         """Return the subtile slice of a given rank on an array.
@@ -163,9 +163,9 @@ class TilePartitioner(Partitioner):
         of a tile, the tile would be the "global" domain.
 
         Args:
-            rank: the rank of the process
             global_dims: dimensions of the global quantity being partitioned
             global_extent: extent of the global quantity being partitioned
+            rank: the rank of the process
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
@@ -180,7 +180,7 @@ class TilePartitioner(Partitioner):
             global_extent,
             self.layout,
             self.subtile_index(rank),
-            self.edge_tile_ratio,
+            self.edge_interior_ratio,
             overlap=overlap,
         )
 
@@ -728,7 +728,7 @@ def tile_extent_from_rank_metadata(
 
 def rank_extent_from_tile_metadata(
         dims: Sequence[str], tile_extent: Sequence[int], subtile_index: Tuple[int, int],
-        layout: Tuple[int, int], edge_tile_ratio: float = 1.0) -> Tuple[int, ...]:
+        layout: Tuple[int, int], edge_interior_ratio: float = 1.0) -> Tuple[int, ...]:
     """
     Returns the extent of a given rank given data about a tile, and the tile
     layout.
@@ -738,7 +738,7 @@ def rank_extent_from_tile_metadata(
         tile_extent: the extent of a tile
         subtile_index: the (y, x) position of the rank on the tile
         layout: the (y, x) number of ranks along each tile axis
-        edge_tile_ratio (optional): ratio between interior and boundary tile sizes.
+        edge_interior_ratio (optional): ratio between interior and boundary tile sizes.
             Assumes full integer divisibility for both interior 
             and boundary tile sizes.
 
@@ -757,7 +757,7 @@ def rank_extent_from_tile_metadata(
         if subtile_count >= 3 and dim not in constants.Z_DIMS:  # only do shrinked edges in x,y and if there is interior
             if dim in constants.INTERFACE_DIMS:
                 dim_extent = dim_extent - 1
-            subtile_size_factor = normal_round(dim_extent / (subtile_count + 2. * (edge_tile_ratio - 1.))) / dim_extent
+            subtile_size_factor = round(dim_extent / (subtile_count + 2. * (edge_interior_ratio - 1.))) / dim_extent
             tile_ratio = round((.5 - (subtile_count / 2. - 1.) * subtile_size_factor) / subtile_size_factor, 3)
             if dim in constants.Y_DIMS and (subtile_index[0] == 0 or subtile_index[0] == subtile_count - 1):
                 subtile_size_factor = subtile_size_factor * tile_ratio
@@ -782,7 +782,7 @@ def extent_from_metadata(
         else:
             add_extent = 0
         tile_extent = (rank_extent + add_extent) * layout_factor - add_extent
-        return_extents.append(normal_round(tile_extent))  # layout_factor is float, need to cast
+        return_extents.append(round(tile_extent))  # layout_factor is float, need to cast
     return tuple(return_extents)
 
 
@@ -790,7 +790,7 @@ def extent_from_metadata(
 class _IndexData1D:
     dim: str
     extent: int
-    edge_tile_ratio: float
+    edge_interior_ratio: float
     i_subtile: int
     n_ranks: int
 
@@ -810,9 +810,9 @@ class _IndexData1D:
         return self.i_subtile == self.n_ranks - 1
 
 
-def _index_generator(dims, tile_extent, subtile_index, horizontal_layout, edge_tile_ratio):
+def _index_generator(dims, tile_extent, subtile_index, horizontal_layout, edge_interior_ratio):
     subtile_extent, tile_ratios = rank_extent_from_tile_metadata(
-        dims, tile_extent, subtile_index, horizontal_layout, edge_tile_ratio
+        dims, tile_extent, subtile_index, horizontal_layout, edge_interior_ratio
     )
     quantity_layout = utils.list_by_dims(
         dims, horizontal_layout, non_horizontal_value=1
@@ -820,10 +820,10 @@ def _index_generator(dims, tile_extent, subtile_index, horizontal_layout, edge_t
     quantity_subtile_index = utils.list_by_dims(
         dims, subtile_index, non_horizontal_value=0
     )
-    for dim, extent, edge_tile_ratio, i_subtile, n_ranks in zip(
+    for dim, extent, edge_interior_ratio, i_subtile, n_ranks in zip(
         dims, subtile_extent, tile_ratios, quantity_subtile_index, quantity_layout
     ):
-        yield _IndexData1D(dim, extent, edge_tile_ratio, i_subtile, n_ranks)
+        yield _IndexData1D(dim, extent, edge_interior_ratio, i_subtile, n_ranks)
 
 
 def subtile_slice(
@@ -831,7 +831,7 @@ def subtile_slice(
     global_extent: Iterable[int],
     layout: Tuple[int, int],
     subtile_index: Tuple[int, int],
-    edge_tile_ratio: float = 1.0,
+    edge_interior_ratio: float = 1.0,
     overlap: bool = False,
 ) -> Tuple[slice, ...]:
     """
@@ -843,7 +843,7 @@ def subtile_slice(
         global_extent: size of the tile or cube's computational domain
         layout: the (y, x) number of ranks along each tile axis
         subtile_index: the (y, x) position of the rank on the tile
-        edge_tile_ratio: ratio between interior and boundary tile sizes.
+        edge_interior_ratio: ratio between interior and boundary tile sizes.
             Assumes full integer divisibility for both interior 
             and boundary tile sizes.
         overlap: whether to assign regions which belong to multiple ranks
@@ -853,23 +853,16 @@ def subtile_slice(
     # discard last index for interface variables, unless you're the last rank
     # done so that only one rank is responsible for the shared interface point
     for index in _index_generator(dims, global_extent,
-                                  subtile_index, layout, edge_tile_ratio):
+                                  subtile_index, layout, edge_interior_ratio):
         if index.i_subtile == 0 or index.n_ranks < 3:
             start = index.i_subtile * index.base_extent
         elif index.is_end_index:
-            start = normal_round((1 + (index.i_subtile - 1) / index.edge_tile_ratio) * index.base_extent)
+            start = round((1 + (index.i_subtile - 1) / index.edge_interior_ratio) * index.base_extent)
         else:
-            start = normal_round((index.i_subtile - 1 + index.edge_tile_ratio) * index.base_extent)
+            start = round((index.i_subtile - 1 + index.edge_interior_ratio) * index.base_extent)
         if index.is_end_index or overlap:
             end = start + index.extent
         else:
             end = start + index.base_extent
         return_list.append(slice(int(start), int(end)))
     return tuple(return_list)
-
-
-def normal_round(n):
-    "Needed to get around IEEE754 half-to-even rounding. Will not work with negative numbers."
-    if n - floor(n) < 0.5:
-        return floor(n)
-    return ceil(n)
