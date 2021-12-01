@@ -322,7 +322,6 @@ def parallel_savepoint_cases(metafunc, data_path, mpi_rank):
                 layout,
             )
         )
-
     return return_list
 
 
