@@ -2,7 +2,7 @@
 
 #############################################
 # Example syntax:
-# ./run_on_daint.sh 60 6 gtx86 <path_to_namelist> <experiment_name>
+# ./run_on_daint.sh 60 6 gtx86 <path_to_serialized_data>
 
 ## Arguments:
 # $1: number of timesteps to run
@@ -67,11 +67,10 @@ test -n "$3" || exitError 1003 ${LINENO} "must pass a backend"
 backend="$3"
 sanitized_backend=`echo $backend | sed 's/:/_/g'` #sanitize the backend from any ':'
 test -n "$4" || exitError 1004 ${LINENO} "must pass a data path"
-namelist_file="$4"
-experiment="$5"
-py_args="$6"
-run_args="$7"
-DO_NSYS_RUN="$8"
+data_path="$4"
+py_args="$5"
+run_args="$6"
+DO_NSYS_RUN="$7"
 
 # get dependencies
 cd $ROOT_DIR
@@ -106,18 +105,22 @@ else
   githash="notarepo"
 fi
 
+split_path=(${data_path//\// })
+experiment=${split_path[-1]}
+
 echo "Configuration overview:"
 echo "    Root dir:          $ROOT_DIR"
 echo "    Timesteps:         $timesteps"
 echo "    Ranks:             $ranks"
 echo "    Backend:           $backend"
-echo "    Input namelist:    $namelist_file"
+echo "    Input data dir:    $data_path"
 echo "    Experiment:        $experiment"
 echo "    Threads per rank:  $NTHREADS"
 echo "    GIT hash:          $githash"
 echo "    Python arguments:  $py_args"
 echo "    Run arguments:     $run_args"
 echo "    Extra run in nsys: $DO_NSYS_RUN"
+
 
 sample_cache=.gt_cache
 
@@ -150,7 +153,7 @@ sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slu
 sed -i "s/00:45:00/03:15:00/g" run.daint.slurm
 sed -i "s/cscsci/normal/g" run.daint.slurm
 sed -i "s/<G2G>/export PYTHONOPTIMIZE=TRUE/g" run.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $namelist_file $experiment $timesteps $backend $githash $run_args#g" run.daint.slurm
+sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 # execute on a gpu node
 set +e
 res=$(sbatch -W -C gpu run.daint.slurm 2>&1)
@@ -184,7 +187,7 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
     sed -i "s/00:45:00/00:40:00/g" run.nsys.daint.slurm
     sed -i "s/cscsci/normal/g" run.nsys.daint.slurm
     sed -i "s#<G2G>#module load nvidia-nsight-systems/2021.1.1.66-6c5c5cb\nexport PYTHONOPTIMIZE=TRUE#g" run.nsys.daint.slurm
-    sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $namelist_file $experiment 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
+    sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
     # execute on a gpu node
     set +e
     res=$(sbatch -W -C gpu run.nsys.daint.slurm 2>&1)
