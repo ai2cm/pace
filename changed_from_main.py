@@ -51,7 +51,7 @@ def add_nested_dependencies(dependency_map: Dict[str, Set[str]]) -> Dict[str, Se
     # path can be at most as long as the total number of items
     for _ in range(len(dependency_map)):
         for dependencies in dependency_map.values():
-            for dependent_key in dependencies:
+            for dependent_key in dependencies.copy():
                 dependencies.update(dependency_map[dependent_key])
 
 

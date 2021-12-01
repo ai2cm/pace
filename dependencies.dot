@@ -26,5 +26,6 @@ digraph {
   physics -> util
   physics -> fv3core
   physics -> stencils
+  stencils -> util
 
 }

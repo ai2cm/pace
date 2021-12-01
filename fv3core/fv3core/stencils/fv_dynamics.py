@@ -39,10 +39,7 @@ def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatFiel
 
 
 def init_pfull(
-    ak: FloatFieldK,
-    bk: FloatFieldK,
-    pfull: FloatField,
-    p_ref: float,
+    ak: FloatFieldK, bk: FloatFieldK, pfull: FloatField, p_ref: float,
 ):
     with computation(PARALLEL), interval(...):
         ph1 = ak + bk * p_ref
@@ -98,10 +95,7 @@ def compute_preamble(
             if is_root_rank:
                 print("Adjust pt")
         pt_adjust_stencil(
-            state.pkz,
-            state.dp1,
-            state.q_con,
-            state.pt,
+            state.pkz, state.dp1, state.q_con, state.pt,
         )
 
 
@@ -119,10 +113,7 @@ def post_remap(
             if is_root_rank:
                 print("Omega")
         set_omega_stencil(
-            state.delp,
-            state.delz,
-            state.w,
-            state.omga,
+            state.delp, state.delz, state.w, state.omga,
         )
     if config.nf_omega > 0:
         if __debug__:
@@ -160,11 +151,7 @@ def wrapup(
         if is_root_rank:
             print("CubedToLatLon")
     cubed_to_latlon_stencil(
-        state.u_quantity,
-        state.v_quantity,
-        state.ua,
-        state.va,
-        comm,
+        state.u_quantity, state.v_quantity, state.ua, state.va, comm,
     )
 
 
@@ -262,10 +249,7 @@ class DynamicalCore:
         self._pfull = utils.make_storage_data(pfull[0, 0, :], self._ak.shape, (0,))
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
-            externals={
-                "nwat": self.config.nwat,
-                "moist_phys": self.config.moist_phys,
-            },
+            externals={"nwat": self.config.nwat, "moist_phys": self.config.moist_phys,},
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
@@ -312,17 +296,11 @@ class DynamicalCore:
         if not (not self.config.inline_q and NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
-            stencil_factory,
-            self.config.check_negative,
-            self.config.hydrostatic,
+            stencil_factory, self.config.check_negative, self.config.hydrostatic,
         )
 
         self._lagrangian_to_eulerian_obj = LagrangianToEulerian(
-            stencil_factory,
-            config.remapping,
-            grid_data.area_64,
-            NQ,
-            self._pfull,
+            stencil_factory, config.remapping, grid_data.area_64, NQ, self._pfull,
         )
 
         full_xyz_spec = grid_indexing.get_quantity_halo_spec(
@@ -367,9 +345,7 @@ class DynamicalCore:
         self._compute(state, timer)
 
     def _compute(
-        self,
-        state,
-        timer: fv3gfs.util.NullTimer,
+        self, state, timer: fv3gfs.util.NullTimer,
     ):
         state.__dict__.update(self._temporaries)
         tracers = {}
@@ -465,8 +441,7 @@ class DynamicalCore:
 
     def _dyn(self, state, tracers, timer=fv3gfs.util.NullTimer()):
         self._copy_stencil(
-            state.delp,
-            state.dp1,
+            state.delp, state.dp1,
         )
         if __debug__:
             if self.comm.rank == 0:
