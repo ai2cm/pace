@@ -273,7 +273,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
 
     def state_from_inputs(self, inputs):
         input_storages = super().state_from_inputs(inputs)
-        # making sure we init DycoreState with the exact set of variables                                                                                                
+        # making sure we init DycoreState with the exact set of variables
         accepted_keys = [_field.name for _field in fields(DycoreState)]
         todelete = []
         for name, quantity in input_storages.items():
