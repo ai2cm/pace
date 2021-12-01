@@ -11,7 +11,7 @@ import numpy as np
 import serialbox
 from mpi4py import MPI
 
-import fv3core.initialization.baroclinic as baroclinic_init
+import fv3core.initialization.aqua_tile as aqua_tile_init
 from fv3core.grid import MetricTerms
 from fv3core.utils.grid import DampingCoefficients, GridData
 
@@ -211,8 +211,8 @@ if __name__ == "__main__":
 
         namelist = spec.namelist
         # set up grid-dependent helper structures
-        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(namelist.layout))
-        communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
+        partitioner = util.TilePartitioner(namelist.layout)
+        communicator = util.TileCommunicator(mpi_comm, partitioner)
         # generate the grid
         grid = spec.make_grid_with_data_from_namelist(
             namelist, communicator, args.backend
@@ -234,7 +234,7 @@ if __name__ == "__main__":
 
         # create an initial state from the Jablonowski & Williamson Baroclinic
         # test case perturbation. JRMS2006
-        state = baroclinic_init.init_baroclinic_state(
+        state = aqua_tile_init.init_doubly_periodic_state(
             metric_terms,
             adiabatic=namelist.adiabatic,
             hydrostatic=namelist.hydrostatic,
