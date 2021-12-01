@@ -1324,7 +1324,7 @@ class MetricTerms:
         local_north_edge = self._tile_partitioner.on_tile_top(self._rank)
         # information on position of subtile in full tile
         slice_x, slice_y = self._tile_partitioner.subtile_slice(
-            self._rank, self._grid.dims, (self._npx, self._npy), overlap=True
+            self._grid.dims, (self._npx, self._npy), self._rank, overlap=True
         )
         section_global_is = self._halo + slice_x.start
         section_global_js = self._halo + slice_y.start
