@@ -28,6 +28,7 @@ CP_VAP = 4.0 * RVGAS
 TICE = 273.16
 T_MIN = 184.0  # below which applies stricter constraint
 CONSV_MIN = 0.001  # Below which no correction applies
+DRY_MASS = 98290.0  # default value for global dry air mass in Pa
 
 # gfdl_cloud_microphys.F90
 # TODO: Leftover having problems using as runtime flags
