@@ -298,6 +298,7 @@ def compute_grid_data(metafunc, grid):
 
 
 def parallel_savepoint_cases(metafunc, data_path, mpi_rank):
+    print("making parallel savepoint cases")
     serializer = get_serializer(data_path, mpi_rank)
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
     grid = process_grid_savepoint(serializer, grid_savepoint, mpi_rank)
@@ -307,6 +308,7 @@ def parallel_savepoint_cases(metafunc, data_path, mpi_rank):
     return_list = []
     layout = fv3core._config.namelist.layout
     for test_name in sorted(list(savepoint_names)):
+        print("777 processing", test_name)
         input_savepoints = serializer.get_savepoint(f"{test_name}-In")
         output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
         if _has_savepoints(input_savepoints, output_savepoints):
@@ -322,6 +324,7 @@ def parallel_savepoint_cases(metafunc, data_path, mpi_rank):
                 layout,
             )
         )
+        print("weee", len(return_list))
     return return_list
 
 
@@ -402,6 +405,7 @@ def generate_parallel_stencil_tests(metafunc):
 def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
     param_list = []
     only_one_rank = metafunc.config.getoption("which_rank") is not None
+    print("7777777777777777777777777777generating stencil tests", len(savepoint_cases))
     for case in savepoint_cases:
         original_grid = fv3core._config.grid
         try:
@@ -413,6 +417,7 @@ def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
         for i, (savepoint_in, savepoint_out) in enumerate(
             zip(case.input_savepoints, case.output_savepoints)
         ):
+            print("here", savepoint_in, savepoint_out)
             param_list.append(
                 get_param(
                     case,
@@ -587,5 +592,10 @@ def compute_grid(pytestconfig):
 
 
 @pytest.fixture()
-def test_grid(pytestconfig):
-    return pytestconfig.getoption("test_grid")
+def skip_grid_tests(pytestconfig):
+    return pytestconfig.getoption("skip_grid_tests")
+
+
+@pytest.fixture()
+def run_without_output(pytestconfig):
+    return pytestconfig.getoption("run_without_output")

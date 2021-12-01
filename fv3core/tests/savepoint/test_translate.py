@@ -437,7 +437,7 @@ def test_parallel_savepoint(
     threshold_overrides,
     print_domains,
     compute_grid,
-    test_grid,
+    skip_grid_tests,
     xy_indices=True,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")
@@ -453,8 +453,8 @@ def test_parallel_savepoint(
         process_override(threshold_overrides, testobj, test_name, backend)
     if compute_grid and not testobj.compute_grid_option:
         pytest.xfail(f"compute_grid option not used for test {test_name}")
-    if not test_grid and testobj.tests_grid:
-        pytest.xfail(f"skipping testing the grid generation, not using --test_grid")
+    if skip_grid_tests and testobj.tests_grid:
+        pytest.xfail(f"skipping testing the grid generation, --skip_grid_tests")
     fv3core._config.set_grid(grid[0])
     input_data = testobj.collect_input_data(serializer, savepoint_in)
     # run python version of functionality
