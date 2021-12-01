@@ -111,7 +111,11 @@ def test_axis_offsets(
         pytest.param((4, 4, 4), 3, (0, 0, 1), (0, 0, 1), id="3_halo_add_k"),
         pytest.param((4, 4, 4), 3, (5, 3, 1), (5, 3, 1), id="3_halo_add_ijk"),
         pytest.param(
-            (4, 4, 4), 3, (-5, -3, -1), (-5, -3, -1), id="3_halo_add_ijk_negative",
+            (4, 4, 4),
+            3,
+            (-5, -3, -1),
+            (-5, -3, -1),
+            id="3_halo_add_ijk_negative",
         ),
     ],
 )
@@ -155,7 +159,11 @@ def test_origin_full(
         pytest.param((4, 4, 4), 3, (0, 0, 1), (3, 3, 1), id="3_halo_add_k"),
         pytest.param((4, 4, 4), 3, (5, 3, 1), (8, 6, 1), id="3_halo_add_ijk"),
         pytest.param(
-            (4, 4, 4), 3, (-5, -3, -1), (-2, 0, -1), id="3_halo_add_ijk_negative",
+            (4, 4, 4),
+            3,
+            (-5, -3, -1),
+            (-2, 0, -1),
+            id="3_halo_add_ijk_negative",
         ),
     ],
 )
@@ -508,7 +516,12 @@ def test_get_origin_domain_restricted_vertical(
     "n_halo, domain, dims, halos, shape_expected",
     [
         pytest.param(
-            3, (5, 6, 7), [X_DIM, Y_DIM, Z_DIM], (0, 0, 0), (8, 9, 7), id="compute",
+            3,
+            (5, 6, 7),
+            [X_DIM, Y_DIM, Z_DIM],
+            (0, 0, 0),
+            (8, 9, 7),
+            id="compute",
         ),
         pytest.param(
             3,
