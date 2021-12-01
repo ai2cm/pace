@@ -4,7 +4,7 @@ import numpy as np
 
 import fv3core.initialization.baroclinic as baroclinic
 import fv3gfs.util as fv3util
-from fv3core.fv3core.utils.global_constants import PI  # noqa: F401
+from fv3core.fv3core.utils.global_constants import GRAV, PI  # noqa: F401
 from fv3core.grid import MetricTerms
 from fv3core.initialization.dycore_state import DycoreState
 
@@ -15,7 +15,36 @@ def initialize_dry_atmosphere(u: np.ndarray, v: np.ndarray, phis: np.ndarray):
     phis[:, :, :] = 0.0
 
 
-def _set_hydrostatic_equilibrium():
+def set_hydrostatic_equilibrium(
+    ps,
+    phis,
+    dry_mass,
+    delp,
+    ak,
+    bk,
+    pt,
+    delz,
+    area,
+    nhalo,
+    mountain: bool,
+    hydrostatic: bool,
+    hybrid_z: bool,
+):
+    if mountain is True:
+        raise NotImplementedError(
+            "mountain is not implemented in hydrostatic equilibrium setup"
+        )
+    p1 = 25000.0
+    z1 = 10000 * GRAV
+    t1 = 200.0
+    t0 = 300.0
+    a0 = (t1 - t0) / z1
+    c0 = t0 / a0
+
+    if hybrid_z is True:
+        ptop = 100.0
+    else:
+        ptop = ak[0]
     pass
 
 
@@ -39,9 +68,15 @@ def perturb_ics(metric_terms: MetricTerms, ps, pt):
     )
 
 
-def set_tracers():
-    q = 0.0
-    pass
+def set_tracers(qvapor, qliquid, qrain, qice, qsnow, qgraupel):
+    qvapor = 0.0
+    qliquid = 0.0
+    qrain = 0.0
+    qice = 0.0
+    qsnow = 0.0
+    qgraupel = 0.0
+    # TODO: Port qsmith from fortran here.
+    qvapor = 2.0e-6
 
 
 def init_doubly_periodic_state(
@@ -54,17 +89,57 @@ def init_doubly_periodic_state(
 ):
     assert metric_terms._grid_type == 4
     state = DycoreState.init_empty(metric_terms.quantity_factory)
-    state.ua.data[:] = 0.0
-    state.va.data[:] = 0.0
-    state.uc.data[:] = 0.0
-    state.vc.data[:] = 0.0
-    state.phis.data[:] = 0.0
+    nx, ny, nz = baroclinic.local_compute_size(state.delp.data.shape)
+    islice, jslice, slice_3d, slice_2d = baroclinic.compute_slices(nx, ny)
+    # Slices with extra buffer points in the horizontal dimension
+    # to accomodate averaging over shifted calculations on the grid
+    _, _, slice_3d_buffer, slice_2d_buffer = baroclinic.compute_slices(nx + 1, ny + 1)
+
+    state.ua.data[slice_3d] = 0.0
+    state.va.data[slice_3d] = 0.0
+    state.uc.data[slice_3d] = 0.0
+    state.vc.data[slice_3d] = 0.0
+    state.phis.data[slice_3d] = 0.0
     pass
     if do_bubble is True:
-        perturb_ics(metric_terms, state.ps.data[:], state.pt.data[:])
+        perturb_ics(
+            metric_terms, ps=state.ps.data[slice_2d], pt=state.pt.data[slice_3d]
+        )
     if hydrostatic is True:
-        baroclinic.p_var()
+        raise NotImplementedError("Hydrostatic mode has not been implemented")
+        baroclinic.p_var(
+            delp=state.delp.data[slice_3d],
+            delz=state.delz.data[slice_3d],
+            pt=state.pt.data[slice_3d],
+            ps=state.ps.data[slice_2d],
+            qvapor=state.qvapor.data[slice_3d],
+            pe=state.pe.data[slice_3d],
+            peln=state.peln.data[slice_3d],
+            pkz=state.pkz.data[slice_3d],
+            ptop=metric_terms.ptop,
+            moist_phys=moist_phys,
+            make_nh=(not hydrostatic),
+        )
     else:
-        state.w.data[:] = 0.0
-        baroclinic.p_var()
-    set_tracers()
+        state.w.data[slice_3d] = 0.0
+        baroclinic.p_var(
+            delp=state.delp.data[slice_3d],
+            delz=state.delz.data[slice_3d],
+            pt=state.pt.data[slice_3d],
+            ps=state.ps.data[slice_2d],
+            qvapor=state.qvapor.data[slice_3d],
+            pe=state.pe.data[slice_3d],
+            peln=state.peln.data[slice_3d],
+            pkz=state.pkz.data[slice_3d],
+            ptop=metric_terms.ptop,
+            moist_phys=moist_phys,
+            make_nh=(not hydrostatic),
+        )
+    set_tracers(
+        qvapor=state.qvapor.data[slice_3d],
+        qliquid=state.qliquid.data[slice_3d],
+        qrain=state.qrain.data[slice_3d],
+        qice=state.qice.data[slice_3d],
+        qsnow=state.qsnow.data[slice_3d],
+        qgraupel=state.qgraupel.data[:],
+    )
