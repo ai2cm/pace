@@ -135,6 +135,11 @@ if [ "${SAVE_TIMINGS}" == "true" ] && [ "${SAVE_ARTIFACTS}" == "true" ] ; then
         cp $ROOT_DIR/*.json ${TIMING_DIR}/
 fi
 
+# copying the cache is in a separate action (generache_cache.sh),
+# otherwise delete it
+if [ "${SAVE_CACHE}" != "true" ] ; then
+    rm -rf .gt_cache*
+fi
 
 # store profiling artifacts
 if [ "${DO_PROFILE}" == "true" ] ; then
