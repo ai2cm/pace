@@ -4,6 +4,3 @@
 [submodule "external/fv3gfs-wrapper"]
 	path = external/fv3gfs-wrapper
 	url = git@github.com:ai2cm/fv3gfs-wrapper.git
-[submodule "buildenv"]
-	path = buildenv
-	url = git@github.com:ai2cm/buildenv.git
