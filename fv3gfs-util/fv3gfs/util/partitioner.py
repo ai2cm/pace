@@ -724,7 +724,7 @@ def is_even(value: Union[int, float]) -> bool:
 
 
 def tile_extent_from_rank_metadata(
-    dims: Sequence[str], rank_extent: Sequence[int], layout: Tuple[int, int]
+    dims: Sequence[str], rank_extent: Sequence[int], layout: Tuple[int, int], edge_interior_ratio: float = 1.0
 ) -> Tuple[int, ...]:
     """
     Returns the extent of a tile given data about a single rank, and the tile
@@ -738,6 +738,9 @@ def tile_extent_from_rank_metadata(
     Returns:
         tile_extent: the extent of one tile
     """
+    if edge_interior_ratio < 1.0:
+        print(f"{edge_interior_ratio}", flush=True)
+        raise NotImplementedError("Only equal sized subdomains are supported.")
     layout_factors = np.asarray(
         utils.list_by_dims(dims, layout, non_horizontal_value=1)
     )

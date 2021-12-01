@@ -830,7 +830,37 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
     ],
 )
 @pytest.mark.cpu_only
-def subtile_extents_from_tile_metadata(
+def test_subtile_extents_from_tile_metadata(
         array_dims, tile_extent, layout, edge_interior_ratio, rank_extent):
     result = fv3gfs.util.partitioner.subtile_extents_from_tile_metadata(array_dims, tile_extent, layout, edge_interior_ratio)
     assert result == rank_extent
+
+
+@pytest.mark.parametrize(
+    "array_dims, tile_extent, layout, full_edge_interior_ratio, half_edge_interior_ratio, expected_slice, expected_extent, expected_error_string",
+    [
+        pytest.param(
+            [fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
+            (12, 12),
+            (3, 4),
+            1.0, 
+            0.5,
+            (slice(0, 3, None), slice(0, 2, None)),
+            (9, 8),
+            "Only equal sized subdomains are supported.",
+            id="48_rank_half_edge_tiles",
+        ),
+    ],
+)
+
+@pytest.mark.cpu_only
+def test_tile_extent_from_metadata(
+        array_dims, tile_extent, layout, full_edge_interior_ratio, half_edge_interior_ratio, expected_slice, expected_extent, expected_error_string):
+    partitioner = fv3gfs.util.TilePartitioner(layout, half_edge_interior_ratio)
+    subtile_slice = partitioner.subtile_slice(array_dims, tile_extent, 0, False)
+    assert subtile_slice == expected_slice
+    slice_extent = (subtile_slice[0].stop - subtile_slice[0].start, subtile_slice[1].stop - subtile_slice[1].start)
+    rank_extent = fv3gfs.util.partitioner.tile_extent_from_rank_metadata(array_dims, slice_extent, layout, full_edge_interior_ratio)
+    assert rank_extent == expected_extent
+    with pytest.raises(NotImplementedError, match=expected_error_string):
+            fv3gfs.util.partitioner.tile_extent_from_rank_metadata(array_dims, slice_extent, layout, half_edge_interior_ratio)
