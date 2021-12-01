@@ -19,7 +19,6 @@ from .constants import (
     WEST,
 )
 from .quantity import QuantityMetadata
-from math import ceil, floor
 
 
 BOUNDARY_CACHE_SIZE = None
@@ -769,7 +768,7 @@ def subtile_extents_from_tile_metadata(
 
 @functools.lru_cache
 def _lru_wrapped_subtile_extents_from_tile_metadata(dims: Sequence[str], tile_extent: Sequence[int],
-                                                layout: Tuple[int, int], edge_interior_ratio: float = 1.0) -> Tuple[int, ...]:
+                                                    layout: Tuple[int, int], edge_interior_ratio: float = 1.0) -> Tuple[int, ...]:
     def _valid_edge_tile_sizes(dim_extent: int, subtile_count: int, start: int):
         """"Returns a list of valid edge tile sizes, counting down from the starting edge size to the smallest possible one
             that lets the interior tile sizes still be an integer. After that, it counts up from the starting edge size.
@@ -837,7 +836,7 @@ def extent_from_metadata(
         else:
             add_extent = 0
         tile_extent = (rank_extent + add_extent) * layout_factor - add_extent
-        return_extents.append(round(tile_extent))  # layout_factor is float, need to cast
+        return_extents.append(int(tile_extent))  # layout_factor is float, need to cast
     return tuple(return_extents)
 
 
@@ -880,7 +879,7 @@ def subtile_slice(
                 start = subtile_index[horizontal_dim_index] * subtile_extent[num_dim]
             else:
                 start = (subtile_index[horizontal_dim_index] - 1) * subtile_extent[num_dim] + subtile_extent[num_dim + num_decomposed_dims]
-                
+
             is_end_index = subtile_index[horizontal_dim_index] == (layout[horizontal_dim_index] - 1)
             if layout[horizontal_dim_index] < 3:
                 end = start + _interface_overlap_extent(dim, is_end_index, subtile_extent[num_dim + num_decomposed_dims], overlap)
