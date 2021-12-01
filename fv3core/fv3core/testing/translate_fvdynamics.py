@@ -271,6 +271,22 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self.ignore_near_zero_errors["q_con"] = True
         self.dycore: Optional[fv_dynamics.DynamicalCore] = None
 
+    def state_from_inputs(self, inputs):
+        input_storages = super().state_from_inputs(inputs)
+        # making sure we init DycoreState with the exact set of variables                                                                                                
+        accepted_keys = [_field.name for _field in fields(DycoreState)]
+        todelete = []
+        for name, quantity in input_storages.items():
+            if name not in accepted_keys:
+                todelete.append(name)
+        for name in todelete:
+            del input_storages[name]
+
+        state = DycoreState(
+            **input_storages, quantity_factory=self.grid.quantity_factory
+        )
+        return state
+
     def compute_parallel(self, inputs, communicator):
         for name in ("ak", "bk", "phis"):
             inputs[name] = utils.make_storage_data(
@@ -283,21 +299,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             grid_data.bk = inputs["bk"]
             grid_data.ptop = inputs["ptop"]
             grid_data.ks = inputs["ks"]
-
-        input_storages = self.state_from_inputs(inputs)
-        # making sure we init DycoreState with the exact set of variables
-        accepted_keys = [_field.name for _field in fields(DycoreState)]
-        todelete = []
-        for name, quantity in input_storages.items():
-            if name not in accepted_keys:
-                todelete.append(name)
-        for name in todelete:
-            del input_storages[name]
-
-        state = DycoreState(
-            **input_storages, quantity_factory=self.grid.quantity_factory
-        )
-
+        state = self.state_from_inputs(inputs)
         self.dycore = fv_dynamics.DynamicalCore(
             comm=communicator,
             grid_data=grid_data,

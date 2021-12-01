@@ -4,7 +4,6 @@ import copy
 import json
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
-from types import SimpleNamespace
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -183,7 +182,7 @@ def read_serialized_initial_state(rank):
     driver_object = fv3core.testing.TranslateFVDynamics([grid])
     input_data = driver_object.collect_input_data(serializer, savepoint_in)
     state = driver_object.state_from_inputs(input_data)
-    return SimpleNamespace(**state)
+    return state
 
 
 def collect_data_and_write_to_file(
