@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from gt4py import gtscript
 
-import fv3gfs.util.grid
+import fv3gfs.util.pace.grid
 from fv3gfs.util import (
     X_DIM,
     X_INTERFACE_DIM,
@@ -67,7 +67,7 @@ def test_axis_offsets(
     j_start,
     j_end,
 ):
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -111,11 +111,7 @@ def test_axis_offsets(
         pytest.param((4, 4, 4), 3, (0, 0, 1), (0, 0, 1), id="3_halo_add_k"),
         pytest.param((4, 4, 4), 3, (5, 3, 1), (5, 3, 1), id="3_halo_add_ijk"),
         pytest.param(
-            (4, 4, 4),
-            3,
-            (-5, -3, -1),
-            (-5, -3, -1),
-            id="3_halo_add_ijk_negative",
+            (4, 4, 4), 3, (-5, -3, -1), (-5, -3, -1), id="3_halo_add_ijk_negative",
         ),
     ],
 )
@@ -137,7 +133,7 @@ def test_origin_full(
     add: Index3D,
     origin_full: Index3D,
 ):
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -159,11 +155,7 @@ def test_origin_full(
         pytest.param((4, 4, 4), 3, (0, 0, 1), (3, 3, 1), id="3_halo_add_k"),
         pytest.param((4, 4, 4), 3, (5, 3, 1), (8, 6, 1), id="3_halo_add_ijk"),
         pytest.param(
-            (4, 4, 4),
-            3,
-            (-5, -3, -1),
-            (-2, 0, -1),
-            id="3_halo_add_ijk_negative",
+            (4, 4, 4), 3, (-5, -3, -1), (-2, 0, -1), id="3_halo_add_ijk_negative",
         ),
     ],
 )
@@ -185,7 +177,7 @@ def test_origin_compute(
     add: Index3D,
     origin_compute: Index3D,
 ):
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -223,7 +215,7 @@ def test_domain_full(
     add: Index3D,
     domain_full: Index3D,
 ):
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -262,7 +254,7 @@ def test_domain_compute(
     add: Index3D,
     domain_compute: Index3D,
 ):
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -437,7 +429,7 @@ def test_get_origin_domain(
     origin_expected: Sequence[int],
     domain_expected: Sequence[int],
 ):
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -496,7 +488,7 @@ def test_get_origin_domain_restricted_vertical(
     domain_expected: Sequence[int],
 ):
     k_start = 2
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -516,12 +508,7 @@ def test_get_origin_domain_restricted_vertical(
     "n_halo, domain, dims, halos, shape_expected",
     [
         pytest.param(
-            3,
-            (5, 6, 7),
-            [X_DIM, Y_DIM, Z_DIM],
-            (0, 0, 0),
-            (8, 9, 7),
-            id="compute",
+            3, (5, 6, 7), [X_DIM, Y_DIM, Z_DIM], (0, 0, 0), (8, 9, 7), id="compute",
         ),
         pytest.param(
             3,
@@ -610,7 +597,7 @@ def test_get_shape(
     halos: Sequence[int],
     shape_expected: Sequence[int],
 ):
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -637,7 +624,7 @@ def test_restrict_vertical_defaults(
     n_halo, south_edge, north_edge, west_edge, east_edge
 ):
     domain = (3, 4, 10)
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -665,7 +652,7 @@ def test_restrict_vertical_default_domain(
     n_halo, south_edge, north_edge, west_edge, east_edge
 ):
     domain = (3, 4, 10)
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -693,7 +680,7 @@ def test_restrict_vertical_max_shape(
     n_halo, south_edge, north_edge, west_edge, east_edge
 ):
     domain = (3, 4, 10)
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -722,7 +709,7 @@ def test_restrict_vertical(
     n_halo, south_edge, north_edge, west_edge, east_edge, k_start, nk
 ):
     domain = (3, 4, 10)
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -760,7 +747,7 @@ def test_restrict_vertical_twice(
     second_nk,
 ):
     domain = (3, 4, 10)
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
@@ -792,7 +779,7 @@ def test_restrict_vertical_raises(
     n_halo, south_edge, north_edge, west_edge, east_edge, k_start, nk
 ):
     domain = (3, 4, 10)
-    grid = fv3gfs.util.grid.GridIndexing(
+    grid = fv3gfs.util.pace.grid.GridIndexing(
         domain=domain,
         n_halo=n_halo,
         south_edge=south_edge,
