@@ -99,12 +99,17 @@ class ApplyPhysics2Dycore:
             stencil_factory, self.grid, self.namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
-            stencil_factory, self.grid.grid_data, order=namelist.c2l_ord,
+            stencil_factory,
+            self.grid.grid_data,
+            order=namelist.c2l_ord,
         )
         origin = self.grid.grid_indexing.origin_compute()
         shape = self.grid.grid_indexing.max_shape
         full_3Dfield_1pts_halo_spec = self.grid.grid_indexing.get_quantity_halo_spec(
-            shape, origin, dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], n_halo=1,
+            shape,
+            origin,
+            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            n_halo=1,
         )
         self._udt_halo_updater = self.comm.get_scalar_halo_updater(
             [full_3Dfield_1pts_halo_spec]
@@ -121,7 +126,11 @@ class ApplyPhysics2Dycore:
         )
 
     def __call__(
-        self, state, u_dt: FloatField, v_dt: FloatField, t_dt: FloatField,
+        self,
+        state,
+        u_dt: FloatField,
+        v_dt: FloatField,
+        t_dt: FloatField,
     ):
         self._moist_cv(
             state.qvapor,
@@ -158,5 +167,9 @@ class ApplyPhysics2Dycore:
         v_dt = v_dt_quantity.storage
         self._AGrid2DGridPhysics(state.u, state.v, u_dt, v_dt)
         self._do_cubed_to_latlon(
-            state.u_quantity, state.v_quantity, state.ua, state.va, self.comm,
+            state.u_quantity,
+            state.v_quantity,
+            state.ua,
+            state.va,
+            self.comm,
         )
