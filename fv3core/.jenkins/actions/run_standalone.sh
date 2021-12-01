@@ -135,18 +135,6 @@ if [ "${SAVE_TIMINGS}" == "true" ] && [ "${SAVE_ARTIFACTS}" == "true" ] ; then
         cp $ROOT_DIR/*.json ${TIMING_DIR}/
 fi
 
-# store cache artifacts (and remove caches afterwards)
-if [ "${SAVE_CACHE}" == "true" ] && [ "${SAVE_ARTIFACTS}" == "true" ] ; then
-    echo "Pruning cache to make sure no __pycache__ and *_pyext_BUILD dirs are present"
-    find .gt_cache* -type d -name \*_pyext_BUILD -prune -exec \rm -rf {} \;
-    find .gt_cache* -type d -name __pycache__ -prune -exec \rm -rf {} \;
-    echo "Copying GT4Py cache directories to ${CACHE_DIR}"
-    mkdir -p ${CACHE_DIR}
-    cp ${ROOT_DIR}/GT4PY_VERSION.txt ${CACHE_DIR}
-    rm -rf ${CACHE_DIR}/.gt_cache*
-    cp -rp .gt_cache* ${CACHE_DIR}
-fi
-rm -rf .gt_cache*
 
 # store profiling artifacts
 if [ "${DO_PROFILE}" == "true" ] ; then
@@ -166,7 +154,6 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
 fi
 
 # remove venv (too many files!)
-rm -rf $ROOT_DIR/external/*
 rm -rf $ROOT_DIR/venv
 
 echo "=== Done ======================================="
