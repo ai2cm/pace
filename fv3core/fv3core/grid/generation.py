@@ -44,19 +44,15 @@ from .gnomonic import (
 from .mirror import mirror_grid
 
 
-# TODO remove this when using python 3.8+ everywhere, it comes for free
+# TODO: when every environment in python3.8, remove
+# this custom decorator
 def cached_property(func):
-    cached = None
-
     @property
-    @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        nonlocal cached
-        if cached is None:
-            cached = func(*args, **kwargs)
-        return cached
+    @functools.lru_cache()
+    def wrapper(self, *args, **kwargs):
+        return func(self, *args, **kwargs)
 
-    return wrapped
+    return wrapper
 
 
 # TODO
