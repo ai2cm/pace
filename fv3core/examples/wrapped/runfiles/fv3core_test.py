@@ -11,7 +11,7 @@ import fv3core
 import fv3core._config as spec
 import fv3gfs.wrapper as wrapper
 from fv3core.testing import translate
-from fv3gfs.util import (
+from pace.util import (
     X_DIMS,
     X_INTERFACE_DIM,
     Y_DIMS,

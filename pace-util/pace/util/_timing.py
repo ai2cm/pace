@@ -47,7 +47,7 @@ class Timer:
             following would time a time.sleep operation::
 
                 >>> import time
-                >>> from fv3gfs.util import Timer
+                >>> from pace.util import Timer
                 >>> timer = Timer()
                 >>> with timer.clock("sleep"):
                 ...     time.sleep(1)

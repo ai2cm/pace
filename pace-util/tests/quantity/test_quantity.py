@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-import fv3gfs.util
-import fv3gfs.util.quantity
+import pace.util
+import pace.util.quantity
 
 
 try:
@@ -69,7 +69,7 @@ def data(n_halo, extent_1d, n_dims, numpy, dtype):
 
 @pytest.fixture
 def quantity(data, origin, extent, dims, units):
-    return fv3gfs.util.Quantity(
+    return pace.util.Quantity(
         data, origin=origin, extent=extent, dims=dims, units=units
     )
 
@@ -82,28 +82,28 @@ def test_smaller_data_raises(data, origin, extent, dims, units):
             pass
         else:
             with pytest.raises(ValueError):
-                fv3gfs.util.Quantity(
+                pace.util.Quantity(
                     small_data, origin=origin, extent=extent, dims=dims, units=units
                 )
 
 
 def test_smaller_dims_raises(data, origin, extent, dims, units):
     with pytest.raises(ValueError):
-        fv3gfs.util.Quantity(
+        pace.util.Quantity(
             data, origin=origin, extent=extent, dims=dims[:-1], units=units
         )
 
 
 def test_smaller_origin_raises(data, origin, extent, dims, units):
     with pytest.raises(ValueError):
-        fv3gfs.util.Quantity(
+        pace.util.Quantity(
             data, origin=origin[:-1], extent=extent, dims=dims, units=units
         )
 
 
 def test_smaller_extent_raises(data, origin, extent, dims, units):
     with pytest.raises(ValueError):
-        fv3gfs.util.Quantity(
+        pace.util.Quantity(
             data, origin=origin, extent=extent[:-1], dims=dims, units=units
         )
 
@@ -237,29 +237,29 @@ def test_compute_view_edit_all_domain(quantity, n_halo, n_dims, extent_1d):
     ],
 )
 def test_shift_slice(slice_in, shift, extent, slice_out):
-    result = fv3gfs.util.quantity.shift_slice(slice_in, shift, extent)
+    result = pace.util.quantity.shift_slice(slice_in, shift, extent)
     assert result == slice_out
 
 
 @pytest.mark.parametrize(
     "quantity",
     [
-        fv3gfs.util.Quantity(
+        pace.util.Quantity(
             np.array(5),
             dims=[],
             units="",
         ),
-        fv3gfs.util.Quantity(
+        pace.util.Quantity(
             np.array([1, 2, 3]),
             dims=["dimension"],
             units="degK",
         ),
-        fv3gfs.util.Quantity(
+        pace.util.Quantity(
             np.random.randn(3, 2, 4),
             dims=["dim1", "dim_2", "dimension_3"],
             units="m",
         ),
-        fv3gfs.util.Quantity(
+        pace.util.Quantity(
             np.random.randn(8, 6, 6),
             dims=["dim1", "dim_2", "dimension_3"],
             units="km",

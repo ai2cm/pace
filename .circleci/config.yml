@@ -31,28 +31,28 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-{{ checksum "fv3gfs-util/tox.ini" }}-{{ checksum "fv3gfs-util/constraints.txt" }}
+            - v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "pace-util/constraints.txt" }}
       - run:
           name: install tox and MPI
           command: |
-            if [ $(python changed_from_main.py fv3gfs-util) != false ]; then
+            if [ $(python changed_from_main.py pace-util) != false ]; then
               sudo apt-get update
               sudo apt-get install libopenmpi3 libopenmpi-dev
-              python3 -m venv fv3gfs-util/venv
-              . fv3gfs-util/venv/bin/activate
-              sudo pip3 install tox -c fv3gfs-util/constraints.txt
+              python3 -m venv pace-util/venv
+              . pace-util/venv/bin/activate
+              sudo pip3 install tox -c pace-util/constraints.txt
             fi
       - run:
           name: run tests
           command: |
-            if [ $(python changed_from_main.py fv3gfs-util) != false ]; then
-              cd fv3gfs-util && tox -e test -e test_no_extras
+            if [ $(python changed_from_main.py pace-util) != false ]; then
+              cd pace-util && tox -e test -e test_no_extras
             fi
       - save_cache:
-          key: v1-{{ checksum "fv3gfs-util/tox.ini" }}-{{ checksum "fv3gfs-util/constraints.txt" }}
+          key: v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "pace-util/constraints.txt" }}
           paths:
-            - fv3gfs-util/.tox
-            - fv3gfs-util/venv
+            - pace-util/.tox
+            - pace-util/venv
 
   test_fv3core:
     docker:

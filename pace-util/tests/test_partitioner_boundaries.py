@@ -1,7 +1,7 @@
 import pytest
 
-import fv3gfs.util
-import fv3gfs.util.partitioner
+import pace.util
+import pace.util.partitioner
 
 
 # the test examples for the 2x2 cube here were recorded by manually inspecting
@@ -10,20 +10,20 @@ import fv3gfs.util.partitioner
 
 @pytest.fixture
 def partitioner_1_by_1():
-    grid = fv3gfs.util.TilePartitioner((1, 1))
-    return fv3gfs.util.CubedSpherePartitioner(grid)
+    grid = pace.util.TilePartitioner((1, 1))
+    return pace.util.CubedSpherePartitioner(grid)
 
 
 @pytest.fixture
 def partitioner_2_by_2():
-    grid = fv3gfs.util.TilePartitioner((2, 2))
-    return fv3gfs.util.CubedSpherePartitioner(grid)
+    grid = pace.util.TilePartitioner((2, 2))
+    return pace.util.CubedSpherePartitioner(grid)
 
 
 @pytest.fixture
 def partitioner_3_by_3():
-    grid = fv3gfs.util.TilePartitioner((3, 3))
-    return fv3gfs.util.CubedSpherePartitioner(grid)
+    grid = pace.util.TilePartitioner((3, 3))
+    return pace.util.CubedSpherePartitioner(grid)
 
 
 @pytest.mark.parametrize(
@@ -59,7 +59,7 @@ def partitioner_3_by_3():
 def test_2_by_2_left_edge(
     partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations
 ):
-    edge = partitioner_2_by_2.boundary(fv3gfs.util.WEST, from_rank)
+    edge = partitioner_2_by_2.boundary(pace.util.WEST, from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -73,7 +73,7 @@ def test_2_by_2_left_edge(
 def test_1_by_1_left_edge(
     partitioner_1_by_1, from_rank, to_rank, n_clockwise_rotations
 ):
-    edge = partitioner_1_by_1.boundary(fv3gfs.util.WEST, from_rank)
+    edge = partitioner_1_by_1.boundary(pace.util.WEST, from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -91,7 +91,7 @@ def test_1_by_1_left_edge(
 )
 @pytest.mark.cpu_only
 def test_rotate_subtile_rank(rank, layout, n_clockwise_rotations, new_rank):
-    result = fv3gfs.util.partitioner.rotate_subtile_rank(
+    result = pace.util.partitioner.rotate_subtile_rank(
         rank, layout, n_clockwise_rotations
     )
     assert result == new_rank
@@ -128,7 +128,7 @@ def test_rotate_subtile_rank(rank, layout, n_clockwise_rotations, new_rank):
 )
 @pytest.mark.cpu_only
 def test_2_by_2_top_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_2_by_2.boundary(fv3gfs.util.NORTH, from_rank)
+    edge = partitioner_2_by_2.boundary(pace.util.NORTH, from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -140,7 +140,7 @@ def test_2_by_2_top_edge(partitioner_2_by_2, from_rank, to_rank, n_clockwise_rot
 )
 @pytest.mark.cpu_only
 def test_1_by_1_top_edge(partitioner_1_by_1, from_rank, to_rank, n_clockwise_rotations):
-    edge = partitioner_1_by_1.boundary(fv3gfs.util.NORTH, from_rank)
+    edge = partitioner_1_by_1.boundary(pace.util.NORTH, from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -179,7 +179,7 @@ def test_1_by_1_top_edge(partitioner_1_by_1, from_rank, to_rank, n_clockwise_rot
 def test_2_by_2_bottom_edge(
     partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations
 ):
-    edge = partitioner_2_by_2.boundary(fv3gfs.util.SOUTH, from_rank)
+    edge = partitioner_2_by_2.boundary(pace.util.SOUTH, from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -193,7 +193,7 @@ def test_2_by_2_bottom_edge(
 def test_1_by_1_bottom_edge(
     partitioner_1_by_1, from_rank, to_rank, n_clockwise_rotations
 ):
-    edge = partitioner_1_by_1.boundary(fv3gfs.util.SOUTH, from_rank)
+    edge = partitioner_1_by_1.boundary(pace.util.SOUTH, from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -232,7 +232,7 @@ def test_1_by_1_bottom_edge(
 def test_2_by_2_right_edge(
     partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations
 ):
-    edge = partitioner_2_by_2.boundary(fv3gfs.util.EAST, from_rank)
+    edge = partitioner_2_by_2.boundary(pace.util.EAST, from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -246,7 +246,7 @@ def test_2_by_2_right_edge(
 def test_1_by_1_right_edge(
     partitioner_1_by_1, from_rank, to_rank, n_clockwise_rotations
 ):
-    edge = partitioner_1_by_1.boundary(fv3gfs.util.EAST, from_rank)
+    edge = partitioner_1_by_1.boundary(pace.util.EAST, from_rank)
     assert edge.from_rank == from_rank
     assert edge.to_rank == to_rank
     assert edge.n_clockwise_rotations == n_clockwise_rotations
@@ -255,28 +255,28 @@ def test_1_by_1_right_edge(
 @pytest.mark.parametrize("from_rank", [0, 1, 2, 3, 4, 5])
 @pytest.mark.cpu_only
 def test_1_by_1_top_left_corner(partitioner_1_by_1, from_rank):
-    corner = partitioner_1_by_1.boundary(fv3gfs.util.NORTHWEST, from_rank)
+    corner = partitioner_1_by_1.boundary(pace.util.NORTHWEST, from_rank)
     assert corner is None
 
 
 @pytest.mark.parametrize("from_rank", [0, 1, 2, 3, 4, 5])
 @pytest.mark.cpu_only
 def test_1_by_1_top_right_corner(partitioner_1_by_1, from_rank):
-    corner = partitioner_1_by_1.boundary(fv3gfs.util.NORTHEAST, from_rank)
+    corner = partitioner_1_by_1.boundary(pace.util.NORTHEAST, from_rank)
     assert corner is None
 
 
 @pytest.mark.parametrize("from_rank", [0, 1, 2, 3, 4, 5])
 @pytest.mark.cpu_only
 def test_1_by_1_bottom_left_corner(partitioner_1_by_1, from_rank):
-    corner = partitioner_1_by_1.boundary(fv3gfs.util.SOUTHWEST, from_rank)
+    corner = partitioner_1_by_1.boundary(pace.util.SOUTHWEST, from_rank)
     assert corner is None
 
 
 @pytest.mark.parametrize("from_rank", [0, 1, 2, 3, 4, 5])
 @pytest.mark.cpu_only
 def test_1_by_1_bottom_right_corner(partitioner_1_by_1, from_rank):
-    corner = partitioner_1_by_1.boundary(fv3gfs.util.SOUTHEAST, from_rank)
+    corner = partitioner_1_by_1.boundary(pace.util.SOUTHEAST, from_rank)
     assert corner is None
 
 
@@ -313,7 +313,7 @@ def test_1_by_1_bottom_right_corner(partitioner_1_by_1, from_rank):
 def test_2_by_2_top_left_corner(
     partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations
 ):
-    corner = partitioner_2_by_2.boundary(fv3gfs.util.NORTHWEST, from_rank)
+    corner = partitioner_2_by_2.boundary(pace.util.NORTHWEST, from_rank)
     if to_rank is None:
         assert corner is None
     else:
@@ -325,23 +325,23 @@ def test_2_by_2_top_left_corner(
 @pytest.mark.parametrize(
     "layout, boundary_type, from_rank, to_rank",
     (
-        ((1, 1), fv3gfs.util.WEST, 0, 0),
-        ((1, 1), fv3gfs.util.EAST, 0, 0),
-        ((1, 1), fv3gfs.util.NORTH, 0, 0),
-        ((1, 1), fv3gfs.util.SOUTH, 0, 0),
-        ((2, 2), fv3gfs.util.WEST, 0, 1),
-        ((2, 2), fv3gfs.util.EAST, 0, 1),
-        ((2, 2), fv3gfs.util.NORTH, 0, 2),
-        ((2, 2), fv3gfs.util.SOUTH, 0, 2),
-        ((2, 2), fv3gfs.util.WEST, 3, 2),
-        ((2, 2), fv3gfs.util.EAST, 3, 2),
-        ((2, 2), fv3gfs.util.NORTH, 3, 1),
-        ((2, 2), fv3gfs.util.SOUTH, 3, 1),
+        ((1, 1), pace.util.WEST, 0, 0),
+        ((1, 1), pace.util.EAST, 0, 0),
+        ((1, 1), pace.util.NORTH, 0, 0),
+        ((1, 1), pace.util.SOUTH, 0, 0),
+        ((2, 2), pace.util.WEST, 0, 1),
+        ((2, 2), pace.util.EAST, 0, 1),
+        ((2, 2), pace.util.NORTH, 0, 2),
+        ((2, 2), pace.util.SOUTH, 0, 2),
+        ((2, 2), pace.util.WEST, 3, 2),
+        ((2, 2), pace.util.EAST, 3, 2),
+        ((2, 2), pace.util.NORTH, 3, 1),
+        ((2, 2), pace.util.SOUTH, 3, 1),
     ),
 )
 @pytest.mark.cpu_only
 def test_tile_boundary(layout, boundary_type, from_rank, to_rank):
-    tile = fv3gfs.util.TilePartitioner(layout)
+    tile = pace.util.TilePartitioner(layout)
     boundary = tile.boundary(boundary_type, from_rank)
     assert boundary.from_rank == from_rank
     assert boundary.to_rank == to_rank
@@ -381,7 +381,7 @@ def test_tile_boundary(layout, boundary_type, from_rank, to_rank):
 def test_2_by_2_top_right_corner(
     partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations
 ):
-    corner = partitioner_2_by_2.boundary(fv3gfs.util.NORTHEAST, from_rank)
+    corner = partitioner_2_by_2.boundary(pace.util.NORTHEAST, from_rank)
     if to_rank is None:
         assert corner is None
     else:
@@ -423,7 +423,7 @@ def test_2_by_2_top_right_corner(
 def test_2_by_2_bottom_left_corner(
     partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations
 ):
-    corner = partitioner_2_by_2.boundary(fv3gfs.util.SOUTHWEST, from_rank)
+    corner = partitioner_2_by_2.boundary(pace.util.SOUTHWEST, from_rank)
     if to_rank is None:
         assert corner is None
     else:
@@ -465,7 +465,7 @@ def test_2_by_2_bottom_left_corner(
 def test_2_by_2_bottom_right_corner(
     partitioner_2_by_2, from_rank, to_rank, n_clockwise_rotations
 ):
-    corner = partitioner_2_by_2.boundary(fv3gfs.util.SOUTHEAST, from_rank)
+    corner = partitioner_2_by_2.boundary(pace.util.SOUTHEAST, from_rank)
     if to_rank is None:
         assert corner is None
     else:
@@ -475,9 +475,9 @@ def test_2_by_2_bottom_right_corner(
 
 
 def test_boundary_returns_correct_boundary_type():
-    tile = fv3gfs.util.TilePartitioner((3, 3))
-    partitioner = fv3gfs.util.CubedSpherePartitioner(tile)
-    for boundary_type in fv3gfs.util.BOUNDARY_TYPES:
+    tile = pace.util.TilePartitioner((3, 3))
+    partitioner = pace.util.CubedSpherePartitioner(tile)
+    for boundary_type in pace.util.BOUNDARY_TYPES:
         boundary = partitioner.boundary(boundary_type, rank=4)  # center face
         assert boundary.boundary_type == boundary_type
 
@@ -490,10 +490,10 @@ def test_boundary_returns_correct_boundary_type():
 @pytest.mark.parametrize(
     "boundary_type, from_rank, to_rank, n_clockwise_rotations",
     [
-        (fv3gfs.util.WEST, 0, 4 * 9 + 8, 1),
-        (fv3gfs.util.SOUTH, 0, 5 * 9 + 6, 0),
-        (fv3gfs.util.WEST, 42, 2 * 9 + 6, 1),
-        (fv3gfs.util.NORTH, 42, 6, 3),
+        (pace.util.WEST, 0, 4 * 9 + 8, 1),
+        (pace.util.SOUTH, 0, 5 * 9 + 6, 0),
+        (pace.util.WEST, 42, 2 * 9 + 6, 1),
+        (pace.util.NORTH, 42, 6, 3),
     ],
 )
 @pytest.mark.cpu_only
@@ -512,11 +512,11 @@ def test_3_by_3_difficult_cases(
 @pytest.mark.parametrize("layout", [(1, 1), (2, 2), (4, 4)])
 @pytest.mark.cpu_only
 def test_edge_boundaries_pair(layout, subtests):
-    order = [fv3gfs.util.WEST, fv3gfs.util.NORTH, fv3gfs.util.EAST, fv3gfs.util.SOUTH]
-    tile = fv3gfs.util.TilePartitioner(layout)
-    partitioner = fv3gfs.util.CubedSpherePartitioner(tile)
+    order = [pace.util.WEST, pace.util.NORTH, pace.util.EAST, pace.util.SOUTH]
+    tile = pace.util.TilePartitioner(layout)
+    partitioner = pace.util.CubedSpherePartitioner(tile)
     for rank in range(partitioner.total_ranks):
-        for boundary_type in fv3gfs.util.EDGE_BOUNDARY_TYPES:
+        for boundary_type in pace.util.EDGE_BOUNDARY_TYPES:
             with subtests.test(rank=rank, boundary_type=boundary_type):
                 out_boundary = partitioner.boundary(boundary_type, rank)
                 in_boundary = partitioner.boundary(
@@ -537,15 +537,15 @@ def test_edge_boundaries_pair(layout, subtests):
 @pytest.mark.cpu_only
 def test_corner_boundaries_pair(layout, subtests):
     order = [
-        fv3gfs.util.NORTHWEST,
-        fv3gfs.util.NORTHEAST,
-        fv3gfs.util.SOUTHEAST,
-        fv3gfs.util.SOUTHWEST,
+        pace.util.NORTHWEST,
+        pace.util.NORTHEAST,
+        pace.util.SOUTHEAST,
+        pace.util.SOUTHWEST,
     ]
-    tile = fv3gfs.util.TilePartitioner(layout)
-    partitioner = fv3gfs.util.CubedSpherePartitioner(tile)
+    tile = pace.util.TilePartitioner(layout)
+    partitioner = pace.util.CubedSpherePartitioner(tile)
     for rank in range(partitioner.total_ranks):
-        for boundary_type in fv3gfs.util.CORNER_BOUNDARY_TYPES:
+        for boundary_type in pace.util.CORNER_BOUNDARY_TYPES:
             with subtests.test(rank=rank, boundary_type=boundary_type):
                 out_boundary = partitioner.boundary(boundary_type, rank)
                 if out_boundary is not None:

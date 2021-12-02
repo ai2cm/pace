@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from fv3gfs.util import NullTimer, Timer
+from pace.util import NullTimer, Timer
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-import fv3gfs.util
+import pace.util
 
 
 try:
@@ -42,9 +42,9 @@ def numpy(backend):
         return cupy
     elif backend.startswith("gt4py"):
         if backend.endswith("numpy"):
-            return fv3gfs.util.testing.gt4py_numpy
+            return pace.util.testing.gt4py_numpy
         elif backend.endswith("cupy"):
-            return fv3gfs.util.testing.gt4py_cupy
+            return pace.util.testing.gt4py_cupy
     else:
         raise NotImplementedError()
 

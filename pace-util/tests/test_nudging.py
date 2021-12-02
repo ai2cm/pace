@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 
-import fv3gfs.util
+import pace.util
 
 
 @pytest.fixture(params=["empty", "one_var", "two_vars"])
@@ -12,7 +12,7 @@ def state(request, numpy):
         return {}
     elif request.param == "one_var":
         return {
-            "var1": fv3gfs.util.Quantity(
+            "var1": pace.util.Quantity(
                 numpy.ones([5]),
                 dims=["dim1"],
                 units="m",
@@ -20,12 +20,12 @@ def state(request, numpy):
         }
     elif request.param == "two_vars":
         return {
-            "var1": fv3gfs.util.Quantity(
+            "var1": pace.util.Quantity(
                 numpy.ones([5]),
                 dims=["dim1"],
                 units="m",
             ),
-            "var2": fv3gfs.util.Quantity(
+            "var2": pace.util.Quantity(
                 numpy.ones([5]),
                 dims=["dim_2"],
                 units="m",
@@ -46,7 +46,7 @@ def reference_state(reference_difference, state, numpy):
         reference_state = copy.deepcopy(state)
     elif reference_difference == "extra_var":
         reference_state = copy.deepcopy(state)
-        reference_state["extra_var"] = fv3gfs.util.Quantity(
+        reference_state["extra_var"] = pace.util.Quantity(
             numpy.ones([5]),
             dims=["dim1"],
             units="m",
@@ -126,7 +126,7 @@ def test_apply_nudging_equals(
     nudging_tendencies,
     numpy,
 ):
-    result = fv3gfs.util.apply_nudging(
+    result = pace.util.apply_nudging(
         state, reference_state, nudging_timescales, timestep
     )
     for name, tendency in nudging_tendencies.items():
@@ -142,7 +142,7 @@ def test_apply_nudging_equals(
 def test_get_nudging_tendencies_equals(
     state, reference_state, nudging_timescales, nudging_tendencies, numpy
 ):
-    result = fv3gfs.util.get_nudging_tendencies(
+    result = pace.util.get_nudging_tendencies(
         state, reference_state, nudging_timescales
     )
     for name, tendency in nudging_tendencies.items():
@@ -156,7 +156,7 @@ def test_get_nudging_tendencies_half_timescale(
 ):
     for name, timescale in nudging_timescales.items():
         nudging_timescales[name] = timedelta(seconds=0.5 * timescale.total_seconds())
-    result = fv3gfs.util.get_nudging_tendencies(
+    result = pace.util.get_nudging_tendencies(
         state, reference_state, nudging_timescales
     )
     for name, tendency in nudging_tendencies.items():

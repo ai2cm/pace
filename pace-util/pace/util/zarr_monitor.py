@@ -22,7 +22,7 @@ try:
 except ImportError:
     cupy = np
 
-logger = logging.getLogger("fv3gfs.util")
+logger = logging.getLogger("pace.util")
 
 __all__ = ["ZarrMonitor"]
 

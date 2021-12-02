@@ -23,7 +23,7 @@ __all__ = [
     "HaloUpdateRequest",
 ]
 
-logger = logging.getLogger("fv3gfs.util")
+logger = logging.getLogger("pace.util")
 
 _HaloSendTuple = Tuple[AsyncRequest, Buffer]
 _HaloRequestSendList = List[_HaloSendTuple]

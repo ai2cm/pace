@@ -1,7 +1,7 @@
 import dataclasses
 from typing import Tuple
 
-from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
+from pace.util.halo_data_transformer import QuantityHaloSpec
 
 from ._boundary_utils import get_boundary_slice
 from .quantity import Quantity

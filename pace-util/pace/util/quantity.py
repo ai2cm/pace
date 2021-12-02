@@ -482,7 +482,7 @@ class Quantity:
 
         If you know you are working with cell-centered variables, you can do:
 
-        >>> from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
+        >>> from pace.util import X_DIM, Y_DIM, Z_DIM
         >>> transposed_quantity = quantity.transpose([X_DIM, Y_DIM, Z_DIM])
 
         To support re-ordering without checking whether quantities are on
@@ -490,13 +490,13 @@ class Quantity:
         for dimensions. For example, to re-order to X-Y-Z dimensions regardless of the
         grid the variable is on, one could do:
 
-        >>> from fv3gfs.util import X_DIMS, Y_DIMS, Z_DIMS
+        >>> from pace.util import X_DIMS, Y_DIMS, Z_DIMS
         >>> transposed_quantity = quantity.transpose([X_DIMS, Y_DIMS, Z_DIMS])
 
         Args:
             target_dims: a list of output dimensions. Instead of a single dimension
                 name, an iterable of dimensions can be used instead for any entries.
-                For example, you may want to use fv3gfs.util.X_DIMS to place an
+                For example, you may want to use pace.util.X_DIMS to place an
                 x-dimension without knowing whether it is on cell centers or interfaces.
 
         Returns:

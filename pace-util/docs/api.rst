@@ -1,7 +1,7 @@
 API
 ===
 
-.. automodule:: fv3gfs.util
+.. automodule:: pace.util
    :members:
    :undoc-members:
    :show-inheritance:

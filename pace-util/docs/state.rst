@@ -5,7 +5,7 @@ State
 Quantity
 --------
 
-Data in fv3gfs-util is managed using a container type called :py:class:`fv3gfs.util.Quantity`.
+Data in pace-util is managed using a container type called :py:class:`pace.util.Quantity`.
 This stores metadata such as dimensions and units (in ``quantity.dims`` and ``quantity.units``),
 and manages the "computational domain" of the data.
 
@@ -32,7 +32,7 @@ Depending on optimization choices, it may also make sense to include
 filler data which serves only to align the computational domain into blocks within
 memory.
 
-If all of that sounded confusing, we agree! That's why :py:class:`fv3gfs.util.Quantity`
+If all of that sounded confusing, we agree! That's why :py:class:`pace.util.Quantity`
 abstracts away as much of this information as possible. If you perform indexing on the
 ``view`` attribute of quantity, the index will be applied within the computational
 domain::

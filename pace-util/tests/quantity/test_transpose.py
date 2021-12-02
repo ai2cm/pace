@@ -1,6 +1,6 @@
 import pytest
 
-import fv3gfs.util
+import pace.util
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def final_data(initial_data, transpose_order, numpy):
 
 @pytest.fixture
 def quantity(quantity_data_input, initial_dims, initial_origin, initial_extent):
-    return fv3gfs.util.Quantity(
+    return pace.util.Quantity(
         quantity_data_input,
         dims=initial_dims,
         units="unit_string",
@@ -98,56 +98,56 @@ def param_product(*param_lists):
     ),
     [
         pytest.param(
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM),
             (6, 7),
             (1, 2),
             (2, 3),
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM),
             (0, 1),
             id="2d_keep_order",
         ),
         pytest.param(
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM),
             (6, 7),
             (1, 2),
             (2, 3),
-            (fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM),
+            (pace.util.Y_DIM, pace.util.X_DIM),
             (1, 0),
             id="2d_transpose",
         ),
         pytest.param(
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM),
             (6, 7, 8),
             (1, 2, 3),
             (2, 3, 4),
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM),
             (0, 1, 2),
             id="3d_keep_order",
         ),
         pytest.param(
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM),
             (6, 7, 8),
             (1, 2, 3),
             (2, 3, 4),
-            (fv3gfs.util.X_DIMS, fv3gfs.util.Y_DIMS, fv3gfs.util.Z_DIMS),
+            (pace.util.X_DIMS, pace.util.Y_DIMS, pace.util.Z_DIMS),
             (0, 1, 2),
             id="3d_keep_order_list_dims",
         ),
         pytest.param(
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM),
             (6, 7, 8),
             (1, 2, 3),
             (2, 3, 4),
-            (fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM),
+            (pace.util.Z_DIM, pace.util.Y_DIM, pace.util.X_DIM),
             (2, 1, 0),
             id="3d_transpose",
         ),
         pytest.param(
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM),
             (6, 7, 8),
             (1, 2, 3),
             (2, 3, 4),
-            (fv3gfs.util.Z_DIMS, fv3gfs.util.Y_DIMS, fv3gfs.util.X_DIMS),
+            (pace.util.Z_DIMS, pace.util.Y_DIMS, pace.util.X_DIMS),
             (2, 1, 0),
             id="3d_transpose_list_dims",
         ),
@@ -174,23 +174,23 @@ def test_transpose(
     ),
     [
         pytest.param(
-            (fv3gfs.util.X_DIM,), (6,), (1,), (2,), (fv3gfs.util.Y_DIM,), (0,), id="1d"
+            (pace.util.X_DIM,), (6,), (1,), (2,), (pace.util.Y_DIM,), (0,), id="1d"
         ),
         pytest.param(
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_INTERFACE_DIM),
+            (pace.util.X_DIM, pace.util.Y_INTERFACE_DIM),
             (6, 7),
             (1, 2),
             (2, 3),
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM),
             (0, 1),
             id="2d_switch_stagger",
         ),
         pytest.param(
-            (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM),
+            (pace.util.X_DIM, pace.util.Y_DIM),
             (6, 7),
             (1, 2),
             (2, 3),
-            (fv3gfs.util.Y_DIM, fv3gfs.util.X_INTERFACE_DIM),
+            (pace.util.Y_DIM, pace.util.X_INTERFACE_DIM),
             (1, 0),
             id="2d_transpose_switch_stagger",
         ),

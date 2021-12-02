@@ -1,7 +1,7 @@
 import mpi4py
 
 import fv3gfs.wrapper as wrapper
-from fv3gfs.util import io
+from pace.util import io
 
 
 # May need to run 'ulimit -s unlimited' before running this example

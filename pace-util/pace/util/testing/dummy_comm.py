@@ -4,7 +4,7 @@ import logging
 from ..utils import ensure_contiguous, safe_assign_array
 
 
-logger = logging.getLogger("fv3gfs.util")
+logger = logging.getLogger("pace.util")
 
 
 class ConcurrencyError(Exception):

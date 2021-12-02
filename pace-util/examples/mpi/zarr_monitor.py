@@ -5,19 +5,19 @@ import numpy as np
 import zarr
 from mpi4py import MPI
 
-import fv3gfs.util
+import pace.util
 
 
 OUTPUT_PATH = "output/zarr_monitor.zarr"
 
 
 def get_example_state(time):
-    sizer = fv3gfs.util.SubtileGridSizer(
+    sizer = pace.util.SubtileGridSizer(
         nx=48, ny=48, nz=70, n_halo=3, extra_dim_lengths={}
     )
-    allocator = fv3gfs.util.QuantityFactory(sizer, np)
+    allocator = pace.util.QuantityFactory(sizer, np)
     air_temperature = allocator.zeros(
-        [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM], units="degK"
+        [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM], units="degK"
     )
     air_temperature.view[:] = np.random.randn(*air_temperature.extent)
     return {"time": time, "air_temperature": air_temperature}
@@ -30,10 +30,8 @@ if __name__ == "__main__":
     layout = (ranks_per_edge, ranks_per_edge)
 
     store = zarr.storage.DirectoryStore(OUTPUT_PATH)
-    partitioner = fv3gfs.util.CubedSpherePartitioner(
-        fv3gfs.util.TilePartitioner(layout)
-    )
-    monitor = fv3gfs.util.ZarrMonitor(store, partitioner, mpi_comm=MPI.COMM_WORLD)
+    partitioner = pace.util.CubedSpherePartitioner(pace.util.TilePartitioner(layout))
+    monitor = pace.util.ZarrMonitor(store, partitioner, mpi_comm=MPI.COMM_WORLD)
 
     time = cftime.DatetimeJulian(2020, 1, 1)
     timestep = timedelta(hours=1)

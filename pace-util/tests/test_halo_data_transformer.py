@@ -3,7 +3,7 @@ from typing import Tuple
 
 import pytest
 
-from fv3gfs.util import (
+from pace.util import (
     EAST,
     NORTH,
     NORTHEAST,
@@ -21,13 +21,13 @@ from fv3gfs.util import (
     Quantity,
     _boundary_utils,
 )
-from fv3gfs.util.buffer import Buffer
-from fv3gfs.util.halo_data_transformer import (
+from pace.util.buffer import Buffer
+from pace.util.halo_data_transformer import (
     HaloDataTransformer,
     HaloExchangeSpec,
     QuantityHaloSpec,
 )
-from fv3gfs.util.rotate import rotate_scalar_data, rotate_vector_data
+from pace.util.rotate import rotate_scalar_data, rotate_vector_data
 
 
 try:

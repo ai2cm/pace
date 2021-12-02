@@ -3,7 +3,7 @@ import contextlib
 import numpy as np
 from mpi4py import MPI
 
-from fv3gfs.util import Timer
+from pace.util import Timer
 
 
 @contextlib.contextmanager

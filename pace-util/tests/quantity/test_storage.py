@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-import fv3gfs.util
+import pace.util
 
 
 try:
@@ -62,7 +62,7 @@ def data(n_halo, extent_1d, n_dims, numpy, dtype):
 
 @pytest.fixture
 def quantity(data, origin, extent, dims, units):
-    return fv3gfs.util.Quantity(
+    return pace.util.Quantity(
         data, origin=origin, extent=extent, dims=dims, units=units
     )
 
@@ -78,7 +78,7 @@ def test_numpy(quantity, backend):
 def test_modifying_numpy_storage_modifies_view():
     shape = (6, 6)
     data = np.zeros(shape, dtype=float)
-    quantity = fv3gfs.util.Quantity(
+    quantity = pace.util.Quantity(
         data,
         origin=(0, 0),
         extent=shape,
@@ -153,7 +153,7 @@ def test_accessing_storage_does_not_break_view(
 ):
     if backend == "cupy":
         backend = "gtcuda"
-    quantity = fv3gfs.util.Quantity(
+    quantity = pace.util.Quantity(
         data,
         origin=origin,
         extent=extent,
@@ -171,7 +171,7 @@ def test_numpy_data_becomes_cupy_with_gpu_backend(
     data, origin, extent, dims, units, backend
 ):
     cpu_data = np.zeros(data.shape)
-    quantity = fv3gfs.util.Quantity(
+    quantity = pace.util.Quantity(
         cpu_data,
         origin=origin,
         extent=extent,
@@ -189,7 +189,7 @@ def test_cannot_use_cpu_storage_with_gpu_backend(
 ):
     assert isinstance(data, gt4py.storage.storage.CPUStorage)
     with pytest.raises(TypeError):
-        fv3gfs.util.Quantity(
+        pace.util.Quantity(
             data,
             origin=origin,
             extent=extent,
@@ -205,7 +205,7 @@ def test_cannot_use_gpu_storage_with_cpu_backend(
 ):
     assert isinstance(data, gt4py.storage.storage.GPUStorage)
     with pytest.raises(TypeError):
-        fv3gfs.util.Quantity(
+        pace.util.Quantity(
             data,
             origin=origin,
             extent=extent,

@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=.
 set BUILDDIR=_build
-set SPHINXPROJ=fv3gfs-util
+set SPHINXPROJ=pace-util
 
 if "%1" == "" goto help
 

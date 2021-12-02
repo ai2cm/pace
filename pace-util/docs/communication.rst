@@ -8,9 +8,9 @@ how to partition that cubed sphere into parts for each rank, and to be able to
 communicate data between those ranks.
 
 Partitioning is managed by so-called "Partitioner" objects. The
-:py:class:`fv3gfs.util.CubedSpherePartitioner` manages the entire cubed sphere, while the
-:py:class:`fv3gfs.util.TilePartitioner` manages one of the six faces of the cube, or a
+:py:class:`pace.util.CubedSpherePartitioner` manages the entire cubed sphere, while the
+:py:class:`pace.util.TilePartitioner` manages one of the six faces of the cube, or a
 region on one of those faces. For communication, we similarly have
-:py:class:`fv3gfs.util.CubedSphereCommunicator` and :py:class:`fv3gfs.util.TileCommunicator`.
+:py:class:`pace.util.CubedSphereCommunicator` and :py:class:`pace.util.TileCommunicator`.
 Please see their API documentation for an up-to-date list of current communications
 routines.

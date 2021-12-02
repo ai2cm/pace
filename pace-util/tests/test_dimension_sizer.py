@@ -2,7 +2,7 @@ from collections import namedtuple
 
 import pytest
 
-import fv3gfs.util
+import pace.util
 
 
 @pytest.fixture(params=[48, 96])
@@ -60,16 +60,16 @@ def namelist(nx_tile, ny_tile, nz, layout):
 @pytest.fixture(params=["from_namelist", "from_tile_params"])
 def sizer(request, nx_tile, ny_tile, nz, layout, namelist, extra_dimension_lengths):
     if request.param == "from_tile_params":
-        sizer = fv3gfs.util.SubtileGridSizer.from_tile_params(
+        sizer = pace.util.SubtileGridSizer.from_tile_params(
             nx_tile,
             ny_tile,
             nz,
-            fv3gfs.util.N_HALO_DEFAULT,
+            pace.util.N_HALO_DEFAULT,
             extra_dimension_lengths,
             layout,
         )
     elif request.param == "from_namelist":
-        sizer = fv3gfs.util.SubtileGridSizer.from_namelist(namelist)
+        sizer = pace.util.SubtileGridSizer.from_namelist(namelist)
     else:
         raise NotImplementedError()
     return sizer
@@ -103,62 +103,62 @@ DimCase = namedtuple("DimCase", ["dims", "origin", "extent", "shape"])
 def dim_case(request, nx, ny, nz):
     if request.param == "x_only":
         return DimCase(
-            (fv3gfs.util.X_DIM,),
-            (fv3gfs.util.N_HALO_DEFAULT,),
+            (pace.util.X_DIM,),
+            (pace.util.N_HALO_DEFAULT,),
             (nx,),
-            (2 * fv3gfs.util.N_HALO_DEFAULT + nx + 1,),
+            (2 * pace.util.N_HALO_DEFAULT + nx + 1,),
         )
     elif request.param == "x_interface_only":
         return DimCase(
-            (fv3gfs.util.X_INTERFACE_DIM,),
-            (fv3gfs.util.N_HALO_DEFAULT,),
+            (pace.util.X_INTERFACE_DIM,),
+            (pace.util.N_HALO_DEFAULT,),
             (nx + 1,),
-            (2 * fv3gfs.util.N_HALO_DEFAULT + nx + 1,),
+            (2 * pace.util.N_HALO_DEFAULT + nx + 1,),
         )
     elif request.param == "y_only":
         return DimCase(
-            (fv3gfs.util.Y_DIM,),
-            (fv3gfs.util.N_HALO_DEFAULT,),
+            (pace.util.Y_DIM,),
+            (pace.util.N_HALO_DEFAULT,),
             (ny,),
-            (2 * fv3gfs.util.N_HALO_DEFAULT + ny + 1,),
+            (2 * pace.util.N_HALO_DEFAULT + ny + 1,),
         )
     elif request.param == "y_interface_only":
         return DimCase(
-            (fv3gfs.util.Y_INTERFACE_DIM,),
-            (fv3gfs.util.N_HALO_DEFAULT,),
+            (pace.util.Y_INTERFACE_DIM,),
+            (pace.util.N_HALO_DEFAULT,),
             (ny + 1,),
-            (2 * fv3gfs.util.N_HALO_DEFAULT + ny + 1,),
+            (2 * pace.util.N_HALO_DEFAULT + ny + 1,),
         )
     elif request.param == "z_only":
-        return DimCase((fv3gfs.util.Z_DIM,), (0,), (nz,), (nz + 1,))
+        return DimCase((pace.util.Z_DIM,), (0,), (nz,), (nz + 1,))
     elif request.param == "z_interface_only":
-        return DimCase((fv3gfs.util.Z_INTERFACE_DIM,), (0,), (nz + 1,), (nz + 1,))
+        return DimCase((pace.util.Z_INTERFACE_DIM,), (0,), (nz + 1,), (nz + 1,))
     elif request.param == "x_y":
         return DimCase(
             (
-                fv3gfs.util.X_DIM,
-                fv3gfs.util.Y_DIM,
+                pace.util.X_DIM,
+                pace.util.Y_DIM,
             ),
-            (fv3gfs.util.N_HALO_DEFAULT, fv3gfs.util.N_HALO_DEFAULT),
+            (pace.util.N_HALO_DEFAULT, pace.util.N_HALO_DEFAULT),
             (nx, ny),
             (
-                2 * fv3gfs.util.N_HALO_DEFAULT + nx + 1,
-                2 * fv3gfs.util.N_HALO_DEFAULT + ny + 1,
+                2 * pace.util.N_HALO_DEFAULT + nx + 1,
+                2 * pace.util.N_HALO_DEFAULT + ny + 1,
             ),
         )
     elif request.param == "z_y_x":
         return DimCase(
             (
-                fv3gfs.util.Z_DIM,
-                fv3gfs.util.Y_DIM,
-                fv3gfs.util.X_DIM,
+                pace.util.Z_DIM,
+                pace.util.Y_DIM,
+                pace.util.X_DIM,
             ),
-            (0, fv3gfs.util.N_HALO_DEFAULT, fv3gfs.util.N_HALO_DEFAULT),
+            (0, pace.util.N_HALO_DEFAULT, pace.util.N_HALO_DEFAULT),
             (nz, ny, nx),
             (
                 nz + 1,
-                2 * fv3gfs.util.N_HALO_DEFAULT + ny + 1,
-                2 * fv3gfs.util.N_HALO_DEFAULT + nx + 1,
+                2 * pace.util.N_HALO_DEFAULT + ny + 1,
+                2 * pace.util.N_HALO_DEFAULT + nx + 1,
             ),
         )
 
@@ -182,7 +182,7 @@ def test_subtile_dimension_sizer_shape(sizer, dim_case):
 
 
 def test_allocator_zeros(numpy, sizer, dim_case, units, dtype):
-    allocator = fv3gfs.util.QuantityFactory(sizer, numpy)
+    allocator = pace.util.QuantityFactory(sizer, numpy)
     quantity = allocator.zeros(dim_case.dims, units, dtype=dtype)
     assert quantity.units == units
     assert quantity.dims == dim_case.dims
@@ -193,7 +193,7 @@ def test_allocator_zeros(numpy, sizer, dim_case, units, dtype):
 
 
 def test_allocator_ones(numpy, sizer, dim_case, units, dtype):
-    allocator = fv3gfs.util.QuantityFactory(sizer, numpy)
+    allocator = pace.util.QuantityFactory(sizer, numpy)
     quantity = allocator.ones(dim_case.dims, units, dtype=dtype)
     assert quantity.units == units
     assert quantity.dims == dim_case.dims
@@ -204,7 +204,7 @@ def test_allocator_ones(numpy, sizer, dim_case, units, dtype):
 
 
 def test_allocator_empty(numpy, sizer, dim_case, units, dtype):
-    allocator = fv3gfs.util.QuantityFactory(sizer, numpy)
+    allocator = pace.util.QuantityFactory(sizer, numpy)
     quantity = allocator.empty(dim_case.dims, units, dtype=dtype)
     assert quantity.units == units
     assert quantity.dims == dim_case.dims

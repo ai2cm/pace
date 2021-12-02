@@ -1,7 +1,7 @@
 import pytest
 
-from fv3gfs.util.buffer import BUFFER_CACHE, Buffer, recv_buffer, send_buffer
-from fv3gfs.util.utils import is_c_contiguous, is_contiguous
+from pace.util.buffer import BUFFER_CACHE, Buffer, recv_buffer, send_buffer
+from pace.util.utils import is_c_contiguous, is_contiguous
 
 
 @pytest.fixture

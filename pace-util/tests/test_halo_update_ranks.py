@@ -1,6 +1,6 @@
 import pytest
 
-import fv3gfs.util
+import pace.util
 
 
 @pytest.fixture
@@ -27,12 +27,12 @@ def total_ranks(ranks_per_tile):
 def shape(nz, ny, nx, dims, n_points):
     return_list = []
     length_dict = {
-        fv3gfs.util.X_DIM: 2 * n_points + nx,
-        fv3gfs.util.X_INTERFACE_DIM: 2 * n_points + nx + 1,
-        fv3gfs.util.Y_DIM: 2 * n_points + ny,
-        fv3gfs.util.Y_INTERFACE_DIM: 2 * n_points + ny + 1,
-        fv3gfs.util.Z_DIM: nz,
-        fv3gfs.util.Z_INTERFACE_DIM: nz + 1,
+        pace.util.X_DIM: 2 * n_points + nx,
+        pace.util.X_INTERFACE_DIM: 2 * n_points + nx + 1,
+        pace.util.Y_DIM: 2 * n_points + ny,
+        pace.util.Y_INTERFACE_DIM: 2 * n_points + ny + 1,
+        pace.util.Z_DIM: nz,
+        pace.util.Z_INTERFACE_DIM: nz + 1,
     }
     for dim in dims:
         return_list.append(length_dict[dim])
@@ -43,12 +43,12 @@ def shape(nz, ny, nx, dims, n_points):
 def origin(n_points, dims):
     return_list = []
     origin_dict = {
-        fv3gfs.util.X_DIM: n_points,
-        fv3gfs.util.X_INTERFACE_DIM: n_points,
-        fv3gfs.util.Y_DIM: n_points,
-        fv3gfs.util.Y_INTERFACE_DIM: n_points,
-        fv3gfs.util.Z_DIM: 0,
-        fv3gfs.util.Z_INTERFACE_DIM: 0,
+        pace.util.X_DIM: n_points,
+        pace.util.X_INTERFACE_DIM: n_points,
+        pace.util.Y_DIM: n_points,
+        pace.util.Y_INTERFACE_DIM: n_points,
+        pace.util.Z_DIM: 0,
+        pace.util.Z_INTERFACE_DIM: 0,
     }
     for dim in dims:
         return_list.append(origin_dict[dim])
@@ -59,12 +59,12 @@ def origin(n_points, dims):
 def extent(n_points, dims, nz, ny, nx):
     return_list = []
     extent_dict = {
-        fv3gfs.util.X_DIM: nx,
-        fv3gfs.util.X_INTERFACE_DIM: nx + 1,
-        fv3gfs.util.Y_DIM: ny,
-        fv3gfs.util.Y_INTERFACE_DIM: ny + 1,
-        fv3gfs.util.Z_DIM: nz,
-        fv3gfs.util.Z_INTERFACE_DIM: nz + 1,
+        pace.util.X_DIM: nx,
+        pace.util.X_INTERFACE_DIM: nx + 1,
+        pace.util.Y_DIM: ny,
+        pace.util.Y_INTERFACE_DIM: ny + 1,
+        pace.util.Z_DIM: nz,
+        pace.util.Z_INTERFACE_DIM: nz + 1,
     }
     for dim in dims:
         return_list.append(extent_dict[dim])
@@ -73,12 +73,12 @@ def extent(n_points, dims, nz, ny, nx):
 
 @pytest.fixture
 def tile_partitioner(layout):
-    return fv3gfs.util.TilePartitioner(layout)
+    return pace.util.TilePartitioner(layout)
 
 
 @pytest.fixture
 def cube_partitioner(tile_partitioner):
-    return fv3gfs.util.CubedSpherePartitioner(tile_partitioner)
+    return pace.util.CubedSpherePartitioner(tile_partitioner)
 
 
 @pytest.fixture()
@@ -87,12 +87,12 @@ def communicator_list(cube_partitioner):
     return_list = []
     for rank in range(cube_partitioner.total_ranks):
         return_list.append(
-            fv3gfs.util.CubedSphereCommunicator(
-                comm=fv3gfs.util.testing.DummyComm(
+            pace.util.CubedSphereCommunicator(
+                comm=pace.util.testing.DummyComm(
                     rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
                 ),
                 partitioner=cube_partitioner,
-                timer=fv3gfs.util.Timer(),
+                timer=pace.util.Timer(),
             )
         )
     return return_list
@@ -105,9 +105,9 @@ def rank_quantity_list(total_ranks, numpy, dtype):
         data = numpy.empty((3, 3), dtype=dtype)
         data[:] = numpy.nan
         data[1, 1] = rank
-        quantity = fv3gfs.util.Quantity(
+        quantity = pace.util.Quantity(
             data,
-            dims=(fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM),
+            dims=(pace.util.Y_DIM, pace.util.X_DIM),
             units="m",
             origin=(1, 1),
             extent=(1, 1),

@@ -8,7 +8,7 @@ import functools
 import numpy as np
 import pytest
 
-import fv3gfs.util
+import pace.util
 
 
 try:
@@ -37,12 +37,12 @@ def total_ranks(ranks_per_tile):
 
 @pytest.fixture
 def tile_partitioner(layout):
-    return fv3gfs.util.TilePartitioner(layout)
+    return pace.util.TilePartitioner(layout)
 
 
 @pytest.fixture
 def cube_partitioner(tile_partitioner):
-    return fv3gfs.util.CubedSpherePartitioner(tile_partitioner)
+    return pace.util.CubedSpherePartitioner(tile_partitioner)
 
 
 @pytest.fixture
@@ -51,13 +51,13 @@ def cpu_communicators(cube_partitioner):
     return_list = []
     for rank in range(cube_partitioner.total_ranks):
         return_list.append(
-            fv3gfs.util.CubedSphereCommunicator(
-                comm=fv3gfs.util.testing.DummyComm(
+            pace.util.CubedSphereCommunicator(
+                comm=pace.util.testing.DummyComm(
                     rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
                 ),
                 force_cpu=True,
                 partitioner=cube_partitioner,
-                timer=fv3gfs.util.Timer(),
+                timer=pace.util.Timer(),
             )
         )
     return return_list
@@ -69,13 +69,13 @@ def gpu_communicators(cube_partitioner):
     return_list = []
     for rank in range(cube_partitioner.total_ranks):
         return_list.append(
-            fv3gfs.util.CubedSphereCommunicator(
-                comm=fv3gfs.util.testing.DummyComm(
+            pace.util.CubedSphereCommunicator(
+                comm=pace.util.testing.DummyComm(
                     rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
                 ),
                 partitioner=cube_partitioner,
                 force_cpu=False,
-                timer=fv3gfs.util.Timer(),
+                timer=pace.util.Timer(),
             )
         )
     return return_list
@@ -115,9 +115,9 @@ def module_count_calls_to_zeros(module):
 def test_halo_update_only_communicate_on_gpu(backend, gpu_communicators):
     with module_count_calls_to_zeros(np), module_count_calls_to_zeros(cp):
         shape = (10, 10, 79)
-        dims = (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM)
+        dims = (pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM)
         data = cp.ones(shape, dtype=float)
-        quantity = fv3gfs.util.Quantity(
+        quantity = pace.util.Quantity(
             data,
             dims=dims,
             units="m",
@@ -143,12 +143,12 @@ def test_halo_update_communicate_though_cpu(backend, cpu_communicators):
     with module_count_calls_to_zeros(np), module_count_calls_to_zeros(cp):
         shape = (10, 10, 79)
         data = cp.ones(shape, dtype=float)
-        quantity = fv3gfs.util.Quantity(
+        quantity = pace.util.Quantity(
             data,
             dims=(
-                fv3gfs.util.X_DIM,
-                fv3gfs.util.Y_DIM,
-                fv3gfs.util.Z_DIM,
+                pace.util.X_DIM,
+                pace.util.Y_DIM,
+                pace.util.Z_DIM,
             ),
             units="m",
             origin=(3, 3, 0),
