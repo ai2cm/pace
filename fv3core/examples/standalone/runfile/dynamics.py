@@ -231,7 +231,7 @@ if __name__ == "__main__":
         fv3core.set_rebuild(False)
         fv3core.set_validate_args(False)
 
-        spec.set_namelist(args.data_dir + "/input.nml")
+        spec.set_namelist(args.data_dir + "/input.nml", rank=rank)
 
         experiment_name, is_baroclinic_test_case = get_experiment_info(args.data_dir)
         if args.disable_halo_exchange:
@@ -247,7 +247,7 @@ if __name__ == "__main__":
 
         # TODO remove this creation of the legacy grid once everything that
         # references it is updated or removed
-        grid = spec.make_grid_from_namelist(namelist, communicator.rank)
+        grid = spec.make_grid_from_namelist(namelist, rank)
         spec.set_grid(grid)
 
         metric_terms = MetricTerms.from_tile_sizing(
@@ -268,7 +268,7 @@ if __name__ == "__main__":
                 comm=communicator,
             )
         else:
-            state = read_serialized_initial_state(communicator.rank, grid)
+            state = read_serialized_initial_state(rank, grid)
 
         dycore = fv3core.DynamicalCore(
             comm=communicator,
