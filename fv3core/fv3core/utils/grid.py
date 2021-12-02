@@ -40,7 +40,8 @@ class Grid:
         self.subtile_width_y = int((self.npy - 1) / self.layout[1])
         for ivar, jvar in self.index_pairs:
             local_i, local_j = int(indices[ivar]), int(indices[jvar])
-            local_i, local_j = self.global_to_local_indices(local_i, local_j)
+            if not local_indices:
+                local_i, local_j = self.global_to_local_indices(local_i, local_j)
             setattr(self, ivar, local_i)
             setattr(self, jvar, local_j)
         self.nid = int(self.ied - self.isd + 1)
