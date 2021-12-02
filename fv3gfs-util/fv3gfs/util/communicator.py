@@ -96,7 +96,10 @@ class Communicator:
         return self.comm.Get_rank()
 
     def _maybe_force_cpu(self, module: NumpyModule) -> NumpyModule:
-        """Get a numpy-like module depending on configuration and Quantity original allocator"""
+        """
+        Get a numpy-like module depending on configuration and
+        Quantity original allocator.
+        """
         if self._force_cpu:
             return np
         return module
@@ -766,8 +769,8 @@ class CubedSphereCommunicator(Communicator):
     ):
         """Deprecated, do not use."""
         raise NotImplementedError(
-            "finish_vector_halo_update has been removed, use .wait() on the request object "
-            "returned by start_vector_halo_update"
+            "finish_vector_halo_update has been removed, use .wait() "
+            "on the request object returned by start_vector_halo_update"
         )
 
     def get_scalar_halo_updater(self, specifications: List[QuantityHaloSpec]):

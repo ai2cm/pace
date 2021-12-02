@@ -90,7 +90,8 @@ class DummyComm:
     def bcast(self, value, root=0):
         if root != 0:
             raise NotImplementedError(
-                "DummyComm assumes ranks are called in order, so root must be the bcast source"
+                "DummyComm assumes ranks are called in order, so root must be "
+                "the bcast source"
             )
         value = self._get_buffer("bcast", value)
         logger.debug(f"bcast {value} to rank {self.rank}")
@@ -104,7 +105,8 @@ class DummyComm:
         ensure_contiguous(recvbuf)
         if root != 0:
             raise NotImplementedError(
-                "DummyComm assumes ranks are called in order, so root must be the scatter source"
+                "DummyComm assumes ranks are called in order, so root must be "
+                "the scatter source"
             )
         if sendbuf is not None:
             sendbuf = self._get_buffer("scatter", copy.deepcopy(sendbuf))

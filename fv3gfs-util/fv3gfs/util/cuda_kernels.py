@@ -1,3 +1,5 @@
+# flake8: noqa
+
 try:
     import cupy as cp
 except ImportError:

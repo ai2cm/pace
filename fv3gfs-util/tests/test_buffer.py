@@ -66,7 +66,9 @@ def test_recvbuf_no_buffer(allocator, contiguous_array):
 
 
 def test_buffer_cache_appends(allocator, backend):
-    """Test buffer with the same key are appended while not in use for potential reuse"""
+    """
+    Test buffer with the same key are appended while not in use for potential reuse
+    """
     if backend == "gt4py_cupy":
         pytest.skip("gt4py gpu backend cannot produce contiguous arrays")
     BUFFER_CACHE.clear()
@@ -98,7 +100,8 @@ def test_buffer_reuse(allocator, backend):
     assert len(BUFFER_CACHE) == 0
     shape = (10, 10, 10)
     # We popped a buffer from the cache. This created a cache line for key
-    # first_buffer._key. That cache line is an empty array for now (the element was popped)
+    # first_buffer._key.
+    # That cache line is an empty array for now (the element was popped)
     first_buffer = Buffer.pop_from_cache(allocator, shape, float)
     fill_scalar = 42
     first_buffer.array.fill(fill_scalar)
