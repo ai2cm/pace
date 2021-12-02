@@ -12,7 +12,7 @@ class TranslateD_SW(TranslateFortranData2Py):
         super().__init__(grid)
         self.max_error = 3.2e-10
         column_namelist = d_sw.get_column_namelist(
-            spec.namelist, grid.npz, backend=self.grid.stencil_config.backend
+            spec.namelist, grid.npz, backend=self.grid.stencil_factory.backend
         )
         self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(
             spec.grid.stencil_factory,
@@ -180,7 +180,7 @@ class TranslateHeatDiss(TranslateFortranData2Py):
 
     def compute_from_storage(self, inputs):
         column_namelist = d_sw.get_column_namelist(
-            spec.namelist, self.grid.npz, backend=self.grid.stencil_config.backend
+            spec.namelist, self.grid.npz, backend=self.grid.stencil_factory.backend
         )
         # TODO add these to the serialized data or remove the test
         inputs["damp_w"] = column_namelist["damp_w"]

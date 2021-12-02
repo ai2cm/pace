@@ -622,7 +622,8 @@ class GridIndexing:
         origin: Tuple[int, ...],
         dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
         n_halo: Optional[int] = None,
-        *backend: str,
+        *,
+        backend: str,
     ) -> QuantityHaloSpec:
         """Build memory specifications for the halo update.
 

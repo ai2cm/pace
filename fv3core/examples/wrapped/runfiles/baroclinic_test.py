@@ -124,7 +124,8 @@ if __name__ == "__main__":
     dt_atmos = spec.namelist.dt_atmos
 
     # set backend
-    fv3core.set_backend("numpy")
+    backend = "numpy"
+    fv3core.set_backend(backend)
 
     # get another namelist for the communicator??
     nml2 = yaml.safe_load(open("/fv3core/examples/wrapped/config/baroclinic.yml", "r"))[
@@ -207,7 +208,7 @@ if __name__ == "__main__":
         grid_data[field] = serializer.read(field, grid_savepoint)
         if len(grid_data[field].flatten()) == 1:
             grid_data[field] = grid_data[field][0]
-    grid = translate.TranslateGrid(grid_data, rank).python_grid()
+    grid = translate.TranslateGrid(grid_data, rank, backend=backend).python_grid()
     fv3core._config.set_grid(grid)
 
     # startup

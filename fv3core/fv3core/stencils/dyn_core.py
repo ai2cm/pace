@@ -163,31 +163,35 @@ def get_nk_heat_dissipation(
     return nk_heat_dissipation
 
 
-def dyncore_temporaries(grid_indexing: GridIndexing):
+def dyncore_temporaries(grid_indexing: GridIndexing, *, backend: str):
     tmps: Dict[str, fv3gfs.util.Quantity] = {}
     utils.storage_dict(
         tmps,
         ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "divgd"],
         grid_indexing.max_shape,
         grid_indexing.origin_full(),
+        backend=backend,
     )
     utils.storage_dict(
         tmps,
         ["ws3"],
         grid_indexing.max_shape[0:2],
         grid_indexing.origin_full()[0:2],
+        backend=backend,
     )
     utils.storage_dict(
         tmps,
         ["crx", "xfx"],
         grid_indexing.max_shape,
         grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
+        backend=backend,
     )
     utils.storage_dict(
         tmps,
         ["cry", "yfx"],
         grid_indexing.max_shape,
         grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
+        backend=backend,
     )
     tmps["heat_source_quantity"] = quantity_wrap(
         tmps["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
@@ -343,7 +347,9 @@ class AcousticDynamics:
                 stencil_factory, grid_data, config.grid_type
             )
         )
-        self._temporaries = dyncore_temporaries(grid_indexing)
+        self._temporaries = dyncore_temporaries(
+            grid_indexing, backend=stencil_factory.backend
+        )
         self._temporaries["gz"][:] = HUGE_R
         if not config.hydrostatic:
             self._temporaries["pk3"][:] = HUGE_R

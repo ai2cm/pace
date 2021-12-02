@@ -47,9 +47,7 @@ class ParallelTranslate:
         if grid is None:
             grid = self.grid
         state = copy.copy(inputs)
-        self._base.make_storage_data_input_vars(
-            state, backend=self.grid.stencil_factory.backend
-        )
+        self._base.make_storage_data_input_vars(state)
         for name, properties in self.inputs.items():
             if "name" not in properties:
                 properties["name"] = name
@@ -236,9 +234,7 @@ class ParallelTranslate2Py(ParallelTranslate):
 
 class ParallelTranslate2PyState(ParallelTranslate2Py):
     def compute_parallel(self, inputs, communicator):
-        self._base.make_storage_data_input_vars(
-            inputs, backend=self.grid.stencil_factory.backend
-        )
+        self._base.make_storage_data_input_vars(inputs)
         for name, properties in self.inputs.items():
             self.grid.quantity_dict_update(
                 inputs, name, dims=properties["dims"], units=properties["units"]

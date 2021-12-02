@@ -527,17 +527,18 @@ class RemapProfile:
         km: int = grid_indexing.domain[2]
         self._kord = kord
 
-        def make_storage():
+        def make_storage(**kwargs):
             return utils.make_storage_from_shape(
                 shape=grid_indexing.domain_full(add=(0, 0, 1)),
                 origin=grid_indexing.origin_full(),
                 backend=stencil_factory.backend,
+                **kwargs,
             )
 
         self._gam: FloatField = make_storage()
         self._q: FloatField = make_storage()
         self._q_bot: FloatField = make_storage()
-        self._extm: BoolField = make_storage()
+        self._extm: BoolField = make_storage(dtype=bool)
         self._ext5: BoolField = make_storage()
         self._ext6: BoolField = make_storage()
 

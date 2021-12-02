@@ -1147,7 +1147,7 @@ class DelnFluxNoSG:
         corner_axis_offsets = axis_offsets(grid_indexing, corner_origin, corner_domain)
 
         self._corner_tmp = utils.make_storage_from_shape(
-            corner_domain, origin=corner_origin
+            corner_domain, origin=corner_origin, backend=stencil_factory.backend
         )
         self._copy_corners_x_nord = stencil_factory.from_origin_domain(
             copy_corners_x_nord,

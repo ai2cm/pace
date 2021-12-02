@@ -124,7 +124,7 @@ class FillNegativeTracerValues:
         shape_ij = shape[0:2]
 
         def make_storage(*args, **kwargs):
-            utils.make_storage_from_shape(
+            return utils.make_storage_from_shape(
                 *args, **kwargs, backend=stencil_factory.backend
             )
 

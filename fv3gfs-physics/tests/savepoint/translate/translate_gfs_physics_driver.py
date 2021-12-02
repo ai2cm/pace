@@ -91,6 +91,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             self.grid.domain_shape_full(add=(1, 1, 1)),
             origin=self.grid.compute_origin(),
             init=True,
+            backend=self.grid.stencil_factory.backend,
         )
         inputs["delprsi"] = copy.deepcopy(storage)
         inputs["phii"] = copy.deepcopy(storage)

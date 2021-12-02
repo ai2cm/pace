@@ -48,6 +48,7 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
             self.grid.domain_shape_full(add=(1, 1, 1)),
             origin=self.grid.compute_origin(),
             init=True,
+            backend=self.grid.stencil_factory.backend,
         )
         inputs["qo3mr"] = copy.deepcopy(storage)
         inputs["qsgs_tke"] = copy.deepcopy(storage)

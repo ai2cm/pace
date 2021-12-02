@@ -52,7 +52,7 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
             spec.namelist.hord_tm,
             inputs.pop("dp0"),
             d_sw.get_column_namelist(
-                spec.namelist, self.grid.npz, backend=self.grid.stencil_config.backend
+                spec.namelist, self.grid.npz, backend=self.grid.stencil_factory.backend
             ),
         )
         self.updatedzd(**inputs)

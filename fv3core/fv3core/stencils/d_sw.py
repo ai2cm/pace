@@ -829,7 +829,10 @@ class DGridShallowWaterLagrangianDynamics:
             damping_coefficients.da_min_c,
         )
         self._delnflux_damp_vt = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :], (self.grid_indexing.domain[2],), (0,)
+            self._tmp_damp_3d[0, 0, :],
+            (self.grid_indexing.domain[2],),
+            (0,),
+            backend=stencil_factory.backend,
         )
 
         damping_factor_calculation_stencil(
@@ -839,7 +842,10 @@ class DGridShallowWaterLagrangianDynamics:
             damping_coefficients.da_min_c,
         )
         self._delnflux_damp_w = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :], (self.grid_indexing.domain[2],), (0,)
+            self._tmp_damp_3d[0, 0, :],
+            (self.grid_indexing.domain[2],),
+            (0,),
+            backend=stencil_factory.backend,
         )
         y_temporary = utils.make_storage_from_shape(
             shape=self.grid_indexing.max_shape,
