@@ -500,7 +500,9 @@ def lowest_kvals(column, k, do_vort_damp):
     vorticity_damping_option(column, k, do_vort_damp)
 
 
-def get_column_namelist(config: DGridShallowWaterLagrangianDynamicsConfig, npz):
+def get_column_namelist(
+    config: DGridShallowWaterLagrangianDynamicsConfig, npz, backend: str
+):
     """
     Generate a dictionary of columns that specify how parameters (such as nord, damp)
     used in several functions called by D_SW vary over the k-dimension.
@@ -518,7 +520,7 @@ def get_column_namelist(config: DGridShallowWaterLagrangianDynamicsConfig, npz):
     ]
     col = {}
     for name in all_names:
-        col[name] = utils.make_storage_from_shape((npz + 1,), (0,))
+        col[name] = utils.make_storage_from_shape((npz + 1,), (0,), backend=backend)
     for name in direct_namelist:
         col[name][:] = getattr(config, name)
 
@@ -592,7 +594,7 @@ def compute_f0(
     """
     Compute the coriolis parameter on the D-grid
     """
-    f0 = utils.make_storage_from_shape(lon_agrid.shape)
+    f0 = utils.make_storage_from_shape(lon_agrid.shape, backend=stencil_factory.backend)
     f0_stencil = stencil_factory.from_dims_halo(
         compute_coriolis_parameter_defn,
         compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -637,30 +639,36 @@ class DGridShallowWaterLagrangianDynamics:
 
         # only compute for k-levels where this is true
         self.hydrostatic = config.hydrostatic
-        self._tmp_heat_s = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._vort_x_delta = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._vort_y_delta = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_ke = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_vort = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._uc_contra = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._vc_contra = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_ut = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_vt = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_fx = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_fy = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_gx = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_gy = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_dw = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_wk = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_fx2 = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._tmp_fy2 = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                self.grid_indexing.max_shape, backend=stencil_factory.backend
+            )
+
+        self._tmp_heat_s = make_storage()
+        self._vort_x_delta = make_storage()
+        self._vort_y_delta = make_storage()
+        self._tmp_ke = make_storage()
+        self._tmp_vort = make_storage()
+        self._uc_contra = make_storage()
+        self._vc_contra = make_storage()
+        self._tmp_ut = make_storage()
+        self._tmp_vt = make_storage()
+        self._tmp_fx = make_storage()
+        self._tmp_fy = make_storage()
+        self._tmp_gx = make_storage()
+        self._tmp_gy = make_storage()
+        self._tmp_dw = make_storage()
+        self._tmp_wk = make_storage()
+        self._tmp_fx2 = make_storage()
+        self._tmp_fy2 = make_storage()
         self._tmp_damp_3d = utils.make_storage_from_shape(
-            (1, 1, self.grid_indexing.domain[2])
+            (1, 1, self.grid_indexing.domain[2]), backend=stencil_factory.backend
         )
-        self._advected_u = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._advected_v = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._ub_contra = utils.make_storage_from_shape(self.grid_indexing.max_shape)
-        self._vb_contra = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._advected_u = make_storage()
+        self._advected_v = make_storage()
+        self._ub_contra = make_storage()
+        self._vb_contra = make_storage()
         self._column_namelist = column_namelist
 
         self.delnflux_nosg_w = DelnFluxNoSG(
@@ -834,7 +842,9 @@ class DGridShallowWaterLagrangianDynamics:
             self._tmp_damp_3d[0, 0, :], (self.grid_indexing.domain[2],), (0,)
         )
         y_temporary = utils.make_storage_from_shape(
-            shape=self.grid_indexing.max_shape, origin=self.grid_indexing.origin
+            shape=self.grid_indexing.max_shape,
+            origin=self.grid_indexing.origin,
+            backend=stencil_factory.backend,
         )
         self._copy_corners = PreAllocatedCopiedCornersFactory(
             stencil_factory,

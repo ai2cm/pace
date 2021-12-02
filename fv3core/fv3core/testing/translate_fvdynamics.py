@@ -274,7 +274,10 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
     def compute_parallel(self, inputs, communicator):
         for name in ("ak", "bk", "phis"):
             inputs[name] = utils.make_storage_data(
-                inputs[name], inputs[name].shape, len(inputs[name].shape) * (0,)
+                inputs[name],
+                inputs[name].shape,
+                len(inputs[name].shape) * (0,),
+                backend=self.grid.stencil_factory.backend,
             )
         grid_data = spec.grid.grid_data
         # These aren't in the Grid-Info savepoint, but are in the generated grid

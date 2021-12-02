@@ -111,6 +111,7 @@ class ApplyPhysics2Dycore:
             origin,
             dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
             n_halo=1,
+            backend=stencil_factory.backend,
         )
         self._udt_halo_updater = self.comm.get_scalar_halo_updater(
             [full_3Dfield_1pts_halo_spec]
@@ -120,10 +121,10 @@ class ApplyPhysics2Dycore:
         )
         # TODO: check if we actually need surface winds
         self._u_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=origin, init=True
+            shape[0:2], origin=origin, init=True, backend=stencil_factory.backend
         )
         self._v_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=origin, init=True
+            shape[0:2], origin=origin, init=True, backend=stencil_factory.backend
         )
 
     def __call__(

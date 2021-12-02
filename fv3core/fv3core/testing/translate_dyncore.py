@@ -120,7 +120,10 @@ class TranslateDynCore(ParallelTranslate2PyState):
         #   must be converted into gt4py storages
         for name in ("ak", "bk", "pfull", "phis"):
             inputs[name] = utils.make_storage_data(
-                inputs[name], inputs[name].shape, len(inputs[name].shape) * (0,)
+                inputs[name],
+                inputs[name].shape,
+                len(inputs[name].shape) * (0,),
+                backend=self.grid.stencil_factory.backend,
             )
 
         grid_data = spec.grid.grid_data

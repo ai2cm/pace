@@ -384,7 +384,11 @@ class Grid:
     ) -> QuantityHaloSpec:
         """Build memory specifications for the halo update."""
         return self.grid_indexing.get_quantity_halo_spec(
-            shape, origin, dims=dims, n_halo=halo_points
+            shape,
+            origin,
+            dims=dims,
+            n_halo=halo_points,
+            backend=global_config.get_backend(),
         )
 
     @property
@@ -646,13 +650,29 @@ class GridData:
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
         # TODO fix <Quantity>.storage mask for FieldI
         shape = metric_terms.lon.data.shape
-        edge_n = utils.make_storage_data(metric_terms.edge_n.data, (shape[0],), axis=0)
-        edge_s = utils.make_storage_data(metric_terms.edge_s.data, (shape[0],), axis=0)
+        edge_n = utils.make_storage_data(
+            metric_terms.edge_n.data,
+            (shape[0],),
+            axis=0,
+            backend=metric_terms.edge_n.gt4py_backend,
+        )
+        edge_s = utils.make_storage_data(
+            metric_terms.edge_s.data,
+            (shape[0],),
+            axis=0,
+            backend=metric_terms.edge_s.gt4py_backend,
+        )
         edge_e = utils.make_storage_data(
-            metric_terms.edge_e.data, (1, shape[1]), axis=1
+            metric_terms.edge_e.data,
+            (1, shape[1]),
+            axis=1,
+            backend=metric_terms.edge_e.gt4py_backend,
         )
         edge_w = utils.make_storage_data(
-            metric_terms.edge_w.data, (1, shape[1]), axis=1
+            metric_terms.edge_w.data,
+            (1, shape[1]),
+            axis=1,
+            backend=metric_terms.edge_w.gt4py_backend,
         )
 
         horizontal_data = HorizontalGridData(
@@ -688,8 +708,12 @@ class GridData:
         ak = metric_terms.ak.data
         bk = metric_terms.bk.data
         # TODO fix <Quantity>.storage mask for FieldK
-        ak = utils.make_storage_data(ak, ak.shape, len(ak.shape) * (0,))
-        bk = utils.make_storage_data(bk, bk.shape, len(bk.shape) * (0,))
+        ak = utils.make_storage_data(
+            ak, ak.shape, len(ak.shape) * (0,), backend=metric_terms.ak.gt4py_backend
+        )
+        bk = utils.make_storage_data(
+            bk, bk.shape, len(bk.shape) * (0,), backend=metric_terms.ak.gt4py_backend
+        )
         vertical_data = VerticalGridData(
             ak=ak,
             bk=bk,

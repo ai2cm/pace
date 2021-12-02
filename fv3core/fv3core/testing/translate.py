@@ -103,6 +103,7 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 names=names_4d,
+                backend=self.grid.stencil_config.backend,
             )
         else:
             return utils.make_storage_data(
@@ -113,6 +114,7 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 read_only=read_only,
+                backend=self.grid.stencil_config.backend,
             )
 
     def storage_vars(self):
@@ -284,10 +286,18 @@ class TranslateGrid:
 
         self.data = inputs
 
-    def make_composite_var_storage(self, varname, data3d, shape):
+    def make_composite_var_storage(
+        self,
+        varname,
+        data3d,
+        shape,
+    ):
         for s in range(9):
             self.data[varname + str(s + 1)] = utils.make_storage_data(
-                np.squeeze(data3d[:, :, s]), shape, origin=(0, 0, 0)
+                np.squeeze(data3d[:, :, s]),
+                shape,
+                origin=(0, 0, 0),
+                backend=self.grid.stencil_config.backend,
             )
 
     def make_grid_storage(self, pygrid):
@@ -300,7 +310,10 @@ class TranslateGrid:
             if key in self.data:
                 self.data[key] = np.moveaxis(self.data[key], 0, 2)
                 self.data[key] = utils.make_storage_data(
-                    self.data[key], (shape[0], shape[1], 3), origin=(0, 0, 0)
+                    self.data[key],
+                    (shape[0], shape[1], 3),
+                    origin=(0, 0, 0),
+                    backend=self.grid.stencil_config.backend,
                 )
         for key, axis in TranslateGrid.edge_var_axis.items():
             if key in self.data:
@@ -310,6 +323,7 @@ class TranslateGrid:
                     start=(0, 0, pygrid.halo),
                     axis=axis,
                     read_only=True,
+                    backend=self.grid.stencil_config.backend,
                 )
         for key, value in self.data.items():
             if type(value) is np.ndarray:
@@ -323,7 +337,12 @@ class TranslateGrid:
                 )
                 origin = (istart, jstart, 0)
                 self.data[key] = utils.make_storage_data(
-                    value, shape, origin=origin, start=origin, read_only=True
+                    value,
+                    shape,
+                    origin=origin,
+                    start=origin,
+                    read_only=True,
+                    backend=self.grid.stencil_config.backend,
                 )
 
     def python_grid(self):

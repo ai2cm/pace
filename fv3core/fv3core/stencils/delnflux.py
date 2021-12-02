@@ -934,11 +934,19 @@ class DelnFlux:
         shape = grid_indexing.max_shape
         k_shape = (1, 1, nk)
 
-        self._damp_3d = utils.make_storage_from_shape(k_shape)
+        self._damp_3d = utils.make_storage_from_shape(
+            k_shape, backend=stencil_factory.backend
+        )
         # fields must be 3d to assign to them
-        self._fx2 = utils.make_storage_from_shape(shape)
-        self._fy2 = utils.make_storage_from_shape(shape)
-        self._d2 = utils.make_storage_from_shape(grid_indexing.domain_full())
+        self._fx2 = utils.make_storage_from_shape(
+            shape, backend=stencil_factory.backend
+        )
+        self._fy2 = utils.make_storage_from_shape(
+            shape, backend=stencil_factory.backend
+        )
+        self._d2 = utils.make_storage_from_shape(
+            grid_indexing.domain_full(), backend=stencil_factory.backend
+        )
 
         damping_factor_calculation = stencil_factory.from_origin_domain(
             calc_damp, origin=(0, 0, 0), domain=k_shape
@@ -954,7 +962,9 @@ class DelnFlux:
         damping_factor_calculation(
             self._damp_3d, nord, damp_c, damping_coefficients.da_min
         )
-        self._damp = utils.make_storage_data(self._damp_3d[0, 0, :], (nk,), (0,))
+        self._damp = utils.make_storage_data(
+            self._damp_3d[0, 0, :], (nk,), (0,), backend=stencil_factory.backend
+        )
 
         self.delnflux_nosg = DelnFluxNoSG(
             stencil_factory, damping_coefficients, rarea, nord, nk=nk

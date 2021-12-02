@@ -527,24 +527,19 @@ class RemapProfile:
         km: int = grid_indexing.domain[2]
         self._kord = kord
 
-        self._gam: FloatField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig
-        )
-        self._q: FloatField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig
-        )
-        self._q_bot: FloatField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig
-        )
-        self._extm: BoolField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
-        )
-        self._ext5: BoolField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
-        )
-        self._ext6: BoolField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
-        )
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape=grid_indexing.domain_full(add=(0, 0, 1)),
+                origin=grid_indexing.origin_full(),
+                backend=stencil_factory.backend,
+            )
+
+        self._gam: FloatField = make_storage()
+        self._q: FloatField = make_storage()
+        self._q_bot: FloatField = make_storage()
+        self._extm: BoolField = make_storage()
+        self._ext5: BoolField = make_storage()
+        self._ext6: BoolField = make_storage()
 
         i_extent: int = i2 - i1 + 1
         j_extent: int = j2 - j1 + 1
