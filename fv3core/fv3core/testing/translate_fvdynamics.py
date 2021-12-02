@@ -288,7 +288,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         return state
 
     def compute_parallel(self, inputs, communicator):
-        for name in ("ak", "bk", "phis"):
+        for name in ("ak", "bk"):
             inputs[name] = utils.make_storage_data(
                 inputs[name], inputs[name].shape, len(inputs[name].shape) * (0,)
             )

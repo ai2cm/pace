@@ -39,7 +39,7 @@ def parse_args() -> Namespace:
         "data_dir",
         type=str,
         action="store",
-        help="namelist configuration for model run",
+        help="directory containing data to run with",
     )
     parser.add_argument(
         "time_step",
@@ -166,11 +166,17 @@ def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
         "test_case_nml" in config_yml.keys()
         and config_yml["test_case_nml"]["test_case"] == 13
     ):
-        is_barcolinic = True
+        is_barcolinic_test_case = True
+    print(
+        "Running "
+        + config_yml["experiment_name"]
+        + ", and using the baroclinic test case?: "
+        + str(is_baroclinic_test_case)
+    )
     return config_yml["experiment_name"], is_baroclinic_test_case
 
 
-def read_serialized_initial_state(rank):
+def read_serialized_initial_state(rank, grid):
     # set up of helper structures
     serializer = serialbox.Serializer(
         serialbox.OpenModeKind.Read,
@@ -262,7 +268,7 @@ if __name__ == "__main__":
                 comm=communicator,
             )
         else:
-            state = read_serialized_initial_state(communicator.rank)
+            state = read_serialized_initial_state(communicator.rank, grid)
 
         dycore = fv3core.DynamicalCore(
             comm=communicator,
