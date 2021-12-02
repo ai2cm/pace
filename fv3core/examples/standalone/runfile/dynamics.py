@@ -176,16 +176,13 @@ def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
     return config_yml["experiment_name"], is_baroclinic_test_case
 
 
-def read_serialized_initial_state(rank):
+def read_serialized_initial_state(rank, grid):
     # set up of helper structures
     serializer = serialbox.Serializer(
         serialbox.OpenModeKind.Read,
         args.data_dir,
         "Generator_rank" + str(rank),
     )
-    grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
-    grid = fv3core.testing.TranslateGrid({}, rank).python_grid()
-    spec.set_grid(grid)
     # create a state from serialized data
     savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
     driver_object = fv3core.testing.TranslateFVDynamics([grid])
@@ -271,7 +268,7 @@ if __name__ == "__main__":
                 comm=communicator,
             )
         else:
-            state = read_serialized_initial_state(communicator.rank)
+            state = read_serialized_initial_state(communicator.rank, grid)
 
         dycore = fv3core.DynamicalCore(
             comm=communicator,
