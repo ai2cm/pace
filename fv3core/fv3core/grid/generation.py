@@ -44,10 +44,16 @@ from .gnomonic import (
 from .mirror import mirror_grid
 
 
-# TODO: when every environment in python3.8, replace
-# @property
-# @functools.lru_cache()
-# with @cached_property
+# TODO: when every environment in python3.8, remove
+# this custom decorator
+def cached_property(func):
+    @property
+    @functools.lru_cache()
+    def wrapper(self, *args, **kwargs):
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
 
 # TODO
 # corners use sizer + partitioner rather than GridIndexer,
@@ -1160,24 +1166,21 @@ class MetricTerms:
             self._reduce_global_area_minmaxes()
         return self._da_max_c
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def area(self):
         """
         the area of each a-grid cell
         """
         return self._compute_area()
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def area_c(self):
         """
         the area of each c-grid cell
         """
         return self._compute_area_c()
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def _dgrid_xyz(self):
         """
         cartesian coordinates of each dgrid cell center
@@ -1186,8 +1189,7 @@ class MetricTerms:
             self._grid.data[:, :, 0], self._grid.data[:, :, 1], self._np
         )
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def _agrid_xyz(self):
         """
         cartesian coordinates of each agrid cell center
@@ -1198,8 +1200,7 @@ class MetricTerms:
             self._np,
         )
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def rarea(self):
         """
         1/cell area
@@ -1211,8 +1212,7 @@ class MetricTerms:
             gt4py_backend=self.area.gt4py_backend,
         )
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def rarea_c(self):
         """
         1/cgrid cell area
@@ -1224,8 +1224,7 @@ class MetricTerms:
             gt4py_backend=self.area_c.gt4py_backend,
         )
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def rdx(self):
         """
         1/dx
@@ -1237,8 +1236,7 @@ class MetricTerms:
             gt4py_backend=self.dx.gt4py_backend,
         )
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def rdy(self):
         """
         1/dy
@@ -1250,8 +1248,7 @@ class MetricTerms:
             gt4py_backend=self.dy.gt4py_backend,
         )
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def rdxa(self):
         """
         1/dxa
@@ -1263,8 +1260,7 @@ class MetricTerms:
             gt4py_backend=self.dxa.gt4py_backend,
         )
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def rdya(self):
         """
         1/dya
@@ -1276,8 +1272,7 @@ class MetricTerms:
             gt4py_backend=self.dya.gt4py_backend,
         )
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def rdxc(self):
         """
         1/dxc
@@ -1289,8 +1284,7 @@ class MetricTerms:
             gt4py_backend=self.dxc.gt4py_backend,
         )
 
-    @property  # type: ignore
-    @functools.lru_cache()
+    @cached_property
     def rdyc(self):
         """
         1/dyc
