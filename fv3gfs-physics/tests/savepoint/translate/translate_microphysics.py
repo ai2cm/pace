@@ -68,7 +68,9 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         inputs["va_t1"] = copy.deepcopy(storage)
         inputs["omga"] = copy.deepcopy(storage)
         physics_state = PhysicsState(**inputs)
-        microph = Microphysics(self.grid.stencil_factory, self.grid, spec.namelist)
+        microph = Microphysics(
+            self.grid.stencil_factory, self.grid.grid_data, spec.namelist
+        )
         microph_state = physics_state.microphysics(storage)
         microph(microph_state)
         inputs["pt_dt"] = microph_state.pt_dt

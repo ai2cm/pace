@@ -175,12 +175,14 @@ class AGrid2DGridPhysics:
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         self._dt5 = 0.5 * self.namelist.dt_atmos
-        self._im2 = int((grid_indexing.domain[0] - 1) / 2) + 2
-        self._jm2 = int((grid_indexing.domain[1] - 1) / 2) + 2
-        self._subtile_index = partitioner.subtile_index(rank)
+        npx = grid_indexing.domain[0] + 1
+        npy = grid_indexing.domain[1] + 1
+        self._im2 = int((npx - 1) / 2) + 2
+        self._jm2 = int((npy - 1) / 2) + 2
+        self._subtile_index = partitioner.tile.subtile_index(rank)
         layout = self.namelist.layout
-        self._subtile_width_x = int((grid_indexing.domain[0] - 1) / layout[0])
-        self._subtile_width_y = int((grid_indexing.domain[1] - 1) / layout[1])
+        self._subtile_width_x = int((npx - 1) / layout[0])
+        self._subtile_width_y = int((npy - 1) / layout[1])
         shape = grid_indexing.max_shape
         self._ue_1 = utils.make_storage_from_shape(shape, init=True)
         self._ue_2 = utils.make_storage_from_shape(shape, init=True)
@@ -201,6 +203,7 @@ class AGrid2DGridPhysics:
         self.north_edge = grid_indexing.north_edge
         self.west_edge = grid_indexing.west_edge
         self.east_edge = grid_indexing.east_edge
+
         self._update_dwind_prep_stencil = stencil_factory.from_origin_domain(
             update_dwind_prep_stencil,
             origin=(grid_indexing.n_halo - 1, grid_indexing.n_halo - 1, 0),
@@ -430,6 +433,9 @@ class AGrid2DGridPhysics:
             j_local, self._subtile_index[0], self._subtile_width_y
         )
         return i_global, j_global
+
+    def local_to_global_1d(self, local_value, subtile_index, subtile_length):
+        return local_value + subtile_index * subtile_length
 
     def __call__(
         self,

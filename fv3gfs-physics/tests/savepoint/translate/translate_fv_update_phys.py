@@ -5,6 +5,7 @@ import numpy as np
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util as fv3util
+import fv3gfs.util as util
 from fv3core.testing import ParallelTranslate2Py
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
@@ -302,11 +303,16 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         tendencies = {}
         for key in ["u_dt", "v_dt", "t_dt"]:
             tendencies[key] = inputs.pop(key)
+        partitioner = util.CubedSpherePartitioner(
+            util.TilePartitioner(spec.namelist.layout)
+        )
         self._base.compute_func = ApplyPhysics2Dycore(
             self.grid.stencil_factory,
-            self.grid,
+            self.grid.grid_data,
             spec.namelist,
             communicator,
+            partitioner,
+            self.grid.rank,
             extra_grid_info,
         )
         state = DycoreState(**inputs)

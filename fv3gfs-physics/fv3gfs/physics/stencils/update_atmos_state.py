@@ -10,6 +10,7 @@ from gt4py.gtscript import (
 
 import fv3core.utils.gt4py_utils as utils
 import fv3gfs.util
+from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
 from fv3gfs.physics.global_constants import *
@@ -104,6 +105,7 @@ class UpdateAtmosphereState:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        grid_data: GridData,
         namelist,
         comm: fv3gfs.util.CubedSphereCommunicator,
         partitioner: TilePartitioner,
@@ -131,7 +133,13 @@ class UpdateAtmosphereState:
         self._v_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._pt_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
         self._apply_physics2dycore = ApplyPhysics2Dycore(
-            stencil_factory, self.namelist, comm, partitioner, rank, grid_info
+            stencil_factory,
+            grid_data,
+            self.namelist,
+            comm,
+            partitioner,
+            rank,
+            grid_info,
         )
 
     def __call__(
