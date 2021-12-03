@@ -9,7 +9,7 @@ from gt4py.gtscript import (
 )
 
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.util
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
 from fv3gfs.physics.global_constants import *
@@ -105,7 +105,7 @@ class UpdateAtmosphereState:
         stencil_factory: StencilFactory,
         grid,
         namelist,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         grid_info,
     ):
         self.grid = grid
@@ -125,9 +125,15 @@ class UpdateAtmosphereState:
                 domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
             )
         )
-        self._u_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._v_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._pt_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape, origin=origin, init=True, backend=stencil_factory.backend
+            )
+
+        self._u_dt = make_storage()
+        self._v_dt = make_storage()
+        self._pt_dt = make_storage()
         self._apply_physics2dycore = ApplyPhysics2Dycore(
             stencil_factory, self.grid, self.namelist, comm, grid_info
         )

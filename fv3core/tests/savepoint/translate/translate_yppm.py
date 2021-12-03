@@ -30,7 +30,9 @@ class TranslateYPPM(TranslateFortranData2Py):
     def process_inputs(self, inputs):
         self.ivars(inputs)
         self.make_storage_data_input_vars(inputs)
-        inputs["flux"] = utils.make_storage_from_shape(inputs["q"].shape)
+        inputs["flux"] = utils.make_storage_from_shape(
+            inputs["q"].shape, backend=self.grid.stencil_factory.backend
+        )
 
     def compute(self, inputs):
         self.process_inputs(inputs)

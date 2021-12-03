@@ -4,7 +4,7 @@ import numpy as np
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as fv3util
+import pace.util as fv3util
 from fv3core.testing import ParallelTranslate2Py
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
@@ -134,10 +134,16 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
                 data3d[:, :, s]
             )
             d[var + str(s + 1)] = utils.make_storage_data(
-                data=buffer, shape=max_shape[0:2], origin=(start1, start2)
+                data=buffer,
+                shape=max_shape[0:2],
+                origin=(start1, start2),
+                backend=self.grid.stencil_factory.backend,
             )
         d[var] = utils.make_storage_from_shape(
-            shape=max_shape[0:2], origin=(start1, start2), init=True
+            shape=max_shape[0:2],
+            origin=(start1, start2),
+            init=True,
+            backend=self.grid.stencil_factory.backend,
         )  # write the original name to avoid missing var
 
     def add_composite_evar_storage(self, d, var, data4d, max_shape, start_indices):
@@ -154,9 +160,13 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
                     data=buffer,
                     origin=(start1, start2),
                     shape=max_shape[0:2],
+                    backend=self.grid.stencil_factory.backend,
                 )
         d[var] = utils.make_storage_from_shape(
-            shape=max_shape[0:2], origin=(start1, start2), init=True
+            shape=max_shape[0:2],
+            origin=(start1, start2),
+            init=True,
+            backend=self.grid.stencil_factory.backend,
         )  # write the original name to avoid missing var
 
     def edge_vector_storage(self, d, var, axis):
@@ -172,6 +182,7 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             data=d[var],
             origin=default_origin,
             shape=d[var].shape,
+            backend=self.grid.stencil_factory.backend,
         )
 
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
@@ -225,6 +236,7 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             data=input_data[varname],
             origin=self.grid.full_origin(),
             shape=input_data[varname].shape,
+            backend=self.grid.stencil_factory.backend,
         )
         return input_data
 

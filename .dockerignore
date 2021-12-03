@@ -1,0 +1,9 @@
+rundir/**
+src/**
+test_data/**
+fv3/__pycache__
+external/fv3gfs-fortran/tests/pytest/output/**
+external/fv3gfs-fortran/serialbox2/.git/**
+external/fv3gfs-fortran/serialbox2/docs/**
+fv3/.gt_cache/**
+.gt_cache/**

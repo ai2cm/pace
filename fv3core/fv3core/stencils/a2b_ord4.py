@@ -17,7 +17,7 @@ from fv3core.utils import axis_offsets
 from fv3core.utils.grid import GridData, GridIndexing
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
-from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 # comact 4-pt cubic interpolation
@@ -489,9 +489,14 @@ class AGrid2BGridFourthOrder:
 
         self.replace = replace
 
-        self._tmp_qx = utils.make_storage_from_shape(self._idx.max_shape)
-        self._tmp_qy = utils.make_storage_from_shape(self._idx.max_shape)
-        self._tmp_qout_edges = utils.make_storage_from_shape(self._idx.max_shape)
+        def make_storage():
+            return utils.make_storage_from_shape(
+                self._idx.max_shape, backend=self._stencil_config.backend
+            )
+
+        self._tmp_qx = make_storage()
+        self._tmp_qy = make_storage()
+        self._tmp_qout_edges = make_storage()
         _, (z_domain,) = self._idx.get_origin_domain([z_dim])
         corner_domain = (1, 1, z_domain)
 

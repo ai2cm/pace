@@ -4,9 +4,9 @@ import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
-from fv3gfs.util import CubedSphereCommunicator
-from fv3gfs.util.constants import X_DIM, Y_DIM, Z_DIM
-from fv3gfs.util.quantity import Quantity
+from pace.util import CubedSphereCommunicator
+from pace.util.constants import X_DIM, Y_DIM, Z_DIM
+from pace.util.quantity import Quantity
 
 
 C1 = 1.125

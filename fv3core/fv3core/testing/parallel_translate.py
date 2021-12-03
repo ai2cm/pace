@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import fv3core
-import fv3gfs.util as fv3util
+import pace.util as fv3util
 from fv3core.utils import gt4py_utils as utils
 
 from .translate import TranslateFortranData2Py, read_serialized_data
@@ -18,6 +18,7 @@ class ParallelTranslate:
     near_zero = TranslateFortranData2Py.near_zero
     python_regression = False
     compute_grid_option = False
+    tests_grid = False
     inputs: Dict[str, Any] = {}
     outputs: Dict[str, Any] = {}
 
@@ -169,6 +170,8 @@ class ParallelTranslateGrid(ParallelTranslate):
     support some non-standard array dimension layouts not supported by the
     TranslateFortranData2Py initializers.
     """
+
+    tests_grid = True
 
     def state_from_inputs(self, inputs: dict, grid=None) -> dict:
         if grid is None:

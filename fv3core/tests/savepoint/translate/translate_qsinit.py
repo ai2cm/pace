@@ -26,7 +26,11 @@ class TranslateQSInit(TranslateFortranData2Py):
         self.make_storage_data_input_vars(inputs)
         index = np.arange(satadjust.QS_LENGTH)
         inputs["index"] = utils.make_storage_data(
-            index, self.maxshape, origin=(0, 0, 0), read_only=False
+            index,
+            self.maxshape,
+            origin=(0, 0, 0),
+            read_only=False,
+            backend=self.grid.stencil_factory.backend,
         )
         self._compute_q_tables_stencil(**inputs)
         utils.device_sync()

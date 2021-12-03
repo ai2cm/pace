@@ -108,7 +108,9 @@ class TranslateRemapping(TranslateFortranData2Py):
         self.ignore_near_zero_errors = {"q_con": True, "tracers": True}
 
     def compute_from_storage(self, inputs):
-        wsd_2d = utils.make_storage_from_shape(inputs["wsd"].shape[0:2])
+        wsd_2d = utils.make_storage_from_shape(
+            inputs["wsd"].shape[0:2], backend=self.grid.stencil_factory.backend
+        )
         wsd_2d[:, :] = inputs["wsd"][:, :, 0]
         inputs["wsd"] = wsd_2d
         inputs["q_cld"] = inputs["tracers"]["qcld"]

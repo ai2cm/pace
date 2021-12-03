@@ -37,7 +37,7 @@ ENV FV3_STENCIL_REBUILD_FLAG=False
 ###
 ### Copy over necessary source and configuration files
 ###
-COPY fv3gfs-util/ fv3gfs-util/
+COPY pace-util/ pace-util/
 COPY fv3core fv3core/
 COPY fv3gfs-physics fv3gfs-physics/
 COPY stencils stencils/
