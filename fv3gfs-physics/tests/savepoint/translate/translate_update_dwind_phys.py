@@ -1,7 +1,7 @@
 import numpy as np
 
 import fv3core._config as spec
-import fv3gfs.util as util
+import pace.util as util
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 

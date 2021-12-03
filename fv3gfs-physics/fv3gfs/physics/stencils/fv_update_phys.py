@@ -10,9 +10,8 @@ from fv3gfs.physics.global_constants import *
 
 # TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
-from fv3gfs.util import TilePartitioner
 from pace.stencils.c2l_ord import CubedToLatLon
-from pace.util.quantity import Quantity
+from pace.util import TilePartitioner
 
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir

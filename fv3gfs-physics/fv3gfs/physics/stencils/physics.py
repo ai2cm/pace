@@ -22,7 +22,7 @@ from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics, MicrophysicsState
 from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
-from fv3gfs.util import TilePartitioner
+from pace.util import TilePartitioner
 
 
 def atmos_phys_driver_statein(
