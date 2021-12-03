@@ -77,11 +77,12 @@ def _build_flatten_indices(
     rotate: bool,
     rotation: int,
 ) -> "cp.ndarray":
-    """Build an array of indexing from a slice & memory description to build an indexation into the "flatten" memory.
+    """Build an array of indexing from a slice & memory description to
+    build an indexation into the "flatten" memory.
 
     Go from a memory layout (strides, itemsize, shape) and slices into it to a
-    single array of indices. We leverage numpy iterator and calculate from the multi_index
-    using memory layout the index into the original memory buffer.
+    single array of indices. We leverage numpy iterator and calculate from
+    the multi_index using memory layout the index into the original memory buffer.
     """
 
     # Have to go down to numpy to leverage indices calculation
@@ -184,11 +185,11 @@ class HaloDataTransformer(abc.ABC):
       when ready to communicate which will internally call synchronize.
     [... user should communicate the buffers...]
     - call async_unpack(quantities) to start unpacking
-    - call synchronize() to finish all the unpacking operations and make sure the quantities
-      passed in async_unpack have been updated.
+    - call synchronize() to finish all the unpacking operations and make sure
+      the quantities passed in async_unpack have been updated.
 
-    The class will hold onto the buffers up until deletion, where they will be returned to an
-    internal buffer pool.
+    The class will hold onto the buffers up until deletion, where they will be
+    returned to an internal buffer pool.
     """
 
     _pack_buffer: Optional[Buffer]
@@ -203,15 +204,14 @@ class HaloDataTransformer(abc.ABC):
         exchange_descriptors_x: Sequence[HaloExchangeSpec],
         exchange_descriptors_y: Optional[Sequence[HaloExchangeSpec]] = None,
     ) -> None:
-        """Init routine.
-
-        Arguments:
+        """
+        Args:
             np_module: numpy-like module for allocation
             exchange_descriptors_x: list of memory information describing an exchange.
                 Used for scalar data and the x-component of vectors.
             exchange_descriptors_y: list of memory information describing an exchange.
-                Optional, used for the y-component of vectors only. If `none` the data will packed
-                as a scalar.
+                Optional, used for the y-component of vectors only. If `none` the
+                data will packed as a scalar.
         """
         self._type = (
             _HaloDataTransformerType.SCALAR
@@ -254,13 +254,13 @@ class HaloDataTransformer(abc.ABC):
     ) -> "HaloDataTransformer":
         """Construct a module from a numpy-like module.
 
-        Arguments:
+        Args:
             np_module: numpy-like module to determin child transformer type.
             exchange_descriptors_x: list of memory information describing an exchange.
                 Used for scalar data and the x-component of vectors.
             exchange_descriptors_y: list of memory information describing an exchange.
-                Optional, used for the y-component of vectors only. If `none` the data will packed
-                as a scalar.
+                Optional, used for the y-component of vectors only. If `none` the data
+                will packed as a scalar.
 
         Returns:
             an initialized packed buffer.
@@ -441,7 +441,8 @@ class HaloDataTransformerCPU(HaloDataTransformer):
             ):
                 raise RuntimeError(
                     f"Quantities count (x: {len(quantities_x)}, y: {len(quantities_y)})"
-                    f" is different that specifications count (x: {len(self._infos_x)}, y: {len(self._infos_y)}"
+                    " is different that specifications count "
+                    f"(x: {len(self._infos_x)}, y: {len(self._infos_y)}"
                 )
             # TODO Per quantity check
 
@@ -525,7 +526,8 @@ class HaloDataTransformerCPU(HaloDataTransformer):
             ):
                 raise RuntimeError(
                     f"Quantities count (x: {len(quantities_x)}, y: {len(quantities_y)})"
-                    f" is different that specifications count (x: {len(self._infos_x)}, y: {len(self._infos_y)})"
+                    " is different that specifications count "
+                    f"(x: {len(self._infos_x)}, y: {len(self._infos_y)})"
                 )
             # TODO Per quantity check
 
@@ -559,8 +561,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
     we use streamed (e.g. async) kernels per quantity per edge to send. The
     kernels are store in `cuda_kernels.py`, they both follow the same simple pattern
     by reading the indices to the device memory of the data to pack/unpack.
-    `_flatten_indices` is the routine that take the layout of the memory and the slice and
-    compute an array of index into the original memory.
+    `_flatten_indices` is the routine that take the layout of the memory and
+    the slice and compute an array of index into the original memory.
     """
 
     # Temporary "safe" code path
@@ -760,7 +762,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
             ):
                 raise RuntimeError(
                     f"Quantities count (x: {len(quantities_x)}, y: {len(quantities_y)}"
-                    f" is different that specifications count (x: {len(self._infos_x)}, y: {len(self._infos_y)}"
+                    " is different that specifications count "
+                    f"(x: {len(self._infos_x)}, y: {len(self._infos_y)}"
                 )
             # TODO Per quantity check
         assert isinstance(self._pack_buffer, Buffer)  # e.g. allocate happened
@@ -820,8 +823,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
         to read the offsets and sizes per quantity.
 
         Args:
-            quantities_x: list of quantities to unpack. Must fit the specifications given
-                at init time.
+            quantities_x: list of quantities to unpack. Must fit
+                the specifications given at init time.
             quantities_y: Same as above but optional, used only for vector transfer.
         """
         # Unpack per type
@@ -881,7 +884,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
             ):
                 raise RuntimeError(
                     f"Quantities count (x: {len(quantities_x)}, y: {len(quantities_y)}"
-                    f" is different that specifications count (x: {len(self._infos_x)}, y: {len(self._infos_y)}"
+                    " is different that specifications count "
+                    f"(x: {len(self._infos_x)}, y: {len(self._infos_y)}"
                 )
             # TODO Per quantity check
         assert isinstance(self._unpack_buffer, Buffer)  # e.g. allocate happened

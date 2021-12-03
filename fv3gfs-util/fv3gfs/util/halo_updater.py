@@ -23,10 +23,11 @@ class HaloUpdater:
     to precompute the maximum of information to have minimum overhead at runtime.
     Therefore it should be cached for early and re-used at runtime.
 
-    - from_scalar_specifications/from_vector_specifications are used to create an HaloUpdater
-      from a list of memory specifications
+    - from_scalar_specifications/from_vector_specifications are used to
+      create a HaloUpdater from a list of memory specifications
     - update and start/wait trigger the halo exchange
-    - the class creates a "pattern" of exchange that can fit any memory given to do/start
+    - the class creates a "pattern" of exchange that can fit
+      any memory given to do/start
     - temporary references to the Quanitites are held between start and wait
     """
 
@@ -86,12 +87,15 @@ class HaloUpdater:
         tag: int,
         optional_timer: Optional[Timer] = None,
     ) -> "HaloUpdater":
-        """Create/retrieve as many packed buffer as needed and queue the slices to exchange.
+        """
+        Create/retrieve as many packed buffer as needed and
+        queue the slices to exchange.
 
         Args:
             comm: communicator to post network messages
             numpy_like_module: module implementing numpy API
-            specifications: data specifications to exchange, including number of halo points
+            specifications: data specifications to exchange, including
+                number of halo points
             boundaries: informations on the exchange boundaries.
             tag: network tag (to differentiate messaging) for this node.
             optional_timer: timing of operations.
@@ -136,7 +140,9 @@ class HaloUpdater:
         tag: int,
         optional_timer: Optional[Timer] = None,
     ) -> "HaloUpdater":
-        """Create/retrieve as many packed buffer as needed and queue the slices to exchange.
+        """
+        Create/retrieve as many packed buffer as needed and queue
+        the slices to exchange.
 
         Args:
             comm: communicator to post network messages

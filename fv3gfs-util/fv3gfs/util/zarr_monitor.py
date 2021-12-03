@@ -35,9 +35,10 @@ class DummyComm:
         return 1
 
     def bcast(self, value, root=0):
-        assert (
-            root == 0
-        ), "DummyComm should only be used on a single core, so root should only ever be 0"
+        assert root == 0, (
+            "DummyComm should only be used on a single core, "
+            "so root should only ever be 0"
+        )
         return value
 
     def barrier(self):
@@ -45,7 +46,9 @@ class DummyComm:
 
 
 class ZarrMonitor:
-    """sympl.Monitor-style object for storing model state dictionaries in a Zarr store."""
+    """
+    sympl.Monitor-style object for storing model state dictionaries in a Zarr store.
+    """
 
     def __init__(
         self,
@@ -197,7 +200,8 @@ class _ZarrVariableWriter:
 
         from_slice = _get_from_slice(target_slice)
         logger.debug(
-            f"assigning data from subtile slice {from_slice} to target slice {target_slice}"
+            f"assigning data from subtile slice {from_slice} to "
+            f"target slice {target_slice}"
         )
         try:
             self.array[target_slice] = quantity.view[:][from_slice]

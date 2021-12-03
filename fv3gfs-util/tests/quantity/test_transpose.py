@@ -92,7 +92,10 @@ def param_product(*param_lists):
 
 
 @pytest.mark.parametrize(
-    "initial_dims, initial_shape, initial_origin, initial_extent, target_dims, transpose_order",
+    (
+        "initial_dims, initial_shape, initial_origin, "
+        "initial_extent, target_dims, transpose_order"
+    ),
     [
         pytest.param(
             (fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM),
@@ -165,7 +168,10 @@ def test_transpose(
 
 
 @pytest.mark.parametrize(
-    "initial_dims, initial_shape, initial_origin, initial_extent, target_dims, transpose_order",
+    (
+        "initial_dims, initial_shape, initial_origin, "
+        "initial_extent, target_dims, transpose_order"
+    ),
     [
         pytest.param(
             (fv3gfs.util.X_DIM,), (6,), (1,), (2,), (fv3gfs.util.Y_DIM,), (0,), id="1d"
