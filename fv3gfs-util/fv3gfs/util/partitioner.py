@@ -151,7 +151,7 @@ class TilePartitioner(Partitioner):
         num_decomposed_dims = int(len(tile_decomposition) / 2)
         horizontal_dim_index = 0
         return_extent = []
-        for num_dim, dim in zip(range(len(global_metadata.dims[cube_metadata_offset:])), global_metadata.dims[cube_metadata_offset:]):
+        for num_dim, dim in enumerate(global_metadata.dims[cube_metadata_offset:]):
             edge_index_offset = 0
             is_end_index = False
             if dim in constants.HORIZONTAL_DIMS:
@@ -874,7 +874,7 @@ def subtile_slice(
     num_decomposed_dims = int(len(subtile_extent) / 2)
     horizontal_dim_index = 0
 
-    for dim, num_dim, dim_extent in zip(dims, range(num_decomposed_dims), global_extent):
+    for num_dim, (dim, dim_extent) in enumerate(zip(dims, global_extent)):
         if dim in constants.HORIZONTAL_DIMS:
             if subtile_index[horizontal_dim_index] == 0 or layout[horizontal_dim_index] < 3:
                 # this is technically not the edge tile size, but does not matter as subtile_index for that dim is 0.
@@ -884,9 +884,7 @@ def subtile_slice(
                 start = (subtile_index[horizontal_dim_index] - 1) * subtile_extent[num_dim] + subtile_extent[num_dim + num_decomposed_dims]
 
             is_end_index = subtile_index[horizontal_dim_index] == (layout[horizontal_dim_index] - 1)
-            if layout[horizontal_dim_index] < 3:
-                end = start + _interface_overlap_extent(dim, is_end_index, subtile_extent[num_dim + num_decomposed_dims], overlap)
-            elif subtile_index[horizontal_dim_index] == 0 or is_end_index:
+            if layout[horizontal_dim_index] < 3 or (subtile_index[horizontal_dim_index] == 0 or is_end_index):
                 end = start + _interface_overlap_extent(dim, is_end_index, subtile_extent[num_dim + num_decomposed_dims], overlap)
             else:
                 end = start + _interface_overlap_extent(dim, False, subtile_extent[num_dim], overlap)
