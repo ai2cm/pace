@@ -105,13 +105,17 @@ def safe_mpi_allocate(
 ) -> np.ndarray:
     """Make sure the allocation use an allocator that works with MPI
 
-    For G2G transfer, MPICH requires the allocation to not be done with managed
-    memory. Since we can't know what state `cupy` is in with switch for the default
-    pooled allocator.
+    For G2G transfer, MPICH requires the allocation to not be done
+    with managedmemory. Since we can't know what state `cupy` is in
+    with switch for the default pooled allocator.
+
     If allocator comes from cupy, it must be cupy.empty or cupy.zeros.
-    We raise a RuntimeError if a cupy array is allocated outside of the safe code path.
-    Though the allocation _might_ be safe, the MPI crash that result from a managed memory
-    allocation is non trivial and should be tightly controlled.
+    We raise a RuntimeError if a cupy array is allocated outside of
+    the safe code path.
+
+    Though the allocation _might_ be safe, the MPI crash that result
+    from a managed memory allocation is non trivial and should be
+    tightly controlled.
     """
     if cp and (allocator is cp.empty or allocator is cp.zeros):
         original_allocator = cp.cuda.get_allocator()

@@ -121,7 +121,10 @@ class TilePartitioner(Partitioner):
         return cls(layout=namelist["fv_core_nml"]["layout"])
 
     def subtile_index(self, rank: int) -> Tuple[int, int]:
-        """Return the (y, x) subtile position of a given rank as an integer number of subtiles."""
+        """
+        Return the (y, x) subtile position of a given rank
+        as an integer number of subtiles.
+        """
         return subtile_index(rank, self.total_ranks, self.layout)
 
     @property

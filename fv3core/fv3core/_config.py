@@ -870,17 +870,22 @@ def make_grid_from_namelist(namelist, rank):
     shape_params = {}
     for narg in ["npx", "npy", "npz"]:
         shape_params[narg] = getattr(namelist, narg)
+    # TODO this won't work with variable sized domains
+    # but this entire method will be refactored away
+    # and not used soon
+    nx = int((namelist.npx - 1) / namelist.layout[0])
+    ny = int((namelist.npy - 1) / namelist.layout[1])
     indices = {
         "isd": 0,
-        "ied": namelist.npx + 2 * utils.halo - 2,
+        "ied": nx + 2 * utils.halo - 1,
         "is_": utils.halo,
-        "ie": namelist.npx + utils.halo - 2,
+        "ie": nx + utils.halo - 1,
         "jsd": 0,
-        "jed": namelist.npy + 2 * utils.halo - 2,
+        "jed": ny + 2 * utils.halo - 1,
         "js": utils.halo,
-        "je": namelist.npy + utils.halo - 2,
+        "je": ny + utils.halo - 1,
     }
-    return Grid(indices, shape_params, rank, namelist.layout)
+    return Grid(indices, shape_params, rank, namelist.layout, local_indices=True)
 
 
 def make_grid_with_data_from_namelist(namelist, communicator, backend):
@@ -905,7 +910,7 @@ def set_grid(in_grid):
     grid = in_grid
 
 
-def set_namelist(filename):
+def set_namelist(filename, rank=0):
     """Updates the global namelist from a file and re-generates the global grid.
 
     Args:
@@ -917,7 +922,7 @@ def set_namelist(filename):
     for name, value in namelist_dict.items():
         setattr(namelist, name, value)
 
-    grid = make_grid_from_namelist(namelist, 0)
+    grid = make_grid_from_namelist(namelist, rank)
 
 
 if "NAMELIST_FILENAME" in os.environ:
