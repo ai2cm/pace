@@ -97,7 +97,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
         )  # write the original name to avoid missing var
 
     def edge_vector_storage(self, d, var, axis):
-        max_shape = self.grid.domain_shape_full(add=(1, 1, 1))
+        max_shape = grid_indexing.domain_full(add=(1, 1, 1))
         default_origin = (0, 0, 0)
         if axis == 1:
             default_origin = (0, 0)
@@ -112,7 +112,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
         )
 
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
-        max_shape = self.grid.domain_shape_full(add=(1, 1, 1))
+        max_shape = grid_indexing.domain_full(add=(1, 1, 1))
         start_indices = {
             "vlon": (self.grid.isd + 1, self.grid.jsd + 1),
             "vlat": (self.grid.isd + 1, self.grid.jsd + 1),
