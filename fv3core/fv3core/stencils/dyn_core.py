@@ -222,7 +222,7 @@ class AcousticDynamics:
 
         def __init__(
             self,
-            comm: fv3gfs.util.CubedSphereCommunicator,
+            comm: pace.util.CubedSphereCommunicator,
             grid_indexing: GridIndexing,
             *,
             backend: str,
