@@ -618,6 +618,8 @@ class GridIndexing:
         origin: Tuple[int, ...],
         dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
         n_halo: Optional[int] = None,
+        *,
+        backend: str,
     ) -> QuantityHaloSpec:
         """Build memory specifications for the halo update.
 
@@ -626,6 +628,7 @@ class GridIndexing:
             origin: the origin of the compute domain
             dims: dimensionality of the data
             n_halo: number of halo points to update, defaults to self.n_halo
+            backend: gt4py backend to use
         """
 
         # TEMPORARY: we do a nasty temporary allocation here to read in the hardware
@@ -634,7 +637,7 @@ class GridIndexing:
         # we don't allocate
         # Refactor is filed in ticket DSL-820
 
-        temp_storage = make_storage_from_shape(shape, origin)
+        temp_storage = make_storage_from_shape(shape, origin, backend=backend)
         origin, extent = self.get_origin_domain(dims)
         temp_quantity = pace.util.Quantity(
             temp_storage,
@@ -675,6 +678,10 @@ class StencilFactory:
         """
         self.config: StencilConfig = config
         self.grid_indexing: GridIndexing = grid_indexing
+
+    @property
+    def backend(self):
+        return self.config.backend
 
     def from_origin_domain(
         self,

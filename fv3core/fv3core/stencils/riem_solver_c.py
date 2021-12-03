@@ -75,13 +75,18 @@ class RiemannSolverC:
         domain = grid_indexing.domain_compute(add=(2, 2, 1))
         shape = grid_indexing.max_shape
 
-        self._dm = utils.make_storage_from_shape(shape, origin)
-        self._w = utils.make_storage_from_shape(shape, origin)
-        self._pem = utils.make_storage_from_shape(shape, origin)
-        self._pe = utils.make_storage_from_shape(shape, origin)
-        self._gm = utils.make_storage_from_shape(shape, origin)
-        self._dz = utils.make_storage_from_shape(shape, origin)
-        self._pm = utils.make_storage_from_shape(shape, origin)
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape, origin, backend=stencil_factory.backend
+            )
+
+        self._dm = make_storage()
+        self._w = make_storage()
+        self._pem = make_storage()
+        self._pe = make_storage()
+        self._gm = make_storage()
+        self._dz = make_storage()
+        self._pm = make_storage()
 
         self._precompute_stencil = stencil_factory.from_origin_domain(
             precompute,

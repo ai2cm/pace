@@ -256,10 +256,14 @@ class DynamicalCore:
         pfull_stencil = stencil_factory.from_origin_domain(
             init_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
         )
-        pfull = utils.make_storage_from_shape((1, 1, self._ak.shape[0]))
+        pfull = utils.make_storage_from_shape(
+            (1, 1, self._ak.shape[0]), backend=stencil_factory.backend
+        )
         pfull_stencil(self._ak, self._bk, pfull, self.config.p_ref)
         # workaround because cannot write to FieldK storage in stencil
-        self._pfull = utils.make_storage_data(pfull[0, 0, :], self._ak.shape, (0,))
+        self._pfull = utils.make_storage_data(
+            pfull[0, 0, :], self._ak.shape, (0,), backend=stencil_factory.backend
+        )
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
             externals={
@@ -330,6 +334,7 @@ class DynamicalCore:
             grid_indexing.origin_compute(),
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=utils.halo,
+            backend=stencil_factory.backend,
         )
         self._omega_halo_updater = self.comm.get_scalar_halo_updater([full_xyz_spec])
 

@@ -83,7 +83,7 @@ def driver(
         grid_data[field] = serializer.read(field, grid_savepoint)
         if len(grid_data[field].flatten()) == 1:
             grid_data[field] = grid_data[field][0]
-    grid = fv3core.testing.TranslateGrid(grid_data, rank).python_grid()
+    grid = fv3core.testing.TranslateGrid(grid_data, rank, backend=backend).python_grid()
     spec.set_grid(grid)
 
     # set up domain decomposition

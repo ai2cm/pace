@@ -59,7 +59,9 @@ class TranslateMapScalar_2d(TranslateFortranData2Py):
                 pad_field_in_j(inputs["pe2"], self.nj)
             )
 
-        qs_field = utils.make_storage_from_shape(self.maxshape[0:2], origin=(0, 0))
+        qs_field = utils.make_storage_from_shape(
+            self.maxshape[0:2], origin=(0, 0), backend=self.grid.stencil_factory.backend
+        )
         qs_field[:, :] = inputs["qs"][:, :, 0]
         inputs["qs"] = qs_field
         if inputs["qs"].shape[1] == 1:

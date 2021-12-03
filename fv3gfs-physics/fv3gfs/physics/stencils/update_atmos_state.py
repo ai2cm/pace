@@ -129,9 +129,15 @@ class UpdateAtmosphereState:
                 domain=grid_indexing.domain_compute(add=(0, 0, 1)),
             )
         )
-        self._u_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._v_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._pt_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape, origin=origin, init=True, backend=stencil_factory.backend
+            )
+
+        self._u_dt = make_storage()
+        self._v_dt = make_storage()
+        self._pt_dt = make_storage()
         self._apply_physics2dycore = ApplyPhysics2Dycore(
             stencil_factory,
             grid_data,

@@ -489,9 +489,14 @@ class AGrid2BGridFourthOrder:
 
         self.replace = replace
 
-        self._tmp_qx = utils.make_storage_from_shape(self._idx.max_shape)
-        self._tmp_qy = utils.make_storage_from_shape(self._idx.max_shape)
-        self._tmp_qout_edges = utils.make_storage_from_shape(self._idx.max_shape)
+        def make_storage():
+            return utils.make_storage_from_shape(
+                self._idx.max_shape, backend=self._stencil_config.backend
+            )
+
+        self._tmp_qx = make_storage()
+        self._tmp_qy = make_storage()
+        self._tmp_qout_edges = make_storage()
         _, (z_domain,) = self._idx.get_origin_domain([z_dim])
         corner_domain = (1, 1, z_domain)
 

@@ -186,13 +186,17 @@ class Physics:
         self._ptop = 300.0  # hard coded before we can call ak from grid: state["ak"][0]
         self._pktop = (self._ptop / self._p00) ** KAPPA
         self._pk0inv = (1.0 / self._p00) ** KAPPA
-        self._prsi = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._prsik = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._dm3d = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._del_gz = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._full_zero_storage = utils.make_storage_from_shape(
-            shape, origin=origin, init=True
-        )
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape, origin=origin, init=True, backend=stencil_factory.backend
+            )
+
+        self._prsi = make_storage()
+        self._prsik = make_storage()
+        self._dm3d = make_storage()
+        self._del_gz = make_storage()
+        self._full_zero_storage = make_storage()
         self._get_prs_fv3 = stencil_factory.from_origin_domain(
             func=get_prs_fv3,
             origin=grid_indexing.origin_full(),

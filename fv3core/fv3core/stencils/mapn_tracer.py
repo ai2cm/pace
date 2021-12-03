@@ -33,7 +33,7 @@ class MapNTracer:
         self._j1 = j1
         self._j2 = j2
         self._qs = utils.make_storage_from_shape(
-            grid_indexing.max_shape, origin=(0, 0, 0)
+            grid_indexing.max_shape, origin=(0, 0, 0), backend=stencil_factory.backend
         )
 
         kord_tracer = [kord] * self._nq

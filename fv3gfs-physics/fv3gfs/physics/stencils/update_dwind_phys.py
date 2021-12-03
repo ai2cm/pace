@@ -183,18 +183,7 @@ class AGrid2DGridPhysics:
         self._subtile_width_x = int((npx - 1) / layout[0])
         self._subtile_width_y = int((npy - 1) / layout[1])
         shape = grid_indexing.max_shape
-        self._ue_1 = utils.make_storage_from_shape(shape, init=True)
-        self._ue_2 = utils.make_storage_from_shape(shape, init=True)
-        self._ue_3 = utils.make_storage_from_shape(shape, init=True)
-        self._ut_1 = utils.make_storage_from_shape(shape, init=True)
-        self._ut_2 = utils.make_storage_from_shape(shape, init=True)
-        self._ut_3 = utils.make_storage_from_shape(shape, init=True)
-        self._ve_1 = utils.make_storage_from_shape(shape, init=True)
-        self._ve_2 = utils.make_storage_from_shape(shape, init=True)
-        self._ve_3 = utils.make_storage_from_shape(shape, init=True)
-        self._vt_1 = utils.make_storage_from_shape(shape, init=True)
-        self._vt_2 = utils.make_storage_from_shape(shape, init=True)
-        self._vt_3 = utils.make_storage_from_shape(shape, init=True)
+
         nic = grid_indexing.iec - grid_indexing.isc + 1
         njc = grid_indexing.jec - grid_indexing.jsc + 1
         npz = grid_indexing.domain[2]
@@ -202,6 +191,24 @@ class AGrid2DGridPhysics:
         self.north_edge = grid_indexing.north_edge
         self.west_edge = grid_indexing.west_edge
         self.east_edge = grid_indexing.east_edge
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape, init=True, backend=stencil_factory.backend
+            )
+
+        self._ue_1 = make_storage()
+        self._ue_2 = make_storage()
+        self._ue_3 = make_storage()
+        self._ut_1 = make_storage()
+        self._ut_2 = make_storage()
+        self._ut_3 = make_storage()
+        self._ve_1 = make_storage()
+        self._ve_2 = make_storage()
+        self._ve_3 = make_storage()
+        self._vt_1 = make_storage()
+        self._vt_2 = make_storage()
+        self._vt_3 = make_storage()
 
         self._update_dwind_prep_stencil = stencil_factory.from_origin_domain(
             update_dwind_prep_stencil,

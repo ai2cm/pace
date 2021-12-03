@@ -413,9 +413,12 @@ class DGrid2AGrid2CGridVectors:
         self._utmp = utils.make_storage_from_shape(
             grid_indexing.max_shape,
             grid_indexing.origin_full(),
+            backend=stencil_factory.backend,
         )
         self._vtmp = utils.make_storage_from_shape(
-            grid_indexing.max_shape, grid_indexing.origin_full()
+            grid_indexing.max_shape,
+            grid_indexing.origin_full(),
+            backend=stencil_factory.backend,
         )
 
         js1 = npt + OFFSET if grid_indexing.south_edge else grid_indexing.jsc - 1
