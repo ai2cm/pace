@@ -171,18 +171,24 @@ class AGrid2DGridPhysics:
         self._im2 = int((self.grid.npx - 1) / 2) + 2
         self._jm2 = int((self.grid.npy - 1) / 2) + 2
         shape = self.grid.grid_indexing.max_shape
-        self._ue_1 = utils.make_storage_from_shape(shape, init=True)
-        self._ue_2 = utils.make_storage_from_shape(shape, init=True)
-        self._ue_3 = utils.make_storage_from_shape(shape, init=True)
-        self._ut_1 = utils.make_storage_from_shape(shape, init=True)
-        self._ut_2 = utils.make_storage_from_shape(shape, init=True)
-        self._ut_3 = utils.make_storage_from_shape(shape, init=True)
-        self._ve_1 = utils.make_storage_from_shape(shape, init=True)
-        self._ve_2 = utils.make_storage_from_shape(shape, init=True)
-        self._ve_3 = utils.make_storage_from_shape(shape, init=True)
-        self._vt_1 = utils.make_storage_from_shape(shape, init=True)
-        self._vt_2 = utils.make_storage_from_shape(shape, init=True)
-        self._vt_3 = utils.make_storage_from_shape(shape, init=True)
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape, init=True, backend=stencil_factory.backend
+            )
+
+        self._ue_1 = make_storage()
+        self._ue_2 = make_storage()
+        self._ue_3 = make_storage()
+        self._ut_1 = make_storage()
+        self._ut_2 = make_storage()
+        self._ut_3 = make_storage()
+        self._ve_1 = make_storage()
+        self._ve_2 = make_storage()
+        self._ve_3 = make_storage()
+        self._vt_1 = make_storage()
+        self._vt_2 = make_storage()
+        self._vt_3 = make_storage()
         self._update_dwind_prep_stencil = stencil_factory.from_origin_domain(
             update_dwind_prep_stencil,
             origin=(self.grid.halo - 1, self.grid.halo - 1, 0),

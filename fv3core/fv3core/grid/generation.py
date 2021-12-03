@@ -250,7 +250,7 @@ class MetricTerms:
         )
 
     @property
-    def lat(self):
+    def lat(self) -> fv3util.Quantity:
         return fv3util.Quantity(
             data=self.grid.data[:, :, 1],
             dims=self.grid.dims[0:2],
@@ -259,7 +259,7 @@ class MetricTerms:
         )
 
     @property
-    def lon_agrid(self):
+    def lon_agrid(self) -> fv3util.Quantity:
         return fv3util.Quantity(
             data=self.agrid.data[:, :, 0],
             dims=self.agrid.dims[0:2],
@@ -268,7 +268,7 @@ class MetricTerms:
         )
 
     @property
-    def lat_agrid(self):
+    def lat_agrid(self) -> fv3util.Quantity:
         return fv3util.Quantity(
             data=self.agrid.data[:, :, 1],
             dims=self.agrid.dims[0:2],
@@ -277,7 +277,7 @@ class MetricTerms:
         )
 
     @property
-    def dx(self):
+    def dx(self) -> fv3util.Quantity:
         """
         the distance between grid corners along the x-direction
         """
@@ -286,7 +286,7 @@ class MetricTerms:
         return self._dx
 
     @property
-    def dy(self):
+    def dy(self) -> fv3util.Quantity:
         """
         the distance between grid corners along the y-direction
         """
@@ -295,7 +295,7 @@ class MetricTerms:
         return self._dy
 
     @property
-    def dxa(self):
+    def dxa(self) -> fv3util.Quantity:
         """
         the with of each grid cell along the x-direction
         """
@@ -304,7 +304,7 @@ class MetricTerms:
         return self._dx_agrid
 
     @property
-    def dya(self):
+    def dya(self) -> fv3util.Quantity:
         """
         the with of each grid cell along the y-direction
         """
@@ -313,7 +313,7 @@ class MetricTerms:
         return self._dy_agrid
 
     @property
-    def dxc(self):
+    def dxc(self) -> fv3util.Quantity:
         """
         the distance between cell centers along the x-direction
         """
@@ -322,7 +322,7 @@ class MetricTerms:
         return self._dx_center
 
     @property
-    def dyc(self):
+    def dyc(self) -> fv3util.Quantity:
         """
         the distance between cell centers along the y-direction
         """
@@ -331,7 +331,7 @@ class MetricTerms:
         return self._dy_center
 
     @property
-    def ak(self):
+    def ak(self) -> fv3util.Quantity:
         """
         the ak coefficient used to calculate the pressure at a given k-level:
         pk = ak + (bk * ps)
@@ -346,7 +346,7 @@ class MetricTerms:
         return self._ak
 
     @property
-    def bk(self):
+    def bk(self) -> fv3util.Quantity:
         """
         the bk coefficient used to calculate the pressure at a given k-level:
         pk = ak + (bk * ps)
@@ -363,7 +363,7 @@ class MetricTerms:
     # TODO: can ks and ptop just be derived from ak and bk instead of being returned
     # as part of _set_hybrid_pressure_coefficients?
     @property
-    def ks(self):
+    def ks(self) -> fv3util.Quantity:
         """
         the number of pure-pressure layers at the top of the model
         also the level where model transitions from pure pressure to
@@ -379,7 +379,7 @@ class MetricTerms:
         return self._ks
 
     @property
-    def ptop(self):
+    def ptop(self) -> fv3util.Quantity:
         """
         the pressure of the top of atmosphere level
         """
@@ -393,7 +393,7 @@ class MetricTerms:
         return self._ptop
 
     @property
-    def ec1(self):
+    def ec1(self) -> fv3util.Quantity:
         """
         cartesian components of the local unit vetcor
         in the x-direation at the cell centers
@@ -404,7 +404,7 @@ class MetricTerms:
         return self._ec1
 
     @property
-    def ec2(self):
+    def ec2(self) -> fv3util.Quantity:
         """
         cartesian components of the local unit vetcor
         in the y-direation at the cell centers
@@ -415,7 +415,7 @@ class MetricTerms:
         return self._ec2
 
     @property
-    def ew1(self):
+    def ew1(self) -> fv3util.Quantity:
         """
         cartesian components of the local unit vetcor
         in the x-direation at the left/right cell edges
@@ -426,7 +426,7 @@ class MetricTerms:
         return self._ew1
 
     @property
-    def ew2(self):
+    def ew2(self) -> fv3util.Quantity:
         """
         cartesian components of the local unit vetcor
         in the y-direation at the left/right cell edges
@@ -437,7 +437,7 @@ class MetricTerms:
         return self._ew2
 
     @property
-    def cos_sg1(self):
+    def cos_sg1(self) -> fv3util.Quantity:
         """
         Cosine of the angle at point 1 of the 'supergrid' within each grid cell:
         9---4---8
@@ -451,7 +451,7 @@ class MetricTerms:
         return self._cos_sg1
 
     @property
-    def cos_sg2(self):
+    def cos_sg2(self) -> fv3util.Quantity:
         """
         Cosine of the angle at point 2 of the 'supergrid' within each grid cell:
         9---4---8
@@ -465,7 +465,7 @@ class MetricTerms:
         return self._cos_sg2
 
     @property
-    def cos_sg3(self):
+    def cos_sg3(self) -> fv3util.Quantity:
         """
         Cosine of the angle at point 3 of the 'supergrid' within each grid cell:
         9---4---8
@@ -479,7 +479,7 @@ class MetricTerms:
         return self._cos_sg3
 
     @property
-    def cos_sg4(self):
+    def cos_sg4(self) -> fv3util.Quantity:
         """
         Cosine of the angle at point 4 of the 'supergrid' within each grid cell:
         9---4---8
@@ -493,7 +493,7 @@ class MetricTerms:
         return self._cos_sg4
 
     @property
-    def cos_sg5(self):
+    def cos_sg5(self) -> fv3util.Quantity:
         """
         Cosine of the angle at point 5 of the 'supergrid' within each grid cell:
         9---4---8
@@ -508,7 +508,7 @@ class MetricTerms:
         return self._cos_sg5
 
     @property
-    def cos_sg6(self):
+    def cos_sg6(self) -> fv3util.Quantity:
         """
         Cosine of the angle at point 6 of the 'supergrid' within each grid cell:
         9---4---8
@@ -522,7 +522,7 @@ class MetricTerms:
         return self._cos_sg6
 
     @property
-    def cos_sg7(self):
+    def cos_sg7(self) -> fv3util.Quantity:
         """
         Cosine of the angle at point 7 of the 'supergrid' within each grid cell:
         9---4---8
@@ -536,7 +536,7 @@ class MetricTerms:
         return self._cos_sg7
 
     @property
-    def cos_sg8(self):
+    def cos_sg8(self) -> fv3util.Quantity:
         """
         Cosine of the angle at point 8 of the 'supergrid' within each grid cell:
         9---4---8
@@ -550,7 +550,7 @@ class MetricTerms:
         return self._cos_sg8
 
     @property
-    def cos_sg9(self):
+    def cos_sg9(self) -> fv3util.Quantity:
         """
         Cosine of the angle at point 9 of the 'supergrid' within each grid cell:
         9---4---8
@@ -564,7 +564,7 @@ class MetricTerms:
         return self._cos_sg9
 
     @property
-    def sin_sg1(self):
+    def sin_sg1(self) -> fv3util.Quantity:
         """
         Sine of the angle at point 1 of the 'supergrid' within each grid cell:
         9---4---8
@@ -578,7 +578,7 @@ class MetricTerms:
         return self._sin_sg1
 
     @property
-    def sin_sg2(self):
+    def sin_sg2(self) -> fv3util.Quantity:
         """
         Sine of the angle at point 2 of the 'supergrid' within each grid cell:
         9---4---8
@@ -592,7 +592,7 @@ class MetricTerms:
         return self._sin_sg2
 
     @property
-    def sin_sg3(self):
+    def sin_sg3(self) -> fv3util.Quantity:
         """
         Sine of the angle at point 3 of the 'supergrid' within each grid cell:
         9---4---8
@@ -606,7 +606,7 @@ class MetricTerms:
         return self._sin_sg3
 
     @property
-    def sin_sg4(self):
+    def sin_sg4(self) -> fv3util.Quantity:
         """
         Sine of the angle at point 4 of the 'supergrid' within each grid cell:
         9---4---8
@@ -620,7 +620,7 @@ class MetricTerms:
         return self._sin_sg4
 
     @property
-    def sin_sg5(self):
+    def sin_sg5(self) -> fv3util.Quantity:
         """
         Sine of the angle at point 5 of the 'supergrid' within each grid cell:
         9---4---8
@@ -635,7 +635,7 @@ class MetricTerms:
         return self._sin_sg5
 
     @property
-    def sin_sg6(self):
+    def sin_sg6(self) -> fv3util.Quantity:
         """
         Sine of the angle at point 6 of the 'supergrid' within each grid cell:
         9---4---8
@@ -649,7 +649,7 @@ class MetricTerms:
         return self._sin_sg6
 
     @property
-    def sin_sg7(self):
+    def sin_sg7(self) -> fv3util.Quantity:
         """
         Sine of the angle at point 7 of the 'supergrid' within each grid cell:
         9---4---8
@@ -663,7 +663,7 @@ class MetricTerms:
         return self._sin_sg7
 
     @property
-    def sin_sg8(self):
+    def sin_sg8(self) -> fv3util.Quantity:
         """
         Sine of the angle at point 8 of the 'supergrid' within each grid cell:
         9---4---8
@@ -677,7 +677,7 @@ class MetricTerms:
         return self._sin_sg8
 
     @property
-    def sin_sg9(self):
+    def sin_sg9(self) -> fv3util.Quantity:
         """
         Sine of the angle at point 9 of the 'supergrid' within each grid cell:
         9---4---8
@@ -691,7 +691,7 @@ class MetricTerms:
         return self._sin_sg9
 
     @property
-    def cosa(self):
+    def cosa(self) -> fv3util.Quantity:
         """
         cosine of angle between coordinate lines at the cell corners
         averaged to ensure consistent answers
@@ -701,7 +701,7 @@ class MetricTerms:
         return self._cosa
 
     @property
-    def sina(self):
+    def sina(self) -> fv3util.Quantity:
         """
         as cosa but sine
         """
@@ -710,7 +710,7 @@ class MetricTerms:
         return self._sina
 
     @property
-    def cosa_u(self):
+    def cosa_u(self) -> fv3util.Quantity:
         """
         as cosa but defined at the left and right cell edges
         """
@@ -719,7 +719,7 @@ class MetricTerms:
         return self._cosa_u
 
     @property
-    def cosa_v(self):
+    def cosa_v(self) -> fv3util.Quantity:
         """
         as cosa but defined at the top and bottom cell edges
         """
@@ -728,7 +728,7 @@ class MetricTerms:
         return self._cosa_v
 
     @property
-    def cosa_s(self):
+    def cosa_s(self) -> fv3util.Quantity:
         """
         as cosa but defined at cell centers
         """
@@ -737,7 +737,7 @@ class MetricTerms:
         return self._cosa_s
 
     @property
-    def sina_u(self):
+    def sina_u(self) -> fv3util.Quantity:
         """
         as cosa_u but with sine
         """
@@ -746,7 +746,7 @@ class MetricTerms:
         return self._sina_u
 
     @property
-    def sina_v(self):
+    def sina_v(self) -> fv3util.Quantity:
         """
         as cosa_v but with sine
         """
@@ -755,7 +755,7 @@ class MetricTerms:
         return self._sina_v
 
     @property
-    def rsin_u(self):
+    def rsin_u(self) -> fv3util.Quantity:
         """
         1/sina_u**2,
         defined as the inverse-squrared as it is only used as such
@@ -765,7 +765,7 @@ class MetricTerms:
         return self._rsin_u
 
     @property
-    def rsin_v(self):
+    def rsin_v(self) -> fv3util.Quantity:
         """
         1/sina_v**2,
         defined as the inverse-squrared as it is only used as such
@@ -775,7 +775,7 @@ class MetricTerms:
         return self._rsin_v
 
     @property
-    def rsina(self):
+    def rsina(self) -> fv3util.Quantity:
         """
         1/sina**2,
         defined as the inverse-squrared as it is only used as such
@@ -785,7 +785,7 @@ class MetricTerms:
         return self._rsina
 
     @property
-    def rsin2(self):
+    def rsin2(self) -> fv3util.Quantity:
         """
         1/sin_sg5**2,
         defined as the inverse-squrared as it is only used as such
@@ -795,7 +795,7 @@ class MetricTerms:
         return self._rsin2
 
     @property
-    def l2c_v(self):
+    def l2c_v(self) -> fv3util.Quantity:
         """
         angular momentum correction for converting v-winds
         from lat/lon to cartesian coordinates
@@ -805,7 +805,7 @@ class MetricTerms:
         return self._l2c_v
 
     @property
-    def l2c_u(self):
+    def l2c_u(self) -> fv3util.Quantity:
         """
         angular momentum correction for converting u-winds
         from lat/lon to cartesian coordinates
@@ -815,7 +815,7 @@ class MetricTerms:
         return self._l2c_u
 
     @property
-    def es1(self):
+    def es1(self) -> fv3util.Quantity:
         """
         cartesian components of the local unit vetcor
         in the x-direation at the top/bottom cell edges,
@@ -826,7 +826,7 @@ class MetricTerms:
         return self._es1
 
     @property
-    def es2(self):
+    def es2(self) -> fv3util.Quantity:
         """
         cartesian components of the local unit vetcor
         in the y-direation at the top/bottom cell edges,
@@ -837,7 +837,7 @@ class MetricTerms:
         return self._es2
 
     @property
-    def ee1(self):
+    def ee1(self) -> fv3util.Quantity:
         """
         cartesian components of the local unit vetcor
         in the x-direation at the cell corners,
@@ -848,7 +848,7 @@ class MetricTerms:
         return self._ee1
 
     @property
-    def ee2(self):
+    def ee2(self) -> fv3util.Quantity:
         """
         cartesian components of the local unit vetcor
         in the y-direation at the cell corners,
@@ -859,7 +859,7 @@ class MetricTerms:
         return self._ee2
 
     @property
-    def divg_u(self):
+    def divg_u(self) -> fv3util.Quantity:
         """
         sina_v * dyc/dx
         """
@@ -873,7 +873,7 @@ class MetricTerms:
         return self._divg_u
 
     @property
-    def divg_v(self):
+    def divg_v(self) -> fv3util.Quantity:
         """
         sina_u * dxc/dy
         """
@@ -887,7 +887,7 @@ class MetricTerms:
         return self._divg_v
 
     @property
-    def del6_u(self):
+    def del6_u(self) -> fv3util.Quantity:
         """
         sina_v * dx/dyc
         """
@@ -901,7 +901,7 @@ class MetricTerms:
         return self._del6_u
 
     @property
-    def del6_v(self):
+    def del6_v(self) -> fv3util.Quantity:
         """
         sina_u * dy/dxc
         """
@@ -915,7 +915,7 @@ class MetricTerms:
         return self._del6_v
 
     @property
-    def vlon(self):
+    def vlon(self) -> fv3util.Quantity:
         """
         unit vector in eastward longitude direction,
         3d array whose last dimension is length 3 and indicates x/y/z value
@@ -925,7 +925,7 @@ class MetricTerms:
         return self._vlon
 
     @property
-    def vlat(self):
+    def vlat(self) -> fv3util.Quantity:
         """
         unit vector in northward latitude direction,
         3d array whose last dimension is length 3 and indicates x/y/z value
@@ -935,7 +935,7 @@ class MetricTerms:
         return self._vlat
 
     @property
-    def z11(self):
+    def z11(self) -> fv3util.Quantity:
         """
         vector product of horizontal component of the cell-center vector
         with the unit longitude vector
@@ -945,7 +945,7 @@ class MetricTerms:
         return self._z11
 
     @property
-    def z12(self):
+    def z12(self) -> fv3util.Quantity:
         """
         vector product of horizontal component of the cell-center vector
         with the unit latitude vector
@@ -955,7 +955,7 @@ class MetricTerms:
         return self._z12
 
     @property
-    def z21(self):
+    def z21(self) -> fv3util.Quantity:
         """
         vector product of vertical component of the cell-center vector
         with the unit longitude vector
@@ -965,7 +965,7 @@ class MetricTerms:
         return self._z21
 
     @property
-    def z22(self):
+    def z22(self) -> fv3util.Quantity:
         """
         vector product of vertical component of the cell-center vector
         with the unit latitude vector
@@ -975,7 +975,7 @@ class MetricTerms:
         return self._z22
 
     @property
-    def a11(self):
+    def a11(self) -> fv3util.Quantity:
         """
         0.5*z22/sin_sg5
         """
@@ -984,7 +984,7 @@ class MetricTerms:
         return self._a11
 
     @property
-    def a12(self):
+    def a12(self) -> fv3util.Quantity:
         """
         0.5*z21/sin_sg5
         """
@@ -993,7 +993,7 @@ class MetricTerms:
         return self._a12
 
     @property
-    def a21(self):
+    def a21(self) -> fv3util.Quantity:
         """
         0.5*z12/sin_sg5
         """
@@ -1002,7 +1002,7 @@ class MetricTerms:
         return self._a21
 
     @property
-    def a22(self):
+    def a22(self) -> fv3util.Quantity:
         """
         0.5*z11/sin_sg5
         """
@@ -1011,7 +1011,7 @@ class MetricTerms:
         return self._a22
 
     @property
-    def edge_w(self):
+    def edge_w(self) -> fv3util.Quantity:
         """
         factor to interpolate scalars from a to c grid at the western grid edge
         """
@@ -1025,7 +1025,7 @@ class MetricTerms:
         return self._edge_w
 
     @property
-    def edge_e(self):
+    def edge_e(self) -> fv3util.Quantity:
         """
         factor to interpolate scalars from a to c grid at the eastern grid edge
         """
@@ -1039,7 +1039,7 @@ class MetricTerms:
         return self._edge_e
 
     @property
-    def edge_s(self):
+    def edge_s(self) -> fv3util.Quantity:
         """
         factor to interpolate scalars from a to c grid at the southern grid edge
         """
@@ -1053,7 +1053,7 @@ class MetricTerms:
         return self._edge_s
 
     @property
-    def edge_n(self):
+    def edge_n(self) -> fv3util.Quantity:
         """
         factor to interpolate scalars from a to c grid at the northern grid edge
         """
@@ -1067,7 +1067,7 @@ class MetricTerms:
         return self._edge_n
 
     @property
-    def edge_vect_w(self):
+    def edge_vect_w(self) -> fv3util.Quantity:
         """
         factor to interpolate vectors from a to c grid at the western grid edge
         """
@@ -1081,7 +1081,7 @@ class MetricTerms:
         return self._edge_vect_w
 
     @property
-    def edge_vect_e(self):
+    def edge_vect_e(self) -> fv3util.Quantity:
         """
         factor to interpolate vectors from a to c grid at the eastern grid edge
         """
@@ -1095,7 +1095,7 @@ class MetricTerms:
         return self._edge_vect_e
 
     @property
-    def edge_vect_s(self):
+    def edge_vect_s(self) -> fv3util.Quantity:
         """
         factor to interpolate vectors from a to c grid at the southern grid edge
         """
@@ -1109,7 +1109,7 @@ class MetricTerms:
         return self._edge_vect_s
 
     @property
-    def edge_vect_n(self):
+    def edge_vect_n(self) -> fv3util.Quantity:
         """
         factor to interpolate vectors from a to c grid at the northern grid edge
         """
@@ -1123,7 +1123,7 @@ class MetricTerms:
         return self._edge_vect_n
 
     @property
-    def da_min(self):
+    def da_min(self) -> fv3util.Quantity:
         """
         the minimum agrid cell area across all ranks,
         if mpi is not present and the communicator is a DummyComm this will be
@@ -1134,7 +1134,7 @@ class MetricTerms:
         return self._da_min
 
     @property
-    def da_max(self):
+    def da_max(self) -> fv3util.Quantity:
         """
         the maximum agrid cell area across all ranks,
         if mpi is not present and the communicator is a DummyComm this will be
@@ -1145,7 +1145,7 @@ class MetricTerms:
         return self._da_max
 
     @property
-    def da_min_c(self):
+    def da_min_c(self) -> fv3util.Quantity:
         """
         the minimum cgrid cell area across all ranks,
         if mpi is not present and the communicator is a DummyComm this will be
@@ -1156,7 +1156,7 @@ class MetricTerms:
         return self._da_min_c
 
     @property
-    def da_max_c(self):
+    def da_max_c(self) -> fv3util.Quantity:
         """
         the maximum cgrid cell area across all ranks,
         if mpi is not present and the communicator is a DummyComm this will be
@@ -1167,21 +1167,21 @@ class MetricTerms:
         return self._da_max_c
 
     @cached_property
-    def area(self):
+    def area(self) -> fv3util.Quantity:
         """
         the area of each a-grid cell
         """
         return self._compute_area()
 
     @cached_property
-    def area_c(self):
+    def area_c(self) -> fv3util.Quantity:
         """
         the area of each c-grid cell
         """
         return self._compute_area_c()
 
     @cached_property
-    def _dgrid_xyz(self):
+    def _dgrid_xyz(self) -> fv3util.Quantity:
         """
         cartesian coordinates of each dgrid cell center
         """
@@ -1190,7 +1190,7 @@ class MetricTerms:
         )
 
     @cached_property
-    def _agrid_xyz(self):
+    def _agrid_xyz(self) -> fv3util.Quantity:
         """
         cartesian coordinates of each agrid cell center
         """
@@ -1201,7 +1201,7 @@ class MetricTerms:
         )
 
     @cached_property
-    def rarea(self):
+    def rarea(self) -> fv3util.Quantity:
         """
         1/cell area
         """
@@ -1213,7 +1213,7 @@ class MetricTerms:
         )
 
     @cached_property
-    def rarea_c(self):
+    def rarea_c(self) -> fv3util.Quantity:
         """
         1/cgrid cell area
         """
@@ -1225,7 +1225,7 @@ class MetricTerms:
         )
 
     @cached_property
-    def rdx(self):
+    def rdx(self) -> fv3util.Quantity:
         """
         1/dx
         """
@@ -1237,7 +1237,7 @@ class MetricTerms:
         )
 
     @cached_property
-    def rdy(self):
+    def rdy(self) -> fv3util.Quantity:
         """
         1/dy
         """
@@ -1249,7 +1249,7 @@ class MetricTerms:
         )
 
     @cached_property
-    def rdxa(self):
+    def rdxa(self) -> fv3util.Quantity:
         """
         1/dxa
         """
@@ -1261,7 +1261,7 @@ class MetricTerms:
         )
 
     @cached_property
-    def rdya(self):
+    def rdya(self) -> fv3util.Quantity:
         """
         1/dya
         """
@@ -1273,7 +1273,7 @@ class MetricTerms:
         )
 
     @cached_property
-    def rdxc(self):
+    def rdxc(self) -> fv3util.Quantity:
         """
         1/dxc
         """
@@ -1285,7 +1285,7 @@ class MetricTerms:
         )
 
     @cached_property
-    def rdyc(self):
+    def rdyc(self) -> fv3util.Quantity:
         """
         1/dyc
         """
