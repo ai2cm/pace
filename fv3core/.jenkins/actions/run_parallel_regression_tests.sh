@@ -2,7 +2,7 @@
 set -e -x
 BACKEND=$1
 EXPNAME=$2
-export TEST_ARGS="-v -s -rsx --backend=${BACKEND} "
+export TEST_ARGS="${EXTRA_TEST_ARGS} -v -s -rsx --backend=${BACKEND} "
 
 # sync the test data
 make get_test_data

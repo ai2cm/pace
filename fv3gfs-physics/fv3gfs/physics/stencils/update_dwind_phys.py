@@ -13,7 +13,6 @@ from gt4py.gtscript import (
 from gt4py.storage.utils import idx_from_order
 
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import (
     Float,
@@ -24,7 +23,7 @@ from fv3core.utils.typing import (
     IntField,
 )
 from fv3gfs.physics.global_constants import *
-from fv3gfs.util import TilePartitioner
+from pace.util import TilePartitioner
 
 
 def update_dwind_prep_stencil(

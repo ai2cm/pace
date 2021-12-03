@@ -4,8 +4,7 @@ import numpy as np
 
 import fv3core._config as spec
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as fv3util
-import fv3gfs.util as util
+import pace.util
 from fv3core.testing import ParallelTranslate2Py
 from fv3core.utils.typing import FloatField, FloatFieldIJ
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
@@ -316,14 +315,14 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             extra_grid_info,
         )
         state = DycoreState(**inputs)
-        dims_u = [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM]
+        dims_u = [pace.util.X_DIM, pace.util.Y_INTERFACE_DIM, pace.util.Z_DIM]
         u_quantity = self.grid.make_quantity(
             state.u,
             dims=dims_u,
             origin=self.grid.sizer.get_origin(dims_u),
             extent=self.grid.sizer.get_extent(dims_u),
         )
-        dims_v = [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM]
+        dims_v = [pace.util.X_INTERFACE_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
         v_quantity = self.grid.make_quantity(
             state.v,
             dims=dims_v,

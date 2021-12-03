@@ -2,8 +2,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
-import fv3gfs.util as fv3util
+import pace.util
 from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField, FloatFieldIJ
@@ -12,8 +11,8 @@ from fv3gfs.physics.global_constants import *
 # TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from fv3gfs.util import TilePartitioner
-from fv3gfs.util.quantity import Quantity
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.util.quantity import Quantity
 
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir
@@ -81,7 +80,7 @@ class ApplyPhysics2Dycore:
         stencil_factory: StencilFactory,
         grid_data: GridData,
         namelist,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         partitioner: TilePartitioner,
         rank,
         grid_info,
@@ -114,7 +113,7 @@ class ApplyPhysics2Dycore:
         full_3Dfield_1pts_halo_spec = grid_indexing.get_quantity_halo_spec(
             shape,
             self.origin,
-            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=1,
         )
         self._udt_halo_updater = self.comm.get_scalar_halo_updater(
@@ -151,16 +150,16 @@ class ApplyPhysics2Dycore:
             self._dt,
         )
         # [TODO] needs a better solution to handle u_dt, v_dt quantity
-        u_dt_quantity = fv3gfs.util.Quantity(
+        u_dt_quantity = pace.util.Quantity(
             u_dt,
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="m/s",
             origin=self.origin,
             extent=self.extent,
         )
-        v_dt_quantity = fv3gfs.util.Quantity(
+        v_dt_quantity = pace.util.Quantity(
             v_dt,
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="m/s",
             origin=self.origin,
             extent=self.extent,

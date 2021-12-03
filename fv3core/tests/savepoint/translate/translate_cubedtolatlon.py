@@ -1,5 +1,5 @@
 import fv3core._config as spec
-import fv3gfs.util as fv3util
+import pace.util as fv3util
 from fv3core.testing import ParallelTranslate2Py
 from pace.stencils.c2l_ord import CubedToLatLon
 

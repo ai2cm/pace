@@ -9,14 +9,14 @@ from gt4py.gtscript import (
 )
 
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.util
 from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
 from fv3gfs.physics.global_constants import *
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
-from fv3gfs.util import TilePartitioner
+from pace.util import TilePartitioner
 
 
 def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
@@ -107,7 +107,7 @@ class UpdateAtmosphereState:
         stencil_factory: StencilFactory,
         grid_data: GridData,
         namelist,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         partitioner: TilePartitioner,
         rank,
         grid_info,

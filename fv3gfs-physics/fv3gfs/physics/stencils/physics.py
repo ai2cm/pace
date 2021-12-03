@@ -10,7 +10,7 @@ from gt4py.gtscript import (
 )
 
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.util
 from fv3core.decorators import get_namespace
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.utils.grid import GridData
@@ -172,7 +172,7 @@ class Physics:
         stencil_factory: StencilFactory,
         grid_data: GridData,
         namelist,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         partitioner: TilePartitioner,
         rank,
         grid_info,

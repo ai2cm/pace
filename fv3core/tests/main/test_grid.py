@@ -6,7 +6,7 @@ from gt4py import gtscript
 
 import fv3core.utils.grid
 from fv3core.utils.typing import Index3D
-from fv3gfs.util import (
+from pace.util import (
     X_DIM,
     X_INTERFACE_DIM,
     Y_DIM,

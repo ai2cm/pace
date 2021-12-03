@@ -203,7 +203,7 @@ PULL=False make build
 - https://github.com/GridTools/gt4py -
   Python package for the DSL language
 
-- https://github.com/VulcanClimateModeling/fv3gfs-util
+- https://github.com/VulcanClimateModeling/pace-util
   Python specific model functionality, such as halo updates.
 
 - https://github.com/VulcanClimateModeling/fv3gfs-wrapper
@@ -214,16 +214,12 @@ While tests can work without these, it may be necessary for development to have 
 To add these to the local repository, run
 
 ```shell
-$ make update_submodules_base
-```
-If running on Piz Daint, another submodule, daint_venv is needed. Instead run
-```shell
-$ make update_submodules_venv
+$ git submodule update --init
 ```
 
 The submodules include:
 
-- `external/fv3gfs-util` - git@github.com:VulcanClimateModeling/fv3gfs-util.git
+- `external/pace-util` - git@github.com:VulcanClimateModeling/pace-util.git
 - `external/daint_venv` -  git@github.com:VulcanClimateModeling/daint_venv.git
 
 ## Dockerfiles and building
@@ -289,7 +285,7 @@ $ make dev_wrapper
 ```
 
 This will bind-mount in fv3core and the submodules in `external` such as `external/fv3gfs-fortran`,
-`external/fv3gfs-wrapper`, and `external/fv3gfs-util` and compile your bind-mounted sources upon
+`external/fv3gfs-wrapper`, and `external/pace-util` and compile your bind-mounted sources upon
 entering. If you change the fortran code while in the development environment, you need to re-compile
 the fortran code and then re-build the wrapper for your changes to be reflected. You can do this
 from the root of the image using:

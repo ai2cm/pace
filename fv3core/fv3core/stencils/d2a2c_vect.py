@@ -7,7 +7,7 @@ from fv3core.utils import corners
 from fv3core.utils.grid import GridData, axis_offsets
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
-from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 c1 = -2.0 / 14.0

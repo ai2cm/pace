@@ -10,7 +10,7 @@ import fv3core
 import fv3core._config
 import fv3core.testing
 import fv3core.utils.gt4py_utils
-import fv3gfs.util as fv3util
+import pace.util as fv3util
 from fv3core.testing import ParallelTranslate, TranslateGrid
 from fv3core.utils.mpi import MPI
 
@@ -584,3 +584,8 @@ def python_regression(pytestconfig):
 @pytest.fixture()
 def compute_grid(pytestconfig):
     return pytestconfig.getoption("compute_grid")
+
+
+@pytest.fixture()
+def skip_grid_tests(pytestconfig):
+    return pytestconfig.getoption("skip_grid_tests")
