@@ -5,7 +5,7 @@ services:
   fv3core_wrapper:
     image: ${FV3CORE_WRAPPER_IMAGE}
     volumes:
-      - ../external/fv3gfs-util:/external/fv3gfs-util
+      - ../external/pace-util:/external/pace-util
       - ../external/fv3gfs-wrapper:/external/fv3gfs-wrapper
       - ../external/stencils:/external/stencils
       - ..:/fv3core

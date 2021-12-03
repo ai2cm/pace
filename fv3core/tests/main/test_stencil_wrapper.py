@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3gfs.util
+import pace.util
 from fv3core import StencilConfig
 from fv3core.utils.global_config import set_backend
 from fv3core.utils.gt4py_utils import make_storage_from_shape
@@ -276,7 +276,7 @@ def test_backend_options(
 
 
 def get_mock_quantity():
-    return unittest.mock.MagicMock(spec=fv3gfs.util.Quantity)
+    return unittest.mock.MagicMock(spec=pace.util.Quantity)
 
 
 def test_convert_quantities_to_storage_no_args():

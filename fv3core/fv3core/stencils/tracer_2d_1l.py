@@ -7,7 +7,7 @@ import fv3core._config as spec
 import fv3core.stencils.fxadv
 import fv3core.utils
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.util
 from fv3core.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
@@ -129,7 +129,7 @@ class TracerAdvection:
         stencil_factory: StencilFactory,
         transport: FiniteVolumeTransport,
         grid_data,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         tracer_count,
     ):
         grid_indexing = stencil_factory.grid_indexing
@@ -200,7 +200,7 @@ class TracerAdvection:
         )
         self._copy_corners = PreAllocatedCopiedCornersFactory(
             stencil_factory=stencil_factory,
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             y_temporary=None,
         )
 

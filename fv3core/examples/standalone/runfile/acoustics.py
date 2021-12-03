@@ -10,7 +10,7 @@ from timing import collect_data_and_write_to_file
 import fv3core
 import fv3core._config as spec
 import fv3core.testing
-import fv3gfs.util as util
+import pace.util as util
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.utils.grid import Grid
 from fv3core.utils.null_comm import NullComm

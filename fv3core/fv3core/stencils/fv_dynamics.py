@@ -3,7 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, interval, log
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.util
 from fv3core._config import DynamicalCoreConfig
 from fv3core.decorators import FrozenStencil
 from fv3core.initialization.dycore_state import DycoreState
@@ -17,8 +17,8 @@ from fv3core.utils import global_config
 from fv3core.utils.grid import DampingCoefficients, GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util.halo_updater import HaloUpdater
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.util.halo_updater import HaloUpdater
 
 
 # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
@@ -134,7 +134,7 @@ def post_remap(
 
 def wrapup(
     state,
-    comm: fv3gfs.util.CubedSphereCommunicator,
+    comm: pace.util.CubedSphereCommunicator,
     adjust_stencil: AdjustNegativeTracerMixingRatio,
     cubed_to_latlon_stencil: CubedToLatLon,
     is_root_rank: bool,
@@ -168,22 +168,22 @@ def wrapup(
     )
 
 
-def fvdyn_temporaries(quantity_factory: fv3gfs.util.QuantityFactory, shape, grid):
+def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory, shape, grid):
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
         quantity = quantity_factory.empty(
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM], units="unknown"
+            dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         )
         tmps[f"{name}_quantity"] = quantity
         tmps[name] = quantity.storage
     for name in ["cappa", "dp1", "cvm"]:
         quantity = quantity_factory.empty(
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="unknown",
         )
         tmps[f"{name}_quantity"] = quantity
         tmps[name] = quantity.storage
-    gz = quantity_factory.empty(dims=[fv3gfs.util.Z_DIM], units="m^2 s^-2")
+    gz = quantity_factory.empty(dims=[pace.util.Z_DIM], units="m^2 s^-2")
     tmps["gz_quantity"] = gz
     tmps["gz"] = gz.storage
     return tmps
@@ -196,12 +196,12 @@ class DynamicalCore:
 
     def __init__(
         self,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         grid_data: GridData,
         stencil_factory: StencilFactory,
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
-        phis: fv3gfs.util.Quantity,
+        phis: pace.util.Quantity,
     ):
         """
         Args:
@@ -218,7 +218,7 @@ class DynamicalCore:
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
-        sizer = fv3gfs.util.SubtileGridSizer.from_tile_params(
+        sizer = pace.util.SubtileGridSizer.from_tile_params(
             nx_tile=config.npx - 1,
             ny_tile=config.npy - 1,
             nz=config.npz,
@@ -228,7 +228,7 @@ class DynamicalCore:
             tile_rank=comm.tile.rank,
             extra_dim_lengths={},
         )
-        quantity_factory = fv3gfs.util.QuantityFactory.from_backend(
+        quantity_factory = pace.util.QuantityFactory.from_backend(
             sizer, backend=global_config.get_backend()
         )
         assert config.moist_phys, "fvsetup is only implemented for moist_phys=true"
@@ -332,7 +332,7 @@ class DynamicalCore:
         full_xyz_spec = grid_indexing.get_quantity_halo_spec(
             grid_indexing.domain_full(add=(1, 1, 1)),
             grid_indexing.origin_compute(),
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=utils.halo,
             backend=stencil_factory.backend,
         )
@@ -345,7 +345,7 @@ class DynamicalCore:
         do_adiabatic_init: bool,
         timestep: float,
         n_split: int,
-        timer: fv3gfs.util.Timer = fv3gfs.util.NullTimer(),
+        timer: pace.util.Timer = pace.util.NullTimer(),
     ):
         """
         Step the model state forward by one timestep.
@@ -374,7 +374,7 @@ class DynamicalCore:
     def _compute(
         self,
         state,
-        timer: fv3gfs.util.NullTimer,
+        timer: pace.util.NullTimer,
     ):
         state.__dict__.update(self._temporaries)
         tracers = {}
@@ -468,7 +468,7 @@ class DynamicalCore:
             is_root_rank=self.comm.rank == 0,
         )
 
-    def _dyn(self, state, tracers, timer=fv3gfs.util.NullTimer()):
+    def _dyn(self, state, tracers, timer=pace.util.NullTimer()):
         self._copy_stencil(
             state.delp,
             state.dp1,

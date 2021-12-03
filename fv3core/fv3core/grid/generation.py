@@ -1,6 +1,6 @@
 import functools
 
-import fv3gfs.util as fv3util
+import pace.util as fv3util
 from fv3core.utils.corners import (
     fill_corners_2d,
     fill_corners_agrid,
@@ -10,7 +10,7 @@ from fv3core.utils.corners import (
 from fv3core.utils.global_constants import PI, RADIUS
 from fv3core.utils.gt4py_utils import asarray
 from fv3core.utils.stencil import GridIndexing
-from fv3gfs.util.constants import N_HALO_DEFAULT
+from pace.util.constants import N_HALO_DEFAULT
 
 from .eta import set_hybrid_pressure_coefficients
 from .geometry import (

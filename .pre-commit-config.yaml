@@ -32,7 +32,7 @@ repos:
           --ignore-missing-imports,
           --follow-imports, skip  # needed so we only test enabled files
         ]
-      files: fv3gfs-util
+      files: pace-util
     # - id: mypy
     #   args: [
     #       --no-strict-optional,
