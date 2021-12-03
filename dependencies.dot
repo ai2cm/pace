@@ -10,7 +10,7 @@ digraph {
   driver [shape=oval, label="driver"]
   physics [shape=oval, label="fv3gfs-physics"]
   stencils [shape=oval, label="stencils"]
-  util [shape=oval, label="fv3gfs-util"]
+  util [shape=oval, label="pace-util"]
 
 
   pace -> fv3core

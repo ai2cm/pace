@@ -12,7 +12,7 @@ from mpi4py import MPI
 import fv3core
 import fv3core._config as spec
 import fv3core.testing
-import fv3gfs.util as util
+import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics
 
 

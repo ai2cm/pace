@@ -11,7 +11,7 @@ import serialbox as ser
 import fv3core._config
 import fv3core.utils.global_config as config
 import fv3core.utils.gt4py_utils as gt_utils
-import fv3gfs.util as fv3util
+import pace.util as fv3util
 from fv3core.utils.mpi import MPI
 
 

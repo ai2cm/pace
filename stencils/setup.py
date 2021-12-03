@@ -6,7 +6,7 @@ from setuptools import find_namespace_packages, setup
 
 setup_requirements: List[str] = []
 
-requirements = ["gt4py", "fv3gfs-util"]
+requirements = ["gt4py", "pace-util"]
 if sys.version_info.major == 3 and sys.version_info.minor == 6:
     requirements.append("dataclasses")
 

@@ -4,7 +4,7 @@ from fv3core.stencils.fvtp2d import (
     PreAllocatedCopiedCornersFactory,
 )
 from fv3core.testing import TranslateFortranData2Py
-from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 class TranslateFvTp2d(TranslateFortranData2Py):

@@ -17,7 +17,7 @@ from fv3core.stencils.d2a2c_vect import contravariant
 from fv3core.utils.grid import DampingCoefficients, GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 @gtscript.function
