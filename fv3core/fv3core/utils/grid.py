@@ -27,7 +27,9 @@ class Grid:
     # But we need to add the halo - 1 to change this check to 0 based python arrays
     # grid.ie == npx + halo - 2
 
-    def __init__(self, indices, shape_params, rank, layout, data_fields={}):
+    def __init__(
+        self, indices, shape_params, rank, layout, data_fields={}, local_indices=False
+    ):
         self.rank = rank
         self.partitioner = fv3gfs.util.TilePartitioner(layout)
         self.subtile_index = self.partitioner.subtile_index(self.rank)
@@ -37,9 +39,9 @@ class Grid:
         self.subtile_width_x = int((self.npx - 1) / self.layout[0])
         self.subtile_width_y = int((self.npy - 1) / self.layout[1])
         for ivar, jvar in self.index_pairs:
-            local_i, local_j = self.global_to_local_indices(
-                int(indices[ivar]), int(indices[jvar])
-            )
+            local_i, local_j = int(indices[ivar]), int(indices[jvar])
+            if not local_indices:
+                local_i, local_j = self.global_to_local_indices(local_i, local_j)
             setattr(self, ivar, local_i)
             setattr(self, jvar, local_j)
         self.nid = int(self.ied - self.isd + 1)
