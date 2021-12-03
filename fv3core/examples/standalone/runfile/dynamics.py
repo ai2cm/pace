@@ -163,10 +163,10 @@ def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
     )
     is_baroclinic_test_case = False
     if (
-        "test_case_nml" in config_yml.keys()
-        and config_yml["test_case_nml"]["test_case"] == 13
+        "test_case_nml" in config_yml["namelist"].keys()
+        and config_yml["namelist"]["test_case_nml"]["test_case"] == 13
     ):
-        is_barcolinic_test_case = True
+        is_baroclinic_test_case = True
     print(
         "Running "
         + config_yml["experiment_name"]
