@@ -214,11 +214,7 @@ While tests can work without these, it may be necessary for development to have 
 To add these to the local repository, run
 
 ```shell
-$ make update_submodules_base
-```
-If running on Piz Daint, another submodule, daint_venv is needed. Instead run
-```shell
-$ make update_submodules_venv
+$ git submodule update --init
 ```
 
 The submodules include:
