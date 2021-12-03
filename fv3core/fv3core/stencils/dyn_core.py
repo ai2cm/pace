@@ -21,8 +21,8 @@ import fv3core.stencils.updatedzc as updatedzc
 import fv3core.stencils.updatedzd as updatedzd
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
-import fv3gfs.util as fv3util
+import pace.util
+import pace.util as fv3util
 from fv3core._config import AcousticDynamicsConfig
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
@@ -38,7 +38,7 @@ from fv3core.utils.grid import (
 )
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
 
 HUGE_R = 1.0e40
@@ -164,7 +164,7 @@ def get_nk_heat_dissipation(
 
 
 def dyncore_temporaries(grid_indexing: GridIndexing):
-    tmps: Dict[str, fv3gfs.util.Quantity] = {}
+    tmps: Dict[str, pace.util.Quantity] = {}
     utils.storage_dict(
         tmps,
         ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "divgd"],
@@ -287,7 +287,7 @@ class AcousticDynamics:
 
     def __init__(
         self,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         stencil_factory: StencilFactory,
         grid_data: GridData,
         damping_coefficients: DampingCoefficients,

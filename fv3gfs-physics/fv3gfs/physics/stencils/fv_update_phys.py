@@ -2,16 +2,16 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
-import fv3gfs.util as fv3util
+import pace.util
+import pace.util as fv3util
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField, FloatFieldIJ
 from fv3gfs.physics.global_constants import *
 
 # TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
-from fv3gfs.util.quantity import Quantity
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.util.quantity import Quantity
 
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir
@@ -79,7 +79,7 @@ class ApplyPhysics2Dycore:
         stencil_factory: StencilFactory,
         grid,
         namelist,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         grid_info,
     ):
         self.grid = grid

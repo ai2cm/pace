@@ -17,7 +17,7 @@ from fv3core.utils import axis_offsets
 from fv3core.utils.grid import GridData, GridIndexing
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
-from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 # comact 4-pt cubic interpolation

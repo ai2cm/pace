@@ -5,7 +5,7 @@ from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ
-from fv3gfs.util import Z_INTERFACE_DIM
+from pace.util import Z_INTERFACE_DIM
 
 
 def set_k0_and_calc_wk(

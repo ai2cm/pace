@@ -13,7 +13,7 @@ requirements = [
     "f90nml>=1.1.0",
     "gt4py",
     "numpy",
-    "fv3gfs-util>=0.4.3",
+    "pace-util>=0.4.3",
 ]
 
 test_requirements = ["pytest==5.2.2", "pytest-subtests>=0.3.0", "serialbox"]

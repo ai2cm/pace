@@ -65,14 +65,14 @@
 <!-- util -->
 <g id="node6" class="node">
 <title>util</title>
-<ellipse fill="none" stroke="black" cx="142" cy="-18" rx="49.29" ry="18"/>
-<text text-anchor="middle" x="142" y="-14.3" font-family="Times,serif" font-size="14.00">fv3gfs&#45;util</text>
+<ellipse fill="none" stroke="black" cx="142" cy="-18" rx="42.49" ry="18"/>
+<text text-anchor="middle" x="142" y="-14.3" font-family="Times,serif" font-size="14.00">pace&#45;util</text>
 </g>
 <!-- pace&#45;&gt;util -->
 <g id="edge3" class="edge">
 <title>pace&#45;&gt;util</title>
-<path fill="none" stroke="black" d="M86.98,-359.96C53.27,-336.37 0,-290.33 0,-235 0,-235 0,-235 0,-161 0,-102.53 60.93,-59.73 102.97,-37.16"/>
-<polygon fill="black" stroke="black" points="104.63,-40.24 111.89,-32.52 101.4,-34.03 104.63,-40.24"/>
+<path fill="none" stroke="black" d="M86.98,-359.96C53.27,-336.37 0,-290.33 0,-235 0,-235 0,-235 0,-161 0,-101.68 62.72,-58.49 104.79,-36.19"/>
+<polygon fill="black" stroke="black" points="106.65,-39.17 113.95,-31.49 103.45,-32.94 106.65,-39.17"/>
 </g>
 <!-- fv3core&#45;&gt;stencils -->
 <g id="edge10" class="edge">
@@ -125,8 +125,8 @@
 <!-- stencils&#45;&gt;util -->
 <g id="edge14" class="edge">
 <title>stencils&#45;&gt;util</title>
-<path fill="none" stroke="black" d="M249.79,-76.16C229.64,-65.48 200.67,-50.11 177.83,-38"/>
-<polygon fill="black" stroke="black" points="179.26,-34.8 168.78,-33.2 175.98,-40.98 179.26,-34.8"/>
+<path fill="none" stroke="black" d="M249.79,-76.16C229.25,-65.27 199.53,-49.51 176.5,-37.3"/>
+<polygon fill="black" stroke="black" points="177.88,-34.07 167.41,-32.47 174.6,-40.25 177.88,-34.07"/>
 </g>
 </g>
 </svg>

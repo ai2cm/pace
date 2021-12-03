@@ -17,12 +17,12 @@ from fv3core.utils.grid import DampingCoefficients, GridData
 
 
 # Dev note: the GTC toolchain fails if xarray is imported after gt4py
-# fv3gfs.util imports xarray if it's available in the env.
+# pace.util imports xarray if it's available in the env.
 # fv3core imports gt4py.
 # To avoid future conflict creeping back we make util imported prior to
 # fv3core. isort turned off to keep it that way.
 # isort: off
-import fv3gfs.util as util
+import pace.util as util
 from fv3core.utils.null_comm import NullComm
 
 # isort: on

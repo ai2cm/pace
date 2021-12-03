@@ -5,8 +5,8 @@ import numpy as np
 
 import fv3core.stencils.divergence_damping
 import fv3core.stencils.updatedzd
-from fv3gfs.util.constants import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
-from fv3gfs.util.quantity import Quantity
+from pace.util.constants import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.util.quantity import Quantity
 
 
 def get_selective_class(
