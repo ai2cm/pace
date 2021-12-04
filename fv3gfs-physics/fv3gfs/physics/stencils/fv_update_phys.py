@@ -3,7 +3,7 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core.utils.gt4py_utils as utils
 import pace.util
-import pace.util as fv3util
+from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField, FloatFieldIJ
 from fv3gfs.physics.global_constants import *
@@ -11,7 +11,7 @@ from fv3gfs.physics.global_constants import *
 # TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from pace.stencils.c2l_ord import CubedToLatLon
-from pace.util.quantity import Quantity
+from pace.util import TilePartitioner
 
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir
@@ -77,39 +77,42 @@ class ApplyPhysics2Dycore:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        grid,
+        grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
+        partitioner: TilePartitioner,
+        rank: int,
         grid_info,
     ):
-        self.grid = grid
+        grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         self.comm = comm
         self._dt = Float(self.namelist.dt_atmos)
         self._moist_cv = stencil_factory.from_origin_domain(
             moist_cv,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._update_pressure_and_surface_winds = stencil_factory.from_origin_domain(
             update_pressure_and_surface_winds,
-            origin=self.grid.compute_origin(),
-            domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._AGrid2DGridPhysics = AGrid2DGridPhysics(
-            stencil_factory, self.grid, self.namelist, grid_info
+            stencil_factory, partitioner, rank, self.namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
             stencil_factory,
-            self.grid.grid_data,
+            grid_data,
             order=namelist.c2l_ord,
         )
-        origin = self.grid.grid_indexing.origin_compute()
-        shape = self.grid.grid_indexing.max_shape
-        full_3Dfield_1pts_halo_spec = self.grid.grid_indexing.get_quantity_halo_spec(
+        self.origin = grid_indexing.origin_compute()
+        self.extent = grid_indexing.domain_compute()
+        shape = grid_indexing.max_shape
+        full_3Dfield_1pts_halo_spec = grid_indexing.get_quantity_halo_spec(
             shape,
-            origin,
-            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            self.origin,
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=1,
             backend=stencil_factory.backend,
         )
@@ -121,10 +124,10 @@ class ApplyPhysics2Dycore:
         )
         # TODO: check if we actually need surface winds
         self._u_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=origin, init=True, backend=stencil_factory.backend
+            shape[0:2], origin=self.origin, init=True, backend=stencil_factory.backend
         )
         self._v_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=origin, init=True, backend=stencil_factory.backend
+            shape[0:2], origin=self.origin, init=True, backend=stencil_factory.backend
         )
 
     def __call__(
@@ -147,8 +150,20 @@ class ApplyPhysics2Dycore:
             self._dt,
         )
         # [TODO] needs a better solution to handle u_dt, v_dt quantity
-        u_dt_quantity = self.grid.make_quantity(u_dt)
-        v_dt_quantity = self.grid.make_quantity(v_dt)
+        u_dt_quantity = pace.util.Quantity(
+            u_dt,
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            units="m/s",
+            origin=self.origin,
+            extent=self.extent,
+        )
+        v_dt_quantity = pace.util.Quantity(
+            v_dt,
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            units="m/s",
+            origin=self.origin,
+            extent=self.extent,
+        )
         self._udt_halo_updater.start([u_dt_quantity])
         self._vdt_halo_updater.start([v_dt_quantity])
         self._update_pressure_and_surface_winds(
