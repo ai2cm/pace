@@ -109,7 +109,7 @@ class UpdateAtmosphereState:
         namelist,
         comm: pace.util.CubedSphereCommunicator,
         partitioner: TilePartitioner,
-        rank,
+        rank: int,
         grid_info,
     ):
         grid_indexing = stencil_factory.grid_indexing

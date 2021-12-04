@@ -167,7 +167,7 @@ class AGrid2DGridPhysics:
         self,
         stencil_factory: StencilFactory,
         partitioner: TilePartitioner,
-        rank,
+        rank: int,
         namelist,
         grid_info,
     ):

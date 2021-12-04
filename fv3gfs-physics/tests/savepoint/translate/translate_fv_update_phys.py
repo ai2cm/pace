@@ -314,8 +314,8 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         tendencies = {}
         for key in ["u_dt", "v_dt", "t_dt"]:
             tendencies[key] = inputs.pop(key)
-        partitioner = util.CubedSpherePartitioner(
-            util.TilePartitioner(spec.namelist.layout)
+        partitioner = pace.util.CubedSpherePartitioner(
+            pace.util.TilePartitioner(spec.namelist.layout)
         )
         self._base.compute_func = ApplyPhysics2Dycore(
             self.grid.stencil_factory,
