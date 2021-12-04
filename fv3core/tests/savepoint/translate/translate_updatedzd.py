@@ -51,7 +51,9 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
             self.grid.grid_type,
             spec.namelist.hord_tm,
             inputs.pop("dp0"),
-            d_sw.get_column_namelist(spec.namelist, self.grid.npz),
+            d_sw.get_column_namelist(
+                spec.namelist, self.grid.npz, backend=self.grid.stencil_factory.backend
+            ),
         )
         self.updatedzd(**inputs)
         outputs = self.slice_output(inputs)

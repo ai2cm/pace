@@ -56,6 +56,7 @@ def make_storage_data(
     shape: Optional[Tuple[int, ...]] = None,
     origin: Tuple[int, int, int] = origin,
     *,
+    backend: str,
     dtype: DTypes = np.float64,
     mask: Optional[Tuple[bool, bool, bool]] = None,
     start: Tuple[int, int, int] = (0, 0, 0),
@@ -77,6 +78,7 @@ def make_storage_data(
         start: Starting points for slices in data copies
         dummy: Dummy axes
         axis: Axis for 2D to 3D arrays
+        backend: gt4py backend to use
 
     Returns:
         Field[..., dtype]: New storage
@@ -122,7 +124,7 @@ def make_storage_data(
 
     storage = gt_storage.from_array(
         data=data,
-        backend=global_config.get_backend(),
+        backend=backend,
         default_origin=origin,
         shape=shape,
         dtype=dtype,
@@ -222,6 +224,7 @@ def make_storage_from_shape_uncached(
     shape: Tuple[int, int, int],
     origin: Tuple[int, int, int] = origin,
     *,
+    backend: str,
     dtype: DTypes = np.float64,
     init: bool = False,
     mask: Optional[Tuple[bool, bool, bool]] = None,
@@ -234,6 +237,7 @@ def make_storage_from_shape_uncached(
         dtype: Data type
         init: If True, initializes the storage to zero
         mask: Tuple indicating the axes used when initializing the storage
+        backend: gt4py backend to use when making the storage
 
     Returns:
         Field[..., dtype]: New storage
@@ -254,7 +258,7 @@ def make_storage_from_shape_uncached(
 
     storage_func = gt_storage.zeros if init else gt_storage.empty
     storage = storage_func(
-        backend=global_config.get_backend(),
+        backend=backend,
         default_origin=origin,
         shape=shape,
         dtype=dtype,
@@ -271,6 +275,7 @@ def make_storage_from_shape(
     shape: Tuple[int, ...],
     origin: Tuple[int, ...] = origin,
     *,
+    backend: str,
     dtype: DTypes = np.float64,
     init: bool = False,
     mask: Optional[Tuple[bool, bool, bool]] = None,
@@ -285,6 +290,7 @@ def make_storage_from_shape(
         init: If True, initializes the storage to zero
         mask: Tuple indicating the axes used when initializing the storage
         cache_key: string for memoizing the storage
+        backend: gt4py backend to use when making the storage
     Returns:
         Field[..., dtype]: New storage
 
@@ -303,12 +309,17 @@ def make_storage_from_shape(
     # the line.
     if cache_key is None:
         return make_storage_from_shape_uncached(
-            shape, origin, dtype=dtype, init=init, mask=mask
+            shape,
+            origin,
+            dtype=dtype,
+            init=init,
+            mask=mask,
+            backend=backend,
         )
     full_key = (shape, origin, cache_key, dtype, init, mask)
     if full_key not in storage_shape_outputs:
         storage_shape_outputs[full_key] = make_storage_from_shape_uncached(
-            shape, origin, dtype=dtype, init=init, mask=mask
+            shape, origin, dtype=dtype, init=init, mask=mask, backend=backend
         )
     return_value = storage_shape_outputs[full_key]
     if init:
@@ -339,6 +350,8 @@ def make_storage_dict(
     dummy: Optional[Tuple[int, int, int]] = None,
     names: Optional[List[str]] = None,
     axis: int = 2,
+    *,
+    backend: str,
 ) -> Dict[str, "Field"]:
     assert names is not None, "for 4d variable storages, specify a list of names"
     if shape is None:
@@ -352,6 +365,7 @@ def make_storage_dict(
             start=start,
             dummy=dummy,
             axis=axis,
+            backend=backend,
         )
     return data_dict
 
@@ -377,9 +391,11 @@ def make_storage_dict(
 #         dictionary[key] = value
 
 
-def storage_dict(st_dict, names, shape, origin):
+def storage_dict(st_dict, names, shape, origin, *, backend: str):
     for name in names:
-        st_dict[name] = make_storage_from_shape_uncached(shape, origin, init=True)
+        st_dict[name] = make_storage_from_shape_uncached(
+            shape, origin, init=True, backend=backend
+        )
 
 
 def get_kstarts(column_info, npz):

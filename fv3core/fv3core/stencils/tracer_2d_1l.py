@@ -139,13 +139,19 @@ class TracerAdvection:
         self.grid_data = grid_data
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
-        self._tmp_xfx = utils.make_storage_from_shape(shape, origin)
-        self._tmp_yfx = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fx = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fy = utils.make_storage_from_shape(shape, origin)
-        self._tmp_dp = utils.make_storage_from_shape(shape, origin)
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape=shape, origin=origin, backend=stencil_factory.backend
+            )
+
+        self._tmp_xfx = make_storage()
+        self._tmp_yfx = make_storage()
+        self._tmp_fx = make_storage()
+        self._tmp_fy = make_storage()
+        self._tmp_dp = make_storage()
         self._tmp_qn2 = self.grid.quantity_wrap(
-            utils.make_storage_from_shape(shape, origin),
+            make_storage(),
             units="kg/m^2",
         )
 

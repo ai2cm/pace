@@ -58,9 +58,15 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
         )
         self.make_storage_data_input_vars(inputs)
         if "qs" not in inputs:
-            inputs["qs"] = utils.make_storage_from_shape(self.maxshape[0:2])
+            inputs["qs"] = utils.make_storage_from_shape(
+                self.maxshape[0:2], backend=self.grid.stencil_factory.backend
+            )
         else:
-            qs_field = utils.make_storage_from_shape(self.maxshape[0:2], origin=(0, 0))
+            qs_field = utils.make_storage_from_shape(
+                self.maxshape[0:2],
+                origin=(0, 0),
+                backend=self.grid.stencil_factory.backend,
+            )
             qs_field[i1 : i2 + 1, j1 : j2 + 1] = inputs["qs"][
                 i1 : i2 + 1, j1 : j2 + 1, 0
             ]

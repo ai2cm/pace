@@ -47,7 +47,11 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         if "qs" in inputs:
-            qs_field = utils.make_storage_from_shape(self.maxshape[0:2], origin=(0, 0))
+            qs_field = utils.make_storage_from_shape(
+                self.maxshape[0:2],
+                origin=(0, 0),
+                backend=self.grid.stencil_factory.backend,
+            )
             qs_field[:, :] = inputs["qs"][:, :, 0]
             inputs["qs"] = qs_field
             if inputs["qs"].shape[1] == 1:

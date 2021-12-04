@@ -32,7 +32,9 @@ class TranslateXPPM(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.process_inputs(inputs)
-        inputs["xflux"] = utils.make_storage_from_shape(inputs["q"].shape)
+        inputs["xflux"] = utils.make_storage_from_shape(
+            inputs["q"].shape, backend=self.grid.stencil_factory.backend
+        )
         origin = self.grid.grid_indexing.origin_compute()
         domain = self.grid.grid_indexing.domain_compute(add=(1, 1, 0))
         self.compute_func = xppm.XPiecewiseParabolic(

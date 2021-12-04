@@ -163,31 +163,35 @@ def get_nk_heat_dissipation(
     return nk_heat_dissipation
 
 
-def dyncore_temporaries(grid_indexing: GridIndexing):
+def dyncore_temporaries(grid_indexing: GridIndexing, *, backend: str):
     tmps: Dict[str, pace.util.Quantity] = {}
     utils.storage_dict(
         tmps,
         ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "divgd"],
         grid_indexing.max_shape,
         grid_indexing.origin_full(),
+        backend=backend,
     )
     utils.storage_dict(
         tmps,
         ["ws3"],
         grid_indexing.max_shape[0:2],
         grid_indexing.origin_full()[0:2],
+        backend=backend,
     )
     utils.storage_dict(
         tmps,
         ["crx", "xfx"],
         grid_indexing.max_shape,
         grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
+        backend=backend,
     )
     utils.storage_dict(
         tmps,
         ["cry", "yfx"],
         grid_indexing.max_shape,
         grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
+        backend=backend,
     )
     tmps["heat_source_quantity"] = quantity_wrap(
         tmps["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
@@ -216,7 +220,13 @@ class AcousticDynamics:
     class _HaloUpdaters:
         """Encapsulate all HaloUpdater objects"""
 
-        def __init__(self, comm, grid_indexing):
+        def __init__(
+            self,
+            comm: pace.util.CubedSphereCommunicator,
+            grid_indexing: GridIndexing,
+            *,
+            backend: str,
+        ):
             origin = grid_indexing.origin_compute()
             shape = grid_indexing.max_shape
             # Define the memory specification required
@@ -226,30 +236,35 @@ class AcousticDynamics:
                 origin,
                 dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
                 n_halo=grid_indexing.n_halo,
+                backend=backend,
             )
             full_size_xyiz_halo_spec = grid_indexing.get_quantity_halo_spec(
                 shape,
                 origin,
                 dims=[fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
                 n_halo=grid_indexing.n_halo,
+                backend=backend,
             )
             full_size_xiyz_halo_spec = grid_indexing.get_quantity_halo_spec(
                 shape,
                 origin,
                 dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
                 n_halo=grid_indexing.n_halo,
+                backend=backend,
             )
             full_size_xyzi_halo_spec = grid_indexing.get_quantity_halo_spec(
                 shape,
                 origin,
                 dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
                 n_halo=grid_indexing.n_halo,
+                backend=backend,
             )
             full_size_xiyiz_halo_spec = grid_indexing.get_quantity_halo_spec(
                 shape,
                 origin,
                 dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
                 n_halo=grid_indexing.n_halo,
+                backend=backend,
             )
 
             # Build the HaloUpdater. We could build one updater per specification group
@@ -277,6 +292,7 @@ class AcousticDynamics:
                     origin,
                     dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
                     n_halo=2,
+                    backend=backend,
                 )
                 self.pkc = comm.get_scalar_halo_updater([full_3Dfield_2pts_halo_spec])
             else:
@@ -331,19 +347,27 @@ class AcousticDynamics:
                 stencil_factory, grid_data, config.grid_type
             )
         )
-        self._temporaries = dyncore_temporaries(grid_indexing)
+        self._temporaries = dyncore_temporaries(
+            grid_indexing, backend=stencil_factory.backend
+        )
         self._temporaries["gz"][:] = HUGE_R
         if not config.hydrostatic:
             self._temporaries["pk3"][:] = HUGE_R
 
         column_namelist = d_sw.get_column_namelist(
-            config.d_grid_shallow_water, grid_indexing.domain[2]
+            config.d_grid_shallow_water,
+            grid_indexing.domain[2],
+            backend=stencil_factory.backend,
         )
         if not config.hydrostatic:
             # To write lower dimensional storages, these need to be 3D
             # then converted to lower dimensional
-            dp_ref_3d = utils.make_storage_from_shape(grid_indexing.max_shape)
-            zs_3d = utils.make_storage_from_shape(grid_indexing.max_shape)
+            dp_ref_3d = utils.make_storage_from_shape(
+                grid_indexing.max_shape, backend=stencil_factory.backend
+            )
+            zs_3d = utils.make_storage_from_shape(
+                grid_indexing.max_shape, backend=stencil_factory.backend
+            )
 
             dp_ref_stencil = stencil_factory.from_origin_domain(
                 dp_ref_compute,
@@ -360,9 +384,17 @@ class AcousticDynamics:
             )
             # After writing, make 'dp_ref' a K-field and 'zs' an IJ-field
             self._dp_ref = utils.make_storage_data(
-                dp_ref_3d[0, 0, :], (dp_ref_3d.shape[2],), (0,)
+                dp_ref_3d[0, 0, :],
+                (dp_ref_3d.shape[2],),
+                (0,),
+                backend=stencil_factory.backend,
             )
-            self._zs = utils.make_storage_data(zs_3d[:, :, 0], zs_3d.shape[0:2], (0, 0))
+            self._zs = utils.make_storage_data(
+                zs_3d[:, :, 0],
+                zs_3d.shape[0:2],
+                (0, 0),
+                backend=stencil_factory.backend,
+            )
             self.update_height_on_d_grid = updatedzd.UpdateHeightOnDGrid(
                 stencil_factory,
                 damping_coefficients,
@@ -470,7 +502,9 @@ class AcousticDynamics:
         )
 
         # Halo updaters
-        self._halo_updaters = AcousticDynamics._HaloUpdaters(self.comm, grid_indexing)
+        self._halo_updaters = AcousticDynamics._HaloUpdaters(
+            self.comm, grid_indexing, backend=stencil_factory.backend
+        )
 
     def __call__(self, state):
         # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
