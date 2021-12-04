@@ -115,13 +115,6 @@ def make_storage_data(
             else:
                 mask = (n_dims * (True,)) + ((max_dim - n_dims) * (False,))
 
-    if n_dims == 1:
-        data = _make_storage_data_1d(data, shape, start, dummy, axis, read_only)
-    elif n_dims == 2:
-        data = _make_storage_data_2d(data, shape, start, dummy, axis, read_only)
-    else:
-        data = _make_storage_data_3d(data, shape, start)
-
     storage = gt_storage.from_array(
         data=data,
         backend=backend,

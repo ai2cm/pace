@@ -150,9 +150,14 @@ class TracerAdvection:
         self._tmp_fx = make_storage()
         self._tmp_fy = make_storage()
         self._tmp_dp = make_storage()
-        self._tmp_qn2 = self.grid.quantity_wrap(
+        dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
+        origin, extent = grid_indexing.get_origin_domain(dims)
+        self._tmp_qn2 = pace.util.Quantity(
             make_storage(),
+            dims=dims,
             units="kg/m^2",
+            origin=origin,
+            extent=extent,
         )
 
         ax_offsets = fv3core.utils.axis_offsets(
@@ -194,7 +199,13 @@ class TracerAdvection:
         # self._cmax_2 = stencil_factory.from_origin_domain(cmax_stencil2)
 
         # Setup halo updater for tracers
-        tracer_halo_spec = self.grid.get_halo_update_spec(shape, origin, utils.halo)
+        tracer_halo_spec = grid_indexing.get_quantity_halo_spec(
+            grid_indexing.domain_full(add=(1, 1, 1)),
+            grid_indexing.origin_compute(),
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            n_halo=utils.halo,
+            backend=stencil_factory.backend,
+        )
         self._tracers_halo_updater = self.comm.get_scalar_halo_updater(
             [tracer_halo_spec] * tracer_count
         )
