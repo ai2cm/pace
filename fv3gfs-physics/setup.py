@@ -1,5 +1,3 @@
-import sys
-
 from setuptools import find_namespace_packages, setup
 
 
@@ -30,7 +28,8 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],
-    description="fv3gfs-physics is a gt4py-based physical parameterization for atmospheric models",
+    description="fv3gfs-physics is a gt4py-based physical parameterization \
+        for atmospheric models",
     install_requires=requirements,
     extras_require={},
     license="BSD license",

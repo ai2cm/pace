@@ -1,28 +1,8 @@
-import copy
-
-import numpy as np
-from gt4py import storage
-from gt4py.gtscript import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    horizontal,
-    interval,
-)
-from gt4py.storage.utils import idx_from_order
+from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.utils.gt4py_utils as utils
 from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import (
-    Float,
-    FloatField,
-    FloatFieldI,
-    FloatFieldIJ,
-    Int,
-    IntField,
-)
-from fv3gfs.physics.global_constants import *
+from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
 from pace.util import TilePartitioner
 
 

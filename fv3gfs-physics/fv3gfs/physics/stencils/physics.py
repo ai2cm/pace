@@ -1,26 +1,17 @@
 import gt4py.gtscript as gtscript
-import numpy as np  # used for debugging only
-from gt4py.gtscript import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    horizontal,
-    interval,
-)
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core.utils.gt4py_utils as utils
+import fv3gfs.physics.global_constants as constants
 import pace.util
-from fv3core.decorators import get_namespace
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField
-from fv3gfs.physics.global_constants import *
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
-from fv3gfs.physics.stencils.microphysics import Microphysics, MicrophysicsState
+from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
 from pace.util import TilePartitioner
 
@@ -46,7 +37,7 @@ def atmos_phys_driver_statein(
     from __externals__ import nwat, pk0inv, pktop, ptop
 
     with computation(BACKWARD), interval(0, -1):
-        phii = phii[0, 0, 1] - delz * grav
+        phii = phii[0, 0, 1] - delz * constants.grav
 
     with computation(PARALLEL), interval(...):
         prsik = 1.0e25
@@ -88,14 +79,14 @@ def atmos_phys_driver_statein(
     with computation(PARALLEL), interval(0, -1):
         qmin = 1.0e-10  # set it here since externals cannot be 2D
         qgrs_rad = max(qmin, qvapor)
-        rTv = rdgas * pt * (1.0 + con_fvirt * qgrs_rad)
+        rTv = constants.rdgas * pt * (1.0 + constants.con_fvirt * qgrs_rad)
         dm = delp[0, 0, 0]
         delp = dm * rTv / (phii[0, 0, 0] - phii[0, 0, 1])
         delp = min(delp, prsi[0, 0, 1] - 0.01 * dm)
         delp = max(delp, prsi + 0.01 * dm)
 
     with computation(PARALLEL), interval(-1, None):
-        prsik = exp(KAPPA * prsik) * pk0inv
+        prsik = exp(constants.KAPPA * prsik) * pk0inv
 
     with computation(PARALLEL), interval(0, 1):
         prsik = pktop
@@ -111,8 +102,14 @@ def prepare_microphysics(
     delp: FloatField,
 ):
     with computation(BACKWARD), interval(...):
-        dz = (phii[0, 0, 1] - phii[0, 0, 0]) * rgrav
-        wmp = -omga * (1.0 + con_fvirt * qvapor) * pt / delp * (rdgas * rgrav)
+        dz = (phii[0, 0, 1] - phii[0, 0, 0]) * constants.rgrav
+        wmp = (
+            -omga
+            * (1.0 + constants.con_fvirt * qvapor)
+            * pt
+            / delp
+            * (constants.rdgas * constants.rgrav)
+        )
 
 
 @gtscript.function
@@ -184,8 +181,8 @@ class Physics:
         self.setup_statein()
         self._dt_atmos = Float(self.namelist.dt_atmos)
         self._ptop = 300.0  # hard coded before we can call ak from grid: state["ak"][0]
-        self._pktop = (self._ptop / self._p00) ** KAPPA
-        self._pk0inv = (1.0 / self._p00) ** KAPPA
+        self._pktop = (self._ptop / self._p00) ** constants.KAPPA
+        self._pk0inv = (1.0 / self._p00) ** constants.KAPPA
 
         def make_storage():
             return utils.make_storage_from_shape(
@@ -240,8 +237,8 @@ class Physics:
         self._p00 = 1.0e5
 
     def setup_const_from_ptop(self, ptop: float):
-        self._pktop = (self._ptop / self._p00) ** KAPPA
-        self._pk0inv = (1.0 / self._p00) ** KAPPA
+        self._pktop = (self._ptop / self._p00) ** constants.KAPPA
+        self._pk0inv = (1.0 / self._p00) ** constants.KAPPA
 
     def __call__(self, state: DycoreState, ptop: float):
         self.setup_const_from_ptop(ptop)

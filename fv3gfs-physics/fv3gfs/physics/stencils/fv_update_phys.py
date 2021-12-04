@@ -2,11 +2,11 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core.utils.gt4py_utils as utils
+import fv3gfs.physics.global_constants as constants
 import pace.util
 from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField, FloatFieldIJ
-from fv3gfs.physics.global_constants import *
 
 # TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
@@ -17,7 +17,12 @@ from pace.util import TilePartitioner
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir
 @gtscript.function
 def moist_cvm(qvapor, gz, ql, qs):
-    cvm = (1.0 - (qvapor + gz)) * cv_air + qvapor * cv_vap + ql * c_liq + qs * c_ice
+    cvm = (
+        (1.0 - (qvapor + gz)) * constants.cv_air
+        + qvapor * constants.cv_vap
+        + ql * constants.c_liq
+        + qs * constants.c_ice
+    )
     return cvm
 
 
@@ -146,7 +151,7 @@ class ApplyPhysics2Dycore:
             state.qgraupel,
             state.pt,
             t_dt,
-            cp_air,
+            constants.cp_air,
             self._dt,
         )
         # [TODO] needs a better solution to handle u_dt, v_dt quantity
@@ -171,7 +176,7 @@ class ApplyPhysics2Dycore:
             state.delp,
             state.peln,
             state.pk,
-            KAPPA,
+            constants.KAPPA,
             state.ua,
             state.va,
             state.ps,
