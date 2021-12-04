@@ -12,12 +12,11 @@ from gt4py.gtscript import (
 )
 
 import fv3core.utils.gt4py_utils as utils
-import pace.util
+from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField, FloatFieldIJ, Int, IntField
 from fv3gfs.physics.functions.microphysics_funcs import *
 from fv3gfs.physics.global_constants import *
-from pace.util.quantity import Quantity
 
 
 def fields_init(
@@ -1863,17 +1862,17 @@ class MicrophysicsState:
 
 
 class Microphysics:
-    def __init__(self, stencil_factory: StencilFactory, grid, namelist):
+    def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, namelist):
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         self.gfdl_cloud_microphys_init()
-        self.grid = grid
+        grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
-        origin = self.grid.compute_origin()
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
+        origin = grid_indexing.origin_compute()
+        shape = grid_indexing.domain_full(add=(1, 1, 1))
 
         self._hydrostatic = self.namelist.hydrostatic
-        self._kke = self.grid.npz - 1
-        self._kbot = self.grid.npz - 1
+        self._kke = grid_indexing.domain[2] - 1
+        self._kbot = grid_indexing.domain[2] - 1
         self._k_s = 0
         self._k_e = self._kke - self._k_s + 1
         self._dt_atmos = self.namelist.dt_atmos
@@ -1895,7 +1894,7 @@ class Microphysics:
         # Calculate cloud condensation nuclei (ccn) based on klein eq. 15
         self._cpaut = c_paut * 0.104 * grav / 1.717e-5
         self._use_ccn = 0 if prog_ccn == 1 else 1
-        self._area = self.grid.area
+        self._area = grid_data.area
 
         def make_storage(**kwargs):
             return utils.make_storage_from_shape(
@@ -1963,28 +1962,28 @@ class Microphysics:
 
         self._fields_init = stencil_factory.from_origin_domain(
             func=fields_init,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
         self._warm_rain = stencil_factory.from_origin_domain(
             func=warm_rain,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
         self._sedimentation = stencil_factory.from_origin_domain(
             func=sedimentation,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
         self._icloud = stencil_factory.from_origin_domain(
             func=icloud,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
         self._fields_update = stencil_factory.from_origin_domain(
             func=fields_update,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
 
     def gfdl_cloud_microphys_init(self):

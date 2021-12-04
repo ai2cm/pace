@@ -13,6 +13,7 @@ import fv3core.utils.gt4py_utils as utils
 import pace.util
 from fv3core.decorators import get_namespace
 from fv3core.initialization.dycore_state import DycoreState
+from fv3core.utils.grid import GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import Float, FloatField
 from fv3gfs.physics.global_constants import *
@@ -21,6 +22,7 @@ from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics, MicrophysicsState
 from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
+from pace.util import TilePartitioner
 
 
 def atmos_phys_driver_statein(
@@ -168,15 +170,17 @@ class Physics:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        grid,
+        grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
+        partitioner: TilePartitioner,
+        rank: int,
         grid_info,
     ):
-        self.grid = grid
+        grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
-        origin = self.grid.compute_origin()
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
+        origin = grid_indexing.origin_compute()
+        shape = grid_indexing.domain_full(add=(1, 1, 1))
         self.setup_statein()
         self._dt_atmos = Float(self.namelist.dt_atmos)
         self._ptop = 300.0  # hard coded before we can call ak from grid: state["ak"][0]
@@ -195,18 +199,18 @@ class Physics:
         self._full_zero_storage = make_storage()
         self._get_prs_fv3 = stencil_factory.from_origin_domain(
             func=get_prs_fv3,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(add=(0, 0, 1)),
         )
         self._get_phi_fv3 = stencil_factory.from_origin_domain(
             func=get_phi_fv3,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(add=(0, 0, 1)),
         )
         self._atmos_phys_driver_statein = stencil_factory.from_origin_domain(
             func=atmos_phys_driver_statein,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(add=(0, 0, 1)),
             externals={
                 "nwat": self._nwat,
                 "ptop": self._ptop,
@@ -216,17 +220,17 @@ class Physics:
         )
         self._prepare_microphysics = stencil_factory.from_origin_domain(
             func=prepare_microphysics,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
         self._update_physics_state_with_tendencies = stencil_factory.from_origin_domain(
             func=update_physics_state_with_tendencies,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
-        self._microphysics = Microphysics(stencil_factory, grid, namelist)
+        self._microphysics = Microphysics(stencil_factory, grid_data, namelist)
         self._update_atmos_state = UpdateAtmosphereState(
-            stencil_factory, grid, namelist, comm, grid_info
+            stencil_factory, grid_data, namelist, comm, partitioner, rank, grid_info
         )
 
     def setup_statein(self):
