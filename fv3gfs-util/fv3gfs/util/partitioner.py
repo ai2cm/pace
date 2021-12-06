@@ -212,13 +212,15 @@ class TilePartitioner(Partitioner):
                     edge_index_offset = num_decomposed_dims
                 horizontal_dim_index = horizontal_dim_index + 1
 
-            return_extent.append(int(
-                _interface_overlap_extent(
-                    dim,
-                    is_end_index,
-                    tile_decomposition[num_dim + edge_index_offset],
-                    True,
-                ))
+            return_extent.append(
+                int(
+                    _interface_overlap_extent(
+                        dim,
+                        is_end_index,
+                        tile_decomposition[num_dim + edge_index_offset],
+                        True,
+                    )
+                )
             )
 
         return tuple(return_extent)
