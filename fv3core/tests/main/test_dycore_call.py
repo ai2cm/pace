@@ -22,6 +22,9 @@ NAMELIST_FILENAME = os.path.join(DIR, "c12_namelist.nml")
 
 @contextlib.contextmanager
 def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
+    # TODO: lagrangian contributions currently cause an out of bounds iteration
+    # when halo updates are disabled. Fix that bug and remove this decorator.
+    # Probably requires an update to gt4py (currently v36).
     def do_nothing(*args, **kwargs):
         pass
 
@@ -108,8 +111,6 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     # TODO compute from namelist
     bdt = 225.0
 
-    # TODO: lagrangian contributions currently cause an out of bounds iteration
-    # when halo updates are disabled. Fix that bug and remove this decorator.
     args = [
         state,
         namelist.consv_te,
