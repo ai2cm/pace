@@ -152,9 +152,9 @@ class Communicator:
             ) as sendbuf:
                 for rank in range(0, self.partitioner.total_ranks):
                     subtile_slice = self.partitioner.subtile_slice(
+                        rank=rank,
                         global_dims=metadata.dims,
                         global_extent=metadata.extent,
-                        rank=rank,
                         overlap=True,
                     )
                     sendbuf.assign_from(
@@ -237,9 +237,9 @@ class Communicator:
                     )
                 for rank in range(self.partitioner.total_ranks):
                     to_slice = self.partitioner.subtile_slice(
+                        rank=rank,
                         global_dims=recv_quantity.dims,
                         global_extent=recv_quantity.extent,
-                        rank=rank,
                         overlap=True,
                     )
                     recvbuf.assign_to(

@@ -607,7 +607,7 @@ def test_subtile_slice(
     array_dims, tile_extent, layout, rank, subtile_slice, overlap, edge_interior_ratio
 ):
     partitioner = fv3gfs.util.TilePartitioner(layout, edge_interior_ratio)
-    result = partitioner.subtile_slice(array_dims, tile_extent, rank, overlap)
+    result = partitioner.subtile_slice(rank, array_dims, tile_extent, overlap)
     assert result == subtile_slice
 
 
@@ -721,7 +721,7 @@ def test_subtile_slice_even_grid_odd_layout(
     array_dims, tile_extent, layout, rank, subtile_slice, overlap, edge_interior_ratio
 ):
     partitioner = fv3gfs.util.TilePartitioner(layout, edge_interior_ratio)
-    result = partitioner.subtile_slice(array_dims, tile_extent, rank, overlap)
+    result = partitioner.subtile_slice(rank, array_dims, tile_extent, overlap)
     assert result == subtile_slice
 
 
@@ -762,7 +762,7 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
 ):
     partitioner = fv3gfs.util.TilePartitioner(layout, edge_interior_ratio)
     with pytest.raises(ValueError, match=expected_error_string):
-        partitioner.subtile_slice(array_dims, tile_extent, rank, overlap)
+        partitioner.subtile_slice(rank, array_dims, tile_extent, overlap)
 
 
 @pytest.mark.parametrize(
@@ -869,7 +869,7 @@ def test_tile_extent_from_metadata(
     expected_error_string,
 ):
     partitioner = fv3gfs.util.TilePartitioner(layout, half_edge_interior_ratio)
-    subtile_slice = partitioner.subtile_slice(array_dims, tile_extent, 0, False)
+    subtile_slice = partitioner.subtile_slice(0, array_dims, tile_extent, False)
     assert subtile_slice == expected_slice
     slice_extent = (
         subtile_slice[0].stop - subtile_slice[0].start,

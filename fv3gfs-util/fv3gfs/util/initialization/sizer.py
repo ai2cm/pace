@@ -60,9 +60,9 @@ class SubtileGridSizer(GridSizer):
         if tile_partitioner is None:
             tile_partitioner = TilePartitioner(layout)
         y_slice, x_slice = tile_partitioner.subtile_slice(
+            tile_rank,
             [constants.Y_DIM, constants.X_DIM],
             [ny_tile, nx_tile],
-            tile_rank,
             overlap=True,
         )
         nx = x_slice.stop - x_slice.start

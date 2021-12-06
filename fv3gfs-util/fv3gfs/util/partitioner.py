@@ -68,9 +68,9 @@ class Partitioner(abc.ABC):
     @abc.abstractmethod
     def subtile_slice(
         self,
+        rank: int,
         global_dims: Sequence[str],
         global_extent: Sequence[int],
-        rank: int,
         overlap: bool = True,
     ) -> Tuple[Union[int, slice], ...]:
         """Return the subtile slice of a given rank on an array.
@@ -79,9 +79,9 @@ class Partitioner(abc.ABC):
         of a tile, the tile would be the "global" domain.
 
         Args:
+            rank: the rank of the process
             global_dims: dimensions of the global quantity being partitioned
             global_extent: extent of the global quantity being partitioned
-            rank: the rank of the process
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
@@ -215,9 +215,9 @@ class TilePartitioner(Partitioner):
 
     def subtile_slice(
         self,
+        rank: int,
         global_dims: Sequence[str],
         global_extent: Sequence[int],
-        rank: int,
         overlap: bool = True,
     ) -> Tuple[slice, ...]:
         """Return the subtile slice of a given rank on an array.
@@ -226,9 +226,9 @@ class TilePartitioner(Partitioner):
         of a tile, the tile would be the "global" domain.
 
         Args:
+            rank: the rank of the process
             global_dims: dimensions of the global quantity being partitioned
             global_extent: extent of the global quantity being partitioned
-            rank: the rank of the process
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
@@ -654,9 +654,9 @@ class CubedSpherePartitioner(Partitioner):
 
     def subtile_slice(
         self,
+        rank: int,
         global_dims: Sequence[str],
         global_extent: Sequence[int],
-        rank: int,
         overlap: bool = True,
     ) -> Tuple[Union[int, slice], ...]:
         """Return the subtile slice of a given rank on an array.
@@ -665,9 +665,9 @@ class CubedSpherePartitioner(Partitioner):
         of a tile, the tile would be the "global" domain.
 
         Args:
+            rank: the rank of the process
             global_dims: dimensions of the global quantity being partitioned
             global_extent: extent of the global quantity being partitioned
-            rank: the rank of the process
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
@@ -684,9 +684,9 @@ class CubedSpherePartitioner(Partitioner):
             )
         i_tile = self.tile_index(rank)
         return (i_tile,) + self.tile.subtile_slice(
+            rank=rank,
             global_dims=global_dims[1:],
             global_extent=global_extent[1:],
-            rank=rank,
             overlap=overlap,
         )
 
