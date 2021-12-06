@@ -1,4 +1,5 @@
 import copy
+import typing
 
 import numpy as np
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
@@ -280,6 +281,7 @@ def fields_init(
                 qvz = qvz + dq / dp1
 
 
+@typing.no_type_check
 def warm_rain(
     h_var: FloatField,
     rain: FloatField,
@@ -737,6 +739,7 @@ def warm_rain(
             m1 = m1 + m1_rain + m1_sol
 
 
+@typing.no_type_check
 def sedimentation(
     graupel: FloatField,
     ice: FloatField,

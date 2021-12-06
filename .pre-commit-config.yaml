@@ -33,7 +33,13 @@ repos:
           --follow-imports, skip  # needed so we only test enabled files
         ]
       files: pace-util
-
+    - id: mypy
+      args: [
+          --no-strict-optional,
+          --ignore-missing-imports,
+          --follow-imports, skip  # needed so we only test enabled files
+        ]
+      files: fv3gfs-physics
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:

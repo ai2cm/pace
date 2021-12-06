@@ -1,10 +1,12 @@
+from typing import List
+
 from setuptools import find_namespace_packages, setup
 
 
 with open("README.md", encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
-setup_requirements = []
+setup_requirements: List[str] = []
 
 requirements = [
     "f90nml>=1.1.0",
