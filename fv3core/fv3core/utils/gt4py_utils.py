@@ -115,6 +115,17 @@ def make_storage_data(
             else:
                 mask = (n_dims * (True,)) + ((max_dim - n_dims) * (False,))
 
+    if n_dims == 1:
+        data = _make_storage_data_1d(
+            data, shape, start, dummy, axis, read_only, backend=backend
+        )
+    elif n_dims == 2:
+        data = _make_storage_data_2d(
+            data, shape, start, dummy, axis, read_only, backend=backend
+        )
+    else:
+        data = _make_storage_data_3d(data, shape, start, backend=backend)
+
     storage = gt_storage.from_array(
         data=data,
         backend=backend,
@@ -134,10 +145,12 @@ def _make_storage_data_1d(
     dummy: Optional[Tuple[int, int, int]] = None,
     axis: int = 2,
     read_only: bool = True,
+    *,
+    backend: str,
 ) -> Field:
     # axis refers to a repeated axis, dummy refers to a singleton axis
     axis = min(axis, len(shape) - 1)
-    buffer = zeros(shape[axis])
+    buffer = zeros(shape[axis], backend=backend)
     if dummy:
         axis = list(set((0, 1, 2)).difference(dummy))[0]
 
@@ -168,6 +181,8 @@ def _make_storage_data_2d(
     dummy: Optional[Tuple[int, int, int]] = None,
     axis: int = 2,
     read_only: bool = True,
+    *,
+    backend: str,
 ) -> Field:
     # axis refers to which axis should be repeated (when making a full 3d data),
     # dummy refers to a singleton axis
@@ -175,14 +190,12 @@ def _make_storage_data_2d(
     if do_reshape:
         d_axis = dummy[0] if dummy else axis
         shape2d = shape[:d_axis] + shape[d_axis + 1 :]
-        start2d = start[:d_axis] + start[d_axis + 1 :]
     else:
         shape2d = shape[0:2]
-        start2d = start[0:2]
 
     start1, start2 = start[0:2]
     size1, size2 = data.shape
-    buffer = zeros(shape2d)
+    buffer = zeros(shape2d, backend=backend)
     buffer[start1 : start1 + size1, start2 : start2 + size2] = asarray(
         data, type(buffer)
     )
@@ -201,10 +214,12 @@ def _make_storage_data_3d(
     data: Field,
     shape: Tuple[int, int, int],
     start: Tuple[int, int, int] = (0, 0, 0),
+    *,
+    backend: str,
 ) -> Field:
     istart, jstart, kstart = start
     isize, jsize, ksize = data.shape
-    buffer = zeros(shape)
+    buffer = zeros(shape, backend=backend)
     buffer[
         istart : istart + isize,
         jstart : jstart + jsize,
@@ -452,8 +467,12 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
             return cp.asarray(array, dtype, order)
 
 
-def zeros(shape, dtype=Float):
-    storage_type = cp.ndarray if global_config.is_gpu_backend() else np.ndarray
+def is_gpu_backend(backend: str) -> bool:
+    return backend.endswith("cuda") or backend.endswith("gpu")
+
+
+def zeros(shape, dtype=Float, *, backend: str):
+    storage_type = cp.ndarray if is_gpu_backend(backend) else np.ndarray
     xp = cp if cp and storage_type is cp.ndarray else np
     return xp.zeros(shape)
 
