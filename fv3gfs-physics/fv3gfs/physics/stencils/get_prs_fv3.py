@@ -1,6 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-from fv3gfs.physics.global_config import *
+from fv3gfs.physics.global_config import FIELD_FLT
+from fv3gfs.physics.global_constants import con_fvirt
 
 
 def get_prs_fv3(
