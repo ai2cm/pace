@@ -1,11 +1,15 @@
 from gt4py.gtscript import BACKWARD, PARALLEL, computation, interval
 
-from fv3gfs.physics.global_config import FIELD_FLT
+from fv3core.utils.typing import FloatField
 from fv3gfs.physics.global_constants import con_fvirt
 
 
 def get_phi_fv3(
-    gt0: FIELD_FLT, gq0: FIELD_FLT, del_gz: FIELD_FLT, phii: FIELD_FLT, phil: FIELD_FLT
+    gt0: FloatField,
+    gq0: FloatField,
+    del_gz: FloatField,
+    phii: FloatField,
+    phil: FloatField,
 ):
     with computation(PARALLEL), interval(0, -1):
         del_gz = (
