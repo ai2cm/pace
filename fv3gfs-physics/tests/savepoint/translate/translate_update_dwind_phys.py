@@ -1,6 +1,7 @@
 import numpy as np
 
 import fv3core._config as spec
+import pace.util
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
@@ -61,8 +62,15 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         grid_info = {}
         for var in grid_names:
             grid_info[var] = inputs.pop(var)
+        partitioner = pace.util.CubedSpherePartitioner(
+            pace.util.TilePartitioner(spec.namelist.layout)
+        )
         self.compute_func = AGrid2DGridPhysics(
-            self.grid.stencil_factory, self.grid, spec.namelist, grid_info
+            self.grid.stencil_factory,
+            partitioner,
+            self.grid.rank,
+            spec.namelist,
+            grid_info,
         )
         self.compute_func(**inputs)
         out = {}

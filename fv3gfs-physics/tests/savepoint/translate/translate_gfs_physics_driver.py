@@ -133,7 +133,13 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         grid_info["ew2_2"] = 0
         grid_info["ew3_2"] = 0
         physics = Physics(
-            self.grid.stencil_factory, self.grid, spec.namelist, communicator, grid_info
+            self.grid.stencil_factory,
+            self.grid.grid_data,
+            spec.namelist,
+            communicator,
+            partitioner,
+            self.grid.rank,
+            grid_info,
         )
         physics._atmos_phys_driver_statein(
             physics._prsik,
