@@ -100,7 +100,17 @@ class Partitioner(abc.ABC):
         rank: int,
         is_cube_metadata: bool = False,
     ) -> Tuple[int, ...]:
-        """Return the shape of a single rank representation for the given dimensions."""
+        """Return the shape of a single rank representation for the given dimensions.
+
+        Args:
+            global_metadata: quantity metadata.
+            rank: rank of the process.
+            is_cube_metadata (optional): True if the given metadata is for a cubed sphere model.
+                False if not, e.g. data is for a single tile. Default is False.
+
+        Returns:
+            extent: shape of a single rank representation for the given dimensions.
+        """
         pass
 
     @abc.abstractproperty
@@ -239,7 +249,7 @@ class TilePartitioner(Partitioner):
                 to the subtile compute domain
         """
         return subtile_slice(
-            global_dims,
+            dims=global_dims,
             global_extent=global_extent,
             layout=self.layout,
             subtile_index=self.subtile_index(rank),
@@ -641,7 +651,17 @@ class CubedSpherePartitioner(Partitioner):
         rank: int,
         is_cube_metadata: bool = True,
     ) -> Tuple[int, ...]:
-        """Return the shape of a single rank representation for the given dimensions."""
+        """Return the shape of a single rank representation for the given dimensions.
+
+        Args:
+            global_metadata: quantity metadata.
+            rank: rank of the process.
+            is_cube_metadata (optional): True if the given metadata is for a cubed sphere model.
+                False if not, e.g. data is for a single tile. Default is True.
+
+        Returns:
+            extent: shape of a single rank representation for the given dimensions.
+        """
         if cube_metadata.dims[0] != constants.TILE_DIM:
             raise NotImplementedError(
                 "currently only supports tile dimension {constants.TILE_DIM} as the "
