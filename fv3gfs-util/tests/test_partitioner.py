@@ -271,7 +271,8 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             False,
             0.5,
             id="18_rank_left_no_overlap_rectangle_layout_half_edge_tiles_3d",
-        ), pytest.param(
+        ),
+        pytest.param(
             [fv3gfs.util.Z_INTERFACE_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
             (5, 4, 4),
             (1, 3),
@@ -408,7 +409,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             0,
             (slice(0, 5), slice(0, 1), slice(0, 1)),
             False,
-            float(1. / 6),
+            float(1.0 / 6),
             id="54_rank_botleft_no_overlap_square_layout_sixth_edge_tiles_3d",
         ),
         pytest.param(
@@ -418,7 +419,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             1,
             (slice(0, 5), slice(0, 1), slice(1, 7)),
             False,
-            float(1. / 6),
+            float(1.0 / 6),
             id="54_rank_botmid_no_overlap_square_layout_sixth_edge_tiles_3d",
         ),
         pytest.param(
@@ -428,7 +429,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             4,
             (slice(0, 5), slice(1, 7), slice(1, 7)),
             False,
-            float(1. / 6),
+            float(1.0 / 6),
             id="54_rank_midmid_no_overlap_square_layout_sixth_edge_tiles_3d",
         ),
         pytest.param(
@@ -438,7 +439,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             5,
             (slice(0, 5), slice(1, 7), slice(7, 8)),
             False,
-            float(1. / 6),
+            float(1.0 / 6),
             id="54_rank_midright_no_overlap_square_layout_sixth_edge_tiles_3d",
         ),
         pytest.param(
@@ -448,7 +449,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             8,
             (slice(0, 5), slice(7, 8), slice(7, 8)),
             False,
-            float(1. / 6),
+            float(1.0 / 6),
             id="54_rank_topright_no_overlap_square_layout_half_edge_tiles_3d",
         ),
         pytest.param(
@@ -458,7 +459,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             0,
             (slice(0, 5), slice(0, 2), slice(0, 2)),
             False,
-            float(1. / 3),
+            float(1.0 / 3),
             id="96_rank_farbotfarleft_no_overlap_square_layout_third_edge_tiles_3d",
         ),
         pytest.param(
@@ -468,7 +469,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             1,
             (slice(0, 5), slice(0, 2), slice(2, 8)),
             False,
-            float(1. / 3),
+            float(1.0 / 3),
             id="96_rank_farbotcloseleft_no_overlap_square_layout_third_edge_tiles_3d",
         ),
         pytest.param(
@@ -478,7 +479,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             6,
             (slice(0, 5), slice(2, 8), slice(8, 14)),
             False,
-            float(1. / 3),
+            float(1.0 / 3),
             id="96_rank_closebotcloseright_right_no_overlap_square_layout_third_edge_tiles_3d",
         ),
         pytest.param(
@@ -488,7 +489,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             14,
             (slice(0, 5), slice(14, 16), slice(8, 14)),
             False,
-            float(1. / 3),
+            float(1.0 / 3),
             id="96_rank_fartopcloseright_no_overlap_square_layout_third_edge_tiles_3d",
         ),
         pytest.param(
@@ -605,13 +606,10 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
 )
 @pytest.mark.cpu_only
 def test_subtile_slice(
-    array_dims, tile_extent, layout,
-    rank, subtile_slice, overlap, edge_interior_ratio
+    array_dims, tile_extent, layout, rank, subtile_slice, overlap, edge_interior_ratio
 ):
     partitioner = fv3gfs.util.TilePartitioner(layout, edge_interior_ratio)
-    result = partitioner.subtile_slice(
-        array_dims, tile_extent, rank, overlap
-    )
+    result = partitioner.subtile_slice(array_dims, tile_extent, rank, overlap)
     assert result == subtile_slice
 
 
@@ -722,13 +720,10 @@ def test_subtile_slice(
 )
 @pytest.mark.cpu_only
 def test_subtile_slice_even_grid_odd_layout(
-    array_dims, tile_extent, layout,
-    rank, subtile_slice, overlap, edge_interior_ratio
+    array_dims, tile_extent, layout, rank, subtile_slice, overlap, edge_interior_ratio
 ):
     partitioner = fv3gfs.util.TilePartitioner(layout, edge_interior_ratio)
-    result = partitioner.subtile_slice(
-        array_dims, tile_extent, rank, overlap
-    )
+    result = partitioner.subtile_slice(array_dims, tile_extent, rank, overlap)
     assert result == subtile_slice
 
 
@@ -759,13 +754,17 @@ def test_subtile_slice_even_grid_odd_layout(
 )
 @pytest.mark.cpu_only
 def test_subtile_slice_odd_grid_even_layout_no_interface(
-        array_dims, tile_extent, layout,
-        rank, expected_error_string, overlap, edge_interior_ratio):
+    array_dims,
+    tile_extent,
+    layout,
+    rank,
+    expected_error_string,
+    overlap,
+    edge_interior_ratio,
+):
     partitioner = fv3gfs.util.TilePartitioner(layout, edge_interior_ratio)
     with pytest.raises(ValueError, match=expected_error_string):
-        partitioner.subtile_slice(
-            array_dims, tile_extent, rank, overlap
-        )
+        partitioner.subtile_slice(array_dims, tile_extent, rank, overlap)
 
 
 @pytest.mark.parametrize(
@@ -820,7 +819,12 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
             id="48_rank_3d_half_edge_tiles",
         ),
         pytest.param(
-            [fv3gfs.util.TILE_DIM, fv3gfs.util.X_DIM, fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM],
+            [
+                fv3gfs.util.TILE_DIM,
+                fv3gfs.util.X_DIM,
+                fv3gfs.util.Z_DIM,
+                fv3gfs.util.Y_DIM,
+            ],
             (6, 12, 5, 12),
             (3, 4),
             0.5,
@@ -831,8 +835,11 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
 )
 @pytest.mark.cpu_only
 def test_subtile_extents_from_tile_metadata(
-        array_dims, tile_extent, layout, edge_interior_ratio, rank_extent):
-    result = fv3gfs.util.partitioner.subtile_extents_from_tile_metadata(array_dims, tile_extent, layout, edge_interior_ratio)
+    array_dims, tile_extent, layout, edge_interior_ratio, rank_extent
+):
+    result = fv3gfs.util.partitioner.subtile_extents_from_tile_metadata(
+        array_dims, tile_extent, layout, edge_interior_ratio
+    )
     assert result == rank_extent
 
 
@@ -843,7 +850,7 @@ def test_subtile_extents_from_tile_metadata(
             [fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
             (12, 12),
             (3, 4),
-            1.0, 
+            1.0,
             0.5,
             (slice(0, 3, None), slice(0, 2, None)),
             (9, 8),
@@ -852,15 +859,29 @@ def test_subtile_extents_from_tile_metadata(
         ),
     ],
 )
-
 @pytest.mark.cpu_only
 def test_tile_extent_from_metadata(
-        array_dims, tile_extent, layout, full_edge_interior_ratio, half_edge_interior_ratio, expected_slice, expected_extent, expected_error_string):
+    array_dims,
+    tile_extent,
+    layout,
+    full_edge_interior_ratio,
+    half_edge_interior_ratio,
+    expected_slice,
+    expected_extent,
+    expected_error_string,
+):
     partitioner = fv3gfs.util.TilePartitioner(layout, half_edge_interior_ratio)
     subtile_slice = partitioner.subtile_slice(array_dims, tile_extent, 0, False)
     assert subtile_slice == expected_slice
-    slice_extent = (subtile_slice[0].stop - subtile_slice[0].start, subtile_slice[1].stop - subtile_slice[1].start)
-    rank_extent = fv3gfs.util.partitioner.tile_extent_from_rank_metadata(array_dims, slice_extent, layout, full_edge_interior_ratio)
+    slice_extent = (
+        subtile_slice[0].stop - subtile_slice[0].start,
+        subtile_slice[1].stop - subtile_slice[1].start,
+    )
+    rank_extent = fv3gfs.util.partitioner.tile_extent_from_rank_metadata(
+        array_dims, slice_extent, layout, full_edge_interior_ratio
+    )
     assert rank_extent == expected_extent
     with pytest.raises(NotImplementedError, match=expected_error_string):
-            fv3gfs.util.partitioner.tile_extent_from_rank_metadata(array_dims, slice_extent, layout, half_edge_interior_ratio)
+        fv3gfs.util.partitioner.tile_extent_from_rank_metadata(
+            array_dims, slice_extent, layout, half_edge_interior_ratio
+        )
