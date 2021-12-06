@@ -21,7 +21,3 @@ if IS_DOCKER:
     SERIALBOX_DIR = "/usr/local/serialbox"
 else:
     SERIALBOX_DIR = "/project/c14/install/daint/serialbox2_master/gnu_debug"
-
-con_rv = 4.6150e2
-con_rd = 2.8705e2
-con_fvirt = con_rv / con_rd - 1.0
