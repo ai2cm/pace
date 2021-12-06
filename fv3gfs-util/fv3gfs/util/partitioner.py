@@ -71,7 +71,7 @@ class Partitioner(abc.ABC):
         global_dims: Sequence[str],
         global_extent: Sequence[int],
         rank: int,
-        overlap: bool = False,
+        overlap: bool = True,
     ) -> Tuple[Union[int, slice], ...]:
         """Return the subtile slice of a given rank on an array.
 
@@ -85,7 +85,7 @@ class Partitioner(abc.ABC):
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
-                section. Default is False.
+                section. Default is True.
 
         Returns:
             subtile_slice: the slice of the global compute domain corresponding
@@ -98,7 +98,6 @@ class Partitioner(abc.ABC):
         self,
         global_metadata: QuantityMetadata,
         rank: int,
-        overlap: bool = False,
         is_cube_metadata: bool = False,
     ) -> Tuple[int, ...]:
         """Return the shape of a single rank representation for the given dimensions."""
@@ -153,15 +152,25 @@ class TilePartitioner(Partitioner):
         self,
         global_metadata: QuantityMetadata,
         rank: int,
-        overlap: bool = False,
         is_cube_metadata: bool = False,
     ) -> Tuple[int, ...]:
-        """Return the shape of a single rank representation for the given dimensions."""
+        """Return the shape of a single rank representation for the given dimensions.
+
+        Args:
+            global_metadata: quantity metadata.
+            rank: rank of the process.
+            is_cube_metadata (optional): True if the given metadata is for a cubed sphere model.
+                False if not, e.g. data is for a single tile. Default is False.
+
+        Returns:
+            extent: shape of a single rank representation for the given dimensions.
+        """
         if is_cube_metadata:
             cube_metadata_offset = 1
         else:
             cube_metadata_offset = 0
 
+        # cube_metadata_offset is used to exclude the TILE dimension (first index) for cubed sphere metadata.
         tile_decomposition = subtile_extents_from_tile_metadata(
             global_metadata.dims[cube_metadata_offset:],
             global_metadata.extent[cube_metadata_offset:],
@@ -198,7 +207,7 @@ class TilePartitioner(Partitioner):
                     dim,
                     is_end_index,
                     tile_decomposition[num_dim + edge_index_offset],
-                    overlap,
+                    True,
                 )
             )
 
@@ -209,7 +218,7 @@ class TilePartitioner(Partitioner):
         global_dims: Sequence[str],
         global_extent: Sequence[int],
         rank: int,
-        overlap: bool = False,
+        overlap: bool = True,
     ) -> Tuple[slice, ...]:
         """Return the subtile slice of a given rank on an array.
 
@@ -223,7 +232,7 @@ class TilePartitioner(Partitioner):
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
-                section. Default is False.
+                section. Default is True.
 
         Returns:
             subtile_slice: the slice of the global compute domain corresponding
@@ -630,7 +639,6 @@ class CubedSpherePartitioner(Partitioner):
         self,
         cube_metadata: QuantityMetadata,
         rank: int,
-        overlap: bool = False,
         is_cube_metadata: bool = True,
     ) -> Tuple[int, ...]:
         """Return the shape of a single rank representation for the given dimensions."""
@@ -642,14 +650,14 @@ class CubedSpherePartitioner(Partitioner):
         if not is_cube_metadata:
             is_cube_metadata = True
 
-        return self.tile.subtile_extent(cube_metadata, rank, overlap, is_cube_metadata)
+        return self.tile.subtile_extent(cube_metadata, rank, is_cube_metadata)
 
     def subtile_slice(
         self,
         global_dims: Sequence[str],
         global_extent: Sequence[int],
         rank: int,
-        overlap: bool = False,
+        overlap: bool = True,
     ) -> Tuple[Union[int, slice], ...]:
         """Return the subtile slice of a given rank on an array.
 
@@ -663,7 +671,7 @@ class CubedSpherePartitioner(Partitioner):
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
-                section. Default is False.
+                section. Default is True.
 
         Returns:
             subtile_slice: the tuple slice of the global compute domain corresponding
@@ -779,6 +787,9 @@ def tile_extent_from_rank_metadata(
         dims: dimension names
         rank_extent: the extent of one rank
         layout: the (y, x) number of ranks along each tile axis
+        edge_interior_ratio (optional): ratio between interior and boundary tile sizes.
+            Assumes full integer divisibility for both interior
+            and boundary tile sizes. Default is 1.0, meaning equal subtiles.
 
     Returns:
         tile_extent: the extent of one tile
@@ -821,7 +832,7 @@ def subtile_extents_from_tile_metadata(
         layout: the (y, x) number of ranks along each tile axis
         edge_interior_ratio (optional): ratio between interior and boundary tile sizes.
             Assumes full integer divisibility for both interior
-            and boundary tile sizes.
+            and boundary tile sizes. Default is 1.0, meaning equal subtiles.
 
     Returns:
         subtile_extents: the extents of first all interior tiles, then all edge tiles along all dimensions.
@@ -920,7 +931,7 @@ def subtile_slice(
     layout: Tuple[int, int],
     subtile_index: Tuple[int, int],
     edge_interior_ratio: float = 1.0,
-    overlap: bool = False,
+    overlap: bool = True,
 ) -> Tuple[slice, ...]:
     """
     Returns the slice of data within a tile's computational domain belonging
@@ -931,11 +942,13 @@ def subtile_slice(
         global_extent: size of the tile or cube's computational domain
         layout: the (y, x) number of ranks along each tile axis
         subtile_index: the (y, x) position of the rank on the tile
-        edge_interior_ratio: ratio between interior and boundary tile sizes.
+        edge_interior_ratio (optional): ratio between interior and boundary tile sizes.
             Assumes full integer divisibility for both interior
-            and boundary tile sizes.
-        overlap: whether to assign regions which belong to multiple ranks
-            to both ranks, or only to the higher rank (default)
+            and boundary tile sizes. Default is 1.0, meaning equal subtiles.
+        overlap (optional): if True, for interface variables include the part
+                of the array shared by adjacent ranks in both ranks. If False, ensure
+                only one of those ranks (the greater rank) is assigned the overlapping
+                section. Default is True.
     """
 
     return_list = []

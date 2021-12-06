@@ -140,8 +140,7 @@ class Communicator:
             metadata = self.comm.bcast(send_quantity.metadata, root=constants.ROOT_RANK)
         else:
             metadata = self.comm.bcast(None, root=constants.ROOT_RANK)
-        overlap = True
-        shape = self.partitioner.subtile_extent(metadata, self.rank, overlap)
+        shape = self.partitioner.subtile_extent(metadata, self.rank)
         if recv_quantity is None:
             recv_quantity = self._get_scatter_recv_quantity(shape, metadata)
         if self.rank == constants.ROOT_RANK:
@@ -156,7 +155,7 @@ class Communicator:
                         global_dims=metadata.dims,
                         global_extent=metadata.extent,
                         rank=rank,
-                        overlap=overlap,
+                        overlap=True,
                     )
                     sendbuf.assign_from(
                         send_quantity.view[subtile_slice],
