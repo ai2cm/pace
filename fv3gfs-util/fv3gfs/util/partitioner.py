@@ -795,8 +795,10 @@ def tile_extent_from_rank_metadata(
         tile_extent: the extent of one tile
     """
     if edge_interior_ratio < 1.0:
-        print(f"{edge_interior_ratio}", flush=True)
-        raise NotImplementedError("Only equal sized subdomains are supported.")
+        raise NotImplementedError(
+            "Only equal sized subdomains are supported, was given "
+            f"an edge_interior_ratio of {edge_interior_ratio}"
+        )
     layout_factors = np.asarray(
         utils.list_by_dims(dims, layout, non_horizontal_value=1)
     )

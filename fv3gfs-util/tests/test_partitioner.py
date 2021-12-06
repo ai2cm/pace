@@ -852,7 +852,7 @@ def test_subtile_extents_from_tile_metadata(
             0.5,
             (slice(0, 3, None), slice(0, 2, None)),
             (9, 8),
-            "Only equal sized subdomains are supported.",
+            "Only equal sized subdomains are supported, was given an edge_interior_ratio of 0.5",
             id="48_rank_half_edge_tiles",
         ),
     ],
