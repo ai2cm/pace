@@ -212,13 +212,13 @@ class TilePartitioner(Partitioner):
                     edge_index_offset = num_decomposed_dims
                 horizontal_dim_index = horizontal_dim_index + 1
 
-            return_extent.append(
+            return_extent.append(int(
                 _interface_overlap_extent(
                     dim,
                     is_end_index,
                     tile_decomposition[num_dim + edge_index_offset],
                     True,
-                )
+                ))
             )
 
         return tuple(return_extent)
@@ -860,8 +860,10 @@ def subtile_extents_from_tile_metadata(
         subtile_extents: the extents of first all interior tiles, then all edge tiles along all dimensions.
     """
 
-    def _valid_edge_tile_sizes(dim_extent: int, subtile_count: int, start: int):
-        """ "Returns a list of valid edge tile sizes, counting down from the starting edge size to the smallest possible one
+    def _valid_edge_tile_sizes(
+        dim_extent: int, subtile_count: int, start: int
+    ) -> Sequence[int]:
+        """Returns a list of valid edge tile sizes, counting down from the starting edge size to the smallest possible one
         that lets the interior tile sizes still be an integer. After that, it counts up from the starting edge size.
         """
         bottom = 1
@@ -924,7 +926,7 @@ def subtile_extents_from_tile_metadata(
                     f"No valid subdomain assignment found for dimension {dim} with {dim_extent} gridpoints along {subtile_count} ranks."
                 )
             return_extents.append(int(edge_size / dim_edge_interior_ratio))
-            edge_extents.append(edge_size)
+            edge_extents.append(int(edge_size))
         else:
             edge_size = int(dim_extent / subtile_count)
             return_extents.append(edge_size)
