@@ -3,21 +3,17 @@ import os
 import unittest.mock
 from typing import Any, List, Tuple
 
-import f90nml
-
 import fv3core
 import fv3core._config
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3core.testing
 import pace.util
-from fv3core._config import Namelist
 from fv3core.grid import MetricTerms
 from fv3core.utils.grid import DampingCoefficients, GridData
 from fv3core.utils.null_comm import NullComm
 
 
 DIR = os.path.abspath(os.path.dirname(__file__))
-NAMELIST_FILENAME = os.path.join(DIR, "c12_namelist.nml")
 
 
 @contextlib.contextmanager
@@ -59,18 +55,61 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         validate_args=True,
     )
     mpi_comm = NullComm(rank=0, total_ranks=6, fill_value=0.0)
-    namelist = Namelist.from_f90nml(f90nml.read(NAMELIST_FILENAME))
+    config = fv3core.DynamicalCoreConfig(
+        layout=(1, 1),
+        npx=13,
+        npy=13,
+        npz=79,
+        ntiles=6,
+        nwat=6,
+        dt_atmos=225,
+        a_imp=1.0,
+        beta=0.0,
+        consv_te=0.0,
+        d2_bg=0.0,
+        d2_bg_k1=0.2,
+        d2_bg_k2=0.1,
+        d4_bg=0.15,
+        d_con=1.0,
+        d_ext=0.0,
+        dddmp=0.5,
+        delt_max=0.002,
+        do_sat_adj=True,
+        do_vort_damp=True,
+        fill=True,
+        hord_dp=6,
+        hord_mt=6,
+        hord_tm=6,
+        hord_tr=8,
+        hord_vt=6,
+        hydrostatic=False,
+        k_split=1,
+        ke_bg=0.0,
+        kord_mt=9,
+        kord_tm=-9,
+        kord_tr=9,
+        kord_wz=9,
+        n_split=1,
+        nord=3,
+        p_fac=0.05,
+        rf_fast=True,
+        rf_cutoff=3000.0,
+        tau=10.0,
+        vtdm4=0.06,
+        z_tracer=True,
+        do_qa=True,
+    )
     partitioner = pace.util.CubedSpherePartitioner(
-        pace.util.TilePartitioner(namelist.layout)
+        pace.util.TilePartitioner(config.layout)
     )
     communicator = pace.util.CubedSphereCommunicator(mpi_comm, partitioner)
     sizer = pace.util.SubtileGridSizer.from_tile_params(
-        nx_tile=namelist.npx - 1,
-        ny_tile=namelist.npy - 1,
-        nz=namelist.npz,
+        nx_tile=config.npx - 1,
+        ny_tile=config.npy - 1,
+        nz=config.npz,
         n_halo=3,
         extra_dim_lengths={},
-        layout=namelist.layout,
+        layout=config.layout,
         tile_partitioner=partitioner.tile,
         tile_rank=mpi_comm.rank,
     )
@@ -78,9 +117,9 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         sizer=sizer, cube=communicator
     )
     metric_terms = MetricTerms.from_tile_sizing(
-        npx=namelist.npx,
-        npy=namelist.npy,
-        npz=namelist.npz,
+        npx=config.npx,
+        npy=config.npy,
+        npz=config.npz,
         communicator=communicator,
         backend=backend,
     )
@@ -89,9 +128,9 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     # test case perturbation. JRMS2006
     state = baroclinic_init.init_baroclinic_state(
         metric_terms,
-        adiabatic=namelist.adiabatic,
-        hydrostatic=namelist.hydrostatic,
-        moist_phys=namelist.moist_phys,
+        adiabatic=config.adiabatic,
+        hydrostatic=config.hydrostatic,
+        moist_phys=config.moist_phys,
         comm=communicator,
     )
     stencil_factory = fv3core.StencilFactory(
@@ -104,19 +143,19 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         grid_data=GridData.new_from_metric_terms(metric_terms),
         stencil_factory=stencil_factory,
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
-        config=namelist.dynamical_core,
+        config=config,
         phis=state.phis_quantity,
     )
     do_adiabatic_init = False
     # TODO compute from namelist
-    bdt = 225.0
+    bdt = config.dt_atmos
 
     args = [
         state,
-        namelist.consv_te,
+        config.consv_te,
         do_adiabatic_init,
         bdt,
-        namelist.n_split,
+        config.n_split,
     ]
     return dycore, args
 
