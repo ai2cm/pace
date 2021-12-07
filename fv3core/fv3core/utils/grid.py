@@ -8,11 +8,10 @@ from gt4py import gtscript
 import fv3core.utils.global_config as global_config
 import pace.util
 from fv3core.grid import MetricTerms
+from pace.dsl import gt4py_utils as utils
+from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
+from pace.dsl.typing import FloatFieldI, FloatFieldIJ
 from pace.util.halo_data_transformer import QuantityHaloSpec
-
-from . import gt4py_utils as utils
-from .stencil import GridIndexing, StencilConfig, StencilFactory
-from .typing import FloatFieldI, FloatFieldIJ
 
 
 TRACER_DIM = "tracers"

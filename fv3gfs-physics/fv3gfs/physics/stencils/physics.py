@@ -1,18 +1,18 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.physics.global_constants as constants
+import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.utils.grid import GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import Float, FloatField
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import Float, FloatField
 from pace.util import TilePartitioner
 
 

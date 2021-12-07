@@ -3,9 +3,9 @@ from typing import Any, Dict
 
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ
+import pace.dsl.gt4py_utils as utils
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
 @typing.no_type_check

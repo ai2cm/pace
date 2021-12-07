@@ -14,14 +14,7 @@ if [[ -d /external/fv3gfs-wrapper ]]
 then
     CC=mpicc MPI=mpich make -C /external/fv3gfs-wrapper build
 fi
-for package in /external/*
-do
-    if [[ -f $package/setup.py ]]
-    then
-        echo "Setting up $package"
-        pip install -e "$package" -c /constraints.txt
-    fi
-done
+pip install -e /external/pace-util -e /external/dsl -e /external/stencils -c constraints.txt
 pip install -e /fv3core -c /constraints.txt
 
 exec "$@"

@@ -1,6 +1,6 @@
 from gt4py import gtscript
 
-from fv3core.utils.typing import FloatField
+from pace.dsl.typing import FloatField
 
 
 # volume-conserving cubic with 2nd drv=0 at end point:

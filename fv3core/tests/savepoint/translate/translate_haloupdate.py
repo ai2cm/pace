@@ -3,7 +3,7 @@ import logging
 import fv3core._config as spec
 import pace.util as fv3util
 from fv3core.testing import ParallelTranslate
-from fv3core.utils import gt4py_utils as utils
+from pace.dsl import gt4py_utils as utils
 
 
 logger = logging.getLogger("fv3ser")

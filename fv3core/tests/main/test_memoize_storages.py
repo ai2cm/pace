@@ -1,6 +1,6 @@
 import pytest
 
-from fv3core.utils.gt4py_utils import (
+from pace.dsl.gt4py_utils import (
     make_storage_from_shape,
     make_storage_from_shape_uncached,
 )

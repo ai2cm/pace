@@ -11,8 +11,8 @@ from gt4py.gtscript import (
 
 from fv3core.stencils import ppm
 from fv3core.stencils.basic_operations import sign
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, Index3D
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, Index3D
 
 
 @gtscript.function

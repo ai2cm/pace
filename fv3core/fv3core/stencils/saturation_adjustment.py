@@ -7,8 +7,8 @@ import fv3core.utils.global_constants as constants
 from fv3core._config import SatAdjustConfig
 from fv3core.stencils.basic_operations import dim
 from fv3core.stencils.moist_cv import compute_pkz_func
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 # TODO: This code could be reduced greatly with abstraction, but first gt4py

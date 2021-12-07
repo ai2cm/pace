@@ -1,4 +1,6 @@
 # flake8: noqa: F401
+from pace.dsl.stencil import StencilConfig, StencilFactory
+
 from . import decorators
 from .stencils.fv_dynamics import DynamicalCore
 from .stencils.fv_subgridz import DryConvectiveAdjustment
@@ -10,4 +12,3 @@ from .utils.global_config import (
     set_rebuild,
     set_validate_args,
 )
-from .utils.stencil import StencilConfig, StencilFactory

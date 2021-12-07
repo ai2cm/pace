@@ -1,7 +1,7 @@
 import numpy as np
 
 import fv3core.stencils.fillz as fillz
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.testing import TranslateFortranData2Py, pad_field_in_j
 
 
@@ -48,12 +48,16 @@ class TranslateFillz(TranslateFortranData2Py):
         for name, value in tuple(inputs.items()):
             if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
                 inputs[name] = self.make_storage_data(
-                    pad_field_in_j(value, self.grid.njd)
+                    pad_field_in_j(
+                        value, self.grid.njd, backend=self.grid.stencil_factory.backend
+                    )
                 )
         for name, value in tuple(inputs["tracers"].items()):
             if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
                 inputs["tracers"][name] = self.make_storage_data(
-                    pad_field_in_j(value, self.grid.njd)
+                    pad_field_in_j(
+                        value, self.grid.njd, backend=self.grid.stencil_factory.backend
+                    )
                 )
         run_fillz = fillz.FillNegativeTracerValues(
             self.grid.stencil_factory,

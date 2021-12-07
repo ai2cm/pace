@@ -2,7 +2,7 @@ from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core._config import DynamicalCoreConfig
 from fv3core.decorators import FrozenStencil
@@ -15,8 +15,8 @@ from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
 from fv3core.utils import global_config
 from fv3core.utils.grid import DampingCoefficients, GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.util.halo_updater import HaloUpdater
 

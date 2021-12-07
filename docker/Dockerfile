@@ -41,6 +41,7 @@ COPY pace-util/ pace-util/
 COPY fv3core fv3core/
 COPY fv3gfs-physics fv3gfs-physics/
 COPY stencils stencils/
+COPY dsl dsl/
 COPY docker/entrypoint.sh /entrypoint.sh
 
 # Docker hard limits shared memory usage. MPICH for oversubscribed situation

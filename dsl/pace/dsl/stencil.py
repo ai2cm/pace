@@ -22,9 +22,8 @@ from gt4py import gtscript
 from gt4py.storage.storage import Storage
 
 import pace.util
-from fv3core.utils.future_stencil import future_stencil
-from fv3core.utils.mpi import MPI
-from fv3core.utils.typing import Index3D, cast_to_index3d
+from pace.dsl.future_stencil import future_stencil
+from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util.halo_data_transformer import QuantityHaloSpec
 
 from .gt4py_utils import make_storage_from_shape
@@ -34,6 +33,10 @@ try:
     import cupy
 except ImportError:
     cupy = np
+try:
+    from mpi4py import MPI
+except ImportError:
+    MPI = None
 
 
 class StencilConfig(Hashable):

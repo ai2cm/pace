@@ -8,8 +8,8 @@ import fv3core
 import fv3core._config as spec
 import fv3core.utils
 import fv3core.utils.grid
-from fv3core.utils.stencil import FrozenStencil, StencilFactory
-from fv3core.utils.typing import Index3D
+from pace.dsl.stencil import FrozenStencil, StencilFactory
+from pace.dsl.typing import Index3D
 
 
 ArgSpec = collections.namedtuple(

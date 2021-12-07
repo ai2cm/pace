@@ -2,9 +2,9 @@ import numpy as np
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 from fv3core.decorators import get_stencils_with_varied_bounds
-from fv3core.utils.gt4py_utils import make_storage_from_shape
-from fv3core.utils.stencil import GridIndexing, StencilConfig, StencilFactory
-from fv3core.utils.typing import FloatField
+from pace.dsl.gt4py_utils import make_storage_from_shape
+from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
+from pace.dsl.typing import FloatField
 
 
 def copy_stencil(q_in: FloatField, q_out: FloatField):

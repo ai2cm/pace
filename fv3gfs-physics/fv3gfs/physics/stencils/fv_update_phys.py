@@ -1,15 +1,15 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.physics.global_constants as constants
+import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.utils.grid import GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import Float, FloatField, FloatFieldIJ
 
 # TODO: we don't want to import from fv3core
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.util import TilePartitioner
 

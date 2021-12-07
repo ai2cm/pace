@@ -15,7 +15,7 @@ from gt4py.gtscript import (
 
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core._config import RemappingConfig
 from fv3core.stencils.basic_operations import adjust_divide_stencil
 from fv3core.stencils.map_single import MapSingle
@@ -23,8 +23,8 @@ from fv3core.stencils.mapn_tracer import MapNTracer
 from fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
 from fv3core.utils.grid import axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
 CONSV_MIN = 0.001
