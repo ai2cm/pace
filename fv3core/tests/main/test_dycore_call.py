@@ -111,17 +111,17 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         extra_dim_lengths={},
         layout=config.layout,
         tile_partitioner=partitioner.tile,
-        tile_rank=mpi_comm.rank,
+        tile_rank=communicator.tile.rank,
     )
     grid_indexing = fv3core.GridIndexing.from_sizer_and_communicator(
         sizer=sizer, cube=communicator
     )
-    metric_terms = MetricTerms.from_tile_sizing(
-        npx=config.npx,
-        npy=config.npy,
-        npz=config.npz,
+    quantity_factory = pace.util.QuantityFactory.from_backend(
+        sizer=sizer, backend=backend
+    )
+    metric_terms = MetricTerms(
+        quantity_factory=quantity_factory,
         communicator=communicator,
-        backend=backend,
     )
 
     # create an initial state from the Jablonowski & Williamson Baroclinic
