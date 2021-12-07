@@ -1598,7 +1598,7 @@ def icloud(
         elif (tz < t_wfr) and (qlz > constants.qcmin):
 
             # - pihom: homogeneous freezing of cloud water into cloud ice
-            # - This is the 1st occurance of liquid water freezing
+            # - This is the 1st occurence of liquid water freezing
             # in the split mp process
 
             dtmp = t_wfr_tmp - tz
