@@ -54,7 +54,6 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         rebuild=False,
         validate_args=True,
     )
-    mpi_comm = NullComm(rank=0, total_ranks=6, fill_value=0.0)
     config = fv3core.DynamicalCoreConfig(
         layout=(1, 1),
         npx=13,
@@ -98,6 +97,9 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         vtdm4=0.06,
         z_tracer=True,
         do_qa=True,
+    )
+    mpi_comm = NullComm(
+        rank=0, total_ranks=6 * config.layout[0] * config.layout[1], fill_value=0.0
     )
     partitioner = pace.util.CubedSpherePartitioner(
         pace.util.TilePartitioner(config.layout)
