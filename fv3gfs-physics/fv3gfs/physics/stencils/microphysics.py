@@ -157,7 +157,7 @@ def fields_init(
 
             # Convert #/cc to #/m^3
             ccn = qn * 1.0e6
-            c_praut = cpaut * (ccn * constants.RHOR) ** (-1.0 / 3.0)
+            c_praut = cpaut * (ccn * functions.RHOR) ** (-1.0 / 3.0)
 
         else:
 
@@ -182,7 +182,7 @@ def fields_init(
     with computation(PARALLEL), interval(...):
 
         if not prog_ccn:
-            c_praut = cpaut * (ccn * constants.RHOR) ** (-1.0 / 3.0)
+            c_praut = cpaut * (ccn * functions.RHOR) ** (-1.0 / 3.0)
 
         # Calculate horizontal subgrid variability
         # Total water subgrid deviation in horizontal direction
@@ -331,7 +331,6 @@ def warm_rain(
     crevp_2: Float,
     crevp_3: Float,
     crevp_4: Float,
-    t_wfr: Float,
     so3: Float,
     dt_rain: Float,
     zs: Float,
@@ -341,6 +340,7 @@ def warm_rain(
         do_sedi_w,
         irain_f,
         p_nonhydro,
+        t_wfr,
         use_ccn,
         use_ppm,
         z_slope_liq,
@@ -355,13 +355,13 @@ def warm_rain(
 
                 dz1 = dz0
                 den = den0  # Dry air density remains the same
-                denfac = sqrt(constants.SFCRHO / den)
+                denfac = sqrt(functions.SFCRHO / den)
 
             else:
 
                 dz1 = dz0 * tz / t0  # Hydrostatic balance
                 den = den0 * dz0 / dz1
-                denfac = sqrt(constants.SFCRHO / den)
+                denfac = sqrt(functions.SFCRHO / den)
 
         # Time-split warm rain processes: 1st pass
         dt5 = 0.5 * dt_rain
@@ -373,7 +373,7 @@ def warm_rain(
 
         with interval(0, 1):
 
-            if qrz > constants.QRMIN:
+            if qrz > functions.QRMIN:
                 no_fall = 0
             else:
                 no_fall = 1
@@ -382,7 +382,7 @@ def warm_rain(
 
             if no_fall[0, 0, -1] == 1:
 
-                if qrz > constants.QRMIN:
+                if qrz > functions.QRMIN:
                     no_fall = 0
                 else:
                     no_fall = 1
@@ -471,17 +471,17 @@ def warm_rain(
         with interval(1, -1):
 
             if use_ppm and (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - constants.DZ_MIN_FLIP
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
         with interval(-1, None):
 
             if use_ppm:
 
                 if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                    zt = zt[0, 0, -1] - constants.DZ_MIN_FLIP
+                    zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
                 if (no_fall == 0) and (zt_kbot1 >= zt):
-                    zt_kbot1 = zt - constants.DZ_MIN_FLIP
+                    zt_kbot1 = zt - functions.DZ_MIN_FLIP
 
     with computation(BACKWARD), interval(0, -1):
 
@@ -719,11 +719,11 @@ def warm_rain(
 
                 # Impose a presumed background horizontal variability that is
                 # proportional to the value itself
-                dl = max(dl, max(constants.QVMIN, h_var * qlz))
+                dl = max(dl, max(functions.QVMIN, h_var * qlz))
 
             else:
 
-                dl = max(constants.QVMIN, h_var * qlz)
+                dl = max(functions.QVMIN, h_var * qlz)
 
             qlz, qrz = functions.autoconv_subgrid_var(
                 use_ccn,
@@ -782,7 +782,7 @@ def sedimentation(
     dts: Float,
     fac_imlt: Float,
 ):
-    from __externals__ import do_sedi_heat, do_sedi_w, ql_mlt, use_ppm
+    from __externals__ import do_sedi_heat, do_sedi_w, ql_mlt, tice, use_ppm, vi_fac
 
     with computation(PARALLEL), interval(...):
 
@@ -808,7 +808,7 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if tz > constants.TICE_MICRO:
+            if tz > tice:
                 stop_k = 1
             else:
                 stop_k = 0
@@ -817,7 +817,7 @@ def sedimentation(
 
             if stop_k[0, 0, -1] == 0:
 
-                if tz > constants.TICE_MICRO:
+                if tz > tice:
                     stop_k = 1
                 else:
                     stop_k = 0
@@ -835,9 +835,9 @@ def sedimentation(
         if stop_k == 1:
 
             # Melting of cloud ice (before fall)
-            tc = tz - constants.TICE_MICRO
+            tc = tz - tice
 
-            if (qiz > constants.QCMIN) and (tc > 0.0):
+            if (qiz > functions.QCMIN) and (tc > 0.0):
 
                 sink = min(qiz, fac_imlt * tc / icpk)
                 tmp = min(sink, functions.dim(ql_mlt, qlz))
@@ -853,7 +853,7 @@ def sedimentation(
                     + q_sol * constants.C_ICE
                 )
                 tz = tz - sink * lhi / cvm
-                tc = tz - constants.TICE_MICRO
+                tc = tz - tice
 
     with computation(PARALLEL), interval(0, -1):
 
@@ -892,7 +892,7 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if qiz > constants.QRMIN:
+            if qiz > functions.QRMIN:
                 no_fall = 0
             else:
                 no_fall = 1
@@ -901,7 +901,7 @@ def sedimentation(
 
             if no_fall[0, 0, -1] == 1:
 
-                if qiz > constants.QRMIN:
+                if qiz > functions.QRMIN:
                     no_fall = 0
                 else:
                     no_fall = 1
@@ -917,19 +917,19 @@ def sedimentation(
 
     with computation(PARALLEL), interval(...):
 
-        if (constants.VI_FAC < 1.0e-5) or (no_fall == 1):
+        if (vi_fac < 1.0e-5) or (no_fall == 1):
             i1 = 0.0
 
     with computation(PARALLEL):
 
         with interval(1, -1):
 
-            if (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (vi_fac >= 1.0e-5) and (no_fall == 0):
                 zt = ze - dt5 * (vtiz[0, 0, -1] + vtiz)
 
         with interval(-1, None):
 
-            if (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (vi_fac >= 1.0e-5) and (no_fall == 0):
 
                 zt = ze - dt5 * (vtiz[0, 0, -1] + vtiz)
                 zt_kbot1 = zs - dts * vtiz
@@ -938,33 +938,25 @@ def sedimentation(
 
         with interval(1, -1):
 
-            if (
-                (constants.VI_FAC >= 1.0e-5)
-                and (no_fall[0, 0, -1] == 0)
-                and (zt >= zt[0, 0, -1])
-            ):
-                zt = zt[0, 0, -1] - constants.DZ_MIN_FLIP
+            if (vi_fac >= 1.0e-5) and (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
         with interval(-1, None):
 
-            if (
-                (constants.VI_FAC >= 1.0e-5)
-                and (no_fall[0, 0, -1] == 0)
-                and (zt >= zt[0, 0, -1])
-            ):
-                zt = zt[0, 0, -1] - constants.DZ_MIN_FLIP
+            if (vi_fac >= 1.0e-5) and (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
-            if (constants.VI_FAC >= 1.0e-5) and (no_fall == 0) and (zt_kbot1 >= zt):
-                zt_kbot1 = zt - constants.DZ_MIN_FLIP
+            if (vi_fac >= 1.0e-5) and (no_fall == 0) and (zt_kbot1 >= zt):
+                zt_kbot1 = zt - functions.DZ_MIN_FLIP
 
     with computation(BACKWARD), interval(0, -1):
 
-        if (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
-            zt_kbot1 = zt_kbot1[0, 0, +1] - constants.DZ_MIN_FLIP
+        if (vi_fac >= 1.0e-5) and (no_fall == 0):
+            zt_kbot1 = zt_kbot1[0, 0, +1] - functions.DZ_MIN_FLIP
 
     with computation(PARALLEL), interval(...):
 
-        if (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+        if (vi_fac >= 1.0e-5) and (no_fall == 0):
 
             if do_sedi_w:
                 dm = dp1 * (1.0 + qvz + qlz + qrz + qiz + qsz + qgz)
@@ -973,17 +965,17 @@ def sedimentation(
 
         with interval(0, -1):
 
-            if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 dz = ze - ze[0, 0, +1]
 
         with interval(-1, None):
 
-            if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 dz = ze - zs
 
     with computation(PARALLEL), interval(...):
 
-        if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+        if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
 
             dd = dts * vtiz
             qiz = qiz * dp1
@@ -993,17 +985,17 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 qm = qiz / (dz + dd)
 
         with interval(1, None):
 
-            if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 qm = (qiz[0, 0, 0] + dd[0, 0, -1] * qm[0, 0, -1]) / (dz + dd)
 
     with computation(PARALLEL), interval(...):
 
-        if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+        if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
 
             # qm is density at this stage
             qm = qm * dz
@@ -1013,31 +1005,31 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 m1_sol = qiz - qm
 
         with interval(1, None):
 
-            if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 m1_sol = m1_sol[0, 0, -1] + qiz[0, 0, 0] - qm
 
     with computation(BACKWARD):
 
         with interval(-1, None):
 
-            if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 i1 = m1_sol
 
         with interval(0, -1):
 
-            if (not use_ppm) and (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 i1 = i1[0, 0, +1]
 
     with computation(PARALLEL):
 
         with interval(0, 1):
 
-            if (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (vi_fac >= 1.0e-5) and (no_fall == 0):
 
                 if not use_ppm:
 
@@ -1050,7 +1042,7 @@ def sedimentation(
 
         with interval(1, None):
 
-            if (constants.VI_FAC >= 1.0e-5) and (no_fall == 0):
+            if (vi_fac >= 1.0e-5) and (no_fall == 0):
 
                 if not use_ppm:
 
@@ -1070,7 +1062,7 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if qsz > constants.QRMIN:
+            if qsz > functions.QRMIN:
                 no_fall = 0
             else:
                 no_fall = 1
@@ -1079,7 +1071,7 @@ def sedimentation(
 
             if no_fall[0, 0, -1] == 1:
 
-                if qsz > constants.QRMIN:
+                if qsz > functions.QRMIN:
                     no_fall = 0
                 else:
                     no_fall = 1
@@ -1119,20 +1111,20 @@ def sedimentation(
         with interval(1, -1):
 
             if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - constants.DZ_MIN_FLIP
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
         with interval(-1, None):
 
             if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - constants.DZ_MIN_FLIP
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
             if (no_fall == 0) and (zt_kbot1 >= zt):
-                zt_kbot1 = zt - constants.DZ_MIN_FLIP
+                zt_kbot1 = zt - functions.DZ_MIN_FLIP
 
     with computation(BACKWARD), interval(0, -1):
 
         if no_fall == 0:
-            zt_kbot1 = zt_kbot1[0, 0, +1] - constants.DZ_MIN_FLIP
+            zt_kbot1 = zt_kbot1[0, 0, +1] - functions.DZ_MIN_FLIP
 
     with computation(PARALLEL), interval(...):
 
@@ -1246,7 +1238,7 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if qgz > constants.QRMIN:
+            if qgz > functions.QRMIN:
                 no_fall = 0
             else:
                 no_fall = 1
@@ -1255,7 +1247,7 @@ def sedimentation(
 
             if no_fall[0, 0, -1] == 1:
 
-                if qgz > constants.QRMIN:
+                if qgz > functions.QRMIN:
                     no_fall = 0
                 else:
                     no_fall = 1
@@ -1293,20 +1285,20 @@ def sedimentation(
         with interval(1, -1):
 
             if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - constants.DZ_MIN_FLIP
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
         with interval(-1, None):
 
             if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - constants.DZ_MIN_FLIP
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
             if (no_fall == 0) and (zt_kbot1 >= zt):
-                zt_kbot1 = zt - constants.DZ_MIN_FLIP
+                zt_kbot1 = zt - functions.DZ_MIN_FLIP
 
     with computation(BACKWARD), interval(0, -1):
 
         if no_fall == 0:
-            zt_kbot1 = zt_kbot1[0, 0, +1] - constants.DZ_MIN_FLIP
+            zt_kbot1 = zt_kbot1[0, 0, +1] - functions.DZ_MIN_FLIP
 
     with computation(PARALLEL), interval(...):
 
@@ -1534,8 +1526,6 @@ def icloud(
     cgmlt_3: Float,
     cgmlt_4: Float,
     ces0: Float,
-    tice0: Float,
-    t_wfr: Float,
     dts: Float,
     rdts: Float,
     fac_i2s: Float,
@@ -1544,7 +1534,7 @@ def icloud(
     fac_imlt: Float,
     fac_l2v: Float,
 ):
-    from __externals__ import qi_gen, qi_lim, ql_mlt, z_slope_ice
+    from __externals__ import qi_gen, qi_lim, ql_mlt, t_wfr, tice, z_slope_ice
 
     with computation(PARALLEL), interval(...):
 
@@ -1563,10 +1553,10 @@ def icloud(
         # initial snow comes from autoconversion
 
         t_wfr_tmp = t_wfr
-        if (tz > constants.TICE_MICRO) and (qiz > constants.QCMIN):
+        if (tz > tice) and (qiz > functions.QCMIN):
 
             # pimlt: instant melting of cloud ice
-            melt = min(qiz, fac_imlt * (tz - constants.TICE_MICRO) / icpk)
+            melt = min(qiz, fac_imlt * (tz - tice) / icpk)
             tmp = min(melt, functions.dim(ql_mlt, qlz))  # Maximum ql amount
             qlz = qlz + tmp
             qrz = qrz + melt - tmp
@@ -1578,16 +1568,16 @@ def icloud(
             )
             tz = tz - melt * lhi / cvm
 
-        elif (tz < t_wfr) and (qlz > constants.QCMIN):
+        elif (tz < t_wfr) and (qlz > functions.QCMIN):
 
             # - pihom: homogeneous freezing of cloud water into cloud ice
             # - This is the 1st occurence of liquid water freezing
             # in the split mp process
 
             dtmp = t_wfr_tmp - tz
-            factor = min(1.0, dtmp / constants.DT_FR)
+            factor = min(1.0, dtmp / functions.DT_FR)
             sink = min(qlz * factor, dtmp / icpk)
-            qi_crt = qi_gen * min(qi_lim, 0.1 * (constants.TICE_MICRO - tz)) / den
+            qi_crt = qi_gen * min(qi_lim, 0.1 * (tice - tz)) / den
             tmp = min(sink, functions.dim(qi_crt, qiz))
             qlz = qlz - sink
             qsz = qsz + sink - tmp
@@ -1643,11 +1633,11 @@ def icloud(
 
             # Impose a presumed background horizontal variability that is
             # proportional to the value itself
-            di = max(di, max(constants.QVMIN, h_var * qiz))
+            di = max(di, max(functions.QVMIN, h_var * qiz))
 
         else:
 
-            di = max(constants.QVMIN, h_var * qiz)
+            di = max(functions.QVMIN, h_var * qiz)
 
         qaz, qgz, qiz, qlz, qrz, qsz, qvz, tz = functions.icloud_main(
             c_air,
@@ -1692,7 +1682,6 @@ def icloud(
             cgmlt_3,
             cgmlt_4,
             ces0,
-            tice0,
             t_wfr,
             dts,
             rdts,
@@ -1928,7 +1917,7 @@ class Microphysics:
         self._c_vap = constants.CP_VAP
         self._p_nonhydro = False
         self._d0_vap = self._c_vap - constants.C_LIQ
-        self._lv00 = constants.HLV - self._d0_vap * constants.TICE_MICRO
+        self._lv00 = constants.HLV - self._d0_vap * constants.TICE
         self._do_sedi_w = False if self._hydrostatic else self.namelist.do_sedi_w
         # Define cloud microphysics sub time step
         self._mpdt = min(self._dt_atmos, self.namelist.mp_time)
@@ -2032,10 +2021,12 @@ class Microphysics:
                 "irain_f": self.namelist.irain_f,
                 "use_ppm": self.namelist.use_ppm,
                 "vr_max": self.namelist.vr_max,
+                "vr_fac": self.namelist.vr_fac,
                 "z_slope_liq": self.namelist.z_slope_liq,
                 "use_ccn": self._use_ccn,
                 "do_sedi_w": self._do_sedi_w,
                 "p_nonhydro": self._p_nonhydro,
+                "t_wfr": self._t_wfr,
             },
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
@@ -2052,7 +2043,11 @@ class Microphysics:
                 "vg_max": self.namelist.vg_max,
                 "vi_max": self.namelist.vi_max,
                 "vs_max": self.namelist.vs_max,
+                "vg_fac": self.namelist.vg_fac,
+                "vi_fac": self.namelist.vi_fac,
+                "vs_fac": self.namelist.vs_fac,
                 "do_sedi_w": self._do_sedi_w,
+                "tice": self.namelist.tice,
             },
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
@@ -2073,6 +2068,9 @@ class Microphysics:
                 "qs_mlt": self.namelist.qs_mlt,
                 "rad_rain": self.namelist.rad_rain,
                 "rad_snow": self.namelist.rad_snow,
+                "tice": self.namelist.tice,
+                "tice0": self._tice0,
+                "t_wfr": self._t_wfr,
                 "z_slope_ice": self.namelist.z_slope_ice,
             },
             origin=grid_indexing.origin_compute(),
@@ -2091,8 +2089,9 @@ class Microphysics:
     def gfdl_cloud_microphys_init(self):
         self.setupm()
         self._log_10 = np.log(10.0)
-        self._tice0 = constants.TICE0
-        self._t_wfr = constants.T_WFR
+        self._tice0 = self.namelist.tice - 0.01
+        # supercooled water can exist down to - 48 c, which is the "absolute"
+        self._t_wfr = self.namelist.tice - 40.0
 
     def setupm(self):
         gam263 = 1.456943
@@ -2113,7 +2112,7 @@ class Microphysics:
         pie = 4.0 * np.arctan(1.0)
 
         # S. Klein's formular (eq 16) from am2
-        fac_rc = (4.0 / 3.0) * pie * constants.RHOR * self.namelist.rthresh ** 3
+        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh ** 3
 
         vdifu = 2.11e-5
         tcond = 2.36e-2
@@ -2128,16 +2127,16 @@ class Microphysics:
         pisq = pie * pie
         scm3 = (visk / vdifu) ** (1.0 / 3.0)
 
-        cracs = pisq * rnzr * rnzs * constants.RHOS
-        csacr = pisq * rnzr * rnzs * constants.RHOR
-        cgacr = pisq * rnzr * rnzg * constants.RHOR
-        cgacs = pisq * rnzg * rnzs * constants.RHOS
+        cracs = pisq * rnzr * rnzs * functions.RHOS
+        csacr = pisq * rnzr * rnzs * functions.RHOR
+        cgacr = pisq * rnzr * rnzg * functions.RHOR
+        cgacs = pisq * rnzg * rnzs * functions.RHOS
         cgacs = cgacs * self.namelist.c_pgacs
 
         act = np.empty(8)
-        act[0] = pie * rnzs * constants.RHOS
-        act[1] = pie * rnzr * constants.RHOR
-        act[5] = pie * rnzg * constants.RHOG
+        act[0] = pie * rnzs * functions.RHOS
+        act[1] = pie * rnzr * functions.RHOR
+        act[5] = pie * rnzg * functions.RHOG
         act[2] = act[1]
         act[3] = act[0]
         act[4] = act[1]
@@ -2151,12 +2150,12 @@ class Microphysics:
                     act[2 * k] ** ((6 - i) * 0.25) * act[2 * k + 1] ** ((i + 1) * 0.25)
                 )
 
-        gcon = 40.74 * np.sqrt(constants.SFCRHO)
+        gcon = 40.74 * np.sqrt(functions.SFCRHO)
 
         # Decreasing csacw to reduce cloud water --- > snow
-        csacw = pie * rnzs * constants.CLIN * gam325 / (4.0 * act[0] ** 0.8125)
+        csacw = pie * rnzs * self.namelist.clin * gam325 / (4.0 * act[0] ** 0.8125)
 
-        craci = pie * rnzr * constants.ALIN * gam380 / (4.0 * act[1] ** 0.95)
+        craci = pie * rnzr * self.namelist.alin * gam380 / (4.0 * act[1] ** 0.95)
         csaci = csacw * self.namelist.c_psaci
 
         cgacw = pie * rnzg * gam350 * gcon / (4.0 * act[5] ** 0.875)
@@ -2171,7 +2170,11 @@ class Microphysics:
         cssub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzs
         cssub[1] = 0.78 / np.sqrt(act[0])
         cssub[2] = (
-            0.31 * scm3 * gam263 * np.sqrt(constants.CLIN / visk) / act[0] ** 0.65625
+            0.31
+            * scm3
+            * gam263
+            * np.sqrt(self.namelist.clin / visk)
+            / act[0] ** 0.65625
         )
         cssub[3] = tcond * constants.RVGAS
         cssub[4] = (hlts ** 2) * vdifu
@@ -2187,13 +2190,13 @@ class Microphysics:
         crevp[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
         crevp[1] = 0.78 / np.sqrt(act[1])
         crevp[2] = (
-            0.31 * scm3 * gam290 * np.sqrt(constants.ALIN / visk) / act[1] ** 0.725
+            0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
         )
         crevp[3] = cssub[3]
         crevp[4] = hltc ** 2 * vdifu
 
         cgfr = np.empty(2)
-        cgfr[0] = 20.0e2 * pisq * rnzr * constants.RHOR / act[1] ** 1.75
+        cgfr[0] = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
         cgfr[1] = 0.66
 
         # smlt: five constants (lin et al. 1983)
@@ -2331,7 +2334,6 @@ class Microphysics:
                 self._crevp[2],
                 self._crevp[3],
                 self._crevp[4],
-                self._t_wfr,
                 self._so3,
                 self._dt_rain,
                 self._zs,
@@ -2401,7 +2403,6 @@ class Microphysics:
                 self._crevp[2],
                 self._crevp[3],
                 self._crevp[4],
-                self._t_wfr,
                 self._so3,
                 self._dt_rain,
                 self._zs,
@@ -2467,8 +2468,6 @@ class Microphysics:
                 self._cgmlt[3],
                 self._cgmlt[4],
                 self._ces0,
-                self._tice0,
-                self._t_wfr,
                 self._dts,
                 self._rdts,
                 self._fac_i2s,

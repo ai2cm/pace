@@ -79,6 +79,10 @@ class NamelistDefaults:
     const_vi = False  # Fall velocity tuning constant of ice
     const_vr = False  # Fall velocity tuning constant of rain water
     const_vs = False  # Fall velocity tuning constant of snow
+    vi_fac = 1.0  # if const_vi: 1/3
+    vs_fac = 1.0  # if const_vs: 1.
+    vg_fac = 1.0  # if const_vg: 2.
+    vr_fac = 1.0  # if const_vr: 4.
     de_ice = False  # To prevent excessive build-up of cloud ice from external sources
     do_qa = True  # Do inline cloud fraction
     do_sedi_heat = False  # Transport of heat in sedimentation
@@ -101,6 +105,9 @@ class NamelistDefaults:
     vs_max = 2.0  # Maximum fall speed for snow
     z_slope_ice = True  # Use linear mono slope for autoconversions
     z_slope_liq = True  # Use linear mono slope for autoconversions
+    tice = 273.16  # set tice = 165. to turn off ice - phase phys (kessler emulator)
+    alin = 842.0  # "a" in lin1983
+    clin = 4.8  # "c" in lin 1983, 4.8 -- > 6. (to ehance ql -- > qs)
 
     @classmethod
     def as_dict(cls):
@@ -599,7 +606,10 @@ class Namelist:
     const_vg: bool = NamelistDefaults.const_vg
     const_vi: bool = NamelistDefaults.const_vi
     const_vr: bool = NamelistDefaults.const_vr
-    const_vs: bool = NamelistDefaults.const_vs
+    vs_fac: float = NamelistDefaults.vs_fac
+    vg_fac: float = NamelistDefaults.vg_fac
+    vi_fac: float = NamelistDefaults.vi_fac
+    vr_fac: float = NamelistDefaults.vr_fac
     de_ice: bool = NamelistDefaults.de_ice
     do_qa: bool = NamelistDefaults.do_qa
     do_sedi_heat: bool = NamelistDefaults.do_sedi_heat
@@ -625,6 +635,9 @@ class Namelist:
     vs_max: float = NamelistDefaults.vs_max
     z_slope_ice: bool = NamelistDefaults.z_slope_ice
     z_slope_liq: bool = NamelistDefaults.z_slope_liq
+    tice: float = NamelistDefaults.tice
+    alin: float = NamelistDefaults.alin
+    clin: float = NamelistDefaults.clin
     # c0s_shal: Any
     # c1_shal: Any
     # cal_pre: Any

@@ -57,9 +57,6 @@ C_ICE = 1972.0  # Heat capacity of ice at -15 degrees Celsius
 C_LIQ = 4.1855e3  # Heat capacity of water at 15 degrees Celsius
 CP_VAP = 4.0 * RVGAS  # Heat capacity of water vapor at constant pressure
 TICE = 273.16  # Freezing temperature
-TICE_MICRO = (
-    TICE  # Freezing temp, set to 165. to turn off ice-phase phys (kessler emulator)
-)
 DC_ICE = C_LIQ - C_ICE  # Isobaric heating / cooling
 DC_VAP = CP_VAP - C_LIQ  # Isobaric heating / cooling
 D2ICE = DC_VAP + DC_ICE  # Isobaric heating / cooling
@@ -80,49 +77,3 @@ TICE0 = TICE - 0.01
 T_MIN = 178.0  # Minimum temperature to freeze-dry all water vapor
 T_SAT_MIN = TICE - 160.0
 LAT2 = (HLV + HLF) ** 2  # used in bigg mechanism
-
-#################
-# Physics only
-#################
-RHOS = 1.0e2
-RHOG = 4.0e2
-QCMIN = 1.0e-12  # Minimum value for cloud condensation
-VR_MIN = 1.0e-3  # Minimum fall speed for rain
-VF_MIN = 1.0e-5  # Minimum fall speed for cloud ice, snow, graupel
-
-QRMIN = 1.0e-8  # Minimum value for rain water
-QVMIN = 1.0e-20  # Minimum value for water vapor (treated as zero)
-
-DZ_MIN_FLIP = 1.0e-2  # Use for correcting flipped height
-SFCRHO = 1.2  # Surface air density
-RHOR = 1.0e3  # Density of rain water, lin83
-DT_FR = 8.0  # Homogeneous freezing of all cloud water at t_wfr - dt_fr
-P_MIN = 100.0  # Minimum pressure (Pascal) for mp to operate
-
-ALIN = 842.0  # "a" in lin1983
-CLIN = 4.8  # "c" in lin 1983, 4.8 -- > 6. (to ehance ql -- > qs)
-
-VI_FAC = 1.0  # if const_vi: 1/3
-VS_FAC = 1.0  # if const_vs: 1.
-VG_FAC = 1.0  # if const_vg: 2.
-VR_FAC = 1.0  # if const_vr: 4.
-
-
-# Fall velocity constants
-VCONR = 2503.23638966667
-NORMR = 25132741228.7183
-THR = 1.0e-8
-THI = 1.0e-8  # Cloud ice threshold for terminal fall
-THG = 1.0e-8
-THS = 1.0e-8
-AA = -4.14122e-5
-BB = -0.00538922
-CC = -0.0516344
-DD_FS = 0.00216078
-EE = 1.9714
-
-# Marshall-Palmer constants ###
-VCONS = 6.6280504
-VCONG = 87.2382675
-NORMS = 942477796.076938
-NORMG = 5026548245.74367
