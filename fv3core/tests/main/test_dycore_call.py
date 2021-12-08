@@ -65,7 +65,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         dt_atmos=225,
         a_imp=1.0,
         beta=0.0,
-        consv_te=0.0,
+        consv_te=False,  # not implemented, needs allreduce
         d2_bg=0.0,
         d2_bg_k1=0.2,
         d2_bg_k2=0.1,
