@@ -5,7 +5,6 @@ import fv3core.utils.global_constants as constants
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core._config import DynamicalCoreConfig
-from fv3core.decorators import FrozenStencil
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.stencils import fvtp2d, tracer_2d_1l
 from fv3core.stencils.basic_operations import copy_defn
@@ -15,7 +14,7 @@ from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
 from fv3core.utils import global_config
 from fv3core.utils.grid import DampingCoefficients, GridData
-from pace.dsl.stencil import StencilFactory
+from pace.dsl.stencil import FrozenStencil, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.util.halo_updater import HaloUpdater

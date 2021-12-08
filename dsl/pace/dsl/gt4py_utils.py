@@ -1,11 +1,12 @@
 import logging
 from functools import wraps
-from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Hashable, List, Mapping, Optional, Tuple, Union
 
 import gt4py.storage as gt_storage
 import numpy as np
 
-from pace.dsl.typing import DTypes, Field, Float
+from pace.dsl.stencil import FrozenStencil, StencilFactory
+from pace.dsl.typing import DTypes, Field, Float, Index3D
 
 
 try:
@@ -540,3 +541,33 @@ def stack(tup, axis: int = 0, out=None):
 def device_sync(backend: str) -> None:
     if cp and is_gpu_backend(backend):
         cp.cuda.Device(0).synchronize()
+
+
+def get_stencils_with_varied_bounds(
+    func: Callable[..., None],
+    origins: List[Index3D],
+    domains: List[Index3D],
+    stencil_factory: StencilFactory,
+    externals: Optional[Mapping[str, Any]] = None,
+) -> List[FrozenStencil]:
+    assert len(origins) == len(domains), (
+        "Lists of origins and domains need to have the same length, you provided "
+        + str(len(origins))
+        + " origins and "
+        + str(len(domains))
+        + " domains"
+    )
+    if externals is None:
+        externals = {}
+    stencils = []
+    for origin, domain in zip(origins, domains):
+        ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
+        stencils.append(
+            stencil_factory.from_origin_domain(
+                func,
+                origin=origin,
+                domain=domain,
+                externals={**externals, **ax_offsets},
+            )
+        )
+    return stencils
