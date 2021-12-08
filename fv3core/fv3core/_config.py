@@ -28,6 +28,7 @@ class NamelistDefaults:
     tau_i2s = 1000.0  # cloud ice to snow auto - conversion
     tau_l2r = 900.0  # cloud water to rain auto - conversion
     tau_g2v = 900.0  # graupel sublimation
+    #  ---tau_g2v = 1200.0  # Graupel sublimation
     tau_v2g = 21600.0  # graupel deposition -- make it a slow process
     sat_adj0 = 0.90  # adjustment factor (0: no, 1: full) during fast_sat_adj
     ql_gen = 1.0e-3  # max new cloud water during remapping step if fast_sat_adj = .t.
@@ -39,11 +40,14 @@ class NamelistDefaults:
     qi_lim = 1.0  # cloud ice limiter to prevent large ice build up
     qi0_max = 1.0e-4  # max cloud ice value (by other sources)
     rad_snow = True  # consider snow in cloud fraciton calculation
+    #---rad_snow = 1  # Consider snow in cloud fraction calculation
     rad_rain = True  # consider rain in cloud fraction calculation
+    # ---rad_rain = 1  # Consider rain in cloud fraction calculation
     rad_graupel = True  # consider graupel in cloud fraction calculation
     tintqs = False  # use temperature in the saturation mixing in PDF
     dw_ocean = 0.10  # base value for ocean
     dw_land = 0.20  # base value for subgrid deviation / variability over land
+    #---dw_land = 0.15  # Base value for subgrid deviation / variability over land
     # cloud scheme 0 - ?
     # 1: old fvgfs gfdl) mp implementation
     # 2: binary cloud scheme (0 / 1)
@@ -51,6 +55,7 @@ class NamelistDefaults:
     cld_min = 0.05  # !< minimum cloud fraction
     tau_l2v = 300.0  # cloud water to water vapor (evaporation)
     tau_v2l = 150.0  # water vapor to cloud water (condensation)
+    #---tau_v2l = 90.0  # Water vapor to cloud water (condensation)
     c2l_ord = 4
     regional = False
     m_split = 0
@@ -64,7 +69,43 @@ class NamelistDefaults:
     nf_omega = 1
     fv_sg_adj = -1
     n_sponge = 1
+    # all below added for physics
+    fast_sat_adj = False
+    #---fast_sat_adj = 1  # Has fast saturation adjustments
+    qc_crt = 5.0e-8  # Minimum condensate mixing ratio to allow partial cloudiness
+    c_cracw = 0.8  # Rain accretion efficiency
+    c_paut = 0.5  # Autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
+    c_pgacs = 0.01  # Snow to graupel "accretion" eff. (was 0.1 in zetac)
+    c_psaci = 0.05  # Accretion: cloud ice to snow (was 0.1 in zetac)
+    ccn_l = 300.0  # CCN over land (cm^-3)
+    ccn_o = 100.0  # CCN over ocean (cm^-3)
+    const_vg = False  # Fall velocity tuning constant of graupel
+    const_vi = False  # Fall velocity tuning constant of ice
+    const_vr = False  # Fall velocity tuning constant of rain water
+    const_vs = False  # Fall velocity tuning constant of snow
+    de_ice = False  # To prevent excessive build-up of cloud ice from external sources
+    do_qa = True  # Do inline cloud fraction
+    do_sedi_heat = False  # Transport of heat in sedimentation
+    fix_negative = True  # Fix negative water species
+    irain_f = 0  # Cloud water to rain auto conversion scheme
+    mono_prof = False  # Perform terminal fall with mono ppm scheme
+    mp_time = 225.0  # Maximum microphysics timestep (sec)
+    prog_ccn = False  # Do prognostic ccn (yi ming's method)
+    qi0_crt = 8e-05  # Cloud ice to snow autoconversion threshold
+    qs0_crt = 0.003  # Snow to graupel density threshold (0.6e-3 in purdue lin scheme)
+    rh_inc = 0.2  # RH increment for complete evaporation of cloud water and cloud ice
+    rh_inr = 0.3  # RH increment for minimum evaporation of rain
+    rthresh = 1e-05  # Critical cloud drop radius (micrometers)
+    sedi_transport = True  # Transport of momentum in sedimentation
+    use_ppm = False  # Use ppm fall scheme
+    vg_max = 16.0  # Maximum fall speed for graupel
+    vi_max = 1.0  # Maximum fall speed for ice
+    vr_max = 16.0  # Maximum fall speed for rain
+    vs_max = 2.0  # Maximum fall speed for snow
+    z_slope_ice = True  # Use linear mono slope for autoconversions
+    z_slope_liq = True  # Use linear mono slope for autoconversions
 
+    
     @classmethod
     def as_dict(cls):
         return {
@@ -553,41 +594,41 @@ class Namelist:
     vtdm4: float = DEFAULT_FLOAT
     # warm_start: bool
     z_tracer: bool = DEFAULT_BOOL
-    # c_cracw: Any
-    # c_paut: Any
-    # c_pgacs: Any
-    # c_psaci: Any
-    # ccn_l: Any
-    # ccn_o: Any
-    # const_vg: bool
-    # const_vi: bool
-    # const_vr: bool
-    # const_vs: bool
-    # de_ice: Any
-    do_qa: bool = DEFAULT_BOOL
-    # do_sedi_heat: Any
-    # do_sedi_w: Any
-    # fast_sat_adj: bool
-    # fix_negative: bool
-    # irain_f: Any
-    # mono_prof: Any
-    # mp_time: Any
-    # prog_ccn: Any
-    # qi0_crt: Any
-    # qs0_crt: Any
-    # rh_inc: Any
-    # rh_inr: Any
+    c_cracw: float = NamelistDefaults.c_cracw
+    c_paut: float = NamelistDefaults.c_paut
+    c_pgacs: float = NamelistDefaults.c_pgacs
+    c_psaci: float = NamelistDefaults.c_psaci
+    ccn_l: float = NamelistDefaults.ccn_l
+    ccn_o: float = NamelistDefaults.ccn_o
+    const_vg: bool = NamelistDefaults.const_vg
+    const_vi: bool = NamelistDefaults.const_vi
+    const_vr: bool = NamelistDefaults.const_vr
+    const_vs: bool = NamelistDefaults.const_vs
+    de_ice: bool = NamelistDefaults.de_ice
+    do_qa: bool = NamelistDefaults.do_qa
+    do_sedi_heat: bool = NamelistDefaults.do_sedi_heat
+    # do_sedi_w: bool
+    fast_sat_adj: bool = NamelistDefaults.fast_sat_adj
+    fix_negative: bool = NamelistDefaults.fix_negative
+    irain_f: float = NamelistDefaults.irain_f
+    mono_prof: bool = NamelistDefaults.mono_prof
+    mp_time: float = NamelistDefaults.mp_time
+    prog_ccn: bool = NamelistDefaults.prog_ccn
+    qi0_crt: float = NamelistDefaults.qi0_crt
+    qs0_crt: float = NamelistDefaults.qs0_crt
+    rh_inc: float = NamelistDefaults.rh_inc
+    rh_inr: float = NamelistDefaults.rh_inr
     # rh_ins: Any
-    # rthresh: Any
-    # sedi_transport: Any
+    rthresh: float = NamelistDefaults.rthresh
+    sedi_transport: bool = NamelistDefaults.sedi_transport
     # use_ccn: Any
-    # use_ppm: Any
-    # vg_max: Any
-    # vi_max: Any
-    # vr_max: Any
-    # vs_max: Any
-    # z_slope_ice: Any
-    # z_slope_liq: Any
+    use_ppm: bool = NamelistDefaults.use_ppm
+    vg_max: float = NamelistDefaults.vg_max
+    vi_max: float = NamelistDefaults.vi_max
+    vr_max: float = NamelistDefaults.vr_max
+    vs_max: float = NamelistDefaults.vs_max
+    z_slope_ice: bool = NamelistDefaults.z_slope_ice
+    z_slope_liq: bool = NamelistDefaults.z_slope_liq
     # c0s_shal: Any
     # c1_shal: Any
     # cal_pre: Any

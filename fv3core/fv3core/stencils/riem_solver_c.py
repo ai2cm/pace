@@ -2,7 +2,7 @@ import typing
 
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, log
 
-import fv3core.utils.global_constants as constants
+import pace.util.constants as constants
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.sim1_solver import Sim1Solver
 from pace.dsl.stencil import StencilFactory

@@ -1,7 +1,7 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.global_constants as constants
+import pace.util.constants as constants
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.stencils.delnflux import DelnFluxNoSG

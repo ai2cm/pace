@@ -12,7 +12,7 @@ from gt4py.gtscript import (
     sin,
 )
 
-import fv3core.utils.global_constants as constants
+import pace.util.constants as constants
 from fv3core.utils import axis_offsets
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldK

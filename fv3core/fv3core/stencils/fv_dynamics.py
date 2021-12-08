@@ -1,7 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
-import fv3core.utils.global_constants as constants
+import pace.util.constants as constants
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core._config import DynamicalCoreConfig

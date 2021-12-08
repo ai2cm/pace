@@ -7,10 +7,9 @@ from fv3core.utils.corners import (
     fill_corners_cgrid,
     fill_corners_dgrid,
 )
-from fv3core.utils.global_constants import PI, RADIUS
 from pace.dsl.gt4py_utils import asarray
 from pace.dsl.stencil import GridIndexing
-from pace.util.constants import N_HALO_DEFAULT
+from pace.util.constants import N_HALO_DEFAULT, PI, RADIUS
 
 from .eta import set_hybrid_pressure_coefficients
 from .geometry import (

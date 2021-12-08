@@ -1,7 +1,7 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, cos, interval, sin
 
-from fv3core.utils.global_constants import OMEGA
+from pace.util.constants import OMEGA
 from pace.dsl.typing import FloatField, FloatFieldIJ
 
 

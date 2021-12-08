@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
-import fv3core.utils.global_constants as constants
+import pace.util.constants as constants
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
 from fv3core.grid import MetricTerms, lon_lat_midpoint
