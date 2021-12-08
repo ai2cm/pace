@@ -51,7 +51,6 @@ TFREEZE = 273.15  # Freezing temperature of fresh water [K]
 K1K = RDGAS / CV_AIR
 CNST_0P20 = 0.2
 CV_VAP = 3.0 * RVGAS  # Heat capacity of water vapor at constant volume
-CV_AIR = CP_AIR - RDGAS  # Heat capacity of dry air at constant volume
 ZVIR = RVGAS / RDGAS - 1  # con_fvirt in Fortran physics
 C_ICE = 1972.0  # Heat capacity of ice at -15 degrees Celsius
 C_LIQ = 4.1855e3  # Heat capacity of water at 15 degrees Celsius
