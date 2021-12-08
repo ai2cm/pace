@@ -23,10 +23,9 @@ from gt4py.storage.storage import Storage
 
 import pace.util
 from pace.dsl.future_stencil import future_stencil
+from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util.halo_data_transformer import QuantityHaloSpec
-
-from .gt4py_utils import make_storage_from_shape
 
 
 try:
@@ -758,3 +757,35 @@ class StencilFactory:
             config=self.config,
             grid_indexing=self.grid_indexing.restrict_vertical(k_start=k_start, nk=nk),
         )
+
+
+def get_stencils_with_varied_bounds(
+    func: Callable[..., None],
+    origins: List[Index3D],
+    domains: List[Index3D],
+    stencil_factory: StencilFactory,
+    externals: Optional[Mapping[str, Any]] = None,
+) -> List[FrozenStencil]:
+    assert len(origins) == len(domains), (
+        "Lists of origins and domains need to have the same length, you provided "
+        + str(len(origins))
+        + " origins and "
+        + str(len(domains))
+        + " domains"
+    )
+    if externals is None:
+        externals = {}
+    stencils = []
+    for origin, domain in zip(origins, domains):
+        ax_offsets = stencil_factory.grid_indexing.axis_offsets(
+            origin=origin, domain=domain
+        )
+        stencils.append(
+            stencil_factory.from_origin_domain(
+                func,
+                origin=origin,
+                domain=domain,
+                externals={**externals, **ax_offsets},
+            )
+        )
+    return stencils

@@ -115,14 +115,14 @@ def make_storage_data(
 
     if n_dims == 1:
         data = _make_storage_data_1d(
-            data, shape, backend, start, dummy, axis, read_only
+            data, shape, start, dummy, axis, read_only, backend=backend
         )
     elif n_dims == 2:
         data = _make_storage_data_2d(
-            data, shape, backend, start, dummy, axis, read_only
+            data, shape, start, dummy, axis, read_only, backend=backend
         )
     else:
-        data = _make_storage_data_3d(data, shape, backend, start)
+        data = _make_storage_data_3d(data, shape, start, backend=backend)
 
     storage = gt_storage.from_array(
         data=data,
@@ -139,11 +139,12 @@ def make_storage_data(
 def _make_storage_data_1d(
     data: Field,
     shape: Tuple[int, int, int],
-    backend: str,
     start: Tuple[int, int, int] = (0, 0, 0),
     dummy: Optional[Tuple[int, int, int]] = None,
     axis: int = 2,
     read_only: bool = True,
+    *,
+    backend: str,
 ) -> Field:
     # axis refers to a repeated axis, dummy refers to a singleton axis
     axis = min(axis, len(shape) - 1)
@@ -174,11 +175,12 @@ def _make_storage_data_1d(
 def _make_storage_data_2d(
     data: Field,
     shape: Tuple[int, int, int],
-    backend: str,
     start: Tuple[int, int, int] = (0, 0, 0),
     dummy: Optional[Tuple[int, int, int]] = None,
     axis: int = 2,
     read_only: bool = True,
+    *,
+    backend: str,
 ) -> Field:
     # axis refers to which axis should be repeated (when making a full 3d data),
     # dummy refers to a singleton axis
@@ -211,8 +213,9 @@ def _make_storage_data_2d(
 def _make_storage_data_3d(
     data: Field,
     shape: Tuple[int, int, int],
-    backend: str,
     start: Tuple[int, int, int] = (0, 0, 0),
+    *,
+    backend: str,
 ) -> Field:
     istart, jstart, kstart = start
     isize, jsize, ksize = data.shape

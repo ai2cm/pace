@@ -1,9 +1,13 @@
 import numpy as np
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-from fv3core.decorators import get_stencils_with_varied_bounds
 from pace.dsl.gt4py_utils import make_storage_from_shape
-from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
+from pace.dsl.stencil import (
+    GridIndexing,
+    StencilConfig,
+    StencilFactory,
+    get_stencils_with_varied_bounds,
+)
 from pace.dsl.typing import FloatField
 
 
@@ -47,10 +51,10 @@ def get_stencil_factory(backend: str) -> StencilFactory:
     indexing = GridIndexing(
         domain=(12, 12, 79),
         n_halo=3,
-        south_edge=False,
-        north_edge=False,
-        west_edge=False,
-        east_edge=False,
+        south_edge=True,
+        north_edge=True,
+        west_edge=True,
+        east_edge=True,
     )
     return StencilFactory(config=config, grid_indexing=indexing)
 
@@ -84,11 +88,11 @@ def test_get_stencils_with_varied_bounds_and_regions(backend: str):
         domains,
         stencil_factory=factory,
     )
-    q, q_ref = setup_data_vars(backend=backend)
-    stencils[0](q, q)
+    q_orig, q_ref = setup_data_vars(backend=backend)
+    stencils[0](q_orig, q_orig)
     q_ref[3, 3] = 2.0
-    np.testing.assert_array_equal(q.data, q_ref.data)
-    stencils[1](q, q)
+    np.testing.assert_array_equal(q_orig.data, q_ref.data)
+    stencils[1](q_orig, q_orig)
     q_ref[3, 2] = 2.0
     q_ref[3, 3] = 3.0
-    np.testing.assert_array_equal(q.data, q_ref.data)
+    np.testing.assert_array_equal(q_orig.data, q_ref.data)
