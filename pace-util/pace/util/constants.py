@@ -80,9 +80,10 @@ TICE0 = TICE - 0.01
 T_MIN = 178.0  # Minimum temperature to freeze-dry all water vapor
 T_SAT_MIN = TICE - 160.0
 LAT2 = (HLV + HLF) ** 2  # used in bigg mechanism
-##################
+
+#################
 # Physics only
-###################
+#################
 RHOS = 1.0e2
 RHOG = 4.0e2
 QCMIN = 1.0e-12  # Minimum value for cloud condensation
@@ -125,52 +126,3 @@ VCONS = 6.6280504
 VCONG = 87.2382675
 NORMS = 942477796.076938
 NORMG = 5026548245.74367
-
-
-########################################################################
-# Tunable parameters (Fortran namelist parameters)
-########################################################################
-
-c_cracw = 0.8  # Rain accretion efficiency
-c_paut = 0.5  # Autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
-c_pgacs = 0.01  # Snow to graupel "accretion" eff. (was 0.1 in zetac)
-c_psaci = 0.05  # Accretion: cloud ice to snow (was 0.1 in zetac)
-ccn_l = 300.0  # CCN over land (cm^-3)
-ccn_o = 100.0  # CCN over ocean (cm^-3)
-const_vg = 0  # Fall velocity tuning constant of graupel
-const_vi = 0  # Fall velocity tuning constant of ice
-const_vr = 0  # Fall velocity tuning constant of rain water
-const_vs = 0  # Fall velocity tuning constant of snow
-de_ice = 0  # To prevent excessive build-up of cloud ice from external sources
-do_qa = 1  # Do inline cloud fraction
-do_sedi_heat = 0  # Transport of heat in sedimentation
-dw_land = 0.15  # Base value for subgrid deviation / variability over land
-dw_ocean = 0.1  # Base value for ocean
-fast_sat_adj = 1  # Has fast saturation adjustments
-fix_negative = 1  # Fix negative water species
-irain_f = 0  # Cloud water to rain auto conversion scheme
-mono_prof = False  # Perform terminal fall with mono ppm scheme
-mp_time = 225.0  # Maximum microphysics timestep (sec)
-prog_ccn = 0  # Do prognostic ccn (yi ming's method)
-qi0_crt = 8e-05  # Cloud ice to snow autoconversion threshold
-qi_lim = 1.0  # Cloud ice limiter to prevent large ice build up
-ql_mlt = 0.002  # Maximum value of cloud water allowed from melted cloud ice
-qs0_crt = 0.003  # Snow to graupel density threshold (0.6e-3 in purdue lin scheme)
-qs_mlt = 1e-06  # Maximum cloud water due to snow melt
-rad_rain = 1  # Consider rain in cloud fraction calculation
-rad_snow = 1  # Consider snow in cloud fraction calculation
-rh_inc = 0.2  # RH increment for complete evaporation of cloud water and cloud ice
-rh_inr = 0.3  # RH increment for minimum evaporation of rain
-rthresh = 1e-05  # Critical cloud drop radius (micrometers)
-sedi_transport = 1  # Transport of momentum in sedimentation
-tau_g2v = 1200.0  # Graupel sublimation
-tau_i2s = 1000.0  # Cloud ice to snow autoconversion
-tau_l2v = 300.0  # Cloud water to water vapor (evaporation)
-tau_v2l = 90.0  # Water vapor to cloud water (condensation)
-use_ppm = 0  # Use ppm fall scheme
-vg_max = 16.0  # Maximum fall speed for graupel
-vi_max = 1.0  # Maximum fall speed for ice
-vr_max = 16.0  # Maximum fall speed for rain
-vs_max = 2.0  # Maximum fall speed for snow
-z_slope_ice = 1  # Use linear mono slope for autoconversions
-z_slope_liq = 1  # Use linear mono slope for autoconversions
