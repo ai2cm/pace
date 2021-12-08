@@ -14,8 +14,7 @@ import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.stencils.d2a2c_vect import contravariant
 from fv3core.utils.grid import DampingCoefficients, GridData
-from pace.dsl.gt4py_utils import get_stencils_with_varied_bounds
-from pace.dsl.stencil import StencilFactory
+from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
 

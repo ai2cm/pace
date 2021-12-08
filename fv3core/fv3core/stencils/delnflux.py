@@ -14,8 +14,7 @@ from gt4py.gtscript import (
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.utils.grid import DampingCoefficients, axis_offsets
-from pace.dsl.gt4py_utils import get_stencils_with_varied_bounds
-from pace.dsl.stencil import StencilFactory
+from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, Y_DIM, Z_DIM
 from pace.util.constants import X_INTERFACE_DIM, Y_INTERFACE_DIM

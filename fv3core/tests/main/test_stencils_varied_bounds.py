@@ -1,11 +1,13 @@
 import numpy as np
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-from pace.dsl.gt4py_utils import (
+from pace.dsl.gt4py_utils import make_storage_from_shape
+from pace.dsl.stencil import (
+    GridIndexing,
+    StencilConfig,
+    StencilFactory,
     get_stencils_with_varied_bounds,
-    make_storage_from_shape,
 )
-from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
 from pace.dsl.typing import FloatField
 
 
@@ -86,11 +88,14 @@ def test_get_stencils_with_varied_bounds_and_regions(backend: str):
         domains,
         stencil_factory=factory,
     )
-    q, q_ref = setup_data_vars(backend=backend)
-    stencils[0](q, q)
+    import pdb
+
+    pdb.set_trace()
+    q_orig, q_ref = setup_data_vars(backend=backend)
+    stencils[0](q_orig, q_orig)
     q_ref[3, 3] = 2.0
-    np.testing.assert_array_equal(q.data, q_ref.data)
-    stencils[1](q, q)
+    np.testing.assert_array_equal(q_orig.data, q_ref.data)
+    stencils[1](q_orig, q_orig)
     q_ref[3, 2] = 2.0
     q_ref[3, 3] = 3.0
-    np.testing.assert_array_equal(q.data, q_ref.data)
+    np.testing.assert_array_equal(q_orig.data, q_ref.data)

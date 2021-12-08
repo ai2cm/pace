@@ -4,8 +4,7 @@ import fv3core.utils.corners as corners
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.utils.grid import DampingCoefficients
-from pace.dsl.gt4py_utils import get_stencils_with_varied_bounds
-from pace.dsl.stencil import StencilFactory
+from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, cast_to_index3d
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
