@@ -58,15 +58,14 @@ experiment="$3"
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
-envloc=`/bin/pwd`
 popd > /dev/null
 shopt -s expand_aliases
-# Download the env
-. ${envloc}/env.sh
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+buildenv_loc = $SCRIPT_DIR/../buildenv
 
 # setup module environment and default queue
-test -f ${envloc}/env/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
-. ${envloc}/env/machineEnvironment.sh
+test -f ${buildenv_loc}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
+. ${buildenv_loc}/machineEnvironment.sh
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
 # get root directory of where jenkins.sh is sitting
@@ -82,17 +81,17 @@ if [[ $backend != *numpy* ]];then
 fi
 
 # load machine dependent environment
-if [ ! -f ${envloc}/env/env.${host}.sh ] ; then
-    exitError 1202 ${LINENO} "could not find ${envloc}/env/env.${host}.sh"
+if [ ! -f ${buildenv_loc}/env.${host}.sh ] ; then
+    exitError 1202 ${LINENO} "could not find ${buildenv_loc}/env.${host}.sh"
 fi
-. ${envloc}/env/env.${host}.sh
+. ${buildenv_loc}/env.${host}.sh
 
 # check if action script exists
 script="${jenkins_dir}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
 # load scheduler tools
-. ${envloc}/env/schedulerTools.sh
+. ${buildenv_loc}/schedulerTools.sh
 scheduler_script="`dirname $0`/env/submit.${host}.${scheduler}"
 
 # if there is a scheduler script, make a copy for this job
@@ -187,7 +186,7 @@ echo "JENKINS TAG ${JENKINS_TAG}"
 
 if [ -z ${VIRTUALENV} ]; then
     echo "setting VIRTUALENV"
-    export VIRTUALENV=${envloc}/../venv_${JENKINS_TAG}
+    export VIRTUALENV=${SCRIPT_DIR}/../venv_${JENKINS_TAG}
 fi
 
 if [ ${python_env} == "virtualenv" ]; then
@@ -202,7 +201,7 @@ if [ ${python_env} == "virtualenv" ]; then
     if grep -q "parallel" <<< "${script}"; then
 	export MPIRUN_CALL="srun"
     fi
-    export FV3_PATH="${envloc}/../"
+    export FV3_PATH="${SCRIPT_DIR}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
     export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi
@@ -218,7 +217,7 @@ fi
 echo "### ACTION ${action} SUCCESSFUL"
 
 # load scheduler tools
-. ${envloc}/env/schedulerTools.sh
+. ${buildenv_loc}/schedulerTools.sh
 run_timing_script="`dirname $0`/env/submit.${host}.${scheduler}"
 
 # second run, this time with timing
