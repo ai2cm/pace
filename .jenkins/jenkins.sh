@@ -56,7 +56,7 @@ action="$1"
 backend="$input_backend"
 experiment="$3"
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-buildenv_loc = $SCRIPT_DIR/../buildenv
+buildenv_loc=$SCRIPT_DIR/../buildenv
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
