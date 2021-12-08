@@ -55,10 +55,6 @@ if [ $save_wheel ]; then
 fi
 python3 -m pip install --find-links=$wheeldir "gt4py/[${cuda_version}]"
 
-# load gridtools modules
-module load gridtools/1_1_3
-module load gridtools/2_1_0_b
-
 # deactivate virtual environment
 deactivate
 
