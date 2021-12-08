@@ -132,6 +132,7 @@ class TracerAdvection:
         tracer_count,
     ):
         grid_indexing = stencil_factory.grid_indexing
+        self.grid_indexing = grid_indexing  # needed for selective validation
         self._tracer_count = tracer_count
         self.comm = comm
         self.grid_data = grid_data
