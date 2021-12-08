@@ -103,6 +103,7 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 names=names_4d,
+                backend=self.grid.stencil_factory.backend,
             )
         else:
             return utils.make_storage_data(
@@ -113,6 +114,7 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 read_only=read_only,
+                backend=self.grid.stencil_factory.backend,
             )
 
     def storage_vars(self):
@@ -226,13 +228,15 @@ class TranslateFortranData2Py:
                 )
                 for varname, data_element in data_result.items():
                     index = names_4d.index(varname)
-                    data_element.synchronize()
+                    if hasattr(data_element, "synchronize"):
+                        data_element.synchronize()
                     var4d[:, :, :, index] = np.squeeze(
                         np.asarray(data_element)[self.grid.slice_dict(ds)]
                     )
                 out[serialname] = var4d
             else:
-                data_result.synchronize()
+                if hasattr(data_result, "synchronize"):
+                    data_result.synchronize()
                 slice_tuple = self.grid.slice_dict(ds, len(data_result.shape))
                 out[serialname] = np.squeeze(np.asarray(data_result)[slice_tuple])
             if "kaxis" in info:
@@ -258,6 +262,7 @@ class TranslateGrid:
     fpy_index_offset = -1
     composite_grid_vars = ["sin_sg", "cos_sg"]
     edge_var_axis = {"edge_w": 1, "edge_e": 1, "edge_s": 0, "edge_n": 0}
+    ee_vars = ["ee1", "ee2", "ew1", "ew2", "es1", "es2"]
     # Super (composite) grid
     #     9---4---8
     #     |       |
@@ -265,7 +270,8 @@ class TranslateGrid:
     #     |       |
     #     6---2---7
 
-    def __init__(self, inputs, rank):
+    def __init__(self, inputs, rank, *, backend: str):
+        self.backend = backend
         self.indices = {}
         self.shape_params = {}
         self.data = {}
@@ -281,40 +287,63 @@ class TranslateGrid:
 
         self.data = inputs
 
-    def make_composite_var_storage(self, varname, data3d, shape):
+    def make_composite_var_storage(
+        self,
+        varname,
+        data3d,
+        shape,
+    ):
         for s in range(9):
             self.data[varname + str(s + 1)] = utils.make_storage_data(
-                np.squeeze(data3d[:, :, s]), shape, origin=(0, 0, 0)
+                np.squeeze(data3d[:, :, s]),
+                shape,
+                origin=(0, 0, 0),
+                backend=self.backend,
             )
 
     def make_grid_storage(self, pygrid):
         shape = pygrid.domain_shape_full(add=(1, 1, 1))
-        for k in TranslateGrid.composite_grid_vars:
-            if k in self.data:
-                self.make_composite_var_storage(k, self.data[k], shape)
-                del self.data[k]
-        for k, axis in TranslateGrid.edge_var_axis.items():
-            if k in self.data:
-                self.data[k] = utils.make_storage_data(
-                    self.data[k],
+        for key in TranslateGrid.composite_grid_vars:
+            if key in self.data:
+                self.make_composite_var_storage(key, self.data[key], shape)
+                del self.data[key]
+        for key in TranslateGrid.ee_vars:
+            if key in self.data:
+                self.data[key] = np.moveaxis(self.data[key], 0, 2)
+                self.data[key] = utils.make_storage_data(
+                    self.data[key],
+                    (shape[0], shape[1], 3),
+                    origin=(0, 0, 0),
+                    backend=self.backend,
+                )
+        for key, axis in TranslateGrid.edge_var_axis.items():
+            if key in self.data:
+                self.data[key] = utils.make_storage_data(
+                    self.data[key],
                     shape,
                     start=(0, 0, pygrid.halo),
                     axis=axis,
                     read_only=True,
+                    backend=self.backend,
                 )
-        for k, v in self.data.items():
-            if type(v) is np.ndarray:
+        for key, value in self.data.items():
+            if type(value) is np.ndarray:
                 # TODO: when grid initialization model exists, may want to use
                 # it to inform this
-                istart, jstart = pygrid.horizontal_starts_from_shape(v.shape)
+                istart, jstart = pygrid.horizontal_starts_from_shape(value.shape)
                 logger.debug(
                     "Storage for Grid variable {}, {}, {}, {}".format(
-                        k, istart, jstart, v.shape
+                        key, istart, jstart, value.shape
                     )
                 )
                 origin = (istart, jstart, 0)
-                self.data[k] = utils.make_storage_data(
-                    v, shape, origin=origin, start=origin, read_only=True
+                self.data[key] = utils.make_storage_data(
+                    value,
+                    shape,
+                    origin=origin,
+                    start=origin,
+                    read_only=True,
+                    backend=self.backend,
                 )
 
     def python_grid(self):

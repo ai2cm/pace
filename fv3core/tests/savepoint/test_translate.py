@@ -11,7 +11,7 @@ import serialbox as ser
 import fv3core._config
 import fv3core.utils.global_config as config
 import fv3core.utils.gt4py_utils as gt_utils
-import fv3gfs.util as fv3util
+import pace.util as fv3util
 from fv3core.utils.mpi import MPI
 
 
@@ -436,6 +436,8 @@ def test_parallel_savepoint(
     python_regression,
     threshold_overrides,
     print_domains,
+    compute_grid,
+    skip_grid_tests,
     xy_indices=True,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")
@@ -449,6 +451,10 @@ def test_parallel_savepoint(
         testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
     if threshold_overrides is not None:
         process_override(threshold_overrides, testobj, test_name, backend)
+    if compute_grid and not testobj.compute_grid_option:
+        pytest.xfail(f"compute_grid option not used for test {test_name}")
+    if skip_grid_tests and testobj.tests_grid:
+        pytest.xfail("skipping testing the grid generation, --skip_grid_tests")
     fv3core._config.set_grid(grid[0])
     input_data = testobj.collect_input_data(serializer, savepoint_in)
     # run python version of functionality

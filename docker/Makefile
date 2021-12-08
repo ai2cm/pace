@@ -1,4 +1,4 @@
-
+SHELL := /bin/bash
 # setup (use XXX=<value> make <target> to override)
 include Makefile.image_names
 

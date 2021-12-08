@@ -2,23 +2,27 @@
 
 import copy
 import json
-import os
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import serialbox
+import yaml
 from mpi4py import MPI
+
+import fv3core.initialization.baroclinic as baroclinic_init
+from fv3core.grid import MetricTerms
+from fv3core.utils.grid import DampingCoefficients, GridData
 
 
 # Dev note: the GTC toolchain fails if xarray is imported after gt4py
-# fv3gfs.util imports xarray if it's available in the env.
+# pace.util imports xarray if it's available in the env.
 # fv3core imports gt4py.
 # To avoid future conflict creeping back we make util imported prior to
 # fv3core. isort turned off to keep it that way.
 # isort: off
-import fv3gfs.util as util
+import pace.util as util
 from fv3core.utils.null_comm import NullComm
 
 # isort: on
@@ -150,6 +154,43 @@ def gather_hit_counts(
     return results
 
 
+def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
+    config_yml = yaml.safe_load(
+        open(
+            data_directory + "/input.yml",
+            "r",
+        )
+    )
+    is_baroclinic_test_case = False
+    if (
+        "test_case_nml" in config_yml["namelist"].keys()
+        and config_yml["namelist"]["test_case_nml"]["test_case"] == 13
+    ):
+        is_baroclinic_test_case = True
+    print(
+        "Running "
+        + config_yml["experiment_name"]
+        + ", and using the baroclinic test case?: "
+        + str(is_baroclinic_test_case)
+    )
+    return config_yml["experiment_name"], is_baroclinic_test_case
+
+
+def read_serialized_initial_state(rank, grid):
+    # set up of helper structures
+    serializer = serialbox.Serializer(
+        serialbox.OpenModeKind.Read,
+        args.data_dir,
+        "Generator_rank" + str(rank),
+    )
+    # create a state from serialized data
+    savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
+    driver_object = fv3core.testing.TranslateFVDynamics([grid])
+    input_data = driver_object.collect_input_data(serializer, savepoint_in)
+    state = driver_object.state_from_inputs(input_data)
+    return state
+
+
 def collect_data_and_write_to_file(
     args: Namespace, comm: MPI.Comm, hits_per_step, times_per_step, experiment_name
 ) -> None:
@@ -190,53 +231,59 @@ if __name__ == "__main__":
         fv3core.set_rebuild(False)
         fv3core.set_validate_args(False)
 
-        spec.set_namelist(args.data_dir + "/input.nml")
+        spec.set_namelist(args.data_dir + "/input.nml", rank=rank)
 
-        experiment_name = os.path.basename(os.path.normpath(args.data_dir))
-
-        # set up of helper structures
-        serializer = serialbox.Serializer(
-            serialbox.OpenModeKind.Read,
-            args.data_dir,
-            "Generator_rank" + str(rank),
-        )
+        experiment_name, is_baroclinic_test_case = get_experiment_info(args.data_dir)
         if args.disable_halo_exchange:
             mpi_comm = NullComm(MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
         else:
             mpi_comm = MPI.COMM_WORLD
 
-        # get grid from serialized data
-        grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
-        grid_data = {}
-        grid_fields = serializer.fields_at_savepoint(grid_savepoint)
-        for field in grid_fields:
-            grid_data[field] = serializer.read(field, grid_savepoint)
-            if len(grid_data[field].flatten()) == 1:
-                grid_data[field] = grid_data[field][0]
-        grid = fv3core.testing.TranslateGrid(grid_data, rank).python_grid()
-        spec.set_grid(grid)
+        namelist = spec.namelist
 
         # set up grid-dependent helper structures
-        layout = spec.namelist.layout
-        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
+        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(namelist.layout))
         communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
 
-        # create a state from serialized data
-        savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
-        driver_object = fv3core.testing.TranslateFVDynamics([grid])
-        input_data = driver_object.collect_input_data(serializer, savepoint_in)
-        input_data["comm"] = communicator
-        state = driver_object.state_from_inputs(input_data)
+        # TODO remove this creation of the legacy grid once everything that
+        # references it is updated or removed
+        grid = spec.make_grid_from_namelist(namelist, rank)
+        spec.set_grid(grid)
+
+        metric_terms = MetricTerms.from_tile_sizing(
+            npx=namelist.npx,
+            npy=namelist.npy,
+            npz=namelist.npz,
+            communicator=communicator,
+            backend=args.backend,
+        )
+        if is_baroclinic_test_case:
+            # create an initial state from the Jablonowski & Williamson Baroclinic
+            # test case perturbation. JRMS2006
+            state = baroclinic_init.init_baroclinic_state(
+                metric_terms,
+                adiabatic=namelist.adiabatic,
+                hydrostatic=namelist.hydrostatic,
+                moist_phys=namelist.moist_phys,
+                comm=communicator,
+            )
+        else:
+            state = read_serialized_initial_state(rank, grid)
+
         dycore = fv3core.DynamicalCore(
             comm=communicator,
-            grid_data=spec.grid.grid_data,
-            stencil_factory=spec.grid.stencil_factory,
-            damping_coefficients=spec.grid.damping_coefficients,
+            grid_data=GridData.new_from_metric_terms(metric_terms),
+            stencil_factory=grid.stencil_factory,
+            damping_coefficients=DampingCoefficients.new_from_metric_terms(
+                metric_terms
+            ),
             config=spec.namelist.dynamical_core,
-            ak=state["atmosphere_hybrid_a_coordinate"],
-            bk=state["atmosphere_hybrid_b_coordinate"],
-            phis=state["surface_geopotential"],
+            phis=state.phis,
         )
+        # TODO include functionality that uses and changes this
+        do_adiabatic_init = False
+        # TODO compute from namelist
+        bdt = 225.0
 
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
@@ -245,12 +292,10 @@ if __name__ == "__main__":
             print("timestep 1")
         dycore.step_dynamics(
             state,
-            input_data["consv_te"],
-            input_data["do_adiabatic_init"],
-            input_data["bdt"],
-            input_data["ptop"],
-            input_data["n_split"],
-            input_data["ks"],
+            namelist.consv_te,
+            do_adiabatic_init,
+            bdt,
+            namelist.n_split,
         )
 
     if profiler is not None:
@@ -267,12 +312,10 @@ if __name__ == "__main__":
                 print(f"timestep {i+2}")
             dycore.step_dynamics(
                 state,
-                input_data["consv_te"],
-                input_data["do_adiabatic_init"],
-                input_data["bdt"],
-                input_data["ptop"],
-                input_data["n_split"],
-                input_data["ks"],
+                namelist.consv_te,
+                do_adiabatic_init,
+                bdt,
+                namelist.n_split,
                 timestep_timer,
             )
         times_per_step.append(timestep_timer.times)

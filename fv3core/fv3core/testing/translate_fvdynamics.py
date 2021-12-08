@@ -1,11 +1,13 @@
-from typing import Optional
+from dataclasses import fields
+from typing import Any, Dict, Optional
 
 import pytest
 
 import fv3core._config as spec
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as fv3util
+import pace.util as fv3util
+from fv3core.initialization.dycore_state import DycoreState
 from fv3core.testing import ParallelTranslateBaseSlicing
 
 
@@ -14,7 +16,8 @@ ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]
 
 class TranslateFVDynamics(ParallelTranslateBaseSlicing):
     python_regression = True
-    inputs = {
+    compute_grid_option = True
+    inputs: Dict[str, Any] = {
         "q_con": {
             "name": "total_condensate_mixing_ratio",
             "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
@@ -194,25 +197,14 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "units": "Pa/s",
         },
         "do_adiabatic_init": {"dims": []},
-        "consv_te": {"dims": []},
         "bdt": {"dims": []},
         "ptop": {"dims": []},
-        "n_split": {"dims": []},
         "ks": {"dims": []},
     }
 
     outputs = inputs.copy()
 
-    for name in (
-        "do_adiabatic_init",
-        "consv_te",
-        "bdt",
-        "ptop",
-        "n_split",
-        "ak",
-        "bk",
-        "ks",
-    ):
+    for name in ("do_adiabatic_init", "bdt", "ak", "bk", "ks", "ptop"):
         outputs.pop(name)
 
     def __init__(self, grids, *args, **kwargs):
@@ -260,8 +252,6 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "va": {},
             "uc": grid.x3d_domain_dict(),
             "vc": grid.y3d_domain_dict(),
-            "ak": {},
-            "bk": {},
             "mfxd": grid.x3d_compute_dict(),
             "mfyd": grid.y3d_compute_dict(),
             "cxd": grid.x3d_compute_domain_y_dict(),
@@ -270,8 +260,6 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         }
 
         self._base.out_vars = self._base.in_vars["data_vars"].copy()
-        for var in ["ak", "bk"]:
-            self._base.out_vars.pop(var)
         self._base.out_vars["ps"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
         self._base.out_vars["phis"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
 
@@ -283,38 +271,72 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self.ignore_near_zero_errors["q_con"] = True
         self.dycore: Optional[fv_dynamics.DynamicalCore] = None
 
-    def compute_parallel(self, inputs, communicator):
-        # ak, bk, and phis are numpy arrays at this point and
-        #   must be converted into gt4py storages
-        for name in ("ak", "bk", "phis"):
-            inputs[name] = utils.make_storage_data(
-                inputs[name], inputs[name].shape, len(inputs[name].shape) * (0,)
-            )
+    def state_from_inputs(self, inputs):
+        input_storages = super().state_from_inputs(inputs)
+        # making sure we init DycoreState with the exact set of variables
+        accepted_keys = [_field.name for _field in fields(DycoreState)]
+        todelete = []
+        for name, quantity in input_storages.items():
+            if name not in accepted_keys:
+                todelete.append(name)
+        for name in todelete:
+            del input_storages[name]
 
-        inputs["comm"] = communicator
+        state = DycoreState(
+            **input_storages, quantity_factory=self.grid.quantity_factory
+        )
+        return state
+
+    def compute_parallel(self, inputs, communicator):
+        for name in ("ak", "bk"):
+            inputs[name] = utils.make_storage_data(
+                inputs[name],
+                inputs[name].shape,
+                len(inputs[name].shape) * (0,),
+                backend=self.grid.stencil_factory.backend,
+            )
+        grid_data = spec.grid.grid_data
+        # These aren't in the Grid-Info savepoint, but are in the generated grid
+        if grid_data.ak is None or grid_data.bk is None:
+            grid_data.ak = inputs["ak"]
+            grid_data.bk = inputs["bk"]
+            grid_data.ptop = inputs["ptop"]
+            grid_data.ks = inputs["ks"]
+
         state = self.state_from_inputs(inputs)
         self.dycore = fv_dynamics.DynamicalCore(
             comm=communicator,
-            grid_data=spec.grid.grid_data,
+            grid_data=grid_data,
             stencil_factory=spec.grid.stencil_factory,
             damping_coefficients=spec.grid.damping_coefficients,
             config=spec.namelist.dynamical_core,
-            ak=state["atmosphere_hybrid_a_coordinate"],
-            bk=state["atmosphere_hybrid_b_coordinate"],
-            phis=state["surface_geopotential"],
+            phis=state.phis,
         )
         self.dycore.step_dynamics(
             state,
-            inputs["consv_te"],
+            spec.namelist.consv_te,
             inputs["do_adiabatic_init"],
             inputs["bdt"],
-            inputs["ptop"],
-            inputs["n_split"],
-            inputs["ks"],
+            spec.namelist.n_split,
         )
         outputs = self.outputs_from_state(state)
         for name, value in outputs.items():
             outputs[name] = self.subset_output(name, value)
+        return outputs
+
+    def outputs_from_state(self, state: dict):
+        if len(self.outputs) == 0:
+            return {}
+        outputs = {}
+        storages = {}
+        for name, properties in self.outputs.items():
+            if isinstance(state[name], fv3util.Quantity):
+                storages[name] = state[name].storage
+            elif len(self.outputs[name]["dims"]) > 0:
+                storages[name] = state[name]  # assume it's a storage
+            else:
+                outputs[name] = state[name]  # scalar
+        outputs.update(self._base.slice_output(storages))
         return outputs
 
     def compute_sequential(self, *args, **kwargs):
@@ -342,3 +364,18 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         else:
             return_value = output
         return return_value
+
+
+# Method for creating a DycoreState object from serialized data
+def init_dycore_state_from_serialized_data(serializer, grid, quantity_factory):
+    savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
+    translate_object = TranslateFVDynamics([grid])
+    input_data = translate_object.collect_input_data(serializer, savepoint_in)
+    # making just storages for the moment, revisit when making them all
+    # quantities (maybe use state_from_inputs)
+    translate_object._base.make_storage_data_input_vars(input_data)
+    # used for the translate test as inputs, but are generated by the
+    # MetricsTerms class and are not part of this data class
+    for delvar in ["ak", "bk", "ptop", "ks"]:
+        del input_data[delvar]
+    return DycoreState(**input_data, quantity_factory=quantity_factory)

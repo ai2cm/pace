@@ -12,7 +12,9 @@ from mpi4py import MPI
 import fv3core
 import fv3core._config as spec
 import fv3core.testing
-import fv3gfs.util as util
+import pace.util as util
+from fv3core.grid import MetricTerms
+from fv3core.utils.grid import DampingCoefficients, GridData
 from fv3gfs.physics.stencils.physics import Physics
 
 
@@ -65,7 +67,7 @@ def driver(
     fv3core.set_rebuild(False)
     fv3core.set_validate_args(False)
     spec.set_namelist(data_directory + "/input.nml")
-
+    namelist = spec.namelist
     # set up of helper structures
     serializer = serialbox.Serializer(
         serialbox.OpenModeKind.Read,
@@ -81,13 +83,21 @@ def driver(
         grid_data[field] = serializer.read(field, grid_savepoint)
         if len(grid_data[field].flatten()) == 1:
             grid_data[field] = grid_data[field][0]
-    grid = fv3core.testing.TranslateGrid(grid_data, rank).python_grid()
+    grid = fv3core.testing.TranslateGrid(grid_data, rank, backend=backend).python_grid()
     spec.set_grid(grid)
 
     # set up domain decomposition
     layout = spec.namelist.layout
     partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
     communicator = util.CubedSphereCommunicator(comm, partitioner)
+
+    metric_terms = MetricTerms.from_tile_sizing(
+        npx=namelist.npx,
+        npy=namelist.npy,
+        npz=namelist.npz,
+        communicator=communicator,
+        backend=backend,
+    )
 
     # create a state from serialized data
     savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
@@ -106,17 +116,26 @@ def driver(
     if run_dycore:
         dycore = fv3core.DynamicalCore(
             comm=communicator,
-            grid_data=spec.grid.grid_data,
-            grid_indexing=spec.grid.grid_indexing,
-            damping_coefficients=spec.grid.damping_coefficients,
+            grid_data=GridData.new_from_metric_terms(metric_terms),
+            stencil_factory=grid.stencil_factory,
+            damping_coefficients=DampingCoefficients.new_from_metric_terms(
+                metric_terms
+            ),
             config=spec.namelist.dynamical_core,
-            ak=state["atmosphere_hybrid_a_coordinate"],
-            bk=state["atmosphere_hybrid_b_coordinate"],
-            phis=state["surface_geopotential"],
+            phis=state.phis_quantity,
         )
     else:
         dycore = DeactivatedDycore()
-    step_physics = Physics(grid, spec.namelist, communicator, missing_grid_info)
+
+    step_physics = Physics(
+        stencil_factory=grid.stencil_factory,
+        grid_data=GridData.new_from_metric_terms(metric_terms),
+        namelist=namelist,
+        comm=communicator,
+        partitioner=partitioner,
+        rank=rank,
+        grid_info=missing_grid_info,
+    )
 
     print_for_rank0(f"Init & timestep 0 done in {time.time() - start}s ")
 

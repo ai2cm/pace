@@ -2,7 +2,7 @@
 Python implementation of FV3 GFS physics built using the GT4Py domain-specific language in Python.
 
 ## Description
-fv3gfs-physics is still under development, more descriptions will be added.
+fv3gfs-physics is under active development. Currently, pace level docker environment should be used for development.
 
 ## QuickStart
 

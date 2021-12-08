@@ -1,16 +1,14 @@
-from typing import Mapping
-
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
 import fv3core.utils.global_constants as constants
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.util
 from fv3core._config import DynamicalCoreConfig
-from fv3core.decorators import ArgSpec, FrozenStencil, get_namespace
+from fv3core.decorators import FrozenStencil
+from fv3core.initialization.dycore_state import DycoreState
 from fv3core.stencils import fvtp2d, tracer_2d_1l
 from fv3core.stencils.basic_operations import copy_defn
-from fv3core.stencils.c2l_ord import CubedToLatLon
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
@@ -19,7 +17,8 @@ from fv3core.utils import global_config
 from fv3core.utils.grid import DampingCoefficients, GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util.halo_updater import HaloUpdater
+from pace.stencils.c2l_ord import CubedToLatLon
+from pace.util.halo_updater import HaloUpdater
 
 
 # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
@@ -135,7 +134,7 @@ def post_remap(
 
 def wrapup(
     state,
-    comm: fv3gfs.util.CubedSphereCommunicator,
+    comm: pace.util.CubedSphereCommunicator,
     adjust_stencil: AdjustNegativeTracerMixingRatio,
     cubed_to_latlon_stencil: CubedToLatLon,
     is_root_rank: bool,
@@ -169,22 +168,22 @@ def wrapup(
     )
 
 
-def fvdyn_temporaries(quantity_factory: fv3gfs.util.QuantityFactory, shape, grid):
+def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory, shape, grid):
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
         quantity = quantity_factory.empty(
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM], units="unknown"
+            dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         )
         tmps[f"{name}_quantity"] = quantity
         tmps[name] = quantity.storage
     for name in ["cappa", "dp1", "cvm"]:
         quantity = quantity_factory.empty(
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="unknown",
         )
         tmps[f"{name}_quantity"] = quantity
         tmps[name] = quantity.storage
-    gz = quantity_factory.empty(dims=[fv3gfs.util.Z_DIM], units="m^2 s^-2")
+    gz = quantity_factory.empty(dims=[pace.util.Z_DIM], units="m^2 s^-2")
     tmps["gz_quantity"] = gz
     tmps["gz"] = gz.storage
     return tmps
@@ -195,70 +194,14 @@ class DynamicalCore:
     Corresponds to fv_dynamics in original Fortran sources.
     """
 
-    arg_specs = (
-        ArgSpec("qvapor", "specific_humidity", "kg/kg", intent="inout"),
-        ArgSpec("qliquid", "cloud_water_mixing_ratio", "kg/kg", intent="inout"),
-        ArgSpec("qrain", "rain_mixing_ratio", "kg/kg", intent="inout"),
-        ArgSpec("qsnow", "snow_mixing_ratio", "kg/kg", intent="inout"),
-        ArgSpec("qice", "cloud_ice_mixing_ratio", "kg/kg", intent="inout"),
-        ArgSpec("qgraupel", "graupel_mixing_ratio", "kg/kg", intent="inout"),
-        ArgSpec("qo3mr", "ozone_mixing_ratio", "kg/kg", intent="inout"),
-        ArgSpec("qsgs_tke", "turbulent_kinetic_energy", "m**2/s**2", intent="inout"),
-        ArgSpec("qcld", "cloud_fraction", "", intent="inout"),
-        ArgSpec("pt", "air_temperature", "degK", intent="inout"),
-        ArgSpec(
-            "delp", "pressure_thickness_of_atmospheric_layer", "Pa", intent="inout"
-        ),
-        ArgSpec("delz", "vertical_thickness_of_atmospheric_layer", "m", intent="inout"),
-        ArgSpec("peln", "logarithm_of_interface_pressure", "ln(Pa)", intent="inout"),
-        ArgSpec("u", "x_wind", "m/s", intent="inout"),
-        ArgSpec("v", "y_wind", "m/s", intent="inout"),
-        ArgSpec("w", "vertical_wind", "m/s", intent="inout"),
-        ArgSpec("ua", "eastward_wind", "m/s", intent="inout"),
-        ArgSpec("va", "northward_wind", "m/s", intent="inout"),
-        ArgSpec("uc", "x_wind_on_c_grid", "m/s", intent="inout"),
-        ArgSpec("vc", "y_wind_on_c_grid", "m/s", intent="inout"),
-        ArgSpec("q_con", "total_condensate_mixing_ratio", "kg/kg", intent="inout"),
-        ArgSpec("pe", "interface_pressure", "Pa", intent="inout"),
-        ArgSpec("phis", "surface_geopotential", "m^2 s^-2", intent="in"),
-        ArgSpec(
-            "pk",
-            "interface_pressure_raised_to_power_of_kappa",
-            "unknown",
-            intent="inout",
-        ),
-        ArgSpec(
-            "pkz",
-            "layer_mean_pressure_raised_to_power_of_kappa",
-            "unknown",
-            intent="inout",
-        ),
-        ArgSpec("ps", "surface_pressure", "Pa", intent="inout"),
-        ArgSpec("omga", "vertical_pressure_velocity", "Pa/s", intent="inout"),
-        ArgSpec("ak", "atmosphere_hybrid_a_coordinate", "Pa", intent="in"),
-        ArgSpec("bk", "atmosphere_hybrid_b_coordinate", "", intent="in"),
-        ArgSpec("mfxd", "accumulated_x_mass_flux", "unknown", intent="inout"),
-        ArgSpec("mfyd", "accumulated_y_mass_flux", "unknown", intent="inout"),
-        ArgSpec("cxd", "accumulated_x_courant_number", "", intent="inout"),
-        ArgSpec("cyd", "accumulated_y_courant_number", "", intent="inout"),
-        ArgSpec(
-            "diss_estd",
-            "dissipation_estimate_from_heat_source",
-            "unknown",
-            intent="inout",
-        ),
-    )
-
     def __init__(
         self,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         grid_data: GridData,
         stencil_factory: StencilFactory,
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
-        ak: fv3gfs.util.Quantity,
-        bk: fv3gfs.util.Quantity,
-        phis: fv3gfs.util.Quantity,
+        phis: pace.util.Quantity,
     ):
         """
         Args:
@@ -268,8 +211,6 @@ class DynamicalCore:
             damping_coefficients: damping configuration/constants
             config: configuration of dynamical core, for example as would be set by
                 the namelist in the Fortran model
-            ak: atmosphere hybrid a coordinate (Pa)
-            bk: atmosphere hybrid b coordinate (dimensionless)
             phis: surface geopotential height
         """
         # nested and stretched_grid are options in the Fortran code which we
@@ -277,7 +218,7 @@ class DynamicalCore:
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
-        sizer = fv3gfs.util.SubtileGridSizer.from_tile_params(
+        sizer = pace.util.SubtileGridSizer.from_tile_params(
             nx_tile=config.npx - 1,
             ny_tile=config.npy - 1,
             nz=config.npz,
@@ -287,7 +228,7 @@ class DynamicalCore:
             tile_rank=comm.tile.rank,
             extra_dim_lengths={},
         )
-        quantity_factory = fv3gfs.util.QuantityFactory.from_backend(
+        quantity_factory = pace.util.QuantityFactory.from_backend(
             sizer, backend=global_config.get_backend()
         )
         assert config.moist_phys, "fvsetup is only implemented for moist_phys=true"
@@ -306,18 +247,23 @@ class DynamicalCore:
             hord=config.hord_tr,
         )
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
-            stencil_factory, tracer_transport, comm, NQ
+            stencil_factory, tracer_transport, self.grid_data, comm, NQ
         )
-        self._ak = ak.storage
-        self._bk = bk.storage
-        self._phis = phis.storage
+        self._ak = grid_data.ak
+        self._bk = grid_data.bk
+        self._phis = phis
+        self._ptop = self.grid_data.ptop
         pfull_stencil = stencil_factory.from_origin_domain(
             init_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
         )
-        pfull = utils.make_storage_from_shape((1, 1, self._ak.shape[0]))
+        pfull = utils.make_storage_from_shape(
+            (1, 1, self._ak.shape[0]), backend=stencil_factory.backend
+        )
         pfull_stencil(self._ak, self._bk, pfull, self.config.p_ref)
         # workaround because cannot write to FieldK storage in stencil
-        self._pfull = utils.make_storage_data(pfull[0, 0, :], self._ak.shape, (0,))
+        self._pfull = utils.make_storage_data(
+            pfull[0, 0, :], self._ak.shape, (0,), backend=stencil_factory.backend
+        )
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
             externals={
@@ -351,8 +297,6 @@ class DynamicalCore:
             nested,
             stretched_grid,
             self.config.acoustic_dynamics,
-            self._ak,
-            self._bk,
             self._pfull,
             self._phis,
         )
@@ -388,21 +332,20 @@ class DynamicalCore:
         full_xyz_spec = grid_indexing.get_quantity_halo_spec(
             grid_indexing.domain_full(add=(1, 1, 1)),
             grid_indexing.origin_compute(),
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=utils.halo,
+            backend=stencil_factory.backend,
         )
         self._omega_halo_updater = self.comm.get_scalar_halo_updater([full_xyz_spec])
 
     def step_dynamics(
         self,
-        state: Mapping[str, fv3gfs.util.Quantity],
+        state: DycoreState,
         conserve_total_energy: bool,
         do_adiabatic_init: bool,
         timestep: float,
-        ptop,
         n_split: int,
-        ks: int,
-        timer: fv3gfs.util.Timer = fv3gfs.util.NullTimer(),
+        timer: pace.util.Timer = pace.util.NullTimer(),
     ):
         """
         Step the model state forward by one timestep.
@@ -413,23 +356,17 @@ class DynamicalCore:
             do_adiabatic_init: if True, do adiabatic dynamics. Used
                 for model initialization.
             timestep: time to progress forward in seconds
-            ptop: pressure at top of atmosphere
             n_split: number of acoustic timesteps per remapping timestep
-            ks: the lowest index (highest layer) for which rayleigh friction
-                and other rayleigh computations are done
             timer: if given, use for timing model execution
         """
-        state = get_namespace(self.arg_specs, state)
         state.__dict__.update(
             {
                 "consv_te": conserve_total_energy,
                 "bdt": timestep,
                 "mdt": timestep / self.config.k_split,
                 "do_adiabatic_init": do_adiabatic_init,
-                "ptop": ptop,
                 "n_split": n_split,
                 "k_split": self.config.k_split,
-                "ks": ks,
             }
         )
         self._compute(state, timer)
@@ -437,7 +374,7 @@ class DynamicalCore:
     def _compute(
         self,
         state,
-        timer: fv3gfs.util.NullTimer,
+        timer: pace.util.NullTimer,
     ):
         state.__dict__.update(self._temporaries)
         tracers = {}
@@ -503,7 +440,7 @@ class DynamicalCore:
                         self._bk,
                         self._pfull,
                         state.dp1,
-                        state.ptop,
+                        self._ptop,
                         constants.KAPPA,
                         constants.ZVIR,
                         last_step,
@@ -531,7 +468,7 @@ class DynamicalCore:
             is_root_rank=self.comm.rank == 0,
         )
 
-    def _dyn(self, state, tracers, timer=fv3gfs.util.NullTimer()):
+    def _dyn(self, state, tracers, timer=pace.util.NullTimer()):
         self._copy_stencil(
             state.delp,
             state.dp1,

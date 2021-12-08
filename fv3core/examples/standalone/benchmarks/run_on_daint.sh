@@ -105,20 +105,23 @@ else
   githash="notarepo"
 fi
 
+split_path=(${data_path//\// })
+experiment=${split_path[-1]}
+
 echo "Configuration overview:"
 echo "    Root dir:          $ROOT_DIR"
 echo "    Timesteps:         $timesteps"
 echo "    Ranks:             $ranks"
 echo "    Backend:           $backend"
 echo "    Input data dir:    $data_path"
+echo "    Experiment:        $experiment"
 echo "    Threads per rank:  $NTHREADS"
 echo "    GIT hash:          $githash"
 echo "    Python arguments:  $py_args"
 echo "    Run arguments:     $run_args"
 echo "    Extra run in nsys: $DO_NSYS_RUN"
 
-split_path=(${data_path//\// })
-experiment=${split_path[-1]}
+
 sample_cache=.gt_cache
 
 if [ ! -d $(pwd)/.gt_cache ]; then

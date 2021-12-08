@@ -53,7 +53,8 @@ SCRIPTPATH=`dirname $SCRIPT`
 ROOT_DIR="$(dirname "$(dirname "$SCRIPTPATH")")"
 DATA_VERSION=`grep 'FORTRAN_SERIALIZED_DATA_VERSION *=' ${ROOT_DIR}/Makefile | cut -d '=' -f 2`
 TIMESTEPS=60
-RANKS=6
+# Could parse from namelist, ranks = 6 * layout[0] * layout[1]
+RANKS=`echo ${experiment} | grep -o -E '[0-9]+ranks' | grep -o -E '[0-9]+'`
 BENCHMARK_DIR=${ROOT_DIR}/examples/standalone/benchmarks
 DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}/${experiment}"
 ARTIFACT_ROOT="/project/s1053/performance/"
@@ -134,18 +135,11 @@ if [ "${SAVE_TIMINGS}" == "true" ] && [ "${SAVE_ARTIFACTS}" == "true" ] ; then
         cp $ROOT_DIR/*.json ${TIMING_DIR}/
 fi
 
-# store cache artifacts (and remove caches afterwards)
-if [ "${SAVE_CACHE}" == "true" ] && [ "${SAVE_ARTIFACTS}" == "true" ] ; then
-    echo "Pruning cache to make sure no __pycache__ and *_pyext_BUILD dirs are present"
-    find .gt_cache* -type d -name \*_pyext_BUILD -prune -exec \rm -rf {} \;
-    find .gt_cache* -type d -name __pycache__ -prune -exec \rm -rf {} \;
-    echo "Copying GT4Py cache directories to ${CACHE_DIR}"
-    mkdir -p ${CACHE_DIR}
-    cp ${ROOT_DIR}/GT4PY_VERSION.txt ${CACHE_DIR}
-    rm -rf ${CACHE_DIR}/.gt_cache*
-    cp -rp .gt_cache* ${CACHE_DIR}
+# copying the cache is in a separate action (generache_cache.sh),
+# otherwise delete it
+if [ "${SAVE_CACHE}" != "true" ] ; then
+    rm -rf .gt_cache*
 fi
-rm -rf .gt_cache*
 
 # store profiling artifacts
 if [ "${DO_PROFILE}" == "true" ] ; then
@@ -165,7 +159,6 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
 fi
 
 # remove venv (too many files!)
-rm -rf $ROOT_DIR/external/*
 rm -rf $ROOT_DIR/venv
 
 echo "=== Done ======================================="

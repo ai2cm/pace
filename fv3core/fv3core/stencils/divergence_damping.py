@@ -8,7 +8,6 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core._config as spec
 import fv3core.stencils.basic_operations as basic
 import fv3core.utils.corners as corners
 import fv3core.utils.gt4py_utils as utils
@@ -18,7 +17,7 @@ from fv3core.stencils.d2a2c_vect import contravariant
 from fv3core.utils.grid import DampingCoefficients, GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 @gtscript.function
@@ -196,10 +195,11 @@ class DivergenceDamping:
         self._sina_v = grid_data.sina_v
         self._dxc = grid_data.dxc
         self._dyc = grid_data.dyc
-
-        # TODO: calculate these locally based on grid_data
-        self._divg_u = spec.grid.divg_u
-        self._divg_v = spec.grid.divg_v
+        # TODO: maybe compute locally divg_* grid variables
+        # They parallel the del6_* variables a lot
+        # so may want to pair together if you move
+        self._divg_u = damping_coefficients.divg_u
+        self._divg_v = damping_coefficients.divg_v
 
         nonzero_nord_k = 0
         self._nonzero_nord = int(nord)
@@ -308,7 +308,9 @@ class DivergenceDamping:
             compute_halos=(self.grid_indexing.n_halo, self.grid_indexing.n_halo),
         )
 
-        self._corner_tmp = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._corner_tmp = utils.make_storage_from_shape(
+            self.grid_indexing.max_shape, backend=stencil_factory.backend
+        )
 
         self.fill_corners_bgrid_x = corners.FillCornersBGrid(
             direction="x",

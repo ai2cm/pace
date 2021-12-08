@@ -75,7 +75,7 @@ qc_crt = 5.0e-8  # Minimum condensate mixing ratio to allow partial cloudiness
 
 qi_gen = 1.82e-6  # Maximum cloud ice generation during remapping step
 
-### Latent heat coefficients used in wet bulb and bigg mechanism ###
+# Latent heat coefficients used in wet bulb and bigg mechanism
 latv = hlv
 lati = hlf
 lats = latv + lati
@@ -84,7 +84,7 @@ lcp = latv / cp_air
 icp = lati / cp_air
 tcp = (latv + lati) / cp_air
 
-### Fall velocity constants ###
+# Fall velocity constants ###
 vconr = 2503.23638966667
 normr = 25132741228.7183
 thr = 1.0e-8
@@ -97,7 +97,7 @@ cc = -0.0516344
 dd_fs = 0.00216078
 ee = 1.9714
 
-### Marshall-Palmer constants ###
+# Marshall-Palmer constants ###
 vcons = 6.6280504
 vcong = 87.2382675
 norms = 942477796.076938
@@ -129,7 +129,7 @@ irain_f = 0  # Cloud water to rain auto conversion scheme
 mono_prof = False  # Perform terminal fall with mono ppm scheme
 mp_time = 225.0  # Maximum microphysics timestep (sec)
 prog_ccn = 0  # Do prognostic ccn (yi ming's method)
-qi0_crt = 8e-05  # Cloud ice to snow autoconversion threshold (highly dependent on horizontal resolution)
+qi0_crt = 8e-05  # Cloud ice to snow autoconversion threshold
 qi_lim = 1.0  # Cloud ice limiter to prevent large ice build up
 ql_mlt = 0.002  # Maximum value of cloud water allowed from melted cloud ice
 qs0_crt = 0.003  # Snow to graupel density threshold (0.6e-3 in purdue lin scheme)

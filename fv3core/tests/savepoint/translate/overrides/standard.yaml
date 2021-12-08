@@ -119,3 +119,47 @@ Tracer2D1L:
    max_error: 1e-9
  - backend: gtc:cuda
    max_error: 1e-9
+
+DivgDel6:
+ - max_error: 3e-13 # 48_6ranks
+
+DxDy:
+ - max_error: 2e-13 # 48_6ranks
+
+EdgeFactors:
+ - max_error: 2e-12 # 48_6ranks
+
+DerivedTrig:
+ - max_error: 2e-11 # 48_6ranks
+
+GridAreas:
+ - max_error: 9e-12 # 48_6ranks
+
+GridGrid:
+ - max_error: 6e-13 # 48_6ranks
+
+InitGrid:
+ - max_error: 7e-12 # 48_6ranks
+
+InitGridUtils:
+ - max_error: 2e-7 # 48_6ranks
+   near_zero: 2e-13
+
+InitCubedToLatLon:
+ - max_error: 9e-13 # 48_6ranks
+   platform: metal
+
+TrigSg:
+  - max_error: 2e-7 # 48_6ranks
+    near_zero: 1e-12
+    ignore_near_zero_errors:
+      - cos_sg6
+      - cos_sg7
+      - cos_sg8
+      - cos_sg9
+
+UtilVectors:
+  - max_error: 2e-10 # 48_6ranks
+
+FVDynamics:
+  - max_error: 5e-5 # 48_6ranks using metric terms

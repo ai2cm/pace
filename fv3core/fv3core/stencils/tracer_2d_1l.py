@@ -7,7 +7,7 @@ import fv3core._config as spec
 import fv3core.stencils.fxadv
 import fv3core.utils
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.util
 from fv3core.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
@@ -128,22 +128,30 @@ class TracerAdvection:
         self,
         stencil_factory: StencilFactory,
         transport: FiniteVolumeTransport,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        grid_data,
+        comm: pace.util.CubedSphereCommunicator,
         tracer_count,
     ):
         grid_indexing = stencil_factory.grid_indexing
         self._tracer_count = tracer_count
         self.comm = comm
         self.grid = spec.grid
+        self.grid_data = grid_data
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
-        self._tmp_xfx = utils.make_storage_from_shape(shape, origin)
-        self._tmp_yfx = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fx = utils.make_storage_from_shape(shape, origin)
-        self._tmp_fy = utils.make_storage_from_shape(shape, origin)
-        self._tmp_dp = utils.make_storage_from_shape(shape, origin)
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape=shape, origin=origin, backend=stencil_factory.backend
+            )
+
+        self._tmp_xfx = make_storage()
+        self._tmp_yfx = make_storage()
+        self._tmp_fx = make_storage()
+        self._tmp_fy = make_storage()
+        self._tmp_dp = make_storage()
         self._tmp_qn2 = self.grid.quantity_wrap(
-            utils.make_storage_from_shape(shape, origin),
+            make_storage(),
             units="kg/m^2",
         )
 
@@ -192,7 +200,7 @@ class TracerAdvection:
         )
         self._copy_corners = PreAllocatedCopiedCornersFactory(
             stencil_factory=stencil_factory,
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             y_temporary=None,
         )
 
@@ -207,14 +215,14 @@ class TracerAdvection:
         self._flux_compute(
             cxd,
             cyd,
-            self.grid.dxa,
-            self.grid.dya,
-            self.grid.dx,
-            self.grid.dy,
-            self.grid.sin_sg1,
-            self.grid.sin_sg2,
-            self.grid.sin_sg3,
-            self.grid.sin_sg4,
+            self.grid_data.dxa,
+            self.grid_data.dya,
+            self.grid_data.dx,
+            self.grid_data.dy,
+            self.grid_data.sin_sg1,
+            self.grid_data.sin_sg2,
+            self.grid_data.sin_sg3,
+            self.grid_data.sin_sg4,
             self._tmp_xfx,
             self._tmp_yfx,
         )
@@ -271,7 +279,7 @@ class TracerAdvection:
                 dp1,
                 mfxd,
                 mfyd,
-                self.grid.rarea,
+                self.grid_data.rarea,
                 dp2,
             )
             for q in tracers.values():
@@ -291,7 +299,7 @@ class TracerAdvection:
                     dp1,
                     self._tmp_fx,
                     self._tmp_fy,
-                    self.grid.rarea,
+                    self.grid_data.rarea,
                     dp2,
                 )
             if not last_call:

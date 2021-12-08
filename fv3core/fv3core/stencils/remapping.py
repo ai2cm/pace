@@ -232,18 +232,19 @@ class LagrangianToEulerian:
             grid_indexing.domain[2] + 1,
         )
 
-        self._pe1 = utils.make_storage_from_shape(shape_kplus)
-        self._pe2 = utils.make_storage_from_shape(shape_kplus)
-        self._dp2 = utils.make_storage_from_shape(shape_kplus)
-        self._pn2 = utils.make_storage_from_shape(shape_kplus)
-        self._pe0 = utils.make_storage_from_shape(shape_kplus)
-        self._pe3 = utils.make_storage_from_shape(shape_kplus)
+        backend = stencil_factory.backend
+        self._pe1 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._dp2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pn2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe0 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe3 = utils.make_storage_from_shape(shape_kplus, backend=backend)
 
         self._gz: FloatField = utils.make_storage_from_shape(
-            shape_kplus, grid_indexing.origin_compute()
+            shape_kplus, grid_indexing.origin_compute(), backend=backend
         )
         self._cvm: FloatField = utils.make_storage_from_shape(
-            shape_kplus, grid_indexing.origin_compute()
+            shape_kplus, grid_indexing.origin_compute(), backend=backend
         )
 
         self._init_pe = stencil_factory.from_origin_domain(

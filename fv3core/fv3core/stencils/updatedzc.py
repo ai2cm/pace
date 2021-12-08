@@ -88,10 +88,12 @@ class UpdateGeopotentialHeightOnCGrid:
         self._gz_x = gt4py_utils.make_storage_from_shape(
             largest_possible_shape,
             grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
+            backend=stencil_factory.backend,
         )
         self._gz_y = gt4py_utils.make_storage_from_shape(
             largest_possible_shape,
             grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
+            backend=stencil_factory.backend,
         )
         full_origin = grid_indexing.origin_full()
         full_domain = grid_indexing.domain_full(add=(0, 0, 1))

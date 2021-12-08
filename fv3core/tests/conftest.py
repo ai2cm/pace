@@ -21,6 +21,8 @@ def pytest_addoption(parser):
     parser.addoption("--python_regression", action="store_true")
     parser.addoption("--threshold_overrides_file", action="store", default=None)
     parser.addoption("--print_domains", action="store_true")
+    parser.addoption("--compute_grid", action="store_true")
+    parser.addoption("--skip_grid_tests", action="store_true")
 
 
 def pytest_configure(config):

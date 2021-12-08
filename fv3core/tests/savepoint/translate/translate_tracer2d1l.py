@@ -5,7 +5,7 @@ import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.stencils.fvtp2d
 import fv3core.stencils.tracer_2d_1l
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as fv3util
+import pace.util as fv3util
 from fv3core.testing import ParallelTranslate
 
 
@@ -49,9 +49,12 @@ class TranslateTracer2D1L(ParallelTranslate):
             grid_type=spec.grid.grid_type,
             hord=spec.namelist.hord_tr,
         )
+        namelist = spec.namelist
+
         self.tracer_advection = fv3core.stencils.tracer_2d_1l.TracerAdvection(
             self.grid.stencil_factory,
             transport,
+            spec.grid.grid_data,
             communicator,
             fv_dynamics.NQ,
         )

@@ -33,7 +33,6 @@ from .translate_fvsubgridz import TranslateFVSubgridZ
 from .translate_fvtp2d import TranslateFvTp2d, TranslateFvTp2d_2
 from .translate_fxadv import TranslateFxAdv
 from .translate_grid import (
-    TranslateAAMCorrection,
     TranslateAGrid,
     TranslateDerivedTrig,
     TranslateDivgDel6,
@@ -56,6 +55,12 @@ from .translate_haloupdate import (
     TranslateHaloVectorUpdate,
     TranslateMPPBoundaryAdjust,
     TranslateMPPUpdateDomains,
+)
+from .translate_init_case import (
+    TranslateInitCase,
+    TranslateInitPreJab,
+    TranslateJablonowskiBaroclinic,
+    TranslatePVarAuxiliaryPressureVars,
 )
 from .translate_last_step import TranslateLastStep
 from .translate_map1_ppm_2d import (

@@ -21,13 +21,19 @@ import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
 
-import fv3gfs.util
+import pace.util
 from fv3core.utils.future_stencil import future_stencil
 from fv3core.utils.mpi import MPI
 from fv3core.utils.typing import Index3D, cast_to_index3d
-from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
+from pace.util.halo_data_transformer import QuantityHaloSpec
 
 from .gt4py_utils import make_storage_from_shape
+
+
+try:
+    import cupy
+except ImportError:
+    cupy = np
 
 
 class StencilConfig(Hashable):
@@ -336,7 +342,7 @@ class GridIndexing:
     @domain.setter
     def domain(self, domain):
         self._domain = domain
-        self._sizer = fv3gfs.util.SubtileGridSizer(
+        self._sizer = pace.util.SubtileGridSizer(
             nx=domain[0],
             ny=domain[1],
             nz=domain[2],
@@ -346,16 +352,12 @@ class GridIndexing:
 
     @classmethod
     def from_sizer_and_communicator(
-        cls, sizer: fv3gfs.util.GridSizer, cube: fv3gfs.util.CubedSphereCommunicator
+        cls, sizer: pace.util.GridSizer, cube: pace.util.CubedSphereCommunicator
     ) -> "GridIndexing":
         # TODO: if this class is refactored to split off the *_edge booleans,
         # this init routine can be refactored to require only a GridSizer
-        origin = sizer.get_origin(
-            [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM]
-        )
-        domain = sizer.get_extent(
-            [fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM]
-        )
+        origin = sizer.get_origin([pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM])
+        domain = sizer.get_extent([pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM])
         south_edge = cube.tile.partitioner.on_tile_bottom(cube.rank)
         north_edge = cube.tile.partitioner.on_tile_top(cube.rank)
         west_edge = cube.tile.partitioner.on_tile_left(cube.rank)
@@ -470,7 +472,11 @@ class GridIndexing:
             self.domain[2] + add[2],
         )
 
-    def axis_offsets(self, origin: Index3D, domain: Index3D) -> Dict[str, Any]:
+    def axis_offsets(
+        self,
+        origin: Tuple[int, ...],
+        domain: Tuple[int, ...],
+    ) -> Dict[str, Any]:
         if self.west_edge:
             i_start = gtscript.I[0] + self.origin[0] - origin[0]
         else:
@@ -518,7 +524,7 @@ class GridIndexing:
         configuration (given by dims) and a certain number of halo points.
 
         Args:
-            dims: dimension names, using dimension constants from fv3gfs.util
+            dims: dimension names, using dimension constants from pace.util
             halos: number of halo points for each dimension, defaults to zero
 
         Returns:
@@ -535,11 +541,11 @@ class GridIndexing:
     def _origin_from_dims(self, dims: Iterable[str]) -> List[int]:
         return_origin = []
         for dim in dims:
-            if dim in fv3gfs.util.X_DIMS:
+            if dim in pace.util.X_DIMS:
                 return_origin.append(self.origin[0])
-            elif dim in fv3gfs.util.Y_DIMS:
+            elif dim in pace.util.Y_DIMS:
                 return_origin.append(self.origin[1])
-            elif dim in fv3gfs.util.Z_DIMS:
+            elif dim in pace.util.Z_DIMS:
                 return_origin.append(self.origin[2])
         return return_origin
 
@@ -551,7 +557,7 @@ class GridIndexing:
         which is accessed up to a given number of halo points.
 
         Args:
-            dims: dimension names, using dimension constants from fv3gfs.util
+            dims: dimension names, using dimension constants from pace.util
             halos: number of halo points for each dimension, defaults to zero
 
         Returns:
@@ -562,7 +568,7 @@ class GridIndexing:
         for i, d in enumerate(dims):
             # need n_halo points at the start of the domain, regardless of whether
             # they are read, so that data is aligned in memory
-            if d in (fv3gfs.util.X_DIMS + fv3gfs.util.Y_DIMS):
+            if d in (pace.util.X_DIMS + pace.util.Y_DIMS):
                 shape[i] += self.n_halo
         for i, n in enumerate(halos):
             shape[i] += n
@@ -610,8 +616,10 @@ class GridIndexing:
         self,
         shape: Tuple[int, ...],
         origin: Tuple[int, ...],
-        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+        dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
         n_halo: Optional[int] = None,
+        *,
+        backend: str,
     ) -> QuantityHaloSpec:
         """Build memory specifications for the halo update.
 
@@ -620,6 +628,7 @@ class GridIndexing:
             origin: the origin of the compute domain
             dims: dimensionality of the data
             n_halo: number of halo points to update, defaults to self.n_halo
+            backend: gt4py backend to use
         """
 
         # TEMPORARY: we do a nasty temporary allocation here to read in the hardware
@@ -628,9 +637,9 @@ class GridIndexing:
         # we don't allocate
         # Refactor is filed in ticket DSL-820
 
-        temp_storage = make_storage_from_shape(shape, origin)
+        temp_storage = make_storage_from_shape(shape, origin, backend=backend)
         origin, extent = self.get_origin_domain(dims)
-        temp_quantity = fv3gfs.util.Quantity(
+        temp_quantity = pace.util.Quantity(
             temp_storage,
             dims=dims,
             units="unknown",
@@ -669,6 +678,10 @@ class StencilFactory:
         """
         self.config: StencilConfig = config
         self.grid_indexing: GridIndexing = grid_indexing
+
+    @property
+    def backend(self):
+        return self.config.backend
 
     def from_origin_domain(
         self,

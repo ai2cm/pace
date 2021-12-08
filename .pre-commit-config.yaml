@@ -32,15 +32,14 @@ repos:
           --ignore-missing-imports,
           --follow-imports, skip  # needed so we only test enabled files
         ]
-      files: fv3gfs-util
-    # - id: mypy
-    #   args: [
-    #       --no-strict-optional,
-    #       --ignore-missing-imports,
-    #       --follow-imports, skip  # needed so we only test enabled files
-    #     ]
-    #   files: fv3gfs-physics
-
+      files: pace-util
+    - id: mypy
+      args: [
+          --no-strict-optional,
+          --ignore-missing-imports,
+          --follow-imports, skip  # needed so we only test enabled files
+        ]
+      files: fv3gfs-physics
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
@@ -50,7 +49,7 @@ repos:
     - id: trailing-whitespace
 
 -   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.7.9
+    rev: 3.9.2
     hooks:
     - id: flake8
       name: flake8
@@ -59,16 +58,9 @@ repos:
       exclude: |
         (?x)^(
         .*/__init__.py |
-        fv3gfs-physics/.* |
-        fv3gfs-util/.*
         )$
     - id: flake8
       name: flake8 __init__.py files
       files: "__init__.py"
       # ignore unused import error in __init__.py files
       args: ["--ignore=F401,E203", --config, setup.cfg]
-      exclude: |
-        (?x)^(
-        fv3gfs-physics/.* |
-        fv3gfs-util/.*
-        )$

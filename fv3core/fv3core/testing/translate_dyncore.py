@@ -1,7 +1,7 @@
 import fv3core._config as spec
 import fv3core.stencils.dyn_core as dyn_core
 import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as fv3util
+import pace.util as fv3util
 from fv3core.testing import ParallelTranslate2PyState
 
 
@@ -120,12 +120,18 @@ class TranslateDynCore(ParallelTranslate2PyState):
         #   must be converted into gt4py storages
         for name in ("ak", "bk", "pfull", "phis"):
             inputs[name] = utils.make_storage_data(
-                inputs[name], inputs[name].shape, len(inputs[name].shape) * (0,)
+                inputs[name],
+                inputs[name].shape,
+                len(inputs[name].shape) * (0,),
+                backend=self.grid.stencil_factory.backend,
             )
 
         grid_data = spec.grid.grid_data
-        grid_data.ak = inputs["ak"]
-        grid_data.bk = inputs["bk"]
+        if grid_data.ak is None or grid_data.bk is None:
+            grid_data.ak = inputs["ak"]
+            grid_data.bk = inputs["bk"]
+            grid_data.ptop = inputs["ptop"]
+            grid_data.ks = inputs["ks"]
         self._base.compute_func = dyn_core.AcousticDynamics(
             communicator,
             spec.grid.stencil_factory,
@@ -135,8 +141,6 @@ class TranslateDynCore(ParallelTranslate2PyState):
             spec.grid.nested,
             spec.grid.stretched_grid,
             spec.namelist.dynamical_core.acoustic_dynamics,
-            inputs["ak"],
-            inputs["bk"],
             inputs["pfull"],
             inputs["phis"],
         )

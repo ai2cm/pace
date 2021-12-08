@@ -11,7 +11,7 @@ import fv3core
 import fv3core._config as spec
 import fv3gfs.wrapper as wrapper
 from fv3core.testing import translate
-from fv3gfs.util import (
+from pace.util import (
     X_DIMS,
     X_INTERFACE_DIM,
     Y_DIMS,
@@ -124,7 +124,8 @@ if __name__ == "__main__":
     dt_atmos = spec.namelist.dt_atmos
 
     # set backend
-    fv3core.set_backend("numpy")
+    backend = "numpy"
+    fv3core.set_backend(backend)
 
     # get another namelist for the communicator??
     nml2 = yaml.safe_load(
@@ -207,7 +208,7 @@ if __name__ == "__main__":
         grid_data[field] = serializer.read(field, grid_savepoint)
         if len(grid_data[field].flatten()) == 1:
             grid_data[field] = grid_data[field][0]
-    grid = translate.TranslateGrid(grid_data, rank).python_grid()
+    grid = translate.TranslateGrid(grid_data, rank, backend=backend).python_grid()
     fv3core._config.set_grid(grid)
 
     # startup
@@ -265,8 +266,6 @@ if __name__ == "__main__":
         stencil_factory=spec.grid.stencil_factory,
         damping_coefficients=spec.grid.damping_coefficients,
         config=spec.namelist.dynamical_core,
-        ak=state["atmosphere_hybrid_a_coordinate"],
-        bk=state["atmosphere_hybrid_b_coordinate"],
         phis=state["surface_geopotential"],
     )
 
@@ -298,9 +297,7 @@ if __name__ == "__main__":
             wrapper.flags.consv_te,
             wrapper.flags.do_adiabatic_init,
             dt_atmos,
-            wrapper.flags.ptop,
             wrapper.flags.n_split,
-            wrapper.flags.ks,
         )
         if spec.namelist.fv_sg_adj > 0:
             state["eastward_wind_tendency_due_to_physics"] = u_tendency
