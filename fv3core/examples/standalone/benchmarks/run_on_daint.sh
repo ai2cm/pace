@@ -76,9 +76,12 @@ DO_NSYS_RUN="$7"
 cd $ROOT_DIR
 make update_submodules_venv
 # set GT4PY version
-cd $ROOT_DIR
+
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PACE_DIR=$SCRIPT_DIR/../../../../
+
 if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
+    export GT4PY_VERSION=git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'
 fi
 
 # set up the virtual environment

@@ -18,9 +18,6 @@ wheel_command="--find-links=$wheel_dir"
 virtualenv_path=$1
 git submodule update --init ${pace_dir}/external/daint_venv
 git submodule update --init ${pace_dir}/external/gt4py
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=git submodule status ${pace_dir}/external/gt4py | awk '{print $1;}'
-fi
 (cd ${pace_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
 source ${virtualenv_path}/bin/activate
 python3 -m pip install ${pace_dir}/pace-util/

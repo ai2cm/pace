@@ -61,6 +61,13 @@ ARTIFACT_ROOT="/project/s1053/performance/"
 TIMING_DIR="${ARTIFACT_ROOT}/fv3core_performance/${backend}"
 PROFILE_DIR="${ARTIFACT_ROOT}/fv3core_profile/${backend}"
 CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/${experiment}/${backend}"
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PACE_DIR=$SCRIPT_DIR/../../../
+
+if [ -z "${GT4PY_VERSION}" ]; then
+    export GT4PY_VERSION=git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'
+fi
+
 
 
 # check sanity of environment
@@ -109,10 +116,6 @@ echo "Perf. artifact directory:     ${TIMING_DIR}"
 echo "Profile artifact directory:   ${PROFILE_DIR}"
 echo "Cache directory:              ${CACHE_DIR}"
 
-
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
-fi
 
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then

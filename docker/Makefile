@@ -3,11 +3,9 @@ SHELL := /bin/bash
 include Makefile.image_names
 
 DOCKER_BUILDKIT=1
-GT4PY_DIR=../external/gt4py
 BUILD_ARGS += \
 	--network host \
 	--build-arg MPI_IMAGE=$(MPI_IMAGE) \
-	--build-arg GT4PY_DIR=${GT4PY_DIR} \
 	--build-arg SERIALBOX_IMAGE=$(SERIALBOX_IMAGE) \
 	--build-arg ENVIRONMENT_IMAGE=$(ENVIRONMENT_IMAGE) \
 	--build-arg GT4PY_OPTIONALS=$(GT4PY_OPTIONALS) \
@@ -15,18 +13,14 @@ BUILD_ARGS += \
 
 
 DEPS_IMAGES = $(SERIALBOX_IMAGE) $(ENVIRONMENT_IMAGE) $(MPI_IMAGE)
-GT4PY_VERSION ?= `cat ../GT4PY_VERSION.txt`
 PULL ?=True
 
 build: fv3gfs_image
 
-.PHONY: dev fv3gfs_image build build_deps push_deps pull_deps get_gt4py
-
-get_gt4py:
-	git submodule update --init $(GT4PY_DIR)
+.PHONY: dev fv3gfs_image build build_deps push_deps pull_deps
 
  ## build production container image
-fv3gfs_image: get_gt4py
+fv3gfs_image:
 	if [ $(PULL) == True ]; then \
 		$(MAKE) pull_deps_if_needed; \
 	else \
