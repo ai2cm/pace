@@ -63,7 +63,6 @@ def fields_init(
     v1: FloatField,
     ccn: FloatField,
     c_praut: FloatField,
-    use_ccn: bool,
     c_air: Float,
     c_vap: Float,
     d0_vap: Float,
@@ -83,6 +82,7 @@ def fields_init(
         qi0_max,
         rh_inc,
         rh_inr,
+        use_ccn,
     )
 
     with computation(PARALLEL), interval(...):
@@ -320,9 +320,6 @@ def warm_rain(
     m2_rain: FloatField,
     m2_sol: FloatField,
     is_first: bool,
-    do_sedi_w: bool,
-    p_nonhydro: bool,
-    use_ccn: bool,
     c_air: Float,
     c_vap: Float,
     d0_vap: Float,
@@ -339,7 +336,15 @@ def warm_rain(
     dt_rain: Float,
     zs: Float,
 ):
-    from __externals__ import do_sedi_heat, irain_f, use_ppm, z_slope_liq
+    from __externals__ import (
+        do_sedi_heat,
+        do_sedi_w,
+        irain_f,
+        p_nonhydro,
+        use_ccn,
+        use_ppm,
+        z_slope_liq,
+    )
 
     with computation(PARALLEL), interval(...):
 
@@ -768,7 +773,6 @@ def sedimentation(
     vtgz: FloatField,
     vtsz: FloatField,
     m1_sol: FloatField,
-    do_sedi_w: bool,
     c_air: Float,
     c_vap: Float,
     d0_vap: Float,
@@ -778,7 +782,7 @@ def sedimentation(
     dts: Float,
     fac_imlt: Float,
 ):
-    from __externals__ import do_sedi_heat, ql_mlt, use_ppm
+    from __externals__ import do_sedi_heat, do_sedi_w, ql_mlt, use_ppm
 
     with computation(PARALLEL), interval(...):
 
@@ -1925,7 +1929,7 @@ class Microphysics:
         self._p_nonhydro = False
         self._d0_vap = self._c_vap - constants.C_LIQ
         self._lv00 = constants.HLV - self._d0_vap * constants.TICE_MICRO
-        self._do_sedi_w = False if self._hydrostatic else True
+        self._do_sedi_w = False if self._hydrostatic else self.namelist.do_sedi_w
         # Define cloud microphysics sub time step
         self._mpdt = min(self._dt_atmos, self.namelist.mp_time)
         self._rdt = 1.0 / self._dt_atmos
@@ -2015,6 +2019,7 @@ class Microphysics:
                 "prog_ccn": self.namelist.prog_ccn,
                 "rh_inr": self.namelist.rh_inr,
                 "rh_inc": self.namelist.rh_inc,
+                "use_ccn": self._use_ccn,
             },
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
@@ -2028,6 +2033,9 @@ class Microphysics:
                 "use_ppm": self.namelist.use_ppm,
                 "vr_max": self.namelist.vr_max,
                 "z_slope_liq": self.namelist.z_slope_liq,
+                "use_ccn": self._use_ccn,
+                "do_sedi_w": self._do_sedi_w,
+                "p_nonhydro": self._p_nonhydro,
             },
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
@@ -2044,6 +2052,7 @@ class Microphysics:
                 "vg_max": self.namelist.vg_max,
                 "vi_max": self.namelist.vi_max,
                 "vs_max": self.namelist.vs_max,
+                "do_sedi_w": self._do_sedi_w,
             },
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
@@ -2275,7 +2284,6 @@ class Microphysics:
             self._v1,
             self._ccn,
             self._c_praut,
-            self._use_ccn,
             self._c_air,
             self._c_vap,
             self._d0_vap,
@@ -2312,9 +2320,6 @@ class Microphysics:
                 self._m2_rain,
                 self._m2_sol,
                 True,
-                self._do_sedi_w,
-                self._p_nonhydro,
-                self._use_ccn,
                 self._c_air,
                 self._c_vap,
                 self._d0_vap,
@@ -2350,7 +2355,6 @@ class Microphysics:
                 self._vtgz,
                 self._vtsz,
                 self._m1_sol,
-                self._do_sedi_w,
                 self._c_air,
                 self._c_vap,
                 self._d0_vap,
@@ -2386,9 +2390,6 @@ class Microphysics:
                 self._m2_rain,
                 self._m2_sol,
                 False,
-                self._do_sedi_w,
-                self._p_nonhydro,
-                self._use_ccn,
                 self._c_air,
                 self._c_vap,
                 self._d0_vap,
