@@ -1,9 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
-import pace.util.constants as constants
 import pace.dsl.gt4py_utils as utils
 import pace.util
+import pace.util.constants as constants
 from fv3core._config import DynamicalCoreConfig
 from fv3core.decorators import FrozenStencil
 from fv3core.initialization.dycore_state import DycoreState

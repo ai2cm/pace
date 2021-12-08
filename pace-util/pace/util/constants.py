@@ -38,13 +38,13 @@ RDGAS = 287.05  # Gas constant for dry air [J/kg/deg] # 287.04
 RVGAS = 461.50  # Gas constant for water vapor [J/kg/deg]
 HLV = 2.5e6  # Latent heat of evaporation [J/kg]
 HLF = 3.3358e5  # Latent heat of fusion [J/kg]  # 3.34e5
-RGRAV = 1.0 / GRAV # Inverse of gravitational acceleration
+RGRAV = 1.0 / GRAV  # Inverse of gravitational acceleration
 # CP_AIR: Specific heat capacity of dry air at
 # constant pressure [J/kg/deg] # RDGAS / KAPPA
-CP_AIR = 1004.6 # Heat capacity of dry air at constant pressure
+CP_AIR = 1004.6  # Heat capacity of dry air at constant pressure
 KAPPA = RDGAS / CP_AIR  # 2.0 / 7.0
 DZ_MIN = 2.0
-CV_AIR = CP_AIR - RDGAS # Heat capacity of dry air at constant volume
+CV_AIR = CP_AIR - RDGAS  # Heat capacity of dry air at constant volume
 RDG = -RDGAS / GRAV
 CNST_0P20 = 0.2
 TFREEZE = 273.15  # Freezing temperature of fresh water [K]
@@ -56,8 +56,10 @@ ZVIR = RVGAS / RDGAS - 1  # con_fvirt in Fortran physics
 C_ICE = 1972.0  # Heat capacity of ice at -15 degrees Celsius
 C_LIQ = 4.1855e3  # Heat capacity of water at 15 degrees Celsius
 CP_VAP = 4.0 * RVGAS  # Heat capacity of water vapor at constant pressure
-TICE = 273.16 # Freezing temperature 
-TICE_MICRO = TICE # Freezing temperature, set to 165. to turn off ice-phase phys (kessler emulator) 
+TICE = 273.16  # Freezing temperature
+TICE_MICRO = (
+    TICE  # Freezing temp, set to 165. to turn off ice-phase phys (kessler emulator)
+)
 DC_ICE = C_LIQ - C_ICE  # Isobaric heating / cooling
 DC_VAP = CP_VAP - C_LIQ  # Isobaric heating / cooling
 D2ICE = DC_VAP + DC_ICE  # Isobaric heating / cooling
@@ -69,7 +71,9 @@ LV0 = (
 LI00 = (
     HLF - DC_ICE * TICE
 )  # -2.7105966e5, fusion latent heat coefficient at 0 degrees Kelvin
-LI2 = LV0 + LI00  # 2.86799816e6, sublimation latent heat coefficient at 0 degrees Kelvin
+LI2 = (
+    LV0 + LI00
+)  # 2.86799816e6, sublimation latent heat coefficient at 0 degrees Kelvin
 E00 = 611.21  # Saturation vapor pressure at 0 degrees Celsius
 T_WFR = TICE - 40.0  # homogeneous freezing temperature
 TICE0 = TICE - 0.01
@@ -126,7 +130,7 @@ NORMG = 5026548245.74367
 ########################################################################
 # Tunable parameters (Fortran namelist parameters)
 ########################################################################
-"""
+
 c_cracw = 0.8  # Rain accretion efficiency
 c_paut = 0.5  # Autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
 c_pgacs = 0.01  # Snow to graupel "accretion" eff. (was 0.1 in zetac)
@@ -170,4 +174,3 @@ vr_max = 16.0  # Maximum fall speed for rain
 vs_max = 2.0  # Maximum fall speed for snow
 z_slope_ice = 1  # Use linear mono slope for autoconversions
 z_slope_liq = 1  # Use linear mono slope for autoconversions
-"""

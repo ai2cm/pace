@@ -1,8 +1,8 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, cos, interval, sin
 
-from pace.util.constants import OMEGA
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util.constants import OMEGA
 
 
 def copy_defn(q_in: FloatField, q_out: FloatField):

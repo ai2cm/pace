@@ -16,7 +16,6 @@ from pace.dsl.typing import FloatField, FloatFieldIJ
 # conditionals.
 
 
-
 DELT = 0.1
 satmix = {"table": None, "table2": None, "tablew": None, "des2": None, "desw": None}
 
@@ -335,10 +334,11 @@ def sublimation(
     c_vap,
     lhl,
     lhi,
-    t_sub,
     qi_gen,
     qi_lim,
 ):
+    from __externals__ import t_sub
+
     src = 0.0
     if pt1 < t_sub:
         src = dim(qv, 1e-6)
@@ -352,7 +352,10 @@ def sublimation(
                 * 349138.78
                 * expsubl
                 / (
-                    iqs2 * den * constants.LAT2 / (0.0243 * constants.RVGAS * pt1 ** 2.0)
+                    iqs2
+                    * den
+                    * constants.LAT2
+                    / (0.0243 * constants.RVGAS * pt1 ** 2.0)
                     + 4.42478e4
                 )
             )
@@ -590,7 +593,6 @@ def satadjust(
         rad_rain,
         rad_snow,
         sat_adj0,
-        t_sub,
         tintqs,
     )
 
@@ -762,7 +764,6 @@ def satadjust(
             c_vap,
             lhl,
             lhi,
-            t_sub,
             qi_gen,
             qi_lim,
         )

@@ -40,14 +40,14 @@ class NamelistDefaults:
     qi_lim = 1.0  # cloud ice limiter to prevent large ice build up
     qi0_max = 1.0e-4  # max cloud ice value (by other sources)
     rad_snow = True  # consider snow in cloud fraciton calculation
-    #---rad_snow = 1  # Consider snow in cloud fraction calculation
+    # ---rad_snow = 1  # Consider snow in cloud fraction calculation
     rad_rain = True  # consider rain in cloud fraction calculation
     # ---rad_rain = 1  # Consider rain in cloud fraction calculation
     rad_graupel = True  # consider graupel in cloud fraction calculation
     tintqs = False  # use temperature in the saturation mixing in PDF
     dw_ocean = 0.10  # base value for ocean
     dw_land = 0.20  # base value for subgrid deviation / variability over land
-    #---dw_land = 0.15  # Base value for subgrid deviation / variability over land
+    # ---dw_land = 0.15  # Base value for subgrid deviation / variability over land
     # cloud scheme 0 - ?
     # 1: old fvgfs gfdl) mp implementation
     # 2: binary cloud scheme (0 / 1)
@@ -55,7 +55,7 @@ class NamelistDefaults:
     cld_min = 0.05  # !< minimum cloud fraction
     tau_l2v = 300.0  # cloud water to water vapor (evaporation)
     tau_v2l = 150.0  # water vapor to cloud water (condensation)
-    #---tau_v2l = 90.0  # Water vapor to cloud water (condensation)
+    # ---tau_v2l = 90.0  # Water vapor to cloud water (condensation)
     c2l_ord = 4
     regional = False
     m_split = 0
@@ -71,10 +71,12 @@ class NamelistDefaults:
     n_sponge = 1
     # all below added for physics
     fast_sat_adj = False
-    #---fast_sat_adj = 1  # Has fast saturation adjustments
+    # ---fast_sat_adj = 1  # Has fast saturation adjustments
     qc_crt = 5.0e-8  # Minimum condensate mixing ratio to allow partial cloudiness
     c_cracw = 0.8  # Rain accretion efficiency
-    c_paut = 0.5  # Autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
+    c_paut = (
+        0.5  # Autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
+    )
     c_pgacs = 0.01  # Snow to graupel "accretion" eff. (was 0.1 in zetac)
     c_psaci = 0.05  # Accretion: cloud ice to snow (was 0.1 in zetac)
     ccn_l = 300.0  # CCN over land (cm^-3)
@@ -105,7 +107,6 @@ class NamelistDefaults:
     z_slope_ice = True  # Use linear mono slope for autoconversions
     z_slope_liq = True  # Use linear mono slope for autoconversions
 
-    
     @classmethod
     def as_dict(cls):
         return {
