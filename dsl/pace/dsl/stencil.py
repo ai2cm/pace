@@ -780,7 +780,6 @@ def get_stencils_with_varied_bounds(
         ax_offsets = stencil_factory.grid_indexing.axis_offsets(
             origin=origin, domain=domain
         )
-        print(ax_offsets)
         stencils.append(
             stencil_factory.from_origin_domain(
                 func,

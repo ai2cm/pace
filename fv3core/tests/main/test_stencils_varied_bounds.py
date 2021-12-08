@@ -51,10 +51,10 @@ def get_stencil_factory(backend: str) -> StencilFactory:
     indexing = GridIndexing(
         domain=(12, 12, 79),
         n_halo=3,
-        south_edge=False,
-        north_edge=False,
-        west_edge=False,
-        east_edge=False,
+        south_edge=True,
+        north_edge=True,
+        west_edge=True,
+        east_edge=True,
     )
     return StencilFactory(config=config, grid_indexing=indexing)
 
@@ -88,9 +88,6 @@ def test_get_stencils_with_varied_bounds_and_regions(backend: str):
         domains,
         stencil_factory=factory,
     )
-    import pdb
-
-    pdb.set_trace()
     q_orig, q_ref = setup_data_vars(backend=backend)
     stencils[0](q_orig, q_orig)
     q_ref[3, 3] = 2.0
