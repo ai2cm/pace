@@ -64,7 +64,6 @@ class NamelistDefaults:
     nf_omega = 1
     fv_sg_adj = -1
     n_sponge = 1
-    # all below added for physics
     fast_sat_adj = False
     qc_crt = 5.0e-8  # Minimum condensate mixing ratio to allow partial cloudiness
     c_cracw = 0.8  # Rain accretion efficiency
