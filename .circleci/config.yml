@@ -29,6 +29,9 @@ jobs:
 
     steps:
       - checkout
+      - run:
+          name: Install Submodules
+          command: git submodule update --init
       - restore_cache:
           keys:
             - v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "pace-util/constraints.txt" }}
@@ -61,6 +64,9 @@ jobs:
 
     steps:
       - checkout
+      - run:
+          name: Install Submodules
+          command: git submodule update --init
       - restore_cache:
           keys:
             - v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "fv3core/constraints.txt" }}
