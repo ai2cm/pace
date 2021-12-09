@@ -13,7 +13,7 @@ cuda_version=cuda
 
 # module environment
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-buildenv_loc=$SCRIPT_DIR/../buildenv
+buildenv_loc=$SCRIPT_DIR/../../buildenv
 source ${buildenv_loc}/machineEnvironment.sh
 source ${buildenv_loc}/${env_file}
 

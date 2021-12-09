@@ -37,6 +37,12 @@ class QuantityFactory:
         self._sizer = sizer
         self._numpy = numpy
 
+    def set_extra_dim_lengths(self, **kwargs):
+        """
+        Set the length of extra (non-x/y/z) dimensions.
+        """
+        self._sizer.extra_dim_lengths.update(kwargs)
+
     @classmethod
     def from_backend(cls, sizer: SubtileGridSizer, backend: str):
         """Initialize a QuantityFactory to use a specific gt4py backend.
