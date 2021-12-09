@@ -33,7 +33,6 @@ import fv3core.testing
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
-
     parser.add_argument(
         "data_dir",
         type=str,
@@ -51,12 +50,6 @@ def parse_args() -> Namespace:
         type=str,
         action="store",
         help="gt4py backend to use",
-    )
-    parser.add_argument(
-        "hash",
-        type=str,
-        action="store",
-        help="git hash to store",
     )
     parser.add_argument(
         "--disable_halo_exchange",
@@ -78,7 +71,7 @@ def parse_args() -> Namespace:
 
 
 def set_experiment_info(
-    experiment_name: str, time_step: int, backend: str, git_hash: str
+    experiment_name: str, time_step: int, backend: str
 ) -> Dict[str, Any]:
     experiment: Dict[str, Any] = {}
     now = datetime.now()
@@ -87,7 +80,6 @@ def set_experiment_info(
     experiment["setup"]["timestamp"] = dt_string
     experiment["setup"]["dataset"] = experiment_name
     experiment["setup"]["timesteps"] = time_step
-    experiment["setup"]["hash"] = git_hash
     experiment["setup"]["version"] = "python/" + backend
     experiment["setup"]["format_version"] = 2
     experiment["times"] = {}
@@ -163,9 +155,7 @@ def collect_data_and_write_to_file(
     results = None
     if is_root:
         print("Gathering Times")
-        results = set_experiment_info(
-            experiment_name, args.time_step, args.backend, args.hash
-        )
+        results = set_experiment_info(experiment_name, args.time_step, args.backend)
         results = gather_hit_counts(hits_per_step, results)
 
     results = gather_timing_data(times_per_step, results, comm)
@@ -218,7 +208,7 @@ if __name__ == "__main__":
         grid = spec.make_grid_from_namelist(namelist, communicator.rank)
         spec.set_grid(grid)
 
-        metric_terms = MetricTerms.from_tile_sizing(
+        metric_terms = MetricTerms.from_single_tile_sizing(
             npx=namelist.npx,
             npy=namelist.npy,
             npz=namelist.npz,

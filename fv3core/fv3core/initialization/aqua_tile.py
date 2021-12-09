@@ -2,9 +2,9 @@ import numpy as np
 
 import fv3core.initialization.baroclinic as baroclinic
 import fv3gfs.util as fv3util
-from fv3core.fv3core.utils.global_constants import DRY_MASS, GRAV, RDGAS
 from fv3core.grid import MetricTerms
 from fv3core.initialization.dycore_state import DycoreState
+from fv3core.utils.global_constants import DRY_MASS, GRAV, RDGAS
 
 
 nhalo = fv3util.N_HALO_DEFAULT

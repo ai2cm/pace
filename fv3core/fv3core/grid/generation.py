@@ -223,7 +223,7 @@ class MetricTerms:
                 cls.TILE_DIM: 6,
                 cls.CARTESIAN_DIM: 3,
             },
-            layout=communicator.partitioner.tile.layout,
+            layout=communicator.layout,
         )
         quantity_factory = fv3util.QuantityFactory.from_backend(sizer, backend=backend)
         return cls(
