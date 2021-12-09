@@ -13,7 +13,6 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
-from fv3core.utils import global_config
 from fv3core.utils.grid import DampingCoefficients, GridData
 from fv3core.utils.stencil import StencilFactory
 from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -229,7 +228,7 @@ class DynamicalCore:
             extra_dim_lengths={},
         )
         quantity_factory = pace.util.QuantityFactory.from_backend(
-            sizer, backend=global_config.get_backend()
+            sizer, backend=stencil_factory.backend
         )
         assert config.moist_phys, "fvsetup is only implemented for moist_phys=true"
         assert config.nwat == 6, "Only nwat=6 has been implemented and tested"
