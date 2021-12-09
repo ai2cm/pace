@@ -47,7 +47,7 @@ unpack_test_data:
 
 get_test_data:
 	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
-	[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt) -" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
+	[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt -)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
 	rm -rf $(TEST_DATA_HOST) && \
 	$(MAKE) sync_test_data && \
 	$(MAKE) unpack_test_data ;\
