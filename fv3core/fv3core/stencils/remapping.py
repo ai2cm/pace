@@ -565,22 +565,22 @@ class LagrangianToEulerian:
         self._copy_from_below_stencil(ua, pe)
         dtmp = 0.0
         if last_step and not do_adiabatic_init:
-            if consv_te > constants.CONSV_MIN:
+            if consv_te > CONSV_MIN:
                 raise NotImplementedError(
                     "We do not support consv_te > 0.001 "
                     "because that would trigger an allReduce"
                 )
-            elif consv_te < -constants.CONSV_MIN:
+            elif consv_te < -CONSV_MIN:
                 raise NotImplementedError(
                     "Unimplemented/untested case consv("
                     + str(consv_te)
                     + ")  < -CONSV_MIN("
-                    + str(-constants.CONSV_MIN)
+                    + str(-CONSV_MIN)
                     + ")"
                 )
 
         if self._do_sat_adjust:
-            fast_mp_consv = not do_adiabatic_init and consv_te > constants.CONSV_MIN
+            fast_mp_consv = not do_adiabatic_init and consv_te > CONSV_MIN
             self._saturation_adjustment(
                 dp1,
                 tracers["qvapor"],
