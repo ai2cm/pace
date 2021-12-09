@@ -11,5 +11,7 @@ else
     if [ $? -ne 0 ] ; then
         echo "Error: Could not download the buildenv (https://github.com/ai2cm/buildenv) into ${envdir}. Aborting."
         exit 1
+    else
+        cd buildenv && git checkout feature/consolidate_daint_venv
     fi
 fi
