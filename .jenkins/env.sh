@@ -12,6 +12,6 @@ else
         echo "Error: Could not download the buildenv (https://github.com/ai2cm/buildenv) into ${envdir}. Aborting."
         exit 1
     else
-        cd buildenv && git checkout feature/consolidate_daint_venv
+        git --git-dir=buildenv/.git --work-tree=buildenv checkout feature/consolidate_daint_venv
     fi
 fi
