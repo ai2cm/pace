@@ -3,7 +3,6 @@ import math
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core._config as spec
 import fv3core.stencils.fxadv
 import fv3core.utils
 import fv3core.utils.gt4py_utils as utils
@@ -133,9 +132,9 @@ class TracerAdvection:
         tracer_count,
     ):
         grid_indexing = stencil_factory.grid_indexing
+        self.grid_indexing = grid_indexing  # needed for selective validation
         self._tracer_count = tracer_count
         self.comm = comm
-        self.grid = spec.grid
         self.grid_data = grid_data
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
@@ -150,13 +149,18 @@ class TracerAdvection:
         self._tmp_fx = make_storage()
         self._tmp_fy = make_storage()
         self._tmp_dp = make_storage()
-        self._tmp_qn2 = self.grid.quantity_wrap(
+        dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
+        origin, extent = grid_indexing.get_origin_domain(dims)
+        self._tmp_qn2 = pace.util.Quantity(
             make_storage(),
+            dims=dims,
             units="kg/m^2",
+            origin=origin,
+            extent=extent,
         )
 
         ax_offsets = fv3core.utils.axis_offsets(
-            self.grid, grid_indexing.origin_full(), grid_indexing.domain_full()
+            grid_indexing, grid_indexing.origin_full(), grid_indexing.domain_full()
         )
         local_axis_offsets = {}
         for axis_offset_name, axis_offset_value in ax_offsets.items():
@@ -194,7 +198,13 @@ class TracerAdvection:
         # self._cmax_2 = stencil_factory.from_origin_domain(cmax_stencil2)
 
         # Setup halo updater for tracers
-        tracer_halo_spec = self.grid.get_halo_update_spec(shape, origin, utils.halo)
+        tracer_halo_spec = grid_indexing.get_quantity_halo_spec(
+            grid_indexing.domain_full(add=(1, 1, 1)),
+            grid_indexing.origin_compute(),
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            n_halo=utils.halo,
+            backend=stencil_factory.backend,
+        )
         self._tracers_halo_updater = self.comm.get_scalar_halo_updater(
             [tracer_halo_spec] * tracer_count
         )
