@@ -33,15 +33,17 @@ optarg="$2"
 
 # get latest version of buildenv
 git submodule update --init
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+buildenv_loc=$SCRIPT_DIR/../../buildenv
 
 # setup module environment and default queue
-. ${envloc}/env/machineEnvironment.sh
+. ${buildenv_loc}/machineEnvironment.sh
 
 # load machine dependent environment
-. ${envloc}/env/env.${host}.sh
+. ${buildenv_loc}/env.${host}.sh
 
 # load scheduler tools (provides run_command)
-. ${envloc}/env/schedulerTools.sh
+. ${buildenv_loc}/schedulerTools.sh
 
 set -e
 
