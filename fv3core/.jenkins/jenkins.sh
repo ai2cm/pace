@@ -61,7 +61,7 @@ pushd `dirname $0` > /dev/null
 popd > /dev/null
 shopt -s expand_aliases
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-buildenv_loc=$SCRIPT_DIR/../buildenv
+buildenv_loc=$SCRIPT_DIR/../../buildenv
 
 # setup module environment and default queue
 test -f ${buildenv_loc}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
