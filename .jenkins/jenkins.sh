@@ -200,10 +200,6 @@ if [ $? -ne 0 ] ; then
 fi
 echo "### ACTION ${action} SUCCESSFUL"
 
-# end timer and report time taken
-T="$(($(date +%s)-T))"
-printf "####### time taken: %02d:%02d:%02d:%02d\n" "$((T/86400))" "$((T/3600%24))" "$((T/60%60))" "$((T%60))"
-
 # no errors encountered
 echo "####### finished: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
 exit 0
