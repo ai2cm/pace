@@ -93,7 +93,7 @@ test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
 # load scheduler tools
 . ${buildenv_loc}/schedulerTools.sh
-scheduler_script=${buildenv_loc}/submit.${host}.${scheduler}"
+scheduler_script="${buildenv_loc}/submit.${host}.${scheduler}"
 
 # if there is a scheduler script, make a copy for this job
 if [ -f ${scheduler_script} ] ; then
