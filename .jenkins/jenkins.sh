@@ -200,10 +200,6 @@ if [ $? -ne 0 ] ; then
 fi
 echo "### ACTION ${action} SUCCESSFUL"
 
-run_timing_script=${BUILDENV_DIR}/submit.${host}.${scheduler}"
-
-echo "### ACTION ${action} SUCCESSFUL"
-
 # end timer and report time taken
 T="$(($(date +%s)-T))"
 printf "####### time taken: %02d:%02d:%02d:%02d\n" "$((T/86400))" "$((T/3600%24))" "$((T/60%60))" "$((T%60))"
