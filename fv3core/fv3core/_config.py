@@ -615,7 +615,7 @@ class Namelist:
     do_sedi_w: bool = NamelistDefaults.do_sedi_w
     fast_sat_adj: bool = NamelistDefaults.fast_sat_adj
     fix_negative: bool = NamelistDefaults.fix_negative
-    irain_f: float = NamelistDefaults.irain_f
+    irain_f: int = NamelistDefaults.irain_f
     mono_prof: bool = NamelistDefaults.mono_prof
     mp_time: float = NamelistDefaults.mp_time
     prog_ccn: bool = NamelistDefaults.prog_ccn
