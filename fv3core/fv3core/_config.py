@@ -753,6 +753,16 @@ class Namelist:
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
 
+    @classmethod
+    def from_f90nml(cls, namelist: f90nml.Namelist):
+        namelist_dict = namelist_to_flatish_dict(namelist.items())
+        namelist_dict = {
+            key: value
+            for key, value in namelist_dict.items()
+            if key in cls.__dataclass_fields__  # type: ignore
+        }
+        return cls(**namelist_dict)
+
     @property
     def dynamical_core(self) -> DynamicalCoreConfig:
         return DynamicalCoreConfig(
