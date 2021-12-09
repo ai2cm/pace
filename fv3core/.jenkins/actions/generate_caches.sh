@@ -29,7 +29,7 @@ SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 PACE_DIR=$SCRIPT_DIR/../../../
 
 if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'
+    export GT4PY_VERSION=`git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'`
 fi
 
 test -n "${experiment}" || exitError 1001 ${LINENO} "experiment is not defined"
