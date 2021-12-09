@@ -23,6 +23,9 @@
 
 set -x +e
 
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BUILDENV_DIR=$SCRIPT_DIR/../../buildenv
+
 # get root directory of where jenkins.sh is sitting
 root=`dirname $0`
 envloc=`dirname $0`
@@ -33,17 +36,15 @@ optarg="$2"
 
 # get latest version of buildenv
 git submodule update --init
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-buildenv_loc=$SCRIPT_DIR/../../buildenv
 
 # setup module environment and default queue
-. ${buildenv_loc}/machineEnvironment.sh
+. ${BUILDENV_DIR}/machineEnvironment.sh
 
 # load machine dependent environment
-. ${buildenv_loc}/env.${host}.sh
+. ${BUILDENV_DIR}/env.${host}.sh
 
 # load scheduler tools (provides run_command)
-. ${buildenv_loc}/schedulerTools.sh
+. ${BUILDENV_DIR}/schedulerTools.sh
 
 set -e
 

@@ -50,6 +50,8 @@ if [[ $input_backend = gtc_* ]] ; then
     input_backend=`echo $input_backend | sed 's/_/:/'`
 fi
 
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BUILDENV_DIR=$SCRIPT_DIR/../../buildenv
 
 # Read arguments
 action="$1"
@@ -60,12 +62,10 @@ experiment="$3"
 pushd `dirname $0` > /dev/null
 popd > /dev/null
 shopt -s expand_aliases
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-buildenv_loc=$SCRIPT_DIR/../../buildenv
 
 # setup module environment and default queue
-test -f ${buildenv_loc}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
-. ${buildenv_loc}/machineEnvironment.sh
+test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
+. ${BUILDENV_DIR}/machineEnvironment.sh
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
 # get root directory of where jenkins.sh is sitting
@@ -81,18 +81,18 @@ if [[ $backend != *numpy* ]];then
 fi
 
 # load machine dependent environment
-if [ ! -f ${buildenv_loc}/env.${host}.sh ] ; then
-    exitError 1202 ${LINENO} "could not find ${buildenv_loc}/env.${host}.sh"
+if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then
+    exitError 1202 ${LINENO} "could not find ${BUILDENV_DIR}/env.${host}.sh"
 fi
-. ${buildenv_loc}/env.${host}.sh
+. ${BUILDENV_DIR}/env.${host}.sh
 
 # check if action script exists
 script="${jenkins_dir}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
 # load scheduler tools
-. ${buildenv_loc}/schedulerTools.sh
-scheduler_script="${buildenv_loc}/submit.${host}.${scheduler}"
+. ${BUILDENV_DIR}/schedulerTools.sh
+scheduler_script="${BUILDENV_DIR}/submit.${host}.${scheduler}"
 
 # if there is a scheduler script, make a copy for this job
 if [ -f ${scheduler_script} ] ; then
