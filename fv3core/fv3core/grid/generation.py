@@ -79,11 +79,13 @@ class MetricTerms:
         self._tile_partitioner = self._partitioner.tile
         self._rank = self._comm.rank
         self.quantity_factory = quantity_factory
-        self.quantity_factory._sizer.extra_dim_lenths = {
-            self.LON_OR_LAT_DIM: 2,
-            self.TILE_DIM: 6,
-            self.CARTESIAN_DIM: 3,
-        }
+        self.quantity_factory.set_extra_dim_lengths(
+            **{
+                self.LON_OR_LAT_DIM: 2,
+                self.TILE_DIM: 6,
+                self.CARTESIAN_DIM: 3,
+            }
+        )
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
             self.quantity_factory._sizer, self._comm
         )

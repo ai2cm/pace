@@ -188,10 +188,8 @@ def _make_storage_data_2d(
     if do_reshape:
         d_axis = dummy[0] if dummy else axis
         shape2d = shape[:d_axis] + shape[d_axis + 1 :]
-        start2d = start[:d_axis] + start[d_axis + 1 :]
     else:
         shape2d = shape[0:2]
-        start2d = start[0:2]
 
     start1, start2 = start[0:2]
     size1, size2 = data.shape
