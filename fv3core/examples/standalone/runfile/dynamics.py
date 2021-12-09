@@ -248,7 +248,6 @@ if __name__ == "__main__":
         # TODO remove this creation of the legacy grid once everything that
         # references it is updated or removed
         grid = spec.make_grid_from_namelist(namelist, rank)
-        spec.set_grid(grid)
 
         metric_terms = MetricTerms.from_tile_sizing(
             npx=namelist.npx,
