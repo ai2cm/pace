@@ -71,7 +71,7 @@ class Partitioner(abc.ABC):
         rank: int,
         global_dims: Sequence[str],
         global_extent: Sequence[int],
-        overlap: bool = True,
+        overlap: bool = False,
     ) -> Tuple[Union[int, slice], ...]:
         """Return the subtile slice of a given rank on an array.
 
@@ -85,7 +85,7 @@ class Partitioner(abc.ABC):
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
-                section. Default is True.
+                section. Default is False.
 
         Returns:
             subtile_slice: the slice of the global compute domain corresponding
@@ -230,7 +230,7 @@ class TilePartitioner(Partitioner):
         rank: int,
         global_dims: Sequence[str],
         global_extent: Sequence[int],
-        overlap: bool = True,
+        overlap: bool = False,
     ) -> Tuple[slice, ...]:
         """Return the subtile slice of a given rank on an array.
 
@@ -244,7 +244,7 @@ class TilePartitioner(Partitioner):
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
-                section. Default is True.
+                section. Default is False.
 
         Returns:
             subtile_slice: the slice of the global compute domain corresponding
@@ -674,7 +674,7 @@ class CubedSpherePartitioner(Partitioner):
         rank: int,
         global_dims: Sequence[str],
         global_extent: Sequence[int],
-        overlap: bool = True,
+        overlap: bool = False,
     ) -> Tuple[Union[int, slice], ...]:
         """Return the subtile slice of a given rank on an array.
 
@@ -688,7 +688,7 @@ class CubedSpherePartitioner(Partitioner):
             overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
-                section. Default is True.
+                section. Default is False.
 
         Returns:
             subtile_slice: the tuple slice of the global compute domain corresponding
@@ -952,7 +952,7 @@ def subtile_slice(
     layout: Tuple[int, int],
     subtile_index: Tuple[int, int],
     edge_interior_ratio: float = 1.0,
-    overlap: bool = True,
+    overlap: bool = False,
 ) -> Tuple[slice, ...]:
     """
     Returns the slice of data within a tile's computational domain belonging
@@ -969,7 +969,7 @@ def subtile_slice(
         overlap (optional): if True, for interface variables include the part
                 of the array shared by adjacent ranks in both ranks. If False, ensure
                 only one of those ranks (the greater rank) is assigned the overlapping
-                section. Default is True.
+                section. Default is False.
     """
 
     return_list = []
