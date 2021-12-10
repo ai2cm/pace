@@ -98,15 +98,12 @@ class Partitioner(abc.ABC):
         self,
         global_metadata: QuantityMetadata,
         rank: int,
-        is_cube_metadata: bool = False,
     ) -> Tuple[int, ...]:
         """Return the shape of a single rank representation for the given dimensions.
 
         Args:
             global_metadata: quantity metadata.
             rank: rank of the process.
-            is_cube_metadata (optional): True if the given metadata is for a cubed sphere model.
-                False if not, e.g. data is for a single tile. Default is False.
 
         Returns:
             extent: shape of a single rank representation for the given dimensions.
@@ -162,34 +159,37 @@ class TilePartitioner(Partitioner):
         self,
         global_metadata: QuantityMetadata,
         rank: int,
-        is_cube_metadata: bool = False,
     ) -> Tuple[int, ...]:
         """Return the shape of a single rank representation for the given dimensions.
 
         Args:
             global_metadata: quantity metadata.
             rank: rank of the process.
-            is_cube_metadata (optional): True if the given metadata is for a cubed sphere model.
-                False if not, e.g. data is for a single tile. Default is False.
 
         Returns:
             extent: shape of a single rank representation for the given dimensions.
         """
-        if is_cube_metadata:
-            cube_metadata_offset = 1
-        else:
-            cube_metadata_offset = 0
+        # detect if one of the given dims is the tile dimension and ignore it
+        cartesian_dims = global_metadata.dims
+        cartesian_extent = global_metadata.extent
+        for index, dim in enumerate(global_metadata.dims):
+            if dim == constants.TILE_DIM:
+                cartesian_dims = (
+                    global_metadata.dims[:index] + global_metadata.dims[index + 1 :]
+                )
+                cartesian_extent = (
+                    global_metadata.extent[:index] + global_metadata.extent[index + 1 :]
+                )
+                break
 
-        # cube_metadata_offset is used to exclude the TILE dimension (first index) for cubed sphere metadata.
         tile_decomposition = subtile_extents_from_tile_metadata(
-            global_metadata.dims[cube_metadata_offset:],
-            global_metadata.extent[cube_metadata_offset:],
-            self.layout,
+            cartesian_dims, cartesian_extent, self.layout, self.edge_interior_ratio
         )
-        num_decomposed_dims = int(len(tile_decomposition) / 2)
+        num_decomposed_dims = len(cartesian_dims)
         horizontal_dim_index = 0
         return_extent = []
-        for num_dim, dim in enumerate(global_metadata.dims[cube_metadata_offset:]):
+
+        for num_dim, dim in enumerate(cartesian_dims):
             edge_index_offset = 0
             is_end_index = False
             if dim in constants.HORIZONTAL_DIMS:
@@ -651,15 +651,12 @@ class CubedSpherePartitioner(Partitioner):
         self,
         cube_metadata: QuantityMetadata,
         rank: int,
-        is_cube_metadata: bool = True,
     ) -> Tuple[int, ...]:
         """Return the shape of a single rank representation for the given dimensions.
 
         Args:
             global_metadata: quantity metadata.
             rank: rank of the process.
-            is_cube_metadata (optional): True if the given metadata is for a cubed sphere model.
-                False if not, e.g. data is for a single tile. Default is True.
 
         Returns:
             extent: shape of a single rank representation for the given dimensions.
@@ -669,10 +666,8 @@ class CubedSpherePartitioner(Partitioner):
                 "currently only supports tile dimension {constants.TILE_DIM} as the "
                 "first dimension, got dims {cube_metadata.dims}"
             )
-        if not is_cube_metadata:
-            is_cube_metadata = True
 
-        return self.tile.subtile_extent(cube_metadata, rank, is_cube_metadata)
+        return self.tile.subtile_extent(cube_metadata, rank)
 
     def subtile_slice(
         self,
