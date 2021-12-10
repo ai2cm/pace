@@ -2,7 +2,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import (
@@ -10,8 +10,8 @@ from fv3core.stencils.fvtp2d import (
     PreAllocatedCopiedCornersFactory,
 )
 from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
 DZ_MIN = constants.DZ_MIN

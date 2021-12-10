@@ -8,8 +8,8 @@ from fv3core.utils.corners import (
     fill_corners_dgrid,
 )
 from fv3core.utils.global_constants import PI, RADIUS
-from fv3core.utils.gt4py_utils import asarray
-from fv3core.utils.stencil import GridIndexing
+from pace.dsl.gt4py_utils import asarray
+from pace.dsl.stencil import GridIndexing
 from pace.util.constants import N_HALO_DEFAULT
 
 from .eta import set_hybrid_pressure_coefficients

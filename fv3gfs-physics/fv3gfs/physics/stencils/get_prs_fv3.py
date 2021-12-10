@@ -1,7 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-from fv3core.utils.typing import FloatField
 from fv3gfs.physics.global_constants import con_fvirt
+from pace.dsl.typing import FloatField
 
 
 def get_prs_fv3(

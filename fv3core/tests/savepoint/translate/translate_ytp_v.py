@@ -4,8 +4,8 @@ import fv3core._config as spec
 import fv3core.stencils.ytp_v as ytp_v
 from fv3core.testing import TranslateFortranData2Py
 from fv3core.utils.grid import GridData, axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 def ytp_v_stencil_defn(

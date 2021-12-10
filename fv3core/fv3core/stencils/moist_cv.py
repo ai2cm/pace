@@ -2,7 +2,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, PARALLEL, computation, exp, interval, log
 
 import fv3core.utils.global_constants as constants
-from fv3core.utils.typing import FloatField
+from pace.dsl.typing import FloatField
 
 
 @gtscript.function

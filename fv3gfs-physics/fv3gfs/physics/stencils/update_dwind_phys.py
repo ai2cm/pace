@@ -1,8 +1,8 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
+import pace.dsl.gt4py_utils as utils
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
 from pace.util import TilePartitioner
 
 
@@ -154,12 +154,13 @@ class AGrid2DGridPhysics:
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         self._dt5 = 0.5 * self.namelist.dt_atmos
-        npx = grid_indexing.domain[0] + 1
-        npy = grid_indexing.domain[1] + 1
+        npx = self.namelist.npx
+        npy = self.namelist.npy
         self._im2 = int((npx - 1) / 2) + 2
         self._jm2 = int((npy - 1) / 2) + 2
         self._subtile_index = partitioner.tile.subtile_index(rank)
         layout = self.namelist.layout
+
         self._subtile_width_x = int((npx - 1) / layout[0])
         self._subtile_width_y = int((npy - 1) / layout[1])
         shape = grid_indexing.max_shape
@@ -202,6 +203,7 @@ class AGrid2DGridPhysics:
         self.global_ie, self.global_je = self.local_to_global_indices(
             grid_indexing.iec, grid_indexing.jec
         )
+
         if self.west_edge:
             je_lower = self.global_to_local_y(min(self._jm2, self.global_je))
             origin_lower = (grid_indexing.n_halo, grid_indexing.n_halo, 0)

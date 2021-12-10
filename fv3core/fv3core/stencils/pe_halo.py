@@ -1,6 +1,6 @@
 from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
-from fv3core.utils.typing import FloatField
+from pace.dsl.typing import FloatField
 
 
 def edge_pe(pe: FloatField, delp: FloatField, ptop: float):

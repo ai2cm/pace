@@ -9,9 +9,9 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import pace.util
 from fv3core import StencilConfig
 from fv3core.utils.global_config import set_backend
-from fv3core.utils.gt4py_utils import make_storage_from_shape
-from fv3core.utils.stencil import FrozenStencil, _convert_quantities_to_storage
-from fv3core.utils.typing import FloatField
+from pace.dsl.gt4py_utils import make_storage_from_shape
+from pace.dsl.stencil import FrozenStencil, _convert_quantities_to_storage
+from pace.dsl.typing import FloatField
 
 
 @contextlib.contextmanager
