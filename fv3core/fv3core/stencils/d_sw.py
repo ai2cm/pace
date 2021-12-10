@@ -9,8 +9,8 @@ from gt4py.gtscript import (
 )
 
 import fv3core.stencils.delnflux as delnflux
-import fv3core.utils.global_constants as constants
 import pace.dsl.gt4py_utils as utils
+import pace.util.constants as constants
 from fv3core._config import DGridShallowWaterLagrangianDynamicsConfig
 from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from fv3core.stencils.d2a2c_vect import contravariant

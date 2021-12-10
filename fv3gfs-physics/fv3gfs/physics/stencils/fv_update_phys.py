@@ -1,9 +1,9 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
-import fv3gfs.physics.global_constants as constants
 import pace.dsl.gt4py_utils as utils
 import pace.util
+import pace.util.constants as constants
 from fv3core.utils.grid import GridData
 
 # TODO: we don't want to import from fv3core
@@ -18,10 +18,10 @@ from pace.util import TilePartitioner
 @gtscript.function
 def moist_cvm(qvapor, gz, ql, qs):
     cvm = (
-        (1.0 - (qvapor + gz)) * constants.cv_air
-        + qvapor * constants.cv_vap
-        + ql * constants.c_liq
-        + qs * constants.c_ice
+        (1.0 - (qvapor + gz)) * constants.CV_AIR
+        + qvapor * constants.CV_VAP
+        + ql * constants.C_LIQ
+        + qs * constants.C_ICE
     )
     return cvm
 
@@ -151,7 +151,7 @@ class ApplyPhysics2Dycore:
             state.qgraupel,
             state.pt,
             t_dt,
-            constants.cp_air,
+            constants.CP_AIR,
             self._dt,
         )
         # [TODO] needs a better solution to handle u_dt, v_dt quantity
