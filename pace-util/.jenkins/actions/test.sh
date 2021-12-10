@@ -39,6 +39,8 @@ parseOptions()
 # echo basic setup
 echo "####### executing: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
 
+JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../"
+
 # start timer
 T="$(date +%s)"
 
@@ -66,7 +68,8 @@ if [ "${target}" == "gpu" ] ; then
     module unload cray-python
     module unload pycuda
     set -e
-    pip3 install -r requirements.txt -r requirements_gpu.txt -c constraints.txt .
+    pip3 install -r requirements.txt -c constraints.txt .
+    pip3 install ${JENKINS_DIR}/../external/gt4py -c constraints.txt
 else
     pip3 install -r requirements.txt -c constraints.txt .
 fi
