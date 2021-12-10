@@ -57,7 +57,7 @@ lint:
 #  - line 2-5: beautify the comments (inline comments generated)
 #  - line 5: get rid of an illegaly generated [toml]
 #  - line 6: replace the pip update command with the make call in docs
-constraints.txt: requirements.txt setup.py external/gt4py/setup.py
+constraints.txt: requirements.txt requirements_gpu.txt setup.py
 	pip-compile $^ --output-file constraints.txt
 	sed -i '/^git+https/d' constraints.txt
 	sed -i 's/ *# \(.*\)/# \1/g' constraints.txt

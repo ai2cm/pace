@@ -71,8 +71,7 @@ echo "PYTHON env ${python_env}"
 
 
 if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`git submodule status ${
-    }/../external/gt4py | awk '{print $1;}'`
+    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
 fi
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then

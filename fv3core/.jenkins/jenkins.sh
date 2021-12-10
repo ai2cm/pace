@@ -71,13 +71,10 @@ test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "canno
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
 
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PACE_DIR=$SCRIPT_DIR/../../
 
 if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'`
+    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
 fi
-
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
     . ${JENKINS_DIR}/actions/fetch_caches.sh $backend $experiment
