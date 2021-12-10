@@ -63,7 +63,6 @@ popd > /dev/null
 shopt -s expand_aliases
 # Download the env
 . ${envloc}/env.sh
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 # setup module environment and default queue
 test -f ${envloc}/env/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
@@ -75,7 +74,7 @@ export jenkins_dir=`dirname $0`
 
 
 if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`git submodule status ${SCRIPT_DIR}/../external/gt4py | awk '{print $1;}'`
+    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
 fi
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
