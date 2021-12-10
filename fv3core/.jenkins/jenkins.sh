@@ -72,10 +72,13 @@ echo "PYTHON env ${python_env}"
 # get root directory of where jenkins.sh is sitting
 export jenkins_dir=`dirname $0`
 
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PACE_DIR=$SCRIPT_DIR/../../
 
 if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
+    export GT4PY_VERSION=`git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'`
 fi
+
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
     . ${jenkins_dir}/actions/fetch_caches.sh $backend $experiment
