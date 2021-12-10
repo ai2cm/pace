@@ -839,6 +839,13 @@ def test_subtile_extents_from_tile_metadata(
         array_dims, tile_extent, layout, edge_interior_ratio
     )
     assert result == rank_extent
+    result = fv3gfs.util.partitioner.subtile_extents_from_tile_metadata(
+        dims=array_dims,
+        tile_extent=tile_extent,
+        layout=layout,
+        edge_interior_ratio=edge_interior_ratio,
+    )
+    assert result == rank_extent
 
 
 @pytest.mark.parametrize(

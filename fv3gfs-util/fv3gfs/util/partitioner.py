@@ -823,10 +823,11 @@ def tile_extent_from_rank_metadata(
 
 
 def list_args_to_tuple_args(function):
-    def wrapper(*args):
+    def wrapper(*args, **kwargs):
         """Wrapper ensures hashable function arguments (e.g. lists become tuples)"""
         args = [tuple(x) if type(x) == list else x for x in args]
-        result = function(*args)
+        kwargs = {key: (tuple(value) if type(value) == list else value) for (key, value) in kwargs.items()}
+        result = function(*args, **kwargs)
         result = tuple(result) if type(result) == list else result
         return result
 
