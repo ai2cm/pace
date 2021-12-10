@@ -661,11 +661,6 @@ class CubedSpherePartitioner(Partitioner):
         Returns:
             extent: shape of a single rank representation for the given dimensions.
         """
-        if cube_metadata.dims[0] != constants.TILE_DIM:
-            raise NotImplementedError(
-                "currently only supports tile dimension {constants.TILE_DIM} as the "
-                "first dimension, got dims {cube_metadata.dims}"
-            )
 
         return self.tile.subtile_extent(cube_metadata, rank)
 
@@ -826,7 +821,10 @@ def list_args_to_tuple_args(function):
     def wrapper(*args, **kwargs):
         """Wrapper ensures hashable function arguments (e.g. lists become tuples)"""
         args = [tuple(x) if type(x) == list else x for x in args]
-        kwargs = {key: (tuple(value) if type(value) == list else value) for (key, value) in kwargs.items()}
+        kwargs = {
+            key: (tuple(value) if type(value) == list else value)
+            for (key, value) in kwargs.items()
+        }
         result = function(*args, **kwargs)
         result = tuple(result) if type(result) == list else result
         return result

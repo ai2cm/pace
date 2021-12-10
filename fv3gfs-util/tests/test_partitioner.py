@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 import fv3gfs.util
@@ -238,7 +239,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(0, 4), slice(0, 2)),
             True,
             1.0,
-            id="24_rank_no_interface_right_overlap",
+            id="12_rank_no_interface_right_overlap",
         ),
         pytest.param(
             [fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
@@ -248,7 +249,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(0, 4), slice(2, 4)),
             True,
             1.0,
-            id="24_rank_no_interface_right_overlap",
+            id="12_rank_no_interface_right_overlap",
         ),
         pytest.param(
             [fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
@@ -258,7 +259,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(0, 4), slice(2, 4)),
             False,
             1.0,
-            id="24_rank_centered_right_no_overlap_rectangle_layout",
+            id="12_rank_centered_right_no_overlap_rectangle_layout",
         ),
         pytest.param(
             [fv3gfs.util.Z_INTERFACE_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
@@ -538,7 +539,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(0, 3), slice(0, 2)),
             False,
             0.5,
-            id="48_rank_botfarleft_x_interface_half_edge",
+            id="72_rank_botfarleft_x_interface_half_edge",
         ),
         pytest.param(
             [fv3gfs.util.Y_DIM, fv3gfs.util.X_INTERFACE_DIM],
@@ -548,7 +549,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(0, 3), slice(2, 6)),
             False,
             0.5,
-            id="48_rank_botcloseleft_x_interface_half_edge",
+            id="72_rank_botcloseleft_x_interface_half_edge",
         ),
         pytest.param(
             [fv3gfs.util.Y_DIM, fv3gfs.util.X_INTERFACE_DIM],
@@ -558,7 +559,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(9, 12), slice(10, 13)),
             False,
             0.5,
-            id="48_rank_topfarright_x_interface_half_edge",
+            id="72_rank_topfarright_x_interface_half_edge",
         ),
         pytest.param(
             [fv3gfs.util.Y_INTERFACE_DIM, fv3gfs.util.X_DIM],
@@ -568,7 +569,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(0, 3), slice(0, 2)),
             False,
             0.5,
-            id="48_rank_botfarleft_y_interface_half_edge",
+            id="72_rank_botfarleft_y_interface_half_edge",
         ),
         pytest.param(
             [fv3gfs.util.Y_INTERFACE_DIM, fv3gfs.util.X_DIM],
@@ -578,7 +579,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(0, 3), slice(2, 6)),
             False,
             0.5,
-            id="48_rank_botcloseleft_y_interface_half_edge",
+            id="72_rank_botcloseleft_y_interface_half_edge",
         ),
         pytest.param(
             [fv3gfs.util.Y_INTERFACE_DIM, fv3gfs.util.X_DIM],
@@ -588,7 +589,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(9, 13), slice(0, 2)),
             False,
             0.5,
-            id="48_rank_topfarleft_y_interface_half_edge",
+            id="72_rank_topfarleft_y_interface_half_edge",
         ),
         pytest.param(
             [fv3gfs.util.Y_INTERFACE_DIM, fv3gfs.util.X_DIM],
@@ -598,7 +599,7 @@ def test_tile_extent_from_rank_metadata(array_extent, array_dims, layout, tile_e
             (slice(9, 13), slice(10, 12)),
             False,
             0.5,
-            id="48_rank_topfarright_y_interface_half_edge",
+            id="72_rank_topfarright_y_interface_half_edge",
         ),
     ],
 )
@@ -736,7 +737,7 @@ def test_subtile_slice_even_grid_odd_layout(
             "Cannot find valid decomposition for odd \\(13\\) gridpoints along an even count \\(4\\) of ranks.",
             False,
             0.5,
-            id="odd_grid_even_layout_y",
+            id="48_rank_odd_grid_even_layout_y",
         ),
         pytest.param(
             [fv3gfs.util.Y_DIM, fv3gfs.util.X_DIM],
@@ -746,7 +747,7 @@ def test_subtile_slice_even_grid_odd_layout(
             "Cannot find valid decomposition for odd \\(19\\) gridpoints along an even count \\(2\\) of ranks.",
             False,
             1.0,
-            id="odd_grid_even_layout_x",
+            id="48_rank_odd_grid_even_layout_x",
         ),
     ],
 )
@@ -790,7 +791,7 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
             (3, 4),
             0.5,
             (4, 6, 2, 3),
-            id="48_rank_half_edge_tiles",
+            id="72_rank_half_edge_tiles",
         ),
         pytest.param(
             [fv3gfs.util.X_INTERFACE_DIM, fv3gfs.util.Y_DIM],
@@ -798,7 +799,7 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
             (3, 4),
             0.5,
             (4, 6, 2, 3),
-            id="48_rank_half_edge_tiles_x_interface",
+            id="72_rank_half_edge_tiles_x_interface",
         ),
         pytest.param(
             [fv3gfs.util.X_DIM, fv3gfs.util.Y_INTERFACE_DIM],
@@ -806,7 +807,7 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
             (3, 4),
             0.5,
             (4, 6, 2, 3),
-            id="48_rank_half_edge_tiles_y_interface",
+            id="72_rank_half_edge_tiles_y_interface",
         ),
         pytest.param(
             [fv3gfs.util.X_DIM, fv3gfs.util.Z_DIM, fv3gfs.util.Y_DIM],
@@ -814,7 +815,7 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
             (3, 4),
             0.5,
             (4, 5, 6, 2, 5, 3),
-            id="48_rank_3d_half_edge_tiles",
+            id="72_rank_3d_half_edge_tiles",
         ),
         pytest.param(
             [
@@ -827,7 +828,7 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
             (3, 4),
             0.5,
             (6, 4, 5, 6, 6, 2, 5, 3),
-            id="48_rank_3d_with_tile_dim_half_edge_tiles",
+            id="72_rank_3d_with_tile_dim_half_edge_tiles",
         ),
     ],
 )
@@ -860,7 +861,7 @@ def test_subtile_extents_from_tile_metadata(
             (slice(0, 3, None), slice(0, 2, None)),
             (9, 8),
             "Only equal sized subdomains are supported, was given an edge_interior_ratio of 0.5",
-            id="48_rank_half_edge_tiles",
+            id="72_rank_half_edge_tiles",
         ),
     ],
 )
@@ -890,3 +891,76 @@ def test_tile_extent_from_metadata(
         fv3gfs.util.partitioner.tile_extent_from_rank_metadata(
             array_dims, slice_extent, layout, half_edge_interior_ratio
         )
+
+
+@pytest.mark.parametrize(
+    "array_dims, tile_extent, layout, edge_interior_ratio, rank, tile_expected, cubedsphere_expected",
+    [
+        pytest.param(
+            [
+                fv3gfs.util.TILE_DIM,
+                fv3gfs.util.X_DIM,
+                fv3gfs.util.Z_DIM,
+                fv3gfs.util.Y_DIM,
+            ],
+            (6, 12, 5, 12),
+            (3, 4),
+            0.5,
+            0,
+            (2, 5, 3),
+            (2, 5, 3),
+            id="72_rank_tile_x_z_y_half_edge_tiles",
+        ),
+        pytest.param(
+            [
+                fv3gfs.util.TILE_DIM,
+                fv3gfs.util.Y_DIM,
+                fv3gfs.util.Z_DIM,
+                fv3gfs.util.X_DIM,
+            ],
+            (6, 12, 5, 12),
+            (3, 4),
+            0.5,
+            0,
+            (3, 5, 2),
+            (3, 5, 2),
+            id="72_rank_tile_y_z_x_half_edge_tiles",
+        ),
+        pytest.param(
+            [
+                fv3gfs.util.Z_DIM,
+                fv3gfs.util.Y_DIM,
+                fv3gfs.util.TILE_DIM,
+                fv3gfs.util.X_DIM,
+            ],
+            (5, 12, 6, 12),
+            (3, 4),
+            0.5,
+            0,
+            (5, 3, 2),
+            (5, 3, 2),
+            id="72_rank_z_y_tile_x_half_edge_tiles",
+        ),
+    ],
+)
+def test_subtile_extent_with_tile_dimensions(
+    array_dims,
+    tile_extent,
+    layout,
+    edge_interior_ratio,
+    rank,
+    tile_expected,
+    cubedsphere_expected,
+):
+    data_array = np.zeros((tile_extent))
+    quantity = fv3gfs.util.Quantity(
+        data_array, array_dims, "dimensionless", [0, 0, 0, 0]
+    )
+
+    tile_partitioner = fv3gfs.util.TilePartitioner(layout, edge_interior_ratio)
+    cubedsphere_partitioner = fv3gfs.util.CubedSpherePartitioner(tile_partitioner)
+
+    tile_result = tile_partitioner.subtile_extent(quantity.metadata, rank)
+    assert tile_result == tile_expected
+    cubedsphere_result = cubedsphere_partitioner.subtile_extent(quantity.metadata, rank)
+    assert cubedsphere_result == cubedsphere_expected
