@@ -81,6 +81,7 @@ fi
 
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
+    echo "Fetching for exisintg gt_caches"
     . ${jenkins_dir}/actions/fetch_caches.sh $backend $experiment
 fi
 
