@@ -13,6 +13,7 @@ import pace.dsl
 import pace.util as fv3util
 from fv3core.testing import ParallelTranslate, TranslateGrid
 from fv3core.utils.mpi import MPI
+from fv3gfs.physics import PhysicsConfig
 
 from . import translate
 
@@ -23,9 +24,6 @@ import serialbox  # noqa: E402
 
 
 GRID_SAVEPOINT_NAME = "Grid-Info"
-
-# this must happen before any classes from fv3core are instantiated
-fv3core.testing.enable_selective_validation()
 
 
 class ReplaceRepr:
@@ -103,6 +101,27 @@ def process_grid_savepoint(serializer, grid_savepoint, rank, *, backend: str):
     grid = make_grid(grid_savepoint, serializer, rank, backend=backend)
     fv3core._config.set_grid(grid)
     return grid
+
+
+@pytest.fixture()
+def Grid(serializer, grid_savepoint, rank, *, backend: str):
+    grid = make_grid(grid_savepoint, serializer, rank, backend=backend)
+    return grid
+
+
+@pytest.fixture()
+def grid_data(Grid):
+    return Grid.grid_data
+
+
+@pytest.fixture()
+def grid_indexing(Grid):
+    return Grid.grid_indexing
+
+
+@pytest.fixture()
+def physics_config(namelist_filename):
+    return PhysicsConfig.from_f90nml(namelist_filename)
 
 
 def get_test_class(test_name):

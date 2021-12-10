@@ -15,7 +15,6 @@ from gt4py.gtscript import (
 
 import fv3core.stencils.moist_cv as moist_cv
 import pace.dsl.gt4py_utils as utils
-import pace.util.constants as constants
 from fv3core._config import RemappingConfig
 from fv3core.stencils.basic_operations import adjust_divide_stencil
 from fv3core.stencils.map_single import MapSingle
