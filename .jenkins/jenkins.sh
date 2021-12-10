@@ -60,7 +60,6 @@ experiment="$3"
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
-envloc=`/bin/pwd`
 popd > /dev/null
 shopt -s expand_aliases
 

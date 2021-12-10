@@ -26,10 +26,6 @@ set -x +e
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BUILDENV_DIR=$JENKINS_DIR/../../buildenv
 
-# get root directory of where jenkins.sh is sitting
-root=`dirname $0`
-envloc=`dirname $0`
-
 # some global variables
 action="$1"
 optarg="$2"
@@ -49,7 +45,7 @@ git submodule update --init
 set -e
 
 # check if action script exists
-script="${root}/actions/${action}.sh"
+script="${JENKINS_DIR}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
 # set up virtual env, if not already set up
