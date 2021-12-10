@@ -827,7 +827,7 @@ def tile_extent_from_rank_metadata(
     return extent_from_metadata(dims, rank_extent, layout_factors)
 
 
-def listArgsToTupleArgs(function):
+def list_args_to_tuple_args(function):
     def wrapper(*args):
         """Wrapper ensures hashable function arguments (e.g. lists become tuples)"""
         args = [tuple(x) if type(x) == list else x for x in args]
@@ -838,7 +838,7 @@ def listArgsToTupleArgs(function):
     return wrapper
 
 
-@listArgsToTupleArgs
+@list_args_to_tuple_args
 @functools.lru_cache(maxsize=64)
 def subtile_extents_from_tile_metadata(
     dims: Sequence[str],
