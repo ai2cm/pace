@@ -14,8 +14,7 @@ if [[ -d /external/fv3gfs-wrapper ]]
 then
     CC=mpicc MPI=mpich make -C /external/fv3gfs-wrapper build
 fi
-
-pip install -e /external/pace-util -e /external/stencils -c constraints.txt
+pip install -e /external/pace-util -e /external/dsl -e /external/stencils -c constraints.txt
 pip install -e /fv3core -c /constraints.txt
 
 exec "$@"

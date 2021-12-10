@@ -39,17 +39,6 @@ if [ $save_wheel ]; then
 fi
 python3 -m pip install --find-links=$wheeldir cupy Cython clang-format
 
-
-# installation of gt4py
-rm -rf gt4py
-git clone git@github.com:ai2cm/gt4py.git gt4py
-cd gt4py
-if [ -z "${GT4PY_VERSION}" ]; then
-    wget 'https://raw.githubusercontent.com/ai2cm/pace/main/GT4PY_VERSION.txt'
-    GT4PY_VERSION=`cat GT4PY_VERSION.txt`
-fi
-git checkout ${GT4PY_VERSION}
-cd ../
 if [ $save_wheel ]; then
     python3 gt4py/setup.py bdist_wheel -d $wheeldir
     python3 -m pip wheel --wheel-dir=$wheeldir "gt4py/[${cuda_version}]"

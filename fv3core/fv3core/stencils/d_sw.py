@@ -9,8 +9,8 @@ from gt4py.gtscript import (
 )
 
 import fv3core.stencils.delnflux as delnflux
-import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
+import pace.util.constants as constants
 from fv3core._config import DGridShallowWaterLagrangianDynamicsConfig
 from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from fv3core.stencils.d2a2c_vect import contravariant
@@ -24,8 +24,8 @@ from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import advect_u_along_x
 from fv3core.stencils.ytp_v import advect_v_along_y
 from fv3core.utils.grid import DampingCoefficients, GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import (
     X_DIM,
     X_INTERFACE_DIM,

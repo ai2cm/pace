@@ -1,6 +1,7 @@
 import math
 
-from ..utils.global_constants import PI, RADIUS
+from pace.util.constants import PI, RADIUS
+
 from .generation import MetricTerms
 from .gnomonic import (
     _cart_to_latlon,

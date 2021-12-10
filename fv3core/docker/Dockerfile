@@ -29,8 +29,7 @@ COPY --from=serialbox_image /usr/include/boost /usr/include/boost
 ENV BOOST_HOME=/usr/include/boost
 ARG CPPFLAGS="-I${BOOST_HOME} -I${BOOST_HOME}/boost"
 ARG GT4PY_OPTIONALS=""
-ARG GT4PY_DIR
-COPY ${GT4PY_DIR} /gt4py
+COPY external/gt4py /gt4py
 
 RUN if [ ! -z `echo $GT4PY_OPTIONALS | grep cuda` ] ; then pip install cupy-cuda102==7.7.0 ; else echo Not installing cuda ; fi
 RUN pip install --no-cache-dir -c /constraints.txt "/gt4py${GT4PY_OPTIONALS}" && \
@@ -42,8 +41,9 @@ ENV FV3_STENCIL_REBUILD_FLAG=False
 ###
 ### Copy over necessary source and configuration files
 ###
-COPY external/stencils/ /external/stencils/
 COPY external/pace-util/ /external/pace-util/
+COPY external/stencils/ /external/stencils/
+COPY external/dsl/ /external/dsl/
 COPY fv3core /fv3core/fv3core
 COPY tests /fv3core/tests
 COPY setup.py README.md /fv3core/

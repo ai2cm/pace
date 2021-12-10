@@ -1,4 +1,4 @@
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.testing import TranslateFortranData2Py
 from fv3core.utils import corners
 from fv3core.utils.grid import axis_offsets
@@ -43,7 +43,7 @@ class TranslateFillCorners(TranslateFortranData2Py):
 
     def compute_from_storage(self, inputs):
         nord_column = inputs["nord_col"][:]
-        utils.device_sync()
+        utils.device_sync(backend=self.grid.stencil_factory.backend)
         for nord in utils.unique(nord_column):
             if nord != 0:
                 ki = [i for i in range(self.grid.npz) if nord_column[i] == nord]

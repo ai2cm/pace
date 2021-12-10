@@ -3,37 +3,23 @@ import math
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, PARALLEL, computation, exp, floor, interval, log
 
-import fv3core.utils.global_constants as constants
+import pace.util.constants as constants
 from fv3core._config import SatAdjustConfig
 from fv3core.stencils.basic_operations import dim
 from fv3core.stencils.moist_cv import compute_pkz_func
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 # TODO: This code could be reduced greatly with abstraction, but first gt4py
 # needs to support gtscript function calls of arbitrary depth embedded in
 # conditionals.
 
-DC_VAP = constants.CP_VAP - constants.C_LIQ  # - 2339.5, isobaric heating / cooling
-DC_ICE = constants.C_LIQ - constants.C_ICE  # 2213.5, isobaric heating / cooling
-LV0 = (
-    constants.HLV - DC_VAP * constants.TICE
-)  # 3.13905782e6, evaporation latent heat coefficient at 0 deg k
-LI00 = (
-    constants.HLF - DC_ICE * constants.TICE
-)  # -2.7105966e5, fusion latent heat coefficient at 0 deg k
-LI2 = LV0 + LI00  # 2.86799816e6, sublimation latent heat coefficient at 0 deg k
-D2ICE = DC_VAP + DC_ICE  # - 126, isobaric heating / cooling
-E00 = 611.21  # saturation vapor pressure at 0 deg c
-TMIN = constants.TICE - 160.0
+
 DELT = 0.1
 satmix = {"table": None, "table2": None, "tablew": None, "des2": None, "desw": None}
-TICE = constants.TICE
-T_WFR = TICE - 40.0  # homogeneous freezing temperature
-TICE0 = TICE - 0.01
 
-LAT2 = (constants.HLV + constants.HLF) ** 2  # used in bigg mechanism
+
 # melting of cloud ice to cloud water and rain
 # TODO, when if blocks are possible,, only compute when 'melting'
 QS_LENGTH = 2621
@@ -41,7 +27,7 @@ QS_LENGTH = 2621
 
 @gtscript.function
 def tem_lower(i):
-    return TMIN + DELT * i
+    return constants.T_SAT_MIN + DELT * i
 
 
 @gtscript.function
@@ -51,10 +37,10 @@ def tem_upper(i):
 
 @gtscript.function
 def q_table_oneline(delta_heat_capacity, latent_heat_coefficient, tem):
-    return E00 * exp(
+    return constants.E00 * exp(
         (
-            delta_heat_capacity * log(tem / TICE)
-            + (tem - TICE) / (tem * TICE) * latent_heat_coefficient
+            delta_heat_capacity * log(tem / constants.TICE)
+            + (tem - constants.TICE) / (tem * constants.TICE) * latent_heat_coefficient
         )
         / constants.RVGAS
     )
@@ -62,12 +48,12 @@ def q_table_oneline(delta_heat_capacity, latent_heat_coefficient, tem):
 
 @gtscript.function
 def table_vapor_oneline(tem):
-    return q_table_oneline(DC_VAP, LV0, tem)
+    return q_table_oneline(constants.DC_VAP, constants.LV0, tem)
 
 
 @gtscript.function
 def table_ice_oneline(tem):
-    return q_table_oneline(D2ICE, LI2, tem)
+    return q_table_oneline(constants.D2ICE, constants.LI2, tem)
 
 
 # TODO Math can be consolidated if we can call gtscript functions from
@@ -83,7 +69,7 @@ def qs_table_fn(i):
         table = table_vapor_oneline(tem_u)
     if i >= 1400 and i < 1600:
         esupc = table_vapor_oneline(tem_u)
-        wice = 0.05 * (TICE - tem_u)
+        wice = 0.05 * (constants.TICE - tem_u)
         wh2o = 0.05 * (tem_u - 253.16)
         table = wice * table + wh2o * esupc
     return table
@@ -104,7 +90,7 @@ def qs_table2_fn(i):
         # table(i)
         table = table_ice_oneline(tem0)
         tem0 = tem_upper(i - 1400)
-        table = (0.05 * (TICE - tem0)) * table + (
+        table = (0.05 * (constants.TICE - tem0)) * table + (
             0.05 * (tem0 - 253.16)
         ) * table_vapor_oneline(tem0)
         # table2(i - 1)
@@ -186,8 +172,8 @@ def subtract_sink_pt1(pt1, sink, lhl, cvm):
 def melt_cloud_ice(
     qv, qi, ql, q_liq, q_sol, pt1, icp2, fac_imlt, mc_air, c_vap, lhi, cvm
 ):
-    if (qi > 1.0e-8) and (pt1 > TICE):
-        factmp = fac_imlt * (pt1 - TICE) / icp2
+    if (qi > 1.0e-8) and (pt1 > constants.TICE):
+        factmp = fac_imlt * (pt1 - constants.TICE) / icp2
         sink = qi if qi < factmp else factmp
         qi = qi - sink
         ql = ql + sink
@@ -234,7 +220,7 @@ def fix_negative_cloud_water(ql, qr):
 # Enforce complete freezing of cloud water to cloud ice below - 48 c
 @gtscript.function
 def complete_freezing(qv, ql, qi, q_liq, q_sol, pt1, cvm, icp2, mc_air, lhi, c_vap):
-    dtmp = TICE - 48.0 - pt1
+    dtmp = constants.TICE - 48.0 - pt1
     if ql > 0.0 and dtmp > 0.0:
         sink = min(ql, dtmp / icp2)
         ql = ql - sink
@@ -248,7 +234,7 @@ def complete_freezing(qv, ql, qi, q_liq, q_sol, pt1, cvm, icp2, mc_air, lhi, c_v
 
 @gtscript.function
 def homogenous_freezing(qv, ql, qi, q_liq, q_sol, pt1, cvm, icp2, mc_air, lhi, c_vap):
-    dtmp = T_WFR - pt1  # [ - 40, - 48]
+    dtmp = constants.T_WFR - pt1  # [ - 40, - 48]
     if ql > 0.0 and dtmp > 0.0:
         sink = min(ql, dtmp / icp2)
         sink = min(sink, ql * dtmp * 0.125)
@@ -266,7 +252,7 @@ def homogenous_freezing(qv, ql, qi, q_liq, q_sol, pt1, cvm, icp2, mc_air, lhi, c
 def heterogeneous_freezing(
     exptc, pt1, cvm, ql, qi, q_liq, q_sol, den, icp2, dt_bigg, mc_air, lhi, qv, c_vap
 ):
-    tc = TICE0 - pt1
+    tc = constants.TICE0 - pt1
     if ql > 0.0 and tc > 0.0:
         sink = 3.3333e-10 * dt_bigg * (exptc - 1.0) * den * ql ** 2
         sink = min(ql, sink)
@@ -282,7 +268,7 @@ def heterogeneous_freezing(
 
 @gtscript.function
 def make_graupel(pt1, cvm, fac_r2g, qr, qg, q_liq, q_sol, lhi, icp2, mc_air, qv, c_vap):
-    dtmp = (TICE - 0.1) - pt1
+    dtmp = (constants.TICE - 0.1) - pt1
     if qr > 1e-7 and dtmp > 0.0:
         rainfac = (dtmp * 0.025) ** 2
         #  no limit on freezing below - 40 deg c
@@ -301,7 +287,7 @@ def make_graupel(pt1, cvm, fac_r2g, qr, qg, q_liq, q_sol, lhi, icp2, mc_air, qv,
 def melt_snow(
     pt1, cvm, fac_smlt, qs, ql, qr, q_liq, q_sol, lhi, icp2, mc_air, qv, c_vap, qs_mlt
 ):
-    dtmp = pt1 - (TICE + 0.1)
+    dtmp = pt1 - (constants.TICE + 0.1)
     dimqs = dim(qs_mlt, ql)
     if qs > 1e-7 and dtmp > 0.0:
         snowfac = (dtmp * 0.1) ** 2
@@ -348,14 +334,15 @@ def sublimation(
     c_vap,
     lhl,
     lhi,
-    t_sub,
     qi_gen,
     qi_lim,
 ):
+    from __externals__ import t_sub
+
     src = 0.0
     if pt1 < t_sub:
         src = dim(qv, 1e-6)
-    elif pt1 < TICE0:
+    elif pt1 < constants.TICE0:
         dq = qv - iqs2
         sink = adj_fac * dq / (1.0 + tcp2 * dqsdt)
         if qi > 1.0e-8:
@@ -365,14 +352,17 @@ def sublimation(
                 * 349138.78
                 * expsubl
                 / (
-                    iqs2 * den * LAT2 / (0.0243 * constants.RVGAS * pt1 ** 2.0)
+                    iqs2
+                    * den
+                    * constants.LAT2
+                    / (0.0243 * constants.RVGAS * pt1 ** 2.0)
                     + 4.42478e4
                 )
             )
         else:
             pidep = 0.0
         if dq > 0.0:
-            tmp = TICE - pt1
+            tmp = constants.TICE - pt1
             qi_crt = (
                 qi_gen * qi_lim / den
                 if qi_lim < 0.1 * tmp
@@ -397,7 +387,7 @@ def sublimation(
 
 @gtscript.function
 def update_latent_heat_coefficient_i(pt1, cvm):
-    lhi = LI00 + DC_ICE * pt1
+    lhi = constants.LI00 + constants.DC_ICE * pt1
     icp2 = lhi / cvm
     return lhi, icp2
 
@@ -452,7 +442,7 @@ def wqsat_correct(src, pt1, lhl, qv, ql, q_liq, q_sol, mc_air, c_vap):
 
 @gtscript.function
 def ap1_for_wqs2(ta):
-    ap1 = 10.0 * dim(ta, TMIN) + 1.0
+    ap1 = 10.0 * dim(ta, constants.T_SAT_MIN) + 1.0
     return min(ap1, QS_LENGTH) - 1
 
 
@@ -603,7 +593,6 @@ def satadjust(
         rad_rain,
         rad_snow,
         sat_adj0,
-        t_sub,
         tintqs,
     )
 
@@ -656,7 +645,7 @@ def satadjust(
         wqsat, dq2dt = wqs2_fn_w(pt1, den)
         # update latent heat coefficient
         lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
-        diff_ice = dim(TICE, pt1) / 48.0
+        diff_ice = dim(constants.TICE, pt1) / 48.0
         dimmin = min(1.0, diff_ice)
         tcp3 = lcp2 + icp2 * dimmin
 
@@ -676,7 +665,7 @@ def satadjust(
         # update latent heat coefficient
         lhl, lhi, lcp2, icp2 = update_latent_heat_coefficient(pt1, cvm, lv00, d0_vap)
         # TODO: Remove duplicate
-        diff_ice = dim(TICE, pt1) / 48.0
+        diff_ice = dim(constants.TICE, pt1) / 48.0
         dimmin = min(1.0, diff_ice)
         tcp3 = lcp2 + icp2 * dimmin
 
@@ -703,7 +692,7 @@ def satadjust(
         )
         # update some of the latent heat coefficients
         lhi, icp2 = update_latent_heat_coefficient_i(pt1, cvm)
-        exptc = exp(0.66 * (TICE0 - pt1))
+        exptc = exp(0.66 * (constants.TICE0 - pt1))
         # bigg mechanism (heterogeneous freezing of cloud water to cloud ice)
         ql, qi, q_liq, q_sol, cvm, pt1 = heterogeneous_freezing(
             exptc,
@@ -775,7 +764,6 @@ def satadjust(
             c_vap,
             lhl,
             lhi,
-            t_sub,
             qi_gen,
             qi_lim,
         )
@@ -835,17 +823,17 @@ def satadjust(
             wqs1 = wqs1_fn_w(it, ap1, tin, den)
             iqs1 = wqs1_fn_2(it, ap1, tin, den)
             # Determine saturated specific humidity
-            if tin < T_WFR:
+            if tin < constants.T_WFR:
                 # ice phase
                 qstar = iqs1
-            elif tin >= TICE:
+            elif tin >= constants.TICE:
                 qstar = wqs1
             else:
                 # qsw = wqs1
                 if q_cond > 1e-6:
                     rqi = q_sol / q_cond
                 else:
-                    rqi = (TICE - tin) / (TICE - T_WFR)
+                    rqi = (constants.TICE - tin) / (constants.TICE - constants.T_WFR)
                 qstar = rqi * iqs1 + (1.0 - rqi) * wqs1
                 # higher than 10 m is considered "land" and will have higher subgrid
                 # variability
@@ -982,7 +970,7 @@ class SatAdjust3d:
             c_vap = constants.CV_VAP
 
         d0_vap = c_vap - constants.C_LIQ
-        lv00 = constants.HLV - d0_vap * TICE
+        lv00 = constants.HLV - d0_vap * constants.TICE
 
         do_qa = True
 

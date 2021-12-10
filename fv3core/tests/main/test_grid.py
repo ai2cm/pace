@@ -5,7 +5,7 @@ import pytest
 from gt4py import gtscript
 
 import fv3core.utils.grid
-from fv3core.utils.typing import Index3D
+from pace.dsl.typing import Index3D
 from pace.util import (
     X_DIM,
     X_INTERFACE_DIM,

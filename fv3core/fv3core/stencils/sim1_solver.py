@@ -2,9 +2,9 @@ import typing
 
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
-import fv3core.utils.global_constants as constants
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+import pace.util.constants as constants
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 @typing.no_type_check

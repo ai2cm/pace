@@ -5,7 +5,7 @@ import pytest
 
 import fv3core._config as spec
 import fv3core.utils.global_config as global_config
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
 from fv3core.grid import MetricTerms, set_hybrid_pressure_coefficients
 from fv3core.grid.global_setup import global_mirror_grid, gnomonic_grid
