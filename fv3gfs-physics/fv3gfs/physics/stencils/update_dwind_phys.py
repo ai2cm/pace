@@ -160,6 +160,7 @@ class AGrid2DGridPhysics:
         self._jm2 = int((npy - 1) / 2) + 2
         self._subtile_index = partitioner.tile.subtile_index(rank)
         layout = self.namelist.layout
+
         self._subtile_width_x = int((npx - 1) / layout[0])
         self._subtile_width_y = int((npy - 1) / layout[1])
         shape = grid_indexing.max_shape
@@ -202,6 +203,7 @@ class AGrid2DGridPhysics:
         self.global_ie, self.global_je = self.local_to_global_indices(
             grid_indexing.iec, grid_indexing.jec
         )
+
         if self.west_edge:
             je_lower = self.global_to_local_y(min(self._jm2, self.global_je))
             origin_lower = (grid_indexing.n_halo, grid_indexing.n_halo, 0)
