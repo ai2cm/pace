@@ -3,11 +3,11 @@ import os
 import sys
 import warnings
 
+import f90nml
 import pytest
 import yaml
 
 import fv3core
-import fv3core._config
 import fv3core.testing
 import pace.dsl
 import pace.util as fv3util
@@ -46,8 +46,7 @@ def data_path(pytestconfig):
 def data_path_from_config(config):
     data_path = config.getoption("data_path")
     namelist_filename = os.path.join(data_path, "input.nml")
-    fv3core._config.set_namelist(namelist_filename)
-    return data_path
+    return data_path, namelist_filename
 
 
 @pytest.fixture
@@ -97,29 +96,19 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def process_grid_savepoint(serializer, grid_savepoint, rank, *, backend: str):
-    grid = make_grid(grid_savepoint, serializer, rank, backend=backend)
-    fv3core._config.set_grid(grid)
-    return grid
-
-
-@pytest.fixture()
 def Grid(serializer, grid_savepoint, rank, *, backend: str):
     grid = make_grid(grid_savepoint, serializer, rank, backend=backend)
     return grid
 
 
-@pytest.fixture()
 def grid_data(Grid):
     return Grid.grid_data
 
 
-@pytest.fixture()
 def grid_indexing(Grid):
     return Grid.grid_indexing
 
 
-@pytest.fixture()
 def physics_config(namelist_filename):
     return PhysicsConfig.from_f90nml(namelist_filename)
 
@@ -210,16 +199,23 @@ SavepointCase = collections.namedtuple(
 )
 
 
-def sequential_savepoint_cases(metafunc, data_path, *, backend: str):
+def sequential_savepoint_cases(
+    metafunc,
+    data_path,
+    namelist_filename,
+    *,
+    backend: str,
+):
     return_list = []
-    layout = fv3core._config.namelist.layout
+    namelist = f90nml.read(namelist_filename)
+    layout = PhysicsConfig.from_f90nml(namelist).layout
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
     ranks = get_ranks(metafunc, layout)
 
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = process_grid_savepoint(serializer, grid_savepoint, rank, backend=backend)
+        grid = Grid(serializer, grid_savepoint, rank, backend=backend)
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -239,9 +235,7 @@ def sequential_savepoint_cases(metafunc, data_path, *, backend: str):
     # Set the grid to rank 0's data
     serializer = get_serializer(data_path, 0)
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid_rank0 = process_grid_savepoint(serializer, grid_savepoint, 0, backend=backend)
-    fv3core._config.set_grid(grid_rank0)
-
+    grid_rank0 = Grid(serializer, grid_savepoint, 0, backend=backend)
     return return_list
 
 
@@ -254,15 +248,18 @@ def check_savepoint_counts(test_name, input_savepoints, output_savepoints):
     assert len(input_savepoints) > 0, f"no savepoints found for {test_name}"
 
 
-def mock_parallel_savepoint_cases(metafunc, data_path, *, backend: str):
+def mock_parallel_savepoint_cases(
+    metafunc, data_path, namelist_filename, *, backend: str
+):
     return_list = []
-    layout = fv3core._config.namelist.layout
+    namelist = f90nml.read(namelist_filename)
+    layout = PhysicsConfig.from_f90nml(namelist).layout
     total_ranks = 6 * layout[0] * layout[1]
     grid_list = []
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = process_grid_savepoint(serializer, grid_savepoint, rank, backend=backend)
+        grid = Grid(serializer, grid_savepoint, rank, backend=backend)
         grid_list.append(grid)
         if rank == 0:
             grid_rank0 = grid
@@ -292,17 +289,19 @@ def mock_parallel_savepoint_cases(metafunc, data_path, *, backend: str):
                 layout,
             )
         )
-    fv3core._config.set_grid(grid_rank0)
     return return_list
 
 
-def parallel_savepoint_cases(metafunc, data_path, mpi_rank, *, backend: str):
+def parallel_savepoint_cases(
+    metafunc, data_path, namelist_filename, mpi_rank, *, backend: str
+):
     serializer = get_serializer(data_path, mpi_rank)
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid = process_grid_savepoint(serializer, grid_savepoint, mpi_rank, backend=backend)
+    grid = Grid(serializer, grid_savepoint, mpi_rank, backend=backend)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     return_list = []
-    layout = fv3core._config.namelist.layout
+    namelist = f90nml.read(namelist_filename)
+    layout = PhysicsConfig.from_f90nml(namelist).layout
     for test_name in sorted(list(savepoint_names)):
         input_savepoints = serializer.get_savepoint(f"{test_name}-In")
         output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -344,11 +343,16 @@ def generate_sequential_stencil_tests(metafunc, *, backend: str):
         "rank",
         "grid",
     ]
-    data_path = data_path_from_config(metafunc.config)
+    data_path, namelist_filename = data_path_from_config(metafunc.config)
     _generate_stencil_tests(
         metafunc,
         arg_names,
-        sequential_savepoint_cases(metafunc, data_path, backend=backend),
+        sequential_savepoint_cases(
+            metafunc,
+            data_path,
+            namelist_filename,
+            backend=backend,
+        ),
         get_sequential_param,
     )
 
@@ -363,11 +367,13 @@ def generate_mock_parallel_stencil_tests(metafunc, backend: str):
         "grid",
         "layout",
     ]
-    data_path = data_path_from_config(metafunc.config)
+    data_path, namelist_filename = data_path_from_config(metafunc.config)
     _generate_stencil_tests(
         metafunc,
         arg_names,
-        mock_parallel_savepoint_cases(metafunc, data_path, backend=backend),
+        mock_parallel_savepoint_cases(
+            metafunc, data_path, namelist_filename, backend=backend
+        ),
         get_parallel_mock_param,
     )
 
@@ -383,14 +389,16 @@ def generate_parallel_stencil_tests(metafunc, backend: str):
         "grid",
         "layout",
     ]
-    data_path = data_path_from_config(metafunc.config)
+    data_path, namelist_filename = data_path_from_config(metafunc.config)
     # get MPI environment
     comm = MPI.COMM_WORLD
     mpi_rank = comm.Get_rank()
     _generate_stencil_tests(
         metafunc,
         arg_names,
-        parallel_savepoint_cases(metafunc, data_path, mpi_rank, backend=backend),
+        parallel_savepoint_cases(
+            metafunc, data_path, namelist_filename, mpi_rank, backend=backend
+        ),
         get_parallel_param,
     )
 
@@ -399,12 +407,7 @@ def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
     param_list = []
     only_one_rank = metafunc.config.getoption("which_rank") is not None
     for case in savepoint_cases:
-        original_grid = fv3core._config.grid
-        try:
-            fv3core._config.set_grid(case.grid)
-            testobj = get_test_class_instance(case.test_name, case.grid)
-        finally:
-            fv3core._config.set_grid(original_grid)
+        testobj = get_test_class_instance(case.test_name, case.grid)
         max_call_count = min(len(case.input_savepoints), len(case.output_savepoints))
         for i, (savepoint_in, savepoint_out) in enumerate(
             zip(case.input_savepoints, case.output_savepoints)
