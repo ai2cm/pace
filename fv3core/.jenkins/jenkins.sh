@@ -52,8 +52,8 @@ if [[ $input_backend = gtc_* ]] ; then
     input_backend=`echo $input_backend | sed 's/_/:/'`
 fi
 
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-BUILDENV_DIR=$SCRIPT_DIR/../../buildenv
+JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BUILDENV_DIR=$JENKINS_DIR/../../buildenv
 
 # Read arguments
 action="$1"
@@ -70,8 +70,6 @@ test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "canno
 . ${BUILDENV_DIR}/machineEnvironment.sh
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
-# get root directory of where jenkins.sh is sitting
-export jenkins_dir=`dirname $0`
 
 
 if [ -z "${GT4PY_VERSION}" ]; then
@@ -79,7 +77,7 @@ if [ -z "${GT4PY_VERSION}" ]; then
 fi
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
-    . ${jenkins_dir}/actions/fetch_caches.sh $backend $experiment
+    . ${JENKINS_DIR}/actions/fetch_caches.sh $backend $experiment
 fi
 
 # load machine dependent environment
@@ -89,7 +87,7 @@ fi
 . ${BUILDENV_DIR}/env.${host}.sh
 
 # check if action script exists
-script="${jenkins_dir}/actions/${action}.sh"
+script="${JENKINS_DIR}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
 # load scheduler tools
@@ -188,7 +186,7 @@ echo "JENKINS TAG ${JENKINS_TAG}"
 
 if [ -z ${VIRTUALENV} ]; then
     echo "setting VIRTUALENV"
-    export VIRTUALENV=${SCRIPT_DIR}/../venv_${JENKINS_TAG}
+    export VIRTUALENV=${JENKINS_DIR}/../venv_${JENKINS_TAG}
 fi
 
 if [ ${python_env} == "virtualenv" ]; then
@@ -197,13 +195,13 @@ if [ ${python_env} == "virtualenv" ]; then
     else
 	echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
 	export FV3CORE_INSTALL_FLAGS="-e"
-	${jenkins_dir}/install_virtualenv.sh ${VIRTUALENV}
+	${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
     fi
     source ${VIRTUALENV}/bin/activate
     if grep -q "parallel" <<< "${script}"; then
 	export MPIRUN_CALL="srun"
     fi
-    export FV3_PATH="${SCRIPT_DIR}/../"
+    export FV3_PATH="${JENKINS_DIR}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
     export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi

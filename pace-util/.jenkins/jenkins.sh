@@ -23,8 +23,8 @@
 
 set -x +e
 
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-BUILDENV_DIR=$SCRIPT_DIR/../../buildenv
+JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BUILDENV_DIR=$JENKINS_DIR/../../buildenv
 
 # get root directory of where jenkins.sh is sitting
 root=`dirname $0`
