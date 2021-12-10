@@ -7,7 +7,7 @@ import pytest
 
 import fv3core
 import pace.util as fv3util
-from fv3core.utils import gt4py_utils as utils
+from pace.dsl import gt4py_utils as utils
 
 from .translate import TranslateFortranData2Py, read_serialized_data
 

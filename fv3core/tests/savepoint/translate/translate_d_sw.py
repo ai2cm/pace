@@ -4,7 +4,7 @@ import fv3core._config as spec
 import fv3core.stencils.d_sw as d_sw
 from fv3core.testing import TranslateFortranData2Py
 from fv3core.utils.grid import axis_offsets
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 class TranslateD_SW(TranslateFortranData2Py):

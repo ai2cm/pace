@@ -19,10 +19,10 @@ import fv3core.stencils.ray_fast as ray_fast
 import fv3core.stencils.temperature_adjust as temperature_adjust
 import fv3core.stencils.updatedzc as updatedzc
 import fv3core.stencils.updatedzd as updatedzd
-import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util as fv3util
+import pace.util.constants as constants
 from fv3core._config import AcousticDynamicsConfig
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
@@ -36,8 +36,8 @@ from fv3core.utils.grid import (
     axis_offsets,
     quantity_wrap,
 )
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
 

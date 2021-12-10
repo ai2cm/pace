@@ -1,18 +1,18 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.physics.global_constants as constants
+import pace.dsl.gt4py_utils as utils
 import pace.util
+import pace.util.constants as constants
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.utils.grid import GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import Float, FloatField
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import Float, FloatField
 from pace.util import TilePartitioner
 
 
@@ -37,7 +37,7 @@ def atmos_phys_driver_statein(
     from __externals__ import nwat, pk0inv, pktop, ptop
 
     with computation(BACKWARD), interval(0, -1):
-        phii = phii[0, 0, 1] - delz * constants.grav
+        phii = phii[0, 0, 1] - delz * constants.GRAV
 
     with computation(PARALLEL), interval(...):
         prsik = 1.0e25
@@ -79,7 +79,7 @@ def atmos_phys_driver_statein(
     with computation(PARALLEL), interval(0, -1):
         qmin = 1.0e-10  # set it here since externals cannot be 2D
         qgrs_rad = max(qmin, qvapor)
-        rTv = constants.rdgas * pt * (1.0 + constants.con_fvirt * qgrs_rad)
+        rTv = constants.RDGAS * pt * (1.0 + constants.ZVIR * qgrs_rad)
         dm = delp[0, 0, 0]
         delp = dm * rTv / (phii[0, 0, 0] - phii[0, 0, 1])
         delp = min(delp, prsi[0, 0, 1] - 0.01 * dm)
@@ -102,13 +102,13 @@ def prepare_microphysics(
     delp: FloatField,
 ):
     with computation(BACKWARD), interval(...):
-        dz = (phii[0, 0, 1] - phii[0, 0, 0]) * constants.rgrav
+        dz = (phii[0, 0, 1] - phii[0, 0, 0]) * constants.RGRAV
         wmp = (
             -omga
-            * (1.0 + constants.con_fvirt * qvapor)
+            * (1.0 + constants.ZVIR * qvapor)
             * pt
             / delp
-            * (constants.rdgas * constants.rgrav)
+            * (constants.RDGAS * constants.RGRAV)
         )
 
 

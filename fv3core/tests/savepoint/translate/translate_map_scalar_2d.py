@@ -1,5 +1,5 @@
 import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.testing import (
     MapSingleFactory,
     TranslateFortranData2Py,
@@ -52,11 +52,15 @@ class TranslateMapScalar_2d(TranslateFortranData2Py):
         # these are sometimes 3D and sometimes singleton in J
         if inputs["pe1"].shape[1] == 1:
             inputs["pe1"] = self.make_storage_data(
-                pad_field_in_j(inputs["pe1"], self.nj)
+                pad_field_in_j(
+                    inputs["pe1"], self.nj, backend=self.grid.stencil_factory.backend
+                )
             )
         if inputs["pe2"].shape[1] == 1:
             inputs["pe2"] = self.make_storage_data(
-                pad_field_in_j(inputs["pe2"], self.nj)
+                pad_field_in_j(
+                    inputs["pe2"], self.nj, backend=self.grid.stencil_factory.backend
+                )
             )
 
         qs_field = utils.make_storage_from_shape(

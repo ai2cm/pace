@@ -1,7 +1,45 @@
 from gt4py import gtscript
 from gt4py.gtscript import exp, log, sqrt
 
-import fv3gfs.physics.global_constants as constants
+import pace.util.constants as constants
+
+
+# Marshall-Palmer constants ###
+VCONS = 6.6280504
+VCONG = 87.2382675
+NORMS = 942477796.076938
+NORMG = 5026548245.74367
+
+# Fall velocity constants
+VCONR = 2503.23638966667
+NORMR = 25132741228.7183
+THR = 1.0e-8
+THI = 1.0e-8  # Cloud ice threshold for terminal fall
+THG = 1.0e-8
+THS = 1.0e-8
+AA = -4.14122e-5
+BB = -0.00538922
+CC = -0.0516344
+DD_FS = 0.00216078
+EE = 1.9714
+VR_MIN = 1.0e-3  # Minimum fall speed for rain
+VF_MIN = 1.0e-5  # Minimum fall speed for cloud ice, snow, graupel
+
+P_MIN = 100.0  # Minimum pressure (Pascal) for mp to operate
+
+DT_FR = 8.0  # Homogeneous freezing of all cloud water at t_wfr - dt_fr
+# minimum temperature water can exist (moore & molinero nov. 2011, nature)
+# DT_FR can be considered as the error bar
+
+
+SFCRHO = 1.2  # Surface air density
+RHOS = 1.0e2  # snow density
+RHOG = 4.0e2  # graupel density
+RHOR = 1.0e3  # density of rain water, lin83
+DZ_MIN_FLIP = 1.0e-2  # Use for correcting flipped height
+QCMIN = 1.0e-12  # Minimum value for cloud condensation
+QRMIN = 1.0e-8  # Minimum value for rain water
+QVMIN = 1.0e-20  # Minimum value for water vapor (treated as zero)
 
 
 @gtscript.function
@@ -17,15 +55,15 @@ def dim(x, y):
 def wqs1(ta, den):
 
     return (
-        constants.e00
+        constants.E00
         * exp(
             (
-                constants.dc_vap * log(ta / constants.t_ice)
-                + constants.lv0 * (ta - constants.t_ice) / (ta * constants.t_ice)
+                constants.DC_VAP * log(ta / constants.TICE)
+                + constants.LV0 * (ta - constants.TICE) / (ta * constants.TICE)
             )
-            / constants.rvgas
+            / constants.RVGAS
         )
-    ) / (constants.rvgas * ta * den)
+    ) / (constants.RVGAS * ta * den)
 
 
 # Compute saturated specific humidity and its gradient
@@ -34,55 +72,51 @@ def wqs2(ta, den):
 
     tmp = wqs1(ta, den)
 
-    return tmp, tmp * (constants.dc_vap + constants.lv0 / ta) / (constants.rvgas * ta)
+    return tmp, tmp * (constants.DC_VAP + constants.LV0 / ta) / (constants.RVGAS * ta)
 
 
 # Compute the saturated specific humidity
 @gtscript.function
 def iqs1(ta, den):
 
-    if ta < constants.t_ice:
+    if ta < constants.TICE:
 
         # Over ice between -160 degrees Celsius and 0 degrees Celsius
-        if ta >= constants.t_ice - 160.0:
+        if ta >= constants.T_SAT_MIN:
 
             tmp = (
-                constants.e00
+                constants.E00
                 * exp(
                     (
-                        constants.d2ice * log(ta / constants.t_ice)
-                        + constants.li2
-                        * (ta - constants.t_ice)
-                        / (ta * constants.t_ice)
+                        constants.D2ICE * log(ta / constants.TICE)
+                        + constants.LI2 * (ta - constants.TICE) / (ta * constants.TICE)
                     )
-                    / constants.rvgas
+                    / constants.RVGAS
                 )
-            ) / (constants.rvgas * ta * den)
+            ) / (constants.RVGAS * ta * den)
 
         else:
 
             tmp = (
-                constants.e00
+                constants.E00
                 * exp(
                     (
-                        constants.d2ice * log(1.0 - 160.0 / constants.t_ice)
-                        - constants.li2
-                        * 160.0
-                        / ((constants.t_ice - 160.0) * constants.t_ice)
+                        constants.D2ICE * log(1.0 - 160.0 / constants.TICE)
+                        - constants.LI2 * 160.0 / (constants.T_SAT_MIN * constants.TICE)
                     )
-                    / constants.rvgas
+                    / constants.RVGAS
                 )
-            ) / (constants.rvgas * (constants.t_ice - 160.0) * den)
+            ) / (constants.RVGAS * constants.T_SAT_MIN * den)
     else:
 
         # Over water between 0 degrees Celsius and 102 degrees Celsius
-        if ta <= constants.t_ice + 102.0:
+        if ta <= constants.TICE + 102.0:
 
             tmp = wqs1(ta, den)
 
         else:
 
-            tmp = wqs1(constants.t_ice + 102.0, den)
+            tmp = wqs1(constants.TICE + 102.0, den)
 
     return tmp
 
@@ -93,36 +127,36 @@ def iqs2(ta, den):
 
     tmp = iqs1(ta, den)
 
-    if ta < constants.t_ice:
+    if ta < constants.TICE:
 
         # Over ice between -160 degrees Celsius and 0 degrees Celsius
-        if ta >= constants.t_ice - 160.0:
+        if ta >= constants.T_SAT_MIN:
 
-            dtmp = tmp * (constants.d2ice + constants.li2 / ta) / (constants.rvgas * ta)
+            dtmp = tmp * (constants.D2ICE + constants.LI2 / ta) / (constants.RVGAS * ta)
 
         else:
 
             dtmp = (
                 tmp
-                * (constants.d2ice + constants.li2 / (constants.t_ice - 160.0))
-                / (constants.rvgas * (constants.t_ice - 160.0))
+                * (constants.D2ICE + constants.LI2 / constants.T_SAT_MIN)
+                / (constants.RVGAS * constants.T_SAT_MIN)
             )
 
     else:
 
         # Over water between 0 degrees Celsius and 102 degrees Celsius
-        if ta <= constants.t_ice + 102.0:
+        if ta <= constants.TICE + 102.0:
 
             dtmp = (
-                tmp * (constants.dc_vap + constants.lv0 / ta) / (constants.rvgas * ta)
+                tmp * (constants.DC_VAP + constants.LV0 / ta) / (constants.RVGAS * ta)
             )
 
         else:
 
             dtmp = (
                 tmp
-                * (constants.dc_vap + constants.lv0 / (constants.t_ice + 102.0))
-                / (constants.rvgas * (constants.t_ice + 102.0))
+                * (constants.DC_VAP + constants.LV0 / (constants.TICE + 102.0))
+                / (constants.RVGAS * (constants.TICE + 102.0))
             )
 
     return tmp, dtmp
@@ -193,13 +227,13 @@ def revap_racc(
 ):
 
     # Evaporation and accretion of rain for the first 1/2 time step
-    if (tz > t_wfr) and (qr > constants.qrmin):
+    if (tz > t_wfr) and (qr > QRMIN):
 
         # Define heat capacity and latent heat coefficient
         lhl = lv00 + d0_vap * tz
         q_liq = ql + qr
         q_sol = qi + qs + qg
-        cvm = c_air + qv * c_vap + q_liq * constants.c_liq + q_sol * constants.c_ice
+        cvm = c_air + qv * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         lcpk = lhl / cvm
 
         tin = tz - lcpk * ql  # Presence of clouds suppresses the rain evap
@@ -207,7 +241,7 @@ def revap_racc(
 
         qsat, dqsdt = wqs2(tin, den)
 
-        dqh = max(ql, h_var * max(qpz, constants.qcmin))
+        dqh = max(ql, h_var * max(qpz, QCMIN))
         dqh = min(dqh, 0.2 * qpz)  # New limiter
         dqv = qsat - qv  # Use this to prevent super-sat the gird box
         q_minus = qpz - dqh
@@ -216,7 +250,7 @@ def revap_racc(
         # qsat must be > q_minus to activate evaporation
         # qsat must be < q_plus to activate accretion
         # Rain evaporation
-        if (dqv > constants.qvmin) and (qsat > q_minus):
+        if (dqv > QVMIN) and (qsat > q_minus):
 
             if qsat > q_plus:
 
@@ -243,11 +277,11 @@ def revap_racc(
             qr = qr - evap
             qv = qv + evap
             q_liq = q_liq - evap
-            cvm = c_air + qv * c_vap + q_liq * constants.c_liq + q_sol * constants.c_ice
+            cvm = c_air + qv * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             tz = tz - evap * lhl / cvm
 
         # Accretion: pracc
-        if (qr > constants.qrmin) and (ql > 1.0e-6) and (qsat < q_minus):
+        if (qr > QRMIN) and (ql > 1.0e-6) and (qsat < q_minus):
 
             sink = dt * denfac * cracw * exp(0.95 * log(qr * den))
             sink = sink / (1.0 + sink) * ql
@@ -260,31 +294,42 @@ def revap_racc(
 # Calculate the vertical fall speed
 @gtscript.function
 def fall_speed(log_10, qg, qi, ql, qs, tk, den):
+    from __externals__ import (
+        const_vg,
+        const_vi,
+        const_vs,
+        tice,
+        vg_fac,
+        vg_max,
+        vi_fac,
+        vi_max,
+        vs_fac,
+        vs_max,
+    )
 
     # Marshall-Palmer formula
-
     # Try the local air density -- for global model; the true value
     # could be much smaller than sfcrho over high mountains
-    rhof = sqrt(min(10.0, constants.sfcrho / den))
+    rhof = sqrt(min(10.0, SFCRHO / den))
 
     # Ice
-    if constants.const_vi == 1:
+    if const_vi:
 
-        vti = constants.vi_fac
+        vti = vi_fac
 
     else:
 
         # Use deng and mace (2008, grl), which gives smaller fall speed
         # than hd90 formula
-        vi0 = 0.01 * constants.vi_fac
+        vi0 = 0.01 * vi_fac
 
-        if qi < constants.thi:
+        if qi < THI:
 
-            vti = constants.vf_min
+            vti = VF_MIN
 
         else:
 
-            tc = tk - constants.tice
+            tc = tk - tice
             """
             THE LOG10 HAD TO BE TRANSFORMED DUE TO THE LOG10
             FUNCTION NOT BEING IMPLEMENTED (?)
@@ -292,91 +337,81 @@ def fall_speed(log_10, qg, qi, ql, qs, tk, den):
             # ~ vti = (3. + log10(qi * den)) *
             # (tc * (aa * tc + bb) + cc) + dd_fs * tc + ee
             vti = (
-                (3.0 + log(qi * den) / log_10)
-                * (tc * (constants.aa * tc + constants.bb) + constants.cc)
-                + constants.dd_fs * tc
-                + constants.ee
+                (3.0 + log(qi * den) / log_10) * (tc * (AA * tc + BB) + CC)
+                + DD_FS * tc
+                + EE
             )
             vti = vi0 * exp(log_10 * vti) * 0.8
-            vti = min(constants.vi_max, max(constants.vf_min, vti))
+            vti = min(vi_max, max(VF_MIN, vti))
 
     # Snow
-    if constants.const_vs == 1:
+    if const_vs:
 
-        vts = constants.vs_fac
+        vts = vs_fac
 
     else:
 
-        if qs < constants.ths:
+        if qs < THS:
 
-            vts = constants.vf_min
+            vts = VF_MIN
 
         else:
 
-            vts = (
-                constants.vs_fac
-                * constants.vcons
-                * rhof
-                * exp(0.0625 * log(qs * den / constants.norms))
-            )
-            vts = min(constants.vs_max, max(constants.vf_min, vts))
+            vts = vs_fac * VCONS * rhof * exp(0.0625 * log(qs * den / NORMS))
+            vts = min(vs_max, max(VF_MIN, vts))
 
     # Graupel
-    if constants.const_vg == 1:
+    if const_vg:
 
-        vtg = constants.vg_fac
+        vtg = vg_fac
 
     else:
 
-        if qg < constants.thg:
+        if qg < THG:
 
-            vtg = constants.vf_min
+            vtg = VF_MIN
 
         else:
 
-            vtg = (
-                constants.vg_fac
-                * constants.vcong
-                * rhof
-                * sqrt(sqrt(sqrt(qg * den / constants.normg)))
-            )
-            vtg = min(constants.vg_max, max(constants.vf_min, vtg))
+            vtg = vg_fac * VCONG * rhof * sqrt(sqrt(sqrt(qg * den / NORMG)))
+            vtg = min(vg_max, max(VF_MIN, vtg))
 
     return vtg, vti, vts
 
 
 @gtscript.function
 def compute_rain_fspeed(no_fall, qrz, den):
+    from __externals__ import const_vr, vr_fac, vr_max
 
     if no_fall == 1:
 
-        vtrz = constants.vf_min
+        vtrz = VF_MIN
         r1 = 0.0
 
     else:
 
         # Fall speed of rain
-        if constants.const_vr == 1:
+        if const_vr:
 
-            vtrz = constants.vr_fac
+            vtrz = vr_fac
 
         else:
 
             qden = qrz * den
 
-            if qrz < constants.thr:
+            if qrz < THR:
 
-                vtrz = constants.vr_min
+                vtrz = VR_MIN
 
             else:
 
                 vtrz = (
-                    constants.vr_fac
-                    * constants.vconr
-                    * sqrt(min(10.0, constants.sfcrho / den))
-                    * exp(0.2 * log(qden / constants.normr))
+                    vr_fac
+                    * VCONR
+                    * sqrt(min(10.0, SFCRHO / den))
+                    * exp(0.2 * log(qden / NORMR))
                 )
-                vtrz = min(constants.vr_max, max(constants.vr_min, vtrz))
+                vtrz = min(vr_max, max(VR_MIN, vtrz))
 
     return vtrz, r1
 
@@ -391,7 +426,7 @@ def autoconv_no_subgrid_var(
 
     if tz > t_wfr:
 
-        if use_ccn == 1:
+        if use_ccn:
 
             # ccn is formulted as ccn = ccn_surface * (den / den_surface)
             qc = qc0
@@ -418,12 +453,12 @@ def autoconv_subgrid_var(
 
     qc0 = fac_rc * ccn
 
-    if tz > t_wfr + constants.dt_fr:
+    if tz > t_wfr + DT_FR:
 
         dl = min(max(1.0e-6, dl), 0.5 * qlz)
 
         # As in klein's gfdl am2 stratiform scheme (with subgrid variations)
-        if use_ccn == 1:
+        if use_ccn:
 
             # ccn is formulted as ccn = ccn_surface * (den / den_surface)
             qc = qc0
@@ -478,47 +513,56 @@ def subgrid_z_proc(
     denfac,
     p1,
 ):
+    from __externals__ import (
+        do_qa,
+        fast_sat_adj,
+        qc_crt,
+        qi_gen,
+        qi_lim,
+        rad_rain,
+        rad_snow,
+        t_sub,
+        tice,
+    )
 
     # Subgrid cloud microphysics
     # Define heat capacity and latent heat coefficient
     lhl = lv00 + d0_vap * tz
-    lhi = constants.li00 + constants.dc_ice * tz
+    lhi = constants.LI00 + constants.DC_ICE * tz
     q_liq = qlz + qrz
     q_sol = qiz + qsz + qgz
-    cvm = c_air + qvz * c_vap + q_liq * constants.c_liq + q_sol * constants.c_ice
+    cvm = c_air + qvz * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
     lcpk = lhl / cvm
     icpk = lhi / cvm
     tcpk = lcpk + icpk
-    tcp3 = lcpk + icpk * min(1.0, dim(constants.tice, tz) / (constants.tice - t_wfr))
+    tcp3 = lcpk + icpk * min(1.0, dim(tice, tz) / (tice - t_wfr))
 
-    if p1 >= constants.p_min:
+    if p1 >= P_MIN:
 
         # Instant deposit all water vapor to cloud ice when temperature is super low
-        if tz < constants.t_min:
+        if tz < constants.T_MIN:
 
             sink = dim(1.0e-7, qvz)
             qvz = qvz - sink
             qiz = qiz + sink
             q_sol = q_sol + sink
             cvm = (
-                c_air + qvz * c_vap + q_liq * constants.c_liq + q_sol * constants.c_ice
+                c_air + qvz * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
             )
             tz = tz + sink * (lhl + lhi) / cvm
 
-            if constants.do_qa == 0:
+            if not do_qa:
                 qaz = qaz + 1.0  # Air fully saturated; 100% cloud cover
 
         else:
 
             # Update heat capacity and latent heat coefficient
             lhl = lv00 + d0_vap * tz
-            lhi = constants.li00 + constants.dc_ice * tz
+            lhi = constants.LI00 + constants.DC_ICE * tz
             lcpk = lhl / cvm
             icpk = lhi / cvm
             tcpk = lcpk + icpk
-            tcp3 = lcpk + icpk * min(
-                1.0, dim(constants.tice, tz) / (constants.tice - t_wfr)
-            )
+            tcp3 = lcpk + icpk * min(1.0, dim(tice, tz) / (tice - t_wfr))
 
             # Instant evaporation / sublimation of all clouds
             # if rh < rh_adj -- > cloud free
@@ -526,11 +570,11 @@ def subgrid_z_proc(
             tin = tz - (lhl * (qlz + qiz) + lhi * qiz) / (
                 c_air
                 + qpz * c_vap
-                + qrz * constants.c_liq
-                + (qsz + qgz) * constants.c_ice
+                + qrz * constants.C_LIQ
+                + (qsz + qgz) * constants.C_ICE
             )
 
-            if tin > constants.t_sub + 6.0:
+            if tin > t_sub + 6.0:
 
                 rh = qpz / iqs1(tin, den)
 
@@ -541,9 +585,7 @@ def subgrid_z_proc(
                     qlz = 0.0
                     qiz = 0.0
 
-            if ((tin > constants.t_sub + 6.0) and (rh >= rh_adj)) or (
-                tin <= constants.t_sub + 6.0
-            ):
+            if ((tin > t_sub + 6.0) and (rh >= rh_adj)) or (tin <= t_sub + 6.0):
 
                 # Cloud water < -- > vapor adjustment
                 qsw, dwsdt = wqs2(tz, den)
@@ -568,19 +610,19 @@ def subgrid_z_proc(
                 cvm = (
                     c_air
                     + qvz * c_vap
-                    + q_liq * constants.c_liq
-                    + q_sol * constants.c_ice
+                    + q_liq * constants.C_LIQ
+                    + q_sol * constants.C_ICE
                 )
                 tz = tz - evap * lhl / cvm
 
                 # Update heat capacity and latent heat coefficient
-                lhi = constants.li00 + constants.dc_ice * tz
+                lhi = constants.LI00 + constants.DC_ICE * tz
                 icpk = lhi / cvm
 
                 # Enforce complete freezing below -48 degrees Celsius
                 dtmp = t_wfr - tz  # [-40, -48]
 
-                if (dtmp > 0.0) and (qlz > constants.qcmin):
+                if (dtmp > 0.0) and (qlz > QCMIN):
 
                     sink = min(qlz, min(qlz * dtmp * 0.125, dtmp / icpk))
                     qlz = qlz - sink
@@ -590,17 +632,17 @@ def subgrid_z_proc(
                     cvm = (
                         c_air
                         + qvz * c_vap
-                        + q_liq * constants.c_liq
-                        + q_sol * constants.c_ice
+                        + q_liq * constants.C_LIQ
+                        + q_sol * constants.C_ICE
                     )
                     tz = tz + sink * lhi / cvm
 
                 # Update heat capacity and latent heat coefficient
-                lhi = constants.li00 + constants.dc_ice * tz
+                lhi = constants.LI00 + constants.DC_ICE * tz
                 icpk = lhi / cvm
 
                 # Bigg mechanism
-                if constants.fast_sat_adj == 1:
+                if fast_sat_adj:
 
                     dt_pisub = 0.5 * dts
 
@@ -608,9 +650,9 @@ def subgrid_z_proc(
 
                     dt_pisub = dts
 
-                    tc = constants.tice - tz
+                    tc = tice - tz
 
-                    if (qlz > constants.qrmin) and (tc > 0.0):
+                    if (qlz > QRMIN) and (tc > 0.0):
 
                         sink = (
                             3.3333e-10 * dts * (exp(0.66 * tc) - 1.0) * den * qlz * qlz
@@ -623,27 +665,27 @@ def subgrid_z_proc(
                         cvm = (
                             c_air
                             + qvz * c_vap
-                            + q_liq * constants.c_liq
-                            + q_sol * constants.c_ice
+                            + q_liq * constants.C_LIQ
+                            + q_sol * constants.C_ICE
                         )
                         tz = tz + sink * lhi / cvm
 
                 # Update capacity heat and latent heat coefficient
                 lhl = lv00 + d0_vap * tz
-                lhi = constants.li00 + constants.dc_ice * tz
+                lhi = constants.LI00 + constants.DC_ICE * tz
                 lcpk = lhl / cvm
                 icpk = lhi / cvm
                 tcpk = lcpk + icpk
 
                 # Sublimation / deposition of ice
-                if tz < constants.tice:
+                if tz < tice:
 
                     qsi, dqsdt = iqs2(tz, den)
 
                     dq = qvz - qsi
                     sink = dq / (1.0 + tcpk * dqsdt)
 
-                    if qiz > constants.qrmin:
+                    if qiz > QRMIN:
 
                         # - Eq 9, hong et al. 2004, mwr
                         # - For a and b, see dudhia 1989: page 3103 eq (b7) and (b8)
@@ -655,8 +697,8 @@ def subgrid_z_proc(
                             / (
                                 qsi
                                 * den
-                                * constants.lat2
-                                / (0.0243 * constants.rvgas * tz ** 2)
+                                * constants.LAT2
+                                / (0.0243 * constants.RVGAS * tz ** 2)
                                 + 4.42478e4
                             )
                         )
@@ -667,17 +709,15 @@ def subgrid_z_proc(
 
                     if dq > 0.0:  # Vapor -- > ice
 
-                        tmp = constants.tice - tz
+                        tmp = tice - tz
 
                         # The following should produce more ice at higher altitude
-                        qi_crt = (
-                            constants.qi_gen * min(constants.qi_lim, 0.1 * tmp) / den
-                        )
+                        qi_crt = qi_gen * min(qi_lim, 0.1 * tmp) / den
                         sink = min(sink, min(max(qi_crt - qiz, pidep), tmp / tcpk))
 
                     else:  # Ice -- > vapor
 
-                        pidep = pidep * min(1.0, dim(tz, constants.t_sub) * 0.2)
+                        pidep = pidep * min(1.0, dim(tz, t_sub) * 0.2)
                         sink = max(pidep, max(sink, -qiz))
 
                     qvz = qvz - sink
@@ -686,21 +726,21 @@ def subgrid_z_proc(
                     cvm = (
                         c_air
                         + qvz * c_vap
-                        + q_liq * constants.c_liq
-                        + q_sol * constants.c_ice
+                        + q_liq * constants.C_LIQ
+                        + q_sol * constants.C_ICE
                     )
                     tz = tz + sink * (lhl + lhi) / cvm
 
                 # Update capacity heat and latent heat coefficient
                 lhl = lv00 + d0_vap * tz
-                lhi = constants.li00 + constants.dc_ice * tz
+                lhi = constants.LI00 + constants.DC_ICE * tz
                 lcpk = lhl / cvm
                 icpk = lhi / cvm
                 tcpk = lcpk + icpk
 
                 # - Sublimation / deposition of snow
                 # - This process happens for the whole temperature range
-                if qsz > constants.qrmin:
+                if qsz > QRMIN:
 
                     qsi, dqsdt = iqs2(tz, den)
 
@@ -718,19 +758,17 @@ def subgrid_z_proc(
 
                     if pssub > 0.0:  # qs -- > qv, sublimation
 
-                        pssub = min(
-                            pssub * min(1.0, dim(tz, constants.t_sub) * 0.2), qsz
-                        )
+                        pssub = min(pssub * min(1.0, dim(tz, t_sub) * 0.2), qsz)
 
                     else:
 
-                        if tz > constants.tice:
+                        if tz > tice:
 
                             pssub = 0.0  # No deposition
 
                         else:
 
-                            pssub = max(pssub, max(dq, (tz - constants.tice) / tcpk))
+                            pssub = max(pssub, max(dq, (tz - tice) / tcpk))
 
                     qsz = qsz - pssub
                     qvz = qvz + pssub
@@ -738,20 +776,20 @@ def subgrid_z_proc(
                     cvm = (
                         c_air
                         + qvz * c_vap
-                        + q_liq * constants.c_liq
-                        + q_sol * constants.c_ice
+                        + q_liq * constants.C_LIQ
+                        + q_sol * constants.C_ICE
                     )
                     tz = tz - pssub * (lhl + lhi) / cvm
 
                 # Update capacity heat and latent heat coefficient
                 lhl = lv00 + d0_vap * tz
-                lhi = constants.li00 + constants.dc_ice * tz
+                lhi = constants.LI00 + constants.DC_ICE * tz
                 lcpk = lhl / cvm
                 icpk = lhi / cvm
                 tcpk = lcpk + icpk
 
                 # Simplified 2-way grapuel sublimation-deposition mechanism
-                if qgz > constants.qrmin:
+                if qgz > QRMIN:
 
                     qsi, dqsdt = iqs2(tz, den)
 
@@ -760,7 +798,7 @@ def subgrid_z_proc(
 
                     if pgsub > 0.0:  # Deposition
 
-                        if tz > constants.tice:
+                        if tz > tice:
 
                             pgsub = 0.0
 
@@ -768,13 +806,13 @@ def subgrid_z_proc(
 
                             pgsub = min(
                                 min(fac_v2g * pgsub, 0.2 * dq),
-                                min(qlz + qrz, (constants.tice - tz) / tcpk),
+                                min(qlz + qrz, (tice - tz) / tcpk),
                             )
 
                     else:  # Sublimation
 
                         pgsub = max(fac_g2v * pgsub, dq) * min(
-                            1.0, dim(tz, constants.t_sub) * 0.1
+                            1.0, dim(tz, t_sub) * 0.1
                         )
 
                     qgz = qgz + pgsub
@@ -783,8 +821,8 @@ def subgrid_z_proc(
                     cvm = (
                         c_air
                         + qvz * c_vap
-                        + q_liq * constants.c_liq
-                        + q_sol * constants.c_ice
+                        + q_liq * constants.C_LIQ
+                        + q_sol * constants.C_ICE
                     )
                     tz = tz + pgsub * (lhl + lhi) / cvm
 
@@ -796,7 +834,7 @@ def subgrid_z_proc(
                 lcpk = lhl / cvm
 
                 # Minimum evap of rain in dry environmental air
-                if qrz > constants.qcmin:
+                if qrz > QCMIN:
 
                     qsw, dqsdt = wqs2(tz, den)
 
@@ -807,8 +845,8 @@ def subgrid_z_proc(
                     cvm = (
                         c_air
                         + qvz * c_vap
-                        + q_liq * constants.c_liq
-                        + q_sol * constants.c_ice
+                        + q_liq * constants.C_LIQ
+                        + q_sol * constants.C_ICE
                     )
                     tz = tz - sink * lhl / cvm
                 """
@@ -822,14 +860,14 @@ def subgrid_z_proc(
 
                 # Compute cloud fraction
                 # Combine water species
-                if constants.do_qa == 0:
+                if not do_qa:
 
-                    if constants.rad_snow == 1:
+                    if rad_snow:
                         q_sol = qiz + qsz
                     else:
                         q_sol = qiz
 
-                    if constants.rad_rain == 1:
+                    if rad_rain:
                         q_liq = qlz + qrz
                     else:
                         q_liq = qlz
@@ -852,7 +890,7 @@ def subgrid_z_proc(
                         # Ice phase
                         qstar = iqs1(tin, den)
 
-                    elif tin >= constants.tice:
+                    elif tin >= tice:
 
                         # Liquid phase
                         qstar = wqs1(tin, den)
@@ -873,18 +911,19 @@ def subgrid_z_proc(
                             # initial cloud development stage
                             """
                             THIS NEEDS TO BE DONE IN ORDER FOR THE CODE TO RUN !?!?
-                            rqi = (constants.tice - tin) / (constants.tice - t_wfr)
+                            rqi = (tice - tin) /
+                                  (tice - t_wfr)
                             """
-                            rqi = (constants.tice - tin) / (constants.tice - t_wfr_tmp)
+                            rqi = (tice - tin) / (tice - t_wfr_tmp)
 
                         qstar = rqi * qsi + (1.0 - rqi) * qsw
 
                     # Assuming subgrid linear distribution in horizontal; this is
                     # effectively a smoother for the binary cloud scheme
-                    if qpz > constants.qrmin:
+                    if qpz > QRMIN:
 
                         # Partial cloudiness by pdf
-                        dq = max(constants.qcmin, h_var * qpz)
+                        dq = max(QCMIN, h_var * qpz)
                         q_plus = qpz + dq  # Cloud free if qstar > q_plus
                         q_minus = qpz - dq
 
@@ -892,7 +931,7 @@ def subgrid_z_proc(
 
                             qaz = qaz + 1.0  # Air fully saturated; 100% cloud cover
 
-                        elif (qstar < q_plus) and (q_cond > constants.qc_crt):
+                        elif (qstar < q_plus) and (q_cond > qc_crt):
 
                             qaz = qaz + (q_plus - qstar) / (
                                 dq + dq
@@ -945,7 +984,6 @@ def icloud_main(
     cgmlt_3,
     cgmlt_4,
     ces0,
-    tice0,
     t_wfr,
     dts,
     rdts,
@@ -975,28 +1013,29 @@ def icloud_main(
     q_sol,
     cvm,
 ):
+    from __externals__ import const_vi, qi0_crt, qs0_crt, qs_mlt, tice, tice0
 
     # Update capacity heat and latent heat coefficient
-    lhi = constants.li00 + constants.dc_ice * tz
+    lhi = constants.LI00 + constants.DC_ICE * tz
     icpk = lhi / cvm
 
-    if p1 >= constants.p_min:
+    if p1 >= P_MIN:
 
         pgacr = 0.0
         pgacw = 0.0
 
-        tc = tz - constants.tice
+        tc = tz - tice
 
         if tc >= 0.0:
 
             # Melting of snow
             dqs0 = ces0 / p1 - qvz
 
-            if qsz > constants.qcmin:
+            if qsz > QCMIN:
 
                 # psacw: accretion of cloud water by snow (only rate is used (for
                 # snow melt) since tc > 0.)
-                if qlz > constants.qrmin:
+                if qlz > QRMIN:
 
                     factor = denfac * csacw * exp(0.8125 * log(qsz * den))
                     psacw = factor / (1.0 + dts * factor) * qlz  # Rate
@@ -1007,7 +1046,7 @@ def icloud_main(
 
                 # psacr: accretion of rain by melted snow
                 # pracs: accretion of snow by rain
-                if qrz > constants.qrmin:
+                if qrz > QRMIN:
 
                     psacr = min(
                         acr3d(
@@ -1045,9 +1084,7 @@ def icloud_main(
                 )
                 sink = min(qsz, min(dts * (psmlt + pracs), tc / icpk))
                 qsz = qsz - sink
-                tmp = min(
-                    sink, dim(constants.qs_mlt, qlz)
-                )  # Maximum ql due to snow melt
+                tmp = min(sink, dim(qs_mlt, qlz))  # Maximum ql due to snow melt
                 qlz = qlz + tmp
                 qrz = qrz + sink - tmp
                 q_liq = q_liq + sink
@@ -1055,21 +1092,21 @@ def icloud_main(
                 cvm = (
                     c_air
                     + qvz * c_vap
-                    + q_liq * constants.c_liq
-                    + q_sol * constants.c_ice
+                    + q_liq * constants.C_LIQ
+                    + q_sol * constants.C_ICE
                 )
                 tz = tz - sink * lhi / cvm
-                tc = tz - constants.tice
+                tc = tz - tice
 
             # Update capacity heat and latent heat coefficient
-            lhi = constants.li00 + constants.dc_ice * tz
+            lhi = constants.LI00 + constants.DC_ICE * tz
             icpk = lhi / cvm
 
             # Melting of graupel
-            if (qgz > constants.qcmin) and (tc > 0.0):
+            if (qgz > QCMIN) and (tc > 0.0):
 
                 # pgacr: accretion of rain by graupel
-                if qrz > constants.qrmin:
+                if qrz > QRMIN:
 
                     pgacr = min(
                         acr3d(
@@ -1081,7 +1118,7 @@ def icloud_main(
                 # pgacw: accretion of cloud water by graupel
                 qden = qgz * den
 
-                if qlz > constants.qrmin:
+                if qlz > QRMIN:
 
                     factor = cgacw * qden / sqrt(den * sqrt(sqrt(qden)))
                     pgacw = factor / (1.0 + dts * factor) * qlz  # Rate
@@ -1108,8 +1145,8 @@ def icloud_main(
                 cvm = (
                     c_air
                     + qvz * c_vap
-                    + q_liq * constants.c_liq
-                    + q_sol * constants.c_ice
+                    + q_liq * constants.C_LIQ
+                    + q_sol * constants.C_ICE
                 )
                 tz = tz - pgmlt * lhi / cvm
 
@@ -1136,11 +1173,11 @@ def icloud_main(
                 # - Similar to lfo 1983: eq. 21 solved implicitly
                 # - Threshold from wsm6 scheme, hong et al 2004, eq (13) :
                 # constants.qi0_crt ~0.8e-4
-                qim = constants.qi0_crt / den
+                qim = qi0_crt / den
 
                 # - Assuming linear subgrid vertical distribution of cloud ice
                 # - The mismatch computation following lin et al. 1994, mwr
-                if constants.const_vi == 1:
+                if const_vi:
 
                     tmp = fac_i2s
 
@@ -1148,10 +1185,10 @@ def icloud_main(
 
                     tmp = fac_i2s * exp(0.025 * tc)
 
-                di = max(di, constants.qrmin)
+                di = max(di, QRMIN)
                 q_plus = qiz + di
 
-                if q_plus > (qim + constants.qrmin):
+                if q_plus > (qim + QRMIN):
 
                     if qim > (qiz - di):
 
@@ -1186,7 +1223,7 @@ def icloud_main(
 
             # Cold-rain proc
             # Rain to ice, snow, graupel processes
-            tc = tz - constants.tice
+            tc = tz - tice
 
             if (qrz > 1e-7) and (tc < 0.0):
 
@@ -1215,7 +1252,7 @@ def icloud_main(
 
                 # Total sink to qr
                 sink = psacr + pgfr
-                factor = min(sink, min(qrz, -tc / icpk)) / max(sink, constants.qrmin)
+                factor = min(sink, min(qrz, -tc / icpk)) / max(sink, QRMIN)
 
                 psacr = factor * psacr
                 pgfr = factor * pgfr
@@ -1229,20 +1266,20 @@ def icloud_main(
                 cvm = (
                     c_air
                     + qvz * c_vap
-                    + q_liq * constants.c_liq
-                    + q_sol * constants.c_ice
+                    + q_liq * constants.C_LIQ
+                    + q_sol * constants.C_ICE
                 )
                 tz = tz + sink * lhi / cvm
 
             # Update capacity heat and latent heat coefficient
-            lhi = constants.li00 + constants.dc_ice * tz
+            lhi = constants.LI00 + constants.DC_ICE * tz
             icpk = lhi / cvm
 
             # Graupel production terms
             if qsz > 1.0e-7:
 
                 # Accretion: snow -- > graupel
-                if qgz > constants.qrmin:
+                if qgz > QRMIN:
 
                     sink = dts * acr3d(
                         vtgz, vtsz, qsz, qgz, cgacs, acco_03, acco_13, acco_23, den
@@ -1253,11 +1290,11 @@ def icloud_main(
                     sink = 0.0
 
                 # Autoconversion snow -- > graupel
-                qsm = constants.qs0_crt / den
+                qsm = qs0_crt / den
 
                 if qsz > qsm:
 
-                    factor = dts * 1.0e-3 * exp(0.09 * (tz - constants.tice))
+                    factor = dts * 1.0e-3 * exp(0.09 * (tz - tice))
                     sink = sink + factor / (1.0 + factor) * (qsz - qsm)
 
                 sink = min(qsz, sink)
@@ -1293,9 +1330,7 @@ def icloud_main(
                     pgacr = 0.0
 
                 sink = pgacr + pgacw
-                factor = min(sink, dim(constants.tice, tz) / icpk) / max(
-                    sink, constants.qrmin
-                )
+                factor = min(sink, dim(tice, tz) / icpk) / max(sink, QRMIN)
                 pgacr = factor * pgacr
                 pgacw = factor * pgacw
 
@@ -1308,8 +1343,8 @@ def icloud_main(
                 cvm = (
                     c_air
                     + qvz * c_vap
-                    + q_liq * constants.c_liq
-                    + q_sol * constants.c_ice
+                    + q_liq * constants.C_LIQ
+                    + q_sol * constants.C_ICE
                 )
                 tz = tz + sink * lhi / cvm
 

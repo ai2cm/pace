@@ -2,7 +2,7 @@ from gt4py import gtscript
 from gt4py.gtscript import __INLINED, compile_assert, horizontal, region
 
 from fv3core.stencils import ppm, yppm
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 @gtscript.function

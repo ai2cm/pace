@@ -1,8 +1,8 @@
 from gt4py.gtscript import PARALLEL, computation, exp, interval, log
 
-import fv3core.utils.global_constants as constants
+import pace.util.constants as constants
 from fv3core.stencils.basic_operations import sign
-from fv3core.utils.typing import FloatField
+from pace.dsl.typing import FloatField
 
 
 def compute_pkz_tempadjust(
