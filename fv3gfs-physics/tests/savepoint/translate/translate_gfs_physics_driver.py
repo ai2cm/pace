@@ -1,18 +1,16 @@
 import copy
 
-from mpi4py import MPI
-
-import fv3core._config as spec
 import pace.dsl.gt4py_utils as utils
 import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 from pace.dsl.typing import Float
+from pace.util.mpi import MPI
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist):
+        super().__init__(grid, namelist)
 
         self.in_vars["data_vars"] = {
             "qvapor": {"dycore": True},
@@ -84,6 +82,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
                 "order": "F",
             },
         }
+        self.namelist = namelist
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -135,7 +134,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         physics = Physics(
             self.grid.stencil_factory,
             self.grid.grid_data,
-            spec.namelist,
+            self.namelist,
             communicator,
             partitioner,
             self.grid.rank,

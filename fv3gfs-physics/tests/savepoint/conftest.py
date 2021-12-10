@@ -8,12 +8,12 @@ import pytest
 import yaml
 
 import fv3core
-import fv3core.testing
 import pace.dsl
 import pace.util as fv3util
-from fv3core.testing import ParallelTranslate, TranslateGrid
-from fv3core.utils.mpi import MPI
 from fv3gfs.physics import PhysicsConfig
+from fv3gfs.physics.testing import TranslateGrid
+from fv3gfs.physics.testing.parallel_translate import ParallelTranslate
+from pace.util.mpi import MPI
 
 from . import translate
 
@@ -24,6 +24,18 @@ import serialbox  # noqa: E402
 
 
 GRID_SAVEPOINT_NAME = "Grid-Info"
+PHYSICS_SAVEPOINT_TESTS = [
+    "GFSPhysicsDriver",
+    "AtmosPhysDriverStatein",
+    "PrsFV3",
+    "PhiFV3",
+    "Microph",
+    "FillGFS",
+    "PhysUpdateTracers",
+    "PhysUpdatePressureSurfaceWinds",
+    "UpdateDWindsPhys",
+    "FVUpdatePhys",
+]
 
 
 class ReplaceRepr:
@@ -80,12 +92,16 @@ def to_output_name(savepoint_name):
     return savepoint_name[-3:] + "-Out"
 
 
-def make_grid(grid_savepoint, serializer, rank, *, backend: str):
+def is_physics_test(savepoint_name):
+    return savepoint_name in PHYSICS_SAVEPOINT_TESTS
+
+
+def make_grid(grid_savepoint, serializer, rank, layout, *, backend: str):
     grid_data = {}
     grid_fields = serializer.fields_at_savepoint(grid_savepoint)
     for field in grid_fields:
         grid_data[field] = read_serialized_data(serializer, grid_savepoint, field)
-    return TranslateGrid(grid_data, rank, backend=backend).python_grid()
+    return TranslateGrid(grid_data, rank, layout, backend=backend).python_grid()
 
 
 def read_serialized_data(serializer, savepoint, variable):
@@ -96,8 +112,8 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def Grid(serializer, grid_savepoint, rank, *, backend: str):
-    grid = make_grid(grid_savepoint, serializer, rank, backend=backend)
+def Grid(serializer, grid_savepoint, rank, layout, *, backend: str):
+    grid = make_grid(grid_savepoint, serializer, rank, layout, backend=backend)
     return grid
 
 
@@ -133,12 +149,12 @@ def is_parallel_test(test_name):
         return issubclass(test_class, ParallelTranslate)
 
 
-def get_test_class_instance(test_name, grid):
+def get_test_class_instance(test_name, grid, namelist):
     translate_class = get_test_class(test_name)
     if translate_class is None:
         return None
     else:
-        return translate_class(grid)
+        return translate_class(grid, namelist)
 
 
 def get_all_savepoint_names(metafunc, data_path):
@@ -147,7 +163,7 @@ def get_all_savepoint_names(metafunc, data_path):
         savepoint_names = set()
         serializer = get_serializer(data_path, rank=0)
         for savepoint in serializer.savepoint_list():
-            if is_input_name(savepoint.name):
+            if is_input_name(savepoint.name) and is_physics_test(savepoint.name[:-3]):
                 savepoint_names.add(savepoint.name[:-3])
     else:
         savepoint_names = set(only_names.split(","))
@@ -195,6 +211,7 @@ SavepointCase = collections.namedtuple(
         "output_savepoints",
         "grid",
         "layout",
+        "namelist",
     ],
 )
 
@@ -208,14 +225,16 @@ def sequential_savepoint_cases(
 ):
     return_list = []
     namelist = f90nml.read(namelist_filename)
-    layout = PhysicsConfig.from_f90nml(namelist).layout
+    physics_config = PhysicsConfig.from_f90nml(namelist)
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
-    ranks = get_ranks(metafunc, layout)
+    ranks = get_ranks(metafunc, physics_config.layout)
 
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = Grid(serializer, grid_savepoint, rank, backend=backend)
+        grid = Grid(
+            serializer, grid_savepoint, rank, physics_config.layout, backend=backend
+        )
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -228,14 +247,17 @@ def sequential_savepoint_cases(
                     input_savepoints,
                     output_savepoints,
                     grid,
-                    layout,
+                    physics_config.layout,
+                    physics_config,
                 )
             )
 
     # Set the grid to rank 0's data
     serializer = get_serializer(data_path, 0)
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid_rank0 = Grid(serializer, grid_savepoint, 0, backend=backend)
+    grid_rank0 = Grid(
+        serializer, grid_savepoint, 0, physics_config.layout, backend=backend
+    )
     return return_list
 
 
@@ -253,13 +275,15 @@ def mock_parallel_savepoint_cases(
 ):
     return_list = []
     namelist = f90nml.read(namelist_filename)
-    layout = PhysicsConfig.from_f90nml(namelist).layout
-    total_ranks = 6 * layout[0] * layout[1]
+    physics_config = PhysicsConfig.from_f90nml(namelist)
+    total_ranks = 6 * physics_config.layout[0] * physics_config.layout[1]
     grid_list = []
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = Grid(serializer, grid_savepoint, rank, backend=backend)
+        grid = Grid(
+            serializer, grid_savepoint, rank, physics_config.layout, backend=backend
+        )
         grid_list.append(grid)
         if rank == 0:
             grid_rank0 = grid
@@ -286,7 +310,8 @@ def mock_parallel_savepoint_cases(
                 ),  # input_list[rank][count] -> input_list[count][rank]
                 list(zip(*output_list)),
                 grid_list,
-                layout,
+                physics_config.layout,
+                physics_config,
             )
         )
     return return_list
@@ -296,12 +321,14 @@ def parallel_savepoint_cases(
     metafunc, data_path, namelist_filename, mpi_rank, *, backend: str
 ):
     serializer = get_serializer(data_path, mpi_rank)
+    namelist = f90nml.read(namelist_filename)
+    physics_config = PhysicsConfig.from_f90nml(namelist)
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid = Grid(serializer, grid_savepoint, mpi_rank, backend=backend)
+    grid = Grid(
+        serializer, grid_savepoint, mpi_rank, physics_config.layout, backend=backend
+    )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     return_list = []
-    namelist = f90nml.read(namelist_filename)
-    layout = PhysicsConfig.from_f90nml(namelist).layout
     for test_name in sorted(list(savepoint_names)):
         input_savepoints = serializer.get_savepoint(f"{test_name}-In")
         output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -314,7 +341,8 @@ def parallel_savepoint_cases(
                 input_savepoints,
                 output_savepoints,
                 [grid],
-                layout,
+                physics_config.layout,
+                physics_config,
             )
         )
     return return_list
@@ -407,7 +435,7 @@ def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
     param_list = []
     only_one_rank = metafunc.config.getoption("which_rank") is not None
     for case in savepoint_cases:
-        testobj = get_test_class_instance(case.test_name, case.grid)
+        testobj = get_test_class_instance(case.test_name, case.grid, case.namelist)
         max_call_count = min(len(case.input_savepoints), len(case.output_savepoints))
         for i, (savepoint_in, savepoint_out) in enumerate(
             zip(case.input_savepoints, case.output_savepoints)

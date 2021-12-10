@@ -2,11 +2,10 @@ import dataclasses
 
 import numpy as np
 
-import fv3core._config as spec
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3core.testing import ParallelTranslate2Py
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
+from fv3gfs.physics.testing.parallel_translate import ParallelTranslate2Py
 from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
@@ -34,8 +33,8 @@ class DycoreState:
 
 
 class TranslateFVUpdatePhys(ParallelTranslate2Py):
-    def __init__(self, grids):
-        super().__init__(grids)
+    def __init__(self, grids, namelist):
+        super().__init__(grids, namelist)
         grid = grids[0]
         self._base.in_vars["data_vars"] = {
             "u_dt": {},
@@ -93,6 +92,7 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             "ua": {},
             "va": {},
         }
+        self.namelist = namelist
 
     def collect_input_data(self, serializer, savepoint):
         input_data = {}
@@ -315,12 +315,12 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         for key in ["u_dt", "v_dt", "t_dt"]:
             tendencies[key] = inputs.pop(key)
         partitioner = pace.util.CubedSpherePartitioner(
-            pace.util.TilePartitioner(spec.namelist.layout)
+            pace.util.TilePartitioner(self.namelist.layout)
         )
         self._base.compute_func = ApplyPhysics2Dycore(
             self.grid.stencil_factory,
             self.grid.grid_data,
-            spec.namelist,
+            self.namelist,
             communicator,
             partitioner,
             self.grid.rank,

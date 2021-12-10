@@ -1,14 +1,13 @@
 import numpy as np
 
-import fv3core._config as spec
 import pace.util
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
 
 class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist):
+        super().__init__(grid, namelist)
 
         self.in_vars["data_vars"] = {
             "edge_vect_e": {"dwind": True},
@@ -28,6 +27,7 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
             "u": {"dwind": True, "kend": grid.npz - 1},
             "v": {"dwind": True, "kend": grid.npz - 1},
         }
+        self.namelist = namelist
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -63,13 +63,13 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         for var in grid_names:
             grid_info[var] = inputs.pop(var)
         partitioner = pace.util.CubedSpherePartitioner(
-            pace.util.TilePartitioner(spec.namelist.layout)
+            pace.util.TilePartitioner(self.namelist.layout)
         )
         self.compute_func = AGrid2DGridPhysics(
             self.grid.stencil_factory,
             partitioner,
             self.grid.rank,
-            spec.namelist,
+            self.namelist,
             grid_info,
         )
         self.compute_func(**inputs)

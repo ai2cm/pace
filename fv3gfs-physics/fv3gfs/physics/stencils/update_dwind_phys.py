@@ -154,8 +154,8 @@ class AGrid2DGridPhysics:
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         self._dt5 = 0.5 * self.namelist.dt_atmos
-        npx = grid_indexing.domain[0] + 1
-        npy = grid_indexing.domain[1] + 1
+        npx = self.namelist.npx
+        npy = self.namelist.npy
         self._im2 = int((npx - 1) / 2) + 2
         self._jm2 = int((npy - 1) / 2) + 2
         self._subtile_index = partitioner.tile.subtile_index(rank)

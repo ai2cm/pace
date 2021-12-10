@@ -5,8 +5,8 @@ from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
 
 class TranslatePhysUpdateTracers(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist):
+        super().__init__(grid, namelist)
         self.in_vars["data_vars"] = {
             "u_dt": {"dycore": True},
             "v_dt": {"dycore": True},

@@ -2,7 +2,6 @@ import copy
 
 import numpy as np
 
-import fv3core._config as spec
 import pace.dsl.gt4py_utils as utils
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
@@ -10,8 +9,8 @@ from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
 
 class TranslateMicroph(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist):
+        super().__init__(grid, namelist)
 
         self.in_vars["data_vars"] = {
             "qvapor": {"serialname": "mph_qv1", "microph": True},
@@ -41,6 +40,7 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
             "udt": {"serialname": "mph_udt", "kend": grid.npz - 1},
             "vdt": {"serialname": "mph_vdt", "kend": grid.npz - 1},
         }
+        self.namelist = namelist
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -70,7 +70,7 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         inputs["omga"] = copy.deepcopy(storage)
         physics_state = PhysicsState(**inputs)
         microphysics = Microphysics(
-            self.grid.stencil_factory, self.grid.grid_data, spec.namelist
+            self.grid.stencil_factory, self.grid.grid_data, self.namelist
         )
         microph_state = physics_state.microphysics(storage)
         microphysics(microph_state)

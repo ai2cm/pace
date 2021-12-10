@@ -24,6 +24,7 @@ class PhysicsConfig:
     const_vg: bool = NamelistDefaults.const_vg
     const_vi: bool = NamelistDefaults.const_vi
     const_vr: bool = NamelistDefaults.const_vr
+    const_vs: bool = NamelistDefaults.const_vs
     vs_fac: float = NamelistDefaults.vs_fac
     vg_fac: float = NamelistDefaults.vg_fac
     vi_fac: float = NamelistDefaults.vi_fac
@@ -69,7 +70,9 @@ class PhysicsConfig:
     do_sedi_heat: bool = NamelistDefaults.do_sedi_heat
     do_sedi_w: bool = NamelistDefaults.do_sedi_w
     fast_sat_adj: bool = NamelistDefaults.fast_sat_adj
+    qc_crt: float = NamelistDefaults.qc_crt
     fix_negative: bool = NamelistDefaults.fix_negative
+    irain_f: int = NamelistDefaults.irain_f
     mp_time: float = NamelistDefaults.mp_time
     prog_ccn: bool = NamelistDefaults.prog_ccn
     qi0_crt: float = NamelistDefaults.qi0_crt

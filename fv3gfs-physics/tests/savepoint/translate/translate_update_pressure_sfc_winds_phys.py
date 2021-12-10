@@ -4,8 +4,8 @@ from pace.util.constants import KAPPA
 
 
 class TranslatePhysUpdatePressureSurfaceWinds(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist):
+        super().__init__(grid, namelist)
         self.in_vars["data_vars"] = {
             "peln": {"dycore": True, "istart": grid.is_, "jstart": grid.js, "kaxis": 1},
             "pk": {
