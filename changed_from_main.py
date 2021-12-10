@@ -70,6 +70,12 @@ def parse_args(subdir_dependencies: Dict[str, Any]):
         help="subdirectory name of project to check",
         choices=subdir_dependencies.keys(),
     )
+    parser.add_argument(
+        "--git_hash",
+        type=str,
+        help="git hash to compare to (default is top of main)",
+        default="main",
+    )
     return parser.parse_args()
 
 
@@ -80,29 +86,31 @@ def unstaged_files(dirname) -> bool:
     return len(result) > 0
 
 
-def staged_files_changed(dirname) -> bool:
-    result = subprocess.check_output(["git", "diff", "main", dirname])
+def staged_files_changed(dirname, git_hash) -> bool:
+    result = subprocess.check_output(["git", "diff", git_hash, dirname])
     return len(result) > 0
 
 
-def changed(dirname) -> bool:
-    return unstaged_files(dirname) or staged_files_changed(dirname)
+def changed(dirname, git_hash) -> bool:
+    return unstaged_files(dirname) or staged_files_changed(dirname, git_hash)
 
 
-def top_level_files_changed() -> bool:
+def top_level_files_changed(git_hash) -> bool:
     exclude_args = [f":!{dirname}/*" for dirname in get_dependencies().keys()]
-    result = subprocess.check_output(["git", "diff", "main", "."] + exclude_args)
+    result = subprocess.check_output(["git", "diff", git_hash, "."] + exclude_args)
     return len(result) > 0
 
 
 if __name__ == "__main__":
     subdir_dependencies = get_dependencies()
     args = parse_args(subdir_dependencies)
-    if changed(args.project_name) or top_level_files_changed():
+    if changed(args.project_name, args.git_hash) or top_level_files_changed(
+        args.git_hash
+    ):
         print("true")
     else:
         for dependency_subdir in subdir_dependencies[args.project_name]:
-            if changed(dependency_subdir):
+            if changed(dependency_subdir, args.git_hash):
                 print("true")
                 break
         else:
