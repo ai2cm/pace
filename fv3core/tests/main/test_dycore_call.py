@@ -7,6 +7,7 @@ import fv3core
 import fv3core._config
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3core.testing
+import pace.dsl.stencil
 import pace.util
 from fv3core.grid import MetricTerms
 from fv3core.utils.grid import DampingCoefficients, GridData
@@ -49,7 +50,7 @@ def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
 
 def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     backend = "numpy"
-    stencil_config = fv3core.StencilConfig(
+    stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=True,
@@ -115,7 +116,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         tile_partitioner=partitioner.tile,
         tile_rank=communicator.tile.rank,
     )
-    grid_indexing = fv3core.GridIndexing.from_sizer_and_communicator(
+    grid_indexing = pace.dsl.stencil.GridIndexing.from_sizer_and_communicator(
         sizer=sizer, cube=communicator
     )
     quantity_factory = pace.util.QuantityFactory.from_backend(
@@ -135,7 +136,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         moist_phys=config.moist_phys,
         comm=communicator,
     )
-    stencil_factory = fv3core.StencilFactory(
+    stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid_indexing,
     )

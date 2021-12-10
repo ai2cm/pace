@@ -9,7 +9,7 @@ import yaml
 import fv3core
 import fv3core._config
 import fv3core.testing
-import fv3core.utils.gt4py_utils
+import pace.dsl
 import pace.util as fv3util
 from fv3core.testing import ParallelTranslate, TranslateGrid
 from fv3core.utils.mpi import MPI
@@ -545,7 +545,7 @@ def failure_stride(pytestconfig):
 @pytest.fixture()
 def print_domains(pytestconfig):
     value = bool(pytestconfig.getoption("print_domains"))
-    original_init = fv3core.decorators.FrozenStencil.__init__
+    original_init = pace.dsl.stencil.FrozenStencil.__init__
     try:
         if value:
 
@@ -553,10 +553,10 @@ def print_domains(pytestconfig):
                 print(func.__name__, origin, domain)
                 original_init(self, func, origin, domain, *args, **kwargs)
 
-            fv3core.decorators.FrozenStencil.__init__ = __init__
+            pace.dsl.stencil.FrozenStencil.__init__ = __init__
         yield value
     finally:
-        fv3core.decorators.FrozenStencil.__init__ = original_init
+        pace.dsl.stencil.FrozenStencil.__init__ = original_init
 
 
 @pytest.fixture()

@@ -4,12 +4,12 @@ import typing
 import numpy as np
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
 
-import fv3core.utils.gt4py_utils as utils
 import fv3gfs.physics.functions.microphysics_funcs as functions
 import fv3gfs.physics.global_constants as constants
+import pace.dsl.gt4py_utils as utils
 from fv3core.utils.grid import GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import Float, FloatField, FloatFieldIJ, Int
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 
 
 def fields_init(

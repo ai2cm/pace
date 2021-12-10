@@ -1,5 +1,5 @@
 import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.remapping import LagrangianToEulerian
 from fv3core.testing import TranslateFortranData2Py
 

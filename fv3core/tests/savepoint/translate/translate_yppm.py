@@ -1,4 +1,4 @@
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils import yppm
 from fv3core.testing import TranslateFortranData2Py, TranslateGrid
 
