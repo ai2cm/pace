@@ -871,6 +871,7 @@ def subtile_extents_from_tile_metadata(
         offset = 0
         factor = -1
 
+        # steps through all valid sizes to sort them: [start, counting down to 1, counting up from start]
         for i in range(len(unsorted_valid_sizes) + 1):
             index = start + factor * offset
             if index in unsorted_valid_sizes and index not in valid_sizes:
@@ -887,6 +888,7 @@ def subtile_extents_from_tile_metadata(
 
     return_extents = []
     edge_extents = []
+    # for each dimension, find a valid edge:interior decomposition that has a ratio close to the desired edge_interior_ratio
     for dim, subtile_count, dim_extent in zip(dims, layout_factors, tile_extent):
         dim_edge_interior_ratio = edge_interior_ratio
         if dim in constants.INTERFACE_DIMS:
@@ -895,9 +897,10 @@ def subtile_extents_from_tile_metadata(
             raise ValueError(
                 f"Cannot find valid decomposition for odd ({dim_extent}) gridpoints along an even count ({subtile_count}) of ranks."
             )
-        if (
-            subtile_count >= 3 and dim in constants.HORIZONTAL_DIMS
-        ):  # only do shrinked edges in x,y and if there is interior
+
+        # only do shrinked edges in x,y and if there is interior
+        if subtile_count >= 3 and dim in constants.HORIZONTAL_DIMS:
+            # starting edge subtile size, rounded to an integer
             edge_subtile_size = round(
                 dim_extent / (2 + (subtile_count - 2) / dim_edge_interior_ratio)
             )
@@ -910,6 +913,8 @@ def subtile_extents_from_tile_metadata(
                 dim_edge_interior_ratio = edge_size / (
                     (dim_extent - 2 * edge_size) / (subtile_count - 2)
                 )
+                # validation that the integer pair (edge_subtile_size, int(edge_size / dim_edge_interior_ratio))
+                # multiplied by their respective subtile counts together add up to the entire dimension's extent
                 if (
                     edge_size * 2
                     + (subtile_count - 2) * int(edge_size / dim_edge_interior_ratio)
@@ -924,9 +929,12 @@ def subtile_extents_from_tile_metadata(
             return_extents.append(int(edge_size / dim_edge_interior_ratio))
             edge_extents.append(int(edge_size))
         else:
-            edge_size = int(dim_extent / subtile_count)
-            return_extents.append(edge_size)
-            edge_extents.append(edge_size)
+            # trivial case of no special handling
+            subtile_size = int(dim_extent / subtile_count)
+            return_extents.append(subtile_size)
+            edge_extents.append(subtile_size)
+
+    # concatenation of interior tile extents, then edge tile extents.
     return_extents.extend(edge_extents)
     return tuple(return_extents)
 
@@ -982,36 +990,39 @@ def subtile_slice(
 
     for num_dim, (dim, dim_extent) in enumerate(zip(dims, global_extent)):
         if dim in constants.HORIZONTAL_DIMS:
+            # compute start index of slice
+
             if (
                 subtile_index[horizontal_dim_index] == 0
                 or layout[horizontal_dim_index] < 3
-            ):
+            ):  # case distinction: rank 0 or no special handling
                 # this is technically not the edge tile size, but does not matter as subtile_index for that dim is 0.
                 # alternatively equal sized tiles go here, which can take both subdomain sizes.
                 start = subtile_index[horizontal_dim_index] * subtile_extent[num_dim]
-            else:
+            else:  # case distinction: interior or end tile
                 start = (subtile_index[horizontal_dim_index] - 1) * subtile_extent[
                     num_dim
                 ] + subtile_extent[num_dim + num_decomposed_dims]
 
+            # compute end index of slice
             is_end_index = subtile_index[horizontal_dim_index] == (
                 layout[horizontal_dim_index] - 1
             )
             if layout[horizontal_dim_index] < 3 or (
                 subtile_index[horizontal_dim_index] == 0 or is_end_index
-            ):
+            ):  # case distinction: no special handling or start or end tile
                 end = start + _interface_overlap_extent(
                     dim,
                     is_end_index,
                     subtile_extent[num_dim + num_decomposed_dims],
                     overlap,
                 )
-            else:
+            else:  # case distinction: interior tile
                 end = start + _interface_overlap_extent(
                     dim, False, subtile_extent[num_dim], overlap
                 )
             horizontal_dim_index = horizontal_dim_index + 1
-        else:
+        else:  # z direction has no partitioning
             start = 0
             end = dim_extent
 
@@ -1020,6 +1031,7 @@ def subtile_slice(
 
 
 def _interface_overlap_extent(dim: str, is_end_index: bool, extent: int, overlap: bool):
+    """In an interface dimension, adds a potential grid point for overlap or the end index tile."""
     if dim in constants.INTERFACE_DIMS and (is_end_index or overlap):
         extent_plus_overlap_gridcell_count = 1
     else:
