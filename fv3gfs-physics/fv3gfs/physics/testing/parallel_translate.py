@@ -21,13 +21,13 @@ class ParallelTranslate:
     inputs: Dict[str, Any] = {}
     outputs: Dict[str, Any] = {}
 
-    def __init__(self, rank_grids, namelist):
+    def __init__(self, rank_grids, namelist, stencil_factory):
         if not hasattr(rank_grids, "__getitem__"):
             raise TypeError(
                 "rank_grids should be a sequence of grids, one for each rank, "
                 f"is {self.__class__} being properly called as a parallel test?"
             )
-        self._base = TranslateFortranData2Py(rank_grids[0])
+        self._base = TranslateFortranData2Py(rank_grids[0], stencil_factory)
         self._base.in_vars = {
             "data_vars": {name: {} for name in self.inputs},
             "parameters": [],

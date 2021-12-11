@@ -5,8 +5,8 @@ from fv3gfs.physics.testing.translate import TranslateFortranData2Py
 
 
 class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
-    def __init__(self, grid, namelist):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, stencil_factory)
 
     def read_physics_serialized_data(
         self, serializer, savepoint, variable, roll_zero, index_order
@@ -74,13 +74,13 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 data=buffer,
                 shape=max_shape[0:2],
                 origin=(start1, start2),
-                backend=self.grid.stencil_factory.backend,
+                backend=self.stencil_factory.backend,
             )
         d[var] = utils.make_storage_from_shape(
             shape=max_shape[0:2],
             origin=(start1, start2),
             init=True,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )  # write the original name to avoid missing var
 
     def add_composite_evar_storage(self, d, var, data4d, max_shape, start_indices):
@@ -97,17 +97,17 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                     data=buffer,
                     origin=(start1, start2),
                     shape=max_shape[0:2],
-                    backend=self.grid.stencil_factory.backend,
+                    backend=self.stencil_factory.backend,
                 )
         d[var] = utils.make_storage_from_shape(
             shape=max_shape[0:2],
             origin=(start1, start2),
             init=True,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )  # write the original name to avoid missing var
 
     def edge_vector_storage(self, d, var, axis):
-        max_shape = self.grid.grid_indexing.domain_full(add=(1, 1, 1))
+        max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
         default_origin = (0, 0, 0)
         if axis == 1:
             default_origin = (0, 0)
@@ -119,11 +119,11 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             data=d[var],
             origin=default_origin,
             shape=d[var].shape,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )
 
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
-        max_shape = self.grid.grid_indexing.domain_full(add=(1, 1, 1))
+        max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
         start_indices = {
             "vlon": (self.grid.isd + 1, self.grid.jsd + 1),
             "vlat": (self.grid.isd + 1, self.grid.jsd + 1),
@@ -173,7 +173,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             data=input_data[varname],
             origin=self.grid.full_origin(),
             shape=input_data[varname].shape,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )
         return input_data
 

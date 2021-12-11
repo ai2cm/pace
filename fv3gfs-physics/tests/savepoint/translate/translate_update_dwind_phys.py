@@ -6,8 +6,8 @@ from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
 
 class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid, namelist):
-        super().__init__(grid, namelist)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
 
         self.in_vars["data_vars"] = {
             "edge_vect_e": {"dwind": True},
@@ -24,10 +24,11 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
             "ew": {"dwind": True},
         }
         self.out_vars = {
-            "u": {"dwind": True, "kend": grid.npz - 1},
-            "v": {"dwind": True, "kend": grid.npz - 1},
+            "u": {"dwind": True, "kend": namelist.npz - 1},
+            "v": {"dwind": True, "kend": namelist.npz - 1},
         }
         self.namelist = namelist
+        self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -66,7 +67,7 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
             pace.util.TilePartitioner(self.namelist.layout)
         )
         self.compute_func = AGrid2DGridPhysics(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             partitioner,
             self.grid.rank,
             self.namelist,

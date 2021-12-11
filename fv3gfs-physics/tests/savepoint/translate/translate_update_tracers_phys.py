@@ -5,8 +5,8 @@ from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
 
 class TranslatePhysUpdateTracers(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid, namelist):
-        super().__init__(grid, namelist)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "u_dt": {"dycore": True},
             "v_dt": {"dycore": True},
@@ -23,49 +23,53 @@ class TranslatePhysUpdateTracers(TranslatePhysicsFortranData2Py):
             "u_t0": {"order": "F"},
             "v_t0": {"order": "F"},
             "pt_t0": {"order": "F"},
-            "qvapor_t0": {"dycore": True, "kend": grid.npz - 1},
-            "qliquid_t0": {"dycore": True, "kend": grid.npz - 1},
-            "qrain_t0": {"dycore": True, "kend": grid.npz - 1},
-            "qsnow_t0": {"dycore": True, "kend": grid.npz - 1},
-            "qice_t0": {"dycore": True, "kend": grid.npz - 1},
-            "qgraupel_t0": {"dycore": True, "kend": grid.npz - 1},
+            "qvapor_t0": {"dycore": True, "kend": namelist.npz - 1},
+            "qliquid_t0": {"dycore": True, "kend": namelist.npz - 1},
+            "qrain_t0": {"dycore": True, "kend": namelist.npz - 1},
+            "qsnow_t0": {"dycore": True, "kend": namelist.npz - 1},
+            "qice_t0": {"dycore": True, "kend": namelist.npz - 1},
+            "qgraupel_t0": {"dycore": True, "kend": namelist.npz - 1},
             "prsi": {"serialname": "IPD_prsi", "order": "F"},
-            "delp": {"dycore": True, "serialname": "IPD_delp", "kend": grid.npz - 1},
+            "delp": {
+                "dycore": True,
+                "serialname": "IPD_delp",
+                "kend": namelist.npz - 1,
+            },
         }
         self.in_vars["parameters"] = ["rdt"]
         self.out_vars = {
             "u_dt": {
                 "dycore": True,
                 "compute": False,
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
             },
             "v_dt": {
                 "dycore": True,
                 "compute": False,
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
             },
             "pt_dt": {
                 "serialname": "t_dt",
                 "dycore": True,
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
             },
             "delp": {
                 "dycore": True,
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "compute": False,
                 "out_roll_zero": True,
             },
-            "qvapor_t0": {"dycore": True, "kend": grid.npz - 1, "compute": False},
-            "qliquid_t0": {"dycore": True, "kend": grid.npz - 1, "compute": False},
-            "qrain_t0": {"dycore": True, "kend": grid.npz - 1, "compute": False},
-            "qsnow_t0": {"dycore": True, "kend": grid.npz - 1, "compute": False},
-            "qice_t0": {"dycore": True, "kend": grid.npz - 1, "compute": False},
-            "qgraupel_t0": {"dycore": True, "kend": grid.npz - 1, "compute": False},
+            "qvapor_t0": {"dycore": True, "kend": namelist.npz - 1, "compute": False},
+            "qliquid_t0": {"dycore": True, "kend": namelist.npz - 1, "compute": False},
+            "qrain_t0": {"dycore": True, "kend": namelist.npz - 1, "compute": False},
+            "qsnow_t0": {"dycore": True, "kend": namelist.npz - 1, "compute": False},
+            "qice_t0": {"dycore": True, "kend": namelist.npz - 1, "compute": False},
+            "qgraupel_t0": {"dycore": True, "kend": namelist.npz - 1, "compute": False},
         }
-        self.compute_func = grid.stencil_factory.from_origin_domain(
+        self.compute_func = stencil_factory.from_origin_domain(
             prepare_tendencies_and_update_tracers,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
+            origin=stencil_factory.grid_indexing.origin_compute(),
+            domain=stencil_factory.grid_indexing.domain_compute(add=(0, 0, 1)),
         )
 
     def compute(self, inputs):

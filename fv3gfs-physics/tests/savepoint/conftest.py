@@ -7,7 +7,6 @@ import f90nml
 import pytest
 import yaml
 
-import fv3core
 import pace.dsl
 import pace.util as fv3util
 from fv3gfs.physics import PhysicsConfig
@@ -129,6 +128,15 @@ def physics_config(namelist_filename):
     return PhysicsConfig.from_f90nml(namelist_filename)
 
 
+@pytest.fixture
+def stencil_config(backend):
+    return pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
+
+
 def get_test_class(test_name):
     translate_class_name = f"Translate{test_name.replace('-', '_')}"
     try:
@@ -149,12 +157,12 @@ def is_parallel_test(test_name):
         return issubclass(test_class, ParallelTranslate)
 
 
-def get_test_class_instance(test_name, grid, namelist):
+def get_test_class_instance(test_name, grid, namelist, stencil_factory):
     translate_class = get_test_class(test_name)
     if translate_class is None:
         return None
     else:
-        return translate_class(grid, namelist)
+        return translate_class(grid, namelist, stencil_factory)
 
 
 def get_all_savepoint_names(metafunc, data_path):
@@ -212,6 +220,7 @@ SavepointCase = collections.namedtuple(
         "grid",
         "layout",
         "namelist",
+        "stencil_factory",
     ],
 )
 
@@ -228,12 +237,20 @@ def sequential_savepoint_cases(
     physics_config = PhysicsConfig.from_f90nml(namelist)
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
     ranks = get_ranks(metafunc, physics_config.layout)
-
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
         grid = Grid(
             serializer, grid_savepoint, rank, physics_config.layout, backend=backend
+        )
+        stencil_factory = pace.dsl.stencil.StencilFactory(
+            config=stencil_config,
+            grid_indexing=grid.grid_indexing,
         )
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
@@ -249,6 +266,7 @@ def sequential_savepoint_cases(
                     grid,
                     physics_config.layout,
                     physics_config,
+                    stencil_factory,
                 )
             )
 
@@ -277,6 +295,11 @@ def mock_parallel_savepoint_cases(
     namelist = f90nml.read(namelist_filename)
     physics_config = PhysicsConfig.from_f90nml(namelist)
     total_ranks = 6 * physics_config.layout[0] * physics_config.layout[1]
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
     grid_list = []
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
@@ -287,6 +310,10 @@ def mock_parallel_savepoint_cases(
         grid_list.append(grid)
         if rank == 0:
             grid_rank0 = grid
+    stencil_factory = pace.dsl.stencil.StencilFactory(
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
+    )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     for test_name in sorted(list(savepoint_names)):
         input_list = []
@@ -312,6 +339,7 @@ def mock_parallel_savepoint_cases(
                 grid_list,
                 physics_config.layout,
                 physics_config,
+                stencil_factory,
             )
         )
     return return_list
@@ -323,9 +351,18 @@ def parallel_savepoint_cases(
     serializer = get_serializer(data_path, mpi_rank)
     namelist = f90nml.read(namelist_filename)
     physics_config = PhysicsConfig.from_f90nml(namelist)
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
     grid = Grid(
         serializer, grid_savepoint, mpi_rank, physics_config.layout, backend=backend
+    )
+    stencil_factory = pace.dsl.stencil.StencilFactory(
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
     )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     return_list = []
@@ -343,6 +380,7 @@ def parallel_savepoint_cases(
                 [grid],
                 physics_config.layout,
                 physics_config,
+                stencil_factory,
             )
         )
     return return_list
@@ -350,7 +388,6 @@ def parallel_savepoint_cases(
 
 def pytest_generate_tests(metafunc):
     backend = metafunc.config.getoption("backend")
-    fv3core.set_backend(backend)
     if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
         if metafunc.function.__name__ == "test_parallel_savepoint":
             generate_parallel_stencil_tests(metafunc, backend=backend)
@@ -435,7 +472,9 @@ def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
     param_list = []
     only_one_rank = metafunc.config.getoption("which_rank") is not None
     for case in savepoint_cases:
-        testobj = get_test_class_instance(case.test_name, case.grid, case.namelist)
+        testobj = get_test_class_instance(
+            case.test_name, case.grid, case.namelist, case.stencil_factory
+        )
         max_call_count = min(len(case.input_savepoints), len(case.output_savepoints))
         for i, (savepoint_in, savepoint_out) in enumerate(
             zip(case.input_savepoints, case.output_savepoints)

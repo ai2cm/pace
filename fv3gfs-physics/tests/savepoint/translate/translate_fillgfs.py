@@ -3,20 +3,20 @@ from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 
 
 class TranslateFillGFS(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid, namelist):
-        super().__init__(grid, namelist)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
 
         self.in_vars["data_vars"] = {
             "pe": {"serialname": "IPD_prsi"},
             "q": {"serialname": "IPD_gq0"},
         }
         self.out_vars = {
-            "q": {"serialname": "IPD_qvapor", "kend": grid.npz - 1},
+            "q": {"serialname": "IPD_qvapor", "kend": namelist.npz - 1},
         }
-        self.compute_func = grid.stencil_factory.from_origin_domain(
+        self.compute_func = stencil_factory.from_origin_domain(
             fill_gfs,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=stencil_factory.grid_indexing.origin_full(),
+            domain=stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
         )
 
     def compute(self, inputs):

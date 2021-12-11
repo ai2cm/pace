@@ -1,10 +1,11 @@
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.utils.grid import Grid
+from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Field  # noqa: F401
 
 
@@ -28,15 +29,16 @@ class TranslateFortranData2Py:
     max_error = 1e-14
     near_zero = 1e-18
 
-    def __init__(self, grid, origin=utils.origin):
+    def __init__(self, grid, stencil_factory: StencilFactory, origin=utils.origin):
         self.origin = origin
-        self.in_vars = {"data_vars": {}, "parameters": []}
-        self.out_vars = {}
-        self.write_vars = []
+        self.stencil_factory = stencil_factory
+        self.in_vars: Dict[str, Any] = {"data_vars": {}, "parameters": []}
+        self.out_vars: Dict[str, Any] = {}
+        self.write_vars: List = []
         self.grid = grid
         self.maxshape = grid.domain_shape_full(add=(1, 1, 1))
         self.ordered_input_vars = None
-        self.ignore_near_zero_errors = {}
+        self.ignore_near_zero_errors: Dict[str, Any] = {}
 
     def setup(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -102,7 +104,7 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 names=names_4d,
-                backend=self.grid.stencil_factory.backend,
+                backend=self.stencil_factory.backend,
             )
         else:
             return utils.make_storage_data(
@@ -113,7 +115,7 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 read_only=read_only,
-                backend=self.grid.stencil_factory.backend,
+                backend=self.stencil_factory.backend,
             )
 
     def storage_vars(self):
@@ -202,7 +204,7 @@ class TranslateFortranData2Py:
                 del inputs[serialname]
 
     def slice_output(self, inputs, out_data=None):
-        utils.device_sync(backend=self.grid.stencil_factory.backend)
+        utils.device_sync(backend=self.stencil_factory.backend)
         if out_data is None:
             out_data = inputs
         else:

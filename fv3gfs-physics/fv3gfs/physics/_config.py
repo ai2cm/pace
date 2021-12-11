@@ -12,6 +12,7 @@ class PhysicsConfig:
     hydrostatic: bool
     npx: int
     npy: int
+    npz: int
     nwat: int
     tau: float
     do_qa: bool
