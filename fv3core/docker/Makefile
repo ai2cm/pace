@@ -3,11 +3,13 @@
 include Makefile.image_names
 
 DOCKER_BUILDKIT=1
+GT4PY_DIR=../gt4py
 BUILD_ARGS += \
 	--network host \
 	--build-arg FMS_IMAGE=$(FMS_IMAGE) \
 	--build-arg ESMF_IMAGE=$(ESMF_IMAGE) \
 	--build-arg MPI_IMAGE=$(MPI_IMAGE) \
+	--build-arg GT4PY_DIR=${GT4PY_DIR} \
 	--build-arg SERIALBOX_IMAGE=$(SERIALBOX_IMAGE) \
 	--build-arg ENVIRONMENT_IMAGE=$(ENVIRONMENT_IMAGE) \
 	--build-arg FORTRAN_IMAGE=$(FORTRAN_IMAGE) \
@@ -18,6 +20,7 @@ BUILD_ARGS += \
 
 CORE_DEPS_IMAGES = $(SERIALBOX_IMAGE) $(ENVIRONMENT_IMAGE)
 DEPS_IMAGES ?= $(CORE_DEPS_IMAGES) $(FMS_IMAGE) $(ESMF_IMAGE) $(MPI_IMAGE)
+GT4PY_VERSION ?= `cat ../GT4PY_VERSION.txt`
 
 build: fv3core_image
 
@@ -27,7 +30,15 @@ dev_wrapper:
 	fi
 	FV3CORE_WRAPPER_IMAGE=$(FV3CORE_WRAPPER_IMAGE) docker-compose run fv3core_wrapper bash
 
-.PHONY: dev fortran_image wrapper_image fv3core_image build build_deps push_deps pull_deps
+.PHONY: dev fortran_image wrapper_image fv3core_image build build_deps push_deps pull_deps get_gt4py
+
+get_gt4py:
+	if [ ! -f ${GT4PY_DIR}/pyproject.toml ]  || \
+	[ "$(shell cd ${GT4PY_DIR} && git describe --tags )" != "${GT4PY_VERSION}"  ]; then \
+                rm -rf ${GT4PY_DIR} && \
+	  	git clone https://github.com/VulcanClimateModeling/gt4py.git ${GT4PY_DIR} && \
+	  	cd ${GT4PY_DIR} && git checkout ${GT4PY_VERSION};\
+	fi
 
 fortran_image:
 	docker build \
@@ -42,7 +53,7 @@ full_fortran_image:
 	FMS_IMAGE=fv3gfs-fms ESMF_IMAGE=fv3gfs-esmf MPI_IMAGE=fv3gfs-mpi $(MAKE) fortran_image
 
  ## build production container image
-fv3core_image:
+fv3core_image: get_gt4py
 	DOCKER_BUILDKIT=1 ./concrete_externals.sh "docker build \
 		$(BUILD_ARGS) \
 		-f $(FV3CORE_DOCKERFILE) \
