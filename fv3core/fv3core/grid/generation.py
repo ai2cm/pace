@@ -86,7 +86,10 @@ class MetricTerms:
         self._halo = N_HALO_DEFAULT
         self._comm = communicator
         self._partitioner = self._comm.partitioner
-        self._tile_partitioner = self._partitioner.tile
+        if isinstance(self._partitioner, fv3util.TilePartitioner):
+            self._tile_partitioner = self._partitioner
+        elif isinstance(self._partitioner, fv3util.CubedSpherePartitioner):
+            self._tile_partitioner = self._partitioner.tile
         self._rank = self._comm.rank
         self.quantity_factory = quantity_factory
         self.quantity_factory._sizer.extra_dim_lenths = {
@@ -223,7 +226,7 @@ class MetricTerms:
                 cls.TILE_DIM: 6,
                 cls.CARTESIAN_DIM: 3,
             },
-            layout=communicator.layout,
+            layout=communicator.partitioner.layout,
         )
         quantity_factory = fv3util.QuantityFactory.from_backend(sizer, backend=backend)
         return cls(

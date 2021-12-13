@@ -348,6 +348,7 @@ class TileCommunicator(Communicator):
         """
         super(TileCommunicator, self).__init__(comm, partitioner, force_cpu=force_cpu)
         self.partitioner: TilePartitioner = partitioner
+        self.tile = self
 
 
 class CubedSphereCommunicator(Communicator):
