@@ -198,17 +198,17 @@ if __name__ == "__main__":
         partitioner = util.TilePartitioner(namelist.layout)
         communicator = util.TileCommunicator(mpi_comm, partitioner)
         # generate the grid
-        grid = spec.make_grid_with_data_from_namelist(
-            namelist, communicator, args.backend
-        )
-        spec.set_grid(grid)
+        # grid = spec.make_grid_with_data_from_namelist(
+        #     namelist, communicator, args.backend
+        # )
+        # spec.set_grid(grid)
 
         # TODO remove this creation of the legacy grid once everything that
         # references it is updated or removed
         grid = spec.make_grid_from_namelist(namelist, communicator.rank)
         spec.set_grid(grid)
 
-        metric_terms = MetricTerms.from_single_tile_sizing(
+        metric_terms = MetricTerms.from_tile_sizing(
             npx=namelist.npx,
             npy=namelist.npy,
             npz=namelist.npz,
