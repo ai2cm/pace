@@ -7,11 +7,11 @@ import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
 from gt4py.stencil_object import StencilObject
 
-from fv3core.utils.future_stencil import FutureStencil, StencilTable, future_stencil
 from fv3core.utils.global_config import set_backend
-from fv3core.utils.gt4py_utils import make_storage_from_shape_uncached
 from fv3core.utils.mpi import MPI
-from fv3core.utils.typing import FloatField, IntField
+from pace.dsl.future_stencil import FutureStencil, StencilTable, future_stencil
+from pace.dsl.gt4py_utils import make_storage_from_shape
+from pace.dsl.typing import FloatField, IntField
 
 
 def copy_stencil(q_in: FloatField, q_out: FloatField):
@@ -33,11 +33,11 @@ def add_rank(out: IntField):
             out = rank + 1.0
 
 
-def setup_data_vars():
+def setup_data_vars(backend: str):
     shape = (7, 7, 3)
-    q = make_storage_from_shape_uncached(shape)
+    q = make_storage_from_shape(shape, backend=backend)
     q[:] = 1.0
-    q_ref = make_storage_from_shape_uncached(shape)
+    q_ref = make_storage_from_shape(shape, backend=backend)
     q_ref[:] = 1.0
     return q, q_ref
 
@@ -82,7 +82,7 @@ def test_future_stencil(backend: str, rebuild: bool, use_wrapper: bool):
         add1_object = wrapper.stencil_object
         assert isinstance(add1_object, StencilObject)
 
-    q, q_ref = setup_data_vars()
+    q, q_ref = setup_data_vars(backend=backend)
     add1_object(q, origin=origin, domain=domain)
     q_ref[1:3, 1:3, :] = 2.0
     assert np.array_equal(q, q_ref)

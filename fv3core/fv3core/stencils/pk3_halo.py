@@ -1,9 +1,9 @@
 from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.utils.grid import axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 # TODO merge with pe_halo? reuse partials?
@@ -53,7 +53,7 @@ class PK3Halo:
         )
         shape_2D = grid_indexing.domain_full(add=(1, 1, 1))[0:2]
         self._pe_tmp = utils.make_storage_from_shape(
-            shape_2D, grid_indexing.origin_full()
+            shape_2D, grid_indexing.origin_full(), backend=stencil_factory.backend
         )
 
     def __call__(self, pk3: FloatField, delp: FloatField, ptop: float, akap: float):

@@ -1,3 +1,5 @@
+.dace.conf
+
 # Test outputs
 results.xml
 

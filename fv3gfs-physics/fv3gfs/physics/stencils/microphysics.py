@@ -1,23 +1,15 @@
 import copy
+import typing
 
 import numpy as np
-from gt4py import storage
-from gt4py.gtscript import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    horizontal,
-    interval,
-)
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
 
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import Float, FloatField, FloatFieldIJ, Int, IntField
-from fv3gfs.physics.functions.microphysics_funcs import *
-from fv3gfs.physics.global_constants import *
-from fv3gfs.util.quantity import Quantity
+import fv3gfs.physics.functions.microphysics_funcs as functions
+import pace.dsl.gt4py_utils as utils
+import pace.util.constants as constants
+from fv3core.utils.grid import GridData
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 
 
 def fields_init(
@@ -71,7 +63,6 @@ def fields_init(
     v1: FloatField,
     ccn: FloatField,
     c_praut: FloatField,
-    use_ccn: Int,
     c_air: Float,
     c_vap: Float,
     d0_vap: Float,
@@ -80,6 +71,19 @@ def fields_init(
     rdt: Float,
     cpaut: Float,
 ):
+    from __externals__ import (
+        ccn_l,
+        ccn_o,
+        de_ice,
+        dw_land,
+        dw_ocean,
+        fix_negative,
+        prog_ccn,
+        qi0_max,
+        rh_inc,
+        rh_inr,
+        use_ccn,
+    )
 
     with computation(PARALLEL), interval(...):
 
@@ -91,7 +95,7 @@ def fields_init(
 
         # This is to prevent excessive build-up of cloud ice from
         # external sources
-        if de_ice == 1:
+        if de_ice:
 
             qio = qi - dt_in * qi_dt  # Orginal qi before phys
             qin = max(qio, qi0_max)  # Adjusted value
@@ -111,7 +115,7 @@ def fields_init(
         t0 = pt
         tz = t0
         dp1 = delp
-        dp0 = dp1  # Moist air mass * grav
+        dp0 = dp1  # Moist air mass * constants.GRAV
 
         # Convert moist mixing ratios to dry mixing ratios
         qvz = qv
@@ -132,8 +136,8 @@ def fields_init(
         qa0 = qa
         dz0 = dz
 
-        den0 = -dp1 / (grav * dz0)  # Density of dry air
-        p1 = den0 * rdgas * t0  # Dry air pressure
+        den0 = -dp1 / (constants.GRAV * dz0)  # Density of dry air
+        p1 = den0 * constants.RDGAS * t0  # Dry air pressure
 
         # Save a copy of old values for computing tendencies
         qv0 = qvz
@@ -149,11 +153,11 @@ def fields_init(
         u1 = u0
         v1 = v0
 
-        if prog_ccn == 1:
+        if prog_ccn:
 
             # Convert #/cc to #/m^3
             ccn = qn * 1.0e6
-            c_praut = cpaut * (ccn * rhor) ** (-1.0 / 3.0)
+            c_praut = cpaut * (ccn * functions.RHOR) ** (-1.0 / 3.0)
 
         else:
 
@@ -163,22 +167,22 @@ def fields_init(
 
         with interval(-1, None):
 
-            if (prog_ccn == 0) and (use_ccn == 1):
+            if not prog_ccn and use_ccn:
 
                 # ccn is formulted as ccn = ccn_surface * (den / den_surface)
-                ccn = ccn * rdgas * tz / p1
+                ccn = ccn * constants.RDGAS * tz / p1
 
         with interval(0, -1):
 
-            if (prog_ccn == 0) and (use_ccn == 1):
+            if not prog_ccn and use_ccn:
 
                 # Propagate downwards previously computed values of ccn
                 ccn = ccn[0, 0, +1]
 
     with computation(PARALLEL), interval(...):
 
-        if prog_ccn == 0:
-            c_praut = cpaut * (ccn * rhor) ** (-1.0 / 3.0)
+        if not prog_ccn:
+            c_praut = cpaut * (ccn * functions.RHOR) ** (-1.0 / 3.0)
 
         # Calculate horizontal subgrid variability
         # Total water subgrid deviation in horizontal direction
@@ -194,12 +198,17 @@ def fields_init(
         rh_rain = max(0.35, rh_adj - rh_inr)
 
         # Fix all negative water species
-        if fix_negative == 1:
+        if fix_negative:
 
             # Define heat capacity and latent heat coefficient
-            cvm = c_air + qvz * c_vap + (qrz + qlz) * c_liq + (qiz + qsz + qgz) * c_ice
+            cvm = (
+                c_air
+                + qvz * c_vap
+                + (qrz + qlz) * constants.C_LIQ
+                + (qiz + qsz + qgz) * constants.C_ICE
+            )
             lcpk = (lv00 + d0_vap * tz) / cvm
-            icpk = (li00 + dc_ice * tz) / cvm
+            icpk = (constants.LI00 + constants.DC_ICE * tz) / cvm
 
             # Ice phase
 
@@ -240,12 +249,12 @@ def fields_init(
     with computation(FORWARD), interval(1, None):
 
         # Fix water vapor; borrow from below
-        if (fix_negative == 1) and (qvz[0, 0, -1] < 0.0):
+        if fix_negative and (qvz[0, 0, -1] < 0.0):
             qvz[0, 0, 0] = qvz[0, 0, 0] + qvz[0, 0, -1] * dp1[0, 0, -1] / dp1[0, 0, 0]
 
     with computation(PARALLEL), interval(0, -1):
 
-        if (fix_negative == 1) and (qvz < 0.0):
+        if fix_negative and (qvz < 0.0):
             qvz = 0.0
 
     # Bottom layer; borrow from above
@@ -255,7 +264,7 @@ def fields_init(
 
             flag = 0
 
-            if (fix_negative == 1) and (qvz[0, 0, +1] < 0.0) and (qvz > 0.0):
+            if fix_negative and (qvz[0, 0, +1] < 0.0) and (qvz > 0.0):
 
                 dq = min(-qvz[0, 0, +1] * dp1[0, 0, +1], qvz[0, 0, 0] * dp1[0, 0, 0])
                 flag = 1
@@ -264,7 +273,7 @@ def fields_init(
 
             flag = 0
 
-            if (fix_negative == 1) and (qvz < 0.0) and (qvz[0, 0, -1] > 0.0):
+            if fix_negative and (qvz < 0.0) and (qvz[0, 0, -1] > 0.0):
 
                 dq = min(-qvz[0, 0, 0] * dp1[0, 0, 0], qvz[0, 0, -1] * dp1[0, 0, -1])
                 flag = 1
@@ -284,6 +293,7 @@ def fields_init(
                 qvz = qvz + dq / dp1
 
 
+@typing.no_type_check
 def warm_rain(
     h_var: FloatField,
     rain: FloatField,
@@ -309,10 +319,7 @@ def warm_rain(
     m1_sol: FloatField,
     m2_rain: FloatField,
     m2_sol: FloatField,
-    is_first: Int,
-    do_sedi_w: Int,
-    p_nonhydro: Int,
-    use_ccn: Int,
+    is_first: bool,
     c_air: Float,
     c_vap: Float,
     d0_vap: Float,
@@ -324,28 +331,37 @@ def warm_rain(
     crevp_2: Float,
     crevp_3: Float,
     crevp_4: Float,
-    t_wfr: Float,
     so3: Float,
     dt_rain: Float,
     zs: Float,
 ):
+    from __externals__ import (
+        do_sedi_heat,
+        do_sedi_w,
+        irain_f,
+        p_nonhydro,
+        t_wfr,
+        use_ccn,
+        use_ppm,
+        z_slope_liq,
+    )
 
     with computation(PARALLEL), interval(...):
 
-        if is_first == 1:
+        if is_first:
 
             # Define air density based on hydrostatical property
-            if p_nonhydro == 1:
+            if p_nonhydro:
 
                 dz1 = dz0
                 den = den0  # Dry air density remains the same
-                denfac = sqrt(sfcrho / den)
+                denfac = sqrt(functions.SFCRHO / den)
 
             else:
 
                 dz1 = dz0 * tz / t0  # Hydrostatic balance
                 den = den0 * dz0 / dz1
-                denfac = sqrt(sfcrho / den)
+                denfac = sqrt(functions.SFCRHO / den)
 
         # Time-split warm rain processes: 1st pass
         dt5 = 0.5 * dt_rain
@@ -357,7 +373,7 @@ def warm_rain(
 
         with interval(0, 1):
 
-            if qrz > qrmin:
+            if qrz > functions.QRMIN:
                 no_fall = 0
             else:
                 no_fall = 1
@@ -366,7 +382,7 @@ def warm_rain(
 
             if no_fall[0, 0, -1] == 1:
 
-                if qrz > qrmin:
+                if qrz > functions.QRMIN:
                     no_fall = 0
                 else:
                     no_fall = 1
@@ -382,7 +398,7 @@ def warm_rain(
 
     with computation(PARALLEL), interval(...):
 
-        vtrz, r1 = compute_rain_fspeed(no_fall, qrz, den)
+        vtrz, r1 = functions.compute_rain_fspeed(no_fall, qrz, den)
 
     with computation(BACKWARD):
 
@@ -401,7 +417,7 @@ def warm_rain(
         if no_fall == 0:
 
             # Evaporation and accretion of rain for the first 1/2 time step
-            qgz, qiz, qlz, qrz, qsz, qvz, tz = revap_racc(
+            qgz, qiz, qlz, qrz, qsz, qvz, tz = functions.revap_racc(
                 dt5,
                 c_air,
                 c_vap,
@@ -426,7 +442,7 @@ def warm_rain(
                 denfac,
             )
 
-            if do_sedi_w == 1:
+            if do_sedi_w:
                 dm = dp1 * (1.0 + qvz + qlz + qrz + qiz + qsz + qgz)
 
     # Mass flux induced by falling rain
@@ -434,17 +450,17 @@ def warm_rain(
 
         with interval(0, 1):
 
-            if (use_ppm == 1) and (no_fall == 0):
+            if use_ppm and (no_fall == 0):
                 zt = ze
 
         with interval(1, -1):
 
-            if (use_ppm == 1) and (no_fall == 0):
+            if use_ppm and (no_fall == 0):
                 zt = ze - dt5 * (vtrz[0, 0, -1] + vtrz)
 
         with interval(-1, None):
 
-            if (use_ppm == 1) and (no_fall == 0):
+            if use_ppm and (no_fall == 0):
 
                 zt = ze - dt5 * (vtrz[0, 0, -1] + vtrz)
 
@@ -454,39 +470,39 @@ def warm_rain(
 
         with interval(1, -1):
 
-            if (use_ppm == 1) and (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - dz_min
+            if use_ppm and (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
         with interval(-1, None):
 
-            if use_ppm == 1:
+            if use_ppm:
 
                 if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                    zt = zt[0, 0, -1] - dz_min
+                    zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
                 if (no_fall == 0) and (zt_kbot1 >= zt):
-                    zt_kbot1 = zt - dz_min
+                    zt_kbot1 = zt - functions.DZ_MIN_FLIP
 
     with computation(BACKWARD), interval(0, -1):
 
-        if (use_ppm == 1) and (no_fall == 0):
+        if use_ppm and (no_fall == 0):
             zt_kbot1 = zt_kbot1[0, 0, +1]
 
     with computation(PARALLEL):
 
         with interval(0, -1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 dz = ze - ze[0, 0, +1]
 
         with interval(-1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 dz = ze - zs
 
     with computation(PARALLEL), interval(...):
 
-        if (use_ppm == 0) and (no_fall == 0):
+        if (not use_ppm) and (no_fall == 0):
 
             dd = dt_rain * vtrz
             qrz = qrz * dp1
@@ -496,17 +512,17 @@ def warm_rain(
 
         with interval(0, 1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 qm = qrz / (dz + dd)
 
         with interval(1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 qm = (qrz[0, 0, 0] + dd[0, 0, -1] * qm[0, 0, -1]) / (dz + dd)
 
     with computation(PARALLEL), interval(...):
 
-        if (use_ppm == 0) and (no_fall == 0):
+        if (not use_ppm) and (no_fall == 0):
 
             # qm is density at this stage
             qm = qm * dz
@@ -516,24 +532,24 @@ def warm_rain(
 
         with interval(0, 1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 m1_rain = qrz - qm
 
         with interval(1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 m1_rain = m1_rain[0, 0, -1] + qrz[0, 0, 0] - qm
 
     with computation(BACKWARD):
 
         with interval(-1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 r1 = m1_rain
 
         with interval(0, -1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 r1 = r1[0, 0, +1]
 
     with computation(PARALLEL):
@@ -542,26 +558,26 @@ def warm_rain(
 
             if no_fall == 0:
 
-                if use_ppm == 0:
+                if not use_ppm:
 
                     # Update
                     qrz = qm / dp1
 
                 # Vertical velocity transportation during sedimentation
-                if do_sedi_w == 1:
+                if do_sedi_w:
                     w = (dm * w + m1_rain * vtrz) / (dm - m1_rain)
 
         with interval(1, None):
 
             if no_fall == 0:
 
-                if use_ppm == 0:
+                if not use_ppm:
 
                     # Update
                     qrz = qm / dp1
 
                 # Vertical velocity transportation during sedimentation
-                if do_sedi_w == 1:
+                if do_sedi_w:
 
                     w[0, 0, 0] = (
                         dm * w[0, 0, 0]
@@ -574,15 +590,15 @@ def warm_rain(
 
         with interval(0, 1):
 
-            if (do_sedi_heat == 1) and (no_fall == 0):
+            if do_sedi_heat and (no_fall == 0):
 
                 # Input q fields are dry mixing ratios, and dm is dry air mass
-                dgz = -0.5 * grav * dz1
+                dgz = -0.5 * constants.GRAV * dz1
                 cvn = dp1 * (
-                    cv_air
-                    + qvz * cv_vap
-                    + (qrz + qlz) * c_liq
-                    + (qiz + qsz + qgz) * c_ice
+                    constants.CV_AIR
+                    + qvz * constants.CV_VAP
+                    + (qrz + qlz) * constants.C_LIQ
+                    + (qiz + qsz + qgz) * constants.C_ICE
                 )
 
                 # - Assumption: The ke in the falling condensates is negligible
@@ -592,39 +608,39 @@ def warm_rain(
                 #               internal energy (to heat the whole grid box).
                 # - Backward time-implicit upwind transport scheme:
                 # - dm here is dry air mass
-                tmp = cvn + m1_rain * c_liq
+                tmp = cvn + m1_rain * constants.C_LIQ
                 tz = tz + m1_rain * dgz / tmp
 
         with interval(1, None):
 
-            if (do_sedi_heat == 1) and (no_fall == 0):
+            if do_sedi_heat and (no_fall == 0):
 
                 # Input q fields are dry mixing ratios, and dm is dry air mass
-                dgz = -0.5 * grav * dz1
+                dgz = -0.5 * constants.GRAV * dz1
                 cvn = dp1 * (
-                    cv_air
-                    + qvz * cv_vap
-                    + (qrz + qlz) * c_liq
-                    + (qiz + qsz + qgz) * c_ice
+                    constants.CV_AIR
+                    + qvz * constants.CV_VAP
+                    + (qrz + qlz) * constants.C_LIQ
+                    + (qiz + qsz + qgz) * constants.C_ICE
                 )
 
     # Implicit algorithm
     with computation(FORWARD), interval(1, None):
 
-        if (do_sedi_heat == 1) and (no_fall == 0):
+        if do_sedi_heat and (no_fall == 0):
 
             tz[0, 0, 0] = (
-                (cvn + c_liq * (m1_rain - m1_rain[0, 0, -1])) * tz[0, 0, 0]
-                + m1_rain[0, 0, -1] * c_liq * tz[0, 0, -1]
+                (cvn + constants.C_LIQ * (m1_rain - m1_rain[0, 0, -1])) * tz[0, 0, 0]
+                + m1_rain[0, 0, -1] * constants.C_LIQ * tz[0, 0, -1]
                 + dgz * (m1_rain[0, 0, -1] + m1_rain)
-            ) / (cvn + c_liq * m1_rain)
+            ) / (cvn + constants.C_LIQ * m1_rain)
 
     with computation(PARALLEL), interval(...):
 
         if no_fall == 0:
 
             # Evaporation and accretion of rain for the remaining 1/2 time step
-            qgz, qiz, qlz, qrz, qsz, qvz, tz = revap_racc(
+            qgz, qiz, qlz, qrz, qsz, qvz, tz = functions.revap_racc(
                 dt5,
                 c_air,
                 c_vap,
@@ -653,7 +669,7 @@ def warm_rain(
         # cloud water following lin et al. 1994, mwr
         if irain_f != 0:
 
-            qlz, qrz = autoconv_no_subgrid_var(
+            qlz, qrz = functions.autoconv_no_subgrid_var(
                 use_ccn, fac_rc, t_wfr, so3, dt_rain, qlz, qrz, tz, den, ccn, c_praut
             )
 
@@ -662,21 +678,22 @@ def warm_rain(
 
         with interval(0, 1):
 
-            if (irain_f == 0) and (z_slope_liq == 1):
+            if (irain_f == 0) and z_slope_liq:
                 dl = 0.0
 
         with interval(1, None):
 
-            if (irain_f == 0) and (z_slope_liq == 1):
+            if (irain_f == 0) and z_slope_liq:
                 dq = 0.5 * (qlz[0, 0, 0] - qlz[0, 0, -1])
 
     with computation(PARALLEL):
 
         with interval(1, -1):
 
-            if (irain_f == 0) and (z_slope_liq == 1):
+            if (irain_f == 0) and z_slope_liq:
 
-                # Use twice the strength of the positive definiteness limiter (lin et al 1994)
+                # Use twice the strength of the
+                # positive definiteness limiter (lin et al 1994)
                 dl = 0.5 * min(abs(dq + dq[0, 0, +1]), 0.5 * qlz[0, 0, 0])
 
                 if dq * dq[0, 0, +1] <= 0.0:
@@ -691,24 +708,24 @@ def warm_rain(
 
         with interval(-1, None):
 
-            if (irain_f == 0) and (z_slope_liq == 1):
+            if (irain_f == 0) and z_slope_liq:
                 dl = 0.0
 
     with computation(PARALLEL), interval(...):
 
         if irain_f == 0:
 
-            if z_slope_liq == 1:
+            if z_slope_liq:
 
                 # Impose a presumed background horizontal variability that is
                 # proportional to the value itself
-                dl = max(dl, max(qvmin, h_var * qlz))
+                dl = max(dl, max(functions.QVMIN, h_var * qlz))
 
             else:
 
-                dl = max(qvmin, h_var * qlz)
+                dl = max(functions.QVMIN, h_var * qlz)
 
-            qlz, qrz = autoconv_subgrid_var(
+            qlz, qrz = functions.autoconv_subgrid_var(
                 use_ccn,
                 fac_rc,
                 t_wfr,
@@ -726,7 +743,7 @@ def warm_rain(
         rain = rain + r1
         m2_rain = m2_rain + m1_rain
 
-        if is_first == 1:
+        if is_first:
 
             m1 = m1 + m1_rain
 
@@ -736,6 +753,7 @@ def warm_rain(
             m1 = m1 + m1_rain + m1_sol
 
 
+@typing.no_type_check
 def sedimentation(
     graupel: FloatField,
     ice: FloatField,
@@ -755,7 +773,6 @@ def sedimentation(
     vtgz: FloatField,
     vtsz: FloatField,
     m1_sol: FloatField,
-    do_sedi_w: Int,
     c_air: Float,
     c_vap: Float,
     d0_vap: Float,
@@ -765,21 +782,22 @@ def sedimentation(
     dts: Float,
     fac_imlt: Float,
 ):
+    from __externals__ import do_sedi_heat, do_sedi_w, ql_mlt, tice, use_ppm, vi_fac
 
     with computation(PARALLEL), interval(...):
 
         # Sedimentation of cloud ice, snow, and graupel
-        vtgz, vtiz, vtsz = fall_speed(log_10, qgz, qiz, qlz, qsz, tz, den)
+        vtgz, vtiz, vtsz = functions.fall_speed(log_10, qgz, qiz, qlz, qsz, tz, den)
 
         dt5 = 0.5 * dts
 
         # Define heat capacity and latent heat coefficient
         m1_sol = 0.0
 
-        lhi = li00 + dc_ice * tz
+        lhi = constants.LI00 + constants.DC_ICE * tz
         q_liq = qlz + qrz
         q_sol = qiz + qsz + qgz
-        cvm = c_air + qvz * c_vap + q_liq * c_liq + q_sol * c_ice
+        cvm = c_air + qvz * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         icpk = lhi / cvm
 
     # Find significant melting level
@@ -819,16 +837,21 @@ def sedimentation(
             # Melting of cloud ice (before fall)
             tc = tz - tice
 
-            if (qiz > qcmin) and (tc > 0.0):
+            if (qiz > functions.QCMIN) and (tc > 0.0):
 
                 sink = min(qiz, fac_imlt * tc / icpk)
-                tmp = min(sink, dim(ql_mlt, qlz))
+                tmp = min(sink, functions.dim(ql_mlt, qlz))
                 qlz = qlz + tmp
                 qrz = qrz + sink - tmp
                 qiz = qiz - sink
                 q_liq = q_liq + sink
                 q_sol = q_sol - sink
-                cvm = c_air + qvz * c_vap + q_liq * c_liq + q_sol * c_ice
+                cvm = (
+                    c_air
+                    + qvz * c_vap
+                    + q_liq * constants.C_LIQ
+                    + q_sol * constants.C_ICE
+                )
                 tz = tz - sink * lhi / cvm
                 tc = tz - tice
 
@@ -861,7 +884,7 @@ def sedimentation(
         if stop_k == 1:
 
             # Update capacity heat and latent heat coefficient
-            lhi = li00 + dc_ice * tz
+            lhi = constants.LI00 + constants.DC_ICE * tz
             icpk = lhi / cvm
 
     # Melting of falling cloud ice into rain
@@ -869,7 +892,7 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if qiz > qrmin:
+            if qiz > functions.QRMIN:
                 no_fall = 0
             else:
                 no_fall = 1
@@ -878,7 +901,7 @@ def sedimentation(
 
             if no_fall[0, 0, -1] == 1:
 
-                if qiz > qrmin:
+                if qiz > functions.QRMIN:
                     no_fall = 0
                 else:
                     no_fall = 1
@@ -916,43 +939,43 @@ def sedimentation(
         with interval(1, -1):
 
             if (vi_fac >= 1.0e-5) and (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - dz_min
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
         with interval(-1, None):
 
             if (vi_fac >= 1.0e-5) and (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - dz_min
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
             if (vi_fac >= 1.0e-5) and (no_fall == 0) and (zt_kbot1 >= zt):
-                zt_kbot1 = zt - dz_min
+                zt_kbot1 = zt - functions.DZ_MIN_FLIP
 
     with computation(BACKWARD), interval(0, -1):
 
         if (vi_fac >= 1.0e-5) and (no_fall == 0):
-            zt_kbot1 = zt_kbot1[0, 0, +1] - dz_min
+            zt_kbot1 = zt_kbot1[0, 0, +1] - functions.DZ_MIN_FLIP
 
     with computation(PARALLEL), interval(...):
 
         if (vi_fac >= 1.0e-5) and (no_fall == 0):
 
-            if do_sedi_w == 1:
+            if do_sedi_w:
                 dm = dp1 * (1.0 + qvz + qlz + qrz + qiz + qsz + qgz)
 
     with computation(PARALLEL):
 
         with interval(0, -1):
 
-            if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 dz = ze - ze[0, 0, +1]
 
         with interval(-1, None):
 
-            if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 dz = ze - zs
 
     with computation(PARALLEL), interval(...):
 
-        if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+        if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
 
             dd = dts * vtiz
             qiz = qiz * dp1
@@ -962,17 +985,17 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 qm = qiz / (dz + dd)
 
         with interval(1, None):
 
-            if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 qm = (qiz[0, 0, 0] + dd[0, 0, -1] * qm[0, 0, -1]) / (dz + dd)
 
     with computation(PARALLEL), interval(...):
 
-        if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+        if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
 
             # qm is density at this stage
             qm = qm * dz
@@ -982,24 +1005,24 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 m1_sol = qiz - qm
 
         with interval(1, None):
 
-            if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 m1_sol = m1_sol[0, 0, -1] + qiz[0, 0, 0] - qm
 
     with computation(BACKWARD):
 
         with interval(-1, None):
 
-            if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 i1 = m1_sol
 
         with interval(0, -1):
 
-            if (use_ppm == 0) and (vi_fac >= 1.0e-5) and (no_fall == 0):
+            if (not use_ppm) and (vi_fac >= 1.0e-5) and (no_fall == 0):
                 i1 = i1[0, 0, +1]
 
     with computation(PARALLEL):
@@ -1008,25 +1031,25 @@ def sedimentation(
 
             if (vi_fac >= 1.0e-5) and (no_fall == 0):
 
-                if use_ppm == 0:
+                if not use_ppm:
 
                     # Update
                     qiz = qm / dp1
 
                 # Vertical velocity transportation during sedimentation
-                if do_sedi_w == 1:
+                if do_sedi_w:
                     w = (dm * w + m1_sol * vtiz) / (dm - m1_sol)
 
         with interval(1, None):
 
             if (vi_fac >= 1.0e-5) and (no_fall == 0):
 
-                if use_ppm == 0:
+                if not use_ppm:
 
                     # Update
                     qiz = qm / dp1
 
-                if do_sedi_w == 1:
+                if do_sedi_w:
 
                     w[0, 0, 0] = (
                         dm * w[0, 0, 0]
@@ -1039,7 +1062,7 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if qsz > qrmin:
+            if qsz > functions.QRMIN:
                 no_fall = 0
             else:
                 no_fall = 1
@@ -1048,7 +1071,7 @@ def sedimentation(
 
             if no_fall[0, 0, -1] == 1:
 
-                if qsz > qrmin:
+                if qsz > functions.QRMIN:
                     no_fall = 0
                 else:
                     no_fall = 1
@@ -1088,43 +1111,43 @@ def sedimentation(
         with interval(1, -1):
 
             if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - dz_min
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
         with interval(-1, None):
 
             if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - dz_min
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
             if (no_fall == 0) and (zt_kbot1 >= zt):
-                zt_kbot1 = zt - dz_min
+                zt_kbot1 = zt - functions.DZ_MIN_FLIP
 
     with computation(BACKWARD), interval(0, -1):
 
         if no_fall == 0:
-            zt_kbot1 = zt_kbot1[0, 0, +1] - dz_min
+            zt_kbot1 = zt_kbot1[0, 0, +1] - functions.DZ_MIN_FLIP
 
     with computation(PARALLEL), interval(...):
 
         if no_fall == 0:
 
-            if do_sedi_w == 1:
+            if do_sedi_w:
                 dm = dp1 * (1.0 + qvz + qlz + qrz + qiz + qsz + qgz)
 
     with computation(PARALLEL):
 
         with interval(0, -1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 dz = ze - ze[0, 0, +1]
 
         with interval(-1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 dz = ze - zs
 
     with computation(PARALLEL), interval(...):
 
-        if (use_ppm == 0) and (no_fall == 0):
+        if (not use_ppm) and (no_fall == 0):
 
             dd = dts * vtsz
             qsz = qsz * dp1
@@ -1134,17 +1157,17 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 qm = qsz / (dz + dd)
 
         with interval(1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 qm = (qsz[0, 0, 0] + dd[0, 0, -1] * qm[0, 0, -1]) / (dz + dd)
 
     with computation(PARALLEL), interval(...):
 
-        if (use_ppm == 0) and (no_fall == 0):
+        if (not use_ppm) and (no_fall == 0):
 
             # qm is density at this stage
             qm = qm * dz
@@ -1154,24 +1177,24 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 m1_tf = qsz - qm
 
         with interval(1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 m1_tf = m1_tf[0, 0, -1] + qsz[0, 0, 0] - qm
 
     with computation(BACKWARD):
 
         with interval(-1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 s1 = m1_tf
 
         with interval(0, -1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 s1 = s1[0, 0, +1]
 
     with computation(PARALLEL):
@@ -1180,7 +1203,7 @@ def sedimentation(
 
             if no_fall == 0:
 
-                if use_ppm == 0:
+                if not use_ppm:
 
                     # Update
                     qsz = qm / dp1
@@ -1188,21 +1211,21 @@ def sedimentation(
                 m1_sol = m1_sol + m1_tf
 
                 # Vertical velocity transportation during sedimentation
-                if do_sedi_w == 1:
+                if do_sedi_w:
                     w = (dm * w + m1_tf * vtsz) / (dm - m1_tf)
 
         with interval(1, None):
 
             if no_fall == 0:
 
-                if use_ppm == 0:
+                if not use_ppm:
 
                     # Update
                     qsz = qm / dp1
 
                 m1_sol = m1_sol + m1_tf
 
-                if do_sedi_w == 1:
+                if do_sedi_w:
 
                     w[0, 0, 0] = (
                         dm * w[0, 0, 0]
@@ -1215,7 +1238,7 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if qgz > qrmin:
+            if qgz > functions.QRMIN:
                 no_fall = 0
             else:
                 no_fall = 1
@@ -1224,7 +1247,7 @@ def sedimentation(
 
             if no_fall[0, 0, -1] == 1:
 
-                if qgz > qrmin:
+                if qgz > functions.QRMIN:
                     no_fall = 0
                 else:
                     no_fall = 1
@@ -1262,43 +1285,43 @@ def sedimentation(
         with interval(1, -1):
 
             if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - dz_min
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
         with interval(-1, None):
 
             if (no_fall[0, 0, -1] == 0) and (zt >= zt[0, 0, -1]):
-                zt = zt[0, 0, -1] - dz_min
+                zt = zt[0, 0, -1] - functions.DZ_MIN_FLIP
 
             if (no_fall == 0) and (zt_kbot1 >= zt):
-                zt_kbot1 = zt - dz_min
+                zt_kbot1 = zt - functions.DZ_MIN_FLIP
 
     with computation(BACKWARD), interval(0, -1):
 
         if no_fall == 0:
-            zt_kbot1 = zt_kbot1[0, 0, +1] - dz_min
+            zt_kbot1 = zt_kbot1[0, 0, +1] - functions.DZ_MIN_FLIP
 
     with computation(PARALLEL), interval(...):
 
         if no_fall == 0:
 
-            if do_sedi_w == 1:
+            if do_sedi_w:
                 dm = dp1 * (1.0 + qvz + qlz + qrz + qiz + qsz + qgz)
 
     with computation(PARALLEL):
 
         with interval(0, -1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 dz = ze - ze[0, 0, +1]
 
         with interval(-1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 dz = ze - zs
 
     with computation(PARALLEL), interval(...):
 
-        if (use_ppm == 0) and (no_fall == 0):
+        if (not use_ppm) and (no_fall == 0):
 
             dd = dts * vtgz
             qgz = qgz * dp1
@@ -1308,17 +1331,17 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 qm = qgz / (dz + dd)
 
         with interval(1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 qm = (qgz[0, 0, 0] + dd[0, 0, -1] * qm[0, 0, -1]) / (dz + dd)
 
     with computation(PARALLEL), interval(...):
 
-        if (use_ppm == 0) and (no_fall == 0):
+        if (not use_ppm) and (no_fall == 0):
 
             # qm is density at this stage
             qm = qm * dz
@@ -1328,24 +1351,24 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 m1_tf = qgz - qm
 
         with interval(1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 m1_tf = m1_tf[0, 0, -1] + qgz[0, 0, 0] - qm
 
     with computation(BACKWARD):
 
         with interval(-1, None):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 g1 = m1_tf
 
         with interval(0, -1):
 
-            if (use_ppm == 0) and (no_fall == 0):
+            if (not use_ppm) and (no_fall == 0):
                 g1 = g1[0, 0, +1]
 
     with computation(PARALLEL):
@@ -1354,7 +1377,7 @@ def sedimentation(
 
             if no_fall == 0:
 
-                if use_ppm == 0:
+                if not use_ppm:
 
                     # Update
                     qgz = qm / dp1
@@ -1362,21 +1385,21 @@ def sedimentation(
                 m1_sol = m1_sol + m1_tf
 
                 # Vertical velocity transportation during sedimentation
-                if do_sedi_w == 1:
+                if do_sedi_w:
                     w = (dm * w + m1_tf * vtgz) / (dm - m1_tf)
 
         with interval(1, None):
 
             if no_fall == 0:
 
-                if use_ppm == 0:
+                if not use_ppm:
 
                     # Update
                     qgz = qm / dp1
 
                 m1_sol = m1_sol + m1_tf
 
-                if do_sedi_w == 1:
+                if do_sedi_w:
 
                     w[0, 0, 0] = (
                         dm * w[0, 0, 0]
@@ -1396,15 +1419,15 @@ def sedimentation(
 
         with interval(0, 1):
 
-            if do_sedi_heat == 1:
+            if do_sedi_heat:
 
                 # Input q fields are dry mixing ratios, and dm is dry air mass
-                dgz = -0.5 * grav * dz1
+                dgz = -0.5 * constants.GRAV * dz1
                 cvn = dp1 * (
-                    cv_air
-                    + qvz * cv_vap
-                    + (qrz + qlz) * c_liq
-                    + (qiz + qsz + qgz) * c_ice
+                    constants.CV_AIR
+                    + qvz * constants.CV_VAP
+                    + (qrz + qlz) * constants.C_LIQ
+                    + (qiz + qsz + qgz) * constants.C_ICE
                 )
 
                 # - Assumption: The ke in the falling condensates is negligible
@@ -1414,32 +1437,32 @@ def sedimentation(
                 #               internal energy (to heat the whole grid box).
                 # - Backward time-implicit upwind transport scheme:
                 # - dm here is dry air mass
-                tmp = cvn + m1_sol * c_ice
+                tmp = cvn + m1_sol * constants.C_ICE
                 tz = tz + m1_sol * dgz / tmp
 
         with interval(1, None):
 
-            if do_sedi_heat == 1:
+            if do_sedi_heat:
 
                 # Input q fields are dry mixing ratios, and dm is dry air mass
-                dgz = -0.5 * grav * dz1
+                dgz = -0.5 * constants.GRAV * dz1
                 cvn = dp1 * (
-                    cv_air
-                    + qvz * cv_vap
-                    + (qrz + qlz) * c_liq
-                    + (qiz + qsz + qgz) * c_ice
+                    constants.CV_AIR
+                    + qvz * constants.CV_VAP
+                    + (qrz + qlz) * constants.C_LIQ
+                    + (qiz + qsz + qgz) * constants.C_ICE
                 )
 
     # Implicit algorithm
     with computation(FORWARD), interval(1, None):
 
-        if do_sedi_heat == 1:
+        if do_sedi_heat:
 
             tz[0, 0, 0] = (
-                (cvn + c_ice * (m1_sol - m1_sol[0, 0, -1])) * tz[0, 0, 0]
-                + m1_sol[0, 0, -1] * c_ice * tz[0, 0, -1]
+                (cvn + constants.C_ICE * (m1_sol - m1_sol[0, 0, -1])) * tz[0, 0, 0]
+                + m1_sol[0, 0, -1] * constants.C_ICE * tz[0, 0, -1]
                 + dgz * (m1_sol[0, 0, -1] + m1_sol)
-            ) / (cvn + c_ice * m1_sol)
+            ) / (cvn + constants.C_ICE * m1_sol)
 
 
 def icloud(
@@ -1503,8 +1526,6 @@ def icloud(
     cgmlt_3: Float,
     cgmlt_4: Float,
     ces0: Float,
-    tice0: Float,
-    t_wfr: Float,
     dts: Float,
     rdts: Float,
     fac_i2s: Float,
@@ -1513,52 +1534,59 @@ def icloud(
     fac_imlt: Float,
     fac_l2v: Float,
 ):
+    from __externals__ import qi_gen, qi_lim, ql_mlt, t_wfr, tice, z_slope_ice
 
     with computation(PARALLEL), interval(...):
 
         # Ice-phase microphysics
 
         # Define heat capacity and latent heat coefficient
-        lhi = li00 + dc_ice * tz
+        lhi = constants.LI00 + constants.DC_ICE * tz
         q_liq = qlz + qrz
         q_sol = qiz + qsz + qgz
-        cvm = c_air + qvz * c_vap + q_liq * c_liq + q_sol * c_ice
+        cvm = c_air + qvz * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
         icpk = lhi / cvm
 
         # - Sources of cloud ice: pihom, cold rain, and the sat_adj
         # - Sources of snow: cold rain, auto conversion + accretion (from cloud ice)
-        # - sat_adj (deposition; requires pre-existing snow); initial snow comes from autoconversion
+        # - sat_adj (deposition; requires pre-existing snow);
+        # initial snow comes from autoconversion
 
         t_wfr_tmp = t_wfr
-        if (tz > tice) and (qiz > qcmin):
+        if (tz > tice) and (qiz > functions.QCMIN):
 
             # pimlt: instant melting of cloud ice
             melt = min(qiz, fac_imlt * (tz - tice) / icpk)
-            tmp = min(melt, dim(ql_mlt, qlz))  # Maximum ql amount
+            tmp = min(melt, functions.dim(ql_mlt, qlz))  # Maximum ql amount
             qlz = qlz + tmp
             qrz = qrz + melt - tmp
             qiz = qiz - melt
             q_liq = q_liq + melt
             q_sol = q_sol - melt
-            cvm = c_air + qvz * c_vap + q_liq * c_liq + q_sol * c_ice
+            cvm = (
+                c_air + qvz * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             tz = tz - melt * lhi / cvm
 
-        elif (tz < t_wfr) and (qlz > qcmin):
+        elif (tz < t_wfr) and (qlz > functions.QCMIN):
 
             # - pihom: homogeneous freezing of cloud water into cloud ice
-            # - This is the 1st occurance of liquid water freezing in the split mp process
+            # - This is the 1st occurence of liquid water freezing
+            # in the split mp process
 
             dtmp = t_wfr_tmp - tz
-            factor = min(1.0, dtmp / dt_fr)
+            factor = min(1.0, dtmp / functions.DT_FR)
             sink = min(qlz * factor, dtmp / icpk)
             qi_crt = qi_gen * min(qi_lim, 0.1 * (tice - tz)) / den
-            tmp = min(sink, dim(qi_crt, qiz))
+            tmp = min(sink, functions.dim(qi_crt, qiz))
             qlz = qlz - sink
             qsz = qsz + sink - tmp
             qiz = qiz + tmp
             q_liq = q_liq - sink
             q_sol = q_sol + sink
-            cvm = c_air + qvz * c_vap + q_liq * c_liq + q_sol * c_ice
+            cvm = (
+                c_air + qvz * c_vap + q_liq * constants.C_LIQ + q_sol * constants.C_ICE
+            )
             tz = tz + sink * lhi / cvm
 
     # Vertical subgrid variability
@@ -1566,21 +1594,22 @@ def icloud(
 
         with interval(0, 1):
 
-            if z_slope_ice == 1:
+            if z_slope_ice:
                 di = 0.0
 
         with interval(1, None):
 
-            if z_slope_ice == 1:
+            if z_slope_ice:
                 dq = 0.5 * (qiz[0, 0, 0] - qiz[0, 0, -1])
 
     with computation(PARALLEL):
 
         with interval(1, -1):
 
-            if z_slope_ice == 1:
+            if z_slope_ice:
 
-                # Use twice the strength of the positive definiteness limiter (lin et al 1994)
+                # Use twice the strength of the
+                # positive definiteness limiter (lin et al 1994)
                 di = 0.5 * min(abs(dq + dq[0, 0, +1]), 0.5 * qiz[0, 0, 0])
 
                 if dq * dq[0, 0, +1] <= 0.0:
@@ -1595,22 +1624,22 @@ def icloud(
 
         with interval(-1, None):
 
-            if z_slope_ice == 1:
+            if z_slope_ice:
                 di = 0.0
 
     with computation(PARALLEL), interval(...):
 
-        if z_slope_ice == 1:
+        if z_slope_ice:
 
             # Impose a presumed background horizontal variability that is
             # proportional to the value itself
-            di = max(di, max(qvmin, h_var * qiz))
+            di = max(di, max(functions.QVMIN, h_var * qiz))
 
         else:
 
-            di = max(qvmin, h_var * qiz)
+            di = max(functions.QVMIN, h_var * qiz)
 
-        qaz, qgz, qiz, qlz, qrz, qsz, qvz, tz = icloud_main(
+        qaz, qgz, qiz, qlz, qrz, qsz, qvz, tz = functions.icloud_main(
             c_air,
             c_vap,
             d0_vap,
@@ -1653,7 +1682,6 @@ def icloud(
             cgmlt_3,
             cgmlt_4,
             ces0,
-            tice0,
             t_wfr,
             dts,
             rdts,
@@ -1730,18 +1758,19 @@ def fields_update(
     c_vap: Float,
     rdt: Float,
 ):
+    from __externals__ import do_qa, sedi_transport
 
     with computation(PARALLEL), interval(...):
 
         # Convert units from Pa*kg/kg to kg/m^2/s
-        m2_rain = m2_rain * rdt * rgrav
-        m2_sol = m2_sol * rdt * rgrav
+        m2_rain = m2_rain * rdt * constants.RGRAV
+        m2_sol = m2_sol * rdt * constants.RGRAV
 
     # Momentum transportation during sedimentation (dp1 is dry mass; dp0
     # is the old moist total mass)
     with computation(FORWARD), interval(1, None):
 
-        if sedi_transport == 1:
+        if sedi_transport:
 
             u1[0, 0, 0] = (dp0[0, 0, 0] * u1[0, 0, 0] + m1[0, 0, -1] * u1[0, 0, -1]) / (
                 dp0[0, 0, 0] + m1[0, 0, -1]
@@ -1752,7 +1781,7 @@ def fields_update(
 
     with computation(PARALLEL), interval(1, None):
 
-        if sedi_transport == 1:
+        if sedi_transport:
 
             udt = udt + (u1 - u0) * rdt
             vdt = vdt + (v1 - v0) * rdt
@@ -1769,12 +1798,17 @@ def fields_update(
         qs_dt = qs_dt + rdt * (qsz - qs0) * omq
         qg_dt = qg_dt + rdt * (qgz - qg0) * omq
 
-        cvm = c_air + qvz * c_vap + (qrz + qlz) * c_liq + (qiz + qsz + qgz) * c_ice
+        cvm = (
+            c_air
+            + qvz * c_vap
+            + (qrz + qlz) * constants.C_LIQ
+            + (qiz + qsz + qgz) * constants.C_ICE
+        )
 
-        pt_dt = pt_dt + rdt * (tz - t0) * cvm / cp_air
+        pt_dt = pt_dt + rdt * (tz - t0) * cvm / constants.CP_AIR
 
         # Update cloud fraction tendency
-        if do_qa == 1:
+        if do_qa:
 
             qa_dt = 0.0
 
@@ -1790,7 +1824,7 @@ def fields_update(
         """
 
         # Convert to mm / day
-        convt = 86400.0 * rdt * rgrav
+        convt = 86400.0 * rdt * constants.RGRAV
 
         rain = rain * convt
         snow = snow * convt
@@ -1863,129 +1897,201 @@ class MicrophysicsState:
 
 
 class Microphysics:
-    def __init__(self, stencil_factory: StencilFactory, grid, namelist):
+    def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, namelist):
+        self.namelist = namelist
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         self.gfdl_cloud_microphys_init()
-        self.grid = grid
-        self.namelist = namelist
-        origin = self.grid.compute_origin()
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
+        grid_indexing = stencil_factory.grid_indexing
+        origin = grid_indexing.origin_compute()
+        shape = grid_indexing.domain_full(add=(1, 1, 1))
 
         self._hydrostatic = self.namelist.hydrostatic
-        self._kke = self.grid.npz - 1
-        self._kbot = self.grid.npz - 1
+        self._kke = grid_indexing.domain[2] - 1
+        self._kbot = grid_indexing.domain[2] - 1
         self._k_s = 0
         self._k_e = self._kke - self._k_s + 1
         self._dt_atmos = self.namelist.dt_atmos
         # Define heat capacity of dry air and water vapor based on
         # hydrostatical property, [TODO] (EW): investigate why this is hard coded
-        self._c_air = cp_air
-        self._c_vap = cp_vap
-        self._p_nonhydro = 0
-        self._d0_vap = self._c_vap - c_liq
-        self._lv00 = hlv0 - self._d0_vap * t_ice
-        self._do_sedi_w = 0 if self._hydrostatic else 1
+        self._c_air = constants.CP_AIR
+        self._c_vap = constants.CP_VAP
+        self._p_nonhydro = False
+        self._d0_vap = self._c_vap - constants.C_LIQ
+        self._lv00 = constants.HLV - self._d0_vap * constants.TICE
+        self._do_sedi_w = False if self._hydrostatic else self.namelist.do_sedi_w
         # Define cloud microphysics sub time step
-        self._mpdt = min(self._dt_atmos, mp_time)
+        self._mpdt = min(self._dt_atmos, self.namelist.mp_time)
         self._rdt = 1.0 / self._dt_atmos
         self._ntimes = Int(round(self._dt_atmos / self._mpdt))
         # Small time step
         self._dts = self._dt_atmos / self._ntimes
         self._dt_rain = self._dts * 0.5
         # Calculate cloud condensation nuclei (ccn) based on klein eq. 15
-        self._cpaut = c_paut * 0.104 * grav / 1.717e-5
-        self._use_ccn = 0 if prog_ccn == 1 else 1
-        self._area = self.grid.area
-        self._land = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._rain = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._graupel = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._ice = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._snow = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._cpaut = self.namelist.c_paut * 0.104 * constants.GRAV / 1.717e-5
+        self._use_ccn = False if self.namelist.prog_ccn else True
+        self._area = grid_data.area
 
-        self._h_var = utils.make_storage_from_shape(shape, origin=origin)
-        self._rh_adj = utils.make_storage_from_shape(shape, origin=origin)
-        self._rh_rain = utils.make_storage_from_shape(shape, origin=origin)
+        def make_storage(**kwargs):
+            return utils.make_storage_from_shape(
+                shape, origin=origin, backend=stencil_factory.backend, **kwargs
+            )
 
-        self._qn = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._qaz = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._qgz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qiz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qlz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qrz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qsz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qvz = utils.make_storage_from_shape(shape, origin=origin)
-        self._den = utils.make_storage_from_shape(shape, origin=origin)
-        self._denfac = utils.make_storage_from_shape(shape, origin=origin)
-        self._tz = utils.make_storage_from_shape(shape, origin=origin)
-        self._qa0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qg0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qi0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._ql0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qr0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qs0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._qv0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._t0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._dp0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._den0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._dz0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._u0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._v0 = utils.make_storage_from_shape(shape, origin=origin)
-        self._dz1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._dp1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._p1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._u1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._v1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._m1 = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._vtgz = utils.make_storage_from_shape(shape, origin=origin)
-        self._vtrz = utils.make_storage_from_shape(shape, origin=origin)
-        self._vtsz = utils.make_storage_from_shape(shape, origin=origin)
-        self._ccn = utils.make_storage_from_shape(shape, origin=origin)
-        self._c_praut = utils.make_storage_from_shape(shape, origin=origin)
-        self._m1_sol = utils.make_storage_from_shape(shape, origin=origin)
-        self._m2_rain = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._m2_sol = utils.make_storage_from_shape(shape, origin=origin, init=True)
+        self._land = make_storage(init=True)
+        self._rain = make_storage(init=True)
+        self._graupel = make_storage(init=True)
+        self._ice = make_storage(init=True)
+        self._snow = make_storage(init=True)
+
+        self._h_var = make_storage()
+        self._rh_adj = make_storage()
+        self._rh_rain = make_storage()
+
+        self._qn = make_storage(init=True)
+        self._qaz = make_storage(init=True)
+        self._qgz = make_storage()
+        self._qiz = make_storage()
+        self._qlz = make_storage()
+        self._qrz = make_storage()
+        self._qsz = make_storage()
+        self._qvz = make_storage()
+        self._den = make_storage()
+        self._denfac = make_storage()
+        self._tz = make_storage()
+        self._qa0 = make_storage()
+        self._qg0 = make_storage()
+        self._qi0 = make_storage()
+        self._ql0 = make_storage()
+        self._qr0 = make_storage()
+        self._qs0 = make_storage()
+        self._qv0 = make_storage()
+        self._t0 = make_storage()
+        self._dp0 = make_storage()
+        self._den0 = make_storage()
+        self._dz0 = make_storage()
+        self._u0 = make_storage()
+        self._v0 = make_storage()
+        self._dz1 = make_storage()
+        self._dp1 = make_storage()
+        self._p1 = make_storage()
+        self._u1 = make_storage()
+        self._v1 = make_storage()
+        self._m1 = make_storage(init=True)
+        self._vtgz = make_storage()
+        self._vtrz = make_storage()
+        self._vtsz = make_storage()
+        self._ccn = make_storage()
+        self._c_praut = make_storage()
+        self._m1_sol = make_storage()
+        self._m2_rain = make_storage(init=True)
+        self._m2_sol = make_storage(init=True)
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0
         self._rdts = 1.0 / self._dts
-        self._dt_evap = 0.5 * self._dts if fast_sat_adj else self._dts
-        self._fac_i2s = 1.0 - np.exp(-self._dts / tau_i2s)
-        self._fac_g2v = 1.0 - np.exp(-self._dts / tau_g2v)
-        self._fac_v2g = 1.0 - np.exp(-self._dts / tau_v2g)
-        self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / tau_imlt)
-        self._fac_l2v = 1.0 - np.exp(-self._dt_evap / tau_l2v)
+        self._dt_evap = 0.5 * self._dts if self.namelist.fast_sat_adj else self._dts
+        self._fac_i2s = 1.0 - np.exp(-self._dts / self.namelist.tau_i2s)
+        self._fac_g2v = 1.0 - np.exp(-self._dts / self.namelist.tau_g2v)
+        self._fac_v2g = 1.0 - np.exp(-self._dts / self.namelist.tau_v2g)
+        self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / self.namelist.tau_imlt)
+        self._fac_l2v = 1.0 - np.exp(-self._dt_evap / self.namelist.tau_l2v)
 
         self._fields_init = stencil_factory.from_origin_domain(
             func=fields_init,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            externals={
+                "qi0_max": self.namelist.qi0_max,
+                "ccn_l": self.namelist.ccn_l,
+                "ccn_o": self.namelist.ccn_o,
+                "de_ice": self.namelist.de_ice,
+                "dw_land": self.namelist.dw_land,
+                "dw_ocean": self.namelist.dw_ocean,
+                "fix_negative": self.namelist.fix_negative,
+                "prog_ccn": self.namelist.prog_ccn,
+                "rh_inr": self.namelist.rh_inr,
+                "rh_inc": self.namelist.rh_inc,
+                "use_ccn": self._use_ccn,
+            },
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
         self._warm_rain = stencil_factory.from_origin_domain(
             func=warm_rain,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            externals={
+                "const_vr": self.namelist.const_vr,
+                "do_sedi_heat": self.namelist.do_sedi_heat,
+                "irain_f": self.namelist.irain_f,
+                "use_ppm": self.namelist.use_ppm,
+                "vr_max": self.namelist.vr_max,
+                "vr_fac": self.namelist.vr_fac,
+                "z_slope_liq": self.namelist.z_slope_liq,
+                "use_ccn": self._use_ccn,
+                "do_sedi_w": self._do_sedi_w,
+                "p_nonhydro": self._p_nonhydro,
+                "t_wfr": self._t_wfr,
+            },
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
         self._sedimentation = stencil_factory.from_origin_domain(
             func=sedimentation,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            externals={
+                "const_vg": self.namelist.const_vg,
+                "const_vi": self.namelist.const_vi,
+                "const_vs": self.namelist.const_vs,
+                "do_sedi_heat": self.namelist.do_sedi_heat,
+                "ql_mlt": self.namelist.ql_mlt,
+                "use_ppm": self.namelist.use_ppm,
+                "vg_max": self.namelist.vg_max,
+                "vi_max": self.namelist.vi_max,
+                "vs_max": self.namelist.vs_max,
+                "vg_fac": self.namelist.vg_fac,
+                "vi_fac": self.namelist.vi_fac,
+                "vs_fac": self.namelist.vs_fac,
+                "do_sedi_w": self._do_sedi_w,
+                "tice": self.namelist.tice,
+            },
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
         self._icloud = stencil_factory.from_origin_domain(
             func=icloud,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            externals={
+                "t_sub": self.namelist.t_sub,
+                "qc_crt": self.namelist.qc_crt,
+                "qi0_crt": self.namelist.qi0_crt,
+                "qs0_crt": self.namelist.qs0_crt,
+                "qi_gen": self.namelist.qi_gen,
+                "qi_lim": self.namelist.qi_lim,
+                "fast_sat_adj": self.namelist.fast_sat_adj,
+                "const_vi": self.namelist.const_vi,
+                "do_qa": self.namelist.do_qa,
+                "ql_mlt": self.namelist.ql_mlt,
+                "qs_mlt": self.namelist.qs_mlt,
+                "rad_rain": self.namelist.rad_rain,
+                "rad_snow": self.namelist.rad_snow,
+                "tice": self.namelist.tice,
+                "tice0": self._tice0,
+                "t_wfr": self._t_wfr,
+                "z_slope_ice": self.namelist.z_slope_ice,
+            },
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
         self._fields_update = stencil_factory.from_origin_domain(
             func=fields_update,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(),
+            externals={
+                "do_qa": self.namelist.do_qa,
+                "sedi_transport": self.namelist.sedi_transport,
+            },
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
         )
 
     def gfdl_cloud_microphys_init(self):
         self.setupm()
         self._log_10 = np.log(10.0)
-        self._tice0 = tice - 0.01
-        self._t_wfr = tice - 40.0
+        self._tice0 = self.namelist.tice - 0.01
+        # supercooled water can exist down to - 48 c, which is the "absolute"
+        self._t_wfr = self.namelist.tice - 40.0
 
     def setupm(self):
         gam263 = 1.456943
@@ -2006,7 +2112,7 @@ class Microphysics:
         pie = 4.0 * np.arctan(1.0)
 
         # S. Klein's formular (eq 16) from am2
-        fac_rc = (4.0 / 3.0) * pie * rhor * rthresh ** 3
+        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh ** 3
 
         vdifu = 2.11e-5
         tcond = 2.36e-2
@@ -2021,16 +2127,16 @@ class Microphysics:
         pisq = pie * pie
         scm3 = (visk / vdifu) ** (1.0 / 3.0)
 
-        cracs = pisq * rnzr * rnzs * rhos
-        csacr = pisq * rnzr * rnzs * rhor
-        cgacr = pisq * rnzr * rnzg * rhor
-        cgacs = pisq * rnzg * rnzs * rhos
-        cgacs = cgacs * c_pgacs
+        cracs = pisq * rnzr * rnzs * functions.RHOS
+        csacr = pisq * rnzr * rnzs * functions.RHOR
+        cgacr = pisq * rnzr * rnzg * functions.RHOR
+        cgacs = pisq * rnzg * rnzs * functions.RHOS
+        cgacs = cgacs * self.namelist.c_pgacs
 
         act = np.empty(8)
-        act[0] = pie * rnzs * rhos
-        act[1] = pie * rnzr * rhor
-        act[5] = pie * rnzg * rhog
+        act[0] = pie * rnzs * functions.RHOS
+        act[1] = pie * rnzr * functions.RHOR
+        act[5] = pie * rnzg * functions.RHOG
         act[2] = act[1]
         act[3] = act[0]
         act[4] = act[1]
@@ -2044,45 +2150,53 @@ class Microphysics:
                     act[2 * k] ** ((6 - i) * 0.25) * act[2 * k + 1] ** ((i + 1) * 0.25)
                 )
 
-        gcon = 40.74 * np.sqrt(sfcrho)
+        gcon = 40.74 * np.sqrt(functions.SFCRHO)
 
         # Decreasing csacw to reduce cloud water --- > snow
-        csacw = pie * rnzs * clin * gam325 / (4.0 * act[0] ** 0.8125)
+        csacw = pie * rnzs * self.namelist.clin * gam325 / (4.0 * act[0] ** 0.8125)
 
-        craci = pie * rnzr * alin * gam380 / (4.0 * act[1] ** 0.95)
-        csaci = csacw * c_psaci
+        craci = pie * rnzr * self.namelist.alin * gam380 / (4.0 * act[1] ** 0.95)
+        csaci = csacw * self.namelist.c_psaci
 
         cgacw = pie * rnzg * gam350 * gcon / (4.0 * act[5] ** 0.875)
 
         cgaci = cgacw * 0.05
 
         cracw = craci
-        cracw = c_cracw * cracw
+        cracw = self.namelist.c_cracw * cracw
 
         # Subl and revap: five constants for three separate processes
         cssub = np.empty(5)
-        cssub[0] = 2.0 * pie * vdifu * tcond * rvgas * rnzs
+        cssub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzs
         cssub[1] = 0.78 / np.sqrt(act[0])
-        cssub[2] = 0.31 * scm3 * gam263 * np.sqrt(clin / visk) / act[0] ** 0.65625
-        cssub[3] = tcond * rvgas
+        cssub[2] = (
+            0.31
+            * scm3
+            * gam263
+            * np.sqrt(self.namelist.clin / visk)
+            / act[0] ** 0.65625
+        )
+        cssub[3] = tcond * constants.RVGAS
         cssub[4] = (hlts ** 2) * vdifu
 
         cgsub = np.empty(5)
-        cgsub[0] = 2.0 * pie * vdifu * tcond * rvgas * rnzg
+        cgsub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
         cgsub[1] = 0.78 / np.sqrt(act[5])
         cgsub[2] = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
         cgsub[3] = cssub[3]
         cgsub[4] = cssub[4]
 
         crevp = np.empty(5)
-        crevp[0] = 2.0 * pie * vdifu * tcond * rvgas * rnzr
+        crevp[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
         crevp[1] = 0.78 / np.sqrt(act[1])
-        crevp[2] = 0.31 * scm3 * gam290 * np.sqrt(alin / visk) / act[1] ** 0.725
+        crevp[2] = (
+            0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
+        )
         crevp[3] = cssub[3]
         crevp[4] = hltc ** 2 * vdifu
 
         cgfr = np.empty(2)
-        cgfr[0] = 20.0e2 * pisq * rnzr * rhor / act[1] ** 1.75
+        cgfr[0] = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
         cgfr[1] = 0.66
 
         # smlt: five constants (lin et al. 1983)
@@ -2119,7 +2233,7 @@ class Microphysics:
         self._cgfr = cgfr
         self._csmlt = csmlt
         self._cgmlt = cgmlt
-        self._ces0 = eps * es0
+        self._ces0 = constants.EPS * es0
 
     def __call__(self, state: MicrophysicsState):
         self._fields_init(
@@ -2173,7 +2287,6 @@ class Microphysics:
             self._v1,
             self._ccn,
             self._c_praut,
-            Int(self._use_ccn),
             self._c_air,
             self._c_vap,
             self._d0_vap,
@@ -2209,10 +2322,7 @@ class Microphysics:
                 self._m1_sol,
                 self._m2_rain,
                 self._m2_sol,
-                Int(1),
-                Int(self._do_sedi_w),
-                Int(self._p_nonhydro),
-                Int(self._use_ccn),
+                True,
                 self._c_air,
                 self._c_vap,
                 self._d0_vap,
@@ -2224,7 +2334,6 @@ class Microphysics:
                 self._crevp[2],
                 self._crevp[3],
                 self._crevp[4],
-                self._t_wfr,
                 self._so3,
                 self._dt_rain,
                 self._zs,
@@ -2248,7 +2357,6 @@ class Microphysics:
                 self._vtgz,
                 self._vtsz,
                 self._m1_sol,
-                Int(self._do_sedi_w),
                 self._c_air,
                 self._c_vap,
                 self._d0_vap,
@@ -2283,10 +2391,7 @@ class Microphysics:
                 self._m1_sol,
                 self._m2_rain,
                 self._m2_sol,
-                Int(0),
-                Int(self._do_sedi_w),
-                Int(self._p_nonhydro),
-                Int(self._use_ccn),
+                False,
                 self._c_air,
                 self._c_vap,
                 self._d0_vap,
@@ -2298,7 +2403,6 @@ class Microphysics:
                 self._crevp[2],
                 self._crevp[3],
                 self._crevp[4],
-                self._t_wfr,
                 self._so3,
                 self._dt_rain,
                 self._zs,
@@ -2364,8 +2468,6 @@ class Microphysics:
                 self._cgmlt[3],
                 self._cgmlt[4],
                 self._ces0,
-                self._tice0,
-                self._t_wfr,
                 self._dts,
                 self._rdts,
                 self._fac_i2s,

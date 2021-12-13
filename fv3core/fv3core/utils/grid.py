@@ -6,13 +6,12 @@ import numpy as np
 from gt4py import gtscript
 
 import fv3core.utils.global_config as global_config
-import fv3gfs.util
+import pace.util
 from fv3core.grid import MetricTerms
-from fv3gfs.util.halo_data_transformer import QuantityHaloSpec
-
-from . import gt4py_utils as utils
-from .stencil import GridIndexing, StencilConfig, StencilFactory
-from .typing import FloatFieldI, FloatFieldIJ
+from pace.dsl import gt4py_utils as utils
+from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
+from pace.dsl.typing import FloatFieldI, FloatFieldIJ
+from pace.util.halo_data_transformer import QuantityHaloSpec
 
 
 TRACER_DIM = "tracers"
@@ -27,9 +26,11 @@ class Grid:
     # But we need to add the halo - 1 to change this check to 0 based python arrays
     # grid.ie == npx + halo - 2
 
-    def __init__(self, indices, shape_params, rank, layout, data_fields={}):
+    def __init__(
+        self, indices, shape_params, rank, layout, data_fields={}, local_indices=False
+    ):
         self.rank = rank
-        self.partitioner = fv3gfs.util.TilePartitioner(layout)
+        self.partitioner = pace.util.TilePartitioner(layout)
         self.subtile_index = self.partitioner.subtile_index(self.rank)
         self.layout = layout
         for s in self.shape_params:
@@ -37,9 +38,9 @@ class Grid:
         self.subtile_width_x = int((self.npx - 1) / self.layout[0])
         self.subtile_width_y = int((self.npy - 1) / self.layout[1])
         for ivar, jvar in self.index_pairs:
-            local_i, local_j = self.global_to_local_indices(
-                int(indices[ivar]), int(indices[jvar])
-            )
+            local_i, local_j = int(indices[ivar]), int(indices[jvar])
+            if not local_indices:
+                local_i, local_j = self.global_to_local_indices(local_i, local_j)
             setattr(self, ivar, local_i)
             setattr(self, jvar, local_j)
         self.nid = int(self.ied - self.isd + 1)
@@ -78,7 +79,7 @@ class Grid:
         if self._sizer is None:
             # in the future this should use from_namelist, when we have a non-flattened
             # namelist
-            self._sizer = fv3gfs.util.SubtileGridSizer.from_tile_params(
+            self._sizer = pace.util.SubtileGridSizer.from_tile_params(
                 nx_tile=self.npx - 1,
                 ny_tile=self.npy - 1,
                 nz=self.npz,
@@ -96,7 +97,7 @@ class Grid:
     @property
     def quantity_factory(self):
         if self._quantity_factory is None:
-            self._quantity_factory = fv3gfs.util.QuantityFactory.from_backend(
+            self._quantity_factory = pace.util.QuantityFactory.from_backend(
                 self.sizer, backend=global_config.get_backend()
             )
         return self._quantity_factory
@@ -104,7 +105,7 @@ class Grid:
     def make_quantity(
         self,
         array,
-        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+        dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
         units="Unknown",
         origin=None,
         extent=None,
@@ -113,7 +114,7 @@ class Grid:
             origin = self.compute_origin()
         if extent is None:
             extent = self.domain_shape_compute()
-        return fv3gfs.util.Quantity(
+        return pace.util.Quantity(
             array, dims=dims, units=units, origin=origin, extent=extent
         )
 
@@ -121,7 +122,7 @@ class Grid:
         self,
         data_dict,
         varname,
-        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+        dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
         units="Unknown",
     ):
         data_dict[varname + "_quantity"] = self.quantity_wrap(
@@ -131,12 +132,12 @@ class Grid:
     def quantity_wrap(
         self,
         data,
-        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+        dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
         units="Unknown",
     ):
         origin = self.sizer.get_origin(dims)
         extent = self.sizer.get_extent(dims)
-        return fv3gfs.util.Quantity(
+        return pace.util.Quantity(
             data, dims=dims, units=units, origin=origin, extent=extent
         )
 
@@ -380,11 +381,15 @@ class Grid:
         shape,
         origin,
         halo_points,
-        dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+        dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
     ) -> QuantityHaloSpec:
         """Build memory specifications for the halo update."""
         return self.grid_indexing.get_quantity_halo_spec(
-            shape, origin, dims=dims, n_halo=halo_points
+            shape,
+            origin,
+            dims=dims,
+            n_halo=halo_points,
+            backend=global_config.get_backend(),
         )
 
     @property
@@ -646,13 +651,29 @@ class GridData:
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
         # TODO fix <Quantity>.storage mask for FieldI
         shape = metric_terms.lon.data.shape
-        edge_n = utils.make_storage_data(metric_terms.edge_n.data, (shape[0],), axis=0)
-        edge_s = utils.make_storage_data(metric_terms.edge_s.data, (shape[0],), axis=0)
+        edge_n = utils.make_storage_data(
+            metric_terms.edge_n.data,
+            (shape[0],),
+            axis=0,
+            backend=metric_terms.edge_n.gt4py_backend,
+        )
+        edge_s = utils.make_storage_data(
+            metric_terms.edge_s.data,
+            (shape[0],),
+            axis=0,
+            backend=metric_terms.edge_s.gt4py_backend,
+        )
         edge_e = utils.make_storage_data(
-            metric_terms.edge_e.data, (1, shape[1]), axis=1
+            metric_terms.edge_e.data,
+            (1, shape[1]),
+            axis=1,
+            backend=metric_terms.edge_e.gt4py_backend,
         )
         edge_w = utils.make_storage_data(
-            metric_terms.edge_w.data, (1, shape[1]), axis=1
+            metric_terms.edge_w.data,
+            (1, shape[1]),
+            axis=1,
+            backend=metric_terms.edge_w.gt4py_backend,
         )
 
         horizontal_data = HorizontalGridData(
@@ -688,8 +709,12 @@ class GridData:
         ak = metric_terms.ak.data
         bk = metric_terms.bk.data
         # TODO fix <Quantity>.storage mask for FieldK
-        ak = utils.make_storage_data(ak, ak.shape, len(ak.shape) * (0,))
-        bk = utils.make_storage_data(bk, bk.shape, len(bk.shape) * (0,))
+        ak = utils.make_storage_data(
+            ak, ak.shape, len(ak.shape) * (0,), backend=metric_terms.ak.gt4py_backend
+        )
+        bk = utils.make_storage_data(
+            bk, bk.shape, len(bk.shape) * (0,), backend=metric_terms.ak.gt4py_backend
+        )
         vertical_data = VerticalGridData(
             ak=ak,
             bk=bk,
@@ -979,7 +1004,7 @@ class GridData:
 
 def quantity_wrap(storage, dims: Sequence[str], grid_indexing: GridIndexing):
     origin, extent = grid_indexing.get_origin_domain(dims)
-    return fv3gfs.util.Quantity(
+    return pace.util.Quantity(
         storage,
         dims=dims,
         units="unknown",

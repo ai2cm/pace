@@ -1,9 +1,9 @@
 import numpy as np
 
-import fv3core.utils.gt4py_utils as utils
-from fv3gfs.physics.global_constants import KAPPA
+import pace.dsl.gt4py_utils as utils
 from fv3gfs.physics.stencils.physics import atmos_phys_driver_statein
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+from pace.util.constants import KAPPA
 
 
 class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
@@ -96,9 +96,17 @@ class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         qsgs_tke = utils.make_storage_from_shape(
-            self.maxshape, origin=(0, 0, 0), init=True
+            self.maxshape,
+            origin=(0, 0, 0),
+            init=True,
+            backend=self.grid.stencil_factory.backend,
         )
-        dm = utils.make_storage_from_shape(self.maxshape, origin=(0, 0, 0), init=True)
+        dm = utils.make_storage_from_shape(
+            self.maxshape,
+            origin=(0, 0, 0),
+            init=True,
+            backend=self.grid.stencil_factory.backend,
+        )
         inputs["qsgs_tke"] = qsgs_tke
         inputs["dm"] = dm
         self.compute_func(**inputs)

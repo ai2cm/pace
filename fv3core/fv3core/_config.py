@@ -4,7 +4,7 @@ from typing import Tuple
 
 import f90nml
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.utils.grid import Grid
 
 
@@ -64,6 +64,49 @@ class NamelistDefaults:
     nf_omega = 1
     fv_sg_adj = -1
     n_sponge = 1
+    fast_sat_adj = False
+    qc_crt = 5.0e-8  # Minimum condensate mixing ratio to allow partial cloudiness
+    c_cracw = 0.8  # Rain accretion efficiency
+    c_paut = (
+        0.5  # Autoconversion cloud water to rain (use 0.5 to reduce autoconversion)
+    )
+    c_pgacs = 0.01  # Snow to graupel "accretion" eff. (was 0.1 in zetac)
+    c_psaci = 0.05  # Accretion: cloud ice to snow (was 0.1 in zetac)
+    ccn_l = 300.0  # CCN over land (cm^-3)
+    ccn_o = 100.0  # CCN over ocean (cm^-3)
+    const_vg = False  # Fall velocity tuning constant of graupel
+    const_vi = False  # Fall velocity tuning constant of ice
+    const_vr = False  # Fall velocity tuning constant of rain water
+    const_vs = False  # Fall velocity tuning constant of snow
+    vi_fac = 1.0  # if const_vi: 1/3
+    vs_fac = 1.0  # if const_vs: 1.
+    vg_fac = 1.0  # if const_vg: 2.
+    vr_fac = 1.0  # if const_vr: 4.
+    de_ice = False  # To prevent excessive build-up of cloud ice from external sources
+    do_qa = True  # Do inline cloud fraction
+    do_sedi_heat = False  # Transport of heat in sedimentation
+    do_sedi_w = False  # Transport of vertical motion in sedimentation
+    fix_negative = True  # Fix negative water species
+    irain_f = 0  # Cloud water to rain auto conversion scheme
+    mono_prof = False  # Perform terminal fall with mono ppm scheme
+    mp_time = 225.0  # Maximum microphysics timestep (sec)
+    prog_ccn = False  # Do prognostic ccn (yi ming's method)
+    qi0_crt = 8e-05  # Cloud ice to snow autoconversion threshold
+    qs0_crt = 0.003  # Snow to graupel density threshold (0.6e-3 in purdue lin scheme)
+    rh_inc = 0.2  # RH increment for complete evaporation of cloud water and cloud ice
+    rh_inr = 0.3  # RH increment for minimum evaporation of rain
+    rthresh = 1e-05  # Critical cloud drop radius (micrometers)
+    sedi_transport = True  # Transport of momentum in sedimentation
+    use_ppm = False  # Use ppm fall scheme
+    vg_max = 16.0  # Maximum fall speed for graupel
+    vi_max = 1.0  # Maximum fall speed for ice
+    vr_max = 16.0  # Maximum fall speed for rain
+    vs_max = 2.0  # Maximum fall speed for snow
+    z_slope_ice = True  # Use linear mono slope for autoconversions
+    z_slope_liq = True  # Use linear mono slope for autoconversions
+    tice = 273.16  # set tice = 165. to turn off ice - phase phys (kessler emulator)
+    alin = 842.0  # "a" in lin1983
+    clin = 4.8  # "c" in lin 1983, 4.8 -- > 6. (to ehance ql -- > qs)
 
     @classmethod
     def as_dict(cls):
@@ -553,41 +596,47 @@ class Namelist:
     vtdm4: float = DEFAULT_FLOAT
     # warm_start: bool
     z_tracer: bool = DEFAULT_BOOL
-    # c_cracw: Any
-    # c_paut: Any
-    # c_pgacs: Any
-    # c_psaci: Any
-    # ccn_l: Any
-    # ccn_o: Any
-    # const_vg: bool
-    # const_vi: bool
-    # const_vr: bool
-    # const_vs: bool
-    # de_ice: Any
-    do_qa: bool = DEFAULT_BOOL
-    # do_sedi_heat: Any
-    # do_sedi_w: Any
-    # fast_sat_adj: bool
-    # fix_negative: bool
-    # irain_f: Any
-    # mono_prof: Any
-    # mp_time: Any
-    # prog_ccn: Any
-    # qi0_crt: Any
-    # qs0_crt: Any
-    # rh_inc: Any
-    # rh_inr: Any
+    c_cracw: float = NamelistDefaults.c_cracw
+    c_paut: float = NamelistDefaults.c_paut
+    c_pgacs: float = NamelistDefaults.c_pgacs
+    c_psaci: float = NamelistDefaults.c_psaci
+    ccn_l: float = NamelistDefaults.ccn_l
+    ccn_o: float = NamelistDefaults.ccn_o
+    const_vg: bool = NamelistDefaults.const_vg
+    const_vi: bool = NamelistDefaults.const_vi
+    const_vr: bool = NamelistDefaults.const_vr
+    vs_fac: float = NamelistDefaults.vs_fac
+    vg_fac: float = NamelistDefaults.vg_fac
+    vi_fac: float = NamelistDefaults.vi_fac
+    vr_fac: float = NamelistDefaults.vr_fac
+    de_ice: bool = NamelistDefaults.de_ice
+    do_qa: bool = NamelistDefaults.do_qa
+    do_sedi_heat: bool = NamelistDefaults.do_sedi_heat
+    do_sedi_w: bool = NamelistDefaults.do_sedi_w
+    fast_sat_adj: bool = NamelistDefaults.fast_sat_adj
+    fix_negative: bool = NamelistDefaults.fix_negative
+    irain_f: int = NamelistDefaults.irain_f
+    mono_prof: bool = NamelistDefaults.mono_prof
+    mp_time: float = NamelistDefaults.mp_time
+    prog_ccn: bool = NamelistDefaults.prog_ccn
+    qi0_crt: float = NamelistDefaults.qi0_crt
+    qs0_crt: float = NamelistDefaults.qs0_crt
+    rh_inc: float = NamelistDefaults.rh_inc
+    rh_inr: float = NamelistDefaults.rh_inr
     # rh_ins: Any
-    # rthresh: Any
-    # sedi_transport: Any
+    rthresh: float = NamelistDefaults.rthresh
+    sedi_transport: bool = NamelistDefaults.sedi_transport
     # use_ccn: Any
-    # use_ppm: Any
-    # vg_max: Any
-    # vi_max: Any
-    # vr_max: Any
-    # vs_max: Any
-    # z_slope_ice: Any
-    # z_slope_liq: Any
+    use_ppm: bool = NamelistDefaults.use_ppm
+    vg_max: float = NamelistDefaults.vg_max
+    vi_max: float = NamelistDefaults.vi_max
+    vr_max: float = NamelistDefaults.vr_max
+    vs_max: float = NamelistDefaults.vs_max
+    z_slope_ice: bool = NamelistDefaults.z_slope_ice
+    z_slope_liq: bool = NamelistDefaults.z_slope_liq
+    tice: float = NamelistDefaults.tice
+    alin: float = NamelistDefaults.alin
+    clin: float = NamelistDefaults.clin
     # c0s_shal: Any
     # c1_shal: Any
     # cal_pre: Any
@@ -753,6 +802,16 @@ class Namelist:
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
 
+    @classmethod
+    def from_f90nml(cls, namelist: f90nml.Namelist):
+        namelist_dict = namelist_to_flatish_dict(namelist.items())
+        namelist_dict = {
+            key: value
+            for key, value in namelist_dict.items()
+            if key in cls.__dataclass_fields__  # type: ignore
+        }
+        return cls(**namelist_dict)
+
     @property
     def dynamical_core(self) -> DynamicalCoreConfig:
         return DynamicalCoreConfig(
@@ -870,17 +929,22 @@ def make_grid_from_namelist(namelist, rank):
     shape_params = {}
     for narg in ["npx", "npy", "npz"]:
         shape_params[narg] = getattr(namelist, narg)
+    # TODO this won't work with variable sized domains
+    # but this entire method will be refactored away
+    # and not used soon
+    nx = int((namelist.npx - 1) / namelist.layout[0])
+    ny = int((namelist.npy - 1) / namelist.layout[1])
     indices = {
         "isd": 0,
-        "ied": namelist.npx + 2 * utils.halo - 2,
+        "ied": nx + 2 * utils.halo - 1,
         "is_": utils.halo,
-        "ie": namelist.npx + utils.halo - 2,
+        "ie": nx + utils.halo - 1,
         "jsd": 0,
-        "jed": namelist.npy + 2 * utils.halo - 2,
+        "jed": ny + 2 * utils.halo - 1,
         "js": utils.halo,
-        "je": namelist.npy + utils.halo - 2,
+        "je": ny + utils.halo - 1,
     }
-    return Grid(indices, shape_params, rank, namelist.layout)
+    return Grid(indices, shape_params, rank, namelist.layout, local_indices=True)
 
 
 def make_grid_with_data_from_namelist(namelist, communicator, backend):
@@ -905,7 +969,7 @@ def set_grid(in_grid):
     grid = in_grid
 
 
-def set_namelist(filename):
+def set_namelist(filename, rank=0):
     """Updates the global namelist from a file and re-generates the global grid.
 
     Args:
@@ -917,7 +981,7 @@ def set_namelist(filename):
     for name, value in namelist_dict.items():
         setattr(namelist, name, value)
 
-    grid = make_grid_from_namelist(namelist, 0)
+    grid = make_grid_from_namelist(namelist, rank)
 
 
 if "NAMELIST_FILENAME" in os.environ:

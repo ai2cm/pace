@@ -9,8 +9,8 @@ import yaml
 import fv3core
 import fv3core._config
 import fv3core.testing
-import fv3core.utils.gt4py_utils
-import fv3gfs.util as fv3util
+import pace.dsl
+import pace.util as fv3util
 from fv3core.testing import ParallelTranslate, TranslateGrid
 from fv3core.utils.mpi import MPI
 
@@ -83,12 +83,12 @@ def to_output_name(savepoint_name):
     return savepoint_name[-3:] + "-Out"
 
 
-def make_grid(grid_savepoint, serializer, rank):
+def make_grid(grid_savepoint, serializer, rank, *, backend: str):
     grid_data = {}
     grid_fields = serializer.fields_at_savepoint(grid_savepoint)
     for field in grid_fields:
         grid_data[field] = read_serialized_data(serializer, grid_savepoint, field)
-    return TranslateGrid(grid_data, rank).python_grid()
+    return TranslateGrid(grid_data, rank, backend=backend).python_grid()
 
 
 def read_serialized_data(serializer, savepoint, variable):
@@ -99,8 +99,8 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def process_grid_savepoint(serializer, grid_savepoint, rank):
-    grid = make_grid(grid_savepoint, serializer, rank)
+def process_grid_savepoint(serializer, grid_savepoint, rank, *, backend: str):
+    grid = make_grid(grid_savepoint, serializer, rank, backend=backend)
     fv3core._config.set_grid(grid)
     return grid
 
@@ -196,7 +196,7 @@ SavepointCase = collections.namedtuple(
 )
 
 
-def sequential_savepoint_cases(metafunc, data_path):
+def sequential_savepoint_cases(metafunc, data_path, *, backend: str):
     return_list = []
     layout = fv3core._config.namelist.layout
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
@@ -205,7 +205,7 @@ def sequential_savepoint_cases(metafunc, data_path):
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = process_grid_savepoint(serializer, grid_savepoint, rank)
+        grid = process_grid_savepoint(serializer, grid_savepoint, rank, backend=backend)
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -227,7 +227,9 @@ def sequential_savepoint_cases(metafunc, data_path):
         # Set the grid to rank 0's data
         serializer = get_serializer(data_path, 0)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid_rank0 = process_grid_savepoint(serializer, grid_savepoint, 0)
+        grid_rank0 = process_grid_savepoint(
+            serializer, grid_savepoint, 0, backend=backend
+        )
         fv3core._config.set_grid(grid_rank0)
 
     return return_list
@@ -242,7 +244,7 @@ def check_savepoint_counts(test_name, input_savepoints, output_savepoints):
     assert len(input_savepoints) > 0, f"no savepoints found for {test_name}"
 
 
-def mock_parallel_savepoint_cases(metafunc, data_path):
+def mock_parallel_savepoint_cases(metafunc, data_path, *, backend: str):
     return_list = []
     layout = fv3core._config.namelist.layout
     total_ranks = 6 * layout[0] * layout[1]
@@ -250,7 +252,7 @@ def mock_parallel_savepoint_cases(metafunc, data_path):
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = process_grid_savepoint(serializer, grid_savepoint, rank)
+        grid = process_grid_savepoint(serializer, grid_savepoint, rank, backend=backend)
         grid_list.append(grid)
         if rank == 0:
             grid_rank0 = grid
@@ -297,10 +299,10 @@ def compute_grid_data(metafunc, grid):
     )
 
 
-def parallel_savepoint_cases(metafunc, data_path, mpi_rank):
+def parallel_savepoint_cases(metafunc, data_path, mpi_rank, *, backend: str):
     serializer = get_serializer(data_path, mpi_rank)
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid = process_grid_savepoint(serializer, grid_savepoint, mpi_rank)
+    grid = process_grid_savepoint(serializer, grid_savepoint, mpi_rank, backend=backend)
     if metafunc.config.getoption("compute_grid"):
         compute_grid_data(metafunc, grid)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
@@ -330,15 +332,15 @@ def pytest_generate_tests(metafunc):
     fv3core.set_backend(backend)
     if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
         if metafunc.function.__name__ == "test_parallel_savepoint":
-            generate_parallel_stencil_tests(metafunc)
+            generate_parallel_stencil_tests(metafunc, backend=backend)
     else:
         if metafunc.function.__name__ == "test_sequential_savepoint":
-            generate_sequential_stencil_tests(metafunc)
+            generate_sequential_stencil_tests(metafunc, backend=backend)
         if metafunc.function.__name__ == "test_mock_parallel_savepoint":
-            generate_mock_parallel_stencil_tests(metafunc)
+            generate_mock_parallel_stencil_tests(metafunc, backend=backend)
 
 
-def generate_sequential_stencil_tests(metafunc):
+def generate_sequential_stencil_tests(metafunc, *, backend: str):
     arg_names = [
         "testobj",
         "test_name",
@@ -352,12 +354,12 @@ def generate_sequential_stencil_tests(metafunc):
     _generate_stencil_tests(
         metafunc,
         arg_names,
-        sequential_savepoint_cases(metafunc, data_path),
+        sequential_savepoint_cases(metafunc, data_path, backend=backend),
         get_sequential_param,
     )
 
 
-def generate_mock_parallel_stencil_tests(metafunc):
+def generate_mock_parallel_stencil_tests(metafunc, *, backend: str):
     arg_names = [
         "testobj",
         "test_name",
@@ -371,12 +373,12 @@ def generate_mock_parallel_stencil_tests(metafunc):
     _generate_stencil_tests(
         metafunc,
         arg_names,
-        mock_parallel_savepoint_cases(metafunc, data_path),
+        mock_parallel_savepoint_cases(metafunc, data_path, backend=backend),
         get_parallel_mock_param,
     )
 
 
-def generate_parallel_stencil_tests(metafunc):
+def generate_parallel_stencil_tests(metafunc, *, backend: str):
     arg_names = [
         "testobj",
         "test_name",
@@ -394,7 +396,7 @@ def generate_parallel_stencil_tests(metafunc):
     _generate_stencil_tests(
         metafunc,
         arg_names,
-        parallel_savepoint_cases(metafunc, data_path, mpi_rank),
+        parallel_savepoint_cases(metafunc, data_path, mpi_rank, backend=backend),
         get_parallel_param,
     )
 
@@ -562,7 +564,7 @@ def failure_stride(pytestconfig):
 @pytest.fixture()
 def print_domains(pytestconfig):
     value = bool(pytestconfig.getoption("print_domains"))
-    original_init = fv3core.decorators.FrozenStencil.__init__
+    original_init = pace.dsl.stencil.FrozenStencil.__init__
     try:
         if value:
 
@@ -570,10 +572,10 @@ def print_domains(pytestconfig):
                 print(func.__name__, origin, domain)
                 original_init(self, func, origin, domain, *args, **kwargs)
 
-            fv3core.decorators.FrozenStencil.__init__ = __init__
+            pace.dsl.stencil.FrozenStencil.__init__ = __init__
         yield value
     finally:
-        fv3core.decorators.FrozenStencil.__init__ = original_init
+        pace.dsl.stencil.FrozenStencil.__init__ = original_init
 
 
 @pytest.fixture()
@@ -584,3 +586,8 @@ def python_regression(pytestconfig):
 @pytest.fixture()
 def compute_grid(pytestconfig):
     return pytestconfig.getoption("compute_grid")
+
+
+@pytest.fixture()
+def skip_grid_tests(pytestconfig):
+    return pytestconfig.getoption("skip_grid_tests")

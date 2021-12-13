@@ -1,7 +1,7 @@
 import fv3core._config as spec
 import fv3core.stencils.dyn_core as dyn_core
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as fv3util
+import pace.dsl.gt4py_utils as utils
+import pace.util as fv3util
 from fv3core.testing import ParallelTranslate2PyState
 
 
@@ -120,7 +120,10 @@ class TranslateDynCore(ParallelTranslate2PyState):
         #   must be converted into gt4py storages
         for name in ("ak", "bk", "pfull", "phis"):
             inputs[name] = utils.make_storage_data(
-                inputs[name], inputs[name].shape, len(inputs[name].shape) * (0,)
+                inputs[name],
+                inputs[name].shape,
+                len(inputs[name].shape) * (0,),
+                backend=self.grid.stencil_factory.backend,
             )
 
         grid_data = spec.grid.grid_data

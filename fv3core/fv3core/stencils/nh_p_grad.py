@@ -1,11 +1,11 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.utils.grid import GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
-from fv3gfs.util import Z_INTERFACE_DIM
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util import Z_INTERFACE_DIM
 
 
 def set_k0_and_calc_wk(
@@ -100,10 +100,14 @@ class NonHydrostaticPressureGradient:
         self._rdy = grid_data.rdy
 
         self._tmp_wk = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=self.orig
+            grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=self.orig,
+            backend=stencil_factory.backend,
         )  # pk3.shape
         self._tmp_wk1 = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=self.orig
+            grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=self.orig,
+            backend=stencil_factory.backend,
         )  # pp.shape
 
         self._set_k0_and_calc_wk_stencil = stencil_factory.from_origin_domain(

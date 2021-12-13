@@ -12,11 +12,11 @@ from gt4py.gtscript import (
     sin,
 )
 
-import fv3core.utils.global_constants as constants
+import pace.util.constants as constants
 from fv3core.utils import axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldK
-from fv3gfs.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldK
+from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 SDAY = 86400.0

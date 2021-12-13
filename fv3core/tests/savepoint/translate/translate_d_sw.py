@@ -4,14 +4,16 @@ import fv3core._config as spec
 import fv3core.stencils.d_sw as d_sw
 from fv3core.testing import TranslateFortranData2Py
 from fv3core.utils.grid import axis_offsets
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 class TranslateD_SW(TranslateFortranData2Py):
     def __init__(self, grid):
         super().__init__(grid)
         self.max_error = 3.2e-10
-        column_namelist = d_sw.get_column_namelist(spec.namelist, grid.npz)
+        column_namelist = d_sw.get_column_namelist(
+            spec.namelist, grid.npz, backend=self.grid.stencil_factory.backend
+        )
         self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(
             spec.grid.stencil_factory,
             spec.grid.grid_data,
@@ -177,7 +179,9 @@ class TranslateHeatDiss(TranslateFortranData2Py):
         }
 
     def compute_from_storage(self, inputs):
-        column_namelist = d_sw.get_column_namelist(spec.namelist, self.grid.npz)
+        column_namelist = d_sw.get_column_namelist(
+            spec.namelist, self.grid.npz, backend=self.grid.stencil_factory.backend
+        )
         # TODO add these to the serialized data or remove the test
         inputs["damp_w"] = column_namelist["damp_w"]
         inputs["ke_bg"] = column_namelist["ke_bg"]

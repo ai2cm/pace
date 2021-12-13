@@ -10,7 +10,7 @@ from timing import collect_data_and_write_to_file
 import fv3core
 import fv3core._config as spec
 import fv3core.testing
-import fv3gfs.util as util
+import pace.util as util
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.utils.grid import Grid
 from fv3core.utils.null_comm import NullComm
@@ -37,20 +37,6 @@ def initialize_serializer(data_directory: str, rank: int = 0) -> serialbox.Seria
         data_directory,
         "Generator_rank" + str(rank),
     )
-
-
-# Only used if reading the grid from savepoints on disk
-# Default is to generate a baroclinic initialization
-def read_grid(serializer: serialbox.Serializer, rank: int = 0) -> Grid:
-    """Uses the serializer to generate a Grid object from serialized data"""
-    grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
-    grid_data = {}
-    grid_fields = serializer.fields_at_savepoint(grid_savepoint)
-    for field in grid_fields:
-        grid_data[field] = serializer.read(field, grid_savepoint)
-        if len(grid_data[field].flatten()) == 1:
-            grid_data[field] = grid_data[field][0]
-    return fv3core.testing.TranslateGrid(grid_data, rank).python_grid()
 
 
 def initialize_fv3core(backend: str, disable_halo_exchange: bool) -> None:

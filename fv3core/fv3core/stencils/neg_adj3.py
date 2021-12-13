@@ -1,10 +1,10 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+import pace.dsl.gt4py_utils as utils
+import pace.util.constants as constants
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 ZVIR = constants.RVGAS / constants.RDGAS - 1.0
@@ -303,8 +303,12 @@ class AdjustNegativeTracerMixingRatio:
     ):
         grid_indexing = stencil_factory.grid_indexing
         shape_ij = grid_indexing.domain_full(add=(1, 1, 0))[:2]
-        self._sum1 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
-        self._sum2 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
+        self._sum1 = utils.make_storage_from_shape(
+            shape_ij, origin=(0, 0), backend=stencil_factory.backend
+        )
+        self._sum2 = utils.make_storage_from_shape(
+            shape_ij, origin=(0, 0), backend=stencil_factory.backend
+        )
         if check_negative:
             raise NotImplementedError(
                 "Unimplemented namelist value check_negative=True"

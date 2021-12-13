@@ -1,10 +1,10 @@
 from typing import Dict
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.fillz import FillNegativeTracerValues
 from fv3core.stencils.map_single import MapSingle
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField
 
 
 class MapNTracer:
@@ -33,7 +33,7 @@ class MapNTracer:
         self._j1 = j1
         self._j2 = j2
         self._qs = utils.make_storage_from_shape(
-            grid_indexing.max_shape, origin=(0, 0, 0)
+            grid_indexing.max_shape, origin=(0, 0, 0), backend=stencil_factory.backend
         )
 
         kord_tracer = [kord] * self._nq

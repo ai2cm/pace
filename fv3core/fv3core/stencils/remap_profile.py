@@ -3,9 +3,9 @@ from typing import Tuple
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import BoolField, FloatField, FloatFieldIJ
+import pace.dsl.gt4py_utils as utils
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import BoolField, FloatField, FloatFieldIJ
 
 
 @gtscript.function
@@ -527,24 +527,20 @@ class RemapProfile:
         km: int = grid_indexing.domain[2]
         self._kord = kord
 
-        self._gam: FloatField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig
-        )
-        self._q: FloatField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig
-        )
-        self._q_bot: FloatField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig
-        )
-        self._extm: BoolField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
-        )
-        self._ext5: BoolField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
-        )
-        self._ext6: BoolField = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(0, 0, 1)), origin=full_orig, dtype=bool
-        )
+        def make_storage(**kwargs):
+            return utils.make_storage_from_shape(
+                shape=grid_indexing.domain_full(add=(0, 0, 1)),
+                origin=grid_indexing.origin_full(),
+                backend=stencil_factory.backend,
+                **kwargs,
+            )
+
+        self._gam: FloatField = make_storage()
+        self._q: FloatField = make_storage()
+        self._q_bot: FloatField = make_storage()
+        self._extm: BoolField = make_storage(dtype=bool)
+        self._ext5: BoolField = make_storage()
+        self._ext6: BoolField = make_storage()
 
         i_extent: int = i2 - i1 + 1
         j_extent: int = j2 - j1 + 1

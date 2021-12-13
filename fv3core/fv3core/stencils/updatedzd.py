@@ -1,17 +1,17 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.dsl.gt4py_utils as utils
+import pace.util
+import pace.util.constants as constants
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
 )
 from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
 DZ_MIN = constants.DZ_MIN
@@ -217,7 +217,9 @@ class UpdateHeightOnDGrid:
         if any(column_namelist["damp_vt"] <= 1e-5):
             raise NotImplementedError("damp <= 1e-5 in column_cols is untested")
         self._dp0 = dp0
-        self._allocate_temporary_storages(grid_indexing)
+        self._allocate_temporary_storages(
+            grid_indexing, backend=stencil_factory.backend
+        )
         self._initialize_interpolation_constants(
             stencil_factory=stencil_factory, grid_indexing=grid_indexing
         )
@@ -247,38 +249,42 @@ class UpdateHeightOnDGrid:
             hord=hord_tm,
         )
 
-    def _allocate_temporary_storages(self, grid_indexing):
+    def _allocate_temporary_storages(self, grid_indexing: GridIndexing, backend: str):
         largest_possible_shape = grid_indexing.domain_full(add=(1, 1, 1))
         self._crx_interface = utils.make_storage_from_shape(
             largest_possible_shape,
             grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
+            backend=backend,
         )
         self._cry_interface = utils.make_storage_from_shape(
             largest_possible_shape,
             grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
+            backend=backend,
         )
         self._x_area_flux_interface = utils.make_storage_from_shape(
             largest_possible_shape,
             grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
+            backend=backend,
         )
         self._y_area_flux_interface = utils.make_storage_from_shape(
             largest_possible_shape,
             grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
+            backend=backend,
         )
         self._wk = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full()
+            largest_possible_shape, grid_indexing.origin_full(), backend=backend
         )
         self._height_x_diffusive_flux = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full()
+            largest_possible_shape, grid_indexing.origin_full(), backend=backend
         )
         self._height_y_diffusive_flux = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full()
+            largest_possible_shape, grid_indexing.origin_full(), backend=backend
         )
         self._fx = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full()
+            largest_possible_shape, grid_indexing.origin_full(), backend=backend
         )
         self._fy = utils.make_storage_from_shape(
-            largest_possible_shape, grid_indexing.origin_full()
+            largest_possible_shape, grid_indexing.origin_full(), backend=backend
         )
 
     def _initialize_interpolation_constants(
@@ -287,13 +293,19 @@ class UpdateHeightOnDGrid:
         # because stencils only work on 3D at the moment, need to compute in 3D
         # and then make these 1D
         gk_3d = utils.make_storage_from_shape(
-            (1, 1, grid_indexing.domain[2] + 1), (0, 0, 0)
+            (1, 1, grid_indexing.domain[2] + 1),
+            (0, 0, 0),
+            backend=stencil_factory.backend,
         )
         gamma_3d = utils.make_storage_from_shape(
-            (1, 1, grid_indexing.domain[2] + 1), (0, 0, 0)
+            (1, 1, grid_indexing.domain[2] + 1),
+            (0, 0, 0),
+            backend=stencil_factory.backend,
         )
         beta_3d = utils.make_storage_from_shape(
-            (1, 1, grid_indexing.domain[2] + 1), (0, 0, 0)
+            (1, 1, grid_indexing.domain[2] + 1),
+            (0, 0, 0),
+            backend=stencil_factory.backend,
         )
 
         _cubic_spline_interpolation_constants = stencil_factory.from_origin_domain(
@@ -303,14 +315,18 @@ class UpdateHeightOnDGrid:
         )
 
         _cubic_spline_interpolation_constants(self._dp0, gk_3d, beta_3d, gamma_3d)
-        self._gk = utils.make_storage_data(gk_3d[0, 0, :], gk_3d.shape[2:], (0,))
-        self._beta = utils.make_storage_data(beta_3d[0, 0, :], beta_3d.shape[2:], (0,))
+        self._gk = utils.make_storage_data(
+            gk_3d[0, 0, :], gk_3d.shape[2:], (0,), backend=stencil_factory.backend
+        )
+        self._beta = utils.make_storage_data(
+            beta_3d[0, 0, :], beta_3d.shape[2:], (0,), backend=stencil_factory.backend
+        )
         self._gamma = utils.make_storage_data(
-            gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,)
+            gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,), backend=stencil_factory.backend
         )
         self._copy_corners = PreAllocatedCopiedCornersFactory(
             stencil_factory=stencil_factory,
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_INTERFACE_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_INTERFACE_DIM],
             y_temporary=None,
         )
 

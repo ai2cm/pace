@@ -1,11 +1,12 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.global_constants as constants
-from fv3core.utils import corners, gt4py_utils
+import pace.util.constants as constants
+from fv3core.utils import corners
 from fv3core.utils.grid import axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl import gt4py_utils
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
 DZ_MIN = constants.DZ_MIN
@@ -88,10 +89,12 @@ class UpdateGeopotentialHeightOnCGrid:
         self._gz_x = gt4py_utils.make_storage_from_shape(
             largest_possible_shape,
             grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
+            backend=stencil_factory.backend,
         )
         self._gz_y = gt4py_utils.make_storage_from_shape(
             largest_possible_shape,
             grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
+            backend=stencil_factory.backend,
         )
         full_origin = grid_indexing.origin_full()
         full_domain = grid_indexing.domain_full(add=(0, 0, 1))

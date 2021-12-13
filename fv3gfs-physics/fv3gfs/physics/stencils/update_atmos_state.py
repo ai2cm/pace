@@ -1,20 +1,13 @@
-import gt4py.gtscript as gtscript
-from gt4py.gtscript import (
-    BACKWARD,
-    FORWARD,
-    PARALLEL,
-    computation,
-    horizontal,
-    interval,
-)
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import Float, FloatField, FloatFieldI, FloatFieldIJ
-from fv3gfs.physics.global_constants import *
+import pace.dsl.gt4py_utils as utils
+import pace.util
+from fv3core.utils.grid import GridData
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import Float, FloatField
+from pace.util import TilePartitioner
 
 
 def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
@@ -103,33 +96,47 @@ class UpdateAtmosphereState:
     def __init__(
         self,
         stencil_factory: StencilFactory,
-        grid,
+        grid_data: GridData,
         namelist,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
+        partitioner: TilePartitioner,
+        rank: int,
         grid_info,
     ):
-        self.grid = grid
+        grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
-        origin = self.grid.compute_origin()
-        shape = self.grid.domain_shape_full(add=(1, 1, 1))
+        origin = grid_indexing.origin_compute()
+        shape = grid_indexing.domain_full(add=(1, 1, 1))
         self._rdt = 1.0 / Float(self.namelist.dt_atmos)
         self._fill_GFS = stencil_factory.from_origin_domain(
             fill_gfs,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(add=(0, 0, 1)),
         )
         self._prepare_tendencies_and_update_tracers = (
             stencil_factory.from_origin_domain(
                 prepare_tendencies_and_update_tracers,
-                origin=self.grid.grid_indexing.origin_compute(),
-                domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
+                origin=grid_indexing.origin_compute(),
+                domain=grid_indexing.domain_compute(add=(0, 0, 1)),
             )
         )
-        self._u_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._v_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
-        self._pt_dt = utils.make_storage_from_shape(shape, origin=origin, init=True)
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape, origin=origin, init=True, backend=stencil_factory.backend
+            )
+
+        self._u_dt = make_storage()
+        self._v_dt = make_storage()
+        self._pt_dt = make_storage()
         self._apply_physics2dycore = ApplyPhysics2Dycore(
-            stencil_factory, self.grid, self.namelist, comm, grid_info
+            stencil_factory,
+            grid_data,
+            self.namelist,
+            comm,
+            partitioner,
+            rank,
+            grid_info,
         )
 
     def __call__(

@@ -12,13 +12,12 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import get_stencils_with_varied_bounds
+import pace.dsl.gt4py_utils as utils
 from fv3core.utils.grid import DampingCoefficients, axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
-from fv3gfs.util.constants import X_INTERFACE_DIM, Y_INTERFACE_DIM
+from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.util import X_DIM, Y_DIM, Z_DIM
+from pace.util.constants import X_INTERFACE_DIM, Y_INTERFACE_DIM
 
 
 def calc_damp(damp4: FloatField, nord: FloatFieldK, damp_c: FloatFieldK, da_min: float):
@@ -934,11 +933,19 @@ class DelnFlux:
         shape = grid_indexing.max_shape
         k_shape = (1, 1, nk)
 
-        self._damp_3d = utils.make_storage_from_shape(k_shape)
+        self._damp_3d = utils.make_storage_from_shape(
+            k_shape, backend=stencil_factory.backend
+        )
         # fields must be 3d to assign to them
-        self._fx2 = utils.make_storage_from_shape(shape)
-        self._fy2 = utils.make_storage_from_shape(shape)
-        self._d2 = utils.make_storage_from_shape(grid_indexing.domain_full())
+        self._fx2 = utils.make_storage_from_shape(
+            shape, backend=stencil_factory.backend
+        )
+        self._fy2 = utils.make_storage_from_shape(
+            shape, backend=stencil_factory.backend
+        )
+        self._d2 = utils.make_storage_from_shape(
+            grid_indexing.domain_full(), backend=stencil_factory.backend
+        )
 
         damping_factor_calculation = stencil_factory.from_origin_domain(
             calc_damp, origin=(0, 0, 0), domain=k_shape
@@ -954,7 +961,9 @@ class DelnFlux:
         damping_factor_calculation(
             self._damp_3d, nord, damp_c, damping_coefficients.da_min
         )
-        self._damp = utils.make_storage_data(self._damp_3d[0, 0, :], (nk,), (0,))
+        self._damp = utils.make_storage_data(
+            self._damp_3d[0, 0, :], (nk,), (0,), backend=stencil_factory.backend
+        )
 
         self.delnflux_nosg = DelnFluxNoSG(
             stencil_factory, damping_coefficients, rarea, nord, nk=nk
@@ -1137,7 +1146,7 @@ class DelnFluxNoSG:
         corner_axis_offsets = axis_offsets(grid_indexing, corner_origin, corner_domain)
 
         self._corner_tmp = utils.make_storage_from_shape(
-            corner_domain, origin=corner_origin
+            corner_domain, origin=corner_origin, backend=stencil_factory.backend
         )
         self._copy_corners_x_nord = stencil_factory.from_origin_domain(
             copy_corners_x_nord,

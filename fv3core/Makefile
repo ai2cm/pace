@@ -16,7 +16,7 @@ CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 TEST_ARGS ?=
 TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
-FV3UTIL_DIR=$(CWD)/external/fv3gfs-util
+FV3UTIL_DIR=$(CWD)/external/pace-util
 
 FV3=fv3core
 FV3_PATH ?=/$(FV3)
@@ -38,7 +38,7 @@ PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_
 # we can't rule out a deadlock if one test fails, so we must set maxfail=1 for parallel tests
 PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(FV3_PATH)/tests/savepoint
 ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/fv3gfs-util
+	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/pace-util
 endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
 
@@ -48,12 +48,7 @@ clean:
 	$(MAKE) -C external/fv3gfs-wrapper clean
 	$(MAKE) -C external/fv3gfs-fortran clean
 
-update_submodules_base:
-	if [ ! -f $(FV3UTIL_DIR)/requirements.txt  ]; then \
-		git submodule update --init external/fv3gfs-util ; \
-	fi
-
-update_submodules_venv: update_submodules_base
+update_submodules_venv:
 	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
                 git submodule update --init external/daint_venv; \
         fi
@@ -63,7 +58,7 @@ constraints.txt: requirements.txt requirements/requirements_wrapper.txt requirem
 	sed -i '' '/^git+https/d' constraints.txt
 # Image build instructions have moved to docker/Makefile but are kept here for backwards-compatibility
 
-build_environment: update_submodules_base
+build_environment:
 	$(MAKE) -C docker build_core_deps
 
 build_cuda_environment: build_environment
@@ -79,7 +74,7 @@ build_wrapped_environment:
 		--build-arg BASE_IMAGE=$(WRAPPER_IMAGE) \
 		.
 
-build: update_submodules_base
+build:
 	if [ $(PULL) == True ]; then \
 		$(MAKE) pull_environment_if_needed; \
 	else \
@@ -87,7 +82,7 @@ build: update_submodules_base
 	fi
 	$(MAKE) -C docker fv3core_image
 
-build_wrapped: update_submodules_base
+build_wrapped:
 	if [ $(PULL) == True ]; then \
 		$(MAKE) pull_wrapped_environment_if_needed; \
 	else \
@@ -97,7 +92,6 @@ build_wrapped: update_submodules_base
 
 pull_environment_if_needed:
 	$(MAKE) -C docker pull_core_deps_if_needed
-
 
 pull_wrapped_environment_if_needed:
 	if [ -z $(shell docker images -q $(WRAPPER_INSTALL_IMAGE)) ]; then \
@@ -170,7 +164,7 @@ push_python_regressions:
 
 get_test_data:
 	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
-	[ "$$(gsutil cat $(DATA_BUCKET)md5sums.txt)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
+	[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt -)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
 	rm -rf $(TEST_DATA_HOST) && \
 	$(MAKE) sync_test_data && \
 	$(MAKE) unpack_test_data ;\
@@ -191,7 +185,7 @@ gt4py_tests_gpu:
 	CUDA=y make build && \
         docker run --gpus all $(FV3CORE_IMAGE) python3 -m pytest -k "(not gtx86) and (not gtmc) and (not gtcuda)" -x gt4py/tests
 
-.PHONY: update_submodules_base update_submodules_venv build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
+.PHONY: update_submodules_venv build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
 	 list_test_data_options pull_environment pull_test_data push_environment \
 	rebuild_environment reformat run_tests_sequential run_tests_parallel test_base test_base_parallel \
 	tests push_core pull_core tar_core sarus_load_tar cleanup_remote

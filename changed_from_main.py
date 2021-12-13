@@ -51,7 +51,7 @@ def add_nested_dependencies(dependency_map: Dict[str, Set[str]]) -> Dict[str, Se
     # path can be at most as long as the total number of items
     for _ in range(len(dependency_map)):
         for dependencies in dependency_map.values():
-            for dependent_key in dependencies:
+            for dependent_key in dependencies.copy():
                 dependencies.update(dependency_map[dependent_key])
 
 
@@ -89,10 +89,16 @@ def changed(dirname) -> bool:
     return unstaged_files(dirname) or staged_files_changed(dirname)
 
 
+def top_level_files_changed() -> bool:
+    exclude_args = [f":!{dirname}/*" for dirname in get_dependencies().keys()]
+    result = subprocess.check_output(["git", "diff", "main", "."] + exclude_args)
+    return len(result) > 0
+
+
 if __name__ == "__main__":
     subdir_dependencies = get_dependencies()
     args = parse_args(subdir_dependencies)
-    if changed(args.project_name):
+    if changed(args.project_name) or top_level_files_changed():
         print("true")
     else:
         for dependency_subdir in subdir_dependencies[args.project_name]:

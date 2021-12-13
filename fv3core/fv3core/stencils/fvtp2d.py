@@ -5,13 +5,13 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core.utils.corners as corners
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.delnflux import DelnFlux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
 from fv3core.utils.grid import DampingCoefficients, GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 @gtscript.function
@@ -136,6 +136,7 @@ class PreAllocatedCopiedCornersFactory:
             y_temporary = utils.make_storage_from_shape(
                 stencil_factory.grid_indexing.max_shape,
                 origin=stencil_factory.grid_indexing.origin_compute(),
+                backend=stencil_factory.backend,
             )
         self._copy_corners_xy = corners.CopyCornersXY(
             stencil_factory, dims, y_field=y_temporary
@@ -169,18 +170,20 @@ class FiniteVolumeTransport:
         idx = stencil_factory.grid_indexing
         self._area = grid_data.area
         origin = idx.origin_compute()
-        self._q_advected_y = utils.make_storage_from_shape(idx.max_shape, origin)
-        self._q_advected_x = utils.make_storage_from_shape(idx.max_shape, origin)
-        self._q_x_advected_mean = utils.make_storage_from_shape(idx.max_shape, origin)
-        self._q_y_advected_mean = utils.make_storage_from_shape(idx.max_shape, origin)
-        self._q_advected_x_y_advected_mean = utils.make_storage_from_shape(
-            idx.max_shape, origin
-        )
-        self._q_advected_y_x_advected_mean = utils.make_storage_from_shape(
-            idx.max_shape, origin
-        )
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                idx.max_shape, origin=origin, backend=stencil_factory.backend
+            )
+
+        self._q_advected_y = make_storage()
+        self._q_advected_x = make_storage()
+        self._q_x_advected_mean = make_storage()
+        self._q_y_advected_mean = make_storage()
+        self._q_advected_x_y_advected_mean = make_storage()
+        self._q_advected_y_x_advected_mean = make_storage()
         self._corner_tmp = utils.make_storage_from_shape(
-            idx.max_shape, origin=idx.origin_full()
+            idx.max_shape, origin=idx.origin_full(), backend=stencil_factory.backend
         )
         """Temporary field to use for corner computation in both x and y direction"""
         self._nord = nord

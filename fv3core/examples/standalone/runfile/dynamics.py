@@ -2,13 +2,13 @@
 
 import copy
 import json
-import os
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import serialbox
+import yaml
 from mpi4py import MPI
 
 import fv3core.initialization.baroclinic as baroclinic_init
@@ -17,12 +17,12 @@ from fv3core.utils.grid import DampingCoefficients, GridData
 
 
 # Dev note: the GTC toolchain fails if xarray is imported after gt4py
-# fv3gfs.util imports xarray if it's available in the env.
+# pace.util imports xarray if it's available in the env.
 # fv3core imports gt4py.
 # To avoid future conflict creeping back we make util imported prior to
 # fv3core. isort turned off to keep it that way.
 # isort: off
-import fv3gfs.util as util
+import pace.util as util
 from fv3core.utils.null_comm import NullComm
 
 # isort: on
@@ -154,6 +154,43 @@ def gather_hit_counts(
     return results
 
 
+def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
+    config_yml = yaml.safe_load(
+        open(
+            data_directory + "/input.yml",
+            "r",
+        )
+    )
+    is_baroclinic_test_case = False
+    if (
+        "test_case_nml" in config_yml["namelist"].keys()
+        and config_yml["namelist"]["test_case_nml"]["test_case"] == 13
+    ):
+        is_baroclinic_test_case = True
+    print(
+        "Running "
+        + config_yml["experiment_name"]
+        + ", and using the baroclinic test case?: "
+        + str(is_baroclinic_test_case)
+    )
+    return config_yml["experiment_name"], is_baroclinic_test_case
+
+
+def read_serialized_initial_state(rank, grid):
+    # set up of helper structures
+    serializer = serialbox.Serializer(
+        serialbox.OpenModeKind.Read,
+        args.data_dir,
+        "Generator_rank" + str(rank),
+    )
+    # create a state from serialized data
+    savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
+    driver_object = fv3core.testing.TranslateFVDynamics([grid])
+    input_data = driver_object.collect_input_data(serializer, savepoint_in)
+    state = driver_object.state_from_inputs(input_data)
+    return state
+
+
 def collect_data_and_write_to_file(
     args: Namespace, comm: MPI.Comm, hits_per_step, times_per_step, experiment_name
 ) -> None:
@@ -194,35 +231,23 @@ if __name__ == "__main__":
         fv3core.set_rebuild(False)
         fv3core.set_validate_args(False)
 
-        spec.set_namelist(args.data_dir + "/input.nml")
+        spec.set_namelist(args.data_dir + "/input.nml", rank=rank)
 
-        experiment_name = os.path.basename(os.path.normpath(args.data_dir))
-
-        # set up of helper structures
-        serializer = serialbox.Serializer(
-            serialbox.OpenModeKind.Read,
-            args.data_dir,
-            "Generator_rank" + str(rank),
-        )
+        experiment_name, is_baroclinic_test_case = get_experiment_info(args.data_dir)
         if args.disable_halo_exchange:
             mpi_comm = NullComm(MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
         else:
             mpi_comm = MPI.COMM_WORLD
 
         namelist = spec.namelist
+
         # set up grid-dependent helper structures
         partitioner = util.CubedSpherePartitioner(util.TilePartitioner(namelist.layout))
         communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
-        # generate the grid
-        grid = spec.make_grid_with_data_from_namelist(
-            namelist, communicator, args.backend
-        )
-        spec.set_grid(grid)
 
         # TODO remove this creation of the legacy grid once everything that
         # references it is updated or removed
-        grid = spec.make_grid_from_namelist(namelist, communicator.rank)
-        spec.set_grid(grid)
+        grid = spec.make_grid_from_namelist(namelist, rank)
 
         metric_terms = MetricTerms.from_tile_sizing(
             npx=namelist.npx,
@@ -231,16 +256,18 @@ if __name__ == "__main__":
             communicator=communicator,
             backend=args.backend,
         )
-
-        # create an initial state from the Jablonowski & Williamson Baroclinic
-        # test case perturbation. JRMS2006
-        state = baroclinic_init.init_baroclinic_state(
-            metric_terms,
-            adiabatic=namelist.adiabatic,
-            hydrostatic=namelist.hydrostatic,
-            moist_phys=namelist.moist_phys,
-            comm=communicator,
-        )
+        if is_baroclinic_test_case:
+            # create an initial state from the Jablonowski & Williamson Baroclinic
+            # test case perturbation. JRMS2006
+            state = baroclinic_init.init_baroclinic_state(
+                metric_terms,
+                adiabatic=namelist.adiabatic,
+                hydrostatic=namelist.hydrostatic,
+                moist_phys=namelist.moist_phys,
+                comm=communicator,
+            )
+        else:
+            state = read_serialized_initial_state(rank, grid)
 
         dycore = fv3core.DynamicalCore(
             comm=communicator,
@@ -250,7 +277,7 @@ if __name__ == "__main__":
                 metric_terms
             ),
             config=spec.namelist.dynamical_core,
-            phis=state.phis_quantity,
+            phis=state.phis,
         )
         # TODO include functionality that uses and changes this
         do_adiabatic_init = False

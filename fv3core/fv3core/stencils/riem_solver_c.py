@@ -2,11 +2,11 @@ import typing
 
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, log
 
-import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
+import pace.util.constants as constants
 from fv3core.stencils.sim1_solver import Sim1Solver
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 @typing.no_type_check
@@ -75,13 +75,18 @@ class RiemannSolverC:
         domain = grid_indexing.domain_compute(add=(2, 2, 1))
         shape = grid_indexing.max_shape
 
-        self._dm = utils.make_storage_from_shape(shape, origin)
-        self._w = utils.make_storage_from_shape(shape, origin)
-        self._pem = utils.make_storage_from_shape(shape, origin)
-        self._pe = utils.make_storage_from_shape(shape, origin)
-        self._gm = utils.make_storage_from_shape(shape, origin)
-        self._dz = utils.make_storage_from_shape(shape, origin)
-        self._pm = utils.make_storage_from_shape(shape, origin)
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape, origin, backend=stencil_factory.backend
+            )
+
+        self._dm = make_storage()
+        self._w = make_storage()
+        self._pem = make_storage()
+        self._pe = make_storage()
+        self._gm = make_storage()
+        self._dz = make_storage()
+        self._pm = make_storage()
 
         self._precompute_stencil = stencil_factory.from_origin_domain(
             precompute,

@@ -7,14 +7,14 @@ from gt4py.gtscript import (
     region,
 )
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from fv3core.utils import corners
 from fv3core.utils.grid import GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
-from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 def geoadjust_ut(
@@ -376,11 +376,13 @@ def initialize_delpc_ptc(delpc: FloatField, ptc: FloatField):
         ptc = 0.0
 
 
-def compute_fC(stencil_factory: StencilFactory, lon: FloatFieldIJ, lat: FloatFieldIJ):
+def compute_fC(
+    stencil_factory: StencilFactory, lon: FloatFieldIJ, lat: FloatFieldIJ, backend: str
+):
     """
     Compute the coriolis parameter on the C-grid
     """
-    fC = utils.make_storage_from_shape(lon.shape)
+    fC = utils.make_storage_from_shape(lon.shape, backend=backend)
     fC_stencil = stencil_factory.from_dims_halo(
         compute_coriolis_parameter_defn,
         compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
@@ -406,7 +408,12 @@ class CGridShallowWaterDynamics:
         grid_indexing = stencil_factory.grid_indexing
         self.grid_data = grid_data
         self._dord4 = True
-        self._fC = compute_fC(stencil_factory, self.grid_data.lon, self.grid_data.lat)
+        self._fC = compute_fC(
+            stencil_factory,
+            self.grid_data.lon,
+            self.grid_data.lat,
+            backend=stencil_factory.backend,
+        )
         self._D2A2CGrid_Vectors = DGrid2AGrid2CGridVectors(
             stencil_factory,
             grid_data,
@@ -416,10 +423,14 @@ class CGridShallowWaterDynamics:
         )
         origin_halo1 = (grid_indexing.isc - 1, grid_indexing.jsc - 1, 0)
         self.delpc = utils.make_storage_from_shape(
-            grid_indexing.max_shape, origin=origin_halo1
+            grid_indexing.max_shape,
+            origin=origin_halo1,
+            backend=stencil_factory.backend,
         )
         self.ptc = utils.make_storage_from_shape(
-            grid_indexing.max_shape, origin=origin_halo1
+            grid_indexing.max_shape,
+            origin=origin_halo1,
+            backend=stencil_factory.backend,
         )
         self._initialize_delpc_ptc = stencil_factory.from_dims_halo(
             initialize_delpc_ptc,
@@ -427,11 +438,16 @@ class CGridShallowWaterDynamics:
             compute_halos=(3, 3),
         )
 
-        self._tmp_ke = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_vort = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_fx = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_fx1 = utils.make_storage_from_shape(grid_indexing.max_shape)
-        self._tmp_fx2 = utils.make_storage_from_shape(grid_indexing.max_shape)
+        def make_storage():
+            return utils.make_storage_from_shape(
+                grid_indexing.max_shape, backend=stencil_factory.backend
+            )
+
+        self._tmp_ke = make_storage()
+        self._tmp_vort = make_storage()
+        self._tmp_fx = make_storage()
+        self._tmp_fx1 = make_storage()
+        self._tmp_fx2 = make_storage()
 
         if nord > 0:
             self._divergence_corner = stencil_factory.from_dims_halo(

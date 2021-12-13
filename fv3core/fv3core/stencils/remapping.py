@@ -14,8 +14,7 @@ from gt4py.gtscript import (
 )
 
 import fv3core.stencils.moist_cv as moist_cv
-import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core._config import RemappingConfig
 from fv3core.stencils.basic_operations import adjust_divide_stencil
 from fv3core.stencils.map_single import MapSingle
@@ -23,8 +22,8 @@ from fv3core.stencils.mapn_tracer import MapNTracer
 from fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
 from fv3core.utils.grid import axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 
 
 CONSV_MIN = 0.001
@@ -232,18 +231,19 @@ class LagrangianToEulerian:
             grid_indexing.domain[2] + 1,
         )
 
-        self._pe1 = utils.make_storage_from_shape(shape_kplus)
-        self._pe2 = utils.make_storage_from_shape(shape_kplus)
-        self._dp2 = utils.make_storage_from_shape(shape_kplus)
-        self._pn2 = utils.make_storage_from_shape(shape_kplus)
-        self._pe0 = utils.make_storage_from_shape(shape_kplus)
-        self._pe3 = utils.make_storage_from_shape(shape_kplus)
+        backend = stencil_factory.backend
+        self._pe1 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._dp2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pn2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe0 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe3 = utils.make_storage_from_shape(shape_kplus, backend=backend)
 
         self._gz: FloatField = utils.make_storage_from_shape(
-            shape_kplus, grid_indexing.origin_compute()
+            shape_kplus, grid_indexing.origin_compute(), backend=backend
         )
         self._cvm: FloatField = utils.make_storage_from_shape(
-            shape_kplus, grid_indexing.origin_compute()
+            shape_kplus, grid_indexing.origin_compute(), backend=backend
         )
 
         self._init_pe = stencil_factory.from_origin_domain(
@@ -564,22 +564,22 @@ class LagrangianToEulerian:
         self._copy_from_below_stencil(ua, pe)
         dtmp = 0.0
         if last_step and not do_adiabatic_init:
-            if consv_te > constants.CONSV_MIN:
+            if consv_te > CONSV_MIN:
                 raise NotImplementedError(
                     "We do not support consv_te > 0.001 "
                     "because that would trigger an allReduce"
                 )
-            elif consv_te < -constants.CONSV_MIN:
+            elif consv_te < -CONSV_MIN:
                 raise NotImplementedError(
                     "Unimplemented/untested case consv("
                     + str(consv_te)
                     + ")  < -CONSV_MIN("
-                    + str(-constants.CONSV_MIN)
+                    + str(-CONSV_MIN)
                     + ")"
                 )
 
         if self._do_sat_adjust:
-            fast_mp_consv = not do_adiabatic_init and consv_te > constants.CONSV_MIN
+            fast_mp_consv = not do_adiabatic_init and consv_te > CONSV_MIN
             self._saturation_adjustment(
                 dp1,
                 tracers["qvapor"],

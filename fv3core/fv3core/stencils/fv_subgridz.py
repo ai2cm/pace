@@ -3,11 +3,13 @@ from typing import Mapping
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, PARALLEL, computation, interval
 
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.dsl.gt4py_utils as utils
+import pace.util
 from fv3core.decorators import ArgSpec
 from fv3core.stencils.basic_operations import dim
-from fv3core.utils.global_constants import (
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField
+from pace.util.constants import (
     C_ICE,
     C_LIQ,
     CP_AIR,
@@ -18,8 +20,6 @@ from fv3core.utils.global_constants import (
     RDGAS,
     ZVIR,
 )
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField
 
 
 RK = CP_AIR / RDGAS + 1.0
@@ -792,7 +792,6 @@ class DryConvectiveAdjustment:
         kbot_domain = (grid_indexing.domain[0], grid_indexing.domain[1], self._k_sponge)
         origin = grid_indexing.origin_compute()
 
-        # TODO(eddied): Applying the `KCacheDetection` pass causes validation to fail
         self._init_stencil = stencil_factory.from_origin_domain(
             init,
             origin=origin,
@@ -801,7 +800,6 @@ class DryConvectiveAdjustment:
                 grid_indexing.domain[1],
                 self._k_sponge + 1,
             ),
-            skip_passes=("KCacheDetection",),
         )
         self._m_loop_stencil = stencil_factory.from_origin_domain(
             m_loop,
@@ -818,22 +816,28 @@ class DryConvectiveAdjustment:
             origin=origin,
             domain=kbot_domain,
         )
-        shape = grid_indexing.domain_full(add=(1, 1, 0))
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                grid_indexing.domain_full(add=(1, 1, 0)),
+                backend=stencil_factory.backend,
+            )
+
         self._q0 = {}
         for tracername in utils.tracer_variables:
-            self._q0[tracername] = utils.make_storage_from_shape(shape)
-        self._tmp_u0 = utils.make_storage_from_shape(shape)
-        self._tmp_v0 = utils.make_storage_from_shape(shape)
-        self._tmp_w0 = utils.make_storage_from_shape(shape)
-        self._tmp_gz = utils.make_storage_from_shape(shape)
-        self._tmp_t0 = utils.make_storage_from_shape(shape)
-        self._tmp_static_energy = utils.make_storage_from_shape(shape)
-        self._tmp_total_energy = utils.make_storage_from_shape(shape)
-        self._tmp_cvm = utils.make_storage_from_shape(shape)
-        self._tmp_cpm = utils.make_storage_from_shape(shape)
+            self._q0[tracername] = make_storage()
+        self._tmp_u0 = make_storage()
+        self._tmp_v0 = make_storage()
+        self._tmp_w0 = make_storage()
+        self._tmp_gz = make_storage()
+        self._tmp_t0 = make_storage()
+        self._tmp_static_energy = make_storage()
+        self._tmp_total_energy = make_storage()
+        self._tmp_cvm = make_storage()
+        self._tmp_cpm = make_storage()
         self._ratios = {0: 0.25, 1: 0.5, 2: 0.999}
 
-    def __call__(self, state: Mapping[str, fv3gfs.util.Quantity], timestep: float):
+    def __call__(self, state: Mapping[str, pace.util.Quantity], timestep: float):
         """
         Performs dry convective adjustment mixing on the subgrid vertical scale.
         Args:

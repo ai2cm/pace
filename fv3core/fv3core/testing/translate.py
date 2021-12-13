@@ -4,9 +4,9 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 import fv3core._config
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.utils.grid import Grid
-from fv3core.utils.typing import Field  # noqa: F401
+from pace.dsl.typing import Field  # noqa: F401
 
 
 logger = logging.getLogger("fv3ser")
@@ -19,8 +19,8 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def pad_field_in_j(field, nj):
-    utils.device_sync()
+def pad_field_in_j(field, nj, backend: str):
+    utils.device_sync(backend)
     outfield = utils.tile(field[:, 0, :], [nj, 1, 1]).transpose(1, 0, 2)
     return outfield
 
@@ -103,6 +103,7 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 names=names_4d,
+                backend=self.grid.stencil_factory.backend,
             )
         else:
             return utils.make_storage_data(
@@ -113,6 +114,7 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 read_only=read_only,
+                backend=self.grid.stencil_factory.backend,
             )
 
     def storage_vars(self):
@@ -201,7 +203,7 @@ class TranslateFortranData2Py:
                 del inputs[serialname]
 
     def slice_output(self, inputs, out_data=None):
-        utils.device_sync()
+        utils.device_sync(backend=self.grid.stencil_factory.backend)
         if out_data is None:
             out_data = inputs
         else:
@@ -268,7 +270,8 @@ class TranslateGrid:
     #     |       |
     #     6---2---7
 
-    def __init__(self, inputs, rank):
+    def __init__(self, inputs, rank, *, backend: str):
+        self.backend = backend
         self.indices = {}
         self.shape_params = {}
         self.data = {}
@@ -284,10 +287,18 @@ class TranslateGrid:
 
         self.data = inputs
 
-    def make_composite_var_storage(self, varname, data3d, shape):
+    def make_composite_var_storage(
+        self,
+        varname,
+        data3d,
+        shape,
+    ):
         for s in range(9):
             self.data[varname + str(s + 1)] = utils.make_storage_data(
-                np.squeeze(data3d[:, :, s]), shape, origin=(0, 0, 0)
+                np.squeeze(data3d[:, :, s]),
+                shape,
+                origin=(0, 0, 0),
+                backend=self.backend,
             )
 
     def make_grid_storage(self, pygrid):
@@ -300,7 +311,10 @@ class TranslateGrid:
             if key in self.data:
                 self.data[key] = np.moveaxis(self.data[key], 0, 2)
                 self.data[key] = utils.make_storage_data(
-                    self.data[key], (shape[0], shape[1], 3), origin=(0, 0, 0)
+                    self.data[key],
+                    (shape[0], shape[1], 3),
+                    origin=(0, 0, 0),
+                    backend=self.backend,
                 )
         for key, axis in TranslateGrid.edge_var_axis.items():
             if key in self.data:
@@ -310,6 +324,7 @@ class TranslateGrid:
                     start=(0, 0, pygrid.halo),
                     axis=axis,
                     read_only=True,
+                    backend=self.backend,
                 )
         for key, value in self.data.items():
             if type(value) is np.ndarray:
@@ -323,7 +338,12 @@ class TranslateGrid:
                 )
                 origin = (istart, jstart, 0)
                 self.data[key] = utils.make_storage_data(
-                    value, shape, origin=origin, start=origin, read_only=True
+                    value,
+                    shape,
+                    origin=origin,
+                    start=origin,
+                    read_only=True,
+                    backend=self.backend,
                 )
 
     def python_grid(self):

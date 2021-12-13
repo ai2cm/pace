@@ -3,7 +3,7 @@ import copy
 import numpy as np
 
 import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
@@ -48,6 +48,7 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
             self.grid.domain_shape_full(add=(1, 1, 1)),
             origin=self.grid.compute_origin(),
             init=True,
+            backend=self.grid.stencil_factory.backend,
         )
         inputs["qo3mr"] = copy.deepcopy(storage)
         inputs["qsgs_tke"] = copy.deepcopy(storage)
@@ -68,9 +69,11 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         inputs["va_t1"] = copy.deepcopy(storage)
         inputs["omga"] = copy.deepcopy(storage)
         physics_state = PhysicsState(**inputs)
-        microph = Microphysics(self.grid.stencil_factory, self.grid, spec.namelist)
+        microphysics = Microphysics(
+            self.grid.stencil_factory, self.grid.grid_data, spec.namelist
+        )
         microph_state = physics_state.microphysics(storage)
-        microph(microph_state)
+        microphysics(microph_state)
         inputs["pt_dt"] = microph_state.pt_dt
         inputs["qv_dt"] = microph_state.qv_dt
         inputs["ql_dt"] = microph_state.ql_dt

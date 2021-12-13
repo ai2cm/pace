@@ -10,14 +10,13 @@ from gt4py.gtscript import (
 
 import fv3core.stencils.basic_operations as basic
 import fv3core.utils.corners as corners
-import fv3core.utils.gt4py_utils as utils
-from fv3core.decorators import get_stencils_with_varied_bounds
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.stencils.d2a2c_vect import contravariant
 from fv3core.utils.grid import DampingCoefficients, GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 @gtscript.function
@@ -308,7 +307,9 @@ class DivergenceDamping:
             compute_halos=(self.grid_indexing.n_halo, self.grid_indexing.n_halo),
         )
 
-        self._corner_tmp = utils.make_storage_from_shape(self.grid_indexing.max_shape)
+        self._corner_tmp = utils.make_storage_from_shape(
+            self.grid_indexing.max_shape, backend=stencil_factory.backend
+        )
 
         self.fill_corners_bgrid_x = corners.FillCornersBGrid(
             direction="x",

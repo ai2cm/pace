@@ -2,11 +2,11 @@ from typing import Optional
 
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.remap_profile import RemapProfile
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
 
 
 def set_dp(dp1: FloatField, pe1: FloatField, lev: IntFieldIJ):
@@ -86,17 +86,25 @@ class MapSingle:
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
 
-        self._dp1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._q4_1 = utils.make_storage_from_shape(shape, origin=origin)
-        self._q4_2 = utils.make_storage_from_shape(shape, origin=origin)
-        self._q4_3 = utils.make_storage_from_shape(shape, origin=origin)
-        self._q4_4 = utils.make_storage_from_shape(shape, origin=origin)
-        self._tmp_qs = utils.make_storage_from_shape(shape[0:2], origin=(0, 0))
+        def make_storage():
+            return utils.make_storage_from_shape(
+                shape=shape, origin=origin, backend=stencil_factory.backend
+            )
+
+        self._dp1 = make_storage()
+        self._q4_1 = make_storage()
+        self._q4_2 = make_storage()
+        self._q4_3 = make_storage()
+        self._q4_4 = make_storage()
+        self._tmp_qs = utils.make_storage_from_shape(
+            shape[0:2], origin=(0, 0), backend=stencil_factory.backend
+        )
         self._lev = utils.make_storage_from_shape(
             shape[:-1],
             origin=origin[:-1],
             mask=(True, True, False),
             dtype=int,
+            backend=stencil_factory.backend,
         )
 
         self._extents = (i2 - i1 + 1, j2 - j1 + 1)

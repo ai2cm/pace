@@ -3,11 +3,11 @@ import copy
 from mpi4py import MPI
 
 import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as util
-from fv3core.utils.typing import Float
+import pace.dsl.gt4py_utils as utils
+import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+from pace.dsl.typing import Float
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
@@ -91,6 +91,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             self.grid.domain_shape_full(add=(1, 1, 1)),
             origin=self.grid.compute_origin(),
             init=True,
+            backend=self.grid.stencil_factory.backend,
         )
         inputs["delprsi"] = copy.deepcopy(storage)
         inputs["phii"] = copy.deepcopy(storage)
@@ -132,7 +133,13 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         grid_info["ew2_2"] = 0
         grid_info["ew3_2"] = 0
         physics = Physics(
-            self.grid.stencil_factory, self.grid, spec.namelist, communicator, grid_info
+            self.grid.stencil_factory,
+            self.grid.grid_data,
+            spec.namelist,
+            communicator,
+            partitioner,
+            self.grid.rank,
+            grid_info,
         )
         physics._atmos_phys_driver_statein(
             physics._prsik,

@@ -4,8 +4,8 @@ import fv3core._config as spec
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.stencils.fvtp2d
 import fv3core.stencils.tracer_2d_1l
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as fv3util
+import pace.dsl.gt4py_utils as utils
+import pace.util as fv3util
 from fv3core.testing import ParallelTranslate
 
 

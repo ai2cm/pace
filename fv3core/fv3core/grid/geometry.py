@@ -1,4 +1,4 @@
-from fv3gfs.util import Quantity, TilePartitioner
+from pace.util import Quantity, TilePartitioner
 
 from .gnomonic import (
     get_lonlat_vect,

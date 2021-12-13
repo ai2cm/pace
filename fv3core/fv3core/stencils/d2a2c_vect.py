@@ -1,13 +1,13 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
 from fv3core.utils import corners
 from fv3core.utils.grid import GridData, axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
-from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 c1 = -2.0 / 14.0
@@ -413,9 +413,12 @@ class DGrid2AGrid2CGridVectors:
         self._utmp = utils.make_storage_from_shape(
             grid_indexing.max_shape,
             grid_indexing.origin_full(),
+            backend=stencil_factory.backend,
         )
         self._vtmp = utils.make_storage_from_shape(
-            grid_indexing.max_shape, grid_indexing.origin_full()
+            grid_indexing.max_shape,
+            grid_indexing.origin_full(),
+            backend=stencil_factory.backend,
         )
 
         js1 = npt + OFFSET if grid_indexing.south_edge else grid_indexing.jsc - 1

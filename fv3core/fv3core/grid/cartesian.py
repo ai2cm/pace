@@ -1,4 +1,4 @@
-from fv3core.utils.global_constants import PI
+from pace.util.constants import PI
 
 
 def setup_cartesian_grid(npx, npy, deglat, np):

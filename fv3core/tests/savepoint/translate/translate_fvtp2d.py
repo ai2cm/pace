@@ -1,10 +1,10 @@
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
 )
 from fv3core.testing import TranslateFortranData2Py
-from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 class TranslateFvTp2d(TranslateFortranData2Py):
@@ -37,10 +37,14 @@ class TranslateFvTp2d(TranslateFortranData2Py):
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute_from_storage(self, inputs):
         inputs["q_x_flux"] = utils.make_storage_from_shape(
-            self.maxshape, self.grid.full_origin()
+            self.maxshape,
+            self.grid.full_origin(),
+            backend=self.grid.stencil_factory.backend,
         )
         inputs["q_y_flux"] = utils.make_storage_from_shape(
-            self.maxshape, self.grid.full_origin()
+            self.maxshape,
+            self.grid.full_origin(),
+            backend=self.grid.stencil_factory.backend,
         )
         for optional_arg in ["mass"]:
             if optional_arg not in inputs:

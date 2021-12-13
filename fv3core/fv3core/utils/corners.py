@@ -3,10 +3,10 @@ from typing import Sequence
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.stencil import GridIndexing, StencilFactory
-from fv3core.utils.typing import FloatField
-from fv3gfs.util.constants import (
+import pace.dsl.gt4py_utils as utils
+from pace.dsl.stencil import GridIndexing, StencilFactory
+from pace.dsl.typing import FloatField
+from pace.util.constants import (
     X_DIM,
     X_INTERFACE_DIM,
     Y_DIM,
@@ -574,7 +574,9 @@ class FillCornersBGrid:
             self._corner_tmp = temporary_field
         else:
             self._corner_tmp = utils.make_storage_from_shape(
-                stencil_factory.grid_indexing.max_shape, origin=origin
+                stencil_factory.grid_indexing.max_shape,
+                origin=origin,
+                backend=stencil_factory.backend,
             )
 
         if direction == "x":

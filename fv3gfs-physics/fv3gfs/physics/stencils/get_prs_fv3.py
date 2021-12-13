@@ -1,19 +1,20 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-from fv3gfs.physics.global_config import *
+from pace.dsl.typing import FloatField
+from pace.util.constants import ZVIR
 
 
 def get_prs_fv3(
-    phii: FIELD_FLT,
-    prsi: FIELD_FLT,
-    tgrs: FIELD_FLT,
-    qgrs: FIELD_FLT,
-    del_: FIELD_FLT,
-    del_gz: FIELD_FLT,
+    phii: FloatField,
+    prsi: FloatField,
+    tgrs: FloatField,
+    qgrs: FloatField,
+    del_: FloatField,
+    del_gz: FloatField,
 ):
     # Passing with integration, but zero padding is different from fortran for del_gz
     with computation(PARALLEL), interval(0, -1):
         del_ = prsi[0, 0, 1] - prsi[0, 0, 0]
         del_gz = (phii[0, 0, 0] - phii[0, 0, 1]) / (
-            tgrs[0, 0, 0] * (1.0 + con_fvirt * max(0.0, qgrs[0, 0, 0]))
+            tgrs[0, 0, 0] * (1.0 + ZVIR * max(0.0, qgrs[0, 0, 0]))
         )
