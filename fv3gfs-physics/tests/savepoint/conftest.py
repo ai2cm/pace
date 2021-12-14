@@ -2,6 +2,7 @@ import collections
 import os
 import sys
 import warnings
+from typing import Tuple
 
 import f90nml
 import pytest
@@ -51,10 +52,10 @@ class ReplaceRepr:
 
 @pytest.fixture()
 def data_path(pytestconfig):
-    return data_path_from_config(pytestconfig)
+    return data_path_and_namelist_filename_from_config(pytestconfig)
 
 
-def data_path_from_config(config):
+def data_path_and_namelist_filename_from_config(config) -> Tuple[str, str]:
     data_path = config.getoption("data_path")
     namelist_filename = os.path.join(data_path, "input.nml")
     return data_path, namelist_filename
@@ -111,17 +112,17 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def Grid(serializer, grid_savepoint, rank, layout, *, backend: str):
+def upper_grid(serializer, grid_savepoint, rank, layout, *, backend: str):
     grid = make_grid(grid_savepoint, serializer, rank, layout, backend=backend)
     return grid
 
 
-def grid_data(Grid):
-    return Grid.grid_data
+def grid_data(upper_grid):
+    return upper_grid.grid_data
 
 
-def grid_indexing(Grid):
-    return Grid.grid_indexing
+def grid_indexing(upper_grid):
+    return upper_grid.grid_indexing
 
 
 def physics_config(namelist_filename):
@@ -245,7 +246,7 @@ def sequential_savepoint_cases(
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = Grid(
+        grid = upper_grid(
             serializer, grid_savepoint, rank, physics_config.layout, backend=backend
         )
         stencil_factory = pace.dsl.stencil.StencilFactory(
@@ -269,13 +270,6 @@ def sequential_savepoint_cases(
                     stencil_factory,
                 )
             )
-
-    # Set the grid to rank 0's data
-    serializer = get_serializer(data_path, 0)
-    grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid_rank0 = Grid(
-        serializer, grid_savepoint, 0, physics_config.layout, backend=backend
-    )
     return return_list
 
 
@@ -304,7 +298,7 @@ def mock_parallel_savepoint_cases(
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = Grid(
+        grid = upper_grid(
             serializer, grid_savepoint, rank, physics_config.layout, backend=backend
         )
         grid_list.append(grid)
@@ -357,7 +351,7 @@ def parallel_savepoint_cases(
         validate_args=True,
     )
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid = Grid(
+    grid = upper_grid(
         serializer, grid_savepoint, mpi_rank, physics_config.layout, backend=backend
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
@@ -408,7 +402,9 @@ def generate_sequential_stencil_tests(metafunc, *, backend: str):
         "rank",
         "grid",
     ]
-    data_path, namelist_filename = data_path_from_config(metafunc.config)
+    data_path, namelist_filename = data_path_and_namelist_filename_from_config(
+        metafunc.config
+    )
     _generate_stencil_tests(
         metafunc,
         arg_names,
@@ -432,7 +428,9 @@ def generate_mock_parallel_stencil_tests(metafunc, backend: str):
         "grid",
         "layout",
     ]
-    data_path, namelist_filename = data_path_from_config(metafunc.config)
+    data_path, namelist_filename = data_path_and_namelist_filename_from_config(
+        metafunc.config
+    )
     _generate_stencil_tests(
         metafunc,
         arg_names,
@@ -454,7 +452,9 @@ def generate_parallel_stencil_tests(metafunc, backend: str):
         "grid",
         "layout",
     ]
-    data_path, namelist_filename = data_path_from_config(metafunc.config)
+    data_path, namelist_filename = data_path_and_namelist_filename_from_config(
+        metafunc.config
+    )
     # get MPI environment
     comm = MPI.COMM_WORLD
     mpi_rank = comm.Get_rank()

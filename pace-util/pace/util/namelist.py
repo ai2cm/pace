@@ -1,3 +1,6 @@
+import f90nml
+
+
 # Global set of namelist defaults, attached to class for namespacing and static typing
 class NamelistDefaults:
     layout = (1, 1)
@@ -103,3 +106,22 @@ class NamelistDefaults:
             for name, default in cls.__dict__.items()
             if not name.startswith("_")
         }
+
+
+def namelist_to_flatish_dict(nml_input):
+    nml = dict(nml_input)
+    for name, value in nml.items():
+        if isinstance(value, f90nml.Namelist):
+            nml[name] = namelist_to_flatish_dict(value)
+    flatter_namelist = {}
+    for key, value in nml.items():
+        if isinstance(value, dict):
+            for subkey, subvalue in value.items():
+                if subkey in flatter_namelist:
+                    raise ValueError(
+                        "Cannot flatten this namelist, duplicate keys: " + subkey
+                    )
+                flatter_namelist[subkey] = subvalue
+        else:
+            flatter_namelist[key] = value
+    return flatter_namelist

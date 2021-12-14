@@ -3,7 +3,7 @@ from typing import Tuple
 
 import f90nml
 
-from pace.util.namelist import NamelistDefaults
+from pace.util.namelist import NamelistDefaults, namelist_to_flatish_dict
 
 
 @dataclasses.dataclass
@@ -104,22 +104,3 @@ class PhysicsConfig:
             if key in cls.__dataclass_fields__  # type: ignore
         }
         return cls(**namelist_dict)
-
-
-def namelist_to_flatish_dict(nml_input):
-    nml = dict(nml_input)
-    for name, value in nml.items():
-        if isinstance(value, f90nml.Namelist):
-            nml[name] = namelist_to_flatish_dict(value)
-    flatter_namelist = {}
-    for key, value in nml.items():
-        if isinstance(value, dict):
-            for subkey, subvalue in value.items():
-                if subkey in flatter_namelist:
-                    raise ValueError(
-                        "Cannot flatten this namelist, duplicate keys: " + subkey
-                    )
-                flatter_namelist[subkey] = subvalue
-        else:
-            flatter_namelist[key] = value
-    return flatter_namelist
