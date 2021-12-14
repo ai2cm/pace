@@ -3,9 +3,9 @@ from typing import Sequence
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.stencil import GridIndexing, StencilFactory
-from fv3core.utils.typing import FloatField
+import pace.dsl.gt4py_utils as utils
+from pace.dsl.stencil import GridIndexing, StencilFactory
+from pace.dsl.typing import FloatField
 from pace.util.constants import (
     X_DIM,
     X_INTERFACE_DIM,

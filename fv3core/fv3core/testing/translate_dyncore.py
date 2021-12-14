@@ -1,6 +1,6 @@
 import fv3core._config as spec
 import fv3core.stencils.dyn_core as dyn_core
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
 from fv3core.testing import ParallelTranslate2PyState
 

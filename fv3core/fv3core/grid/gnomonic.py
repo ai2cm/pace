@@ -1,6 +1,6 @@
 import math
 
-from fv3core.utils.global_constants import PI
+from pace.util.constants import PI
 
 
 def _check_shapes(lon, lat):

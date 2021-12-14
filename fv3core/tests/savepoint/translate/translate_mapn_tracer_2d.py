@@ -32,13 +32,19 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
         inputs["j2"] = inputs["j_2d"]
         del inputs["j_2d"]
         inputs["pe1"] = self.make_storage_data(
-            pad_field_in_j(inputs["pe1"], self.grid.njd)
+            pad_field_in_j(
+                inputs["pe1"], self.grid.njd, backend=self.grid.stencil_factory.backend
+            )
         )
         inputs["pe2"] = self.make_storage_data(
-            pad_field_in_j(inputs["pe2"], self.grid.njd)
+            pad_field_in_j(
+                inputs["pe2"], self.grid.njd, backend=self.grid.stencil_factory.backend
+            )
         )
         inputs["dp2"] = self.make_storage_data(
-            pad_field_in_j(inputs["dp2"], self.grid.njd)
+            pad_field_in_j(
+                inputs["dp2"], self.grid.njd, backend=self.grid.stencil_factory.backend
+            )
         )
         inputs["kord"] = abs(spec.namelist.kord_tr)
         self.compute_func = MapN_Tracer.MapNTracer(

@@ -1,6 +1,6 @@
 import numpy as np
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.testing import (
     MapSingleFactory,
     TranslateFortranData2Py,
@@ -78,11 +78,19 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
             inputs["j2"] = inputs["j_2d"]
             if inputs["pe1"].shape[1] == 1:
                 inputs["pe1"] = self.make_storage_data(
-                    pad_field_in_j(inputs["pe1"], self.nj)
+                    pad_field_in_j(
+                        inputs["pe1"],
+                        self.nj,
+                        backend=self.grid.stencil_factory.backend,
+                    )
                 )
             if inputs["pe2"].shape[1] == 1:
                 inputs["pe2"] = self.make_storage_data(
-                    pad_field_in_j(inputs["pe2"], self.nj)
+                    pad_field_in_j(
+                        inputs["pe2"],
+                        self.nj,
+                        backend=self.grid.stencil_factory.backend,
+                    )
                 )
         del inputs["j_2d"]
         var_inout = self.compute_func(**inputs)

@@ -12,12 +12,12 @@ from gt4py.gtscript import (
     log,
 )
 
-import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
+import pace.util.constants as constants
 from fv3core._config import RiemannConfig
 from fv3core.stencils.sim1_solver import Sim1Solver
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 @typing.no_type_check
