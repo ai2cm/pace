@@ -1,6 +1,6 @@
-from fv3gfs.physics.global_constants import KAPPA
 from fv3gfs.physics.stencils.fv_update_phys import update_pressure_and_surface_winds
 from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+from pace.util.constants import KAPPA
 
 
 class TranslatePhysUpdatePressureSurfaceWinds(TranslatePhysicsFortranData2Py):

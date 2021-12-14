@@ -7,7 +7,9 @@ import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.decorators import ArgSpec
 from fv3core.stencils.basic_operations import dim
-from fv3core.utils.global_constants import (
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField
+from pace.util.constants import (
     C_ICE,
     C_LIQ,
     CP_AIR,
@@ -18,8 +20,6 @@ from fv3core.utils.global_constants import (
     RDGAS,
     ZVIR,
 )
-from pace.dsl.stencil import StencilFactory
-from pace.dsl.typing import FloatField
 
 
 RK = CP_AIR / RDGAS + 1.0

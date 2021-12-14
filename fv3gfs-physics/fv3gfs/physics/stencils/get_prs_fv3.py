@@ -1,7 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-from fv3gfs.physics.global_constants import con_fvirt
 from pace.dsl.typing import FloatField
+from pace.util.constants import ZVIR
 
 
 def get_prs_fv3(
@@ -16,5 +16,5 @@ def get_prs_fv3(
     with computation(PARALLEL), interval(0, -1):
         del_ = prsi[0, 0, 1] - prsi[0, 0, 0]
         del_gz = (phii[0, 0, 0] - phii[0, 0, 1]) / (
-            tgrs[0, 0, 0] * (1.0 + con_fvirt * max(0.0, qgrs[0, 0, 0]))
+            tgrs[0, 0, 0] * (1.0 + ZVIR * max(0.0, qgrs[0, 0, 0]))
         )
