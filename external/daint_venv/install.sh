@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 
-version=vcm_1.0
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BUILDENV_DIR=$SCRIPT_DIR/../../buildenv
+
+VERSION=vcm_1.0
 env_file=env.daint.sh
-dst_dir=${1:-/project/s1053/install/venv/${version}}
+dst_dir=${1:-/project/s1053/install/venv/${VERSION}}
 wheeldir=${2:-/project/s1053/install/wheeldir}
 save_wheel=${3: false}
 src_dir=$(pwd)
@@ -12,9 +15,8 @@ cuda_version=cuda
 # gt4py checks out the latest stable tag below
 
 # module environment
-source ${src_dir}/env.sh
-source ${src_dir}/env/machineEnvironment.sh
-source ${src_dir}/env/${env_file}
+source ${BUILDENV_DIR}/machineEnvironment.sh
+source ${BUILDENV_DIR}/${env_file}
 
 # echo commands and stop on error
 set -e
@@ -54,16 +56,12 @@ if [ $save_wheel ]; then
 fi
 python3 -m pip install --find-links=$wheeldir "gt4py/[${cuda_version}]"
 
-# load gridtools modules
-module load gridtools/1_1_3
-module load gridtools/2_1_0_b
-
 # deactivate virtual environment
 deactivate
 
 # echo module environment
 echo "Note: this virtual env has been created on `hostname`."
-cat ${src_dir}/env/${env_file} ${dst_dir}/bin/activate > ${dst_dir}/bin/activate~
+cat ${BUILDENV_DIR}/${env_file} ${dst_dir}/bin/activate > ${dst_dir}/bin/activate~
 mv ${dst_dir}/bin/activate~ ${dst_dir}/bin/activate
 
 

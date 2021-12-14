@@ -92,11 +92,9 @@ source ./venv/bin/activate
 pip list
 
 # set the environment
-if [ -d ./buildenv ] ; then rm -rf buildenv ; fi
-git clone https://github.com/VulcanClimateModeling/buildenv/
-cp ./buildenv/submit.daint.slurm run.daint.slurm
+cp $ROOT_DIR/buildenv/submit.daint.slurm run.daint.slurm
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
-    cp ./buildenv/submit.daint.slurm run.nsys.daint.slurm
+    cp $ROOT_DIR/buildenv/submit.daint.slurm run.nsys.daint.slurm
 fi
 
 if git rev-parse --git-dir > /dev/null 2>&1 ; then
