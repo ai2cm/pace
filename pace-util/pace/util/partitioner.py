@@ -297,6 +297,12 @@ class TilePartitioner(Partitioner):
     def rotate_rank(self, rank: int, n_clockwise_rotations: int) -> int:
         return rotate_subtile_rank(rank, self.layout, n_clockwise_rotations)
 
+    def tile_index(self, rank):
+        """
+        Needed for single-tile grid generation. Otherwise you should use subtile_index
+        """
+        return 0
+
 
 def _get_corner(
     boundary_type: int,

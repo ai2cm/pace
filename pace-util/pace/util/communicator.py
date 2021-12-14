@@ -341,17 +341,366 @@ class Communicator:
 class TileCommunicator(Communicator):
     """Performs communications within a single tile or region of a tile"""
 
-    def __init__(self, comm, partitioner: TilePartitioner, force_cpu: bool = False):
+    def __init__(
+        self,
+        comm,
+        partitioner: TilePartitioner,
+        force_cpu: bool = False,
+        timer: Optional[Timer] = None,
+    ):
         """Initialize a TileCommunicator.
 
         Args:
             comm: communication object behaving like mpi4py.Comm
             partitioner: tile partitioner
             force_cpu: force all communication to go through central memory
+            timer: Time communication operations. Optional.
         """
+        self.timer: Timer = timer if timer is not None else NullTimer()
+        self._tile_communicator: Optional[TileCommunicator] = None
+        self._boundaries: Optional[Mapping[int, Boundary]] = None
+        self._last_halo_tag = 0
+        self._force_cpu = force_cpu
+
         super(TileCommunicator, self).__init__(comm, partitioner, force_cpu=force_cpu)
         self.partitioner: TilePartitioner = partitioner
         self.tile = self
+
+    def _get_halo_tag(self) -> int:
+        self._last_halo_tag += 1
+        return self._last_halo_tag
+
+    @property
+    def boundaries(self) -> Mapping[int, Boundary]:
+        """boundaries of this tile with neighboring tiles"""
+        if self._boundaries is None:
+            self._boundaries = {}
+            for boundary_type in constants.BOUNDARY_TYPES:
+                boundary = self.partitioner.boundary(boundary_type, self.rank)
+                if boundary is not None:
+                    self._boundaries[boundary_type] = boundary
+        return self._boundaries
+
+    def halo_update(self, quantity: Union[Quantity, List[Quantity]], n_points: int):
+        """Perform a halo update on a quantity or quantities
+
+        Args:
+            quantity: the quantity to be updated
+            n_points: how many halo points to update, starting from the interior
+        """
+        if isinstance(quantity, Quantity):
+            quantities = [quantity]
+        else:
+            quantities = quantity
+
+        halo_updater = self.start_halo_update(quantities, n_points)
+        halo_updater.wait()
+
+    def start_halo_update(
+        self, quantity: Union[Quantity, List[Quantity]], n_points: int
+    ) -> HaloUpdater:
+        """Start an asynchronous halo update on a quantity.
+
+        Args:
+            quantity: the quantity to be updated
+            n_points: how many halo points to update, starting from the interior
+
+        Returns:
+            request: an asynchronous request object with a .wait() method
+        """
+        if isinstance(quantity, Quantity):
+            quantities = [quantity]
+        else:
+            quantities = quantity
+
+        specifications = []
+        for quantity in quantities:
+            specification = QuantityHaloSpec(
+                n_points=n_points,
+                shape=quantity.data.shape,
+                strides=quantity.data.strides,
+                itemsize=quantity.data.itemsize,
+                origin=quantity.origin,
+                extent=quantity.extent,
+                dims=quantity.dims,
+                numpy_module=self._maybe_force_cpu(quantity.np),
+                dtype=quantity.metadata.dtype,
+            )
+            specifications.append(specification)
+
+        halo_updater = self.get_scalar_halo_updater(specifications)
+        halo_updater.force_finalize_on_wait()
+        halo_updater.start(quantities)
+        return halo_updater
+
+    def vector_halo_update(
+        self,
+        x_quantity: Union[Quantity, List[Quantity]],
+        y_quantity: Union[Quantity, List[Quantity]],
+        n_points: int,
+    ):
+        """Perform a halo update of a horizontal vector quantity or quantities.
+
+        Assumes the x and y dimension indices are the same between the two quantities.
+
+        Args:
+            x_quantity: the x-component quantity to be halo updated
+            y_quantity: the y-component quantity to be halo updated
+            n_points: how many halo points to update, starting at the interior
+        """
+        if isinstance(x_quantity, Quantity):
+            x_quantities = [x_quantity]
+        else:
+            x_quantities = x_quantity
+        if isinstance(y_quantity, Quantity):
+            y_quantities = [y_quantity]
+        else:
+            y_quantities = y_quantity
+
+        halo_updater = self.start_vector_halo_update(
+            x_quantities, y_quantities, n_points
+        )
+        halo_updater.wait()
+
+    def start_vector_halo_update(
+        self,
+        x_quantity: Union[Quantity, List[Quantity]],
+        y_quantity: Union[Quantity, List[Quantity]],
+        n_points: int,
+    ) -> HaloUpdater:
+        """Start an asynchronous halo update of a horizontal vector quantity.
+
+        Assumes the x and y dimension indices are the same between the two quantities.
+
+        Args:
+            x_quantity: the x-component quantity to be halo updated
+            y_quantity: the y-component quantity to be halo updated
+            n_points: how many halo points to update, starting at the interior
+
+        Returns:
+            request: an asynchronous request object with a .wait() method
+        """
+        if isinstance(x_quantity, Quantity):
+            x_quantities = [x_quantity]
+        else:
+            x_quantities = x_quantity
+        if isinstance(y_quantity, Quantity):
+            y_quantities = [y_quantity]
+        else:
+            y_quantities = y_quantity
+
+        x_specifications = []
+        y_specifications = []
+        for x_quantity, y_quantity in zip(x_quantities, y_quantities):
+            x_specification = QuantityHaloSpec(
+                n_points=n_points,
+                shape=x_quantity.data.shape,
+                strides=x_quantity.data.strides,
+                itemsize=x_quantity.data.itemsize,
+                origin=x_quantity.metadata.origin,
+                extent=x_quantity.metadata.extent,
+                dims=x_quantity.metadata.dims,
+                numpy_module=self._maybe_force_cpu(x_quantity.np),
+                dtype=x_quantity.metadata.dtype,
+            )
+            x_specifications.append(x_specification)
+            y_specification = QuantityHaloSpec(
+                n_points=n_points,
+                shape=y_quantity.data.shape,
+                strides=y_quantity.data.strides,
+                itemsize=y_quantity.data.itemsize,
+                origin=y_quantity.metadata.origin,
+                extent=y_quantity.metadata.extent,
+                dims=y_quantity.metadata.dims,
+                numpy_module=self._maybe_force_cpu(y_quantity.np),
+                dtype=y_quantity.metadata.dtype,
+            )
+            y_specifications.append(y_specification)
+
+        halo_updater = self.get_vector_halo_updater(x_specifications, y_specifications)
+        halo_updater.force_finalize_on_wait()
+        halo_updater.start(x_quantities, y_quantities)
+        return halo_updater
+
+    def start_synchronize_vector_interfaces(
+        self, x_quantity: Quantity, y_quantity: Quantity
+    ) -> HaloUpdateRequest:
+        """
+        Synchronize shared points at the edges of a vector interface variable.
+
+        Sends the values on the south and west edges to overwrite the values on adjacent
+        subtiles. Vector must be defined on the Arakawa C grid.
+
+        For interface variables, the edges of the tile are computed on both ranks
+        bordering that edge. This routine copies values across those shared edges
+        so that both ranks have the same value for that edge. It also handles any
+        rotation of vector quantities needed to move data across the edge.
+
+        Args:
+            x_quantity: the x-component quantity to be synchronized
+            y_quantity: the y-component quantity to be synchronized
+
+        Returns:
+            request: an asynchronous request object with a .wait() method
+        """
+        if not on_c_grid(x_quantity, y_quantity):
+            raise ValueError("vector must be defined on Arakawa C-grid")
+        CubedSphereCommunicator._device_synchronize()
+        tag = self._get_halo_tag()
+        send_requests = self._Isend_vector_shared_boundary(
+            x_quantity, y_quantity, tag=tag
+        )
+        recv_requests = self._Irecv_vector_shared_boundary(
+            x_quantity, y_quantity, tag=tag
+        )
+        return HaloUpdateRequest(send_requests, recv_requests, self.timer)
+
+    def synchronize_vector_interfaces(self, x_quantity: Quantity, y_quantity: Quantity):
+        """
+        Synchronize shared points at the edges of a vector interface variable.
+
+        Sends the values on the south and west edges to overwrite the values on adjacent
+        subtiles. Vector must be defined on the Arakawa C grid.
+
+        For interface variables, the edges of the tile are computed on both ranks
+        bordering that edge. This routine copies values across those shared edges
+        so that both ranks have the same value for that edge. It also handles any
+        rotation of vector quantities needed to move data across the edge.
+
+        Args:
+            x_quantity: the x-component quantity to be synchronized
+            y_quantity: the y-component quantity to be synchronized
+        """
+        req = self.start_synchronize_vector_interfaces(x_quantity, y_quantity)
+        req.wait()
+
+    def _Isend_vector_shared_boundary(
+        self, x_quantity, y_quantity, tag=0
+    ) -> _HaloRequestSendList:
+        south_boundary = self.boundaries[constants.SOUTH]
+        west_boundary = self.boundaries[constants.WEST]
+        south_data = x_quantity.view.southwest.sel(
+            **{
+                constants.Y_INTERFACE_DIM: 0,
+                constants.X_DIM: slice(
+                    0, x_quantity.extent[x_quantity.dims.index(constants.X_DIM)]
+                ),
+            }
+        )
+        west_data = y_quantity.view.southwest.sel(
+            **{
+                constants.X_INTERFACE_DIM: 0,
+                constants.Y_DIM: slice(
+                    0, y_quantity.extent[y_quantity.dims.index(constants.Y_DIM)]
+                ),
+            }
+        )
+        send_requests = [
+            self._Isend(
+                self._maybe_force_cpu(x_quantity.np),
+                south_data,
+                dest=south_boundary.to_rank,
+                tag=tag,
+            ),
+            self._Isend(
+                self._maybe_force_cpu(y_quantity.np),
+                west_data,
+                dest=west_boundary.to_rank,
+                tag=tag,
+            ),
+        ]
+        return send_requests
+
+    def _Irecv_vector_shared_boundary(
+        self, x_quantity, y_quantity, tag=0
+    ) -> _HaloRequestRecvList:
+        north_rank = self.boundaries[constants.NORTH].to_rank
+        east_rank = self.boundaries[constants.EAST].to_rank
+        north_data = x_quantity.view.northwest.sel(
+            **{
+                constants.Y_INTERFACE_DIM: -1,
+                constants.X_DIM: slice(
+                    0, x_quantity.extent[x_quantity.dims.index(constants.X_DIM)]
+                ),
+            }
+        )
+        east_data = y_quantity.view.southeast.sel(
+            **{
+                constants.X_INTERFACE_DIM: -1,
+                constants.Y_DIM: slice(
+                    0, y_quantity.extent[y_quantity.dims.index(constants.Y_DIM)]
+                ),
+            }
+        )
+        recv_requests = [
+            self._Irecv(
+                self._maybe_force_cpu(x_quantity.np),
+                north_data,
+                source=north_rank,
+                tag=tag,
+            ),
+            self._Irecv(
+                self._maybe_force_cpu(y_quantity.np),
+                east_data,
+                source=east_rank,
+                tag=tag,
+            ),
+        ]
+        return recv_requests
+
+    def _Isend(self, numpy_module, in_array, **kwargs) -> _HaloSendTuple:
+        # copy the resulting view in a contiguous array for transfer
+        with self.timer.clock("pack"):
+            buffer = Buffer.pop_from_cache(
+                numpy_module.zeros, in_array.shape, in_array.dtype
+            )
+            buffer.assign_from(in_array)
+            buffer.finalize_memory_transfer()
+        with self.timer.clock("Isend"):
+            request = self.comm.Isend(buffer.array, **kwargs)
+        return (request, buffer)
+
+    def _Irecv(self, numpy_module, out_array, **kwargs) -> _HaloRecvTuple:
+        # Prepare a contiguous buffer to receive data
+        with self.timer.clock("Irecv"):
+            buffer = Buffer.pop_from_cache(
+                numpy_module.zeros, out_array.shape, out_array.dtype
+            )
+            recv_request = self.comm.Irecv(buffer.array, **kwargs)
+        return (recv_request, buffer, out_array)
+
+    def get_scalar_halo_updater(self, specifications: List[QuantityHaloSpec]):
+        if len(specifications) == 0:
+            raise RuntimeError("Cannot create updater with specifications list")
+        if specifications[0].n_points == 0:
+            raise ValueError("cannot perform a halo update on zero halo points")
+        return HaloUpdater.from_scalar_specifications(
+            self,
+            self._maybe_force_cpu(specifications[0].numpy_module),
+            specifications,
+            self.boundaries.values(),
+            self._get_halo_tag(),
+            self.timer,
+        )
+
+    def get_vector_halo_updater(
+        self,
+        specifications_x: List[QuantityHaloSpec],
+        specifications_y: List[QuantityHaloSpec],
+    ):
+        if len(specifications_x) == 0 and len(specifications_y) == 0:
+            raise RuntimeError("Cannot create updater with empty specifications list")
+        if specifications_x[0].n_points == 0 and specifications_y[0].n_points == 0:
+            raise ValueError("Cannot perform a halo update on zero halo points")
+        return HaloUpdater.from_vector_specifications(
+            self,
+            self._maybe_force_cpu(specifications_x[0].numpy_module),
+            specifications_x,
+            specifications_y,
+            self.boundaries.values(),
+            self._get_halo_tag(),
+            self.timer,
+        )
 
 
 class CubedSphereCommunicator(Communicator):

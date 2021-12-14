@@ -76,3 +76,11 @@ TICE0 = TICE - 0.01
 T_MIN = 178.0  # Minimum temperature to freeze-dry all water vapor
 T_SAT_MIN = TICE - 160.0
 LAT2 = (HLV + HLF) ** 2  # used in bigg mechanism
+
+CONSV_MIN = 0.001  # Below which no correction applies
+DRY_MASS = 98290.0  # default value for global dry air mass in Pa
+
+# gfdl_cloud_microphys.F90
+# TODO: Leftover having problems using as runtime flags
+ql0_max = 2.0e-3  # max cloud water value (auto converted to rain)
+t_sub = 184.0  # min temp for sublimation of cloud ice
