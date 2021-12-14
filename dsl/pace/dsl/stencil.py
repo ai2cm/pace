@@ -170,6 +170,11 @@ class FrozenStencil:
         stencil_function = gtscript.stencil
         stencil_kwargs = {**self.stencil_config.stencil_kwargs}
 
+        # added because future stencil provides this information and
+        # we want to be consistent with the naming whether we are
+        # running in parallel or not (so we use the same cache)
+        stencil_kwargs["name"] = func.__module__ + "." + func.__name__
+
         # Enable distributed compilation if running in parallel
         if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
             stencil_function = future_stencil
