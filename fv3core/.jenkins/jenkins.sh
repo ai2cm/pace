@@ -28,6 +28,8 @@ exitError()
     exit $1
 }
 
+set -x
+
 # echo basic setup
 echo "####### executing: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
 
@@ -50,6 +52,8 @@ if [[ $input_backend = gtc_* ]] ; then
     input_backend=`echo $input_backend | sed 's/_/:/'`
 fi
 
+JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BUILDENV_DIR=$JENKINS_DIR/../../buildenv
 
 # Read arguments
 action="$1"
@@ -58,27 +62,19 @@ experiment="$3"
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
-envloc=`/bin/pwd`
 popd > /dev/null
 shopt -s expand_aliases
-# Download the env
-. ${envloc}/env.sh
 
 # setup module environment and default queue
-test -f ${envloc}/env/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
-. ${envloc}/env/machineEnvironment.sh
+test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
+. ${BUILDENV_DIR}/machineEnvironment.sh
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
-# get root directory of where jenkins.sh is sitting
-export jenkins_dir=`dirname $0`
 
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PACE_DIR=$SCRIPT_DIR/../../
 
 if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'`
+    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
 fi
-
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
     echo "Fetching for exisintg gt_caches"
@@ -86,18 +82,18 @@ if [[ $backend != *numpy* ]];then
 fi
 
 # load machine dependent environment
-if [ ! -f ${envloc}/env/env.${host}.sh ] ; then
-    exitError 1202 ${LINENO} "could not find ${envloc}/env/env.${host}.sh"
+if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then
+    exitError 1202 ${LINENO} "could not find ${BUILDENV_DIR}/env.${host}.sh"
 fi
-. ${envloc}/env/env.${host}.sh
+. ${BUILDENV_DIR}/env.${host}.sh
 
 # check if action script exists
-script="${jenkins_dir}/actions/${action}.sh"
+script="${JENKINS_DIR}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
 # load scheduler tools
-. ${envloc}/env/schedulerTools.sh
-scheduler_script="`dirname $0`/env/submit.${host}.${scheduler}"
+. ${BUILDENV_DIR}/schedulerTools.sh
+scheduler_script="${BUILDENV_DIR}/submit.${host}.${scheduler}"
 
 # if there is a scheduler script, make a copy for this job
 if [ -f ${scheduler_script} ] ; then
@@ -191,7 +187,7 @@ echo "JENKINS TAG ${JENKINS_TAG}"
 
 if [ -z ${VIRTUALENV} ]; then
     echo "setting VIRTUALENV"
-    export VIRTUALENV=${envloc}/../venv_${JENKINS_TAG}
+    export VIRTUALENV=${JENKINS_DIR}/../venv_${JENKINS_TAG}
 fi
 
 if [ ${python_env} == "virtualenv" ]; then
@@ -200,13 +196,13 @@ if [ ${python_env} == "virtualenv" ]; then
     else
 	echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
 	export FV3CORE_INSTALL_FLAGS="-e"
-	${jenkins_dir}/install_virtualenv.sh ${VIRTUALENV}
+	${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
     fi
     source ${VIRTUALENV}/bin/activate
     if grep -q "parallel" <<< "${script}"; then
 	export MPIRUN_CALL="srun"
     fi
-    export FV3_PATH="${envloc}/../"
+    export FV3_PATH="${JENKINS_DIR}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
     export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi
@@ -220,10 +216,6 @@ if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
 fi
 echo "### ACTION ${action} SUCCESSFUL"
-
-# load scheduler tools
-. ${envloc}/env/schedulerTools.sh
-run_timing_script="`dirname $0`/env/submit.${host}.${scheduler}"
 
 # second run, this time with timing
 if grep -q "fv_dynamics" <<< "${script}"; then
