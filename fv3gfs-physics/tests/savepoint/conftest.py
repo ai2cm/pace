@@ -11,9 +11,9 @@ import yaml
 import pace.dsl
 import pace.util as fv3util
 from fv3gfs.physics import PhysicsConfig
-from fv3gfs.physics.testing import TranslateGrid
-from fv3gfs.physics.testing.parallel_translate import ParallelTranslate
 from pace.util.mpi import MPI
+from pace.util.testing.parallel_translate import ParallelTranslate
+from pace.util.testing.translate import TranslateGrid
 
 from . import translate
 

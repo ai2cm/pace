@@ -1,7 +1,7 @@
 from fv3gfs.physics.stencils.update_atmos_state import (
     prepare_tendencies_and_update_tracers,
 )
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+from pace.util.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslatePhysUpdateTracers(TranslatePhysicsFortranData2Py):

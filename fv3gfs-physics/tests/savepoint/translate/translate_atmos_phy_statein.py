@@ -2,8 +2,8 @@ import numpy as np
 
 import pace.dsl.gt4py_utils as utils
 from fv3gfs.physics.stencils.physics import atmos_phys_driver_statein
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 from pace.util.constants import KAPPA
+from pace.util.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):

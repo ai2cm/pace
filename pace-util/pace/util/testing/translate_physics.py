@@ -1,7 +1,7 @@
 import numpy as np
 
 import pace.dsl.gt4py_utils as utils
-from fv3gfs.physics.testing.translate import TranslateFortranData2Py
+from pace.util.testing.translate import TranslateFortranData2Py
 
 
 class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):

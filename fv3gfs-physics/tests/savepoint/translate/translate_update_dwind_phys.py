@@ -2,7 +2,7 @@ import numpy as np
 
 import pace.util
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+from pace.util.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
