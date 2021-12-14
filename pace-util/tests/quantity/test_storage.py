@@ -108,12 +108,8 @@ def test_storage_exists(quantity, backend):
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"], indirect=True)
 def test_storage_does_not_exist(quantity, backend):
-    if gt4py is None:
-        with pytest.raises(ImportError):
-            quantity.storage
-    else:
-        with pytest.raises(TypeError):
-            quantity.storage
+    with pytest.raises(TypeError):
+        quantity.storage
 
 
 def test_data_is_not_storage(quantity, backend):
