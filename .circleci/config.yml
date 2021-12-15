@@ -78,9 +78,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            if [ $(python changed_from_main.py pace-util) != false ]; then
-              cd pace-util && tox -e test -e test_no_extras
-            fi
+            cd pace-util && tox -e test -e test_no_extras
       - save_cache:
           key: v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "pace-util/constraints.txt" }}
           paths:
