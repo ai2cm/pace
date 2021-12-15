@@ -425,8 +425,8 @@ def init_baroclinic_state(
     Create a DycoreState object with quantities initialized to the Jablonowski &
     Williamson baroclinic test case perturbation applied to the cubed sphere grid.
     """
-
-    shape = (*metric_terms.lat.data.shape[0:2], metric_terms.ak.data.shape[0])
+    sample_quantity = metric_terms.lat
+    shape = (*sample_quantity.data.shape[0:2], metric_terms.ak.data.shape[0])
     nx, ny, nz = local_compute_size(shape)
     numpy_dict = {}
     for _field in fields(DycoreState):
@@ -517,15 +517,13 @@ def init_baroclinic_state(
         make_nh=(not hydrostatic),
     )
     state = DycoreState.init_from_numpy_arrays(
-        numpy_state.__dict__, metric_terms.quantity_factory
+        numpy_state.__dict__,
+        metric_terms.quantity_factory,
+        sample_quantity.metadata.gt4py_backend,
     )
 
     comm.halo_update(state.phis_quantity, n_points=nhalo)
 
     comm.vector_halo_update(state.u_quantity, state.v_quantity, n_points=nhalo)
-    for i in range(state.u.data.shape[0]):
-        for j in range(state.u.data.shape[0]):
-            print(
-                "BADNESS", i, j, state.u.data[i, j, 0], state.u_quantity.data[i, j, 0]
-            )
+
     return state

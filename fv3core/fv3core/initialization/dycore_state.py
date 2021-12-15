@@ -307,7 +307,7 @@ class DycoreState:
         return cls(**initial_storages, quantity_factory=quantity_factory)
 
     @classmethod
-    def init_from_numpy_arrays(cls, dict_of_numpy_arrays, quantity_factory):
+    def init_from_numpy_arrays(cls, dict_of_numpy_arrays, quantity_factory, backend):
         field_names = [_field.name for _field in fields(cls)]
         for variable_name, data in dict_of_numpy_arrays.items():
             if variable_name not in field_names:
@@ -324,6 +324,7 @@ class DycoreState:
                     _field.metadata["units"],
                     origin=quantity_factory._sizer.get_origin(dims),
                     extent=quantity_factory._sizer.get_extent(dims),
+                    gt4py_backend=backend,
                 ).data  # TODO remove .data when using only Quantities
         state = cls(**dict_state, quantity_factory=quantity_factory)
         return state
