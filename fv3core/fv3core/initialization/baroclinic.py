@@ -414,6 +414,15 @@ def compute_slices(nx, ny):
     return islice, jslice, slice_3d, slice_2d
 
 
+def empty_numpy_dycore_state(shape):
+    numpy_dict = {}
+    for _field in fields(DycoreState):
+        if "dims" in _field.metadata.keys():
+            numpy_dict[_field.name] = np.zeros(shape[: len(_field.metadata["dims"])])
+    numpy_state = SimpleNamespace(**numpy_dict)
+    return numpy_state
+
+
 def init_baroclinic_state(
     metric_terms: MetricTerms,
     adiabatic: bool,
@@ -428,11 +437,7 @@ def init_baroclinic_state(
     sample_quantity = metric_terms.lat
     shape = (*sample_quantity.data.shape[0:2], metric_terms.ak.data.shape[0])
     nx, ny, nz = local_compute_size(shape)
-    numpy_dict = {}
-    for _field in fields(DycoreState):
-        if "dims" in _field.metadata.keys():
-            numpy_dict[_field.name] = np.zeros(shape[: len(_field.metadata["dims"])])
-    numpy_state = SimpleNamespace(**numpy_dict)
+    numpy_state = empty_numpy_dycore_state(shape)
     # Initializing to values the Fortran does for easy comparison
     numpy_state.delp[:] = 1e30
     numpy_state.delp[:nhalo, :nhalo] = 0.0
