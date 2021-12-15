@@ -1,3 +1,4 @@
+
 import math
 
 import numpy as np
@@ -8,7 +9,8 @@ import pace.util as fv3util
 import pace.util.constants as constants
 from fv3core.grid import MetricTerms, lon_lat_midpoint
 from fv3core.initialization.dycore_state import DycoreState
-
+from types import SimpleNamespace
+from dataclasses import fields
 
 nhalo = fv3util.N_HALO_DEFAULT
 ptop_min = 1e-8
@@ -424,24 +426,30 @@ def init_baroclinic_state(
     Williamson baroclinic test case perturbation applied to the cubed sphere grid.
     """
 
-    state = DycoreState.init_empty(metric_terms.quantity_factory)
-    nx, ny, nz = local_compute_size(state.delp.data.shape)
+    #state = DycoreState.init_empty(metric_terms.quantity_factory)
+    shape = (*metric_terms.lat.data.shape[0:2], metric_terms.ak.data.shape[2])
+    nx, ny, nz = local_compute_size(shape)
+    numpy_state = {}
+    for _field in fields(DycoreState):
+        if "dims" in _field.metadata.keys():
+            numpy_state[_field.name] = np.zeros(shape)
+    numpy_state = SimpleNamespace(**numpy_state)
     # Initializing to values the Fortran does for easy comparison
-    state.delp[:] = 1e30
-    state.delp[:nhalo, :nhalo] = 0.0
-    state.delp[:nhalo, nhalo + ny :] = 0.0
-    state.delp[nhalo + nx :, :nhalo] = 0.0
-    state.delp[nhalo + nx :, nhalo + ny :] = 0.0
-    state.pe[:] = 0.0
-    state.pt[:] = 1.0
-    state.ua[:] = 1e35
-    state.va[:] = 1e35
-    state.uc[:] = 1e30
-    state.vc[:] = 1e30
-    state.w[:] = 1.0e30
-    state.delz[:] = 1.0e25
-    state.phis[:] = 1.0e25
-    state.ps[:] = jablo_init.surface_pressure
+    numpy_state.delp[:] = 1e30
+    numpy_state.delp[:nhalo, :nhalo] = 0.0
+    numpy_state.delp[:nhalo, nhalo + ny :] = 0.0
+    numpy_state.delp[nhalo + nx :, :nhalo] = 0.0
+    numpy_state.delp[nhalo + nx :, nhalo + ny :] = 0.0
+    numpy_state.pe[:] = 0.0
+    numpy_state.pt[:] = 1.0
+    numpy_state.ua[:] = 1e35
+    numpy_state.va[:] = 1e35
+    numpy_state.uc[:] = 1e30
+    numpy_state.vc[:] = 1e30
+    numpy_state.w[:] = 1.0e30
+    numpy_state.delz[:] = 1.0e25
+    numpy_state.phis[:] = 1.0e25
+    numpy_state.ps[:] = jablo_init.surface_pressure
     eta = np.zeros(nz)
     eta_v = np.zeros(nz)
     islice, jslice, slice_3d, slice_2d = compute_slices(nx, ny)
@@ -456,30 +464,32 @@ def init_baroclinic_state(
     setup_pressure_fields(
         eta=eta,
         eta_v=eta_v,
-        delp=utils.asarray(state.delp[slice_3d]),
-        ps=utils.asarray(state.ps[slice_2d]),
-        pe=utils.asarray(state.pe[slice_3d]),
-        peln=utils.asarray(state.peln[slice_3d]),
-        pk=utils.asarray(state.pk[slice_3d]),
-        pkz=utils.asarray(state.pkz[slice_3d]),
+        delp=numpy_state.delp[slice_3d],
+        ps=numpy_state.ps[slice_2d],
+        pe=numpy_state.pe[slice_3d],
+        peln=numpy_state.peln[slice_3d],
+        pk=numpy_state.pk[slice_3d],
+        pkz=numpy_state.pkz[slice_3d],
         ak=utils.asarray(metric_terms.ak.data),
         bk=utils.asarray(metric_terms.bk.data),
         ptop=metric_terms.ptop,
-        lat_agrid=utils.asarray(metric_terms.lat_agrid.data[slice_2d]),
+        lat_agrid=metric_terms.lat_agrid.data[slice_2d],
         adiabatic=adiabatic,
     )
+    #numpy_u = utils.asarray(state.u)
+    #numpy_v = utils.asarray(state.v)
     baroclinic_initialization(
         eta=eta,
         eta_v=eta_v,
-        peln=utils.asarray(state.peln[slice_3d_buffer]),
-        qvapor=utils.asarray(state.qvapor[slice_3d_buffer]),
-        delp=utils.asarray(state.delp[slice_3d_buffer]),
-        u=utils.asarray(state.u[slice_3d_buffer]),
-        v=utils.asarray(state.v[slice_3d_buffer]),
-        pt=utils.asarray(state.pt[slice_3d_buffer]),
-        phis=utils.asarray(state.phis[slice_2d_buffer]),
-        delz=utils.asarray(state.delz[slice_3d_buffer]),
-        w=utils.asarray(state.w[slice_3d_buffer]),
+        peln=numpy_state.peln[slice_3d_buffer],
+        qvapor=numpy_state.qvapor[slice_3d_buffer],
+        delp=numpy_state.delp[slice_3d_buffer],
+        u=numpy_state.u[slice_3d_buffer],#numpy_u[slice_3d_buffer],
+        v=numpy_state.v[slice_3d_buffer],#numpy_v[slice_3d_buffer],
+        pt=numpy_state.pt[slice_3d_buffer],
+        phis=numpy_state.phis[slice_2d_buffer],
+        delz=numpy_state.delz[slice_3d_buffer],
+        w=numpy_state.w[slice_3d_buffer],
         lon=utils.asarray(metric_terms.lon.data[slice_2d_buffer]),
         lat=utils.asarray(metric_terms.lat.data[slice_2d_buffer]),
         lon_agrid=utils.asarray(metric_terms.lon_agrid.data[slice_2d_buffer]),
@@ -496,21 +506,38 @@ def init_baroclinic_state(
     )
 
     p_var(
-        delp=utils.asarray(state.delp[slice_3d]),
-        delz=utils.asarray(state.delz[slice_3d]),
-        pt=utils.asarray(state.pt[slice_3d]),
-        ps=utils.asarray(state.ps[slice_2d]),
-        qvapor=utils.asarray(state.qvapor[slice_3d]),
-        pe=utils.asarray(state.pe[slice_3d]),
-        peln=utils.asarray(state.peln[slice_3d]),
-        pkz=utils.asarray(state.pkz[slice_3d]),
+        delp=numpy_state.delp[slice_3d],
+        delz=numpy_state.delz[slice_3d],
+        pt=numpy_state.pt[slice_3d],
+        ps=numpy_state.ps[slice_2d],
+        qvapor=numpy_state.qvapor[slice_3d],
+        pe=numpy_state.pe[slice_3d],
+        peln=numpy_state.peln[slice_3d],
+        pkz=numpy_state.pkz[slice_3d],
         ptop=metric_terms.ptop,
         moist_phys=moist_phys,
         make_nh=(not hydrostatic),
     )
-
+    #import cupy as cp
+    #cp.cuda.Device(0).synchronize()
+    #state.u_quantity.data[:] = utils.asarray(numpy_u, type(state.u_quantity.data))
+    #state.v_quantity.data[:] = utils.asarray(numpy_v, type(state.v_quantity.data))
+    storage_state = {}
+    for _field in fields(DycoreState):
+        if "dims" in _field.metadata.keys():
+            dims = _field.metadata["dims"]
+            storage_state[_field.name] = fv3util.Quantity(
+                numpy_state[_field.name],
+                dims,
+                _field.metadata["units"],
+                origin=metric_terms.quantity_factory._sizer.get_origin(dims),
+                extent=metric_terms.quantity_factory._sizer.get_extent(dims),
+            ).data
+    state = DycoreState(**storage_state, quantity_factory=metric_terms.quantity_factory) 
     comm.halo_update(state.phis_quantity, n_points=nhalo)
 
     comm.vector_halo_update(state.u_quantity, state.v_quantity, n_points=nhalo)
-
+    for i in range(state.u.data.shape[0]):
+        for j in range(state.u.data.shape[0]):
+            print("BADNESS", i, j, state.u.data[i, j, 0], state.u_quantity.data[i, j, 0])
     return state
