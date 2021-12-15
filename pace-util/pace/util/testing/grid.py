@@ -6,9 +6,8 @@ import numpy as np
 from gt4py import gtscript
 
 import pace.util
-import pace.util.global_config as global_config
 from pace.dsl import gt4py_utils as utils
-from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
+from pace.dsl.stencil import GridIndexing
 from pace.dsl.typing import FloatFieldI, FloatFieldIJ
 from pace.util.grid import MetricTerms
 from pace.util.halo_data_transformer import QuantityHaloSpec
@@ -409,17 +408,6 @@ class Grid:
             north_edge=self.north_edge,
             west_edge=self.west_edge,
             east_edge=self.east_edge,
-        )
-
-    @property
-    def stencil_factory(self) -> "StencilFactory":
-        return StencilFactory(
-            config=StencilConfig(
-                backend=self.backend(),
-                rebuild=global_config.get_rebuild(),
-                validate_args=global_config.get_validate_args(),
-            ),
-            grid_indexing=self.grid_indexing,
         )
 
     @property

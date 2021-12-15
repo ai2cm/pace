@@ -8,7 +8,6 @@ import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
-import pace.util.global_config as global_config
 from pace.util.grid import MetricTerms
 from pace.util.testing import ParallelTranslateBaseSlicing, TranslateFortranData2Py
 from pace.util.testing.grid import TRACER_DIM
@@ -151,6 +150,7 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
         for var in ["u", "v"]:
             self.ignore_near_zero_errors[var] = {"near_zero": 2e-13}
         self.namelist = namelist
+        self.stencil_factory = stencil_factory
 
     def compute_sequential(self, *args, **kwargs):
         pytest.skip(
@@ -185,7 +185,7 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
                 properties["units"],
                 origin=self.grid.sizer.get_origin(dims),
                 extent=self.grid.sizer.get_extent(dims),
-                gt4py_backend=global_config.get_backend(),
+                gt4py_backend=self.stencil_factory.backend,
             )
 
         metric_terms = MetricTerms.from_tile_sizing(
@@ -193,7 +193,7 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
             npy=self.namelist.npy,
             npz=self.namelist.npz,
             communicator=communicator,
-            backend=global_config.get_backend(),
+            backend=self.stencil_factory.backend,
         )
 
         state = baroclinic_init.init_baroclinic_state(
