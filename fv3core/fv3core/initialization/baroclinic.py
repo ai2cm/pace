@@ -6,8 +6,8 @@ import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
 import pace.util.constants as constants
-from fv3core.grid import MetricTerms, lon_lat_midpoint
 from fv3core.initialization.dycore_state import DycoreState
+from pace.util.grid import MetricTerms, lon_lat_midpoint
 
 
 nhalo = fv3util.N_HALO_DEFAULT

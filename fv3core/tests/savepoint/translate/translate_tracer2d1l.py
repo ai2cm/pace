@@ -1,12 +1,11 @@
 import pytest
 
-import fv3core._config as spec
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.stencils.fvtp2d
 import fv3core.stencils.tracer_2d_1l
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
-from fv3core.testing import ParallelTranslate
+from pace.util.testing import ParallelTranslate
 
 
 class TranslateTracer2D1L(ParallelTranslate):
@@ -17,8 +16,8 @@ class TranslateTracer2D1L(ParallelTranslate):
         }
     }
 
-    def __init__(self, grids):
-        super().__init__(grids)
+    def __init__(self, grids, namelist, stencil_factory):
+        super().__init__(grids, namelist, stencil_factory)
         grid = grids[0]
         self._base.in_vars["data_vars"] = {
             "tracers": {},
@@ -30,6 +29,8 @@ class TranslateTracer2D1L(ParallelTranslate):
         }
         self._base.in_vars["parameters"] = ["nq", "mdt"]
         self._base.out_vars = self._base.in_vars["data_vars"]
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def collect_input_data(self, serializer, savepoint):
         input_data = self._base.collect_input_data(serializer, savepoint)
@@ -43,18 +44,17 @@ class TranslateTracer2D1L(ParallelTranslate):
             inputs["tracers"], inputs.pop("nq")
         )
         transport = fv3core.stencils.fvtp2d.FiniteVolumeTransport(
-            stencil_factory=spec.grid.stencil_factory,
-            grid_data=spec.grid.grid_data,
-            damping_coefficients=spec.grid.damping_coefficients,
-            grid_type=spec.grid.grid_type,
-            hord=spec.namelist.hord_tr,
+            stencil_factory=self.stencil_factory,
+            grid_data=self.grid.grid_data,
+            damping_coefficients=self.grid.damping_coefficients,
+            grid_type=self.grid.grid_type,
+            hord=self.namelist.hord_tr,
         )
-        namelist = spec.namelist
 
         self.tracer_advection = fv3core.stencils.tracer_2d_1l.TracerAdvection(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             transport,
-            spec.grid.grid_data,
+            self.grid.grid_data,
             communicator,
             fv_dynamics.NQ,
         )

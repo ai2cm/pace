@@ -1,13 +1,12 @@
-import fv3core._config as spec
 from fv3core.stencils import pe_halo
-from fv3core.testing import TranslateFortranData2Py
-from fv3core.utils.grid import axis_offsets
+from pace.util.testing import TranslateFortranData2Py
+from pace.util.testing.grid import axis_offsets
 
 
 class TranslatePE_Halo(TranslateFortranData2Py):
-    def __init__(self, grid):
+    def __init__(self, grid, namelist, stencil_factory):
 
-        super().__init__(grid)
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "pe": {
                 "istart": grid.is_ - 1,
@@ -21,14 +20,15 @@ class TranslatePE_Halo(TranslateFortranData2Py):
         }
         self.in_vars["parameters"] = ["ptop"]
         self.out_vars = {"pe": self.in_vars["data_vars"]["pe"]}
+        self.stencil_factory = stencil_factory
         ax_offsets_pe = axis_offsets(
-            self.grid.grid_indexing,
-            self.grid.grid_indexing.origin_full(),
-            self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
+            self.stencil_factory.grid_indexing,
+            self.stencil_factory.grid_indexing.origin_full(),
+            self.stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
         )
-        self.compute_func = spec.grid.stencil_factory.from_origin_domain(
+        self.compute_func = stencil_factory.from_origin_domain(
             pe_halo.edge_pe,
-            origin=self.grid.grid_indexing.origin_full(),
-            domain=self.grid.grid_indexing.domain_full(add=(0, 0, 1)),
+            origin=self.stencil_factory.grid_indexing.origin_full(),
+            domain=self.stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
             externals={**ax_offsets_pe},
         )

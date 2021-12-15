@@ -1,10 +1,10 @@
 import fv3core.stencils.delnflux as delnflux
-from fv3core.testing import TranslateFortranData2Py
+from pace.util.testing import TranslateFortranData2Py
 
 
 class TranslateDel6VtFlux(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         fxstat = grid.x3d_domain_dict()
         fxstat.update({"serialname": "fx2"})
         fystat = grid.y3d_domain_dict()
@@ -24,12 +24,13 @@ class TranslateDel6VtFlux(TranslateFortranData2Py):
             "d2": {"serialname": "wd2"},
             "q": {"serialname": "wq"},
         }
+        self.stencil_factory = stencil_factory
 
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         self.compute_func = delnflux.DelnFluxNoSG(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.rarea,
             inputs.pop("nord_column"),

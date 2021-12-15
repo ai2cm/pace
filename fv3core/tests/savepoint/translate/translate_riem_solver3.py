@@ -1,18 +1,18 @@
 import fv3core._config as spec
 from fv3core.stencils.riem_solver3 import RiemannSolver3
-from fv3core.testing import TranslateFortranData2Py
+from pace.util.testing import TranslateFortranData2Py
 
 
 class TranslateRiem_Solver3(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.compute_func = RiemannSolver3(
-            self.grid.stencil_factory,
+            stencil_factory,
             spec.RiemannConfig(
-                p_fac=spec.namelist.p_fac,
-                a_imp=spec.namelist.a_imp,
-                use_logp=spec.namelist.use_logp,
-                beta=spec.namelist.beta,
+                p_fac=namelist.p_fac,
+                a_imp=namelist.a_imp,
+                use_logp=namelist.use_logp,
+                beta=namelist.beta,
             ),
         )
         self.in_vars["data_vars"] = {
@@ -56,3 +56,4 @@ class TranslateRiem_Solver3(TranslateFortranData2Py):
             "pk": grid.compute_buffer_k_dict(),
             "pk3": grid.default_buffer_k_dict(),
         }
+        self.stencil_factory = stencil_factory

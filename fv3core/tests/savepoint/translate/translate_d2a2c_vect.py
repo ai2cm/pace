@@ -1,17 +1,18 @@
-import fv3core._config as spec
 from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
-from fv3core.testing import TranslateFortranData2Py
+from pace.util.testing import TranslateFortranData2Py
 
 
 class TranslateD2A2C_Vect(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         dord4 = True
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
         self.compute_func = DGrid2AGrid2CGridVectors(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             self.grid.grid_data,
             self.grid.nested,
-            spec.namelist.grid_type,
+            self.namelist.grid_type,
             dord4,
         )
         self.in_vars["data_vars"] = {

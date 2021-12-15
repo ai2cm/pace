@@ -6,12 +6,12 @@ from typing import Any, List, Tuple
 import fv3core
 import fv3core._config
 import fv3core.initialization.baroclinic as baroclinic_init
-import fv3core.testing
 import pace.dsl.stencil
 import pace.util
-from fv3core.grid import MetricTerms
-from fv3core.utils.grid import DampingCoefficients, GridData
+import pace.util.testing
 from fv3core.utils.null_comm import NullComm
+from pace.util.grid import MetricTerms
+from pace.util.testing.grid import DampingCoefficients, GridData
 
 
 DIR = os.path.abspath(os.path.dirname(__file__))
@@ -170,9 +170,9 @@ def test_call_does_not_access_global_state():
         raise AssertionError("call not allowed")
 
     mock_grid = unittest.mock.MagicMock()
-    with unittest.mock.patch("fv3core.utils.global_config.get_backend", new=error_func):
+    with unittest.mock.patch("pace.util.global_config.get_backend", new=error_func):
         with unittest.mock.patch(
-            "fv3core.utils.global_config.is_gpu_backend", new=error_func
+            "pace.util.global_config.is_gpu_backend", new=error_func
         ):
             with unittest.mock.patch("fv3core._config.set_grid", new=error_func):
                 with unittest.mock.patch("fv3core._config.grid", new=mock_grid):

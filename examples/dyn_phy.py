@@ -2,6 +2,7 @@ import sys
 import time
 
 import click
+import f90nml
 
 # Use this to add non-installed seriablox path
 # sys.path.append("/usr/local/serialbox/python/")
@@ -11,11 +12,13 @@ from mpi4py import MPI
 
 import fv3core
 import fv3core._config as spec
-import fv3core.testing
+import pace.dsl
 import pace.util as util
-from fv3core.grid import MetricTerms
-from fv3core.utils.grid import DampingCoefficients, GridData
+import pace.util.testing
+from fv3core._config import Namelist
 from fv3gfs.physics.stencils.physics import Physics
+from pace.util.grid import MetricTerms
+from pace.util.testing.grid import DampingCoefficients, GridData
 
 
 MODEL_OUT_DIR = "./model_output"
@@ -63,11 +66,8 @@ def driver(
     if rank == 0:
         start = time.time()
 
-    fv3core.set_backend(backend)
-    fv3core.set_rebuild(False)
-    fv3core.set_validate_args(False)
-    spec.set_namelist(data_directory + "/input.nml")
-    namelist = spec.namelist
+    f90_namelist = f90nml.read(data_directory + "/input.nml")
+    namelist = Namelist.from_f90nml(f90_namelist)
     # set up of helper structures
     serializer = serialbox.Serializer(
         serialbox.OpenModeKind.Read,
@@ -83,8 +83,18 @@ def driver(
         grid_data[field] = serializer.read(field, grid_savepoint)
         if len(grid_data[field].flatten()) == 1:
             grid_data[field] = grid_data[field][0]
-    grid = fv3core.testing.TranslateGrid(grid_data, rank, backend=backend).python_grid()
-    spec.set_grid(grid)
+    grid = pace.util.testing.TranslateGrid(
+        grid_data, rank, backend=backend
+    ).python_grid()
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
+    stencil_factory = pace.dsl.stencil.StencilFactory(
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
+    )
 
     # set up domain decomposition
     layout = spec.namelist.layout
@@ -117,18 +127,18 @@ def driver(
         dycore = fv3core.DynamicalCore(
             comm=communicator,
             grid_data=GridData.new_from_metric_terms(metric_terms),
-            stencil_factory=grid.stencil_factory,
+            stencil_factory=stencil_factory,
             damping_coefficients=DampingCoefficients.new_from_metric_terms(
                 metric_terms
             ),
-            config=spec.namelist.dynamical_core,
+            config=namelist.dynamical_core,
             phis=state.phis_quantity,
         )
     else:
         dycore = DeactivatedDycore()
 
     step_physics = Physics(
-        stencil_factory=grid.stencil_factory,
+        stencil_factory=stencil_factory,
         grid_data=GridData.new_from_metric_terms(metric_terms),
         namelist=namelist,
         comm=communicator,

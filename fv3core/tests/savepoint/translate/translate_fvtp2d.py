@@ -3,13 +3,13 @@ from fv3core.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
 )
-from fv3core.testing import TranslateFortranData2Py
 from pace.util import X_DIM, Y_DIM, Z_DIM
+from pace.util.testing import TranslateFortranData2Py
 
 
 class TranslateFvTp2d(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "q": {},
             "mass": {},
@@ -33,24 +33,25 @@ class TranslateFvTp2d(TranslateFortranData2Py):
         }
         self.out_vars["q_x_flux"]["serialname"] = "fx"
         self.out_vars["q_y_flux"]["serialname"] = "fy"
+        self.stencil_factory = stencil_factory
 
     # use_sg -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute_from_storage(self, inputs):
         inputs["q_x_flux"] = utils.make_storage_from_shape(
             self.maxshape,
             self.grid.full_origin(),
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )
         inputs["q_y_flux"] = utils.make_storage_from_shape(
             self.maxshape,
             self.grid.full_origin(),
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )
         for optional_arg in ["mass"]:
             if optional_arg not in inputs:
                 inputs[optional_arg] = None
         self.compute_func = FiniteVolumeTransport(
-            stencil_factory=self.grid.stencil_factory,
+            stencil_factory=self.stencil_factory,
             grid_data=self.grid.grid_data,
             damping_coefficients=self.grid.damping_coefficients,
             grid_type=self.grid.grid_type,
@@ -61,7 +62,7 @@ class TranslateFvTp2d(TranslateFortranData2Py):
         del inputs["hord"]
         q_storage = inputs["q"]
         factory = PreAllocatedCopiedCornersFactory(
-            self.grid.stencil_factory, dims=[X_DIM, Y_DIM, Z_DIM], y_temporary=None
+            self.stencil_factory, dims=[X_DIM, Y_DIM, Z_DIM], y_temporary=None
         )
         inputs["q"] = factory(q_storage)
         self.compute_func(**inputs)
@@ -70,8 +71,8 @@ class TranslateFvTp2d(TranslateFortranData2Py):
 
 
 class TranslateFvTp2d_2(TranslateFvTp2d):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         del self.in_vars["data_vars"]["mass"]
         del self.in_vars["data_vars"]["x_mass_flux"]
         del self.in_vars["data_vars"]["y_mass_flux"]

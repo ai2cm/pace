@@ -7,9 +7,9 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, s
 import fv3gfs.physics.functions.microphysics_funcs as functions
 import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
-from fv3core.utils.grid import GridData
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ, Int
+from pace.util.testing.grid import GridData
 
 
 def fields_init(

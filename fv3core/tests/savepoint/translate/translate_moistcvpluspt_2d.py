@@ -1,8 +1,8 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.stencils.moist_cv as moist_cv
-from fv3core.testing import TranslateFortranData2Py, pad_field_in_j
 from pace.dsl.typing import FloatField
+from pace.util.testing import TranslateFortranData2Py, pad_field_in_j
 
 
 def moist_pt(
@@ -41,9 +41,10 @@ def moist_pt(
 
 
 class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
-        self.compute_func = self.grid.stencil_factory.from_origin_domain(
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
+        self.stencil_factory = stencil_factory
+        self.compute_func = self.stencil_factory.from_origin_domain(
             moist_pt,
             origin=self.grid.compute_origin(),
             domain=(self.grid.nic, 1, self.grid.npz),
@@ -97,7 +98,7 @@ class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
             if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
                 inputs[name] = self.make_storage_data(
                     pad_field_in_j(
-                        value, self.grid.njd, backend=self.grid.stencil_factory.backend
+                        value, self.grid.njd, backend=self.stencil_factory.backend
                     )
                 )
         self.compute_func(**inputs)

@@ -3,12 +3,11 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-import fv3core._config as spec
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
 from fv3core.initialization.dycore_state import DycoreState
-from fv3core.testing import ParallelTranslateBaseSlicing
+from pace.util.testing import ParallelTranslateBaseSlicing
 
 
 ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]
@@ -207,8 +206,8 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
     for name in ("do_adiabatic_init", "bdt", "ak", "bk", "ks", "ptop"):
         outputs.pop(name)
 
-    def __init__(self, grids, *args, **kwargs):
-        super().__init__(grids, *args, **kwargs)
+    def __init__(self, grids, namelist, stencil_factory, *args, **kwargs):
+        super().__init__(grids, namelist, stencil_factory, *args, **kwargs)
         grid = grids[0]
         self._base.in_vars["data_vars"] = {
             "u": grid.y3d_domain_dict(),
@@ -270,6 +269,8 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             self.ignore_near_zero_errors[qvar] = True
         self.ignore_near_zero_errors["q_con"] = True
         self.dycore: Optional[fv_dynamics.DynamicalCore] = None
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def state_from_inputs(self, inputs):
         input_storages = super().state_from_inputs(inputs)
@@ -293,9 +294,9 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
                 inputs[name],
                 inputs[name].shape,
                 len(inputs[name].shape) * (0,),
-                backend=self.grid.stencil_factory.backend,
+                backend=self.stencil_factory.backend,
             )
-        grid_data = spec.grid.grid_data
+        grid_data = self.grid.grid_data
         # These aren't in the Grid-Info savepoint, but are in the generated grid
         if grid_data.ak is None or grid_data.bk is None:
             grid_data.ak = inputs["ak"]
@@ -307,17 +308,17 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self.dycore = fv_dynamics.DynamicalCore(
             comm=communicator,
             grid_data=grid_data,
-            stencil_factory=spec.grid.stencil_factory,
-            damping_coefficients=spec.grid.damping_coefficients,
-            config=spec.namelist.dynamical_core,
+            stencil_factory=self.stencil_factory,
+            damping_coefficients=self.grid.damping_coefficients,
+            config=self.namelist,
             phis=state.phis,
         )
         self.dycore.step_dynamics(
             state,
-            spec.namelist.consv_te,
+            self.namelist.consv_te,
             inputs["do_adiabatic_init"],
             inputs["bdt"],
-            spec.namelist.n_split,
+            self.namelist.n_split,
         )
         outputs = self.outputs_from_state(state)
         for name, value in outputs.items():

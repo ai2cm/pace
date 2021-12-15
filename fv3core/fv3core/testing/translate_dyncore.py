@@ -1,8 +1,7 @@
-import fv3core._config as spec
 import fv3core.stencils.dyn_core as dyn_core
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
-from fv3core.testing import ParallelTranslate2PyState
+from pace.util.testing import ParallelTranslate2PyState
 
 
 class TranslateDynCore(ParallelTranslate2PyState):
@@ -39,8 +38,8 @@ class TranslateDynCore(ParallelTranslate2PyState):
         "w": {"dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "m/s"},
     }
 
-    def __init__(self, grids):
-        super().__init__(grids)
+    def __init__(self, grids, namelist, stencil_factory):
+        super().__init__(grids, namelist, stencil_factory)
         grid = grids[0]
         self._base.in_vars["data_vars"] = {
             "cappa": {},
@@ -114,6 +113,8 @@ class TranslateDynCore(ParallelTranslate2PyState):
         # TODO: Fix edge_interpolate4 in d2a2c_vect to match closer and the
         # variables here should as well.
         self.max_error = 2e-6
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def compute_parallel(self, inputs, communicator):
         # ak, bk, pfull, and phis are numpy arrays at this point and
@@ -123,10 +124,10 @@ class TranslateDynCore(ParallelTranslate2PyState):
                 inputs[name],
                 inputs[name].shape,
                 len(inputs[name].shape) * (0,),
-                backend=self.grid.stencil_factory.backend,
+                backend=self.stencil_factory.backend,
             )
 
-        grid_data = spec.grid.grid_data
+        grid_data = self.grid.grid_data
         if grid_data.ak is None or grid_data.bk is None:
             grid_data.ak = inputs["ak"]
             grid_data.bk = inputs["bk"]
@@ -134,13 +135,13 @@ class TranslateDynCore(ParallelTranslate2PyState):
             grid_data.ks = inputs["ks"]
         self._base.compute_func = dyn_core.AcousticDynamics(
             communicator,
-            spec.grid.stencil_factory,
+            self.stencil_factory,
             grid_data,
-            spec.grid.damping_coefficients,
-            spec.grid.grid_type,
-            spec.grid.nested,
-            spec.grid.stretched_grid,
-            spec.namelist.dynamical_core.acoustic_dynamics,
+            self.grid.damping_coefficients,
+            self.grid.grid_type,
+            self.grid.nested,
+            self.grid.stretched_grid,
+            self.namelist.acoustic_dynamics,
             inputs["pfull"],
             inputs["phis"],
         )

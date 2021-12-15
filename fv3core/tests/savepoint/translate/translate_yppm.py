@@ -1,11 +1,11 @@
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils import yppm
-from fv3core.testing import TranslateFortranData2Py, TranslateGrid
+from pace.util.testing import TranslateFortranData2Py, TranslateGrid
 
 
 class TranslateYPPM(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "q": {"istart": "ifirst"},
             "c": {"jstart": grid.js},
@@ -20,6 +20,7 @@ class TranslateYPPM(TranslateFortranData2Py):
             }
         }
         self.grid = grid
+        self.stencil_factory = stencil_factory
 
     def ivars(self, inputs):
         inputs["ifirst"] += TranslateGrid.fpy_model_index_offset
@@ -31,7 +32,7 @@ class TranslateYPPM(TranslateFortranData2Py):
         self.ivars(inputs)
         self.make_storage_data_input_vars(inputs)
         inputs["flux"] = utils.make_storage_from_shape(
-            inputs["q"].shape, backend=self.grid.stencil_factory.backend
+            inputs["q"].shape, backend=self.stencil_factory.backend
         )
 
     def compute(self, inputs):
@@ -39,7 +40,7 @@ class TranslateYPPM(TranslateFortranData2Py):
         origin = self.grid.grid_indexing.origin_compute()
         domain = self.grid.grid_indexing.domain_compute(add=(1, 1, 0))
         self.compute_func = yppm.YPiecewiseParabolic(
-            stencil_factory=self.grid.stencil_factory,
+            stencil_factory=self.stencil_factory,
             dya=self.grid.dya,
             grid_type=self.grid.grid_type,
             jord=int(inputs["jord"]),
@@ -51,7 +52,7 @@ class TranslateYPPM(TranslateFortranData2Py):
 
 
 class TranslateYPPM_2(TranslateYPPM):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"]["q"]["serialname"] = "q_2"
         self.out_vars["flux"]["serialname"] = "flux_2"

@@ -29,16 +29,16 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.pk3_halo import PK3Halo
 from fv3core.stencils.riem_solver3 import RiemannSolver3
 from fv3core.stencils.riem_solver_c import RiemannSolverC
-from fv3core.utils.grid import (
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from pace.util.testing.grid import (
     DampingCoefficients,
     GridData,
     GridIndexing,
     axis_offsets,
     quantity_wrap,
 )
-from pace.dsl.stencil import StencilFactory
-from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
 
 
 HUGE_R = 1.0e40

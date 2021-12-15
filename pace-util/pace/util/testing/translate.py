@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 import pace.dsl.gt4py_utils as utils
-from fv3core.utils.grid import Grid
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Field  # noqa: F401
+from pace.util.testing.grid import Grid
 
 
 logger = logging.getLogger("fv3ser")
@@ -120,33 +120,6 @@ class TranslateFortranData2Py:
 
     def storage_vars(self):
         return self.in_vars["data_vars"]
-
-    # TODO: delete this when ready to let it go
-    """
-    def ordered_stencil_arg_values(self, data):
-        if self.ordered_input_vars is not None:
-            return [data[key] for key in self.ordered_input_vars]
-        data_vars = [data[key] for key in self.in_vars['data_vars'].keys()]
-        parameters = [data[key] for key in self.in_vars['parameters']]
-        return data_vars + parameters
-
-    #[data[key] for parent_key in ['data_vars', 'parameters'] for key in self.in_vars[parent_key]] # noqa: E501
-
-    def make_storage_data_input_vars(self, inputs, storage_vars=None):
-        from fv3core._config import grid
-        if storage_vars is None:
-            storage_vars = self.storage_vars()
-        storage = {}
-        for d in storage_vars:
-            istart, jstart = grid.horizontal_starts_from_shape(inputs[d].shape)
-            storage[d] = self.make_storage_data(np.squeeze(inputs[d]), istart=istart, jstart=jstart) # noqa: E501
-        for p in self.in_vars['parameters'] + self.in_vars['grid_parameters']:
-            storage[p] = inputs[p]
-            if type(inputs[p]) == np.int64:
-                storage[p] = int(storage[p])
-        return storage
-
-    """
 
     def get_index_from_info(self, varinfo, index_name, initial_index):
         index = initial_index
@@ -348,7 +321,9 @@ class TranslateGrid:
                 )
 
     def python_grid(self):
-        pygrid = Grid(self.indices, self.shape_params, self.rank, self.layout)
+        pygrid = Grid(
+            self.indices, self.shape_params, self.rank, self.layout, self.backend
+        )
         self.make_grid_storage(pygrid)
         pygrid.add_data(self.data)
         return pygrid

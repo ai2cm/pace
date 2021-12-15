@@ -302,8 +302,6 @@ def mock_parallel_savepoint_cases(
             serializer, grid_savepoint, rank, physics_config.layout, backend=backend
         )
         grid_list.append(grid)
-        if rank == 0:
-            grid_rank0 = grid
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,

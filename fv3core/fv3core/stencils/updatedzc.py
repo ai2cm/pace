@@ -2,11 +2,11 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.util.constants as constants
-from fv3core.utils import corners
-from fv3core.utils.grid import axis_offsets
 from pace.dsl import gt4py_utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.util import corners
+from pace.util.testing.grid import axis_offsets
 
 
 DZ_MIN = constants.DZ_MIN

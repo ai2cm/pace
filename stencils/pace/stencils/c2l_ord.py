@@ -1,12 +1,12 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
-from fv3core.utils.grid import GridData
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util import CubedSphereCommunicator
 from pace.util.constants import X_DIM, Y_DIM, Z_DIM
 from pace.util.quantity import Quantity
+from pace.util.testing.grid import GridData
 
 
 C1 = 1.125

@@ -1,6 +1,7 @@
 import copy
 import sys
 
+import f90nml
 import mpi4py
 import numpy
 import numpy as np
@@ -8,9 +9,9 @@ import xarray as xr
 import yaml
 
 import fv3core
-import fv3core._config as spec
 import fv3gfs.wrapper as wrapper
-from fv3core.testing import translate
+import pace.dsl
+from fv3core._config import DynamicalCoreConfig
 from pace.util import (
     X_DIMS,
     X_INTERFACE_DIM,
@@ -25,6 +26,7 @@ from pace.util import (
     SubtileGridSizer,
     io,
 )
+from pace.util.testing import translate
 
 
 sys.path.append("/usr/local/serialbox/python")
@@ -119,13 +121,13 @@ def convert_3d_to_1d(state, field_names):
 
 if __name__ == "__main__":
 
-    # read in the namelist
-    spec.set_namelist("input.nml")
-    dt_atmos = spec.namelist.dt_atmos
-
     # set backend
     backend = "numpy"
-    fv3core.set_backend(backend)
+
+    # read in the namelist
+    namelist = f90nml.read("/input.nml")
+    dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
+    dt_atmos = dycore_config.dt_atmos
 
     # get another namelist for the communicator??
     nml2 = yaml.safe_load(open("/fv3core/examples/wrapped/config/baroclinic.yml", "r"))[
@@ -133,7 +135,7 @@ if __name__ == "__main__":
     ]
 
     sizer = SubtileGridSizer.from_namelist(nml2)
-    allocator = QuantityFactory.from_backend(sizer, fv3core.get_backend())
+    allocator = QuantityFactory.from_backend(sizer, backend)
 
     # MPI stuff
     comm = mpi4py.MPI.COMM_WORLD
@@ -209,16 +211,23 @@ if __name__ == "__main__":
         if len(grid_data[field].flatten()) == 1:
             grid_data[field] = grid_data[field][0]
     grid = translate.TranslateGrid(grid_data, rank, backend=backend).python_grid()
-    fv3core._config.set_grid(grid)
-
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
+    stencil_factory = pace.dsl.stencil.StencilFactory(
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
+    )
     # startup
     wrapper.initialize()
 
     # add things to State
     origin = (0, 3, 3)
-    extent = (spec.namelist.npz, spec.namelist.npy - 1, spec.namelist.npx - 1)
+    extent = (dycore_config.npz, dycore_config.npy - 1, dycore_config.npx - 1)
     arr = np.zeros(
-        (spec.namelist.npz + 1, spec.namelist.npy + 6, spec.namelist.npx + 6)
+        (dycore_config.npz + 1, dycore_config.npy + 6, dycore_config.npx + 6)
     )
     turbulent_kinetic_energy = Quantity.from_data_array(
         xr.DataArray(
@@ -241,30 +250,30 @@ if __name__ == "__main__":
     u_tendency = Quantity.from_data_array(
         xr.DataArray(
             arr.reshape(
-                (spec.namelist.npx + 6, spec.namelist.npy + 6, spec.namelist.npz + 1)
+                (dycore_config.npx + 6, dycore_config.npy + 6, dycore_config.npz + 1)
             ),
             attrs={"fortran_name": "u_dt", "units": "m/s**2"},
             dims=["x", "y", "z"],
         ),
         origin=(3, 3, 0),
-        extent=(spec.namelist.npx - 1, spec.namelist.npy - 1, spec.namelist.npz),
+        extent=(dycore_config.npx - 1, dycore_config.npy - 1, dycore_config.npz),
     )
     v_tendency = Quantity.from_data_array(
         xr.DataArray(
             arr.reshape(
-                (spec.namelist.npx + 6, spec.namelist.npy + 6, spec.namelist.npz + 1)
+                (dycore_config.npx + 6, dycore_config.npy + 6, dycore_config.npz + 1)
             ),
             attrs={"fortran_name": "v_dt", "units": "m/s**2"},
             dims=["x", "y", "z"],
         ),
         origin=(3, 3, 0),
-        extent=(spec.namelist.npx - 1, spec.namelist.npy - 1, spec.namelist.npz),
+        extent=(dycore_config.npx - 1, dycore_config.npy - 1, dycore_config.npz),
     )
 
-    turbulent_kinetic_energy.metadata.gt4py_backend = fv3core.get_backend()
-    cloud_fraction.metadata.gt4py_backend = fv3core.get_backend()
-    u_tendency.metadata.gt4py_backend = fv3core.get_backend()
-    v_tendency.metadata.gt4py_backend = fv3core.get_backend()
+    turbulent_kinetic_energy.metadata.gt4py_backend = backend
+    cloud_fraction.metadata.gt4py_backend = backend
+    u_tendency.metadata.gt4py_backend = backend
+    v_tendency.metadata.gt4py_backend = backend
 
     n_tracers = 6
 
@@ -272,18 +281,18 @@ if __name__ == "__main__":
     cube_comm.halo_update(state["surface_geopotential"])
     dycore = fv3core.DynamicalCore(
         comm=cube_comm,
-        grid_data=spec.grid.grid_data,
-        stencil_factory=spec.grid.stencil_factory,
-        damping_coefficients=spec.grid.damping_coefficients,
-        config=spec.namelist.dynamical_core,
+        grid_data=grid.grid_data,
+        stencil_factory=stencil_factory,
+        damping_coefficients=grid.damping_coefficients,
+        config=dycore_config,
         phis=state["surface_geopotential"],
     )
     fvsubgridz = fv3core.DryConvectiveAdjustment(
-        spec.grid.grid_indexing,
-        spec.namelist.nwat,
-        spec.namelist.fv_sg_adj,
-        spec.namelist.n_sponge,
-        spec.namelist.hydrostatic,
+        grid.grid_indexing,
+        dycore_config.nwat,
+        dycore_config.fv_sg_adj,
+        dycore_config.n_sponge,
+        dycore_config.hydrostatic,
     )
     # Step through time
     for i in range(wrapper.get_step_count()):
@@ -297,9 +306,9 @@ if __name__ == "__main__":
         state = transpose(
             state,
             [X_DIMS, Y_DIMS, Z_DIMS],
-            spec.namelist.npz,
-            spec.namelist.npx,
-            spec.namelist.npy,
+            dycore_config.npz,
+            dycore_config.npx,
+            dycore_config.npy,
         )
 
         dycore.step_dynamics(
@@ -309,7 +318,7 @@ if __name__ == "__main__":
             dt_atmos,
             wrapper.flags.n_,
         )
-        if spec.namelist.fv_sg_adj > 0:
+        if dycore_config.fv_sg_adj > 0:
             state["eastward_wind_tendency_due_to_physics"] = u_tendency
             state["northward_wind_tendency_due_to_physics"] = v_tendency
             fvsubgridz(state, dt_atmos)
@@ -327,9 +336,9 @@ if __name__ == "__main__":
         newstate = transpose(
             newstate,
             [Z_DIMS, Y_DIMS, X_DIMS],
-            spec.namelist.npz,
-            spec.namelist.npx,
-            spec.namelist.npy,
+            dycore_config.npz,
+            dycore_config.npx,
+            dycore_config.npy,
         )
         newstate = convert_3d_to_2d(newstate, levels_of_2d_variables)
         newstate = convert_3d_to_1d(newstate, names_of_1d_variables)

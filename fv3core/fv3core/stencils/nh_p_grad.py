@@ -2,10 +2,10 @@ from gt4py.gtscript import PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
-from fv3core.utils.grid import GridData
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util import Z_INTERFACE_DIM
+from pace.util.testing.grid import GridData
 
 
 def set_k0_and_calc_wk(

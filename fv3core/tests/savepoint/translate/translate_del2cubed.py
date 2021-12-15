@@ -1,17 +1,18 @@
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
-from fv3core.testing import TranslateFortranData2Py
+from pace.util.testing import TranslateFortranData2Py
 
 
 class TranslateDel2Cubed(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"qdel": {}}
         self.in_vars["parameters"] = ["nmax", "cd"]
         self.out_vars = {"qdel": {}}
+        self.stencil_factory = stencil_factory
 
     def compute_from_storage(self, inputs):
         hyperdiffusion = HyperdiffusionDamping(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.rarea,
             inputs.pop("nmax"),

@@ -3,11 +3,10 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
-from fv3core.utils import corners
-from fv3core.utils.grid import GridData, axis_offsets
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.util import X_DIM, Y_DIM, Z_DIM
+from pace.util import X_DIM, Y_DIM, Z_DIM, corners
+from pace.util.testing.grid import GridData, axis_offsets
 
 
 c1 = -2.0 / 14.0

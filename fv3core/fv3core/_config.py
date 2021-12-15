@@ -1,12 +1,11 @@
 import dataclasses
-import os
 from typing import Tuple
 
 import f90nml
 
 import pace.dsl.gt4py_utils as utils
-from fv3core.utils.grid import Grid
 from pace.util.namelist import NamelistDefaults, namelist_to_flatish_dict
+from pace.util.testing.grid import Grid
 
 
 grid = None
@@ -272,6 +271,16 @@ class DynamicalCoreConfig:
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
+
+    @classmethod
+    def from_f90nml(cls, namelist: f90nml.Namelist):
+        namelist_dict = namelist_to_flatish_dict(namelist.items())
+        namelist_dict = {
+            key: value
+            for key, value in namelist_dict.items()
+            if key in cls.__dataclass_fields__  # type: ignore
+        }
+        return cls(**namelist_dict)
 
     @property
     def riemann(self) -> RiemannConfig:
@@ -800,7 +809,7 @@ class Namelist:
 namelist = Namelist()
 
 
-def make_grid_from_namelist(namelist, rank):
+def make_grid_from_namelist(namelist, rank, backend):
     shape_params = {}
     for narg in ["npx", "npy", "npz"]:
         shape_params[narg] = getattr(namelist, narg)
@@ -819,11 +828,13 @@ def make_grid_from_namelist(namelist, rank):
         "js": utils.halo,
         "je": ny + utils.halo - 1,
     }
-    return Grid(indices, shape_params, rank, namelist.layout, local_indices=True)
+    return Grid(
+        indices, shape_params, rank, namelist.layout, backend, local_indices=True
+    )
 
 
 def make_grid_with_data_from_namelist(namelist, communicator, backend):
-    grid = make_grid_from_namelist(namelist, communicator.rank)
+    grid = make_grid_from_namelist(namelist, communicator.rank, backend)
     grid.make_grid_data(
         npx=namelist.npx,
         npy=namelist.npy,
@@ -844,7 +855,7 @@ def set_grid(in_grid):
     grid = in_grid
 
 
-def set_namelist(filename, rank=0):
+def set_namelist(filename, backend, rank=0):
     """Updates the global namelist from a file and re-generates the global grid.
 
     Args:
@@ -856,8 +867,4 @@ def set_namelist(filename, rank=0):
     for name, value in namelist_dict.items():
         setattr(namelist, name, value)
 
-    grid = make_grid_from_namelist(namelist, rank)
-
-
-if "NAMELIST_FILENAME" in os.environ:
-    set_namelist(os.environ["NAMELIST_FILENAME"])
+    grid = make_grid_from_namelist(namelist, rank, backend)

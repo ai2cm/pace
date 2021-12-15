@@ -3,17 +3,19 @@ from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
 
 import click
+import f90nml
 import serialbox
 import yaml
 from timing import collect_data_and_write_to_file
 
-import fv3core
 import fv3core._config as spec
-import fv3core.testing
+import pace.dsl
 import pace.util as util
+from fv3core._config import DynamicalCoreConfig
 from fv3core.stencils.dyn_core import AcousticDynamics
-from fv3core.utils.grid import Grid
+from fv3core.testing import TranslateDynCore
 from fv3core.utils.null_comm import NullComm
+from pace.util.testing.grid import Grid
 
 
 try:
@@ -22,12 +24,14 @@ except ImportError:
     MPI = None
 
 
-def set_up_namelist(data_directory: str) -> None:
+def set_up_namelist(data_directory: str) -> DynamicalCoreConfig:
     """
     Reads the namelist at the given directory and sets
     the global fv3core config to it
     """
-    spec.set_namelist(data_directory + "/input.nml")
+    namelist = f90nml.read(data_directory + "/input.nml")
+    dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
+    return dycore_config
 
 
 def initialize_serializer(data_directory: str, rank: int = 0) -> serialbox.Serializer:
@@ -39,25 +43,20 @@ def initialize_serializer(data_directory: str, rank: int = 0) -> serialbox.Seria
     )
 
 
-def initialize_fv3core(backend: str, disable_halo_exchange: bool) -> None:
-    """
-    Initializes globalfv3core config to the arguments for single runs
-    with the given backend and choice of halo updates
-    """
-    fv3core.set_backend(backend)
-    fv3core.set_rebuild(False)
-    fv3core.set_validate_args(False)
-
-
-def read_input_data(grid: Grid, serializer: serialbox.Serializer) -> Dict[str, Any]:
+def read_input_data(
+    grid: Grid,
+    namelist: DynamicalCoreConfig,
+    stencil_factory: pace.dsl.StencilFactory,
+    serializer: serialbox.Serializer,
+) -> Dict[str, Any]:
     """Uses the serializer to read the input data from disk"""
-    driver_object = fv3core.testing.TranslateDynCore([grid])
+    driver_object = TranslateDynCore([grid], namelist, stencil_factory)
     savepoint_in = serializer.get_savepoint("DynCore-In")[0]
     return driver_object.collect_input_data(serializer, savepoint_in)
 
 
 def get_state_from_input(
-    grid: Grid, input_data: Dict[str, Any]
+    grid: Grid, namelist, stencil_config, input_data: Dict[str, Any]
 ) -> Dict[str, SimpleNamespace]:
     """
     Transforms the input data from the dictionary of strings
@@ -69,7 +68,7 @@ def get_state_from_input(
     This will also take care of reshaping the arrays into same sized
     fields as required by the acoustics
     """
-    driver_object = fv3core.testing.TranslateDynCore([grid])
+    driver_object = TranslateDynCore([grid], namelist, stencil_config)
     driver_object._base.make_storage_data_input_vars(input_data)
 
     inputs = driver_object.inputs
@@ -139,31 +138,37 @@ def driver(
 ):
     total_timer, timestep_timer, times_per_step, hits_per_step = initialize_timers()
     with total_timer.clock("initialization"):
-        set_up_namelist(data_directory)
+        dycore_config = set_up_namelist(data_directory)
         serializer = initialize_serializer(data_directory)
-        initialize_fv3core(backend, disable_halo_exchange)
         mpi_comm, communicator = set_up_communicator(disable_halo_exchange)
         grid = spec.make_grid_with_data_from_namelist(
-            spec.namelist, communicator, backend
+            dycore_config, communicator, backend
         )
-        spec.set_grid(grid)
-
-        input_data = read_input_data(grid, serializer)
+        stencil_config = pace.dsl.stencil.StencilConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=True,
+        )
+        stencil_factory = pace.dsl.stencil.StencilFactory(
+            config=stencil_config,
+            grid_indexing=grid.grid_indexing,
+        )
+        input_data = read_input_data(grid, dycore_config, stencil_factory, serializer)
         experiment_name = get_experiment_name(data_directory)
         acoustics_object = AcousticDynamics(
             communicator,
-            grid.stencil_factory,
+            stencil_factory,
             grid.grid_data,
             grid.damping_coefficients,
             grid.grid_type,
             grid.nested,
             grid.stretched_grid,
-            spec.namelist.dynamical_core.acoustic_dynamics,
+            dycore_config.acoustic_dynamics,
             input_data["pfull"],
             input_data["phis"],
         )
 
-        state = get_state_from_input(grid, input_data)
+        state = get_state_from_input(grid, dycore_config, stencil_config, input_data)
 
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
@@ -175,7 +180,7 @@ def driver(
     for _ in range(int(time_steps) - 1):
         # this loop is not required
         # but make performance numbers comparable with FVDynamics
-        for _ in range(spec.namelist.k_split):
+        for _ in range(dycore_config.k_split):
             with timestep_timer.clock("DynCore"):
                 acoustics_object(**state)
         times_per_step, hits_per_step = read_and_reset_timer(

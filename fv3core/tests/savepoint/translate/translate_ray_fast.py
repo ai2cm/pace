@@ -1,16 +1,15 @@
-import fv3core._config as spec
 from fv3core.stencils.ray_fast import RayleighDamping
-from fv3core.testing import TranslateFortranData2Py
+from pace.util.testing import TranslateFortranData2Py
 
 
 class TranslateRay_Fast(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.compute_func = RayleighDamping(
-            self.grid.stencil_factory,
-            spec.namelist.rf_cutoff,
-            spec.namelist.tau,
-            spec.namelist.hydrostatic,
+            stencil_factory,
+            namelist.rf_cutoff,
+            namelist.tau,
+            namelist.hydrostatic,
         )
         self.in_vars["data_vars"] = {
             "u": grid.y3d_domain_dict(),
@@ -25,3 +24,4 @@ class TranslateRay_Fast(TranslateFortranData2Py):
             "v": grid.x3d_domain_dict(),
             "w": {},
         }
+        self.stencil_factory = stencil_factory

@@ -2,12 +2,12 @@ import numpy as np
 
 import fv3core.stencils.fillz as fillz
 import pace.dsl.gt4py_utils as utils
-from fv3core.testing import TranslateFortranData2Py, pad_field_in_j
+from pace.util.testing import TranslateFortranData2Py, pad_field_in_j
 
 
 class TranslateFillz(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "dp2": {"istart": grid.is_, "iend": grid.ie, "axis": 1},
             "q2tracers": {"istart": grid.is_, "iend": grid.ie, "axis": 1},
@@ -24,6 +24,7 @@ class TranslateFillz(TranslateFortranData2Py):
         }
         self.max_error = 1e-13
         self.ignore_near_zero_errors = {"q2tracers": True}
+        self.stencil_factory = stencil_factory
 
     def make_storage_data_input_vars(self, inputs, storage_vars=None):
         if storage_vars is None:
@@ -49,18 +50,18 @@ class TranslateFillz(TranslateFortranData2Py):
             if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
                 inputs[name] = self.make_storage_data(
                     pad_field_in_j(
-                        value, self.grid.njd, backend=self.grid.stencil_factory.backend
+                        value, self.grid.njd, backend=self.stencil_factory.backend
                     )
                 )
         for name, value in tuple(inputs["tracers"].items()):
             if hasattr(value, "shape") and len(value.shape) > 1 and value.shape[1] == 1:
                 inputs["tracers"][name] = self.make_storage_data(
                     pad_field_in_j(
-                        value, self.grid.njd, backend=self.grid.stencil_factory.backend
+                        value, self.grid.njd, backend=self.stencil_factory.backend
                     )
                 )
         run_fillz = fillz.FillNegativeTracerValues(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             inputs.pop("im"),
             inputs.pop("jm"),
             inputs.pop("km"),

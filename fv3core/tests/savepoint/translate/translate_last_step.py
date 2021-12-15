@@ -1,11 +1,11 @@
 import fv3core.stencils.moist_cv as moist_cv
-from fv3core.testing import TranslateFortranData2Py
+from pace.util.testing import TranslateFortranData2Py
 
 
 class TranslateLastStep(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
-        self.compute_func = self.grid.stencil_factory.from_origin_domain(
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
+        self.compute_func = stencil_factory.from_origin_domain(
             moist_cv.moist_pt_last_step,
             origin=self.grid.compute_origin(),
             domain=self.grid.domain_shape_compute(add=(0, 0, 1)),
@@ -40,3 +40,4 @@ class TranslateLastStep(TranslateFortranData2Py):
             "pt": {},
         }
         self.write_vars = ["gz"]
+        self.stencil_factory = stencil_factory
