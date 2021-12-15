@@ -325,7 +325,7 @@ class DycoreState:
                     origin=quantity_factory._sizer.get_origin(dims),
                     extent=quantity_factory._sizer.get_extent(dims),
                     gt4py_backend=backend,
-                ).data  # TODO remove .data when using only Quantities
+                ).storage  # TODO remove .storage when using only Quantities
         state = cls(**dict_state, quantity_factory=quantity_factory)
         return state
 
