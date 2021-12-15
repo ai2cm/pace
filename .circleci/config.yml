@@ -127,6 +127,10 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - test_util_gpu:
+          filters:
+            tags:
+              only: /^v.*/
       - test_fv3core:
           filters:
             tags:
