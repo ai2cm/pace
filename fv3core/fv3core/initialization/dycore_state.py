@@ -308,20 +308,24 @@ class DycoreState:
 
     @classmethod
     def init_from_numpy_arrays(cls, dict_of_numpy_arrays, quantity_factory):
-        state = cls.init_empty(quantity_factory)
         field_names = [_field.name for _field in fields(cls)]
         for variable_name, data in dict_of_numpy_arrays.items():
             if variable_name not in field_names:
                 raise KeyError(
                     variable_name + " is provided, but not part of the dycore state"
                 )
-            getattr(state, variable_name).data[:] = data
-        for field_name in field_names:
-            if field_name not in dict_of_numpy_arrays.keys():
-                raise KeyError(
-                    field_name
-                    + " is not included in the provided dictionary of numpy arrays"
-                )
+        dict_state = {}
+        for _field in fields(cls):
+            if "dims" in _field.metadata.keys():
+                dims = _field.metadata["dims"]
+                dict_state[_field.name] = fv3util.Quantity(
+                    dict_of_numpy_arrays[_field.name],
+                    dims,
+                    _field.metadata["units"],
+                    origin=quantity_factory._sizer.get_origin(dims),
+                    extent=quantity_factory._sizer.get_extent(dims),
+                ).data  # TODO remove .data when using only Quantities
+        state = cls(**dict_state, quantity_factory=quantity_factory)
         return state
 
     @classmethod

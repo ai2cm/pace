@@ -1,5 +1,6 @@
-
 import math
+from dataclasses import fields
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -9,8 +10,7 @@ import pace.util as fv3util
 import pace.util.constants as constants
 from fv3core.grid import MetricTerms, lon_lat_midpoint
 from fv3core.initialization.dycore_state import DycoreState
-from types import SimpleNamespace
-from dataclasses import fields
+
 
 nhalo = fv3util.N_HALO_DEFAULT
 ptop_min = 1e-8
@@ -426,14 +426,13 @@ def init_baroclinic_state(
     Williamson baroclinic test case perturbation applied to the cubed sphere grid.
     """
 
-    #state = DycoreState.init_empty(metric_terms.quantity_factory)
-    shape = (*metric_terms.lat.data.shape[0:2], metric_terms.ak.data.shape[2])
+    shape = (*metric_terms.lat.data.shape[0:2], metric_terms.ak.data.shape[0])
     nx, ny, nz = local_compute_size(shape)
-    numpy_state = {}
+    numpy_dict = {}
     for _field in fields(DycoreState):
         if "dims" in _field.metadata.keys():
-            numpy_state[_field.name] = np.zeros(shape)
-    numpy_state = SimpleNamespace(**numpy_state)
+            numpy_dict[_field.name] = np.zeros(shape[: len(_field.metadata["dims"])])
+    numpy_state = SimpleNamespace(**numpy_dict)
     # Initializing to values the Fortran does for easy comparison
     numpy_state.delp[:] = 1e30
     numpy_state.delp[:nhalo, :nhalo] = 0.0
@@ -476,16 +475,15 @@ def init_baroclinic_state(
         lat_agrid=metric_terms.lat_agrid.data[slice_2d],
         adiabatic=adiabatic,
     )
-    #numpy_u = utils.asarray(state.u)
-    #numpy_v = utils.asarray(state.v)
+
     baroclinic_initialization(
         eta=eta,
         eta_v=eta_v,
         peln=numpy_state.peln[slice_3d_buffer],
         qvapor=numpy_state.qvapor[slice_3d_buffer],
         delp=numpy_state.delp[slice_3d_buffer],
-        u=numpy_state.u[slice_3d_buffer],#numpy_u[slice_3d_buffer],
-        v=numpy_state.v[slice_3d_buffer],#numpy_v[slice_3d_buffer],
+        u=numpy_state.u[slice_3d_buffer],
+        v=numpy_state.v[slice_3d_buffer],
         pt=numpy_state.pt[slice_3d_buffer],
         phis=numpy_state.phis[slice_2d_buffer],
         delz=numpy_state.delz[slice_3d_buffer],
@@ -518,26 +516,16 @@ def init_baroclinic_state(
         moist_phys=moist_phys,
         make_nh=(not hydrostatic),
     )
-    #import cupy as cp
-    #cp.cuda.Device(0).synchronize()
-    #state.u_quantity.data[:] = utils.asarray(numpy_u, type(state.u_quantity.data))
-    #state.v_quantity.data[:] = utils.asarray(numpy_v, type(state.v_quantity.data))
-    storage_state = {}
-    for _field in fields(DycoreState):
-        if "dims" in _field.metadata.keys():
-            dims = _field.metadata["dims"]
-            storage_state[_field.name] = fv3util.Quantity(
-                numpy_state[_field.name],
-                dims,
-                _field.metadata["units"],
-                origin=metric_terms.quantity_factory._sizer.get_origin(dims),
-                extent=metric_terms.quantity_factory._sizer.get_extent(dims),
-            ).data
-    state = DycoreState(**storage_state, quantity_factory=metric_terms.quantity_factory) 
+    state = DycoreState.init_from_numpy_arrays(
+        numpy_state.__dict__, metric_terms.quantity_factory
+    )
+
     comm.halo_update(state.phis_quantity, n_points=nhalo)
 
     comm.vector_halo_update(state.u_quantity, state.v_quantity, n_points=nhalo)
     for i in range(state.u.data.shape[0]):
         for j in range(state.u.data.shape[0]):
-            print("BADNESS", i, j, state.u.data[i, j, 0], state.u_quantity.data[i, j, 0])
+            print(
+                "BADNESS", i, j, state.u.data[i, j, 0], state.u_quantity.data[i, j, 0]
+            )
     return state
