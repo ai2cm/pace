@@ -456,10 +456,6 @@ def init_baroclinic_state(
     # to accomodate averaging over shifted calculations on the grid
     _, _, slice_3d_buffer, slice_2d_buffer = compute_slices(nx + 1, ny + 1)
 
-    # TODO: It would be neat to use <quantity>.view here rather than slices
-    # But doesn't work with all numpy operations, would need to either
-    # support some features or change the calculations
-    # asarray was added to allow gpu operations, there are other solutions
     setup_pressure_fields(
         eta=eta,
         eta_v=eta_v,
