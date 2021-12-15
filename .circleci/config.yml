@@ -54,6 +54,39 @@ jobs:
             - pace-util/.tox
             - pace-util/venv
 
+  test_util_gpu:
+    machine:
+      resource_class: gpu.nvidia.small
+      image: ubuntu-1604-cuda-10.2:202012-01
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run: nvidia-smi
+      - restore_cache:
+          keys:
+            - v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "pace-util/constraints.txt" }}
+      - run:
+          name: install tox and MPI
+          command: |
+            if [ $(python changed_from_main.py pace-util) != false ]; then
+              sudo apt-get update
+              sudo apt-get install libopenmpi3 libopenmpi-dev
+              python3 -m venv pace-util/venv
+              . pace-util/venv/bin/activate
+              sudo pip3 install tox -c pace-util/constraints.txt
+            fi
+      - run:
+          name: run tests
+          command: |
+            if [ $(python changed_from_main.py pace-util) != false ]; then
+              cd pace-util && tox -e test -e test_no_extras
+            fi
+      - save_cache:
+          key: v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "pace-util/constraints.txt" }}
+          paths:
+            - pace-util/.tox
+            - pace-util/venv
+
   test_fv3core:
     docker:
       - image: circleci/python:3.8
