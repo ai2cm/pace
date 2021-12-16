@@ -1,4 +1,6 @@
 import math
+from dataclasses import fields
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -412,6 +414,15 @@ def compute_slices(nx, ny):
     return islice, jslice, slice_3d, slice_2d
 
 
+def empty_numpy_dycore_state(shape):
+    numpy_dict = {}
+    for _field in fields(DycoreState):
+        if "dims" in _field.metadata.keys():
+            numpy_dict[_field.name] = np.zeros(shape[: len(_field.metadata["dims"])])
+    numpy_state = SimpleNamespace(**numpy_dict)
+    return numpy_state
+
+
 def init_baroclinic_state(
     metric_terms: MetricTerms,
     adiabatic: bool,
@@ -423,25 +434,26 @@ def init_baroclinic_state(
     Create a DycoreState object with quantities initialized to the Jablonowski &
     Williamson baroclinic test case perturbation applied to the cubed sphere grid.
     """
-
-    state = DycoreState.init_empty(metric_terms.quantity_factory)
-    nx, ny, nz = local_compute_size(state.delp.data.shape)
+    sample_quantity = metric_terms.lat
+    shape = (*sample_quantity.data.shape[0:2], metric_terms.ak.data.shape[0])
+    nx, ny, nz = local_compute_size(shape)
+    numpy_state = empty_numpy_dycore_state(shape)
     # Initializing to values the Fortran does for easy comparison
-    state.delp[:] = 1e30
-    state.delp[:nhalo, :nhalo] = 0.0
-    state.delp[:nhalo, nhalo + ny :] = 0.0
-    state.delp[nhalo + nx :, :nhalo] = 0.0
-    state.delp[nhalo + nx :, nhalo + ny :] = 0.0
-    state.pe[:] = 0.0
-    state.pt[:] = 1.0
-    state.ua[:] = 1e35
-    state.va[:] = 1e35
-    state.uc[:] = 1e30
-    state.vc[:] = 1e30
-    state.w[:] = 1.0e30
-    state.delz[:] = 1.0e25
-    state.phis[:] = 1.0e25
-    state.ps[:] = jablo_init.surface_pressure
+    numpy_state.delp[:] = 1e30
+    numpy_state.delp[:nhalo, :nhalo] = 0.0
+    numpy_state.delp[:nhalo, nhalo + ny :] = 0.0
+    numpy_state.delp[nhalo + nx :, :nhalo] = 0.0
+    numpy_state.delp[nhalo + nx :, nhalo + ny :] = 0.0
+    numpy_state.pe[:] = 0.0
+    numpy_state.pt[:] = 1.0
+    numpy_state.ua[:] = 1e35
+    numpy_state.va[:] = 1e35
+    numpy_state.uc[:] = 1e30
+    numpy_state.vc[:] = 1e30
+    numpy_state.w[:] = 1.0e30
+    numpy_state.delz[:] = 1.0e25
+    numpy_state.phis[:] = 1.0e25
+    numpy_state.ps[:] = jablo_init.surface_pressure
     eta = np.zeros(nz)
     eta_v = np.zeros(nz)
     islice, jslice, slice_3d, slice_2d = compute_slices(nx, ny)
@@ -449,37 +461,34 @@ def init_baroclinic_state(
     # to accomodate averaging over shifted calculations on the grid
     _, _, slice_3d_buffer, slice_2d_buffer = compute_slices(nx + 1, ny + 1)
 
-    # TODO: It would be neat to use <quantity>.view here rather than slices
-    # But doesn't work with all numpy operations, would need to either
-    # support some features or change the calculations
-    # asarray was added to allow gpu operations, there are other solutions
     setup_pressure_fields(
         eta=eta,
         eta_v=eta_v,
-        delp=utils.asarray(state.delp[slice_3d]),
-        ps=utils.asarray(state.ps[slice_2d]),
-        pe=utils.asarray(state.pe[slice_3d]),
-        peln=utils.asarray(state.peln[slice_3d]),
-        pk=utils.asarray(state.pk[slice_3d]),
-        pkz=utils.asarray(state.pkz[slice_3d]),
+        delp=numpy_state.delp[slice_3d],
+        ps=numpy_state.ps[slice_2d],
+        pe=numpy_state.pe[slice_3d],
+        peln=numpy_state.peln[slice_3d],
+        pk=numpy_state.pk[slice_3d],
+        pkz=numpy_state.pkz[slice_3d],
         ak=utils.asarray(metric_terms.ak.data),
         bk=utils.asarray(metric_terms.bk.data),
         ptop=metric_terms.ptop,
-        lat_agrid=utils.asarray(metric_terms.lat_agrid.data[slice_2d]),
+        lat_agrid=metric_terms.lat_agrid.data[slice_2d],
         adiabatic=adiabatic,
     )
+
     baroclinic_initialization(
         eta=eta,
         eta_v=eta_v,
-        peln=utils.asarray(state.peln[slice_3d_buffer]),
-        qvapor=utils.asarray(state.qvapor[slice_3d_buffer]),
-        delp=utils.asarray(state.delp[slice_3d_buffer]),
-        u=utils.asarray(state.u[slice_3d_buffer]),
-        v=utils.asarray(state.v[slice_3d_buffer]),
-        pt=utils.asarray(state.pt[slice_3d_buffer]),
-        phis=utils.asarray(state.phis[slice_2d_buffer]),
-        delz=utils.asarray(state.delz[slice_3d_buffer]),
-        w=utils.asarray(state.w[slice_3d_buffer]),
+        peln=numpy_state.peln[slice_3d_buffer],
+        qvapor=numpy_state.qvapor[slice_3d_buffer],
+        delp=numpy_state.delp[slice_3d_buffer],
+        u=numpy_state.u[slice_3d_buffer],
+        v=numpy_state.v[slice_3d_buffer],
+        pt=numpy_state.pt[slice_3d_buffer],
+        phis=numpy_state.phis[slice_2d_buffer],
+        delz=numpy_state.delz[slice_3d_buffer],
+        w=numpy_state.w[slice_3d_buffer],
         lon=utils.asarray(metric_terms.lon.data[slice_2d_buffer]),
         lat=utils.asarray(metric_terms.lat.data[slice_2d_buffer]),
         lon_agrid=utils.asarray(metric_terms.lon_agrid.data[slice_2d_buffer]),
@@ -496,17 +505,22 @@ def init_baroclinic_state(
     )
 
     p_var(
-        delp=utils.asarray(state.delp[slice_3d]),
-        delz=utils.asarray(state.delz[slice_3d]),
-        pt=utils.asarray(state.pt[slice_3d]),
-        ps=utils.asarray(state.ps[slice_2d]),
-        qvapor=utils.asarray(state.qvapor[slice_3d]),
-        pe=utils.asarray(state.pe[slice_3d]),
-        peln=utils.asarray(state.peln[slice_3d]),
-        pkz=utils.asarray(state.pkz[slice_3d]),
+        delp=numpy_state.delp[slice_3d],
+        delz=numpy_state.delz[slice_3d],
+        pt=numpy_state.pt[slice_3d],
+        ps=numpy_state.ps[slice_2d],
+        qvapor=numpy_state.qvapor[slice_3d],
+        pe=numpy_state.pe[slice_3d],
+        peln=numpy_state.peln[slice_3d],
+        pkz=numpy_state.pkz[slice_3d],
         ptop=metric_terms.ptop,
         moist_phys=moist_phys,
         make_nh=(not hydrostatic),
+    )
+    state = DycoreState.init_from_numpy_arrays(
+        numpy_state.__dict__,
+        metric_terms.quantity_factory,
+        sample_quantity.metadata.gt4py_backend,
     )
 
     comm.halo_update(state.phis_quantity, n_points=nhalo)
