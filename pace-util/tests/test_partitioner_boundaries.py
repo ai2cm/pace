@@ -22,7 +22,7 @@ def partitioner_2_by_2():
 
 @pytest.fixture
 def tile_partitioner_3_by_3():
-    return pace.util.TilePartitioner((2, 2))
+    return pace.util.TilePartitioner((3, 3))
 
 
 @pytest.fixture
@@ -246,7 +246,7 @@ def test_2_by_2_bottom_edge(
         (2, 8, 0),
         (3, 0, 0),
         (4, 1, 0),
-        (5, 3, 0),
+        (5, 2, 0),
         (6, 3, 0),
         (7, 4, 0),
         (8, 5, 0),
