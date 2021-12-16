@@ -20,7 +20,7 @@ set -e
 SCRIPT=`realpath $0`
 SCRIPT_DIR=`dirname $SCRIPT`
 FV3CORE_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
-BUILDENV_DIR="$FV3CORE_DIR/../"
+BUILDENV_DIR="$FV3CORE_DIR/../buildenv"
 NTHREADS=12
 
 # utility functions
