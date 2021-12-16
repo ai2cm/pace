@@ -15,7 +15,7 @@ if [ ! -d $(pwd)/.gt_cache ]; then
         if [ "$version" == "$GT4PY_VERSION" ]; then
             if [ -d ${CACHE_DIR}/${EXPNAME}/${SANITIZED_BACKEND}/.gt_cache  ]; then
                 cp -r ${CACHE_DIR}/${EXPNAME}/${SANITIZED_BACKEND}/.gt_cache .
-                find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/pace-fv3core-cache-setup\/backend\/${SANITIZED_BACKEND}\/experiment\/${EXPNAME}\/slave\/daint_submit/fv3core|$(pwd)|g" {} +
+                find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/pace-physics-cache-setup\/backend\/${SANITIZED_BACKEND}\/experiment\/${EXPNAME}\/slave\/daint_submit|$(pwd)|g" {} +
                 echo "gt_cache successfully fetched from: ${CACHE_DIR}/${EXPNAME}/${SANITIZED_BACKEND}/.gt_cache"
             else
                 echo "gt_cache not fetched, caches not found in: ${CACHE_DIR}/${EXPNAME}/${SANITIZED_BACKEND}/.gt_cache"
