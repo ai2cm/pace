@@ -331,7 +331,6 @@ def calculate_trig_uv(
     tile_partitioner: TilePartitioner,
     rank: int,
     np,
-    non_ortho=True,
 ):
     """
     Calculates more trig quantities
@@ -341,100 +340,77 @@ def calculate_trig_uv(
     tiny_number = 1.0e-8
 
     dgrid_shape_2d = xyz_dgrid[:, :, 0].shape
-    cosa = np.zeros(dgrid_shape_2d)
-    sina = np.zeros(dgrid_shape_2d)
-    cosa_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1))
-    sina_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1))
-    rsin_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1))
-    cosa_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1]))
-    sina_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1]))
-    rsin_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1]))
+    cosa = np.zeros(dgrid_shape_2d) + big_number
+    sina = np.zeros(dgrid_shape_2d) + big_number
+    cosa_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1)) + big_number
+    sina_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1)) + big_number
+    rsin_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1)) + big_number
+    cosa_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1])) + big_number
+    sina_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1])) + big_number
+    rsin_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1])) + big_number
 
-    if non_ortho:
-        cosa += big_number
-        sina += big_number
-        cosa_u += big_number
-        sina_u += big_number
-        rsin_u += big_number
-        cosa_v += big_number
-        sina_v += big_number
-        rsin_v += big_number
+    cosa[nhalo:-nhalo, nhalo:-nhalo] = 0.5 * (
+        cos_sg[nhalo - 1 : -nhalo, nhalo - 1 : -nhalo, 7]
+        + cos_sg[nhalo : -nhalo + 1, nhalo : -nhalo + 1, 5]
+    )
+    sina[nhalo:-nhalo, nhalo:-nhalo] = 0.5 * (
+        sin_sg[nhalo - 1 : -nhalo, nhalo - 1 : -nhalo, 7]
+        + sin_sg[nhalo : -nhalo + 1, nhalo : -nhalo + 1, 5]
+    )
 
-        cosa[nhalo:-nhalo, nhalo:-nhalo] = 0.5 * (
-            cos_sg[nhalo - 1 : -nhalo, nhalo - 1 : -nhalo, 7]
-            + cos_sg[nhalo : -nhalo + 1, nhalo : -nhalo + 1, 5]
+    cosa_u[1:-1, :] = 0.5 * (cos_sg[:-1, :, 2] + cos_sg[1:, :, 0])
+    sina_u[1:-1, :] = 0.5 * (sin_sg[:-1, :, 2] + sin_sg[1:, :, 0])
+    sinu2 = sina_u[1:-1, :] ** 2
+    sinu2[sinu2 < tiny_number] = tiny_number
+    rsin_u[1:-1, :] = 1.0 / sinu2
+
+    cosa_v[:, 1:-1] = 0.5 * (cos_sg[:, :-1, 3] + cos_sg[:, 1:, 1])
+    sina_v[:, 1:-1] = 0.5 * (sin_sg[:, :-1, 3] + sin_sg[:, 1:, 1])
+    sinv2 = sina_v[:, 1:-1] ** 2
+    sinv2[sinv2 < tiny_number] = tiny_number
+    rsin_v[:, 1:-1] = 1.0 / sinv2
+
+    cosa_s = cos_sg[:, :, 4]
+    sin2 = sin_sg[:, :, 4] ** 2
+    sin2[sin2 < tiny_number] = tiny_number
+    rsin2 = 1.0 / sin2
+
+    # fill ghost on cosa_s:
+    _fill_halo_corners(cosa_s, big_number, nhalo, tile_partitioner, rank)
+
+    sina2 = sina[nhalo:-nhalo, nhalo:-nhalo] ** 2
+    sina2[sina2 < tiny_number] = tiny_number
+    rsina = 1.0 / sina2
+
+    # Set special sin values at edges
+    if tile_partitioner.on_tile_left(rank):
+        rsina[0, :] = big_number
+        sina_u_limit = sina_u[nhalo, :]
+        sina_u_limit[abs(sina_u_limit) < tiny_number] = tiny_number * np.sign(
+            sina_u_limit[abs(sina_u_limit) < tiny_number]
         )
-        sina[nhalo:-nhalo, nhalo:-nhalo] = 0.5 * (
-            sin_sg[nhalo - 1 : -nhalo, nhalo - 1 : -nhalo, 7]
-            + sin_sg[nhalo : -nhalo + 1, nhalo : -nhalo + 1, 5]
+        rsin_u[nhalo, :] = 1.0 / sina_u_limit
+    if tile_partitioner.on_tile_right(rank):
+        rsina[-1, :] = big_number
+        sina_u_limit = sina_u[-nhalo - 1, :]
+        sina_u_limit[abs(sina_u_limit) < tiny_number] = tiny_number * np.sign(
+            sina_u_limit[abs(sina_u_limit) < tiny_number]
         )
-
-        cosa_u[1:-1, :] = 0.5 * (cos_sg[:-1, :, 2] + cos_sg[1:, :, 0])
-        sina_u[1:-1, :] = 0.5 * (sin_sg[:-1, :, 2] + sin_sg[1:, :, 0])
-        sinu2 = sina_u[1:-1, :] ** 2
-        sinu2[sinu2 < tiny_number] = tiny_number
-        rsin_u[1:-1, :] = 1.0 / sinu2
-
-        cosa_v[:, 1:-1] = 0.5 * (cos_sg[:, :-1, 3] + cos_sg[:, 1:, 1])
-        sina_v[:, 1:-1] = 0.5 * (sin_sg[:, :-1, 3] + sin_sg[:, 1:, 1])
-        sinv2 = sina_v[:, 1:-1] ** 2
-        sinv2[sinv2 < tiny_number] = tiny_number
-        rsin_v[:, 1:-1] = 1.0 / sinv2
-
-        cosa_s = cos_sg[:, :, 4]
-        sin2 = sin_sg[:, :, 4] ** 2
-        sin2[sin2 < tiny_number] = tiny_number
-        rsin2 = 1.0 / sin2
-
-        # fill ghost on cosa_s:
-        _fill_halo_corners(cosa_s, big_number, nhalo, tile_partitioner, rank)
-
-        sina2 = sina[nhalo:-nhalo, nhalo:-nhalo] ** 2
-        sina2[sina2 < tiny_number] = tiny_number
-        rsina = 1.0 / sina2
-
-        # Set special sin values at edges
-        if tile_partitioner.on_tile_left(rank):
-            rsina[0, :] = big_number
-            sina_u_limit = sina_u[nhalo, :]
-            sina_u_limit[abs(sina_u_limit) < tiny_number] = tiny_number * np.sign(
-                sina_u_limit[abs(sina_u_limit) < tiny_number]
-            )
-            rsin_u[nhalo, :] = 1.0 / sina_u_limit
-        if tile_partitioner.on_tile_right(rank):
-            rsina[-1, :] = big_number
-            sina_u_limit = sina_u[-nhalo - 1, :]
-            sina_u_limit[abs(sina_u_limit) < tiny_number] = tiny_number * np.sign(
-                sina_u_limit[abs(sina_u_limit) < tiny_number]
-            )
-            rsin_u[-nhalo - 1, :] = 1.0 / sina_u_limit
-        if tile_partitioner.on_tile_bottom(rank):
-            rsina[:, 0] = big_number
-            sina_v_limit = sina_v[:, nhalo]
-            sina_v_limit[abs(sina_v_limit) < tiny_number] = tiny_number * np.sign(
-                sina_v_limit[abs(sina_v_limit) < tiny_number]
-            )
-            rsin_v[:, nhalo] = 1.0 / sina_v_limit
-        if tile_partitioner.on_tile_top(rank):
-            rsina[:, -1] = big_number
-            sina_v_limit = sina_v[:, -nhalo - 1]
-            sina_v_limit[abs(sina_v_limit) < tiny_number] = tiny_number * np.sign(
-                sina_v_limit[abs(sina_v_limit) < tiny_number]
-            )
-            rsin_v[:, -nhalo - 1] = 1.0 / sina_v_limit
-
-    else:
-        # cosa += 0.
-        # cosa_u += 0.
-        # cosa_v += 0.
-        sina += 1.0
-        sina_u += 1.0
-        rsin_u += 1.0
-        sina_v += 1.0
-        rsin_v += 1.0
-        rsina = np.zeros(sina[nhalo:-nhalo, nhalo:-nhalo].shape) + 1.0
-        rsin2 = np.zeros(sin_sg[:, :, 4].shape) + 1.0
-        cosa_s = np.zeros(cos_sg[:, :, 4].shape)
+        rsin_u[-nhalo - 1, :] = 1.0 / sina_u_limit
+    if tile_partitioner.on_tile_bottom(rank):
+        rsina[:, 0] = big_number
+        sina_v_limit = sina_v[:, nhalo]
+        sina_v_limit[abs(sina_v_limit) < tiny_number] = tiny_number * np.sign(
+            sina_v_limit[abs(sina_v_limit) < tiny_number]
+        )
+        rsin_v[:, nhalo] = 1.0 / sina_v_limit
+    if tile_partitioner.on_tile_top(rank):
+        rsina[:, -1] = big_number
+        sina_v_limit = sina_v[:, -nhalo - 1]
+        sina_v_limit[abs(sina_v_limit) < tiny_number] = tiny_number * np.sign(
+            sina_v_limit[abs(sina_v_limit) < tiny_number]
+        )
+        rsin_v[:, -nhalo - 1] = 1.0 / sina_v_limit
 
     return (
         cosa,
@@ -634,7 +610,6 @@ def edge_factors(
     rank: int,
     radius: float,
     np,
-    non_ortho=True,
 ):
     """
     Creates interpolation factors from the A grid to the B grid on tile edges
@@ -643,50 +618,39 @@ def edge_factors(
     big_number = 1.0e8
     i_range = grid[nhalo:-nhalo, nhalo:-nhalo].shape[0]
     j_range = grid[nhalo:-nhalo, nhalo:-nhalo].shape[1]
-    edge_n = np.zeros(i_range)
-    edge_s = np.zeros(i_range)
-    edge_e = np.zeros(j_range)
-    edge_w = np.zeros(j_range)
-
-    if non_ortho is True:
-        edge_n += big_number
-        edge_s += big_number
-        edge_e += big_number
-        edge_w += big_number
-        npx, npy, ndims = tile_partitioner.global_extent(grid_quantity)
-        slice_x, slice_y = tile_partitioner.subtile_slice(
-            rank, grid_quantity.dims, (npx, npy)
-        )
-        global_is = nhalo + slice_x.start
-        global_js = nhalo + slice_y.start
-        global_ie = nhalo + slice_x.stop - 1
-        global_je = nhalo + slice_y.stop - 1
-        jstart = max(4, global_js) - global_js + nhalo
-        jend = min(npy + nhalo - 1, global_je + 2) - global_js + nhalo
-        istart = max(4, global_is) - global_is + nhalo
-        iend = min(npx + nhalo - 1, global_ie + 2) - global_is + nhalo
-        if grid_type < 3:
-            if tile_partitioner.on_tile_left(rank):
-                edge_w[jstart - nhalo : jend - nhalo] = set_west_edge_factor(
-                    grid, agrid, nhalo, radius, jstart, jend, np
-                )
-            if tile_partitioner.on_tile_right(rank):
-                edge_e[jstart - nhalo : jend - nhalo] = set_east_edge_factor(
-                    grid, agrid, nhalo, radius, jstart, jend, np
-                )
-            if tile_partitioner.on_tile_bottom(rank):
-                edge_s[istart - nhalo : iend - nhalo] = set_south_edge_factor(
-                    grid, agrid, nhalo, radius, istart, iend, np
-                )
-            if tile_partitioner.on_tile_top(rank):
-                edge_n[istart - nhalo : iend - nhalo] = set_north_edge_factor(
-                    grid, agrid, nhalo, radius, istart, iend, np
-                )
-    else:
-        edge_n += 0.5
-        edge_s += 0.5
-        edge_e += 0.5
-        edge_w += 0.5
+    edge_n = np.zeros(i_range) + big_number
+    edge_s = np.zeros(i_range) + big_number
+    edge_e = np.zeros(j_range) + big_number
+    edge_w = np.zeros(j_range) + big_number
+    npx, npy, ndims = tile_partitioner.global_extent(grid_quantity)
+    slice_x, slice_y = tile_partitioner.subtile_slice(
+        rank, grid_quantity.dims, (npx, npy)
+    )
+    global_is = nhalo + slice_x.start
+    global_js = nhalo + slice_y.start
+    global_ie = nhalo + slice_x.stop - 1
+    global_je = nhalo + slice_y.stop - 1
+    jstart = max(4, global_js) - global_js + nhalo
+    jend = min(npy + nhalo - 1, global_je + 2) - global_js + nhalo
+    istart = max(4, global_is) - global_is + nhalo
+    iend = min(npx + nhalo - 1, global_ie + 2) - global_is + nhalo
+    if grid_type < 3:
+        if tile_partitioner.on_tile_left(rank):
+            edge_w[jstart - nhalo : jend - nhalo] = set_west_edge_factor(
+                grid, agrid, nhalo, radius, jstart, jend, np
+            )
+        if tile_partitioner.on_tile_right(rank):
+            edge_e[jstart - nhalo : jend - nhalo] = set_east_edge_factor(
+                grid, agrid, nhalo, radius, jstart, jend, np
+            )
+        if tile_partitioner.on_tile_bottom(rank):
+            edge_s[istart - nhalo : iend - nhalo] = set_south_edge_factor(
+                grid, agrid, nhalo, radius, istart, iend, np
+            )
+        if tile_partitioner.on_tile_top(rank):
+            edge_n[istart - nhalo : iend - nhalo] = set_north_edge_factor(
+                grid, agrid, nhalo, radius, istart, iend, np
+            )
 
     return edge_w, edge_e, edge_s, edge_n
 
@@ -753,12 +717,12 @@ def set_north_edge_factor(grid, agrid, nhalo, radius, jstart, jend, np):
 def efactor_a2c_v(
     grid_quantity: Quantity,
     agrid,
+    grid_type: int,
     nhalo: int,
     tile_partitioner: TilePartitioner,
     rank: int,
     radius: float,
     np,
-    non_ortho=True,
 ):
     """
     Creates interpolation factors at tile edges
@@ -798,15 +762,11 @@ def efactor_a2c_v(
     im2 = max(im2, -1)
     jm2 = max(jm2, -1)
 
-    edge_vect_s = np.zeros(grid.shape[0] - 1)
-    edge_vect_n = np.zeros(grid.shape[0] - 1)
-    edge_vect_e = np.zeros(grid.shape[1] - 1)
-    edge_vect_w = np.zeros(grid.shape[1] - 1)
-    if non_ortho is True:
-        edge_vect_s += big_number
-        edge_vect_n += big_number
-        edge_vect_e += big_number
-        edge_vect_w += big_number
+    edge_vect_s = np.zeros(grid.shape[0] - 1) + big_number
+    edge_vect_n = np.zeros(grid.shape[0] - 1) + big_number
+    edge_vect_e = np.zeros(grid.shape[1] - 1) + big_number
+    edge_vect_w = np.zeros(grid.shape[1] - 1) + big_number
+    if grid_type < 3:
         if tile_partitioner.on_tile_left(rank):
             edge_vect_w[2:-2] = calculate_west_edge_vectors(
                 grid, agrid, jm2, nhalo, radius, np
