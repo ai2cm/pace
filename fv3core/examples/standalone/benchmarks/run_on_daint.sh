@@ -19,7 +19,8 @@ set -e
 # configuration
 SCRIPT=`realpath $0`
 SCRIPT_DIR=`dirname $SCRIPT`
-ROOT_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
+FV3CORE_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
+BUILDENV_DIR="$FV3CORE_DIR/../"
 NTHREADS=12
 
 # utility functions
@@ -73,10 +74,10 @@ run_args="$6"
 DO_NSYS_RUN="$7"
 
 # get dependencies
-cd $ROOT_DIR
+cd $FV3CORE_DIR
 make update_submodules_venv
 # set GT4PY version
-cd $ROOT_DIR
+cd $FV3CORE_DIR
 if [ -z "${GT4PY_VERSION}" ]; then
     export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
 fi
@@ -84,17 +85,17 @@ fi
 # set up the virtual environment
 echo "creating the venv"
 if [ -d ./venv ] ; then rm -rf venv ; fi
-cd $ROOT_DIR/external/daint_venv/
+cd $FV3CORE_DIR/external/daint_venv/
 if [ -d ./gt4py ] ; then rm -rf gt4py ; fi
-cd $ROOT_DIR
-$ROOT_DIR/.jenkins/install_virtualenv.sh $ROOT_DIR/venv
+cd $FV3CORE_DIR
+$FV3CORE_DIR/.jenkins/install_virtualenv.sh $FV3CORE_DIR/venv
 source ./venv/bin/activate
 pip list
 
 # set the environment
-cp $ROOT_DIR/buildenv/submit.daint.slurm run.daint.slurm
+cp $BUILDENV_DIR/submit.daint.slurm run.daint.slurm
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
-    cp $ROOT_DIR/buildenv/submit.daint.slurm run.nsys.daint.slurm
+    cp $BUILDENV_DIR/submit.daint.slurm run.nsys.daint.slurm
 fi
 
 if git rev-parse --git-dir > /dev/null 2>&1 ; then
@@ -107,7 +108,7 @@ split_path=(${data_path//\// })
 experiment=${split_path[-1]}
 
 echo "Configuration overview:"
-echo "    Root dir:          $ROOT_DIR"
+echo "    Root dir:          $FV3CORE_DIR"
 echo "    Timesteps:         $timesteps"
 echo "    Ranks:             $ranks"
 echo "    Backend:           $backend"
