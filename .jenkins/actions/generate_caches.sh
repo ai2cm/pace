@@ -37,6 +37,6 @@ find .gt_cache* -type d -name \*_pyext_BUILD -prune -exec \rm -rf {} \;
 find .gt_cache* -type d -name __pycache__ -prune -exec \rm -rf {} \;
 echo "Copying GT4Py cache directories to ${CACHE_DIR}"
 mkdir -p ${CACHE_DIR}
-cp `pwd`/GT4PY_VERSION.txt ${CACHE_DIR}
+cp `pwd`/../GT4PY_VERSION.txt ${CACHE_DIR}
 rm -rf ${CACHE_DIR}/.gt_cache
 cp -rp .gt_cache ${CACHE_DIR}
