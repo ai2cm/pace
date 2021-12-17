@@ -96,7 +96,7 @@ class PhysicsConfig:
     clin: float = NamelistDefaults.clin
 
     @classmethod
-    def from_f90nml(cls, namelist: f90nml.Namelist):
+    def from_f90nml(cls, namelist: f90nml.Namelist) -> "PhysicsConfig":
         namelist_dict = namelist_to_flatish_dict(namelist.items())
         namelist_dict = {
             key: value

@@ -273,7 +273,7 @@ class DynamicalCoreConfig:
     n_sponge: int = NamelistDefaults.n_sponge
 
     @classmethod
-    def from_f90nml(cls, namelist: f90nml.Namelist):
+    def from_f90nml(cls, namelist: f90nml.Namelist) -> "DynamicalCoreConfig":
         namelist_dict = namelist_to_flatish_dict(namelist.items())
         namelist_dict = {
             key: value
@@ -855,18 +855,3 @@ def set_grid(in_grid):
     """
     global grid
     grid = in_grid
-
-
-def set_namelist(filename, backend, rank=0):
-    """Updates the global namelist from a file and re-generates the global grid.
-
-    Args:
-        filename (str): Input file.
-    """
-    global grid
-    namelist_dict = NamelistDefaults.as_dict()
-    namelist_dict.update(namelist_to_flatish_dict(f90nml.read(filename).items()))
-    for name, value in namelist_dict.items():
-        setattr(namelist, name, value)
-
-    grid = make_grid_from_namelist(namelist, rank, backend)

@@ -112,23 +112,6 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def upper_grid(serializer, grid_savepoint, rank, layout, *, backend: str):
-    grid = make_grid(grid_savepoint, serializer, rank, layout, backend=backend)
-    return grid
-
-
-def grid_data(upper_grid):
-    return upper_grid.grid_data
-
-
-def grid_indexing(upper_grid):
-    return upper_grid.grid_indexing
-
-
-def physics_config(namelist_filename):
-    return PhysicsConfig.from_f90nml(namelist_filename)
-
-
 @pytest.fixture
 def stencil_config(backend):
     return pace.dsl.stencil.StencilConfig(
@@ -246,8 +229,8 @@ def sequential_savepoint_cases(
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = upper_grid(
-            serializer, grid_savepoint, rank, physics_config.layout, backend=backend
+        grid = make_grid(
+            grid_savepoint, serializer, rank, physics_config.layout, backend=backend
         )
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
@@ -298,8 +281,8 @@ def mock_parallel_savepoint_cases(
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = upper_grid(
-            serializer, grid_savepoint, rank, physics_config.layout, backend=backend
+        grid = make_grid(
+            grid_savepoint, serializer, rank, physics_config.layout, backend=backend
         )
         grid_list.append(grid)
     stencil_factory = pace.dsl.stencil.StencilFactory(
@@ -349,8 +332,8 @@ def parallel_savepoint_cases(
         validate_args=True,
     )
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid = upper_grid(
-        serializer, grid_savepoint, mpi_rank, physics_config.layout, backend=backend
+    grid = make_grid(
+        grid_savepoint, serializer, mpi_rank, physics_config.layout, backend=backend
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,

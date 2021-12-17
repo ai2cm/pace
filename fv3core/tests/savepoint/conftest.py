@@ -100,15 +100,6 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def upper_grid(serializer, grid_savepoint, rank, layout, *, backend: str):
-    grid = make_grid(grid_savepoint, serializer, rank, layout, backend=backend)
-    return grid
-
-
-def dycore_config(namelist_filename):
-    return DynamicalCoreConfig.from_f90nml(namelist_filename)
-
-
 @pytest.fixture
 def stencil_config(backend):
     return pace.dsl.stencil.StencilConfig(
@@ -225,8 +216,8 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = upper_grid(
-            serializer, grid_savepoint, rank, dycore_config.layout, backend=backend
+        grid = make_grid(
+            grid_savepoint, serializer, rank, dycore_config.layout, backend=backend
         )
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
@@ -278,8 +269,8 @@ def mock_parallel_savepoint_cases(
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = upper_grid(
-            serializer, grid_savepoint, rank, dycore_config.layout, backend=backend
+        grid = make_grid(
+            grid_savepoint, serializer, rank, dycore_config.layout, backend=backend
         )
         grid_list.append(grid)
     stencil_factory = pace.dsl.stencil.StencilFactory(
@@ -341,8 +332,8 @@ def parallel_savepoint_cases(
         validate_args=True,
     )
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid = upper_grid(
-        serializer, grid_savepoint, mpi_rank, dycore_config.layout, backend=backend
+    grid = make_grid(
+        grid_savepoint, serializer, mpi_rank, dycore_config.layout, backend=backend
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,

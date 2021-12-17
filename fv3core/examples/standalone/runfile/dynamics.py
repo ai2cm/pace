@@ -13,6 +13,7 @@ import yaml
 from mpi4py import MPI
 
 import fv3core.initialization.baroclinic as baroclinic_init
+import fv3core.testing
 import pace.dsl
 from fv3core._config import DynamicalCoreConfig
 from pace.stencils.testing.grid import DampingCoefficients, GridData
@@ -251,7 +252,7 @@ if __name__ == "__main__":
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=args.backend,
             rebuild=False,
-            validate_args=True,
+            validate_args=False,
         )
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,

@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 import dataclasses
 import functools
 from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple, Union

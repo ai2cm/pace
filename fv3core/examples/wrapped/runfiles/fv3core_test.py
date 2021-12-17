@@ -238,6 +238,7 @@ if __name__ == "__main__":
         ),
         origin=origin,
         extent=extent,
+        gt4py_backend=backend,
     )
     u_tendency = Quantity.from_data_array(
         xr.DataArray(
@@ -249,6 +250,7 @@ if __name__ == "__main__":
         ),
         origin=(3, 3, 0),
         extent=(dycore_config.npx - 1, dycore_config.npy - 1, dycore_config.npz),
+        gt4py_backend=backend,
     )
     v_tendency = Quantity.from_data_array(
         xr.DataArray(
@@ -260,11 +262,8 @@ if __name__ == "__main__":
         ),
         origin=(3, 3, 0),
         extent=(dycore_config.npx - 1, dycore_config.npy - 1, dycore_config.npz),
+        gt4py_backend=backend,
     )
-
-    turbulent_kinetic_energy.metadata.gt4py_backend = backend
-    u_tendency.metadata.gt4py_backend = backend
-    v_tendency.metadata.gt4py_backend = backend
 
     n_tracers = 6
 

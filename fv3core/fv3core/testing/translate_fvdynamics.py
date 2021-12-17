@@ -6,6 +6,7 @@ import pytest
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
+from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.dycore_state import DycoreState
 from pace.stencils.testing import ParallelTranslateBaseSlicing
 
@@ -270,7 +271,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self.ignore_near_zero_errors["q_con"] = True
         self.dycore: Optional[fv_dynamics.DynamicalCore] = None
         self.stencil_factory = stencil_factory
-        self.namelist = namelist
+        self.namelist: DynamicalCoreConfig = namelist
 
     def state_from_inputs(self, inputs):
         input_storages = super().state_from_inputs(inputs)

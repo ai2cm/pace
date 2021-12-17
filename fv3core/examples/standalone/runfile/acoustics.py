@@ -24,7 +24,7 @@ except ImportError:
     MPI = None
 
 
-def set_up_namelist(data_directory: str) -> DynamicalCoreConfig:
+def dycore_config_from_namelist(data_directory: str) -> DynamicalCoreConfig:
     """
     Reads the namelist at the given directory and sets
     the global fv3core config to it
@@ -138,7 +138,7 @@ def driver(
 ):
     total_timer, timestep_timer, times_per_step, hits_per_step = initialize_timers()
     with total_timer.clock("initialization"):
-        dycore_config = set_up_namelist(data_directory)
+        dycore_config = dycore_config_from_namelist(data_directory)
         serializer = initialize_serializer(data_directory)
         mpi_comm, communicator = set_up_communicator(disable_halo_exchange)
         grid = spec.make_grid_with_data_from_namelist(
