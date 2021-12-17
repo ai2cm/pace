@@ -43,7 +43,7 @@ if [ "${SAVE_CACHE}" != "true" -a "${DO_PROFILE}" != "true" ] ; then
     SAVE_TIMINGS="true"
 fi
 # check if we store the results of this run
-if [[ "$GIT_BRANCH" != "origin/master" ]]; then
+if [[ "$GIT_BRANCH" != "origin/main" ]]; then
     SAVE_ARTIFACTS="false"
 fi
 
