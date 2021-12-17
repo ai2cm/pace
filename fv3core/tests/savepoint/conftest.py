@@ -318,9 +318,8 @@ def mock_parallel_savepoint_cases(
     return return_list
 
 
-def compute_grid_data(metafunc, grid):
+def compute_grid_data(metafunc, grid, namelist):
     backend = metafunc.config.getoption("backend")
-    namelist = fv3core._config.namelist
     grid.make_grid_data(
         npx=namelist.npx,
         npy=namelist.npy,
@@ -350,7 +349,7 @@ def parallel_savepoint_cases(
         grid_indexing=grid.grid_indexing,
     )
     if metafunc.config.getoption("compute_grid"):
-        compute_grid_data(metafunc, grid)
+        compute_grid_data(metafunc, grid, dycore_config)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     return_list = []
     for test_name in sorted(list(savepoint_names)):
