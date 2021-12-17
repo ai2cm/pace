@@ -174,6 +174,7 @@ else
 fi
 
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
+    module load nvidia-nsight-systems/2021.1.1.66-6c5c5cb
     echo "Install performance_visualization package"
     git clone git@github.com:ai2cm/performance_visualization.git
     pip install -e performance_visualization.git
