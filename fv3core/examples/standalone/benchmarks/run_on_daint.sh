@@ -23,6 +23,8 @@ FV3CORE_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
 BUILDENV_DIR="$FV3CORE_DIR/../buildenv"
 NTHREADS=12
 
+export PYTHONOPTIMIZE=TRUE
+
 # utility functions
 function exitError()
 {
@@ -151,8 +153,7 @@ sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
 sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
 sed -i "s/00:45:00/03:15:00/g" run.daint.slurm
 sed -i "s/cscsci/normal/g" run.daint.slurm
-sed -i "s/<G2G>/export PYTHONOPTIMIZE=TRUE/g" run.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
+sed -i "s#<CMD>#srun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 # execute on a gpu node
 set +e
 res=$(sbatch -W -C gpu run.daint.slurm 2>&1)
@@ -173,6 +174,7 @@ else
 fi
 
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
+    module load nvidia-nsight-systems/2021.1.1.66-6c5c5cb
     echo "Install performance_visualization package"
     git clone git@github.com:ai2cm/performance_visualization.git
     pip install -e performance_visualization.git
@@ -185,8 +187,7 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
     sed -i "s/<OUTFILE>/run.nsys.daint.out\n#SBATCH --hint=nomultithread/g" run.nsys.daint.slurm
     sed -i "s/00:45:00/00:40:00/g" run.nsys.daint.slurm
     sed -i "s/cscsci/normal/g" run.nsys.daint.slurm
-    sed -i "s#<G2G>#module load nvidia-nsight-systems/2021.1.1.66-6c5c5cb\nexport PYTHONOPTIMIZE=TRUE#g" run.nsys.daint.slurm
-    sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
+    sed -i "s#<CMD>#srun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
     # execute on a gpu node
     set +e
     res=$(sbatch -W -C gpu run.nsys.daint.slurm 2>&1)

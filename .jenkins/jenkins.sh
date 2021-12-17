@@ -180,10 +180,9 @@ if [ ${python_env} == "virtualenv" ]; then
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
 fi
 
-G2G="false"
 export DOCKER_BUILDKIT=1
 
-run_command "${script} ${backend} ${experiment} " Job${action} ${G2G} ${scheduler_script}
+run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script}
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
