@@ -155,8 +155,6 @@ if grep -q "fv_dynamics" <<< "${script}"; then
     export MPIRUN_CALL="srun"
 fi
 
-module load daint-gpu
-module load ${installdir}/modulefiles/gcloud/303.0.0
 # get the test data version from the Makefile
 export DATA_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
 
@@ -204,7 +202,6 @@ if [ ${python_env} == "virtualenv" ]; then
     fi
     export FV3_PATH="${JENKINS_DIR}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
-    export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi
 
 G2G="false"
