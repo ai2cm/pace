@@ -121,13 +121,13 @@ def driver(
     missing_grid_info = dwind.collect_input_data(
         serializer, serializer.get_savepoint("FVUpdatePhys-In")[0]
     )
+    dwind.make_storage_data_input_vars(missing_grid_info)
     grid_data = GridData.new_from_metric_terms(metric_terms)
-    np.save("metric_terms_" + str(rank) + ".npy", metric_terms)
     # initialize dynamical core and physics objects
     if run_dycore:
         dycore = fv3core.DynamicalCore(
             comm=communicator,
-            grid_data=GridData.new_from_metric_terms(metric_terms),
+            grid_data=grid_data,
             stencil_factory=stencil_factory,
             damping_coefficients=DampingCoefficients.new_from_metric_terms(
                 metric_terms
@@ -140,7 +140,7 @@ def driver(
 
     step_physics = Physics(
         stencil_factory=stencil_factory,
-        grid_data=GridData.new_from_metric_terms(metric_terms),
+        grid_data=grid_data,
         namelist=namelist,
         comm=communicator,
         partitioner=partitioner,
