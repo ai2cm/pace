@@ -62,7 +62,7 @@ if [ "${target}" == "cpu" ] ; then
 fi
 
 echo "I am running on host ${host} with scheduler ${scheduler}."
-run_command ${script} ${optarg}
+run_command "${script} ${optarg}" "UtilAction${action}"
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"

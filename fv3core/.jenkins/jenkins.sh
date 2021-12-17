@@ -207,10 +207,7 @@ if [ ${python_env} == "virtualenv" ]; then
     export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi
 
-G2G="false"
-export DOCKER_BUILDKIT=1
-
-run_command "${script} ${backend} ${experiment} " Job${action} ${G2G} ${scheduler_script}
+run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script}
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
@@ -234,7 +231,7 @@ if grep -q "fv_dynamics" <<< "${script}"; then
     sed -i 's|<NTASKSPERNODE>|1|g' ${run_timing_script}
     sed -i 's/<CPUSPERTASK>/1/g' ${run_timing_script}
     sed -i 's|cscsci|debug|g' ${run_timing_script}
-    run_command "${script} ${backend} ${experiment} " Job2${action} ${G2G} ${run_timing_script}
+    run_command "${script} ${backend} ${experiment} " Job2${action} ${run_timing_script}
     if [ $? -ne 0 ] ; then
     exitError 1511 ${LINENO} "problem while executing script ${script}"
     fi
