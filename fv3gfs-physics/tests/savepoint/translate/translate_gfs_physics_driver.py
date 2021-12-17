@@ -4,8 +4,8 @@ import pace.dsl.gt4py_utils as utils
 import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
 from pace.dsl.typing import Float
+from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 from pace.util.mpi import MPI
-from pace.util.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):

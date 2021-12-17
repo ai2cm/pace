@@ -15,8 +15,8 @@ from mpi4py import MPI
 import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl
 from fv3core._config import DynamicalCoreConfig
+from pace.stencils.testing.grid import DampingCoefficients, GridData
 from pace.util.grid import MetricTerms
-from pace.util.testing.grid import DampingCoefficients, GridData
 
 
 # Dev note: the GTC toolchain fails if xarray is imported after gt4py
@@ -178,7 +178,7 @@ def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
     return config_yml["experiment_name"], is_baroclinic_test_case
 
 
-def read_serialized_initial_state(rank, grid):
+def read_serialized_initial_state(rank, grid, namelist, stencil_factory):
     # set up of helper structures
     serializer = serialbox.Serializer(
         serialbox.OpenModeKind.Read,
@@ -187,7 +187,9 @@ def read_serialized_initial_state(rank, grid):
     )
     # create a state from serialized data
     savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
-    driver_object = fv3core.testing.TranslateFVDynamics([grid])
+    driver_object = fv3core.testing.TranslateFVDynamics(
+        [grid], namelist, stencil_factory
+    )
     input_data = driver_object.collect_input_data(serializer, savepoint_in)
     state = driver_object.state_from_inputs(input_data)
     return state
@@ -238,7 +240,9 @@ if __name__ == "__main__":
             mpi_comm = MPI.COMM_WORLD
 
         # set up grid-dependent helper structures
-        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(namelist.layout))
+        partitioner = util.CubedSpherePartitioner(
+            util.TilePartitioner(dycore_config.layout)
+        )
         communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
 
         # TODO remove this creation of the legacy grid once everything that
@@ -254,9 +258,9 @@ if __name__ == "__main__":
             grid_indexing=grid.grid_indexing,
         )
         metric_terms = MetricTerms.from_tile_sizing(
-            npx=namelist.npx,
-            npy=namelist.npy,
-            npz=namelist.npz,
+            npx=dycore_config.npx,
+            npy=dycore_config.npy,
+            npz=dycore_config.npz,
             communicator=communicator,
             backend=args.backend,
         )
@@ -271,7 +275,9 @@ if __name__ == "__main__":
                 comm=communicator,
             )
         else:
-            state = read_serialized_initial_state(rank, grid)
+            state = read_serialized_initial_state(
+                rank, grid, dycore_config, stencil_factory
+            )
 
         dycore = fv3core.DynamicalCore(
             comm=communicator,

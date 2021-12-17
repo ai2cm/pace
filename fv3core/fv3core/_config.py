@@ -4,8 +4,8 @@ from typing import Tuple
 import f90nml
 
 import pace.dsl.gt4py_utils as utils
+from pace.stencils.testing.grid import Grid
 from pace.util.namelist import NamelistDefaults, namelist_to_flatish_dict
-from pace.util.testing.grid import Grid
 
 
 grid = None
@@ -508,6 +508,8 @@ class Namelist:
     const_vg: bool = NamelistDefaults.const_vg
     const_vi: bool = NamelistDefaults.const_vi
     const_vr: bool = NamelistDefaults.const_vr
+    const_vs: bool = NamelistDefaults.const_vs
+    qc_crt: float = NamelistDefaults.qc_crt
     vs_fac: float = NamelistDefaults.vs_fac
     vg_fac: float = NamelistDefaults.vg_fac
     vi_fac: float = NamelistDefaults.vi_fac

@@ -15,8 +15,8 @@ import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
+from pace.stencils.testing.grid import GridData, GridIndexing, axis_offsets
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
-from pace.util.testing.grid import GridData, GridIndexing, axis_offsets
 
 
 # comact 4-pt cubic interpolation

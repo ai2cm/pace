@@ -1,7 +1,7 @@
 import fv3core.stencils.dyn_core as dyn_core
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
-from pace.util.testing import ParallelTranslate2PyState
+from pace.stencils.testing import ParallelTranslate2PyState
 
 
 class TranslateDynCore(ParallelTranslate2PyState):

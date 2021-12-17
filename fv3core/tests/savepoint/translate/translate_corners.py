@@ -1,7 +1,7 @@
 import pace.dsl.gt4py_utils as utils
-from pace.util import corners
-from pace.util.testing import TranslateFortranData2Py
-from pace.util.testing.grid import axis_offsets
+from pace.stencils import corners
+from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing.grid import axis_offsets
 
 
 class TranslateFill4Corners(TranslateFortranData2Py):

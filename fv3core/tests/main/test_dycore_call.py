@@ -7,11 +7,11 @@ import fv3core
 import fv3core._config
 import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl.stencil
+import pace.stencils.testing
 import pace.util
-import pace.util.testing
 from fv3core.utils.null_comm import NullComm
+from pace.stencils.testing.grid import DampingCoefficients, GridData
 from pace.util.grid import MetricTerms
-from pace.util.testing.grid import DampingCoefficients, GridData
 
 
 DIR = os.path.abspath(os.path.dirname(__file__))

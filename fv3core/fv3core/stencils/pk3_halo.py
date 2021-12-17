@@ -3,7 +3,7 @@ from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.util.testing.grid import axis_offsets
+from pace.stencils.testing.grid import axis_offsets
 
 
 # TODO merge with pe_halo? reuse partials?

@@ -1,8 +1,8 @@
 import fv3core
-import pace.util.testing.grid
+import pace.stencils.testing.grid
 
 
-mock_grid = pace.util.testing.grid.GridIndexing(
+mock_grid = pace.stencils.testing.grid.GridIndexing(
     domain=(12, 12, 79),
     n_halo=3,
     south_edge=True,

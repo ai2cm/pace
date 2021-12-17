@@ -2,7 +2,7 @@ import numpy as np
 
 import fv3core.stencils.remap_profile as profile
 import pace.dsl.gt4py_utils as utils
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateCS_Profile_2d(TranslateFortranData2Py):

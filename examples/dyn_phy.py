@@ -11,14 +11,14 @@ import serialbox
 from mpi4py import MPI
 
 import fv3core
-import fv3core._config as spec
+import fv3core.testing
 import pace.dsl
+import pace.stencils.testing
 import pace.util as util
-import pace.util.testing
 from fv3core._config import Namelist
 from fv3gfs.physics.stencils.physics import Physics
+from pace.stencils.testing.grid import DampingCoefficients, GridData
 from pace.util.grid import MetricTerms
-from pace.util.testing.grid import DampingCoefficients, GridData
 
 
 MODEL_OUT_DIR = "./model_output"
@@ -43,9 +43,7 @@ class DeactivatedDycore:
 
 # Reuse infrastructure to read in grid variables
 # add path to integration test to reuse existing grid logic
-sys.path.append(
-    "/home/floriand/vulcan/git/fv3gfs-integration/tests/savepoint/translate/"
-)
+sys.path.append("/fv3gfs-physics/tests/savepoint/translate/")
 from translate_update_dwind_phys import TranslateUpdateDWindsPhys  # noqa
 
 
@@ -83,8 +81,8 @@ def driver(
         grid_data[field] = serializer.read(field, grid_savepoint)
         if len(grid_data[field].flatten()) == 1:
             grid_data[field] = grid_data[field][0]
-    grid = pace.util.testing.TranslateGrid(
-        grid_data, rank, backend=backend
+    grid = pace.stencils.testing.TranslateGrid(
+        grid_data, rank, namelist.layout, backend=backend
     ).python_grid()
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
@@ -97,7 +95,7 @@ def driver(
     )
 
     # set up domain decomposition
-    layout = spec.namelist.layout
+    layout = namelist.layout
     partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
     communicator = util.CubedSphereCommunicator(comm, partitioner)
 
@@ -111,17 +109,20 @@ def driver(
 
     # create a state from serialized data
     savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
-    driver_object = fv3core.testing.TranslateFVDynamics([grid])
+    driver_object = fv3core.testing.TranslateFVDynamics(
+        [grid], namelist, stencil_factory
+    )
     input_data = driver_object.collect_input_data(serializer, savepoint_in)
     input_data["comm"] = communicator
     state = driver_object.state_from_inputs(input_data)
 
     # read in missing grid info for physics - this will be removed
-    dwind = TranslateUpdateDWindsPhys(grid)
+    dwind = TranslateUpdateDWindsPhys(grid, namelist, stencil_factory)
     missing_grid_info = dwind.collect_input_data(
         serializer, serializer.get_savepoint("FVUpdatePhys-In")[0]
     )
-
+    grid_data = GridData.new_from_metric_terms(metric_terms)
+    np.save("metric_terms_" + str(rank) + ".npy", metric_terms)
     # initialize dynamical core and physics objects
     if run_dycore:
         dycore = fv3core.DynamicalCore(
@@ -146,6 +147,10 @@ def driver(
         rank=rank,
         grid_info=missing_grid_info,
     )
+    # TODO include functionality that uses and changes this
+    do_adiabatic_init = False
+    # TODO compute from namelist
+    bdt = 225.0
 
     print_for_rank0(f"Init & timestep 0 done in {time.time() - start}s ")
 
@@ -154,14 +159,12 @@ def driver(
             start = time.time()
         dycore.step_dynamics(
             state,
-            input_data["consv_te"],
-            input_data["do_adiabatic_init"],
-            input_data["bdt"],
-            input_data["ptop"],
-            input_data["n_split"],
-            input_data["ks"],
+            namelist.consv_te,
+            do_adiabatic_init,
+            bdt,
+            namelist.n_split,
         )
-        step_physics(state)
+        step_physics(state, 300.0)
         if t % 5 == 0:
             io_start = 0
             if rank == 0:

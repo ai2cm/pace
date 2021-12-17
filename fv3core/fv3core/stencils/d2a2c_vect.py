@@ -5,8 +5,9 @@ import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.util import X_DIM, Y_DIM, Z_DIM, corners
-from pace.util.testing.grid import GridData, axis_offsets
+from pace.stencils import corners
+from pace.stencils.testing.grid import GridData, axis_offsets
+from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 c1 = -2.0 / 14.0

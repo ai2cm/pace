@@ -1,5 +1,5 @@
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 def get_c_sw_instance(grid, namelist, stencil_factory):

@@ -11,7 +11,7 @@ from fv3core.stencils.fvtp2d import (
 )
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.util.testing.grid import DampingCoefficients, GridData, GridIndexing
+from pace.stencils.testing.grid import DampingCoefficients, GridData, GridIndexing
 
 
 DZ_MIN = constants.DZ_MIN

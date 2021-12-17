@@ -5,7 +5,7 @@ import fv3core.stencils.fvtp2d
 import fv3core.stencils.tracer_2d_1l
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
-from pace.util.testing import ParallelTranslate
+from pace.stencils.testing import ParallelTranslate
 
 
 class TranslateTracer2D1L(ParallelTranslate):

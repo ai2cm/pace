@@ -5,7 +5,7 @@ import numpy as np
 import pace.dsl.gt4py_utils as utils
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
-from pace.util.testing.translate_physics import TranslatePhysicsFortranData2Py
+from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslateMicroph(TranslatePhysicsFortranData2Py):

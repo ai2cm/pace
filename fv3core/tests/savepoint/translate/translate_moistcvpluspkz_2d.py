@@ -1,5 +1,5 @@
 import fv3core.stencils.moist_cv as moist_cv
-from pace.util.testing import TranslateFortranData2Py, pad_field_in_j
+from pace.stencils.testing import TranslateFortranData2Py, pad_field_in_j
 
 
 class TranslateMoistCVPlusPkz_2d(TranslateFortranData2Py):

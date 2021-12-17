@@ -1,6 +1,6 @@
 import pace.dsl.gt4py_utils as utils
 from fv3core.testing import MapSingleFactory
-from pace.util.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
+from pace.stencils.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
 
 
 class TranslateMapScalar_2d(TranslateFortranData2Py):

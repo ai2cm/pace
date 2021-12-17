@@ -1,6 +1,6 @@
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils import xppm
-from pace.util.testing import TranslateFortranData2Py, TranslateGrid
+from pace.stencils.testing import TranslateFortranData2Py, TranslateGrid
 
 
 class TranslateXPPM(TranslateFortranData2Py):

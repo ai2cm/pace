@@ -1,5 +1,5 @@
 from fv3core.stencils.ray_fast import RayleighDamping
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateRay_Fast(TranslateFortranData2Py):

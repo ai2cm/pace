@@ -12,10 +12,9 @@ import fv3core
 import fv3core._config
 import pace.dsl
 import pace.util as fv3util
-import pace.util.testing
 from fv3core import DynamicalCoreConfig
 from fv3core.utils.mpi import MPI
-from pace.util.testing import ParallelTranslate, TranslateGrid
+from pace.stencils.testing import ParallelTranslate, TranslateGrid
 
 from . import translate
 

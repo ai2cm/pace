@@ -12,8 +12,8 @@ from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
+from pace.stencils.testing.grid import GridData
 from pace.util import TilePartitioner
-from pace.util.testing.grid import GridData
 
 
 def atmos_phys_driver_statein(

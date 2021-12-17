@@ -7,7 +7,7 @@ import fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
 from fv3core.initialization.dycore_state import DycoreState
-from pace.util.testing import ParallelTranslateBaseSlicing
+from pace.stencils.testing import ParallelTranslateBaseSlicing
 
 
 ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]

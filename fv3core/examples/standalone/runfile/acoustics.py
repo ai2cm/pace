@@ -15,7 +15,7 @@ from fv3core._config import DynamicalCoreConfig
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.testing import TranslateDynCore
 from fv3core.utils.null_comm import NullComm
-from pace.util.testing.grid import Grid
+from pace.stencils.testing.grid import Grid
 
 
 try:
@@ -46,7 +46,7 @@ def initialize_serializer(data_directory: str, rank: int = 0) -> serialbox.Seria
 def read_input_data(
     grid: Grid,
     namelist: DynamicalCoreConfig,
-    stencil_factory: pace.dsl.StencilFactory,
+    stencil_factory: pace.dsl.stencil.StencilFactory,
     serializer: serialbox.Serializer,
 ) -> Dict[str, Any]:
     """Uses the serializer to read the input data from disk"""
@@ -155,14 +155,16 @@ def driver(
         )
         input_data = read_input_data(grid, dycore_config, stencil_factory, serializer)
         experiment_name = get_experiment_name(data_directory)
+        nested = False
+        stretched_grid = False
         acoustics_object = AcousticDynamics(
             communicator,
             stencil_factory,
             grid.grid_data,
             grid.damping_coefficients,
-            grid.grid_type,
-            grid.nested,
-            grid.stretched_grid,
+            dycore_config.grid_type,
+            nested,
+            stretched_grid,
             dycore_config.acoustic_dynamics,
             input_data["pfull"],
             input_data["phis"],

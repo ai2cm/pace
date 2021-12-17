@@ -1,5 +1,5 @@
 from fv3core.stencils.riem_solver_c import RiemannSolverC
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateRiem_Solver_C(TranslateFortranData2Py):

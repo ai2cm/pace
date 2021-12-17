@@ -1,5 +1,5 @@
 import fv3core.stencils.delnflux as delnflux
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateDelnFlux(TranslateFortranData2Py):

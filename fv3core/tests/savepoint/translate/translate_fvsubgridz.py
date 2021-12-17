@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import fv3core.stencils.fv_subgridz as fv_subgridz
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
-from pace.util.testing import ParallelTranslateBaseSlicing
+from pace.stencils.testing import ParallelTranslateBaseSlicing
 
 
 # NOTE, does no halo updates, does not need to be a Parallel test,

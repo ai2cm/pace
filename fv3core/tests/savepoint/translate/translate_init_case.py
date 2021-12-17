@@ -8,9 +8,9 @@ import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
+from pace.stencils.testing import ParallelTranslateBaseSlicing, TranslateFortranData2Py
+from pace.stencils.testing.grid import TRACER_DIM
 from pace.util.grid import MetricTerms
-from pace.util.testing import ParallelTranslateBaseSlicing, TranslateFortranData2Py
-from pace.util.testing.grid import TRACER_DIM
 
 
 class TranslateInitCase(ParallelTranslateBaseSlicing):

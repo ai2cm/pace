@@ -15,8 +15,8 @@ from gt4py.gtscript import (
 import pace.util.constants as constants
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldK
+from pace.stencils.testing.grid import axis_offsets
 from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
-from pace.util.testing.grid import axis_offsets
 
 
 SDAY = 86400.0

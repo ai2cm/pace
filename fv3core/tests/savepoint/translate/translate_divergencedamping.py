@@ -1,7 +1,7 @@
 from typing import Optional
 
 import fv3core.stencils.divergence_damping
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateDivergenceDamping(TranslateFortranData2Py):

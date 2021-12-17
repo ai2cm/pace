@@ -3,13 +3,13 @@ import functools
 import pace.util as fv3util
 from pace.dsl.gt4py_utils import asarray
 from pace.dsl.stencil import GridIndexing
-from pace.util.constants import N_HALO_DEFAULT, PI, RADIUS
-from pace.util.corners import (
+from pace.stencils.corners import (
     fill_corners_2d,
     fill_corners_agrid,
     fill_corners_cgrid,
     fill_corners_dgrid,
 )
+from pace.util.constants import N_HALO_DEFAULT, PI, RADIUS
 
 from .eta import set_hybrid_pressure_coefficients
 from .geometry import (

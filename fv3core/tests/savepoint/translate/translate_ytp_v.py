@@ -3,8 +3,8 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import fv3core.stencils.ytp_v as ytp_v
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.util.testing import TranslateFortranData2Py
-from pace.util.testing.grid import GridData, axis_offsets
+from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing.grid import GridData, axis_offsets
 
 
 def ytp_v_stencil_defn(

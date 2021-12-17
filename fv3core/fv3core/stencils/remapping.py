@@ -23,7 +23,7 @@ from fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.util.testing.grid import axis_offsets
+from pace.stencils.testing.grid import axis_offsets
 
 
 CONSV_MIN = 0.001

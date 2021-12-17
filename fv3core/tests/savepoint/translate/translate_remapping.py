@@ -1,6 +1,6 @@
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.remapping import LagrangianToEulerian
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateRemapping(TranslateFortranData2Py):

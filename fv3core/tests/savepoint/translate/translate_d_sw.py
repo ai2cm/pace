@@ -2,8 +2,8 @@ from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.stencils.d_sw as d_sw
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.util.testing import TranslateFortranData2Py
-from pace.util.testing.grid import axis_offsets
+from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing.grid import axis_offsets
 
 
 class TranslateD_SW(TranslateFortranData2Py):

@@ -31,9 +31,16 @@ repos:
           --follow-imports, skip  # needed so we only test enabled files
         ]
       files: pace-util
+    - id: mypy
+      args: [
+          --no-strict-optional,
+          --ignore-missing-imports,
+          --follow-imports, skip  # needed so we only test enabled files
+        ]
+      files: stencils
       exclude: |
         (?x)^(
-        pace-util/pace/util/testing/grid.py |
+        stencils/pace/stencils/testing/grid.py |
         )$
     - id: mypy
       args: [

@@ -15,8 +15,8 @@ from fv3core.stencils.remapping import LagrangianToEulerian
 from pace.dsl.stencil import FrozenStencil, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.stencils.testing.grid import DampingCoefficients, GridData
 from pace.util.halo_updater import HaloUpdater
-from pace.util.testing.grid import DampingCoefficients, GridData
 
 
 # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:

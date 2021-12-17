@@ -1,5 +1,5 @@
 import fv3core.stencils.moist_cv as moist_cv
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateLastStep(TranslateFortranData2Py):

@@ -1,5 +1,5 @@
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateFxAdv(TranslateFortranData2Py):

@@ -6,7 +6,7 @@ import numpy as np
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Field  # noqa: F401
-from pace.util.testing.grid import Grid
+from pace.stencils.testing.grid import Grid
 
 
 logger = logging.getLogger("fv3ser")

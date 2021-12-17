@@ -2,7 +2,7 @@ import numpy as np
 
 import fv3core.stencils.saturation_adjustment as satadjust
 import pace.dsl.gt4py_utils as utils
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateQSInit(TranslateFortranData2Py):

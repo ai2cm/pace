@@ -1,6 +1,6 @@
 import pace.util as fv3util
 from pace.stencils.c2l_ord import CubedToLatLon
-from pace.util.testing import ParallelTranslate2Py
+from pace.stencils.testing import ParallelTranslate2Py
 
 
 class TranslateCubedToLatLon(ParallelTranslate2Py):

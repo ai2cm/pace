@@ -1,5 +1,5 @@
 from fv3core.stencils.pk3_halo import PK3Halo
-from pace.util.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslatePK3_Halo(TranslateFortranData2Py):

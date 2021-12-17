@@ -2,7 +2,7 @@ import logging
 
 import pace.util as fv3util
 from pace.dsl import gt4py_utils as utils
-from pace.util.testing import ParallelTranslate
+from pace.stencils.testing import ParallelTranslate
 
 
 logger = logging.getLogger("fv3ser")

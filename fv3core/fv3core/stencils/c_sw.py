@@ -12,8 +12,9 @@ from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM, corners
-from pace.util.testing.grid import GridData
+from pace.stencils import corners
+from pace.stencils.testing.grid import GridData
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
 def geoadjust_ut(

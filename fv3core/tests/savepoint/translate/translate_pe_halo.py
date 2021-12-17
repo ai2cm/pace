@@ -1,6 +1,6 @@
 from fv3core.stencils import pe_halo
-from pace.util.testing import TranslateFortranData2Py
-from pace.util.testing.grid import axis_offsets
+from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing.grid import axis_offsets
 
 
 class TranslatePE_Halo(TranslateFortranData2Py):

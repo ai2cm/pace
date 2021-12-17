@@ -12,6 +12,7 @@ import fv3core
 import fv3gfs.wrapper as wrapper
 import pace.dsl
 from fv3core._config import DynamicalCoreConfig
+from pace.stencils.testing import translate
 from pace.util import (
     X_DIMS,
     X_INTERFACE_DIM,
@@ -26,7 +27,6 @@ from pace.util import (
     SubtileGridSizer,
     io,
 )
-from pace.util.testing import translate
 
 
 sys.path.append("/usr/local/serialbox/python")

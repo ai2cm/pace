@@ -3,7 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 from fv3core.stencils.d2a2c_vect import contravariant
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.util.testing.grid import GridData, axis_offsets
+from pace.stencils.testing.grid import GridData, axis_offsets
 
 
 # TODO: the mix of local and global regions is strange here

@@ -2,7 +2,7 @@ import numpy as np
 
 import fv3core.stencils.fillz as fillz
 import pace.dsl.gt4py_utils as utils
-from pace.util.testing import TranslateFortranData2Py, pad_field_in_j
+from pace.stencils.testing import TranslateFortranData2Py, pad_field_in_j
 
 
 class TranslateFillz(TranslateFortranData2Py):
