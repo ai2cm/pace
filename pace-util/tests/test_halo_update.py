@@ -302,7 +302,7 @@ def tile_depth_quantity_list(
     single_tile_ranks, dims, units, origin, extent, shape, numpy, dtype, n_points
 ):
     """A list of quantities whose value indicates the distance from the computational
-    domain boundary."""
+    domain boundary for a single tile."""
     return_list = []
     for rank in range(single_tile_ranks):
         data = numpy.empty(shape, dtype=dtype)
@@ -421,7 +421,7 @@ def test_depth_tile_halo_update(
     boundary_dict,
     ranks_per_tile,
 ):
-    """test that written values have the correct orientation"""
+    """test that written values have the correct orientation on a tile"""
     sample_quantity = tile_depth_quantity_list[0]
     y_dim, x_dim = get_horizontal_dims(sample_quantity.dims)
     y_index = sample_quantity.dims.index(y_dim)
@@ -476,7 +476,7 @@ def zeros_quantity_tile_list(
     single_tile_ranks, dims, units, origin, extent, shape, numpy, dtype
 ):
     """A list of quantities whose values are 0 in the computational domain and 1
-    outside of it."""
+    outside of it on a single tile."""
     return_list = []
     for rank in range(single_tile_ranks):
         data = numpy.ones(shape, dtype=dtype)
@@ -509,6 +509,28 @@ def test_too_many_points_requested(
     test that an exception is raised when trying to update more halo points than exist
     """
     for communicator, quantity in zip(communicator_list, zeros_quantity_list):
+        with pytest.raises(pace.util.OutOfBoundsError):
+            communicator.start_halo_update(quantity, n_points_update)
+
+
+@pytest.mark.parametrize(
+    "n_points, n_points_update, n_buffer", [(2, "more", 0)], indirect=True
+)
+def test_too_many_points_requested_tile(
+    zeros_quantity_tile_list,
+    tile_communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
+    """
+    test that an exception is raised when trying to update more halo points than exist
+    on a tile
+    """
+    for communicator, quantity in zip(tile_communicator_list, zeros_quantity_tile_list):
         with pytest.raises(pace.util.OutOfBoundsError):
             communicator.start_halo_update(quantity, n_points_update)
 
@@ -554,6 +576,52 @@ def test_zeros_halo_update(
                     )
 
 
+def test_zeros_tile_halo_update(
+    zeros_quantity_tile_list,
+    tile_communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
+    """test that zeros from adjacent domains get written over ones on local halo
+    on a single tile"""
+    halo_updater_list = []
+    if 0 < n_points_update <= n_points:
+        for communicator, quantity in zip(
+            tile_communicator_list, zeros_quantity_tile_list
+        ):
+            halo_updater = communicator.start_halo_update(quantity, n_points_update)
+            halo_updater_list.append(halo_updater)
+        for halo_updater in halo_updater_list:
+            halo_updater.wait()
+        for rank, quantity in enumerate(zeros_quantity_tile_list):
+            boundaries = boundary_dict[
+                rank % ranks_per_tile
+            ]  # Is the %ranks_per_tile necessary?
+            for boundary in boundaries:
+                boundary_slice = pace.util._boundary_utils.get_boundary_slice(
+                    quantity.dims,
+                    quantity.origin,
+                    quantity.extent,
+                    quantity.data.shape,
+                    boundary,
+                    n_points_update,
+                    interior=False,
+                )
+                with subtests.test(
+                    quantity=quantity,
+                    rank=rank,
+                    boundary=boundary,
+                    boundary_slice=boundary_slice,
+                ):
+                    numpy.testing.assert_array_equal(
+                        quantity.data[tuple(boundary_slice)], 0.0
+                    )
+
+
 def test_zeros_vector_halo_update(
     zeros_quantity_list,
     communicator_list,
@@ -571,6 +639,56 @@ def test_zeros_vector_halo_update(
         halo_updater_list = []
         for communicator, y_quantity, x_quantity in zip(
             communicator_list, y_list, x_list
+        ):
+            halo_updater_list.append(
+                communicator.start_vector_halo_update(
+                    y_quantity, x_quantity, n_points_update
+                )
+            )
+        for halo_updater in halo_updater_list:
+            halo_updater.wait()
+        for rank, (y_quantity, x_quantity) in enumerate(zip(y_list, x_list)):
+            boundaries = boundary_dict[rank % ranks_per_tile]
+            for boundary in boundaries:
+                boundary_slice = pace.util._boundary_utils.get_boundary_slice(
+                    x_quantity.dims,
+                    x_quantity.origin,
+                    x_quantity.extent,
+                    x_quantity.data.shape,
+                    boundary,
+                    n_points_update,
+                    interior=False,
+                )
+                with subtests.test(
+                    x_quantity=x_quantity,
+                    rank=rank,
+                    boundary=boundary,
+                    boundary_slice=boundary_slice,
+                ):
+                    for quantity in y_quantity, x_quantity:
+                        numpy.testing.assert_array_equal(
+                            quantity.data[tuple(boundary_slice)], 0.0
+                        )
+
+
+def test_zeros_vector_tile_halo_update(
+    zeros_quantity_tile_list,
+    tile_communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
+    """test that zeros from adjacent domains get written over ones on local halo
+    on a single tile"""
+    x_list = zeros_quantity_tile_list
+    y_list = copy.deepcopy(x_list)
+    if 0 < n_points_update <= n_points:
+        halo_updater_list = []
+        for communicator, y_quantity, x_quantity in zip(
+            tile_communicator_list, y_list, x_list
         ):
             halo_updater_list.append(
                 communicator.start_vector_halo_update(
