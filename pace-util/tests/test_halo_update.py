@@ -113,6 +113,11 @@ def total_ranks(ranks_per_tile):
     return 6 * ranks_per_tile
 
 
+@pytest.fixture
+def single_tile_ranks(layout):
+    return layout[0] * layout[1]
+
+
 @pytest.fixture(params=[0, 1])
 def n_buffer(request):
     return request.param
@@ -194,23 +199,6 @@ def cube_partitioner(tile_partitioner):
 
 
 @pytest.fixture
-def tile_communicator_list(tile_partitioner):
-    shared_buffer = {}
-    return_list = []
-    for rank in range(tile_partitioner.total_ranks):
-        return_list.append(
-            pace.util.TileCommunicator(
-                comm=pace.util.testing.DummyComm(
-                    rank=rank, total_ranks=ranks_per_tile, buffer_dict=shared_buffer
-                ),
-                partitioner=tile_partitioner,
-                timer=pace.util.Timer(),
-            )
-        )
-    return return_list
-
-
-@pytest.fixture
 def updated_slice(ny, nx, dims, n_points, n_points_update):
     n_points_remain = n_points - n_points_update
     return_list = []
@@ -280,6 +268,43 @@ def depth_quantity_list(
     domain boundary."""
     return_list = []
     for rank in range(total_ranks):
+        data = numpy.empty(shape, dtype=dtype)
+        data[:] = numpy.nan
+        for n_inside in range(max(n_points, max(extent) // 2), -1, -1):
+            for i, dim in enumerate(dims):
+                if (n_inside <= extent[i] // 2) and (dim in pace.util.HORIZONTAL_DIMS):
+                    pos = [slice(None, None)] * len(dims)
+                    pos[i] = origin[i] + n_inside
+                    data[tuple(pos)] = n_inside
+                    pos[i] = origin[i] + extent[i] - 1 - n_inside
+                    data[tuple(pos)] = n_inside
+        for n_outside in range(1, n_points + 1):
+            for i, dim in enumerate(dims):
+                if dim in pace.util.HORIZONTAL_DIMS:
+                    pos = [slice(None, None)] * len(dims)
+                    pos[i] = origin[i] - n_outside
+                    data[tuple(pos)] = numpy.nan
+                    pos[i] = origin[i] + extent[i] + n_outside - 1
+                    data[tuple(pos)] = numpy.nan
+        quantity = pace.util.Quantity(
+            data,
+            dims=dims,
+            units=units,
+            origin=origin,
+            extent=extent,
+        )
+        return_list.append(quantity)
+    return return_list
+
+
+@pytest.fixture
+def tile_depth_quantity_list(
+    single_tile_ranks, dims, units, origin, extent, shape, numpy, dtype, n_points
+):
+    """A list of quantities whose value indicates the distance from the computational
+    domain boundary."""
+    return_list = []
+    for rank in range(single_tile_ranks):
         data = numpy.empty(shape, dtype=dtype)
         data[:] = numpy.nan
         for n_inside in range(max(n_points, max(extent) // 2), -1, -1):
@@ -386,12 +411,74 @@ def test_depth_halo_update(
                         raise NotImplementedError(n_points_update)
 
 
+def test_depth_tile_halo_update(
+    tile_depth_quantity_list,
+    tile_communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
+    """test that written values have the correct orientation"""
+    sample_quantity = tile_depth_quantity_list[0]
+    y_dim, x_dim = get_horizontal_dims(sample_quantity.dims)
+    y_index = sample_quantity.dims.index(y_dim)
+    x_index = sample_quantity.dims.index(x_dim)
+    y_extent = sample_quantity.extent[y_index]
+    x_extent = sample_quantity.extent[x_index]
+    halo_updater_list = []
+    if 0 < n_points_update <= n_points:
+        for communicator, quantity in zip(
+            tile_communicator_list, tile_depth_quantity_list
+        ):
+            halo_updater = communicator.start_halo_update(quantity, n_points_update)
+            halo_updater_list.append(halo_updater)
+        for halo_updater in halo_updater_list:
+            halo_updater.wait()
+        for rank, quantity in enumerate(tile_depth_quantity_list):
+            with subtests.test(rank=rank, quantity=quantity):
+                for dim, extent in ((y_dim, y_extent), (x_dim, x_extent)):
+                    assert numpy.all(quantity.sel(**{dim: -1}) <= 1)
+                    assert numpy.all(quantity.sel(**{dim: extent}) <= 1)
+                    if n_points_update >= 2:
+                        assert numpy.all(quantity.sel(**{dim: -2}) <= 2)
+                        assert numpy.all(quantity.sel(**{dim: extent + 1}) <= 2)
+                    if n_points_update >= 3:
+                        assert numpy.all(quantity.sel(**{dim: -3}) <= 3)
+                        assert numpy.all(quantity.sel(**{dim: extent + 2}) <= 3)
+                    if n_points_update > 3:
+                        raise NotImplementedError(n_points_update)
+
+
 @pytest.fixture
 def zeros_quantity_list(total_ranks, dims, units, origin, extent, shape, numpy, dtype):
     """A list of quantities whose values are 0 in the computational domain and 1
     outside of it."""
     return_list = []
     for rank in range(total_ranks):
+        data = numpy.ones(shape, dtype=dtype)
+        quantity = pace.util.Quantity(
+            data,
+            dims=dims,
+            units=units,
+            origin=origin,
+            extent=extent,
+        )
+        quantity.view[:] = 0.0
+        return_list.append(quantity)
+    return return_list
+
+
+@pytest.fixture
+def zeros_quantity_tile_list(
+    single_tile_ranks, dims, units, origin, extent, shape, numpy, dtype
+):
+    """A list of quantities whose values are 0 in the computational domain and 1
+    outside of it."""
+    return_list = []
+    for rank in range(single_tile_ranks):
         data = numpy.ones(shape, dtype=dtype)
         quantity = pace.util.Quantity(
             data,
