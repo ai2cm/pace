@@ -1,11 +1,10 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3core._config as spec
 import fv3core.stencils.ytp_v as ytp_v
-from fv3core.testing import TranslateFortranData2Py
-from fv3core.utils.grid import GridData, axis_offsets
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing.grid import GridData, axis_offsets
 
 
 def ytp_v_stencil_defn(
@@ -69,8 +68,8 @@ class YTP_V:
 
 
 class TranslateYTP_V(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         c_info = self.grid.compute_dict_buffer_2d()
         c_info["serialname"] = "vb"
         flux_info = self.grid.compute_dict_buffer_2d()
@@ -78,13 +77,15 @@ class TranslateYTP_V(TranslateFortranData2Py):
         self.in_vars["data_vars"] = {"c": c_info, "v": {}, "flux": flux_info}
         self.in_vars["parameters"] = []
         self.out_vars = {"flux": flux_info}
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def compute_from_storage(self, inputs):
         ytp_obj = YTP_V(
-            stencil_factory=self.grid.stencil_factory,
+            stencil_factory=self.stencil_factory,
             grid_data=self.grid.grid_data,
-            grid_type=spec.namelist.grid_type,
-            jord=spec.namelist.hord_mt,
+            grid_type=self.namelist.grid_type,
+            jord=self.namelist.hord_mt,
         )
         ytp_obj(inputs["c"], inputs["v"], inputs["flux"])
         return inputs

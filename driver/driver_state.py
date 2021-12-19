@@ -6,7 +6,7 @@ from fv3core.initialization.dycore_state import DycoreState
 from fv3core import DynamicalCore
 from fv3gfs.physics.stencils.physics import Physics
 #from stencil_functions import copy_fields_in, prepare_tendencies_and_update_tracers
-from fv_update_phys import ApplyPhysics2Dycore
+#from fv_update_phys import ApplyPhysics2Dycore
 import pace.util as fv3util 
 from pace.dsl.stencil import FrozenStencil
 
@@ -73,11 +73,11 @@ class DriverState:
             do_adiabatic_init,
             bdt,  
         )
-
+"""
 class UpdateAtmosphereState:
-    """Fortran name is atmosphere_state_update
+    Fortran name is atmosphere_state_update
     This is an API to apply tendencies and compute a consistent prognostic state.
-    """
+    
 
     def __init__(
             self, grid, namelist, comm: fv3util.CubedSphereCommunicator, grid_info, quantity_factory: fv3util.QuantityFactory
@@ -178,3 +178,4 @@ class UpdateAtmosphereState:
             physics_state.w,
             physics_state.omga,
         )
+"""

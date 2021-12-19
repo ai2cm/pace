@@ -1,6 +1,6 @@
 import sys
 
-
+import f90nml
 import json
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
@@ -13,7 +13,6 @@ from mpi4py import MPI
 import fv3core
 import fv3core._config as spec
 
-import fv3core.utils.global_config as global_config
 import pace.util as util
 import gt4py
 
@@ -23,9 +22,9 @@ import fv3core.initialization.baroclinic as baroclinic_init
 from fv3gfs.physics import PhysicsState
 from fv3gfs.physics.stencils.physics import Physics
 from pace.util.constants import N_HALO_DEFAULT
-from fv3core.grid import MetricTerms
-from fv3core.utils.grid import DampingCoefficients, GridData, DriverGridData
-import pace.util as util
+from pace.util.grid import MetricTerms
+from pace.stencils.testing.grid import DampingCoefficients, GridData, DriverGridData
+import pace.util
 import pace.dsl
 import fv3core._config
 from fv3core.testing.translate_fvdynamics import init_dycore_state_from_serialized_data
@@ -37,17 +36,13 @@ sys.path.append("/port_dev/fv3gfs-physics/tests/savepoint/translate/")
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 backend="numpy"
-fv3core.set_backend(backend)
-fv3core.set_rebuild(False)
-fv3core.set_validate_args(False)
+
 case_name = "/port_dev/fv3core/test_data/c12_6ranks_baroclinic_dycore_microphysics"
-#case_name = "c12_6ranks_baroclinic_dycore_microphysics"
-spec.set_namelist(case_name + "/input.nml")
-namelist = spec.namelist
+
 experiment_name = yaml.safe_load(open(case_name + "/input.yml", "r",))[
     "experiment_name"
 ]
-
+namelist = fv3core._config.Namelist.from_f90nml(f90nml.read(case_name + "/input.nml"))
 output_vars = [
     "u",
     "v",
@@ -65,15 +60,15 @@ output_vars = [
 
 # set up domain decomposition
 layout = namelist.layout
-partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
-communicator = util.CubedSphereCommunicator(comm, partitioner)
+partitioner = pace.util.CubedSpherePartitioner(pace.util.TilePartitioner(layout))
+communicator = pace.util.CubedSphereCommunicator(comm, partitioner)
 
 stencil_config = pace.dsl.stencil.StencilConfig(
     backend=backend,
     rebuild=False,
     validate_args=True,
 )
-sizer = util.SubtileGridSizer.from_tile_params(
+sizer = pace.util.SubtileGridSizer.from_tile_params(
     nx_tile=namelist.npx - 1,
     ny_tile=namelist.npy - 1,
     nz=namelist.npz,
@@ -83,7 +78,7 @@ sizer = util.SubtileGridSizer.from_tile_params(
     tile_partitioner=partitioner.tile,
     tile_rank=communicator.tile.rank,
 )
-quantity_factory = util.QuantityFactory.from_backend(
+quantity_factory = pace.util.QuantityFactory.from_backend(
     sizer, backend=backend
 )
 grid_indexing = pace.dsl.stencil.GridIndexing.from_sizer_and_communicator(
@@ -96,11 +91,6 @@ stencil_factory = pace.dsl.stencil.StencilFactory(
 metric_terms = MetricTerms(quantity_factory=quantity_factory, communicator=communicator)
 grid_data = GridData.new_from_metric_terms(metric_terms)
 driver_grid_data = DriverGridData.new_from_metric_terms(metric_terms)
-# create an initial state from the Jablonowski & Williamson Baroclinic
-# test case perturbation. JRMS2006
-
-# read in missing grid info for physics - this will be removed
-grid = fv3core._config.make_grid_from_namelist(namelist, rank)
 
 init_mode = 'serialized_data'
 
@@ -110,9 +100,12 @@ if init_mode == 'serialized_data':
     serializer = serialbox.Serializer(
     serialbox.OpenModeKind.Read, case_name, "Generator_rank" + str(rank),
     )
-    dycore_state = init_dycore_state_from_serialized_data(serializer, rank, namelist, quantity_factory)
+    dycore_state = init_dycore_state_from_serialized_data(serializer=serializer, rank=rank, backend=backend, namelist=namelist, quantity_factory=quantity_factory, stencil_factory=stencil_factory)
 
 if init_mode == 'baroclinic':
+    # create an initial state from the Jablonowski & Williamson Baroclinic
+    # test case perturbation. JRMS2006
+
     dycore_state = baroclinic_init.init_baroclinic_state(
         metric_terms,
         adiabatic=namelist.adiabatic,

@@ -19,7 +19,7 @@ fv3core_dir=`dirname $0`/../
 if [ -z "${GT4PY_VERSION}" ]; then
     export GT4PY_VERSION=`cat ${fv3core_dir}/GT4PY_VERSION.txt`
 fi
-(cd ${fv3core_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
+${fv3core_dir}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
 python3 -m pip install ${fv3core_dir}/external/pace-util/
 python3 -m pip install $wheel_command -c ${fv3core_dir}/constraints.txt -r ${fv3core_dir}/requirements/requirements_daint.txt

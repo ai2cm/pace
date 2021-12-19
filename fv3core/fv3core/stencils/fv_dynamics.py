@@ -12,10 +12,10 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
-from fv3core.utils.grid import DampingCoefficients, GridData
 from pace.dsl.stencil import FrozenStencil, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.stencils.testing.grid import DampingCoefficients, GridData
 from pace.util.halo_updater import HaloUpdater
 
 

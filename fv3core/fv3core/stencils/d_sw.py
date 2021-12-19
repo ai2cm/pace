@@ -23,9 +23,9 @@ from fv3core.stencils.fvtp2d import (
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import advect_u_along_x
 from fv3core.stencils.ytp_v import advect_v_along_y
-from fv3core.utils.grid import DampingCoefficients, GridData
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.stencils.testing.grid import DampingCoefficients, GridData
 from pace.util import (
     X_DIM,
     X_INTERFACE_DIM,

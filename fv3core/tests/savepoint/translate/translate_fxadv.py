@@ -1,16 +1,17 @@
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
-from fv3core.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateFxAdv(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         utinfo = grid.x3d_domain_dict()
         utinfo["serialname"] = "ut"
         vtinfo = grid.y3d_domain_dict()
         vtinfo["serialname"] = "vt"
+        self.stencil_factory = stencil_factory
         self.compute_func = FiniteVolumeFluxPrep(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             self.grid.grid_data,
         )
         self.in_vars["data_vars"] = {
