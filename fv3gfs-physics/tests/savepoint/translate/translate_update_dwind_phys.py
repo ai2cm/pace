@@ -3,6 +3,7 @@ import numpy as np
 import pace.util
 from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from pace.stencils.testing.grid import DriverGridData
 
 
 class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
@@ -60,9 +61,10 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
             "ew2_2",
             "ew3_2",
         ]
-        grid_info = {}
+        grid_dict = {}
         for var in grid_names:
-            grid_info[var] = inputs.pop(var)
+            grid_dict[var] = inputs.pop(var)
+        grid_info = DriverGridData(**grid_dict)
         partitioner = pace.util.CubedSpherePartitioner(
             pace.util.TilePartitioner(self.namelist.layout)
         )
