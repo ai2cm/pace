@@ -138,9 +138,9 @@ class ApplyPhysics2Dycore:
     def __call__(
         self,
         state,
-        u_dt: FloatField,
-        v_dt: FloatField,
-        t_dt: FloatField,
+        u_dt_quantity: pace.util.Quantity,
+        v_dt_quantity: pace.util.Quantity,
+        t_dt: pace.util.Quantity,
     ):
         self._moist_cv(
             state.qvapor,
@@ -154,21 +154,7 @@ class ApplyPhysics2Dycore:
             constants.CP_AIR,
             self._dt,
         )
-        # [TODO] needs a better solution to handle u_dt, v_dt quantity
-        u_dt_quantity = pace.util.Quantity(
-            u_dt,
-            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            units="m/s",
-            origin=self.origin,
-            extent=self.extent,
-        )
-        v_dt_quantity = pace.util.Quantity(
-            v_dt,
-            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            units="m/s",
-            origin=self.origin,
-            extent=self.extent,
-        )
+      
         self._udt_halo_updater.start([u_dt_quantity])
         self._vdt_halo_updater.start([v_dt_quantity])
         self._update_pressure_and_surface_winds(
@@ -185,9 +171,7 @@ class ApplyPhysics2Dycore:
         )
         self._udt_halo_updater.wait()
         self._vdt_halo_updater.wait()
-        u_dt = u_dt_quantity.storage
-        v_dt = v_dt_quantity.storage
-        self._AGrid2DGridPhysics(state.u, state.v, u_dt, v_dt)
+        self._AGrid2DGridPhysics(state.u, state.v, u_dt_quantity.storage, v_dt_quantity.storage)
         self._do_cubed_to_latlon(
             state.u_quantity,
             state.v_quantity,

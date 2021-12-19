@@ -162,7 +162,7 @@ def update_physics_state_with_tendencies(
         ua_t1 = forward_euler(ua, udt, dt)
         va_t1 = forward_euler(va, vdt, dt)
 
-
+            
 class Physics:
     def __init__(
         self,
@@ -172,7 +172,7 @@ class Physics:
         comm: pace.util.CubedSphereCommunicator,
         rank: int,
         grid_info,
-        ptop: int
+        quantity_factory: pace.util.QuantityFactory
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
@@ -180,7 +180,7 @@ class Physics:
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         self.setup_statein()
         self._dt_atmos = Float(self.namelist.dt_atmos)
-        self._ptop = ptop
+        self._ptop = grid_data.ptop
         self._pktop = (self._ptop / self._p00) ** constants.KAPPA
         self._pk0inv = (1.0 / self._p00) ** constants.KAPPA
 
@@ -189,7 +189,6 @@ class Physics:
                 shape, origin=origin, init=True, backend=stencil_factory.backend
             )
 
-        self._prsi = make_storage()
         self._prsik = make_storage()
         self._dm3d = make_storage()
         self._del_gz = make_storage()
@@ -226,8 +225,9 @@ class Physics:
             domain=grid_indexing.domain_compute(),
         )
         self._microphysics = Microphysics(stencil_factory, grid_data, namelist)
+      
         self._update_atmos_state = UpdateAtmosphereState(
-            stencil_factory, grid_data, namelist, comm, rank, grid_info
+            stencil_factory, grid_data, namelist, comm, rank, grid_info, quantity_factory
         )
 
     def setup_statein(self):
@@ -242,7 +242,7 @@ class Physics:
         self._atmos_phys_driver_statein(
             self._prsik,
             physics_state.phii,
-            self._prsi,
+            physics_state.prsi,
             physics_state.delz,
             physics_state.delp,
             physics_state.qvapor,
@@ -259,7 +259,7 @@ class Physics:
         )
         self._get_prs_fv3(
             physics_state.phii,
-            self._prsi,
+            physics_state.prsi,
             physics_state.pt,
             physics_state.qvapor,
             physics_state.delprsi,
@@ -318,5 +318,6 @@ class Physics:
             physics_state.va_t1,
             self._dt_atmos,
         )
+       
         # [TODO]: allow update_atmos_state call when grid variables are ready
-        self._update_atmos_state(state, physics_state, self._prsi)
+        self._update_atmos_state(state, physics_state)
