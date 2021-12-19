@@ -38,7 +38,7 @@ class DriverState:
             if field.metadata["full_model_var"]:
                 initial_storages[field.name] = getattr(dycore_state, field.name)
             else:
-                initial_storages[field.name] = quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],  field.metadata["units"], dtype=float).storage
+                initial_storages[field.name] = quantity_factory.zeros([fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],  field.metadata["units"], dtype=float)
         return PhysicsState(**initial_storages, quantity_factory=quantity_factory)
  
     @classmethod

@@ -128,7 +128,7 @@ dycore = fv3core.DynamicalCore(
     phis=dycore_state.phis, 
 )
 
-step_physics = Physics(stencil_factory=stencil_factory,   grid_data=grid_data, namelist=namelist,comm=communicator, rank=rank, grid_info=driver_grid_data, ptop=metric_terms.ptop)
+step_physics = Physics(stencil_factory=stencil_factory,   grid_data=grid_data, namelist=namelist,comm=communicator, rank=rank, grid_info=driver_grid_data, quantity_factory=quantity_factory)
 
 for t in range(1, 2):
     dycore.step_dynamics(
@@ -138,9 +138,7 @@ for t in range(1, 2):
         do_adiabatic_init=do_adiabatic_init,
         timestep=bdt,  
     )
-    #driver.update_physics_inputs_state(driver_state.dycore_state, driver_state.physics_state)
     step_physics(driver_state.dycore_state, driver_state.physics_state)
-    #driver.apply_physics_to_dynamics(driver_state.physics_state, driver_state.dycore_state)
     if t % 5 == 0:
         comm.Barrier()
        
