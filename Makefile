@@ -45,3 +45,11 @@ update_submodules_venv:
 	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
                 git submodule update --init external/daint_venv; \
         fi
+
+run:
+	docker run --rm \
+		--network host \
+		-v $(CWD):/port_dev \
+	        -v $(CWD)/fv3gfs-physics:/fv3gfs-physics \
+                -v $(CWD)/fv3core:/fv3core \
+		$(FV3GFS_IMAGE) bash -c 'cd /port_dev &&  mpirun -np 6 python3 /port_dev/driver/run_driver.py'

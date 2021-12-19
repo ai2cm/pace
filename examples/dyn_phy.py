@@ -132,7 +132,6 @@ def driver(
         grid_data=GridData.new_from_metric_terms(metric_terms),
         namelist=namelist,
         comm=communicator,
-        partitioner=partitioner,
         rank=rank,
         grid_info=missing_grid_info,
     )

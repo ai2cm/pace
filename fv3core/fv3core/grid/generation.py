@@ -7,7 +7,7 @@ from fv3core.utils.corners import (
     fill_corners_cgrid,
     fill_corners_dgrid,
 )
-from pace.dsl.gt4py_utils import asarray
+from pace.dsl.gt4py_utils import asarray, make_storage_data
 from pace.dsl.stencil import GridIndexing
 from pace.util.constants import N_HALO_DEFAULT, PI, RADIUS
 
@@ -2217,3 +2217,14 @@ class MetricTerms:
             self._da_max = max_area
             self._da_min_c = min_area_c
             self._da_max_c = max_area_c
+
+    def split_cartesian_into_storages(self, var: fv3util.Quantity):
+        var_data = []
+        for cart in range(3):
+            var_data.append(make_storage_data(
+                var.data[:, :, cart],
+                var.data.shape[0:2],
+                backend=var.gt4py_backend,
+            ))
+        return var_data
+       

@@ -1093,3 +1093,85 @@ def _grid_indexing_axis_offsets(
     domain: Tuple[int, ...],
 ) -> Mapping[str, gtscript.AxisIndex]:
     return grid.axis_offsets(origin=origin, domain=domain)
+
+@dataclasses.dataclass(frozen=True)
+class DriverGridData:
+    """
+    Terms used to Apply Physics changes to the Dycore.
+    """
+
+    vlon1: FloatFieldIJ
+    vlon2: FloatFieldIJ
+    vlon3: FloatFieldIJ
+    vlat1: FloatFieldIJ
+    vlat2: FloatFieldIJ
+    vlat3: FloatFieldIJ
+    edge_vect_w: FloatFieldI
+    edge_vect_e: FloatFieldI
+    edge_vect_s: FloatFieldIJ
+    edge_vect_n: FloatFieldIJ
+    es1_1: FloatFieldIJ
+    es1_2: FloatFieldIJ
+    es1_3: FloatFieldIJ
+    ew2_1: FloatFieldIJ
+    ew2_2: FloatFieldIJ
+    ew2_3: FloatFieldIJ
+  
+    
+    @classmethod
+    def new_from_metric_terms(cls, metric_terms: MetricTerms):
+        # TODO fix <Quantity>.storage mask for FieldI
+        shape = metric_terms.lon.data.shape
+        backend = metric_terms.edge_vect_n.gt4py_backend
+        edge_vect_n = utils.make_storage_data(
+            metric_terms.edge_vect_n.data,
+            (shape[0],),
+            axis=0,
+            backend=backend,
+        )
+        edge_vect_s = utils.make_storage_data(
+            metric_terms.edge_vect_s.data,
+            (shape[0],),
+            axis=0,
+            backend=backend,
+        )
+       
+        east_edge_data = metric_terms.edge_vect_e.data[np.newaxis, ...]
+        east_edge_data = np.repeat(east_edge_data, shape[0], axis=0)
+        edge_vect_e = utils.make_storage_data(
+            data=east_edge_data,
+            shape=east_edge_data.shape,
+            origin=(0, 0),
+            backend=backend,
+        )
+        west_edge_data = metric_terms.edge_vect_w.data[np.newaxis, ...]
+        west_edge_data = np.repeat(west_edge_data, shape[0], axis=0)
+        edge_vect_w = utils.make_storage_data(
+            data=west_edge_data,
+            shape=west_edge_data.shape,
+            origin=(0, 0),
+            backend=backend,
+        )
+      
+        vlon1, vlon2, vlon3 = metric_terms.split_cartesian_into_storages(metric_terms.vlon)
+        vlat1, vlat2, vlat3 = metric_terms.split_cartesian_into_storages(metric_terms.vlat)
+        es1_1, es1_2, es1_3 = metric_terms.split_cartesian_into_storages(metric_terms.es1)
+        ew2_1, ew2_2, ew2_3 = metric_terms.split_cartesian_into_storages(metric_terms.ew2)
+        return cls(
+            vlon1=vlon1,
+            vlon2=vlon2,
+            vlon3=vlon3,
+            vlat1=vlat1,
+            vlat2=vlat2,
+            vlat3=vlat3,
+            es1_1=es1_1,
+            es1_2=es1_2,
+            es1_3=es1_3,
+            ew2_1=ew2_1,
+            ew2_2=ew2_2,
+            ew2_3=ew2_3,
+            edge_vect_w=edge_vect_w,
+            edge_vect_e=edge_vect_e,
+            edge_vect_s=edge_vect_s,
+            edge_vect_n=edge_vect_n,
+        )

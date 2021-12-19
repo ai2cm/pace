@@ -170,9 +170,9 @@ class Physics:
         grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
-        partitioner: TilePartitioner,
         rank: int,
         grid_info,
+        ptop: int
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
@@ -180,7 +180,7 @@ class Physics:
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         self.setup_statein()
         self._dt_atmos = Float(self.namelist.dt_atmos)
-        self._ptop = 300.0  # hard coded before we can call ak from grid: state["ak"][0]
+        self._ptop = ptop
         self._pktop = (self._ptop / self._p00) ** constants.KAPPA
         self._pk0inv = (1.0 / self._p00) ** constants.KAPPA
 
@@ -227,7 +227,7 @@ class Physics:
         )
         self._microphysics = Microphysics(stencil_factory, grid_data, namelist)
         self._update_atmos_state = UpdateAtmosphereState(
-            stencil_factory, grid_data, namelist, comm, partitioner, rank, grid_info
+            stencil_factory, grid_data, namelist, comm, rank, grid_info
         )
 
     def setup_statein(self):
@@ -236,13 +236,9 @@ class Physics:
         self._nwat = 6  # spec.namelist.nwat
         self._p00 = 1.0e5
 
-    def setup_const_from_ptop(self, ptop: float):
-        self._pktop = (self._ptop / self._p00) ** constants.KAPPA
-        self._pk0inv = (1.0 / self._p00) ** constants.KAPPA
-
-    def __call__(self, state: DycoreState, ptop: float):
-        self.setup_const_from_ptop(ptop)
-        physics_state = PhysicsState.from_dycore_state(state, self._full_zero_storage)
+   
+    def __call__(self, state: DycoreState, physics_state: PhysicsState):
+      
         self._atmos_phys_driver_statein(
             self._prsik,
             physics_state.phii,
@@ -286,7 +282,7 @@ class Physics:
             physics_state.pt,
             physics_state.delp,
         )
-        microph_state = physics_state.microphysics(self._full_zero_storage)
+        microph_state = physics_state.microphysics
         self._microphysics(microph_state)
         # Fortran uses IPD interface, here we use var_t1 to denote the updated field
         self._update_physics_state_with_tendencies(

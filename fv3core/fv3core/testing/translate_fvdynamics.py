@@ -367,7 +367,8 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
 
 
 # Method for creating a DycoreState object from serialized data
-def init_dycore_state_from_serialized_data(serializer, grid, quantity_factory):
+def init_dycore_state_from_serialized_data(serializer, rank, namelist, quantity_factory):
+    grid = spec.make_grid_from_namelist(namelist, rank)
     savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
     translate_object = TranslateFVDynamics([grid])
     input_data = translate_object.collect_input_data(serializer, savepoint_in)

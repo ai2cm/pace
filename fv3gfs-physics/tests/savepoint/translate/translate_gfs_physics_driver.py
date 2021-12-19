@@ -137,9 +137,9 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             self.grid.grid_data,
             spec.namelist,
             communicator,
-            partitioner,
             self.grid.rank,
             grid_info,
+            300.0
         )
         physics._atmos_phys_driver_statein(
             physics._prsik,

@@ -7,7 +7,6 @@ from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
-from pace.util import TilePartitioner
 
 
 def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
@@ -99,7 +98,6 @@ class UpdateAtmosphereState:
         grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
-        partitioner: TilePartitioner,
         rank: int,
         grid_info,
     ):
@@ -134,7 +132,6 @@ class UpdateAtmosphereState:
             grid_data,
             self.namelist,
             comm,
-            partitioner,
             rank,
             grid_info,
         )

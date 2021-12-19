@@ -11,7 +11,7 @@ from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
-from pace.util import TilePartitioner
+
 
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir
@@ -85,7 +85,6 @@ class ApplyPhysics2Dycore:
         grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
-        partitioner: TilePartitioner,
         rank: int,
         grid_info,
     ):
@@ -104,7 +103,7 @@ class ApplyPhysics2Dycore:
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._AGrid2DGridPhysics = AGrid2DGridPhysics(
-            stencil_factory, partitioner, rank, self.namelist, grid_info
+            stencil_factory, comm.partitioner, rank, self.namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
             stencil_factory,
