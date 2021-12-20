@@ -390,7 +390,7 @@ class Namelist:
     # use_ncep_sst: bool
     # blocksize: int
     # chksum_debug: bool
-    # dycore_only: bool
+    dycore_only: bool = DEFAULT_BOOL
     # fdiag: float
     # knob_ugwp_azdir: Tuple[int, int, int, int]
     # knob_ugwp_doaxyz: int
