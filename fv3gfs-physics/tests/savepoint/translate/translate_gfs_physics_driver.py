@@ -1,18 +1,16 @@
 import copy
 
-from mpi4py import MPI
-
-import fv3core._config as spec
 import pace.dsl.gt4py_utils as utils
 import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
 from pace.dsl.typing import Float
+from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from pace.util.mpi import MPI
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
 
         self.in_vars["data_vars"] = {
             "qvapor": {"dycore": True},
@@ -35,63 +33,66 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         self.out_vars = {
             "gt0": {
                 "serialname": "IPD_gt0",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "gu0": {
                 "serialname": "IPD_gu0",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "gv0": {
                 "serialname": "IPD_gv0",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qvapor": {
                 "serialname": "IPD_qvapor",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qliquid": {
                 "serialname": "IPD_qliquid",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qrain": {
                 "serialname": "IPD_rain",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qice": {
                 "serialname": "IPD_qice",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qsnow": {
                 "serialname": "IPD_snow",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qgraupel": {
                 "serialname": "IPD_qgraupel",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qcld": {
                 "serialname": "IPD_qcld",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
         }
+        self.namelist = namelist
+        self.stencil_factory = stencil_factory
+        self.grid_indexing = self.stencil_factory.grid_indexing
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         storage = utils.make_storage_from_shape(
-            self.grid.domain_shape_full(add=(1, 1, 1)),
-            origin=self.grid.compute_origin(),
+            self.grid_indexing.domain_full(add=(1, 1, 1)),
+            origin=self.grid_indexing.origin_compute(),
             init=True,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )
         inputs["delprsi"] = copy.deepcopy(storage)
         inputs["phii"] = copy.deepcopy(storage)
@@ -133,9 +134,9 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         grid_info["ew2_2"] = 0
         grid_info["ew3_2"] = 0
         physics = Physics(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             self.grid.grid_data,
-            spec.namelist,
+            self.namelist,
             communicator,
             partitioner,
             self.grid.rank,

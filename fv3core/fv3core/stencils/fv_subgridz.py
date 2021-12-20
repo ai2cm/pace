@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 from typing import Mapping
 
 import gt4py.gtscript as gtscript

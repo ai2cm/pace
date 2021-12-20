@@ -1,12 +1,13 @@
 import fv3core.stencils.updatedzc as updatedzc
-from fv3core.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateUpdateDzC(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
+        self.stencil_factory = stencil_factory
         update_gz_on_c_grid = updatedzc.UpdateGeopotentialHeightOnCGrid(
-            grid.stencil_factory, grid.area
+            self.stencil_factory, grid.area
         )
 
         def compute(**kwargs):
