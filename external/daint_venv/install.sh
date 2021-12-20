@@ -5,9 +5,6 @@ BUILDENV_DIR=$SCRIPT_DIR/../../buildenv
 
 VERSION=vcm_1.0
 env_file=env.daint.sh
-dst_dir=${1:-${installdir}/venv/${VERSION}}
-wheeldir=${2:-${installdir}/wheeldir}
-save_wheel=${3: false}
 src_dir=$(pwd)
 
 # versions
@@ -21,6 +18,10 @@ source ${BUILDENV_DIR}/${env_file}
 # echo commands and stop on error
 set -e
 set -x
+
+dst_dir=${1:-${installdir}/venv/${VERSION}}
+wheeldir=${2:-${installdir}/wheeldir}
+save_wheel=${3: false}
 
 # delete any pre-existing venv directories
 if [ -d ${dst_dir} ] ; then
