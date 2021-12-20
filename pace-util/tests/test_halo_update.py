@@ -189,6 +189,23 @@ def communicator_list(cube_partitioner):
 
 
 @pytest.fixture
+def tile_communicator_list(tile_partitioner):
+    shared_buffer = {}
+    return_list = []
+    for rank in range(tile_partitioner.total_ranks):
+        return_list.append(
+            pace.util.TileCommunicator(
+                comm=pace.util.testing.DummyComm(
+                    rank=rank, total_ranks=single_tile_ranks, buffer_dict=shared_buffer
+                ),
+                partitioner=tile_partitioner,
+                timer=pace.util.Timer(),
+            )
+        )
+    return return_list
+
+
+@pytest.fixture
 def tile_partitioner(layout):
     return pace.util.TilePartitioner(layout)
 
