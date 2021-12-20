@@ -8,8 +8,6 @@ from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.stencils.testing.grid import DriverGridData, GridData
-
-# TODO: we don't want to import from fv3core
 from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
 
 
