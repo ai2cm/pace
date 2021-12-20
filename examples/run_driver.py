@@ -16,7 +16,7 @@ import fv3core._config as spec
 import pace.util as util
 import gt4py
 
-from driver_state import DriverState
+from pace.driver.driver import Driver
 from fv3core.initialization.dycore_state import DycoreState
 import fv3core.initialization.baroclinic as baroclinic_init
 from fv3gfs.physics import PhysicsState
@@ -37,7 +37,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 backend="numpy"
 
-case_name = "/port_dev/fv3core/test_data/c12_6ranks_baroclinic_dycore_microphysics"
+case_name = "/fv3core/test_data/c12_6ranks_baroclinic_dycore_microphysics"
 
 experiment_name = yaml.safe_load(open(case_name + "/input.yml", "r",))[
     "experiment_name"
@@ -113,7 +113,7 @@ if init_mode == 'baroclinic':
         moist_phys=namelist.moist_phys,
         comm=communicator,
     )
-driver_state = DriverState.init_from_dycore_state(dycore_state,  quantity_factory, namelist, comm, grid_info=driver_grid_data)
+driver = Driver.init_from_dycore_state(dycore_state,  quantity_factory, namelist, comm, grid_info=driver_grid_data)
 # TODO
 do_adiabatic_init = False
 # TODO derive from namelist
@@ -132,20 +132,20 @@ step_physics = Physics(stencil_factory=stencil_factory,   grid_data=grid_data, n
 
 for t in range(1, 2):
     dycore.step_dynamics(
-        state=driver_state.dycore_state,
+        state=driver.dycore_state,
         conserve_total_energy=namelist.consv_te,
         n_split=namelist.n_split,
         do_adiabatic_init=do_adiabatic_init,
         timestep=bdt,  
     )
-    step_physics(driver_state.dycore_state, driver_state.physics_state)
+    step_physics(driver.dycore_state, driver.physics_state)
     if t % 5 == 0:
         comm.Barrier()
        
         output = {}
 
         for key in output_vars:
-            getattr(driver_state.dycore_state, key).synchronize()
-            output[key] = np.asarray(getattr(driver_state.dycore_state, key))
+            getattr(driver.dycore_state, key).synchronize()
+            output[key] = np.asarray(getattr(driver.dycore_state, key))
         np.save("pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npy", output)
 

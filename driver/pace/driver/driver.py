@@ -11,7 +11,7 @@ import pace.util as fv3util
 from pace.dsl.stencil import FrozenStencil
 
 
-class DriverState:
+class Driver:
     # TODO, should not need all these inputs
     def __init__(self, dycore_state: DycoreState, physics_state: PhysicsState, quantity_factory, namelist, comm, grid_info):
         self.dycore_state = dycore_state
