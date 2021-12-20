@@ -4,15 +4,13 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util.constants as constants
-
-# TODO: we don't want to import from fv3core
-from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.stencils.testing.grid import DriverGridData, GridData
 
-from pace.stencils.testing.grid import GridData, DriverGridData
-
+# TODO: we don't want to import from fv3core
+from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
 
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir
@@ -153,7 +151,7 @@ class ApplyPhysics2Dycore:
             constants.CP_AIR,
             self._dt,
         )
-      
+
         self._udt_halo_updater.start([u_dt_quantity])
         self._vdt_halo_updater.start([v_dt_quantity])
         self._update_pressure_and_surface_winds(
@@ -170,7 +168,9 @@ class ApplyPhysics2Dycore:
         )
         self._udt_halo_updater.wait()
         self._vdt_halo_updater.wait()
-        self._AGrid2DGridPhysics(state.u, state.v, u_dt_quantity.storage, v_dt_quantity.storage)
+        self._AGrid2DGridPhysics(
+            state.u, state.v, u_dt_quantity.storage, v_dt_quantity.storage
+        )
         self._do_cubed_to_latlon(
             state.u_quantity,
             state.v_quantity,

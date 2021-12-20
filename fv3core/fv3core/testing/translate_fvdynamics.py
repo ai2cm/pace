@@ -3,13 +3,14 @@ from typing import Any, Dict, Optional
 
 import pytest
 
+import fv3core._config as spec
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
 from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.dycore_state import DycoreState
 from pace.stencils.testing import ParallelTranslateBaseSlicing
-import fv3core._config as spec
+
 
 ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]
 
@@ -369,7 +370,9 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
 
 
 # Method for creating a DycoreState object from serialized data
-def init_dycore_state_from_serialized_data(serializer, rank, backend, namelist, quantity_factory, stencil_factory):
+def init_dycore_state_from_serialized_data(
+    serializer, rank, backend, namelist, quantity_factory, stencil_factory
+):
     grid = spec.make_grid_from_namelist(namelist, rank, backend)
     savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
     translate_object = TranslateFVDynamics([grid], namelist, stencil_factory)

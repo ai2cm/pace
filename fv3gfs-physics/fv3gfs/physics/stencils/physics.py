@@ -2,9 +2,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import pace.dsl.gt4py_utils as utils
-import pace.util
 import pace.util.constants as constants
-from fv3core.initialization.dycore_state import DycoreState
 from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
@@ -12,7 +10,6 @@ from fv3gfs.physics.stencils.microphysics import Microphysics
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.testing.grid import GridData
-from pace.util import TilePartitioner
 
 
 def atmos_phys_driver_statein(
@@ -161,7 +158,7 @@ def update_physics_state_with_tendencies(
         ua_t1 = forward_euler(ua, udt, dt)
         va_t1 = forward_euler(va, vdt, dt)
 
-            
+
 class Physics:
     def __init__(
         self,
@@ -220,7 +217,6 @@ class Physics:
             domain=grid_indexing.domain_compute(),
         )
         self._microphysics = Microphysics(stencil_factory, grid_data, namelist)
-      
 
     def setup_statein(self):
         self._NQ = 8  # state.nq_tot - spec.namelist.dnats
@@ -228,9 +224,8 @@ class Physics:
         self._nwat = 6  # spec.namelist.nwat
         self._p00 = 1.0e5
 
-   
     def __call__(self, physics_state: PhysicsState):
-      
+
         self._atmos_phys_driver_statein(
             self._prsik,
             physics_state.phii,
@@ -310,4 +305,3 @@ class Physics:
             physics_state.va_t1,
             self._dt_atmos,
         )
-       

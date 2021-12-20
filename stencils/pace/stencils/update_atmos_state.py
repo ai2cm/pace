@@ -1,12 +1,11 @@
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3gfs.physics.physics_state import PhysicsState
-from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
-from pace.stencils.testing.grid import GridData, DriverGridData
+from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
+from pace.stencils.testing.grid import DriverGridData, GridData
 
 
 def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
@@ -30,6 +29,7 @@ def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
     with computation(FORWARD), interval(0, -2):
         if q[0, 0, 0] < 0.0:
             q = 0.0
+
 
 def prepare_tendencies_and_update_tracers(
     u_dt: FloatField,
@@ -105,7 +105,7 @@ class UpdateAtmosphereState:
         origin = grid_indexing.origin_compute()
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         self._rdt = 1.0 / Float(self.namelist.dt_atmos)
-       
+
         self._prepare_tendencies_and_update_tracers = (
             stencil_factory.from_origin_domain(
                 prepare_tendencies_and_update_tracers,
@@ -114,11 +114,10 @@ class UpdateAtmosphereState:
             )
         )
 
-      
         dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
-        self._u_dt = quantity_factory.zeros(dims,  "m/s^2", dtype=float)
-        self._v_dt = quantity_factory.zeros(dims,  "m/s^2", dtype=float) 
-        self._pt_dt = quantity_factory.zeros(dims,  "degK/s", dtype=float)
+        self._u_dt = quantity_factory.zeros(dims, "m/s^2", dtype=float)
+        self._v_dt = quantity_factory.zeros(dims, "m/s^2", dtype=float)
+        self._pt_dt = quantity_factory.zeros(dims, "degK/s", dtype=float)
         self._fill_GFS = stencil_factory.from_origin_domain(
             fill_gfs,
             origin=grid_indexing.origin_full(),

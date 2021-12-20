@@ -4,10 +4,11 @@ import numpy as np
 
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
+from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.stencils.testing.grid import DriverGridData
+from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
+
 
 @dataclasses.dataclass()
 class DycoreState:
@@ -315,16 +316,22 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         for var in grid_names:
             data = inputs.pop(var)
             if "_1" in var:
-                grid_dict["es1_"+ var[2]] = data
+                grid_dict["es1_" + var[2]] = data
             elif "_2" in var:
-                grid_dict["ew2_"+ var[2]] = data
+                grid_dict["ew2_" + var[2]] = data
             else:
                 grid_dict[var] = data
-        extra_grid_info = DriverGridData(**grid_dict) 
+        extra_grid_info = DriverGridData(**grid_dict)
         tendencies = {}
         for key in ["u_dt", "v_dt", "t_dt"]:
             storage = inputs.pop(key)
-            tendencies[key] = pace.util.Quantity(storage, dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM], units="test", origin=(0,0,0), extent=storage.shape)
+            tendencies[key] = pace.util.Quantity(
+                storage,
+                dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+                units="test",
+                origin=(0, 0, 0),
+                extent=storage.shape,
+            )
         partitioner = pace.util.CubedSpherePartitioner(
             pace.util.TilePartitioner(self.namelist.layout)
         )

@@ -119,9 +119,10 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             extra_dim_lengths={},
             layout=self.namelist.layout,
         )
-       
+
         quantity_factory = util.QuantityFactory.from_backend(
-            sizer, self.stencil_factory.backend)
+            sizer, self.stencil_factory.backend
+        )
         physics_state = PhysicsState(**inputs, quantity_factory=quantity_factory)
         # make mock communicator, this is not used
         # but needs to be passed as type CubedSphereCommunicator

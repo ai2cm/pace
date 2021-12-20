@@ -1,9 +1,9 @@
 import numpy as np
 
 import pace.util
-from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
-from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 from pace.stencils.testing.grid import DriverGridData
+from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
 
 
 class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
@@ -65,12 +65,12 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         for var in grid_names:
             data = inputs.pop(var)
             if "_1" in var:
-                grid_dict["es1_"+ var[2]] = data
+                grid_dict["es1_" + var[2]] = data
             elif "_2" in var:
-                grid_dict["ew2_"+ var[2]] = data
+                grid_dict["ew2_" + var[2]] = data
             else:
                 grid_dict[var] = data
-          
+
         grid_info = DriverGridData(**grid_dict)
         partitioner = pace.util.CubedSpherePartitioner(
             pace.util.TilePartitioner(self.namelist.layout)

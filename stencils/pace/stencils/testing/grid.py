@@ -1090,6 +1090,7 @@ def _grid_indexing_axis_offsets(
 ) -> Mapping[str, gtscript.AxisIndex]:
     return grid.axis_offsets(origin=origin, domain=domain)
 
+
 @dataclasses.dataclass(frozen=True)
 class DriverGridData:
     """
@@ -1112,8 +1113,7 @@ class DriverGridData:
     ew2_1: FloatFieldIJ
     ew2_2: FloatFieldIJ
     ew2_3: FloatFieldIJ
-  
-    
+
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
         # TODO fix <Quantity>.storage mask for FieldI
@@ -1131,7 +1131,7 @@ class DriverGridData:
             axis=0,
             backend=backend,
         )
-       
+
         east_edge_data = metric_terms.edge_vect_e.data[np.newaxis, ...]
         east_edge_data = np.repeat(east_edge_data, shape[0], axis=0)
         edge_vect_e = utils.make_storage_data(
@@ -1148,11 +1148,19 @@ class DriverGridData:
             origin=(0, 0),
             backend=backend,
         )
-      
-        vlon1, vlon2, vlon3 = metric_terms.split_cartesian_into_storages(metric_terms.vlon)
-        vlat1, vlat2, vlat3 = metric_terms.split_cartesian_into_storages(metric_terms.vlat)
-        es1_1, es1_2, es1_3 = metric_terms.split_cartesian_into_storages(metric_terms.es1)
-        ew2_1, ew2_2, ew2_3 = metric_terms.split_cartesian_into_storages(metric_terms.ew2)
+
+        vlon1, vlon2, vlon3 = metric_terms.split_cartesian_into_storages(
+            metric_terms.vlon
+        )
+        vlat1, vlat2, vlat3 = metric_terms.split_cartesian_into_storages(
+            metric_terms.vlat
+        )
+        es1_1, es1_2, es1_3 = metric_terms.split_cartesian_into_storages(
+            metric_terms.es1
+        )
+        ew2_1, ew2_2, ew2_3 = metric_terms.split_cartesian_into_storages(
+            metric_terms.ew2
+        )
         return cls(
             vlon1=vlon1,
             vlon2=vlon2,

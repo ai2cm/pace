@@ -435,7 +435,7 @@ class AGrid2DGridPhysics:
         """
         Transforms the wind tendencies from A grid to D grid for the final update
         """
-      
+
         self._update_dwind_prep_stencil(
             u_dt,
             v_dt,

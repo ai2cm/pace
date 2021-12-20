@@ -1,8 +1,9 @@
 import copy
 
 import numpy as np
-import pace.util
+
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
@@ -80,9 +81,10 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
             extra_dim_lengths={},
             layout=self.namelist.layout,
         )
-       
+
         quantity_factory = pace.util.QuantityFactory.from_backend(
-            sizer, self.stencil_factory.backend)
+            sizer, self.stencil_factory.backend
+        )
         physics_state = PhysicsState(**inputs, quantity_factory=quantity_factory)
         microphysics = Microphysics(
             self.stencil_factory, self.grid.grid_data, self.namelist
