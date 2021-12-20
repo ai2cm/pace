@@ -168,7 +168,6 @@ class Physics:
         stencil_factory: StencilFactory,
         grid_data: GridData,
         namelist,
-        quantity_factory: pace.util.QuantityFactory
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist

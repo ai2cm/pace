@@ -128,7 +128,7 @@ dycore = fv3core.DynamicalCore(
     phis=dycore_state.phis, 
 )
 
-step_physics = Physics(stencil_factory=stencil_factory,   grid_data=grid_data, namelist=namelist,comm=communicator, rank=rank, grid_info=driver_grid_data, quantity_factory=quantity_factory)
+step_physics = Physics(stencil_factory=stencil_factory,   grid_data=grid_data, namelist=namelist)
 
 for t in range(1, 2):
     dycore.step_dynamics(
