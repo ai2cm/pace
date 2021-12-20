@@ -11,7 +11,7 @@ RUN_FLAGS ?=--rm
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 VOLUMES = -v $(CWD):/port_dev
 ifeq ($(DEV),y)
-	VOLUMES = -v $(CWD)/fv3core:/fv3core -v $(CWD)/fv3gfs-physics:/fv3gfs-physics -v $(CWD)/stencils:/stencils -v $(CWD)/dsl:/dsl -v $(CWD)/pace-util:/pace-util -v $(CWD)/test_data:/test_data -v $(CWD)/examples:/port_dev/examples
+	VOLUMES = -v $(CWD)/fv3core:/fv3core -v $(CWD)/fv3gfs-physics:/fv3gfs-physics -v $(CWD)/stencils:/stencils -v $(CWD)/dsl:/dsl -v $(CWD)/pace-util:/pace-util -v $(CWD)/test_data:/test_data -v $(CWD)/examples:/port_dev/examples -v $(CWD)/driver:/driver
 endif
 
 build:
@@ -58,4 +58,5 @@ run:
 	        -v $(CWD)/fv3gfs-physics:/fv3gfs-physics \
                 -v $(CWD)/pace-util:/pace-util \
                 -v $(CWD)/fv3core:/fv3core \
-		$(FV3GFS_IMAGE) bash -c 'cd /port_dev &&  mpirun -np 6 python3 /port_dev/driver/run_driver.py'
+		-v $(CWD)/driver:/driver \
+		$(FV3GFS_IMAGE) bash -c 'cd /port_dev &&  mpirun -np 6 python3 /port_dev/examples/run_driver.py'

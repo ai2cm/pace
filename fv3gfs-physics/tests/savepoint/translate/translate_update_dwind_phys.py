@@ -63,7 +63,14 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
         ]
         grid_dict = {}
         for var in grid_names:
-            grid_dict[var] = inputs.pop(var)
+            data = inputs.pop(var)
+            if "_1" in var:
+                grid_dict["es1_"+ var[2]] = data
+            elif "_2" in var:
+                grid_dict["ew2_"+ var[2]] = data
+            else:
+                grid_dict[var] = data
+          
         grid_info = DriverGridData(**grid_dict)
         partitioner = pace.util.CubedSpherePartitioner(
             pace.util.TilePartitioner(self.namelist.layout)
