@@ -84,31 +84,6 @@ class HaloUpdateRequest:
                 Buffer.push_to_cache(transfer_buffer)
 
 
-class LocalCommunicator:
-    """
-    A non-MPI based communicator for single-rank halo updates
-    """
-
-    def __init__(self, partitioner, force_cpu: bool = False):
-        self.partitioner: Partitioner = partitioner
-        self._force_cpu = force_cpu
-
-    def _maybe_force_cpu(self, module: NumpyModule) -> NumpyModule:
-        """
-        Get a numpy-like module depending on configuration and
-        Quantity original allocator.
-        """
-        if self._force_cpu:
-            return np
-        return module
-
-    @staticmethod
-    def _device_synchronize():
-        """Wait for all work that could be in-flight to finish."""
-        # this is a method so we can profile it separately from other device syncs
-        device_synchronize()
-
-
 class Communicator:
     def __init__(self, comm, partitioner, force_cpu: bool = False):
         self.comm = comm
