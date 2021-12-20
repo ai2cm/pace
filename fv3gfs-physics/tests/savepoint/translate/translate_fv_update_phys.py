@@ -4,10 +4,10 @@ import numpy as np
 
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
+from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
-
+from pace.stencils.testing.grid import DriverGridData
 
 @dataclasses.dataclass()
 class DycoreState:
@@ -293,7 +293,7 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         del inputs["ew2_1"]
         del inputs["ew3_1"]
         extra_grid_info = {}
-        for key in [
+        grid_names = [
             "edge_vect_e",
             "edge_vect_w",
             "edge_vect_s",
@@ -310,12 +310,21 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             "ew1_2",
             "ew2_2",
             "ew3_2",
-        ]:
-            extra_grid_info[key] = inputs.pop(key)
-
+        ]
+        grid_dict = {}
+        for var in grid_names:
+            data = inputs.pop(var)
+            if "_1" in var:
+                grid_dict["es1_"+ var[2]] = data
+            elif "_2" in var:
+                grid_dict["ew2_"+ var[2]] = data
+            else:
+                grid_dict[var] = data
+        extra_grid_info = DriverGridData(**grid_dict) 
         tendencies = {}
         for key in ["u_dt", "v_dt", "t_dt"]:
-            tendencies[key] = inputs.pop(key)
+            storage = inputs.pop(key)
+            tendencies[key] = pace.util.Quantity(storage, dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM], units="test", origin=(0,0,0), extent=storage.shape)
         partitioner = pace.util.CubedSpherePartitioner(
             pace.util.TilePartitioner(self.namelist.layout)
         )
@@ -324,8 +333,6 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             self.grid.grid_data,
             self.namelist,
             communicator,
-            partitioner,
-            self.grid.rank,
             extra_grid_info,
         )
         state = DycoreState(**inputs)

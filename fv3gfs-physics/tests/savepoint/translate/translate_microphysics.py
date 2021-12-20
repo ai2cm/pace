@@ -1,7 +1,7 @@
 import copy
 
 import numpy as np
-
+import pace.util
 import pace.dsl.gt4py_utils as utils
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
@@ -70,11 +70,24 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         inputs["ua_t1"] = copy.deepcopy(storage)
         inputs["va_t1"] = copy.deepcopy(storage)
         inputs["omga"] = copy.deepcopy(storage)
-        physics_state = PhysicsState(**inputs)
+        inputs["prsi"] = copy.deepcopy(storage)
+        inputs["prsik"] = copy.deepcopy(storage)
+        sizer = pace.util.SubtileGridSizer.from_tile_params(
+            nx_tile=self.namelist.npx - 1,
+            ny_tile=self.namelist.npy - 1,
+            nz=self.namelist.npz,
+            n_halo=3,
+            extra_dim_lengths={},
+            layout=self.namelist.layout,
+        )
+       
+        quantity_factory = pace.util.QuantityFactory.from_backend(
+            sizer, self.stencil_factory.backend)
+        physics_state = PhysicsState(**inputs, quantity_factory=quantity_factory)
         microphysics = Microphysics(
             self.stencil_factory, self.grid.grid_data, self.namelist
         )
-        microph_state = physics_state.microphysics(storage)
+        microph_state = physics_state.microphysics
         microphysics(microph_state)
         inputs["pt_dt"] = microph_state.pt_dt
         inputs["qv_dt"] = microph_state.qv_dt

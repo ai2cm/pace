@@ -109,39 +109,37 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         inputs["pt_t1"] = copy.deepcopy(storage)
         inputs["ua_t1"] = copy.deepcopy(storage)
         inputs["va_t1"] = copy.deepcopy(storage)
-        physics_state = PhysicsState(**inputs)
+        inputs["prsi"] = copy.deepcopy(storage)
+        inputs["prsik"] = copy.deepcopy(storage)
+        sizer = util.SubtileGridSizer.from_tile_params(
+            nx_tile=self.namelist.npx - 1,
+            ny_tile=self.namelist.npy - 1,
+            nz=self.namelist.npz,
+            n_halo=3,
+            extra_dim_lengths={},
+            layout=self.namelist.layout,
+        )
+       
+        quantity_factory = util.QuantityFactory.from_backend(
+            sizer, self.stencil_factory.backend)
+        physics_state = PhysicsState(**inputs, quantity_factory=quantity_factory)
         # make mock communicator, this is not used
         # but needs to be passed as type CubedSphereCommunicator
         comm = MPI.COMM_WORLD
         layout = [1, 1]
         partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
         communicator = util.CubedSphereCommunicator(comm, partitioner)
-        grid_info = {}  # pass empty grid info, they are not in used for this test
-        grid_info["vlon1"] = 0
-        grid_info["vlon2"] = 0
-        grid_info["vlon3"] = 0
-        grid_info["vlat1"] = 0
-        grid_info["vlat2"] = 0
-        grid_info["vlat3"] = 0
-        grid_info["edge_vect_w"] = 0
-        grid_info["edge_vect_e"] = 0
-        grid_info["edge_vect_s"] = 0
-        grid_info["edge_vect_n"] = 0
-        grid_info["es1_1"] = 0
-        grid_info["es2_1"] = 0
-        grid_info["es3_1"] = 0
-        grid_info["ew1_2"] = 0
-        grid_info["ew2_2"] = 0
-        grid_info["ew3_2"] = 0
+        # because it's not in the serialized data
+        self.grid.grid_data.ptop = 300.0
         physics = Physics(
             self.stencil_factory,
             self.grid.grid_data,
             self.namelist,
         )
         physics._atmos_phys_driver_statein(
-            physics._prsik,
+            physics_state.prsik,
             physics_state.phii,
-            physics._prsi,
+            physics_state.prsi,
             physics_state.delz,
             physics_state.delp,
             physics_state.qvapor,
@@ -158,7 +156,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         )
         physics._get_prs_fv3(
             physics_state.phii,
-            physics._prsi,
+            physics_state.prsi,
             physics_state.pt,
             physics_state.qvapor,
             physics_state.delprsi,
@@ -181,7 +179,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             physics_state.pt,
             physics_state.delp,
         )
-        microph_state = physics_state.microphysics(storage)
+        microph_state = physics_state.microphysics
         physics._microphysics(microph_state)
         # Fortran uses IPD interface, here we use var_t1 to denote the updated field
         physics._update_physics_state_with_tendencies(
