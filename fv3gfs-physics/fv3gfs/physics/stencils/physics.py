@@ -168,9 +168,6 @@ class Physics:
         stencil_factory: StencilFactory,
         grid_data: GridData,
         namelist,
-        comm: pace.util.CubedSphereCommunicator,
-        rank: int,
-        grid_info,
         quantity_factory: pace.util.QuantityFactory
     ):
         grid_indexing = stencil_factory.grid_indexing
