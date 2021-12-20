@@ -5,8 +5,8 @@ BUILDENV_DIR=$SCRIPT_DIR/../../buildenv
 
 VERSION=vcm_1.0
 env_file=env.daint.sh
-dst_dir=${1:-/project/s1053/install/venv/${VERSION}}
-wheeldir=${2:-/project/s1053/install/wheeldir}
+dst_dir=${1:-${installdir}/venv/${VERSION}}
+wheeldir=${2:-${installdir}/wheeldir}
 save_wheel=${3: false}
 src_dir=$(pwd)
 
@@ -55,6 +55,8 @@ if [ $save_wheel ]; then
     python3 -m pip wheel --wheel-dir=$wheeldir "gt4py/[${cuda_version}]"
 fi
 python3 -m pip install --find-links=$wheeldir "gt4py/[${cuda_version}]"
+
+python3 -m pip install ${installdir}/mpi4py/mpi4py-3.1.0a0-cp38-cp38-linux_x86_64.whl
 
 # deactivate virtual environment
 deactivate

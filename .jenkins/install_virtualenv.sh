@@ -11,7 +11,7 @@ exitError()
 
 # check a virtualenv path has been provided
 test -n "$1" || exitError 1001 ${virtualenv_path} "must pass an argument"
-wheel_dir=/project/s1053/install/wheeldir
+wheel_dir=${installdir}/wheeldir
 wheel_command="--find-links=$wheel_dir"
 make update_submodules_venv
 virtualenv_path=$1
@@ -23,7 +23,7 @@ fi
 ${pace_dir}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
 python3 -m pip install ${pace_dir}/pace-util/
-python3 -m pip install $wheel_command -c ${pace_dir}/constraints.txt -r fv3core/requirements/requirements_daint.txt
+python3 -m pip install $wheel_command -c ${pace_dir}/constraints.txt -r fv3core/requirements/requirements_base.txt
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/fv3core/
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/fv3gfs-physics/
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/stencils/
