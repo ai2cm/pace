@@ -9,7 +9,6 @@ from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics
-from fv3gfs.physics.stencils.update_atmos_state import UpdateAtmosphereState
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.testing.grid import GridData
@@ -226,9 +225,6 @@ class Physics:
         )
         self._microphysics = Microphysics(stencil_factory, grid_data, namelist)
       
-        self._update_atmos_state = UpdateAtmosphereState(
-            stencil_factory, grid_data, namelist, comm, rank, grid_info, quantity_factory
-        )
 
     def setup_statein(self):
         self._NQ = 8  # state.nq_tot - spec.namelist.dnats
@@ -237,7 +233,7 @@ class Physics:
         self._p00 = 1.0e5
 
    
-    def __call__(self, state: DycoreState, physics_state: PhysicsState):
+    def __call__(self, physics_state: PhysicsState):
       
         self._atmos_phys_driver_statein(
             self._prsik,
@@ -319,5 +315,3 @@ class Physics:
             self._dt_atmos,
         )
        
-        # [TODO]: allow update_atmos_state call when grid variables are ready
-        self._update_atmos_state(state, physics_state)

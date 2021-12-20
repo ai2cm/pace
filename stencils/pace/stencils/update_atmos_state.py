@@ -3,7 +3,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3gfs.physics.physics_state import PhysicsState
-from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
+from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.testing.grid import GridData, DriverGridData
@@ -97,7 +97,6 @@ class UpdateAtmosphereState:
         grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
-        rank: int,
         grid_info: DriverGridData,
         quantity_factory: pace.util.QuantityFactory,
     ):
@@ -130,7 +129,6 @@ class UpdateAtmosphereState:
             grid_data,
             self.namelist,
             comm,
-            rank,
             grid_info,
         )
 

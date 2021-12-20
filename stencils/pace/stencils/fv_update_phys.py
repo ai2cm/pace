@@ -6,7 +6,7 @@ import pace.util
 import pace.util.constants as constants
 
 # TODO: we don't want to import from fv3core
-from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
+from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
@@ -86,7 +86,6 @@ class ApplyPhysics2Dycore:
         grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
-        rank: int,
         grid_info: DriverGridData,
     ):
         grid_indexing = stencil_factory.grid_indexing
@@ -104,7 +103,7 @@ class ApplyPhysics2Dycore:
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._AGrid2DGridPhysics = AGrid2DGridPhysics(
-            stencil_factory, comm.partitioner, rank, self.namelist, grid_info
+            stencil_factory, comm.partitioner, comm.rank, self.namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
             stencil_factory,

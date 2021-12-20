@@ -113,7 +113,7 @@ if init_mode == 'baroclinic':
         moist_phys=namelist.moist_phys,
         comm=communicator,
     )
-driver = Driver.init_from_dycore_state(dycore_state,  quantity_factory, namelist, comm, grid_info=driver_grid_data)
+driver = Driver.init_from_dycore_state(dycore_state,  quantity_factory, stencil_factory, namelist, communicator, grid_data, grid_info=driver_grid_data)
 # TODO
 do_adiabatic_init = False
 # TODO derive from namelist
@@ -138,7 +138,8 @@ for t in range(1, 2):
         do_adiabatic_init=do_adiabatic_init,
         timestep=bdt,  
     )
-    step_physics(driver.dycore_state, driver.physics_state)
+    step_physics(driver.physics_state)
+    driver.sync_state()
     if t % 5 == 0:
         comm.Barrier()
        
