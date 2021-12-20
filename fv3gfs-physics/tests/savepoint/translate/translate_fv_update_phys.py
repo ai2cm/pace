@@ -2,12 +2,11 @@ import dataclasses
 
 import numpy as np
 
-import fv3core._config as spec
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3core.testing import ParallelTranslate2Py
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
 
 
 @dataclasses.dataclass()
@@ -34,9 +33,11 @@ class DycoreState:
 
 
 class TranslateFVUpdatePhys(ParallelTranslate2Py):
-    def __init__(self, grids):
-        super().__init__(grids)
+    def __init__(self, grids, namelist, stencil_factory):
+        super().__init__(grids, namelist, stencil_factory)
         grid = grids[0]
+        self.stencil_factory = stencil_factory
+        self.grid_indexing = self.stencil_factory.grid_indexing
         self._base.in_vars["data_vars"] = {
             "u_dt": {},
             "v_dt": {},
@@ -52,22 +53,22 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             "qsnow": {},
             "qgraupel": {},
             "peln": {
-                "istart": grid.is_,
-                "iend": grid.ie,
-                "jstart": grid.js,
-                "jend": grid.je,
-                "kend": grid.npz,
+                "istart": self.grid_indexing.isc,
+                "iend": self.grid_indexing.iec,
+                "jstart": self.grid_indexing.jsc,
+                "jend": self.grid_indexing.jec,
+                "kend": namelist.npz,
                 "kaxis": 1,
             },
             "delp": {},
             "pt": {},
             "ps": {},
             "pe": {
-                "istart": grid.is_ - 1,
-                "iend": grid.ie + 1,
-                "jstart": grid.js - 1,
-                "jend": grid.je + 1,
-                "kend": grid.npz + 1,
+                "istart": self.grid_indexing.isc - 1,
+                "iend": self.grid_indexing.iec + 1,
+                "jstart": self.grid_indexing.jsc - 1,
+                "jend": self.grid_indexing.jec + 1,
+                "kend": namelist.npz + 1,
                 "kaxis": 1,
             },
             "pk": grid.compute_buffer_k_dict(),
@@ -93,6 +94,7 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             "ua": {},
             "va": {},
         }
+        self.namelist = namelist
 
     def collect_input_data(self, serializer, savepoint):
         input_data = {}
@@ -137,13 +139,13 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
                 data=buffer,
                 shape=max_shape[0:2],
                 origin=(start1, start2),
-                backend=self.grid.stencil_factory.backend,
+                backend=self.stencil_factory.backend,
             )
         d[var] = utils.make_storage_from_shape(
             shape=max_shape[0:2],
             origin=(start1, start2),
             init=True,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )  # write the original name to avoid missing var
 
     def add_composite_evar_storage(self, d, var, data4d, max_shape, start_indices):
@@ -160,13 +162,13 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
                     data=buffer,
                     origin=(start1, start2),
                     shape=max_shape[0:2],
-                    backend=self.grid.stencil_factory.backend,
+                    backend=self.stencil_factory.backend,
                 )
         d[var] = utils.make_storage_from_shape(
             shape=max_shape[0:2],
             origin=(start1, start2),
             init=True,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )  # write the original name to avoid missing var
 
     def edge_vector_storage(self, d, var, axis):
@@ -182,7 +184,7 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             data=d[var],
             origin=default_origin,
             shape=d[var].shape,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )
 
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
@@ -234,9 +236,9 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             ] = data
         input_data[varname] = utils.make_storage_data(
             data=input_data[varname],
-            origin=self.grid.full_origin(),
+            origin=self.grid_indexing.origin_full(),
             shape=input_data[varname].shape,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )
         return input_data
 
@@ -315,12 +317,12 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         for key in ["u_dt", "v_dt", "t_dt"]:
             tendencies[key] = inputs.pop(key)
         partitioner = pace.util.CubedSpherePartitioner(
-            pace.util.TilePartitioner(spec.namelist.layout)
+            pace.util.TilePartitioner(self.namelist.layout)
         )
         self._base.compute_func = ApplyPhysics2Dycore(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             self.grid.grid_data,
-            spec.namelist,
+            self.namelist,
             communicator,
             partitioner,
             self.grid.rank,

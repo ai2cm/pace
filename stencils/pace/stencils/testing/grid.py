@@ -5,12 +5,11 @@ from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple, Union
 import numpy as np
 from gt4py import gtscript
 
-import fv3core.utils.global_config as global_config
 import pace.util
-from fv3core.grid import MetricTerms
 from pace.dsl import gt4py_utils as utils
-from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
+from pace.dsl.stencil import GridIndexing
 from pace.dsl.typing import FloatFieldI, FloatFieldIJ
+from pace.util.grid import MetricTerms
 from pace.util.halo_data_transformer import QuantityHaloSpec
 
 
@@ -27,9 +26,17 @@ class Grid:
     # grid.ie == npx + halo - 2
 
     def __init__(
-        self, indices, shape_params, rank, layout, data_fields={}, local_indices=False
+        self,
+        indices,
+        shape_params,
+        rank,
+        layout,
+        backend,
+        data_fields={},
+        local_indices=False,
     ):
         self.rank = rank
+        self.backend = backend
         self.partitioner = pace.util.TilePartitioner(layout)
         self.subtile_index = self.partitioner.subtile_index(self.rank)
         self.layout = layout
@@ -98,7 +105,7 @@ class Grid:
     def quantity_factory(self):
         if self._quantity_factory is None:
             self._quantity_factory = pace.util.QuantityFactory.from_backend(
-                self.sizer, backend=global_config.get_backend()
+                self.sizer, backend=self.backend
             )
         return self._quantity_factory
 
@@ -389,7 +396,7 @@ class Grid:
             origin,
             dims=dims,
             n_halo=halo_points,
-            backend=global_config.get_backend(),
+            backend=self.backend,
         )
 
     @property
@@ -401,17 +408,6 @@ class Grid:
             north_edge=self.north_edge,
             west_edge=self.west_edge,
             east_edge=self.east_edge,
-        )
-
-    @property
-    def stencil_factory(self) -> "StencilFactory":
-        return StencilFactory(
-            config=StencilConfig(
-                backend=global_config.get_backend(),
-                rebuild=global_config.get_rebuild(),
-                validate_args=global_config.get_validate_args(),
-            ),
-            grid_indexing=self.grid_indexing,
         )
 
     @property

@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 import pace.util.constants as constants
-from fv3core.grid import great_circle_distance_lon_lat
+from pace.util.grid import great_circle_distance_lon_lat
 
 
 """

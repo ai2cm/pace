@@ -43,7 +43,7 @@ if [ "${SAVE_CACHE}" != "true" -a "${DO_PROFILE}" != "true" ] ; then
     SAVE_TIMINGS="true"
 fi
 # check if we store the results of this run
-if [[ "$GIT_BRANCH" != "origin/master" ]]; then
+if [[ "$GIT_BRANCH" != "origin/main" ]]; then
     SAVE_ARTIFACTS="false"
 fi
 
@@ -52,7 +52,14 @@ SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
 ROOT_DIR="$(dirname "$(dirname "$SCRIPTPATH")")"
 DATA_VERSION=`grep 'FORTRAN_SERIALIZED_DATA_VERSION *=' ${ROOT_DIR}/Makefile | cut -d '=' -f 2`
-TIMESTEPS=60
+if [ "$2" != "" ]; then
+    TIMESTEPS=$2
+elif [ "${SAVE_CACHE}" == "true" ]; then
+    TIMESTEPS=2
+else
+    TIMESTEPS=60
+fi
+
 # Could parse from namelist, ranks = 6 * layout[0] * layout[1]
 RANKS=`echo ${experiment} | grep -o -E '[0-9]+ranks' | grep -o -E '[0-9]+'`
 BENCHMARK_DIR=${ROOT_DIR}/examples/standalone/benchmarks
@@ -81,9 +88,6 @@ if [ ! -d "${ARTIFACT_ROOT}" ] ; then
 fi
 if [ ! -d "${BENCHMARK_DIR}" ] ; then
     exitError 1005 ${LINENO} "Benchmark directory ${BENCHMARK_DIR} does not exist"
-fi
-if [ "${SAVE_CACHE}" == "true" ] ; then
-    TIMESTEPS=2
 fi
 
 # GTC backend name fix: passed as gtc_gt_* but their real name are gtc:gt:*

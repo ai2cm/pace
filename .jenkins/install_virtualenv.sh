@@ -19,6 +19,7 @@ virtualenv_path=$1
 git submodule update --init ${pace_dir}/external/daint_venv
 git submodule update --init ${pace_dir}/external/gt4py
 (cd ${pace_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
+${pace_dir}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/external/gt4py/
 python3 -m pip install ${pace_dir}/pace-util/

@@ -1,12 +1,9 @@
 import pytest
 
-import fv3core
-
 
 @pytest.fixture()
 def backend(pytestconfig):
     backend = pytestconfig.getoption("backend")
-    fv3core.set_backend(backend)
     return backend
 
 

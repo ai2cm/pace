@@ -117,13 +117,6 @@ if grep -q "parallel" <<< "${script}"; then
     if grep -q "ranks" <<< "${experiment}"; then
 	export NUM_RANKS=`echo ${experiment} | grep -o -E '[0-9]+ranks' | grep -o -E '[0-9]+'`
 	echo "Setting NUM_RANKS=${NUM_RANKS}"
-	if grep -q "cuda\|gpu" <<< "${backend}" ; then
-	    export MPICH_RDMA_ENABLED_CUDA=1
-        export CRAY_CUDA_MPS=1
-	else
-	    export MPICH_RDMA_ENABLED_CUDA=0
-        export CRAY_CUDA_MPS=0
-	fi
 	if [ -f ${scheduler_script} ] ; then
 	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
 	    sed -i 's|45|30|g' ${scheduler_script}
@@ -138,8 +131,6 @@ if grep -q "parallel" <<< "${script}"; then
     fi
 fi
 
-module load daint-gpu
-module load ${installdir}/modulefiles/gcloud/303.0.0
 # get the test data version from the Makefile
 export DATA_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
 
@@ -187,13 +178,11 @@ if [ ${python_env} == "virtualenv" ]; then
     fi
     export PACE_PATH="${JENKINS_DIR}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
-    export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi
 
-G2G="false"
 export DOCKER_BUILDKIT=1
 
-run_command "${script} ${backend} ${experiment} " Job${action} ${G2G} ${scheduler_script}
+run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script}
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"

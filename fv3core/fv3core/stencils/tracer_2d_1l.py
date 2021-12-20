@@ -3,8 +3,6 @@ import math
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.stencils.fxadv
-import fv3core.utils
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.stencils.fvtp2d import (
@@ -159,8 +157,8 @@ class TracerAdvection:
             extent=extent,
         )
 
-        ax_offsets = fv3core.utils.axis_offsets(
-            grid_indexing, grid_indexing.origin_full(), grid_indexing.domain_full()
+        ax_offsets = grid_indexing.axis_offsets(
+            grid_indexing.origin_full(), grid_indexing.domain_full()
         )
         local_axis_offsets = {}
         for axis_offset_name, axis_offset_value in ax_offsets.items():

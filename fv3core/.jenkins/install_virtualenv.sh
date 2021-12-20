@@ -16,7 +16,7 @@ wheel_command="--find-links=$wheel_dir"
 make update_submodules_venv
 virtualenv_path=$1
 fv3core_dir=`dirname $0`/../
-(cd ${fv3core_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
+${fv3core_dir}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
 python3 -m pip install ${fv3core_dir}/external/gt4py/ -c ${fv3core_dir}/constraints.txt
 python3 -m pip install ${fv3core_dir}/external/pace-util/ -c ${fv3core_dir}/constraints.txt

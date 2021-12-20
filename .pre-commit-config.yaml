@@ -14,6 +14,7 @@ repos:
     rev: v0.812
     hooks:
     - id: mypy
+      name: mypy-fv3core
       args: [
           --no-strict-optional,
           --ignore-missing-imports,
@@ -22,11 +23,10 @@ repos:
       files: fv3core
       exclude: |
         (?x)^(
-        fv3core/fv3core/utils/grid.py |
-        fv3core/fv3core/utils/gt4py_utils.py |
         fv3core/fv3core/stencils/fv_subgridz.py |
         )$
     - id: mypy
+      name: mypy-pace-util
       args: [
           --no-strict-optional,
           --ignore-missing-imports,
@@ -34,12 +34,37 @@ repos:
         ]
       files: pace-util
     - id: mypy
+      name: mypy-stencils
+      args: [
+          --no-strict-optional,
+          --ignore-missing-imports,
+          --follow-imports, skip  # needed so we only test enabled files
+        ]
+      files: stencils
+      exclude: |
+        (?x)^(
+        stencils/pace/stencils/testing/grid.py |
+        )$
+    - id: mypy
+      name: mypy-physics
       args: [
           --no-strict-optional,
           --ignore-missing-imports,
           --follow-imports, skip  # needed so we only test enabled files
         ]
       files: fv3gfs-physics
+    - id: mypy
+      name: mypy-dsl
+      args: [
+          --no-strict-optional,
+          --ignore-missing-imports,
+          --follow-imports, skip  # needed so we only test enabled files
+        ]
+      files: dsl
+      exclude: |
+        (?x)^(
+        dsl/pace/dsl/gt4py_utils.py |
+        )$
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
