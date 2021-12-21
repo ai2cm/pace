@@ -136,7 +136,7 @@ def update_physics_state_with_tendencies(
     pt_dt: FloatField,
     udt: FloatField,
     vdt: FloatField,
-    qvapot_t1: FloatField,
+    qvapor_t1: FloatField,
     qliquid_t1: FloatField,
     qrain_t1: FloatField,
     qice_t1: FloatField,

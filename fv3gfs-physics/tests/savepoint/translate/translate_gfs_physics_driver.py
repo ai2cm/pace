@@ -123,10 +123,11 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         quantity_factory = util.QuantityFactory.from_backend(
             sizer, self.stencil_factory.backend
         )
+        active_packages = ["microphysics"]
         physics_state = PhysicsState(
             **inputs,
             quantity_factory=quantity_factory,
-            active_packages=["microphysics"],
+            active_packages=active_packages,
         )
         # make mock communicator, this is not used
         # but needs to be passed as type CubedSphereCommunicator
@@ -140,6 +141,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             self.stencil_factory,
             self.grid.grid_data,
             self.namelist,
+            active_packages=active_packages,
         )
         physics._atmos_phys_driver_statein(
             physics_state.prsik,
