@@ -19,6 +19,9 @@ else
     wheel_command=""
 fi
 virtualenv_path=$1
+
+set -e -x
+
 git submodule update --init ${pace_dir}/external/daint_venv
 git submodule update --init ${pace_dir}/external/gt4py
 ${pace_dir}/external/daint_venv/install.sh ${virtualenv_path}
