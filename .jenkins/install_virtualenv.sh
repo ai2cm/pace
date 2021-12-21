@@ -11,8 +11,11 @@ exitError()
 
 # check a virtualenv path has been provided
 test -n "$1" || exitError 1001 ${virtualenv_path} "must pass an argument"
-wheel_dir=${installdir}/wheeldir
-wheel_command="--find-links=$wheel_dir"
+if [ "$WHEEL_DIR" != "" ]; then
+    wheel_command="--find-links=$WHEEL_DIR"
+else
+    wheel_command=""
+fi
 make update_submodules_venv
 virtualenv_path=$1
 pace_dir=`dirname $0`/../
