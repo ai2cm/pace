@@ -39,6 +39,8 @@ dependencies.svg: dependencies.dot
 
 constraints.txt: fv3core/requirements.txt fv3core/requirements/requirements_wrapper.txt fv3core/requirements/requirements_lint.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt external/gt4py/setup.cfg
 	pip-compile $^ --output-file constraints.txt
+	sed -i.bak '/^git+https/d' constraints.txt
+	rm -f constraints.txt.bak
 
 physics_savepoint_tests:
 	$(MAKE) -C fv3gfs-physics $@
@@ -50,3 +52,5 @@ update_submodules_venv:
 	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
                 git submodule update --init external/daint_venv; \
         fi
+
+.PHONY: constraints.txt

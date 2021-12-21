@@ -79,7 +79,6 @@ coverage==5.5
     #   pytest-cov
 cytoolz==0.11.2
     # via gt4py (external/gt4py/setup.cfg)
-git+https://github.com/spcl/dace.git@54e707ee675ca3ac68199d6b0e132c8639fb4cd2
     # via gt4py (external/gt4py/setup.cfg)
 dask==2021.12.0
     # via -r pace-util/requirements.txt
@@ -131,7 +130,6 @@ fsspec==2021.7.0
     #   dask
     #   fv3config
     #   gcsfs
-git+https://github.com/VulcanClimateModeling/fv3config.git@a0799928824a4f10617cf4615e8837c81ccb1f2d
     # via -r fv3core/requirements/requirements_base.txt
 gcsfs==2021.7.0
     # via
@@ -205,7 +203,6 @@ markupsafe==2.0.1
     #   mako
 mccabe==0.6.1
     # via flake8
-git+https://github.com/mpi4py/mpi4py.git@aac3d8f2a56f3d74a75ad32ac0554d63e7ef90ab
     # via -r fv3core/requirements/requirements_container.txt
 mpmath==1.2.1
     # via sympy
