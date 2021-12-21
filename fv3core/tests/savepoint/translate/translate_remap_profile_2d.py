@@ -2,12 +2,12 @@ import numpy as np
 
 import fv3core.stencils.remap_profile as profile
 import pace.dsl.gt4py_utils as utils
-from fv3core.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateCS_Profile_2d(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "a4_1": {"serialname": "q4_1"},
             "a4_2": {"serialname": "q4_2"},
@@ -24,6 +24,7 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
         }
         self.ignore_near_zero_errors = {"q4_4": True}
         self.write_vars = ["qs"]
+        self.stencil_factory = stencil_factory
 
     def make_storage_data_input_vars(self, inputs, storage_vars=None):
         if storage_vars is None:
@@ -54,18 +55,18 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
         j1 = 0
         j2 = 0
         self.compute_func = profile.RemapProfile(
-            self.grid.stencil_factory, inputs["kord"], inputs["iv"], i1, i2, j1, j2
+            self.stencil_factory, inputs["kord"], inputs["iv"], i1, i2, j1, j2
         )
         self.make_storage_data_input_vars(inputs)
         if "qs" not in inputs:
             inputs["qs"] = utils.make_storage_from_shape(
-                self.maxshape[0:2], backend=self.grid.stencil_factory.backend
+                self.maxshape[0:2], backend=self.stencil_factory.backend
             )
         else:
             qs_field = utils.make_storage_from_shape(
                 self.maxshape[0:2],
                 origin=(0, 0),
-                backend=self.grid.stencil_factory.backend,
+                backend=self.stencil_factory.backend,
             )
             qs_field[i1 : i2 + 1, j1 : j2 + 1] = inputs["qs"][
                 i1 : i2 + 1, j1 : j2 + 1, 0
@@ -79,8 +80,8 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
 
 
 class TranslateCS_Profile_2d_2(TranslateCS_Profile_2d):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "qs": {"serialname": "qs_column_2", "kstart": 0, "kend": grid.npz},
             "a4_1": {"serialname": "q4_1_2"},

@@ -20,7 +20,7 @@ echo "pace path is ${pace_dir}"
 if [ -z "${GT4PY_VERSION}" ]; then
     export GT4PY_VERSION=`cat ${pace_dir}/GT4PY_VERSION.txt`
 fi
-(cd ${pace_dir}/external/daint_venv && ./install.sh ${virtualenv_path})
+${pace_dir}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
 python3 -m pip install ${pace_dir}/pace-util/
 python3 -m pip install $wheel_command -c ${pace_dir}/constraints.txt -r fv3core/requirements/requirements_daint.txt

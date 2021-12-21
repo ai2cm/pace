@@ -1,6 +1,6 @@
 import logging
 from functools import wraps
-from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gt4py.storage as gt_storage
 import numpy as np
@@ -226,7 +226,7 @@ def _make_storage_data_3d(
     return buffer
 
 
-def make_storage_from_shape_uncached(
+def make_storage_from_shape(
     shape: Tuple[int, int, int],
     origin: Tuple[int, int, int] = origin,
     *,
@@ -272,65 +272,6 @@ def make_storage_from_shape_uncached(
         managed_memory=managed_memory,
     )
     return storage
-
-
-storage_shape_outputs = {}
-
-
-def make_storage_from_shape(
-    shape: Tuple[int, ...],
-    origin: Tuple[int, ...] = origin,
-    *,
-    backend: str,
-    dtype: DTypes = np.float64,
-    init: bool = False,
-    mask: Optional[Tuple[bool, bool, bool]] = None,
-    cache_key: Optional[Hashable] = None,
-) -> Field:
-    """Create a new gt4py storage of a given shape. Outputs are memoized
-       using a provided cache_key
-    Args:
-        shape: Shape of the new storage
-        origin: Default origin for gt4py stencil calls
-        dtype: Data type
-        init: If True, initializes the storage to zero
-        mask: Tuple indicating the axes used when initializing the storage
-        cache_key: string for memoizing the storage
-        backend: gt4py backend to use when making the storage
-    Returns:
-        Field[..., dtype]: New storage
-
-    Examples:
-        1) utmp = utils.make_storage_from_shape(ua.shape)
-        2) qx = utils.make_storage_from_shape(
-               qin.shape, origin=(grid().is_, grid().jsd, kstart)
-           )
-        3) q_out = utils.make_storage_from_shape(q_in.shape, origin, init=True)
-    """
-    # The caching used here is dangerous, in that e.g. if you call this in a
-    # loop with the same arguments you will get the same storage.
-    # This was implemented this way for fast results with minimal code
-    # changes.
-    # We should shift to an explicit caching or array re-use system down
-    # the line.
-    if cache_key is None:
-        return make_storage_from_shape_uncached(
-            shape,
-            origin,
-            dtype=dtype,
-            init=init,
-            mask=mask,
-            backend=backend,
-        )
-    full_key = (shape, origin, cache_key, dtype, init, mask)
-    if full_key not in storage_shape_outputs:
-        storage_shape_outputs[full_key] = make_storage_from_shape_uncached(
-            shape, origin, dtype=dtype, init=init, mask=mask, backend=backend
-        )
-    return_value = storage_shape_outputs[full_key]
-    if init:
-        return_value[:] = 0.0
-    return return_value
 
 
 def make_storage_dict(
@@ -384,7 +325,7 @@ def make_storage_dict(
 
 def storage_dict(st_dict, names, shape, origin, *, backend: str):
     for name in names:
-        st_dict[name] = make_storage_from_shape_uncached(
+        st_dict[name] = make_storage_from_shape(
             shape, origin, init=True, backend=backend
         )
 

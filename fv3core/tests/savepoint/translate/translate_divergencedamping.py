@@ -1,13 +1,12 @@
 from typing import Optional
 
-import fv3core._config as spec
 import fv3core.stencils.divergence_damping
-from fv3core.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateDivergenceDamping(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "u": {},
             "v": {},
@@ -34,18 +33,20 @@ class TranslateDivergenceDamping(TranslateFortranData2Py):
         self.divdamp: Optional[
             fv3core.stencils.divergence_damping.DivergenceDamping
         ] = None
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def compute_from_storage(self, inputs):
         self.divdamp = fv3core.stencils.divergence_damping.DivergenceDamping(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             self.grid.grid_data,
             self.grid.damping_coefficients,
             self.grid.nested,
             self.grid.stretched_grid,
-            spec.namelist.dddmp,
-            spec.namelist.d4_bg,
-            spec.namelist.nord,
-            spec.namelist.grid_type,
+            self.namelist.dddmp,
+            self.namelist.d4_bg,
+            self.namelist.nord,
+            self.namelist.grid_type,
             inputs["nord_col"],
             inputs["d2_bg"],
         )

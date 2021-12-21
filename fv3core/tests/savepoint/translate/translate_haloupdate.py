@@ -1,9 +1,8 @@
 import logging
 
-import fv3core._config as spec
 import pace.util as fv3util
-from fv3core.testing import ParallelTranslate
 from pace.dsl import gt4py_utils as utils
+from pace.stencils.testing import ParallelTranslate
 
 
 logger = logging.getLogger("fv3ser")
@@ -30,8 +29,8 @@ class TranslateHaloUpdate(ParallelTranslate):
     }
     halo_update_varname = "air_temperature"
 
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
 
     def compute_parallel(self, inputs, communicator):
         state = self.state_from_inputs(inputs)
@@ -135,8 +134,8 @@ class TranslateHaloVectorUpdate(ParallelTranslate):
         },
     }
 
-    def __init__(self, grid):
-        super(TranslateHaloVectorUpdate, self).__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super(TranslateHaloVectorUpdate, self).__init__(grid, namelist, stencil_factory)
 
     def compute_parallel(self, inputs, communicator):
         logger.debug(f"starting on {communicator.rank}")
@@ -199,8 +198,10 @@ class TranslateMPPBoundaryAdjust(ParallelTranslate):
         },
     }
 
-    def __init__(self, grid):
-        super(TranslateMPPBoundaryAdjust, self).__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super(TranslateMPPBoundaryAdjust, self).__init__(
+            grid, namelist, stencil_factory
+        )
 
     def compute_parallel(self, inputs, communicator):
         logger.debug(f"starting on {communicator.rank}")
@@ -215,7 +216,7 @@ class TranslateMPPBoundaryAdjust(ParallelTranslate):
     def compute_sequential(self, inputs_list, communicator_list):
         state_list = self.state_list_from_inputs_list(inputs_list)
         req_list = []
-        for state, communicator, grid in zip(state_list, communicator_list, spec.grid):
+        for state, communicator in zip(state_list, communicator_list):
             req_list.append(
                 communicator.start_synchronize_vector_interfaces(
                     state["x_wind_on_d_grid"], state["y_wind_on_d_grid"]

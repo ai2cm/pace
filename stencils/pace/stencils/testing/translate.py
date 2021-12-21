@@ -1,12 +1,12 @@
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-import fv3core._config
 import pace.dsl.gt4py_utils as utils
-from fv3core.utils.grid import Grid
+from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Field  # noqa: F401
+from pace.stencils.testing.grid import Grid
 
 
 logger = logging.getLogger("fv3ser")
@@ -29,15 +29,16 @@ class TranslateFortranData2Py:
     max_error = 1e-14
     near_zero = 1e-18
 
-    def __init__(self, grid, origin=utils.origin):
+    def __init__(self, grid, stencil_factory: StencilFactory, origin=utils.origin):
         self.origin = origin
-        self.in_vars = {"data_vars": {}, "parameters": []}
-        self.out_vars = {}
-        self.write_vars = []
+        self.stencil_factory = stencil_factory
+        self.in_vars: Dict[str, Any] = {"data_vars": {}, "parameters": []}
+        self.out_vars: Dict[str, Any] = {}
+        self.write_vars: List = []
         self.grid = grid
         self.maxshape = grid.domain_shape_full(add=(1, 1, 1))
         self.ordered_input_vars = None
-        self.ignore_near_zero_errors = {}
+        self.ignore_near_zero_errors: Dict[str, Any] = {}
 
     def setup(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -103,7 +104,7 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 names=names_4d,
-                backend=self.grid.stencil_factory.backend,
+                backend=self.stencil_factory.backend,
             )
         else:
             return utils.make_storage_data(
@@ -114,38 +115,11 @@ class TranslateFortranData2Py:
                 dummy=dummy_axes,
                 axis=axis,
                 read_only=read_only,
-                backend=self.grid.stencil_factory.backend,
+                backend=self.stencil_factory.backend,
             )
 
     def storage_vars(self):
         return self.in_vars["data_vars"]
-
-    # TODO: delete this when ready to let it go
-    """
-    def ordered_stencil_arg_values(self, data):
-        if self.ordered_input_vars is not None:
-            return [data[key] for key in self.ordered_input_vars]
-        data_vars = [data[key] for key in self.in_vars['data_vars'].keys()]
-        parameters = [data[key] for key in self.in_vars['parameters']]
-        return data_vars + parameters
-
-    #[data[key] for parent_key in ['data_vars', 'parameters'] for key in self.in_vars[parent_key]] # noqa: E501
-
-    def make_storage_data_input_vars(self, inputs, storage_vars=None):
-        from fv3core._config import grid
-        if storage_vars is None:
-            storage_vars = self.storage_vars()
-        storage = {}
-        for d in storage_vars:
-            istart, jstart = grid.horizontal_starts_from_shape(inputs[d].shape)
-            storage[d] = self.make_storage_data(np.squeeze(inputs[d]), istart=istart, jstart=jstart) # noqa: E501
-        for p in self.in_vars['parameters'] + self.in_vars['grid_parameters']:
-            storage[p] = inputs[p]
-            if type(inputs[p]) == np.int64:
-                storage[p] = int(storage[p])
-        return storage
-
-    """
 
     def get_index_from_info(self, varinfo, index_name, initial_index):
         index = initial_index
@@ -203,7 +177,7 @@ class TranslateFortranData2Py:
                 del inputs[serialname]
 
     def slice_output(self, inputs, out_data=None):
-        utils.device_sync(backend=self.grid.stencil_factory.backend)
+        utils.device_sync(backend=self.stencil_factory.backend)
         if out_data is None:
             out_data = inputs
         else:
@@ -270,7 +244,7 @@ class TranslateGrid:
     #     |       |
     #     6---2---7
 
-    def __init__(self, inputs, rank, *, backend: str):
+    def __init__(self, inputs, rank, layout, *, backend: str):
         self.backend = backend
         self.indices = {}
         self.shape_params = {}
@@ -279,7 +253,7 @@ class TranslateGrid:
             self.shape_params[s] = inputs[s]
             del inputs[s]
         self.rank = rank
-        self.layout = fv3core._config.namelist.layout
+        self.layout = layout
         for i, j in Grid.index_pairs:
             for index in [i, j]:
                 self.indices[index] = inputs[index] + self.fpy_model_index_offset
@@ -347,7 +321,9 @@ class TranslateGrid:
                 )
 
     def python_grid(self):
-        pygrid = Grid(self.indices, self.shape_params, self.rank, self.layout)
+        pygrid = Grid(
+            self.indices, self.shape_params, self.rank, self.layout, self.backend
+        )
         self.make_grid_storage(pygrid)
         pygrid.add_data(self.data)
         return pygrid

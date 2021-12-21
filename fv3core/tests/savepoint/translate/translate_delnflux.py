@@ -1,10 +1,10 @@
 import fv3core.stencils.delnflux as delnflux
-from fv3core.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateDelnFlux(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "q": {},
             "fx": grid.x3d_compute_dict(),
@@ -15,6 +15,7 @@ class TranslateDelnFlux(TranslateFortranData2Py):
         }
         self.in_vars["parameters"] = []
         self.out_vars = {"fx": grid.x3d_compute_dict(), "fy": grid.y3d_compute_dict()}
+        self.stencil_factory = stencil_factory
 
     # If use_sg is defined -- 'dx', 'dy', 'rdxc', 'rdyc', 'sin_sg needed
     def compute(self, inputs):
@@ -22,7 +23,7 @@ class TranslateDelnFlux(TranslateFortranData2Py):
             inputs["mass"] = None
         self.make_storage_data_input_vars(inputs)
         self.compute_func = delnflux.DelnFlux(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.rarea,
             inputs.pop("nord_column"),
@@ -33,6 +34,6 @@ class TranslateDelnFlux(TranslateFortranData2Py):
 
 
 class TranslateDelnFlux_2(TranslateDelnFlux):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         del self.in_vars["data_vars"]["mass"]

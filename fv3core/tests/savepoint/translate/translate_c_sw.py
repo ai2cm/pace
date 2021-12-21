@@ -1,11 +1,10 @@
-import fv3core._config as spec
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
-from fv3core.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
-def get_c_sw_instance(grid, namelist):
+def get_c_sw_instance(grid, namelist, stencil_factory):
     return CGridShallowWaterDynamics(
-        grid.stencil_factory,
+        stencil_factory,
         grid.grid_data,
         grid.nested,
         namelist.grid_type,
@@ -14,9 +13,11 @@ def get_c_sw_instance(grid, namelist):
 
 
 class TranslateC_SW(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
-        cgrid_shallow_water_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
+        cgrid_shallow_water_lagrangian_dynamics = get_c_sw_instance(
+            grid, namelist, stencil_factory
+        )
         self.compute_func = cgrid_shallow_water_lagrangian_dynamics
         self.in_vars["data_vars"] = {
             "delp": {},
@@ -44,6 +45,7 @@ class TranslateC_SW(TranslateFortranData2Py):
         # TODO: Fix edge_interpolate4 in d2a2c_vect to match closer and the
         # variables here should as well.
         self.max_error = 2e-10
+        self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -52,10 +54,12 @@ class TranslateC_SW(TranslateFortranData2Py):
 
 
 class TranslateDivergenceCorner(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.max_error = 9e-10
-        self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
+        self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(
+            grid, namelist, stencil_factory
+        )
         self.in_vars["data_vars"] = {
             "u": {
                 "istart": grid.isd,
@@ -81,6 +85,7 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
                 "jend": grid.jed + 1,
             }
         }
+        self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -102,10 +107,12 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
 
 
 class TranslateCirculation_Cgrid(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.max_error = 5e-9
-        self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
+        self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(
+            grid, namelist, stencil_factory
+        )
         self.in_vars["data_vars"] = {
             "uc": {},
             "vc": {},
@@ -124,6 +131,7 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
                 "jend": grid.je + 1,
             }
         }
+        self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -136,9 +144,11 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
 
 
 class TranslateVorticityTransport_Cgrid(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
-        cgrid_sw_lagrangian_dynamics = get_c_sw_instance(grid, spec.namelist)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
+        cgrid_sw_lagrangian_dynamics = get_c_sw_instance(
+            grid, namelist, stencil_factory
+        )
         self.compute_func = cgrid_sw_lagrangian_dynamics._vorticitytransport_cgrid
         self.in_vars["data_vars"] = {
             "uc": {},
@@ -160,3 +170,4 @@ class TranslateVorticityTransport_Cgrid(TranslateFortranData2Py):
         }
         self.in_vars["parameters"] = ["dt2"]
         self.out_vars = {"uc": grid.x3d_domain_dict(), "vc": grid.y3d_domain_dict()}
+        self.stencil_factory = stencil_factory

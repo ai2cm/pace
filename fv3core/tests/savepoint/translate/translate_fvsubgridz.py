@@ -1,10 +1,9 @@
 from types import SimpleNamespace
 
-import fv3core._config as spec
 import fv3core.stencils.fv_subgridz as fv_subgridz
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
-from fv3core.testing import ParallelTranslateBaseSlicing
+from pace.stencils.testing import ParallelTranslateBaseSlicing
 
 
 # NOTE, does no halo updates, does not need to be a Parallel test,
@@ -122,8 +121,8 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
     for name in ("dt", "pe", "peln", "delp", "delz", "pkz"):
         outputs.pop(name)
 
-    def __init__(self, grids, *args, **kwargs):
-        super().__init__(grids, *args, **kwargs)
+    def __init__(self, grids, namelist, stencil_factory, *args, **kwargs):
+        super().__init__(grids, namelist, stencil_factory, *args, **kwargs)
         grid = grids[0]
         self._base.in_vars["data_vars"] = {
             "pe": {
@@ -169,15 +168,17 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
         self.ignore_near_zero_errors = {}
         for qvar in utils.tracer_variables:
             self.ignore_near_zero_errors[qvar] = True
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def compute_parallel(self, inputs, communicator):
         state = self.state_from_inputs(inputs)
         fvsubgridz = fv_subgridz.DryConvectiveAdjustment(
-            spec.grid.stencil_factory,
-            spec.namelist.nwat,
-            spec.namelist.fv_sg_adj,
-            spec.namelist.n_sponge,
-            spec.namelist.hydrostatic,
+            self.stencil_factory,
+            self.namelist.nwat,
+            self.namelist.fv_sg_adj,
+            self.namelist.n_sponge,
+            self.namelist.hydrostatic,
         )
         state_namespace = SimpleNamespace(**state)
         fvsubgridz(state_namespace, state_namespace.dt)
@@ -185,13 +186,13 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
 
     def compute_sequential(self, inputs_list, communicator_list):
         state_list = self.state_list_from_inputs_list(inputs_list)
-        for state, grid in zip(state_list, spec.grid):
+        for state in state_list:
             fvsubgridz = fv_subgridz.DryConvectiveAdjustment(
-                grid.stencil_factory,
-                spec.namelist.nwat,
-                spec.namelist.fv_sg_adj,
-                spec.namelist.n_sponge,
-                spec.namelist.hydrostatic,
+                self.stencil_factory,
+                self.namelist.nwat,
+                self.namelist.fv_sg_adj,
+                self.namelist.n_sponge,
+                self.namelist.hydrostatic,
             )
             state_namespace = SimpleNamespace(**state)
             fvsubgridz(state_namespace, state_namespace.dt)

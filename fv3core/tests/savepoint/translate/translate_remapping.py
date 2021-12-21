@@ -1,12 +1,11 @@
-import fv3core._config as spec
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.remapping import LagrangianToEulerian
-from fv3core.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateRemapping(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "tracers": {},
             "w": {},
@@ -106,18 +105,20 @@ class TranslateRemapping(TranslateFortranData2Py):
         self.max_error = 2e-8
         self.near_zero = 3e-18
         self.ignore_near_zero_errors = {"q_con": True, "tracers": True}
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def compute_from_storage(self, inputs):
         wsd_2d = utils.make_storage_from_shape(
-            inputs["wsd"].shape[0:2], backend=self.grid.stencil_factory.backend
+            inputs["wsd"].shape[0:2], backend=self.stencil_factory.backend
         )
         wsd_2d[:, :] = inputs["wsd"][:, :, 0]
         inputs["wsd"] = wsd_2d
         inputs["q_cld"] = inputs["tracers"]["qcld"]
         l_to_e_obj = LagrangianToEulerian(
-            spec.grid.stencil_factory,
-            spec.namelist.dynamical_core.remapping,
-            spec.grid.area_64,
+            self.stencil_factory,
+            self.namelist.remapping,
+            self.grid.area_64,
             inputs["nq"],
             inputs["pfull"],
         )

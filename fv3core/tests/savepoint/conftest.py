@@ -2,17 +2,19 @@ import collections
 import os
 import sys
 import warnings
+from typing import Tuple
 
+import f90nml
 import pytest
 import yaml
 
 import fv3core
 import fv3core._config
-import fv3core.testing
 import pace.dsl
 import pace.util as fv3util
-from fv3core.testing import ParallelTranslate, TranslateGrid
+from fv3core import DynamicalCoreConfig
 from fv3core.utils.mpi import MPI
+from pace.stencils.testing import ParallelTranslate, TranslateGrid
 
 from . import translate
 
@@ -42,14 +44,13 @@ class ReplaceRepr:
 
 @pytest.fixture()
 def data_path(pytestconfig):
-    return data_path_from_config(pytestconfig)
+    return data_path_and_namelist_filename_from_config(pytestconfig)
 
 
-def data_path_from_config(config):
+def data_path_and_namelist_filename_from_config(config) -> Tuple[str, str]:
     data_path = config.getoption("data_path")
     namelist_filename = os.path.join(data_path, "input.nml")
-    fv3core._config.set_namelist(namelist_filename)
-    return data_path
+    return data_path, namelist_filename
 
 
 @pytest.fixture
@@ -83,12 +84,12 @@ def to_output_name(savepoint_name):
     return savepoint_name[-3:] + "-Out"
 
 
-def make_grid(grid_savepoint, serializer, rank, *, backend: str):
+def make_grid(grid_savepoint, serializer, rank, layout, *, backend: str):
     grid_data = {}
     grid_fields = serializer.fields_at_savepoint(grid_savepoint)
     for field in grid_fields:
         grid_data[field] = read_serialized_data(serializer, grid_savepoint, field)
-    return TranslateGrid(grid_data, rank, backend=backend).python_grid()
+    return TranslateGrid(grid_data, rank, layout, backend=backend).python_grid()
 
 
 def read_serialized_data(serializer, savepoint, variable):
@@ -99,10 +100,13 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-def process_grid_savepoint(serializer, grid_savepoint, rank, *, backend: str):
-    grid = make_grid(grid_savepoint, serializer, rank, backend=backend)
-    fv3core._config.set_grid(grid)
-    return grid
+@pytest.fixture
+def stencil_config(backend):
+    return pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
 
 
 def get_test_class(test_name):
@@ -125,12 +129,12 @@ def is_parallel_test(test_name):
         return issubclass(test_class, ParallelTranslate)
 
 
-def get_test_class_instance(test_name, grid):
+def get_test_class_instance(test_name, grid, namelist, stencil_factory):
     translate_class = get_test_class(test_name)
     if translate_class is None:
         return None
     else:
-        return translate_class(grid)
+        return translate_class(grid, namelist, stencil_factory)
 
 
 def get_all_savepoint_names(metafunc, data_path):
@@ -192,20 +196,33 @@ SavepointCase = collections.namedtuple(
         "output_savepoints",
         "grid",
         "layout",
+        "namelist",
+        "stencil_factory",
     ],
 )
 
 
-def sequential_savepoint_cases(metafunc, data_path, *, backend: str):
+def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backend: str):
     return_list = []
-    layout = fv3core._config.namelist.layout
+    namelist = f90nml.read(namelist_filename)
+    dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
-    ranks = get_ranks(metafunc, layout)
-
+    ranks = get_ranks(metafunc, dycore_config.layout)
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = process_grid_savepoint(serializer, grid_savepoint, rank, backend=backend)
+        grid = make_grid(
+            grid_savepoint, serializer, rank, dycore_config.layout, backend=backend
+        )
+        stencil_factory = pace.dsl.stencil.StencilFactory(
+            config=stencil_config,
+            grid_indexing=grid.grid_indexing,
+        )
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
             output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -219,19 +236,11 @@ def sequential_savepoint_cases(metafunc, data_path, *, backend: str):
                         input_savepoints,
                         output_savepoints,
                         grid,
-                        layout,
+                        dycore_config.layout,
+                        dycore_config,
+                        stencil_factory,
                     )
                 )
-
-    if len(ranks) > 1:
-        # Set the grid to rank 0's data
-        serializer = get_serializer(data_path, 0)
-        grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid_rank0 = process_grid_savepoint(
-            serializer, grid_savepoint, 0, backend=backend
-        )
-        fv3core._config.set_grid(grid_rank0)
-
     return return_list
 
 
@@ -244,18 +253,30 @@ def check_savepoint_counts(test_name, input_savepoints, output_savepoints):
     assert len(input_savepoints) > 0, f"no savepoints found for {test_name}"
 
 
-def mock_parallel_savepoint_cases(metafunc, data_path, *, backend: str):
+def mock_parallel_savepoint_cases(
+    metafunc, data_path, namelist_filename, *, backend: str
+):
     return_list = []
-    layout = fv3core._config.namelist.layout
-    total_ranks = 6 * layout[0] * layout[1]
+    namelist = f90nml.read(namelist_filename)
+    dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
+    total_ranks = 6 * dycore_config.layout[0] * dycore_config.layout[1]
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
     grid_list = []
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
         grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = process_grid_savepoint(serializer, grid_savepoint, rank, backend=backend)
+        grid = make_grid(
+            grid_savepoint, serializer, rank, dycore_config.layout, backend=backend
+        )
         grid_list.append(grid)
-        if rank == 0:
-            grid_rank0 = grid
+    stencil_factory = pace.dsl.stencil.StencilFactory(
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
+    )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     for test_name in sorted(list(savepoint_names)):
         input_list = []
@@ -280,16 +301,16 @@ def mock_parallel_savepoint_cases(metafunc, data_path, *, backend: str):
                 ),  # input_list[rank][count] -> input_list[count][rank]
                 list(zip(*output_list)),
                 grid_list,
-                layout,
+                dycore_config.layout,
+                dycore_config,
+                stencil_factory,
             )
         )
-    fv3core._config.set_grid(grid_rank0)
     return return_list
 
 
-def compute_grid_data(metafunc, grid):
+def compute_grid_data(metafunc, grid, namelist):
     backend = metafunc.config.getoption("backend")
-    namelist = fv3core._config.namelist
     grid.make_grid_data(
         npx=namelist.npx,
         npy=namelist.npy,
@@ -299,15 +320,29 @@ def compute_grid_data(metafunc, grid):
     )
 
 
-def parallel_savepoint_cases(metafunc, data_path, mpi_rank, *, backend: str):
+def parallel_savepoint_cases(
+    metafunc, data_path, namelist_filename, mpi_rank, *, backend: str
+):
     serializer = get_serializer(data_path, mpi_rank)
+    namelist = f90nml.read(namelist_filename)
+    dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
+    )
     grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid = process_grid_savepoint(serializer, grid_savepoint, mpi_rank, backend=backend)
+    grid = make_grid(
+        grid_savepoint, serializer, mpi_rank, dycore_config.layout, backend=backend
+    )
+    stencil_factory = pace.dsl.stencil.StencilFactory(
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
+    )
     if metafunc.config.getoption("compute_grid"):
-        compute_grid_data(metafunc, grid)
+        compute_grid_data(metafunc, grid, dycore_config)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     return_list = []
-    layout = fv3core._config.namelist.layout
     for test_name in sorted(list(savepoint_names)):
         input_savepoints = serializer.get_savepoint(f"{test_name}-In")
         output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
@@ -321,7 +356,9 @@ def parallel_savepoint_cases(metafunc, data_path, mpi_rank, *, backend: str):
                 input_savepoints,
                 output_savepoints,
                 [grid],
-                layout,
+                dycore_config.layout,
+                dycore_config,
+                stencil_factory,
             )
         )
     return return_list
@@ -329,7 +366,6 @@ def parallel_savepoint_cases(metafunc, data_path, mpi_rank, *, backend: str):
 
 def pytest_generate_tests(metafunc):
     backend = metafunc.config.getoption("backend")
-    fv3core.set_backend(backend)
     if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
         if metafunc.function.__name__ == "test_parallel_savepoint":
             generate_parallel_stencil_tests(metafunc, backend=backend)
@@ -350,11 +386,15 @@ def generate_sequential_stencil_tests(metafunc, *, backend: str):
         "rank",
         "grid",
     ]
-    data_path = data_path_from_config(metafunc.config)
+    data_path, namelist_filename = data_path_and_namelist_filename_from_config(
+        metafunc.config
+    )
     _generate_stencil_tests(
         metafunc,
         arg_names,
-        sequential_savepoint_cases(metafunc, data_path, backend=backend),
+        sequential_savepoint_cases(
+            metafunc, data_path, namelist_filename, backend=backend
+        ),
         get_sequential_param,
     )
 
@@ -369,11 +409,15 @@ def generate_mock_parallel_stencil_tests(metafunc, *, backend: str):
         "grid",
         "layout",
     ]
-    data_path = data_path_from_config(metafunc.config)
+    data_path, namelist_filename = data_path_and_namelist_filename_from_config(
+        metafunc.config
+    )
     _generate_stencil_tests(
         metafunc,
         arg_names,
-        mock_parallel_savepoint_cases(metafunc, data_path, backend=backend),
+        mock_parallel_savepoint_cases(
+            metafunc, data_path, namelist_filename, backend=backend
+        ),
         get_parallel_mock_param,
     )
 
@@ -389,14 +433,18 @@ def generate_parallel_stencil_tests(metafunc, *, backend: str):
         "grid",
         "layout",
     ]
-    data_path = data_path_from_config(metafunc.config)
+    data_path, namelist_filename = data_path_and_namelist_filename_from_config(
+        metafunc.config
+    )
     # get MPI environment
     comm = MPI.COMM_WORLD
     mpi_rank = comm.Get_rank()
     _generate_stencil_tests(
         metafunc,
         arg_names,
-        parallel_savepoint_cases(metafunc, data_path, mpi_rank, backend=backend),
+        parallel_savepoint_cases(
+            metafunc, data_path, namelist_filename, mpi_rank, backend=backend
+        ),
         get_parallel_param,
     )
 
@@ -406,11 +454,9 @@ def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
     only_one_rank = metafunc.config.getoption("which_rank") is not None
     for case in savepoint_cases:
         original_grid = fv3core._config.grid
-        try:
-            fv3core._config.set_grid(case.grid)
-            testobj = get_test_class_instance(case.test_name, case.grid)
-        finally:
-            fv3core._config.set_grid(original_grid)
+        testobj = get_test_class_instance(
+            case.test_name, case.grid, case.namelist, case.stencil_factory
+        )
         max_call_count = min(len(case.input_savepoints), len(case.output_savepoints))
         for i, (savepoint_in, savepoint_out) in enumerate(
             zip(case.input_savepoints, case.output_savepoints)

@@ -19,8 +19,11 @@ set -e
 # configuration
 SCRIPT=`realpath $0`
 SCRIPT_DIR=`dirname $SCRIPT`
-ROOT_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
+FV3CORE_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
+BUILDENV_DIR="$FV3CORE_DIR/../buildenv"
 NTHREADS=12
+
+export PYTHONOPTIMIZE=TRUE
 
 # utility functions
 function exitError()
@@ -73,10 +76,10 @@ run_args="$6"
 DO_NSYS_RUN="$7"
 
 # get dependencies
-cd $ROOT_DIR
+cd $FV3CORE_DIR
 make update_submodules_venv
 # set GT4PY version
-cd $ROOT_DIR
+cd $FV3CORE_DIR
 if [ -z "${GT4PY_VERSION}" ]; then
     export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
 fi
@@ -84,17 +87,17 @@ fi
 # set up the virtual environment
 echo "creating the venv"
 if [ -d ./venv ] ; then rm -rf venv ; fi
-cd $ROOT_DIR/external/daint_venv/
+cd $FV3CORE_DIR/external/daint_venv/
 if [ -d ./gt4py ] ; then rm -rf gt4py ; fi
-cd $ROOT_DIR
-$ROOT_DIR/.jenkins/install_virtualenv.sh $ROOT_DIR/venv
+cd $FV3CORE_DIR
+$FV3CORE_DIR/.jenkins/install_virtualenv.sh $FV3CORE_DIR/venv
 source ./venv/bin/activate
 pip list
 
 # set the environment
-cp $ROOT_DIR/buildenv/submit.daint.slurm run.daint.slurm
+cp $BUILDENV_DIR/submit.daint.slurm run.daint.slurm
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
-    cp $ROOT_DIR/buildenv/submit.daint.slurm run.nsys.daint.slurm
+    cp $BUILDENV_DIR/submit.daint.slurm run.nsys.daint.slurm
 fi
 
 if git rev-parse --git-dir > /dev/null 2>&1 ; then
@@ -107,7 +110,7 @@ split_path=(${data_path//\// })
 experiment=${split_path[-1]}
 
 echo "Configuration overview:"
-echo "    Root dir:          $ROOT_DIR"
+echo "    Root dir:          $FV3CORE_DIR"
 echo "    Timesteps:         $timesteps"
 echo "    Ranks:             $ranks"
 echo "    Backend:           $backend"
@@ -150,8 +153,7 @@ sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
 sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
 sed -i "s/00:45:00/03:15:00/g" run.daint.slurm
 sed -i "s/cscsci/normal/g" run.daint.slurm
-sed -i "s/<G2G>/export PYTHONOPTIMIZE=TRUE/g" run.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
+sed -i "s#<CMD>#srun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 # execute on a gpu node
 set +e
 res=$(sbatch -W -C gpu run.daint.slurm 2>&1)
@@ -172,6 +174,7 @@ else
 fi
 
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
+    module load nvidia-nsight-systems/2021.1.1.66-6c5c5cb
     echo "Install performance_visualization package"
     git clone git@github.com:ai2cm/performance_visualization.git
     pip install -e performance_visualization.git
@@ -184,8 +187,7 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
     sed -i "s/<OUTFILE>/run.nsys.daint.out\n#SBATCH --hint=nomultithread/g" run.nsys.daint.slurm
     sed -i "s/00:45:00/00:40:00/g" run.nsys.daint.slurm
     sed -i "s/cscsci/normal/g" run.nsys.daint.slurm
-    sed -i "s#<G2G>#module load nvidia-nsight-systems/2021.1.1.66-6c5c5cb\nexport PYTHONOPTIMIZE=TRUE#g" run.nsys.daint.slurm
-    sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
+    sed -i "s#<CMD>#srun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
     # execute on a gpu node
     set +e
     res=$(sbatch -W -C gpu run.nsys.daint.slurm 2>&1)

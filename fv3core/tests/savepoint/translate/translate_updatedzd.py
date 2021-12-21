@@ -1,14 +1,13 @@
 import numpy as np
 
-import fv3core._config as spec
 import fv3core.stencils.updatedzd
 from fv3core.stencils import d_sw
-from fv3core.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateUpdateDzD(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "dp0": {},  # column var
             "surface_height": {"serialname": "zs"},
@@ -41,18 +40,20 @@ class TranslateUpdateDzD(TranslateFortranData2Py):
             self.out_vars[v] = self.in_vars["data_vars"][v]
         self.out_vars["ws"]["kstart"] = grid.npz
         self.out_vars["ws"]["kend"] = None
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         self.updatedzd = fv3core.stencils.updatedzd.UpdateHeightOnDGrid(
-            self.grid.stencil_factory,
+            self.stencil_factory,
             self.grid.damping_coefficients,
             self.grid.grid_data,
             self.grid.grid_type,
-            spec.namelist.hord_tm,
+            self.namelist.hord_tm,
             inputs.pop("dp0"),
             d_sw.get_column_namelist(
-                spec.namelist, self.grid.npz, backend=self.grid.stencil_factory.backend
+                self.namelist, self.grid.npz, backend=self.stencil_factory.backend
             ),
         )
         self.updatedzd(**inputs)
