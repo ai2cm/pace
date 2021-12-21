@@ -37,7 +37,7 @@ savepoint_tests_mpi:
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
 
-constraints.txt: fv3core/requirements.txt fv3core/requirements/requirements_wrapper.txt fv3core/requirements/requirements_lint.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt
+constraints.txt: fv3core/requirements.txt fv3core/requirements/requirements_wrapper.txt fv3core/requirements/requirements_lint.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt external/gt4py/setup.cfg
 	pip-compile $^ --output-file constraints.txt
 
 physics_savepoint_tests:
