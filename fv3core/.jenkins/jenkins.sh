@@ -164,7 +164,6 @@ if [ -z ${SCRATCH} ] ; then
 fi
 
 # Set the host data head directory location
-export TEST_DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}"
 export TEST_DATA_DIR="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/${DATA_VERSION}"
 export FV3_STENCIL_REBUILD_FLAG=False
 # Set the host data location
