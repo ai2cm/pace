@@ -1,3 +1,5 @@
+from typing import List
+
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
@@ -134,7 +136,7 @@ def update_physics_state_with_tendencies(
     pt_dt: FloatField,
     udt: FloatField,
     vdt: FloatField,
-    qvapor_t1: FloatField,
+    qvapot_t1: FloatField,
     qliquid_t1: FloatField,
     qrain_t1: FloatField,
     qice_t1: FloatField,
@@ -165,6 +167,7 @@ class Physics:
         stencil_factory: StencilFactory,
         grid_data: GridData,
         namelist,
+        active_packages: List[str],
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
@@ -206,17 +209,23 @@ class Physics:
                 "pktop": self._pktop,
             },
         )
-        self._prepare_microphysics = stencil_factory.from_origin_domain(
-            func=prepare_microphysics,
-            origin=grid_indexing.origin_compute(),
-            domain=grid_indexing.domain_compute(),
-        )
-        self._update_physics_state_with_tendencies = stencil_factory.from_origin_domain(
-            func=update_physics_state_with_tendencies,
-            origin=grid_indexing.origin_compute(),
-            domain=grid_indexing.domain_compute(),
-        )
-        self._microphysics = Microphysics(stencil_factory, grid_data, namelist)
+        if "microphysics" in active_packages:
+            self._do_microphysics = True
+            self._prepare_microphysics = stencil_factory.from_origin_domain(
+                func=prepare_microphysics,
+                origin=grid_indexing.origin_compute(),
+                domain=grid_indexing.domain_compute(),
+            )
+            self._update_physics_state_with_tendencies = (
+                stencil_factory.from_origin_domain(
+                    func=update_physics_state_with_tendencies,
+                    origin=grid_indexing.origin_compute(),
+                    domain=grid_indexing.domain_compute(),
+                )
+            )
+            self._microphysics = Microphysics(stencil_factory, grid_data, namelist)
+        else:
+            self._do_microphysics = False
 
     def setup_statein(self):
         self._NQ = 8  # state.nq_tot - spec.namelist.dnats
@@ -260,48 +269,49 @@ class Physics:
             physics_state.phii,
             physics_state.phil,
         )
-        self._prepare_microphysics(
-            physics_state.dz,
-            physics_state.phii,
-            physics_state.wmp,
-            physics_state.omga,
-            physics_state.qvapor,
-            physics_state.pt,
-            physics_state.delp,
-        )
-        microph_state = physics_state.microphysics
-        self._microphysics(microph_state)
-        # Fortran uses IPD interface, here we use var_t1 to denote the updated field
-        self._update_physics_state_with_tendencies(
-            physics_state.qvapor,
-            physics_state.qliquid,
-            physics_state.qrain,
-            physics_state.qice,
-            physics_state.qsnow,
-            physics_state.qgraupel,
-            physics_state.qcld,
-            physics_state.pt,
-            physics_state.ua,
-            physics_state.va,
-            microph_state.qv_dt,
-            microph_state.ql_dt,
-            microph_state.qr_dt,
-            microph_state.qi_dt,
-            microph_state.qs_dt,
-            microph_state.qg_dt,
-            microph_state.qa_dt,
-            microph_state.pt_dt,
-            microph_state.udt,
-            microph_state.vdt,
-            physics_state.qvapor_t1,
-            physics_state.qliquid_t1,
-            physics_state.qrain_t1,
-            physics_state.qice_t1,
-            physics_state.qsnow_t1,
-            physics_state.qgraupel_t1,
-            physics_state.qcld_t1,
-            physics_state.pt_t1,
-            physics_state.ua_t1,
-            physics_state.va_t1,
-            self._dt_atmos,
-        )
+        if self._do_microphysics:
+            self._prepare_microphysics(
+                physics_state.dz,
+                physics_state.phii,
+                physics_state.wmp,
+                physics_state.omga,
+                physics_state.qvapor,
+                physics_state.pt,
+                physics_state.delp,
+            )
+            microph_state = physics_state.microphysics
+            self._microphysics(microph_state)
+            # Fortran uses IPD interface, here we use var_t1 to denote the updated field
+            self._update_physics_state_with_tendencies(
+                physics_state.qvapor,
+                physics_state.qliquid,
+                physics_state.qrain,
+                physics_state.qice,
+                physics_state.qsnow,
+                physics_state.qgraupel,
+                physics_state.qcld,
+                physics_state.pt,
+                physics_state.ua,
+                physics_state.va,
+                microph_state.qv_dt,
+                microph_state.ql_dt,
+                microph_state.qr_dt,
+                microph_state.qi_dt,
+                microph_state.qs_dt,
+                microph_state.qg_dt,
+                microph_state.qa_dt,
+                microph_state.pt_dt,
+                microph_state.udt,
+                microph_state.vdt,
+                physics_state.qvapor_t1,
+                physics_state.qliquid_t1,
+                physics_state.qrain_t1,
+                physics_state.qice_t1,
+                physics_state.qsnow_t1,
+                physics_state.qgraupel_t1,
+                physics_state.qcld_t1,
+                physics_state.pt_t1,
+                physics_state.ua_t1,
+                physics_state.va_t1,
+                self._dt_atmos,
+            )

@@ -133,8 +133,8 @@ class ApplyPhysics2Dycore:
     def __call__(
         self,
         state,
-        u_dt_quantity: pace.util.Quantity,
-        v_dt_quantity: pace.util.Quantity,
+        u_dt: pace.util.Quantity,
+        v_dt: pace.util.Quantity,
         t_dt: pace.util.Quantity,
     ):
         self._moist_cv(
@@ -150,8 +150,8 @@ class ApplyPhysics2Dycore:
             self._dt,
         )
 
-        self._udt_halo_updater.start([u_dt_quantity])
-        self._vdt_halo_updater.start([v_dt_quantity])
+        self._udt_halo_updater.start([u_dt])
+        self._vdt_halo_updater.start([v_dt])
         self._update_pressure_and_surface_winds(
             state.pe,
             state.delp,
@@ -166,9 +166,7 @@ class ApplyPhysics2Dycore:
         )
         self._udt_halo_updater.wait()
         self._vdt_halo_updater.wait()
-        self._AGrid2DGridPhysics(
-            state.u, state.v, u_dt_quantity.storage, v_dt_quantity.storage
-        )
+        self._AGrid2DGridPhysics(state.u, state.v, u_dt.storage, v_dt.storage)
         self._do_cubed_to_latlon(
             state.u_quantity,
             state.v_quantity,

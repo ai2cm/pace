@@ -3,6 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
+from pace.stencils.testing.grid import DriverGridData
 from pace.util import TilePartitioner
 
 
@@ -149,7 +150,7 @@ class AGrid2DGridPhysics:
         partitioner: TilePartitioner,
         rank: int,
         namelist,
-        grid_info,
+        grid_info: DriverGridData,
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist

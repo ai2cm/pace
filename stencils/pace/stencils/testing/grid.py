@@ -1095,6 +1095,23 @@ def _grid_indexing_axis_offsets(
 class DriverGridData:
     """
     Terms used to Apply Physics changes to the Dycore.
+    Attributes:
+      vlon1: x-component of unit lon vector in eastward longitude direction
+      vlon2: y-component of unit lon vector in eastward longitude direction
+      vlon3: z-component of unit lon vector in eastward longitude direction
+      vlat1: x-component of unit lat vector in northward latitude direction
+      vlat2: y-component of unit lat vector in northward latitude direction
+      vlat3: z-component of unit lat vector in northward latitude direction
+      edge_vect_w: factor to interpolate A to C grids at the western grid edge
+      edge_vect_e: factor to interpolate A to C grids at the easter grid edge
+      edge_vect_s: factor to interpolate A to C grids at the southern grid edge
+      edge_vect_n: factor to interpolate A to C grids at the northern grid edge
+      es1_1: x-component of grid local unit vector in x-direction at cell edge
+      es1_2: y-component of grid local unit vector in x-direction at cell edge
+      es1_3: z-component of grid local unit vector in x-direction at cell edge
+      ew2_1: x-component of grid local unit vector in y-direction at cell edge
+      ew2_2: y-component of grid local unit vector in y-direction at cell edge
+      ew2_3: z-component of grid local unit vector in y-direction at cell edge
     """
 
     vlon1: FloatFieldIJ
@@ -1115,7 +1132,7 @@ class DriverGridData:
     ew2_3: FloatFieldIJ
 
     @classmethod
-    def new_from_metric_terms(cls, metric_terms: MetricTerms):
+    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "DriverGridData":
         # TODO fix <Quantity>.storage mask for FieldI
         shape = metric_terms.lon.data.shape
         backend = metric_terms.edge_vect_n.gt4py_backend
