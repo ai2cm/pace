@@ -1,0 +1,21 @@
+bump2version
+wheel
+flake8==3.8.4
+mypy==0.790
+tox
+coverage
+f90nml>=1.1.0
+appdirs>=1.4.0
+sphinx_rtd_theme
+pytest-cov
+pytest-subtests
+gcsfs>=0.7.0
+google-cloud-storage
+black==19.10b0
+numcodecs==0.7.2 #pin for gt4py, h5py and py3.6 to agree
+h5py==2.10.0 #pin for gt4py, h5py and py3.6 to agree
+h5netcdf
+dask==2021.03.0 #py3.6 - last supported version
+numpy>=1.15, <2. #pin for gt4py, h5py, cupy9.1 and py3.6 to agree
+toolz
+git+https://github.com/GridTools/gt4py.git@db40777788863bfe87b9674b118e8bd5b8db0440#egg=gt4py

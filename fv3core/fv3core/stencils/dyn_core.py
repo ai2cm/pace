@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 
 from gt4py.gtscript import (
     __INLINED,
@@ -164,7 +164,7 @@ def get_nk_heat_dissipation(
 
 
 def dyncore_temporaries(grid_indexing: GridIndexing, *, backend: str):
-    tmps: Dict[str, pace.util.Quantity] = {}
+    tmps: Dict[str, Union[pace.util.Quantity, "FloatField"]] = {}
     utils.storage_dict(
         tmps,
         ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "divgd"],
@@ -193,16 +193,16 @@ def dyncore_temporaries(grid_indexing: GridIndexing, *, backend: str):
         grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
         backend=backend,
     )
-    tmps["heat_source_quantity"] = quantity_wrap(
+    tmps["heat_source"] = quantity_wrap(
         tmps["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
     )
-    tmps["divgd_quantity"] = quantity_wrap(
+    tmps["divgd"] = quantity_wrap(
         tmps["divgd"],
         dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
         grid_indexing=grid_indexing,
     )
     for name in ["gz", "pkc", "zh"]:
-        tmps[f"{name}_quantity"] = quantity_wrap(
+        tmps[name] = quantity_wrap(
             tmps[name],
             dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
             grid_indexing=grid_indexing,
@@ -350,7 +350,6 @@ class AcousticDynamics:
         self._temporaries = dyncore_temporaries(
             grid_indexing, backend=stencil_factory.backend
         )
-        self._temporaries["gz"][:] = HUGE_R
         if not config.hydrostatic:
             self._temporaries["pk3"][:] = HUGE_R
 
@@ -506,6 +505,7 @@ class AcousticDynamics:
             self.comm, grid_indexing, backend=stencil_factory.backend
         )
 
+    # TODO: type hint state when it is possible to do so, when it is a static type
     def __call__(self, state):
         # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
         # mfyd, cxd, cyd, pkz, peln, q_con, ak, bk, diss_estd, cappa, mdt, n_split,
@@ -521,17 +521,17 @@ class AcousticDynamics:
         # NOTE: In Fortran model the halo update starts happens in fv_dynamics, not here
         self._halo_updaters.q_con__cappa.start(
             [
-                state.q_con_quantity,
-                state.cappa_quantity,
+                state.q_con,
+                state.cappa,
             ]
         )
         self._halo_updaters.delp__pt.start(
             [
-                state.delp_quantity,
-                state.pt_quantity,
+                state.delp,
+                state.pt,
             ]
         )
-        self._halo_updaters.u__v.start([state.u_quantity], [state.v_quantity])
+        self._halo_updaters.u__v.start([state.u], [state.v])
         self._halo_updaters.q_con__cappa.wait()
 
         state.__dict__.update(self._temporaries)
@@ -564,14 +564,14 @@ class AcousticDynamics:
             if self.config.breed_vortex_inline or (it == n_split - 1):
                 remap_step = True
             if not self.config.hydrostatic:
-                self._halo_updaters.w.start([state.w_quantity])
+                self._halo_updaters.w.start([state.w])
                 if it == 0:
                     self._set_gz(
                         self._zs,
                         state.delz,
                         state.gz,
                     )
-                    self._halo_updaters.gz.start([state.gz_quantity])
+                    self._halo_updaters.gz.start([state.gz])
             if it == 0:
                 self._halo_updaters.delp__pt.wait()
 
@@ -605,7 +605,7 @@ class AcousticDynamics:
             )
 
             if self.config.nord > 0:
-                self._halo_updaters.divgd.start([state.divgd_quantity])
+                self._halo_updaters.divgd.start([state.divgd])
             if not self.config.hydrostatic:
                 if it == 0:
                     self._halo_updaters.gz.wait()
@@ -624,12 +624,12 @@ class AcousticDynamics:
                 )
                 self.riem_solver_c(
                     dt2,
-                    state.cappa_quantity,
+                    state.cappa,
                     self._ptop,
                     state.phis,
                     state.ws3,
                     state.ptc,
-                    state.q_con_quantity,
+                    state.q_con,
                     state.delpc,
                     state.gz,
                     state.pkc,
@@ -646,7 +646,7 @@ class AcousticDynamics:
                 state.gz,
                 dt2,
             )
-            self._halo_updaters.uc__vc.start([state.uc_quantity], [state.vc_quantity])
+            self._halo_updaters.uc__vc.start([state.uc], [state.vc])
             if self.config.nord > 0:
                 self._halo_updaters.divgd.wait()
             self._halo_updaters.uc__vc.wait()
@@ -683,7 +683,7 @@ class AcousticDynamics:
             # they will be re-computed from scratch on the next acoustic timestep.
 
             self._halo_updaters.delp__pt__q_con.update(
-                [state.delp_quantity, state.pt_quantity, state.q_con_quantity]
+                [state.delp, state.pt, state.q_con]
             )
 
             # Not used unless we implement other betas and alternatives to nh_p_grad
@@ -721,8 +721,8 @@ class AcousticDynamics:
                     state.w,
                 )
 
-                self._halo_updaters.zh.start([state.zh_quantity])
-                self._halo_updaters.pkc.start([state.pkc_quantity])
+                self._halo_updaters.zh.start([state.zh])
+                self._halo_updaters.pkc.start([state.pkc])
                 if remap_step:
                     self._edge_pe_stencil(state.pe, state.delp, self._ptop)
                 if self.config.use_logp:
@@ -766,15 +766,13 @@ class AcousticDynamics:
                 )
 
             if it != n_split - 1:
-                self._halo_updaters.u__v.start([state.u_quantity], [state.v_quantity])
+                self._halo_updaters.u__v.start([state.u], [state.v])
             else:
                 if self.config.grid_type < 4:
-                    self.comm.synchronize_vector_interfaces(
-                        state.u_quantity, state.v_quantity
-                    )
+                    self.comm.synchronize_vector_interfaces(state.u, state.v)
 
         if self._do_del2cubed:
-            self._halo_updaters.heat_source.update([state.heat_source_quantity])
+            self._halo_updaters.heat_source.update([state.heat_source])
             # TODO: move dependence on da_min into init of hyperdiffusion class
             cd = constants.CNST_0P20 * self._da_min
             self._hyperdiffusion(state.heat_source, cd)
