@@ -49,7 +49,7 @@ class LocalComm:
             self._buffer[buffer_type].append(in_value)
         return self._buffer[buffer_type][i_buffer]
 
-    def _get_send_recv(self, from_rank, tag):
+    def _get_send_recv(self, from_rank, tag: int):
         key = (from_rank, self.rank, tag)
         if "send_recv" not in self._buffer:
             raise ConcurrencyError(
@@ -63,7 +63,7 @@ class LocalComm:
         return_value = self._buffer["send_recv"][key].pop(0)
         return return_value
 
-    def _put_send_recv(self, value, to_rank, tag):
+    def _put_send_recv(self, value, to_rank, tag: int):
         key = (self.rank, to_rank, tag)
         self._buffer["send_recv"] = self._buffer.get("send_recv", {})
         self._buffer["send_recv"][key] = self._buffer["send_recv"].get(key, [])
@@ -131,11 +131,11 @@ class LocalComm:
             for i, sendbuf in enumerate(gather_buffer):
                 safe_assign_array(recvbuf[i, :], sendbuf)
 
-    def Send(self, sendbuf, dest, tag=0, **kwargs):
+    def Send(self, sendbuf, dest, tag: int = 0, **kwargs):
         ensure_contiguous(sendbuf)
         self._put_send_recv(sendbuf, dest, tag)
 
-    def Isend(self, sendbuf, dest, tag=0, **kwargs):
+    def Isend(self, sendbuf, dest, tag: int = 0, **kwargs):
         result = self.Send(sendbuf, dest, tag)
 
         def send():
@@ -143,11 +143,11 @@ class LocalComm:
 
         return AsyncResult(send)
 
-    def Recv(self, recvbuf, source, tag=0, **kwargs):
+    def Recv(self, recvbuf, source, tag: int = 0, **kwargs):
         ensure_contiguous(recvbuf)
         safe_assign_array(recvbuf, self._get_send_recv(source, tag))
 
-    def Irecv(self, recvbuf, source, tag=0, **kwargs):
+    def Irecv(self, recvbuf, source, tag: int = 0, **kwargs):
         def receive():
             return self.Recv(recvbuf, source, tag)
 
