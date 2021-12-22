@@ -136,7 +136,9 @@ class UpdateAtmosphereState:
         dycore_state,
         phy_state: PhysicsState,
     ):
-        self._fill_GFS(phy_state.prsi, phy_state.physics_updated_specific_humidity, 1.0e-9)
+        self._fill_GFS(
+            phy_state.prsi, phy_state.physics_updated_specific_humidity, 1.0e-9
+        )
         self._prepare_tendencies_and_update_tracers(
             self._u_dt,
             self._v_dt,

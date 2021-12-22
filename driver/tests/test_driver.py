@@ -1,18 +1,16 @@
-import pytest
-from mpi4py import MPI
-
-from pace.util import NullTimer, Timer
-from pace.driver.run import Driver
-from typing import Tuple, List, Any
-import fv3core._config
-import numpy as np
-from fv3core.utils.null_comm import NullComm
 import contextlib
+from typing import Any, List, Tuple
+
+import pytest
+
+import fv3core._config
+from fv3core.utils.null_comm import NullComm
+from pace.driver.run import Driver
 
 
 def setup_driver(dycore_only, comm) -> Tuple[Driver, List[Any]]:
-     
-     namelist = fv3core._config.Namelist(
+
+    namelist = fv3core._config.Namelist(
         layout=(1, 1),
         npx=13,
         npy=13,
@@ -55,33 +53,42 @@ def setup_driver(dycore_only, comm) -> Tuple[Driver, List[Any]]:
         vtdm4=0.06,
         z_tracer=True,
         do_qa=True,
-        dycore_only=dycore_only
-    )     
-     driver = Driver(
+        dycore_only=dycore_only,
+    )
+    driver = Driver(
         namelist,
         comm,
         backend="numpy",
         physics_packages=["microphysics"],
         dycore_init_mode="baroclinic",
     )
-     do_adiabatic_init = False
-     bdt = 225.0
-     args = [ 
-         do_adiabatic_init,
-         bdt,
-     ]
-     return driver, args
+    do_adiabatic_init = False
+    bdt = 225.0
+    args = [
+        do_adiabatic_init,
+        bdt,
+    ]
+    return driver, args
 
+
+# import numpy as np
+# from mpi4py import MPI
 # Disabled for the moment, to be run with mpirun -np 6
-# running into errors in parallel. using non-MPI is all nans and data changes aren't comparable
-#@pytest.mark.parametrize("sample_indices,ua_post_dycore,qv_post_dycore, qv_post_physics", [((3, 3, 6), 26.76749012814138, 3.6784598476435017e-06, 5.415568861604212e-07)])
-#def test_driver_runs_and_updates_data(sample_indices,ua_post_dycore, qv_post_dycore, qv_post_physics):
+# running into errors in parallel. non-MPI is all nans and data
+# changes aren't comparable
+# @pytest.mark.parametrize
+# ("sample_indices,ua_post_dycore,qv_post_dycore, qv_post_physics",
+# [((3, 3, 6), 26.76749012814138, 3.6784598476435017e-06, 5.415568861604212e-07)])
+# def test_driver_runs_and_updates_data(sample_indices,ua_post_dycore,
+# qv_post_dycore, qv_post_physics):
 #    driver, args = setup_driver(dycore_only=False, comm=MPI.COMM_WORLD)
 #    ti, tj, tz = sample_indices
-   
+
 #    rank = driver._comm.rank
 #    sample_qv = driver.dycore_state.qvapor.data[ti, tj, tz]
-#    assert(driver.dycore_state.ua.data[ti, tj, tz] == driver.physics_state.ua.data[ti, tj, tz])
+#    dycore_ua = driver.dycore_state.ua.data[ti, tj, tz]
+#    physics_ua =  driver.physics_state.ua.data[ti, tj, tz]
+#    assert(dycore_ua == physics_ua)
 #    assert(driver.physics_state.physics_updated_ua.data[ti, tj, tz] == 0)
 #    assert(driver.physics_state.wmp.data[ti, tj, tz] == 0)
 #    with no_lagrangian_contributions(dynamical_core=driver.dycore):
@@ -89,7 +96,9 @@ def setup_driver(dycore_only, comm) -> Tuple[Driver, List[Any]]:
 #    print(driver.dycore_state.qvapor.data[ti, tj, tz])
 #    sample_qv_post_dynamics = driver.dycore_state.qvapor.data[ti, tj, tz]
 #    assert(sample_qv != sample_qv_post_dynamics)
-#    assert(driver.dycore_state.ua.data[ti, tj, tz] == driver.physics_state.ua.data[ti, tj, tz])
+#    dycore_ua = driver.dycore_state.ua.data[ti, tj, tz]
+#    physics_ua =  driver.physics_state.ua.data[ti, tj, tz]
+#    assert(dycore_ua == physics_ua)
 #    if rank == 3:
 #        assert(driver.dycore_state.ua.data[ti, tj, tz] == ua_post_dycore)
 #        assert(sample_qv_post_dynamics == qv_post_dycore)
@@ -99,19 +108,23 @@ def setup_driver(dycore_only, comm) -> Tuple[Driver, List[Any]]:
 #    driver.step_physics()
 #    print(driver.dycore_state.qvapor.data[ti, tj, tz])
 #    assert(driver.dycore_state.qvapor.data[ti, tj, tz] != sample_qv_post_dynamics)
-#    assert(driver.dycore_state.ua.data[ti, tj, tz] == driver.physics_state.ua.data[ti, tj, tz])
+#    dycore_ua = driver.dycore_state.ua.data[ti, tj, tz]
+#    physics_ua =  driver.physics_state.ua.data[ti, tj, tz]
+#    assert(dycore_ua == physics_ua)
 #    assert(driver.physics_state.wmp.data[ti, tj, tz] != 0)
-   
+
 #    if rank == 3:
-#        assert(driver.physics_state.physics_updated_ua.data[ti, tj, tz] ==  ua_post_dycore)
+#        ua = driver.physics_state.physics_updated_ua.data[ti, tj, tz]
+#        updated_ua = driver.physics_state.physics_updated_ua.data[ti, tj, tz]
+#        assert(updated_ua ==  ua_post_dycore)
 #        assert(driver.dycore_state.ua.data[ti, tj, tz] == ua_post_dycore)
-#        assert(driver.physics_state.physics_updated_specific_humidity.data[ti, tj, tz] == qv_post_dycore)
+#        sh = driver.physics_state.physics_updated_specific_humidity.data[ti, tj, tz]
+#        assert(sh == qv_post_dycore)
 #        assert(driver.dycore_state.qvapor.data[ti, tj, tz] == qv_post_physics)
-        
+
+
 def test_driver_dycore_only():
-    comm =  NullComm(
-         rank=0, total_ranks=6, fill_value=0.0
-    )
+    comm = NullComm(rank=0, total_ranks=6, fill_value=0.0)
     driver, args = setup_driver(dycore_only=True, comm=comm)
     with pytest.raises(AttributeError):
         driver.physics
@@ -119,8 +132,7 @@ def test_driver_dycore_only():
         driver.physics_state
     with pytest.raises(AttributeError):
         driver.state_updater
-    
-   
+
 
 @contextlib.contextmanager
 def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
@@ -152,12 +164,9 @@ def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
         for obj, original in original_attributes.items():
             obj._lagrangian_contributions = original
 
-def test_driver_runs():
-     comm =  NullComm(
-          rank=0, total_ranks=6, fill_value=0.0
-     )
-     driver, args = setup_driver(dycore_only=True, comm=comm)
-     with no_lagrangian_contributions(dynamical_core=driver.dycore):
-          driver.step(*args)
 
-           
+def test_driver_runs():
+    comm = NullComm(rank=0, total_ranks=6, fill_value=0.0)
+    driver, args = setup_driver(dycore_only=True, comm=comm)
+    with no_lagrangian_contributions(dynamical_core=driver.dycore):
+        driver.step(*args)
