@@ -5,8 +5,9 @@ from pace.util import NullTimer, Timer
 from pace.driver.run import Driver
 from typing import Tuple, List, Any
 import fv3core._config
-from fv3core.utils.null_comm import NullComm
 import numpy as np
+
+
 
 def setup_driver(dycore_only) -> Tuple[Driver, List[Any]]:
 
@@ -57,6 +58,7 @@ def setup_driver(dycore_only) -> Tuple[Driver, List[Any]]:
     )
      
      comm = MPI.COMM_WORLD
+     
      driver = Driver(
         namelist,
         comm,
@@ -83,8 +85,9 @@ def test_driver_runs_and_updates_data(sample_indices,ua_post_dycore, qv_post_dyc
     assert(driver.dycore_state.ua.data[ti, tj, tz] == driver.physics_state.ua.data[ti, tj, tz])
     assert(driver.physics_state.ua_t1.data[ti, tj, tz] == 0)
     assert(driver.physics_state.wmp.data[ti, tj, tz] == 0)
-    driver.step_dynamics(*args)
-        
+    with no_lagrangian_contributions(dynamical_core=driver.dycore):
+         driver.step_dynamics(*args)
+    print(driver.dycore_state.qvapor.data[ti, tj, tz])
     sample_qv_post_dynamics = driver.dycore_state.qvapor.data[ti, tj, tz]
     assert(sample_qv != sample_qv_post_dynamics)
     assert(driver.dycore_state.ua.data[ti, tj, tz] == driver.physics_state.ua.data[ti, tj, tz])
@@ -95,10 +98,11 @@ def test_driver_runs_and_updates_data(sample_indices,ua_post_dycore, qv_post_dyc
     assert(driver.physics_state.wmp.data[ti, tj, tz] == 0)
 
     driver.step_physics()
-    
+    print(driver.dycore_state.qvapor.data[ti, tj, tz])
     assert(driver.dycore_state.qvapor.data[ti, tj, tz] != sample_qv_post_dynamics)
     assert(driver.dycore_state.ua.data[ti, tj, tz] == driver.physics_state.ua.data[ti, tj, tz])
     assert(driver.physics_state.wmp.data[ti, tj, tz] != 0)
+   
     if rank == 3:
         assert(driver.physics_state.ua_t1.data[ti, tj, tz] ==  ua_post_dycore)
         assert(driver.dycore_state.ua.data[ti, tj, tz] == ua_post_dycore)

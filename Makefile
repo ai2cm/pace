@@ -50,3 +50,6 @@ update_submodules_venv:
 	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
                 git submodule update --init external/daint_venv; \
         fi
+
+test_driver:
+	DEV=$(DEV) $(MAKE) -C driver test
