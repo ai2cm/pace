@@ -48,7 +48,8 @@ set -e
 script="${JENKINS_DIR}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
-# set up virtual env, if not already set up
+# set up virtual env
+rm -rf venv
 python3 -m venv venv
 . ./venv/bin/activate
 pip3 install --upgrade pip setuptools wheel
