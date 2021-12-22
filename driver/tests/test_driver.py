@@ -105,9 +105,7 @@ def test_driver_runs_and_updates_data(sample_indices,ua_post_dycore, qv_post_dyc
         assert(driver.physics_state.qvapor_t1.data[ti, tj, tz] == qv_post_dycore)
         assert(driver.dycore_state.qvapor.data[ti, tj, tz] == qv_post_physics)
         
-@pytest.mark.parametrize("sample_indices,ua_post_dycore,qv_post_dycore", [((3, 3, 6), 26.76749012814138, 3.6784598476435017e-06)])
-def test_driver_dycore_only(sample_indices, ua_post_dycore, qv_post_dycore):
-    ti, tj, tz = sample_indices
+def test_driver_dycore_only():
     driver, args = setup_driver(dycore_only=True)
     with pytest.raises(AttributeError):
         driver.physics
@@ -116,8 +114,4 @@ def test_driver_dycore_only(sample_indices, ua_post_dycore, qv_post_dycore):
     with pytest.raises(AttributeError):
         driver.state_updater
     
-    driver.step(*args)
-
-    if driver._comm.rank == 3:
-           assert(driver.dycore_state.ua.data[ti, tj, tz] == ua_post_dycore)
-           assert(driver.dycore_state.qvapor.data[ti, tj, tz] == qv_post_dycore)
+   
