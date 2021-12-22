@@ -6,8 +6,8 @@ from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
-from pace.stencils.testing.grid import GridData
 from pace.util import TilePartitioner
+from pace.util.grid import GridData
 
 
 def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):

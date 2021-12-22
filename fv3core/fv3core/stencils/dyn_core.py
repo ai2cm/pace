@@ -29,16 +29,10 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.pk3_halo import PK3Halo
 from fv3core.stencils.riem_solver3 import RiemannSolver3
 from fv3core.stencils.riem_solver_c import RiemannSolverC
-from pace.dsl.stencil import StencilFactory
+from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.stencils.testing.grid import (
-    DampingCoefficients,
-    GridData,
-    GridIndexing,
-    axis_offsets,
-    quantity_wrap,
-)
 from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from pace.util.grid import DampingCoefficients, GridData, quantity_wrap
 
 
 HUGE_R = 1.0e40
@@ -460,8 +454,7 @@ class AcousticDynamics:
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(),
         )
-        ax_offsets_pe = axis_offsets(
-            grid_indexing,
+        ax_offsets_pe = grid_indexing.axis_offsets(
             grid_indexing.origin_full(),
             grid_indexing.domain_full(add=(0, 0, 1)),
         )

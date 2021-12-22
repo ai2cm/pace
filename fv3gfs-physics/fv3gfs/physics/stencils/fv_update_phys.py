@@ -10,8 +10,8 @@ from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
-from pace.stencils.testing.grid import GridData
 from pace.util import TilePartitioner
+from pace.util.grid import GridData
 
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir

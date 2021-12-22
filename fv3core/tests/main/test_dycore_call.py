@@ -10,8 +10,7 @@ import pace.dsl.stencil
 import pace.stencils.testing
 import pace.util
 from fv3core.utils.null_comm import NullComm
-from pace.stencils.testing.grid import DampingCoefficients, GridData
-from pace.util.grid import MetricTerms
+from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 
 DIR = os.path.abspath(os.path.dirname(__file__))
