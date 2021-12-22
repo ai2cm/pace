@@ -1,6 +1,6 @@
 import dataclasses
 import warnings
-from typing import Dict, Iterable, Sequence, Tuple, Union, cast
+from typing import Dict, Iterable, Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
 
@@ -259,6 +259,7 @@ class Quantity:
         origin: Sequence[int] = None,
         extent: Sequence[int] = None,
         gt4py_backend: Union[str, None] = None,
+        mask: Optional[Tuple[bool, bool, bool]] = None,
     ):
         """
         Initialize a Quantity.
@@ -307,7 +308,7 @@ class Quantity:
                 )
         elif gt4py_backend is not None:
             self._storage, self._data = self._initialize_storage(
-                data, origin, gt4py_backend
+                data, origin, gt4py_backend, mask
             )
         else:
             self._data = data
@@ -392,12 +393,13 @@ class Quantity:
             )
         return self._storage
 
-    def _initialize_storage(self, data, origin, gt4py_backend: str):
+    def _initialize_storage(self, data, origin, gt4py_backend: str, mask: Tuple):
         storage = gt4py.storage.storage.empty(
             gt4py_backend,
             default_origin=origin,
             shape=data.shape,
             dtype=data.dtype,
+            mask=mask,
             managed_memory=True,  # required to get GPUStorage with only gpu data copy
         )
         storage[...] = data

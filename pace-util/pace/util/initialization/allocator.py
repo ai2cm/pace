@@ -1,4 +1,4 @@
-from typing import Callable, Sequence
+from typing import Callable, Optional, Sequence, Tuple
 
 from ..quantity import Quantity
 from .sizer import SubtileGridSizer
@@ -54,29 +54,48 @@ class QuantityFactory:
         numpy = StorageNumpy(backend)
         return cls(sizer, numpy)
 
-    def empty(self, dims: Sequence[str], units: str, dtype: type = float):
-        return self._allocate(self._numpy.empty, dims, units, dtype)
+    def empty(
+        self,
+        dims: Sequence[str],
+        units: str,
+        dtype: type = float,
+        mask: Optional[Tuple[bool, bool, bool]] = None,
+    ):
+        return self._allocate(self._numpy.empty, dims, units, dtype, mask)
 
-    def zeros(self, dims: Sequence[str], units: str, dtype: type = float):
-        return self._allocate(self._numpy.zeros, dims, units, dtype)
+    def zeros(
+        self,
+        dims: Sequence[str],
+        units: str,
+        dtype: type = float,
+        mask: Optional[Tuple[bool, bool, bool]] = None,
+    ):
+        return self._allocate(self._numpy.zeros, dims, units, dtype, mask)
 
-    def ones(self, dims: Sequence[str], units: str, dtype: type = float):
-        return self._allocate(self._numpy.ones, dims, units, dtype)
+    def ones(
+        self,
+        dims: Sequence[str],
+        units: str,
+        dtype: type = float,
+        mask: Optional[Tuple[bool, bool, bool]] = None,
+    ):
+        return self._allocate(self._numpy.ones, dims, units, dtype, mask)
 
     def _allocate(
-        self, allocator: Callable, dims: Sequence[str], units: str, dtype: type = float
+        self,
+        allocator: Callable,
+        dims: Sequence[str],
+        units: str,
+        dtype: type = float,
+        mask: Optional[Tuple[bool, bool, bool]] = None,
     ):
         origin = self._sizer.get_origin(dims)
         extent = self._sizer.get_extent(dims)
         shape = self._sizer.get_shape(dims)
         try:
-            data = allocator(shape, dtype=dtype, default_origin=origin)
+            data = allocator(shape, dtype=dtype, default_origin=origin, mask=mask)
         except TypeError:
-            data = allocator(shape, dtype=dtype)
+            data = allocator(shape, dtype=dtype, mask=mask)
         return Quantity(
-            data,
-            dims=dims,
-            units=units,
-            origin=origin,
-            extent=extent,
+            data, dims=dims, units=units, origin=origin, extent=extent, mask=mask
         )

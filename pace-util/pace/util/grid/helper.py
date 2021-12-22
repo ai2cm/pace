@@ -2,7 +2,6 @@ import dataclasses
 from typing import Any, Optional, Sequence
 
 import pace.util
-from pace.dsl import gt4py_utils as utils
 from pace.dsl.stencil import GridIndexing
 from pace.dsl.typing import FloatFieldI, FloatFieldIJ
 
@@ -184,15 +183,8 @@ class GridData:
             edge_s=edge_s,
             edge_n=edge_n,
         )
-        ak = metric_terms.ak.data
-        bk = metric_terms.bk.data
-        # TODO fix <Quantity>.storage mask for FieldK
-        ak = utils.make_storage_data(
-            ak, ak.shape, len(ak.shape) * (0,), backend=metric_terms.ak.gt4py_backend
-        )
-        bk = utils.make_storage_data(
-            bk, bk.shape, len(bk.shape) * (0,), backend=metric_terms.ak.gt4py_backend
-        )
+        ak = metric_terms.ak.storage
+        bk = metric_terms.bk.storage
         vertical_data = VerticalGridData(
             ak=ak,
             bk=bk,

@@ -1657,8 +1657,12 @@ class MetricTerms:
     def _set_hybrid_pressure_coefficients(self):
         ks = self.quantity_factory.zeros([], "")
         ptop = self.quantity_factory.zeros([], "mb")
-        ak = self.quantity_factory.zeros([fv3util.Z_INTERFACE_DIM], "mb")
-        bk = self.quantity_factory.zeros([fv3util.Z_INTERFACE_DIM], "")
+        ak = self.quantity_factory.zeros(
+            [fv3util.Z_INTERFACE_DIM], "mb", mask=(False, False, True)
+        )
+        bk = self.quantity_factory.zeros(
+            [fv3util.Z_INTERFACE_DIM], "", mask=(False, False, True)
+        )
         pressure_coefficients = set_hybrid_pressure_coefficients(self._npz)
         ks = pressure_coefficients.ks
         ptop = pressure_coefficients.ptop
