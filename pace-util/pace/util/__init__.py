@@ -44,6 +44,7 @@ from .halo_data_transformer import QuantityHaloSpec
 from .halo_updater import HaloUpdater
 from .initialization import GridSizer, QuantityFactory, SubtileGridSizer
 from .io import read_state, write_state
+from .local_communicator import LocalComm
 from .nudging import apply_nudging, get_nudging_tendencies
 from .partitioner import (
     CubedSpherePartitioner,
