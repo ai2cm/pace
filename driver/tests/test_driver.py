@@ -8,7 +8,38 @@ from fv3core.utils.null_comm import NullComm
 from pace.driver.run import Driver
 
 
-def setup_driver(dycore_only, comm) -> Tuple[Driver, List[Any]]:
+@contextlib.contextmanager
+def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
+    # TODO: lagrangian contributions currently cause an out of bounds iteration
+    # when halo updates are disabled. Fix that bug and remove this decorator.
+    # Probably requires an update to gt4py (currently v36).
+    def do_nothing(*args, **kwargs):
+        pass
+
+    original_attributes = {}
+    for obj in (
+        dynamical_core._lagrangian_to_eulerian_obj._map_single_delz,
+        dynamical_core._lagrangian_to_eulerian_obj._map_single_pt,
+        dynamical_core._lagrangian_to_eulerian_obj._map_single_u,
+        dynamical_core._lagrangian_to_eulerian_obj._map_single_v,
+        dynamical_core._lagrangian_to_eulerian_obj._map_single_w,
+        dynamical_core._lagrangian_to_eulerian_obj._map_single_delz,
+    ):
+        original_attributes[obj] = obj._lagrangian_contributions
+        obj._lagrangian_contributions = do_nothing  # type: ignore
+    for (
+        obj
+    ) in dynamical_core._lagrangian_to_eulerian_obj._mapn_tracer._list_of_remap_objects:
+        original_attributes[obj] = obj._lagrangian_contributions
+        obj._lagrangian_contributions = do_nothing  # type: ignore
+    try:
+        yield
+    finally:
+        for obj, original in original_attributes.items():
+            obj._lagrangian_contributions = original
+
+
+def setup_driver(dycore_only, comm=None) -> Tuple[Driver, List[Any]]:
 
     namelist = fv3core._config.Namelist(
         layout=(1, 1),
@@ -55,6 +86,12 @@ def setup_driver(dycore_only, comm) -> Tuple[Driver, List[Any]]:
         do_qa=True,
         dycore_only=dycore_only,
     )
+    if comm is None:
+        comm = NullComm(
+            rank=0,
+            total_ranks=6 * namelist.layout[0] * namelist.layout[1],
+            fill_value=0.0,
+        )
     driver = Driver(
         namelist,
         comm,
@@ -69,6 +106,22 @@ def setup_driver(dycore_only, comm) -> Tuple[Driver, List[Any]]:
         bdt,
     ]
     return driver, args
+
+
+def test_driver_dycore_only():
+    driver, args = setup_driver(dycore_only=True)
+    with pytest.raises(AttributeError):
+        driver.physics
+    with pytest.raises(AttributeError):
+        driver.physics_state
+    with pytest.raises(AttributeError):
+        driver.state_updater
+
+
+def test_driver_runs():
+    driver, args = setup_driver(dycore_only=True)
+    with no_lagrangian_contributions(dynamical_core=driver.dycore):
+        driver.step(*args)
 
 
 # import numpy as np
@@ -121,52 +174,3 @@ def setup_driver(dycore_only, comm) -> Tuple[Driver, List[Any]]:
 #        sh = driver.physics_state.physics_updated_specific_humidity.data[ti, tj, tz]
 #        assert(sh == qv_post_dycore)
 #        assert(driver.dycore_state.qvapor.data[ti, tj, tz] == qv_post_physics)
-
-
-def test_driver_dycore_only():
-    comm = NullComm(rank=0, total_ranks=6, fill_value=0.0)
-    driver, args = setup_driver(dycore_only=True, comm=comm)
-    with pytest.raises(AttributeError):
-        driver.physics
-    with pytest.raises(AttributeError):
-        driver.physics_state
-    with pytest.raises(AttributeError):
-        driver.state_updater
-
-
-@contextlib.contextmanager
-def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
-    # TODO: lagrangian contributions currently cause an out of bounds iteration
-    # when halo updates are disabled. Fix that bug and remove this decorator.
-    # Probably requires an update to gt4py (currently v36).
-    def do_nothing(*args, **kwargs):
-        pass
-
-    original_attributes = {}
-    for obj in (
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_delz,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_pt,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_u,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_v,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_w,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_delz,
-    ):
-        original_attributes[obj] = obj._lagrangian_contributions
-        obj._lagrangian_contributions = do_nothing  # type: ignore
-    for (
-        obj
-    ) in dynamical_core._lagrangian_to_eulerian_obj._mapn_tracer._list_of_remap_objects:
-        original_attributes[obj] = obj._lagrangian_contributions
-        obj._lagrangian_contributions = do_nothing  # type: ignore
-    try:
-        yield
-    finally:
-        for obj, original in original_attributes.items():
-            obj._lagrangian_contributions = original
-
-
-def test_driver_runs():
-    comm = NullComm(rank=0, total_ranks=6, fill_value=0.0)
-    driver, args = setup_driver(dycore_only=True, comm=comm)
-    with no_lagrangian_contributions(dynamical_core=driver.dycore):
-        driver.step(*args)
