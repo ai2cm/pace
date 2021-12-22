@@ -99,16 +99,16 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         inputs["phil"] = copy.deepcopy(storage)
         inputs["dz"] = copy.deepcopy(storage)
         inputs["wmp"] = copy.deepcopy(storage)
-        inputs["qvapor_t1"] = copy.deepcopy(storage)
-        inputs["qliquid_t1"] = copy.deepcopy(storage)
-        inputs["qrain_t1"] = copy.deepcopy(storage)
-        inputs["qsnow_t1"] = copy.deepcopy(storage)
-        inputs["qice_t1"] = copy.deepcopy(storage)
-        inputs["qgraupel_t1"] = copy.deepcopy(storage)
-        inputs["qcld_t1"] = copy.deepcopy(storage)
-        inputs["pt_t1"] = copy.deepcopy(storage)
-        inputs["ua_t1"] = copy.deepcopy(storage)
-        inputs["va_t1"] = copy.deepcopy(storage)
+        inputs["physics_updated_specific_humidity"] = copy.deepcopy(storage)
+        inputs["physics_updated_qliquid"] = copy.deepcopy(storage)
+        inputs["physics_updated_qrain"] = copy.deepcopy(storage)
+        inputs["physics_updated_qsnow"] = copy.deepcopy(storage)
+        inputs["physics_updated_qice"] = copy.deepcopy(storage)
+        inputs["physics_updated_qgraupel"] = copy.deepcopy(storage)
+        inputs["physics_updated_cloud_fraction"] = copy.deepcopy(storage)
+        inputs["physics_updated_pt"] = copy.deepcopy(storage)
+        inputs["physics_updated_ua"] = copy.deepcopy(storage)
+        inputs["physics_updated_va"] = copy.deepcopy(storage)
         inputs["prsi"] = copy.deepcopy(storage)
         inputs["prsik"] = copy.deepcopy(storage)
         sizer = util.SubtileGridSizer.from_tile_params(
@@ -188,7 +188,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         )
         microph_state = physics_state.microphysics
         physics._microphysics(microph_state)
-        # Fortran uses IPD interface, here we use var_t1 to denote the updated field
+        # Fortran uses IPD interface, here we use physics_updated_<var> to denote the updated field
         physics._update_physics_state_with_tendencies(
             physics_state.qvapor,
             physics_state.qliquid,
@@ -210,26 +210,26 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             microph_state.pt_dt,
             microph_state.udt,
             microph_state.vdt,
-            physics_state.qvapor_t1,
-            physics_state.qliquid_t1,
-            physics_state.qrain_t1,
-            physics_state.qice_t1,
-            physics_state.qsnow_t1,
-            physics_state.qgraupel_t1,
-            physics_state.qcld_t1,
-            physics_state.pt_t1,
-            physics_state.ua_t1,
-            physics_state.va_t1,
+            physics_state.physics_updated_specific_humidity,
+            physics_state.physics_updated_qliquid,
+            physics_state.physics_updated_qrain,
+            physics_state.physics_updated_qice,
+            physics_state.physics_updated_qsnow,
+            physics_state.physics_updated_qgraupel,
+            physics_state.physics_updated_cloud_fraction,
+            physics_state.physics_updated_pt,
+            physics_state.physics_updated_ua,
+            physics_state.physics_updated_va,
             Float(physics._dt_atmos),
         )
-        inputs["gt0"] = physics_state.pt_t1
-        inputs["gu0"] = physics_state.ua_t1
-        inputs["gv0"] = physics_state.va_t1
-        inputs["qvapor"] = physics_state.qvapor_t1
-        inputs["qliquid"] = physics_state.qliquid_t1
-        inputs["qrain"] = physics_state.qrain_t1
-        inputs["qice"] = physics_state.qice_t1
-        inputs["qsnow"] = physics_state.qsnow_t1
-        inputs["qgraupel"] = physics_state.qgraupel_t1
-        inputs["qcld"] = physics_state.qcld_t1
+        inputs["gt0"] = physics_state.physics_updated_pt
+        inputs["gu0"] = physics_state.physics_updated_ua
+        inputs["gv0"] = physics_state.physics_updated_va
+        inputs["qvapor"] = physics_state.physics_updated_specific_humidity
+        inputs["qliquid"] = physics_state.physics_updated_qliquid
+        inputs["qrain"] = physics_state.physics_updated_qrain
+        inputs["qice"] = physics_state.physics_updated_qice
+        inputs["qsnow"] = physics_state.physics_updated_qsnow
+        inputs["qgraupel"] = physics_state.physics_updated_qgraupel
+        inputs["qcld"] = physics_state.physics_updated_cloud_fraction
         return self.slice_output(inputs)

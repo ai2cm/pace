@@ -136,29 +136,29 @@ def update_physics_state_with_tendencies(
     pt_dt: FloatField,
     udt: FloatField,
     vdt: FloatField,
-    qvapor_t1: FloatField,
-    qliquid_t1: FloatField,
-    qrain_t1: FloatField,
-    qice_t1: FloatField,
-    qsnow_t1: FloatField,
-    qgraupel_t1: FloatField,
-    qcld_t1: FloatField,
-    pt_t1: FloatField,
-    ua_t1: FloatField,
-    va_t1: FloatField,
+    physics_updated_specific_humidity: FloatField,
+    physics_updated_qliquid: FloatField,
+    physics_updated_qrain: FloatField,
+    physics_updated_qice: FloatField,
+    physics_updated_qsnow: FloatField,
+    physics_updated_qgraupel: FloatField,
+    physics_updated_cloud_fraction: FloatField,
+    physics_updated_pt: FloatField,
+    physics_updated_ua: FloatField,
+    physics_updated_va: FloatField,
     dt: Float,
 ):
     with computation(PARALLEL), interval(...):
-        qvapor_t1 = forward_euler(qvapor, qv_dt, dt)
-        qliquid_t1 = forward_euler(qliquid, ql_dt, dt)
-        qrain_t1 = forward_euler(qrain, qr_dt, dt)
-        qice_t1 = forward_euler(qice, qi_dt, dt)
-        qsnow_t1 = forward_euler(qsnow, qs_dt, dt)
-        qgraupel_t1 = forward_euler(qgraupel, qg_dt, dt)
-        qcld_t1 = forward_euler(qcld, qa_dt, dt)
-        pt_t1 = forward_euler(pt, pt_dt, dt)
-        ua_t1 = forward_euler(ua, udt, dt)
-        va_t1 = forward_euler(va, vdt, dt)
+        physics_updated_specific_humidity = forward_euler(qvapor, qv_dt, dt)
+        physics_updated_qliquid = forward_euler(qliquid, ql_dt, dt)
+        physics_updated_qrain = forward_euler(qrain, qr_dt, dt)
+        physics_updated_qice = forward_euler(qice, qi_dt, dt)
+        physics_updated_qsnow = forward_euler(qsnow, qs_dt, dt)
+        physics_updated_qgraupel = forward_euler(qgraupel, qg_dt, dt)
+        physics_updated_cloud_fraction = forward_euler(qcld, qa_dt, dt)
+        physics_updated_pt = forward_euler(pt, pt_dt, dt)
+        physics_updated_ua = forward_euler(ua, udt, dt)
+        physics_updated_va = forward_euler(va, vdt, dt)
 
 
 class Physics:
@@ -281,7 +281,8 @@ class Physics:
             )
             microph_state = physics_state.microphysics
             self._microphysics(microph_state)
-            # Fortran uses IPD interface, here we use var_t1 to denote the updated field
+            # Fortran uses IPD interface, here we use physics_updated_<var> to denote
+            # the updated field
             self._update_physics_state_with_tendencies(
                 physics_state.qvapor,
                 physics_state.qliquid,
@@ -303,15 +304,15 @@ class Physics:
                 microph_state.pt_dt,
                 microph_state.udt,
                 microph_state.vdt,
-                physics_state.qvapor_t1,
-                physics_state.qliquid_t1,
-                physics_state.qrain_t1,
-                physics_state.qice_t1,
-                physics_state.qsnow_t1,
-                physics_state.qgraupel_t1,
-                physics_state.qcld_t1,
-                physics_state.pt_t1,
-                physics_state.ua_t1,
-                physics_state.va_t1,
+                physics_state.physics_updated_specific_humidity,
+                physics_state.physics_updated_qliquid,
+                physics_state.physics_updated_qrain,
+                physics_state.physics_updated_qice,
+                physics_state.physics_updated_qsnow,
+                physics_state.physics_updated_qgraupel,
+                physics_state.physics_updated_cloud_fraction,
+                physics_state.physics_updated_pt,
+                physics_state.physics_updated_ua,
+                physics_state.physics_updated_va,
                 self._dt_atmos,
             )

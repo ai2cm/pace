@@ -37,13 +37,13 @@ def prepare_tendencies_and_update_tracers(
     pt_dt: FloatField,
     u_t1: FloatField,
     v_t1: FloatField,
-    pt_t1: FloatField,
-    qvapor_t1: FloatField,
-    qliquid_t1: FloatField,
-    qrain_t1: FloatField,
-    qsnow_t1: FloatField,
-    qice_t1: FloatField,
-    qgraupel_t1: FloatField,
+    physics_updated_pt: FloatField,
+    physics_updated_specific_humidity: FloatField,
+    physics_updated_qliquid: FloatField,
+    physics_updated_qrain: FloatField,
+    physics_updated_qsnow: FloatField,
+    physics_updated_qice: FloatField,
+    physics_updated_qgraupel: FloatField,
     u_t0: FloatField,
     v_t0: FloatField,
     pt_t0: FloatField,
@@ -66,14 +66,14 @@ def prepare_tendencies_and_update_tracers(
     with computation(PARALLEL), interval(0, -1):
         u_dt += (u_t1 - u_t0) * rdt
         v_dt += (v_t1 - v_t0) * rdt
-        pt_dt += (pt_t1 - pt_t0) * rdt
+        pt_dt += (physics_updated_pt - pt_t0) * rdt
         dp = prsi[0, 0, 1] - prsi[0, 0, 0]
-        qwat_qv = dp * qvapor_t1
-        qwat_ql = dp * qliquid_t1
-        qwat_qr = dp * qrain_t1
-        qwat_qs = dp * qsnow_t1
-        qwat_qi = dp * qice_t1
-        qwat_qg = dp * qgraupel_t1
+        qwat_qv = dp * physics_updated_specific_humidity
+        qwat_ql = dp * physics_updated_qliquid
+        qwat_qr = dp * physics_updated_qrain
+        qwat_qs = dp * physics_updated_qsnow
+        qwat_qi = dp * physics_updated_qice
+        qwat_qg = dp * physics_updated_qgraupel
         qt = qwat_qv + qwat_ql + qwat_qr + qwat_qs + qwat_qi + qwat_qg
         q_sum = qvapor_t0 + qliquid_t0 + qrain_t0 + qsnow_t0 + qice_t0 + qgraupel_t0
         q0 = delp * (1.0 - q_sum) + qt
@@ -136,20 +136,20 @@ class UpdateAtmosphereState:
         dycore_state,
         phy_state: PhysicsState,
     ):
-        self._fill_GFS(phy_state.prsi, phy_state.qvapor_t1, 1.0e-9)
+        self._fill_GFS(phy_state.prsi, phy_state.physics_updated_specific_humidity, 1.0e-9)
         self._prepare_tendencies_and_update_tracers(
             self._u_dt,
             self._v_dt,
             self._pt_dt,
-            phy_state.ua_t1,
-            phy_state.va_t1,
-            phy_state.pt_t1,
-            phy_state.qvapor_t1,
-            phy_state.qliquid_t1,
-            phy_state.qrain_t1,
-            phy_state.qsnow_t1,
-            phy_state.qice_t1,
-            phy_state.qgraupel_t1,
+            phy_state.physics_updated_ua,
+            phy_state.physics_updated_va,
+            phy_state.physics_updated_pt,
+            phy_state.physics_updated_specific_humidity,
+            phy_state.physics_updated_qliquid,
+            phy_state.physics_updated_qrain,
+            phy_state.physics_updated_qsnow,
+            phy_state.physics_updated_qice,
+            phy_state.physics_updated_qgraupel,
             phy_state.ua,
             phy_state.va,
             phy_state.pt,

@@ -74,58 +74,58 @@ class PhysicsState:
             "intent": "inout",
         }
     )
-    qvapor_t1: FloatField = field(
+    physics_updated_specific_humidity: FloatField = field(
         metadata={
             "name": "physics_specific_humidity",
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qliquid_t1: FloatField = field(
+    physics_updated_qliquid: FloatField = field(
         metadata={
             "name": "physics_cloud_water_mixing_ratio",
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qice_t1: FloatField = field(
+    physics_updated_qice: FloatField = field(
         metadata={
             "name": "physics_cloud_ice_mixing_ratio",
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qrain_t1: FloatField = field(
+    physics_updated_qrain: FloatField = field(
         metadata={
             "name": "physics_rain_mixing_ratio",
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qsnow_t1: FloatField = field(
+    physics_updated_qsnow: FloatField = field(
         metadata={
             "name": "physics_snow_mixing_ratio",
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qgraupel_t1: FloatField = field(
+    physics_updated_qgraupel: FloatField = field(
         metadata={
             "name": "physics_graupel_mixing_ratio",
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qcld_t1: FloatField = field(
+    physics_updated_cloud_fraction: FloatField = field(
         metadata={"name": "physics_cloud_fraction", "units": "", "intent": "inout"}
     )
-    pt_t1: FloatField = field(
+    physics_updated_pt: FloatField = field(
         metadata={"name": "physics_air_temperature", "units": "degK", "intent": "inout"}
     )
-    ua_t1: FloatField = field(
+    physics_updated_ua: FloatField = field(
         metadata={"name": "physics_eastward_wind", "units": "m/s", "intent": "inout"}
     )
-    va_t1: FloatField = field(
+    physics_updated_va: FloatField = field(
         metadata={"name": "physics_northward_wind", "units": "m/s", "intent": "inout"}
     )
     delprsi: FloatField = field(
