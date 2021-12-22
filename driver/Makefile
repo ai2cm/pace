@@ -24,4 +24,4 @@ ifneq ($(findstring docker,$(CONTAINER_CMD)),)
 	$(MAKE) build
     endif
 endif
-	$(CONTAINER_CMD) bash -c "mpirun -np 6 $(PYTEST_CMD) -vv -s -k test_driver_dycore_only"
+	$(CONTAINER_CMD) bash -c "$(PYTEST_CMD) -vv -s "
