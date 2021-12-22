@@ -1,10 +1,10 @@
-import sys
 import time
 
 import click
 import f90nml
 
 # Use this to add non-installed seriablox path
+# import sys
 # sys.path.append("/usr/local/serialbox/python/")
 import numpy as np
 import serialbox
@@ -17,7 +17,7 @@ import pace.stencils.testing
 import pace.util as util
 from fv3core._config import Namelist
 from fv3gfs.physics.stencils.physics import Physics
-from pace.stencils.testing.grid import DampingCoefficients, GridData
+from pace.stencils.testing.grid import DampingCoefficients, DriverGridData, GridData
 from pace.util.grid import MetricTerms
 
 
@@ -39,12 +39,6 @@ class DeactivatedDycore:
 
     def step_dynamics(*args, **kwargs):
         pass
-
-
-# Reuse infrastructure to read in grid variables
-# add path to integration test to reuse existing grid logic
-sys.path.append("/fv3gfs-physics/tests/savepoint/translate/")
-from translate_update_dwind_phys import TranslateUpdateDWindsPhys  # noqa
 
 
 @click.command()
@@ -73,17 +67,9 @@ def driver(
         "Generator_rank" + str(rank),
     )
 
-    # get grid from serialized data
-    grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
-    grid_data = {}
-    grid_fields = serializer.fields_at_savepoint(grid_savepoint)
-    for field in grid_fields:
-        grid_data[field] = serializer.read(field, grid_savepoint)
-        if len(grid_data[field].flatten()) == 1:
-            grid_data[field] = grid_data[field][0]
-    grid = pace.stencils.testing.TranslateGrid(
-        grid_data, rank, namelist.layout, backend=backend
-    ).python_grid()
+    # get grid object with indices used for translating from serialized data
+    grid = fv3core._config.make_grid_from_namelist(namelist, rank, backend)
+
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
@@ -116,12 +102,7 @@ def driver(
     input_data["comm"] = communicator
     state = driver_object.state_from_inputs(input_data)
 
-    # read in missing grid info for physics - this will be removed
-    dwind = TranslateUpdateDWindsPhys(grid, namelist, stencil_factory)
-    missing_grid_info = dwind.collect_input_data(
-        serializer, serializer.get_savepoint("FVUpdatePhys-In")[0]
-    )
-    dwind.make_storage_data_input_vars(missing_grid_info)
+    dwind = DriverGridData.new_from_metric_terms(metric_terms)
     grid_data = GridData.new_from_metric_terms(metric_terms)
     # initialize dynamical core and physics objects
     if run_dycore:
@@ -142,10 +123,6 @@ def driver(
         stencil_factory=stencil_factory,
         grid_data=grid_data,
         namelist=namelist,
-        comm=communicator,
-        partitioner=partitioner,
-        rank=rank,
-        grid_info=missing_grid_info,
     )
     # TODO include functionality that uses and changes this
     do_adiabatic_init = False
