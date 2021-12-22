@@ -149,32 +149,10 @@ class GridData:
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
-        # TODO fix <Quantity>.storage mask for FieldI
-        shape = metric_terms.lon.data.shape
-        edge_n = utils.make_storage_data(
-            metric_terms.edge_n.data,
-            (shape[0],),
-            axis=0,
-            backend=metric_terms.edge_n.gt4py_backend,
-        )
-        edge_s = utils.make_storage_data(
-            metric_terms.edge_s.data,
-            (shape[0],),
-            axis=0,
-            backend=metric_terms.edge_s.gt4py_backend,
-        )
-        edge_e = utils.make_storage_data(
-            metric_terms.edge_e.data,
-            (1, shape[1]),
-            axis=1,
-            backend=metric_terms.edge_e.gt4py_backend,
-        )
-        edge_w = utils.make_storage_data(
-            metric_terms.edge_w.data,
-            (1, shape[1]),
-            axis=1,
-            backend=metric_terms.edge_w.gt4py_backend,
-        )
+        edge_n = metric_terms.edge_n.storage
+        edge_s = metric_terms.edge_s.storage
+        edge_e = metric_terms.edge_e.storage
+        edge_w = metric_terms.edge_w.storage
 
         horizontal_data = HorizontalGridData(
             lon=metric_terms.lon.storage,

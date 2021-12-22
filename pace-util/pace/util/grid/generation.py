@@ -63,6 +63,7 @@ class MetricTerms:
     CARTESIAN_DIM = "xyz_direction"
     N_TILES = 6
     RIGHT_HAND_GRID = False
+    UNIT_X_DIM = "unit_vector_x"
 
     def __init__(
         self,
@@ -84,6 +85,7 @@ class MetricTerms:
                 self.LON_OR_LAT_DIM: 2,
                 self.TILE_DIM: 6,
                 self.CARTESIAN_DIM: 3,
+                self.UNIT_X_DIM: 1,
             }
         )
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
@@ -2161,11 +2163,15 @@ class MetricTerms:
         nhalo = self._halo
         edge_s = self.quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
         edge_n = self.quantity_factory.zeros([fv3util.X_INTERFACE_DIM], "")
-        edge_e = self.quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
-        edge_w = self.quantity_factory.zeros([fv3util.Y_INTERFACE_DIM], "")
+        edge_e = self.quantity_factory.zeros(
+            [self.UNIT_X_DIM, fv3util.Y_INTERFACE_DIM], ""
+        )
+        edge_w = self.quantity_factory.zeros(
+            [self.UNIT_X_DIM, fv3util.Y_INTERFACE_DIM], ""
+        )
         (
-            edge_w.data[nhalo:-nhalo],
-            edge_e.data[nhalo:-nhalo],
+            edge_w.data[:, nhalo:-nhalo],
+            edge_e.data[:, nhalo:-nhalo],
             edge_s.data[nhalo:-nhalo],
             edge_n.data[nhalo:-nhalo],
         ) = edge_factors(
