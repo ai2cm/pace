@@ -391,7 +391,7 @@ class Namelist:
     # blocksize: int
     # chksum_debug: bool
     """
-    WARNING: dycore_only may not be used in this model
+    note: dycore_only may not be used in this model
      the same way it is in the Fortran version, watch for
      consequences of these inconsistencies, or more closely
      parallel the Fortran structure

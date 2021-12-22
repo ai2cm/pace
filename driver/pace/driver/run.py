@@ -1,12 +1,13 @@
 import os
 import sys
 from dataclasses import fields
-from typing import List, Literal, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import click
 import f90nml
 import numpy as np
 from mpi4py import MPI
+from typing_extensions import Literal
 
 import fv3core._config
 import fv3core.initialization.baroclinic as baroclinic_init

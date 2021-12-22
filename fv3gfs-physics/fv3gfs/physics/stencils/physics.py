@@ -2,6 +2,7 @@ from typing import List
 
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
+from typing_extensions import Literal
 
 import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
@@ -12,6 +13,9 @@ from fv3gfs.physics.stencils.microphysics import Microphysics
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.testing.grid import GridData
+
+
+PHYSICS_PACKAGES = Literal["microphysics"]
 
 
 def atmos_phys_driver_statein(
@@ -167,7 +171,7 @@ class Physics:
         stencil_factory: StencilFactory,
         grid_data: GridData,
         namelist,
-        active_packages: List[str],
+        active_packages: List[Literal[PHYSICS_PACKAGES]],
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
