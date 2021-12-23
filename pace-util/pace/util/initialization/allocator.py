@@ -93,7 +93,7 @@ class QuantityFactory:
         extent = self._sizer.get_extent(dims)
         shape = self._sizer.get_shape(dims)
         try:
-            data = allocator(shape, dtype=dtype, default_origin=origin, mask=mask)
+            data = allocator(shape, dtype=dtype, mask=mask)
         except TypeError:
             data = allocator(shape, dtype=dtype)
         return Quantity(
