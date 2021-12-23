@@ -1,135 +1,211 @@
-import copy
-import dataclasses
+from dataclasses import InitVar, dataclass, field, fields
+from typing import List
 
+import pace.util
 from fv3gfs.physics.stencils.microphysics import MicrophysicsState
 from pace.dsl.typing import FloatField
 
 
-@dataclasses.dataclass()
+@dataclass()
 class PhysicsState:
-    """
-    Physics state variables
-    From dynamical core:
-        qvapor: specific_humidity
-        qliquid: cloud_water_mixing_ratio
-        qrain: rain_mixing_ratio
-        qsnow: snow_mixing_ratio
-        qice: cloud_ice_mixing_ratio
-        qgraupel: graupel_mixing_ratio
-        qo3mr: ozone_mixing_ratio
-        qsgs_tke: turbulent_kinetic_energy
-        qcld: cloud_fraction
-        pt: air_temperature
-        delp: pressure_thickness_of_atmospheric_layer
-        delz: vertical_thickness_of_atmospheric_layer
-        ua: eastward_wind
-        va: northward_wind
-        w: vertical_wind
-        omga: vertical_pressure_velocity
-    Physics driver:
-        delprsi: model_level_pressure_thickness_in_physics
-        phii: interface_geopotential_height
-        phil: layer_geopotential_height
-        dz: geopotential_height_thickness
-        *_t1: respective dynamical core variables marched by 1 time step
-    Microphysics:
-        wmp: layer_mean_vertical_velocity_microph
-    """
+    qvapor: FloatField = field(metadata={"name": "specific_humidity", "units": "kg/kg"})
+    qliquid: FloatField = field(
+        metadata={
+            "name": "cloud_water_mixing_ratio",
+            "units": "kg/kg",
+            "intent": "inout",
+        }
+    )
+    qice: FloatField = field(
+        metadata={"name": "cloud_ice_mixing_ratio", "units": "kg/kg", "intent": "inout"}
+    )
+    qrain: FloatField = field(
+        metadata={"name": "rain_mixing_ratio", "units": "kg/kg", "intent": "inout"}
+    )
+    qsnow: FloatField = field(
+        metadata={"name": "snow_mixing_ratio", "units": "kg/kg", "intent": "inout"}
+    )
+    qgraupel: FloatField = field(
+        metadata={"name": "graupel_mixing_ratio", "units": "kg/kg", "intent": "inout"}
+    )
+    qo3mr: FloatField = field(
+        metadata={"name": "ozone_mixing_ratio", "units": "kg/kg", "intent": "inout"}
+    )
+    qsgs_tke: FloatField = field(
+        metadata={
+            "name": "turbulent_kinetic_energy",
+            "units": "m**2/s**2",
+            "intent": "inout",
+        }
+    )
+    qcld: FloatField = field(
+        metadata={"name": "cloud_fraction", "units": "", "intent": "inout"}
+    )
+    pt: FloatField = field(
+        metadata={"name": "air_temperature", "units": "degK", "intent": "inout"}
+    )
+    delp: FloatField = field(
+        metadata={
+            "name": "pressure_thickness_of_atmospheric_layer",
+            "units": "Pa",
+            "intent": "inout",
+        }
+    )
+    delz: FloatField = field(
+        metadata={
+            "name": "vertical_thickness_of_atmospheric_layer",
+            "units": "m",
+            "intent": "inout",
+        }
+    )
+    ua: FloatField = field(
+        metadata={"name": "eastward_wind", "units": "m/s", "intent": "inout"}
+    )
+    va: FloatField = field(
+        metadata={"name": "northward_wind", "units": "m/s", "intent": "inout"}
+    )
+    w: FloatField = field(
+        metadata={"name": "vertical_wind", "units": "m/s", "intent": "inout"}
+    )
+    omga: FloatField = field(
+        metadata={
+            "name": "vertical_pressure_velocity",
+            "units": "Pa/s",
+            "intent": "inout",
+        }
+    )
+    physics_updated_specific_humidity: FloatField = field(
+        metadata={
+            "name": "physics_specific_humidity",
+            "units": "kg/kg",
+            "intent": "inout",
+        }
+    )
+    physics_updated_qliquid: FloatField = field(
+        metadata={
+            "name": "physics_cloud_water_mixing_ratio",
+            "units": "kg/kg",
+            "intent": "inout",
+        }
+    )
+    physics_updated_qice: FloatField = field(
+        metadata={
+            "name": "physics_cloud_ice_mixing_ratio",
+            "units": "kg/kg",
+            "intent": "inout",
+        }
+    )
+    physics_updated_qrain: FloatField = field(
+        metadata={
+            "name": "physics_rain_mixing_ratio",
+            "units": "kg/kg",
+            "intent": "inout",
+        }
+    )
+    physics_updated_qsnow: FloatField = field(
+        metadata={
+            "name": "physics_snow_mixing_ratio",
+            "units": "kg/kg",
+            "intent": "inout",
+        }
+    )
+    physics_updated_qgraupel: FloatField = field(
+        metadata={
+            "name": "physics_graupel_mixing_ratio",
+            "units": "kg/kg",
+            "intent": "inout",
+        }
+    )
+    physics_updated_cloud_fraction: FloatField = field(
+        metadata={"name": "physics_cloud_fraction", "units": "", "intent": "inout"}
+    )
+    physics_updated_pt: FloatField = field(
+        metadata={"name": "physics_air_temperature", "units": "degK", "intent": "inout"}
+    )
+    physics_updated_ua: FloatField = field(
+        metadata={"name": "physics_eastward_wind", "units": "m/s", "intent": "inout"}
+    )
+    physics_updated_va: FloatField = field(
+        metadata={"name": "physics_northward_wind", "units": "m/s", "intent": "inout"}
+    )
+    delprsi: FloatField = field(
+        metadata={
+            "name": "model_level_pressure_thickness_in_physics",
+            "units": "Pa",
+            "intent": "inout",
+        }
+    )
+    phii: FloatField = field(
+        metadata={
+            "name": "interface_geopotential_height",
+            "units": "m",
+            "intent": "inout",
+        }
+    )
+    phil: FloatField = field(
+        metadata={"name": "layer_geopotential_height", "units": "m", "intent": "inout"}
+    )
+    dz: FloatField = field(
+        metadata={
+            "name": "geopotential_height_thickness",
+            "units": "m",
+            "intent": "inout",
+        }
+    )
+    wmp: FloatField = field(
+        metadata={
+            "name": "layer_mean_vertical_velocity_microph",
+            "units": "m/s",
+            "intent": "inout",
+        }
+    )
+    prsi: FloatField = field(
+        metadata={"name": "interface_pressure", "units": "Pa", "intent": "inout"}
+    )
+    prsik: FloatField = field(
+        metadata={"name": "log_interface_pressure", "units": "Pa", "intent": "inout"}
+    )
+    quantity_factory: InitVar[pace.util.QuantityFactory]
+    active_packages: InitVar[List[str]]
 
-    qvapor: FloatField
-    qliquid: FloatField
-    qrain: FloatField
-    qsnow: FloatField
-    qice: FloatField
-    qgraupel: FloatField
-    qo3mr: FloatField
-    qsgs_tke: FloatField
-    qcld: FloatField
-    pt: FloatField
-    delp: FloatField
-    delz: FloatField
-    ua: FloatField
-    va: FloatField
-    w: FloatField
-    omga: FloatField
-    delprsi: FloatField
-    phii: FloatField
-    phil: FloatField
-    dz: FloatField
-    wmp: FloatField
-    qvapor_t1: FloatField
-    qliquid_t1: FloatField
-    qrain_t1: FloatField
-    qsnow_t1: FloatField
-    qice_t1: FloatField
-    qgraupel_t1: FloatField
-    qcld_t1: FloatField
-    pt_t1: FloatField
-    ua_t1: FloatField
-    va_t1: FloatField
+    def __post_init__(
+        self, quantity_factory: pace.util.QuantityFactory, active_packages: List[str]
+    ):
+        # storage for tendency variables not in PhysicsState
+
+        if "microphysics" in active_packages:
+            tendency = quantity_factory.zeros(
+                [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+                "unknown",
+                dtype=float,
+            ).storage
+            self.microphysics = MicrophysicsState(
+                pt=self.pt,
+                qvapor=self.qvapor,
+                qliquid=self.qliquid,
+                qrain=self.qrain,
+                qice=self.qice,
+                qsnow=self.qsnow,
+                qgraupel=self.qgraupel,
+                qcld=self.qcld,
+                ua=self.ua,
+                va=self.va,
+                delp=self.delp,
+                delz=self.delz,
+                omga=self.omga,
+                delprsi=self.delprsi,
+                wmp=self.wmp,
+                dz=self.dz,
+                tendency_storage=tendency,
+            )
 
     @classmethod
-    def from_dycore_state(cls, state, storage: FloatField) -> "PhysicsState":
-        """
-        Constructor for PhysicsState when using dynamical core state
-        storage: storage for variables not in dycore
-        """
-        # [TODO] using a copy here because variables definition change inside physics
-        # we should copy only the variables that will be updated
-        return cls(
-            qvapor=copy.deepcopy(state.qvapor),
-            qliquid=copy.deepcopy(state.qliquid),
-            qrain=copy.deepcopy(state.qrain),
-            qsnow=copy.deepcopy(state.qsnow),
-            qice=copy.deepcopy(state.qice),
-            qgraupel=copy.deepcopy(state.qgraupel),
-            qo3mr=copy.deepcopy(state.qo3mr),
-            qsgs_tke=copy.deepcopy(state.qsgs_tke),
-            qcld=copy.deepcopy(state.qcld),
-            pt=copy.deepcopy(state.pt),
-            delp=copy.deepcopy(state.delp),
-            delz=copy.deepcopy(state.delz),
-            ua=copy.deepcopy(state.ua),
-            va=copy.deepcopy(state.va),
-            w=copy.deepcopy(state.w),
-            omga=copy.deepcopy(state.omga),
-            delprsi=copy.deepcopy(storage),
-            phii=copy.deepcopy(storage),
-            phil=copy.deepcopy(storage),
-            dz=copy.deepcopy(storage),
-            wmp=copy.deepcopy(storage),
-            qvapor_t1=copy.deepcopy(storage),
-            qliquid_t1=copy.deepcopy(storage),
-            qrain_t1=copy.deepcopy(storage),
-            qsnow_t1=copy.deepcopy(storage),
-            qice_t1=copy.deepcopy(storage),
-            qgraupel_t1=copy.deepcopy(storage),
-            qcld_t1=copy.deepcopy(storage),
-            pt_t1=copy.deepcopy(storage),
-            ua_t1=copy.deepcopy(storage),
-            va_t1=copy.deepcopy(storage),
-        )
-
-    def microphysics(self, tendency_storage) -> MicrophysicsState:
-        """
-        tendency_storage: storage for tendency variables not in PhysicsState
-        """
-        return MicrophysicsState(
-            pt=self.pt,
-            qvapor=self.qvapor,
-            qliquid=self.qliquid,
-            qrain=self.qrain,
-            qice=self.qice,
-            qsnow=self.qsnow,
-            qgraupel=self.qgraupel,
-            qcld=self.qcld,
-            ua=self.ua,
-            va=self.va,
-            delp=self.delp,
-            delz=self.delz,
-            omga=self.omga,
-            delprsi=self.delprsi,
-            wmp=self.wmp,
-            dz=self.dz,
-            tendency_storage=tendency_storage,
-        )
+    def init_zeros(cls, quantity_factory) -> "PhysicsState":
+        initial_storages = {}
+        for _field in fields(cls):
+            initial_storages[_field.name] = quantity_factory.zeros(
+                [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+                _field.metadata["units"],
+                dtype=float,
+            ).storage
+        return cls(**initial_storages, quantity_factory=quantity_factory)
