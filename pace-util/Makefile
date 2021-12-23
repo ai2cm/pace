@@ -73,6 +73,9 @@ clean:
 reformat:
 	black $(PYTHON_FILES) $(PYTHON_INIT_FILES)
 
+release: dist ## package and upload a release
+	twine upload dist/*
+
 docs: ## generate Sphinx HTML documentation, including API docs
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
