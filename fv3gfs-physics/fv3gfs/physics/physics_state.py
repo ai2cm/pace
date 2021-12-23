@@ -163,7 +163,7 @@ class PhysicsState:
         metadata={"name": "interface_pressure", "units": "Pa", "intent": "inout"}
     )
     prsik: FloatField = field(
-        metadata={"name": "log interface_pressure", "units": "Pa", "intent": "inout"}
+        metadata={"name": "log_interface_pressure", "units": "Pa", "intent": "inout"}
     )
     quantity_factory: InitVar[pace.util.QuantityFactory]
     active_packages: InitVar[List[str]]

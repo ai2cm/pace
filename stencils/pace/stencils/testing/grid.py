@@ -1103,7 +1103,7 @@ class DriverGridData:
       vlat2: y-component of unit lat vector in northward latitude direction
       vlat3: z-component of unit lat vector in northward latitude direction
       edge_vect_w: factor to interpolate A to C grids at the western grid edge
-      edge_vect_e: factor to interpolate A to C grids at the easter grid edge
+      edge_vect_e: factor to interpolate A to C grids at the eastern grid edge
       edge_vect_s: factor to interpolate A to C grids at the southern grid edge
       edge_vect_n: factor to interpolate A to C grids at the northern grid edge
       es1_1: x-component of grid local unit vector in x-direction at cell edge
