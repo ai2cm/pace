@@ -32,6 +32,8 @@ if [ -z "${GT4PY_VERSION}" ]; then
     export GT4PY_VERSION=`git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'`
 fi
 
+CACHE_FILENAME=${CACHE_DIR}/${GT4PY_VERSION}.tar.gz
+
 test -n "${experiment}" || exitError 1001 ${LINENO} "experiment is not defined"
 test -n "${SANITIZED_BACKEND}" || exitError 1002 ${LINENO} "backend is not defined"
 
@@ -41,6 +43,5 @@ find .gt_cache* -type d -name \*_pyext_BUILD -prune -exec \rm -rf {} \;
 find .gt_cache* -type d -name __pycache__ -prune -exec \rm -rf {} \;
 echo "Copying GT4Py cache directories to ${CACHE_DIR}"
 mkdir -p ${CACHE_DIR}
-echo "$GT4PY_VERSION" > ${CACHE_DIR}/GT4PY_VERSION.txt
-rm -rf ${CACHE_DIR}/.gt_cache
-cp -rp .gt_cache ${CACHE_DIR}
+rm -rf ${CACHE_FILENAME}
+tar -czf ${CACHE_FILENAME} .gt_cache
