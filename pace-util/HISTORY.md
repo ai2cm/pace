@@ -5,7 +5,14 @@ latest
 ------
 
 Major changes:
+- Renamed package from fv3gfs-util to pace-util
 - Added NullTimer to use for default Timer value, it is a disabled timer which cannot be enabled (raises NotImplementedError)
+- Added pace.util.grid, keeping symbols out of top level as they are still unstable
+- Added HaloUpdater and associated code, which compiles halo packing for more efficient halo updates
+- Added physical constants to pace.util.constants
+
+Minor changes:
+- Added method set_extra_dim_lengths to QuantityFactory
 
 Fixes:
 - Fixed bug where ZarrMonitor depended on dict `.items()` always returning items in the same order
