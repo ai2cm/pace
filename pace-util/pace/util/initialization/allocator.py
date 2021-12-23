@@ -95,7 +95,7 @@ class QuantityFactory:
         try:
             data = allocator(shape, dtype=dtype, default_origin=origin, mask=mask)
         except TypeError:
-            data = allocator(shape, dtype=dtype, mask=mask)
+            data = allocator(shape, dtype=dtype)
         return Quantity(
             data, dims=dims, units=units, origin=origin, extent=extent, mask=mask
         )

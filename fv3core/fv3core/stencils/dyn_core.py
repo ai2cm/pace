@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Sequence
 
 from gt4py.gtscript import (
     __INLINED,
@@ -32,7 +32,7 @@ from fv3core.stencils.riem_solver_c import RiemannSolverC
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
-from pace.util.grid import DampingCoefficients, GridData, quantity_wrap
+from pace.util.grid import DampingCoefficients, GridData
 
 
 HUGE_R = 1.0e40
@@ -157,6 +157,17 @@ def get_nk_heat_dissipation(
     return nk_heat_dissipation
 
 
+def _quantity_wrap(storage, dims: Sequence[str], grid_indexing: GridIndexing):
+    origin, extent = grid_indexing.get_origin_domain(dims)
+    return pace.util.Quantity(
+        storage,
+        dims=dims,
+        units="unknown",
+        origin=origin,
+        extent=extent,
+    )
+
+
 def dyncore_temporaries(grid_indexing: GridIndexing, *, backend: str):
     tmps: Dict[str, pace.util.Quantity] = {}
     utils.storage_dict(
@@ -187,16 +198,16 @@ def dyncore_temporaries(grid_indexing: GridIndexing, *, backend: str):
         grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
         backend=backend,
     )
-    tmps["heat_source_quantity"] = quantity_wrap(
+    tmps["heat_source_quantity"] = _quantity_wrap(
         tmps["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
     )
-    tmps["divgd_quantity"] = quantity_wrap(
+    tmps["divgd_quantity"] = _quantity_wrap(
         tmps["divgd"],
         dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
         grid_indexing=grid_indexing,
     )
     for name in ["gz", "pkc", "zh"]:
-        tmps[f"{name}_quantity"] = quantity_wrap(
+        tmps[f"{name}_quantity"] = _quantity_wrap(
             tmps[name],
             dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
             grid_indexing=grid_indexing,

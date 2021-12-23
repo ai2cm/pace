@@ -18,5 +18,4 @@ from .helper import (
     GridData,
     HorizontalGridData,
     VerticalGridData,
-    quantity_wrap,
 )
