@@ -17,7 +17,7 @@ Minor changes:
 Fixes:
 - Fixed bug where ZarrMonitor depended on dict `.items()` always returning items in the same order
 
-Other changes may exist in this version, as we were not careful about updating the history on each PR.
+Other changes may exist in this version, as we temporarily paused updating the history on each PR.
 
 v0.6.0
 ------
