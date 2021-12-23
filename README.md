@@ -1,7 +1,7 @@
 
-# fv3gfs-integration
+# Pace
 
-FV3GFS-integration is the top level directory that includes the FV3 dynamical core, physics, and util.
+Pace is the top level directory that includes the FV3 dynamical core, physics, and util.
 
 **WARNING** This repo is under active development and relies on code and data that is not publicly available at this point.
 

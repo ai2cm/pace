@@ -390,7 +390,13 @@ class Namelist:
     # use_ncep_sst: bool
     # blocksize: int
     # chksum_debug: bool
-    # dycore_only: bool
+    """
+    note: dycore_only may not be used in this model
+     the same way it is in the Fortran version, watch for
+     consequences of these inconsistencies, or more closely
+     parallel the Fortran structure
+    """
+    dycore_only: bool = DEFAULT_BOOL
     # fdiag: float
     # knob_ugwp_azdir: Tuple[int, int, int, int]
     # knob_ugwp_doaxyz: int
