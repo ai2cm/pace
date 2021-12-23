@@ -51,6 +51,22 @@ lint:
 	mypy --follow-imports silent --show-error-codes fv3gfs
 	@echo "LINTING SUCCESSFUL"
 
+# We do not use --no-annotate to keep the dependencies annotations
+# but we beautify the files with `sed`
+#  - line 1: remove direct git dependencies
+#  - line 2-5: beautify the comments (inline comments generated)
+#  - line 5: get rid of an illegaly generated [toml]
+#  - line 6: replace the pip update command with the make call in docs
+constraints.txt: requirements.txt requirements_gpu.txt setup.py
+	pip-compile $^ --output-file constraints.txt
+	sed -i '/^git+https/d' constraints.txt
+	sed -i 's/ *# \(.*\)/# \1/g' constraints.txt
+	sed -i -z 's/\n#/  #/6g' constraints.txt
+	sed -i 's/\n,/,/g' constraints.txt
+	sed -i 's/via,/via/g' constraints.txt
+	sed -i '/^\[toml\]/d' constraints.txt
+	sed -i '5s/.*/#    make constraints.txt/' constraints.txt
+
 clean:
 	$(MAKE) -c examples/mpi clean
 
