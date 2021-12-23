@@ -4,13 +4,11 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util.constants as constants
-
-# TODO: we don't want to import from fv3core
-from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
-from pace.util import TilePartitioner
+from pace.stencils.testing.grid import DriverGridData
+from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
 from pace.util.grid import GridData
 
 
@@ -85,9 +83,7 @@ class ApplyPhysics2Dycore:
         grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
-        partitioner: TilePartitioner,
-        rank: int,
-        grid_info,
+        grid_info: DriverGridData,
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
@@ -104,7 +100,7 @@ class ApplyPhysics2Dycore:
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._AGrid2DGridPhysics = AGrid2DGridPhysics(
-            stencil_factory, partitioner, rank, self.namelist, grid_info
+            stencil_factory, comm.partitioner, comm.rank, self.namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
             stencil_factory,
@@ -138,9 +134,9 @@ class ApplyPhysics2Dycore:
     def __call__(
         self,
         state,
-        u_dt: FloatField,
-        v_dt: FloatField,
-        t_dt: FloatField,
+        u_dt: pace.util.Quantity,
+        v_dt: pace.util.Quantity,
+        t_dt: pace.util.Quantity,
     ):
         self._moist_cv(
             state.qvapor,
@@ -154,23 +150,9 @@ class ApplyPhysics2Dycore:
             constants.CP_AIR,
             self._dt,
         )
-        # [TODO] needs a better solution to handle u_dt, v_dt quantity
-        u_dt_quantity = pace.util.Quantity(
-            u_dt,
-            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            units="m/s",
-            origin=self.origin,
-            extent=self.extent,
-        )
-        v_dt_quantity = pace.util.Quantity(
-            v_dt,
-            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            units="m/s",
-            origin=self.origin,
-            extent=self.extent,
-        )
-        self._udt_halo_updater.start([u_dt_quantity])
-        self._vdt_halo_updater.start([v_dt_quantity])
+
+        self._udt_halo_updater.start([u_dt])
+        self._vdt_halo_updater.start([v_dt])
         self._update_pressure_and_surface_winds(
             state.pe,
             state.delp,
@@ -185,9 +167,7 @@ class ApplyPhysics2Dycore:
         )
         self._udt_halo_updater.wait()
         self._vdt_halo_updater.wait()
-        u_dt = u_dt_quantity.storage
-        v_dt = v_dt_quantity.storage
-        self._AGrid2DGridPhysics(state.u, state.v, u_dt, v_dt)
+        self._AGrid2DGridPhysics(state.u, state.v, u_dt.storage, v_dt.storage)
         self._do_cubed_to_latlon(
             state.u_quantity,
             state.v_quantity,

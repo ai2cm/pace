@@ -3,6 +3,7 @@ import copy
 import numpy as np
 
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
@@ -59,22 +60,40 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         inputs["phii"] = copy.deepcopy(storage)
         inputs["phil"] = copy.deepcopy(storage)
         inputs["dz"] = copy.deepcopy(storage)
-        inputs["qvapor_t1"] = copy.deepcopy(storage)
-        inputs["qliquid_t1"] = copy.deepcopy(storage)
-        inputs["qrain_t1"] = copy.deepcopy(storage)
-        inputs["qsnow_t1"] = copy.deepcopy(storage)
-        inputs["qice_t1"] = copy.deepcopy(storage)
-        inputs["qgraupel_t1"] = copy.deepcopy(storage)
-        inputs["qcld_t1"] = copy.deepcopy(storage)
-        inputs["pt_t1"] = copy.deepcopy(storage)
-        inputs["ua_t1"] = copy.deepcopy(storage)
-        inputs["va_t1"] = copy.deepcopy(storage)
+        inputs["physics_updated_specific_humidity"] = copy.deepcopy(storage)
+        inputs["physics_updated_qliquid"] = copy.deepcopy(storage)
+        inputs["physics_updated_qrain"] = copy.deepcopy(storage)
+        inputs["physics_updated_qsnow"] = copy.deepcopy(storage)
+        inputs["physics_updated_qice"] = copy.deepcopy(storage)
+        inputs["physics_updated_qgraupel"] = copy.deepcopy(storage)
+        inputs["physics_updated_cloud_fraction"] = copy.deepcopy(storage)
+        inputs["physics_updated_pt"] = copy.deepcopy(storage)
+        inputs["physics_updated_ua"] = copy.deepcopy(storage)
+        inputs["physics_updated_va"] = copy.deepcopy(storage)
         inputs["omga"] = copy.deepcopy(storage)
-        physics_state = PhysicsState(**inputs)
+        inputs["prsi"] = copy.deepcopy(storage)
+        inputs["prsik"] = copy.deepcopy(storage)
+        sizer = pace.util.SubtileGridSizer.from_tile_params(
+            nx_tile=self.namelist.npx - 1,
+            ny_tile=self.namelist.npy - 1,
+            nz=self.namelist.npz,
+            n_halo=3,
+            extra_dim_lengths={},
+            layout=self.namelist.layout,
+        )
+
+        quantity_factory = pace.util.QuantityFactory.from_backend(
+            sizer, self.stencil_factory.backend
+        )
+        physics_state = PhysicsState(
+            **inputs,
+            quantity_factory=quantity_factory,
+            active_packages=["microphysics"],
+        )
         microphysics = Microphysics(
             self.stencil_factory, self.grid.grid_data, self.namelist
         )
-        microph_state = physics_state.microphysics(storage)
+        microph_state = physics_state.microphysics
         microphysics(microph_state)
         inputs["pt_dt"] = microph_state.pt_dt
         inputs["qv_dt"] = microph_state.qv_dt
