@@ -1,7 +1,5 @@
-from fv3gfs.physics.stencils.update_atmos_state import (
-    prepare_tendencies_and_update_tracers,
-)
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from pace.stencils.update_atmos_state import prepare_tendencies_and_update_tracers
 
 
 class TranslatePhysUpdateTracers(TranslatePhysicsFortranData2Py):
@@ -13,13 +11,16 @@ class TranslatePhysUpdateTracers(TranslatePhysicsFortranData2Py):
             "pt_dt": {"serialname": "t_dt", "dycore": True},
             "u_t1": {"order": "F"},
             "v_t1": {"order": "F"},
-            "pt_t1": {"order": "F"},
-            "qvapor_t1": {"order": "F"},
-            "qliquid_t1": {"order": "F"},
-            "qrain_t1": {"order": "F"},
-            "qsnow_t1": {"order": "F"},
-            "qice_t1": {"order": "F"},
-            "qgraupel_t1": {"order": "F"},
+            "physics_updated_pt": {"serialname": "pt_t1", "order": "F"},
+            "physics_updated_specific_humidity": {
+                "serialname": "qvapor_t1",
+                "order": "F",
+            },
+            "physics_updated_qliquid": {"serialname": "qliquid_t1", "order": "F"},
+            "physics_updated_qrain": {"serialname": "qrain_t1", "order": "F"},
+            "physics_updated_qsnow": {"serialname": "qsnow_t1", "order": "F"},
+            "physics_updated_qice": {"serialname": "qice_t1", "order": "F"},
+            "physics_updated_qgraupel": {"serialname": "qgraupel_t1", "order": "F"},
             "u_t0": {"order": "F"},
             "v_t0": {"order": "F"},
             "pt_t0": {"order": "F"},
