@@ -154,6 +154,8 @@ class TranslateDynCore(ParallelTranslate2PyState):
         )
         for name, value in inputs.items():
             if hasattr(state, name) and isinstance(state[name], fv3util.Quantity):
+                # storage can have buffer points at the end, so value.shape
+                # is often not equal to state[name].storage.shape
                 selection = tuple(slice(0, end) for end in value.shape)
                 state[name].storage[selection] = value
             else:

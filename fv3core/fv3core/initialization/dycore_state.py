@@ -292,7 +292,7 @@ class DycoreState:
                         )
 
     @classmethod
-    def init_zeros(cls, quantity_factory):
+    def init_zeros(cls, quantity_factory: util.QuantityFactory):
         initial_storages = {}
         for _field in fields(cls):
             if "dims" in _field.metadata.keys():
@@ -304,7 +304,9 @@ class DycoreState:
         )
 
     @classmethod
-    def init_from_numpy_arrays(cls, dict_of_numpy_arrays, quantity_factory, backend):
+    def init_from_numpy_arrays(
+        cls, dict_of_numpy_arrays, quantity_factory: util.QuantityFactory, backend
+    ):
         field_names = [_field.name for _field in fields(cls)]
         for variable_name, data in dict_of_numpy_arrays.items():
             if variable_name not in field_names:
@@ -319,8 +321,8 @@ class DycoreState:
                     dict_of_numpy_arrays[_field.name],
                     dims,
                     _field.metadata["units"],
-                    origin=quantity_factory._sizer.get_origin(dims),
-                    extent=quantity_factory._sizer.get_extent(dims),
+                    origin=quantity_factory.get_origin(dims),
+                    extent=quantity_factory.get_extent(dims),
                     gt4py_backend=backend,
                 )
         state = cls(**dict_state)

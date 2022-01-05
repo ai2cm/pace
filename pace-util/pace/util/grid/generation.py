@@ -87,7 +87,7 @@ class MetricTerms:
             }
         )
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
-            self.quantity_factory._sizer, self._comm
+            self.quantity_factory.sizer, self._comm
         )
         self._grid_dims = [
             fv3util.X_INTERFACE_DIM,
@@ -102,7 +102,7 @@ class MetricTerms:
         npx, npy, ndims = self._tile_partitioner.global_extent(self._grid)
         self._npx = npx
         self._npy = npy
-        self._npz = self.quantity_factory._sizer.get_extent(fv3util.Z_DIM)[0]
+        self._npz = self.quantity_factory.get_extent(fv3util.Z_DIM)[0]
         self._agrid = self.quantity_factory.zeros(
             [fv3util.X_DIM, fv3util.Y_DIM, self.LON_OR_LAT_DIM], "radians", dtype=float
         )
