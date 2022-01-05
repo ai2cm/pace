@@ -321,8 +321,8 @@ class DycoreState:
                     dict_of_numpy_arrays[_field.name],
                     dims,
                     _field.metadata["units"],
-                    origin=quantity_factory.get_origin(dims),
-                    extent=quantity_factory.get_extent(dims),
+                    origin=quantity_factory.sizer.get_origin(dims),
+                    extent=quantity_factory.sizer.get_extent(dims),
                     gt4py_backend=backend,
                 )
         state = cls(**dict_state)
@@ -345,8 +345,8 @@ class DycoreState:
                     storages[_field.name],
                     dims,
                     _field.metadata["units"],
-                    origin=quantity_factory.get_origin(dims),
-                    extent=quantity_factory.get_extent(dims),
+                    origin=quantity_factory.sizer.get_origin(dims),
+                    extent=quantity_factory.sizer.get_extent(dims),
                 )
                 inputs[_field.name] = quantity
         return cls(**inputs, do_adiabatic_init=do_adiabatic_init, bdt=bdt, mdt=mdt)

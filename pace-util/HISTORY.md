@@ -10,7 +10,6 @@ Major changes:
 Minor changes:
 - updated QuantityFactory to accept the more generic GridSizer class on initialization
 - added `sizer` as public attribute on QuantityFactory
-- added public methods `get_origin`, `get_extent`, and `get_shape` to QuantityFactory
 
 v0.7.0
 ------
