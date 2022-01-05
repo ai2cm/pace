@@ -104,7 +104,7 @@ def compute_preamble(
 
 
 def post_remap(
-    state,
+    state: DycoreState,
     is_root_rank: bool,
     config: DynamicalCoreConfig,
     hyperdiffusion: HyperdiffusionDamping,
@@ -126,12 +126,12 @@ def post_remap(
         if __debug__:
             if is_root_rank == 0:
                 print("Del2Cubed")
-        omega_halo_updater.update([state.omga_quantity])
+        omega_halo_updater.update([state.omga])
         hyperdiffusion(state.omga, 0.18 * da_min)
 
 
 def wrapup(
-    state,
+    state: DycoreState,
     comm: pace.util.CubedSphereCommunicator,
     adjust_stencil: AdjustNegativeTracerMixingRatio,
     cubed_to_latlon_stencil: CubedToLatLon,
@@ -158,32 +158,27 @@ def wrapup(
         if is_root_rank:
             print("CubedToLatLon")
     cubed_to_latlon_stencil(
-        state.u_quantity,
-        state.v_quantity,
+        state.u,
+        state.v,
         state.ua,
         state.va,
         comm,
     )
 
 
-def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory, shape, grid):
+def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
         quantity = quantity_factory.empty(
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         )
-        tmps[f"{name}_quantity"] = quantity
-        tmps[name] = quantity.storage
+        tmps[name] = quantity
     for name in ["cappa", "dp1", "cvm"]:
         quantity = quantity_factory.empty(
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="unknown",
         )
-        tmps[f"{name}_quantity"] = quantity
-        tmps[name] = quantity.storage
-    gz = quantity_factory.empty(dims=[pace.util.Z_DIM], units="m^2 s^-2")
-    tmps["gz_quantity"] = gz
-    tmps["gz"] = gz.storage
+        tmps[name] = quantity
     return tmps
 
 
@@ -308,9 +303,7 @@ class DynamicalCore:
             stencil_factory, grid_data, order=config.c2l_ord
         )
 
-        self._temporaries = fvdyn_temporaries(
-            quantity_factory, grid_indexing.domain_full(add=(1, 1, 1)), grid_data
-        )
+        self._temporaries = fvdyn_temporaries(quantity_factory)
         if not (not self.config.inline_q and NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
@@ -357,6 +350,9 @@ class DynamicalCore:
             n_split: number of acoustic timesteps per remapping timestep
             timer: if given, use for timing model execution
         """
+        # TODO: state should be a statically typed class, move these to the
+        # definition of DycoreState and pass them on init or alternatively
+        # move these to/get these from the namelist/configuration class
         state.__dict__.update(
             {
                 "consv_te": conserve_total_energy,
@@ -369,17 +365,22 @@ class DynamicalCore:
         )
         self._compute(state, timer)
 
+    # TODO: type hint state when it is possible to do so, when it is a static type
     def _compute(
         self,
         state,
-        timer: pace.util.NullTimer,
+        timer: pace.util.Timer,
     ):
+        # TODO: put temporaries on a statically typed container class, as they are not
+        # attributes of DycoreState
         state.__dict__.update(self._temporaries)
         tracers = {}
         for name in utils.tracer_variables[0:NQ]:
-            tracers[name] = state.__dict__[name + "_quantity"]
+            tracers[name] = state.__dict__[name]
         tracer_storages = {name: quantity.storage for name, quantity in tracers.items()}
 
+        # TODO: ak and bk are not attributes of DycoreState, put them on a statically
+        # typed class that has them as attributes
         state.ak = self._ak
         state.bk = self._bk
         last_step = False
@@ -466,6 +467,7 @@ class DynamicalCore:
             is_root_rank=self.comm.rank == 0,
         )
 
+    # TODO: type hint state when it is possible to do so, when it is a static type
     def _dyn(self, state, tracers, timer=pace.util.NullTimer()):
         self._copy_stencil(
             state.delp,
