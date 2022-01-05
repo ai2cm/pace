@@ -400,8 +400,11 @@ class Quantity:
         return self._storage
 
     def _initialize_storage(self, data, origin, gt4py_backend: str, mask: Tuple):
-        extra_dims = [x for x in self._dims if x not in ["x", "y", "z"]]
-        if len(extra_dims) > 0:
+        spatial_dims = [
+            i for j in [constants.X_DIMS, constants.Y_DIMS, constants.Z_DIMS] for i in j
+        ]
+        extra_dims = [i for i in self._dims if i not in spatial_dims]
+        if len(extra_dims) > 0 or not self._dims:
             mask = None
         storage = gt4py.storage.storage.empty(
             gt4py_backend,

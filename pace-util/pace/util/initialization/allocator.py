@@ -1,5 +1,6 @@
-from typing import Callable, Optional, Sequence, Tuple
+from typing import Callable, Sequence
 
+from ..constants import X_DIMS, Y_DIMS, Z_DIMS
 from ..quantity import Quantity
 from .sizer import SubtileGridSizer
 
@@ -59,27 +60,24 @@ class QuantityFactory:
         dims: Sequence[str],
         units: str,
         dtype: type = float,
-        mask: Optional[Tuple[bool, bool, bool]] = None,
     ):
-        return self._allocate(self._numpy.empty, dims, units, dtype, mask)
+        return self._allocate(self._numpy.empty, dims, units, dtype)
 
     def zeros(
         self,
         dims: Sequence[str],
         units: str,
         dtype: type = float,
-        mask: Optional[Tuple[bool, bool, bool]] = None,
     ):
-        return self._allocate(self._numpy.zeros, dims, units, dtype, mask)
+        return self._allocate(self._numpy.zeros, dims, units, dtype)
 
     def ones(
         self,
         dims: Sequence[str],
         units: str,
         dtype: type = float,
-        mask: Optional[Tuple[bool, bool, bool]] = None,
     ):
-        return self._allocate(self._numpy.ones, dims, units, dtype, mask)
+        return self._allocate(self._numpy.ones, dims, units, dtype)
 
     def _allocate(
         self,
@@ -87,11 +85,20 @@ class QuantityFactory:
         dims: Sequence[str],
         units: str,
         dtype: type = float,
-        mask: Optional[Tuple[bool, bool, bool]] = None,
     ):
         origin = self._sizer.get_origin(dims)
         extent = self._sizer.get_extent(dims)
         shape = self._sizer.get_shape(dims)
+        mask = tuple(
+            [
+                any(dim in coord_dims for dim in dims)
+                for coord_dims in [X_DIMS, Y_DIMS, Z_DIMS]
+            ]
+        )
+        spatial_dims = [i for j in [X_DIMS, Y_DIMS, Z_DIMS] for i in j]
+        extra_dims = [i for i in dims if i not in spatial_dims]
+        if len(extra_dims) > 0 or not dims:
+            mask = None
         try:
             data = allocator(shape, dtype=dtype, mask=mask)
         except TypeError:
