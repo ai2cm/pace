@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, Sequence, Tuple
+from typing import Callable, Sequence
 
 from ..quantity import Quantity
 from .sizer import GridSizer
@@ -66,9 +66,9 @@ class QuantityFactory:
     def _allocate(
         self, allocator: Callable, dims: Sequence[str], units: str, dtype: type = float
     ):
-        origin = self.get_origin(dims)
-        extent = self.get_extent(dims)
-        shape = self.get_shape(dims)
+        origin = self.sizer.get_origin(dims)
+        extent = self.sizer.get_extent(dims)
+        shape = self.sizer.get_shape(dims)
         try:
             data = allocator(shape, dtype=dtype, default_origin=origin)
         except TypeError:
@@ -80,12 +80,3 @@ class QuantityFactory:
             origin=origin,
             extent=extent,
         )
-
-    def get_origin(self, dims: Iterable[str]) -> Tuple[int, ...]:
-        return self.sizer.get_origin(dims=dims)
-
-    def get_extent(self, dims: Iterable[str]) -> Tuple[int, ...]:
-        return self.sizer.get_extent(dims=dims)
-
-    def get_shape(self, dims: Iterable[str]) -> Tuple[int, ...]:
-        return self.sizer.get_shape(dims=dims)
