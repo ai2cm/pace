@@ -284,12 +284,6 @@ class Quantity:
         else:
             extent = tuple(extent)
 
-        mask = tuple(
-            [
-                any(dim in coord_dims for dim in dims)
-                for coord_dims in [constants.X_DIMS, constants.Y_DIMS, constants.Z_DIMS]
-            ]
-        )
         self._dims = dims
         if isinstance(data, (int, float, list)):
             data = np.asarray(data)
@@ -313,6 +307,20 @@ class Quantity:
                     f"got {type(data)}"
                 )
         elif gt4py_backend is not None:
+            extra_dims = [i for i in dims if i not in constants.SPATIAL_DIMS]
+            if len(extra_dims) > 0 or not dims:
+                mask = None
+            else:
+                mask = tuple(
+                    [
+                        any(dim in coord_dims for dim in dims)
+                        for coord_dims in [
+                            constants.X_DIMS,
+                            constants.Y_DIMS,
+                            constants.Z_DIMS,
+                        ]
+                    ]
+                )
             self._storage, self._data = self._initialize_storage(
                 data, origin, gt4py_backend, mask
             )
@@ -400,12 +408,6 @@ class Quantity:
         return self._storage
 
     def _initialize_storage(self, data, origin, gt4py_backend: str, mask: Tuple):
-        spatial_dims = [
-            i for j in [constants.X_DIMS, constants.Y_DIMS, constants.Z_DIMS] for i in j
-        ]
-        extra_dims = [i for i in self._dims if i not in spatial_dims]
-        if len(extra_dims) > 0 or not self._dims:
-            mask = None
         storage = gt4py.storage.storage.empty(
             gt4py_backend,
             default_origin=origin,

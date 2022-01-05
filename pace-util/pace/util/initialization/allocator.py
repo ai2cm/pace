@@ -1,6 +1,6 @@
 from typing import Callable, Sequence
 
-from ..constants import X_DIMS, Y_DIMS, Z_DIMS
+from ..constants import SPATIAL_DIMS, X_DIMS, Y_DIMS, Z_DIMS
 from ..quantity import Quantity
 from .sizer import SubtileGridSizer
 
@@ -14,7 +14,8 @@ except ImportError:
 def _wrap_storage_call(function, backend):
     def wrapped(shape, dtype=float, **kwargs):
         kwargs["managed_memory"] = True
-        return function(backend, [0] * len(shape), shape, dtype, **kwargs)
+        kwargs.setdefault("default_origin", [0] * len(shape))
+        return function(backend, shape=shape, dtype=dtype, **kwargs)
 
     wrapped.__name__ = function.__name__
     return wrapped
@@ -95,12 +96,11 @@ class QuantityFactory:
                 for coord_dims in [X_DIMS, Y_DIMS, Z_DIMS]
             ]
         )
-        spatial_dims = [i for j in [X_DIMS, Y_DIMS, Z_DIMS] for i in j]
-        extra_dims = [i for i in dims if i not in spatial_dims]
+        extra_dims = [i for i in dims if i not in SPATIAL_DIMS]
         if len(extra_dims) > 0 or not dims:
             mask = None
         try:
-            data = allocator(shape, dtype=dtype, mask=mask)
+            data = allocator(shape, dtype=dtype, default_origin=origin, mask=mask)
         except TypeError:
             data = allocator(shape, dtype=dtype)
         return Quantity(data, dims=dims, units=units, origin=origin, extent=extent)

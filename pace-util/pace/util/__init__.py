@@ -27,6 +27,7 @@ from .constants import (
     SOUTH,
     SOUTHEAST,
     SOUTHWEST,
+    SPATIAL_DIMS,
     TILE_DIM,
     WEST,
     X_DIM,
