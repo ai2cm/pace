@@ -300,15 +300,15 @@ class DycoreState:
                     _field.metadata["dims"], _field.metadata["units"], dtype=float
                 ).storage
         return cls.init_from_storages(
-            storages=initial_storages, quantity_factory=quantity_factory
+            storages=initial_storages, sizer=quantity_factory.sizer
         )
 
     @classmethod
     def init_from_numpy_arrays(
-        cls, dict_of_numpy_arrays, quantity_factory: util.QuantityFactory, backend
+        cls, dict_of_numpy_arrays, sizer: util.GridSizer, backend: str
     ):
         field_names = [_field.name for _field in fields(cls)]
-        for variable_name, data in dict_of_numpy_arrays.items():
+        for variable_name in dict_of_numpy_arrays.keys():
             if variable_name not in field_names:
                 raise KeyError(
                     variable_name + " is provided, but not part of the dycore state"
@@ -321,8 +321,8 @@ class DycoreState:
                     dict_of_numpy_arrays[_field.name],
                     dims,
                     _field.metadata["units"],
-                    origin=quantity_factory.sizer.get_origin(dims),
-                    extent=quantity_factory.sizer.get_extent(dims),
+                    origin=sizer.get_origin(dims),
+                    extent=sizer.get_extent(dims),
                     gt4py_backend=backend,
                 )
         state = cls(**dict_state)
@@ -332,7 +332,7 @@ class DycoreState:
     def init_from_storages(
         cls,
         storages: Mapping[str, Any],
-        quantity_factory: util.QuantityFactory,
+        sizer: util.GridSizer,
         do_adiabatic_init: bool = False,
         bdt: float = 0.0,
         mdt: float = 0.0,
@@ -345,8 +345,8 @@ class DycoreState:
                     storages[_field.name],
                     dims,
                     _field.metadata["units"],
-                    origin=quantity_factory.sizer.get_origin(dims),
-                    extent=quantity_factory.sizer.get_extent(dims),
+                    origin=sizer.get_origin(dims),
+                    extent=sizer.get_extent(dims),
                 )
                 inputs[_field.name] = quantity
         return cls(**inputs, do_adiabatic_init=do_adiabatic_init, bdt=bdt, mdt=mdt)
