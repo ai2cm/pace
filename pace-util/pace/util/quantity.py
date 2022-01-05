@@ -1,6 +1,6 @@
 import dataclasses
 import warnings
-from typing import Dict, Iterable, Optional, Sequence, Tuple, Union, cast
+from typing import Dict, Iterable, Sequence, Tuple, Union, cast
 
 import numpy as np
 
@@ -259,7 +259,6 @@ class Quantity:
         origin: Sequence[int] = None,
         extent: Sequence[int] = None,
         gt4py_backend: Union[str, None] = None,
-        mask: Optional[Tuple[bool, bool, bool]] = None,
     ):
         """
         Initialize a Quantity.
@@ -285,6 +284,13 @@ class Quantity:
         else:
             extent = tuple(extent)
 
+        mask = tuple(
+            [
+                any(dim in coord_dims for dim in dims)
+                for coord_dims in [constants.X_DIMS, constants.Y_DIMS, constants.Z_DIMS]
+            ]
+        )
+        self._dims = dims
         if isinstance(data, (int, float, list)):
             data = np.asarray(data)
         elif gt4py is not None and isinstance(data, gt4py.storage.storage.Storage):
@@ -394,6 +400,9 @@ class Quantity:
         return self._storage
 
     def _initialize_storage(self, data, origin, gt4py_backend: str, mask: Tuple):
+        extra_dims = [x for x in self._dims if x not in ["x", "y", "z"]]
+        if len(extra_dims) > 0:
+            mask = None
         storage = gt4py.storage.storage.empty(
             gt4py_backend,
             default_origin=origin,

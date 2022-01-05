@@ -17,8 +17,7 @@ import pace.stencils.testing
 import pace.util as util
 from fv3core._config import Namelist
 from fv3gfs.physics.stencils.physics import Physics
-from pace.stencils.testing.grid import DriverGridData
-from pace.util.grid import DampingCoefficients, GridData, MetricTerms
+from pace.util.grid import DampingCoefficients, DriverGridData, GridData, MetricTerms
 
 
 MODEL_OUT_DIR = "./model_output"
