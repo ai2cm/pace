@@ -1,9 +1,7 @@
-import copy
 from dataclasses import InitVar, dataclass, field, fields
 from typing import List
 
 import pace.util
-from fv3core.initialization.dycore_state import DycoreState
 from fv3gfs.physics.stencils.microphysics import MicrophysicsState
 from pace.dsl.typing import FloatField
 
@@ -199,66 +197,6 @@ class PhysicsState:
                 dz=self.dz,
                 tendency_storage=tendency,
             )
-
-    @classmethod
-    def from_dycore_state(
-        cls,
-        state: DycoreState,
-        quantity_factory: pace.util.QuantityFactory,
-        active_packages: List[str],
-    ) -> "PhysicsState":
-        """
-        Constructor for PhysicsState when using dynamical core state
-
-        Args:
-            quantity_factory: used to initialize storages not present
-                in the dycore state
-            active_packages: names of physics packages active
-        """
-        storage = quantity_factory.zeros(
-            [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            "unknown",
-            dtype=float,
-        ).storage
-        # [TODO] using a copy here because variables definition change inside physics
-        # we should copy only the variables that will be updated
-        return cls(
-            qvapor=copy.deepcopy(state.qvapor.storage),
-            qliquid=copy.deepcopy(state.qliquid.storage),
-            qrain=copy.deepcopy(state.qrain.storage),
-            qsnow=copy.deepcopy(state.qsnow.storage),
-            qice=copy.deepcopy(state.qice.storage),
-            qgraupel=copy.deepcopy(state.qgraupel.storage),
-            qo3mr=copy.deepcopy(state.qo3mr.storage),
-            qsgs_tke=copy.deepcopy(state.qsgs_tke.storage),
-            qcld=copy.deepcopy(state.qcld.storage),
-            pt=copy.deepcopy(state.pt.storage),
-            delp=copy.deepcopy(state.delp.storage),
-            delz=copy.deepcopy(state.delz.storage),
-            ua=copy.deepcopy(state.ua.storage),
-            va=copy.deepcopy(state.va.storage),
-            w=copy.deepcopy(state.w.storage),
-            omga=copy.deepcopy(state.omga),
-            delprsi=copy.deepcopy(storage),
-            phii=copy.deepcopy(storage),
-            phil=copy.deepcopy(storage),
-            dz=copy.deepcopy(storage),
-            wmp=copy.deepcopy(storage),
-            prsi=copy.deepcopy(storage),
-            prsik=copy.deepcopy(storage),
-            physics_updated_specific_humidity=copy.deepcopy(storage),
-            physics_updated_qliquid=copy.deepcopy(storage),
-            physics_updated_qrain=copy.deepcopy(storage),
-            physics_updated_qsnow=copy.deepcopy(storage),
-            physics_updated_qice=copy.deepcopy(storage),
-            physics_updated_qgraupel=copy.deepcopy(storage),
-            physics_updated_cloud_fraction=copy.deepcopy(storage),
-            physics_updated_pt=copy.deepcopy(storage),
-            physics_updated_ua=copy.deepcopy(storage),
-            physics_updated_va=copy.deepcopy(storage),
-            quantity_factory=quantity_factory,
-            active_packages=active_packages,
-        )
 
     @classmethod
     def init_zeros(cls, quantity_factory) -> "PhysicsState":
