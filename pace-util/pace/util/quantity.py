@@ -321,7 +321,7 @@ class Quantity:
                     ]
                 )
             self._storage, self._data = self._initialize_storage(
-                data, origin, gt4py_backend, mask
+                data, origin=origin, gt4py_backend=gt4py_backend, mask=mask
             )
         else:
             self._data = data
