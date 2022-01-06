@@ -3,7 +3,6 @@ from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.stencils.testing.grid import axis_offsets
 
 
 # TODO merge with pe_halo? reuse partials?
@@ -42,7 +41,7 @@ class PK3Halo:
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_full()
         domain = grid_indexing.domain_full(add=(0, 0, 1))
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         self._edge_pe_update = stencil_factory.from_origin_domain(
             func=edge_pe_update,
             externals={

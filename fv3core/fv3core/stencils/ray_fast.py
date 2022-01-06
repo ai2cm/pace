@@ -15,7 +15,6 @@ from gt4py.gtscript import (
 import pace.util.constants as constants
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldK
-from pace.stencils.testing.grid import axis_offsets
 from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
 
 
@@ -148,7 +147,7 @@ class RayleighDamping:
             [X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM]
         )
 
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         local_axis_offsets = {}
         for axis_offset_name, axis_offset_value in ax_offsets.items():
             if "local" in axis_offset_name:

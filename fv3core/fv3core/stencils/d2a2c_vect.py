@@ -6,8 +6,8 @@ from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils import corners
-from pace.stencils.testing.grid import GridData, axis_offsets
 from pace.util import X_DIM, Y_DIM, Z_DIM
+from pace.util.grid import GridData
 
 
 c1 = -2.0 / 14.0
@@ -467,7 +467,7 @@ class DGrid2AGrid2CGridVectors:
 
         origin = grid_indexing.origin_full()
         domain = grid_indexing.domain_full()
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         if npt == 0:
             d2a2c_avg_offset = -1
         else:
@@ -487,7 +487,7 @@ class DGrid2AGrid2CGridVectors:
         )
         origin_edges = grid_indexing.origin_compute(add=(-3, -3, 0))
         domain_edges = grid_indexing.domain_compute(add=(6, 6, 0))
-        ax_offsets_edges = axis_offsets(grid_indexing, origin_edges, domain_edges)
+        ax_offsets_edges = grid_indexing.axis_offsets(origin_edges, domain_edges)
         self._fill_corners_x = stencil_factory.from_origin_domain(
             func=fill_corners_x,
             externals=ax_offsets_edges,

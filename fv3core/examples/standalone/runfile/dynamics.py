@@ -16,8 +16,7 @@ import fv3core.initialization.baroclinic as baroclinic_init
 import fv3core.testing
 import pace.dsl
 from fv3core._config import DynamicalCoreConfig
-from pace.stencils.testing.grid import DampingCoefficients, GridData
-from pace.util.grid import MetricTerms
+from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 
 # Dev note: the GTC toolchain fails if xarray is imported after gt4py

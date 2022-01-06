@@ -1,5 +1,6 @@
 from typing import Callable, Sequence
 
+from ..constants import SPATIAL_DIMS, X_DIMS, Y_DIMS, Z_DIMS
 from ..quantity import Quantity
 from .sizer import GridSizer
 
@@ -13,7 +14,8 @@ except ImportError:
 def _wrap_storage_call(function, backend):
     def wrapped(shape, dtype=float, **kwargs):
         kwargs["managed_memory"] = True
-        return function(backend, [0] * len(shape), shape, dtype, **kwargs)
+        kwargs.setdefault("default_origin", [0] * len(shape))
+        return function(backend, shape=shape, dtype=dtype, **kwargs)
 
     wrapped.__name__ = function.__name__
     return wrapped
@@ -54,29 +56,51 @@ class QuantityFactory:
         numpy = StorageNumpy(backend)
         return cls(sizer, numpy)
 
-    def empty(self, dims: Sequence[str], units: str, dtype: type = float):
+    def empty(
+        self,
+        dims: Sequence[str],
+        units: str,
+        dtype: type = float,
+    ):
         return self._allocate(self._numpy.empty, dims, units, dtype)
 
-    def zeros(self, dims: Sequence[str], units: str, dtype: type = float):
+    def zeros(
+        self,
+        dims: Sequence[str],
+        units: str,
+        dtype: type = float,
+    ):
         return self._allocate(self._numpy.zeros, dims, units, dtype)
 
-    def ones(self, dims: Sequence[str], units: str, dtype: type = float):
+    def ones(
+        self,
+        dims: Sequence[str],
+        units: str,
+        dtype: type = float,
+    ):
         return self._allocate(self._numpy.ones, dims, units, dtype)
 
     def _allocate(
-        self, allocator: Callable, dims: Sequence[str], units: str, dtype: type = float
+        self,
+        allocator: Callable,
+        dims: Sequence[str],
+        units: str,
+        dtype: type = float,
     ):
         origin = self.sizer.get_origin(dims)
         extent = self.sizer.get_extent(dims)
         shape = self.sizer.get_shape(dims)
+        mask = tuple(
+            [
+                any(dim in coord_dims for dim in dims)
+                for coord_dims in [X_DIMS, Y_DIMS, Z_DIMS]
+            ]
+        )
+        extra_dims = [i for i in dims if i not in SPATIAL_DIMS]
+        if len(extra_dims) > 0 or not dims:
+            mask = None
         try:
-            data = allocator(shape, dtype=dtype, default_origin=origin)
+            data = allocator(shape, dtype=dtype, default_origin=origin, mask=mask)
         except TypeError:
             data = allocator(shape, dtype=dtype)
-        return Quantity(
-            data,
-            dims=dims,
-            units=units,
-            origin=origin,
-            extent=extent,
-        )
+        return Quantity(data, dims=dims, units=units, origin=origin, extent=extent)

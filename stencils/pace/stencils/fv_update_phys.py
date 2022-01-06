@@ -7,8 +7,8 @@ import pace.util.constants as constants
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
-from pace.stencils.testing.grid import DriverGridData, GridData
 from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
+from pace.util.grid import DriverGridData, GridData
 
 
 # TODO: This is the same as moist_cv.py in fv3core, should move to integration dir

@@ -3,8 +3,8 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
-from pace.stencils.testing.grid import DriverGridData
 from pace.util import TilePartitioner
+from pace.util.grid import DriverGridData
 
 
 def update_dwind_prep_stencil(

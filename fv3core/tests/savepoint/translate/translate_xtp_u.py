@@ -3,7 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import fv3core.stencils.xtp_u as xtp_u
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.stencils.testing.grid import GridData, axis_offsets
+from pace.util.grid import GridData
 
 from .translate_ytp_v import TranslateYTP_V
 
@@ -40,7 +40,7 @@ class XTP_U:
         self._dx = grid_data.dx
         self._dxa = grid_data.dxa
         self._rdx = grid_data.rdx
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         self._stencil = stencil_factory.from_origin_domain(
             xtp_u_stencil_defn,
             externals={
