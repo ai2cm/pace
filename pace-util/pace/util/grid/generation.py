@@ -103,7 +103,7 @@ class MetricTerms:
         npx, npy, ndims = self._tile_partitioner.global_extent(self._grid)
         self._npx = npx
         self._npy = npy
-        self._npz = self.quantity_factory._sizer.get_extent(util.Z_DIM)[0]
+        self._npz = self.quantity_factory.sizer.get_extent(util.Z_DIM)[0]
         self._agrid = self.quantity_factory.zeros(
             [util.X_DIM, util.Y_DIM, self.LON_OR_LAT_DIM], "radians", dtype=float
         )
