@@ -284,7 +284,6 @@ class Quantity:
         else:
             extent = tuple(extent)
 
-        self._dims = dims
         if isinstance(data, (int, float, list)):
             data = np.asarray(data)
         elif gt4py is not None and isinstance(data, gt4py.storage.storage.Storage):
