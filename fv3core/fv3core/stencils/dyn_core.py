@@ -198,16 +198,16 @@ def dyncore_temporaries(grid_indexing: GridIndexing, *, backend: str):
         grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
         backend=backend,
     )
-    tmps["heat_source_quantity"] = _quantity_wrap(
+    tmps["heat_source"] = _quantity_wrap(
         tmps["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
     )
-    tmps["divgd_quantity"] = _quantity_wrap(
+    tmps["divgd"] = _quantity_wrap(
         tmps["divgd"],
         dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
         grid_indexing=grid_indexing,
     )
     for name in ["gz", "pkc", "zh"]:
-        tmps[f"{name}_quantity"] = _quantity_wrap(
+        tmps[name] = _quantity_wrap(
             tmps[name],
             dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
             grid_indexing=grid_indexing,
