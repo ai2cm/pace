@@ -146,7 +146,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         stencil_factory=stencil_factory,
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
-        phis=state.phis_quantity,
+        phis=state.phis,
     )
     do_adiabatic_init = False
     # TODO compute from namelist

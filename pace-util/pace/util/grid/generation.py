@@ -88,7 +88,7 @@ class MetricTerms:
             }
         )
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
-            self.quantity_factory._sizer, self._comm
+            self.quantity_factory.sizer, self._comm
         )
         self._grid_dims = [
             util.X_INTERFACE_DIM,

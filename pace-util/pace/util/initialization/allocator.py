@@ -2,7 +2,7 @@ from typing import Callable, Sequence
 
 from ..constants import SPATIAL_DIMS, X_DIMS, Y_DIMS, Z_DIMS
 from ..quantity import Quantity
-from .sizer import SubtileGridSizer
+from .sizer import GridSizer
 
 
 try:
@@ -35,18 +35,18 @@ class StorageNumpy:
 
 
 class QuantityFactory:
-    def __init__(self, sizer: SubtileGridSizer, numpy):
-        self._sizer = sizer
+    def __init__(self, sizer: GridSizer, numpy):
+        self.sizer: GridSizer = sizer
         self._numpy = numpy
 
     def set_extra_dim_lengths(self, **kwargs):
         """
         Set the length of extra (non-x/y/z) dimensions.
         """
-        self._sizer.extra_dim_lengths.update(kwargs)
+        self.sizer.extra_dim_lengths.update(kwargs)
 
     @classmethod
-    def from_backend(cls, sizer: SubtileGridSizer, backend: str):
+    def from_backend(cls, sizer: GridSizer, backend: str):
         """Initialize a QuantityFactory to use a specific gt4py backend.
 
         Args:
@@ -87,9 +87,9 @@ class QuantityFactory:
         units: str,
         dtype: type = float,
     ):
-        origin = self._sizer.get_origin(dims)
-        extent = self._sizer.get_extent(dims)
-        shape = self._sizer.get_shape(dims)
+        origin = self.sizer.get_origin(dims)
+        extent = self.sizer.get_extent(dims)
+        shape = self.sizer.get_shape(dims)
         mask = tuple(
             [
                 any(dim in coord_dims for dim in dims)

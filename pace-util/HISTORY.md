@@ -1,6 +1,16 @@
 History
 =======
 
+latest
+------
+
+Major changes:
+-
+
+Minor changes:
+- updated QuantityFactory to accept the more generic GridSizer class on initialization
+- added `sizer` as public attribute on QuantityFactory
+
 v0.7.0
 ------
 
