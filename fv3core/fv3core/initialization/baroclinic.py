@@ -519,8 +519,8 @@ def init_baroclinic_state(
     )
     state = DycoreState.init_from_numpy_arrays(
         numpy_state.__dict__,
-        metric_terms.quantity_factory,
-        sample_quantity.metadata.gt4py_backend,
+        sizer=metric_terms.quantity_factory.sizer,
+        backend=sample_quantity.metadata.gt4py_backend,
     )
 
     comm.halo_update(state.phis, n_points=nhalo)

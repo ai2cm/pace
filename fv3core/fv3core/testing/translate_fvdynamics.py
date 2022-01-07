@@ -285,9 +285,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         for name in todelete:
             del input_storages[name]
 
-        state = DycoreState.init_from_storages(
-            input_storages, quantity_factory=self.grid.quantity_factory
-        )
+        state = DycoreState.init_from_storages(input_storages, sizer=self.grid.sizer)
         return state
 
     def compute_parallel(self, inputs, communicator):
