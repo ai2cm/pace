@@ -12,7 +12,7 @@ from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
-from pace.stencils.testing.grid import GridData
+from pace.util.grid import GridData
 
 
 PHYSICS_PACKAGES = Literal["microphysics"]

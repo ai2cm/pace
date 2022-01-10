@@ -3,7 +3,6 @@ from gt4py.gtscript import PARALLEL, computation, interval
 import fv3core.stencils.d_sw as d_sw
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.testing import TranslateFortranData2Py
-from pace.stencils.testing.grid import axis_offsets
 
 
 class TranslateD_SW(TranslateFortranData2Py):
@@ -86,8 +85,8 @@ class TranslateUbKE(TranslateFortranData2Py):
         self.out_vars = {"ub": grid.compute_dict_buffer_2d()}
         origin = self.grid.compute_origin()
         domain = self.grid.domain_shape_compute(add=(1, 1, 0))
-        ax_offsets = axis_offsets(self.grid, origin, domain)
         self.stencil_factory = stencil_factory
+        ax_offsets = self.stencil_factory.grid_indexing.axis_offsets(origin, domain)
         self.compute_func = self.stencil_factory.from_origin_domain(
             ubke, externals=ax_offsets, origin=origin, domain=domain
         )
@@ -128,8 +127,8 @@ class TranslateVbKE(TranslateFortranData2Py):
         self.out_vars = {"vb": grid.compute_dict_buffer_2d()}
         origin = self.grid.compute_origin()
         domain = self.grid.domain_shape_compute(add=(1, 1, 0))
-        ax_offsets = axis_offsets(self.grid, origin, domain)
         self.stencil_factory = stencil_factory
+        ax_offsets = self.stencil_factory.grid_indexing.axis_offsets(origin, domain)
         self.compute_func = self.stencil_factory.from_origin_domain(
             vbke, externals=ax_offsets, origin=origin, domain=domain
         )

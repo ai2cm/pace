@@ -172,7 +172,6 @@ class PhysicsState:
         self, quantity_factory: pace.util.QuantityFactory, active_packages: List[str]
     ):
         # storage for tendency variables not in PhysicsState
-
         if "microphysics" in active_packages:
             tendency = quantity_factory.zeros(
                 [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],

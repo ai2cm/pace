@@ -15,8 +15,8 @@ from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.stencils.d2a2c_vect import contravariant
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.stencils.testing.grid import DampingCoefficients, GridData
 from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.util.grid import DampingCoefficients, GridData
 
 
 @gtscript.function

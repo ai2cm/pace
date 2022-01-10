@@ -6,8 +6,8 @@ import pace.dsl.gt4py_utils as utils
 import pace.util
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
-from pace.stencils.testing.grid import DriverGridData
 from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
+from pace.util.grid import DriverGridData
 
 
 @dataclasses.dataclass()
