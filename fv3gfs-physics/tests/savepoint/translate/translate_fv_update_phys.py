@@ -357,10 +357,8 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             origin=self.grid.sizer.get_origin(dims_v),
             extent=self.grid.sizer.get_extent(dims_v),
         )
-        state.u_quantity = u_quantity
-        state.u = u_quantity.storage
-        state.v_quantity = v_quantity
-        state.v = v_quantity.storage
+        state.u = u_quantity
+        state.v = v_quantity
         self._base.compute_func(
             state,
             tendencies["u_dt"],
@@ -376,12 +374,10 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         out["qsnow"] = state.qsnow[self.grid.slice_dict(ds)]
         out["qgraupel"] = state.qgraupel[self.grid.slice_dict(ds)]
         out["pt"] = state.pt[self.grid.slice_dict(ds)]
-        state.u.synchronize()
-        state.v.synchronize()
         state.ua.synchronize()
         state.va.synchronize()
-        out["u"] = np.asarray(state.u)[self.grid.y3d_domain_interface()]
-        out["v"] = np.asarray(state.v)[self.grid.x3d_domain_interface()]
+        out["u"] = np.asarray(state.u.data)[self.grid.y3d_domain_interface()]
+        out["v"] = np.asarray(state.v.data)[self.grid.x3d_domain_interface()]
         out["ua"] = np.asarray(state.ua)[self.grid.slice_dict(ds)]
         out["va"] = np.asarray(state.va)[self.grid.slice_dict(ds)]
         return out

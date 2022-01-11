@@ -1,9 +1,6 @@
 import dataclasses
 from typing import Any, Optional
 
-import numpy as np
-
-from pace.dsl import gt4py_utils as utils
 from pace.dsl.typing import FloatFieldI, FloatFieldIJ
 
 from .generation import MetricTerms
@@ -515,37 +512,10 @@ class DriverGridData:
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "DriverGridData":
-        # TODO fix <Quantity>.storage mask for FieldI
-        shape = metric_terms.lon.data.shape
-        backend = metric_terms.edge_vect_n.gt4py_backend
-        edge_vect_n = utils.make_storage_data(
-            metric_terms.edge_vect_n.data,
-            (shape[0],),
-            axis=0,
-            backend=backend,
-        )
-        edge_vect_s = utils.make_storage_data(
-            metric_terms.edge_vect_s.data,
-            (shape[0],),
-            axis=0,
-            backend=backend,
-        )
-        east_edge_data = metric_terms.edge_vect_e.data[np.newaxis, ...]
-        east_edge_data = np.repeat(east_edge_data, shape[0], axis=0)
-        edge_vect_e = utils.make_storage_data(
-            data=east_edge_data,
-            shape=east_edge_data.shape,
-            origin=(0, 0),
-            backend=backend,
-        )
-        west_edge_data = metric_terms.edge_vect_w.data[np.newaxis, ...]
-        west_edge_data = np.repeat(west_edge_data, shape[0], axis=0)
-        edge_vect_w = utils.make_storage_data(
-            data=west_edge_data,
-            shape=west_edge_data.shape,
-            origin=(0, 0),
-            backend=backend,
-        )
+        edge_vect_n = metric_terms.edge_vect_n.storage
+        edge_vect_s = metric_terms.edge_vect_s.storage
+        edge_vect_e = metric_terms.edge_vect_e_2d.storage
+        edge_vect_w = metric_terms.edge_vect_w_2d.storage
 
         vlon1, vlon2, vlon3 = metric_terms.split_cartesian_into_storages(
             metric_terms.vlon
