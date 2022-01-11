@@ -1,6 +1,20 @@
 SHELL := /bin/bash
 include docker/Makefile.image_names
 
+define BROWSER_PYSCRIPT
+import os, webbrowser, sys
+
+try:
+	from urllib import pathname2url
+except:
+	from urllib.request import pathname2url
+
+webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
+endef
+export BROWSER_PYSCRIPT
+
+BROWSER := python -c "$$BROWSER_PYSCRIPT"
+
 DOCKER_BUILDKIT=1
 SHELL=/bin/bash
 CWD=$(shell pwd)
@@ -37,7 +51,7 @@ savepoint_tests_mpi:
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
 
-constraints.txt: fv3core/requirements.txt fv3core/requirements/requirements_wrapper.txt fv3core/requirements/requirements_lint.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt
+constraints.txt: fv3core/requirements.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt requirements_docs.txt requirements_lint.txt
 	pip-compile $^ --output-file constraints.txt
 
 physics_savepoint_tests:
@@ -53,3 +67,12 @@ update_submodules_venv:
 
 test_driver:
 	DEV=$(DEV) $(MAKE) -C driver test
+
+docs: ## generate Sphinx HTML documentation
+	$(MAKE) -C docs html
+	$(BROWSER) docs/_build/html/index.html
+
+servedocs: docs ## compile the docs watching for changes
+	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
+
+.PHONY: docs servedocs
