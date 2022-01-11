@@ -179,6 +179,8 @@ class MetricTerms:
         self._edge_vect_e = None
         self._edge_vect_s = None
         self._edge_vect_n = None
+        self._edge_vect_w_2d = None
+        self._edge_vect_e_2d = None
         self._da_min = None
         self._da_max = None
         self._da_min_c = None
@@ -1083,6 +1085,19 @@ class MetricTerms:
         return self._edge_vect_w
 
     @property
+    def edge_vect_w_2d(self) -> util.Quantity:
+        """
+        factor to interpolate vectors from a to c grid at the western grid edge
+        repeated in x and y to be used in stencils
+        """
+        if self._edge_vect_w_2d is None:
+            (
+                self._edge_vect_e_2d,
+                self._edge_vect_w_2d,
+            ) = self._calculate_2d_edge_a2c_vect_factors()
+        return self._edge_vect_w_2d
+
+    @property
     def edge_vect_e(self) -> util.Quantity:
         """
         factor to interpolate vectors from a to c grid at the eastern grid edge
@@ -1095,6 +1110,19 @@ class MetricTerms:
                 self._edge_vect_n,
             ) = self._calculate_edge_a2c_vect_factors()
         return self._edge_vect_e
+
+    @property
+    def edge_vect_e_2d(self) -> util.Quantity:
+        """
+        factor to interpolate vectors from a to c grid at the eastern grid edge
+        repeated in x and y to be used in stencils
+        """
+        if self._edge_vect_e_2d is None:
+            (
+                self._edge_vect_e_2d,
+                self._edge_vect_w_2d,
+            ) = self._calculate_2d_edge_a2c_vect_factors()
+        return self._edge_vect_e_2d
 
     @property
     def edge_vect_s(self) -> util.Quantity:
@@ -2166,6 +2194,20 @@ class MetricTerms:
             self._np,
         )
         return edge_vect_w, edge_vect_e, edge_vect_s, edge_vect_n
+
+    def _calculate_2d_edge_a2c_vect_factors(self):
+        edge_vect_e_2d = self.quantity_factory.zeros([util.X_DIM, util.Y_DIM], "")
+        edge_vect_w_2d = self.quantity_factory.zeros([util.X_DIM, util.Y_DIM], "")
+        shape = self.lon.data.shape
+        east_edge_data = self.edge_vect_e.data[self._np.newaxis, ...]
+        east_edge_data = self._np.repeat(east_edge_data, shape[0], axis=0)
+        west_edge_data = self.edge_vect_w.data[self._np.newaxis, ...]
+        west_edge_data = self._np.repeat(west_edge_data, shape[0], axis=0)
+        edge_vect_e_2d.data[:-1, :-1], edge_vect_w_2d.data[:-1, :-1] = (
+            east_edge_data[:-1, :-1],
+            west_edge_data[:-1, :-1],
+        )
+        return edge_vect_e_2d, edge_vect_w_2d
 
     def _reduce_global_area_minmaxes(self):
         min_area = self._np.min(self.area.storage[3:-4, 3:-4])[()]

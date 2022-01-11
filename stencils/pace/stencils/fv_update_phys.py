@@ -168,8 +168,8 @@ class ApplyPhysics2Dycore:
         self._vdt_halo_updater.wait()
         self._AGrid2DGridPhysics(state.u, state.v, u_dt.storage, v_dt.storage)
         self._do_cubed_to_latlon(
-            state.u_quantity,
-            state.v_quantity,
+            state.u,
+            state.v,
             state.ua,
             state.va,
             self.comm,
