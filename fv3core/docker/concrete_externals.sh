@@ -13,6 +13,9 @@ cp -r $SCRIPT_DIR/../../stencils $SCRIPT_DIR/../external/stencils
 rm $SCRIPT_DIR/../external/dsl
 cp -r $SCRIPT_DIR/../../dsl $SCRIPT_DIR/../external/dsl
 
+rm $SCRIPT_DIR/../constraints.txt
+cp $SCRIPT_DIR/../../constraints.txt $SCRIPT_DIR/../constraints.txt
+
 echo $command
 eval $command
 
@@ -21,10 +24,12 @@ ret=$?
 rm -r $SCRIPT_DIR/../external/pace-util
 rm -r $SCRIPT_DIR/../external/stencils
 rm -r $SCRIPT_DIR/../external/dsl
+rm $SCRIPT_DIR/../constraints.txt
 
 cd $SCRIPT_DIR
 ln -s ../../pace-util ../external/pace-util
 ln -s ../../stencils ../external/stencils
 ln -s ../../dsl ../external/dsl
+ln -s ../../constraints.txt ../constraints.txt
 
 exit $ret
