@@ -34,7 +34,7 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "pace-util/constraints.txt" }}
+            - v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}
       - run:
           name: install tox and MPI
           command: |
@@ -43,7 +43,7 @@ jobs:
               sudo apt-get install libopenmpi3 libopenmpi-dev
               python3 -m venv pace-util/venv
               . pace-util/venv/bin/activate
-              sudo pip3 install tox -c pace-util/constraints.txt
+              sudo pip3 install tox -c constraints.txt
             fi
       - run:
           name: run tests
@@ -52,7 +52,7 @@ jobs:
               cd pace-util && tox -e test -e test_no_extras
             fi
       - save_cache:
-          key: v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "pace-util/constraints.txt" }}
+          key: v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}
           paths:
             - pace-util/.tox
             - pace-util/venv
@@ -69,14 +69,14 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "fv3core/constraints.txt" }}
+            - v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
       - run:
           name: install tox
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
               python3 -m venv fv3core/venv
               . fv3core/venv/bin/activate
-              sudo pip3 install tox -c fv3core/constraints.txt
+              sudo pip3 install tox -c constraints.txt
             fi
       - run:
           name: run tests
@@ -85,7 +85,7 @@ jobs:
               cd fv3core && tox -e test
             fi
       - save_cache:
-          key: v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "fv3core/constraints.txt" }}
+          key: v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
           paths:
             - fv3core/.tox
             - fv3core/venv
