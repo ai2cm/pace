@@ -17,7 +17,7 @@ echo "restoring cache"
 
 UTIL_DIR=$SCRIPT_DIR/..
 
-cache_key=v1-util-$($SCRIPT_DIR/checksum.sh $SCRIPT_DIR/test_util.sh $UTIL_DIR/requirements.txt $UTIL_DIR/requirements_gpu.txt $UTIL_DIR/constraints.txt)-$target
+cache_key=v1-util-$($SCRIPT_DIR/checksum.sh $SCRIPT_DIR/test_util.sh $UTIL_DIR/requirements.txt $UTIL_DIR/requirements_gpu.txt $UTIL_DIR/../constraints.txt)-$target
 
 $SCRIPT_DIR/cache.sh restore $cache_key
 
@@ -31,9 +31,9 @@ if [ "${target}" == "gpu" ] ; then
     module unload cray-python
     module unload pycuda
     set -e
-    pip3 install -r $UTIL_DIR/requirements.txt -r $UTIL_DIR/requirements_gpu.txt -c $UTIL_DIR/constraints.txt -e $UTIL_DIR
+    pip3 install -r $UTIL_DIR/requirements.txt -r $UTIL_DIR/requirements_gpu.txt -c $UTIL_DIR/../constraints.txt -e $UTIL_DIR
 else
-    pip3 install -r $UTIL_DIR/requirements.txt -c $UTIL_DIR/constraints.txt -e $UTIL_DIR
+    pip3 install -r $UTIL_DIR/requirements.txt -c $UTIL_DIR/../constraints.txt -e $UTIL_DIR
 fi
 
 pytest --junitxml results.xml $UTIL_DIR/tests

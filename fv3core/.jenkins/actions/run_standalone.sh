@@ -67,7 +67,6 @@ DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}/${experime
 ARTIFACT_ROOT="/project/s1053/performance/"
 TIMING_DIR="${ARTIFACT_ROOT}/fv3core_performance/${backend}"
 PROFILE_DIR="${ARTIFACT_ROOT}/fv3core_profile/${backend}"
-CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/${experiment}/${backend}"
 
 
 # check sanity of environment
@@ -111,12 +110,7 @@ echo "Benchmark directory:          ${BENCHMARK_DIR}"
 echo "Data directory:               ${DATA_DIR}"
 echo "Perf. artifact directory:     ${TIMING_DIR}"
 echo "Profile artifact directory:   ${PROFILE_DIR}"
-echo "Cache directory:              ${CACHE_DIR}"
 
-
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
-fi
 
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
