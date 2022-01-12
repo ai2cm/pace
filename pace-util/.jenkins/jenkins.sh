@@ -53,9 +53,9 @@ python3 --version
 python3 -m venv venv
 . ./venv/bin/activate
 pip3 install --upgrade pip setuptools wheel
-pip3 install -r constraints.txt
-pip3 install ${JENKINS_DIR}/../external/gt4py -c constraints.txt
-pip3 install ${JENKINS_DIR}/../ -c constraints.txt
+pip3 install -r $JENKINS_DIR/../requirements.txt -c $JENKINS_DIR/../../constraints.txt
+pip3 install -e ${JENKINS_DIR}/../external/gt4py -c $JENKINS_DIR/../../constraints.txt
+pip3 install -e ${JENKINS_DIR}/../ -c $JENKINS_DIR/../../constraints.txt
 
 set +e
 
