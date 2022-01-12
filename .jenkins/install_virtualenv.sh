@@ -11,8 +11,10 @@ exitError()
 
 # check a virtualenv path has been provided
 test -n "$1" || exitError 1001 ${virtualenv_path} "must pass an argument"
-pace_dir=`dirname $0`/../
-echo "pace path is ${pace_dir}"
+JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PACE_DIR=$JENKINS_DIR/../
+echo "pace path is ${PACE_DIR}"
+
 if [ "$WHEEL_DIR" != "" ]; then
     wheel_command="--find-links=$WHEEL_DIR"
 else
@@ -22,15 +24,15 @@ virtualenv_path=$1
 
 set -e -x
 
-git submodule update --init ${pace_dir}/external/daint_venv
-git submodule update --init ${pace_dir}/external/gt4py
-${pace_dir}/external/daint_venv/install.sh ${virtualenv_path}
+git submodule update --init ${PACE_DIR}/external/daint_venv
+git submodule update --init ${PACE_DIR}/external/gt4py
+${PACE_DIR}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/external/gt4py/
-python3 -m pip install ${pace_dir}/pace-util/
-python3 -m pip install $wheel_command -c ${pace_dir}/constraints.txt -r fv3core/requirements/requirements_base.txt
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/fv3core/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/fv3gfs-physics/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/stencils/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${pace_dir}/dsl/
+python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/external/gt4py/
+python3 -m pip install ${PACE_DIR}/pace-util/
+python3 -m pip install $wheel_command -c ${PACE_DIR}/constraints.txt -r fv3core/requirements/requirements_base.txt
+python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/fv3core/
+python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/fv3gfs-physics/
+python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/stencils/
+python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/dsl/
 deactivate
