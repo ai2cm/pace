@@ -77,11 +77,7 @@ DO_NSYS_RUN="$7"
 # get dependencies
 cd $FV3CORE_DIR
 make update_submodules_venv
-# set GT4PY version
 
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'`
-fi
 
 # set up the virtual environment
 echo "creating the venv"

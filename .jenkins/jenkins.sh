@@ -72,9 +72,6 @@ export python_env=${python_env}
 echo "PYTHON env ${python_env}"
 
 
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`git submodule status ${JENKINS_DIR}/../external/gt4py | awk '{print $1;}'`
-fi
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
     echo "Fetching for exisintg gt_caches"
