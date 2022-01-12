@@ -119,7 +119,7 @@ def test_driver_dycore_only():
 
 
 def test_driver_runs():
-    driver, args = setup_driver(dycore_only=True)
+    driver, args = setup_driver(dycore_only=False)
     with no_lagrangian_contributions(dynamical_core=driver.dycore):
         driver.step(*args)
 

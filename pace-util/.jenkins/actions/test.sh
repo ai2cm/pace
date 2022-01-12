@@ -47,32 +47,9 @@ T="$(date +%s)"
 # parse command line options (pass all of them to function)
 parseOptions $*
 
-if [ "${target}" == "gpu" ] ; then
-    # we only run this on HPC
-    set +e
-    module load cray-python
-    module load pycuda
-    set -e
-fi
-
 # run tests
 echo "### run tests"
-if [ ! -f requirements.txt ] ; then
-    exitError 1205 ${LINENO} "could not find requirements.txt, run from top directory"
-fi
-python3 -m venv venv
-. ./venv/bin/activate
-
-if [ "${target}" == "gpu" ] ; then
-    set +e
-    module unload cray-python
-    module unload pycuda
-    set -e
-fi
-pip3 install -r requirements.txt -c constraints.txt .
 pytest --junitxml results.xml tests
-
-deactivate
 
 # end timer and report time taken
 T="$(($(date +%s)-T))"
