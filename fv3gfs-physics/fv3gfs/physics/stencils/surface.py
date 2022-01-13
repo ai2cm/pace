@@ -3,54 +3,56 @@ import numpy as np
 import pace.util.constants as constants
 
 
-def fpvs(t):
-    """Compute saturation vapor pressure
-       t: Temperature [K]
-    fpvs: Vapor pressure [Pa]
-    """
+def fpvsx(t):
+    tliq = constants.TTP
+    tice = constants.TTP - 20.0
+    dldtl = constants.CVAP - constants.C_LIQ
+    heatl = constants.HLV
+    xponal = -dldtl / constants.RVGAS
+    xponbl = -dldtl / constants.RVGAS + heatl / (constants.RVGAS * constants.TTP)
+    dldti = constants.CVAP - constants.CSOL
+    heati = constants.HLV + constants.HFUS
+    xponai = -dldti / constants.RVGAS
+    xponbi = -dldti / constants.RVGAS + heati / (constants.RVGAS * constants.TTP)
 
-    con_psat = constants.PSAT
-    con_ttp = constants.TTP
-    con_cvap = constants.CVAP
-    con_cliq = constants.C_LIQ
-    con_hvap = constants.HLV
-    con_rv = constants.RVGAS
-    con_csol = constants.CSOL
-    con_hfus = constants.HFUS
+    tr = constants.TTP / t
 
-    tliq = con_ttp
-    tice = con_ttp - 20.0
-    dldtl = con_cvap - con_cliq
-    heatl = con_hvap
-    xponal = -dldtl / con_rv
-    xponbl = -dldtl / con_rv + heatl / (con_rv * con_ttp)
-    dldti = con_cvap - con_csol
-    heati = con_hvap + con_hfus
-    xponai = -dldti / con_rv
-    xponbi = -dldti / con_rv + heati / (con_rv * con_ttp)
-
-    convert_to_scalar = False
-    if np.isscalar(t):
-        t = np.array(t)
-        convert_to_scalar = True
-
-    fpvs = np.empty_like(t)
-    tr = con_ttp / t
-
-    ind1 = t >= tliq
-    fpvs[ind1] = con_psat * (tr[ind1] ** xponal) * np.exp(xponbl * (1.0 - tr[ind1]))
-
+    fpvsx = np.zeros_like(tr)
+    ind1 = t > tliq
+    fpvsx[ind1] = (
+        constants.PSAT * tr[ind1] ** xponal * np.exp(xponbl * (1.0 - tr[ind1]))
+    )
     ind2 = t < tice
-    fpvs[ind2] = con_psat * (tr[ind2] ** xponai) * np.exp(xponbi * (1.0 - tr[ind2]))
-
+    fpvsx[ind2] = (
+        constants.PSAT * tr[ind2] ** xponai * np.exp(xponbi * (1.0 - tr[ind2]))
+    )
     ind3 = ~np.logical_or(ind1, ind2)
-    w = (t[ind3] - tice) / (tliq - tice)
-    pvl = con_psat * (tr[ind3] ** xponal) * np.exp(xponbl * (1.0 - tr[ind3]))
-    pvi = con_psat * (tr[ind3] ** xponai) * np.exp(xponbi * (1.0 - tr[ind3]))
-    fpvs[ind3] = w * pvl + (1.0 - w) * pvi
+    w = (t - tice) / (tliq - tice)
+    pvl = constants.PSAT * (tr ** xponal) * np.exp(xponbl * (1.0 - tr))
+    pvi = constants.PSAT * (tr ** xponai) * np.exp(xponbi * (1.0 - tr))
+    fpvsx[ind3] = w[ind3] * pvl[ind3] + (1.0 - w[ind3]) * pvi[ind3]
 
-    if convert_to_scalar:
-        fpvs = fpvs.item()
+    return fpvsx
+
+
+def fpvs(t):
+    # gpvs function variables
+    xmin = 180.0
+    xmax = 330.0
+    nxpvs = 7501
+    xinc = (xmax - xmin) / (nxpvs - 1)
+    c2xpvs = 1.0 / xinc
+    c1xpvs = 1.0 - (xmin * c2xpvs)
+
+    xj = np.minimum(np.maximum(c1xpvs + c2xpvs * t, 1.0), nxpvs)
+    jx = np.minimum(xj, nxpvs - 1.0)
+    jx = np.floor(jx)
+
+    # Convert jx to "x"
+    x = xmin + (jx * xinc)
+    xm = xmin + ((jx - 1) * xinc)
+
+    fpvs = fpvsx(xm) + (xj - jx) * (fpvsx(x) - fpvsx(xm))
 
     return fpvs
 
