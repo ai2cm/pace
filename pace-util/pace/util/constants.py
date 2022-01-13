@@ -62,6 +62,8 @@ DC_VAP = CP_VAP - C_LIQ  # Isobaric heating / cooling
 D2ICE = DC_VAP + DC_ICE  # Isobaric heating / cooling
 LI0 = HLF - DC_ICE * TICE
 EPS = RDGAS / RVGAS
+EPSM1 = RDGAS / RVGAS - 1
+ELOCP = HLV / CP_AIR
 LV0 = (
     HLV - DC_VAP * TICE
 )  # 3.13905782e6, evaporation latent heat coefficient at 0 degrees Kelvin
@@ -77,3 +79,8 @@ TICE0 = TICE - 0.01
 T_MIN = 178.0  # Minimum temperature to freeze-dry all water vapor
 T_SAT_MIN = TICE - 160.0
 LAT2 = (HLV + HLF) ** 2  # used in bigg mechanism
+PSAT = 6.1078e2  # pressure at H2O 3pt
+CVAP = 1.8460e3  # specific heat H2O gas
+CSOL = 2.1060e3  # specific heat H2O ice
+HFUS = 3.3358e5  # latent heat H2O fusion
+TTP = 2.7316e2  # temperature at H2O 3pt

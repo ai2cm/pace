@@ -58,6 +58,20 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             return data[0]
         return data
 
+    def read_surface2d_serialized_data(self, serializer, savepoint, variable):
+        data = serializer.read(variable, savepoint)
+        if isinstance(data, np.ndarray):
+            n_dim = len(data.shape)
+            cn = int(np.sqrt(data.shape[0]))
+            if n_dim == 1:
+                var_reshape = np.reshape(data[:], (cn, cn))
+                rearranged = var_reshape[:, :]
+            else:
+                raise NotImplementedError("Data dimension not supported")
+        else:
+            return data
+        return rearranged
+
     def add_composite_vvar_storage(self, d, var, data3d, max_shape, start_indices):
         """This function is needed to transform vlat, vlon, es, and ew
         This can be removed when the information is in Grid
@@ -189,6 +203,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             dycore_format = info["dycore"] if "dycore" in info else False
             microph_format = info["microph"] if "microph" in info else False
             dwind_format = info["dwind"] if "dwind" in info else False
+            surface2d_format = info["sfc2d"] if "sfc2d" in info else False
             index_order = info["order"] if "order" in info else "C"
             if dycore_format:
                 input_data[serialname] = self.read_dycore_serialized_data(
@@ -204,6 +219,10 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 )
                 for dvar in dwind_data_dict.keys():
                     input_data[dvar] = dwind_data_dict[dvar]
+            elif surface2d_format:
+                input_data[varname] = self.read_surface2d_serialized_data(
+                    serializer, savepoint, serialname
+                )
             else:
                 input_data[serialname] = self.read_physics_serialized_data(
                     serializer, savepoint, serialname, roll_zero, index_order
