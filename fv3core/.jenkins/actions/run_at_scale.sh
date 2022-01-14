@@ -74,7 +74,7 @@ cp $compile_script $scale_script
 sed -i "s/scale-compilation/scale/g" $scale_script
 sed -i "s/${ranks_compile}/${ranks_scale}/g" $compile_script
 sed -i "s/c${size_compile}/c${size_scale}/g" $compile_script
-sed -i "s/03:15:00/02:00:00/g" $compile_script
+sed -i "s/03:15:00/01:30:00/g" $compile_script
 
 # set up the virtual environment
 $ROOT_DIR/.jenkins/install_virtualenv.sh $ROOT_DIR/venv
