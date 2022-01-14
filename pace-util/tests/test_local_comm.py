@@ -1,7 +1,7 @@
 import numpy
 import pytest
 
-from pace.util import local_communicator
+from pace.util import LocalComm
 
 
 @pytest.fixture
@@ -20,9 +20,7 @@ def local_communicator_list(total_ranks):
     return_list = []
     for rank in range(total_ranks):
         return_list.append(
-            local_communicator.LocalComm(
-                rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
-            )
+            LocalComm(rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer)
         )
     return return_list
 
