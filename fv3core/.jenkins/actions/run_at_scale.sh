@@ -60,7 +60,7 @@ make update_submodules_venv
 env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0\nexport FV3_STENCIL_REBUILD_FLAG=False"
 compile_script=daint.c${size_compile}_${ranks_compile}ranks.slurm
 scale_script=daint.c${size_scale}_${ranks_scale}ranks.slurm
-namelist_folder_compile=${namelists_root_dir}/c${size_compile}_${ranks_compile}_baroclinic
+namelist_folder_compile=${namelists_root_dir}/c${size_compile}_${ranks_compile}ranks_baroclinic
 
 cp $BUILDENV_DIR/submit.daint.slurm $compile_script
 
