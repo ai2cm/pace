@@ -5,7 +5,7 @@ latest
 ------
 
 Major changes:
-- Added LocalComm to use for single-rank runs. LocalComm messages can be tagged
+- Renamed DummyComm to LocalComm, and added support for message tags. The DummyComm symbol is still in place for backwards compatibility, but points to LocalComm
 - Added NullTimer to use for default Timer value, it is a disabled timer which cannot be enabled (raises NotImplementedError)
 
 Fixes:
