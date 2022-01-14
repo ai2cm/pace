@@ -5,10 +5,7 @@ latest
 ------
 
 Major changes:
-<<<<<<< HEAD
 - Renamed DummyComm to LocalComm, and added support for message tags. The DummyComm symbol is still in place for backwards compatibility, but points to LocalComm
-=======
--
 
 Minor changes:
 - updated QuantityFactory to accept the more generic GridSizer class on initialization
@@ -19,7 +16,6 @@ v0.7.0
 
 Major changes:
 - Renamed package from fv3gfs-util to pace-util
->>>>>>> main
 - Added NullTimer to use for default Timer value, it is a disabled timer which cannot be enabled (raises NotImplementedError)
 - Added pace.util.grid, keeping symbols out of top level as they are still unstable
 - Added HaloUpdater and associated code, which compiles halo packing for more efficient halo updates
