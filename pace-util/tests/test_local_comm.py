@@ -52,14 +52,17 @@ def test_local_comm_tags(local_communicator_list, tags):
             comm.Isend(data1, dest=(rank + 1) % size, tag=tags[1])
             comm.Isend(data2, dest=(rank + 1) % size, tag=tags[2])
         else:
-            result_order_list = [None, None, None]
-            recv1 = comm.Irecv(data1, source=(rank - 1) % size, tag=tags[1])
-            recv1.wait()
-            result_order_list[1] = data1[0]
-            recv0 = comm.Irecv(data0, source=(rank - 1) % size, tag=tags[0])
+            result_ordered = [None, None, None]
+            result_received = []
+            recv0 = comm.Irecv(data0, source=(rank - 1) % size, tag=0)
             recv0.wait()
-            result_order_list[0] = data0[0]
-            recv2 = comm.Irecv(data2, source=(rank - 1) % size, tag=tags[2])
+            result_received.append(data0[0])
+            recv1 = comm.Irecv(data1, source=(rank - 1) % size, tag=1)
+            recv1.wait()
+            result_received.append(data1[0])
+            result_ordered[tags[1]] = data1[0]
+            recv2 = comm.Irecv(data2, source=(rank - 1) % size, tag=2)
             recv2.wait()
-            result_order_list[2] = data2[0]
-            assert result_order_list == [rank - 1, rank, rank + 1]
+            result_received.append(data2[0])
+            result_ordered = list(numpy.array(result_received)[list(tags)])
+            assert result_ordered == [rank - 1, rank, rank + 1]
