@@ -42,25 +42,15 @@ def test_local_comm_tags(local_communicator_list, tags):
     for comm in local_communicator_list:
         rank = comm.Get_rank()
         size = comm.Get_size()
-        data0 = numpy.asarray([rank], dtype=numpy.int)
-        data1 = numpy.asarray([rank + 1], dtype=numpy.int)
-        data2 = numpy.asarray([rank + 2], dtype=numpy.int)
+        data = numpy.array([[rank], [rank + 1], [rank + 2]])
         if rank % 2 == 0:
-            comm.Isend(data0, dest=(rank + 1) % size, tag=tags[0])
-            comm.Isend(data1, dest=(rank + 1) % size, tag=tags[1])
-            comm.Isend(data2, dest=(rank + 1) % size, tag=tags[2])
+            for i in range(len(tags)):
+                comm.Isend(data[i], dest=(rank + 1) % size, tag=tags[i])
         else:
             result_ordered = [None, None, None]
-            result_received = []
-            recv0 = comm.Irecv(data0, source=(rank - 1) % size, tag=0)
-            recv0.wait()
-            result_received.append(data0[0])
-            recv1 = comm.Irecv(data1, source=(rank - 1) % size, tag=1)
-            recv1.wait()
-            result_received.append(data1[0])
-            result_ordered[tags[1]] = data1[0]
-            recv2 = comm.Irecv(data2, source=(rank - 1) % size, tag=2)
-            recv2.wait()
-            result_received.append(data2[0])
-            result_ordered = list(numpy.array(result_received)[list(tags)])
-            assert result_ordered == [rank - 1, rank, rank + 1]
+            rec_buffer = numpy.array([[-1], [-1], [-1]])
+            for i in range(len(tags)):
+                recv = comm.Irecv(rec_buffer[i], source=(rank - 1) % size, tag=i)
+                recv.wait()
+            result_ordered = rec_buffer[list(tags)]
+            assert (result_ordered == data - 1).all()
