@@ -70,11 +70,11 @@ cp $BUILDENV_DIR/submit.daint.slurm $compile_script
 sed -i "s/<NAME>/scale-compilation/g" $compile_script
 sed -i "s/<NTASKS>/${ranks_compile}/g" $compile_script
 sed -i "s/<NTASKSPERNODE>/1/g" $compile_script
-sed -i "s/<CPUSPERTASK>/$NTHREADS/g" $compile_script
+sed -i "s/<CPUSPERTASK>/12/g" $compile_script
 sed -i "s/<OUTFILE>/${compile_log}\n#SBATCH --hint=nomultithread/g" $compile_script
 sed -i "s/00:45:00/03:15:00/g" $compile_script
 sed -i "s/cscsci/normal/g" $compile_script
-sed -i "s#<CMD>#$env_vars\nsrun python examples/standalone/runfile/dynamics.py $namelist_folder_compile 2 $backend $githash #g" $compile_script
+sed -i "s#<CMD>#$env_vars\nsrun python examples/standalone/runfile/dynamics.py $namelist_folder_compile 11 $backend $githash #g" $compile_script
 
 # Copy compile script and adjust for running at scale settings
 cp $compile_script $scale_script
