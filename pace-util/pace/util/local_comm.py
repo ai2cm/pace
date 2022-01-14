@@ -11,7 +11,7 @@ class ConcurrencyError(Exception):
     """Exception to denote that a rank cannot proceed because it is waiting on a
     call from another rank."""
 
-    pass
+    pass  # noqa
 
 
 class AsyncResult:
