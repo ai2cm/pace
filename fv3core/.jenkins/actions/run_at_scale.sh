@@ -46,16 +46,21 @@ test -n "$4" || exitError 1001 ${LINENO} "must pass a number of tile edge points
 test -n "$5" || exitError 1003 ${LINENO} "must pass a backend"
 test -n "$6" || exitError 1004 ${LINENO} "must pass a namelists root directory"
 
-ranks_compile=$1
-size_compile=$2
-ranks_scale=$3
-size_scale=$4
+size_compile=$1
+ranks_compile=$2
+size_scale=$3
+ranks_scale=$4
 backend=$5
 namelists_root_dir=$6
+
+# get dependencies
+cd $ROOT_DIR
+make update_submodules_venv
+
 env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0\nexport FV3_STENCIL_REBUILD_FLAG=False"
-compile_script=daint.${ranks_compile}ranks.slurm
-scale_script=daint.${ranks_scale}ranks.slurm
-namelist_folder_compile=${namelist_root_dir}/c${size_compile}_${ranks_compile}_baroclinic
+compile_script=daint.c${size_compile}_${ranks_compile}ranks.slurm
+scale_script=daint.c${size_scale}_${ranks_scale}ranks.slurm
+namelist_folder_compile=${namelists_root_dir}/c${size_compile}_${ranks_compile}_baroclinic
 
 cp $BUILDENV_DIR/submit.daint.slurm $compile_script
 
@@ -77,7 +82,9 @@ sed -i "s/c${size_compile}/c${size_scale}/g" $compile_script
 sed -i "s/03:15:00/01:30:00/g" $compile_script
 
 # set up the virtual environment
-$ROOT_DIR/.jenkins/install_virtualenv.sh $ROOT_DIR/venv
+if [ ! -d ./venv ] ; then
+    $ROOT_DIR/.jenkins/install_virtualenv.sh $ROOT_DIR/venv
+fi
 source ./venv/bin/activate
 pip list
 # create the cache
