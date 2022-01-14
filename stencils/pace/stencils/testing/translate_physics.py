@@ -220,7 +220,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 for dvar in dwind_data_dict.keys():
                     input_data[dvar] = dwind_data_dict[dvar]
             elif surface2d_format:
-                input_data[varname] = self.read_surface2d_serialized_data(
+                input_data[serialname] = self.read_surface2d_serialized_data(
                     serializer, savepoint, serialname
                 )
             else:
@@ -232,6 +232,27 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 serializer, savepoint, varname
             )
         return input_data
+
+    def slice_surface2d_output(self, inputs, out_data=None):
+        if out_data is None:
+            out_data = inputs
+        else:
+            out_data.update(inputs)
+        out = {}
+        for var in self.out_vars.keys():
+            info = self.out_vars[var]
+            serialname = info["serialname"] if "serialname" in info else var
+            data_result = out_data[var]
+            n_dim = len(data_result.shape)
+            cn2 = int(data_result.shape[0] - self.grid.halo * 2 - 1) ** 2
+            if n_dim == 2:
+                ds = self.grid.compute_dict()
+                ij_slice = self.grid.slice_dict(ds)
+                data_compute = np.asarray(data_result)[ij_slice[0], ij_slice[1]]
+                out[serialname] = np.reshape(data_compute, cn2)
+            else:
+                raise NotImplementedError("Output data dimension not supported")
+        return out
 
     def slice_output(self, inputs, out_data=None):
         if out_data is None:

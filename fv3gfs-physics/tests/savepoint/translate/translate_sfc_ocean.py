@@ -35,21 +35,16 @@ class TranslateSfcOcean1(TranslatePhysicsFortranData2Py):
             "hflx": self.in_vars["data_vars"]["hflx"],
             "qsurf": self.in_vars["data_vars"]["qsurf"],
         }
+        self.compute_func = stencil_factory.from_origin_domain(
+            sfc_ocean,
+            origin=stencil_factory.grid_indexing.origin_full(),
+            domain=stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
+        )
 
     def compute(self, inputs):
-        qsurf, cmm, chh, gflux, evap, hflx, ep = sfc_ocean(**inputs)
-        output = {}
-        output["qss33"] = qsurf
-        output["cmm33"] = cmm
-        output["chh33"] = chh
-        output["gflx33"] = gflux
-        output["evap33"] = evap
-        output["hflx33"] = hflx
-        output["ep1d33"] = ep
-        ij = qsurf.shape[0] * qsurf.shape[1]
-        for var in output.keys():
-            output[var] = output[var].reshape(ij)
-        return output
+        self.make_storage_data_input_vars(inputs)
+        self.compute_func(**inputs)
+        return self.slice_surface2d_output(inputs)
 
 
 class TranslateSfcOcean2(TranslatePhysicsFortranData2Py):
@@ -85,18 +80,13 @@ class TranslateSfcOcean2(TranslatePhysicsFortranData2Py):
             "hflx": self.in_vars["data_vars"]["hflx"],
             "qsurf": self.in_vars["data_vars"]["qsurf"],
         }
+        self.compute_func = stencil_factory.from_origin_domain(
+            sfc_ocean,
+            origin=stencil_factory.grid_indexing.origin_full(),
+            domain=stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
+        )
 
     def compute(self, inputs):
-        qsurf, cmm, chh, gflux, evap, hflx, ep = sfc_ocean(**inputs)
-        output = {}
-        output["qss33"] = qsurf
-        output["cmm33"] = cmm
-        output["chh33"] = chh
-        output["gflx33"] = gflux
-        output["evap33"] = evap
-        output["hflx33"] = hflx
-        output["ep1d33"] = ep
-        ij = qsurf.shape[0] * qsurf.shape[1]
-        for var in output.keys():
-            output[var] = output[var].reshape(ij)
-        return output
+        self.make_storage_data_input_vars(inputs)
+        self.compute_func(**inputs)
+        return self.slice_surface2d_output(inputs)
