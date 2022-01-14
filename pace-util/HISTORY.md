@@ -5,6 +5,7 @@ latest
 ------
 
 Major changes:
+- Added LocalComm to use for single-rank runs. LocalComm messages can be tagged
 - Added NullTimer to use for default Timer value, it is a disabled timer which cannot be enabled (raises NotImplementedError)
 
 Fixes:
