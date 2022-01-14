@@ -84,4 +84,3 @@ pip list
 run_job $compile_script
 # run at scale
 run_job $scale_script
-
