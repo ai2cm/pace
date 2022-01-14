@@ -15,7 +15,8 @@ import fv3core.testing
 import pace.dsl
 import pace.stencils.testing
 import pace.util as util
-from fv3core._config import Namelist
+from fv3core._config import DynamicalCoreConfig, Namelist
+from fv3gfs.physics._config import PhysicsConfig
 from fv3gfs.physics.stencils.physics import Physics
 from pace.util.grid import DampingCoefficients, DriverGridData, GridData, MetricTerms
 
@@ -104,6 +105,7 @@ def driver(
     dwind = DriverGridData.new_from_metric_terms(metric_terms)
     grid_data = GridData.new_from_metric_terms(metric_terms)
     # initialize dynamical core and physics objects
+    dycore_config = DynamicalCoreConfig.from_namelist(namelist)
     if run_dycore:
         dycore = fv3core.DynamicalCore(
             comm=communicator,
@@ -112,16 +114,16 @@ def driver(
             damping_coefficients=DampingCoefficients.new_from_metric_terms(
                 metric_terms
             ),
-            config=namelist.dynamical_core,
+            config=dycore_config,
             phis=state.phis_quantity,
         )
     else:
         dycore = DeactivatedDycore()
-
+    physics_config = PhysicsConfig.from_namelist(namelist)
     step_physics = Physics(
         stencil_factory=stencil_factory,
         grid_data=grid_data,
-        namelist=namelist,
+        namelist=physics_config,
     )
     # TODO include functionality that uses and changes this
     do_adiabatic_init = False
