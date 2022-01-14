@@ -51,27 +51,38 @@ lint:
 	mypy --follow-imports silent --show-error-codes fv3gfs
 	@echo "LINTING SUCCESSFUL"
 
-# We do not use --no-annotate to keep the dependencies annotations
-# but we beautify the files with `sed`
-#  - line 1: remove direct git dependencies
-#  - line 2-5: beautify the comments (inline comments generated)
-#  - line 5: get rid of an illegaly generated [toml]
-#  - line 6: replace the pip update command with the make call in docs
-constraints.txt: requirements.txt requirements_gpu.txt setup.py
-	pip-compile $^ --output-file constraints.txt
-	sed -i '/^git+https/d' constraints.txt
-	sed -i 's/ *# \(.*\)/# \1/g' constraints.txt
-	sed -i -z 's/\n#/  #/6g' constraints.txt
-	sed -i 's/\n,/,/g' constraints.txt
-	sed -i 's/via,/via/g' constraints.txt
-	sed -i '/^\[toml\]/d' constraints.txt
-	sed -i '5s/.*/#    make constraints.txt/' constraints.txt
+clean: clean-build clean-pyc clean-test
+	$(MAKE) -C examples/mpi clean
 
-clean:
-	$(MAKE) -c examples/mpi clean
+clean-build: ## remove build artifacts
+	rm -fr build/
+	rm -fr dist/
+	rm -fr .eggs/
+	find . -name '*.egg-info' -exec rm -fr {} +
+	find . -name '*.egg' -exec rm -f {} +
+
+clean-pyc: ## remove Python file artifacts
+	find . -name '*.pyc' -exec rm -f {} +
+	find . -name '*.pyo' -exec rm -f {} +
+	find . -name '*~' -exec rm -f {} +
+	find . -name '__pycache__' -exec rm -fr {} +
+
+clean-test: ## remove test and coverage artifacts
+	rm -fr .tox/
+	rm -f .coverage
+	rm -fr htmlcov/
+	rm -fr .pytest_cache
 
 reformat:
 	black $(PYTHON_FILES) $(PYTHON_INIT_FILES)
+
+dist: clean ## builds source and wheel package
+	python3 setup.py sdist
+	python3 setup.py bdist_wheel
+	ls -l dist
+
+release: dist ## package and upload a release
+	twine upload dist/*
 
 docs: ## generate Sphinx HTML documentation, including API docs
 	$(MAKE) -C docs clean

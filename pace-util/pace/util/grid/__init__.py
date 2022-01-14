@@ -11,3 +11,12 @@ from .gnomonic import (
     xyz_midpoint,
     xyz_to_lon_lat,
 )
+from .helper import (
+    AngleGridData,
+    ContravariantGridData,
+    DampingCoefficients,
+    DriverGridData,
+    GridData,
+    HorizontalGridData,
+    VerticalGridData,
+)

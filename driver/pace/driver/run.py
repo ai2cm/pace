@@ -18,11 +18,10 @@ from fv3core.testing.translate_fvdynamics import init_dycore_state_from_serializ
 from fv3gfs.physics import PhysicsState
 from fv3gfs.physics.stencils.physics import Physics
 from pace.dsl.stencil import StencilFactory
-from pace.stencils.testing.grid import DampingCoefficients, DriverGridData, GridData
 from pace.stencils.update_atmos_state import UpdateAtmosphereState
 from pace.util import QuantityFactory
 from pace.util.constants import N_HALO_DEFAULT
-from pace.util.grid import MetricTerms
+from pace.util.grid import DampingCoefficients, DriverGridData, GridData, MetricTerms
 
 
 class Driver:
@@ -227,7 +226,7 @@ rank = comm.Get_rank()
     "data_directory",
     required=False,
     nargs=1,
-    default="/port_dev/test_data/c12_6ranks_baroclinic_dycore_microphysics",
+    default="/test_data/",
 )
 @click.argument("time_steps", required=False, default="1")
 @click.argument("backend", required=False, default="numpy")
@@ -280,7 +279,7 @@ def driver(data_directory: str, time_steps: str, backend: str, init_mode: str):
             output = {}
 
             for key in output_vars:
-                getattr(driver.dycore_state, key).synchronize()
+                getattr(driver.dycore_state, key).storage.synchronize()
                 output[key] = np.asarray(getattr(driver.dycore_state, key))
             np.save("pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npy", output)
 

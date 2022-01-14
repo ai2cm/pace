@@ -5,8 +5,8 @@ import pace.stencils.corners as corners
 from fv3core.stencils.basic_operations import copy_defn
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, cast_to_index3d
-from pace.stencils.testing.grid import DampingCoefficients
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.util.grid import DampingCoefficients
 
 
 #

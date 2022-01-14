@@ -1,6 +1,5 @@
 from fv3core.stencils import pe_halo
 from pace.stencils.testing import TranslateFortranData2Py
-from pace.stencils.testing.grid import axis_offsets
 
 
 class TranslatePE_Halo(TranslateFortranData2Py):
@@ -21,8 +20,7 @@ class TranslatePE_Halo(TranslateFortranData2Py):
         self.in_vars["parameters"] = ["ptop"]
         self.out_vars = {"pe": self.in_vars["data_vars"]["pe"]}
         self.stencil_factory = stencil_factory
-        ax_offsets_pe = axis_offsets(
-            self.stencil_factory.grid_indexing,
+        ax_offsets_pe = self.stencil_factory.grid_indexing.axis_offsets(
             self.stencil_factory.grid_indexing.origin_full(),
             self.stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
         )

@@ -7,3 +7,6 @@ external/fv3gfs-fortran/serialbox2/.git/**
 external/fv3gfs-fortran/serialbox2/docs/**
 fv3/.gt_cache/**
 .gt_cache/**
+fv3core/test_data/**
+.git/**
+pace-util/.tox/**

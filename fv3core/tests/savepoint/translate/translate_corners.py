@@ -1,7 +1,6 @@
 import pace.dsl.gt4py_utils as utils
 from pace.stencils import corners
 from pace.stencils.testing import TranslateFortranData2Py
-from pace.stencils.testing.grid import axis_offsets
 
 
 class TranslateFill4Corners(TranslateFortranData2Py):
@@ -16,7 +15,7 @@ class TranslateFill4Corners(TranslateFortranData2Py):
         self.make_storage_data_input_vars(inputs)
         origin = self.grid.full_origin()
         domain = self.grid.domain_shape_full()
-        axes_offsets = axis_offsets(self.grid, origin, domain)
+        axes_offsets = self.stencil_factory.grid_indexing.axis_offsets(origin, domain)
         if inputs["dir"] == 1:
             stencil = self.stencil_factory.from_origin_domain(
                 corners.fill_corners_2cells_x_stencil,
@@ -112,7 +111,9 @@ class TranslateFillCornersVector(TranslateFortranData2Py):
                 ki = [k for k in range(self.grid.npz) if nord_column[0, 0, k] == nord]
                 origin = (self.grid.isd, self.grid.jsd, ki[0])
                 domain = (self.grid.nid + 1, self.grid.njd + 1, len(ki))
-                axes_offsets = axis_offsets(self.grid.grid_indexing, origin, domain)
+                axes_offsets = self.stencil_factory.grid_indexing.axis_offsets(
+                    origin, domain
+                )
                 vector_corner_fill = self.stencil_factory.from_origin_domain(
                     corners.fill_corners_dgrid_defn,
                     externals=axes_offsets,

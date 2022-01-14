@@ -1,6 +1,7 @@
 import fv3core.stencils.dyn_core as dyn_core
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
+from fv3core.initialization.dycore_state import DycoreState
 from pace.stencils.testing import ParallelTranslate2PyState
 
 
@@ -133,7 +134,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
             grid_data.bk = inputs["bk"]
             grid_data.ptop = inputs["ptop"]
             grid_data.ks = inputs["ks"]
-        self._base.compute_func = dyn_core.AcousticDynamics(
+        acoustic_dynamics = dyn_core.AcousticDynamics(
             communicator,
             self.stencil_factory,
             grid_data,
@@ -145,4 +146,25 @@ class TranslateDynCore(ParallelTranslate2PyState):
             inputs["pfull"],
             inputs["phis"],
         )
-        return super().compute_parallel(inputs, communicator)
+        self._base.make_storage_data_input_vars(inputs)
+        state = DycoreState.init_zeros(quantity_factory=self.grid.quantity_factory)
+        state.cappa = self.grid.quantity_factory.empty(
+            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            units="unknown",
+        )
+        for name, value in inputs.items():
+            if hasattr(state, name) and isinstance(state[name], fv3util.Quantity):
+                # storage can have buffer points at the end, so value.shape
+                # is often not equal to state[name].storage.shape
+                selection = tuple(slice(0, end) for end in value.shape)
+                state[name].storage[selection] = value
+            else:
+                setattr(state, name, value)
+        acoustic_dynamics(state)
+        storages_only = {}
+        for name, value in vars(state).items():
+            if isinstance(value, fv3util.Quantity):
+                storages_only[name] = value.storage
+            else:
+                storages_only[name] = value
+        return self._base.slice_output(storages_only)

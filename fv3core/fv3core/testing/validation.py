@@ -74,9 +74,14 @@ def get_selective_class(
             for name, validation_slice in self._validation_slice.items():
                 if name in kwargs.keys():
                     array = kwargs[name]
-                    validation_data = np.copy(array[validation_slice])
-                    array[:] = np.nan
-                    array[validation_slice] = validation_data
+                    try:
+                        validation_data = np.copy(array[validation_slice])
+                        array[:] = np.nan
+                        array[validation_slice] = validation_data
+                    except TypeError:
+                        validation_data = np.copy(array.storage[validation_slice])
+                        array.storage[:] = np.nan
+                        array.storage[validation_slice] = validation_data
 
         def __getattr__(self, name):
             # if SelectivelyValidated doesn't have an attribute, this is called
