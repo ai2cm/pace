@@ -47,10 +47,8 @@ def test_local_comm_tags(local_communicator_list, tags):
             for i in range(len(tags)):
                 comm.Isend(data[i], dest=(rank + 1) % size, tag=tags[i])
         else:
-            result_ordered = [None, None, None]
             rec_buffer = numpy.array([[-1], [-1], [-1]])
             for i in range(len(tags)):
                 recv = comm.Irecv(rec_buffer[i], source=(rank - 1) % size, tag=i)
                 recv.wait()
-            result_ordered = rec_buffer[list(tags)]
-            assert (result_ordered == data - 1).all()
+            assert (rec_buffer[list(tags)] == data - 1).all()
