@@ -31,15 +31,16 @@ def test_local_comm_simple(local_communicator_list):
     for comm in local_communicator_list:
         rank = comm.Get_rank()
         size = comm.Get_size()
-        data0 = numpy.asarray([rank], dtype=numpy.int)
+        data = numpy.asarray([rank], dtype=numpy.int)
         if rank % 2 == 0:
-            comm.Send(data0, dest=(rank + 1) % size)
+            comm.Send(data, dest=(rank + 1) % size)
         else:
-            comm.Recv(data0, source=(rank - 1) % size)
-            assert data0 == (rank - 1) % size
+            comm.Recv(data, source=(rank - 1) % size)
+            assert data == (rank - 1) % size
 
 
-def test_local_comm_tags_inorder(local_communicator_list):
+@pytest.mark.parametrize("tags", [(0, 1, 2), (2, 1, 0), (2, 0, 1)])
+def test_local_comm_tags(local_communicator_list, tags):
     for comm in local_communicator_list:
         rank = comm.Get_rank()
         size = comm.Get_size()
@@ -47,30 +48,18 @@ def test_local_comm_tags_inorder(local_communicator_list):
         data1 = numpy.asarray([rank + 1], dtype=numpy.int)
         data2 = numpy.asarray([rank + 2], dtype=numpy.int)
         if rank % 2 == 0:
-            comm.Isend(data0, dest=(rank + 1) % size, tag=0)
-            comm.Isend(data1, dest=(rank + 1) % size, tag=1)
-            comm.Isend(data2, dest=(rank + 1) % size, tag=2)
+            comm.Isend(data0, dest=(rank + 1) % size, tag=tags[0])
+            comm.Isend(data1, dest=(rank + 1) % size, tag=tags[1])
+            comm.Isend(data2, dest=(rank + 1) % size, tag=tags[2])
         else:
-            result_order_list = []
-            comm.Irecv(data0, source=(rank - 1) % size, tag=0)
-            comm.Irecv(data1, source=(rank - 1) % size, tag=1)
-            comm.Irecv(data2, source=(rank - 1) % size, tag=2)
-            result_order_list = [data0[0], data1[0], data2[0]]
+            result_order_list = [None, None, None]
+            recv1 = comm.Irecv(data1, source=(rank - 1) % size, tag=tags[1])
+            recv1.wait()
+            result_order_list[1] = data1[0]
+            recv0 = comm.Irecv(data0, source=(rank - 1) % size, tag=tags[0])
+            recv0.wait()
+            result_order_list[0] = data0[0]
+            recv2 = comm.Irecv(data2, source=(rank - 1) % size, tag=tags[2])
+            recv2.wait()
+            result_order_list[2] = data2[0]
             assert result_order_list == [rank - 1, rank, rank + 1]
-
-
-def test_local_comm_tags_reversed(local_communicator_list):
-    for comm in local_communicator_list:
-        rank = comm.Get_rank()
-        size = comm.Get_size()
-        data0 = numpy.asarray([rank], dtype=numpy.int)
-        data1 = numpy.asarray([rank + 1], dtype=numpy.int)
-        if rank % 2 == 0:
-            comm.Isend(data0, dest=(rank + 1) % size, tag=0)
-            comm.Isend(data1, dest=(rank + 1) % size, tag=1)
-        else:
-            result_order_list = []
-            comm.Irecv(data1, source=(rank - 1) % size, tag=1)
-            comm.Irecv(data0, source=(rank - 1) % size, tag=0)
-            result_order_list = [data0[0], data1[0]]
-            assert result_order_list == [rank - 1, rank]
