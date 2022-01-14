@@ -72,9 +72,6 @@ export python_env=${python_env}
 echo "PYTHON env ${python_env}"
 
 
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
-fi
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
     echo "Fetching for exisintg gt_caches"
@@ -140,7 +137,6 @@ if [ -z ${SCRATCH} ] ; then
 fi
 
 # Set the host data head directory location
-export TEST_DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}"
 export TEST_DATA_DIR="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/${DATA_VERSION}"
 export FV3_STENCIL_REBUILD_FLAG=False
 # Set the host data location

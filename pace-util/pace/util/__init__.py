@@ -27,6 +27,7 @@ from .constants import (
     SOUTH,
     SOUTHEAST,
     SOUTHWEST,
+    SPATIAL_DIMS,
     TILE_DIM,
     WEST,
     X_DIM,
@@ -58,5 +59,5 @@ from .units import UnitsError, ensure_equal_units, units_are_equal
 from .zarr_monitor import ZarrMonitor
 
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 __all__ = list(key for key in locals().keys() if not key.startswith("_"))

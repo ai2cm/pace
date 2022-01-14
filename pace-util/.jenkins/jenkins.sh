@@ -48,12 +48,14 @@ set -e
 script="${JENKINS_DIR}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
-# set up virtual env, if not already set up
+# set up virtual env
+python3 --version
 python3 -m venv venv
 . ./venv/bin/activate
 pip3 install --upgrade pip setuptools wheel
-pip3 install -r requirements.txt -c constraints.txt
-pip3 install ${JENKINS_DIR}/../ -c constraints.txt
+pip3 install -r $JENKINS_DIR/../requirements.txt -c $JENKINS_DIR/../../constraints.txt
+pip3 install -e ${JENKINS_DIR}/../external/gt4py -c $JENKINS_DIR/../../constraints.txt
+pip3 install -e ${JENKINS_DIR}/../ -c $JENKINS_DIR/../../constraints.txt
 
 set +e
 

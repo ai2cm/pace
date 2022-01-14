@@ -11,7 +11,7 @@ from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.stencils.testing.grid import DampingCoefficients, GridData
+from pace.util.grid import DampingCoefficients, GridData
 
 
 @gtscript.function

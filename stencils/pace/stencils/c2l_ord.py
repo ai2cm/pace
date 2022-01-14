@@ -3,9 +3,9 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.stencils.testing.grid import GridData
 from pace.util import CubedSphereCommunicator
 from pace.util.constants import X_DIM, Y_DIM, Z_DIM
+from pace.util.grid import GridData
 from pace.util.quantity import Quantity
 
 

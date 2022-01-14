@@ -4,6 +4,7 @@ import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
 from pace.util import TilePartitioner
+from pace.util.grid import DriverGridData
 
 
 def update_dwind_prep_stencil(
@@ -149,7 +150,7 @@ class AGrid2DGridPhysics:
         partitioner: TilePartitioner,
         rank: int,
         namelist,
-        grid_info,
+        grid_info: DriverGridData,
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
@@ -383,22 +384,22 @@ class AGrid2DGridPhysics:
             domain=(nic + 1, njc, npz),
         )
         # [TODO] The following is waiting on grid code vlat and vlon
-        self._vlon1 = grid_info["vlon1"]
-        self._vlon2 = grid_info["vlon2"]
-        self._vlon3 = grid_info["vlon3"]
-        self._vlat1 = grid_info["vlat1"]
-        self._vlat2 = grid_info["vlat2"]
-        self._vlat3 = grid_info["vlat3"]
-        self._edge_vect_w = grid_info["edge_vect_w"]
-        self._edge_vect_e = grid_info["edge_vect_e"]
-        self._edge_vect_s = grid_info["edge_vect_s"]
-        self._edge_vect_n = grid_info["edge_vect_n"]
-        self._es1_1 = grid_info["es1_1"]
-        self._es2_1 = grid_info["es2_1"]
-        self._es3_1 = grid_info["es3_1"]
-        self._ew1_2 = grid_info["ew1_2"]
-        self._ew2_2 = grid_info["ew2_2"]
-        self._ew3_2 = grid_info["ew3_2"]
+        self._vlon1 = grid_info.vlon1
+        self._vlon2 = grid_info.vlon2
+        self._vlon3 = grid_info.vlon3
+        self._vlat1 = grid_info.vlat1
+        self._vlat2 = grid_info.vlat2
+        self._vlat3 = grid_info.vlat3
+        self._edge_vect_w = grid_info.edge_vect_w
+        self._edge_vect_e = grid_info.edge_vect_e
+        self._edge_vect_s = grid_info.edge_vect_s
+        self._edge_vect_n = grid_info.edge_vect_n
+        self._es1_1 = grid_info.es1_1
+        self._es2_1 = grid_info.es1_2
+        self._es3_1 = grid_info.es1_3
+        self._ew1_2 = grid_info.ew2_1
+        self._ew2_2 = grid_info.ew2_2
+        self._ew3_2 = grid_info.ew2_3
 
     def global_to_local_1d(self, global_value, subtile_index, subtile_length):
         return global_value - subtile_index * subtile_length
@@ -435,6 +436,7 @@ class AGrid2DGridPhysics:
         """
         Transforms the wind tendencies from A grid to D grid for the final update
         """
+
         self._update_dwind_prep_stencil(
             u_dt,
             v_dt,

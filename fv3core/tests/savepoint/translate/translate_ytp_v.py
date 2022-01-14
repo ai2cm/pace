@@ -4,7 +4,7 @@ import fv3core.stencils.ytp_v as ytp_v
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.testing import TranslateFortranData2Py
-from pace.stencils.testing.grid import GridData, axis_offsets
+from pace.util.grid import GridData
 
 
 def ytp_v_stencil_defn(
@@ -39,7 +39,7 @@ class YTP_V:
         self._dy = grid_data.dy
         self._dya = grid_data.dya
         self._rdy = grid_data.rdy
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
 
         self.stencil = stencil_factory.from_origin_domain(
             ytp_v_stencil_defn,
