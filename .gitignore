@@ -2,6 +2,7 @@
 
 # Test outputs
 results.xml
+driver/output.zarr
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
