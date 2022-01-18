@@ -5,7 +5,7 @@ import f90nml
 
 import pace.dsl.gt4py_utils as utils
 from pace.stencils.testing.grid import Grid
-from pace.util.namelist import Namelist, NamelistDefaults, namelist_to_flatish_dict
+from pace.util import Namelist, NamelistDefaults
 
 
 grid = None
@@ -266,14 +266,9 @@ class DynamicalCoreConfig:
     n_sponge: int = NamelistDefaults.n_sponge
 
     @classmethod
-    def from_f90nml(cls, namelist: f90nml.Namelist) -> "DynamicalCoreConfig":
-        namelist_dict = namelist_to_flatish_dict(namelist.items())
-        namelist_dict = {
-            key: value
-            for key, value in namelist_dict.items()
-            if key in cls.__dataclass_fields__  # type: ignore
-        }
-        return cls(**namelist_dict)
+    def from_f90nml(self, f90_namelist: f90nml.Namelist) -> "DynamicalCoreConfig":
+        namelist = Namelist.from_f90nml(f90_namelist)
+        return self.from_namelist(namelist)
 
     @classmethod
     def from_namelist(cls, namelist: Namelist) -> "DynamicalCoreConfig":

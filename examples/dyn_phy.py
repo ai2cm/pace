@@ -15,9 +15,10 @@ import fv3core.testing
 import pace.dsl
 import pace.stencils.testing
 import pace.util as util
-from fv3core._config import DynamicalCoreConfig, Namelist
-from fv3gfs.physics._config import PhysicsConfig
+from fv3core import DynamicalCoreConfig
+from fv3gfs.physics import PhysicsConfig
 from fv3gfs.physics.stencils.physics import Physics
+from pace.util import Namelist
 from pace.util.grid import DampingCoefficients, DriverGridData, GridData, MetricTerms
 
 

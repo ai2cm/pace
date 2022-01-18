@@ -11,12 +11,10 @@ from typing_extensions import Literal
 
 import fv3core.initialization.baroclinic as baroclinic_init
 import pace.util
-from fv3core import DynamicalCore
-from fv3core._config import DynamicalCoreConfig
+from fv3core import DynamicalCore, DynamicalCoreConfig
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.testing.translate_fvdynamics import init_dycore_state_from_serialized_data
-from fv3gfs.physics import PhysicsState
-from fv3gfs.physics._config import PhysicsConfig
+from fv3gfs.physics import PhysicsConfig, PhysicsState
 from fv3gfs.physics.stencils.physics import Physics
 from pace.dsl.stencil import StencilFactory
 from pace.stencils.update_atmos_state import UpdateAtmosphereState

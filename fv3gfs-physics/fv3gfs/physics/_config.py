@@ -3,7 +3,7 @@ from typing import Tuple
 
 import f90nml
 
-from pace.util.namelist import Namelist, NamelistDefaults, namelist_to_flatish_dict
+from pace.util import Namelist, NamelistDefaults
 
 
 @dataclasses.dataclass
@@ -96,14 +96,9 @@ class PhysicsConfig:
     clin: float = NamelistDefaults.clin
 
     @classmethod
-    def from_f90nml(cls, namelist: f90nml.Namelist) -> "PhysicsConfig":
-        namelist_dict = namelist_to_flatish_dict(namelist.items())
-        namelist_dict = {
-            key: value
-            for key, value in namelist_dict.items()
-            if key in cls.__dataclass_fields__  # type: ignore
-        }
-        return cls(**namelist_dict)
+    def from_f90nml(self, f90_namelist: f90nml.Namelist) -> "PhysicsConfig":
+        namelist = Namelist.from_f90nml(f90_namelist)
+        return self.from_namelist(namelist)
 
     @classmethod
     def from_namelist(cls, namelist: Namelist) -> "PhysicsConfig":
