@@ -76,7 +76,7 @@ jobs:
             if [ $(python changed_from_main.py driver) != false ]; then
               python3 -m venv driver/venv
               . driver/venv/bin/activate
-              cd driver && sudo pip3 install -r requirements.txt . -c constraints.txt
+              cd driver && sudo pip3 install -r requirements.txt . -c ../constraints.txt
             fi
       - run:
           name: run tests
