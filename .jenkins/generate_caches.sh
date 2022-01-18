@@ -36,7 +36,7 @@ test -n "${SANITIZED_BACKEND}" || exitError 1002 ${LINENO} "backend is not defin
 
 cd fv3gfs-physics
 # change path name to PLACEHOLDER for later use
-find fv3gfs-physics/. -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/pace-physics-cache-setup\/backend\/${SANITIZED_BACKEND}\/experiment\/${experiment}\/slave\/daint_submit/fv3gfs-physics|PLACEHOLDER/fv3gfs-physics|g" {} +
+find .gt_cache* -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/pace-physics-cache-setup\/backend\/${SANITIZED_BACKEND}\/experiment\/${experiment}\/slave\/daint_submit/fv3gfs-physics|PLACEHOLDER/fv3gfs-physics|g" {} +
 # store cache artifacts (and remove caches afterwards)
 echo "Pruning cache to make sure no __pycache__ and *_pyext_BUILD dirs are present"
 find .gt_cache* -type d -name \*_pyext_BUILD -prune -exec \rm -rf {} \;
