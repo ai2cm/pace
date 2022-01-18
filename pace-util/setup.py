@@ -11,6 +11,7 @@ requirements = [
     "numpy>=0.15.0",
     "fsspec>=0.6.0",
     "typing_extensions>=3.7.4",
+    "f90nml>=1.1.0",
 ]
 if sys.version_info.major == 3 and sys.version_info.minor == 6:
     requirements.append("dataclasses")
