@@ -18,7 +18,7 @@ import pace.util
 import pace.util.grid
 from fv3gfs.physics.stencils.physics import Physics
 from pace.dsl.stencil import StencilFactory
-from pace.stencils.update_atmos_state import UpdateAtmosphereState
+from pace.stencils.update_atmos_state import DycoreToPhysics, UpdateAtmosphereState
 from pace.util import QuantityFactory
 from pace.util.communicator import CubedSphereCommunicator
 from pace.util.constants import N_HALO_DEFAULT
@@ -283,7 +283,8 @@ class Driver:
             namelist=self.config.physics_config,
             active_packages=["microphysics"],
         )
-        self.state_updater = UpdateAtmosphereState(
+        self.dycore_to_physics = DycoreToPhysics(stencil_factory=stencil_factory)
+        self.physics_to_dycore = UpdateAtmosphereState(
             stencil_factory=stencil_factory,
             grid_data=grid_data,
             namelist=self.config.physics_config,
@@ -318,8 +319,11 @@ class Driver:
         )
 
     def _step_physics(self, timestep: float):
+        self.dycore_to_physics(
+            dycore_state=self.state.dycore_state, physics_state=self.state.physics_state
+        )
         self.physics(self.state.physics_state, timestep=float(timestep))
-        self.state_updater(
+        self.physics_to_dycore(
             dycore_state=self.state.dycore_state,
             phy_state=self.state.physics_state,
             dt=float(timestep),

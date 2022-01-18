@@ -1,6 +1,7 @@
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.util
+from fv3core.initialization.dycore_state import DycoreState
 from fv3gfs.physics.physics_state import PhysicsState
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
@@ -84,6 +85,108 @@ def prepare_tendencies_and_update_tracers(
         qsnow_t0 = qwat_qs / q0
         qice_t0 = qwat_qi / q0
         qgraupel_t0 = qwat_qg / q0
+
+
+def copy_dycore_to_physics(
+    qvapor_in: FloatField,
+    qliquid_in: FloatField,
+    qrain_in: FloatField,
+    qsnow_in: FloatField,
+    qice_in: FloatField,
+    qgraupel_in: FloatField,
+    qo3mr_in: FloatField,
+    qsgs_tke_in: FloatField,
+    qcld_in: FloatField,
+    pt_in: FloatField,
+    delp_in: FloatField,
+    delz_in: FloatField,
+    ua_in: FloatField,
+    va_in: FloatField,
+    w_in: FloatField,
+    omga_in: FloatField,
+    qvapor_out: FloatField,
+    qliquid_out: FloatField,
+    qrain_out: FloatField,
+    qsnow_out: FloatField,
+    qice_out: FloatField,
+    qgraupel_out: FloatField,
+    qo3mr_out: FloatField,
+    qsgs_tke_out: FloatField,
+    qcld_out: FloatField,
+    pt_out: FloatField,
+    delp_out: FloatField,
+    delz_out: FloatField,
+    ua_out: FloatField,
+    va_out: FloatField,
+    w_out: FloatField,
+    omga_out: FloatField,
+):
+    with computation(PARALLEL), interval(0, -1):
+        qvapor_out = qvapor_in
+        qliquid_out = qliquid_in
+        qrain_out = qrain_in
+        qsnow_out = qsnow_in
+        qice_out = qice_in
+        qgraupel_out = qgraupel_in
+        qo3mr_out = qo3mr_in
+        qsgs_tke_out = qsgs_tke_in
+        qcld_out = qcld_in
+        pt_out = pt_in
+        delp_out = delp_in
+        delz_out = delz_in
+        ua_out = ua_in
+        va_out = va_in
+        w_out = w_in
+        omga_out = omga_in
+
+
+class DycoreToPhysics:
+    def __init__(self, stencil_factory: StencilFactory):
+        self._copy_dycore_to_physics = stencil_factory.from_dims_halo(
+            copy_dycore_to_physics,
+            compute_dims=[
+                pace.util.X_INTERFACE_DIM,
+                pace.util.Y_INTERFACE_DIM,
+                pace.util.Z_INTERFACE_DIM,
+            ],
+            compute_halos=(0, 0),
+        )
+
+    def __call__(self, dycore_state: DycoreState, physics_state: PhysicsState):
+        self._copy_dycore_to_physics(
+            qvapor_in=dycore_state.qvapor,
+            qliquid_in=dycore_state.qliquid,
+            qrain_in=dycore_state.qrain,
+            qsnow_in=dycore_state.qsnow,
+            qice_in=dycore_state.qice,
+            qgraupel_in=dycore_state.qgraupel,
+            qo3mr_in=dycore_state.qo3mr,
+            qsgs_tke_in=dycore_state.qsgs_tke,
+            qcld_in=dycore_state.qcld,
+            pt_in=dycore_state.pt,
+            delp_in=dycore_state.delp,
+            delz_in=dycore_state.delz,
+            ua_in=dycore_state.ua,
+            va_in=dycore_state.va,
+            w_in=dycore_state.w,
+            omga_in=dycore_state.omga,
+            qvapor_out=physics_state.qvapor,
+            qliquid_out=physics_state.qliquid,
+            qrain_out=physics_state.qrain,
+            qsnow_out=physics_state.qsnow,
+            qice_out=physics_state.qice,
+            qgraupel_out=physics_state.qgraupel,
+            qo3mr_out=physics_state.qo3mr,
+            qsgs_tke_out=physics_state.qsgs_tke,
+            qcld_out=physics_state.qcld,
+            pt_out=physics_state.pt,
+            delp_out=physics_state.delp,
+            delz_out=physics_state.delz,
+            ua_out=physics_state.ua,
+            va_out=physics_state.va,
+            w_out=physics_state.w,
+            omga_out=physics_state.omga,
+        )
 
 
 class UpdateAtmosphereState:
