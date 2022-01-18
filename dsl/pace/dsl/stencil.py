@@ -41,7 +41,7 @@ class StencilConfig(Hashable):
     rebuild: bool = True
     validate_args: bool = True
     format_source: bool = False
-    device_sync: bool = True
+    device_sync: bool = False
 
     def __post_init__(self):
         self.backend_opts = self._get_backend_opts(self.device_sync, self.format_source)
