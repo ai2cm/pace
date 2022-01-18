@@ -74,6 +74,8 @@ jobs:
           name: install packages
           command: |
             if [ $(python changed_from_main.py driver) != false ]; then
+              sudo apt-get update
+              sudo apt-get install libopenmpi3 libopenmpi-dev
               python3 -m venv driver/venv
               . driver/venv/bin/activate
               cd driver && sudo pip3 install -r requirements.txt . -c ../constraints.txt
