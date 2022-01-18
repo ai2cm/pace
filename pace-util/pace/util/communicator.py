@@ -374,6 +374,12 @@ class CubedSphereCommunicator(Communicator):
             force_cpu: Force all communication to go through central memory. Optional.
             timer: Time communication operations. Optional.
         """
+        if comm.Get_size() != partitioner.total_ranks:
+            raise ValueError(
+                f"was given a partitioner for {partitioner.total_ranks} ranks but a "
+                f"comm object with only {comm.Get_size()} ranks, are we running "
+                "with mpi and the correct number of ranks?"
+            )
         self.timer: Timer = timer if timer is not None else NullTimer()
         self._tile_communicator: Optional[TileCommunicator] = None
         self._boundaries: Optional[Mapping[int, Boundary]] = None
