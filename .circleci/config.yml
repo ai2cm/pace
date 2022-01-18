@@ -138,3 +138,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - test_driver:
+          filters:
+            tags:
+              only: /^v.*/
