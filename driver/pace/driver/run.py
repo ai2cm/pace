@@ -9,25 +9,25 @@ import numpy as np
 from mpi4py import MPI
 from typing_extensions import Literal
 
-import fv3core._config
 import fv3core.initialization.baroclinic as baroclinic_init
 import pace.util
-from fv3core import DynamicalCore
+from fv3core import DynamicalCore, DynamicalCoreConfig
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.testing.translate_fvdynamics import init_dycore_state_from_serialized_data
-from fv3gfs.physics import PhysicsState
+from fv3gfs.physics import PhysicsConfig, PhysicsState
 from fv3gfs.physics.stencils.physics import Physics
 from pace.dsl.stencil import StencilFactory
 from pace.stencils.update_atmos_state import UpdateAtmosphereState
 from pace.util import QuantityFactory
 from pace.util.constants import N_HALO_DEFAULT
 from pace.util.grid import DampingCoefficients, DriverGridData, GridData, MetricTerms
+from pace.util.namelist import Namelist
 
 
 class Driver:
     def __init__(
         self,
-        namelist: fv3core._config.Namelist,
+        namelist: Namelist,
         comm,
         backend: str,
         physics_packages: List[str],
@@ -63,7 +63,7 @@ class Driver:
         )
         self._metric_terms, self._grid_data = self._compute_grid()
         self.dycore_state = self._initialize_dycore_state(dycore_init_mode)
-
+        self.dycore_config = DynamicalCoreConfig.from_namelist(self._namelist)
         self.dycore = DynamicalCore(
             comm=self._comm,
             grid_data=self._grid_data,
@@ -71,14 +71,15 @@ class Driver:
             damping_coefficients=DampingCoefficients.new_from_metric_terms(
                 self._metric_terms
             ),
-            config=self._namelist.dynamical_core,
+            config=self.dycore_config,
             phis=self.dycore_state.phis,
         )
         if not self._namelist.dycore_only:
+            self.physics_config = PhysicsConfig.from_namelist(self._namelist)
             self.physics = Physics(
                 stencil_factory=self._stencil_factory,
                 grid_data=self._grid_data,
-                namelist=self._namelist,
+                namelist=self.physics_config,
                 active_packages=physics_packages,
             )
             self.physics_state = self._init_physics_state_from_dycore_state(
@@ -145,7 +146,7 @@ class Driver:
                 serializer=serializer,
                 rank=self._comm.rank,
                 backend=self._backend,
-                namelist=self._namelist.dynamical_core,
+                namelist=self.dycore_config,
                 quantity_factory=self._quantity_factory,
                 stencil_factory=self._stencil_factory,
             )
@@ -236,9 +237,7 @@ def driver(data_directory: str, time_steps: str, backend: str, init_mode: str):
     experiment_name = os.path.basename(data_directory)
     print("Running configuration " + experiment_name)
 
-    namelist = fv3core._config.Namelist.from_f90nml(
-        f90nml.read(data_directory + "/input.nml")
-    )
+    namelist = Namelist.from_f90nml(f90nml.read(data_directory + "/input.nml"))
     output_vars = [
         "u",
         "v",

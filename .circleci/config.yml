@@ -34,7 +34,7 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}
+            - v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}-{{ checksum "pace-util/setup.py" }}
       - run:
           name: install tox and MPI
           command: |
