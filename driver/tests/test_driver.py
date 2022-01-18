@@ -3,9 +3,10 @@ from typing import Any, List, Tuple
 
 import pytest
 
-import fv3core._config
+import fv3core
 from fv3core.utils.null_comm import NullComm
 from pace.driver.run import Driver
+from pace.util.namelist import Namelist
 
 
 @contextlib.contextmanager
@@ -41,7 +42,7 @@ def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
 
 def setup_driver(dycore_only, comm=None) -> Tuple[Driver, List[Any]]:
 
-    namelist = fv3core._config.Namelist(
+    namelist = Namelist(
         layout=(1, 1),
         npx=13,
         npy=13,
