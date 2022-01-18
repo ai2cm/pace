@@ -5,7 +5,7 @@ latest
 ------
 
 Major changes:
--
+- Renamed DummyComm to LocalComm, and added support for message tags. The DummyComm symbol is still in place for backwards compatibility, but points to LocalComm
 
 Minor changes:
 - updated QuantityFactory to accept the more generic GridSizer class on initialization
