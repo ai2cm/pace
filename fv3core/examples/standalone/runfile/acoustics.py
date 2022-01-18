@@ -83,7 +83,7 @@ def get_state_from_input(
 
 def set_up_communicator(
     disable_halo_exchange: bool,
-    layout,
+    layout: Tuple[int, int],
 ) -> Tuple[Optional[MPI.Comm], Optional[util.CubedSphereCommunicator]]:
     layout = layout
     partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
