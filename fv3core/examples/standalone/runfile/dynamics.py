@@ -6,14 +6,17 @@ from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
+import f90nml
 import numpy as np
 import serialbox
 import yaml
 from mpi4py import MPI
 
 import fv3core.initialization.baroclinic as baroclinic_init
-from fv3core.grid import MetricTerms
-from fv3core.utils.grid import DampingCoefficients, GridData
+import fv3core.testing
+import pace.dsl
+from fv3core._config import DynamicalCoreConfig
+from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 
 # Dev note: the GTC toolchain fails if xarray is imported after gt4py
@@ -29,7 +32,6 @@ from fv3core.utils.null_comm import NullComm
 
 import fv3core
 import fv3core._config as spec
-import fv3core.testing
 
 
 def parse_args() -> Namespace:
@@ -176,7 +178,7 @@ def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
     return config_yml["experiment_name"], is_baroclinic_test_case
 
 
-def read_serialized_initial_state(rank, grid):
+def read_serialized_initial_state(rank, grid, namelist, stencil_factory):
     # set up of helper structures
     serializer = serialbox.Serializer(
         serialbox.OpenModeKind.Read,
@@ -185,7 +187,9 @@ def read_serialized_initial_state(rank, grid):
     )
     # create a state from serialized data
     savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
-    driver_object = fv3core.testing.TranslateFVDynamics([grid])
+    driver_object = fv3core.testing.TranslateFVDynamics(
+        [grid], namelist, stencil_factory
+    )
     input_data = driver_object.collect_input_data(serializer, savepoint_in)
     state = driver_object.state_from_inputs(input_data)
     return state
@@ -227,32 +231,36 @@ if __name__ == "__main__":
             profiler = cProfile.Profile()
             profiler.disable()
 
-        fv3core.set_backend(args.backend)
-        fv3core.set_rebuild(False)
-        fv3core.set_validate_args(False)
-
-        spec.set_namelist(args.data_dir + "/input.nml", rank=rank)
-
+        namelist = f90nml.read(args.data_dir + "/input.nml")
+        dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
         experiment_name, is_baroclinic_test_case = get_experiment_info(args.data_dir)
         if args.disable_halo_exchange:
             mpi_comm = NullComm(MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
         else:
             mpi_comm = MPI.COMM_WORLD
 
-        namelist = spec.namelist
-
         # set up grid-dependent helper structures
-        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(namelist.layout))
+        partitioner = util.CubedSpherePartitioner(
+            util.TilePartitioner(dycore_config.layout)
+        )
         communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
 
         # TODO remove this creation of the legacy grid once everything that
         # references it is updated or removed
-        grid = spec.make_grid_from_namelist(namelist, rank)
-
+        grid = spec.make_grid_from_namelist(dycore_config, rank, args.backend)
+        stencil_config = pace.dsl.stencil.StencilConfig(
+            backend=args.backend,
+            rebuild=False,
+            validate_args=False,
+        )
+        stencil_factory = pace.dsl.stencil.StencilFactory(
+            config=stencil_config,
+            grid_indexing=grid.grid_indexing,
+        )
         metric_terms = MetricTerms.from_tile_sizing(
-            npx=namelist.npx,
-            npy=namelist.npy,
-            npz=namelist.npz,
+            npx=dycore_config.npx,
+            npy=dycore_config.npy,
+            npz=dycore_config.npz,
             communicator=communicator,
             backend=args.backend,
         )
@@ -261,22 +269,24 @@ if __name__ == "__main__":
             # test case perturbation. JRMS2006
             state = baroclinic_init.init_baroclinic_state(
                 metric_terms,
-                adiabatic=namelist.adiabatic,
-                hydrostatic=namelist.hydrostatic,
-                moist_phys=namelist.moist_phys,
+                adiabatic=dycore_config.adiabatic,
+                hydrostatic=dycore_config.hydrostatic,
+                moist_phys=dycore_config.moist_phys,
                 comm=communicator,
             )
         else:
-            state = read_serialized_initial_state(rank, grid)
+            state = read_serialized_initial_state(
+                rank, grid, dycore_config, stencil_factory
+            )
 
         dycore = fv3core.DynamicalCore(
             comm=communicator,
             grid_data=GridData.new_from_metric_terms(metric_terms),
-            stencil_factory=grid.stencil_factory,
+            stencil_factory=stencil_factory,
             damping_coefficients=DampingCoefficients.new_from_metric_terms(
                 metric_terms
             ),
-            config=spec.namelist.dynamical_core,
+            config=dycore_config,
             phis=state.phis,
         )
         # TODO include functionality that uses and changes this
@@ -291,10 +301,10 @@ if __name__ == "__main__":
             print("timestep 1")
         dycore.step_dynamics(
             state,
-            namelist.consv_te,
+            dycore_config.consv_te,
             do_adiabatic_init,
             bdt,
-            namelist.n_split,
+            dycore_config.n_split,
         )
 
     if profiler is not None:
@@ -311,10 +321,10 @@ if __name__ == "__main__":
                 print(f"timestep {i+2}")
             dycore.step_dynamics(
                 state,
-                namelist.consv_te,
+                dycore_config.consv_te,
                 do_adiabatic_init,
                 bdt,
-                namelist.n_split,
+                dycore_config.n_split,
                 timestep_timer,
             )
         times_per_step.append(timestep_timer.times)

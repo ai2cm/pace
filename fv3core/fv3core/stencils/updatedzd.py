@@ -9,9 +9,9 @@ from fv3core.stencils.fvtp2d import (
     FiniteVolumeTransport,
     PreAllocatedCopiedCornersFactory,
 )
-from fv3core.utils.grid import DampingCoefficients, GridData, GridIndexing
-from pace.dsl.stencil import StencilFactory
+from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.util.grid import DampingCoefficients, GridData
 
 
 DZ_MIN = constants.DZ_MIN

@@ -1,9 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 from fv3core.stencils.d2a2c_vect import contravariant
-from fv3core.utils.grid import GridData, axis_offsets
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util.grid import GridData
 
 
 # TODO: the mix of local and global regions is strange here
@@ -447,11 +447,11 @@ class FiniteVolumeFluxPrep:
         self._sin_sg4 = grid_data.sin_sg4
         origin = grid_indexing.origin_full()
         domain = grid_indexing.domain_full()
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         kwargs = {"externals": ax_offsets, "origin": origin, "domain": domain}
         origin_corners = grid_indexing.origin_full(add=(1, 1, 0))
         domain_corners = grid_indexing.domain_full(add=(-1, -1, 0))
-        corner_offsets = axis_offsets(grid_indexing, origin_corners, domain_corners)
+        corner_offsets = grid_indexing.axis_offsets(origin_corners, domain_corners)
         kwargs_corners = {
             "externals": corner_offsets,
             "origin": origin_corners,

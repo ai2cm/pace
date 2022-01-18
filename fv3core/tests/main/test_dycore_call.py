@@ -6,12 +6,11 @@ from typing import Any, List, Tuple
 import fv3core
 import fv3core._config
 import fv3core.initialization.baroclinic as baroclinic_init
-import fv3core.testing
 import pace.dsl.stencil
+import pace.stencils.testing
 import pace.util
-from fv3core.grid import MetricTerms
-from fv3core.utils.grid import DampingCoefficients, GridData
 from fv3core.utils.null_comm import NullComm
+from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 
 DIR = os.path.abspath(os.path.dirname(__file__))
@@ -147,7 +146,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         stencil_factory=stencil_factory,
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
-        phis=state.phis_quantity,
+        phis=state.phis,
     )
     do_adiabatic_init = False
     # TODO compute from namelist
@@ -170,9 +169,9 @@ def test_call_does_not_access_global_state():
         raise AssertionError("call not allowed")
 
     mock_grid = unittest.mock.MagicMock()
-    with unittest.mock.patch("fv3core.utils.global_config.get_backend", new=error_func):
+    with unittest.mock.patch("pace.util.global_config.get_backend", new=error_func):
         with unittest.mock.patch(
-            "fv3core.utils.global_config.is_gpu_backend", new=error_func
+            "pace.util.global_config.is_gpu_backend", new=error_func
         ):
             with unittest.mock.patch("fv3core._config.set_grid", new=error_func):
                 with unittest.mock.patch("fv3core._config.grid", new=mock_grid):

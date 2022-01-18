@@ -2,11 +2,10 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.util.constants as constants
-from fv3core.utils import corners
-from fv3core.utils.grid import axis_offsets
 from pace.dsl import gt4py_utils
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.stencils import corners
 
 
 DZ_MIN = constants.DZ_MIN
@@ -104,7 +103,7 @@ class UpdateGeopotentialHeightOnCGrid:
             domain=full_domain,
         )
 
-        ax_offsets = axis_offsets(grid_indexing, full_origin, full_domain)
+        ax_offsets = grid_indexing.axis_offsets(full_origin, full_domain)
         self._fill_corners_x_stencil = stencil_factory.from_origin_domain(
             corners.fill_corners_2cells_x_stencil,
             externals=ax_offsets,

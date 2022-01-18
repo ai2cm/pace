@@ -1,365 +1,355 @@
-from dataclasses import InitVar, dataclass, field, fields
-from typing import Optional
+from dataclasses import dataclass, field, fields
+from typing import Any, Mapping
 
-import pace.util as fv3util
-from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace import util
 
 
 @dataclass()
 class DycoreState:
-    u: FloatField = field(
+    u: util.Quantity = field(
         metadata={
             "name": "x_wind",
-            "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_INTERFACE_DIM, util.Z_DIM],
             "units": "m/s",
             "intent": "inout",
         }
     )
-    v: FloatField = field(
+    v: util.Quantity = field(
         metadata={
             "name": "y_wind",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_INTERFACE_DIM, util.Y_DIM, util.Z_DIM],
             "units": "m/s",
             "intent": "inout",
         }
     )
-    w: FloatField = field(
+    w: util.Quantity = field(
         metadata={
             "name": "vertical_wind",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "m/s",
             "intent": "inout",
         }
     )
-    ua: FloatField = field(
+    ua: util.Quantity = field(
         metadata={
             "name": "eastward_wind",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "m/s",
             "intent": "inout",
         }
     )
-    va: FloatField = field(
+    va: util.Quantity = field(
         metadata={
             "name": "northward_wind",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "m/s",
         }
     )
-    uc: FloatField = field(
+    uc: util.Quantity = field(
         metadata={
             "name": "x_wind_on_c_grid",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_INTERFACE_DIM, util.Y_DIM, util.Z_DIM],
             "units": "m/s",
             "intent": "inout",
         }
     )
-    vc: FloatField = field(
+    vc: util.Quantity = field(
         metadata={
             "name": "y_wind_on_c_grid",
-            "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_INTERFACE_DIM, util.Z_DIM],
             "units": "m/s",
             "intent": "inout",
         }
     )
-    delp: FloatField = field(
+    delp: util.Quantity = field(
         metadata={
             "name": "pressure_thickness_of_atmospheric_layer",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "Pa",
             "intent": "inout",
         }
     )
-    delz: FloatField = field(
+    delz: util.Quantity = field(
         metadata={
             "name": "vertical_thickness_of_atmospheric_layer",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "m",
             "intent": "inout",
         }
     )
-    ps: FloatFieldIJ = field(
+    ps: util.Quantity = field(
         metadata={
             "name": "surface_pressure",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [util.X_DIM, util.Y_DIM],
             "units": "Pa",
             "intent": "inout",
         }
     )
-    pe: FloatField = field(
+    pe: util.Quantity = field(
         metadata={
             "name": "interface_pressure",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_INTERFACE_DIM],
             "units": "Pa",
             "n_halo": 1,
             "intent": "inout",
         }
     )
-    pt: FloatField = field(
+    pt: util.Quantity = field(
         metadata={
             "name": "air_temperature",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "degK",
             "intent": "inout",
         }
     )
-    peln: FloatField = field(
+    peln: util.Quantity = field(
         metadata={
             "name": "logarithm_of_interface_pressure",
             "dims": [
-                fv3util.X_DIM,
-                fv3util.Y_DIM,
-                fv3util.Z_INTERFACE_DIM,
+                util.X_DIM,
+                util.Y_DIM,
+                util.Z_INTERFACE_DIM,
             ],
             "units": "ln(Pa)",
             "n_halo": 0,
             "intent": "inout",
         }
     )
-    pk: FloatField = field(
+    pk: util.Quantity = field(
         metadata={
             "name": "interface_pressure_raised_to_power_of_kappa",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_INTERFACE_DIM],
             "units": "unknown",
             "n_halo": 0,
             "intent": "inout",
         }
     )
-    pkz: FloatField = field(
+    pkz: util.Quantity = field(
         metadata={
             "name": "layer_mean_pressure_raised_to_power_of_kappa",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "unknown",
             "n_halo": 0,
             "intent": "inout",
         }
     )
-    qvapor: FloatField = field(
+    qvapor: util.Quantity = field(
         metadata={
             "name": "specific_humidity",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "kg/kg",
         }
     )
-    qliquid: FloatField = field(
+    qliquid: util.Quantity = field(
         metadata={
             "name": "cloud_water_mixing_ratio",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qice: FloatField = field(
+    qice: util.Quantity = field(
         metadata={
             "name": "cloud_ice_mixing_ratio",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qrain: FloatField = field(
+    qrain: util.Quantity = field(
         metadata={
             "name": "rain_mixing_ratio",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qsnow: FloatField = field(
+    qsnow: util.Quantity = field(
         metadata={
             "name": "snow_mixing_ratio",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qgraupel: FloatField = field(
+    qgraupel: util.Quantity = field(
         metadata={
             "name": "graupel_mixing_ratio",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qo3mr: FloatField = field(
+    qo3mr: util.Quantity = field(
         metadata={
             "name": "ozone_mixing_ratio",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    qsgs_tke: FloatField = field(
+    qsgs_tke: util.Quantity = field(
         metadata={
             "name": "turbulent_kinetic_energy",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "m**2/s**2",
             "intent": "inout",
         }
     )
-    qcld: FloatField = field(
+    qcld: util.Quantity = field(
         metadata={
             "name": "cloud_fraction",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "",
             "intent": "inout",
         }
     )
-    q_con: FloatField = field(
+    q_con: util.Quantity = field(
         metadata={
             "name": "total_condensate_mixing_ratio",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "kg/kg",
             "intent": "inout",
         }
     )
-    omga: FloatField = field(
+    omga: util.Quantity = field(
         metadata={
             "name": "vertical_pressure_velocity",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "Pa/s",
             "intent": "inout",
         }
     )
-    mfxd: FloatField = field(
+    mfxd: util.Quantity = field(
         metadata={
             "name": "accumulated_x_mass_flux",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_INTERFACE_DIM, util.Y_DIM, util.Z_DIM],
             "units": "unknown",
             "n_halo": 0,
             "intent": "inout",
         }
     )
-    mfyd: FloatField = field(
+    mfyd: util.Quantity = field(
         metadata={
             "name": "accumulated_y_mass_flux",
-            "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_INTERFACE_DIM, util.Z_DIM],
             "units": "unknown",
             "n_halo": 0,
             "intent": "inout",
         }
     )
-    cxd: FloatField = field(
+    cxd: util.Quantity = field(
         metadata={
             "name": "accumulated_x_courant_number",
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_INTERFACE_DIM, util.Y_DIM, util.Z_DIM],
             "units": "",
             "n_halo": (0, 3),
             "intent": "inout",
         }
     )
-    cyd: FloatField = field(
+    cyd: util.Quantity = field(
         metadata={
             "name": "accumulated_y_courant_number",
-            "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_INTERFACE_DIM, util.Z_DIM],
             "units": "",
             "n_halo": (3, 0),
             "intent": "inout",
         }
     )
-    diss_estd: FloatField = field(
+    diss_estd: util.Quantity = field(
         metadata={
             "name": "dissipation_estimate_from_heat_source",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [util.X_DIM, util.Y_DIM, util.Z_DIM],
             "units": "unknown",
             "n_halo": (3, 3),
             "intent": "inout",
         }
     )
-    phis: FloatField = field(
+    phis: util.Quantity = field(
         metadata={
             "name": "surface_geopotential",
             "units": "m^2 s^-2",
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM],
+            "dims": [util.X_DIM, util.Y_DIM],
             "intent": "in",
         }
     )
-    quantity_factory: InitVar[fv3util.QuantityFactory]
     do_adiabatic_init: bool = field(default=False)
     bdt: float = field(default=0.0)
     mdt: float = field(default=0.0)
 
-    def __post_init__(self, quantity_factory: Optional[fv3util.QuantityFactory]):
-        if quantity_factory is not None:
-            # creating quantities around the storages
-            # TODO, when dycore and physics use quantities everywhere
-            # change fields to be quantities and remove this extra processing
-            for _field in fields(self):
-                if "dims" in _field.metadata.keys():
-                    dims = _field.metadata["dims"]
-                    quantity = fv3util.Quantity(
-                        getattr(self, _field.name),
-                        dims,
-                        _field.metadata["units"],
-                        origin=quantity_factory._sizer.get_origin(dims),
-                        extent=quantity_factory._sizer.get_extent(dims),
-                    )
-                    setattr(self, _field.name + "_quantity", quantity)
+    def __post_init__(self):
+        for _field in fields(self):
+            for check_name in ["units", "dims"]:
+                if check_name in _field.metadata:
+                    required = _field.metadata[check_name]
+                    actual = getattr(getattr(self, _field.name), check_name)
+                    if isinstance(required, list):
+                        actual = list(actual)
+                    if actual != required:
+                        raise TypeError(
+                            f"{_field.name} has metadata {check_name} of {actual}"
+                            f"that does not match the requirement {required}"
+                        )
 
     @classmethod
-    def init_empty(cls, quantity_factory):
+    def init_zeros(cls, quantity_factory: util.QuantityFactory):
         initial_storages = {}
         for _field in fields(cls):
             if "dims" in _field.metadata.keys():
                 initial_storages[_field.name] = quantity_factory.zeros(
                     _field.metadata["dims"], _field.metadata["units"], dtype=float
                 ).storage
-        return cls(**initial_storages, quantity_factory=quantity_factory)
+        return cls.init_from_storages(
+            storages=initial_storages, sizer=quantity_factory.sizer
+        )
 
     @classmethod
-    def init_from_numpy_arrays(cls, dict_of_numpy_arrays, quantity_factory):
-        state = cls.init_empty(quantity_factory)
+    def init_from_numpy_arrays(
+        cls, dict_of_numpy_arrays, sizer: util.GridSizer, backend: str
+    ):
         field_names = [_field.name for _field in fields(cls)]
-        for variable_name, data in dict_of_numpy_arrays.items():
+        for variable_name in dict_of_numpy_arrays.keys():
             if variable_name not in field_names:
                 raise KeyError(
                     variable_name + " is provided, but not part of the dycore state"
                 )
-            getattr(state, variable_name).data[:] = data
-        for field_name in field_names:
-            if field_name not in dict_of_numpy_arrays.keys():
-                raise KeyError(
-                    field_name
-                    + " is not included in the provided dictionary of numpy arrays"
+        dict_state = {}
+        for _field in fields(cls):
+            if "dims" in _field.metadata.keys():
+                dims = _field.metadata["dims"]
+                dict_state[_field.name] = util.Quantity(
+                    dict_of_numpy_arrays[_field.name],
+                    dims,
+                    _field.metadata["units"],
+                    origin=sizer.get_origin(dims),
+                    extent=sizer.get_extent(dims),
+                    gt4py_backend=backend,
                 )
+        state = cls(**dict_state)
         return state
 
     @classmethod
-    def init_from_quantities(cls, dict_of_quantities):
-        field_names = [field.name for field in fields(cls)]
-        for variable_name, data in dict_of_quantities.items():
-            if variable_name not in field_names:
-                raise KeyError(
-                    variable_name + " is provided, but not part of the dycore state"
-                )
-        for field_name in field_names:
-            if field_name not in dict_of_quantities.keys():
-                raise KeyError(
-                    field_name
-                    + " is not included in the provided dictionary of quantities"
-                )
-            elif not isinstance(dict_of_quantities[field_name], fv3util.Quantity):
-                raise TypeError(
-                    field_name
-                    + " is not a Quantity, but instead a "
-                    + str(type(dict_of_quantities[field_name]))
-                )
+    def init_from_storages(
+        cls,
+        storages: Mapping[str, Any],
+        sizer: util.GridSizer,
+        do_adiabatic_init: bool = False,
+        bdt: float = 0.0,
+        mdt: float = 0.0,
+    ):
+        inputs = {}
         for _field in fields(cls):
-            for varcheck in ["units", "dims"]:
-                if (
-                    _field.metadata[varcheck]
-                    != dict_of_quantities[_field.name][varcheck]
-                ):
-                    raise TypeError(
-                        field_name
-                        + " has metadata "
-                        + varcheck
-                        + " of "
-                        + dict_of_quantities[_field.name][varcheck]
-                        + " that does not match the requirement"
-                        + _field.metadata[varcheck]
-                    )
-        return cls(**dict_of_quantities, quantity_factory=None)
+            if "dims" in _field.metadata.keys():
+                dims = _field.metadata["dims"]
+                quantity = util.Quantity(
+                    storages[_field.name],
+                    dims,
+                    _field.metadata["units"],
+                    origin=sizer.get_origin(dims),
+                    extent=sizer.get_extent(dims),
+                )
+                inputs[_field.name] = quantity
+        return cls(**inputs, do_adiabatic_init=do_adiabatic_init, bdt=bdt, mdt=mdt)
 
     def __getitem__(self, item):
         return getattr(self, item)

@@ -1,13 +1,11 @@
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3core.utils.grid import GridData
 from fv3gfs.physics.physics_state import PhysicsState
-from fv3gfs.physics.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
-from pace.util import TilePartitioner
+from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
+from pace.util.grid import DriverGridData, GridData
 
 
 def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
@@ -39,13 +37,13 @@ def prepare_tendencies_and_update_tracers(
     pt_dt: FloatField,
     u_t1: FloatField,
     v_t1: FloatField,
-    pt_t1: FloatField,
-    qvapor_t1: FloatField,
-    qliquid_t1: FloatField,
-    qrain_t1: FloatField,
-    qsnow_t1: FloatField,
-    qice_t1: FloatField,
-    qgraupel_t1: FloatField,
+    physics_updated_pt: FloatField,
+    physics_updated_specific_humidity: FloatField,
+    physics_updated_qliquid: FloatField,
+    physics_updated_qrain: FloatField,
+    physics_updated_qsnow: FloatField,
+    physics_updated_qice: FloatField,
+    physics_updated_qgraupel: FloatField,
     u_t0: FloatField,
     v_t0: FloatField,
     pt_t0: FloatField,
@@ -68,14 +66,14 @@ def prepare_tendencies_and_update_tracers(
     with computation(PARALLEL), interval(0, -1):
         u_dt += (u_t1 - u_t0) * rdt
         v_dt += (v_t1 - v_t0) * rdt
-        pt_dt += (pt_t1 - pt_t0) * rdt
+        pt_dt += (physics_updated_pt - pt_t0) * rdt
         dp = prsi[0, 0, 1] - prsi[0, 0, 0]
-        qwat_qv = dp * qvapor_t1
-        qwat_ql = dp * qliquid_t1
-        qwat_qr = dp * qrain_t1
-        qwat_qs = dp * qsnow_t1
-        qwat_qi = dp * qice_t1
-        qwat_qg = dp * qgraupel_t1
+        qwat_qv = dp * physics_updated_specific_humidity
+        qwat_ql = dp * physics_updated_qliquid
+        qwat_qr = dp * physics_updated_qrain
+        qwat_qs = dp * physics_updated_qsnow
+        qwat_qi = dp * physics_updated_qice
+        qwat_qg = dp * physics_updated_qgraupel
         qt = qwat_qv + qwat_ql + qwat_qr + qwat_qs + qwat_qi + qwat_qg
         q_sum = qvapor_t0 + qliquid_t0 + qrain_t0 + qsnow_t0 + qice_t0 + qgraupel_t0
         q0 = delp * (1.0 - q_sum) + qt
@@ -99,20 +97,15 @@ class UpdateAtmosphereState:
         grid_data: GridData,
         namelist,
         comm: pace.util.CubedSphereCommunicator,
-        partitioner: TilePartitioner,
-        rank: int,
-        grid_info,
+        grid_info: DriverGridData,
+        quantity_factory: pace.util.QuantityFactory,
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         origin = grid_indexing.origin_compute()
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         self._rdt = 1.0 / Float(self.namelist.dt_atmos)
-        self._fill_GFS = stencil_factory.from_origin_domain(
-            fill_gfs,
-            origin=grid_indexing.origin_full(),
-            domain=grid_indexing.domain_full(add=(0, 0, 1)),
-        )
+
         self._prepare_tendencies_and_update_tracers = (
             stencil_factory.from_origin_domain(
                 prepare_tendencies_and_update_tracers,
@@ -121,21 +114,20 @@ class UpdateAtmosphereState:
             )
         )
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                shape, origin=origin, init=True, backend=stencil_factory.backend
-            )
-
-        self._u_dt = make_storage()
-        self._v_dt = make_storage()
-        self._pt_dt = make_storage()
+        dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
+        self._u_dt = quantity_factory.zeros(dims, "m/s^2", dtype=float)
+        self._v_dt = quantity_factory.zeros(dims, "m/s^2", dtype=float)
+        self._pt_dt = quantity_factory.zeros(dims, "degK/s", dtype=float)
+        self._fill_GFS = stencil_factory.from_origin_domain(
+            fill_gfs,
+            origin=grid_indexing.origin_full(),
+            domain=grid_indexing.domain_full(add=(0, 0, 1)),
+        )
         self._apply_physics2dycore = ApplyPhysics2Dycore(
             stencil_factory,
             grid_data,
             self.namelist,
             comm,
-            partitioner,
-            rank,
             grid_info,
         )
 
@@ -143,22 +135,23 @@ class UpdateAtmosphereState:
         self,
         dycore_state,
         phy_state: PhysicsState,
-        prsi: FloatField,  # consider pushing this into physics_state
     ):
-        self._fill_GFS(prsi, phy_state.qvapor_t1, 1.0e-9)
+        self._fill_GFS(
+            phy_state.prsi, phy_state.physics_updated_specific_humidity, 1.0e-9
+        )
         self._prepare_tendencies_and_update_tracers(
             self._u_dt,
             self._v_dt,
             self._pt_dt,
-            phy_state.ua_t1,
-            phy_state.va_t1,
-            phy_state.pt_t1,
-            phy_state.qvapor_t1,
-            phy_state.qliquid_t1,
-            phy_state.qrain_t1,
-            phy_state.qsnow_t1,
-            phy_state.qice_t1,
-            phy_state.qgraupel_t1,
+            phy_state.physics_updated_ua,
+            phy_state.physics_updated_va,
+            phy_state.physics_updated_pt,
+            phy_state.physics_updated_specific_humidity,
+            phy_state.physics_updated_qliquid,
+            phy_state.physics_updated_qrain,
+            phy_state.physics_updated_qsnow,
+            phy_state.physics_updated_qice,
+            phy_state.physics_updated_qgraupel,
             phy_state.ua,
             phy_state.va,
             phy_state.pt,
@@ -168,7 +161,7 @@ class UpdateAtmosphereState:
             dycore_state.qsnow,
             dycore_state.qice,
             dycore_state.qgraupel,
-            prsi,
+            phy_state.prsi,
             dycore_state.delp,
             self._rdt,
         )

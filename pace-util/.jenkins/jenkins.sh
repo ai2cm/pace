@@ -23,9 +23,8 @@
 
 set -x +e
 
-# get root directory of where jenkins.sh is sitting
-root=`dirname $0`
-envloc=`dirname $0`
+JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BUILDENV_DIR=$JENKINS_DIR/../../buildenv
 
 # some global variables
 action="$1"
@@ -35,25 +34,28 @@ optarg="$2"
 git submodule update --init
 
 # setup module environment and default queue
-. ${envloc}/env/machineEnvironment.sh
+. ${BUILDENV_DIR}/machineEnvironment.sh
 
 # load machine dependent environment
-. ${envloc}/env/env.${host}.sh
+. ${BUILDENV_DIR}/env.${host}.sh
 
 # load scheduler tools (provides run_command)
-. ${envloc}/env/schedulerTools.sh
+. ${BUILDENV_DIR}/schedulerTools.sh
 
 set -e
 
 # check if action script exists
-script="${root}/actions/${action}.sh"
+script="${JENKINS_DIR}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
-# set up virtual env, if not already set up
+# set up virtual env
+python3 --version
 python3 -m venv venv
 . ./venv/bin/activate
 pip3 install --upgrade pip setuptools wheel
-pip3 install -r requirements.txt -c constraints.txt
+pip3 install -r $JENKINS_DIR/../requirements.txt -c $JENKINS_DIR/../../constraints.txt
+pip3 install -e ${JENKINS_DIR}/../external/gt4py -c $JENKINS_DIR/../../constraints.txt
+pip3 install -e ${JENKINS_DIR}/../ -c $JENKINS_DIR/../../constraints.txt
 
 set +e
 
@@ -62,7 +64,7 @@ if [ "${target}" == "cpu" ] ; then
 fi
 
 echo "I am running on host ${host} with scheduler ${scheduler}."
-run_command ${script} ${optarg}
+run_command "${script} ${optarg}" "UtilAction${action}"
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"

@@ -4,14 +4,14 @@ from typing import Optional, Sequence
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.utils.corners as corners
 import pace.dsl.gt4py_utils as utils
+import pace.stencils.corners as corners
 from fv3core.stencils.delnflux import DelnFlux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
-from fv3core.utils.grid import DampingCoefficients, GridData
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util.grid import DampingCoefficients, GridData
 
 
 @gtscript.function

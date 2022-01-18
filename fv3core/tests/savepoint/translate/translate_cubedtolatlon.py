@@ -1,7 +1,6 @@
-import fv3core._config as spec
 import pace.util as fv3util
-from fv3core.testing import ParallelTranslate2Py
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.stencils.testing import ParallelTranslate2Py
 
 
 class TranslateCubedToLatLon(ParallelTranslate2Py):
@@ -16,12 +15,11 @@ class TranslateCubedToLatLon(ParallelTranslate2Py):
         },
     }
 
-    def __init__(self, grids):
-        super().__init__(grids)
+    def __init__(self, grids, namelist, stencil_factory):
+        super().__init__(grids, namelist, stencil_factory)
         grid = grids[0]
-        spec.set_grid(grid)
         self._base.compute_func = CubedToLatLon(
-            grid.stencil_factory, grid.grid_data, order=spec.namelist.c2l_ord
+            stencil_factory, grid.grid_data, order=namelist.c2l_ord
         )
         self._base.in_vars["data_vars"] = {"u": {}, "v": {}, "ua": {}, "va": {}}
         self._base.out_vars = {
@@ -30,3 +28,4 @@ class TranslateCubedToLatLon(ParallelTranslate2Py):
             "u": grid.y3d_domain_dict(),
             "v": grid.x3d_domain_dict(),
         }
+        self.stencil_factory = stencil_factory

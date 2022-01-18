@@ -5,9 +5,14 @@ DOCKER_BUILDKIT=1
 SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
+DEV ?=n
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
+VOLUMES = -v $(CWD):/port_dev
+ifeq ($(DEV),y)
+	VOLUMES = -v $(CWD)/fv3core:/fv3core -v $(CWD)/fv3gfs-physics:/fv3gfs-physics -v $(CWD)/stencils:/stencils -v $(CWD)/dsl:/dsl -v $(CWD)/pace-util:/pace-util -v $(CWD)/test_data:/test_data -v $(CWD)/examples:/port_dev/examples -v $(CWD)/driver:/driver
+endif
 
 build:
 	PULL=$(PULL) $(MAKE) -C docker fv3gfs_image
@@ -15,7 +20,7 @@ build:
 dev:
 	docker run --rm -it \
 		--network host \
-		-v $(CWD):/port_dev \
+		$(VOLUMES) \
 		$(FV3GFS_IMAGE) bash
 
 test_util:
@@ -32,8 +37,10 @@ savepoint_tests_mpi:
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
 
-constraints.txt: fv3core/requirements.txt fv3core/requirements/requirements_wrapper.txt fv3core/requirements/requirements_lint.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt
+constraints.txt: fv3core/requirements.txt fv3core/requirements/requirements_wrapper.txt fv3core/requirements/requirements_lint.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt external/gt4py/setup.cfg
 	pip-compile $^ --output-file constraints.txt
+	sed -i.bak '/^git+https/d' constraints.txt
+	rm -f constraints.txt.bak
 
 physics_savepoint_tests:
 	$(MAKE) -C fv3gfs-physics $@
@@ -45,3 +52,6 @@ update_submodules_venv:
 	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
                 git submodule update --init external/daint_venv; \
         fi
+
+test_driver:
+	DEV=$(DEV) $(MAKE) -C driver test

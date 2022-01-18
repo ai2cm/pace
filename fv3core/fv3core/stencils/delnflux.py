@@ -13,11 +13,11 @@ from gt4py.gtscript import (
 )
 
 import pace.dsl.gt4py_utils as utils
-from fv3core.utils.grid import DampingCoefficients, axis_offsets
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, Y_DIM, Z_DIM
 from pace.util.constants import X_INTERFACE_DIM, Y_INTERFACE_DIM
+from pace.util.grid import DampingCoefficients
 
 
 def calc_damp(damp4: FloatField, nord: FloatFieldK, damp_c: FloatFieldK, da_min: float):
@@ -1054,10 +1054,10 @@ class DelnFluxNoSG:
         if nk <= 3:
             raise NotImplementedError("nk must be more than 3 for DelnFluxNoSG")
 
-        preamble_ax_offsets = axis_offsets(grid_indexing, origin_d2, domain_d2)
-        fx_ax_offsets = axis_offsets(grid_indexing, fx_origin, (f1_nx, f1_ny, nk))
-        fy_ax_offsets = axis_offsets(
-            grid_indexing, fx_origin, (f1_nx - 1, f1_ny + 1, nk)
+        preamble_ax_offsets = grid_indexing.axis_offsets(origin_d2, domain_d2)
+        fx_ax_offsets = grid_indexing.axis_offsets(fx_origin, (f1_nx, f1_ny, nk))
+        fy_ax_offsets = grid_indexing.axis_offsets(
+            fx_origin, (f1_nx - 1, f1_ny + 1, nk)
         )
 
         origins_d2 = []
@@ -1143,7 +1143,7 @@ class DelnFluxNoSG:
             halos=(grid_indexing.n_halo, grid_indexing.n_halo),
         )
         corner_domain = corner_domain[:2] + (nk,)
-        corner_axis_offsets = axis_offsets(grid_indexing, corner_origin, corner_domain)
+        corner_axis_offsets = grid_indexing.axis_offsets(corner_origin, corner_domain)
 
         self._corner_tmp = utils.make_storage_from_shape(
             corner_domain, origin=corner_origin, backend=stencil_factory.backend

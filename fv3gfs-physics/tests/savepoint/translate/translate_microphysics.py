@@ -2,16 +2,16 @@ import copy
 
 import numpy as np
 
-import fv3core._config as spec
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslateMicroph(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
 
         self.in_vars["data_vars"] = {
             "qvapor": {"serialname": "mph_qv1", "microph": True},
@@ -30,25 +30,28 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         }
 
         self.out_vars = {
-            "pt_dt": {"serialname": "mph_pt_dt", "kend": grid.npz - 1},
-            "qv_dt": {"serialname": "mph_qv_dt", "kend": grid.npz - 1},
-            "ql_dt": {"serialname": "mph_ql_dt", "kend": grid.npz - 1},
-            "qr_dt": {"serialname": "mph_qr_dt", "kend": grid.npz - 1},
-            "qi_dt": {"serialname": "mph_qi_dt", "kend": grid.npz - 1},
-            "qs_dt": {"serialname": "mph_qs_dt", "kend": grid.npz - 1},
-            "qg_dt": {"serialname": "mph_qg_dt", "kend": grid.npz - 1},
-            "qa_dt": {"serialname": "mph_qa_dt", "kend": grid.npz - 1},
-            "udt": {"serialname": "mph_udt", "kend": grid.npz - 1},
-            "vdt": {"serialname": "mph_vdt", "kend": grid.npz - 1},
+            "pt_dt": {"serialname": "mph_pt_dt", "kend": namelist.npz - 1},
+            "qv_dt": {"serialname": "mph_qv_dt", "kend": namelist.npz - 1},
+            "ql_dt": {"serialname": "mph_ql_dt", "kend": namelist.npz - 1},
+            "qr_dt": {"serialname": "mph_qr_dt", "kend": namelist.npz - 1},
+            "qi_dt": {"serialname": "mph_qi_dt", "kend": namelist.npz - 1},
+            "qs_dt": {"serialname": "mph_qs_dt", "kend": namelist.npz - 1},
+            "qg_dt": {"serialname": "mph_qg_dt", "kend": namelist.npz - 1},
+            "qa_dt": {"serialname": "mph_qa_dt", "kend": namelist.npz - 1},
+            "udt": {"serialname": "mph_udt", "kend": namelist.npz - 1},
+            "vdt": {"serialname": "mph_vdt", "kend": namelist.npz - 1},
         }
+        self.namelist = namelist
+        self.stencil_factory = stencil_factory
+        self.grid_indexing = self.stencil_factory.grid_indexing
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         storage = utils.make_storage_from_shape(
-            self.grid.domain_shape_full(add=(1, 1, 1)),
-            origin=self.grid.compute_origin(),
+            self.grid_indexing.domain_full(add=(1, 1, 1)),
+            origin=self.grid_indexing.origin_compute(),
             init=True,
-            backend=self.grid.stencil_factory.backend,
+            backend=self.stencil_factory.backend,
         )
         inputs["qo3mr"] = copy.deepcopy(storage)
         inputs["qsgs_tke"] = copy.deepcopy(storage)
@@ -57,22 +60,40 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
         inputs["phii"] = copy.deepcopy(storage)
         inputs["phil"] = copy.deepcopy(storage)
         inputs["dz"] = copy.deepcopy(storage)
-        inputs["qvapor_t1"] = copy.deepcopy(storage)
-        inputs["qliquid_t1"] = copy.deepcopy(storage)
-        inputs["qrain_t1"] = copy.deepcopy(storage)
-        inputs["qsnow_t1"] = copy.deepcopy(storage)
-        inputs["qice_t1"] = copy.deepcopy(storage)
-        inputs["qgraupel_t1"] = copy.deepcopy(storage)
-        inputs["qcld_t1"] = copy.deepcopy(storage)
-        inputs["pt_t1"] = copy.deepcopy(storage)
-        inputs["ua_t1"] = copy.deepcopy(storage)
-        inputs["va_t1"] = copy.deepcopy(storage)
+        inputs["physics_updated_specific_humidity"] = copy.deepcopy(storage)
+        inputs["physics_updated_qliquid"] = copy.deepcopy(storage)
+        inputs["physics_updated_qrain"] = copy.deepcopy(storage)
+        inputs["physics_updated_qsnow"] = copy.deepcopy(storage)
+        inputs["physics_updated_qice"] = copy.deepcopy(storage)
+        inputs["physics_updated_qgraupel"] = copy.deepcopy(storage)
+        inputs["physics_updated_cloud_fraction"] = copy.deepcopy(storage)
+        inputs["physics_updated_pt"] = copy.deepcopy(storage)
+        inputs["physics_updated_ua"] = copy.deepcopy(storage)
+        inputs["physics_updated_va"] = copy.deepcopy(storage)
         inputs["omga"] = copy.deepcopy(storage)
-        physics_state = PhysicsState(**inputs)
-        microphysics = Microphysics(
-            self.grid.stencil_factory, self.grid.grid_data, spec.namelist
+        inputs["prsi"] = copy.deepcopy(storage)
+        inputs["prsik"] = copy.deepcopy(storage)
+        sizer = pace.util.SubtileGridSizer.from_tile_params(
+            nx_tile=self.namelist.npx - 1,
+            ny_tile=self.namelist.npy - 1,
+            nz=self.namelist.npz,
+            n_halo=3,
+            extra_dim_lengths={},
+            layout=self.namelist.layout,
         )
-        microph_state = physics_state.microphysics(storage)
+
+        quantity_factory = pace.util.QuantityFactory.from_backend(
+            sizer, self.stencil_factory.backend
+        )
+        physics_state = PhysicsState(
+            **inputs,
+            quantity_factory=quantity_factory,
+            active_packages=["microphysics"],
+        )
+        microphysics = Microphysics(
+            self.stencil_factory, self.grid.grid_data, self.namelist
+        )
+        microph_state = physics_state.microphysics
         microphysics(microph_state)
         inputs["pt_dt"] = microph_state.pt_dt
         inputs["qv_dt"] = microph_state.qv_dt

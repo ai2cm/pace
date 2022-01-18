@@ -3,16 +3,14 @@ from typing import Any, Dict
 import numpy as np
 import pytest
 
-import fv3core._config as spec
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import fv3core.stencils.fv_dynamics as fv_dynamics
-import fv3core.utils.global_config as global_config
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
-from fv3core.grid import MetricTerms
-from fv3core.testing import ParallelTranslateBaseSlicing, TranslateFortranData2Py
-from fv3core.utils.grid import TRACER_DIM
+from pace.stencils.testing import ParallelTranslateBaseSlicing, TranslateFortranData2Py
+from pace.stencils.testing.grid import TRACER_DIM
+from pace.util.grid import MetricTerms
 
 
 class TranslateInitCase(ParallelTranslateBaseSlicing):
@@ -109,8 +107,8 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
         },
     }
 
-    def __init__(self, grid_list):
-        super().__init__(grid_list)
+    def __init__(self, grid_list, namelist, stencil_factory):
+        super().__init__(grid_list, namelist, stencil_factory)
         grid = grid_list[0]
         self._base.in_vars["data_vars"] = {}
         self._base.in_vars["parameters"] = ["ptop"]
@@ -151,6 +149,8 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
         self.ignore_near_zero_errors = {}
         for var in ["u", "v"]:
             self.ignore_near_zero_errors[var] = {"near_zero": 2e-13}
+        self.namelist = namelist
+        self.stencil_factory = stencil_factory
 
     def compute_sequential(self, *args, **kwargs):
         pytest.skip(
@@ -185,24 +185,22 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
                 properties["units"],
                 origin=self.grid.sizer.get_origin(dims),
                 extent=self.grid.sizer.get_extent(dims),
-                gt4py_backend=global_config.get_backend(),
+                gt4py_backend=self.stencil_factory.backend,
             )
 
-        namelist = spec.namelist
-
         metric_terms = MetricTerms.from_tile_sizing(
-            npx=namelist.npx,
-            npy=namelist.npy,
-            npz=namelist.npz,
+            npx=self.namelist.npx,
+            npy=self.namelist.npy,
+            npz=self.namelist.npz,
             communicator=communicator,
-            backend=global_config.get_backend(),
+            backend=self.stencil_factory.backend,
         )
 
         state = baroclinic_init.init_baroclinic_state(
             metric_terms=metric_terms,
-            adiabatic=namelist.adiabatic,
-            hydrostatic=namelist.hydrostatic,
-            moist_phys=namelist.moist_phys,
+            adiabatic=self.namelist.adiabatic,
+            hydrostatic=self.namelist.hydrostatic,
+            moist_phys=self.namelist.moist_phys,
             comm=communicator,
         )
 
@@ -227,8 +225,8 @@ def make_sliced_inputs_dict(inputs, slice_2d):
 
 
 class TranslateInitPreJab(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"ak": {}, "bk": {}, "delp": {}}
         self.in_vars["parameters"] = ["ptop"]
         self.out_vars = {
@@ -255,6 +253,7 @@ class TranslateInitPreJab(TranslateFortranData2Py):
             "eta": {"istart": 0, "iend": 0, "jstart": 0, "jend": 0},
             "eta_v": {"istart": 0, "iend": 0, "jstart": 0, "jend": 0},
         }
+        self.namelist = namelist
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -275,14 +274,14 @@ class TranslateInitPreJab(TranslateFortranData2Py):
         baroclinic_init.setup_pressure_fields(
             **sliced_inputs,
             lat_agrid=self.grid.agrid2.data[self.grid.compute_interface()[0:2]],
-            adiabatic=spec.namelist.adiabatic,
+            adiabatic=self.namelist.adiabatic,
         )
         return self.slice_output(inputs)
 
 
 class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "delp": {},
             "eta_v": {"istart": 0, "iend": 0, "jstart": 0, "jend": 0},
@@ -312,6 +311,7 @@ class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
             self.ignore_near_zero_errors[var] = {"near_zero": 2e-13}
 
         self.max_error = 1e-13
+        self.namelist = namelist
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -347,8 +347,8 @@ class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
         baroclinic_init.baroclinic_initialization(
             **sliced_inputs,
             **grid_vars,
-            adiabatic=spec.namelist.adiabatic,
-            hydrostatic=spec.namelist.hydrostatic,
+            adiabatic=self.namelist.adiabatic,
+            hydrostatic=self.namelist.hydrostatic,
             nx=self.grid.nic,
             ny=self.grid.njc,
         )
@@ -356,8 +356,8 @@ class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
 
 
 class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "delp": {},
             "delz": {},
@@ -387,6 +387,7 @@ class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
         self.out_vars = {}
         for var in ["delz", "delp", "ps", "peln"]:
             self.out_vars[var] = self.in_vars["data_vars"][var]
+        self.namelist = namelist
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -395,7 +396,7 @@ class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
             if k != "ptop":
                 inputs[k] = v.data
 
-        namelist = spec.namelist
+        namelist = self.namelist
         inputs["delz"][:] = 1.0e25
         sliced_inputs = make_sliced_inputs_dict(
             inputs, self.grid.compute_interface()[0:2]

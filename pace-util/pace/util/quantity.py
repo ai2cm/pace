@@ -306,8 +306,22 @@ class Quantity:
                     f"got {type(data)}"
                 )
         elif gt4py_backend is not None:
+            extra_dims = [i for i in dims if i not in constants.SPATIAL_DIMS]
+            if len(extra_dims) > 0 or not dims:
+                mask = None
+            else:
+                mask = tuple(
+                    [
+                        any(dim in coord_dims for dim in dims)
+                        for coord_dims in [
+                            constants.X_DIMS,
+                            constants.Y_DIMS,
+                            constants.Z_DIMS,
+                        ]
+                    ]
+                )
             self._storage, self._data = self._initialize_storage(
-                data, origin, gt4py_backend
+                data, origin=origin, gt4py_backend=gt4py_backend, mask=mask
             )
         else:
             self._data = data
@@ -392,12 +406,13 @@ class Quantity:
             )
         return self._storage
 
-    def _initialize_storage(self, data, origin, gt4py_backend: str):
+    def _initialize_storage(self, data, origin, gt4py_backend: str, mask: Tuple):
         storage = gt4py.storage.storage.empty(
             gt4py_backend,
             default_origin=origin,
             shape=data.shape,
             dtype=data.dtype,
+            mask=mask,
             managed_memory=True,  # required to get GPUStorage with only gpu data copy
         )
         storage[...] = data

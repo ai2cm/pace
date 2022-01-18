@@ -10,11 +10,9 @@ import serialbox as ser
 import xarray as xr
 from gt4py.config import build_settings as gt4py_build_settings
 
-import fv3core._config
-import fv3core.utils.global_config as config
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util as fv3util
-from fv3core.utils.mpi import MPI
+from pace.util.mpi import MPI
 
 
 # this only matters for manually-added print statements
@@ -262,6 +260,7 @@ def test_sequential_savepoint(
     savepoint_in,
     savepoint_out,
     rank,
+    stencil_config,
     backend,
     print_failures,
     failure_stride,
@@ -271,16 +270,15 @@ def test_sequential_savepoint(
     print_domains,
     xy_indices=True,
 ):
-    caplog.set_level(logging.DEBUG, logger="fv3core")
+    caplog.set_level(logging.DEBUG, logger="physics")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     # Reduce error threshold for GPU
-    if config.is_gpu_backend():
+    if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
         testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
     if threshold_overrides is not None:
         process_override(threshold_overrides, testobj, test_name, backend)
-    fv3core._config.set_grid(grid)
     input_data = testobj.collect_input_data(serializer, savepoint_in)
     # run python version of functionality
     output = testobj.compute(input_data)
@@ -353,6 +351,7 @@ def test_mock_parallel_savepoint(
     serializer_list,
     savepoint_in_list,
     savepoint_out_list,
+    stencil_config,
     backend,
     print_failures,
     failure_stride,
@@ -362,17 +361,16 @@ def test_mock_parallel_savepoint(
     print_domains,
     xy_indices=False,
 ):
-    caplog.set_level(logging.DEBUG, logger="fv3core")
+    caplog.set_level(logging.DEBUG, logger="physics")
     caplog.set_level(logging.DEBUG, logger="fv3util")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     # Reduce error threshold for GPU
-    if config.is_gpu_backend():
+    if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
         testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
     if threshold_overrides is not None:
         process_override(threshold_overrides, testobj, test_name, backend)
-    fv3core._config.set_grid(grid)
     inputs_list = []
     for savepoint_in, serializer in zip(savepoint_in_list, serializer_list):
         inputs_list.append(testobj.collect_input_data(serializer, savepoint_in))
@@ -446,6 +444,7 @@ def test_parallel_savepoint(
     savepoint_in,
     savepoint_out,
     communicator,
+    stencil_config,
     backend,
     print_failures,
     failure_stride,
@@ -456,18 +455,17 @@ def test_parallel_savepoint(
     print_domains,
     xy_indices=True,
 ):
-    caplog.set_level(logging.DEBUG, logger="fv3core")
+    caplog.set_level(logging.DEBUG, logger="physics")
     if python_regression and not testobj.python_regression:
         pytest.xfail(f"python_regression not set for test {test_name}")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     # Increase minimum error threshold for GPU
-    if config.is_gpu_backend():
+    if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
         testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
     if threshold_overrides is not None:
         process_override(threshold_overrides, testobj, test_name, backend)
-    fv3core._config.set_grid(grid[0])
     input_data = testobj.collect_input_data(serializer, savepoint_in)
     # run python version of functionality
     output = testobj.compute_parallel(input_data, communicator)

@@ -39,40 +39,17 @@ parseOptions()
 # echo basic setup
 echo "####### executing: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
 
+JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../"
+
 # start timer
 T="$(date +%s)"
 
 # parse command line options (pass all of them to function)
 parseOptions $*
 
-if [ "${target}" == "gpu" ] ; then
-    # we only run this on HPC
-    set +e
-    module load cray-python
-    module load pycuda
-    set -e
-fi
-
 # run tests
 echo "### run tests"
-if [ ! -f requirements.txt ] ; then
-    exitError 1205 ${LINENO} "could not find requirements.txt, run from top directory"
-fi
-python3 -m venv venv
-. ./venv/bin/activate
-
-if [ "${target}" == "gpu" ] ; then
-    set +e
-    module unload cray-python
-    module unload pycuda
-    set -e
-    pip3 install -r requirements.txt -r requirements_gpu.txt -c constraints.txt .
-else
-    pip3 install -r requirements.txt -c constraints.txt .
-fi
 pytest --junitxml results.xml tests
-
-deactivate
 
 # end timer and report time taken
 T="$(($(date +%s)-T))"

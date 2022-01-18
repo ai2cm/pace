@@ -1,10 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3core._config as spec
 import fv3core.stencils.xtp_u as xtp_u
-from fv3core.utils.grid import GridData, axis_offsets
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util.grid import GridData
 
 from .translate_ytp_v import TranslateYTP_V
 
@@ -41,7 +40,7 @@ class XTP_U:
         self._dx = grid_data.dx
         self._dxa = grid_data.dxa
         self._rdx = grid_data.rdx
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         self._stencil = stencil_factory.from_origin_domain(
             xtp_u_stencil_defn,
             externals={
@@ -75,18 +74,20 @@ class XTP_U:
 
 
 class TranslateXTP_U(TranslateYTP_V):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"]["u"] = {}
         self.in_vars["data_vars"]["c"]["serialname"] = "ub"
         self.in_vars["data_vars"]["flux"]["serialname"] = "vb"
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def compute_from_storage(self, inputs):
         xtp_obj = XTP_U(
-            stencil_factory=self.grid.stencil_factory,
+            stencil_factory=self.stencil_factory,
             grid_data=self.grid.grid_data,
-            grid_type=spec.namelist.grid_type,
-            iord=spec.namelist.hord_mt,
+            grid_type=self.namelist.grid_type,
+            iord=self.namelist.hord_mt,
         )
         xtp_obj(inputs["c"], inputs["u"], inputs["flux"])
         return inputs

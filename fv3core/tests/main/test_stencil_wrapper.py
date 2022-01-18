@@ -7,11 +7,14 @@ import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import pace.util
-from fv3core import StencilConfig
-from fv3core.utils.global_config import set_backend
 from pace.dsl.gt4py_utils import make_storage_from_shape
-from pace.dsl.stencil import FrozenStencil, _convert_quantities_to_storage
+from pace.dsl.stencil import (
+    FrozenStencil,
+    StencilConfig,
+    _convert_quantities_to_storage,
+)
 from pace.dsl.typing import FloatField
+from pace.util.global_config import set_backend
 
 
 @contextlib.contextmanager
@@ -220,7 +223,10 @@ def test_frozen_stencil_kwargs_passed_to_init(
             externals={},
         )
     mock_stencil.assert_called_once_with(
-        definition=copy_stencil, externals={}, **config.stencil_kwargs
+        definition=copy_stencil,
+        externals={},
+        name="main.test_stencil_wrapper.copy_stencil",
+        **config.stencil_kwargs,
     )
 
 

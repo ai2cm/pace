@@ -5,7 +5,6 @@ from typing import Any, Dict, List
 import numpy as np
 import pytest
 
-import fv3core
 import pace.util as fv3util
 from pace.dsl import gt4py_utils as utils
 
@@ -22,13 +21,13 @@ class ParallelTranslate:
     inputs: Dict[str, Any] = {}
     outputs: Dict[str, Any] = {}
 
-    def __init__(self, rank_grids):
+    def __init__(self, rank_grids, namelist, stencil_factory):
         if not hasattr(rank_grids, "__getitem__"):
             raise TypeError(
                 "rank_grids should be a sequence of grids, one for each rank, "
                 f"is {self.__class__} being properly called as a parallel test?"
             )
-        self._base = TranslateFortranData2Py(rank_grids[0])
+        self._base = TranslateFortranData2Py(rank_grids[0], stencil_factory)
         self._base.in_vars = {
             "data_vars": {name: {} for name in self.inputs},
             "parameters": [],
@@ -37,6 +36,7 @@ class ParallelTranslate:
         self.max_error = self._base.max_error
         self._rank_grids = rank_grids
         self.ignore_near_zero_errors = {}
+        self.namelist = namelist
 
     def state_list_from_inputs_list(self, inputs_list: List[dict]) -> list:
         state_list = []
@@ -111,7 +111,7 @@ class ParallelTranslate:
 
     @property
     def layout(self):
-        return fv3core._config.namelist.layout
+        return self.namelist.layout
 
     def compute_sequential(self, inputs_list, communicator_list):
         """Compute the outputs while iterating over a set of communicator
