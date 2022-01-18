@@ -85,9 +85,7 @@ class ApplyPhysics2Dycore:
         grid_info: DriverGridData,
     ):
         grid_indexing = stencil_factory.grid_indexing
-        self.namelist = namelist
         self.comm = comm
-        self._dt = Float(self.namelist.dt_atmos)
         self._moist_cv = stencil_factory.from_origin_domain(
             moist_cv,
             origin=grid_indexing.origin_compute(),
@@ -99,7 +97,7 @@ class ApplyPhysics2Dycore:
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
         self._AGrid2DGridPhysics = AGrid2DGridPhysics(
-            stencil_factory, comm.partitioner, comm.rank, self.namelist, grid_info
+            stencil_factory, comm.partitioner, comm.rank, namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
             stencil_factory,
@@ -136,6 +134,7 @@ class ApplyPhysics2Dycore:
         u_dt: pace.util.Quantity,
         v_dt: pace.util.Quantity,
         t_dt: pace.util.Quantity,
+        dt: float,
     ):
         self._moist_cv(
             state.qvapor,
@@ -147,7 +146,7 @@ class ApplyPhysics2Dycore:
             state.pt,
             t_dt,
             constants.CP_AIR,
-            self._dt,
+            dt,
         )
 
         self._udt_halo_updater.start([u_dt])

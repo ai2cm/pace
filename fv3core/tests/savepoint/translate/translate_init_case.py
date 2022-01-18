@@ -273,8 +273,6 @@ class TranslateInitPreJab(TranslateFortranData2Py):
 
         baroclinic_init.setup_pressure_fields(
             **sliced_inputs,
-            lat_agrid=self.grid.agrid2.data[self.grid.compute_interface()[0:2]],
-            adiabatic=self.namelist.adiabatic,
         )
         return self.slice_output(inputs)
 

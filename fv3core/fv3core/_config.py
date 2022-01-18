@@ -153,7 +153,7 @@ class DynamicalCoreConfig:
     dt_atmos: int
     a_imp: float
     beta: float
-    consv_te: bool
+    consv_te: float
     d2_bg: float
     d2_bg_k1: float
     d2_bg_k2: float
@@ -447,7 +447,7 @@ class Namelist:
     # adjust_dry_mass: Any
     beta: float = DEFAULT_FLOAT
     # consv_am: Any
-    consv_te: bool = DEFAULT_BOOL
+    consv_te: float = DEFAULT_FLOAT
     d2_bg: float = DEFAULT_FLOAT
     d2_bg_k1: float = DEFAULT_FLOAT
     d2_bg_k2: float = DEFAULT_FLOAT

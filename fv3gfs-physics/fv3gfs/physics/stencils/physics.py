@@ -14,6 +14,8 @@ from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.util.grid import GridData
 
+from .._config import PhysicsConfig
+
 
 PHYSICS_PACKAGES = Literal["microphysics"]
 
@@ -170,15 +172,13 @@ class Physics:
         self,
         stencil_factory: StencilFactory,
         grid_data: GridData,
-        namelist,
+        namelist: PhysicsConfig,
         active_packages: List[Literal[PHYSICS_PACKAGES]],
     ):
         grid_indexing = stencil_factory.grid_indexing
-        self.namelist = namelist
         origin = grid_indexing.origin_compute()
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         self.setup_statein()
-        self._dt_atmos = Float(self.namelist.dt_atmos)
         self._ptop = grid_data.ptop
         self._pktop = (self._ptop / self._p00) ** constants.KAPPA
         self._pk0inv = (1.0 / self._p00) ** constants.KAPPA
@@ -227,7 +227,9 @@ class Physics:
                     domain=grid_indexing.domain_compute(),
                 )
             )
-            self._microphysics = Microphysics(stencil_factory, grid_data, namelist)
+            self._microphysics = Microphysics(
+                stencil_factory, grid_data, namelist=namelist
+            )
         else:
             self._do_microphysics = False
 
@@ -237,7 +239,7 @@ class Physics:
         self._nwat = 6  # spec.namelist.nwat
         self._p00 = 1.0e5
 
-    def __call__(self, physics_state: PhysicsState):
+    def __call__(self, physics_state: PhysicsState, timestep: float):
 
         self._atmos_phys_driver_statein(
             self._prsik,
@@ -283,8 +285,7 @@ class Physics:
                 physics_state.pt,
                 physics_state.delp,
             )
-            microph_state = physics_state.microphysics
-            self._microphysics(microph_state)
+            self._microphysics(physics_state.microphysics, timestep=timestep)
             # Fortran uses IPD interface, here we use physics_updated_<var> to denote
             # the updated field
             self._update_physics_state_with_tendencies(
@@ -298,16 +299,16 @@ class Physics:
                 physics_state.pt,
                 physics_state.ua,
                 physics_state.va,
-                microph_state.qv_dt,
-                microph_state.ql_dt,
-                microph_state.qr_dt,
-                microph_state.qi_dt,
-                microph_state.qs_dt,
-                microph_state.qg_dt,
-                microph_state.qa_dt,
-                microph_state.pt_dt,
-                microph_state.udt,
-                microph_state.vdt,
+                physics_state.microphysics.qv_dt,
+                physics_state.microphysics.ql_dt,
+                physics_state.microphysics.qr_dt,
+                physics_state.microphysics.qi_dt,
+                physics_state.microphysics.qs_dt,
+                physics_state.microphysics.qg_dt,
+                physics_state.microphysics.qa_dt,
+                physics_state.microphysics.pt_dt,
+                physics_state.microphysics.udt,
+                physics_state.microphysics.vdt,
                 physics_state.physics_updated_specific_humidity,
                 physics_state.physics_updated_qliquid,
                 physics_state.physics_updated_qrain,
@@ -318,5 +319,5 @@ class Physics:
                 physics_state.physics_updated_pt,
                 physics_state.physics_updated_ua,
                 physics_state.physics_updated_va,
-                self._dt_atmos,
+                timestep,
             )

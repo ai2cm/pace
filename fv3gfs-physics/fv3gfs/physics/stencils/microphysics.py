@@ -11,6 +11,8 @@ from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pace.util.grid import GridData
 
+from .._config import PhysicsConfig
+
 
 def fields_init(
     land: FloatField,
@@ -1897,7 +1899,12 @@ class MicrophysicsState:
 
 
 class Microphysics:
-    def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, namelist):
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        grid_data: GridData,
+        namelist: PhysicsConfig,
+    ):
         self.namelist = namelist
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         self.gfdl_cloud_microphys_init()
@@ -1910,7 +1917,6 @@ class Microphysics:
         self._kbot = grid_indexing.domain[2] - 1
         self._k_s = 0
         self._k_e = self._kke - self._k_s + 1
-        self._dt_atmos = self.namelist.dt_atmos
         # Define heat capacity of dry air and water vapor based on
         # hydrostatical property, [TODO] (EW): investigate why this is hard coded
         self._c_air = constants.CP_AIR
@@ -1919,13 +1925,6 @@ class Microphysics:
         self._d0_vap = self._c_vap - constants.C_LIQ
         self._lv00 = constants.HLV - self._d0_vap * constants.TICE
         self._do_sedi_w = False if self._hydrostatic else self.namelist.do_sedi_w
-        # Define cloud microphysics sub time step
-        self._mpdt = min(self._dt_atmos, self.namelist.mp_time)
-        self._rdt = 1.0 / self._dt_atmos
-        self._ntimes = Int(round(self._dt_atmos / self._mpdt))
-        # Small time step
-        self._dts = self._dt_atmos / self._ntimes
-        self._dt_rain = self._dts * 0.5
         # Calculate cloud condensation nuclei (ccn) based on klein eq. 15
         self._cpaut = self.namelist.c_paut * 0.104 * constants.GRAV / 1.717e-5
         self._use_ccn = False if self.namelist.prog_ccn else True
@@ -1987,13 +1986,6 @@ class Microphysics:
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0
-        self._rdts = 1.0 / self._dts
-        self._dt_evap = 0.5 * self._dts if self.namelist.fast_sat_adj else self._dts
-        self._fac_i2s = 1.0 - np.exp(-self._dts / self.namelist.tau_i2s)
-        self._fac_g2v = 1.0 - np.exp(-self._dts / self.namelist.tau_g2v)
-        self._fac_v2g = 1.0 - np.exp(-self._dts / self.namelist.tau_v2g)
-        self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / self.namelist.tau_imlt)
-        self._fac_l2v = 1.0 - np.exp(-self._dt_evap / self.namelist.tau_l2v)
 
         self._fields_init = stencil_factory.from_origin_domain(
             func=fields_init,
@@ -2235,7 +2227,21 @@ class Microphysics:
         self._cgmlt = cgmlt
         self._ces0 = constants.EPS * es0
 
-    def __call__(self, state: MicrophysicsState):
+    def __call__(self, state: MicrophysicsState, timestep: float):
+        # Define cloud microphysics sub time step
+        self._mpdt = min(timestep, self.namelist.mp_time)
+        self._rdt = 1.0 / timestep
+        self._ntimes = int(round(timestep / self._mpdt))
+        # Small time step
+        self._dts = timestep / self._ntimes
+        self._dt_rain = self._dts * 0.5
+        self._rdts = 1.0 / self._dts
+        self._dt_evap = 0.5 * self._dts if self.namelist.fast_sat_adj else self._dts
+        self._fac_i2s = 1.0 - np.exp(-self._dts / self.namelist.tau_i2s)
+        self._fac_g2v = 1.0 - np.exp(-self._dts / self.namelist.tau_g2v)
+        self._fac_v2g = 1.0 - np.exp(-self._dts / self.namelist.tau_v2g)
+        self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / self.namelist.tau_imlt)
+        self._fac_l2v = 1.0 - np.exp(-self._dt_evap / self.namelist.tau_l2v)
         self._fields_init(
             self._land,
             self._area,
@@ -2291,7 +2297,7 @@ class Microphysics:
             self._c_vap,
             self._d0_vap,
             self._lv00,
-            Float(self._dt_atmos),
+            timestep,
             self._rdt,
             self._cpaut,
         )
@@ -2521,4 +2527,3 @@ class Microphysics:
             self._c_vap,
             self._rdt,
         )
-        print("Microphysics")

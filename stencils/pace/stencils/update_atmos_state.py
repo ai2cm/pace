@@ -135,6 +135,7 @@ class UpdateAtmosphereState:
         self,
         dycore_state,
         phy_state: PhysicsState,
+        dt: float,
     ):
         self._fill_GFS(
             phy_state.prsi, phy_state.physics_updated_specific_humidity, 1.0e-9
@@ -166,8 +167,5 @@ class UpdateAtmosphereState:
             self._rdt,
         )
         self._apply_physics2dycore(
-            dycore_state,
-            self._u_dt,
-            self._v_dt,
-            self._pt_dt,
+            dycore_state, self._u_dt, self._v_dt, self._pt_dt, dt=dt
         )

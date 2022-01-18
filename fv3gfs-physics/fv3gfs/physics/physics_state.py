@@ -199,7 +199,7 @@ class PhysicsState:
             )
 
     @classmethod
-    def init_zeros(cls, quantity_factory) -> "PhysicsState":
+    def init_zeros(cls, quantity_factory, active_packages: List[str]) -> "PhysicsState":
         initial_storages = {}
         for _field in fields(cls):
             initial_storages[_field.name] = quantity_factory.zeros(
@@ -207,4 +207,8 @@ class PhysicsState:
                 _field.metadata["units"],
                 dtype=float,
             ).storage
-        return cls(**initial_storages, quantity_factory=quantity_factory)
+        return cls(
+            **initial_storages,
+            quantity_factory=quantity_factory,
+            active_packages=active_packages,
+        )

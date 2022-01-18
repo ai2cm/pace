@@ -50,7 +50,7 @@ class StencilTable(object, metaclass=Singleton):
 
     DONE_STATE: int = -1
     NONE_STATE: int = -2
-    MAX_SIZE: int = 200
+    MAX_SIZE: int = 800
 
     @classmethod
     def create(cls):
