@@ -376,8 +376,8 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         out["pt"] = state.pt[self.grid.slice_dict(ds)]
         state.ua.synchronize()
         state.va.synchronize()
-        out["u"] = np.asarray(state.u.data)[self.grid.y3d_domain_interface()]
-        out["v"] = np.asarray(state.v.data)[self.grid.x3d_domain_interface()]
-        out["ua"] = np.asarray(state.ua)[self.grid.slice_dict(ds)]
-        out["va"] = np.asarray(state.va)[self.grid.slice_dict(ds)]
+        out["u"] = state.u.data[self.grid.y3d_domain_interface()]
+        out["v"] = state.v.data[self.grid.x3d_domain_interface()]
+        out["ua"] = state.ua[self.grid.slice_dict(ds)]
+        out["va"] = state.va[self.grid.slice_dict(ds)]
         return out
