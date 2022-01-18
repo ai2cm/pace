@@ -85,7 +85,6 @@ def set_up_communicator(
     disable_halo_exchange: bool,
     layout: Tuple[int, int],
 ) -> Tuple[Optional[MPI.Comm], Optional[util.CubedSphereCommunicator]]:
-    layout = layout
     partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
     if MPI is not None:
         comm = MPI.COMM_WORLD
