@@ -40,3 +40,6 @@ ifneq ($(findstring docker,$(CONTAINER_CMD)),)
     endif
 endif
 	$(CONTAINER_CMD) bash -c "$(MPIRUN_CALL) python3 driver/pace/driver/run.py /test_data 3 numpy serialized_data"
+
+test_mpi:
+	mpirun -n 6 python3 -m mpi4py -m pace.driver.run examples/configs/baroclinic_c48.yaml
