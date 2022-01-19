@@ -83,8 +83,8 @@ def get_state_from_input(
 
 def set_up_communicator(
     disable_halo_exchange: bool,
+    layout: Tuple[int, int],
 ) -> Tuple[Optional[MPI.Comm], Optional[util.CubedSphereCommunicator]]:
-    layout = spec.namelist.layout
     partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
     if MPI is not None:
         comm = MPI.COMM_WORLD
@@ -140,7 +140,10 @@ def driver(
     with total_timer.clock("initialization"):
         dycore_config = dycore_config_from_namelist(data_directory)
         serializer = initialize_serializer(data_directory)
-        mpi_comm, communicator = set_up_communicator(disable_halo_exchange)
+        layout = dycore_config.layout
+        mpi_comm, communicator = set_up_communicator(
+            disable_halo_exchange, layout=layout
+        )
         grid = spec.make_grid_with_data_from_namelist(
             dycore_config, communicator, backend
         )

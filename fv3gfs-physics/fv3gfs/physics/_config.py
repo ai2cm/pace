@@ -3,7 +3,7 @@ from typing import Tuple
 
 import f90nml
 
-from pace.util.namelist import NamelistDefaults, namelist_to_flatish_dict
+from pace.util import Namelist, NamelistDefaults
 
 
 @dataclasses.dataclass
@@ -95,11 +95,74 @@ class PhysicsConfig:
     clin: float = NamelistDefaults.clin
 
     @classmethod
-    def from_f90nml(cls, namelist: f90nml.Namelist) -> "PhysicsConfig":
-        namelist_dict = namelist_to_flatish_dict(namelist.items())
-        namelist_dict = {
-            key: value
-            for key, value in namelist_dict.items()
-            if key in cls.__dataclass_fields__  # type: ignore
-        }
-        return cls(**namelist_dict)
+    def from_f90nml(self, f90_namelist: f90nml.Namelist) -> "PhysicsConfig":
+        namelist = Namelist.from_f90nml(f90_namelist)
+        return self.from_namelist(namelist)
+
+    @classmethod
+    def from_namelist(cls, namelist: Namelist) -> "PhysicsConfig":
+        return cls(
+            dt_atmos=namelist.dt_atmos,
+            hydrostatic=namelist.hydrostatic,
+            npx=namelist.npx,
+            npy=namelist.npy,
+            npz=namelist.npz,
+            nwat=namelist.nwat,
+            do_qa=namelist.do_qa,
+            c_cracw=namelist.c_cracw,
+            c_paut=namelist.c_paut,
+            c_pgacs=namelist.c_pgacs,
+            c_psaci=namelist.c_psaci,
+            ccn_l=namelist.ccn_l,
+            ccn_o=namelist.ccn_o,
+            const_vg=namelist.const_vg,
+            const_vi=namelist.const_vi,
+            const_vr=namelist.const_vr,
+            const_vs=namelist.const_vs,
+            vs_fac=namelist.vs_fac,
+            vg_fac=namelist.vg_fac,
+            vi_fac=namelist.vi_fac,
+            vr_fac=namelist.vr_fac,
+            de_ice=namelist.de_ice,
+            layout=namelist.layout,
+            tau_imlt=namelist.tau_imlt,
+            tau_i2s=namelist.tau_i2s,
+            tau_g2v=namelist.tau_g2v,
+            tau_v2g=namelist.tau_v2g,
+            ql_mlt=namelist.ql_mlt,
+            qs_mlt=namelist.qs_mlt,
+            t_sub=namelist.t_sub,
+            qi_gen=namelist.qi_gen,
+            qi_lim=namelist.qi_lim,
+            qi0_max=namelist.qi0_max,
+            rad_snow=namelist.rad_snow,
+            rad_rain=namelist.rad_rain,
+            dw_ocean=namelist.dw_ocean,
+            dw_land=namelist.dw_land,
+            tau_l2v=namelist.tau_l2v,
+            c2l_ord=namelist.c2l_ord,
+            do_sedi_heat=namelist.do_sedi_heat,
+            do_sedi_w=namelist.do_sedi_w,
+            fast_sat_adj=namelist.fast_sat_adj,
+            qc_crt=namelist.qc_crt,
+            fix_negative=namelist.fix_negative,
+            irain_f=namelist.irain_f,
+            mp_time=namelist.mp_time,
+            prog_ccn=namelist.prog_ccn,
+            qi0_crt=namelist.qi0_crt,
+            qs0_crt=namelist.qs0_crt,
+            rh_inc=namelist.rh_inc,
+            rh_inr=namelist.rh_inr,
+            rthresh=namelist.rthresh,
+            sedi_transport=namelist.sedi_transport,
+            use_ppm=namelist.use_ppm,
+            vg_max=namelist.vg_max,
+            vi_max=namelist.vi_max,
+            vr_max=namelist.vr_max,
+            vs_max=namelist.vs_max,
+            z_slope_ice=namelist.z_slope_ice,
+            z_slope_liq=namelist.z_slope_liq,
+            tice=namelist.tice,
+            alin=namelist.alin,
+            clin=namelist.clin,
+        )

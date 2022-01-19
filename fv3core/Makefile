@@ -53,9 +53,6 @@ update_submodules_venv:
                 git submodule update --init external/daint_venv; \
         fi
 
-constraints.txt: requirements.txt requirements/requirements_wrapper.txt requirements/requirements_lint.txt
-	pip-compile $^ --output-file constraints.txt
-	sed -i '' '/^git+https/d' constraints.txt
 # Image build instructions have moved to docker/Makefile but are kept here for backwards-compatibility
 
 build_environment:

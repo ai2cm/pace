@@ -5,11 +5,12 @@ latest
 ------
 
 Major changes:
--
+- Renamed DummyComm to LocalComm, and added support for message tags. The DummyComm symbol is still in place for backwards compatibility, but points to LocalComm
 
 Minor changes:
 - updated QuantityFactory to accept the more generic GridSizer class on initialization
 - added `sizer` as public attribute on QuantityFactory
+- added `Namelist` class to initialize namelist files used in fv3gfs-fortran
 
 v0.7.0
 ------
