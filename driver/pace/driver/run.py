@@ -370,40 +370,7 @@ def main(config_path: str):
         config=driver_config,
         comm=MPI.COMM_WORLD,
     )
-    # output_vars = [
-    #     "u",
-    #     "v",
-    #     "ua",
-    #     "va",
-    #     "pt",
-    #     "delp",
-    #     "qvapor",
-    #     "qliquid",
-    #     "qice",
-    #     "qrain",
-    #     "qsnow",
-    #     "qgraupel",
-    # ]
-    # # TODO derive from namelist
-    # bdt = 225.0
-
     driver.step_all()
-
-    # for t in range(int(time_steps)):
-    #     driver.step(
-    #         do_adiabatic_init=do_adiabatic_init,
-    #         timestep=bdt,
-    #     )
-
-    #     if t % 5 == 0:
-    #         comm.Barrier()
-
-    #         output = {}
-
-    #         for key in output_vars:
-    #             getattr(driver.dycore_state, key).synchronize()
-    #             output[key] = np.asarray(getattr(driver.dycore_state, key))
-    #         np.save("pace_output_t_" + str(t) + "_rank_" + str(rank) + ".npy", output)
 
 
 if __name__ == "__main__":

@@ -49,7 +49,7 @@ jobs:
           name: run tests
           command: |
             if [ $(python changed_from_main.py pace-util) != false ]; then
-              cd pace-util && tox -e test -e test_no_extras
+              cd pace-util && tox --recreate -e test -e test_no_extras
             fi
       - save_cache:
           key: v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}
@@ -116,7 +116,7 @@ jobs:
           name: run tests
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
-              cd fv3core && tox -e test
+              cd fv3core && tox --recreate -e test
             fi
       - save_cache:
           key: v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
