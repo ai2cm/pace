@@ -42,4 +42,4 @@ endif
 	$(CONTAINER_CMD) bash -c "$(MPIRUN_CALL) python3 driver/pace/driver/run.py /test_data 3 numpy serialized_data"
 
 test_mpi:
-	$(MPIRUN_CALL) python3 -m mpi4py -m pace.driver.run examples/configs/baroclinic_c48.yaml
+	$(MPIRUN_CALL) python3 -m mpi4py -m pace.driver.run examples/configs/baroclinic_c12.yaml
