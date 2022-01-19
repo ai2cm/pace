@@ -32,38 +32,38 @@ $ make dev
 Then in the container, dynamical core serial tests can be run:
 
 ```shell
-$ pytest -v -s --data_path=/port_dev/fv3core/test_data/c12_6ranks_standard/ /port_dev/fv3core/tests
+$ pytest -v -s --data_path=/fv3core/test_data/c12_6ranks_standard/ /fv3core/tests
 ```
 
 For parallel tests:
 
 ```shell
-$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/port_dev/fv3core/test_data/c12_6ranks_standard/ /port_dev/fv3core/tests
+$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/fv3core/test_data/c12_6ranks_standard/ /fv3core/tests
 ```
 
 Additional test options are described under `fv3core` documentation.
 
 ### Physics tests
 
-Currently, the only supported test case is `c12_6ranks_baroclinic_dycore_microphysics`(vcm-fv3gfs-serialized-regression-data/integration-7.2.5/c12_6ranks_baroclinic_dycore_microphysics).
+Currently, the supported test case is dynamical core + microphysics: e.g., `c12_6ranks_baroclinic_dycore_microphysics` (gs://vcm-fv3gfs-serialized-regression-data/integration-7.2.5/c12_6ranks_baroclinic_dycore_microphysics).
 
 In the container, physics tests can be run:
 
 ```shell
-$ pytest -v -s --data_path=/port_dev/fv3core/test_data/c12_6ranks_baroclinic_dycore_microphysics/ /port_dev/tests --threshold_overrides_file=/port_dev/tests/savepoint/translate/overrides/baroclinic.yaml
+$ pytest -v -s --data_path=/test_data/c12_6ranks_baroclinic_dycore_microphysics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
 For parallel tests:
 
 ```shell
-$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/port_dev/fv3core/test_data/c12_6ranks_baroclinic_dycore_microphysics/ /port_dev/tests --threshold_overrides_file=/port_dev/tests/savepoint/translate/overrides/baroclinic.yaml
+$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/test_data/c12_6ranks_baroclinic_dycore_microphysics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
 
 ### Util tests
 
-Inside the container, util tests can be run from `/port_dev`:
+Inside the container, util tests can be run from `/pace-util`:
 ```shell
-$ cd /port_dev
-$ make test_util
+$ cd /pace-util
+$ make test
 ```
