@@ -175,7 +175,7 @@ def stability(z1, snwdph, thv1, wind, z0max, ztmax, tvs,
 
     return rb, fm, fh, fm10, fh2, cm, ch, stress, ustar
 
-@gtscript.functiion
+@gtscript.function
 def znot_m_v6(uref):
     p13 = -1.296521881682694e-02
     p12 =  2.855780863283819e-01
@@ -572,9 +572,9 @@ def sfc_diff(
                     ztmax = znot_t_v6(wind10m)
                 elif sfc_z0_type == 7:
                     ztmax = znot_t_v7(wind10m)
-                elif sfc_z0_type != 0:
-                    print("No option for zfc_zo_type=", sfc_z0_type)
-                    exit(1)
+                # elif sfc_z0_type != 0:
+                    # print("No option for zfc_zo_type=", sfc_z0_type)
+                    # exit(1)
                 
                 rb[0,0,0], fm[0,0,0], fh[0,0,0], fm10[0,0,0], fh2[0,0,0], \
                 cm[0,0,0], ch[0,0,0], stress[0,0,0], ustar[0,0,0] = \

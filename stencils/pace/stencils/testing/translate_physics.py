@@ -66,6 +66,9 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             if n_dim == 1:
                 var_reshape = np.reshape(data[:], (cn, cn))
                 rearranged = var_reshape[:, :]
+            elif n_dim == 2:
+                var_reshape = np.reshape(data[:,:],(cn, cn, data.shape[1]))
+                rearranged = var_reshape[:,:,:]
             else:
                 raise NotImplementedError("Data dimension not supported")
         else:
