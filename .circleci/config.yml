@@ -84,7 +84,7 @@ jobs:
           name: run tests
           command: |
             if [ $(python changed_from_main.py driver) != false ]; then
-              cd driver && mpirun -n 6 python3 -m mpi4py -m pace.driver.run examples/baroclinic_c48.yaml
+              cd driver && mpirun -n 6 python3 -m mpi4py -m pace.driver.run examples/configs/baroclinic_c48.yaml
             fi
       - save_cache:
           key: v1-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
