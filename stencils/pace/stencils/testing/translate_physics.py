@@ -67,8 +67,8 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 var_reshape = np.reshape(data[:], (cn, cn))
                 rearranged = var_reshape[:, :]
             elif n_dim == 2:
-                var_reshape = np.reshape(data[:,:],(cn, cn, data.shape[1]))
-                rearranged = var_reshape[:,:,:]
+                var_reshape = np.reshape(data[:, :], (cn, cn, data.shape[1]))
+                rearranged = var_reshape[:, :, :]
             else:
                 raise NotImplementedError("Data dimension not supported")
         else:
@@ -253,6 +253,11 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 ij_slice = self.grid.slice_dict(ds)
                 data_compute = np.asarray(data_result)[ij_slice[0], ij_slice[1]]
                 out[serialname] = np.reshape(data_compute, cn2)
+            elif n_dim == 3:
+                ds = self.grid.compute_dict()
+                ij_slice = self.grid.slice_dict(ds)
+                data_compute = np.asarray(data_result)[ij_slice[0], ij_slice[1], 0:3]
+                out[serialname] = np.reshape(data_compute, (cn2, 3))
             else:
                 raise NotImplementedError("Output data dimension not supported")
         return out

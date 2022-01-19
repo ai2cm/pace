@@ -15,14 +15,11 @@ class TranslateSfcDiff1(TranslatePhysicsFortranData2Py):
             "sigmaf": {"serialname": "sigmaf", "sfc2d": True},
             "vegtype": {"serialname": "vegtype", "sfc2d": True},
             "shdmax": {"serialname": "shdmax", "sfc2d": True},
-            "ivegsrc": {"serialname": "ivegsrc", "sfc2d": True},
             "z0pert": {"serialname": "z01d", "sfc2d": True},
             "ztpert": {"serialname": "zt1d", "sfc2d": True},
             "flag_iter": {"serialname": "flag_iter", "sfc2d": True},
-            "redrag": {"serialname": "redrag", "sfc2d": True},
             "u10m": {"serialname": "u10m", "sfc2d": True},
             "v10m": {"serialname": "v10m", "sfc2d": True},
-            "sfc_z0_type": {"serialname": "sfc_z0_type", "sfc2d": True},
             "wet": {"serialname": "wet", "sfc2d": True},
             "dry": {"serialname": "dry", "sfc2d": True},
             "icy": {"serialname": "icy", "sfc2d": True},
@@ -31,7 +28,10 @@ class TranslateSfcDiff1(TranslatePhysicsFortranData2Py):
             "snwdph": {"serialname": "snowd3", "sfc2d": True},
             "z0rl": {"serialname": "zorl3", "sfc2d": True},
             "ustar": {"serialname": "uustar3", "sfc2d": True},
-            "cm": {"serialname": "cd3", "sfc2d": True},
+            "cm": {
+                "serialname": "cd3",
+                "sfc2d": True,
+            },
             "ch": {"serialname": "cdq3", "sfc2d": True},
             "rb": {"serialname": "rb3", "sfc2d": True},
             "stress": {"serialname": "stress3", "sfc2d": True},
@@ -40,6 +40,7 @@ class TranslateSfcDiff1(TranslatePhysicsFortranData2Py):
             "fm10": {"serialname": "fm103", "sfc2d": True},
             "fh2": {"serialname": "fh23", "sfc2d": True},
         }
+        self.in_vars["parameters"] = ["ivegsrc", "redrag", "sfc_z0_type"]
         self.out_vars = {
             "cm": self.in_vars["data_vars"]["cm"],
             "ch": self.in_vars["data_vars"]["ch"],
@@ -58,7 +59,6 @@ class TranslateSfcDiff1(TranslatePhysicsFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         self.compute_func(**inputs)
-        output = {}
 
         return self.slice_surface2d_output(inputs)
 
@@ -76,14 +76,11 @@ class TranslateSfcDiff2(TranslatePhysicsFortranData2Py):
             "sigmaf": {"serialname": "sigmaf", "sfc2d": True},
             "vegtype": {"serialname": "vegtype", "sfc2d": True},
             "shdmax": {"serialname": "shdmax", "sfc2d": True},
-            "ivegsrc": {"serialname": "ivegsrc", "sfc2d": True},
             "z0pert": {"serialname": "z01d", "sfc2d": True},
             "ztpert": {"serialname": "zt1d", "sfc2d": True},
             "flag_iter": {"serialname": "flag_iter", "sfc2d": True},
-            "redrag": {"serialname": "redrag", "sfc2d": True},
             "u10m": {"serialname": "u10m", "sfc2d": True},
             "v10m": {"serialname": "v10m", "sfc2d": True},
-            "sfc_z0_type": {"serialname": "sfc_z0_type", "sfc2d": True},
             "wet": {"serialname": "wet", "sfc2d": True},
             "dry": {"serialname": "dry", "sfc2d": True},
             "icy": {"serialname": "icy", "sfc2d": True},
@@ -92,7 +89,10 @@ class TranslateSfcDiff2(TranslatePhysicsFortranData2Py):
             "snwdph": {"serialname": "snowd3", "sfc2d": True},
             "z0rl": {"serialname": "zorl3", "sfc2d": True},
             "ustar": {"serialname": "uustar3", "sfc2d": True},
-            "cm": {"serialname": "cd3", "sfc2d": True},
+            "cm": {
+                "serialname": "cd3",
+                "sfc2d": True,
+            },
             "ch": {"serialname": "cdq3", "sfc2d": True},
             "rb": {"serialname": "rb3", "sfc2d": True},
             "stress": {"serialname": "stress3", "sfc2d": True},
@@ -101,6 +101,7 @@ class TranslateSfcDiff2(TranslatePhysicsFortranData2Py):
             "fm10": {"serialname": "fm103", "sfc2d": True},
             "fh2": {"serialname": "fh23", "sfc2d": True},
         }
+        self.in_vars["parameters"] = ["ivegsrc", "redrag", "sfc_z0_type"]
         self.out_vars = {
             "cm": self.in_vars["data_vars"]["cm"],
             "ch": self.in_vars["data_vars"]["ch"],
