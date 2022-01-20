@@ -1,3 +1,4 @@
+import abc
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple
 
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
     from .communicator import Communicator
 
 
-class HaloUpdater:
+class HaloUpdater(abc.ABC):
     """Exchange halo information between ranks.
 
     The class is responsible for the entire exchange and uses the __init__
@@ -31,6 +32,13 @@ class HaloUpdater:
     - temporary references to the Quanitites are held between start and wait
     """
 
+    def __new__(cls: type["HaloUpdater"], comm, *args, **kwargs) -> "HaloUpdater":
+        if comm.Get_size() == 1:
+            return SingleRankHaloUpdater(comm, *args, **kwargs)
+        else:
+            return MultiRankHaloUpdater(comm, *args, **kwargs)
+
+    @abc.abstractmethod
     def __init__(
         self,
         comm: "Communicator",
@@ -47,35 +55,15 @@ class HaloUpdater:
                 pack/unpack before and after communication
             timer: timing operations
         """
-        self._comm = comm
-        self._tag = tag
-        self._transformers = transformers
-        self._timer = timer
-        self._recv_requests: List[AsyncRequest] = []
-        self._send_requests: List[AsyncRequest] = []
-        self._inflight_x_quantities: Optional[Tuple[Quantity, ...]] = None
-        self._inflight_y_quantities: Optional[Tuple[Quantity, ...]] = None
-        self._finalize_on_wait = False
+        pass
 
+    @abc.abstractmethod
     def force_finalize_on_wait(self):
         """HaloDataTransformer are finalized after a wait call
 
         This is a temporary fix. See DSL-816 which will remove self._finalize_on_wait.
         """
-        self._finalize_on_wait = True
-
-    def __del__(self):
-        """Clean up all buffers on garbage collection"""
-        if (
-            self._inflight_x_quantities is not None
-            or self._inflight_y_quantities is not None
-        ):
-            raise RuntimeError(
-                "An halo exchange wasn't completed and a wait() call was expected"
-            )
-        if not self._finalize_on_wait:
-            for transformer in self._transformers.values():
-                transformer.finalize()
+        pass
 
     @classmethod
     def from_scalar_specifications(
@@ -204,6 +192,82 @@ class HaloUpdater:
         self.start(quantities_x, quantities_y)
         self.wait()
 
+    @abc.abstractmethod
+    def start(
+        self,
+        quantities_x: List[Quantity],
+        quantities_y: Optional[List[Quantity]] = None,
+    ):
+        """Start data exchange."""
+        pass
+
+    @abc.abstractmethod
+    def wait(self):
+        """Finalize data exchange."""
+        pass
+
+
+class MultiRankHaloUpdater(HaloUpdater):
+    """Exchange halo information between ranks.
+
+    The class is responsible for the entire exchange and uses the __init__
+    to precompute the maximum of information to have minimum overhead at runtime.
+    Therefore it should be cached for early and re-used at runtime.
+
+    - from_scalar_specifications/from_vector_specifications are used to
+      create a HaloUpdater from a list of memory specifications
+    - update and start/wait trigger the halo exchange
+    - the class creates a "pattern" of exchange that can fit
+      any memory given to do/start
+    - temporary references to the Quanitites are held between start and wait
+    """
+
+    def __init__(
+        self,
+        comm: "Communicator",
+        tag: int,
+        transformers: Dict[int, HaloDataTransformer],
+        timer: Timer,
+    ):
+        """Build the updater.
+
+        Args:
+            comm: communicator responsible for send/recv commands.
+            tag: network tag to be used for communication
+            transformers: mapping from destination rank to transformers used to
+                pack/unpack before and after communication
+            timer: timing operations
+        """
+        self._comm = comm
+        self._tag = tag
+        self._transformers = transformers
+        self._timer = timer
+        self._recv_requests: List[AsyncRequest] = []
+        self._send_requests: List[AsyncRequest] = []
+        self._inflight_x_quantities: Optional[Tuple[Quantity, ...]] = None
+        self._inflight_y_quantities: Optional[Tuple[Quantity, ...]] = None
+        self._finalize_on_wait = False
+
+    def force_finalize_on_wait(self):
+        """HaloDataTransformer are finalized after a wait call
+
+        This is a temporary fix. See DSL-816 which will remove self._finalize_on_wait.
+        """
+        self._finalize_on_wait = True
+
+    def __del__(self):
+        """Clean up all buffers on garbage collection"""
+        if (
+            self._inflight_x_quantities is not None
+            or self._inflight_y_quantities is not None
+        ):
+            raise RuntimeError(
+                "An halo exchange wasn't completed and a wait() call was expected"
+            )
+        if not self._finalize_on_wait:
+            for transformer in self._transformers.values():
+                transformer.finalize()
+
     def start(
         self,
         quantities_x: List[Quantity],
@@ -283,3 +347,43 @@ class HaloUpdater:
 
         self._inflight_x_quantities = None
         self._inflight_y_quantities = None
+
+
+class SingleRankHaloUpdater(HaloUpdater):
+    def __init__(
+        self,
+        comm: "Communicator",
+        tag: int,
+        transformers: Dict[int, HaloDataTransformer],
+        timer: Timer,
+    ):
+        """Build the updater.
+
+        Args:
+            comm: communicator responsible for send/recv commands.
+            tag: network tag to be used for communication
+            transformers: mapping from destination rank to transformers used to
+                pack/unpack before and after communication
+            timer: timing operations
+        """
+        self._comm = comm
+        self._tag = tag
+        self._timer = timer
+        self._recv_requests: List[AsyncRequest] = []
+        self._send_requests: List[AsyncRequest] = []
+        self._inflight_x_quantities: Optional[Tuple[Quantity, ...]] = None
+        self._inflight_y_quantities: Optional[Tuple[Quantity, ...]] = None
+        self._finalize_on_wait = False
+
+    def force_finalize_on_wait(self):
+        """HaloDataTransformer are finalized after a wait call
+
+        This is a temporary fix. See DSL-816 which will remove self._finalize_on_wait.
+        """
+        self._finalize_on_wait = True
+
+    def start(self):
+        pass
+
+    def wait(self):
+        pass
