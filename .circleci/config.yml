@@ -78,7 +78,7 @@ jobs:
               sudo apt-get install libopenmpi3 libopenmpi-dev
               python3 -m venv driver/venv
               . driver/venv/bin/activate
-              cd driver && sudo pip3 install -r requirements.txt -r requriements_local.txt . -c ../constraints.txt
+              cd driver && sudo pip3 install -r requirements.txt -r requirements_local.txt . -c ../constraints.txt
             fi
       - run:
           name: run tests
