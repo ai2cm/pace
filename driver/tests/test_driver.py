@@ -1,5 +1,6 @@
 import contextlib
 import dataclasses
+import math
 import unittest.mock
 from datetime import datetime, timedelta
 from typing import Literal, Tuple
@@ -68,7 +69,7 @@ def test_total_time(days, hours, minutes, seconds, expected):
         pytest.param(timedelta(minutes=5), 5, id="one_step"),
         pytest.param(timedelta(minutes=5), 10, id="two_steps"),
         pytest.param(timedelta(minutes=10), 50, id="many_longer_steps"),
-        pytest.param(timedelta(minutes=5), 1, id="no_step"),
+        pytest.param(timedelta(minutes=5), 11, id="three_steps_past_duration"),
     ],
 )
 def test_driver(timestep: timedelta, minutes: int):
@@ -76,7 +77,7 @@ def test_driver(timestep: timedelta, minutes: int):
         dt_atmos=int(timestep.total_seconds()),
         minutes=minutes,
     )
-    n_timesteps = int((minutes * 60) / timestep.total_seconds())
+    n_timesteps = math.ceil((minutes * 60) / timestep.total_seconds())
     comm = NullComm(
         rank=0,
         total_ranks=6 * config.layout[0] * config.layout[1],
