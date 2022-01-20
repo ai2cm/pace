@@ -356,7 +356,6 @@ class GridIndexing:
     ) -> "GridIndexing":
         # TODO: if this class is refactored to split off the *_edge booleans,
         # this init routine can be refactored to require only a GridSizer
-        origin = sizer.get_origin([pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM])
         domain = sizer.get_extent([pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM])
         south_edge = cube.tile.partitioner.on_tile_bottom(cube.rank)
         north_edge = cube.tile.partitioner.on_tile_top(cube.rank)

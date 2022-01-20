@@ -14,14 +14,9 @@ import fv3core
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3gfs.physics
 import pace.dsl
+import pace.stencils
 import pace.util
 import pace.util.grid
-from fv3gfs.physics.stencils.physics import Physics
-from pace.dsl.stencil import StencilFactory
-from pace.stencils.update_atmos_state import DycoreToPhysics, UpdateAtmosphereState
-from pace.util import QuantityFactory
-from pace.util.communicator import CubedSphereCommunicator
-from pace.util.constants import N_HALO_DEFAULT
 from pace.util.grid import DampingCoefficients
 
 
@@ -252,10 +247,9 @@ class Driver:
             comm: communication object behaving like mpi4py.Comm
         """
         self.config = config
-        partitioner = pace.util.CubedSpherePartitioner(
-            pace.util.TilePartitioner(self.config.layout)
+        communicator = pace.util.CubedSphereCommunicator.from_layout(
+            comm=comm, layout=self.config.layout
         )
-        communicator = pace.util.CubedSphereCommunicator(comm, partitioner)
         quantity_factory, stencil_factory = _setup_factories(
             config=config, communicator=communicator
         )
@@ -277,14 +271,16 @@ class Driver:
             config=self.config.dycore_config,
             phis=self.state.dycore_state.phis,
         )
-        self.physics = Physics(
+        self.physics = fv3gfs.physics.Physics(
             stencil_factory=stencil_factory,
             grid_data=grid_data,
             namelist=self.config.physics_config,
             active_packages=["microphysics"],
         )
-        self.dycore_to_physics = DycoreToPhysics(stencil_factory=stencil_factory)
-        self.physics_to_dycore = UpdateAtmosphereState(
+        self.dycore_to_physics = pace.stencils.DycoreToPhysics(
+            stencil_factory=stencil_factory
+        )
+        self.physics_to_dycore = pace.stencils.UpdateAtmosphereState(
             stencil_factory=stencil_factory,
             grid_data=grid_data,
             namelist=self.config.physics_config,
@@ -293,7 +289,9 @@ class Driver:
             quantity_factory=quantity_factory,
         )
         self.diagnostics = Diagnostics(
-            config=config.diagnostics_config, partitioner=partitioner, comm=comm
+            config=config.diagnostics_config,
+            partitioner=communicator.partitioner,
+            comm=comm,
         )
 
     def step_all(self):
@@ -331,13 +329,13 @@ class Driver:
 
 
 def _setup_factories(
-    config: DriverConfig, communicator: CubedSphereCommunicator
-) -> Tuple["QuantityFactory", "StencilFactory"]:
+    config: DriverConfig, communicator: pace.util.CubedSphereCommunicator
+) -> Tuple["pace.util.QuantityFactory", "pace.dsl.StencilFactory"]:
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.nx_tile,
         ny_tile=config.nx_tile,
         nz=config.nz,
-        n_halo=N_HALO_DEFAULT,
+        n_halo=pace.util.N_HALO_DEFAULT,
         extra_dim_lengths={},
         layout=config.layout,
         tile_partitioner=communicator.partitioner.tile,
@@ -347,10 +345,10 @@ def _setup_factories(
     grid_indexing = pace.dsl.stencil.GridIndexing.from_sizer_and_communicator(
         sizer=sizer, cube=communicator
     )
-    quantity_factory = QuantityFactory.from_backend(
+    quantity_factory = pace.util.QuantityFactory.from_backend(
         sizer, backend=config.stencil_config.backend
     )
-    stencil_factory = StencilFactory(
+    stencil_factory = pace.dsl.StencilFactory(
         config=config.stencil_config,
         grid_indexing=grid_indexing,
     )
@@ -362,16 +360,19 @@ def _setup_factories(
     "config_path",
     required=True,
 )
-def main(config_path: str):
+def cli(config_path: str):
     with open(config_path, "r") as f:
         driver_config = DriverConfig.from_dict(yaml.safe_load(f))
+    main(driver_config=driver_config, comm=MPI.COMM_WORLD)
 
+
+def main(driver_config: DriverConfig, comm):
     driver = Driver(
         config=driver_config,
-        comm=MPI.COMM_WORLD,
+        comm=comm,
     )
     driver.step_all()
 
 
 if __name__ == "__main__":
-    main()
+    cli()

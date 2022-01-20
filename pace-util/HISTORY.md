@@ -11,6 +11,7 @@ Minor changes:
 - updated QuantityFactory to accept the more generic GridSizer class on initialization
 - added `sizer` as public attribute on QuantityFactory
 - added `Namelist` class to initialize namelist files used in fv3gfs-fortran
+- added `CubedSphereCommunicator.from_layout` constructor method
 
 v0.7.0
 ------

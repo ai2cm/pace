@@ -392,6 +392,17 @@ class CubedSphereCommunicator(Communicator):
         self._last_halo_tag += 1
         return self._last_halo_tag
 
+    @classmethod
+    def from_layout(
+        cls,
+        comm,
+        layout: Tuple[int, int],
+        force_cpu: bool = False,
+        timer: Optional[Timer] = None,
+    ) -> "CubedSphereCommunicator":
+        partitioner = CubedSpherePartitioner(tile=TilePartitioner(layout=layout))
+        return cls(comm=comm, partitioner=partitioner, force_cpu=force_cpu, timer=timer)
+
     @property
     def boundaries(self) -> Mapping[int, Boundary]:
         """boundaries of this tile with neighboring tiles"""
