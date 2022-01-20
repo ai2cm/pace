@@ -1,8 +1,6 @@
 import copy
 import os
-from typing import BinaryIO, Generator, Iterable, Optional
-
-from pace.util.initialization.allocator import QuantityFactory
+from typing import BinaryIO, Generator, Iterable
 
 from . import _xarray as xr
 from . import constants, filesystem, io
@@ -26,7 +24,6 @@ def open_restart(
     only_names: Iterable[str] = None,
     to_state: dict = None,
     tracer_properties: RestartProperties = None,
-    quantity_factory: Optional[QuantityFactory] = None,
 ):
     """Load restart files output by the Fortran model into a state dictionary.
 
@@ -37,8 +34,6 @@ def open_restart(
         only_names (optional): list of standard names to load
         to_state (optional): if given, assign loaded data into pre-allocated quantities
             in this state dictionary
-        tracer_properties: definition of tracers used in restart simulation
-        quantity_factory: if given, use this factory to initialize quantities
 
     Returns:
         state: model state dictionary
@@ -54,10 +49,7 @@ def open_restart(
         for file in restart_files(dirname, tile_index, label):
             state.update(
                 load_partial_state_from_restart_file(
-                    file,
-                    restart_properties,
-                    only_names=only_names,
-                    quantity_factory=quantity_factory,
+                    file, restart_properties, only_names=only_names
                 )
             )
         coupler_res_filename = get_coupler_res_filename(dirname, label)
@@ -147,10 +139,7 @@ def prepend_label(filename, label=None):
 
 
 def load_partial_state_from_restart_file(
-    file,
-    restart_properties: RestartProperties,
-    only_names=None,
-    quantity_factory: Optional[QuantityFactory] = None,
+    file, restart_properties: RestartProperties, only_names=None
 ):
     ds = xr.open_dataset(file).isel(Time=0).drop_vars("Time")
     state = map_keys(ds.data_vars, _get_restart_standard_names(restart_properties))
@@ -165,15 +154,7 @@ def load_partial_state_from_restart_file(
     for name, array in state.items():
         if name != "time":
             array.load()
-            if quantity_factory is None:
-                state[name] = Quantity.from_data_array(array)
-            else:
-                state[name] = quantity_factory.empty(
-                    dims=array.dims,
-                    units=array.attrs.get("units", "unknown"),
-                    dtype=array.dtype,
-                )
-                state[name].view[:] = array.values
+            state[name] = Quantity.from_data_array(array)
     return state
 
 

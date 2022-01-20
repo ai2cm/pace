@@ -30,7 +30,7 @@ class DriverState:
 class InitializationConfig(abc.ABC):
     @property
     @abc.abstractmethod
-    def start_time(self) -> Union[datetime, timedelta]:
+    def start_time(self) -> datetime:
         ...
 
     @abc.abstractmethod
@@ -50,6 +50,7 @@ class BaroclinicConfig(InitializationConfig):
 
     @property
     def start_time(self) -> datetime:
+        # TODO: instead of arbitrary start time, enable use of timedeltas
         return datetime(2000, 1, 1)
 
     def get_driver_state(

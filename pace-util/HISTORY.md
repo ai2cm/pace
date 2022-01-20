@@ -6,6 +6,7 @@ latest
 
 Major changes:
 - Renamed DummyComm to LocalComm, and added support for message tags. The DummyComm symbol is still in place for backwards compatibility, but points to LocalComm
+- added error in CubedSphereCommunicator init if given a communicator with a size not equal to the total ranks of the given partitioner
 
 Minor changes:
 - updated QuantityFactory to accept the more generic GridSizer class on initialization

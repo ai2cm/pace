@@ -1,5 +1,5 @@
 from dataclasses import InitVar, dataclass, field, fields
-from typing import List
+from typing import List, Optional
 
 import pace.util
 from fv3gfs.physics.stencils.microphysics import MicrophysicsState
@@ -178,7 +178,7 @@ class PhysicsState:
                 "unknown",
                 dtype=float,
             ).storage
-            self.microphysics = MicrophysicsState(
+            self.microphysics: Optional[MicrophysicsState] = MicrophysicsState(
                 pt=self.pt,
                 qvapor=self.qvapor,
                 qliquid=self.qliquid,
@@ -197,6 +197,8 @@ class PhysicsState:
                 dz=self.dz,
                 tendency_storage=tendency,
             )
+        else:
+            self.microphysics = None
 
     @classmethod
     def init_zeros(cls, quantity_factory, active_packages: List[str]) -> "PhysicsState":
