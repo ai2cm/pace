@@ -1,3 +1,4 @@
+MPIRUN_CALL ?= mpirun -n 6
 
 test:
 	pytest tests
