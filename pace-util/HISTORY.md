@@ -13,6 +13,7 @@ Minor changes:
 - added `sizer` as public attribute on QuantityFactory
 - added `Namelist` class to initialize namelist files used in fv3gfs-fortran
 - added `CubedSphereCommunicator.from_layout` constructor method
+- added support for built-in `datetime` in ZarrMonitor
 
 v0.7.0
 ------
