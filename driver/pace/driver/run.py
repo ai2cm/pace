@@ -19,7 +19,7 @@ import pace.util
 import pace.util.grid
 
 # TODO: move update_atmos_state into pace.driver
-from pace.stencils.update_atmos_state import DycoreToPhysics, UpdateAtmosphereState
+from pace.stencils import update_atmos_state
 from pace.util.grid import DampingCoefficients
 
 
@@ -281,8 +281,10 @@ class Driver:
             namelist=self.config.physics_config,
             active_packages=["microphysics"],
         )
-        self.dycore_to_physics = DycoreToPhysics(stencil_factory=stencil_factory)
-        self.physics_to_dycore = UpdateAtmosphereState(
+        self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
+            stencil_factory=stencil_factory
+        )
+        self.physics_to_dycore = update_atmos_state.UpdateAtmosphereState(
             stencil_factory=stencil_factory,
             grid_data=grid_data,
             namelist=self.config.physics_config,
