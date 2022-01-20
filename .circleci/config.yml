@@ -69,7 +69,7 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v1-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
+            - v2-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
       - run:
           name: install packages
           command: |
@@ -78,7 +78,7 @@ jobs:
               sudo apt-get install libopenmpi3 libopenmpi-dev
               python3 -m venv driver/venv
               . driver/venv/bin/activate
-              cd driver && sudo pip3 install -r requirements.txt -r requirements_local.txt . -c ../constraints.txt
+              cd driver && sudo pip3 install -r requirements.txt -r requirements_local.txt -e . -c ../constraints.txt
             fi
       - run:
           name: run tests
@@ -89,9 +89,10 @@ jobs:
               MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
             fi
       - save_cache:
-          key: v1-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
+          key: v2-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
           paths:
             - driver/venv
+            - /root/.cache/pip
 
   test_fv3core:
     docker:
