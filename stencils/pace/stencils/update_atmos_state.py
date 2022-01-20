@@ -1,12 +1,14 @@
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.util
-from fv3core.initialization.dycore_state import DycoreState
-from fv3gfs.physics.physics_state import PhysicsState
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.util.grid import DriverGridData, GridData
+
+
+# TODO: when this file is not importable from physics or fv3core, import
+#       PhysicsState and DycoreState and use them to type hint below
 
 
 def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
@@ -152,7 +154,7 @@ class DycoreToPhysics:
             compute_halos=(0, 0),
         )
 
-    def __call__(self, dycore_state: DycoreState, physics_state: PhysicsState):
+    def __call__(self, dycore_state, physics_state):
         self._copy_dycore_to_physics(
             qvapor_in=dycore_state.qvapor,
             qliquid_in=dycore_state.qliquid,
@@ -237,7 +239,7 @@ class UpdateAtmosphereState:
     def __call__(
         self,
         dycore_state,
-        phy_state: PhysicsState,
+        phy_state,
         dt: float,
     ):
         self._fill_GFS(
