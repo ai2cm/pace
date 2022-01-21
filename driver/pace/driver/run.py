@@ -364,7 +364,7 @@ def _setup_factories(
     "config_path",
     required=True,
 )
-def cli(config_path: str):
+def command_line(config_path: str):
     with open(config_path, "r") as f:
         driver_config = DriverConfig.from_dict(yaml.safe_load(f))
     main(driver_config=driver_config, comm=MPI.COMM_WORLD)
@@ -379,4 +379,4 @@ def main(driver_config: DriverConfig, comm):
 
 
 if __name__ == "__main__":
-    cli()
+    command_line()

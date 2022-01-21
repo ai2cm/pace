@@ -5,7 +5,6 @@ import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
 from pace.dsl.typing import Float
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
-from pace.util.mpi import MPI
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
@@ -129,12 +128,6 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             quantity_factory=quantity_factory,
             active_packages=active_packages,
         )
-        # make mock communicator, this is not used
-        # but needs to be passed as type CubedSphereCommunicator
-        comm = MPI.COMM_WORLD
-        layout = [1, 1]
-        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
-        communicator = util.CubedSphereCommunicator(comm, partitioner)
         # because it's not in the serialized data
         self.grid.grid_data.ptop = 300.0
         physics = Physics(
