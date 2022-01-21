@@ -25,6 +25,7 @@ ENV BOOST_HOME=/usr/include/boost
 ARG CPPFLAGS="-I${BOOST_HOME} -I${BOOST_HOME}/boost"
 ARG GT4PY_OPTIONALS=""
 COPY external/gt4py /gt4py
+#  The following should be removed and change back to gt_src_manager for v37+
 RUN git clone --depth 1 -b v2.1.0 https://github.com/GridTools/gridtools.git /gt4py/src/gt4py/_external_src/gridtools2
 
 RUN if [ ! -z `echo $GT4PY_OPTIONALS | grep cuda` ] ; then pip install cupy-cuda102==7.7.0 ; else echo Not installing cuda ; fi
