@@ -13,12 +13,7 @@ digraph {
   util [shape=oval, label="pace-util"]
   dsl [shape=oval, label="dsl"]
 
-  pace -> fv3core
-  pace -> physics
-  pace -> util
   pace -> driver
-  pace -> stencils
-  pace -> dsl
   driver -> fv3core
   driver -> physics
   driver -> util
@@ -26,7 +21,6 @@ digraph {
   fv3core -> stencils
   fv3core -> dsl
   physics -> util
-  physics -> fv3core
   physics -> stencils
   physics -> dsl
   stencils -> util
