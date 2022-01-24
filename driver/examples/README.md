@@ -8,11 +8,18 @@ In the future, we will add examples for the compiled backends we support.
 Note that on the baroclinic test case example you will see significant grid imprinting in the first hour time evolution.
 Rest assured that this duplicates the behavior of the original Fortran code.
 
+We have also included a utility to convert the zarr output of the run to netcdf, for convenience. To convert `output.zarr` to `output.nc`, you would run:
+
+```bash
+$ python3 zarr_to_nc.py output.zarr output.nz
+```
+
 ## Docker
 
 To run a baroclinic c12 case with Docker in a single command, run `run_docker.sh`.
 This example will start from the Python 3.8 docker image, install extra dependencies and Python packages, and execute the example, leaving the output in this directory.
-There is also a script `plot_output.py` which will show the
+
+There is also a script `plot_output.py` which will show the output of the run. To use it, you must install matplotlib (e.g. with `pip install matplotlib`).
 
 ## Host Machine
 
