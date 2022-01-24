@@ -1,4 +1,3 @@
-
 # Pace
 
 Pace is the top level directory that includes the FV3 dynamical core, physics, and util.
@@ -47,7 +46,7 @@ Additional test options are described under `fv3core` documentation.
 
 ### Physics tests
 
-Currently, the only supported test case is `c12_6ranks_baroclinic_dycore_microphysics`(vcm-fv3gfs-serialized-regression-data/integration-7.2.5/c12_6ranks_baroclinic_dycore_microphysics).
+Currently, the only supported test case is `c12_6ranks_baroclinic_dycore_microphysics` (vcm-fv3gfs-serialized-regression-data/integration-7.2.5/c12_6ranks_baroclinic_dycore_microphysics).
 
 In the container, physics tests can be run:
 
