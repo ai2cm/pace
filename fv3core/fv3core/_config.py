@@ -455,14 +455,22 @@ class DynamicalCoreConfig:
 
 
 def make_grid_from_namelist(namelist, rank, backend):
-    shape_params = {}
-    for narg in ["npx", "npy", "npz"]:
-        shape_params[narg] = getattr(namelist, narg)
+    return make_grid(
+        namelist.npx, namelist.npy, namelist.npz, namelist.layout, rank, backend
+    )
+
+
+def make_grid(npx, npy, npz, layout, rank, backend):
+    shape_params = {
+        "npx": npx,
+        "npy": npy,
+        "npz": npz,
+    }
     # TODO this won't work with variable sized domains
     # but this entire method will be refactored away
     # and not used soon
-    nx = int((namelist.npx - 1) / namelist.layout[0])
-    ny = int((namelist.npy - 1) / namelist.layout[1])
+    nx = int((npx - 1) / layout[0])
+    ny = int((npy - 1) / layout[1])
     indices = {
         "isd": 0,
         "ied": nx + 2 * utils.halo - 1,
@@ -473,9 +481,7 @@ def make_grid_from_namelist(namelist, rank, backend):
         "js": utils.halo,
         "je": ny + utils.halo - 1,
     }
-    return Grid(
-        indices, shape_params, rank, namelist.layout, backend, local_indices=True
-    )
+    return Grid(indices, shape_params, rank, layout, backend, local_indices=True)
 
 
 def make_grid_with_data_from_namelist(namelist, communicator, backend):

@@ -3,7 +3,6 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-import fv3core._config
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
@@ -365,14 +364,3 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         else:
             return_value = output
         return return_value
-
-
-# Method for creating a DycoreState object from serialized data
-def init_dycore_state_from_serialized_data(
-    serializer, rank, backend, namelist, quantity_factory, stencil_factory
-):
-    grid = fv3core._config.make_grid_from_namelist(namelist, rank, backend)
-    savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
-    translate_object = TranslateFVDynamics([grid], namelist, stencil_factory)
-    input_data = translate_object.collect_input_data(serializer, savepoint_in)
-    return translate_object.state_from_inputs(input_data)

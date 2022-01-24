@@ -1,6 +1,6 @@
 stencil_config:
   backend: numpy
-  rebuild: true
+  rebuild: false
   validate_args: true
   format_source: false
   device_sync: true
@@ -8,8 +8,8 @@ initialization_type: baroclinic
 initialization_config: {}
 nx_tile: 12
 nz: 79
-dt_atmos: 450
-minutes: 15
+dt_atmos: 225
+minutes: 60
 layout:
   - 1
   - 1
@@ -65,6 +65,20 @@ dycore_config:
   vtdm4: 0.06
   z_tracer: true
   do_qa: true
+  tau_i2s: 1000.
+  tau_g2v: 1200.
+  ql_gen: 0.001
+  ql_mlt: 0.002
+  qs_mlt: 0.000001
+  qi_lim: 1.0
+  dw_ocean: 0.1
+  dw_land: 0.15
+  icloud_f: 0
+  tau_l2v: 300.
+  tau_v2l: 90.
+  fv_sg_adj: 0
+  n_sponge: 48
+
 physics_config:
   hydrostatic: false
   nwat: 6
