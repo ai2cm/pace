@@ -2250,7 +2250,7 @@ class Microphysics:
         self._timestep = timestep
 
     def __call__(self, state: MicrophysicsState, timestep: float):
-        self._set_timestep(timestep)
+        self._update_timestep_if_needed(timestep)
         self._fields_init(
             self._land,
             self._area,
