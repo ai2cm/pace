@@ -2226,7 +2226,7 @@ class Microphysics:
         self._csmlt = csmlt
         self._cgmlt = cgmlt
         self._ces0 = constants.EPS * es0
-        self._set_timestep(0.0)
+        self._set_timestep(-1.0)
 
     def _update_timestep_if_needed(self, timestep: float):
         if timestep != self._timestep:
