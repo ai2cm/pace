@@ -3,6 +3,8 @@
 
 Pace is the top level directory that includes the FV3 dynamical core, physics, and util.
 
+If you are visiting for AMS 2022, we recommend you go to `driver/README.md`.
+
 **WARNING** This repo is under active development and relies on code and data that is not publicly available at this point.
 
 ## Getting started
