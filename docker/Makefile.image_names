@@ -9,9 +9,6 @@ FV3GFS_NAME = fv3gfs-integration
 DEPENDENCIES_DOCKERFILE = dependencies.Dockerfile
 FV3GFS_DOCKERFILE = Dockerfile
 
-# fv3core or fv3core-wrapper
-FV3GFS_TARGET ?= fv3core
-
 BASE_IMAGE = ubuntu:18.04
 # If trying to test the gtcuda backend, override the CUDA option
 # and use the cuda based image
