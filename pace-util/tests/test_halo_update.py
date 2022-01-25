@@ -167,7 +167,7 @@ def extent(n_points, dims, nz, ny, nx):
 
 
 @pytest.fixture
-def communicator_list(cube_partitioner):
+def communicator_list(cube_partitioner, total_ranks):
     shared_buffer = {}
     return_list = []
     for rank in range(cube_partitioner.total_ranks):

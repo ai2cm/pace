@@ -5,7 +5,7 @@ try:
     import zarr
 except ModuleNotFoundError:
     zarr = None
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import cftime
 import pytest
@@ -39,7 +39,12 @@ def n_times(request, fast):
 
 
 @pytest.fixture(
-    params=[cftime.DatetimeJulian, cftime.Datetime360Day, cftime.DatetimeNoLeap]
+    params=[
+        cftime.DatetimeJulian,
+        cftime.Datetime360Day,
+        cftime.DatetimeNoLeap,
+        datetime,
+    ]
 )
 def start_time(request):
     date_type = request.param
@@ -149,7 +154,7 @@ def validate_xarray_can_open(dirname):
 @requires_zarr
 def validate_store(states, filename, numpy, start_time):
     nt = len(states)
-    calendar = start_time.calendar
+    calendar = pace.util.zarr_monitor.get_calendar(start_time)
 
     def assert_no_missing_names(store, state):
         missing_names = set(states[0].keys()).difference(store.array_keys())

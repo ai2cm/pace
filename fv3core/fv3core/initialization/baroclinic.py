@@ -222,7 +222,17 @@ def moisture_adjusted_temperature(pt, qvapor):
 
 
 def setup_pressure_fields(
-    eta, eta_v, delp, ps, pe, peln, pk, pkz, ak, bk, ptop, lat_agrid, adiabatic
+    eta,
+    eta_v,
+    delp,
+    ps,
+    pe,
+    peln,
+    pk,
+    pkz,
+    ak,
+    bk,
+    ptop,
 ):
     ps[:] = jablo_init.surface_pressure
     delp[:, :, :-1] = initialize_delp(ps, ak, bk)
@@ -473,8 +483,6 @@ def init_baroclinic_state(
         ak=utils.asarray(metric_terms.ak.data),
         bk=utils.asarray(metric_terms.bk.data),
         ptop=metric_terms.ptop,
-        lat_agrid=metric_terms.lat_agrid.data[slice_2d],
-        adiabatic=adiabatic,
     )
 
     baroclinic_initialization(
