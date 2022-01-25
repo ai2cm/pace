@@ -3,7 +3,6 @@ import copy
 import pace.dsl.gt4py_utils as utils
 import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
-from pace.dsl.typing import Float
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
@@ -180,7 +179,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             physics_state.delp,
         )
         microph_state = physics_state.microphysics
-        physics._microphysics(microph_state, Float(self.namelist.dt_atmos))
+        physics._microphysics(microph_state, float(self.namelist.dt_atmos))
         # Fortran uses IPD interface, here we use physics_updated_<var>
         # to denote the updated field
         physics._update_physics_state_with_tendencies(
@@ -214,7 +213,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             physics_state.physics_updated_pt,
             physics_state.physics_updated_ua,
             physics_state.physics_updated_va,
-            Float(self.namelist.dt_atmos),
+            float(self.namelist.dt_atmos),
         )
         inputs["gt0"] = physics_state.physics_updated_pt
         inputs["gu0"] = physics_state.physics_updated_ua
