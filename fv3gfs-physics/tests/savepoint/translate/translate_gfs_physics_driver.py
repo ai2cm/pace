@@ -180,7 +180,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             physics_state.delp,
         )
         microph_state = physics_state.microphysics
-        physics._microphysics(microph_state)
+        physics._microphysics(microph_state, Float(self.namelist.dt_atmos))
         # Fortran uses IPD interface, here we use physics_updated_<var>
         # to denote the updated field
         physics._update_physics_state_with_tendencies(

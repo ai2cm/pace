@@ -6,6 +6,7 @@ import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
+from pace.dsl.typing import Float
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
@@ -94,7 +95,7 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
             self.stencil_factory, self.grid.grid_data, self.namelist
         )
         microph_state = physics_state.microphysics
-        microphysics(microph_state, timestep=self.namelist.dt_atmos)
+        microphysics(microph_state, timestep=Float(self.namelist.dt_atmos))
         inputs["pt_dt"] = microph_state.pt_dt
         inputs["qv_dt"] = microph_state.qv_dt
         inputs["ql_dt"] = microph_state.ql_dt
