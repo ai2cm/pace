@@ -112,10 +112,10 @@ def mocked_components():
     with unittest.mock.patch("fv3core.DynamicalCore", spec=True) as dycore_mock:
         with unittest.mock.patch("fv3gfs.physics.Physics") as physics_mock:
             with unittest.mock.patch(
-                "pace.stencils.UpdateAtmosphereState"
+                "pace.stencils.update_atmos_state.UpdateAtmosphereState"
             ) as physics_to_dycore_mock:
                 with unittest.mock.patch(
-                    "pace.stencils.DycoreToPhysics"
+                    "pace.stencils.update_atmos_state.DycoreToPhysics"
                 ) as dycore_to_physics_mock:
                     with unittest.mock.patch(
                         "pace.driver.run.Diagnostics"

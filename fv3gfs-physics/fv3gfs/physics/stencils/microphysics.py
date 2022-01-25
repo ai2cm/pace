@@ -2226,8 +2226,13 @@ class Microphysics:
         self._csmlt = csmlt
         self._cgmlt = cgmlt
         self._ces0 = constants.EPS * es0
+        self._set_timestep(-1.0)
 
-    def __call__(self, state: MicrophysicsState, timestep: float):
+    def _update_timestep_if_needed(self, timestep: float):
+        if timestep != self._timestep:
+            self._set_timestep(timestep=timestep)
+
+    def _set_timestep(self, timestep: float):
         # Define cloud microphysics sub time step
         self._mpdt = min(timestep, self.namelist.mp_time)
         self._rdt = 1.0 / timestep
@@ -2242,6 +2247,10 @@ class Microphysics:
         self._fac_v2g = 1.0 - np.exp(-self._dts / self.namelist.tau_v2g)
         self._fac_imlt = 1.0 - np.exp(-0.5 * self._dts / self.namelist.tau_imlt)
         self._fac_l2v = 1.0 - np.exp(-self._dt_evap / self.namelist.tau_l2v)
+        self._timestep = timestep
+
+    def __call__(self, state: MicrophysicsState, timestep: float):
+        self._update_timestep_if_needed(timestep)
         self._fields_init(
             self._land,
             self._area,

@@ -17,6 +17,9 @@ import pace.dsl
 import pace.stencils
 import pace.util
 import pace.util.grid
+
+# TODO: move update_atmos_state into pace.driver
+from pace.stencils import update_atmos_state
 from pace.util.grid import DampingCoefficients
 
 
@@ -30,7 +33,7 @@ class DriverState:
 class InitializationConfig(abc.ABC):
     @property
     @abc.abstractmethod
-    def start_time(self) -> Union[datetime, timedelta]:
+    def start_time(self) -> datetime:
         ...
 
     @abc.abstractmethod
@@ -50,6 +53,7 @@ class BaroclinicConfig(InitializationConfig):
 
     @property
     def start_time(self) -> datetime:
+        # TODO: instead of arbitrary start time, enable use of timedeltas
         return datetime(2000, 1, 1)
 
     def get_driver_state(
@@ -103,6 +107,94 @@ class RestartConfig(InitializationConfig):
             quantity_factory=quantity_factory,
         )
         raise NotImplementedError()
+
+
+@dataclasses.dataclass
+class SerialboxConfig(InitializationConfig):
+    """
+    Configuration for Serialbox initialization.
+    """
+
+    path: str
+    npx: int
+    npy: int
+    npz: int
+    layout: List[int]
+    backend: str
+
+    @property
+    def start_time(self) -> datetime:
+        return datetime(2000, 1, 1)
+
+    def get_driver_state(
+        self,
+        quantity_factory: pace.util.QuantityFactory,
+        communicator: pace.util.CubedSphereCommunicator,
+    ) -> DriverState:
+        raise NotImplementedError()
+
+    def _initialize_dycore_state(
+        self, communicator: pace.util.CubedSphereCommunicator
+    ) -> fv3core.DycoreState:
+        # TODO: this code currently depends on namelist and stencil_factory,
+        # update the config to require a namelist file or load the file from
+        # the place we know it exists in
+        # the file path, and use that to make a factory.
+        #
+        # import sys
+        # sys.path.append("/usr/local/serialbox/python/")
+        # import serialbox
+
+        # serializer = serialbox.Serializer(
+        #     serialbox.OpenModeKind.Read,
+        #     self._data_dir,
+        #     "Generator_rank" + str(self._comm.rank),
+        # )
+
+        # grid = fv3core._config.make_grid(
+        #     npx=self.npx,
+        #     npy=self.npy,
+        #     npz=self.npz,
+        #     layout=self.layout,
+        #     rank=communicator.rank,
+        #     backend=self.backend,
+        # )
+        # savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
+        # translate_object = TranslateFVDynamics([grid], namelist, stencil_factory)
+        # input_data = translate_object.collect_input_data(serializer, savepoint_in)
+        # dycore_state = translate_object.state_from_inputs(input_data)
+        # return dycore_state
+        pass
+
+    def _init_physics_state_from_dycore_state(
+        self,
+        dycore_state: fv3core.DycoreState,
+        quantity_factory: pace.util.QuantityFactory,
+    ) -> fv3gfs.physics.PhysicsState:
+        initial_storages = {}
+        dycore_fields = dataclasses.fields(fv3core.DycoreState)
+        for field in dataclasses.fields(fv3gfs.physics.PhysicsState):
+            metadata = field.metadata
+            matches = [
+                f
+                for f in dycore_fields
+                if field.name == f.name
+                and metadata["name"] == f.metadata["name"]
+                and metadata["units"] == f.metadata["units"]
+            ]
+            if len(matches) > 0:
+                initial_storages[field.name] = getattr(dycore_state, field.name)
+            else:
+                initial_storages[field.name] = quantity_factory.zeros(
+                    [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+                    field.metadata["units"],
+                    dtype=float,
+                )
+        return fv3gfs.physics.PhysicsState(
+            **initial_storages,
+            quantity_factory=quantity_factory,
+            active_packages=["microphysics"],
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -277,10 +369,10 @@ class Driver:
             namelist=self.config.physics_config,
             active_packages=["microphysics"],
         )
-        self.dycore_to_physics = pace.stencils.DycoreToPhysics(
+        self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
             stencil_factory=stencil_factory
         )
-        self.physics_to_dycore = pace.stencils.UpdateAtmosphereState(
+        self.physics_to_dycore = update_atmos_state.UpdateAtmosphereState(
             stencil_factory=stencil_factory,
             grid_data=grid_data,
             namelist=self.config.physics_config,
@@ -360,7 +452,7 @@ def _setup_factories(
     "config_path",
     required=True,
 )
-def cli(config_path: str):
+def command_line(config_path: str):
     with open(config_path, "r") as f:
         driver_config = DriverConfig.from_dict(yaml.safe_load(f))
     main(driver_config=driver_config, comm=MPI.COMM_WORLD)
@@ -375,4 +467,4 @@ def main(driver_config: DriverConfig, comm):
 
 
 if __name__ == "__main__":
-    cli()
+    command_line()

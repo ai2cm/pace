@@ -94,7 +94,7 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
             self.stencil_factory, self.grid.grid_data, self.namelist
         )
         microph_state = physics_state.microphysics
-        microphysics(microph_state)
+        microphysics(microph_state, timestep=self.namelist.dt_atmos)
         inputs["pt_dt"] = microph_state.pt_dt
         inputs["qv_dt"] = microph_state.qv_dt
         inputs["ql_dt"] = microph_state.ql_dt
