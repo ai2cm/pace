@@ -214,7 +214,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             physics_state.physics_updated_pt,
             physics_state.physics_updated_ua,
             physics_state.physics_updated_va,
-            Float(physics._dt_atmos),
+            Float(self.namelist.dt_atmos),
         )
         inputs["gt0"] = physics_state.physics_updated_pt
         inputs["gu0"] = physics_state.physics_updated_ua
