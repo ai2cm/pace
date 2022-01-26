@@ -186,7 +186,7 @@ class Namelist:
     # adjust_dry_mass: Any
     beta: float = DEFAULT_FLOAT
     # consv_am: Any
-    consv_te: bool = DEFAULT_BOOL
+    consv_te: float = DEFAULT_FLOAT
     d2_bg: float = DEFAULT_FLOAT
     d2_bg_k1: float = DEFAULT_FLOAT
     d2_bg_k2: float = DEFAULT_FLOAT

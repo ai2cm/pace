@@ -332,7 +332,7 @@ class DynamicalCore:
     def step_dynamics(
         self,
         state: DycoreState,
-        conserve_total_energy: bool,
+        conserve_total_energy: float,
         do_adiabatic_init: bool,
         timestep: float,
         n_split: int,

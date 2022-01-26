@@ -49,13 +49,49 @@ jobs:
           name: run tests
           command: |
             if [ $(python changed_from_main.py pace-util) != false ]; then
-              cd pace-util && tox -e test -e test_no_extras
+              cd pace-util && tox --recreate -e test -e test_no_extras
             fi
       - save_cache:
           key: v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}
           paths:
             - pace-util/.tox
             - pace-util/venv
+
+  test_driver:
+    docker:
+      - image: circleci/python:3.8
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+      - run:
+          name: Install Submodules
+          command: git submodule update --init
+      - restore_cache:
+          keys:
+            - v2-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
+      - run:
+          name: install packages
+          command: |
+            if [ $(python changed_from_main.py driver) != false ]; then
+              sudo apt-get update
+              sudo apt-get install libopenmpi3 libopenmpi-dev
+              cd driver && ./examples/create_venv.sh
+            fi
+      - run:
+          name: run tests
+          command: |
+            if [ $(python changed_from_main.py driver) != false ]; then
+              cd driver
+              . venv/bin/activate
+              make test
+              MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
+            fi
+      - save_cache:
+          key: v2-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
+          paths:
+            - driver/venv
+            - /root/.cache/pip
 
   test_fv3core:
     docker:
@@ -82,7 +118,7 @@ jobs:
           name: run tests
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
-              cd fv3core && tox -e test
+              cd fv3core && tox --recreate -e test
             fi
       - save_cache:
           key: v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
@@ -103,6 +139,10 @@ workflows:
             tags:
               only: /^v.*/
       - test_fv3core:
+          filters:
+            tags:
+              only: /^v.*/
+      - test_driver:
           filters:
             tags:
               only: /^v.*/

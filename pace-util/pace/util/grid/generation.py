@@ -1,4 +1,5 @@
 import functools
+import warnings
 
 from pace import util
 from pace.dsl.gt4py_utils import asarray, make_storage_data
@@ -52,6 +53,16 @@ def cached_property(func):
         return func(self, *args, **kwargs)
 
     return wrapper
+
+
+def ignore_zero_division(func):
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return func(*args, **kwargs)
+
+    return wrapped
 
 
 # TODO
@@ -1255,6 +1266,7 @@ class MetricTerms:
         )
 
     @cached_property
+    @ignore_zero_division
     def rdx(self) -> util.Quantity:
         """
         1/dx
@@ -1267,6 +1279,7 @@ class MetricTerms:
         )
 
     @cached_property
+    @ignore_zero_division
     def rdy(self) -> util.Quantity:
         """
         1/dy
@@ -1279,6 +1292,7 @@ class MetricTerms:
         )
 
     @cached_property
+    @ignore_zero_division
     def rdxa(self) -> util.Quantity:
         """
         1/dxa
@@ -1291,6 +1305,7 @@ class MetricTerms:
         )
 
     @cached_property
+    @ignore_zero_division
     def rdya(self) -> util.Quantity:
         """
         1/dya
@@ -1303,6 +1318,7 @@ class MetricTerms:
         )
 
     @cached_property
+    @ignore_zero_division
     def rdxc(self) -> util.Quantity:
         """
         1/dxc
@@ -1315,6 +1331,7 @@ class MetricTerms:
         )
 
     @cached_property
+    @ignore_zero_division
     def rdyc(self) -> util.Quantity:
         """
         1/dyc
