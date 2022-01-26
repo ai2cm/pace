@@ -1,6 +1,5 @@
 rundir/**
 src/**
 test_data/**
-fv3/__pycache__
-fv3/.gt_cache/**
+**/.gt_cache/**
 .gt_cache/**
