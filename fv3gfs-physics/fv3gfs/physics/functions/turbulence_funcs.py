@@ -7,11 +7,13 @@ import pace.dsl.typing as typing
 FloatField_8 = typing.Field[gtscript.IJK, (typing.Float,(8,))]
 FloatField_7 = typing.Field[gtscript.IJK, (typing.Float,(7,))]
 
-RD = 2.87050e2
-CP = 1.00460e3
-RV = 4.61500e2
-HVAP = 2.50000e6
-HFUS = 3.33580e5
+# Turbulence Constants
+
+# RD = 2.87050e2    This is under pace-util/constants.py as RDGAS
+# CP = 1.00460e3    This is under pace-util/constants.py as CP_AIR
+# RV = 4.61500e2    This is under pace-util/constants.py as RVGAS
+# HVAP = 2.50000e6  This is under pace-util/constants.py as HLV
+# HFUS = 3.33580e5  This is under pace-util/constants.py as HLF
 WFAC = 7.0
 CFAC = 4.5
 GAMCRT = 3.0
@@ -58,13 +60,13 @@ CDTN = 25.0
 XMIN = 180.0
 XMAX = 330.0
 
-CON_TTP = 2.7316e2
-CON_CVAP = 1.8460e3
-CON_CLIQ = 4.1855e3
+CON_TTP = 2.7316e2          # Maybe constants.TFREEZE?
+CON_CVAP = constants.CP_VAP # 1.8460e3
+CON_CLIQ = constants.C_LIQ  # 4.1855e3
 CON_HVAP = 2.5000e6
-CON_RV = 4.6150e2
+CON_RV = constants.RVGAS    # 4.6150e2
 CON_CSOL = 2.1060e3
-CON_HFUS = 3.3358e5
+CON_HFUS = constants.HLF    # 3.3358e5
 CON_PSAT = 6.1078e2
 
 @gtscript.function

@@ -11,10 +11,11 @@ from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, Int, FloatField, FloatFieldIJ, IntField, IntFieldIJ, BoolFieldIJ
 from pace.util.grid import GridData
 
-# @gtscript.stencil(backend=backend)
+#@gtscript.stencil(backend=backend)
 def mask_init(mask: IntField):
     with computation(FORWARD), interval(1, None):
         mask = mask[0, 0, -1] + 1
+
 
 #@gtscript.stencil(backend=backend)
 def init(
@@ -97,24 +98,39 @@ def init(
     v1: FloatField,
     v10m: FloatFieldIJ,
     xmu: FloatFieldIJ,
-    gravi: Float,
-    dt2: Float,
-    el2orc: Float,
-    tkmin: Float,
-    xkzm_h: Float,
-    xkzm_m: Float,
-    xkzm_s: Float,
-    km1: Int,
-    ntiw: Int,
-    fv: Float,
-    elocp: Float,
-    g: Float,
-    eps: Float,
-    ntke: Int,
-    ntcw: Int,
+    gravi: float,
+    dt2: float,
+    el2orc: float,
+    tkmin: float,
+    xkzm_h: float,
+    xkzm_m: float,
+    xkzm_s: float,
+    km1: int,
+    ntiw: int,
+    fv: float,
+    elocp: float,
+    g: float,
+    eps: float,
+    ntke: int,
+    ntcw: int,
+    hvap: float,
+    hfus: float,
+    rbcr: float,
+    f0: float,
+    crbmin: float,
+    crbmax: float,
+    qmin: float,
+    qlmin: float,
+    cql: float,
+    dw2min: float,
+    xkgdx: float,
+    xkzinv: float,
+    ck1: float,
+    ch1: float,
+    cp: float,
 ):
 
-    with computation(FORWARD), interval(0,1):
+    with computation(FORWARD), interval(0, 1):
         pcnvflg = 0
         scuflg = 1
         dusfc = 0.0
@@ -141,29 +157,27 @@ def init(
         zl = phil[0, 0, 0] * gravi
         tke = max(q1[0, 0, 0][ntke], tkmin)
     with computation(PARALLEL), interval(0, -1):
-        ckz = functions.CK1
-        chz = functions.CH1
+        ckz = ck1
+        chz = ch1
         prn = 1.0
         kx1 = 0.0
         zm = zi[0, 0, 1]
         rdzt = 1.0 / (zl[0, 0, 1] - zl[0, 0, 0])
 
-        if gdx[0, 0] >= functions.XKGDX:
+        if gdx[0, 0] >= xkgdx:
             xkzm_hx = xkzm_h
             xkzm_mx = xkzm_m
         else:
-            xkzm_hx = 0.01 + ((xkzm_h - 0.01) * (1.0 / (functions.XKGDX - 5.0))) * (
+            xkzm_hx = 0.01 + ((xkzm_h - 0.01) * (1.0 / (xkgdx - 5.0))) * (
                 gdx[0, 0] - 5.0
             )
-            xkzm_mx = 0.01 + ((xkzm_m - 0.01) * (1.0 / (functions.XKGDX - 5.0))) * (
+            xkzm_mx = 0.01 + ((xkzm_m - 0.01) * (1.0 / (xkgdx - 5.0))) * (
                 gdx[0, 0] - 5.0
             )
 
         if mask[0, 0, 0] < kinver[0, 0]:
             ptem = prsi[0, 0, 1] * tx1[0, 0]
-            xkzo = xkzm_hx * min(
-                1.0, exp(-((1.0 - ptem) * (1.0 - ptem) * 10.0))
-            )
+            xkzo = xkzm_hx * min(1.0, exp(-((1.0 - ptem) * (1.0 - ptem) * 10.0)))
 
             if ptem >= xkzm_s:
                 xkzmo = xkzm_mx
@@ -183,34 +197,34 @@ def init(
 
         pix = psk[0, 0] / prslk[0, 0, 0]
         theta = t1[0, 0, 0] * pix[0, 0, 0]
-        if (ntiw+1) > 0:
-            tem = max(q1[0, 0, 0][ntcw], functions.QLMIN)
-            tem1 = max(q1[0, 0, 0][ntiw], functions.QLMIN)
-            ptem = functions.HVAP * tem + (functions.HVAP + functions.HFUS) * tem1
+        if (ntiw + 1) > 0:
+            tem = max(q1[0, 0, 0][ntcw], qlmin)
+            tem1 = max(q1[0, 0, 0][ntiw], qlmin)
+            ptem = hvap * tem + (hvap + hfus) * tem1
             qlx = tem + tem1
-            slx = functions.CP * t1[0, 0, 0] + phil[0, 0, 0] - ptem
+            slx = cp * t1[0, 0, 0] + phil[0, 0, 0] - ptem
         else:
-            qlx = max(q1[0, 0, 0][ntcw], functions.QLMIN)
-            slx = functions.CP * t1[0, 0, 0] + phil[0, 0, 0] - functions.HVAP * qlx[0, 0, 0]
+            qlx = max(q1[0, 0, 0][ntcw], qlmin)
+            slx = cp * t1[0, 0, 0] + phil[0, 0, 0] - hvap * qlx[0, 0, 0]
 
-        tem = 1.0 + fv * max(q1[0, 0, 0][0], functions.QMIN) - qlx[0, 0, 0]
+        tem = 1.0 + fv * max(q1[0, 0, 0][0], qmin) - qlx[0, 0, 0]
         thvx = theta[0, 0, 0] * tem
-        qtx = max(q1[0, 0, 0][0], functions.QMIN) + qlx[0, 0, 0]
+        qtx = max(q1[0, 0, 0][0], qmin) + qlx[0, 0, 0]
         thlx = theta[0, 0, 0] - pix[0, 0, 0] * elocp * qlx[0, 0, 0]
         thlvx = thlx[0, 0, 0] * (1.0 + fv * qtx[0, 0, 0])
-        svx = functions.CP * t1[0, 0, 0] * tem
-        thetae = theta[0, 0, 0] + elocp * pix[0, 0, 0] * max(q1[0, 0, 0][0], functions.QMIN)
+        svx = cp * t1[0, 0, 0] * tem
+        thetae = theta[0, 0, 0] + elocp * pix[0, 0, 0] * max(q1[0, 0, 0][0], qmin)
         gotvx = g / (t1[0, 0, 0] * tem)
 
         tem = (t1[0, 0, 1] - t1[0, 0, 0]) * tem * rdzt[0, 0, 0]
         if tem > 1.0e-5:
-            xkzo = min(xkzo[0, 0, 0], functions.XKZINV)
-            xkzmo = min(xkzmo[0, 0, 0], functions.XKZINV)
+            xkzo = min(xkzo[0, 0, 0], xkzinv)
+            xkzmo = min(xkzmo[0, 0, 0], xkzinv)
 
         plyr = 0.01 * prsl[0, 0, 0]
         es = 0.01 * functions.fpvs(t1)
-        qs = max(functions.QMIN, eps * es / (plyr[0, 0, 0] + (eps - 1) * es))
-        rhly = max(0.0, min(1.0, max(functions.QMIN, q1[0, 0, 0][0]) / qs))
+        qs = max(qmin, eps * es / (plyr[0, 0, 0] + (eps - 1) * es))
+        rhly = max(0.0, min(1.0, max(qmin, q1[0, 0, 0][0]) / qs))
         qstl = qs
 
     with computation(FORWARD), interval(...):
@@ -218,7 +232,7 @@ def init(
         clwt = 1.0e-6 * (plyr[0, 0, 0] * 0.001)
         if qlx[0, 0, 0] > clwt:
             onemrh = max(1.0e-10, 1.0 - rhly[0, 0, 0])
-            tem1 = functions.CQL / min(max((onemrh * qstl[0, 0, 0]) ** 0.49, 0.0001), 1.0)
+            tem1 = cql / min(max((onemrh * qstl[0, 0, 0]) ** 0.49, 0.0001), 1.0)
             val = max(min(tem1 * qlx[0, 0, 0], 50.0), 0.0)
             cfly = min(max(sqrt(sqrt(rhly[0, 0, 0])) * (1.0 - exp(-val)), 0.0), 1.0)
 
@@ -230,14 +244,12 @@ def init(
         epsi = tem1 / elocp
         beta = (1.0 + gamma * epsi * (1.0 + fv)) / (1.0 + gamma)
         chx = cfh * alp * beta + (1.0 - cfh) * alp
-        cqx = cfh * alp * functions.HVAP * (beta - epsi)
+        cqx = cfh * alp * hvap * (beta - epsi)
         cqx = cqx + (1.0 - cfh) * fv * g
         bf = chx * ((slx[0, 0, 1] - slx[0, 0, 0]) * rdzt[0, 0, 0]) + cqx * (
             (qtx[0, 0, 1] - qtx[0, 0, 0]) * rdzt[0, 0, 0]
         )
-        radx = (zi[0, 0, 1] - zi[0, 0, 0]) * (
-            swh[0, 0, 0] * xmu[0, 0] + hlw[0, 0, 0]
-        )
+        radx = (zi[0, 0, 1] - zi[0, 0, 0]) * (swh[0, 0, 0] * xmu[0, 0] + hlw[0, 0, 0])
 
     with computation(FORWARD):
         with interval(0, 1):
@@ -248,14 +260,14 @@ def init(
 
             if pblflg[0, 0]:
                 thermal = thlvx[0, 0, 0]
-                crb = functions.RBCR
+                crb = rbcr
             else:
                 tem1 = 1e-7 * (
                     max(sqrt(u10m[0, 0] ** 2 + v10m[0, 0] ** 2), 1.0)
-                    / (functions.F0 * 0.01 * zorl[0, 0])
+                    / (f0 * 0.01 * zorl[0, 0])
                 )
-                thermal = tsea[0, 0] * (1.0 + fv * max(q1[0, 0, 0][0], functions.QMIN))
-                crb = max(min(0.16 * (tem1 ** (-0.18)), functions.CRBMAX), functions.CRBMIN)
+                thermal = tsea[0, 0] * (1.0 + fv * max(q1[0, 0, 0][0], qmin))
+                crb = max(min(0.16 * (tem1 ** (-0.18)), crbmax), crbmin)
 
             dtdz1 = dt2 / (zi[0, 0, 1] - zi[0, 0, 0])
             ustar = sqrt(stress[0, 0])
@@ -263,12 +275,14 @@ def init(
     with computation(PARALLEL):
         with interval(0, -2):
             dw2 = (u1[0, 0, 0] - u1[0, 0, 1]) ** 2 + (v1[0, 0, 0] - v1[0, 0, 1]) ** 2
-            shr2 = max(dw2, functions.DW2MIN) * rdzt[0, 0, 0] * rdzt[0, 0, 0]
+            shr2 = max(dw2, dw2min) * rdzt[0, 0, 0] * rdzt[0, 0, 0]
 
     with computation(FORWARD):
-        with interval(0,1):
+        with interval(0, 1):
             rbup = rbsoil[0, 0]
 
+
+# Possible stencil name : mrf_pbl_scheme_part1
 #@gtscript.stencil(backend=backend)
 def mrf_pbl_scheme_part1(
     crb: FloatFieldIJ,
@@ -283,7 +297,7 @@ def mrf_pbl_scheme_part1(
     u1: FloatField,
     v1: FloatField,
     zl: FloatField,
-    g: Float,
+    g: float,
 ):
 
     with computation(FORWARD):
@@ -311,7 +325,9 @@ def mrf_pbl_scheme_part1(
                 kpblx = mask[0, 0, 0]
                 flg = rbup[0, 0] > crb[0, 0]
 
-#@gtscript.stencil(backend=backend,skip_passes=["graph_merge_horizontal_executions"])
+
+# Possible stencil name : mrf_pbl_2_thermal_1
+#@gtscript.stencil(**STENCIL_OPTS)
 def mrf_pbl_2_thermal_1(
     crb: FloatFieldIJ,
     evap: FloatFieldIJ,
@@ -341,7 +357,18 @@ def mrf_pbl_2_thermal_1(
     zi: FloatField,
     zl: FloatField,
     zol: FloatFieldIJ,
-    fv: Float,
+    fv: float,
+    wfac: float,
+    cfac: float,
+    gamcrt: float,
+    sfcfrac: float,
+    vk: float,
+    rimin: float,
+    zolcru: float,
+    zfmin: float,
+    aphi5: float,
+    aphi16: float,
+    h1: float,
 ):
 
     with computation(FORWARD), interval(...):
@@ -352,9 +379,7 @@ def mrf_pbl_2_thermal_1(
                 elif rbup[0, 0] <= crb[0, 0]:
                     rbint = 1.0
                 else:
-                    rbint = (crb[0, 0] - rbdn[0, 0]) / (
-                        rbup[0, 0] - rbdn[0, 0]
-                    )
+                    rbint = (crb[0, 0] - rbdn[0, 0]) / (rbup[0, 0] - rbdn[0, 0])
                 hpblx = zl[0, 0, -1] + rbint * (zl[0, 0, 0] - zl[0, 0, -1])
 
                 if hpblx[0, 0] < zi[0, 0, 0]:
@@ -370,30 +395,28 @@ def mrf_pbl_2_thermal_1(
                 pblflg = 0
 
     with computation(FORWARD), interval(0, 1):
-        zol = max(rbsoil[0, 0] * fm[0, 0] * fm[0, 0] / fh[0, 0], functions.RIMIN)
+        zol = max(rbsoil[0, 0] * fm[0, 0] * fm[0, 0] / fh[0, 0], rimin)
         if sfcflg[0, 0]:
-            zol = min(zol[0, 0], -functions.ZFMIN)
+            zol = min(zol[0, 0], -zfmin)
         else:
-            zol = max(zol[0, 0], functions.ZFMIN)
+            zol = max(zol[0, 0], zfmin)
 
-        zol1 = zol[0, 0] * functions.SFCFRAC * hpbl[0, 0] / zl[0, 0, 0]
+        zol1 = zol[0, 0] * sfcfrac * hpbl[0, 0] / zl[0, 0, 0]
 
         if sfcflg[0, 0]:
-            phih = sqrt(1.0 / (1.0 - functions.APHI16 * zol1))
+            phih = sqrt(1.0 / (1.0 - aphi16 * zol1))
             phim = sqrt(phih[0, 0])
         else:
-            phim = 1.0 + functions.APHI5 * zol1
+            phim = 1.0 + aphi5 * zol1
             phih = phim[0, 0]
 
-        pcnvflg = pblflg[0, 0] and (zol[0, 0] < functions.ZOLCRU)
+        pcnvflg = pblflg[0, 0] and (zol[0, 0] < zolcru)
 
         wst3 = gotvx[0, 0, 0] * sflux[0, 0] * hpbl[0, 0]
         ust3 = ustar[0, 0] ** 3.0
 
         if pblflg[0, 0]:
-            wscale = max(
-                (ust3 + functions.WFAC * functions.VK * wst3 * functions.SFCFRAC) ** functions.H1, ustar[0, 0] / functions.APHI5
-            )
+            wscale = max((ust3 + wfac * vk * wst3 * sfcfrac) ** h1, ustar[0, 0] / aphi5)
 
         flg = 1
 
@@ -401,10 +424,12 @@ def mrf_pbl_2_thermal_1(
             hgamt = heat[0, 0] / wscale
             hgamq = evap[0, 0] / wscale
             vpert = max(hgamt + hgamq * fv * theta[0, 0, 0], 0.0)
-            thermal = thermal[0, 0] + min(functions.CFAC * vpert[0, 0], functions.GAMCRT)
+            thermal = thermal[0, 0] + min(cfac * vpert[0, 0], gamcrt)
             flg = 0
             rbup = rbsoil[0, 0]
 
+
+# Possible stencil name : thermal_2
 #@gtscript.stencil(backend=backend)
 def thermal_2(
     crb: FloatFieldIJ,
@@ -419,12 +444,12 @@ def thermal_2(
     u1: FloatField,
     v1: FloatField,
     zl: FloatField,
-    g: Float,
+    g: float,
 ):
 
     with computation(FORWARD):
         with interval(1, 2):
-            thlvx_0 = thlvx[0,0,-1]
+            thlvx_0 = thlvx[0, 0, -1]
             if flg[0, 0] == 0:
                 rbdn = rbup[0, 0]
                 rbup = (
@@ -446,6 +471,8 @@ def thermal_2(
                 kpbl = mask[0, 0, 0]
                 flg = rbup[0, 0] > crb[0, 0]
 
+
+# Possible stencil name : pbl_height_enhance
 #@gtscript.stencil(backend=backend)
 def pbl_height_enhance(
     crb: FloatFieldIJ,
@@ -461,6 +488,7 @@ def pbl_height_enhance(
     scuflg: BoolFieldIJ,
     zi: FloatField,
     zl: FloatField,
+    zstblmax: float,
 ):
 
     with computation(FORWARD), interval(...):
@@ -484,14 +512,16 @@ def pbl_height_enhance(
     with computation(FORWARD):
         with interval(0, 1):
             flg = scuflg[0, 0]
-            if flg[0, 0] and (zl[0, 0, 0] >= functions.ZSTBLMAX):
+            if flg[0, 0] and (zl[0, 0, 0] >= zstblmax):
                 lcld = mask[0, 0, 0]
                 flg = 0
         with interval(1, -1):
-            if flg[0, 0] and (zl[0, 0, 0] >= functions.ZSTBLMAX):
+            if flg[0, 0] and (zl[0, 0, 0] >= zstblmax):
                 lcld = mask[0, 0, 0]
                 flg = 0
 
+
+# Possible stencil name : stratocumulus
 #@gtscript.stencil(backend=backend)
 def stratocumulus(
     flg: BoolFieldIJ,
@@ -503,7 +533,8 @@ def stratocumulus(
     radx: FloatField,
     qlx: FloatField,
     scuflg: BoolFieldIJ,
-    km1: Int,
+    km1: int,
+    qlcr: float,
 ):
 
     with computation(FORWARD):
@@ -512,20 +543,12 @@ def stratocumulus(
 
     with computation(BACKWARD):
         with interval(-1, None):
-            if (
-                flg[0, 0]
-                and (mask[0, 0, 0] <= lcld[0, 0])
-                and (qlx[0, 0, 0] >= functions.QLCR)
-            ):
+            if flg[0, 0] and (mask[0, 0, 0] <= lcld[0, 0]) and (qlx[0, 0, 0] >= qlcr):
                 kcld = mask[0, 0, 0]
                 flg = 0
 
         with interval(0, -1):
-            if (
-                flg[0, 0]
-                and (mask[0, 0, 0] <= lcld[0, 0])
-                and (qlx[0, 0, 0] >= functions.QLCR)
-            ):
+            if flg[0, 0] and (mask[0, 0, 0] <= lcld[0, 0]) and (qlx[0, 0, 0] >= qlcr):
                 kcld = mask[0, 0, 0]
                 flg = 0
 
@@ -538,7 +561,7 @@ def stratocumulus(
     with computation(BACKWARD):
         with interval(-1, None):
             if flg[0, 0] and (mask[0, 0, 0] <= kcld[0, 0]):
-                if qlx[0, 0, 0] >= functions.QLCR:
+                if qlx[0, 0, 0] >= qlcr:
                     if radx[0, 0, 0] < radmin[0, 0]:
                         radmin = radx[0, 0, 0]
                         krad = mask[0, 0, 0]
@@ -547,7 +570,7 @@ def stratocumulus(
 
         with interval(0, -1):
             if flg[0, 0] and (mask[0, 0, 0] <= kcld[0, 0]):
-                if qlx[0, 0, 0] >= functions.QLCR:
+                if qlx[0, 0, 0] >= qlcr:
                     if radx[0, 0, 0] < radmin[0, 0]:
                         radmin = radx[0, 0, 0]
                         krad = mask[0, 0, 0]
@@ -559,6 +582,7 @@ def stratocumulus(
             scuflg = 0
         if scuflg[0, 0] and radmin[0, 0] >= 0.0:
             scuflg = 0
+
 
 #@gtscript.stencil(backend=backend)
 def mass_flux_comp(
@@ -582,7 +606,7 @@ def mass_flux_comp(
             tcko = t1[0, 0, 0]
             ucko = u1[0, 0, 0]
             vcko = v1[0, 0, 0]
-            for ii in range(8): 
+            for ii in range(8):
                 qcko[0, 0, 0][ii] = q1[0, 0, 0][ii]
         if scuflg[0, 0]:
             tcdo = t1[0, 0, 0]
@@ -591,7 +615,9 @@ def mass_flux_comp(
             for i2 in range(8):
                 qcdo[0, 0, 0][i2] = q1[0, 0, 0][i2]
 
-#@gtscript.stencil(backend=backend,skip_passes=["graph_merge_horizontal_executions"])
+
+# Possible stencil name : prandtl_comp_exchg_coeff
+#@gtscript.stencil(**STENCIL_OPTS)
 def prandtl_comp_exchg_coeff(
     chz: FloatField,
     ckz: FloatField,
@@ -603,10 +629,17 @@ def prandtl_comp_exchg_coeff(
     phim: FloatFieldIJ,
     prn: FloatField,
     zi: FloatField,
+    sfcfrac: float,
+    prmin: float,
+    prmax: float,
+    ck0: float,
+    ck1: float,
+    ch0: float,
+    ch1: float,
 ):
 
     with computation(PARALLEL), interval(...):
-        tem1 = max(zi[0, 0, 1] - functions.SFCFRAC * hpbl[0, 0], 0.0)
+        tem1 = max(zi[0, 0, 1] - sfcfrac * hpbl[0, 0], 0.0)
         ptem = -3.0 * (tem1 ** 2.0) / (hpbl[0, 0] ** 2.0)
         if mask[0, 0, 0] < kpbl[0, 0]:
             if pcnvflg[0, 0]:
@@ -615,10 +648,12 @@ def prandtl_comp_exchg_coeff(
                 prn = phih[0, 0] / phim[0, 0]
 
         if mask[0, 0, 0] < kpbl[0, 0]:
-            prn = max(min(prn[0, 0, 0], functions.PRMAX), functions.PRMIN)
-            ckz = max(min(functions.CK1 + (functions.CK0 - functions.CK1) * exp(ptem), functions.CK0), functions.CK1)
-            chz = max(min(functions.CH1 + (functions.CH0 - functions.CH1) * exp(ptem), functions.CH0), functions.CH1)
+            prn = max(min(prn[0, 0, 0], prmax), prmin)
+            ckz = max(min(ck1 + (ck0 - ck1) * exp(ptem), ck0), ck1)
+            chz = max(min(ch1 + (ch0 - ch1) * exp(ptem), ch0), ch1)
 
+
+# Possible stencil name : compute_eddy_buoy_shear
 #@gtscript.stencil(backend=backend)
 def compute_eddy_buoy_shear(
     bf: FloatField,
@@ -665,16 +700,27 @@ def compute_eddy_buoy_shear(
     zi: FloatField,
     zl: FloatField,
     zol: FloatFieldIJ,
+    vk: float,
+    rimin: float,
+    tdzmin: float,
+    prmax: float,
+    prtke: float,
+    prscu: float,
+    dkmax: float,
+    ck1: float,
+    ch1: float,
+    ce0: float,
+    rchck: float,
 ):
 
     with computation(FORWARD):
         with interval(0, -1):
             if zol[0, 0] < 0.0:
-                zk = functions.VK * zl[0, 0, 0] * (1.0 - 100.0 * zol[0, 0]) ** 0.2
+                zk = vk * zl[0, 0, 0] * (1.0 - 100.0 * zol[0, 0]) ** 0.2
             elif zol[0, 0] >= 1.0:
-                zk = functions.VK * zl[0, 0, 0] / 3.7
+                zk = vk * zl[0, 0, 0] / 3.7
             else:
-                zk = functions.VK * zl[0, 0, 0] / (1.0 + 2.7 * zol[0, 0])
+                zk = vk * zl[0, 0, 0] / (1.0 + 2.7 * zol[0, 0])
 
             elm = zk * rlam[0, 0, 0] / (rlam[0, 0, 0] + zk)
             dz = zi[0, 0, 1] - zi[0, 0, 0]
@@ -692,7 +738,7 @@ def compute_eddy_buoy_shear(
             * (elm[0, 0, 0] + elm[0, 0, 1])
             * sqrt(0.5 * (tke[0, 0, 0] + tke[0, 0, 1]))
         )
-        ri = max(bf[0, 0, 0] / shr2[0, 0, 0], functions.RIMIN)
+        ri = max(bf[0, 0, 0] / shr2[0, 0, 0], rimin)
 
         if mask[0, 0, 0] < kpbl[0, 0]:
             if pblflg[0, 0]:
@@ -703,35 +749,35 @@ def compute_eddy_buoy_shear(
                 dku = dkt[0, 0, 0] * prn[0, 0, 0]
         else:
             if ri < 0.0:
-                dku = functions.CK1 * tem
-                dkt = functions.RCHCK * dku[0, 0, 0]
+                dku = ck1 * tem
+                dkt = rchck * dku[0, 0, 0]
             else:
-                dkt = functions.CH1 * tem
-                dku = dkt[0, 0, 0] * min(1.0 + 2.1 * ri, functions.PRMAX)
+                dkt = ch1 * tem
+                dku = dkt[0, 0, 0] * min(1.0 + 2.1 * ri, prmax)
 
         tem = ckz[0, 0, 0] * tem
         dku_tmp = max(dku[0, 0, 0], tem)
-        dkt_tmp = max(dkt[0, 0, 0], tem / functions.PRSCU)
+        dkt_tmp = max(dkt[0, 0, 0], tem / prscu)
 
         if scuflg[0, 0]:
             if mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
                 dku = dku_tmp
                 dkt = dkt_tmp
 
-        dkq = functions.PRTKE * dkt[0, 0, 0]
+        dkq = prtke * dkt[0, 0, 0]
 
-        dkt = max(min(dkt[0, 0, 0], functions.DKMAX), xkzo[0, 0, 0])
+        dkt = max(min(dkt[0, 0, 0], dkmax), xkzo[0, 0, 0])
 
-        dkq = max(min(dkq[0, 0, 0], functions.DKMAX), xkzo[0, 0, 0])
+        dkq = max(min(dkq[0, 0, 0], dkmax), xkzo[0, 0, 0])
 
-        dku = max(min(dku[0, 0, 0], functions.DKMAX), xkzmo[0, 0, 0])
+        dku = max(min(dku[0, 0, 0], dkmax), xkzmo[0, 0, 0])
 
     with computation(PARALLEL), interval(...):
         if mask[0, 0, 0] == krad[0, 0]:
             if scuflg[0, 0]:
                 tem1 = bf[0, 0, 0] / gotvx[0, 0, 0]
-                if tem1 < functions.TDZMIN:
-                    tem1 = functions.TDZMIN
+                if tem1 < tdzmin:
+                    tem1 = tdzmin
                 ptem = radj[0, 0] / tem1
                 dkt = dkt[0, 0, 0] + ptem
                 dku = dku[0, 0, 0] + ptem
@@ -768,12 +814,7 @@ def compute_eddy_buoy_shear(
                 dku[0, 0, 0] * shr2[0, 0, 0]
                 + ptem1
                 + ptem2
-                + (
-                    stress[0, 0]
-                    * ustar[0, 0]
-                    * phim[0, 0]
-                    / (functions.VK * zl[0, 0, 0])
-                )
+                + (stress[0, 0] * ustar[0, 0] * phim[0, 0] / (vk * zl[0, 0, 0]))
             )
 
             prod = buop + shrp
@@ -830,25 +871,35 @@ def compute_eddy_buoy_shear(
             )
 
             shrp = (
-                0.5
-                * ((dku[0, 0, -1] * shr2[0, 0, -1]) + (dku[0, 0, 0] * shr2[0, 0, 0]))
-                + ptem1_1
-                + ptem2_1
-            ) + ptem1_2 + ptem2_2
+                (
+                    0.5
+                    * (
+                        (dku[0, 0, -1] * shr2[0, 0, -1])
+                        + (dku[0, 0, 0] * shr2[0, 0, 0])
+                    )
+                    + ptem1_1
+                    + ptem2_1
+                )
+                + ptem1_2
+                + ptem2_2
+            )
 
             prod = buop + shrp
 
     with computation(PARALLEL), interval(0, -1):
-        rle = functions.CE0 / ele[0, 0, 0]
+        rle = ce0 / ele[0, 0, 0]
 
+
+# Possible stencil name : predict_tke
 #@gtscript.stencil(backend=backend)
 def predict_tke(
-    diss: FloatField, 
-    prod: FloatField, 
-    rle: FloatField, 
-    tke: FloatField, 
-    dtn: Float, 
-    kk : Int,
+    diss: FloatField,
+    prod: FloatField,
+    rle: FloatField,
+    tke: FloatField,
+    dtn: float,
+    kk: int,
+    tkmin: float,
 ):
     with computation(PARALLEL), interval(...):
         for n in range(kk):
@@ -859,8 +910,10 @@ def predict_tke(
                 ),
                 0.0,
             )
-            tke = max(tke[0, 0, 0] + dtn * (prod[0, 0, 0] - diss[0, 0, 0]), functions.TKMIN)
-    
+            tke = max(tke[0, 0, 0] + dtn * (prod[0, 0, 0] - diss[0, 0, 0]), tkmin)
+
+
+# Possible stencil name : tke_up_down_prop_1
 #@gtscript.stencil(backend=backend)
 def tke_up_down_prop(
     pcnvflg: BoolFieldIJ,
@@ -877,41 +930,44 @@ def tke_up_down_prop(
     krad: IntFieldIJ,
     mrad: IntFieldIJ,
     xlamde: FloatField,
-    kmpbl: Int,
-    kmscu: Int,
+    kmpbl: int,
+    kmscu: int,
 ):
 
     with computation(PARALLEL), interval(...):
         if pcnvflg[0, 0]:
-            qcko[0,0,0][7] = tke[0, 0, 0]
+            qcko[0, 0, 0][7] = tke[0, 0, 0]
         if scuflg[0, 0]:
-            qcdo[0,0,0][7] = tke[0, 0, 0]
+            qcdo[0, 0, 0][7] = tke[0, 0, 0]
 
     with computation(FORWARD), interval(1, None):
-        if mask[0,0,0] < kmpbl:
+        if mask[0, 0, 0] < kmpbl:
             tem = 0.5 * xlamue[0, 0, -1] * (zl[0, 0, 0] - zl[0, 0, -1])
             if pcnvflg[0, 0] and mask[0, 0, 0] <= kpbl[0, 0]:
-                qcko[0,0,0][7] = (
-                    (1.0 - tem) * qcko[0, 0, -1][7] + tem * (tke[0, 0, 0] + tke[0, 0, -1])
+                qcko[0, 0, 0][7] = (
+                    (1.0 - tem) * qcko[0, 0, -1][7]
+                    + tem * (tke[0, 0, 0] + tke[0, 0, -1])
                 ) / (1.0 + tem)
 
     with computation(BACKWARD), interval(...):
-        if mask[0,0,0] < kmscu:
+        if mask[0, 0, 0] < kmscu:
             tem = 0.5 * xlamde[0, 0, 0] * (zl[0, 0, 1] - zl[0, 0, 0])
             if (
                 scuflg[0, 0]
                 and mask[0, 0, 0] < krad[0, 0]
                 and mask[0, 0, 0] >= mrad[0, 0]
             ):
-                qcdo[0,0,0][7] = (
+                qcdo[0, 0, 0][7] = (
                     (1.0 - tem) * qcdo[0, 0, 1][7] + tem * (tke[0, 0, 0] + tke[0, 0, 1])
                 ) / (1.0 + tem)
 
     with computation(PARALLEL), interval(0, 1):
-        if mask[0,0,0] < kmscu:
+        if mask[0, 0, 0] < kmscu:
             ad = 1.0
             f1 = tke[0, 0, 0]
 
+
+# Possible stencil name : tke_tridiag_matrix_ele_comp
 #@gtscript.stencil(backend=backend)
 def tke_tridiag_matrix_ele_comp(
     ad: FloatField,
@@ -935,7 +991,7 @@ def tke_tridiag_matrix_ele_comp(
     tke: FloatField,
     xmf: FloatField,
     xmfd: FloatField,
-    dt2: Float,
+    dt2: float,
 ):
 
     with computation(FORWARD):
@@ -953,9 +1009,7 @@ def tke_tridiag_matrix_ele_comp(
 
             if pcnvflg[0, 0] and mask[0, 0, 0] < kpbl[0, 0]:
                 tem = (
-                    qcko[0, 0, 0][7]
-                    + qcko[0, 0, 1][7]
-                    - (tke[0, 0, 0] + tke[0, 0, 1])
+                    qcko[0, 0, 0][7] + qcko[0, 0, 1][7] - (tke[0, 0, 0] + tke[0, 0, 1])
                 )
                 f1 = f1[0, 0, 0] - tem * dtodsd * 0.5 * tem2 * xmf[0, 0, 0]
                 f1_p1 = tke[0, 0, 1] + tem * dtodsu * 0.5 * tem2 * xmf[0, 0, 0]
@@ -968,9 +1022,7 @@ def tke_tridiag_matrix_ele_comp(
                 and mask[0, 0, 0] < krad[0, 0]
             ):
                 tem = (
-                    qcdo[0, 0, 0][7]
-                    + qcdo[0, 0, 1][7]
-                    - (tke[0, 0, 0] + tke[0, 0, 1])
+                    qcdo[0, 0, 0][7] + qcdo[0, 0, 1][7] - (tke[0, 0, 0] + tke[0, 0, 1])
                 )
                 f1 = f1[0, 0, 0] + tem * dtodsd * 0.5 * tem2 * xmfd[0, 0, 0]
                 f1_p1 = f1_p1 - tem * dtodsu * 0.5 * tem2 * xmfd[0, 0, 0]
@@ -990,9 +1042,7 @@ def tke_tridiag_matrix_ele_comp(
 
             if pcnvflg[0, 0] and mask[0, 0, 0] < kpbl[0, 0]:
                 tem = (
-                    qcko[0, 0, 0][7]
-                    + qcko[0, 0, 1][7]
-                    - (tke[0, 0, 0] + tke[0, 0, 1])
+                    qcko[0, 0, 0][7] + qcko[0, 0, 1][7] - (tke[0, 0, 0] + tke[0, 0, 1])
                 )
                 f1 = f1[0, 0, 0] - tem * dtodsd * 0.5 * dsig * rdz * xmf[0, 0, 0]
                 f1_p1 = tke[0, 0, 1] + tem * dtodsu * 0.5 * dsig * rdz * xmf[0, 0, 0]
@@ -1005,9 +1055,7 @@ def tke_tridiag_matrix_ele_comp(
                 and mask[0, 0, 0] < krad[0, 0]
             ):
                 tem = (
-                    qcdo[0, 0, 0][7]
-                    + qcdo[0, 0, 1][7]
-                    - (tke[0, 0, 0] + tke[0, 0, 1])
+                    qcdo[0, 0, 0][7] + qcdo[0, 0, 1][7] - (tke[0, 0, 0] + tke[0, 0, 1])
                 )
                 f1 = f1[0, 0, 0] + tem * dtodsd * 0.5 * dsig * rdz * xmfd[0, 0, 0]
                 f1_p1 = f1_p1 - tem * dtodsu * 0.5 * dsig * rdz * xmfd[0, 0, 0]
@@ -1016,33 +1064,38 @@ def tke_tridiag_matrix_ele_comp(
             ad = ad_p1[0, 0]
             f1 = f1_p1[0, 0]
 
+
 #@gtscript.stencil(backend=backend)
 def part12a(
-    rtg : functions.FloatField_8,
-    f1 : FloatField,
-    q1 : functions.FloatField_8,
-    ad : FloatField,
-    f2 : functions.FloatField_8,
-    dtdz1 : FloatField,
-    evap : FloatFieldIJ,
-    heat : FloatFieldIJ,
-    t1 : FloatField,
-    rdt : Float,
-    ntrac1 : Int,
-    ntke : Int,
+    rtg: functions.FloatField_8,
+    f1: FloatField,
+    q1: functions.FloatField_8,
+    ad: FloatField,
+    f2: functions.FloatField_8,
+    dtdz1: FloatField,
+    evap: FloatFieldIJ,
+    heat: FloatFieldIJ,
+    t1: FloatField,
+    rdt: float,
+    ntrac1: int,
+    ntke: int,
 ):
     with computation(PARALLEL), interval(...):
-        rtg[0,0,0][ntke-1] = (rtg[0,0,0][ntke-1] + (f1[0,0,0] - q1[0,0,0][ntke-1]) * rdt)
+        rtg[0, 0, 0][ntke - 1] = (
+            rtg[0, 0, 0][ntke - 1] + (f1[0, 0, 0] - q1[0, 0, 0][ntke - 1]) * rdt
+        )
 
-    with computation(FORWARD), interval(0,1):
+    with computation(FORWARD), interval(0, 1):
         ad = 1.0
-        f1 = t1[0,0,0] + dtdz1[0,0,0] * heat[0,0]
-        f2[0,0,0][0] = q1[0,0,0][0] + dtdz1[0,0,0] * evap[0,0]
-    
-        if ntrac1 >= 2:
-            for kk in range(1,ntrac1):
-                f2[0,0,0][kk] = q1[0,0,0][kk]
+        f1 = t1[0, 0, 0] + dtdz1[0, 0, 0] * heat[0, 0]
+        f2[0, 0, 0][0] = q1[0, 0, 0][0] + dtdz1[0, 0, 0] * evap[0, 0]
 
+        if ntrac1 >= 2:
+            for kk in range(1, ntrac1):
+                f2[0, 0, 0][kk] = q1[0, 0, 0][kk]
+
+
+# Possible stencil name : heat_moist_tridiag_mat_ele_comp
 #@gtscript.stencil(backend=backend)
 def heat_moist_tridiag_mat_ele_comp(
     ad: FloatField,
@@ -1071,8 +1124,8 @@ def heat_moist_tridiag_mat_ele_comp(
     t1: FloatField,
     xmf: FloatField,
     xmfd: FloatField,
-    dt2: Float,
-    gocp: Float,
+    dt2: float,
+    gocp: float,
 ):
 
     with computation(FORWARD):
@@ -1096,8 +1149,12 @@ def heat_moist_tridiag_mat_ele_comp(
                 tem = tcko[0, 0, 0] + tcko[0, 0, 1] - (t1[0, 0, 0] + t1[0, 0, 1])
                 f1 = f1[0, 0, 0] + dtodsd * dsdzt - tem * ptem1
                 f1_p1 = t1[0, 0, 1] - dtodsu * dsdzt + tem * ptem2
-                tem = qcko[0, 0, 0][0] + qcko[0, 0, 1][0] - (q1[0, 0, 0][0] + q1[0, 0, 1][0])
-                f2[0,0,0][0] = f2[0, 0, 0][0] - tem * ptem1
+                tem = (
+                    qcko[0, 0, 0][0]
+                    + qcko[0, 0, 1][0]
+                    - (q1[0, 0, 0][0] + q1[0, 0, 1][0])
+                )
+                f2[0, 0, 0][0] = f2[0, 0, 0][0] - tem * ptem1
                 f2_p1 = q1[0, 0, 1][0] + tem * ptem2
             else:
                 f1 = f1[0, 0, 0] + dtodsd * dsdzt
@@ -1115,12 +1172,16 @@ def heat_moist_tridiag_mat_ele_comp(
                 tem = tcdo[0, 0, 0] + tcdo[0, 0, 1] - (t1[0, 0, 0] + t1[0, 0, 1])
                 f1 = f1[0, 0, 0] + tem * ptem1
                 f1_p1 = f1_p1[0, 0] - tem * ptem2
-                tem = qcdo[0, 0, 0][0] + qcdo[0, 0, 1][0] - (q1[0, 0, 0][0] + q1[0, 0, 1][0])
-                f2[0,0,0][0] = f2[0, 0, 0][0] + tem * ptem1
+                tem = (
+                    qcdo[0, 0, 0][0]
+                    + qcdo[0, 0, 1][0]
+                    - (q1[0, 0, 0][0] + q1[0, 0, 1][0])
+                )
+                f2[0, 0, 0][0] = f2[0, 0, 0][0] + tem * ptem1
                 f2_p1 = f2_p1[0, 0] - tem * ptem2
         with interval(1, -1):
             f1 = f1_p1[0, 0]
-            f2[0,0,0][0] = f2_p1[0, 0]
+            f2[0, 0, 0][0] = f2_p1[0, 0]
             ad = ad_p1[0, 0]
 
             dtodsd = dt2 / del_[0, 0, 0]
@@ -1142,8 +1203,12 @@ def heat_moist_tridiag_mat_ele_comp(
                 tem = tcko[0, 0, 0] + tcko[0, 0, 1] - (t1[0, 0, 0] + t1[0, 0, 1])
                 f1 = f1[0, 0, 0] + dtodsd * dsdzt - tem * ptem1
                 f1_p1 = t1[0, 0, 1] - dtodsu * dsdzt + tem * ptem2
-                tem = qcko[0, 0, 0][0] + qcko[0, 0, 1][0] - (q1[0, 0, 0][0] + q1[0, 0, 1][0])
-                f2[0,0,0][0] = f2[0, 0, 0][0] - tem * ptem1
+                tem = (
+                    qcko[0, 0, 0][0]
+                    + qcko[0, 0, 1][0]
+                    - (q1[0, 0, 0][0] + q1[0, 0, 1][0])
+                )
+                f2[0, 0, 0][0] = f2[0, 0, 0][0] - tem * ptem1
                 f2_p1 = q1[0, 0, 1][0] + tem * ptem2
             else:
                 f1 = f1[0, 0, 0] + dtodsd * dsdzt
@@ -1161,127 +1226,145 @@ def heat_moist_tridiag_mat_ele_comp(
                 tem = tcdo[0, 0, 0] + tcdo[0, 0, 1] - (t1[0, 0, 0] + t1[0, 0, 1])
                 f1 = f1[0, 0, 0] + tem * ptem1
                 f1_p1 = f1_p1[0, 0] - tem * ptem2
-                tem = qcdo[0, 0, 0][0] + qcdo[0, 0, 1][0] - (q1[0, 0, 0][0] + q1[0, 0, 1][0])
-                f2[0,0,0][0] = f2[0, 0, 0][0] + tem * ptem1
+                tem = (
+                    qcdo[0, 0, 0][0]
+                    + qcdo[0, 0, 1][0]
+                    - (q1[0, 0, 0][0] + q1[0, 0, 1][0])
+                )
+                f2[0, 0, 0][0] = f2[0, 0, 0][0] + tem * ptem1
                 f2_p1 = f2_p1[0, 0] - tem * ptem2
         with interval(-1, None):
             f1 = f1_p1[0, 0]
-            f2[0,0,0][0] = f2_p1[0, 0]
+            f2[0, 0, 0][0] = f2_p1[0, 0]
             ad = ad_p1[0, 0]
+
 
 #@gtscript.stencil(backend=backend)
 def part13a(
-    pcnvflg : BoolFieldIJ,
-    mask : IntField,
-    kpbl : IntFieldIJ,
-    del_ : FloatField,
-    prsl : FloatField,
-    rdzt : FloatField,
-    xmf : FloatField,
-    qcko : functions.FloatField_8,
-    q1 : functions.FloatField_8,
-    f2 : functions.FloatField_8,
-    scuflg : BoolFieldIJ,
-    mrad : IntFieldIJ,
-    krad : IntFieldIJ,
-    xmfd : FloatField,
-    qcdo : functions.FloatField_8,
-    ntrac1 : Int,
-    dt2 : Float,
+    pcnvflg: BoolFieldIJ,
+    mask: IntField,
+    kpbl: IntFieldIJ,
+    del_: FloatField,
+    prsl: FloatField,
+    rdzt: FloatField,
+    xmf: FloatField,
+    qcko: functions.FloatField_8,
+    q1: functions.FloatField_8,
+    f2: functions.FloatField_8,
+    scuflg: BoolFieldIJ,
+    mrad: IntFieldIJ,
+    krad: IntFieldIJ,
+    xmfd: FloatField,
+    qcdo: functions.FloatField_8,
+    ntrac1: int,
+    dt2: float,
 ):
-    with computation(FORWARD), interval(0,-1):
+    with computation(FORWARD), interval(0, -1):
         for kk in range(1, ntrac1):
-            if mask[0,0,0] > 0:
-                if pcnvflg[0, 0] and mask[0,0,-1] < kpbl[0,0]:
-                    dtodsu = dt2 / del_[0,0,0]
-                    dsig = prsl[0,0,-1] - prsl[0,0,0]
-                    tem = dsig * rdzt[0,0,-1]
-                    ptem = 0.5 * tem * xmf[0,0,-1]
+            if mask[0, 0, 0] > 0:
+                if pcnvflg[0, 0] and mask[0, 0, -1] < kpbl[0, 0]:
+                    dtodsu = dt2 / del_[0, 0, 0]
+                    dsig = prsl[0, 0, -1] - prsl[0, 0, 0]
+                    tem = dsig * rdzt[0, 0, -1]
+                    ptem = 0.5 * tem * xmf[0, 0, -1]
                     ptem2 = dtodsu * ptem
-                    tem1 = qcko[0,0,-1][kk] + qcko[0,0,0][kk]
-                    tem2 = q1[0,0,-1][kk] + q1[0,0,0][kk]
-                    f2[0,0,0][kk] = q1[0,0,0][kk] + (tem1 - tem2) * ptem2
+                    tem1 = qcko[0, 0, -1][kk] + qcko[0, 0, 0][kk]
+                    tem2 = q1[0, 0, -1][kk] + q1[0, 0, 0][kk]
+                    f2[0, 0, 0][kk] = q1[0, 0, 0][kk] + (tem1 - tem2) * ptem2
                 else:
-                    f2[0,0,0][kk] = q1[0,0,0][kk]
+                    f2[0, 0, 0][kk] = q1[0, 0, 0][kk]
 
-                if scuflg[0,0] and mask[0,0,-1] >= mrad[0,0] and mask[0,0,-1] < krad[0,0]:
-                    dtodsu = dt2 / del_[0,0,0]
-                    dsig = prsl[0,0,-1] - prsl[0,0,0]
-                    tem = dsig * rdzt[0,0,-1]
-                    ptem = 0.5 * tem * xmfd[0,0,-1]
+                if (
+                    scuflg[0, 0]
+                    and mask[0, 0, -1] >= mrad[0, 0]
+                    and mask[0, 0, -1] < krad[0, 0]
+                ):
+                    dtodsu = dt2 / del_[0, 0, 0]
+                    dsig = prsl[0, 0, -1] - prsl[0, 0, 0]
+                    tem = dsig * rdzt[0, 0, -1]
+                    ptem = 0.5 * tem * xmfd[0, 0, -1]
                     ptem2 = dtodsu * ptem
-                    tem1 = qcdo[0,0,-1][kk] + qcdo[0,0,0][kk]
-                    tem2 = q1[0,0,-1][kk] + q1[0,0,0][kk]
-                    f2[0,0,0][kk] = f2[0,0,0][kk] - (tem1 - tem2) * ptem2
+                    tem1 = qcdo[0, 0, -1][kk] + qcdo[0, 0, 0][kk]
+                    tem2 = q1[0, 0, -1][kk] + q1[0, 0, 0][kk]
+                    f2[0, 0, 0][kk] = f2[0, 0, 0][kk] - (tem1 - tem2) * ptem2
 
-
-            if pcnvflg[0,0] and mask[0,0,0] < kpbl[0,0]:
-                dtodsd = dt2 / del_[0,0,0]
-                dtodsu = dt2 / del_[0,0,1]
-                dsig = prsl[0,0,0] - prsl[0,0,1]
-                tem = dsig * rdzt[0,0,0]
-                ptem = 0.5 * tem * xmf[0,0,0]
+            if pcnvflg[0, 0] and mask[0, 0, 0] < kpbl[0, 0]:
+                dtodsd = dt2 / del_[0, 0, 0]
+                dtodsu = dt2 / del_[0, 0, 1]
+                dsig = prsl[0, 0, 0] - prsl[0, 0, 1]
+                tem = dsig * rdzt[0, 0, 0]
+                ptem = 0.5 * tem * xmf[0, 0, 0]
                 ptem1 = dtodsd * ptem
                 ptem2 = dtodsu * ptem
-                tem1 = qcko[0,0,0][kk] + qcko[0,0,1][kk]
-                tem2 = q1[0,0,0][kk] + q1[0,0,1][kk]
-                f2[0,0,0][kk] = f2[0,0,0][kk] - (tem1 - tem2) * ptem1
+                tem1 = qcko[0, 0, 0][kk] + qcko[0, 0, 1][kk]
+                tem2 = q1[0, 0, 0][kk] + q1[0, 0, 1][kk]
+                f2[0, 0, 0][kk] = f2[0, 0, 0][kk] - (tem1 - tem2) * ptem1
 
-            
-            if scuflg[0,0] and mask[0,0,0] >= mrad[0,0] and mask[0,0,0] < krad[0,0]:
-                dtodsd = dt2 / del_[0,0,0]
-                dtodsu = dt2 / del_[0,0,1]
-                dsig = prsl[0,0,0] - prsl[0,0,1]
-                tem = dsig * rdzt[0,0,0]
-                ptem = 0.5 * tem * xmfd[0,0,0]
+            if (
+                scuflg[0, 0]
+                and mask[0, 0, 0] >= mrad[0, 0]
+                and mask[0, 0, 0] < krad[0, 0]
+            ):
+                dtodsd = dt2 / del_[0, 0, 0]
+                dtodsu = dt2 / del_[0, 0, 1]
+                dsig = prsl[0, 0, 0] - prsl[0, 0, 1]
+                tem = dsig * rdzt[0, 0, 0]
+                ptem = 0.5 * tem * xmfd[0, 0, 0]
                 ptem1 = dtodsd * ptem
                 ptem2 = dtodsu * ptem
-                tem1 = qcdo[0,0,0][kk] + qcdo[0,0,1][kk]
-                tem2 = q1[0,0,0][kk] + q1[0,0,1][kk]
-                f2[0,0,0][kk] = f2[0,0,0][kk] + (tem1 - tem2) * ptem1
-    
-    with computation(FORWARD), interval(-1,None):
+                tem1 = qcdo[0, 0, 0][kk] + qcdo[0, 0, 1][kk]
+                tem2 = q1[0, 0, 0][kk] + q1[0, 0, 1][kk]
+                f2[0, 0, 0][kk] = f2[0, 0, 0][kk] + (tem1 - tem2) * ptem1
+
+    with computation(FORWARD), interval(-1, None):
         for kk2 in range(1, ntrac1):
-            if pcnvflg[0, 0] and mask[0,0,-1] < kpbl[0,0]:
-                dtodsu = dt2 / del_[0,0,0]
-                dsig = prsl[0,0,-1] - prsl[0,0,0]
-                tem = dsig * rdzt[0,0,-1]
-                ptem = 0.5 * tem * xmf[0,0,-1]
+            if pcnvflg[0, 0] and mask[0, 0, -1] < kpbl[0, 0]:
+                dtodsu = dt2 / del_[0, 0, 0]
+                dsig = prsl[0, 0, -1] - prsl[0, 0, 0]
+                tem = dsig * rdzt[0, 0, -1]
+                ptem = 0.5 * tem * xmf[0, 0, -1]
                 ptem2 = dtodsu * ptem
-                tem1 = qcko[0,0,-1][kk2] + qcko[0,0,0][kk2]
-                tem2 = q1[0,0,-1][kk2] + q1[0,0,0][kk2]
-                f2[0,0,0][kk2] = q1[0,0,0][kk2] + (tem1 - tem2) * ptem2
+                tem1 = qcko[0, 0, -1][kk2] + qcko[0, 0, 0][kk2]
+                tem2 = q1[0, 0, -1][kk2] + q1[0, 0, 0][kk2]
+                f2[0, 0, 0][kk2] = q1[0, 0, 0][kk2] + (tem1 - tem2) * ptem2
             else:
-                f2[0,0,0][kk2] = q1[0,0,0][kk2]
+                f2[0, 0, 0][kk2] = q1[0, 0, 0][kk2]
+
 
 #@gtscript.stencil(backend=backend)
 def part13b(
-    f1 : FloatField,
-    t1 : FloatField,
-    f2 : functions.FloatField_8,
-    q1 : functions.FloatField_8,
-    tdt : FloatField,
-    rtg : functions.FloatField_8,
-    dtsfc : FloatFieldIJ,
-    del_ : FloatField,
-    dqsfc : FloatFieldIJ,
-    conq : Float,
-    cont : Float,
-    rdt : Float,
-    ntrac1 : Int,
+    f1: FloatField,
+    t1: FloatField,
+    f2: functions.FloatField_8,
+    q1: functions.FloatField_8,
+    tdt: FloatField,
+    rtg: functions.FloatField_8,
+    dtsfc: FloatFieldIJ,
+    del_: FloatField,
+    dqsfc: FloatFieldIJ,
+    conq: float,
+    cont: float,
+    rdt: float,
+    ntrac1: int,
 ):
     with computation(PARALLEL), interval(...):
-        tdt = tdt[0,0,0] + (f1[0,0,0] - t1[0,0,0]) * rdt
-        rtg[0,0,0][0] = rtg[0,0,0][0] + (f2[0,0,0][0] - q1[0,0,0][0]) * rdt
+        tdt = tdt[0, 0, 0] + (f1[0, 0, 0] - t1[0, 0, 0]) * rdt
+        rtg[0, 0, 0][0] = rtg[0, 0, 0][0] + (f2[0, 0, 0][0] - q1[0, 0, 0][0]) * rdt
 
         if ntrac1 >= 2:
             for kk in range(1, ntrac1):
-                rtg[0,0,0][kk] = rtg[0,0,0][kk] + ((f2[0,0,0][kk] - q1[0,0,0][kk]) * rdt)
+                rtg[0, 0, 0][kk] = rtg[0, 0, 0][kk] + (
+                    (f2[0, 0, 0][kk] - q1[0, 0, 0][kk]) * rdt
+                )
 
     with computation(FORWARD), interval(...):
-        dtsfc = dtsfc[0,0] + cont * del_[0,0,0] * ((f1[0,0,0] - t1[0,0,0]) * rdt)
-        dqsfc = dqsfc[0,0] + conq * del_[0,0,0] * ((f2[0,0,0][0] - q1[0,0,0][0]) * rdt)
+        dtsfc = dtsfc[0, 0] + cont * del_[0, 0, 0] * ((f1[0, 0, 0] - t1[0, 0, 0]) * rdt)
+        dqsfc = dqsfc[0, 0] + conq * del_[0, 0, 0] * (
+            (f2[0, 0, 0][0] - q1[0, 0, 0][0]) * rdt
+        )
 
+
+# Possible stencil name : moment_tridiag_mat_ele_comp
 #@gtscript.stencil(backend=backend)
 def moment_tridiag_mat_ele_comp(
     ad: FloatField,
@@ -1316,17 +1399,19 @@ def moment_tridiag_mat_ele_comp(
     xmf: FloatField,
     xmfd: FloatField,
     dspheat: bool,
-    dt2: Float,
+    dt2: float,
+    dspfac: float,
+    cp: float,
 ):
 
     with computation(PARALLEL), interval(0, -1):
-            if dspheat:
-                tdt = tdt[0, 0, 0] + functions.DSPFAC * (diss[0, 0, 0] / functions.CP)
+        if dspheat:
+            tdt = tdt[0, 0, 0] + dspfac * (diss[0, 0, 0] / cp)
 
     with computation(PARALLEL), interval(0, 1):
-            ad = 1.0 + dtdz1[0, 0, 0] * stress[0, 0] / spd1[0, 0]
-            f1 = u1[0, 0, 0]
-            f2[0,0,0][0] = v1[0, 0, 0]
+        ad = 1.0 + dtdz1[0, 0, 0] * stress[0, 0] / spd1[0, 0]
+        f1 = u1[0, 0, 0]
+        f2[0, 0, 0][0] = v1[0, 0, 0]
 
     with computation(FORWARD):
         with interval(0, 1):
@@ -1364,13 +1449,13 @@ def moment_tridiag_mat_ele_comp(
                 ptem2 = dtodsu * ptem
                 tem = ucdo[0, 0, 0] + ucdo[0, 0, 1] - (u1[0, 0, 0] + u1[0, 0, 1])
                 f1 = f1[0, 0, 0] + tem * ptem1
-                f1_p1 = f1_p1[0, 0]- tem * ptem2
+                f1_p1 = f1_p1[0, 0] - tem * ptem2
                 tem = vcdo[0, 0, 0] + vcdo[0, 0, 1] - (v1[0, 0, 0] + v1[0, 0, 1])
                 f2[0, 0, 0][0] = f2[0, 0, 0][0] + tem * ptem1
                 f2_p1 = f2_p1[0, 0] - tem * ptem2
         with interval(1, -1):
             f1 = f1_p1[0, 0]
-            f2[0,0,0][0] = f2_p1[0, 0]
+            f2[0, 0, 0][0] = f2_p1[0, 0]
             ad = ad_p1[0, 0]
 
             dtodsd = dt2 / del_[0, 0, 0]
@@ -1417,6 +1502,8 @@ def moment_tridiag_mat_ele_comp(
             f2[0, 0, 0][0] = f2_p1[0, 0]
             ad = ad_p1[0, 0]
 
+
+# Possible stencil name : moment_recover
 #@gtscript.stencil(backend=backend)
 def moment_recover(
     del_: FloatField,
@@ -1433,12 +1520,12 @@ def moment_recover(
     mask: IntField,
     u1: FloatField,
     v1: FloatField,
-    conw: Float,
-    rdt: Float,
+    conw: float,
+    rdt: float,
 ):
 
     with computation(FORWARD), interval(...):
-        if mask[0,0,0] < 1:
+        if mask[0, 0, 0] < 1:
             hpbl = hpblx[0, 0]
             kpbl = kpblx[0, 0]
         utend = (f1[0, 0, 0] - u1[0, 0, 0]) * rdt
@@ -1447,6 +1534,7 @@ def moment_recover(
         dv = dv[0, 0, 0] + vtend
         dusfc = dusfc[0, 0] + conw * del_[0, 0, 0] * utend
         dvsfc = dvsfc[0, 0] + conw * del_[0, 0, 0] * vtend
+
 
 def mfpblt(
     im,
@@ -1540,7 +1628,7 @@ def mfpblt(
         hpblx=hpblx,
         xlamavg=xlamavg,
         sumx=sumx,
-        ntcw=ntcw-1,
+        ntcw=ntcw - 1,
     )
 
     mfpblt_s1(
@@ -1574,6 +1662,7 @@ def mfpblt(
         xlamuem=xlamuem,
         zl=zl,
         zm=zm,
+        qmin=qmin,
         domain=(im, 1, kmpbl),
     )
 
@@ -1627,46 +1716,50 @@ def mfpblt(
         wu2=wu2,
         zl=zl,
         zm=zm,
+        qmin=qmin,
         domain=(im, 1, kmpbl),
     )
 
     mfpblt_s3(
-        cnvflg = cnvflg,
-        kpbl = kpbl,
-        mask = mask,
-        xlamue = xlamue,
-        qcko = qcko,
-        q1_gt = q1_gt,
-        zl = zl,
-        ntcw = ntcw,
-        ntrac1 = ntrac1,
-        domain=(im, 1, kmpbl)
+        cnvflg=cnvflg,
+        kpbl=kpbl,
+        mask=mask,
+        xlamue=xlamue,
+        qcko=qcko,
+        q1_gt=q1_gt,
+        zl=zl,
+        ntcw=ntcw,
+        ntrac1=ntrac1,
+        domain=(im, 1, kmpbl),
     )
 
     return kpbl, hpbl, buo, xmf, tcko, qcko, ucko, vcko, xlamue
 
-#@gtscript.stencil(backend=backend,skip_passes=["graph_merge_horizontal_executions","GreedyMerging"])
+
+#@gtscript.stencil(
+#     **STENCIL_OPTS_2
+# )
 def mfpblt_s3(
-    cnvflg : BoolFieldIJ,
-    kpbl : IntFieldIJ,
-    mask : IntField,
-    xlamue : FloatField,
-    qcko : functions.FloatField_8,
-    q1_gt : functions.FloatField_8,
-    zl : FloatField,
-    ntcw  : Int,
-    ntrac1 : Int,
+    cnvflg: BoolFieldIJ,
+    kpbl: IntFieldIJ,
+    mask: IntField,
+    xlamue: FloatField,
+    qcko: functions.FloatField_8,
+    q1_gt: functions.FloatField_8,
+    zl: FloatField,
+    ntcw: int,
+    ntrac1: int,
 ):
-    with computation(FORWARD), interval(1,None):
+    with computation(FORWARD), interval(1, None):
         if ntcw > 2:
             for n in range(1, ntcw):
                 if cnvflg[0, 0] and mask[0, 0, 0] <= kpbl[0, 0]:
                     dz = zl[0, 0, 0] - zl[0, 0, -1]
                     tem = 0.5 * xlamue[0, 0, -1] * dz
                     factor = 1.0 + tem
-                    qcko[0,0,0][n] = (
-                        (1.0 - tem) * qcko[0,0,-1][n]
-                        + tem * (q1_gt[0,0,0][n] + q1_gt[0,0,-1][n])
+                    qcko[0, 0, 0][n] = (
+                        (1.0 - tem) * qcko[0, 0, -1][n]
+                        + tem * (q1_gt[0, 0, 0][n] + q1_gt[0, 0, -1][n])
                     ) / factor
 
         ndc = ntrac1 - ntcw
@@ -1676,10 +1769,11 @@ def mfpblt_s3(
                     dz = zl[0, 0, 0] - zl[0, 0, -1]
                     tem = 0.5 * xlamue[0, 0, -1] * dz
                     factor = 1.0 + tem
-                    qcko[0,0,0][n2] = (
-                        (1.0 - tem) * qcko[0,0,-1][n2]
-                        + tem * (q1_gt[0,0,0][n2] + q1_gt[0,0,-1][n2])
-                     ) / factor
+                    qcko[0, 0, 0][n2] = (
+                        (1.0 - tem) * qcko[0, 0, -1][n2]
+                        + tem * (q1_gt[0, 0, 0][n2] + q1_gt[0, 0, -1][n2])
+                    ) / factor
+
 
 #@gtscript.stencil(backend=backend)
 def mfpblt_s0(
@@ -1695,16 +1789,16 @@ def mfpblt_s0(
     thvx: FloatField,
     vpert: FloatFieldIJ,
     wu2: FloatField,
-    kpblx : IntFieldIJ,
-    kpbly : IntFieldIJ,
-    rbup : FloatFieldIJ,
-    rbdn : FloatFieldIJ,
-    hpblx : FloatFieldIJ,
-    xlamavg : FloatFieldIJ,
-    sumx : FloatFieldIJ,
-    alp: Float,
-    g: Float,
-    ntcw: Int,
+    kpblx: IntFieldIJ,
+    kpbly: IntFieldIJ,
+    rbup: FloatFieldIJ,
+    rbdn: FloatFieldIJ,
+    hpblx: FloatFieldIJ,
+    xlamavg: FloatFieldIJ,
+    sumx: FloatFieldIJ,
+    alp: float,
+    g: float,
+    ntcw: int,
 ):
 
     with computation(PARALLEL), interval(0, -1):
@@ -1726,6 +1820,7 @@ def mfpblt_s0(
             thlu = thlx[0, 0, 0] + ptem
             qtu = qtx[0, 0, 0]
             buo = g * ptem / thvx[0, 0, 0]
+
 
 #@gtscript.stencil(backend=backend)
 def mfpblt_s1(
@@ -1751,14 +1846,15 @@ def mfpblt_s1(
     xlamuem: FloatField,
     zl: FloatField,
     zm: FloatField,
-    ce0: Float,
-    cm: Float,
-    el2orc: Float,
-    elocp: Float,
-    eps: Float,
-    epsm1: Float,
-    fv: Float,
-    g: Float,
+    ce0: float,
+    cm: float,
+    el2orc: float,
+    elocp: float,
+    eps: float,
+    epsm1: float,
+    fv: float,
+    g: float,
+    qmin: float,
 ):
     with computation(PARALLEL), interval(...):
         if cnvflg[0, 0]:
@@ -1787,7 +1883,7 @@ def mfpblt_s1(
 
                 tlu = thlu[0, 0, 0] / pix[0, 0, 0]
                 es = 0.01 * functions.fpvs(tlu)
-                qs = max(functions.QMIN, eps * es / (plyr[0, 0, 0] + epsm1 * es))
+                qs = max(qmin, eps * es / (plyr[0, 0, 0] + epsm1 * es))
                 dq = qtu[0, 0, 0] - qs
 
                 if dq > 0.0:
@@ -1888,15 +1984,16 @@ def mfpblt_s2(
     wu2: FloatField,
     zl: FloatField,
     zm: FloatField,
-    a1: Float,
-    dt2: Float,
-    ce0: Float,
-    cm: Float,
-    el2orc: Float,
-    elocp: Float,
-    eps: Float,
-    epsm1: Float,
-    pgcon: Float,
+    a1: float,
+    dt2: float,
+    ce0: float,
+    cm: float,
+    el2orc: float,
+    elocp: float,
+    eps: float,
+    epsm1: float,
+    pgcon: float,
+    qmin: float,
 ):
 
     with computation(FORWARD):
@@ -1945,14 +2042,11 @@ def mfpblt_s2(
             if cnvflg[0, 0]:
                 tem = 0.2 / xlamavg[0, 0]
                 sigma = min(
-                    max((3.14 * tem * tem) / (gdx[0, 0] * gdx[0, 0]), 0.001),
-                    0.999,
+                    max((3.14 * tem * tem) / (gdx[0, 0] * gdx[0, 0]), 0.001), 0.999,
                 )
 
                 if sigma > a1:
-                    scaldfunc = max(
-                        min((1.0 - sigma) * (1.0 - sigma), 1.0), 0.0
-                    )
+                    scaldfunc = max(min((1.0 - sigma) * (1.0 - sigma), 1.0), 0.0)
                 else:
                     scaldfunc = 1.0
 
@@ -1981,19 +2075,19 @@ def mfpblt_s2(
 
             tlu = thlu[0, 0, 0] / pix[0, 0, 0]
             es = 0.01 * functions.fpvs(tlu)
-            qs = max(functions.QMIN, eps * es / (plyr[0, 0, 0] + epsm1 * es))
+            qs = max(qmin, eps * es / (plyr[0, 0, 0] + epsm1 * es))
             dq = qtu[0, 0, 0] - qs
             qlu = dq / (1.0 + (el2orc * qs / (tlu ** 2)))
 
             if cnvflg[0, 0] and (mask[0, 0, 0] <= kpbl[0, 0]):
                 if dq > 0.0:
                     qtu = qs + qlu
-                    qcko[0,0,0][0] = qs
-                    qcko[0,0,0][1] = qlu
+                    qcko[0, 0, 0][0] = qs
+                    qcko[0, 0, 0][1] = qlu
                     tcko = tlu + elocp * qlu
                 else:
-                    qcko[0,0,0][0] = qtu[0, 0, 0]
-                    qcko[0,0,0][1] = 0.0
+                    qcko[0, 0, 0][0] = qtu[0, 0, 0]
+                    qcko[0, 0, 0][1] = 0.0
                     qcko_track = 1
                     tcko = tlu
 
@@ -2153,7 +2247,7 @@ def mfscu(
         return
 
     for i in range(im):
-        zm_mrad[i,0] = zm[i, 0, mrad[i,0]-1]
+        zm_mrad[i, 0] = zm[i, 0, mrad[i, 0] - 1]
 
     mfscu_s2(
         zl=zl,
@@ -2168,7 +2262,7 @@ def mfscu(
         cnvflg=cnvflg,
         ce0=ce0,
         cm=cm,
-        domain=(im,1,kmscu),
+        domain=(im, 1, kmscu),
     )
 
     mfscu_s3(
@@ -2191,6 +2285,7 @@ def mfscu(
         qtx=qtx,
         xlamde=xlamde,
         zl=zl,
+        qmin=qmin,
         domain=(im, 1, kmscu),
     )
 
@@ -2235,7 +2330,7 @@ def mfscu(
         return
 
     for i in range(im):
-        zm_mrad[i,0] = zm[i, 0, mrad[i,0]-1]
+        zm_mrad[i, 0] = zm[i, 0, mrad[i, 0] - 1]
 
     mfscu_s6(
         zl=zl,
@@ -2252,7 +2347,7 @@ def mfscu(
         mradx=mradx,
         ce0=ce0,
         cm=cm,
-        domain=(im,1,kmscu),
+        domain=(im, 1, kmscu),
     )
 
     mfscu_s7(
@@ -2274,12 +2369,7 @@ def mfscu(
     )
 
     mfscu_s8(
-        cnvflg=cnvflg, 
-        krad=krad,
-        mask=mask,
-        thld=thld,
-        thlx=thlx,
-        domain=(im, 1, km)
+        cnvflg=cnvflg, krad=krad, mask=mask, thld=thld, thlx=thlx, domain=(im, 1, km)
     )
 
     mfscu_s9(
@@ -2308,125 +2398,144 @@ def mfscu(
         xlamdem=xlamdem,
         zl=zl,
         ntcw=ntcw,
+        qmin=qmin,
         domain=(im, 1, kmscu),
     )
 
     mfscu_10(
-        cnvflg = cnvflg,
-        krad = krad,
-        mrad = mrad,
-        mask = mask,
-        zl = zl,
-        xlamde = xlamde,
-        qcdo = qcdo,
-        q1 = q1,
-        ntcw = ntcw,
-        ntrac1 = ntrac1,
-        domain = (im, 1, kmscu),
+        cnvflg=cnvflg,
+        krad=krad,
+        mrad=mrad,
+        mask=mask,
+        zl=zl,
+        xlamde=xlamde,
+        qcdo=qcdo,
+        q1=q1,
+        ntcw=ntcw,
+        ntrac1=ntrac1,
+        domain=(im, 1, kmscu),
     )
 
     return radj, mrad, buo, xmfd, tcdo, qcdo, ucdo, vcdo, xlamde
 
+
 #@gtscript.stencil(backend=backend)
 def mfscu_s2(
-    zl : FloatField,
-    mask : IntField,
-    mrad : IntFieldIJ,
-    krad : IntFieldIJ,
-    zm : FloatField,
-    zm_mrad : FloatFieldIJ,
-    xlamde : FloatField,
-    xlamdem : FloatField,
-    hrad : FloatFieldIJ,
+    zl: FloatField,
+    mask: IntField,
+    mrad: IntFieldIJ,
+    krad: IntFieldIJ,
+    zm: FloatField,
+    zm_mrad: FloatFieldIJ,
+    xlamde: FloatField,
+    xlamdem: FloatField,
+    hrad: FloatFieldIJ,
     cnvflg: BoolFieldIJ,
-    ce0 : Float,
-    cm : Float,
+    ce0: float,
+    cm: float,
 ):
     with computation(PARALLEL), interval(...):
-        if cnvflg[0,0]:
-            dz = zl[0,0,1] - zl[0,0,0]
-            if mask[0,0,0] >= mrad[0,0] and mask[0,0,0] < krad[0,0]:
-                if mrad[0,0] == 0:
+        if cnvflg[0, 0]:
+            dz = zl[0, 0, 1] - zl[0, 0, 0]
+            if mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
+                if mrad[0, 0] == 0:
                     xlamde = ce0 * (
-                        (1.0/(zm[0,0,0] + dz)) + 1.0 / max(hrad[0,0] - zm[0,0,0] + dz, dz)
+                        (1.0 / (zm[0, 0, 0] + dz))
+                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
                     )
                 else:
                     xlamde = ce0 * (
-                        (1.0/(zm[0,0,0] - zm_mrad[0,0] + dz)) + 1.0 / max(hrad[0,0] - zm[0,0,0] + dz, dz)
+                        (1.0 / (zm[0, 0, 0] - zm_mrad[0, 0] + dz))
+                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
                     )
             else:
                 xlamde = ce0 / dz
-            xlamdem = cm * xlamde[0,0,0]
+            xlamdem = cm * xlamde[0, 0, 0]
+
 
 #@gtscript.stencil(backend=backend)
 def mfscu_s6(
-    zl : FloatField,
-    mask : IntField,
-    mrad : IntFieldIJ,
-    krad : IntFieldIJ,
-    zm : FloatField,
-    zm_mrad : FloatFieldIJ,
-    xlamde : FloatField,
-    xlamdem : FloatField,
-    hrad : FloatFieldIJ,
+    zl: FloatField,
+    mask: IntField,
+    mrad: IntFieldIJ,
+    krad: IntFieldIJ,
+    zm: FloatField,
+    zm_mrad: FloatFieldIJ,
+    xlamde: FloatField,
+    xlamdem: FloatField,
+    hrad: FloatFieldIJ,
     cnvflg: BoolFieldIJ,
-    mrady : IntFieldIJ,
-    mradx : IntFieldIJ,
-    ce0 : Float,
-    cm : Float,
+    mrady: IntFieldIJ,
+    mradx: IntFieldIJ,
+    ce0: float,
+    cm: float,
 ):
     with computation(PARALLEL), interval(...):
-        if cnvflg[0,0] and (mrady[0,0] < mradx[0,0]):
-            dz = zl[0,0,1] - zl[0,0,0]
-            if mask[0,0,0] >= mrad[0,0] and mask[0,0,0] < krad[0,0]:
-                if mrad[0,0] == 0:
+        if cnvflg[0, 0] and (mrady[0, 0] < mradx[0, 0]):
+            dz = zl[0, 0, 1] - zl[0, 0, 0]
+            if mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
+                if mrad[0, 0] == 0:
                     xlamde = ce0 * (
-                        (1.0/(zm[0,0,0] + dz)) + 1.0 / max(hrad[0,0] - zm[0,0,0] + dz, dz)
+                        (1.0 / (zm[0, 0, 0] + dz))
+                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
                     )
                 else:
                     xlamde = ce0 * (
-                        (1.0/(zm[0,0,0] - zm_mrad[0,0] + dz)) + 1.0 / max(hrad[0,0] - zm[0,0,0] + dz, dz)
+                        (1.0 / (zm[0, 0, 0] - zm_mrad[0, 0] + dz))
+                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
                     )
             else:
                 xlamde = ce0 / dz
-            xlamdem = cm * xlamde[0,0,0]
+            xlamdem = cm * xlamde[0, 0, 0]
 
-#@gtscript.stencil(backend=backend,skip_passes=["graph_merge_horizontal_executions","GreedyMerging"])
+
+#@gtscript.stencil(
+#     **STENCIL_OPTS_2
+# )
 def mfscu_10(
-    cnvflg : BoolFieldIJ,
-    krad   : IntFieldIJ,
-    mrad   : IntFieldIJ,
-    mask   : IntField,
-    zl     : FloatField,
-    xlamde : FloatField,
-    qcdo   : functions.FloatField_8,
-    q1     : functions.FloatField_8,
-    ntcw   : Int,
-    ntrac1 : Int,
+    cnvflg: BoolFieldIJ,
+    krad: IntFieldIJ,
+    mrad: IntFieldIJ,
+    mask: IntField,
+    zl: FloatField,
+    xlamde: FloatField,
+    qcdo: functions.FloatField_8,
+    q1: functions.FloatField_8,
+    ntcw: int,
+    ntrac1: int,
 ):
     with computation(BACKWARD), interval(...):
         if ntcw > 2:
-            for n in range(1, ntcw-1):
-                if cnvflg[0,0] and mask[0,0,0] < krad[0,0] and mask[0,0,0] >= mrad[0,0]:
-                    dz = zl[0,0,1] - zl[0,0,0]
-                    tem = 0.5 * xlamde[0,0,0] * dz
+            for n in range(1, ntcw - 1):
+                if (
+                    cnvflg[0, 0]
+                    and mask[0, 0, 0] < krad[0, 0]
+                    and mask[0, 0, 0] >= mrad[0, 0]
+                ):
+                    dz = zl[0, 0, 1] - zl[0, 0, 0]
+                    tem = 0.5 * xlamde[0, 0, 0] * dz
                     factor = 1.0 + tem
-                    qcdo[0,0,0][n] = (
-                        (1.0 - tem) * qcdo[0,0,1][n]
-                        + tem * (q1[0,0,0][n] + q1[0,0,1][n])
+                    qcdo[0, 0, 0][n] = (
+                        (1.0 - tem) * qcdo[0, 0, 1][n]
+                        + tem * (q1[0, 0, 0][n] + q1[0, 0, 1][n])
                     ) / factor
-            
+
         ndc = ntrac1 - ntcw
         if ndc > 0:
             for n1 in range(ntcw, ntrac1):
-                if cnvflg[0,0] and mask[0,0,0] < krad[0,0] and mask[0,0,0] >= mrad[0,0]:
-                    dz = zl[0,0,1] - zl[0,0,0]
-                    tem = 0.5 * xlamde[0,0,0] * dz
+                if (
+                    cnvflg[0, 0]
+                    and mask[0, 0, 0] < krad[0, 0]
+                    and mask[0, 0, 0] >= mrad[0, 0]
+                ):
+                    dz = zl[0, 0, 1] - zl[0, 0, 0]
+                    tem = 0.5 * xlamde[0, 0, 0] * dz
                     factor = 1.0 + tem
-                    qcdo[0,0,0][n1] = (
-                        (1.0 - tem) * qcdo[0,0,1][n1]
-                        + tem * (q1[0,0,0][n1] + q1[0,0,1][n1])
+                    qcdo[0, 0, 0][n1] = (
+                        (1.0 - tem) * qcdo[0, 0, 1][n1]
+                        + tem * (q1[0, 0, 0][n1] + q1[0, 0, 1][n1])
                     ) / factor
+
 
 #@gtscript.stencil(backend=backend)
 def mfscu_s0(
@@ -2453,32 +2562,30 @@ def mfscu_s0(
     thvx: FloatField,
     wd2: FloatField,
     zm: FloatField,
-    a1: Float,
-    a11: Float,
-    a2: Float,
-    a22: Float,
-    actei: Float,
-    cldtime: Float,
-    cp: Float,
-    hvap: Float,
-    g: Float,
-    ntcw: Int,
+    a1: float,
+    a11: float,
+    a2: float,
+    a22: float,
+    actei: float,
+    cldtime: float,
+    cp: float,
+    hvap: float,
+    g: float,
+    ntcw: int,
 ):
 
     with computation(PARALLEL), interval(...):
         if cnvflg[0, 0]:
             buo = 0.0
             wd2 = 0.0
-            qtx = q1[0, 0, 0][0] + q1[0, 0, 0][ntcw-1]
+            qtx = q1[0, 0, 0][0] + q1[0, 0, 0][ntcw - 1]
 
     with computation(FORWARD), interval(...):
         if krad[0, 0] == mask[0, 0, 0]:
             if cnvflg[0, 0]:
                 hrad = zm[0, 0, 0]
                 krad1 = mask[0, 0, 0] - 1
-                tem1 = max(
-                    cldtime * radmin[0, 0] / (zm[0, 0, 1] - zm[0, 0, 0]), -3.0
-                )
+                tem1 = max(cldtime * radmin[0, 0] / (zm[0, 0, 1] - zm[0, 0, 0]), -3.0)
                 thld = thlx[0, 0, 0] + tem1
                 qtd = qtx[0, 0, 0]
                 thlvd = thlvx[0, 0, 0] + tem1
@@ -2549,12 +2656,13 @@ def mfscu_s3(
     qtx: FloatField,
     xlamde: FloatField,
     zl: FloatField,
-    el2orc: Float,
-    elocp: Float,
-    eps: Float,
-    epsm1: Float,
-    fv: Float,
-    g: Float,
+    el2orc: float,
+    elocp: float,
+    eps: float,
+    epsm1: float,
+    fv: float,
+    g: float,
+    qmin: float,
 ):
 
     with computation(BACKWARD), interval(...):
@@ -2571,7 +2679,7 @@ def mfscu_s3(
 
         tld = thld[0, 0, 0] / pix[0, 0, 0]
         es = 0.01 * functions.fpvs(tld)
-        qs = max(functions.QMIN, eps * es / (plyr[0, 0, 0] + epsm1 * es))
+        qs = max(qmin, eps * es / (plyr[0, 0, 0] + epsm1 * es))
         dq = qtd[0, 0, 0] - qs
         gamma = el2orc * qs / (tld ** 2)
         qld = dq / (1.0 + gamma)
@@ -2586,7 +2694,7 @@ def mfscu_s3(
             buo = g * (1.0 - thvd / thvx[0, 0, 0])
 
 
-#@gtscript.stencil(backend=backend,skip_passes=["graph_merge_horizontal_executions"])
+#@gtscript.stencil(**STENCIL_OPTS)
 def mfscu_s4(
     buo: FloatField,
     cnvflg: BoolFieldIJ,
@@ -2595,8 +2703,8 @@ def mfscu_s4(
     wd2: FloatField,
     xlamde: FloatField,
     zm: FloatField,
-    bb1: Float,
-    bb2: Float,
+    bb1: float,
+    bb2: float,
 ):
 
     with computation(FORWARD), interval(...):
@@ -2608,7 +2716,7 @@ def mfscu_s4(
                 )
 
 
-#@gtscript.stencil(backend=backend,skip_passes=["graph_merge_horizontal_executions"])
+# @gtscript.stencil(**STENCIL_OPTS)
 def mfscu_s5(
     buo: FloatField,
     cnvflg: BoolFieldIJ,
@@ -2673,26 +2781,18 @@ def mfscu_s7(
     xlamavg: FloatFieldIJ,
     xmfd: FloatField,
     zl: FloatField,
-    dt2: Float,
+    dt2: float,
 ):
     with computation(FORWARD), interval(0, 1):
         xlamavg = 0.0
         sumx = 0.0
 
     with computation(BACKWARD), interval(-1, None):
-        if (
-            cnvflg[0, 0]
-            and mask[0, 0, 0] >= mrad[0, 0]
-            and mask[0, 0, 0] < krad[0, 0]
-        ):
+        if cnvflg[0, 0] and mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
             dz = zl[0, 0, 1] - zl[0, 0, 0]
             xlamavg = xlamavg[0, 0] + xlamde[0, 0, 0] * dz
             sumx = sumx[0, 0] + dz
-        if (
-            cnvflg[0, 0]
-            and mask[0, 0, 0] >= mrad[0, 0]
-            and mask[0, 0, 0] < krad[0, 0]
-        ):
+        if cnvflg[0, 0] and mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
             dz = zl[0, 0, 1] - zl[0, 0, 0]
             xlamavg = xlamavg[0, 0] + xlamde[0, 0, 0] * dz
             sumx = sumx[0, 0] + dz
@@ -2702,11 +2802,7 @@ def mfscu_s7(
             xlamavg = xlamavg[0, 0] / sumx[0, 0]
 
     with computation(BACKWARD), interval(...):
-        if (
-            cnvflg[0, 0]
-            and mask[0, 0, 0] >= mrad[0, 0]
-            and mask[0, 0, 0] < krad[0, 0]
-        ):
+        if cnvflg[0, 0] and mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
             if wd2[0, 0, 0] > 0:
                 xmfd = ra1[0, 0] * sqrt(wd2[0, 0, 0])
             else:
@@ -2722,18 +2818,12 @@ def mfscu_s7(
 
             if cnvflg[0, 0]:
                 if sigma > ra1[0, 0]:
-                    scaldfunc = max(
-                        min((1.0 - sigma) * (1.0 - sigma), 1.0), 0.0
-                    )
+                    scaldfunc = max(min((1.0 - sigma) * (1.0 - sigma), 1.0), 0.0)
                 else:
                     scaldfunc = 1.0
 
     with computation(BACKWARD), interval(...):
-        if (
-            cnvflg[0, 0]
-            and mask[0, 0, 0] >= mrad[0, 0]
-            and mask[0, 0, 0] < krad[0, 0]
-        ):
+        if cnvflg[0, 0] and mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
             xmmx = (zl[0, 0, 1] - zl[0, 0, 0]) / dt2
             xmfd = min(scaldfunc[0, 0] * xmfd[0, 0, 0], xmmx)
 
@@ -2774,21 +2864,18 @@ def mfscu_s9(
     xlamde: FloatField,
     xlamdem: FloatField,
     zl: FloatField,
-    el2orc: Float,
-    elocp: Float,
-    eps: Float,
-    epsm1: Float,
-    pgcon: Float,
-    ntcw: Int,
+    el2orc: float,
+    elocp: float,
+    eps: float,
+    epsm1: float,
+    pgcon: float,
+    ntcw: int,
+    qmin: float,
 ):
 
     with computation(BACKWARD), interval(...):
         dz = zl[0, 0, 1] - zl[0, 0, 0]
-        if (
-            cnvflg[0, 0]
-            and mask[0, 0, 0] >= mrad[0, 0]
-            and mask[0, 0, 0] < krad[0, 0]
-        ):
+        if cnvflg[0, 0] and mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
             tem = 0.5 * xlamde[0, 0, 0] * dz
             factor = 1.0 + tem
             thld = (
@@ -2800,31 +2887,23 @@ def mfscu_s9(
 
         tld = thld[0, 0, 0] / pix[0, 0, 0]
         es = 0.01 * functions.fpvs(tld)
-        qs = max(functions.QMIN, eps * es / (plyr[0, 0, 0] + epsm1 * es))
+        qs = max(qmin, eps * es / (plyr[0, 0, 0] + epsm1 * es))
         dq = qtd[0, 0, 0] - qs
         gamma = el2orc * qs / (tld ** 2)
         qld = dq / (1.0 + gamma)
 
-        if (
-            cnvflg[0, 0]
-            and mask[0, 0, 0] >= mrad[0, 0]
-            and mask[0, 0, 0] < krad[0, 0]
-        ):
+        if cnvflg[0, 0] and mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
             if dq > 0.0:
                 qtd = qs + qld
-                qcdo[0,0,0][0] = qs
-                qcdo[0,0,0][ntcw-1] = qld
+                qcdo[0, 0, 0][0] = qs
+                qcdo[0, 0, 0][ntcw - 1] = qld
                 tcdo = tld + elocp * qld
             else:
-                qcdo[0,0,0] = qtd[0, 0, 0]
-                qcdo[0,0,0][ntcw-1] = 0.0
+                qcdo[0, 0, 0] = qtd[0, 0, 0]
+                qcdo[0, 0, 0][ntcw - 1] = 0.0
                 tcdo = tld
 
-        if (
-            cnvflg[0, 0]
-            and mask[0, 0, 0] < krad[0, 0]
-            and mask[0, 0, 0] >= mrad[0, 0]
-        ):
+        if cnvflg[0, 0] and mask[0, 0, 0] < krad[0, 0] and mask[0, 0, 0] >= mrad[0, 0]:
             tem = 0.5 * xlamdem[0, 0, 0] * dz
             factor = 1.0 + tem
             ptem = tem - pgcon
@@ -2839,10 +2918,7 @@ def mfscu_s9(
 
 #@gtscript.stencil(backend=backend)
 def tridit(
-    au: FloatField,
-    cm: FloatField,
-    cl: FloatField,
-    f1: FloatField,
+    au: FloatField, cm: FloatField, cl: FloatField, f1: FloatField,
 ):
     with computation(FORWARD):
         with interval(0, 1):
@@ -2862,46 +2938,53 @@ def tridit(
             f1 = f1[0, 0, 0] - au[0, 0, 0] * f1[0, 0, 1]
 
 
-#@gtscript.stencil(backend=backend,skip_passes=["graph_merge_horizontal_executions","GreedyMerging"])
+#@gtscript.stencil(
+#     **STENCIL_OPTS_2
+# )
 def tridin(
-    cl : FloatField, 
-    cm : FloatField,
-    cu : FloatField, 
-    r1 : FloatField, 
-    r2 : functions.FloatField_7, 
-    au : FloatField, 
-    a1 : FloatField, 
-    a2 : functions.FloatField_7,
-    nt : Int,
+    cl: FloatField,
+    cm: FloatField,
+    cu: FloatField,
+    r1: FloatField,
+    r2: functions.FloatField_7,
+    au: FloatField,
+    a1: FloatField,
+    a2: functions.FloatField_7,
+    nt: int,
 ):
     with computation(FORWARD):
-        with interval(0,1):
-            fk = 1.0 / cm[0,0,0]
-            au = fk * cu[0,0,0]
-            a1 = fk * r1[0,0,0]
+        with interval(0, 1):
+            fk = 1.0 / cm[0, 0, 0]
+            au = fk * cu[0, 0, 0]
+            a1 = fk * r1[0, 0, 0]
             for n0 in range(nt):
-                a2[0,0,0][n0] = fk * r2[0,0,0][n0]
+                a2[0, 0, 0][n0] = fk * r2[0, 0, 0][n0]
 
-        with interval(1,-1):
-            fkk = 1.0 / (cm[0,0,0] - cl[0,0,-1] * au[0,0,-1])
-            au = fkk * cu[0,0,0]
-            a1 = fkk * (r1[0,0,0] - cl[0,0,-1] * a1[0,0,-1])
+        with interval(1, -1):
+            fkk = 1.0 / (cm[0, 0, 0] - cl[0, 0, -1] * au[0, 0, -1])
+            au = fkk * cu[0, 0, 0]
+            a1 = fkk * (r1[0, 0, 0] - cl[0, 0, -1] * a1[0, 0, -1])
 
             for n1 in range(nt):
-                a2[0,0,0][n1] = fkk * (r2[0,0,0][n1] - cl[0,0,-1] * a2[0,0,-1][n1])
+                a2[0, 0, 0][n1] = fkk * (
+                    r2[0, 0, 0][n1] - cl[0, 0, -1] * a2[0, 0, -1][n1]
+                )
 
-        with interval(-1,None):
-            fk = 1.0 / (cm[0,0,0] - cl[0,0,-1] * au[0,0,-1])
-            a1 = fk * (r1[0,0,0] - cl[0,0,-1] * a1[0,0,-1])
+        with interval(-1, None):
+            fk = 1.0 / (cm[0, 0, 0] - cl[0, 0, -1] * au[0, 0, -1])
+            a1 = fk * (r1[0, 0, 0] - cl[0, 0, -1] * a1[0, 0, -1])
 
             for n2 in range(nt):
-                a2[0,0,0][n2] = fk * (r2[0,0,0][n2] - cl[0,0,-1] * a2[0,0,-1][n2])
+                a2[0, 0, 0][n2] = fk * (
+                    r2[0, 0, 0][n2] - cl[0, 0, -1] * a2[0, 0, -1][n2]
+                )
 
     with computation(BACKWARD):
-        with interval(0,-1):
-            a1 = a1[0,0,0] - au[0,0,0] * a1[0,0,1]
+        with interval(0, -1):
+            a1 = a1[0, 0, 0] - au[0, 0, 0] * a1[0, 0, 1]
             for n3 in range(nt):
-                a2[0,0,0][n3] = a2[0,0,0][n3] - au[0,0,0] * a2[0,0,1][n3]
+                a2[0, 0, 0][n3] = a2[0, 0, 0][n3] - au[0, 0, 0] * a2[0, 0, 1][n3]
+
 
 #@gtscript.stencil(backend=backend)
 def tridi2(
@@ -2936,106 +3019,221 @@ def tridi2(
         a1 = a1[0, 0, 0] - au[0, 0, 0] * a1[0, 0, 1]
         a2[0, 0, 0][0] = a2[0, 0, 0][0] - au[0, 0, 0] * a2[0, 0, 1][0]
 
+
 #@gtscript.stencil(backend=backend)
 def comp_asym_mix_up(
-    mask : IntField,
-    mlenflg : BoolFieldIJ,
-    bsum : FloatFieldIJ,
-    zlup : FloatFieldIJ,
-    thvx_k : FloatFieldIJ,
-    tke_k : FloatFieldIJ,
-    thvx : FloatField,
-    tke : FloatField,
-    gotvx : FloatField,
-    zl : FloatField,
-    zfmin : Float,
-    k : Int,
-):  
+    mask: IntField,
+    mlenflg: BoolFieldIJ,
+    bsum: FloatFieldIJ,
+    zlup: FloatFieldIJ,
+    thvx_k: FloatFieldIJ,
+    tke_k: FloatFieldIJ,
+    thvx: FloatField,
+    tke: FloatField,
+    gotvx: FloatField,
+    zl: FloatField,
+    zfmin: float,
+    k: int,
+):
     with computation(FORWARD), interval(...):
-        if mask[0,0,0] == k:
+        if mask[0, 0, 0] == k:
             mlenflg = True
             zlup = 0.0
             bsum = 0.0
-            thvx_k = thvx[0,0,0]
-            tke_k = tke[0,0,0]
-        if mlenflg[0,0] == True:
-            dz = zl[0,0,1] - zl[0,0,0]
-            ptem = gotvx[0,0,0] * (thvx[0,0,1] - thvx_k[0,0]) * dz
-            bsum = bsum[0,0] + ptem
-            zlup = zlup[0,0] + dz
-            if bsum[0,0] >= tke_k[0,0]:
+            thvx_k = thvx[0, 0, 0]
+            tke_k = tke[0, 0, 0]
+        if mlenflg[0, 0] == True:
+            dz = zl[0, 0, 1] - zl[0, 0, 0]
+            ptem = gotvx[0, 0, 0] * (thvx[0, 0, 1] - thvx_k[0, 0]) * dz
+            bsum = bsum[0, 0] + ptem
+            zlup = zlup[0, 0] + dz
+            if bsum[0, 0] >= tke_k[0, 0]:
                 if ptem >= 0.0:
                     tem2 = max(ptem, zfmin)
                 else:
                     tem2 = min(ptem, -zfmin)
-                ptem1 = (bsum[0,0] - tke_k[0,0]) / tem2
-                zlup = zlup[0,0] - ptem1 * dz
-                zlup = max(zlup[0,0], 0.0)
+                ptem1 = (bsum[0, 0] - tke_k[0, 0]) / tem2
+                zlup = zlup[0, 0] - ptem1 * dz
+                zlup = max(zlup[0, 0], 0.0)
                 mlenflg = False
+
 
 #@gtscript.stencil(backend=backend)
 def comp_asym_mix_dn(
-    mask : IntField,
-    mlenflg : BoolFieldIJ,
-    bsum : FloatFieldIJ,
-    zldn : FloatFieldIJ,
-    thvx_k : FloatFieldIJ,
-    tke_k : FloatFieldIJ,
-    thvx : FloatField,
-    tke : FloatField,
-    gotvx : FloatField,
-    zl : FloatField,
-    tsea : FloatFieldIJ,
-    q1_gt : functions.FloatField_8,
-    zfmin : Float,
-    fv : Float,
-    k : Int,
+    mask: IntField,
+    mlenflg: BoolFieldIJ,
+    bsum: FloatFieldIJ,
+    zldn: FloatFieldIJ,
+    thvx_k: FloatFieldIJ,
+    tke_k: FloatFieldIJ,
+    thvx: FloatField,
+    tke: FloatField,
+    gotvx: FloatField,
+    zl: FloatField,
+    tsea: FloatFieldIJ,
+    q1_gt: functions.FloatField_8,
+    zfmin: float,
+    fv: float,
+    k: int,
+    qmin: float,
 ):
     with computation(BACKWARD), interval(...):
-        if mask[0,0,0] == k:
+        if mask[0, 0, 0] == k:
             mlenflg = True
             bsum = 0.0
             zldn = 0.0
-            thvx_k = thvx[0, 0 ,0]
+            thvx_k = thvx[0, 0, 0]
             tke_k = tke[0, 0, 0]
-        if mlenflg[0,0] == True:
-            if mask[0,0,0] == 0:
-                dz = zl[0,0,0]
-                tem1 = tsea[0,0] * (1.0 + fv * max(q1_gt[0,0,0][0], functions.QMIN))
+        if mlenflg[0, 0] == True:
+            if mask[0, 0, 0] == 0:
+                dz = zl[0, 0, 0]
+                tem1 = tsea[0, 0] * (1.0 + fv * max(q1_gt[0, 0, 0][0], qmin))
             else:
-                dz = zl[0,0,0] - zl[0,0,-1]
-                tem1 = thvx[0,0,-1]
-            ptem = gotvx[0,0,0] * (thvx_k[0,0] - tem1) * dz
-            bsum = bsum[0,0] + ptem
-            zldn = zldn[0,0] + dz
-            if bsum[0,0] >= tke_k[0,0]:
+                dz = zl[0, 0, 0] - zl[0, 0, -1]
+                tem1 = thvx[0, 0, -1]
+            ptem = gotvx[0, 0, 0] * (thvx_k[0, 0] - tem1) * dz
+            bsum = bsum[0, 0] + ptem
+            zldn = zldn[0, 0] + dz
+            if bsum[0, 0] >= tke_k[0, 0]:
                 if ptem >= 0.0:
-                    tem2 = max(ptem,zfmin)
+                    tem2 = max(ptem, zfmin)
                 else:
                     tem2 = min(ptem, -zfmin)
-                ptem1 = (bsum[0,0] - tke_k[0,0]) / tem2
-                zldn = zldn[0,0] - ptem1 * dz
-                zldn = max(zldn[0,0], 0.0)
-                mlenflg[0,0] = False
+                ptem1 = (bsum[0, 0] - tke_k[0, 0]) / tem2
+                zldn = zldn[0, 0] - ptem1 * dz
+                zldn = max(zldn[0, 0], 0.0)
+                mlenflg[0, 0] = False
+
 
 #@gtscript.stencil(backend=backend)
 def comp_asym_rlam_ele(
-    zi : FloatField,
-    rlam : FloatField,
-    ele : FloatField,
-    zlup : FloatFieldIJ,
-    zldn : FloatFieldIJ,
-    rlmn : Float,
-    rlmx : Float,
-    elmfac : Float,
-    elmx : Float,
+    zi: FloatField,
+    rlam: FloatField,
+    ele: FloatField,
+    zlup: FloatFieldIJ,
+    zldn: FloatFieldIJ,
+    rlmn: float,
+    rlmx: float,
+    elmfac: float,
+    elmx: float,
+    elefac: float,
 ):
     with computation(FORWARD), interval(...):
-        tem = 0.5 * (zi[0,0,1] - zi[0,0,0])
+        tem = 0.5 * (zi[0, 0, 1] - zi[0, 0, 0])
         tem1 = min(tem, rlmn)
 
-        ptem2 = min(zlup[0,0], zldn[0,0])
-        rlam = min(max(elmfac*ptem2,tem1),rlmx)
+        ptem2 = min(zlup[0, 0], zldn[0, 0])
+        rlam = min(max(elmfac * ptem2, tem1), rlmx)
 
-        ptem2 = sqrt(zlup[0,0] * zldn[0,0])
-        ele = min(max(functions.ELEFAC*ptem2,tem1),elmx)
+        ptem2 = sqrt(zlup[0, 0] * zldn[0, 0])
+        ele = min(max(elefac * ptem2, tem1), elmx)
+
+class Turbulence:
+    def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, namelist):
+        self.namelist = namelist
+
+        grid_indexing = stencil_factory.grid_indexing
+        origin = grid_indexing.origin_compute()
+        shape = grid_indexing.domain_full(add=(1, 1, 1))
+
+        # Constants
+        self._fv = constants.RVGAS / constants.RDGAS - 1.0
+        self._eps = constants.RDGAS / constants.RVGAS
+        self._epsm1 = constants.RDGAS / constants.RVGAS - 1.0
+
+        self._gravi = 1.0 / constants.GRAV
+        self._g = constants.GRAV
+        self._gocp = self._g / constants.CP_AIR
+        self._cont = constants.CP_AIR / self._g
+        self._conq = constants.HLV / self._g
+        self._conw = 1.0 / self._g
+        self._elocp = constants.HLV / constants.CP_AIR
+        self._el2orc = constants.HLV * constants.HLV / (constants.RVGAS * constants.CP_AIR)
+
+        self._dt2 = self.namelist.dt_atmos  # NOTE : Check this later
+        self._rdt = 1.0 / self._dt2
+        self._ntrac = 8             # ntrac : Number of tracers (8) NOTE: See if this can be extracted elsewhere
+        self._ntrac1 = self._ntrac - 1
+        self._km1 = km - 1
+        self._kmpbl = int(km / 2)
+        self._kmscu = int(km / 2)
+        # self._km = km
+        # self._im = im
+        # self._ix = ix
+        self._ntcw = ntcw               # 2
+        self._ntiw = ntiw               # 3
+        self._ntke = ntke               # 8
+        self._dspheat = dspheat         # True
+        self._xkzm_m = xkzm_m           # 0.01
+        self._xkzm_h = xkzm_h           # 0.1
+        self._xkzm_s = xkzm_s           # 1.0
+        self._tkmin = functions.TKMIN   # tkmin
+        self._zfmin = functions.ZFMIN   # zfmin
+        self._rlmn = functions.RLMN     # rlmn
+        self._rlmx = functions.RLMX     # rlmx
+        self._elmfac = functions.ELMFAC # elmfac
+        self._elmx = functions.ELMX     # elmx
+        self._cdtn = functions.CDTN     # cdtn
+
+        self._kk = max(round(self._dt2 / self._cdtn), 1)
+        self._dtn = self._dt2 / self._kk
+
+        self._ce0 = functions.CE0
+        self._cm = 1.0
+        self._qmin = functions.QMIN
+        self._qlmin = functions.QLMIN
+        self._alp = 1.0
+        self._pgcon = 0.55
+
+        self._a1_mfpblt = 0.13
+        self._a1_mfscu = 0.12
+
+        self._b1_mfpblt = 0.5
+        self._b1_mfscu = 0.45
+
+        self._a2 = 0.50
+        self._a11 = 0.2
+        self._a22 = 1.0
+        self._cldtime = 500.0
+        self._actei = 0.7
+        self._hvap = constants.HLV
+        self._hfus = constants.HLF
+        self._cp = constants.CP_AIR
+        self._f1_const = 0.15
+        self._wfac = functions.WFAC
+        self._cfac = functions.CFAC
+        self._gamcrt = functions.GAMCRT
+        self._sfcfrac = functions.SFCFRAC
+        self._vk = functions.VK
+        self._rimin = functions.RIMIN
+        self._rbcr = functions.RBCR
+        self._zolcru = functions.ZOLCRU
+        self._tdzmin = functions.TDZMIN
+        self._prmin = functions.PRMIN
+        self._prmax = functions.PRMAX
+        self._prtke = functions.PRTKE
+        self._prscu = functions.PRSCU
+        self._f0 = functions.F0
+        self._crbmin = functions.CRBMIN
+        self._crbmax = functions.CRBMAX
+        self._dspfac = functions.DSPFAC
+        self._aphi5 = functions.APHI5
+        self._aphi16 = functions.APHI16
+        self._elefac = functions.ELEFAC
+        self._cql = functions.CQL
+        self._dw2min = functions.DW2MIN
+        self._dkmax = functions.DKMAX
+        self._xkgdx = functions.XKGDX
+        self._qlcr = functions.QLCR
+        self._zstblmax = functions.ZSTBLMAX
+        self._xkzinv = functions.XKZINV
+        self._h1 = functions.H1
+        self._ck0 = functions.CK0
+        self._ck1 = functions.CK1
+        self._ch0 = functions.CH0
+        self._ch1 = functions.CH1
+        self._rchck = functions.RCHCK
+        self._xmin = functions.XMIN
+        self._xmax = functions.XMAX
+
+   
