@@ -1736,46 +1736,6 @@ def mfpblt(
 
     return kpbl, hpbl, buo, xmf, tcko, qcko, ucko, vcko, xlamue
 
-
-#@gtscript.stencil(
-#     **STENCIL_OPTS_2
-# )
-def mfpblt_s3(
-    cnvflg: BoolFieldIJ,
-    kpbl: IntFieldIJ,
-    mask: IntField,
-    xlamue: FloatField,
-    qcko: functions.FloatField_8,
-    q1_gt: functions.FloatField_8,
-    zl: FloatField,
-    ntcw: int,
-    ntrac1: int,
-):
-    with computation(FORWARD), interval(1, None):
-        if ntcw > 2:
-            for n in range(1, ntcw):
-                if cnvflg[0, 0] and mask[0, 0, 0] <= kpbl[0, 0]:
-                    dz = zl[0, 0, 0] - zl[0, 0, -1]
-                    tem = 0.5 * xlamue[0, 0, -1] * dz
-                    factor = 1.0 + tem
-                    qcko[0, 0, 0][n] = (
-                        (1.0 - tem) * qcko[0, 0, -1][n]
-                        + tem * (q1_gt[0, 0, 0][n] + q1_gt[0, 0, -1][n])
-                    ) / factor
-
-        ndc = ntrac1 - ntcw
-        if ndc > 0:
-            for n2 in range(ntcw, ntrac1):
-                if cnvflg[0, 0] and mask[0, 0, 0] <= kpbl[0, 0]:
-                    dz = zl[0, 0, 0] - zl[0, 0, -1]
-                    tem = 0.5 * xlamue[0, 0, -1] * dz
-                    factor = 1.0 + tem
-                    qcko[0, 0, 0][n2] = (
-                        (1.0 - tem) * qcko[0, 0, -1][n2]
-                        + tem * (q1_gt[0, 0, 0][n2] + q1_gt[0, 0, -1][n2])
-                    ) / factor
-
-
 #@gtscript.stencil(backend=backend)
 def mfpblt_s0(
     buo: FloatField,
@@ -2107,6 +2067,43 @@ def mfpblt_s2(
                     + (tem - pgcon) * v1[0, 0, -1]
                 ) / factor
 
+#@gtscript.stencil(
+#     **STENCIL_OPTS_2
+# )
+def mfpblt_s3(
+    cnvflg: BoolFieldIJ,
+    kpbl: IntFieldIJ,
+    mask: IntField,
+    xlamue: FloatField,
+    qcko: functions.FloatField_8,
+    q1_gt: functions.FloatField_8,
+    zl: FloatField,
+    ntcw: int,
+    ntrac1: int,
+):
+    with computation(FORWARD), interval(1, None):
+        if ntcw > 2:
+            for n in range(1, ntcw):
+                if cnvflg[0, 0] and mask[0, 0, 0] <= kpbl[0, 0]:
+                    dz = zl[0, 0, 0] - zl[0, 0, -1]
+                    tem = 0.5 * xlamue[0, 0, -1] * dz
+                    factor = 1.0 + tem
+                    qcko[0, 0, 0][n] = (
+                        (1.0 - tem) * qcko[0, 0, -1][n]
+                        + tem * (q1_gt[0, 0, 0][n] + q1_gt[0, 0, -1][n])
+                    ) / factor
+
+        ndc = ntrac1 - ntcw
+        if ndc > 0:
+            for n2 in range(ntcw, ntrac1):
+                if cnvflg[0, 0] and mask[0, 0, 0] <= kpbl[0, 0]:
+                    dz = zl[0, 0, 0] - zl[0, 0, -1]
+                    tem = 0.5 * xlamue[0, 0, -1] * dz
+                    factor = 1.0 + tem
+                    qcko[0, 0, 0][n2] = (
+                        (1.0 - tem) * qcko[0, 0, -1][n2]
+                        + tem * (q1_gt[0, 0, 0][n2] + q1_gt[0, 0, -1][n2])
+                    ) / factor
 
 def mfscu(
     im,
@@ -2421,124 +2418,6 @@ def mfscu(
 
 
 #@gtscript.stencil(backend=backend)
-def mfscu_s2(
-    zl: FloatField,
-    mask: IntField,
-    mrad: IntFieldIJ,
-    krad: IntFieldIJ,
-    zm: FloatField,
-    zm_mrad: FloatFieldIJ,
-    xlamde: FloatField,
-    xlamdem: FloatField,
-    hrad: FloatFieldIJ,
-    cnvflg: BoolFieldIJ,
-    ce0: float,
-    cm: float,
-):
-    with computation(PARALLEL), interval(...):
-        if cnvflg[0, 0]:
-            dz = zl[0, 0, 1] - zl[0, 0, 0]
-            if mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
-                if mrad[0, 0] == 0:
-                    xlamde = ce0 * (
-                        (1.0 / (zm[0, 0, 0] + dz))
-                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
-                    )
-                else:
-                    xlamde = ce0 * (
-                        (1.0 / (zm[0, 0, 0] - zm_mrad[0, 0] + dz))
-                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
-                    )
-            else:
-                xlamde = ce0 / dz
-            xlamdem = cm * xlamde[0, 0, 0]
-
-
-#@gtscript.stencil(backend=backend)
-def mfscu_s6(
-    zl: FloatField,
-    mask: IntField,
-    mrad: IntFieldIJ,
-    krad: IntFieldIJ,
-    zm: FloatField,
-    zm_mrad: FloatFieldIJ,
-    xlamde: FloatField,
-    xlamdem: FloatField,
-    hrad: FloatFieldIJ,
-    cnvflg: BoolFieldIJ,
-    mrady: IntFieldIJ,
-    mradx: IntFieldIJ,
-    ce0: float,
-    cm: float,
-):
-    with computation(PARALLEL), interval(...):
-        if cnvflg[0, 0] and (mrady[0, 0] < mradx[0, 0]):
-            dz = zl[0, 0, 1] - zl[0, 0, 0]
-            if mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
-                if mrad[0, 0] == 0:
-                    xlamde = ce0 * (
-                        (1.0 / (zm[0, 0, 0] + dz))
-                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
-                    )
-                else:
-                    xlamde = ce0 * (
-                        (1.0 / (zm[0, 0, 0] - zm_mrad[0, 0] + dz))
-                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
-                    )
-            else:
-                xlamde = ce0 / dz
-            xlamdem = cm * xlamde[0, 0, 0]
-
-
-#@gtscript.stencil(
-#     **STENCIL_OPTS_2
-# )
-def mfscu_10(
-    cnvflg: BoolFieldIJ,
-    krad: IntFieldIJ,
-    mrad: IntFieldIJ,
-    mask: IntField,
-    zl: FloatField,
-    xlamde: FloatField,
-    qcdo: functions.FloatField_8,
-    q1: functions.FloatField_8,
-    ntcw: int,
-    ntrac1: int,
-):
-    with computation(BACKWARD), interval(...):
-        if ntcw > 2:
-            for n in range(1, ntcw - 1):
-                if (
-                    cnvflg[0, 0]
-                    and mask[0, 0, 0] < krad[0, 0]
-                    and mask[0, 0, 0] >= mrad[0, 0]
-                ):
-                    dz = zl[0, 0, 1] - zl[0, 0, 0]
-                    tem = 0.5 * xlamde[0, 0, 0] * dz
-                    factor = 1.0 + tem
-                    qcdo[0, 0, 0][n] = (
-                        (1.0 - tem) * qcdo[0, 0, 1][n]
-                        + tem * (q1[0, 0, 0][n] + q1[0, 0, 1][n])
-                    ) / factor
-
-        ndc = ntrac1 - ntcw
-        if ndc > 0:
-            for n1 in range(ntcw, ntrac1):
-                if (
-                    cnvflg[0, 0]
-                    and mask[0, 0, 0] < krad[0, 0]
-                    and mask[0, 0, 0] >= mrad[0, 0]
-                ):
-                    dz = zl[0, 0, 1] - zl[0, 0, 0]
-                    tem = 0.5 * xlamde[0, 0, 0] * dz
-                    factor = 1.0 + tem
-                    qcdo[0, 0, 0][n1] = (
-                        (1.0 - tem) * qcdo[0, 0, 1][n1]
-                        + tem * (q1[0, 0, 0][n1] + q1[0, 0, 1][n1])
-                    ) / factor
-
-
-#@gtscript.stencil(backend=backend)
 def mfscu_s0(
     buo: FloatField,
     cnvflg: BoolFieldIJ,
@@ -2641,6 +2520,38 @@ def mfscu_s1(
             if kk < 1:
                 cnvflg[0, 0] = 0
 
+#@gtscript.stencil(backend=backend)
+def mfscu_s2(
+    zl: FloatField,
+    mask: IntField,
+    mrad: IntFieldIJ,
+    krad: IntFieldIJ,
+    zm: FloatField,
+    zm_mrad: FloatFieldIJ,
+    xlamde: FloatField,
+    xlamdem: FloatField,
+    hrad: FloatFieldIJ,
+    cnvflg: BoolFieldIJ,
+    ce0: float,
+    cm: float,
+):
+    with computation(PARALLEL), interval(...):
+        if cnvflg[0, 0]:
+            dz = zl[0, 0, 1] - zl[0, 0, 0]
+            if mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
+                if mrad[0, 0] == 0:
+                    xlamde = ce0 * (
+                        (1.0 / (zm[0, 0, 0] + dz))
+                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
+                    )
+                else:
+                    xlamde = ce0 * (
+                        (1.0 / (zm[0, 0, 0] - zm_mrad[0, 0] + dz))
+                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
+                    )
+            else:
+                xlamde = ce0 / dz
+            xlamdem = cm * xlamde[0, 0, 0]
 
 #@gtscript.stencil(backend=backend)
 def mfscu_s3(
@@ -2766,6 +2677,40 @@ def mfscu_s5(
             if (krad[0, 0] - mrad[0, 0]) < 1:
                 cnvflg = 0
 
+#@gtscript.stencil(backend=backend)
+def mfscu_s6(
+    zl: FloatField,
+    mask: IntField,
+    mrad: IntFieldIJ,
+    krad: IntFieldIJ,
+    zm: FloatField,
+    zm_mrad: FloatFieldIJ,
+    xlamde: FloatField,
+    xlamdem: FloatField,
+    hrad: FloatFieldIJ,
+    cnvflg: BoolFieldIJ,
+    mrady: IntFieldIJ,
+    mradx: IntFieldIJ,
+    ce0: float,
+    cm: float,
+):
+    with computation(PARALLEL), interval(...):
+        if cnvflg[0, 0] and (mrady[0, 0] < mradx[0, 0]):
+            dz = zl[0, 0, 1] - zl[0, 0, 0]
+            if mask[0, 0, 0] >= mrad[0, 0] and mask[0, 0, 0] < krad[0, 0]:
+                if mrad[0, 0] == 0:
+                    xlamde = ce0 * (
+                        (1.0 / (zm[0, 0, 0] + dz))
+                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
+                    )
+                else:
+                    xlamde = ce0 * (
+                        (1.0 / (zm[0, 0, 0] - zm_mrad[0, 0] + dz))
+                        + 1.0 / max(hrad[0, 0] - zm[0, 0, 0] + dz, dz)
+                    )
+            else:
+                xlamde = ce0 / dz
+            xlamdem = cm * xlamde[0, 0, 0]
 
 #@gtscript.stencil(backend=backend)
 def mfscu_s7(
@@ -2916,6 +2861,52 @@ def mfscu_s9(
                 (1.0 - tem) * vcdo[0, 0, 1] + ptem * v1[0, 0, 1] + ptem1 * v1[0, 0, 0]
             ) / factor
 
+#@gtscript.stencil(
+#     **STENCIL_OPTS_2
+# )
+def mfscu_10(
+    cnvflg: BoolFieldIJ,
+    krad: IntFieldIJ,
+    mrad: IntFieldIJ,
+    mask: IntField,
+    zl: FloatField,
+    xlamde: FloatField,
+    qcdo: functions.FloatField_8,
+    q1: functions.FloatField_8,
+    ntcw: int,
+    ntrac1: int,
+):
+    with computation(BACKWARD), interval(...):
+        if ntcw > 2:
+            for n in range(1, ntcw - 1):
+                if (
+                    cnvflg[0, 0]
+                    and mask[0, 0, 0] < krad[0, 0]
+                    and mask[0, 0, 0] >= mrad[0, 0]
+                ):
+                    dz = zl[0, 0, 1] - zl[0, 0, 0]
+                    tem = 0.5 * xlamde[0, 0, 0] * dz
+                    factor = 1.0 + tem
+                    qcdo[0, 0, 0][n] = (
+                        (1.0 - tem) * qcdo[0, 0, 1][n]
+                        + tem * (q1[0, 0, 0][n] + q1[0, 0, 1][n])
+                    ) / factor
+
+        ndc = ntrac1 - ntcw
+        if ndc > 0:
+            for n1 in range(ntcw, ntrac1):
+                if (
+                    cnvflg[0, 0]
+                    and mask[0, 0, 0] < krad[0, 0]
+                    and mask[0, 0, 0] >= mrad[0, 0]
+                ):
+                    dz = zl[0, 0, 1] - zl[0, 0, 0]
+                    tem = 0.5 * xlamde[0, 0, 0] * dz
+                    factor = 1.0 + tem
+                    qcdo[0, 0, 0][n1] = (
+                        (1.0 - tem) * qcdo[0, 0, 1][n1]
+                        + tem * (q1[0, 0, 0][n1] + q1[0, 0, 1][n1])
+                    ) / factor
 
 #@gtscript.stencil(backend=backend)
 def tridit(
@@ -3128,6 +3119,10 @@ def comp_asym_rlam_ele(
 
         ptem2 = sqrt(zlup[0, 0] * zldn[0, 0])
         ele = min(max(elefac * ptem2, tem1), elmx)
+
+class TurbulenceState:
+    def __init():
+        print()
 
 class Turbulence:
     def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, namelist):
@@ -3667,3 +3662,6 @@ class Turbulence:
             domains=domain_list_rlam,
             stencil_factory=stencil_factory,
         )
+
+    def __call__(self, state: TurbulenceState):
+        print()
