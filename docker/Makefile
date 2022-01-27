@@ -30,7 +30,6 @@ fv3gfs_image:
 		$(BUILD_ARGS) \
 		-f $(FV3GFS_DOCKERFILE) \
 		-t $(FV3GFS_IMAGE) \
-		--target=$(FV3GFS_TARGET) \
 		..
 
 build_deps: ## build container images of dependencies
