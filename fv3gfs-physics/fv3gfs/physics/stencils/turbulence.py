@@ -1,5 +1,6 @@
 import copy
 import typing
+from matplotlib.pyplot import grid
 
 import numpy as np
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt, floor, exp
@@ -7,7 +8,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, s
 import fv3gfs.physics.functions.turbulence_funcs as functions
 import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
-from pace.dsl.stencil import StencilFactory
+from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import Float, Int, FloatField, FloatFieldIJ, IntField, IntFieldIJ, BoolFieldIJ
 from pace.util.grid import GridData
 
@@ -3154,19 +3155,19 @@ class Turbulence:
         self._rdt = 1.0 / self._dt2
         self._ntrac = 8             # ntrac : Number of tracers (8) NOTE: See if this can be extracted elsewhere
         self._ntrac1 = self._ntrac - 1
-        self._km1 = km - 1
-        self._kmpbl = int(km / 2)
-        self._kmscu = int(km / 2)
+        self._km1 = grid_indexing.domain[2] - 1 # km - 1
+        self._kmpbl = int(grid_indexing.domain[2] / 2) # int(km / 2)
+        self._kmscu = int(grid_indexing.domain[2] / 2) # int(km / 2)
         # self._km = km
         # self._im = im
         # self._ix = ix
-        self._ntcw = ntcw               # 2
-        self._ntiw = ntiw               # 3
-        self._ntke = ntke               # 8
-        self._dspheat = dspheat         # True
-        self._xkzm_m = xkzm_m           # 0.01
-        self._xkzm_h = xkzm_h           # 0.1
-        self._xkzm_s = xkzm_s           # 1.0
+        self._ntcw = 2               # 2 : ntcw
+        self._ntiw = 3               # 3 : ntiw
+        self._ntke = 8               # 8 : ntke
+        self._dspheat = True         # True : dspheat
+        self._xkzm_m = 0.01           # 0.01 : xkzm_m
+        self._xkzm_h = 0.1           # 0.1 : xkzm_h
+        self._xkzm_s = 1.0           # 1.0 : xkzm_s
         self._tkmin = functions.TKMIN   # tkmin
         self._zfmin = functions.ZFMIN   # zfmin
         self._rlmn = functions.RLMN     # rlmn
@@ -3236,4 +3237,433 @@ class Turbulence:
         self._xmin = functions.XMIN
         self._xmax = functions.XMAX
 
-   
+        def make_storage(**kwargs):
+            return utils.make_storage_from_shape(
+                shape, origin=origin, backend=stencil_factory.backend, **kwargs
+            )
+
+        def make_storage_2D(**kwargs):
+            return utils.make_storage_from_shape(
+                shape[0:2], origin=origin, backend=stencil_factory.backend, **kwargs
+            )
+
+        # *** 3D storages ***
+        # *** Multi-dimensional storages ***
+        self._qcko = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
+        self._qcdo = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
+        self._f2 = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
+        self._q1 = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
+        self._rtg_gt = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
+        # *** 3D storages ***
+        self._zi = make_storage(init=True)
+        self._zl = make_storage(init=True)
+        self._zm = make_storage(init=True)
+        self._ckz = make_storage(init=True)
+        self._chz = make_storage(init=True)
+        self._tke = make_storage(init=True)
+        self._rdzt = make_storage(init=True)
+        self._prn = make_storage(init=True)
+        self._xkzo = make_storage(init=True)
+        self._xkzmo = make_storage(init=True)
+        self._pix = make_storage(init=True)
+        self._theta = make_storage(init=True)
+        self._qlx = make_storage(init=True)
+        self._slx = make_storage(init=True)
+        self._thvx = make_storage(init=True)
+        self._qtx = make_storage(init=True)
+        self._thlx = make_storage(init=True)
+        self._thlvx = make_storage(init=True)
+        self._svx = make_storage(init=True)
+        self._thetae = make_storage(init=True)
+        self._gotvx = make_storage(init=True)
+        self._plyr = make_storage(init=True)
+        self._cfly = make_storage(init=True)
+        self._bf = make_storage(init=True)
+        self._dku = make_storage(init=True)
+        self._dkt = make_storage(init=True)
+        self._dkq = make_storage(init=True)
+        self._radx = make_storage(init=True)
+        self._shr2 = make_storage(init=True)
+        self._tcko = make_storage(init=True)
+        self._tcdo = make_storage(init=True)
+        self._ucko = make_storage(init=True)
+        self._ucdo = make_storage(init=True)
+        self._vcko = make_storage(init=True)
+        self._vcdo = make_storage(init=True)
+        self._buou = make_storage(init=True)
+        self._xmf = make_storage(init=True)
+        self._xlamue = make_storage(init=True)
+        self._rhly = make_storage(init=True)
+        self._qstl = make_storage(init=True)
+        self._buod = make_storage(init=True)
+        self._xmfd = make_storage(init=True)
+        self._xlamde = make_storage(init=True)
+        self._rlam = make_storage(init=True)
+        self._ele = make_storage(init=True)
+        self._elm = make_storage(init=True)
+        self._prod = make_storage(init=True)
+        self._rle = make_storage(init=True)
+        self._diss = make_storage(init=True)
+        self._ad = make_storage(init=True)
+        self._f1 = make_storage(init=True)
+        self._al = make_storage(init=True)
+        self._au = make_storage(init=True)
+        self._wd2 = make_storage(init=True)
+        self._thld = make_storage(init=True)
+        self._qtd = make_storage(init=True)
+        self._xlamdem = make_storage(init=True)
+        self._wu2 = make_storage(init=True)
+        self._qtu = make_storage(init=True)
+        self._xlamuem = make_storage(init=True)
+        self._thlu = make_storage(init=True)
+        self._dtdz1 = make_storage(init=True)
+        # 1D GT storages extended into 2D
+        self._f1_p1 = make_storage_2D(shape=shape[0:2],init=True)
+        self._f2_p1 = make_storage_2D(shape=shape[0:2],init=True)
+        self._ad_p1 = make_storage_2D(shape=shape[0:2],init=True)
+        self._thlvx_0 = make_storage_2D(shape=shape[0:2],init=True)
+        self._gdx = make_storage_2D(shape=shape[0:2],init=True)
+        self._kx1 = make_storage(init=True,dtype=np.int32)
+        self._kpblx = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._kpblx_mfp = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._hpblx = make_storage_2D(shape=shape[0:2],init=True)
+        self._hpblx_mfp = make_storage_2D(shape=shape[0:2],init=True)
+        self._pblflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
+        self._sfcflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
+        self._pcnvflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
+        self._scuflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
+        self._radmin = make_storage_2D(shape=shape[0:2],init=True)
+        self._mrad = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._krad = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._lcld = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._kcld = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._flg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
+        self._rbup = make_storage_2D(shape=shape[0:2],init=True)
+        self._rbdn = make_storage_2D(shape=shape[0:2],init=True)
+        self._sflux = make_storage_2D(shape=shape[0:2],init=True)
+        self._thermal = make_storage_2D(shape=shape[0:2],init=True)
+        self._crb = make_storage_2D(shape=shape[0:2],init=True)
+        self._ustar = make_storage_2D(shape=shape[0:2],init=True)
+        self._zol = make_storage_2D(shape=shape[0:2],init=True)
+        self._phim = make_storage_2D(shape=shape[0:2],init=True)
+        self._phih = make_storage_2D(shape=shape[0:2],init=True)
+        self._vpert = make_storage_2D(shape=shape[0:2],init=True)
+        self._radj = make_storage_2D(shape=shape[0:2],init=True)
+        self._zlup = make_storage_2D(shape=shape[0:2],init=True)
+        self._zldn = make_storage_2D(shape=shape[0:2],init=True)
+        self._bsum = make_storage_2D(shape=shape[0:2],init=True)
+        self._mlenflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
+        self._thvx_k = make_storage_2D(shape=shape[0:2],init=True)
+        self._tke_k = make_storage_2D(shape=shape[0:2],init=True)
+        self._hrad = make_storage_2D(shape=shape[0:2],init=True)
+        self._krad1 = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._thlvd = make_storage_2D(shape=shape[0:2],init=True)
+        self._ra1 = make_storage_2D(shape=shape[0:2],init=True)
+        self._ra2 = make_storage_2D(shape=shape[0:2],init=True)
+        self._mradx = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._mrady = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._sumx = make_storage_2D(shape=shape[0:2],init=True)
+        self._xlamavg = make_storage_2D(shape=shape[0:2],init=True)
+        self._scaldfunc = make_storage_2D(shape=shape[0:2],init=True)
+        self._kpbly = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._kpbly_mfp = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
+        self._zm_mrad = make_storage_2D(shape=shape[0:2],init=True)
+        # Mask/Index Array
+        self._mask = make_storage(init=True,dtype=np.int32)
+
+        self._mask_init = stencil_factory.from_origin_domain(
+            func=mask_init,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
+        )
+
+        self._init = stencil_factory.from_origin_domain(
+            func=init,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
+        )
+
+        self._mrf_pbl_scheme_part1 = stencil_factory.from_origin_domain(
+            func=mrf_pbl_scheme_part1,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+        )
+
+        self._mrf_pbl_2_thermal_1 = stencil_factory.from_origin_domain(
+            func=mrf_pbl_2_thermal_1,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1) 
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._thermal_2 = stencil_factory.from_origin_domain(
+            func=thermal_2,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+        )
+
+        self._pbl_height_enhance = stencil_factory.from_origin_domain(
+            func=pbl_height_enhance,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1) 
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._stratocumulus = stencil_factory.from_origin_domain(
+            func=stratocumulus,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+        )
+
+        self._mass_flux_comp = stencil_factory.from_origin_domain(
+            func=mass_flux_comp,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
+        )
+
+        self._prandtl_comp_exchg_coeff = stencil_factory.from_origin_domain(
+            func=prandtl_comp_exchg_coeff,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+        )
+
+        self._compute_eddy_buoy_shear = stencil_factory.from_origin_domain(
+            func=compute_eddy_buoy_shear,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1) 
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._predict_tke = stencil_factory.from_origin_domain(
+            func=predict_tke,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-2) 
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._tke_up_down_prop = stencil_factory.from_origin_domain(
+            func=tke_up_down_prop,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1) 
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._tke_tridiag_matrix_ele_comp = stencil_factory.from_origin_domain(
+            func=tke_tridiag_matrix_ele_comp,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        # NOTE: This stencil needs a better name...
+        self._part12a = stencil_factory.from_origin_domain(
+            func=part12a,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._heat_moist_tridiag_mat_ele_comp = stencil_factory.from_origin_domain(
+            func=heat_moist_tridiag_mat_ele_comp,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        # NOTE : This stencil also needs a better name...
+        self._part13a = stencil_factory.from_origin_domain(
+            func=part13a,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        # NOTE : This stencil also needs a better name...
+        self._part13b = stencil_factory.from_origin_domain(
+            func=part13b,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._moment_tridiag_mat_ele_comp = stencil_factory.from_origin_domain(
+            func=moment_tridiag_mat_ele_comp,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._moment_recover = stencil_factory.from_origin_domain(
+            func=moment_recover,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfpblt_s0 = stencil_factory.from_origin_domain(
+            func=mfpblt_s0,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
+        )
+
+        self._mfpblt_s1 = stencil_factory.from_origin_domain(
+            func=mfpblt_s1,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfpblt_s1a = stencil_factory.from_origin_domain(
+            func=mfpblt_s1a,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfpblt_s2 = stencil_factory.from_origin_domain(
+            func=mfpblt_s2,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfpblt_s3 = stencil_factory.from_origin_domain(
+            func=mfpblt_s3,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s0 = stencil_factory.from_origin_domain(
+            func=mfscu_s0,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s1 = stencil_factory.from_origin_domain(
+            func=mfscu_s1,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s2 = stencil_factory.from_origin_domain(
+            func=mfscu_s2,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s3 = stencil_factory.from_origin_domain(
+            func=mfscu_s3,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s4 = stencil_factory.from_origin_domain(
+            func=mfscu_s4,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s5 = stencil_factory.from_origin_domain(
+            func=mfscu_s5,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s6 = stencil_factory.from_origin_domain(
+            func=mfscu_s6,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s7 = stencil_factory.from_origin_domain(
+            func=mfscu_s7,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s8 = stencil_factory.from_origin_domain(
+            func=mfscu_s8,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_s9 = stencil_factory.from_origin_domain(
+            func=mfscu_s9,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._mfscu_10 = stencil_factory.from_origin_domain(
+            func=mfscu_10,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._tridit = stencil_factory.from_origin_domain(
+            func=tridit,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._tridin = stencil_factory.from_origin_domain(
+            func=tridin,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        self._tridi2 = stencil_factory.from_origin_domain(
+            func=tridi2,
+            origin=grid_indexing.origin_compute(),
+            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            # NOTE: Not sure about k-size of domain
+        )
+
+        origin_list_up = []
+        origin_list_dwn = []
+        domain_list_up = []
+        domain_list_dwn = []
+        domain_list_rlam = []
+
+        for k in range(grid_indexing.domain[2]-2):
+            origin_list_up.append((0,0,k))
+            domain_list_up.append((grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-2-k))
+
+            origin_list_dwn.append((0,0,0))
+            domain_list_dwn.append((grid_indexing.domain[0], grid_indexing.domain[1], k+1))
+
+            domain_list_rlam.append((grid_indexing.domain[0], grid_indexing.domain[1], 1))
+
+        self._comp_asym_mix_up = get_stencils_with_varied_bounds(
+            func=comp_asym_mix_up,
+            origins=origin_list_up,
+            domains=domain_list_up,
+            stencil_factory=stencil_factory,
+        )
+
+        self._comp_asym_mix_down = get_stencils_with_varied_bounds(
+            func=comp_asym_mix_dn,
+            origins=origin_list_dwn,
+            domains=domain_list_dwn,
+            stencil_factory=stencil_factory,
+        )
+
+        self._comp_asym_rlam_ele = get_stencils_with_varied_bounds(
+            func=comp_asym_rlam_ele,
+            origins=origin_list_up,
+            domains=domain_list_rlam,
+            stencil_factory=stencil_factory,
+        )
