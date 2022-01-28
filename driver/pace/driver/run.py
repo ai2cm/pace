@@ -402,6 +402,10 @@ class DriverConfig:
         kwargs["physics_config"] = fv3gfs.physics.PhysicsConfig.from_f90nml(
             config.f90_namelist
         )
+        kwargs["days"] = config.namelist.days
+        kwargs["hours"] = config.namelist.hours
+        kwargs["minutes"] = config.namelist.minutes
+        kwargs["seconds"] = config.namelist.seconds
         return kwargs
 
     @classmethod
