@@ -3121,8 +3121,16 @@ def comp_asym_rlam_ele(
         ele = min(max(elefac * ptem2, tem1), elmx)
 
 class TurbulenceState:
-    def __init():
-        print()
+    def __init__(
+        self,
+        prsi : FloatField,
+        phii : FloatField,
+        phil : FloatField,
+        ugrs : FloatField,
+    ):
+        self.prsi = prsi
+        self.phii = phii
+        self.phil = phil
 
 class Turbulence:
     def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, namelist):
@@ -3363,6 +3371,13 @@ class Turbulence:
         self._kpbly = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
         self._kpbly_mfp = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
         self._zm_mrad = make_storage_2D(shape=shape[0:2],init=True)
+
+        self._dusfc = make_storage_2D(shape=shape[0:2])
+        self._dvsfc = make_storage_2D(shape=shape[0:2])
+        self._dtsfc = make_storage_2D(shape=shape[0:2])
+        self._dqsfc = make_storage_2D(shape=shape[0:2])
+        self._kpbl = make_storage_2D(shape=shape[0:2])
+
         # Mask/Index Array
         self._mask = make_storage(init=True,dtype=np.int32)
 
