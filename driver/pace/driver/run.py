@@ -193,26 +193,26 @@ class SerialboxConfig(InitializationConfig):
         driver_grid_info_object = TranslateUpdateDWindsPhys(
             grid, self.namelist, stencil_factory
         )
-        missing_grid_data = driver_grid_info_object.collect_input_data(
+        extra_grid_data = driver_grid_info_object.collect_input_data(
             ser, ser.get_savepoint("FVUpdatePhys-In")[0]
         )
         driver_grid_data = pace.util.grid.DriverGridData(
-            vlon1=missing_grid_data["vlon1"],
-            vlon2=missing_grid_data["vlon2"],
-            vlon3=missing_grid_data["vlon3"],
-            vlat1=missing_grid_data["vlat1"],
-            vlat2=missing_grid_data["vlat2"],
-            vlat3=missing_grid_data["vlat3"],
-            edge_vect_w=missing_grid_data["edge_vect_w"],
-            edge_vect_e=missing_grid_data["edge_vect_e"],
-            edge_vect_s=missing_grid_data["edge_vect_s"],
-            edge_vect_n=missing_grid_data["edge_vect_n"],
-            es1_1=missing_grid_data["es1_1"],
-            es1_2=missing_grid_data["es2_1"],
-            es1_3=missing_grid_data["es3_1"],
-            ew2_1=missing_grid_data["ew1_2"],
-            ew2_2=missing_grid_data["ew2_2"],
-            ew2_3=missing_grid_data["ew3_2"],
+            vlon1=extra_grid_data["vlon1"],
+            vlon2=extra_grid_data["vlon2"],
+            vlon3=extra_grid_data["vlon3"],
+            vlat1=extra_grid_data["vlat1"],
+            vlat2=extra_grid_data["vlat2"],
+            vlat3=extra_grid_data["vlat3"],
+            edge_vect_w=extra_grid_data["edge_vect_w"],
+            edge_vect_e=extra_grid_data["edge_vect_e"],
+            edge_vect_s=extra_grid_data["edge_vect_s"],
+            edge_vect_n=extra_grid_data["edge_vect_n"],
+            es1_1=extra_grid_data["es1_1"],
+            es1_2=extra_grid_data["es2_1"],
+            es1_3=extra_grid_data["es3_1"],
+            ew2_1=extra_grid_data["ew1_2"],
+            ew2_2=extra_grid_data["ew2_2"],
+            ew2_3=extra_grid_data["ew3_2"],
         )
         return grid, damping_coefficients, driver_grid_data
 
