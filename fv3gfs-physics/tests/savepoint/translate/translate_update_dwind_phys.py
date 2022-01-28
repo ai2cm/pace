@@ -1,13 +1,14 @@
 import numpy as np
 
-import fv3core._config as spec
-from fv3gfs.physics.stencils.update_dwind_phys import AGrid2DGridPhysics
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+import pace.util
+from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
+from pace.util.grid import DriverGridData
 
 
 class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
 
         self.in_vars["data_vars"] = {
             "edge_vect_e": {"dwind": True},
@@ -24,9 +25,11 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
             "ew": {"dwind": True},
         }
         self.out_vars = {
-            "u": {"dwind": True, "kend": grid.npz - 1},
-            "v": {"dwind": True, "kend": grid.npz - 1},
+            "u": {"dwind": True, "kend": namelist.npz - 1},
+            "v": {"dwind": True, "kend": namelist.npz - 1},
         }
+        self.namelist = namelist
+        self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -58,11 +61,26 @@ class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
             "ew2_2",
             "ew3_2",
         ]
-        grid_info = {}
+        grid_dict = {}
         for var in grid_names:
-            grid_info[var] = inputs.pop(var)
+            data = inputs.pop(var)
+            if "_1" in var:
+                grid_dict["es1_" + var[2]] = data
+            elif "_2" in var:
+                grid_dict["ew2_" + var[2]] = data
+            else:
+                grid_dict[var] = data
+
+        grid_info = DriverGridData(**grid_dict)
+        partitioner = pace.util.CubedSpherePartitioner(
+            pace.util.TilePartitioner(self.namelist.layout)
+        )
         self.compute_func = AGrid2DGridPhysics(
-            self.grid.stencil_factory, self.grid, spec.namelist, grid_info
+            self.stencil_factory,
+            partitioner,
+            self.grid.rank,
+            self.namelist,
+            grid_info,
         )
         self.compute_func(**inputs)
         out = {}

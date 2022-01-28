@@ -12,12 +12,12 @@ from gt4py.gtscript import (
     log,
 )
 
-import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
+import pace.util.constants as constants
 from fv3core._config import RiemannConfig
 from fv3core.stencils.sim1_solver import Sim1Solver
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
 
 
 @typing.no_type_check
@@ -121,15 +121,23 @@ class RiemannSolver3:
         )
         if config.a_imp <= 0.999:
             raise NotImplementedError("a_imp <= 0.999 is not implemented")
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                grid_indexing.max_shape,
+                origin=grid_indexing.origin_compute(),
+                backend=stencil_factory.backend,
+            )
+
+        self._tmp_dm = make_storage()
+        self._tmp_pe_init = make_storage()
+        self._tmp_pm = make_storage()
+        self._tmp_pem = make_storage()
+        self._tmp_peln_run = make_storage()
+        self._tmp_gm = make_storage()
+
         riemorigin = grid_indexing.origin_compute()
         domain = grid_indexing.domain_compute(add=(0, 0, 1))
-        shape = grid_indexing.max_shape
-        self._tmp_dm = utils.make_storage_from_shape(shape, riemorigin)
-        self._tmp_pe_init = utils.make_storage_from_shape(shape, riemorigin)
-        self._tmp_pm = utils.make_storage_from_shape(shape, riemorigin)
-        self._tmp_pem = utils.make_storage_from_shape(shape, riemorigin)
-        self._tmp_peln_run = utils.make_storage_from_shape(shape, riemorigin)
-        self._tmp_gm = utils.make_storage_from_shape(shape, riemorigin)
         self._precompute_stencil = stencil_factory.from_origin_domain(
             precompute,
             origin=riemorigin,

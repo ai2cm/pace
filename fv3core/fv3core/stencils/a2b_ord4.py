@@ -11,13 +11,12 @@ from gt4py.gtscript import (
     sqrt,
 )
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
-from fv3core.utils import axis_offsets
-from fv3core.utils.grid import GridData, GridIndexing
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldI, FloatFieldIJ
-from fv3gfs.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.dsl.stencil import GridIndexing, StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.util.grid import GridData
 
 
 # comact 4-pt cubic interpolation
@@ -489,9 +488,14 @@ class AGrid2BGridFourthOrder:
 
         self.replace = replace
 
-        self._tmp_qx = utils.make_storage_from_shape(self._idx.max_shape)
-        self._tmp_qy = utils.make_storage_from_shape(self._idx.max_shape)
-        self._tmp_qout_edges = utils.make_storage_from_shape(self._idx.max_shape)
+        def make_storage():
+            return utils.make_storage_from_shape(
+                self._idx.max_shape, backend=self._stencil_config.backend
+            )
+
+        self._tmp_qx = make_storage()
+        self._tmp_qy = make_storage()
+        self._tmp_qout_edges = make_storage()
         _, (z_domain,) = self._idx.get_origin_domain([z_dim])
         corner_domain = (1, 1, z_domain)
 
@@ -570,8 +574,7 @@ class AGrid2BGridFourthOrder:
         )
         origin, domain = self._exclude_tile_edges(origin, domain)
 
-        ax_offsets = axis_offsets(
-            self._idx,
+        ax_offsets = self._idx.axis_offsets(
             origin,
             domain,
         )

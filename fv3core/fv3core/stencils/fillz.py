@@ -3,9 +3,9 @@ from typing import Any, Dict
 
 from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, IntFieldIJ
+import pace.dsl.gt4py_utils as utils
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
 
 
 @typing.no_type_check
@@ -123,13 +123,18 @@ class FillNegativeTracerValues:
         shape = stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
         shape_ij = shape[0:2]
 
-        self._dm = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
-        self._dm_pos = utils.make_storage_from_shape(shape, origin=(0, 0, 0))
+        def make_storage(*args, **kwargs):
+            return utils.make_storage_from_shape(
+                *args, **kwargs, backend=stencil_factory.backend
+            )
+
+        self._dm = make_storage(shape, origin=(0, 0, 0))
+        self._dm_pos = make_storage(shape, origin=(0, 0, 0))
         # Setting initial value of upper_fix to zero is only needed for validation.
         # The values in the compute domain are set to zero in the stencil.
-        self._zfix = utils.make_storage_from_shape(shape_ij, dtype=int, origin=(0, 0))
-        self._sum0 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
-        self._sum1 = utils.make_storage_from_shape(shape_ij, origin=(0, 0))
+        self._zfix = make_storage(shape_ij, dtype=int, origin=(0, 0))
+        self._sum0 = make_storage(shape_ij, origin=(0, 0))
+        self._sum1 = make_storage(shape_ij, origin=(0, 0))
 
     def __call__(
         self,

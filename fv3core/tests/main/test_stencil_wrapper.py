@@ -6,12 +6,15 @@ import numpy as np
 import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3gfs.util
-from fv3core import StencilConfig
-from fv3core.utils.global_config import set_backend
-from fv3core.utils.gt4py_utils import make_storage_from_shape_uncached
-from fv3core.utils.stencil import FrozenStencil, _convert_quantities_to_storage
-from fv3core.utils.typing import FloatField
+import pace.util
+from pace.dsl.gt4py_utils import make_storage_from_shape
+from pace.dsl.stencil import (
+    FrozenStencil,
+    StencilConfig,
+    _convert_quantities_to_storage,
+)
+from pace.dsl.typing import FloatField
+from pace.util.global_config import set_backend
 
 
 @contextlib.contextmanager
@@ -117,9 +120,9 @@ def test_copy_frozen_stencil(
         stencil_config=config,
         externals={},
     )
-    q_in = make_storage_from_shape_uncached((3, 3, 3))
+    q_in = make_storage_from_shape((3, 3, 3), backend=backend)
     q_in[:] = 1.0
-    q_out = make_storage_from_shape_uncached((3, 3, 3))
+    q_out = make_storage_from_shape((3, 3, 3), backend=backend)
     q_out[:] = 2.0
     stencil(q_in, q_out)
     np.testing.assert_array_equal(q_in, q_out)
@@ -149,8 +152,8 @@ def test_frozen_stencil_raises_if_given_origin(
         stencil_config=config,
         externals={},
     )
-    q_in = make_storage_from_shape_uncached((3, 3, 3))
-    q_out = make_storage_from_shape_uncached((3, 3, 3))
+    q_in = make_storage_from_shape((3, 3, 3), backend=backend)
+    q_out = make_storage_from_shape((3, 3, 3), backend=backend)
     with pytest.raises(TypeError, match="origin"):
         stencil(q_in, q_out, origin=(0, 0, 0))
 
@@ -179,8 +182,8 @@ def test_frozen_stencil_raises_if_given_domain(
         stencil_config=config,
         externals={},
     )
-    q_in = make_storage_from_shape_uncached((3, 3, 3))
-    q_out = make_storage_from_shape_uncached((3, 3, 3))
+    q_in = make_storage_from_shape((3, 3, 3), backend=backend)
+    q_out = make_storage_from_shape((3, 3, 3), backend=backend)
     with pytest.raises(TypeError, match="domain"):
         stencil(q_in, q_out, domain=(3, 3, 3))
 
@@ -220,7 +223,10 @@ def test_frozen_stencil_kwargs_passed_to_init(
             externals={},
         )
     mock_stencil.assert_called_once_with(
-        definition=copy_stencil, externals={}, **config.stencil_kwargs
+        definition=copy_stencil,
+        externals={},
+        name="main.test_stencil_wrapper.copy_stencil",
+        **config.stencil_kwargs,
     )
 
 
@@ -276,7 +282,7 @@ def test_backend_options(
 
 
 def get_mock_quantity():
-    return unittest.mock.MagicMock(spec=fv3gfs.util.Quantity)
+    return unittest.mock.MagicMock(spec=pace.util.Quantity)
 
 
 def test_convert_quantities_to_storage_no_args():

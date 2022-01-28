@@ -4,22 +4,37 @@ command=$1
 
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-rm $SCRIPT_DIR/../external/fv3gfs-util
-cp -r $SCRIPT_DIR/../../fv3gfs-util $SCRIPT_DIR/../external/fv3gfs-util
+rm $SCRIPT_DIR/../external/pace-util
+cp -r $SCRIPT_DIR/../../pace-util $SCRIPT_DIR/../external/pace-util
 
 rm $SCRIPT_DIR/../external/stencils
 cp -r $SCRIPT_DIR/../../stencils $SCRIPT_DIR/../external/stencils
+
+rm $SCRIPT_DIR/../external/gt4py
+cp -r $SCRIPT_DIR/../../external/gt4py $SCRIPT_DIR/../external/gt4py
+
+rm $SCRIPT_DIR/../external/dsl
+cp -r $SCRIPT_DIR/../../dsl $SCRIPT_DIR/../external/dsl
+
+rm $SCRIPT_DIR/../constraints.txt
+cp $SCRIPT_DIR/../../constraints.txt $SCRIPT_DIR/../constraints.txt
 
 echo $command
 eval $command
 
 ret=$?
 
-rm -r $SCRIPT_DIR/../external/fv3gfs-util
+rm -r $SCRIPT_DIR/../external/pace-util
 rm -r $SCRIPT_DIR/../external/stencils
+rm -r $SCRIPT_DIR/../external/gt4py
+rm -r $SCRIPT_DIR/../external/dsl
+rm $SCRIPT_DIR/../constraints.txt
 
 cd $SCRIPT_DIR
-ln -s ../../fv3gfs-util ../external/fv3gfs-util
+ln -s ../../pace-util ../external/pace-util
 ln -s ../../stencils ../external/stencils
+ln -s ../../stencils ../external/gt4py
+ln -s ../../dsl ../external/dsl
+ln -s ../../constraints.txt ../constraints.txt
 
 exit $ret

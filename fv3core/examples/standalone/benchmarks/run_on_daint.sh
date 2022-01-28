@@ -17,10 +17,12 @@
 set -e
 
 # configuration
-SCRIPT=`realpath $0`
-SCRIPT_DIR=`dirname $SCRIPT`
-ROOT_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
+SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+FV3CORE_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
+BUILDENV_DIR="$FV3CORE_DIR/../buildenv"
+PACE_DIR=$SCRIPT_DIR/../../../../
 NTHREADS=12
+env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"
 
 # utility functions
 function exitError()
@@ -65,38 +67,32 @@ test -n "$2" || exitError 1002 ${LINENO} "must pass a number of ranks"
 ranks="$2"
 test -n "$3" || exitError 1003 ${LINENO} "must pass a backend"
 backend="$3"
-sanitized_backend=`echo $backend | sed 's/:/_/g'` #sanitize the backend from any ':'
 test -n "$4" || exitError 1004 ${LINENO} "must pass a data path"
 data_path="$4"
 py_args="$5"
 run_args="$6"
 DO_NSYS_RUN="$7"
 
+
 # get dependencies
-cd $ROOT_DIR
+cd $FV3CORE_DIR
 make update_submodules_venv
-# set GT4PY version
-cd $ROOT_DIR
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
-fi
+
 
 # set up the virtual environment
 echo "creating the venv"
 if [ -d ./venv ] ; then rm -rf venv ; fi
-cd $ROOT_DIR/external/daint_venv/
+cd $FV3CORE_DIR/external/daint_venv/
 if [ -d ./gt4py ] ; then rm -rf gt4py ; fi
-cd $ROOT_DIR
-$ROOT_DIR/.jenkins/install_virtualenv.sh $ROOT_DIR/venv
+cd $FV3CORE_DIR
+$FV3CORE_DIR/.jenkins/install_virtualenv.sh $FV3CORE_DIR/venv
 source ./venv/bin/activate
 pip list
 
 # set the environment
-if [ -d ./buildenv ] ; then rm -rf buildenv ; fi
-git clone https://github.com/VulcanClimateModeling/buildenv/
-cp ./buildenv/submit.daint.slurm run.daint.slurm
+cp $BUILDENV_DIR/submit.daint.slurm run.daint.slurm
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
-    cp ./buildenv/submit.daint.slurm run.nsys.daint.slurm
+    cp $BUILDENV_DIR/submit.daint.slurm run.nsys.daint.slurm
 fi
 
 if git rev-parse --git-dir > /dev/null 2>&1 ; then
@@ -109,7 +105,7 @@ split_path=(${data_path//\// })
 experiment=${split_path[-1]}
 
 echo "Configuration overview:"
-echo "    Root dir:          $ROOT_DIR"
+echo "    Root dir:          $FV3CORE_DIR"
 echo "    Timesteps:         $timesteps"
 echo "    Ranks:             $ranks"
 echo "    Backend:           $backend"
@@ -122,26 +118,8 @@ echo "    Run arguments:     $run_args"
 echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 
-sample_cache=.gt_cache
+$FV3CORE_DIR/.jenkins/actions/fetch_caches.sh $backend $EXPNAME
 
-if [ ! -d $(pwd)/.gt_cache ]; then
-    echo "Attempting to use precomputed cache"
-    if [ ! -d $(pwd)/${sample_cache} ] ; then
-        premade_caches=/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$sanitized_backend
-        if [ -d ${premade_caches}/${sample_cache} ] ; then
-            version_file=${premade_caches}/GT4PY_VERSION.txt
-            if [ -f ${version_file} ]; then
-                version=`cat ${version_file}`
-            else
-                version=""
-            fi
-            if [ "$version" == "$GT4PY_VERSION" ]; then
-                cp -r ${premade_caches}/.gt_cache .
-                find . -name m_\*.py -exec sed -i "s|\/scratch\/snx3000\/olifu\/jenkins_submit\/workspace\/pace-fv3core-cache-setup\/backend\/${SANITIZED_BACKEND}\/experiment\/${EXPNAME}\/slave\/daint_submit/fv3core|$(pwd)|g" {} +
-            fi
-        fi
-    fi
-fi
 
 echo "Submitting script to do performance run"
 # Adapt batch script to run the code:
@@ -152,8 +130,7 @@ sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
 sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
 sed -i "s/00:45:00/03:15:00/g" run.daint.slurm
 sed -i "s/cscsci/normal/g" run.daint.slurm
-sed -i "s/<G2G>/export PYTHONOPTIMIZE=TRUE/g" run.daint.slurm
-sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
+sed -i "s#<CMD>#$env_vars\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 # execute on a gpu node
 set +e
 res=$(sbatch -W -C gpu run.daint.slurm 2>&1)
@@ -174,6 +151,7 @@ else
 fi
 
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
+    module load nvidia-nsight-systems/2021.1.1.66-6c5c5cb
     echo "Install performance_visualization package"
     git clone git@github.com:ai2cm/performance_visualization.git
     pip install -e performance_visualization.git
@@ -186,8 +164,7 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
     sed -i "s/<OUTFILE>/run.nsys.daint.out\n#SBATCH --hint=nomultithread/g" run.nsys.daint.slurm
     sed -i "s/00:45:00/00:40:00/g" run.nsys.daint.slurm
     sed -i "s/cscsci/normal/g" run.nsys.daint.slurm
-    sed -i "s#<G2G>#module load nvidia-nsight-systems/2021.1.1.66-6c5c5cb\nexport PYTHONOPTIMIZE=TRUE#g" run.nsys.daint.slurm
-    sed -i "s#<CMD>#export PYTHONPATH=/project/s1053/install/serialbox/gnu/python:\$PYTHONPATH\nsrun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
+    sed -i "s#<CMD>#srun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
     # execute on a gpu node
     set +e
     res=$(sbatch -W -C gpu run.nsys.daint.slurm 2>&1)

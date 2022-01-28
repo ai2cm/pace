@@ -1,6 +1,6 @@
 import pytest
 
-from fv3core import StencilConfig
+from pace.dsl.stencil import StencilConfig
 
 
 @pytest.mark.parametrize("validate_args", [True, False])

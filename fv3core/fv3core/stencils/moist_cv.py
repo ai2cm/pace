@@ -1,8 +1,8 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, PARALLEL, computation, exp, interval, log
 
-import fv3core.utils.global_constants as constants
-from fv3core.utils.typing import FloatField
+import pace.util.constants as constants
+from pace.dsl.typing import FloatField
 
 
 @gtscript.function
@@ -117,7 +117,7 @@ def moist_pt_func(
 ):
     cvm, gz = moist_cv_nwat6_fn(
         qvapor, qliquid, qrain, qsnow, qice, qgraupel
-    )  # if (nwat == 6) else moist_cv_default_fn(cv_air)
+    )  # if (nwat == 6) else moist_cv_default_fn(constants.CV_AIR)
     q_con = gz
     cappa = set_cappa(qvapor, cvm, r_vir)
     pt = pt * exp(cappa / (1.0 - cappa) * log(constants.RDG * delp / delz * pt))
@@ -188,7 +188,7 @@ def moist_pkz(
     with computation(PARALLEL), interval(...):
         cvm, gz = moist_cv_nwat6_fn(
             qvapor, qliquid, qrain, qsnow, qice, qgraupel
-        )  # if (nwat == 6) else moist_cv_default_fn(cv_air)
+        )  # if (nwat == 6) else moist_cv_default_fn(constants.CV_AIR)
         q_con[0, 0, 0] = gz
         cappa = set_cappa(qvapor, cvm, r_vir)
         pkz = compute_pkz_func(delp, delz, pt, cappa)
@@ -216,7 +216,7 @@ def fv_setup(
         if __INLINED(moist_phys):
             cvm, q_con = moist_cv_nwat6_fn(
                 qvapor, qliquid, qrain, qsnow, qice, qgraupel
-            )  # if (nwat == 6) else moist_cv_default_fn(cv_air)
+            )  # if (nwat == 6) else moist_cv_default_fn(constants.CV_AIR)
             dp1 = constants.ZVIR * qvapor
             cappa = constants.RDGAS / (constants.RDGAS + cvm / (1.0 + dp1))
             pkz = exp(

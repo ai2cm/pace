@@ -1,11 +1,10 @@
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
-import fv3core.utils.global_constants as constants
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util
+import pace.dsl.gt4py_utils as utils
+import pace.util
+import pace.util.constants as constants
 from fv3core._config import DynamicalCoreConfig
-from fv3core.decorators import FrozenStencil
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.stencils import fvtp2d, tracer_2d_1l
 from fv3core.stencils.basic_operations import copy_defn
@@ -13,12 +12,11 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
-from fv3core.utils import global_config
-from fv3core.utils.grid import DampingCoefficients, GridData
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ, FloatFieldK
-from fv3gfs.util.halo_updater import HaloUpdater
+from pace.dsl.stencil import FrozenStencil, StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.util.grid import DampingCoefficients, GridData
+from pace.util.halo_updater import HaloUpdater
 
 
 # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
@@ -106,7 +104,7 @@ def compute_preamble(
 
 
 def post_remap(
-    state,
+    state: DycoreState,
     is_root_rank: bool,
     config: DynamicalCoreConfig,
     hyperdiffusion: HyperdiffusionDamping,
@@ -128,13 +126,13 @@ def post_remap(
         if __debug__:
             if is_root_rank == 0:
                 print("Del2Cubed")
-        omega_halo_updater.update([state.omga_quantity])
+        omega_halo_updater.update([state.omga])
         hyperdiffusion(state.omga, 0.18 * da_min)
 
 
 def wrapup(
-    state,
-    comm: fv3gfs.util.CubedSphereCommunicator,
+    state: DycoreState,
+    comm: pace.util.CubedSphereCommunicator,
     adjust_stencil: AdjustNegativeTracerMixingRatio,
     cubed_to_latlon_stencil: CubedToLatLon,
     is_root_rank: bool,
@@ -160,32 +158,27 @@ def wrapup(
         if is_root_rank:
             print("CubedToLatLon")
     cubed_to_latlon_stencil(
-        state.u_quantity,
-        state.v_quantity,
+        state.u,
+        state.v,
         state.ua,
         state.va,
         comm,
     )
 
 
-def fvdyn_temporaries(quantity_factory: fv3gfs.util.QuantityFactory, shape, grid):
+def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
         quantity = quantity_factory.empty(
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM], units="unknown"
+            dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         )
-        tmps[f"{name}_quantity"] = quantity
-        tmps[name] = quantity.storage
+        tmps[name] = quantity
     for name in ["cappa", "dp1", "cvm"]:
         quantity = quantity_factory.empty(
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="unknown",
         )
-        tmps[f"{name}_quantity"] = quantity
-        tmps[name] = quantity.storage
-    gz = quantity_factory.empty(dims=[fv3gfs.util.Z_DIM], units="m^2 s^-2")
-    tmps["gz_quantity"] = gz
-    tmps["gz"] = gz.storage
+        tmps[name] = quantity
     return tmps
 
 
@@ -196,12 +189,12 @@ class DynamicalCore:
 
     def __init__(
         self,
-        comm: fv3gfs.util.CubedSphereCommunicator,
+        comm: pace.util.CubedSphereCommunicator,
         grid_data: GridData,
         stencil_factory: StencilFactory,
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
-        phis: fv3gfs.util.Quantity,
+        phis: pace.util.Quantity,
     ):
         """
         Args:
@@ -218,7 +211,7 @@ class DynamicalCore:
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
-        sizer = fv3gfs.util.SubtileGridSizer.from_tile_params(
+        sizer = pace.util.SubtileGridSizer.from_tile_params(
             nx_tile=config.npx - 1,
             ny_tile=config.npy - 1,
             nz=config.npz,
@@ -228,8 +221,8 @@ class DynamicalCore:
             tile_rank=comm.tile.rank,
             extra_dim_lengths={},
         )
-        quantity_factory = fv3gfs.util.QuantityFactory.from_backend(
-            sizer, backend=global_config.get_backend()
+        quantity_factory = pace.util.QuantityFactory.from_backend(
+            sizer, backend=stencil_factory.backend
         )
         assert config.moist_phys, "fvsetup is only implemented for moist_phys=true"
         assert config.nwat == 6, "Only nwat=6 has been implemented and tested"
@@ -256,10 +249,14 @@ class DynamicalCore:
         pfull_stencil = stencil_factory.from_origin_domain(
             init_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
         )
-        pfull = utils.make_storage_from_shape((1, 1, self._ak.shape[0]))
+        pfull = utils.make_storage_from_shape(
+            (1, 1, self._ak.shape[0]), backend=stencil_factory.backend
+        )
         pfull_stencil(self._ak, self._bk, pfull, self.config.p_ref)
         # workaround because cannot write to FieldK storage in stencil
-        self._pfull = utils.make_storage_data(pfull[0, 0, :], self._ak.shape, (0,))
+        self._pfull = utils.make_storage_data(
+            pfull[0, 0, :], self._ak.shape, (0,), backend=stencil_factory.backend
+        )
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
             externals={
@@ -306,9 +303,7 @@ class DynamicalCore:
             stencil_factory, grid_data, order=config.c2l_ord
         )
 
-        self._temporaries = fvdyn_temporaries(
-            quantity_factory, grid_indexing.domain_full(add=(1, 1, 1)), grid_data
-        )
+        self._temporaries = fvdyn_temporaries(quantity_factory)
         if not (not self.config.inline_q and NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
@@ -328,19 +323,20 @@ class DynamicalCore:
         full_xyz_spec = grid_indexing.get_quantity_halo_spec(
             grid_indexing.domain_full(add=(1, 1, 1)),
             grid_indexing.origin_compute(),
-            dims=[fv3gfs.util.X_DIM, fv3gfs.util.Y_DIM, fv3gfs.util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             n_halo=utils.halo,
+            backend=stencil_factory.backend,
         )
         self._omega_halo_updater = self.comm.get_scalar_halo_updater([full_xyz_spec])
 
     def step_dynamics(
         self,
         state: DycoreState,
-        conserve_total_energy: bool,
+        conserve_total_energy: float,
         do_adiabatic_init: bool,
         timestep: float,
         n_split: int,
-        timer: fv3gfs.util.Timer = fv3gfs.util.NullTimer(),
+        timer: pace.util.Timer = pace.util.NullTimer(),
     ):
         """
         Step the model state forward by one timestep.
@@ -354,6 +350,9 @@ class DynamicalCore:
             n_split: number of acoustic timesteps per remapping timestep
             timer: if given, use for timing model execution
         """
+        # TODO: state should be a statically typed class, move these to the
+        # definition of DycoreState and pass them on init or alternatively
+        # move these to/get these from the namelist/configuration class
         state.__dict__.update(
             {
                 "consv_te": conserve_total_energy,
@@ -366,17 +365,22 @@ class DynamicalCore:
         )
         self._compute(state, timer)
 
+    # TODO: type hint state when it is possible to do so, when it is a static type
     def _compute(
         self,
         state,
-        timer: fv3gfs.util.NullTimer,
+        timer: pace.util.Timer,
     ):
+        # TODO: put temporaries on a statically typed container class, as they are not
+        # attributes of DycoreState
         state.__dict__.update(self._temporaries)
         tracers = {}
         for name in utils.tracer_variables[0:NQ]:
-            tracers[name] = state.__dict__[name + "_quantity"]
+            tracers[name] = state.__dict__[name]
         tracer_storages = {name: quantity.storage for name, quantity in tracers.items()}
 
+        # TODO: ak and bk are not attributes of DycoreState, put them on a statically
+        # typed class that has them as attributes
         state.ak = self._ak
         state.bk = self._bk
         last_step = False
@@ -463,7 +467,8 @@ class DynamicalCore:
             is_root_rank=self.comm.rank == 0,
         )
 
-    def _dyn(self, state, tracers, timer=fv3gfs.util.NullTimer()):
+    # TODO: type hint state when it is possible to do so, when it is a static type
+    def _dyn(self, state, tracers, timer=pace.util.NullTimer()):
         self._copy_stencil(
             state.delp,
             state.dp1,

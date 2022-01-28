@@ -1,11 +1,11 @@
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils import xppm
-from fv3core.testing import TranslateFortranData2Py, TranslateGrid
+from pace.stencils.testing import TranslateFortranData2Py, TranslateGrid
 
 
 class TranslateXPPM(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "q": {"serialname": "qx", "jstart": "jfirst"},
             "c": {"serialname": "cx", "istart": grid.is_},
@@ -19,6 +19,7 @@ class TranslateXPPM(TranslateFortranData2Py):
                 "jend": "jlast",
             }
         }
+        self.stencil_factory = stencil_factory
 
     def jvars(self, inputs):
         inputs["jfirst"] += TranslateGrid.fpy_model_index_offset
@@ -32,11 +33,13 @@ class TranslateXPPM(TranslateFortranData2Py):
 
     def compute(self, inputs):
         self.process_inputs(inputs)
-        inputs["xflux"] = utils.make_storage_from_shape(inputs["q"].shape)
+        inputs["xflux"] = utils.make_storage_from_shape(
+            inputs["q"].shape, backend=self.stencil_factory.backend
+        )
         origin = self.grid.grid_indexing.origin_compute()
         domain = self.grid.grid_indexing.domain_compute(add=(1, 1, 0))
         self.compute_func = xppm.XPiecewiseParabolic(
-            stencil_factory=self.grid.stencil_factory,
+            stencil_factory=self.stencil_factory,
             dxa=self.grid.dxa,
             grid_type=self.grid.grid_type,
             iord=int(inputs["iord"]),
@@ -48,7 +51,7 @@ class TranslateXPPM(TranslateFortranData2Py):
 
 
 class TranslateXPPM_2(TranslateXPPM):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"]["q"]["serialname"] = "q"
         self.out_vars["xflux"]["serialname"] = "xflux_2"

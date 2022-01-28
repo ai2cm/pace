@@ -1,8 +1,8 @@
-import fv3core._config as spec
 import fv3core.stencils.dyn_core as dyn_core
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as fv3util
-from fv3core.testing import ParallelTranslate2PyState
+import pace.dsl.gt4py_utils as utils
+import pace.util as fv3util
+from fv3core.initialization.dycore_state import DycoreState
+from pace.stencils.testing import ParallelTranslate2PyState
 
 
 class TranslateDynCore(ParallelTranslate2PyState):
@@ -39,8 +39,8 @@ class TranslateDynCore(ParallelTranslate2PyState):
         "w": {"dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "m/s"},
     }
 
-    def __init__(self, grids):
-        super().__init__(grids)
+    def __init__(self, grids, namelist, stencil_factory):
+        super().__init__(grids, namelist, stencil_factory)
         grid = grids[0]
         self._base.in_vars["data_vars"] = {
             "cappa": {},
@@ -114,31 +114,57 @@ class TranslateDynCore(ParallelTranslate2PyState):
         # TODO: Fix edge_interpolate4 in d2a2c_vect to match closer and the
         # variables here should as well.
         self.max_error = 2e-6
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def compute_parallel(self, inputs, communicator):
         # ak, bk, pfull, and phis are numpy arrays at this point and
         #   must be converted into gt4py storages
         for name in ("ak", "bk", "pfull", "phis"):
             inputs[name] = utils.make_storage_data(
-                inputs[name], inputs[name].shape, len(inputs[name].shape) * (0,)
+                inputs[name],
+                inputs[name].shape,
+                len(inputs[name].shape) * (0,),
+                backend=self.stencil_factory.backend,
             )
 
-        grid_data = spec.grid.grid_data
+        grid_data = self.grid.grid_data
         if grid_data.ak is None or grid_data.bk is None:
             grid_data.ak = inputs["ak"]
             grid_data.bk = inputs["bk"]
             grid_data.ptop = inputs["ptop"]
             grid_data.ks = inputs["ks"]
-        self._base.compute_func = dyn_core.AcousticDynamics(
+        acoustic_dynamics = dyn_core.AcousticDynamics(
             communicator,
-            spec.grid.stencil_factory,
+            self.stencil_factory,
             grid_data,
-            spec.grid.damping_coefficients,
-            spec.grid.grid_type,
-            spec.grid.nested,
-            spec.grid.stretched_grid,
-            spec.namelist.dynamical_core.acoustic_dynamics,
+            self.grid.damping_coefficients,
+            self.grid.grid_type,
+            self.grid.nested,
+            self.grid.stretched_grid,
+            self.namelist.acoustic_dynamics,
             inputs["pfull"],
             inputs["phis"],
         )
-        return super().compute_parallel(inputs, communicator)
+        self._base.make_storage_data_input_vars(inputs)
+        state = DycoreState.init_zeros(quantity_factory=self.grid.quantity_factory)
+        state.cappa = self.grid.quantity_factory.empty(
+            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            units="unknown",
+        )
+        for name, value in inputs.items():
+            if hasattr(state, name) and isinstance(state[name], fv3util.Quantity):
+                # storage can have buffer points at the end, so value.shape
+                # is often not equal to state[name].storage.shape
+                selection = tuple(slice(0, end) for end in value.shape)
+                state[name].storage[selection] = value
+            else:
+                setattr(state, name, value)
+        acoustic_dynamics(state)
+        storages_only = {}
+        for name, value in vars(state).items():
+            if isinstance(value, fv3util.Quantity):
+                storages_only[name] = value.storage
+            else:
+                storages_only[name] = value
+        return self._base.slice_output(storages_only)

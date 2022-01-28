@@ -1,12 +1,8 @@
 import numpy as np
 
-import fv3core.utils.gt4py_utils as utils
-from fv3core.testing import (
-    MapSingleFactory,
-    TranslateFortranData2Py,
-    TranslateGrid,
-    pad_field_in_j,
-)
+import pace.dsl.gt4py_utils as utils
+from fv3core.testing import MapSingleFactory
+from pace.stencils.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
 
 
 class TranslateSingleJ(TranslateFortranData2Py):
@@ -29,9 +25,9 @@ class TranslateSingleJ(TranslateFortranData2Py):
 
 
 class TranslateMap1_PPM_2d(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
-        self.compute_func = MapSingleFactory()
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
+        self.compute_func = MapSingleFactory(stencil_factory)
         self.in_vars["data_vars"] = {
             "q1": {"serialname": "var_in"},
             "pe1": {"istart": 3, "iend": grid.ie - 2, "axis": 1},
@@ -43,11 +39,16 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
         self.max_error = 5e-13
         self.write_vars = ["qs"]
         self.nj = self.maxshape[1]
+        self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         if "qs" in inputs:
-            qs_field = utils.make_storage_from_shape(self.maxshape[0:2], origin=(0, 0))
+            qs_field = utils.make_storage_from_shape(
+                self.maxshape[0:2],
+                origin=(0, 0),
+                backend=self.stencil_factory.backend,
+            )
             qs_field[:, :] = inputs["qs"][:, :, 0]
             inputs["qs"] = qs_field
             if inputs["qs"].shape[1] == 1:
@@ -74,11 +75,19 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
             inputs["j2"] = inputs["j_2d"]
             if inputs["pe1"].shape[1] == 1:
                 inputs["pe1"] = self.make_storage_data(
-                    pad_field_in_j(inputs["pe1"], self.nj)
+                    pad_field_in_j(
+                        inputs["pe1"],
+                        self.nj,
+                        backend=self.stencil_factory.backend,
+                    )
                 )
             if inputs["pe2"].shape[1] == 1:
                 inputs["pe2"] = self.make_storage_data(
-                    pad_field_in_j(inputs["pe2"], self.nj)
+                    pad_field_in_j(
+                        inputs["pe2"],
+                        self.nj,
+                        backend=self.stencil_factory.backend,
+                    )
                 )
         del inputs["j_2d"]
         var_inout = self.compute_func(**inputs)
@@ -86,8 +95,8 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
 
 
 class TranslateMap1_PPM_2d_3(TranslateMap1_PPM_2d):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"]["pe1"]["serialname"] = "pe1_2"
         self.in_vars["data_vars"]["pe2"]["serialname"] = "pe2_2"
         self.in_vars["data_vars"]["q1"]["serialname"] = "var_in_3"
@@ -101,8 +110,8 @@ class TranslateMap1_PPM_2d_3(TranslateMap1_PPM_2d):
 
 
 class TranslateMap1_PPM_2d_2(TranslateMap1_PPM_2d):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"]["pe1"]["serialname"] = "pe1_2"
         self.in_vars["data_vars"]["pe2"]["serialname"] = "pe2_2"
         self.in_vars["data_vars"]["q1"]["serialname"] = "var_in_2"

@@ -1,13 +1,13 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
-from fv3core.utils import corners
-from fv3core.utils.grid import GridData, axis_offsets
-from fv3core.utils.stencil import StencilFactory
-from fv3core.utils.typing import FloatField, FloatFieldIJ
-from fv3gfs.util import X_DIM, Y_DIM, Z_DIM
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.stencils import corners
+from pace.util import X_DIM, Y_DIM, Z_DIM
+from pace.util.grid import GridData
 
 
 c1 = -2.0 / 14.0
@@ -413,9 +413,12 @@ class DGrid2AGrid2CGridVectors:
         self._utmp = utils.make_storage_from_shape(
             grid_indexing.max_shape,
             grid_indexing.origin_full(),
+            backend=stencil_factory.backend,
         )
         self._vtmp = utils.make_storage_from_shape(
-            grid_indexing.max_shape, grid_indexing.origin_full()
+            grid_indexing.max_shape,
+            grid_indexing.origin_full(),
+            backend=stencil_factory.backend,
         )
 
         js1 = npt + OFFSET if grid_indexing.south_edge else grid_indexing.jsc - 1
@@ -464,7 +467,7 @@ class DGrid2AGrid2CGridVectors:
 
         origin = grid_indexing.origin_full()
         domain = grid_indexing.domain_full()
-        ax_offsets = axis_offsets(grid_indexing, origin, domain)
+        ax_offsets = grid_indexing.axis_offsets(origin, domain)
         if npt == 0:
             d2a2c_avg_offset = -1
         else:
@@ -484,7 +487,7 @@ class DGrid2AGrid2CGridVectors:
         )
         origin_edges = grid_indexing.origin_compute(add=(-3, -3, 0))
         domain_edges = grid_indexing.domain_compute(add=(6, 6, 0))
-        ax_offsets_edges = axis_offsets(grid_indexing, origin_edges, domain_edges)
+        ax_offsets_edges = grid_indexing.axis_offsets(origin_edges, domain_edges)
         self._fill_corners_x = stencil_factory.from_origin_domain(
             func=fill_corners_x,
             externals=ax_offsets_edges,

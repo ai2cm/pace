@@ -28,6 +28,8 @@ exitError()
     exit $1
 }
 
+set -x
+
 # echo basic setup
 echo "####### executing: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
 
@@ -50,6 +52,8 @@ if [[ $input_backend = gtc_* ]] ; then
     input_backend=`echo $input_backend | sed 's/_/:/'`
 fi
 
+JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+BUILDENV_DIR=$JENKINS_DIR/../buildenv
 
 # Read arguments
 action="$1"
@@ -58,42 +62,35 @@ experiment="$3"
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
-envloc=`/bin/pwd`
 popd > /dev/null
 shopt -s expand_aliases
-# Download the env
-. ${envloc}/env.sh
 
 # setup module environment and default queue
-test -f ${envloc}/env/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
-. ${envloc}/env/machineEnvironment.sh
+test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
+. ${BUILDENV_DIR}/machineEnvironment.sh
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
-# get root directory of where jenkins.sh is sitting
-export jenkins_dir=`dirname $0`
 
 
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`cat GT4PY_VERSION.txt`
-fi
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
-    . ${jenkins_dir}/actions/fetch_caches.sh $backend $experiment
+    echo "Fetching for exisintg gt_caches"
+    . ${JENKINS_DIR}/actions/fetch_caches.sh $backend $experiment
 fi
 
 # load machine dependent environment
-if [ ! -f ${envloc}/env/env.${host}.sh ] ; then
-    exitError 1202 ${LINENO} "could not find ${envloc}/env/env.${host}.sh"
+if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then
+    exitError 1202 ${LINENO} "could not find ${BUILDENV_DIR}/env.${host}.sh"
 fi
-. ${envloc}/env/env.${host}.sh
+. ${BUILDENV_DIR}/env.${host}.sh
 
 # check if action script exists
-script="${jenkins_dir}/actions/${action}.sh"
+script="${JENKINS_DIR}/actions/${action}.sh"
 test -f "${script}" || exitError 1301 ${LINENO} "cannot find script ${script}"
 
 # load scheduler tools
-. ${envloc}/env/schedulerTools.sh
-scheduler_script="`dirname $0`/env/submit.${host}.${scheduler}"
+. ${BUILDENV_DIR}/schedulerTools.sh
+scheduler_script="${BUILDENV_DIR}/submit.${host}.${scheduler}"
 
 # if there is a scheduler script, make a copy for this job
 if [ -f ${scheduler_script} ] ; then
@@ -117,13 +114,6 @@ if grep -q "parallel" <<< "${script}"; then
     if grep -q "ranks" <<< "${experiment}"; then
 	export NUM_RANKS=`echo ${experiment} | grep -o -E '[0-9]+ranks' | grep -o -E '[0-9]+'`
 	echo "Setting NUM_RANKS=${NUM_RANKS}"
-	if grep -q "cuda\|gpu" <<< "${backend}" ; then
-	    export MPICH_RDMA_ENABLED_CUDA=1
-        export CRAY_CUDA_MPS=1
-	else
-	    export MPICH_RDMA_ENABLED_CUDA=0
-        export CRAY_CUDA_MPS=0
-	fi
 	if [ -f ${scheduler_script} ] ; then
 	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
 	    sed -i 's|45|30|g' ${scheduler_script}
@@ -138,8 +128,6 @@ if grep -q "parallel" <<< "${script}"; then
     fi
 fi
 
-module load daint-gpu
-module load ${installdir}/modulefiles/gcloud/303.0.0
 # get the test data version from the Makefile
 export DATA_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
 
@@ -149,7 +137,6 @@ if [ -z ${SCRATCH} ] ; then
 fi
 
 # Set the host data head directory location
-export TEST_DATA_DIR="/project/s1053/fv3core_serialized_test_data/${DATA_VERSION}"
 export TEST_DATA_DIR="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/${DATA_VERSION}"
 export FV3_STENCIL_REBUILD_FLAG=False
 # Set the host data location
@@ -170,7 +157,7 @@ echo "JENKINS TAG ${JENKINS_TAG}"
 
 if [ -z ${VIRTUALENV} ]; then
     echo "setting VIRTUALENV"
-    export VIRTUALENV=${envloc}/../venv_${JENKINS_TAG}
+    export VIRTUALENV=${JENKINS_DIR}/../venv_${JENKINS_TAG}
 fi
 
 if [ ${python_env} == "virtualenv" ]; then
@@ -179,36 +166,24 @@ if [ ${python_env} == "virtualenv" ]; then
     else
 	echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
 	export PACE_INSTALL_FLAGS="-e"
-	${jenkins_dir}/install_virtualenv.sh ${VIRTUALENV}
+	${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
     fi
     source ${VIRTUALENV}/bin/activate
     if grep -q "parallel" <<< "${script}"; then
 	export MPIRUN_CALL="srun"
     fi
-    export PACE_PATH="${envloc}/../"
+    export PACE_PATH="${JENKINS_DIR}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
-    export PYTHONPATH=${installdir}/serialbox/gnu/python:$PYTHONPATH
 fi
 
-G2G="false"
 export DOCKER_BUILDKIT=1
 
-run_command "${script} ${backend} ${experiment} " Job${action} ${G2G} ${scheduler_script}
+run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script}
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
 fi
 echo "### ACTION ${action} SUCCESSFUL"
-
-# load scheduler tools
-. ${envloc}/env/schedulerTools.sh
-run_timing_script="`dirname $0`/env/submit.${host}.${scheduler}"
-
-echo "### ACTION ${action} SUCCESSFUL"
-
-# end timer and report time taken
-T="$(($(date +%s)-T))"
-printf "####### time taken: %02d:%02d:%02d:%02d\n" "$((T/86400))" "$((T/3600%24))" "$((T/60%60))" "$((T%60))"
 
 # no errors encountered
 echo "####### finished: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"

@@ -1,12 +1,11 @@
-import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
+import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
-from fv3core.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateFortranData2Py
 
 
 class TranslateNeg_Adj3(TranslateFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "qvapor": {},
             "qliquid": {},
@@ -33,13 +32,15 @@ class TranslateNeg_Adj3(TranslateFortranData2Py):
         }
         for qvar in utils.tracer_variables:
             self.ignore_near_zero_errors[qvar] = True
+        self.stencil_factory = stencil_factory
+        self.namelist = namelist
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         compute_fn = AdjustNegativeTracerMixingRatio(
-            self.grid.stencil_factory,
-            spec.namelist.check_negative,
-            spec.namelist.hydrostatic,
+            self.stencil_factory,
+            self.namelist.check_negative,
+            self.namelist.hydrostatic,
         )
         compute_fn(
             inputs["qvapor"],

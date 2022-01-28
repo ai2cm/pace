@@ -10,22 +10,20 @@ digraph {
   driver [shape=oval, label="driver"]
   physics [shape=oval, label="fv3gfs-physics"]
   stencils [shape=oval, label="stencils"]
-  util [shape=oval, label="fv3gfs-util"]
+  util [shape=oval, label="pace-util"]
+  dsl [shape=oval, label="dsl"]
 
-
-  pace -> fv3core
-  pace -> physics
-  pace -> util
   pace -> driver
-  pace -> stencils
   driver -> fv3core
   driver -> physics
   driver -> util
   fv3core -> util
   fv3core -> stencils
+  fv3core -> dsl
   physics -> util
-  physics -> fv3core
   physics -> stencils
+  physics -> dsl
   stencils -> util
+  stencils -> dsl
 
 }

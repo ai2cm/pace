@@ -1,18 +1,14 @@
 import copy
 
-from mpi4py import MPI
-
-import fv3core._config as spec
-import fv3core.utils.gt4py_utils as utils
-import fv3gfs.util as util
-from fv3core.utils.typing import Float
+import pace.dsl.gt4py_utils as utils
+import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
 
         self.in_vars["data_vars"] = {
             "qvapor": {"dycore": True},
@@ -35,109 +31,114 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         self.out_vars = {
             "gt0": {
                 "serialname": "IPD_gt0",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "gu0": {
                 "serialname": "IPD_gu0",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "gv0": {
                 "serialname": "IPD_gv0",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qvapor": {
                 "serialname": "IPD_qvapor",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qliquid": {
                 "serialname": "IPD_qliquid",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qrain": {
                 "serialname": "IPD_rain",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qice": {
                 "serialname": "IPD_qice",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qsnow": {
                 "serialname": "IPD_snow",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qgraupel": {
                 "serialname": "IPD_qgraupel",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qcld": {
                 "serialname": "IPD_qcld",
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
         }
+        self.namelist = namelist
+        self.stencil_factory = stencil_factory
+        self.grid_indexing = self.stencil_factory.grid_indexing
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         storage = utils.make_storage_from_shape(
-            self.grid.domain_shape_full(add=(1, 1, 1)),
-            origin=self.grid.compute_origin(),
+            self.grid_indexing.domain_full(add=(1, 1, 1)),
+            origin=self.grid_indexing.origin_compute(),
             init=True,
+            backend=self.stencil_factory.backend,
         )
         inputs["delprsi"] = copy.deepcopy(storage)
         inputs["phii"] = copy.deepcopy(storage)
         inputs["phil"] = copy.deepcopy(storage)
         inputs["dz"] = copy.deepcopy(storage)
         inputs["wmp"] = copy.deepcopy(storage)
-        inputs["qvapor_t1"] = copy.deepcopy(storage)
-        inputs["qliquid_t1"] = copy.deepcopy(storage)
-        inputs["qrain_t1"] = copy.deepcopy(storage)
-        inputs["qsnow_t1"] = copy.deepcopy(storage)
-        inputs["qice_t1"] = copy.deepcopy(storage)
-        inputs["qgraupel_t1"] = copy.deepcopy(storage)
-        inputs["qcld_t1"] = copy.deepcopy(storage)
-        inputs["pt_t1"] = copy.deepcopy(storage)
-        inputs["ua_t1"] = copy.deepcopy(storage)
-        inputs["va_t1"] = copy.deepcopy(storage)
-        physics_state = PhysicsState(**inputs)
-        # make mock communicator, this is not used
-        # but needs to be passed as type CubedSphereCommunicator
-        comm = MPI.COMM_WORLD
-        layout = [1, 1]
-        partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
-        communicator = util.CubedSphereCommunicator(comm, partitioner)
-        grid_info = {}  # pass empty grid info, they are not in used for this test
-        grid_info["vlon1"] = 0
-        grid_info["vlon2"] = 0
-        grid_info["vlon3"] = 0
-        grid_info["vlat1"] = 0
-        grid_info["vlat2"] = 0
-        grid_info["vlat3"] = 0
-        grid_info["edge_vect_w"] = 0
-        grid_info["edge_vect_e"] = 0
-        grid_info["edge_vect_s"] = 0
-        grid_info["edge_vect_n"] = 0
-        grid_info["es1_1"] = 0
-        grid_info["es2_1"] = 0
-        grid_info["es3_1"] = 0
-        grid_info["ew1_2"] = 0
-        grid_info["ew2_2"] = 0
-        grid_info["ew3_2"] = 0
+        inputs["physics_updated_specific_humidity"] = copy.deepcopy(storage)
+        inputs["physics_updated_qliquid"] = copy.deepcopy(storage)
+        inputs["physics_updated_qrain"] = copy.deepcopy(storage)
+        inputs["physics_updated_qsnow"] = copy.deepcopy(storage)
+        inputs["physics_updated_qice"] = copy.deepcopy(storage)
+        inputs["physics_updated_qgraupel"] = copy.deepcopy(storage)
+        inputs["physics_updated_cloud_fraction"] = copy.deepcopy(storage)
+        inputs["physics_updated_pt"] = copy.deepcopy(storage)
+        inputs["physics_updated_ua"] = copy.deepcopy(storage)
+        inputs["physics_updated_va"] = copy.deepcopy(storage)
+        inputs["prsi"] = copy.deepcopy(storage)
+        inputs["prsik"] = copy.deepcopy(storage)
+        sizer = util.SubtileGridSizer.from_tile_params(
+            nx_tile=self.namelist.npx - 1,
+            ny_tile=self.namelist.npy - 1,
+            nz=self.namelist.npz,
+            n_halo=3,
+            extra_dim_lengths={},
+            layout=self.namelist.layout,
+        )
+
+        quantity_factory = util.QuantityFactory.from_backend(
+            sizer, self.stencil_factory.backend
+        )
+        active_packages = ["microphysics"]
+        physics_state = PhysicsState(
+            **inputs,
+            quantity_factory=quantity_factory,
+            active_packages=active_packages,
+        )
+        # because it's not in the serialized data
+        self.grid.grid_data.ptop = 300.0
         physics = Physics(
-            self.grid.stencil_factory, self.grid, spec.namelist, communicator, grid_info
+            self.stencil_factory,
+            self.grid.grid_data,
+            self.namelist,
+            active_packages=active_packages,
         )
         physics._atmos_phys_driver_statein(
-            physics._prsik,
+            physics_state.prsik,
             physics_state.phii,
-            physics._prsi,
+            physics_state.prsi,
             physics_state.delz,
             physics_state.delp,
             physics_state.qvapor,
@@ -154,7 +155,7 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         )
         physics._get_prs_fv3(
             physics_state.phii,
-            physics._prsi,
+            physics_state.prsi,
             physics_state.pt,
             physics_state.qvapor,
             physics_state.delprsi,
@@ -177,9 +178,10 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             physics_state.pt,
             physics_state.delp,
         )
-        microph_state = physics_state.microphysics(storage)
-        physics._microphysics(microph_state)
-        # Fortran uses IPD interface, here we use var_t1 to denote the updated field
+        microph_state = physics_state.microphysics
+        physics._microphysics(microph_state, float(self.namelist.dt_atmos))
+        # Fortran uses IPD interface, here we use physics_updated_<var>
+        # to denote the updated field
         physics._update_physics_state_with_tendencies(
             physics_state.qvapor,
             physics_state.qliquid,
@@ -201,26 +203,26 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             microph_state.pt_dt,
             microph_state.udt,
             microph_state.vdt,
-            physics_state.qvapor_t1,
-            physics_state.qliquid_t1,
-            physics_state.qrain_t1,
-            physics_state.qice_t1,
-            physics_state.qsnow_t1,
-            physics_state.qgraupel_t1,
-            physics_state.qcld_t1,
-            physics_state.pt_t1,
-            physics_state.ua_t1,
-            physics_state.va_t1,
-            Float(physics._dt_atmos),
+            physics_state.physics_updated_specific_humidity,
+            physics_state.physics_updated_qliquid,
+            physics_state.physics_updated_qrain,
+            physics_state.physics_updated_qice,
+            physics_state.physics_updated_qsnow,
+            physics_state.physics_updated_qgraupel,
+            physics_state.physics_updated_cloud_fraction,
+            physics_state.physics_updated_pt,
+            physics_state.physics_updated_ua,
+            physics_state.physics_updated_va,
+            float(self.namelist.dt_atmos),
         )
-        inputs["gt0"] = physics_state.pt_t1
-        inputs["gu0"] = physics_state.ua_t1
-        inputs["gv0"] = physics_state.va_t1
-        inputs["qvapor"] = physics_state.qvapor_t1
-        inputs["qliquid"] = physics_state.qliquid_t1
-        inputs["qrain"] = physics_state.qrain_t1
-        inputs["qice"] = physics_state.qice_t1
-        inputs["qsnow"] = physics_state.qsnow_t1
-        inputs["qgraupel"] = physics_state.qgraupel_t1
-        inputs["qcld"] = physics_state.qcld_t1
+        inputs["gt0"] = physics_state.physics_updated_pt
+        inputs["gu0"] = physics_state.physics_updated_ua
+        inputs["gv0"] = physics_state.physics_updated_va
+        inputs["qvapor"] = physics_state.physics_updated_specific_humidity
+        inputs["qliquid"] = physics_state.physics_updated_qliquid
+        inputs["qrain"] = physics_state.physics_updated_qrain
+        inputs["qice"] = physics_state.physics_updated_qice
+        inputs["qsnow"] = physics_state.physics_updated_qsnow
+        inputs["qgraupel"] = physics_state.physics_updated_qgraupel
+        inputs["qcld"] = physics_state.physics_updated_cloud_fraction
         return self.slice_output(inputs)

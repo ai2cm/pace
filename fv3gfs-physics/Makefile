@@ -18,7 +18,7 @@ FORTRAN_SERIALIZED_DATA_VERSION=integration-7.2.5
 TEST_DATA_TARFILE=dat_files.tar.gz
 TEST_DATA_HOST ?=$(CWD)/../test_data/$(EXPERIMENT)
 TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
-FV3UTIL_DIR=$(CWD)/../fv3gfs-util
+FV3UTIL_DIR=$(CWD)/../pace-util
 DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/
 TEST_DATA_RUN_LOC ?=/test_data
 
@@ -30,7 +30,7 @@ THRESH_ARGS=--threshold_overrides_file=$(PACE_PATH)/fv3gfs-physics/tests/savepoi
 PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(PACE_PATH)/fv3gfs-physics/tests/savepoint
 PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3gfs-physics/tests/savepoint
 ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD)/../fv3core:/fv3core -v $(CWD)/../fv3gfs-physics:/fv3gfs-physics -v $(CWD)/../stencils:/stencils -v $(CWD)/tests:/$(pace)/tests -v $(FV3UTIL_DIR):/fv3gfs-util
+	VOLUMES += -v $(CWD)/../fv3core:/fv3core -v $(CWD)/../fv3gfs-physics:/fv3gfs-physics -v $(CWD)/../stencils:/stencils -v $(CWD)/tests:/$(pace)/tests -v $(FV3UTIL_DIR):/pace-util
 endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3GFS_IMAGE)
 
@@ -47,7 +47,7 @@ unpack_test_data:
 
 get_test_data:
 	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
-	[ "$$(gsutil cat $(DATA_BUCKET)md5sums.txt)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
+	[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt -)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
 	rm -rf $(TEST_DATA_HOST) && \
 	$(MAKE) sync_test_data && \
 	$(MAKE) unpack_test_data ;\

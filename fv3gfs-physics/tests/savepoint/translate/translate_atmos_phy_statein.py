@@ -1,14 +1,14 @@
 import numpy as np
 
-import fv3core.utils.gt4py_utils as utils
-from fv3gfs.physics.global_constants import KAPPA
+import pace.dsl.gt4py_utils as utils
 from fv3gfs.physics.stencils.physics import atmos_phys_driver_statein
-from fv3gfs.physics.testing import TranslatePhysicsFortranData2Py
+from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from pace.util.constants import KAPPA
 
 
 class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
-    def __init__(self, grid):
-        super().__init__(grid)
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "prsik": {"serialname": "IPD_prsik", "order": "F"},
             "phii": {"serialname": "IPD_phii", "order": "F"},
@@ -33,26 +33,27 @@ class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
             "pt": {
                 "serialname": "IPD_tgrs",
                 "out_roll_zero": True,
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
             "qgrs": {
                 "serialname": "IPD_qgrs",
-                "kend": grid.npz,
+                "kend": namelist.npz,
                 "order": "F",
                 "manual": True,
             },
             "delp": {
                 "serialname": "IPD_prsl",
                 "out_roll_zero": True,
-                "kend": grid.npz - 1,
+                "kend": namelist.npz - 1,
                 "order": "F",
             },
         }
-        self.compute_func = grid.stencil_factory.from_origin_domain(
+        self.stencil_factory = stencil_factory
+        self.compute_func = self.stencil_factory.from_origin_domain(
             atmos_phys_driver_statein,
-            origin=self.grid.grid_indexing.origin_compute(),
-            domain=self.grid.grid_indexing.domain_compute(add=(0, 0, 1)),
+            origin=self.stencil_factory.grid_indexing.origin_compute(),
+            domain=self.stencil_factory.grid_indexing.domain_compute(add=(0, 0, 1)),
             externals={
                 "nwat": 6,
                 "ptop": 300,  # hard coded before we can call
@@ -81,7 +82,7 @@ class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
         self.update_info(info, inputs)
         ds = self.grid.compute_dict()
         ds.update(info)
-        k_length = info["kend"] if "kend" in info else self.grid.npz
+        k_length = info["kend"] if "kend" in info else self.namelist.npz
         index_order = info["order"] if "order" in info else "C"
         ij_slice = self.grid.slice_dict(ds)
         qgrs = qgrs[ij_slice[0], ij_slice[1], 0:k_length, :]
@@ -96,9 +97,17 @@ class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
         qsgs_tke = utils.make_storage_from_shape(
-            self.maxshape, origin=(0, 0, 0), init=True
+            self.maxshape,
+            origin=(0, 0, 0),
+            init=True,
+            backend=self.stencil_factory.backend,
         )
-        dm = utils.make_storage_from_shape(self.maxshape, origin=(0, 0, 0), init=True)
+        dm = utils.make_storage_from_shape(
+            self.maxshape,
+            origin=(0, 0, 0),
+            init=True,
+            backend=self.stencil_factory.backend,
+        )
         inputs["qsgs_tke"] = qsgs_tke
         inputs["dm"] = dm
         self.compute_func(**inputs)
