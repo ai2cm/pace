@@ -1,7 +1,7 @@
 import abc
 import copy
 import functools
-from typing import Callable, Optional, Sequence, Tuple, Union, cast
+from typing import Callable, List, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 import numpy as np
 
@@ -20,8 +20,10 @@ from .constants import (
 from .quantity import QuantityMetadata
 
 
-BOUNDARY_CACHE_SIZE = None
-
+# we're caching slice objects which are pretty small, and the number we
+# generate depends on the number of different array shapes/sizes which
+# should not be that many
+DEFAULT_CACHE_SIZE = None
 
 __all__ = ["TilePartitioner", "CubedSpherePartitioner", "get_tile_index"]
 
@@ -171,61 +173,15 @@ class TilePartitioner(Partitioner):
         Returns:
             extent: shape of a single rank representation for the given dimensions.
         """
-        # detect if one of the given dims is the tile dimension and ignore it
-        cartesian_dims = global_metadata.dims
-        cartesian_extent = global_metadata.extent
-        for index, dim in enumerate(global_metadata.dims):
-            if dim == constants.TILE_DIM:
-                cartesian_dims = (
-                    global_metadata.dims[:index] + global_metadata.dims[index + 1 :]
-                )
-                cartesian_extent = (
-                    global_metadata.extent[:index] + global_metadata.extent[index + 1 :]
-                )
-                break
-
-        tile_decomposition = subtile_extents_from_tile_metadata(
-            cartesian_dims, cartesian_extent, self.layout, self.edge_interior_ratio
+        rank_slice = rank_slice_from_tile_metadata(
+            global_metadata.dims,
+            extent=global_metadata.extent,
+            layout=self.layout,
+            subtile_index=self.subtile_index(rank),
+            edge_interior_ratio=self.edge_interior_ratio,
+            overlap=True,
         )
-        num_decomposed_dims = len(cartesian_dims)
-        horizontal_dim_index = 0
-        return_extent = []
-
-        for num_dim, dim in enumerate(cartesian_dims):
-            edge_index_offset = 0
-            is_end_index = False
-            if dim in constants.HORIZONTAL_DIMS:
-                if dim in constants.Y_DIMS:
-                    is_end_index = (
-                        rank
-                        >= (self.layout[horizontal_dim_index] - 1)
-                        * self.layout[1 - horizontal_dim_index]
-                    )
-                    rank_is_on_axis_edge = (
-                        rank < self.layout[horizontal_dim_index] or is_end_index
-                    )
-                elif dim in constants.X_DIMS:
-                    position_on_axis = rank % self.layout[horizontal_dim_index]
-                    is_end_index = (
-                        position_on_axis == self.layout[horizontal_dim_index] - 1
-                    )
-                    rank_is_on_axis_edge = position_on_axis == 0 or is_end_index
-                if rank_is_on_axis_edge:
-                    edge_index_offset = num_decomposed_dims
-                horizontal_dim_index = horizontal_dim_index + 1
-
-            return_extent.append(
-                int(
-                    _interface_overlap_extent(
-                        dim,
-                        is_end_index,
-                        tile_decomposition[num_dim + edge_index_offset],
-                        True,
-                    )
-                )
-            )
-
-        return tuple(return_extent)
+        return tuple(item.stop - item.start for item in rank_slice)
 
     def subtile_slice(
         self,
@@ -289,7 +245,7 @@ class TilePartitioner(Partitioner):
         boundary = copy.copy(self._cached_boundary(boundary_type, rank))
         return boundary
 
-    @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
+    @functools.lru_cache(maxsize=DEFAULT_CACHE_SIZE)
     def _cached_boundary(
         self, boundary_type: int, rank: int
     ) -> Optional[bd.SimpleBoundary]:
@@ -449,7 +405,7 @@ class CubedSpherePartitioner(Partitioner):
         boundary = copy.copy(self._cached_boundary(boundary_type, rank))
         return boundary
 
-    @functools.lru_cache(maxsize=BOUNDARY_CACHE_SIZE)
+    @functools.lru_cache(maxsize=DEFAULT_CACHE_SIZE)
     def _cached_boundary(
         self, boundary_type: int, rank: int
     ) -> Optional[bd.SimpleBoundary]:
@@ -808,7 +764,7 @@ def tile_extent_from_rank_metadata(
     Returns:
         tile_extent: the extent of one tile
     """
-    if edge_interior_ratio < 1.0:
+    if edge_interior_ratio != 1.0:
         raise NotImplementedError(
             "Only equal sized subdomains are supported, was given "
             f"an edge_interior_ratio of {edge_interior_ratio}"
@@ -834,14 +790,70 @@ def list_args_to_tuple_args(function):
     return wrapper
 
 
+@functools.lru_cache(maxsize=DEFAULT_CACHE_SIZE)
+def rank_slice_from_tile_metadata(
+    dims: Sequence[str],
+    *,
+    extent: Sequence[int],
+    layout: Tuple[int, int],
+    subtile_index: Tuple[int, int],
+    edge_interior_ratio: float,
+    overlap: bool,
+) -> Tuple[slice, ...]:
+    # detect if one of the given dims is the tile dimension and ignore it
+    cartesian_dims = discard_dimension(dims, constants.TILE_DIM, data=dims)
+    cartesian_extent = discard_dimension(dims, constants.TILE_DIM, data=extent)
+
+    interior_extents, edge_extents = subtile_extents_from_tile_metadata(
+        cartesian_dims, cartesian_extent, layout, edge_interior_ratio
+    )
+    return_slice = []
+
+    for dim, dim_interior_extent, dim_edge_extent in zip(
+        cartesian_dims, interior_extents, edge_extents
+    ):
+        if dim in constants.HORIZONTAL_DIMS:
+            if dim in constants.Y_DIMS:
+                index = subtile_index[0]
+                n_ranks = layout[0]
+            else:
+                index = subtile_index[1]
+                n_ranks = layout[1]
+            start, end = 0, 0
+            for i in range(index + 1):
+                if i == 0:
+                    end += dim_edge_extent
+                elif i == n_ranks - 1:
+                    start = end
+                    end += dim_edge_extent
+                else:
+                    start = end
+                    end += dim_interior_extent
+            if dim in constants.INTERFACE_DIMS and (overlap or (index == n_ranks - 1)):
+                end += 1
+        else:
+            start, end = 0, dim_interior_extent
+            if dim in constants.INTERFACE_DIMS:
+                end += 1
+        return_slice.append(slice(start, end))
+    return tuple(return_slice)
+
+
+T = TypeVar("T")
+
+
+def discard_dimension(dims, dim_name: str, data: Sequence[T]) -> List[T]:
+    return [item for (item, dim) in zip(data, dims) if dim != dim_name]
+
+
 @list_args_to_tuple_args
-@functools.lru_cache(maxsize=64)
+@functools.lru_cache(maxsize=DEFAULT_CACHE_SIZE)
 def subtile_extents_from_tile_metadata(
     dims: Sequence[str],
     tile_extent: Sequence[int],
     layout: Tuple[int, int],
     edge_interior_ratio: float = 1.0,
-) -> Tuple[int, ...]:
+) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
     """
     Returns the extent of a given rank given data about a tile, and the tile
     layout.
@@ -947,9 +959,7 @@ def subtile_extents_from_tile_metadata(
             return_extents.append(subtile_size)
             edge_extents.append(subtile_size)
 
-    # concatenation of interior tile extents, then edge tile extents.
-    return_extents.extend(edge_extents)
-    return tuple(return_extents)
+    return tuple(return_extents), tuple(edge_extents)
 
 
 def extent_from_metadata(
@@ -966,6 +976,7 @@ def extent_from_metadata(
     return tuple(return_extents)
 
 
+@functools.lru_cache(maxsize=DEFAULT_CACHE_SIZE)
 def subtile_slice(
     dims: Sequence[str],
     global_extent: Sequence[int],
@@ -991,67 +1002,11 @@ def subtile_slice(
                 only one of those ranks (the greater rank) is assigned the overlapping
                 section. Default is False.
     """
-
-    return_list = []
-    subtile_extent = subtile_extents_from_tile_metadata(
-        dims, global_extent, layout, edge_interior_ratio
+    return rank_slice_from_tile_metadata(
+        dims=dims,
+        extent=global_extent,
+        layout=layout,
+        subtile_index=subtile_index,
+        edge_interior_ratio=edge_interior_ratio,
+        overlap=overlap,
     )
-    # discard last index for interface variables, unless you're the last rank
-    # done so that only one rank is responsible for the shared interface point
-    num_decomposed_dims = int(len(subtile_extent) / 2)
-    horizontal_dim_index = 0
-
-    for num_dim, (dim, dim_extent) in enumerate(zip(dims, global_extent)):
-        if dim in constants.HORIZONTAL_DIMS:
-            # compute start index of slice
-
-            if (
-                subtile_index[horizontal_dim_index] == 0
-                or layout[horizontal_dim_index] < 3
-            ):  # case distinction: rank 0 or no special handling
-                # this is technically not the edge tile size,
-                # but does not matter as subtile_index for that dim is 0.
-                # alternatively equal sized tiles go here,
-                # which can take both subdomain sizes.
-                start = subtile_index[horizontal_dim_index] * subtile_extent[num_dim]
-            else:  # case distinction: interior or end tile
-                start = (subtile_index[horizontal_dim_index] - 1) * subtile_extent[
-                    num_dim
-                ] + subtile_extent[num_dim + num_decomposed_dims]
-
-            # compute end index of slice
-            is_end_index = subtile_index[horizontal_dim_index] == (
-                layout[horizontal_dim_index] - 1
-            )
-            if layout[horizontal_dim_index] < 3 or (
-                subtile_index[horizontal_dim_index] == 0 or is_end_index
-            ):  # case distinction: no special handling or start or end tile
-                end = start + _interface_overlap_extent(
-                    dim,
-                    is_end_index,
-                    subtile_extent[num_dim + num_decomposed_dims],
-                    overlap,
-                )
-            else:  # case distinction: interior tile
-                end = start + _interface_overlap_extent(
-                    dim, False, subtile_extent[num_dim], overlap
-                )
-            horizontal_dim_index = horizontal_dim_index + 1
-        else:  # z direction has no partitioning
-            start = 0
-            end = dim_extent
-
-        return_list.append(slice(int(start), int(end)))
-    return tuple(return_list)
-
-
-def _interface_overlap_extent(dim: str, is_end_index: bool, extent: int, overlap: bool):
-    """
-    In an interface dimension, adds a potential grid point
-    for overlap or the end index tile.
-    """
-    if dim in constants.INTERFACE_DIMS and (is_end_index or overlap):
-        extent_plus_overlap_gridcell_count = 1
-    else:
-        extent_plus_overlap_gridcell_count = 0
-    return extent + extent_plus_overlap_gridcell_count
