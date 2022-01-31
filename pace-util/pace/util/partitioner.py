@@ -775,22 +775,6 @@ def tile_extent_from_rank_metadata(
     return extent_from_metadata(dims, rank_extent, layout_factors)
 
 
-def list_args_to_tuple_args(function):
-    def wrapper(*args, **kwargs):
-        """Wrapper ensures hashable function arguments (e.g. lists become tuples)"""
-        args = [tuple(x) if type(x) == list else x for x in args]
-        kwargs = {
-            key: (tuple(value) if type(value) == list else value)
-            for (key, value) in kwargs.items()
-        }
-        result = function(*args, **kwargs)
-        result = tuple(result) if type(result) == list else result
-        return result
-
-    return wrapper
-
-
-@functools.lru_cache(maxsize=DEFAULT_CACHE_SIZE)
 def rank_slice_from_tile_metadata(
     dims: Sequence[str],
     *,
@@ -800,11 +784,31 @@ def rank_slice_from_tile_metadata(
     edge_interior_ratio: float,
     overlap: bool,
 ) -> Tuple[slice, ...]:
+    return _rank_slice_from_tile_metadata_cached(
+        dims=tuple(dims),
+        extent=tuple(extent),
+        layout=tuple(layout),
+        subtile_index=tuple(subtile_index),
+        edge_interior_ratio=edge_interior_ratio,
+        overlap=overlap,
+    )
+
+
+@functools.lru_cache(maxsize=DEFAULT_CACHE_SIZE)
+def _rank_slice_from_tile_metadata_cached(
+    dims: Tuple[str, ...],
+    *,
+    extent: Tuple[int, ...],
+    layout: Tuple[int, int],
+    subtile_index: Tuple[int, int],
+    edge_interior_ratio: float,
+    overlap: bool,
+) -> Tuple[slice, ...]:
     # detect if one of the given dims is the tile dimension and ignore it
     cartesian_dims = discard_dimension(dims, constants.TILE_DIM, data=dims)
     cartesian_extent = discard_dimension(dims, constants.TILE_DIM, data=extent)
 
-    interior_extents, edge_extents = subtile_extents_from_tile_metadata(
+    interior_extents, edge_extents = _subtile_extents_from_tile_metadata(
         cartesian_dims, cartesian_extent, layout, edge_interior_ratio
     )
     return_slice = []
@@ -846,9 +850,7 @@ def discard_dimension(dims, dim_name: str, data: Sequence[T]) -> List[T]:
     return [item for (item, dim) in zip(data, dims) if dim != dim_name]
 
 
-@list_args_to_tuple_args
-@functools.lru_cache(maxsize=DEFAULT_CACHE_SIZE)
-def subtile_extents_from_tile_metadata(
+def _subtile_extents_from_tile_metadata(
     dims: Sequence[str],
     tile_extent: Sequence[int],
     layout: Tuple[int, int],
@@ -976,7 +978,6 @@ def extent_from_metadata(
     return tuple(return_extents)
 
 
-@functools.lru_cache(maxsize=DEFAULT_CACHE_SIZE)
 def subtile_slice(
     dims: Sequence[str],
     global_extent: Sequence[int],

@@ -854,11 +854,11 @@ def test_subtile_slice_odd_grid_even_layout_no_interface(
 def test_subtile_extents_from_tile_metadata(
     array_dims, tile_extent, layout, edge_interior_ratio, rank_extent
 ):
-    result = pace.util.partitioner.subtile_extents_from_tile_metadata(
+    result = pace.util.partitioner._subtile_extents_from_tile_metadata(
         array_dims, tile_extent, layout, edge_interior_ratio
     )
     assert result == rank_extent
-    result = pace.util.partitioner.subtile_extents_from_tile_metadata(
+    result = pace.util.partitioner._subtile_extents_from_tile_metadata(
         dims=array_dims,
         tile_extent=tile_extent,
         layout=layout,
