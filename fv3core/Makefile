@@ -3,7 +3,7 @@ include docker/Makefile.image_names
 GCR_URL = us.gcr.io/vcm-ml
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_standard
-FORTRAN_SERIALIZED_DATA_VERSION=7.2.6
+FORTRAN_SERIALIZED_DATA_VERSION=dev-8.0.0
 WRAPPER_IMAGE = us.gcr.io/vcm-ml/fv3gfs-wrapper:gnu9-mpich314-nocuda
 DOCKER_BUILDKIT=1
 SHELL=/bin/bash
@@ -15,7 +15,7 @@ VOLUMES ?=
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 TEST_ARGS ?=
-TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
+TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)/dycore/
 FV3UTIL_DIR=$(CWD)/external/pace-util
 
 FV3=fv3core
@@ -29,7 +29,7 @@ TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
 CORE_TAR=$(SARUS_FV3CORE_IMAGE).tar
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 BASE_INSTALL?=$(FV3)-install-serialbox
-DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/
+DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/DYCORE/
 
 TEST_TYPE=$(word 3, $(subst _, ,$(EXPERIMENT)))
 THRESH_ARGS=--threshold_overrides_file=$(FV3_PATH)/tests/savepoint/translate/overrides/$(TEST_TYPE).yaml
