@@ -1,4 +1,5 @@
 import dataclasses
+import os.path
 from typing import Tuple
 
 import f90nml
@@ -9,6 +10,10 @@ from pace.util import Namelist, NamelistDefaults
 
 
 grid = None
+DEFAULT_INT = 0
+DEFAULT_STR = ""
+DEFAULT_FLOAT = 0.0
+DEFAULT_BOOL = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -143,46 +148,46 @@ class AcousticDynamicsConfig:
 
 @dataclasses.dataclass
 class DynamicalCoreConfig:
-    dt_atmos: int
-    a_imp: float
-    beta: float
-    consv_te: float
-    d2_bg: float
-    d2_bg_k1: float
-    d2_bg_k2: float
-    d4_bg: float
-    d_con: float
-    d_ext: float
-    dddmp: float
-    delt_max: float
-    do_sat_adj: bool
-    do_vort_damp: bool
-    fill: bool
-    hord_dp: int
-    hord_mt: int
-    hord_tm: int
-    hord_tr: int
-    hord_vt: int
-    hydrostatic: bool
-    k_split: int
-    ke_bg: float
-    kord_mt: int
-    kord_tm: int
-    kord_tr: int
-    kord_wz: int
-    n_split: int
-    nord: int
-    npx: int
-    npy: int
-    npz: int
-    ntiles: int
-    nwat: int
-    p_fac: float
-    rf_cutoff: float
-    tau: float
-    vtdm4: float
-    z_tracer: bool
-    do_qa: bool
+    dt_atmos: int = DEFAULT_INT
+    a_imp: float = DEFAULT_FLOAT
+    beta: float = DEFAULT_FLOAT
+    consv_te: float = DEFAULT_FLOAT
+    d2_bg: float = DEFAULT_FLOAT
+    d2_bg_k1: float = DEFAULT_FLOAT
+    d2_bg_k2: float = DEFAULT_FLOAT
+    d4_bg: float = DEFAULT_FLOAT
+    d_con: float = DEFAULT_FLOAT
+    d_ext: float = DEFAULT_FLOAT
+    dddmp: float = DEFAULT_FLOAT
+    delt_max: float = DEFAULT_FLOAT
+    do_sat_adj: bool = DEFAULT_BOOL
+    do_vort_damp: bool = DEFAULT_BOOL
+    fill: bool = DEFAULT_BOOL
+    hord_dp: int = DEFAULT_INT
+    hord_mt: int = DEFAULT_INT
+    hord_tm: int = DEFAULT_INT
+    hord_tr: int = DEFAULT_INT
+    hord_vt: int = DEFAULT_INT
+    hydrostatic: bool = DEFAULT_BOOL
+    k_split: int = DEFAULT_INT
+    ke_bg: float = DEFAULT_FLOAT
+    kord_mt: int = DEFAULT_INT
+    kord_tm: int = DEFAULT_INT
+    kord_tr: int = DEFAULT_INT
+    kord_wz: int = DEFAULT_INT
+    n_split: int = DEFAULT_INT
+    nord: int = DEFAULT_INT
+    npx: int = DEFAULT_INT
+    npy: int = DEFAULT_INT
+    npz: int = DEFAULT_INT
+    ntiles: int = DEFAULT_INT
+    nwat: int = DEFAULT_INT
+    p_fac: float = DEFAULT_FLOAT
+    rf_cutoff: float = DEFAULT_FLOAT
+    tau: float = DEFAULT_FLOAT
+    vtdm4: float = DEFAULT_FLOAT
+    z_tracer: bool = DEFAULT_BOOL
+    do_qa: bool = DEFAULT_BOOL
     layout: Tuple[int, int] = NamelistDefaults.layout
     grid_type: int = NamelistDefaults.grid_type
     do_f3d: bool = NamelistDefaults.do_f3d
@@ -264,6 +269,99 @@ class DynamicalCoreConfig:
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
+    namelist_override: str = None
+
+    def __post_init__(self):
+        if self.namelist_override is not None and os.path.exists(
+            self.namelist_override
+        ):
+            f90_nml = f90nml.read(self.namelist_override)
+            namelist = Namelist.from_f90nml(f90_nml)
+            self.dt_atmos = namelist.dt_atmos
+            self.a_imp = namelist.a_imp
+            self.beta = namelist.beta
+            self.consv_te = namelist.consv_te
+            self.d2_bg = namelist.d2_bg
+            self.d2_bg_k1 = namelist.d2_bg_k1
+            self.d2_bg_k2 = namelist.d2_bg_k2
+            self.d4_bg = namelist.d4_bg
+            self.d_con = namelist.d_con
+            self.d_ext = namelist.d_ext
+            self.dddmp = namelist.dddmp
+            self.delt_max = namelist.delt_max
+            self.do_sat_adj = namelist.do_sat_adj
+            self.do_vort_damp = namelist.do_vort_damp
+            self.fill = namelist.fill
+            self.hord_dp = namelist.hord_dp
+            self.hord_mt = namelist.hord_mt
+            self.hord_tm = namelist.hord_tm
+            self.hord_tr = namelist.hord_tr
+            self.hord_vt = namelist.hord_vt
+            self.hydrostatic = namelist.hydrostatic
+            self.k_split = namelist.k_split
+            self.ke_bg = namelist.ke_bg
+            self.kord_mt = namelist.kord_mt
+            self.kord_tm = namelist.kord_tm
+            self.kord_tr = namelist.kord_tr
+            self.kord_wz = namelist.kord_wz
+            self.n_split = namelist.n_split
+            self.nord = namelist.nord
+            self.npx = namelist.npx
+            self.npy = namelist.npy
+            self.npz = namelist.npz
+            self.ntiles = namelist.ntiles
+            self.nwat = namelist.nwat
+            self.p_fac = namelist.p_fac
+            self.rf_cutoff = namelist.rf_cutoff
+            self.tau = namelist.tau
+            self.vtdm4 = namelist.vtdm4
+            self.z_tracer = namelist.z_tracer
+            self.do_qa = namelist.do_qa
+            self.layout = namelist.layout
+            self.grid_type = namelist.grid_type
+            self.do_f3d = namelist.do_f3d
+            self.inline_q = namelist.inline_q
+            self.do_skeb = namelist.do_skeb
+            self.check_negative = namelist.check_negative
+            self.tau_r2g = namelist.tau_r2g
+            self.tau_smlt = namelist.tau_smlt
+            self.tau_g2r = namelist.tau_g2r
+            self.tau_imlt = namelist.tau_imlt
+            self.tau_i2s = namelist.tau_i2s
+            self.tau_l2r = namelist.tau_l2r
+            self.tau_g2v = namelist.tau_g2v
+            self.tau_v2g = namelist.tau_v2g
+            self.sat_adj0 = namelist.sat_adj0
+            self.ql_gen = namelist.ql_gen
+            self.ql_mlt = namelist.ql_mlt
+            self.qs_mlt = namelist.qs_mlt
+            self.ql0_max = namelist.ql0_max
+            self.t_sub = namelist.t_sub
+            self.qi_gen = namelist.qi_gen
+            self.qi_lim = namelist.qi_lim
+            self.qi0_max = namelist.qi0_max
+            self.rad_snow = namelist.rad_snow
+            self.rad_rain = namelist.rad_rain
+            self.rad_graupel = namelist.rad_graupel
+            self.tintqs = namelist.tintqs
+            self.dw_ocean = namelist.dw_ocean
+            self.dw_land = namelist.dw_land
+            self.icloud_f = namelist.icloud_f
+            self.cld_min = namelist.cld_min
+            self.tau_l2v = namelist.tau_l2v
+            self.tau_v2l = namelist.tau_v2l
+            self.c2l_ord = namelist.c2l_ord
+            self.regional = namelist.regional
+            self.m_split = namelist.m_split
+            self.convert_ke = namelist.convert_ke
+            self.breed_vortex_inline = namelist.breed_vortex_inline
+            self.use_old_omega = namelist.use_old_omega
+            self.rf_fast = namelist.rf_fast
+            self.p_ref = namelist.p_ref
+            self.adiabatic = namelist.adiabatic
+            self.nf_omega = namelist.nf_omega
+            self.fv_sg_adj = namelist.fv_sg_adj
+            self.n_sponge = namelist.n_sponge
 
     @classmethod
     def from_f90nml(self, f90_namelist: f90nml.Namelist) -> "DynamicalCoreConfig":

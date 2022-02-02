@@ -1,4 +1,5 @@
 import dataclasses
+import os.path
 from typing import Tuple
 
 import f90nml
@@ -6,15 +7,19 @@ import f90nml
 from pace.util import Namelist, NamelistDefaults
 
 
+DEFAULT_INT = 0
+DEFAULT_BOOL = False
+
+
 @dataclasses.dataclass
 class PhysicsConfig:
-    dt_atmos: int
-    hydrostatic: bool
-    npx: int
-    npy: int
-    npz: int
-    nwat: int
-    do_qa: bool
+    dt_atmos: int = DEFAULT_INT
+    hydrostatic: bool = DEFAULT_BOOL
+    npx: int = DEFAULT_INT
+    npy: int = DEFAULT_INT
+    npz: int = DEFAULT_INT
+    nwat: int = DEFAULT_INT
+    do_qa: bool = DEFAULT_BOOL
     c_cracw: float = NamelistDefaults.c_cracw
     c_paut: float = NamelistDefaults.c_paut
     c_pgacs: float = NamelistDefaults.c_pgacs
@@ -93,6 +98,77 @@ class PhysicsConfig:
     tice: float = NamelistDefaults.tice
     alin: float = NamelistDefaults.alin
     clin: float = NamelistDefaults.clin
+    namelist_override: str = None
+
+    def __post_init__(self):
+        if self.namelist_override is not None and os.path.exists(
+            self.namelist_override
+        ):
+            f90_nml = f90nml.read(self.namelist_override)
+            namelist = Namelist.from_f90nml(f90_nml)
+            self.dt_atmos = namelist.dt_atmos
+            self.hydrostatic = namelist.hydrostatic
+            self.npx = namelist.npx
+            self.npy = namelist.npy
+            self.npz = namelist.npz
+            self.nwat = namelist.nwat
+            self.do_qa = namelist.do_qa
+            self.c_cracw = namelist.c_cracw
+            self.c_paut = namelist.c_paut
+            self.c_pgacs = namelist.c_pgacs
+            self.c_psaci = namelist.c_psaci
+            self.ccn_l = namelist.ccn_l
+            self.ccn_o = namelist.ccn_o
+            self.const_vg = namelist.const_vg
+            self.const_vi = namelist.const_vi
+            self.const_vr = namelist.const_vr
+            self.const_vs = namelist.const_vs
+            self.vs_fac = namelist.vs_fac
+            self.vg_fac = namelist.vg_fac
+            self.vi_fac = namelist.vi_fac
+            self.vr_fac = namelist.vr_fac
+            self.de_ice = namelist.de_ice
+            self.layout = namelist.layout
+            self.tau_imlt = namelist.tau_imlt
+            self.tau_i2s = namelist.tau_i2s
+            self.tau_g2v = namelist.tau_g2v
+            self.tau_v2g = namelist.tau_v2g
+            self.ql_mlt = namelist.ql_mlt
+            self.qs_mlt = namelist.qs_mlt
+            self.t_sub = namelist.t_sub
+            self.qi_gen = namelist.qi_gen
+            self.qi_lim = namelist.qi_lim
+            self.qi0_max = namelist.qi0_max
+            self.rad_snow = namelist.rad_snow
+            self.rad_rain = namelist.rad_rain
+            self.dw_ocean = namelist.dw_ocean
+            self.dw_land = namelist.dw_land
+            self.tau_l2v = namelist.tau_l2v
+            self.c2l_ord = namelist.c2l_ord
+            self.do_sedi_heat = namelist.do_sedi_heat
+            self.do_sedi_w = namelist.do_sedi_w
+            self.fast_sat_adj = namelist.fast_sat_adj
+            self.qc_crt = namelist.qc_crt
+            self.fix_negative = namelist.fix_negative
+            self.irain_f = namelist.irain_f
+            self.mp_time = namelist.mp_time
+            self.prog_ccn = namelist.prog_ccn
+            self.qi0_crt = namelist.qi0_crt
+            self.qs0_crt = namelist.qs0_crt
+            self.rh_inc = namelist.rh_inc
+            self.rh_inr = namelist.rh_inr
+            self.rthresh = namelist.rthresh
+            self.sedi_transport = namelist.sedi_transport
+            self.use_ppm = namelist.use_ppm
+            self.vg_max = namelist.vg_max
+            self.vi_max = namelist.vi_max
+            self.vr_max = namelist.vr_max
+            self.vs_max = namelist.vs_max
+            self.z_slope_ice = namelist.z_slope_ice
+            self.z_slope_liq = namelist.z_slope_liq
+            self.tice = namelist.tice
+            self.alin = namelist.alin
+            self.clin = namelist.clin
 
     @classmethod
     def from_f90nml(self, f90_namelist: f90nml.Namelist) -> "PhysicsConfig":
