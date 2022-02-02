@@ -380,24 +380,6 @@ class DriverConfig:
             days=self.days, hours=self.hours, minutes=self.minutes, seconds=self.seconds
         )
 
-    @staticmethod
-    def _set_kwargs_from_serialbox(kwargs: Dict[str, Any], config: SerialboxConfig):
-        kwargs["nx_tile"] = config.namelist.npx - 1
-        kwargs["nz"] = config.namelist.npz
-        kwargs["layout"] = tuple(config.namelist.layout)
-        kwargs["dt_atmos"] = float(config.namelist.dt_atmos)
-        kwargs["dycore_config"] = fv3core.DynamicalCoreConfig.from_f90nml(
-            config.f90_namelist
-        )
-        kwargs["physics_config"] = fv3gfs.physics.PhysicsConfig.from_f90nml(
-            config.f90_namelist
-        )
-        kwargs["days"] = config.namelist.days
-        kwargs["hours"] = config.namelist.hours
-        kwargs["minutes"] = config.namelist.minutes
-        kwargs["seconds"] = config.namelist.seconds
-        return kwargs
-
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
         initialization_type = kwargs["initialization_type"]
