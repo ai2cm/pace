@@ -1,3 +1,4 @@
+import dataclasses
 import hashlib
 import inspect
 import re
@@ -29,43 +30,21 @@ from pace.util.halo_data_transformer import QuantityHaloSpec
 
 
 try:
-    import cupy
-except ImportError:
-    cupy = np
-try:
     from mpi4py import MPI
 except ImportError:
     MPI = None
 
 
+@dataclasses.dataclass
 class StencilConfig(Hashable):
-    _all_backend_opts: Optional[Dict[str, Any]] = {
-        "device_sync": {
-            "backend": r".*(gpu|cuda)$",
-            "value": False,
-        },
-        "format_source": {
-            "value": False,
-        },
-        "skip_passes": {
-            "backend": r"^gtc:(gt|cuda)",
-            "value": ["graph_merge_horizontal_executions"],
-        },
-        "verbose": {"backend": r"^gtc:(gt|cuda)", "value": False},
-    }
+    backend: str = "numpy"
+    rebuild: bool = True
+    validate_args: bool = True
+    format_source: bool = False
+    device_sync: bool = False
 
-    def __init__(
-        self,
-        backend: str,
-        rebuild: bool,
-        validate_args: bool,
-        format_source: Optional[bool] = None,
-        device_sync: Optional[bool] = None,
-    ):
-        self.backend = backend
-        self.rebuild = rebuild
-        self.validate_args = validate_args
-        self.backend_opts = self._get_backend_opts(device_sync, format_source)
+    def __post_init__(self):
+        self.backend_opts = self._get_backend_opts(self.device_sync, self.format_source)
         self._hash = self._compute_hash()
 
     def _compute_hash(self):
@@ -97,7 +76,21 @@ class StencilConfig(Hashable):
         format_source: Optional[bool] = None,
     ) -> Dict[str, Any]:
         backend_opts: Dict[str, Any] = {}
-        for name, option in StencilConfig._all_backend_opts.items():
+        all_backend_opts: Optional[Dict[str, Any]] = {
+            "device_sync": {
+                "backend": r".*(gpu|cuda)$",
+                "value": False,
+            },
+            "format_source": {
+                "value": False,
+            },
+            "skip_passes": {
+                "backend": r"^gtc:(gt|cuda)",
+                "value": ["graph_merge_horizontal_executions"],
+            },
+            "verbose": {"backend": r"^gtc:(gt|cuda)", "value": False},
+        }
+        for name, option in all_backend_opts.items():
             using_option_backend = re.match(option.get("backend", ""), self.backend)
             if "backend" not in option or using_option_backend:
                 backend_opts[name] = option["value"]
@@ -363,7 +356,6 @@ class GridIndexing:
     ) -> "GridIndexing":
         # TODO: if this class is refactored to split off the *_edge booleans,
         # this init routine can be refactored to require only a GridSizer
-        origin = sizer.get_origin([pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM])
         domain = sizer.get_extent([pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM])
         south_edge = cube.tile.partitioner.on_tile_bottom(cube.rank)
         north_edge = cube.tile.partitioner.on_tile_top(cube.rank)

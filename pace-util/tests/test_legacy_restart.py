@@ -29,7 +29,7 @@ def layout(request):
 
 @requires_xarray
 def get_c12_restart_state_list(layout, only_names, tracer_properties):
-    total_ranks = layout[0] * layout[1]
+    total_ranks = 6 * layout[0] * layout[1]
     shared_buffer = {}
     communicator_list = []
     for rank in range(total_ranks):
@@ -140,7 +140,7 @@ def test_open_c12_restart_tracer_properties(layout, tracer_properties):
 @pytest.mark.cpu_only
 @requires_xarray
 def test_open_c12_restart_empty_to_state_without_crashing(layout):
-    total_ranks = layout[0] * layout[1]
+    total_ranks = 6 * layout[0] * layout[1]
     ny = 12 / layout[0]
     nx = 12 / layout[1]
     shared_buffer = {}
@@ -183,7 +183,7 @@ def test_open_c12_restart_empty_to_state_without_crashing(layout):
 @pytest.mark.cpu_only
 @requires_xarray
 def test_open_c12_restart_to_allocated_state_without_crashing(layout):
-    total_ranks = layout[0] * layout[1]
+    total_ranks = 6 * layout[0] * layout[1]
     ny = 12 / layout[0]
     nx = 12 / layout[1]
     shared_buffer = {}
