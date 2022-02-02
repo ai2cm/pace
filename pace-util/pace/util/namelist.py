@@ -157,15 +157,15 @@ class Namelist:
     # atmos_nthreads: int
     # calendar: Any
     # current_date: Any
-    # days: Any
+    days: int = 0
     dt_atmos: int = DEFAULT_INT
     # dt_ocean: Any
-    # hours: Any
+    hours: int = 0
     # memuse_verbose: Any
-    # minutes: Any
+    minutes: int = 0
     # months: Any
     # ncores_per_node: Any
-    # seconds: Any
+    seconds: int = 0
     # use_hyper_thread: Any
     # max_axes: Any
     # max_files: Any
