@@ -131,11 +131,6 @@ class SerialboxConfig(InitializationConfig):
 
     path: str
     serialized_grid: bool
-    backend: str
-    rebuild: bool
-    validate_args: bool
-    format_source: bool
-    device_sync: bool
 
     @property
     def start_time(self) -> datetime:
@@ -149,18 +144,10 @@ class SerialboxConfig(InitializationConfig):
     def namelist(self) -> Namelist:
         return Namelist.from_f90nml(self.f90_namelist)
 
-    @property
-    def stencil_config(self) -> pace.dsl.stencil.StencilConfig:
-        return pace.dsl.stencil.StencilConfig(
-            backend=self.backend,
-            rebuild=self.rebuild,
-            validate_args=self.validate_args,
-        )
-
-    def get_serialized_grid_damping_coeff_and_driver_grid(
+    def _get_serialized_grid_damping_coeff_and_driver_grid(
         self, communicator: pace.util.CubedSphereCommunicator
     ) -> pace.stencils.testing.grid.Grid:
-        ser = self.serializer(communicator)
+        ser = self._serializer(communicator)
         grid_savepoint = ser.get_savepoint("Grid-Info")[0]
         grid_data = {}
         grid_fields = ser.fields_at_savepoint(grid_savepoint)
@@ -187,8 +174,11 @@ class SerialboxConfig(InitializationConfig):
             da_min=grid_data["da_min"],
             da_min_c=grid_data["da_min_c"],
         )
+        stencil_config = pace.dsl.stencil.StencilConfig(
+            backend=self.backend,
+        )
         stencil_factory = StencilFactory(
-            config=self.stencil_config, grid_indexing=grid.grid_indexing
+            config=stencil_config, grid_indexing=grid.grid_indexing
         )
         driver_grid_info_object = TranslateUpdateDWindsPhys(
             grid, self.namelist, stencil_factory
@@ -216,7 +206,7 @@ class SerialboxConfig(InitializationConfig):
         )
         return grid, damping_coefficients, driver_grid_data
 
-    def serializer(self, communicator: pace.util.CubedSphereCommunicator):
+    def _serializer(self, communicator: pace.util.CubedSphereCommunicator):
         import serialbox
 
         serializer = serialbox.Serializer(
@@ -226,7 +216,7 @@ class SerialboxConfig(InitializationConfig):
         )
         return serializer
 
-    def get_grid_data_damping_coeff_and_driver_grid(
+    def _get_grid_data_damping_coeff_and_driver_grid(
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
@@ -236,7 +226,7 @@ class SerialboxConfig(InitializationConfig):
                 grid,
                 damping_coeff,
                 driver_grid_data,
-            ) = self.get_serialized_grid_damping_coeff_and_driver_grid(communicator)
+            ) = self._get_serialized_grid_damping_coeff_and_driver_grid(communicator)
             grid_data = grid.grid_data
         else:
             grid = fv3core._config.make_grid_with_data_from_namelist(
@@ -257,16 +247,22 @@ class SerialboxConfig(InitializationConfig):
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
+        self.backend = quantity_factory.empty(
+            dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
+        ).gt4py_backend
         (
             grid,
             grid_data,
             damping_coeff,
             driver_grid_data,
-        ) = self.get_grid_data_damping_coeff_and_driver_grid(
+        ) = self._get_grid_data_damping_coeff_and_driver_grid(
             quantity_factory, communicator
         )
         dycore_state = self._initialize_dycore_state(quantity_factory, communicator)
-        physics_state = self._init_physics_state(quantity_factory)
+        physics_state = fv3gfs.physics.PhysicsState.init_zeros(
+            quantity_factory=quantity_factory,
+            active_packages=["microphysics"],
+        )
         return DriverState(
             dycore_state=dycore_state,
             physics_state=physics_state,
@@ -285,27 +281,21 @@ class SerialboxConfig(InitializationConfig):
             grid_data,
             damping_coeff,
             driver_grid_data,
-        ) = self.get_grid_data_damping_coeff_and_driver_grid(
+        ) = self._get_grid_data_damping_coeff_and_driver_grid(
             quantity_factory, communicator
         )
-        ser = self.serializer(communicator)
+        ser = self._serializer(communicator)
         savepoint_in = ser.get_savepoint("FVDynamics-In")[0]
+        stencil_config = pace.dsl.stencil.StencilConfig(
+            backend=self.backend,
+        )
         stencil_factory = StencilFactory(
-            config=self.stencil_config, grid_indexing=grid.grid_indexing
+            config=stencil_config, grid_indexing=grid.grid_indexing
         )
         translate_object = TranslateFVDynamics([grid], self.namelist, stencil_factory)
         input_data = translate_object.collect_input_data(ser, savepoint_in)
         dycore_state = translate_object.state_from_inputs(input_data)
         return dycore_state
-
-    def _init_physics_state(
-        self,
-        quantity_factory: pace.util.QuantityFactory,
-    ) -> fv3gfs.physics.PhysicsState:
-        return fv3gfs.physics.PhysicsState.init_zeros(
-            quantity_factory=quantity_factory,
-            active_packages=["microphysics"],
-        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -390,41 +380,11 @@ class DriverConfig:
             days=self.days, hours=self.hours, minutes=self.minutes, seconds=self.seconds
         )
 
-    @staticmethod
-    def _set_kwargs_from_serialbox(kwargs: Dict[str, Any], config: SerialboxConfig):
-        kwargs["nx_tile"] = config.namelist.npx - 1
-        kwargs["nz"] = config.namelist.npz
-        kwargs["layout"] = tuple(config.namelist.layout)
-        kwargs["dt_atmos"] = float(config.namelist.dt_atmos)
-        kwargs["dycore_config"] = fv3core.DynamicalCoreConfig.from_f90nml(
-            config.f90_namelist
-        )
-        kwargs["physics_config"] = fv3gfs.physics.PhysicsConfig.from_f90nml(
-            config.f90_namelist
-        )
-        kwargs["days"] = config.namelist.days
-        kwargs["hours"] = config.namelist.hours
-        kwargs["minutes"] = config.namelist.minutes
-        kwargs["seconds"] = config.namelist.seconds
-        return kwargs
-
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
         initialization_type = kwargs["initialization_type"]
         if initialization_type == "serialbox":
-            config = kwargs.get("initialization_config", {})
-            config.update(kwargs.get("stencil_config", {}))
-            kwargs["initialization_config"] = dacite.from_dict(
-                data_class=SerialboxConfig,
-                data=config,
-                config=dacite.Config(strict=True),
-            )
-            kwargs = cls._set_kwargs_from_serialbox(
-                kwargs, kwargs["initialization_config"]
-            )
-            return dacite.from_dict(
-                data_class=cls, data=kwargs, config=dacite.Config(strict=True)
-            )
+            initialization_class = SerialboxConfig
         elif initialization_type == "baroclinic":
             initialization_class = BaroclinicConfig
         elif initialization_type == "restart":
@@ -434,35 +394,50 @@ class DriverConfig:
                 "initialization_type must be one of 'baroclinic' or 'restart', "
                 f"got {initialization_type}"
             )
-        kwargs["layout"] = tuple(kwargs["layout"])
+
         kwargs["initialization_config"] = dacite.from_dict(
             data_class=initialization_class,
             data=kwargs.get("initialization_config", {}),
             config=dacite.Config(strict=True),
         )
+
         for derived_name in ("dt_atmos", "layout", "npx", "npy", "npz", "ntiles"):
             if derived_name in kwargs["dycore_config"]:
                 raise ValueError(
                     f"you cannot set {derived_name} directly in dycore_config, "
                     "as it is determined based on top-level configuration"
                 )
-        kwargs["dycore_config"]["layout"] = kwargs["layout"]
-        kwargs["dycore_config"]["dt_atmos"] = kwargs["dt_atmos"]
-        kwargs["dycore_config"]["npx"] = kwargs["nx_tile"] + 1
-        kwargs["dycore_config"]["npy"] = kwargs["nx_tile"] + 1
-        kwargs["dycore_config"]["npz"] = kwargs["nz"]
-        kwargs["dycore_config"]["ntiles"] = 6
-        for derived_name in ("dt_atmos", "layout", "npx", "npy", "npz"):
-            if derived_name in kwargs["physics_config"]:
-                raise ValueError(
-                    f"you cannot set {derived_name} directly in physics_config, "
-                    "as it is determined based on top-level configuration"
-                )
-        kwargs["physics_config"]["layout"] = kwargs["layout"]
-        kwargs["physics_config"]["dt_atmos"] = kwargs["dt_atmos"]
-        kwargs["physics_config"]["npx"] = kwargs["nx_tile"] + 1
-        kwargs["physics_config"]["npy"] = kwargs["nx_tile"] + 1
-        kwargs["physics_config"]["npz"] = kwargs["nz"]
+
+        kwargs["dycore_config"] = dacite.from_dict(
+            data_class=fv3core.DynamicalCoreConfig,
+            data=kwargs.get("dycore_config", {}),
+            config=dacite.Config(strict=True),
+        )
+        kwargs["physics_config"] = dacite.from_dict(
+            data_class=fv3gfs.physics.PhysicsConfig,
+            data=kwargs.get("physics_config", {}),
+            config=dacite.Config(strict=True),
+        )
+
+        if initialization_type != "serialbox":
+            kwargs["layout"] = tuple(kwargs["layout"])
+            kwargs["dycore_config"].layout = kwargs["layout"]
+            kwargs["dycore_config"].dt_atmos = kwargs["dt_atmos"]
+            kwargs["dycore_config"].npx = kwargs["nx_tile"] + 1
+            kwargs["dycore_config"].npy = kwargs["nx_tile"] + 1
+            kwargs["dycore_config"].npz = kwargs["nz"]
+            kwargs["dycore_config"].ntiles = 6
+            kwargs["physics_config"].layout = kwargs["layout"]
+            kwargs["physics_config"].dt_atmos = kwargs["dt_atmos"]
+            kwargs["physics_config"].npx = kwargs["nx_tile"] + 1
+            kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
+            kwargs["physics_config"].npz = kwargs["nz"]
+
+        elif initialization_type == "serialbox":
+            kwargs["nx_tile"] = kwargs["dycore_config"].npx - 1
+            kwargs["nz"] = kwargs["dycore_config"].npz
+            kwargs["layout"] = tuple(kwargs["dycore_config"].layout)
+
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
         )
