@@ -137,15 +137,17 @@ class SerialboxConfig(InitializationConfig):
         return datetime(2000, 1, 1)
 
     @property
-    def f90_namelist(self) -> f90nml.Namelist:
+    def _f90_namelist(self) -> f90nml.Namelist:
         return f90nml.read(self.path + "/input.nml")
 
     @property
-    def namelist(self) -> Namelist:
-        return Namelist.from_f90nml(self.f90_namelist)
+    def _namelist(self) -> Namelist:
+        return Namelist.from_f90nml(self._f90_namelist)
 
     def _get_serialized_grid_damping_coeff_and_driver_grid(
-        self, communicator: pace.util.CubedSphereCommunicator
+        self,
+        communicator: pace.util.CubedSphereCommunicator,
+        backend: str,
     ) -> pace.stencils.testing.grid.Grid:
         ser = self._serializer(communicator)
         grid_savepoint = ser.get_savepoint("Grid-Info")[0]
@@ -161,7 +163,7 @@ class SerialboxConfig(InitializationConfig):
             if len(grid_data[field].flatten()) == 1:
                 grid_data[field] = grid_data[field][0]
         grid = TranslateGrid(
-            grid_data, communicator.rank, self.namelist.layout, backend=self.backend
+            grid_data, communicator.rank, self._namelist.layout, backend=backend
         ).python_grid()
         grid.grid_data.ak = grid_data["ak"]
         grid.grid_data.bk = grid_data["bk"]
@@ -175,13 +177,13 @@ class SerialboxConfig(InitializationConfig):
             da_min_c=grid_data["da_min_c"],
         )
         stencil_config = pace.dsl.stencil.StencilConfig(
-            backend=self.backend,
+            backend=backend,
         )
         stencil_factory = StencilFactory(
             config=stencil_config, grid_indexing=grid.grid_indexing
         )
         driver_grid_info_object = TranslateUpdateDWindsPhys(
-            grid, self.namelist, stencil_factory
+            grid, self._namelist, stencil_factory
         )
         extra_grid_data = driver_grid_info_object.collect_input_data(
             ser, ser.get_savepoint("FVUpdatePhys-In")[0]
@@ -220,17 +222,20 @@ class SerialboxConfig(InitializationConfig):
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        backend: str,
     ):
         if self.serialized_grid:
             (
                 grid,
                 damping_coeff,
                 driver_grid_data,
-            ) = self._get_serialized_grid_damping_coeff_and_driver_grid(communicator)
+            ) = self._get_serialized_grid_damping_coeff_and_driver_grid(
+                communicator, backend
+            )
             grid_data = grid.grid_data
         else:
             grid = fv3core._config.make_grid_with_data_from_namelist(
-                self.namelist, communicator, self.backend
+                self._namelist, communicator, backend
             )
             metric_terms = pace.util.grid.MetricTerms(
                 quantity_factory=quantity_factory, communicator=communicator
@@ -247,7 +252,7 @@ class SerialboxConfig(InitializationConfig):
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
-        self.backend = quantity_factory.empty(
+        backend = quantity_factory.empty(
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         ).gt4py_backend
         (
@@ -256,9 +261,11 @@ class SerialboxConfig(InitializationConfig):
             damping_coeff,
             driver_grid_data,
         ) = self._get_grid_data_damping_coeff_and_driver_grid(
-            quantity_factory, communicator
+            quantity_factory, communicator, backend
         )
-        dycore_state = self._initialize_dycore_state(quantity_factory, communicator)
+        dycore_state = self._initialize_dycore_state(
+            quantity_factory, communicator, backend
+        )
         physics_state = fv3gfs.physics.PhysicsState.init_zeros(
             quantity_factory=quantity_factory,
             active_packages=["microphysics"],
@@ -275,6 +282,7 @@ class SerialboxConfig(InitializationConfig):
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        backend: str,
     ) -> fv3core.DycoreState:
         (
             grid,
@@ -282,17 +290,17 @@ class SerialboxConfig(InitializationConfig):
             damping_coeff,
             driver_grid_data,
         ) = self._get_grid_data_damping_coeff_and_driver_grid(
-            quantity_factory, communicator
+            quantity_factory, communicator, backend
         )
         ser = self._serializer(communicator)
         savepoint_in = ser.get_savepoint("FVDynamics-In")[0]
         stencil_config = pace.dsl.stencil.StencilConfig(
-            backend=self.backend,
+            backend=backend,
         )
         stencil_factory = StencilFactory(
             config=stencil_config, grid_indexing=grid.grid_indexing
         )
-        translate_object = TranslateFVDynamics([grid], self.namelist, stencil_factory)
+        translate_object = TranslateFVDynamics([grid], self._namelist, stencil_factory)
         input_data = translate_object.collect_input_data(ser, savepoint_in)
         dycore_state = translate_object.state_from_inputs(input_data)
         return dycore_state
