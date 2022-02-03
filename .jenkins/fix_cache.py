@@ -19,8 +19,8 @@ def test():
     import tempfile
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        os.makedirs(f"{tmpdir}/.gt_cache", exist_ok=True)
-        with open(f"{tmpdir}/.gt_cache/file.py", "w") as f:
+        os.makedirs(f"{tmpdir}/.gt_cache/subdir", exist_ok=True)
+        with open(f"{tmpdir}/.gt_cache/subdir/file.py", "w") as f:
             f.write(
                 """
 
@@ -41,7 +41,7 @@ from gt4py.stencil_object import AccessKind, Boundary, DomainInfo, FieldInfo, Pa
             )
         os.chdir(tmpdir)
         main()
-        with open(".gt_cache/file.py", "r") as f:
+        with open(".gt_cache/subdir/file.py", "r") as f:
             output = f.read()
         expected = """import pathlib
 
@@ -66,17 +66,16 @@ from gt4py.stencil_object import AccessKind, Boundary, DomainInfo, FieldInfo, Pa
 def main():
     cwd = pathlib.Path()
     cache_dir = cwd / ".gt_cache"
-    for path in cache_dir.iterdir():
-        if path.suffix == ".py":
-            with open(path, "r") as f:
-                code = f.read()
-            match = PATTERN.search(code)
-            if match:
-                new_code = "import pathlib\n" + re.sub(
-                    pattern=PATTERN, repl=replace, string=code
-                )
-                with open(path, "w") as f:
-                    f.write(new_code)
+    for path in cache_dir.rglob("**/*.py"):
+        with open(path, "r") as f:
+            code = f.read()
+        match = PATTERN.search(code)
+        if match:
+            new_code = "import pathlib\n" + re.sub(
+                pattern=PATTERN, repl=replace, string=code
+            )
+            with open(path, "w") as f:
+                f.write(new_code)
 
 
 if __name__ == "__main__":
