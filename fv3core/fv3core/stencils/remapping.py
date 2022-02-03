@@ -194,12 +194,6 @@ def copy_from_below(a: FloatField, b: FloatField):
         b = a[0, 0, -1]
 
 
-def sum_te(te: FloatField, te0_2d: FloatField):
-    with computation(FORWARD):
-        with interval(0, None):
-            te0_2d = te0_2d[0, 0, -1] + te
-
-
 class LagrangianToEulerian:
     """
     Fortran name is Lagrangian_to_Eulerian
@@ -401,16 +395,6 @@ class LagrangianToEulerian:
             stencil_factory, config.sat_adjust, area_64, self.kmp
         )
 
-        self._sum_te_stencil = stencil_factory.from_origin_domain(
-            sum_te,
-            origin=(grid_indexing.isc, grid_indexing.jsc, self.kmp),
-            domain=(
-                grid_indexing.domain[0],
-                grid_indexing.domain[1],
-                grid_indexing.domain[2] - self.kmp,
-            ),
-        )
-
     def __call__(
         self,
         tracers: Dict[str, "FloatField"],
@@ -602,11 +586,6 @@ class LagrangianToEulerian:
                 akap,
                 self.kmp,
             )
-            if fast_mp_consv:
-                self._sum_te_stencil(
-                    dp1,
-                    te0_2d,
-                )
 
         if last_step:
             self._moist_cv_last_step_stencil(
