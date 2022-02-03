@@ -364,6 +364,7 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             tendencies["u_dt"],
             tendencies["v_dt"],
             tendencies["t_dt"],
+            dt=float(self.namelist.dt_atmos),
         )
         out = {}
         ds = self.grid.default_domain_dict()

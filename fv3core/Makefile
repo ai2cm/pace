@@ -4,7 +4,6 @@ GCR_URL = us.gcr.io/vcm-ml
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_standard
 FORTRAN_SERIALIZED_DATA_VERSION=7.2.6
-WRAPPER_IMAGE = us.gcr.io/vcm-ml/fv3gfs-wrapper:gnu9-mpich314-nocuda
 DOCKER_BUILDKIT=1
 SHELL=/bin/bash
 CWD=$(shell pwd)
@@ -43,10 +42,6 @@ endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
 
 clean:
-	find . -name ""
-	$(RM) -rf examples/wrapped/output/*
-	$(MAKE) -C external/fv3gfs-wrapper clean
-	$(MAKE) -C external/fv3gfs-fortran clean
 
 update_submodules_venv:
 	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
@@ -61,16 +56,6 @@ build_environment:
 build_cuda_environment: build_environment
 	CUDA=y $(MAKE) -C docker build_core_env
 
-build_wrapped_environment:
-	$(MAKE) -C external/fv3gfs-wrapper build-docker
-	docker build \
-		--network host \
-		-f $(CWD)/docker/Dockerfile.build_environment \
-		-t $(WRAPPER_INSTALL_IMAGE) \
-		--target $(FV3_INSTALL_TARGET) \
-		--build-arg BASE_IMAGE=$(WRAPPER_IMAGE) \
-		.
-
 build:
 	if [ $(PULL) == True ]; then \
 		$(MAKE) pull_environment_if_needed; \
@@ -79,21 +64,8 @@ build:
 	fi
 	$(MAKE) -C docker fv3core_image
 
-build_wrapped:
-	if [ $(PULL) == True ]; then \
-		$(MAKE) pull_wrapped_environment_if_needed; \
-	else \
-		$(MAKE) build_wrapped_environment; \
-	fi
-	$(MAKE) -C docker fv3core_wrapper_image
-
 pull_environment_if_needed:
 	$(MAKE) -C docker pull_core_deps_if_needed
-
-pull_wrapped_environment_if_needed:
-	if [ -z $(shell docker images -q $(WRAPPER_INSTALL_IMAGE)) ]; then \
-		docker pull $(WRAPPER_INSTALL_IMAGE); \
-	fi
 
 pull_environment:
 	$(MAKE) -C docker pull_core_deps
@@ -141,9 +113,6 @@ dev:
 		-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) \
 		-v $(CWD):/port_dev \
 		$(FV3CORE_IMAGE) bash
-
-dev_wrapper:
-	$(MAKE) -C docker dev_wrapper
 
 test_base:
 ifneq ($(findstring docker,$(CONTAINER_CMD)),)

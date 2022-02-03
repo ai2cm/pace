@@ -6,11 +6,14 @@ latest
 
 Major changes:
 - Renamed DummyComm to LocalComm, and added support for message tags. The DummyComm symbol is still in place for backwards compatibility, but points to LocalComm
+- added error in CubedSphereCommunicator init if given a communicator with a size not equal to the total ranks of the given partitioner
 
 Minor changes:
 - updated QuantityFactory to accept the more generic GridSizer class on initialization
 - added `sizer` as public attribute on QuantityFactory
 - added `Namelist` class to initialize namelist files used in fv3gfs-fortran
+- added `CubedSphereCommunicator.from_layout` constructor method
+- added support for built-in `datetime` in ZarrMonitor
 
 v0.7.0
 ------

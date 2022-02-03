@@ -1,12 +1,6 @@
-ARG FORTRAN_IMAGE
-ARG FMS_IMAGE
-ARG ESMF_IMAGE
 ARG SERIALBOX_IMAGE
 ARG ENVIRONMENT_IMAGE
 
-FROM $FORTRAN_IMAGE as fortran_image
-FROM $ESMF_IMAGE as esmf_image
-FROM $FMS_IMAGE as fms_image
 FROM $SERIALBOX_IMAGE as serialbox_image
 FROM $ENVIRONMENT_IMAGE as environment
 
@@ -64,30 +58,3 @@ RUN chmod +x /entrypoint.sh && \
 ARG ENV_CUDA_PATH=""
 ENV CUDA_PATH=${ENV_CUDA_PATH}
 ENV IN_DOCKER=True
-
-FROM fv3core AS fv3core_wrapper
-
-COPY --from=fortran_image /NCEPlibs /NCEPlibs
-
-# install NCEP libraries
-RUN cd /NCEPlibs && \
-    mkdir /opt/NCEPlibs && \
-    echo "y" | ./make_ncep_libs.sh -s linux -c gnu -d /opt/NCEPlibs -o 1
-
-ENV FMS_DIR=/FMS \
-    ESMF_DIR=/usr/local/esmf \
-    MPI=mpich
-
-ENV ESMF_INC="-I${ESMF_DIR}/include" \
-    LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${ESMF_DIR}/lib:${FMS_DIR}/libFMS/.libs/
-
-COPY --from=fms_image /FMS $FMS_DIR
-COPY --from=esmf_image /usr/local/esmf $ESMF_DIR
-COPY --from=fortran_image /FV3/ /external/fv3gfs-fortran/FV3/
-COPY --from=fortran_image /stochastic_physics/ /external/fv3gfs-fortran/stochastic_physics/
-
-COPY requirements/requirements_wrapper.txt /
-RUN pip3 install -r /requirements_wrapper.txt -c /constraints.txt
-
-COPY external/fv3gfs-wrapper /external/fv3gfs-wrapper
-RUN /entrypoint.sh

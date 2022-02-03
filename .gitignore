@@ -2,6 +2,7 @@
 
 # Test outputs
 results.xml
+driver/output.zarr
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -146,8 +147,6 @@ dmypy.json
 **/.gt_cache/
 
 # Run outputs
-examples/wrapped/output/
-examples/wrapped/plots/
 plot_output/
 profiling_results/
 model_output/

@@ -42,7 +42,7 @@ def cube_partitioner(tile_partitioner):
 
 
 @pytest.fixture
-def communicator_list(cube_partitioner):
+def communicator_list(cube_partitioner, total_ranks):
     shared_buffer = {}
     return_list = []
     for rank in range(cube_partitioner.total_ranks):

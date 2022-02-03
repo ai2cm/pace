@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 from typing import Tuple, Union
 
 import cftime
@@ -277,15 +278,16 @@ class _ZarrTimeWriter(_ZarrVariableWriter):
 
     def _set_time_encoding_attrs(self, time):
         self._encoding_units = f"seconds since {time}"
-        self._encoding_calendar = time.calendar
+        self._encoding_calendar = get_calendar(time)
         if self.rank == 0:
             self.array.attrs["units"] = self._encoding_units
             self.array.attrs["calendar"] = self._encoding_calendar
 
     def _encode_time(self, time):
-        if time.calendar != self._encoding_calendar:
+        calendar = get_calendar(time)
+        if calendar != self._encoding_calendar:
             raise ValueError(
-                f"Calendar type of time, {time.calendar}, does not match the original "
+                f"Calendar type of time, {calendar}, does not match the original "
                 f"calendar encoding, {self._encoding_calendar}."
             )
         return cftime.date2num(
@@ -305,3 +307,10 @@ class _ZarrTimeWriter(_ZarrVariableWriter):
             self.array[self.i_time] = self._encode_time(time)
         self.i_time += 1
         self.comm.barrier()
+
+
+def get_calendar(time: Union[datetime, timedelta, cftime.datetime]):
+    try:
+        return time.calendar  # type: ignore
+    except AttributeError:
+        return "proleptic_gregorian"  # the calendar for Python datetimes

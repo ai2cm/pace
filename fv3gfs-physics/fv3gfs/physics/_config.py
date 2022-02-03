@@ -14,7 +14,6 @@ class PhysicsConfig:
     npy: int
     npz: int
     nwat: int
-    tau: float
     do_qa: bool
     c_cracw: float = NamelistDefaults.c_cracw
     c_paut: float = NamelistDefaults.c_paut
@@ -109,7 +108,6 @@ class PhysicsConfig:
             npy=namelist.npy,
             npz=namelist.npz,
             nwat=namelist.nwat,
-            tau=namelist.tau,
             do_qa=namelist.do_qa,
             c_cracw=namelist.c_cracw,
             c_paut=namelist.c_paut,
