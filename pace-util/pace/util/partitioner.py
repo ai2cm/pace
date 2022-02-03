@@ -757,9 +757,12 @@ def tile_extent_from_rank_metadata(
         dims: dimension names
         rank_extent: the extent of one rank
         layout: the (y, x) number of ranks along each tile axis
-        edge_interior_ratio (optional): ratio between interior and boundary tile sizes.
-            Assumes full integer divisibility for both interior
-            and boundary tile sizes. Default is 1.0, meaning equal subtiles.
+        edge_interior_ratio: target value for the relative 1-dimensional
+            extent of the compute domains of ranks on tile edges and corners compared
+            to ranks on the tile interior. In all cases, the closest valid value will
+            be used, which enables some previously invalid configurations
+            (e.g. C128 on a 3 by 3 layout will use the closest valid
+            edge_interior_ratio to 1.0).
 
     Returns:
         tile_extent: the extent of one tile
@@ -864,9 +867,12 @@ def _subtile_extents_from_tile_metadata(
         dims: dimension names
         tile_extent: the extent of a tile
         layout: the (y, x) number of ranks along each tile axis
-        edge_interior_ratio (optional): ratio between interior and boundary tile sizes.
-            Assumes full integer divisibility for both interior
-            and boundary tile sizes. Default is 1.0, meaning equal subtiles.
+        edge_interior_ratio: target value for the relative 1-dimensional
+            extent of the compute domains of ranks on tile edges and corners compared
+            to ranks on the tile interior. In all cases, the closest valid value will
+            be used, which enables some previously invalid configurations
+            (e.g. C128 on a 3 by 3 layout will use the closest valid
+            edge_interior_ratio to 1.0).
 
     Returns:
         subtile_extents: the extents of first all interior tiles,
@@ -995,13 +1001,16 @@ def subtile_slice(
         global_extent: size of the tile or cube's computational domain
         layout: the (y, x) number of ranks along each tile axis
         subtile_index: the (y, x) position of the rank on the tile
-        edge_interior_ratio (optional): ratio between interior and boundary tile sizes.
-            Assumes full integer divisibility for both interior
-            and boundary tile sizes. Default is 1.0, meaning equal subtiles.
+        edge_interior_ratio: target value for the relative 1-dimensional
+            extent of the compute domains of ranks on tile edges and corners compared
+            to ranks on the tile interior. In all cases, the closest valid value will
+            be used, which enables some previously invalid configurations
+            (e.g. C128 on a 3 by 3 layout will use the closest valid
+            edge_interior_ratio to 1.0).
         overlap (optional): if True, for interface variables include the part
-                of the array shared by adjacent ranks in both ranks. If False, ensure
-                only one of those ranks (the greater rank) is assigned the overlapping
-                section. Default is False.
+            of the array shared by adjacent ranks in both ranks. If False, ensure
+            only one of those ranks (the greater rank) is assigned the overlapping
+            section. Default is False.
     """
     return rank_slice_from_tile_metadata(
         dims=dims,
