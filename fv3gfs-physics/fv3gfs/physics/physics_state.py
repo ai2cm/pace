@@ -165,12 +165,41 @@ class PhysicsState:
     prsik: FloatField = field(
         metadata={"name": "log_interface_pressure", "units": "Pa", "intent": "inout"}
     )
+
+    #NOTE: Should check these fields below to ensure the metadata is correct
+
+    prsl: FloatField = field(
+        metadata={"name": "pressure", "units": "Pa", "intent": "inout"}
+    )
+
+    prslk: FloatField = field(
+        metadata={"name": "layer_center_pressure", "units": "Pa", "intent": "inout"}
+    )
+
+    prsl: FloatField = field(
+        metadata={"name": "pressure", "units": "Pa", "intent": "inout"}
+    )
+
+    tgrs : FloatField = field(
+        metadata={"name": "time(?)", "units": "sec(?)", "intent": "inout"}
+    )
+
+    ugrs : FloatField = field(
+        metadata={"name": "", "units": "", "intent": "inout"}
+    )
+
+    vgrs : FloatField = field(
+        metadata={"name": "", "units": "", "intent": "inout"}
+    )
+
     quantity_factory: InitVar[pace.util.QuantityFactory]
     active_packages: InitVar[List[str]]
 
     def __post_init__(
         self, quantity_factory: pace.util.QuantityFactory, active_packages: List[str]
     ):
+        #TODO Add turbulence if statement
+
         # storage for tendency variables not in PhysicsState
         if "microphysics" in active_packages:
             tendency = quantity_factory.zeros(

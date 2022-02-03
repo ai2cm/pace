@@ -3123,14 +3123,76 @@ def comp_asym_rlam_ele(
 class TurbulenceState:
     def __init__(
         self,
-        prsi : FloatField,
+        qvapor : FloatField,
+        qliquid : FloatField,
+        qrain : FloatField,
+        qice : FloatField,
+        qsnow : FloatField,
+        qgraupel: FloatField,
+        qcloud : FloatField,
+        qo3mr : FloatField,
+        delprsi : FloatField,
+        prsik : FloatField,
+        prsl : FloatField,
+        prslk : FloatField,
         phii : FloatField,
         phil : FloatField,
         ugrs : FloatField,
+        vgrs : FloatField,
+        pt : FloatField,
+        tendency_storage : FloatField,
+        tendency_storage_2D : FloatFieldIJ,
+        tendency_storage_8 : functions.FloatField_8,
+        grid_data: GridData,
     ):
-        self.prsi = prsi
+        self.dv = copy.deepcopy(tendency_storage)
+        self.du = copy.deepcopy(tendency_storage)
+        self.tdt = copy.deepcopy(tendency_storage)
+        self.rtg = copy.deepcopy(tendency_storage_8)
+        self.u1 = ugrs
+        self.v1 = vgrs
+        self.t1 = pt
+        self.q1 = copy.deepcopy(tendency_storage_8)
+        #NOTE : May have to check if these assocations are correct
+        self.q1[:,:,0] = qvapor
+        self.q1[:,:,1] = qliquid
+        self.q1[:,:,2] = qrain
+        self.q1[:,:,3] = qice
+        self.q1[:,:,4] = qsnow
+        self.q1[:,:,5] = qgraupel
+        self.q1[:,:,6] = qo3mr
+        self.q1[:,:,7] = qcloud
+        self.swh = copy.deepcopy(tendency_storage) # associated with Radtend%htrsw
+        self.hlw = copy.deepcopy(tendency_storage) # associated with Radtend%htrlw
+        self.xmu = copy.deepcopy(tendency_storage_2D)
+        self.garea = grid_data.area
+        self.psk = prsik
+        self.rbsoil = copy.deepcopy(tendency_storage_2D)
+        self.zorl = copy.deepcopy(tendency_storage_2D)
+        self.u10m = copy.deepcopy(tendency_storage_2D)
+        self.v10m = copy.deepcopy(tendency_storage_2D)
+        self.fm = copy.deepcopy(tendency_storage_2D)
+        self.fh = copy.deepcopy(tendency_storage_2D)
+        self.tsea = copy.deepcopy(tendency_storage_2D)
+        self.evap = copy.deepcopy(tendency_storage_2D)
+        self.heat = copy.deepcopy(tendency_storage_2D)
+        self.stress = copy.deepcopy(tendency_storage_2D)
+        self.spd1 = copy.deepcopy(tendency_storage_2D)
+        self.kpbl = copy.deepcopy(tendency_storage_2D)
+        self.prsi = delprsi
+        self._del = copy.deepcopy(tendency_storage)
+        self.prsl = prsl
+        self.prslk = prslk
         self.phii = phii
         self.phil = phil
+        self.dusfc = copy.deepcopy(tendency_storage_2D)
+        self.dvsfc = copy.deepcopy(tendency_storage_2D)
+        self.dtsfc = copy.deepcopy(tendency_storage_2D)
+        self.dqsfc = copy.deepcopy(tendency_storage_2D)
+        self.hpbl = copy.deepcopy(tendency_storage_2D)
+        # self.kinver = copy.deepcopy(tendency_storage_2D)
+        # self.kinver[:,:] = grid_indexing.domain[2]-1
+           
 
 class Turbulence:
     def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, namelist):
@@ -3255,8 +3317,6 @@ class Turbulence:
         self._qcko = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
         self._qcdo = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
         self._f2 = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
-        self._q1 = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
-        self._rtg_gt = make_storage(dtype=(np.float64,(self._ntrac,)),init=True)
         # *** 3D storages ***
         self._zi = make_storage(init=True)
         self._zl = make_storage(init=True)
@@ -3371,12 +3431,10 @@ class Turbulence:
         self._kpbly = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
         self._kpbly_mfp = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
         self._zm_mrad = make_storage_2D(shape=shape[0:2],init=True)
-
-        self._dusfc = make_storage_2D(shape=shape[0:2])
-        self._dvsfc = make_storage_2D(shape=shape[0:2])
-        self._dtsfc = make_storage_2D(shape=shape[0:2])
-        self._dqsfc = make_storage_2D(shape=shape[0:2])
-        self._kpbl = make_storage_2D(shape=shape[0:2])
+        self._tx1 = make_storage_2D(shape=shape[0:2])
+        self._tx2 = make_storage_2D(shape=shape[0:2])
+        self._kinver = copy.deepcopy(shape=shape[0:2])
+        self._kinver[:,:] = grid_indexing.domain[2]-1
 
         # Mask/Index Array
         self._mask = make_storage(init=True,dtype=np.int32)
