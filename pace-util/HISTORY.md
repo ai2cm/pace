@@ -7,6 +7,8 @@ latest
 Major changes:
 - Renamed DummyComm to LocalComm, and added support for message tags. The DummyComm symbol is still in place for backwards compatibility, but points to LocalComm
 - added error in CubedSphereCommunicator init if given a communicator with a size not equal to the total ranks of the given partitioner
+- `subtile_extent` method of Partitioner classes now takes in a required `rank` argument
+- TilePartitioner has a new `edge_interior_ratio` argument which defaults to 1.0, and lets the user specify the relative 1-dimensional extent of the compute domains of ranks on tile edges and corners relative to ranks on the tile interior. In all cases, the closest valid value will be used, which enables some previously invalid configurations (e.g. C128 on a 3 by 3 layout will use the closest valid edge_interior_ratio to 1.0)
 
 Minor changes:
 - updated QuantityFactory to accept the more generic GridSizer class on initialization
@@ -14,6 +16,7 @@ Minor changes:
 - added `Namelist` class to initialize namelist files used in fv3gfs-fortran
 - added `CubedSphereCommunicator.from_layout` constructor method
 - added support for built-in `datetime` in ZarrMonitor
+- `edge_interior_ratio` is now an optional argument of `tile_extent_from_rank_metadata`
 
 v0.7.0
 ------

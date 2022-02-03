@@ -119,7 +119,7 @@ def scattered_quantities(cube_quantity, layout, n_rank_halo, numpy):
         for rank in range(tile_ranks):
             # partitioner is tested in other tests, here we assume it works
             subtile_slice = partitioner.subtile_slice(
-                rank,
+                rank=rank,
                 global_dims=cube_quantity.dims[1:],
                 global_extent=cube_quantity.extent[1:],
                 overlap=True,
