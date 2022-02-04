@@ -23,27 +23,19 @@ def layout():
 
 
 @pytest.fixture
-def nx_rank(n_points):
-    return max(48, n_points * 2 - 1)
-
-
-@pytest.fixture
-def ny_rank(nx_rank):
-    return nx_rank
-
-
-@pytest.fixture
 def nz():
     return 70
 
 
 @pytest.fixture
-def ny(ny_rank, layout):
+def ny(n_points, layout):
+    ny_rank = max(12, n_points * 2 - 1)
     return ny_rank * layout[0]
 
 
 @pytest.fixture
-def nx(nx_rank, layout):
+def nx(n_points, layout):
+    nx_rank = max(12, n_points * 2 - 1)
     return nx_rank * layout[1]
 
 
@@ -170,9 +162,14 @@ def communicator(cube_partitioner):
     )
 
 
+@pytest.fixture(params=[0.1, 1.0])
+def edge_interior_ratio(request):
+    return request.param
+
+
 @pytest.fixture
-def tile_partitioner(layout):
-    return pace.util.TilePartitioner(layout)
+def tile_partitioner(layout, edge_interior_ratio: float):
+    return pace.util.TilePartitioner(layout, edge_interior_ratio=edge_interior_ratio)
 
 
 @pytest.fixture

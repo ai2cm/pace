@@ -1,5 +1,4 @@
 import dataclasses
-import os.path
 from typing import Tuple
 
 import f90nml
@@ -272,96 +271,14 @@ class DynamicalCoreConfig:
     namelist_override: str = None
 
     def __post_init__(self):
-        if self.namelist_override is not None and os.path.exists(
-            self.namelist_override
-        ):
-            f90_nml = f90nml.read(self.namelist_override)
-            namelist = Namelist.from_f90nml(f90_nml)
-            self.dt_atmos = namelist.dt_atmos
-            self.a_imp = namelist.a_imp
-            self.beta = namelist.beta
-            self.consv_te = namelist.consv_te
-            self.d2_bg = namelist.d2_bg
-            self.d2_bg_k1 = namelist.d2_bg_k1
-            self.d2_bg_k2 = namelist.d2_bg_k2
-            self.d4_bg = namelist.d4_bg
-            self.d_con = namelist.d_con
-            self.d_ext = namelist.d_ext
-            self.dddmp = namelist.dddmp
-            self.delt_max = namelist.delt_max
-            self.do_sat_adj = namelist.do_sat_adj
-            self.do_vort_damp = namelist.do_vort_damp
-            self.fill = namelist.fill
-            self.hord_dp = namelist.hord_dp
-            self.hord_mt = namelist.hord_mt
-            self.hord_tm = namelist.hord_tm
-            self.hord_tr = namelist.hord_tr
-            self.hord_vt = namelist.hord_vt
-            self.hydrostatic = namelist.hydrostatic
-            self.k_split = namelist.k_split
-            self.ke_bg = namelist.ke_bg
-            self.kord_mt = namelist.kord_mt
-            self.kord_tm = namelist.kord_tm
-            self.kord_tr = namelist.kord_tr
-            self.kord_wz = namelist.kord_wz
-            self.n_split = namelist.n_split
-            self.nord = namelist.nord
-            self.npx = namelist.npx
-            self.npy = namelist.npy
-            self.npz = namelist.npz
-            self.ntiles = namelist.ntiles
-            self.nwat = namelist.nwat
-            self.p_fac = namelist.p_fac
-            self.rf_cutoff = namelist.rf_cutoff
-            self.tau = namelist.tau
-            self.vtdm4 = namelist.vtdm4
-            self.z_tracer = namelist.z_tracer
-            self.do_qa = namelist.do_qa
-            self.layout = namelist.layout
-            self.grid_type = namelist.grid_type
-            self.do_f3d = namelist.do_f3d
-            self.inline_q = namelist.inline_q
-            self.do_skeb = namelist.do_skeb
-            self.check_negative = namelist.check_negative
-            self.tau_r2g = namelist.tau_r2g
-            self.tau_smlt = namelist.tau_smlt
-            self.tau_g2r = namelist.tau_g2r
-            self.tau_imlt = namelist.tau_imlt
-            self.tau_i2s = namelist.tau_i2s
-            self.tau_l2r = namelist.tau_l2r
-            self.tau_g2v = namelist.tau_g2v
-            self.tau_v2g = namelist.tau_v2g
-            self.sat_adj0 = namelist.sat_adj0
-            self.ql_gen = namelist.ql_gen
-            self.ql_mlt = namelist.ql_mlt
-            self.qs_mlt = namelist.qs_mlt
-            self.ql0_max = namelist.ql0_max
-            self.t_sub = namelist.t_sub
-            self.qi_gen = namelist.qi_gen
-            self.qi_lim = namelist.qi_lim
-            self.qi0_max = namelist.qi0_max
-            self.rad_snow = namelist.rad_snow
-            self.rad_rain = namelist.rad_rain
-            self.rad_graupel = namelist.rad_graupel
-            self.tintqs = namelist.tintqs
-            self.dw_ocean = namelist.dw_ocean
-            self.dw_land = namelist.dw_land
-            self.icloud_f = namelist.icloud_f
-            self.cld_min = namelist.cld_min
-            self.tau_l2v = namelist.tau_l2v
-            self.tau_v2l = namelist.tau_v2l
-            self.c2l_ord = namelist.c2l_ord
-            self.regional = namelist.regional
-            self.m_split = namelist.m_split
-            self.convert_ke = namelist.convert_ke
-            self.breed_vortex_inline = namelist.breed_vortex_inline
-            self.use_old_omega = namelist.use_old_omega
-            self.rf_fast = namelist.rf_fast
-            self.p_ref = namelist.p_ref
-            self.adiabatic = namelist.adiabatic
-            self.nf_omega = namelist.nf_omega
-            self.fv_sg_adj = namelist.fv_sg_adj
-            self.n_sponge = namelist.n_sponge
+        if self.namelist_override is not None:
+            try:
+                f90_nml = f90nml.read(self.namelist_override)
+            except FileNotFoundError:
+                print(f"{self.namelist_override} does not exist")
+            dycore_config = self.from_f90nml(f90_nml)
+            for var in dycore_config.__dict__.keys():
+                setattr(self, var, dycore_config.__dict__[var])
 
     @classmethod
     def from_f90nml(self, f90_namelist: f90nml.Namelist) -> "DynamicalCoreConfig":
