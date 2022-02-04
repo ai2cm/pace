@@ -155,7 +155,7 @@ class SerialboxConfig(InitializationConfig):
             grid_data[field] = ser.read(field, grid_savepoint)
             if len(grid_data[field].flatten()) == 1:
                 grid_data[field] = grid_data[field][0]
-        savepoint_in = ser.get_savepoint("FVDynamics-In")[0]
+        savepoint_in = ser.get_savepoint("Driver-In")[0]
         for field in ["ak", "bk", "ptop"]:
             grid_data[field] = ser.read(field, savepoint_in)
             if len(grid_data[field].flatten()) == 1:
@@ -285,7 +285,7 @@ class SerialboxConfig(InitializationConfig):
             quantity_factory, communicator
         )
         ser = self._serializer(communicator)
-        savepoint_in = ser.get_savepoint("FVDynamics-In")[0]
+        savepoint_in = ser.get_savepoint("Driver-In")[0]
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=self.backend,
         )
@@ -318,6 +318,8 @@ class Diagnostics:
         )
 
     def store(self, time: datetime, state: DriverState):
+        if len(self.config_names) == 0:
+            return
         zarr_state = {"time": time}
         for name in self.config.names:
             try:
