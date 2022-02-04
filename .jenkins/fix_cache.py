@@ -1,5 +1,6 @@
 import pathlib
 import re
+from typing import Match
 
 
 PATTERN = re.compile(
@@ -8,7 +9,7 @@ PATTERN = re.compile(
 )
 
 
-def replace(match: re.Match):
+def replace(match: Match):
     return match.group(0).replace(
         match.group(1), 'f"{pathlib.Path(__file__).parent.resolve()}'
     )
