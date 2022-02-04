@@ -118,7 +118,7 @@ echo "    Run arguments:     $run_args"
 echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 
-$FV3CORE_DIR/.jenkins/actions/fetch_caches.sh $backend $EXPNAME
+$FV3CORE_DIR/../.jenkins/actions/fetch_caches.sh $backend $EXPNAME
 
 
 echo "Submitting script to do performance run"
