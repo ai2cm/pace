@@ -427,24 +427,18 @@ class DriverConfig:
             config=dacite.Config(strict=True),
         )
 
-        if initialization_type != "serialbox":
-            kwargs["layout"] = tuple(kwargs["layout"])
-            kwargs["dycore_config"].layout = kwargs["layout"]
-            kwargs["dycore_config"].dt_atmos = kwargs["dt_atmos"]
-            kwargs["dycore_config"].npx = kwargs["nx_tile"] + 1
-            kwargs["dycore_config"].npy = kwargs["nx_tile"] + 1
-            kwargs["dycore_config"].npz = kwargs["nz"]
-            kwargs["dycore_config"].ntiles = 6
-            kwargs["physics_config"].layout = kwargs["layout"]
-            kwargs["physics_config"].dt_atmos = kwargs["dt_atmos"]
-            kwargs["physics_config"].npx = kwargs["nx_tile"] + 1
-            kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
-            kwargs["physics_config"].npz = kwargs["nz"]
-
-        elif initialization_type == "serialbox":
-            kwargs["nx_tile"] = kwargs["dycore_config"].npx - 1
-            kwargs["nz"] = kwargs["dycore_config"].npz
-            kwargs["layout"] = tuple(kwargs["dycore_config"].layout)
+        kwargs["layout"] = tuple(kwargs["layout"])
+        kwargs["dycore_config"].layout = kwargs["layout"]
+        kwargs["dycore_config"].dt_atmos = kwargs["dt_atmos"]
+        kwargs["dycore_config"].npx = kwargs["nx_tile"] + 1
+        kwargs["dycore_config"].npy = kwargs["nx_tile"] + 1
+        kwargs["dycore_config"].npz = kwargs["nz"]
+        kwargs["dycore_config"].ntiles = 6
+        kwargs["physics_config"].layout = kwargs["layout"]
+        kwargs["physics_config"].dt_atmos = kwargs["dt_atmos"]
+        kwargs["physics_config"].npx = kwargs["nx_tile"] + 1
+        kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
+        kwargs["physics_config"].npz = kwargs["nz"]
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
