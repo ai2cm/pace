@@ -109,17 +109,20 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
     def edge_vector_storage(self, d, var, axis):
         max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
         default_origin = (0, 0, 0)
+        mask = None
         if axis == 1:
             default_origin = (0, 0)
             d[var] = d[var][np.newaxis, ...]
             d[var] = np.repeat(d[var], max_shape[0], axis=0)
         if axis == 0:
             default_origin = (0,)
+            mask = (True, False, False)
         d[var] = utils.make_storage_data(
             data=d[var],
             origin=default_origin,
             shape=d[var].shape,
             backend=self.stencil_factory.backend,
+            mask=mask,
         )
 
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
