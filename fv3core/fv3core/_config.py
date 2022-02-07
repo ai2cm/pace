@@ -9,6 +9,10 @@ from pace.util import Namelist, NamelistDefaults
 
 
 grid = None
+DEFAULT_INT = 0
+DEFAULT_STR = ""
+DEFAULT_FLOAT = 0.0
+DEFAULT_BOOL = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -143,46 +147,46 @@ class AcousticDynamicsConfig:
 
 @dataclasses.dataclass
 class DynamicalCoreConfig:
-    dt_atmos: int
-    a_imp: float
-    beta: float
-    consv_te: float
-    d2_bg: float
-    d2_bg_k1: float
-    d2_bg_k2: float
-    d4_bg: float
-    d_con: float
-    d_ext: float
-    dddmp: float
-    delt_max: float
-    do_sat_adj: bool
-    do_vort_damp: bool
-    fill: bool
-    hord_dp: int
-    hord_mt: int
-    hord_tm: int
-    hord_tr: int
-    hord_vt: int
-    hydrostatic: bool
-    k_split: int
-    ke_bg: float
-    kord_mt: int
-    kord_tm: int
-    kord_tr: int
-    kord_wz: int
-    n_split: int
-    nord: int
-    npx: int
-    npy: int
-    npz: int
-    ntiles: int
-    nwat: int
-    p_fac: float
-    rf_cutoff: float
-    tau: float
-    vtdm4: float
-    z_tracer: bool
-    do_qa: bool
+    dt_atmos: int = DEFAULT_INT
+    a_imp: float = DEFAULT_FLOAT
+    beta: float = DEFAULT_FLOAT
+    consv_te: float = DEFAULT_FLOAT
+    d2_bg: float = DEFAULT_FLOAT
+    d2_bg_k1: float = DEFAULT_FLOAT
+    d2_bg_k2: float = DEFAULT_FLOAT
+    d4_bg: float = DEFAULT_FLOAT
+    d_con: float = DEFAULT_FLOAT
+    d_ext: float = DEFAULT_FLOAT
+    dddmp: float = DEFAULT_FLOAT
+    delt_max: float = DEFAULT_FLOAT
+    do_sat_adj: bool = DEFAULT_BOOL
+    do_vort_damp: bool = DEFAULT_BOOL
+    fill: bool = DEFAULT_BOOL
+    hord_dp: int = DEFAULT_INT
+    hord_mt: int = DEFAULT_INT
+    hord_tm: int = DEFAULT_INT
+    hord_tr: int = DEFAULT_INT
+    hord_vt: int = DEFAULT_INT
+    hydrostatic: bool = DEFAULT_BOOL
+    k_split: int = DEFAULT_INT
+    ke_bg: float = DEFAULT_FLOAT
+    kord_mt: int = DEFAULT_INT
+    kord_tm: int = DEFAULT_INT
+    kord_tr: int = DEFAULT_INT
+    kord_wz: int = DEFAULT_INT
+    n_split: int = DEFAULT_INT
+    nord: int = DEFAULT_INT
+    npx: int = DEFAULT_INT
+    npy: int = DEFAULT_INT
+    npz: int = DEFAULT_INT
+    ntiles: int = DEFAULT_INT
+    nwat: int = DEFAULT_INT
+    p_fac: float = DEFAULT_FLOAT
+    rf_cutoff: float = DEFAULT_FLOAT
+    tau: float = DEFAULT_FLOAT
+    vtdm4: float = DEFAULT_FLOAT
+    z_tracer: bool = DEFAULT_BOOL
+    do_qa: bool = DEFAULT_BOOL
     layout: Tuple[int, int] = NamelistDefaults.layout
     grid_type: int = NamelistDefaults.grid_type
     do_f3d: bool = NamelistDefaults.do_f3d
@@ -264,6 +268,17 @@ class DynamicalCoreConfig:
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
+    namelist_override: str = None
+
+    def __post_init__(self):
+        if self.namelist_override is not None:
+            try:
+                f90_nml = f90nml.read(self.namelist_override)
+            except FileNotFoundError:
+                print(f"{self.namelist_override} does not exist")
+            dycore_config = self.from_f90nml(f90_nml)
+            for var in dycore_config.__dict__.keys():
+                setattr(self, var, dycore_config.__dict__[var])
 
     @classmethod
     def from_f90nml(self, f90_namelist: f90nml.Namelist) -> "DynamicalCoreConfig":

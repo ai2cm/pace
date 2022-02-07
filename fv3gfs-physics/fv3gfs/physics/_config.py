@@ -6,15 +6,19 @@ import f90nml
 from pace.util import Namelist, NamelistDefaults
 
 
+DEFAULT_INT = 0
+DEFAULT_BOOL = False
+
+
 @dataclasses.dataclass
 class PhysicsConfig:
-    dt_atmos: int
-    hydrostatic: bool
-    npx: int
-    npy: int
-    npz: int
-    nwat: int
-    do_qa: bool
+    dt_atmos: int = DEFAULT_INT
+    hydrostatic: bool = DEFAULT_BOOL
+    npx: int = DEFAULT_INT
+    npy: int = DEFAULT_INT
+    npz: int = DEFAULT_INT
+    nwat: int = DEFAULT_INT
+    do_qa: bool = DEFAULT_BOOL
     c_cracw: float = NamelistDefaults.c_cracw
     c_paut: float = NamelistDefaults.c_paut
     c_pgacs: float = NamelistDefaults.c_pgacs
@@ -93,6 +97,17 @@ class PhysicsConfig:
     tice: float = NamelistDefaults.tice
     alin: float = NamelistDefaults.alin
     clin: float = NamelistDefaults.clin
+    namelist_override: str = None
+
+    def __post_init__(self):
+        if self.namelist_override is not None:
+            try:
+                f90_nml = f90nml.read(self.namelist_override)
+            except FileNotFoundError:
+                print(f"{self.namelist_override} does not exist")
+            physics_config = self.from_f90nml(f90_nml)
+            for var in physics_config.__dict__.keys():
+                setattr(self, var, physics_config.__dict__[var])
 
     @classmethod
     def from_f90nml(self, f90_namelist: f90nml.Namelist) -> "PhysicsConfig":
