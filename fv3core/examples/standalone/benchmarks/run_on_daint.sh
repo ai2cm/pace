@@ -128,7 +128,12 @@ sed -i "s/<NTASKS>/$ranks/g" run.daint.slurm
 sed -i "s/<NTASKSPERNODE>/1/g" run.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
 sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
-sed -i "s/00:45:00/03:15:00/g" run.daint.slurm
+if [ "$timesteps" -lt 5 ]
+then
+  sed -i "s/00:45:00/01:30:00/g" run.daint.slurm
+else
+  sed -i "s/00:45:00/03:15:00/g" run.daint.slurm
+fi
 sed -i "s/cscsci/normal/g" run.daint.slurm
 sed -i "s#<CMD>#$env_vars\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 # execute on a gpu node
