@@ -74,7 +74,6 @@ def _sw_corner(
         lon (in):
         lat (in):
     """
-
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
             lon[0, 0],
@@ -687,8 +686,8 @@ class AGrid2BGridFourthOrder:
         In some cases, qin is also updated to the B grid.
 
         Args:
-            qin: Input on A-grid (inout)
-            qout: Output on B-grid (inout)
+            qin (inout): Input on A-grid (intent=in if replace=false)
+            qout (out): Output on B-grid (out)
         """
         # TODO: update docstring saying in what cases qin gets updated
         """for each corner stencil, for baroclinic:

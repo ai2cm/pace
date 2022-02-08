@@ -48,6 +48,29 @@ def get_delpc(
     u_contra_dyc: FloatField,
     v_contra_dxc: FloatField,
 ):
+    """
+    Args:
+        u (in):
+        v (in):
+        ua (in):
+        va (in):
+        cosa_u (in):
+        sina_u (in):
+        dxc (in):
+        dyc (in):
+        uc (in):
+        vc (in):
+        sin_sg1 (in):
+        sin_sg2 (in):
+        sin_sg3 (in):
+        sin_sg4 (in):
+        cosa_v (in):
+        sina_v (in):
+        rarea_c (in):
+        delpc (out):
+        u_contra_dyc (out):
+        v_contra_dxc (out):
+    """
     from __externals__ import i_end, i_start, j_end, j_start
 
     # in the Fortran, u_contra_dyc is called ke and v_contra_dxc is called vort
@@ -86,7 +109,9 @@ def get_delpc(
             + u_contra_dyc[-1, 0, 0]
             - u_contra_dyc
         )
-        delpc = rarea_c * delpc
+        delpc = (
+            rarea_c * delpc
+        )  # TODO: can we multiply by rarea_c on the previous line?
 
 
 def damping(
@@ -98,6 +123,13 @@ def damping(
     dddmp: float,
     dt: float,
 ):
+    """
+    Args:
+        delpc (in):
+        vort (out):
+        ke (inout):
+        d2_bg (in):
+    """
     with computation(PARALLEL), interval(...):
         delpcdt = delpc * dt
         damp = damp_tmp(delpcdt, da_min_c, d2_bg, dddmp)
@@ -115,6 +147,14 @@ def damping_nord_highorder_stencil(
     dddmp: float,
     dd8: float,
 ):
+    """
+    Args:
+        vort (inout):
+        ke (inout):
+        delpc (in):
+        divg_d (in):
+        d2_bg (in):
+    """
     with computation(PARALLEL), interval(...):
         damp = damp_tmp(vort, da_min_c, d2_bg, dddmp)
         vort = damp * delpc + dd8 * divg_d
@@ -137,6 +177,13 @@ def redo_divg_d(
     divg_d: FloatField,
     adjustment_factor: FloatFieldIJ,
 ):
+    """
+    Args:
+        uc (in):
+        vc (in):
+        divg_d (out):
+        adjustment_factor (in):
+    """
     from __externals__ import do_adjustment, i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
@@ -150,6 +197,15 @@ def redo_divg_d(
 
 
 def smagorinksy_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: float):
+    """
+    Args:
+        delpc (in):
+        vort (inout):
+        absdt (in):
+    """
+    # TODO: what are these values really? are delpc and vort (as input)
+    # some kind of u and v, and is vort (as output) some kind of kinetic energy?
+    # what does this have to do with diffusion?
     with computation(PARALLEL), interval(...):
         vort = absdt * (delpc ** 2.0 + vort ** 2.0) ** 0.5
 
@@ -345,18 +401,18 @@ class DivergenceDamping:
     ) -> None:
         """
         Args:
-            u (in)
-            v (in)
-            va (in)
-            u_contra_dyc (out)
-            v_contra_dxc (out)
-            ua (in)
-            divg_d (inout)
-            vc (inout)
-            uc (inout)
-            delpc (out)
-            ke: gets vort added to it (inout)
-            wk: gets converted by a2b_ord4 and put into wk at end (in)
+            u (in):
+            v (in):
+            va (in):
+            u_contra_dyc (out):
+            v_contra_dxc (out):
+            ua (in):
+            divg_d (inout):
+            vc (inout):
+            uc (inout):
+            delpc (out):
+            ke (inout): gets vort added to it
+            wk (in): gets converted by a2b_ord4 and put into vort at end (in)
             dt: timestep (in)
         """
         # in the original Fortran, u_contra_dyc is "ptc" and v_contra_dxc is "vort"
@@ -430,18 +486,18 @@ class DivergenceDamping:
     ) -> None:
         """
         Args:
-            u (in)
-            v (in)
-            va (in)
-            ptc (out)
-            vort (out)
-            ua (in)
-            vc (in)
-            uc (in)
-            delpc (out)
-            ke: gets vort added to it (inout)
-            d2_bg (in)
-            dt: timestep in seconds
+            u (in):
+            v (in):
+            va (in):
+            ptc (out):
+            vort (out):
+            ua (in):
+            vc (in):
+            uc (in):
+            delpc (out):
+            ke (inout): gets vort added to it
+            d2_bg (in):
+            dt (in): timestep in seconds
         """
         # TODO: convert ptc and vort to gt4py temporaries using selective validation
         # their outputs from get_delpc do not get used
@@ -483,6 +539,7 @@ class DivergenceDamping:
         if self._dddmp < 1e-5:
             self._set_value(vort, 0.0)
         else:
+            # TODO: what is wk/vort here?
             self.a2b_ord4(wk, vort)
             self._smagorinksy_diffusion_approx_stencil(
                 delpc,

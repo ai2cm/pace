@@ -62,11 +62,11 @@ def flux_adjust(
     Update q according to fluxes gx and gy.
 
     Args:
-        q: any scalar, is replaced with something in units of q * delp (out)
-        delp: pressure thickness of layer (in)
-        gx: x-flux of q in units of q * Pa * area (in)
-        gy: y-flux of q in units of q * Pa * area (in)
-        rarea: 1 / area (in)
+        q (inout): any scalar, is replaced with something in units of q * delp
+        delp (in): pressure thickness of layer
+        gx (in): x-flux of q in units of q * Pa * area
+        gy (in): y-flux of q in units of q * Pa * area
+        rarea (in): 1 / area
     """
     # TODO: this function changes the units and therefore meaning of q,
     # is there any way we can avoid doing so?
@@ -92,14 +92,14 @@ def flux_capacitor(
     Saves the mass fluxes to the "flux capacitor" variables for tracer transport
     Also updates the accumulated courant numbers
     Args:
-        cx: accumulated courant number in the x direction (out)
-        cy: accumulated courant number in the y direction (out)
-        xflux: flux capacitor in the x direction, accumlated mass flux (out)
-        yflux: flux capacitor in the y direction, accumlated mass flux (out)
-        crx_adv: local courant numver, dt*ut/dx  (in)
-        cry_adv: local courant number dt*vt/dy (in)
-        fx: 1-D x-direction flux (in)
-        fy: 1-D y-direction flux (in)
+        cx (inout): accumulated courant number in the x direction
+        cy (inout): accumulated courant number in the y direction
+        xflux (inout): flux capacitor in the x direction, accumlated mass flux
+        yflux (inout): flux capacitor in the y direction, accumlated mass flux
+        crx_adv (in): local courant numver, dt*ut/dx
+        cry_adv (in): local courant number dt*vt/dy
+        fx (in): 1-D x-direction flux
+        fy (in): 1-D y-direction flux
     """
     with computation(PARALLEL), interval(...):
         cx = cx + crx_adv
@@ -160,6 +160,16 @@ def apply_pt_delp_fluxes(
     pt: FloatField,
     delp: FloatField,
 ):
+    """
+    Args:
+        fx (in):
+        fy (in):
+        pt (inout):
+        delp (inout):
+        gx (in):
+        gy (in):
+        rarea (in):
+    """
     from __externals__ import inline_q, local_ie, local_is, local_je, local_js
 
     # original Fortran uses gx/gy for pt fluxes, fx/fy for delp fluxes
@@ -186,8 +196,8 @@ def apply_pt_delp_fluxes_stencil_defn(
     Args:
         fx (in):
         fy (in):
-        pt (out):
-        delp (out):
+        pt (inout):
+        delp (inout):
         gx (in):
         gy (in):
         rarea (in):
@@ -228,13 +238,13 @@ def kinetic_energy_update_part_1(
         u (in):
         uc_contra (in):
         dx (in):
-        dxa (in):
+        dxa (???):
         rdx (in):
         dy (in):
-        dya (in):
+        dya (???):
         rdy (in):
-        ub_contra (inout):
-        vb_contra (inout):
+        ub_contra (out):
+        vb_contra (out):
         advected_u (out):
         advected_v (out):
     """
@@ -329,8 +339,8 @@ def u_and_v_from_ke(
         ke (in):
         fx (in):
         fy (in):
-        u (out):
-        v (out):
+        u (inout):
+        v (inout):
         dx (in):
         dy (in):
     """
@@ -364,7 +374,7 @@ def compute_vort(
     Args:
         wk (in):
         f0 (in):
-        zh (in):
+        zh (in): (only used if do_f3d=True in externals)
         vort (out):
     """
     from __externals__ import do_f3d, hydrostatic, radius
@@ -386,10 +396,10 @@ def adjust_w_and_qcon(
 ):
     """
     Args:
-        w (out):
+        w (inout):
         delp (in):
         dw (in):
-        q_con (out):
+        q_con (inout):
         damp_w (in):
     """
     with computation(PARALLEL), interval(...):
@@ -421,19 +431,21 @@ def heat_diss(
     dt: float,
 ):
     """
+    Does nothing for levels where damp_w <= 1e-5.
+
     Args:
         fx2 (in):
         fy2 (in):
         w (in):
         rarea (in):
         heat_source (out):
-        diss_est (out):
-        dw (out):
+        diss_est (inout):
+        dw (inout):
         damp_w (in):
         ke_bg (in):
     """
     with computation(PARALLEL), interval(...):
-        diss_e = diss_est
+        diss_e = diss_est  # TODO: can this be deleted, using diss_est below?
         if damp_w > 1e-5:
             dd8 = ke_bg * abs(dt)
             dw = (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea
@@ -461,20 +473,20 @@ def heat_source_from_vorticity_damping(
     """
     Calculates heat source from vorticity damping implied by energy conservation.
     Args:
-        vort_x_delta (in)
-        vort_y_delta (in)
-        ut (in)
-        vt (in)
-        u (in)
-        v (in)
-        delp (in)
-        rsin2 (in)
-        cosa_s (in)
+        vort_x_delta (in):
+        vort_y_delta (in):
+        ut (in):
+        vt (in):
+        u (in):
+        v (in):
+        delp (in):
+        rsin2 (in):
+        cosa_s (in):
         rdx (in): 1 / dx
         rdy (in): 1 / dy
-        heat_source (out): heat source from vorticity damping
+        heat_source (inout): heat source from vorticity damping
             implied by energy conservation
-        heat_source_total: (out) accumulated heat source
+        heat_source_total (inout): accumulated heat source
         dissipation_estimate (out): dissipation estimate, only calculated if
             calculate_dissipation_estimate is 1
         kinetic_energy_fraction_to_damp (in): according to its comment in fv_arrays,
@@ -524,10 +536,10 @@ def update_u_and_v(
     """
     Updates u and v after calculation of heat source from vorticity damping.
     Args:
-        ut (in)
-        vt (in)
-        u (inout)
-        v (inout)
+        ut (in):
+        vt (in):
+        u (inout):
+        v (inout):
         damp_vt (in): column scalar for damping vorticity
     """
     from __externals__ import local_ie, local_is, local_je, local_js
@@ -978,36 +990,39 @@ class DGridShallowWaterLagrangianDynamics:
         diss_est,
         dt,
     ):
-        """D-Grid Shallow Water Routine
-        Peforms a full-timestep advance of the D-grid winds and other
-        prognostic variables using Lagrangian dynamics on the cubed-sphere.
-        described by Lin 1997, Lin 2004 and Harris 2013.
+        """
+        D-Grid shallow water routine, peforms a full-timestep advance
+        of the D-grid winds and other prognostic variables using Lagrangian
+        dynamics on the cubed-sphere.
+
+        Described by Lin 1997, Lin 2004 and Harris 2013.
+
         Args:
-            delpc: C-grid  vertical delta in pressure (inout)
-            delp: D-grid vertical delta in pressure (inout),
-            ptc: C-grid potential temperature (inout)
-            pt: D-grid potnetial teperature (out)
-            u: D-grid x-velocity (inout)
-            v: D-grid y-velocity (inout)
-            w: vertical velocity (inout)
-            uc: C-grid x-velocity (in)
-            vc: C-grid y-velocity (in)
-            ua: A-grid x-velocity (in)
-            va A-grid y-velocity (in)
+            delpc (inout): C-grid  vertical delta in pressure (inout)
+            delp (inout): D-grid vertical delta in pressure (inout),
+            ptc : C-grid potential temperature (inout)
+            pt (inout): D-grid potential teperature
+            u (inout): D-grid x-velocity (inout)
+            v (inout): D-grid y-velocity (inout)
+            w (inout): vertical velocity (inout)
+            uc (in): C-grid x-velocity (in)
+            vc (in): C-grid y-velocity (in)
+            ua (in): A-grid x-velocity (in)
+            va (in) A-grid y-velocity (in)
             divgd: D-grid horizontal divergence (inout)
-            mfx: accumulated x mass flux (inout)
-            mfy: accumulated y mass flux (inout)
-            cx: accumulated Courant number in the x direction (out)
-            cy: accumulated Courant number in the y direction (out)
-            crx: local courant number in the x direction (inout)
-            cry: local courant number in the y direction (inout)
-            xfx: flux of area in x-direction, in units of m^2 (in)
-            yfx: flux of area in y-direction, in units of m^2 (in)
-            q_con: total condensate mixing ratio (inout)
-            zh: geopotential height defined on layer interfaces (in)
-            heat_source:  accumulated heat source (inout)
-            diss_est: dissipation estimate (inout)
-            dt: acoustic timestep in seconds (in)
+            mfx (inout): accumulated x mass flux (inout)
+            mfy (inout): accumulated y mass flux (inout)
+            cx (inout): accumulated Courant number in the x direction
+            cy (inout): accumulated Courant number in the y direction
+            crx (out): local courant number in the x direction
+            cry (out): local courant number in the y direction
+            xfx (out): flux of area in x-direction, in units of m^2
+            yfx (out): flux of area in y-direction, in units of m^2
+            q_con (inout): total condensate mixing ratio
+            zh (in): geopotential height defined on layer interfaces
+            heat_source (inout):  accumulated heat source
+            diss_est (inout): dissipation estimate
+            dt (in): acoustic timestep in seconds
         """
         # uc_contra/vc_contra are ut/vt in the original Fortran
         # TODO: when these stencils can be merged investigate whether

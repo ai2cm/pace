@@ -80,20 +80,21 @@ def apply_height_fluxes(
     (normally interface levels).
 
     Args:
-        height: height profile on which to apply fluxes (inout)
-        fx: area-weighted flux of height in x-direction,
+        area (in): gridcell area in m^2
+        height (inout): height profile on which to apply fluxes
+        fx (in): area-weighted flux of height in x-direction,
             in units of g * m^3
-        fy: area-weighted flux of height in y-direction,
+        fy (in): area-weighted flux of height in y-direction,
             in units of g * m^3
-        x_area_flux: flux of area in x-direction, in units of m^2 (in)
-        y_area_flux: flux of area in y-direction, in units of m^2 (in)
-        gz_x_diffusive_flux: diffusive flux of area-weighted height
-            in x-direction (in)
-        gz_y_diffusive_flux: diffusive flux of area-weighted height
-            in y-direction (in)
-        surface_height: surface height (in)
-        ws: vertical velocity of the lowest level (to keep it at the surface) (out)
-        dt: acoustic timestep (seconds) (in)
+        x_area_flux (in): flux of area in x-direction, in units of m^2
+        y_area_flux (in): flux of area in y-direction, in units of m^2
+        gz_x_diffusive_flux (in): diffusive flux of area-weighted height
+            in x-direction
+        gz_y_diffusive_flux (in): diffusive flux of area-weighted height
+            in y-direction
+        surface_height (in): surface height
+        ws (out): vertical velocity of the lowest level (to keep it at the surface)
+        dt (in): acoustic timestep (seconds)
     Grid variable inputs:
         area
     """
@@ -347,15 +348,15 @@ class UpdateHeightOnDGrid:
         Height can be in any units, including geopotential units.
 
         Args:
-            surface_height: height of surface (in)
-            height: height defined on layer interfaces (inout)
-            courant_number_x: Courant number in x-direction defined on cell centers (in)
-            courant_number_y: Courant number in y-direction defined on cell centers (in)
-            x_area_flux: Area flux in x-direction defined on cell centers (in)
-            y_area_flux: Area flux in y-direction defined on cell centers (in)
-            ws: lowest layer vertical velocity implied by horizontal motion
-                over topography, in units of [height units] / second (out)
-            dt: timestep over which input fluxes have been computed, in seconds
+            surface_height (in): height of surface (in)
+            height (inout): height defined on layer interfaces (inout)
+            courant_number_x (in): Courant number in x-direction defined on cell centers
+            courant_number_y (in): Courant number in y-direction defined on cell centers
+            x_area_flux (in): Area flux in x-direction defined on cell centers
+            y_area_flux (in): Area flux in y-direction defined on cell centers
+            ws (out): lowest layer vertical velocity implied by horizontal motion
+                over topography, in units of [height units] / second
+            dt (in): timestep over which input fluxes have been computed, in seconds
         """
         self._interpolate_to_layer_interface(
             courant_number_x, self._crx_interface, self._gk, self._beta, self._gamma

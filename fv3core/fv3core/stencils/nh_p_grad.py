@@ -11,6 +11,12 @@ from pace.util.grid import GridData
 def set_k0_and_calc_wk(
     pp: FloatField, pk3: FloatField, wk: FloatField, top_value: float
 ):
+    """
+    Args:
+        pp (inout):
+        pk3 (inout):
+        wk (out):
+    """
     with computation(PARALLEL), interval(0, 1):
         pp[0, 0, 0] = 0.0
         pk3[0, 0, 0] = top_value
@@ -28,6 +34,16 @@ def calc_u(
     rdx: FloatFieldIJ,
     dt: float,
 ):
+    """
+    Args:
+        u (inout):
+        wk (in):
+        wk1 (in):
+        gz (in):
+        pk3 (in):
+        pp (in):
+        rdx (in):
+    """
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution
         du = (
@@ -61,6 +77,16 @@ def calc_v(
     rdy: FloatFieldIJ,
     dt: float,
 ):
+    """
+    Args:
+        v (inout):
+        wk (in):
+        wk1 (in):
+        gz (in):
+        pk3 (in):
+        pp (in):
+        rdy (in):
+    """
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution
         dv = (
@@ -164,11 +190,11 @@ class NonHydrostaticPressureGradient:
         Updates the U and V winds due to pressure gradients,
         accounting for both the hydrostatic and nonhydrostatic contributions.
         Args:
-            u: U wind (inout)
-            v: V wind (inout)
-            pp: Pressure (in)
-            gz:  height of the model grid cells (in)
-            pk3: (in)
+            u (inout): U wind (inout)
+            v (inout): V wind (inout)
+            pp (inout): Pressure, gets updated to B-grid
+            gz (inout): height of the model grid cells, gets updated to B-grid
+            pk3 (inout): gets updated to B-grid
             delp: vertical delta in pressure (in)
             dt: model atmospheric timestep (in)
             ptop: pressure at top of atmosphere (in)

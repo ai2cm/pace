@@ -159,7 +159,7 @@ class HyperdiffusionDamping:
         Perform hyperdiffusion damping/filtering
 
         Args:
-            qdel (inout): Variable to be filterd
+            qdel (inout): Variable to be filtered
             nmax: Number of times to apply filtering
             cd: Damping coeffcient
         """

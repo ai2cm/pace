@@ -92,6 +92,13 @@ def fix_negative_liq(qvapor, qice, qsnow, qgraupel, qrain, qliquid, pt, lcpk, ic
 
 
 def fillq(q: FloatField, dp: FloatField, sum1: FloatFieldIJ, sum2: FloatFieldIJ):
+    """
+    Args:
+        q (inout):
+        dp (in):
+        sum1 (out):
+        sum2 (out):
+    """
     with computation(FORWARD), interval(...):
         # reset accumulating fields
         sum1 = 0.0
@@ -114,8 +121,6 @@ def fillq(q: FloatField, dp: FloatField, sum1: FloatFieldIJ, sum2: FloatFieldIJ)
 
 def fix_neg_water(
     pt: FloatField,
-    dp: FloatField,
-    delz: FloatField,
     qvapor: FloatField,
     qliquid: FloatField,
     qrain: FloatField,
@@ -125,6 +130,16 @@ def fix_neg_water(
     lv00: float,
     d0_vap: float,
 ):
+    """
+    Args:
+        pt (inout):
+        qvapor (inout):
+        qliquid (inout):
+        qrain (inout):
+        qsnow (inout):
+        qice (inout):
+        qgraupel (inout):
+    """
     with computation(PARALLEL), interval(...):
         q_liq = 0.0 if 0.0 > qliquid + qrain else qliquid + qrain
         q_sol = 0.0 if 0.0 > qice + qsnow else qice + qsnow
@@ -227,6 +242,11 @@ def fix_water_vapor_k_loop(i, j, kbot, qvapor, dp):
 
 # Stencil version
 def fix_water_vapor_down(qvapor: FloatField, dp: FloatField):
+    """
+    Args:
+        qvapor (inout):
+        dp (in):
+    """
     with computation(PARALLEL), interval(...):
         upper_fix = 0.0  # type: FloatField
         lower_fix = 0.0  # type: FloatField
@@ -355,10 +375,23 @@ class AdjustNegativeTracerMixingRatio:
         delz,
         peln,
     ):
+        """
+        Args:
+            qvapor (inout):
+            qliquid (inout):
+            qrain (inout):
+            qsnow (inout):
+            qice (inout):
+            qgraupel (inout):
+            qcld (inout):
+            pt (inout):
+            delp (in):
+            delz (unused):
+            peln (unused):
+        """
+        # TODO: remove delz and peln from args
         self._fix_neg_water(
             pt,
-            delp,
-            delz,
             qvapor,
             qliquid,
             qrain,
@@ -370,6 +403,7 @@ class AdjustNegativeTracerMixingRatio:
         )
         # TODO - optimisation: those could be merged into one stencil. To keep
         # the physical meaning we could keep the structure as @gtstencil.function
+        # TODO: can sum1 and sum2 be removed as API fields and used as temporaries?
         self._fillq(qgraupel, delp, self._sum1, self._sum2)
         self._fillq(qrain, delp, self._sum1, self._sum2)
         self._fix_water_vapor_down(qvapor, delp)
