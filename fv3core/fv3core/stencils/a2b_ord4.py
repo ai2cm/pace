@@ -282,90 +282,6 @@ def lagrange_x_func(qy):
     return a2 * (qy[-2, 0, 0] + qy[1, 0, 0]) + a1 * (qy[-1, 0, 0] + qy)
 
 
-def ppm_volume_mean_x(
-    qin: FloatField,
-    qx: FloatField,
-    dxa: FloatFieldIJ,
-):
-    """
-    Args:
-        qin (in):
-        qx (out):
-        dxa (in):
-    """
-    from __externals__ import i_end, i_start
-
-    with computation(PARALLEL), interval(...):
-        qx = b2 * (qin[-2, 0, 0] + qin[1, 0, 0]) + b1 * (qin[-1, 0, 0] + qin)
-        with horizontal(region[i_start, :]):
-            qx = qx_edge_west(qin, dxa)
-        with horizontal(region[i_start + 1, :]):
-            qx = qx_edge_west2(qin, dxa)
-        with horizontal(region[i_end + 1, :]):
-            qx = qx_edge_east(qin, dxa)
-        with horizontal(region[i_end, :]):
-            qx = qx_edge_east2(qin, dxa)
-
-
-def ppm_volume_mean_y(
-    qin: FloatField,
-    qy: FloatField,
-    dya: FloatFieldIJ,
-):
-    """
-    Args:
-        qin (in):
-        qy (out):
-        dya (in):
-    """
-    from __externals__ import j_end, j_start
-
-    with computation(PARALLEL), interval(...):
-        qy = b2 * (qin[0, -2, 0] + qin[0, 1, 0]) + b1 * (qin[0, -1, 0] + qin)
-        with horizontal(region[:, j_start]):
-            qy = qy_edge_south(qin, dya)
-        with horizontal(region[:, j_start + 1]):
-            qy = qy_edge_south2(qin, dya)
-        with horizontal(region[:, j_end + 1]):
-            qy = qy_edge_north(qin, dya)
-        with horizontal(region[:, j_end]):
-            qy = qy_edge_north2(qin, dya)
-
-
-def a2b_interpolation(
-    tmp_qout_edges: FloatField,
-    qout: FloatField,
-    qx: FloatField,
-    qy: FloatField,
-):
-    """
-    Args:
-        tmp_qout_edges (in):
-        qout (out):
-        qx (in):
-        qy (in):
-    """
-    from __externals__ import i_end, i_start, j_end, j_start
-
-    with computation(PARALLEL), interval(...):
-        qxx = a2 * (qx[0, -2, 0] + qx[0, 1, 0]) + a1 * (qx[0, -1, 0] + qx)
-        qyy = a2 * (qy[-2, 0, 0] + qy[1, 0, 0]) + a1 * (qy[-1, 0, 0] + qy)
-        # TODO(rheag) use a function with an offset when that works consistently
-        with horizontal(region[:, j_start + 1]):
-            qxx_upper = a2 * (qx[0, -1, 0] + qx[0, 2, 0]) + a1 * (qx + qx[0, 1, 0])
-            qxx = c1 * (qx[0, -1, 0] + qx) + c2 * (tmp_qout_edges[0, -1, 0] + qxx_upper)
-        with horizontal(region[:, j_end]):
-            qxx_lower = a2 * (qx[0, -3, 0] + qx) + a1 * (qx[0, -2, 0] + qx[0, -1, 0])
-            qxx = c1 * (qx[0, -1, 0] + qx) + c2 * (tmp_qout_edges[0, 1, 0] + qxx_lower)
-        with horizontal(region[i_start + 1, :]):
-            qyy_right = a2 * (qy[-1, 0, 0] + qy[2, 0, 0]) + a1 * (qy + qy[1, 0, 0])
-            qyy = c1 * (qy[-1, 0, 0] + qy) + c2 * (tmp_qout_edges[-1, 0, 0] + qyy_right)
-        with horizontal(region[i_end, :]):
-            qyy_left = a2 * (qy[-3, 0, 0] + qy) + a1 * (qy[-2, 0, 0] + qy[-1, 0, 0])
-            qyy = c1 * (qy[-1, 0, 0] + qy) + c2 * (tmp_qout_edges[1, 0, 0] + qyy_left)
-        qout = 0.5 * (qxx + qyy)
-
-
 def qout_x_edge(
     qin: FloatField,
     dxa: FloatFieldIJ,
@@ -521,6 +437,90 @@ def qy_edge_north2(qin: FloatField, dya: FloatFieldIJ):
     return (3.0 * (qin[0, -1, 0] + g_in * qin) - (g_in * qy_upper + qy_lower)) / (
         2.0 + 2.0 * g_in
     )
+
+
+def ppm_volume_mean_x(
+    qin: FloatField,
+    qx: FloatField,
+    dxa: FloatFieldIJ,
+):
+    """
+    Args:
+        qin (in):
+        qx (out):
+        dxa (in):
+    """
+    from __externals__ import i_end, i_start
+
+    with computation(PARALLEL), interval(...):
+        qx = b2 * (qin[-2, 0, 0] + qin[1, 0, 0]) + b1 * (qin[-1, 0, 0] + qin)
+        with horizontal(region[i_start, :]):
+            qx = qx_edge_west(qin, dxa)
+        with horizontal(region[i_start + 1, :]):
+            qx = qx_edge_west2(qin, dxa)
+        with horizontal(region[i_end + 1, :]):
+            qx = qx_edge_east(qin, dxa)
+        with horizontal(region[i_end, :]):
+            qx = qx_edge_east2(qin, dxa)
+
+
+def ppm_volume_mean_y(
+    qin: FloatField,
+    qy: FloatField,
+    dya: FloatFieldIJ,
+):
+    """
+    Args:
+        qin (in):
+        qy (out):
+        dya (in):
+    """
+    from __externals__ import j_end, j_start
+
+    with computation(PARALLEL), interval(...):
+        qy = b2 * (qin[0, -2, 0] + qin[0, 1, 0]) + b1 * (qin[0, -1, 0] + qin)
+        with horizontal(region[:, j_start]):
+            qy = qy_edge_south(qin, dya)
+        with horizontal(region[:, j_start + 1]):
+            qy = qy_edge_south2(qin, dya)
+        with horizontal(region[:, j_end + 1]):
+            qy = qy_edge_north(qin, dya)
+        with horizontal(region[:, j_end]):
+            qy = qy_edge_north2(qin, dya)
+
+
+def a2b_interpolation(
+    tmp_qout_edges: FloatField,
+    qout: FloatField,
+    qx: FloatField,
+    qy: FloatField,
+):
+    """
+    Args:
+        tmp_qout_edges (in):
+        qout (out):
+        qx (in):
+        qy (in):
+    """
+    from __externals__ import i_end, i_start, j_end, j_start
+
+    with computation(PARALLEL), interval(...):
+        qxx = a2 * (qx[0, -2, 0] + qx[0, 1, 0]) + a1 * (qx[0, -1, 0] + qx)
+        qyy = a2 * (qy[-2, 0, 0] + qy[1, 0, 0]) + a1 * (qy[-1, 0, 0] + qy)
+        # TODO(rheag) use a function with an offset when that works consistently
+        with horizontal(region[:, j_start + 1]):
+            qxx_upper = a2 * (qx[0, -1, 0] + qx[0, 2, 0]) + a1 * (qx + qx[0, 1, 0])
+            qxx = c1 * (qx[0, -1, 0] + qx) + c2 * (tmp_qout_edges[0, -1, 0] + qxx_upper)
+        with horizontal(region[:, j_end]):
+            qxx_lower = a2 * (qx[0, -3, 0] + qx) + a1 * (qx[0, -2, 0] + qx[0, -1, 0])
+            qxx = c1 * (qx[0, -1, 0] + qx) + c2 * (tmp_qout_edges[0, 1, 0] + qxx_lower)
+        with horizontal(region[i_start + 1, :]):
+            qyy_right = a2 * (qy[-1, 0, 0] + qy[2, 0, 0]) + a1 * (qy + qy[1, 0, 0])
+            qyy = c1 * (qy[-1, 0, 0] + qy) + c2 * (tmp_qout_edges[-1, 0, 0] + qyy_right)
+        with horizontal(region[i_end, :]):
+            qyy_left = a2 * (qy[-3, 0, 0] + qy) + a1 * (qy[-2, 0, 0] + qy[-1, 0, 0])
+            qyy = c1 * (qy[-1, 0, 0] + qy) + c2 * (tmp_qout_edges[1, 0, 0] + qyy_left)
+        qout = 0.5 * (qxx + qyy)
 
 
 class AGrid2BGridFourthOrder:
@@ -682,23 +682,25 @@ class AGrid2BGridFourthOrder:
         return tuple(origin), tuple(domain)
 
     def __call__(self, qin: FloatField, qout: FloatField):
-        """Converts qin from A-grid to B-grid in qout.
-        In some cases, qin is also updated to the B grid.
+        """
+        Converts qin from A-grid to B-grid in qout.
+
+        If initialized with replace=True, qin is also updated to the B grid.
 
         Args:
             qin (inout): Input on A-grid (intent=in if replace=false)
             qout (out): Output on B-grid (out)
         """
-        # TODO: update docstring saying in what cases qin gets updated
-        """for each corner stencil, for baroclinic:
-        qin (in):
-        qout (out):
-        tmp_qout_edges (out):
-        lon_agrid (in):
-        lat_agrid (in):
-        lon (in):
-        lat (in):
-        """
+
+        # for each corner stencil, for baroclinic:
+        # qin (in):
+        # qout (out):
+        # tmp_qout_edges (out):
+        # lon_agrid (in):
+        # lat_agrid (in):
+        # lon (in):
+        # lat (in):
+
         self._sw_corner_stencil(
             qin,
             qout,
@@ -737,7 +739,24 @@ class AGrid2BGridFourthOrder:
             self._lat,
         )
 
-        self._compute_qout_edges(qin, qout)
+        if self._idx.west_edge:
+            self._qout_x_edge_west(
+                qin, self._dxa, self._edge_w, qout, self._tmp_qout_edges
+            )
+        if self._idx.east_edge:
+            self._qout_x_edge_east(
+                qin, self._dxa, self._edge_e, qout, self._tmp_qout_edges
+            )
+
+        if self._idx.south_edge:
+            self._qout_y_edge_south(
+                qin, self._dya, self._edge_s, qout, self._tmp_qout_edges
+            )
+        if self._idx.north_edge:
+            self._qout_y_edge_north(
+                qin, self._dya, self._edge_n, qout, self._tmp_qout_edges
+            )
+
         self._ppm_volume_mean_x_stencil(
             qin,
             self._tmp_qx,
@@ -759,23 +778,4 @@ class AGrid2BGridFourthOrder:
             self._copy_stencil(
                 qout,
                 qin,
-            )
-
-    def _compute_qout_edges(self, qin: FloatField, qout: FloatField):
-        if self._idx.west_edge:
-            self._qout_x_edge_west(
-                qin, self._dxa, self._edge_w, qout, self._tmp_qout_edges
-            )
-        if self._idx.east_edge:
-            self._qout_x_edge_east(
-                qin, self._dxa, self._edge_e, qout, self._tmp_qout_edges
-            )
-
-        if self._idx.south_edge:
-            self._qout_y_edge_south(
-                qin, self._dya, self._edge_s, qout, self._tmp_qout_edges
-            )
-        if self._idx.north_edge:
-            self._qout_y_edge_north(
-                qin, self._dya, self._edge_n, qout, self._tmp_qout_edges
             )

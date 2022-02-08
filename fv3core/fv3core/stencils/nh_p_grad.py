@@ -136,23 +136,6 @@ class NonHydrostaticPressureGradient:
             backend=stencil_factory.backend,
         )  # pp.shape
 
-        self._set_k0_and_calc_wk_stencil = stencil_factory.from_origin_domain(
-            set_k0_and_calc_wk,
-            origin=self.orig,
-            domain=domain_full_k,
-        )
-
-        self._calc_u_stencil = stencil_factory.from_origin_domain(
-            calc_u,
-            origin=self.orig,
-            domain=u_domain,
-        )
-
-        self._calc_v_stencil = stencil_factory.from_origin_domain(
-            calc_v,
-            origin=self.orig,
-            domain=v_domain,
-        )
         self.a2b_k1 = AGrid2BGridFourthOrder(
             stencil_factory.restrict_vertical(k_start=1),
             grid_data,
@@ -172,6 +155,23 @@ class NonHydrostaticPressureGradient:
             grid_data,
             grid_type,
             replace=False,
+        )
+        self._set_k0_and_calc_wk_stencil = stencil_factory.from_origin_domain(
+            set_k0_and_calc_wk,
+            origin=self.orig,
+            domain=domain_full_k,
+        )
+
+        self._calc_u_stencil = stencil_factory.from_origin_domain(
+            calc_u,
+            origin=self.orig,
+            domain=u_domain,
+        )
+
+        self._calc_v_stencil = stencil_factory.from_origin_domain(
+            calc_v,
+            origin=self.orig,
+            domain=v_domain,
         )
 
     def __call__(

@@ -230,10 +230,12 @@ class UpdateHeightOnDGrid:
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(0, 0, 1)),
         )
-        self._apply_height_fluxes = stencil_factory.from_origin_domain(
-            apply_height_fluxes,
-            origin=grid_indexing.origin_compute(),
-            domain=grid_indexing.domain_compute(add=(0, 0, 1)),
+        self.finite_volume_transport = FiniteVolumeTransport(
+            stencil_factory=stencil_factory,
+            grid_data=grid_data,
+            damping_coefficients=damping_coefficients,
+            grid_type=grid_type,
+            hord=hord_tm,
         )
         self.delnflux = DelnFluxNoSG(
             stencil_factory,
@@ -242,12 +244,10 @@ class UpdateHeightOnDGrid:
             self._column_namelist["nord_v"],
             nk=grid_indexing.domain[2] + 1,
         )
-        self.finite_volume_transport = FiniteVolumeTransport(
-            stencil_factory=stencil_factory,
-            grid_data=grid_data,
-            damping_coefficients=damping_coefficients,
-            grid_type=grid_type,
-            hord=hord_tm,
+        self._apply_height_fluxes = stencil_factory.from_origin_domain(
+            apply_height_fluxes,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
 
     def _allocate_temporary_storages(self, grid_indexing: GridIndexing, backend: str):

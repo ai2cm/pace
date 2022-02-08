@@ -163,6 +163,8 @@ class RiemannSolverC:
            pef (out): full hydrostatic pressure
            w3 (in): vertical velocity
         """
+        # TODO: this class is extremely similar in structure to RiemannSolver3,
+        # can or should they be merged?
         self._precompute_stencil(
             delpc,
             cappa,

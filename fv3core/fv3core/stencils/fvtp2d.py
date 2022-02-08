@@ -216,21 +216,6 @@ class FiniteVolumeTransport:
         self._damp_c = damp_c
         ord_outer = hord
         ord_inner = 8 if hord == 10 else hord
-        self.q_i_stencil = stencil_factory.from_origin_domain(
-            q_i_stencil,
-            origin=idx.origin_full(add=(0, 3, 0)),
-            domain=idx.domain_full(add=(0, -3, 1)),
-        )
-        self.q_j_stencil = stencil_factory.from_origin_domain(
-            q_j_stencil,
-            origin=idx.origin_full(add=(3, 0, 0)),
-            domain=idx.domain_full(add=(-3, 0, 1)),
-        )
-        self.stencil_transport_flux = stencil_factory.from_origin_domain(
-            final_fluxes,
-            origin=idx.origin_compute(),
-            domain=idx.domain_compute(add=(1, 1, 1)),
-        )
         if (self._nord is not None) and (self._damp_c is not None):
             self.delnflux: Optional[DelnFlux] = DelnFlux(
                 stencil_factory=stencil_factory,
@@ -242,14 +227,6 @@ class FiniteVolumeTransport:
         else:
             self.delnflux = None
 
-        self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
-            stencil_factory=stencil_factory,
-            dxa=grid_data.dxa,
-            grid_type=grid_type,
-            iord=ord_inner,
-            origin=idx.origin_compute(add=(0, -idx.n_halo, 0)),
-            domain=idx.domain_compute(add=(1, 1 + 2 * idx.n_halo, 1)),
-        )
         self.y_piecewise_parabolic_inner = YPiecewiseParabolic(
             stencil_factory=stencil_factory,
             dya=grid_data.dya,
@@ -257,6 +234,11 @@ class FiniteVolumeTransport:
             jord=ord_inner,
             origin=idx.origin_compute(add=(-idx.n_halo, 0, 0)),
             domain=idx.domain_compute(add=(1 + 2 * idx.n_halo, 1, 1)),
+        )
+        self.q_i_stencil = stencil_factory.from_origin_domain(
+            q_i_stencil,
+            origin=idx.origin_full(add=(0, 3, 0)),
+            domain=idx.domain_full(add=(0, -3, 1)),
         )
         self.x_piecewise_parabolic_outer = XPiecewiseParabolic(
             stencil_factory=stencil_factory,
@@ -266,11 +248,29 @@ class FiniteVolumeTransport:
             origin=idx.origin_compute(),
             domain=idx.domain_compute(add=(1, 1, 1)),
         )
+        self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
+            stencil_factory=stencil_factory,
+            dxa=grid_data.dxa,
+            grid_type=grid_type,
+            iord=ord_inner,
+            origin=idx.origin_compute(add=(0, -idx.n_halo, 0)),
+            domain=idx.domain_compute(add=(1, 1 + 2 * idx.n_halo, 1)),
+        )
+        self.q_j_stencil = stencil_factory.from_origin_domain(
+            q_j_stencil,
+            origin=idx.origin_full(add=(3, 0, 0)),
+            domain=idx.domain_full(add=(-3, 0, 1)),
+        )
         self.y_piecewise_parabolic_outer = YPiecewiseParabolic(
             stencil_factory=stencil_factory,
             dya=grid_data.dya,
             grid_type=grid_type,
             jord=ord_outer,
+            origin=idx.origin_compute(),
+            domain=idx.domain_compute(add=(1, 1, 1)),
+        )
+        self.stencil_transport_flux = stencil_factory.from_origin_domain(
+            final_fluxes,
             origin=idx.origin_compute(),
             domain=idx.domain_compute(add=(1, 1, 1)),
         )

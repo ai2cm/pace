@@ -39,6 +39,71 @@ from pace.util.grid import DampingCoefficients, GridData
 dcon_threshold = 1e-5
 
 
+def flux_capacitor(
+    cx: FloatField,
+    cy: FloatField,
+    xflux: FloatField,
+    yflux: FloatField,
+    crx_adv: FloatField,
+    cry_adv: FloatField,
+    fx: FloatField,
+    fy: FloatField,
+):
+    """Accumulates the flux capacitor and courant number variables
+    Saves the mass fluxes to the "flux capacitor" variables for tracer transport
+    Also updates the accumulated courant numbers
+    Args:
+        cx (inout): accumulated courant number in the x direction
+        cy (inout): accumulated courant number in the y direction
+        xflux (inout): flux capacitor in the x direction, accumlated mass flux
+        yflux (inout): flux capacitor in the y direction, accumlated mass flux
+        crx_adv (in): local courant numver, dt*ut/dx
+        cry_adv (in): local courant number dt*vt/dy
+        fx (in): 1-D x-direction flux
+        fy (in): 1-D y-direction flux
+    """
+    with computation(PARALLEL), interval(...):
+        cx = cx + crx_adv
+        cy = cy + cry_adv
+        xflux = xflux + fx
+        yflux = yflux + fy
+
+
+def heat_diss(
+    fx2: FloatField,
+    fy2: FloatField,
+    w: FloatField,
+    rarea: FloatFieldIJ,
+    heat_source: FloatField,
+    diss_est: FloatField,
+    dw: FloatField,
+    damp_w: FloatFieldK,
+    ke_bg: FloatFieldK,
+    dt: float,
+):
+    """
+    Does nothing for levels where damp_w <= 1e-5.
+
+    Args:
+        fx2 (in):
+        fy2 (in):
+        w (in):
+        rarea (in):
+        heat_source (out):
+        diss_est (inout):
+        dw (inout):
+        damp_w (in):
+        ke_bg (in):
+    """
+    with computation(PARALLEL), interval(...):
+        diss_e = diss_est  # TODO: can this be deleted, using diss_est below?
+        if damp_w > 1e-5:
+            dd8 = ke_bg * abs(dt)
+            dw = (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea
+            heat_source = dd8 - dw * (w + 0.5 * dw)
+            diss_est = diss_e + heat_source
+
+
 @gtscript.function
 def flux_increment(gx, gy, rarea):
     """
@@ -76,78 +141,6 @@ def flux_adjust(
     with computation(PARALLEL), interval(...):
         # in the original Fortran, this uses `w` instead of `q`
         q = q * delp + flux_increment(gx, gy, rarea)
-
-
-def flux_capacitor(
-    cx: FloatField,
-    cy: FloatField,
-    xflux: FloatField,
-    yflux: FloatField,
-    crx_adv: FloatField,
-    cry_adv: FloatField,
-    fx: FloatField,
-    fy: FloatField,
-):
-    """Accumulates the flux capacitor and courant number variables
-    Saves the mass fluxes to the "flux capacitor" variables for tracer transport
-    Also updates the accumulated courant numbers
-    Args:
-        cx (inout): accumulated courant number in the x direction
-        cy (inout): accumulated courant number in the y direction
-        xflux (inout): flux capacitor in the x direction, accumlated mass flux
-        yflux (inout): flux capacitor in the y direction, accumlated mass flux
-        crx_adv (in): local courant numver, dt*ut/dx
-        cry_adv (in): local courant number dt*vt/dy
-        fx (in): 1-D x-direction flux
-        fy (in): 1-D y-direction flux
-    """
-    with computation(PARALLEL), interval(...):
-        cx = cx + crx_adv
-        cy = cy + cry_adv
-        xflux = xflux + fx
-        yflux = yflux + fy
-
-
-@gtscript.function
-def corner_ke(
-    u,
-    v,
-    ut,
-    vt,
-    dt,
-    io1,
-    jo1,
-    io2,
-    vsign,
-):
-    dt6 = dt / 6.0
-
-    return dt6 * (
-        (ut[0, 0, 0] + ut[0, -1, 0]) * ((io1 + 1) * u[0, 0, 0] - (io1 * u[-1, 0, 0]))
-        + (vt[0, 0, 0] + vt[-1, 0, 0]) * ((jo1 + 1) * v[0, 0, 0] - (jo1 * v[0, -1, 0]))
-        + (
-            ((jo1 + 1) * ut[0, 0, 0] - (jo1 * ut[0, -1, 0]))
-            + vsign * ((io1 + 1) * vt[0, 0, 0] - (io1 * vt[-1, 0, 0]))
-        )
-        * ((io2 + 1) * u[0, 0, 0] - (io2 * u[-1, 0, 0]))
-    )
-
-
-@gtscript.function
-def all_corners_ke(ke, u, v, ut, vt, dt):
-    from __externals__ import i_end, i_start, j_end, j_start
-
-    # Assumption: not __INLINED(grid.nested)
-    with horizontal(region[i_start, j_start]):
-        ke = corner_ke(u, v, ut, vt, dt, 0, 0, -1, 1)
-    with horizontal(region[i_end + 1, j_start]):
-        ke = corner_ke(u, v, ut, vt, dt, -1, 0, 0, -1)
-    with horizontal(region[i_end + 1, j_end + 1]):
-        ke = corner_ke(u, v, ut, vt, dt, -1, -1, 0, 1)
-    with horizontal(region[i_start, j_end + 1]):
-        ke = corner_ke(u, v, ut, vt, dt, 0, -1, -1, -1)
-
-    return ke
 
 
 @gtscript.function
@@ -256,6 +249,48 @@ def kinetic_energy_update_part_1(
         advected_u = advect_u_along_x(u, ub_contra, rdx=rdx, dx=dx, dxa=dxa, dt=dt)
 
 
+@gtscript.function
+def corner_ke(
+    u,
+    v,
+    ut,
+    vt,
+    dt,
+    io1,
+    jo1,
+    io2,
+    vsign,
+):
+    dt6 = dt / 6.0
+
+    return dt6 * (
+        (ut[0, 0, 0] + ut[0, -1, 0]) * ((io1 + 1) * u[0, 0, 0] - (io1 * u[-1, 0, 0]))
+        + (vt[0, 0, 0] + vt[-1, 0, 0]) * ((jo1 + 1) * v[0, 0, 0] - (jo1 * v[0, -1, 0]))
+        + (
+            ((jo1 + 1) * ut[0, 0, 0] - (jo1 * ut[0, -1, 0]))
+            + vsign * ((io1 + 1) * vt[0, 0, 0] - (io1 * vt[-1, 0, 0]))
+        )
+        * ((io2 + 1) * u[0, 0, 0] - (io2 * u[-1, 0, 0]))
+    )
+
+
+@gtscript.function
+def all_corners_ke(ke, u, v, ut, vt, dt):
+    from __externals__ import i_end, i_start, j_end, j_start
+
+    # Assumption: not __INLINED(grid.nested)
+    with horizontal(region[i_start, j_start]):
+        ke = corner_ke(u, v, ut, vt, dt, 0, 0, -1, 1)
+    with horizontal(region[i_end + 1, j_start]):
+        ke = corner_ke(u, v, ut, vt, dt, -1, 0, 0, -1)
+    with horizontal(region[i_end + 1, j_end + 1]):
+        ke = corner_ke(u, v, ut, vt, dt, -1, -1, 0, 1)
+    with horizontal(region[i_start, j_end + 1]):
+        ke = corner_ke(u, v, ut, vt, dt, 0, -1, -1, -1)
+
+    return ke
+
+
 def kinetic_energy_update_part_2(
     ub_contra: FloatField,
     advected_u: FloatField,
@@ -289,6 +324,58 @@ def kinetic_energy_update_part_2(
         ke = all_corners_ke(ke, u, v, uc_contra, vc_contra, dt)
 
 
+def compute_vorticity(
+    u: FloatField,
+    v: FloatField,
+    dx: FloatFieldIJ,
+    dy: FloatFieldIJ,
+    rarea: FloatFieldIJ,
+    vorticity: FloatField,
+):
+    """
+    Args:
+        u (in):
+        v (in):
+        dx (in):
+        dy (in):
+        rarea (in):
+        vorticity (out):
+    """
+    with computation(PARALLEL), interval(...):
+        # TODO: ask Lucas why vorticity is computed with this particular treatment
+        # of dx, dy, and rarea. The original code read like:
+        #     u_dx = u * dx
+        #     v_dy = v * dy
+        #     vorticity = rarea * (u_dx - u_dx[0, 1, 0] - v_dy + v_dy[1, 0, 0])
+        rdy_tmp = rarea * dx
+        rdx_tmp = rarea * dy
+        vorticity = (u - u[0, 1, 0] * dx[0, 1] / dx) * rdy_tmp + (
+            v[1, 0, 0] * dy[1, 0] / dy - v
+        ) * rdx_tmp
+
+
+def adjust_w_and_qcon(
+    w: FloatField,
+    delp: FloatField,
+    dw: FloatField,
+    q_con: FloatField,
+    damp_w: FloatFieldK,
+):
+    """
+    Args:
+        w (inout):
+        delp (in):
+        dw (in):
+        q_con (inout):
+        damp_w (in):
+    """
+    with computation(PARALLEL), interval(...):
+        w = w / delp
+        w = w + dw if damp_w > 1e-5 else w
+        # Fortran: #ifdef USE_COND
+        q_con = q_con / delp
+
+
 def vort_differencing(
     vort: FloatField,
     vort_x_delta: FloatField,
@@ -313,6 +400,35 @@ def vort_differencing(
                 vort_x_delta = vort - vort[1, 0, 0]
             with horizontal(region[local_is : local_ie + 2, local_js : local_je + 1]):
                 vort_y_delta = vort - vort[0, 1, 0]
+
+
+# TODO: This is untested and the radius may be incorrect
+@gtscript.function
+def coriolis_force_correction(zh, radius):
+    return 1.0 + (zh + zh[0, 0, 1]) / radius
+
+
+def compute_vort(
+    wk: FloatField,
+    f0: FloatFieldIJ,
+    zh: FloatField,
+    vort: FloatField,
+):
+    """
+    Args:
+        wk (in):
+        f0 (in):
+        zh (in): (only used if do_f3d=True in externals)
+        vort (out):
+    """
+    from __externals__ import do_f3d, hydrostatic, radius
+
+    with computation(PARALLEL), interval(...):
+        if __INLINED(do_f3d and not hydrostatic):
+            z_rat = coriolis_force_correction(zh, radius)
+            vort = wk + f0 * z_rat
+        else:
+            vort = wk[0, 0, 0] + f0[0, 0]
 
 
 @gtscript.function
@@ -358,57 +474,6 @@ def u_and_v_from_ke(
             v = v_from_ke(ke, v, dy, fx)
 
 
-# TODO: This is untested and the radius may be incorrect
-@gtscript.function
-def coriolis_force_correction(zh, radius):
-    return 1.0 + (zh + zh[0, 0, 1]) / radius
-
-
-def compute_vort(
-    wk: FloatField,
-    f0: FloatFieldIJ,
-    zh: FloatField,
-    vort: FloatField,
-):
-    """
-    Args:
-        wk (in):
-        f0 (in):
-        zh (in): (only used if do_f3d=True in externals)
-        vort (out):
-    """
-    from __externals__ import do_f3d, hydrostatic, radius
-
-    with computation(PARALLEL), interval(...):
-        if __INLINED(do_f3d and not hydrostatic):
-            z_rat = coriolis_force_correction(zh, radius)
-            vort = wk + f0 * z_rat
-        else:
-            vort = wk[0, 0, 0] + f0[0, 0]
-
-
-def adjust_w_and_qcon(
-    w: FloatField,
-    delp: FloatField,
-    dw: FloatField,
-    q_con: FloatField,
-    damp_w: FloatFieldK,
-):
-    """
-    Args:
-        w (inout):
-        delp (in):
-        dw (in):
-        q_con (inout):
-        damp_w (in):
-    """
-    with computation(PARALLEL), interval(...):
-        w = w / delp
-        w = w + dw if damp_w > 1e-5 else w
-        # Fortran: #ifdef USE_COND
-        q_con = q_con / delp
-
-
 @gtscript.function
 def heat_damping_term(ub, vb, gx, gy, rsin2, cosa_s, u2, v2, du2, dv2):
     return rsin2 * (
@@ -416,41 +481,6 @@ def heat_damping_term(ub, vb, gx, gy, rsin2, cosa_s, u2, v2, du2, dv2):
         + 2.0 * (gy + gy[0, 1, 0] + gx + gx[1, 0, 0])
         - cosa_s * (u2 * dv2 + v2 * du2 + du2 * dv2)
     )
-
-
-def heat_diss(
-    fx2: FloatField,
-    fy2: FloatField,
-    w: FloatField,
-    rarea: FloatFieldIJ,
-    heat_source: FloatField,
-    diss_est: FloatField,
-    dw: FloatField,
-    damp_w: FloatFieldK,
-    ke_bg: FloatFieldK,
-    dt: float,
-):
-    """
-    Does nothing for levels where damp_w <= 1e-5.
-
-    Args:
-        fx2 (in):
-        fy2 (in):
-        w (in):
-        rarea (in):
-        heat_source (out):
-        diss_est (inout):
-        dw (inout):
-        damp_w (in):
-        ke_bg (in):
-    """
-    with computation(PARALLEL), interval(...):
-        diss_e = diss_est  # TODO: can this be deleted, using diss_est below?
-        if damp_w > 1e-5:
-            dd8 = ke_bg * abs(dt)
-            dw = (fx2 - fx2[1, 0, 0] + fy2 - fy2[0, 1, 0]) * rarea
-            heat_source = dd8 - dw * (w + 0.5 * dw)
-            diss_est = diss_e + heat_source
 
 
 def heat_source_from_vorticity_damping(
@@ -550,36 +580,6 @@ def update_u_and_v(
                 u += vt
             with horizontal(region[local_is : local_ie + 2, local_js : local_je + 1]):
                 v -= ut
-
-
-def compute_vorticity(
-    u: FloatField,
-    v: FloatField,
-    dx: FloatFieldIJ,
-    dy: FloatFieldIJ,
-    rarea: FloatFieldIJ,
-    vorticity: FloatField,
-):
-    """
-    Args:
-        u (in):
-        v (in):
-        dx (in):
-        dy (in):
-        rarea (in):
-        vorticity (out):
-    """
-    with computation(PARALLEL), interval(...):
-        # TODO: ask Lucas why vorticity is computed with this particular treatment
-        # of dx, dy, and rarea. The original code read like:
-        #     u_dx = u * dx
-        #     v_dy = v * dy
-        #     vorticity = rarea * (u_dx - u_dx[0, 1, 0] - v_dy + v_dy[1, 0, 0])
-        rdy_tmp = rarea * dx
-        rdx_tmp = rarea * dy
-        vorticity = (u - u[0, 1, 0] * dx[0, 1] / dx) * rdy_tmp + (
-            v[1, 0, 0] * dy[1, 0] / dy - v
-        ) * rdx_tmp
 
 
 # Set the unique parameters for the smallest
@@ -1034,6 +1034,9 @@ class DGridShallowWaterLagrangianDynamics:
         # TODO: ptc may only be used as a temporary under this scope, investigate
         # and decouple it from higher level if possible (i.e. if not a real output)
         self.fv_prep(uc, vc, crx, cry, xfx, yfx, self._uc_contra, self._vc_contra, dt)
+
+        # TODO: the structure of much of this is to get fluxes from fvtp2d and then
+        # apply them in various similar stencils - can these steps be merged?
 
         self.fvtp2d_dp(
             self._copy_corners(delp),

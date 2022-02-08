@@ -91,34 +91,6 @@ def fix_negative_liq(qvapor, qice, qsnow, qgraupel, qrain, qliquid, pt, lcpk, ic
     return qvapor, qice, qsnow, qgraupel, qrain, qliquid, pt
 
 
-def fillq(q: FloatField, dp: FloatField, sum1: FloatFieldIJ, sum2: FloatFieldIJ):
-    """
-    Args:
-        q (inout):
-        dp (in):
-        sum1 (out):
-        sum2 (out):
-    """
-    with computation(FORWARD), interval(...):
-        # reset accumulating fields
-        sum1 = 0.0
-        sum2 = 0.0
-    with computation(FORWARD), interval(...):
-        if q > 0:
-            sum1 = sum1 + q * dp
-    with computation(BACKWARD), interval(...):
-        if q < 0.0 and sum1 >= 0:
-            dq = sum1 if sum1 < -q * dp else -q * dp
-            sum1 = sum1 - dq
-            sum2 = sum2 + dq
-            q = q + dq / dp
-    with computation(BACKWARD), interval(...):
-        if q > 0.0 and sum1 >= 1e-12 and sum2 > 0:
-            dq = sum2 if sum2 < q * dp else q * dp
-            sum2 = sum2 - dq
-            q = q - dq / dp
-
-
 def fix_neg_water(
     pt: FloatField,
     qvapor: FloatField,
@@ -160,6 +132,90 @@ def fix_neg_water(
         )
         # Fast moist physics: Saturation adjustment
         # no GFS_PHYS compiler flag -- additional saturation adjustment calculations!
+
+
+def fillq(q: FloatField, dp: FloatField, sum1: FloatFieldIJ, sum2: FloatFieldIJ):
+    """
+    Args:
+        q (inout):
+        dp (in):
+        sum1 (out):
+        sum2 (out):
+    """
+    with computation(FORWARD), interval(...):
+        # reset accumulating fields
+        sum1 = 0.0
+        sum2 = 0.0
+    with computation(FORWARD), interval(...):
+        if q > 0:
+            sum1 = sum1 + q * dp
+    with computation(BACKWARD), interval(...):
+        if q < 0.0 and sum1 >= 0:
+            dq = sum1 if sum1 < -q * dp else -q * dp
+            sum1 = sum1 - dq
+            sum2 = sum2 + dq
+            q = q + dq / dp
+    with computation(BACKWARD), interval(...):
+        if q > 0.0 and sum1 >= 1e-12 and sum2 > 0:
+            dq = sum2 if sum2 < q * dp else q * dp
+            sum2 = sum2 - dq
+            q = q - dq / dp
+
+
+# Stencil version
+def fix_water_vapor_down(qvapor: FloatField, dp: FloatField):
+    """
+    Args:
+        qvapor (inout):
+        dp (in):
+    """
+    with computation(PARALLEL), interval(...):
+        upper_fix = 0.0  # type: FloatField
+        lower_fix = 0.0  # type: FloatField
+    with computation(PARALLEL):
+        with interval(0, 1):
+            if qvapor < 0.0:
+                qvapor = 0.0
+        with interval(1, 2):
+            if qvapor[0, 0, -1] < 0:
+                qvapor = qvapor + qvapor[0, 0, -1] * dp[0, 0, -1] / dp
+    with computation(FORWARD), interval(1, -1):
+        dq = qvapor[0, 0, -1] * dp[0, 0, -1]
+        if lower_fix[0, 0, -1] != 0:
+            qvapor += lower_fix[0, 0, -1] / dp
+        if (qvapor < 0) and (qvapor[0, 0, -1] > 0):
+            dq = dq if dq < -qvapor * dp else -qvapor * dp
+            upper_fix = dq
+            qvapor += dq / dp
+        if qvapor < 0:
+            lower_fix = qvapor * dp
+            qvapor = 0
+    with computation(PARALLEL), interval(0, -2):
+        if upper_fix[0, 0, 1] != 0:
+            qvapor = qvapor - upper_fix[0, 0, 1] / dp
+    with computation(PARALLEL), interval(-1, None):
+        if lower_fix[0, 0, -1] > 0:
+            qvapor = qvapor + lower_fix / dp
+        # Here we're re-using upper_fix to represent the current version of
+        # qvapor[k_bot] fixed from above. We could also re-use lower_fix instead of
+        # dp_bot, but that's probably over-optimized for now
+        upper_fix = qvapor
+        # If we didn't have to worry about float valitation and negative column
+        # mass we could set qvapor[k_bot] to 0 here...
+        dp_bot = dp
+    with computation(BACKWARD), interval(0, -1):
+        dq = qvapor * dp
+        if (upper_fix[0, 0, 1] < 0) and (qvapor > 0):
+            if dq >= -upper_fix[0, 0, 1] * dp_bot:
+                dq = -upper_fix[0, 0, 1] * dp_bot
+            qvapor = qvapor - dq / dp
+            upper_fix = upper_fix[0, 0, 1] + dq / dp_bot
+        else:
+            upper_fix = upper_fix[0, 0, 1]
+    with computation(FORWARD), interval(1, None):
+        upper_fix = upper_fix[0, 0, -1]
+    with computation(PARALLEL), interval(-1, None):
+        qvapor = upper_fix
 
 
 def fix_neg_cloud(dp: FloatField, qcld: FloatField):
@@ -239,61 +295,6 @@ def fix_water_vapor_k_loop(i, j, kbot, qvapor, dp):
             qvapor[i, j, k] = qvapor[i, j, k] - dq / dp[i, j, k]
             qvapor[i, j, kbot] = qvapor[i, j, kbot] + dq / dp[i, j, kbot]
 """
-
-# Stencil version
-def fix_water_vapor_down(qvapor: FloatField, dp: FloatField):
-    """
-    Args:
-        qvapor (inout):
-        dp (in):
-    """
-    with computation(PARALLEL), interval(...):
-        upper_fix = 0.0  # type: FloatField
-        lower_fix = 0.0  # type: FloatField
-    with computation(PARALLEL):
-        with interval(0, 1):
-            if qvapor < 0.0:
-                qvapor = 0.0
-        with interval(1, 2):
-            if qvapor[0, 0, -1] < 0:
-                qvapor = qvapor + qvapor[0, 0, -1] * dp[0, 0, -1] / dp
-    with computation(FORWARD), interval(1, -1):
-        dq = qvapor[0, 0, -1] * dp[0, 0, -1]
-        if lower_fix[0, 0, -1] != 0:
-            qvapor += lower_fix[0, 0, -1] / dp
-        if (qvapor < 0) and (qvapor[0, 0, -1] > 0):
-            dq = dq if dq < -qvapor * dp else -qvapor * dp
-            upper_fix = dq
-            qvapor += dq / dp
-        if qvapor < 0:
-            lower_fix = qvapor * dp
-            qvapor = 0
-    with computation(PARALLEL), interval(0, -2):
-        if upper_fix[0, 0, 1] != 0:
-            qvapor = qvapor - upper_fix[0, 0, 1] / dp
-    with computation(PARALLEL), interval(-1, None):
-        if lower_fix[0, 0, -1] > 0:
-            qvapor = qvapor + lower_fix / dp
-        # Here we're re-using upper_fix to represent the current version of
-        # qvapor[k_bot] fixed from above. We could also re-use lower_fix instead of
-        # dp_bot, but that's probably over-optimized for now
-        upper_fix = qvapor
-        # If we didn't have to worry about float valitation and negative column
-        # mass we could set qvapor[k_bot] to 0 here...
-        dp_bot = dp
-    with computation(BACKWARD), interval(0, -1):
-        dq = qvapor * dp
-        if (upper_fix[0, 0, 1] < 0) and (qvapor > 0):
-            if dq >= -upper_fix[0, 0, 1] * dp_bot:
-                dq = -upper_fix[0, 0, 1] * dp_bot
-            qvapor = qvapor - dq / dp
-            upper_fix = upper_fix[0, 0, 1] + dq / dp_bot
-        else:
-            upper_fix = upper_fix[0, 0, 1]
-    with computation(FORWARD), interval(1, None):
-        upper_fix = upper_fix[0, 0, -1]
-    with computation(PARALLEL), interval(-1, None):
-        qvapor = upper_fix
 
 
 class AdjustNegativeTracerMixingRatio:

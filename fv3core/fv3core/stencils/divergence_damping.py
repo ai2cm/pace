@@ -278,12 +278,6 @@ class DivergenceDamping:
         high_k_stencil_factory = stencil_factory.restrict_vertical(
             k_start=nonzero_nord_k
         )
-        self.a2b_ord4 = AGrid2BGridFourthOrder(
-            stencil_factory=high_k_stencil_factory,
-            grid_data=grid_data,
-            grid_type=self._grid_type,
-            replace=False,
-        )
 
         self._get_delpc = low_k_stencil_factory.from_dims_halo(
             func=get_delpc,
@@ -302,6 +296,14 @@ class DivergenceDamping:
             func=basic.copy_defn,
             compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             compute_halos=(0, 0),
+        )
+        corner_tmp = utils.make_storage_from_shape(
+            self.grid_indexing.max_shape, backend=stencil_factory.backend
+        )
+        self.fill_corners_bgrid_x = corners.FillCornersBGrid(
+            direction="x",
+            temporary_field=corner_tmp,
+            stencil_factory=high_k_stencil_factory,
         )
 
         origins = []
@@ -322,6 +324,7 @@ class DivergenceDamping:
             domains_u.append((nint, njnt + 1, nk))
             origins.append((is_, js, kstart))
             domains.append((nint, njnt, nk))
+
         self._vc_from_divg_stencils = get_stencils_with_varied_bounds(
             vc_from_divg,
             origins=origins_v,
@@ -329,11 +332,23 @@ class DivergenceDamping:
             stencil_factory=stencil_factory,
         )
 
+        self.fill_corners_bgrid_y = corners.FillCornersBGrid(
+            direction="y",
+            temporary_field=corner_tmp,
+            stencil_factory=high_k_stencil_factory,
+        )
+
         self._uc_from_divg_stencils = get_stencils_with_varied_bounds(
             uc_from_divg,
             origins=origins_u,
             domains=domains_u,
             stencil_factory=stencil_factory,
+        )
+
+        self._fill_corners_dgrid_stencil = high_k_stencil_factory.from_dims_halo(
+            func=corners.fill_corners_dgrid_defn,
+            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
+            compute_halos=(self.grid_indexing.n_halo, self.grid_indexing.n_halo),
         )
 
         self._redo_divg_d_stencils = get_stencils_with_varied_bounds(
@@ -344,11 +359,19 @@ class DivergenceDamping:
             externals={"do_adjustment": not stretched_grid},
         )
 
-        self._damping_nord_highorder_stencil = high_k_stencil_factory.from_dims_halo(
-            func=damping_nord_highorder_stencil,
+        self._set_value = high_k_stencil_factory.from_dims_halo(
+            func=basic.set_value_defn,
             compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-            compute_halos=(0, 0),
+            compute_halos=(self.grid_indexing.n_halo, self.grid_indexing.n_halo),
         )
+
+        self.a2b_ord4 = AGrid2BGridFourthOrder(
+            stencil_factory=high_k_stencil_factory,
+            grid_data=grid_data,
+            grid_type=self._grid_type,
+            replace=False,
+        )
+
         self._smagorinksy_diffusion_approx_stencil = (
             high_k_stencil_factory.from_dims_halo(
                 func=smagorinksy_diffusion_approx,
@@ -357,30 +380,10 @@ class DivergenceDamping:
             )
         )
 
-        self._set_value = high_k_stencil_factory.from_dims_halo(
-            func=basic.set_value_defn,
+        self._damping_nord_highorder_stencil = high_k_stencil_factory.from_dims_halo(
+            func=damping_nord_highorder_stencil,
             compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-            compute_halos=(self.grid_indexing.n_halo, self.grid_indexing.n_halo),
-        )
-
-        self._corner_tmp = utils.make_storage_from_shape(
-            self.grid_indexing.max_shape, backend=stencil_factory.backend
-        )
-
-        self.fill_corners_bgrid_x = corners.FillCornersBGrid(
-            direction="x",
-            temporary_field=self._corner_tmp,
-            stencil_factory=high_k_stencil_factory,
-        )
-        self.fill_corners_bgrid_y = corners.FillCornersBGrid(
-            direction="y",
-            temporary_field=self._corner_tmp,
-            stencil_factory=high_k_stencil_factory,
-        )
-        self._fill_corners_dgrid_stencil = high_k_stencil_factory.from_dims_halo(
-            func=corners.fill_corners_dgrid_defn,
-            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-            compute_halos=(self.grid_indexing.n_halo, self.grid_indexing.n_halo),
+            compute_halos=(0, 0),
         )
 
     def __call__(
@@ -398,7 +401,7 @@ class DivergenceDamping:
         ke: FloatField,
         wk: FloatField,
         dt: float,
-    ) -> None:
+    ):
         """
         Args:
             u (in):
@@ -419,18 +422,35 @@ class DivergenceDamping:
         if self._do_zero_order:
             # TODO: delpc is an output of this but is never used. Inside the helper
             # function, use a stencil temporary or temporary storage instead
-            self._damping_zero_order(
+            self._get_delpc(
                 u,
                 v,
+                ua,
                 va,
+                self._cosa_u,
+                self._sina_u,
+                self._dxc,
+                self._dyc,
+                uc,
+                vc,
+                self._sin_sg1,
+                self._sin_sg2,
+                self._sin_sg3,
+                self._sin_sg4,
+                self._cosa_v,
+                self._sina_v,
+                self._rarea_c,
+                delpc,
                 u_contra_dyc,
                 v_contra_dxc,
-                ua,
-                vc,
-                uc,
+            )
+            self._damping(
                 delpc,
+                v_contra_dxc,
                 ke,
                 self._d2_bg_column,
+                self._da_min_c,
+                self._dddmp,
                 dt,
             )
         self._copy_computeplus(divg_d, delpc)
@@ -457,7 +477,16 @@ class DivergenceDamping:
                 self._fill_corners_dgrid_stencil(vc, vc, uc, uc, -1.0)
             self._redo_divg_d_stencils[n](uc, vc, divg_d, self._rarea_c)
 
-        self._vorticity_calc(wk, v_contra_dxc, delpc, dt)
+        if self._dddmp < 1e-5:
+            self._set_value(v_contra_dxc, 0.0)
+        else:
+            # TODO: what is wk/v_contra_dxc here?
+            self.a2b_ord4(wk, v_contra_dxc)
+            self._smagorinksy_diffusion_approx_stencil(
+                delpc,
+                v_contra_dxc,
+                abs(dt),
+            )
         self._damping_nord_highorder_stencil(
             v_contra_dxc,
             ke,
@@ -469,73 +498,10 @@ class DivergenceDamping:
             self._dd8,
         )
 
-    def _damping_zero_order(
-        self,
-        u: FloatField,
-        v: FloatField,
-        va: FloatField,
-        u_contra_dyc: FloatField,
-        v_contra_dxc: FloatField,
-        ua: FloatField,
-        vc: FloatField,
-        uc: FloatField,
-        delpc: FloatField,
-        ke: FloatField,
-        d2_bg: FloatFieldK,
-        dt: float,
-    ) -> None:
-        """
-        Args:
-            u (in):
-            v (in):
-            va (in):
-            ptc (out):
-            vort (out):
-            ua (in):
-            vc (in):
-            uc (in):
-            delpc (out):
-            ke (inout): gets vort added to it
-            d2_bg (in):
-            dt (in): timestep in seconds
-        """
-        # TODO: convert ptc and vort to gt4py temporaries using selective validation
-        # their outputs from get_delpc do not get used
-
-        self._get_delpc(
-            u,
-            v,
-            ua,
-            va,
-            self._cosa_u,
-            self._sina_u,
-            self._dxc,
-            self._dyc,
-            uc,
-            vc,
-            self._sin_sg1,
-            self._sin_sg2,
-            self._sin_sg3,
-            self._sin_sg4,
-            self._cosa_v,
-            self._sina_v,
-            self._rarea_c,
-            delpc,
-            u_contra_dyc,
-            v_contra_dxc,
-        )
-
-        self._damping(
-            delpc,
-            v_contra_dxc,
-            ke,
-            d2_bg,
-            self._da_min_c,
-            self._dddmp,
-            dt,
-        )
-
     def _vorticity_calc(self, wk, vort, delpc, dt):
+        # this function is kept because it has a translate test, if its
+        # structure is changed significantly from __call__ consider deleting this
+        # method and the translate test
         if self._dddmp < 1e-5:
             self._set_value(vort, 0.0)
         else:
