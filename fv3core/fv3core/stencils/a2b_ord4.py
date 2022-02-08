@@ -64,6 +64,16 @@ def _sw_corner(
     lon: FloatFieldIJ,
     lat: FloatFieldIJ,
 ):
+    """
+    Args:
+        qin (in):
+        qout (out):
+        tmp_qout_edges (out):
+        lon_agrid (in):
+        lat_agrid (in):
+        lon (in):
+        lat (in):
+    """
 
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
@@ -110,6 +120,16 @@ def _nw_corner(
     lon: FloatFieldIJ,
     lat: FloatFieldIJ,
 ):
+    """
+    Args:
+        qin (in):
+        qout (out):
+        tmp_qout_edges (out):
+        lon_agrid (in):
+        lat_agrid (in):
+        lon (in):
+        lat (in):
+    """
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
             lon[0, 0],
@@ -154,6 +174,16 @@ def _ne_corner(
     lon: FloatFieldIJ,
     lat: FloatFieldIJ,
 ):
+    """
+    Args:
+        qin (in):
+        qout (out):
+        tmp_qout_edges (out):
+        lon_agrid (in):
+        lat_agrid (in):
+        lon (in):
+        lat (in):
+    """
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
             lon[0, 0],
@@ -198,6 +228,16 @@ def _se_corner(
     lon: FloatFieldIJ,
     lat: FloatFieldIJ,
 ):
+    """
+    Args:
+        qin (in):
+        qout (out):
+        tmp_qout_edges (out):
+        lon_agrid (in):
+        lat_agrid (in):
+        lon (in):
+        lat (in):
+    """
     with computation(PARALLEL), interval(...):
         ec1 = extrap_corner(
             lon[0, 0],
@@ -248,6 +288,12 @@ def ppm_volume_mean_x(
     qx: FloatField,
     dxa: FloatFieldIJ,
 ):
+    """
+    Args:
+        qin (in):
+        qx (out):
+        dxa (in):
+    """
     from __externals__ import i_end, i_start
 
     with computation(PARALLEL), interval(...):
@@ -267,6 +313,12 @@ def ppm_volume_mean_y(
     qy: FloatField,
     dya: FloatFieldIJ,
 ):
+    """
+    Args:
+        qin (in):
+        qy (out):
+        dya (in):
+    """
     from __externals__ import j_end, j_start
 
     with computation(PARALLEL), interval(...):
@@ -287,6 +339,13 @@ def a2b_interpolation(
     qx: FloatField,
     qy: FloatField,
 ):
+    """
+    Args:
+        tmp_qout_edges (in):
+        qout (out):
+        qx (in):
+        qy (in):
+    """
     from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
@@ -315,6 +374,14 @@ def qout_x_edge(
     qout: FloatField,
     tmp_qout_edges: FloatField,
 ):
+    """
+    Args:
+        qin (in):
+        dxa (in):
+        edge_w (in):
+        qout (out):
+        tmp_qout_edges (out):
+    """
     with computation(PARALLEL), interval(...):
         q2 = (qin[-1, 0, 0] * dxa + qin * dxa[-1, 0]) / (dxa[-1, 0] + dxa)
         qout = edge_w * q2[0, -1, 0] + (1.0 - edge_w) * q2
@@ -328,6 +395,14 @@ def qout_y_edge(
     qout: FloatField,
     tmp_qout_edges: FloatField,
 ):
+    """
+    Args:
+        qin (in):
+        dya (in):
+        edge_s (in):
+        qout (out):
+        tmp_qout_edges (out):
+    """
     with computation(PARALLEL), interval(...):
         q1 = (qin[0, -1, 0] * dya + qin * dya[0, -1]) / (dya[0, -1] + dya)
         qout = edge_s * q1[-1, 0, 0] + (1.0 - edge_s) * q1
@@ -616,7 +691,15 @@ class AGrid2BGridFourthOrder:
             qout: Output on B-grid (inout)
         """
         # TODO: update docstring saying in what cases qin gets updated
-
+        """for each corner stencil, for baroclinic:
+        qin (in):
+        qout (out):
+        tmp_qout_edges (out):
+        lon_agrid (in):
+        lat_agrid (in):
+        lon (in):
+        lat (in):
+        """
         self._sw_corner_stencil(
             qin,
             qout,

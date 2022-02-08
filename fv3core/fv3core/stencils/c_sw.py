@@ -24,6 +24,14 @@ def geoadjust_ut(
     sin_sg1: FloatFieldIJ,
     dt2: float,
 ):
+    """
+    Args:
+        ut (out):
+        dy (in):
+        sin_sg3 (in):
+        sin_sg1 (in):
+        dt2 (in):
+    """
     with computation(PARALLEL), interval(...):
         ut[0, 0, 0] = (
             dt2 * ut * dy * sin_sg3[-1, 0] if ut > 0 else dt2 * ut * dy * sin_sg1
@@ -37,6 +45,14 @@ def geoadjust_vt(
     sin_sg2: FloatFieldIJ,
     dt2: float,
 ):
+    """
+    Args:
+        vt (out):
+        dx (in):
+        sin_sg4 (in):
+        sin_sg2 (in):
+        dt2 (in):
+    """
     with computation(PARALLEL), interval(...):
         vt[0, 0, 0] = (
             dt2 * vt * dx * sin_sg4[0, -1] if vt > 0 else dt2 * vt * dx * sin_sg2
@@ -44,6 +60,12 @@ def geoadjust_vt(
 
 
 def absolute_vorticity(vort: FloatField, fC: FloatFieldIJ, rarea_c: FloatFieldIJ):
+    """
+    Args:
+        vort (out):
+        fC (in):
+        rarea_c (in):
+    """
     with computation(PARALLEL), interval(...):
         vort[0, 0, 0] = fC + rarea_c * vort
 
@@ -56,6 +78,15 @@ def fill_corners_delp_pt_w(
     pt_out: FloatField,
     w_out: FloatField,
 ):
+    """
+    Args:
+        delp_in (in):
+        pt_in (in):
+        w_in (in):
+        delp_out (out):
+        pt_out (out):
+        w_out (out):
+    """
     from __externals__ import fill_corners_func
 
     with computation(PARALLEL), interval(...):
@@ -73,6 +104,16 @@ def compute_nonhydro_fluxes_x(
     fx1: FloatField,
     fx2: FloatField,
 ):
+    """
+    Args:
+        delp (in):
+        pt (in):
+        utc (in):
+        w (in):
+        fx (out):
+        fx1 (out):
+        fx2 (out):
+    """
     with computation(PARALLEL), interval(...):
         fx1 = delp[-1, 0, 0] if utc > 0.0 else delp
         fx = pt[-1, 0, 0] if utc > 0.0 else pt
@@ -116,21 +157,35 @@ def transportdelp_update_vorticity_and_kineticenergy(
     """Transport delp then update vorticity and kinetic energy
 
     Args:
-        delp: What is transported (input)
-        pt: Pressure (input)
-        utc: x-velocity on C-grid (input)
-        vtc: y-velocity on C-grid (input)
-        w: z-velocity on C-grid (input)
-        rarea: Inverse areas (input) -- IJ field
-        delpc: Updated delp (output)
-        ptc: Updated pt (output)
-        wc: Updated w (output)
-        ke: kinetic energy (inout)
-        vort: vorticity (inout)
-        ua/uc/u: u wind on the a/c/d grid (in)
-        va/vc/v: v wind on the a/c/d grid (in)
-        sin_sg/cos_sg 1/2/3/4: variables that specify grid geometry grid (in)
-        dt2: length of half a timestep (in)
+        delp (in): what is transported
+        pt (in): pressure
+        utc (???): x-velocity on C-grid
+        vtc (in): y-velocity on C-grid
+        w (in): z-velocity on C-grid
+        rarea (in): inverse gridcell area
+        delpc (out): updated delp
+        ptc (out): updated pt
+        wc (out): updated w
+        ke (out): kinetic energy
+        vort (out): vorticity
+        ua (in): u wind on A-grid
+        va (in): v wind on A-grid
+        uc (in): u wind on C-grid
+        vc (in): v wind on C-grid
+        u (in): u wind on D-grid
+        v (in): v wind on D-grid
+        fx (in):
+        fx1 (in):
+        fx2 (in):
+        sin_sg1 (in):
+        cos_sg1 (in):
+        sin_sg2 (in):
+        cos_sg2 (in):
+        sin_sg3 (in):
+        cos_sg3 (in):
+        sin_sg4 (in):
+        cos_sg4 (in):
+        dt2 (in): length of half a timestep
     """
 
     from __externals__ import grid_type, i_end, i_start, j_end, j_start
@@ -189,22 +244,22 @@ def divergence_corner(
 ):
     """Calculate divg on d-grid.
     Args:
-        u: x-velocity (input)
-        v: y-velocity (input)
-        ua: x-velocity on a (input)
-        va: y-velocity on a (input)
-        dxc: grid spacing in x-direction (input)
-        dyc: grid spacing in y-direction (input)
-        sin_sg1: grid sin(sg1) (input)
-        sin_sg2: grid sin(sg2) (input)
-        sin_sg3: grid sin(sg3) (input)
-        sin_sg4: grid sin(sg4) (input)
-        cos_sg1: grid cos(sg1) (input)
-        cos_sg2: grid cos(sg2) (input)
-        cos_sg3: grid cos(sg3) (input)
-        cos_sg4: grid cos(sg4) (input)
-        rarea_c: inverse cell areas on c-grid (input)
-        divg_d: divergence on d-grid (output)
+        u (in): x-velocity
+        v (in): y-velocity
+        ua (in): x-velocity on a
+        va (in): y-velocity on a
+        dxc (in): grid spacing in x-direction
+        dyc (in): grid spacing in y-direction
+        sin_sg1 (in): grid sin(sg1)
+        sin_sg2 (in): grid sin(sg2)
+        sin_sg3 (in): grid sin(sg3)
+        sin_sg4 (in): grid sin(sg4)
+        cos_sg1 (in): grid cos(sg1)
+        cos_sg2 (in): grid cos(sg2)
+        cos_sg3 (in): grid cos(sg3)
+        cos_sg4 (in): grid cos(sg4)
+        rarea_c (in): inverse cell areas on c-grid
+        divg_d (out): divergence on d-grid
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -299,11 +354,11 @@ def circulation_cgrid(
     """Update vort_c.
 
     Args:
-        uc: x-velocity on C-grid (input)
-        vc: y-velocity on C-grid (input)
-        dxc: grid spacing in x-dir (input)
-        dyc: grid spacing in y-dir (input)
-        vort_c: C-grid vorticity (output)
+        uc (in): x-velocity on C-grid
+        vc (in): y-velocity on C-grid
+        dxc (in): grid spacing in x-dir
+        dyc (in): grid spacing in y-dir
+        vort_c (out): C-grid vorticity
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -332,6 +387,16 @@ def update_x_velocity(
     rdxc: FloatFieldIJ,
     dt2: float,
 ):
+    """
+    Args:
+        vorticity (in):
+        ke (in):
+        velocity (in):
+        velocity_c (out):
+        cosa (in):
+        sina (in):
+        rdxc (in):
+    """
     from __externals__ import grid_type, i_end, i_start
 
     with computation(PARALLEL), interval(...):
@@ -356,6 +421,16 @@ def update_y_velocity(
     rdyc: FloatFieldIJ,
     dt2: float,
 ):
+    """
+    Args:
+        vorticity (in):
+        ke (in):
+        velocity (in):
+        velocity_c (out):
+        cosa (in):
+        sina (in):
+        rdyc (in):
+    """
     from __externals__ import grid_type, j_end, j_start
 
     with computation(PARALLEL), interval(...):
@@ -371,6 +446,11 @@ def update_y_velocity(
 
 
 def initialize_delpc_ptc(delpc: FloatField, ptc: FloatField):
+    """
+    Args:
+        delpc (out):
+        ptc (out):
+    """
     with computation(PARALLEL), interval(...):
         delpc = 0.0
         ptc = 0.0
@@ -588,14 +668,15 @@ class CGridShallowWaterDynamics:
             w: vertical velocity (in)
             uc: C-grid x-velocity (inout)
             vc: C-grid y-velocity (inout)
-            ua: A-grid x-velocity (in)
-            va: A-grid y-velocity (in)
-            ut: u * dx (inout)
-            vt: v * dy (inout)
-            divgd: D-grid horizontal divergence (inout)
-            omga: Vertical pressure velocity (inout)
+            ua: A-grid x-velocity (inout)
+            va: A-grid y-velocity (inout)
+            ut: u * dx (out)
+            vt: v * dy (out)
+            divgd: D-grid horizontal divergence (out)
+            omga: Vertical pressure velocity (out)
             dt2: Half a model timestep in seconds (in)
         """
+        # TODO: omga is called "wc" inside stencils, consolidate the naming
         self._initialize_delpc_ptc(
             self.delpc,
             self.ptc,

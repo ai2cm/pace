@@ -27,11 +27,25 @@ NQ = 8  # state.nq_tot - spec.namelist.dnats
 
 
 def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatField):
+    """
+    Args:
+        pkz (in):
+        dp1 (in):
+        q_con (in):
+        pt (out):
+    """
     with computation(PARALLEL), interval(...):
         pt = pt * (1.0 + dp1) * (1.0 - q_con) / pkz
 
 
 def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatField):
+    """
+    Args:
+        delp (in):
+        delz (in):
+        w (in):
+        omga (out):
+    """
     with computation(PARALLEL), interval(...):
         omga = delp / delz * w
 

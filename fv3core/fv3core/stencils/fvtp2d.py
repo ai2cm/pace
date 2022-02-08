@@ -37,6 +37,14 @@ def q_i_stencil(
     q_advected_along_y: FloatField,
     q_i: FloatField,
 ):
+    """
+    Args:
+        q (in):
+        area (in):
+        y_area_flux (in):
+        q_advected_along_y (in):
+        q_i (out):
+    """
     with computation(PARALLEL), interval(...):
         fyy = y_area_flux * q_advected_along_y
         # note the units of area cancel out, because area is present in all
@@ -54,6 +62,14 @@ def q_j_stencil(
     fx2: FloatField,
     q_j: FloatField,
 ):
+    """
+    Args:
+        q (in):
+        area (in):
+        x_area_flux (in):
+        fx2 (in):
+        q_j (out):
+    """
     with computation(PARALLEL), interval(...):
         fx1 = x_area_flux * fx2
         area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
@@ -80,6 +96,16 @@ def final_fluxes(
 
     Combining the advection operators in this way is done to cancel leading-order
     numerical splitting error.
+
+    Args:
+        q_advected_y_x_advected_mean (in):
+        q_x_advected_mean (in):
+        q_advected_x_y_advected_mean (in):
+        q_y_advected_mean (in):
+        x_unit_flux (in):
+        y_unit_flux (in):
+        x_flux (out):
+        y_flux (out):
     """
     with computation(PARALLEL), interval(...):
         with horizontal(region[:, :-1]):
@@ -277,22 +303,22 @@ class FiniteVolumeTransport:
         by contrast are area weighted.
 
         Args:
-            q: scalar to be transported (in)
-            crx: Courant number in x-direction
-            cry: Courant number in y-direction
-            x_area_flux: flux of area in x-direction, in units of m^2 (in)
-            y_area_flux: flux of area in y-direction, in units of m^2 (in)
-            q_x_flux: transport flux of q in x-direction in units q * m^2,
-                corresponding to X in eq 4.17 of FV3 documentation (out)
-            q_y_flux: transport flux of q in y-direction in units q * m^2,
-                corresponding to Y in eq 4.17 of FV3 documentation (out)
-            x_mass_flux: mass flux in x-direction,
+            q (in): scalar to be transported
+            crx (in): Courant number in x-direction
+            cry (in): Courant number in y-direction
+            x_area_flux (in): flux of area in x-direction, in units of m^2
+            y_area_flux (in): flux of area in y-direction, in units of m^2
+            q_x_flux (out): transport flux of q in x-direction in units q * m^2,
+                corresponding to X in eq 4.17 of FV3 documentation
+            q_y_flux (out): transport flux of q in y-direction in units q * m^2,
+                corresponding to Y in eq 4.17 of FV3 documentation
+            x_mass_flux (in): mass flux in x-direction,
                 corresponds to F(rho^* = 1) in PL07 eq 17, if not given
                 then q is assumed to have per-area units
-            y_mass_flux: mass flux in x-direction,
+            y_mass_flux (in): mass flux in x-direction,
                 corresponds to G(rho^* = 1) in PL07 eq 18, if not given
                 then q is assumed to have per-area units
-            mass: ??? passed along to damping code, if scalar is per-mass
+            mass (in): ??? passed along to damping code, if scalar is per-mass
                 (as opposed to per-area) then this must be provided for
                 damping to be correct
         """

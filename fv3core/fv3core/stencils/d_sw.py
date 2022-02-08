@@ -62,7 +62,7 @@ def flux_adjust(
     Update q according to fluxes gx and gy.
 
     Args:
-        q: any scalar, is replaced with something in units of q * delp (inout)
+        q: any scalar, is replaced with something in units of q * delp (out)
         delp: pressure thickness of layer (in)
         gx: x-flux of q in units of q * Pa * area (in)
         gy: y-flux of q in units of q * Pa * area (in)
@@ -92,10 +92,10 @@ def flux_capacitor(
     Saves the mass fluxes to the "flux capacitor" variables for tracer transport
     Also updates the accumulated courant numbers
     Args:
-        cx: accumulated courant number in the x direction (inout)
-        cy: accumulated courant number in the y direction (inout)
-        xflux: flux capacitor in the x direction, accumlated mass flux (inout)
-        yflux: flux capacitor in the y direction, accumlated mass flux (inout)
+        cx: accumulated courant number in the x direction (out)
+        cy: accumulated courant number in the y direction (out)
+        xflux: flux capacitor in the x direction, accumlated mass flux (out)
+        yflux: flux capacitor in the y direction, accumlated mass flux (out)
         crx_adv: local courant numver, dt*ut/dx  (in)
         cry_adv: local courant number dt*vt/dy (in)
         fx: 1-D x-direction flux (in)
@@ -182,6 +182,16 @@ def apply_pt_delp_fluxes_stencil_defn(
     gy: FloatField,
     rarea: FloatFieldIJ,
 ):
+    """
+    Args:
+        fx (in):
+        fy (in):
+        pt (out):
+        delp (out):
+        gx (in):
+        gy (in):
+        rarea (in):
+    """
     with computation(PARALLEL), interval(...):
         pt, delp = apply_pt_delp_fluxes(gx, gy, rarea, fx, fy, pt, delp)
 
@@ -207,7 +217,27 @@ def kinetic_energy_update_part_1(
     advected_v: FloatField,
     dt: float,
 ):
-
+    """
+    Args:
+        vc (in):
+        uc (in):
+        cosa (in):
+        rsina (in):
+        v (in):
+        vc_contra (in):
+        u (in):
+        uc_contra (in):
+        dx (in):
+        dxa (in):
+        rdx (in):
+        dy (in):
+        dya (in):
+        rdy (in):
+        ub_contra (inout):
+        vb_contra (inout):
+        advected_u (out):
+        advected_v (out):
+    """
     with computation(PARALLEL), interval(...):
         ub_contra, vb_contra = interpolate_uc_vc_to_cell_corners(
             uc, vc, cosa, rsina, uc_contra, vc_contra
@@ -228,6 +258,18 @@ def kinetic_energy_update_part_2(
     ke: FloatField,
     dt: float,
 ):
+    """
+    Args:
+        ub_contra (in):
+        advected_u (in):
+        vb_contra (in):
+        advected_v (in):
+        v (in):
+        vc_contra (in):
+        u (in):
+        uc_contra (in):
+        ke (out):
+    """
     # TODO: this is split from part 1 only because the compiled code asks for
     # too much memory. Merge these when that's fixed.
     with computation(PARALLEL), interval(...):
@@ -243,6 +285,13 @@ def vort_differencing(
     vort_y_delta: FloatField,
     dcon: FloatFieldK,
 ):
+    """
+    Args:
+        vort (in):
+        vort_x_delta (out):
+        vort_y_delta (out):
+        dcon (in):
+    """
     from __externals__ import local_ie, local_is, local_je, local_js
 
     with computation(PARALLEL), interval(...):
@@ -275,6 +324,16 @@ def u_and_v_from_ke(
     dx: FloatFieldIJ,
     dy: FloatFieldIJ,
 ):
+    """
+    Args:
+        ke (in):
+        fx (in):
+        fy (in):
+        u (out):
+        v (out):
+        dx (in):
+        dy (in):
+    """
     from __externals__ import local_ie, local_is, local_je, local_js
 
     # TODO: this function does not return u and v, it returns something
@@ -301,7 +360,13 @@ def compute_vort(
     zh: FloatField,
     vort: FloatField,
 ):
-
+    """
+    Args:
+        wk (in):
+        f0 (in):
+        zh (in):
+        vort (out):
+    """
     from __externals__ import do_f3d, hydrostatic, radius
 
     with computation(PARALLEL), interval(...):
@@ -319,6 +384,14 @@ def adjust_w_and_qcon(
     q_con: FloatField,
     damp_w: FloatFieldK,
 ):
+    """
+    Args:
+        w (out):
+        delp (in):
+        dw (in):
+        q_con (out):
+        damp_w (in):
+    """
     with computation(PARALLEL), interval(...):
         w = w / delp
         w = w + dw if damp_w > 1e-5 else w
@@ -347,6 +420,18 @@ def heat_diss(
     ke_bg: FloatFieldK,
     dt: float,
 ):
+    """
+    Args:
+        fx2 (in):
+        fy2 (in):
+        w (in):
+        rarea (in):
+        heat_source (out):
+        diss_est (out):
+        dw (out):
+        damp_w (in):
+        ke_bg (in):
+    """
     with computation(PARALLEL), interval(...):
         diss_e = diss_est
         if damp_w > 1e-5:
@@ -441,11 +526,10 @@ def update_u_and_v(
     Args:
         ut (in)
         vt (in)
-        u (in/out)
-        v (in/out)
+        u (inout)
+        v (inout)
         damp_vt (in): column scalar for damping vorticity
     """
-
     from __externals__ import local_ie, local_is, local_je, local_js
 
     with computation(PARALLEL), interval(...):
@@ -464,7 +548,15 @@ def compute_vorticity(
     rarea: FloatFieldIJ,
     vorticity: FloatField,
 ):
-
+    """
+    Args:
+        u (in):
+        v (in):
+        dx (in):
+        dy (in):
+        rarea (in):
+        vorticity (out):
+    """
     with computation(PARALLEL), interval(...):
         # TODO: ask Lucas why vorticity is computed with this particular treatment
         # of dx, dy, and rarea. The original code read like:
@@ -891,22 +983,22 @@ class DGridShallowWaterLagrangianDynamics:
         prognostic variables using Lagrangian dynamics on the cubed-sphere.
         described by Lin 1997, Lin 2004 and Harris 2013.
         Args:
-            delpc: C-grid  vertical delta in pressure (in)
+            delpc: C-grid  vertical delta in pressure (inout)
             delp: D-grid vertical delta in pressure (inout),
-            ptc: C-grid potential temperature (in)
-            pt: D-grid potnetial teperature (inout)
+            ptc: C-grid potential temperature (inout)
+            pt: D-grid potnetial teperature (out)
             u: D-grid x-velocity (inout)
             v: D-grid y-velocity (inout)
             w: vertical velocity (inout)
             uc: C-grid x-velocity (in)
             vc: C-grid y-velocity (in)
             ua: A-grid x-velocity (in)
-            va A-grid y-velocity(in)
+            va A-grid y-velocity (in)
             divgd: D-grid horizontal divergence (inout)
             mfx: accumulated x mass flux (inout)
             mfy: accumulated y mass flux (inout)
-            cx: accumulated Courant number in the x direction (inout)
-            cy: accumulated Courant number in the y direction (inout)
+            cx: accumulated Courant number in the x direction (out)
+            cy: accumulated Courant number in the y direction (out)
             crx: local courant number in the x direction (inout)
             cry: local courant number in the y direction (inout)
             xfx: flux of area in x-direction, in units of m^2 (in)
@@ -923,6 +1015,9 @@ class DGridShallowWaterLagrangianDynamics:
         # the chain looks something like:
         #   uc_contra, vc_contra = f(uc, vc, ...)
         #   xfx, yfx = g(uc_contra, vc_contra, ...)
+
+        # TODO: ptc may only be used as a temporary under this scope, investigate
+        # and decouple it from higher level if possible (i.e. if not a real output)
         self.fv_prep(uc, vc, crx, cry, xfx, yfx, self._uc_contra, self._vc_contra, dt)
 
         self.fvtp2d_dp(
