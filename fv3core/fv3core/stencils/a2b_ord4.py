@@ -689,7 +689,7 @@ class AGrid2BGridFourthOrder:
 
         Args:
             qin (inout): Input on A-grid (intent=in if replace=false)
-            qout (out): Output on B-grid (out)
+            qout (out): Output on B-grid
         """
 
         self._sw_corner_stencil(
