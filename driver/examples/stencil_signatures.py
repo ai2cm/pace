@@ -1,7 +1,6 @@
 import collections
 import inspect
-from io import BytesIO
-from typing import Optional
+from typing import Optional, TextIO
 
 import yaml
 
@@ -22,7 +21,7 @@ def has_stencils(object):
     return False
 
 
-def report_stencils(obj, file: Optional[BytesIO]):
+def report_stencils(obj, file: Optional[TextIO]):
     sub_objects = {}
     module = inspect.getmodule(obj.__class__)
     print(f"module {module.__name__}, class {obj.__class__.__name__}:", file=file)

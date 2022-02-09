@@ -2,7 +2,7 @@ import abc
 import dataclasses
 import functools
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 
 import click
 import dacite
@@ -392,7 +392,7 @@ class DriverConfig:
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
         initialization_type = kwargs["initialization_type"]
         if initialization_type == "serialbox":
-            initialization_class = SerialboxConfig
+            initialization_class: Type[InitializationConfig] = SerialboxConfig
         elif initialization_type == "baroclinic":
             initialization_class = BaroclinicConfig
         elif initialization_type == "restart":
