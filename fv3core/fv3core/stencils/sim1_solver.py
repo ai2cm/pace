@@ -161,7 +161,7 @@ class Sim1Solver:
           pe (out): full hydrostatic pressure
           dm (in): delta in pressure / g
           pm (in): ?? ratio of change in layer pressure without condensates
-          pem (in): recomputed pressure using ptop and delp(
+          pem (in): recomputed pressure using ptop and delp
           w (inout): vertical velocity
           dz (inout): vertical delta of atmospheric layer in meters
           ptr (in): potential temperature

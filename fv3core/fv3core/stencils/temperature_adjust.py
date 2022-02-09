@@ -24,9 +24,9 @@ def compute_pkz_tempadjust(
         cappa (in): Power to raise pressure to
         heat_source (in): heat source from vorticity damping implied by
             energy conservation
-        pt (inout): Air potential temperature (inout)
+        pt (inout): Air potential temperature
         pkz (out): Layer mean pressure raised to the power of Kappa
-        delta_time_factor: scaled time step (in)
+        delta_time_factor (in): scaled time step
     """
     with computation(PARALLEL), interval(...):
         pkz = exp(cappa / (1.0 - cappa) * log(constants.RDG * delp / delz * pt))

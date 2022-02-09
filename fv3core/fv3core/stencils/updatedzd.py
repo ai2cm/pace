@@ -348,8 +348,8 @@ class UpdateHeightOnDGrid:
         Height can be in any units, including geopotential units.
 
         Args:
-            surface_height (in): height of surface (in)
-            height (inout): height defined on layer interfaces (inout)
+            surface_height (in): height of surface
+            height (inout): height defined on layer interfaces
             courant_number_x (in): Courant number in x-direction defined on cell centers
             courant_number_y (in): Courant number in y-direction defined on cell centers
             x_area_flux (in): Area flux in x-direction defined on cell centers
