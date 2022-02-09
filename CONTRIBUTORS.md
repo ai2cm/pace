@@ -12,5 +12,6 @@ List format (alphabetical order):  Surname, Name. Employer/Affiliation
 * Harris, Lucas. GFDL.
 * Kung, Chris. NASA.
 * McGibbon, Jeremy. Vulcan Inc.
+* Niedermayr, Yannick. ETH.
 * Wicky, Tobias. Vulcan Inc.
 * Wu, Elynn. Vulcan Inc.
