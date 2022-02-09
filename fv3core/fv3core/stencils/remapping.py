@@ -29,6 +29,13 @@ CONSV_MIN = 0.001
 
 
 def init_pe(pe: FloatField, pe1: FloatField, pe2: FloatField, ptop: float):
+    """
+    Args:
+        pe (in):
+        pe1 (out):
+        pe2 (out):
+        ptop (in):
+    """
     with computation(PARALLEL):
         with interval(0, 1):
             pe2 = ptop
@@ -45,6 +52,14 @@ def undo_delz_adjust_and_copy_peln(
     pe0: FloatField,
     pn2: FloatField,
 ):
+    """
+    Args:
+        delp (in):
+        delz (inout):
+        peln (inout):
+        pe0 (out):
+        pn2 (in):
+    """
     with computation(PARALLEL), interval(0, -1):
         delz = -delz * delp
     with computation(PARALLEL), interval(...):
@@ -76,6 +91,30 @@ def moist_cv_pt_pressure(
     peln: FloatField,
     r_vir: float,
 ):
+    """
+    Args:
+        qvapor (in):
+        qliquid (in):
+        qrain (in):
+        qsnow (in):
+        qice (in):
+        qgraupel (in):
+        q_con (out):
+        gz (out):
+        cvm (out):
+        pt (inout):
+        cappa (out):
+        delp (inout):
+        delz (inout):
+        pe (in):
+        pe2 (inout):
+        ak (in):
+        bk (in):
+        dp2 (out):
+        ps (out):
+        pn2 (out):
+        peln (in):
+    """
     from __externals__ import hydrostatic, kord_tm
 
     # moist_cv.moist_pt
@@ -126,6 +165,14 @@ def pn2_pk_delp(
     pk: FloatField,
     akap: float,
 ):
+    """
+    Args:
+        dp2 (in):
+        delp (out):
+        pe2 (in):
+        pn2 (out):
+        pk (out):
+    """
     with computation(PARALLEL), interval(...):
         delp = dp2
         pn2 = log(pe2)
@@ -140,6 +187,15 @@ def pressures_mapu(
     pe0: FloatField,
     pe3: FloatField,
 ):
+    """
+    Args:
+        pe (in):
+        pe1 (in):
+        ak (in):
+        bk (in):
+        pe0 (out):
+        pe3 (out):
+    """
     with computation(BACKWARD):
         with interval(-1, None):
             pe_bottom = pe
@@ -160,6 +216,14 @@ def pressures_mapu(
 def pressures_mapv(
     pe: FloatField, ak: FloatFieldK, bk: FloatFieldK, pe0: FloatField, pe3: FloatField
 ):
+    """
+    Args:
+        pe (in):
+        ak (in):
+        bk (in):
+        pe0 (out):
+        pe3 (out):
+    """
     with computation(BACKWARD):
         with interval(-1, None):
             pe_bottom = pe
@@ -176,6 +240,11 @@ def pressures_mapv(
 
 
 def update_ua(pe2: FloatField, ua: FloatField):
+    """
+    Args:
+        pe2 (in):
+        ua (out):
+    """
     from __externals__ import local_je
 
     with computation(PARALLEL), interval(...):
@@ -190,6 +259,11 @@ def update_ua(pe2: FloatField, ua: FloatField):
 
 
 def copy_from_below(a: FloatField, b: FloatField):
+    """
+    Args:
+        a (in):
+        b (out):
+    """
     with computation(PARALLEL), interval(1, None):
         b = a[0, 0, -1]
 

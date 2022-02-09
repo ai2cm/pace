@@ -27,6 +27,7 @@ def lagrangian_contributions(
     dp1: FloatField,
     lev: IntFieldIJ,
 ):
+
     with computation(FORWARD), interval(...):
         pl = (pe2 - pe1[0, 0, lev]) / dp1[0, 0, lev]
         if pe2[0, 0, 1] <= pe1[0, 0, lev + 1]:
