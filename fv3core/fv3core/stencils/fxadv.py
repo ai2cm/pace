@@ -17,11 +17,11 @@ def main_uc_contra(
 ):
     """
     Args:
-        uc (in): covariant c-grid x-wind (in)
-        vc (in): covariant c-grid y-wind (in)
-        cosa_u (in): ??? (in)
-        rsin_u (in): ??? (in)
-        uc_contra (out): contravariant c-grid x-wind (out)
+        uc (in): covariant c-grid x-wind
+        vc (in): covariant c-grid y-wind
+        cosa_u (in): ???
+        rsin_u (in): ???
+        uc_contra (out): contravariant c-grid x-wind
     """
     from __externals__ import j_end, j_start, local_ie, local_is
 

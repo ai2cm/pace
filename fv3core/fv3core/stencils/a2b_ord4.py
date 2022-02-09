@@ -692,15 +692,6 @@ class AGrid2BGridFourthOrder:
             qout (out): Output on B-grid (out)
         """
 
-        # for each corner stencil, for baroclinic:
-        # qin (in):
-        # qout (out):
-        # tmp_qout_edges (out):
-        # lon_agrid (in):
-        # lat_agrid (in):
-        # lon (in):
-        # lat (in):
-
         self._sw_corner_stencil(
             qin,
             qout,
