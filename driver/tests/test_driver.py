@@ -40,6 +40,7 @@ def get_driver_config(
         layout=layout,
         initialization_type="baroclinic",
         initialization_config=initialization_config,
+        performance_config=unittest.mock.MagicMock(),
         diagnostics_config=unittest.mock.MagicMock(),
         dycore_config=unittest.mock.MagicMock(),
         physics_config=unittest.mock.MagicMock(),
