@@ -49,6 +49,21 @@ def flux_compute(
     xfx: FloatField,
     yfx: FloatField,
 ):
+    """
+    Args:
+        cx (in):
+        cy (in):
+        dxa (in):
+        dya (in):
+        dx (in):
+        dy (in):
+        sin_sg1 (in):
+        sin_sg2 (in):
+        sin_sg3 (in):
+        sin_sg4 (in):
+        xfx (out):
+        yfx (out):
+    """
     with computation(PARALLEL), interval(...):
         xfx = flux_x(cx, dxa, dy, sin_sg3, sin_sg1, xfx)
         yfx = flux_y(cy, dya, dx, sin_sg4, sin_sg2, yfx)
@@ -63,7 +78,17 @@ def cmax_multiply_by_frac(
     mfyd: FloatField,
     n_split: int,
 ):
-    """multiply all other inputs in-place by frac."""
+    """
+    Multiply all inputs in-place by 1.0 / n_split.
+
+    Args:
+        cxd (inout):
+        xfx (inout):
+        mfxd (inout):
+        cyd (inout):
+        yfx (inout):
+        mfyd (inout):
+    """
     with computation(PARALLEL), interval(...):
         frac = 1.0 / n_split
         cxd = cxd * frac
@@ -93,6 +118,14 @@ def dp_fluxadjustment(
     rarea: FloatFieldIJ,
     dp2: FloatField,
 ):
+    """
+    Args:
+        dp1 (in):
+        mfx (in):
+        mfy (in):
+        rarea (in):
+        dp2 (out):
+    """
     with computation(PARALLEL), interval(...):
         dp2 = dp1 + (mfx - mfx[1, 0, 0] + mfy - mfy[0, 1, 0]) * rarea
 
@@ -110,6 +143,15 @@ def q_adjust(
     rarea: FloatFieldIJ,
     dp2: FloatField,
 ):
+    """
+    Args:
+        q (inout):
+        dp1 (in):
+        fx (in):
+        fy (in):
+        rarea (in):
+        dp2 (in):
+    """
     with computation(PARALLEL), interval(...):
         q = adjustment(q, dp1, fx, fy, rarea, dp2)
 
@@ -213,6 +255,16 @@ class TracerAdvection:
         )
 
     def __call__(self, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt):
+        """
+        Args:
+            tracers (inout):
+            dp1 (in):
+            mfxd (inout):
+            mfyd (inout):
+            cxd (inout):
+            cyd (inout):
+        """
+        # TODO: remove unused mdt argument
         if len(tracers) != self._tracer_count:
             raise ValueError(
                 f"incorrect number of tracers, {self._tracer_count} was "

@@ -46,6 +46,14 @@ repos:
         stencils/pace/stencils/testing/grid.py |
         )$
     - id: mypy
+      name: mypy-driver
+      args: [
+          --no-strict-optional,
+          --ignore-missing-imports,
+          --follow-imports, skip  # needed so we only test enabled files
+        ]
+      files: driver
+    - id: mypy
       name: mypy-physics
       args: [
           --no-strict-optional,
