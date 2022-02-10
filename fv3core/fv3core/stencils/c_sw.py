@@ -621,20 +621,20 @@ class CGridShallowWaterDynamics:
         C-grid shallow water routine.
         Advances C-grid winds by half a time step.
         Args:
-            delp: D-grid vertical delta in pressure (in)
-            pt: D-grid potential temperature (in)
-            u: D-grid x-velocity (in)
-            v: D-grid y-velocity (in)
-            w: vertical velocity (in)
-            uc: C-grid x-velocity (inout)
-            vc: C-grid y-velocity (inout)
-            ua: A-grid x-velocity (inout)
-            va: A-grid y-velocity (inout)
-            ut: u * dx (out)
-            vt: v * dy (out)
-            divgd: D-grid horizontal divergence (out)
-            omga: Vertical pressure velocity (out)
-            dt2: Half a model timestep in seconds (in)
+            delp (in): D-grid vertical delta in pressure
+            pt (inout): D-grid potential temperature (only halos get updated)
+            u (in): D-grid x-velocity
+            v (in): D-grid y-velocity
+            w (in): vertical velocity
+            uc (inout): C-grid x-velocity
+            vc (inout): C-grid y-velocity
+            ua (inout): A-grid x-velocity
+            va (inout): A-grid y-velocity
+            ut (out): u * dx
+            vt (out): v * dy
+            divgd (out): D-grid horizontal divergence
+            omga (out): Vertical pressure velocity
+            dt2 (in): Half a model timestep in seconds
         """
         # TODO: omga is called "wc" inside stencils, consolidate the naming
         self._initialize_delpc_ptc(

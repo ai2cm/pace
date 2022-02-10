@@ -998,20 +998,20 @@ class DGridShallowWaterLagrangianDynamics:
         Described by Lin 1997, Lin 2004 and Harris 2013.
 
         Args:
-            delpc (inout): C-grid  vertical delta in pressure (inout)
-            delp (inout): D-grid vertical delta in pressure (inout),
-            ptc : C-grid potential temperature (inout)
+            delpc (inout): C-grid  vertical delta in pressure
+            delp (inout): D-grid vertical delta in pressure
+            ptc : C-grid potential temperature
             pt (inout): D-grid potential teperature
-            u (inout): D-grid x-velocity (inout)
-            v (inout): D-grid y-velocity (inout)
-            w (inout): vertical velocity (inout)
-            uc (in): C-grid x-velocity (in)
-            vc (in): C-grid y-velocity (in)
-            ua (in): A-grid x-velocity (in)
-            va (in) A-grid y-velocity (in)
-            divgd: D-grid horizontal divergence (inout)
-            mfx (inout): accumulated x mass flux (inout)
-            mfy (inout): accumulated y mass flux (inout)
+            u (inout): D-grid x-velocity
+            v (inout): D-grid y-velocity
+            w (inout): vertical velocity
+            uc (in): C-grid x-velocity
+            vc (in): C-grid y-velocity
+            ua (in): A-grid x-velocity
+            va (in) A-grid y-velocity
+            divgd (inout): D-grid horizontal divergence
+            mfx (inout): accumulated x mass flux
+            mfy (inout): accumulated y mass flux
             cx (inout): accumulated Courant number in the x direction
             cy (inout): accumulated Courant number in the y direction
             crx (out): local courant number in the x direction
