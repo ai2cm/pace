@@ -600,51 +600,6 @@ class CGridShallowWaterDynamics:
             externals={"grid_type": grid_type},
         )
 
-    def _vorticitytransport_cgrid(
-        self,
-        uc: FloatField,
-        vc: FloatField,
-        vort_c: FloatField,
-        ke_c: FloatField,
-        v: FloatField,
-        u: FloatField,
-        dt2: float,
-    ):
-        """Update the C-Grid x and y velocity fields.
-
-        Args:
-            uc: x-velocity on C-grid (input, output)
-            vc: y-velocity on C-grid (input, output)
-            vort_c: Vorticity on C-grid (input)
-            ke_c: kinetic energy on C-grid (input)
-            v: y-velocity on D-grid (input)
-            u: x-velocity on D-grid (input)
-            dt2: timestep (input)
-        """
-        # TODO: this function is kept because it has a translate test,
-        # if the structure of call changes significantly from this
-        # consider deleting this function and the translate test
-        self._update_y_velocity(
-            vort_c,
-            ke_c,
-            u,
-            vc,
-            self.grid_data.cosa_v,
-            self.grid_data.sina_v,
-            self.grid_data.rdyc,
-            dt2,
-        )
-        self._update_x_velocity(
-            vort_c,
-            ke_c,
-            v,
-            uc,
-            self.grid_data.cosa_u,
-            self.grid_data.sina_u,
-            self.grid_data.rdxc,
-            dt2,
-        )
-
     def __call__(
         self,
         delp: FloatField,

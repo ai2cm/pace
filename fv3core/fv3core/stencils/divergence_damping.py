@@ -497,18 +497,3 @@ class DivergenceDamping:
             self._dddmp,
             self._dd8,
         )
-
-    def _vorticity_calc(self, wk, vort, delpc, dt):
-        # this function is kept because it has a translate test, if its
-        # structure is changed significantly from __call__ consider deleting this
-        # method and the translate test
-        if self._dddmp < 1e-5:
-            self._set_value(vort, 0.0)
-        else:
-            # TODO: what is wk/vort here?
-            self.a2b_ord4(wk, vort)
-            self._smagorinksy_diffusion_approx_stencil(
-                delpc,
-                vort,
-                abs(dt),
-            )
