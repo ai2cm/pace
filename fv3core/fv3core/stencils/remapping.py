@@ -313,6 +313,18 @@ class LagrangianToEulerian:
             shape_kplus, grid_indexing.origin_compute(), backend=backend
         )
 
+        self._kord_tm = abs(config.kord_tm)
+        self._kord_wz = config.kord_wz
+        self._kord_mt = config.kord_mt
+
+        self._do_sat_adjust = config.do_sat_adj
+
+        self.kmp = grid_indexing.domain[2] - 1
+        for k in range(pfull.shape[0]):
+            if pfull[k] > 10.0e2:
+                self.kmp = k
+                break
+
         self._init_pe = stencil_factory.from_origin_domain(
             init_pe, origin=grid_indexing.origin_compute(), domain=self._domain_jextra
         )
@@ -323,11 +335,6 @@ class LagrangianToEulerian:
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
-        self._moist_cv_pkz = stencil_factory.from_origin_domain(
-            moist_cv.moist_pkz,
-            origin=grid_indexing.origin_compute(),
-            domain=grid_indexing.domain_compute(),
-        )
 
         self._pn2_pk_delp = stencil_factory.from_origin_domain(
             pn2_pk_delp,
@@ -335,7 +342,6 @@ class LagrangianToEulerian:
             domain=grid_indexing.domain_compute(),
         )
 
-        self._kord_tm = abs(config.kord_tm)
         self._map_single_pt = MapSingle(
             stencil_factory,
             self._kord_tm,
@@ -357,7 +363,6 @@ class LagrangianToEulerian:
             fill=config.fill,
         )
 
-        self._kord_wz = config.kord_wz
         self._map_single_w = MapSingle(
             stencil_factory,
             self._kord_wz,
@@ -367,6 +372,7 @@ class LagrangianToEulerian:
             grid_indexing.jsc,
             grid_indexing.jec,
         )
+
         self._map_single_delz = MapSingle(
             stencil_factory,
             self._kord_wz,
@@ -387,13 +393,18 @@ class LagrangianToEulerian:
             ),
         )
 
+        self._moist_cv_pkz = stencil_factory.from_origin_domain(
+            moist_cv.moist_pkz,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
+        )
+
         self._pressures_mapu = stencil_factory.from_origin_domain(
             pressures_mapu,
             origin=grid_indexing.origin_compute(),
             domain=self._domain_jextra,
         )
 
-        self._kord_mt = config.kord_mt
         self._map_single_u = MapSingle(
             stencil_factory,
             self._kord_mt,
@@ -441,6 +452,10 @@ class LagrangianToEulerian:
             domain=grid_indexing.domain_compute(),
         )
 
+        self._saturation_adjustment = SatAdjust3d(
+            stencil_factory, config.sat_adjust, area_64, self.kmp
+        )
+
         self._moist_cv_last_step_stencil = stencil_factory.from_origin_domain(
             moist_pt_last_step,
             origin=(grid_indexing.isc, grid_indexing.jsc, 0),
@@ -455,18 +470,6 @@ class LagrangianToEulerian:
             adjust_divide_stencil,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
-        )
-
-        self._do_sat_adjust = config.do_sat_adj
-
-        self.kmp = grid_indexing.domain[2] - 1
-        for k in range(pfull.shape[0]):
-            if pfull[k] > 10.0e2:
-                self.kmp = k
-                break
-
-        self._saturation_adjustment = SatAdjust3d(
-            stencil_factory, config.sat_adjust, area_64, self.kmp
         )
 
     def __call__(
@@ -507,39 +510,39 @@ class LagrangianToEulerian:
         nq: int,
     ):
         """
-        pt: D-grid potential temperature (inout)
-        delp: Pressure Thickness (inout)
-        delz: Vertical thickness of atmosphere layers (in)
-        peln: Logarithm of interface pressure (inout)
-        u: D-grid x-velocity (inout)
-        v: D-grid y-velocity (inout)
-        w: Vertical velocity (inout)
-        ua: A-grid x-velocity (inout)
-        va: A-grid y-velocity (inout)
-        cappa: Power to raise pressure to (inout)
-        q_con: Total condensate mixing ratio (inout)
-        q_cld: Cloud fraction (inout)
-        pkz: Layer mean pressure raised to the power of Kappa (in)
-        pk: Interface pressure raised to power of kappa, final acoustic value (inout)
-        pe: Pressure at layer edges (inout)
-        hs: Surface geopotential (in)
-        te0_2d: Atmosphere total energy in columns (inout)
-        ps: Surface pressure (inout)
-        wsd: Vertical velocity of the lowest level (in)
-        omga: Vertical pressure velocity (inout)
-        ak: Atmosphere hybrid a coordinate (Pa) (in)
-        bk: Atmosphere hybrid b coordinate (dimensionless) (in)
-        pfull: Pressure full levels (in)
-        dp1: Pressure thickness before dyn_core (inout)
-        ptop: The pressure level at the top of atmosphere (in)
-        akap: Poisson constant (KAPPA) (in)
-        zvir: Constant (Rv/Rd-1) (in)
-        last_step: Flag for the last step of k-split remapping (in)
-        consv_te: If True, conserve total energy (in)
-        mdt : Remap time step (in)
-        bdt: Timestep (in)
-        do_adiabatic_init: If True, do adiabatic dynamics (in)
-        nq: Number of tracers (in)
+        pt (inout): D-grid potential temperature
+        delp (inout): Pressure Thickness
+        delz (in): Vertical thickness of atmosphere layers
+        peln (inout): Logarithm of interface pressure
+        u (inout): D-grid x-velocity
+        v (inout): D-grid y-velocity
+        w (inout): Vertical velocity
+        ua (inout): A-grid x-velocity
+        va (inout): A-grid y-velocity
+        cappa (inout): Power to raise pressure to
+        q_con (inout): Total condensate mixing ratio
+        q_cld (inout): Cloud fraction
+        pkz (in): Layer mean pressure raised to the power of Kappa
+        pk (inout): Interface pressure raised to power of kappa, final acoustic value
+        pe (inout): Pressure at layer edges
+        hs (in): Surface geopotential
+        te0_2d (inout): Atmosphere total energy in columns
+        ps (inout): Surface pressure
+        wsd (in): Vertical velocity of the lowest level
+        omga (inout): Vertical pressure velocity
+        ak (in): Atmosphere hybrid a coordinate (Pa)
+        bk (in): Atmosphere hybrid b coordinate (dimensionless)
+        pfull (in): Pressure full levels
+        dp1 (inout): Pressure thickness before dyn_core
+        ptop (in): The pressure level at the top of atmosphere
+        akap (in): Poisson constant (KAPPA)
+        zvir (in): Constant (Rv/Rd-1)
+        last_step (in): Flag for the last step of k-split remapping
+        consv_te (in): If True, conserve total energy
+        mdt (in) : Remap time step
+        bdt (in): Timestep
+        do_adiabatic_init (in): If True, do adiabatic dynamics
+        nq (in): Number of tracers
 
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.
