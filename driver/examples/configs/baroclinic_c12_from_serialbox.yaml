@@ -8,6 +8,9 @@ initialization_type: serialbox
 initialization_config:
   path: /test_data/c12_6ranks_baroclinic_dycore_microphysics
   serialized_grid: True
+performance_config:
+  timer: true
+  json_dump: true
 nx_tile: 12
 nz: 79
 dt_atmos: 225
