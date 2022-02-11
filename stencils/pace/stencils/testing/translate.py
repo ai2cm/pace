@@ -19,6 +19,7 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
+
 def pad_field_in_j(field, nj, backend: str):
     utils.device_sync(backend)
     outfield = utils.tile(field[:, 0, :], [nj, 1, 1]).transpose(1, 0, 2)
@@ -245,7 +246,15 @@ class TranslateGrid:
     #     1   5   3
     #     |       |
     #     6---2---7
-
+    @classmethod
+    def new_from_serialized_data(cls, serializer, rank, layout, backend):
+        grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
+        grid_data = {}
+        grid_fields = serializer.fields_at_savepoint(grid_savepoint)
+        for field in grid_fields:
+            grid_data[field] = read_serialized_data(serializer, grid_savepoint, field)
+        return cls(grid_data, rank, layout, backend=backend)
+    
     def __init__(self, inputs, rank, layout, *, backend: str):
         self.backend = backend
         self.indices = {}
@@ -374,3 +383,4 @@ class TranslateGrid:
         self.make_grid_storage(pygrid)
         pygrid.add_data(self.data)
         return pygrid
+
