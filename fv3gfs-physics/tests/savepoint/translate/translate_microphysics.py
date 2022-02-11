@@ -42,7 +42,6 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
             "udt": {"serialname": "mph_udt", "kend": namelist.npz - 1},
             "vdt": {"serialname": "mph_vdt", "kend": namelist.npz - 1},
         }
-        self.namelist = namelist
         self.stencil_factory = stencil_factory
         self.grid_indexing = self.stencil_factory.grid_indexing
 

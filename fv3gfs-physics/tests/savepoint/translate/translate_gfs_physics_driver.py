@@ -80,7 +80,6 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
                 "order": "F",
             },
         }
-        self.namelist = namelist
         self.stencil_factory = stencil_factory
         self.grid_indexing = self.stencil_factory.grid_indexing
 
