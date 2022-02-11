@@ -72,9 +72,8 @@ class MapNTracer:
             pe1 (in): Lagrangian pressure levels
             pe2 (out): Eulerian pressure levels
             dp2 (in): Difference in pressure between Eulerian levels
-            qs (out): Field to be remapped on deformed grid
-            jfirst: Starting index of the J-dir compute domain
-            jlast: Final index of the J-dir compute domain
+            tracers (inout): Dict mapping tracer names to their correstponding storages
+            qmin (in): Minimum allowed value of the remapped field
         """
         for i, q in enumerate(utils.tracer_variables[0 : self._nq]):
             self._list_of_remap_objects[i](tracers[q], pe1, pe2, self._qs)
