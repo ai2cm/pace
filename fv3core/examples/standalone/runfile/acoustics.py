@@ -8,7 +8,6 @@ import serialbox
 import yaml
 from timing import collect_data_and_write_to_file
 
-import fv3core._config as spec
 import pace.dsl
 import pace.util as util
 from fv3core._config import DynamicalCoreConfig
@@ -144,9 +143,7 @@ def driver(
         mpi_comm, communicator = set_up_communicator(
             disable_halo_exchange, layout=layout
         )
-        grid = spec.make_grid_with_data_from_namelist(
-            dycore_config, communicator, backend
-        )
+        grid = Grid.with_data_from_namelist(dycore_config, communicator, backend)
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=backend,
             rebuild=False,
