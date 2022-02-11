@@ -533,6 +533,15 @@ def compute_q_tables(
     desw: FloatField,
     des2: FloatField,
 ):
+    """
+    Args:
+        index (in):
+        tablew (out):
+        table2 (out):
+        table (out):
+        desw (out):
+        des2 (out):
+    """
     with computation(PARALLEL), interval(...):
         tablew = qs_tablew_fn(index)
         table2 = qs_table2_fn(index)
@@ -577,6 +586,43 @@ def satadjust(
     fac_l2v: float,
     last_step: bool,
 ):
+    """
+    Args:
+        peln (in):
+        qv (inout):
+        ql (inout):
+        qi (inout):
+        qr (inout):
+        qs (inout):
+        cappa (out):
+        qg (inout):
+        pt (inout):
+        dp (in):
+        delz (inout): If nonhydrostatic delz is only in, not out
+        te0 (out):
+        q_con (out):
+        qa (out):
+        area (in):
+        hs (in):
+        pkz (out):
+        sdt (in):
+        zvir (in):
+        fac_i2s (in):
+        do_qa (in):
+        consv_te (in):
+        c_air (in):
+        c_vap (in):
+        mdt (in):
+        fac_r2g (in):
+        fac_smlt (in):
+        fac_l2r (in):
+        fac_imlt (in):
+        d0_vap (in):
+        lv00 (in):
+        fac_v2l (in):
+        fac_l2v (in):
+        last_step (in):
+    """
     from __externals__ import (
         cld_min,
         dw_land,
@@ -946,6 +992,32 @@ class SatAdjust3d:
         akap: float,
         kmp: int,
     ):
+        """
+        Args:
+            te (out):
+            qvapor (inout):
+            qliquid (inout):
+            qice (inout):
+            qrain (inout):
+            qsnow (inout):
+            qgraupel (inout):
+            qcld (out):
+            hs (in):
+            peln (in):
+            delp (in):
+            delz (inout): If nonhydrostatic delz is only in, not out
+            q_con (out):
+            pt (inout):
+            pkz (out):
+            cappa (out):
+            r_vir (in):
+            mdt (in):
+            fast_mp_consv (in):
+            last_step (in):
+            akap (in):
+            kmp (in):
+        """
+        # TODO: akap and kmp are not used and should be removed from the call
         sdt = 0.5 * mdt  # half remapping time step
         # define conversion scalar / factor
         fac_i2s = 1.0 - math.exp(-mdt / self._config.tau_i2s)
