@@ -26,6 +26,19 @@ def c2l_ord2(
     ua: FloatField,
     va: FloatField,
 ):
+    """
+    Args:
+        u (in):
+        v (in):
+        dx (in):
+        dy (in):
+        a11 (in):
+        a12 (in):
+        a21 (in):
+        a22 (in):
+        ua (out):
+        va (out):
+    """
     with computation(PARALLEL), interval(...):
         wu = u * dx
         wv = v * dy
@@ -49,6 +62,19 @@ def ord4_transform(
     ua: FloatField,
     va: FloatField,
 ):
+    """
+    Args:
+        u (in):
+        v (in):
+        dx (in):
+        dy (in):
+        a11 (in):
+        a12 (in):
+        a21 (in):
+        a22 (in):
+        ua (out):
+        va (out):
+    """
     with computation(PARALLEL), interval(...):
         from __externals__ import i_end, i_start, j_end, j_start
 

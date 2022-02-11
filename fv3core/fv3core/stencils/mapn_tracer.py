@@ -76,7 +76,7 @@ class MapNTracer:
             qmin (in): Minimum allowed value of the remapped field
         """
         for i, q in enumerate(utils.tracer_variables[0 : self._nq]):
-            self._list_of_remap_objects[i](tracers[q], pe1, pe2, self._qs)
+            self._list_of_remap_objects[i](tracers[q], pe1, pe2, self._qs, qmin=q_min)
 
         if self._fill_negative_tracers is True:
             self._fillz(dp2, tracers)

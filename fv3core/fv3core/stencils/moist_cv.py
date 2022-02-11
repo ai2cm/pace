@@ -210,6 +210,23 @@ def fv_setup(
     delz: FloatField,
     dp1: FloatField,
 ):
+    """
+    Args:
+        qvapor (in):
+        qliquid (in):
+        qrain (in):
+        qsnow (in):
+        qice (in):
+        qgraupel (in):
+        q_con (out):
+        cvm (out):
+        pkz (out):
+        pt (in):
+        cappa (out):
+        delp (in):
+        delz (in):
+        dp1 (out):
+    """
     with computation(PARALLEL), interval(...):
         from __externals__ import moist_phys
 
