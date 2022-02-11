@@ -3,7 +3,7 @@ import copy
 import pace.dsl.gt4py_utils as utils
 import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
-from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from fv3gfs.physics.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):

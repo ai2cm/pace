@@ -7,7 +7,7 @@ import pace.util
 from fv3gfs.physics.stencils.microphysics import Microphysics
 from fv3gfs.physics.stencils.physics import PhysicsState
 from pace.dsl.typing import Float
-from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from fv3gfs.physics.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslateMicroph(TranslatePhysicsFortranData2Py):

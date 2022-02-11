@@ -1,4 +1,4 @@
-from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from fv3gfs.physics.testing.translate_physics import TranslatePhysicsFortranData2Py
 from pace.stencils.update_atmos_state import fill_gfs
 
 

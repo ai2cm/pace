@@ -6,7 +6,7 @@ import pace.dsl.gt4py_utils as utils
 import pace.util
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
-from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
+from fv3gfs.physics.testing.translate_physics import ParallelPhysicsTranslate2Py
 from pace.util.grid import DriverGridData
 
 
@@ -33,7 +33,7 @@ class DycoreState:
         return getattr(self, item)
 
 
-class TranslateFVUpdatePhys(ParallelTranslate2Py):
+class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
     def __init__(self, grids, namelist, stencil_factory):
         super().__init__(grids, namelist, stencil_factory)
         grid = grids[0]

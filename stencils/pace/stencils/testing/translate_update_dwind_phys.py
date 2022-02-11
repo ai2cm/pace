@@ -1,12 +1,12 @@
 import numpy as np
 
 import pace.util
-from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
+from pace.stencils.testing.translate import TranslateFortranData2Py
 from pace.stencils.update_dwind_phys import AGrid2DGridPhysics
 from pace.util.grid import DriverGridData
 
 
-class TranslateUpdateDWindsPhys(TranslatePhysicsFortranData2Py):
+class TranslateUpdateDWindsPhys(TranslateFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.grid=grid
