@@ -315,7 +315,7 @@ def parallel_savepoint_cases(
         rebuild=False,
         validate_args=True,
     )
-    grid =  grid = TranslateGrid.new_from_serialized_data(serializer, mpi_rank, dycore_config.layout, backend).python_grid()
+    grid = TranslateGrid.new_from_serialized_data(serializer, mpi_rank, dycore_config.layout, backend).python_grid()
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,

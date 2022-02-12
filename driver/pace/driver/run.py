@@ -150,6 +150,9 @@ class SerialboxConfig(InitializationConfig):
         backend: str,
     ) -> pace.stencils.testing.grid.Grid:
         ser = self._serializer(communicator)
+        grid = TranslateGrid(
+            grid_data, communicator.rank, self._namelist.layout, backend=backend
+        ).python_grid()
         grid = TranslateGrid.new_from_serialized_data(serializer, communicator.rank, self._namelist.layout, backend).python_grid()
         return grid
 
@@ -250,6 +253,7 @@ class SerialboxConfig(InitializationConfig):
         dycore_state = translate_object.state_from_inputs(input_data)
         return dycore_state
 
+@dataclasses.dataclass    
 class TranslateConfig(InitializationConfig):
     """
     Configuration for pre-existing dycore state
@@ -298,7 +302,7 @@ class Diagnostics:
         )
 
     def store(self, time: datetime, state: DriverState):
-        if len(self.config_names) == 0:
+        if len(self.config.names) == 0:
             return
         zarr_state = {"time": time}
         for name in self.config.names:
@@ -367,6 +371,8 @@ class DriverConfig:
         initialization_type = kwargs["initialization_type"]
         if initialization_type == "serialbox":
             initialization_class = SerialboxConfig
+        if initialization_type == "regression":
+            initialization_class = TranslateConfig
         elif initialization_type == "baroclinic":
             initialization_class = BaroclinicConfig
         elif initialization_type == "restart":
@@ -382,26 +388,27 @@ class DriverConfig:
             data=kwargs.get("initialization_config", {}),
             config=dacite.Config(strict=True),
         )
+        if not isinstance(kwargs["dycore_config"], fv3core.DynamicalCoreConfig):
+            for derived_name in ("dt_atmos", "layout", "npx", "npy", "npz", "ntiles"):
+                if derived_name in kwargs["dycore_config"]:
+                    raise ValueError(
+                        f"you cannot set {derived_name} directly in dycore_config, "
+                        "as it is determined based on top-level configuration"
+                    )
 
-        for derived_name in ("dt_atmos", "layout", "npx", "npy", "npz", "ntiles"):
-            if derived_name in kwargs["dycore_config"]:
-                raise ValueError(
-                    f"you cannot set {derived_name} directly in dycore_config, "
-                    "as it is determined based on top-level configuration"
+                kwargs["dycore_config"] = dacite.from_dict(
+                    data_class=fv3core.DynamicalCoreConfig,
+                    data=kwargs.get("dycore_config", {}),
+                    config=dacite.Config(strict=True),
                 )
+        if not isinstance(kwargs["physics_config"], fv3gfs.physics.PhysicsConfig):
+            kwargs["physics_config"] = dacite.from_dict(
+                data_class=fv3gfs.physics.PhysicsConfig,
+                data=kwargs.get("physics_config", {}),
+                config=dacite.Config(strict=True),
+            )
 
-        kwargs["dycore_config"] = dacite.from_dict(
-            data_class=fv3core.DynamicalCoreConfig,
-            data=kwargs.get("dycore_config", {}),
-            config=dacite.Config(strict=True),
-        )
-        kwargs["physics_config"] = dacite.from_dict(
-            data_class=fv3gfs.physics.PhysicsConfig,
-            data=kwargs.get("physics_config", {}),
-            config=dacite.Config(strict=True),
-        )
-
-        if initialization_type != "serialbox":
+        if initialization_type not in ["serialbox", "regression"]:
             kwargs["layout"] = tuple(kwargs["layout"])
             kwargs["dycore_config"].layout = kwargs["layout"]
             kwargs["dycore_config"].dt_atmos = kwargs["dt_atmos"]
@@ -415,7 +422,7 @@ class DriverConfig:
             kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
             kwargs["physics_config"].npz = kwargs["nz"]
 
-        elif initialization_type == "serialbox":
+        elif initialization_type in ["serialbox", "regression"]:
             kwargs["nx_tile"] = kwargs["dycore_config"].npx - 1
             kwargs["nz"] = kwargs["dycore_config"].npz
             kwargs["layout"] = tuple(kwargs["dycore_config"].layout)
@@ -563,3 +570,4 @@ def main(driver_config: DriverConfig, comm):
 
 if __name__ == "__main__":
     command_line()
+

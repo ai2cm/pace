@@ -467,7 +467,7 @@ class Grid:
             edge_s=self.edge_s,
             edge_n=self.edge_n,
         )
-        vertical = VerticalGridData(ptop=-1.0e7, ks=-1)
+        vertical = VerticalGridData(ptop=self.ptop, ak=self.ak, bk=self.bk, ks=self.ks)
         contravariant = ContravariantGridData(
             self.cosa,
             self.cosa_u,

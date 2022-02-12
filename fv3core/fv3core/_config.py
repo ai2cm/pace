@@ -268,10 +268,10 @@ class DynamicalCoreConfig:
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
-    namelist_override: str = None
+    namelist_override: str = ""
 
     def __post_init__(self):
-        if self.namelist_override is not None:
+        if len(self.namelist_override) > 0:
             try:
                 f90_nml = f90nml.read(self.namelist_override)
             except FileNotFoundError:
@@ -328,7 +328,7 @@ class DynamicalCoreConfig:
             vtdm4=namelist.vtdm4,
             z_tracer=namelist.z_tracer,
             do_qa=namelist.do_qa,
-            layout=namelist.layout,
+            layout=tuple(namelist.layout),
             grid_type=namelist.grid_type,
             do_f3d=namelist.do_f3d,
             inline_q=namelist.inline_q,
