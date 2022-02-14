@@ -1,4 +1,3 @@
-import sys
 from typing import List
 
 from setuptools import find_namespace_packages, setup
