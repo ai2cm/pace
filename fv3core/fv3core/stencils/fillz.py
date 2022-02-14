@@ -28,6 +28,7 @@ def fix_tracer(
         sum0 (out):
         sum1 (out):
     """
+    # TODO: can we make everything except q and dp temporaries?
     # reset fields
     with computation(FORWARD), interval(...):
         zfix = 0
@@ -153,8 +154,8 @@ class FillNegativeTracerValues:
     ):
         """
         Args:
-            dp2 (in): Difference in remapped pressure levels
-            tracers (inout): tracers to be filled
+            dp2 (in): pressure thickness of atmospheric layer
+            tracers (inout): tracers to fix negative masses in
         """
         tracer_list = [tracers[name] for name in utils.tracer_variables[0 : self._nq]]
         for tracer in tracer_list:

@@ -120,7 +120,7 @@ def remap_constraint(
         a4_2 (inout): Second cubic interpolation coefficient
         a4_3 (inout): Third cubic interpolation coefficient
         a4_4 (inout): Fourth cubic interpolation coefficient
-        extm (in): Whether to set a4_2, a4_3, and a4_4 simply
+        extm (in): If true sets a4_2 and a4_3 as a4_1 and a4_4 to 0
     """
     da1 = a4_3 - a4_2
     da2 = da1 * da1

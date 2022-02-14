@@ -1003,7 +1003,7 @@ class SatAdjust3d:
             qgraupel (inout):
             qcld (out):
             hs (in):
-            peln (in):
+            peln (in): only read if hydrostartc, otherwise unused
             delp (in):
             delz (inout): If nonhydrostatic delz is only in, not out
             q_con (out):
@@ -1014,10 +1014,11 @@ class SatAdjust3d:
             mdt (in):
             fast_mp_consv (in):
             last_step (in):
-            akap (in):
-            kmp (in):
+            akap (unused):
+            kmp (unused):
         """
         # TODO: akap and kmp are not used and should be removed from the call
+        # TODO: Maybe remove hydrostatic code
         sdt = 0.5 * mdt  # half remapping time step
         # define conversion scalar / factor
         fac_i2s = 1.0 - math.exp(-mdt / self._config.tau_i2s)

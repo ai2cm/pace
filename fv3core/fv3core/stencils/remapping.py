@@ -60,6 +60,7 @@ def undo_delz_adjust_and_copy_peln(
         pe0 (out):
         pn2 (in):
     """
+    # TODO: We can assign pe0 and peln outside of a stencil to save the data copying
     with computation(PARALLEL), interval(0, -1):
         delz = -delz * delp
     with computation(PARALLEL), interval(...):
@@ -224,6 +225,7 @@ def pressures_mapv(
         pe0 (out):
         pe3 (out):
     """
+    # TODO: Combine pressures_mapu and pressures_mapv
     with computation(BACKWARD):
         with interval(-1, None):
             pe_bottom = pe
@@ -520,20 +522,21 @@ class LagrangianToEulerian:
         ua (inout): A-grid x-velocity
         va (inout): A-grid y-velocity
         cappa (inout): Power to raise pressure to
-        q_con (inout): Total condensate mixing ratio
-        q_cld (inout): Cloud fraction
+        q_con (out): Total condensate mixing ratio
+        q_cld (out): Cloud fraction
         pkz (in): Layer mean pressure raised to the power of Kappa
-        pk (inout): Interface pressure raised to power of kappa, final acoustic value
-        pe (inout): Pressure at layer edges
+        pk (out): Interface pressure raised to power of kappa, final acoustic value
+        pe (in): Pressure at layer edges
         hs (in): Surface geopotential
-        te0_2d (inout): Atmosphere total energy in columns
+        te0_2d (unused): Atmosphere total energy in columns
         ps (inout): Surface pressure
         wsd (in): Vertical velocity of the lowest level
-        omga (inout): Vertical pressure velocity
+        omga (unused): Vertical pressure velocity
         ak (in): Atmosphere hybrid a coordinate (Pa)
         bk (in): Atmosphere hybrid b coordinate (dimensionless)
         pfull (in): Pressure full levels
-        dp1 (inout): Pressure thickness before dyn_core
+        dp1 (out): Pressure thickness before dyn_core (only written
+            if do_sat_adjust=True)
         ptop (in): The pressure level at the top of atmosphere
         akap (in): Poisson constant (KAPPA)
         zvir (in): Constant (Rv/Rd-1)
@@ -547,6 +550,7 @@ class LagrangianToEulerian:
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.
         """
+        # TODO: remove unused arguments (and commented code that references them)
         self._init_pe(pe, self._pe1, self._pe2, ptop)
 
         self._moist_cv_pt_pressure(

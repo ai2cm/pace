@@ -73,7 +73,7 @@ class MapNTracer:
             pe2 (out): Eulerian pressure levels
             dp2 (in): Difference in pressure between Eulerian levels
             tracers (inout): Dict mapping tracer names to their correstponding storages
-            qmin (in): Minimum allowed value of the remapped field
+            qmin (in): Minimum allowed value of the remapped fields
         """
         for i, q in enumerate(utils.tracer_variables[0 : self._nq]):
             self._list_of_remap_objects[i](tracers[q], pe1, pe2, self._qs, qmin=q_min)

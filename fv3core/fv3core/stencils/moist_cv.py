@@ -158,7 +158,7 @@ def moist_pt_last_step(
         qice (in):
         qgraupel (in):
         gz (out):
-        pt (out):
+        pt (inout):
         pkz (in):
         dtmp (in):
         r_vir (in):
@@ -217,6 +217,7 @@ def moist_pkz(
         delz (in):
         r_vir (in):
     """
+    # TODO: What is happening with q_con and gz here?
     with computation(PARALLEL), interval(...):
         cvm, gz = moist_cv_nwat6_fn(
             qvapor, qliquid, qrain, qsnow, qice, qgraupel
