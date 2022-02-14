@@ -7,7 +7,7 @@ from setuptools import find_namespace_packages, setup
 setup_requirements: List[str] = []
 
 requirements = ["pace-util", "fv3core", "fv3gfs-physics", "pace-stencils", "dacite"]
-if sys.version_info.major == 3 and sys.version_info.minor == 6:
+if sys.version_info.major == 3 and sys.version_info.minor == 8:
     requirements.append("dataclasses")
 
 test_requirements: List[str] = []
