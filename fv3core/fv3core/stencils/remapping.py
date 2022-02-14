@@ -529,7 +529,7 @@ class LagrangianToEulerian:
         pe (in): Pressure at layer edges
         hs (in): Surface geopotential
         te0_2d (unused): Atmosphere total energy in columns
-        ps (inout): Surface pressure
+        ps (out): Surface pressure
         wsd (in): Vertical velocity of the lowest level
         omga (unused): Vertical pressure velocity
         ak (in): Atmosphere hybrid a coordinate (Pa)
@@ -551,6 +551,7 @@ class LagrangianToEulerian:
         coordinate levels.
         """
         # TODO: remove unused arguments (and commented code that references them)
+        # TODO: can we trim ps or make it a temporary
         self._init_pe(pe, self._pe1, self._pe2, ptop)
 
         self._moist_cv_pt_pressure(
