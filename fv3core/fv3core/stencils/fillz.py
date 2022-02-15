@@ -18,6 +18,17 @@ def fix_tracer(
     sum0: FloatFieldIJ,
     sum1: FloatFieldIJ,
 ):
+    """
+    Args:
+        q (inout):
+        dp (in):
+        dm (out):
+        dm_pos (out):
+        zfix (out):
+        sum0 (out):
+        sum1 (out):
+    """
+    # TODO: can we make everything except q and dp temporaries?
     # reset fields
     with computation(FORWARD), interval(...):
         zfix = 0
@@ -141,6 +152,11 @@ class FillNegativeTracerValues:
         dp2: FloatField,
         tracers: Dict[str, Any],
     ):
+        """
+        Args:
+            dp2 (in): pressure thickness of atmospheric layer
+            tracers (inout): tracers to fix negative masses in
+        """
         tracer_list = [tracers[name] for name in utils.tracer_variables[0 : self._nq]]
         for tracer in tracer_list:
             self._fix_tracer_stencil(
