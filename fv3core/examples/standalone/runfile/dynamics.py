@@ -31,7 +31,7 @@ from fv3core.utils.null_comm import NullComm
 # isort: on
 
 import fv3core
-import fv3core._config as spec
+from pace.stencils.testing.grid import Grid
 
 
 def parse_args() -> Namespace:
@@ -247,7 +247,7 @@ if __name__ == "__main__":
 
         # TODO remove this creation of the legacy grid once everything that
         # references it is updated or removed
-        grid = spec.make_grid_from_namelist(dycore_config, rank, args.backend)
+        grid = Grid.from_namelist(dycore_config, rank, args.backend)
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=args.backend,
             rebuild=False,
