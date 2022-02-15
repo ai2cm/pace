@@ -402,15 +402,15 @@ class DivergenceDamping:
             u (in):
             v (in):
             va (in):
-            v_contra_dxc (out):
+            v_contra_dxc (out): wk converted from a grid to b grid and damped
             ua (in):
             divg_d (inout):
             vc (inout):
             uc (inout):
             delpc (out):
             ke (inout): gets vort added to it
-            wk (in): gets converted by a2b_ord4 and put into vort at end (in)
-            dt: timestep (in)
+            wk (in): gets converted by a2b_ord4 and put into v_contra_dxc
+            dt (in): timestep
         """
         # in the original Fortran, u_contra_dyc is "ptc" and v_contra_dxc is "vort"
         if self._do_zero_order:
