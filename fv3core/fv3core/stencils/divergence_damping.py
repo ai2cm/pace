@@ -45,8 +45,6 @@ def get_delpc(
     sina_v: FloatFieldIJ,
     rarea_c: FloatFieldIJ,
     delpc: FloatField,
-    u_contra_dyc: FloatField,
-    v_contra_dxc: FloatField,
 ):
     """
     Args:
@@ -68,8 +66,6 @@ def get_delpc(
         sina_v (in):
         rarea_c (in):
         delpc (out):
-        u_contra_dyc (out):
-        v_contra_dxc (out):
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -391,7 +387,6 @@ class DivergenceDamping:
         u: FloatField,
         v: FloatField,
         va: FloatField,
-        u_contra_dyc: FloatField,
         v_contra_dxc: FloatField,
         ua: FloatField,
         divg_d: FloatField,
@@ -407,7 +402,6 @@ class DivergenceDamping:
             u (in):
             v (in):
             va (in):
-            u_contra_dyc (out):
             v_contra_dxc (out):
             ua (in):
             divg_d (inout):
@@ -441,8 +435,6 @@ class DivergenceDamping:
                 self._sina_v,
                 self._rarea_c,
                 delpc,
-                u_contra_dyc,
-                v_contra_dxc,
             )
             self._damping(
                 delpc,

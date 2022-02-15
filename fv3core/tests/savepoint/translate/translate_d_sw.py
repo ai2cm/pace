@@ -43,7 +43,6 @@ class TranslateD_SW(TranslateFortranData2Py):
             "diss_est": {},
             "q_con": {},
             "pt": {},
-            "ptc": {},
             "ua": {},
             "va": {},
             "zh": {},

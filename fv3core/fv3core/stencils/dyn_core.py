@@ -668,7 +668,6 @@ class AcousticDynamics:
             self.dgrid_shallow_water_lagrangian_dynamics(
                 state.vt,
                 state.delp,
-                state.ptc,
                 state.pt,
                 state.u,
                 state.v,
