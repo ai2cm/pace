@@ -1,2 +1,2 @@
 -r requirements_base.txt
-git+https://github.com/mpi4py/mpi4py.git@aac3d8f2a56f3d74a75ad32ac0554d63e7ef90ab
+mpi4py>=3.1.3
