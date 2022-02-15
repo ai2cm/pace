@@ -293,7 +293,7 @@ class FutureStencil:
         builder: Optional["StencilBuilder"] = None,
         wrapper: Optional[Callable] = None,
         sleep_time: float = 0.05,
-        timeout: float = 900.0,
+        timeout: float = 600.0,
     ):
         """
         Args:
@@ -301,7 +301,7 @@ class FutureStencil:
             wrapper: Another wrapper with a `stencil_object` attribute to which the
                      compiled stencil can be passed
             sleep_time: Amount of time to sleep between table checks (defaults to 50 ms)
-            timeout: Time to wait for a stencil to compile (defaults to 15 min)
+            timeout: Time to wait for a stencil to compile (defaults to 10 min)
         """
         self._builder = builder
         self._wrapper = wrapper
