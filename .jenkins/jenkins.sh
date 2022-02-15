@@ -77,7 +77,7 @@ echo "PYTHON env ${python_env}"
 if [[ $backend != *numpy* ]];then
     echo "Fetching for exisintg gt_caches"
     cd ${PACE_DIR}/fv3gfs-physics
-    . ${JENKINS_DIR}/fetch_caches.sh $backend $experiment
+    ${JENKINS_DIR}/fetch_caches.sh $backend $experiment
     cd ${PACE_DIR}
 fi
 
