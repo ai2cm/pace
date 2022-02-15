@@ -39,6 +39,22 @@ def precompute(
     peln1: float,
     ptk: float,
 ):
+    """
+    Args:
+        delp (in):
+        cappa (in):
+        pe (in):
+        pe_init (out):
+        dm (out):
+        zh (in):
+        q_con (in):
+        pem (out):
+        peln (out):
+        pk3 (out):
+        gm (out):
+        dz (out):
+        pm (out):
+    """
     with computation(PARALLEL), interval(...):
         dm = delp
         pe_init = pe
@@ -81,6 +97,21 @@ def finalize(
     pe_init: FloatField,
     last_call: bool,
 ):
+    """
+    Args:
+        zs (in):
+        dz (in):
+        zh (out):
+        peln_run (in):
+        peln (out):
+        pk3 (in):
+        pk (out):
+        pem (in):
+        pe (inout):
+        ppe (out):
+        pe_init (in):
+        last_call (in):
+    """
     from __externals__ import beta, use_logp
 
     with computation(PARALLEL), interval(...):
@@ -180,27 +211,30 @@ class RiemannSolver3:
         simulations is not yet implemented.
 
         Args:
-           last_call: boolean, is last acoustic timestep (in)
-           dt: acoustic timestep in seconds (in)
-           cappa: (in)
-           ptop: pressure at top of atmosphere (in)
-           zs: surface geopotential height(in)
-           wsd: vertical velocity of the lowest level (in)
-           delz: vertical delta of atmospheric layer in meters (in)
-           q_con: total condensate mixing ratio (in)
-           delp: vertical delta in pressure (in)
-           pt: potential temperature (in)
-           zh: geopotential height (inout)
-           pe: full hydrostatic pressure(inout)
-           ppe: non-hydrostatic pressure perturbation (inout)
-           pk3: interface pressure raised to power of kappa using constant kappa (inout)
-           pk: interface pressure raised to power of kappa, final acoustic value (inout)
-           peln: logarithm of interface pressure(inout)
-           w: vertical velocity (inout)
+            last_call (in): boolean, is last acoustic timestep
+            dt (in): acoustic timestep in seconds
+            cappa (in):
+            ptop (in): pressure at top of atmosphere
+            zs (in): surface geopotential height
+            wsd (in): vertical velocity of the lowest level
+            delz (inout): vertical delta of atmospheric layer in meters
+            q_con (in): total condensate mixing ratio
+            delp (in): vertical delta in pressure
+            pt (in): potential temperature
+            zh (inout): geopotential height
+            pe (inout): full hydrostatic pressure
+            ppe (out): non-hydrostatic pressure perturbation
+            pk3 (inout): interface pressure raised to power of kappa
+                using constant kappa
+            pk (out): interface pressure raised to power of kappa, final acoustic value
+            peln (out): logarithm of interface pressure, only written if last_call=True
+            w (inout): vertical velocity
         """
+        # TODO: wsd is named wsr at the sim1_solver level, consolidate names
 
         peln1 = math.log(ptop)
         ptk = math.exp(constants.KAPPA * peln1)
+
         self._precompute_stencil(
             delp,
             cappa,

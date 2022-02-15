@@ -12,6 +12,53 @@ def get_c_sw_instance(grid, namelist, stencil_factory):
     )
 
 
+def compute_vorticitytransport_cgrid(
+    c_sw: CGridShallowWaterDynamics,
+    uc,
+    vc,
+    vort_c,
+    ke_c,
+    v,
+    u,
+    dt2: float,
+):
+    """Update the C-Grid x and y velocity fields.
+
+    Args:
+        uc: x-velocity on C-grid (input, output)
+        vc: y-velocity on C-grid (input, output)
+        vort_c: Vorticity on C-grid (input)
+        ke_c: kinetic energy on C-grid (input)
+        v: y-velocity on D-grid (input)
+        u: x-velocity on D-grid (input)
+        dt2: timestep (input)
+    """
+    # TODO: this function is kept because it has a translate test,
+    # if the structure of call changes significantly from this
+    # consider deleting this function and the translate test
+    # or restructuring the savepoint
+    c_sw._update_y_velocity(
+        vort_c,
+        ke_c,
+        u,
+        vc,
+        c_sw.grid_data.cosa_v,
+        c_sw.grid_data.sina_v,
+        c_sw.grid_data.rdyc,
+        dt2,
+    )
+    c_sw._update_x_velocity(
+        vort_c,
+        ke_c,
+        v,
+        uc,
+        c_sw.grid_data.cosa_u,
+        c_sw.grid_data.sina_u,
+        c_sw.grid_data.rdxc,
+        dt2,
+    )
+
+
 class TranslateC_SW(TranslateFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
@@ -149,7 +196,13 @@ class TranslateVorticityTransport_Cgrid(TranslateFortranData2Py):
         cgrid_sw_lagrangian_dynamics = get_c_sw_instance(
             grid, namelist, stencil_factory
         )
-        self.compute_func = cgrid_sw_lagrangian_dynamics._vorticitytransport_cgrid
+
+        def compute_func(*args, **kwargs):
+            return compute_vorticitytransport_cgrid(
+                cgrid_sw_lagrangian_dynamics, *args, **kwargs
+            )
+
+        self.compute_func = compute_func
         self.in_vars["data_vars"] = {
             "uc": {},
             "vc": {},

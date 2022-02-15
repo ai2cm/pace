@@ -26,6 +26,12 @@ def calc_damp(damp4: FloatField, nord: FloatFieldK, damp_c: FloatFieldK, da_min:
 
 
 def fx_calc_stencil_nord(q: FloatField, del6_v: FloatFieldIJ, fx: FloatField):
+    """
+    Args:
+        q (in):
+        del6_v (in):
+        fx (out):
+    """
     from __externals__ import (
         local_ie,
         local_is,
@@ -64,6 +70,12 @@ def fx_calc_stencil_nord(q: FloatField, del6_v: FloatFieldIJ, fx: FloatField):
 
 
 def fy_calc_stencil_nord(q: FloatField, del6_u: FloatFieldIJ, fy: FloatField):
+    """
+    Args:
+        q (in):
+        del6_u (in):
+        fy (out):
+    """
     from __externals__ import (
         local_ie,
         local_is,
@@ -181,6 +193,11 @@ def d2_highorder(fx: FloatField, fy: FloatField, rarea: FloatField):
 
 
 def d2_damp_interval(q: FloatField, d2: FloatField, damp: FloatFieldK):
+    """
+    q (in):
+    d2 (out):
+    damp (in):
+    """
     from __externals__ import (
         local_ie,
         local_is,
@@ -227,6 +244,11 @@ def d2_damp_interval(q: FloatField, d2: FloatField, damp: FloatFieldK):
 
 
 def copy_stencil_interval(q_in: FloatField, q_out: FloatField):
+    """
+    Args:
+        q_in (in):
+        q_out (out):
+    """
     from __externals__ import (
         local_ie,
         local_is,
@@ -294,6 +316,11 @@ def diffusive_damp(
 
 
 def copy_corners_y_nord(q_in: FloatField, q_out: FloatField):
+    """
+    Args:
+        q_in (in):
+        q_out (out):
+    """
     from __externals__ import i_end, i_start, j_end, j_start, nord0, nord1, nord2, nord3
 
     with computation(PARALLEL), interval(0, 1):
@@ -596,6 +623,11 @@ def copy_corners_y_nord(q_in: FloatField, q_out: FloatField):
 
 
 def copy_corners_x_nord(q_in: FloatField, q_out: FloatField):
+    """
+    Args:
+        q_in (in):
+        q_out (out):
+    """
     from __externals__ import i_end, i_start, j_end, j_start, nord0, nord1, nord2, nord3
 
     with computation(PARALLEL), interval(0, 1):
@@ -1169,12 +1201,12 @@ class DelnFluxNoSG:
         TODO: confirm what these args are.
 
         Args:
-            q: Field for which to calculate damped fluxes (in)
-            fx2: ? x-flux on A grid to be damped (out)
-            fy2: ? y-flux on A grid to be damped (out)
-            damp_c: damping coefficient for q (in)
-            d2: ? a damped copy of the q field (in)
-            mass: Mass to weight the diffusive flux by (in)
+            q (in): Field for which to calculate damped fluxes
+            fx2 (out): ? x-flux on A grid to be damped
+            fy2 (out): ? y-flux on A grid to be damped
+            damp_c (in): damping coefficient for q
+            d2 (out): ? a damped copy of the q field
+            mass (unused): if given, apply d2 damping (does not use this as input)
         """
 
         if mass is None:

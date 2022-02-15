@@ -24,6 +24,20 @@ def precompute(
     pm: FloatField,
     ptop: float,
 ):
+    """
+    Args:
+        delpc (in):
+        cappa (in):
+        w3 (in):
+        w (out):
+        gz (in):
+        dm (out):
+        q_con (in):
+        pem (out):
+        dz (out):
+        gm (out):
+        pm (out):
+    """
     with computation(PARALLEL), interval(...):
         dm = delpc
         w = w3
@@ -52,6 +66,15 @@ def finalize(
     gz: FloatField,
     ptop: float,
 ):
+    """
+    Args:
+        pe2 (in):
+        pem (in):
+        hs (in):
+        dz (in):
+        pef (out):
+        gz (out):
+    """
     with computation(PARALLEL):
         with interval(0, 1):
             pef = ptop
@@ -128,18 +151,20 @@ class RiemannSolverC:
         and heights are updated.
 
         Args:
-           dt2: acoustic timestep in seconds (in)
-           cappa: ??? (in)
-           ptop: pressure at top of atmosphere (in)
-           hs: ??? (in)
-           ws: vertical velocity of the lowest level (in)
-           ptc: potential temperature (in)
-           q_con: total condensate mixing ratio (in)
-           delpc: vertical delta in pressure (in)
-           gz: geopotential heigh (inout)
-           pef: full hydrostatic pressure(inout)
-           w3: vertical velocity (inout)
+           dt2 (in): acoustic timestep in seconds
+           cappa (in): ???
+           ptop (in): pressure at top of atmosphere
+           hs (in): ???
+           ws (in): vertical velocity of the lowest level
+           ptc (in): potential temperature
+           q_con (in): total condensate mixing ratio
+           delpc (in): vertical delta in pressure
+           gz (inout): geopotential height
+           pef (out): full hydrostatic pressure
+           w3 (in): vertical velocity
         """
+        # TODO: this class is extremely similar in structure to RiemannSolver3,
+        # can or should they be merged?
         self._precompute_stencil(
             delpc,
             cappa,
