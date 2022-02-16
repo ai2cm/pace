@@ -29,23 +29,6 @@ def apply_y_flux_divergence(q: FloatField, q_y_flux: FloatField) -> FloatField:
     """
     return q + q_y_flux - q_y_flux[0, 1, 0]
 
-    # self.y_piecewise_parabolic_inner(
-    #     q.y_differentiable, cry, self._q_y_advected_mean
-    # )
-    # # q_y_advected_mean is 1/Delta_area * curly-F, where curly-F is defined in
-    # # equation 4.3 of the FV3 documentation and Delta_area is the advected area
-    # # (y_area_flux)
-    # self.q_i_stencil(
-    #     q.y_differentiable,
-    #     self._area,
-    #     y_area_flux,
-    #     self._q_y_advected_mean,
-    #     self._q_advected_y,
-    # )  # q_advected_y out is f(q) in eq 4.18 of FV3 documentation
-    # self.x_piecewise_parabolic_outer(
-    #     self._q_advected_y, crx, self._q_advected_y_x_advected_mean
-    # )
-
 
 def q_i_stencil(
     q: FloatField,
@@ -53,9 +36,9 @@ def q_i_stencil(
     courant_y: FloatField,
     area: FloatFieldIJ,
     y_area_flux: FloatField,
-    q_advected_along_y: FloatField,
+    q_y_advected_mean: FloatField,
     # q_i: FloatField,
-    q_i_advected_along_x: FloatField,
+    q_advected_y_x_advected_mean: FloatField,
 ):
     """
     Args:
@@ -67,30 +50,15 @@ def q_i_stencil(
         q_i_flux_x (out):
     """
     with computation(PARALLEL), interval(...):
-        q_advected_along_y = compute_y_flux_interior(q, courant_y)
-        fyy = y_area_flux * q_advected_along_y
+        q_y_advected_mean = compute_y_flux_interior(q, courant_y)
+        fyy = y_area_flux * q_y_advected_mean
         # note the units of area cancel out, because area is present in all
         # terms in the numerator and denominator of q_i
         # corresponds to FV3 documentation eq 4.18, q_i = f(q)
-        q_i = (q * area + fyy - fyy[0, 1, 0]) / (
+        q_advected_y = (q * area + fyy - fyy[0, 1, 0]) / (
             area + y_area_flux - y_area_flux[0, 1, 0]
         )
-        q_i_advected_along_x = compute_x_flux_interior(q_i, courant_x)
-
-
-# self.x_piecewise_parabolic_inner(
-#     q.x_differentiable, crx, self._q_x_advected_mean
-# )
-# self.q_j_stencil(
-#     q.x_differentiable,
-#     self._area,
-#     x_area_flux,
-#     self._q_x_advected_mean,
-#     self._q_advected_x,
-# )
-# self.y_piecewise_parabolic_outer(
-#     self._q_advected_x, cry, self._q_advected_x_y_advected_mean
-# )
+        q_advected_y_x_advected_mean = compute_x_flux_interior(q_advected_y, courant_x)
 
 
 def q_j_stencil(
@@ -99,9 +67,9 @@ def q_j_stencil(
     courant_y: FloatField,
     area: FloatFieldIJ,
     x_area_flux: FloatField,
-    fx2: FloatField,
-    q_j: FloatField,
-    q_j_advected_along_y: FloatField,
+    q_x_advected_mean: FloatField,
+    q_advected_x: FloatField,
+    q_advected_x_y_advected_mean: FloatField,
 ):
     """
     Args:
@@ -112,11 +80,11 @@ def q_j_stencil(
         q_j (out):
     """
     with computation(PARALLEL), interval(...):
-        fx2 = compute_x_flux_interior(q, courant_x)
-        fx1 = x_area_flux * fx2
+        q_x_advected_mean = compute_x_flux_interior(q, courant_x)
+        fxx = x_area_flux * q_x_advected_mean
         area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
-        q_j = (q * area + fx1 - fx1[1, 0, 0]) / area_with_x_flux
-        q_j_advected_along_y = compute_y_flux_interior(q_j, courant_y)
+        q_advected_x = (q * area + fxx - fxx[1, 0, 0]) / area_with_x_flux
+        q_advected_x_y_advected_mean = compute_y_flux_interior(q_advected_x, courant_y)
 
 
 def final_fluxes(
