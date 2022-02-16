@@ -31,14 +31,17 @@ def apply_y_flux_divergence(q: FloatField, q_y_flux: FloatField) -> FloatField:
 
 
 def q_i_stencil(
-    q: FloatField,
+    q_x_differentiable: FloatField,
+    q_y_differentiable: FloatField,
     courant_x: FloatField,
     courant_y: FloatField,
     area: FloatFieldIJ,
+    x_area_flux: FloatField,
     y_area_flux: FloatField,
     q_y_advected_mean: FloatField,
-    # q_i: FloatField,
     q_advected_y_x_advected_mean: FloatField,
+    q_x_advected_mean: FloatField,
+    q_advected_x_y_advected_mean: FloatField,
 ):
     """
     Args:
@@ -50,15 +53,23 @@ def q_i_stencil(
         q_i_flux_x (out):
     """
     with computation(PARALLEL), interval(...):
-        q_y_advected_mean = compute_y_flux_interior(q, courant_y)
+        q_y_advected_mean = compute_y_flux_interior(q_y_differentiable, courant_y)
         fyy = y_area_flux * q_y_advected_mean
         # note the units of area cancel out, because area is present in all
         # terms in the numerator and denominator of q_i
         # corresponds to FV3 documentation eq 4.18, q_i = f(q)
-        q_advected_y = (q * area + fyy - fyy[0, 1, 0]) / (
+        q_advected_y = (q_y_differentiable * area + fyy - fyy[0, 1, 0]) / (
             area + y_area_flux - y_area_flux[0, 1, 0]
         )
         q_advected_y_x_advected_mean = compute_x_flux_interior(q_advected_y, courant_x)
+
+        q_x_advected_mean = compute_x_flux_interior(q_x_differentiable, courant_x)
+        fxx = x_area_flux * q_x_advected_mean
+        area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
+        q_advected_x = (
+            q_x_differentiable * area + fxx - fxx[1, 0, 0]
+        ) / area_with_x_flux
+        q_advected_x_y_advected_mean = compute_y_flux_interior(q_advected_x, courant_y)
 
 
 def q_j_stencil(
@@ -381,14 +392,17 @@ class FiniteVolumeTransport:
         # equation 4.3 of the FV3 documentation and Delta_area is the advected area
         # (y_area_flux)
         self.q_i_stencil(
+            q.x_differentiable,
             q.y_differentiable,
             crx,
             cry,
             self._area,
+            x_area_flux,
             y_area_flux,
             self._q_y_advected_mean,
-            # self._q_advected_y,
             self._q_advected_y_x_advected_mean,
+            self._q_x_advected_mean,
+            self._q_advected_x_y_advected_mean,
         )  # q_advected_y out is f(q) in eq 4.18 of FV3 documentation
         # self.x_piecewise_parabolic_outer(
         #     self._q_advected_y, crx, self._q_advected_y_x_advected_mean
@@ -399,16 +413,16 @@ class FiniteVolumeTransport:
         # self.x_piecewise_parabolic_inner(
         #     q.x_differentiable, crx, self._q_x_advected_mean
         # )
-        self.q_j_stencil(
-            q.x_differentiable,
-            crx,
-            cry,
-            self._area,
-            x_area_flux,
-            self._q_x_advected_mean,
-            self._q_advected_x,
-            self._q_advected_x_y_advected_mean,
-        )
+        # self.q_j_stencil(
+        #     q.x_differentiable,
+        #     crx,
+        #     cry,
+        #     self._area,
+        #     x_area_flux,
+        #     self._q_x_advected_mean,
+        #     self._q_advected_x,
+        #     self._q_advected_x_y_advected_mean,
+        # )
         # self.y_piecewise_parabolic_outer(
         #     self._q_advected_x, cry, self._q_advected_x_y_advected_mean
         # )
