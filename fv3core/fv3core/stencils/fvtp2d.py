@@ -42,6 +42,10 @@ def q_i_stencil(
     q_advected_y_x_advected_mean: FloatField,
     q_x_advected_mean: FloatField,
     q_advected_x_y_advected_mean: FloatField,
+    x_unit_flux: FloatField,
+    y_unit_flux: FloatField,
+    x_flux: FloatField,
+    y_flux: FloatField,
 ):
     """
     Args:
@@ -70,6 +74,15 @@ def q_i_stencil(
             q_x_differentiable * area + fxx - fxx[1, 0, 0]
         ) / area_with_x_flux
         q_advected_x_y_advected_mean = compute_y_flux_interior(q_advected_x, courant_y)
+    with computation(PARALLEL), interval(...):
+        with horizontal(region[:, :-1]):
+            x_flux = (
+                0.5 * (q_advected_y_x_advected_mean + q_x_advected_mean) * x_unit_flux
+            )
+        with horizontal(region[:-1, :]):
+            y_flux = (
+                0.5 * (q_advected_x_y_advected_mean + q_y_advected_mean) * y_unit_flux
+            )
 
 
 def q_j_stencil(
@@ -403,6 +416,10 @@ class FiniteVolumeTransport:
             self._q_advected_y_x_advected_mean,
             self._q_x_advected_mean,
             self._q_advected_x_y_advected_mean,
+            x_unit_flux,
+            y_unit_flux,
+            q_x_flux,
+            q_y_flux,
         )  # q_advected_y out is f(q) in eq 4.18 of FV3 documentation
         # self.x_piecewise_parabolic_outer(
         #     self._q_advected_y, crx, self._q_advected_y_x_advected_mean
@@ -427,16 +444,16 @@ class FiniteVolumeTransport:
         #     self._q_advected_x, cry, self._q_advected_x_y_advected_mean
         # )
 
-        self.stencil_transport_flux(
-            self._q_advected_y_x_advected_mean,
-            self._q_x_advected_mean,
-            self._q_advected_x_y_advected_mean,
-            self._q_y_advected_mean,
-            x_unit_flux,
-            y_unit_flux,
-            q_x_flux,
-            q_y_flux,
-        )
+        # self.stencil_transport_flux(
+        #     self._q_advected_y_x_advected_mean,
+        #     self._q_x_advected_mean,
+        #     self._q_advected_x_y_advected_mean,
+        #     self._q_y_advected_mean,
+        #     x_unit_flux,
+        #     y_unit_flux,
+        #     q_x_flux,
+        #     q_y_flux,
+        # )
         if self.delnflux is not None:
             self.delnflux(q.base, q_x_flux, q_y_flux, mass=mass)
 
