@@ -7,8 +7,8 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import pace.dsl.gt4py_utils as utils
 import pace.stencils.corners as corners
 from fv3core.stencils.delnflux import DelnFlux
-from fv3core.stencils.xppm import XPiecewiseParabolic, compute_x_flux_interior
-from fv3core.stencils.yppm import YPiecewiseParabolic, compute_y_flux_interior
+from fv3core.stencils.xppm import compute_x_flux_interior
+from fv3core.stencils.yppm import compute_y_flux_interior
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import DampingCoefficients, GridData
@@ -78,12 +78,30 @@ def q_i_stencil(
         q_i_advected_along_x = compute_x_flux_interior(q_i, courant_x)
 
 
+# self.x_piecewise_parabolic_inner(
+#     q.x_differentiable, crx, self._q_x_advected_mean
+# )
+# self.q_j_stencil(
+#     q.x_differentiable,
+#     self._area,
+#     x_area_flux,
+#     self._q_x_advected_mean,
+#     self._q_advected_x,
+# )
+# self.y_piecewise_parabolic_outer(
+#     self._q_advected_x, cry, self._q_advected_x_y_advected_mean
+# )
+
+
 def q_j_stencil(
     q: FloatField,
+    courant_x: FloatField,
+    courant_y: FloatField,
     area: FloatFieldIJ,
     x_area_flux: FloatField,
     fx2: FloatField,
     q_j: FloatField,
+    q_j_advected_along_y: FloatField,
 ):
     """
     Args:
@@ -94,9 +112,11 @@ def q_j_stencil(
         q_j (out):
     """
     with computation(PARALLEL), interval(...):
+        fx2 = compute_x_flux_interior(q, courant_x)
         fx1 = x_area_flux * fx2
         area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
         q_j = (q * area + fx1 - fx1[1, 0, 0]) / area_with_x_flux
+        q_j_advected_along_y = compute_y_flux_interior(q_j, courant_y)
 
 
 def final_fluxes(
@@ -275,35 +295,42 @@ class FiniteVolumeTransport:
                 **ax_offsets,
             },
         )
-        self.x_piecewise_parabolic_outer = XPiecewiseParabolic(
-            stencil_factory=stencil_factory,
-            dxa=grid_data.dxa,
-            grid_type=grid_type,
-            iord=ord_outer,
-            origin=idx.origin_compute(),
-            domain=idx.domain_compute(add=(1, 1, 1)),
-        )
-        self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
-            stencil_factory=stencil_factory,
-            dxa=grid_data.dxa,
-            grid_type=grid_type,
-            iord=ord_inner,
-            origin=idx.origin_compute(add=(0, -idx.n_halo, 0)),
-            domain=idx.domain_compute(add=(1, 1 + 2 * idx.n_halo, 1)),
-        )
+        # self.x_piecewise_parabolic_outer = XPiecewiseParabolic(
+        #     stencil_factory=stencil_factory,
+        #     dxa=grid_data.dxa,
+        #     grid_type=grid_type,
+        #     iord=ord_outer,
+        #     origin=idx.origin_compute(),
+        #     domain=idx.domain_compute(add=(1, 1, 1)),
+        # )
+        # self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
+        #     stencil_factory=stencil_factory,
+        #     dxa=grid_data.dxa,
+        #     grid_type=grid_type,
+        #     iord=ord_inner,
+        #     origin=idx.origin_compute(add=(0, -idx.n_halo, 0)),
+        #     domain=idx.domain_compute(add=(1, 1 + 2 * idx.n_halo, 1)),
+        # )
         self.q_j_stencil = stencil_factory.from_origin_domain(
             q_j_stencil,
-            origin=idx.origin_full(add=(3, 0, 0)),
-            domain=idx.domain_full(add=(-3, 0, 1)),
+            origin=origin,
+            domain=domain,
+            externals={
+                "jord": ord_outer,
+                "iord": ord_inner,
+                "mord": abs(ord_inner),
+                "yt_minmax": True,
+                **ax_offsets,
+            },
         )
-        self.y_piecewise_parabolic_outer = YPiecewiseParabolic(
-            stencil_factory=stencil_factory,
-            dya=grid_data.dya,
-            grid_type=grid_type,
-            jord=ord_outer,
-            origin=idx.origin_compute(),
-            domain=idx.domain_compute(add=(1, 1, 1)),
-        )
+        # self.y_piecewise_parabolic_outer = YPiecewiseParabolic(
+        #     stencil_factory=stencil_factory,
+        #     dya=grid_data.dya,
+        #     grid_type=grid_type,
+        #     jord=ord_outer,
+        #     origin=idx.origin_compute(),
+        #     domain=idx.domain_compute(add=(1, 1, 1)),
+        # )
         self.stencil_transport_flux = stencil_factory.from_origin_domain(
             final_fluxes,
             origin=idx.origin_compute(),
@@ -401,19 +428,22 @@ class FiniteVolumeTransport:
         # q_advected_y_x_advected_mean is now rho^n + F(rho^y) in PL07 eq 16
 
         # similarly below for x<->y
-        self.x_piecewise_parabolic_inner(
-            q.x_differentiable, crx, self._q_x_advected_mean
-        )
+        # self.x_piecewise_parabolic_inner(
+        #     q.x_differentiable, crx, self._q_x_advected_mean
+        # )
         self.q_j_stencil(
             q.x_differentiable,
+            crx,
+            cry,
             self._area,
             x_area_flux,
             self._q_x_advected_mean,
             self._q_advected_x,
+            self._q_advected_x_y_advected_mean,
         )
-        self.y_piecewise_parabolic_outer(
-            self._q_advected_x, cry, self._q_advected_x_y_advected_mean
-        )
+        # self.y_piecewise_parabolic_outer(
+        #     self._q_advected_x, cry, self._q_advected_x_y_advected_mean
+        # )
 
         self.stencil_transport_flux(
             self._q_advected_y_x_advected_mean,
