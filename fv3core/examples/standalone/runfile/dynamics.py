@@ -15,6 +15,7 @@ from mpi4py import MPI
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3core.testing
 import pace.dsl
+import pace.dsl.future_stencil as future_stencil
 from fv3core._config import DynamicalCoreConfig
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
@@ -221,6 +222,10 @@ if __name__ == "__main__":
     timer.start("total")
     with timer.clock("initialization"):
         args = parse_args()
+        print(
+            "Using StencilTable with buffer size "
+            + str(2 * future_stencil.StencilTable.MAX_SIZE + 1)
+        )
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
 
