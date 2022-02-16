@@ -7,7 +7,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import pace.dsl.gt4py_utils as utils
 import pace.stencils.corners as corners
 from fv3core.stencils.delnflux import DelnFlux
-from fv3core.stencils.xppm import XPiecewiseParabolic
+from fv3core.stencils.xppm import XPiecewiseParabolic, compute_x_flux_interior
 from fv3core.stencils.yppm import YPiecewiseParabolic, compute_y_flux_interior
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
@@ -42,26 +42,32 @@ def apply_y_flux_divergence(q: FloatField, q_y_flux: FloatField) -> FloatField:
     #     self._q_y_advected_mean,
     #     self._q_advected_y,
     # )  # q_advected_y out is f(q) in eq 4.18 of FV3 documentation
+    # self.x_piecewise_parabolic_outer(
+    #     self._q_advected_y, crx, self._q_advected_y_x_advected_mean
+    # )
 
 
 def q_i_stencil(
     q: FloatField,
-    courant: FloatField,
+    courant_x: FloatField,
+    courant_y: FloatField,
     area: FloatFieldIJ,
     y_area_flux: FloatField,
     q_advected_along_y: FloatField,
-    q_i: FloatField,
+    # q_i: FloatField,
+    q_i_advected_along_x: FloatField,
 ):
     """
     Args:
         q (in):
         area (in):
         y_area_flux (in):
-        q_advected_along_y (in):
+        q_flux_y (out):
         q_i (out):
+        q_i_flux_x (out):
     """
     with computation(PARALLEL), interval(...):
-        q_advected_along_y = compute_y_flux_interior(q, courant)
+        q_advected_along_y = compute_y_flux_interior(q, courant_y)
         fyy = y_area_flux * q_advected_along_y
         # note the units of area cancel out, because area is present in all
         # terms in the numerator and denominator of q_i
@@ -69,6 +75,7 @@ def q_i_stencil(
         q_i = (q * area + fyy - fyy[0, 1, 0]) / (
             area + y_area_flux - y_area_flux[0, 1, 0]
         )
+        q_i_advected_along_x = compute_x_flux_interior(q_i, courant_x)
 
 
 def q_j_stencil(
@@ -249,16 +256,20 @@ class FiniteVolumeTransport:
         #     origin=idx.origin_compute(add=(-idx.n_halo, 0, 0)),
         #     domain=idx.domain_compute(add=(1 + 2 * idx.n_halo, 1, 1)),
         # )
-        origin = idx.origin_full(add=(0, 3, 0))
-        domain = idx.domain_full(add=(0, -5, 1))
+        # origin = idx.origin_full(add=(0, 3, 0))
+        # domain = idx.domain_full(add=(0, -5, 1))
+        origin = idx.origin_compute()
+        domain = idx.domain_compute(add=(1, 1, 1))
         print(origin, domain)
         ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
+        assert ord_inner == ord_outer
         self.q_i_stencil = stencil_factory.from_origin_domain(
             q_i_stencil,
             origin=origin,
             domain=domain,
             externals={
                 "jord": ord_inner,
+                "iord": ord_outer,
                 "mord": abs(ord_inner),
                 "yt_minmax": True,
                 **ax_offsets,
@@ -376,15 +387,17 @@ class FiniteVolumeTransport:
         # (y_area_flux)
         self.q_i_stencil(
             q.y_differentiable,
+            crx,
             cry,
             self._area,
             y_area_flux,
             self._q_y_advected_mean,
-            self._q_advected_y,
+            # self._q_advected_y,
+            self._q_advected_y_x_advected_mean,
         )  # q_advected_y out is f(q) in eq 4.18 of FV3 documentation
-        self.x_piecewise_parabolic_outer(
-            self._q_advected_y, crx, self._q_advected_y_x_advected_mean
-        )
+        # self.x_piecewise_parabolic_outer(
+        #     self._q_advected_y, crx, self._q_advected_y_x_advected_mean
+        # )
         # q_advected_y_x_advected_mean is now rho^n + F(rho^y) in PL07 eq 16
 
         # similarly below for x<->y
