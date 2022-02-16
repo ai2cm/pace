@@ -764,6 +764,8 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_gy = make_storage()
         self._tmp_dw = make_storage()
         self._tmp_wk = make_storage()
+        self._vorticity_agrid = make_storage()
+        self._vorticity_bgrid_damped = make_storage()
         self._tmp_fx2 = make_storage()
         self._tmp_fy2 = make_storage()
         self._tmp_damp_3d = utils.make_storage_from_shape(
@@ -1046,12 +1048,18 @@ class DGridShallowWaterLagrangianDynamics:
             self._tmp_fy,
         )
 
+        # TODO: part of flux_capacitor_stencil (updating cx, cy)
+        # should be mergeable with fv_prep, the other part (updating xflux, yflux)
+        # should be mergeable with any compute domain stencil in this object
+
         self._flux_capacitor_stencil(
             cx, cy, mfx, mfy, crx, cry, self._tmp_fx, self._tmp_fy
         )
 
         if not self.hydrostatic:
 
+            # TODO: output value for tmp_wk here is never used, refactor so it is
+            # not unnecessarily computed
             self.delnflux_nosg_w(
                 w,
                 self._tmp_fx2,
@@ -1173,7 +1181,7 @@ class DGridShallowWaterLagrangianDynamics:
             self.grid_data.dx,
             self.grid_data.dy,
             self.grid_data.rarea,
-            self._tmp_wk,
+            self._vorticity_agrid,
         )
 
         # TODO if namelist.d_f3d and ROT3 unimplemented
@@ -1184,26 +1192,26 @@ class DGridShallowWaterLagrangianDynamics:
             u,
             v,
             va,
-            self._tmp_vort,
+            self._vorticity_bgrid_damped,
             ua,
             divgd,
             vc,
             uc,
             delpc,
             self._tmp_ke,
-            self._tmp_wk,
+            self._vorticity_agrid,
             dt,
         )
 
         self._vort_differencing_stencil(
-            self._tmp_vort,
+            self._vorticity_bgrid_damped,
             self._vort_x_delta,
             self._vort_y_delta,
             self._column_namelist["d_con"],
         )
 
         # Vorticity transport
-        self._compute_vort_stencil(self._tmp_wk, self._f0, zh, self._tmp_vort)
+        self._compute_vort_stencil(self._vorticity_agrid, self._f0, zh, self._tmp_vort)
 
         self.fvtp2d_vt_nodelnflux(
             self._copy_corners(self._tmp_vort),
@@ -1230,7 +1238,7 @@ class DGridShallowWaterLagrangianDynamics:
         )
 
         self.delnflux_nosg_v(
-            self._tmp_wk,
+            self._vorticity_agrid,
             self._tmp_ut,
             self._tmp_vt,
             self._delnflux_damp_vt,
