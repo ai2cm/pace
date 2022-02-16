@@ -261,9 +261,12 @@ def test_sequential_savepoint(
         output = testobj.compute(input_data)
         failing_names = []
         passing_names = []
+        all_ref_data = {}
         for varname in testobj.serialnames(testobj.out_vars):
+            all_ref_data[varname] = []
             ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
             ref_data = serializer.read(varname, savepoint_out)
+            all_ref_data[varname].append(ref_data)
             if hasattr(testobj, "subset_output"):
                 ref_data = testobj.subset_output(varname, ref_data)
             with subtests.test(varname=varname):
@@ -294,12 +297,13 @@ def test_sequential_savepoint(
                     testobj,
                     [input_data],
                     [output],
-                    ref_data,
+                    all_ref_data,
                     failing_names,
                     out_filename,
                 )
             except Exception as error:
                 print(f"TestSequential SaveNetCDF Error: {error}")
+                raise error
         assert (
             failing_names == []
         ), f"only the following variables passed: {passing_names}"
@@ -535,8 +539,12 @@ def save_netcdf(
 
     data_vars = {}
     for i, varname in enumerate(failing_names):
-        dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
-        attrs = {"units": testobj.outputs[varname]["units"]}
+        if hasattr(testobj, "outputs"):
+            dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
+            attrs = {"units": testobj.outputs[varname]["units"]}
+        else:
+            dims = [f"dim_{i}" for i in range(len(output_list[0][varname].shape))]
+            attrs = {}
         try:
             data_vars[f"{varname}_in"] = xr.DataArray(
                 np.stack([in_data[varname] for in_data in inputs_list]),
