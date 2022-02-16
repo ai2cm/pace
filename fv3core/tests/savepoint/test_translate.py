@@ -246,56 +246,66 @@ def test_sequential_savepoint(
     print_domains,
     xy_indices=True,
 ):
-    caplog.set_level(logging.DEBUG, logger="fv3core")
-    if testobj is None:
-        pytest.xfail(f"no translate object available for savepoint {test_name}")
-    # Reduce error threshold for GPU
-    if stencil_config.is_gpu_backend:
-        testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
-        testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
-    if threshold_overrides is not None:
-        process_override(threshold_overrides, testobj, test_name, backend)
-    input_data = testobj.collect_input_data(serializer, savepoint_in)
-    # run python version of functionality
-    output = testobj.compute(input_data)
-    failing_names = []
-    passing_names = []
-    for varname in testobj.serialnames(testobj.out_vars):
-        ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
-        ref_data = serializer.read(varname, savepoint_out)
-        if hasattr(testobj, "subset_output"):
-            ref_data = testobj.subset_output(varname, ref_data)
-        with subtests.test(varname=varname):
-            failing_names.append(varname)
-            output_data = gt_utils.asarray(output[varname])
-            assert success(
-                output_data,
-                ref_data,
-                testobj.max_error,
-                ignore_near_zero,
-                testobj.near_zero,
-            ), sample_wherefail(
-                output_data,
-                ref_data,
-                testobj.max_error,
-                print_failures,
-                failure_stride,
-                test_name,
-                ignore_near_zero_errors=ignore_near_zero,
-                near_zero=testobj.near_zero,
-                xy_indices=xy_indices,
-            )
-            passing_names.append(failing_names.pop())
-    if len(failing_names) > 0:
-        out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
-        try:
-            save_netcdf(
-                testobj, [input_data], [output], ref_data, failing_names, out_filename
-            )
-        except Exception as error:
-            print(f"TestSequential SaveNetCDF Error: {error}")
-    assert failing_names == [], f"only the following variables passed: {passing_names}"
-    assert len(passing_names) > 0, "No tests passed"
+    if rank == 4:
+        caplog.set_level(logging.DEBUG, logger="fv3core")
+        if testobj is None:
+            pytest.xfail(f"no translate object available for savepoint {test_name}")
+        # Reduce error threshold for GPU
+        if stencil_config.is_gpu_backend:
+            testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
+            testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
+        if threshold_overrides is not None:
+            process_override(threshold_overrides, testobj, test_name, backend)
+        input_data = testobj.collect_input_data(serializer, savepoint_in)
+        # run python version of functionality
+        output = testobj.compute(input_data)
+        failing_names = []
+        passing_names = []
+        for varname in testobj.serialnames(testobj.out_vars):
+            ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
+            ref_data = serializer.read(varname, savepoint_out)
+            if hasattr(testobj, "subset_output"):
+                ref_data = testobj.subset_output(varname, ref_data)
+            with subtests.test(varname=varname):
+                failing_names.append(varname)
+                output_data = gt_utils.asarray(output[varname])
+                assert success(
+                    output_data,
+                    ref_data,
+                    testobj.max_error,
+                    ignore_near_zero,
+                    testobj.near_zero,
+                ), sample_wherefail(
+                    output_data,
+                    ref_data,
+                    testobj.max_error,
+                    print_failures,
+                    failure_stride,
+                    test_name,
+                    ignore_near_zero_errors=ignore_near_zero,
+                    near_zero=testobj.near_zero,
+                    xy_indices=xy_indices,
+                )
+                passing_names.append(failing_names.pop())
+        if len(failing_names) > 0:
+            out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
+            try:
+                save_netcdf(
+                    testobj,
+                    [input_data],
+                    [output],
+                    ref_data,
+                    failing_names,
+                    out_filename,
+                )
+            except Exception as error:
+                print(f"TestSequential SaveNetCDF Error: {error}")
+        assert (
+            failing_names == []
+        ), f"only the following variables passed: {passing_names}"
+        assert len(passing_names) > 0, "No tests passed"
+    else:
+        print(rank)
 
 
 def get_serializer(data_path, rank):
