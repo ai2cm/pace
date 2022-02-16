@@ -966,7 +966,6 @@ class DGridShallowWaterLagrangianDynamics:
         self,
         delpc,
         delp,
-        ptc,
         pt,
         u,
         v,
@@ -1000,7 +999,6 @@ class DGridShallowWaterLagrangianDynamics:
         Args:
             delpc (inout): C-grid  vertical delta in pressure
             delp (inout): D-grid vertical delta in pressure
-            ptc : C-grid potential temperature
             pt (inout): D-grid potential teperature
             u (inout): D-grid x-velocity
             v (inout): D-grid y-velocity
@@ -1186,7 +1184,6 @@ class DGridShallowWaterLagrangianDynamics:
             u,
             v,
             va,
-            ptc,
             self._tmp_vort,
             ua,
             divgd,
