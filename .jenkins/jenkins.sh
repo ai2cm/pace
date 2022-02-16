@@ -54,6 +54,7 @@ fi
 
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BUILDENV_DIR=$JENKINS_DIR/../buildenv
+PACE_DIR=$JENKINS_DIR/../
 
 # Read arguments
 action="$1"
@@ -75,7 +76,9 @@ echo "PYTHON env ${python_env}"
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
     echo "Fetching for exisintg gt_caches"
-    . ${JENKINS_DIR}/actions/fetch_caches.sh $backend $experiment
+    cd ${PACE_DIR}/fv3gfs-physics
+    ${JENKINS_DIR}/fetch_caches.sh $backend $experiment
+    cd ${PACE_DIR}
 fi
 
 # load machine dependent environment

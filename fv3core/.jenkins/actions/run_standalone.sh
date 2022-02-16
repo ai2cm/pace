@@ -114,7 +114,7 @@ echo "Profile artifact directory:   ${PROFILE_DIR}"
 
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
-    . ${ROOT_DIR}/.jenkins/actions/fetch_caches.sh $backend $experiment
+    . ${ROOT_DIR}/../.jenkins/fetch_caches.sh $backend $experiment
 fi
 
 # run standalone

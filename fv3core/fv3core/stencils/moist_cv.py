@@ -149,6 +149,20 @@ def moist_pt_last_step(
     dtmp: float,
     r_vir: float,
 ):
+    """
+    Args:
+        qvapor (in):
+        qliquid (in):
+        qrain (in):
+        qsnow (in):
+        qice (in):
+        qgraupel (in):
+        gz (out):
+        pt (inout):
+        pkz (in):
+        dtmp (in):
+        r_vir (in):
+    """
     with computation(PARALLEL), interval(...):
         # if nwat == 2:
         #    gz = qliquid if qliquid > 0. else 0.
@@ -185,6 +199,25 @@ def moist_pkz(
     delz: FloatField,
     r_vir: float,
 ):
+    """
+    Args:
+        qvapor (in):
+        qliquid (in):
+        qrain (in):
+        qsnow (in):
+        qice (in):
+        qgraupel (in):
+        q_con (out):
+        gz (out):
+        cvm (out):
+        pkz (out):
+        pt (in):
+        cappa (out):
+        delp (in):
+        delz (in):
+        r_vir (in):
+    """
+    # TODO: What is happening with q_con and gz here?
     with computation(PARALLEL), interval(...):
         cvm, gz = moist_cv_nwat6_fn(
             qvapor, qliquid, qrain, qsnow, qice, qgraupel

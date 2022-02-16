@@ -24,6 +24,7 @@ from pace.dsl.stencil import StencilFactory
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.stencils.testing import TranslateGrid, TranslateUpdateDWindsPhys
+from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
 
@@ -234,9 +235,7 @@ class SerialboxConfig(InitializationConfig):
             )
             grid_data = grid.grid_data
         else:
-            grid = fv3core._config.make_grid_with_data_from_namelist(
-                self._namelist, communicator, backend
-            )
+            grid = Grid.with_data_from_namelist(self._namelist, communicator, backend)
             metric_terms = pace.util.grid.MetricTerms(
                 quantity_factory=quantity_factory, communicator=communicator
             )

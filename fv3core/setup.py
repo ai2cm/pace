@@ -21,15 +21,15 @@ test_requirements = ["pytest==5.2.2", "pytest-subtests>=0.3.0", "serialbox"]
 setup(
     author="Vulcan Technologies LLC",
     author_email="RheaG@vulcan.com",
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     description="fv3core is a gt4py-based FV3 dynamical core for atmospheric models",
     install_requires=requirements,

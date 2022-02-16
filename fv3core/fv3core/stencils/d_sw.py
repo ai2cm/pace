@@ -1192,7 +1192,7 @@ class DGridShallowWaterLagrangianDynamics:
             u,
             v,
             va,
-            self._vorticity_bgrid_damped,
+            self._tmp_vort,
             ua,
             divgd,
             vc,
