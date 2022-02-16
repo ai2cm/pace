@@ -8,7 +8,7 @@ import pace.dsl.gt4py_utils as utils
 import pace.stencils.corners as corners
 from fv3core.stencils.delnflux import DelnFlux
 from fv3core.stencils.xppm import XPiecewiseParabolic
-from fv3core.stencils.yppm import YPiecewiseParabolic
+from fv3core.stencils.yppm import YPiecewiseParabolic, compute_y_flux_interior
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import DampingCoefficients, GridData
@@ -29,9 +29,24 @@ def apply_y_flux_divergence(q: FloatField, q_y_flux: FloatField) -> FloatField:
     """
     return q + q_y_flux - q_y_flux[0, 1, 0]
 
+    # self.y_piecewise_parabolic_inner(
+    #     q.y_differentiable, cry, self._q_y_advected_mean
+    # )
+    # # q_y_advected_mean is 1/Delta_area * curly-F, where curly-F is defined in
+    # # equation 4.3 of the FV3 documentation and Delta_area is the advected area
+    # # (y_area_flux)
+    # self.q_i_stencil(
+    #     q.y_differentiable,
+    #     self._area,
+    #     y_area_flux,
+    #     self._q_y_advected_mean,
+    #     self._q_advected_y,
+    # )  # q_advected_y out is f(q) in eq 4.18 of FV3 documentation
+
 
 def q_i_stencil(
     q: FloatField,
+    courant: FloatField,
     area: FloatFieldIJ,
     y_area_flux: FloatField,
     q_advected_along_y: FloatField,
@@ -46,6 +61,7 @@ def q_i_stencil(
         q_i (out):
     """
     with computation(PARALLEL), interval(...):
+        q_advected_along_y = compute_y_flux_interior(q, courant)
         fyy = y_area_flux * q_advected_along_y
         # note the units of area cancel out, because area is present in all
         # terms in the numerator and denominator of q_i
@@ -212,33 +228,41 @@ class FiniteVolumeTransport:
             idx.max_shape, origin=idx.origin_full(), backend=stencil_factory.backend
         )
         """Temporary field to use for corner computation in both x and y direction"""
-        self._nord = nord
-        self._damp_c = damp_c
         ord_outer = hord
         ord_inner = 8 if hord == 10 else hord
-        if (self._nord is not None) and (self._damp_c is not None):
+        if (nord is not None) and (damp_c is not None):
             self.delnflux: Optional[DelnFlux] = DelnFlux(
                 stencil_factory=stencil_factory,
                 damping_coefficients=damping_coefficients,
                 rarea=grid_data.rarea,
-                nord=self._nord,
-                damp_c=self._damp_c,
+                nord=nord,
+                damp_c=damp_c,
             )
         else:
             self.delnflux = None
 
-        self.y_piecewise_parabolic_inner = YPiecewiseParabolic(
-            stencil_factory=stencil_factory,
-            dya=grid_data.dya,
-            grid_type=grid_type,
-            jord=ord_inner,
-            origin=idx.origin_compute(add=(-idx.n_halo, 0, 0)),
-            domain=idx.domain_compute(add=(1 + 2 * idx.n_halo, 1, 1)),
-        )
+        # self.y_piecewise_parabolic_inner = YPiecewiseParabolic(
+        #     stencil_factory=stencil_factory,
+        #     dya=grid_data.dya,
+        #     grid_type=grid_type,
+        #     jord=ord_inner,
+        #     origin=idx.origin_compute(add=(-idx.n_halo, 0, 0)),
+        #     domain=idx.domain_compute(add=(1 + 2 * idx.n_halo, 1, 1)),
+        # )
+        origin = idx.origin_full(add=(0, 3, 0))
+        domain = idx.domain_full(add=(0, -5, 1))
+        print(origin, domain)
+        ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
         self.q_i_stencil = stencil_factory.from_origin_domain(
             q_i_stencil,
-            origin=idx.origin_full(add=(0, 3, 0)),
-            domain=idx.domain_full(add=(0, -3, 1)),
+            origin=origin,
+            domain=domain,
+            externals={
+                "jord": ord_inner,
+                "mord": abs(ord_inner),
+                "yt_minmax": True,
+                **ax_offsets,
+            },
         )
         self.x_piecewise_parabolic_outer = XPiecewiseParabolic(
             stencil_factory=stencil_factory,
@@ -344,14 +368,15 @@ class FiniteVolumeTransport:
         # easier to understand than the current output. This would be like merging
         # yppm with q_i_stencil and xppm with q_j_stencil.
 
-        self.y_piecewise_parabolic_inner(
-            q.y_differentiable, cry, self._q_y_advected_mean
-        )
+        # self.y_piecewise_parabolic_inner(
+        #     q.y_differentiable, cry, self._q_y_advected_mean
+        # )
         # q_y_advected_mean is 1/Delta_area * curly-F, where curly-F is defined in
         # equation 4.3 of the FV3 documentation and Delta_area is the advected area
         # (y_area_flux)
         self.q_i_stencil(
             q.y_differentiable,
+            cry,
             self._area,
             y_area_flux,
             self._q_y_advected_mean,
@@ -389,3 +414,49 @@ class FiniteVolumeTransport:
         )
         if self.delnflux is not None:
             self.delnflux(q.base, q_x_flux, q_y_flux, mass=mass)
+
+        # Notes on usages of fvtp2d, to consider fusing this code with the code
+        # that actually updates the value being advected:
+
+        # tracer advection:
+        # def adjustment(q, dp1, fx, fy, rarea, dp2):
+        #     return (q * dp1 + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / dp2
+
+        # height (updatedzd)
+        # # described in Putman and Lin 2007 equation 7
+        # # updated area is used because of implicit-in-time evaluation
+        # area_after_flux = (
+        #     (area + x_area_flux - x_area_flux[1, 0, 0])
+        #     + (area + y_area_flux - y_area_flux[0, 1, 0])
+        #     - area
+        # )
+        # # final height is the original volume plus the fluxed volumes,
+        # # divided by the final area
+        # return (
+        #     height * area
+        #     + x_height_flux
+        #     - x_height_flux[1, 0, 0]
+        #     + y_height_flux
+        #     - y_height_flux[0, 1, 0]
+        # ) / area_after_flux
+
+        # pressure/mass flux gets added to a running total, so it can be evenly applied
+        # during tracer advection
+
+        # flux_adjust for some variables in d_sw:
+        # with computation(PARALLEL), interval(...):
+        #     # in the original Fortran, this uses `w` instead of `q`
+        #     q = q * delp + flux_increment(gx, gy, rarea)
+        # def flux_increment(gx, gy, rarea):
+        #     return (gx - gx[1, 0, 0] + gy - gy[0, 1, 0]) * rarea
+
+        # apply_pt_delp_fluxes in d_sw:
+
+        # if __INLINED(inline_q == 0):
+        #     with horizontal(region[local_is : local_ie + 1, local_js : local_je + 1]):
+        #         pt = pt * delp + flux_increment(pt_x_flux, pt_y_flux, rarea)
+        #         delp = delp + flux_increment(delp_x_flux, delp_y_flux, rarea)
+        #         pt = pt / delp
+
+        # something fairly spread out is done for u and v in d_sw, but it follows
+        # a general pattern of delnflux then adding fluxes - needs more investigation

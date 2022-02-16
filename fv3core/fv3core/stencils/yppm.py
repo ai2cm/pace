@@ -145,6 +145,12 @@ def yt_dya_edge_1(q, dya):
 
 
 @gtscript.function
+def compute_al_interior(q: FloatField):
+    al = ppm.p1 * (q[0, -1, 0] + q) + ppm.p2 * (q[0, -2, 0] + q[0, 1, 0])
+    return al
+
+
+@gtscript.function
 def compute_al(q: FloatField, dya: FloatFieldIJ):
     """
     Interpolate q at interface.
@@ -160,7 +166,7 @@ def compute_al(q: FloatField, dya: FloatFieldIJ):
 
     compile_assert(jord < 8)
 
-    al = ppm.p1 * (q[0, -1, 0] + q) + ppm.p2 * (q[0, -2, 0] + q[0, 1, 0])
+    al = compute_al_interior(q)
 
     if __INLINED(jord < 0):
         compile_assert(False)
@@ -266,7 +272,47 @@ def compute_blbr_ord8plus(q: FloatField, dya: FloatFieldIJ):
     return bl, br
 
 
-def compute_y_flux(
+@gtscript.function
+def compute_blbr_ord8plus_interior(q: FloatField):
+    from __externals__ import jord
+
+    dm = dm_jord8plus(q)
+    al = al_jord8plus(q, dm)
+
+    compile_assert(jord == 8)
+
+    bl, br = blbr_jord8(q, al, dm)
+
+    return bl, br
+
+
+@gtscript.function
+def compute_y_flux(q: FloatField, courant: FloatField, dya: FloatFieldIJ):
+    from __externals__ import mord
+
+    if __INLINED(mord < 8):
+        al = compute_al(q, dya)
+        yflux = get_flux(q, courant, al)
+    else:
+        bl, br = compute_blbr_ord8plus(q, dya)
+        yflux = get_flux_ord8plus(q, courant, bl, br)
+    return yflux
+
+
+@gtscript.function
+def compute_y_flux_interior(q: FloatField, courant: FloatField):
+    from __externals__ import mord
+
+    if __INLINED(mord < 8):
+        al = compute_al_interior(q)
+        yflux = get_flux(q, courant, al)
+    else:
+        bl, br = compute_blbr_ord8plus_interior(q)
+        yflux = get_flux_ord8plus(q, courant, bl, br)
+    return yflux
+
+
+def compute_y_flux_stencil_def(
     q: FloatField, courant: FloatField, dya: FloatFieldIJ, yflux: FloatField
 ):
     """
@@ -276,15 +322,9 @@ def compute_y_flux(
         dya (in):
         yflux (out):
     """
-    from __externals__ import mord
 
     with computation(PARALLEL), interval(...):
-        if __INLINED(mord < 8):
-            al = compute_al(q, dya)
-            yflux = get_flux(q, courant, al)
-        else:
-            bl, br = compute_blbr_ord8plus(q, dya)
-            yflux = get_flux_ord8plus(q, courant, bl, br)
+        yflux = compute_y_flux(q, courant, dya)
 
 
 class YPiecewiseParabolic:
@@ -308,7 +348,7 @@ class YPiecewiseParabolic:
         self._dya = dya
         ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
         self._compute_flux_stencil = stencil_factory.from_origin_domain(
-            func=compute_y_flux,
+            func=compute_y_flux_stencil_def,
             externals={
                 "jord": jord,
                 "mord": abs(jord),
