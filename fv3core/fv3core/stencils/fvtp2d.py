@@ -38,10 +38,6 @@ def q_i_stencil(
     area: FloatFieldIJ,
     x_area_flux: FloatField,
     y_area_flux: FloatField,
-    q_y_advected_mean: FloatField,
-    q_advected_y_x_advected_mean: FloatField,
-    q_x_advected_mean: FloatField,
-    q_advected_x_y_advected_mean: FloatField,
     x_unit_flux: FloatField,
     y_unit_flux: FloatField,
     x_flux: FloatField,
@@ -232,17 +228,6 @@ class FiniteVolumeTransport:
         self._area = grid_data.area
         origin = idx.origin_compute()
 
-        def make_storage():
-            return utils.make_storage_from_shape(
-                idx.max_shape, origin=origin, backend=stencil_factory.backend
-            )
-
-        self._q_advected_y = make_storage()
-        self._q_advected_x = make_storage()
-        self._q_x_advected_mean = make_storage()
-        self._q_y_advected_mean = make_storage()
-        self._q_advected_x_y_advected_mean = make_storage()
-        self._q_advected_y_x_advected_mean = make_storage()
         self._corner_tmp = utils.make_storage_from_shape(
             idx.max_shape, origin=idx.origin_full(), backend=stencil_factory.backend
         )
@@ -412,10 +397,6 @@ class FiniteVolumeTransport:
             self._area,
             x_area_flux,
             y_area_flux,
-            self._q_y_advected_mean,
-            self._q_advected_y_x_advected_mean,
-            self._q_x_advected_mean,
-            self._q_advected_x_y_advected_mean,
             x_unit_flux,
             y_unit_flux,
             q_x_flux,
