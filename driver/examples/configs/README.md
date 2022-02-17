@@ -1,8 +1,5 @@
 # Driver Configurations
 Currently, driver takes in a yaml config containing the following options. Example configuration file can be found in examples/configs.
-
-## experiment_name
-Name of the experiment, default to test if not specified.
 ## stencil_config
 Configuration options pertaining to GT4Py stencils such as backend and whether to rebuild stencils.
 
@@ -21,7 +18,8 @@ make -C fv3gfs-physics get_test_data
 ## performance_config
 Configuration for doing performance timing. \
 timer: true if performance timing is desired \
-json_dump: true if timing output should be saved as a json file
+json_dump: true if timing output should be saved as a json file \
+experiment_name: default to test if not specified
 ## diagnostics_config
 Diagnostics configuration specifies where and what variables to save from the model. Currently, we support writing to `zarr` format.
 

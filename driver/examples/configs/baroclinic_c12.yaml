@@ -1,4 +1,3 @@
-experiment_name: c12_baroclinic
 stencil_config:
   backend: numpy
   rebuild: false
@@ -10,6 +9,7 @@ initialization_config: {}
 performance_config:
   timer: true
   json_dump: true
+  experiment_name: c12_baroclinic
 nx_tile: 12
 nz: 79
 dt_atmos: 225

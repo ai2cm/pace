@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import functools
+import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple, Union
 
@@ -26,7 +27,8 @@ from pace.stencils import update_atmos_state
 from pace.stencils.testing import TranslateGrid, TranslateUpdateDWindsPhys
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
-from pace.util.report import collect_data_and_write_to_file
+
+from .report import collect_data_and_write_to_file
 
 
 @dataclasses.dataclass
@@ -317,6 +319,77 @@ class DiagnosticsConfig:
 class PerformanceConfig:
     timer: bool = False
     json_dump: bool = False
+    experiment_name: str = "test"
+
+    def __post_init__(self):
+        if self.json_dump:
+            if not self.timer:
+                raise ValueError(
+                    "timer neeeds to be true to output performance json file"
+                )
+
+    @property
+    def timestep_timer(self):
+        if self.timer:
+            return pace.util.Timer()
+        return pace.util.NullTimer()
+
+    @property
+    def total_timer(self):
+        if self.timer:
+            return pace.util.Timer()
+        return pace.util.NullTimer()
+
+    @property
+    def times_per_step(self):
+        return []
+
+    @property
+    def hits_per_step(self):
+        return []
+
+    def collect_performance(
+        self,
+        timestep_timer: Union[pace.util.Timer, pace.util.NullTimer],
+        times_per_step: list,
+        hits_per_step: list,
+    ):
+        times_per_step.append(timestep_timer.times)
+        hits_per_step.append(timestep_timer.hits)
+
+    def write_out_performance(
+        self,
+        comm,
+        backend: str,
+        dt_atmos: float,
+        total_timer: Union[pace.util.Timer, pace.util.NullTimer],
+        times_per_step: list,
+        hits_per_step: list,
+    ):
+        from git import InvalidGitRepositoryError, Repo
+
+        try:
+            driver_path = os.path.dirname(__file__)
+            pace_path = driver_path + "/../../../"
+            git_hash = Repo(pace_path).git.rev_parse("HEAD")
+        except InvalidGitRepositoryError:
+            git_hash = "notarepo"
+
+        times_per_step.append(total_timer.times)
+        hits_per_step.append(total_timer.hits)
+        comm.Barrier()
+        while {} in hits_per_step:
+            hits_per_step.remove({})
+        collect_data_and_write_to_file(
+            len(hits_per_step) - 1,
+            backend,
+            git_hash,
+            comm,
+            hits_per_step,
+            times_per_step,
+            self.experiment_name,
+            dt_atmos,
+        )
 
 
 class Diagnostics:
@@ -361,7 +434,6 @@ class DriverConfig:
         layout: number of ranks along the x and y dimensions
         dt_atmos: atmospheric timestep in seconds
         diagnostics_config: configuration for output diagnostics
-        experiment_name: name of this experiment
         dycore_config: configuration for dynamical core
         physics_config: configuration for physics
         days: simulation time in days
@@ -379,7 +451,6 @@ class DriverConfig:
     dt_atmos: float
     diagnostics_config: DiagnosticsConfig
     performance_config: PerformanceConfig
-    experiment_name: str = "test"
     dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
         default_factory=fv3core.DynamicalCoreConfig
     )
@@ -390,7 +461,6 @@ class DriverConfig:
     hours: int = 0
     minutes: int = 0
     seconds: int = 0
-    git_hash: str = "notarepo"
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -478,21 +548,11 @@ class Driver:
         """
         self.config = config
         self.comm = comm
-        if self.config.performance_config.timer:
-            self.timestep_timer = pace.util.Timer()
-            self.timer = pace.util.Timer()
-        else:
-            self.timestep_timer = pace.util.NullTimer()
-            self.timer = pace.util.NullTimer()
-
-        if self.config.performance_config.json_dump:
-            if not self.config.performance_config.timer:
-                raise ValueError(
-                    "timer neeeds to be true to output performance json file"
-                )
-            self.times_per_step = []
-            self.hits_per_step = []
-
+        self.performance_config = self.config.performance_config
+        self.timestep_timer = self.performance_config.timestep_timer
+        self.timer = self.performance_config.total_timer
+        self.times_per_step = self.performance_config.times_per_step
+        self.hits_per_step = self.performance_config.hits_per_step
         self.timer.start("total")
         with self.timer.clock("initialization"):
             communicator = pace.util.CubedSphereCommunicator.from_layout(
@@ -546,38 +606,26 @@ class Driver:
             time += self.config.timestep
             self.diagnostics.store(time=time, state=self.state)
         self.timer.stop("total")
-        self._collect_performance()
-        self._write_out_performance()
+        self.performance_config.collect_performance(
+            self.timestep_timer, self.times_per_step, self.hits_per_step
+        )
+        self.performance_config.write_out_performance(
+            self.comm,
+            self.config.stencil_config.backend,
+            self.config.dt_atmos,
+            self.timer,
+            self.times_per_step,
+            self.hits_per_step,
+        )
 
     def _step(self, timestep: float):
         with self.timestep_timer.clock("mainloop"):
             self._step_dynamics(timestep=timestep)
             self._step_physics(timestep=timestep)
-        self._collect_performance()
+        self.performance_config.collect_performance(
+            self.timestep_timer, self.times_per_step, self.hits_per_step
+        )
         self.timestep_timer.reset()
-
-    def _collect_performance(self):
-        if self.config.performance_config.json_dump:
-            self.times_per_step.append(self.timestep_timer.times)
-            self.hits_per_step.append(self.timestep_timer.hits)
-
-    def _write_out_performance(self):
-        if self.config.performance_config.json_dump:
-            self.times_per_step.append(self.timer.times)
-            self.hits_per_step.append(self.timer.hits)
-            self.comm.Barrier()
-            while {} in self.hits_per_step:
-                self.hits_per_step.remove({})
-            collect_data_and_write_to_file(
-                len(self.hits_per_step) - 1,
-                self.config.stencil_config.backend,
-                self.config.git_hash,
-                self.comm,
-                self.hits_per_step,
-                self.times_per_step,
-                self.config.experiment_name,
-                self.config.dt_atmos,
-            )
 
     def _step_dynamics(self, timestep: float):
         self.dycore.step_dynamics(
