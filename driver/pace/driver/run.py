@@ -2,6 +2,7 @@ import abc
 import dataclasses
 import functools
 import os
+import subprocess
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple, Union
 
@@ -366,13 +367,14 @@ class PerformanceConfig:
         times_per_step: list,
         hits_per_step: list,
     ):
-        from git import InvalidGitRepositoryError, Repo
-
         try:
             driver_path = os.path.dirname(__file__)
-            pace_path = driver_path + "/../../../"
-            git_hash = Repo(pace_path).git.rev_parse("HEAD")
-        except InvalidGitRepositoryError:
+            git_hash = (
+                subprocess.check_output(["git", "-C", driver_path, "rev-parse", "HEAD"])
+                .decode()
+                .rstrip()
+            )
+        except subprocess.CalledProcessError:
             git_hash = "notarepo"
 
         times_per_step.append(total_timer.times)

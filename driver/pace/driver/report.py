@@ -140,9 +140,6 @@ def collect_data_and_write_to_file(
     timing_info = gather_timing_data(times_per_step, comm)
 
     if is_root:
-        import pdb
-
-        pdb.set_trace()
         exp_info = get_experiment_info(experiment_name, time_step, backend, git_hash)
         timing_info = gather_hit_counts(hits_per_step, timing_info)
         report = make_report(exp_info, timing_info, dt_atmos)
