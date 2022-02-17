@@ -36,7 +36,7 @@ if [ $save_wheel ]; then
 fi
 python3 -m pip install --find-links=$wheeldir cupy Cython clang-format
 
-python3 -m pip install ${installdir}/mpi4py/mpi4py-3.1.0a0-cp38-cp38-linux_x86_64.whl
+MPICC=cc pip install mpi4py==3.1.3
 
 # deactivate virtual environment
 deactivate
