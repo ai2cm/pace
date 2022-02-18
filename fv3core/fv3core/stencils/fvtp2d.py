@@ -32,8 +32,7 @@ def apply_y_flux_divergence(q: FloatField, q_y_flux: FloatField) -> FloatField:
 
 
 def finite_volume_transport_interior_stencil(
-    q_x_differentiable: FloatField,
-    q_y_differentiable: FloatField,
+    q: FloatField,
     courant_x: FloatField,
     courant_y: FloatField,
     area: FloatFieldIJ,
@@ -47,16 +46,19 @@ def finite_volume_transport_interior_stencil(
     """
     Args:
         q (in):
+        courant_x (in):
+        courant_y (in):
         area (in):
+        x_area_flux (in):
         y_area_flux (in):
-        q_flux_y (out):
-        q_i (out):
-        q_i_flux_x (out):
+        x_unit_flux (in):
+        y_unit_flux (in):
+        x_flux (out):
+        y_flux (out):
     """
     with computation(PARALLEL), interval(...):
         x_flux, y_flux = finite_volume_transport_interior(
-            q_x_differentiable=q_x_differentiable,
-            q_y_differentiable=q_y_differentiable,
+            q=q,
             courant_x=courant_x,
             courant_y=courant_y,
             area=area,
@@ -69,8 +71,7 @@ def finite_volume_transport_interior_stencil(
 
 @gtscript.function
 def finite_volume_transport_interior(
-    q_x_differentiable: FloatField,
-    q_y_differentiable: FloatField,
+    q: FloatField,
     courant_x: FloatField,
     courant_y: FloatField,
     area: FloatFieldIJ,
@@ -79,20 +80,33 @@ def finite_volume_transport_interior(
     x_unit_flux: FloatField,
     y_unit_flux: FloatField,
 ):
-    q_y_advected_mean = compute_y_flux_interior(q_y_differentiable, courant_y)
+    """
+    Args:
+        q (in):
+        courant_x (in):
+        courant_y (in):
+        area (in):
+        x_area_flux (in):
+        y_area_flux (in):
+        x_unit_flux (in):
+        y_unit_flux (in):
+        x_flux (out):
+        y_flux (out):
+    """
+    q_y_advected_mean = compute_y_flux_interior(q, courant_y)
     fyy = y_area_flux * q_y_advected_mean
     # note the units of area cancel out, because area is present in all
     # terms in the numerator and denominator of q_i
     # corresponds to FV3 documentation eq 4.18, q_i = f(q)
-    q_advected_y = (q_y_differentiable * area + fyy - fyy[0, 1, 0]) / (
+    q_advected_y = (q * area + fyy - fyy[0, 1, 0]) / (
         area + y_area_flux - y_area_flux[0, 1, 0]
     )
     q_advected_y_x_advected_mean = compute_x_flux_interior(q_advected_y, courant_x)
 
-    q_x_advected_mean = compute_x_flux_interior(q_x_differentiable, courant_x)
+    q_x_advected_mean = compute_x_flux_interior(q, courant_x)
     fxx = x_area_flux * q_x_advected_mean
     area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
-    q_advected_x = (q_x_differentiable * area + fxx - fxx[1, 0, 0]) / area_with_x_flux
+    q_advected_x = (q * area + fxx - fxx[1, 0, 0]) / area_with_x_flux
     q_advected_x_y_advected_mean = compute_y_flux_interior(q_advected_x, courant_y)
     with horizontal(region[:, :-1]):
         x_flux = 0.5 * (q_advected_y_x_advected_mean + q_x_advected_mean) * x_unit_flux
@@ -105,58 +119,46 @@ def q_i_stencil(
     q: FloatField,
     area: FloatFieldIJ,
     y_area_flux: FloatField,
-    q_advected_along_y: FloatField,
-    q_i: FloatField,
+    q_y_advected_mean: FloatField,
+    q_advected_y: FloatField,
 ):
     """
     Args:
         q (in):
         area (in):
         y_area_flux (in):
-        q_advected_along_y (in):
-        q_i (out):
+        q_y_advected_mean (in):
+        q_advected_y (out): q having been advected along the y-axis
     """
     with computation(PARALLEL), interval(...):
-        fyy = y_area_flux * q_advected_along_y
+        fyy = y_area_flux * q_y_advected_mean
         # note the units of area cancel out, because area is present in all
         # terms in the numerator and denominator of q_i
         # corresponds to FV3 documentation eq 4.18, q_i = f(q)
-        q_i = (q * area + fyy - fyy[0, 1, 0]) / (
+        q_advected_y = (q * area + fyy - fyy[0, 1, 0]) / (
             area + y_area_flux - y_area_flux[0, 1, 0]
         )
-        # fyy = y_area_flux * q_y_advected_mean
-        # # note the units of area cancel out, because area is present in all
-        # # terms in the numerator and denominator of q_i
-        # # corresponds to FV3 documentation eq 4.18, q_i = f(q)
-        # q_advected_y = (q_y_differentiable * area + fyy - fyy[0, 1, 0]) / (
-        #     area + y_area_flux - y_area_flux[0, 1, 0]
-        # )
 
 
 def q_j_stencil(
     q: FloatField,
     area: FloatFieldIJ,
     x_area_flux: FloatField,
-    fx2: FloatField,
-    q_j: FloatField,
+    q_x_advected_mean: FloatField,
+    q_advected_x: FloatField,
 ):
     """
     Args:
         q (in):
         area (in):
         x_area_flux (in):
-        fx2 (in):
-        q_j (out):
+        q_x_advected_mean (in):
+        q_advected_x (out): q having been advected along the x-axis
     """
     with computation(PARALLEL), interval(...):
-        fx1 = x_area_flux * fx2
+        fxx = x_area_flux * q_x_advected_mean
         area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
-        q_j = (q * area + fx1 - fx1[1, 0, 0]) / area_with_x_flux
-    # fxx = x_area_flux * q_x_advected_mean
-    # area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
-    # q_advected_x = (
-    #     q_x_differentiable * area + fxx - fxx[1, 0, 0]
-    # ) / area_with_x_flux
+        q_advected_x = (q * area + fxx - fxx[1, 0, 0]) / area_with_x_flux
 
 
 def final_fluxes(
@@ -538,8 +540,11 @@ class _FiniteVolumeTransportInteriorStencils(_FiniteVolumeTransportStencils):
         idx = stencil_factory.grid_indexing
         self._area = area
         ord_outer = hord
-        assert hord == 8  # JM: have to update externals
         ord_inner = 8 if hord == 10 else hord
+        # would have to refactor xppm/yppm externals to remove this assert, since it
+        # requires xppm/yppm use different iord/jord values on their inner and
+        # outer calls
+        assert ord_outer == ord_inner
         origin = idx.origin_compute()
         domain = idx.domain_compute(add=(1, 1, 1))
         ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
@@ -569,8 +574,7 @@ class _FiniteVolumeTransportInteriorStencils(_FiniteVolumeTransportStencils):
         y_unit_flux,
     ):
         self._stencil(
-            q.x_differentiable,
-            q.y_differentiable,
+            q.base,
             crx,
             cry,
             self._area,

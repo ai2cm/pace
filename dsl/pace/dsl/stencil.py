@@ -439,6 +439,12 @@ class GridIndexing:
     def se_corner(self):
         return self.south_edge and self.east_edge
 
+    @property
+    def tile_interior(self) -> bool:
+        return not (
+            self.south_edge or self.north_edge or self.west_edge or self.east_edge
+        )
+
     def origin_full(self, add: Index3D = (0, 0, 0)):
         """
         Returns the origin of the full domain including halos, plus an optional offset.
