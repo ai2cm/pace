@@ -1,3 +1,4 @@
+import abc
 import dataclasses
 from typing import Optional, Sequence
 
@@ -7,8 +8,8 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import pace.dsl.gt4py_utils as utils
 import pace.stencils.corners as corners
 from fv3core.stencils.delnflux import DelnFlux
-from fv3core.stencils.xppm import compute_x_flux_interior
-from fv3core.stencils.yppm import compute_y_flux_interior
+from fv3core.stencils.xppm import XPiecewiseParabolic, compute_x_flux_interior
+from fv3core.stencils.yppm import YPiecewiseParabolic, compute_y_flux_interior
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import DampingCoefficients, GridData
@@ -30,7 +31,7 @@ def apply_y_flux_divergence(q: FloatField, q_y_flux: FloatField) -> FloatField:
     return q + q_y_flux - q_y_flux[0, 1, 0]
 
 
-def q_i_stencil(
+def finite_volume_transport_interior_stencil(
     q_x_differentiable: FloatField,
     q_y_differentiable: FloatField,
     courant_x: FloatField,
@@ -53,43 +54,91 @@ def q_i_stencil(
         q_i_flux_x (out):
     """
     with computation(PARALLEL), interval(...):
-        q_y_advected_mean = compute_y_flux_interior(q_y_differentiable, courant_y)
-        fyy = y_area_flux * q_y_advected_mean
-        # note the units of area cancel out, because area is present in all
-        # terms in the numerator and denominator of q_i
-        # corresponds to FV3 documentation eq 4.18, q_i = f(q)
-        q_advected_y = (q_y_differentiable * area + fyy - fyy[0, 1, 0]) / (
-            area + y_area_flux - y_area_flux[0, 1, 0]
+        x_flux, y_flux = finite_volume_transport_interior(
+            q_x_differentiable=q_x_differentiable,
+            q_y_differentiable=q_y_differentiable,
+            courant_x=courant_x,
+            courant_y=courant_y,
+            area=area,
+            x_area_flux=x_area_flux,
+            y_area_flux=y_area_flux,
+            x_unit_flux=x_unit_flux,
+            y_unit_flux=y_unit_flux,
         )
-        q_advected_y_x_advected_mean = compute_x_flux_interior(q_advected_y, courant_x)
-
-        q_x_advected_mean = compute_x_flux_interior(q_x_differentiable, courant_x)
-        fxx = x_area_flux * q_x_advected_mean
-        area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
-        q_advected_x = (
-            q_x_differentiable * area + fxx - fxx[1, 0, 0]
-        ) / area_with_x_flux
-        q_advected_x_y_advected_mean = compute_y_flux_interior(q_advected_x, courant_y)
-    with computation(PARALLEL), interval(...):
-        with horizontal(region[:, :-1]):
-            x_flux = (
-                0.5 * (q_advected_y_x_advected_mean + q_x_advected_mean) * x_unit_flux
-            )
-        with horizontal(region[:-1, :]):
-            y_flux = (
-                0.5 * (q_advected_x_y_advected_mean + q_y_advected_mean) * y_unit_flux
-            )
 
 
-def q_j_stencil(
-    q: FloatField,
+@gtscript.function
+def finite_volume_transport_interior(
+    q_x_differentiable: FloatField,
+    q_y_differentiable: FloatField,
     courant_x: FloatField,
     courant_y: FloatField,
     area: FloatFieldIJ,
     x_area_flux: FloatField,
-    q_x_advected_mean: FloatField,
-    q_advected_x: FloatField,
-    q_advected_x_y_advected_mean: FloatField,
+    y_area_flux: FloatField,
+    x_unit_flux: FloatField,
+    y_unit_flux: FloatField,
+):
+    q_y_advected_mean = compute_y_flux_interior(q_y_differentiable, courant_y)
+    fyy = y_area_flux * q_y_advected_mean
+    # note the units of area cancel out, because area is present in all
+    # terms in the numerator and denominator of q_i
+    # corresponds to FV3 documentation eq 4.18, q_i = f(q)
+    q_advected_y = (q_y_differentiable * area + fyy - fyy[0, 1, 0]) / (
+        area + y_area_flux - y_area_flux[0, 1, 0]
+    )
+    q_advected_y_x_advected_mean = compute_x_flux_interior(q_advected_y, courant_x)
+
+    q_x_advected_mean = compute_x_flux_interior(q_x_differentiable, courant_x)
+    fxx = x_area_flux * q_x_advected_mean
+    area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
+    q_advected_x = (q_x_differentiable * area + fxx - fxx[1, 0, 0]) / area_with_x_flux
+    q_advected_x_y_advected_mean = compute_y_flux_interior(q_advected_x, courant_y)
+    with horizontal(region[:, :-1]):
+        x_flux = 0.5 * (q_advected_y_x_advected_mean + q_x_advected_mean) * x_unit_flux
+    with horizontal(region[:-1, :]):
+        y_flux = 0.5 * (q_advected_x_y_advected_mean + q_y_advected_mean) * y_unit_flux
+    return x_flux, y_flux
+
+
+def q_i_stencil(
+    q: FloatField,
+    area: FloatFieldIJ,
+    y_area_flux: FloatField,
+    q_advected_along_y: FloatField,
+    q_i: FloatField,
+):
+    """
+    Args:
+        q (in):
+        area (in):
+        y_area_flux (in):
+        q_advected_along_y (in):
+        q_i (out):
+    """
+    with computation(PARALLEL), interval(...):
+        fyy = y_area_flux * q_advected_along_y
+        # note the units of area cancel out, because area is present in all
+        # terms in the numerator and denominator of q_i
+        # corresponds to FV3 documentation eq 4.18, q_i = f(q)
+        q_i = (q * area + fyy - fyy[0, 1, 0]) / (
+            area + y_area_flux - y_area_flux[0, 1, 0]
+        )
+        # fyy = y_area_flux * q_y_advected_mean
+        # # note the units of area cancel out, because area is present in all
+        # # terms in the numerator and denominator of q_i
+        # # corresponds to FV3 documentation eq 4.18, q_i = f(q)
+        # q_advected_y = (q_y_differentiable * area + fyy - fyy[0, 1, 0]) / (
+        #     area + y_area_flux - y_area_flux[0, 1, 0]
+        # )
+
+
+def q_j_stencil(
+    q: FloatField,
+    area: FloatFieldIJ,
+    x_area_flux: FloatField,
+    fx2: FloatField,
+    q_j: FloatField,
 ):
     """
     Args:
@@ -100,11 +149,14 @@ def q_j_stencil(
         q_j (out):
     """
     with computation(PARALLEL), interval(...):
-        q_x_advected_mean = compute_x_flux_interior(q, courant_x)
-        fxx = x_area_flux * q_x_advected_mean
+        fx1 = x_area_flux * fx2
         area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
-        q_advected_x = (q * area + fxx - fxx[1, 0, 0]) / area_with_x_flux
-        q_advected_x_y_advected_mean = compute_y_flux_interior(q_advected_x, courant_y)
+        q_j = (q * area + fx1 - fx1[1, 0, 0]) / area_with_x_flux
+    # fxx = x_area_flux * q_x_advected_mean
+    # area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
+    # q_advected_x = (
+    #     q_x_differentiable * area + fxx - fxx[1, 0, 0]
+    # ) / area_with_x_flux
 
 
 def final_fluxes(
@@ -223,96 +275,30 @@ class FiniteVolumeTransport:
         nord=None,
         damp_c=None,
     ):
-        # use a shorter alias for grid_indexing here to avoid very verbose lines
-        idx = stencil_factory.grid_indexing
+        if stencil_factory.grid_indexing.tile_interior:
+            self._stencils: _FiniteVolumeTransportStencils = (
+                _FiniteVolumeTransportInteriorStencils(
+                    stencil_factory, area=grid_data.area, hord=hord
+                )
+            )
+        else:
+            self._stencils = _FiniteVolumeTransportEdgeStencils(
+                stencil_factory, grid_data=grid_data, hord=hord
+            )
         self._area = grid_data.area
-        origin = idx.origin_compute()
 
-        self._corner_tmp = utils.make_storage_from_shape(
-            idx.max_shape, origin=idx.origin_full(), backend=stencil_factory.backend
-        )
-        """Temporary field to use for corner computation in both x and y direction"""
-        ord_outer = hord
-        ord_inner = 8 if hord == 10 else hord
-        if (nord is not None) and (damp_c is not None):
+        self._nord = nord
+        self._damp_c = damp_c
+        if (self._nord is not None) and (self._damp_c is not None):
             self.delnflux: Optional[DelnFlux] = DelnFlux(
                 stencil_factory=stencil_factory,
                 damping_coefficients=damping_coefficients,
                 rarea=grid_data.rarea,
-                nord=nord,
-                damp_c=damp_c,
+                nord=self._nord,
+                damp_c=self._damp_c,
             )
         else:
             self.delnflux = None
-
-        # self.y_piecewise_parabolic_inner = YPiecewiseParabolic(
-        #     stencil_factory=stencil_factory,
-        #     dya=grid_data.dya,
-        #     grid_type=grid_type,
-        #     jord=ord_inner,
-        #     origin=idx.origin_compute(add=(-idx.n_halo, 0, 0)),
-        #     domain=idx.domain_compute(add=(1 + 2 * idx.n_halo, 1, 1)),
-        # )
-        # origin = idx.origin_full(add=(0, 3, 0))
-        # domain = idx.domain_full(add=(0, -5, 1))
-        origin = idx.origin_compute()
-        domain = idx.domain_compute(add=(1, 1, 1))
-        print(origin, domain)
-        ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
-        assert ord_inner == ord_outer
-        self.q_i_stencil = stencil_factory.from_origin_domain(
-            q_i_stencil,
-            origin=origin,
-            domain=domain,
-            externals={
-                "jord": ord_inner,
-                "iord": ord_outer,
-                "mord": abs(ord_inner),
-                "yt_minmax": True,
-                **ax_offsets,
-            },
-        )
-        # self.x_piecewise_parabolic_outer = XPiecewiseParabolic(
-        #     stencil_factory=stencil_factory,
-        #     dxa=grid_data.dxa,
-        #     grid_type=grid_type,
-        #     iord=ord_outer,
-        #     origin=idx.origin_compute(),
-        #     domain=idx.domain_compute(add=(1, 1, 1)),
-        # )
-        # self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
-        #     stencil_factory=stencil_factory,
-        #     dxa=grid_data.dxa,
-        #     grid_type=grid_type,
-        #     iord=ord_inner,
-        #     origin=idx.origin_compute(add=(0, -idx.n_halo, 0)),
-        #     domain=idx.domain_compute(add=(1, 1 + 2 * idx.n_halo, 1)),
-        # )
-        self.q_j_stencil = stencil_factory.from_origin_domain(
-            q_j_stencil,
-            origin=origin,
-            domain=domain,
-            externals={
-                "jord": ord_outer,
-                "iord": ord_inner,
-                "mord": abs(ord_inner),
-                "yt_minmax": True,
-                **ax_offsets,
-            },
-        )
-        # self.y_piecewise_parabolic_outer = YPiecewiseParabolic(
-        #     stencil_factory=stencil_factory,
-        #     dya=grid_data.dya,
-        #     grid_type=grid_type,
-        #     jord=ord_outer,
-        #     origin=idx.origin_compute(),
-        #     domain=idx.domain_compute(add=(1, 1, 1)),
-        # )
-        self.stencil_transport_flux = stencil_factory.from_origin_domain(
-            final_fluxes,
-            origin=idx.origin_compute(),
-            domain=idx.domain_compute(add=(1, 1, 1)),
-        )
 
     def __call__(
         self,
@@ -329,10 +315,8 @@ class FiniteVolumeTransport:
     ):
         """
         Calculate fluxes for horizontal finite volume transport.
-
         Defined in Putman and Lin 2007 (PL07). Corresponds to equation 4.17
         in the FV3 documentation.
-
         Divergence terms are handled by advecting the weighting used in
         the units of the scalar, and dividing by its divergence. For example,
         temperature (pt in the Fortran) and tracers are mass weighted, so
@@ -340,7 +324,6 @@ class FiniteVolumeTransport:
         e.g. (convergence of tracer) / (convergence of gridcell mass). This
         is described in eq 17 of PL07. pressure thickness and vorticity
         by contrast are area weighted.
-
         Args:
             q (in): scalar to be transported
             crx (in): Courant number in x-direction
@@ -378,18 +361,214 @@ class FiniteVolumeTransport:
         else:
             y_unit_flux = y_mass_flux
 
-        # TODO: consider whether to refactor xppm/yppm to output fluxes by also taking
-        # y_area_flux as an input (flux = area_flux * advected_mean), since a flux is
-        # easier to understand than the current output. This would be like merging
-        # yppm with q_i_stencil and xppm with q_j_stencil.
+        self._stencils.call_stencils(
+            q=q,
+            crx=crx,
+            cry=cry,
+            x_area_flux=x_area_flux,
+            y_area_flux=y_area_flux,
+            q_x_flux=q_x_flux,
+            q_y_flux=q_y_flux,
+            x_unit_flux=x_unit_flux,
+            y_unit_flux=y_unit_flux,
+        )
 
-        # self.y_piecewise_parabolic_inner(
-        #     q.y_differentiable, cry, self._q_y_advected_mean
-        # )
+        if self.delnflux is not None:
+            self.delnflux(q.base, q_x_flux, q_y_flux, mass=mass)
+
+
+class _FiniteVolumeTransportStencils(abc.ABC):
+    """
+    Contains just the stencils component of FiniteVolumeTransport classes.
+    """
+
+    @abc.abstractmethod
+    def call_stencils(
+        self,
+        q: CopiedCorners,
+        crx,
+        cry,
+        x_area_flux,
+        y_area_flux,
+        q_x_flux,
+        q_y_flux,
+        x_unit_flux,
+        y_unit_flux,
+    ):
+        pass
+
+
+class _FiniteVolumeTransportEdgeStencils(_FiniteVolumeTransportStencils):
+    """
+    This version works on any rank, including ranks which border a tile edge.
+    """
+
+    def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, hord: int):
+        # use a shorter alias for grid_indexing here to avoid very verbose lines
+        idx = stencil_factory.grid_indexing
+        self._area = grid_data.area
+        origin = idx.origin_compute()
+
+        def make_storage():
+            return utils.make_storage_from_shape(
+                idx.max_shape, origin=origin, backend=stencil_factory.backend
+            )
+
+        self._q_advected_y = make_storage()
+        self._q_advected_x = make_storage()
+        self._q_x_advected_mean = make_storage()
+        self._q_y_advected_mean = make_storage()
+        self._q_advected_x_y_advected_mean = make_storage()
+        self._q_advected_y_x_advected_mean = make_storage()
+        ord_outer = hord
+        ord_inner = 8 if hord == 10 else hord
+        self.y_piecewise_parabolic_inner = YPiecewiseParabolic(
+            stencil_factory=stencil_factory,
+            dya=grid_data.dya,
+            jord=ord_inner,
+            origin=idx.origin_compute(add=(-idx.n_halo, 0, 0)),
+            domain=idx.domain_compute(add=(1 + 2 * idx.n_halo, 1, 1)),
+        )
+        self.q_i_stencil = stencil_factory.from_origin_domain(
+            q_i_stencil,
+            origin=idx.origin_full(add=(0, 3, 0)),
+            domain=idx.domain_full(add=(0, -3, 1)),
+        )
+        self.x_piecewise_parabolic_outer = XPiecewiseParabolic(
+            stencil_factory=stencil_factory,
+            dxa=grid_data.dxa,
+            iord=ord_outer,
+            origin=idx.origin_compute(),
+            domain=idx.domain_compute(add=(1, 1, 1)),
+        )
+        self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
+            stencil_factory=stencil_factory,
+            dxa=grid_data.dxa,
+            iord=ord_inner,
+            origin=idx.origin_compute(add=(0, -idx.n_halo, 0)),
+            domain=idx.domain_compute(add=(1, 1 + 2 * idx.n_halo, 1)),
+        )
+        self.q_j_stencil = stencil_factory.from_origin_domain(
+            q_j_stencil,
+            origin=idx.origin_full(add=(3, 0, 0)),
+            domain=idx.domain_full(add=(-3, 0, 1)),
+        )
+        self.y_piecewise_parabolic_outer = YPiecewiseParabolic(
+            stencil_factory=stencil_factory,
+            dya=grid_data.dya,
+            jord=ord_outer,
+            origin=idx.origin_compute(),
+            domain=idx.domain_compute(add=(1, 1, 1)),
+        )
+        self.stencil_transport_flux = stencil_factory.from_origin_domain(
+            final_fluxes,
+            origin=idx.origin_compute(),
+            domain=idx.domain_compute(add=(1, 1, 1)),
+        )
+
+    def call_stencils(
+        self,
+        q: CopiedCorners,
+        crx,
+        cry,
+        x_area_flux,
+        y_area_flux,
+        q_x_flux,
+        q_y_flux,
+        x_unit_flux,
+        y_unit_flux,
+    ):
+        self.y_piecewise_parabolic_inner(
+            q.y_differentiable, cry, self._q_y_advected_mean
+        )
         # q_y_advected_mean is 1/Delta_area * curly-F, where curly-F is defined in
         # equation 4.3 of the FV3 documentation and Delta_area is the advected area
         # (y_area_flux)
         self.q_i_stencil(
+            q.y_differentiable,
+            self._area,
+            y_area_flux,
+            self._q_y_advected_mean,
+            self._q_advected_y,
+        )  # q_advected_y out is f(q) in eq 4.18 of FV3 documentation
+        self.x_piecewise_parabolic_outer(
+            self._q_advected_y, crx, self._q_advected_y_x_advected_mean
+        )
+        # q_advected_y_x_advected_mean is now rho^n + F(rho^y) in PL07 eq 16
+
+        # similarly below for x<->y
+        self.x_piecewise_parabolic_inner(
+            q.x_differentiable, crx, self._q_x_advected_mean
+        )
+        self.q_j_stencil(
+            q.x_differentiable,
+            self._area,
+            x_area_flux,
+            self._q_x_advected_mean,
+            self._q_advected_x,
+        )
+        self.y_piecewise_parabolic_outer(
+            self._q_advected_x, cry, self._q_advected_x_y_advected_mean
+        )
+
+        self.stencil_transport_flux(
+            self._q_advected_y_x_advected_mean,
+            self._q_x_advected_mean,
+            self._q_advected_x_y_advected_mean,
+            self._q_y_advected_mean,
+            x_unit_flux,
+            y_unit_flux,
+            q_x_flux,
+            q_y_flux,
+        )
+
+
+class _FiniteVolumeTransportInteriorStencils(_FiniteVolumeTransportStencils):
+    """
+    This version works only on ranks in the interior of a tile, not ranks which
+    border a tile edge.
+    """
+
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        area: FloatFieldIJ,
+        hord: int,
+    ):
+        idx = stencil_factory.grid_indexing
+        self._area = area
+        ord_outer = hord
+        assert hord == 8  # JM: have to update externals
+        ord_inner = 8 if hord == 10 else hord
+        origin = idx.origin_compute()
+        domain = idx.domain_compute(add=(1, 1, 1))
+        ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
+        self._stencil = stencil_factory.from_origin_domain(
+            finite_volume_transport_interior_stencil,
+            origin=origin,
+            domain=domain,
+            externals={
+                "jord": ord_inner,
+                "iord": ord_outer,
+                "mord": abs(ord_inner),
+                "yt_minmax": True,
+                **ax_offsets,
+            },
+        )
+
+    def call_stencils(
+        self,
+        q: CopiedCorners,
+        crx,
+        cry,
+        x_area_flux,
+        y_area_flux,
+        q_x_flux,
+        q_y_flux,
+        x_unit_flux,
+        y_unit_flux,
+    ):
+        self._stencil(
             q.x_differentiable,
             q.y_differentiable,
             crx,
@@ -401,85 +580,51 @@ class FiniteVolumeTransport:
             y_unit_flux,
             q_x_flux,
             q_y_flux,
-        )  # q_advected_y out is f(q) in eq 4.18 of FV3 documentation
-        # self.x_piecewise_parabolic_outer(
-        #     self._q_advected_y, crx, self._q_advected_y_x_advected_mean
-        # )
-        # q_advected_y_x_advected_mean is now rho^n + F(rho^y) in PL07 eq 16
+        )
 
-        # similarly below for x<->y
-        # self.x_piecewise_parabolic_inner(
-        #     q.x_differentiable, crx, self._q_x_advected_mean
-        # )
-        # self.q_j_stencil(
-        #     q.x_differentiable,
-        #     crx,
-        #     cry,
-        #     self._area,
-        #     x_area_flux,
-        #     self._q_x_advected_mean,
-        #     self._q_advected_x,
-        #     self._q_advected_x_y_advected_mean,
-        # )
-        # self.y_piecewise_parabolic_outer(
-        #     self._q_advected_x, cry, self._q_advected_x_y_advected_mean
-        # )
 
-        # self.stencil_transport_flux(
-        #     self._q_advected_y_x_advected_mean,
-        #     self._q_x_advected_mean,
-        #     self._q_advected_x_y_advected_mean,
-        #     self._q_y_advected_mean,
-        #     x_unit_flux,
-        #     y_unit_flux,
-        #     q_x_flux,
-        #     q_y_flux,
-        # )
-        if self.delnflux is not None:
-            self.delnflux(q.base, q_x_flux, q_y_flux, mass=mass)
+# Notes on usages of fvtp2d, to consider fusing this code with the code
+# that actually updates the value being advected:
 
-        # Notes on usages of fvtp2d, to consider fusing this code with the code
-        # that actually updates the value being advected:
+# tracer advection:
+# def adjustment(q, dp1, fx, fy, rarea, dp2):
+#     return (q * dp1 + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / dp2
 
-        # tracer advection:
-        # def adjustment(q, dp1, fx, fy, rarea, dp2):
-        #     return (q * dp1 + (fx - fx[1, 0, 0] + fy - fy[0, 1, 0]) * rarea) / dp2
+# height (updatedzd)
+# # described in Putman and Lin 2007 equation 7
+# # updated area is used because of implicit-in-time evaluation
+# area_after_flux = (
+#     (area + x_area_flux - x_area_flux[1, 0, 0])
+#     + (area + y_area_flux - y_area_flux[0, 1, 0])
+#     - area
+# )
+# # final height is the original volume plus the fluxed volumes,
+# # divided by the final area
+# return (
+#     height * area
+#     + x_height_flux
+#     - x_height_flux[1, 0, 0]
+#     + y_height_flux
+#     - y_height_flux[0, 1, 0]
+# ) / area_after_flux
 
-        # height (updatedzd)
-        # # described in Putman and Lin 2007 equation 7
-        # # updated area is used because of implicit-in-time evaluation
-        # area_after_flux = (
-        #     (area + x_area_flux - x_area_flux[1, 0, 0])
-        #     + (area + y_area_flux - y_area_flux[0, 1, 0])
-        #     - area
-        # )
-        # # final height is the original volume plus the fluxed volumes,
-        # # divided by the final area
-        # return (
-        #     height * area
-        #     + x_height_flux
-        #     - x_height_flux[1, 0, 0]
-        #     + y_height_flux
-        #     - y_height_flux[0, 1, 0]
-        # ) / area_after_flux
+# pressure/mass flux gets added to a running total, so it can be evenly applied
+# during tracer advection
 
-        # pressure/mass flux gets added to a running total, so it can be evenly applied
-        # during tracer advection
+# flux_adjust for some variables in d_sw:
+# with computation(PARALLEL), interval(...):
+#     # in the original Fortran, this uses `w` instead of `q`
+#     q = q * delp + flux_increment(gx, gy, rarea)
+# def flux_increment(gx, gy, rarea):
+#     return (gx - gx[1, 0, 0] + gy - gy[0, 1, 0]) * rarea
 
-        # flux_adjust for some variables in d_sw:
-        # with computation(PARALLEL), interval(...):
-        #     # in the original Fortran, this uses `w` instead of `q`
-        #     q = q * delp + flux_increment(gx, gy, rarea)
-        # def flux_increment(gx, gy, rarea):
-        #     return (gx - gx[1, 0, 0] + gy - gy[0, 1, 0]) * rarea
+# apply_pt_delp_fluxes in d_sw:
 
-        # apply_pt_delp_fluxes in d_sw:
+# if __INLINED(inline_q == 0):
+#     with horizontal(region[local_is : local_ie + 1, local_js : local_je + 1]):
+#         pt = pt * delp + flux_increment(pt_x_flux, pt_y_flux, rarea)
+#         delp = delp + flux_increment(delp_x_flux, delp_y_flux, rarea)
+#         pt = pt / delp
 
-        # if __INLINED(inline_q == 0):
-        #     with horizontal(region[local_is : local_ie + 1, local_js : local_je + 1]):
-        #         pt = pt * delp + flux_increment(pt_x_flux, pt_y_flux, rarea)
-        #         delp = delp + flux_increment(delp_x_flux, delp_y_flux, rarea)
-        #         pt = pt / delp
-
-        # something fairly spread out is done for u and v in d_sw, but it follows
-        # a general pattern of delnflux then adding fluxes - needs more investigation
+# something fairly spread out is done for u and v in d_sw, but it follows
+# a general pattern of delnflux then adding fluxes - needs more investigation

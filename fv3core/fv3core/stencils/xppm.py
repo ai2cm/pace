@@ -336,15 +336,11 @@ class XPiecewiseParabolic:
         self,
         stencil_factory: StencilFactory,
         dxa,
-        grid_type: int,
         iord,
         origin: Index3D,
         domain: Index3D,
     ):
-        # Arguments come from:
-        # namelist.grid_type
-        # grid.dxa
-        assert grid_type < 3
+        # dxa comes from grid
         self._dxa = dxa
         ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
         self._compute_flux_stencil = stencil_factory.from_origin_domain(

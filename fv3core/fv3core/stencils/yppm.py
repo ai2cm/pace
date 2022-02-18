@@ -336,15 +336,11 @@ class YPiecewiseParabolic:
         self,
         stencil_factory: StencilFactory,
         dya,
-        grid_type: int,
         jord,
         origin: Index3D,
         domain: Index3D,
     ):
-        # Arguments come from:
-        # namelist.grid_type
-        # grid.dya
-        assert grid_type < 3
+        # dya comes from grid
         self._dya = dya
         ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin, domain)
         self._compute_flux_stencil = stencil_factory.from_origin_domain(
