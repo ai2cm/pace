@@ -1538,6 +1538,7 @@ def moment_recover(
 
 
 def mfpblt(
+    self,
     im,
     ix,
     km,
@@ -1607,7 +1608,7 @@ def mfpblt(
     if totflag:
         return kpbl, hpbl, buo, xmf, tcko, qcko, ucko, vcko, xlamue
 
-    mfpblt_s0(
+    self._mfpblt_s0(
         alp=alp,
         buo=buo,
         cnvflg=cnvflg,
@@ -3162,18 +3163,18 @@ class TurbulenceState:
         self.q1[:,:,5] = qgraupel
         self.q1[:,:,6] = qo3mr
         self.q1[:,:,7] = qcloud
-        self.swh = copy.deepcopy(tendency_storage) # associated with Radtend%htrsw
-        self.hlw = copy.deepcopy(tendency_storage) # associated with Radtend%htrlw
+        self.swh = copy.deepcopy(tendency_storage) # NOTE : Where is Radtend%htrsw?
+        self.hlw = copy.deepcopy(tendency_storage) # NOTE : Where is Radtend%htrlw?
         self.xmu = copy.deepcopy(tendency_storage_2D)
         self.garea = grid_data.area
         self.psk = prsik
         self.rbsoil = copy.deepcopy(tendency_storage_2D)
-        self.zorl = copy.deepcopy(tendency_storage_2D)
-        self.u10m = copy.deepcopy(tendency_storage_2D)
-        self.v10m = copy.deepcopy(tendency_storage_2D)
-        self.fm = copy.deepcopy(tendency_storage_2D)
-        self.fh = copy.deepcopy(tendency_storage_2D)
-        self.tsea = copy.deepcopy(tendency_storage_2D)
+        self.zorl = copy.deepcopy(tendency_storage_2D) # NOTE : Set by SfcProp%zorl, which is defined in physics driver
+        self.u10m = copy.deepcopy(tendency_storage_2D) # NOTE : Where is Diag%u10m
+        self.v10m = copy.deepcopy(tendency_storage_2D) # NOTE : Where is Diag%v10m
+        self.fm = copy.deepcopy(tendency_storage_2D)   # NOTE : Where is Sfcprop%ffmm
+        self.fh = copy.deepcopy(tendency_storage_2D)   # NOTE : Where is Sfcprop%ffhh
+        self.tsea = copy.deepcopy(tendency_storage_2D) # NOTE : Where is Sfcprop%tsfc
         self.evap = copy.deepcopy(tendency_storage_2D)
         self.heat = copy.deepcopy(tendency_storage_2D)
         self.stress = copy.deepcopy(tendency_storage_2D)
@@ -3189,7 +3190,7 @@ class TurbulenceState:
         self.dvsfc = copy.deepcopy(tendency_storage_2D)
         self.dtsfc = copy.deepcopy(tendency_storage_2D)
         self.dqsfc = copy.deepcopy(tendency_storage_2D)
-        self.hpbl = copy.deepcopy(tendency_storage_2D)
+        self.hpbl = copy.deepcopy(tendency_storage_2D) # NOTE : diag%hpbl
         # self.kinver = copy.deepcopy(tendency_storage_2D)
         # self.kinver[:,:] = grid_indexing.domain[2]-1
            
@@ -3226,13 +3227,13 @@ class Turbulence:
         # self._km = km
         # self._im = im
         # self._ix = ix
-        self._ntcw = 2               # 2 : ntcw
-        self._ntiw = 3               # 3 : ntiw
-        self._ntke = 8               # 8 : ntke
-        self._dspheat = True         # True : dspheat
-        self._xkzm_m = 0.01           # 0.01 : xkzm_m
-        self._xkzm_h = 0.1           # 0.1 : xkzm_h
-        self._xkzm_s = 1.0           # 1.0 : xkzm_s
+        self._ntcw = 2               # 2 : ntcw NOTE: Can these value be found elsewhere?
+        self._ntiw = 3               # 3 : ntiw NOTE: Can these value be found elsewhere?
+        self._ntke = 8               # 8 : ntke NOTE: Can these value be found elsewhere?
+        self._dspheat = True         # True : dspheat NOTE: State variable?
+        self._xkzm_m = 0.01           # 0.01 : xkzm_m NOTE : State variable?
+        self._xkzm_h = 0.1           # 0.1 : xkzm_h   NOTE : State variable?
+        self._xkzm_s = 1.0           # 1.0 : xkzm_s   NOTE : State variable?
         self._tkmin = functions.TKMIN   # tkmin
         self._zfmin = functions.ZFMIN   # zfmin
         self._rlmn = functions.RLMN     # rlmn
@@ -3737,4 +3738,932 @@ class Turbulence:
         )
 
     def __call__(self, state: TurbulenceState):
-        print()
+        self._init(
+            bf=self._bf,
+            cfly=self._cfly,
+            chz=self._chz,
+            ckz=self._ckz,
+            crb=self._crb,
+            dqsfc=state.dqsfc,
+            dt2=self._dt2,
+            dtdz1=self._dtdz1,
+            dtsfc=state.dtsfc,
+            dusfc=state.dusfc,
+            dvsfc=state.dvsfc,
+            elocp=self._elocp,
+            el2orc=self._el2orc,
+            eps=self._eps,
+            evap=state.evap,
+            fv=self._fv,
+            garea=state.garea,
+            gdx=self._gdx,
+            heat=state.heat,
+            hlw=state.hlw,
+            hpbl=state.hpbl,
+            hpblx=self._hpblx,
+            kpbl=state.kpbl,
+            kcld=self._kcld,
+            kinver=self._kinver,
+            km1=self._km1,
+            kpblx=self._kpblx,
+            krad=self._krad,
+            kx1=self._kx1,
+            lcld=self._lcld,
+            g=self._g,
+            gotvx=self._gotvx,
+            gravi=self._gravi,
+            mask=self._mask,
+            mrad=self._mrad,
+            pblflg=self._pblflg,
+            pcnvflg=self._pcnvflg,
+            phii=state.phii,
+            phil=state.phil,
+            pix=self._pix,
+            plyr=self._plyr,
+            prn=self._prn,
+            prsi=state.prsi,
+            prsl=state.prsl,
+            prslk=state.prslk,
+            psk=state.psk,
+            q1=state.q1,
+            qlx=self._qlx,
+            qstl=self._qstl,
+            qtx=self._qtx,
+            radmin=self._radmin,
+            radx=self._radx,
+            rbsoil=state.rbsoil,
+            rbup=self._rbup,
+            rdzt=self._rdzt,
+            rhly=self._rhly,
+            sfcflg=self._sfcflg,
+            sflux=self._sflux,
+            scuflg=self._scuflg,
+            shr2=self._shr2,
+            slx=self._slx,
+            stress=state.stress,
+            svx=self._svx,
+            swh=state.swh,
+            t1=state.t1,
+            thermal=self._thermal,
+            theta=self._theta,
+            thetae=self._thetae,
+            thlvx=self._thlvx,
+            thlx=self._thlx,
+            thvx=self._thvx,
+            tke=self._tke,
+            tkmin=self._tkmin,
+            tsea=state.tsea,
+            tx1=self._tx1,
+            tx2=self._tx2,
+            u10m=state.u10m,
+            ustar=self._ustar,
+            u1=state.u1,
+            v1=state.v1,
+            v10m=state.v10m,
+            xkzm_h=self._xkzm_h,
+            xkzm_m=self._xkzm_m,
+            xkzm_s=self._xkzm_s,
+            xkzmo=self._xkzmo,
+            xkzo=self._xkzo,
+            xmu=state.xmu,
+            zi=self._zi,
+            zl=self._zl,
+            zm=self._zm,
+            zorl=state.zorl,
+            ntke=self._ntke-1,
+            ntcw=self._ntcw-1,
+            ntiw=self._ntiw-1,
+            hvap=self._hvap,
+            hfus=self._hfus,
+            rbcr=self._rbcr,
+            f0=self._f0,
+            crbmin=self._crbmin,
+            crbmax=self._crbmax,
+            qmin=self._qmin,
+            qlmin=self._qlmin,
+            cql=self._cql,
+            dw2min=self._dw2min,
+            xkgdx=self._xkgdx,
+            xkzinv=self._xkzinv,
+            ck1=self._ck1,
+            ch1=self._ch1,
+            cp=self._cp,
+        )
+
+        self._mrf_pbl_scheme_part1(
+            crb=self._crb,
+            flg=self._flg,
+            g=self._g,
+            kpblx=self._kpblx,
+            mask=self._mask,
+            rbdn=self._rbdn,
+            rbup=self._rbup,
+            thermal=self._thermal,
+            thlvx=self._thlvx,
+            thlvx_0=self._thlvx_0,
+            u1=state.u1,
+            v1=state.v1,
+            zl=self._zl,
+        )
+
+        self._mrf_pbl_2_thermal_1(
+            crb=self._crb,
+            evap=state.evap,
+            fh=state.fh,
+            flg=self._flg,
+            fm=state.fm,
+            gotvx=self._gotvx,
+            heat=state.heat,
+            hpbl=state.hpbl,
+            hpblx=self._hpblx,
+            kpbl=state.kpbl,
+            kpblx=self._kpblx,
+            mask=self._mask,
+            pblflg=self._pblflg,
+            pcnvflg=self._pcnvflg,
+            phih=self._phih,
+            phim=self._phim,
+            rbdn=self._rbdn,
+            rbup=self._rbup,
+            rbsoil=state.rbsoil,
+            sfcflg=self._sfcflg,
+            sflux=self._sflux,
+            thermal=self._thermal,
+            theta=self._theta,
+            ustar=self._ustar,
+            vpert=self._vpert,
+            zi=self._zi,
+            zl=self._zl,
+            zol=self._zol,
+            fv=self._fv,
+            wfac=self._wfac,
+            cfac=self._cfac,
+            gamcrt=self._gamcrt,
+            sfcfrac=self._sfcfrac,
+            vk=self._vk,
+            rimin=self._rimin,
+            zolcru=self._zolcru,
+            zfmin=self._zfmin,
+            aphi5=self._aphi5,
+            aphi16=self._aphi16,
+            h1=self._h1,
+        )
+
+        self._thermal_2(
+            crb=self._crb,
+            flg=self._flg,
+            g=self._g,
+            kpbl=state.kpbl,
+            mask=self._mask,
+            rbdn=self._rbdn,
+            rbup=self._rbup,
+            thermal=self._thermal,
+            thlvx=self._thlvx,
+            thlvx_0=self._thlvx_0,
+            u1=state.u1,
+            v1=state.v1,
+            zl=self._zl,
+        )
+
+        self._pbl_height_enhance(
+            crb=self._crb,
+            flg=self._flg,
+            hpbl=state.hpbl,
+            kpbl=state.kpbl,
+            lcld=self._lcld,
+            mask=self._mask,
+            pblflg=self._pblflg,
+            pcnvflg=self._pcnvflg,
+            rbdn=self._rbdn,
+            rbup=self._rbup,
+            scuflg=self._scuflg,
+            zi=self._zi,
+            zl=self._zl,
+            zstblmax=self._zstblmax,
+        )
+
+        self._stratocumulus(
+            flg=self._flg,
+            kcld=self._kcld,
+            krad=self._krad,
+            lcld=self._lcld,
+            km1=self._km1,
+            mask=self._mask,
+            radmin=self._radmin,
+            radx=self._radx,
+            qlx=self._qlx,
+            scuflg=self._scuflg,
+            qlcr=self._qlcr,
+        )
+
+        self._mass_flux_comp(
+            pcnvflg=self._pcnvflg,
+            q1=state.q1,
+            scuflg=self._scuflg,
+            t1=state.t1,
+            tcdo=self._tcdo,
+            tcko=self._tcko,
+            u1=state.u1,
+            ucdo=self._ucdo,
+            ucko=self._ucko,
+            v1=state.v1,
+            vcdo=self._vcdo,
+            vcko=self._vcko,
+            qcdo=self._qcdo,
+            qcko=self._qcko,
+        )
+
+        # *** inlined mfpblt subroutine call ***
+        totflag = True
+        for i in range(im):
+            totflag = totflag and self._pcnvflg[i, 0]
+
+
+        if not totflag:
+            self._mfpblt_s0(
+                alp=self._alp,
+                buo=self._buou,
+                cnvflg=self._pcnvflg,
+                g=self._g,
+                hpbl=state.hpbl,
+                kpbl=state.kpbl,
+                q1=state.q1,
+                qtu=self._qtu,
+                qtx=self._qtx,
+                thlu=self._thlu,
+                thlx=self._thlx,
+                thvx=self._thvx,
+                vpert=self._vpert,
+                wu2=self._wu2,
+                kpblx=self._kpblx,
+                kpbly=self._kpbly,
+                rbup=self._rbup,
+                rbdn=self._rbdn,
+                hpblx=self._hpblx,
+                xlamavg=self._xlamavg,
+                sumx=self._sumx,
+                ntcw=self._ntcw - 1,
+            )
+
+            self._mfpblt_s1(
+                buo=self._buou,
+                ce0=self._ce0,
+                cm=self._cm,
+                cnvflg=self._pcnvflg,
+                elocp=self._elocp,
+                el2orc=self._el2orc,
+                eps=self._eps,
+                epsm1=self._epsm1,
+                flg=self._flg,
+                fv=self._fv,
+                g=self._g,
+                hpbl=state.hpbl,
+                kpbl=state.kpbl,
+                kpblx=self._kpblx,
+                kpbly=self._kpbly,
+                mask=self._mask,
+                pix=self._pix,
+                plyr=self._plyr,
+                qtu=self._qtu,
+                qtx=self._qtx,
+                rbdn=self._rbdn,
+                rbup=self._rbup,
+                thlu=self._thlu,
+                thlx=self._thlx,
+                thvx=self._thvx,
+                wu2=self._wu2,
+                xlamue=self._xlamue,
+                xlamuem=self._xlamuem,
+                zl=self._zl,
+                zm=self._zm,
+                qmin=self._qmin,
+            )
+
+            self._mfpblt_s1a(
+                cnvflg=self._pcnvflg,
+                hpblx=self._hpblx,
+                kpblx=self._kpblx,
+                mask=self._mask,
+                rbdn=self._rbdn,
+                rbup=self._rbup,
+                zm=self._zm,
+            )
+
+            self._mfpblt_s2(
+                a1=self._a1_mfpblt,
+                ce0=self._ce0,
+                cm=self._cm,
+                cnvflg=self._pcnvflg,
+                dt2=self._dt2,
+                el2orc=self._el2orc,
+                elocp=self._elocp,
+                eps=self._eps,
+                epsm1=self._epsm1,
+                gdx=self._gdx,
+                hpbl=state.hpbl,
+                hpblx=self._hpblx,
+                kpbl=state.kpbl,
+                kpblx=self._kpblx,
+                kpbly=self._kpbly,
+                mask=self._mask,
+                pgcon=self._pgcon,
+                pix=self._pix,
+                plyr=self._plyr,
+                qcko=self._qcko,
+                qtu=self._qtu,
+                qtx=self._qtx,
+                scaldfunc=self._scaldfunc,
+                sumx=self._sumx,
+                tcko=self._tcko,
+                thlu=self._thlu,
+                thlx=self._thlx,
+                u1=state.u1,
+                ucko=self._ucko,
+                v1=state.v1,
+                vcko=self._vcko,
+                xlamue=self._xlamue,
+                xlamuem=self._xlamuem,
+                xlamavg=self._xlamavg,
+                xmf=self._xmf,
+                wu2=self._wu2,
+                zl=self._zl,
+                zm=self._zm,
+                qmin=self._qmin,
+            )
+
+            self._mfpblt_s3(
+                cnvflg=self._pcnvflg,
+                kpbl=state.kpbl,
+                mask=self._mask,
+                xlamue=self._xlamue,
+                qcko=self._qcko,
+                q1_gt=state.q1,
+                zl=self._zl,
+                ntcw=self._ntcw,
+                ntrac1=self._ntrac1,
+            )
+        #*********
+
+        # *** Inlined mfscu subroutine call ***
+        totflag = True
+        for i in range(im):
+            totflag = totflag and self._pcnvflg[i, 0]
+
+        if not totflag:
+            self._mfscu_s0(
+                buo=self._buou,
+                cnvflg=self._pcnvflg,
+                flg=self._flg,
+                hrad=self._hrad,
+                krad=self._krad,
+                krad1=self._krad1,
+                mask=self._mask,
+                mrad=self._mrad,
+                q1=state.q1,
+                qtd=self._qtd,
+                qtx=self._qtx,
+                ra1=self._ra1,
+                ra2=self._ra2,
+                radmin=self._radmin,
+                radj=self._radj,
+                thetae=self._thetae,
+                thld=self._thld,
+                thlvd=self._thlvd,
+                thlvx=self._thlvx,
+                thlx=self._thlx,
+                thvx=self._thvx,
+                wd2=self._wd2,
+                zm=self._zm,
+                a1=self._a1_mfscu,
+                a11=self._a11,
+                a2=self._a2,
+                a22=self._a22,
+                actei=self._actei,
+                cldtime=self._cldtime,
+                cp=self._cp,
+                hvap=self._hvap,
+                g=self._g,
+                ntcw=self._ntcw,
+            )
+
+            self._mfscu_s1(
+                cnvflg=self._pcnvflg,
+                flg=self._flg,
+                krad=self._krad,
+                mask=self._mask,
+                mrad=self._mrad,
+                thlvd=self._thlvd,
+                thlvx=self._thlvx,
+            )
+        
+        totflg = True
+
+        for i in range(im):
+            totflg = totflg and ~self._pcnvflg[i, 0]
+
+        if not totflag:        
+            for i in range(im):
+                self._zm_mrad[i,0] = self._zm[i, 0, self._mrad[i,0] - 1]
+
+            self._mfscu_s2(
+                zl=self._zl,
+                mask=self._mask,
+                mrad=self._mrad,
+                krad=self._krad,
+                zm=self._zm,
+                zm_mrad=self._zm_mrad,
+                xlamde=self._xlamde,
+                xlamdem=self._xlamdem,
+                hrad=self._hrad,
+                cnvflg=self._pcnvflg,
+                ce0=self._ce0,
+                cm=self._cm,
+            )
+
+            self._mfscu_s3(
+                buo=self._buou,
+                cnvflg=self._pcnvflg,
+                el2orc=self._el2orc,
+                elocp=self._elocp,
+                eps=self._eps,
+                epsm1=self._epsm1,
+                fv=self._fv,
+                g=self._g,
+                krad=self._krad,
+                mask=self._mask,
+                pix=self._pix,
+                plyr=self._plyr,
+                thld=self._thld,
+                thlx=self._thlx,
+                thvx=self._thvx,
+                qtd=self._qtd,
+                qtx=self._qtx,
+                xlamde=self._xlamde,
+                zl=self._zl,
+                qmin=self._qmin,
+            )
+
+            self._mfscu_s4(
+                buo=self._buou,
+                cnvflg=self._pcnvflg,
+                krad1=self._krad1,
+                mask=self._mask,
+                wd2=self._wd2,
+                xlamde=self._xlamde,
+                zm=self._zm,
+                bb1=2.0,
+                bb2=4.0,
+            )
+
+            self._mfscu_s5(
+                buo=self._buou,
+                cnvflg=self._pcnvflg,
+                flg=self._flg,
+                krad=self._krad,
+                krad1=self._krad1,
+                mask=self._mask,
+                mrad=self._mrad,
+                mradx=self._mradx,
+                mrady=self._mrady,
+                xlamde=self._xlamde,
+                wd2=self._wd2,
+                zm=self._zm,
+            )
+        
+        totflag = True
+        for i in range(im):
+            totflag = totflag and self._pcnvflg[i, 0]
+
+        if not totflag:
+            self._mfscu_s6(
+                zl=self._zl,
+                mask=self._mask,
+                mrad=self._mrad,
+                krad=self._krad,
+                zm=self._zm,
+                zm_mrad=self._zm_mrad,
+                xlamde=self._xlamde,
+                xlamdem=self._xlamdem,
+                hrad=self._hrad,
+                cnvflg=self._pcnvflg,
+                mrady=self._mrady,
+                mradx=self._mradx,
+                ce0=self._ce0,
+                cm=self._cm,
+            )
+
+            self._mfscu_s7(
+                cnvflg=self._pcnvflg,
+                dt2=self._dt2,
+                gdx=self._gdx,
+                krad=self._krad,
+                mask=self._mask,
+                mrad=self._mrad,
+                ra1=self._ra1,
+                scaldfunc=self._scaldfunc,
+                sumx=self._sumx,
+                wd2=self._wd2,
+                xlamde=self._xlamde,
+                xlamavg=self._xlamavg,
+                xmfd=self._xmfd,
+                zl=self._zl,
+            )
+
+            self._mfscu_s8(
+                cnvflg=self._pcnvflg, 
+                krad=self._krad, 
+                mask=self._mask, 
+                thld=self._thld, 
+                thlx=self._thlx,
+            )
+
+            self._mfscu_s9(
+                cnvflg=self._pcnvflg,
+                el2orc=self._el2orc,
+                elocp=self._elocp,
+                eps=self._eps,
+                epsm1=self._epsm1,
+                krad=self._krad,
+                mask=self._mask,
+                mrad=self._mrad,
+                pgcon=self._pgcon,
+                pix=self._pix,
+                plyr=self._plyr,
+                qcdo=self._qcdo,
+                qtd=self._qtd,
+                qtx=self._qtx,
+                tcdo=self._tcdo,
+                thld=self._thld,
+                thlx=self._thlx,
+                u1=state.u1,
+                ucdo=self._ucdo,
+                v1=state.v1,
+                vcdo=self._vcdo,
+                xlamde=self._xlamde,
+                xlamdem=self._xlamdem,
+                zl=self._zl,
+                ntcw=self._ntcw,
+                qmin=self._qmin,
+            )
+
+            self._mfscu_10(
+                cnvflg=self._pcnvflg,
+                krad=self._krad,
+                mrad=self._mrad,
+                mask=self._mask,
+                zl=self._zl,
+                xlamde=self._xlamde,
+                qcdo=self._qcdo,
+                q1=state.q1,
+                ntcw=self._ntcw,
+                ntrac1=self._ntrac1,
+            )
+
+        prandtl_comp_exchg_coeff(
+            chz=self._chz,
+            ckz=self._ckz,
+            hpbl=self._hpbl,
+            kpbl=self._kpbl,
+            mask=self._mask,
+            pcnvflg=self._pcnvflg,
+            phih=self._phih,
+            phim=self._phim,
+            prn=self._prn,
+            zi=self._zi,
+            sfcfrac=self._sfcfrac,
+            prmin=self._prmin,
+            prmax=self._prmax,
+            ck0=self._ck0,
+            ck1=self._ck1,
+            ch0=self._ch0,
+            ch1=self._ch1,
+        )
+
+        # *** Will have to rethink how to execute this portion of 3 stencil calls **
+
+        comp_asym_mix_up(
+                mask=self._mask,
+                mlenflg=self._mlenflg,
+                bsum=self._bsum,
+                zlup=self._zlup,
+                thvx_k=self._thvx_k,
+                tke_k=self._tke_k,
+                thvx=self._thvx,
+                tke=self._tke,
+                gotvx=self._gotvx,
+                zl=self._zl,
+                zfmin=self._zfmin,
+                k=k,
+            )
+
+        comp_asym_mix_dn(
+                mask=self._mask,
+                mlenflg=self._mlenflg,
+                bsum=self._bsum,
+                zldn=self._zldn,
+                thvx_k=self._thvx_k,
+                tke_k=self._tke_k,
+                thvx=self._thvx,
+                tke=self._tke,
+                gotvx=self._gotvx,
+                zl=self._zl,
+                tsea=state.tsea,
+                q1_gt=state.q1,
+                zfmin=self._zfmin,
+                fv=self._fv,
+                k=k,
+                qmin=self._qmin,
+            )
+        comp_asym_rlam_ele(
+                zi=self._zi,
+                rlam=self._rlam,
+                ele=self._ele,
+                zlup=self._zlup,
+                zldn=self._zldn,
+                rlmn=self._rlmn,
+                rlmx=self._rlmx,
+                elmfac=self._elmfac,
+                elmx=self._elmx,
+                elefac=self._elefac,
+            )
+
+        # ******
+
+        compute_eddy_buoy_shear(
+            bf=self._bf,
+            buod=self._buod,
+            buou=self._buou,
+            chz=self._chz,
+            ckz=self._ckz,
+            dku=self._dku,
+            dkt=self._dkt,
+            dkq=self._dkq,
+            ele=self._ele,
+            elm=self._elm,
+            gdx=self._gdx,
+            gotvx=self._gotvx,
+            kpbl=self._kpbl,
+            mask=self._mask,
+            mrad=self._mrad,
+            krad=self._krad,
+            pblflg=self._pblflg,
+            pcnvflg=self._pcnvflg,
+            phim=self._phim,
+            prn=self._prn,
+            prod=self._prod,
+            radj=self._radj,
+            rdzt=self._rdzt,
+            rlam=self._rlam,
+            rle=self._rle,
+            scuflg=self._scuflg,
+            sflux=self._sflux,
+            shr2=self._shr2,
+            stress=state.stress,
+            tke=self._tke,
+            u1=state.u1,
+            ucdo=self._ucdo,
+            ucko=self._ucko,
+            ustar=self._ustar,
+            v1=state.v1,
+            vcdo=self._vcdo,
+            vcko=self._vcko,
+            xkzo=self._xkzo,
+            xkzmo=self._xkzmo,
+            xmf=self._xmf,
+            xmfd=self._xmfd,
+            zi=self._zi,
+            zl=self._zl,
+            zol=self._zol,
+            vk=self._vk,
+            rimin=self._rimin,
+            tdzmin=self._tdzmin,
+            prmax=self._prmax,
+            prtke=self._prtke,
+            prscu=self._prscu,
+            dkmax=self._dkmax,
+            ck1=self._ck1,
+            ch1=self._ch1,
+            ce0=self._ce0,
+            rchck=self._rchck,
+        )
+
+        predict_tke(diss=self._diss, 
+              prod=self._prod, 
+              rle=self._rle, 
+              tke=self._tke, 
+              dtn=self._dtn, 
+              kk=self._kk,
+              tkmin=self._tkmin,              
+              )
+
+        tke_up_down_prop(
+            pcnvflg=self._pcnvflg,
+            qcdo=self._qcdo,
+            qcko=self._qcko,
+            scuflg=self._scuflg,
+            tke=self._tke,
+            kpbl=self._kpbl,
+            mask=self._mask,
+            xlamue=self._xlamue,
+            zl=self._zl,
+            ad=self._ad,
+            f1=self._f1,
+            krad=self._krad,
+            mrad=self._mrad,
+            xlamde=self._xlamde,
+            kmpbl=self._kmpbl,
+            kmscu=self._kmscu,
+        )
+
+        tke_tridiag_matrix_ele_comp(
+            ad=self._ad,
+            ad_p1=self._ad_p1,
+            al=self._al,
+            au=self._au,
+            del_=state._del,
+            dkq=self._dkq,
+            dt2=self._dt2,
+            f1=self._f1,
+            f1_p1=self._f1_p1,
+            kpbl=self._kpbl,
+            krad=self._krad,
+            mask=self._mask,
+            mrad=self._mrad,
+            pcnvflg=self._pcnvflg,
+            prsl=self._prsl,
+            qcdo=self._qcdo,
+            qcko=self._qcko,
+            rdzt=self._rdzt,
+            scuflg=self._scuflg,
+            tke=self._tke,
+            xmf=self._xmf,
+            xmfd=self._xmfd,
+        )
+
+        tridit(au=self._au, 
+               cm=self._ad, 
+               cl=self._al, 
+               f1=self._f1,
+        )
+
+        part12a(
+            rtg=state.rtg,
+            f1=self._f1,
+            q1=state.q1,
+            ad=self._ad,
+            f2=self._f2,
+            dtdz1=self._dtdz1,
+            evap=state.evap,
+            heat=state.heat,
+            t1=state.t1,
+            rdt=self._rdt,
+            ntrac1=self._ntrac1,
+            ntke=self._ntke,
+        )
+
+        heat_moist_tridiag_mat_ele_comp(
+            ad=self._ad,
+            ad_p1=self._ad_p1,
+            al=self._al,
+            au=self._au,
+            del_=state._del,
+            dkt=self._dkt,
+            f1=self._f1,
+            f1_p1=self._f1_p1,
+            f2=self._f2,
+            f2_p1=self._f2_p1,
+            kpbl=self._kpbl,
+            krad=self._krad,
+            mask=self._mask,
+            mrad=self._mrad,
+            pcnvflg=self._pcnvflg,
+            prsl=state.prsl,
+            q1=state.q1,
+            qcdo=self._qcdo,
+            qcko=self._qcko,
+            rdzt=self._rdzt,
+            scuflg=self._scuflg,
+            tcdo=self._tcdo,
+            tcko=self._tcko,
+            t1=state.t1,
+            xmf=self._xmf,
+            xmfd=self._xmfd,
+            dt2=self._dt2,
+            gocp=self._gocp,
+        )
+
+        if self._ntrac1 >= 2:
+            part13a(
+                pcnvflg=self._pcnvflg,
+                mask=self._mask,
+                kpbl=self._kpbl,
+                del_=state._del,
+                prsl=state.prsl,
+                rdzt=self._rdzt,
+                xmf=self._xmf,
+                qcko=self._qcko,
+                q1=state.q1,
+                f2=self._f2,
+                scuflg=self._scuflg,
+                mrad=self._mrad,
+                krad=self._krad,
+                xmfd=self._xmfd,
+                qcdo=self._qcdo,
+                ntrac1=self._ntrac1,
+                dt2=self._dt2,
+            )
+
+        tridin(cl=self._al,
+           cm=self._ad,
+           cu=self._au,
+           r1=self._f1,
+           r2=self._f2,
+           au=self._au,
+           a1=self._f1,
+           a2=self._f2,
+           nt=self._ntrac1,
+        )
+
+        part13b(
+            f1=self._f1,
+            t1=state.t1,
+            f2=self._f2,
+            q1=state.q1,
+            tdt=state.tdt,
+            rtg=state.rtg,
+            dtsfc=state.dtsfc,
+            del_=state._del,
+            dqsfc=state.dqsfc,
+            conq=self._conq,
+            cont=self._cont,
+            rdt=self._rdt,
+            ntrac1=self._ntrac1,
+        )
+
+        moment_tridiag_mat_ele_comp(
+            ad=self._ad,
+            ad_p1=self._ad_p1,
+            al=self._al,
+            au=self._au,
+            del_=state._del,
+            diss=self._diss,
+            dku=self._dku,
+            dtdz1=self._dtdz1,
+            f1=self._f1,
+            f1_p1=self._f1_p1,
+            f2=self._f2,
+            f2_p1=self._f2_p1,
+            kpbl=self._kpbl,
+            krad=self._krad,
+            mask=self._mask,
+            mrad=self._mrad,
+            pcnvflg=self._pcnvflg,
+            prsl=state.prsl,
+            rdzt=self._rdzt,
+            scuflg=self._scuflg,
+            spd1=state.spd1,
+            stress=state.stress,
+            tdt=state.tdt,
+            u1=state.u1,
+            ucdo=self._ucdo,
+            ucko=self._ucko,
+            v1=state.v1,
+            vcdo=self._vcdo,
+            vcko=self._vcko,
+            xmf=self._xmf,
+            xmfd=self._xmfd,
+            dspheat=self._dspheat,
+            dt2=self._dt2,
+            dspfac=self._dspfac,
+            cp=self._cp,
+        )
+
+        tridi2(
+            a1=self._f1, 
+            a2=self._f2, 
+            au=self._au, 
+            cl=self._al, 
+            cm=self._ad, 
+            cu=self._au, 
+            r1=self._f1, 
+            r2=self._f2,
+        )
+
+        moment_recover(
+            del_=state._del,
+            du=state.du,
+            dusfc=state.dusfc,
+            dv=state.dv,
+            dvsfc=state.dvsfc,
+            f1=self._f1,
+            f2=self._f2,
+            hpbl=self._hpbl,
+            hpblx=self._hpblx,
+            kpbl=self._kpbl,
+            kpblx=self._kpblx,
+            mask=self._mask,
+            u1=state.u1,
+            v1=state.v1,
+            conw=self._conw,
+            rdt=self._rdt,
+        )
