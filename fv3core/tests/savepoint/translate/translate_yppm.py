@@ -42,7 +42,6 @@ class TranslateYPPM(TranslateFortranData2Py):
         self.compute_func = yppm.YPiecewiseParabolic(
             stencil_factory=self.stencil_factory,
             dya=self.grid.dya,
-            grid_type=self.grid.grid_type,
             jord=int(inputs["jord"]),
             origin=(inputs["ifirst"], origin[1], origin[2]),
             domain=(inputs["ilast"] - inputs["ifirst"] + 1, domain[1], domain[2]),

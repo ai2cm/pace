@@ -41,7 +41,6 @@ class TranslateXPPM(TranslateFortranData2Py):
         self.compute_func = xppm.XPiecewiseParabolic(
             stencil_factory=self.stencil_factory,
             dxa=self.grid.dxa,
-            grid_type=self.grid.grid_type,
             iord=int(inputs["iord"]),
             origin=(origin[0], inputs["jfirst"], origin[2]),
             domain=(domain[0], inputs["jlast"] - inputs["jfirst"] + 1, domain[2]),
