@@ -3146,8 +3146,8 @@ class TurbulenceState:
         tendency_storage_8 : functions.FloatField_8,
         grid_data: GridData,
     ):
-        self.dv = copy.deepcopy(tendency_storage)
-        self.du = copy.deepcopy(tendency_storage)
+        self.dv = copy.deepcopy(tendency_storage) # va state variable?
+        self.du = copy.deepcopy(tendency_storage) # ua state variable?
         self.tdt = copy.deepcopy(tendency_storage)
         self.rtg = copy.deepcopy(tendency_storage_8)
         self.u1 = ugrs
@@ -3382,59 +3382,59 @@ class Turbulence:
         self._thlu = make_storage(init=True)
         self._dtdz1 = make_storage(init=True)
         # 1D GT storages extended into 2D
-        self._f1_p1 = make_storage_2D(shape=shape[0:2],init=True)
-        self._f2_p1 = make_storage_2D(shape=shape[0:2],init=True)
-        self._ad_p1 = make_storage_2D(shape=shape[0:2],init=True)
-        self._thlvx_0 = make_storage_2D(shape=shape[0:2],init=True)
-        self._gdx = make_storage_2D(shape=shape[0:2],init=True)
+        self._f1_p1 = make_storage_2D(init=True)
+        self._f2_p1 = make_storage_2D(init=True)
+        self._ad_p1 = make_storage_2D(init=True)
+        self._thlvx_0 = make_storage_2D(init=True)
+        self._gdx = make_storage_2D(init=True)
         self._kx1 = make_storage(init=True,dtype=np.int32)
-        self._kpblx = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._kpblx_mfp = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._hpblx = make_storage_2D(shape=shape[0:2],init=True)
-        self._hpblx_mfp = make_storage_2D(shape=shape[0:2],init=True)
-        self._pblflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
-        self._sfcflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
-        self._pcnvflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
-        self._scuflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
-        self._radmin = make_storage_2D(shape=shape[0:2],init=True)
-        self._mrad = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._krad = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._lcld = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._kcld = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._flg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
-        self._rbup = make_storage_2D(shape=shape[0:2],init=True)
-        self._rbdn = make_storage_2D(shape=shape[0:2],init=True)
-        self._sflux = make_storage_2D(shape=shape[0:2],init=True)
-        self._thermal = make_storage_2D(shape=shape[0:2],init=True)
-        self._crb = make_storage_2D(shape=shape[0:2],init=True)
-        self._ustar = make_storage_2D(shape=shape[0:2],init=True)
-        self._zol = make_storage_2D(shape=shape[0:2],init=True)
-        self._phim = make_storage_2D(shape=shape[0:2],init=True)
-        self._phih = make_storage_2D(shape=shape[0:2],init=True)
-        self._vpert = make_storage_2D(shape=shape[0:2],init=True)
-        self._radj = make_storage_2D(shape=shape[0:2],init=True)
-        self._zlup = make_storage_2D(shape=shape[0:2],init=True)
-        self._zldn = make_storage_2D(shape=shape[0:2],init=True)
-        self._bsum = make_storage_2D(shape=shape[0:2],init=True)
-        self._mlenflg = make_storage_2D(shape=shape[0:2],init=True,dtype=bool)
-        self._thvx_k = make_storage_2D(shape=shape[0:2],init=True)
-        self._tke_k = make_storage_2D(shape=shape[0:2],init=True)
-        self._hrad = make_storage_2D(shape=shape[0:2],init=True)
-        self._krad1 = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._thlvd = make_storage_2D(shape=shape[0:2],init=True)
-        self._ra1 = make_storage_2D(shape=shape[0:2],init=True)
-        self._ra2 = make_storage_2D(shape=shape[0:2],init=True)
-        self._mradx = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._mrady = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._sumx = make_storage_2D(shape=shape[0:2],init=True)
-        self._xlamavg = make_storage_2D(shape=shape[0:2],init=True)
-        self._scaldfunc = make_storage_2D(shape=shape[0:2],init=True)
-        self._kpbly = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._kpbly_mfp = make_storage_2D(shape=shape[0:2],init=True,dtype=np.int32)
-        self._zm_mrad = make_storage_2D(shape=shape[0:2],init=True)
-        self._tx1 = make_storage_2D(shape=shape[0:2])
-        self._tx2 = make_storage_2D(shape=shape[0:2])
-        self._kinver = copy.deepcopy(shape=shape[0:2])
+        self._kpblx = make_storage_2D(init=True,dtype=np.int32)
+        self._kpblx_mfp = make_storage_2D(init=True,dtype=np.int32)
+        self._hpblx = make_storage_2D(init=True)
+        self._hpblx_mfp = make_storage_2D(init=True)
+        self._pblflg = make_storage_2D(init=True,dtype=bool)
+        self._sfcflg = make_storage_2D(init=True,dtype=bool)
+        self._pcnvflg = make_storage_2D(init=True,dtype=bool)
+        self._scuflg = make_storage_2D(init=True,dtype=bool)
+        self._radmin = make_storage_2D(init=True)
+        self._mrad = make_storage_2D(init=True,dtype=np.int32)
+        self._krad = make_storage_2D(init=True,dtype=np.int32)
+        self._lcld = make_storage_2D(init=True,dtype=np.int32)
+        self._kcld = make_storage_2D(init=True,dtype=np.int32)
+        self._flg = make_storage_2D(init=True,dtype=bool)
+        self._rbup = make_storage_2D(init=True)
+        self._rbdn = make_storage_2D(init=True)
+        self._sflux = make_storage_2D(init=True)
+        self._thermal = make_storage_2D(init=True)
+        self._crb = make_storage_2D(init=True)
+        self._ustar = make_storage_2D(init=True)
+        self._zol = make_storage_2D(init=True)
+        self._phim = make_storage_2D(init=True)
+        self._phih = make_storage_2D(init=True)
+        self._vpert = make_storage_2D(init=True)
+        self._radj = make_storage_2D(init=True)
+        self._zlup = make_storage_2D(init=True)
+        self._zldn = make_storage_2D(init=True)
+        self._bsum = make_storage_2D(init=True)
+        self._mlenflg = make_storage_2D(init=True,dtype=bool)
+        self._thvx_k = make_storage_2D(init=True)
+        self._tke_k = make_storage_2D(init=True)
+        self._hrad = make_storage_2D(init=True)
+        self._krad1 = make_storage_2D(init=True,dtype=np.int32)
+        self._thlvd = make_storage_2D(init=True)
+        self._ra1 = make_storage_2D(init=True)
+        self._ra2 = make_storage_2D(init=True)
+        self._mradx = make_storage_2D(init=True,dtype=np.int32)
+        self._mrady = make_storage_2D(init=True,dtype=np.int32)
+        self._sumx = make_storage_2D(init=True)
+        self._xlamavg = make_storage_2D(init=True)
+        self._scaldfunc = make_storage_2D(init=True)
+        self._kpbly = make_storage_2D(init=True,dtype=np.int32)
+        self._kpbly_mfp = make_storage_2D(init=True,dtype=np.int32)
+        self._zm_mrad = make_storage_2D(init=True)
+        self._tx1 = make_storage_2D(init=True)
+        self._tx2 = make_storage_2D(init=True)
+        self._kinver = make_storage_2D(init=True, dtype=np.int32)
         self._kinver[:,:] = grid_indexing.domain[2]-1
 
         # Mask/Index Array
@@ -3736,6 +3736,8 @@ class Turbulence:
             domains=domain_list_rlam,
             stencil_factory=stencil_factory,
         )
+
+        self._mask_init(mask=self._mask)
 
     def __call__(self, state: TurbulenceState):
         self._init(
@@ -4322,8 +4324,8 @@ class Turbulence:
         prandtl_comp_exchg_coeff(
             chz=self._chz,
             ckz=self._ckz,
-            hpbl=self._hpbl,
-            kpbl=self._kpbl,
+            hpbl=state.hpbl,
+            kpbl=state.kpbl,
             mask=self._mask,
             pcnvflg=self._pcnvflg,
             phih=self._phih,
@@ -4402,7 +4404,7 @@ class Turbulence:
             elm=self._elm,
             gdx=self._gdx,
             gotvx=self._gotvx,
-            kpbl=self._kpbl,
+            kpbl=state.kpbl,
             mask=self._mask,
             mrad=self._mrad,
             krad=self._krad,
@@ -4447,7 +4449,8 @@ class Turbulence:
             rchck=self._rchck,
         )
 
-        predict_tke(diss=self._diss, 
+        predict_tke(
+              diss=self._diss, 
               prod=self._prod, 
               rle=self._rle, 
               tke=self._tke, 
@@ -4462,7 +4465,7 @@ class Turbulence:
             qcko=self._qcko,
             scuflg=self._scuflg,
             tke=self._tke,
-            kpbl=self._kpbl,
+            kpbl=state.kpbl,
             mask=self._mask,
             xlamue=self._xlamue,
             zl=self._zl,
@@ -4485,12 +4488,12 @@ class Turbulence:
             dt2=self._dt2,
             f1=self._f1,
             f1_p1=self._f1_p1,
-            kpbl=self._kpbl,
+            kpbl=state.kpbl,
             krad=self._krad,
             mask=self._mask,
             mrad=self._mrad,
             pcnvflg=self._pcnvflg,
-            prsl=self._prsl,
+            prsl=state.prsl,
             qcdo=self._qcdo,
             qcko=self._qcko,
             rdzt=self._rdzt,
@@ -4532,7 +4535,7 @@ class Turbulence:
             f1_p1=self._f1_p1,
             f2=self._f2,
             f2_p1=self._f2_p1,
-            kpbl=self._kpbl,
+            kpbl=state.kpbl,
             krad=self._krad,
             mask=self._mask,
             mrad=self._mrad,
@@ -4556,7 +4559,7 @@ class Turbulence:
             part13a(
                 pcnvflg=self._pcnvflg,
                 mask=self._mask,
-                kpbl=self._kpbl,
+                kpbl=state.kpbl,
                 del_=state._del,
                 prsl=state.prsl,
                 rdzt=self._rdzt,
@@ -4613,7 +4616,7 @@ class Turbulence:
             f1_p1=self._f1_p1,
             f2=self._f2,
             f2_p1=self._f2_p1,
-            kpbl=self._kpbl,
+            kpbl=state.kpbl,
             krad=self._krad,
             mask=self._mask,
             mrad=self._mrad,
@@ -4657,9 +4660,9 @@ class Turbulence:
             dvsfc=state.dvsfc,
             f1=self._f1,
             f2=self._f2,
-            hpbl=self._hpbl,
+            hpbl=state.hpbl,
             hpblx=self._hpblx,
-            kpbl=self._kpbl,
+            kpbl=state.kpbl,
             kpblx=self._kpblx,
             mask=self._mask,
             u1=state.u1,
