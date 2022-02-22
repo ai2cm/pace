@@ -214,36 +214,23 @@ def pressures_mapu(
         pe3 = ak + bkh * (pe_bottom[0, -1, 0] + pe1_bottom)
 
 
-def pressures_bottom(pe: FloatField, pe_bottom: FloatFieldIJ):
-    """
-    Args:
-        pe (in):
-        pe_bottom(out):
-    """
-    # TODO: Combine pressures_mapu and pressures_mapv
-    with computation(BACKWARD):
-        with interval(-1, None):
-            pe_bottom = pe
-
-
 def pressures_mapv(
-    pe: FloatField,
-    pe_bottom: FloatFieldIJ,
-    ak: FloatFieldK,
-    bk: FloatFieldK,
-    pe0: FloatField,
-    pe3: FloatField,
+    pe: FloatField, ak: FloatFieldK, bk: FloatFieldK, pe0: FloatField, pe3: FloatField
 ):
     """
     Args:
         pe (in):
-        pe_bottom (in):
         ak (in):
         bk (in):
         pe0 (out):
         pe3 (out):
     """
-
+    # TODO: Combine pressures_mapu and pressures_mapv
+    with computation(BACKWARD):
+        with interval(-1, None):
+            pe_bottom = pe
+        with interval(0, -1):
+            pe_bottom = pe_bottom[0, 0, 1]
     with computation(FORWARD):
         with interval(0, 1):
             pe3 = ak
@@ -251,7 +238,7 @@ def pressures_mapv(
         with interval(1, None):
             bkh = 0.5 * bk
             pe0 = 0.5 * (pe[-1, 0, 0] + pe)
-            pe3 = ak + bkh * (pe_bottom[-1, 0] + pe_bottom)
+            pe3 = ak + bkh * (pe_bottom[-1, 0, 0] + pe_bottom)
 
 
 def update_ua(pe2: FloatField, ua: FloatField):
@@ -320,9 +307,7 @@ class LagrangianToEulerian:
         self._pn2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
         self._pe0 = utils.make_storage_from_shape(shape_kplus, backend=backend)
         self._pe3 = utils.make_storage_from_shape(shape_kplus, backend=backend)
-        self._pe_bottom = utils.make_storage_from_shape(
-            shape_kplus[0:2], backend=backend
-        )
+
         self._gz: FloatField = utils.make_storage_from_shape(
             shape_kplus, grid_indexing.origin_compute(), backend=backend
         )
@@ -430,15 +415,6 @@ class LagrangianToEulerian:
             grid_indexing.iec,
             grid_indexing.jsc,
             grid_indexing.jec + 1,
-        )
-        self._pressures_bottom = stencil_factory.from_origin_domain(
-            pressures_bottom,
-            origin=grid_indexing.origin_compute(add=(-1, 0, 0)),
-            domain=(
-                grid_indexing.domain[0] + 2,
-                grid_indexing.domain[1],
-                grid_indexing.domain[2] + 1,
-            ),
         )
 
         self._pressures_mapv = stencil_factory.from_origin_domain(
@@ -643,8 +619,8 @@ class LagrangianToEulerian:
 
         self._pressures_mapu(pe, self._pe1, ak, bk, self._pe0, self._pe3)
         self._map_single_u(u, self._pe0, self._pe3)
-        self._pressures_bottom(pe, self._pe_bottom)
-        self._pressures_mapv(pe, self._pe_bottom, ak, bk, self._pe0, self._pe3)
+
+        self._pressures_mapv(pe, ak, bk, self._pe0, self._pe3)
         self._map_single_v(v, self._pe0, self._pe3)
 
         self._update_ua(self._pe2, ua)
