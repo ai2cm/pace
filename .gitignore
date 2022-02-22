@@ -1,5 +1,3 @@
-.dace.conf
-
 # Test outputs
 results.xml
 driver/output.zarr
@@ -150,3 +148,6 @@ dmypy.json
 plot_output/
 profiling_results/
 model_output/
+
+# DaCe caches
+.dacecache
