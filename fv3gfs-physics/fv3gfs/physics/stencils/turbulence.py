@@ -3217,6 +3217,9 @@ class Turbulence:
         self._elocp = constants.HLV / constants.CP_AIR
         self._el2orc = constants.HLV * constants.HLV / (constants.RVGAS * constants.CP_AIR)
 
+        self._im = grid_indexing.domain[0]
+        self._jm = grid_indexing.domain[1]
+
         self._dt2 = self.namelist.dt_atmos  # NOTE : Check this later
         self._rdt = 1.0 / self._dt2
         self._ntrac = 8             # ntrac : Number of tracers (8) NOTE: See if this can be extracted elsewhere
@@ -3977,7 +3980,7 @@ class Turbulence:
 
         # *** inlined mfpblt subroutine call ***
         totflag = True
-        for i in range(im):
+        for i in range(self._im):
             totflag = totflag and self._pcnvflg[i, 0]
 
 
@@ -4108,7 +4111,7 @@ class Turbulence:
 
         # *** Inlined mfscu subroutine call ***
         totflag = True
-        for i in range(im):
+        for i in range(self._im):
             totflag = totflag and self._pcnvflg[i, 0]
 
         if not totflag:
@@ -4160,11 +4163,11 @@ class Turbulence:
         
         totflg = True
 
-        for i in range(im):
+        for i in range(self._im):
             totflg = totflg and ~self._pcnvflg[i, 0]
 
         if not totflag:        
-            for i in range(im):
+            for i in range(self._im):
                 self._zm_mrad[i,0] = self._zm[i, 0, self._mrad[i,0] - 1]
 
             self._mfscu_s2(
@@ -4233,7 +4236,7 @@ class Turbulence:
             )
         
         totflag = True
-        for i in range(im):
+        for i in range(self._im):
             totflag = totflag and self._pcnvflg[i, 0]
 
         if not totflag:
