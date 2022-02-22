@@ -176,10 +176,6 @@ class PhysicsState:
         metadata={"name": "layer_center_pressure", "units": "Pa", "intent": "inout"}
     )
 
-    prsl: FloatField = field(
-        metadata={"name": "pressure", "units": "Pa", "intent": "inout"}
-    )
-
     tgrs : FloatField = field(
         metadata={"name": "time(?)", "units": "sec(?)", "intent": "inout"}
     )
