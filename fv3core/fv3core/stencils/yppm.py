@@ -287,7 +287,7 @@ def compute_blbr_ord8plus_interior(q: FloatField):
 
 
 @gtscript.function
-def compute_y_flux(q: FloatField, courant: FloatField, dya: FloatFieldIJ):
+def compute_y_mean_fluxed_value(q: FloatField, courant: FloatField, dya: FloatFieldIJ):
     from __externals__ import mord
 
     if __INLINED(mord < 8):
@@ -300,7 +300,7 @@ def compute_y_flux(q: FloatField, courant: FloatField, dya: FloatFieldIJ):
 
 
 @gtscript.function
-def compute_y_flux_interior(q: FloatField, courant: FloatField):
+def compute_y_mean_fluxed_value_interior(q: FloatField, courant: FloatField):
     from __externals__ import mord
 
     if __INLINED(mord < 8):
@@ -324,7 +324,7 @@ def compute_y_flux_stencil_def(
     """
 
     with computation(PARALLEL), interval(...):
-        yflux = compute_y_flux(q, courant, dya)
+        yflux = compute_y_mean_fluxed_value(q, courant, dya)
 
 
 class YPiecewiseParabolic:

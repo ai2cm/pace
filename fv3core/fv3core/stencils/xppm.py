@@ -287,7 +287,7 @@ def compute_blbr_ord8plus_interior(q: FloatField):
 
 
 @gtscript.function
-def compute_x_flux(q: FloatField, courant: FloatField, dxa: FloatFieldIJ):
+def compute_x_mean_fluxed_value(q: FloatField, courant: FloatField, dxa: FloatFieldIJ):
     from __externals__ import mord
 
     if __INLINED(mord < 8):
@@ -300,7 +300,7 @@ def compute_x_flux(q: FloatField, courant: FloatField, dxa: FloatFieldIJ):
 
 
 @gtscript.function
-def compute_x_flux_interior(q: FloatField, courant: FloatField):
+def compute_x_mean_fluxed_value_interior(q: FloatField, courant: FloatField):
     from __externals__ import mord
 
     if __INLINED(mord < 8):
@@ -324,7 +324,7 @@ def compute_x_flux_stencil_def(
     """
 
     with computation(PARALLEL), interval(...):
-        xflux = compute_x_flux(q, courant, dxa)
+        xflux = compute_x_mean_fluxed_value(q, courant, dxa)
 
 
 class XPiecewiseParabolic:

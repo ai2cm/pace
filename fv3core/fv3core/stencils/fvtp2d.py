@@ -8,8 +8,14 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import pace.dsl.gt4py_utils as utils
 import pace.stencils.corners as corners
 from fv3core.stencils.delnflux import DelnFlux
-from fv3core.stencils.xppm import XPiecewiseParabolic, compute_x_flux_interior
-from fv3core.stencils.yppm import YPiecewiseParabolic, compute_y_flux_interior
+from fv3core.stencils.xppm import (
+    XPiecewiseParabolic,
+    compute_x_mean_fluxed_value_interior,
+)
+from fv3core.stencils.yppm import (
+    YPiecewiseParabolic,
+    compute_y_mean_fluxed_value_interior,
+)
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import DampingCoefficients, GridData
@@ -93,21 +99,25 @@ def finite_volume_transport_interior(
         x_flux (out):
         y_flux (out):
     """
-    q_y_advected_mean = compute_y_flux_interior(q, courant_y)
-    fyy = y_area_flux * q_y_advected_mean
+    q_y_advected_mean = compute_y_mean_fluxed_value_interior(q, courant_y)
+    y_flux = y_area_flux * q_y_advected_mean
     # note the units of area cancel out, because area is present in all
     # terms in the numerator and denominator of q_i
     # corresponds to FV3 documentation eq 4.18, q_i = f(q)
-    q_advected_y = (q * area + fyy - fyy[0, 1, 0]) / (
+    q_advected_y = (q * area + y_flux - y_flux[0, 1, 0]) / (
         area + y_area_flux - y_area_flux[0, 1, 0]
     )
-    q_advected_y_x_advected_mean = compute_x_flux_interior(q_advected_y, courant_x)
+    q_advected_y_x_advected_mean = compute_x_mean_fluxed_value_interior(
+        q_advected_y, courant_x
+    )
 
-    q_x_advected_mean = compute_x_flux_interior(q, courant_x)
-    fxx = x_area_flux * q_x_advected_mean
+    q_x_advected_mean = compute_x_mean_fluxed_value_interior(q, courant_x)
+    x_flux = x_area_flux * q_x_advected_mean
     area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
-    q_advected_x = (q * area + fxx - fxx[1, 0, 0]) / area_with_x_flux
-    q_advected_x_y_advected_mean = compute_y_flux_interior(q_advected_x, courant_y)
+    q_advected_x = (q * area + x_flux - x_flux[1, 0, 0]) / area_with_x_flux
+    q_advected_x_y_advected_mean = compute_y_mean_fluxed_value_interior(
+        q_advected_x, courant_y
+    )
     with horizontal(region[:, :-1]):
         x_flux = 0.5 * (q_advected_y_x_advected_mean + q_x_advected_mean) * x_unit_flux
     with horizontal(region[:-1, :]):
