@@ -180,14 +180,6 @@ class PhysicsState:
         metadata={"name": "time(?)", "units": "sec(?)", "intent": "inout"}
     )
 
-    ugrs : FloatField = field(
-        metadata={"name": "", "units": "", "intent": "inout"}
-    )
-
-    vgrs : FloatField = field(
-        metadata={"name": "", "units": "", "intent": "inout"}
-    )
-
     quantity_factory: InitVar[pace.util.QuantityFactory]
     active_packages: InitVar[List[str]]
 

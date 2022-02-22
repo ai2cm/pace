@@ -3138,31 +3138,31 @@ class TurbulenceState:
         prslk : FloatField,
         phii : FloatField,
         phil : FloatField,
-        ugrs : FloatField,
-        vgrs : FloatField,
+        ua : FloatField,
+        va : FloatField,
         pt : FloatField,
         tendency_storage : FloatField,
         tendency_storage_2D : FloatFieldIJ,
         tendency_storage_8 : functions.FloatField_8,
         grid_data: GridData,
     ):
-        self.dv = copy.deepcopy(tendency_storage) # va state variable?
-        self.du = copy.deepcopy(tendency_storage) # ua state variable?
+        self.dv = copy.deepcopy(tendency_storage)
+        self.du = copy.deepcopy(tendency_storage)
         self.tdt = copy.deepcopy(tendency_storage)
         self.rtg = copy.deepcopy(tendency_storage_8)
-        self.u1 = ugrs
-        self.v1 = vgrs
+        self.u1 = ua
+        self.v1 = va
         self.t1 = pt
         self.q1 = copy.deepcopy(tendency_storage_8)
         #NOTE : May have to check if these assocations are correct
-        self.q1[:,:,0] = qvapor
-        self.q1[:,:,1] = qliquid
-        self.q1[:,:,2] = qrain
-        self.q1[:,:,3] = qice
-        self.q1[:,:,4] = qsnow
-        self.q1[:,:,5] = qgraupel
-        self.q1[:,:,6] = qo3mr
-        self.q1[:,:,7] = qcloud
+        self.q1[:,:,:][0] = qvapor
+        self.q1[:,:,:][1] = qliquid
+        self.q1[:,:,:][2] = qrain
+        self.q1[:,:,:][3] = qice
+        self.q1[:,:,:][4] = qsnow
+        self.q1[:,:,:][5] = qgraupel
+        self.q1[:,:,:][6] = qo3mr
+        self.q1[:,:,:][7] = qcloud
         self.swh = copy.deepcopy(tendency_storage) # NOTE : Where is Radtend%htrsw?
         self.hlw = copy.deepcopy(tendency_storage) # NOTE : Where is Radtend%htrlw?
         self.xmu = copy.deepcopy(tendency_storage_2D)
@@ -3217,8 +3217,8 @@ class Turbulence:
         self._elocp = constants.HLV / constants.CP_AIR
         self._el2orc = constants.HLV * constants.HLV / (constants.RVGAS * constants.CP_AIR)
 
-        self._im = grid_indexing.domain[0]
-        self._jm = grid_indexing.domain[1]
+        self._im = grid_indexing.domain_compute()[0]
+        self._jm = grid_indexing.domain_compute()[1]
 
         self._dt2 = self.namelist.dt_atmos  # NOTE : Check this later
         self._rdt = 1.0 / self._dt2
@@ -3458,33 +3458,33 @@ class Turbulence:
         self._mrf_pbl_scheme_part1 = stencil_factory.from_origin_domain(
             func=mrf_pbl_scheme_part1,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmpbl)
         )
 
         self._mrf_pbl_2_thermal_1 = stencil_factory.from_origin_domain(
             func=mrf_pbl_2_thermal_1,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1) 
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1) 
             # NOTE: Not sure about k-size of domain
         )
 
         self._thermal_2 = stencil_factory.from_origin_domain(
             func=thermal_2,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmpbl)
         )
 
         self._pbl_height_enhance = stencil_factory.from_origin_domain(
             func=pbl_height_enhance,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1) 
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1) 
             # NOTE: Not sure about k-size of domain
         )
 
         self._stratocumulus = stencil_factory.from_origin_domain(
             func=stratocumulus,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmscu)
         )
 
         self._mass_flux_comp = stencil_factory.from_origin_domain(
@@ -3496,34 +3496,34 @@ class Turbulence:
         self._prandtl_comp_exchg_coeff = stencil_factory.from_origin_domain(
             func=prandtl_comp_exchg_coeff,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmpbl)
         )
 
         self._compute_eddy_buoy_shear = stencil_factory.from_origin_domain(
             func=compute_eddy_buoy_shear,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1) 
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1) 
             # NOTE: Not sure about k-size of domain
         )
 
         self._predict_tke = stencil_factory.from_origin_domain(
             func=predict_tke,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-2) 
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-2) 
             # NOTE: Not sure about k-size of domain
         )
 
         self._tke_up_down_prop = stencil_factory.from_origin_domain(
             func=tke_up_down_prop,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1) 
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1) 
             # NOTE: Not sure about k-size of domain
         )
 
         self._tke_tridiag_matrix_ele_comp = stencil_factory.from_origin_domain(
             func=tke_tridiag_matrix_ele_comp,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
@@ -3531,14 +3531,14 @@ class Turbulence:
         self._part12a = stencil_factory.from_origin_domain(
             func=part12a,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
         self._heat_moist_tridiag_mat_ele_comp = stencil_factory.from_origin_domain(
             func=heat_moist_tridiag_mat_ele_comp,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
@@ -3546,7 +3546,7 @@ class Turbulence:
         self._part13a = stencil_factory.from_origin_domain(
             func=part13a,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
@@ -3554,21 +3554,21 @@ class Turbulence:
         self._part13b = stencil_factory.from_origin_domain(
             func=part13b,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
         self._moment_tridiag_mat_ele_comp = stencil_factory.from_origin_domain(
             func=moment_tridiag_mat_ele_comp,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
         self._moment_recover = stencil_factory.from_origin_domain(
             func=moment_recover,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
@@ -3581,126 +3581,126 @@ class Turbulence:
         self._mfpblt_s1 = stencil_factory.from_origin_domain(
             func=mfpblt_s1,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmpbl)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfpblt_s1a = stencil_factory.from_origin_domain(
             func=mfpblt_s1a,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfpblt_s2 = stencil_factory.from_origin_domain(
             func=mfpblt_s2,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmpbl)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfpblt_s3 = stencil_factory.from_origin_domain(
             func=mfpblt_s3,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmpbl)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmpbl)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s0 = stencil_factory.from_origin_domain(
             func=mfscu_s0,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s1 = stencil_factory.from_origin_domain(
             func=mfscu_s1,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmscu)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s2 = stencil_factory.from_origin_domain(
             func=mfscu_s2,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmscu)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s3 = stencil_factory.from_origin_domain(
             func=mfscu_s3,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmscu)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s4 = stencil_factory.from_origin_domain(
             func=mfscu_s4,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s5 = stencil_factory.from_origin_domain(
             func=mfscu_s5,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmscu)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s6 = stencil_factory.from_origin_domain(
             func=mfscu_s6,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmscu)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s7 = stencil_factory.from_origin_domain(
             func=mfscu_s7,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmscu)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s8 = stencil_factory.from_origin_domain(
             func=mfscu_s8,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_s9 = stencil_factory.from_origin_domain(
             func=mfscu_s9,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmscu)
             # NOTE: Not sure about k-size of domain
         )
 
         self._mfscu_10 = stencil_factory.from_origin_domain(
             func=mfscu_10,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], self._kmscu)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], self._kmscu)
             # NOTE: Not sure about k-size of domain
         )
 
         self._tridit = stencil_factory.from_origin_domain(
             func=tridit,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
         self._tridin = stencil_factory.from_origin_domain(
             func=tridin,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
         self._tridi2 = stencil_factory.from_origin_domain(
             func=tridi2,
             origin=grid_indexing.origin_compute(),
-            domain=(grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-1)
+            domain=(grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-1)
             # NOTE: Not sure about k-size of domain
         )
 
@@ -3712,12 +3712,12 @@ class Turbulence:
 
         for k in range(grid_indexing.domain[2]-2):
             origin_list_up.append((0,0,k))
-            domain_list_up.append((grid_indexing.domain[0], grid_indexing.domain[1], grid_indexing.domain[2]-2-k))
+            domain_list_up.append((grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], grid_indexing.domain[2]-2-k))
 
             origin_list_dwn.append((0,0,0))
-            domain_list_dwn.append((grid_indexing.domain[0], grid_indexing.domain[1], k+1))
+            domain_list_dwn.append((grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], k+1))
 
-            domain_list_rlam.append((grid_indexing.domain[0], grid_indexing.domain[1], 1))
+            domain_list_rlam.append((grid_indexing.domain_compute()[0], grid_indexing.domain_compute()[1], 1))
 
         self._comp_asym_mix_up = get_stencils_with_varied_bounds(
             func=comp_asym_mix_up,
