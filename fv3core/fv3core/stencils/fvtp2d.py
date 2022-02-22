@@ -21,22 +21,6 @@ from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import DampingCoefficients, GridData
 
 
-@gtscript.function
-def apply_x_flux_divergence(q: FloatField, q_x_flux: FloatField) -> FloatField:
-    """
-    Update a scalar q according to its flux in the x direction.
-    """
-    return q + q_x_flux - q_x_flux[1, 0, 0]
-
-
-@gtscript.function
-def apply_y_flux_divergence(q: FloatField, q_y_flux: FloatField) -> FloatField:
-    """
-    Update a scalar q according to its flux in the x direction.
-    """
-    return q + q_y_flux - q_y_flux[0, 1, 0]
-
-
 def finite_volume_transport_interior_stencil(
     q: FloatField,
     courant_x: FloatField,
@@ -113,8 +97,9 @@ def finite_volume_transport_interior(
 
     q_x_advected_mean = compute_x_mean_fluxed_value_interior(q, courant_x)
     x_flux = x_area_flux * q_x_advected_mean
-    area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
-    q_advected_x = (q * area + x_flux - x_flux[1, 0, 0]) / area_with_x_flux
+    q_advected_x = (q * area + x_flux - x_flux[1, 0, 0]) / (
+        area + x_area_flux - x_area_flux[0, 1, 0]
+    )
     q_advected_x_y_advected_mean = compute_y_mean_fluxed_value_interior(
         q_advected_x, courant_y
     )
@@ -167,8 +152,9 @@ def q_j_stencil(
     """
     with computation(PARALLEL), interval(...):
         fxx = x_area_flux * q_x_advected_mean
-        area_with_x_flux = apply_x_flux_divergence(area, x_area_flux)
-        q_advected_x = (q * area + fxx - fxx[1, 0, 0]) / area_with_x_flux
+        q_advected_x = (q * area + fxx - fxx[1, 0, 0]) / (
+            area + x_area_flux - x_area_flux[0, 1, 0]
+        )
 
 
 def final_fluxes(
