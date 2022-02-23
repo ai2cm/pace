@@ -1,17 +1,16 @@
-import os
-from typing import Dict, Tuple, Callable, Union, Any
 import inspect
+import os
+from typing import Any, Callable, Dict, Tuple, Union
 
 import dace
+import gt4py.storage
 from dace.frontend.python.common import SDFGConvertible
 from dace.frontend.python.parser import DaceProgram
 from dace.transformation.auto.auto_optimize import make_transients_persistent
 from dace.transformation.helpers import get_parent_map
 
-from pace.dsl.dace.sdfg_opt_passes import refine_permute_arrays
 from pace.dsl.dace.dace_config import dace_config
-
-import gt4py.storage
+from pace.dsl.dace.sdfg_opt_passes import refine_permute_arrays
 
 
 def dace_inhibitor(fn: Callable):
