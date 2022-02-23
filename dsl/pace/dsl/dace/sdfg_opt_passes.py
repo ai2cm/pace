@@ -1,8 +1,8 @@
-import dace
-from typing import List, Dict
-from dace import subsets
-from dace import data
 import collections
+from typing import Dict, List
+
+import dace
+from dace import data, subsets
 
 
 def refine_permute_arrays(sdfg: dace.SDFG):
@@ -12,14 +12,16 @@ def refine_permute_arrays(sdfg: dace.SDFG):
     refined = 0
     permuted = 0
 
-    # Collect all nodes that appear exactly twice: before and after a nested SDFG, and nowhere else
+    # Collect all nodes that appear exactly twice:
+    #  before and after a nested SDFG, and nowhere else
     names: Dict[str, List[dace.nodes.AccessNode]] = collections.defaultdict(list)
     for node, state in sdfg.all_nodes_recursive():
         if isinstance(node, dace.nodes.AccessNode):
             names[node.data].append((node, state))
     names = {k: v for k, v in names.items() if len(v) == 2}
 
-    # Then, for all nested SDFG nodes, find those which appear in "names" and are around that SDFG
+    # Then, for all nested SDFG nodes,
+    # find those which appear in "names" and are around that SDFG
     for node, state in sdfg.all_nodes_recursive():
         if isinstance(node, dace.nodes.NestedSDFG):
             cursdfg = state.parent
@@ -53,12 +55,8 @@ def refine_permute_arrays(sdfg: dace.SDFG):
                         except StopIteration:
                             me = None
                             continue
-                        me: dace.nodes.MapEntry = nstate.entry_node(mx)
+                        me = nstate.entry_node(mx)
                         break
-                else:
-                    if me is None:
-                        continue
-                    raise TypeError(f"what {iname} {e.data.data}")
 
                 if me is None:
                     continue
