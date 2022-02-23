@@ -17,6 +17,7 @@ Minor changes:
 - added `CubedSphereCommunicator.from_layout` constructor method
 - added support for built-in `datetime` in ZarrMonitor
 - `edge_interior_ratio` is now an optional argument of `tile_extent_from_rank_metadata`
+- added support for writing grid data (constants with time) in ZarrMonitor
 
 v0.7.0
 ------

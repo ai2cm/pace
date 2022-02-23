@@ -324,7 +324,7 @@ class Diagnostics:
             store=store, partitioner=partitioner, mpi_comm=comm
         )
 
-    def store(self, time: datetime, state: DriverState):
+    def store(self, time: datetime, state: DriverState, write_grid=False):
         zarr_state = {"time": time}
         for name in self.config.names:
             try:
@@ -334,6 +334,19 @@ class Diagnostics:
             zarr_state[name] = quantity
         assert time is not None
         self.monitor.store(zarr_state)
+        if write_grid:
+            metadata = state.dycore_state.ps.metadata
+            zarr_grid = {}
+            for name in ["lat", "lon"]:
+                grid_quantity = pace.util.Quantity(
+                    getattr(state.grid_data, name),
+                    dims=("x_interface", "y_intercace"),
+                    origin=metadata.origin,
+                    extent=(metadata.extent[0] + 1, metadata.extent[1] + 1),
+                    units="rad",
+                )
+                zarr_grid[name] = grid_quantity
+            self.monitor.store_grid(zarr_grid)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -503,7 +516,7 @@ class Driver:
     def step_all(self):
         time = self.config.start_time
         end_time = self.config.start_time + self.config.total_time
-        self.diagnostics.store(time=time, state=self.state)
+        self.diagnostics.store(time=time, state=self.state, write_grid=True)
         while time < end_time:
             self._step(timestep=self.config.timestep.total_seconds())
             time += self.config.timestep
