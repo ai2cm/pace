@@ -9,12 +9,15 @@ from dace.transformation.auto.auto_optimize import make_transients_persistent
 from dace.transformation.helpers import get_parent_map
 
 from pace.dsl.dace.dace_config import dace_config
-from pace.dsl.dace.sdfg_opt_passes import refine_permute_arrays
+from pace.dsl.dace.sdfg_opt_passes import (
+    flip_default_layout_to_KIJ_on_maps,
+    make_local_memory_transient,
+)
 
 
-def dace_inhibitor(function: Callable):
-    """Triggers callback generation wrapping `function` while doing DaCe parsing."""
-    return function
+def dace_inhibitor(func: Callable):
+    """Triggers callback generation wrapping `func` while doing DaCe parsing."""
+    return func
 
 
 def to_gpu(sdfg: dace.SDFG):
@@ -31,7 +34,7 @@ def to_gpu(sdfg: dace.SDFG):
         (me, state) for me, state in allmaps if get_parent_map(state, me) is None
     ]
 
-    # Set storage of arraays to GPU, sclarizable arrays will be set on registers
+    # Set storage of arrays to GPU, scalarizable arrays will be set on registers
     for sd, _aname, arr in sdfg.arrays_recursive():
         if arr.shape == (1,):
             arr.storage = dace.StorageType.Register
@@ -78,7 +81,8 @@ def call_sdfg(daceprog: DaceProgram, sdfg: dace.SDFG, args, kwargs, sdfg_final=F
         sdfg.simplify(validate=False)
 
         # Here we insert optimization passes that don't exists in Simplify yet
-        refine_permute_arrays(sdfg)
+        make_local_memory_transient(sdfg)
+        flip_default_layout_to_KIJ_on_maps(sdfg)
 
         # Call
         res = sdfg(**sdfg_kwargs)

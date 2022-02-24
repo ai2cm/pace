@@ -5,16 +5,17 @@ import dace
 from dace import data, subsets
 
 
-def refine_permute_arrays(sdfg: dace.SDFG):
+def make_local_memory_transient(sdfg: dace.SDFG):
     """
-    Move all arrays defined has global to scoped transient
-    when used only in a nested SDFG - reducing memory pressure
+    Detect memory used only locally to a nested SDFG and turns it into
+    transient (GPU shared & scoped to the nested SDFG) when it has been
+    declared has global.
+    This will reduce memory pressure.
 
     As a custom optimization pass, this is to be inserted after the
     generic optimization call to sdfg.simplify(...)
     """
     refined = 0
-    permuted = 0
 
     # Collect all nodes that appear exactly twice:
     #  before and after a nested SDFG, and nowhere else
@@ -58,7 +59,7 @@ def refine_permute_arrays(sdfg: dace.SDFG):
                         and the_node.data == edge.dst_conn
                     ):
                         try:
-                            mx = next(iter(node_state.predecessors(an)))
+                            mx = next(iter(node_state.predecessors(the_node)))
                         except StopIteration:
                             me = None
                             continue
@@ -99,13 +100,22 @@ def refine_permute_arrays(sdfg: dace.SDFG):
                 current_sdfg.remove_data(edge.data.data)
                 refined += 1
 
-        # Flip the default layout from IJK to KIJ
+
+def flip_default_layout_to_KIJ_on_maps(sdfg: dace.SDFG):
+    """Flip the default layout of all maps from IJK to KIJ
+
+    As a custom optimization pass, this is to be inserted after the
+    generic optimization call to sdfg.simplify(...)
+    """
+    array_flipped = 0
+    for node, _state in sdfg.all_nodes_recursive():
+
         if (
             isinstance(node, dace.nodes.MapEntry)
             and node.map.params[-1] == "k"
             and len(node.map.params) == 3
         ):
-            permuted += 1
+            array_flipped += 1
             node.map.params = [
                 node.map.params[-1],
                 node.map.params[0],
