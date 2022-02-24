@@ -1,6 +1,6 @@
 [submodule "external/gt4py"]
 	path = external/gt4py
-	url = git@github.com:ai2cm/gt4py.git
+	url = https://github.com/ai2cm/gt4py.git
 [submodule "buildenv"]
 	path = buildenv
 	url = git@github.com:ai2cm/buildenv.git
