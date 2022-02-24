@@ -90,7 +90,7 @@ source ./venv/bin/activate
 pip list
 
 # set the environment
-cp ./buildenv/submit.daint.slurm compile.daint.slurm
+cp $BUILDENV_DIR/submit.daint.slurm compile.daint.slurm
 cp $BUILDENV_DIR/submit.daint.slurm run.daint.slurm
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
     cp $BUILDENV_DIR/submit.daint.slurm run.nsys.daint.slurm
