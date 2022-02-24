@@ -13,7 +13,9 @@ import pace.util
 def has_stencils(object):
     for name in dir(object):
         try:
-            stencil_found = isinstance(getattr(object, name), pace.dsl.FrozenStencil)
+            stencil_found = isinstance(
+                getattr(object, name), pace.dsl.stencil.FrozenStencil
+            )
         except (AttributeError, RuntimeError):
             stencil_found = False
         if stencil_found:
@@ -27,7 +29,7 @@ def report_stencils(obj, file: Optional[TextIO]):
     print(f"module {module.__name__}, class {obj.__class__.__name__}:", file=file)
     all_access_names = collections.defaultdict(list)
     for name, value in obj.__dict__.items():
-        if isinstance(value, pace.dsl.FrozenStencil):
+        if isinstance(value, pace.dsl.stencil.FrozenStencil):
             print(f"    stencil {name}:", file=file)
             for arg_name, field_info in value.stencil_object.field_info.items():
                 if field_info is None:
