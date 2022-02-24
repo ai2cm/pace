@@ -1,6 +1,5 @@
-import inspect
 import os
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import dace
 import gt4py.storage
@@ -13,14 +12,16 @@ from pace.dsl.dace.dace_config import dace_config
 from pace.dsl.dace.sdfg_opt_passes import refine_permute_arrays
 
 
-def dace_inhibitor(fn: Callable):
-    """Triggers callback generation wrapping `fn` while doing DaCe parsing."""
-    return fn
+def dace_inhibitor(function: Callable):
+    """Triggers callback generation wrapping `function` while doing DaCe parsing."""
+    return function
 
 
 def to_gpu(sdfg: dace.SDFG):
-    """Move all arrays to GPU, distributing between global memory and register
-    based on the shape"""
+    """Flag memory in SDFG to GPU.
+    Force deactivate OpenMP sections for sanity."""
+
+    # Gather all maps
     allmaps = [
         (me, state)
         for me, state in sdfg.all_nodes_recursive()
@@ -30,12 +31,14 @@ def to_gpu(sdfg: dace.SDFG):
         (me, state) for me, state in allmaps if get_parent_map(state, me) is None
     ]
 
+    # Set storage of arraays to GPU, sclarizable arrays will be set on registers
     for sd, _aname, arr in sdfg.arrays_recursive():
         if arr.shape == (1,):
             arr.storage = dace.StorageType.Register
         else:
             arr.storage = dace.StorageType.GPU_Global
 
+    # All maps will be scedule on GPU
     for mapentry, state in topmaps:
         mapentry.schedule = dace.ScheduleType.GPU_Device
 
@@ -107,11 +110,9 @@ def call_sdfg(daceprog: DaceProgram, sdfg: dace.SDFG, args, kwargs, sdfg_final=F
     return res
 
 
-class LazyComputepathFunction:
-    def __init__(self, func, use_dace, skip_dacemode, load_sdfg):
+class LazyComputepathFunction(SDFGConvertible):
+    def __init__(self, func, load_sdfg):
         self.func = func
-        self._use_dace = use_dace
-        self._skip_dacemode = skip_dacemode
         self._load_sdfg = load_sdfg
         self.daceprog = dace.program(self.func)
         self._sdfg_loaded = False
@@ -170,17 +171,17 @@ class LazyComputepathFunction:
 
     @property
     def use_dace(self):
-        return self._use_dace or (
-            dace_config.get_orchestrate() and not self._skip_dacemode
-        )
+        return dace_config.get_orchestrate()
 
 
 class LazyComputepathMethod:
 
-    bound_callables: Dict[Tuple[int, int], Callable] = dict()
+    # In order to regenerate SDFG for the same obj.method callable
+    # we cache the SDFGEnabledCallable we have already init
+    bound_callables: Dict[Tuple[int, int], "SDFGEnabledCallable"] = dict()
 
     class SDFGEnabledCallable(SDFGConvertible):
-        def __init__(self, lazy_method, obj_to_bind):
+        def __init__(self, lazy_method: "LazyComputepathMethod", obj_to_bind):
             methodwrapper = dace.method(lazy_method.func)
             self.obj_to_bind = obj_to_bind
             self.lazy_method = lazy_method
@@ -238,15 +239,13 @@ class LazyComputepathMethod:
                 constant_args, given_args, parent_closure
             )
 
-    def __init__(self, func, use_dace, skip_dacemode, load_sdfg, arg_spec):
+    def __init__(self, func, load_sdfg):
         self.func = func
-        self._use_dace = use_dace
-        self._skip_dacemode = skip_dacemode
         self._load_sdfg = load_sdfg
-        self.arg_spec = arg_spec
 
-    def __get__(self, obj, objype=None):
-
+    def __get__(self, obj, objype=None) -> SDFGEnabledCallable:
+        """Return SDFGEnabledCallable wrapping original obj.method from cache.
+        Update cache first if need be"""
         if (id(obj), id(self.func)) not in LazyComputepathMethod.bound_callables:
 
             LazyComputepathMethod.bound_callables[
@@ -257,41 +256,23 @@ class LazyComputepathMethod:
 
     @property
     def use_dace(self):
-        return self._use_dace or (
-            dace_config.get_orchestrate() and not self._skip_dacemode
-        )
+        return dace_config.get_orchestrate()
 
 
-def computepath_method(*args, **kwargs):
-    skip_dacemode = kwargs.get("skip_dacemode", False)
-    load_sdfg = kwargs.get("load_sdfg", None)
-    use_dace = kwargs.get("use_dace", False)
-    arg_spec = inspect.getfullargspec(args[0]) if len(args) == 1 else None
+def computepath_method(
+    method: Callable[..., Any], load_sdfg: Optional[str] = None
+) -> Union[Callable[..., Any], LazyComputepathFunction]:
+    def _decorator(method, load_sdfg):
+        return LazyComputepathMethod(method, load_sdfg)
 
-    def _decorator(method):
-        return LazyComputepathMethod(
-            method, use_dace, skip_dacemode, load_sdfg, arg_spec
-        )
-
-    if len(args) == 1 and not kwargs and callable(args[0]):
-        return _decorator(args[0])
-    else:
-        assert not args, "bad args"
-        return _decorator
+    return _decorator(method, load_sdfg)
 
 
 def computepath_function(
-    *args, **kwargs
+    function: Callable[..., Any],
+    load_sdfg: Optional[str] = None,
 ) -> Union[Callable[..., Any], LazyComputepathFunction]:
-    skip_dacemode = kwargs.get("skip_dacemode", False)
-    load_sdfg = kwargs.get("load_sdfg", None)
-    use_dace = kwargs.get("use_dace", False)
+    def _decorator(function, load_sdfg):
+        return LazyComputepathFunction(function, load_sdfg)
 
-    def _decorator(function):
-        return LazyComputepathFunction(function, use_dace, skip_dacemode, load_sdfg)
-
-    if len(args) == 1 and not kwargs and callable(args[0]):
-        return _decorator(args[0])
-    else:
-        assert not args, "bad args"
-        return _decorator
+    return _decorator(function, load_sdfg)
