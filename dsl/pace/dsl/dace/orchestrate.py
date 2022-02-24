@@ -115,6 +115,16 @@ def call_sdfg(daceprog: DaceProgram, sdfg: dace.SDFG, args, kwargs, sdfg_final=F
 
 
 class LazyComputepathFunction(SDFGConvertible):
+    """JIT wrapper around a function for DaCe orchestration.
+
+    If use_dace() is False, the wrapper will just return the original callable.
+
+    Attributes:
+        func: function to either orchestrate or directly execute
+        load_sdfg: folder path to a pre-compiled SDFG or file path to a .sdfg graph
+                   that will be compiled but not regenerated.
+    """
+
     def __init__(self, func, load_sdfg):
         self.func = func
         self._load_sdfg = load_sdfg
@@ -179,6 +189,15 @@ class LazyComputepathFunction(SDFGConvertible):
 
 
 class LazyComputepathMethod:
+    """JIT wrapper around a class method for DaCe orchestration.
+
+    If use_dace() is False, the wrapper will just return the original callable.
+
+    Attributes:
+        method: class method to either orchestrate or directly execute
+        load_sdfg: folder path to a pre-compiled SDFG or file path to a .sdfg graph
+                   that will be compiled but not regenerated.
+    """
 
     # In order to not regenerate SDFG for the same obj.method callable
     # we cache the SDFGEnabledCallable we have already init
