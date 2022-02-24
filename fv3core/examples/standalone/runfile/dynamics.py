@@ -11,7 +11,7 @@ import numpy as np
 import serialbox
 import yaml
 from mpi4py import MPI
-
+import pace.dsl.stencil
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3core.testing
 import pace.dsl
