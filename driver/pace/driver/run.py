@@ -354,7 +354,7 @@ class DriverConfig:
         dt_atmos: atmospheric timestep in seconds
     """
 
-    stencil_config: pace.dsl.stencil.StencilConfig
+    stencil_config: pace.dsl.StencilConfig
     initialization_type: str
     initialization_config: InitializationConfig
     nx_tile: int
@@ -536,7 +536,7 @@ class Driver:
 
 def _setup_factories(
     config: DriverConfig, communicator: pace.util.CubedSphereCommunicator
-) -> Tuple["pace.util.QuantityFactory", "pace.dsl.stencil.StencilFactory"]:
+) -> Tuple["pace.util.QuantityFactory", "pace.dsl.StencilFactory"]:
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.nx_tile,
         ny_tile=config.nx_tile,
@@ -554,7 +554,7 @@ def _setup_factories(
     quantity_factory = pace.util.QuantityFactory.from_backend(
         sizer, backend=config.stencil_config.backend
     )
-    stencil_factory = pace.dsl.stencil.StencilFactory(
+    stencil_factory = pace.dsl.StencilFactory(
         config=config.stencil_config,
         grid_indexing=grid_indexing,
     )

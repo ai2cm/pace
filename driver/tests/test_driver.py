@@ -29,7 +29,7 @@ def get_driver_config(
     else:
         initialization_config.start_time = datetime(2000, 1, 1)
     return DriverConfig(
-        stencil_config=pace.dsl.stencil.StencilConfig(),
+        stencil_config=pace.dsl.StencilConfig(),
         nx_tile=nx_tile,
         nz=nz,
         dt_atmos=dt_atmos,
