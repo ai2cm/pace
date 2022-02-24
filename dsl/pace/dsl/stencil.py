@@ -114,6 +114,11 @@ class StencilConfig(Hashable):
         }
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
+        # Note: this assure the backward compatibility between v36 and v37
+        if "skip_passes" in kwargs:
+            kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
+                kwargs.pop("skip_passes")
+            )
         return kwargs
 
     @property
@@ -123,6 +128,13 @@ class StencilConfig(Hashable):
     @property
     def is_gtc_backend(self) -> bool:
         return self.backend.startswith("gtc")
+
+    @classmethod
+    def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
+        """Creates a DefaultPipeline with skip_passes properly initialized."""
+        step_map = {step.__name__: step for step in DefaultPipeline.all_steps()}
+        skip_steps = [step_map[pass_name] for pass_name in skip_passes]
+        return DefaultPipeline(skip=skip_steps)
 
 
 class FrozenStencil(SDFGConvertible):
@@ -182,11 +194,7 @@ class FrozenStencil(SDFGConvertible):
             stencil_kwargs["name"] = func.__module__ + "." + func.__name__
 
         if skip_passes and self.stencil_config.is_gtc_backend:
-            stencil_kwargs["skip_passes"] = skip_passes
-        if "skip_passes" in stencil_kwargs:
-            stencil_kwargs["oir_pipeline"] = FrozenStencil._get_oir_pipeline(
-                stencil_kwargs.pop("skip_passes")
-            )
+            stencil_kwargs["oir_pipeline"].skip = skip_passes
 
         # When using DaCe orchestration, we deactivate code generation
         # (Only SDFG are needed). But because some stencils are executed
@@ -297,13 +305,6 @@ class FrozenStencil(SDFGConvertible):
                     field_origin = origin_tuple
                 field_origins[field_name] = field_origin
         return field_origins
-
-    @classmethod
-    def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
-        """Creates a DefaultPipeline with skip_passes properly initialized."""
-        step_map = {step.__name__: step for step in DefaultPipeline.all_steps()}
-        skip_steps = [step_map[pass_name] for pass_name in skip_passes]
-        return DefaultPipeline(skip=skip_steps)
 
     @classmethod
     def _get_written_fields(cls, field_info) -> List[str]:
