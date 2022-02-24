@@ -7,7 +7,11 @@ from dace import data, subsets
 
 def refine_permute_arrays(sdfg: dace.SDFG):
     """
-    Insert after sdfg.simplify(...)
+    Move all arrays defined has global to scoped transient
+    when used only in a nested SDFG - reducing memory pressure
+
+    As a custom optimization pass, this is to be inserted after the
+    generic optimization call to sdfg.simplify(...)
     """
     refined = 0
     permuted = 0
@@ -24,22 +28,22 @@ def refine_permute_arrays(sdfg: dace.SDFG):
     # find those which appear in "names" and are around that SDFG
     for node, state in sdfg.all_nodes_recursive():
         if isinstance(node, dace.nodes.NestedSDFG):
-            cursdfg = state.parent
-            for e in list(state.in_edges(node)):
-                if e.data.data not in names:
+            current_sdfg = state.parent
+            for edge in list(state.in_edges(node)):
+                if edge.data.data not in names:
                     continue
-                if e.data.is_empty():
+                if edge.data.is_empty():
                     continue
                 try:
-                    oe = next(state.out_edges_by_connector(node, e.dst_conn))
+                    out_edge = next(state.out_edges_by_connector(node, edge.dst_conn))
                 except StopIteration:
                     continue
-                if state.in_degree(state.memlet_tree(e).root().edge.src) > 0:
+                if state.in_degree(state.memlet_tree(edge).root().edge.src) > 0:
                     continue
-                if state.out_degree(state.memlet_tree(oe).root().edge.dst) > 0:
+                if state.out_degree(state.memlet_tree(out_edge).root().edge.dst) > 0:
                     continue
 
-                desc = cursdfg.arrays[e.data.data]
+                desc = current_sdfg.arrays[edge.data.data]
                 if not desc.transient:
                     continue
                 if desc.storage != dace.StorageType.GPU_Global:
@@ -48,31 +52,34 @@ def refine_permute_arrays(sdfg: dace.SDFG):
                     continue
 
                 # Get size from map
-                for an, nstate in node.sdfg.all_nodes_recursive():
-                    if isinstance(an, dace.nodes.AccessNode) and an.data == e.dst_conn:
+                for the_node, node_state in node.sdfg.all_nodes_recursive():
+                    if (
+                        isinstance(the_node, dace.nodes.AccessNode)
+                        and the_node.data == edge.dst_conn
+                    ):
                         try:
-                            mx = next(iter(nstate.predecessors(an)))
+                            mx = next(iter(node_state.predecessors(an)))
                         except StopIteration:
                             me = None
                             continue
-                        me = nstate.entry_node(mx)
+                        me = node_state.entry_node(mx)
                         break
 
                 if me is None:
                     continue
 
-                # external
-                state.remove_memlet_path(e)
-                state.remove_memlet_path(oe)
+                # Link to external memory node to be removed
+                state.remove_memlet_path(edge)
+                state.remove_memlet_path(out_edge)
 
-                # internal
+                # Switch array to an internal shared memory access
                 nsdfg = node.sdfg
-                iname = e.dst_conn
-                idesc = nsdfg.arrays[iname]
-                idesc.transient = True
-                idesc.storage = dace.StorageType.GPU_Shared
+                internal_name = edge.dst_conn
+                internal_desc = nsdfg.arrays[internal_name]
+                internal_desc.transient = True
+                internal_desc.storage = dace.StorageType.GPU_Shared
 
-                shp = []
+                shape = []
                 for expr in me.map.range.size()[::-1]:
                     symdict = {str(s): s for s in expr.free_symbols}
                     repldict = {}
@@ -80,18 +87,19 @@ def refine_permute_arrays(sdfg: dace.SDFG):
                         repldict[symdict["tile_i"]] = 0
                     if "tile_j" in symdict:
                         repldict[symdict["tile_j"]] = 0
-                    shp.append(expr.subs(repldict))
+                    shape.append(expr.subs(repldict))
 
-                if len(shp) < 3:
-                    shp += [1] * (3 - len(shp))
+                if len(shape) < 3:
+                    shape += [1] * (3 - len(shape))
 
-                idesc.shape = tuple(shp)
-                idesc.strides = (shp[1], 1, 1)
-                idesc.total_size = data._prod(shp)
-                idesc.lifetime = dace.AllocationLifetime.Scope
-                cursdfg.remove_data(e.data.data)
+                internal_desc.shape = tuple(shape)
+                internal_desc.strides = (shape[1], 1, 1)
+                internal_desc.total_size = data._prod(shape)
+                internal_desc.lifetime = dace.AllocationLifetime.Scope
+                current_sdfg.remove_data(edge.data.data)
                 refined += 1
 
+        # Flip the default layout from IJK to KIJ
         if (
             isinstance(node, dace.nodes.MapEntry)
             and node.map.params[-1] == "k"
@@ -106,6 +114,3 @@ def refine_permute_arrays(sdfg: dace.SDFG):
             node.map.range = subsets.Range(
                 [node.map.range[-1], node.map.range[0], node.map.range[1]]
             )
-
-    print("Refined arrays:", refined)
-    print("Permuted arrays from IJK t KIJ:", permuted)

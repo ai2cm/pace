@@ -176,7 +176,7 @@ class LazyComputepathFunction(SDFGConvertible):
 
 class LazyComputepathMethod:
 
-    # In order to regenerate SDFG for the same obj.method callable
+    # In order to not regenerate SDFG for the same obj.method callable
     # we cache the SDFGEnabledCallable we have already init
     bound_callables: Dict[Tuple[int, int], "SDFGEnabledCallable"] = dict()
 
