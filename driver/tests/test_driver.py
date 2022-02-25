@@ -171,9 +171,6 @@ test_data = [timing_info, 365.0, 1.0]
 )
 def test_sypd(timing_info, dt_atmos, expected_SYPD):
     sypd = get_sypd(timing_info, dt_atmos)
-    import pdb
-
-    pdb.set_trace()
     assert sypd == expected_SYPD
 
 
