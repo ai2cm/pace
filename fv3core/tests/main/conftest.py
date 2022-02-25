@@ -1,4 +1,3 @@
-import fv3core
 import pace.dsl.stencil
 
 
@@ -11,5 +10,3 @@ mock_grid = pace.dsl.stencil.GridIndexing(
     east_edge=False,
 )
 mock_grid.rank = 0
-
-fv3core._config.grid = mock_grid

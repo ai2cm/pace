@@ -29,6 +29,13 @@ CONSV_MIN = 0.001
 
 
 def init_pe(pe: FloatField, pe1: FloatField, pe2: FloatField, ptop: float):
+    """
+    Args:
+        pe (in):
+        pe1 (out):
+        pe2 (out):
+        ptop (in):
+    """
     with computation(PARALLEL):
         with interval(0, 1):
             pe2 = ptop
@@ -45,6 +52,15 @@ def undo_delz_adjust_and_copy_peln(
     pe0: FloatField,
     pn2: FloatField,
 ):
+    """
+    Args:
+        delp (in):
+        delz (inout):
+        peln (inout):
+        pe0 (out):
+        pn2 (in):
+    """
+    # TODO: We can assign pe0 and peln outside of a stencil to save the data copying
     with computation(PARALLEL), interval(0, -1):
         delz = -delz * delp
     with computation(PARALLEL), interval(...):
@@ -76,6 +92,30 @@ def moist_cv_pt_pressure(
     peln: FloatField,
     r_vir: float,
 ):
+    """
+    Args:
+        qvapor (in):
+        qliquid (in):
+        qrain (in):
+        qsnow (in):
+        qice (in):
+        qgraupel (in):
+        q_con (out):
+        gz (out):
+        cvm (out):
+        pt (inout):
+        cappa (out):
+        delp (inout):
+        delz (inout):
+        pe (in):
+        pe2 (inout):
+        ak (in):
+        bk (in):
+        dp2 (out):
+        ps (out):
+        pn2 (out):
+        peln (in):
+    """
     from __externals__ import hydrostatic, kord_tm
 
     # moist_cv.moist_pt
@@ -126,6 +166,14 @@ def pn2_pk_delp(
     pk: FloatField,
     akap: float,
 ):
+    """
+    Args:
+        dp2 (in):
+        delp (out):
+        pe2 (in):
+        pn2 (out):
+        pk (out):
+    """
     with computation(PARALLEL), interval(...):
         delp = dp2
         pn2 = log(pe2)
@@ -140,6 +188,15 @@ def pressures_mapu(
     pe0: FloatField,
     pe3: FloatField,
 ):
+    """
+    Args:
+        pe (in):
+        pe1 (in):
+        ak (in):
+        bk (in):
+        pe0 (out):
+        pe3 (out):
+    """
     with computation(BACKWARD):
         with interval(-1, None):
             pe_bottom = pe
@@ -160,6 +217,15 @@ def pressures_mapu(
 def pressures_mapv(
     pe: FloatField, ak: FloatFieldK, bk: FloatFieldK, pe0: FloatField, pe3: FloatField
 ):
+    """
+    Args:
+        pe (in):
+        ak (in):
+        bk (in):
+        pe0 (out):
+        pe3 (out):
+    """
+    # TODO: Combine pressures_mapu and pressures_mapv
     with computation(BACKWARD):
         with interval(-1, None):
             pe_bottom = pe
@@ -176,6 +242,11 @@ def pressures_mapv(
 
 
 def update_ua(pe2: FloatField, ua: FloatField):
+    """
+    Args:
+        pe2 (in):
+        ua (out):
+    """
     from __externals__ import local_je
 
     with computation(PARALLEL), interval(...):
@@ -190,6 +261,11 @@ def update_ua(pe2: FloatField, ua: FloatField):
 
 
 def copy_from_below(a: FloatField, b: FloatField):
+    """
+    Args:
+        a (in):
+        b (out):
+    """
     with computation(PARALLEL), interval(1, None):
         b = a[0, 0, -1]
 
@@ -239,6 +315,18 @@ class LagrangianToEulerian:
             shape_kplus, grid_indexing.origin_compute(), backend=backend
         )
 
+        self._kord_tm = abs(config.kord_tm)
+        self._kord_wz = config.kord_wz
+        self._kord_mt = config.kord_mt
+
+        self._do_sat_adjust = config.do_sat_adj
+
+        self.kmp = grid_indexing.domain[2] - 1
+        for k in range(pfull.shape[0]):
+            if pfull[k] > 10.0e2:
+                self.kmp = k
+                break
+
         self._init_pe = stencil_factory.from_origin_domain(
             init_pe, origin=grid_indexing.origin_compute(), domain=self._domain_jextra
         )
@@ -249,11 +337,6 @@ class LagrangianToEulerian:
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
-        self._moist_cv_pkz = stencil_factory.from_origin_domain(
-            moist_cv.moist_pkz,
-            origin=grid_indexing.origin_compute(),
-            domain=grid_indexing.domain_compute(),
-        )
 
         self._pn2_pk_delp = stencil_factory.from_origin_domain(
             pn2_pk_delp,
@@ -261,7 +344,6 @@ class LagrangianToEulerian:
             domain=grid_indexing.domain_compute(),
         )
 
-        self._kord_tm = abs(config.kord_tm)
         self._map_single_pt = MapSingle(
             stencil_factory,
             self._kord_tm,
@@ -283,7 +365,6 @@ class LagrangianToEulerian:
             fill=config.fill,
         )
 
-        self._kord_wz = config.kord_wz
         self._map_single_w = MapSingle(
             stencil_factory,
             self._kord_wz,
@@ -293,6 +374,7 @@ class LagrangianToEulerian:
             grid_indexing.jsc,
             grid_indexing.jec,
         )
+
         self._map_single_delz = MapSingle(
             stencil_factory,
             self._kord_wz,
@@ -313,13 +395,18 @@ class LagrangianToEulerian:
             ),
         )
 
+        self._moist_cv_pkz = stencil_factory.from_origin_domain(
+            moist_cv.moist_pkz,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
+        )
+
         self._pressures_mapu = stencil_factory.from_origin_domain(
             pressures_mapu,
             origin=grid_indexing.origin_compute(),
             domain=self._domain_jextra,
         )
 
-        self._kord_mt = config.kord_mt
         self._map_single_u = MapSingle(
             stencil_factory,
             self._kord_mt,
@@ -367,6 +454,10 @@ class LagrangianToEulerian:
             domain=grid_indexing.domain_compute(),
         )
 
+        self._saturation_adjustment = SatAdjust3d(
+            stencil_factory, config.sat_adjust, area_64, self.kmp
+        )
+
         self._moist_cv_last_step_stencil = stencil_factory.from_origin_domain(
             moist_pt_last_step,
             origin=(grid_indexing.isc, grid_indexing.jsc, 0),
@@ -381,18 +472,6 @@ class LagrangianToEulerian:
             adjust_divide_stencil,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
-        )
-
-        self._do_sat_adjust = config.do_sat_adj
-
-        self.kmp = grid_indexing.domain[2] - 1
-        for k in range(pfull.shape[0]):
-            if pfull[k] > 10.0e2:
-                self.kmp = k
-                break
-
-        self._saturation_adjustment = SatAdjust3d(
-            stencil_factory, config.sat_adjust, area_64, self.kmp
         )
 
     def __call__(
@@ -433,43 +512,46 @@ class LagrangianToEulerian:
         nq: int,
     ):
         """
-        pt: D-grid potential temperature (inout)
-        delp: Pressure Thickness (inout)
-        delz: Vertical thickness of atmosphere layers (in)
-        peln: Logarithm of interface pressure (inout)
-        u: D-grid x-velocity (inout)
-        v: D-grid y-velocity (inout)
-        w: Vertical velocity (inout)
-        ua: A-grid x-velocity (inout)
-        va: A-grid y-velocity (inout)
-        cappa: Power to raise pressure to (inout)
-        q_con: Total condensate mixing ratio (inout)
-        q_cld: Cloud fraction (inout)
-        pkz: Layer mean pressure raised to the power of Kappa (in)
-        pk: Interface pressure raised to power of kappa, final acoustic value (inout)
-        pe: Pressure at layer edges (inout)
-        hs: Surface geopotential (in)
-        te0_2d: Atmosphere total energy in columns (inout)
-        ps: Surface pressure (inout)
-        wsd: Vertical velocity of the lowest level (in)
-        omga: Vertical pressure velocity (inout)
-        ak: Atmosphere hybrid a coordinate (Pa) (in)
-        bk: Atmosphere hybrid b coordinate (dimensionless) (in)
-        pfull: Pressure full levels (in)
-        dp1: Pressure thickness before dyn_core (inout)
-        ptop: The pressure level at the top of atmosphere (in)
-        akap: Poisson constant (KAPPA) (in)
-        zvir: Constant (Rv/Rd-1) (in)
-        last_step: Flag for the last step of k-split remapping (in)
-        consv_te: If True, conserve total energy (in)
-        mdt : Remap time step (in)
-        bdt: Timestep (in)
-        do_adiabatic_init: If True, do adiabatic dynamics (in)
-        nq: Number of tracers (in)
+        pt (inout): D-grid potential temperature
+        delp (inout): Pressure Thickness
+        delz (in): Vertical thickness of atmosphere layers
+        peln (inout): Logarithm of interface pressure
+        u (inout): D-grid x-velocity
+        v (inout): D-grid y-velocity
+        w (inout): Vertical velocity
+        ua (inout): A-grid x-velocity
+        va (inout): A-grid y-velocity
+        cappa (inout): Power to raise pressure to
+        q_con (out): Total condensate mixing ratio
+        q_cld (out): Cloud fraction
+        pkz (in): Layer mean pressure raised to the power of Kappa
+        pk (out): Interface pressure raised to power of kappa, final acoustic value
+        pe (in): Pressure at layer edges
+        hs (in): Surface geopotential
+        te0_2d (unused): Atmosphere total energy in columns
+        ps (out): Surface pressure
+        wsd (in): Vertical velocity of the lowest level
+        omga (unused): Vertical pressure velocity
+        ak (in): Atmosphere hybrid a coordinate (Pa)
+        bk (in): Atmosphere hybrid b coordinate (dimensionless)
+        pfull (in): Pressure full levels
+        dp1 (out): Pressure thickness before dyn_core (only written
+            if do_sat_adjust=True)
+        ptop (in): The pressure level at the top of atmosphere
+        akap (in): Poisson constant (KAPPA)
+        zvir (in): Constant (Rv/Rd-1)
+        last_step (in): Flag for the last step of k-split remapping
+        consv_te (in): If True, conserve total energy
+        mdt (in) : Remap time step
+        bdt (in): Timestep
+        do_adiabatic_init (in): If True, do adiabatic dynamics
+        nq (in): Number of tracers
 
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.
         """
+        # TODO: remove unused arguments (and commented code that references them)
+        # TODO: can we trim ps or make it a temporary
         self._init_pe(pe, self._pe1, self._pe2, ptop)
 
         self._moist_cv_pt_pressure(

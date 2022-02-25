@@ -23,16 +23,6 @@ def compute_meridional_flux(flux: FloatField, a_in: FloatField, del_term: FloatF
 
 
 #
-# Q update stencil
-# ------------------
-def update_q(
-    q: FloatField, rarea: FloatFieldIJ, fx: FloatField, fy: FloatField, cd: float
-):
-    with computation(PARALLEL), interval(...):
-        q += cd * rarea * (fx - fx[1, 0, 0] + fy - fy[0, 1, 0])
-
-
-#
 # corner_fill
 #
 # Stencil that copies/fills in the appropriate corner values for qdel
@@ -74,6 +64,16 @@ def corner_fill(q_in: FloatField, q_out: FloatField):
             q_out = (q_in[0, -1, 0] + q_in[-1, -1, 0] + q_in[0, 0, 0]) * third
 
 
+#
+# Q update stencil
+# ------------------
+def update_q(
+    q: FloatField, rarea: FloatFieldIJ, fx: FloatField, fy: FloatField, cd: float
+):
+    with computation(PARALLEL), interval(...):
+        q += cd * rarea * (fx - fx[1, 0, 0] + fy - fy[0, 1, 0])
+
+
 class HyperdiffusionDamping:
     """
     Fortran name is del2_cubed
@@ -109,10 +109,9 @@ class HyperdiffusionDamping:
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             compute_halos=(3, 3),
         )
-        self._copy_stencil = stencil_factory.from_dims_halo(
-            func=copy_defn,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            compute_halos=(3, 3),
+
+        self._copy_corners_x: corners.CopyCorners = corners.CopyCorners(
+            direction="x", stencil_factory=stencil_factory
         )
 
         self._ntimes = min(3, nmax)
@@ -138,28 +137,33 @@ class HyperdiffusionDamping:
         self._compute_zonal_flux = get_stencils_with_varied_bounds(
             compute_zonal_flux, origins, domains_x, stencil_factory=stencil_factory
         )
-        self._compute_meridional_flux = get_stencils_with_varied_bounds(
-            compute_meridional_flux, origins, domains_y, stencil_factory=stencil_factory
-        )
-        self._update_q = get_stencils_with_varied_bounds(
-            update_q, origins, domains, stencil_factory=stencil_factory
-        )
 
-        self._copy_corners_x: corners.CopyCorners = corners.CopyCorners(
-            direction="x", stencil_factory=stencil_factory
-        )
-        """Stencil responsible for doing corners updates in x-direction."""
         self._copy_corners_y: corners.CopyCorners = corners.CopyCorners(
             direction="y", stencil_factory=stencil_factory
         )
         """Stencil responsible for doing corners updates in y-direction."""
+
+        self._compute_meridional_flux = get_stencils_with_varied_bounds(
+            compute_meridional_flux, origins, domains_y, stencil_factory=stencil_factory
+        )
+
+        """Stencil responsible for doing corners updates in x-direction."""
+        self._copy_stencil = stencil_factory.from_dims_halo(
+            func=copy_defn,
+            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            compute_halos=(3, 3),
+        )
+
+        self._update_q = get_stencils_with_varied_bounds(
+            update_q, origins, domains, stencil_factory=stencil_factory
+        )
 
     def __call__(self, qdel: FloatField, cd: float):
         """
         Perform hyperdiffusion damping/filtering
 
         Args:
-            qdel (inout): Variable to be filterd
+            qdel (inout): Variable to be filtered
             nmax: Number of times to apply filtering
             cd: Damping coeffcient
         """

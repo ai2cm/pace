@@ -4,7 +4,7 @@ import functools
 import os
 import subprocess
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 
 import click
 import dacite
@@ -26,6 +26,7 @@ from pace.dsl.stencil import StencilFactory
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.stencils.testing import TranslateGrid, TranslateUpdateDWindsPhys
+from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
 
@@ -238,9 +239,7 @@ class SerialboxConfig(InitializationConfig):
             )
             grid_data = grid.grid_data
         else:
-            grid = fv3core._config.make_grid_with_data_from_namelist(
-                self._namelist, communicator, backend
-            )
+            grid = Grid.with_data_from_namelist(self._namelist, communicator, backend)
             metric_terms = pace.util.grid.MetricTerms(
                 quantity_factory=quantity_factory, communicator=communicator
             )
@@ -467,7 +466,7 @@ class DriverConfig:
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
         initialization_type = kwargs["initialization_type"]
         if initialization_type == "serialbox":
-            initialization_class = SerialboxConfig
+            initialization_class: Type[InitializationConfig] = SerialboxConfig
         elif initialization_type == "baroclinic":
             initialization_class = BaroclinicConfig
         elif initialization_type == "restart":

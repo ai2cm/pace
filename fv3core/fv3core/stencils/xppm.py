@@ -269,6 +269,13 @@ def compute_blbr_ord8plus(q: FloatField, dxa: FloatFieldIJ):
 def compute_x_flux(
     q: FloatField, courant: FloatField, dxa: FloatFieldIJ, xflux: FloatField
 ):
+    """
+    Args:
+        q (in):
+        courant (in):
+        dxa (in):
+        xflux (out):
+    """
     from __externals__ import mord
 
     with computation(PARALLEL), interval(...):

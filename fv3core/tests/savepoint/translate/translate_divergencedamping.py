@@ -11,7 +11,6 @@ class TranslateDivergenceDamping(TranslateFortranData2Py):
             "u": {},
             "v": {},
             "va": {},
-            "u_contra_dyc": {"serialname": "ptc"},
             "v_contra_dxc": {"serialname": "vort"},
             "ua": {},
             "divg_d": {},

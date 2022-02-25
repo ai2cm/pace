@@ -46,6 +46,15 @@ def zero_data(
     diss_estd: FloatField,
     first_timestep: bool,
 ):
+    """
+    Args:
+        mfxd (out):
+        mfyd (out):
+        cxd (out):
+        cyd (out):
+        diss_estd (out):
+        first_timestep (in):
+    """
     with computation(PARALLEL), interval(...):
         mfxd = 0.0
         mfyd = 0.0
@@ -111,15 +120,15 @@ def p_grad_c_stencil(
     upon completing this stencil..
 
      Args:
-         uc: x-velocity on the C-grid (inout)
-         vc: y-velocity on the C-grid (inout)
-         delpc: vertical delta in pressure (in)
-         pkc:  pressure if non-hydrostatic,
-               (edge pressure)**(moist kappa) if hydrostatic(in)
-         gz:  height of the model grid cells (m)(in)
-         dt2: half a model timestep (for C-grid update) in seconds (in)
-    Grid variable inputs:
-        rdxc, rdyc
+        rdxc (in):
+        rdyc (in):
+        uc (inout): x-velocity on the C-grid
+        vc (inout): y-velocity on the C-grid
+        delpc (in): vertical delta in pressure
+        pkc (in):  pressure if non-hydrostatic,
+            (edge pressure)**(moist kappa) if hydrostatic
+        gz (in):  height of the model grid cells (m)
+        dt2 (in): half a model timestep (for C-grid update) in seconds
     """
     from __externals__ import hydrostatic
 
@@ -659,7 +668,6 @@ class AcousticDynamics:
             self.dgrid_shallow_water_lagrangian_dynamics(
                 state.vt,
                 state.delp,
-                state.ptc,
                 state.pt,
                 state.u,
                 state.v,
