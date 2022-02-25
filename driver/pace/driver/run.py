@@ -535,7 +535,6 @@ class Driver:
         self.config = config
         self.comm = comm
         self.performance_config = self.config.performance_config
-        self.performance_config.total_timer.start("total")
         with self.performance_config.total_timer.clock("initialization"):
             communicator = pace.util.CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
@@ -587,17 +586,8 @@ class Driver:
             self._step(timestep=self.config.timestep.total_seconds())
             time += self.config.timestep
             self.diagnostics.store(time=time, state=self.state)
-        self.performance_config.total_timer.stop("total")
         self.performance_config.collect_performance(
             self.performance_config.timestep_timer,
-            self.performance_config.times_per_step,
-            self.performance_config.hits_per_step,
-        )
-        self.performance_config.write_out_performance(
-            self.comm,
-            self.config.stencil_config.backend,
-            self.config.dt_atmos,
-            self.performance_config.total_timer,
             self.performance_config.times_per_step,
             self.performance_config.hits_per_step,
         )
@@ -632,6 +622,16 @@ class Driver:
             dycore_state=self.state.dycore_state,
             phy_state=self.state.physics_state,
             dt=float(timestep),
+        )
+
+    def write_performance_json_output(self):
+        self.performance_config.write_out_performance(
+            self.comm,
+            self.config.stencil_config.backend,
+            self.config.dt_atmos,
+            self.performance_config.total_timer,
+            self.performance_config.times_per_step,
+            self.performance_config.hits_per_step,
         )
 
 
@@ -678,7 +678,9 @@ def main(driver_config: DriverConfig, comm):
         config=driver_config,
         comm=comm,
     )
-    driver.step_all()
+    with driver.performance_config.total_timer.clock("total"):
+        driver.step_all()
+    driver.write_performance_json_output()
 
 
 if __name__ == "__main__":
