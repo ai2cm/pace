@@ -38,7 +38,7 @@ class Report:
 
 def get_experiment_info(
     experiment_name: str, time_step: int, backend: str, git_hash: str
-) -> Dict[str, Any]:
+) -> Experiment:
     experiment = Experiment(
         dataset=experiment_name,
         format_version=3,
@@ -90,7 +90,7 @@ def gather_timing_data(
     return timing_info
 
 
-def write_to_timestamped_json(experiment: Dict[str, Any]) -> None:
+def write_to_timestamped_json(experiment: Report) -> None:
     now = datetime.now()
     filename = now.strftime("%Y-%m-%d-%H-%M-%S")
     with open(filename + ".json", "w") as outfile:
