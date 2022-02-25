@@ -16,7 +16,7 @@ class Experiment:
     git_hash: str
     timestamp: str
     timesteps: int
-    version: str
+    backend: str
 
 
 @dataclasses.dataclass
@@ -29,7 +29,11 @@ class TimeReport:
 class Report:
     setup: Experiment
     times: dict
-    SYPD: float
+    dt_atmos: float
+    SYPD: float = 0.0
+
+    def __post_init__(self):
+        self.SYPD = get_sypd(self.times, self.dt_atmos)
 
 
 def get_experiment_info(
@@ -41,7 +45,7 @@ def get_experiment_info(
         git_hash=git_hash,
         timestamp=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         timesteps=time_step,
-        version="python/" + backend,
+        backend="python/" + backend,
     )
     return experiment
 
@@ -62,7 +66,7 @@ def gather_timing_data(
     comm,
     root: int = 0,
 ) -> Dict[str, Any]:
-    """returns an updated version of  the results dictionary owned
+    """returns an updated version of the results dictionary owned
     by the root node to hold data on the substeps as well as the main loop timers"""
     is_root = comm.Get_rank() == root
     keys = collect_keys_from_data(times_per_step)
@@ -90,7 +94,7 @@ def write_to_timestamped_json(experiment: Dict[str, Any]) -> None:
     now = datetime.now()
     filename = now.strftime("%Y-%m-%d-%H-%M-%S")
     with open(filename + ".json", "w") as outfile:
-        json.dump(experiment, outfile, sort_keys=True, indent=4)
+        json.dump(dataclasses.asdict(experiment), outfile, sort_keys=True, indent=4)
 
 
 def gather_hit_counts(
@@ -113,16 +117,6 @@ def get_sypd(timing_info: Dict[str, TimeReport], dt_atmos: float) -> float:
     return sypd
 
 
-def make_report(
-    exp_info: Experiment,
-    timing_info: Dict[str, TimeReport],
-    dt_atmos: float,
-):
-    sypd = get_sypd(timing_info, dt_atmos)
-    report = Report(setup=exp_info, times=timing_info, SYPD=sypd)
-    return dataclasses.asdict(report)
-
-
 def collect_data_and_write_to_file(
     time_step: int,
     backend: str,
@@ -142,5 +136,5 @@ def collect_data_and_write_to_file(
     if is_root:
         exp_info = get_experiment_info(experiment_name, time_step, backend, git_hash)
         timing_info = gather_hit_counts(hits_per_step, timing_info)
-        report = make_report(exp_info, timing_info, dt_atmos)
+        report = Report(setup=exp_info, times=timing_info, dt_atmos=dt_atmos)
         write_to_timestamped_json(report)

@@ -7,8 +7,7 @@ stencil_config:
 initialization_type: baroclinic
 initialization_config: {}
 performance_config:
-  timer: true
-  json_dump: true
+  performance_mode: true
   experiment_name: c12_baroclinic
 nx_tile: 12
 nz: 79
