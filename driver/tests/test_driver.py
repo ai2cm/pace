@@ -9,7 +9,12 @@ import pytest
 
 import pace.dsl
 from fv3core.utils.null_comm import NullComm
-from pace.driver.report import gather_hit_counts, gather_timing_data, get_sypd
+from pace.driver.report import (
+    TimeReport,
+    gather_hit_counts,
+    gather_timing_data,
+    get_sypd,
+)
 from pace.driver.run import Driver, DriverConfig
 
 
@@ -143,6 +148,32 @@ def test_timing_info(
     ]
     sypd = get_sypd(timing_info, dt_atmos)
     assert timing_info["mainloop"].hits == expected_hits
+    assert sypd == expected_SYPD
+
+
+timing_info = {
+    "mainloop": TimeReport(
+        hits=3,
+        times=[
+            [1.0, 0.8, 1.2],
+            [1.2, 0.9, 0.9],
+            [1.0, 1.0, 1.0],
+        ],
+    )
+}
+
+test_data = [timing_info, 365.0, 1.0]
+
+
+@pytest.mark.parametrize(
+    "timing_info, dt_atmos, expected_SYPD",
+    [test_data],
+)
+def test_sypd(timing_info, dt_atmos, expected_SYPD):
+    sypd = get_sypd(timing_info, dt_atmos)
+    import pdb
+
+    pdb.set_trace()
     assert sypd == expected_SYPD
 
 
