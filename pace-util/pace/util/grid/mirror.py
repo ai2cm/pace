@@ -4,7 +4,26 @@ from pace.util.constants import PI, RADIUS
 __all__ = ["mirror_grid"]
 
 RIGHT_HAND_GRID = False
+"""
+0 -- 0 True, True y == 6, y == 12 lon and lat
+0 -- 1, False, True, x == 0, x == 12. 6.1 vs 5.686
+0 -- 2 True, False 
+0 -- 3 False, False
+1 -- 6, True, False x == 6
 
+2 -- 8, True, True, x == 6
+2 -- 9, False, True, x == 0, x == 12
+3 -- 15, False False x == 0 lon and lat
+5 -- 20, True, True
+5 -- 23 False, False x == 0, lon and lat
+6 ranks working: (14), mid = 6
+(8), 3, 3
+
+2 - rank 11 [3, 3, 0], False, False, 
+2 - rank 9 [3, 9, 0] False, True
+2 - rank 10       [9, 3, 0] True, False
+tile 1 rank 6  x == 6. True, False
+"""
 
 def mirror_grid(
     mirror_data,
@@ -31,7 +50,11 @@ def mirror_grid(
         global_js < ng + (npy - 1) / 2
         and global_js + y_subtile_width > ng + (npy - 1) / 2
     )
-
+    print("@@", iend, jend, x_center_tile, y_center_tile)
+    #i_mid = (iend - istart) // 2
+    #j_mid = (jend - jstart) // 2 
+    i_mid = npx // 2 - global_is + istart
+    j_mid = npy // 2 - global_js + jstart
     # first fix base region
     for j in range(jstart, jend + 1):
         for i in range(istart, iend + 1):
@@ -62,14 +85,13 @@ def mirror_grid(
             )
 
             # force dateline/greenwich-meridion consistency
-            if npx % 2 != 0:
-                if x_center_tile and i == istart + (iend - istart) // 2:
-                    # if i == (npx - 1) // 2:
-                    mirror_data["local"][i, j, 0] = 0.0
-
-    i_mid = (iend - istart) // 2
-    j_mid = (jend - jstart) // 2
-
+            #if npx % 2 != 0:
+            #    if x_center_tile and i==i_mid: #istart + (iend - istart) // 2:
+            #        # if i == (npx - 1) // 2:
+            #        mirror_data["local"][i, j, 0] = 0.0
+            #        #mirror_data["north-south"][i, -(j+1), 0] = 0
+    
+  
     if tile_index > 0:
 
         for j in range(jstart, jend + 1):
@@ -119,7 +141,7 @@ def mirror_grid(
                         if x_center_tile:
                             x2[:i_mid] = 0.0
                             x2[i_mid + 1] = PI
-                        elif global_is + i_mid < ng + (npx - 1) / 2:
+                        elif global_is + iend < ng + (npx - 1) / 2:
                             x2[:] = 0.0
 
             elif tile_index == 3:
@@ -198,7 +220,10 @@ def mirror_grid(
                         x2[i_mid] = 0.0
                     elif global_js + j_mid < ng + (npy - 1) / 2 and x_center_tile:
                         x2[i_mid] = PI
-
+            print('mirror', x2.shape, y2.shape, i_mid, j_mid, istart + (iend - istart) // 2, (iend - istart) // 2, (jend - jstart) // 2, 'g', global_is, global_js, npx//2, npy //2)
+            if j == 3:
+                print('x2', x2[3])
+           
             mirror_data["local"][istart : iend + 1, j, 0] = x2
             mirror_data["local"][istart : iend + 1, j, 1] = y2
 
