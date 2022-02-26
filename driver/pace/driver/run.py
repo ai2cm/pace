@@ -340,7 +340,7 @@ class Diagnostics:
             for name in ["lat", "lon"]:
                 grid_quantity = pace.util.Quantity(
                     getattr(state.grid_data, name),
-                    dims=("x_interface", "y_intercace"),
+                    dims=("x_interface", "y_interface"),
                     origin=metadata.origin,
                     extent=(metadata.extent[0] + 1, metadata.extent[1] + 1),
                     units="rad",
