@@ -329,24 +329,17 @@ class PerformanceConfig:
             self.timestep_timer = pace.util.Timer()
             self.total_timer = pace.util.Timer()
 
-    def collect_performance(
-        self,
-        timestep_timer: Union[pace.util.Timer, pace.util.NullTimer],
-        times_per_step: list,
-        hits_per_step: list,
-    ):
+    def collect_performance(self):
         if self.performance_mode:
-            times_per_step.append(timestep_timer.times)
-            hits_per_step.append(timestep_timer.hits)
+            self.times_per_step.append(self.timestep_timer.times)
+            self.hits_per_step.append(self.timestep_timer.hits)
+            self.timestep_timer.reset()
 
     def write_out_performance(
         self,
         comm,
         backend: str,
         dt_atmos: float,
-        total_timer: Union[pace.util.Timer, pace.util.NullTimer],
-        times_per_step: list,
-        hits_per_step: list,
     ):
         if self.performance_mode:
             try:
@@ -361,18 +354,18 @@ class PerformanceConfig:
             except subprocess.CalledProcessError:
                 git_hash = "notarepo"
 
-            times_per_step.append(total_timer.times)
-            hits_per_step.append(total_timer.hits)
+            self.times_per_step.append(self.total_timer.times)
+            self.hits_per_step.append(self.total_timer.hits)
             comm.Barrier()
-            while {} in hits_per_step:
-                hits_per_step.remove({})
+            while {} in self.hits_per_step:
+                self.hits_per_step.remove({})
             collect_data_and_write_to_file(
-                len(hits_per_step) - 1,
+                len(self.hits_per_step) - 1,
                 backend,
                 git_hash,
                 comm,
-                hits_per_step,
-                times_per_step,
+                self.hits_per_step,
+                self.times_per_step,
                 self.experiment_name,
                 dt_atmos,
             )
@@ -586,22 +579,13 @@ class Driver:
             self._step(timestep=self.config.timestep.total_seconds())
             time += self.config.timestep
             self.diagnostics.store(time=time, state=self.state)
-        self.performance_config.collect_performance(
-            self.performance_config.timestep_timer,
-            self.performance_config.times_per_step,
-            self.performance_config.hits_per_step,
-        )
+        self.performance_config.collect_performance()
 
     def _step(self, timestep: float):
         with self.performance_config.timestep_timer.clock("mainloop"):
             self._step_dynamics(timestep=timestep)
             self._step_physics(timestep=timestep)
-        self.performance_config.collect_performance(
-            self.performance_config.timestep_timer,
-            self.performance_config.times_per_step,
-            self.performance_config.hits_per_step,
-        )
-        self.performance_config.timestep_timer.reset()
+        self.performance_config.collect_performance()
 
     def _step_dynamics(self, timestep: float):
         self.dycore.step_dynamics(
@@ -629,9 +613,6 @@ class Driver:
             self.comm,
             self.config.stencil_config.backend,
             self.config.dt_atmos,
-            self.performance_config.total_timer,
-            self.performance_config.times_per_step,
-            self.performance_config.hits_per_step,
         )
 
 
