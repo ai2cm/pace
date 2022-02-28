@@ -1,6 +1,5 @@
 # Driver Configurations
 Currently, driver takes in a yaml config containing the following options. Example configuration file can be found in examples/configs.
-
 ## stencil_config
 Configuration options pertaining to GT4Py stencils such as backend and whether to rebuild stencils.
 
@@ -15,6 +14,12 @@ Driver initialization type can be either `baroclinic` or `serialbox`.
 make -C fv3gfs-physics get_test_data
 ```
 [TODO] Update this once driver specific savepoints are added.
+
+## performance_config
+Configuration for doing performance timing. \
+timer: true if performance timing is desired \
+json_dump: true if timing output should be saved as a json file \
+experiment_name: default to test if not specified
 
 ## diagnostics_config
 Diagnostics configuration specifies where and what variables to save from the model. Currently, we support writing to `zarr` format.
@@ -34,7 +39,7 @@ Simulation runtime \
 \
 *Note that this is required for serialbox initialization, time information in the nml file will not be used.
 
-## ----**The following options are not used if initialization type is serialbox**----
+## ----**The following options need to match .nml file when using namelist_override**----
 ## nx_tile
 Number of grid cells in the x-direction on one tile of the domain. This number is then duplicated in the y-direction since we only support `nx = ny`.
 
