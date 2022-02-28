@@ -415,10 +415,10 @@ class DriverConfig:
         diagnostics_config: configuration for output diagnostics
         dycore_config: configuration for dynamical core
         physics_config: configuration for physics
-        days: simulation time in days
-        hours: simulation time in hours
-        minutes: simulation time in minutes
-        seconds: simulation time in seconds
+        days: days to add to total simulation time
+        hours: hours to add to total simulation time
+        minutes: minutes to add to total simulation time
+        seconds: seconds to add to total simulation time
     """
 
     stencil_config: pace.dsl.StencilConfig
