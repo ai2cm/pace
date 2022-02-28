@@ -576,14 +576,15 @@ class Driver:
             )
 
     def step_all(self):
-        time = self.config.start_time
-        end_time = self.config.start_time + self.config.total_time
-        self.diagnostics.store(time=time, state=self.state)
-        while time < end_time:
-            self._step(timestep=self.config.timestep.total_seconds())
-            time += self.config.timestep
+        with self.performance_config.total_timer.clock("total"):
+            time = self.config.start_time
+            end_time = self.config.start_time + self.config.total_time
             self.diagnostics.store(time=time, state=self.state)
-        self.performance_config.collect_performance()
+            while time < end_time:
+                self._step(timestep=self.config.timestep.total_seconds())
+                time += self.config.timestep
+                self.diagnostics.store(time=time, state=self.state)
+            self.performance_config.collect_performance()
 
     def _step(self, timestep: float):
         with self.performance_config.timestep_timer.clock("mainloop"):
@@ -663,8 +664,7 @@ def main(driver_config: DriverConfig, comm):
         config=driver_config,
         comm=comm,
     )
-    with driver.performance_config.total_timer.clock("total"):
-        driver.step_all()
+    driver.step_all()
     driver.write_performance_json_output()
 
 
