@@ -17,8 +17,6 @@ Minor changes:
 - added `CubedSphereCommunicator.from_layout` constructor method
 - added support for built-in `datetime` in ZarrMonitor
 - `edge_interior_ratio` is now an optional argument of `tile_extent_from_rank_metadata`
-- added `report` for saving performance timing outputs
-- added `Barrier` in `NullComm` which behaves the same as `barrier`
 
 v0.7.0
 ------
