@@ -8,12 +8,15 @@ from pace.util.grid import GridData
 
 # TODO: the mix of local and global regions is strange here
 # it's a workaround to specify DON'T do this calculation if on the tile edge
-def main_uc_contra(
+def main_uc_vc_contra(
     uc: FloatField,
     vc: FloatField,
     cosa_u: FloatFieldIJ,
     rsin_u: FloatFieldIJ,
+    cosa_v: FloatFieldIJ,
+    rsin_v: FloatFieldIJ,
     uc_contra: FloatField,
+    vc_contra: FloatField,
 ):
     """
     Args:
@@ -21,9 +24,12 @@ def main_uc_contra(
         vc (in): covariant c-grid y-wind
         cosa_u (in): ???
         rsin_u (in): ???
+        cosa_v (in): ???
+        rsin_v (in): ???
         uc_contra (out): contravariant c-grid x-wind
+        vc_contra (out): contravariant c-grid y-wind
     """
-    from __externals__ import j_end, j_start, local_ie, local_is
+    from __externals__ import j_end, j_start, local_ie, local_is, local_je, local_js
 
     with computation(PARALLEL), interval(...):
         utmp = uc_contra
@@ -35,6 +41,14 @@ def main_uc_contra(
             region[:, j_start - 1 : j_start + 1], region[:, j_end : j_end + 2]
         ):
             uc_contra = utmp
+
+        vtmp = vc_contra
+        with horizontal(region[:, local_js - 1 : local_je + 3]):
+            # for C-grid, u must be regridded to lie at same point as v
+            u = 0.25 * (uc[0, -1, 0] + uc[1, -1, 0] + uc + uc[1, 0, 0])
+            vc_contra = contravariant(vc, u, cosa_v, rsin_v)
+        with horizontal(region[:, j_start], region[:, j_end + 1]):
+            vc_contra = vtmp
 
 
 def uc_contra_y_edge(
@@ -55,35 +69,6 @@ def uc_contra_y_edge(
     with computation(PARALLEL), interval(...):
         with horizontal(region[i_start, :], region[i_end + 1, :]):
             uc_contra = (uc / sin_sg3[-1, 0]) if (uc > 0) else (uc / sin_sg1)
-
-
-# TODO: the mix of local and global regions is strange here
-# it's a workaround to specify DON'T do this calculation if on the tile edge
-def main_vc_contra(
-    uc: FloatField,
-    vc: FloatField,
-    cosa_v: FloatFieldIJ,
-    rsin_v: FloatFieldIJ,
-    vc_contra: FloatField,
-):
-    """
-    Args:
-        uc (in):
-        vc (in):
-        cosa_v (in):
-        rsin_v (in):
-        vc_contra (out):
-    """
-    from __externals__ import j_end, j_start, local_je, local_js
-
-    with computation(PARALLEL), interval(...):
-        vtmp = vc_contra
-        with horizontal(region[:, local_js - 1 : local_je + 3]):
-            # for C-grid, u must be regridded to lie at same point as v
-            u = 0.25 * (uc[0, -1, 0] + uc[1, -1, 0] + uc + uc[1, 0, 0])
-            vc_contra = contravariant(vc, u, cosa_v, rsin_v)
-        with horizontal(region[:, j_start], region[:, j_end + 1]):
-            vc_contra = vtmp
 
 
 def vc_contra_y_edge(
@@ -505,6 +490,12 @@ class FiniteVolumeFluxPrep:
         grid_data: GridData,
     ):
         grid_indexing = stencil_factory.grid_indexing
+        self._tile_interior = not (
+            grid_indexing.west_edge
+            or grid_indexing.east_edge
+            or grid_indexing.north_edge
+            or grid_indexing.south_edge
+        )
         self._dx = grid_data.dx
         self._dy = grid_data.dy
         self._rdxa = grid_data.rdxa
@@ -529,14 +520,11 @@ class FiniteVolumeFluxPrep:
             "origin": origin_corners,
             "domain": domain_corners,
         }
-        self._main_uc_contra_stencil = stencil_factory.from_origin_domain(
-            main_uc_contra, **kwargs
+        self._main_uc_vc_contra_stencil = stencil_factory.from_origin_domain(
+            main_uc_vc_contra, **kwargs
         )
         self._uc_contra_y_edge_stencil = stencil_factory.from_origin_domain(
             uc_contra_y_edge, **kwargs
-        )
-        self._main_vc_contra_stencil = stencil_factory.from_origin_domain(
-            main_vc_contra, **kwargs
         )
         self._vc_contra_y_edge_stencil = stencil_factory.from_origin_domain(
             vc_contra_y_edge, **kwargs
@@ -590,54 +578,51 @@ class FiniteVolumeFluxPrep:
 
         # in the original Fortran code, uc_contra is named ut and vc_contra is vt
 
-        self._main_uc_contra_stencil(
+        self._main_uc_vc_contra_stencil(
             uc,
             vc,
             self._cosa_u,
             self._rsin_u,
-            uc_contra,
-        )
-        self._uc_contra_y_edge_stencil(uc, self._sin_sg1, self._sin_sg3, uc_contra)
-        self._main_vc_contra_stencil(
-            uc,
-            vc,
             self._cosa_v,
             self._rsin_v,
-            vc_contra,
-        )
-        self._vc_contra_y_edge_stencil(
-            vc,
-            self._cosa_v,
             uc_contra,
             vc_contra,
         )
-        self._vc_contra_x_edge_stencil(vc, self._sin_sg2, self._sin_sg4, vc_contra)
-        self._uc_contra_x_edge_stencil(
-            uc,
-            self._cosa_u,
-            vc_contra,
-            uc_contra,
-        )
-        # NOTE: this is aliasing memory
-        self._uc_contra_corners_stencil(
-            self._cosa_u,
-            self._cosa_v,
-            uc,
-            vc,
-            uc_contra,
-            uc_contra,
-            vc_contra,
-        )
-        # NOTE: this is aliasing memory
-        self._vc_contra_corners_stencil(
-            self._cosa_u,
-            self._cosa_v,
-            uc,
-            vc,
-            uc_contra,
-            vc_contra,
-            vc_contra,
-        )
+        if not self._tile_interior:
+            self._uc_contra_y_edge_stencil(uc, self._sin_sg1, self._sin_sg3, uc_contra)
+            self._vc_contra_y_edge_stencil(
+                vc,
+                self._cosa_v,
+                uc_contra,
+                vc_contra,
+            )
+            self._vc_contra_x_edge_stencil(vc, self._sin_sg2, self._sin_sg4, vc_contra)
+            self._uc_contra_x_edge_stencil(
+                uc,
+                self._cosa_u,
+                vc_contra,
+                uc_contra,
+            )
+            # NOTE: this is aliasing memory
+            self._uc_contra_corners_stencil(
+                self._cosa_u,
+                self._cosa_v,
+                uc,
+                vc,
+                uc_contra,
+                uc_contra,
+                vc_contra,
+            )
+            # NOTE: this is aliasing memory
+            self._vc_contra_corners_stencil(
+                self._cosa_u,
+                self._cosa_v,
+                uc,
+                vc,
+                uc_contra,
+                vc_contra,
+                vc_contra,
+            )
         self._fxadv_fluxes_stencil(
             self._sin_sg1,
             self._sin_sg2,
