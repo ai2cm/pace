@@ -51,7 +51,7 @@ def get_experiment_info(
 
 
 def collect_keys_from_data(times_per_step: List[Dict[str, float]]) -> List[str]:
-    """Collects all the keys in the list of dics and returns a sorted version"""
+    """Collects all the keys in the list of dicts and returns a sorted version"""
     keys = set()
     for data_point in times_per_step:
         for k, _ in data_point.items():
