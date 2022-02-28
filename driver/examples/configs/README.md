@@ -20,6 +20,7 @@ Configuration for doing performance timing. \
 timer: true if performance timing is desired \
 json_dump: true if timing output should be saved as a json file \
 experiment_name: default to test if not specified
+
 ## diagnostics_config
 Diagnostics configuration specifies where and what variables to save from the model. Currently, we support writing to `zarr` format.
 
