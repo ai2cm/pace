@@ -330,6 +330,10 @@ class PerformanceConfig:
             self.total_timer = pace.util.Timer()
 
     def collect_performance(self):
+        """
+        Take the accumulated timings and flush them into a new entry
+        in times_per_step and hits_per_step.
+        """
         if self.performance_mode:
             self.times_per_step.append(self.timestep_timer.times)
             self.hits_per_step.append(self.timestep_timer.hits)
