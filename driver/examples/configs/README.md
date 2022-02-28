@@ -38,7 +38,7 @@ Simulation runtime \
 \
 *Note that this is required for serialbox initialization, time information in the nml file will not be used.
 
-## ----**The following options need to match nml when using namelist_override**----
+## ----**The following options need to match .nml file when using namelist_override**----
 ## nx_tile
 Number of grid cells in the x-direction on one tile of the domain. This number is then duplicated in the y-direction since we only support `nx = ny`.
 
