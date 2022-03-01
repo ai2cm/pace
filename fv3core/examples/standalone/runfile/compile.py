@@ -5,8 +5,8 @@ from typing import Any, List, Tuple
 
 import f90nml
 
-import fv3core
 import pace.dsl.stencil
+from fv3core import DynamicalCore
 from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.baroclinic import init_baroclinic_state
 from fv3core.utils.null_comm import NullComm
@@ -14,7 +14,7 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 
 @contextlib.contextmanager
-def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
+def no_lagrangian_contributions(dynamical_core: DynamicalCore):
     # TODO: lagrangian contributions currently cause an out of bounds iteration
     # when halo updates are disabled. Fix that bug and remove this decorator.
     # Probably requires an update to gt4py (currently v36).
@@ -63,7 +63,7 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-def setup_dycore(config, rank, backend) -> Tuple[fv3core.DynamicalCore, List[Any]]:
+def setup_dycore(config, rank, backend) -> Tuple[DynamicalCore, List[Any]]:
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
@@ -112,7 +112,7 @@ def setup_dycore(config, rank, backend) -> Tuple[fv3core.DynamicalCore, List[Any
         grid_indexing=grid_indexing,
     )
 
-    dycore = fv3core.DynamicalCore(
+    dycore = DynamicalCore(
         comm=communicator,
         grid_data=GridData.new_from_metric_terms(metric_terms),
         stencil_factory=stencil_factory,
