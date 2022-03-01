@@ -1,8 +1,6 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import pace.util
 from fv3core.stencils.d2a2c_vect import contravariant
-from fv3core.utils.functional_validation import get_set_nan_func
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import GridData
@@ -543,11 +541,11 @@ class FiniteVolumeFluxPrep:
         self._fxadv_fluxes_stencil = stencil_factory.from_origin_domain(
             fxadv_fluxes_stencil, **kwargs
         )
-        self._set_nans = get_set_nan_func(
-            grid_indexing,
-            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            n_halo=((2, 2), (2, 2)),
-        )
+        # self._set_nans = get_set_nan_func(
+        #     grid_indexing,
+        #     dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+        #     n_halo=((2, 2), (2, 2)),
+        # )
 
     def __call__(
         self,
@@ -644,9 +642,8 @@ class FiniteVolumeFluxPrep:
             vc_contra,
             dt,
         )
-        if __debug__:
-            self._set_nans(uc_contra)
-            self._set_nans(vc_contra)
+        # self._set_nans(uc_contra)
+        # self._set_nans(vc_contra)
 
 
 # -------------------- DEPRECATED CORNERS-----------------
