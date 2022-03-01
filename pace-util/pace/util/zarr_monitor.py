@@ -128,17 +128,15 @@ class ZarrMonitor:
         for name, quantity in sorted(state.items(), key=lambda x: x[0]):
             self._writers[name].append(quantity)  # type: ignore[index]
 
-    def store_grid(self, grid: dict) -> None:
+    def store_constant(self, grid: dict) -> None:
         for name, quantity in grid.items():
-            self._bypass_checks.append(name)
-            if self._writers is not None:
-                self._writers[name] = _ZarrGridWriter(
-                    self._comm,
-                    self._group,
-                    name=name,
-                    partitioner=self.partitioner,
-                )
-                self._writers[name].append(quantity)  # type: ignore[index]
+            constant_writer = _ZarrConstantWriter(
+                self._comm,
+                self._group,
+                name=name,
+                partitioner=self.partitioner,
+            )
+            constant_writer.append(quantity)  # type: ignore[index]
 
 
 class _ZarrVariableWriter:
@@ -273,9 +271,9 @@ def _get_from_slice(target_slice):
     return tuple(return_list)
 
 
-class _ZarrGridWriter(_ZarrVariableWriter):
+class _ZarrConstantWriter(_ZarrVariableWriter):
     def __init__(self, *args, **kwargs):
-        super(_ZarrGridWriter, self).__init__(*args, **kwargs)
+        super(_ZarrConstantWriter, self).__init__(*args, **kwargs)
         self._prepend_shape = (6,)
         self._prepend_chunks = (1,)
         self._PREPEND_DIMS = ("tile",)

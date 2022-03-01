@@ -27,6 +27,7 @@ from pace.stencils.testing import TranslateGrid, TranslateUpdateDWindsPhys
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
+from pace.util.quantity import QuantityMetadata
 
 
 @dataclasses.dataclass
@@ -324,7 +325,7 @@ class Diagnostics:
             store=store, partitioner=partitioner, mpi_comm=comm
         )
 
-    def store(self, time: datetime, state: DriverState, write_grid=False):
+    def store(self, time: datetime, state: DriverState):
         zarr_state = {"time": time}
         for name in self.config.names:
             try:
@@ -334,19 +335,21 @@ class Diagnostics:
             zarr_state[name] = quantity
         assert time is not None
         self.monitor.store(zarr_state)
-        if write_grid:
-            metadata = state.dycore_state.ps.metadata
-            zarr_grid = {}
-            for name in ["lat", "lon"]:
-                grid_quantity = pace.util.Quantity(
-                    getattr(state.grid_data, name),
-                    dims=("x_interface", "y_interface"),
-                    origin=metadata.origin,
-                    extent=(metadata.extent[0] + 1, metadata.extent[1] + 1),
-                    units="rad",
-                )
-                zarr_grid[name] = grid_quantity
-            self.monitor.store_grid(zarr_grid)
+
+    def store_grid(
+        self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
+    ):
+        zarr_grid = {}
+        for name in ["lat", "lon"]:
+            grid_quantity = pace.util.Quantity(
+                getattr(grid_data, name),
+                dims=("x_interface", "y_interface"),
+                origin=metadata.origin,
+                extent=(metadata.extent[0] + 1, metadata.extent[1] + 1),
+                units="rad",
+            )
+            zarr_grid[name] = grid_quantity
+        self.monitor.store_constant(zarr_grid)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -516,7 +519,9 @@ class Driver:
     def step_all(self):
         time = self.config.start_time
         end_time = self.config.start_time + self.config.total_time
-        self.diagnostics.store(time=time, state=self.state, write_grid=True)
+        self.diagnostics.store_grid(
+            grid_data=self.state.grid_data, metadata=self.state.dycore_state.ps.metadata
+        )
         while time < end_time:
             self._step(timestep=self.config.timestep.total_seconds())
             time += self.config.timestep
