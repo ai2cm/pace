@@ -287,12 +287,11 @@ def computepath_method(
 ) -> Union[Callable[..., Any], LazyComputepathFunction]:
     """
     Decorator wrapping a class method in a JIT DaCe orchestrator.
-    
+
     Args:
         method: class method to either orchestrate or directly execute
         load_sdfg: folder path to a pre-compiled SDFG or file path to a .sdfg graph
-            that will be compiled but not regenerated.
-"""
+            that will be compiled but not regenerated."""
 
     def _decorator(method, load_sdfg):
         return LazyComputepathMethod(method, load_sdfg)
@@ -306,12 +305,11 @@ def computepath_function(
 ) -> Union[Callable[..., Any], LazyComputepathFunction]:
     """
     Decorator wrapping a function in a JIT DaCe orchestrator.
-    
+
     Args:
         method: class method to either orchestrate or directly execute
         load_sdfg: folder path to a pre-compiled SDFG or file path to a .sdfg graph
-            that will be compiled but not regenerated.
-"""
+            that will be compiled but not regenerated."""
 
     def _decorator(function, load_sdfg):
         return LazyComputepathFunction(function, load_sdfg)
