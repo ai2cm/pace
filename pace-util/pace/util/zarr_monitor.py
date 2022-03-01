@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import List, Tuple, Union
+from typing import Tuple, Union
 
 import cftime
 
@@ -75,7 +75,6 @@ class ZarrMonitor:
         self._group = mpi_comm.bcast(group)
         self._comm = mpi_comm
         self._writers = None
-        self._bypass_checks: List[str] = []
         self.partitioner = partitioner
 
     def _init_writers(self, state):
@@ -103,7 +102,6 @@ class ZarrMonitor:
                 "that were not present in earlier states"
             )
         missing_names = set(self._writers.keys()).difference(state.keys())
-        missing_names.difference_update(self._bypass_checks)
         if len(missing_names) != 0:
             raise ValueError(
                 f"provided state is missing keys {missing_names} "
