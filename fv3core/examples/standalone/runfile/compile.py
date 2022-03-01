@@ -1,37 +1,17 @@
 #!/usr/bin/env python3
-
-import copy
-import json
+import contextlib
 from argparse import ArgumentParser, Namespace
-from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 
 import f90nml
-import numpy as np
-import serialbox
-import yaml
-from mpi4py import MPI
 
+import fv3core
 import pace.dsl.stencil
 from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.baroclinic import init_baroclinic_state
-from fv3core.testing import TranslateFVDynamics
+from fv3core.utils.null_comm import NullComm
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
-
-# Dev note: the GTC toolchain fails if xarray is imported after gt4py
-# pace.util imports xarray if it's available in the env.
-# fv3core imports gt4py.
-# To avoid future conflict creeping back we make util imported prior to
-# fv3core. isort turned off to keep it that way.
-# isort: off
-import pace.util as util
-from fv3core.utils.null_comm import NullComm
-
-# isort: on
-
-import fv3core
-from pace.stencils.testing.grid import Grid
 
 @contextlib.contextmanager
 def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
@@ -63,6 +43,7 @@ def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
         for obj, original in original_attributes.items():
             obj._lagrangian_contributions = original
 
+
 def parse_args() -> Namespace:
     parser = ArgumentParser()
 
@@ -78,10 +59,8 @@ def parse_args() -> Namespace:
         action="store",
         help="gt4py backend to use",
     )
-   
+
     return parser.parse_args()
-
-
 
 
 def setup_dycore(config, rank, backend) -> Tuple[fv3core.DynamicalCore, List[Any]]:
@@ -90,7 +69,7 @@ def setup_dycore(config, rank, backend) -> Tuple[fv3core.DynamicalCore, List[Any
         rebuild=False,
         validate_args=True,
     )
-   
+
     mpi_comm = NullComm(
         rank=rank, total_ranks=6 * config.layout[0] * config.layout[1], fill_value=0.0
     )
@@ -121,7 +100,7 @@ def setup_dycore(config, rank, backend) -> Tuple[fv3core.DynamicalCore, List[Any
 
     # create an initial state from the Jablonowski & Williamson Baroclinic
     # test case perturbation. JRMS2006
-    state = baroclinic_init.init_baroclinic_state(
+    state = init_baroclinic_state(
         metric_terms,
         adiabatic=config.adiabatic,
         hydrostatic=config.hydrostatic,
@@ -154,11 +133,12 @@ def setup_dycore(config, rank, backend) -> Tuple[fv3core.DynamicalCore, List[Any
     ]
     return dycore, args
 
+
 if __name__ == "__main__":
     args = parse_args()
     namelist = f90nml.read(args.data_dir + "/input.nml")
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     for rank in range(dycore_config.layout[0] * dycore_config.layout[1]):
-        dycore, args = setup_dycore(dycore_config, rank, args.backend)
+        dycore, dycore_args = setup_dycore(dycore_config, rank, args.backend)
         with no_lagrangian_contributions(dynamical_core=dycore):
-            dycore.step_dynamics(*args)
+            dycore.step_dynamics(*dycore_args)
