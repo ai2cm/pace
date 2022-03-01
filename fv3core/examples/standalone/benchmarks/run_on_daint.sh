@@ -90,7 +90,6 @@ source ./venv/bin/activate
 pip list
 
 # set the environment
-cp $BUILDENV_DIR/submit.daint.slurm compile.daint.slurm
 cp $BUILDENV_DIR/submit.daint.slurm run.daint.slurm
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
     cp $BUILDENV_DIR/submit.daint.slurm run.nsys.daint.slurm
@@ -120,35 +119,6 @@ echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 
 $FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME
-
-echo "submitting script to do compilation"
-env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=1"
-# Adapt batch script to compile the code:
-sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
-sed -i "s/<NTASKS>/$ranks/g" compile.daint.slurm
-sed -i "s/<NTASKSPERNODE>/1/g" compile.daint.slurm
-sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
-sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
-sed -i "s/00:45:00/01:40:00/g" compile.daint.slurm
-sed -i "s/cscsci/normal/g" compile.daint.slurm
-sed -i "s/<G2G>/export CRAY_CUDA_MPS=1\nexport PYTHONOPTIMIZE=TRUE/g" compile.daint.slurm
-sed -i "s#<CMD>#$env_vars\nsrun python examples/standalone/runfile/dynamics.py $data_path 1 $backend $githash#g" compile.daint.slurm
-# execute on a gpu node
-set +e
-res=$(sbatch -W -C gpu compile.daint.slurm 2>&1)
-status1=$?
-grep -q SUCCESS compile.daint.out
-status2=$?
-set -e
-wait
-echo "DONE WAITING ${status1} ${status2}"
-if [ $status1 -ne 0 -o $status2 -ne 0 ] ; then
-    cleanupFailedJob "${res}" compile.daint.out
-    echo "ERROR: compilation step failed"
-    exit 1
-else
-    echo "compilation step finished"
-fi
 
 echo "Submitting script to do performance run"
 env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"
