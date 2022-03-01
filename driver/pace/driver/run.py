@@ -1,6 +1,8 @@
 import abc
 import dataclasses
 import functools
+import os
+import subprocess
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple, Type, Union
 
@@ -27,6 +29,8 @@ from pace.stencils.testing import TranslateGrid, TranslateUpdateDWindsPhys
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
+
+from .report import collect_data_and_write_to_file
 
 
 @dataclasses.dataclass
@@ -311,6 +315,66 @@ class DiagnosticsConfig:
     names: List[str] = dataclasses.field(default_factory=list)
 
 
+@dataclasses.dataclass
+class PerformanceConfig:
+    performance_mode: bool = False
+    experiment_name: str = "test"
+    timestep_timer: pace.util.Timer = pace.util.NullTimer()
+    total_timer: pace.util.Timer = pace.util.NullTimer()
+    times_per_step: List = dataclasses.field(default_factory=list)
+    hits_per_step: List = dataclasses.field(default_factory=list)
+
+    def __post_init__(self):
+        if self.performance_mode:
+            self.timestep_timer = pace.util.Timer()
+            self.total_timer = pace.util.Timer()
+
+    def collect_performance(self):
+        """
+        Take the accumulated timings and flush them into a new entry
+        in times_per_step and hits_per_step.
+        """
+        if self.performance_mode:
+            self.times_per_step.append(self.timestep_timer.times)
+            self.hits_per_step.append(self.timestep_timer.hits)
+            self.timestep_timer.reset()
+
+    def write_out_performance(
+        self,
+        comm,
+        backend: str,
+        dt_atmos: float,
+    ):
+        if self.performance_mode:
+            try:
+                driver_path = os.path.dirname(__file__)
+                git_hash = (
+                    subprocess.check_output(
+                        ["git", "-C", driver_path, "rev-parse", "HEAD"]
+                    )
+                    .decode()
+                    .rstrip()
+                )
+            except subprocess.CalledProcessError:
+                git_hash = "notarepo"
+
+            self.times_per_step.append(self.total_timer.times)
+            self.hits_per_step.append(self.total_timer.hits)
+            comm.Barrier()
+            while {} in self.hits_per_step:
+                self.hits_per_step.remove({})
+            collect_data_and_write_to_file(
+                len(self.hits_per_step) - 1,
+                backend,
+                git_hash,
+                comm,
+                self.hits_per_step,
+                self.times_per_step,
+                self.experiment_name,
+                dt_atmos,
+            )
+
+
 class Diagnostics:
     def __init__(
         self,
@@ -343,7 +407,7 @@ class DriverConfig:
 
     Attributes:
         stencil_config: configuration for stencil compilation
-        initialization_type: must be "baroclinic" or "restart"
+        initialization_type: must be "baroclinic", "restart", or "serialbox"
         initialization_config: configuration for the chosen initialization
             type, see documentation for its corresponding configuration
             dataclass
@@ -352,6 +416,13 @@ class DriverConfig:
         nz: number of gridpoints in the vertical dimension
         layout: number of ranks along the x and y dimensions
         dt_atmos: atmospheric timestep in seconds
+        diagnostics_config: configuration for output diagnostics
+        dycore_config: configuration for dynamical core
+        physics_config: configuration for physics
+        days: days to add to total simulation time
+        hours: hours to add to total simulation time
+        minutes: minutes to add to total simulation time
+        seconds: seconds to add to total simulation time
     """
 
     stencil_config: pace.dsl.StencilConfig
@@ -362,6 +433,7 @@ class DriverConfig:
     layout: Tuple[int, int]
     dt_atmos: float
     diagnostics_config: DiagnosticsConfig
+    performance_config: PerformanceConfig
     dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
         default_factory=fv3core.DynamicalCoreConfig
     )
@@ -458,60 +530,67 @@ class Driver:
             comm: communication object behaving like mpi4py.Comm
         """
         self.config = config
-        communicator = pace.util.CubedSphereCommunicator.from_layout(
-            comm=comm, layout=self.config.layout
-        )
-        quantity_factory, stencil_factory = _setup_factories(
-            config=config, communicator=communicator
-        )
+        self.comm = comm
+        self.performance_config = self.config.performance_config
+        with self.performance_config.total_timer.clock("initialization"):
+            communicator = pace.util.CubedSphereCommunicator.from_layout(
+                comm=self.comm, layout=self.config.layout
+            )
+            quantity_factory, stencil_factory = _setup_factories(
+                config=config, communicator=communicator
+            )
 
-        self.state = self.config.initialization_config.get_driver_state(
-            quantity_factory=quantity_factory, communicator=communicator
-        )
-        self._start_time = self.config.initialization_config.start_time
-        self.dycore = fv3core.DynamicalCore(
-            comm=communicator,
-            grid_data=self.state.grid_data,
-            stencil_factory=stencil_factory,
-            damping_coefficients=self.state.damping_coefficients,
-            config=self.config.dycore_config,
-            phis=self.state.dycore_state.phis,
-        )
-        self.physics = fv3gfs.physics.Physics(
-            stencil_factory=stencil_factory,
-            grid_data=self.state.grid_data,
-            namelist=self.config.physics_config,
-            active_packages=["microphysics"],
-        )
-        self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
-            stencil_factory=stencil_factory
-        )
-        self.physics_to_dycore = update_atmos_state.UpdateAtmosphereState(
-            stencil_factory=stencil_factory,
-            grid_data=self.state.grid_data,
-            namelist=self.config.physics_config,
-            comm=communicator,
-            grid_info=self.state.driver_grid_data,
-            quantity_factory=quantity_factory,
-        )
-        self.diagnostics = Diagnostics(
-            config=config.diagnostics_config,
-            partitioner=communicator.partitioner,
-            comm=comm,
-        )
+            self.state = self.config.initialization_config.get_driver_state(
+                quantity_factory=quantity_factory, communicator=communicator
+            )
+            self._start_time = self.config.initialization_config.start_time
+            self.dycore = fv3core.DynamicalCore(
+                comm=communicator,
+                grid_data=self.state.grid_data,
+                stencil_factory=stencil_factory,
+                damping_coefficients=self.state.damping_coefficients,
+                config=self.config.dycore_config,
+                phis=self.state.dycore_state.phis,
+            )
+            self.physics = fv3gfs.physics.Physics(
+                stencil_factory=stencil_factory,
+                grid_data=self.state.grid_data,
+                namelist=self.config.physics_config,
+                active_packages=["microphysics"],
+            )
+            self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
+                stencil_factory=stencil_factory
+            )
+            self.physics_to_dycore = update_atmos_state.UpdateAtmosphereState(
+                stencil_factory=stencil_factory,
+                grid_data=self.state.grid_data,
+                namelist=self.config.physics_config,
+                comm=communicator,
+                grid_info=self.state.driver_grid_data,
+                quantity_factory=quantity_factory,
+            )
+            self.diagnostics = Diagnostics(
+                config=config.diagnostics_config,
+                partitioner=communicator.partitioner,
+                comm=comm,
+            )
 
     def step_all(self):
-        time = self.config.start_time
-        end_time = self.config.start_time + self.config.total_time
-        self.diagnostics.store(time=time, state=self.state)
-        while time < end_time:
-            self._step(timestep=self.config.timestep.total_seconds())
-            time += self.config.timestep
+        with self.performance_config.total_timer.clock("total"):
+            time = self.config.start_time
+            end_time = self.config.start_time + self.config.total_time
             self.diagnostics.store(time=time, state=self.state)
+            while time < end_time:
+                self._step(timestep=self.config.timestep.total_seconds())
+                time += self.config.timestep
+                self.diagnostics.store(time=time, state=self.state)
+            self.performance_config.collect_performance()
 
     def _step(self, timestep: float):
-        self._step_dynamics(timestep=timestep)
-        self._step_physics(timestep=timestep)
+        with self.performance_config.timestep_timer.clock("mainloop"):
+            self._step_dynamics(timestep=timestep)
+            self._step_physics(timestep=timestep)
+        self.performance_config.collect_performance()
 
     def _step_dynamics(self, timestep: float):
         self.dycore.step_dynamics(
@@ -520,6 +599,7 @@ class Driver:
             n_split=self.config.dycore_config.n_split,
             do_adiabatic_init=False,
             timestep=float(timestep),
+            timer=self.performance_config.timestep_timer,
         )
 
     def _step_physics(self, timestep: float):
@@ -531,6 +611,13 @@ class Driver:
             dycore_state=self.state.dycore_state,
             phy_state=self.state.physics_state,
             dt=float(timestep),
+        )
+
+    def write_performance_json_output(self):
+        self.performance_config.write_out_performance(
+            self.comm,
+            self.config.stencil_config.backend,
+            self.config.dt_atmos,
         )
 
 
@@ -578,6 +665,7 @@ def main(driver_config: DriverConfig, comm):
         comm=comm,
     )
     driver.step_all()
+    driver.write_performance_json_output()
 
 
 if __name__ == "__main__":
