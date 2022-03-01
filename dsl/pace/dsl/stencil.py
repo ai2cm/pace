@@ -22,9 +22,9 @@ import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
 
+import pace.dsl.future_stencil as future_stencil
+import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
-from pace.dsl.future_stencil import future_stencil
-from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util.halo_data_transformer import QuantityHaloSpec
 
@@ -165,7 +165,7 @@ class FrozenStencil:
 
         # Enable distributed compilation if running in parallel
         if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-            stencil_function = future_stencil
+            stencil_function = future_stencil.future_stencil
             stencil_kwargs["wrapper"] = self
         else:
             # future stencil provides this information and
@@ -636,7 +636,9 @@ class GridIndexing:
         # we don't allocate
         # Refactor is filed in ticket DSL-820
 
-        temp_storage = make_storage_from_shape(shape, origin, backend=backend)
+        temp_storage = gt4py_utils.make_storage_from_shape(
+            shape, origin, backend=backend
+        )
         origin, extent = self.get_origin_domain(dims)
         temp_quantity = pace.util.Quantity(
             temp_storage,

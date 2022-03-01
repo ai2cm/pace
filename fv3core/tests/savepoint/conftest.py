@@ -453,7 +453,6 @@ def _generate_stencil_tests(metafunc, arg_names, savepoint_cases, get_param):
     param_list = []
     only_one_rank = metafunc.config.getoption("which_rank") is not None
     for case in savepoint_cases:
-        original_grid = fv3core._config.grid
         testobj = get_test_class_instance(
             case.test_name, case.grid, case.namelist, case.stencil_factory
         )

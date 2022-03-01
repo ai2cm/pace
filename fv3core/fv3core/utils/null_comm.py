@@ -44,6 +44,9 @@ class NullComm:
     def barrier(self):
         return
 
+    def Barrier(self):
+        return
+
     def Scatter(self, sendbuf, recvbuf, root=0, **kwargs):
         if recvbuf is not None:
             recvbuf[:] = self._fill_value
