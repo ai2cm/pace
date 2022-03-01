@@ -6,6 +6,9 @@ stencil_config:
   device_sync: true
 initialization_type: baroclinic
 initialization_config: {}
+performance_config:
+  performance_mode: true
+  experiment_name: c12_baroclinic
 nx_tile: 12
 nz: 79
 dt_atmos: 225
