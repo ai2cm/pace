@@ -1459,20 +1459,20 @@ class MetricTerms:
             "north-south": grid_mirror_ns.data,
             "diagonal": grid_mirror_diag.data,
         }
-        print("$$", self._rank, tile_index, subtile_width_x, section_global_is, section_global_js)
         mirror_grid(
             mirror_data=mirror_data,
             tile_index=tile_index,
             npx=self._npx,
             npy=self._npy,
-            x_subtile_width=subtile_width_x+1,
-            y_subtile_width=subtile_width_y+1,
+            x_subtile_width=subtile_width_x + 1,
+            y_subtile_width=subtile_width_y + 1,
             global_is=section_global_is,
             global_js=section_global_js,
             ng=self._halo,
             np=self._grid.np,
             right_hand_grid=self.RIGHT_HAND_GRID,
         )
+
         # Shift the corner away from Japan
         # This will result in the corner close to east coast of China
         # TODO if not config.do_schmidt and config.shift_fac > 1.0e-4
