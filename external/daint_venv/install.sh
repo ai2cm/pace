@@ -34,8 +34,8 @@ python3 -m pip install --upgrade wheel
 if [ $save_wheel ]; then
     python3 -m pip wheel --wheel-dir=$wheeldir cupy Cython clang-format
 fi
-python3 -m pip install --find-links=$wheeldir cupy Cython clang-format
-
+#python3 -m pip install --find-links=$wheeldir cupy Cython clang-format
+python3 -m pip install cupy Cython clang-format
 python3 -m pip install ${installdir}/mpi4py/mpi4py-3.1.0a0-cp38-cp38-linux_x86_64.whl
 
 # deactivate virtual environment
