@@ -1,4 +1,8 @@
+import numpy as np
+
+import pace.util
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
+from fv3core.utils.functional_validation import get_subset_func
 from pace.stencils.testing import TranslateFortranData2Py
 
 
@@ -38,6 +42,25 @@ class TranslateFxAdv(TranslateFortranData2Py):
         for var in ["x_area_flux", "crx", "y_area_flux", "cry"]:
             self.out_vars[var] = self.in_vars["data_vars"][var]
 
+        self._subset = get_subset_func(
+            self.grid.grid_indexing,
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            n_halo=((2, 2), (2, 2)),
+        )
+
+    def subset_output(self, varname: str, output: np.ndarray) -> np.ndarray:
+        """
+        Given an output array, return the slice of the array which we'd
+        like to validate against reference data
+        """
+        if varname in ["uc_contra", "vc_contra", "ut", "vt"]:
+            return self._subset(output)
+        else:
+            return output
+
     def compute_from_storage(self, inputs):
         self.compute_func(**inputs)
+        for name in ["uc_contra", "vc_contra"]:
+            inputs[name] = self.subset_output(name, inputs[name])
+
         return inputs
