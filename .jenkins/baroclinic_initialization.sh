@@ -29,11 +29,6 @@ JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd 
 BUILDENV_DIR=$JENKINS_DIR/../buildenv
 PACE_DIR=$JENKINS_DIR/../
 
-# check presence of env directory
-pushd `dirname $0` > /dev/null
-popd > /dev/null
-shopt -s expand_aliases
-
 # setup module environment and default queue
 test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
 . ${BUILDENV_DIR}/machineEnvironment.sh
