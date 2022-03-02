@@ -12,26 +12,18 @@ import serialbox
 import yaml
 from mpi4py import MPI
 
+# NOTE: we need to import dsl.stencil prior to
+# pace.util, otherwise xarray precedes gt4py, causing
+# very strange errors on some systems (e.g. daint)
 import pace.dsl.stencil
+import pace.util as util
+from fv3core import DynamicalCore
 from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.baroclinic import init_baroclinic_state
 from fv3core.testing import TranslateFVDynamics
-from pace.util.grid import DampingCoefficients, GridData, MetricTerms
-
-
-# Dev note: the GTC toolchain fails if xarray is imported after gt4py
-# pace.util imports xarray if it's available in the env.
-# fv3core imports gt4py.
-# To avoid future conflict creeping back we make util imported prior to
-# fv3core. isort turned off to keep it that way.
-# isort: off
-import pace.util as util
 from fv3core.utils.null_comm import NullComm
-
-# isort: on
-
-import fv3core
 from pace.stencils.testing.grid import Grid
+from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 
 def parse_args() -> Namespace:
@@ -215,8 +207,8 @@ def collect_data_and_write_to_file(
 
 
 def setup_dycore(
-    dycore_config, mpi_comm, backend
-) -> Tuple[fv3core.DynamicalCore, Dict[str, Any]]:
+    dycore_config, mpi_comm, backend, is_baroclinic_test_case
+) -> Tuple[DynamicalCore, Dict[str, Any]]:
     # set up grid-dependent helper structures
     partitioner = util.CubedSpherePartitioner(
         util.TilePartitioner(dycore_config.layout)
@@ -254,7 +246,7 @@ def setup_dycore(
         state = read_serialized_initial_state(
             rank, grid, dycore_config, stencil_factory
         )
-    dycore = fv3core.DynamicalCore(
+    dycore = DynamicalCore(
         comm=communicator,
         grid_data=GridData.new_from_metric_terms(metric_terms),
         stencil_factory=stencil_factory,
@@ -298,7 +290,9 @@ if __name__ == "__main__":
             mpi_comm = NullComm(MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
         else:
             mpi_comm = MPI.COMM_WORLD
-        dycore, dycore_args = setup_dycore(dycore_config, mpi_comm, args.backend)
+        dycore, dycore_args = setup_dycore(
+            dycore_config, mpi_comm, args.backend, is_baroclinic_test_case
+        )
 
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
