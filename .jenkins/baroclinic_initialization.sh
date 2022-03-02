@@ -17,7 +17,7 @@ exitError()
 }
 
 # stop on all errors and echo commands
-set -e -x
+set -x
 
 
 experiment="$1"
@@ -29,11 +29,7 @@ JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd 
 BUILDENV_DIR=$JENKINS_DIR/../buildenv
 PACE_DIR=$JENKINS_DIR/../
 
-# setup module environment and default queue
-test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
-. ${BUILDENV_DIR}/machineEnvironment.sh
-
-. ${BUILDENV_DIR}/env.${host}.sh
+. ${BUILDENV_DIR}/env.daint.sh
 
 # load scheduler tools
 . ${BUILDENV_DIR}/schedulerTools.sh
