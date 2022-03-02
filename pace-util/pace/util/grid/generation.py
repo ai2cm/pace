@@ -1465,13 +1465,14 @@ class MetricTerms:
             npx=self._npx,
             npy=self._npy,
             x_subtile_width=subtile_width_x + 1,
-            y_subtile_width=subtile_width_x + 1,
+            y_subtile_width=subtile_width_y + 1,
             global_is=section_global_is,
             global_js=section_global_js,
             ng=self._halo,
             np=self._grid.np,
             right_hand_grid=self.RIGHT_HAND_GRID,
         )
+
         # Shift the corner away from Japan
         # This will result in the corner close to east coast of China
         # TODO if not config.do_schmidt and config.shift_fac > 1.0e-4
