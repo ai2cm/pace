@@ -21,30 +21,29 @@ exitError()
 experiment="$1"
 
 ARTIFACT_ROOT="/project/s1053/baroclinic_initialization/"
+echo "####### executing: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
 
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BUILDENV_DIR=$JENKINS_DIR/../buildenv
 PACE_DIR=$JENKINS_DIR/../
 
-# load machine dependent environment
-if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then
-    exitError 1202 ${LINENO} "could not find ${BUILDENV_DIR}/env.${host}.sh"
-fi
+# check presence of env directory
+pushd `dirname $0` > /dev/null
+popd > /dev/null
+shopt -s expand_aliases
+
+# setup module environment and default queue
+test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
+. ${BUILDENV_DIR}/machineEnvironment.sh
+
 . ${BUILDENV_DIR}/env.${host}.sh
 
 # load scheduler tools
 . ${BUILDENV_DIR}/schedulerTools.sh
 scheduler_script="${BUILDENV_DIR}/submit.${host}.${scheduler}"
 
-# if there is a scheduler script, make a copy for this job
-if [ -f ${scheduler_script} ] ; then
-    if [ "${action}" == "setup" ]; then
-	scheduler="none"
-    else
-	cp  ${scheduler_script} job_initialization.sh
-	scheduler_script=job_initialization.sh
-    fi
-fi
+cp ${scheduler_script} job_initialization.sh
+scheduler_script=job_initialization.sh
 
 if grep -q "ranks" <<< "${experiment}"; then
     export NUM_RANKS=`echo ${experiment} | grep -o -E '[0-9]+ranks' | grep -o -E '[0-9]+'`
@@ -62,25 +61,23 @@ if grep -q "ranks" <<< "${experiment}"; then
     fi
 fi
 
-if [ ${python_env} == "virtualenv" ]; then
-    if [ -d ${VIRTUALENV} ]; then
-	echo "Using existing virtualenv ${VIRTUALENV}"
-    else
-	echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
-	export PACE_INSTALL_FLAGS="-e"
-	${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
-    fi
-    source ${VIRTUALENV}/bin/activate
-    if grep -q "parallel" <<< "${script}"; then
-	export MPIRUN_CALL="srun"
-    fi
-    export PACE_PATH="${JENKINS_DIR}/../"
-    export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
+export VIRTUALENV=${JENKINS_DIR}/../venv_driver
+# ${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
+source ${VIRTUALENV}/bin/activate
+
+CMD="srun python3 ${PACE_DIR}/driver/examples/baroclinic_init.py ${JENKINS_DIR}/driver_configs/${experiment}.yaml"
+run_command "${CMD}" Job${action} ${scheduler_script}
+if [ $? -ne 0 ] ; then
+  exitError 1510 ${LINENO} "problem while executing script ${script}"
 fi
 
-CMD="${MPIRUN_CALL} python3 ${PACE_DIR}/driver/examples/baroclinic_init.py ${JENKINS_DIR}/driver_configs/${experiment}.yaml"
-run_command "${CMD}" Job${action} ${scheduler_script}
 pip install matplotlib
+echo "####### generating figures..."
 python3 ${PACE_DIR}/driver/examples/plot_baroclinic_init.py ${PACE_DIR}/output.zarr
 mkdir -p ${ARTIFACT_ROOT}/${experiment}
+echo "####### moving figures..."
 mv *.png ${ARTIFACT_ROOT}/${experiment}/.
+
+# no errors encountered
+echo "####### finished: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
+exit 0

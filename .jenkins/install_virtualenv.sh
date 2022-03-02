@@ -35,5 +35,6 @@ python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/fv3core/
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/fv3gfs-physics/
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/stencils/
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/dsl/
+python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/driver/
 
 deactivate
