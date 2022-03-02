@@ -62,7 +62,7 @@ if grep -q "ranks" <<< "${experiment}"; then
 fi
 
 export VIRTUALENV=${JENKINS_DIR}/../venv_driver
-# ${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
+${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
 source ${VIRTUALENV}/bin/activate
 
 CMD="srun python3 ${PACE_DIR}/driver/examples/baroclinic_init.py ${JENKINS_DIR}/driver_configs/${experiment}.yaml"
