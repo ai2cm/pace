@@ -73,4 +73,4 @@ if __name__ == "__main__":
         )
         dycore, dycore_args = setup_dycore(dycore_config, mpi_comm, args.backend)
         with no_lagrangian_contributions(dynamical_core=dycore):
-            dycore.step_dynamics(*dycore_args)
+            dycore.step_dynamics(**dycore_args)
