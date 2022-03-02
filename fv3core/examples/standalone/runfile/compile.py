@@ -83,3 +83,4 @@ if __name__ == "__main__":
         )
         with no_lagrangian_contributions(dynamical_core=dycore):
             dycore.step_dynamics(**dycore_args)
+        print("SUCCESS")
