@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 import contextlib
 from argparse import ArgumentParser, Namespace
-from typing import Any, List, Tuple
 
 import f90nml
 
-import pace.dsl.stencil
 from fv3core import DynamicalCore
 from fv3core._config import DynamicalCoreConfig
-from fv3core.initialization.baroclinic import init_baroclinic_state
 from fv3core.utils.null_comm import NullComm
-from pace.util.grid import DampingCoefficients, GridData, MetricTerms
+
+from .dynamics import setup_dycore
 
 
 @contextlib.contextmanager
@@ -63,82 +61,16 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
-def setup_dycore(config, rank, backend) -> Tuple[DynamicalCore, List[Any]]:
-    stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=True,
-    )
-
-    mpi_comm = NullComm(
-        rank=rank, total_ranks=6 * config.layout[0] * config.layout[1], fill_value=0.0
-    )
-    partitioner = pace.util.CubedSpherePartitioner(
-        pace.util.TilePartitioner(config.layout)
-    )
-    communicator = pace.util.CubedSphereCommunicator(mpi_comm, partitioner)
-    sizer = pace.util.SubtileGridSizer.from_tile_params(
-        nx_tile=config.npx - 1,
-        ny_tile=config.npy - 1,
-        nz=config.npz,
-        n_halo=3,
-        extra_dim_lengths={},
-        layout=config.layout,
-        tile_partitioner=partitioner.tile,
-        tile_rank=communicator.tile.rank,
-    )
-    grid_indexing = pace.dsl.stencil.GridIndexing.from_sizer_and_communicator(
-        sizer=sizer, cube=communicator
-    )
-    quantity_factory = pace.util.QuantityFactory.from_backend(
-        sizer=sizer, backend=backend
-    )
-    metric_terms = MetricTerms(
-        quantity_factory=quantity_factory,
-        communicator=communicator,
-    )
-
-    # create an initial state from the Jablonowski & Williamson Baroclinic
-    # test case perturbation. JRMS2006
-    state = init_baroclinic_state(
-        metric_terms,
-        adiabatic=config.adiabatic,
-        hydrostatic=config.hydrostatic,
-        moist_phys=config.moist_phys,
-        comm=communicator,
-    )
-    stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config,
-        grid_indexing=grid_indexing,
-    )
-
-    dycore = DynamicalCore(
-        comm=communicator,
-        grid_data=GridData.new_from_metric_terms(metric_terms),
-        stencil_factory=stencil_factory,
-        damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
-        config=config,
-        phis=state.phis,
-    )
-    do_adiabatic_init = False
-    # TODO compute from namelist
-    bdt = config.dt_atmos
-
-    args = [
-        state,
-        config.consv_te,
-        do_adiabatic_init,
-        bdt,
-        config.n_split,
-    ]
-    return dycore, args
-
-
 if __name__ == "__main__":
     args = parse_args()
     namelist = f90nml.read(args.data_dir + "/input.nml")
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     for rank in range(dycore_config.layout[0] * dycore_config.layout[1]):
-        dycore, dycore_args = setup_dycore(dycore_config, rank, args.backend)
+        mpi_comm = NullComm(
+            rank=rank,
+            total_ranks=6 * dycore_config.layout[0] * dycore_config.layout[1],
+            fill_value=0.0,
+        )
+        dycore, dycore_args = setup_dycore(dycore_config, mpi_comm, args.backend)
         with no_lagrangian_contributions(dynamical_core=dycore):
             dycore.step_dynamics(*dycore_args)

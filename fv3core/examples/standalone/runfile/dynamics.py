@@ -214,6 +214,68 @@ def collect_data_and_write_to_file(
         write_global_timings(results)
 
 
+def setup_dycore(
+    dycore_config, mpi_comm, backend
+) -> Tuple[fv3core.DynamicalCore, Dict[str, Any]]:
+    # set up grid-dependent helper structures
+    partitioner = util.CubedSpherePartitioner(
+        util.TilePartitioner(dycore_config.layout)
+    )
+    communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
+
+    grid = Grid.from_namelist(dycore_config, rank, backend)
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend,
+        rebuild=False,
+        validate_args=False,
+    )
+    stencil_factory = pace.dsl.stencil.StencilFactory(
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
+    )
+    metric_terms = MetricTerms.from_tile_sizing(
+        npx=dycore_config.npx,
+        npy=dycore_config.npy,
+        npz=dycore_config.npz,
+        communicator=communicator,
+        backend=backend,
+    )
+    if is_baroclinic_test_case:
+        # create an initial state from the Jablonowski & Williamson Baroclinic
+        # test case perturbation. JRMS2006
+        state = init_baroclinic_state(
+            metric_terms,
+            adiabatic=dycore_config.adiabatic,
+            hydrostatic=dycore_config.hydrostatic,
+            moist_phys=dycore_config.moist_phys,
+            comm=communicator,
+        )
+    else:
+        state = read_serialized_initial_state(
+            rank, grid, dycore_config, stencil_factory
+        )
+    dycore = fv3core.DynamicalCore(
+        comm=communicator,
+        grid_data=GridData.new_from_metric_terms(metric_terms),
+        stencil_factory=stencil_factory,
+        damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
+        config=dycore_config,
+        phis=state.phis,
+    )
+    # TODO include functionality that uses and changes this
+    do_adiabatic_init = False
+    # TODO compute from namelist
+    bdt = 225.0
+    args = {
+        "state": state,
+        "conserve_total_energy": dycore_config.consv_te,
+        "do_adiabatic_init": do_adiabatic_init,
+        "timestep": bdt,
+        "n_split": dycore_config.n_split,
+    }
+    return dycore, args
+
+
 if __name__ == "__main__":
     timer = util.Timer()
     timer.start("total")
@@ -236,74 +298,14 @@ if __name__ == "__main__":
             mpi_comm = NullComm(MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
         else:
             mpi_comm = MPI.COMM_WORLD
-
-        # set up grid-dependent helper structures
-        partitioner = util.CubedSpherePartitioner(
-            util.TilePartitioner(dycore_config.layout)
-        )
-        communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
-
-        # TODO remove this creation of the legacy grid once everything that
-        # references it is updated or removed
-        grid = Grid.from_namelist(dycore_config, rank, args.backend)
-        stencil_config = pace.dsl.stencil.StencilConfig(
-            backend=args.backend,
-            rebuild=False,
-            validate_args=False,
-        )
-        stencil_factory = pace.dsl.stencil.StencilFactory(
-            config=stencil_config,
-            grid_indexing=grid.grid_indexing,
-        )
-        metric_terms = MetricTerms.from_tile_sizing(
-            npx=dycore_config.npx,
-            npy=dycore_config.npy,
-            npz=dycore_config.npz,
-            communicator=communicator,
-            backend=args.backend,
-        )
-        if is_baroclinic_test_case:
-            # create an initial state from the Jablonowski & Williamson Baroclinic
-            # test case perturbation. JRMS2006
-            state = init_baroclinic_state(
-                metric_terms,
-                adiabatic=dycore_config.adiabatic,
-                hydrostatic=dycore_config.hydrostatic,
-                moist_phys=dycore_config.moist_phys,
-                comm=communicator,
-            )
-        else:
-            state = read_serialized_initial_state(
-                rank, grid, dycore_config, stencil_factory
-            )
-
-        dycore = fv3core.DynamicalCore(
-            comm=communicator,
-            grid_data=GridData.new_from_metric_terms(metric_terms),
-            stencil_factory=stencil_factory,
-            damping_coefficients=DampingCoefficients.new_from_metric_terms(
-                metric_terms
-            ),
-            config=dycore_config,
-            phis=state.phis,
-        )
-        # TODO include functionality that uses and changes this
-        do_adiabatic_init = False
-        # TODO compute from namelist
-        bdt = 225.0
+        dycore, dycore_args = setup_dycore(dycore_config, mpi_comm, args.backend)
 
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
         # warmup/compilation from the internal timers
         if rank == 0:
             print("timestep 1")
-        dycore.step_dynamics(
-            state,
-            dycore_config.consv_te,
-            do_adiabatic_init,
-            bdt,
-            dycore_config.n_split,
-        )
+        dycore.step_dynamics(**dycore_args)
 
     if profiler is not None:
         profiler.enable()
@@ -318,12 +320,8 @@ if __name__ == "__main__":
             if rank == 0:
                 print(f"timestep {i+2}")
             dycore.step_dynamics(
-                state,
-                dycore_config.consv_te,
-                do_adiabatic_init,
-                bdt,
-                dycore_config.n_split,
-                timestep_timer,
+                **dycore_args,
+                timer=timestep_timer,
             )
         times_per_step.append(timestep_timer.times)
         hits_per_step.append(timestep_timer.hits)
