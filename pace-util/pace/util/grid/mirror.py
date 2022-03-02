@@ -122,8 +122,8 @@ def mirror_grid(
                         y2[i_mid] = PI / 2.0
                     if j == ng + j_mid and y_center_tile:
                         if x_center_tile:
-                            x2[: i_mid + 1] = 0.0
-                            x2[i_mid + 1] = PI
+                            x2[:i_mid + 1] = 0.0
+                            x2[i_mid + 1:] = PI
                         elif global_is + iend < ng + (npx - 1) / 2:
                             x2[:] = 0.0
 
@@ -197,7 +197,7 @@ def mirror_grid(
                 # force South Pole and dateline/Greenwich-Meridian consistency
                 if npx % 2 != 0:
                     if (
-                        j == ng + i_mid
+                        i == ng + i_mid
                         and x_center_tile
                         and y_center_tile
                         and i_mid == j_mid
