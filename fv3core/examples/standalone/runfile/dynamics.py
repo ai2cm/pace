@@ -214,8 +214,7 @@ def setup_dycore(
         util.TilePartitioner(dycore_config.layout)
     )
     communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
-
-    grid = Grid.from_namelist(dycore_config, rank, backend)
+    grid = Grid.from_namelist(dycore_config, mpi_comm.rank, backend)
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
@@ -244,7 +243,7 @@ def setup_dycore(
         )
     else:
         state = read_serialized_initial_state(
-            rank, grid, dycore_config, stencil_factory
+            mpi_comm.rank, grid, dycore_config, stencil_factory
         )
     dycore = DynamicalCore(
         comm=communicator,
