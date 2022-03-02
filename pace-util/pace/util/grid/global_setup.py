@@ -195,8 +195,8 @@ def global_mirror_grid(
                         x2[i_mid] = 0.0
                         y2[i_mid] = PI / 2.0
                     if j == j_mid:
-                        x2[:i_mid + 1] = 0.0
-                        x2[i_mid + 1:] = PI
+                        x2[: i_mid + 1] = 0.0
+                        x2[i_mid + 1 :] = PI
             elif nreg == 3:
                 ang = -180.0
                 x2, y2, z2 = _rot_3d(
