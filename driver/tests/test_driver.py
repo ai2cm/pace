@@ -99,7 +99,7 @@ def test_driver(timestep: timedelta, minutes: int):
     assert driver.dycore.step_dynamics.call_count == n_timesteps
     assert driver.physics.call_count == n_timesteps
     # we store an extra step at the start of the run
-    assert driver.diagnostics.store.call_count == n_timesteps + 1
+    assert driver.diagnostics.store.call_count == n_timesteps
     assert driver.dycore_to_physics.call_count == n_timesteps
     assert driver.physics_to_dycore.call_count == n_timesteps
 
