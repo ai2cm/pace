@@ -123,10 +123,11 @@ def mirror_grid(
                     if j == ng + j_mid and y_center_tile:
                         if x_center_tile:
                             x2[: i_mid + 1] = 0.0
-                            x2[i_mid + 1] = PI
-                        elif global_is + iend < ng + (npx - 1) / 2:
+                            x2[i_mid + 1 :] = PI
+                        elif global_is + i_mid < ng + (npx - 1) / 2:
                             x2[:] = 0.0
-
+                        elif global_is + i_mid > ng + (npx - 1) / 2:
+                            x2[:] = PI
             elif tile_index == 3:
                 ang = -180.0
                 x2, y2, z2 = _rot_3d(
