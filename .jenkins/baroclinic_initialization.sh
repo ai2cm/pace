@@ -73,10 +73,10 @@ fi
 
 pip install matplotlib
 echo "####### generating figures..."
-python3 ${PACE_DIR}/driver/examples/plot_baroclinic_init.py ${PACE_DIR}/output.zarr
+python3 ${PACE_DIR}/driver/examples/plot_baroclinic_init.py ${PACE_DIR}/output.zarr ${experiment}
 mkdir -p ${ARTIFACT_ROOT}/${experiment}
 echo "####### moving figures..."
-mv *.png ${ARTIFACT_ROOT}/${experiment}/.
+cp *.png ${ARTIFACT_ROOT}/${experiment}/.
 
 # no errors encountered
 echo "####### finished: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"

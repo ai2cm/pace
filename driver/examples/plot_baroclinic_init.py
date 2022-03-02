@@ -15,6 +15,13 @@ def parse_args():
         action="store",
         help="which zarr output file to use",
     )
+
+    parser.add_argument(
+        "experiment",
+        type=str,
+        action="store",
+        help="experiment name",
+    )
     return parser.parse_args()
 
 
@@ -34,5 +41,5 @@ for varname in varnames:
         plt.colorbar(im, ax=ax[i])
     fig.suptitle(f"Lowest level {varname} at initialization")
     plt.tight_layout()
-    plt.savefig(f"baroclinic_initialization_{varname}.png", dpi=150)
+    plt.savefig(f"{args.experiment}_baroclinic_initialization_{varname}.png", dpi=150)
     plt.close()
