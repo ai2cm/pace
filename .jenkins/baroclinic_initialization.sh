@@ -7,9 +7,6 @@
 
 ## Arguments:
 
-# stop on all errors and echo commands
-set -e
-
 # utility function for error handling
 exitError()
 {
@@ -18,6 +15,11 @@ exitError()
     echo "ERROR     LINE=$2" 1>&2
     exit $1
 }
+
+# stop on all errors and echo commands
+set -e -x
+
+
 experiment="$1"
 
 ARTIFACT_ROOT="/project/s1053/baroclinic_initialization/"
