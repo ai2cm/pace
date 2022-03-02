@@ -191,7 +191,7 @@ def global_mirror_grid(
                 )
                 # force North Pole and dateline/Greenwich-Meridian consistency
                 if npx % 2 != 0:
-                    if i == i_mid:
+                    if j == i_mid:
                         x2[i_mid] = 0.0
                         y2[i_mid] = PI / 2.0
                     if j == j_mid:

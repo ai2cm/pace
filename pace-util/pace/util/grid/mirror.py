@@ -113,7 +113,7 @@ def mirror_grid(
                 # force North Pole and dateline/Greenwich-Meridian consistency
                 if npx % 2 != 0:
                     if (
-                        i == ng + i_mid
+                        j == ng + j_mid
                         and x_center_tile
                         and y_center_tile
                         and i_mid == j_mid
