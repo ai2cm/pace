@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import cftime
 
@@ -75,6 +75,7 @@ class ZarrMonitor:
         self._group = mpi_comm.bcast(group)
         self._comm = mpi_comm
         self._writers = None
+        self._constants: List[str] = []
         self.partitioner = partitioner
 
     def _init_writers(self, state):
@@ -128,6 +129,10 @@ class ZarrMonitor:
 
     def store_constant(self, grid: dict) -> None:
         for name, quantity in grid.items():
+            if name in self._constants:
+                raise RuntimeError(
+                    f"constant fields can only be written once, {name} exists"
+                )
             constant_writer = _ZarrConstantWriter(
                 self._comm,
                 self._group,
@@ -135,6 +140,7 @@ class ZarrMonitor:
                 partitioner=self.partitioner,
             )
             constant_writer.append(quantity)  # type: ignore[index]
+            self._constants.append(name)
 
 
 class _ZarrVariableWriter:
