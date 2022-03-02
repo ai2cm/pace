@@ -45,8 +45,6 @@ def get_delpc(
     sina_v: FloatFieldIJ,
     rarea_c: FloatFieldIJ,
     delpc: FloatField,
-    u_contra_dyc: FloatField,
-    v_contra_dxc: FloatField,
 ):
     """
     Args:
@@ -68,8 +66,6 @@ def get_delpc(
         sina_v (in):
         rarea_c (in):
         delpc (out):
-        u_contra_dyc (out):
-        v_contra_dxc (out):
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -391,7 +387,6 @@ class DivergenceDamping:
         u: FloatField,
         v: FloatField,
         va: FloatField,
-        u_contra_dyc: FloatField,
         v_contra_dxc: FloatField,
         ua: FloatField,
         divg_d: FloatField,
@@ -407,16 +402,15 @@ class DivergenceDamping:
             u (in):
             v (in):
             va (in):
-            u_contra_dyc (out):
-            v_contra_dxc (out):
+            v_contra_dxc (out): wk converted from a grid to b grid and damped
             ua (in):
             divg_d (inout):
             vc (inout):
             uc (inout):
             delpc (out):
             ke (inout): gets vort added to it
-            wk (in): gets converted by a2b_ord4 and put into vort at end (in)
-            dt: timestep (in)
+            wk (in): gets converted by a2b_ord4 and put into v_contra_dxc
+            dt (in): timestep
         """
         # in the original Fortran, u_contra_dyc is "ptc" and v_contra_dxc is "vort"
         if self._do_zero_order:
@@ -441,8 +435,6 @@ class DivergenceDamping:
                 self._sina_v,
                 self._rarea_c,
                 delpc,
-                u_contra_dyc,
-                v_contra_dxc,
             )
             self._damping(
                 delpc,

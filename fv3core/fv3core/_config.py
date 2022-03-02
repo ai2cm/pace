@@ -3,12 +3,9 @@ from typing import Tuple
 
 import f90nml
 
-import pace.dsl.gt4py_utils as utils
-from pace.stencils.testing.grid import Grid
 from pace.util import Namelist, NamelistDefaults
 
 
-grid = None
 DEFAULT_INT = 0
 DEFAULT_STR = ""
 DEFAULT_FLOAT = 0.0
@@ -467,55 +464,3 @@ class DynamicalCoreConfig:
             do_sat_adj=self.do_sat_adj,
             sat_adjust=self.sat_adjust,
         )
-
-
-def make_grid_from_namelist(namelist, rank, backend):
-    return make_grid(
-        namelist.npx, namelist.npy, namelist.npz, namelist.layout, rank, backend
-    )
-
-
-def make_grid(npx, npy, npz, layout, rank, backend):
-    shape_params = {
-        "npx": npx,
-        "npy": npy,
-        "npz": npz,
-    }
-    # TODO this won't work with variable sized domains
-    # but this entire method will be refactored away
-    # and not used soon
-    nx = int((npx - 1) / layout[0])
-    ny = int((npy - 1) / layout[1])
-    indices = {
-        "isd": 0,
-        "ied": nx + 2 * utils.halo - 1,
-        "is_": utils.halo,
-        "ie": nx + utils.halo - 1,
-        "jsd": 0,
-        "jed": ny + 2 * utils.halo - 1,
-        "js": utils.halo,
-        "je": ny + utils.halo - 1,
-    }
-    return Grid(indices, shape_params, rank, layout, backend, local_indices=True)
-
-
-def make_grid_with_data_from_namelist(namelist, communicator, backend):
-    grid = make_grid_from_namelist(namelist, communicator.rank, backend)
-    grid.make_grid_data(
-        npx=namelist.npx,
-        npy=namelist.npy,
-        npz=namelist.npz,
-        communicator=communicator,
-        backend=backend,
-    )
-    return grid
-
-
-def set_grid(in_grid):
-    """Updates the global grid given another.
-
-    Args:
-        in_grid (Grid): Input grid to set.
-    """
-    global grid
-    grid = in_grid

@@ -12,10 +12,10 @@ import serialbox
 import yaml
 from mpi4py import MPI
 
-import fv3core.initialization.baroclinic as baroclinic_init
-import fv3core.testing
-import pace.dsl
+import pace.dsl.stencil
 from fv3core._config import DynamicalCoreConfig
+from fv3core.initialization.baroclinic import init_baroclinic_state
+from fv3core.testing import TranslateFVDynamics
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 
@@ -31,7 +31,7 @@ from fv3core.utils.null_comm import NullComm
 # isort: on
 
 import fv3core
-import fv3core._config as spec
+from pace.stencils.testing.grid import Grid
 
 
 def parse_args() -> Namespace:
@@ -187,9 +187,7 @@ def read_serialized_initial_state(rank, grid, namelist, stencil_factory):
     )
     # create a state from serialized data
     savepoint_in = serializer.get_savepoint("FVDynamics-In")[0]
-    driver_object = fv3core.testing.TranslateFVDynamics(
-        [grid], namelist, stencil_factory
-    )
+    driver_object = TranslateFVDynamics([grid], namelist, stencil_factory)
     input_data = driver_object.collect_input_data(serializer, savepoint_in)
     state = driver_object.state_from_inputs(input_data)
     return state
@@ -247,7 +245,7 @@ if __name__ == "__main__":
 
         # TODO remove this creation of the legacy grid once everything that
         # references it is updated or removed
-        grid = spec.make_grid_from_namelist(dycore_config, rank, args.backend)
+        grid = Grid.from_namelist(dycore_config, rank, args.backend)
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=args.backend,
             rebuild=False,
@@ -267,7 +265,7 @@ if __name__ == "__main__":
         if is_baroclinic_test_case:
             # create an initial state from the Jablonowski & Williamson Baroclinic
             # test case perturbation. JRMS2006
-            state = baroclinic_init.init_baroclinic_state(
+            state = init_baroclinic_state(
                 metric_terms,
                 adiabatic=dycore_config.adiabatic,
                 hydrostatic=dycore_config.hydrostatic,

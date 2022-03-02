@@ -29,6 +29,48 @@ class Grid:
     # But we need to add the halo - 1 to change this check to 0 based python arrays
     # grid.ie == npx + halo - 2
 
+    @classmethod
+    def _make(cls, npx, npy, npz, layout, rank, backend):
+        shape_params = {
+            "npx": npx,
+            "npy": npy,
+            "npz": npz,
+        }
+        # TODO this won't work with variable sized domains
+        # but this entire method will be refactored away
+        # and not used soon
+        nx = int((npx - 1) / layout[0])
+        ny = int((npy - 1) / layout[1])
+        indices = {
+            "isd": 0,
+            "ied": nx + 2 * utils.halo - 1,
+            "is_": utils.halo,
+            "ie": nx + utils.halo - 1,
+            "jsd": 0,
+            "jed": ny + 2 * utils.halo - 1,
+            "js": utils.halo,
+            "je": ny + utils.halo - 1,
+        }
+        return cls(indices, shape_params, rank, layout, backend, local_indices=True)
+
+    @classmethod
+    def from_namelist(cls, namelist, rank, backend):
+        return cls._make(
+            namelist.npx, namelist.npy, namelist.npz, namelist.layout, rank, backend
+        )
+
+    @classmethod
+    def with_data_from_namelist(cls, namelist, communicator, backend):
+        grid = cls.from_namelist(namelist, communicator.rank, backend)
+        grid.make_grid_data(
+            npx=namelist.npx,
+            npy=namelist.npy,
+            npz=namelist.npz,
+            communicator=communicator,
+            backend=backend,
+        )
+        return grid
+
     def __init__(
         self,
         indices,

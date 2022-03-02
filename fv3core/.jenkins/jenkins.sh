@@ -54,6 +54,7 @@ fi
 
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BUILDENV_DIR=$JENKINS_DIR/../../buildenv
+TOP_LEVEL_JENKINS_DIR=$JENKINS_DIR/../../.jenkins
 
 # Read arguments
 action="$1"
@@ -77,7 +78,7 @@ PACE_DIR=$SCRIPT_DIR/../../
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
     echo "Fetching for exisintg gt_caches"
-    . ${JENKINS_DIR}/actions/fetch_caches.sh $backend $experiment
+    . ${TOP_LEVEL_JENKINS_DIR}/fetch_caches.sh $backend $experiment
 fi
 
 # load machine dependent environment

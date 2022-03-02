@@ -1,7 +1,7 @@
 import typing
 from typing import Any, Dict
 
-from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
+from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.stencil import StencilFactory
@@ -18,6 +18,17 @@ def fix_tracer(
     sum0: FloatFieldIJ,
     sum1: FloatFieldIJ,
 ):
+    """
+    Args:
+        q (inout):
+        dp (in):
+        dm (out):
+        dm_pos (out):
+        zfix (out):
+        sum0 (out):
+        sum1 (out):
+    """
+    # TODO: can we make everything except q and dp temporaries?
     # reset fields
     with computation(FORWARD), interval(...):
         zfix = 0
@@ -27,16 +38,16 @@ def fix_tracer(
         lower_fix = 0.0
         upper_fix = 0.0
     # fix_top:
-    with computation(PARALLEL):
-        with interval(0, 1):
-            if q < 0:
-                q = 0
-            dm = q * dp
+    with computation(BACKWARD):
         with interval(1, 2):
             if q[0, 0, -1] < 0.0:
                 q = (
                     q + q[0, 0, -1] * dp[0, 0, -1] / dp
                 )  # move enough mass up so that the top layer isn't negative
+        with interval(0, 1):
+            if q < 0:
+                q = 0
+            dm = q * dp
     # fix_interior:
     with computation(FORWARD), interval(1, -1):
         # if a higher layer borrowed from this one, account for that here
@@ -141,6 +152,11 @@ class FillNegativeTracerValues:
         dp2: FloatField,
         tracers: Dict[str, Any],
     ):
+        """
+        Args:
+            dp2 (in): pressure thickness of atmospheric layer
+            tracers (inout): tracers to fix negative masses in
+        """
         tracer_list = [tracers[name] for name in utils.tracer_variables[0 : self._nq]]
         for tracer in tracer_list:
             self._fix_tracer_stencil(
