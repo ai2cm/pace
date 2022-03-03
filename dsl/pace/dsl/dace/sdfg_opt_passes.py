@@ -107,7 +107,6 @@ def flip_default_layout_to_KIJ_on_maps(sdfg: dace.SDFG):
     As a custom optimization pass, this is to be inserted after the
     generic optimization call to sdfg.simplify(...)
     """
-    array_flipped = 0
     for node, _state in sdfg.all_nodes_recursive():
 
         if (
@@ -115,7 +114,6 @@ def flip_default_layout_to_KIJ_on_maps(sdfg: dace.SDFG):
             and node.map.params[-1] == "k"
             and len(node.map.params) == 3
         ):
-            array_flipped += 1
             node.map.params = [
                 node.map.params[-1],
                 node.map.params[0],
