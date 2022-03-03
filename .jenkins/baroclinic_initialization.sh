@@ -17,8 +17,7 @@ exitError()
 }
 
 # stop on all errors and echo commands
-set -x
-
+set -x +e
 
 experiment="$1"
 
@@ -29,7 +28,12 @@ JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd 
 BUILDENV_DIR=$JENKINS_DIR/../buildenv
 PACE_DIR=$JENKINS_DIR/../
 
-. ${BUILDENV_DIR}/env.daint.sh
+# setup module environment and default queue
+test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
+. ${BUILDENV_DIR}/machineEnvironment.sh
+
+set -x -e
+. ${BUILDENV_DIR}/env.${host}.sh
 
 # load scheduler tools
 . ${BUILDENV_DIR}/schedulerTools.sh
@@ -64,9 +68,9 @@ if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
 fi
 
-pip install matplotlib
+sarus pull elynnwu/pace:latest
 echo "####### generating figures..."
-python3 ${PACE_DIR}/driver/examples/plot_baroclinic_init.py ${PACE_DIR}/output.zarr ${experiment}
+srun -C gpu --partition=debug --account=s1053 --time=00:05:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_baroclinic_init.py /work/output.zarr ${experiment} pt -1
 mkdir -p ${ARTIFACT_ROOT}/${experiment}
 echo "####### moving figures..."
 cp *.png ${ARTIFACT_ROOT}/${experiment}/.

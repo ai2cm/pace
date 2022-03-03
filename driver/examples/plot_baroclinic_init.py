@@ -1,8 +1,11 @@
 from argparse import ArgumentParser
 
 import matplotlib.pyplot as plt
+import numpy as np
 import xarray as xr
 import zarr
+from cartopy import crs as ccrs
+from fv3viz import pcolormesh_cube
 
 
 def parse_args():
@@ -22,24 +25,40 @@ def parse_args():
         action="store",
         help="experiment name",
     )
+
+    parser.add_argument(
+        "variable",
+        type=str,
+        action="store",
+        help="variable name to be plotted",
+    )
+
+    parser.add_argument(
+        "zlevel",
+        type=int,
+        action="store",
+        help="variable zlevel to be plotted",
+    )
+
     return parser.parse_args()
 
 
 args = parse_args()
 ds = xr.open_zarr(store=zarr.DirectoryStore(path=args.zarr_output), consolidated=False)
-
-
-level = -1
-varnames = ["pt"]
-for varname in varnames:
-    fig, ax = plt.subplots(2, 3, figsize=(12, 8))
-    ax = ax.flatten()
-    for i in range(6):
-        data = ds[varname].isel(time=0, tile=i, z=level).values
-        im = ax[i].pcolormesh(data)
-        ax[i].set_title(f"Tile {i}")
-        plt.colorbar(im, ax=ax[i])
-    fig.suptitle(f"Lowest level {varname} at initialization")
-    plt.tight_layout()
-    plt.savefig(f"{args.experiment}_baroclinic_initialization_{varname}.png", dpi=150)
-    plt.close()
+fig, ax = plt.subplots(1, 1, subplot_kw={"projection": ccrs.Robinson()})
+lat = ds["lat"].values * 180.0 / np.pi
+lon = ds["lon"].values * 180.0 / np.pi
+h = pcolormesh_cube(
+    lat,
+    lon,
+    ds[args.variable].isel(time=0, z=args.zlevel).values,
+    cmap=plt.cm.viridis,
+    ax=ax,
+)
+fig.colorbar(h, ax=ax, location="bottom", label=f"{args.variable}")
+title = args.experiment.replace("_", " ")
+fig.suptitle(f"{title}: {args.variable}, z={args.zlevel}")
+plt.tight_layout()
+plt.savefig(
+    f"/work/{args.experiment}_baroclinic_initialization_{args.variable}.png", dpi=150
+)
