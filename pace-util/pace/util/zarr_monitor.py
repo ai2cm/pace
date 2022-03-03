@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import cftime
 
@@ -75,6 +75,7 @@ class ZarrMonitor:
         self._group = mpi_comm.bcast(group)
         self._comm = mpi_comm
         self._writers = None
+        self._constants: List[str] = []
         self.partitioner = partitioner
 
     def _init_writers(self, state):
@@ -125,6 +126,21 @@ class ZarrMonitor:
         self._ensure_writers_are_consistent(state)
         for name, quantity in sorted(state.items(), key=lambda x: x[0]):
             self._writers[name].append(quantity)  # type: ignore[index]
+
+    def store_constant(self, grid: dict) -> None:
+        for name, quantity in grid.items():
+            if name in self._constants:
+                raise RuntimeError(
+                    f"constant fields can only be written once, {name} exists"
+                )
+            constant_writer = _ZarrConstantWriter(
+                self._comm,
+                self._group,
+                name=name,
+                partitioner=self.partitioner,
+            )
+            constant_writer.append(quantity)  # type: ignore[index]
+            self._constants.append(name)
 
 
 class _ZarrVariableWriter:
@@ -257,6 +273,51 @@ def _get_from_slice(target_slice):
         if isinstance(entry, slice):
             return_list.append(slice(0, entry.stop - entry.start))
     return tuple(return_list)
+
+
+class _ZarrConstantWriter(_ZarrVariableWriter):
+    def __init__(self, *args, **kwargs):
+        super(_ZarrConstantWriter, self).__init__(*args, **kwargs)
+        self._prepend_shape = (6,)
+        self._prepend_chunks = (1,)
+        self._PREPEND_DIMS = ("tile",)
+
+    def append(self, quantity):
+        # can't just use zarr_array.append because we only want to
+        # extend the dimension once, from the root rank
+        if self.array is None:
+            self._init_zarr(quantity)
+
+        self.sync_array()
+
+        target_slice = (self._partitioner.tile_index(self.rank),) + subtile_slice(
+            quantity.dims,
+            self.array.shape[1:],  # remove tile dimensions
+            self.partitioner.layout,
+            self.partitioner.tile.subtile_index(self.rank),
+            overlap=False,
+        )
+
+        from_slice = _get_from_slice(target_slice)
+        logger.debug(
+            f"assigning data from subtile slice {from_slice} to "
+            f"target slice {target_slice}"
+        )
+
+        try:
+            self.array[target_slice] = quantity.view[:][from_slice]
+        except ValueError as err:
+            if err.args[0] == "object __array__ method not producing an array":
+                self.array[target_slice] = cupy.asnumpy(quantity.view[:][from_slice])
+            else:
+                raise err
+        except TypeError as err:
+            if err.args[0].startswith(
+                "Implicit conversion to a NumPy array is not allowed."
+            ):
+                self.array[target_slice] = cupy.asnumpy(quantity.view[:][from_slice])
+            else:
+                raise err
 
 
 class _ZarrTimeWriter(_ZarrVariableWriter):
