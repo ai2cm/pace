@@ -68,6 +68,7 @@ if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
 fi
 
+module load sarus
 sarus pull elynnwu/pace:latest
 echo "####### generating figures..."
 srun -C gpu --partition=debug --account=s1053 --time=00:05:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_baroclinic_init.py /work/output.zarr ${experiment} pt -1
