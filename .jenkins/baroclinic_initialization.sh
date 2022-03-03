@@ -32,7 +32,7 @@ PACE_DIR=$JENKINS_DIR/../
 test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "cannot find machineEnvironment.sh script"
 . ${BUILDENV_DIR}/machineEnvironment.sh
 
-set -x -e
+set -x
 . ${BUILDENV_DIR}/env.${host}.sh
 
 # load scheduler tools
