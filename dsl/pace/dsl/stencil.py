@@ -38,6 +38,17 @@ except ImportError:
     MPI = None
 
 
+# TODO: remove this monkeypatch once this code is in gt4py
+def __eq__(self, other):
+    if isinstance(other, DefaultPipeline) and self.skip == other.skip:
+        return True
+    else:
+        return False
+
+
+setattr(DefaultPipeline, "__eq__", __eq__)
+
+
 @dataclasses.dataclass
 class StencilConfig(Hashable):
     backend: str = "numpy"

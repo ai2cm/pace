@@ -285,10 +285,6 @@ def test_backend_options(
         validate_args=validate_args,
     ).stencil_kwargs
     expected = expected_options[backend]
-    if backend.startswith("gtc"):
-        actual_pipeline = actual.pop("oir_pipeline")
-        expected_pipeline = expected.pop("oir_pipeline")
-        assert actual_pipeline.skip == expected_pipeline.skip
     assert actual == expected
 
 
