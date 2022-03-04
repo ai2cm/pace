@@ -187,14 +187,14 @@ def process_override(threshold_overrides, testobj, test_name, backend):
             if "ignore_near_zero_errors" in match:
                 parsed_ignore_zero = match["ignore_near_zero_errors"]
                 if isinstance(parsed_ignore_zero, list):
-                    testobj.ignore_near_zero_errors = {
+                    testobj.ignore_near_zero_errors.update({
                         field: True for field in match["ignore_near_zero_errors"]
-                    }
+                    })
                 elif isinstance(parsed_ignore_zero, dict):
-                    testobj.ignore_near_zero_errors = {
+                    testobj.ignore_near_zero_errors.update({
                         field: True for field in parsed_ignore_zero.keys()
-                    }
-                    for key in testobj.ignore_near_zero_errors.keys():
+                    })
+                    for key in parsed_ignore_zero.keys():
                         testobj.ignore_near_zero_errors[key] = {}
                         testobj.ignore_near_zero_errors[key]["near_zero"] = float(
                             parsed_ignore_zero[key]

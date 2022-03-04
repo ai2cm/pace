@@ -7,7 +7,6 @@ from typing import Union
 import numpy as np
 import pytest
 import serialbox as ser
-import xarray as xr
 from gt4py.config import build_settings as gt4py_build_settings
 
 import pace.dsl.gt4py_utils as gt_utils
@@ -102,35 +101,37 @@ def sample_wherefail(
     # List all errors
     return_strings = []
     bad_indices_count = len(found_indices[0])
-    if print_failures:
-        for b in range(0, bad_indices_count, failure_stride):
-            full_index = [f[b] for f in found_indices]
-            abs_err = abs(computed_failures[b] - reference_failures[b])
-            metric_err = compare_scalar(computed_failures[b], reference_failures[b])
+    # Determine worst result
+    worst_metric_err = 0.0
+    for b in range(bad_indices_count):
+        full_index = [f[b] for f in found_indices]
+        metric_err = compare_scalar(computed_failures[b], reference_failures[b])
+        abs_err = abs(computed_failures[b] - reference_failures[b])
+        if print_failures and b % failure_stride == 0:
             return_strings.append(
                 f"index: {full_index}, computed {computed_failures[b]}, "
                 f"reference {reference_failures[b]}, "
                 f"absolute diff {abs_err:.3e}, "
                 f"metric diff: {metric_err:.3e}"
             )
-
-    # Determine worst result
-    err = compare_arr(computed_data, ref_data)
-    worst_full_idx = np.unravel_index(np.argmax(err, axis=None), err.shape)
-
+        if metric_err > worst_metric_err:
+            worst_metric_err = metric_err
+            worst_full_idx = full_index
+            worst_abs_err = abs_err
+            computed_worst = computed_failures[b]
+            reference_worst = reference_failures[b]
     # Summary and worst result
     fullcount = len(ref_data.flatten())
-    abs_err = abs(computed_data[worst_full_idx] - ref_data[worst_full_idx])
-    metric_err = compare_scalar(computed_data[worst_full_idx], ref_data[worst_full_idx])
     return_strings.append(
         f"Failed count: {bad_indices_count}/{fullcount} "
         f"({round(100.0 * (bad_indices_count / fullcount), 2)}%),\n"
         f"Worst failed index {worst_full_idx}\n"
-        f"\tcomputed:{computed_data[worst_full_idx]}\n"
-        f"\treference: {ref_data[worst_full_idx]}\n"
-        f"\tabsolute diff: {abs_err:.3e}\n"
-        f"\tmetric diff: {metric_err:.3e}\n"
+        f"\tcomputed:{computed_worst}\n"
+        f"\treference: {reference_worst}\n"
+        f"\tabsolute diff: {worst_abs_err:.3e}\n"
+        f"\tmetric diff: {worst_metric_err:.3e}\n"
     )
+
 
     if xy_indices:
         if len(computed_data.shape) == 3:
@@ -185,14 +186,14 @@ def process_override(threshold_overrides, testobj, test_name, backend):
             if "ignore_near_zero_errors" in match:
                 parsed_ignore_zero = match["ignore_near_zero_errors"]
                 if isinstance(parsed_ignore_zero, list):
-                    testobj.ignore_near_zero_errors = {
+                    testobj.ignore_near_zero_errors.update({
                         field: True for field in match["ignore_near_zero_errors"]
-                    }
+                    })
                 elif isinstance(parsed_ignore_zero, dict):
-                    testobj.ignore_near_zero_errors = {
+                    testobj.ignore_near_zero_errors.update({
                         field: True for field in parsed_ignore_zero.keys()
-                    }
-                    for key in testobj.ignore_near_zero_errors.keys():
+                    })
+                    for key in parsed_ignore_zero.keys():
                         testobj.ignore_near_zero_errors[key] = {}
                         testobj.ignore_near_zero_errors[key]["near_zero"] = float(
                             parsed_ignore_zero[key]
@@ -311,6 +312,14 @@ def test_sequential_savepoint(
             passing_names.append(failing_names.pop())
     if threshold_overrides is not None:
         reset_override(threshold_overrides, test_name, backend)
+    if len(failing_names) > 0:
+        out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
+        try:
+            save_netcdf(
+                testobj, [input_data], [output], ref_data, failing_names, out_filename
+            )
+        except Exception as error:
+            print(f"TestSequential SaveNetCDF Error: {error}")
     assert failing_names == [], f"only the following variables passed: {passing_names}"
     assert len(passing_names) > 0, "No tests passed"
 
@@ -491,6 +500,7 @@ def test_parallel_savepoint(
             new_ref_data = testobj.subset_output(varname, new_ref_data)
         ref_data[varname].append(new_ref_data)
         ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
+        print("TESTING", varname, ignore_near_zero)
         with subtests.test(varname=varname):
             failing_names.append(varname)
             assert success(
@@ -511,8 +521,8 @@ def test_parallel_savepoint(
                 xy_indices,
             )
             passing_names.append(failing_names.pop())
-    if threshold_overrides is not None:
-        reset_override(threshold_overrides, test_name, backend)
+    #if threshold_overrides is not None:
+    #    reset_override(threshold_overrides, test_name, backend)
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{test_name}-{grid[0].rank}.nc")
         try:
@@ -520,7 +530,7 @@ def test_parallel_savepoint(
                 testobj, [input_data], [output], ref_data, failing_names, out_filename
             )
         except Exception as error:
-            print(error)
+            print(f"TestParallel SaveNetCDF Error: {error}")
     assert failing_names == [], f"only the following variables passed: {passing_names}"
     assert len(passing_names) > 0, "No tests passed"
 
@@ -536,15 +546,19 @@ def _subtest(failure_list, subtests, **kwargs):
 def save_netcdf(
     testobj, inputs_list, output_list, ref_data, failing_names, out_filename
 ):
+    import xarray as xr
     data_vars = {}
     for i, varname in enumerate(failing_names):
         dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
         attrs = {"units": testobj.outputs[varname]["units"]}
-        data_vars[f"{varname}_in"] = xr.DataArray(
-            np.stack([in_data[varname] for in_data in inputs_list]),
-            dims=("rank",) + tuple(dims),
-            attrs=attrs,
-        )
+        try:
+            data_vars[f"{varname}_in"] = xr.DataArray(
+                np.stack([in_data[varname] for in_data in inputs_list]),
+                dims=("rank",) + tuple(dims),
+                attrs=attrs,
+            )
+        except KeyError as error:
+            print(f"No input data found for {error}")
         data_vars[f"{varname}_ref"] = xr.DataArray(
             np.stack(ref_data[varname]), dims=("rank",) + tuple(dims), attrs=attrs
         )
