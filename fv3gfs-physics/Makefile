@@ -28,7 +28,7 @@ TEST_HOST_LOC=$(CWD)/tests
 TEST_RUN_LOC ?=$(PACE_PATH)/fv3gfs-physics/tests
 THRESH_ARGS=--threshold_overrides_file=$(PACE_PATH)/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(PACE_PATH)/fv3gfs-physics/tests/savepoint
-PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3gfs-physics/tests/savepoint
+PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) --print_failures -m parallel $(PACE_PATH)/fv3gfs-physics/tests/savepoint
 ifeq ($(DEV),y)
 	VOLUMES += -v $(CWD)/../fv3core:/fv3core -v $(CWD)/../fv3gfs-physics:/fv3gfs-physics -v $(CWD)/../stencils:/stencils -v $(CWD)/tests:/$(pace)/tests -v $(FV3UTIL_DIR):/pace-util  -v $(CWD)/../driver:/driver -v $(CWD)/../dsl:/dsl 
 endif
@@ -73,10 +73,16 @@ physics_savepoint_tests_mpi:
 
 # TODO move this and all driver related tests out of fv3gfs-physics
 # will make sense to do when test_translate and savepoint conftests between fv3core and physics consolidated
+#driver_savepoint_tests_mpi:
+#	TEST_DATA_HOST=$(CWD)/../test_data/$(EXPERIMENT)/dycore/ \
+#        DATA_BUCKET=$(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/dycore/ \
+#	$(MAKE) get_test_data 
+#	VOLUMES=' $(VOLUMES) -v $(CWD)/../test_data/$(EXPERIMENT)/dycore/:$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)'  \
+#	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
+
 driver_savepoint_tests_mpi:
 	TEST_DATA_HOST=$(CWD)/../test_data/$(EXPERIMENT)/driver/ \
         DATA_BUCKET=$(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/driver/ \
 	$(MAKE) get_test_data 
-	VOLUMES=' -v $(CWD)/../test_data/$(EXPERIMENT)/driver/:$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)'  \
+	VOLUMES='  -v $(CWD)/../test_data/$(EXPERIMENT)/driver/:$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)'  \
 	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
-

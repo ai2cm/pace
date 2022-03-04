@@ -10,29 +10,28 @@ from pace.util.grid import DriverGridData, GridData
 # TODO: when this file is not importable from physics or fv3core, import
 #       PhysicsState and DycoreState and use them to type hint below
 
+def fill_gfs_delp(delp: FloatField, q: FloatField, q_min: Float):
 
-def fill_gfs(pe: FloatField, q: FloatField, q_min: Float):
+    with computation(BACKWARD):
+            
+        with interval(0, -2):
+            if q[0, 0, 1] < q_min:
+                q = q[0, 0, 0] + (q[0, 0, 1] - q_min) * delp[0, 0, 1] / delp[0,0,0]
 
-    with computation(BACKWARD), interval(0, -3):
-        if q[0, 0, 1] < q_min:
-            q = q[0, 0, 0] + (q[0, 0, 1] - q_min) * (pe[0, 0, 2] - pe[0, 0, 1]) / (
-                pe[0, 0, 1] - pe[0, 0, 0]
-            )
-
-    with computation(BACKWARD), interval(1, -3):
+    with computation(PARALLEL), interval(1, -1):
         if q[0, 0, 0] < q_min:
             q = q_min
 
-    with computation(FORWARD), interval(1, -2):
+    with computation(FORWARD), interval(1, -1):
         if q[0, 0, -1] < 0.0:
-            q = q[0, 0, 0] + q[0, 0, -1] * (pe[0, 0, 0] - pe[0, 0, -1]) / (
-                pe[0, 0, 1] - pe[0, 0, 0]
+            q = q[0, 0, 0] + q[0, 0, -1] * (delp[0,0,-1]) / (
+                delp[0,0,0]
             )
 
-    with computation(FORWARD), interval(0, -2):
+    with computation(FORWARD), interval(0, -1):
         if q[0, 0, 0] < 0.0:
             q = 0.0
-
+   
 
 def prepare_tendencies_and_update_tracers(
     u_dt: FloatField,
@@ -224,10 +223,11 @@ class UpdateAtmosphereState:
         self._v_dt = quantity_factory.zeros(dims, "m/s^2", dtype=float)
         self._pt_dt = quantity_factory.zeros(dims, "degK/s", dtype=float)
         self._fill_GFS = stencil_factory.from_origin_domain(
-            fill_gfs,
+            fill_gfs_delp,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(0, 0, 1)),
         )
+
         self._apply_physics2dycore = ApplyPhysics2Dycore(
             stencil_factory,
             grid_data,
@@ -241,36 +241,44 @@ class UpdateAtmosphereState:
         dycore_state,
         phy_state,
         dt: float,
+        dycore_only: bool
     ):
-        self._fill_GFS(
-            phy_state.prsi, phy_state.physics_updated_specific_humidity, 1.0e-9
-        )
-        self._prepare_tendencies_and_update_tracers(
-            self._u_dt,
-            self._v_dt,
-            self._pt_dt,
-            phy_state.physics_updated_ua,
-            phy_state.physics_updated_va,
-            phy_state.physics_updated_pt,
-            phy_state.physics_updated_specific_humidity,
-            phy_state.physics_updated_qliquid,
-            phy_state.physics_updated_qrain,
-            phy_state.physics_updated_qsnow,
-            phy_state.physics_updated_qice,
-            phy_state.physics_updated_qgraupel,
-            phy_state.ua,
-            phy_state.va,
-            phy_state.pt,
-            dycore_state.qvapor,
-            dycore_state.qliquid,
-            dycore_state.qrain,
-            dycore_state.qsnow,
-            dycore_state.qice,
-            dycore_state.qgraupel,
-            phy_state.prsi,
-            dycore_state.delp,
-            self._rdt,
-        )
+        if dycore_only:
+            self._fill_GFS(
+                dycore_state.delp, dycore_state.qvapor, 1.0e-9
+            )
+        else:
+            self._fill_GFS(
+                dycore_state.delp, phy_state.physics_updated_specific_humidity, 1.0e-9
+            )
+            self._prepare_tendencies_and_update_tracers(
+                self._u_dt,
+                self._v_dt,
+                self._pt_dt,
+                phy_state.physics_updated_ua,
+                phy_state.physics_updated_va,
+                phy_state.physics_updated_pt,
+                phy_state.physics_updated_specific_humidity,
+                phy_state.physics_updated_qliquid,
+                phy_state.physics_updated_qrain,
+                phy_state.physics_updated_qsnow,
+                phy_state.physics_updated_qice,
+                phy_state.physics_updated_qgraupel,
+                phy_state.ua,
+                phy_state.va,
+                phy_state.pt,
+                dycore_state.qvapor,
+                dycore_state.qliquid,
+                dycore_state.qrain,
+                dycore_state.qsnow,
+                dycore_state.qice,
+                dycore_state.qgraupel,
+                phy_state.prsi,
+                dycore_state.delp,
+                self._rdt,
+            )
+    
         self._apply_physics2dycore(
             dycore_state, self._u_dt, self._v_dt, self._pt_dt, dt=dt
         )
+        

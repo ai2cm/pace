@@ -20,7 +20,7 @@ import pace.util
 import pace.util.grid
 from fv3core.testing import TranslateFVDynamics
 from pace.dsl.stencil import StencilFactory
-
+from fv3core.stencils.fv_subgridz import DryConvectiveAdjustment
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.stencils.testing import TranslateGrid, TranslateUpdateDWindsPhys
@@ -264,7 +264,7 @@ class TranslateConfig(InitializationConfig):
     @property
     def start_time(self) -> datetime:
         # TODO: instead of arbitrary start time, enable use of timedeltas
-        return datetime(2000, 1, 1)
+        return datetime(2016, 8, 1)
 
     def get_driver_state(
         self,
@@ -351,7 +351,8 @@ class DriverConfig:
     hours: int = 0
     minutes: int = 0
     seconds: int = 0
-
+    dycore_only: bool = False
+    
     @functools.cached_property
     def timestep(self) -> timedelta:
         return timedelta(seconds=self.dt_atmos)
@@ -445,6 +446,7 @@ class Driver:
             config: driver configuration
             comm: communication object behaving like mpi4py.Comm
         """
+       
         self.config = config
         communicator = pace.util.CubedSphereCommunicator.from_layout(
             comm=comm, layout=self.config.layout
@@ -452,12 +454,12 @@ class Driver:
         quantity_factory, stencil_factory = _setup_factories(
             config=config, communicator=communicator
         )
-
+        self.comm = communicator
         self.state = self.config.initialization_config.get_driver_state(
             quantity_factory=quantity_factory, communicator=communicator
         )
         self._start_time = self.config.initialization_config.start_time
-        self.dycore = fv3core.DynamicalCore(
+        self.dycore = fv3core.stencils.fv_dynamics.DynamicalCore(
             comm=communicator,
             grid_data=self.state.grid_data,
             stencil_factory=stencil_factory,
@@ -465,6 +467,14 @@ class Driver:
             config=self.config.dycore_config,
             phis=self.state.dycore_state.phis,
         )
+        if self.config.dycore_config.fv_sg_adj > 0:
+            self.fv_subgridz = DryConvectiveAdjustment(
+                stencil_factory=stencil_factory,
+                nwat=self.config.dycore_config.nwat,
+                fv_sg_adj=self.config.dycore_config.fv_sg_adj,
+                n_sponge=self.config.dycore_config.n_sponge,
+                hydrostatic=self.config.dycore_config.hydrostatic,
+            )
         self.physics = fv3gfs.physics.Physics(
             stencil_factory=stencil_factory,
             grid_data=self.state.grid_data,
@@ -492,15 +502,24 @@ class Driver:
         time = self.config.start_time
         end_time = self.config.start_time + self.config.total_time
         self.diagnostics.store(time=time, state=self.state)
+       
         while time < end_time:
+            print('running time', time, end_time,  self.config.total_time)
             self._step(timestep=self.config.timestep.total_seconds())
             time += self.config.timestep
             self.diagnostics.store(time=time, state=self.state)
 
     def _step(self, timestep: float):
         self._step_dynamics(timestep=timestep)
-        self._step_physics(timestep=timestep)
-
+        if not self.config.dycore_only:
+            self._step_physics(timestep=timestep)
+        self.physics_to_dycore(
+            dycore_state=self.state.dycore_state,
+            phy_state=self.state.physics_state,
+            dt=float(timestep),
+            dycore_only=self.config.dycore_only
+        )
+        
     def _step_dynamics(self, timestep: float):
         self.dycore.step_dynamics(
             state=self.state.dycore_state,
@@ -509,17 +528,14 @@ class Driver:
             do_adiabatic_init=False,
             timestep=float(timestep),
         )
-
+        if self.config.dycore_config.fv_sg_adj > 0:
+            self.fv_subgridz(state=self.state.dycore_state, timestep=float(timestep))
     def _step_physics(self, timestep: float):
         self.dycore_to_physics(
             dycore_state=self.state.dycore_state, physics_state=self.state.physics_state
         )
         self.physics(self.state.physics_state, timestep=float(timestep))
-        self.physics_to_dycore(
-            dycore_state=self.state.dycore_state,
-            phy_state=self.state.physics_state,
-            dt=float(timestep),
-        )
+      
 
 
 def _setup_factories(
@@ -571,3 +587,6 @@ def main(driver_config: DriverConfig, comm):
 if __name__ == "__main__":
     command_line()
 
+"""
+
+"""
