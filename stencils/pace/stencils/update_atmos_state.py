@@ -219,9 +219,6 @@ class UpdateAtmosphereState:
         )
 
         dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
-        self._u_dt = quantity_factory.zeros(dims, "m/s^2", dtype=float)
-        self._v_dt = quantity_factory.zeros(dims, "m/s^2", dtype=float)
-        self._pt_dt = quantity_factory.zeros(dims, "degK/s", dtype=float)
         self._fill_GFS = stencil_factory.from_origin_domain(
             fill_gfs_delp,
             origin=grid_indexing.origin_full(),
@@ -240,6 +237,7 @@ class UpdateAtmosphereState:
         self,
         dycore_state,
         phy_state,
+        tendency_state,
         dt: float,
         dycore_only: bool
     ):
@@ -252,9 +250,9 @@ class UpdateAtmosphereState:
                 dycore_state.delp, phy_state.physics_updated_specific_humidity, 1.0e-9
             )
             self._prepare_tendencies_and_update_tracers(
-                self._u_dt,
-                self._v_dt,
-                self._pt_dt,
+                tendency_state.u_dt,
+                tendency_state.v_dt,
+                tendency_state.pt_dt,
                 phy_state.physics_updated_ua,
                 phy_state.physics_updated_va,
                 phy_state.physics_updated_pt,
@@ -279,6 +277,6 @@ class UpdateAtmosphereState:
             )
     
         self._apply_physics2dycore(
-            dycore_state, self._u_dt, self._v_dt, self._pt_dt, dt=dt
+            dycore_state, tendency_state.u_dt, tendency_state.v_dt, tendency_state.pt_dt, dt=dt
         )
         

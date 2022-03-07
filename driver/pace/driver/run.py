@@ -27,11 +27,13 @@ from pace.stencils.testing import TranslateGrid, TranslateUpdateDWindsPhys
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
 from pace.stencils.testing.grid import Grid
+import pace.driver
 
 @dataclasses.dataclass
 class DriverState:
     dycore_state: fv3core.DycoreState
     physics_state: fv3gfs.physics.PhysicsState
+    tendency_state: pace.driver.TendencyState
     grid_data: pace.util.grid.GridData
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
@@ -86,9 +88,13 @@ class BaroclinicConfig(InitializationConfig):
         physics_state = fv3gfs.physics.PhysicsState.init_zeros(
             quantity_factory=quantity_factory, active_packages=["microphysics"]
         )
+        tendency_state = pace.driver.TendencyState.init_zeros(
+            quantity_factory=quantity_factory,
+        )
         return DriverState(
             dycore_state=dycore_state,
             physics_state=physics_state,
+            tendency_state=tendency_state,
             grid_data=grid_data,
             damping_coefficients=damping_coeffient,
             driver_grid_data=driver_grid_data,
@@ -218,9 +224,13 @@ class SerialboxConfig(InitializationConfig):
             quantity_factory=quantity_factory,
             active_packages=["microphysics"],
         )
+        tendency_state = pace.driver.TendencyState.init_zeros(
+            quantity_factory=quantity_factory,
+        )
         return DriverState(
             dycore_state=dycore_state,
             physics_state=physics_state,
+            tendency_state=tendency_state,
             grid_data=grid_data,
             damping_coefficients=damping_coeff,
             driver_grid_data=driver_grid_data,
@@ -274,9 +284,13 @@ class TranslateConfig(InitializationConfig):
         physics_state = fv3gfs.physics.PhysicsState.init_zeros(
             quantity_factory=quantity_factory, active_packages=["microphysics"]
         )
+        tendency_state = pace.driver.TendencyState.init_zeros(
+            quantity_factory=quantity_factory,
+        )
         return DriverState(
             dycore_state=self.dycore_state,
             physics_state=physics_state,
+            tendency_state=tendency_state,
             grid_data=self.grid.grid_data,
             damping_coefficients=self.grid.damping_coefficients,
             driver_grid_data=self.grid.driver_grid_data,
@@ -516,6 +530,7 @@ class Driver:
         self.physics_to_dycore(
             dycore_state=self.state.dycore_state,
             phy_state=self.state.physics_state,
+            tendency_state=self.state.tendency_state,
             dt=float(timestep),
             dycore_only=self.config.dycore_only
         )
@@ -528,8 +543,11 @@ class Driver:
             do_adiabatic_init=False,
             timestep=float(timestep),
         )
+        self.state.tendency_state.u_dt.data[:] = 0.0
+        self.state.tendency_state.v_dt.data[:] = 0.0
+        self.state.tendency_state.pt_dt.data[:] = 0.0
         if self.config.dycore_config.fv_sg_adj > 0:
-            self.fv_subgridz(state=self.state.dycore_state, timestep=float(timestep))
+            self.fv_subgridz(state=self.state.dycore_state, tendency_state=self.state.tendency_state, timestep=float(timestep))
     def _step_physics(self, timestep: float):
         self.dycore_to_physics(
             dycore_state=self.state.dycore_state, physics_state=self.state.physics_state
