@@ -33,6 +33,7 @@ def get_set_nan_func(
     def set_nans(data):
         safe = copy.deepcopy(data)
         data[:] = np.nan
+        # data_subset is a view of data, so modifying data_subset modifies data
         data_subset = subset(data)
         data_subset[:] = subset(safe)
 
