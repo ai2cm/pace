@@ -116,7 +116,7 @@ def sample_wherefail(
                 f"absolute diff {abs_err:.3e}, "
                 f"metric diff: {metric_err:.3e}"
             )
-        if metric_err > worst_metric_err:
+        if np.isnan(metric_err) or (metric_err > worst_metric_err):
             worst_metric_err = metric_err
             worst_full_idx = full_index
             worst_abs_err = abs_err
