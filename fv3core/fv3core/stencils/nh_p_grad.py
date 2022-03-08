@@ -11,6 +11,12 @@ from pace.util.grid import GridData
 def set_k0_and_calc_wk(
     pp: FloatField, pk3: FloatField, wk: FloatField, top_value: float
 ):
+    """
+    Args:
+        pp (inout):
+        pk3 (inout):
+        wk (out):
+    """
     with computation(PARALLEL), interval(0, 1):
         pp[0, 0, 0] = 0.0
         pk3[0, 0, 0] = top_value
@@ -28,6 +34,16 @@ def calc_u(
     rdx: FloatFieldIJ,
     dt: float,
 ):
+    """
+    Args:
+        u (inout):
+        wk (in):
+        wk1 (in):
+        gz (in):
+        pk3 (in):
+        pp (in):
+        rdx (in):
+    """
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution
         du = (
@@ -61,6 +77,16 @@ def calc_v(
     rdy: FloatFieldIJ,
     dt: float,
 ):
+    """
+    Args:
+        v (inout):
+        wk (in):
+        wk1 (in):
+        gz (in):
+        pk3 (in):
+        pp (in):
+        rdy (in):
+    """
     with computation(PARALLEL), interval(...):
         # hydrostatic contribution
         dv = (
@@ -110,23 +136,6 @@ class NonHydrostaticPressureGradient:
             backend=stencil_factory.backend,
         )  # pp.shape
 
-        self._set_k0_and_calc_wk_stencil = stencil_factory.from_origin_domain(
-            set_k0_and_calc_wk,
-            origin=self.orig,
-            domain=domain_full_k,
-        )
-
-        self._calc_u_stencil = stencil_factory.from_origin_domain(
-            calc_u,
-            origin=self.orig,
-            domain=u_domain,
-        )
-
-        self._calc_v_stencil = stencil_factory.from_origin_domain(
-            calc_v,
-            origin=self.orig,
-            domain=v_domain,
-        )
         self.a2b_k1 = AGrid2BGridFourthOrder(
             stencil_factory.restrict_vertical(k_start=1),
             grid_data,
@@ -147,6 +156,23 @@ class NonHydrostaticPressureGradient:
             grid_type,
             replace=False,
         )
+        self._set_k0_and_calc_wk_stencil = stencil_factory.from_origin_domain(
+            set_k0_and_calc_wk,
+            origin=self.orig,
+            domain=domain_full_k,
+        )
+
+        self._calc_u_stencil = stencil_factory.from_origin_domain(
+            calc_u,
+            origin=self.orig,
+            domain=u_domain,
+        )
+
+        self._calc_v_stencil = stencil_factory.from_origin_domain(
+            calc_v,
+            origin=self.orig,
+            domain=v_domain,
+        )
 
     def __call__(
         self,
@@ -163,19 +189,21 @@ class NonHydrostaticPressureGradient:
         """
         Updates the U and V winds due to pressure gradients,
         accounting for both the hydrostatic and nonhydrostatic contributions.
+
         Args:
-            u: U wind (inout)
-            v: V wind (inout)
-            pp: Pressure (in)
-            gz:  height of the model grid cells (in)
-            pk3: (in)
-            delp: vertical delta in pressure (in)
-            dt: model atmospheric timestep (in)
-            ptop: pressure at top of atmosphere (in)
-            akap: Kappa (in)
-        Fortran names:
-        u=u v=v pp=pkc gz=gz pk3=pk3 delp=delp dt=dt
+            u (inout): U wind
+            v (inout): V wind
+            pp (inout): Pressure, gets updated to B-grid
+            gz (inout): height of the model grid cells, gets updated to B-grid
+            pk3 (inout): gets updated to B-grid
+            delp (in): vertical delta in pressure
+            dt (in): model atmospheric timestep
+            ptop (in): pressure at top of atmosphere
+            akap (in): Kappa
         """
+        # Fortran names:
+        # u=u v=v pp=pkc gz=gz pk3=pk3 delp=delp dt=dt
+
         ptk = ptop ** akap
         top_value = ptk  # = peln1 if spec.namelist.use_logp else ptk
 

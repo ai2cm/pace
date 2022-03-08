@@ -17,11 +17,11 @@ def main_uc_contra(
 ):
     """
     Args:
-        uc: covariant c-grid x-wind (in)
-        vc: covariant c-grid y-wind (in)
-        cosa_u: ??? (in)
-        rsin_u: ??? (in)
-        uc_contra: contravariant c-grid x-wind (out)
+        uc (in): covariant c-grid x-wind
+        vc (in): covariant c-grid y-wind
+        cosa_u (in): ???
+        rsin_u (in): ???
+        uc_contra (out): contravariant c-grid x-wind
     """
     from __externals__ import j_end, j_start, local_ie, local_is
 
@@ -37,6 +37,26 @@ def main_uc_contra(
             uc_contra = utmp
 
 
+def uc_contra_y_edge(
+    uc: FloatField,
+    sin_sg1: FloatFieldIJ,
+    sin_sg3: FloatFieldIJ,
+    uc_contra: FloatField,
+):
+    """
+    Args:
+        uc (in):
+        sin_sg1 (in):
+        sin_sg3 (in):
+        uc_contra (out):
+    """
+    from __externals__ import i_end, i_start
+
+    with computation(PARALLEL), interval(...):
+        with horizontal(region[i_start, :], region[i_end + 1, :]):
+            uc_contra = (uc / sin_sg3[-1, 0]) if (uc > 0) else (uc / sin_sg1)
+
+
 # TODO: the mix of local and global regions is strange here
 # it's a workaround to specify DON'T do this calculation if on the tile edge
 def main_vc_contra(
@@ -46,6 +66,14 @@ def main_vc_contra(
     rsin_v: FloatFieldIJ,
     vc_contra: FloatField,
 ):
+    """
+    Args:
+        uc (in):
+        vc (in):
+        cosa_v (in):
+        rsin_v (in):
+        vc_contra (out):
+    """
     from __externals__ import j_end, j_start, local_je, local_js
 
     with computation(PARALLEL), interval(...):
@@ -58,50 +86,16 @@ def main_vc_contra(
             vc_contra = vtmp
 
 
-def uc_contra_y_edge(
-    uc: FloatField,
-    sin_sg1: FloatFieldIJ,
-    sin_sg3: FloatFieldIJ,
-    uc_contra: FloatField,
-):
-    from __externals__ import i_end, i_start
-
-    with computation(PARALLEL), interval(...):
-        with horizontal(region[i_start, :], region[i_end + 1, :]):
-            uc_contra = (uc / sin_sg3[-1, 0]) if (uc > 0) else (uc / sin_sg1)
-
-
-def uc_contra_x_edge(
-    uc: FloatField, cosa_u: FloatFieldIJ, vc_contra: FloatField, uc_contra: FloatField
-):
-    from __externals__ import i_end, i_start, j_end, j_start, local_ie, local_is
-
-    with computation(PARALLEL), interval(...):
-        # TODO: parallel to what done for the vt_y_edge section
-        utmp = uc_contra
-        with horizontal(
-            region[local_is : local_ie + 2, j_start - 1 : j_start + 1],
-            region[local_is : local_ie + 2, j_end : j_end + 2],
-        ):
-            v_contra = 0.25 * (
-                vc_contra[-1, 0, 0]
-                + vc_contra
-                + vc_contra[-1, 1, 0]
-                + vc_contra[0, 1, 0]
-            )
-            uc_contra = contravariant(uc, v_contra, cosa_u, 1.0)
-        with horizontal(
-            region[i_start : i_start + 2, j_start - 1 : j_start + 1],
-            region[i_start : i_start + 2, j_end : j_end + 2],
-            region[i_end : i_end + 2, j_start - 1 : j_start + 1],
-            region[i_end : i_end + 2, j_end : j_end + 2],
-        ):
-            uc_contra = utmp
-
-
 def vc_contra_y_edge(
     vc: FloatField, cosa_v: FloatFieldIJ, uc_contra: FloatField, vc_contra: FloatField
 ):
+    """
+    Args:
+        vc (in):
+        cosa_v (in):
+        uc_contra (in):
+        vc_contra (inout):
+    """
     from __externals__ import i_end, i_start, j_end, j_start, local_je, local_js
 
     # This works for 6 ranks, but not 54:
@@ -146,11 +140,53 @@ def vc_contra_x_edge(
     sin_sg4: FloatFieldIJ,
     vc_contra: FloatField,
 ):
+    """
+    Args:
+        vc (in):
+        sin_sg2 (in):
+        sin_sg4 (in):
+        vc_contra (out):
+    """
     from __externals__ import j_end, j_start
 
     with computation(PARALLEL), interval(...):
         with horizontal(region[:, j_start], region[:, j_end + 1]):
             vc_contra = (vc / sin_sg4[0, -1]) if (vc > 0) else (vc / sin_sg2)
+
+
+def uc_contra_x_edge(
+    uc: FloatField, cosa_u: FloatFieldIJ, vc_contra: FloatField, uc_contra: FloatField
+):
+    """
+    Args:
+        uc (in):
+        cosa_u (in):
+        vc_contra (in):
+        uc_contra (inout):
+    """
+    from __externals__ import i_end, i_start, j_end, j_start, local_ie, local_is
+
+    with computation(PARALLEL), interval(...):
+        # TODO: parallel to what done for the vt_y_edge section
+        utmp = uc_contra
+        with horizontal(
+            region[local_is : local_ie + 2, j_start - 1 : j_start + 1],
+            region[local_is : local_ie + 2, j_end : j_end + 2],
+        ):
+            v_contra = 0.25 * (
+                vc_contra[-1, 0, 0]
+                + vc_contra
+                + vc_contra[-1, 1, 0]
+                + vc_contra[0, 1, 0]
+            )
+            uc_contra = contravariant(uc, v_contra, cosa_u, 1.0)
+        with horizontal(
+            region[i_start : i_start + 2, j_start - 1 : j_start + 1],
+            region[i_start : i_start + 2, j_end : j_end + 2],
+            region[i_end : i_end + 2, j_start - 1 : j_start + 1],
+            region[i_end : i_end + 2, j_end : j_end + 2],
+        ):
+            uc_contra = utmp
 
 
 def uc_contra_corners(
@@ -168,11 +204,20 @@ def uc_contra_corners(
     (ex: for the sw corner ut(2,1) and vt(1,2) are solved for simultaneously).
     It then computes the halo uc, vc values so as to be consistent with the
     computations on the facing panel.
-    The system solved is:
-       ut(2,1) = uc(2,1) - avg(vt)*cosa_u(2,1)
-       vt(1,2) = vc(1,2) - avg(ut)*cosa_v(1,2)
-       in which avg(vt) includes vt(1,2) and avg(ut) includes ut(2,1)
 
+    The system solved is:
+        ut(2,1) = uc(2,1) - avg(vt)*cosa_u(2,1)
+        vt(1,2) = vc(1,2) - avg(ut)*cosa_v(1,2)
+        in which avg(vt) includes vt(1,2) and avg(ut) includes ut(2,1)
+
+    Args:
+        cosa_u (in):
+        cosa_v (in):
+        uc (in):
+        vc (in):
+        uc_contra (out):
+        uc_contra_copy (in): the covariant u-wind on ??? grid
+        vc_contra (in):
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -269,6 +314,16 @@ def vc_contra_corners(
     vc_contra: FloatField,
     vc_contra_copy: FloatField,
 ):
+    """
+    Args:
+        cosa_u (in):
+        cosa_v (in):
+        uc (in):
+        vc (in):
+        ut (in):
+        vc_contra (out):
+        vc_contra_copy (in): the covariant v-wind on ??? grid
+    """
     from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):
@@ -400,6 +455,23 @@ def fxadv_fluxes_stencil(
     vc_contra: FloatField,
     dt: float,
 ):
+    """
+    Args:
+        sin_sg1 (in):
+        sin_sg2 (in):
+        sin_sg3 (in):
+        sin_sg4 (in):
+        rdxa (in):
+        rdya (in):
+        dy (in):
+        dx (in):
+        crx (out):
+        cry (out):
+        x_area_flux (out):
+        y_area_flux (out):
+        uc_contra (in):
+        vc_contra (in):
+    """
     from __externals__ import local_ie, local_is, local_je, local_js
 
     with computation(PARALLEL), interval(...):
@@ -460,20 +532,20 @@ class FiniteVolumeFluxPrep:
         self._main_uc_contra_stencil = stencil_factory.from_origin_domain(
             main_uc_contra, **kwargs
         )
-        self._main_vc_contra_stencil = stencil_factory.from_origin_domain(
-            main_vc_contra, **kwargs
-        )
         self._uc_contra_y_edge_stencil = stencil_factory.from_origin_domain(
             uc_contra_y_edge, **kwargs
+        )
+        self._main_vc_contra_stencil = stencil_factory.from_origin_domain(
+            main_vc_contra, **kwargs
         )
         self._vc_contra_y_edge_stencil = stencil_factory.from_origin_domain(
             vc_contra_y_edge, **kwargs
         )
-        self._uc_contra_x_edge_stencil = stencil_factory.from_origin_domain(
-            uc_contra_x_edge, **kwargs
-        )
         self._vc_contra_x_edge_stencil = stencil_factory.from_origin_domain(
             vc_contra_x_edge, **kwargs
+        )
+        self._uc_contra_x_edge_stencil = stencil_factory.from_origin_domain(
+            uc_contra_x_edge, **kwargs
         )
         self._uc_contra_corners_stencil = stencil_factory.from_origin_domain(
             uc_contra_corners, **kwargs_corners
@@ -505,15 +577,15 @@ class FiniteVolumeFluxPrep:
         Lin, 2007, that get consumed by fvtp2d and ppm methods.
 
         Args:
-            uc: covariant x-velocity on the C-grid (in)
-            vc: covariant y-velocity on the C-grid (in)
-            crx: Courant number, x direction (out)
-            cry: Courant number, y direction (out)
-            x_area_flux: flux of area in x-direction, in units of m^2 (out)
-            y_area_flux: flux of area in y-direction, in units of m^2 (out)
-            uc_contra: contravariant x-velocity on C-grid (out)
-            vc_contra: contravariant y-velocity on C-grid (out)
-            dt: acoustic timestep in seconds
+            uc (in): covariant x-velocity on the C-grid
+            vc (in): covariant y-velocity on the C-grid
+            crx (out): Courant number, x direction
+            cry (out): Courant number, y direction
+            x_area_flux (out): flux of area in x-direction, in units of m^2
+            y_area_flux (out): flux of area in y-direction, in units of m^2
+            uc_contra (out): contravariant x-velocity on C-grid
+            vc_contra (out): contravariant y-velocity on C-grid
+            dt (in): acoustic timestep in seconds
         """
 
         # in the original Fortran code, uc_contra is named ut and vc_contra is vt

@@ -162,24 +162,6 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     return dycore, args
 
 
-def test_call_does_not_access_global_state():
-    dycore, args = setup_dycore()
-
-    def error_func(*args, **kwargs):
-        raise AssertionError("call not allowed")
-
-    mock_grid = unittest.mock.MagicMock()
-    with unittest.mock.patch("pace.util.global_config.get_backend", new=error_func):
-        with unittest.mock.patch(
-            "pace.util.global_config.is_gpu_backend", new=error_func
-        ):
-            with unittest.mock.patch("fv3core._config.set_grid", new=error_func):
-                with unittest.mock.patch("fv3core._config.grid", new=mock_grid):
-                    with no_lagrangian_contributions(dynamical_core=dycore):
-                        dycore.step_dynamics(*args)
-    mock_grid.assert_not_called()
-
-
 def test_call_does_not_allocate_storages():
     dycore, args = setup_dycore()
 

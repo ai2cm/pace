@@ -1,8 +1,10 @@
 import abc
 import dataclasses
 import functools
+import os
+import subprocess
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 
 import click
 import dacite
@@ -28,6 +30,10 @@ from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
 from pace.stencils.testing.grid import Grid
 import pace.driver
+from pace.util.quantity import QuantityMetadata
+
+from .report import collect_data_and_write_to_file
+
 
 @dataclasses.dataclass
 class DriverState:
@@ -188,9 +194,7 @@ class SerialboxConfig(InitializationConfig):
             driver_grid_data = grid.driver_grid_data
             damping_coeff = grid.damping_coefficients
         else:
-            grid = fv3core._config.make_grid_with_data_from_namelist(
-                self._namelist, communicator, backend
-            )
+            grid = Grid.with_data_from_namelist(self._namelist, communicator, backend)
             metric_terms = pace.util.grid.MetricTerms(
                 quantity_factory=quantity_factory, communicator=communicator
             )
@@ -296,10 +300,71 @@ class TranslateConfig(InitializationConfig):
             driver_grid_data=self.grid.driver_grid_data,
         )
 
+
 @dataclasses.dataclass(frozen=True)
 class DiagnosticsConfig:
     path: str
     names: List[str] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+class PerformanceConfig:
+    performance_mode: bool = False
+    experiment_name: str = "test"
+    timestep_timer: pace.util.Timer = pace.util.NullTimer()
+    total_timer: pace.util.Timer = pace.util.NullTimer()
+    times_per_step: List = dataclasses.field(default_factory=list)
+    hits_per_step: List = dataclasses.field(default_factory=list)
+
+    def __post_init__(self):
+        if self.performance_mode:
+            self.timestep_timer = pace.util.Timer()
+            self.total_timer = pace.util.Timer()
+
+    def collect_performance(self):
+        """
+        Take the accumulated timings and flush them into a new entry
+        in times_per_step and hits_per_step.
+        """
+        if self.performance_mode:
+            self.times_per_step.append(self.timestep_timer.times)
+            self.hits_per_step.append(self.timestep_timer.hits)
+            self.timestep_timer.reset()
+
+    def write_out_performance(
+        self,
+        comm,
+        backend: str,
+        dt_atmos: float,
+    ):
+        if self.performance_mode:
+            try:
+                driver_path = os.path.dirname(__file__)
+                git_hash = (
+                    subprocess.check_output(
+                        ["git", "-C", driver_path, "rev-parse", "HEAD"]
+                    )
+                    .decode()
+                    .rstrip()
+                )
+            except subprocess.CalledProcessError:
+                git_hash = "notarepo"
+
+            self.times_per_step.append(self.total_timer.times)
+            self.hits_per_step.append(self.total_timer.hits)
+            comm.Barrier()
+            while {} in self.hits_per_step:
+                self.hits_per_step.remove({})
+            collect_data_and_write_to_file(
+                len(self.hits_per_step) - 1,
+                backend,
+                git_hash,
+                comm,
+                self.hits_per_step,
+                self.times_per_step,
+                self.experiment_name,
+                dt_atmos,
+            )
 
 
 class Diagnostics:
@@ -328,6 +393,21 @@ class Diagnostics:
         assert time is not None
         self.monitor.store(zarr_state)
 
+    def store_grid(
+        self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
+    ):
+        zarr_grid = {}
+        for name in ["lat", "lon"]:
+            grid_quantity = pace.util.Quantity(
+                getattr(grid_data, name),
+                dims=("x_interface", "y_interface"),
+                origin=metadata.origin,
+                extent=(metadata.extent[0] + 1, metadata.extent[1] + 1),
+                units="rad",
+            )
+            zarr_grid[name] = grid_quantity
+        self.monitor.store_constant(zarr_grid)
+        
 
 @dataclasses.dataclass(frozen=True)
 class DriverConfig:
@@ -336,7 +416,7 @@ class DriverConfig:
 
     Attributes:
         stencil_config: configuration for stencil compilation
-        initialization_type: must be "baroclinic" or "restart"
+        initialization_type: must be "baroclinic", "restart", "serialbox", or "regression"
         initialization_config: configuration for the chosen initialization
             type, see documentation for its corresponding configuration
             dataclass
@@ -345,6 +425,14 @@ class DriverConfig:
         nz: number of gridpoints in the vertical dimension
         layout: number of ranks along the x and y dimensions
         dt_atmos: atmospheric timestep in seconds
+        diagnostics_config: configuration for output diagnostics
+        dycore_config: configuration for dynamical core
+        physics_config: configuration for physics
+        days: days to add to total simulation time
+        hours: hours to add to total simulation time
+        minutes: minutes to add to total simulation time
+        seconds: seconds to add to total simulation time
+        dycore_only: whether to run just the dycore, or physics too
     """
 
     stencil_config: pace.dsl.StencilConfig
@@ -355,6 +443,7 @@ class DriverConfig:
     layout: Tuple[int, int]
     dt_atmos: float
     diagnostics_config: DiagnosticsConfig
+    performance_config: PerformanceConfig
     dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
         default_factory=fv3core.DynamicalCoreConfig
     )
@@ -416,13 +505,14 @@ class DriverConfig:
                     data=kwargs.get("dycore_config", {}),
                     config=dacite.Config(strict=True),
                 )
+                                 
         if not isinstance(kwargs["physics_config"], fv3gfs.physics.PhysicsConfig):
             kwargs["physics_config"] = dacite.from_dict(
                 data_class=fv3gfs.physics.PhysicsConfig,
                 data=kwargs.get("physics_config", {}),
                 config=dacite.Config(strict=True),
             )
-
+                                 
         if initialization_type not in ["serialbox", "regression"]:
             kwargs["layout"] = tuple(kwargs["layout"])
             kwargs["dycore_config"].layout = kwargs["layout"]
@@ -445,8 +535,8 @@ class DriverConfig:
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
         )
-
-
+    
+                                 
 class Driver:
     def __init__(
         self,
@@ -462,79 +552,90 @@ class Driver:
         """
        
         self.config = config
-        communicator = pace.util.CubedSphereCommunicator.from_layout(
-            comm=comm, layout=self.config.layout
-        )
-        quantity_factory, stencil_factory = _setup_factories(
-            config=config, communicator=communicator
-        )
-        self.comm = communicator
-        self.state = self.config.initialization_config.get_driver_state(
-            quantity_factory=quantity_factory, communicator=communicator
-        )
-        self._start_time = self.config.initialization_config.start_time
-        self.dycore = fv3core.stencils.fv_dynamics.DynamicalCore(
-            comm=communicator,
-            grid_data=self.state.grid_data,
-            stencil_factory=stencil_factory,
-            damping_coefficients=self.state.damping_coefficients,
-            config=self.config.dycore_config,
-            phis=self.state.dycore_state.phis,
-        )
-        if self.config.dycore_config.fv_sg_adj > 0:
-            self.fv_subgridz = DryConvectiveAdjustment(
-                stencil_factory=stencil_factory,
-                nwat=self.config.dycore_config.nwat,
-                fv_sg_adj=self.config.dycore_config.fv_sg_adj,
-                n_sponge=self.config.dycore_config.n_sponge,
-                hydrostatic=self.config.dycore_config.hydrostatic,
+        self.comm = comm
+        self.performance_config = self.config.performance_config
+        with self.performance_config.total_timer.clock("initialization"):                         
+            communicator = pace.util.CubedSphereCommunicator.from_layout(
+                comm=self.comm, layout=self.config.layout
             )
-        self.physics = fv3gfs.physics.Physics(
-            stencil_factory=stencil_factory,
-            grid_data=self.state.grid_data,
-            namelist=self.config.physics_config,
-            active_packages=["microphysics"],
-        )
-        self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
-            stencil_factory=stencil_factory
-        )
-        self.physics_to_dycore = update_atmos_state.UpdateAtmosphereState(
-            stencil_factory=stencil_factory,
-            grid_data=self.state.grid_data,
-            namelist=self.config.physics_config,
-            comm=communicator,
-            grid_info=self.state.driver_grid_data,
-            quantity_factory=quantity_factory,
-        )
-        self.diagnostics = Diagnostics(
-            config=config.diagnostics_config,
-            partitioner=communicator.partitioner,
-            comm=comm,
-        )
+            quantity_factory, stencil_factory = _setup_factories(
+                config=config, communicator=communicator
+            )
+       
+            self.state = self.config.initialization_config.get_driver_state(
+                quantity_factory=quantity_factory, communicator=communicator
+            )
+            self._start_time = self.config.initialization_config.start_time
+            self.dycore = fv3core.stencils.fv_dynamics.DynamicalCore(
+                comm=communicator,
+                grid_data=self.state.grid_data,
+                stencil_factory=stencil_factory,
+                damping_coefficients=self.state.damping_coefficients,
+                config=self.config.dycore_config,
+                phis=self.state.dycore_state.phis,
+            )
+            if self.config.dycore_config.fv_sg_adj > 0:
+                self.fv_subgridz = DryConvectiveAdjustment(
+                    stencil_factory=stencil_factory,
+                    nwat=self.config.dycore_config.nwat,
+                    fv_sg_adj=self.config.dycore_config.fv_sg_adj,
+                    n_sponge=self.config.dycore_config.n_sponge,
+                    hydrostatic=self.config.dycore_config.hydrostatic,
+                )
+            self.physics = fv3gfs.physics.Physics(
+                stencil_factory=stencil_factory,
+                grid_data=self.state.grid_data,
+                namelist=self.config.physics_config,
+                active_packages=["microphysics"],
+            )
+            self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
+                stencil_factory=stencil_factory
+            )
+            self.physics_to_dycore = update_atmos_state.UpdateAtmosphereState(
+                stencil_factory=stencil_factory,
+                grid_data=self.state.grid_data,
+                namelist=self.config.physics_config,
+                comm=communicator,
+                grid_info=self.state.driver_grid_data,
+                quantity_factory=quantity_factory,
+            )
+            self.diagnostics = Diagnostics(
+                config=config.diagnostics_config,
+                partitioner=communicator.partitioner,
+                comm=self.comm,
+            )
+
+   
+
 
     def step_all(self):
-        time = self.config.start_time
-        end_time = self.config.start_time + self.config.total_time
-        self.diagnostics.store(time=time, state=self.state)
-       
-        while time < end_time:
-            print('running time', time, end_time,  self.config.total_time)
-            self._step(timestep=self.config.timestep.total_seconds())
-            time += self.config.timestep
-            self.diagnostics.store(time=time, state=self.state)
+        with self.performance_config.total_timer.clock("total"):
+            time = self.config.start_time
+            end_time = self.config.start_time + self.config.total_time
+            self.diagnostics.store_grid(
+                grid_data=self.state.grid_data,
+                metadata=self.state.dycore_state.ps.metadata,
+            )
+            while time < end_time:
+                self._step(timestep=self.config.timestep.total_seconds())
+                time += self.config.timestep
+                self.diagnostics.store(time=time, state=self.state)
+            self.performance_config.collect_performance()
 
     def _step(self, timestep: float):
-        self._step_dynamics(timestep=timestep)
-        if not self.config.dycore_only:
-            self._step_physics(timestep=timestep)
-        self.physics_to_dycore(
-            dycore_state=self.state.dycore_state,
-            phy_state=self.state.physics_state,
-            tendency_state=self.state.tendency_state,
-            dt=float(timestep),
-            dycore_only=self.config.dycore_only
-        )
-        
+        with self.performance_config.timestep_timer.clock("mainloop"):
+            self._step_dynamics(timestep=timestep)
+            if not self.config.dycore_only:
+                self._step_physics(timestep=timestep)
+            self.physics_to_dycore(
+                dycore_state=self.state.dycore_state,
+                phy_state=self.state.physics_state,
+                tendency_state=self.state.tendency_state,
+                dt=float(timestep),
+                dycore_only=self.config.dycore_only
+            )
+        self.performance_config.collect_performance()
+
     def _step_dynamics(self, timestep: float):
         self.dycore.step_dynamics(
             state=self.state.dycore_state,
@@ -542,18 +643,27 @@ class Driver:
             n_split=self.config.dycore_config.n_split,
             do_adiabatic_init=False,
             timestep=float(timestep),
+            timer=self.performance_config.timestep_timer,
         )
         self.state.tendency_state.u_dt.data[:] = 0.0
         self.state.tendency_state.v_dt.data[:] = 0.0
         self.state.tendency_state.pt_dt.data[:] = 0.0
         if self.config.dycore_config.fv_sg_adj > 0:
             self.fv_subgridz(state=self.state.dycore_state, tendency_state=self.state.tendency_state, timestep=float(timestep))
+    
     def _step_physics(self, timestep: float):
         self.dycore_to_physics(
             dycore_state=self.state.dycore_state, physics_state=self.state.physics_state
         )
         self.physics(self.state.physics_state, timestep=float(timestep))
       
+
+    def write_performance_json_output(self):
+        self.performance_config.write_out_performance(
+            self.comm,
+            self.config.stencil_config.backend,
+            self.config.dt_atmos,
+        )
 
 
 def _setup_factories(
@@ -600,11 +710,8 @@ def main(driver_config: DriverConfig, comm):
         comm=comm,
     )
     driver.step_all()
+    driver.write_performance_json_output()
 
 
 if __name__ == "__main__":
     command_line()
-
-"""
-
-"""

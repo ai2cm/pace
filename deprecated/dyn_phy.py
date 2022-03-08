@@ -18,6 +18,7 @@ import pace.util as util
 from fv3core import DynamicalCoreConfig
 from fv3gfs.physics import PhysicsConfig
 from fv3gfs.physics.stencils.physics import Physics
+from pace.stencils.testing.grid import Grid
 from pace.util import Namelist
 from pace.util.grid import DampingCoefficients, DriverGridData, GridData, MetricTerms
 
@@ -69,7 +70,7 @@ def driver(
     )
 
     # get grid object with indices used for translating from serialized data
-    grid = fv3core._config.make_grid_from_namelist(namelist, rank, backend)
+    grid = Grid.from_namelist(namelist, rank, backend)
 
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,

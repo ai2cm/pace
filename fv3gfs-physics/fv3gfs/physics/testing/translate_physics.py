@@ -61,8 +61,6 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             return data[0]
         return data
 
-   
-       
 
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
         max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))

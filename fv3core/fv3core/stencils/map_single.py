@@ -27,6 +27,19 @@ def lagrangian_contributions(
     dp1: FloatField,
     lev: IntFieldIJ,
 ):
+    """
+    Args:
+        q (out):
+        pe1 (in):
+        pe2 (in):
+        q4_1 (in):
+        q4_2 (in):
+        q4_3 (in):
+        q4_4 (in):
+        dp1 (in):
+        lev (inout):
+    """
+    # TODO: Can we make lev a 2D temporary?
     with computation(FORWARD), interval(...):
         pl = (pe2 - pe1[0, 0, lev]) / dp1[0, 0, lev]
         if pe2[0, 0, 1] <= pe1[0, 0, lev + 1]:
@@ -111,20 +124,22 @@ class MapSingle:
         origin = (i1, j1, 0)
         domain = (*self._extents, grid_indexing.domain[2])
 
-        self._lagrangian_contributions = stencil_factory.from_origin_domain(
-            lagrangian_contributions,
-            origin=origin,
-            domain=domain,
-        )
-        self._remap_profile = RemapProfile(stencil_factory, kord, mode, i1, i2, j1, j2)
-
-        self._set_dp = stencil_factory.from_origin_domain(
-            set_dp, origin=origin, domain=domain
-        )
         self._copy_stencil = stencil_factory.from_origin_domain(
             copy_defn,
             origin=(0, 0, 0),
             domain=grid_indexing.domain_full(),
+        )
+
+        self._set_dp = stencil_factory.from_origin_domain(
+            set_dp, origin=origin, domain=domain
+        )
+
+        self._remap_profile = RemapProfile(stencil_factory, kord, mode, i1, i2, j1, j2)
+
+        self._lagrangian_contributions = stencil_factory.from_origin_domain(
+            lagrangian_contributions,
+            origin=origin,
+            domain=domain,
         )
 
     @property
@@ -151,8 +166,7 @@ class MapSingle:
             pe1 (in): Lagrangian pressure levels
             pe2 (in): Eulerian pressure levels
             qs (in): Bottom boundary condition
-            jfirst: Starting index of the J-dir compute domain
-            jlast: Final index of the J-dir compute domain
+            qmin (in): Minimum allowed value of the remapped field
         """
         if qs is None:
             qs = self._tmp_qs

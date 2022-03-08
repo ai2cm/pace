@@ -998,6 +998,13 @@ def fill_corners_dgrid_defn(
     y_out: FloatField,
     mysign: float,
 ):
+    """
+    Args:
+        x_in (in):
+        x_out (inout):
+        y_in (in):
+        y_out (inout):
+    """
     from __externals__ import i_end, i_start, j_end, j_start
 
     with computation(PARALLEL), interval(...):

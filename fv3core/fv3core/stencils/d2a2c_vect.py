@@ -22,6 +22,60 @@ def set_tmps(utmp: FloatField, vtmp: FloatField, big_number: float):
         vtmp = big_number
 
 
+# almost the same as a2b_ord4's version
+@gtscript.function
+def lagrange_y_func_p1(qx):
+    return a2 * (qx[0, -1, 0] + qx[0, 2, 0]) + a1 * (qx + qx[0, 1, 0])
+
+
+def lagrange_interpolation_y_p1(qx: FloatField, qout: FloatField):
+    with computation(PARALLEL), interval(...):
+        qout = lagrange_y_func_p1(qx)
+
+
+@gtscript.function
+def lagrange_x_func_p1(qy):
+    return a2 * (qy[-1, 0, 0] + qy[2, 0, 0]) + a1 * (qy + qy[1, 0, 0])
+
+
+def lagrange_interpolation_x_p1(qy: FloatField, qout: FloatField):
+    with computation(PARALLEL), interval(...):
+        qout = lagrange_x_func_p1(qy)
+
+
+def avg_box(u: FloatField, v: FloatField, utmp: FloatField, vtmp: FloatField):
+    """
+    D2A2C_AVG_OFFSET is an external that describes how far the
+    averaging should go before switching to Lagrangian interpolation. For
+    sufficiently small grids, this should be set to -1, otherwise 3. Note that
+    this makes the stencil code in d2a2c grid-dependent!
+    """
+    from __externals__ import D2A2C_AVG_OFFSET, i_end, i_start, j_end, j_start
+
+    with computation(PARALLEL), interval(...):
+        with horizontal(
+            region[:, : j_start + D2A2C_AVG_OFFSET],
+            region[:, j_end - D2A2C_AVG_OFFSET + 1 :],
+            region[: i_start + D2A2C_AVG_OFFSET, :],
+            region[i_end - D2A2C_AVG_OFFSET + 1 :, :],
+        ):
+            utmp = 0.5 * (u + u[0, 1, 0])
+            vtmp = 0.5 * (v + v[1, 0, 0])
+
+
+def contravariant_components(
+    utmp: FloatField,
+    vtmp: FloatField,
+    cosa_s: FloatFieldIJ,
+    rsin2: FloatFieldIJ,
+    ua: FloatField,
+    va: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        ua = contravariant(utmp, vtmp, cosa_s, rsin2)
+        va = contravariant(vtmp, utmp, cosa_s, rsin2)
+
+
 def fill_corners_x(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: FloatField):
     with computation(PARALLEL), interval(...):
         utmp = corners.fill_corners_3cells_mult_x(
@@ -32,14 +86,17 @@ def fill_corners_x(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: Float
         )
 
 
-def fill_corners_y(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: FloatField):
+def ut_main(
+    utmp: FloatField,
+    uc: FloatField,
+    v: FloatField,
+    cosa_u: FloatFieldIJ,
+    rsin_u: FloatFieldIJ,
+    ut: FloatField,
+):
     with computation(PARALLEL), interval(...):
-        vtmp = corners.fill_corners_3cells_mult_y(
-            vtmp, utmp, sw_mult=-1, se_mult=1, ne_mult=-1, nw_mult=1
-        )
-        va = corners.fill_corners_2cells_mult_y(
-            va, ua, sw_mult=-1, se_mult=1, ne_mult=-1, nw_mult=1
-        )
+        uc = lagrange_x_func(utmp)
+        ut = contravariant(uc, v, cosa_u, rsin_u)
 
 
 def east_west_edges(
@@ -93,6 +150,16 @@ def east_west_edges(
             utc = contravariant(uc, v, cosa_u, rsin_u)
 
 
+def fill_corners_y(utmp: FloatField, vtmp: FloatField, ua: FloatField, va: FloatField):
+    with computation(PARALLEL), interval(...):
+        vtmp = corners.fill_corners_3cells_mult_y(
+            vtmp, utmp, sw_mult=-1, se_mult=1, ne_mult=-1, nw_mult=1
+        )
+        va = corners.fill_corners_2cells_mult_y(
+            va, ua, sw_mult=-1, se_mult=1, ne_mult=-1, nw_mult=1
+        )
+
+
 def north_south_edges(
     v: FloatField,
     va: FloatField,
@@ -140,45 +207,17 @@ def north_south_edges(
             vtc = contravariant(vc, u, cosa_v, rsin_v)
 
 
-# almost the same as a2b_ord4's version
-@gtscript.function
-def lagrange_y_func_p1(qx):
-    return a2 * (qx[0, -1, 0] + qx[0, 2, 0]) + a1 * (qx + qx[0, 1, 0])
-
-
-def lagrange_interpolation_y_p1(qx: FloatField, qout: FloatField):
+def vt_main(
+    vtmp: FloatField,
+    vc: FloatField,
+    u: FloatField,
+    cosa_v: FloatFieldIJ,
+    rsin_v: FloatFieldIJ,
+    vt: FloatField,
+):
     with computation(PARALLEL), interval(...):
-        qout = lagrange_y_func_p1(qx)
-
-
-@gtscript.function
-def lagrange_x_func_p1(qy):
-    return a2 * (qy[-1, 0, 0] + qy[2, 0, 0]) + a1 * (qy + qy[1, 0, 0])
-
-
-def lagrange_interpolation_x_p1(qy: FloatField, qout: FloatField):
-    with computation(PARALLEL), interval(...):
-        qout = lagrange_x_func_p1(qy)
-
-
-def avg_box(u: FloatField, v: FloatField, utmp: FloatField, vtmp: FloatField):
-    """
-    D2A2C_AVG_OFFSET is an external that describes how far the
-    averaging should go before switching to Lagrangian interpolation. For
-    sufficiently small grids, this should be set to -1, otherwise 3. Note that
-    this makes the stencil code in d2a2c grid-dependent!
-    """
-    from __externals__ import D2A2C_AVG_OFFSET, i_end, i_start, j_end, j_start
-
-    with computation(PARALLEL), interval(...):
-        with horizontal(
-            region[:, : j_start + D2A2C_AVG_OFFSET],
-            region[:, j_end - D2A2C_AVG_OFFSET + 1 :],
-            region[: i_start + D2A2C_AVG_OFFSET, :],
-            region[i_end - D2A2C_AVG_OFFSET + 1 :, :],
-        ):
-            utmp = 0.5 * (u + u[0, 1, 0])
-            vtmp = 0.5 * (v + v[1, 0, 0])
+        vc = lagrange_y_func(vtmp)
+        vt = contravariant(vc, u, cosa_v, rsin_v)
 
 
 @gtscript.function
@@ -245,45 +284,6 @@ def contravariant_stencil(
 ):
     with computation(PARALLEL), interval(...):
         out = contravariant(u, v, cosa, rsin)
-
-
-def contravariant_components(
-    utmp: FloatField,
-    vtmp: FloatField,
-    cosa_s: FloatFieldIJ,
-    rsin2: FloatFieldIJ,
-    ua: FloatField,
-    va: FloatField,
-):
-    with computation(PARALLEL), interval(...):
-        ua = contravariant(utmp, vtmp, cosa_s, rsin2)
-        va = contravariant(vtmp, utmp, cosa_s, rsin2)
-
-
-def ut_main(
-    utmp: FloatField,
-    uc: FloatField,
-    v: FloatField,
-    cosa_u: FloatFieldIJ,
-    rsin_u: FloatFieldIJ,
-    ut: FloatField,
-):
-    with computation(PARALLEL), interval(...):
-        uc = lagrange_x_func(utmp)
-        ut = contravariant(uc, v, cosa_u, rsin_u)
-
-
-def vt_main(
-    vtmp: FloatField,
-    vc: FloatField,
-    u: FloatField,
-    cosa_v: FloatFieldIJ,
-    rsin_v: FloatFieldIJ,
-    vt: FloatField,
-):
-    with computation(PARALLEL), interval(...):
-        vc = lagrange_y_func(vtmp)
-        vt = contravariant(vc, u, cosa_v, rsin_v)
 
 
 @gtscript.function

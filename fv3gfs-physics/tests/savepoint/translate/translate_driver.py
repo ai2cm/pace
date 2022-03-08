@@ -19,7 +19,6 @@ from mpi4py import MPI
 import pace.dsl.gt4py_utils as utils
 from fv3core.testing.validation import enable_selective_validation
 enable_selective_validation()
-# TODO 
 class TranslateDriver(TranslateFVDynamics):
    
    
@@ -61,8 +60,6 @@ class TranslateDriver(TranslateFVDynamics):
             outputs[name] = self.subset_output(name, value)
         return outputs
 
-    #def subset_output(self, varname, output):
-    #    return output
-
+   
 
     

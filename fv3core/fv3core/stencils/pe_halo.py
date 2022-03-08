@@ -8,9 +8,9 @@ def edge_pe(pe: FloatField, delp: FloatField, ptop: float):
     This corresponds to the pe_halo routine in FV3core
     Updading the interface pressure from the pressure differences
     Arguments:
-        pe: The pressure on the interfaces of the cell
-        delp: The pressure difference between vertical grid cells
-        ptop: The pressure level at the top of the grid
+        pe (out): The pressure on the interfaces of the cell
+        delp (in): The pressure difference between vertical grid cells
+        ptop (in): The pressure level at the top of the grid
     """
     from __externals__ import local_ie, local_is, local_je, local_js
 
