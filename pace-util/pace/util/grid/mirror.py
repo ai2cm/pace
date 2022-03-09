@@ -24,13 +24,16 @@ def mirror_grid(
     jstart = ng
     jend = ng + y_subtile_width
     x_center_tile = (
-        global_is < ng + (npx - 1) / 2
+        global_is <= ng + (npx - 1) / 2
         and global_is + x_subtile_width > ng + (npx - 1) / 2
     )
     y_center_tile = (
-        global_js < ng + (npy - 1) / 2
+        global_js <= ng + (npy - 1) / 2
         and global_js + y_subtile_width > ng + (npy - 1) / 2
     )
+
+    i_mid = npx // 2 - global_is + istart
+    j_mid = npy // 2 - global_js + jstart
 
     # first fix base region
     for j in range(jstart, jend + 1):
@@ -63,12 +66,9 @@ def mirror_grid(
 
             # force dateline/greenwich-meridion consistency
             if npx % 2 != 0:
-                if x_center_tile and i == istart + (iend - istart) // 2:
-                    # if i == (npx - 1) // 2:
+                if x_center_tile and i == ng + i_mid:
                     mirror_data["local"][i, j, 0] = 0.0
-
-    i_mid = (iend - istart) // 2
-    j_mid = (jend - jstart) // 2
+                    mirror_data["north-south"][i, -(j + 1), 0] = 0
 
     if tile_index > 0:
 
@@ -112,16 +112,22 @@ def mirror_grid(
 
                 # force North Pole and dateline/Greenwich-Meridian consistency
                 if npx % 2 != 0:
-                    if j == ng + i_mid and x_center_tile and y_center_tile:
+                    if (
+                        j == ng + j_mid
+                        and x_center_tile
+                        and y_center_tile
+                        and i_mid == j_mid
+                    ):
                         x2[i_mid] = 0.0
                         y2[i_mid] = PI / 2.0
                     if j == ng + j_mid and y_center_tile:
                         if x_center_tile:
-                            x2[:i_mid] = 0.0
-                            x2[i_mid + 1] = PI
+                            x2[: i_mid + 1] = 0.0
+                            x2[i_mid + 1 :] = PI
                         elif global_is + i_mid < ng + (npx - 1) / 2:
                             x2[:] = 0.0
-
+                        elif global_is + i_mid > ng + (npx - 1) / 2:
+                            x2[:] = PI
             elif tile_index == 3:
                 ang = -180.0
                 x2, y2, z2 = _rot_3d(
@@ -191,7 +197,12 @@ def mirror_grid(
                 )
                 # force South Pole and dateline/Greenwich-Meridian consistency
                 if npx % 2 != 0:
-                    if j == ng + i_mid and x_center_tile and y_center_tile:
+                    if (
+                        i == ng + i_mid
+                        and x_center_tile
+                        and y_center_tile
+                        and i_mid == j_mid
+                    ):
                         x2[i_mid] = 0.0
                         y2[i_mid] = -PI / 2.0
                     if global_js + j_mid > ng + (npy - 1) / 2 and x_center_tile:
