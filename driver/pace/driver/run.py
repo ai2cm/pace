@@ -4,7 +4,7 @@ import functools
 import os
 import subprocess
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Tuple, Type, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import click
 import dacite
@@ -16,23 +16,26 @@ from mpi4py import MPI
 import fv3core
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3gfs.physics
+import pace.driver
 import pace.dsl
 import pace.stencils
 import pace.util
 import pace.util.grid
+from fv3core.stencils.fv_subgridz import DryConvectiveAdjustment
 from fv3core.testing import TranslateFVDynamics
 from pace.dsl.stencil import StencilFactory
-from fv3core.stencils.fv_subgridz import DryConvectiveAdjustment
+
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
-from pace.stencils.testing import TranslateGrid, TranslateUpdateDWindsPhys
+from pace.stencils.testing import TranslateGrid
+from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
-from pace.stencils.testing.grid import Grid
-import pace.driver
 from pace.util.quantity import QuantityMetadata
+
 from .report import collect_data_and_write_to_file
 from .tendency_state import TendencyState
+
 
 @dataclasses.dataclass
 class DriverState:
@@ -161,10 +164,9 @@ class SerialboxConfig(InitializationConfig):
         backend: str,
     ) -> pace.stencils.testing.grid.Grid:
         ser = self._serializer(communicator)
-        grid = TranslateGrid(
-            grid_data, communicator.rank, self._namelist.layout, backend=backend
+        grid = TranslateGrid.new_from_serialized_data(
+            ser, communicator.rank, self._namelist.layout, backend
         ).python_grid()
-        grid = TranslateGrid.new_from_serialized_data(serializer, communicator.rank, self._namelist.layout, backend).python_grid()
         return grid
 
     def _serializer(self, communicator: pace.util.CubedSphereCommunicator):
@@ -184,11 +186,7 @@ class SerialboxConfig(InitializationConfig):
         backend: str,
     ):
         if self.serialized_grid:
-            (
-                grid,
-            ) = self._get_serialized_grid(
-                communicator, backend
-            )
+            (grid,) = self._get_serialized_grid(communicator, backend)
             grid_data = grid.grid_data
             driver_grid_data = grid.driver_grid_data
             damping_coeff = grid.damping_coefficients
@@ -266,14 +264,16 @@ class SerialboxConfig(InitializationConfig):
         dycore_state = translate_object.state_from_inputs(input_data)
         return dycore_state
 
-@dataclasses.dataclass    
+
+@dataclasses.dataclass
 class TranslateConfig(InitializationConfig):
     """
     Configuration for pre-existing dycore state
     """
+
     dycore_state: Any
     grid: Grid
-    
+
     @property
     def start_time(self) -> datetime:
         # TODO: instead of arbitrary start time, enable use of timedeltas
@@ -283,7 +283,7 @@ class TranslateConfig(InitializationConfig):
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
-    ) -> DriverState:       
+    ) -> DriverState:
         physics_state = fv3gfs.physics.PhysicsState.init_zeros(
             quantity_factory=quantity_factory, active_packages=["microphysics"]
         )
@@ -406,7 +406,7 @@ class Diagnostics:
             )
             zarr_grid[name] = grid_quantity
         self.monitor.store_constant(zarr_grid)
-        
+
 
 @dataclasses.dataclass(frozen=True)
 class DriverConfig:
@@ -415,7 +415,8 @@ class DriverConfig:
 
     Attributes:
         stencil_config: configuration for stencil compilation
-        initialization_type: must be "baroclinic", "restart", "serialbox", or "regression"
+        initialization_type: must be
+             "baroclinic", "restart", "serialbox", or "regression"
         initialization_config: configuration for the chosen initialization
             type, see documentation for its corresponding configuration
             dataclass
@@ -454,7 +455,7 @@ class DriverConfig:
     minutes: int = 0
     seconds: int = 0
     dycore_only: bool = False
-    
+
     @functools.cached_property
     def timestep(self) -> timedelta:
         return timedelta(seconds=self.dt_atmos)
@@ -473,13 +474,13 @@ class DriverConfig:
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
         initialization_type = kwargs["initialization_type"]
         if initialization_type == "serialbox":
-            initialization_class = SerialboxConfig
+            initialization_class = SerialboxConfig  # type: ignore
         if initialization_type == "regression":
-            initialization_class = TranslateConfig
+            initialization_class = TranslateConfig  # type: ignore
         elif initialization_type == "baroclinic":
-            initialization_class = BaroclinicConfig
+            initialization_class = BaroclinicConfig  # type: ignore
         elif initialization_type == "restart":
-            initialization_class = RestartConfig
+            initialization_class = RestartConfig  # type: ignore
         else:
             raise ValueError(
                 "initialization_type must be one of 'baroclinic' or 'restart', "
@@ -504,14 +505,14 @@ class DriverConfig:
                     data=kwargs.get("dycore_config", {}),
                     config=dacite.Config(strict=True),
                 )
-                                 
+
         if not isinstance(kwargs["physics_config"], fv3gfs.physics.PhysicsConfig):
             kwargs["physics_config"] = dacite.from_dict(
                 data_class=fv3gfs.physics.PhysicsConfig,
                 data=kwargs.get("physics_config", {}),
                 config=dacite.Config(strict=True),
             )
-                                 
+
         if initialization_type not in ["serialbox", "regression"]:
             kwargs["layout"] = tuple(kwargs["layout"])
             kwargs["dycore_config"].layout = kwargs["layout"]
@@ -534,8 +535,8 @@ class DriverConfig:
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
         )
-    
-                                 
+
+
 class Driver:
     def __init__(
         self,
@@ -549,18 +550,18 @@ class Driver:
             config: driver configuration
             comm: communication object behaving like mpi4py.Comm
         """
-       
+
         self.config = config
         self.comm = comm
         self.performance_config = self.config.performance_config
-        with self.performance_config.total_timer.clock("initialization"):                         
+        with self.performance_config.total_timer.clock("initialization"):
             communicator = pace.util.CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
             quantity_factory, stencil_factory = _setup_factories(
                 config=config, communicator=communicator
             )
-       
+
             self.state = self.config.initialization_config.get_driver_state(
                 quantity_factory=quantity_factory, communicator=communicator
             )
@@ -604,9 +605,6 @@ class Driver:
                 comm=self.comm,
             )
 
-   
-
-
     def step_all(self):
         with self.performance_config.total_timer.clock("total"):
             time = self.config.start_time
@@ -631,7 +629,7 @@ class Driver:
                 phy_state=self.state.physics_state,
                 tendency_state=self.state.tendency_state,
                 dt=float(timestep),
-                dycore_only=self.config.dycore_only
+                dycore_only=self.config.dycore_only,
             )
         self.performance_config.collect_performance()
 
@@ -648,14 +646,17 @@ class Driver:
         self.state.tendency_state.v_dt.data[:] = 0.0
         self.state.tendency_state.pt_dt.data[:] = 0.0
         if self.config.dycore_config.fv_sg_adj > 0:
-            self.fv_subgridz(state=self.state.dycore_state, tendency_state=self.state.tendency_state, timestep=float(timestep))
-    
+            self.fv_subgridz(
+                state=self.state.dycore_state,
+                tendency_state=self.state.tendency_state,
+                timestep=float(timestep),
+            )
+
     def _step_physics(self, timestep: float):
         self.dycore_to_physics(
             dycore_state=self.state.dycore_state, physics_state=self.state.physics_state
         )
         self.physics(self.state.physics_state, timestep=float(timestep))
-      
 
     def write_performance_json_output(self):
         self.performance_config.write_out_performance(

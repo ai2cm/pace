@@ -539,6 +539,7 @@ class Grid:
             angle_data=angle,
         )
         return self._grid_data
+
     @property
     def driver_grid_data(self) -> "GridData":
         if self._driver_grid_data is not None:
@@ -554,6 +555,7 @@ class Grid:
             ew2=self.ew2,
         )
         return self._driver_grid_data
+
     def set_grid_data(self, grid_data: "GridData"):
         self._grid_data = grid_data
 

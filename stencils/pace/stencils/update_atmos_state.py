@@ -10,13 +10,14 @@ from pace.util.grid import DriverGridData, GridData
 # TODO: when this file is not importable from physics or fv3core, import
 #       PhysicsState and DycoreState and use them to type hint below
 
+
 def fill_gfs_delp(delp: FloatField, q: FloatField, q_min: Float):
 
     with computation(BACKWARD):
-            
+
         with interval(0, -2):
             if q[0, 0, 1] < q_min:
-                q = q[0, 0, 0] + (q[0, 0, 1] - q_min) * delp[0, 0, 1] / delp[0,0,0]
+                q = q[0, 0, 0] + (q[0, 0, 1] - q_min) * delp[0, 0, 1] / delp[0, 0, 0]
 
     with computation(PARALLEL), interval(1, -1):
         if q[0, 0, 0] < q_min:
@@ -24,14 +25,12 @@ def fill_gfs_delp(delp: FloatField, q: FloatField, q_min: Float):
 
     with computation(FORWARD), interval(1, -1):
         if q[0, 0, -1] < 0.0:
-            q = q[0, 0, 0] + q[0, 0, -1] * (delp[0,0,-1]) / (
-                delp[0,0,0]
-            )
+            q = q[0, 0, 0] + q[0, 0, -1] * (delp[0, 0, -1]) / (delp[0, 0, 0])
 
     with computation(FORWARD), interval(0, -1):
         if q[0, 0, 0] < 0.0:
             q = 0.0
-   
+
 
 def prepare_tendencies_and_update_tracers(
     u_dt: FloatField,
@@ -234,17 +233,10 @@ class UpdateAtmosphereState:
         )
 
     def __call__(
-        self,
-        dycore_state,
-        phy_state,
-        tendency_state,
-        dt: float,
-        dycore_only: bool
+        self, dycore_state, phy_state, tendency_state, dt: float, dycore_only: bool
     ):
         if dycore_only:
-            self._fill_GFS(
-                dycore_state.delp, dycore_state.qvapor, 1.0e-9
-            )
+            self._fill_GFS(dycore_state.delp, dycore_state.qvapor, 1.0e-9)
         else:
             self._fill_GFS(
                 dycore_state.delp, phy_state.physics_updated_specific_humidity, 1.0e-9
@@ -275,8 +267,11 @@ class UpdateAtmosphereState:
                 dycore_state.delp,
                 self._rdt,
             )
-    
+
         self._apply_physics2dycore(
-            dycore_state, tendency_state.u_dt, tendency_state.v_dt, tendency_state.pt_dt, dt=dt
+            dycore_state,
+            tendency_state.u_dt,
+            tendency_state.v_dt,
+            tendency_state.pt_dt,
+            dt=dt,
         )
-        

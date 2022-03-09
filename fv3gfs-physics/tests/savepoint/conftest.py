@@ -13,7 +13,8 @@ import pace.util as fv3util
 from pace.stencils.testing.parallel_translate import ParallelTranslate
 from pace.stencils.testing.translate import TranslateGrid
 from pace.util.mpi import MPI
-from pace.util.namelist import Namelist 
+from pace.util.namelist import Namelist
+
 from . import translate
 
 
@@ -218,7 +219,9 @@ def sequential_savepoint_cases(
     )
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
-        grid = TranslateGrid.new_from_serialized_data(serializer, rank, namelist.layout, backend).python_grid()
+        grid = TranslateGrid.new_from_serialized_data(
+            serializer, rank, namelist.layout, backend
+        ).python_grid()
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
             grid_indexing=grid.grid_indexing,
@@ -266,7 +269,9 @@ def mock_parallel_savepoint_cases(
     grid_list = []
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
-        grid = TranslateGrid.new_from_serialized_data(serializer, rank, namelist.layout, backend).python_grid()
+        grid = TranslateGrid.new_from_serialized_data(
+            serializer, rank, namelist.layout, backend
+        ).python_grid()
         grid_list.append(grid)
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
@@ -313,7 +318,9 @@ def parallel_savepoint_cases(
         rebuild=False,
         validate_args=True,
     )
-    grid = TranslateGrid.new_from_serialized_data(serializer, mpi_rank, namelist.layout, backend).python_grid()
+    grid = TranslateGrid.new_from_serialized_data(
+        serializer, mpi_rank, namelist.layout, backend
+    ).python_grid()
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,
@@ -333,7 +340,7 @@ def parallel_savepoint_cases(
                 output_savepoints,
                 [grid],
                 namelist.layout,
-                namelist, 
+                namelist,
                 stencil_factory,
             )
         )

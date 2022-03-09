@@ -1,11 +1,11 @@
 import dataclasses
 from typing import Any, Optional
 
+from pace.dsl.gt4py_utils import split_cartesian_into_storages
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
 
 from .generation import MetricTerms
-from pace import util
-from pace.dsl.gt4py_utils import split_cartesian_into_storages
+
 
 @dataclasses.dataclass(frozen=True)
 class DampingCoefficients:
@@ -521,18 +521,27 @@ class DriverGridData:
             edge_vect_e=metric_terms.edge_vect_e.storage,
             edge_vect_w=metric_terms.edge_vect_w.storage,
             es1=metric_terms.es1,
-            ew2=metric_terms.ew2
+            ew2=metric_terms.ew2,
         )
 
-
     @classmethod
-    def new_from_grid_variables(cls, vlon: FloatField, vlat: FloatField, edge_vect_n: FloatFieldIJ, edge_vect_s: FloatFieldIJ, edge_vect_e: FloatFieldI, edge_vect_w: FloatFieldI, es1: FloatField, ew2: FloatField) -> "DriverGridData":
-       
+    def new_from_grid_variables(
+        cls,
+        vlon: FloatField,
+        vlat: FloatField,
+        edge_vect_n: FloatFieldIJ,
+        edge_vect_s: FloatFieldIJ,
+        edge_vect_e: FloatFieldI,
+        edge_vect_w: FloatFieldI,
+        es1: FloatField,
+        ew2: FloatField,
+    ) -> "DriverGridData":
+
         vlon1, vlon2, vlon3 = split_cartesian_into_storages(vlon)
         vlat1, vlat2, vlat3 = split_cartesian_into_storages(vlat)
         es1_1, es1_2, es1_3 = split_cartesian_into_storages(es1)
         ew2_1, ew2_2, ew2_3 = split_cartesian_into_storages(ew2)
-      
+
         return cls(
             vlon1=vlon1,
             vlon2=vlon2,
@@ -551,5 +560,3 @@ class DriverGridData:
             edge_vect_s=edge_vect_s,
             edge_vect_n=edge_vect_n,
         )
-
-   

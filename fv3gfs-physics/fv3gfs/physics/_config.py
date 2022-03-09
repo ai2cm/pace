@@ -97,7 +97,7 @@ class PhysicsConfig:
     tice: float = NamelistDefaults.tice
     alin: float = NamelistDefaults.alin
     clin: float = NamelistDefaults.clin
-    namelist_override: str = ''
+    namelist_override: str = ""
 
     def __post_init__(self):
         if len(self.namelist_override) > 0:
@@ -139,7 +139,7 @@ class PhysicsConfig:
             vi_fac=namelist.vi_fac,
             vr_fac=namelist.vr_fac,
             de_ice=namelist.de_ice,
-            layout=tuple(namelist.layout),
+            layout=namelist.layout,  # type: ignore
             tau_imlt=namelist.tau_imlt,
             tau_i2s=namelist.tau_i2s,
             tau_g2v=namelist.tau_g2v,

@@ -205,7 +205,9 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
     )
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
-        grid = TranslateGrid.new_from_serialized_data(serializer, rank, dycore_config.layout, backend).python_grid()
+        grid = TranslateGrid.new_from_serialized_data(
+            serializer, rank, dycore_config.layout, backend
+        ).python_grid()
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
             grid_indexing=grid.grid_indexing,
@@ -255,7 +257,9 @@ def mock_parallel_savepoint_cases(
     grid_list = []
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
-        grid = TranslateGrid.new_from_serialized_data(serializer, rank, dycore_config.layout, backend).python_grid()
+        grid = TranslateGrid.new_from_serialized_data(
+            serializer, rank, dycore_config.layout, backend
+        ).python_grid()
         grid_list.append(grid)
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
@@ -315,7 +319,9 @@ def parallel_savepoint_cases(
         rebuild=False,
         validate_args=True,
     )
-    grid = TranslateGrid.new_from_serialized_data(serializer, mpi_rank, dycore_config.layout, backend).python_grid()
+    grid = TranslateGrid.new_from_serialized_data(
+        serializer, mpi_rank, dycore_config.layout, backend
+    ).python_grid()
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,

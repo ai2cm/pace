@@ -483,12 +483,13 @@ def device_sync(backend: str) -> None:
     if cp and is_gpu_backend(backend):
         cp.cuda.Device(0).synchronize()
 
+
 def split_cartesian_into_storages(var: FloatField):
     """
-     Provided a storage of dims [X_DIM, Y_DIM, CARTESIAN_DIM]
-          or [X_INTERFACE_DIM, Y_INTERFACE_DIM, CARTESIAN_DIM]
-     Split it into separate 2D storages for each cartesian
-     dimension, and return these in a list.
+    Provided a storage of dims [X_DIM, Y_DIM, CARTESIAN_DIM]
+         or [X_INTERFACE_DIM, Y_INTERFACE_DIM, CARTESIAN_DIM]
+    Split it into separate 2D storages for each cartesian
+    dimension, and return these in a list.
     """
     var_data = []
     for cart in range(3):

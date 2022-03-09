@@ -132,7 +132,6 @@ def sample_wherefail(
         f"\tmetric diff: {worst_metric_err:.3e}\n"
     )
 
-
     if xy_indices:
         if len(computed_data.shape) == 3:
             axis = 2
@@ -186,13 +185,13 @@ def process_override(threshold_overrides, testobj, test_name, backend):
             if "ignore_near_zero_errors" in match:
                 parsed_ignore_zero = match["ignore_near_zero_errors"]
                 if isinstance(parsed_ignore_zero, list):
-                    testobj.ignore_near_zero_errors.update({
-                        field: True for field in match["ignore_near_zero_errors"]
-                    })
+                    testobj.ignore_near_zero_errors.update(
+                        {field: True for field in match["ignore_near_zero_errors"]}
+                    )
                 elif isinstance(parsed_ignore_zero, dict):
-                    testobj.ignore_near_zero_errors.update({
-                        field: True for field in parsed_ignore_zero.keys()
-                    })
+                    testobj.ignore_near_zero_errors.update(
+                        {field: True for field in parsed_ignore_zero.keys()}
+                    )
                     for key in parsed_ignore_zero.keys():
                         testobj.ignore_near_zero_errors[key] = {}
                         testobj.ignore_near_zero_errors[key]["near_zero"] = float(
@@ -521,7 +520,7 @@ def test_parallel_savepoint(
                 xy_indices,
             )
             passing_names.append(failing_names.pop())
-    #if threshold_overrides is not None:
+    # if threshold_overrides is not None:
     #    reset_override(threshold_overrides, test_name, backend)
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{test_name}-{grid[0].rank}.nc")
@@ -547,6 +546,7 @@ def save_netcdf(
     testobj, inputs_list, output_list, ref_data, failing_names, out_filename
 ):
     import xarray as xr
+
     data_vars = {}
     for i, varname in enumerate(failing_names):
         dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]

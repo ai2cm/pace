@@ -19,7 +19,6 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-
 def pad_field_in_j(field, nj, backend: str):
     utils.device_sync(backend)
     outfield = utils.tile(field[:, 0, :], [nj, 1, 1]).transpose(1, 0, 2)
@@ -237,8 +236,18 @@ class TranslateGrid:
     fpy_index_offset = -1
     composite_grid_vars = ["sin_sg", "cos_sg"]
     vvars = ["vlon", "vlat"]
-    edge_var_axis = {"edge_w": 1, "edge_e": 1, "edge_s": 0, "edge_n": 0,}
-    edge_vect_axis = {"edge_vect_w": 1, "edge_vect_e": 1, "edge_vect_s": 0, "edge_vect_n": 0}
+    edge_var_axis = {
+        "edge_w": 1,
+        "edge_e": 1,
+        "edge_s": 0,
+        "edge_n": 0,
+    }
+    edge_vect_axis = {
+        "edge_vect_w": 1,
+        "edge_vect_e": 1,
+        "edge_vect_s": 0,
+        "edge_vect_n": 0,
+    }
     ee_vars = ["ee1", "ee2", "ew1", "ew2", "es1", "es2"]
     # Super (composite) grid
     #     9---4---8
@@ -246,6 +255,7 @@ class TranslateGrid:
     #     1   5   3
     #     |       |
     #     6---2---7
+
     @classmethod
     def new_from_serialized_data(cls, serializer, rank, layout, backend):
         grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
@@ -254,7 +264,7 @@ class TranslateGrid:
         for field in grid_fields:
             grid_data[field] = read_serialized_data(serializer, grid_savepoint, field)
         return cls(grid_data, rank, layout, backend=backend)
-    
+
     def __init__(self, inputs, rank, layout, *, backend: str):
         self.backend = backend
         self.indices = {}
@@ -272,14 +282,8 @@ class TranslateGrid:
 
         self.data = inputs
 
-    def make_composite_var_storage(
-        self,
-        varname,
-        data3d,
-        shape,
-        count
-    ):
-        
+    def make_composite_var_storage(self, varname, data3d, shape, count):
+
         for s in range(count):
             self.data[varname + str(s + 1)] = utils.make_storage_data(
                 np.squeeze(data3d[:, :, s]),
@@ -287,18 +291,19 @@ class TranslateGrid:
                 origin=(0, 0, 0),
                 backend=self.backend,
             )
+
     def edge_vector_storage(self, varname, axis, max_shape):
         default_origin = (0, 0, 0)
         mask = None
         if axis == 1:
             buffer = np.zeros(max_shape[1])
-            buffer[:self.data[varname].shape[0]] = self.data[varname]
+            buffer[: self.data[varname].shape[0]] = self.data[varname]
             default_origin = (0, 0)
             buffer = buffer[np.newaxis, ...]
             buffer = np.repeat(buffer, max_shape[0], axis=0)
         if axis == 0:
             buffer = np.zeros(max_shape[0])
-            buffer[:self.data[varname].shape[0]] = self.data[varname]
+            buffer[: self.data[varname].shape[0]] = self.data[varname]
             default_origin = (0,)
             mask = (True, False, False)
         self.data[varname] = utils.make_storage_data(
@@ -308,28 +313,27 @@ class TranslateGrid:
             backend=self.backend,
             mask=mask,
         )
-     
+
     def make_composite_vvar_storage(self, varname, data3d, shape):
-        """This function is needed to transform vlat, vlon
-        """
-       
+        """This function is needed to transform vlat, vlon"""
+
         size1, size2 = data3d.shape[0:2]
         buffer = np.zeros((shape[0], shape[1], 3))
-        buffer[1:1+size1, 1:1+size2, :] = data3d
+        buffer[1 : 1 + size1, 1 : 1 + size2, :] = data3d
         self.data[varname] = utils.make_storage_data(
             data=buffer,
             shape=buffer.shape,
             origin=(1, 1, 0),
             backend=self.backend,
         )
-        
+
     def make_grid_storage(self, pygrid):
         shape = pygrid.domain_shape_full(add=(1, 1, 1))
         for key in TranslateGrid.composite_grid_vars:
             if key in self.data:
                 self.make_composite_var_storage(key, self.data[key], shape, 9)
                 del self.data[key]
-    
+
         for key in TranslateGrid.vvars:
             if key in self.data:
                 self.make_composite_vvar_storage(key, self.data[key], shape)
@@ -383,4 +387,3 @@ class TranslateGrid:
         self.make_grid_storage(pygrid)
         pygrid.add_data(self.data)
         return pygrid
-

@@ -325,7 +325,7 @@ class DynamicalCoreConfig:
             vtdm4=namelist.vtdm4,
             z_tracer=namelist.z_tracer,
             do_qa=namelist.do_qa,
-            layout=tuple(namelist.layout),
+            layout=namelist.layout,  # type: ignore
             grid_type=namelist.grid_type,
             do_f3d=namelist.do_f3d,
             inline_q=namelist.inline_q,

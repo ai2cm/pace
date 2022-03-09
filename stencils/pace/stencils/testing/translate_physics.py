@@ -1,9 +1,9 @@
 import numpy as np
 
 import pace.dsl.gt4py_utils as utils
-from pace.stencils.testing.translate import TranslateFortranData2Py
-from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
 from fv3gfs.physics import PhysicsConfig
+from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
+from pace.stencils.testing.translate import TranslateFortranData2Py
 
 
 class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
@@ -61,13 +61,12 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             return data[0]
         return data
 
-
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
         max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
-       
+        axes = {"edge_vect_s": 0, "edge_vect_n": 0, "edge_vect_w": 1, "edge_vect_e": 1}
         input_data = {}
         data = serializer.read(varname, savepoint)
-       
+
         # convert single element numpy arrays to scalars
         if data.size == 1:
             data = data.item()
@@ -203,8 +202,8 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                     raise NotImplementedError("Output data dimension not supported")
         return out
 
+
 class ParallelPhysicsTranslate2Py(ParallelTranslate2Py):
     def __init__(self, rank_grids, namelist, stencil_factory):
         physics_namelist = PhysicsConfig.from_namelist(namelist)
         super().__init__(rank_grids, physics_namelist, stencil_factory)
-        

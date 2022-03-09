@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field, fields
-from typing import Any, Mapping
 
 from pace import util
 
@@ -30,9 +29,9 @@ class TendencyState:
             "intent": "inout",
         }
     )
-    
+
     @classmethod
-    def init_zeros(cls, quantity_factory) -> "TendencyState":
+    def init_zeros(cls, quantity_factory: util.QuantityFactory) -> "TendencyState":
         initial_quantities = {}
         for _field in fields(cls):
             initial_quantities[_field.name] = quantity_factory.zeros(

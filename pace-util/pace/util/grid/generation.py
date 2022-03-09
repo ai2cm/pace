@@ -2,7 +2,7 @@ import functools
 import warnings
 
 from pace import util
-from pace.dsl.gt4py_utils import asarray, make_storage_data
+from pace.dsl.gt4py_utils import asarray
 from pace.dsl.stencil import GridIndexing
 from pace.stencils.corners import (
     fill_corners_2d,

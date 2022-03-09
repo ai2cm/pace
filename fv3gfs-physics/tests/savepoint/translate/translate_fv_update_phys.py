@@ -7,7 +7,6 @@ import pace.util
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
 from pace.stencils.testing.translate_physics import ParallelPhysicsTranslate2Py
-from pace.util.grid import DriverGridData
 
 
 @dataclasses.dataclass()
@@ -73,7 +72,6 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
                 "kaxis": 1,
             },
             "pk": grid.compute_buffer_k_dict(),
-           
         }
         self._base.out_vars = {
             "qvapor": {},
@@ -117,11 +115,13 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
             return data[0]
         return data
 
-   
-
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
         max_shape = self.grid.domain_shape_full(add=(1, 1, 1))
-              
+        start_indices = {
+            "vlon": (self.grid.isd + 1, self.grid.jsd + 1),
+            "vlat": (self.grid.isd + 1, self.grid.jsd + 1),
+        }
+        axes = {"edge_vect_s": 0, "edge_vect_n": 0, "edge_vect_w": 1, "edge_vect_e": 1}
         input_data = {}
         data = serializer.read(varname, savepoint)
 

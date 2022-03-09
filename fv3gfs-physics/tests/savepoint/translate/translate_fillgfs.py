@@ -1,11 +1,16 @@
+from gt4py.gtscript import PARALLEL, computation, interval
+
+import pace.dsl.gt4py_utils as utils
+from pace.dsl.typing import FloatField
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 from pace.stencils.update_atmos_state import fill_gfs_delp
-from pace.dsl.typing import FloatField
-import pace.dsl.gt4py_utils as utils
 
-def compute_delp(pe:FloatField, delp: FloatField):
+
+def compute_delp(pe: FloatField, delp: FloatField):
     with computation(PARALLEL), interval(0, -1):
         delp = pe[0, 0, 1] - pe[0, 0, 0]
+
+
 class TranslateFillGFS(TranslatePhysicsFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)

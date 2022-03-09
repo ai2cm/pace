@@ -1,11 +1,10 @@
 # mypy: ignore-errors
-from typing import Mapping
+import collections
 
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, PARALLEL, computation, interval
-import collections
+
 import pace.dsl.gt4py_utils as utils
-import pace.util
 from fv3core.stencils.basic_operations import dim
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
@@ -723,9 +722,12 @@ def finalize(
         qsgs_tke = q0_sgs_tke
         qcld = q0_cld
 
+
 ArgSpec = collections.namedtuple(
     "ArgSpec", ["arg_name", "standard_name", "units", "intent"]
 )
+
+
 class DryConvectiveAdjustment:
     """
     Corresponds to fv_subgrid_z in Fortran's fv_sg module
