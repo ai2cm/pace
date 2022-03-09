@@ -31,15 +31,14 @@ from pace.util.namelist import Namelist
 from pace.stencils.testing.grid import Grid
 import pace.driver
 from pace.util.quantity import QuantityMetadata
-
 from .report import collect_data_and_write_to_file
-
+from .tendency_state import TendencyState
 
 @dataclasses.dataclass
 class DriverState:
     dycore_state: fv3core.DycoreState
     physics_state: fv3gfs.physics.PhysicsState
-    tendency_state: pace.driver.TendencyState
+    tendency_state: TendencyState
     grid_data: pace.util.grid.GridData
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
@@ -94,7 +93,7 @@ class BaroclinicConfig(InitializationConfig):
         physics_state = fv3gfs.physics.PhysicsState.init_zeros(
             quantity_factory=quantity_factory, active_packages=["microphysics"]
         )
-        tendency_state = pace.driver.TendencyState.init_zeros(
+        tendency_state = TendencyState.init_zeros(
             quantity_factory=quantity_factory,
         )
         return DriverState(
@@ -228,7 +227,7 @@ class SerialboxConfig(InitializationConfig):
             quantity_factory=quantity_factory,
             active_packages=["microphysics"],
         )
-        tendency_state = pace.driver.TendencyState.init_zeros(
+        tendency_state = TendencyState.init_zeros(
             quantity_factory=quantity_factory,
         )
         return DriverState(
@@ -288,7 +287,7 @@ class TranslateConfig(InitializationConfig):
         physics_state = fv3gfs.physics.PhysicsState.init_zeros(
             quantity_factory=quantity_factory, active_packages=["microphysics"]
         )
-        tendency_state = pace.driver.TendencyState.init_zeros(
+        tendency_state = TendencyState.init_zeros(
             quantity_factory=quantity_factory,
         )
         return DriverState(

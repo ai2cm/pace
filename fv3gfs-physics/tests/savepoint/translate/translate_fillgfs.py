@@ -1,4 +1,4 @@
-from fv3gfs.physics.testing.translate_physics import TranslatePhysicsFortranData2Py
+from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 from pace.stencils.update_atmos_state import fill_gfs_delp
 from pace.dsl.typing import FloatField
 import pace.dsl.gt4py_utils as utils
