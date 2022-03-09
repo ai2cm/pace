@@ -3150,7 +3150,7 @@ class TurbulenceState:
         qice : FloatField,
         qsnow : FloatField,
         qgraupel: FloatField,
-        qcloud : FloatField,
+        qsgs_tke : FloatField,
         qo3mr : FloatField,
         delprsi : FloatField,
         prsik : FloatField,
@@ -3177,12 +3177,12 @@ class TurbulenceState:
         #NOTE : May have to check if these assocations are correct
         self.q1[:,:,:][0] = qvapor
         self.q1[:,:,:][1] = qliquid
-        self.q1[:,:,:][2] = qrain
-        self.q1[:,:,:][3] = qice
+        self.q1[:,:,:][2] = qice
+        self.q1[:,:,:][3] = qrain
         self.q1[:,:,:][4] = qsnow
         self.q1[:,:,:][5] = qgraupel
         self.q1[:,:,:][6] = qo3mr
-        self.q1[:,:,:][7] = qcloud
+        self.q1[:,:,:][7] = qsgs_tke
         self.swh = copy.deepcopy(tendency_storage) # NOTE : Where is Radtend%htrsw?
         self.hlw = copy.deepcopy(tendency_storage) # NOTE : Where is Radtend%htrlw?
         self.xmu = copy.deepcopy(tendency_storage_2D)
@@ -3201,7 +3201,7 @@ class TurbulenceState:
         self.spd1 = copy.deepcopy(tendency_storage_2D)
         self.kpbl = copy.deepcopy(tendency_storage_2D)
         self.prsi = delprsi
-        self._del = copy.deepcopy(tendency_storage)
+        self.del_ = copy.deepcopy(tendency_storage)
         self.prsl = prsl
         self.prslk = prslk
         self.phii = phii
@@ -3213,7 +3213,16 @@ class TurbulenceState:
         self.hpbl = copy.deepcopy(tendency_storage_2D) # NOTE : diag%hpbl
         # self.kinver = copy.deepcopy(tendency_storage_2D)
         # self.kinver[:,:] = grid_indexing.domain[2]-1
-           
+        
+        self.updated_dv = copy.deepcopy(tendency_storage)
+        self.updated_du = copy.deepcopy(tendency_storage)
+        self.updated_tdt = copy.deepcopy(tendency_storage)
+        self.updated_kpbl = copy.deepcopy(tendency_storage_2D)
+        self.updated_dusfc = copy.deepcopy(tendency_storage_2D)
+        self.updated_dvsfc = copy.deepcopy(tendency_storage_2D)
+        self.updated_dtsfc = copy.deepcopy(tendency_storage_2D)
+        self.updated_dqsfc = copy.deepcopy(tendency_storage_2D)
+        self.updated_hpbl = copy.deepcopy(tendency_storage_2D)
 
 class Turbulence:
     def __init__(self, stencil_factory: StencilFactory, grid_data: GridData, namelist):
@@ -4478,7 +4487,7 @@ class Turbulence:
             ad_p1=self._ad_p1,
             al=self._al,
             au=self._au,
-            del_=state._del,
+            del_=state.del_,
             dkq=self._dkq,
             dt2=self._dt2,
             f1=self._f1,
@@ -4524,7 +4533,7 @@ class Turbulence:
             ad_p1=self._ad_p1,
             al=self._al,
             au=self._au,
-            del_=state._del,
+            del_=state.del_,
             dkt=self._dkt,
             f1=self._f1,
             f1_p1=self._f1_p1,
@@ -4555,7 +4564,7 @@ class Turbulence:
                 pcnvflg=self._pcnvflg,
                 mask=self._mask,
                 kpbl=state.kpbl,
-                del_=state._del,
+                del_=state.del_,
                 prsl=state.prsl,
                 rdzt=self._rdzt,
                 xmf=self._xmf,
@@ -4590,7 +4599,7 @@ class Turbulence:
             tdt=state.tdt,
             rtg=state.rtg,
             dtsfc=state.dtsfc,
-            del_=state._del,
+            del_=state.del_,
             dqsfc=state.dqsfc,
             conq=self._conq,
             cont=self._cont,
@@ -4603,7 +4612,7 @@ class Turbulence:
             ad_p1=self._ad_p1,
             al=self._al,
             au=self._au,
-            del_=state._del,
+            del_=state.del_,
             diss=self._diss,
             dku=self._dku,
             dtdz1=self._dtdz1,
@@ -4648,7 +4657,7 @@ class Turbulence:
         )
 
         moment_recover(
-            del_=state._del,
+            del_=state.del_,
             du=state.du,
             dusfc=state.dusfc,
             dv=state.dv,
