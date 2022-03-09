@@ -3405,6 +3405,8 @@ class Turbulence:
         self._xlamuem = make_storage(init=True)
         self._thlu = make_storage(init=True)
         self._dtdz1 = make_storage(init=True)
+        self._zlup_3D = make_storage(init=True)
+        self._zldn_3D = make_storage(init=True)
         # 1D GT storages extended into 2D
         self._f1_p1 = make_storage_2D(init=True)
         self._f2_p1 = make_storage_2D(init=True)
@@ -4227,6 +4229,10 @@ class Turbulence:
             totflag = totflag and self._pcnvflg[i, 0]
 
         if not totflag:
+
+            for i in range(self._im):
+                self._zm_mrad[i,0] = self._zm[i, 0, self._mrad[i,0] - 1]
+
             self._mfscu_s6(
                 zl=self._zl,
                 mask=self._mask,
@@ -4334,10 +4340,10 @@ class Turbulence:
         # *** Will have to rethink how to execute this portion of 3 stencil calls **
 
         comp_asym_mix_up(
-                mask=self._mask,
                 mlenflg=self._mlenflg,
                 bsum=self._bsum,
                 zlup=self._zlup,
+                zlup_3D=self._zlup_3D,
                 thvx_k=self._thvx_k,
                 tke_k=self._tke_k,
                 thvx=self._thvx,
@@ -4345,7 +4351,6 @@ class Turbulence:
                 gotvx=self._gotvx,
                 zl=self._zl,
                 zfmin=self._zfmin,
-                k=k,
             )
 
         comp_asym_mix_dn(
@@ -4353,6 +4358,7 @@ class Turbulence:
                 mlenflg=self._mlenflg,
                 bsum=self._bsum,
                 zldn=self._zldn,
+                zldn_3D=self._zldn_3D,
                 thvx_k=self._thvx_k,
                 tke_k=self._tke_k,
                 thvx=self._thvx,
@@ -4363,15 +4369,14 @@ class Turbulence:
                 q1_gt=state.q1,
                 zfmin=self._zfmin,
                 fv=self._fv,
-                k=k,
                 qmin=self._qmin,
             )
         comp_asym_rlam_ele(
                 zi=self._zi,
                 rlam=self._rlam,
                 ele=self._ele,
-                zlup=self._zlup,
-                zldn=self._zldn,
+                zlup=self._zlup_3D,
+                zldn=self._zldn_3D,
                 rlmn=self._rlmn,
                 rlmx=self._rlmx,
                 elmfac=self._elmfac,
