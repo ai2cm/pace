@@ -28,6 +28,6 @@ driver = Driver(
 )
 driver.diagnostics.store(time=driver.config.start_time, state=driver.state)
 driver.diagnostics.store_grid(
-                grid_data=driver.state.grid_data,
-                metadata=driver.state.dycore_state.ps.metadata,
-            )
+    grid_data=driver.state.grid_data,
+    metadata=driver.state.dycore_state.ps.metadata,
+)
