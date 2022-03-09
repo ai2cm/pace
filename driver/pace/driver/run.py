@@ -27,6 +27,7 @@ from pace.dsl.stencil import StencilFactory
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
+from pace.stencils.reset_tendencies import ResetTendencies
 from pace.stencils.testing import TranslateGrid
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients
@@ -554,6 +555,10 @@ class Driver:
         self.config = config
         self.comm = comm
         self.performance_config = self.config.performance_config
+        self.apply_tendencies = (
+            self.config.dycore_config.fv_sg_adj > 0 or not self.config.dycore_only
+        )
+        self.dry_convective_adjustment = self.config.dycore_config.fv_sg_adj > 0
         with self.performance_config.total_timer.clock("initialization"):
             communicator = pace.util.CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
@@ -574,7 +579,9 @@ class Driver:
                 config=self.config.dycore_config,
                 phis=self.state.dycore_state.phis,
             )
-            if self.config.dycore_config.fv_sg_adj > 0:
+            if self.apply_tendencies:
+                self.reset_tendencies = ResetTendencies(stencil_factory)
+            if self.dry_convective_adjustment:
                 self.fv_subgridz = DryConvectiveAdjustment(
                     stencil_factory=stencil_factory,
                     nwat=self.config.dycore_config.nwat,
@@ -630,6 +637,7 @@ class Driver:
                 tendency_state=self.state.tendency_state,
                 dt=float(timestep),
                 dycore_only=self.config.dycore_only,
+                apply_tendencies=self.apply_tendencies,
             )
         self.performance_config.collect_performance()
 
@@ -642,13 +650,17 @@ class Driver:
             timestep=float(timestep),
             timer=self.performance_config.timestep_timer,
         )
-        self.state.tendency_state.u_dt.data[:] = 0.0
-        self.state.tendency_state.v_dt.data[:] = 0.0
-        self.state.tendency_state.pt_dt.data[:] = 0.0
-        if self.config.dycore_config.fv_sg_adj > 0:
+        if self.apply_tendencies:
+            self.reset_tendencies(
+                u_dt=self.state.tendency_state.u_dt,
+                v_dt=self.state.tendency_state.v_dt,
+                pt_dt=self.state.tendency_state.pt_dt,
+            )
+        if self.dry_convective_adjustment:
             self.fv_subgridz(
                 state=self.state.dycore_state,
-                tendency_state=self.state.tendency_state,
+                u_dt=self.state.tendency_state.u_dt,
+                v_dt=self.state.tendency_state.v_dt,
                 timestep=float(timestep),
             )
 

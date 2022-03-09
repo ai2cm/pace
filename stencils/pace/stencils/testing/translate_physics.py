@@ -63,7 +63,6 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
 
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
         max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
-        axes = {"edge_vect_s": 0, "edge_vect_n": 0, "edge_vect_w": 1, "edge_vect_e": 1}
         input_data = {}
         data = serializer.read(varname, savepoint)
 
@@ -75,12 +74,9 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
         elif len(data.shape) < 2:
             start1 = 0
             size1 = data.shape[0]
-            axis = axes.get(varname, 2)
-            input_data[varname] = np.zeros(max_shape[axis])
+            input_data[varname] = np.zeros(max_shape[2])
             input_data[varname][start1 : start1 + size1] = data
-            if "edge_vect" in varname:
-                self.edge_vector_storage(input_data, varname, axis)
-                return input_data
+
         elif len(data.shape) == 2:
             input_data[varname] = np.zeros(max_shape[0:2])
             start1, start2 = (0, 0)

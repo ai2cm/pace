@@ -23,20 +23,6 @@ sys.path.append("/usr/local/serialbox/python")  # noqa: E402
 import serialbox  # noqa: E402
 
 
-PHYSICS_SAVEPOINT_TESTS = [
-    "GFSPhysicsDriver",
-    "AtmosPhysDriverStatein",
-    "PrsFV3",
-    "PhiFV3",
-    "Microph",
-    "FillGFS",
-    "PhysUpdateTracers",
-    "PhysUpdatePressureSurfaceWinds",
-    "UpdateDWindsPhys",
-    "FVUpdatePhys",
-]
-
-
 class ReplaceRepr:
     def __init__(self, wrapped, new_repr):
         self._wrapped = wrapped
@@ -91,10 +77,6 @@ def to_output_name(savepoint_name):
     return savepoint_name[-3:] + "-Out"
 
 
-def is_physics_test(savepoint_name):
-    return savepoint_name in PHYSICS_SAVEPOINT_TESTS
-
-
 def read_serialized_data(serializer, savepoint, variable):
 
     data = serializer.read(variable, savepoint)
@@ -146,7 +128,7 @@ def get_all_savepoint_names(metafunc, data_path):
         savepoint_names = set()
         serializer = get_serializer(data_path, rank=0)
         for savepoint in serializer.savepoint_list():
-            if is_input_name(savepoint.name) and is_physics_test(savepoint.name[:-3]):
+            if is_input_name(savepoint.name):
                 savepoint_names.add(savepoint.name[:-3])
     else:
         savepoint_names = set(only_names.split(","))

@@ -1,5 +1,5 @@
 # flake8: noqa: F401
-from pace.stencils.testing import TranslateUpdateDWindsPhys
+from pace.stencils.testing.translate_update_dwind_phys import TranslateUpdateDWindsPhys
 
 from .translate_atmos_phy_statein import TranslateAtmosPhysDriverStatein
 from .translate_driver import TranslateDriver

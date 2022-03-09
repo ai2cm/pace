@@ -233,7 +233,13 @@ class UpdateAtmosphereState:
         )
 
     def __call__(
-        self, dycore_state, phy_state, tendency_state, dt: float, dycore_only: bool
+        self,
+        dycore_state,
+        phy_state,
+        tendency_state,
+        dt: float,
+        dycore_only: bool,
+        apply_tendencies: bool,
     ):
         if dycore_only:
             self._fill_GFS(dycore_state.delp, dycore_state.qvapor, 1.0e-9)
@@ -267,11 +273,11 @@ class UpdateAtmosphereState:
                 dycore_state.delp,
                 self._rdt,
             )
-
-        self._apply_physics2dycore(
-            dycore_state,
-            tendency_state.u_dt,
-            tendency_state.v_dt,
-            tendency_state.pt_dt,
-            dt=dt,
-        )
+        if apply_tendencies:
+            self._apply_physics2dycore(
+                dycore_state,
+                tendency_state.u_dt,
+                tendency_state.v_dt,
+                tendency_state.pt_dt,
+                dt=dt,
+            )

@@ -39,6 +39,4 @@ class TendencyState:
                 _field.metadata["units"],
                 dtype=float,
             )
-        return cls(
-            **initial_quantities,
-        )
+        return cls(**initial_quantities)
