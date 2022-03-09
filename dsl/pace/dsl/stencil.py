@@ -205,7 +205,11 @@ class FrozenStencil(SDFGConvertible):
             stencil_kwargs["name"] = func.__module__ + "." + func.__name__
 
         if skip_passes and self.stencil_config.is_gtc_backend:
-            stencil_kwargs["oir_pipeline"].skip = skip_passes
+            stencil_kwargs["skip_passes"] = skip_passes
+        if "skip_passes" in stencil_kwargs:
+            stencil_kwargs["oir_pipeline"] = FrozenStencil._get_oir_pipeline(
+                stencil_kwargs.pop("skip_passes")
+            )
 
         # When using DaCe orchestration, we deactivate code generation
         # (Only SDFG are needed). But because some stencils are executed
@@ -331,6 +335,12 @@ class FrozenStencil(SDFGConvertible):
             and bool(field_info[field_name].access & gt4py.definitions.AccessKind.WRITE)
         ]
         return write_fields
+
+    @classmethod
+    def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
+        step_map = {step.__name__: step for step in DefaultPipeline.all_steps()}
+        skip_steps = [step_map[pass_name] for pass_name in skip_passes]
+        return DefaultPipeline(skip=skip_steps)
 
     def __sdfg__(self, *args, **kwargs):
         """Implemented SDFG generation"""
