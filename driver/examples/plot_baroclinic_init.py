@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -58,6 +59,14 @@ h = pcolormesh_cube(
 fig.colorbar(h, ax=ax, location="bottom", label=f"{args.variable}")
 title = args.experiment.replace("_", " ")
 fig.suptitle(f"{title}: {args.variable}, z={args.zlevel}")
+ax.annotate(
+    "Generated on " + datetime.now().strftime("%m/%d/%y %H:%M:%S"),
+    xy=(1.0, -0.6),
+    xycoords="axes fraction",
+    ha="right",
+    va="center",
+    fontsize=8,
+)
 plt.tight_layout()
 plt.savefig(
     f"/work/{args.experiment}_baroclinic_initialization_{args.variable}.png", dpi=150
