@@ -1,9 +1,11 @@
 from fv3core.stencils import temperature_adjust
 from fv3core.stencils.dyn_core import get_nk_heat_dissipation
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslatePressureAdjustedTemperature_NonHydrostatic(TranslateFortranData2Py):
+class TranslatePressureAdjustedTemperature_NonHydrostatic(
+    TranslateDycoreFortranData2Py
+):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.namelist = namelist

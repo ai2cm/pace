@@ -1,5 +1,5 @@
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 def get_c_sw_instance(grid, namelist, stencil_factory):
@@ -59,7 +59,7 @@ def compute_vorticitytransport_cgrid(
     )
 
 
-class TranslateC_SW(TranslateFortranData2Py):
+class TranslateC_SW(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         cgrid_shallow_water_lagrangian_dynamics = get_c_sw_instance(
@@ -100,7 +100,7 @@ class TranslateC_SW(TranslateFortranData2Py):
         return self.slice_output(inputs, {"delpcd": delpc, "ptcd": ptc})
 
 
-class TranslateDivergenceCorner(TranslateFortranData2Py):
+class TranslateDivergenceCorner(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.max_error = 9e-10
@@ -153,7 +153,7 @@ class TranslateDivergenceCorner(TranslateFortranData2Py):
         return self.slice_output({"divg_d": inputs["divg_d"]})
 
 
-class TranslateCirculation_Cgrid(TranslateFortranData2Py):
+class TranslateCirculation_Cgrid(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.max_error = 5e-9
@@ -190,7 +190,7 @@ class TranslateCirculation_Cgrid(TranslateFortranData2Py):
         return self.slice_output({"vort_c": inputs["vort_c"]})
 
 
-class TranslateVorticityTransport_Cgrid(TranslateFortranData2Py):
+class TranslateVorticityTransport_Cgrid(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         cgrid_sw_lagrangian_dynamics = get_c_sw_instance(

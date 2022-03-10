@@ -1,5 +1,5 @@
 from fv3core.stencils.divergence_damping import DivergenceDamping
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 def compute(divdamp, wk, vort, delpc, dt):
@@ -20,7 +20,7 @@ def compute(divdamp, wk, vort, delpc, dt):
         )
 
 
-class TranslateA2B_Ord4(TranslateFortranData2Py):
+class TranslateA2B_Ord4(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"wk": {}, "vort": {}, "delpc": {}, "nord_col": {}}

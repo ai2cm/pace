@@ -8,7 +8,7 @@ from pace.stencils.testing import ParallelTranslateBaseSlicing
 
 # NOTE, does no halo updates, does not need to be a Parallel test,
 # but doing so here to make the interface match fv_dynamics.
-# Could add support to the TranslateFortranData2Py class
+# Could add support to the TranslateDycoreFortranData2Py class
 class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
     inputs = {
         "delp": {
