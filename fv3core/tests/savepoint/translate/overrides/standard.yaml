@@ -163,3 +163,7 @@ UtilVectors:
 
 FVDynamics:
   - max_error: 5e-5 # 48_6ranks using metric terms
+
+DivergenceDamping:
+  - backend: gtc:dace
+    max_error: 1e-9
