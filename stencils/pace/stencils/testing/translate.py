@@ -249,6 +249,12 @@ class TranslateGrid:
         "edge_vect_n": 0,
     }
     ee_vars = ["ee1", "ee2", "ew1", "ew2", "es1", "es2"]
+    edge_vect_axis = {
+        "edge_vect_s": 0,
+        "edge_vect_n": 0,
+        "edge_vect_w": 1,
+        "edge_vect_e": 1,
+    }
     # Super (composite) grid
     #     9---4---8
     #     |       |
@@ -360,6 +366,7 @@ class TranslateGrid:
         for key, axis in TranslateGrid.edge_vect_axis.items():
             if key in self.data:
                 self.edge_vector_storage(key, axis, shape)
+
         for key, value in self.data.items():
             if type(value) is np.ndarray:
                 # TODO: when grid initialization model exists, may want to use

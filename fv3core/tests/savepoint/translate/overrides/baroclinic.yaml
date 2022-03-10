@@ -97,3 +97,15 @@ TrigSg:
 UtilVectors:
   - max_error: 5e-10 # 48_6ranks
     near_zero: 1e-13
+
+JablonowskiBaroclinic:
+  - ignore_near_zero_errors:
+      u: 4e-12
+      v: 4e-12
+    max_error: 3e-12
+
+InitCase:
+  - max_error: 7e-12
+    ignore_near_zero_errors:
+      u: 7e-12
+      v: 7e-12
