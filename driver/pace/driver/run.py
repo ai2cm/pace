@@ -471,6 +471,14 @@ class DriverConfig:
             days=self.days, hours=self.hours, minutes=self.minutes, seconds=self.seconds
         )
 
+    @functools.cached_property
+    def do_dry_convective_adjustment(self) -> bool:
+        return self.dycore_config.fv_sg_adj > 0
+
+    @functools.cached_property
+    def apply_tendencies(self) -> bool:
+        return self.do_dry_convective_adjustment or not self.dycore_only
+
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
         initialization_type = kwargs["initialization_type"]
@@ -555,10 +563,6 @@ class Driver:
         self.config = config
         self.comm = comm
         self.performance_config = self.config.performance_config
-        self.apply_tendencies = (
-            self.config.dycore_config.fv_sg_adj > 0 or not self.config.dycore_only
-        )
-        self.dry_convective_adjustment = self.config.dycore_config.fv_sg_adj > 0
         with self.performance_config.total_timer.clock("initialization"):
             communicator = pace.util.CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
@@ -579,9 +583,9 @@ class Driver:
                 config=self.config.dycore_config,
                 phis=self.state.dycore_state.phis,
             )
-            if self.apply_tendencies:
+            if self.config.apply_tendencies:
                 self.reset_tendencies = ResetTendencies(stencil_factory)
-            if self.dry_convective_adjustment:
+            if self.config.do_dry_convective_adjustment:
                 self.fv_subgridz = DryConvectiveAdjustment(
                     stencil_factory=stencil_factory,
                     nwat=self.config.dycore_config.nwat,
@@ -637,7 +641,7 @@ class Driver:
                 tendency_state=self.state.tendency_state,
                 dt=float(timestep),
                 dycore_only=self.config.dycore_only,
-                apply_tendencies=self.apply_tendencies,
+                apply_tendencies=self.config.apply_tendencies,
             )
         self.performance_config.collect_performance()
 
@@ -650,13 +654,13 @@ class Driver:
             timestep=float(timestep),
             timer=self.performance_config.timestep_timer,
         )
-        if self.apply_tendencies:
+        if self.config.apply_tendencies:
             self.reset_tendencies(
                 u_dt=self.state.tendency_state.u_dt,
                 v_dt=self.state.tendency_state.v_dt,
                 pt_dt=self.state.tendency_state.pt_dt,
             )
-        if self.dry_convective_adjustment:
+        if self.config.do_dry_convective_adjustment:
             self.fv_subgridz(
                 state=self.state.dycore_state,
                 u_dt=self.state.tendency_state.u_dt,
