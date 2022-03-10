@@ -1,25 +1,35 @@
-from gt4py.gtscript import PARALLEL, computation, horizontal, interval
+from gt4py.gtscript import PARALLEL, computation, interval
+
+from pace import util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
-from pace import util
+
+
 def reset_tendencies(u_dt: FloatField, v_dt: FloatField, pt_dt: FloatField):
     with computation(PARALLEL), interval(...):
         u_dt = 0.0
         v_dt = 0.0
         pt_dt = 0.0
 
+
 class ResetTendencies:
     """
-    A class for setting tendencies to 0, since slice assignment 
-    for 3d gpu storages doesn't work 
+    A class for setting tendencies to 0, since slice assignment
+    for 3d gpu storages doesn't work
     """
-    def __init__(
-        self, stencil_factory: StencilFactory
-    ):
+
+    def __init__(self, stencil_factory: StencilFactory):
 
         self._reset_tendencies = stencil_factory.from_dims_halo(
-            func=reset_tendencies, compute_dims=[util.X_INTERFACE_DIM, util.Y_INTERFACE_DIM, util.Z_INTERFACE_DIM], compute_halos=(3, 3)
+            func=reset_tendencies,
+            compute_dims=[
+                util.X_INTERFACE_DIM,
+                util.Y_INTERFACE_DIM,
+                util.Z_INTERFACE_DIM,
+            ],
+            compute_halos=(3, 3),
         )
+
     def __call__(self, u_dt: util.Quantity, v_dt: util.Quantity, pt_dt: util.Quantity):
         """
         Zeros out tendencies
