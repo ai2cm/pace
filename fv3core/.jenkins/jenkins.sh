@@ -167,7 +167,7 @@ fi
 export TEST_DATA_DIR="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/${DATA_VERSION}"
 export FV3_STENCIL_REBUILD_FLAG=False
 # Set the host data location
-export TEST_DATA_HOST="${TEST_DATA_DIR}/${experiment}/"
+export TEST_DATA_HOST="${TEST_DATA_DIR}/${experiment}/dycore/"
 export EXPERIMENT=${experiment}
 if [ -z ${JENKINS_TAG} ]; then
     export JENKINS_TAG=${JOB_NAME}${BUILD_NUMBER}
