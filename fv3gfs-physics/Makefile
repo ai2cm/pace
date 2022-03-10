@@ -71,14 +71,6 @@ physics_savepoint_tests_mpi:
 	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)' \
 	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
 
-# TODO move this and all driver related tests out of fv3gfs-physics
-# will make sense to do when test_translate and savepoint conftests between fv3core and physics consolidated
-#driver_savepoint_tests_mpi:
-#	TEST_DATA_HOST=$(CWD)/../test_data/$(EXPERIMENT)/dycore/ \
-#        DATA_BUCKET=$(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/dycore/ \
-#	$(MAKE) get_test_data
-#	VOLUMES=' $(VOLUMES) -v $(CWD)/../test_data/$(EXPERIMENT)/dycore/:$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)'  \
-#	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
 
 driver_savepoint_tests_mpi:
 	TEST_DATA_HOST=$(CWD)/../test_data/$(EXPERIMENT)/driver/ \
