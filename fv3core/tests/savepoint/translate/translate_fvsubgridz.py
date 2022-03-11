@@ -181,7 +181,12 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
             self.namelist.hydrostatic,
         )
         state_namespace = SimpleNamespace(**state)
-        fvsubgridz(state_namespace, state_namespace.dt)
+        fvsubgridz(
+            state_namespace,
+            state_namespace.u_dt,
+            state_namespace.v_dt,
+            state_namespace.dt,
+        )
         return self.outputs_from_state(state)
 
     def compute_sequential(self, inputs_list, communicator_list):
@@ -195,5 +200,10 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
                 self.namelist.hydrostatic,
             )
             state_namespace = SimpleNamespace(**state)
-            fvsubgridz(state_namespace, state_namespace.dt)
+            fvsubgridz(
+                state_namespace,
+                state_namespace.u_dt,
+                state_namespace.v_dt,
+                state_namespace.dt,
+            )
         return self.outputs_list_from_state_list(state_list)
