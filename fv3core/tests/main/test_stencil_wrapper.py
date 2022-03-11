@@ -2,9 +2,13 @@ import contextlib
 import unittest.mock
 
 import gt4py.gtscript
+import gtc.passes.oir_pipeline
 import numpy as np
 import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
+from gtc.passes.oir_dace_optimizations.horizontal_execution_merging import (
+    graph_merge_horizontal_executions,
+)
 
 import pace.util
 from pace.dsl.gt4py_utils import make_storage_from_shape
@@ -267,18 +271,21 @@ def test_backend_options(
             "rebuild": True,
             "device_sync": False,
             "format_source": False,
-            "skip_passes": ["graph_merge_horizontal_executions"],
+            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(
+                skip=[graph_merge_horizontal_executions]
+            ),
             "verbose": False,
         },
     }
 
     set_backend(backend)
-    stencil_kwargs = StencilConfig(
+    actual = StencilConfig(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
     ).stencil_kwargs
-    assert stencil_kwargs == expected_options[backend]
+    expected = expected_options[backend]
+    assert actual == expected
 
 
 def get_mock_quantity():

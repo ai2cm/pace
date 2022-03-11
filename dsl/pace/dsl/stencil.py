@@ -21,10 +21,13 @@ import gt4py
 import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
+from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
+from pace.dsl.dace.dace_config import dace_config, is_dacemode_codegen_whitelisted
+from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util.halo_data_transformer import QuantityHaloSpec
 
@@ -33,6 +36,17 @@ try:
     from mpi4py import MPI
 except ImportError:
     MPI = None
+
+
+# TODO: remove this monkeypatch once this code is in gt4py
+def __eq__(self, other):
+    if isinstance(other, DefaultPipeline) and self.skip == other.skip:
+        return True
+    else:
+        return False
+
+
+setattr(DefaultPipeline, "__eq__", __eq__)
 
 
 @dataclasses.dataclass
@@ -111,6 +125,11 @@ class StencilConfig(Hashable):
         }
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
+        # Note: this assure the backward compatibility between v36 and v37
+        if "skip_passes" in kwargs:
+            kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
+                kwargs.pop("skip_passes")
+            )
         return kwargs
 
     @property
@@ -121,8 +140,15 @@ class StencilConfig(Hashable):
     def is_gtc_backend(self) -> bool:
         return self.backend.startswith("gtc")
 
+    @classmethod
+    def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
+        """Creates a DefaultPipeline with skip_passes properly initialized."""
+        step_map = {step.__name__: step for step in DefaultPipeline.all_steps()}
+        skip_steps = [step_map[pass_name] for pass_name in skip_passes]
+        return DefaultPipeline(skip=skip_steps)
 
-class FrozenStencil:
+
+class FrozenStencil(SDFGConvertible):
     """
     Wrapper for gt4py stencils which stores origin and domain at compile time,
     and uses their stored values at call time.
@@ -163,8 +189,13 @@ class FrozenStencil:
         stencil_function = gtscript.stencil
         stencil_kwargs = {**self.stencil_config.stencil_kwargs}
 
-        # Enable distributed compilation if running in parallel
-        if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
+        # Enable distributed compilation if running in parallel and
+        # not running dace orchestration
+        if (
+            MPI is not None
+            and MPI.COMM_WORLD.Get_size() > 1
+            and not dace_config.is_dace_orchestrated()
+        ):
             stencil_function = future_stencil.future_stencil
             stencil_kwargs["wrapper"] = self
         else:
@@ -175,6 +206,18 @@ class FrozenStencil:
 
         if skip_passes and self.stencil_config.is_gtc_backend:
             stencil_kwargs["skip_passes"] = skip_passes
+        if "skip_passes" in stencil_kwargs:
+            stencil_kwargs["oir_pipeline"] = FrozenStencil._get_oir_pipeline(
+                stencil_kwargs.pop("skip_passes")
+            )
+
+        # When using DaCe orchestration, we deactivate code generation
+        # (Only SDFG are needed). But because some stencils are executed
+        # outside of the runtime path, we have a whitelist exception.
+        if dace_config.is_dace_orchestrated() and not is_dacemode_codegen_whitelisted(
+            func
+        ):
+            stencil_kwargs["disable_code_generation"] = True
 
         self.stencil_object: gt4py.StencilObject = stencil_function(
             definition=func,
@@ -201,6 +244,14 @@ class FrozenStencil:
         }
 
         self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
+
+        # When orchestrating with DaCe, cache the frozen stencil for
+        # calls in __sdfg__ generation
+        if dace_config.is_dace_orchestrated():
+            self._frozen_stencil = self.stencil_object.freeze(
+                origin=self._field_origins,
+                domain=self.domain,
+            )
 
     def __call__(
         self,
@@ -284,6 +335,30 @@ class FrozenStencil:
             and bool(field_info[field_name].access & gt4py.definitions.AccessKind.WRITE)
         ]
         return write_fields
+
+    @classmethod
+    def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
+        step_map = {step.__name__: step for step in DefaultPipeline.all_steps()}
+        skip_steps = [step_map[pass_name] for pass_name in skip_passes]
+        return DefaultPipeline(skip=skip_steps)
+
+    def __sdfg__(self, *args, **kwargs):
+        """Implemented SDFG generation"""
+        return self._frozen_stencil.__sdfg__(*args, **kwargs)
+
+    def __sdfg_signature__(self):
+        """Implemented SDFG signature lookup"""
+        return self._frozen_stencil.__sdfg_signature__()
+
+    def __sdfg_closure__(self, *args, **kwargs):
+        """Implemented SDFG closure build"""
+        return self._frozen_stencil.__sdfg_closure__(*args, **kwargs)
+
+    def closure_resolver(self, constant_args, given_args, parent_closure=None):
+        """Implemented SDFG closure resolver build"""
+        return self._frozen_stencil.closure_resolver(
+            constant_args, given_args, parent_closure=parent_closure
+        )
 
 
 def _convert_quantities_to_storage(args, kwargs):
