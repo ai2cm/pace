@@ -11,6 +11,7 @@ PULL ?=True
 DEV ?=n
 NUM_RANKS ?=6
 VOLUMES ?=
+DACE_INSTALL ?=
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 TEST_ARGS ?=
@@ -120,7 +121,7 @@ ifneq ($(findstring docker,$(CONTAINER_CMD)),)
 	$(MAKE) build
     endif
 endif
-	$(CONTAINER_CMD) bash -c "pip list && $(PYTEST_CMD)"
+	$(CONTAINER_CMD) bash -c "${DACE_INSTALL} pip list && $(PYTEST_CMD)"
 
 sync_test_data:
 	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)
