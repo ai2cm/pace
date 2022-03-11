@@ -16,10 +16,11 @@ REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_baroclinic_dycore_microphysics
 FORTRAN_SERIALIZED_DATA_VERSION=dev2-8.0.0
 TEST_DATA_TARFILE=dat_files.tar.gz
-TEST_DATA_HOST ?=$(CWD)/../test_data/$(EXPERIMENT)/physics/
+TARGET ?= physics
+TEST_DATA_HOST ?=$(CWD)/../test_data/$(EXPERIMENT)/$(TARGET)/
 TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
 FV3UTIL_DIR=$(CWD)/../pace-util
-DATA_BUCKET ?= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/physics/
+DATA_BUCKET ?= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)/
 TEST_DATA_RUN_LOC ?=/test_data
 
 pace=pace
@@ -73,8 +74,7 @@ physics_savepoint_tests_mpi:
 
 
 driver_savepoint_tests_mpi:
-	TEST_DATA_HOST=$(CWD)/../test_data/$(EXPERIMENT)/driver/ \
-        DATA_BUCKET=$(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/driver/ \
+	TARGET=driver \
 	$(MAKE) get_test_data
 	VOLUMES='  -v $(CWD)/../test_data/$(EXPERIMENT)/driver/:$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)'  \
 	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base

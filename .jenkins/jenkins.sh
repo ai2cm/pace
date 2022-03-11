@@ -132,7 +132,7 @@ if grep -q "parallel" <<< "${script}"; then
 fi
 
 # get the test data version from the Makefile
-export DATA_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
+export DATA_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" fv3gfs-physics/Makefile  | cut -d '=' -f 2`
 
 # Set the SCRATCH directory to the working directory if not set (e.g. for running on gce)
 if [ -z ${SCRATCH} ] ; then
