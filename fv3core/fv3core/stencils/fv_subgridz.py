@@ -247,7 +247,7 @@ def m_loop(
 ):
     from __externals__ import t_max, xvir
 
-    with computation(PARALLEL), interval(0, -1):
+    with computation(PARALLEL), interval(...):
         qcon = qcon_func(q0_liquid, q0_ice, q0_snow, q0_rain, q0_graupel)
         h0_vapor = 0.0
         h0_liquid = 0.0
@@ -265,7 +265,7 @@ def m_loop(
         ri = 0.0
         ref = 0.0
     with computation(BACKWARD):
-        with interval(-2, -1):
+        with interval(-1, None):
             ri, ri_ref = compute_richardson_number(
                 t0, q0_vapor, qcon, pkz, delp, peln, gz, u0, v0, xvir, t_max, t_min
             )
@@ -310,7 +310,7 @@ def m_loop(
                 total_energy,
                 static_energy,
             )
-        with interval(4, -2):
+        with interval(4, -1):
             if ri[0, 0, 1] < ri_ref[0, 0, 1]:
                 q0_vapor = kh_adjust_up(delp, h0_vapor, q0_vapor)
                 q0_liquid = kh_adjust_up(delp, h0_liquid, q0_liquid)
@@ -690,7 +690,7 @@ def finalize(
 ):
     from __externals__ import fv_sg_adj, hydrostatic
 
-    with computation(PARALLEL), interval(0, -1):
+    with computation(PARALLEL), interval(...):
         fra = timestep / fv_sg_adj
         if fra < 1.0:
             t0 = readjust_by_frac(t0, ta, fra)
@@ -793,7 +793,7 @@ class DryConvectiveAdjustment:
         kbot_domain = (
             grid_indexing.domain[0],
             grid_indexing.domain[1],
-            self._k_sponge + 1,
+            self._k_sponge,
         )
         origin = grid_indexing.origin_compute()
 
