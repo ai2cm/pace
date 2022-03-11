@@ -237,6 +237,12 @@ class TranslateGrid:
     composite_grid_vars = ["sin_sg", "cos_sg"]
     edge_var_axis = {"edge_w": 1, "edge_e": 1, "edge_s": 0, "edge_n": 0}
     ee_vars = ["ee1", "ee2", "ew1", "ew2", "es1", "es2"]
+    edge_vect_axis = {
+        "edge_vect_s": 0,
+        "edge_vect_n": 0,
+        "edge_vect_w": 1,
+        "edge_vect_e": 1,
+    }
     # Super (composite) grid
     #     9---4---8
     #     |       |
@@ -299,6 +305,23 @@ class TranslateGrid:
                     axis=axis,
                     read_only=True,
                     backend=self.backend,
+                )
+        for key, axis in TranslateGrid.edge_vect_axis.items():
+            if key in self.data:
+                mask = None
+                if axis == 1:
+                    default_origin = (0, 0)
+                    self.data[key] = self.data[key][np.newaxis, ...]
+                    self.data[key] = np.repeat(self.data[key], shape[0], axis=0)
+                if axis == 0:
+                    default_origin = (0,)
+                    mask = (True, False, False)
+                self.data[key] = utils.make_storage_data(
+                    data=self.data[key],
+                    origin=default_origin,
+                    shape=self.data[key].shape,
+                    backend=self.backend,
+                    mask=mask,
                 )
         for key, value in self.data.items():
             if type(value) is np.ndarray:
