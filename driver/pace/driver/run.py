@@ -187,7 +187,7 @@ class SerialboxConfig(InitializationConfig):
         backend: str,
     ):
         if self.serialized_grid:
-            (grid,) = self._get_serialized_grid(communicator, backend)
+            grid = self._get_serialized_grid(communicator, backend)
             grid_data = grid.grid_data
             driver_grid_data = grid.driver_grid_data
             damping_coeff = grid.damping_coefficients
@@ -484,7 +484,7 @@ class DriverConfig:
         initialization_type = kwargs["initialization_type"]
         if initialization_type == "serialbox":
             initialization_class = SerialboxConfig  # type: ignore
-        if initialization_type == "regression":
+        elif initialization_type == "regression":
             initialization_class = TranslateConfig  # type: ignore
         elif initialization_type == "baroclinic":
             initialization_class = BaroclinicConfig  # type: ignore
@@ -501,6 +501,7 @@ class DriverConfig:
             data=kwargs.get("initialization_config", {}),
             config=dacite.Config(strict=True),
         )
+
         if isinstance(kwargs["dycore_config"], dict):
             for derived_name in ("dt_atmos", "layout", "npx", "npy", "npz", "ntiles"):
                 if derived_name in kwargs["dycore_config"]:
@@ -509,11 +510,11 @@ class DriverConfig:
                         "as it is determined based on top-level configuration"
                     )
 
-                kwargs["dycore_config"] = dacite.from_dict(
-                    data_class=fv3core.DynamicalCoreConfig,
-                    data=kwargs.get("dycore_config", {}),
-                    config=dacite.Config(strict=True),
-                )
+            kwargs["dycore_config"] = dacite.from_dict(
+                data_class=fv3core.DynamicalCoreConfig,
+                data=kwargs.get("dycore_config", {}),
+                config=dacite.Config(strict=True),
+            )
 
         if not isinstance(kwargs["physics_config"], fv3gfs.physics.PhysicsConfig):
             kwargs["physics_config"] = dacite.from_dict(

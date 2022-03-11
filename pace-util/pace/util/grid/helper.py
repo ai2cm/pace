@@ -518,10 +518,10 @@ class DriverGridData:
             vlat=metric_terms.vlon.storage,
             edge_vect_n=metric_terms.edge_vect_n.storage,
             edge_vect_s=metric_terms.edge_vect_s.storage,
-            edge_vect_e=metric_terms.edge_vect_e.storage,
-            edge_vect_w=metric_terms.edge_vect_w.storage,
-            es1=metric_terms.es1,
-            ew2=metric_terms.ew2,
+            edge_vect_e=metric_terms.edge_vect_e_2d.storage,
+            edge_vect_w=metric_terms.edge_vect_w_2d.storage,
+            es1=metric_terms.es1.storage,
+            ew2=metric_terms.ew2.storage,
         )
 
     @classmethod
@@ -529,10 +529,10 @@ class DriverGridData:
         cls,
         vlon: FloatField,
         vlat: FloatField,
-        edge_vect_n: FloatFieldIJ,
-        edge_vect_s: FloatFieldIJ,
-        edge_vect_e: FloatFieldI,
-        edge_vect_w: FloatFieldI,
+        edge_vect_n: FloatFieldI,
+        edge_vect_s: FloatFieldI,
+        edge_vect_e: FloatFieldIJ,
+        edge_vect_w: FloatFieldIJ,
         es1: FloatField,
         ew2: FloatField,
     ) -> "DriverGridData":
