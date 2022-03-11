@@ -801,6 +801,12 @@ class DryConvectiveAdjustment:
                 grid_indexing.domain[1],
                 self._k_sponge + 1,
             ),
+            skip_passes=(
+                "KCacheDetection",
+                "PruneKCacheFills",
+                "PruneKCacheFlushes",
+                "FillFlushToLocalKCaches",
+            ),
         )
         self._m_loop_stencil = stencil_factory.from_origin_domain(
             m_loop,
