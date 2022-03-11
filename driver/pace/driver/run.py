@@ -501,7 +501,7 @@ class DriverConfig:
             data=kwargs.get("initialization_config", {}),
             config=dacite.Config(strict=True),
         )
-        if not isinstance(kwargs["dycore_config"], fv3core.DynamicalCoreConfig):
+        if isinstance(kwargs["dycore_config"], dict):
             for derived_name in ("dt_atmos", "layout", "npx", "npy", "npz", "ntiles"):
                 if derived_name in kwargs["dycore_config"]:
                     raise ValueError(
