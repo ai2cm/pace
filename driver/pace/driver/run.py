@@ -15,19 +15,19 @@ from mpi4py import MPI
 
 import fv3core
 import fv3core.initialization.baroclinic as baroclinic_init
+import fv3core.stencils.fv_subgridz as fv_subgridz
 import fv3gfs.physics
 import pace.driver
 import pace.dsl
 import pace.stencils
+import pace.stencils.reset_tendencies as reset
 import pace.util
 import pace.util.grid
-from fv3core.stencils.fv_subgridz import DryConvectiveAdjustment
 from fv3core.testing import TranslateFVDynamics
 from pace.dsl.stencil import StencilFactory
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
-from pace.stencils.reset_tendencies import ResetTendencies
 from pace.stencils.testing import TranslateGrid
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients
@@ -575,7 +575,7 @@ class Driver:
                 quantity_factory=quantity_factory, communicator=communicator
             )
             self._start_time = self.config.initialization_config.start_time
-            self.dycore = fv3core.stencils.fv_dynamics.DynamicalCore(
+            self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
                 grid_data=self.state.grid_data,
                 stencil_factory=stencil_factory,
@@ -584,9 +584,9 @@ class Driver:
                 phis=self.state.dycore_state.phis,
             )
             if self.config.apply_tendencies:
-                self.reset_tendencies = ResetTendencies(stencil_factory)
+                self.reset_tendencies = reset.ResetTendencies(stencil_factory)
             if self.config.do_dry_convective_adjustment:
-                self.fv_subgridz = DryConvectiveAdjustment(
+                self.fv_subgridz = fv_subgridz.DryConvectiveAdjustment(
                     stencil_factory=stencil_factory,
                     nwat=self.config.dycore_config.nwat,
                     fv_sg_adj=self.config.dycore_config.fv_sg_adj,

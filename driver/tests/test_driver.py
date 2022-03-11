@@ -48,7 +48,7 @@ def get_driver_config(
         initialization_config=initialization_config,
         performance_config=unittest.mock.MagicMock(),
         diagnostics_config=unittest.mock.MagicMock(),
-        dycore_config=unittest.mock.MagicMock(),
+        dycore_config=unittest.mock.MagicMock(fv_sg_adj=1),
         physics_config=unittest.mock.MagicMock(),
     )
 
@@ -178,6 +178,8 @@ def test_sypd(timing_info, dt_atmos, expected_SYPD):
 class MockedComponents:
     dycore: unittest.mock.MagicMock
     step_dynamics: unittest.mock.MagicMock
+    reset_tendencies: unittest.mock.MagicMock
+    fv_subgridz: unittest.mock.MagicMock
     physics: unittest.mock.MagicMock
     diagnostics: unittest.mock.MagicMock
     dycore_to_physics: unittest.mock.MagicMock
@@ -195,16 +197,24 @@ def mocked_components():
                     "pace.stencils.update_atmos_state.DycoreToPhysics"
                 ) as dycore_to_physics_mock:
                     with unittest.mock.patch(
-                        "pace.driver.run.Diagnostics"
-                    ) as diagnostics_mock:
+                        "pace.stencils.reset_tendencies.ResetTendencies"
+                    ) as reset_tendencies_mock:
                         with unittest.mock.patch(
-                            "fv3core.DynamicalCore.step_dynamics"
-                        ) as step_dynamics_mock:
-                            yield MockedComponents(
-                                dycore=dycore_mock,
-                                step_dynamics=step_dynamics_mock,
-                                physics=physics_mock,
-                                diagnostics=diagnostics_mock,
-                                dycore_to_physics=dycore_to_physics_mock,
-                                physics_to_dycore=physics_to_dycore_mock,
-                            )
+                            "fv3core.stencils.fv_subgridz.DryConvectiveAdjustment"
+                        ) as fv_subgridz_mock:
+                            with unittest.mock.patch(
+                                "pace.driver.run.Diagnostics"
+                            ) as diagnostics_mock:
+                                with unittest.mock.patch(
+                                    "fv3core.DynamicalCore.step_dynamics"
+                                ) as step_dynamics_mock:
+                                    yield MockedComponents(
+                                        dycore=dycore_mock,
+                                        step_dynamics=step_dynamics_mock,
+                                        physics=physics_mock,
+                                        diagnostics=diagnostics_mock,
+                                        dycore_to_physics=dycore_to_physics_mock,
+                                        physics_to_dycore=physics_to_dycore_mock,
+                                        reset_tendencies=reset_tendencies_mock,
+                                        fv_subgridz=fv_subgridz_mock,
+                                    )
