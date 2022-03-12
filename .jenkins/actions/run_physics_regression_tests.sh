@@ -8,6 +8,7 @@ export TEST_ARGS="-v -s -rsx --backend=${BACKEND} "
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../"
 export TEST_DATA_HOST="${TEST_DATA_HOST}/physics/"
 if [ ${python_env} == "virtualenv" ]; then
+    export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
     export TEST_ARGS="${TEST_ARGS} --junitxml=${JENKINS_DIR}/${XML_REPORT}"
     CONTAINER_CMD="srun" make physics_savepoint_tests
 else
