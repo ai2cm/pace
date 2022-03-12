@@ -520,8 +520,8 @@ def test_parallel_savepoint(
                 xy_indices,
             )
             passing_names.append(failing_names.pop())
-    # if threshold_overrides is not None:
-    #    reset_override(threshold_overrides, test_name, backend)
+    if threshold_overrides is not None:
+        reset_override(threshold_overrides, test_name, backend)
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{test_name}-{grid[0].rank}.nc")
         try:

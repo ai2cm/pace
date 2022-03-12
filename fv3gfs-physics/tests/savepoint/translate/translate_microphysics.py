@@ -13,7 +13,7 @@ from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2
 class TranslateMicroph(TranslatePhysicsFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
-
+        self.namelist = namelist
         self.in_vars["data_vars"] = {
             "qvapor": {"serialname": "mph_qv1", "microph": True},
             "qliquid": {"serialname": "mph_ql1", "microph": True},

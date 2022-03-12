@@ -495,7 +495,7 @@ def split_cartesian_into_storages(var: FloatField):
     for cart in range(3):
         var_data.append(
             make_storage_data(
-                var.data[:, :, cart],
+                asarray(var.data, type(var.data))[:, :, cart],
                 var.data.shape[0:2],
                 backend=var.backend,
             )
