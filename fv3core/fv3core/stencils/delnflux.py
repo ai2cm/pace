@@ -13,6 +13,7 @@ from gt4py.gtscript import (
 )
 
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, Y_DIM, Z_DIM
@@ -1001,6 +1002,7 @@ class DelnFlux:
             stencil_factory, damping_coefficients, rarea, nord, nk=nk
         )
 
+    @computepath_method
     def __call__(
         self,
         q: FloatField,
@@ -1021,10 +1023,15 @@ class DelnFlux:
         if self._no_compute is True:
             return fx, fy
 
+        # [DaCe] Optional d2 gets reduced to subset 0 in DaCe parsing leading to a
+        # parsing error
+        # Original code:
+        # if d2 is None:
+        #     d2 = self._d2
         if d2 is None:
-            d2 = self._d2
-
-        self.delnflux_nosg(q, self._fx2, self._fy2, self._damp, d2, mass)
+            self.delnflux_nosg(q, self._fx2, self._fy2, self._damp, self._d2, mass)
+        else:
+            self.delnflux_nosg(q, self._fx2, self._fy2, self._damp, d2, mass)
 
         if mass is None:
             self._add_diffusive_stencil(fx, self._fx2, fy, self._fy2)
