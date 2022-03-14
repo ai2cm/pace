@@ -3,6 +3,7 @@ import copy
 import pace.dsl.gt4py_utils as utils
 import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
+from pace.stencils import update_atmos_state
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
@@ -134,6 +135,10 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             self.namelist,
             active_packages=active_packages,
         )
+        vars_to_physics = update_atmos_state.DycoreToPhysics(
+            stencil_factory=self.stencil_factory
+        )
+        vars_to_physics(dycore_state=physics_state, physics_state=physics_state)
         physics._atmos_phys_driver_statein(
             physics_state.prsik,
             physics_state.phii,

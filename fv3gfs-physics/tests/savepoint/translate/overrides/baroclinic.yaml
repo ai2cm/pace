@@ -36,7 +36,7 @@ Microph:
   - backend: gtcuda
     cuda_no_fma: true
   - backend: gtc:gt:gpu
-    max_error: 1.1e-10
+    max_error: 1.8e-9
     cuda_no_fma: true
 
 FillGFS:
