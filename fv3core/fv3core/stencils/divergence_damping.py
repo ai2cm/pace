@@ -279,7 +279,7 @@ class DivergenceDamping:
             func=get_delpc,
             compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             compute_halos=(0, 0),
-            skip_passes=("GreedyMerging",),
+            skip_passes=("GreedyMerging", "OnTheFlyMerging"),
         )
 
         self._damping = low_k_stencil_factory.from_dims_halo(
