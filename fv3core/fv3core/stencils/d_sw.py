@@ -858,7 +858,6 @@ class DGridShallowWaterLagrangianDynamics:
                 "xt_minmax": False,
                 "yt_minmax": False,
             },
-            skip_passes=("GreedyMerging",),
         )
         self._kinetic_energy_update_part_2 = stencil_factory.from_dims_halo(
             func=kinetic_energy_update_part_2,
@@ -870,7 +869,6 @@ class DGridShallowWaterLagrangianDynamics:
                 "xt_minmax": False,
                 "yt_minmax": False,
             },
-            skip_passes=("GreedyMerging",),
         )
         self._flux_adjust_stencil = stencil_factory.from_dims_halo(
             func=flux_adjust, compute_dims=[X_DIM, Y_DIM, Z_DIM]
@@ -935,7 +933,7 @@ class DGridShallowWaterLagrangianDynamics:
             damping_coefficients.da_min_c,
         )
         self._delnflux_damp_vt = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :],
+            self._tmp_damp_3d.data[0, 0, :],
             (self.grid_indexing.domain[2],),
             (0,),
             backend=stencil_factory.backend,
@@ -948,7 +946,7 @@ class DGridShallowWaterLagrangianDynamics:
             damping_coefficients.da_min_c,
         )
         self._delnflux_damp_w = utils.make_storage_data(
-            self._tmp_damp_3d[0, 0, :],
+            self._tmp_damp_3d.data[0, 0, :],
             (self.grid_indexing.domain[2],),
             (0,),
             backend=stencil_factory.backend,

@@ -49,7 +49,7 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
                 origin=(0, 0),
                 backend=self.stencil_factory.backend,
             )
-            qs_field[:, :] = inputs["qs"][:, :, 0]
+            qs_field[:, :] = inputs["qs"].data[:, :, 0]
             inputs["qs"] = qs_field
             if inputs["qs"].shape[1] == 1:
                 inputs["qs"] = utils.tile(inputs["qs"][:, 0], [self.nj, 1]).transpose(

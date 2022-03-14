@@ -73,6 +73,6 @@ class TranslateFillz(TranslateFortranData2Py):
         tracers = np.zeros((self.grid.nic, self.grid.npz, len(inputs["tracers"])))
         for varname, data in inputs["tracers"].items():
             index = utils.tracer_variables.index(varname)
-            tracers[:, :, index] = np.squeeze(data[self.grid.slice_dict(ds)])
+            tracers[:, :, index] = np.squeeze(data.data[self.grid.slice_dict(ds)])
         out = {"q2tracers": tracers}
         return out

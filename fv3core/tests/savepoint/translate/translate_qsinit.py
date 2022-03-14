@@ -37,5 +37,5 @@ class TranslateQSInit(TranslateFortranData2Py):
         utils.device_sync(backend=self.stencil_factory.backend)
         for k, v in inputs.items():
             if v.shape == self.maxshape:
-                inputs[k] = np.squeeze(v)
+                inputs[k] = np.squeeze(v.data)
         return inputs

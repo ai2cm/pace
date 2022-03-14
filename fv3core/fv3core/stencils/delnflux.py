@@ -994,7 +994,7 @@ class DelnFlux:
             self._damp_3d, nord, damp_c, damping_coefficients.da_min
         )
         self._damp = utils.make_storage_data(
-            self._damp_3d[0, 0, :], (nk,), (0,), backend=stencil_factory.backend
+            self._damp_3d.data[0, 0, :], (nk,), (0,), backend=stencil_factory.backend
         )
 
         self.delnflux_nosg = DelnFluxNoSG(

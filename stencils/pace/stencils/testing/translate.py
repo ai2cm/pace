@@ -21,7 +21,7 @@ def read_serialized_data(serializer, savepoint, variable):
 
 def pad_field_in_j(field, nj, backend: str):
     utils.device_sync(backend)
-    outfield = utils.tile(field[:, 0, :], [nj, 1, 1]).transpose(1, 0, 2)
+    outfield = utils.tile(field.data[:, 0, :], [nj, 1, 1]).transpose(1, 0, 2)
     return outfield
 
 
