@@ -51,7 +51,7 @@ class XTP_U:
             },
             origin=origin,
             domain=domain,
-            skip_passes=("GreedyMerging",),
+            skip_passes=("GreedyMerging", "OnTheFlyMerging"),
         )
 
     def __call__(self, c: FloatField, u: FloatField, flux: FloatField):
