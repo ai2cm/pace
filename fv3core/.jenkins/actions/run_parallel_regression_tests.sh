@@ -16,5 +16,9 @@ export TEST_ARGS="${TEST_ARGS} --compute_grid"
 if [ ${python_env} == "virtualenv" ]; then
     CONTAINER_CMD="" make savepoint_tests_mpi
 else
-    make savepoint_tests_mpi
+    if [[ ${FV3_DACEMODE} == "True" ]]; then
+        RUN_FLAGS="--rm -e FV3_DACEMODE=True" make savepoint_tests_mpi
+    else
+        make savepoint_tests_mpi
+    fi
 fi

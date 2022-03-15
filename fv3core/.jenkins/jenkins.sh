@@ -60,8 +60,6 @@ TOP_LEVEL_JENKINS_DIR=$JENKINS_DIR/../../.jenkins
 action="$1"
 backend="$input_backend"
 experiment="$3"
-orchestration=${4:-none}
-savepoint=${5:-All}
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
@@ -203,22 +201,15 @@ if [ ${python_env} == "virtualenv" ]; then
     fi
     export FV3_PATH="${JENKINS_DIR}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
-    if [ "$orchestration"  == "dace" ] ; then
-        echo "dace orchestration is turned on"
-        ${JENKINS_DIR}/install_dace.sh $orchestration
-    elif [ "$orchestration"  == "python" ] ; then
-        echo "no dace orchestration, but running with dace backend"
-        ${JENKINS_DIR}/install_dace.sh $orchestration
+    if [[ "$backend"  == *"dace"* ]] ; then
+        echo "temporary fix for dace on daint..."
+        module switch gcc gcc/8.3.0
     else
         echo "no dace orchestration, not running dace backend"
     fi
 fi
 
-if [ "$orchestration"  == "none" ] ; then
-    run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script}
-else
-    run_command "${script} ${backend} ${experiment} ${savepoint} ${orchestration}" Job${action} ${scheduler_script}
-fi
+run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script}
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
