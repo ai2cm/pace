@@ -19,7 +19,9 @@ $ python3 zarr_to_nc.py output.zarr output.nz
 To run a baroclinic c12 case with Docker in a single command, run `run_docker.sh`.
 This example will start from the Python 3.8 docker image, install extra dependencies and Python packages, and execute the example, leaving the output in this directory.
 
-There is also a script `plot_output.py` which will show the output of the run. To use it, you must install matplotlib (e.g. with `pip install matplotlib`).
+To visualize the output, two example scripts are provided:
+1. `plot_output.py`: To use it, you must install matplotlib (e.g. with `pip install matplotlib`).
+2. `plot_cube.py`: this uses plotting tools in [fv3viz](https://github.com/ai2cm/fv3net/tree/master/external/fv3viz). Note the requirements aren't part of pace by default and need to be installed accordingly. It is recommended to use the post processing docker provided at the top level `docker/postprocessing.Dockerfile`.
 
 ## Host Machine
 
