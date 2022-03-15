@@ -51,7 +51,7 @@ class YTP_V:
             },
             origin=origin,
             domain=domain,
-            skip_passes=("GreedyMerging",),
+            skip_passes=("GreedyMerging", "OnTheFlyMerging"),
         )
 
     def __call__(self, c: FloatField, v: FloatField, flux: FloatField):
