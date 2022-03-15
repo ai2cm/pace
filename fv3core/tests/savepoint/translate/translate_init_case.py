@@ -254,6 +254,7 @@ class TranslateInitPreJab(TranslateFortranData2Py):
             "eta_v": {"istart": 0, "iend": 0, "jstart": 0, "jend": 0},
         }
         self.namelist = namelist
+        self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -310,6 +311,7 @@ class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
 
         self.max_error = 1e-13
         self.namelist = namelist
+        self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -386,6 +388,7 @@ class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
         for var in ["delz", "delp", "ps", "peln"]:
             self.out_vars[var] = self.in_vars["data_vars"][var]
         self.namelist = namelist
+        self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)

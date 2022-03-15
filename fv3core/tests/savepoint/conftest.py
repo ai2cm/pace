@@ -25,7 +25,9 @@ import serialbox  # noqa: E402
 
 
 GRID_SAVEPOINT_NAME = "Grid-Info"
-
+CURRENT_DACE_SAVEPOINT_TESTS = [
+    "DelnFlux",
+]
 # this must happen before any classes from fv3core are instantiated
 fv3core.testing.enable_selective_validation()
 
@@ -207,6 +209,10 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
     namelist = f90nml.read(namelist_filename)
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
+    if "dace" in backend:
+        savepoint_names = [
+            sp for sp in savepoint_names if sp in CURRENT_DACE_SAVEPOINT_TESTS
+        ]
     ranks = get_ranks(metafunc, dycore_config.layout)
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
@@ -278,6 +284,10 @@ def mock_parallel_savepoint_cases(
         grid_indexing=grid.grid_indexing,
     )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
+    if "dace" in backend:
+        savepoint_names = [
+            sp for sp in savepoint_names if sp in CURRENT_DACE_SAVEPOINT_TESTS
+        ]
     for test_name in sorted(list(savepoint_names)):
         input_list = []
         output_list = []
@@ -342,6 +352,10 @@ def parallel_savepoint_cases(
     if metafunc.config.getoption("compute_grid"):
         compute_grid_data(metafunc, grid, dycore_config)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
+    if "dace" in backend:
+        savepoint_names = [
+            sp for sp in savepoint_names if sp in CURRENT_DACE_SAVEPOINT_TESTS
+        ]
     return_list = []
     for test_name in sorted(list(savepoint_names)):
         input_savepoints = serializer.get_savepoint(f"{test_name}-In")

@@ -29,6 +29,7 @@ from pace.stencils.testing import TranslateGrid, TranslateUpdateDWindsPhys
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
+from pace.util.quantity import QuantityMetadata
 
 from .report import collect_data_and_write_to_file
 
@@ -399,6 +400,21 @@ class Diagnostics:
         assert time is not None
         self.monitor.store(zarr_state)
 
+    def store_grid(
+        self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
+    ):
+        zarr_grid = {}
+        for name in ["lat", "lon"]:
+            grid_quantity = pace.util.Quantity(
+                getattr(grid_data, name),
+                dims=("x_interface", "y_interface"),
+                origin=metadata.origin,
+                extent=(metadata.extent[0] + 1, metadata.extent[1] + 1),
+                units="rad",
+            )
+            zarr_grid[name] = grid_quantity
+        self.monitor.store_constant(zarr_grid)
+
 
 @dataclasses.dataclass(frozen=True)
 class DriverConfig:
@@ -579,7 +595,10 @@ class Driver:
         with self.performance_config.total_timer.clock("total"):
             time = self.config.start_time
             end_time = self.config.start_time + self.config.total_time
-            self.diagnostics.store(time=time, state=self.state)
+            self.diagnostics.store_grid(
+                grid_data=self.state.grid_data,
+                metadata=self.state.dycore_state.ps.metadata,
+            )
             while time < end_time:
                 self._step(timestep=self.config.timestep.total_seconds())
                 time += self.config.timestep

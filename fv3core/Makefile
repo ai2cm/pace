@@ -112,6 +112,7 @@ dev:
 		--network host \
 		-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) \
 		-v $(CWD):/port_dev \
+		$(VOLUMES) \
 		$(FV3CORE_IMAGE) bash
 
 test_base:
