@@ -27,6 +27,7 @@ import serialbox  # noqa: E402
 GRID_SAVEPOINT_NAME = "Grid-Info"
 CURRENT_DACE_SAVEPOINT_TESTS = [
     "DelnFlux",
+    "DivergenceDamping",
 ]
 # this must happen before any classes from fv3core are instantiated
 fv3core.testing.enable_selective_validation()
