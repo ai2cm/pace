@@ -1,10 +1,6 @@
 import pace.dsl.gt4py_utils as utils
-from fv3core.stencils.fvtp2d import (
-    FiniteVolumeTransport,
-    PreAllocatedCopiedCornersFactory,
-)
+from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from pace.stencils.testing import TranslateFortranData2Py
-from pace.util import X_DIM, Y_DIM, Z_DIM
 
 
 class TranslateFvTp2d(TranslateFortranData2Py):
@@ -60,13 +56,7 @@ class TranslateFvTp2d(TranslateFortranData2Py):
             damp_c=inputs.pop("damp_c"),
         )
         del inputs["hord"]
-        q_storage = inputs["q"]
-        factory = PreAllocatedCopiedCornersFactory(
-            self.stencil_factory, dims=[X_DIM, Y_DIM, Z_DIM], y_temporary=None
-        )
-        inputs["q"] = factory(q_storage)
         self.compute_func(**inputs)
-        inputs["q"] = q_storage
         return inputs
 
 
