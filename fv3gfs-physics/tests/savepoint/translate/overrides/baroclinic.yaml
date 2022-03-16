@@ -1,9 +1,9 @@
 C_SW:
-  - backend: numpy
+  - backend: gtc:numpy
     max_error: 5e-2
 
 FVDynamics:
-  - backend: numpy
+  - backend: gtc:numpy
     ignore_near_zero_errors:
       uc: 1e-13
       vc: 1e-13
@@ -13,7 +13,7 @@ FVDynamics:
       cyd: 1e-3
 
 DynCore:
-  - backend: numpy
+  - backend: gtc:numpy
     ignore_near_zero_errors:
       uc: 1e-13
       vc: 1e-13
@@ -23,7 +23,7 @@ DynCore:
       cyd: 1e-3
 
 D_SW:
-  - backend: numpy
+  - backend: gtc:numpy
     ignore_near_zero_errors:
       divgdd: 1e-20
       ucd: 1e-20
@@ -31,15 +31,13 @@ D_SW:
       delpcd: 1e-15
 
 DivergenceDamping:
-  - backend: numpy
+  - backend: gtc:numpy
     ignore_near_zero_errors:
       vort: 6e-8
       delpc: 1e-15
 
 GFSPhysicsDriver:
-  - backend: numpy
-    max_error: 1e-10
-  - backend: gtx86
+  - backend: gtc:numpy
     max_error: 1e-10
   - backend: gtc:gt:cpu_ifirst
     max_error: 1e-10
@@ -50,11 +48,11 @@ GFSPhysicsDriver:
   - backend: gtcuda
     cuda_no_fma: true
 
-# On GPU u/v wind tendencies seems to diverge in computation from numpy/fortran
+# On GPU u/v wind tendencies seems to diverge in computation from gtc:numpy/fortran
 # equivalent due to the use of fused multiply-add in the update stencil.
 # For validation we deactivate it (for validation only!)
 Microph:
-  - backend: numpy
+  - backend: gtc:numpy
     max_error: 1e-10
   - backend: gtx86
     max_error: 1e-12
