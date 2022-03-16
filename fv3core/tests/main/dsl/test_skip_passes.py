@@ -1,7 +1,9 @@
 import unittest.mock
 
 from gt4py.gtscript import PARALLEL, computation, interval
-from gtc.passes.oir_optimizations.horizontal_execution_merging import HorizontalExecutionMerging
+from gtc.passes.oir_optimizations.horizontal_execution_merging import (
+    HorizontalExecutionMerging,
+)
 from gtc.passes.oir_pipeline import DefaultPipeline
 
 from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
@@ -27,8 +29,7 @@ def test_skip_passes_becomes_oir_pipeline():
     factory = StencilFactory(config=config, grid_indexing=grid_indexing)
     with unittest.mock.patch("gt4py.gtscript.stencil") as mock_stencil_builder:
         factory.from_dims_halo(
-            stencil_definition,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            stencil_definition, compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
     pipeline: DefaultPipeline = mock_stencil_builder.call_args.kwargs["oir_pipeline"]
     assert HorizontalExecutionMerging not in pipeline.skip
@@ -58,7 +59,6 @@ def test_skip_passes_not_given_to_numpy_backend():
     factory = StencilFactory(config=config, grid_indexing=grid_indexing)
     with unittest.mock.patch("gt4py.gtscript.stencil") as mock_stencil_builder:
         factory.from_dims_halo(
-            stencil_definition,
-            compute_dims=[X_DIM, Y_DIM, Z_DIM],
+            stencil_definition, compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
     assert "oir_pipeline" not in mock_stencil_builder.call_args.kwargs
