@@ -49,7 +49,7 @@ setattr(DefaultPipeline, "__eq__", __eq__)
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
-    backend: str = "numpy"
+    backend: str = "gtc:numpy"
     rebuild: bool = True
     validate_args: bool = True
     format_source: bool = False
