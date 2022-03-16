@@ -5,6 +5,10 @@ from pace import util
 
 @dataclass()
 class TendencyState:
+    """
+    Accumulated tendencies from physical parameterizations to be applied
+    to the dynamical core model state.
+    """
     u_dt: util.Quantity = field(
         metadata={
             "name": "eastward_wind_tendency_due_to_physics",
