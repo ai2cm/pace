@@ -537,10 +537,6 @@ class DriverConfig:
             kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
             kwargs["physics_config"].npz = kwargs["nz"]
 
-        elif initialization_type in ["serialbox", "regression"]:
-            kwargs["nx_tile"] = kwargs["dycore_config"].npx - 1
-            kwargs["nz"] = kwargs["dycore_config"].npz
-            kwargs["layout"] = tuple(kwargs["dycore_config"].layout)
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
