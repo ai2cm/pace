@@ -84,7 +84,7 @@ def test_modifying_numpy_storage_modifies_view():
         extent=shape,
         dims=["dim1", "dim2"],
         units="units",
-        gt4py_backend="numpy",
+        gt4py_backend="gtc:numpy",
     )
     assert np.all(quantity.data == 0)
     quantity.storage[0, 0] = 1
@@ -207,5 +207,5 @@ def test_cannot_use_gpu_storage_with_cpu_backend(
             extent=extent,
             dims=dims,
             units=units,
-            gt4py_backend="numpy",
+            gt4py_backend="gtc:numpy",
         )

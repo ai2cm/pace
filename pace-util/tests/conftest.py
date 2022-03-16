@@ -36,12 +36,12 @@ def fast(pytestconfig):
 
 @pytest.fixture
 def numpy(backend):
-    if backend == "numpy":
+    if backend == "gtc:numpy":
         return np
     elif backend == "cupy":
         return cupy
     elif backend.startswith("gt4py"):
-        if backend.endswith("numpy"):
+        if backend.endswith("gtc:numpy"):
             return pace.util.testing.gt4py_numpy
         elif backend.endswith("cupy"):
             return pace.util.testing.gt4py_cupy
