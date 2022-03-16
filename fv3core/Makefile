@@ -14,13 +14,25 @@ VOLUMES ?=
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 TEST_ARGS ?=
-TEST_DATA_HOST ?=$(CWD)/../test_data/$(EXPERIMENT)/dycore/
+TARGET ?=dycore
+TEST_DATA_ROOT ?=$(CWD)/test_data/
+TEST_DATA_HOST ?=$(TEST_DATA_ROOT)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)
 FV3UTIL_DIR=$(CWD)/external/pace-util
 
 FV3=fv3core
 FV3_PATH ?=/$(FV3)
 
-TEST_DATA_RUN_LOC ?=/test_data
+ifeq ($(DEV),y)
+	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/pace-util -v $(CWD)/external/stencils:/external/stencils  -v $(CWD)/external/dsl:/external/dsl
+endif
+CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
+
+ifeq ($(CONTAINER_CMD),"") 
+	TEST_DATA_RUN_LOC=$(TEST_DATA_HOST)
+else
+	TEST_DATA_RUN_LOC =/test_data
+endif
+
 PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
 PYTHON_INIT_FILES = $(shell git ls-files | grep '__init__.py')
 TEST_DATA_TARFILE=dat_files.tar.gz
@@ -28,7 +40,7 @@ TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
 CORE_TAR=$(SARUS_FV3CORE_IMAGE).tar
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 BASE_INSTALL?=$(FV3)-install-serialbox
-DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/dycore/
+DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)/
 
 TEST_TYPE=$(word 3, $(subst _, ,$(EXPERIMENT)))
 THRESH_ARGS=--threshold_overrides_file=$(FV3_PATH)/tests/savepoint/translate/overrides/$(TEST_TYPE).yaml
@@ -36,10 +48,6 @@ PYTEST_MAIN=pytest $(TEST_ARGS) $(FV3_PATH)/tests/main
 PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(FV3_PATH)/tests/savepoint
 # we can't rule out a deadlock if one test fails, so we must set maxfail=1 for parallel tests
 PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(FV3_PATH)/tests/savepoint
-ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/pace-util -v $(CWD)/external/stencils:/external/stencils  -v $(CWD)/external/dsl:/external/dsl
-endif
-CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
 
 clean:
 

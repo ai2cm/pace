@@ -15,12 +15,13 @@ enable_selective_validation()
 
 
 class TranslateDriver(TranslateFVDynamics):
-    def __init__(self, grids, namelist, stencil_factory):
-        super().__init__(grids, namelist, stencil_factory)
+    def __init__(self, grids, namelist, stencil_factory, data_path):
+        super().__init__(grids, namelist, stencil_factory, data_path)
         grid = grids[0]
         self.namelist: Namelist = namelist
         self.stencil_factory = stencil_factory
         self.stencil_config = self.stencil_factory.config
+        self.data_path = data_path
 
     def compute_parallel(self, inputs, communicator):
         dycore_state = self.state_from_inputs(inputs)
