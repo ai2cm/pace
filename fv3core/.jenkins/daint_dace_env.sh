@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e -x
-orchestration=$1
 if [ -d "gt4py" ]; then rm -rf gt4py; fi
 git clone https://github.com/ai2cm/gt4py.git
 cd gt4py
