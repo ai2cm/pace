@@ -20,7 +20,7 @@ if [ ${python_env} == "virtualenv" ]; then
 else
     export TEST_ARGS="${TEST_ARGS} --junitxml=/.jenkins/${XML_REPORT}"
     if [[ ${FV3_DACEMODE} == "True" ]]; then
-        VOLUMES="-v ${SCRIPT_DIR}/../:/.jenkins" RUN_FLAGS="--rm -e FV3_DACEMODE=True" make savepoint_tests
+        VOLUMES="-v ${SCRIPT_DIR}/../:/.jenkins" make savepoint_tests
     else
         VOLUMES="-v ${SCRIPT_DIR}/../:/.jenkins" make tests savepoint_tests
     fi
