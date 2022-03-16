@@ -4,7 +4,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 from gtc.passes.oir_dace_optimizations.horizontal_execution_merging import (
     graph_merge_horizontal_executions,
 )
-from gtc.passes.oir_optimizations.horizontal_execution_merging import GreedyMerging
+from gtc.passes.oir_optimizations.horizontal_execution_merging import HorizontalExecutionMerging
 from gtc.passes.oir_pipeline import DefaultPipeline
 
 from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
@@ -34,8 +34,8 @@ def test_skip_passes_becomes_oir_pipeline():
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
     pipeline: DefaultPipeline = mock_stencil_builder.call_args.kwargs["oir_pipeline"]
-    assert GreedyMerging not in pipeline.skip
-    assert GreedyMerging in pipeline.steps
+    assert HorizontalExecutionMerging not in pipeline.skip
+    assert HorizontalExecutionMerging in pipeline.steps
     assert (
         graph_merge_horizontal_executions in pipeline.skip
     )  # skipped for gtc backends
@@ -44,12 +44,12 @@ def test_skip_passes_becomes_oir_pipeline():
         factory.from_dims_halo(
             stencil_definition,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            skip_passes=("GreedyMerging",),
+            skip_passes=("HorizontalExecutionMerging",),
         )
     assert "oir_pipeline" in mock_stencil_builder.call_args.kwargs
     pipeline: DefaultPipeline = mock_stencil_builder.call_args.kwargs["oir_pipeline"]
-    assert GreedyMerging in pipeline.skip
-    assert GreedyMerging not in pipeline.steps
+    assert HorizontalExecutionMerging in pipeline.skip
+    assert HorizontalExecutionMerging not in pipeline.steps
     assert graph_merge_horizontal_executions in pipeline.skip
     assert graph_merge_horizontal_executions not in pipeline.steps
 
