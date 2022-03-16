@@ -15,13 +15,12 @@ enable_selective_validation()
 
 
 class TranslateDriver(TranslateFVDynamics):
-    def __init__(self, grids, namelist, stencil_factory, data_path):
-        super().__init__(grids, namelist, stencil_factory, data_path)
+    def __init__(self, grids, namelist, stencil_factory):
+        super().__init__(grids, namelist, stencil_factory)
         grid = grids[0]
         self.namelist: Namelist = namelist
         self.stencil_factory = stencil_factory
         self.stencil_config = self.stencil_factory.config
-        self.data_path = data_path
 
     def compute_parallel(self, inputs, communicator):
         dycore_state = self.state_from_inputs(inputs)
@@ -38,7 +37,7 @@ class TranslateDriver(TranslateFVDynamics):
             "dycore_only": self.namelist.dycore_only,
             "nx_tile":  self.namelist.npx - 1,
             "nz" : self.namelist.npz,
-            "layout": self.namelist.layout
+            "layout": tuple(self.namelist.layout)
         }
         config = DriverConfig.from_dict(config_info)
         driver = Driver(config=config, comm=MPI.COMM_WORLD)
