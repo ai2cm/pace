@@ -35,9 +35,9 @@ class TranslateDriver(TranslateFVDynamics):
             "physics_config": PhysicsConfig.from_namelist(self.namelist),
             "seconds": self.namelist.dt_atmos,
             "dycore_only": self.namelist.dycore_only,
-            "nx_tile":  self.namelist.npx - 1,
-            "nz" : self.namelist.npz,
-            "layout": tuple(self.namelist.layout)
+            "nx_tile": self.namelist.npx - 1,
+            "nz": self.namelist.npz,
+            "layout": tuple(self.namelist.layout),
         }
         config = DriverConfig.from_dict(config_info)
         driver = Driver(config=config, comm=MPI.COMM_WORLD)
