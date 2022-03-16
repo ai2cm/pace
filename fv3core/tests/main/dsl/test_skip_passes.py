@@ -48,7 +48,7 @@ def test_skip_passes_becomes_oir_pipeline():
 
 
 def test_skip_passes_not_given_to_numpy_backend():
-    config = StencilConfig(backend="numpy")
+    config = StencilConfig(backend="gtc:numpy")
     grid_indexing = GridIndexing(
         domain=(4, 4, 7),
         n_halo=3,

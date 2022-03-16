@@ -253,7 +253,7 @@ def test_frozen_field_after_parameter(backend):
     )
 
 
-@pytest.mark.parametrize("backend", ("numpy", "gtc:cuda"))
+@pytest.mark.parametrize("backend", ("gtc:numpy", "gtc:cuda"))
 @pytest.mark.parametrize("rebuild", [True])
 @pytest.mark.parametrize("validate_args", [True])
 def test_backend_options(
@@ -262,7 +262,7 @@ def test_backend_options(
     validate_args: bool,
 ):
     expected_options = {
-        "numpy": {"backend": "numpy", "rebuild": True, "format_source": False},
+        "gtc:numpy": {"backend": "gtc:numpy", "rebuild": True, "format_source": False},
         "gtc:cuda": {
             "backend": "gtc:cuda",
             "rebuild": True,
