@@ -202,6 +202,8 @@ if [ ${python_env} == "virtualenv" ]; then
     export FV3_PATH="${JENKINS_DIR}/../"
     export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
     if [[ "$backend"  == *"dace"* ]] ; then
+        echo "temporary fix for dace on daint, installing gt4py and dace again..."
+        ${JENKINS_DIR}/daint_dace_env.sh
         echo "temporary fix for dace on daint, replacing gcc with 8.3.0..."
         module switch gcc gcc/8.3.0
     else
