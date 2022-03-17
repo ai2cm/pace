@@ -169,3 +169,7 @@ DivergenceDamping:
     max_error: 1e-9
   - backend: gtc:dace:gpu
     max_error: 1e-9
+
+DelnFlux:
+  - backend: gtc:dace
+    max_error: 2e-13

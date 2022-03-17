@@ -12,16 +12,14 @@ make get_test_data
 
 if [ ${python_env} == "virtualenv" ]; then
     export TEST_ARGS="${TEST_ARGS} --junitxml=${JENKINS_DIR}/${XML_REPORT}"
-    if [[ ${FV3_DACEMODE} == "True" ]]; then
-        CONTAINER_CMD="srun" make savepoint_tests
-    else
-        CONTAINER_CMD="srun" make tests savepoint_tests
-    fi
+    export CONTAINER_CMD="srun"
 else
     export TEST_ARGS="${TEST_ARGS} --junitxml=/.jenkins/${XML_REPORT}"
-    if [[ ${FV3_DACEMODE} == "True" ]]; then
-        VOLUMES="-v ${SCRIPT_DIR}/../:/.jenkins" RUN_FLAGS="--rm -e FV3_DACEMODE=True" make savepoint_tests
-    else
-        VOLUMES="-v ${SCRIPT_DIR}/../:/.jenkins" make tests savepoint_tests
-    fi
+    export VOLUMES="-v ${SCRIPT_DIR}/../:/.jenkins"
+fi
+
+if [[ ${FV3_DACEMODE} == "True" ]]; then
+    make savepoint_tests
+else
+    make tests savepoint_tests
 fi
