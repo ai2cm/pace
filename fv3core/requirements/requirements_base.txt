@@ -23,3 +23,6 @@ factory-boy
 pytest-factoryboy
 pytest-cache
 pytest-cov
+
+# DaCe
+git+https://github.com/spcl/dace.git@56c42b21b72b043408b725dd85d6a47ba62f451b

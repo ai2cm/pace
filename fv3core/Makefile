@@ -13,6 +13,9 @@ NUM_RANKS ?=6
 VOLUMES ?=
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
+ifeq ($(FV3_DACEMODE),True)
+   RUN_FLAGS += -e FV3_DACEMODE=True
+endif
 TEST_ARGS ?=
 TEST_DATA_HOST ?=$(CWD)/test_data/$(EXPERIMENT)
 FV3UTIL_DIR=$(CWD)/external/pace-util
@@ -112,6 +115,7 @@ dev:
 		--network host \
 		-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) \
 		-v $(CWD):/port_dev \
+		$(VOLUMES) \
 		$(FV3CORE_IMAGE) bash
 
 test_base:
