@@ -27,7 +27,7 @@ ifeq ($(DEV),y)
 endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
 
-ifneq ($(findstring $(FV3GFS_IMAGE),$(CONTAINER_CMD),)
+ifneq (,$(findstring $(FV3GFS_IMAGE),$(CONTAINER_CMD)))
 	TEST_DATA_RUN_LOC =/test_data
 else
 	TEST_DATA_RUN_LOC=$(TEST_DATA_HOST)
