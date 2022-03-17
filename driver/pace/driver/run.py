@@ -381,17 +381,16 @@ class Diagnostics:
         )
 
     def store(self, time: datetime, state: DriverState):
-        if len(self.config.names) == 0:
-            return
-        zarr_state = {"time": time}
-        for name in self.config.names:
-            try:
-                quantity = getattr(state.dycore_state, name)
-            except AttributeError:
-                quantity = getattr(state.physics_state, name)
-            zarr_state[name] = quantity
-        assert time is not None
-        self.monitor.store(zarr_state)
+        if len(self.config.names) > 0:
+            zarr_state = {"time": time}
+            for name in self.config.names:
+                try:
+                    quantity = getattr(state.dycore_state, name)
+                except AttributeError:
+                    quantity = getattr(state.physics_state, name)
+                zarr_state[name] = quantity
+            assert time is not None
+            self.monitor.store(zarr_state)
 
     def store_grid(
         self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
@@ -473,7 +472,7 @@ class DriverConfig:
 
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:
-        return self.dycore_config.fv_sg_adj > 0
+        return self.dycore_config.do_dry_convective_adjustment
 
     @functools.cached_property
     def apply_tendencies(self) -> bool:
@@ -516,26 +515,25 @@ class DriverConfig:
                 config=dacite.Config(strict=True),
             )
 
-        if not isinstance(kwargs["physics_config"], fv3gfs.physics.PhysicsConfig):
+        if isinstance(kwargs["physics_config"], dict):
             kwargs["physics_config"] = dacite.from_dict(
                 data_class=fv3gfs.physics.PhysicsConfig,
                 data=kwargs.get("physics_config", {}),
                 config=dacite.Config(strict=True),
             )
 
-        if initialization_type not in ["serialbox", "regression"]:
-            kwargs["layout"] = tuple(kwargs["layout"])
-            kwargs["dycore_config"].layout = kwargs["layout"]
-            kwargs["dycore_config"].dt_atmos = kwargs["dt_atmos"]
-            kwargs["dycore_config"].npx = kwargs["nx_tile"] + 1
-            kwargs["dycore_config"].npy = kwargs["nx_tile"] + 1
-            kwargs["dycore_config"].npz = kwargs["nz"]
-            kwargs["dycore_config"].ntiles = 6
-            kwargs["physics_config"].layout = kwargs["layout"]
-            kwargs["physics_config"].dt_atmos = kwargs["dt_atmos"]
-            kwargs["physics_config"].npx = kwargs["nx_tile"] + 1
-            kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
-            kwargs["physics_config"].npz = kwargs["nz"]
+        kwargs["layout"] = tuple(kwargs["layout"])
+        kwargs["dycore_config"].layout = kwargs["layout"]
+        kwargs["dycore_config"].dt_atmos = kwargs["dt_atmos"]
+        kwargs["dycore_config"].npx = kwargs["nx_tile"] + 1
+        kwargs["dycore_config"].npy = kwargs["nx_tile"] + 1
+        kwargs["dycore_config"].npz = kwargs["nz"]
+        kwargs["dycore_config"].ntiles = 6
+        kwargs["physics_config"].layout = kwargs["layout"]
+        kwargs["physics_config"].dt_atmos = kwargs["dt_atmos"]
+        kwargs["physics_config"].npx = kwargs["nx_tile"] + 1
+        kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
+        kwargs["physics_config"].npz = kwargs["nz"]
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
@@ -598,7 +596,7 @@ class Driver:
             self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
                 stencil_factory=stencil_factory
             )
-            self.physics_to_dycore = update_atmos_state.UpdateAtmosphereState(
+            self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
                 stencil_factory=stencil_factory,
                 grid_data=self.state.grid_data,
                 namelist=self.config.physics_config,
@@ -631,7 +629,7 @@ class Driver:
             self._step_dynamics(timestep=timestep)
             if not self.config.dycore_only:
                 self._step_physics(timestep=timestep)
-            self.physics_to_dycore(
+            self.end_of_step_update(
                 dycore_state=self.state.dycore_state,
                 phy_state=self.state.physics_state,
                 tendency_state=self.state.tendency_state,

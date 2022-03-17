@@ -542,18 +542,17 @@ class Grid:
 
     @property
     def driver_grid_data(self) -> "GridData":
-        if self._driver_grid_data is not None:
-            return self._driver_grid_data
-        self._driver_grid_data = DriverGridData.new_from_grid_variables(
-            vlon=self.vlon,
-            vlat=self.vlat,
-            edge_vect_w=self.edge_vect_w,
-            edge_vect_e=self.edge_vect_e,
-            edge_vect_s=self.edge_vect_s,
-            edge_vect_n=self.edge_vect_n,
-            es1=self.es1,
-            ew2=self.ew2,
-        )
+        if self._driver_grid_data is None:
+            self._driver_grid_data = DriverGridData.new_from_grid_variables(
+                vlon=self.vlon,
+                vlat=self.vlat,
+                edge_vect_w=self.edge_vect_w,
+                edge_vect_e=self.edge_vect_e,
+                edge_vect_s=self.edge_vect_s,
+                edge_vect_n=self.edge_vect_n,
+                es1=self.es1,
+                ew2=self.ew2,
+            )
         return self._driver_grid_data
 
     def set_grid_data(self, grid_data: "GridData"):

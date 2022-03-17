@@ -189,9 +189,6 @@ def process_override(threshold_overrides, testobj, test_name, backend):
                         {field: True for field in match["ignore_near_zero_errors"]}
                     )
                 elif isinstance(parsed_ignore_zero, dict):
-                    testobj.ignore_near_zero_errors.update(
-                        {field: True for field in parsed_ignore_zero.keys()}
-                    )
                     for key in parsed_ignore_zero.keys():
                         testobj.ignore_near_zero_errors[key] = {}
                         testobj.ignore_near_zero_errors[key]["near_zero"] = float(
@@ -200,7 +197,6 @@ def process_override(threshold_overrides, testobj, test_name, backend):
                     if "all_other_near_zero" in match:
                         for key in testobj.out_vars.keys():
                             if key not in testobj.ignore_near_zero_errors:
-                                testobj.ignore_near_zero_errors[key] = True
                                 testobj.ignore_near_zero_errors[key] = {}
                                 testobj.ignore_near_zero_errors[key][
                                     "near_zero"

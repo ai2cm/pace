@@ -12,7 +12,7 @@ Major changes:
 
 Minor changes:
 - The `split_cartesian_into_storages` method is moved out of pace-util, as it is more generally used, and now lives in pace.dsl.gt4py_utils
-- `DriverGridData` is updated to include a class initilaizer from grid variable data
+- created `DriverGridData.new_from_grid_variables` class method to initialize from grid variable data
 - updated QuantityFactory to accept the more generic GridSizer class on initialization
 - added `sizer` as public attribute on QuantityFactory
 - added `Namelist` class to initialize namelist files used in fv3gfs-fortran

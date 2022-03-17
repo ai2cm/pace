@@ -27,15 +27,15 @@ class ResetTendencies:
                 util.Y_INTERFACE_DIM,
                 util.Z_INTERFACE_DIM,
             ],
-            compute_halos=(3, 3),
+            compute_halos=(0, 0),
         )
 
     def __call__(self, u_dt: util.Quantity, v_dt: util.Quantity, pt_dt: util.Quantity):
         """
         Zeros out tendencies
-        u_dt: x-wind tendency (inout)
-        v_dt: y-wind tendency (inout)
-        pt_dt: temperature tendency (inout)
+        u_dt: x-wind tendency (out)
+        v_dt: y-wind tendency (out)
+        pt_dt: temperature tendency (out)
 
         """
         self._reset_tendencies(u_dt.storage, v_dt.storage, pt_dt.storage)

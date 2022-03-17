@@ -288,7 +288,7 @@ class TranslateGrid:
 
         self.data = inputs
 
-    def make_composite_var_storage(self, varname, data3d, shape, count):
+    def _make_composite_var_storage(self, varname, data3d, shape, count):
 
         for s in range(count):
             self.data[varname + str(s + 1)] = utils.make_storage_data(
@@ -298,7 +298,7 @@ class TranslateGrid:
                 backend=self.backend,
             )
 
-    def edge_vector_storage(self, varname, axis, max_shape):
+    def _edge_vector_storage(self, varname, axis, max_shape):
         default_origin = (0, 0, 0)
         mask = None
         if axis == 1:
@@ -320,7 +320,7 @@ class TranslateGrid:
             mask=mask,
         )
 
-    def make_composite_vvar_storage(self, varname, data3d, shape):
+    def _make_composite_vvar_storage(self, varname, data3d, shape):
         """This function is needed to transform vlat, vlon"""
 
         size1, size2 = data3d.shape[0:2]
@@ -337,12 +337,12 @@ class TranslateGrid:
         shape = pygrid.domain_shape_full(add=(1, 1, 1))
         for key in TranslateGrid.composite_grid_vars:
             if key in self.data:
-                self.make_composite_var_storage(key, self.data[key], shape, 9)
+                self._make_composite_var_storage(key, self.data[key], shape, 9)
                 del self.data[key]
 
         for key in TranslateGrid.vvars:
             if key in self.data:
-                self.make_composite_vvar_storage(key, self.data[key], shape)
+                self._make_composite_vvar_storage(key, self.data[key], shape)
 
         for key in TranslateGrid.ee_vars:
             if key in self.data:
@@ -365,7 +365,7 @@ class TranslateGrid:
                 )
         for key, axis in TranslateGrid.edge_vect_axis.items():
             if key in self.data:
-                self.edge_vector_storage(key, axis, shape)
+                self._edge_vector_storage(key, axis, shape)
 
         for key, value in self.data.items():
             if type(value) is np.ndarray:

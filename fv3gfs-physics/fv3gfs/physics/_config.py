@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Tuple
+from typing import Optional, Tuple
 
 import f90nml
 
@@ -97,10 +97,10 @@ class PhysicsConfig:
     tice: float = NamelistDefaults.tice
     alin: float = NamelistDefaults.alin
     clin: float = NamelistDefaults.clin
-    namelist_override: str = ""
+    namelist_override: Optional[str] = None
 
     def __post_init__(self):
-        if len(self.namelist_override) > 0:
+        if self.namelist_override:
             try:
                 f90_nml = f90nml.read(self.namelist_override)
             except FileNotFoundError:
