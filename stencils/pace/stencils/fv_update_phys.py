@@ -42,6 +42,8 @@ def moist_cv(
         gz = ql + qs
         cvm = moist_cvm(qvapor, gz, ql, qs)
         pt = pt + t_dt * dt * con_cp / cvm
+    with computation(PARALLEL), interval(...):
+        t_dt = 0.0
 
 
 def update_pressure_and_surface_winds(

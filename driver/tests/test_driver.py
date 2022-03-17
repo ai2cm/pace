@@ -178,7 +178,6 @@ def test_sypd(timing_info, dt_atmos, expected_SYPD):
 class MockedComponents:
     dycore: unittest.mock.MagicMock
     step_dynamics: unittest.mock.MagicMock
-    reset_tendencies: unittest.mock.MagicMock
     fv_subgridz: unittest.mock.MagicMock
     physics: unittest.mock.MagicMock
     diagnostics: unittest.mock.MagicMock
@@ -197,24 +196,20 @@ def mocked_components():
                     "pace.stencils.update_atmos_state.DycoreToPhysics"
                 ) as dycore_to_physics_mock:
                     with unittest.mock.patch(
-                        "pace.stencils.reset_tendencies.ResetTendencies"
-                    ) as reset_tendencies_mock:
+                        "fv3core.stencils.fv_subgridz.DryConvectiveAdjustment"
+                    ) as fv_subgridz_mock:
                         with unittest.mock.patch(
-                            "fv3core.stencils.fv_subgridz.DryConvectiveAdjustment"
-                        ) as fv_subgridz_mock:
+                            "pace.driver.run.Diagnostics"
+                        ) as diagnostics_mock:
                             with unittest.mock.patch(
-                                "pace.driver.run.Diagnostics"
-                            ) as diagnostics_mock:
-                                with unittest.mock.patch(
-                                    "fv3core.DynamicalCore.step_dynamics"
-                                ) as step_dynamics_mock:
-                                    yield MockedComponents(
-                                        dycore=dycore_mock,
-                                        step_dynamics=step_dynamics_mock,
-                                        physics=physics_mock,
-                                        diagnostics=diagnostics_mock,
-                                        dycore_to_physics=dycore_to_physics_mock,
-                                        end_of_step_update=end_of_step_update_mock,
-                                        reset_tendencies=reset_tendencies_mock,
-                                        fv_subgridz=fv_subgridz_mock,
-                                    )
+                                "fv3core.DynamicalCore.step_dynamics"
+                            ) as step_dynamics_mock:
+                                yield MockedComponents(
+                                    dycore=dycore_mock,
+                                    step_dynamics=step_dynamics_mock,
+                                    physics=physics_mock,
+                                    diagnostics=diagnostics_mock,
+                                    dycore_to_physics=dycore_to_physics_mock,
+                                    end_of_step_update=end_of_step_update_mock,
+                                    fv_subgridz=fv_subgridz_mock,
+                                )

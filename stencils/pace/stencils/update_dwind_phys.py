@@ -33,6 +33,9 @@ def update_dwind_prep_stencil(
         ve_1 = v3_1[-1, 0, 0] + v3_1
         ve_2 = v3_2[-1, 0, 0] + v3_2
         ve_3 = v3_3[-1, 0, 0] + v3_3
+    with computation(PARALLEL), interval(...):
+        u_dt = 0.0
+        v_dt = 0.0
 
 
 def update_dwind_y_edge_south_stencil(

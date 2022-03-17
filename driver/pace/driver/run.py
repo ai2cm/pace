@@ -20,7 +20,6 @@ import fv3gfs.physics
 import pace.driver
 import pace.dsl
 import pace.stencils
-import pace.stencils.reset_tendencies as reset
 import pace.util
 import pace.util.grid
 from fv3core.testing import TranslateFVDynamics
@@ -577,8 +576,6 @@ class Driver:
                 config=self.config.dycore_config,
                 phis=self.state.dycore_state.phis,
             )
-            if self.config.apply_tendencies:
-                self.reset_tendencies = reset.ResetTendencies(stencil_factory)
             if self.config.do_dry_convective_adjustment:
                 self.fv_subgridz = fv_subgridz.DryConvectiveAdjustment(
                     stencil_factory=stencil_factory,
@@ -648,12 +645,6 @@ class Driver:
             timestep=float(timestep),
             timer=self.performance_config.timestep_timer,
         )
-        if self.config.apply_tendencies:
-            self.reset_tendencies(
-                u_dt=self.state.tendency_state.u_dt,
-                v_dt=self.state.tendency_state.v_dt,
-                pt_dt=self.state.tendency_state.pt_dt,
-            )
         if self.config.do_dry_convective_adjustment:
             self.fv_subgridz(
                 state=self.state.dycore_state,
