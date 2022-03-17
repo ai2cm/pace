@@ -269,7 +269,7 @@ class DynamicalCore:
         pfull_stencil(self._ak, self._bk, pfull, self.config.p_ref)
         # workaround because cannot write to FieldK storage in stencil
         self._pfull = utils.make_storage_data(
-            pfull[0, 0, :], self._ak.shape, (0,), backend=stencil_factory.backend
+            pfull.data[0, 0, :], self._ak.shape, (0,), backend=stencil_factory.backend
         )
         self._fv_setup_stencil = stencil_factory.from_origin_domain(
             moist_cv.fv_setup,
