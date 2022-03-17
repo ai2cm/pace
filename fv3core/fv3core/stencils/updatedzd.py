@@ -2,13 +2,9 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
-import pace.util
 import pace.util.constants as constants
 from fv3core.stencils.delnflux import DelnFluxNoSG
-from fv3core.stencils.fvtp2d import (
-    FiniteVolumeTransport,
-    PreAllocatedCopiedCornersFactory,
-)
+from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util.grid import DampingCoefficients, GridData
@@ -325,11 +321,6 @@ class UpdateHeightOnDGrid:
         self._gamma = utils.make_storage_data(
             gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,), backend=stencil_factory.backend
         )
-        self._copy_corners = PreAllocatedCopiedCornersFactory(
-            stencil_factory=stencil_factory,
-            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_INTERFACE_DIM],
-            y_temporary=None,
-        )
 
     def __call__(
         self,
@@ -371,7 +362,7 @@ class UpdateHeightOnDGrid:
             y_area_flux, self._y_area_flux_interface, self._gk, self._beta, self._gamma
         )
         self.finite_volume_transport(
-            self._copy_corners(height),
+            height,
             self._crx_interface,
             self._cry_interface,
             self._x_area_flux_interface,

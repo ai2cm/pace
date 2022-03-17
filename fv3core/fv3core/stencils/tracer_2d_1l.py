@@ -5,10 +5,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3core.stencils.fvtp2d import (
-    FiniteVolumeTransport,
-    PreAllocatedCopiedCornersFactory,
-)
+from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 
@@ -248,11 +245,6 @@ class TracerAdvection:
         self._tracers_halo_updater = self.comm.get_scalar_halo_updater(
             [tracer_halo_spec] * tracer_count
         )
-        self._copy_corners = PreAllocatedCopiedCornersFactory(
-            stencil_factory=stencil_factory,
-            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-            y_temporary=None,
-        )
 
     def __call__(self, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt):
         """
@@ -344,7 +336,7 @@ class TracerAdvection:
             )
             for q in tracers.values():
                 self.finite_volume_transport(
-                    self._copy_corners(q.storage),
+                    q.storage,
                     cxd,
                     cyd,
                     self._tmp_xfx,
