@@ -43,7 +43,7 @@ test -n "${slave}" || exitError 1005 ${LINENO} "slave is not defined"
 # GTC backend name fix: passed as gtc_gt_* but their real name are gtc:gt:*
 #                       OR gtc_* but their real name is gtc:*
 input_backend="$2"
-if [[ $input_backend = gtc_gt_* ]] ; then
+if [[ $input_backend = gtc_gt_* ]] || [[ $input_backend = gtc_dace_* ]]; then
     # sed explained: replace _ with :, two times
     input_backend=`echo $input_backend | sed 's/_/:/;s/_/:/'`
 fi
