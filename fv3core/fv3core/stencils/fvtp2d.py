@@ -1,5 +1,4 @@
-import dataclasses
-from typing import Optional, Sequence
+from typing import Optional
 
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
@@ -119,66 +118,6 @@ def final_fluxes(
             )
 
 
-@dataclasses.dataclass
-class CopiedCorners:
-    """
-    Data container for storages with corners copied for differencing
-    along the x- and y-directions.
-
-    Attributes:
-        base: writeable version of storage with no guarantees about corner data
-        x_differentiable: read-only version of storage which can be differenced
-            along the x-direction
-        y_differentiable: read-only version of storage which can be differenced
-            along the y-direction
-    """
-
-    base: FloatField
-    x_differentiable: FloatField
-    y_differentiable: FloatField
-
-
-class PreAllocatedCopiedCornersFactory:
-    """
-    Creates CopiedCorners from a field, using an init-compiled stencil
-    and pre-allocated output fields.
-    """
-
-    def __init__(
-        self,
-        stencil_factory: StencilFactory,
-        *,
-        dims: Sequence[str],
-        y_temporary: FloatField,
-    ):
-        """
-        Args:
-            stencil_factory: creates stencils
-            dims: dimensionality of data to be copied
-            y_temporary: if given, storage to use for y-differenceable field
-                (x-differenceable field uses same memory as base storage),
-                if None then a storage is initialized based on max shape
-        """
-        if y_temporary is None:
-            y_temporary = utils.make_storage_from_shape(
-                stencil_factory.grid_indexing.max_shape,
-                origin=stencil_factory.grid_indexing.origin_compute(),
-                backend=stencil_factory.backend,
-            )
-        self._copy_corners_xy = corners.CopyCornersXY(
-            stencil_factory, dims, y_field=y_temporary
-        )
-
-    # [DaCe] Unroll CopiedCorners to avoid constructor at runtime which
-    # fails DaCe parsing
-    @computepath_method
-    def __call__(self, field: FloatFieldIJ) -> CopiedCorners:
-        x_field, y_field = self._copy_corners_xy(field)
-        return CopiedCorners(
-            base=field, x_differentiable=x_field, y_differentiable=y_field
-        )
-
-
 class FiniteVolumeTransport:
     """
     Equivalent of Fortran FV3 subroutine fv_tp_2d, done in 3 dimensions.
@@ -215,18 +154,13 @@ class FiniteVolumeTransport:
         self._q_y_advected_mean = make_storage()
         self._q_advected_x_y_advected_mean = make_storage()
         self._q_advected_y_x_advected_mean = make_storage()
-        self._corner_tmp = utils.make_storage_from_shape(
-            idx.max_shape,
-            origin=idx.origin_full(),
-            backend=stencil_factory.backend,
-            is_temporary=True,
-        )
-        """Temporary field to use for corner computation in both x and y direction"""
         self._nord = nord
         self._damp_c = damp_c
         ord_outer = hord
         ord_inner = 8 if hord == 10 else hord
         if (self._nord is not None) and (self._damp_c is not None):
+            # [DaCe] Use _do_delnflux instead of a None function
+            # to have DaCe parsing working
             self._do_delnflux = True
             self.delnflux: Optional[DelnFlux] = DelnFlux(
                 stencil_factory=stencil_factory,
@@ -236,9 +170,11 @@ class FiniteVolumeTransport:
                 damp_c=self._damp_c,
             )
         else:
-            # [DaCe] Use _do_delnflux instead of a None function for parsing
             self._do_delnflux = False
 
+        self._copy_corners_y: corners.CopyCorners = corners.CopyCorners(
+            "y", stencil_factory
+        )
         self.y_piecewise_parabolic_inner = YPiecewiseParabolic(
             stencil_factory=stencil_factory,
             dya=grid_data.dya,
@@ -259,6 +195,10 @@ class FiniteVolumeTransport:
             iord=ord_outer,
             origin=idx.origin_compute(),
             domain=idx.domain_compute(add=(1, 1, 1)),
+        )
+
+        self._copy_corners_x: corners.CopyCorners = corners.CopyCorners(
+            "x", stencil_factory
         )
         self.x_piecewise_parabolic_inner = XPiecewiseParabolic(
             stencil_factory=stencil_factory,
@@ -286,18 +226,11 @@ class FiniteVolumeTransport:
             origin=idx.origin_compute(),
             domain=idx.domain_compute(add=(1, 1, 1)),
         )
-        # [DaCe] Remove CopiedCorners - restore previous corner copy pattern
-        self._copy_corners_x: corners.CopyCorners = corners.CopyCorners(
-            "x", stencil_factory
-        )
-        self._copy_corners_y: corners.CopyCorners = corners.CopyCorners(
-            "y", stencil_factory
-        )
 
     @computepath_method
     def __call__(
         self,
-        q,  # [DaCe] Remove CopiedCorners
+        q,
         crx,
         cry,
         x_area_flux,
@@ -364,8 +297,6 @@ class FiniteVolumeTransport:
         # y_area_flux as an input (flux = area_flux * advected_mean), since a flux is
         # easier to understand than the current output. This would be like merging
         # yppm with q_i_stencil and xppm with q_j_stencil.
-
-        # [DaCe] Previous copy_corners
         self._copy_corners_y(q)
         self.y_piecewise_parabolic_inner(q, cry, self._q_y_advected_mean)
         # q_y_advected_mean is 1/Delta_area * curly-F, where curly-F is defined in
@@ -383,9 +314,7 @@ class FiniteVolumeTransport:
         )
         # q_advected_y_x_advected_mean is now rho^n + F(rho^y) in PL07 eq 16
 
-        # [DaCe] Previous copy_corners
         self._copy_corners_x(q)
-
         # similarly below for x<->y
         self.x_piecewise_parabolic_inner(q, crx, self._q_x_advected_mean)
         self.q_j_stencil(
