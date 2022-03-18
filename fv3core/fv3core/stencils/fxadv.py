@@ -1,6 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 from fv3core.stencils.d2a2c_vect import contravariant
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import GridData
@@ -547,6 +548,7 @@ class FiniteVolumeFluxPrep:
         #     n_halo=((2, 2), (2, 2)),
         # )
 
+    @computepath_method
     def __call__(
         self,
         uc,

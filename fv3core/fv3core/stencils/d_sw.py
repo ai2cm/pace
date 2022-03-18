@@ -23,6 +23,7 @@ from fv3core.stencils.fvtp2d import (
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import advect_u_along_x
 from fv3core.stencils.ytp_v import advect_v_along_y
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import (
@@ -746,7 +747,9 @@ class DGridShallowWaterLagrangianDynamics:
 
         def make_storage():
             return utils.make_storage_from_shape(
-                self.grid_indexing.max_shape, backend=stencil_factory.backend
+                self.grid_indexing.max_shape,
+                backend=stencil_factory.backend,
+                is_temporary=True,
             )
 
         self._tmp_heat_s = make_storage()
@@ -769,7 +772,9 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_fx2 = make_storage()
         self._tmp_fy2 = make_storage()
         self._tmp_damp_3d = utils.make_storage_from_shape(
-            (1, 1, self.grid_indexing.domain[2]), backend=stencil_factory.backend
+            (1, 1, self.grid_indexing.domain[2]),
+            backend=stencil_factory.backend,
+            is_temporary=True,
         )
         self._advected_u = make_storage()
         self._advected_v = make_storage()
@@ -964,6 +969,7 @@ class DGridShallowWaterLagrangianDynamics:
             y_temporary=y_temporary,
         )
 
+    @computepath_method
     def __call__(
         self,
         delpc,
@@ -1038,8 +1044,9 @@ class DGridShallowWaterLagrangianDynamics:
         # TODO: the structure of much of this is to get fluxes from fvtp2d and then
         # apply them in various similar stencils - can these steps be merged?
 
+        # [DaCe] Remove CopiedCorners
         self.fvtp2d_dp(
-            self._copy_corners(delp),
+            delp,
             crx,
             cry,
             xfx,
@@ -1081,8 +1088,9 @@ class DGridShallowWaterLagrangianDynamics:
                 dt,
             )
 
+            # [DaCe] Remove CopiedCorners
             self.fvtp2d_vt_nodelnflux(
-                self._copy_corners(w),
+                w,
                 crx,
                 cry,
                 xfx,
@@ -1101,8 +1109,9 @@ class DGridShallowWaterLagrangianDynamics:
                 self.grid_data.rarea,
             )
         # Fortran: #ifdef USE_COND
+        # [DaCe] Remove CopiedCorners
         self.fvtp2d_dp_t(
-            self._copy_corners(q_con),
+            q_con,
             crx,
             cry,
             xfx,
@@ -1119,8 +1128,9 @@ class DGridShallowWaterLagrangianDynamics:
         )
 
         # Fortran #endif //USE_COND
+        # [DaCe] Remove CopiedCorners
         self.fvtp2d_tm(
-            self._copy_corners(pt),
+            pt,
             crx,
             cry,
             xfx,
@@ -1213,8 +1223,9 @@ class DGridShallowWaterLagrangianDynamics:
         # Vorticity transport
         self._compute_vort_stencil(self._vorticity_agrid, self._f0, zh, self._tmp_vort)
 
+        # [DaCe] Unroll CopiedCorners see __init__
         self.fvtp2d_vt_nodelnflux(
-            self._copy_corners(self._tmp_vort),
+            self._tmp_vort,
             crx,
             cry,
             xfx,
