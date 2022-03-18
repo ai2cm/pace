@@ -126,7 +126,7 @@ def test_copy_frozen_stencil(
     q_out = make_storage_from_shape((3, 3, 3), backend=backend)
     q_out[:] = 2.0
     stencil(q_in, q_out)
-    np.testing.assert_array_equal(q_in, q_out)
+    np.testing.assert_array_equal(q_in.data, q_out.data)
 
 
 @pytest.mark.parametrize("device_sync", [True])
