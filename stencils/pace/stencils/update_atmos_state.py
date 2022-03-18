@@ -1,5 +1,7 @@
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
+import fv3core
+import fv3core.stencils.fv_subgridz as fv_subgridz
 import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
@@ -141,7 +143,13 @@ def copy_dycore_to_physics(
 
 
 class DycoreToPhysics:
-    def __init__(self, stencil_factory: StencilFactory):
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        dycore_config: fv3core.DynamicalCoreConfig,
+        do_dry_convective_adjustment: bool,
+        dycore_only: bool,
+    ):
         self._copy_dycore_to_physics = stencil_factory.from_dims_halo(
             copy_dycore_to_physics,
             compute_dims=[
@@ -151,42 +159,60 @@ class DycoreToPhysics:
             ],
             compute_halos=(0, 0),
         )
+        self._do_dry_convective_adjustment = do_dry_convective_adjustment
+        self._dycore_only = dycore_only
+        if self._do_dry_convective_adjustment:
+            self._fv_subgridz = fv_subgridz.DryConvectiveAdjustment(
+                stencil_factory=stencil_factory,
+                nwat=dycore_config.nwat,
+                fv_sg_adj=dycore_config.fv_sg_adj,
+                n_sponge=dycore_config.n_sponge,
+                hydrostatic=dycore_config.hydrostatic,
+            )
 
-    def __call__(self, dycore_state, physics_state):
-        self._copy_dycore_to_physics(
-            qvapor_in=dycore_state.qvapor,
-            qliquid_in=dycore_state.qliquid,
-            qrain_in=dycore_state.qrain,
-            qsnow_in=dycore_state.qsnow,
-            qice_in=dycore_state.qice,
-            qgraupel_in=dycore_state.qgraupel,
-            qo3mr_in=dycore_state.qo3mr,
-            qsgs_tke_in=dycore_state.qsgs_tke,
-            qcld_in=dycore_state.qcld,
-            pt_in=dycore_state.pt,
-            delp_in=dycore_state.delp,
-            delz_in=dycore_state.delz,
-            ua_in=dycore_state.ua,
-            va_in=dycore_state.va,
-            w_in=dycore_state.w,
-            omga_in=dycore_state.omga,
-            qvapor_out=physics_state.qvapor,
-            qliquid_out=physics_state.qliquid,
-            qrain_out=physics_state.qrain,
-            qsnow_out=physics_state.qsnow,
-            qice_out=physics_state.qice,
-            qgraupel_out=physics_state.qgraupel,
-            qo3mr_out=physics_state.qo3mr,
-            qsgs_tke_out=physics_state.qsgs_tke,
-            qcld_out=physics_state.qcld,
-            pt_out=physics_state.pt,
-            delp_out=physics_state.delp,
-            delz_out=physics_state.delz,
-            ua_out=physics_state.ua,
-            va_out=physics_state.va,
-            w_out=physics_state.w,
-            omga_out=physics_state.omga,
-        )
+    def __call__(self, dycore_state, physics_state, tendency_state, timestep: float):
+        if self._do_dry_convective_adjustment:
+            self._fv_subgridz(
+                state=dycore_state,
+                u_dt=tendency_state.u_dt,
+                v_dt=tendency_state.v_dt,
+                timestep=timestep,
+            )
+        if not self._dycore_only:
+            self._copy_dycore_to_physics(
+                qvapor_in=dycore_state.qvapor,
+                qliquid_in=dycore_state.qliquid,
+                qrain_in=dycore_state.qrain,
+                qsnow_in=dycore_state.qsnow,
+                qice_in=dycore_state.qice,
+                qgraupel_in=dycore_state.qgraupel,
+                qo3mr_in=dycore_state.qo3mr,
+                qsgs_tke_in=dycore_state.qsgs_tke,
+                qcld_in=dycore_state.qcld,
+                pt_in=dycore_state.pt,
+                delp_in=dycore_state.delp,
+                delz_in=dycore_state.delz,
+                ua_in=dycore_state.ua,
+                va_in=dycore_state.va,
+                w_in=dycore_state.w,
+                omga_in=dycore_state.omga,
+                qvapor_out=physics_state.qvapor,
+                qliquid_out=physics_state.qliquid,
+                qrain_out=physics_state.qrain,
+                qsnow_out=physics_state.qsnow,
+                qice_out=physics_state.qice,
+                qgraupel_out=physics_state.qgraupel,
+                qo3mr_out=physics_state.qo3mr,
+                qsgs_tke_out=physics_state.qsgs_tke,
+                qcld_out=physics_state.qcld,
+                pt_out=physics_state.pt,
+                delp_out=physics_state.delp,
+                delz_out=physics_state.delz,
+                ua_out=physics_state.ua,
+                va_out=physics_state.va,
+                w_out=physics_state.w,
+                omga_out=physics_state.omga,
+            )
 
 
 class UpdateAtmosphereState:
@@ -202,6 +228,8 @@ class UpdateAtmosphereState:
         comm: pace.util.CubedSphereCommunicator,
         grid_info: DriverGridData,
         quantity_factory: pace.util.QuantityFactory,
+        dycore_only: bool,
+        apply_tendencies: bool,
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
@@ -231,6 +259,8 @@ class UpdateAtmosphereState:
             comm,
             grid_info,
         )
+        self._dycore_only = dycore_only
+        self._apply_tendencies = apply_tendencies
 
     def __call__(
         self,
@@ -238,10 +268,8 @@ class UpdateAtmosphereState:
         phy_state,
         tendency_state,
         dt: float,
-        dycore_only: bool,
-        apply_tendencies: bool,
     ):
-        if dycore_only:
+        if self._dycore_only:
             self._fill_GFS(dycore_state.delp, dycore_state.qvapor, 1.0e-9)
         else:
             self._fill_GFS(
@@ -273,7 +301,7 @@ class UpdateAtmosphereState:
                 dycore_state.delp,
                 self._rdt,
             )
-        if apply_tendencies:
+        if self._apply_tendencies:
             self._apply_physics2dycore(
                 dycore_state,
                 tendency_state.u_dt,

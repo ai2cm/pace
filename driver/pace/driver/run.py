@@ -15,7 +15,6 @@ from mpi4py import MPI
 
 import fv3core
 import fv3core.initialization.baroclinic as baroclinic_init
-import fv3core.stencils.fv_subgridz as fv_subgridz
 import fv3gfs.physics
 import pace.driver
 import pace.dsl
@@ -576,14 +575,7 @@ class Driver:
                 config=self.config.dycore_config,
                 phis=self.state.dycore_state.phis,
             )
-            if self.config.do_dry_convective_adjustment:
-                self.fv_subgridz = fv_subgridz.DryConvectiveAdjustment(
-                    stencil_factory=stencil_factory,
-                    nwat=self.config.dycore_config.nwat,
-                    fv_sg_adj=self.config.dycore_config.fv_sg_adj,
-                    n_sponge=self.config.dycore_config.n_sponge,
-                    hydrostatic=self.config.dycore_config.hydrostatic,
-                )
+
             self.physics = fv3gfs.physics.Physics(
                 stencil_factory=stencil_factory,
                 grid_data=self.state.grid_data,
@@ -591,7 +583,10 @@ class Driver:
                 active_packages=["microphysics"],
             )
             self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
-                stencil_factory=stencil_factory
+                stencil_factory=stencil_factory,
+                dycore_config=self.config.dycore_config,
+                do_dry_convective_adjustment=self.config.do_dry_convective_adjustment,
+                dycore_only=self.config.dycore_only,
             )
             self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
                 stencil_factory=stencil_factory,
@@ -600,6 +595,8 @@ class Driver:
                 comm=communicator,
                 grid_info=self.state.driver_grid_data,
                 quantity_factory=quantity_factory,
+                dycore_only=self.config.dycore_only,
+                apply_tendencies=self.config.apply_tendencies,
             )
             self.diagnostics = Diagnostics(
                 config=config.diagnostics_config,
@@ -624,16 +621,8 @@ class Driver:
     def _step(self, timestep: float):
         with self.performance_config.timestep_timer.clock("mainloop"):
             self._step_dynamics(timestep=timestep)
-            if not self.config.dycore_only:
-                self._step_physics(timestep=timestep)
-            self.end_of_step_update(
-                dycore_state=self.state.dycore_state,
-                phy_state=self.state.physics_state,
-                tendency_state=self.state.tendency_state,
-                dt=float(timestep),
-                dycore_only=self.config.dycore_only,
-                apply_tendencies=self.config.apply_tendencies,
-            )
+            self._step_physics(timestep=timestep)
+
         self.performance_config.collect_performance()
 
     def _step_dynamics(self, timestep: float):
@@ -645,19 +634,22 @@ class Driver:
             timestep=float(timestep),
             timer=self.performance_config.timestep_timer,
         )
-        if self.config.do_dry_convective_adjustment:
-            self.fv_subgridz(
-                state=self.state.dycore_state,
-                u_dt=self.state.tendency_state.u_dt,
-                v_dt=self.state.tendency_state.v_dt,
-                timestep=float(timestep),
-            )
 
     def _step_physics(self, timestep: float):
         self.dycore_to_physics(
-            dycore_state=self.state.dycore_state, physics_state=self.state.physics_state
+            dycore_state=self.state.dycore_state,
+            physics_state=self.state.physics_state,
+            tendency_state=self.state.tendency_state,
+            timestep=float(timestep),
         )
-        self.physics(self.state.physics_state, timestep=float(timestep))
+        if not self.config.dycore_only:
+            self.physics(self.state.physics_state, timestep=float(timestep))
+        self.end_of_step_update(
+            dycore_state=self.state.dycore_state,
+            phy_state=self.state.physics_state,
+            tendency_state=self.state.tendency_state,
+            dt=float(timestep),
+        )
 
     def write_performance_json_output(self):
         self.performance_config.write_out_performance(
