@@ -1,14 +1,8 @@
-from gt4py.gtscript import PARALLEL, computation, interval
+import numpy as np
 
 import pace.dsl.gt4py_utils as utils
-from pace.dsl.typing import FloatField
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 from pace.stencils.update_atmos_state import fill_gfs_delp
-
-
-def compute_delp(pe: FloatField, delp: FloatField):
-    with computation(PARALLEL), interval(0, -1):
-        delp = pe[0, 0, 1] - pe[0, 0, 0]
 
 
 class TranslateFillGFS(TranslatePhysicsFortranData2Py):
@@ -23,11 +17,6 @@ class TranslateFillGFS(TranslatePhysicsFortranData2Py):
             "q": {"serialname": "IPD_qvapor", "kend": namelist.npz - 1},
         }
         self.grid_indexing = stencil_factory.grid_indexing
-        self.compute_delp = stencil_factory.from_origin_domain(
-            compute_delp,
-            origin=self.grid_indexing.origin_full(),
-            domain=self.grid_indexing.domain_full(add=(1, 1, 1)),
-        )
         self.compute_func = stencil_factory.from_origin_domain(
             fill_gfs_delp,
             origin=self.grid_indexing.origin_full(),
@@ -38,13 +27,15 @@ class TranslateFillGFS(TranslatePhysicsFortranData2Py):
         self.make_storage_data_input_vars(inputs)
         inputs["q"] = inputs["q"]["qvapor"]
         inputs["q_min"] = 1.0e-9
-        delp = utils.make_storage_from_shape(
-            self.grid_indexing.domain_full(add=(1, 1, 1)),
-            origin=self.grid_indexing.origin_compute(),
-            init=True,
+        shape = self.grid_indexing.domain_full(add=(1, 1, 1))
+        delp = np.zeros(shape)
+        delp[:, :, :-1] = inputs["pe"][:, :, 1:] - inputs["pe"][:, :, :-1]
+        delp = utils.make_storage_data(
+            delp,
+            origin=self.grid_indexing.origin_full(),
+            shape=shape,
             backend=self.stencil_factory.backend,
         )
-        self.compute_delp(inputs["pe"], delp)
         del inputs["pe"]
         inputs["delp"] = delp
         self.compute_func(**inputs)

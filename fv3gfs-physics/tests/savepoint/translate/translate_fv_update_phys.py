@@ -5,7 +5,7 @@ import numpy as np
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
+from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
 from pace.stencils.testing.translate_physics import ParallelPhysicsTranslate2Py
 
 
@@ -212,7 +212,7 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         partitioner = pace.util.CubedSpherePartitioner(
             pace.util.TilePartitioner(self.namelist.layout)
         )
-        self._base.compute_func = ApplyPhysics2Dycore(
+        self._base.compute_func = ApplyPhysicsToDycore(
             self.stencil_factory,
             self.grid.grid_data,
             self.namelist,

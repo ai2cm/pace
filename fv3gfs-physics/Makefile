@@ -9,7 +9,7 @@ VOLUMES ?=
 NUM_RANKS ?=6
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
-TEST_ARGS ?=''
+TEST_ARGS ?=
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data

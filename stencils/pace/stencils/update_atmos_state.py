@@ -7,7 +7,7 @@ import fv3core.stencils.fv_subgridz as fv_subgridz
 import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
-from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
+from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
 from pace.util.grid import DriverGridData, GridData
 
 
@@ -254,13 +254,13 @@ class UpdateAtmosphereState:
         )
 
         dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
-        self._fill_GFS = stencil_factory.from_origin_domain(
+        self._fill_GFS_delp = stencil_factory.from_origin_domain(
             fill_gfs_delp,
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(0, 0, 1)),
         )
 
-        self._apply_physics2dycore = ApplyPhysics2Dycore(
+        self._apply_physics_to_dycore = ApplyPhysicsToDycore(
             stencil_factory,
             grid_data,
             self.namelist,
@@ -278,9 +278,9 @@ class UpdateAtmosphereState:
         dt: float,
     ):
         if self._dycore_only:
-            self._fill_GFS(dycore_state.delp, dycore_state.qvapor, 1.0e-9)
+            self._fill_GFS_delp(dycore_state.delp, dycore_state.qvapor, 1.0e-9)
         else:
-            self._fill_GFS(
+            self._fill_GFS_delp(
                 dycore_state.delp, phy_state.physics_updated_specific_humidity, 1.0e-9
             )
             self._prepare_tendencies_and_update_tracers(
@@ -310,7 +310,7 @@ class UpdateAtmosphereState:
                 self._rdt,
             )
         if self._apply_tendencies:
-            self._apply_physics2dycore(
+            self._apply_physics_to_dycore(
                 dycore_state,
                 tendency_state.u_dt,
                 tendency_state.v_dt,

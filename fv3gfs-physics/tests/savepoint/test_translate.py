@@ -495,7 +495,6 @@ def test_parallel_savepoint(
             new_ref_data = testobj.subset_output(varname, new_ref_data)
         ref_data[varname].append(new_ref_data)
         ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
-        print("TESTING", varname, ignore_near_zero)
         with subtests.test(varname=varname):
             failing_names.append(varname)
             assert success(
@@ -554,7 +553,7 @@ def save_netcdf(
                 attrs=attrs,
             )
         except KeyError as error:
-            print(f"No input data found for {error}")
+            print(f"No input data found for {varname}: {error}")
         data_vars[f"{varname}_ref"] = xr.DataArray(
             np.stack(ref_data[varname]), dims=("rank",) + tuple(dims), attrs=attrs
         )

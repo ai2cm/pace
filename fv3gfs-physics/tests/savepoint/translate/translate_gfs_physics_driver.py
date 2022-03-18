@@ -10,7 +10,9 @@ from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
-
+        # using top level namelist rather than PhysicsConfig
+        # because DycoreToPhysics needs some dycore info
+        self.namelist = namelist
         self.in_vars["data_vars"] = {
             "qvapor": {"dycore": True},
             "qliquid": {"dycore": True},
@@ -140,7 +142,10 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         # get around this issue another way. Setting do_dry_convective_adjustment
         # to False for now (we don't run this on a case where it is True yet)
         dycore_to_physics = update_atmos_state.DycoreToPhysics(
-            self.stencil_factory, self.namelist, False, False
+            self.stencil_factory,
+            self.namelist,
+            self.namelist.fv_sg_adj > 0,
+            self.namelist.dycore_only,
         )
         dycore_to_physics(dycore_state=physics_state, physics_state=physics_state)
         physics._atmos_phys_driver_statein(
