@@ -33,6 +33,7 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "FvTp2d",
     "FxAdv",
     "D_SW",
+    "D2A2C_Vect",
     "C_SW",
     "DynCore",
 ]
