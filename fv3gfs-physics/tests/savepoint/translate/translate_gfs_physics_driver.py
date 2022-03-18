@@ -135,8 +135,12 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             self.namelist,
             active_packages=active_packages,
         )
+        # TODO, self.namelist doesn't have fv_sg_adj because it is PhysicsConfig
+        # either move where GFSPhysicsDriver starts, or pass the full namelist or
+        # get around this issue another way. Setting do_dry_convective_adjustment
+        # to False for now (we don't run this on a case where it is True yet)
         dycore_to_physics = update_atmos_state.DycoreToPhysics(
-            stencil_factory=self.stencil_factory
+            self.stencil_factory, self.namelist, False, False
         )
         dycore_to_physics(dycore_state=physics_state, physics_state=physics_state)
         physics._atmos_phys_driver_statein(

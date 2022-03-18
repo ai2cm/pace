@@ -1,3 +1,5 @@
+from typing import Optional
+
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core
@@ -170,7 +172,13 @@ class DycoreToPhysics:
                 hydrostatic=dycore_config.hydrostatic,
             )
 
-    def __call__(self, dycore_state, physics_state, tendency_state, timestep: float):
+    def __call__(
+        self,
+        dycore_state,
+        physics_state,
+        tendency_state=None,
+        timestep: Optional[float] = None,
+    ):
         if self._do_dry_convective_adjustment:
             self._fv_subgridz(
                 state=dycore_state,
