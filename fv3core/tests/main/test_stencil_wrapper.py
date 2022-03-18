@@ -262,7 +262,12 @@ def test_backend_options(
     validate_args: bool,
 ):
     expected_options = {
-        "gtc:numpy": {"backend": "gtc:numpy", "rebuild": True, "format_source": False},
+        "gtc:numpy": {
+            "backend": "gtc:numpy",
+            "rebuild": True,
+            "format_source": False,
+            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
+        },
         "gtc:cuda": {
             "backend": "gtc:cuda",
             "rebuild": True,
