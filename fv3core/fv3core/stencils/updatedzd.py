@@ -5,6 +5,7 @@ import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util.grid import DampingCoefficients, GridData
@@ -322,6 +323,7 @@ class UpdateHeightOnDGrid:
             gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,), backend=stencil_factory.backend
         )
 
+    @computepath_method
     def __call__(
         self,
         surface_height: FloatFieldIJ,

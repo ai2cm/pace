@@ -35,6 +35,15 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "D_SW",
     "D2A2C_Vect",
     "C_SW",
+    "NH_P_Grad",
+    "A2B_Ord4",
+    "UpdateDzD",
+    "Riem_Solver3",
+    "Riem_Solver_C",
+    "UpdateDzC",
+    "Del2Cubed",
+    "Ray_Fast",
+    "PK3_Halo",
     "DynCore",
 ]
 # this must happen before any classes from fv3core are instantiated

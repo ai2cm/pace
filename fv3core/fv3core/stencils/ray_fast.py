@@ -13,6 +13,7 @@ from gt4py.gtscript import (
 )
 
 import pace.util.constants as constants
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldK
 from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
@@ -165,6 +166,7 @@ class RayleighDamping:
             },
         )
 
+    @computepath_method
     def __call__(
         self,
         u: FloatField,

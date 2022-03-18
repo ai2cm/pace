@@ -170,6 +170,7 @@ class FiniteVolumeTransport:
                 damp_c=self._damp_c,
             )
         else:
+            # [EW]: self.delnflux = None triggers dace error
             self._do_delnflux = False
 
         self._copy_corners_y: corners.CopyCorners = corners.CopyCorners(

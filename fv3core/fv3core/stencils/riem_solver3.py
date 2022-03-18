@@ -16,6 +16,7 @@ import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
 from fv3core._config import RiemannConfig
 from fv3core.stencils.sim1_solver import Sim1Solver
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 
@@ -158,6 +159,7 @@ class RiemannSolver3:
                 grid_indexing.max_shape,
                 origin=grid_indexing.origin_compute(),
                 backend=stencil_factory.backend,
+                is_temporary=True,
             )
 
         self._tmp_dm = make_storage()
@@ -181,6 +183,7 @@ class RiemannSolver3:
             domain=domain,
         )
 
+    @computepath_method
     def __call__(
         self,
         last_call: bool,
