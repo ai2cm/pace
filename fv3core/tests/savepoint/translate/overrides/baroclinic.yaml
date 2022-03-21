@@ -55,9 +55,6 @@ DerivedTrig:
 GridGrid:
  - max_error: 2e-11 # 192_6ranks
 
-InitGrid:
- - max_error: 1e-10 # 192_6ranks
-
 InitGridUtils:
  - max_error: 5e-6 # 48_6ranks
    near_zero: 5e-8

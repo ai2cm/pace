@@ -471,7 +471,7 @@ class TranslateInitGrid(ParallelTranslateGrid):
 
     def __init__(self, grids, namelist, stencil_factory):
         super().__init__(grids, namelist, stencil_factory)
-        self.max_error = 3e-12
+        self.max_error = 1e-10
         self.near_zero = 3e-14
         self.ignore_near_zero_errors = {"gridvar": True, "agrid": True}
         self.stencil_factory = stencil_factory
