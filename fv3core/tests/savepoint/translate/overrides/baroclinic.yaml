@@ -40,22 +40,23 @@ DivgDel6:
  - max_error: 3e-12 # 48_6ranks
 
 DxDy:
- - max_error: 4e-13 # 48_6ranks
+ - max_error: 6e-13 # 48_6ranks
 
 EdgeFactors:
  - max_error: 3e-11 # 48_6ranks
 
 DerivedTrig:
- - max_error: 7e-11 # 48_6ranks
-
-GridAreas:
- - max_error: 1e-10 # 48_6ranks
+ - max_error: 7e-11 # 192_6ranks
+   near_zero: 1.1e-4
+   ignore_near_zero_errors:
+      - ee1
+      - ee2
 
 GridGrid:
- - max_error: 2e-12 # 48_6ranks
+ - max_error: 2e-11 # 192_6ranks
 
 InitGrid:
- - max_error: 5e-11 # 48_6ranks
+ - max_error: 1e-10 # 192_6ranks
 
 InitGridUtils:
  - max_error: 5e-6 # 48_6ranks
@@ -97,7 +98,7 @@ TrigSg:
 
 UtilVectors:
   - max_error: 5e-10 # 48_6ranks
-    near_zero: 1e-13
+    near_zero: 5e-5
 
 JablonowskiBaroclinic:
   - ignore_near_zero_errors:
