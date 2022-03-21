@@ -27,7 +27,6 @@ from pace.dsl.stencil import StencilFactory
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.stencils.testing import TranslateGrid
-from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
 from pace.util.quantity import QuantityMetadata
@@ -190,7 +189,9 @@ class SerialboxConfig(InitializationConfig):
             driver_grid_data = grid.driver_grid_data
             damping_coeff = grid.damping_coefficients
         else:
-            grid = Grid.with_data_from_namelist(self._namelist, communicator, backend)
+            grid = pace.stencils.testing.grid.Grid.with_data_from_namelist(
+                self._namelist, communicator, backend
+            )
             metric_terms = pace.util.grid.MetricTerms(
                 quantity_factory=quantity_factory, communicator=communicator
             )
@@ -265,13 +266,17 @@ class SerialboxConfig(InitializationConfig):
 
 
 @dataclasses.dataclass
-class TranslateConfig(InitializationConfig):
+class PredefinedStateConfig(InitializationConfig):
     """
-    Configuration for pre-existing dycore state
+    Configuration if the states are already defined
     """
 
-    dycore_state: Any
-    grid: Grid
+    dycore_state: fv3core.DycoreState
+    physics_state: fv3gfs.physics.PhysicsState
+    tendency_state: TendencyState
+    grid_data: pace.util.grid.GridData
+    damping_coefficients: pace.util.grid.DampingCoefficients
+    driver_grid_data: pace.util.grid.DriverGridData
 
     @property
     def start_time(self) -> datetime:
@@ -283,19 +288,14 @@ class TranslateConfig(InitializationConfig):
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
-        physics_state = fv3gfs.physics.PhysicsState.init_zeros(
-            quantity_factory=quantity_factory, active_packages=["microphysics"]
-        )
-        tendency_state = TendencyState.init_zeros(
-            quantity_factory=quantity_factory,
-        )
+
         return DriverState(
             dycore_state=self.dycore_state,
-            physics_state=physics_state,
-            tendency_state=tendency_state,
-            grid_data=self.grid.grid_data,
-            damping_coefficients=self.grid.damping_coefficients,
-            driver_grid_data=self.grid.driver_grid_data,
+            physics_state=self.physics_state,
+            tendency_state=self.tendency_state,
+            grid_data=self.grid_data,
+            damping_coefficients=self.damping_coefficients,
+            driver_grid_data=self.driver_grid_data,
         )
 
 
@@ -414,7 +414,7 @@ class DriverConfig:
     Attributes:
         stencil_config: configuration for stencil compilation
         initialization_type: must be
-             "baroclinic", "restart", "serialbox", or "regression"
+             "baroclinic", "restart", "serialbox", or "predefined"
         initialization_config: configuration for the chosen initialization
             type, see documentation for its corresponding configuration
             dataclass
@@ -481,8 +481,8 @@ class DriverConfig:
         initialization_type = kwargs["initialization_type"]
         if initialization_type == "serialbox":
             initialization_class = SerialboxConfig  # type: ignore
-        elif initialization_type == "regression":
-            initialization_class = TranslateConfig  # type: ignore
+        elif initialization_type == "predefined":
+            initialization_class = PredefinedStateConfig  # type: ignore
         elif initialization_type == "baroclinic":
             initialization_class = BaroclinicConfig  # type: ignore
         elif initialization_type == "restart":

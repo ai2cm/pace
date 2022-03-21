@@ -1,13 +1,16 @@
 from mpi4py import MPI
 
+import pace.dsl
+import pace.util
 from fv3core._config import DynamicalCoreConfig
 
 # TODO physics should not depend on fv3core
 # but also, driver tests should not be in physics
 from fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from fv3core.testing.validation import enable_selective_validation
-from fv3gfs.physics import PhysicsConfig
+from fv3gfs.physics import PhysicsConfig, PhysicsState
 from pace.driver.run import Driver, DriverConfig
+from pace.driver.tendency_state import TendencyState
 from pace.util.namelist import Namelist
 
 
@@ -24,10 +27,40 @@ class TranslateDriver(TranslateFVDynamics):
 
     def compute_parallel(self, inputs, communicator):
         dycore_state = self.state_from_inputs(inputs)
+        sizer = pace.util.SubtileGridSizer.from_tile_params(
+            nx_tile=self.namelist.npx - 1,
+            ny_tile=self.namelist.npy - 1,
+            nz=self.namelist.npz,
+            n_halo=pace.util.N_HALO_DEFAULT,
+            extra_dim_lengths={},
+            layout=self.namelist.layout,
+            tile_partitioner=communicator.partitioner.tile,
+            tile_rank=communicator.tile.rank,
+        )
+
+        grid_indexing = pace.dsl.stencil.GridIndexing.from_sizer_and_communicator(
+            sizer=sizer, cube=communicator
+        )
+        quantity_factory = pace.util.QuantityFactory.from_backend(
+            sizer, backend=self.stencil_config.backend
+        )
+        physics_state = PhysicsState.init_zeros(
+            quantity_factory=quantity_factory, active_packages=["microphysics"]
+        )
+        tendency_state = TendencyState.init_zeros(
+            quantity_factory=quantity_factory,
+        )
         config_info = {
             "stencil_config": self.stencil_config.stencil_kwargs,
-            "initialization_type": "regression",
-            "initialization_config": {"dycore_state": dycore_state, "grid": self.grid},
+            "initialization_type": "predefined",
+            "initialization_config": {
+                "dycore_state": dycore_state,
+                "grid_data": self.grid.grid_data,
+                "damping_coefficients": self.grid.damping_coefficients,
+                "driver_grid_data": self.grid.driver_grid_data,
+                "physics_state": physics_state,
+                "tendency_state": tendency_state,
+            },
             "dt_atmos": self.namelist.dt_atmos,
             "diagnostics_config": {"path": "null.zarr", "names": []},
             "performance_config": {"performance_mode": False},
