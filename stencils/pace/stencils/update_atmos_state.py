@@ -268,6 +268,9 @@ class UpdateAtmosphereState:
             grid_info,
         )
         self._dycore_only = dycore_only
+        # apply_tendencies when we have run physics or fv_subgridz
+        # if neither of those are true, we still need to run
+        # fill_GFS_delp
         self._apply_tendencies = apply_tendencies
 
     def __call__(

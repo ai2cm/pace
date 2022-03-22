@@ -268,7 +268,7 @@ class DynamicalCoreConfig:
     namelist_override: Optional[str] = None
 
     def __post_init__(self):
-        if self.namelist_override:
+        if self.namelist_override is not None:
             try:
                 f90_nml = f90nml.read(self.namelist_override)
             except FileNotFoundError:
@@ -325,7 +325,7 @@ class DynamicalCoreConfig:
             vtdm4=namelist.vtdm4,
             z_tracer=namelist.z_tracer,
             do_qa=namelist.do_qa,
-            layout=namelist.layout,  # type: ignore
+            layout=namelist.layout,
             grid_type=namelist.grid_type,
             do_f3d=namelist.do_f3d,
             inline_q=namelist.inline_q,

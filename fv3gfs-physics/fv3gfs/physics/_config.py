@@ -100,7 +100,7 @@ class PhysicsConfig:
     namelist_override: Optional[str] = None
 
     def __post_init__(self):
-        if self.namelist_override:
+        if self.namelist_override is not None:
             try:
                 f90_nml = f90nml.read(self.namelist_override)
             except FileNotFoundError:
@@ -139,7 +139,7 @@ class PhysicsConfig:
             vi_fac=namelist.vi_fac,
             vr_fac=namelist.vr_fac,
             de_ice=namelist.de_ice,
-            layout=namelist.layout,  # type: ignore
+            layout=namelist.layout,
             tau_imlt=namelist.tau_imlt,
             tau_i2s=namelist.tau_i2s,
             tau_g2v=namelist.tau_g2v,
