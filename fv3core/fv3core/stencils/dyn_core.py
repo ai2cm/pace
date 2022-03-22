@@ -397,13 +397,13 @@ class AcousticDynamics:
             )
             # After writing, make 'dp_ref' a K-field and 'zs' an IJ-field
             self._dp_ref = utils.make_storage_data(
-                dp_ref_3d.data[0, 0, :],
+                dp_ref_3d[0, 0, :],
                 (dp_ref_3d.shape[2],),
                 (0,),
                 backend=stencil_factory.backend,
             )
             self._zs = utils.make_storage_data(
-                zs_3d.data[:, :, 0],
+                zs_3d[:, :, 0],
                 zs_3d.shape[0:2],
                 (0, 0),
                 backend=stencil_factory.backend,

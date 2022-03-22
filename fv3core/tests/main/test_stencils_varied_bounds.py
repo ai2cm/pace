@@ -69,12 +69,12 @@ def test_get_stencils_with_varied_bounds(backend: str):
     assert len(stencils) == len(origins)
     q, q_ref = setup_data_vars(backend=backend)
     stencils[0](q)
-    q_ref.data[2:3, 2:3, :] = 2.0
+    q_ref[2:3, 2:3, :] = 2.0
     np.testing.assert_array_equal(q.data, q_ref.data)
     stencils[1](q)
-    q_ref.data[2:3, 2:3, :] = 3.0
-    q_ref.data[1, 1:3, :] = 2.0
-    q_ref.data[2:3, 1, :] = 2.0
+    q_ref[2:3, 2:3, :] = 3.0
+    q_ref[1, 1:3, :] = 2.0
+    q_ref[2:3, 1, :] = 2.0
     np.testing.assert_array_equal(q.data, q_ref.data)
 
 
@@ -90,9 +90,9 @@ def test_get_stencils_with_varied_bounds_and_regions(backend: str):
     )
     q_orig, q_ref = setup_data_vars(backend=backend)
     stencils[0](q_orig, q_orig)
-    q_ref.data[3, 3] = 2.0
+    q_ref[3, 3] = 2.0
     np.testing.assert_array_equal(q_orig.data, q_ref.data)
     stencils[1](q_orig, q_orig)
-    q_ref.data[3, 2] = 2.0
-    q_ref.data[3, 3] = 3.0
+    q_ref[3, 2] = 2.0
+    q_ref[3, 3] = 3.0
     np.testing.assert_array_equal(q_orig.data, q_ref.data)

@@ -317,19 +317,13 @@ class UpdateHeightOnDGrid:
 
         _cubic_spline_interpolation_constants(self._dp0, gk_3d, beta_3d, gamma_3d)
         self._gk = utils.make_storage_data(
-            gk_3d.data[0, 0, :], gk_3d.shape[2:], (0,), backend=stencil_factory.backend
+            gk_3d[0, 0, :], gk_3d.shape[2:], (0,), backend=stencil_factory.backend
         )
         self._beta = utils.make_storage_data(
-            beta_3d.data[0, 0, :],
-            beta_3d.shape[2:],
-            (0,),
-            backend=stencil_factory.backend,
+            beta_3d[0, 0, :], beta_3d.shape[2:], (0,), backend=stencil_factory.backend
         )
         self._gamma = utils.make_storage_data(
-            gamma_3d.data[0, 0, :],
-            gamma_3d.shape[2:],
-            (0,),
-            backend=stencil_factory.backend,
+            gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,), backend=stencil_factory.backend
         )
         self._copy_corners = PreAllocatedCopiedCornersFactory(
             stencil_factory=stencil_factory,

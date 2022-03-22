@@ -112,7 +112,7 @@ class TranslateRemapping(TranslateFortranData2Py):
         wsd_2d = utils.make_storage_from_shape(
             inputs["wsd"].shape[0:2], backend=self.stencil_factory.backend
         )
-        wsd_2d[:, :] = inputs["wsd"].data[:, :, 0]
+        wsd_2d[:, :] = inputs["wsd"][:, :, 0]
         inputs["wsd"] = wsd_2d
         inputs["q_cld"] = inputs["tracers"]["qcld"]
         l_to_e_obj = LagrangianToEulerian(

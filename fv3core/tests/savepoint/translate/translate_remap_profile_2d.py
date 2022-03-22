@@ -68,7 +68,7 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
                 origin=(0, 0),
                 backend=self.stencil_factory.backend,
             )
-            qs_field[i1 : i2 + 1, j1 : j2 + 1] = inputs["qs"].data[
+            qs_field[i1 : i2 + 1, j1 : j2 + 1] = inputs["qs"][
                 i1 : i2 + 1, j1 : j2 + 1, 0
             ]
             inputs["qs"] = qs_field
