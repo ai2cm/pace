@@ -2,10 +2,10 @@ import numpy as np
 
 import fv3core.stencils.fillz as fillz
 import pace.dsl.gt4py_utils as utils
-from pace.stencils.testing import TranslateFortranData2Py, pad_field_in_j
+from pace.stencils.testing import TranslateDycoreFortranData2Py, pad_field_in_j
 
 
-class TranslateFillz(TranslateFortranData2Py):
+class TranslateFillz(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {

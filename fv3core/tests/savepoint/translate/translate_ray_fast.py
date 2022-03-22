@@ -1,8 +1,8 @@
 from fv3core.stencils.ray_fast import RayleighDamping
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslateRay_Fast(TranslateFortranData2Py):
+class TranslateRay_Fast(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.compute_func = RayleighDamping(

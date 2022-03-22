@@ -1,9 +1,9 @@
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslateFvTp2d(TranslateFortranData2Py):
+class TranslateFvTp2d(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
