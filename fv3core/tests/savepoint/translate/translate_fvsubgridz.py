@@ -8,7 +8,7 @@ from pace.stencils.testing import ParallelTranslateBaseSlicing
 
 # NOTE, does no halo updates, does not need to be a Parallel test,
 # but doing so here to make the interface match fv_dynamics.
-# Could add support to the TranslateFortranData2Py class
+# Could add support to the TranslateDycoreFortranData2Py class
 class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
     inputs = {
         "delp": {
@@ -181,7 +181,12 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
             self.namelist.hydrostatic,
         )
         state_namespace = SimpleNamespace(**state)
-        fvsubgridz(state_namespace, state_namespace.dt)
+        fvsubgridz(
+            state_namespace,
+            state_namespace.u_dt,
+            state_namespace.v_dt,
+            state_namespace.dt,
+        )
         return self.outputs_from_state(state)
 
     def compute_sequential(self, inputs_list, communicator_list):
@@ -195,5 +200,10 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
                 self.namelist.hydrostatic,
             )
             state_namespace = SimpleNamespace(**state)
-            fvsubgridz(state_namespace, state_namespace.dt)
+            fvsubgridz(
+                state_namespace,
+                state_namespace.u_dt,
+                state_namespace.v_dt,
+                state_namespace.dt,
+            )
         return self.outputs_list_from_state_list(state_list)

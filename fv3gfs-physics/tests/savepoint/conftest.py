@@ -10,10 +10,10 @@ import yaml
 
 import pace.dsl
 import pace.util as fv3util
-from fv3gfs.physics import PhysicsConfig
 from pace.stencils.testing.parallel_translate import ParallelTranslate
 from pace.stencils.testing.translate import TranslateGrid
 from pace.util.mpi import MPI
+from pace.util.namelist import Namelist
 
 from . import translate
 
@@ -21,21 +21,6 @@ from . import translate
 # get MPI environment
 sys.path.append("/usr/local/serialbox/python")  # noqa: E402
 import serialbox  # noqa: E402
-
-
-GRID_SAVEPOINT_NAME = "Grid-Info"
-PHYSICS_SAVEPOINT_TESTS = [
-    "GFSPhysicsDriver",
-    "AtmosPhysDriverStatein",
-    "PrsFV3",
-    "PhiFV3",
-    "Microph",
-    "FillGFS",
-    "PhysUpdateTracers",
-    "PhysUpdatePressureSurfaceWinds",
-    "UpdateDWindsPhys",
-    "FVUpdatePhys",
-]
 
 
 class ReplaceRepr:
@@ -92,18 +77,6 @@ def to_output_name(savepoint_name):
     return savepoint_name[-3:] + "-Out"
 
 
-def is_physics_test(savepoint_name):
-    return savepoint_name in PHYSICS_SAVEPOINT_TESTS
-
-
-def make_grid(grid_savepoint, serializer, rank, layout, *, backend: str):
-    grid_data = {}
-    grid_fields = serializer.fields_at_savepoint(grid_savepoint)
-    for field in grid_fields:
-        grid_data[field] = read_serialized_data(serializer, grid_savepoint, field)
-    return TranslateGrid(grid_data, rank, layout, backend=backend).python_grid()
-
-
 def read_serialized_data(serializer, savepoint, variable):
 
     data = serializer.read(variable, savepoint)
@@ -155,7 +128,7 @@ def get_all_savepoint_names(metafunc, data_path):
         savepoint_names = set()
         serializer = get_serializer(data_path, rank=0)
         for savepoint in serializer.savepoint_list():
-            if is_input_name(savepoint.name) and is_physics_test(savepoint.name[:-3]):
+            if is_input_name(savepoint.name):
                 savepoint_names.add(savepoint.name[:-3])
     else:
         savepoint_names = set(only_names.split(","))
@@ -217,10 +190,10 @@ def sequential_savepoint_cases(
     backend: str,
 ):
     return_list = []
-    namelist = f90nml.read(namelist_filename)
-    physics_config = PhysicsConfig.from_f90nml(namelist)
+    namelist = Namelist.from_f90nml(f90nml.read(namelist_filename))
+
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
-    ranks = get_ranks(metafunc, physics_config.layout)
+    ranks = get_ranks(metafunc, namelist.layout)
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
@@ -228,10 +201,9 @@ def sequential_savepoint_cases(
     )
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
-        grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = make_grid(
-            grid_savepoint, serializer, rank, physics_config.layout, backend=backend
-        )
+        grid = TranslateGrid.new_from_serialized_data(
+            serializer, rank, namelist.layout, backend
+        ).python_grid()
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
             grid_indexing=grid.grid_indexing,
@@ -248,8 +220,8 @@ def sequential_savepoint_cases(
                     input_savepoints,
                     output_savepoints,
                     grid,
-                    physics_config.layout,
-                    physics_config,
+                    namelist.layout,
+                    namelist,
                     stencil_factory,
                 )
             )
@@ -269,9 +241,8 @@ def mock_parallel_savepoint_cases(
     metafunc, data_path, namelist_filename, *, backend: str
 ):
     return_list = []
-    namelist = f90nml.read(namelist_filename)
-    physics_config = PhysicsConfig.from_f90nml(namelist)
-    total_ranks = 6 * physics_config.layout[0] * physics_config.layout[1]
+    namelist = Namelist.from_f90nml(f90nml.read(namelist_filename))
+    total_ranks = 6 * namelist.layout[0] * namelist.layout[1]
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
@@ -280,10 +251,9 @@ def mock_parallel_savepoint_cases(
     grid_list = []
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
-        grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = make_grid(
-            grid_savepoint, serializer, rank, physics_config.layout, backend=backend
-        )
+        grid = TranslateGrid.new_from_serialized_data(
+            serializer, rank, namelist.layout, backend
+        ).python_grid()
         grid_list.append(grid)
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
@@ -312,8 +282,8 @@ def mock_parallel_savepoint_cases(
                 ),  # input_list[rank][count] -> input_list[count][rank]
                 list(zip(*output_list)),
                 grid_list,
-                physics_config.layout,
-                physics_config,
+                namelist.layout,
+                namelist,
                 stencil_factory,
             )
         )
@@ -324,17 +294,15 @@ def parallel_savepoint_cases(
     metafunc, data_path, namelist_filename, mpi_rank, *, backend: str
 ):
     serializer = get_serializer(data_path, mpi_rank)
-    namelist = f90nml.read(namelist_filename)
-    physics_config = PhysicsConfig.from_f90nml(namelist)
+    namelist = Namelist.from_f90nml(f90nml.read(namelist_filename))
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=True,
     )
-    grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid = make_grid(
-        grid_savepoint, serializer, mpi_rank, physics_config.layout, backend=backend
-    )
+    grid = TranslateGrid.new_from_serialized_data(
+        serializer, mpi_rank, namelist.layout, backend
+    ).python_grid()
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,
@@ -353,8 +321,8 @@ def parallel_savepoint_cases(
                 input_savepoints,
                 output_savepoints,
                 [grid],
-                physics_config.layout,
-                physics_config,
+                namelist.layout,
+                namelist,
                 stencil_factory,
             )
         )

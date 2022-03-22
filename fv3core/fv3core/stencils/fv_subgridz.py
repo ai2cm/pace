@@ -1,12 +1,11 @@
 # mypy: ignore-errors
-from typing import Mapping
+import collections
 
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
-import pace.util
-from fv3core.decorators import ArgSpec
+from fv3core.initialization.dycore_state import DycoreState
 from fv3core.stencils.basic_operations import dim
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
@@ -21,6 +20,7 @@ from pace.util.constants import (
     RDGAS,
     ZVIR,
 )
+from pace.util.quantity import Quantity
 
 
 RK = CP_AIR / RDGAS + 1.0
@@ -725,6 +725,11 @@ def finalize(
         qcld = q0_cld
 
 
+ArgSpec = collections.namedtuple(
+    "ArgSpec", ["arg_name", "standard_name", "units", "intent"]
+)
+
+
 class DryConvectiveAdjustment:
     """
     Corresponds to fv_subgrid_z in Fortran's fv_sg module
@@ -838,15 +843,19 @@ class DryConvectiveAdjustment:
         self._tmp_cpm = make_storage()
         self._ratios = {0: 0.25, 1: 0.5, 2: 0.999}
 
-    def __call__(self, state: Mapping[str, pace.util.Quantity], timestep: float):
+    def __call__(
+        self, state: DycoreState, u_dt: Quantity, v_dt: Quantity, timestep: float
+    ):
         """
         Performs dry convective adjustment mixing on the subgrid vertical scale.
         Args:
             state: see arg_specs, includes mainly windspeed, temperature,
-                   pressure and tracer variables
+                   pressure and tracer variables that are in the DycoreState
+            u_dt: x-wind tendency for the dry convective windspeed adjustment
+            v_dt: y-wind tendency for the dry convective windspeed adjustment
             timestep:  time to progress forward in seconds
         """
-        if state.pe[self._is, self._js, 0] < 2.0:
+        if state.pe.data[self._is, self._js, 0] < 2.0:
             t_min = T1_MIN
         else:
             t_min = T2_MIN
@@ -922,8 +931,8 @@ class DryConvectiveAdjustment:
             state.va,
             state.pt,
             state.w,
-            state.u_dt,
-            state.v_dt,
+            u_dt,
+            v_dt,
             self._q0["qvapor"],
             self._q0["qliquid"],
             self._q0["qrain"],

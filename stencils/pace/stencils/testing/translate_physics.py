@@ -1,12 +1,15 @@
 import numpy as np
 
 import pace.dsl.gt4py_utils as utils
+from fv3gfs.physics import PhysicsConfig
+from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
 from pace.stencils.testing.translate import TranslateFortranData2Py
 
 
 class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, stencil_factory)
+        self.namelist = PhysicsConfig.from_namelist(namelist)
 
     def read_physics_serialized_data(
         self, serializer, savepoint, variable, roll_zero, index_order
@@ -58,113 +61,29 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             return data[0]
         return data
 
-    def add_composite_vvar_storage(self, d, var, data3d, max_shape, start_indices):
-        """This function is needed to transform vlat, vlon, es, and ew
-        This can be removed when the information is in Grid
-        """
-        shape = data3d.shape
-        start1, start2 = start_indices.get(var, (0, 0))
-        size1, size2 = data3d.shape[0:2]
-        for s in range(data3d.shape[2]):
-            buffer = np.zeros(max_shape[0:2])
-            buffer[start1 : start1 + size1, start2 : start2 + size2] = np.squeeze(
-                data3d[:, :, s]
-            )
-            d[var + str(s + 1)] = utils.make_storage_data(
-                data=buffer,
-                shape=max_shape[0:2],
-                origin=(start1, start2),
-                backend=self.stencil_factory.backend,
-            )
-        d[var] = utils.make_storage_from_shape(
-            shape=max_shape[0:2],
-            origin=(start1, start2),
-            init=True,
-            backend=self.stencil_factory.backend,
-        )  # write the original name to avoid missing var
-
-    def add_composite_evar_storage(self, d, var, data4d, max_shape, start_indices):
-        shape = data4d.shape
-        start1, start2 = start_indices.get(var, (0, 0))
-        size1, size2 = data4d.shape[1:3]
-        for s in range(data4d.shape[0]):
-            for t in range(data4d.shape[3]):
-                buffer = np.zeros(max_shape[0:2])
-                buffer[start1 : start1 + size1, start2 : start2 + size2] = np.squeeze(
-                    data4d[s, :, :, t]
-                )
-                d[var + str(s + 1) + "_" + str(t + 1)] = utils.make_storage_data(
-                    data=buffer,
-                    origin=(start1, start2),
-                    shape=max_shape[0:2],
-                    backend=self.stencil_factory.backend,
-                )
-        d[var] = utils.make_storage_from_shape(
-            shape=max_shape[0:2],
-            origin=(start1, start2),
-            init=True,
-            backend=self.stencil_factory.backend,
-        )  # write the original name to avoid missing var
-
-    def edge_vector_storage(self, d, var, axis):
-        max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
-        default_origin = (0, 0, 0)
-        mask = None
-        if axis == 1:
-            default_origin = (0, 0)
-            d[var] = d[var][np.newaxis, ...]
-            d[var] = np.repeat(d[var], max_shape[0], axis=0)
-        if axis == 0:
-            default_origin = (0,)
-            mask = (True, False, False)
-        d[var] = utils.make_storage_data(
-            data=d[var],
-            origin=default_origin,
-            shape=d[var].shape,
-            backend=self.stencil_factory.backend,
-            mask=mask,
-        )
-
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
         max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
-        start_indices = {
-            "vlon": (self.grid.isd + 1, self.grid.jsd + 1),
-            "vlat": (self.grid.isd + 1, self.grid.jsd + 1),
-        }
-        axes = {"edge_vect_s": 0, "edge_vect_n": 0, "edge_vect_w": 1, "edge_vect_e": 1}
         input_data = {}
         data = serializer.read(varname, savepoint)
-        if varname in ["vlat", "vlon"]:
-            self.add_composite_vvar_storage(
-                input_data, varname, data, max_shape, start_indices
-            )
-            return input_data
-        if varname in ["es", "ew"]:
-            self.add_composite_evar_storage(
-                input_data, varname, data, max_shape, start_indices
-            )
-            return input_data
+
         # convert single element numpy arrays to scalars
-        elif data.size == 1:
+        if data.size == 1:
             data = data.item()
             input_data[varname] = data
             return input_data
         elif len(data.shape) < 2:
-            start1 = start_indices.get(varname, 0)
+            start1 = 0
             size1 = data.shape[0]
-            axis = axes.get(varname, 2)
-            input_data[varname] = np.zeros(max_shape[axis])
+            input_data[varname] = np.zeros(max_shape[2])
             input_data[varname][start1 : start1 + size1] = data
-            if "edge_vect" in varname:
-                self.edge_vector_storage(input_data, varname, axis)
-                return input_data
+
         elif len(data.shape) == 2:
             input_data[varname] = np.zeros(max_shape[0:2])
-            start1, start2 = start_indices.get(varname, (0, 0))
+            start1, start2 = (0, 0)
             size1, size2 = data.shape
             input_data[varname][start1 : start1 + size1, start2 : start2 + size2] = data
         else:
-            start1, start2, start3 = start_indices.get(varname, self.grid.full_origin())
+            start1, start2, start3 = self.grid.full_origin()
             size1, size2, size3 = data.shape
             input_data[varname] = np.zeros(max_shape)
             input_data[varname][
@@ -278,3 +197,9 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
                 else:
                     raise NotImplementedError("Output data dimension not supported")
         return out
+
+
+class ParallelPhysicsTranslate2Py(ParallelTranslate2Py):
+    def __init__(self, rank_grids, namelist, stencil_factory):
+        physics_namelist = PhysicsConfig.from_namelist(namelist)
+        super().__init__(rank_grids, physics_namelist, stencil_factory)
