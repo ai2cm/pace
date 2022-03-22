@@ -6,7 +6,7 @@ stencil_config:
   device_sync: true
 initialization_type: serialbox
 initialization_config:
-  path: /test_data/dev2-8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver
+  path: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver
   serialized_grid: True
 performance_config:
   performance_mode: true
@@ -33,6 +33,6 @@ diagnostics_config:
     - qsnow
     - qgraupel
 dycore_config:
-  namelist_override: /test_data/dev2-8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver/input.nml
+  namelist_override: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver/input.nml
 physics_config:
-  namelist_override: /test_data/dev2-8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver/input.nml
+  namelist_override: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver/input.nml
