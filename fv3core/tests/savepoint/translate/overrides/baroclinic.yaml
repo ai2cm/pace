@@ -46,11 +46,7 @@ EdgeFactors:
  - max_error: 3e-11 # 48_6ranks
 
 DerivedTrig:
- - max_error: 7e-11 # 192_6ranks
-   near_zero: 1.1e-4
-   ignore_near_zero_errors:
-      - ee1
-      - ee2
+ - max_error: 2e-9 # 192_6ranks
 
 GridGrid:
  - max_error: 2e-11 # 192_6ranks
@@ -94,8 +90,7 @@ TrigSg:
       - cos_sg9
 
 UtilVectors:
-  - max_error: 5e-10 # 48_6ranks
-    near_zero: 5e-5
+  - max_error: 2e-8 # 192_6ranks
 
 JablonowskiBaroclinic:
   - ignore_near_zero_errors:
