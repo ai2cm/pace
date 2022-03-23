@@ -116,7 +116,7 @@ def sample_wherefail(
                 f"absolute diff {abs_err:.3e}, "
                 f"metric diff: {metric_err:.3e}"
             )
-        if metric_err > worst_metric_err:
+        if np.isnan(metric_err) or (metric_err > worst_metric_err):
             worst_metric_err = metric_err
             worst_full_idx = full_index
             worst_abs_err = abs_err
@@ -187,14 +187,11 @@ def process_override(threshold_overrides, testobj, test_name, backend):
             if "ignore_near_zero_errors" in match:
                 parsed_ignore_zero = match["ignore_near_zero_errors"]
                 if isinstance(parsed_ignore_zero, list):
-                    testobj.ignore_near_zero_errors = {
-                        field: True for field in match["ignore_near_zero_errors"]
-                    }
+                    testobj.ignore_near_zero_errors.update(
+                        {field: True for field in match["ignore_near_zero_errors"]}
+                    )
                 elif isinstance(parsed_ignore_zero, dict):
-                    testobj.ignore_near_zero_errors = {
-                        field: True for field in parsed_ignore_zero.keys()
-                    }
-                    for key in testobj.ignore_near_zero_errors.keys():
+                    for key in parsed_ignore_zero.keys():
                         testobj.ignore_near_zero_errors[key] = {}
                         testobj.ignore_near_zero_errors[key]["near_zero"] = float(
                             parsed_ignore_zero[key]
@@ -202,7 +199,6 @@ def process_override(threshold_overrides, testobj, test_name, backend):
                     if "all_other_near_zero" in match:
                         for key in testobj.out_vars.keys():
                             if key not in testobj.ignore_near_zero_errors:
-                                testobj.ignore_near_zero_errors[key] = True
                                 testobj.ignore_near_zero_errors[key] = {}
                                 testobj.ignore_near_zero_errors[key][
                                     "near_zero"
