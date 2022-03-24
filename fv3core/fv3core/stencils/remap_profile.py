@@ -4,6 +4,9 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
+
+# [DaCe] Import
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import BoolField, FloatField, FloatFieldIJ
 
@@ -329,7 +332,6 @@ def apply_constraints(
 
 
 def set_interpolation_coefficients(
-    q: FloatField,
     gam: FloatField,
     a4_1: FloatField,
     a4_2: FloatField,
@@ -342,7 +344,6 @@ def set_interpolation_coefficients(
 ):
     """
     Args:
-        q (in):
         gam (in):
         a4_1 (inout):
         a4_2 (inout):
@@ -353,7 +354,6 @@ def set_interpolation_coefficients(
         extm (in):
         qmin (in):
     """
-    # TODO: q isn't used here. We should take it out of the call signature
     from __externals__ import iv, kord
 
     # set_top_as_iv0
@@ -585,7 +585,6 @@ class RemapProfile:
         """
         assert kord <= 10, f"kord {kord} not implemented."
         grid_indexing = stencil_factory.grid_indexing
-        full_orig: Tuple[int] = grid_indexing.origin_full()
         km: int = grid_indexing.domain[2]
         self._kord = kord
 
@@ -594,6 +593,7 @@ class RemapProfile:
                 shape=grid_indexing.domain_full(add=(0, 0, 1)),
                 origin=grid_indexing.origin_full(),
                 backend=stencil_factory.backend,
+                is_temporary=True,
                 **kwargs,
             )
 
@@ -631,6 +631,7 @@ class RemapProfile:
             domain=domain,
         )
 
+    @computepath_method
     def __call__(
         self,
         qs: FloatFieldIJ,
@@ -681,7 +682,6 @@ class RemapProfile:
             )
 
             self._set_interpolation_coefficients(
-                self._q,
                 self._gam,
                 a4_1,
                 a4_2,

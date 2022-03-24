@@ -5,6 +5,9 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.remap_profile import RemapProfile
+
+# [DaCe] Import
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
 
@@ -101,7 +104,10 @@ class MapSingle:
 
         def make_storage():
             return utils.make_storage_from_shape(
-                shape=shape, origin=origin, backend=stencil_factory.backend
+                shape=shape,
+                origin=origin,
+                backend=stencil_factory.backend,
+                is_temporary=True,
             )
 
         self._dp1 = make_storage()
@@ -110,7 +116,10 @@ class MapSingle:
         self._q4_3 = make_storage()
         self._q4_4 = make_storage()
         self._tmp_qs = utils.make_storage_from_shape(
-            shape[0:2], origin=(0, 0), backend=stencil_factory.backend
+            shape[0:2],
+            origin=(0, 0),
+            backend=stencil_factory.backend,
+            is_temporary=True,
         )
         self._lev = utils.make_storage_from_shape(
             shape[:-1],
@@ -118,6 +127,7 @@ class MapSingle:
             mask=(True, True, False),
             dtype=int,
             backend=stencil_factory.backend,
+            is_temporary=True,
         )
 
         self._extents = (i2 - i1 + 1, j2 - j1 + 1)
@@ -150,6 +160,7 @@ class MapSingle:
     def j_extent(self):
         return self._extents[1]
 
+    @computepath_method
     def __call__(
         self,
         q1: FloatField,
@@ -168,19 +179,31 @@ class MapSingle:
             qs (in): Bottom boundary condition
             qmin (in): Minimum allowed value of the remapped field
         """
-        if qs is None:
-            qs = self._tmp_qs
+
         self._copy_stencil(q1, self._q4_1)
         self._set_dp(self._dp1, pe1, self._lev)
-        q4_1, q4_2, q4_3, q4_4 = self._remap_profile(
-            qs,
-            self._q4_1,
-            self._q4_2,
-            self._q4_3,
-            self._q4_4,
-            self._dp1,
-            qmin,
-        )
+
+        # [DaCe] Cannot reassign variable - unroll
+        if qs is None:
+            q4_1, q4_2, q4_3, q4_4 = self._remap_profile(
+                self._tmp_qs,
+                self._q4_1,
+                self._q4_2,
+                self._q4_3,
+                self._q4_4,
+                self._dp1,
+                qmin,
+            )
+        else:
+            q4_1, q4_2, q4_3, q4_4 = self._remap_profile(
+                qs,
+                self._q4_1,
+                self._q4_2,
+                self._q4_3,
+                self._q4_4,
+                self._dp1,
+                qmin,
+            )
         self._lagrangian_contributions(
             q1,
             pe1,
