@@ -27,6 +27,17 @@ import serialbox  # noqa: E402
 GRID_SAVEPOINT_NAME = "Grid-Info"
 CURRENT_DACE_SAVEPOINT_TESTS = [
     "DelnFlux",
+    "Remapping",
+    "CS_Profile_2d",
+    "CS_Profile_2d_2",
+    "MapScalar_2d",
+    "Map1_PPM_2d",
+    "Map1_PPM_2d_2",
+    "Map1_PPM_2d_3",
+    "MapN_Tracer_2d",
+    "MoistCVPlusPt_2d",
+    "MoistCVPlusPkz_2d",
+    "SatAdjust3d",
 ]
 # this must happen before any classes from fv3core are instantiated
 fv3core.testing.enable_selective_validation()
