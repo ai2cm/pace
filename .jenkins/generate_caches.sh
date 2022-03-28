@@ -21,6 +21,7 @@ backend=$1
 experiment=$2
 SANITIZED_BACKEND=`echo $backend | sed 's/:/_/g'` #sanitize the backend from any ':'
 CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/${experiment}/${SANITIZED_BACKEND}/"
+REMOTE_CACHE_DIR="gs://fv3core-gt-cache/pace/${experiment}/${SANITIZED_BACKEND}/"
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PACE_DIR=$SCRIPT_DIR/../
 
@@ -30,6 +31,7 @@ if [ -z "${GT4PY_VERSION}" ]; then
 fi
 
 CACHE_FILENAME=${CACHE_DIR}/${GT4PY_VERSION}.tar.gz
+REMOTE_CACHE_FILENAME=${REMOTE_CACHE_DIR}/${GT4PY_VERSION}.tar.gz
 
 test -n "${experiment}" || exitError 1001 ${LINENO} "experiment is not defined"
 test -n "${SANITIZED_BACKEND}" || exitError 1002 ${LINENO} "backend is not defined"
@@ -43,3 +45,4 @@ echo "Copying GT4Py cache directories to ${CACHE_DIR}"
 mkdir -p ${CACHE_DIR}
 rm -rf ${CACHE_FILENAME}
 tar -czf ${CACHE_FILENAME} .gt_cache
+gsutil -m cp $CACHE_FILENAME $REMOTE_CACHE_FILENAME
