@@ -9,7 +9,7 @@ from fv3core.stencils.basic_operations import dim
 from fv3core.stencils.moist_cv import compute_pkz_func
 
 # [DaCe] Import
-from fv3core.utils.dace.computepath import computepath_method
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 
