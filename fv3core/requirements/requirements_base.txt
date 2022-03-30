@@ -25,4 +25,4 @@ pytest-cache
 pytest-cov
 
 # DaCe
-git+https://github.com/spcl/dace.git@0dee7e25dd7d4225c8eac00927ceb97a2cd2c864
+git+https://github.com/spcl/dace.git@56c42b21b72b043408b725dd85d6a47ba62f451b
