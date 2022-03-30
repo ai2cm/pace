@@ -2,7 +2,8 @@ repos:
 -   repo: https://github.com/psf/black
     rev: 20.8b1
     hooks:
-    -   id: black
+    - id: black
+      additional_dependencies: ["click==8.0.4"]
 
 -   repo: https://github.com/pre-commit/mirrors-isort
     rev: v5.4.2
