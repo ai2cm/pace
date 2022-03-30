@@ -44,7 +44,6 @@ class MapNTracer:
             grid_indexing.max_shape,
             origin=(0, 0, 0),
             backend=stencil_factory.backend,
-            is_temporary=True,
         )
 
         kord_tracer = [kord] * self._nq

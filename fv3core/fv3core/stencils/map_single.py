@@ -107,7 +107,6 @@ class MapSingle:
                 shape=shape,
                 origin=origin,
                 backend=stencil_factory.backend,
-                is_temporary=True,
             )
 
         self._dp1 = make_storage()
@@ -119,7 +118,6 @@ class MapSingle:
             shape[0:2],
             origin=(0, 0),
             backend=stencil_factory.backend,
-            is_temporary=True,
         )
         self._lev = utils.make_storage_from_shape(
             shape[:-1],
@@ -127,7 +125,6 @@ class MapSingle:
             mask=(True, True, False),
             dtype=int,
             backend=stencil_factory.backend,
-            is_temporary=True,
         )
 
         self._extents = (i2 - i1 + 1, j2 - j1 + 1)

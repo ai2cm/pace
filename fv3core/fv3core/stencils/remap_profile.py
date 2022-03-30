@@ -593,7 +593,6 @@ class RemapProfile:
                 shape=grid_indexing.domain_full(add=(0, 0, 1)),
                 origin=grid_indexing.origin_full(),
                 backend=stencil_factory.backend,
-                is_temporary=True,
                 **kwargs,
             )
 
