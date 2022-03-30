@@ -311,6 +311,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             damping_coefficients=self.grid.damping_coefficients,
             config=self.namelist,
             phis=state.phis,
+            state=state,
         )
         self.dycore.step_dynamics(
             state,

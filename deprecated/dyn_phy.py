@@ -118,6 +118,7 @@ def driver(
             ),
             config=dycore_config,
             phis=state.phis_quantity,
+            state=state,
         )
     else:
         dycore = DeactivatedDycore()

@@ -14,6 +14,7 @@ import pace.dsl
 import pace.util as fv3util
 from fv3core import DynamicalCoreConfig
 from fv3core.utils.mpi import MPI
+from pace.dsl.dace.dace_config import dace_config
 from pace.stencils.testing import ParallelTranslate, TranslateGrid
 
 from . import translate
@@ -147,6 +148,7 @@ def get_test_class_instance(test_name, grid, namelist, stencil_factory):
     if translate_class is None:
         return None
     else:
+        dace_config.backend = stencil_factory.backend
         return translate_class(grid, namelist, stencil_factory)
 
 
