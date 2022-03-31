@@ -122,6 +122,12 @@ Tracer2D1L:
    max_error: 1e-9
  - backend: gtc:cuda
    max_error: 1e-9
+ - backend: gtc:dace
+   ignore_near_zero_errors:
+     tracers: 1e-15
+ - backend: gtc:gt:cpu_ifirst
+   ignore_near_zero_errors:
+     tracers: 1e-15
 
 DivgDel6:
  - max_error: 3e-13 # 48_6ranks

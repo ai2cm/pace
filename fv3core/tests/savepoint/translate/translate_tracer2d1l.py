@@ -1,6 +1,5 @@
 import pytest
 
-import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.stencils.fvtp2d
 import fv3core.stencils.tracer_2d_1l
 import pace.dsl.gt4py_utils as utils
@@ -56,7 +55,7 @@ class TranslateTracer2D1L(ParallelTranslate):
             transport,
             self.grid.grid_data,
             communicator,
-            fv_dynamics.NQ,
+            inputs["tracers"],
         )
         self.tracer_advection(**inputs)
         inputs[

@@ -1,13 +1,18 @@
 import math
+from typing import Dict
 
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
 import pace.util
+from dace import constant as dace_constant
+from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.util import Quantity
 
 
 @gtscript.function
@@ -166,11 +171,11 @@ class TracerAdvection:
         transport: FiniteVolumeTransport,
         grid_data,
         comm: pace.util.CubedSphereCommunicator,
-        tracer_count,
+        tracers: Dict[str, Quantity],
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.grid_indexing = grid_indexing  # needed for selective validation
-        self._tracer_count = tracer_count
+        self._tracer_count = len(tracers)
         self.comm = comm
         self.grid_data = grid_data
         shape = grid_indexing.domain_full(add=(1, 1, 1))
@@ -186,6 +191,7 @@ class TracerAdvection:
         self._tmp_fx = make_storage()
         self._tmp_fy = make_storage()
         self._tmp_dp = make_storage()
+        self._tmp_dp2 = make_storage()
         dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
         origin, extent = grid_indexing.get_origin_domain(dims)
         self._tmp_qn2 = pace.util.Quantity(
@@ -242,11 +248,14 @@ class TracerAdvection:
             n_halo=utils.halo,
             backend=stencil_factory.backend,
         )
-        self._tracers_halo_updater = self.comm.get_scalar_halo_updater(
-            [tracer_halo_spec] * tracer_count
+        self._tracers_halo_updater = AcousticDynamics._WrappedHaloUpdater(
+            comm.get_scalar_halo_updater([tracer_halo_spec] * self._tracer_count),
+            tracers,
+            [t for t in tracers.keys()],
         )
 
-    def __call__(self, tracers, dp1, mfxd, mfyd, cxd, cyd, mdt):
+    @computepath_method
+    def __call__(self, tracers: dace_constant, dp1, mfxd, mfyd, cxd, cyd, mdt):
         """
         Args:
             tracers (inout):
@@ -257,11 +266,12 @@ class TracerAdvection:
             cyd (inout):
         """
         # TODO: remove unused mdt argument
-        if len(tracers) != self._tracer_count:
-            raise ValueError(
-                f"incorrect number of tracers, {self._tracer_count} was "
-                f"specified on init but {len(tracers)} were passed"
-            )
+        # DaCe parsing issue
+        # if len(tracers) != self._tracer_count:
+        #     raise ValueError(
+        #         f"incorrect number of tracers, {self._tracer_count} was "
+        #         f"specified on init but {len(tracers)} were passed"
+        #     )
         # start HALO update on q (in dyn_core in fortran -- just has started when
         # this function is called...)
         self._flux_compute(
@@ -321,11 +331,11 @@ class TracerAdvection:
                 n_split,
             )
 
-        self._tracers_halo_updater.update(tracers.values())
+        self._tracers_halo_updater.update()
 
         dp2 = self._tmp_dp
 
-        for it in range(int(n_split)):
+        for it in range(n_split):
             last_call = it == n_split - 1
             self._dp_fluxadjustment(
                 dp1,
@@ -355,6 +365,8 @@ class TracerAdvection:
                     dp2,
                 )
             if not last_call:
-                self._tracers_halo_updater.update(tracers.values())
+                self._tracers_halo_updater.update()
                 # use variable assignment to avoid a data copy
-                dp1, dp2 = dp2, dp1
+                self._tmp_dp2[:] = dp1
+                dp1[:] = dp2
+                dp2[:] = self._tmp_dp2
