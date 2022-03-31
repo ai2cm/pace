@@ -1,13 +1,13 @@
 import os
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
-import dace
 import gt4py.storage
+
+import dace
 from dace.frontend.python.common import SDFGConvertible
 from dace.frontend.python.parser import DaceProgram
 from dace.transformation.auto.auto_optimize import make_transients_persistent
 from dace.transformation.helpers import get_parent_map
-
 from pace.dsl.dace.dace_config import dace_config
 from pace.dsl.dace.sdfg_opt_passes import (
     flip_default_layout_to_KIJ_on_maps,

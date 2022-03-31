@@ -18,11 +18,13 @@ from typing import (
 )
 
 import gt4py
+import gt4py as gt
 import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
+import dace
 import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
@@ -189,12 +191,46 @@ class FrozenStencil(SDFGConvertible):
         stencil_function = gtscript.stencil
         stencil_kwargs = {**self.stencil_config.stencil_kwargs}
 
+        if "dace" in self.stencil_config.backend:
+            # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
+            if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
+                gt.config.cache_settings["dir_name"] = ".gt_cache_{:0>6d}".format(
+                    MPI.COMM_WORLD.Get_rank()
+                )
+
+            dace.Config.set(
+                "default_build_folder",
+                value="{gt_cache}/dacecache".format(
+                    gt_cache=gt.config.cache_settings["dir_name"]
+                ),
+            )
+            dace.Config.set("compiler", "allow_view_arguments", value=True)
+            dace.Config.set(
+                "compiler",
+                "cpu",
+                "args",
+                value=" ".join(
+                    [
+                        "-std=c++14",
+                        "-fPIC",
+                        "-Wall",
+                        "-Wextra",
+                        "-O3",
+                        "-fno-expensive-optimizations",
+                        "-ggdb",
+                        "-march=native",
+                        "-Wno-unused-parameter",
+                        "-Wno-unused-label",
+                    ]
+                ),
+            )
+
         # Enable distributed compilation if running in parallel and
         # not running dace orchestration
         if (
             MPI is not None
             and MPI.COMM_WORLD.Get_size() > 1
-            and not dace_config.is_dace_orchestrated()
+            and not "dace" in self.stencil_config.backend
         ):
             stencil_function = future_stencil.future_stencil
             stencil_kwargs["wrapper"] = self
@@ -214,8 +250,10 @@ class FrozenStencil(SDFGConvertible):
         # When using DaCe orchestration, we deactivate code generation
         # (Only SDFG are needed). But because some stencils are executed
         # outside of the runtime path, we have a whitelist exception.
-        if dace_config.is_dace_orchestrated() and not is_dacemode_codegen_whitelisted(
-            func
+        if (
+            dace_config.is_dace_orchestrated()
+            and not is_dacemode_codegen_whitelisted(func)
+            and "dace" in self.stencil_config.backend
         ):
             stencil_kwargs["disable_code_generation"] = True
 
@@ -247,7 +285,7 @@ class FrozenStencil(SDFGConvertible):
 
         # When orchestrating with DaCe, cache the frozen stencil for
         # calls in __sdfg__ generation
-        if dace_config.is_dace_orchestrated():
+        if "dace" in self.stencil_config.backend:
             self._frozen_stencil = self.stencil_object.freeze(
                 origin=self._field_origins,
                 domain=self.domain,

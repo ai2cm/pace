@@ -44,6 +44,10 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "Del2Cubed",
     "Ray_Fast",
     "PK3_Halo",
+    "PE_Halo",
+    "XPPM",
+    "YPPM",
+    "PressureAdjustedTemperature_NonHydrostatic",
     "DynCore",
 ]
 # this must happen before any classes from fv3core are instantiated
@@ -115,7 +119,9 @@ def read_serialized_data(serializer, savepoint, variable):
 @pytest.fixture
 def stencil_config(backend):
     return pace.dsl.stencil.StencilConfig(
-        backend=backend, rebuild=False, validate_args=True,
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
     )
 
 
@@ -224,7 +230,9 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
         ]
     ranks = get_ranks(metafunc, dycore_config.layout)
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend, rebuild=False, validate_args=True,
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
     )
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
@@ -232,7 +240,8 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
             serializer, rank, dycore_config.layout, backend
         ).python_grid()
         stencil_factory = pace.dsl.stencil.StencilFactory(
-            config=stencil_config, grid_indexing=grid.grid_indexing,
+            config=stencil_config,
+            grid_indexing=grid.grid_indexing,
         )
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
@@ -272,7 +281,9 @@ def mock_parallel_savepoint_cases(
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     total_ranks = 6 * dycore_config.layout[0] * dycore_config.layout[1]
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend, rebuild=False, validate_args=True,
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
     )
     grid_list = []
     for rank in range(total_ranks):
@@ -282,7 +293,8 @@ def mock_parallel_savepoint_cases(
         ).python_grid()
         grid_list.append(grid)
     stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config, grid_indexing=grid.grid_indexing,
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
     )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     if "dace" in backend:
@@ -338,13 +350,16 @@ def parallel_savepoint_cases(
     namelist = f90nml.read(namelist_filename)
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend, rebuild=False, validate_args=True,
+        backend=backend,
+        rebuild=False,
+        validate_args=True,
     )
     grid = TranslateGrid.new_from_serialized_data(
         serializer, mpi_rank, dycore_config.layout, backend
     ).python_grid()
     stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config, grid_indexing=grid.grid_indexing,
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
     )
     if metafunc.config.getoption("compute_grid"):
         compute_grid_data(metafunc, grid, dycore_config)
