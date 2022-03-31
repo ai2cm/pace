@@ -48,6 +48,7 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "XPPM",
     "YPPM",
     "PressureAdjustedTemperature_NonHydrostatic",
+    "FillCornersVector",
     "DynCore",
 ]
 # this must happen before any classes from fv3core are instantiated

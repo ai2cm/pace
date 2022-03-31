@@ -739,7 +739,7 @@ class DGridShallowWaterLagrangianDynamics:
             return utils.make_storage_from_shape(
                 self.grid_indexing.max_shape,
                 backend=stencil_factory.backend,
-                is_temporary=True,
+                is_temporary=False,
             )
 
         self._tmp_heat_s = make_storage()
@@ -764,7 +764,7 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_damp_3d = utils.make_storage_from_shape(
             (1, 1, self.grid_indexing.domain[2]),
             backend=stencil_factory.backend,
-            is_temporary=True,
+            is_temporary=False,
         )
         self._advected_u = make_storage()
         self._advected_v = make_storage()

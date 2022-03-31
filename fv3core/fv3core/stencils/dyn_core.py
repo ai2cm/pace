@@ -336,7 +336,8 @@ class AcousticDynamics:
             # straighforward solution of one HaloUpdater per group of updated variable.
             # It also makes the code in call() more readable
             # [DaCe] Wrapping call to a DaCe readable halo updater
-            #        Biggest parsing issue is that DaCe cannot do quantities at runtime paradigm
+            #        Biggest parsing issue is that DaCe cannot do
+            #        quantities at runtime paradigm
             self.q_con__cappa = AcousticDynamics._WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyz_halo_spec] * 2),
                 state,
@@ -883,7 +884,8 @@ class AcousticDynamics:
                 )
 
             if it != n_split - 1:
-                # [DaCe] this should be a reuse of self._halo_updaters.u__v but it creates
+                # [DaCe] this should be a reuse of
+                #        self._halo_updaters.u__v but it creates
                 #        parameter generation issues, and therefore has been duplicated
                 self._halo_updaters.u__v.update()
             else:

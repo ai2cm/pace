@@ -56,7 +56,7 @@ class PK3Halo:
             shape_2D,
             grid_indexing.origin_full(),
             backend=stencil_factory.backend,
-            is_temporary=True,
+            is_temporary=False,
         )
 
     @computepath_method
