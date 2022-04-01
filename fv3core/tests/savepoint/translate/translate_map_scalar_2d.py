@@ -68,4 +68,5 @@ class TranslateMapScalar_2d(TranslateFortranData2Py):
         if inputs["qs"].shape[1] == 1:
             inputs["qs"] = utils.tile(inputs["qs"][:, 0], [self.nj, 1]).transpose(1, 0)
         var_inout = self.compute_func(**inputs)
-        return self.slice_output(inputs, {"pt": var_inout})
+        # [DaCe] var_inout is looking at q1 - DaCe parsing comes back with a list
+        return self.slice_output(inputs, {"pt": inputs["q1"]})
