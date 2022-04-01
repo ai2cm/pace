@@ -32,6 +32,7 @@ class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
         inputs["j1"] = inputs["j_2d"]
         inputs["j2"] = inputs["j_2d"]
         del inputs["j_2d"]
+        del inputs["q_min"]
         inputs["pe1"] = self.make_storage_data(
             pad_field_in_j(
                 inputs["pe1"], self.grid.njd, backend=self.stencil_factory.backend
