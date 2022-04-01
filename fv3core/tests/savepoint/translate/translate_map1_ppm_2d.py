@@ -91,7 +91,8 @@ class TranslateMap1_PPM_2d(TranslateFortranData2Py):
                 )
         del inputs["j_2d"]
         var_inout = self.compute_func(**inputs)
-        return self.slice_output(inputs, {"var_inout": var_inout})
+        # [DaCe] var_inout is looking at q1 - DaCe parsing comes back with a list
+        return self.slice_output(inputs, {"var_inout": inputs["q1"]})
 
 
 class TranslateMap1_PPM_2d_3(TranslateMap1_PPM_2d):
