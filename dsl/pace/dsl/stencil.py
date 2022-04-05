@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import hashlib
 import inspect
@@ -13,6 +14,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Type,
     Union,
     cast,
 )
@@ -42,6 +44,7 @@ class StencilConfig(Hashable):
     validate_args: bool = True
     format_source: bool = False
     device_sync: bool = False
+    compare_to_numpy: bool = False
 
     def __post_init__(self):
         self.backend_opts = self._get_backend_opts(self.device_sync, self.format_source)
@@ -120,6 +123,148 @@ class StencilConfig(Hashable):
     @property
     def is_gtc_backend(self) -> bool:
         return self.backend.startswith("gtc")
+
+
+def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id):
+    report_head = f"comparing against numpy for func {function_name}, gt_id {gt_id}:"
+    report_segments = []
+    for i, (arg, numpy_arg) in enumerate(zip(args, args_copy)):
+        if isinstance(arg, pace.util.Quantity):
+            arg = arg.storage
+            numpy_arg = numpy_arg.storage
+        if isinstance(arg, np.ndarray):
+            report_segments.append(report_diff(arg, numpy_arg, label=f"arg {i}"))
+    for name in kwargs:
+        if isinstance(kwargs[name], pace.util.Quantity):
+            kwarg = kwargs[name].data
+            numpy_kwarg = kwargs_copy[name].data
+        else:
+            kwarg = kwargs[name]
+            numpy_kwarg = kwargs_copy[name]
+        if isinstance(kwarg, np.ndarray):
+            report_segments.append(
+                report_diff(kwarg, numpy_kwarg, label=f"kwarg {name}")
+            )
+    report_body = "".join(report_segments)
+    if len(report_body) > 0:
+        print("")  # newline
+        print(report_head + report_body)
+
+
+def compare_arr(computed_data, ref_data):
+    """
+    Smooth error near zero values.
+    Inputs are arrays.
+    """
+    if ref_data.dtype in (np.float64, np.int64, np.float32, np.int32):
+        denom = np.abs(ref_data) + np.abs(computed_data)
+        compare = 2.0 * np.abs(computed_data - ref_data) / denom
+        compare[denom == 0] = 0.0
+        return compare
+    elif ref_data.dtype in (np.bool,):
+        return np.logical_xor(computed_data, ref_data)
+    else:
+        raise TypeError(f"recieved data with unexpected dtype {ref_data.dtype}")
+
+
+def report_diff(arg: np.ndarray, numpy_arg: np.ndarray, label) -> str:
+    metric_err = compare_arr(arg, numpy_arg)
+    nans_match = np.logical_and(np.isnan(arg), np.isnan(numpy_arg))
+    n_points = np.product(arg.shape)
+    failures_14 = n_points - np.sum(
+        np.logical_or(
+            nans_match,
+            metric_err < 1e-14,
+        )
+    )
+    failures_10 = n_points - np.sum(
+        np.logical_or(
+            nans_match,
+            metric_err < 1e-10,
+        )
+    )
+    failures_8 = n_points - np.sum(
+        np.logical_or(
+            nans_match,
+            metric_err < 1e-10,
+        )
+    )
+    greatest_error = np.max(metric_err[~np.isnan(metric_err)])
+    if greatest_error == 0.0 and failures_14 == 0:
+        report = ""
+    else:
+        report = f"\n    {label}: "
+        report += f"max_err={greatest_error}"
+        if failures_14 > 0:
+            report += f" 1e-14 failures: {failures_14}"
+        if failures_10 > 0:
+            report += f" 1e-10 failures: {failures_10}"
+        if failures_8 > 0:
+            report += f" 1e-8 failures: {failures_8}"
+    return report
+
+
+class CompareToNumpyStencil:
+    def __init__(
+        self,
+        func: Callable[..., None],
+        origin: Union[Tuple[int, ...], Mapping[str, Tuple[int, ...]]],
+        domain: Tuple[int, ...],
+        stencil_config: StencilConfig,
+        externals: Optional[Mapping[str, Any]] = None,
+        skip_passes: Optional[Tuple[str, ...]] = None,
+    ):
+
+        self._actual = FrozenStencil(
+            func=func,
+            origin=origin,
+            domain=domain,
+            stencil_config=stencil_config,
+            externals=externals,
+            skip_passes=skip_passes,
+        )
+        numpy_stencil_config = StencilConfig(
+            backend="numpy",
+            rebuild=stencil_config.rebuild,
+            validate_args=stencil_config.validate_args,
+            format_source=True,
+            device_sync=None,
+        )
+        self._numpy = FrozenStencil(
+            func=func,
+            origin=origin,
+            domain=domain,
+            stencil_config=numpy_stencil_config,
+            externals=externals,
+            skip_passes=skip_passes,
+        )
+        self._func_name = func.__name__
+
+    def __call__(
+        self,
+        *args,
+        **kwargs,
+    ) -> None:
+        args_copy = copy.deepcopy(args)
+        kwargs_copy = copy.deepcopy(kwargs)
+        report_difference(
+            args,
+            kwargs,
+            args_copy,
+            kwargs_copy,
+            self._func_name + " BEFORE",
+            self._actual.stencil_object._gt_id_,
+        )
+        self._numpy(*args, **kwargs)
+        self._numpy(*args_copy, **kwargs_copy)
+        report_difference(
+            args,
+            kwargs,
+            args_copy,
+            kwargs_copy,
+            self._func_name,
+            self._actual.stencil_object._gt_id_,
+        )
 
 
 class FrozenStencil:
@@ -691,7 +836,7 @@ class StencilFactory:
         domain: Tuple[int, ...],
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Optional[Tuple[str, ...]] = None,
-    ) -> FrozenStencil:
+    ):
         """
         Args:
             func: stencil definition function
@@ -701,7 +846,11 @@ class StencilFactory:
             externals: compile-time external variables required by stencil
             skip_passes: compiler passes to skip when building stencil
         """
-        return FrozenStencil(
+        if self.config.compare_to_numpy:
+            cls: Type = CompareToNumpyStencil
+        else:
+            cls = FrozenStencil
+        return cls(
             func=func,
             origin=origin,
             domain=domain,
@@ -717,7 +866,7 @@ class StencilFactory:
         compute_halos: Sequence[int] = tuple(),
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Optional[Tuple[str, ...]] = None,
-    ) -> FrozenStencil:
+    ) -> Callable:
         """
         Initialize a stencil from dimensions and number of halo points.
 
