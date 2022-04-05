@@ -27,6 +27,7 @@ def upload_to_device(host_data: List[Any]):
 
 def download_results_from_dace(dace_result: Optional[List[Any]], args: List[Any]):
     """Move all data from DaCe memory space to GT4Py"""
+    gt4py_results = None
     if dace_result is not None:
         for arg in args:
             if isinstance(arg, gt4py.storage.Storage) and hasattr(
