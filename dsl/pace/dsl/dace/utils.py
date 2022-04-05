@@ -1,5 +1,6 @@
 import time
 
+
 # Rough timer & log for major operations of DaCe build stack
 class DaCeProgress:
     def __init__(self, label):
