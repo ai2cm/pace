@@ -28,6 +28,7 @@ import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
 from pace.dsl.typing import Index3D, cast_to_index3d
+from pace.util import testing
 from pace.util.halo_data_transformer import QuantityHaloSpec
 
 
@@ -151,24 +152,8 @@ def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id
         print(report_head + report_body)
 
 
-def compare_arr(computed_data, ref_data):
-    """
-    Smooth error near zero values.
-    Inputs are arrays.
-    """
-    if ref_data.dtype in (np.float64, np.int64, np.float32, np.int32):
-        denom = np.abs(ref_data) + np.abs(computed_data)
-        compare = 2.0 * np.abs(computed_data - ref_data) / denom
-        compare[denom == 0] = 0.0
-        return compare
-    elif ref_data.dtype in (np.bool,):
-        return np.logical_xor(computed_data, ref_data)
-    else:
-        raise TypeError(f"recieved data with unexpected dtype {ref_data.dtype}")
-
-
 def report_diff(arg: np.ndarray, numpy_arg: np.ndarray, label) -> str:
-    metric_err = compare_arr(arg, numpy_arg)
+    metric_err = testing.compare_arr(arg, numpy_arg)
     nans_match = np.logical_and(np.isnan(arg), np.isnan(numpy_arg))
     n_points = np.product(arg.shape)
     failures_14 = n_points - np.sum(
@@ -255,7 +240,7 @@ class CompareToNumpyStencil:
             self._func_name + " BEFORE",
             self._actual.stencil_object._gt_id_,
         )
-        self._numpy(*args, **kwargs)
+        self._actual(*args, **kwargs)
         self._numpy(*args_copy, **kwargs_copy)
         report_difference(
             args,
