@@ -1,8 +1,12 @@
 import fv3core.stencils.mapn_tracer as MapN_Tracer
-from pace.stencils.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
+from pace.stencils.testing import (
+    TranslateDycoreFortranData2Py,
+    TranslateGrid,
+    pad_field_in_j,
+)
 
 
-class TranslateMapN_Tracer_2d(TranslateFortranData2Py):
+class TranslateMapN_Tracer_2d(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {

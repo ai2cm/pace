@@ -121,19 +121,27 @@ echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 $FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME
 
-echo "submitting script to do compilation"
-env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=1"
 # Adapt batch script to compile the code:
 sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
-sed -i "s/<NTASKS>/$ranks/g" compile.daint.slurm
+sed -i "s/<NTASKS>/1/g" compile.daint.slurm
 sed -i "s/<NTASKSPERNODE>/1/g" compile.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
-sed -i "s/00:45:00/01:40:00/g" compile.daint.slurm
-sed -i "s/cscsci/normal/g" compile.daint.slurm
-sed -i "s/<G2G>/export CRAY_CUDA_MPS=1\nexport PYTHONOPTIMIZE=TRUE/g" compile.daint.slurm
-sed -i "s#<CMD>#$env_vars\nsrun python examples/standalone/runfile/dynamics.py $data_path 1 $backend $githash#g" compile.daint.slurm
-# execute on a gpu node
+sed -i "s/00:45:00/02:00:00/g" compile.daint.slurm
+sed -i "s#<CMD>#export PYTHONOPTIMIZE=TRUE\nsrun python examples/standalone/runfile/compile.py $data_path $backend #g" compile.daint.slurm
+
+
+env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"
+# Adapt batch script to run the code:
+sed -i "s/<NAME>/standalone/g" run.daint.slurm
+sed -i "s/<NTASKS>/$ranks/g" run.daint.slurm
+sed -i "s/<NTASKSPERNODE>/1/g" run.daint.slurm
+sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
+sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
+sed -i "s/cscsci/normal/g" run.daint.slurm
+sed -i "s#<CMD>#$env_vars\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
+
+echo "submitting script to do compilation"
 set +e
 res=$(sbatch -W -C gpu compile.daint.slurm 2>&1)
 status1=$?
@@ -151,22 +159,6 @@ else
 fi
 
 echo "Submitting script to do performance run"
-env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"
-# Adapt batch script to run the code:
-sed -i "s/<NAME>/standalone/g" run.daint.slurm
-sed -i "s/<NTASKS>/$ranks/g" run.daint.slurm
-sed -i "s/<NTASKSPERNODE>/1/g" run.daint.slurm
-sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
-sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
-if [ "$timesteps" -lt 5 ]
-then
-  sed -i "s/00:45:00/01:30:00/g" run.daint.slurm
-else
-  sed -i "s/00:45:00/03:15:00/g" run.daint.slurm
-fi
-sed -i "s/cscsci/normal/g" run.daint.slurm
-sed -i "s#<CMD>#$env_vars\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
-# execute on a gpu node
 set +e
 res=$(sbatch -W -C gpu run.daint.slurm 2>&1)
 status1=$?

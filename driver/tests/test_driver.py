@@ -48,7 +48,7 @@ def get_driver_config(
         initialization_config=initialization_config,
         performance_config=unittest.mock.MagicMock(),
         diagnostics_config=unittest.mock.MagicMock(),
-        dycore_config=unittest.mock.MagicMock(),
+        dycore_config=unittest.mock.MagicMock(fv_sg_adj=1),
         physics_config=unittest.mock.MagicMock(),
     )
 
@@ -101,7 +101,7 @@ def test_driver(timestep: timedelta, minutes: int):
     # we store an extra step at the start of the run
     assert driver.diagnostics.store.call_count == n_timesteps
     assert driver.dycore_to_physics.call_count == n_timesteps
-    assert driver.physics_to_dycore.call_count == n_timesteps
+    assert driver.end_of_step_update.call_count == n_timesteps
 
 
 test_data = [
@@ -181,7 +181,7 @@ class MockedComponents:
     physics: unittest.mock.MagicMock
     diagnostics: unittest.mock.MagicMock
     dycore_to_physics: unittest.mock.MagicMock
-    physics_to_dycore: unittest.mock.MagicMock
+    end_of_step_update: unittest.mock.MagicMock
 
 
 @contextlib.contextmanager
@@ -190,7 +190,7 @@ def mocked_components():
         with unittest.mock.patch("fv3gfs.physics.Physics") as physics_mock:
             with unittest.mock.patch(
                 "pace.stencils.update_atmos_state.UpdateAtmosphereState"
-            ) as physics_to_dycore_mock:
+            ) as end_of_step_update_mock:
                 with unittest.mock.patch(
                     "pace.stencils.update_atmos_state.DycoreToPhysics"
                 ) as dycore_to_physics_mock:
@@ -206,5 +206,5 @@ def mocked_components():
                                 physics=physics_mock,
                                 diagnostics=diagnostics_mock,
                                 dycore_to_physics=dycore_to_physics_mock,
-                                physics_to_dycore=physics_to_dycore_mock,
+                                end_of_step_update=end_of_step_update_mock,
                             )

@@ -4,6 +4,27 @@ command=$1
 
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
+function cleanup {
+  echo "Restoring fv3core symlinks"
+  rm -r $SCRIPT_DIR/../external/pace-util
+  rm -r $SCRIPT_DIR/../external/stencils
+  rm -r $SCRIPT_DIR/../external/gt4py
+  rm -r $SCRIPT_DIR/../external/dsl
+  rm $SCRIPT_DIR/../constraints.txt
+
+  cd $SCRIPT_DIR
+  ln -s ../../pace-util ../external/pace-util
+  ln -s ../../stencils ../external/stencils
+  ln -s ../../external/gt4py ../external/gt4py
+  ln -s ../../dsl ../external/dsl
+  cd $SCRIPT_DIR/..
+  ln -s ../constraints.txt constraints.txt
+}
+
+trap cleanup EXIT
+
+echo "Replacing fv3core symlinks with concrete files"
+
 rm $SCRIPT_DIR/../external/pace-util
 cp -r $SCRIPT_DIR/../../pace-util $SCRIPT_DIR/../external/pace-util
 
@@ -23,18 +44,5 @@ echo $command
 eval $command
 
 ret=$?
-
-rm -r $SCRIPT_DIR/../external/pace-util
-rm -r $SCRIPT_DIR/../external/stencils
-rm -r $SCRIPT_DIR/../external/gt4py
-rm -r $SCRIPT_DIR/../external/dsl
-rm $SCRIPT_DIR/../constraints.txt
-
-cd $SCRIPT_DIR
-ln -s ../../pace-util ../external/pace-util
-ln -s ../../stencils ../external/stencils
-ln -s ../../stencils ../external/gt4py
-ln -s ../../dsl ../external/dsl
-ln -s ../../constraints.txt ../constraints.txt
 
 exit $ret

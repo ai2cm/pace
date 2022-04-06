@@ -131,8 +131,6 @@ if grep -q "parallel" <<< "${script}"; then
     fi
 fi
 
-# get the test data version from the Makefile
-export DATA_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
 
 # Set the SCRATCH directory to the working directory if not set (e.g. for running on gce)
 if [ -z ${SCRATCH} ] ; then
@@ -140,10 +138,8 @@ if [ -z ${SCRATCH} ] ; then
 fi
 
 # Set the host data head directory location
-export TEST_DATA_DIR="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/${DATA_VERSION}"
+export TEST_DATA_ROOT="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/"
 export FV3_STENCIL_REBUILD_FLAG=False
-# Set the host data location
-export TEST_DATA_HOST="${TEST_DATA_DIR}/${experiment}/"
 export EXPERIMENT=${experiment}
 if [ -z ${JENKINS_TAG} ]; then
     export JENKINS_TAG=${JOB_NAME}${BUILD_NUMBER}
@@ -176,7 +172,6 @@ if [ ${python_env} == "virtualenv" ]; then
 	export MPIRUN_CALL="srun"
     fi
     export PACE_PATH="${JENKINS_DIR}/../"
-    export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
 fi
 
 export DOCKER_BUILDKIT=1

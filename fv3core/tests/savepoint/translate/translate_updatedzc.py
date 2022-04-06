@@ -1,8 +1,8 @@
 import fv3core.stencils.updatedzc as updatedzc
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslateUpdateDzC(TranslateFortranData2Py):
+class TranslateUpdateDzC(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory

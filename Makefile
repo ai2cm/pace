@@ -70,11 +70,17 @@ update_submodules_venv:
 test_driver:
 	DEV=$(DEV) $(MAKE) -C driver test
 
+driver_savepoint_tests_mpi:
+	DEV=$(DEV) $(MAKE) -C  fv3gfs-physics $@
+
 docs: ## generate Sphinx HTML documentation
 	$(MAKE) -C docs html
 	$(BROWSER) docs/_build/html/index.html
 
 servedocs: docs ## compile the docs watching for changes
 	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
+
+lint:
+	pre-commit run --all-files
 
 .PHONY: docs servedocs

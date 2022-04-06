@@ -1,7 +1,8 @@
 import dataclasses
 from typing import Any, Optional
 
-from pace.dsl.typing import FloatFieldI, FloatFieldIJ
+from pace.dsl.gt4py_utils import split_cartesian_into_storages
+from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
 
 from .generation import MetricTerms
 
@@ -512,23 +513,35 @@ class DriverGridData:
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "DriverGridData":
-        edge_vect_n = metric_terms.edge_vect_n.storage
-        edge_vect_s = metric_terms.edge_vect_s.storage
-        edge_vect_e = metric_terms.edge_vect_e_2d.storage
-        edge_vect_w = metric_terms.edge_vect_w_2d.storage
+        return cls.new_from_grid_variables(
+            vlon=metric_terms.vlon.storage,
+            vlat=metric_terms.vlon.storage,
+            edge_vect_n=metric_terms.edge_vect_n.storage,
+            edge_vect_s=metric_terms.edge_vect_s.storage,
+            edge_vect_e=metric_terms.edge_vect_e_2d.storage,
+            edge_vect_w=metric_terms.edge_vect_w_2d.storage,
+            es1=metric_terms.es1.storage,
+            ew2=metric_terms.ew2.storage,
+        )
 
-        vlon1, vlon2, vlon3 = metric_terms.split_cartesian_into_storages(
-            metric_terms.vlon
-        )
-        vlat1, vlat2, vlat3 = metric_terms.split_cartesian_into_storages(
-            metric_terms.vlat
-        )
-        es1_1, es1_2, es1_3 = metric_terms.split_cartesian_into_storages(
-            metric_terms.es1
-        )
-        ew2_1, ew2_2, ew2_3 = metric_terms.split_cartesian_into_storages(
-            metric_terms.ew2
-        )
+    @classmethod
+    def new_from_grid_variables(
+        cls,
+        vlon: FloatField,
+        vlat: FloatField,
+        edge_vect_n: FloatFieldI,
+        edge_vect_s: FloatFieldI,
+        edge_vect_e: FloatFieldIJ,
+        edge_vect_w: FloatFieldIJ,
+        es1: FloatField,
+        ew2: FloatField,
+    ) -> "DriverGridData":
+
+        vlon1, vlon2, vlon3 = split_cartesian_into_storages(vlon)
+        vlat1, vlat2, vlat3 = split_cartesian_into_storages(vlat)
+        es1_1, es1_2, es1_3 = split_cartesian_into_storages(es1)
+        ew2_1, ew2_2, ew2_3 = split_cartesian_into_storages(ew2)
+
         return cls(
             vlon1=vlon1,
             vlon2=vlon2,
