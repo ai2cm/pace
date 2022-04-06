@@ -184,6 +184,41 @@ def compute_pkz_func(delp, delz, pt, cappa):
     return exp(cappa * log(constants.RDG * delp / delz * pt))
 
 
+def moist_pt(
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    q_con: FloatField,
+    gz: FloatField,
+    cvm: FloatField,
+    pt: FloatField,
+    cappa: FloatField,
+    delp: FloatField,
+    delz: FloatField,
+    r_vir: float,
+):
+    with computation(PARALLEL), interval(...):
+        cvm, gz, q_con, cappa, pt = moist_pt_func(
+            qvapor,
+            qliquid,
+            qrain,
+            qsnow,
+            qice,
+            qgraupel,
+            q_con,
+            gz,
+            cvm,
+            pt,
+            cappa,
+            delp,
+            delz,
+            r_vir,
+        )
+
+
 def moist_pkz(
     qvapor: FloatField,
     qliquid: FloatField,
@@ -288,12 +323,12 @@ class MoistPKZ:
     def __init__(
         self,
         stencil_factory: StencilFactory,
+        grid,
     ):
-        grid_indexing = stencil_factory.grid_indexing
         self._moist_cv_pkz = stencil_factory.from_origin_domain(
             moist_pkz,
-            origin=grid_indexing.origin_compute(),
-            domain=grid_indexing.domain_compute(),
+            origin=grid.compute_origin(),
+            domain=(grid.nic, 1, grid.npz),
         )
 
     @computepath_method
@@ -313,7 +348,7 @@ class MoistPKZ:
         cappa: FloatField,
         delp: FloatField,
         delz: FloatField,
-        zvir: float,
+        r_vir: float,
     ):
 
         self._moist_cv_pkz(
@@ -331,7 +366,7 @@ class MoistPKZ:
             cappa,
             delp,
             delz,
-            zvir,
+            r_vir,
         )
 
 
@@ -340,9 +375,48 @@ class MoistPT:
     Class to test with DaCe orchestration. test class is MoistCVPlusPt_2d
     """
 
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        grid,
+    ):
+        self._moist_cv_pt = stencil_factory.from_origin_domain(
+            moist_pt,
+            origin=grid.compute_origin(),
+            domain=(grid.nic, 1, grid.npz),
+        )
 
     @computepath_method
-    def __call__(self, *args):
-        pass
+    def __call__(
+        self,
+        qvapor: FloatField,
+        qliquid: FloatField,
+        qrain: FloatField,
+        qsnow: FloatField,
+        qice: FloatField,
+        qgraupel: FloatField,
+        q_con: FloatField,
+        gz: FloatField,
+        cvm: FloatField,
+        pt: FloatField,
+        cappa: FloatField,
+        delp: FloatField,
+        delz: FloatField,
+        r_vir: float,
+    ):
+        self._moist_cv_pt(
+            qvapor,
+            qliquid,
+            qrain,
+            qsnow,
+            qice,
+            qgraupel,
+            q_con,
+            gz,
+            cvm,
+            pt,
+            cappa,
+            delp,
+            delz,
+            r_vir,
+        )

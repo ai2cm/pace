@@ -1,54 +1,12 @@
-from gt4py.gtscript import PARALLEL, computation, interval
-
 import fv3core.stencils.moist_cv as moist_cv
-from pace.dsl.typing import FloatField
 from pace.stencils.testing import TranslateFortranData2Py, pad_field_in_j
-
-
-def moist_pt(
-    qvapor: FloatField,
-    qliquid: FloatField,
-    qrain: FloatField,
-    qsnow: FloatField,
-    qice: FloatField,
-    qgraupel: FloatField,
-    q_con: FloatField,
-    gz: FloatField,
-    cvm: FloatField,
-    pt: FloatField,
-    cappa: FloatField,
-    delp: FloatField,
-    delz: FloatField,
-    r_vir: float,
-):
-    with computation(PARALLEL), interval(...):
-        cvm, gz, q_con, cappa, pt = moist_cv.moist_pt_func(
-            qvapor,
-            qliquid,
-            qrain,
-            qsnow,
-            qice,
-            qgraupel,
-            q_con,
-            gz,
-            cvm,
-            pt,
-            cappa,
-            delp,
-            delz,
-            r_vir,
-        )
 
 
 class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
-        self.compute_func = self.stencil_factory.from_origin_domain(
-            moist_pt,
-            origin=self.grid.compute_origin(),
-            domain=(self.grid.nic, 1, self.grid.npz),
-        )
+        self.compute_func = moist_cv.MoistPT(stencil_factory, self.grid)
         self.in_vars["data_vars"] = {
             "qvapor": {"serialname": "qvapor_js"},
             "qliquid": {"serialname": "qliquid_js"},
