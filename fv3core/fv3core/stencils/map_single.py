@@ -182,7 +182,7 @@ class MapSingle:
 
         # [DaCe] Cannot reassign variable - unroll
         if qs is None:
-            q4_1, q4_2, q4_3, q4_4 = self._remap_profile(
+            self._remap_profile(
                 self._tmp_qs,
                 self._q4_1,
                 self._q4_2,
@@ -192,7 +192,7 @@ class MapSingle:
                 qmin,
             )
         else:
-            q4_1, q4_2, q4_3, q4_4 = self._remap_profile(
+            self._remap_profile(
                 qs,
                 self._q4_1,
                 self._q4_2,
@@ -205,10 +205,10 @@ class MapSingle:
             q1,
             pe1,
             pe2,
-            q4_1,
-            q4_2,
-            q4_3,
-            q4_4,
+            self._q4_1,
+            self._q4_2,
+            self._q4_3,
+            self._q4_4,
             self._dp1,
             self._lev,
         )

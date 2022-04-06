@@ -691,5 +691,3 @@ class RemapProfile:
                 self._extm,
                 qmin,
             )
-
-        return a4_1, a4_2, a4_3, a4_4
