@@ -6,11 +6,7 @@ class TranslateMoistCVPlusPkz_2d(TranslateFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
-        self.compute_func = self.stencil_factory.from_origin_domain(
-            moist_cv.moist_pkz,
-            origin=self.grid.compute_origin(),
-            domain=(self.grid.nic, 1, self.grid.npz),
-        )
+        self.compute_func = moist_cv.MoistPKZ(stencil_factory)
 
         self.in_vars["data_vars"] = {
             "qvapor": {"serialname": "qvapor_js"},

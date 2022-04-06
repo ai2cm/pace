@@ -2,6 +2,8 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, PARALLEL, computation, exp, interval, log
 
 import pace.util.constants as constants
+from pace.dsl.dace.orchestrate import computepath_method
+from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
 
 
@@ -276,3 +278,71 @@ def fv_setup(
         else:
             dp1 = 0
             pkz = exp(constants.KAPPA * log(constants.RDG * delp * pt / delz))
+
+
+class MoistPKZ:
+    """
+    Class to test with DaCe orchestration. test class is MoistCVPlusPkz_2d
+    """
+
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+    ):
+        grid_indexing = stencil_factory.grid_indexing
+        self._moist_cv_pkz = stencil_factory.from_origin_domain(
+            moist_pkz,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
+        )
+
+    @computepath_method
+    def __call__(
+        self,
+        qvapor: FloatField,
+        qliquid: FloatField,
+        qrain: FloatField,
+        qsnow: FloatField,
+        qice: FloatField,
+        qgraupel: FloatField,
+        q_con: FloatField,
+        gz: FloatField,
+        cvm: FloatField,
+        pkz: FloatField,
+        pt: FloatField,
+        cappa: FloatField,
+        delp: FloatField,
+        delz: FloatField,
+        zvir: float,
+    ):
+
+        self._moist_cv_pkz(
+            qvapor,
+            qliquid,
+            qrain,
+            qsnow,
+            qice,
+            qgraupel,
+            q_con,
+            gz,
+            cvm,
+            pkz,
+            pt,
+            cappa,
+            delp,
+            delz,
+            zvir,
+        )
+
+
+class MoistPT:
+    """
+    Class to test with DaCe orchestration. test class is MoistCVPlusPt_2d
+    """
+
+    def __init__(self):
+        pass
+
+    @computepath_method
+    def __call__(self, *args):
+        pass

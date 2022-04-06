@@ -36,10 +36,9 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "Map1_PPM_2d_2",
     "Map1_PPM_2d_3",
     "MapN_Tracer_2d",
-    "MoistCVPlusPt_2d",
-    "MoistCVPlusPkz_2d",
     "SatAdjust3d",
     "Fillz",
+    "MoistCVPlusPkz_2d",
 ]
 # this must happen before any classes from fv3core are instantiated
 fv3core.testing.enable_selective_validation()
