@@ -73,9 +73,15 @@ class TranslateCS_Profile_2d(TranslateFortranData2Py):
             ]
             inputs["qs"] = qs_field
         del inputs["km"], inputs["iv"], inputs["kord"], inputs["i1"], inputs["i2"]
-        q4_1, q4_2, q4_3, q4_4 = self.compute_func(**inputs)
+        self.compute_func(**inputs)
         return self.slice_output(
-            inputs, {"q4_1": q4_1, "q4_2": q4_2, "q4_3": q4_3, "q4_4": q4_4}
+            inputs,
+            {
+                "q4_1": inputs["q4_1"],
+                "q4_2": inputs["q4_2"],
+                "q4_3": inputs["q4_3"],
+                "q4_4": inputs["q4_4"],
+            },
         )
 
 
