@@ -51,6 +51,11 @@ def is_dacemode_codegen_whitelisted(func: Callable[..., None]) -> bool:
         "compute_geopotential",
         # DynamicalCore
         "init_pfull",
+        # CubedToLatLon for Metric/Grid/baroclinic state calculation
+        "ord4_transform",
+        "c2l_ord2",
+        # Expanded grid variable
+        "compute_coriolis_parameter_defn",
     ]
     return any(func.__name__ in name for name in whitelist)
 
