@@ -1,5 +1,5 @@
 import os
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import dace
 import gt4py.storage
@@ -9,15 +9,49 @@ from dace.transformation.auto.auto_optimize import make_transients_persistent
 from dace.transformation.helpers import get_parent_map
 
 from pace.dsl.dace.dace_config import dace_config
-from pace.dsl.dace.sdfg_opt_passes import (
-    flip_default_layout_to_KIJ_on_maps,
-    make_local_memory_transient,
-)
+from pace.dsl.dace.sdfg_opt_passes import strip_unused_global_in_compute_x_flux
+from pace.dsl.dace.utils import DaCeProgress
 
 
 def dace_inhibitor(func: Callable):
     """Triggers callback generation wrapping `func` while doing DaCe parsing."""
     return func
+
+
+def upload_to_device(host_data: List[Any]):
+    """Make sure any data that are still a gt4py.storage gets uploaded to device"""
+    for data in host_data:
+        if isinstance(data, gt4py.storage.Storage):
+            data.host_to_device()
+
+
+def download_results_from_dace(dace_result: Optional[List[Any]], args: List[Any]):
+    """Move all data from DaCe memory space to GT4Py"""
+    gt4py_results = None
+    if dace_result is not None:
+        for arg in args:
+            if isinstance(arg, gt4py.storage.Storage) and hasattr(
+                arg, "_set_device_modified"
+            ):
+                arg._set_device_modified()
+        if dace_config.is_gpu_backend():
+            gt4py_results = [
+                gt4py.storage.from_array(
+                    r,
+                    default_origin=(0, 0, 0),
+                    backend=dace_config.get_backend(),
+                    managed_memory=True,
+                )
+                for r in dace_result
+            ]
+        else:
+            gt4py_results = [
+                gt4py.storage.from_array(
+                    r, default_origin=(0, 0, 0), backend=dace_config.get_backend()
+                )
+                for r in dace_result
+            ]
+    return gt4py_results
 
 
 def to_gpu(sdfg: dace.SDFG):
@@ -57,9 +91,9 @@ def call_sdfg(daceprog: DaceProgram, sdfg: dace.SDFG, args, kwargs, sdfg_final=F
             make_transients_persistent(sdfg=sdfg, device=dace.dtypes.DeviceType.GPU)
         else:
             make_transients_persistent(sdfg=sdfg, device=dace.dtypes.DeviceType.CPU)
-    for arg in list(args) + list(kwargs.values()):
-        if isinstance(arg, gt4py.storage.Storage):
-            arg.host_to_device()
+
+    # Make sure all data have been uploaded to the device
+    upload_to_device(list(args) + list(kwargs.values()))
 
     if not sdfg_final:
         sdfg_kwargs = daceprog._create_sdfg_args(sdfg, args, kwargs)
@@ -74,44 +108,30 @@ def call_sdfg(daceprog: DaceProgram, sdfg: dace.SDFG, args, kwargs, sdfg_final=F
         # Promote scalar
         from dace.sdfg.analysis import scalar_to_symbol as scal2sym
 
-        for sd in sdfg.all_sdfgs_recursive():
-            scal2sym.promote_scalars_to_symbols(sd)
+        with DaCeProgress("Scalar promotion"):
+            for sd in sdfg.all_sdfgs_recursive():
+                scal2sym.promote_scalars_to_symbols(sd)
 
-        # Simplify the SDFG (automatic optimization)
-        sdfg.simplify(validate=False)
+        with DaCeProgress("Simplify (1 of 2)"):
+            sdfg.simplify(validate=False)
 
-        # Here we insert optimization passes that don't exists in Simplify yet
-        make_local_memory_transient(sdfg)
-        flip_default_layout_to_KIJ_on_maps(sdfg)
+        with DaCeProgress("Expand library nodes (including stencils)"):
+            sdfg.expand_library_nodes()
+
+        with DaCeProgress("Simplify (final)"):
+            sdfg.simplify(validate=False)
+
+        with DaCeProgress(
+            "Refine optimisations:\n  compute_x_flux transient as global removal"
+        ):
+            strip_unused_global_in_compute_x_flux(sdfg)
 
         # Call
         res = sdfg(**sdfg_kwargs)
     else:
         res = daceprog(*args, **kwargs)
-    for arg in list(args) + list(kwargs.values()):
-        if isinstance(arg, gt4py.storage.Storage) and hasattr(
-            arg, "_set_device_modified"
-        ):
-            arg._set_device_modified()
-    if res is not None:
-        if dace_config.is_gpu_backend():
-            res = [
-                gt4py.storage.from_array(
-                    r,
-                    default_origin=(0, 0, 0),
-                    backend=dace_config.get_backend(),
-                    managed_memory=True,
-                )
-                for r in res
-            ]
-        else:
-            res = [
-                gt4py.storage.from_array(
-                    r, default_origin=(0, 0, 0), backend=dace_config.get_backend()
-                )
-                for r in res
-            ]
-    return res
+
+    return download_results_from_dace(res, list(args) + list(kwargs.values()))
 
 
 class LazyComputepathFunction(SDFGConvertible):
