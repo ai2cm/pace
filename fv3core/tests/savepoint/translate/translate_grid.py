@@ -121,7 +121,7 @@ class TranslateMirrorGrid(ParallelTranslateGrid):
 class TranslateGridAreas(ParallelTranslateGrid):
     def __init__(self, rank_grids, namelist, stencil_factory):
         super().__init__(rank_grids, namelist, stencil_factory)
-        self.max_error = 3e-12
+        self.max_error = 1e-10
         self.near_zero = 3e-14
         self.ignore_near_zero_errors = {"agrid": True, "dxc": True, "dyc": True}
         self.stencil_factory = stencil_factory
@@ -571,12 +571,14 @@ class TranslateUtilVectors(ParallelTranslateGrid):
     def __init__(self, grids, namelist, stencil_factory):
         super().__init__(grids, namelist, stencil_factory)
         self.max_error = 3e-12
-        self.near_zero = 3e-14
+        self.near_zero = 1e-13
         self.ignore_near_zero_errors = {
             "ew1": True,
             "ew2": True,
             "es1": True,
             "es2": True,
+            "ec1": True,
+            "ec2": True,
         }
         self._base.in_vars["data_vars"] = {
             "ec1": {

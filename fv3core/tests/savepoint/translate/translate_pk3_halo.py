@@ -1,8 +1,8 @@
 from fv3core.stencils.pk3_halo import PK3Halo
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslatePK3_Halo(TranslateFortranData2Py):
+class TranslatePK3_Halo(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory

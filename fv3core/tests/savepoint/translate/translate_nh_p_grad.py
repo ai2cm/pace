@@ -1,8 +1,8 @@
 import fv3core.stencils.nh_p_grad as NH_P_Grad
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslateNH_P_Grad(TranslateFortranData2Py):
+class TranslateNH_P_Grad(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {

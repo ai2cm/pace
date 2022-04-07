@@ -235,7 +235,19 @@ class TranslateGrid:
     fpy_model_index_offset = 2
     fpy_index_offset = -1
     composite_grid_vars = ["sin_sg", "cos_sg"]
-    edge_var_axis = {"edge_w": 1, "edge_e": 1, "edge_s": 0, "edge_n": 0}
+    vvars = ["vlon", "vlat"]
+    edge_var_axis = {
+        "edge_w": 1,
+        "edge_e": 1,
+        "edge_s": 0,
+        "edge_n": 0,
+    }
+    edge_vect_axis = {
+        "edge_vect_w": 1,
+        "edge_vect_e": 1,
+        "edge_vect_s": 0,
+        "edge_vect_n": 0,
+    }
     ee_vars = ["ee1", "ee2", "ew1", "ew2", "es1", "es2"]
     edge_vect_axis = {
         "edge_vect_s": 0,
@@ -249,6 +261,15 @@ class TranslateGrid:
     #     1   5   3
     #     |       |
     #     6---2---7
+
+    @classmethod
+    def new_from_serialized_data(cls, serializer, rank, layout, backend):
+        grid_savepoint = serializer.get_savepoint("Grid-Info")[0]
+        grid_data = {}
+        grid_fields = serializer.fields_at_savepoint(grid_savepoint)
+        for field in grid_fields:
+            grid_data[field] = read_serialized_data(serializer, grid_savepoint, field)
+        return cls(grid_data, rank, layout, backend=backend)
 
     def __init__(self, inputs, rank, layout, *, backend: str):
         self.backend = backend
@@ -267,13 +288,9 @@ class TranslateGrid:
 
         self.data = inputs
 
-    def make_composite_var_storage(
-        self,
-        varname,
-        data3d,
-        shape,
-    ):
-        for s in range(9):
+    def _make_composite_var_storage(self, varname, data3d, shape, count):
+
+        for s in range(count):
             self.data[varname + str(s + 1)] = utils.make_storage_data(
                 np.squeeze(data3d[:, :, s]),
                 shape,
@@ -281,12 +298,52 @@ class TranslateGrid:
                 backend=self.backend,
             )
 
+    def _edge_vector_storage(self, varname, axis, max_shape):
+        default_origin = (0, 0, 0)
+        mask = None
+        if axis == 1:
+            buffer = np.zeros(max_shape[1])
+            buffer[: self.data[varname].shape[0]] = self.data[varname]
+            default_origin = (0, 0)
+            buffer = buffer[np.newaxis, ...]
+            buffer = np.repeat(buffer, max_shape[0], axis=0)
+        if axis == 0:
+            buffer = np.zeros(max_shape[0])
+            buffer[: self.data[varname].shape[0]] = self.data[varname]
+            default_origin = (0,)
+            mask = (True, False, False)
+        self.data[varname] = utils.make_storage_data(
+            data=buffer,
+            origin=default_origin,
+            shape=buffer.shape,
+            backend=self.backend,
+            mask=mask,
+        )
+
+    def _make_composite_vvar_storage(self, varname, data3d, shape):
+        """This function is needed to transform vlat, vlon"""
+
+        size1, size2 = data3d.shape[0:2]
+        buffer = np.zeros((shape[0], shape[1], 3))
+        buffer[1 : 1 + size1, 1 : 1 + size2, :] = data3d
+        self.data[varname] = utils.make_storage_data(
+            data=buffer,
+            shape=buffer.shape,
+            origin=(1, 1, 0),
+            backend=self.backend,
+        )
+
     def make_grid_storage(self, pygrid):
         shape = pygrid.domain_shape_full(add=(1, 1, 1))
         for key in TranslateGrid.composite_grid_vars:
             if key in self.data:
-                self.make_composite_var_storage(key, self.data[key], shape)
+                self._make_composite_var_storage(key, self.data[key], shape, 9)
                 del self.data[key]
+
+        for key in TranslateGrid.vvars:
+            if key in self.data:
+                self._make_composite_vvar_storage(key, self.data[key], shape)
+
         for key in TranslateGrid.ee_vars:
             if key in self.data:
                 self.data[key] = np.moveaxis(self.data[key], 0, 2)
@@ -308,21 +365,8 @@ class TranslateGrid:
                 )
         for key, axis in TranslateGrid.edge_vect_axis.items():
             if key in self.data:
-                mask = None
-                if axis == 1:
-                    default_origin = (0, 0)
-                    self.data[key] = self.data[key][np.newaxis, ...]
-                    self.data[key] = np.repeat(self.data[key], shape[0], axis=0)
-                if axis == 0:
-                    default_origin = (0,)
-                    mask = (True, False, False)
-                self.data[key] = utils.make_storage_data(
-                    data=self.data[key],
-                    origin=default_origin,
-                    shape=self.data[key].shape,
-                    backend=self.backend,
-                    mask=mask,
-                )
+                self._edge_vector_storage(key, axis, shape)
+
         for key, value in self.data.items():
             if type(value) is np.ndarray:
                 # TODO: when grid initialization model exists, may want to use

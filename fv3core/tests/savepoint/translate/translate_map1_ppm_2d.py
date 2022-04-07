@@ -2,10 +2,14 @@ import numpy as np
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.testing import MapSingleFactory
-from pace.stencils.testing import TranslateFortranData2Py, TranslateGrid, pad_field_in_j
+from pace.stencils.testing import (
+    TranslateDycoreFortranData2Py,
+    TranslateGrid,
+    pad_field_in_j,
+)
 
 
-class TranslateSingleJ(TranslateFortranData2Py):
+class TranslateSingleJ(TranslateDycoreFortranData2Py):
     def make_storage_data_input_vars(self, inputs, storage_vars=None):
         if storage_vars is None:
             storage_vars = self.storage_vars()
@@ -24,7 +28,7 @@ class TranslateSingleJ(TranslateFortranData2Py):
         super().make_storage_data_input_vars(inputs, storage_vars)
 
 
-class TranslateMap1_PPM_2d(TranslateFortranData2Py):
+class TranslateMap1_PPM_2d(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.compute_func = MapSingleFactory(stencil_factory)

@@ -1,8 +1,8 @@
 import fv3core.stencils.moist_cv as moist_cv
-from pace.stencils.testing import TranslateFortranData2Py, pad_field_in_j
+from pace.stencils.testing import TranslateDycoreFortranData2Py, pad_field_in_j
 
 
-class TranslateMoistCVPlusPkz_2d(TranslateFortranData2Py):
+class TranslateMoistCVPlusPkz_2d(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory

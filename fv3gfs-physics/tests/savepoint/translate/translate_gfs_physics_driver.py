@@ -3,13 +3,16 @@ import copy
 import pace.dsl.gt4py_utils as utils
 import pace.util as util
 from fv3gfs.physics.stencils.physics import Physics, PhysicsState
+from pace.stencils import update_atmos_state
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 
 
 class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
-
+        # using top level namelist rather than PhysicsConfig
+        # because DycoreToPhysics needs some dycore info
+        self.namelist = namelist
         self.in_vars["data_vars"] = {
             "qvapor": {"dycore": True},
             "qliquid": {"dycore": True},
@@ -80,7 +83,6 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
                 "order": "F",
             },
         }
-        self.namelist = namelist
         self.stencil_factory = stencil_factory
         self.grid_indexing = self.stencil_factory.grid_indexing
 
@@ -135,6 +137,17 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
             self.namelist,
             active_packages=active_packages,
         )
+        # TODO, self.namelist doesn't have fv_sg_adj because it is PhysicsConfig
+        # either move where GFSPhysicsDriver starts, or pass the full namelist or
+        # get around this issue another way. Setting do_dry_convective_adjustment
+        # to False for now (we don't run this on a case where it is True yet)
+        dycore_to_physics = update_atmos_state.DycoreToPhysics(
+            self.stencil_factory,
+            self.namelist,
+            self.namelist.fv_sg_adj > 0,
+            self.namelist.dycore_only,
+        )
+        dycore_to_physics(dycore_state=physics_state, physics_state=physics_state)
         physics._atmos_phys_driver_statein(
             physics_state.prsik,
             physics_state.phii,

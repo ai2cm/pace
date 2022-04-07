@@ -33,6 +33,9 @@ def update_dwind_prep_stencil(
         ve_1 = v3_1[-1, 0, 0] + v3_1
         ve_2 = v3_2[-1, 0, 0] + v3_2
         ve_3 = v3_3[-1, 0, 0] + v3_3
+    with computation(PARALLEL), interval(...):
+        u_dt = 0.0
+        v_dt = 0.0
 
 
 def update_dwind_y_edge_south_stencil(
@@ -112,8 +115,8 @@ def copy3_stencil(
 def update_uwind_stencil(
     u: FloatField,
     es1_1: FloatFieldIJ,
-    es2_1: FloatFieldIJ,
-    es3_1: FloatFieldIJ,
+    es1_2: FloatFieldIJ,
+    es1_3: FloatFieldIJ,
     ue_1: FloatField,
     ue_2: FloatField,
     ue_3: FloatField,
@@ -121,14 +124,14 @@ def update_uwind_stencil(
 ):
     with computation(PARALLEL), interval(...):
         # is: ie; js:je+1
-        u = u + dt5 * (ue_1 * es1_1 + ue_2 * es2_1 + ue_3 * es3_1)
+        u = u + dt5 * (ue_1 * es1_1 + ue_2 * es1_2 + ue_3 * es1_3)
 
 
 def update_vwind_stencil(
     v: FloatField,
-    ew1_2: FloatFieldIJ,
+    ew2_1: FloatFieldIJ,
     ew2_2: FloatFieldIJ,
-    ew3_2: FloatFieldIJ,
+    ew2_3: FloatFieldIJ,
     ve_1: FloatField,
     ve_2: FloatField,
     ve_3: FloatField,
@@ -136,7 +139,7 @@ def update_vwind_stencil(
 ):
     with computation(PARALLEL), interval(...):
         # is: ie+1; js:je
-        v = v + dt5 * (ve_1 * ew1_2 + ve_2 * ew2_2 + ve_3 * ew3_2)
+        v = v + dt5 * (ve_1 * ew2_1 + ve_2 * ew2_2 + ve_3 * ew2_3)
 
 
 class AGrid2DGridPhysics:
@@ -395,11 +398,11 @@ class AGrid2DGridPhysics:
         self._edge_vect_s = grid_info.edge_vect_s
         self._edge_vect_n = grid_info.edge_vect_n
         self._es1_1 = grid_info.es1_1
-        self._es2_1 = grid_info.es1_2
-        self._es3_1 = grid_info.es1_3
-        self._ew1_2 = grid_info.ew2_1
+        self._es1_2 = grid_info.es1_2
+        self._es1_3 = grid_info.es1_3
+        self._ew2_1 = grid_info.ew2_1
         self._ew2_2 = grid_info.ew2_2
-        self._ew3_2 = grid_info.ew2_3
+        self._ew2_3 = grid_info.ew2_3
 
     def global_to_local_1d(self, global_value, subtile_index, subtile_length):
         return global_value - subtile_index * subtile_length
@@ -616,8 +619,8 @@ class AGrid2DGridPhysics:
         self._update_uwind_stencil(
             u,
             self._es1_1,
-            self._es2_1,
-            self._es3_1,
+            self._es1_2,
+            self._es1_3,
             self._ue_1,
             self._ue_2,
             self._ue_3,
@@ -625,9 +628,9 @@ class AGrid2DGridPhysics:
         )
         self._update_vwind_stencil(
             v,
-            self._ew1_2,
+            self._ew2_1,
             self._ew2_2,
-            self._ew3_2,
+            self._ew2_3,
             self._ve_1,
             self._ve_2,
             self._ve_3,

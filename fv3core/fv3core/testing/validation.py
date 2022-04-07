@@ -209,3 +209,4 @@ def enable_selective_validation():
             "u": get_domain_func([X_DIM, Y_INTERFACE_DIM, Z_DIM]),
         },
     )
+    fv3core.DynamicalCore = fv3core.stencils.fv_dynamics.DynamicalCore

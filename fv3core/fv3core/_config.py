@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Tuple
+from typing import Optional, Tuple
 
 import f90nml
 
@@ -265,7 +265,7 @@ class DynamicalCoreConfig:
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
-    namelist_override: str = None
+    namelist_override: Optional[str] = None
 
     def __post_init__(self):
         if self.namelist_override is not None:
@@ -371,6 +371,10 @@ class DynamicalCoreConfig:
             fv_sg_adj=namelist.fv_sg_adj,
             n_sponge=namelist.n_sponge,
         )
+
+    @property
+    def do_dry_convective_adjustment(self) -> bool:
+        return self.fv_sg_adj > 0
 
     @property
     def riemann(self) -> RiemannConfig:

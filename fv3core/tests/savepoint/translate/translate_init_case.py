@@ -8,7 +8,10 @@ import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.dsl.gt4py_utils as utils
 import pace.util as fv3util
-from pace.stencils.testing import ParallelTranslateBaseSlicing, TranslateFortranData2Py
+from pace.stencils.testing import (
+    ParallelTranslateBaseSlicing,
+    TranslateDycoreFortranData2Py,
+)
 from pace.stencils.testing.grid import TRACER_DIM
 from pace.util.grid import MetricTerms
 
@@ -224,7 +227,7 @@ def make_sliced_inputs_dict(inputs, slice_2d):
     return sliced_inputs
 
 
-class TranslateInitPreJab(TranslateFortranData2Py):
+class TranslateInitPreJab(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"ak": {}, "bk": {}, "delp": {}}
@@ -278,7 +281,7 @@ class TranslateInitPreJab(TranslateFortranData2Py):
         return self.slice_output(inputs)
 
 
-class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
+class TranslateJablonowskiBaroclinic(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
@@ -355,7 +358,7 @@ class TranslateJablonowskiBaroclinic(TranslateFortranData2Py):
         return self.slice_output(inputs)
 
 
-class TranslatePVarAuxiliaryPressureVars(TranslateFortranData2Py):
+class TranslatePVarAuxiliaryPressureVars(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {

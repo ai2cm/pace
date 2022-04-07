@@ -1,8 +1,8 @@
 import fv3core.stencils.moist_cv as moist_cv
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslateLastStep(TranslateFortranData2Py):
+class TranslateLastStep(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.compute_func = stencil_factory.from_origin_domain(
