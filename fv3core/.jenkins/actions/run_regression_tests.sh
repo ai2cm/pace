@@ -18,8 +18,4 @@ else
     export VOLUMES="-v ${SCRIPT_DIR}/../:/.jenkins"
 fi
 
-if [[ ${FV3_DACEMODE} == "True" ]]; then
-    make savepoint_tests
-else
-    make tests savepoint_tests
-fi
+make savepoint_tests
