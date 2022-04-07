@@ -86,14 +86,6 @@ def to_output_name(savepoint_name):
     return savepoint_name[-3:] + "-Out"
 
 
-def make_grid(grid_savepoint, serializer, rank, layout, *, backend: str):
-    grid_data = {}
-    grid_fields = serializer.fields_at_savepoint(grid_savepoint)
-    for field in grid_fields:
-        grid_data[field] = read_serialized_data(serializer, grid_savepoint, field)
-    return TranslateGrid(grid_data, rank, layout, backend=backend).python_grid()
-
-
 def read_serialized_data(serializer, savepoint, variable):
 
     data = serializer.read(variable, savepoint)
@@ -221,10 +213,9 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
     )
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
-        grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = make_grid(
-            grid_savepoint, serializer, rank, dycore_config.layout, backend=backend
-        )
+        grid = TranslateGrid.new_from_serialized_data(
+            serializer, rank, dycore_config.layout, backend
+        ).python_grid()
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
             grid_indexing=grid.grid_indexing,
@@ -274,10 +265,9 @@ def mock_parallel_savepoint_cases(
     grid_list = []
     for rank in range(total_ranks):
         serializer = get_serializer(data_path, rank)
-        grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-        grid = make_grid(
-            grid_savepoint, serializer, rank, dycore_config.layout, backend=backend
-        )
+        grid = TranslateGrid.new_from_serialized_data(
+            serializer, rank, dycore_config.layout, backend
+        ).python_grid()
         grid_list.append(grid)
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
@@ -341,10 +331,9 @@ def parallel_savepoint_cases(
         rebuild=False,
         validate_args=True,
     )
-    grid_savepoint = serializer.get_savepoint(GRID_SAVEPOINT_NAME)[0]
-    grid = make_grid(
-        grid_savepoint, serializer, mpi_rank, dycore_config.layout, backend=backend
-    )
+    grid = TranslateGrid.new_from_serialized_data(
+        serializer, mpi_rank, dycore_config.layout, backend
+    ).python_grid()
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,

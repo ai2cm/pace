@@ -3,15 +3,12 @@ BACKEND=$1
 EXPNAME=$2
 
 
-python_data_dir=${TEST_DATA_DIR}/python_regressions
+python_data_dir=${TEST_DATA_ROOT}/python_regressions
 if [[ ! -d ${python_data_dir} ]] ; then
     set +e
     echo "Making python regression data for the first time for {exp_name}"
 fi
 export EXPERIMENT=${EXPNAME}
-
-# Set the host data location
-export TEST_DATA_HOST="${TEST_DATA_DIR}/${EXPNAME}/"
 
 # sync the test data
 make get_test_data

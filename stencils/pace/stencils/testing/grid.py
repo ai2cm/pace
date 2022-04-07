@@ -9,6 +9,7 @@ from pace.util.grid import (
     AngleGridData,
     ContravariantGridData,
     DampingCoefficients,
+    DriverGridData,
     GridData,
     HorizontalGridData,
     MetricTerms,
@@ -125,6 +126,7 @@ class Grid:
         self._sizer = None
         self._quantity_factory = None
         self._grid_data = None
+        self._driver_grid_data = None
         self._damping_coefficients = None
 
     @property
@@ -507,7 +509,7 @@ class Grid:
             edge_s=self.edge_s,
             edge_n=self.edge_n,
         )
-        vertical = VerticalGridData(ptop=-1.0e7, ks=-1)
+        vertical = VerticalGridData(ptop=self.ptop, ak=self.ak, bk=self.bk, ks=self.ks)
         contravariant = ContravariantGridData(
             self.cosa,
             self.cosa_u,
@@ -537,6 +539,21 @@ class Grid:
             angle_data=angle,
         )
         return self._grid_data
+
+    @property
+    def driver_grid_data(self) -> "GridData":
+        if self._driver_grid_data is None:
+            self._driver_grid_data = DriverGridData.new_from_grid_variables(
+                vlon=self.vlon,
+                vlat=self.vlat,
+                edge_vect_w=self.edge_vect_w,
+                edge_vect_e=self.edge_vect_e,
+                edge_vect_s=self.edge_vect_s,
+                edge_vect_n=self.edge_vect_n,
+                es1=self.es1,
+                ew2=self.ew2,
+            )
+        return self._driver_grid_data
 
     def set_grid_data(self, grid_data: "GridData"):
         self._grid_data = grid_data

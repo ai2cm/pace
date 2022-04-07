@@ -1,9 +1,9 @@
 import fv3core._config as spec
 from fv3core.stencils.riem_solver3 import RiemannSolver3
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslateRiem_Solver3(TranslateFortranData2Py):
+class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.compute_func = RiemannSolver3(

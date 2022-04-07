@@ -5,9 +5,8 @@ import numpy as np
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.stencils.fv_update_phys import ApplyPhysics2Dycore
-from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
-from pace.util.grid import DriverGridData
+from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
+from pace.stencils.testing.translate_physics import ParallelPhysicsTranslate2Py
 
 
 @dataclasses.dataclass()
@@ -33,7 +32,7 @@ class DycoreState:
         return getattr(self, item)
 
 
-class TranslateFVUpdatePhys(ParallelTranslate2Py):
+class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
     def __init__(self, grids, namelist, stencil_factory):
         super().__init__(grids, namelist, stencil_factory)
         grid = grids[0]
@@ -73,14 +72,6 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
                 "kaxis": 1,
             },
             "pk": grid.compute_buffer_k_dict(),
-            "edge_vect_e": {"dwind": True},
-            "edge_vect_n": {"dwind": True, "axis": 0},
-            "edge_vect_s": {"dwind": True, "axis": 0},
-            "edge_vect_w": {"dwind": True},
-            "vlat": {"dwind": True},
-            "vlon": {"dwind": True},
-            "es": {"dwind": True},
-            "ew": {"dwind": True},
         }
         self._base.out_vars = {
             "qvapor": {},
@@ -124,70 +115,6 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             return data[0]
         return data
 
-    def add_composite_vvar_storage(self, d, var, data3d, max_shape, start_indices):
-        """This function is needed to transform vlat, vlon, es, and ew
-        This can be removed when the information is in Grid
-        """
-        shape = data3d.shape
-        start1, start2 = start_indices.get(var, (0, 0))
-        size1, size2 = data3d.shape[0:2]
-        for s in range(data3d.shape[2]):
-            buffer = np.zeros(max_shape[0:2])
-            buffer[start1 : start1 + size1, start2 : start2 + size2] = np.squeeze(
-                data3d[:, :, s]
-            )
-            d[var + str(s + 1)] = utils.make_storage_data(
-                data=buffer,
-                shape=max_shape[0:2],
-                origin=(start1, start2),
-                backend=self.stencil_factory.backend,
-            )
-        d[var] = utils.make_storage_from_shape(
-            shape=max_shape[0:2],
-            origin=(start1, start2),
-            init=True,
-            backend=self.stencil_factory.backend,
-        )  # write the original name to avoid missing var
-
-    def add_composite_evar_storage(self, d, var, data4d, max_shape, start_indices):
-        shape = data4d.shape
-        start1, start2 = start_indices.get(var, (0, 0))
-        size1, size2 = data4d.shape[1:3]
-        for s in range(data4d.shape[0]):
-            for t in range(data4d.shape[3]):
-                buffer = np.zeros(max_shape[0:2])
-                buffer[start1 : start1 + size1, start2 : start2 + size2] = np.squeeze(
-                    data4d[s, :, :, t]
-                )
-                d[var + str(s + 1) + "_" + str(t + 1)] = utils.make_storage_data(
-                    data=buffer,
-                    origin=(start1, start2),
-                    shape=max_shape[0:2],
-                    backend=self.stencil_factory.backend,
-                )
-        d[var] = utils.make_storage_from_shape(
-            shape=max_shape[0:2],
-            origin=(start1, start2),
-            init=True,
-            backend=self.stencil_factory.backend,
-        )  # write the original name to avoid missing var
-
-    def edge_vector_storage(self, d, var, axis):
-        max_shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        default_origin = (0, 0, 0)
-        if axis == 1:
-            default_origin = (0, 0)
-            d[var] = d[var][np.newaxis, ...]
-            d[var] = np.repeat(d[var], max_shape[0], axis=0)
-        if axis == 0:
-            default_origin = (0,)
-        d[var] = utils.make_storage_data(
-            data=d[var],
-            origin=default_origin,
-            shape=d[var].shape,
-            backend=self.stencil_factory.backend,
-        )
-
     def read_dwind_serialized_data(self, serializer, savepoint, varname):
         max_shape = self.grid.domain_shape_full(add=(1, 1, 1))
         start_indices = {
@@ -197,18 +124,9 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         axes = {"edge_vect_s": 0, "edge_vect_n": 0, "edge_vect_w": 1, "edge_vect_e": 1}
         input_data = {}
         data = serializer.read(varname, savepoint)
-        if varname in ["vlat", "vlon"]:
-            self.add_composite_vvar_storage(
-                input_data, varname, data, max_shape, start_indices
-            )
-            return input_data
-        if varname in ["es", "ew"]:
-            self.add_composite_evar_storage(
-                input_data, varname, data, max_shape, start_indices
-            )
-            return input_data
+
         # convert single element numpy arrays to scalars
-        elif data.size == 1:
+        if data.size == 1:
             data = data.item()
             input_data[varname] = data
             return input_data
@@ -218,9 +136,6 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
             axis = axes.get(varname, 2)
             input_data[varname] = np.zeros(max_shape[axis])
             input_data[varname][start1 : start1 + size1] = data
-            if "edge_vect" in varname:
-                self.edge_vector_storage(input_data, varname, axis)
-                return input_data
         elif len(data.shape) == 2:
             input_data[varname] = np.zeros(max_shape[0:2])
             start1, start2 = start_indices.get(varname, (0, 0))
@@ -283,45 +198,7 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
 
     def compute_parallel(self, inputs, communicator):
         self.make_storage_data_input_vars(inputs)
-        del inputs["vlat"]
-        del inputs["vlon"]
-        del inputs["es"]
-        del inputs["ew"]
-        del inputs["es1_2"]
-        del inputs["es2_2"]
-        del inputs["es3_2"]
-        del inputs["ew1_1"]
-        del inputs["ew2_1"]
-        del inputs["ew3_1"]
-        extra_grid_info = {}
-        grid_names = [
-            "edge_vect_e",
-            "edge_vect_w",
-            "edge_vect_s",
-            "edge_vect_n",
-            "vlat1",
-            "vlat2",
-            "vlat3",
-            "vlon1",
-            "vlon2",
-            "vlon3",
-            "es1_1",
-            "es2_1",
-            "es3_1",
-            "ew1_2",
-            "ew2_2",
-            "ew3_2",
-        ]
-        grid_dict = {}
-        for var in grid_names:
-            data = inputs.pop(var)
-            if "_1" in var:
-                grid_dict["es1_" + var[2]] = data
-            elif "_2" in var:
-                grid_dict["ew2_" + var[2]] = data
-            else:
-                grid_dict[var] = data
-        extra_grid_info = DriverGridData(**grid_dict)
+
         tendencies = {}
         for key in ["u_dt", "v_dt", "t_dt"]:
             storage = inputs.pop(key)
@@ -335,12 +212,12 @@ class TranslateFVUpdatePhys(ParallelTranslate2Py):
         partitioner = pace.util.CubedSpherePartitioner(
             pace.util.TilePartitioner(self.namelist.layout)
         )
-        self._base.compute_func = ApplyPhysics2Dycore(
+        self._base.compute_func = ApplyPhysicsToDycore(
             self.stencil_factory,
             self.grid.grid_data,
             self.namelist,
             communicator,
-            extra_grid_info,
+            self.grid.driver_grid_data,
         )
         state = DycoreState(**inputs)
         dims_u = [pace.util.X_DIM, pace.util.Y_INTERFACE_DIM, pace.util.Z_DIM]

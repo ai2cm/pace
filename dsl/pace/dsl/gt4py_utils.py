@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import gt4py.storage as gt_storage
 import numpy as np
 
-from pace.dsl.typing import DTypes, Field, Float
+from pace.dsl.typing import DTypes, Field, Float, FloatField
 
 
 try:
@@ -482,3 +482,22 @@ def stack(tup, axis: int = 0, out=None):
 def device_sync(backend: str) -> None:
     if cp and is_gpu_backend(backend):
         cp.cuda.Device(0).synchronize()
+
+
+def split_cartesian_into_storages(var: FloatField):
+    """
+    Provided a storage of dims [X_DIM, Y_DIM, CARTESIAN_DIM]
+         or [X_INTERFACE_DIM, Y_INTERFACE_DIM, CARTESIAN_DIM]
+    Split it into separate 2D storages for each cartesian
+    dimension, and return these in a list.
+    """
+    var_data = []
+    for cart in range(3):
+        var_data.append(
+            make_storage_data(
+                asarray(var.data, type(var.data))[:, :, cart],
+                var.data.shape[0:2],
+                backend=var.backend,
+            )
+        )
+    return var_data

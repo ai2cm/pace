@@ -1,5 +1,6 @@
 # Driver Configurations
 Currently, driver takes in a yaml config containing the following options. Example configuration file can be found in examples/configs.
+
 ## stencil_config
 Configuration options pertaining to GT4Py stencils such as backend and whether to rebuild stencils.
 
