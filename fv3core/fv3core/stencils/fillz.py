@@ -2,7 +2,7 @@ import typing
 from typing import Dict
 
 # [DaCe] Import
-from dace import constant as dace_constant
+from dace import constant as DaceConstant
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
@@ -161,7 +161,7 @@ class FillNegativeTracerValues:
     def __call__(
         self,
         dp2: FloatField,
-        tracers: dace_constant,
+        tracers: DaceConstant,
     ):
         """
         Args:

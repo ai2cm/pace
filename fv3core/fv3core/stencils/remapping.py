@@ -1,7 +1,7 @@
 from typing import Dict
 
 # [DaCe] import
-from dace import constant as dace_constant
+from dace import constant as DaceConstant
 from gt4py.gtscript import (
     __INLINED,
     BACKWARD,
@@ -508,7 +508,7 @@ class LagrangianToEulerian:
     @computepath_method
     def __call__(
         self,
-        tracers: dace_constant,
+        tracers: DaceConstant,
         pt: FloatField,
         delp: FloatField,
         delz: FloatField,
