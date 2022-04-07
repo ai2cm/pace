@@ -1,12 +1,70 @@
 import fv3core.stencils.moist_cv as moist_cv
+from pace.dsl.dace.orchestrate import computepath_method
+from pace.dsl.stencil import StencilFactory
+from pace.dsl.typing import FloatField
 from pace.stencils.testing import TranslateDycoreFortranData2Py, pad_field_in_j
+
+
+class MoistPKZ:
+    """
+    Class to test with DaCe orchestration. test class is MoistCVPlusPkz_2d
+    """
+
+    def __init__(
+        self,
+        stencil_factory: StencilFactory,
+        grid,
+    ):
+        self._moist_cv_pkz = stencil_factory.from_origin_domain(
+            moist_cv.moist_pkz,
+            origin=grid.compute_origin(),
+            domain=(grid.nic, 1, grid.npz),
+        )
+
+    @computepath_method
+    def __call__(
+        self,
+        qvapor: FloatField,
+        qliquid: FloatField,
+        qrain: FloatField,
+        qsnow: FloatField,
+        qice: FloatField,
+        qgraupel: FloatField,
+        q_con: FloatField,
+        gz: FloatField,
+        cvm: FloatField,
+        pkz: FloatField,
+        pt: FloatField,
+        cappa: FloatField,
+        delp: FloatField,
+        delz: FloatField,
+        r_vir: float,
+    ):
+
+        self._moist_cv_pkz(
+            qvapor,
+            qliquid,
+            qrain,
+            qsnow,
+            qice,
+            qgraupel,
+            q_con,
+            gz,
+            cvm,
+            pkz,
+            pt,
+            cappa,
+            delp,
+            delz,
+            r_vir,
+        )
 
 
 class TranslateMoistCVPlusPkz_2d(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
-        self.compute_func = moist_cv.MoistPKZ(stencil_factory, self.grid)
+        self.compute_func = MoistPKZ(stencil_factory, self.grid)
 
         self.in_vars["data_vars"] = {
             "qvapor": {"serialname": "qvapor_js"},
