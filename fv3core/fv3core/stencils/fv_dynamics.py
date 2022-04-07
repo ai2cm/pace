@@ -259,7 +259,7 @@ class DynamicalCore:
         # [DaCe] Build tracers names & storages
         self.tracers = {}
         for name in utils.tracer_variables[0:NQ]:
-            self.tracers[name] = state.__dict__[name]
+            self.tracers[name] = getattr(state, name)
         self.tracer_storages = {
             name: quantity.storage for name, quantity in self.tracers.items()
         }
