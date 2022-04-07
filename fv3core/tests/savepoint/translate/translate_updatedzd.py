@@ -3,6 +3,8 @@ import numpy as np
 import fv3core.stencils.updatedzd
 from fv3core.stencils import d_sw
 from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.utils.functional_validation import get_subset_func
+import pace.util
 
 
 class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
@@ -42,6 +44,11 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
         self.out_vars["ws"]["kend"] = None
         self.stencil_factory = stencil_factory
         self.namelist = namelist
+        self._subset = get_subset_func(
+            self.grid.grid_indexing,
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            n_halo=((0, 0), (0, 0)),
+        )
 
     def compute(self, inputs):
         self.make_storage_data_input_vars(inputs)
@@ -66,4 +73,7 @@ class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
         Given an output array, return the slice of the array which we'd
         like to validate against reference data
         """
-        return self.updatedzd.subset_output(varname, output)
+        if varname in ["zh", "height"]:
+            return self._subset(output)
+        else:
+            return output

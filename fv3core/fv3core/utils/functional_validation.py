@@ -11,6 +11,15 @@ def get_subset_func(
     dims: Sequence[str],
     n_halo: Tuple[Tuple[int, int], Tuple[int, int]] = ((0, 0), (0, 0)),
 ) -> Callable[[np.ndarray], np.ndarray]:
+    """
+    Args:
+        grid_indexing: configuration for domain and halo indexing
+        dims: dimensions
+        n_halo: number of halo points to retain
+
+    Returns:
+        subset: a subset function
+    """
     origin, domain = grid_indexing.get_origin_domain(dims)
     i_start = origin[0] - n_halo[0][0]
     i_end = origin[0] + domain[0] + n_halo[0][1]
