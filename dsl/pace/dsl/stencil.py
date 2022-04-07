@@ -230,7 +230,7 @@ class FrozenStencil(SDFGConvertible):
         if (
             MPI is not None
             and MPI.COMM_WORLD.Get_size() > 1
-            and not "dace" in self.stencil_config.backend
+            and "dace" not in self.stencil_config.backend
         ):
             stencil_function = future_stencil.future_stencil
             stencil_kwargs["wrapper"] = self
