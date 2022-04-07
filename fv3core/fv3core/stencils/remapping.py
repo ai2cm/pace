@@ -309,40 +309,18 @@ class LagrangianToEulerian:
         )
 
         backend = stencil_factory.backend
-        self._pe1 = utils.make_storage_from_shape(
-            shape_kplus,
-            backend=backend,
-        )
-        self._pe2 = utils.make_storage_from_shape(
-            shape_kplus,
-            backend=backend,
-        )
-        self._dp2 = utils.make_storage_from_shape(
-            shape_kplus,
-            backend=backend,
-        )
-        self._pn2 = utils.make_storage_from_shape(
-            shape_kplus,
-            backend=backend,
-        )
-        self._pe0 = utils.make_storage_from_shape(
-            shape_kplus,
-            backend=backend,
-        )
-        self._pe3 = utils.make_storage_from_shape(
-            shape_kplus,
-            backend=backend,
-        )
+        self._pe1 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._dp2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pn2 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe0 = utils.make_storage_from_shape(shape_kplus, backend=backend)
+        self._pe3 = utils.make_storage_from_shape(shape_kplus, backend=backend)
 
         self._gz: FloatField = utils.make_storage_from_shape(
-            shape_kplus,
-            grid_indexing.origin_compute(),
-            backend=backend,
+            shape_kplus, grid_indexing.origin_compute(), backend=backend
         )
         self._cvm: FloatField = utils.make_storage_from_shape(
-            shape_kplus,
-            grid_indexing.origin_compute(),
-            backend=backend,
+            shape_kplus, grid_indexing.origin_compute(), backend=backend
         )
 
         self._kord_tm = abs(config.kord_tm)
