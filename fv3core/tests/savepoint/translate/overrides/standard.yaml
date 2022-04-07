@@ -116,6 +116,9 @@ DynCore:
  - backend: gtc:dace
    ignore_near_zero_errors:
      - wsd
+ - backend: gtc:dace:gpu
+   ignore_near_zero_errors:
+     - wsd
 
 Tracer2D1L:
  - backend: gtc:gt:gpu
@@ -123,6 +126,9 @@ Tracer2D1L:
  - backend: gtc:cuda
    max_error: 1e-9
  - backend: gtc:dace
+   ignore_near_zero_errors:
+     tracers: 1e-15
+ - backend: gtc:dace:gpu
    ignore_near_zero_errors:
      tracers: 1e-15
  - backend: gtc:gt:cpu_ifirst
@@ -181,4 +187,6 @@ DivergenceDamping:
 
 DelnFlux:
   - backend: gtc:dace
+    max_error: 2e-13
+  - backend: gtc:dace:gpu
     max_error: 2e-13
