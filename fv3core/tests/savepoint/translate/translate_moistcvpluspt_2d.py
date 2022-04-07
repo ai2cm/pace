@@ -1,8 +1,45 @@
+from gt4py.gtscript import PARALLEL, computation, interval
+
 import fv3core.stencils.moist_cv as moist_cv
 from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
 from pace.stencils.testing import TranslateFortranData2Py, pad_field_in_j
+
+
+def moist_pt(
+    qvapor: FloatField,
+    qliquid: FloatField,
+    qrain: FloatField,
+    qsnow: FloatField,
+    qice: FloatField,
+    qgraupel: FloatField,
+    q_con: FloatField,
+    gz: FloatField,
+    cvm: FloatField,
+    pt: FloatField,
+    cappa: FloatField,
+    delp: FloatField,
+    delz: FloatField,
+    r_vir: float,
+):
+    with computation(PARALLEL), interval(...):
+        cvm, gz, q_con, cappa, pt = moist_cv.moist_pt_func(
+            qvapor,
+            qliquid,
+            qrain,
+            qsnow,
+            qice,
+            qgraupel,
+            q_con,
+            gz,
+            cvm,
+            pt,
+            cappa,
+            delp,
+            delz,
+            r_vir,
+        )
 
 
 class MoistPT:
@@ -16,7 +53,7 @@ class MoistPT:
         grid,
     ):
         self._moist_cv_pt = stencil_factory.from_origin_domain(
-            moist_cv.moist_pt,
+            moist_pt,
             origin=grid.compute_origin(),
             domain=(grid.nic, 1, grid.npz),
         )

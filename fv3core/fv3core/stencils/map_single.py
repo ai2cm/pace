@@ -104,9 +104,7 @@ class MapSingle:
 
         def make_storage():
             return utils.make_storage_from_shape(
-                shape=shape,
-                origin=origin,
-                backend=stencil_factory.backend,
+                shape=shape, origin=origin, backend=stencil_factory.backend
             )
 
         self._dp1 = make_storage()
@@ -115,9 +113,7 @@ class MapSingle:
         self._q4_3 = make_storage()
         self._q4_4 = make_storage()
         self._tmp_qs = utils.make_storage_from_shape(
-            shape[0:2],
-            origin=(0, 0),
-            backend=stencil_factory.backend,
+            shape[0:2], origin=(0, 0), backend=stencil_factory.backend
         )
         self._lev = utils.make_storage_from_shape(
             shape[:-1],

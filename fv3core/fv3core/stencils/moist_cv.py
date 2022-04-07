@@ -182,41 +182,6 @@ def compute_pkz_func(delp, delz, pt, cappa):
     return exp(cappa * log(constants.RDG * delp / delz * pt))
 
 
-def moist_pt(
-    qvapor: FloatField,
-    qliquid: FloatField,
-    qrain: FloatField,
-    qsnow: FloatField,
-    qice: FloatField,
-    qgraupel: FloatField,
-    q_con: FloatField,
-    gz: FloatField,
-    cvm: FloatField,
-    pt: FloatField,
-    cappa: FloatField,
-    delp: FloatField,
-    delz: FloatField,
-    r_vir: float,
-):
-    with computation(PARALLEL), interval(...):
-        cvm, gz, q_con, cappa, pt = moist_pt_func(
-            qvapor,
-            qliquid,
-            qrain,
-            qsnow,
-            qice,
-            qgraupel,
-            q_con,
-            gz,
-            cvm,
-            pt,
-            cappa,
-            delp,
-            delz,
-            r_vir,
-        )
-
-
 def moist_pkz(
     qvapor: FloatField,
     qliquid: FloatField,
