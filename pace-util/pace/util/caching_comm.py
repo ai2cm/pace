@@ -38,6 +38,13 @@ class NullRequest(Request):
 
 @dataclasses.dataclass
 class CachingCommData:
+    """
+    Data required to restore a CachingCommReader.
+
+    Usually you will not want to initialize this class directly, but instead
+    use the CachingCommReader.load method.
+    """
+
     rank: int
     size: int
     bcast_objects: List[Any] = dataclasses.field(default_factory=list)
@@ -73,8 +80,17 @@ class CachingCommData:
 
 
 class CachingCommReader(Comm):
+    """
+    mpi4py Comm-like object which replays stored communications.
+    """
+
     def __init__(self, data: CachingCommData):
         """
+        Initialize a CachingCommReader.
+
+        Usually you will not want to initialize this class directly, but instead
+        use the CachingCommReader.load method.
+
         Args:
             data: contains all data needed for mocked communication
         """
@@ -121,6 +137,11 @@ class CachingCommReader(Comm):
 
 
 class CachingCommWriter(Comm):
+    """
+    Wrapper around a mpi4py Comm object which can be serialized and then loaded
+    as a CachingCommReader.
+    """
+
     def __init__(self, comm: Comm):
         """
         Args:

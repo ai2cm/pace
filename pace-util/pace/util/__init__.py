@@ -6,7 +6,7 @@ from ._legacy_restart import open_restart
 from ._timing import NullTimer, Timer
 from ._xarray import to_dataset
 from .buffer import Buffer, array_buffer, recv_buffer, send_buffer
-from .caching_comm import CachingCommReader, CachingCommWriter
+from .caching_comm import CachingCommData, CachingCommReader, CachingCommWriter
 from .communicator import Communicator, CubedSphereCommunicator, TileCommunicator
 from .constants import (
     BOUNDARY_TYPES,
