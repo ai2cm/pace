@@ -8,12 +8,18 @@ CS_Profile_2d:
   - backend: gtc:cuda
     max_error: 2.5e-9
     near_zero: 1.5e-14
+  - backend: gtc:dace:gpu
+    max_error: 2.5e-9
+    near_zero: 1.5e-14
 
 CS_Profile_2d-2:
   - backend: gtcuda
     max_error: 3e-8
     near_zero: 1.5e-14
   - backend: gtc:gt:gpu
+    max_error: 3e-8
+    near_zero: 1.5e-14
+  - backend: gtc:dace:gpu
     max_error: 3e-8
     near_zero: 1.5e-14
   - backend: gtc:cuda
@@ -26,6 +32,8 @@ Fillz:
     near_zero: 3e-15
   - backend: gtc:gt:gpu
     max_error: 5e-6
+  - backend: gtc:dace:gpu
+    max_error: 5e-6
 
 MapN_Tracer_2d:
   - backend: gtcuda
@@ -33,15 +41,17 @@ MapN_Tracer_2d:
     near_zero: 1e-17
     ignore_near_zero_errors:
       - qtracers
+  - backend: gtc:dace:gpu
+    max_error: 2e-7
+    near_zero: 1e-17
+    ignore_near_zero_errors:
+      - qtracers
   - backend: numpy
     max_error: 9e-9 # 48_6ranks
-
-
 
 NH_P_Grad:
   - backend: gtcuda
     max_error: 2e-9
-
 
 Riem_Solver3:
   - backend: gtcuda
@@ -61,6 +71,12 @@ Remapping:
       - q_con
       - tracers
   - backend: gtc:gt:gpu
+    max_error: 1e-9
+    near_zero: 5e-6
+    ignore_near_zero_errors:
+      - q_con
+      - tracers
+  - backend: gtc:dace:gpu
     max_error: 1e-9
     near_zero: 5e-6
     ignore_near_zero_errors:
@@ -102,6 +118,8 @@ FVSubgridZ:
   - backend: gtcuda
     max_error: 1e-8
   - backend: gtc:gt:gpu
+    max_error: 1e-8
+  - backend: gtc:dace:gpu
     max_error: 1e-8
   - backend: gtc:cuda
     max_error: 1e-8
