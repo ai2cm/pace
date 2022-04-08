@@ -161,6 +161,7 @@ class CachingCommWriter(Comm):
         return self._comm.Isend(sendbuf=sendbuf, dest=dest, tag=tag, **kwargs)
 
     def Recv(self, recvbuf, source, tag: int = 0, **kwargs):
+        self._comm.Recv(recvbuf=recvbuf, source=source, tag=tag, **kwargs)
         self._data.received_buffers.append(copy.deepcopy(recvbuf))
 
     def Irecv(self, recvbuf, source, tag: int = 0, **kwargs) -> Request:

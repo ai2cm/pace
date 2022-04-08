@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterable, List, Mapping, Optional, Tuple
 
 import numpy as np
 
@@ -352,7 +352,7 @@ class VectorInterfaceHaloUpdater:
     def __init__(
         self,
         comm,
-        boundaries: List[Boundary],
+        boundaries: Mapping[int, Boundary],
         force_cpu: bool = False,
         timer: Optional[Timer] = None,
     ):

@@ -606,7 +606,7 @@ class CubedSphereCommunicator(Communicator):
         """
         halo_updater = VectorInterfaceHaloUpdater(
             comm=self.comm,
-            boundaries=list(self.boundaries.values()),
+            boundaries=self.boundaries,
             force_cpu=self._force_cpu,
             timer=self.timer,
         )
