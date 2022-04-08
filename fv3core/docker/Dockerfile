@@ -58,5 +58,3 @@ RUN chmod +x /entrypoint.sh && \
 ARG ENV_CUDA_PATH=""
 ENV CUDA_PATH=${ENV_CUDA_PATH}
 ENV IN_DOCKER=True
-ENV GT_CACHE_ROOT=/
-ENV GT_CACHE_DIR_NAME=gt_cache
