@@ -6,12 +6,8 @@ from ._legacy_restart import open_restart
 from ._timing import NullTimer, Timer
 from ._xarray import to_dataset
 from .buffer import Buffer, array_buffer, recv_buffer, send_buffer
-from .communicator import (
-    Communicator,
-    CubedSphereCommunicator,
-    HaloUpdateRequest,
-    TileCommunicator,
-)
+from .caching_comm import CachingCommReader, CachingCommWriter
+from .communicator import Communicator, CubedSphereCommunicator, TileCommunicator
 from .constants import (
     BOUNDARY_TYPES,
     CORNER_BOUNDARY_TYPES,
@@ -42,12 +38,13 @@ from .constants import (
     Z_SOIL_DIM,
 )
 from .halo_data_transformer import QuantityHaloSpec
-from .halo_updater import HaloUpdater
+from .halo_updater import HaloUpdater, HaloUpdateRequest
 from .initialization import GridSizer, QuantityFactory, SubtileGridSizer
 from .io import read_state, write_state
 from .local_comm import LocalComm
 from .namelist import Namelist, NamelistDefaults
 from .nudging import apply_nudging, get_nudging_tendencies
+from .null_comm import NullComm
 from .partitioner import (
     CubedSpherePartitioner,
     TilePartitioner,
