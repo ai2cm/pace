@@ -232,14 +232,6 @@ class CompareToNumpyStencil:
     ) -> None:
         args_copy = copy.deepcopy(args)
         kwargs_copy = copy.deepcopy(kwargs)
-        report_difference(
-            args,
-            kwargs,
-            args_copy,
-            kwargs_copy,
-            self._func_name + " BEFORE",
-            self._actual.stencil_object._gt_id_,
-        )
         self._actual(*args, **kwargs)
         self._numpy(*args_copy, **kwargs_copy)
         report_difference(
