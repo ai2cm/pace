@@ -190,6 +190,11 @@ def report_diff(arg: np.ndarray, numpy_arg: np.ndarray, label) -> str:
 
 
 class CompareToNumpyStencil:
+    """
+    A wrapper over FrozenStencil which executes a numpy version of the stencil as well,
+    and compares the results.
+    """
+
     def __init__(
         self,
         func: Callable[..., None],
