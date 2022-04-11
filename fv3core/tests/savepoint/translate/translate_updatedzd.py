@@ -1,10 +1,10 @@
 import numpy as np
 
 import fv3core.stencils.updatedzd
-from fv3core.stencils import d_sw
-from pace.stencils.testing import TranslateDycoreFortranData2Py
-from fv3core.utils.functional_validation import get_subset_func
 import pace.util
+from fv3core.stencils import d_sw
+from fv3core.utils.functional_validation import get_subset_func
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateUpdateDzD(TranslateDycoreFortranData2Py):

@@ -2,13 +2,9 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
-
-# import pace.util
 import pace.util.constants as constants
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
-
-# from fv3core.utils.functional_validation import get_set_nan_func
 from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
