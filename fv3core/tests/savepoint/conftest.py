@@ -52,6 +52,18 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     # [TODO] the following tests do not pass on fv3core repo either:
     # "FillCornersVector",
     # "A2B_Ord4",
+    "Remapping",
+    "CS_Profile_2d",
+    "CS_Profile_2d_2",
+    "MapScalar_2d",
+    "Map1_PPM_2d",
+    "Map1_PPM_2d_2",
+    "Map1_PPM_2d_3",
+    "MapN_Tracer_2d",
+    "SatAdjust3d",
+    "Fillz",
+    "MoistCVPlusPkz_2d",
+    "MoistCVPlusPt_2d",
 ]
 # this must happen before any classes from fv3core are instantiated
 fv3core.testing.enable_selective_validation()

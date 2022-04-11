@@ -1,10 +1,17 @@
 from typing import Dict
 
+from dace import constant as DaceConstant
+
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.fillz import FillNegativeTracerValues
 from fv3core.stencils.map_single import MapSingle
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
+
+# [DaCe] Import.
+#        Quantity required for type hints
+from pace.util import Quantity
 
 
 class MapNTracer:
@@ -22,6 +29,7 @@ class MapNTracer:
         j1: int,
         j2: int,
         fill: bool,
+        tracers: Dict[str, Quantity],
     ):
         grid_indexing = stencil_factory.grid_indexing
         self._origin = (i1, j1, 0)
@@ -33,7 +41,9 @@ class MapNTracer:
         self._j1 = j1
         self._j2 = j2
         self._qs = utils.make_storage_from_shape(
-            grid_indexing.max_shape, origin=(0, 0, 0), backend=stencil_factory.backend
+            grid_indexing.max_shape,
+            origin=(0, 0, 0),
+            backend=stencil_factory.backend,
         )
 
         kord_tracer = [kord] * self._nq
@@ -52,31 +62,32 @@ class MapNTracer:
                 self._list_of_remap_objects[0].j_extent,
                 self._nk,
                 self._nq,
+                tracers,
             )
         else:
             self._fill_negative_tracers = False
 
+    @computepath_method
     def __call__(
         self,
         pe1: FloatField,
         pe2: FloatField,
         dp2: FloatField,
-        tracers: Dict[str, "FloatField"],
-        q_min: float,
+        tracers: DaceConstant,
     ):
         """
         Remaps the tracer species onto the Eulerian grid
         and optionally fills negative values in the tracer fields
+        Assumes the minimum value is 0 for each tracer
 
         Args:
             pe1 (in): Lagrangian pressure levels
             pe2 (out): Eulerian pressure levels
             dp2 (in): Difference in pressure between Eulerian levels
             tracers (inout): Dict mapping tracer names to their correstponding storages
-            qmin (in): Minimum allowed value of the remapped fields
         """
         for i, q in enumerate(utils.tracer_variables[0 : self._nq]):
-            self._list_of_remap_objects[i](tracers[q], pe1, pe2, self._qs, qmin=q_min)
+            self._list_of_remap_objects[i](tracers[q], pe1, pe2, self._qs)
 
         if self._fill_negative_tracers is True:
             self._fillz(dp2, tracers)

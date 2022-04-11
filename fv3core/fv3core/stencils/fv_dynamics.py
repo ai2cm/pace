@@ -209,6 +209,7 @@ class DynamicalCore:
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
+        state: DycoreState,
     ):
         """
         Args:
@@ -219,6 +220,7 @@ class DynamicalCore:
             config: configuration of dynamical core, for example as would be set by
                 the namelist in the Fortran model
             phis: surface geopotential height
+            state: Model state
         """
         # nested and stretched_grid are options in the Fortran code which we
         # have not implemented, so they are hard-coded here.
@@ -253,6 +255,15 @@ class DynamicalCore:
             grid_type=config.grid_type,
             hord=config.hord_tr,
         )
+
+        # [DaCe] Build tracers names & storages
+        self.tracers = {}
+        for name in utils.tracer_variables[0:NQ]:
+            self.tracers[name] = getattr(state, name)
+        self.tracer_storages = {
+            name: quantity.storage for name, quantity in self.tracers.items()
+        }
+        # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
             stencil_factory, tracer_transport, self.grid_data, comm, NQ
         )
@@ -332,6 +343,7 @@ class DynamicalCore:
             grid_data.area_64,
             NQ,
             self._pfull,
+            tracers=self.tracers,
         )
 
         full_xyz_spec = grid_indexing.get_quantity_halo_spec(

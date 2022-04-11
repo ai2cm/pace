@@ -574,6 +574,7 @@ class Driver:
                 damping_coefficients=self.state.damping_coefficients,
                 config=self.config.dycore_config,
                 phis=self.state.dycore_state.phis,
+                state=self.state.dycore_state,
             )
 
             self.physics = fv3gfs.physics.Physics(
