@@ -5,6 +5,7 @@ from typing import List
 import numpy as np
 
 import pace.util
+from pace.util.caching_comm import CachingCommReader, CachingCommWriter
 
 
 def test_halo_update_integration():
@@ -107,3 +108,66 @@ def test_bcast_inserts_data():
     assert comm._data.bcast_objects[0].shape == shape
     np.testing.assert_array_equal(comm._data.bcast_objects[0], recvbuf)
     assert comm._data.bcast_objects[0] is not recvbuf
+
+
+def writer_to_reader(comm_writer: CachingCommWriter) -> CachingCommReader:
+    file = io.BytesIO()
+    comm_writer.dump(file)
+    file.seek(0)
+    return CachingCommReader.load(file)
+
+
+def test_Scatter():
+    np.random.seed(0)
+    array = np.random.uniform(size=(50,))
+    send_array = np.empty([2] + list(array.shape))
+    send_array[:] = array[None, :]
+    buffer_dict = {}
+    root_comm = pace.util.CachingCommWriter(
+        comm=pace.util.LocalComm(rank=0, total_ranks=2, buffer_dict=buffer_dict)
+    )
+    worker_comm = pace.util.CachingCommWriter(
+        comm=pace.util.LocalComm(rank=1, total_ranks=2, buffer_dict=buffer_dict)
+    )
+    recvbuf_root = np.zeros_like(array)
+    recvbuf_worker = np.zeros_like(array)
+    root_comm.Scatter(send_array, recvbuf=recvbuf_root, root=0)
+    worker_comm.Scatter(None, recvbuf=recvbuf_worker, root=0)
+    np.testing.assert_array_equal(recvbuf_root, recvbuf_worker)
+
+    root_comm = writer_to_reader(root_comm)
+    worker_comm = writer_to_reader(worker_comm)
+
+    recvbuf2_root = np.zeros_like(array)
+    recvbuf2_worker = np.zeros_like(array)
+    root_comm.Scatter(send_array, recvbuf=recvbuf2_root, root=0)
+    worker_comm.Scatter(None, recvbuf=recvbuf2_worker, root=0)
+    np.testing.assert_array_equal(recvbuf2_root, recvbuf_root)
+    np.testing.assert_array_equal(recvbuf2_worker, recvbuf_worker)
+
+
+def test_Gather():
+    np.random.seed(0)
+    array_root = np.random.uniform(size=(50,))
+    array_worker = np.random.uniform(size=(50,))
+    buffer_dict = {}
+    root_comm = pace.util.CachingCommWriter(
+        comm=pace.util.LocalComm(rank=0, total_ranks=2, buffer_dict=buffer_dict)
+    )
+    worker_comm = pace.util.CachingCommWriter(
+        comm=pace.util.LocalComm(rank=1, total_ranks=2, buffer_dict=buffer_dict)
+    )
+    recvbuf_root = np.empty([2] + list(array_root.shape))
+    worker_comm.Gather(array_worker, recvbuf=None, root=0)
+    root_comm.Gather(array_root, recvbuf=recvbuf_root, root=0)
+    np.testing.assert_array_equal(recvbuf_root[0, :], array_root)
+    np.testing.assert_array_equal(recvbuf_root[1, :], array_worker)
+
+    root_comm = writer_to_reader(root_comm)
+    worker_comm = writer_to_reader(worker_comm)
+
+    recvbuf_root = np.empty([2] + list(array_root.shape))
+    worker_comm.Gather(array_worker, recvbuf=None, root=0)
+    root_comm.Gather(array_root, recvbuf=recvbuf_root, root=0)
+    np.testing.assert_array_equal(recvbuf_root[0, :], array_root)
+    np.testing.assert_array_equal(recvbuf_root[1, :], array_worker)

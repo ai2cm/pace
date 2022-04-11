@@ -112,7 +112,8 @@ class CachingCommReader(Comm):
         recvbuf[:] = self._data.get_buffer()
 
     def Gather(self, sendbuf, recvbuf, root=0, **kwargs):
-        recvbuf[:] = self._data.get_buffer()
+        if recvbuf is not None:
+            recvbuf[:] = self._data.get_buffer()
 
     def Send(self, sendbuf, dest, tag: int = 0, **kwargs):
         pass
