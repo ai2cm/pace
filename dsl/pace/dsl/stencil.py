@@ -192,6 +192,7 @@ class FrozenStencil(SDFGConvertible):
         stencil_kwargs = {**self.stencil_config.stencil_kwargs}
 
         if "dace" in self.stencil_config.backend:
+            # [TODO]: find a better solution for this
             # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
             if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
                 gt.config.cache_settings["dir_name"] = ".gt_cache_{:0>6d}".format(
@@ -202,26 +203,6 @@ class FrozenStencil(SDFGConvertible):
                 "default_build_folder",
                 value="{gt_cache}/dacecache".format(
                     gt_cache=gt.config.cache_settings["dir_name"]
-                ),
-            )
-            dace.Config.set("compiler", "allow_view_arguments", value=True)
-            dace.Config.set(
-                "compiler",
-                "cpu",
-                "args",
-                value=" ".join(
-                    [
-                        "-std=c++14",
-                        "-fPIC",
-                        "-Wall",
-                        "-Wextra",
-                        "-O3",
-                        "-fno-expensive-optimizations",
-                        "-ggdb",
-                        "-march=native",
-                        "-Wno-unused-parameter",
-                        "-Wno-unused-label",
-                    ]
                 ),
             )
 
