@@ -49,8 +49,8 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "PressureAdjustedTemperature_NonHydrostatic",
     "DynCore",
     "Tracer2D1L",
+    "FillCornersVector",
     # [TODO] the following tests do not pass on fv3core repo either:
-    # "FillCornersVector",
     # "A2B_Ord4",
 ]
 # this must happen before any classes from fv3core are instantiated

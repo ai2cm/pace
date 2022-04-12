@@ -1,4 +1,5 @@
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.stencils import corners
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
@@ -96,6 +97,27 @@ class TranslateCopyCorners(TranslateDycoreFortranData2Py):
         return inputs
 
 
+class FillCornersVector_Wrapper:
+    def __init__(self, stencil_factory, axes_offsets, origin, domain):
+        self.stencil = stencil_factory.from_origin_domain(
+            corners.fill_corners_dgrid_defn,
+            externals=axes_offsets,
+            origin=origin,
+            domain=domain,
+        )
+
+    @computepath_method
+    def __call__(
+        self,
+        x_in,
+        x_out,
+        y_in,
+        y_out,
+        mysign,
+    ):
+        self.stencil(x_in, x_out, y_in, y_out, mysign)
+
+
 class TranslateFillCornersVector(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
@@ -114,11 +136,8 @@ class TranslateFillCornersVector(TranslateDycoreFortranData2Py):
                 axes_offsets = self.stencil_factory.grid_indexing.axis_offsets(
                     origin, domain
                 )
-                vector_corner_fill = self.stencil_factory.from_origin_domain(
-                    corners.fill_corners_dgrid_defn,
-                    externals=axes_offsets,
-                    origin=origin,
-                    domain=domain,
+                vector_corner_fill = FillCornersVector_Wrapper(
+                    self.stencil_factory, axes_offsets, origin, domain
                 )
                 vector_corner_fill(
                     inputs["vc"], inputs["vc"], inputs["uc"], inputs["uc"], -1.0
