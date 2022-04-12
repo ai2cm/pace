@@ -228,7 +228,7 @@ class CompareToNumpyStencil:
             skip_passes=skip_passes,
         )
         numpy_stencil_config = StencilConfig(
-            backend="numpy",
+            backend="gtc:numpy",
             rebuild=stencil_config.rebuild,
             validate_args=stencil_config.validate_args,
             format_source=True,
