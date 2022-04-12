@@ -48,7 +48,7 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "YPPM",
     "PressureAdjustedTemperature_NonHydrostatic",
     "DynCore",
-    "Tracer2D1L",
+    # "Tracer2D1L",
     "FillCornersVector",
     # [TODO] the following tests do not pass on fv3core repo either:
     # "A2B_Ord4",
