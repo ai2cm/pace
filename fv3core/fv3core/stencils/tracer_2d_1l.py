@@ -368,5 +368,8 @@ class TracerAdvection:
                 self._tracers_halo_updater.update()
                 # use variable assignment to avoid a data copy
                 self._tmp_dp2[:] = dp1
-                dp1[:] = dp2
+                if isinstance(dp1, pace.util.Quantity):
+                    dp1.storage[:] = dp2[:]
+                else:
+                    dp1[:] = dp2
                 dp2[:] = self._tmp_dp2

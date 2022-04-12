@@ -49,6 +49,7 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "PressureAdjustedTemperature_NonHydrostatic",
     "DynCore",
     "Tracer2D1L",
+    "CopyCorners",
     # [TODO] the following tests do not pass on fv3core repo either:
     # "FillCornersVector",
     # "A2B_Ord4",
@@ -65,6 +66,8 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "MoistCVPlusPkz_2d",
     "MoistCVPlusPt_2d",
     "CubedToLatLon",
+    "Neg_Adj3",
+    "FVDynamics",
 ]
 # this must happen before any classes from fv3core are instantiated
 fv3core.testing.enable_selective_validation()

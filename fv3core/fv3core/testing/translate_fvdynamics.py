@@ -313,12 +313,15 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             phis=state.phis,
             state=state,
         )
+        self.dycore.update_state(
+            self.namelist.consv_te,
+            inputs["bdt"],
+            inputs["do_adiabatic_init"],
+            self.namelist.n_split,
+            state,
+        )
         self.dycore.step_dynamics(
             state,
-            self.namelist.consv_te,
-            inputs["do_adiabatic_init"],
-            inputs["bdt"],
-            self.namelist.n_split,
         )
         outputs = self.outputs_from_state(state)
         for name, value in outputs.items():
@@ -356,12 +359,31 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
                 "cannot call subset_output before calling compute_parallel "
                 "to initialize dycore"
             )
-        elif varname in self.dycore.selective_names:  # type: ignore
+        if hasattr(self.dycore, "selective_names") and (
+            varname in self.dycore.selective_names  # type: ignore
+        ):
             return_value = self.dycore.subset_output(varname, output)  # type: ignore
-        elif varname in ADVECTED_TRACER_NAMES:
-            return_value = self.dycore.tracer_advection.subset_output(  # type: ignore
-                "tracers", output
+
+        if varname in ADVECTED_TRACER_NAMES:
+
+            def get_compute_domain_k_interfaces(
+                instance,
+            ):
+                try:
+                    origin = instance.grid_indexing.origin_compute()
+                    domain = instance.grid_indexing.domain_compute(add=(0, 0, 1))
+                except AttributeError:
+                    origin = instance.grid.compute_origin()
+                    domain = instance.grid.domain_shape_compute(add=(0, 0, 1))
+                return origin, domain
+
+            origin, domain = get_compute_domain_k_interfaces(
+                self.dycore.tracer_advection
             )
+            self._validation_slice = tuple(
+                slice(start, start + n) for start, n in zip(origin, domain)
+            )
+            return_value = output[self._validation_slice]
         else:
             return_value = output
         return return_value

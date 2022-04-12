@@ -208,3 +208,8 @@ DelnFlux:
     max_error: 2e-13
   - backend: gtc:dace:gpu
     max_error: 2e-13
+
+Del2Cubed:
+ - backend: gtc:dace
+   ignore_near_zero_errors:
+     tracers: 1e-15
