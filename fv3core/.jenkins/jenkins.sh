@@ -52,6 +52,11 @@ if [[ $input_backend = gtc_* ]] ; then
     input_backend=`echo $input_backend | sed 's/_/:/'`
 fi
 
+if [[ $input_backend = "numpy" ]] ; then
+    input_backend="gtc:numpy"
+fi
+
+
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BUILDENV_DIR=$JENKINS_DIR/../../buildenv
 TOP_LEVEL_JENKINS_DIR=$JENKINS_DIR/../../.jenkins
