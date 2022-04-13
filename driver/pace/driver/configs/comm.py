@@ -52,7 +52,7 @@ class CommConfig:
     @classmethod
     def from_dict(cls, config: dict):
         config.setdefault("config", {})
-        comm_type = config["type"]
+        comm_type = config.get("type", "mpi")
         if comm_type not in cls.registry:
             raise ValueError(f"Unknown comm type: {comm_type}")
         else:

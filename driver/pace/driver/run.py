@@ -538,7 +538,7 @@ class DriverConfig:
         kwargs["physics_config"].npx = kwargs["nx_tile"] + 1
         kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
         kwargs["physics_config"].npz = kwargs["nz"]
-        kwargs["comm_config"] = CommConfig.from_dict(kwargs["comm_config"])
+        kwargs["comm_config"] = CommConfig.from_dict(kwargs.get("comm_config", {}))
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
