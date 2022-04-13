@@ -192,7 +192,9 @@ class FrozenStencil(SDFGConvertible):
         self.stencil_function = gtscript.stencil
         self.stencil_kwargs = {**self.stencil_config.stencil_kwargs}
         self.stencil_object = None
-
+        self._stencil_run_kwargs = None
+        self._field_origins = None
+        self._written_fields = []
         # Enable distributed compilation if running in parallel and
         # not running dace orchestration
         if (
@@ -222,26 +224,23 @@ class FrozenStencil(SDFGConvertible):
         ), "A stencil with no arguments? You may be double decorating"
 
     def _compile(self):
-        if self.stencil_object:
-            return
+        if self.stencil_object and self._stencil_run_kwargs:
+            return self.stencil_object
         self.stencil_object: gt4py.StencilObject = self.stencil_function(
             definition=self.func,
             externals=self.externals,
             **self.stencil_kwargs,
         )
-        field_info = self.stencil_object.field_info                                                                                                                                                                                                                                                               
-        self._field_origins: Dict[                                                                                                                                                                                                                                                                                
-            str, Tuple[int, ...]                                                                                                                                                                                                                                                                                  
-        ] = FrozenStencil._compute_field_origins(field_info, self.origin)                                                                                                                                                                                                                                         
-        """mapping from field names to field origins"""                                                                                                                                                                                                                                                           
-
-        self._stencil_run_kwargs: Dict[str, Any] = {                                                                                                                                                                                                                                                              
-            "_origin_": self._field_origins,                                                                                                                                                                                                                                                                      
-            "_domain_": self.domain,                                                                                                                                                                                                                                                                              
-        }                                                                                                                                                                                                                                                                                                         
-
+        field_info = self.stencil_object.field_info
+        self._field_origins: Dict[str, Tuple[int, ...]] = FrozenStencil._compute_field_origins(field_info, self.origin)
+        """mapping from field names to field origins"""
+        self._stencil_run_kwargs: Dict[str, Any] = {
+            "_origin_": self._field_origins,
+            "_domain_": self.domain,
+        }
         self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
-
+        return self.stencil_object
+    
     def __call__(
         self,
         *args,
@@ -343,8 +342,8 @@ class FrozenStencil(SDFGConvertible):
     def __sdfg__(self, *args, **kwargs):
         """Implemented SDFG generation"""
         args_as_kwargs = dict(zip(self._argument_names, args))
-        self._stencil_sfg = self._frozen_stencil.__sdfg__(**args_as_kwargs, **kwargs)
-        return self._stencil_sfg
+        self._stencil_sdfg = self._frozen_stencil.__sdfg__(**args_as_kwargs, **kwargs)
+        return self._stencil_sdfg
 
     def __sdfg_signature__(self):
         """Implemented SDFG signature lookup"""
