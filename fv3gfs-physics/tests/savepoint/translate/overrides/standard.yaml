@@ -1,7 +1,4 @@
 CS_Profile_2d:
-  - backend: gtcuda
-    max_error: 2.5e-9
-    near_zero: 1.5e-14
   - backend: gtc:gt:gpu
     max_error: 2.5e-9
     near_zero: 1.5e-14
@@ -10,9 +7,6 @@ CS_Profile_2d:
     near_zero: 1.5e-14
 
 CS_Profile_2d-2:
-  - backend: gtcuda
-    max_error: 3e-8
-    near_zero: 1.5e-14
   - backend: gtc:gt:gpu
     max_error: 3e-8
     near_zero: 1.5e-14
@@ -21,30 +15,15 @@ CS_Profile_2d-2:
     near_zero: 1.5e-14
 
 Fillz:
-  - backend: gtcuda
-    max_error: 1e-13
-    near_zero: 3e-15
   - backend: gtc:gt:gpu
     max_error: 5e-6
 
 MapN_Tracer_2d:
-  - backend: gtcuda
-    max_error: 2e-7
-    near_zero: 1e-17
-    ignore_near_zero_errors:
-      - qtracers
   - backend: numpy
     platform: docker
     max_error: 9e-9 # 48_6ranks
 
-
-NH_P_Grad:
-  - backend: gtcuda
-    max_error: 2e-9
-
 Riem_Solver3:
-  - backend: gtcuda
-    max_error: 5e-6
   - backend: gtc:gt:gpu
     max_error: 5e-6
   - backend: gtc:cuda
@@ -54,11 +33,6 @@ Riem_Solver3:
     max_error: 1e-11 # 48_6ranks
 
 Remapping:
-  - backend: gtcuda
-    near_zero: 5e-6
-    ignore_near_zero_errors:
-      - q_con
-      - tracers
   - backend: gtc:gt:gpu
     max_error: 1e-9
     near_zero: 5e-6
@@ -67,11 +41,6 @@ Remapping:
       - tracers
 
 UpdateDzC:
-  - backend: gtcuda
-    max_error: 5e-10
-    near_zero: 4.5e-15
-    ignore_near_zero_errors:
-      - ws
   - backend: gtc:gt:gpu
     max_error: 5e-10
     near_zero: 4.5e-15
@@ -84,10 +53,6 @@ UpdateDzC:
       - ws
 
 UpdateDzD:
-  - backend: gtcuda
-    max_error: 5e-10
-    ignore_near_zero_errors:
-      - wsd
   - backend: gtc:gt:gpu
     max_error: 5e-10
     ignore_near_zero_errors:
@@ -96,7 +61,3 @@ UpdateDzD:
     max_error: 5e-10
     ignore_near_zero_errors:
       - wsd
-
-FVSubgridZ:
-  - backend: gtcuda
-    max_error: 1e-8

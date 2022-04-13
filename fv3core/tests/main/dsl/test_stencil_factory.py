@@ -105,7 +105,7 @@ def test_get_stencils_with_varied_bounds_and_regions(backend: str):
 @pytest.mark.parametrize("enabled", [True, False])
 def test_stencil_factory_numpy_comparison_from_dims_halo(enabled: bool):
     config = StencilConfig(
-        backend="numpy",
+        backend="gtc:numpy",
         rebuild=False,
         validate_args=False,
         format_source=False,
@@ -135,7 +135,7 @@ def test_stencil_factory_numpy_comparison_from_dims_halo(enabled: bool):
 @pytest.mark.parametrize("enabled", [True, False])
 def test_stencil_factory_numpy_comparison_from_origin_domain(enabled: bool):
     config = StencilConfig(
-        backend="numpy",
+        backend="gtc:numpy",
         rebuild=False,
         validate_args=False,
         format_source=False,
@@ -161,7 +161,7 @@ def test_stencil_factory_numpy_comparison_from_origin_domain(enabled: bool):
 
 
 def test_stencil_factory_numpy_comparison_runs_without_exceptions():
-    backend = "numpy"
+    backend = "gtc:numpy"
     config = StencilConfig(
         backend=backend,
         rebuild=False,

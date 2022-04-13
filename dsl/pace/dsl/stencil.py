@@ -23,6 +23,7 @@ import gt4py
 import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
+from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
@@ -40,7 +41,7 @@ except ImportError:
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
-    backend: str = "numpy"
+    backend: str = "gtc:numpy"
     rebuild: bool = True
     validate_args: bool = True
     format_source: bool = False
@@ -90,7 +91,7 @@ class StencilConfig(Hashable):
             },
             "skip_passes": {
                 "backend": r"^gtc:(gt|cuda)",
-                "value": ["graph_merge_horizontal_executions"],
+                "value": [],
             },
             "verbose": {"backend": r"^gtc:(gt|cuda)", "value": False},
         }
@@ -106,8 +107,7 @@ class StencilConfig(Hashable):
 
         return backend_opts
 
-    @property
-    def stencil_kwargs(self):
+    def stencil_kwargs(self, skip_passes: Iterable[str] = ()):
         kwargs = {
             "backend": self.backend,
             "rebuild": self.rebuild,
@@ -115,6 +115,13 @@ class StencilConfig(Hashable):
         }
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
+        # Note: this assure the backward compatibility between v36 and v37
+        if self.backend.startswith("gtc") and (
+            "skip_passes" in kwargs or skip_passes is not None
+        ):
+            kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
+                list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
+            )
         return kwargs
 
     @property
@@ -124,6 +131,13 @@ class StencilConfig(Hashable):
     @property
     def is_gtc_backend(self) -> bool:
         return self.backend.startswith("gtc")
+
+    @classmethod
+    def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
+        """Creates a DefaultPipeline with skip_passes properly initialized."""
+        step_map = {step.__name__: step for step in DefaultPipeline.all_steps()}
+        skip_steps = [step_map[pass_name] for pass_name in skip_passes]
+        return DefaultPipeline(skip=skip_steps)
 
 
 def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id):
@@ -214,7 +228,7 @@ class CompareToNumpyStencil:
             skip_passes=skip_passes,
         )
         numpy_stencil_config = StencilConfig(
-            backend="numpy",
+            backend="gtc:numpy",
             rebuild=stencil_config.rebuild,
             validate_args=stencil_config.validate_args,
             format_source=True,
@@ -266,7 +280,7 @@ class FrozenStencil:
         domain: Tuple[int, ...],
         stencil_config: StencilConfig,
         externals: Optional[Mapping[str, Any]] = None,
-        skip_passes: Optional[Tuple[str, ...]] = None,
+        skip_passes: Tuple[str, ...] = (),
     ):
         """
         Args:
@@ -288,7 +302,7 @@ class FrozenStencil:
             externals = {}
 
         stencil_function = gtscript.stencil
-        stencil_kwargs = {**self.stencil_config.stencil_kwargs}
+        stencil_kwargs = {**self.stencil_config.stencil_kwargs(skip_passes=skip_passes)}
 
         # Enable distributed compilation if running in parallel
         if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
@@ -299,9 +313,6 @@ class FrozenStencil:
             # we want to be consistent with the naming whether we are
             # running in parallel or not (so we use the same cache)
             stencil_kwargs["name"] = func.__module__ + "." + func.__name__
-
-        if skip_passes and self.stencil_config.is_gtc_backend:
-            stencil_kwargs["skip_passes"] = skip_passes
 
         self.stencil_object: gt4py.StencilObject = stencil_function(
             definition=func,
@@ -817,8 +828,8 @@ class StencilFactory:
         origin: Union[Tuple[int, ...], Mapping[str, Tuple[int, ...]]],
         domain: Tuple[int, ...],
         externals: Optional[Mapping[str, Any]] = None,
-        skip_passes: Optional[Tuple[str, ...]] = None,
-    ):
+        skip_passes: Tuple[str, ...] = (),
+    ) -> FrozenStencil:
         """
         Args:
             func: stencil definition function
@@ -847,8 +858,8 @@ class StencilFactory:
         compute_dims: Sequence[str],
         compute_halos: Sequence[int] = tuple(),
         externals: Optional[Mapping[str, Any]] = None,
-        skip_passes: Optional[Tuple[str, ...]] = None,
-    ) -> Callable:
+        skip_passes: Tuple[str, ...] = (),
+    ) -> FrozenStencil:
         """
         Initialize a stencil from dimensions and number of halo points.
 

@@ -60,7 +60,6 @@ For parallel tests:
 $ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/test_data/c12_6ranks_baroclinic_dycore_microphysics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
-
 ### Util tests
 
 Inside the container, util tests can be run from `/pace-util`:

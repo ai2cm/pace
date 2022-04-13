@@ -81,6 +81,7 @@ coverage==5.5
     #   pytest-cov
 cytoolz==0.11.2
     # via gt4py (external/gt4py/setup.cfg)
+dace==0.13
     # via gt4py (external/gt4py/setup.cfg)
 dacite==1.6.0
     # via -r driver/requirements.txt
@@ -383,7 +384,9 @@ rsa==4.7.2
 scikit-build==0.12.0
     # via dace
 scipy==1.7.1
-    # via -r fv3core/requirements/requirements_base.txt
+    # via
+    #   -r fv3core/requirements/requirements_base.txt
+    #   gt4py (external/gt4py/setup.cfg)
 six==1.16.0
     # via
     #   asttokens
