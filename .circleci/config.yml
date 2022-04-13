@@ -62,6 +62,8 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
+      - attach_workspace:
+          at: ~/workspace
       - run:
           name: Install Submodules
           command: git submodule update --init
@@ -86,14 +88,14 @@ jobs:
               MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
             fi
           environment:
-            GT_CACHE_ROOT: ~/repo
+            GT_CACHE_ROOT: ~/workspace
       - save_cache:
           key: v2-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
           paths:
             - driver/venv
             - /root/.cache/pip
       - persist_to_workspace:
-          root: ~/repo
+          root: ~/workspace
           paths:
             - .gt_cache
 
