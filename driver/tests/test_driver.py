@@ -9,13 +9,13 @@ import pytest
 
 import pace.dsl
 from fv3core.utils.null_comm import NullComm
+from pace.driver import CreatesComm, Driver, DriverConfig
 from pace.driver.report import (
     TimeReport,
     gather_hit_counts,
     gather_timing_data,
     get_sypd,
 )
-from pace.driver.run import CreatesComm, Driver, DriverConfig
 
 
 def get_driver_config(
