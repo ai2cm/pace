@@ -18,6 +18,11 @@ We have also included a utility to convert the zarr output of the run to netcdf,
 $ python3 zarr_to_nc.py output.zarr output.nz
 ```
 
+Another example is `baroclinic_init.py`, which initializes a barcolinic wave and writes out the grid and the initial state. To run this script with the c12 6ranks example:
+
+```bash
+$ mpirun -n 6 python3 baroclinic_init.py ./configs/baroclinic_c12.yaml
+```
 ## Docker
 
 To run a baroclinic c12 case with Docker in a single command, run `run_docker.sh`.
