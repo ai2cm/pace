@@ -74,6 +74,19 @@ class MPICommConfig(CreatesComm):
         pass
 
 
+@CommConfig.register("null_comm")
+@dataclasses.dataclass
+class NullCommConfig(CreatesComm):
+    rank: int
+    total_ranks: int
+
+    def get_comm(self):
+        return pace.util.NullComm(rank=self.rank, total_ranks=self.total_ranks)
+
+    def cleanup(self, comm):
+        pass
+
+
 @CommConfig.register("write")
 @dataclasses.dataclass
 class WriterCommConfig(CreatesComm):
