@@ -8,7 +8,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v2-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
+            - v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
       - run:
           name: run linting
           command: |
@@ -17,7 +17,7 @@ jobs:
             pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
       - save_cache:
-          key: v2-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
+          key: v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
           paths:
             - ~/.cache/pre-commit
             - venv
@@ -49,7 +49,9 @@ jobs:
           name: run tests
           command: |
             if [ $(python changed_from_main.py pace-util) != false ]; then
-              cd pace-util && tox --recreate -e test -e test_no_extras
+              cd pace-util
+              . venv/bin/activate
+              tox --recreate -e test -e test_no_extras
             fi
       - save_cache:
           key: v2-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}
@@ -120,7 +122,9 @@ jobs:
           name: run tests
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
-              cd fv3core && tox --recreate -e test
+              cd fv3core
+              . venv/bin/activate
+              tox --recreate -e test
             fi
       - save_cache:
           key: v3-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
