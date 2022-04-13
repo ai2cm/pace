@@ -200,7 +200,7 @@ class FrozenStencil(SDFGConvertible):
         if (
             MPI is not None
             and MPI.COMM_WORLD.Get_size() > 1
-            and "dace" not in self.stencil_config.backend
+            and not dace_config.is_dace_orchestrated()
         ):
             self.stencil_function = future_stencil.future_stencil
             self.stencil_kwargs["wrapper"] = self
@@ -211,12 +211,8 @@ class FrozenStencil(SDFGConvertible):
             self.stencil_kwargs["name"] = self.func.__module__ + "." + self.func.__name__
 
         if skip_passes and self.stencil_config.is_gtc_backend:
-            self.stencil_kwargs["skip_passes"] = skip_passes
-        if "skip_passes" in self.stencil_kwargs:
-            self.stencil_kwargs["oir_pipeline"] = FrozenStencil._get_oir_pipeline(
-                self.stencil_kwargs.pop("skip_passes")
-            )
-            
+            self.stencil_kwargs["oir_pipeline"].skip = skip_passes
+   
         self._argument_names = tuple(inspect.getfullargspec(self.func).args)
 
         assert (
