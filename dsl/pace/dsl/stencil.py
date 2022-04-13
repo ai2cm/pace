@@ -19,7 +19,6 @@ from typing import (
 )
 
 import gt4py
-import gt4py as gt
 import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
@@ -193,20 +192,6 @@ class FrozenStencil(SDFGConvertible):
         self.stencil_function = gtscript.stencil
         self.stencil_kwargs = {**self.stencil_config.stencil_kwargs}
         self.stencil_object = None
-        if "dace" in self.stencil_config.backend:
-            # [TODO]: find a better solution for this
-            # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
-            if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-                gt.config.cache_settings["dir_name"] = ".gt_cache_{:0>6d}".format(
-                    MPI.COMM_WORLD.Get_rank()
-                )
-
-            dace.Config.set(
-                "default_build_folder",
-                value="{gt_cache}/dacecache".format(
-                    gt_cache=gt.config.cache_settings["dir_name"]
-                ),
-            )
 
         # Enable distributed compilation if running in parallel and
         # not running dace orchestration
