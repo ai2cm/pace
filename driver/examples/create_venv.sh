@@ -6,9 +6,9 @@ set -e -x
 
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-pip3 install --upgrade setuptools wheel virtualenv
+pip3 install --upgrade setuptools wheel
 
-virtualenv venv
+python3 -m venv venv
 . venv/bin/activate
 
 rundir=$(pwd)
