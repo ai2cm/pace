@@ -42,7 +42,7 @@ NH_P_Grad:
   - backend: gtcuda
     max_error: 2e-9
   - backend: gtc:dace
-    max_error: 2e-11
+    max_error: 6e-11
 
 Riem_Solver3:
   - backend: gtcuda
@@ -55,9 +55,9 @@ Riem_Solver3:
     backend: numpy
     max_error: 1e-11 # 48_6ranks
   - backend: gtc:dace:gpu
-    max_error: 7e-8
-  - backend: gtc:dace
     max_error: 1e-7
+  - backend: gtc:dace
+    max_error: 2e-7
 
 Remapping:
   - backend: gtcuda
@@ -213,11 +213,11 @@ DelnFlux:
 
 Del2Cubed:
   - backend: gtc:dace
-    max_error: 2e-13
+    max_error: 5e-13
 
 FvTp2d:
   - backend: gtc:dace
-    max_error: 7e-14
+    max_error: 2e-13
 
 FxAdv:
   - backend: gtc:dace
@@ -225,8 +225,12 @@ FxAdv:
 
 XPPM:
   - backend: gtc:dace
-    max_error: 1e-13
+    max_error: 2e-12
 
 YPPM:
+  - backend: gtc:dace
+    max_error: 2e-13
+
+A2B_Ord4:
   - backend: gtc:dace
     max_error: 1e-13
