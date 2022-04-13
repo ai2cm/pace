@@ -1,14 +1,14 @@
 # Contributing
 
-FV3core is actively developed by Vulcan, so please contact us if there is interest in making contributions in the near-term.
+pace is actively developed by AI2, so please contact us if there is interest in making contributions in the near-term.
 Contributors names will be added to [`CONTRIBUTORS.md`](https://github.com/VulcanClimateModeling/fv3core/blob/master/CONTRIBUTORS.md).
 
 ## Linting
 
-Dependencies for linting are maintained in `requirements/requirements_lint.txt`, and can be installed with:
+Dependencies for linting are maintained in `requirements_lint.txt`, and can be installed with:
 
 ```shell
-$ pip install -c constraints.txt -r requirements/requirements_lint.txt
+$ pip install -c constraints.txt -r requirements_lint.txt
 ```
 
 Correcting and checking your code complies with all requirements can be run with:
@@ -114,29 +114,18 @@ Turns into
 - Internal functions that are likely to be inlined into a larger stencil do not need this if it will just be removed in the near-term.
 
 ### GT4Py stencils
-FV3core defines a custom decorator `fv3core.gtstencil` defined in `decorators.py` for creating stencils.
-This eventually calls `gt4py.gtscript.stencil`, but sets default external arguments such as `backend`, and `rebuild` and provides the global namelist to the stencils as `namelist`.
-The type of each input of a stencil requires a type and the first version of the model used a shorthand 'sd' (storage data) to indicate a 3D gt4py storage, such as
+We interface to `gt4py.gtscript.stencil` through pace.dsl.stencil, specifically the FrozenStencil, that allows us to minimize runtime overhead in calling stencils.
+
 
 ```python
 @gtstencil
-def pt_adjust(pkz:sd, dp1: sd, q_con: sd, pt: sd):
+def pt_adjust(pkz:FloatField, dp1: FloatField, q_con: FloatField, pt: FloatField):
     with computation(PARALLEL), interval(...):
 ```
 
-In the refactoring of the dycore, we are using lower dimensional storages and different item types, so `sd` is insufficient to type these.
 [`fv3core/utils/typing.py`](https://github.com/VulcanClimateModeling/fv3core/blob/master/fv3core/utils/typing.py) defines various field types.
 For example, `FloatField[IJ]` for a 2D field of default floating point values.
 
-### Namelist
-The `fv3core.gtstencil` decorator automatically makes `namelist` available, if `from __externals__ import namelist` is added at the top of the stencil or any stencil function along with other imports.
-
-```python
-@fv3core.gtstencil
-def mystencil(var: FloatField):
-    from gtscript import parallel
-    from __externals__ import namelist, x_start
-```
 
 ### GTScript functions
 These use the `@gtscript.function` decorator and the arguments do not include type

@@ -225,7 +225,7 @@ def test_frozen_stencil_kwargs_passed_to_init(
     mock_stencil.assert_called_once_with(
         definition=copy_stencil,
         externals={},
-        name="main.test_stencil_wrapper.copy_stencil",
+        name="test_stencil_wrapper.copy_stencil",
         **config.stencil_kwargs,
     )
 

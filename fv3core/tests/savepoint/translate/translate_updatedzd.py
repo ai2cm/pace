@@ -2,10 +2,10 @@ import numpy as np
 
 import fv3core.stencils.updatedzd
 from fv3core.stencils import d_sw
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslateUpdateDzD(TranslateFortranData2Py):
+class TranslateUpdateDzD(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
