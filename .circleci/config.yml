@@ -98,7 +98,7 @@ jobs:
       - persist_to_workspace:
           root: ~/workspace
           paths:
-            - .gt_cache
+            - .gt_cache/.
 
   test_fv3core:
     docker:
