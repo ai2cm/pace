@@ -75,7 +75,7 @@ echo "PYTHON env ${python_env}"
 
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
-    echo "Fetching for exisintg gt_caches"
+    echo "Fetching for existing gt_caches"
     cd ${PACE_DIR}/fv3gfs-physics
     ${JENKINS_DIR}/fetch_caches.sh $backend $experiment
     cd ${PACE_DIR}

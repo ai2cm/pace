@@ -2,7 +2,6 @@ import contextlib
 import hashlib
 import logging
 import os
-from typing import Union
 
 import numpy as np
 import pytest
@@ -11,6 +10,7 @@ import serialbox as ser
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util as fv3util
 from fv3core.utils.mpi import MPI
+from pace.util.testing import compare_scalar, success, success_array
 
 
 # this only matters for manually-added print statements
@@ -19,59 +19,6 @@ np.set_printoptions(threshold=4096)
 OUTDIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
 GPU_MAX_ERR = 1e-10
 GPU_NEAR_ZERO = 1e-15
-
-
-def compare_arr(computed_data, ref_data):
-    """Smooth error near zero values.
-    Inputs are arrays.
-    """
-    denom = np.abs(ref_data) + np.abs(computed_data)
-    compare = 2.0 * np.abs(computed_data - ref_data) / denom
-    compare[denom == 0] = 0.0
-    return compare
-
-
-def compare_scalar(computed_data: np.float64, ref_data: np.float64) -> np.float64:
-    """Smooth error near zero values. Scalar versions."""
-    err_as_array = compare_arr(np.atleast_1d(computed_data), np.atleast_1d(ref_data))
-    return err_as_array[0]
-
-
-def success_array(
-    computed_data: np.ndarray,
-    ref_data: np.ndarray,
-    eps: float,
-    ignore_near_zero_errors: Union[dict, bool],
-    near_zero: float,
-):
-    success = np.logical_or(
-        np.logical_and(np.isnan(computed_data), np.isnan(ref_data)),
-        compare_arr(computed_data, ref_data) < eps,
-    )
-    if isinstance(ignore_near_zero_errors, dict):
-        if ignore_near_zero_errors.keys():
-            near_zero = ignore_near_zero_errors["near_zero"]
-            success = np.logical_or(
-                success,
-                np.logical_and(
-                    np.abs(computed_data) < near_zero,
-                    np.abs(ref_data) < near_zero,
-                ),
-            )
-    elif ignore_near_zero_errors:
-        success = np.logical_or(
-            success,
-            np.logical_and(
-                np.abs(computed_data) < near_zero, np.abs(ref_data) < near_zero
-            ),
-        )
-    return success
-
-
-def success(computed_data, ref_data, eps, ignore_near_zero_errors, near_zero=0.0):
-    return np.all(
-        success_array(computed_data, ref_data, eps, ignore_near_zero_errors, near_zero)
-    )
 
 
 def platform():
