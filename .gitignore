@@ -3,6 +3,7 @@
 # Test outputs
 results.xml
 *.zarr
+*.json
 driver/examples/comm
 
 # Byte-compiled / optimized / DLL files

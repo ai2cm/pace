@@ -26,7 +26,6 @@ jobs:
     docker:
       - image: circleci/python:3.8
     working_directory: ~/repo
-
     steps:
       - checkout
       - run:
@@ -61,7 +60,6 @@ jobs:
     docker:
       - image: circleci/python:3.8
     working_directory: ~/repo
-
     steps:
       - checkout
       - run:
@@ -87,17 +85,22 @@ jobs:
               make test
               MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
             fi
+          environment:
+            GT_CACHE_ROOT: ~/repo
       - save_cache:
           key: v2-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
           paths:
             - driver/venv
             - /root/.cache/pip
+      - persist_to_workspace:
+          root: ~/repo
+          paths:
+            - .gt_cache
 
   test_fv3core:
     docker:
       - image: circleci/python:3.8
     working_directory: ~/repo
-
     steps:
       - checkout
       - run:
