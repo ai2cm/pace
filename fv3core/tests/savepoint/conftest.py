@@ -50,7 +50,6 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "DynCore",
     "Tracer2D1L",
     "FillCornersVector",
-    # [TODO] the following tests do not pass on fv3core repo either:
     "A2B_Ord4",
 ]
 # this must happen before any classes from fv3core are instantiated

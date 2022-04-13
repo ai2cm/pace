@@ -1,7 +1,7 @@
-from fv3core.stencils.divergence_damping import DivergenceDamping
-from pace.stencils.testing import TranslateDycoreFortranData2Py
-from pace.dsl.dace.orchestrate import computepath_function
 from dace import constant as DaceConstant
+from fv3core.stencils.divergence_damping import DivergenceDamping
+from pace.dsl.dace.orchestrate import computepath_function
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 @computepath_function

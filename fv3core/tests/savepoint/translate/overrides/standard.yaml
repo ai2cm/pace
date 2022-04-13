@@ -41,7 +41,8 @@ MapN_Tracer_2d:
 NH_P_Grad:
   - backend: gtcuda
     max_error: 2e-9
-
+  - backend: gtc:dace
+    max_error: 2e-11
 
 Riem_Solver3:
   - backend: gtcuda
@@ -55,6 +56,8 @@ Riem_Solver3:
     max_error: 1e-11 # 48_6ranks
   - backend: gtc:dace:gpu
     max_error: 7e-8
+  - backend: gtc:dace
+    max_error: 1e-7
 
 Remapping:
   - backend: gtcuda
@@ -90,6 +93,8 @@ UpdateDzC:
     near_zero: 4.5e-15
     ignore_near_zero_errors:
       - ws
+  - backend: gtc:dace
+    max_error: 3e-13
 
 UpdateDzD:
   - backend: gtcuda
@@ -105,6 +110,10 @@ UpdateDzD:
     ignore_near_zero_errors:
       - wsd
   - backend: gtc:dace:gpu
+    max_error: 5e-10
+    ignore_near_zero_errors:
+      - wsd
+  - backend: gtc:dace
     max_error: 5e-10
     ignore_near_zero_errors:
       - wsd
@@ -200,4 +209,24 @@ DelnFlux:
   - backend: gtc:dace
     max_error: 2e-13
   - backend: gtc:dace:gpu
+    max_error: 7e-13
+
+Del2Cubed:
+  - backend: gtc:dace
+    max_error: 2e-13
+
+FvTp2d:
+  - backend: gtc:dace
+    max_error: 7e-14
+
+FxAdv:
+  - backend: gtc:dace
     max_error: 4e-13
+
+XPPM:
+  - backend: gtc:dace
+    max_error: 1e-13
+
+YPPM:
+  - backend: gtc:dace
+    max_error: 1e-13
