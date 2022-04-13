@@ -50,9 +50,8 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "DynCore",
     "Tracer2D1L",
     "CopyCorners",
-    # [TODO] the following tests do not pass on fv3core repo either:
-    # "FillCornersVector",
-    # "A2B_Ord4",
+    "FillCornersVector",
+    "A2B_Ord4",
     "Remapping",
     "CS_Profile_2d",
     "CS_Profile_2d_2",

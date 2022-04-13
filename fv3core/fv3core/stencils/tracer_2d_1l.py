@@ -346,7 +346,7 @@ class TracerAdvection:
             )
             for q in tracers.values():
                 self.finite_volume_transport(
-                    q.storage,
+                    q,
                     cxd,
                     cyd,
                     self._tmp_xfx,
@@ -357,7 +357,7 @@ class TracerAdvection:
                     y_mass_flux=mfyd,
                 )
                 self._q_adjust(
-                    q.storage,
+                    q,
                     dp1,
                     self._tmp_fx,
                     self._tmp_fy,

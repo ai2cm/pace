@@ -63,6 +63,8 @@ Riem_Solver3:
   - platform: metal
     backend: numpy
     max_error: 1e-11 # 48_6ranks
+  - backend: gtc:dace:gpu
+    max_error: 7e-8
 
 Remapping:
   - backend: gtcuda
@@ -99,6 +101,11 @@ UpdateDzC:
     near_zero: 4.5e-15
     ignore_near_zero_errors:
       - ws
+  - backend: gtc:dace:gpu
+    max_error: 5e-10
+    near_zero: 4.5e-15
+    ignore_near_zero_errors:
+      - ws
 
 UpdateDzD:
   - backend: gtcuda
@@ -110,6 +117,10 @@ UpdateDzD:
     ignore_near_zero_errors:
       - wsd
   - backend: gtc:cuda
+    max_error: 5e-10
+    ignore_near_zero_errors:
+      - wsd
+  - backend: gtc:dace:gpu
     max_error: 5e-10
     ignore_near_zero_errors:
       - wsd
@@ -207,7 +218,7 @@ DelnFlux:
   - backend: gtc:dace
     max_error: 2e-13
   - backend: gtc:dace:gpu
-    max_error: 2e-13
+    max_error: 4e-13
 
 Del2Cubed:
  - backend: gtc:dace
