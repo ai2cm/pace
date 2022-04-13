@@ -3,7 +3,7 @@ jobs:
 
   lint:
     docker:
-    - image: circleci/python:3.8
+    - image: cimg/python:3.8
     steps:
       - checkout
       - restore_cache:
@@ -14,7 +14,7 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            sudo pip3 install pre-commit -c constraints.txt
+            pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
       - save_cache:
           key: v2-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
@@ -40,9 +40,10 @@ jobs:
             if [ $(python changed_from_main.py pace-util) != false ]; then
               sudo apt-get update
               sudo apt-get install libopenmpi3 libopenmpi-dev
+              pip3 install --upgrade setuptools wheel
               python3 -m venv pace-util/venv
               . pace-util/venv/bin/activate
-              sudo pip3 install tox -c constraints.txt
+              pip3 install tox -c constraints.txt
             fi
       - run:
           name: run tests
@@ -116,9 +117,10 @@ jobs:
           name: install tox
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
-              python3 -m venv fv3core/venv
+              pip3 install --upgrade setuptools wheel virtualenv
+              virtualenv fv3core/venv
               . fv3core/venv/bin/activate
-              sudo pip3 install tox -c constraints.txt
+              pip3 install tox -c constraints.txt
             fi
       - run:
           name: run tests
