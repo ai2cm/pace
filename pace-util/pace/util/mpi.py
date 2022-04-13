@@ -33,6 +33,9 @@ class MPIComm(Comm):
         logger.debug("barrier on rank %s", self._comm.Get_rank())
         self._comm.barrier()
 
+    def Barrier(self):
+        pass
+
     def Scatter(self, sendbuf, recvbuf, root=0, **kwargs):
         logger.debug("Scatter on rank %s with root %s", self._comm.Get_rank(), root)
         self._comm.Scatter(sendbuf, recvbuf, root=root, **kwargs)

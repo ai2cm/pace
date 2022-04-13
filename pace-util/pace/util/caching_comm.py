@@ -108,6 +108,9 @@ class CachingCommReader(Comm):
     def barrier(self):
         pass
 
+    def Barrier(self):
+        pass
+
     def Scatter(self, sendbuf, recvbuf, root=0, **kwargs):
         recvbuf[:] = self._data.get_buffer()
 
@@ -167,6 +170,9 @@ class CachingCommWriter(Comm):
 
     def barrier(self):
         return self._comm.barrier()
+
+    def Barrier(self):
+        pass
 
     def Scatter(self, sendbuf, recvbuf, root=0, **kwargs):
         self._comm.Scatter(sendbuf=sendbuf, recvbuf=recvbuf, root=root, **kwargs)
