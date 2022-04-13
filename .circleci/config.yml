@@ -63,8 +63,6 @@ jobs:
     working_directory: ~/repo
     steps:
       - checkout
-      - attach_workspace:
-          at: ~/workspace
       - run:
           name: Install Submodules
           command: git submodule update --init
@@ -96,10 +94,6 @@ jobs:
           paths:
             - driver/venv
             - /root/.cache/pip
-      - persist_to_workspace:
-          root: ~/workspace
-          paths:
-            - .gt_cache/.
 
   test_fv3core:
     docker:
