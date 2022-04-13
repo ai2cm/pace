@@ -24,7 +24,7 @@ jobs:
 
   test_util:
     docker:
-      - image: circleci/python:3.8
+      - image: cimg/python:3.8
     working_directory: ~/repo
     steps:
       - checkout
@@ -58,7 +58,7 @@ jobs:
 
   test_driver:
     docker:
-      - image: circleci/python:3.8
+      - image: cimg/python:3.8
     working_directory: ~/repo
     steps:
       - checkout
@@ -101,7 +101,7 @@ jobs:
 
   test_fv3core:
     docker:
-      - image: circleci/python:3.8
+      - image: cimg/python:3.8
     working_directory: ~/repo
     steps:
       - checkout
