@@ -10,11 +10,10 @@ performance_config:
   performance_mode: false
   experiment_name: c12_baroclinic
 comm_config:
-  type: write
+  type: null_comm
   config:
-    path: comm
-    ranks:
-      - 0
+    rank: 0
+    total_ranks: 6
 nx_tile: 12
 nz: 79
 dt_atmos: 225
