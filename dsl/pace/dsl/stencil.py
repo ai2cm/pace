@@ -321,12 +321,6 @@ class FrozenStencil(SDFGConvertible):
         ]
         return write_fields
 
-    @classmethod
-    def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
-        step_map = {step.__name__: step for step in DefaultPipeline.all_steps()}
-        skip_steps = [step_map[pass_name] for pass_name in skip_passes]
-        return DefaultPipeline(skip=skip_steps)
-
     @cached_property
     def _frozen_stencil(self):
         self.stencil_kwargs["disable_code_generation"] = True
