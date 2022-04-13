@@ -29,7 +29,7 @@ import dace
 import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
-from pace.dsl.dace.dace_config import dace_config#, is_dacemode_codegen_whitelisted
+from pace.dsl.dace.dace_config import dace_config
 from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util.halo_data_transformer import QuantityHaloSpec
@@ -229,50 +229,12 @@ class FrozenStencil(SDFGConvertible):
             self.stencil_kwargs["oir_pipeline"] = FrozenStencil._get_oir_pipeline(
                 self.stencil_kwargs.pop("skip_passes")
             )
-
-        # When using DaCe orchestration, we deactivate code generation
-        # (Only SDFG are needed). But because some stencils are executed
-        # outside of the runtime path, we have a whitelist exception.
-        #if (
-        #    dace_config.is_dace_orchestrated()
-        #    and not is_dacemode_codegen_whitelisted(func)
-        #    and "dace" in self.stencil_config.backend
-        #):
-        #    stencil_kwargs["disable_code_generation"] = True
-
-        #self.stencil_object: gt4py.StencilObject = stencil_function(
-        #    definition=func,
-        #    externals=externals,
-        #    **stencil_kwargs,
-        #)
-        #"""generated stencil object returned from gt4py."""
-
+            
         self._argument_names = tuple(inspect.getfullargspec(self.func).args)
 
         assert (
             len(self._argument_names) > 0
         ), "A stencil with no arguments? You may be double decorating"
-
-        #field_info = self.stencil_object.field_info
-        #self._field_origins: Dict[
-        #    str, Tuple[int, ...]
-        #] = FrozenStencil._compute_field_origins(field_info, self.origin)
-        #"""mapping from field names to field origins"""
-
-        #self._stencil_run_kwargs: Dict[str, Any] = {
-        #    "_origin_": self._field_origins,
-        #    "_domain_": self.domain,
-        #}
-
-        #self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
-
-        # When orchestrating with DaCe, cache the frozen stencil for
-        # calls in __sdfg__ generation
-        #if "dace" in self.stencil_config.backend:
-        #    self._frozen_stencil = self.stencil_object.freeze(
-        #        origin=self._field_origins,
-        #        domain=self.domain,
-        #    )
 
     def _compile(self):
         if self.stencil_object:
@@ -389,7 +351,7 @@ class FrozenStencil(SDFGConvertible):
     def _frozen_stencil(self):
         self.stencil_kwargs["disable_code_generation"] = True
         self._compile()
-        return self.sdfg_stencil_object.freeze(
+        return self.stencil_object.freeze(
                 origin=self._field_origins,
                 domain=self.domain,
         )
