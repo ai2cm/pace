@@ -1,9 +1,13 @@
 # Driver Examples
 
 Here we have example scripts and configuration for running the Pace driver.
-Currently this contains one example, to run the model on a baroclinic test case using the numpy backend.
+Currently this contains two examples which run the model on a baroclinic test case using the numpy backend.
 You will find this runs fairly slowly, since the "compiled" code is still Python.
 In the future, we will add examples for the compiled backends we support.
+
+The "docker" workflow here is written for the basic baroclinic test example.
+`write_then_read.sh` is the second example, which shows how to configure an MPI run to write communication data to disk and then use it to repeat a single rank of that run with the same configuration.
+This second example assumes you are already in an appropriate environment to run the driver, for example as documented in the "Host Machine" section below.
 
 Note that on the baroclinic test case example you will see significant grid imprinting in the first hour time evolution.
 Rest assured that this duplicates the behavior of the original Fortran code.

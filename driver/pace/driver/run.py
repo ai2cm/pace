@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import functools
+import logging
 import os
 import subprocess
 from datetime import datetime, timedelta
@@ -11,7 +12,6 @@ import dacite
 import f90nml
 import yaml
 import zarr.storage
-from mpi4py import MPI
 
 import fv3core
 import fv3core.initialization.baroclinic as baroclinic_init
@@ -28,11 +28,16 @@ from pace.dsl.stencil import StencilFactory
 from pace.stencils import update_atmos_state
 from pace.stencils.testing import TranslateGrid
 from pace.util.grid import DampingCoefficients
+from pace.util.mpi import MPI
 from pace.util.namelist import Namelist
 from pace.util.quantity import QuantityMetadata
 
+from .configs.comm import CommConfig
 from .report import collect_data_and_write_to_file
 from .tendency_state import TendencyState
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -442,6 +447,7 @@ class DriverConfig:
     dt_atmos: float
     diagnostics_config: DiagnosticsConfig
     performance_config: PerformanceConfig
+    comm_config: CommConfig
     dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
         default_factory=fv3core.DynamicalCoreConfig
     )
@@ -532,6 +538,7 @@ class DriverConfig:
         kwargs["physics_config"].npx = kwargs["nx_tile"] + 1
         kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
         kwargs["physics_config"].npz = kwargs["nz"]
+        kwargs["comm_config"] = CommConfig.from_dict(kwargs["comm_config"])
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
@@ -542,7 +549,6 @@ class Driver:
     def __init__(
         self,
         config: DriverConfig,
-        comm,
     ):
         """
         Initializes a pace Driver.
@@ -551,9 +557,10 @@ class Driver:
             config: driver configuration
             comm: communication object behaving like mpi4py.Comm
         """
-
+        logger.info("initializing driver")
         self.config = config
-        self.comm = comm
+        self.comm_config = config.comm_config
+        self.comm = config.comm_config.get_comm()
         self.performance_config = self.config.performance_config
         with self.performance_config.total_timer.clock("initialization"):
             communicator = pace.util.CubedSphereCommunicator.from_layout(
@@ -605,6 +612,7 @@ class Driver:
             )
 
     def step_all(self):
+        logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
             time = self.config.start_time
             end_time = self.config.start_time + self.config.total_time
@@ -651,12 +659,17 @@ class Driver:
             dt=float(timestep),
         )
 
-    def write_performance_json_output(self):
+    def _write_performance_json_output(self):
         self.performance_config.write_out_performance(
             self.comm,
             self.config.stencil_config.backend,
             self.config.dt_atmos,
         )
+
+    def cleanup(self):
+        logger.info("cleaning up driver")
+        self._write_performance_json_output()
+        self.comm_config.cleanup(self.comm)
 
 
 def _setup_factories(
@@ -692,19 +705,35 @@ def _setup_factories(
     required=True,
 )
 def command_line(config_path: str):
+    logger.info("loading DriverConfig from yaml")
     with open(config_path, "r") as f:
-        driver_config = DriverConfig.from_dict(yaml.safe_load(f))
-    main(driver_config=driver_config, comm=MPI.COMM_WORLD)
+        config = yaml.safe_load(f)
+        driver_config = DriverConfig.from_dict(config)
+    main(driver_config=driver_config)
 
 
-def main(driver_config: DriverConfig, comm):
-    driver = Driver(
-        config=driver_config,
-        comm=comm,
-    )
+def main(driver_config: DriverConfig):
+    driver = Driver(config=driver_config)
     driver.step_all()
-    driver.write_performance_json_output()
+    driver.cleanup()
 
 
 if __name__ == "__main__":
+    if MPI is None:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(name)s:%(message)s",
+            handlers=[logging.StreamHandler()],
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format=(
+                f"%(asctime)s [%(levelname)s] (rank {MPI.COMM_WORLD.Get_rank()}) "
+                "%(name)s:%(message)s"
+            ),
+            handlers=[logging.StreamHandler()],
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
     command_line()
