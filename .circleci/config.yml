@@ -89,6 +89,7 @@ jobs:
             fi
           environment:
             GT_CACHE_ROOT: ~/workspace
+            GT_CACHE_DIR_NAME: .gt_cache
       - save_cache:
           key: v2-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
           paths:
