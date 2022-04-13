@@ -84,7 +84,7 @@ def test_modifying_numpy_storage_modifies_view():
         extent=shape,
         dims=["dim1", "dim2"],
         units="units",
-        gt4py_backend="numpy",
+        gt4py_backend="gtc:numpy",
     )
     assert np.all(quantity.data == 0)
     quantity.storage[0, 0] = 1
@@ -145,17 +145,15 @@ def test_modifying_storage_modifies_data_after_transpose(quantity):
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"], indirect=True)
 def test_accessing_storage_does_not_break_view(
-    data, origin, extent, dims, units, backend
+    data, origin, extent, dims, units, gt4py_backend
 ):
-    if backend == "cupy":
-        backend = "gtcuda"
     quantity = pace.util.Quantity(
         data,
         origin=origin,
         extent=extent,
         dims=dims,
         units=units,
-        gt4py_backend=backend,
+        gt4py_backend=gt4py_backend,
     )
     quantity.storage[origin] = -1.0
     assert quantity.data[origin] == quantity.view[tuple(0 for _ in origin)]
@@ -164,7 +162,7 @@ def test_accessing_storage_does_not_break_view(
 # run using cupy backend even though unused, to mark this as a "gpu" test
 @pytest.mark.parametrize("backend", ["cupy"], indirect=True)
 def test_numpy_data_becomes_cupy_with_gpu_backend(
-    data, origin, extent, dims, units, backend
+    data, origin, extent, dims, units, gt4py_backend
 ):
     cpu_data = np.zeros(data.shape)
     quantity = pace.util.Quantity(
@@ -173,7 +171,7 @@ def test_numpy_data_becomes_cupy_with_gpu_backend(
         extent=extent,
         dims=dims,
         units=units,
-        gt4py_backend="gtcuda",
+        gt4py_backend=gt4py_backend,
     )
     assert isinstance(quantity.data, cupy.ndarray)
     assert isinstance(quantity.storage, gt4py.storage.storage.GPUStorage)
@@ -181,7 +179,7 @@ def test_numpy_data_becomes_cupy_with_gpu_backend(
 
 @pytest.mark.parametrize("backend", ["gt4py_numpy"], indirect=True)
 def test_cannot_use_cpu_storage_with_gpu_backend(
-    data, origin, extent, dims, units, backend
+    data, origin, extent, dims, units, gt4py_backend
 ):
     assert isinstance(data, gt4py.storage.storage.CPUStorage)
     with pytest.raises(TypeError):
@@ -191,13 +189,13 @@ def test_cannot_use_cpu_storage_with_gpu_backend(
             extent=extent,
             dims=dims,
             units=units,
-            gt4py_backend="gtcuda",
+            gt4py_backend=gt4py_backend,
         )
 
 
 @pytest.mark.parametrize("backend", ["gt4py_cupy"], indirect=True)
 def test_cannot_use_gpu_storage_with_cpu_backend(
-    data, origin, extent, dims, units, backend
+    data, origin, extent, dims, units, gt4py_backend
 ):
     assert isinstance(data, gt4py.storage.storage.GPUStorage)
     with pytest.raises(TypeError):
@@ -207,5 +205,5 @@ def test_cannot_use_gpu_storage_with_cpu_backend(
             extent=extent,
             dims=dims,
             units=units,
-            gt4py_backend="numpy",
+            gt4py_backend=gt4py_backend,
         )
