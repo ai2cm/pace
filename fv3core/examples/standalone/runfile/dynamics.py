@@ -290,7 +290,11 @@ if __name__ == "__main__":
         else:
             mpi_comm = MPI.COMM_WORLD
         dycore, dycore_args = setup_dycore(
-            dycore_config, mpi_comm, args.backend, is_baroclinic_test_case, args.data_dir
+            dycore_config,
+            mpi_comm,
+            args.backend,
+            is_baroclinic_test_case,
+            args.data_dir,
         )
 
         # warm-up timestep.

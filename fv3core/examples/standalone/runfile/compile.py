@@ -46,6 +46,10 @@ if __name__ == "__main__":
             fill_value=0.0,
         )
         dycore, dycore_args = setup_dycore(
-            dycore_config, mpi_comm, args.backend, is_baroclinic_test_case, args.data_dir
+            dycore_config,
+            mpi_comm,
+            args.backend,
+            is_baroclinic_test_case,
+            args.data_dir,
         )
     print("SUCCESS")
