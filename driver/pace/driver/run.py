@@ -30,6 +30,7 @@ from pace.stencils.testing import TranslateGrid
 from pace.util.grid import DampingCoefficients
 from pace.util.mpi import MPI
 from pace.util.namelist import Namelist
+from pace.util.partitioner import TilePartitioner
 from pace.util.quantity import QuantityMetadata
 
 from .configs.comm import CommConfig
@@ -610,6 +611,9 @@ class Driver:
                 partitioner=communicator.partitioner,
                 comm=self.comm,
             )
+        log_subtile_location(
+            partitioner=communicator.partitioner.tile, rank=communicator.rank
+        )
 
     def step_all(self):
         logger.info("integrating driver forward in time")
@@ -670,6 +674,16 @@ class Driver:
         logger.info("cleaning up driver")
         self._write_performance_json_output()
         self.comm_config.cleanup(self.comm)
+
+
+def log_subtile_location(partitioner: TilePartitioner, rank: int):
+    location_info = {
+        "north": partitioner.on_tile_top(rank),
+        "south": partitioner.on_tile_bottom(rank),
+        "east": partitioner.on_tile_right(rank),
+        "west": partitioner.on_tile_left(rank),
+    }
+    logger.info(f"running on rank {rank} with subtile location {location_info}")
 
 
 def _setup_factories(
