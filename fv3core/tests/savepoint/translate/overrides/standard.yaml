@@ -147,10 +147,10 @@ Tracer2D1L:
    max_error: 1e-9
  - backend: gtc:dace
    ignore_near_zero_errors:
-     tracers: 1e-13
+     tracers: 1e-9
  - backend: gtc:dace:gpu
    ignore_near_zero_errors:
-     tracers: 1e-13
+     tracers: 1e-9
  - backend: gtc:gt:cpu_ifirst
    ignore_near_zero_errors:
      tracers: 1e-15
@@ -213,7 +213,7 @@ DelnFlux:
 
 Del2Cubed:
   - backend: gtc:dace
-    max_error: 7e-13
+    max_error: 5e-12
 
 FvTp2d:
   - backend: gtc:dace
