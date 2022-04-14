@@ -81,9 +81,8 @@ coverage==5.5
     #   pytest-cov
 cytoolz==0.11.2
     # via gt4py (external/gt4py/setup.cfg)
-    # via
-    #   -r fv3core/requirements/requirements_base.txt
-    #   gt4py (external/gt4py/setup.cfg)
+dace==0.13
+    # via gt4py (external/gt4py/setup.cfg)
 dacite==1.6.0
     # via -r driver/requirements.txt
 dask==2021.12.0

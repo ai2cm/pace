@@ -52,6 +52,10 @@ if [[ $input_backend = gtc_* ]] ; then
     input_backend=`echo $input_backend | sed 's/_/:/'`
 fi
 
+if [[ $input_backend = "numpy" ]] ; then
+    input_backend="gtc:numpy"
+fi
+
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BUILDENV_DIR=$JENKINS_DIR/../buildenv
 PACE_DIR=$JENKINS_DIR/../
@@ -75,7 +79,7 @@ echo "PYTHON env ${python_env}"
 
 # If the backend is a GTC backend we fetch the caches
 if [[ $backend != *numpy* ]];then
-    echo "Fetching for exisintg gt_caches"
+    echo "Fetching for existing gt_caches"
     cd ${PACE_DIR}/fv3gfs-physics
     ${JENKINS_DIR}/fetch_caches.sh $backend $experiment
     cd ${PACE_DIR}

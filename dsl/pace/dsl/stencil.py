@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import hashlib
 import inspect
@@ -14,6 +15,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Type,
     Union,
     cast,
 )
@@ -31,6 +33,7 @@ import pace.util
 from pace.dsl.dace.dace_config import dace_config
 from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
+from pace.util import testing
 from pace.util.halo_data_transformer import QuantityHaloSpec
 
 
@@ -53,11 +56,12 @@ setattr(DefaultPipeline, "__eq__", __eq__)
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
-    backend: str = "numpy"
+    backend: str = "gtc:numpy"
     rebuild: bool = True
     validate_args: bool = True
     format_source: bool = False
     device_sync: bool = False
+    compare_to_numpy: bool = False
 
     def __post_init__(self):
         self.backend_opts = self._get_backend_opts(self.device_sync, self.format_source)
@@ -102,7 +106,7 @@ class StencilConfig(Hashable):
             },
             "skip_passes": {
                 "backend": r"^gtc:(gt|cuda)",
-                "value": ["graph_merge_horizontal_executions"],
+                "value": [],
             },
             "verbose": {"backend": r"^gtc:(gt|cuda)", "value": False},
         }
@@ -118,8 +122,7 @@ class StencilConfig(Hashable):
 
         return backend_opts
 
-    @property
-    def stencil_kwargs(self):
+    def stencil_kwargs(self, skip_passes: Iterable[str] = ()):
         kwargs = {
             "backend": self.backend,
             "rebuild": self.rebuild,
@@ -128,9 +131,11 @@ class StencilConfig(Hashable):
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
         # Note: this assure the backward compatibility between v36 and v37
-        if "skip_passes" in kwargs:
+        if self.backend.startswith("gtc") and (
+            "skip_passes" in kwargs or skip_passes is not None
+        ):
             kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
-                kwargs.pop("skip_passes")
+                list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
             )
         return kwargs
 
@@ -150,6 +155,129 @@ class StencilConfig(Hashable):
         return DefaultPipeline(skip=skip_steps)
 
 
+def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id):
+    report_head = f"comparing against numpy for func {function_name}, gt_id {gt_id}:"
+    report_segments = []
+    for i, (arg, numpy_arg) in enumerate(zip(args, args_copy)):
+        if isinstance(arg, pace.util.Quantity):
+            arg = arg.storage
+            numpy_arg = numpy_arg.storage
+        if isinstance(arg, np.ndarray):
+            report_segments.append(report_diff(arg, numpy_arg, label=f"arg {i}"))
+    for name in kwargs:
+        if isinstance(kwargs[name], pace.util.Quantity):
+            kwarg = kwargs[name].data
+            numpy_kwarg = kwargs_copy[name].data
+        else:
+            kwarg = kwargs[name]
+            numpy_kwarg = kwargs_copy[name]
+        if isinstance(kwarg, np.ndarray):
+            report_segments.append(
+                report_diff(kwarg, numpy_kwarg, label=f"kwarg {name}")
+            )
+    report_body = "".join(report_segments)
+    if len(report_body) > 0:
+        print("")  # newline
+        print(report_head + report_body)
+
+
+def report_diff(arg: np.ndarray, numpy_arg: np.ndarray, label) -> str:
+    metric_err = testing.compare_arr(arg, numpy_arg)
+    nans_match = np.logical_and(np.isnan(arg), np.isnan(numpy_arg))
+    n_points = np.product(arg.shape)
+    failures_14 = n_points - np.sum(
+        np.logical_or(
+            nans_match,
+            metric_err < 1e-14,
+        )
+    )
+    failures_10 = n_points - np.sum(
+        np.logical_or(
+            nans_match,
+            metric_err < 1e-10,
+        )
+    )
+    failures_8 = n_points - np.sum(
+        np.logical_or(
+            nans_match,
+            metric_err < 1e-10,
+        )
+    )
+    greatest_error = np.max(metric_err[~np.isnan(metric_err)])
+    if greatest_error == 0.0 and failures_14 == 0:
+        report = ""
+    else:
+        report = f"\n    {label}: "
+        report += f"max_err={greatest_error}"
+        if failures_14 > 0:
+            report += f" 1e-14 failures: {failures_14}"
+        if failures_10 > 0:
+            report += f" 1e-10 failures: {failures_10}"
+        if failures_8 > 0:
+            report += f" 1e-8 failures: {failures_8}"
+    return report
+
+
+class CompareToNumpyStencil:
+    """
+    A wrapper over FrozenStencil which executes a numpy version of the stencil as well,
+    and compares the results.
+    """
+
+    def __init__(
+        self,
+        func: Callable[..., None],
+        origin: Union[Tuple[int, ...], Mapping[str, Tuple[int, ...]]],
+        domain: Tuple[int, ...],
+        stencil_config: StencilConfig,
+        externals: Optional[Mapping[str, Any]] = None,
+        skip_passes: Optional[Tuple[str, ...]] = None,
+    ):
+
+        self._actual = FrozenStencil(
+            func=func,
+            origin=origin,
+            domain=domain,
+            stencil_config=stencil_config,
+            externals=externals,
+            skip_passes=skip_passes,
+        )
+        numpy_stencil_config = StencilConfig(
+            backend="gtc:numpy",
+            rebuild=stencil_config.rebuild,
+            validate_args=stencil_config.validate_args,
+            format_source=True,
+            device_sync=None,
+        )
+        self._numpy = FrozenStencil(
+            func=func,
+            origin=origin,
+            domain=domain,
+            stencil_config=numpy_stencil_config,
+            externals=externals,
+            skip_passes=skip_passes,
+        )
+        self._func_name = func.__name__
+
+    def __call__(
+        self,
+        *args,
+        **kwargs,
+    ) -> None:
+        args_copy = copy.deepcopy(args)
+        kwargs_copy = copy.deepcopy(kwargs)
+        self._actual(*args, **kwargs)
+        self._numpy(*args_copy, **kwargs_copy)
+        report_difference(
+            args,
+            kwargs,
+            args_copy,
+            kwargs_copy,
+            self._func_name,
+            self._actual.stencil_object._gt_id_,
+        )
+
+
 class FrozenStencil(SDFGConvertible):
     """
     Wrapper for gt4py stencils which stores origin and domain at compile time,
@@ -167,7 +295,7 @@ class FrozenStencil(SDFGConvertible):
         domain: Tuple[int, ...],
         stencil_config: StencilConfig,
         externals: Optional[Mapping[str, Any]] = None,
-        skip_passes: Optional[Tuple[str, ...]] = None,
+        skip_passes: Tuple[str, ...] = (),
     ):
         """
         Args:
@@ -190,7 +318,7 @@ class FrozenStencil(SDFGConvertible):
         self.externals = externals
         self.func = func
         self.stencil_function = gtscript.stencil
-        self.stencil_kwargs = {**self.stencil_config.stencil_kwargs}
+        self.stencil_kwargs = {**self.stencil_config.stencil_kwargs(skip_passes=skip_passes)}
         self.stencil_object = None
         self._stencil_run_kwargs = None
         self._field_origins = None
@@ -754,7 +882,7 @@ class StencilFactory:
         origin: Union[Tuple[int, ...], Mapping[str, Tuple[int, ...]]],
         domain: Tuple[int, ...],
         externals: Optional[Mapping[str, Any]] = None,
-        skip_passes: Optional[Tuple[str, ...]] = None,
+        skip_passes: Tuple[str, ...] = (),
     ) -> FrozenStencil:
         """
         Args:
@@ -765,7 +893,11 @@ class StencilFactory:
             externals: compile-time external variables required by stencil
             skip_passes: compiler passes to skip when building stencil
         """
-        return FrozenStencil(
+        if self.config.compare_to_numpy:
+            cls: Type = CompareToNumpyStencil
+        else:
+            cls = FrozenStencil
+        return cls(
             func=func,
             origin=origin,
             domain=domain,
@@ -780,7 +912,7 @@ class StencilFactory:
         compute_dims: Sequence[str],
         compute_halos: Sequence[int] = tuple(),
         externals: Optional[Mapping[str, Any]] = None,
-        skip_passes: Optional[Tuple[str, ...]] = None,
+        skip_passes: Tuple[str, ...] = (),
     ) -> FrozenStencil:
         """
         Initialize a stencil from dimensions and number of halo points.

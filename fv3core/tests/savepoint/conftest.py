@@ -100,6 +100,7 @@ def stencil_config(backend):
         backend=backend,
         rebuild=False,
         validate_args=True,
+        format_source="numpy" in backend,
     )
 
 
