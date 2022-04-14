@@ -785,8 +785,11 @@ def command_line(config_path: str, log_rank: Optional[int], log_level: str):
 
 def main(driver_config: DriverConfig):
     driver = Driver(config=driver_config)
-    driver.step_all()
-    driver.cleanup()
+    try:
+        driver.step_all()
+    except Exception as e:
+        driver.cleanup()
+        raise e
 
 
 if __name__ == "__main__":
