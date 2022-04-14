@@ -13,9 +13,7 @@ NUM_RANKS ?=6
 VOLUMES ?=
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
-ifeq ($(FV3_DACEMODE),True)
-   RUN_FLAGS += -e FV3_DACEMODE=True
-endif
+RUN_FLAGS += -e FV3_DACEMODE=$(FV3_DACEMODE)
 TEST_ARGS ?=
 TARGET ?=dycore
 TEST_DATA_ROOT ?=$(CWD)/test_data/
