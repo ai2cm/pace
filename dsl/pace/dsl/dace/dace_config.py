@@ -1,5 +1,4 @@
 import dataclasses
-from typing import Callable
 
 from pace.util.global_config import getenv_bool
 
