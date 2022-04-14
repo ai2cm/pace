@@ -14,6 +14,10 @@ from pace.util.caching_comm import CachingCommReader, CachingCommWriter
 
 
 class CreatesComm(abc.ABC):
+    """
+    Retrieves and does cleanup for a mpi4py-style Comm object.
+    """
+
     @abc.abstractmethod
     def get_comm(self) -> Any:
         """
@@ -31,6 +35,15 @@ class CreatesComm(abc.ABC):
 
 @dataclasses.dataclass(frozen=True)
 class CommConfig:
+    """
+    Configuration for a mpi4py-style Comm object.
+
+    Attributes:
+        config: type-specific configuration
+        type: type of Comm object to create, should be one of "mpi" (default),
+            "write", "read", or "null_comm"
+    """
+
     config: CreatesComm
     type: str = "mpi"
     registry: ClassVar = {}
@@ -67,6 +80,10 @@ class CommConfig:
 @CommConfig.register("mpi")
 @dataclasses.dataclass
 class MPICommConfig(CreatesComm):
+    """
+    Configuration for a true mpi4py Comm object.
+    """
+
     def get_comm(self):
         return pace.util.MPIComm()
 
@@ -77,11 +94,27 @@ class MPICommConfig(CreatesComm):
 @CommConfig.register("null_comm")
 @dataclasses.dataclass
 class NullCommConfig(CreatesComm):
+    """
+    Configuration for a NullComm object which does not perform halo updates,
+    instead filling the halos with a constant value.
+
+    Generally used to test whether the code crashes while running in serial when
+    correctness of the answer is not important.
+
+    Attributes:
+        rank: rank of the comm
+        total_ranks: the total number of ranks for the comm to pretend to have
+        fill_value: the value to fill the halos with
+    """
+
     rank: int
     total_ranks: int
+    fill_value: float
 
     def get_comm(self):
-        return pace.util.NullComm(rank=self.rank, total_ranks=self.total_ranks)
+        return pace.util.NullComm(
+            rank=self.rank, total_ranks=self.total_ranks, fill_value=self.fill_value
+        )
 
     def cleanup(self, comm):
         pass
@@ -90,6 +123,20 @@ class NullCommConfig(CreatesComm):
 @CommConfig.register("write")
 @dataclasses.dataclass
 class WriterCommConfig(CreatesComm):
+    """
+    Configuration for a CachingCommWriter object.
+
+    This object will wrap a real mpi4py comm object, but will cache the
+    communication between the ranks in the comm and write the result to disk
+    at cleanup.
+
+    This data can later be read in a run using a ReaderCommConfig.
+
+    Attributes:
+        ranks: which ranks to write data for
+        path: directory to write data to
+    """
+
     ranks: List[int]
     path: str = "."
 
@@ -112,6 +159,22 @@ class WriterCommConfig(CreatesComm):
 @CommConfig.register("read")
 @dataclasses.dataclass
 class ReaderCommConfig(CreatesComm):
+    """
+    Configuration for a CachingCommReader object.
+
+    This object reads data cached by a WriterCommConfig, and will perform
+    identical communication as was written by that writer, played back
+    in the same order.
+
+    This should generally be used within an identical configuration as was used by
+    the WriterCommConfig, and must be used with a configuration that will result
+    in an identical communication pattern.
+
+    Attributes:
+        rank: rank to read data for
+        path: directory to read data from
+    """
+
     rank: int
     path: str = "."
 
