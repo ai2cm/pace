@@ -27,7 +27,7 @@ COPY external/gt4py /gt4py
 
 RUN if [ ! -z `echo $GT4PY_OPTIONALS | grep cuda` ] ; then pip install cupy-cuda102==7.7.0 ; else echo Not installing cuda ; fi
 RUN pip install --no-cache-dir -c /constraints.txt "/gt4py${GT4PY_OPTIONALS}" && \
-    python3 -m gt4py.gt_src_manager install
+    python3 -m gt4py.gt_src_manager install --major-version 2
 
 # This environment flag sets rebuild=False in gtscript.stencil calls
 ENV FV3_STENCIL_REBUILD_FLAG=False
