@@ -315,8 +315,8 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         )
         self.dycore.update_state(
             self.namelist.consv_te,
-            inputs["bdt"],
             inputs["do_adiabatic_init"],
+            inputs["bdt"],
             self.namelist.n_split,
             state,
         )
