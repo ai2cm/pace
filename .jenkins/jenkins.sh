@@ -164,7 +164,6 @@ if [ ${python_env} == "virtualenv" ]; then
 	echo "Using existing virtualenv ${VIRTUALENV}"
     else
 	echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
-	export PACE_INSTALL_FLAGS="-e"
 	${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
     fi
     source ${VIRTUALENV}/bin/activate
