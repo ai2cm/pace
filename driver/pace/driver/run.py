@@ -766,7 +766,7 @@ def configure_logging(log_rank: Optional[int], log_level: str):
 @click.option(
     "--log-level",
     default="info",
-    help="one of 'info', 'debug', 'warning', 'error', 'critical'",
+    help="one of 'debug', 'info', 'warning', 'error', 'critical'",
 )
 def command_line(config_path: str, log_rank: Optional[int], log_level: str):
     """

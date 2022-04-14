@@ -5,5 +5,5 @@ set -e -x
 
 MPIRUN_CMD=${MPIRUN_CMD:-mpirun -n 6}
 
-$MPIRUN_CMD python3 -m pace.driver.run configs/baroclinic_c12_comm_write.yaml
+$MPIRUN_CMD python3 -m pace.driver.run configs/baroclinic_c12_comm_write.yaml --log-rank 0
 python3 -m pace.driver.run configs/baroclinic_c12_comm_read.yaml
