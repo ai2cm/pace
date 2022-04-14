@@ -213,7 +213,7 @@ DelnFlux:
 
 Del2Cubed:
   - backend: gtc:dace
-    max_error: 5e-12
+    max_error: 8e-12
 
 FvTp2d:
   - backend: gtc:dace
