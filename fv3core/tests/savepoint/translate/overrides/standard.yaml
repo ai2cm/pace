@@ -55,9 +55,9 @@ Riem_Solver3:
     backend: numpy
     max_error: 1e-11 # 48_6ranks
   - backend: gtc:dace:gpu
-    max_error: 1e-7
+    max_error: 5e-6
   - backend: gtc:dace
-    max_error: 2e-7
+    max_error: 5e-6
 
 Remapping:
   - backend: gtcuda
@@ -147,10 +147,10 @@ Tracer2D1L:
    max_error: 1e-9
  - backend: gtc:dace
    ignore_near_zero_errors:
-     tracers: 1e-15
+     tracers: 1e-13
  - backend: gtc:dace:gpu
    ignore_near_zero_errors:
-     tracers: 1e-15
+     tracers: 1e-13
  - backend: gtc:gt:cpu_ifirst
    ignore_near_zero_errors:
      tracers: 1e-15
@@ -213,7 +213,7 @@ DelnFlux:
 
 Del2Cubed:
   - backend: gtc:dace
-    max_error: 5e-13
+    max_error: 7e-13
 
 FvTp2d:
   - backend: gtc:dace
@@ -221,7 +221,7 @@ FvTp2d:
 
 FxAdv:
   - backend: gtc:dace
-    max_error: 4e-13
+    max_error: 5e-12
 
 XPPM:
   - backend: gtc:dace
