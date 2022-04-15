@@ -16,23 +16,13 @@ from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from fv3core.stencils.d2a2c_vect import contravariant
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.divergence_damping import DivergenceDamping
-from fv3core.stencils.fvtp2d import (
-    FiniteVolumeTransport,
-    PreAllocatedCopiedCornersFactory,
-)
+from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import advect_u_along_x
 from fv3core.stencils.ytp_v import advect_v_along_y
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.util import (
-    X_DIM,
-    X_INTERFACE_DIM,
-    Y_DIM,
-    Y_INTERFACE_DIM,
-    Z_DIM,
-    Z_INTERFACE_DIM,
-)
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from pace.util.grid import DampingCoefficients, GridData
 
 
@@ -764,6 +754,8 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_gy = make_storage()
         self._tmp_dw = make_storage()
         self._tmp_wk = make_storage()
+        self._vorticity_agrid = make_storage()
+        self._vorticity_bgrid_damped = make_storage()
         self._tmp_fx2 = make_storage()
         self._tmp_fy2 = make_storage()
         self._tmp_damp_3d = utils.make_storage_from_shape(
@@ -856,7 +848,6 @@ class DGridShallowWaterLagrangianDynamics:
                 "xt_minmax": False,
                 "yt_minmax": False,
             },
-            skip_passes=("GreedyMerging",),
         )
         self._kinetic_energy_update_part_2 = stencil_factory.from_dims_halo(
             func=kinetic_energy_update_part_2,
@@ -868,7 +859,6 @@ class DGridShallowWaterLagrangianDynamics:
                 "xt_minmax": False,
                 "yt_minmax": False,
             },
-            skip_passes=("GreedyMerging",),
         )
         self._flux_adjust_stencil = stencil_factory.from_dims_halo(
             func=flux_adjust, compute_dims=[X_DIM, Y_DIM, Z_DIM]
@@ -956,11 +946,6 @@ class DGridShallowWaterLagrangianDynamics:
             origin=self.grid_indexing.origin,
             backend=stencil_factory.backend,
         )
-        self._copy_corners = PreAllocatedCopiedCornersFactory(
-            stencil_factory,
-            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
-            y_temporary=y_temporary,
-        )
 
     def __call__(
         self,
@@ -1037,7 +1022,7 @@ class DGridShallowWaterLagrangianDynamics:
         # apply them in various similar stencils - can these steps be merged?
 
         self.fvtp2d_dp(
-            self._copy_corners(delp),
+            delp,
             crx,
             cry,
             xfx,
@@ -1046,12 +1031,18 @@ class DGridShallowWaterLagrangianDynamics:
             self._tmp_fy,
         )
 
+        # TODO: part of flux_capacitor_stencil (updating cx, cy)
+        # should be mergeable with fv_prep, the other part (updating xflux, yflux)
+        # should be mergeable with any compute domain stencil in this object
+
         self._flux_capacitor_stencil(
             cx, cy, mfx, mfy, crx, cry, self._tmp_fx, self._tmp_fy
         )
 
         if not self.hydrostatic:
 
+            # TODO: output value for tmp_wk here is never used, refactor so it is
+            # not unnecessarily computed
             self.delnflux_nosg_w(
                 w,
                 self._tmp_fx2,
@@ -1074,7 +1065,7 @@ class DGridShallowWaterLagrangianDynamics:
             )
 
             self.fvtp2d_vt_nodelnflux(
-                self._copy_corners(w),
+                w,
                 crx,
                 cry,
                 xfx,
@@ -1094,7 +1085,7 @@ class DGridShallowWaterLagrangianDynamics:
             )
         # Fortran: #ifdef USE_COND
         self.fvtp2d_dp_t(
-            self._copy_corners(q_con),
+            q_con,
             crx,
             cry,
             xfx,
@@ -1112,7 +1103,7 @@ class DGridShallowWaterLagrangianDynamics:
 
         # Fortran #endif //USE_COND
         self.fvtp2d_tm(
-            self._copy_corners(pt),
+            pt,
             crx,
             cry,
             xfx,
@@ -1173,7 +1164,7 @@ class DGridShallowWaterLagrangianDynamics:
             self.grid_data.dx,
             self.grid_data.dy,
             self.grid_data.rarea,
-            self._tmp_wk,
+            self._vorticity_agrid,
         )
 
         # TODO if namelist.d_f3d and ROT3 unimplemented
@@ -1184,29 +1175,29 @@ class DGridShallowWaterLagrangianDynamics:
             u,
             v,
             va,
-            self._tmp_vort,
+            self._vorticity_bgrid_damped,
             ua,
             divgd,
             vc,
             uc,
             delpc,
             self._tmp_ke,
-            self._tmp_wk,
+            self._vorticity_agrid,
             dt,
         )
 
         self._vort_differencing_stencil(
-            self._tmp_vort,
+            self._vorticity_bgrid_damped,
             self._vort_x_delta,
             self._vort_y_delta,
             self._column_namelist["d_con"],
         )
 
         # Vorticity transport
-        self._compute_vort_stencil(self._tmp_wk, self._f0, zh, self._tmp_vort)
+        self._compute_vort_stencil(self._vorticity_agrid, self._f0, zh, self._tmp_vort)
 
         self.fvtp2d_vt_nodelnflux(
-            self._copy_corners(self._tmp_vort),
+            self._tmp_vort,
             crx,
             cry,
             xfx,
@@ -1230,7 +1221,7 @@ class DGridShallowWaterLagrangianDynamics:
         )
 
         self.delnflux_nosg_v(
-            self._tmp_wk,
+            self._vorticity_agrid,
             self._tmp_ut,
             self._tmp_vt,
             self._delnflux_damp_vt,

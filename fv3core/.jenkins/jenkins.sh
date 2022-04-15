@@ -126,12 +126,13 @@ if grep -q "parallel" <<< "${script}"; then
 	fi
 	if [ -f ${scheduler_script} ] ; then
 	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
-	    sed -i 's|45|30|g' ${scheduler_script}
-	    if [ "$NUM_RANKS" -gt "6" ] && [ ! -v LONG_EXECUTION ]; then
-            sed -i 's|cscsci|debug|g' ${scheduler_script}
-        elif [ "$NUM_RANKS" -gt "6" ]; then
-            sed -i 's|cscsci|normal|g' ${scheduler_script}
-        fi
+	    sed -i 's|45|50|g' ${scheduler_script}
+	    # if 54 rank test can run in 30 minutes again, sed 45 to 30 and:
+	    # if [ "$NUM_RANKS" -gt "6" ] && [ ! -v LONG_EXECUTION ]; then
+            #  sed -i 's|cscsci|debug|g' ${scheduler_script}
+            if [ "$NUM_RANKS" -gt "6" ]; then
+              sed -i 's|cscsci|normal|g' ${scheduler_script}
+            fi
 	    sed -i 's|<NTASKS>|"'${NUM_RANKS}'"|g' ${scheduler_script}
 	    sed -i 's|<NTASKSPERNODE>|"24"|g' ${scheduler_script}
 	fi
@@ -155,8 +156,6 @@ if grep -q "fv_dynamics" <<< "${script}"; then
     export MPIRUN_CALL="srun"
 fi
 
-# get the test data version from the Makefile
-export DATA_VERSION=`grep "FORTRAN_SERIALIZED_DATA_VERSION=" Makefile  | cut -d '=' -f 2`
 
 # Set the SCRATCH directory to the working directory if not set (e.g. for running on gce)
 if [ -z ${SCRATCH} ] ; then
@@ -164,10 +163,9 @@ if [ -z ${SCRATCH} ] ; then
 fi
 
 # Set the host data head directory location
-export TEST_DATA_DIR="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/${DATA_VERSION}"
+export TEST_DATA_ROOT="${SCRATCH}/jenkins/scratch/fv3core_fortran_data/"
 export FV3_STENCIL_REBUILD_FLAG=False
 # Set the host data location
-export TEST_DATA_HOST="${TEST_DATA_DIR}/${experiment}/"
 export EXPERIMENT=${experiment}
 if [ -z ${JENKINS_TAG} ]; then
     export JENKINS_TAG=${JOB_NAME}${BUILD_NUMBER}
@@ -200,7 +198,6 @@ if [ ${python_env} == "virtualenv" ]; then
 	export MPIRUN_CALL="srun"
     fi
     export FV3_PATH="${JENKINS_DIR}/../"
-    export TEST_DATA_RUN_LOC=${TEST_DATA_HOST}
 fi
 
 run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script}

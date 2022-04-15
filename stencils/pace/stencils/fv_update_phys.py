@@ -42,6 +42,8 @@ def moist_cv(
         gz = ql + qs
         cvm = moist_cvm(qvapor, gz, ql, qs)
         pt = pt + t_dt * dt * con_cp / cvm
+    with computation(PARALLEL), interval(...):
+        t_dt = 0.0
 
 
 def update_pressure_and_surface_winds(
@@ -69,7 +71,7 @@ def update_pressure_and_surface_winds(
         v_srf = va[0, 0, 0]
 
 
-class ApplyPhysics2Dycore:
+class ApplyPhysicsToDycore:
     """
     Fortran name is fv_update_phys
     Apply the physics tendencies (u_dt, v_dt, t_dt, q_dt) consistent with

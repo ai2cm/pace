@@ -1,4 +1,3 @@
-from . import decorators
 from ._config import DynamicalCoreConfig
 from .initialization.dycore_state import DycoreState
 from .stencils.fv_dynamics import DynamicalCore

@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from mpi_comm import MPI
 
@@ -301,7 +302,7 @@ def test_worker(comm, dummy_results, mpi_results, numpy):
         assert len(dummy_results) == len(mpi_results)
         for dummy, mpi in zip(dummy_results, mpi_results):
             if isinstance(mpi, numpy.ndarray):
-                numpy.testing.assert_array_equal(dummy, mpi)
+                numpy.testing.assert_array_equal(np.asarray(dummy), np.asarray(mpi))
             elif isinstance(mpi, Exception):
                 assert type(dummy) == type(mpi)
                 assert dummy.args == mpi.args

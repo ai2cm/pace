@@ -120,10 +120,8 @@ def collect_data_and_write_to_file(
     if comm:
         comm.Barrier()
         is_root = comm.Get_rank() == 0
-        print("here" + str(comm.Get_rank()))
     else:
         is_root = True
-        print("here")
 
     results = None
     if is_root:

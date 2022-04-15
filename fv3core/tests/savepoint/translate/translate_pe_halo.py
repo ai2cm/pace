@@ -1,8 +1,8 @@
 from fv3core.stencils import pe_halo
-from pace.stencils.testing import TranslateFortranData2Py
+from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-class TranslatePE_Halo(TranslateFortranData2Py):
+class TranslatePE_Halo(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
 
         super().__init__(grid, namelist, stencil_factory)
@@ -29,4 +29,5 @@ class TranslatePE_Halo(TranslateFortranData2Py):
             origin=self.stencil_factory.grid_indexing.origin_full(),
             domain=self.stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
             externals={**ax_offsets_pe},
+            skip_passes=("PruneKCacheFills",),
         )

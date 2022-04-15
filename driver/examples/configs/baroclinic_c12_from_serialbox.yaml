@@ -1,13 +1,15 @@
 stencil_config:
-  backend: numpy
+  backend: gtc:numpy
   rebuild: false
   validate_args: true
   format_source: false
   device_sync: true
 initialization_type: serialbox
 initialization_config:
-  path: /test_data/c12_6ranks_baroclinic_dycore_microphysics
+  path: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver
   serialized_grid: True
+performance_config:
+  performance_mode: true
 nx_tile: 12
 nz: 79
 dt_atmos: 225
@@ -31,6 +33,6 @@ diagnostics_config:
     - qsnow
     - qgraupel
 dycore_config:
-  namelist_override: /test_data/c12_6ranks_baroclinic_dycore_microphysics/input.nml
+  namelist_override: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver/input.nml
 physics_config:
-  namelist_override: /test_data/c12_6ranks_baroclinic_dycore_microphysics/input.nml
+  namelist_override: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver/input.nml

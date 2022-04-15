@@ -22,7 +22,7 @@ FV3CORE_DIR="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
 BUILDENV_DIR="$FV3CORE_DIR/../buildenv"
 PACE_DIR=$SCRIPT_DIR/../../../../
 NTHREADS=12
-env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"
+
 
 # utility functions
 function exitError()
@@ -90,6 +90,7 @@ source ./venv/bin/activate
 pip list
 
 # set the environment
+cp $BUILDENV_DIR/submit.daint.slurm compile.daint.slurm
 cp $BUILDENV_DIR/submit.daint.slurm run.daint.slurm
 if [ "${DO_NSYS_RUN}" == "true" ] ; then
     cp $BUILDENV_DIR/submit.daint.slurm run.nsys.daint.slurm
@@ -120,23 +121,44 @@ echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 $FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME
 
+# Adapt batch script to compile the code:
+sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
+sed -i "s/<NTASKS>/1/g" compile.daint.slurm
+sed -i "s/<NTASKSPERNODE>/1/g" compile.daint.slurm
+sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
+sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
+sed -i "s/00:45:00/02:00:00/g" compile.daint.slurm
+sed -i "s#<CMD>#export PYTHONOPTIMIZE=TRUE\nsrun python examples/standalone/runfile/compile.py $data_path $backend #g" compile.daint.slurm
 
-echo "Submitting script to do performance run"
+
+env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"
 # Adapt batch script to run the code:
 sed -i "s/<NAME>/standalone/g" run.daint.slurm
 sed -i "s/<NTASKS>/$ranks/g" run.daint.slurm
 sed -i "s/<NTASKSPERNODE>/1/g" run.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
 sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
-if [ "$timesteps" -lt 5 ]
-then
-  sed -i "s/00:45:00/01:30:00/g" run.daint.slurm
-else
-  sed -i "s/00:45:00/03:15:00/g" run.daint.slurm
-fi
 sed -i "s/cscsci/normal/g" run.daint.slurm
 sed -i "s#<CMD>#$env_vars\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
-# execute on a gpu node
+
+echo "submitting script to do compilation"
+set +e
+res=$(sbatch -W -C gpu compile.daint.slurm 2>&1)
+status1=$?
+grep -q SUCCESS compile.daint.out
+status2=$?
+set -e
+wait
+echo "DONE WAITING ${status1} ${status2}"
+if [ $status1 -ne 0 -o $status2 -ne 0 ] ; then
+    cleanupFailedJob "${res}" compile.daint.out
+    echo "ERROR: compilation step failed"
+    exit 1
+else
+    echo "compilation step finished"
+fi
+
+echo "Submitting script to do performance run"
 set +e
 res=$(sbatch -W -C gpu run.daint.slurm 2>&1)
 status1=$?

@@ -34,7 +34,6 @@ CACHE_FILENAME=${CACHE_DIR}/${GT4PY_VERSION}.tar.gz
 test -n "${experiment}" || exitError 1001 ${LINENO} "experiment is not defined"
 test -n "${SANITIZED_BACKEND}" || exitError 1002 ${LINENO} "backend is not defined"
 
-python3 ${SCRIPT_DIR}/fix_cache.py
 # store cache artifacts (and remove caches afterwards)
 echo "Pruning cache to make sure no __pycache__ and *_pyext_BUILD dirs are present"
 find .gt_cache* -type d -name \*_pyext_BUILD -prune -exec \rm -rf {} \;

@@ -9,6 +9,12 @@ import pytest
 
 import pace.dsl
 from fv3core.utils.null_comm import NullComm
+from pace.driver.report import (
+    TimeReport,
+    gather_hit_counts,
+    gather_timing_data,
+    get_sypd,
+)
 from pace.driver.run import Driver, DriverConfig
 
 
@@ -40,8 +46,9 @@ def get_driver_config(
         layout=layout,
         initialization_type="baroclinic",
         initialization_config=initialization_config,
+        performance_config=unittest.mock.MagicMock(),
         diagnostics_config=unittest.mock.MagicMock(),
-        dycore_config=unittest.mock.MagicMock(),
+        dycore_config=unittest.mock.MagicMock(fv_sg_adj=1),
         physics_config=unittest.mock.MagicMock(),
     )
 
@@ -92,9 +99,79 @@ def test_driver(timestep: timedelta, minutes: int):
     assert driver.dycore.step_dynamics.call_count == n_timesteps
     assert driver.physics.call_count == n_timesteps
     # we store an extra step at the start of the run
-    assert driver.diagnostics.store.call_count == n_timesteps + 1
+    assert driver.diagnostics.store.call_count == n_timesteps
     assert driver.dycore_to_physics.call_count == n_timesteps
-    assert driver.physics_to_dycore.call_count == n_timesteps
+    assert driver.end_of_step_update.call_count == n_timesteps
+
+
+test_data = [
+    list(
+        [
+            {
+                "DynCore": 0.8,
+                "TracerAdvection": 0.15,
+                "Remapping": 0.05,
+                "mainloop": 1.0,
+            }
+        ]
+    ),
+    list(
+        [
+            {"DynCore": 1, "TracerAdvection": 1, "Remapping": 1, "mainloop": 1},
+            {"DynCore": 1, "TracerAdvection": 1, "Remapping": 1, "mainloop": 1},
+            {"DynCore": 1, "TracerAdvection": 1, "Remapping": 1, "mainloop": 1},
+        ]
+    ),
+    365.0,
+    3,
+    1.0,
+]
+
+
+@pytest.mark.parametrize(
+    "times_per_step, hits_per_step, dt_atmos, expected_hits, expected_SYPD",
+    [test_data],
+)
+def test_timing_info(
+    times_per_step, hits_per_step, dt_atmos, expected_hits, expected_SYPD
+):
+    comm = NullComm(
+        rank=0,
+        total_ranks=6,
+        fill_value=0.0,
+    )
+    timing_info = gather_timing_data(times_per_step, comm)
+    timing_info = gather_hit_counts(hits_per_step, timing_info)
+    nrank = len(timing_info["mainloop"].times)
+    timing_info["mainloop"].times = [
+        [times_per_step[0]["mainloop"]] for i in range(nrank)
+    ]
+    sypd = get_sypd(timing_info, dt_atmos)
+    assert timing_info["mainloop"].hits == expected_hits
+    assert sypd == expected_SYPD
+
+
+timing_info = {
+    "mainloop": TimeReport(
+        hits=3,
+        times=[
+            [1.0, 0.8, 1.2],
+            [1.2, 0.9, 0.9],
+            [1.0, 1.0, 1.0],
+        ],
+    )
+}
+
+test_data = [timing_info, 365.0, 1.0]
+
+
+@pytest.mark.parametrize(
+    "timing_info, dt_atmos, expected_SYPD",
+    [test_data],
+)
+def test_sypd(timing_info, dt_atmos, expected_SYPD):
+    sypd = get_sypd(timing_info, dt_atmos)
+    assert sypd == expected_SYPD
 
 
 @dataclasses.dataclass
@@ -104,7 +181,7 @@ class MockedComponents:
     physics: unittest.mock.MagicMock
     diagnostics: unittest.mock.MagicMock
     dycore_to_physics: unittest.mock.MagicMock
-    physics_to_dycore: unittest.mock.MagicMock
+    end_of_step_update: unittest.mock.MagicMock
 
 
 @contextlib.contextmanager
@@ -113,7 +190,7 @@ def mocked_components():
         with unittest.mock.patch("fv3gfs.physics.Physics") as physics_mock:
             with unittest.mock.patch(
                 "pace.stencils.update_atmos_state.UpdateAtmosphereState"
-            ) as physics_to_dycore_mock:
+            ) as end_of_step_update_mock:
                 with unittest.mock.patch(
                     "pace.stencils.update_atmos_state.DycoreToPhysics"
                 ) as dycore_to_physics_mock:
@@ -129,5 +206,5 @@ def mocked_components():
                                 physics=physics_mock,
                                 diagnostics=diagnostics_mock,
                                 dycore_to_physics=dycore_to_physics_mock,
-                                physics_to_dycore=physics_to_dycore_mock,
+                                end_of_step_update=end_of_step_update_mock,
                             )

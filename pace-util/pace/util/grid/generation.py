@@ -2,7 +2,7 @@ import functools
 import warnings
 
 from pace import util
-from pace.dsl.gt4py_utils import asarray, make_storage_data
+from pace.dsl.gt4py_utils import asarray
 from pace.dsl.stencil import GridIndexing
 from pace.stencils.corners import (
     fill_corners_2d,
@@ -1465,13 +1465,14 @@ class MetricTerms:
             npx=self._npx,
             npy=self._npy,
             x_subtile_width=subtile_width_x + 1,
-            y_subtile_width=subtile_width_x + 1,
+            y_subtile_width=subtile_width_y + 1,
             global_is=section_global_is,
             global_js=section_global_js,
             ng=self._halo,
             np=self._grid.np,
             right_hand_grid=self.RIGHT_HAND_GRID,
         )
+
         # Shift the corner away from Japan
         # This will result in the corner close to east coast of China
         # TODO if not config.do_schmidt and config.shift_fac > 1.0e-4
@@ -2241,21 +2242,3 @@ class MetricTerms:
             self._da_max = max_area
             self._da_min_c = min_area_c
             self._da_max_c = max_area_c
-
-    def split_cartesian_into_storages(self, var: util.Quantity):
-        """
-        Provided a quantity of dims [X_DIM, Y_DIM, CARTESIAN_DIM]
-             or [X_INTERFACE_DIM, Y_INTERFACE_DIM, CARTESIAN_DIM]
-        Split it into separate 2D storages for each cartesian
-        dimension, and return these in a list.
-        """
-        var_data = []
-        for cart in range(var.data.shape[2]):
-            var_data.append(
-                make_storage_data(
-                    var.data[:, :, cart],
-                    var.data.shape[0:2],
-                    backend=var.gt4py_backend,
-                )
-            )
-        return var_data

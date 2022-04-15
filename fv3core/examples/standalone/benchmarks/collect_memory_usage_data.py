@@ -32,7 +32,7 @@ def gather_meta_data_from_line(output_line):
     for index, path in enumerate(experiment_call):
         if "fv3core_serialized_test_data" in path:
             data_set = (experiment_call[index + 2]).split()[0]
-            backend = "python/" + (experiment_call[index + 2]).split()[2]
+            backend = "python/" + (experiment_call[index + 3]).split()[2]
             return data_set, backend
 
 
