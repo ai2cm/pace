@@ -24,7 +24,6 @@ from .initialization import (
     InitializationConfig,
     PredefinedStateConfig,
     RestartConfig,
-    SerialboxConfig,
 )
 from .performance import PerformanceConfig
 
@@ -40,7 +39,7 @@ class DriverConfig:
     Attributes:
         stencil_config: configuration for stencil compilation
         initialization_type: must be
-             "baroclinic", "restart", "serialbox", or "predefined"
+             "baroclinic", "restart", or "predefined"
         initialization_config: configuration for the chosen initialization
             type, see documentation for its corresponding configuration
             dataclass
@@ -106,9 +105,7 @@ class DriverConfig:
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
         initialization_type = kwargs["initialization_type"]
-        if initialization_type == "serialbox":
-            initialization_class = SerialboxConfig  # type: ignore
-        elif initialization_type == "predefined":
+        if initialization_type == "predefined":
             initialization_class = PredefinedStateConfig  # type: ignore
         elif initialization_type == "baroclinic":
             initialization_class = BaroclinicConfig  # type: ignore

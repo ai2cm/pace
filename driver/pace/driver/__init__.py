@@ -12,7 +12,6 @@ from .initialization import (
     InitializationConfig,
     PredefinedStateConfig,
     RestartConfig,
-    SerialboxConfig,
 )
 from .performance import PerformanceConfig
 from .state import DriverState, TendencyState
