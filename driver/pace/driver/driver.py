@@ -17,15 +17,9 @@ import pace.util.grid
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 
+from . import diagnostics
 from .comm import CommConfig
-from .diagnostics import Diagnostics, DiagnosticsConfig
-from .initialization import (
-    BaroclinicConfig,
-    InitializationConfig,
-    PredefinedStateConfig,
-    RestartConfig,
-    SerialboxConfig,
-)
+from .initialization import InitializationConfig
 from .performance import PerformanceConfig
 
 
@@ -60,13 +54,12 @@ class DriverConfig:
     """
 
     stencil_config: pace.dsl.StencilConfig
-    initialization_type: str
-    initialization_config: InitializationConfig
+    initialization: InitializationConfig
     nx_tile: int
     nz: int
     layout: Tuple[int, int]
     dt_atmos: float
-    diagnostics_config: DiagnosticsConfig
+    diagnostics_config: diagnostics.DiagnosticsConfig
     performance_config: PerformanceConfig
     comm_config: CommConfig
     dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
@@ -87,7 +80,7 @@ class DriverConfig:
 
     @property
     def start_time(self) -> Union[datetime, timedelta]:
-        return self.initialization_config.start_time
+        return self.initialization.start_time
 
     @functools.cached_property
     def total_time(self) -> timedelta:
@@ -105,26 +98,6 @@ class DriverConfig:
 
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
-        initialization_type = kwargs["initialization_type"]
-        if initialization_type == "serialbox":
-            initialization_class = SerialboxConfig  # type: ignore
-        elif initialization_type == "predefined":
-            initialization_class = PredefinedStateConfig  # type: ignore
-        elif initialization_type == "baroclinic":
-            initialization_class = BaroclinicConfig  # type: ignore
-        elif initialization_type == "restart":
-            initialization_class = RestartConfig  # type: ignore
-        else:
-            raise ValueError(
-                "initialization_type must be one of 'baroclinic' or 'restart', "
-                f"got {initialization_type}"
-            )
-
-        kwargs["initialization_config"] = dacite.from_dict(
-            data_class=initialization_class,
-            data=kwargs.get("initialization_config", {}),
-            config=dacite.Config(strict=True),
-        )
 
         if isinstance(kwargs["dycore_config"], dict):
             for derived_name in ("dt_atmos", "layout", "npx", "npy", "npz", "ntiles"):
@@ -160,6 +133,9 @@ class DriverConfig:
         kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
         kwargs["physics_config"].npz = kwargs["nz"]
         kwargs["comm_config"] = CommConfig.from_dict(kwargs.get("comm_config", {}))
+        kwargs["initialization"] = InitializationConfig.from_dict(
+            kwargs["initialization"]
+        )
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
@@ -191,10 +167,10 @@ class Driver:
                 config=config, communicator=communicator
             )
 
-            self.state = self.config.initialization_config.get_driver_state(
+            self.state = self.config.initialization.get_driver_state(
                 quantity_factory=quantity_factory, communicator=communicator
             )
-            self._start_time = self.config.initialization_config.start_time
+            self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
                 grid_data=self.state.grid_data,
@@ -226,7 +202,7 @@ class Driver:
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,
             )
-            self.diagnostics = Diagnostics(
+            self.diagnostics = diagnostics.Diagnostics(
                 config=config.diagnostics_config,
                 partitioner=communicator.partitioner,
                 comm=self.comm,

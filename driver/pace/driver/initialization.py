@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 from datetime import datetime
+from typing import ClassVar
 
 import f90nml
 
@@ -20,10 +21,11 @@ from pace.stencils.testing import TranslateGrid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
 
+from .registry import Registry
 from .state import DriverState, TendencyState
 
 
-class InitializationConfig(abc.ABC):
+class Initializer(abc.ABC):
     @property
     @abc.abstractmethod
     def start_time(self) -> datetime:
@@ -39,7 +41,38 @@ class InitializationConfig(abc.ABC):
 
 
 @dataclasses.dataclass
-class BaroclinicConfig(InitializationConfig):
+class InitializationConfig:
+
+    type: str
+    config: Initializer
+    registry: ClassVar = Registry()
+
+    @classmethod
+    def register(cls, type_name):
+        return cls.registry.register(type_name)
+
+    @property
+    def start_time(self) -> datetime:
+        return self.config.start_time
+
+    def get_driver_state(
+        self,
+        quantity_factory: pace.util.QuantityFactory,
+        communicator: pace.util.CubedSphereCommunicator,
+    ) -> DriverState:
+        return self.config.get_driver_state(
+            quantity_factory=quantity_factory, communicator=communicator
+        )
+
+    @classmethod
+    def from_dict(cls, config: dict):
+        instance = cls.registry.from_dict(config)
+        return cls(config=instance, type=config["type"])
+
+
+@InitializationConfig.register("baroclinic")
+@dataclasses.dataclass
+class BaroclinicConfig(Initializer):
     """
     Configuration for baroclinic initialization.
     """
@@ -85,8 +118,9 @@ class BaroclinicConfig(InitializationConfig):
         )
 
 
+@InitializationConfig.register("restart")
 @dataclasses.dataclass
-class RestartConfig(InitializationConfig):
+class RestartConfig(Initializer):
     """
     Configuration for restart initialization.
     """
@@ -113,6 +147,7 @@ class RestartConfig(InitializationConfig):
         raise NotImplementedError()
 
 
+@InitializationConfig.register("serialbox")
 @dataclasses.dataclass
 class SerialboxConfig(InitializationConfig):
     """
@@ -244,10 +279,12 @@ class SerialboxConfig(InitializationConfig):
 
 
 @dataclasses.dataclass
-class PredefinedStateConfig(InitializationConfig):
+class PredefinedStateConfig(Initializer):
     """
     Configuration if the states are already defined
     """
+
+    # this class is not registered because it cannot be initialized from a dictionary.
 
     dycore_state: fv3core.DycoreState
     physics_state: fv3gfs.physics.PhysicsState

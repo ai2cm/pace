@@ -44,8 +44,7 @@ def get_driver_config(
         minutes=minutes,
         seconds=seconds,
         layout=layout,
-        initialization_type="baroclinic",
-        initialization_config=initialization_config,
+        initialization=initialization_config,
         performance_config=unittest.mock.MagicMock(),
         comm_config=NullCommConfig(layout),
         diagnostics_config=unittest.mock.MagicMock(),
@@ -205,7 +204,7 @@ def mocked_components():
                     "pace.stencils.update_atmos_state.DycoreToPhysics"
                 ) as dycore_to_physics_mock:
                     with unittest.mock.patch(
-                        "pace.driver.run.Diagnostics"
+                        "pace.driver.diagnostics.Diagnostics"
                     ) as diagnostics_mock:
                         with unittest.mock.patch(
                             "fv3core.DynamicalCore.step_dynamics"

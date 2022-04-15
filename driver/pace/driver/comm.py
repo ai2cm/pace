@@ -3,14 +3,14 @@ import dataclasses
 import os
 from typing import Any, ClassVar, List
 
-import dacite
-
 import pace.driver
 import pace.dsl
 import pace.stencils
 import pace.util
 import pace.util.grid
 from pace.util.caching_comm import CachingCommReader, CachingCommWriter
+
+from .registry import Registry
 
 
 class CreatesComm(abc.ABC):
@@ -46,15 +46,11 @@ class CommConfig:
 
     config: CreatesComm
     type: str = "mpi"
-    registry: ClassVar = {}
+    registry: ClassVar = Registry(default_type="mpi")
 
     @classmethod
     def register(cls, type_name):
-        def register_func(func):
-            cls.registry[type_name] = func
-            return func
-
-        return register_func
+        return cls.registry.register(type_name)
 
     def get_comm(self):
         return self.config.get_comm()
@@ -64,17 +60,10 @@ class CommConfig:
 
     @classmethod
     def from_dict(cls, config: dict):
-        config.setdefault("config", {})
-        comm_type = config.get("type", "mpi")
-        if comm_type not in cls.registry:
-            raise ValueError(f"Unknown comm type: {comm_type}")
-        else:
-            creates_comm: CreatesComm = dacite.from_dict(
-                data_class=cls.registry[comm_type],
-                data=config["config"],
-                config=dacite.Config(strict=True),
-            )
-            return cls(config=creates_comm, type=comm_type)
+        creates_comm = cls.registry.from_dict(config)
+        return cls(
+            config=creates_comm, type=config.get("type", cls.registry.default_type)
+        )
 
 
 @CommConfig.register("mpi")
@@ -109,7 +98,7 @@ class NullCommConfig(CreatesComm):
 
     rank: int
     total_ranks: int
-    fill_value: float
+    fill_value: float = 0.0
 
     def get_comm(self):
         return pace.util.NullComm(

@@ -4,10 +4,11 @@ stencil_config:
   validate_args: true
   format_source: false
   device_sync: true
-initialization_type: serialbox
-initialization_config:
-  path: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver
-  serialized_grid: True
+initialization:
+  type: serialbox
+  config:
+    path: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver
+    serialized_grid: True
 performance_config:
   performance_mode: true
 nx_tile: 12
