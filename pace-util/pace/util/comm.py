@@ -29,6 +29,10 @@ class Comm(abc.ABC):
         ...
 
     @abc.abstractmethod
+    def Barrier(self):
+        ...
+
+    @abc.abstractmethod
     def Scatter(self, sendbuf, recvbuf, root=0, **kwargs):
         ...
 
