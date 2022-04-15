@@ -158,6 +158,18 @@ def q_adjust(
         q = adjustment(q, dp1, fx, fy, rarea, dp2)
 
 
+# Simple stencil replacing:
+#   self._tmp_dp2[:] = dp1
+#   dp1[:] = dp2
+#   dp2[:] = self._tmp_dp2
+# Because dpX can be a quantity or an array
+def swap_dp(dp1: FloatField, dp2: FloatField):
+    with computation(PARALLEL), interval(...):
+        tmp = dp1
+        dp1 = dp2
+        dp2 = tmp
+
+
 class TracerAdvection:
     """
     Performs horizontal advection on tracers.
@@ -209,6 +221,13 @@ class TracerAdvection:
         for axis_offset_name, axis_offset_value in ax_offsets.items():
             if "local" in axis_offset_name:
                 local_axis_offsets[axis_offset_name] = axis_offset_value
+
+        self._swap_dp = stencil_factory.from_origin_domain(
+            swap_dp,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
+            externals=local_axis_offsets,
+        )
 
         self._flux_compute = stencil_factory.from_origin_domain(
             flux_compute,
@@ -367,9 +386,4 @@ class TracerAdvection:
             if not last_call:
                 self._tracers_halo_updater.update()
                 # use variable assignment to avoid a data copy
-                self._tmp_dp2[:] = dp1
-                if isinstance(dp1, pace.util.Quantity):
-                    dp1.storage[:] = dp2[:]
-                else:
-                    dp1[:] = dp2
-                dp2[:] = self._tmp_dp2
+                self._swap_dp(dp1, dp2)

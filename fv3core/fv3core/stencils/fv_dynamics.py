@@ -337,7 +337,7 @@ class DynamicalCore:
     @computepath_method
     def step_dynamics(
         self,
-        state: DycoreState,
+        state: dace_constant,
     ):
         """
         Step the model state forward by one timestep.
@@ -481,7 +481,7 @@ class DynamicalCore:
     @computepath_method
     def wrapup(
         self,
-        state: DycoreState,
+        state: dace_constant,  # DycoreState
         is_root_rank: bool,
     ):
         if __debug__:
