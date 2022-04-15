@@ -1,7 +1,5 @@
 from typing import Dict, Sequence, Union
 
-import dace
-from dace.frontend.python.interface import nounroll as dace_nounroll
 from gt4py.gtscript import (
     __INLINED,
     BACKWARD,
@@ -13,6 +11,7 @@ from gt4py.gtscript import (
     region,
 )
 
+import dace
 import fv3core.stencils.basic_operations as basic
 import fv3core.stencils.d_sw as d_sw
 import fv3core.stencils.nh_p_grad as nh_p_grad
@@ -25,6 +24,7 @@ import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util as fv3util
 import pace.util.constants as constants
+from dace.frontend.python.interface import nounroll as dace_nounroll
 from fv3core import DycoreState
 from fv3core._config import AcousticDynamicsConfig
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
