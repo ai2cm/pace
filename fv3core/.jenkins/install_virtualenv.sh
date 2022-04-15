@@ -22,10 +22,10 @@ virtualenv_path=$1
 fv3core_dir=`dirname $0`/../
 ${fv3core_dir}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
-python3 -m pip install ${fv3core_dir}/external/gt4py/ -c ${fv3core_dir}/constraints.txt
-python3 -m pip install ${fv3core_dir}/external/pace-util/ -c ${fv3core_dir}/../constraints.txt
-python3 -m pip install ${fv3core_dir}/external/stencils/ -c ${fv3core_dir}/../constraints.txt
-python3 -m pip install ${fv3core_dir}/external/dsl/ -c ${fv3core_dir}/../constraints.txt
+python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${fv3core_dir}/external/gt4py/ -c ${fv3core_dir}/constraints.txt
+python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${fv3core_dir}/external/pace-util/ -c ${fv3core_dir}/../constraints.txt
+python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${fv3core_dir}/external/stencils/ -c ${fv3core_dir}/../constraints.txt
+python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${fv3core_dir}/external/dsl/ -c ${fv3core_dir}/../constraints.txt
 python3 -m pip install $wheel_command -c ${fv3core_dir}/../constraints.txt -r ${fv3core_dir}/requirements/requirements_base.txt
 python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${fv3core_dir} -c ${fv3core_dir}/../constraints.txt
 deactivate

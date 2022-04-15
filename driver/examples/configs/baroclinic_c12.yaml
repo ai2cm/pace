@@ -1,5 +1,5 @@
 stencil_config:
-  backend: numpy
+  backend: gtc:numpy
   rebuild: false
   validate_args: true
   format_source: false

@@ -5,7 +5,14 @@ from setuptools import find_namespace_packages, setup
 
 setup_requirements: List[str] = []
 
-requirements = ["pace-util", "fv3core", "fv3gfs-physics", "pace-stencils", "dacite"]
+requirements = [
+    "pace-util",
+    "fv3core",
+    "fv3gfs-physics",
+    "pace-stencils",
+    "dacite",
+    "pyyaml",
+]
 
 test_requirements: List[str] = []
 
