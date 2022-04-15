@@ -598,6 +598,7 @@ class AcousticDynamics:
             origin=grid_indexing.origin_full(),
             domain=grid_indexing.domain_full(add=(0, 0, 1)),
             externals={**ax_offsets_pe},
+            skip_passes=("PruneKCacheFills",),
         )
         """The stencil object responsible for updating the interface pressure"""
 

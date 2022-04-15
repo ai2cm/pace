@@ -1,0 +1,88 @@
+stencil_config:
+  backend: numpy
+  rebuild: false
+  validate_args: true
+  format_source: false
+  device_sync: true
+initialization_type: baroclinic
+initialization_config: {}
+performance_config:
+  performance_mode: true
+  experiment_name: c192_baroclinic
+nx_tile: 192
+nz: 79
+dt_atmos: 225
+minutes: 60
+layout:
+  - 1
+  - 1
+diagnostics_config:
+  path: "output.zarr"
+  names:
+    - u
+    - v
+    - ua
+    - va
+    - pt
+    - delp
+    - qvapor
+    - qliquid
+    - qice
+    - qrain
+    - qsnow
+    - qgraupel
+dycore_config:
+  a_imp: 1.0
+  beta: 0.
+  consv_te: 0.
+  d2_bg: 0.
+  d2_bg_k1: 0.2
+  d2_bg_k2: 0.1
+  d4_bg: 0.15
+  d_con: 1.0
+  d_ext: 0.0
+  dddmp: 0.5
+  delt_max: 0.002
+  do_sat_adj: true
+  do_vort_damp: true
+  fill: true
+  hord_dp: 6
+  hord_mt: 6
+  hord_tm: 6
+  hord_tr: 8
+  hord_vt: 6
+  hydrostatic: false
+  k_split: 1
+  ke_bg: 0.
+  kord_mt: 9
+  kord_tm: -9
+  kord_tr: 9
+  kord_wz: 9
+  n_split: 1
+  nord: 3
+  nwat: 6
+  p_fac: 0.05
+  rf_cutoff: 3000.
+  rf_fast: true
+  tau: 10.
+  vtdm4: 0.06
+  z_tracer: true
+  do_qa: true
+  tau_i2s: 1000.
+  tau_g2v: 1200.
+  ql_gen: 0.001
+  ql_mlt: 0.002
+  qs_mlt: 0.000001
+  qi_lim: 1.0
+  dw_ocean: 0.1
+  dw_land: 0.15
+  icloud_f: 0
+  tau_l2v: 300.
+  tau_v2l: 90.
+  fv_sg_adj: 0
+  n_sponge: 48
+
+physics_config:
+  hydrostatic: false
+  nwat: 6
+  do_qa: true

@@ -5,6 +5,10 @@ latest
 ------
 
 Major changes:
+- Added `CachingCommWriter` which wraps a `Comm` object and can be serialized to a file-like object with a `.dump` method
+- Added `CachingCommReader` which can be loaded from the dump output of `CachingCommWriter` and replays its communication in the order it occurred.
+- `NullComm` is now public api in `pace-util`
+- Deleted deprecated `finish_vector_halo_update` method from `CubedSphereCommunicator`
 - Renamed DummyComm to LocalComm, and added support for message tags. The DummyComm symbol is still in place for backwards compatibility, but points to LocalComm
 - added error in CubedSphereCommunicator init if given a communicator with a size not equal to the total ranks of the given partitioner
 - `subtile_extent` method of Partitioner classes now takes in a required `rank` argument

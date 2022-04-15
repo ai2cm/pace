@@ -1,6 +1,7 @@
 import copy
 from typing import Tuple
 
+import numpy as np
 import pytest
 
 from pace.util import (
@@ -28,12 +29,6 @@ from pace.util.halo_data_transformer import (
     QuantityHaloSpec,
 )
 from pace.util.rotate import rotate_scalar_data, rotate_vector_data
-
-
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
 
 
 @pytest.fixture
@@ -169,36 +164,23 @@ def _shape_length(shape: Tuple[int]) -> int:
 
 
 @pytest.fixture
-def quantity(dims, units, origin, extent, shape, numpy, dtype, backend):
+def quantity(dims, units, origin, extent, shape, dtype, gt4py_backend):
     """A list of quantities whose values are 42.42 in the computational domain and 1
     outside of it."""
     sz = _shape_length(shape)
     print(f"{shape} {sz}")
-    data = numpy.arange(0, sz, dtype=dtype).reshape(shape)
-    if backend == "gt4py_cupy":
-        quantity = Quantity(
-            cp.asnumpy(data),
-            dims=dims,
-            units=units,
-            origin=origin,
-            extent=extent,
-            gt4py_backend="gtcuda",
-        )
-        layout_map = quantity.storage.layout_map
-        print(layout_map)
-    elif backend == "gt4py_numpy":
-        quantity = Quantity(
-            data,
-            dims=dims,
-            units=units,
-            origin=origin,
-            extent=extent,
-            gt4py_backend="gtx86",
-        )
-        layout_map = quantity.storage.layout_map
-        print(layout_map)
-    else:
-        quantity = Quantity(data, dims=dims, units=units, origin=origin, extent=extent)
+    data = np.arange(0, sz, dtype=dtype).reshape(shape)
+    if "gtc" not in gt4py_backend:
+        # should also test code if gt4py_backend is unset
+        gt4py_backend = None
+    quantity = Quantity(
+        data,
+        dims=dims,
+        units=units,
+        origin=origin,
+        extent=extent,
+        gt4py_backend=gt4py_backend,
+    )
     return quantity
 
 

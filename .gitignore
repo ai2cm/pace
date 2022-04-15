@@ -1,6 +1,7 @@
+.dace.conf
 # Test outputs
 results.xml
-driver/output.zarr
+**/output.zarr
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -119,6 +120,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv_*/
 
 # Spyder project settings
 .spyderproject

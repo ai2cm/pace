@@ -6,29 +6,16 @@ import numpy as np
 from . import constants
 from ._timing import NullTimer, Timer
 from .boundary import Boundary
-from .buffer import Buffer, array_buffer, recv_buffer, send_buffer
+from .buffer import array_buffer, recv_buffer, send_buffer
 from .halo_data_transformer import QuantityHaloSpec
-from .halo_updater import HaloUpdater
+from .halo_updater import HaloUpdater, HaloUpdateRequest, VectorInterfaceHaloUpdater
 from .partitioner import CubedSpherePartitioner, Partitioner, TilePartitioner
 from .quantity import Quantity, QuantityMetadata
-from .rotate import rotate_scalar_data
-from .types import AsyncRequest, NumpyModule
+from .types import NumpyModule
 from .utils import device_synchronize
 
 
-__all__ = [
-    "TileCommunicator",
-    "CubedSphereCommunicator",
-    "Communicator",
-    "HaloUpdateRequest",
-]
-
 logger = logging.getLogger("pace.util")
-
-_HaloSendTuple = Tuple[AsyncRequest, Buffer]
-_HaloRequestSendList = List[_HaloSendTuple]
-_HaloRecvTuple = Tuple[AsyncRequest, Buffer, np.ndarray]
-_HaloRequestRecvList = List[_HaloRecvTuple]
 
 
 def bcast_metadata_list(comm, quantity_list):
@@ -44,44 +31,6 @@ def bcast_metadata_list(comm, quantity_list):
 
 def bcast_metadata(comm, array):
     return bcast_metadata_list(comm, [array])[0]
-
-
-class HaloUpdateRequest:
-    """Asynchronous request object for halo updates."""
-
-    def __init__(
-        self,
-        send_data: _HaloRequestSendList,
-        recv_data: _HaloRequestRecvList,
-        timer: Optional[Timer] = None,
-    ):
-        """Build a halo request.
-        Args:
-            send_data: a tuple of the MPI request and the buffer sent
-            recv_data: a tuple of the MPI request, the temporary buffer and
-                the destination buffer
-            timer: optional, time the wait & unpack of a halo exchange
-        """
-        self._send_data = send_data
-        self._recv_data = recv_data
-        self._timer: Timer = timer if timer is not None else NullTimer()
-
-    def wait(self):
-        """Wait & unpack data into destination buffers
-        Clean up by inserting back all buffers back in cache
-        for potential reuse
-        """
-        for request, transfer_buffer in self._send_data:
-            with self._timer.clock("wait"):
-                request.wait()
-            with self._timer.clock("unpack"):
-                Buffer.push_to_cache(transfer_buffer)
-        for request, transfer_buffer, destination_array in self._recv_data:
-            with self._timer.clock("wait"):
-                request.wait()
-            with self._timer.clock("unpack"):
-                transfer_buffer.assign_to(destination_array)
-                Buffer.push_to_cache(transfer_buffer)
 
 
 class Communicator:
@@ -615,6 +564,25 @@ class CubedSphereCommunicator(Communicator):
         halo_updater.start(x_quantities, y_quantities)
         return halo_updater
 
+    def synchronize_vector_interfaces(self, x_quantity: Quantity, y_quantity: Quantity):
+        """
+        Synchronize shared points at the edges of a vector interface variable.
+
+        Sends the values on the south and west edges to overwrite the values on adjacent
+        subtiles. Vector must be defined on the Arakawa C grid.
+
+        For interface variables, the edges of the tile are computed on both ranks
+        bordering that edge. This routine copies values across those shared edges
+        so that both ranks have the same value for that edge. It also handles any
+        rotation of vector quantities needed to move data across the edge.
+
+        Args:
+            x_quantity: the x-component quantity to be synchronized
+            y_quantity: the y-component quantity to be synchronized
+        """
+        req = self.start_synchronize_vector_interfaces(x_quantity, y_quantity)
+        req.wait()
+
     def start_synchronize_vector_interfaces(
         self, x_quantity: Quantity, y_quantity: Quantity
     ) -> HaloUpdateRequest:
@@ -636,159 +604,14 @@ class CubedSphereCommunicator(Communicator):
         Returns:
             request: an asynchronous request object with a .wait() method
         """
-        if not on_c_grid(x_quantity, y_quantity):
-            raise ValueError("vector must be defined on Arakawa C-grid")
-        CubedSphereCommunicator._device_synchronize()
-        tag = self._get_halo_tag()
-        send_requests = self._Isend_vector_shared_boundary(
-            x_quantity, y_quantity, tag=tag
+        halo_updater = VectorInterfaceHaloUpdater(
+            comm=self.comm,
+            boundaries=self.boundaries,
+            force_cpu=self._force_cpu,
+            timer=self.timer,
         )
-        recv_requests = self._Irecv_vector_shared_boundary(
-            x_quantity, y_quantity, tag=tag
-        )
-        return HaloUpdateRequest(send_requests, recv_requests, self.timer)
-
-    def synchronize_vector_interfaces(self, x_quantity: Quantity, y_quantity: Quantity):
-        """
-        Synchronize shared points at the edges of a vector interface variable.
-
-        Sends the values on the south and west edges to overwrite the values on adjacent
-        subtiles. Vector must be defined on the Arakawa C grid.
-
-        For interface variables, the edges of the tile are computed on both ranks
-        bordering that edge. This routine copies values across those shared edges
-        so that both ranks have the same value for that edge. It also handles any
-        rotation of vector quantities needed to move data across the edge.
-
-        Args:
-            x_quantity: the x-component quantity to be synchronized
-            y_quantity: the y-component quantity to be synchronized
-        """
-        req = self.start_synchronize_vector_interfaces(x_quantity, y_quantity)
-        req.wait()
-
-    def _Isend_vector_shared_boundary(
-        self, x_quantity, y_quantity, tag=0
-    ) -> _HaloRequestSendList:
-        south_boundary = self.boundaries[constants.SOUTH]
-        west_boundary = self.boundaries[constants.WEST]
-        south_data = x_quantity.view.southwest.sel(
-            **{
-                constants.Y_INTERFACE_DIM: 0,
-                constants.X_DIM: slice(
-                    0, x_quantity.extent[x_quantity.dims.index(constants.X_DIM)]
-                ),
-            }
-        )
-        south_data = rotate_scalar_data(
-            south_data,
-            [constants.X_DIM],
-            x_quantity.np,
-            -south_boundary.n_clockwise_rotations,
-        )
-        if south_boundary.n_clockwise_rotations in (3, 2):
-            south_data = -south_data
-        west_data = y_quantity.view.southwest.sel(
-            **{
-                constants.X_INTERFACE_DIM: 0,
-                constants.Y_DIM: slice(
-                    0, y_quantity.extent[y_quantity.dims.index(constants.Y_DIM)]
-                ),
-            }
-        )
-        west_data = rotate_scalar_data(
-            west_data,
-            [constants.Y_DIM],
-            y_quantity.np,
-            -west_boundary.n_clockwise_rotations,
-        )
-        if west_boundary.n_clockwise_rotations in (1, 2):
-            west_data = -west_data
-        send_requests = [
-            self._Isend(
-                self._maybe_force_cpu(x_quantity.np),
-                south_data,
-                dest=south_boundary.to_rank,
-                tag=tag,
-            ),
-            self._Isend(
-                self._maybe_force_cpu(y_quantity.np),
-                west_data,
-                dest=west_boundary.to_rank,
-                tag=tag,
-            ),
-        ]
-        return send_requests
-
-    def _Irecv_vector_shared_boundary(
-        self, x_quantity, y_quantity, tag=0
-    ) -> _HaloRequestRecvList:
-        north_rank = self.boundaries[constants.NORTH].to_rank
-        east_rank = self.boundaries[constants.EAST].to_rank
-        north_data = x_quantity.view.northwest.sel(
-            **{
-                constants.Y_INTERFACE_DIM: -1,
-                constants.X_DIM: slice(
-                    0, x_quantity.extent[x_quantity.dims.index(constants.X_DIM)]
-                ),
-            }
-        )
-        east_data = y_quantity.view.southeast.sel(
-            **{
-                constants.X_INTERFACE_DIM: -1,
-                constants.Y_DIM: slice(
-                    0, y_quantity.extent[y_quantity.dims.index(constants.Y_DIM)]
-                ),
-            }
-        )
-        recv_requests = [
-            self._Irecv(
-                self._maybe_force_cpu(x_quantity.np),
-                north_data,
-                source=north_rank,
-                tag=tag,
-            ),
-            self._Irecv(
-                self._maybe_force_cpu(y_quantity.np),
-                east_data,
-                source=east_rank,
-                tag=tag,
-            ),
-        ]
-        return recv_requests
-
-    def _Isend(self, numpy_module, in_array, **kwargs) -> _HaloSendTuple:
-        # copy the resulting view in a contiguous array for transfer
-        with self.timer.clock("pack"):
-            buffer = Buffer.pop_from_cache(
-                numpy_module.zeros, in_array.shape, in_array.dtype
-            )
-            buffer.assign_from(in_array)
-            buffer.finalize_memory_transfer()
-        with self.timer.clock("Isend"):
-            request = self.comm.Isend(buffer.array, **kwargs)
-        return (request, buffer)
-
-    def _Irecv(self, numpy_module, out_array, **kwargs) -> _HaloRecvTuple:
-        # Prepare a contiguous buffer to receive data
-        with self.timer.clock("Irecv"):
-            buffer = Buffer.pop_from_cache(
-                numpy_module.zeros, out_array.shape, out_array.dtype
-            )
-            recv_request = self.comm.Irecv(buffer.array, **kwargs)
-        return (recv_request, buffer, out_array)
-
-    def finish_vector_halo_update(
-        self,
-        x_quantity: Quantity,
-        y_quantity: Quantity,
-        n_points: int,
-    ):
-        """Deprecated, do not use."""
-        raise NotImplementedError(
-            "finish_vector_halo_update has been removed, use .wait() "
-            "on the request object returned by start_vector_halo_update"
-        )
+        req = halo_updater.start_synchronize_vector_interfaces(x_quantity, y_quantity)
+        return req
 
     def get_scalar_halo_updater(self, specifications: List[QuantityHaloSpec]):
         if len(specifications) == 0:
@@ -822,18 +645,3 @@ class CubedSphereCommunicator(Communicator):
             self._get_halo_tag(),
             self.timer,
         )
-
-
-def on_c_grid(x_quantity, y_quantity):
-    if (
-        constants.X_DIM not in x_quantity.dims
-        or constants.Y_INTERFACE_DIM not in x_quantity.dims
-    ):
-        return False
-    if (
-        constants.Y_DIM not in y_quantity.dims
-        or constants.X_INTERFACE_DIM not in y_quantity.dims
-    ):
-        return False
-    else:
-        return True
