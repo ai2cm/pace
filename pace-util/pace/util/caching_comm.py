@@ -108,6 +108,9 @@ class CachingCommReader(Comm):
     def barrier(self):
         pass
 
+    def Barrier(self):
+        pass
+
     def Scatter(self, sendbuf, recvbuf, root=0, **kwargs):
         recvbuf[:] = self._data.get_buffer()
 
@@ -168,6 +171,9 @@ class CachingCommWriter(Comm):
     def barrier(self):
         return self._comm.barrier()
 
+    def Barrier(self):
+        pass
+
     def Scatter(self, sendbuf, recvbuf, root=0, **kwargs):
         self._comm.Scatter(sendbuf=sendbuf, recvbuf=recvbuf, root=root, **kwargs)
         self._data.received_buffers.append(copy.deepcopy(recvbuf))
@@ -180,14 +186,14 @@ class CachingCommWriter(Comm):
         self._comm.Send(sendbuf=sendbuf, dest=dest, tag=tag, **kwargs)
 
     def Isend(self, sendbuf, dest, tag: int = 0, **kwargs) -> Request:
-        return self._comm.Isend(sendbuf=sendbuf, dest=dest, tag=tag, **kwargs)
+        return self._comm.Isend(sendbuf, dest, tag=tag, **kwargs)
 
     def Recv(self, recvbuf, source, tag: int = 0, **kwargs):
         self._comm.Recv(recvbuf=recvbuf, source=source, tag=tag, **kwargs)
         self._data.received_buffers.append(copy.deepcopy(recvbuf))
 
     def Irecv(self, recvbuf, source, tag: int = 0, **kwargs) -> Request:
-        req = self._comm.Irecv(recvbuf=recvbuf, source=source, tag=tag, **kwargs)
+        req = self._comm.Irecv(recvbuf, source, tag=tag, **kwargs)
         return CachingRequestWriter(
             req=req, buffer=recvbuf, buffer_list=self._data.received_buffers
         )
