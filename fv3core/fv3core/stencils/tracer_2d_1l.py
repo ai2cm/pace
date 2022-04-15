@@ -2,11 +2,11 @@ import math
 from typing import Dict
 
 import gt4py.gtscript as gtscript
+from dace import constant as dace_constant
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from dace import constant as dace_constant
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from pace.dsl.dace.orchestrate import computepath_method

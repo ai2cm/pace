@@ -8,7 +8,6 @@ from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util import CubedSphereCommunicator
 from pace.util.constants import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from pace.util.grid import GridData
-from pace.util.quantity import Quantity
 
 
 C1 = 1.125

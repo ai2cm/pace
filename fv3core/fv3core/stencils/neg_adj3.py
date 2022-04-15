@@ -3,9 +3,10 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.dsl.dace.orchestrate import computepath_method
+
 
 ZVIR = constants.RVGAS / constants.RDGAS - 1.0
 

@@ -1,7 +1,4 @@
-from types import SimpleNamespace
-
 import pace.util as fv3util
-from fv3core.initialization.dycore_state import DycoreState
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.stencils.testing import ParallelTranslate2Py
 

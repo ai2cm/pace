@@ -1,12 +1,11 @@
 import typing
 from typing import Dict
 
+# [DaCe] Import
+from dace import constant as DaceConstant
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
-
-# [DaCe] Import
-from dace import constant as DaceConstant
 from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
