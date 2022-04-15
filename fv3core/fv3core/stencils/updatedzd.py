@@ -5,6 +5,7 @@ import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
 from fv3core.stencils.delnflux import DelnFluxNoSG
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util.grid import DampingCoefficients, GridData
@@ -245,6 +246,11 @@ class UpdateHeightOnDGrid:
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
+        # self._set_nans = get_set_nan_func(
+        #     grid_indexing,
+        #     dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+        #     n_halo=((0, 0), (0, 0)),
+        # )
 
     def _allocate_temporary_storages(self, grid_indexing: GridIndexing, backend: str):
         largest_possible_shape = grid_indexing.domain_full(add=(1, 1, 1))
@@ -322,6 +328,7 @@ class UpdateHeightOnDGrid:
             gamma_3d[0, 0, :], gamma_3d.shape[2:], (0,), backend=stencil_factory.backend
         )
 
+    @computepath_method
     def __call__(
         self,
         surface_height: FloatFieldIJ,
@@ -393,3 +400,4 @@ class UpdateHeightOnDGrid:
             ws,
             dt,
         )
+        # self._set_nans(height)

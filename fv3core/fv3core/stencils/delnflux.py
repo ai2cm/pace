@@ -967,17 +967,19 @@ class DelnFlux:
         k_shape = (1, 1, nk)
 
         self._damp_3d = utils.make_storage_from_shape(
-            k_shape, backend=stencil_factory.backend
+            k_shape, backend=stencil_factory.backend, is_temporary=False
         )
         # fields must be 3d to assign to them
         self._fx2 = utils.make_storage_from_shape(
-            shape, backend=stencil_factory.backend
+            shape, backend=stencil_factory.backend, is_temporary=False
         )
         self._fy2 = utils.make_storage_from_shape(
-            shape, backend=stencil_factory.backend
+            shape, backend=stencil_factory.backend, is_temporary=False
         )
         self._d2 = utils.make_storage_from_shape(
-            grid_indexing.domain_full(), backend=stencil_factory.backend
+            grid_indexing.domain_full(),
+            backend=stencil_factory.backend,
+            is_temporary=False,
         )
 
         damping_factor_calculation = stencil_factory.from_origin_domain(
@@ -1185,7 +1187,10 @@ class DelnFluxNoSG:
         corner_axis_offsets = grid_indexing.axis_offsets(corner_origin, corner_domain)
 
         self._corner_tmp = utils.make_storage_from_shape(
-            corner_domain, origin=corner_origin, backend=stencil_factory.backend
+            corner_domain,
+            origin=corner_origin,
+            backend=stencil_factory.backend,
+            is_temporary=False,
         )
         self._copy_corners_x_nord = stencil_factory.from_origin_domain(
             copy_corners_x_nord,
@@ -1200,6 +1205,7 @@ class DelnFluxNoSG:
             domain=corner_domain,
         )
 
+    @computepath_method
     def __call__(self, q, fx2, fy2, damp_c, d2, mass=None):
         """
         Computes flux fields which would apply del-n damping to q,

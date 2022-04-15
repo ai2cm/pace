@@ -3,6 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils import corners
@@ -543,6 +544,7 @@ class DGrid2AGrid2CGridVectors:
             domain=(grid_indexing.domain[0] + 2, jdiff, grid_indexing.domain[2]),
         )
 
+    @computepath_method
     def __call__(self, uc, vc, u, v, ua, va, utc, vtc):
         """
         Calculate velocity vector from D-grid to A-grid to C-grid.

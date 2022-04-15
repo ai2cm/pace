@@ -1,6 +1,7 @@
 from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 
@@ -52,9 +53,13 @@ class PK3Halo:
         )
         shape_2D = grid_indexing.domain_full(add=(1, 1, 1))[0:2]
         self._pe_tmp = utils.make_storage_from_shape(
-            shape_2D, grid_indexing.origin_full(), backend=stencil_factory.backend
+            shape_2D,
+            grid_indexing.origin_full(),
+            backend=stencil_factory.backend,
+            is_temporary=False,
         )
 
+    @computepath_method
     def __call__(self, pk3: FloatField, delp: FloatField, ptop: float, akap: float):
         """Update pressure (pk3) in halo region
 

@@ -144,7 +144,7 @@ dmypy.json
 .vscode/
 
 # GT4Py
-**/.gt_cache/
+**/.gt_cache*/
 
 # Run outputs
 plot_output/
