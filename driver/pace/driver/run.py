@@ -787,9 +787,8 @@ def main(driver_config: DriverConfig):
     driver = Driver(config=driver_config)
     try:
         driver.step_all()
-    except Exception as e:
+    finally:
         driver.cleanup()
-        raise e
 
 
 if __name__ == "__main__":
