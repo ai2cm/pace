@@ -319,7 +319,7 @@ class FiniteVolumeTransport:
         )
 
         if self.delnflux is not None:
-            self.delnflux(q.base, q_x_flux, q_y_flux, mass=mass)
+            self.delnflux(q, q_x_flux, q_y_flux, mass=mass)
 
 
 class _FiniteVolumeTransportStencils(abc.ABC):
