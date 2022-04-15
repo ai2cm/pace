@@ -1,8 +1,18 @@
-from .configs.comm import (
+from .comm import (
     CommConfig,
     CreatesComm,
     MPICommConfig,
     ReaderCommConfig,
     WriterCommConfig,
 )
-from .run import Driver, DriverConfig
+from .diagnostics import Diagnostics, DiagnosticsConfig
+from .driver import Driver, DriverConfig
+from .initialization import (
+    BaroclinicConfig,
+    InitializationConfig,
+    PredefinedStateConfig,
+    RestartConfig,
+    SerialboxConfig,
+)
+from .performance import PerformanceConfig
+from .state import DriverState, TendencyState
