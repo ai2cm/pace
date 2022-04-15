@@ -1,3 +1,19 @@
--r fv3core/requirements/requirements_container.txt
--r fv3gfs-physics/requirements.txt
 dacite
+f90nml>=1.1.0
+numpy>=1.15
+mpi4py>=3.1.3
+
+pytest-xdist
+pytest-dependency
+pytest
+pytest-cov
+pytest-subtests
+pytest-profiling
+pytest-regressions
+xarray
+zarr
+cftime
+pip-tools
+netCDF4
+hypothesis
+scipy
