@@ -3,4 +3,4 @@
 	url = https://github.com/ai2cm/gt4py.git
 [submodule "buildenv"]
 	path = buildenv
-	url = git@github.com:ai2cm/buildenv.git
+	url = https://github.com/ai2cm/buildenv.git

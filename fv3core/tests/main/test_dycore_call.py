@@ -48,7 +48,7 @@ def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
 
 
 def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
-    backend = "numpy"
+    backend = "gtc:numpy"
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,

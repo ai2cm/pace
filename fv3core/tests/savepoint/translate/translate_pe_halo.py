@@ -29,4 +29,5 @@ class TranslatePE_Halo(TranslateDycoreFortranData2Py):
             origin=self.stencil_factory.grid_indexing.origin_full(),
             domain=self.stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
             externals={**ax_offsets_pe},
+            skip_passes=("PruneKCacheFills",),
         )
