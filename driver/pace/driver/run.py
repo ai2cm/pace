@@ -52,6 +52,45 @@ def configure_logging(log_rank: Optional[int], log_level: str):
             )
 
 
+log_levels = {
+    "info": logging.INFO,
+    "debug": logging.DEBUG,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+}
+
+
+def configure_logging(log_rank: Optional[int], log_level: str):
+    """
+    Configure logging for the driver.
+
+    Args:
+        log_rank: rank to log from, or 'all' to log to all ranks,
+            forced to 'all' if running without MPI
+        log_level: log level to use
+    """
+    level = log_levels[log_level]
+    if MPI is None:
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s [%(levelname)s] %(name)s:%(message)s",
+            handlers=[logging.StreamHandler()],
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    else:
+        if log_rank is None or int(log_rank) == MPI.COMM_WORLD.Get_rank():
+            logging.basicConfig(
+                level=level,
+                format=(
+                    f"%(asctime)s [%(levelname)s] (rank {MPI.COMM_WORLD.Get_rank()}) "
+                    "%(name)s:%(message)s"
+                ),
+                handlers=[logging.StreamHandler()],
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+
+
 @click.command()
 @click.argument(
     "CONFIG_PATH",
