@@ -17,8 +17,8 @@ import pace.util.grid
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 
+from . import diagnostics
 from .comm import CommConfig
-from .diagnostics import Diagnostics, DiagnosticsConfig
 from .initialization import (
     BaroclinicConfig,
     InitializationConfig,
@@ -66,7 +66,7 @@ class DriverConfig:
     nz: int
     layout: Tuple[int, int]
     dt_atmos: float
-    diagnostics_config: DiagnosticsConfig
+    diagnostics_config: diagnostics.DiagnosticsConfig
     performance_config: PerformanceConfig
     comm_config: CommConfig
     dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
@@ -226,7 +226,7 @@ class Driver:
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,
             )
-            self.diagnostics = Diagnostics(
+            self.diagnostics = diagnostics.Diagnostics(
                 config=config.diagnostics_config,
                 partitioner=communicator.partitioner,
                 comm=self.comm,
