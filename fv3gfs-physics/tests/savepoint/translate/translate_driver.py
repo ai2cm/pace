@@ -10,7 +10,7 @@ from fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from fv3core.testing.validation import enable_selective_validation
 from fv3gfs.physics import PhysicsConfig, PhysicsState
 from pace.driver.run import Driver, DriverConfig
-from pace.driver.tendency_state import TendencyState
+from pace.driver.state import TendencyState
 from pace.util.namelist import Namelist
 
 
