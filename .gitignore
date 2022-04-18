@@ -1,7 +1,9 @@
 .dace.conf
 # Test outputs
 results.xml
-**/output.zarr
+*.zarr
+driver/examples/*.json
+driver/examples/comm
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
