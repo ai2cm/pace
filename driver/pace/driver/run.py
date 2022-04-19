@@ -13,6 +13,7 @@ import yaml
 import zarr.storage
 from mpi4py import MPI
 
+
 import fv3core
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3gfs.physics
@@ -66,10 +67,41 @@ class BaroclinicConfig(InitializationConfig):
     Configuration for baroclinic initialization.
     """
 
+    path: str
+    serialized_grid: bool
+
     @property
     def start_time(self) -> datetime:
-        # TODO: instead of arbitrary start time, enable use of timedeltas
         return datetime(2000, 1, 1)
+
+    @property
+    def _f90_namelist(self) -> f90nml.Namelist:
+        return f90nml.read(self.path + "/input.nml")
+
+    @property
+    def _namelist(self) -> Namelist:
+        return Namelist.from_f90nml(self._f90_namelist)
+
+    def _get_serialized_grid(
+        self,
+        communicator: pace.util.CubedSphereCommunicator,
+        backend: str,
+    ) -> pace.stencils.testing.grid.Grid:
+        ser = self._serializer(communicator)
+        grid = TranslateGrid.new_from_serialized_data(
+            ser, communicator.rank, self._namelist.layout, backend
+        ).python_grid()
+        return grid
+
+    def _serializer(self, communicator: pace.util.CubedSphereCommunicator):
+        import serialbox
+
+        serializer = serialbox.Serializer(
+            serialbox.OpenModeKind.Read,
+            self.path,
+            "Generator_rank" + str(communicator.rank),
+        )
+        return serializer
 
     def get_driver_state(
         self,
@@ -79,11 +111,20 @@ class BaroclinicConfig(InitializationConfig):
         metric_terms = pace.util.grid.MetricTerms(
             quantity_factory=quantity_factory, communicator=communicator
         )
-        grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-        damping_coeffient = DampingCoefficients.new_from_metric_terms(metric_terms)
-        driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
-            metric_terms
-        )
+        if self.serialized_grid:
+            backend = quantity_factory.empty(
+                dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
+            ).gt4py_backend
+            grid = self._get_serialized_grid(communicator, backend)
+            grid_data = grid.grid_data
+            damping_coeffient = grid.damping_coefficients
+            driver_grid_data = grid.driver_grid_data
+        else:
+            grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
+            damping_coeffient = DampingCoefficients.new_from_metric_terms(metric_terms)
+            driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
+                metric_terms
+            )
         dycore_state = baroclinic_init.init_baroclinic_state(
             metric_terms,
             adiabatic=False,
@@ -302,6 +343,7 @@ class PredefinedStateConfig(InitializationConfig):
 @dataclasses.dataclass(frozen=True)
 class DiagnosticsConfig:
     path: str
+    output_frequency: int
     names: List[str] = dataclasses.field(default_factory=list)
 
 
@@ -612,10 +654,14 @@ class Driver:
                 grid_data=self.state.grid_data,
                 metadata=self.state.dycore_state.ps.metadata,
             )
+            output_counter = 0
+            self.diagnostics.store(time=time, state=self.state)
             while time < end_time:
                 self._step(timestep=self.config.timestep.total_seconds())
                 time += self.config.timestep
-                self.diagnostics.store(time=time, state=self.state)
+                output_counter += 1
+                if output_counter % self.config.diagnostics_config.output_frequency == 0:
+                    self.diagnostics.store(time=time, state=self.state)
             self.performance_config.collect_performance()
 
     def _step(self, timestep: float):
