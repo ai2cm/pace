@@ -365,16 +365,6 @@ class FrozenStencil(SDFGConvertible):
                 self.stencil_kwargs.pop("skip_passes")
             )
 
-        # When using DaCe orchestration, we deactivate code generation
-        # (Only SDFG are needed). But because some stencils are executed
-        # outside of the runtime path, we have a whitelist exception.
-        if (
-            dace_config.is_dace_orchestrated()
-            and not is_dacemode_codegen_whitelisted(func)
-            and "dace" in self.stencil_config.backend
-        ):
-            self.stencil_kwargs["disable_code_generation"] = True
-
         self._argument_names = tuple(inspect.getfullargspec(self.func).args)
 
         assert (
