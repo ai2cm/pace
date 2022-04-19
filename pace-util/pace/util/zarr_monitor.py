@@ -120,7 +120,7 @@ class ZarrMonitor:
 
         Requires the state contain the same quantities with the same metadata as the
         first time this is called. Dimension order metadata may change between calls
-        so long as the set of dimsensions is the same. Quantities are stored with
+        so long as the set of dimensions is the same. Quantities are stored with
         dimensions [time, rank] followed by the dimensions included in the first
         state snapshot. The one exception is "time" which is stored with dimensions
         [time].
