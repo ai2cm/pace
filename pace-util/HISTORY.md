@@ -4,6 +4,9 @@ History
 latest
 ------
 
+v0.8.0
+------
+
 Major changes:
 - Changed `ZarrMonitor.store` behavior to allow passing quantities with different dimension orders
 - Added `CachingCommWriter` which wraps a `Comm` object and can be serialized to a file-like object with a `.dump` method

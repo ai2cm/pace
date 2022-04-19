@@ -23,8 +23,8 @@ with open("HISTORY.md") as history_file:
     history = history_file.read()
 
 setup(
-    author="Vulcan Technologies LLC",
-    author_email="jeremym@vulcan.com",
+    author="Allen Institute of Artificial Intelligence",
+    author_email="jeremym@allenai.org",
     python_requires=">=3.8",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
