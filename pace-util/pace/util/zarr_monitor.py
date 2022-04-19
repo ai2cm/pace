@@ -119,9 +119,10 @@ class ZarrMonitor:
         """Append the model state dictionary to the zarr store.
 
         Requires the state contain the same quantities with the same metadata as the
-        first time this is called. Quantities are stored with dimensions [time, rank]
-        followed by the dimensions included in any one state snapshot. The one exception
-        is "time" which is stored with dimensions [time].
+        first time this is called. Dimension order metadata may change between calls
+        so long as the set of dimsensions is the same. Quantities are stored with
+        dimensions [time, rank] followed by the dimensions included in any one state
+        snapshot. The one exception is "time" which is stored with dimensions [time].
         """
         self._ensure_writers_are_consistent(state)
         for name, quantity in sorted(state.items(), key=lambda x: x[0]):

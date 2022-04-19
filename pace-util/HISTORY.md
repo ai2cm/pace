@@ -5,6 +5,7 @@ latest
 ------
 
 Major changes:
+- Changed `ZarrMonitor` store behavior to allow passing chunks with different dimension orders
 - Added `CachingCommWriter` which wraps a `Comm` object and can be serialized to a file-like object with a `.dump` method
 - Added `CachingCommReader` which can be loaded from the dump output of `CachingCommWriter` and replays its communication in the order it occurred.
 - `NullComm` is now public api in `pace-util`

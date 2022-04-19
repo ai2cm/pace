@@ -424,6 +424,7 @@ def _transpose(quantity, dims_2d=[Y_DIMS, X_DIMS], dims_3d=[Z_DIMS, Y_DIMS, X_DI
         return quantity.transpose(dims_3d)
 
 
+@requires_zarr
 def test_transposed_diags_write_across_ranks(diag, cube_partitioner, tmpdir_factory):
 
     layout = (1, 1)
@@ -449,6 +450,7 @@ def test_transposed_diags_write_across_ranks(diag, cube_partitioner, tmpdir_fact
         monitor.store({"a": diag_to_store})
 
 
+@requires_zarr
 def test_transposed_diags_write_across_timesteps(
     diag, cube_partitioner, tmpdir_factory
 ):
