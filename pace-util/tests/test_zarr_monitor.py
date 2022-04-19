@@ -417,7 +417,7 @@ def diag(request, numpy):
     return diag
 
 
-def _transpose(quantity, dims_2d=[Y_DIMS, X_DIMS], dims_3d=[Z_DIMS, Y_DIMS, X_DIMS]):
+def _transpose(quantity, dims_2d, dims_3d):
     if len(quantity.dims) == 2:
         return quantity.transpose(dims_2d)
     elif len(quantity.dims) == 3:
@@ -441,7 +441,9 @@ def test_transposed_diags_write_across_ranks(diag, cube_partitioner, tmpdir_fact
             ),
         )
         if rank % 2 == 0:
-            diag_to_store = _transpose(diag)
+            diag_to_store = _transpose(
+                diag, dims_2d=[Y_DIMS, X_DIMS], dims_3d=[Z_DIMS, Y_DIMS, X_DIMS]
+            )
         else:
             diag_to_store = _transpose(
                 diag, dims_2d=[X_DIMS, Y_DIMS], dims_3d=[X_DIMS, Y_DIMS, Z_DIMS]
@@ -460,7 +462,9 @@ def test_transposed_diags_write_across_timesteps(
     monitor = pace.util.ZarrMonitor(store, cube_partitioner)
     # verify that we can store transposed diags across time
     time_1 = cftime.DatetimeJulian(2010, 6, 20, 6, 0, 0)
-    diag_1 = _transpose(diag)
+    diag_1 = _transpose(
+        diag, dims_2d=[Y_DIMS, X_DIMS], dims_3d=[Z_DIMS, Y_DIMS, X_DIMS]
+    )
     monitor.store({"time": time_1, "a": diag_1})
     time_2 = cftime.DatetimeJulian(2010, 6, 20, 6, 15, 0)
     diag_2 = _transpose(

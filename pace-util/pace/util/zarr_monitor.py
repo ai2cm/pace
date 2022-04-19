@@ -121,8 +121,9 @@ class ZarrMonitor:
         Requires the state contain the same quantities with the same metadata as the
         first time this is called. Dimension order metadata may change between calls
         so long as the set of dimsensions is the same. Quantities are stored with
-        dimensions [time, rank] followed by the dimensions included in any one state
-        snapshot. The one exception is "time" which is stored with dimensions [time].
+        dimensions [time, rank] followed by the dimensions included in the first
+        state snapshot. The one exception is "time" which is stored with dimensions
+        [time].
         """
         self._ensure_writers_are_consistent(state)
         for name, quantity in sorted(state.items(), key=lambda x: x[0]):
@@ -266,12 +267,6 @@ class _ZarrVariableWriter:
             "_ARRAY_DIMENSIONS": list(self._PREPEND_DIMS + quantity.dims),
             **quantity.attrs,
         }
-
-    def _order_dims(self, quantity):
-        if self.array is None:
-            return quantity
-        else:
-            dim_order = self.array.attrs["_ARRAY_DIMENSIONS"]
 
     def _ensure_compatible_attrs(self, new_quantity):
         new_attrs = self._get_attrs(new_quantity)
