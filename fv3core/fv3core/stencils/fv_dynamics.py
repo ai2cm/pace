@@ -265,7 +265,7 @@ class DynamicalCore:
         }
         # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
-            stencil_factory, tracer_transport, self.grid_data, comm, NQ
+            stencil_factory, tracer_transport, self.grid_data, comm, self.tracers
         )
         self._ak = grid_data.ak
         self._bk = grid_data.bk
@@ -317,6 +317,7 @@ class DynamicalCore:
             self.config.acoustic_dynamics,
             self._pfull,
             self._phis,
+            state,
         )
         self._hyperdiffusion = HyperdiffusionDamping(
             stencil_factory,
