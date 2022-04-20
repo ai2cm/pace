@@ -157,6 +157,9 @@ def driver(
         experiment_name = get_experiment_name(data_directory)
         nested = False
         stretched_grid = False
+
+        state = get_state_from_input(grid, dycore_config, stencil_config, input_data)
+
         acoustics_object = AcousticDynamics(
             communicator,
             stencil_factory,
@@ -168,9 +171,8 @@ def driver(
             dycore_config.acoustic_dynamics,
             input_data["pfull"],
             input_data["phis"],
+            state,
         )
-
-        state = get_state_from_input(grid, dycore_config, stencil_config, input_data)
 
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
