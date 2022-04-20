@@ -40,6 +40,29 @@ CURRENT_DACE_SAVEPOINT_TESTS = [
     "Fillz",
     "MoistCVPlusPkz_2d",
     "MoistCVPlusPt_2d",
+    "DivergenceDamping",
+    "Del6VtFlux",
+    "FvTp2d",
+    "FxAdv",
+    "D_SW",
+    "D2A2C_Vect",
+    "C_SW",
+    "NH_P_Grad",
+    "UpdateDzD",
+    "Riem_Solver3",
+    "Riem_Solver_C",
+    "UpdateDzC",
+    "Del2Cubed",
+    "Ray_Fast",
+    "PK3_Halo",
+    "PE_Halo",
+    "XPPM",
+    "YPPM",
+    "PressureAdjustedTemperature_NonHydrostatic",
+    "DynCore",
+    "Tracer2D1L",
+    "FillCornersVector",
+    "A2B_Ord4",
 ]
 # this must happen before any classes from fv3core are instantiated
 fv3core.testing.enable_selective_validation()
@@ -113,6 +136,7 @@ def stencil_config(backend):
         backend=backend,
         rebuild=False,
         validate_args=True,
+        format_source="numpy" in backend,
     )
 
 

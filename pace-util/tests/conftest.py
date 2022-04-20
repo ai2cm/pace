@@ -30,6 +30,16 @@ def backend(request):
 
 
 @pytest.fixture
+def gt4py_backend(backend):
+    if backend in ("numpy", "gt4py_numpy"):
+        return "gtc:numpy"
+    elif backend in ("cupy", "gt4py_cupy"):
+        return "gtc:gt:gpu"
+    else:
+        return None
+
+
+@pytest.fixture
 def fast(pytestconfig):
     return pytestconfig.getoption("--fast")
 
@@ -40,11 +50,10 @@ def numpy(backend):
         return np
     elif backend == "cupy":
         return cupy
-    elif backend.startswith("gt4py"):
-        if backend.endswith("numpy"):
-            return pace.util.testing.gt4py_numpy
-        elif backend.endswith("cupy"):
-            return pace.util.testing.gt4py_cupy
+    elif backend == "gt4py_numpy":
+        return pace.util.testing.gt4py_numpy
+    elif backend == "gt4py_cupy":
+        return pace.util.testing.gt4py_cupy
     else:
         raise NotImplementedError()
 

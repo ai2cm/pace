@@ -52,6 +52,8 @@ MapN_Tracer_2d:
 NH_P_Grad:
   - backend: gtcuda
     max_error: 2e-9
+  - backend: gtc:dace
+    max_error: 6e-11
 
 Riem_Solver3:
   - backend: gtcuda
@@ -63,6 +65,10 @@ Riem_Solver3:
   - platform: metal
     backend: numpy
     max_error: 1e-11 # 48_6ranks
+  - backend: gtc:dace:gpu
+    max_error: 5e-6
+  - backend: gtc:dace
+    max_error: 5e-6
 
 Remapping:
   - backend: gtcuda
@@ -99,6 +105,13 @@ UpdateDzC:
     near_zero: 4.5e-15
     ignore_near_zero_errors:
       - ws
+  - backend: gtc:dace:gpu
+    max_error: 5e-10
+    near_zero: 4.5e-15
+    ignore_near_zero_errors:
+      - ws
+  - backend: gtc:dace
+    max_error: 3e-13
 
 UpdateDzD:
   - backend: gtcuda
@@ -110,6 +123,14 @@ UpdateDzD:
     ignore_near_zero_errors:
       - wsd
   - backend: gtc:cuda
+    max_error: 5e-10
+    ignore_near_zero_errors:
+      - wsd
+  - backend: gtc:dace:gpu
+    max_error: 5e-10
+    ignore_near_zero_errors:
+      - wsd
+  - backend: gtc:dace
     max_error: 5e-10
     ignore_near_zero_errors:
       - wsd
@@ -131,12 +152,27 @@ DynCore:
  - backend: gtc:cuda
    ignore_near_zero_errors:
      - wsd
+ - backend: gtc:dace
+   ignore_near_zero_errors:
+     - wsd
+ - backend: gtc:dace:gpu
+   ignore_near_zero_errors:
+     - wsd
 
 Tracer2D1L:
  - backend: gtc:gt:gpu
    max_error: 1e-9
  - backend: gtc:cuda
    max_error: 1e-9
+ - backend: gtc:dace
+   ignore_near_zero_errors:
+     tracers: 1e-9
+ - backend: gtc:dace:gpu
+   ignore_near_zero_errors:
+     tracers: 1e-9
+ - backend: gtc:gt:cpu_ifirst
+   ignore_near_zero_errors:
+     tracers: 1e-15
 
 DivgDel6:
  - max_error: 3e-13 # 48_6ranks
@@ -182,6 +218,38 @@ UtilVectors:
 FVDynamics:
   - max_error: 5e-5 # 48_6ranks using metric terms
 
+DivergenceDamping:
+  - backend: gtc:dace
+    max_error: 1e-9
+  - backend: gtc:dace:gpu
+    max_error: 1e-9
+
 DelnFlux:
   - backend: gtc:dace
     max_error: 2e-13
+  - backend: gtc:dace:gpu
+    max_error: 7e-13
+
+Del2Cubed:
+  - backend: gtc:dace
+    max_error: 8e-12
+
+FvTp2d:
+  - backend: gtc:dace
+    max_error: 2e-13
+
+FxAdv:
+  - backend: gtc:dace
+    max_error: 5e-12
+
+XPPM:
+  - backend: gtc:dace
+    max_error: 2e-12
+
+YPPM:
+  - backend: gtc:dace
+    max_error: 2e-13
+
+A2B_Ord4:
+  - backend: gtc:dace
+    max_error: 1e-13

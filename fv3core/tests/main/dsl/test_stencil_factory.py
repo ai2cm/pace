@@ -15,6 +15,9 @@ from pace.dsl.stencil import (
 from pace.dsl.typing import FloatField
 
 
+TEST_BACKEND = "numpy"
+
+
 def copy_stencil(q_in: FloatField, q_out: FloatField):
     with computation(PARALLEL), interval(...):
         q_out = q_in
@@ -105,7 +108,7 @@ def test_get_stencils_with_varied_bounds_and_regions(backend: str):
 @pytest.mark.parametrize("enabled", [True, False])
 def test_stencil_factory_numpy_comparison_from_dims_halo(enabled: bool):
     config = StencilConfig(
-        backend="numpy",
+        backend=TEST_BACKEND,
         rebuild=False,
         validate_args=False,
         format_source=False,
@@ -135,7 +138,7 @@ def test_stencil_factory_numpy_comparison_from_dims_halo(enabled: bool):
 @pytest.mark.parametrize("enabled", [True, False])
 def test_stencil_factory_numpy_comparison_from_origin_domain(enabled: bool):
     config = StencilConfig(
-        backend="numpy",
+        backend=TEST_BACKEND,
         rebuild=False,
         validate_args=False,
         format_source=False,
@@ -161,7 +164,7 @@ def test_stencil_factory_numpy_comparison_from_origin_domain(enabled: bool):
 
 
 def test_stencil_factory_numpy_comparison_runs_without_exceptions():
-    backend = "numpy"
+    backend = TEST_BACKEND
     config = StencilConfig(
         backend=backend,
         rebuild=False,

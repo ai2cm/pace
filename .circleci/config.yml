@@ -3,30 +3,29 @@ jobs:
 
   lint:
     docker:
-    - image: circleci/python:3.8
+    - image: cimg/python:3.8
     steps:
       - checkout
       - restore_cache:
           keys:
-            - v1-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
+            - v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
       - run:
           name: run linting
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            sudo pip3 install pre-commit -c constraints.txt
+            pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
       - save_cache:
-          key: v1-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
+          key: v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
           paths:
             - ~/.cache/pre-commit
             - venv
 
   test_util:
     docker:
-      - image: circleci/python:3.8
+      - image: cimg/python:3.8
     working_directory: ~/repo
-
     steps:
       - checkout
       - run:
@@ -34,34 +33,36 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}-{{ checksum "pace-util/setup.py" }}
+            - v2-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}-{{ checksum "pace-util/setup.py" }}
       - run:
           name: install tox and MPI
           command: |
             if [ $(python changed_from_main.py pace-util) != false ]; then
               sudo apt-get update
               sudo apt-get install libopenmpi3 libopenmpi-dev
+              pip3 install --upgrade setuptools wheel
               python3 -m venv pace-util/venv
               . pace-util/venv/bin/activate
-              sudo pip3 install tox -c constraints.txt
+              pip3 install tox -c constraints.txt
             fi
       - run:
           name: run tests
           command: |
             if [ $(python changed_from_main.py pace-util) != false ]; then
-              cd pace-util && tox --recreate -e test -e test_no_extras
+              cd pace-util
+              . venv/bin/activate
+              tox --recreate -e test -e test_no_extras
             fi
       - save_cache:
-          key: v1-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}
+          key: v2-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}
           paths:
             - pace-util/.tox
             - pace-util/venv
 
   test_driver:
     docker:
-      - image: circleci/python:3.8
+      - image: cimg/python:3.8
     working_directory: ~/repo
-
     steps:
       - checkout
       - run:
@@ -69,7 +70,7 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v2-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
+            - v3-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
       - run:
           name: install packages
           command: |
@@ -87,17 +88,19 @@ jobs:
               make test
               MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
             fi
+          environment:
+            GT_CACHE_ROOT: ~/workspace
+            GT_CACHE_DIR_NAME: .gt_cache
       - save_cache:
-          key: v2-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
+          key: v3-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
           paths:
             - driver/venv
             - /root/.cache/pip
 
   test_fv3core:
     docker:
-      - image: circleci/python:3.8
+      - image: cimg/python:3.8
     working_directory: ~/repo
-
     steps:
       - checkout
       - run:
@@ -105,23 +108,26 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
+            - v3-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
       - run:
           name: install tox
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
-              python3 -m venv fv3core/venv
+              pip3 install --upgrade setuptools wheel virtualenv
+              virtualenv fv3core/venv
               . fv3core/venv/bin/activate
-              sudo pip3 install tox -c constraints.txt
+              pip3 install tox -c constraints.txt
             fi
       - run:
           name: run tests
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
-              cd fv3core && tox --recreate -e test
+              cd fv3core
+              . venv/bin/activate
+              tox --recreate -e test
             fi
       - save_cache:
-          key: v2-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
+          key: v3-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
           paths:
             - fv3core/.tox
             - fv3core/venv

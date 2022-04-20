@@ -1,8 +1,11 @@
+from dace import constant as DaceConstant
 from fv3core.stencils.divergence_damping import DivergenceDamping
+from pace.dsl.dace.orchestrate import computepath_function
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-def compute(divdamp, wk, vort, delpc, dt):
+@computepath_function
+def compute(divdamp: DaceConstant, wk, vort, delpc, dt):
     # this function is kept because it has a translate test, if its
     # structure is changed significantly from __call__ of DivergenceDamping
     # consider deleting this method and the translate test, or altering the

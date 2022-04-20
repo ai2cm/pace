@@ -25,6 +25,7 @@ from gt4py import gtscript
 from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
+import dace
 import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
@@ -54,7 +55,7 @@ setattr(DefaultPipeline, "__eq__", __eq__)
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
-    backend: str = "numpy"
+    backend: str = "gtc:numpy"
     rebuild: bool = True
     validate_args: bool = True
     format_source: bool = False
@@ -104,7 +105,7 @@ class StencilConfig(Hashable):
             },
             "skip_passes": {
                 "backend": r"^gtc:(gt|cuda)",
-                "value": ["graph_merge_horizontal_executions"],
+                "value": [],
             },
             "verbose": {"backend": r"^gtc:(gt|cuda)", "value": False},
         }
@@ -120,8 +121,7 @@ class StencilConfig(Hashable):
 
         return backend_opts
 
-    @property
-    def stencil_kwargs(self):
+    def stencil_kwargs(self, skip_passes: Iterable[str] = ()):
         kwargs = {
             "backend": self.backend,
             "rebuild": self.rebuild,
@@ -130,9 +130,11 @@ class StencilConfig(Hashable):
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
         # Note: this assure the backward compatibility between v36 and v37
-        if "skip_passes" in kwargs:
+        if self.backend.startswith("gtc") and (
+            "skip_passes" in kwargs or skip_passes is not None
+        ):
             kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
-                kwargs.pop("skip_passes")
+                list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
             )
         return kwargs
 
@@ -240,7 +242,7 @@ class CompareToNumpyStencil:
             skip_passes=skip_passes,
         )
         numpy_stencil_config = StencilConfig(
-            backend="numpy",
+            backend="gtc:numpy",
             rebuild=stencil_config.rebuild,
             validate_args=stencil_config.validate_args,
             format_source=True,
@@ -292,7 +294,7 @@ class FrozenStencil(SDFGConvertible):
         domain: Tuple[int, ...],
         stencil_config: StencilConfig,
         externals: Optional[Mapping[str, Any]] = None,
-        skip_passes: Optional[Tuple[str, ...]] = None,
+        skip_passes: Tuple[str, ...] = (),
     ):
         """
         Args:
@@ -314,14 +316,29 @@ class FrozenStencil(SDFGConvertible):
             externals = {}
 
         stencil_function = gtscript.stencil
-        stencil_kwargs = {**self.stencil_config.stencil_kwargs}
+        stencil_kwargs = {**self.stencil_config.stencil_kwargs(skip_passes=skip_passes)}
+
+        if "dace" in self.stencil_config.backend:
+            # [TODO]: find a better solution for this
+            # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
+            if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
+                gt4py.config.cache_settings["dir_name"] = ".gt_cache_{:0>6d}".format(
+                    MPI.COMM_WORLD.Get_rank()
+                )
+
+            dace.Config.set(
+                "default_build_folder",
+                value="{gt_cache}/dacecache".format(
+                    gt_cache=gt4py.config.cache_settings["dir_name"]
+                ),
+            )
 
         # Enable distributed compilation if running in parallel and
         # not running dace orchestration
         if (
             MPI is not None
             and MPI.COMM_WORLD.Get_size() > 1
-            and not dace_config.is_dace_orchestrated()
+            and "dace" not in self.stencil_config.backend
         ):
             stencil_function = future_stencil.future_stencil
             stencil_kwargs["wrapper"] = self
@@ -332,13 +349,19 @@ class FrozenStencil(SDFGConvertible):
             stencil_kwargs["name"] = func.__module__ + "." + func.__name__
 
         if skip_passes and self.stencil_config.is_gtc_backend:
-            stencil_kwargs["oir_pipeline"].skip = skip_passes
+            stencil_kwargs["skip_passes"] = skip_passes
+        if "skip_passes" in stencil_kwargs:
+            stencil_kwargs["oir_pipeline"] = FrozenStencil._get_oir_pipeline(
+                stencil_kwargs.pop("skip_passes")
+            )
 
         # When using DaCe orchestration, we deactivate code generation
         # (Only SDFG are needed). But because some stencils are executed
         # outside of the runtime path, we have a whitelist exception.
-        if dace_config.is_dace_orchestrated() and not is_dacemode_codegen_whitelisted(
-            func
+        if (
+            dace_config.is_dace_orchestrated()
+            and not is_dacemode_codegen_whitelisted(func)
+            and "dace" in self.stencil_config.backend
         ):
             stencil_kwargs["disable_code_generation"] = True
 
@@ -370,7 +393,7 @@ class FrozenStencil(SDFGConvertible):
 
         # When orchestrating with DaCe, cache the frozen stencil for
         # calls in __sdfg__ generation
-        if dace_config.is_dace_orchestrated():
+        if "dace" in self.stencil_config.backend:
             self._frozen_stencil = self.stencil_object.freeze(
                 origin=self._field_origins,
                 domain=self.domain,
@@ -458,6 +481,12 @@ class FrozenStencil(SDFGConvertible):
             and bool(field_info[field_name].access & gt4py.definitions.AccessKind.WRITE)
         ]
         return write_fields
+
+    @classmethod
+    def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
+        step_map = {step.__name__: step for step in DefaultPipeline.all_steps()}
+        skip_steps = [step_map[pass_name] for pass_name in skip_passes]
+        return DefaultPipeline(skip=skip_steps)
 
     def __sdfg__(self, *args, **kwargs):
         """Implemented SDFG generation"""
@@ -883,8 +912,8 @@ class StencilFactory:
         origin: Union[Tuple[int, ...], Mapping[str, Tuple[int, ...]]],
         domain: Tuple[int, ...],
         externals: Optional[Mapping[str, Any]] = None,
-        skip_passes: Optional[Tuple[str, ...]] = None,
-    ):
+        skip_passes: Tuple[str, ...] = (),
+    ) -> FrozenStencil:
         """
         Args:
             func: stencil definition function
@@ -913,8 +942,8 @@ class StencilFactory:
         compute_dims: Sequence[str],
         compute_halos: Sequence[int] = tuple(),
         externals: Optional[Mapping[str, Any]] = None,
-        skip_passes: Optional[Tuple[str, ...]] = None,
-    ) -> Callable:
+        skip_passes: Tuple[str, ...] = (),
+    ) -> FrozenStencil:
         """
         Initialize a stencil from dimensions and number of halo points.
 

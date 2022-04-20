@@ -170,11 +170,11 @@ def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
     return config_yml["experiment_name"], is_baroclinic_test_case
 
 
-def read_serialized_initial_state(rank, grid, namelist, stencil_factory):
+def read_serialized_initial_state(rank, grid, namelist, stencil_factory, data_dir):
     # set up of helper structures
     serializer = serialbox.Serializer(
         serialbox.OpenModeKind.Read,
-        args.data_dir,
+        data_dir,
         "Generator_rank" + str(rank),
     )
     # create a state from serialized data
@@ -207,7 +207,7 @@ def collect_data_and_write_to_file(
 
 
 def setup_dycore(
-    dycore_config, mpi_comm, backend, is_baroclinic_test_case
+    dycore_config, mpi_comm, backend, is_baroclinic_test_case, data_dir
 ) -> Tuple[DynamicalCore, Dict[str, Any]]:
     # set up grid-dependent helper structures
     partitioner = util.CubedSpherePartitioner(
@@ -243,7 +243,7 @@ def setup_dycore(
         )
     else:
         state = read_serialized_initial_state(
-            mpi_comm.rank, grid, dycore_config, stencil_factory
+            mpi_comm.rank, grid, dycore_config, stencil_factory, data_dir
         )
     dycore = DynamicalCore(
         comm=communicator,
@@ -291,7 +291,11 @@ if __name__ == "__main__":
         else:
             mpi_comm = MPI.COMM_WORLD
         dycore, dycore_args = setup_dycore(
-            dycore_config, mpi_comm, args.backend, is_baroclinic_test_case
+            dycore_config,
+            mpi_comm,
+            args.backend,
+            is_baroclinic_test_case,
+            args.data_dir,
         )
 
         # warm-up timestep.

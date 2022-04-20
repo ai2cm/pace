@@ -6,9 +6,6 @@ import gtc.passes.oir_pipeline
 import numpy as np
 import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
-from gtc.passes.oir_dace_optimizations.horizontal_execution_merging import (
-    graph_merge_horizontal_executions,
-)
 
 import pace.util
 from pace.dsl.gt4py_utils import make_storage_from_shape
@@ -230,7 +227,7 @@ def test_frozen_stencil_kwargs_passed_to_init(
         definition=copy_stencil,
         externals={},
         name="test_stencil_wrapper.copy_stencil",
-        **config.stencil_kwargs,
+        **config.stencil_kwargs(),
     )
 
 
@@ -256,7 +253,7 @@ def test_frozen_field_after_parameter(backend):
     )
 
 
-@pytest.mark.parametrize("backend", ("numpy", "gtc:cuda"))
+@pytest.mark.parametrize("backend", ("gtc:numpy", "gtc:cuda"))
 @pytest.mark.parametrize("rebuild", [True])
 @pytest.mark.parametrize("validate_args", [True])
 def test_backend_options(
@@ -265,15 +262,18 @@ def test_backend_options(
     validate_args: bool,
 ):
     expected_options = {
-        "numpy": {"backend": "numpy", "rebuild": True, "format_source": False},
+        "gtc:numpy": {
+            "backend": "gtc:numpy",
+            "rebuild": True,
+            "format_source": False,
+            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
+        },
         "gtc:cuda": {
             "backend": "gtc:cuda",
             "rebuild": True,
             "device_sync": False,
             "format_source": False,
-            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(
-                skip=[graph_merge_horizontal_executions]
-            ),
+            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
             "verbose": False,
         },
     }
@@ -283,7 +283,7 @@ def test_backend_options(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
-    ).stencil_kwargs
+    ).stencil_kwargs()
     expected = expected_options[backend]
     assert actual == expected
 
