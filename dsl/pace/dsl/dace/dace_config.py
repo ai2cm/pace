@@ -47,6 +47,7 @@ class DaceConfig:
         return self.orchestrate
 
     def get_partitioner(self) -> CubedSpherePartitioner:
+        xxx Find a solution or set dace_config.partitioner
         if not self.partitioner:
             raise RuntimeError(
                 "DaceConfig: orchestration didn't specify the partitioner"
