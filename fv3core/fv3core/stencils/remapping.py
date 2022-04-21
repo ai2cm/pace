@@ -1,6 +1,5 @@
 from typing import Dict
 
-# [DaCe] import
 from dace import constant as DaceConstant
 from gt4py.gtscript import (
     __INLINED,
@@ -23,8 +22,6 @@ from fv3core.stencils.map_single import MapSingle
 from fv3core.stencils.mapn_tracer import MapNTracer
 from fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
-
-# [DaCe] Import
 from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK

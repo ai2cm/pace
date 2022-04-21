@@ -256,7 +256,6 @@ class DynamicalCore:
             hord=config.hord_tr,
         )
 
-        # [DaCe] Build tracers names & storages
         self.tracers = {}
         for name in utils.tracer_variables[0:NQ]:
             self.tracers[name] = getattr(state, name)

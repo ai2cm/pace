@@ -1,7 +1,6 @@
 import typing
 from typing import Dict
 
-# [DaCe] Import
 from dace import constant as DaceConstant
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
@@ -152,7 +151,6 @@ class FillNegativeTracerValues:
         self._sum0 = make_storage(shape_ij, origin=(0, 0))
         self._sum1 = make_storage(shape_ij, origin=(0, 0))
 
-        # [DaCe] linearlize tracers dict into a list at __init__ time
         self._filtered_tracer_dict = {
             name: tracers[name] for name in utils.tracer_variables[0 : self._nq]
         }
@@ -168,10 +166,7 @@ class FillNegativeTracerValues:
             dp2 (in): pressure thickness of atmospheric layer
             tracers (inout): tracers to fix negative masses in
         """
-        # [DaCe] runtime tracers is deactivate, was cached in __init__
 
-        # [DaCe] return value is not used
-        # [DaCe] dict.values/dict.items bug - using key indexing
         for tracer_name in self._filtered_tracer_dict.keys():
             self._fix_tracer_stencil(
                 tracers[tracer_name],
@@ -182,4 +177,3 @@ class FillNegativeTracerValues:
                 self._sum0,
                 self._sum1,
             )
-        # [DaCe] unused return value was removed

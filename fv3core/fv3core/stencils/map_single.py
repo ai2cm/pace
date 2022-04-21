@@ -5,8 +5,6 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.remap_profile import RemapProfile
-
-# [DaCe] Import
 from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
@@ -176,7 +174,6 @@ class MapSingle:
         self._copy_stencil(q1, self._q4_1)
         self._set_dp(self._dp1, pe1, self._lev)
 
-        # [DaCe] Cannot reassign variable - unroll
         if qs is None:
             self._remap_profile(
                 self._tmp_qs,
