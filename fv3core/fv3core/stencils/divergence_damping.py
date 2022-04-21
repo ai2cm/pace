@@ -407,7 +407,10 @@ class DivergenceDamping:
             vc (inout):
             uc (inout):
             delpc (out):
-            ke (inout): gets vort added to it
+            ke (inout): dt times the kinetic energy defined on cell corners,
+                at input time must be accurate for the input winds.
+                Gets updated to remain accurate for the output winds,
+                as described in section 8.3 of the FV3 documentation.
             wk (in): gets converted by a2b_ord4 and put into v_contra_dxc
             dt (in): timestep
         """
