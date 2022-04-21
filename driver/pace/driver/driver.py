@@ -231,8 +231,7 @@ class Driver:
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,
             )
-            self.diagnostics = diagnostics.Diagnostics(
-                config=config.diagnostics_config,
+            self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
                 comm=self.comm,
             )
