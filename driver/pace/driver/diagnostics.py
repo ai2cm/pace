@@ -39,6 +39,12 @@ class DiagnosticsConfig:
     path: Optional[str] = None
     names: List[str] = dataclasses.field(default_factory=list)
 
+    def __post_init__(self):
+        if len(self.names) > 0 and self.path is None:
+            raise ValueError(
+                "DiagnosticsConfig.path must be given to enable diagnostics"
+            )
+
     def diagnostics_factory(
         self, partitioner: pace.util.CubedSpherePartitioner, comm
     ) -> Diagnostics:
