@@ -1,5 +1,6 @@
 from typing import Dict
 
+from dace import constant as DaceConstant
 from gt4py.gtscript import (
     __INLINED,
     BACKWARD,
@@ -21,10 +22,13 @@ from fv3core.stencils.map_single import MapSingle
 from fv3core.stencils.mapn_tracer import MapNTracer
 from fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
+from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.util import Quantity
 
 
+# TODO: Should this be set here or in global_constants?
 CONSV_MIN = 0.001
 
 
@@ -249,13 +253,13 @@ def update_ua(pe2: FloatField, ua: FloatField):
     """
     from __externals__ import local_je
 
-    with computation(PARALLEL), interval(...):
+    with computation(PARALLEL), interval(0, -1):
         ua = pe2[0, 0, 1]
 
     # pe2[:, je+1, 1:npz] should equal pe2[:, je, 1:npz] as in the Fortran model,
     # but the extra j-elements are only used here, so we can just directly assign ua.
     # Maybe we can eliminate this later?
-    with computation(PARALLEL), interval(0, -1):
+    with computation(PARALLEL), interval(0, -2):
         with horizontal(region[:, local_je + 1]):
             ua = pe2[0, -1, 1]
 
@@ -282,6 +286,7 @@ class LagrangianToEulerian:
         area_64,
         nq,
         pfull,
+        tracers: Dict[str, Quantity],
     ):
         grid_indexing = stencil_factory.grid_indexing
         if config.kord_tm >= 0:
@@ -363,6 +368,7 @@ class LagrangianToEulerian:
             grid_indexing.jsc,
             grid_indexing.jec,
             fill=config.fill,
+            tracers=tracers,
         )
 
         self._map_single_w = MapSingle(
@@ -439,12 +445,12 @@ class LagrangianToEulerian:
 
         ax_offsets_jextra = grid_indexing.axis_offsets(
             grid_indexing.origin_compute(),
-            grid_indexing.domain_compute(add=(0, 1, 0)),
+            self._domain_jextra,
         )
         self._update_ua = stencil_factory.from_origin_domain(
             update_ua,
             origin=grid_indexing.origin_compute(),
-            domain=grid_indexing.domain_compute(add=(0, 1, 0)),
+            domain=self._domain_jextra,
             externals={**ax_offsets_jextra},
         )
 
@@ -474,9 +480,10 @@ class LagrangianToEulerian:
             domain=grid_indexing.domain_compute(),
         )
 
+    @computepath_method
     def __call__(
         self,
-        tracers: Dict[str, "FloatField"],
+        tracers: DaceConstant,
         pt: FloatField,
         delp: FloatField,
         delz: FloatField,
@@ -512,6 +519,7 @@ class LagrangianToEulerian:
         nq: int,
     ):
         """
+        tracers (inout): Tracer species tracked across
         pt (inout): D-grid potential temperature
         delp (inout): Pressure Thickness
         delz (in): Vertical thickness of atmosphere layers
@@ -584,7 +592,7 @@ class LagrangianToEulerian:
         self._map_single_pt(pt, peln, self._pn2, qmin=self._t_min)
 
         # TODO if self._nq > 5:
-        self._mapn_tracer(self._pe1, self._pe2, self._dp2, tracers, 0.0)
+        self._mapn_tracer(self._pe1, self._pe2, self._dp2, tracers)
         # TODO else if self._nq > 0:
         # TODO map1_q2, fillz
 

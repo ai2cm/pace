@@ -121,6 +121,7 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
             self.grid.area_64,
             inputs["nq"],
             inputs["pfull"],
+            inputs["tracers"],
         )
         l_to_e_obj(**inputs)
         inputs.pop("q_cld")

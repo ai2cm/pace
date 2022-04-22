@@ -28,6 +28,18 @@ import serialbox  # noqa: E402
 GRID_SAVEPOINT_NAME = "Grid-Info"
 CURRENT_DACE_SAVEPOINT_TESTS = [
     "DelnFlux",
+    "Remapping",
+    "CS_Profile_2d",
+    "CS_Profile_2d_2",
+    "MapScalar_2d",
+    "Map1_PPM_2d",
+    "Map1_PPM_2d_2",
+    "Map1_PPM_2d_3",
+    "MapN_Tracer_2d",
+    "SatAdjust3d",
+    "Fillz",
+    "MoistCVPlusPkz_2d",
+    "MoistCVPlusPt_2d",
     "DivergenceDamping",
     "Del6VtFlux",
     "FvTp2d",
