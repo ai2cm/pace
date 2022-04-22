@@ -56,6 +56,10 @@ class DriverConfig:
         minutes: minutes to add to total simulation time
         seconds: seconds to add to total simulation time
         dycore_only: whether to run just the dycore, or physics too
+        disable_step_physics: whether to completely disable the step_physics call,
+            including coupling code between the dycore and physics, as well as
+            dry static adjustment. This is a development flag and will be removed
+            in a later commit.
     """
 
     stencil_config: pace.dsl.StencilConfig
@@ -79,6 +83,7 @@ class DriverConfig:
     minutes: int = 0
     seconds: int = 0
     dycore_only: bool = False
+    disable_step_physics: bool = False
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -250,7 +255,8 @@ class Driver:
     def _step(self, timestep: float):
         with self.performance_config.timestep_timer.clock("mainloop"):
             self._step_dynamics(timestep=timestep)
-            self._step_physics(timestep=timestep)
+            if not self.config.disable_step_physics:
+                self._step_physics(timestep=timestep)
 
         self.performance_config.collect_performance()
 
