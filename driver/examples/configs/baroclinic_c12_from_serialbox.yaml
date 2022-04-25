@@ -8,7 +8,7 @@ initialization:
   type: serialbox
   config:
     path: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver
-    serialized_grid: True
+    serialized_grid: true
 performance_config:
   performance_mode: true
 nx_tile: 12

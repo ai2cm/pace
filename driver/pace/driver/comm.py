@@ -46,7 +46,7 @@ class CommConfig:
 
     config: CreatesComm
     type: str = "mpi"
-    registry: ClassVar = Registry(default_type="mpi")
+    registry: ClassVar[Registry] = Registry(default_type="mpi")
 
     @classmethod
     def register(cls, type_name):

@@ -45,7 +45,7 @@ class InitializationConfig:
 
     type: str
     config: Initializer
-    registry: ClassVar = Registry()
+    registry: ClassVar[Registry] = Registry()
 
     @classmethod
     def register(cls, type_name):
