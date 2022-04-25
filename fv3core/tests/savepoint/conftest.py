@@ -15,6 +15,7 @@ import pace.util as fv3util
 from fv3core import DynamicalCoreConfig
 from fv3core.utils.mpi import MPI
 from pace.dsl.dace.dace_config import dace_config
+from pace.dsl.dace.build import set_distribued_caches
 from pace.stencils.testing import ParallelTranslate, TranslateGrid
 
 from . import translate
@@ -616,6 +617,7 @@ def get_sequential_param(
 @pytest.fixture()
 def communicator(layout):
     communicator = get_communicator(MPI.COMM_WORLD, layout)
+    set_distribued_caches(communicator)
     return communicator
 
 

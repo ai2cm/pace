@@ -17,9 +17,12 @@ def determine_compiling_ranks() -> Tuple[bool, Any]:
     rank = 0
     size = 1
 
-    comm = dace_config.get_communicator().comm
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+    if dace_config.get_communicator():
+        comm = dace_config.get_communicator().comm
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+    else:
+        comm = None
 
     if int(size / 6) == 0:
         is_compiling = True
@@ -30,7 +33,7 @@ def determine_compiling_ranks() -> Tuple[bool, Any]:
 
 
 def unblock_waiting_tiles(comm, sdfg_path: str) -> None:
-    if comm.Get_size() > 1:
+    if comm and comm.Get_size() > 1:
         for tile in range(1, 6):
             tilesize = comm.Get_size() / 6
             comm.send(sdfg_path, dest=tile * tilesize + comm.Get_rank())

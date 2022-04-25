@@ -107,7 +107,7 @@ def build_sdfg(daceprog: DaceProgram, sdfg: dace.SDFG, args, kwargs):
     """Build the .so out of the SDFG on the top tile ranks only"""
     is_compiling, comm = determine_compiling_ranks()
     if is_compiling:
-        if comm.Get_rank() == 0 and comm.Get_size() > 1:
+        if comm and comm.Get_rank() == 0 and comm.Get_size() > 1:
             write_decomposition()
         # Make the transients array persistents
         if dace_config.is_gpu_backend():
@@ -153,9 +153,7 @@ def build_sdfg(daceprog: DaceProgram, sdfg: dace.SDFG, args, kwargs):
         with DaCeProgress("Simplify (final)"):
             sdfg.simplify(validate=False)
 
-        with DaCeProgress(
-            "Removed of compute_x_flux transients (to lower VRAM and because of their evilness)"
-        ):
+        with DaCeProgress("Removed unused globals of compute_x_flux (lower VRAM)"):
             strip_unused_global_in_compute_x_flux(sdfg)
 
         # Compile
@@ -318,7 +316,6 @@ class LazyComputepathMethod:
                     sdfg,
                     args,
                     kwargs,
-                    sdfg_final=(self.lazy_method._load_sdfg is not None),
                 )
             else:
                 return self.lazy_method.func(self.obj_to_bind, *args, **kwargs)

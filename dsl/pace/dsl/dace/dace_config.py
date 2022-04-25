@@ -24,11 +24,9 @@ class DaceConfig:
         # Temporary. This is a bit too out of the ordinary for the common user.
         # We should refactor the architecture to allow for a `gtc:orchestrated:dace:X`
         # backend that would signify both the `CPU|GPU` split and the orchestration mode
-        self.orchestrate = (
-            DaCeOrchestration.BuildAndRun
-            if getenv_bool("FV3_DACEMODE", "False")
-            else DaCeOrchestration.Python
-        )
+        import os
+
+        self.orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
 
     def init(self, communicator: CubedSphereCommunicator):
         self.communicator = communicator
@@ -51,10 +49,6 @@ class DaceConfig:
         return self.orchestrate
 
     def get_communicator(self) -> CubedSphereCommunicator:
-        if not self.communicator:
-            raise RuntimeError(
-                "DaceConfig: orchestration didn't specify the communicator"
-            )
         return self.communicator
 
 
