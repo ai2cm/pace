@@ -278,6 +278,7 @@ class Driver:
                 metadata=self.state.dycore_state.ps.metadata,
             )
             time_steps = int((end_time - time).seconds / self.config.timestep.seconds)
+            logger.info(f"  time_steps: {time_steps}")
             self.dycore_loop(
                 state=self.state.dycore_state, time_steps=time_steps, time_step_freq=18
             )
