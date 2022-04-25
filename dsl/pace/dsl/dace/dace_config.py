@@ -1,7 +1,8 @@
 import dataclasses
+from pace.util import communicator
 
 from pace.util.global_config import getenv_bool
-from pace.util.communicator import CubedSpherePartitioner
+from pace.util.communicator import CubedSphereCommunicator, CubedSpherePartitioner
 from typing import Optional
 import enum
 
@@ -17,7 +18,7 @@ class DaCeOrchestration(enum.Enum):
 class DaceConfig:
     backend: str = ""
     orchestrate: DaCeOrchestration = DaCeOrchestration.Python
-    partitioner: Optional[CubedSpherePartitioner] = None
+    communicator: Optional[CubedSphereCommunicator] = None
 
     def __post_init__(self):
         # Temporary. This is a bit too out of the ordinary for the common user.
@@ -28,6 +29,9 @@ class DaceConfig:
             if getenv_bool("FV3_DACEMODE", "False")
             else DaCeOrchestration.Python
         )
+
+    def init(self, communicator: CubedSphereCommunicator):
+        self.communicator = communicator
 
     def is_dace_orchestrated(self) -> bool:
         if self.orchestrate and "dace" not in self.backend:
@@ -46,13 +50,12 @@ class DaceConfig:
     def get_orchestrate(self) -> DaCeOrchestration:
         return self.orchestrate
 
-    def get_partitioner(self) -> CubedSpherePartitioner:
-        xxx Find a solution or set dace_config.partitioner
-        if not self.partitioner:
+    def get_communicator(self) -> CubedSphereCommunicator:
+        if not self.communicator:
             raise RuntimeError(
-                "DaceConfig: orchestration didn't specify the partitioner"
+                "DaceConfig: orchestration didn't specify the communicator"
             )
-        return self.partitioner
+        return self.communicator
 
 
 dace_config = DaceConfig()

@@ -1,5 +1,6 @@
 import os.path
 from typing import Any, Callable, Optional, Tuple
+from pace.util.communicator import CubedSphereCommunicator
 
 import yaml
 
@@ -15,21 +16,16 @@ def determine_compiling_ranks() -> Tuple[bool, Any]:
     is_compiling = False
     rank = 0
     size = 1
-    try:
-        # Would rahter use fv3core.utils.mpi but that pulls on fv3core
-        from mpi4py import MPI
 
-        if MPI:
-            comm = MPI.COMM_WORLD
-            rank = comm.Get_rank()
-            size = comm.Get_size()
-    finally:
-        if int(size / 6) == 0:
-            is_compiling = True
-        elif rank % int(size / 6) == rank:
-            is_compiling = True
-        MPI = None
-        # We need to set MPI to none again to turn off distributed compilation
+    comm = dace_config.get_communicator().comm
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    if int(size / 6) == 0:
+        is_compiling = True
+    elif rank % int(size / 6) == rank:
+        is_compiling = True
+
     return is_compiling, comm
 
 
@@ -110,7 +106,7 @@ def top_tile_rank_from_decomposition_string(string, partitioner):
 
 
 def top_tile_rank_to_decomposition_string(rank):
-    partitioner = global_config.get_partitioner()
+    partitioner = dace_config.get_communicator().partitioner
     if partitioner.tile.on_tile_bottom(rank):
         if partitioner.tile.on_tile_left(rank):
             return "00"
@@ -135,7 +131,7 @@ def top_tile_rank_to_decomposition_string(rank):
 
 
 def read_target_rank(rank, filename=None):
-    partitioner = global_config.get_partitioner()
+    partitioner = dace_config.get_communicator().partitioner
     top_tile_rank = top_tile_equivalent(rank, partitioner.total_ranks)
     with open(filename) as decomposition:
         parsed_file = yaml.safe_load(decomposition)
@@ -162,7 +158,7 @@ _loaded_sdfg_once = False
 def write_decomposition():
     from gt4py import config as gt_config
 
-    partitioner = global_config.get_partitioner()
+    partitioner = dace_config.get_communicator().partitioner
     path = f"{gt_config.cache_settings['root_path']}/.layout/"
     config_path = path + "decomposition.yml"
     os.makedirs(path, exist_ok=True)
@@ -231,7 +227,7 @@ def build_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> 
 
     from gt4py import config as gt_config
 
-    comm = MPI.COMM_WORLD
+    comm = dace_config.get_communicator().comm
     config_path = f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
     if comm.Get_size() > 1:
         rank_str = f"_{read_target_rank(comm.Get_rank(), config_path):06d}"
@@ -242,18 +238,18 @@ def build_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> 
     if not os.path.isdir(sdfg_dir_path):
         raise RuntimeError(f"Precompiled SDFG is missing at {sdfg_dir_path}")
 
-    print(
-        f"[DaCe Config] Rank {MPI.COMM_WORLD.Get_rank()} loading SDFG {sdfg_dir_path}"
-    )
+    print(f"[DaCe Config] Rank {comm.Get_rank()} loading SDFG {sdfg_dir_path}")
 
     return sdfg_dir_path
 
 
-def set_distribued_caches(
-    comm: util.CubedSphereCommunicator,
-):
+def set_distribued_caches(cube_communicator: CubedSphereCommunicator):
     """In Run mode, check required file then point current rank cache to source cache"""
 
+    # Set the communicator for the dace builder
+    dace_config.init(cube_communicator)
+
+    # Execute specific initialization per orchestration state
     orchestration_mode = dace_config.get_orchestrate()
 
     # Check that we have all the file we need to early out in case
@@ -262,7 +258,8 @@ def set_distribued_caches(
         from gt4py import config as gt_config
         import os
 
-        rank = comm.comm.Get_rank()
+        comm = dace_config.get_communicator().comm
+        rank = comm.Get_rank()
 
         # Check layout
         layout_filepath = (
@@ -274,7 +271,7 @@ def set_distribued_caches(
             )
 
         # Check our cache exist
-        if comm.comm.Get_size() > 1:
+        if comm.Get_size() > 1:
             rank_str = f"_{read_target_rank(rank, layout_filepath):06d}"
         else:
             rank_str = ""
