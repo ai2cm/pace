@@ -1,6 +1,7 @@
+import abc
 import dataclasses
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import zarr.storage
 
@@ -14,29 +15,75 @@ from pace.util.quantity import QuantityMetadata
 from .state import DriverState
 
 
+class Diagnostics(abc.ABC):
+    @abc.abstractmethod
+    def store(self, time: datetime, state: DriverState):
+        ...
+
+    @abc.abstractmethod
+    def store_grid(
+        self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
+    ):
+        ...
+
+
 @dataclasses.dataclass(frozen=True)
 class DiagnosticsConfig:
-    path: str
+    """
+    Attributes:
+        path: location to save diagnostics if given, otherwise no diagnostics
+            will be stored
+        names: diagnostics to save
+    """
+
+    path: Optional[str] = None
     names: List[str] = dataclasses.field(default_factory=list)
 
+    def __post_init__(self):
+        if len(self.names) > 0 and self.path is None:
+            raise ValueError(
+                "DiagnosticsConfig.path must be given to enable diagnostics"
+            )
 
-class Diagnostics:
+    def diagnostics_factory(
+        self, partitioner: pace.util.CubedSpherePartitioner, comm
+    ) -> Diagnostics:
+        """
+        Create a diagnostics object.
+
+        Args:
+            partitioner: defines the grid on which diagnostics are stored
+            comm: an mpi4py-style communicator required to coordinate the
+                storage of the diagnostics
+        """
+        if self.path is None:
+            return NullDiagnostics()
+        else:
+            return ZarrDiagnostics(
+                path=self.path, names=self.names, partitioner=partitioner, comm=comm
+            )
+
+
+class ZarrDiagnostics(Diagnostics):
+    """Diagnostics that saves to a zarr store."""
+
     def __init__(
         self,
-        config: DiagnosticsConfig,
+        path: str,
+        names: List[str],
         partitioner: pace.util.CubedSpherePartitioner,
         comm,
     ):
-        self.config = config
-        store = zarr.storage.DirectoryStore(path=self.config.path)
+        self.names = names
+        store = zarr.storage.DirectoryStore(path=path)
         self.monitor = pace.util.ZarrMonitor(
             store=store, partitioner=partitioner, mpi_comm=comm
         )
 
     def store(self, time: datetime, state: DriverState):
-        if len(self.config.names) > 0:
+        if len(self.names) > 0:
             zarr_state = {"time": time}
-            for name in self.config.names:
+            for name in self.names:
                 try:
                     quantity = getattr(state.dycore_state, name)
                 except AttributeError:
@@ -59,3 +106,15 @@ class Diagnostics:
             )
             zarr_grid[name] = grid_quantity
         self.monitor.store_constant(zarr_grid)
+
+
+class NullDiagnostics(Diagnostics):
+    """Diagnostics that do nothing."""
+
+    def store(self, time: datetime, state: DriverState):
+        pass
+
+    def store_grid(
+        self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
+    ):
+        pass

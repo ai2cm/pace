@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e -x
 BACKEND=$1
-EXPNAME=$2
 XML_REPORT="sequential_test_results.xml"
 export TEST_ARGS="-v -s -rsx --backend=${BACKEND} "
 
