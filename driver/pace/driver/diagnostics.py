@@ -1,7 +1,7 @@
 import abc
 import dataclasses
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timedelta
+from typing import List, Optional, Union
 
 import zarr.storage
 
@@ -17,7 +17,7 @@ from .state import DriverState
 
 class Diagnostics(abc.ABC):
     @abc.abstractmethod
-    def store(self, time: datetime, state: DriverState):
+    def store(self, time: Union[datetime, timedelta], state: DriverState):
         ...
 
     @abc.abstractmethod
@@ -80,7 +80,7 @@ class ZarrDiagnostics(Diagnostics):
             store=store, partitioner=partitioner, mpi_comm=comm
         )
 
-    def store(self, time: datetime, state: DriverState):
+    def store(self, time: Union[datetime, timedelta], state: DriverState):
         if len(self.names) > 0:
             zarr_state = {"time": time}
             for name in self.names:
@@ -111,7 +111,7 @@ class ZarrDiagnostics(Diagnostics):
 class NullDiagnostics(Diagnostics):
     """Diagnostics that do nothing."""
 
-    def store(self, time: datetime, state: DriverState):
+    def store(self, time: Union[datetime, timedelta], state: DriverState):
         pass
 
     def store_grid(

@@ -44,7 +44,7 @@ class CommConfig:
             "write", "read", or "null_comm"
     """
 
-    config: CreatesComm
+    config: CreatesComm = dataclasses.field(default_factory=lambda: MPICommConfig())
     type: str = "mpi"
     registry: ClassVar = {}
 
