@@ -9,6 +9,7 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from pace.util.caching_comm import CachingCommReader, CachingCommWriter
+from pace.util.comm import Comm
 
 from .registry import Registry
 
@@ -34,9 +35,14 @@ class CreatesComm(abc.ABC):
 
 
 @dataclasses.dataclass(frozen=True)
-class CommConfig:
+class CreatesCommSelector(CreatesComm):
     """
-    Configuration for a mpi4py-style Comm object.
+    Dataclass for selecting the CreatesComm implementation to use.
+
+    Used to circumvent the issue that dacite expects static class definitions,
+    but we would like to dynamically define which CreatesComm to use. Does this
+    by representing the part of the yaml specification that asks which comm creator
+    to use, but deferring to the implementation in that selected type when called.
 
     Attributes:
         config: type-specific configuration
@@ -52,7 +58,13 @@ class CommConfig:
     def register(cls, type_name):
         return cls.registry.register(type_name)
 
-    def get_comm(self):
+    def get_comm(self) -> Comm:
+        """
+        Get an mpi4py-style Comm object.
+
+        Returns:
+            comm: an mpi4py-style Comm object
+        """
         return self.config.get_comm()
 
     def cleanup(self, comm):
@@ -66,7 +78,7 @@ class CommConfig:
         )
 
 
-@CommConfig.register("mpi")
+@CreatesCommSelector.register("mpi")
 @dataclasses.dataclass
 class MPICommConfig(CreatesComm):
     """
@@ -80,7 +92,7 @@ class MPICommConfig(CreatesComm):
         pass
 
 
-@CommConfig.register("null_comm")
+@CreatesCommSelector.register("null_comm")
 @dataclasses.dataclass
 class NullCommConfig(CreatesComm):
     """
@@ -109,7 +121,7 @@ class NullCommConfig(CreatesComm):
         pass
 
 
-@CommConfig.register("write")
+@CreatesCommSelector.register("write")
 @dataclasses.dataclass
 class WriterCommConfig(CreatesComm):
     """
@@ -145,7 +157,7 @@ class WriterCommConfig(CreatesComm):
                 comm.dump(f)
 
 
-@CommConfig.register("read")
+@CreatesCommSelector.register("read")
 @dataclasses.dataclass
 class ReaderCommConfig(CreatesComm):
     """

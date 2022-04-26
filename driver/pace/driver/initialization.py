@@ -15,8 +15,6 @@ import pace.util
 import pace.util.grid
 from fv3core.testing import TranslateFVDynamics
 from pace.dsl.stencil import StencilFactory
-
-# TODO: move update_atmos_state into pace.driver
 from pace.stencils.testing import TranslateGrid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
@@ -41,7 +39,15 @@ class Initializer(abc.ABC):
 
 
 @dataclasses.dataclass
-class InitializationConfig:
+class InitializerSelector(Initializer):
+    """
+    Dataclass for selecting the implementation of Initializer to use.
+
+    Used to circumvent the issue that dacite expects static class definitions,
+    but we would like to dynamically define which Initializer to use. Does this
+    by representing the part of the yaml specification that asks which initializer
+    to use, but deferring to the implementation in that initializer when called.
+    """
 
     type: str
     config: Initializer
@@ -70,7 +76,7 @@ class InitializationConfig:
         return cls(config=instance, type=config["type"])
 
 
-@InitializationConfig.register("baroclinic")
+@InitializerSelector.register("baroclinic")
 @dataclasses.dataclass
 class BaroclinicConfig(Initializer):
     """
@@ -118,7 +124,7 @@ class BaroclinicConfig(Initializer):
         )
 
 
-@InitializationConfig.register("restart")
+@InitializerSelector.register("restart")
 @dataclasses.dataclass
 class RestartConfig(Initializer):
     """
@@ -147,9 +153,9 @@ class RestartConfig(Initializer):
         raise NotImplementedError()
 
 
-@InitializationConfig.register("serialbox")
+@InitializerSelector.register("serialbox")
 @dataclasses.dataclass
-class SerialboxConfig(InitializationConfig):
+class SerialboxConfig(Initializer):
     """
     Configuration for Serialbox initialization.
     """
@@ -284,7 +290,8 @@ class PredefinedStateConfig(Initializer):
     Configuration if the states are already defined
     """
 
-    # this class is not registered because it cannot be initialized from a dictionary.
+    # this class is not registered because it cannot be
+    # initialized from a yaml dictionary
 
     dycore_state: fv3core.DycoreState
     physics_state: fv3gfs.physics.PhysicsState

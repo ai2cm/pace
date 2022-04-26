@@ -18,8 +18,8 @@ import pace.util.grid
 from pace.stencils import update_atmos_state
 
 from . import diagnostics
-from .comm import CommConfig
-from .initialization import InitializationConfig
+from .comm import CreatesCommSelector
+from .initialization import InitializerSelector
 from .performance import PerformanceConfig
 
 
@@ -54,14 +54,14 @@ class DriverConfig:
     """
 
     stencil_config: pace.dsl.StencilConfig
-    initialization: InitializationConfig
+    initialization: InitializerSelector
     nx_tile: int
     nz: int
     layout: Tuple[int, int]
     dt_atmos: float
     diagnostics_config: diagnostics.DiagnosticsConfig
     performance_config: PerformanceConfig
-    comm_config: CommConfig
+    comm_config: CreatesCommSelector
     dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
         default_factory=fv3core.DynamicalCoreConfig
     )
@@ -132,8 +132,10 @@ class DriverConfig:
         kwargs["physics_config"].npx = kwargs["nx_tile"] + 1
         kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
         kwargs["physics_config"].npz = kwargs["nz"]
-        kwargs["comm_config"] = CommConfig.from_dict(kwargs.get("comm_config", {}))
-        kwargs["initialization"] = InitializationConfig.from_dict(
+        kwargs["comm_config"] = CreatesCommSelector.from_dict(
+            kwargs.get("comm_config", {})
+        )
+        kwargs["initialization"] = InitializerSelector.from_dict(
             kwargs["initialization"]
         )
 
