@@ -34,7 +34,7 @@ class DriverConfig:
     Attributes:
         stencil_config: configuration for stencil compilation
         initialization_type: must be
-             "baroclinic", "restart", "serialbox", or "predefined"
+             "baroclinic", "restart", or "predefined"
         initialization_config: configuration for the chosen initialization
             type, see documentation for its corresponding configuration
             dataclass
@@ -103,7 +103,6 @@ class DriverConfig:
 
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
-
         if isinstance(kwargs["dycore_config"], dict):
             for derived_name in ("dt_atmos", "layout", "npx", "npy", "npz", "ntiles"):
                 if derived_name in kwargs["dycore_config"]:
