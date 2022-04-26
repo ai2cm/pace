@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 import pytest
 import yaml
@@ -17,9 +18,7 @@ TESTED_CONFIGS = [
     "baroclinic_c12_null_comm.yaml",
 ]
 
-EXCLUDED_CONFIGS = [
-    "baroclinic_c12_from_serialbox.yaml"  # depends on downloading test data
-]
+EXCLUDED_CONFIGS: List[str] = []
 
 
 def test_all_configs_tested_or_excluded():

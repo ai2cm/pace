@@ -147,14 +147,16 @@ class RestartConfig(Initializer):
         raise NotImplementedError()
 
 
+@InitializerSelector.register("predefined")
 @dataclasses.dataclass
 class PredefinedStateConfig(Initializer):
     """
-    Configuration if the states are already defined
-    """
+    Configuration if the states are already defined.
 
-    # this class is not registered because it cannot be
-    # initialized from a yaml dictionary
+    Generally you will not want to use this class when initializing from yaml,
+    as it requires numpy array data to be part of the configuration dictionary
+    used to construct the class.
+    """
 
     dycore_state: fv3core.DycoreState
     physics_state: fv3gfs.physics.PhysicsState
