@@ -1,5 +1,3 @@
-from mpi4py import MPI
-
 import pace.dsl
 import pace.util
 from fv3core._config import DynamicalCoreConfig
@@ -51,7 +49,7 @@ class TranslateDriver(TranslateFVDynamics):
             quantity_factory=quantity_factory,
         )
         config_info = {
-            "stencil_config": self.stencil_config.stencil_kwargs,
+            "stencil_config": self.stencil_config,
             "initialization_type": "predefined",
             "initialization_config": {
                 "dycore_state": dycore_state,
@@ -73,7 +71,7 @@ class TranslateDriver(TranslateFVDynamics):
             "layout": tuple(self.namelist.layout),
         }
         config = DriverConfig.from_dict(config_info)
-        driver = Driver(config=config, comm=MPI.COMM_WORLD)
+        driver = Driver(config=config)
 
         driver.step_all()
         self.dycore = driver.dycore
