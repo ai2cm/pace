@@ -196,6 +196,7 @@ class Driver:
             communicator = pace.util.CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
+            set_distribued_caches(communicator)
             quantity_factory, stencil_factory = _setup_factories(
                 config=config, communicator=communicator
             )
@@ -254,7 +255,6 @@ class Driver:
         )
 
         self._time_run = self.config.start_time
-        set_distribued_caches(communicator)
 
     @dace_inhibitor
     def _cb_io(self):
