@@ -243,20 +243,17 @@ class Driver:
         log_subtile_location(
             partitioner=communicator.partitioner.tile, rank=communicator.rank
         )
+        self.diagnostics.store_grid(
+            grid_data=self.state.grid_data,
+            metadata=self.state.dycore_state.ps.metadata,
+        )
 
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
-
             end_time = self.config.start_time + self.config.total_time
-            self.diagnostics.store_grid(
-                grid_data=self.state.grid_data,
-                metadata=self.state.dycore_state.ps.metadata,
-            )
             while self.time < end_time:
                 self.step(timestep=self.config.timestep)
-                self.diagnostics.store(time=self.time, state=self.state)
-            self.performance_config.collect_performance()
 
     def step(self, timestep: timedelta):
         with self.performance_config.timestep_timer.clock("mainloop"):
@@ -264,6 +261,7 @@ class Driver:
             if not self.config.disable_step_physics:
                 self._step_physics(timestep=timestep.total_seconds())
         self.time += timestep
+        self.diagnostics.store(time=self.time, state=self.state)
         self.performance_config.collect_performance()
 
     def _step_dynamics(self, timestep: float):
