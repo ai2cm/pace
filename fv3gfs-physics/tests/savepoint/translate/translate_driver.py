@@ -50,7 +50,7 @@ class TranslateDriver(TranslateFVDynamics):
         )
         config_info = {
             "stencil_config": self.stencil_config,
-            "initialization_config": {
+            "initialization": {
                 "type": "predefined",
                 "config": {
                     "dycore_state": dycore_state,
