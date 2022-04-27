@@ -273,6 +273,7 @@ class DynamicalCoreConfig:
                 f90_nml = f90nml.read(self.namelist_override)
             except FileNotFoundError:
                 print(f"{self.namelist_override} does not exist")
+                raise
             dycore_config = self.from_f90nml(f90_nml)
             for var in dycore_config.__dict__.keys():
                 setattr(self, var, dycore_config.__dict__[var])

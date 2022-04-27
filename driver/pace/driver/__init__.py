@@ -1,17 +1,13 @@
 from .comm import (
-    CommConfig,
     CreatesComm,
+    CreatesCommSelector,
     MPICommConfig,
     ReaderCommConfig,
     WriterCommConfig,
 )
 from .diagnostics import Diagnostics, DiagnosticsConfig
 from .driver import Driver, DriverConfig
-from .initialization import (
-    BaroclinicConfig,
-    InitializationConfig,
-    PredefinedStateConfig,
-    RestartConfig,
-)
+from .initialization import BaroclinicConfig, PredefinedStateConfig, RestartConfig
 from .performance import PerformanceConfig
+from .registry import Registry
 from .state import DriverState, TendencyState
