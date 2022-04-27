@@ -50,7 +50,7 @@ class CreatesCommSelector(CreatesComm):
             "write", "read", or "null_comm"
     """
 
-    config: CreatesComm
+    config: CreatesComm = dataclasses.field(default_factory=lambda: MPICommConfig())
     type: str = "mpi"
     registry: ClassVar[Registry] = Registry(default_type="mpi")
 

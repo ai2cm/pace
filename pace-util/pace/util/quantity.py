@@ -299,7 +299,7 @@ class Quantity:
                 self._data = data.gpu_view
             elif isinstance(data, gt4py.storage.storage.CPUStorage):
                 self._storage = data
-                self._data = np.asarray(data)
+                self._data = data.data
             else:
                 raise TypeError(
                     "only storages supported are CPUStorage and GPUStorage, "
@@ -421,7 +421,7 @@ class Quantity:
         # when GDP-3 is merged, we can instead use the data in self._data to
         # initialize the storage, instead of making a copy.
         if isinstance(storage, gt4py.storage.storage.CPUStorage):
-            data = np.asarray(storage.data)
+            data = storage.data
         elif isinstance(storage, gt4py.storage.storage.GPUStorage):
             data = storage.gpu_view
         else:
