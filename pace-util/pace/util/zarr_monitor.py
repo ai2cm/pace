@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import List, Tuple, Union
 
 import cftime
+from toolz import dissoc
 
 
 try:
@@ -168,6 +169,13 @@ class _ZarrVariableWriter:
     def rank(self):
         return self.comm.Get_rank()
 
+    @property
+    def array_dims(self):
+        if self.array is None:
+            raise ValueError("Array not yet set, must call .store first.")
+        else:
+            return self.array.attrs.get("_ARRAY_DIMENSIONS")
+
     def _init_zarr(self, quantity):
         if self.rank == 0:
             self._init_zarr_root(quantity)
@@ -192,14 +200,15 @@ class _ZarrVariableWriter:
 
     def _match_dim_order(self, quantity):
         self._check_dims(quantity)
-        full_dim_order = self.array.attrs["_ARRAY_DIMENSIONS"]
-        return quantity.transpose(full_dim_order[2:])
+        if self.array_dims != self._get_quantity_dims(quantity):
+            return self._transpose(quantity)
+        else:
+            return quantity
 
     def _check_dims(self, quantity):
-        array_dims = self.array.attrs["_ARRAY_DIMENSIONS"]
-        quantity_dims = self._get_attrs(quantity)["_ARRAY_DIMENSIONS"]
-        missing_dims = set(array_dims).difference(quantity_dims)
-        extra_dims = set(quantity_dims).difference(array_dims)
+        quantity_dims = self._get_quantity_dims(quantity)
+        missing_dims = set(self.array_dims).difference(quantity_dims)
+        extra_dims = set(quantity_dims).difference(self.array_dims)
         if len(extra_dims) > 0:
             raise ValueError(
                 "Attempting to append a quantity with dimension(s)"
@@ -264,9 +273,17 @@ class _ZarrVariableWriter:
 
     def _get_attrs(self, quantity):
         return {
-            "_ARRAY_DIMENSIONS": list(self._PREPEND_DIMS + quantity.dims),
+            "_ARRAY_DIMENSIONS": self._get_quantity_dims(quantity),
             **quantity.attrs,
         }
+
+    def _get_quantity_dims(self, quantity):
+        return list(self._PREPEND_DIMS + quantity.dims)
+
+    def _transpose(self, quantity):
+        transposed = quantity.transpose(self.array_dims[2:])
+        transposed.update_attrs(dissoc(quantity.attrs, "units"))
+        return transposed
 
     def _ensure_compatible_attrs(self, new_quantity):
         new_attrs = self._get_attrs(new_quantity)

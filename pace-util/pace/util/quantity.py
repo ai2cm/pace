@@ -532,6 +532,9 @@ class Quantity:
             gt4py_backend=self.gt4py_backend,
         )
 
+    def update_attrs(self, attrs: dict) -> None:
+        self._attrs.update(attrs)
+
 
 def transpose_sequence(sequence, order):
     return sequence.__class__(sequence[i] for i in order)
