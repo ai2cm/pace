@@ -42,6 +42,7 @@ from .halo_updater import HaloUpdater, HaloUpdateRequest
 from .initialization import GridSizer, QuantityFactory, SubtileGridSizer
 from .io import read_state, write_state
 from .local_comm import LocalComm
+from .mpi import MPIComm
 from .namelist import Namelist, NamelistDefaults
 from .nudging import apply_nudging, get_nudging_tendencies
 from .null_comm import NullComm
@@ -57,5 +58,5 @@ from .units import UnitsError, ensure_equal_units, units_are_equal
 from .zarr_monitor import ZarrMonitor
 
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 __all__ = list(key for key in locals().keys() if not key.startswith("_"))

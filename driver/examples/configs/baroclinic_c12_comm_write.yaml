@@ -7,8 +7,14 @@ stencil_config:
 initialization:
   type: baroclinic
 performance_config:
-  performance_mode: true
+  performance_mode: false
   experiment_name: c12_baroclinic
+comm_config:
+  type: write
+  config:
+    path: comm
+    ranks:
+      - 0
 nx_tile: 12
 nz: 79
 dt_atmos: 225

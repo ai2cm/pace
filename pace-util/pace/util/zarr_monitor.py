@@ -119,9 +119,11 @@ class ZarrMonitor:
         """Append the model state dictionary to the zarr store.
 
         Requires the state contain the same quantities with the same metadata as the
-        first time this is called. Quantities are stored with dimensions [time, rank]
-        followed by the dimensions included in any one state snapshot. The one exception
-        is "time" which is stored with dimensions [time].
+        first time this is called. Dimension order metadata may change between calls
+        so long as the set of dimensions is the same. Quantities are stored with
+        dimensions [time, rank] followed by the dimensions included in the first
+        state snapshot. The one exception is "time" which is stored with dimensions
+        [time].
         """
         self._ensure_writers_are_consistent(state)
         for name, quantity in sorted(state.items(), key=lambda x: x[0]):
@@ -188,11 +190,34 @@ class _ZarrVariableWriter:
     def sync_array(self):
         self.array = self.comm.bcast(self.array, root=0)
 
+    def _match_dim_order(self, quantity):
+        self._check_dims(quantity)
+        full_dim_order = self.array.attrs["_ARRAY_DIMENSIONS"]
+        return quantity.transpose(full_dim_order[2:])
+
+    def _check_dims(self, quantity):
+        array_dims = self.array.attrs["_ARRAY_DIMENSIONS"]
+        quantity_dims = self._get_attrs(quantity)["_ARRAY_DIMENSIONS"]
+        missing_dims = set(array_dims).difference(quantity_dims)
+        extra_dims = set(quantity_dims).difference(array_dims)
+        if len(extra_dims) > 0:
+            raise ValueError(
+                "Attempting to append a quantity with dimension(s)"
+                f"{extra_dims} not contained in previously stored array."
+            )
+        if len(missing_dims) > 0:
+            raise ValueError(
+                "Attempting to append a quantity missing dimension(s)"
+                f"{missing_dims} contained in previously stored array."
+            )
+
     def append(self, quantity):
         # can't just use zarr_array.append because we only want to
         # extend the dimension once, from the root rank
         if self.array is None:
             self._init_zarr(quantity)
+
+        quantity = self._match_dim_order(quantity)
 
         if self.i_time >= self.array.shape[0] and self.rank == 0:
             new_shape = list(
