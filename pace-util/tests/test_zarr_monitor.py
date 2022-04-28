@@ -479,9 +479,41 @@ def test_transposed_diags_write_across_timesteps(diag, zarr_monitor_single_rank)
 
 
 @requires_zarr
+def test_diags_fail_different_dim_set(diag, numpy, zarr_monitor_single_rank):
+    time_1 = cftime.DatetimeJulian(2010, 6, 20, 6, 0, 0)
+    time_2 = cftime.DatetimeJulian(2010, 6, 20, 6, 15, 0)
+    zarr_monitor_single_rank.store({"time": time_1, "a": diag})
+    new_dims = list(diag.dims)
+    new_dims[-1] = "some_other_dim"
+    diag_2 = pace.util.Quantity(
+        numpy.ones([size + 2 for size in range(len(diag.dims))]),
+        dims=new_dims,
+        units="m",
+    )
+    with pytest.raises(ValueError):
+        zarr_monitor_single_rank.store({"time": time_2, "a": diag_2})
+
+
+@requires_zarr
 def test_transposed_diags_retain_attrs(diag, zarr_monitor_single_rank):
 
     zarr_monitor_single_rank.store({"a": diag})
-    diag.update_attrs({"some_non_units_attr": 9.0})
-    transposed_diag = zarr_monitor_single_rank._writers["a"]._transpose(diag)
-    assert transposed_diag.attrs == diag.attrs
+    diag_2 = copy.deepcopy(diag)
+    diag_2.update_attrs({"some_non_units_attr": 9.0})
+    transposed_diag = zarr_monitor_single_rank._writers["a"]._transpose(diag_2)
+    assert transposed_diag.attrs == diag_2.attrs
+
+
+@requires_zarr
+def test_diags_only_consistent_units_attrs_required(diag, zarr_monitor_single_rank):
+
+    time_1 = cftime.DatetimeJulian(2010, 6, 20, 6, 0, 0)
+    time_2 = cftime.DatetimeJulian(2010, 6, 20, 6, 15, 0)
+    time_3 = cftime.DatetimeJulian(2010, 6, 20, 6, 30, 0)
+    zarr_monitor_single_rank.store({"time": time_1, "a": diag})
+    diag_2 = copy.deepcopy(diag)
+    diag_2.update_attrs({"some_non_units_attrs": 9.0})
+    zarr_monitor_single_rank.store({"time": time_2, "a": diag_2})
+    diag_3 = pace.util.Quantity(data=diag.values, dims=diag.dims, units="not_m")
+    with pytest.raises(ValueError):
+        zarr_monitor_single_rank.store({"time": time_3, "a": diag_3})

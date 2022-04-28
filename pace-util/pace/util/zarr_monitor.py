@@ -227,6 +227,7 @@ class _ZarrVariableWriter:
             self._init_zarr(quantity)
 
         quantity = self._match_dim_order(quantity)
+        self._check_units(quantity)
 
         if self.i_time >= self.array.shape[0] and self.rank == 0:
             new_shape = list(
@@ -235,7 +236,6 @@ class _ZarrVariableWriter:
             )
             new_shape[0] = self.i_time + 1
             self.array.resize(*new_shape)
-            self._ensure_compatible_attrs(quantity)
         self.sync_array()
 
         target_slice = (
@@ -285,12 +285,12 @@ class _ZarrVariableWriter:
         transposed.update_attrs(dissoc(quantity.attrs, "units"))
         return transposed
 
-    def _ensure_compatible_attrs(self, new_quantity):
-        new_attrs = self._get_attrs(new_quantity)
-        if dict(self.array.attrs) != new_attrs:
+    def _check_units(self, new_quantity):
+        units = self.array.attrs.get("units")
+        if units != new_quantity.units:
             raise ValueError(
-                f"value for {self.name} with attrs {new_attrs} "
-                f"does not match previously stored attrs {dict(self.array.attrs)}"
+                f"value for {self.name} with units {new_quantity.units} "
+                f"does not match previously stored units {units}"
             )
 
 
