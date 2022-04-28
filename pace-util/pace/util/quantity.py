@@ -533,6 +533,13 @@ class Quantity:
         )
 
     def update_attrs(self, attrs: dict) -> None:
+        """Update the attributes of the quantity in place.
+
+        Note that `units` is not a mutable attribute and is set on creation
+
+        Args:
+            attrs: attributes to be updated
+        """
         self._attrs.update(attrs)
 
 
