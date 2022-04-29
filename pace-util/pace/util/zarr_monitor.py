@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from typing import List, Tuple, Union
 
 import cftime
-from toolz import dissoc
 
 
 try:
@@ -169,8 +168,7 @@ class _ZarrVariableWriter:
     def rank(self):
         return self.comm.Get_rank()
 
-    @property
-    def array_dims(self):
+    def _get_array_dims(self):
         if self.array is None:
             raise ValueError("Array not yet set, must call .store first.")
         else:
@@ -200,15 +198,15 @@ class _ZarrVariableWriter:
 
     def _match_dim_order(self, quantity):
         self._check_dims(quantity)
-        if self.array_dims != self._get_quantity_dims(quantity):
-            return self._transpose(quantity)
+        if self._get_array_dims() != self._get_quantity_dims(quantity):
+            return quantity.transpose(self._get_array_dims()[2:])
         else:
             return quantity
 
     def _check_dims(self, quantity):
         quantity_dims = self._get_quantity_dims(quantity)
-        missing_dims = set(self.array_dims).difference(quantity_dims)
-        extra_dims = set(quantity_dims).difference(self.array_dims)
+        missing_dims = set(self._get_array_dims()).difference(quantity_dims)
+        extra_dims = set(quantity_dims).difference(self._get_array_dims())
         if len(extra_dims) > 0:
             raise ValueError(
                 "Attempting to append a quantity with dimension(s)"
@@ -279,11 +277,6 @@ class _ZarrVariableWriter:
 
     def _get_quantity_dims(self, quantity):
         return list(self._PREPEND_DIMS + quantity.dims)
-
-    def _transpose(self, quantity):
-        transposed = quantity.transpose(self.array_dims[2:])
-        transposed.update_attrs(dissoc(quantity.attrs, "units"))
-        return transposed
 
     def _check_units(self, new_quantity):
         units = self.array.attrs.get("units")

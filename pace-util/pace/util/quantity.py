@@ -523,7 +523,7 @@ class Quantity:
         """
         target_dims = _collapse_dims(target_dims, self.dims)
         transpose_order = [self.dims.index(dim) for dim in target_dims]
-        return Quantity(
+        transposed = Quantity(
             self.np.transpose(self.data, transpose_order),  # type: ignore[attr-defined]
             dims=transpose_sequence(self.dims, transpose_order),
             units=self.units,
@@ -531,16 +531,8 @@ class Quantity:
             extent=transpose_sequence(self.extent, transpose_order),
             gt4py_backend=self.gt4py_backend,
         )
-
-    def update_attrs(self, attrs: dict) -> None:
-        """Update the attributes of the quantity in place.
-
-        Note that `units` is not a mutable attribute and is set on creation
-
-        Args:
-            attrs: attributes to be updated
-        """
-        self._attrs.update(attrs)
+        transposed._attrs = self._attrs
+        return transposed
 
 
 def transpose_sequence(sequence, order):

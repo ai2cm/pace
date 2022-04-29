@@ -490,18 +490,9 @@ def test_diags_fail_different_dim_set(diag, numpy, zarr_monitor_single_rank):
         dims=new_dims,
         units="m",
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as excinfo:
         zarr_monitor_single_rank.store({"time": time_2, "a": diag_2})
-
-
-@requires_zarr
-def test_transposed_diags_retain_attrs(diag, zarr_monitor_single_rank):
-
-    zarr_monitor_single_rank.store({"a": diag})
-    diag_2 = copy.deepcopy(diag)
-    diag_2.update_attrs({"some_non_units_attr": 9.0})
-    transposed_diag = zarr_monitor_single_rank._writers["a"]._transpose(diag_2)
-    assert transposed_diag.attrs == diag_2.attrs
+    assert "Attempting to append a quantity" in str(excinfo.value)
 
 
 @requires_zarr
@@ -512,7 +503,7 @@ def test_diags_only_consistent_units_attrs_required(diag, zarr_monitor_single_ra
     time_3 = cftime.DatetimeJulian(2010, 6, 20, 6, 30, 0)
     zarr_monitor_single_rank.store({"time": time_1, "a": diag})
     diag_2 = copy.deepcopy(diag)
-    diag_2.update_attrs({"some_non_units_attrs": 9.0})
+    diag_2._attrs.update({"some_non_units_attrs": 9.0})
     zarr_monitor_single_rank.store({"time": time_2, "a": diag_2})
     diag_3 = pace.util.Quantity(data=diag.values, dims=diag.dims, units="not_m")
     with pytest.raises(ValueError):
