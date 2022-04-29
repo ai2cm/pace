@@ -3,6 +3,7 @@ import dataclasses
 import hashlib
 import inspect
 import re
+import os
 from typing import (
     Any,
     Callable,
@@ -24,6 +25,7 @@ import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
+from pace.util.decomposition import set_distributed_caches, write_decomposition
 
 import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
@@ -71,19 +73,12 @@ class StencilConfig(Hashable):
             return False
 
     def _get_backend_opts(
-        self,
-        device_sync: Optional[bool] = None,
-        format_source: Optional[bool] = None,
+        self, device_sync: Optional[bool] = None, format_source: Optional[bool] = None,
     ) -> Dict[str, Any]:
         backend_opts: Dict[str, Any] = {}
         all_backend_opts: Optional[Dict[str, Any]] = {
-            "device_sync": {
-                "backend": r".*(gpu|cuda)$",
-                "value": False,
-            },
-            "format_source": {
-                "value": False,
-            },
+            "device_sync": {"backend": r".*(gpu|cuda)$", "value": False,},
+            "format_source": {"value": False,},
             "verbose": {"backend": r"(gt:|cuda)", "value": False},
         }
         for name, option in all_backend_opts.items():
@@ -154,24 +149,9 @@ def report_diff(arg: np.ndarray, numpy_arg: np.ndarray, label) -> str:
     metric_err = testing.compare_arr(arg, numpy_arg)
     nans_match = np.logical_and(np.isnan(arg), np.isnan(numpy_arg))
     n_points = np.product(arg.shape)
-    failures_14 = n_points - np.sum(
-        np.logical_or(
-            nans_match,
-            metric_err < 1e-14,
-        )
-    )
-    failures_10 = n_points - np.sum(
-        np.logical_or(
-            nans_match,
-            metric_err < 1e-10,
-        )
-    )
-    failures_8 = n_points - np.sum(
-        np.logical_or(
-            nans_match,
-            metric_err < 1e-10,
-        )
-    )
+    failures_14 = n_points - np.sum(np.logical_or(nans_match, metric_err < 1e-14,))
+    failures_10 = n_points - np.sum(np.logical_or(nans_match, metric_err < 1e-10,))
+    failures_8 = n_points - np.sum(np.logical_or(nans_match, metric_err < 1e-10,))
     greatest_error = np.max(metric_err[~np.isnan(metric_err)])
     if greatest_error == 0.0 and failures_14 == 0:
         report = ""
@@ -228,11 +208,7 @@ class CompareToNumpyStencil:
         )
         self._func_name = func.__name__
 
-    def __call__(
-        self,
-        *args,
-        **kwargs,
-    ) -> None:
+    def __call__(self, *args, **kwargs,) -> None:
         args_copy = copy.deepcopy(args)
         kwargs_copy = copy.deepcopy(kwargs)
         self._actual(*args, **kwargs)
@@ -288,20 +264,21 @@ class FrozenStencil:
         stencil_function = gtscript.stencil
         stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes)
 
-        # Enable distributed compilation if running in parallel
+        # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
         if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-            stencil_function = future_stencil.future_stencil
-            stencil_kwargs["wrapper"] = self
-        else:
-            # future stencil provides this information and
-            # we want to be consistent with the naming whether we are
-            # running in parallel or not (so we use the same cache)
-            stencil_kwargs["name"] = func.__module__ + "." + func.__name__
+            gt4py.config.cache_settings["dir_name"] = ".gt_cache_{:0>6d}".format(
+                MPI.COMM_WORLD.Get_rank()
+            )
+
+            if os.getenv("RUN_ONLY"):
+                set_distributed_caches(
+                    MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size()
+                )
+            else:
+                write_decomposition()
 
         self.stencil_object: gt4py.StencilObject = stencil_function(
-            definition=func,
-            externals=externals,
-            **stencil_kwargs,
+            definition=func, externals=externals, **stencil_kwargs,
         )
         """generated stencil object returned from gt4py."""
 
@@ -324,11 +301,7 @@ class FrozenStencil:
 
         self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
 
-    def __call__(
-        self,
-        *args,
-        **kwargs,
-    ) -> None:
+    def __call__(self, *args, **kwargs,) -> None:
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)
@@ -594,9 +567,7 @@ class GridIndexing:
         )
 
     def axis_offsets(
-        self,
-        origin: Tuple[int, ...],
-        domain: Tuple[int, ...],
+        self, origin: Tuple[int, ...], domain: Tuple[int, ...],
     ) -> Dict[str, Any]:
         if self.west_edge:
             i_start = gtscript.I[0] + self.origin[0] - origin[0]
@@ -763,11 +734,7 @@ class GridIndexing:
         )
         origin, extent = self.get_origin_domain(dims)
         temp_quantity = pace.util.Quantity(
-            temp_storage,
-            dims=dims,
-            units="unknown",
-            origin=origin,
-            extent=extent,
+            temp_storage, dims=dims, units="unknown", origin=origin, extent=extent,
         )
         if n_halo is None:
             n_halo = self.n_halo
