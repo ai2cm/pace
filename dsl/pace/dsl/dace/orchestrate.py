@@ -275,7 +275,7 @@ class LazyComputepathFunction(SDFGConvertible):
 
     @property
     def use_dace(self):
-        return dace_config.get_orchestrate()
+        return dace_config.get_orchestrate() != DaCeOrchestration.Python
 
 
 class LazyComputepathMethod:
@@ -364,7 +364,7 @@ class LazyComputepathMethod:
 
     @property
     def use_dace(self):
-        return dace_config.get_orchestrate()
+        return dace_config.get_orchestrate() != DaCeOrchestration.Python
 
 
 def computepath_method(

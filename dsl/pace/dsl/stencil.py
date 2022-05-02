@@ -35,12 +35,7 @@ from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.halo_data_transformer import QuantityHaloSpec
-
-
-try:
-    from mpi4py import MPI
-except ImportError:
-    MPI = None
+from pace.util.mpi import MPI
 
 
 # TODO: remove this monkeypatch once this code is in gt4py
