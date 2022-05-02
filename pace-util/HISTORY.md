@@ -3,6 +3,7 @@ History
 
 latest
 ------
+- Changed `ZarrMonitor.store` behavior to transposing quantities without losing attributes, and loosening requirements on attribute consistency
 
 v0.8.0
 ------
