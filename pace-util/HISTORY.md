@@ -3,7 +3,12 @@ History
 
 latest
 ------
-- Changed `ZarrMonitor.store` behavior to transposing quantities without losing attributes, and loosening requirements on attribute consistency
+
+v0.9.0
+------
+
+Minor changes:
+- Modified `pace.util.Quantity.transpose` to retain attributes, and loosened `pace.util.ZarrMonitor.store` requirements on attribute consistency, both to ease fv3net integration issues not addressed in v0.8.0
 
 v0.8.0
 ------
