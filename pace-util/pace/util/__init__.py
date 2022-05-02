@@ -58,5 +58,5 @@ from .units import UnitsError, ensure_equal_units, units_are_equal
 from .zarr_monitor import ZarrMonitor
 
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 __all__ = list(key for key in locals().keys() if not key.startswith("_"))
