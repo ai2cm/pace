@@ -77,10 +77,14 @@ def delpc_computation(
 
     with computation(PARALLEL), interval(...):
         delpc = vort[0, -1, 0] - vort + ptc[-1, 0, 0] - ptc
+
+    with computation(PARALLEL), interval(...):
         with horizontal(region[i_start, j_start], region[i_end + 1, j_start]):
-            delpc = ptc[-1, 0, 0] - ptc - vort
+            delpc = delpc - vort[0, -1, 0]
         with horizontal(region[i_start, j_end + 1], region[i_end + 1, j_end + 1]):
-            delpc = vort[0, -1, 0] + ptc[-1, 0, 0] - ptc
+            delpc = delpc + vort
+
+    with computation(PARALLEL), interval(...):
         delpc = rarea_c * delpc
 
 
@@ -242,10 +246,14 @@ def redo_divg_d(
 
     with computation(PARALLEL), interval(...):
         divg_d = uc[0, -1, 0] - uc + vc[-1, 0, 0] - vc
+
+    with computation(PARALLEL), interval(...):
         with horizontal(region[i_start, j_start], region[i_end + 1, j_start]):
-            divg_d = vc[-1, 0, 0] - vc - uc
+            divg_d = divg_d - uc[0, -1, 0]
         with horizontal(region[i_start, j_end + 1], region[i_end + 1, j_end + 1]):
-            divg_d = uc[0, -1, 0] + vc[-1, 0, 0] - vc
+            divg_d = divg_d + uc
+
+    with computation(PARALLEL), interval(...):
         if __INLINED(do_adjustment):
             divg_d = divg_d * adjustment_factor
 
