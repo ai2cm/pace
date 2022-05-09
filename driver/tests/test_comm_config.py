@@ -1,10 +1,10 @@
 import dataclasses
 import unittest.mock
 
-from pace.driver.configs.comm import CommConfig, CreatesComm, WriterCommConfig
+from pace.driver import CreatesComm, CreatesCommSelector, WriterCommConfig
 
 
-@CommConfig.register("mock")
+@CreatesCommSelector.register("mock")
 @dataclasses.dataclass(frozen=True)
 class MockCommConfig(CreatesComm):
     def __post_init__(self):
@@ -26,6 +26,6 @@ def test_create_comm_writer():
             "ranks": [0],
         },
     }
-    config = CommConfig.from_dict(config_dict)
-    assert isinstance(config, CommConfig)
+    config = CreatesCommSelector.from_dict(config_dict)
+    assert isinstance(config, CreatesCommSelector)
     assert isinstance(config.config, WriterCommConfig)

@@ -4,7 +4,17 @@ History
 latest
 ------
 
+v0.9.0
+------
+
+Minor changes:
+- Modified `pace.util.Quantity.transpose` to retain attributes, and loosened `pace.util.ZarrMonitor.store` requirements on attribute consistency, both to ease fv3net integration issues not addressed in v0.8.0
+
+v0.8.0
+------
+
 Major changes:
+- Changed `ZarrMonitor.store` behavior to allow passing quantities with different dimension orders
 - Added `CachingCommWriter` which wraps a `Comm` object and can be serialized to a file-like object with a `.dump` method
 - Added `CachingCommReader` which can be loaded from the dump output of `CachingCommWriter` and replays its communication in the order it occurred.
 - `NullComm` is now public api in `pace-util`
