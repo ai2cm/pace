@@ -55,8 +55,8 @@ dycore_config:
   tau_v2l: 90.0
   vtdm4: 0.06
   z_tracer: true
-initialization_config: {}
-initialization_type: baroclinic
+initialization:
+  type: baroclinic
 layout:
 - 1
 - 1
