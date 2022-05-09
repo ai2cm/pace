@@ -6,6 +6,7 @@ from uuid import UUID, uuid1
 
 import numpy as np
 
+from ._optional_imports import cupy as cp
 from .buffer import Buffer
 from .cuda_kernels import (
     pack_scalar_f64_kernel,
@@ -17,12 +18,6 @@ from .quantity import Quantity
 from .rotate import rotate_scalar_data, rotate_vector_data
 from .types import NumpyModule
 from .utils import device_synchronize
-
-
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
 
 
 @dataclass

@@ -3,8 +3,6 @@ import dataclasses
 from datetime import datetime, timedelta
 from typing import List, Optional, Union
 
-import zarr.storage
-
 import pace.driver
 import pace.dsl
 import pace.stencils
@@ -13,6 +11,12 @@ import pace.util.grid
 from pace.util.quantity import QuantityMetadata
 
 from .state import DriverState
+
+
+try:
+    import zarr.storage as zarr_storage
+except ModuleNotFoundError:
+    zarr_storage = None
 
 
 class Diagnostics(abc.ABC):
@@ -74,11 +78,14 @@ class ZarrDiagnostics(Diagnostics):
         partitioner: pace.util.CubedSpherePartitioner,
         comm,
     ):
-        self.names = names
-        store = zarr.storage.DirectoryStore(path=path)
-        self.monitor = pace.util.ZarrMonitor(
-            store=store, partitioner=partitioner, mpi_comm=comm
-        )
+        if zarr_storage is None:
+            raise ModuleNotFoundError("zarr must be installed to use this class")
+        else:
+            self.names = names
+            store = zarr_storage.DirectoryStore(path=path)
+            self.monitor = pace.util.ZarrMonitor(
+                store=store, partitioner=partitioner, mpi_comm=comm
+            )
 
     def store(self, time: Union[datetime, timedelta], state: DriverState):
         if len(self.names) > 0:

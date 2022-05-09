@@ -4,24 +4,11 @@ from typing import List, Tuple, Union
 
 import cftime
 
-
-try:
-    import zarr
-except ModuleNotFoundError as err:
-    from ._optional_imports import RaiseWhenAccessed
-
-    zarr = RaiseWhenAccessed(err)
-import numpy as np
-
 from . import _xarray as xr
 from . import constants, utils
+from ._optional_imports import cupy, zarr
 from .partitioner import CubedSpherePartitioner, subtile_slice
 
-
-try:
-    import cupy
-except ImportError:
-    cupy = np
 
 logger = logging.getLogger("pace.util")
 
