@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-from .comm import Comm
+from pace.util.comm import Comm
 
 
 @dataclasses.dataclass
