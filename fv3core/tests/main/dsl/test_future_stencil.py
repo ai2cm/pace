@@ -7,11 +7,11 @@ import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
 from gt4py.stencil_object import StencilObject
 
-from fv3core.utils.mpi import MPI
 from pace.dsl.future_stencil import FutureStencil, StencilTable, future_stencil
 from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.typing import FloatField, IntField
 from pace.util.global_config import set_backend
+from pace.util.mpi import MPI
 
 
 def copy_stencil(q_in: FloatField, q_out: FloatField):

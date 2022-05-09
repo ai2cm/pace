@@ -31,12 +31,7 @@ import pace.util
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.halo_data_transformer import QuantityHaloSpec
-
-
-try:
-    from mpi4py import MPI
-except ImportError:
-    MPI = None
+from pace.util.mpi import MPI
 
 
 @dataclasses.dataclass

@@ -1,5 +1,5 @@
 import pace.util
-from fv3core.utils.null_comm import NullComm
+from pace.util.null_comm import NullComm
 
 
 def test_can_create_cube_communicator():
