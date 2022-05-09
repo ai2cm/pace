@@ -9,8 +9,8 @@ import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl.stencil
 import pace.stencils.testing
 import pace.util
-from fv3core.utils.null_comm import NullComm
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
+from pace.util.null_comm import NullComm
 
 
 DIR = os.path.abspath(os.path.dirname(__file__))

@@ -21,9 +21,9 @@ from fv3core import DynamicalCore
 from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.baroclinic import init_baroclinic_state
 from fv3core.testing import TranslateFVDynamics
-from fv3core.utils.null_comm import NullComm
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
+from pace.util.null_comm import NullComm
 
 
 def parse_args() -> Namespace:

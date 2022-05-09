@@ -8,7 +8,6 @@ from typing import Literal, Tuple
 import pytest
 
 import pace.dsl
-from fv3core.utils.null_comm import NullComm
 from pace.driver import CreatesComm, Driver, DriverConfig
 from pace.driver.report import (
     TimeReport,
@@ -16,6 +15,7 @@ from pace.driver.report import (
     gather_timing_data,
     get_sypd,
 )
+from pace.util.null_comm import NullComm
 
 
 def get_driver_config(
