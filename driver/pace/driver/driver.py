@@ -12,6 +12,7 @@ import pace.driver
 import pace.dsl
 from pace.dsl.dace.orchestrate import dace_inhibitor, computepath_method
 from pace.dsl.dace.build import set_distribued_caches
+from pace.dsl.dace.dace_config import dace_config
 import pace.stencils
 import pace.util
 import pace.util.grid
@@ -223,28 +224,28 @@ class Driver:
                 self.state.dycore_state,
             )
 
-            # self.physics = fv3gfs.physics.Physics(
-            #     stencil_factory=stencil_factory,
-            #     grid_data=self.state.grid_data,
-            #     namelist=self.config.physics_config,
-            #     active_packages=["microphysics"],
-            # )
-            # self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
-            #     stencil_factory=stencil_factory,
-            #     dycore_config=self.config.dycore_config,
-            #     do_dry_convective_adjustment=self.config.do_dry_convective_adjustment,
-            #     dycore_only=self.config.dycore_only,
-            # )
-            # self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
-            #     stencil_factory=stencil_factory,
-            #     grid_data=self.state.grid_data,
-            #     namelist=self.config.physics_config,
-            #     comm=communicator,
-            #     grid_info=self.state.driver_grid_data,
-            #     quantity_factory=quantity_factory,
-            #     dycore_only=self.config.dycore_only,
-            #     apply_tendencies=self.config.apply_tendencies,
-            # )
+            self.physics = fv3gfs.physics.Physics(
+                stencil_factory=stencil_factory,
+                grid_data=self.state.grid_data,
+                namelist=self.config.physics_config,
+                active_packages=["microphysics"],
+            )
+            self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
+                stencil_factory=stencil_factory,
+                dycore_config=self.config.dycore_config,
+                do_dry_convective_adjustment=self.config.do_dry_convective_adjustment,
+                dycore_only=self.config.dycore_only,
+            )
+            self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
+                stencil_factory=stencil_factory,
+                grid_data=self.state.grid_data,
+                namelist=self.config.physics_config,
+                comm=communicator,
+                grid_info=self.state.driver_grid_data,
+                quantity_factory=quantity_factory,
+                dycore_only=self.config.dycore_only,
+                apply_tendencies=self.config.apply_tendencies,
+            )
             self.diagnostics = diagnostics.Diagnostics(
                 config=config.diagnostics_config,
                 partitioner=communicator.partitioner,
@@ -257,16 +258,18 @@ class Driver:
         self._time_run = self.config.start_time
 
     @dace_inhibitor
-    def _cb_io(self):
+    def _callback_diagnostics(self):
         self._time_run += self.config.timestep
         self.diagnostics.store(time=self._time_run, state=self.state)
 
     @computepath_method
-    def dycore_loop(self, state: dace.constant, time_steps: int, time_step_freq: int):
+    def dycore_only_loop_orchestrated(
+        self, state: dace.constant, time_steps: int, time_step_freq: int
+    ):
         for t in dace.nounroll(range(time_steps)):
-            self._step(state)
+            self._step_dynamics(state)
             if (t % time_step_freq) == 0:
-                self._cb_io()
+                self._callback_diagnostics()
 
     def step_all(self):
         logger.info("integrating driver forward in time")
@@ -277,19 +280,33 @@ class Driver:
                 grid_data=self.state.grid_data,
                 metadata=self.state.dycore_state.ps.metadata,
             )
-            time_steps = int((end_time - time).seconds / self.config.timestep.seconds)
-            logger.info(f"  time_steps: {time_steps}")
-            self.dycore_loop(
-                state=self.state.dycore_state, time_steps=time_steps, time_step_freq=18
-            )
+            # Temporary DaCe execution code to restrict orchestration to the dycore only
+            # and properly error out. Original code conserved in else
+            if dace_config.is_dace_orchestrated():
+                time_steps = int(
+                    (end_time - time).seconds / self.config.timestep.seconds
+                )
+                logger.info(f"  time_steps: {time_steps}")
+                if not self.config.disable_step_physics:
+                    raise RuntimeError("DaCe orchestration doesn't handle physics.")
+                self.dycore_only_loop_orchestrated(
+                    state=self.state.dycore_state,
+                    time_steps=time_steps,
+                    time_step_freq=18,
+                )
+            else:
+                while time < end_time:
+                    self._step(timestep=self.config.timestep.total_seconds())
+                    time += self.config.timestep
+                    self.diagnostics.store(time=time, state=self.state)
             self.performance_config.collect_performance()
 
     def _step(self, state: dace.constant):
-        # with self.performance_config.timestep_timer.clock("mainloop"):
-        self._step_dynamics(state)
-        # if not self.config.disable_step_physics:
-        #     self._step_physics(state)
-        # self.performance_config.collect_performance()
+        with self.performance_config.timestep_timer.clock("mainloop"):
+            self._step_dynamics(state)
+        if not self.config.disable_step_physics:
+            self._step_physics(state)
+        self.performance_config.collect_performance()
 
     def _step_dynamics(self, state: dace.constant):
         self.dycore.step_dynamics(state=state)

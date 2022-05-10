@@ -32,7 +32,7 @@ N_HALO_DEFAULT = 3
 # Physical constants
 #####################
 
-GFS_PHYS = True
+GFS_PHYS = False
 if GFS_PHYS:
     RADIUS = 6.3712e6  # Radius of the Earth [m]
     PI = 3.1415926535897931
