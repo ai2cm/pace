@@ -1,9 +1,5 @@
 # flake8: noqa
-
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
+from ._optional_imports import cupy as cp
 
 
 pack_scalar_f64_kernel = (

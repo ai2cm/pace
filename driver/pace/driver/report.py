@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-from pace.util.mpi import MPI
+from pace.util.comm import Comm
 
 
 @dataclasses.dataclass
@@ -121,7 +121,7 @@ def collect_data_and_write_to_file(
     time_step: int,
     backend: str,
     git_hash: str,
-    comm: MPI.Comm,
+    comm: Comm,
     hits_per_step: List,
     times_per_step: List,
     experiment_name: str,

@@ -6,17 +6,12 @@ import numpy as np
 
 from . import _xarray, constants
 from ._boundary_utils import bound_default_slice, shift_boundary_slice_tuple
+from ._optional_imports import cupy, gt4py
 from .types import NumpyModule
 
 
-try:
-    import cupy
-except ImportError:
-    cupy = np  # avoids attribute errors while also disabling cupy support
-try:
-    import gt4py
-except ImportError:
-    gt4py = None
+if cupy is None:
+    import numpy as cupy
 
 __all__ = ["Quantity", "QuantityMetadata"]
 
