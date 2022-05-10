@@ -33,7 +33,7 @@ MapN_Tracer_2d:
     near_zero: 1e-17
     ignore_near_zero_errors:
       - qtracers
-  - backend: numpy
+  - backend: gtc:numpy
     max_error: 9e-9 # 48_6ranks
 
 
@@ -51,7 +51,7 @@ Riem_Solver3:
   - backend: gtc:cuda
     max_error: 5e-6
   - platform: metal
-    backend: numpy
+    backend: gtc:numpy
     max_error: 1e-11 # 48_6ranks
 
 Remapping:
