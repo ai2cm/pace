@@ -1,11 +1,94 @@
 version: 2.1
+commands:
+  checkout-all:
+    steps:
+      - checkout
+      - run:
+          name: Install Submodules
+          command: git submodule update --init
+  setup-mpi-environment:
+    steps:
+      - restore_cache:
+          keys:
+            - v1-mpi-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
+      - run:
+          name: Install Dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install libopenmpi3 libopenmpi-dev
+            python3 -m venv venv
+            source venv/bin/activate
+            pip3 install --upgrade pip setuptools wheel
+            pip3 install -r .circleci/requirements.txt -r .circleci/mpi_requirements.txt -c constraints.txt
+            pip3 install external/gt4py -c constraints.txt
+            pip3 install pace-util fv3core fv3gfs-physics stencils dsl driver -c constraints.txt
+      - save_cache:
+          key: v1-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
+          paths:
+            - venv
+            - /root/.cache/pip
+  setup-environment:
+    steps:
+      - run:
+          name: Install Submodules
+          command: git submodule update --init
+      - restore_cache:
+          keys:
+            - v1-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
+      - run:
+          name: Install Dependencies
+          command: |
+            python3 -m venv venv
+            source venv/bin/activate
+            pip3 install --upgrade pip setuptools wheel
+            pip3 install -r .circleci/requirements.txt -c constraints.txt
+            pip3 install external/gt4py -c constraints.txt
+            pip3 install pace-util fv3core fv3gfs-physics stencils dsl driver -c constraints.txt
+      - save_cache:
+          key: v1-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
+          paths:
+            - venv
+            - /root/.cache/pip
+  setup-serialbox:
+    steps:
+      - run: |
+          sudo apt-get update
+          sudo apt-get install cmake libboost-all-dev
+          python3 -m venv venv
+          source venv/bin/activate
+          git clone https://github.com/GridTools/serialbox.git
+          cd serialbox && git checkout e1406251e11c1ebafef5f1a896dde4f0cecc1f01 && cd ..
+          pip install -e serialbox/src/serialbox-python -c constraints.txt
+  download-regression-data:
+    parameters:
+      case:
+        type: string
+      version:
+        type: string
+      module:
+        type: string
+    steps:
+      - restore_cache:
+          keys:
+            - v1-regression-data-<<parameters.version>>-<<parameters.case>>-<<parameters.module>>
+      - run: mkdir -p test_data
+      - run: gsutil -m rsync -r gs://vcm-fv3gfs-serialized-regression-data/<<parameters.version>>/<<parameters.case>>/<<parameters.module>> test_data/
+      - run: ls test_data
+      - save_cache:
+          key: v1-regression-data-<<parameters.version>>-<<parameters.case>>-<<parameters.module>>
+          paths:
+            - test_data
+  unpack-regression-data:
+    steps:
+      - run: tar -xf test_data/dat_files.tar.gz
+
 jobs:
 
   lint:
     docker:
     - image: cimg/python:3.8
     steps:
-      - checkout
+      - checkout-all
       - restore_cache:
           keys:
             - v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
@@ -22,15 +105,32 @@ jobs:
             - ~/.cache/pre-commit
             - venv
 
+  regression-download:
+    docker:
+    - image: google/cloud-sdk
+    steps:
+      - checkout-all
+      - download-regression-data:
+          case: c12_6ranks_baroclinic
+          version: 8.0.3
+          module: dycore
+      - unpack-regression-data
+  
+  regression:
+    docker:
+      - image: cimg/python:3.8
+    working_directory: ~/repo
+    steps:
+      - checkout-all
+      - setup-serialbox
+      - setup-mpi-environment
+
   test_util:
     docker:
       - image: cimg/python:3.8
     working_directory: ~/repo
     steps:
-      - checkout
-      - run:
-          name: Install Submodules
-          command: git submodule update --init
+      - checkout-all
       - restore_cache:
           keys:
             - v2-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}-{{ checksum "pace-util/setup.py" }}
@@ -64,10 +164,7 @@ jobs:
       - image: cimg/python:3.8
     working_directory: ~/repo
     steps:
-      - checkout
-      - run:
-          name: Install Submodules
-          command: git submodule update --init
+      - checkout-all
       - restore_cache:
           keys:
             - v3-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
@@ -102,10 +199,7 @@ jobs:
       - image: cimg/python:3.8
     working_directory: ~/repo
     steps:
-      - checkout
-      - run:
-          name: Install Submodules
-          command: git submodule update --init
+      - checkout-all
       - restore_cache:
           keys:
             - v3-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
