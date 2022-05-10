@@ -95,7 +95,6 @@ class TranslateMap1_PPM_2d(TranslateDycoreFortranData2Py):
                 )
         del inputs["j_2d"]
         self.compute_func(**inputs)
-        # [DaCe] var_inout is looking at q1 - DaCe parsing comes back with a list
         return self.slice_output(inputs, {"var_inout": inputs["q1"]})
 
 

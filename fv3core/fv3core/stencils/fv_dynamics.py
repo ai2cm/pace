@@ -94,7 +94,6 @@ class DynamicalCore:
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
         state: DycoreState,
-        timer: pace.util.Timer = pace.util.NullTimer(),
     ):
         """
         Args:
@@ -141,7 +140,6 @@ class DynamicalCore:
             hord=config.hord_tr,
         )
 
-        # [DaCe] Build tracers names & storages
         self.tracers = {}
         for name in utils.tracer_variables[0:NQ]:
             self.tracers[name] = state.__dict__[name]
@@ -245,7 +243,6 @@ class DynamicalCore:
         self._omega_halo_updater = AcousticDynamics._WrappedHaloUpdater(
             comm.get_scalar_halo_updater([full_xyz_spec]), state, ["omga"], comm=comm
         )
-        self.timer = timer
 
     def update_state(
         self,
