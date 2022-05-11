@@ -4,20 +4,19 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, Tuple, Union
 
+import dace
 import dacite
 
 import fv3core
 import fv3gfs.physics
 import pace.driver
 import pace.dsl
-from pace.dsl.dace.orchestrate import dace_inhibitor, computepath_method
-from pace.dsl.dace.build import set_distribued_caches
-from pace.dsl.dace.dace_config import dace_config
+import pace.dsl.dace.build as dace_build
 import pace.stencils
 import pace.util
 import pace.util.grid
-
-import dace
+from pace.dsl.dace.dace_config import dace_config
+from pace.dsl.dace.orchestrate import computepath_method, dace_inhibitor
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
@@ -197,7 +196,11 @@ class Driver:
             communicator = pace.util.CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
-            set_distribued_caches(communicator)
+
+            # DaCe distributed caches and backend setup
+            dace_build.set_distribued_caches(communicator)
+            dace_config.set_backend(self.config.stencil_config.backend)
+
             quantity_factory, stencil_factory = _setup_factories(
                 config=config, communicator=communicator
             )
@@ -242,6 +245,7 @@ class Driver:
                 namelist=self.config.physics_config,
                 comm=communicator,
                 grid_info=self.state.driver_grid_data,
+                state=self.state.dycore_state,
                 quantity_factory=quantity_factory,
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,

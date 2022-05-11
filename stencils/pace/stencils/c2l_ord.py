@@ -1,5 +1,6 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
+import fv3core
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.dyn_core import AcousticDynamics
 from pace.dsl.dace.orchestrate import computepath_method
@@ -104,7 +105,7 @@ class CubedToLatLon:
 
     def __init__(
         self,
-        state,
+        state: fv3core.DycoreState,
         stencil_factory: StencilFactory,
         grid_data: GridData,
         order: int,
