@@ -1,7 +1,7 @@
 import contextlib
 import os
 import unittest.mock
-from typing import Any, List, Tuple
+from typing import Tuple
 
 import fv3core
 import fv3core._config

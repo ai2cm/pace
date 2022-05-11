@@ -30,12 +30,14 @@ class DaceConfig:
         self._communicator = communicator
 
     def is_dace_orchestrated(self) -> bool:
-        if self._orchestrate and "dace" not in self._backend:
+        if self._orchestrate == DaCeOrchestration.Python:
+            return False
+        if "dace" not in self._backend:
             raise RuntimeError(
                 "DaceConfig: orchestration can only be leverage "
                 f"on gtc:dace or gtc:dace:gpu not on {self._backend}"
             )
-        return "dace" in self._backend and self.orchestrate
+        return True
 
     def is_gpu_backend(self) -> bool:
         return "gpu" in self._backend
