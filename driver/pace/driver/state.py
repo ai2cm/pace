@@ -4,6 +4,7 @@ import fv3core
 import fv3gfs.physics
 import pace.util
 import pace.util.grid
+import xarray as xr
 
 
 @dataclasses.dataclass()
@@ -48,6 +49,24 @@ class TendencyState:
                 dtype=float,
             )
         return cls(**initial_quantities)
+
+    @property
+    def xr_dataset(self):
+        data_vars = {}
+        for name, field_info in self.__dataclass_fields__.items():
+            if issubclass(field_info.type, pace.util.Quantity):
+                dims = [
+                    f"{dim_name}_{name}" for dim_name in field_info.metadata["dims"]
+                ]
+                data_vars[name] = xr.DataArray(
+                    getattr(self, name).data,
+                    dims=dims,
+                    attrs={
+                        "long_name": field_info.metadata["name"],
+                        "units": field_info.metadata.get("units", "unknown"),
+                    },
+                )
+        return xr.Dataset(data_vars=data_vars)
 
 
 @dataclasses.dataclass

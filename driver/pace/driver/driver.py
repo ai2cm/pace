@@ -55,6 +55,7 @@ class DriverConfig:
             including coupling code between the dycore and physics, as well as
             dry static adjustment. This is a development flag and will be removed
             in a later commit.
+        save_restart: whether to save the state output as restart files
     """
 
     stencil_config: pace.dsl.StencilConfig
@@ -84,6 +85,7 @@ class DriverConfig:
     seconds: int = 0
     dycore_only: bool = False
     disable_step_physics: bool = False
+    save_restart: bool = False
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -276,8 +278,23 @@ class Driver:
             self.config.dt_atmos,
         )
 
+    def _write_restart_files(self):
+        current_rank = str(self.comm.Get_rank())
+        self.state.dycore_state.xr_dataset.to_netcdf(
+            f"restart_dycore_state_{current_rank}.nc"
+        )
+        if not self.config.dycore_only:
+            self.state.physics_state.xr_dataset.to_netcdf(
+                f"restart_physics_state_{current_rank}.nc"
+            )
+        self.state.tendency_state.xr_dataset.to_netcdf(
+            f"restart_tendency_state_{current_rank}.nc"
+        )
+
     def cleanup(self):
         logger.info("cleaning up driver")
+        if self.config.save_restart:
+            self._write_restart_files()
         self._write_performance_json_output()
         self.comm_config.cleanup(self.comm)
 

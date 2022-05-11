@@ -155,3 +155,4 @@ dmypy.json
 plot_output/
 profiling_results/
 model_output/
+**/restart*.nc
