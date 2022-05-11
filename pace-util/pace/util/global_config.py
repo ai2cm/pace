@@ -1,3 +1,4 @@
+import enum
 import functools
 import os
 from typing import Optional
@@ -57,8 +58,6 @@ _BACKEND: Optional[str] = None
 # if FALSE, caches will be checked and rebuild if code changes
 _REBUILD: bool = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "False")
 _VALIDATE_ARGS: bool = True
-
-import enum
 
 
 class DaCeOrchestration(enum.Enum):
