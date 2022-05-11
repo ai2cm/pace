@@ -1,12 +1,11 @@
 import os.path
 from typing import Any, Callable, Optional, Tuple
-from pace.util.communicator import CubedSphereCommunicator
 
 import yaml
 
 from pace.dsl.dace.dace_config import DaCeOrchestration, dace_config
+from pace.util.communicator import CubedSphereCommunicator
 
-import pace.util as util
 
 ################################################
 # Distributed compilation
@@ -236,7 +235,10 @@ def build_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> 
     else:
         rank_str = ""
 
-    sdfg_dir_path = f"{gt_config.cache_settings['root_path']}/.gt_cache{rank_str}/dacecache/{program_name}"
+    sdfg_dir_path = (
+        f"{gt_config.cache_settings['root_path']}"
+        f"/.gt_cache{rank_str}/dacecache/{program_name}"
+    )
     if not os.path.isdir(sdfg_dir_path):
         raise RuntimeError(f"Precompiled SDFG is missing at {sdfg_dir_path}")
 
@@ -257,8 +259,9 @@ def set_distribued_caches(cube_communicator: CubedSphereCommunicator):
     # Check that we have all the file we need to early out in case
     # of issues.
     if orchestration_mode == DaCeOrchestration.Run:
-        from gt4py import config as gt_config
         import os
+
+        from gt4py import config as gt_config
 
         comm = dace_config.get_communicator().comm
         rank = comm.Get_rank()
@@ -269,7 +272,8 @@ def set_distribued_caches(cube_communicator: CubedSphereCommunicator):
         )
         if not os.path.exists(layout_filepath):
             raise RuntimeError(
-                f"{orchestration_mode} error: Could not find layout at {layout_filepath}"
+                f"{orchestration_mode} error: Could not find layout at"
+                f" {layout_filepath}"
             )
 
         # Check our cache exist
@@ -280,11 +284,13 @@ def set_distribued_caches(cube_communicator: CubedSphereCommunicator):
         cache_filepath = f"{gt_config.cache_settings['root_path']}/.gt_cache{rank_str}"
         if not os.path.exists(cache_filepath):
             raise RuntimeError(
-                f"{orchestration_mode} error: Could not find caches for rank {rank} at {cache_filepath}"
+                f"{orchestration_mode} error: Could not find caches for rank "
+                f"{rank} at {cache_filepath}"
             )
 
         # All, good set this rank cache to the source cache
         gt_config.cache_settings["dir_name"] = f".gt_cache{rank_str}"
         print(
-            f"[{orchestration_mode}] Rank {rank} reading cache {gt_config.cache_settings['dir_name']}"
+            f"[{orchestration_mode}] Rank {rank} "
+            f"reading cache {gt_config.cache_settings['dir_name']}"
         )

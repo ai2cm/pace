@@ -1,7 +1,9 @@
 import functools
 import os
 from typing import Optional
+
 import pace.util as util
+
 
 def getenv_bool(name: str, default: str) -> bool:
     indicator = os.getenv(name, default).title()
@@ -89,6 +91,7 @@ def set_dacemode(dacemode: DaCeOrchestration):
 # BuildAndRun: compile & save SDFG, then run
 # Run: load from .so and run, will fail if .so is not available
 _DACEMODE: DaCeOrchestration = load_dace_orchestration()
+
 
 def get_partitioner() -> Optional[util.CubedSpherePartitioner]:
     global _PARTITIONER

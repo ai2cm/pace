@@ -1,10 +1,8 @@
 import dataclasses
-from pace.util import communicator
-
-from pace.util.global_config import getenv_bool
-from pace.util.communicator import CubedSphereCommunicator, CubedSpherePartitioner
-from typing import Optional
 import enum
+from typing import Optional
+
+from pace.util.communicator import CubedSphereCommunicator
 
 
 class DaCeOrchestration(enum.Enum):
@@ -16,9 +14,9 @@ class DaCeOrchestration(enum.Enum):
 
 @dataclasses.dataclass
 class DaceConfig:
-    backend: str = ""
-    orchestrate: DaCeOrchestration = DaCeOrchestration.Python
-    communicator: Optional[CubedSphereCommunicator] = None
+    _backend: str = ""
+    _orchestrate: DaCeOrchestration = DaCeOrchestration.Python
+    _communicator: Optional[CubedSphereCommunicator] = None
 
     def __post_init__(self):
         # Temporary. This is a bit too out of the ordinary for the common user.
@@ -29,27 +27,30 @@ class DaceConfig:
         self.orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
 
     def init(self, communicator: CubedSphereCommunicator):
-        self.communicator = communicator
+        self._communicator = communicator
 
     def is_dace_orchestrated(self) -> bool:
-        if self.orchestrate and "dace" not in self.backend:
+        if self._orchestrate and "dace" not in self._backend:
             raise RuntimeError(
                 "DaceConfig: orchestration can only be leverage "
-                f"on gtc:dace or gtc:dace:gpu not on {self.backend}"
+                f"on gtc:dace or gtc:dace:gpu not on {self._backend}"
             )
-        return "dace" in self.backend and self.orchestrate
+        return "dace" in self._backend and self.orchestrate
 
     def is_gpu_backend(self) -> bool:
-        return "gpu" in self.backend
+        return "gpu" in self._backend
+
+    def set_backend(self, backend: str) -> None:
+        self._backend = backend
 
     def get_backend(self) -> str:
-        return self.backend
+        return self._backend
 
     def get_orchestrate(self) -> DaCeOrchestration:
-        return self.orchestrate
+        return self._orchestrate
 
     def get_communicator(self) -> CubedSphereCommunicator:
-        return self.communicator
+        return self._communicator
 
 
 dace_config = DaceConfig()

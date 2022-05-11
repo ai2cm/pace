@@ -3,13 +3,11 @@ from typing import Dict
 from dace import constant as DaceConstant
 
 import pace.dsl.gt4py_utils as utils
-from dace import constant as DaceConstant
 from fv3core.stencils.fillz import FillNegativeTracerValues
 from fv3core.stencils.map_single import MapSingle
 from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
-from pace.util import Quantity
 
 # [DaCe] Import.
 #        Quantity required for type hints

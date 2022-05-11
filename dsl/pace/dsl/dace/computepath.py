@@ -10,7 +10,6 @@ from dace.transformation.auto.auto_optimize import make_transients_persistent
 from dace.transformation.helpers import get_parent_map
 from dace.transformation.transformation import simplification_transformations
 
-from pace.util import global_config
 from pace.dsl.dace.build import (
     determine_compiling_ranks,
     load_sdfg_once,
@@ -23,6 +22,7 @@ from pace.dsl.dace.sdfg_opt_passes import (
     strip_unused_global_in_compute_x_flux,
 )
 from pace.dsl.dace.utils import DaCeProgress
+from pace.util import global_config
 from pace.util.mpi import MPI
 
 
@@ -175,7 +175,8 @@ def build_sdfg(daceprog: DaceProgram, sdfg: dace.SDFG, args, kwargs):
             sdfg.simplify(validate=False)
 
         with DaCeProgress(
-            "Removed of compute_x_flux transients (to lower VRAM and because of their evilness)"
+            "Removed of compute_x_flux transients "
+            "(to lower VRAM and because of their evilness)"
         ):
             strip_unused_global_in_compute_x_flux(sdfg)
 

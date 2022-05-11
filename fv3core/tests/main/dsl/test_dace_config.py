@@ -16,12 +16,12 @@ functionality.
 
 @contextlib.contextmanager
 def use_dace(use: bool):
-    original_setting = pace.dsl.dace.dace_config.dace_config.orchestrate
+    original_setting = pace.dsl.dace.dace_config.dace_config.get_orchestrate()
     try:
-        pace.dsl.dace.dace_config.dace_config.orchestrate = use
+        pace.dsl.dace.dace_config.dace_config._orchestrate = use
         yield
     finally:
-        pace.dsl.dace.dace_config.dace_config.orchestrate = original_setting
+        pace.dsl.dace.dace_config.dace_config._orchestrate = original_setting
 
 
 def test_computepath_function_calls_dace():

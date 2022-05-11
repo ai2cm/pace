@@ -16,7 +16,7 @@ from fv3core.stencils.d2a2c_vect import contravariant
 from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM, X_DIM, Y_DIM
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from pace.util.grid import DampingCoefficients, GridData
 
 
@@ -269,7 +269,7 @@ def smagorinksy_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: flo
     # some kind of u and v, and is vort (as output) some kind of kinetic energy?
     # what does this have to do with diffusion?
     with computation(PARALLEL), interval(...):
-        vort = absdt * (delpc**2.0 + vort**2.0) ** 0.5
+        vort = absdt * (delpc ** 2.0 + vort ** 2.0) ** 0.5
 
 
 class DivergenceDamping:

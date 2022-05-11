@@ -44,7 +44,7 @@ if GFS_PHYS:
     HLV = 2.5e6  # Latent heat of evaporation [J/kg]
     HLF = 3.3358e5  # Latent heat of fusion [J/kg]  # 3.34e5
     CP_AIR = 1004.6
-    KAPPA = RDGAS / CP_AIR  #  Specific heat capacity of dry air at
+    KAPPA = RDGAS / CP_AIR  # Specific heat capacity of dry air at
     TFREEZE = 273.15
 else:
     RADIUS = 6371.0e3  # Radius of the Earth [m] #6371.0e3
@@ -57,7 +57,7 @@ else:
     HLV = 2.500e6  # Latent heat of evaporation [J/kg]
     HLF = 3.34e5  # Latent heat of fusion [J/kg]  # 3.34e5
     KAPPA = 2.0 / 7.0
-    CP_AIR = RDGAS / KAPPA  #  Specific heat capacity of dry air at
+    CP_AIR = RDGAS / KAPPA  # Specific heat capacity of dry air at
     TFREEZE = 273.16  # Freezing temperature of fresh water [K]
 
 DZ_MIN = 2.0

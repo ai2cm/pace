@@ -20,17 +20,16 @@ from typing import (
     cast,
 )
 
+import dace
 import gt4py
 import numpy as np
 from gt4py import gtscript
 from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
-import dace
 import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
-from pace.dsl.dace.dace_config import dace_config
 from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing

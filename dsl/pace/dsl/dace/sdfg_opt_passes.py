@@ -1,9 +1,4 @@
 import dace
-from typing import List, Dict
-from dace import subsets
-from dace import data
-from dace.sdfg import graph
-import collections
 
 
 def strip_unused_global_in_compute_x_flux(sdfg: dace.SDFG):
