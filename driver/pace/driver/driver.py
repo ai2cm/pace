@@ -309,9 +309,7 @@ class Driver:
         with self.performance_config.timestep_timer.clock("mainloop"):
             self._step_dynamics(self.state.dycore_state)
         if not self.config.disable_step_physics:
-            self._step_physics(
-                self.state.dycore_state, timestep=self.config.timestep.total_seconds()
-            )
+            self._step_physics(timestep=self.config.timestep.total_seconds())
         self.performance_config.collect_performance()
 
     def _step_dynamics(self, state: dace.constant):
