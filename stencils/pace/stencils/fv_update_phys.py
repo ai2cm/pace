@@ -173,5 +173,4 @@ class ApplyPhysicsToDycore:
             state.v,
             state.ua,
             state.va,
-            self.comm,
         )
