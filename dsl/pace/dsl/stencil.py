@@ -85,10 +85,10 @@ class StencilConfig(Hashable):
                 "value": False,
             },
             "skip_passes": {
-                "backend": r"^gtc:(gt|cuda)",
+                "backend": r"^(gt:|cuda)",
                 "value": [],
             },
-            "verbose": {"backend": r"^gtc:(gt|cuda)", "value": False},
+            "verbose": {"backend": r"(gt:|cuda)", "value": False},
         }
         for name, option in all_backend_opts.items():
             using_option_backend = re.match(option.get("backend", ""), self.backend)
@@ -111,9 +111,7 @@ class StencilConfig(Hashable):
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
         # Note: this assure the backward compatibility between v36 and v37
-        if self.backend.startswith("gtc") and (
-            "skip_passes" in kwargs or skip_passes is not None
-        ):
+        if "skip_passes" in kwargs or skip_passes is not None:
             kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
                 list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
             )
