@@ -1,10 +1,11 @@
 import dataclasses
 
+import xarray as xr
+
 import fv3core
 import fv3gfs.physics
 import pace.util
 import pace.util.grid
-import xarray as xr
 
 
 @dataclasses.dataclass()

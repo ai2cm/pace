@@ -1,11 +1,12 @@
 from dataclasses import InitVar, dataclass, field, fields
 from typing import List, Optional
 
+import gt4py.gtscript as gtscript
+import xarray as xr
+
 import pace.util
 from fv3gfs.physics.stencils.microphysics import MicrophysicsState
 from pace.dsl.typing import FloatField
-import xarray as xr
-import gt4py.gtscript as gtscript
 
 
 @dataclass()
