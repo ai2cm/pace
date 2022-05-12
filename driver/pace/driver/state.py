@@ -1,4 +1,6 @@
 import dataclasses
+from dataclasses import fields
+from typing import Union
 
 import xarray as xr
 
@@ -6,6 +8,7 @@ import fv3core
 import fv3gfs.physics
 import pace.util
 import pace.util.grid
+from pace.util.grid import DampingCoefficients
 
 
 @dataclasses.dataclass()
@@ -78,3 +81,108 @@ class DriverState:
     grid_data: pace.util.grid.GridData
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
+
+    @classmethod
+    def load_state_from_restart(
+        cls,
+        restart_path: str,
+        driver_config,
+    ) -> "DriverState":
+        comm = driver_config.comm_config.get_comm()
+        communicator = pace.util.CubedSphereCommunicator.from_layout(
+            comm=comm, layout=driver_config.layout
+        )
+        sizer = pace.util.SubtileGridSizer.from_tile_params(
+            nx_tile=driver_config.nx_tile,
+            ny_tile=driver_config.nx_tile,
+            nz=driver_config.nz,
+            n_halo=pace.util.N_HALO_DEFAULT,
+            extra_dim_lengths={},
+            layout=driver_config.layout,
+            tile_partitioner=communicator.partitioner.tile,
+            tile_rank=communicator.tile.rank,
+        )
+        quantity_factory = pace.util.QuantityFactory.from_backend(
+            sizer, backend=driver_config.stencil_config.backend
+        )
+        state = _restart_driver_state(
+            restart_path, str(communicator.rank), quantity_factory, communicator
+        )
+        return state
+
+    def save_state(self, comm, restart_path: str = "RESTART"):
+        from pathlib import Path
+
+        Path(restart_path).mkdir(parents=True, exist_ok=True)
+        current_rank = str(comm.Get_rank())
+        self.dycore_state.xr_dataset.to_netcdf(
+            f"{restart_path}/restart_dycore_state_{current_rank}.nc"
+        )
+        self.physics_state.xr_dataset.to_netcdf(
+            f"{restart_path}/restart_physics_state_{current_rank}.nc"
+        )
+        self.tendency_state.xr_dataset.to_netcdf(
+            f"{restart_path}/restart_tendency_state_{current_rank}.nc"
+        )
+
+
+def _read_restart_files(
+    path: str,
+    rank: str,
+    state: Union[fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState],
+    restart_file_prefix: str,
+):
+    """
+    Args:
+        path: path to restart files
+        rank: current rank number
+        state: an empty state
+        restart_file_prefix: file prefix name to read
+
+    Returns:
+        state: new state filled with restart files
+    """
+    df = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
+    for _field in fields(type(state)):
+        if "units" in _field.metadata.keys():
+            state.__dict__[_field.name].data[:] = df[_field.name].data[:]
+    return state
+
+
+def _restart_driver_state(
+    path: str,
+    rank: str,
+    quantity_factory: pace.util.QuantityFactory,
+    communicator: pace.util.CubedSphereCommunicator,
+):
+    metric_terms = pace.util.grid.MetricTerms(
+        quantity_factory=quantity_factory, communicator=communicator
+    )
+    grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
+    damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
+    driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
+    dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
+    dycore_state = _read_restart_files(path, rank, dycore_state, "restart_dycore_state")
+    active_packages = ["microphysics"]
+    physics_state = fv3gfs.physics.PhysicsState.init_zeros(
+        quantity_factory=quantity_factory, active_packages=active_packages
+    )
+    physics_state = _read_restart_files(
+        path, rank, physics_state, "restart_physics_state"
+    )
+    physics_state.__post_init__(quantity_factory, active_packages)
+    tendency_state = TendencyState.init_zeros(
+        quantity_factory=quantity_factory,
+    )
+    tendency_state = _read_restart_files(
+        path, rank, tendency_state, "restart_tendency_state"
+    )
+
+    return DriverState(
+        dycore_state=dycore_state,
+        physics_state=physics_state,
+        tendency_state=tendency_state,
+        grid_data=grid_data,
+        damping_coefficients=damping_coefficients,
+        driver_grid_data=driver_grid_data,
+    )

@@ -115,14 +115,12 @@ class Registry(Generic[T]):
         It can also have a "config" key, which is a dict used to initialize the
         dataclass. By default this is an empty dict.
         """
-        config.setdefault("config", {})
+        if "config" not in config:
+            config.setdefault("config", {})
         if self.default_type is not None:
             type_name = config.get("type", self.default_type)
         else:
             type_name = config["type"]
-        # [TODO]: temporary fix here, needs clarification here
-        if "path" in config:
-            config["config"]["path"] = config["path"]
         if type_name not in self._types:
             raise ValueError(
                 f"Received unexpected type {type_name}, "

@@ -1,10 +1,12 @@
 import dataclasses
 import functools
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, Tuple, Union
 
 import dacite
+import yaml
 
 import fv3core
 import fv3gfs.physics
@@ -279,17 +281,21 @@ class Driver:
         )
 
     def _write_restart_files(self):
-        current_rank = str(self.comm.Get_rank())
-        self.state.dycore_state.xr_dataset.to_netcdf(
-            f"restart_dycore_state_{current_rank}.nc"
-        )
-        if not self.config.dycore_only:
-            self.state.physics_state.xr_dataset.to_netcdf(
-                f"restart_physics_state_{current_rank}.nc"
-            )
-        self.state.tendency_state.xr_dataset.to_netcdf(
-            f"restart_tendency_state_{current_rank}.nc"
-        )
+        self.state.save_state(comm=self.comm)
+        if self.comm.Get_rank() == 0:
+            config_dict = dataclasses.asdict(self.config)
+            config_dict["performance_config"].pop("times_per_step", None)
+            config_dict["performance_config"].pop("hits_per_step", None)
+            config_dict["performance_config"].pop("timestep_timer", None)
+            config_dict["performance_config"].pop("total_timer", None)
+            for field in ["dt_atmos", "layout", "npx", "npy", "npz", "ntiles"]:
+                config_dict["dycore_config"].pop(field, None)
+                config_dict["physics_config"].pop(field, None)
+            config_dict["initialization"]["type"] = "restart"
+            config_dict["initialization"]["config"]["start_time"] = self.time
+            config_dict["initialization"]["config"]["path"] = f"{os.getcwd()}/RESTART"
+            with open("RESTART/restart.yaml", "w") as file:
+                yaml.safe_dump(config_dict, file)
 
     def cleanup(self):
         logger.info("cleaning up driver")

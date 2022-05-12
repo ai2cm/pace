@@ -1,10 +1,7 @@
 import abc
 import dataclasses
-from dataclasses import fields
 from datetime import datetime
-from typing import ClassVar, Union
-
-import xarray as xr
+from typing import ClassVar
 
 import fv3core
 import fv3core.initialization.baroclinic as baroclinic_init
@@ -17,7 +14,7 @@ import pace.util.grid
 from pace.util.grid import DampingCoefficients
 
 from .registry import Registry
-from .state import DriverState, TendencyState
+from .state import DriverState, TendencyState, _restart_driver_state
 
 
 class Initializer(abc.ABC):
@@ -80,10 +77,7 @@ class BaroclinicConfig(Initializer):
     Configuration for baroclinic initialization.
     """
 
-    @property
-    def start_time(self) -> datetime:
-        # TODO: instead of arbitrary start time, enable use of timedeltas
-        return datetime(2000, 1, 1)
+    start_time: datetime = datetime(2000, 1, 1)
 
     def get_driver_state(
         self,
@@ -128,76 +122,18 @@ class RestartConfig(Initializer):
     Configuration for restart initialization.
     """
 
-    path: str
-
-    @property
-    def start_time(self) -> datetime:
-        return datetime(2000, 1, 1)
-
-    def _read_restart_files(
-        self,
-        state: Union[fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState],
-        restart_file_prefix: str,
-        metadata_check: str,
-    ):
-        """
-        Args:
-            state: an empty state
-            restart_file_prefix: file prefix name to read
-            metadata_check: use this string to check if we should fill the field
-
-        Returns:
-            state: new state filled with restart files
-        """
-        df = xr.open_dataset(
-            self.path + f"/{restart_file_prefix}_{self.communicator.rank}.nc"
-        )
-        for _field in fields(type(state)):
-            if metadata_check in _field.metadata.keys():
-                state.__dict__[_field.name].data[:] = df[_field.name].data[:]
-        return state
+    path: str = "."
+    start_time: datetime = datetime(2000, 1, 1)
 
     def get_driver_state(
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
-        self.communicator = communicator
-        metric_terms = pace.util.grid.MetricTerms(
-            quantity_factory=quantity_factory, communicator=communicator
+        state = _restart_driver_state(
+            self.path, str(communicator.rank), quantity_factory, communicator
         )
-        grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-        damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
-        driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
-            metric_terms
-        )
-        dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
-        dycore_state = self._read_restart_files(
-            dycore_state, "restart_dycore_state", "dim"
-        )
-        active_packages = ["microphysics"]
-        physics_state = fv3gfs.physics.PhysicsState.init_zeros(
-            quantity_factory=quantity_factory, active_packages=active_packages
-        )
-        physics_state = self._read_restart_files(
-            physics_state, "restart_physics_state", "units"
-        )
-        physics_state.__post_init__(quantity_factory, active_packages)
-        tendency_state = TendencyState.init_zeros(
-            quantity_factory=quantity_factory,
-        )
-        tendency_state = self._read_restart_files(
-            tendency_state, "restart_tendency_state", "dim"
-        )
-
-        return DriverState(
-            dycore_state=dycore_state,
-            physics_state=physics_state,
-            tendency_state=tendency_state,
-            grid_data=grid_data,
-            damping_coefficients=damping_coefficients,
-            driver_grid_data=driver_grid_data,
-        )
+        return state
 
 
 @InitializerSelector.register("predefined")
@@ -217,11 +153,7 @@ class PredefinedStateConfig(Initializer):
     grid_data: pace.util.grid.GridData
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
-
-    @property
-    def start_time(self) -> datetime:
-        # TODO: instead of arbitrary start time, enable use of timedeltas
-        return datetime(2016, 8, 1)
+    start_time: datetime = datetime(2016, 8, 1)
 
     def get_driver_state(
         self,

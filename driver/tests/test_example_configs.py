@@ -16,6 +16,7 @@ TESTED_CONFIGS = [
     "baroclinic_c12_comm_read.yaml",
     "baroclinic_c12_comm_write.yaml",
     "baroclinic_c12_null_comm.yaml",
+    "baroclinic_c12_write_restart.yaml",
 ]
 
 EXCLUDED_CONFIGS: List[str] = []
