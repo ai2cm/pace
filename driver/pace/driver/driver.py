@@ -220,11 +220,11 @@ class Driver:
             )
 
             self.dycore.update_state(
-                self.config.dycore_config.consv_te,
-                self.config.dycore_config.adiabatic,
-                self.config.dycore_config.dt_atmos,
-                self.config.dycore_config.n_split,
-                self.state.dycore_state,
+                conserve_total_energy=self.config.dycore_config.consv_te,
+                do_adiabatic_init=False,
+                timestep=self.config.timestep.total_seconds(),
+                n_split=self.config.dycore_config.n_split,
+                state=self.state.dycore_state,
             )
 
             self.physics = fv3gfs.physics.Physics(
@@ -268,11 +268,11 @@ class Driver:
 
     @computepath_method
     def dycore_only_loop_orchestrated(
-        self, state: dace.constant, time_steps: int, time_step_freq: int
+        self, state: dace.constant, time_steps: int, time_step_io_freq: int
     ):
         for t in dace.nounroll(range(time_steps)):
             self._step_dynamics(state)
-            if (t % time_step_freq) == 0:
+            if (t % time_step_io_freq) == 0:
                 self._callback_diagnostics()
 
     def step_all(self):
@@ -296,20 +296,20 @@ class Driver:
                 self.dycore_only_loop_orchestrated(
                     state=self.state.dycore_state,
                     time_steps=time_steps,
-                    time_step_freq=18,
+                    time_step_io_freq=18,
                 )
             else:
                 while time < end_time:
-                    self._step(timestep=self.config.timestep.total_seconds())
+                    self._step()
                     time += self.config.timestep
                     self.diagnostics.store(time=time, state=self.state)
             self.performance_config.collect_performance()
 
-    def _step(self, state: dace.constant):
+    def _step(self):
         with self.performance_config.timestep_timer.clock("mainloop"):
-            self._step_dynamics(state)
+            self._step_dynamics(self.state.dycore_state)
         if not self.config.disable_step_physics:
-            self._step_physics(state)
+            self._step_physics(self.state.dycore_state)
         self.performance_config.collect_performance()
 
     def _step_dynamics(self, state: dace.constant):
