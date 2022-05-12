@@ -17,7 +17,7 @@ def stencil_definition(a: FloatField):
 
 
 def test_skip_passes_becomes_oir_pipeline():
-    config = StencilConfig(backend="gtc:gt:cpu_ifirst")
+    config = StencilConfig(backend="gt:cpu_ifirst")
     grid_indexing = GridIndexing(
         domain=(4, 4, 7),
         n_halo=3,

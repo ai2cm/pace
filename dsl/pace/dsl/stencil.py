@@ -36,7 +36,7 @@ from pace.util.mpi import MPI
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
-    backend: str = "gtc:numpy"
+    backend: str = "numpy"
     rebuild: bool = True
     validate_args: bool = True
     format_source: bool = False
@@ -223,7 +223,7 @@ class CompareToNumpyStencil:
             skip_passes=skip_passes,
         )
         numpy_stencil_config = StencilConfig(
-            backend="gtc:numpy",
+            backend="numpy",
             rebuild=stencil_config.rebuild,
             validate_args=stencil_config.validate_args,
             format_source=True,

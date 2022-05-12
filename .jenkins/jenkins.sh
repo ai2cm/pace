@@ -40,7 +40,7 @@ T="$(date +%s)"
 test -n "$1" || exitError 1001 ${LINENO} "must pass an argument"
 test -n "${slave}" || exitError 1005 ${LINENO} "slave is not defined"
 
-# GTC backend name fix: passed as gtc_gt_* but their real name are gtc:gt:*
+# GTC backend name fix: passed as gtc_gt_* but their real name are gt:*
 #                       OR gtc_* but their real name is gtc:*
 input_backend="$2"
 if [[ $input_backend = gtc_gt_* ]] ; then
