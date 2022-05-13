@@ -1,4 +1,3 @@
-import enum
 import functools
 import os
 from typing import Optional

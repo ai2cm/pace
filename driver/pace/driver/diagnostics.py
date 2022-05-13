@@ -16,8 +16,18 @@ from .state import DriverState
 
 @dataclasses.dataclass(frozen=True)
 class DiagnosticsConfig:
+    """
+    Configuration for diagnostics write
+
+        - path: file path to directory where files will be written
+                (relative to working directory)
+        - names: list of variables to write
+        - timestep_io_frequency: number of time steps to do a write
+    """
+
     path: str
     names: List[str] = dataclasses.field(default_factory=list)
+    timestep_io_frequency: int = 1
 
 
 class Diagnostics:

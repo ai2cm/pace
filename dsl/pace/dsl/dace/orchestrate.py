@@ -15,7 +15,7 @@ from pace.dsl.dace.build import (
     unblock_waiting_tiles,
     write_decomposition,
 )
-from pace.dsl.dace.dace_config import dace_config, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaCeOrchestration, dace_config
 from pace.dsl.dace.sdfg_opt_passes import (
     splittable_region_expansion,
     strip_unused_global_in_compute_x_flux,

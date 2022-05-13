@@ -296,7 +296,9 @@ class Driver:
                 self.dycore_only_loop_orchestrated(
                     state=self.state.dycore_state,
                     time_steps=time_steps,
-                    time_step_io_freq=18,
+                    time_step_io_freq=(
+                        self.config.diagnostics_config.timestep_io_frequency,
+                    ),
                 )
             else:
                 while time < end_time:
