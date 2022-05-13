@@ -203,23 +203,24 @@ def test_sequential_savepoint(
     output = testobj.compute(input_data)
     failing_names = []
     passing_names = []
+    ref_data = {}
     for varname in testobj.serialnames(testobj.out_vars):
         ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
-        ref_data = serializer.read(varname, savepoint_out)
+        ref_data[varname] = serializer.read(varname, savepoint_out)
         if hasattr(testobj, "subset_output"):
-            ref_data = testobj.subset_output(varname, ref_data)
+            ref_data[varname] = testobj.subset_output(varname, ref_data[varname])
         with subtests.test(varname=varname):
             failing_names.append(varname)
             output_data = gt_utils.asarray(output[varname])
             assert success(
                 output_data,
-                ref_data,
+                ref_data[varname],
                 testobj.max_error,
                 ignore_near_zero,
                 testobj.near_zero,
             ), sample_wherefail(
                 output_data,
-                ref_data,
+                ref_data[varname],
                 testobj.max_error,
                 print_failures,
                 failure_stride,
@@ -229,14 +230,12 @@ def test_sequential_savepoint(
                 xy_indices=xy_indices,
             )
             passing_names.append(failing_names.pop())
+        ref_data[varname] = [ref_data[varname]]  # compatibility with rank-based netcdf saving
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
-        try:
-            save_netcdf(
-                testobj, [input_data], [output], ref_data, failing_names, out_filename
-            )
-        except Exception as error:
-            print(f"TestSequential SaveNetCDF Error: {error}")
+        save_netcdf(
+            testobj, [input_data], [output], ref_data, failing_names, out_filename
+        )
     assert failing_names == [], f"only the following variables passed: {passing_names}"
     assert len(passing_names) > 0, "No tests passed"
 
@@ -468,22 +467,26 @@ def save_netcdf(
 
     data_vars = {}
     for i, varname in enumerate(failing_names):
-        dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
-        attrs = {"units": testobj.outputs[varname]["units"]}
+        if hasattr(testobj, "outputs"):
+            dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
+            attrs = {"units": testobj.outputs[varname]["units"]}
+        else:
+            dims = [f"dim_{varname}_{j}" for j in range(len(ref_data[varname][0].shape))]
+            attrs = {"units": "unknown"}
         try:
             data_vars[f"{varname}_in"] = xr.DataArray(
                 np.stack([in_data[varname] for in_data in inputs_list]),
-                dims=("rank",) + tuple(dims),
+                dims=("rank",) + tuple([f"{d}_in" for d in dims]),
                 attrs=attrs,
             )
         except KeyError as error:
             print(f"No input data found for {error}")
         data_vars[f"{varname}_ref"] = xr.DataArray(
-            np.stack(ref_data[varname]), dims=("rank",) + tuple(dims), attrs=attrs
+            np.stack(ref_data[varname]), dims=("rank",) + tuple([f"{d}_out" for d in dims]), attrs=attrs
         )
         data_vars[f"{varname}_out"] = xr.DataArray(
             np.stack([output[varname] for output in output_list]),
-            dims=("rank",) + tuple(dims),
+            dims=("rank",) + tuple([f"{d}_out" for d in dims]),
             attrs=attrs,
         )
         data_vars[f"{varname}_error"] = (
