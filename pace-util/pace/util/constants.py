@@ -32,7 +32,10 @@ N_HALO_DEFAULT = 3
 # Physical constants
 #####################
 
-GFS_PHYS = False
+# The FV3GFS model ships with two sets of constants, one used in the GFS physics
+# package and the other used for the Dycore. Their difference are small but significant
+# Our Fortran executable on GCE has GFS_PHYS=True
+GFS_PHYS = True
 if GFS_PHYS:
     RADIUS = 6.3712e6  # Radius of the Earth [m]
     PI = 3.1415926535897931

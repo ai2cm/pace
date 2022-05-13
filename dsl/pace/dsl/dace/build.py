@@ -198,10 +198,10 @@ def load_sdfg_once(
         .replace("_run_<locals>_", "")
     )
 
-    return build_sdfg_path(qualified_dirname, sdfg_file_path)
+    return _get_sdfg_path(qualified_dirname, sdfg_file_path)
 
 
-def build_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> str:
+def _get_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> str:
     """Build an SDFG path from the qualified program name or it's direct path to .sdfg
 
     Args:

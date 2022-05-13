@@ -9,14 +9,13 @@ from dace.transformation.auto.auto_optimize import make_transients_persistent
 from dace.transformation.helpers import get_parent_map
 
 from pace.dsl.dace.build import (
-    DaCeOrchestration,
     determine_compiling_ranks,
     load_sdfg_once,
     read_target_rank,
     unblock_waiting_tiles,
     write_decomposition,
 )
-from pace.dsl.dace.dace_config import dace_config
+from pace.dsl.dace.dace_config import dace_config, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import (
     splittable_region_expansion,
     strip_unused_global_in_compute_x_flux,

@@ -6,6 +6,15 @@ from pace.util.communicator import CubedSphereCommunicator
 
 
 class DaCeOrchestration(enum.Enum):
+    """
+    Orchestration mode for DaCe
+
+        Python: python orchestration
+        Build: compile & save SDFG only
+        BuildAndRun: compile & save SDFG, then run
+        Run: load from .so and run, will fail if .so is not available
+    """
+
     Python = 0
     Build = 1
     BuildAndRun = 2
