@@ -54,24 +54,6 @@ class TendencyState:
             )
         return cls(**initial_quantities)
 
-    @property
-    def xr_dataset(self):
-        data_vars = {}
-        for name, field_info in self.__dataclass_fields__.items():
-            if issubclass(field_info.type, pace.util.Quantity):
-                dims = [
-                    f"{dim_name}_{name}" for dim_name in field_info.metadata["dims"]
-                ]
-                data_vars[name] = xr.DataArray(
-                    getattr(self, name).data,
-                    dims=dims,
-                    attrs={
-                        "long_name": field_info.metadata["name"],
-                        "units": field_info.metadata.get("units", "unknown"),
-                    },
-                )
-        return xr.Dataset(data_vars=data_vars)
-
 
 @dataclasses.dataclass
 class DriverState:
@@ -120,9 +102,6 @@ class DriverState:
         )
         self.physics_state.xr_dataset.to_netcdf(
             f"{restart_path}/restart_physics_state_{current_rank}.nc"
-        )
-        self.tendency_state.xr_dataset.to_netcdf(
-            f"{restart_path}/restart_tendency_state_{current_rank}.nc"
         )
 
 
@@ -175,9 +154,6 @@ def _restart_driver_state(
     physics_state.__post_init__(quantity_factory, active_packages)
     tendency_state = TendencyState.init_zeros(
         quantity_factory=quantity_factory,
-    )
-    tendency_state = _overwrite_state_from_restart(
-        path, rank, tendency_state, "restart_tendency_state"
     )
 
     return DriverState(

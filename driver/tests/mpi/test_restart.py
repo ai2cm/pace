@@ -1,18 +1,17 @@
 import subprocess
 import unittest.mock
 
+import gt4py
 import numpy as np
-import xarray as xr
 import pytest
+import xarray as xr
 import yaml
 import zarr
 
 import pace.dsl
-from pace.driver import DriverConfig
+from pace.driver import CreatesComm, DriverConfig
 from pace.driver.state import DriverState
-from pace.driver import CreatesComm
 from pace.util.null_comm import NullComm
-import gt4py
 
 
 class NullCommConfig(CreatesComm):
