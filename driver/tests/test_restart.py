@@ -1,14 +1,17 @@
+import subprocess
 import unittest.mock
+
+import numpy as np
+import pytest
+import xarray as xr
+import yaml
+import zarr
+
+import pace.dsl
 from pace.driver import DriverConfig
 from pace.driver.state import DriverState
-import pace.dsl
+
 from .test_driver import NullCommConfig
-import xarray as xr
-import zarr
-import numpy as np
-import subprocess
-import pytest
-import yaml
 
 
 def test_save_restart():
@@ -30,7 +33,7 @@ def test_save_restart():
         physics_config=unittest.mock.MagicMock(),
         save_restart=True,
     )
-    assert driver_config.save_restart == True
+    assert driver_config.save_restart is True
 
 
 def test_restart_results():
