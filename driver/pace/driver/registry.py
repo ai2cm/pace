@@ -115,8 +115,7 @@ class Registry(Generic[T]):
         It can also have a "config" key, which is a dict used to initialize the
         dataclass. By default this is an empty dict.
         """
-        if "config" not in config:
-            config.setdefault("config", {})
+        config.setdefault("config", {})
         if self.default_type is not None:
             type_name = config.get("type", self.default_type)
         else:

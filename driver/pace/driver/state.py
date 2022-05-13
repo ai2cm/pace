@@ -126,7 +126,7 @@ class DriverState:
         )
 
 
-def _read_restart_files(
+def _overwrite_state_from_restart(
     path: str,
     rank: str,
     state: Union[fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState],
@@ -162,19 +162,21 @@ def _restart_driver_state(
     damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
-    dycore_state = _read_restart_files(path, rank, dycore_state, "restart_dycore_state")
+    dycore_state = _overwrite_state_from_restart(
+        path, rank, dycore_state, "restart_dycore_state"
+    )
     active_packages = ["microphysics"]
     physics_state = fv3gfs.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages
     )
-    physics_state = _read_restart_files(
+    physics_state = _overwrite_state_from_restart(
         path, rank, physics_state, "restart_physics_state"
     )
     physics_state.__post_init__(quantity_factory, active_packages)
     tendency_state = TendencyState.init_zeros(
         quantity_factory=quantity_factory,
     )
-    tendency_state = _read_restart_files(
+    tendency_state = _overwrite_state_from_restart(
         path, rank, tendency_state, "restart_tendency_state"
     )
 

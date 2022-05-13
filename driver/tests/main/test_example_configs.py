@@ -9,7 +9,7 @@ import pace.driver
 
 dirname = os.path.dirname(os.path.abspath(__file__))
 
-EXAMPLE_CONFIGS_DIR = os.path.join(dirname, "../examples/configs/")
+EXAMPLE_CONFIGS_DIR = os.path.join(dirname, "../../examples/configs/")
 
 TESTED_CONFIGS = [
     "baroclinic_c12.yaml",
