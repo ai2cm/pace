@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 MPIRUN_CALL=${MPIRUN_CALL:-mpirun -n 6}
 cp examples/configs/baroclinic_c12_write_restart.yaml baroclinic_c12_write_restart.yaml
 cp examples/configs/baroclinic_c12_write_restart.yaml baroclinic_c12_run_two_steps.yaml
