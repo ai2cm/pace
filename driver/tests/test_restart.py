@@ -1,8 +1,6 @@
-import subprocess
 import unittest.mock
 
 import numpy as np
-import pytest
 import xarray as xr
 import yaml
 import zarr
@@ -37,7 +35,6 @@ def test_save_restart():
 
 
 def test_restart_results():
-    subprocess.call("tests/run_save_and_load_restart.sh")
     restart = xr.open_zarr(
         store=zarr.DirectoryStore(path="output.zarr"), consolidated=False
     )
@@ -64,7 +61,6 @@ def test_restart_results():
         )
 
 
-@pytest.mark.last
 def test_driver_state_load_restart():
     with open("RESTART/restart.yaml", "r") as f:
         config = yaml.safe_load(f)
