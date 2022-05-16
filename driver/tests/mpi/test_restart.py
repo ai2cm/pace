@@ -51,7 +51,7 @@ def test_default_save_restart():
 
 
 def test_restart_results():
-    subprocess.call("tests/mpi/run_save_and_load_restart.sh")
+    output = subprocess.run("tests/mpi/run_save_and_load_restart.sh")
     restart = xr.open_zarr(
         store=zarr.DirectoryStore(path="output.zarr"), consolidated=False
     )
