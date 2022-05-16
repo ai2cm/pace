@@ -2,6 +2,8 @@ import functools
 import os
 from typing import Optional
 
+import pace.util as util
+
 
 def getenv_bool(name: str, default: str) -> bool:
     indicator = os.getenv(name, default).title()
@@ -55,3 +57,25 @@ _BACKEND: Optional[str] = None
 # if FALSE, caches will be checked and rebuild if code changes
 _REBUILD: bool = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "False")
 _VALIDATE_ARGS: bool = True
+
+
+def get_partitioner() -> Optional[util.CubedSpherePartitioner]:
+    global _PARTITIONER
+    return _PARTITIONER
+
+
+def set_partitioner(partitioner: Optional[util.CubedSpherePartitioner]) -> None:
+    global _PARTITIONER
+    if _PARTITIONER is not None:
+        print("re-setting the partitioner, why is that?")
+    _PARTITIONER = partitioner
+
+
+def set_partitioner_once(partitioner: Optional[util.CubedSpherePartitioner]) -> None:
+    global _PARTITIONER
+    if _PARTITIONER is None:
+        _PARTITIONER = partitioner
+
+
+# Partitioner from pace
+_PARTITIONER: Optional[util.CubedSpherePartitioner] = None

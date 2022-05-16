@@ -166,7 +166,6 @@ class FillNegativeTracerValues:
             dp2 (in): pressure thickness of atmospheric layer
             tracers (inout): tracers to fix negative masses in
         """
-
         for tracer_name in self._filtered_tracer_dict.keys():
             self._fix_tracer_stencil(
                 tracers[tracer_name],

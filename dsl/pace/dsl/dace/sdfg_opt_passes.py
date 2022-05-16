@@ -23,3 +23,23 @@ def strip_unused_global_in_compute_x_flux(sdfg: dace.SDFG):
                     code_str = f"{conn}: dace.{dtype.to_string()}\n" + code_str
                     tasklet.code.as_string = code_str
                 state.remove_memlet_path(e, True)
+
+
+def splittable_region_expansion(sdfg: dace.SDFG):
+    """
+    Set certain StencilComputation library nodes to expand to a different
+    schedule if they contain small splittable regions.
+    """
+    from gtc.dace.nodes import StencilComputation
+
+    for node, _ in sdfg.all_nodes_recursive():
+        if isinstance(node, StencilComputation):
+            if node.has_splittable_regions() and "corner" in node.label:
+                node.expansion_specification = [
+                    "Sections",
+                    "Stages",
+                    "J",
+                    "I",
+                    "K",
+                ]
+                print("Reordered schedule for", node.label)

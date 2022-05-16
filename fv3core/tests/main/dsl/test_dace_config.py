@@ -3,6 +3,7 @@ import unittest.mock
 
 import pace.dsl
 import pace.dsl.dace.dace_config
+from pace.dsl.dace.orchestrate import DaCeOrchestration
 
 
 """
@@ -15,20 +16,20 @@ functionality.
 
 
 @contextlib.contextmanager
-def use_dace(use: bool):
-    original_setting = pace.dsl.dace.dace_config.dace_config.orchestrate
+def use_dace(orchestration_mode: DaCeOrchestration):
+    original_setting = pace.dsl.dace.dace_config.dace_config.get_orchestrate()
     try:
-        pace.dsl.dace.dace_config.dace_config.orchestrate = use
+        pace.dsl.dace.dace_config.dace_config._orchestrate = orchestration_mode
         yield
     finally:
-        pace.dsl.dace.dace_config.dace_config.orchestrate = original_setting
+        pace.dsl.dace.dace_config.dace_config._orchestrate = original_setting
 
 
 def test_computepath_function_calls_dace():
     def foo():
         pass
 
-    with use_dace(True):
+    with use_dace(DaCeOrchestration.BuildAndRun):
         wrapped = pace.dsl.computepath_function(foo)
         with unittest.mock.patch(
             "pace.dsl.dace.orchestrate.call_sdfg"
@@ -42,7 +43,7 @@ def test_computepath_function_does_not_call_dace():
     def foo():
         pass
 
-    with use_dace(False):
+    with use_dace(DaCeOrchestration.Python):
         wrapped = pace.dsl.computepath_function(foo)
         with unittest.mock.patch(
             "pace.dsl.dace.orchestrate.call_sdfg"
@@ -53,7 +54,7 @@ def test_computepath_function_does_not_call_dace():
 
 def test_computepath_method_calls_dace():
 
-    with use_dace(True):
+    with use_dace(DaCeOrchestration.BuildAndRun):
 
         class A:
             @pace.dsl.computepath_method
@@ -70,7 +71,7 @@ def test_computepath_method_calls_dace():
 
 def test_computepath_method_does_not_call_dace():
 
-    with use_dace(False):
+    with use_dace(DaCeOrchestration.Python):
 
         class A:
             @pace.dsl.computepath_method

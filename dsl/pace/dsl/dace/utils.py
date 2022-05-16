@@ -1,5 +1,7 @@
 import time
 
+from pace.dsl.dace.dace_config import dace_config
+
 
 # Rough timer & log for major operations of DaCe build stack
 class DaCeProgress:
@@ -8,7 +10,7 @@ class DaCeProgress:
 
     @classmethod
     def log(cls, message: str):
-        print(f"[Dace.Build] {message}")
+        print(f"[{dace_config.get_orchestrate()}] {message}")
 
     def __enter__(self):
         DaCeProgress.log(f"{self.label}...")

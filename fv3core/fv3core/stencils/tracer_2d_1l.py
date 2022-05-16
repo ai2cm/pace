@@ -2,11 +2,11 @@ import math
 from typing import Dict
 
 import gt4py.gtscript as gtscript
+from dace import constant as dace_constant
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from dace import constant as dace_constant
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from pace.dsl.dace.orchestrate import computepath_method
@@ -158,6 +158,18 @@ def q_adjust(
         q = adjustment(q, dp1, fx, fy, rarea, dp2)
 
 
+# Simple stencil replacing:
+#   self._tmp_dp2[:] = dp1
+#   dp1[:] = dp2
+#   dp2[:] = self._tmp_dp2
+# Because dpX can be a quantity or an array
+def swap_dp(dp1: FloatField, dp2: FloatField):
+    with computation(PARALLEL), interval(...):
+        tmp = dp1
+        dp1 = dp2
+        dp2 = tmp
+
+
 class TracerAdvection:
     """
     Performs horizontal advection on tracers.
@@ -209,6 +221,13 @@ class TracerAdvection:
         for axis_offset_name, axis_offset_value in ax_offsets.items():
             if "local" in axis_offset_name:
                 local_axis_offsets[axis_offset_name] = axis_offset_value
+
+        self._swap_dp = stencil_factory.from_origin_domain(
+            swap_dp,
+            origin=grid_indexing.origin_compute(),
+            domain=grid_indexing.domain_compute(),
+            externals=local_axis_offsets,
+        )
 
         self._flux_compute = stencil_factory.from_origin_domain(
             flux_compute,
@@ -367,6 +386,4 @@ class TracerAdvection:
             if not last_call:
                 self._tracers_halo_updater.update()
                 # use variable assignment to avoid a data copy
-                self._tmp_dp2[:] = dp1
-                dp1[:] = dp2
-                dp2[:] = self._tmp_dp2
+                self._swap_dp(dp1, dp2)

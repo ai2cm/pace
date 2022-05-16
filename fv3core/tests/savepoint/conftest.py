@@ -14,6 +14,7 @@ import pace.dsl
 import pace.util as fv3util
 from fv3core import DynamicalCoreConfig
 from fv3core.utils.mpi import MPI
+from pace.dsl.dace.build import set_distribued_caches
 from pace.dsl.dace.dace_config import dace_config
 from pace.stencils.testing import ParallelTranslate, TranslateGrid
 
@@ -26,44 +27,6 @@ import serialbox  # noqa: E402
 
 
 GRID_SAVEPOINT_NAME = "Grid-Info"
-CURRENT_DACE_SAVEPOINT_TESTS = [
-    "DelnFlux",
-    "Remapping",
-    "CS_Profile_2d",
-    "CS_Profile_2d_2",
-    "MapScalar_2d",
-    "Map1_PPM_2d",
-    "Map1_PPM_2d_2",
-    "Map1_PPM_2d_3",
-    "MapN_Tracer_2d",
-    "SatAdjust3d",
-    "Fillz",
-    "MoistCVPlusPkz_2d",
-    "MoistCVPlusPt_2d",
-    "DivergenceDamping",
-    "Del6VtFlux",
-    "FvTp2d",
-    "FxAdv",
-    "D_SW",
-    "D2A2C_Vect",
-    "C_SW",
-    "NH_P_Grad",
-    "UpdateDzD",
-    "Riem_Solver3",
-    "Riem_Solver_C",
-    "UpdateDzC",
-    "Del2Cubed",
-    "Ray_Fast",
-    "PK3_Halo",
-    "PE_Halo",
-    "XPPM",
-    "YPPM",
-    "PressureAdjustedTemperature_NonHydrostatic",
-    "DynCore",
-    "Tracer2D1L",
-    "FillCornersVector",
-    "A2B_Ord4",
-]
 # this must happen before any classes from fv3core are instantiated
 fv3core.testing.enable_selective_validation()
 
@@ -165,7 +128,7 @@ def get_test_class_instance(test_name, grid, namelist, stencil_factory):
     if translate_class is None:
         return None
     else:
-        dace_config.backend = stencil_factory.backend
+        dace_config._backend = stencil_factory.backend
         return translate_class(grid, namelist, stencil_factory)
 
 
@@ -239,10 +202,6 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
     namelist = f90nml.read(namelist_filename)
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
-    if "dace" in backend:
-        savepoint_names = [
-            sp for sp in savepoint_names if sp in CURRENT_DACE_SAVEPOINT_TESTS
-        ]
     ranks = get_ranks(metafunc, dycore_config.layout)
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
@@ -312,10 +271,6 @@ def mock_parallel_savepoint_cases(
         grid_indexing=grid.grid_indexing,
     )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
-    if "dace" in backend:
-        savepoint_names = [
-            sp for sp in savepoint_names if sp in CURRENT_DACE_SAVEPOINT_TESTS
-        ]
     for test_name in sorted(list(savepoint_names)):
         input_list = []
         output_list = []
@@ -379,10 +334,6 @@ def parallel_savepoint_cases(
     if metafunc.config.getoption("compute_grid"):
         compute_grid_data(metafunc, grid, dycore_config)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
-    if "dace" in backend:
-        savepoint_names = [
-            sp for sp in savepoint_names if sp in CURRENT_DACE_SAVEPOINT_TESTS
-        ]
     return_list = []
     for test_name in sorted(list(savepoint_names)):
         input_savepoints = serializer.get_savepoint(f"{test_name}-In")
@@ -612,6 +563,7 @@ def get_sequential_param(
 @pytest.fixture()
 def communicator(layout):
     communicator = get_communicator(MPI.COMM_WORLD, layout)
+    set_distribued_caches(communicator)
     return communicator
 
 

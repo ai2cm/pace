@@ -16,7 +16,7 @@ from fv3core.stencils.d2a2c_vect import contravariant
 from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
+from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from pace.util.grid import DampingCoefficients, GridData
 
 
@@ -25,6 +25,67 @@ def damp_tmp(q, da_min_c, d2_bg, dddmp):
     mintmp = min(0.2, dddmp * abs(q))
     damp = da_min_c * max(d2_bg, mintmp)
     return damp
+
+
+def ptc_computation(
+    u: FloatField,
+    va: FloatField,
+    vc: FloatField,
+    cosa_v: FloatFieldIJ,
+    sina_v: FloatFieldIJ,
+    dyc: FloatFieldIJ,
+    sin_sg2: FloatFieldIJ,
+    sin_sg4: FloatFieldIJ,
+    ptc: FloatField,
+):
+    """computation of pct"""
+    from __externals__ import j_end, j_start
+
+    with computation(PARALLEL), interval(...):
+        ptc = (u - 0.5 * (va[0, -1, 0] + va) * cosa_v) * dyc * sina_v
+        with horizontal(region[:, j_start], region[:, j_end + 1]):
+            ptc = u * dyc * sin_sg4[0, -1] if vc > 0 else u * dyc * sin_sg2
+
+
+def vorticity_computation(
+    v: FloatField,
+    ua: FloatField,
+    cosa_u: FloatFieldIJ,
+    sina_u: FloatFieldIJ,
+    dxc: FloatFieldIJ,
+    vort: FloatField,
+    uc: FloatField,
+    sin_sg3: FloatFieldIJ,
+    sin_sg1: FloatFieldIJ,
+):
+    """computation of the vorticity"""
+    from __externals__ import i_end, i_start
+
+    with computation(PARALLEL), interval(...):
+        vort = (v - 0.5 * (ua[-1, 0, 0] + ua) * cosa_u) * dxc * sina_u
+        with horizontal(region[i_start, :], region[i_end + 1, :]):
+            vort = v * dxc * sin_sg3[-1, 0] if uc > 0 else v * dxc * sin_sg1
+
+
+def delpc_computation(
+    ptc: FloatField,
+    rarea_c: FloatFieldIJ,
+    delpc: FloatField,
+    vort: FloatField,
+):
+    from __externals__ import i_end, i_start, j_end, j_start
+
+    with computation(PARALLEL), interval(...):
+        delpc = vort[0, -1, 0] - vort + ptc[-1, 0, 0] - ptc
+
+    with computation(PARALLEL), interval(...):
+        with horizontal(region[i_start, j_start], region[i_end + 1, j_start]):
+            delpc = delpc - vort[0, -1, 0]
+        with horizontal(region[i_start, j_end + 1], region[i_end + 1, j_end + 1]):
+            delpc = delpc + vort
+
+    with computation(PARALLEL), interval(...):
+        delpc = rarea_c * delpc
 
 
 def get_delpc(
@@ -185,10 +246,14 @@ def redo_divg_d(
 
     with computation(PARALLEL), interval(...):
         divg_d = uc[0, -1, 0] - uc + vc[-1, 0, 0] - vc
+
+    with computation(PARALLEL), interval(...):
         with horizontal(region[i_start, j_start], region[i_end + 1, j_start]):
-            divg_d = vc[-1, 0, 0] - vc - uc
+            divg_d = divg_d - uc[0, -1, 0]
         with horizontal(region[i_start, j_end + 1], region[i_end + 1, j_end + 1]):
-            divg_d = uc[0, -1, 0] + vc[-1, 0, 0] - vc
+            divg_d = divg_d + uc
+
+    with computation(PARALLEL), interval(...):
         if __INLINED(do_adjustment):
             divg_d = divg_d * adjustment_factor
 
@@ -274,6 +339,30 @@ class DivergenceDamping:
         )
         high_k_stencil_factory = stencil_factory.restrict_vertical(
             k_start=nonzero_nord_k
+        )
+
+        self._ptc_computation = low_k_stencil_factory.from_dims_halo(
+            ptc_computation,
+            compute_dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM],
+            compute_halos=(1, 0),
+        )
+
+        self._vorticity_computation = low_k_stencil_factory.from_dims_halo(
+            vorticity_computation,
+            compute_dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
+            compute_halos=(0, 1),
+        )
+
+        self._delpc_computation = low_k_stencil_factory.from_dims_halo(
+            delpc_computation,
+            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
+            compute_halos=(0, 0),
+        )
+
+        self.ptc = utils.make_storage_from_shape(
+            self.grid_indexing.max_shape,
+            origin=(self.grid_indexing.isc - 1, self.grid_indexing.jsc - 1, 0),
+            backend=stencil_factory.backend,
         )
 
         self._get_delpc = low_k_stencil_factory.from_dims_halo(
@@ -417,6 +506,38 @@ class DivergenceDamping:
         if self._do_zero_order:
             # TODO: delpc is an output of this but is never used. Inside the helper
             # function, use a stencil temporary or temporary storage instead
+            self._ptc_computation(
+                u,
+                va,
+                vc,
+                self._cosa_v,
+                self._sina_v,
+                self._dyc,
+                self._sin_sg2,
+                self._sin_sg4,
+                self.ptc,
+            )
+
+            self._vorticity_computation(
+                v,
+                ua,
+                self._cosa_u,
+                self._sina_u,
+                self._dxc,
+                v_contra_dxc,  # vort
+                uc,
+                self._sin_sg3,
+                self._sin_sg1,
+            )
+
+            self._delpc_computation(
+                self.ptc,
+                self._rarea_c,
+                delpc,
+                v_contra_dxc,  # vort
+            )
+
+            """
             self._get_delpc(
                 u,
                 v,
@@ -437,6 +558,8 @@ class DivergenceDamping:
                 self._rarea_c,
                 delpc,
             )
+            """
+
             self._damping(
                 delpc,
                 v_contra_dxc,

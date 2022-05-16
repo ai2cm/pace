@@ -1,7 +1,7 @@
 import contextlib
 import os
 import unittest.mock
-from typing import Any, List, Tuple
+from typing import Tuple
 
 import fv3core
 import fv3core._config
@@ -47,7 +47,7 @@ def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
             obj._lagrangian_contributions = original
 
 
-def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
+def setup_dycore() -> Tuple[fv3core.DynamicalCore, fv3core.DycoreState]:
     backend = "numpy"
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
@@ -150,21 +150,20 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         state=state,
     )
     do_adiabatic_init = False
-    # TODO compute from namelist
-    bdt = config.dt_atmos
 
-    args = [
-        state,
+    dycore.update_state(
         config.consv_te,
         do_adiabatic_init,
-        bdt,
+        config.dt_atmos,
         config.n_split,
-    ]
-    return dycore, args
+        state,
+    )
+
+    return dycore, state
 
 
 def test_call_does_not_allocate_storages():
-    dycore, args = setup_dycore()
+    dycore, state = setup_dycore()
 
     def error_func(*args, **kwargs):
         raise AssertionError("call not allowed")
@@ -172,15 +171,15 @@ def test_call_does_not_allocate_storages():
     with unittest.mock.patch("gt4py.storage.storage.zeros", new=error_func):
         with unittest.mock.patch("gt4py.storage.storage.empty", new=error_func):
             with no_lagrangian_contributions(dynamical_core=dycore):
-                dycore.step_dynamics(*args)
+                dycore.step_dynamics(state)
 
 
 def test_call_does_not_define_stencils():
-    dycore, args = setup_dycore()
+    dycore, state = setup_dycore()
 
     def error_func(*args, **kwargs):
         raise AssertionError("call not allowed")
 
     with unittest.mock.patch("gt4py.gtscript.stencil", new=error_func):
         with no_lagrangian_contributions(dynamical_core=dycore):
-            dycore.step_dynamics(*args)
+            dycore.step_dynamics(state)
