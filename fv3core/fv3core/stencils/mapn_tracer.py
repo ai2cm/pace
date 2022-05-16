@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from dace import constant as DaceConstant
 
@@ -9,9 +9,9 @@ from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
 
-# [DaCe] Import.
-#        Quantity required for type hints
-from pace.util import Quantity
+
+if TYPE_CHECKING:
+    from pace.util import Quantity
 
 
 class MapNTracer:
