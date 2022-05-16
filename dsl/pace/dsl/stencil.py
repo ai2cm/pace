@@ -25,13 +25,11 @@ from gt4py import gtscript
 from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
-import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.halo_data_transformer import QuantityHaloSpec
-from pace.util.mpi import MPI
 
 
 @dataclasses.dataclass
@@ -299,15 +297,9 @@ class FrozenStencil:
         stencil_function = gtscript.stencil
         stencil_kwargs = {**self.stencil_config.stencil_kwargs(skip_passes=skip_passes)}
 
-        # Enable distributed compilation if running in parallel
-        if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-            stencil_function = future_stencil.future_stencil
-            stencil_kwargs["wrapper"] = self
-        else:
-            # future stencil provides this information and
-            # we want to be consistent with the naming whether we are
-            # running in parallel or not (so we use the same cache)
-            stencil_kwargs["name"] = func.__module__ + "." + func.__name__
+        # we want to be consistent with the naming whether we are
+        # running in parallel or not (so we use the same cache)
+        # stencil_kwargs["name"] = func.__module__ + "." + func.__name__
 
         self.stencil_object: gt4py.StencilObject = stencil_function(
             definition=func,
