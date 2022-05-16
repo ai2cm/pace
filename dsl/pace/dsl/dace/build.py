@@ -39,6 +39,11 @@ def unblock_waiting_tiles(comm, sdfg_path: str) -> None:
 
 
 def top_tile_rank_from_decomposition_string(string, partitioner):
+    """
+    Return the rank number on the correct subtile position by matching
+    the decomposition string and the position given by the partitionner
+        e.g.: return rank for "00" for bottom left subtile
+    """
     tilesize = partitioner.total_ranks / 6
     if tilesize == 1:
         return 0
@@ -108,6 +113,11 @@ def top_tile_rank_from_decomposition_string(string, partitioner):
 
 
 def top_tile_rank_to_decomposition_string(rank):
+    """
+    Return the decomposition string for the correct subtile position by matching
+     osition given by the partitionner
+        e.g.: return "00" for ranl at bottom left subtile
+    """
     partitioner = dace_config.get_communicator().partitioner
     if partitioner.tile.on_tile_bottom(rank):
         if partitioner.tile.on_tile_left(rank):
@@ -247,11 +257,11 @@ def _get_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> s
     return sdfg_dir_path
 
 
-def set_distribued_caches(cube_communicator: CubedSphereCommunicator):
+def set_distributed_caches(cube_communicator: CubedSphereCommunicator, backend: str):
     """In Run mode, check required file then point current rank cache to source cache"""
 
     # Set the communicator for the dace builder
-    dace_config.init(cube_communicator)
+    dace_config.init(cube_communicator, backend)
 
     # Execute specific initialization per orchestration state
     orchestration_mode = dace_config.get_orchestrate()

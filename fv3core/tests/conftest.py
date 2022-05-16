@@ -6,7 +6,7 @@ from pace.dsl.dace.dace_config import dace_config
 @pytest.fixture()
 def backend(pytestconfig):
     backend = pytestconfig.getoption("backend")
-    dace_config.set_backend(backend)
+    dace_config._backend = backend
     return backend
 
 

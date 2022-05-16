@@ -35,8 +35,9 @@ class DaceConfig:
 
         self.orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
 
-    def init(self, communicator: CubedSphereCommunicator):
+    def init(self, communicator: CubedSphereCommunicator, backend: str):
         self._communicator = communicator
+        self._backend = backend
 
     def is_dace_orchestrated(self) -> bool:
         if self._orchestrate == DaCeOrchestration.Python:
@@ -50,9 +51,6 @@ class DaceConfig:
 
     def is_gpu_backend(self) -> bool:
         return "gpu" in self._backend
-
-    def set_backend(self, backend: str) -> None:
-        self._backend = backend
 
     def get_backend(self) -> str:
         return self._backend

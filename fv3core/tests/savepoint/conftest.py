@@ -128,7 +128,7 @@ def get_test_class_instance(test_name, grid, namelist, stencil_factory):
     if translate_class is None:
         return None
     else:
-        dace_config.set_backend(stencil_factory.backend)
+        dace_config._backend = stencil_factory.backend
         return translate_class(grid, namelist, stencil_factory)
 
 

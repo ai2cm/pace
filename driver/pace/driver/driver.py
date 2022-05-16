@@ -198,8 +198,9 @@ class Driver:
             )
 
             # DaCe distributed caches and backend setup
-            dace_build.set_distribued_caches(communicator)
-            dace_config.set_backend(self.config.stencil_config.backend)
+            dace_build.set_distributed_caches(
+                communicator, self.config.stencil_config.backend
+            )
 
             quantity_factory, stencil_factory = _setup_factories(
                 config=config, communicator=communicator
