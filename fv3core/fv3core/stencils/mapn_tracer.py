@@ -8,7 +8,6 @@ from fv3core.stencils.map_single import MapSingle
 from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
-
 from pace.util import Quantity
 
 
