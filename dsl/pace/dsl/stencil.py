@@ -296,15 +296,10 @@ class FrozenStencil:
 
         stencil_function = gtscript.stencil
         stencil_kwargs = {**self.stencil_config.stencil_kwargs(skip_passes=skip_passes)}
-
-        # we want to be consistent with the naming whether we are
-        # running in parallel or not (so we use the same cache)
         # stencil_kwargs["name"] = func.__module__ + "." + func.__name__
 
         self.stencil_object: gt4py.StencilObject = stencil_function(
-            definition=func,
-            externals=externals,
-            **stencil_kwargs,
+            definition=func, externals=externals, **stencil_kwargs
         )
         """generated stencil object returned from gt4py."""
 
