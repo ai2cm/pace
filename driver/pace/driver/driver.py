@@ -57,7 +57,8 @@ class DriverConfig:
             including coupling code between the dycore and physics, as well as
             dry static adjustment. This is a development flag and will be removed
             in a later commit.
-        save_restart: whether to save the state output as restart files
+        save_restart: whether to save the state output as restart files at
+            cleanup time
     """
 
     stencil_config: pace.dsl.StencilConfig
