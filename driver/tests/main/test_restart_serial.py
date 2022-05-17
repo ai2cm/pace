@@ -1,4 +1,4 @@
-import subprocess
+import os
 import unittest.mock
 
 import gt4py
@@ -110,4 +110,4 @@ def test_restart_save_to_disk():
                             should not be in physics restart file"
                     )
     finally:
-        subprocess.Popen(["make", "clean"])
+        os.rmdir("RESTART")
