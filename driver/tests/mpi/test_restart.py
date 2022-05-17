@@ -3,15 +3,21 @@ import unittest.mock
 
 import gt4py
 import numpy as np
-import pytest
 import xarray as xr
 import yaml
 import zarr
+from mpi4py import MPI
 
 import pace.dsl
 from pace.driver import CreatesComm, DriverConfig
 from pace.driver.state import DriverState
 from pace.util.null_comm import NullComm
+
+
+# The packages we import will import MPI, causing an MPI init, but we don't actually
+# want to use MPI under this script. We have to finalize so mpirun will work on
+# the test scripts we call that *do* need MPI.
+MPI.Finalize()
 
 
 class NullCommConfig(CreatesComm):
@@ -50,7 +56,7 @@ def test_default_save_restart():
     assert driver_config.save_restart is False
 
 
-def test_restart_results():
+def test_restart():
     subprocess.check_output("tests/mpi/run_save_and_load_restart.sh")
     restart = xr.open_zarr(
         store=zarr.DirectoryStore(path="output.zarr"), consolidated=False
@@ -77,9 +83,7 @@ def test_restart_results():
             restart[var].isel(time=0).values, regular[var].isel(time=-1).values
         )
 
-
-@pytest.mark.last
-def test_driver_state_load_restart():
+    # now use the same restart to test DriverState load function
     with open("RESTART/restart.yaml", "r") as f:
         config = yaml.safe_load(f)
         config["comm_config"]["type"] = "null_comm"
