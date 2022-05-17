@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 
 import gt4py
@@ -80,4 +81,4 @@ def test_restart():
                     restart_physics[var].values,
                 )
     finally:
-        subprocess.Popen(["make", "clean"])
+        shutil.rmtree("RESTART")
