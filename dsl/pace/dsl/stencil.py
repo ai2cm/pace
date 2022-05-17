@@ -104,7 +104,7 @@ class StencilConfig(Hashable):
 
     def stencil_kwargs(self, skip_passes: Iterable[str] = ()):
         kwargs = {
-            "backend": self.backend,
+            "backend": self.backend.replace("gtc:", ""),
             "rebuild": self.rebuild,
             **self.backend_opts,
         }
