@@ -82,9 +82,14 @@ if [ ! -d "${BENCHMARK_DIR}" ] ; then
     exitError 1005 ${LINENO} "Benchmark directory ${BENCHMARK_DIR} does not exist"
 fi
 
-# GTC backend name fix: passed as gt_* but their real name are gt:*
-if [[ $backend = gt_* ]] ; then
-    # sed explained: replace _ with : once
+# GTC backend name fix: passed as gtc_gt_* but their real name are gtc:gt:*
+#                       OR gtc_* but their real name is gtc:*
+if [[ $backend = gtc_gt_* ]] ; then
+    # sed explained: replace _ with :, two times
+    backend=`echo $backend | sed 's/_/:/;s/_/:/'`
+fi
+if [[ $backend = gtc_* ]] ; then
+    # sed explained: replace _ with :
     backend=`echo $backend | sed 's/_/:/'`
 fi
 
