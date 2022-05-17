@@ -11,5 +11,5 @@ test_mpi:
 clean:
 	rm -rf *.json
 	rm -rf RESTART
-	rm -rf *.yaml
+	rm -rf baroclinic_c12_*.yaml
 	rm -rf *output.zarr
