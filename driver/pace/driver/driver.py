@@ -22,14 +22,8 @@ from pace.dsl.dace.orchestrate import computepath_method, dace_inhibitor
 from pace.stencils import update_atmos_state
 
 from . import diagnostics
-from .comm import CommConfig
-from .initialization import (
-    BaroclinicConfig,
-    InitializationConfig,
-    PredefinedStateConfig,
-    RestartConfig,
-    SerialboxConfig,
-)
+from .comm import CreatesCommSelector
+from .initialization import InitializerSelector
 from .performance import PerformanceConfig
 
 
@@ -44,7 +38,7 @@ class DriverConfig:
     Attributes:
         stencil_config: configuration for stencil compilation
         initialization_type: must be
-             "baroclinic", "restart", "serialbox", or "predefined"
+             "baroclinic", "restart", or "predefined"
         initialization_config: configuration for the chosen initialization
             type, see documentation for its corresponding configuration
             dataclass
@@ -68,15 +62,20 @@ class DriverConfig:
     """
 
     stencil_config: pace.dsl.StencilConfig
-    initialization_type: str
-    initialization_config: InitializationConfig
+    initialization: InitializerSelector
     nx_tile: int
     nz: int
     layout: Tuple[int, int]
     dt_atmos: float
-    diagnostics_config: diagnostics.DiagnosticsConfig
-    performance_config: PerformanceConfig
-    comm_config: CommConfig
+    diagnostics_config: diagnostics.DiagnosticsConfig = dataclasses.field(
+        default_factory=diagnostics.DiagnosticsConfig
+    )
+    performance_config: PerformanceConfig = dataclasses.field(
+        default_factory=PerformanceConfig
+    )
+    comm_config: CreatesCommSelector = dataclasses.field(
+        default_factory=CreatesCommSelector
+    )
     dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
         default_factory=fv3core.DynamicalCoreConfig
     )
@@ -96,7 +95,7 @@ class DriverConfig:
 
     @property
     def start_time(self) -> Union[datetime, timedelta]:
-        return self.initialization_config.start_time
+        return self.initialization.start_time
 
     @functools.cached_property
     def total_time(self) -> timedelta:
@@ -114,27 +113,6 @@ class DriverConfig:
 
     @classmethod
     def from_dict(cls, kwargs: Dict[str, Any]) -> "DriverConfig":
-        initialization_type = kwargs["initialization_type"]
-        if initialization_type == "serialbox":
-            initialization_class = SerialboxConfig  # type: ignore
-        elif initialization_type == "predefined":
-            initialization_class = PredefinedStateConfig  # type: ignore
-        elif initialization_type == "baroclinic":
-            initialization_class = BaroclinicConfig  # type: ignore
-        elif initialization_type == "restart":
-            initialization_class = RestartConfig  # type: ignore
-        else:
-            raise ValueError(
-                "initialization_type must be one of 'baroclinic' or 'restart', "
-                f"got {initialization_type}"
-            )
-
-        kwargs["initialization_config"] = dacite.from_dict(
-            data_class=initialization_class,
-            data=kwargs.get("initialization_config", {}),
-            config=dacite.Config(strict=True),
-        )
-
         if isinstance(kwargs["dycore_config"], dict):
             for derived_name in ("dt_atmos", "layout", "npx", "npy", "npz", "ntiles"):
                 if derived_name in kwargs["dycore_config"]:
@@ -168,7 +146,12 @@ class DriverConfig:
         kwargs["physics_config"].npx = kwargs["nx_tile"] + 1
         kwargs["physics_config"].npy = kwargs["nx_tile"] + 1
         kwargs["physics_config"].npz = kwargs["nz"]
-        kwargs["comm_config"] = CommConfig.from_dict(kwargs.get("comm_config", {}))
+        kwargs["comm_config"] = CreatesCommSelector.from_dict(
+            kwargs.get("comm_config", {})
+        )
+        kwargs["initialization"] = InitializerSelector.from_dict(
+            kwargs["initialization"]
+        )
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
@@ -189,6 +172,7 @@ class Driver:
         """
         logger.info("initializing driver")
         self.config = config
+        self.time = self.config.start_time
         self.comm_config = config.comm_config
         self.comm = config.comm_config.get_comm()
         self.performance_config = self.config.performance_config
@@ -201,19 +185,18 @@ class Driver:
             dace_build.set_distributed_caches(
                 communicator, self.config.stencil_config.backend
             )
-
-            quantity_factory, stencil_factory = _setup_factories(
+            self.quantity_factory, self.stencil_factory = _setup_factories(
                 config=config, communicator=communicator
             )
 
-            self.state = self.config.initialization_config.get_driver_state(
-                quantity_factory=quantity_factory, communicator=communicator
+            self.state = self.config.initialization.get_driver_state(
+                quantity_factory=self.quantity_factory, communicator=communicator
             )
-            self._start_time = self.config.initialization_config.start_time
+            self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
                 grid_data=self.state.grid_data,
-                stencil_factory=stencil_factory,
+                stencil_factory=self.stencil_factory,
                 damping_coefficients=self.state.damping_coefficients,
                 config=self.config.dycore_config,
                 phis=self.state.dycore_state.phis,
@@ -229,35 +212,38 @@ class Driver:
             )
 
             self.physics = fv3gfs.physics.Physics(
-                stencil_factory=stencil_factory,
+                stencil_factory=self.stencil_factory,
                 grid_data=self.state.grid_data,
                 namelist=self.config.physics_config,
                 active_packages=["microphysics"],
             )
             self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
-                stencil_factory=stencil_factory,
+                stencil_factory=self.stencil_factory,
                 dycore_config=self.config.dycore_config,
                 do_dry_convective_adjustment=self.config.do_dry_convective_adjustment,
                 dycore_only=self.config.dycore_only,
             )
             self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
-                stencil_factory=stencil_factory,
+                stencil_factory=self.stencil_factory,
                 grid_data=self.state.grid_data,
                 namelist=self.config.physics_config,
                 comm=communicator,
                 grid_info=self.state.driver_grid_data,
                 state=self.state.dycore_state,
-                quantity_factory=quantity_factory,
+                quantity_factory=self.quantity_factory,
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,
             )
-            self.diagnostics = diagnostics.Diagnostics(
-                config=config.diagnostics_config,
+            self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
                 comm=self.comm,
             )
         log_subtile_location(
             partitioner=communicator.partitioner.tile, rank=communicator.rank
+        )
+        self.diagnostics.store_grid(
+            grid_data=self.state.grid_data,
+            metadata=self.state.dycore_state.ps.metadata,
         )
 
         self._time_run = self.config.start_time
@@ -279,7 +265,6 @@ class Driver:
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
-            time = self.config.start_time
             end_time = self.config.start_time + self.config.total_time
             self.diagnostics.store_grid(
                 grid_data=self.state.grid_data,
@@ -289,7 +274,7 @@ class Driver:
             # and properly error out. Original code conserved in else
             if dace_config.is_dace_orchestrated():
                 time_steps = int(
-                    (end_time - time).seconds / self.config.timestep.seconds
+                    (end_time - self.time).seconds / self.config.timestep.seconds
                 )
                 logger.info(f"  time_steps: {time_steps}")
                 if not self.config.disable_step_physics:
@@ -302,10 +287,10 @@ class Driver:
                     ),
                 )
             else:
-                while time < end_time:
+                while self.time < end_time:
                     self._step()
-                    time += self.config.timestep
-                    self.diagnostics.store(time=time, state=self.state)
+                    self.time += self.config.timestep
+                    self.diagnostics.store(time=self.time, state=self.state)
             self.performance_config.collect_performance()
 
     def _step(self):

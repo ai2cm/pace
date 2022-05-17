@@ -202,3 +202,12 @@ def test_transpose_invalid_cases(
 ):
     with pytest.raises(ValueError):
         quantity.transpose(target_dims)
+
+
+def test_transpose_retains_attrs(numpy):
+    quantity = pace.util.Quantity(
+        numpy.random.randn(3, 4), dims=["x", "y"], units="unit_string"
+    )
+    quantity._attrs = {"long_name": "500 mb height"}
+    transposed = quantity.transpose(["y", "x"])
+    assert transposed.attrs == quantity.attrs

@@ -4,7 +4,6 @@ from typing import Optional, TextIO
 
 import yaml
 
-import fv3core.utils.null_comm
 import pace.driver
 import pace.dsl
 import pace.util
@@ -56,7 +55,7 @@ if __name__ == "__main__":
         driver_config = pace.driver.DriverConfig.from_dict(yaml.safe_load(f))
     driver = pace.driver.Driver(
         config=driver_config,
-        comm=fv3core.utils.null_comm.NullComm(rank=0, total_ranks=6),
+        comm=pace.util.null_comm.NullComm(rank=0, total_ranks=6),
     )
     with open("stencil_report.txt", "w") as f:
         report_stencils(driver.dycore, file=f)

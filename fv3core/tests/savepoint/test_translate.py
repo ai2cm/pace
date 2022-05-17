@@ -9,7 +9,7 @@ import serialbox as ser
 
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util as fv3util
-from fv3core.utils.mpi import MPI
+from pace.util.mpi import MPI
 from pace.util.testing import compare_scalar, success, success_array
 
 

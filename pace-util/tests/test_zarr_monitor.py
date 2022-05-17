@@ -19,12 +19,16 @@ import copy
 import logging
 
 import pace.util
+from pace.util import X_DIMS, Y_DIMS
 from pace.util.testing import DummyComm
 
 
 requires_zarr = pytest.mark.skipif(zarr is None, reason="zarr is not installed")
 
 logger = logging.getLogger("test_zarr_monitor")
+
+# pace's Z_DIMS doesn't check the soil dimension
+Z_DIMS = ("z", "z_interface", "z_soil")
 
 
 @pytest.fixture(params=["one_step", "three_steps"])
@@ -394,3 +398,113 @@ def test_monitor_file_store_inconsistent_calendars(
         monitor.store(initial_state)
         with pytest.raises(ValueError, match="Calendar type"):
             monitor.store(final_state)
+
+
+@pytest.fixture(
+    params=[
+        ["x", "y"],
+        ["x", "y", "z"],
+        ["x_interface", "y", "z"],
+        ["x", "y_interface", "z"],
+        ["x", "y", "z_soil"],
+    ],
+)
+def diag(request, numpy):
+    dims = request.param
+    diag = pace.util.Quantity(
+        numpy.ones([size + 2 for size in range(len(dims))]), dims=dims, units="m"
+    )
+    return diag
+
+
+def _transpose(quantity, dims_2d, dims_3d):
+    if len(quantity.dims) == 2:
+        return quantity.transpose(dims_2d)
+    elif len(quantity.dims) == 3:
+        return quantity.transpose(dims_3d)
+
+
+@pytest.fixture(scope="function")
+def zarr_store(tmpdir_factory):
+    tmpdir = tmpdir_factory.mktemp("diags.zarr")
+    store = zarr.storage.DirectoryStore(tmpdir)
+    return store
+
+
+@pytest.fixture(scope="function")
+def zarr_monitor_single_rank(zarr_store, cube_partitioner):
+    return pace.util.ZarrMonitor(zarr_store, cube_partitioner)
+
+
+@requires_zarr
+def test_transposed_diags_write_across_ranks(diag, cube_partitioner, zarr_store):
+
+    layout = (1, 1)
+    total_ranks = 6 * layout[0] * layout[1]
+    shared_buffer = {}
+    for rank in range(total_ranks):
+        monitor = pace.util.ZarrMonitor(
+            zarr_store,
+            cube_partitioner,
+            mpi_comm=DummyComm(
+                rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
+            ),
+        )
+        if rank % 2 == 0:
+            diag_to_store = _transpose(
+                diag, dims_2d=[Y_DIMS, X_DIMS], dims_3d=[Z_DIMS, Y_DIMS, X_DIMS]
+            )
+        else:
+            diag_to_store = _transpose(
+                diag, dims_2d=[X_DIMS, Y_DIMS], dims_3d=[X_DIMS, Y_DIMS, Z_DIMS]
+            )
+        # verify that we can store transposed diags across ranks
+        monitor.store({"a": diag_to_store})
+
+
+@requires_zarr
+def test_transposed_diags_write_across_timesteps(diag, zarr_monitor_single_rank):
+
+    # verify that we can store transposed diags across time
+    time_1 = cftime.DatetimeJulian(2010, 6, 20, 6, 0, 0)
+    diag_1 = _transpose(
+        diag, dims_2d=[Y_DIMS, X_DIMS], dims_3d=[Z_DIMS, Y_DIMS, X_DIMS]
+    )
+    zarr_monitor_single_rank.store({"time": time_1, "a": diag_1})
+    time_2 = cftime.DatetimeJulian(2010, 6, 20, 6, 15, 0)
+    diag_2 = _transpose(
+        diag, dims_2d=[X_DIMS, Y_DIMS], dims_3d=[X_DIMS, Y_DIMS, Z_DIMS]
+    )
+    zarr_monitor_single_rank.store({"time": time_2, "a": diag_2})
+
+
+@requires_zarr
+def test_diags_fail_different_dim_set(diag, numpy, zarr_monitor_single_rank):
+    time_1 = cftime.DatetimeJulian(2010, 6, 20, 6, 0, 0)
+    time_2 = cftime.DatetimeJulian(2010, 6, 20, 6, 15, 0)
+    zarr_monitor_single_rank.store({"time": time_1, "a": diag})
+    new_dims = list(diag.dims)
+    new_dims[-1] = "some_other_dim"
+    diag_2 = pace.util.Quantity(
+        numpy.ones([size + 2 for size in range(len(diag.dims))]),
+        dims=new_dims,
+        units="m",
+    )
+    with pytest.raises(ValueError) as excinfo:
+        zarr_monitor_single_rank.store({"time": time_2, "a": diag_2})
+    assert "Attempting to append a quantity" in str(excinfo.value)
+
+
+@requires_zarr
+def test_diags_only_consistent_units_attrs_required(diag, zarr_monitor_single_rank):
+
+    time_1 = cftime.DatetimeJulian(2010, 6, 20, 6, 0, 0)
+    time_2 = cftime.DatetimeJulian(2010, 6, 20, 6, 15, 0)
+    time_3 = cftime.DatetimeJulian(2010, 6, 20, 6, 30, 0)
+    zarr_monitor_single_rank.store({"time": time_1, "a": diag})
+    diag_2 = copy.deepcopy(diag)
+    diag_2._attrs.update({"some_non_units_attrs": 9.0})
+    zarr_monitor_single_rank.store({"time": time_2, "a": diag_2})
+    diag_3 = pace.util.Quantity(data=diag.values, dims=diag.dims, units="not_m")
+    with pytest.raises(ValueError):
+        zarr_monitor_single_rank.store({"time": time_3, "a": diag_3})

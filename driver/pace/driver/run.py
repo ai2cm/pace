@@ -1,4 +1,5 @@
 import dataclasses
+import gc
 import logging
 from typing import Optional
 
@@ -93,3 +94,6 @@ def main(driver_config: DriverConfig):
 
 if __name__ == "__main__":
     command_line()
+    # need to cleanup any python objects that may have MPI operations before
+    # mpi4py performs its final cleanup
+    gc.collect()

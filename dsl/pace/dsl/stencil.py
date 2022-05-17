@@ -38,17 +38,6 @@ from pace.util.halo_data_transformer import QuantityHaloSpec
 from pace.util.mpi import MPI
 
 
-# TODO: remove this monkeypatch once this code is in gt4py
-def __eq__(self, other):
-    if isinstance(other, DefaultPipeline) and self.skip == other.skip:
-        return True
-    else:
-        return False
-
-
-setattr(DefaultPipeline, "__eq__", __eq__)
-
-
 @dataclasses.dataclass
 class StencilConfig(Hashable):
     backend: str = "gtc:numpy"
