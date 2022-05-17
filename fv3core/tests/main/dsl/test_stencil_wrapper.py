@@ -290,7 +290,7 @@ def test_backend_options(
 
 def test_custom_gt_cache_dir():
     with tempfile.TemporaryDirectory() as tmpdirname:
-        cache_dir = f"{tmpdirname}.gt_cache"
+        cache_dir = f"{tmpdirname}/.gt_cache"
         config = StencilConfig(backend="gtc:numpy", cache_dir=cache_dir)
         FrozenStencil(
             copy_stencil,
