@@ -155,10 +155,7 @@ class DriverConfig:
 
 
 class Driver:
-    def __init__(
-        self,
-        config: DriverConfig,
-    ):
+    def __init__(self, config: DriverConfig):
         """
         Initializes a pace Driver.
 
@@ -315,5 +312,6 @@ def _setup_factories(
     stencil_factory = pace.dsl.StencilFactory(
         config=config.stencil_config,
         grid_indexing=grid_indexing,
+        comm=communicator.comm,
     )
     return quantity_factory, stencil_factory

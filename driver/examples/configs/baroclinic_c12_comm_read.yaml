@@ -1,5 +1,6 @@
 stencil_config:
   backend: gtc:numpy
+  cache_dir: .gt_cache_{rank}
   rebuild: false
   validate_args: true
   format_source: false

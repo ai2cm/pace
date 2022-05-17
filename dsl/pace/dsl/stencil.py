@@ -29,12 +29,14 @@ import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
+from pace.util.comm import Comm
 from pace.util.halo_data_transformer import QuantityHaloSpec
 
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
     backend: str = "gtc:numpy"
+    cache_dir: str = ".gt_cache"
     rebuild: bool = True
     validate_args: bool = True
     format_source: bool = False
@@ -133,6 +135,11 @@ class StencilConfig(Hashable):
         return DefaultPipeline(skip=skip_steps)
 
 
+def is_gpu_backend(backend: str) -> bool:
+    """Returns True if the backend generates GPU code."""
+    return backend.endswith("cuda") or backend.endswith("gpu")
+
+
 def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id):
     report_head = f"comparing against numpy for func {function_name}, gt_id {gt_id}:"
     report_segments = []
@@ -222,6 +229,7 @@ class CompareToNumpyStencil:
         )
         numpy_stencil_config = StencilConfig(
             backend="gtc:numpy",
+            cache_dir=".gt_cache",
             rebuild=stencil_config.rebuild,
             validate_args=stencil_config.validate_args,
             format_source=True,
@@ -295,7 +303,7 @@ class FrozenStencil:
             externals = {}
 
         stencil_function = gtscript.stencil
-        stencil_kwargs = {**self.stencil_config.stencil_kwargs(skip_passes=skip_passes)}
+        stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes)
         # stencil_kwargs["name"] = func.__module__ + "." + func.__name__
 
         self.stencil_object: gt4py.StencilObject = stencil_function(
@@ -322,11 +330,7 @@ class FrozenStencil:
 
         self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
 
-    def __call__(
-        self,
-        *args,
-        **kwargs,
-    ) -> None:
+    def __call__(self, *args, **kwargs) -> None:
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)
@@ -791,7 +795,7 @@ class GridIndexing:
 class StencilFactory:
     """Configurable class which creates stencil objects."""
 
-    def __init__(self, config: StencilConfig, grid_indexing: GridIndexing):
+    def __init__(self, config: StencilConfig, grid_indexing: GridIndexing, comm: Comm):
         """
         Args:
             config: gt4py-specific stencil configuration
@@ -799,6 +803,12 @@ class StencilFactory:
         """
         self.config: StencilConfig = config
         self.grid_indexing: GridIndexing = grid_indexing
+        self.comm: Comm = comm
+
+        # Replace {rank} in self.config.cache_dir with the communicator's rank
+        self.config.cache_dir = self.config.cache_dir.replace(
+            "{rank}", str(comm.Get_rank())
+        )
 
     @property
     def backend(self):
@@ -879,6 +889,7 @@ class StencilFactory:
         return StencilFactory(
             config=self.config,
             grid_indexing=self.grid_indexing.restrict_vertical(k_start=k_start, nk=nk),
+            comm=self.comm,
         )
 
 

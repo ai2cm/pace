@@ -13,6 +13,7 @@ from pace.dsl.stencil import (
     get_stencils_with_varied_bounds,
 )
 from pace.dsl.typing import FloatField
+from pace.util import NullComm
 
 
 def copy_stencil(q_in: FloatField, q_out: FloatField):
@@ -60,7 +61,8 @@ def get_stencil_factory(backend: str) -> StencilFactory:
         west_edge=True,
         east_edge=True,
     )
-    return StencilFactory(config=config, grid_indexing=indexing)
+    comm = NullComm(0, 6)
+    return StencilFactory(config=config, grid_indexing=indexing, comm=comm)
 
 
 def test_get_stencils_with_varied_bounds(backend: str):
@@ -120,7 +122,8 @@ def test_stencil_factory_numpy_comparison_from_dims_halo(enabled: bool):
         west_edge=True,
         east_edge=True,
     )
-    factory = StencilFactory(config=config, grid_indexing=indexing)
+    comm = NullComm(0, 6)
+    factory = StencilFactory(config=config, grid_indexing=indexing, comm=comm)
     stencil = factory.from_dims_halo(
         func=copy_stencil,
         compute_dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
@@ -150,7 +153,8 @@ def test_stencil_factory_numpy_comparison_from_origin_domain(enabled: bool):
         west_edge=True,
         east_edge=True,
     )
-    factory = StencilFactory(config=config, grid_indexing=indexing)
+    comm = NullComm(0, 6)
+    factory = StencilFactory(config=config, grid_indexing=indexing, comm=comm)
     stencil = factory.from_origin_domain(
         func=copy_stencil, origin=(3, 3, 0), domain=(6, 6, 79)
     )
@@ -178,7 +182,8 @@ def test_stencil_factory_numpy_comparison_runs_without_exceptions():
         west_edge=True,
         east_edge=True,
     )
-    factory = StencilFactory(config=config, grid_indexing=indexing)
+    comm = NullComm(0, 6)
+    factory = StencilFactory(config=config, grid_indexing=indexing, comm=comm)
     stencil = factory.from_origin_domain(
         func=copy_stencil, origin=(0, 0, 0), domain=(12, 12, 79)
     )

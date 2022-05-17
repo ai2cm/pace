@@ -317,6 +317,7 @@ def parallel_savepoint_cases(
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
+        cache_dir=f".gt_cache_{mpi_rank}",
         rebuild=False,
         validate_args=True,
     )

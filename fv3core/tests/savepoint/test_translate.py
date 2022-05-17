@@ -8,6 +8,7 @@ import pytest
 import serialbox as ser
 
 import pace.dsl.gt4py_utils as gt_utils
+import pace.dsl.stencil
 import pace.util as fv3util
 from pace.util.mpi import MPI
 from pace.util.testing import compare_scalar, success, success_array
@@ -179,7 +180,6 @@ def test_sequential_savepoint(
     savepoint_in,
     savepoint_out,
     rank,
-    stencil_config,
     backend,
     print_failures,
     failure_stride,
@@ -193,7 +193,7 @@ def test_sequential_savepoint(
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     # Reduce error threshold for GPU
-    if stencil_config.is_gpu_backend:
+    if pace.dsl.stencil.is_gpu_backend(backend):
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
         testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
     if threshold_overrides is not None:
@@ -277,7 +277,6 @@ def test_mock_parallel_savepoint(
     serializer_list,
     savepoint_in_list,
     savepoint_out_list,
-    stencil_config,
     backend,
     print_failures,
     failure_stride,
@@ -292,7 +291,7 @@ def test_mock_parallel_savepoint(
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     # Reduce error threshold for GPU
-    if stencil_config.is_gpu_backend:
+    if pace.dsl.stencil.is_gpu_backend(backend):
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
         testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
     if threshold_overrides is not None:
@@ -369,7 +368,6 @@ def test_parallel_savepoint(
     savepoint_in,
     savepoint_out,
     communicator,
-    stencil_config,
     backend,
     print_failures,
     failure_stride,
@@ -388,7 +386,7 @@ def test_parallel_savepoint(
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     # Increase minimum error threshold for GPU
-    if stencil_config.is_gpu_backend:
+    if pace.dsl.stencil.is_gpu_backend(backend):
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
         testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
     if threshold_overrides is not None:

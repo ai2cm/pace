@@ -207,6 +207,7 @@ def sequential_savepoint_cases(
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
             grid_indexing=grid.grid_indexing,
+            comm=pace.util.NullComm(rank, len(ranks)),
         )
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
@@ -255,16 +256,17 @@ def mock_parallel_savepoint_cases(
             serializer, rank, namelist.layout, backend
         ).python_grid()
         grid_list.append(grid)
-    stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config,
-        grid_indexing=grid.grid_indexing,
-    )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
-    for test_name in sorted(list(savepoint_names)):
+    for rank in range(total_ranks):
         input_list = []
         output_list = []
         serializer_list = []
-        for rank in range(total_ranks):
+        stencil_factory = pace.dsl.stencil.StencilFactory(
+            config=stencil_config,
+            grid_indexing=grid.grid_indexing,
+            comm=pace.util.NullComm(rank, total_ranks),
+        )
+        for test_name in sorted(list(savepoint_names)):
             serializer = get_serializer(data_path, rank)
             serializer_list.append(serializer)
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
@@ -306,6 +308,7 @@ def parallel_savepoint_cases(
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,
+        comm=MPI.COMM_WORLD,
     )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     return_list = []
