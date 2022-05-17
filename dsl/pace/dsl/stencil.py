@@ -229,7 +229,7 @@ class CompareToNumpyStencil:
         )
         numpy_stencil_config = StencilConfig(
             backend="gtc:numpy",
-            cache_dir=".gt_cache",
+            cache_dir=stencil_config.cache_dir,
             rebuild=stencil_config.rebuild,
             validate_args=stencil_config.validate_args,
             format_source=True,

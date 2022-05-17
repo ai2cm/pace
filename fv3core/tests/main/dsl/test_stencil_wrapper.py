@@ -1,4 +1,6 @@
 import contextlib
+import os.path
+import tempfile
 import unittest.mock
 
 import gt4py.gtscript
@@ -284,6 +286,20 @@ def test_backend_options(
         validate_args=validate_args,
     ).stencil_kwargs()
     assert stencil_kwargs == expected_options[backend]
+
+
+def test_custom_gt_cache_dir():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        cache_dir = f"{tmpdirname}.gt_cache"
+        config = StencilConfig(backend="gtc:numpy", cache_dir=cache_dir)
+        FrozenStencil(
+            copy_stencil,
+            origin=(0, 0, 0),
+            domain=(3, 3, 3),
+            stencil_config=config,
+            externals={},
+        )
+        assert os.path.isdir(cache_dir)
 
 
 def get_mock_quantity():
