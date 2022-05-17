@@ -221,8 +221,7 @@ def setup_dycore(
         validate_args=False,
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config,
-        grid_indexing=grid.grid_indexing,
+        config=stencil_config, grid_indexing=grid.grid_indexing, comm=mpi_comm
     )
     metric_terms = MetricTerms.from_tile_sizing(
         npx=dycore_config.npx,

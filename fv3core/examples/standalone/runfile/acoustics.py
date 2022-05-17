@@ -150,8 +150,7 @@ def driver(
             validate_args=True,
         )
         stencil_factory = pace.dsl.stencil.StencilFactory(
-            config=stencil_config,
-            grid_indexing=grid.grid_indexing,
+            config=stencil_config, grid_indexing=grid.grid_indexing, comm=mpi_comm
         )
         input_data = read_input_data(grid, dycore_config, stencil_factory, serializer)
         experiment_name = get_experiment_name(data_directory)

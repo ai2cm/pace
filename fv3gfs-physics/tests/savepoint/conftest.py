@@ -256,17 +256,17 @@ def mock_parallel_savepoint_cases(
             serializer, rank, namelist.layout, backend
         ).python_grid()
         grid_list.append(grid)
+    stencil_factory = pace.dsl.stencil.StencilFactory(
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
+        comm=pace.util.NullComm(0, total_ranks),
+    )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
-    for rank in range(total_ranks):
+    for test_name in sorted(list(savepoint_names)):
         input_list = []
         output_list = []
         serializer_list = []
-        stencil_factory = pace.dsl.stencil.StencilFactory(
-            config=stencil_config,
-            grid_indexing=grid.grid_indexing,
-            comm=pace.util.NullComm(rank, total_ranks),
-        )
-        for test_name in sorted(list(savepoint_names)):
+        for rank in range(total_ranks):
             serializer = get_serializer(data_path, rank)
             serializer_list.append(serializer)
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")

@@ -212,6 +212,7 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
             grid_indexing=grid.grid_indexing,
+            comm=pace.util.NullComm(rank, len(ranks)),
         )
         for test_name in sorted(list(savepoint_names)):
             input_savepoints = serializer.get_savepoint(f"{test_name}-In")
@@ -265,6 +266,7 @@ def mock_parallel_savepoint_cases(
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,
+        comm=pace.util.NullComm(0, total_ranks),
     )
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     for test_name in sorted(list(savepoint_names)):
@@ -327,6 +329,7 @@ def parallel_savepoint_cases(
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,
+        comm=MPI.COMM_WORLD,
     )
     if metafunc.config.getoption("compute_grid"):
         compute_grid_data(metafunc, grid, dycore_config)
