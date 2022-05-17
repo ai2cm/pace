@@ -5,7 +5,6 @@ import gt4py
 import numpy as np
 import xarray as xr
 
-
 import pace.dsl
 from pace.driver import CreatesComm, DriverConfig
 from pace.driver.initialization import BaroclinicConfig
