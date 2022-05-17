@@ -136,8 +136,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         comm=communicator,
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config,
-        grid_indexing=grid_indexing,
+        config=stencil_config, grid_indexing=grid_indexing, comm=communicator.comm
     )
 
     dycore = fv3core.DynamicalCore(

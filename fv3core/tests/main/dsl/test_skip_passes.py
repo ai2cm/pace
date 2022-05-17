@@ -8,7 +8,7 @@ from gtc.passes.oir_pipeline import DefaultPipeline
 
 from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
 from pace.dsl.typing import FloatField
-from pace.util import X_DIM, Y_DIM, Z_DIM
+from pace.util import X_DIM, Y_DIM, Z_DIM, NullComm
 
 
 def stencil_definition(a: FloatField):
@@ -26,7 +26,9 @@ def test_skip_passes_becomes_oir_pipeline():
         west_edge=False,
         east_edge=False,
     )
-    factory = StencilFactory(config=config, grid_indexing=grid_indexing)
+    factory = StencilFactory(
+        config=config, grid_indexing=grid_indexing, comm=NullComm(0, 6)
+    )
     with unittest.mock.patch("gt4py.gtscript.stencil") as mock_stencil_builder:
         factory.from_dims_halo(
             stencil_definition,

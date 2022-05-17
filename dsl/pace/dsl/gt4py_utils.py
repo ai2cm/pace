@@ -1,7 +1,10 @@
 import logging
+import os.path
+from contextlib import contextmanager
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+import gt4py.config
 import gt4py.storage as gt_storage
 import numpy as np
 
@@ -35,6 +38,22 @@ tracer_variables = [
 
 # Logger instance
 logger = logging.getLogger("fv3core")
+
+
+@contextmanager
+def gt_cache_dir(dir: str):
+    """Set the gt_cache directory for the inner statements."""
+    try:
+        old_dir_name = gt4py.config.cache_settings["dir_name"]
+        old_root_path = gt4py.config.cache_settings["root_path"]
+        new_root_path, new_dir_name = os.path.split(dir)
+        new_root_path = new_root_path or "."
+        gt4py.config.cache_settings["dir_name"] = new_dir_name
+        gt4py.config.cache_settings["root_path"] = new_root_path
+        yield
+    finally:
+        gt4py.config.cache_settings["dir_name"] = old_dir_name
+        gt4py.config.cache_settings["root_path"] = old_root_path
 
 
 def mark_untested(msg="This is not tested"):

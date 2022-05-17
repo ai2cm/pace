@@ -306,10 +306,11 @@ class FrozenStencil:
         stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes)
         # stencil_kwargs["name"] = func.__module__ + "." + func.__name__
 
-        self.stencil_object: gt4py.StencilObject = stencil_function(
-            definition=func, externals=externals, **stencil_kwargs
-        )
-        """generated stencil object returned from gt4py."""
+        with gt4py_utils.gt_cache_dir(stencil_config.cache_dir):
+            self.stencil_object: gt4py.StencilObject = stencil_function(
+                definition=func, externals=externals, **stencil_kwargs
+            )
+            """generated stencil object returned from gt4py."""
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
