@@ -103,6 +103,7 @@ class StencilConfig(Hashable):
         return backend_opts
 
     def stencil_kwargs(self, skip_passes: Iterable[str] = ()):
+        # NOTE (jdahm): Temporary replace call until Jenkins is updated
         kwargs = {
             "backend": self.backend.replace("gtc:", ""),
             "rebuild": self.rebuild,
