@@ -13,6 +13,7 @@ requirements = [
     "gt4py",
     "numpy",
     "pace-util>=0.4.3",
+    "xarray",
 ]
 
 test_requirements = ["serialbox"]

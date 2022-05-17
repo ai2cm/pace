@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field, fields
 from typing import Any, Mapping
 
+import xarray as xr
+
 from pace import util
 
 
@@ -350,6 +352,24 @@ class DycoreState:
                 )
                 inputs[_field.name] = quantity
         return cls(**inputs, do_adiabatic_init=do_adiabatic_init, bdt=bdt, mdt=mdt)
+
+    @property
+    def xr_dataset(self):
+        data_vars = {}
+        for name, field_info in self.__dataclass_fields__.items():
+            if issubclass(field_info.type, util.Quantity):
+                dims = [
+                    f"{dim_name}_{name}" for dim_name in field_info.metadata["dims"]
+                ]
+                data_vars[name] = xr.DataArray(
+                    getattr(self, name).data,
+                    dims=dims,
+                    attrs={
+                        "long_name": field_info.metadata["name"],
+                        "units": field_info.metadata.get("units", "unknown"),
+                    },
+                )
+        return xr.Dataset(data_vars=data_vars)
 
     def __getitem__(self, item):
         return getattr(self, item)
