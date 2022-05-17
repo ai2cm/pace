@@ -131,7 +131,7 @@ class RestartConfig(Initializer):
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
         state = _restart_driver_state(
-            self.path, str(communicator.rank), quantity_factory, communicator
+            self.path, communicator.rank, quantity_factory, communicator
         )
         return state
 

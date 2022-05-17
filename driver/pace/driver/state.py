@@ -88,7 +88,7 @@ class DriverState:
             sizer, backend=driver_config.stencil_config.backend
         )
         state = _restart_driver_state(
-            restart_path, str(communicator.rank), quantity_factory, communicator
+            restart_path, communicator.rank, quantity_factory, communicator
         )
         return state
 
@@ -107,7 +107,7 @@ class DriverState:
 
 def _overwrite_state_from_restart(
     path: str,
-    rank: str,
+    rank: int,
     state: Union[fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState],
     restart_file_prefix: str,
 ):
@@ -130,7 +130,7 @@ def _overwrite_state_from_restart(
 
 def _restart_driver_state(
     path: str,
-    rank: str,
+    rank: int,
     quantity_factory: pace.util.QuantityFactory,
     communicator: pace.util.CubedSphereCommunicator,
 ):
