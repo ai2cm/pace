@@ -142,7 +142,8 @@ def build_sdfg(daceprog: DaceProgram, sdfg: dace.SDFG, args, kwargs):
             sdfg.simplify(validate=False)
 
         # Perform pre-expansion fine tuning
-        splittable_region_expansion(sdfg)
+        # WARNING: Deactivate until expansion is in gt4py/master
+        # splittable_region_expansion(sdfg)
 
         # Expand the stencil computation Library Nodes with the right expansion
         with DaCeProgress("Expand"):
