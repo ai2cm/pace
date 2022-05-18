@@ -71,7 +71,7 @@ test_driver:
 	DEV=$(DEV) $(MAKE) -C driver test
 
 driver_savepoint_tests_mpi:
-	TARGET=driver DEV=$(DEV) $(MAKE) -C  fv3gfs-physics $@
+	DEV=$(DEV) $(MAKE) -C  fv3gfs-physics $@
 
 docs: ## generate Sphinx HTML documentation
 	$(MAKE) -C docs html
