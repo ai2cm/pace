@@ -111,8 +111,7 @@ class StencilConfig(Hashable):
         }
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
-        # Note: this assure the backward compatibility between v36 and v37
-        if "skip_passes" in kwargs or skip_passes is not None:
+        if "skip_passes" in kwargs:
             kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
                 list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
             )
@@ -120,11 +119,11 @@ class StencilConfig(Hashable):
 
     @property
     def is_gpu_backend(self) -> bool:
-        return self.backend.endswith("cuda") or self.backend.endswith("gpu")
-
-    @property
-    def is_gtc_backend(self) -> bool:
-        return self.backend.startswith("gtc")
+        try:
+            return gt4py.backend.from_name(self.backend).storage_info["device"] == "gpu"
+        except Exception:
+            backend = self.backend.replace("gtc:", "")
+            return gt4py.backend.from_name(backend).storage_info["device"] == "gpu"
 
     @classmethod
     def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:

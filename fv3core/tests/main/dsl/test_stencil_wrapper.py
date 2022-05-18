@@ -15,7 +15,6 @@ from pace.dsl.stencil import (
     _convert_quantities_to_storage,
 )
 from pace.dsl.typing import FloatField
-from pace.util.global_config import set_backend
 
 
 @contextlib.contextmanager
@@ -278,7 +277,6 @@ def test_backend_options(
         },
     }
 
-    set_backend(backend)
     stencil_kwargs = StencilConfig(
         backend=backend,
         rebuild=rebuild,
