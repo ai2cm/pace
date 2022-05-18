@@ -273,8 +273,8 @@ def test_backend_options(
             "rebuild": True,
             "device_sync": False,
             "format_source": False,
-            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
             "verbose": False,
+            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
         },
     }
 
@@ -285,7 +285,7 @@ def test_backend_options(
         validate_args=validate_args,
     ).stencil_kwargs()
     expected = expected_options[backend]
-    assert actual == expected
+    assert str(actual) == str(expected)
 
 
 def get_mock_quantity():
