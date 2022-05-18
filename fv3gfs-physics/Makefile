@@ -14,7 +14,7 @@ MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_baroclinic_dycore_microphysics
-FORTRAN_SERIALIZED_DATA_VERSION=8.0.2
+FORTRAN_SERIALIZED_DATA_VERSION=8.0.4
 TEST_DATA_TARFILE=dat_files.tar.gz
 TARGET ?= physics
 TEST_DATA_ROOT ?=$(CWD)/../test_data/
