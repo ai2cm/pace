@@ -8,6 +8,7 @@ import pytest
 import serialbox as ser
 from gt4py.config import build_settings as gt4py_build_settings
 
+import pace.dsl
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util as fv3util
@@ -115,6 +116,8 @@ def sample_wherefail(
 
 
 def process_override(threshold_overrides, testobj, test_name, backend):
+    # NOTE (jdahm): Temporary replace call until Jenkins is updated
+    backend = backend.replace("gtc:", "")
     override = threshold_overrides.get(test_name, None)
     if override is not None:
         for spec in override:
@@ -219,7 +222,7 @@ def test_sequential_savepoint(
     caplog.set_level(logging.DEBUG, logger="physics")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
-    stencil_config = pace.dsl.stencil.StencilConfig(backend=backend)
+    stencil_config = pace.dsl.StencilConfig(backend=backend)
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
@@ -319,7 +322,7 @@ def test_mock_parallel_savepoint(
     caplog.set_level(logging.DEBUG, logger="fv3util")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
-    stencil_config = pace.dsl.stencil.StencilConfig(backend=backend)
+    stencil_config = pace.dsl.StencilConfig(backend=backend)
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
@@ -414,7 +417,7 @@ def test_parallel_savepoint(
         pytest.xfail(f"python_regression not set for test {test_name}")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
-    stencil_config = pace.dsl.stencil.StencilConfig(backend=backend)
+    stencil_config = pace.dsl.StencilConfig(backend=backend)
     # Increase minimum error threshold for GPU
     if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
