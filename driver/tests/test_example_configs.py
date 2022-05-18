@@ -16,7 +16,9 @@ TESTED_CONFIGS = [
     "baroclinic_c12_comm_read.yaml",
     "baroclinic_c12_comm_write.yaml",
     "baroclinic_c12_null_comm.yaml",
-    "baroclinic_c12_from_serialbox.yaml",
+    # We don't test serialbox example because it loads namelist
+    # filepath that are not in git
+    # "baroclinic_c12_from_serialbox.yaml",
 ]
 
 EXCLUDED_CONFIGS: List[str] = []
