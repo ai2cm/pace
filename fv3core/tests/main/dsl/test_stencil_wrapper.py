@@ -2,7 +2,6 @@ import contextlib
 import unittest.mock
 
 import gt4py.gtscript
-import gtc.passes.oir_pipeline
 import numpy as np
 import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
@@ -265,14 +264,12 @@ def test_backend_options(
             "backend": "numpy",
             "rebuild": True,
             "format_source": False,
-            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
         },
         "cuda": {
             "backend": "cuda",
             "rebuild": True,
             "device_sync": False,
             "format_source": False,
-            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
             "verbose": False,
         },
     }

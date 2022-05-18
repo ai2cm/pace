@@ -84,10 +84,6 @@ class StencilConfig(Hashable):
             "format_source": {
                 "value": False,
             },
-            "skip_passes": {
-                "backend": r"^(gt:|cuda)",
-                "value": [],
-            },
             "verbose": {"backend": r"(gt:|cuda)", "value": False},
         }
         for name, option in all_backend_opts.items():
@@ -111,7 +107,7 @@ class StencilConfig(Hashable):
         }
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
-        if "skip_passes" in kwargs:
+        if kwargs.get("skip_passes", ()):
             kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
                 list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
             )
