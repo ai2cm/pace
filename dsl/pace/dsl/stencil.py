@@ -342,13 +342,6 @@ class FrozenStencil(SDFGConvertible):
                 self.func.__module__ + "." + self.func.__name__
             )
 
-        if skip_passes and self.stencil_config.is_gtc_backend:
-            self.stencil_kwargs["skip_passes"] = skip_passes
-        if "skip_passes" in self.stencil_kwargs:
-            self.stencil_kwargs["oir_pipeline"] = FrozenStencil._get_oir_pipeline(
-                self.stencil_kwargs.pop("skip_passes")
-            )
-
         self._argument_names = tuple(inspect.getfullargspec(self.func).args)
 
         assert (
