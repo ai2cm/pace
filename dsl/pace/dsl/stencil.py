@@ -107,7 +107,7 @@ class StencilConfig(Hashable):
         }
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
-        if kwargs.get("skip_passes", ()):
+        if skip_passes or kwargs.get("skip_passes", ()):
             kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
                 list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
             )
@@ -291,7 +291,7 @@ class FrozenStencil:
             externals = {}
 
         stencil_function = gtscript.stencil
-        stencil_kwargs = {**self.stencil_config.stencil_kwargs(skip_passes=skip_passes)}
+        stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes)
 
         # Enable distributed compilation if running in parallel
         if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
