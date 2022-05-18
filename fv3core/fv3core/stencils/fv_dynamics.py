@@ -1,3 +1,5 @@
+from typing import Optional
+
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
@@ -209,6 +211,7 @@ class DynamicalCore:
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
+        checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         """
         Args:
@@ -222,6 +225,8 @@ class DynamicalCore:
         """
         # nested and stretched_grid are options in the Fortran code which we
         # have not implemented, so they are hard-coded here.
+        self.call_checkpointer = checkpointer is not None
+        self.checkpointer = checkpointer
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
@@ -306,6 +311,7 @@ class DynamicalCore:
             self.config.acoustic_dynamics,
             self._pfull,
             self._phis,
+            checkpointer=checkpointer,
         )
         self._hyperdiffusion = HyperdiffusionDamping(
             stencil_factory,
@@ -364,6 +370,19 @@ class DynamicalCore:
             n_split: number of acoustic timesteps per remapping timestep
             timer: if given, use for timing model execution
         """
+        if self.call_checkpointer:
+            self.checkpointer(
+                "FVDynamics-In",
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                delz=state.delz,
+                ua=state.ua,
+                va=state.va,
+                uc=state.uc,
+                vc=state.vc,
+                qvapor=state.qvapor,
+            )
         # TODO: state should be a statically typed class, move these to the
         # definition of DycoreState and pass them on init or alternatively
         # move these to/get these from the namelist/configuration class
@@ -378,6 +397,19 @@ class DynamicalCore:
             }
         )
         self._compute(state, timer)
+        if self.call_checkpointer:
+            self.checkpointer(
+                "FVDynamics-Out",
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                delz=state.delz,
+                ua=state.ua,
+                va=state.va,
+                uc=state.uc,
+                vc=state.vc,
+                qvapor=state.qvapor,
+            )
 
     # TODO: type hint state when it is possible to do so, when it is a static type
     def _compute(
