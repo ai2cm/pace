@@ -341,6 +341,9 @@ class AcousticDynamics:
             config: configuration settings
             pfull: atmospheric Eulerian grid reference pressure (Pa)
             phis: surface geopotential height
+            checkpointer: if given, used to perform operations on model data
+                at specific points in model execution, such as testing against
+                reference data
         """
         self.call_checkpointer = checkpointer is not None
         self.checkpointer = checkpointer

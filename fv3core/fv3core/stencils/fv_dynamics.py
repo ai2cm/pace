@@ -222,6 +222,9 @@ class DynamicalCore:
             config: configuration of dynamical core, for example as would be set by
                 the namelist in the Fortran model
             phis: surface geopotential height
+            checkpointer: if given, used to perform operations on model data
+                at specific points in model execution, such as testing against
+                reference data
         """
         # nested and stretched_grid are options in the Fortran code which we
         # have not implemented, so they are hard-coded here.
