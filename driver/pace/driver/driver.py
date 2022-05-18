@@ -258,7 +258,7 @@ class Driver:
         self, state: dace.constant, time_steps: int, time_step_io_freq: int
     ):
         for t in dace.nounroll(range(time_steps)):
-            self._step_dynamics(state)
+            self._step_dynamics(state, self.performance_config.timestep_timer)
             if (t % time_step_io_freq) == 0:
                 self._callback_diagnostics()
 
@@ -295,13 +295,15 @@ class Driver:
 
     def _step(self):
         with self.performance_config.timestep_timer.clock("mainloop"):
-            self._step_dynamics(self.state.dycore_state)
+            self._step_dynamics(
+                self.state.dycore_state, self.performance_config.timestep_timer
+            )
         if not self.config.disable_step_physics:
             self._step_physics(timestep=self.config.timestep.total_seconds())
         self.performance_config.collect_performance()
 
-    def _step_dynamics(self, state: dace.constant):
-        self.dycore.step_dynamics(state=state)
+    def _step_dynamics(self, state: dace.constant, timer: dace.constant):
+        self.dycore.step_dynamics(state=state, timer=timer)
 
     def _step_physics(self, timestep: float):
         self.dycore_to_physics(

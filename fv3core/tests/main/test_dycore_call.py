@@ -171,7 +171,7 @@ def test_call_does_not_allocate_storages():
     with unittest.mock.patch("gt4py.storage.storage.zeros", new=error_func):
         with unittest.mock.patch("gt4py.storage.storage.empty", new=error_func):
             with no_lagrangian_contributions(dynamical_core=dycore):
-                dycore.step_dynamics(state)
+                dycore.step_dynamics(state, pace.util.NullTimer())
 
 
 def test_call_does_not_define_stencils():
@@ -182,4 +182,4 @@ def test_call_does_not_define_stencils():
 
     with unittest.mock.patch("gt4py.gtscript.stencil", new=error_func):
         with no_lagrangian_contributions(dynamical_core=dycore):
-            dycore.step_dynamics(state)
+            dycore.step_dynamics(state, pace.util.NullTimer())

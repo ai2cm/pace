@@ -332,23 +332,17 @@ class DynamicalCore:
         return self.step_dynamics(*args, **kwargs)
 
     @computepath_method
-    def step_dynamics(
-        self,
-        state: dace_constant,
-    ):
+    def step_dynamics(self, state: dace_constant, timer: dace_constant):
         """
         Step the model state forward by one timestep.
 
         Args:
             state: model prognostic state and inputs
         """
-        self._compute(state)
+        self._compute(state, timer)
 
     @computepath_method
-    def _compute(
-        self,
-        state: dace_constant,
-    ):
+    def _compute(self, state: dace_constant, timer: dace_constant):
         last_step = False
         self.compute_preamble(
             state,
@@ -358,7 +352,7 @@ class DynamicalCore:
         for k_split in dace_no_unroll(range(state.k_split)):
             n_map = k_split + 1
             last_step = k_split == state.k_split - 1
-            self._dyn(state=state, tracers=self.tracers, n_map=n_map)
+            self._dyn(state=state, tracers=self.tracers, n_map=n_map, timer=timer)
 
             if self.grid_indexing.domain[2] > 4:
                 # nq is actually given by ncnst - pnats,
@@ -375,42 +369,43 @@ class DynamicalCore:
                 if __debug__:
                     if self.comm_rank == 0:
                         print("Remapping")
-                self._lagrangian_to_eulerian_obj(
-                    self.tracer_storages,
-                    state.pt,
-                    state.delp,
-                    state.delz,
-                    state.peln,
-                    state.u,
-                    state.v,
-                    state.w,
-                    state.ua,
-                    state.va,
-                    state.cappa,
-                    state.q_con,
-                    state.qcld,
-                    state.pkz,
-                    state.pk,
-                    state.pe,
-                    state.phis,
-                    state.te0_2d,
-                    state.ps,
-                    state.wsd,
-                    state.omga,
-                    self._ak,
-                    self._bk,
-                    self._pfull,
-                    state.dp1,
-                    self._ptop,
-                    constants.KAPPA,
-                    constants.ZVIR,
-                    last_step,
-                    state.consv_te,
-                    state.bdt / state.k_split,
-                    state.bdt,
-                    state.do_adiabatic_init,
-                    NQ,
-                )
+                with timer.clock("Remapping"):
+                    self._lagrangian_to_eulerian_obj(
+                        self.tracer_storages,
+                        state.pt,
+                        state.delp,
+                        state.delz,
+                        state.peln,
+                        state.u,
+                        state.v,
+                        state.w,
+                        state.ua,
+                        state.va,
+                        state.cappa,
+                        state.q_con,
+                        state.qcld,
+                        state.pkz,
+                        state.pk,
+                        state.pe,
+                        state.phis,
+                        state.te0_2d,
+                        state.ps,
+                        state.wsd,
+                        state.omga,
+                        self._ak,
+                        self._bk,
+                        self._pfull,
+                        state.dp1,
+                        self._ptop,
+                        constants.KAPPA,
+                        constants.ZVIR,
+                        last_step,
+                        state.consv_te,
+                        state.bdt / state.k_split,
+                        state.bdt,
+                        state.do_adiabatic_init,
+                        NQ,
+                    )
                 if last_step:
                     self.post_remap(
                         state,
@@ -424,7 +419,9 @@ class DynamicalCore:
 
     # TODO: type hint state when it is possible to do so, when it is a static type
     @computepath_method
-    def _dyn(self, state: dace_constant, tracers: dace_constant, n_map):
+    def _dyn(
+        self, state: dace_constant, tracers: dace_constant, n_map, timer: dace_constant
+    ):
         self._copy_stencil(
             state.delp,
             state.dp1,
@@ -432,24 +429,26 @@ class DynamicalCore:
         if __debug__:
             if self.comm_rank == 0:
                 print("DynCore")
-        self.acoustic_dynamics(
-            state,
-            n_map=n_map,
-            update_temporaries=False,
-        )
+        with timer.clock("DynCore"):
+            self.acoustic_dynamics(
+                state,
+                n_map=n_map,
+                update_temporaries=False,
+            )
         if self.config.z_tracer:
             if __debug__:
                 if self.comm_rank == 0:
                     print("TracerAdvection")
-            self.tracer_advection(
-                tracers,
-                state.dp1,
-                state.mfxd,
-                state.mfyd,
-                state.cxd,
-                state.cyd,
-                state.mdt,
-            )
+            with timer.clock("TracerAdvection"):
+                self.tracer_advection(
+                    tracers,
+                    state.dp1,
+                    state.mfxd,
+                    state.mfyd,
+                    state.cxd,
+                    state.cyd,
+                    state.mdt,
+                )
 
     @computepath_method
     def post_remap(
