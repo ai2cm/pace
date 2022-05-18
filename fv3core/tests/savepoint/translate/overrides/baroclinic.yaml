@@ -1,6 +1,5 @@
 C_SW:
-  - backend: numpy
-    max_error: 5e-2
+  - max_error: 5e-2
 
 FVDynamics:
   - ignore_near_zero_errors:
@@ -12,8 +11,7 @@ FVDynamics:
       cyd: 1e-3
 
 DynCore:
-  - backend: numpy
-    ignore_near_zero_errors:
+  - ignore_near_zero_errors:
       uc: 1e-13
       vc: 1e-13
       mfxd: 1e-3
@@ -22,16 +20,14 @@ DynCore:
       cyd: 1e-3
 
 D_SW:
-  - backend: numpy
-    ignore_near_zero_errors:
+  - ignore_near_zero_errors:
       divgdd: 1e-20
       ucd: 1e-20
       vcd: 1e-20
       delpcd: 1e-15
 
 DivergenceDamping:
-  - backend: numpy
-    ignore_near_zero_errors:
+  - ignore_near_zero_errors:
       vort: 6e-8
       delpc: 1e-15
 

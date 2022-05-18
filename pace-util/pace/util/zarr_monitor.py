@@ -4,24 +4,11 @@ from typing import List, Tuple, Union
 
 import cftime
 
-
-try:
-    import zarr
-except ModuleNotFoundError as err:
-    from ._optional_imports import RaiseWhenAccessed
-
-    zarr = RaiseWhenAccessed(err)
-import numpy as np
-
 from . import _xarray as xr
 from . import constants, utils
+from ._optional_imports import cupy, zarr
 from .partitioner import CubedSpherePartitioner, subtile_slice
 
-
-try:
-    import cupy
-except ImportError:
-    cupy = np
 
 logger = logging.getLogger("pace.util")
 
@@ -119,9 +106,11 @@ class ZarrMonitor:
         """Append the model state dictionary to the zarr store.
 
         Requires the state contain the same quantities with the same metadata as the
-        first time this is called. Quantities are stored with dimensions [time, rank]
-        followed by the dimensions included in any one state snapshot. The one exception
-        is "time" which is stored with dimensions [time].
+        first time this is called. Dimension order metadata may change between calls
+        so long as the set of dimensions is the same. Quantities are stored with
+        dimensions [time, rank] followed by the dimensions included in the first
+        state snapshot. The one exception is "time" which is stored with dimensions
+        [time].
         """
         self._ensure_writers_are_consistent(state)
         for name, quantity in sorted(state.items(), key=lambda x: x[0]):
@@ -166,6 +155,12 @@ class _ZarrVariableWriter:
     def rank(self):
         return self.comm.Get_rank()
 
+    def _get_array_dims(self):
+        if self.array is None:
+            raise ValueError("Array not yet set, must call .store first.")
+        else:
+            return self.array.attrs.get("_ARRAY_DIMENSIONS")
+
     def _init_zarr(self, quantity):
         if self.rank == 0:
             self._init_zarr_root(quantity)
@@ -188,11 +183,36 @@ class _ZarrVariableWriter:
     def sync_array(self):
         self.array = self.comm.bcast(self.array, root=0)
 
+    def _match_dim_order(self, quantity):
+        self._check_dims(quantity)
+        if self._get_array_dims() != self._get_quantity_dims(quantity):
+            return quantity.transpose(self._get_array_dims()[2:])
+        else:
+            return quantity
+
+    def _check_dims(self, quantity):
+        quantity_dims = self._get_quantity_dims(quantity)
+        missing_dims = set(self._get_array_dims()).difference(quantity_dims)
+        extra_dims = set(quantity_dims).difference(self._get_array_dims())
+        if len(extra_dims) > 0:
+            raise ValueError(
+                "Attempting to append a quantity with dimension(s)"
+                f"{extra_dims} not contained in previously stored array."
+            )
+        if len(missing_dims) > 0:
+            raise ValueError(
+                "Attempting to append a quantity missing dimension(s)"
+                f"{missing_dims} contained in previously stored array."
+            )
+
     def append(self, quantity):
         # can't just use zarr_array.append because we only want to
         # extend the dimension once, from the root rank
         if self.array is None:
             self._init_zarr(quantity)
+
+        quantity = self._match_dim_order(quantity)
+        self._check_units(quantity)
 
         if self.i_time >= self.array.shape[0] and self.rank == 0:
             new_shape = list(
@@ -201,7 +221,6 @@ class _ZarrVariableWriter:
             )
             new_shape[0] = self.i_time + 1
             self.array.resize(*new_shape)
-            self._ensure_compatible_attrs(quantity)
         self.sync_array()
 
         target_slice = (
@@ -239,16 +258,19 @@ class _ZarrVariableWriter:
 
     def _get_attrs(self, quantity):
         return {
-            "_ARRAY_DIMENSIONS": list(self._PREPEND_DIMS + quantity.dims),
+            "_ARRAY_DIMENSIONS": self._get_quantity_dims(quantity),
             **quantity.attrs,
         }
 
-    def _ensure_compatible_attrs(self, new_quantity):
-        new_attrs = self._get_attrs(new_quantity)
-        if dict(self.array.attrs) != new_attrs:
+    def _get_quantity_dims(self, quantity):
+        return list(self._PREPEND_DIMS + quantity.dims)
+
+    def _check_units(self, new_quantity):
+        units = self.array.attrs.get("units")
+        if units != new_quantity.units:
             raise ValueError(
-                f"value for {self.name} with attrs {new_attrs} "
-                f"does not match previously stored attrs {dict(self.array.attrs)}"
+                f"value for {self.name} with units {new_quantity.units} "
+                f"does not match previously stored units {units}"
             )
 
 

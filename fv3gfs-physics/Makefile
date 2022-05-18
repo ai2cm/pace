@@ -77,7 +77,6 @@ physics_savepoint_tests_mpi:
 	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)' \
 	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
 
-
 driver_savepoint_tests_mpi:
 	TARGET=driver \
 	$(MAKE) get_test_data

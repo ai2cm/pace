@@ -279,7 +279,6 @@ class DivergenceDamping:
             func=get_delpc,
             compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             compute_halos=(0, 0),
-            skip_passes=("GreedyMerging",),
         )
 
         self._damping = low_k_stencil_factory.from_dims_halo(
@@ -408,7 +407,10 @@ class DivergenceDamping:
             vc (inout):
             uc (inout):
             delpc (out):
-            ke (inout): gets vort added to it
+            ke (inout): dt times the kinetic energy defined on cell corners,
+                at input time must be accurate for the input winds.
+                Gets updated to remain accurate for the output winds,
+                as described in section 8.3 of the FV3 documentation.
             wk (in): gets converted by a2b_ord4 and put into v_contra_dxc
             dt (in): timestep
         """

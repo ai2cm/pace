@@ -2,7 +2,12 @@
 
 # Test outputs
 results.xml
-driver/output.zarr
+*.zarr
+driver/examples/*.json
+driver/examples/**/*.json
+driver/examples/comm
+20*-*-*-*-*-*.json
+*.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -121,6 +126,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv_*/
 
 # Spyder project settings
 .spyderproject
@@ -150,3 +156,4 @@ dmypy.json
 plot_output/
 profiling_results/
 model_output/
+RESTART/

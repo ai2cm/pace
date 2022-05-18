@@ -7,11 +7,11 @@ import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
 from gt4py.stencil_object import StencilObject
 
-from fv3core.utils.mpi import MPI
 from pace.dsl.future_stencil import FutureStencil, StencilTable, future_stencil
 from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.typing import FloatField, IntField
 from pace.util.global_config import set_backend
+from pace.util.mpi import MPI
 
 
 def copy_stencil(q_in: FloatField, q_out: FloatField):
@@ -47,7 +47,7 @@ def setup_data_vars(backend: str):
     MPI is not None and MPI.COMM_WORLD.Get_size() > 1,
     reason="Running in parallel with mpi",
 )
-@pytest.mark.parametrize("backend", ("numpy",))
+@pytest.mark.parametrize("backend", ("gtc:numpy",))
 @pytest.mark.parametrize("rebuild", (True, False))
 @pytest.mark.parametrize("use_wrapper", (True, False))
 def test_future_stencil(backend: str, rebuild: bool, use_wrapper: bool):
@@ -156,7 +156,7 @@ def test_one_sided_mpi():
     reason="Not running in parallel with mpi",
 )
 def test_rank_adder_numpy():
-    run_rank_adder_test("numpy", True)
+    run_rank_adder_test("gtc:numpy", True)
 
 
 @pytest.mark.parallel
@@ -165,7 +165,7 @@ def test_rank_adder_numpy():
     reason="Not running in parallel with mpi",
 )
 def test_rank_adder_gridtools():
-    run_rank_adder_test("gtx86", True)
+    run_rank_adder_test("gtc:gt:cpu_ifirst", True)
 
 
 def run_rank_adder_test(backend: str, rebuild: bool):

@@ -1,7 +1,9 @@
 from typing import Any, Mapping
 
+from pace.util.comm import Comm, Request
 
-class NullAsyncResult:
+
+class NullAsyncResult(Request):
     def __init__(self, recvbuf=None):
         self._recvbuf = recvbuf
 
@@ -10,7 +12,7 @@ class NullAsyncResult:
             self._recvbuf[:] = 0.0
 
 
-class NullComm:
+class NullComm(Comm):
     """
     A class with a subset of the mpi4py Comm API, but which
     'receives' a fill value (default zero) instead of using MPI.

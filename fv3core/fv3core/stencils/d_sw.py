@@ -189,7 +189,7 @@ def apply_pt_delp_fluxes_stencil_defn(
         pt, delp = apply_pt_delp_fluxes(gx, gy, rarea, fx, fy, pt, delp)
 
 
-def kinetic_energy_update_part_1(
+def compute_kinetic_energy(
     vc: FloatField,
     uc: FloatField,
     cosa: FloatFieldIJ,
@@ -204,10 +204,7 @@ def kinetic_energy_update_part_1(
     dy: FloatFieldIJ,
     dya: FloatFieldIJ,
     rdy: FloatFieldIJ,
-    ub_contra: FloatField,
-    vb_contra: FloatField,
-    advected_u: FloatField,
-    advected_v: FloatField,
+    dt_kinetic_energy_on_cell_corners: FloatField,
     dt: float,
 ):
     """
@@ -226,10 +223,9 @@ def kinetic_energy_update_part_1(
         dy (in):
         dya (???):
         rdy (in):
-        ub_contra (out):
-        vb_contra (out):
-        advected_u (out):
-        advected_v (out):
+        dt_kinetic_energy_on_cell_corners (out): kinetic energy on cell corners,
+            as defined in FV3 documentation by equation 6.3, multiplied by dt
+        dt: timestep
     """
     with computation(PARALLEL), interval(...):
         ub_contra, vb_contra = interpolate_uc_vc_to_cell_corners(
@@ -237,6 +233,12 @@ def kinetic_energy_update_part_1(
         )
         advected_v = advect_v_along_y(v, vb_contra, rdy=rdy, dy=dy, dya=dya, dt=dt)
         advected_u = advect_u_along_x(u, ub_contra, rdx=rdx, dx=dx, dxa=dxa, dt=dt)
+        dt_kinetic_energy_on_cell_corners = (
+            0.5 * dt * (ub_contra * advected_u + vb_contra * advected_v)
+        )
+        dt_kinetic_energy_on_cell_corners = all_corners_ke(
+            dt_kinetic_energy_on_cell_corners, u, v, uc_contra, vc_contra, dt
+        )
 
 
 @gtscript.function
@@ -279,39 +281,6 @@ def all_corners_ke(ke, u, v, ut, vt, dt):
         ke = corner_ke(u, v, ut, vt, dt, 0, -1, -1, -1)
 
     return ke
-
-
-def kinetic_energy_update_part_2(
-    ub_contra: FloatField,
-    advected_u: FloatField,
-    vb_contra: FloatField,
-    advected_v: FloatField,
-    v: FloatField,
-    vc_contra: FloatField,
-    u: FloatField,
-    uc_contra: FloatField,
-    ke: FloatField,
-    dt: float,
-):
-    """
-    Args:
-        ub_contra (in):
-        advected_u (in):
-        vb_contra (in):
-        advected_v (in):
-        v (in):
-        vc_contra (in):
-        u (in):
-        uc_contra (in):
-        ke (out):
-    """
-    # TODO: this is split from part 1 only because the compiled code asks for
-    # too much memory. Merge these when that's fixed.
-    with computation(PARALLEL), interval(...):
-        # TODO: we see here that ke is not kinetic energy, but kinetic energy * timestep
-        #       refactor or rename to avoid this confusion
-        ke = 0.5 * dt * (ub_contra * advected_u + vb_contra * advected_v)
-        ke = all_corners_ke(ke, u, v, uc_contra, vc_contra, dt)
 
 
 def compute_vorticity(
@@ -742,7 +711,7 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_heat_s = make_storage()
         self._vort_x_delta = make_storage()
         self._vort_y_delta = make_storage()
-        self._tmp_ke = make_storage()
+        self._dt_kinetic_energy_on_cell_corners = make_storage()
         self._tmp_vort = make_storage()
         self._uc_contra = make_storage()
         self._vc_contra = make_storage()
@@ -761,10 +730,6 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_damp_3d = utils.make_storage_from_shape(
             (1, 1, self.grid_indexing.domain[2]), backend=stencil_factory.backend
         )
-        self._advected_u = make_storage()
-        self._advected_v = make_storage()
-        self._ub_contra = make_storage()
-        self._vb_contra = make_storage()
         self._column_namelist = column_namelist
 
         self.delnflux_nosg_w = DelnFluxNoSG(
@@ -838,8 +803,8 @@ class DGridShallowWaterLagrangianDynamics:
                 "inline_q": config.inline_q,
             },
         )
-        self._kinetic_energy_update_part_1 = stencil_factory.from_dims_halo(
-            func=kinetic_energy_update_part_1,
+        self._compute_kinetic_energy = stencil_factory.from_dims_halo(
+            func=compute_kinetic_energy,
             compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
             externals={
                 "iord": config.hord_mt,
@@ -848,19 +813,6 @@ class DGridShallowWaterLagrangianDynamics:
                 "xt_minmax": False,
                 "yt_minmax": False,
             },
-            skip_passes=("GreedyMerging",),
-        )
-        self._kinetic_energy_update_part_2 = stencil_factory.from_dims_halo(
-            func=kinetic_energy_update_part_2,
-            compute_dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
-            externals={
-                "iord": config.hord_mt,
-                "jord": config.hord_mt,
-                "mord": config.hord_mt,
-                "xt_minmax": False,
-                "yt_minmax": False,
-            },
-            skip_passes=("GreedyMerging",),
         )
         self._flux_adjust_stencil = stencil_factory.from_dims_halo(
             func=flux_adjust, compute_dims=[X_DIM, Y_DIM, Z_DIM]
@@ -1126,7 +1078,7 @@ class DGridShallowWaterLagrangianDynamics:
             pt=pt,
             delp=delp,
         )
-        self._kinetic_energy_update_part_1(
+        self._compute_kinetic_energy(
             vc=vc,
             uc=uc,
             cosa=self.grid_data.cosa,
@@ -1141,22 +1093,7 @@ class DGridShallowWaterLagrangianDynamics:
             dy=self.grid_data.dy,
             dya=self.grid_data.dya,
             rdy=self.grid_data.rdy,
-            ub_contra=self._ub_contra,
-            vb_contra=self._vb_contra,
-            advected_u=self._advected_u,
-            advected_v=self._advected_v,
-            dt=dt,
-        )
-        self._kinetic_energy_update_part_2(
-            ub_contra=self._ub_contra,
-            advected_u=self._advected_u,
-            vb_contra=self._vb_contra,
-            advected_v=self._advected_v,
-            v=v,
-            vc_contra=self._vc_contra,
-            u=u,
-            uc_contra=self._uc_contra,
-            ke=self._tmp_ke,
+            dt_kinetic_energy_on_cell_corners=self._dt_kinetic_energy_on_cell_corners,
             dt=dt,
         )
 
@@ -1183,7 +1120,7 @@ class DGridShallowWaterLagrangianDynamics:
             vc,
             uc,
             delpc,
-            self._tmp_ke,
+            self._dt_kinetic_energy_on_cell_corners,
             self._vorticity_agrid,
             dt,
         )
@@ -1208,12 +1145,8 @@ class DGridShallowWaterLagrangianDynamics:
             self._tmp_fy,
         )
 
-        # TODO: what is ke here? It isn't kinetic energy. What are the u and v outputs?
-        # they have units of speed * distance, so they are no longer x and y-wind
-        # unless before this point u has units of speed divided by distance
-        # and is not the x-wind?
         self._u_and_v_from_ke_stencil(
-            self._tmp_ke,
+            self._dt_kinetic_energy_on_cell_corners,
             self._tmp_fx,
             self._tmp_fy,
             u,

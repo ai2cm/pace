@@ -1,6 +1,9 @@
 from dataclasses import InitVar, dataclass, field, fields
 from typing import List, Optional
 
+import gt4py.gtscript as gtscript
+import xarray as xr
+
 import pace.util
 from fv3gfs.physics.stencils.microphysics import MicrophysicsState
 from pace.dsl.typing import FloatField
@@ -214,3 +217,19 @@ class PhysicsState:
             quantity_factory=quantity_factory,
             active_packages=active_packages,
         )
+
+    @property
+    def xr_dataset(self):
+        data_vars = {}
+        for name, field_info in self.__dataclass_fields__.items():
+            if isinstance(field_info.type, gtscript._FieldDescriptor):
+                dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
+                data_vars[name] = xr.DataArray(
+                    getattr(self, name).data,
+                    dims=dims,
+                    attrs={
+                        "long_name": field_info.metadata["name"],
+                        "units": field_info.metadata.get("units", "unknown"),
+                    },
+                )
+        return xr.Dataset(data_vars=data_vars)

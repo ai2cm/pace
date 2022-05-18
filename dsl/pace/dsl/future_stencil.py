@@ -7,11 +7,7 @@ from gt4py.definitions import FieldInfo
 from gt4py.stencil_builder import StencilBuilder
 from gt4py.stencil_object import StencilObject
 
-
-try:
-    from mpi4py import MPI
-except ImportError:
-    MPI = None
+from pace.util.mpi import MPI
 
 
 class Singleton(type):
@@ -260,7 +256,7 @@ def future_stencil(
     def _decorator(func):
         # Move backend options to `backend_opts`
         backend_opts: Dict[str, Any] = {}
-        for backend_opt in ("device_sync", "skip_passes", "verbose"):
+        for backend_opt in ("device_sync", "skip_passes", "verbose", "oir_pipeline"):
             if backend_opt in kwargs:
                 backend_opts[backend_opt] = kwargs.pop(backend_opt)
 

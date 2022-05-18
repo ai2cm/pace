@@ -1,14 +1,9 @@
 from typing import Callable, Sequence
 
+from .._optional_imports import gt4py
 from ..constants import SPATIAL_DIMS, X_DIMS, Y_DIMS, Z_DIMS
 from ..quantity import Quantity
 from .sizer import GridSizer
-
-
-try:
-    import gt4py
-except ImportError:
-    gt4py = None
 
 
 def _wrap_storage_call(function, backend):

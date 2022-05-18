@@ -13,8 +13,8 @@ import fv3core._config
 import pace.dsl
 import pace.util as fv3util
 from fv3core import DynamicalCoreConfig
-from fv3core.utils.mpi import MPI
 from pace.stencils.testing import ParallelTranslate, TranslateGrid
+from pace.util.mpi import MPI
 
 from . import translate
 
@@ -96,6 +96,7 @@ def stencil_config(backend):
         backend=backend,
         rebuild=False,
         validate_args=True,
+        format_source="numpy" in backend,
     )
 
 

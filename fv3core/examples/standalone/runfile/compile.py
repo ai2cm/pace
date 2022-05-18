@@ -7,7 +7,7 @@ import f90nml
 
 import pace.dsl.stencil  # noqa: F401
 from fv3core._config import DynamicalCoreConfig
-from fv3core.utils.null_comm import NullComm
+from pace.util.null_comm import NullComm
 
 
 local = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +46,10 @@ if __name__ == "__main__":
             fill_value=0.0,
         )
         dycore, dycore_args = setup_dycore(
-            dycore_config, mpi_comm, args.backend, is_baroclinic_test_case
+            dycore_config,
+            mpi_comm,
+            args.backend,
+            is_baroclinic_test_case,
+            args.data_dir,
         )
     print("SUCCESS")
