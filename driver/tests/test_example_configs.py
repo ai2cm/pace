@@ -16,12 +16,13 @@ TESTED_CONFIGS = [
     "baroclinic_c12_comm_read.yaml",
     "baroclinic_c12_comm_write.yaml",
     "baroclinic_c12_null_comm.yaml",
-    # We don't test serialbox example because it loads namelist
-    # filepath that are not in git
-    # "baroclinic_c12_from_serialbox.yaml",
 ]
 
-EXCLUDED_CONFIGS: List[str] = []
+EXCLUDED_CONFIGS: List[str] = [
+    # We don't test serialbox example because it loads namelist
+    # filepath that are not in git
+    "baroclinic_c12_from_serialbox.yaml",
+]
 
 
 def test_all_configs_tested_or_excluded():
