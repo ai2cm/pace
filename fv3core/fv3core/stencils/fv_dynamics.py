@@ -352,6 +352,21 @@ class DynamicalCore:
         )
         self._omega_halo_updater = self.comm.get_scalar_halo_updater([full_xyz_spec])
 
+    def _checkpoint_fvdynamics(self, state: DycoreState, tag: str):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "FVDynamics-" + tag,
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                delz=state.delz,
+                ua=state.ua,
+                va=state.va,
+                uc=state.uc,
+                vc=state.vc,
+                qvapor=state.qvapor,
+            )
+
     def step_dynamics(
         self,
         state: DycoreState,
@@ -373,19 +388,7 @@ class DynamicalCore:
             n_split: number of acoustic timesteps per remapping timestep
             timer: if given, use for timing model execution
         """
-        if self.call_checkpointer:
-            self.checkpointer(
-                "FVDynamics-In",
-                u=state.u,
-                v=state.v,
-                w=state.w,
-                delz=state.delz,
-                ua=state.ua,
-                va=state.va,
-                uc=state.uc,
-                vc=state.vc,
-                qvapor=state.qvapor,
-            )
+        self._checkpoint_fvdynamics(state=state, tag="In")
         # TODO: state should be a statically typed class, move these to the
         # definition of DycoreState and pass them on init or alternatively
         # move these to/get these from the namelist/configuration class
@@ -400,19 +403,7 @@ class DynamicalCore:
             }
         )
         self._compute(state, timer)
-        if self.call_checkpointer:
-            self.checkpointer(
-                "FVDynamics-Out",
-                u=state.u,
-                v=state.v,
-                w=state.w,
-                delz=state.delz,
-                ua=state.ua,
-                va=state.va,
-                uc=state.uc,
-                vc=state.vc,
-                qvapor=state.qvapor,
-            )
+        self._checkpoint_fvdynamics(state=state, tag="Out")
 
     # TODO: type hint state when it is possible to do so, when it is a static type
     def _compute(
