@@ -30,7 +30,7 @@ from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
-from pace.dsl.dace.dace_config import dace_config
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
@@ -46,6 +46,7 @@ class StencilConfig(Hashable):
     format_source: bool = False
     device_sync: bool = False
     compare_to_numpy: bool = False
+    dace_config: DaceConfig = None
 
     def __post_init__(self):
         self.backend_opts = self._get_backend_opts(self.device_sync, self.format_source)
@@ -352,7 +353,7 @@ class FrozenStencil(SDFGConvertible):
         # If we orchestrate, move the compilation at call time to make sure
         # disable_codegen do not lead to call to uncompiled stencils, which fails
         # silently
-        if not dace_config.is_dace_orchestrated():
+        if not self.stencil_config.dace_config.is_dace_orchestrated():
             self.stencil_object = self._compile()
 
     def _compile(self):
@@ -374,7 +375,7 @@ class FrozenStencil(SDFGConvertible):
 
         # When orchestrating with DaCe, cache the frozen stencil for
         # calls in __sdfg__ generation
-        if dace_config.is_dace_orchestrated():
+        if self.stencil_config.dace_config.is_dace_orchestrated():
             self._frozen_stencil = stencil_object.freeze(
                 origin=self._field_origins,
                 domain=self.domain,

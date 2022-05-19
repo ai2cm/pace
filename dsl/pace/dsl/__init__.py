@@ -1,3 +1,3 @@
 from . import dace
-from .dace.orchestrate import computepath_function, computepath_method
+from .dace.orchestrate import Orchestratable, orchestrate_function
 from .stencil import FrozenStencil, StencilConfig, StencilFactory

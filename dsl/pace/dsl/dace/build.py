@@ -1,23 +1,22 @@
 import os.path
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import yaml
 
-from pace.dsl.dace.dace_config import DaCeOrchestration, dace_config
-from pace.util.communicator import CubedSphereCommunicator
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 
 
 ################################################
 # Distributed compilation
 
 
-def determine_compiling_ranks() -> Tuple[bool, Any]:
+def determine_compiling_ranks(config: DaceConfig) -> Tuple[bool, Any]:
     is_compiling = False
     rank = 0
     size = 1
 
-    if dace_config.get_communicator():
-        comm = dace_config.get_communicator().comm
+    if config.get_communicator():
+        comm = config.get_communicator().comm
         rank = comm.Get_rank()
         size = comm.Get_size()
     else:
@@ -112,13 +111,13 @@ def top_tile_rank_from_decomposition_string(string, partitioner):
     return None
 
 
-def top_tile_rank_to_decomposition_string(rank):
+def top_tile_rank_to_decomposition_string(rank: int, config: DaceConfig):
     """
     Return the decomposition string for the correct subtile position by matching
      osition given by the partitionner
         e.g.: return "00" for ranl at bottom left subtile
     """
-    partitioner = dace_config.get_communicator().partitioner
+    partitioner = config.get_communicator().partitioner
     if partitioner.tile.on_tile_bottom(rank):
         if partitioner.tile.on_tile_left(rank):
             return "00"
@@ -142,12 +141,14 @@ def top_tile_rank_to_decomposition_string(rank):
             return "11"
 
 
-def read_target_rank(rank, filename=None):
-    partitioner = dace_config.get_communicator().partitioner
+def read_target_rank(rank: int, config: DaceConfig, filename=None):
+    partitioner = config.get_communicator().partitioner
     top_tile_rank = top_tile_equivalent(rank, partitioner.total_ranks)
     with open(filename) as decomposition:
         parsed_file = yaml.safe_load(decomposition)
-        return int(parsed_file[top_tile_rank_to_decomposition_string(top_tile_rank)])
+        return int(
+            parsed_file[top_tile_rank_to_decomposition_string(top_tile_rank, config)]
+        )
 
 
 def top_tile_equivalent(rank, size):
@@ -167,14 +168,16 @@ def top_tile_equivalent(rank, size):
 _loaded_sdfg_once = False
 
 
-def write_decomposition():
+def write_decomposition(
+    config: DaceConfig,
+):
     from gt4py import config as gt_config
 
-    partitioner = dace_config.get_communicator().partitioner
+    partitioner = config.get_communicator().partitioner
     path = f"{gt_config.cache_settings['root_path']}/.layout/"
     config_path = path + "decomposition.yml"
     os.makedirs(path, exist_ok=True)
-    decomposition = {}
+    decomposition: Dict[Any, Any] = {}
     for string in ["00", "10", "20", "01", "11", "21", "02", "12", "22"]:
         target_rank = top_tile_rank_from_decomposition_string(string, partitioner)
         if target_rank is not None:
@@ -185,13 +188,13 @@ def write_decomposition():
 
 
 def load_sdfg_once(
-    program: Callable, sdfg_file_path: Optional[str] = None
+    program: Callable, config: DaceConfig, sdfg_file_path: Optional[str] = None
 ) -> Optional[str]:
     """Attempt to load SDFG the first time it's called.
     Silently return for any other call but the first one.
     """
 
-    if dace_config.get_orchestrate() != DaCeOrchestration.Run:
+    if config.get_orchestrate() != DaCeOrchestration.Run:
         return None
 
     global _loaded_sdfg_once
@@ -211,7 +214,9 @@ def load_sdfg_once(
     return _get_sdfg_path(qualified_dirname, sdfg_file_path)
 
 
-def _get_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> str:
+def _get_sdfg_path(
+    program_name: str, config: DaceConfig, sdfg_file_path: Optional[str] = None
+) -> str:
     """Build an SDFG path from the qualified program name or it's direct path to .sdfg
 
     Args:
@@ -220,7 +225,7 @@ def _get_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> s
     """
 
     # Guarding against bad usage of this function
-    if dace_config.get_orchestrate() != DaCeOrchestration.Run:
+    if config.get_orchestrate() != DaCeOrchestration.Run:
         raise RuntimeError(
             "Coding mistaked: sdfg path ask but DaCe orchestration is != Production"
         )
@@ -238,7 +243,7 @@ def _get_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> s
 
     from gt4py import config as gt_config
 
-    comm = dace_config.get_communicator().comm
+    comm = config.get_communicator().comm
     config_path = f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
     if comm.Get_size() > 1:
         rank_str = f"_{read_target_rank(comm.Get_rank(), config_path):06d}"
@@ -257,14 +262,11 @@ def _get_sdfg_path(program_name: str, sdfg_file_path: Optional[str] = None) -> s
     return sdfg_dir_path
 
 
-def set_distributed_caches(cube_communicator: CubedSphereCommunicator, backend: str):
+def set_distributed_caches(config: "DaceConfig"):
     """In Run mode, check required file then point current rank cache to source cache"""
 
-    # Set the communicator for the dace builder
-    dace_config.init(cube_communicator, backend)
-
     # Execute specific initialization per orchestration state
-    orchestration_mode = dace_config.get_orchestrate()
+    orchestration_mode = config.get_orchestrate()
 
     # Check that we have all the file we need to early out in case
     # of issues.
@@ -273,7 +275,7 @@ def set_distributed_caches(cube_communicator: CubedSphereCommunicator, backend: 
 
         from gt4py import config as gt_config
 
-        comm = dace_config.get_communicator().comm
+        comm = config.get_communicator().comm
         rank = comm.Get_rank()
 
         # Check layout

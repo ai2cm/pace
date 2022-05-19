@@ -13,12 +13,12 @@ import fv3core
 import fv3gfs.physics
 import pace.driver
 import pace.dsl
-import pace.dsl.dace.build as dace_build
 import pace.stencils
 import pace.util
 import pace.util.grid
-from pace.dsl.dace.dace_config import dace_config
-from pace.dsl.dace.orchestrate import computepath_method, dace_inhibitor
+from fv3core.initialization.dycore_state import DycoreState
+from pace.dsl.dace.dace_config import DaceConfig
+from pace.dsl.dace.orchestrate import Orchestratable, dace_inhibitor
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
@@ -163,7 +163,7 @@ class DriverConfig:
         )
 
 
-class Driver:
+class Driver(Orchestratable):
     def __init__(
         self,
         config: DriverConfig,
@@ -186,10 +186,16 @@ class Driver:
                 comm=self.comm, layout=self.config.layout
             )
 
-            # DaCe distributed caches and backend setup
-            dace_build.set_distributed_caches(
-                communicator, self.config.stencil_config.backend
+            dace_config = DaceConfig(
+                communicator=communicator, backend=self.config.stencil_config.backend
             )
+            self.config.stencil_config.dace_config = dace_config
+            super(Driver, self).__init__(
+                config=dace_config,
+                method_to_orchestrate="dycore_only_loop_orchestrated",
+                dace_constant_args=["state"],
+            )
+
             self.quantity_factory, self.stencil_factory = _setup_factories(
                 config=config, communicator=communicator
             )
@@ -258,9 +264,8 @@ class Driver:
         self._time_run += self.config.timestep
         self.diagnostics.store(time=self._time_run, state=self.state)
 
-    @computepath_method
     def dycore_only_loop_orchestrated(
-        self, state: dace.constant, time_steps: int, time_step_io_freq: int
+        self, state: DycoreState, time_steps: int, time_step_io_freq: int
     ):
         for t in dace.nounroll(range(time_steps)):
             self._step_dynamics(state, self.performance_config.timestep_timer)
@@ -277,7 +282,7 @@ class Driver:
             )
             # Temporary DaCe execution code to restrict orchestration to the dycore only
             # and properly error out. Original code conserved in else
-            if dace_config.is_dace_orchestrated():
+            if self.config.stencil_config.dace_config.is_dace_orchestrated():
                 time_steps = int(
                     (end_time - self.time).seconds / self.config.timestep.seconds
                 )
