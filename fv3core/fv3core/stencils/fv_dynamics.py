@@ -355,7 +355,7 @@ class DynamicalCore:
     def _checkpoint_fvdynamics(self, state: DycoreState, tag: str):
         if self.call_checkpointer:
             self.checkpointer(
-                "FVDynamics-" + tag,
+                f"FVDynamics-{tag}",
                 u=state.u,
                 v=state.v,
                 w=state.w,
