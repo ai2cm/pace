@@ -1,6 +1,4 @@
-import dataclasses
 import enum
-from typing import Optional
 
 from pace.util.communicator import CubedSphereCommunicator
 
@@ -21,26 +19,24 @@ class DaCeOrchestration(enum.Enum):
     Run = 3
 
 
-@dataclasses.dataclass
 class DaceConfig:
-    _backend: str = ""
-    _orchestrate: DaCeOrchestration = DaCeOrchestration.Python
-    _communicator: Optional[CubedSphereCommunicator] = None
-
     def __init__(self, communicator: CubedSphereCommunicator, backend: str):
         # Temporary. This is a bit too out of the ordinary for the common user.
         # We should refactor the architecture to allow for a `gtc:orchestrated:dace:X`
         # backend that would signify both the `CPU|GPU` split and the orchestration mode
         import os
 
-        self.orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
+        self._orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
         self._communicator = communicator
         self._backend = backend
         from pace.dsl.dace.build import set_distributed_caches
 
         set_distributed_caches(self)
 
-        if "dace" not in self._backend:
+        if (
+            self._orchestrate != DaCeOrchestration.Python
+            and "dace" not in self._backend
+        ):
             raise RuntimeError(
                 "DaceConfig: orchestration can only be leverage "
                 f"on gtc:dace or gtc:dace:gpu not on {self._backend}"

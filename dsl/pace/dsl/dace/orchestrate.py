@@ -231,6 +231,7 @@ class _LazyComputepathFunction(SDFGConvertible):
         return call_sdfg(
             self.daceprog,
             sdfg,
+            self.config,
             args,
             kwargs,
         )
@@ -303,6 +304,7 @@ class _LazyComputepathMethod:
 
         def __call__(self, *args, **kwargs):
             assert self.lazy_method.config.is_dace_orchestrated()
+            print(f"__call__ {self.daceprog.f}")
             sdfg = self.__sdfg__(*args, **kwargs)
             return call_sdfg(
                 self.daceprog,
@@ -376,6 +378,9 @@ def computepath_method(
 
 
 class Orchestratable:
+
+    orchestrated: List[Tuple[object, str]] = []
+
     def __init__(
         self,
         config: DaceConfig,
@@ -383,29 +388,34 @@ class Orchestratable:
         dace_constant_args: List[str] = [],
     ):
         if config.is_dace_orchestrated():
-            if hasattr(self, method_to_orchestrate):
-                # Grab the function from the type of the child class
-                # Dev note: we need to use type for dunder call because:
-                #   a = A()
-                #   a()
-                # resolved to: type(a).__call__(a)
-                # therefore patching the instance is not enough. The side effect
-                # is that _every_ instance of A will be patched, not an issue for us.
-                func = type.__getattribute__(type(self), method_to_orchestrate)
+            if (type(self), method_to_orchestrate) not in self.orchestrated:
+                if hasattr(self, method_to_orchestrate):
+                    # Grab the function from the type of the child class
+                    # Dev note: we need to use type for dunder call because:
+                    #   a = A()
+                    #   a()
+                    # resolved to: type(a).__call__(a)
+                    # therefore patching the instance is not enough. The side effect
+                    # is that _every_ instance of A will be patched, not an issue for us.
+                    func = type.__getattribute__(type(self), method_to_orchestrate)
 
-                # Flag argument as dace.constant
-                for argument in dace_constant_args:
-                    func.__annotations__[argument] = DaceConstant
+                    # Flag argument as dace.constant
+                    for argument in dace_constant_args:
+                        func.__annotations__[argument] = DaceConstant
 
-                # Build DaCe orchestrated (JIT) wrapper & patch the method
-                wrapped = _LazyComputepathMethod(func, config).__get__(self).__call__
-                type.__setattr__(type(self), method_to_orchestrate, wrapped)
-            else:
-                raise RuntimeError(
-                    f"Could not orchestrate, "
-                    f"{type(self).__name__}.{method_to_orchestrate} "
-                    "does not exists"
-                )
+                    # Build DaCe orchestrated (JIT) wrapper & patch the method
+                    wrapped = (
+                        _LazyComputepathMethod(func, config).__get__(self).__call__
+                    )
+                    type.__setattr__(type(self), method_to_orchestrate, wrapped)
+
+                    self.orchestrated.append((type(self), method_to_orchestrate))
+                else:
+                    raise RuntimeError(
+                        f"Could not orchestrate, "
+                        f"{type(self).__name__}.{method_to_orchestrate} "
+                        "does not exists"
+                    )
 
 
 def orchestrate_function(

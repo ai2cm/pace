@@ -13,8 +13,7 @@ import fv3core._config
 import pace.dsl
 import pace.util as fv3util
 from fv3core import DynamicalCoreConfig
-from pace.dsl.dace.build import set_distribued_caches
-from pace.dsl.dace.dace_config import dace_config
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.stencils.testing import ParallelTranslate, TranslateGrid
 from pace.util.mpi import MPI
 
@@ -95,11 +94,13 @@ def read_serialized_data(serializer, savepoint, variable):
 
 @pytest.fixture
 def stencil_config(backend):
+    dace_config = DaceConfig(None, backend)
     return pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=True,
         format_source="numpy" in backend,
+        dace_config=dace_config,
     )
 
 
@@ -128,7 +129,6 @@ def get_test_class_instance(test_name, grid, namelist, stencil_factory):
     if translate_class is None:
         return None
     else:
-        dace_config._backend = stencil_factory.backend
         return translate_class(grid, namelist, stencil_factory)
 
 
@@ -203,10 +203,9 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
     ranks = get_ranks(metafunc, dycore_config.layout)
+    dace_config = DaceConfig(communicator=None, backend=backend)
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=True,
+        backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
     )
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
@@ -563,7 +562,6 @@ def get_sequential_param(
 @pytest.fixture()
 def communicator(layout):
     communicator = get_communicator(MPI.COMM_WORLD, layout)
-    set_distribued_caches(communicator)
     return communicator
 
 

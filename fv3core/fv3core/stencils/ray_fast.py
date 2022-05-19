@@ -13,7 +13,7 @@ from gt4py.gtscript import (
 )
 
 import pace.util.constants as constants
-from pace.dsl.dace.orchestrate import computepath_method
+from pace.dsl.dace.orchestrate import Orchestratable
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldK
 from pace.util import X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM
@@ -127,7 +127,7 @@ def ray_fast_wind_compute(
                     w *= rf
 
 
-class RayleighDamping:
+class RayleighDamping(Orchestratable):
     """
     Apply Rayleigh damping (for tau > 0).
 
@@ -142,6 +142,7 @@ class RayleighDamping:
     """
 
     def __init__(self, stencil_factory: StencilFactory, rf_cutoff, tau, hydrostatic):
+        super(RayleighDamping, self).__init__(config=stencil_factory.config.dace_config)
         grid_indexing = stencil_factory.grid_indexing
         self._rf_cutoff = rf_cutoff
         origin, domain = grid_indexing.get_origin_domain(
@@ -166,7 +167,6 @@ class RayleighDamping:
             },
         )
 
-    @computepath_method
     def __call__(
         self,
         u: FloatField,

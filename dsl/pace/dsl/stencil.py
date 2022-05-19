@@ -479,13 +479,8 @@ class FrozenStencil(SDFGConvertible):
     def _frozen_stencil(self):
         old_codegen_flag = None
         if "disable_code_generation" in self.stencil_kwargs:
-            old_codegen_flag = self.stencil_kwargs["disable_code_generation"]
-        self.stencil_kwargs["disable_code_generation"] = True
-        stencil_object_no_codegen = self._compile()
-        if old_codegen_flag:
-            self.stencil_kwargs["disable_code_generation"] = old_codegen_flag
-        else:
             self.stencil_kwargs.pop("disable_code_generation")
+        stencil_object_no_codegen = self._compile()
         return stencil_object_no_codegen.freeze(
             origin=self._field_origins,
             domain=self.domain,
