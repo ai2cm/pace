@@ -14,7 +14,7 @@ import pace.util.grid
 from pace.util.grid import DampingCoefficients
 
 from .registry import Registry
-from .state import DriverState, TendencyState
+from .state import DriverState, TendencyState, _restart_driver_state
 
 
 class Initializer(abc.ABC):
@@ -77,10 +77,7 @@ class BaroclinicConfig(Initializer):
     Configuration for baroclinic initialization.
     """
 
-    @property
-    def start_time(self) -> datetime:
-        # TODO: instead of arbitrary start time, enable use of timedeltas
-        return datetime(2000, 1, 1)
+    start_time: datetime = datetime(2000, 1, 1)
 
     def get_driver_state(
         self,
@@ -125,26 +122,18 @@ class RestartConfig(Initializer):
     Configuration for restart initialization.
     """
 
-    path: str
-
-    @property
-    def start_time(self) -> datetime:
-        return datetime(2000, 1, 1)
+    path: str = "."
+    start_time: datetime = datetime(2000, 1, 1)
 
     def get_driver_state(
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
-        metric_terms = pace.util.grid.MetricTerms(
-            quantity_factory=quantity_factory, communicator=communicator
+        state = _restart_driver_state(
+            self.path, communicator.rank, quantity_factory, communicator
         )
-        state = pace.util.open_restart(
-            dirname=self.path,
-            communicator=communicator,
-            quantity_factory=quantity_factory,
-        )
-        raise NotImplementedError()
+        return state
 
 
 @InitializerSelector.register("predefined")
@@ -164,11 +153,7 @@ class PredefinedStateConfig(Initializer):
     grid_data: pace.util.grid.GridData
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
-
-    @property
-    def start_time(self) -> datetime:
-        # TODO: instead of arbitrary start time, enable use of timedeltas
-        return datetime(2016, 8, 1)
+    start_time: datetime = datetime(2016, 8, 1)
 
     def get_driver_state(
         self,

@@ -3,3 +3,7 @@ pytest-subtests
 pytest-cov
 dacite
 mpi4py
+numpy
+netCDF4
+xarray
+zarr
