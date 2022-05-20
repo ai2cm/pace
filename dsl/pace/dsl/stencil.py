@@ -100,10 +100,13 @@ class StencilConfig(Hashable):
 
         return backend_opts
 
-    def stencil_kwargs(self, skip_passes: Iterable[str] = ()):
+    def stencil_kwargs(
+        self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()
+    ):
         kwargs = {
             "backend": self.backend,
             "rebuild": self.rebuild,
+            "name": func.__module__ + "." + func.__name__,
             **self.backend_opts,
         }
         if not self.is_gpu_backend:
@@ -294,7 +297,9 @@ class FrozenStencil:
         if externals is None:
             externals = {}
 
-        stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes)
+        stencil_kwargs = self.stencil_config.stencil_kwargs(
+            skip_passes=skip_passes, func=func
+        )
         self.stencil_object: gt4py.StencilObject = gtscript.stencil(
             definition=func, externals=externals, **stencil_kwargs
         )

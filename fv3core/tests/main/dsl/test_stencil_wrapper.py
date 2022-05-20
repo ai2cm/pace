@@ -226,7 +226,7 @@ def test_frozen_stencil_kwargs_passed_to_init(
     mock_stencil.assert_called_once_with(
         definition=copy_stencil,
         externals={},
-        **config.stencil_kwargs(),
+        **config.stencil_kwargs(func=copy_stencil),
     )
 
 
@@ -265,6 +265,7 @@ def test_backend_options(
             "backend": "gtc:numpy",
             "rebuild": True,
             "format_source": False,
+            "name": "test_stencil_wrapper.copy_stencil",
             "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
         },
         "gtc:cuda": {
@@ -272,6 +273,7 @@ def test_backend_options(
             "rebuild": True,
             "device_sync": False,
             "format_source": False,
+            "name": "test_stencil_wrapper.copy_stencil",
             "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
             "verbose": False,
         },
@@ -282,7 +284,7 @@ def test_backend_options(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
-    ).stencil_kwargs()
+    ).stencil_kwargs(func=copy_stencil)
     assert stencil_kwargs == expected_options[backend]
 
 
