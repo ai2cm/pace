@@ -1,0 +1,3 @@
+# We can only pip-compile external dependencies
+# We indirectly depend on dace for development
+dace

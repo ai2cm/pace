@@ -1,4 +1,4 @@
--e ../external/gt4py
+-e ../external/gt4py[dace]
 -e ../pace-util[zarr]
 -e ../dsl
 -e ../stencils
