@@ -1,3 +1,5 @@
+from typing import Optional
+
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
@@ -209,6 +211,7 @@ class DynamicalCore:
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
+        checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         """
         Args:
@@ -219,9 +222,14 @@ class DynamicalCore:
             config: configuration of dynamical core, for example as would be set by
                 the namelist in the Fortran model
             phis: surface geopotential height
+            checkpointer: if given, used to perform operations on model data
+                at specific points in model execution, such as testing against
+                reference data
         """
         # nested and stretched_grid are options in the Fortran code which we
         # have not implemented, so they are hard-coded here.
+        self.call_checkpointer = checkpointer is not None
+        self.checkpointer = checkpointer
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
@@ -306,6 +314,7 @@ class DynamicalCore:
             self.config.acoustic_dynamics,
             self._pfull,
             self._phis,
+            checkpointer=checkpointer,
         )
         self._hyperdiffusion = HyperdiffusionDamping(
             stencil_factory,
@@ -343,6 +352,21 @@ class DynamicalCore:
         )
         self._omega_halo_updater = self.comm.get_scalar_halo_updater([full_xyz_spec])
 
+    def _checkpoint_fvdynamics(self, state: DycoreState, tag: str):
+        if self.call_checkpointer:
+            self.checkpointer(
+                f"FVDynamics-{tag}",
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                delz=state.delz,
+                ua=state.ua,
+                va=state.va,
+                uc=state.uc,
+                vc=state.vc,
+                qvapor=state.qvapor,
+            )
+
     def step_dynamics(
         self,
         state: DycoreState,
@@ -364,6 +388,7 @@ class DynamicalCore:
             n_split: number of acoustic timesteps per remapping timestep
             timer: if given, use for timing model execution
         """
+        self._checkpoint_fvdynamics(state=state, tag="In")
         # TODO: state should be a statically typed class, move these to the
         # definition of DycoreState and pass them on init or alternatively
         # move these to/get these from the namelist/configuration class
@@ -378,6 +403,7 @@ class DynamicalCore:
             }
         )
         self._compute(state, timer)
+        self._checkpoint_fvdynamics(state=state, tag="Out")
 
     # TODO: type hint state when it is possible to do so, when it is a static type
     def _compute(

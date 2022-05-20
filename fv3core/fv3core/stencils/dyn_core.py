@@ -1,4 +1,4 @@
-from typing import Dict, Sequence, Union
+from typing import Dict, Optional, Sequence, Union
 
 from gt4py.gtscript import (
     __INLINED,
@@ -327,6 +327,7 @@ class AcousticDynamics:
         config: AcousticDynamicsConfig,
         pfull: FloatFieldK,
         phis: FloatFieldIJ,
+        checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         """
         Args:
@@ -340,7 +341,12 @@ class AcousticDynamics:
             config: configuration settings
             pfull: atmospheric Eulerian grid reference pressure (Pa)
             phis: surface geopotential height
+            checkpointer: if given, used to perform operations on model data
+                at specific points in model execution, such as testing against
+                reference data
         """
+        self.call_checkpointer = checkpointer is not None
+        self.checkpointer = checkpointer
         grid_indexing = stencil_factory.grid_indexing
         self.comm = comm
         self.config = config
@@ -519,6 +525,46 @@ class AcousticDynamics:
             self.comm, grid_indexing, backend=stencil_factory.backend
         )
 
+    def _checkpoint_csw(self, state, tag: str):
+        if self.call_checkpointer:
+            self.checkpointer(
+                f"C_SW-{tag}",
+                delp=state.delp,
+                pt=state.pt,
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                uc=state.uc,
+                vc=state.vc,
+                ua=state.ua,
+                va=state.va,
+                ut=state.ut,
+                vt=state.vt,
+                divgd=state.divgd,
+            )
+
+    def _checkpoint_dsw(self, state, tag: str):
+        if self.call_checkpointer:
+            self.checkpointer(
+                f"D_SW-{tag}",
+                ucd=state.uc,
+                vcd=state.vc,
+                wd=state.w,
+                delpcd=state.delpc,
+                delpd=state.delp,
+                ud=state.u,
+                vd=state.v,
+                ptd=state.pt,
+                uad=state.ua,
+                vad=state.va,
+                zhd=state.zh,
+                divgdd=state.divgd,
+                xfxd=state.xfx,
+                yfxd=state.yfx,
+                mfxd=state.mfxd,
+                mfyd=state.mfyd,
+            )
+
     # TODO: type hint state when it is possible to do so, when it is a static type
     def __call__(self, state):
         # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
@@ -601,6 +647,7 @@ class AcousticDynamics:
                 self._halo_updaters.w.wait()
 
             # compute the c-grid winds at t + 1/2 timestep
+            self._checkpoint_csw(state, tag="In")
             state.delpc, state.ptc = self.cgrid_shallow_water_lagrangian_dynamics(
                 state.delp,
                 state.pt,
@@ -617,6 +664,7 @@ class AcousticDynamics:
                 state.omga,
                 dt2,
             )
+            self._checkpoint_csw(state, tag="Out")
 
             if self.config.nord > 0:
                 self._halo_updaters.divgd.start([state.divgd])
@@ -666,6 +714,7 @@ class AcousticDynamics:
             self._halo_updaters.uc__vc.wait()
             # use the computed c-grid winds to evolve the d-grid winds forward
             # by 1 timestep
+            self._checkpoint_dsw(state, tag="In")
             self.dgrid_shallow_water_lagrangian_dynamics(
                 state.vt,
                 state.delp,
@@ -692,6 +741,7 @@ class AcousticDynamics:
                 state.diss_estd,
                 dt,
             )
+            self._checkpoint_dsw(state, tag="Out")
             # note that uc and vc are not needed at all past this point.
             # they will be re-computed from scratch on the next acoustic timestep.
 
