@@ -10,5 +10,5 @@ if MPI is not None:
 
     gt4py.config.cache_settings["root_path"] = os.environ.get("GT_CACHE_DIR_NAME", ".")
     gt4py.config.cache_settings["dir_name"] = os.environ.get(
-        "GT_CACHE_ROOT", f".gt_cache_{MPI.COMM_WORLD.Get_rank()}"
+        "GT_CACHE_ROOT", f".gt_cache_{MPI.COMM_WORLD.Get_rank():06}"
     )
