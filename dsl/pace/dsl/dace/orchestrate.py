@@ -304,7 +304,6 @@ class _LazyComputepathMethod:
 
         def __call__(self, *args, **kwargs):
             assert self.lazy_method.config.is_dace_orchestrated()
-            print(f"__call__ {self.daceprog.f}")
             sdfg = self.__sdfg__(*args, **kwargs)
             return call_sdfg(
                 self.daceprog,
@@ -346,7 +345,7 @@ class _LazyComputepathMethod:
         self.func = func
         self.config = config
 
-    def __get__(self, obj) -> SDFGEnabledCallable:
+    def __get__(self, obj, objtype=None) -> SDFGEnabledCallable:
         """Return SDFGEnabledCallable wrapping original obj.method from cache.
         Update cache first if need be"""
         if (id(obj), id(self.func)) not in _LazyComputepathMethod.bound_callables:
@@ -358,6 +357,7 @@ class _LazyComputepathMethod:
         return _LazyComputepathMethod.bound_callables[(id(obj), id(self.func))]
 
 
+# TODO: Kill me before merging
 def computepath_method(
     method: Callable[..., Any]
 ) -> Union[Callable[..., Any], _LazyComputepathFunction]:
@@ -369,53 +369,92 @@ def computepath_method(
         load_sdfg: folder path to a pre-compiled SDFG or file path to a .sdfg graph
             that will be compiled but not regenerated."""
 
-    return method
+    # return method
+
+    config = DaceConfig(None, "gtc:dace")
 
     def _decorator(method):
-        return _LazyComputepathMethod(method)
+        return _LazyComputepathMethod(method, config)
 
     return _decorator(method)
 
 
-class Orchestratable:
+def orchestrate(
+    obj: object,
+    config: DaceConfig,
+    method_to_orchestrate: str = "__call__",
+    dace_constant_args: List[str] = [],
+):
+    """
+    Orchestrate a method of an object with DaCe.
+    If the model configuration doesn't demand orchestration, this won't do anything.
 
-    orchestrated: List[Tuple[object, str]] = []
+    Args:
+        obj: object which methods is to be orchestrated
+        config: DaceConfig carrying model configuration
+        method_to_orchestrate: string representing the name of the method
+        dace_constant_args: list of names of arguments to be flagged has dace.constant
+                            for orchestration to behave
+    """
 
-    def __init__(
-        self,
-        config: DaceConfig,
-        method_to_orchestrate: str = "__call__",
-        dace_constant_args: List[str] = [],
-    ):
-        if config.is_dace_orchestrated():
-            if (type(self), method_to_orchestrate) not in self.orchestrated:
-                if hasattr(self, method_to_orchestrate):
-                    # Grab the function from the type of the child class
-                    # Dev note: we need to use type for dunder call because:
-                    #   a = A()
-                    #   a()
-                    # resolved to: type(a).__call__(a)
-                    # therefore patching the instance is not enough. The side effect
-                    # is that _every_ instance of A will be patched, not an issue for us.
-                    func = type.__getattribute__(type(self), method_to_orchestrate)
+    if config.is_dace_orchestrated():
+        if hasattr(obj, method_to_orchestrate):
+            func = type.__getattribute__(type(obj), method_to_orchestrate)
 
-                    # Flag argument as dace.constant
-                    for argument in dace_constant_args:
-                        func.__annotations__[argument] = DaceConstant
+            # Flag argument as dace.constant
+            for argument in dace_constant_args:
+                func.__annotations__[argument] = DaceConstant
 
-                    # Build DaCe orchestrated (JIT) wrapper & patch the method
-                    wrapped = (
-                        _LazyComputepathMethod(func, config).__get__(self).__call__
-                    )
-                    type.__setattr__(type(self), method_to_orchestrate, wrapped)
+            # Build DaCe orchestrated wrapper
+            # This is a JIT object, e.g. DaCe compilation will happen on call
+            wrapped = _LazyComputepathMethod(func, config).__get__(obj)
 
-                    self.orchestrated.append((type(self), method_to_orchestrate))
-                else:
-                    raise RuntimeError(
-                        f"Could not orchestrate, "
-                        f"{type(self).__name__}.{method_to_orchestrate} "
-                        "does not exists"
-                    )
+            if method_to_orchestrate == "__call__":
+                # Grab the function from the type of the child class
+                # Dev note: we need to use type for dunder call because:
+                #   a = A()
+                #   a()
+                # resolved to: type(a).__call__(a)
+                # therefore patching the instance call (e.g a.__call__) is not enough.
+                # We could patch the type(self), ergo the class itself
+                # but that would patch _every_ instance of A.
+                # What we can do is patch the instance.__class__ with a local made class
+                # in order to keep each instance with it's own patch.
+
+                class _(type(obj)):
+                    __qualname__ = f"{type(obj)}_patched"
+                    __name__ = f"{type(obj)}_patched"
+
+                    def __call__(self, *arg, **kwarg):
+                        return wrapped(*arg, **kwarg)
+
+                    def __sdfg__(self, *args, **kwargs):
+                        return wrapped.__sdfg__(*args, **kwargs)
+
+                    def __sdfg_closure__(self, reevaluate=None):
+                        return wrapped.__sdfg_closure__(reevaluate)
+
+                    def __sdfg_signature__(self):
+                        return wrapped.__sdfg_signature__()
+
+                    def closure_resolver(
+                        self, constant_args, given_args, parent_closure=None
+                    ):
+                        return wrapped.closure_resolver(
+                            constant_args, given_args, parent_closure
+                        )
+
+                obj.__class__ = _
+            else:
+                # For regular attribute - we can just patch as usual
+                setattr(obj, method_to_orchestrate, wrapped)
+
+        else:
+            raise RuntimeError(
+                f"Could not orchestrate, "
+                f"{type(obj).__name__}.{method_to_orchestrate} "
+                "does not exists"
+            )
 
 
 def orchestrate_function(
@@ -423,12 +462,13 @@ def orchestrate_function(
     dace_constant_args: List[str] = [],
 ) -> Union[Callable[..., Any], _LazyComputepathFunction]:
     """
-    Decorator wrapping a function in a JIT DaCe orchestrator.
+    Decorator orchestrating a method of an object with DaCe.
+    If the model configuration doesn't demand orchestration, this won't do anything.
 
     Args:
-        function: class method to either orchestrate or directly execute
-        config: DaceConfig allowing to query for build settings
-        dace_constant_args: list of names of arguments to be considered as dace.constant
+        config: DaceConfig carrying model configuration
+        dace_constant_args: list of names of arguments to be flagged has dace.constant
+                            for orchestration to behave
     """
 
     def _decorator(func: Callable[..., Any]):

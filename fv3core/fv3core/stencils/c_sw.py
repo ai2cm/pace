@@ -10,7 +10,7 @@ from gt4py.gtscript import (
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
-from pace.dsl.dace.orchestrate import computepath_method
+from pace.dsl.dace.orchestrate import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils import corners
@@ -486,6 +486,7 @@ class CGridShallowWaterDynamics:
         grid_type: int,
         nord: int,
     ):
+        orchestrate(self, config=stencil_factory.config.dace_config)
         grid_indexing = stencil_factory.grid_indexing
         self.grid_data = grid_data
         self._dord4 = True
@@ -603,7 +604,6 @@ class CGridShallowWaterDynamics:
             externals={"grid_type": grid_type},
         )
 
-    @computepath_method
     def __call__(
         self,
         delp: FloatField,

@@ -13,7 +13,7 @@ from gt4py.gtscript import (
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
-from pace.dsl.dace.orchestrate import computepath_method
+from pace.dsl.dace.orchestrate import orchestrate
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
@@ -544,6 +544,7 @@ class AGrid2BGridFourthOrder:
             z_dim: defines whether vertical dimension is centered or staggered
             replace: boolean, update qin to the B grid as well
         """
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
         assert grid_type < 3
         self._idx: GridIndexing = stencil_factory.grid_indexing
         self._stencil_config = stencil_factory.config
@@ -682,7 +683,6 @@ class AGrid2BGridFourthOrder:
             domain[0] -= 1
         return tuple(origin), tuple(domain)
 
-    @computepath_method
     def __call__(self, qin: FloatField, qout: FloatField):
         """
         Converts qin from A-grid to B-grid in qout.

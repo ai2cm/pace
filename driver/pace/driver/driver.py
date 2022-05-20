@@ -18,7 +18,7 @@ import pace.util
 import pace.util.grid
 from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig
-from pace.dsl.dace.orchestrate import Orchestratable, dace_inhibitor
+from pace.dsl.dace.orchestrate import orchestrate, dace_inhibitor
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
@@ -163,7 +163,7 @@ class DriverConfig:
         )
 
 
-class Driver(Orchestratable):
+class Driver:
     def __init__(
         self,
         config: DriverConfig,
@@ -190,7 +190,8 @@ class Driver(Orchestratable):
                 communicator=communicator, backend=self.config.stencil_config.backend
             )
             self.config.stencil_config.dace_config = dace_config
-            super(Driver, self).__init__(
+            orchestrate(
+                obj=self,
                 config=dace_config,
                 method_to_orchestrate="dycore_only_loop_orchestrated",
                 dace_constant_args=["state"],
