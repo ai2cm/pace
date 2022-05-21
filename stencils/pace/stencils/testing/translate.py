@@ -94,7 +94,7 @@ class TranslateFortranData2Py:
                 use_shape[axis] = 1
         elif not full_shape and len(array.shape) < 3 and axis == len(array.shape) - 1:
             use_shape[1] = 1
-        start = (istart, jstart, kstart)
+        start = (int(istart), int(jstart), int(kstart))
         if names_4d:
             return utils.make_storage_dict(
                 array,
@@ -368,7 +368,7 @@ class TranslateGrid:
                 self._edge_vector_storage(key, axis, shape)
 
         for key, value in self.data.items():
-            if type(value) is np.ndarray:
+            if type(value) is np.ndarray and len(value.shape) > 0:
                 # TODO: when grid initialization model exists, may want to use
                 # it to inform this
                 istart, jstart = pygrid.horizontal_starts_from_shape(value.shape)

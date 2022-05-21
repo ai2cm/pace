@@ -124,11 +124,11 @@ class FillNegativeTracerValues:
         km: int,
         nq: int,
     ):
-        self._nq = nq
+        self._nq = int(nq)
         self._fix_tracer_stencil = stencil_factory.from_origin_domain(
             fix_tracer,
             origin=stencil_factory.grid_indexing.origin_compute(),
-            domain=(im, jm, km),
+            domain=(int(im), int(jm), int(km)),
         )
 
         shape = stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))

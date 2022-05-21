@@ -9,6 +9,7 @@ import serialbox as ser
 
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util as fv3util
+from pace.stencils.testing import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
 from pace.util.testing import compare_scalar, success, success_array
 
@@ -172,13 +173,7 @@ def process_override(threshold_overrides, testobj, test_name, backend):
     reason="Running in parallel with mpi",
 )
 def test_sequential_savepoint(
-    testobj,
-    test_name,
-    grid,
-    serializer,
-    savepoint_in,
-    savepoint_out,
-    rank,
+    case: SavepointCase,
     stencil_config,
     backend,
     print_failures,
@@ -186,54 +181,68 @@ def test_sequential_savepoint(
     subtests,
     caplog,
     threshold_overrides,
-    print_domains,
     xy_indices=True,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")
-    if testobj is None:
-        pytest.xfail(f"no translate object available for savepoint {test_name}")
+    if case.testobj is None:
+        pytest.xfail(
+            f"no translate object available for savepoint {case.savepoint_name}"
+        )
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
-        testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
-        testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
+        case.testobj.max_error = max(case.testobj.max_error, GPU_MAX_ERR)
+        case.testobj.near_zero = max(case.testobj.near_zero, GPU_NEAR_ZERO)
     if threshold_overrides is not None:
-        process_override(threshold_overrides, testobj, test_name, backend)
-    input_data = testobj.collect_input_data(serializer, savepoint_in)
+        process_override(
+            threshold_overrides, case.testobj, case.savepoint_name, backend
+        )
+    input_data = dataset_to_dict(case.ds_in)
+    input_names = (
+        case.testobj.serialnames(case.testobj.in_vars["data_vars"])
+        + case.testobj.in_vars["parameters"]
+    )
+    input_data = {name: input_data[name] for name in input_names}
     # run python version of functionality
-    output = testobj.compute(input_data)
+    output = case.testobj.compute(input_data)
     failing_names = []
     passing_names = []
-    for varname in testobj.serialnames(testobj.out_vars):
-        ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
-        ref_data = serializer.read(varname, savepoint_out)
-        if hasattr(testobj, "subset_output"):
-            ref_data = testobj.subset_output(varname, ref_data)
+    all_ref_data = dataset_to_dict(case.ds_out)
+    for varname in case.testobj.serialnames(case.testobj.out_vars):
+        ignore_near_zero = case.testobj.ignore_near_zero_errors.get(varname, False)
+        ref_data = all_ref_data[varname]
+        if hasattr(case.testobj, "subset_output"):
+            ref_data = case.testobj.subset_output(varname, ref_data)
         with subtests.test(varname=varname):
             failing_names.append(varname)
             output_data = gt_utils.asarray(output[varname])
             assert success(
                 output_data,
                 ref_data,
-                testobj.max_error,
+                case.testobj.max_error,
                 ignore_near_zero,
-                testobj.near_zero,
+                case.testobj.near_zero,
             ), sample_wherefail(
                 output_data,
                 ref_data,
-                testobj.max_error,
+                case.testobj.max_error,
                 print_failures,
                 failure_stride,
-                test_name,
+                case.savepoint_name,
                 ignore_near_zero_errors=ignore_near_zero,
-                near_zero=testobj.near_zero,
+                near_zero=case.testobj.near_zero,
                 xy_indices=xy_indices,
             )
             passing_names.append(failing_names.pop())
     if len(failing_names) > 0:
-        out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
+        out_filename = os.path.join(OUTDIR, f"{case.savepoint_name}.nc")
         try:
             save_netcdf(
-                testobj, [input_data], [output], ref_data, failing_names, out_filename
+                case.testobj,
+                [input_data],
+                [output],
+                ref_data,
+                failing_names,
+                out_filename,
             )
         except Exception as error:
             print(f"TestSequential SaveNetCDF Error: {error}")

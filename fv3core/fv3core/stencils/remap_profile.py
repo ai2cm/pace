@@ -585,7 +585,6 @@ class RemapProfile:
         """
         assert kord <= 10, f"kord {kord} not implemented."
         grid_indexing = stencil_factory.grid_indexing
-        full_orig: Tuple[int] = grid_indexing.origin_full()
         km: int = grid_indexing.domain[2]
         self._kord = kord
 
@@ -604,8 +603,8 @@ class RemapProfile:
         self._ext5: BoolField = make_storage()
         self._ext6: BoolField = make_storage()
 
-        i_extent: int = i2 - i1 + 1
-        j_extent: int = j2 - j1 + 1
+        i_extent: int = int(i2 - i1 + 1)
+        j_extent: int = int(j2 - j1 + 1)
         origin: Tuple[int, int, int] = (i1, j1, 0)
         domain: Tuple[int, int, int] = (i_extent, j_extent, km)
         domain_extend: Tuple[int, int, int] = (i_extent, j_extent, km + 1)

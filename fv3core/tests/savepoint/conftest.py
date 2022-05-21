@@ -1,19 +1,22 @@
 import collections
 import os
+import re
 import sys
 import warnings
 from typing import Tuple
 
 import f90nml
 import pytest
+import xarray as xr
 import yaml
 
 import fv3core
 import fv3core._config
 import pace.dsl
-import pace.util as fv3util
+import pace.util
 from fv3core import DynamicalCoreConfig
 from pace.stencils.testing import ParallelTranslate, TranslateGrid
+from pace.stencils.testing.savepoint import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
 
 from . import translate
@@ -74,14 +77,6 @@ def get_serializer(data_path, rank):
     )
 
 
-def is_input_name(savepoint_name):
-    return savepoint_name[-3:] == "-In"
-
-
-def to_output_name(savepoint_name):
-    return savepoint_name[-3:] + "-Out"
-
-
 def read_serialized_data(serializer, savepoint, variable):
 
     data = serializer.read(variable, savepoint)
@@ -96,7 +91,7 @@ def stencil_config(backend):
         backend=backend,
         rebuild=False,
         validate_args=True,
-        format_source="numpy" in backend,
+        format_source=False,
     )
 
 
@@ -120,22 +115,21 @@ def is_parallel_test(test_name):
         return issubclass(test_class, ParallelTranslate)
 
 
-def get_test_class_instance(test_name, grid, namelist, stencil_factory):
+def get_test_class_instance(test_name, grid, dycore_config, stencil_factory):
     translate_class = get_test_class(test_name)
     if translate_class is None:
         return None
     else:
-        return translate_class(grid, namelist, stencil_factory)
+        return translate_class(grid, dycore_config, stencil_factory)
 
 
 def get_all_savepoint_names(metafunc, data_path):
     only_names = metafunc.config.getoption("which_modules")
     if only_names is None:
-        savepoint_names = set()
-        serializer = get_serializer(data_path, rank=0)
-        for savepoint in serializer.savepoint_list():
-            if is_input_name(savepoint.name):
-                savepoint_names.add(savepoint.name[:-3])
+        savepoint_names = [
+            fname[:-3] for fname in os.listdir(data_path) if re.match(r".*\.nc", fname)
+        ]
+        savepoint_names = [s[:-3] for s in savepoint_names if s.endswith("-In")]
     else:
         savepoint_names = set(only_names.split(","))
         savepoint_names.discard("")
@@ -177,8 +171,8 @@ def _has_savepoints(input_savepoints, output_savepoints) -> bool:
     return savepoints_exist
 
 
-SavepointCase = collections.namedtuple(
-    "SavepointCase",
+LegacySavepointCase = collections.namedtuple(
+    "LegacySavepointCase",
     [
         "test_name",
         "rank",
@@ -195,8 +189,8 @@ SavepointCase = collections.namedtuple(
 
 def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backend: str):
     return_list = []
-    namelist = f90nml.read(namelist_filename)
-    dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
+    namelist = pace.util.Namelist.from_f90nml(f90nml.read(namelist_filename))
+    dycore_config = DynamicalCoreConfig.from_namelist(namelist)
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
     ranks = get_ranks(metafunc, dycore_config.layout)
     stencil_config = pace.dsl.stencil.StencilConfig(
@@ -204,31 +198,36 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
         rebuild=False,
         validate_args=True,
     )
+    ds_grid: xr.Dataset = xr.open_dataset(os.path.join(data_path, "Grid-Info.nc")).isel(
+        savepoint=0
+    )
     for rank in ranks:
-        serializer = get_serializer(data_path, rank)
-        grid = TranslateGrid.new_from_serialized_data(
-            serializer, rank, dycore_config.layout, backend
+        grid = TranslateGrid(
+            dataset_to_dict(ds_grid.isel(rank=rank)),
+            rank=rank,
+            layout=dycore_config.layout,
+            backend=backend,
         ).python_grid()
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
             grid_indexing=grid.grid_indexing,
         )
         for test_name in sorted(list(savepoint_names)):
-            input_savepoints = serializer.get_savepoint(f"{test_name}-In")
-            output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
-            if _has_savepoints(input_savepoints, output_savepoints):
-                check_savepoint_counts(test_name, input_savepoints, output_savepoints)
+            testobj = get_test_class_instance(
+                test_name, grid, dycore_config, stencil_factory
+            )
+            n_calls = xr.open_dataset(
+                os.path.join(data_path, f"{test_name}-In.nc")
+            ).dims["savepoint"]
+            for i_call in range(n_calls):
                 return_list.append(
                     SavepointCase(
-                        test_name,
-                        rank,
-                        serializer,
-                        input_savepoints,
-                        output_savepoints,
-                        grid,
-                        dycore_config.layout,
-                        dycore_config,
-                        stencil_factory,
+                        savepoint_name=test_name,
+                        data_dir=data_path,
+                        rank=rank,
+                        i_call=i_call,
+                        testobj=testobj,
+                        grid=grid,
                     )
                 )
     return return_list
@@ -281,7 +280,7 @@ def mock_parallel_savepoint_cases(
                 input_list.append(input_savepoints)
                 output_list.append(output_savepoints)
         return_list.append(
-            SavepointCase(
+            LegacySavepointCase(
                 test_name,
                 None,
                 serializer_list,
@@ -337,7 +336,7 @@ def parallel_savepoint_cases(
         if _has_savepoints(input_savepoints, output_savepoints):
             check_savepoint_counts(test_name, input_savepoints, output_savepoints)
         return_list.append(
-            SavepointCase(
+            LegacySavepointCase(
                 test_name,
                 mpi_rank,
                 serializer,
@@ -360,30 +359,19 @@ def pytest_generate_tests(metafunc):
     else:
         if metafunc.function.__name__ == "test_sequential_savepoint":
             generate_sequential_stencil_tests(metafunc, backend=backend)
-        if metafunc.function.__name__ == "test_mock_parallel_savepoint":
-            generate_mock_parallel_stencil_tests(metafunc, backend=backend)
+        # if metafunc.function.__name__ == "test_mock_parallel_savepoint":
+        #     generate_mock_parallel_stencil_tests(metafunc, backend=backend)
 
 
 def generate_sequential_stencil_tests(metafunc, *, backend: str):
-    arg_names = [
-        "testobj",
-        "test_name",
-        "serializer",
-        "savepoint_in",
-        "savepoint_out",
-        "rank",
-        "grid",
-    ]
     data_path, namelist_filename = data_path_and_namelist_filename_from_config(
         metafunc.config
     )
-    _generate_stencil_tests(
-        metafunc,
-        arg_names,
-        sequential_savepoint_cases(
-            metafunc, data_path, namelist_filename, backend=backend
-        ),
-        get_sequential_param,
+    savepoint_cases = sequential_savepoint_cases(
+        metafunc, data_path, namelist_filename, backend=backend
+    )
+    metafunc.parametrize(
+        "case", savepoint_cases, ids=[str(item) for item in savepoint_cases]
     )
 
 
@@ -568,19 +556,19 @@ def mock_communicator_list(layout):
 
 
 def get_mock_communicator_list(layout):
-    total_ranks = 6 * fv3util.TilePartitioner(layout).total_ranks
+    total_ranks = 6 * pace.util.TilePartitioner(layout).total_ranks
     shared_buffer = {}
     communicators = []
     for rank in range(total_ranks):
-        comm = fv3util.testing.DummyComm(rank, total_ranks, buffer_dict=shared_buffer)
+        comm = pace.util.testing.DummyComm(rank, total_ranks, buffer_dict=shared_buffer)
         communicator = get_communicator(comm, layout)
         communicators.append(communicator)
     return communicators
 
 
 def get_communicator(comm, layout):
-    partitioner = fv3util.CubedSpherePartitioner(fv3util.TilePartitioner(layout))
-    communicator = fv3util.CubedSphereCommunicator(comm, partitioner)
+    partitioner = pace.util.CubedSpherePartitioner(pace.util.TilePartitioner(layout))
+    communicator = pace.util.CubedSphereCommunicator(comm, partitioner)
     return communicator
 
 
