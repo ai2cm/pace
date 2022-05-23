@@ -6,6 +6,7 @@ results.xml
 driver/examples/*.json
 driver/examples/**/*.json
 driver/examples/comm
+20*-*-*-*-*-*.json
 *.pkl
 
 # Byte-compiled / optimized / DLL files
@@ -155,3 +156,4 @@ dmypy.json
 plot_output/
 profiling_results/
 model_output/
+RESTART/

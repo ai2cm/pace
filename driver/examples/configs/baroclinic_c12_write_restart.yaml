@@ -1,5 +1,5 @@
 stencil_config:
-  backend: numpy
+  backend: gtc:numpy
   rebuild: false
   validate_args: true
   format_source: false
@@ -12,10 +12,12 @@ performance_config:
 nx_tile: 12
 nz: 79
 dt_atmos: 225
-minutes: 60
+minutes: 0
+seconds: 225
 layout:
   - 1
   - 1
+save_restart: true
 diagnostics_config:
   path: "output.zarr"
   names:

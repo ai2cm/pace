@@ -14,7 +14,7 @@ MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
 
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_baroclinic_dycore_microphysics
-FORTRAN_SERIALIZED_DATA_VERSION=8.0.0
+FORTRAN_SERIALIZED_DATA_VERSION=8.0.5
 TEST_DATA_TARFILE=dat_files.tar.gz
 TARGET ?= physics
 TEST_DATA_ROOT ?=$(CWD)/../test_data/
@@ -80,5 +80,5 @@ physics_savepoint_tests_mpi:
 driver_savepoint_tests_mpi:
 	TARGET=driver \
 	$(MAKE) get_test_data
-	VOLUMES='  -v $(TEST_DATA_HOST)/../driver/:$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)'  \
+	TARGET=driver VOLUMES='  -v $(TEST_DATA_HOST)/../driver/:$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)'  \
 	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
