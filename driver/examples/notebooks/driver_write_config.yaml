@@ -71,7 +71,7 @@ physics_config:
   hydrostatic: false
   nwat: 6
 stencil_config:
-  backend: gtc:numpy
+  backend: numpy
   device_sync: true
   format_source: false
   rebuild: false

@@ -538,7 +538,7 @@ def set_interpolation_coefficients(
         if __INLINED(iv == 0):
             a4_1, a4_2, a4_3, a4_4 = posdef_constraint_iv0(a4_1, a4_2, a4_3, a4_4)
     # set_bottom_as_iv0, set_bottom_as_iv1
-    # TODO(rheag) temporary workaround to gtc:gt:gpu bug
+    # TODO(rheag) temporary workaround to gt:gpu bug
     # this computation can get out of order with the one that follows
     with computation(FORWARD), interval(-1, None):
         if __INLINED(iv == 0):

@@ -90,16 +90,6 @@ def read_serialized_data(serializer, savepoint, variable):
     return data
 
 
-@pytest.fixture
-def stencil_config(backend):
-    return pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=True,
-        format_source="numpy" in backend,
-    )
-
-
 def get_test_class(test_name):
     translate_class_name = f"Translate{test_name.replace('-', '_')}"
     try:

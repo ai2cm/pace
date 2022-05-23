@@ -11,8 +11,6 @@ def getenv_bool(name: str, default: str) -> bool:
 def set_backend(new_backend: str):
     global _BACKEND
     _BACKEND = new_backend
-    for function in (is_gpu_backend, is_gtc_backend):
-        function.cache_clear()
 
 
 def get_backend() -> str:
@@ -39,18 +37,11 @@ def get_validate_args() -> bool:
     return _VALIDATE_ARGS
 
 
-@functools.lru_cache(maxsize=None)
-def is_gpu_backend() -> bool:
-    return get_backend().endswith("cuda") or get_backend().endswith("gpu")
-
-
-@functools.lru_cache(maxsize=None)
-def is_gtc_backend() -> bool:
-    return get_backend().startswith("gtc")
-
-
-# Options: numpy, gtx86, gtcuda, debug
+# Options
+# CPU: numpy, gt:cpu_ifirst, gt:cpu_kfirst
+# GPU: gt:gpu, cuda
 _BACKEND: Optional[str] = None
+
 # If TRUE, all caches will bypassed and stencils recompiled
 # if FALSE, caches will be checked and rebuild if code changes
 _REBUILD: bool = getenv_bool("FV3_STENCIL_REBUILD_FLAG", "False")
