@@ -44,6 +44,7 @@ COPY stencils stencils/
 COPY dsl dsl/
 COPY driver driver/
 COPY docker/entrypoint.sh /entrypoint.sh
+COPY install.sh /install.sh
 
 # Docker hard limits shared memory usage. MPICH for oversubscribed situation
 # uses shared mem for most of its comunication operations,
