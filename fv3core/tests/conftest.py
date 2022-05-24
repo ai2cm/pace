@@ -16,6 +16,7 @@ def pytest_addoption(parser):
     parser.addoption("--failure_stride", action="store", default=1)
     parser.addoption("--data_path", action="store", default="./")
     parser.addoption("--threshold_overrides_file", action="store", default=None)
+    parser.addoption("--compute_grid", action="store_true")
 
 
 def pytest_configure(config):

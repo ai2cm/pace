@@ -15,6 +15,7 @@ class ParallelTranslate:
 
     max_error = TranslateFortranData2Py.max_error
     near_zero = TranslateFortranData2Py.near_zero
+    compute_grid_option = False
     tests_grid = False
     inputs: Dict[str, Any] = {}
     outputs: Dict[str, Any] = {}

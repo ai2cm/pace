@@ -15,6 +15,7 @@ ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]
 
 
 class TranslateFVDynamics(ParallelTranslateBaseSlicing):
+    compute_grid_option = True
     inputs: Dict[str, Any] = {
         "q_con": {
             "name": "total_condensate_mixing_ratio",
