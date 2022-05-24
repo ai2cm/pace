@@ -207,10 +207,9 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
     for name in ("do_adiabatic_init", "bdt", "ak", "bk", "ks", "ptop"):
         outputs.pop(name)
 
-    def __init__(self, grids, namelist, stencil_factory, *args, **kwargs):
-        super().__init__(grids, namelist, stencil_factory, *args, **kwargs)
-        grid = grids[0]
-        self._base.in_vars["data_vars"] = {
+    def __init__(self, grid, namelist, stencil_factory, *args, **kwargs):
+        super().__init__(grid, namelist, stencil_factory, *args, **kwargs)
+        fv_dynamics_vars = {
             "u": grid.y3d_domain_dict(),
             "v": grid.x3d_domain_dict(),
             "w": {},
@@ -258,8 +257,9 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "cyd": grid.y3d_compute_domain_x_dict(),
             "diss_estd": {},
         }
+        self._base.in_vars["data_vars"].update(fv_dynamics_vars)
 
-        self._base.out_vars = self._base.in_vars["data_vars"].copy()
+        self._base.out_vars.update(fv_dynamics_vars)
         self._base.out_vars["ps"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
         self._base.out_vars["phis"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
 

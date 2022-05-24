@@ -187,17 +187,40 @@ LegacySavepointCase = collections.namedtuple(
 )
 
 
-def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backend: str):
-    return_list = []
+def check_savepoint_counts(test_name, input_savepoints, output_savepoints):
+    if len(input_savepoints) != len(output_savepoints):
+        warnings.warn(
+            f"number of input and output savepoints not equal for {test_name}:"
+            f" {len(input_savepoints)} in and {len(output_savepoints)} out"
+        )
+    assert len(input_savepoints) > 0, f"no savepoints found for {test_name}"
+
+
+def get_config(namelist_filename, backend):
     namelist = pace.util.Namelist.from_f90nml(f90nml.read(namelist_filename))
     dycore_config = DynamicalCoreConfig.from_namelist(namelist)
-    savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
-    ranks = get_ranks(metafunc, dycore_config.layout)
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=True,
     )
+    dycore_config = DynamicalCoreConfig.from_namelist(namelist)
+    return stencil_config, dycore_config
+
+
+def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backend: str):
+    savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
+    stencil_config, dycore_config = get_config(namelist_filename, backend)
+    ranks = get_ranks(metafunc, dycore_config.layout)
+    return _savepoint_cases(
+        savepoint_names, ranks, stencil_config, dycore_config, backend, data_path
+    )
+
+
+def _savepoint_cases(
+    savepoint_names, ranks, stencil_config, dycore_config, backend, data_path
+):
+    return_list = []
     ds_grid: xr.Dataset = xr.open_dataset(os.path.join(data_path, "Grid-Info.nc")).isel(
         savepoint=0
     )
@@ -231,15 +254,6 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
                     )
                 )
     return return_list
-
-
-def check_savepoint_counts(test_name, input_savepoints, output_savepoints):
-    if len(input_savepoints) != len(output_savepoints):
-        warnings.warn(
-            f"number of input and output savepoints not equal for {test_name}:"
-            f" {len(input_savepoints)} in and {len(output_savepoints)} out"
-        )
-    assert len(input_savepoints) > 0, f"no savepoints found for {test_name}"
 
 
 def mock_parallel_savepoint_cases(
@@ -280,7 +294,7 @@ def mock_parallel_savepoint_cases(
                 input_list.append(input_savepoints)
                 output_list.append(output_savepoints)
         return_list.append(
-            LegacySavepointCase(
+            SavepointCase(
                 test_name,
                 None,
                 serializer_list,
@@ -311,44 +325,11 @@ def compute_grid_data(metafunc, grid, namelist):
 def parallel_savepoint_cases(
     metafunc, data_path, namelist_filename, mpi_rank, *, backend: str
 ):
-    serializer = get_serializer(data_path, mpi_rank)
-    namelist = f90nml.read(namelist_filename)
-    dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
-    stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=True,
-    )
-    grid = TranslateGrid.new_from_serialized_data(
-        serializer, mpi_rank, dycore_config.layout, backend
-    ).python_grid()
-    stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config,
-        grid_indexing=grid.grid_indexing,
-    )
-    if metafunc.config.getoption("compute_grid"):
-        compute_grid_data(metafunc, grid, dycore_config)
+    stencil_config, dycore_config = get_config(namelist_filename, backend)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
-    return_list = []
-    for test_name in sorted(list(savepoint_names)):
-        input_savepoints = serializer.get_savepoint(f"{test_name}-In")
-        output_savepoints = serializer.get_savepoint(f"{test_name}-Out")
-        if _has_savepoints(input_savepoints, output_savepoints):
-            check_savepoint_counts(test_name, input_savepoints, output_savepoints)
-        return_list.append(
-            LegacySavepointCase(
-                test_name,
-                mpi_rank,
-                serializer,
-                input_savepoints,
-                output_savepoints,
-                [grid],
-                dycore_config.layout,
-                dycore_config,
-                stencil_factory,
-            )
-        )
-    return return_list
+    return _savepoint_cases(
+        savepoint_names, [mpi_rank], stencil_config, dycore_config, backend, data_path
+    )
 
 
 def pytest_generate_tests(metafunc):
@@ -359,8 +340,8 @@ def pytest_generate_tests(metafunc):
     else:
         if metafunc.function.__name__ == "test_sequential_savepoint":
             generate_sequential_stencil_tests(metafunc, backend=backend)
-        # if metafunc.function.__name__ == "test_mock_parallel_savepoint":
-        #     generate_mock_parallel_stencil_tests(metafunc, backend=backend)
+        if metafunc.function.__name__ == "test_mock_parallel_savepoint":
+            generate_mock_parallel_stencil_tests(metafunc, backend=backend)
 
 
 def generate_sequential_stencil_tests(metafunc, *, backend: str):
@@ -399,29 +380,17 @@ def generate_mock_parallel_stencil_tests(metafunc, *, backend: str):
 
 
 def generate_parallel_stencil_tests(metafunc, *, backend: str):
-    arg_names = [
-        "testobj",
-        "test_name",
-        "test_case",
-        "serializer",
-        "savepoint_in",
-        "savepoint_out",
-        "grid",
-        "layout",
-    ]
     data_path, namelist_filename = data_path_and_namelist_filename_from_config(
         metafunc.config
     )
     # get MPI environment
     comm = MPI.COMM_WORLD
     mpi_rank = comm.Get_rank()
-    _generate_stencil_tests(
-        metafunc,
-        arg_names,
-        parallel_savepoint_cases(
-            metafunc, data_path, namelist_filename, mpi_rank, backend=backend
-        ),
-        get_parallel_param,
+    savepoint_cases = parallel_savepoint_cases(
+        metafunc, data_path, namelist_filename, mpi_rank, backend=backend
+    )
+    metafunc.parametrize(
+        "case", savepoint_cases, ids=[str(item) for item in savepoint_cases]
     )
 
 
@@ -545,12 +514,6 @@ def get_sequential_param(
 
 
 @pytest.fixture()
-def communicator(layout):
-    communicator = get_communicator(MPI.COMM_WORLD, layout)
-    return communicator
-
-
-@pytest.fixture()
 def mock_communicator_list(layout):
     return get_mock_communicator_list(layout)
 
@@ -583,30 +546,8 @@ def failure_stride(pytestconfig):
 
 
 @pytest.fixture()
-def print_domains(pytestconfig):
-    value = bool(pytestconfig.getoption("print_domains"))
-    original_init = pace.dsl.stencil.FrozenStencil.__init__
-    try:
-        if value:
-
-            def __init__(self, func, origin, domain, *args, **kwargs):
-                print(func.__name__, origin, domain)
-                original_init(self, func, origin, domain, *args, **kwargs)
-
-            pace.dsl.stencil.FrozenStencil.__init__ = __init__
-        yield value
-    finally:
-        pace.dsl.stencil.FrozenStencil.__init__ = original_init
-
-
-@pytest.fixture()
 def python_regression(pytestconfig):
     return pytestconfig.getoption("python_regression")
-
-
-@pytest.fixture()
-def compute_grid(pytestconfig):
-    return pytestconfig.getoption("compute_grid")
 
 
 @pytest.fixture()

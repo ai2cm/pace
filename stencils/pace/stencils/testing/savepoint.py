@@ -31,6 +31,10 @@ class Translate(Protocol):
 
 @dataclasses.dataclass
 class SavepointCase:
+    """
+    Represents a savepoint with data on one rank.
+    """
+
     savepoint_name: str
     data_dir: str
     rank: int

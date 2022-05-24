@@ -142,28 +142,36 @@ class TranslateFortranData2Py:
         return istart, jstart, kstart
 
     def make_storage_data_input_vars(self, inputs, storage_vars=None):
+        inputs_in = {**inputs}
+        inputs_out = {}
         if storage_vars is None:
             storage_vars = self.storage_vars()
         for p in self.in_vars["parameters"]:
-            if type(inputs[p]) in [np.int64, np.int32]:
-                inputs[p] = int(inputs[p])
+            if type(inputs_in[p]) in [np.int64, np.int32]:
+                inputs_out[p] = int(inputs_in[p])
+            else:
+                inputs_out[p] = inputs_in[p]
         for d, info in storage_vars.items():
             serialname = info["serialname"] if "serialname" in info else d
-            self.update_info(info, inputs)
+            self.update_info(info, inputs_in)
             if "kaxis" in info:
-                inputs[serialname] = np.moveaxis(inputs[serialname], info["kaxis"], 2)
+                inputs_in[serialname] = np.moveaxis(
+                    inputs_in[serialname], info["kaxis"], 2
+                )
+            else:
+                inputs_in[serialname] = inputs_in[serialname]
             istart, jstart, kstart = self.collect_start_indices(
-                inputs[serialname].shape, info
+                inputs_in[serialname].shape, info
             )
 
             names_4d = None
-            if len(inputs[serialname].shape) == 4:
+            if len(inputs_in[serialname].shape) == 4:
                 names_4d = info.get("names_4d", utils.tracer_variables)
 
             dummy_axes = info.get("dummy_axes", None)
             axis = info.get("axis", 2)
-            inputs[d] = self.make_storage_data(
-                np.squeeze(inputs[serialname]),
+            inputs_out[d] = self.make_storage_data(
+                np.squeeze(inputs_in[serialname]),
                 istart=istart,
                 jstart=jstart,
                 kstart=kstart,
@@ -173,8 +181,10 @@ class TranslateFortranData2Py:
                 read_only=d not in self.write_vars,
                 full_shape="full_shape" in storage_vars[d],
             )
-            if d != serialname:
-                del inputs[serialname]
+        # update the input in-place because that's how it was originally written
+        # feel free to refactor
+        inputs.clear()
+        inputs.update(inputs_out)
 
     def slice_output(self, inputs, out_data=None):
         utils.device_sync(backend=self.stencil_factory.backend)

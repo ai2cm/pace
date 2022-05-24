@@ -2,13 +2,14 @@ import contextlib
 import hashlib
 import logging
 import os
+from typing import Any, Dict
 
 import numpy as np
 import pytest
 import serialbox as ser
 
 import pace.dsl.gt4py_utils as gt_utils
-import pace.util as fv3util
+import pace.util
 from pace.stencils.testing import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
 from pace.util.testing import compare_scalar, success, success_array
@@ -257,13 +258,13 @@ def get_serializer(data_path, rank):
 
 
 def state_from_savepoint(serializer, savepoint, name_to_std_name):
-    properties = fv3util.fortran_info.properties_by_std_name
+    properties = pace.util.fortran_info.properties_by_std_name
     origin = gt_utils.origin
     state = {}
     for name, std_name in name_to_std_name.items():
         array = serializer.read(name, savepoint)
         extent = tuple(np.asarray(array.shape) - 2 * np.asarray(origin))
-        state["air_temperature"] = fv3util.Quantity(
+        state["air_temperature"] = pace.util.Quantity(
             array,
             dims=reversed(properties["air_temperature"]["dims"]),
             units=properties["air_temperature"]["units"],
@@ -297,7 +298,7 @@ def test_mock_parallel_savepoint(
     xy_indices=False,
 ):
     caplog.set_level(logging.DEBUG, logger="fv3core")
-    caplog.set_level(logging.DEBUG, logger="fv3util")
+    caplog.set_level(logging.DEBUG, logger="pace.util")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
     # Reduce error threshold for GPU
@@ -362,99 +363,98 @@ def hash_result_data(result, data_keys):
     return hashes
 
 
+def get_communicator(comm, layout):
+    partitioner = pace.util.CubedSpherePartitioner(pace.util.TilePartitioner(layout))
+    communicator = pace.util.CubedSphereCommunicator(comm, partitioner)
+    return communicator
+
+
 @pytest.mark.parallel
 @pytest.mark.skipif(
     MPI is None or MPI.COMM_WORLD.Get_size() == 1,
     reason="Not running in parallel with mpi",
 )
 def test_parallel_savepoint(
-    data_regression,
-    data_path,
-    testobj,
-    test_name,
-    test_case,
-    grid,
-    serializer,
-    savepoint_in,
-    savepoint_out,
-    communicator,
+    case: SavepointCase,
     stencil_config,
     backend,
     print_failures,
     failure_stride,
     subtests,
     caplog,
-    python_regression,
     threshold_overrides,
-    print_domains,
-    compute_grid,
     skip_grid_tests,
     xy_indices=True,
 ):
+    layout = (
+        int((MPI.COMM_WORLD.Get_size() // 6) ** 0.5),
+        int((MPI.COMM_WORLD.Get_size() // 6) ** 0.5),
+    )
+    communicator = get_communicator(MPI.COMM_WORLD, layout)
     caplog.set_level(logging.DEBUG, logger="fv3core")
-    if python_regression and not testobj.python_regression:
-        pytest.xfail(f"python_regression not set for test {test_name}")
-    if testobj is None:
-        pytest.xfail(f"no translate object available for savepoint {test_name}")
+    if case.testobj is None:
+        pytest.xfail(
+            f"no translate object available for savepoint {case.savepoint_name}"
+        )
     # Increase minimum error threshold for GPU
     if stencil_config.is_gpu_backend:
-        testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
-        testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
+        case.testobj.max_error = max(case.testobj.max_error, GPU_MAX_ERR)
+        case.testobj.near_zero = max(case.testobj.near_zero, GPU_NEAR_ZERO)
     if threshold_overrides is not None:
-        process_override(threshold_overrides, testobj, test_name, backend)
-    if compute_grid and not testobj.compute_grid_option:
-        pytest.xfail(f"compute_grid option not used for test {test_name}")
-    if skip_grid_tests and testobj.tests_grid:
-        pytest.xfail("skipping testing the grid generation, --skip_grid_tests")
-    input_data = testobj.collect_input_data(serializer, savepoint_in)
-    # run python version of functionality
-    output = testobj.compute_parallel(input_data, communicator)
-    out_vars = set(testobj.outputs.keys())
-    out_vars.update(list(testobj._base.out_vars.keys()))
-    if python_regression and testobj.python_regression:
-        filename = f"python_regressions/{test_case}_{backend}_{platform()}.yml"
-        filename = filename.replace("=", "_")
-        data_regression.check(
-            hash_result_data(output, out_vars),
-            fullpath=os.path.join(data_path, filename),
+        process_override(
+            threshold_overrides, case.testobj, case.savepoint_name, backend
         )
-        return
+    if skip_grid_tests and case.testobj.tests_grid:
+        pytest.xfail("skipping testing the grid generation, --skip_grid_tests")
+    input_data = dataset_to_dict(case.ds_in)
+    # run python version of functionality
+    output = case.testobj.compute_parallel(input_data, communicator)
+    out_vars = set(case.testobj.outputs.keys())
+    out_vars.update(list(case.testobj._base.out_vars.keys()))
     failing_names = []
     passing_names = []
-    ref_data = {}
+    ref_data: Dict[str, Any] = {}
+    all_ref_data = dataset_to_dict(case.ds_out)
     for varname in out_vars:
         ref_data[varname] = []
-        new_ref_data = serializer.read(varname, savepoint_out)
-        if hasattr(testobj, "subset_output"):
-            new_ref_data = testobj.subset_output(varname, new_ref_data)
+        new_ref_data = all_ref_data[varname]
+        if hasattr(case.testobj, "subset_output"):
+            new_ref_data = case.testobj.subset_output(varname, new_ref_data)
         ref_data[varname].append(new_ref_data)
-        ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
+        ignore_near_zero = case.testobj.ignore_near_zero_errors.get(varname, False)
         with subtests.test(varname=varname):
             failing_names.append(varname)
             output_data = gt_utils.asarray(output[varname])
             assert success(
                 output_data,
                 ref_data[varname][0],
-                testobj.max_error,
+                case.testobj.max_error,
                 ignore_near_zero,
-                testobj.near_zero,
+                case.testobj.near_zero,
             ), sample_wherefail(
                 output_data,
                 ref_data[varname][0],
-                testobj.max_error,
+                case.testobj.max_error,
                 print_failures,
                 failure_stride,
-                test_name,
+                case.savepoint_name,
                 ignore_near_zero,
-                testobj.near_zero,
+                case.testobj.near_zero,
                 xy_indices,
             )
             passing_names.append(failing_names.pop())
     if len(failing_names) > 0:
-        out_filename = os.path.join(OUTDIR, f"{test_name}-{grid[0].rank}.nc")
+        out_filename = os.path.join(
+            OUTDIR, f"{case.savepoint_name}-{case.grid[0].rank}.nc"
+        )
         try:
             save_netcdf(
-                testobj, [input_data], [output], ref_data, failing_names, out_filename
+                case.testobj,
+                [input_data],
+                [output],
+                ref_data,
+                failing_names,
+                out_filename,
             )
         except Exception as error:
             print(f"TestParallel SaveNetCDF Error: {error}")
