@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 import serialbox as ser
 
+import pace.dsl
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 from pace.stencils.testing import SavepointCase, dataset_to_dict
@@ -116,6 +117,9 @@ def sample_wherefail(
 
 def process_override(threshold_overrides, testobj, test_name, backend):
     override = threshold_overrides.get(test_name, None)
+    # NOTE (jdahm): Temporary until Jenkins is updated
+    if backend.startswith("gtc:"):
+        backend = backend.replace("gtc:", "")
     if override is not None:
         for spec in override:
             if "platform" not in spec:
@@ -175,7 +179,6 @@ def process_override(threshold_overrides, testobj, test_name, backend):
 )
 def test_sequential_savepoint(
     case: SavepointCase,
-    stencil_config,
     backend,
     print_failures,
     failure_stride,
@@ -189,6 +192,7 @@ def test_sequential_savepoint(
         pytest.xfail(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
+    stencil_config = pace.dsl.StencilConfig(backend=backend)
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
         case.testobj.max_error = max(case.testobj.max_error, GPU_MAX_ERR)
@@ -287,7 +291,6 @@ def test_mock_parallel_savepoint(
     serializer_list,
     savepoint_in_list,
     savepoint_out_list,
-    stencil_config,
     backend,
     print_failures,
     failure_stride,
@@ -301,6 +304,7 @@ def test_mock_parallel_savepoint(
     caplog.set_level(logging.DEBUG, logger="pace.util")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
+    stencil_config = pace.dsl.StencilConfig(backend=backend)
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
@@ -376,7 +380,6 @@ def get_communicator(comm, layout):
 )
 def test_parallel_savepoint(
     case: SavepointCase,
-    stencil_config,
     backend,
     print_failures,
     failure_stride,
@@ -396,6 +399,9 @@ def test_parallel_savepoint(
         pytest.xfail(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
+    if testobj is None:
+        pytest.xfail(f"no translate object available for savepoint {test_name}")
+    stencil_config = pace.dsl.StencilConfig(backend=backend)
     # Increase minimum error threshold for GPU
     if stencil_config.is_gpu_backend:
         case.testobj.max_error = max(case.testobj.max_error, GPU_MAX_ERR)

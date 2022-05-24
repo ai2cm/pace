@@ -13,7 +13,7 @@ from .gt4py_numpy import inject_attrs, inject_storage_methods
 
 
 if cupy is not None:
-    inject_storage_methods(locals(), "gtcuda")
+    inject_storage_methods(locals(), "cuda")
     inject_attrs(locals(), cupy)
 
     def all(a, axis=None, out=None, keepdims=False):

@@ -1,0 +1,2 @@
+# We can only pip-compile external dependencies, and indirectly depend on dace for development
+dace==0.13

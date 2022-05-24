@@ -31,8 +31,8 @@ SAVE_ARTIFACTS="true"
 if [ "$1" == "profile" ] ; then
     DO_PROFILE="true"
 fi
-# Extra run in 'gtcuda' with nsys
-if [ "${DO_PROFILE}" == "true" ] && [ "${backend}" == "gtcuda" ] ; then
+# Extra run in 'cuda' with nsys
+if [ "${DO_PROFILE}" == "true" ] && [ "${backend}" == "cuda" ] ; then
     DO_NSYS_RUN="true"
 fi
 if [ "$1" == "build_cache" ] ; then

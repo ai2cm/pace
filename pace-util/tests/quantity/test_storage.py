@@ -84,7 +84,7 @@ def test_modifying_numpy_storage_modifies_view():
         extent=shape,
         dims=["dim1", "dim2"],
         units="units",
-        gt4py_backend="gtc:numpy",
+        gt4py_backend="numpy",
     )
     assert np.all(quantity.data == 0)
     quantity.storage[0, 0] = 1

@@ -2,7 +2,6 @@ import contextlib
 import unittest.mock
 
 import gt4py.gtscript
-import gtc.passes.oir_pipeline
 import numpy as np
 import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
@@ -15,7 +14,6 @@ from pace.dsl.stencil import (
     _convert_quantities_to_storage,
 )
 from pace.dsl.typing import FloatField
-from pace.util.global_config import set_backend
 
 
 @contextlib.contextmanager
@@ -253,7 +251,7 @@ def test_frozen_field_after_parameter(backend):
     )
 
 
-@pytest.mark.parametrize("backend", ("gtc:numpy", "gtc:cuda"))
+@pytest.mark.parametrize("backend", ("numpy", "cuda"))
 @pytest.mark.parametrize("rebuild", [True])
 @pytest.mark.parametrize("validate_args", [True])
 def test_backend_options(
@@ -262,23 +260,20 @@ def test_backend_options(
     validate_args: bool,
 ):
     expected_options = {
-        "gtc:numpy": {
-            "backend": "gtc:numpy",
+        "numpy": {
+            "backend": "numpy",
             "rebuild": True,
             "format_source": False,
-            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
         },
-        "gtc:cuda": {
-            "backend": "gtc:cuda",
+        "cuda": {
+            "backend": "cuda",
             "rebuild": True,
             "device_sync": False,
             "format_source": False,
-            "oir_pipeline": gtc.passes.oir_pipeline.DefaultPipeline(),
             "verbose": False,
         },
     }
 
-    set_backend(backend)
     stencil_kwargs = StencilConfig(
         backend=backend,
         rebuild=rebuild,

@@ -36,7 +36,7 @@ from pace.util.mpi import MPI
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
-    backend: str = "gtc:numpy"
+    backend: str = "numpy"
     rebuild: bool = True
     validate_args: bool = True
     format_source: bool = False
@@ -84,11 +84,7 @@ class StencilConfig(Hashable):
             "format_source": {
                 "value": False,
             },
-            "skip_passes": {
-                "backend": r"^gtc:(gt|cuda)",
-                "value": [],
-            },
-            "verbose": {"backend": r"^gtc:(gt|cuda)", "value": False},
+            "verbose": {"backend": r"(gt:|cuda)", "value": False},
         }
         for name, option in all_backend_opts.items():
             using_option_backend = re.match(option.get("backend", ""), self.backend)
@@ -103,17 +99,15 @@ class StencilConfig(Hashable):
         return backend_opts
 
     def stencil_kwargs(self, skip_passes: Iterable[str] = ()):
+        # NOTE (jdahm): Temporary replace call until Jenkins is updated
         kwargs = {
-            "backend": self.backend,
+            "backend": self.backend.replace("gtc:", ""),
             "rebuild": self.rebuild,
             **self.backend_opts,
         }
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
-        # Note: this assure the backward compatibility between v36 and v37
-        if self.backend.startswith("gtc") and (
-            "skip_passes" in kwargs or skip_passes is not None
-        ):
+        if skip_passes or kwargs.get("skip_passes", ()):
             kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
                 list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
             )
@@ -121,11 +115,11 @@ class StencilConfig(Hashable):
 
     @property
     def is_gpu_backend(self) -> bool:
-        return self.backend.endswith("cuda") or self.backend.endswith("gpu")
-
-    @property
-    def is_gtc_backend(self) -> bool:
-        return self.backend.startswith("gtc")
+        try:
+            return gt4py.backend.from_name(self.backend).storage_info["device"] == "gpu"
+        except Exception:
+            backend = self.backend.replace("gtc:", "")
+            return gt4py.backend.from_name(backend).storage_info["device"] == "gpu"
 
     @classmethod
     def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
@@ -223,7 +217,7 @@ class CompareToNumpyStencil:
             skip_passes=skip_passes,
         )
         numpy_stencil_config = StencilConfig(
-            backend="gtc:numpy",
+            backend="numpy",
             rebuild=stencil_config.rebuild,
             validate_args=stencil_config.validate_args,
             format_source=True,
@@ -297,7 +291,7 @@ class FrozenStencil:
             externals = {}
 
         stencil_function = gtscript.stencil
-        stencil_kwargs = {**self.stencil_config.stencil_kwargs(skip_passes=skip_passes)}
+        stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes)
 
         # Enable distributed compilation if running in parallel
         if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
