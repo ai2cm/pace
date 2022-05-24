@@ -133,13 +133,26 @@ def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backen
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
     stencil_config, dycore_config = get_config(namelist_filename, backend)
     ranks = get_ranks(metafunc, dycore_config.layout)
+    compute_grid = metafunc.config.getoption("compute_grid")
     return _savepoint_cases(
-        savepoint_names, ranks, stencil_config, dycore_config, backend, data_path
+        savepoint_names,
+        ranks,
+        stencil_config,
+        dycore_config,
+        backend,
+        data_path,
+        compute_grid,
     )
 
 
 def _savepoint_cases(
-    savepoint_names, ranks, stencil_config, dycore_config, backend, data_path
+    savepoint_names,
+    ranks,
+    stencil_config,
+    dycore_config,
+    backend,
+    data_path,
+    compute_grid: bool,
 ):
     return_list = []
     ds_grid: xr.Dataset = xr.open_dataset(os.path.join(data_path, "Grid-Info.nc")).isel(
@@ -152,6 +165,8 @@ def _savepoint_cases(
             layout=dycore_config.layout,
             backend=backend,
         ).python_grid()
+        if compute_grid:
+            compute_grid_data(grid, dycore_config, backend, dycore_config.layout)
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
             grid_indexing=grid.grid_indexing,
@@ -177,13 +192,12 @@ def _savepoint_cases(
     return return_list
 
 
-def compute_grid_data(metafunc, grid, namelist):
-    backend = metafunc.config.getoption("backend")
+def compute_grid_data(grid, namelist, backend, layout):
     grid.make_grid_data(
         npx=namelist.npx,
         npy=namelist.npy,
         npz=namelist.npz,
-        communicator=get_communicator(MPI.COMM_WORLD, namelist.layout),
+        communicator=get_communicator(MPI.COMM_WORLD, layout),
         backend=backend,
     )
 
@@ -193,8 +207,15 @@ def parallel_savepoint_cases(
 ):
     stencil_config, dycore_config = get_config(namelist_filename, backend)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
+    compute_grid = metafunc.config.getoption("compute_grid")
     return _savepoint_cases(
-        savepoint_names, [mpi_rank], stencil_config, dycore_config, backend, data_path
+        savepoint_names,
+        [mpi_rank],
+        stencil_config,
+        dycore_config,
+        backend,
+        data_path,
+        compute_grid,
     )
 
 
@@ -248,3 +269,8 @@ def print_failures(pytestconfig):
 @pytest.fixture()
 def failure_stride(pytestconfig):
     return int(pytestconfig.getoption("failure_stride"))
+
+
+@pytest.fixture()
+def compute_grid(pytestconfig):
+    return pytestconfig.getoption("compute_grid")
