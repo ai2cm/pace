@@ -399,8 +399,6 @@ def test_parallel_savepoint(
         pytest.xfail(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
-    if testobj is None:
-        pytest.xfail(f"no translate object available for savepoint {test_name}")
     stencil_config = pace.dsl.StencilConfig(backend=backend)
     # Increase minimum error threshold for GPU
     if stencil_config.is_gpu_backend:
