@@ -1,12 +1,9 @@
-import contextlib
-import hashlib
 import logging
 import os
 from typing import Any, Dict
 
 import numpy as np
 import pytest
-import serialbox as ser
 
 import pace.dsl
 import pace.dsl.gt4py_utils as gt_utils
@@ -255,12 +252,6 @@ def test_sequential_savepoint(
     assert len(passing_names) > 0, "No tests passed"
 
 
-def get_serializer(data_path, rank):
-    return ser.Serializer(
-        ser.OpenModeKind.Read, data_path, "Generator_rank" + str(rank)
-    )
-
-
 def state_from_savepoint(serializer, savepoint, name_to_std_name):
     properties = pace.util.fortran_info.properties_by_std_name
     origin = gt_utils.origin
@@ -276,95 +267,6 @@ def state_from_savepoint(serializer, savepoint, name_to_std_name):
             extent=extent,
         )
     return state
-
-
-@pytest.mark.mock_parallel
-@pytest.mark.skipif(
-    MPI is not None and MPI.COMM_WORLD.Get_size() > 1,
-    reason="Running in parallel with mpi",
-)
-def test_mock_parallel_savepoint(
-    testobj,
-    test_name,
-    grid,
-    mock_communicator_list,
-    serializer_list,
-    savepoint_in_list,
-    savepoint_out_list,
-    backend,
-    print_failures,
-    failure_stride,
-    subtests,
-    caplog,
-    threshold_overrides,
-    print_domains,
-    xy_indices=False,
-):
-    caplog.set_level(logging.DEBUG, logger="fv3core")
-    caplog.set_level(logging.DEBUG, logger="pace.util")
-    if testobj is None:
-        pytest.xfail(f"no translate object available for savepoint {test_name}")
-    stencil_config = pace.dsl.StencilConfig(backend=backend)
-    # Reduce error threshold for GPU
-    if stencil_config.is_gpu_backend:
-        testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
-        testobj.near_zero = max(testobj.near_zero, GPU_NEAR_ZERO)
-    if threshold_overrides is not None:
-        process_override(threshold_overrides, testobj, test_name, backend)
-    inputs_list = []
-    for savepoint_in, serializer in zip(savepoint_in_list, serializer_list):
-        inputs_list.append(testobj.collect_input_data(serializer, savepoint_in))
-    output_list = testobj.compute_sequential(inputs_list, mock_communicator_list)
-    failing_names = []
-    ref_data = {}
-    for varname in testobj.outputs.keys():
-        ref_data[varname] = []
-        ignore_near_zero = testobj.ignore_near_zero_errors.get(varname, False)
-        with _subtest(failing_names, subtests, varname=varname):
-            failing_ranks = []
-            for rank, (savepoint_out, serializer, output) in enumerate(
-                zip(savepoint_out_list, serializer_list, output_list)
-            ):
-                with _subtest(failing_ranks, subtests, varname=varname, rank=rank):
-                    output_data = gt_utils.asarray(output[varname])
-                    ref_data[varname].append(serializer.read(varname, savepoint_out))
-                    assert success(
-                        output_data,
-                        ref_data[varname][-1],
-                        testobj.max_error,
-                        ignore_near_zero,
-                        testobj.near_zero,
-                    ), sample_wherefail(
-                        output_data,
-                        ref_data[varname][-1],
-                        testobj.max_error,
-                        print_failures,
-                        failure_stride,
-                        test_name,
-                        ignore_near_zero,
-                        testobj.near_zero,
-                        xy_indices,
-                    )
-            assert failing_ranks == []
-    failing_names = [item["varname"] for item in failing_names]
-    if len(failing_names) > 0:
-        out_filename = os.path.join(OUTDIR, f"{test_name}.nc")
-        try:
-            save_netcdf(
-                testobj, inputs_list, output_list, ref_data, failing_names, out_filename
-            )
-        except Exception as error:
-            print(f"TestMockParallel SaveNetCDF Error: {error}")
-    assert failing_names == [], f"names tested: {list(testobj.outputs.keys())}"
-
-
-def hash_result_data(result, data_keys):
-    hashes = {}
-    for k in data_keys:
-        hashes[k] = hashlib.sha1(
-            np.ascontiguousarray(gt_utils.asarray(result[k]))
-        ).hexdigest()
-    return hashes
 
 
 def get_communicator(comm, layout):
@@ -464,14 +366,6 @@ def test_parallel_savepoint(
             print(f"TestParallel SaveNetCDF Error: {error}")
     assert failing_names == [], f"only the following variables passed: {passing_names}"
     assert len(passing_names) > 0, "No tests passed"
-
-
-@contextlib.contextmanager
-def _subtest(failure_list, subtests, **kwargs):
-    failure_list.append(kwargs)
-    with subtests.test(**kwargs):
-        yield
-        failure_list.pop()  # will remove kwargs if the test passes
 
 
 def save_netcdf(
