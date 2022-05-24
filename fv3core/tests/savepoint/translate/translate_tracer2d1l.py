@@ -40,7 +40,7 @@ class TranslateTracer2D1L(ParallelTranslate):
         self._base.make_storage_data_input_vars(inputs)
         all_tracers = inputs["tracers"]
         inputs["tracers"] = self.get_advected_tracer_dict(
-            inputs["tracers"], inputs.pop("nq")
+            inputs["tracers"], int(inputs.pop("nq"))
         )
         transport = fv3core.stencils.fvtp2d.FiniteVolumeTransport(
             stencil_factory=self.stencil_factory,
