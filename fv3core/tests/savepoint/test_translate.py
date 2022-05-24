@@ -288,7 +288,6 @@ def test_parallel_savepoint(
     subtests,
     caplog,
     threshold_overrides,
-    skip_grid_tests,
     xy_indices=True,
 ):
     layout = (
@@ -310,8 +309,6 @@ def test_parallel_savepoint(
         process_override(
             threshold_overrides, case.testobj, case.savepoint_name, backend
         )
-    if skip_grid_tests and case.testobj.tests_grid:
-        pytest.xfail("skipping testing the grid generation, --skip_grid_tests")
     input_data = dataset_to_dict(case.ds_in)
     # run python version of functionality
     output = case.testobj.compute_parallel(input_data, communicator)

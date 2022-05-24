@@ -248,13 +248,3 @@ def print_failures(pytestconfig):
 @pytest.fixture()
 def failure_stride(pytestconfig):
     return int(pytestconfig.getoption("failure_stride"))
-
-
-@pytest.fixture()
-def python_regression(pytestconfig):
-    return pytestconfig.getoption("python_regression")
-
-
-@pytest.fixture()
-def skip_grid_tests(pytestconfig):
-    return pytestconfig.getoption("skip_grid_tests")
