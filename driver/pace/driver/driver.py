@@ -7,6 +7,7 @@ from typing import Any, Dict, Tuple, Union
 
 import dacite
 import yaml
+from importlib_metadata import itertools
 
 import fv3core
 import fv3gfs.physics
@@ -231,13 +232,21 @@ class Driver:
             grid_data=self.state.grid_data,
             metadata=self.state.dycore_state.ps.metadata,
         )
+        if config.diagnostics_config.output_initial_state:
+            self.diagnostics.store(time=self.time, state=self.state)
 
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
             end_time = self.config.start_time + self.config.total_time
+            timestep_counter = itertools.count()
             while self.time < end_time:
                 self.step(timestep=self.config.timestep)
+                if (
+                    timestep_counter % self.config.diagnostics_config.output_frequency
+                    == 0
+                ):
+                    self.diagnostics.store(time=self.time, state=self.state)
 
     def step(self, timestep: timedelta):
         with self.performance_config.timestep_timer.clock("mainloop"):
@@ -245,7 +254,6 @@ class Driver:
             if not self.config.disable_step_physics:
                 self._step_physics(timestep=timestep.total_seconds())
         self.time += timestep
-        self.diagnostics.store(time=self.time, state=self.state)
         self.performance_config.collect_performance()
 
     def _step_dynamics(self, timestep: float):
