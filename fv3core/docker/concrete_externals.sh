@@ -6,10 +6,10 @@ SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 function cleanup {
   echo "Restoring fv3core symlinks"
-  rm -r $SCRIPT_DIR/../external/pace-util
-  rm -r $SCRIPT_DIR/../external/stencils
-  rm -r $SCRIPT_DIR/../external/gt4py
-  rm -r $SCRIPT_DIR/../external/dsl
+  rm -rf $SCRIPT_DIR/../external/pace-util
+  rm -rf $SCRIPT_DIR/../external/stencils
+  rm -rf $SCRIPT_DIR/../external/gt4py
+  rm -rf $SCRIPT_DIR/../external/dsl
   rm $SCRIPT_DIR/../constraints.txt
 
   cd $SCRIPT_DIR

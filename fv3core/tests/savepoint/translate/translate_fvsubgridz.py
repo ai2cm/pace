@@ -121,9 +121,8 @@ class TranslateFVSubgridZ(ParallelTranslateBaseSlicing):
     for name in ("dt", "pe", "peln", "delp", "delz", "pkz"):
         outputs.pop(name)
 
-    def __init__(self, grids, namelist, stencil_factory, *args, **kwargs):
-        super().__init__(grids, namelist, stencil_factory, *args, **kwargs)
-        grid = grids[0]
+    def __init__(self, grid, namelist, stencil_factory, *args, **kwargs):
+        super().__init__(grid, namelist, stencil_factory, *args, **kwargs)
         self._base.in_vars["data_vars"] = {
             "pe": {
                 "istart": grid.is_ - 1,

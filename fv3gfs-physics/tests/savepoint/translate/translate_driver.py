@@ -17,8 +17,7 @@ enable_selective_validation()
 
 class TranslateDriver(TranslateFVDynamics):
     def __init__(self, grids, namelist, stencil_factory):
-        super().__init__(grids, namelist, stencil_factory)
-        grid = grids[0]
+        super().__init__(grids[0], namelist, stencil_factory)
         self.namelist: Namelist = namelist
         self.stencil_factory = stencil_factory
         self.stencil_config = self.stencil_factory.config
@@ -36,9 +35,6 @@ class TranslateDriver(TranslateFVDynamics):
             tile_rank=communicator.tile.rank,
         )
 
-        grid_indexing = pace.dsl.stencil.GridIndexing.from_sizer_and_communicator(
-            sizer=sizer, cube=communicator
-        )
         quantity_factory = pace.util.QuantityFactory.from_backend(
             sizer, backend=self.stencil_config.backend
         )

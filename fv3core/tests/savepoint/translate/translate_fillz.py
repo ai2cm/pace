@@ -35,7 +35,7 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
         )
         inputs["tracers"] = {}
         info = storage_vars["q2tracers"]
-        for i in range(inputs["nq"]):
+        for i in range(int(inputs["nq"])):
             inputs["tracers"][utils.tracer_variables[i]] = self.make_storage_data(
                 np.squeeze(inputs["q2tracers"][:, :, i]),
                 istart=info["istart"],

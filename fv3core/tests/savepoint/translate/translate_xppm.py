@@ -43,8 +43,8 @@ class TranslateXPPM(TranslateDycoreFortranData2Py):
             dxa=self.grid.dxa,
             grid_type=self.grid.grid_type,
             iord=int(inputs["iord"]),
-            origin=(origin[0], inputs["jfirst"], origin[2]),
-            domain=(domain[0], inputs["jlast"] - inputs["jfirst"] + 1, domain[2]),
+            origin=(origin[0], int(inputs["jfirst"]), origin[2]),
+            domain=(domain[0], int(inputs["jlast"] - inputs["jfirst"] + 1), domain[2]),
         )
         self.compute_func(inputs["q"], inputs["c"], inputs["xflux"])
         return self.slice_output(inputs)

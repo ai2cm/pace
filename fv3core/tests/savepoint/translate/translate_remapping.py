@@ -115,6 +115,7 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
         wsd_2d[:, :] = inputs["wsd"][:, :, 0]
         inputs["wsd"] = wsd_2d
         inputs["q_cld"] = inputs["tracers"]["qcld"]
+        inputs["last_step"] = bool(inputs["last_step"])
         l_to_e_obj = LagrangianToEulerian(
             self.stencil_factory,
             self.namelist.remapping,

@@ -27,11 +27,11 @@ class MapNTracer:
         self._origin = (i1, j1, 0)
         self._domain = ()
         self._nk = grid_indexing.domain[2]
-        self._nq = nq
-        self._i1 = i1
-        self._i2 = i2
-        self._j1 = j1
-        self._j2 = j2
+        self._nq = int(nq)
+        self._i1 = int(i1)
+        self._i2 = int(i2)
+        self._j1 = int(j1)
+        self._j2 = int(j2)
         self._qs = utils.make_storage_from_shape(
             grid_indexing.max_shape, origin=(0, 0, 0), backend=stencil_factory.backend
         )
