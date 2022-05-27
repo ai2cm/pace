@@ -235,16 +235,14 @@ def make_storage_from_shape(
     *,
     backend: str,
     dtype: DTypes = np.float64,
-    init: bool = False,
     mask: Optional[Tuple[bool, bool, bool]] = None,
 ) -> Field:
-    """Create a new gt4py storage of a given shape.
+    """Create a new gt4py storage of a given shape filled with zeros.
 
     Args:
         shape: Shape of the new storage
         origin: Default origin for gt4py stencil calls
         dtype: Data type
-        init: If True, initializes the storage to zero
         mask: Tuple indicating the axes used when initializing the storage
         backend: gt4py backend to use when making the storage
 
@@ -266,7 +264,6 @@ def make_storage_from_shape(
             mask = (n_dims * (True,)) + ((3 - n_dims) * (False,))
     # NOTE (jdahm): Temporary until Jenkins is updated
     backend = backend.replace("gtc:", "")
-    # storage_func = gt_storage.zeros if init else gt_storage.empty
     storage = gt_storage.zeros(
         backend=backend,
         default_origin=origin,
