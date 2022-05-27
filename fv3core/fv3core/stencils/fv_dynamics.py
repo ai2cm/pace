@@ -327,6 +327,9 @@ class DynamicalCore:
         )
 
         self._temporaries = fvdyn_temporaries(quantity_factory)
+        # This is only here so the temporaries are attributes on this class,
+        # to more easily pick them up in unit testing
+        # if self._temporaries were a dataclass we can remove this
         for name, value in self._temporaries.items():
             setattr(self, f"_tmp_{name}", value)
         if not (not self.config.inline_q and NQ != 0):

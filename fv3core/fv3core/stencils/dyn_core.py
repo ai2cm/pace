@@ -371,6 +371,11 @@ class AcousticDynamics:
         self._temporaries = dyncore_temporaries(
             grid_indexing, backend=stencil_factory.backend
         )
+        # This is only here so the temporaries are attributes on this class,
+        # to more easily pick them up in unit testing
+        # if self._temporaries were a dataclass we can remove this
+        for name, value in self._temporaries.items():
+            setattr(self, f"_tmp_{name}", value)
         if not config.hydrostatic:
             self._temporaries["pk3"][:] = HUGE_R
 
