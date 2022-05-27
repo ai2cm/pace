@@ -327,6 +327,8 @@ class DynamicalCore:
         )
 
         self._temporaries = fvdyn_temporaries(quantity_factory)
+        for name, value in self._temporaries.items():
+            setattr(self, f"_tmp_{name}", value)
         if not (not self.config.inline_q and NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(

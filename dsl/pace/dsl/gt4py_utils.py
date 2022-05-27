@@ -238,7 +238,7 @@ def make_storage_from_shape(
     init: bool = False,
     mask: Optional[Tuple[bool, bool, bool]] = None,
 ) -> Field:
-    """Create a new gt4py storage of a given shape. Do not memoize outputs.
+    """Create a new gt4py storage of a given shape.
 
     Args:
         shape: Shape of the new storage
@@ -266,8 +266,8 @@ def make_storage_from_shape(
             mask = (n_dims * (True,)) + ((3 - n_dims) * (False,))
     # NOTE (jdahm): Temporary until Jenkins is updated
     backend = backend.replace("gtc:", "")
-    storage_func = gt_storage.zeros if init else gt_storage.empty
-    storage = storage_func(
+    # storage_func = gt_storage.zeros if init else gt_storage.empty
+    storage = gt_storage.zeros(
         backend=backend,
         default_origin=origin,
         shape=shape,

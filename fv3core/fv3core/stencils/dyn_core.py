@@ -43,6 +43,7 @@ def zero_data(
     mfyd: FloatField,
     cxd: FloatField,
     cyd: FloatField,
+    heat_source: FloatField,
     diss_estd: FloatField,
     first_timestep: bool,
 ):
@@ -52,6 +53,7 @@ def zero_data(
         mfyd (out):
         cxd (out):
         cyd (out):
+        heat_source (out):
         diss_estd (out):
         first_timestep (in):
     """
@@ -60,6 +62,7 @@ def zero_data(
         mfyd = 0.0
         cxd = 0.0
         cyd = 0.0
+        heat_source = 0.0
         if first_timestep:
             with horizontal(region[3:-3, 3:-3]):
                 diss_estd = 0.0
@@ -529,24 +532,24 @@ class AcousticDynamics:
         if self.call_checkpointer:
             self.checkpointer(
                 f"C_SW-{tag}",
-                delp=state.delp,
-                pt=state.pt,
-                u=state.u,
-                v=state.v,
-                w=state.w,
-                uc=state.uc,
-                vc=state.vc,
-                ua=state.ua,
-                va=state.va,
-                ut=state.ut,
-                vt=state.vt,
-                divgd=state.divgd,
+                delpd=state.delp,
+                ptd=state.pt,
+                ud=state.u,
+                vd=state.v,
+                wd=state.w,
+                ucd=state.uc,
+                vcd=state.vc,
+                uad=state.ua,
+                vad=state.va,
+                utd=state.ut,
+                vtd=state.vt,
+                divgdd=state.divgd,
             )
 
-    def _checkpoint_dsw(self, state, tag: str):
+    def _checkpoint_dsw_in(self, state):
         if self.call_checkpointer:
             self.checkpointer(
-                f"D_SW-{tag}",
+                "D_SW-In",
                 ucd=state.uc,
                 vcd=state.vc,
                 wd=state.w,
@@ -558,6 +561,27 @@ class AcousticDynamics:
                 uad=state.ua,
                 vad=state.va,
                 zhd=state.zh,
+                divgdd=state.divgd,
+                xfxd=state.xfx,
+                yfxd=state.yfx,
+                mfxd=state.mfxd,
+                mfyd=state.mfyd,
+            )
+
+    def _checkpoint_dsw_out(self, state):
+        if self.call_checkpointer:
+            self.checkpointer(
+                "D_SW-Out",
+                ucd=state.uc,
+                vcd=state.vc,
+                wd=state.w,
+                delpcd=state.delpc,
+                delpd=state.delp,
+                ud=state.u,
+                vd=state.v,
+                ptd=state.pt,
+                uad=state.ua,
+                vad=state.va,
                 divgdd=state.divgd,
                 xfxd=state.xfx,
                 yfxd=state.yfx,
@@ -601,6 +625,7 @@ class AcousticDynamics:
             state.mfyd,
             state.cxd,
             state.cyd,
+            state.heat_source,
             state.diss_estd,
             state.n_map == 1,
         )
@@ -714,7 +739,7 @@ class AcousticDynamics:
             self._halo_updaters.uc__vc.wait()
             # use the computed c-grid winds to evolve the d-grid winds forward
             # by 1 timestep
-            self._checkpoint_dsw(state, tag="In")
+            self._checkpoint_dsw_in(state)
             self.dgrid_shallow_water_lagrangian_dynamics(
                 state.vt,
                 state.delp,
@@ -741,7 +766,7 @@ class AcousticDynamics:
                 state.diss_estd,
                 dt,
             )
-            self._checkpoint_dsw(state, tag="Out")
+            self._checkpoint_dsw_out(state)
             # note that uc and vc are not needed at all past this point.
             # they will be re-computed from scratch on the next acoustic timestep.
 
