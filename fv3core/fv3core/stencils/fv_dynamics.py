@@ -185,12 +185,12 @@ def wrapup(
 def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
-        quantity = quantity_factory.empty(
+        quantity = quantity_factory.zeros(
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         )
         tmps[name] = quantity
     for name in ["cappa", "dp1", "cvm"]:
-        quantity = quantity_factory.empty(
+        quantity = quantity_factory.zeros(
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="unknown",
         )
