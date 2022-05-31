@@ -186,7 +186,7 @@ def test_stencil_factory_numpy_comparison_runs_without_exceptions():
     )
     assert isinstance(stencil, CompareToNumpyStencil)
     q_in = make_storage_from_shape(indexing.max_shape, backend=backend)
-    q_in[:] = np.random.randn(*q_in.shape)
+    q_in.data[:] = np.random.randn(*q_in.data.shape)
     q_out = make_storage_from_shape(indexing.max_shape, backend=backend)
     stencil(q_in, q_out)
     np.testing.assert_array_equal(q_in.data, q_out.data)
