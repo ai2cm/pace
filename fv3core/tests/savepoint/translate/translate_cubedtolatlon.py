@@ -15,9 +15,8 @@ class TranslateCubedToLatLon(ParallelTranslate2Py):
         },
     }
 
-    def __init__(self, grids, namelist, stencil_factory):
-        super().__init__(grids, namelist, stencil_factory)
-        grid = grids[0]
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self._base.compute_func = CubedToLatLon(
             stencil_factory, grid.grid_data, order=namelist.c2l_ord
         )

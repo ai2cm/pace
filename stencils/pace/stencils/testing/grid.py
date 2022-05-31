@@ -95,8 +95,8 @@ class Grid:
             local_i, local_j = int(indices[ivar]), int(indices[jvar])
             if not local_indices:
                 local_i, local_j = self.global_to_local_indices(local_i, local_j)
-            setattr(self, ivar, local_i)
-            setattr(self, jvar, local_j)
+            setattr(self, ivar, int(local_i))
+            setattr(self, jvar, int(local_j))
         self.nid = int(self.ied - self.isd + 1)
         self.njd = int(self.jed - self.jsd + 1)
         self.nic = int(self.ie - self.is_ + 1)
@@ -188,7 +188,7 @@ class Grid:
         self,
         data,
         dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-        units="Unknown",
+        units="unknown",
     ):
         origin = self.sizer.get_origin(dims)
         extent = self.sizer.get_extent(dims)
@@ -197,7 +197,7 @@ class Grid:
         )
 
     def global_to_local_1d(self, global_value, subtile_index, subtile_length):
-        return global_value - subtile_index * subtile_length
+        return int(global_value - subtile_index * subtile_length)
 
     def global_to_local_x(self, i_global):
         return self.global_to_local_1d(
@@ -215,7 +215,7 @@ class Grid:
         return i_local, j_local
 
     def local_to_global_1d(self, local_value, subtile_index, subtile_length):
-        return local_value + subtile_index * subtile_length
+        return int(local_value + subtile_index * subtile_length)
 
     def local_to_global_indices(self, i_local, j_local):
         i_global = self.local_to_global_1d(
@@ -276,7 +276,9 @@ class Grid:
         iters: str = "ijk" if ndim > 1 else "k"
         return tuple(
             [
-                slice(d[f"{iters[i]}start"], self.add_one(d[f"{iters[i]}end"]))
+                slice(
+                    int(d[f"{iters[i]}start"]), int(self.add_one(d[f"{iters[i]}end"]))
+                )
                 for i in range(ndim)
             ]
         )
@@ -450,7 +452,7 @@ class Grid:
     @property
     def grid_indexing(self) -> "GridIndexing":
         return GridIndexing(
-            domain=self.domain_shape_compute(),
+            domain=tuple(int(item) for item in self.domain_shape_compute()),
             n_halo=self.halo,
             south_edge=self.south_edge,
             north_edge=self.north_edge,

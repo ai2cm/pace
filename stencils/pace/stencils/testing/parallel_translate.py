@@ -15,7 +15,6 @@ class ParallelTranslate:
 
     max_error = TranslateFortranData2Py.max_error
     near_zero = TranslateFortranData2Py.near_zero
-    python_regression = False
     compute_grid_option = False
     tests_grid = False
     inputs: Dict[str, Any] = {}
@@ -23,14 +22,22 @@ class ParallelTranslate:
 
     def __init__(self, rank_grids, namelist, stencil_factory):
         if not hasattr(rank_grids, "__getitem__"):
-            raise TypeError(
-                "rank_grids should be a sequence of grids, one for each rank, "
-                f"is {self.__class__} being properly called as a parallel test?"
-            )
-        self._base = TranslateFortranData2Py(rank_grids[0], stencil_factory)
+            rank_grid = rank_grids
+        else:
+            rank_grid = rank_grids[0]
+        self.grid = rank_grid
+        self._base = TranslateFortranData2Py(rank_grid, stencil_factory)
         self._base.in_vars = {
-            "data_vars": {name: {} for name in self.inputs},
-            "parameters": [],
+            "data_vars": {
+                name: {}
+                for name, data in self.inputs.items()
+                if len(data.get("dims", [])) > 0
+            },
+            "parameters": [
+                name
+                for name, data in self.inputs.items()
+                if len(data.get("dims", [])) == 0
+            ],
         }
         self._base.out_vars = {name: {} for name in self.outputs}
         self.max_error = self._base.max_error
@@ -104,10 +111,6 @@ class ParallelTranslate:
     @property
     def rank_grids(self):
         return self._rank_grids
-
-    @property
-    def grid(self):
-        return self._rank_grids[0]
 
     @property
     def layout(self):
@@ -217,8 +220,9 @@ class ParallelTranslate2Py(ParallelTranslate):
         return input_data
 
     def compute_parallel(self, inputs, communicator):
-        inputs["comm"] = communicator
+        inputs = {**inputs}
         inputs = self.state_from_inputs(inputs)
+        inputs["comm"] = communicator
         result = self._base.compute_from_storage(inputs)
         quantity_result = self.outputs_from_state(result)
         result.update(quantity_result)

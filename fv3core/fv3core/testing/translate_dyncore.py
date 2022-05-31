@@ -39,9 +39,8 @@ class TranslateDynCore(ParallelTranslate2PyState):
         "w": {"dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "m/s"},
     }
 
-    def __init__(self, grids, namelist, stencil_factory):
-        super().__init__(grids, namelist, stencil_factory)
-        grid = grids[0]
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self._base.in_vars["data_vars"] = {
             "cappa": {},
             "u": grid.y3d_domain_dict(),
