@@ -1,5 +1,6 @@
 import dataclasses
 import functools
+import itertools
 import logging
 import os
 from datetime import datetime, timedelta
@@ -7,8 +8,6 @@ from typing import Any, Dict, Tuple, Union
 
 import dacite
 import yaml
-import itertools
-
 
 import fv3core
 import fv3gfs.physics
@@ -163,7 +162,8 @@ class DriverConfig:
 
 class Driver:
     def __init__(
-        self, config: DriverConfig,
+        self,
+        config: DriverConfig,
     ):
         """
         Initializes a pace Driver.
@@ -222,7 +222,8 @@ class Driver:
                 apply_tendencies=self.config.apply_tendencies,
             )
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
-                partitioner=communicator.partitioner, comm=self.comm,
+                partitioner=communicator.partitioner,
+                comm=self.comm,
             )
         log_subtile_location(
             partitioner=communicator.partitioner.tile, rank=communicator.rank
@@ -283,7 +284,9 @@ class Driver:
 
     def _write_performance_json_output(self):
         self.performance_config.write_out_performance(
-            self.comm, self.config.stencil_config.backend, self.config.dt_atmos,
+            self.comm,
+            self.config.stencil_config.backend,
+            self.config.dt_atmos,
         )
 
     def _write_restart_files(self):
@@ -342,6 +345,7 @@ def _setup_factories(
         sizer, backend=config.stencil_config.backend
     )
     stencil_factory = pace.dsl.StencilFactory(
-        config=config.stencil_config, grid_indexing=grid_indexing,
+        config=config.stencil_config,
+        grid_indexing=grid_indexing,
     )
     return quantity_factory, stencil_factory
