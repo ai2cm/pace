@@ -147,7 +147,9 @@ def _assert_same_temporaries(dict1: dict, dict2: dict) -> List[str]:
         attr2 = dict2[attr]
         if isinstance(attr1, np.ndarray):
             try:
-                np.testing.assert_array_equal(attr1, attr2, err_msg=f"{attr} not equal")
+                np.testing.assert_almost_equal(
+                    attr1, attr2, err_msg=f"{attr} not equal"
+                )
             except AssertionError:
                 differences.append(attr)
         else:
@@ -197,7 +199,7 @@ def test_temporaries_are_deterministic():
 
 def test_call_on_same_state_same_dycore_produces_same_temporaries():
     """
-    Assuming the precursor test passses, this test indicates whether
+    Assuming the precursor test passes, this test indicates whether
     the dycore retains and re-uses internal state on subsequent calls.
     If it does not, then subsequent calls on identical input should
     produce identical results.
