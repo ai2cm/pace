@@ -202,13 +202,15 @@ def test_call_on_same_state_same_dycore_produces_same_temporaries():
     If it does not, then subsequent calls on identical input should
     produce identical results.
     """
-    dycore, args1 = setup_dycore()
-    _, args2 = setup_dycore()
+    dycore, state_1 = setup_dycore()
+    _, state_2 = setup_dycore()
 
-    dycore.step_dynamics(*args1)
+    # state_1 and state_2 are identical, if the dycore is stateless then they
+    # should produce identical dycore final states when used to call
+    dycore.step_dynamics(*state_1)
     first_temporaries = copy_temporaries(dycore, max_depth=10)
     assert len(first_temporaries) > 0
-    dycore.step_dynamics(*args2)
+    dycore.step_dynamics(*state_2)
     second_temporaries = copy_temporaries(dycore, max_depth=10)
     assert_same_temporaries(second_temporaries, first_temporaries)
 
