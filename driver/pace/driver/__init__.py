@@ -2,6 +2,7 @@ from .comm import (
     CreatesComm,
     CreatesCommSelector,
     MPICommConfig,
+    NullCommConfig,
     ReaderCommConfig,
     WriterCommConfig,
 )
