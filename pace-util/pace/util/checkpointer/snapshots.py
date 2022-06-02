@@ -1,7 +1,8 @@
 import collections
 
 import numpy as np
-import xarray as xr
+
+from pace.util._optional_imports import xarray as xr
 
 from .base import Checkpointer
 
@@ -28,7 +29,7 @@ class Snapshots:
         self._python_data[variable_name].append(python_data)
 
     @property
-    def dataset(self) -> xr.Dataset:
+    def dataset(self) -> "xr.Dataset":
         data_vars = {}
         for variable_name, savepoint_list in self._savepoints.items():
             savepoint_dim = f"sp_{variable_name}"
@@ -36,7 +37,12 @@ class Snapshots:
             data_vars[f"{variable_name}"] = make_dims(
                 savepoint_dim, variable_name, self._python_data[variable_name]
             )
-        return xr.Dataset(data_vars=data_vars)
+        if xr is None:
+            raise ModuleNotFoundError(
+                "xarray must be installed to use Snapshots.dataset"
+            )
+        else:
+            return xr.Dataset(data_vars=data_vars)
 
 
 class SnapshotCheckpointer(Checkpointer):
@@ -46,6 +52,10 @@ class SnapshotCheckpointer(Checkpointer):
     """
 
     def __init__(self, rank: int):
+        if xr is None:
+            raise ModuleNotFoundError(
+                "xarray must be installed to use SnapshotCheckpointer"
+            )
         self._rank = rank
         self._snapshots = Snapshots()
 
@@ -55,7 +65,7 @@ class SnapshotCheckpointer(Checkpointer):
             self._snapshots.compare(savepoint_name, name, array_data)
 
     @property
-    def dataset(self) -> xr.Dataset:
+    def dataset(self) -> "xr.Dataset":
         return self._snapshots.dataset
 
     def cleanup(self):
