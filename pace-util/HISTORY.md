@@ -9,6 +9,7 @@ v0.9.0
 
 Major changes:
 - Added Checkpointer and NullCheckpointer classes
+- Added SnapshotCheckpointer
 
 Minor changes:
 - Modified `pace.util.Quantity.transpose` to retain attributes, and loosened `pace.util.ZarrMonitor.store` requirements on attribute consistency, both to ease fv3net integration issues not addressed in v0.8.0

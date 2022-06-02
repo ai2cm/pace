@@ -7,6 +7,12 @@ from .base import Checkpointer
 
 
 def make_dims(savepoint_dim, label, data_list):
+    """
+    Helper which defines dimension names for an xarray variable.
+
+    Used to ensure no dimensions have the same name but different sizes
+    when defining xarray datasets.
+    """
     data = np.concatenate([array[None, :] for array in data_list], axis=0)
     dims = [savepoint_dim] + [f"{label}_dim{i}" for i in range(len(data.shape[1:]))]
     return dims, data
@@ -34,6 +40,11 @@ class Snapshots:
 
 
 class SnapshotCheckpointer(Checkpointer):
+    """
+    Checkpointer which can be used to save datasets showing the evolution
+    of variables between checkpointer calls.
+    """
+
     def __init__(self, rank: int):
         self._rank = rank
         self._snapshots = Snapshots()
@@ -44,7 +55,7 @@ class SnapshotCheckpointer(Checkpointer):
             self._snapshots.compare(savepoint_name, name, array_data)
 
     @property
-    def dataset(self):
+    def dataset(self) -> xr.Dataset:
         return self._snapshots.dataset
 
     def cleanup(self):
