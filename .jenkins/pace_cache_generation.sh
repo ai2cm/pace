@@ -1,32 +1,52 @@
 #!/usr/bin/env bash
 
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PACE_DIR=$SCRIPT_DIR/../
+set -e
+
+if (( $# < 3 )); then
+    echo "USAGE: .jenkins/pace_cache_generation.sh backend experiment [target_uri]"
+fi
+
+backend=$1
+experiment=$2
+
+# If the target_uri starts with "daint:" then the Jenkins scripts are used
+# Use the target_uri as the last command line argument if passed, else the default daint path
+default_target_uri="daint:/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/${backend//:/_}"
+target_uri=${1:-$daint_target_uri}
+
+if [[ $target_uri == daint:* ]]; then
+    use_jenkins_action=true
+    target_dir=${target_uri#daint:}
+else
+    use_jenkins_action=false
+    target_dir=$target_uri
+fi
+
+script_dir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+pace_dir=$script_dir/../
 [[ "${NODE_NAME}" == *"daint"* ]] && source ~/.bashrc
 
-set -e
 export LONG_EXECUTION=1
 
-.jenkins/jenkins.sh initialize_driver $backend $experiment
+if [[ $use_jenkins_action == "true" ]]; then
+    .jenkins/jenkins.sh initialize_driver $backend $experiment
+else
+    EXPERIMENT=$experiment TARGET=driver make get_test_data
+    $pace_dir/.jenkins/initialize_driver.py test_data/8.1.0/$experiment/driver $backend
+fi
 
-SANITIZED_BACKEND=$(echo $backend | sed 's/:/_/g') #sanitize the backend from any ':'
-TARGET_DIR="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/$SANITIZED_BACKEND/"
-
-export GT4PY_VERSION=$(git submodule status $PACE_DIR/external/gt4py | awk '{print $1;}')
-echo "GT4PY_VERSION is $GT4PY_VERSION"
-
-[ -n "$experiment" ] || exitError 1001 $LINENO "experiment is not defined"
-[ -n "$SANITIZED_BACKEND" ] || exitError 1002 $LINENO "backend is not defined"
+export gt4py_version=$(git submodule status $pace_dir/external/gt4py | awk '{print $1;}')
+echo "Using gt4py version $gt4py_version"
 
 echo "Pruning cache to make sure no __pycache__ and *_pyext_BUILD dirs are present"
 find .gt_cache* -type d -name \*_pyext_BUILD -prune -exec \rm -rf {} \;
 find .gt_cache* -type d -name __pycache__ -prune -exec \rm -rf {} \;
 
-CACHE_ARCHVE=$TARGET_DIR/$GT4PY_VERSION.tar.gz
+cache_archive=$target_dir/$gt4py_version.tar.gz
 
-echo "Copying gt4py cache directories to $CACHE_DIR"
+echo "Copying gt4py cache directories to $cache_archive"
 tar -czf _tmp .gt_cache*
-rm -rf $CACHE_ARCHVE
+rm -rf $cache_archive
 
-mkdir -p $CACHE_DIR
-cp _tmp $CACHE_ARCHVE
+mkdir -p $target_dir
+cp _tmp $cache_archve
