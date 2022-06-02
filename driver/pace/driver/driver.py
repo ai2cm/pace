@@ -1,6 +1,5 @@
 import dataclasses
 import functools
-import itertools
 import logging
 import os
 from datetime import datetime, timedelta
@@ -239,9 +238,10 @@ class Driver:
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
             end_time = self.config.start_time + self.config.total_time
-            timestep_counter = itertools.count()
+            timestep_counter = 0
             while self.time < end_time:
                 self.step(timestep=self.config.timestep)
+                timestep_counter += 1
                 if (
                     timestep_counter % self.config.diagnostics_config.output_frequency
                     == 0
