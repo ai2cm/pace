@@ -103,6 +103,34 @@ class DriverState:
         self.physics_state.xr_dataset.to_netcdf(
             f"{restart_path}/restart_physics_state_{current_rank}.nc"
         )
+        # we can also convert the state to Fortran's restart format using
+        # code similar to this commented code. We don't need this feature right
+        # now so we haven't implemented it, but this is a good starter.
+        """
+        xr.Dataset(
+            data_vars={
+                "cld_amt": state.dycore_state.qcld.data_array,
+                "graupel": state.dycore_state.qgraupel.data_array,
+                "ice_wat": state.dycore_state.qice.data_array,
+                "liq_wat": state.dycore_state.qliquid.data_array,
+                "o3mr": state.dycore_state.qo3mr.data_array,
+                "rainwat": state.dycore_state.qrain.data_array,
+                "sgs_tke": state.dycore_state.qsgs_tke.data_array,
+                "snowwat": state.dycore_state.qsnow.data_array,
+                "sphum": state.dycore_state.qvapor.data_array,
+            }
+        ).rename(
+            {
+                "z": "zaxis_1",
+                "x": "xaxis_1",
+                "y": "yaxis_1",
+            }
+        ).transpose(
+            "zaxis_1", "yaxis_1", "xaxis_1"
+        ).expand_dims(
+            dim="Time", axis=0
+        ).to_netcdf(os.path.join(path, f"fv_tracer.res.tile{rank + 1}.nc"))
+        """
 
 
 def _overwrite_state_from_restart(
