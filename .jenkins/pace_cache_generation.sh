@@ -12,7 +12,7 @@ experiment=$2
 # If the target_uri starts with "daint:" then the Jenkins scripts are used
 # Use the target_uri as the last command line argument if passed, else the default daint path
 default_target_uri="daint:/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/${backend//:/_}"
-target_uri=${3:-$daint_target_uri}
+target_uri=${3:-$default_target_uri}
 
 if [[ $target_uri == daint:* ]]; then
     use_jenkins_action=true
@@ -30,8 +30,7 @@ if [[ $use_jenkins_action == "true" ]]; then
     export LONG_EXECUTION=1
     .jenkins/jenkins.sh initialize_driver $backend $experiment
 else
-    data_version=$(cd fv3core && EXPERIMENT=$experiment TARGET=driver make get_test_data | tail -1)
-    $pace_dir/.jenkins/initialize_driver.py test_data/$data_version/$experiment/driver $backend
+    .jenkins/actions/initialize_driver.py $backend $experiment
 fi
 
 export gt4py_version=$(git submodule status $pace_dir/external/gt4py | awk '{print $1;}')
