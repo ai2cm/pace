@@ -28,7 +28,7 @@ pace_dir=$script_dir/../
 
 if [[ $use_jenkins_action == "true" ]]; then
     export LONG_EXECUTION=1
-    .jenkins/jenkins.sh initialize_driver $backend $experiment
+    slave=daint .jenkins/jenkins.sh initialize_driver $backend $experiment
 else
     .jenkins/actions/initialize_driver.py $backend $experiment
 fi
