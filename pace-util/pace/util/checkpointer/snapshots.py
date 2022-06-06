@@ -19,14 +19,14 @@ def make_dims(savepoint_dim, label, data_list):
     return dims, data
 
 
-class Snapshots:
+class _Snapshots:
     def __init__(self):
         self._savepoints = collections.defaultdict(list)
-        self._python_data = collections.defaultdict(list)
+        self._arrays = collections.defaultdict(list)
 
-    def compare(self, savepoint_name: str, variable_name: str, python_data):
+    def store(self, savepoint_name: str, variable_name: str, python_data):
         self._savepoints[variable_name].append(savepoint_name)
-        self._python_data[variable_name].append(python_data)
+        self._arrays[variable_name].append(python_data)
 
     @property
     def dataset(self) -> "xr.Dataset":
@@ -35,7 +35,7 @@ class Snapshots:
             savepoint_dim = f"sp_{variable_name}"
             data_vars[f"{variable_name}_savepoints"] = ([savepoint_dim], savepoint_list)
             data_vars[f"{variable_name}"] = make_dims(
-                savepoint_dim, variable_name, self._python_data[variable_name]
+                savepoint_dim, variable_name, self._arrays[variable_name]
             )
         if xr is None:
             raise ModuleNotFoundError(
@@ -57,12 +57,12 @@ class SnapshotCheckpointer(Checkpointer):
                 "xarray must be installed to use SnapshotCheckpointer"
             )
         self._rank = rank
-        self._snapshots = Snapshots()
+        self._snapshots = _Snapshots()
 
     def __call__(self, savepoint_name, **kwargs):
         for name, value in kwargs.items():
             array_data = np.copy(value.data)
-            self._snapshots.compare(savepoint_name, name, array_data)
+            self._snapshots.store(savepoint_name, name, array_data)
 
     @property
     def dataset(self) -> "xr.Dataset":
