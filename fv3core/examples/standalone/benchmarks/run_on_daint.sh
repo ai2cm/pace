@@ -123,11 +123,12 @@ $FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME
 
 # Adapt batch script to compile the code:
 sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
-sed -i "s/<NTASKS>/1/g" compile.daint.slurm
+sed -i "s/<NTASKS>/6/g" compile.daint.slurm
 sed -i "s/<NTASKSPERNODE>/1/g" compile.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
-sed -i "s/00:45:00/02:00:00/g" compile.daint.slurm
+sed -i "s/00:45:00/03:30:00/g" compile.daint.slurm
+sed -i "s/cscsci/normal/g" compile.daint.slurm
 sed -i "s#<CMD>#export PYTHONOPTIMIZE=TRUE\nsrun python examples/standalone/runfile/compile.py $data_path $backend #g" compile.daint.slurm
 
 

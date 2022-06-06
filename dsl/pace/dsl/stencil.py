@@ -25,13 +25,11 @@ from gt4py import gtscript
 from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
-import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.halo_data_transformer import QuantityHaloSpec
-from pace.util.mpi import MPI
 
 
 @dataclasses.dataclass
@@ -98,11 +96,14 @@ class StencilConfig(Hashable):
 
         return backend_opts
 
-    def stencil_kwargs(self, skip_passes: Iterable[str] = ()):
+    def stencil_kwargs(
+        self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()
+    ):
         # NOTE (jdahm): Temporary replace call until Jenkins is updated
         kwargs = {
             "backend": self.backend.replace("gtc:", ""),
             "rebuild": self.rebuild,
+            "name": func.__module__ + "." + func.__name__,
             **self.backend_opts,
         }
         if not self.is_gpu_backend:
@@ -290,25 +291,13 @@ class FrozenStencil:
         if externals is None:
             externals = {}
 
-        stencil_function = gtscript.stencil
-        stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes)
-
-        # Enable distributed compilation if running in parallel
-        if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-            stencil_function = future_stencil.future_stencil
-            stencil_kwargs["wrapper"] = self
-        else:
-            # future stencil provides this information and
-            # we want to be consistent with the naming whether we are
-            # running in parallel or not (so we use the same cache)
-            stencil_kwargs["name"] = func.__module__ + "." + func.__name__
-
-        self.stencil_object: gt4py.StencilObject = stencil_function(
-            definition=func,
-            externals=externals,
-            **stencil_kwargs,
+        stencil_kwargs = self.stencil_config.stencil_kwargs(
+            skip_passes=skip_passes, func=func
         )
-        """generated stencil object returned from gt4py."""
+        self.stencil_object: gt4py.StencilObject = gtscript.stencil(
+            definition=func, externals=externals, **stencil_kwargs
+        )
+        """Generated stencil object returned from gt4py."""
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
@@ -329,11 +318,7 @@ class FrozenStencil:
 
         self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
 
-    def __call__(
-        self,
-        *args,
-        **kwargs,
-    ) -> None:
+    def __call__(self, *args, **kwargs) -> None:
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)
