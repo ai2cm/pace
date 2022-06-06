@@ -3,34 +3,34 @@
 set -e
 
 if (( $# < 3 )); then
-    echo "USAGE: .jenkins/pace_cache_generation.sh backend experiment [target_uri]"
+    echo "USAGE: .jenkins/pace_cache_generation.sh backend experiment [target_dir] [bypass_wrapper]"
 fi
 
 backend=$1
 experiment=$2
+shift 2
 
-# If the target_uri starts with "daint:" then the Jenkins scripts are used
-# Use the target_uri as the last command line argument if passed, else the default daint path
-default_target_uri="daint:/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/${backend//:/_}"
-target_uri=${3:-$default_target_uri}
-
-if [[ $target_uri == daint:* ]]; then
-    use_jenkins_action=true
-    target_dir=${target_uri#daint:}
+if [ $# > 0 ]; then
+    target_dir=$1
 else
-    use_jenkins_action=false
-    target_dir=$target_uri
+    target_dir="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/${backend//:/_}"
+fi
+
+if [ $# > 1 ] && [ $2 == "bypass_wrapper" ]; then
+    bypass_wrapper=true
+else
+    bypass_wrapper=false
 fi
 
 script_dir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 pace_dir=$script_dir/../
 [[ "${NODE_NAME}" == *"daint"* ]] && source ~/.bashrc
 
-if [[ $use_jenkins_action == "true" ]]; then
+if [[ $bypass_wrapper != "true" ]]; then
     export LONG_EXECUTION=1
-    slave=daint .jenkins/jenkins.sh initialize_driver $backend $experiment
+    slave=daint .jenkins/jenkins.sh create_caches $backend $experiment
 else
-    .jenkins/actions/initialize_driver.py $backend $experiment
+    .jenkins/actions/create_caches.sh $backend $experiment
 fi
 
 export gt4py_version=$(git submodule status $pace_dir/external/gt4py | awk '{print $1;}')
