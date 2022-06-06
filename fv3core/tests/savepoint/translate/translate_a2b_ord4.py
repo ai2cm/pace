@@ -1,3 +1,7 @@
+from typing import Any, Dict
+
+import pace.dsl
+import pace.util
 from fv3core.stencils.divergence_damping import DivergenceDamping
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
@@ -21,11 +25,16 @@ def compute(divdamp, wk, vort, delpc, dt):
 
 
 class TranslateA2B_Ord4(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"wk": {}, "vort": {}, "delpc": {}, "nord_col": {}}
         self.in_vars["parameters"] = ["dt"]
-        self.out_vars = {"wk": {}, "vort": {}}
+        self.out_vars: Dict[str, Any] = {"wk": {}, "vort": {}}
         self.namelist = namelist
         self.stencil_factory = stencil_factory
 

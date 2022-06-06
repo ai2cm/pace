@@ -1,6 +1,8 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.stencils.xtp_u as xtp_u
+import pace.dsl
+import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import GridData
@@ -73,7 +75,12 @@ class XTP_U:
 
 
 class TranslateXTP_U(TranslateYTP_V):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"]["u"] = {}
         self.in_vars["data_vars"]["c"]["serialname"] = "ub"

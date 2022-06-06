@@ -1,14 +1,23 @@
+from typing import Any, Dict
+
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.stencils import corners
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateFill4Corners(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"q4c": {}}
         self.in_vars["parameters"] = ["dir"]
-        self.out_vars = {"q4c": {}}
+        self.out_vars: Dict[str, Any] = {"q4c": {}}
         self.stencil_factory = stencil_factory
 
     def compute(self, inputs):
@@ -35,7 +44,12 @@ class TranslateFill4Corners(TranslateDycoreFortranData2Py):
 
 
 class TranslateFillCorners(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"divg_d": {}, "nord_col": {}}
         self.in_vars["parameters"] = ["dir"]
@@ -77,11 +91,16 @@ class TranslateFillCorners(TranslateDycoreFortranData2Py):
 
 
 class TranslateCopyCorners(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"q": {}}
         self.in_vars["parameters"] = ["dir"]
-        self.out_vars = {"q": {}}
+        self.out_vars: Dict[str, Any] = {"q": {}}
         self._copy_corners_x = corners.CopyCorners("x", stencil_factory=stencil_factory)
         self._copy_corners_y = corners.CopyCorners("y", stencil_factory=stencil_factory)
         self.stencil_factory = stencil_factory
@@ -97,10 +116,18 @@ class TranslateCopyCorners(TranslateDycoreFortranData2Py):
 
 
 class TranslateFillCornersVector(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"vc": {}, "uc": {}, "nord_col": {}}
-        self.out_vars = {"vc": grid.y3d_domain_dict(), "uc": grid.x3d_domain_dict()}
+        self.out_vars: Dict[str, Any] = {
+            "vc": grid.y3d_domain_dict(),
+            "uc": grid.x3d_domain_dict(),
+        }
         self.stencil_factory = stencil_factory
 
     def compute(self, inputs):

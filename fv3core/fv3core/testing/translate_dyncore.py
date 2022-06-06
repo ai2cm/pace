@@ -1,45 +1,57 @@
 import fv3core.stencils.dyn_core as dyn_core
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
-import pace.util as fv3util
-from fv3core.initialization.dycore_state import DycoreState
+import pace.util
+from fv3core import DycoreState, DynamicalCoreConfig
 from pace.stencils.testing import ParallelTranslate2PyState
 
 
 class TranslateDynCore(ParallelTranslate2PyState):
     inputs = {
         "q_con": {
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             "units": "default",
         },
         "cappa": {
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             "units": "default",
         },
         "delp": {
-            "dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             "units": "default",
         },
-        "pt": {"dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "K"},
+        "pt": {
+            "dims": [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            "units": "K",
+        },
         "u": {
-            "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+            "dims": [pace.util.X_DIM, pace.util.Y_INTERFACE_DIM, pace.util.Z_DIM],
             "units": "m/s",
         },
         "v": {
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [pace.util.X_INTERFACE_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             "units": "m/s",
         },
         "uc": {
-            "dims": [fv3util.X_INTERFACE_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            "dims": [pace.util.X_INTERFACE_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             "units": "m/s",
         },
         "vc": {
-            "dims": [fv3util.X_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+            "dims": [pace.util.X_DIM, pace.util.Y_INTERFACE_DIM, pace.util.Z_DIM],
             "units": "m/s",
         },
-        "w": {"dims": [fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM], "units": "m/s"},
+        "w": {
+            "dims": [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+            "units": "m/s",
+        },
     }
 
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self._base.in_vars["data_vars"] = {
             "cappa": {},
@@ -141,18 +153,18 @@ class TranslateDynCore(ParallelTranslate2PyState):
             self.grid.grid_type,
             self.grid.nested,
             self.grid.stretched_grid,
-            self.namelist.acoustic_dynamics,
+            DynamicalCoreConfig.from_namelist(self.namelist).acoustic_dynamics,
             inputs["pfull"],
             inputs["phis"],
         )
         self._base.make_storage_data_input_vars(inputs)
         state = DycoreState.init_zeros(quantity_factory=self.grid.quantity_factory)
         state.cappa = self.grid.quantity_factory.empty(
-            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="unknown",
         )
         for name, value in inputs.items():
-            if hasattr(state, name) and isinstance(state[name], fv3util.Quantity):
+            if hasattr(state, name) and isinstance(state[name], pace.util.Quantity):
                 # storage can have buffer points at the end, so value.shape
                 # is often not equal to state[name].storage.shape
                 selection = tuple(slice(0, end) for end in value.shape)
@@ -162,7 +174,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
         acoustic_dynamics(state)
         storages_only = {}
         for name, value in vars(state).items():
-            if isinstance(value, fv3util.Quantity):
+            if isinstance(value, pace.util.Quantity):
                 storages_only[name] = value.storage
             else:
                 storages_only[name] = value

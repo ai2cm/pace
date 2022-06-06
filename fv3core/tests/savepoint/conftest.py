@@ -11,7 +11,6 @@ import fv3core
 import fv3core._config
 import pace.dsl
 import pace.util
-from fv3core import DynamicalCoreConfig
 from pace.stencils.testing import ParallelTranslate, TranslateGrid
 from pace.stencils.testing.savepoint import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
@@ -66,12 +65,12 @@ def is_parallel_test(test_name):
         return issubclass(test_class, ParallelTranslate)
 
 
-def get_test_class_instance(test_name, grid, dycore_config, stencil_factory):
+def get_test_class_instance(test_name, grid, namelist, stencil_factory):
     translate_class = get_test_class(test_name)
     if translate_class is None:
         return None
     else:
-        return translate_class(grid, dycore_config, stencil_factory)
+        return translate_class(grid, namelist, stencil_factory)
 
 
 def get_all_savepoint_names(metafunc, data_path):
@@ -119,26 +118,24 @@ def get_ranks(metafunc, layout):
 
 def get_config(namelist_filename, backend):
     namelist = pace.util.Namelist.from_f90nml(f90nml.read(namelist_filename))
-    dycore_config = DynamicalCoreConfig.from_namelist(namelist)
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=True,
     )
-    dycore_config = DynamicalCoreConfig.from_namelist(namelist)
-    return stencil_config, dycore_config
+    return stencil_config, namelist
 
 
 def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backend: str):
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
-    stencil_config, dycore_config = get_config(namelist_filename, backend)
-    ranks = get_ranks(metafunc, dycore_config.layout)
+    stencil_config, namelist = get_config(namelist_filename, backend)
+    ranks = get_ranks(metafunc, namelist.layout)
     compute_grid = metafunc.config.getoption("compute_grid")
     return _savepoint_cases(
         savepoint_names,
         ranks,
         stencil_config,
-        dycore_config,
+        namelist,
         backend,
         data_path,
         compute_grid,
@@ -149,7 +146,7 @@ def _savepoint_cases(
     savepoint_names,
     ranks,
     stencil_config,
-    dycore_config,
+    namelist,
     backend,
     data_path,
     compute_grid: bool,
@@ -162,18 +159,18 @@ def _savepoint_cases(
         grid = TranslateGrid(
             dataset_to_dict(ds_grid.isel(rank=rank)),
             rank=rank,
-            layout=dycore_config.layout,
+            layout=namelist.layout,
             backend=backend,
         ).python_grid()
         if compute_grid:
-            compute_grid_data(grid, dycore_config, backend, dycore_config.layout)
+            compute_grid_data(grid, namelist, backend, namelist.layout)
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
             grid_indexing=grid.grid_indexing,
         )
         for test_name in sorted(list(savepoint_names)):
             testobj = get_test_class_instance(
-                test_name, grid, dycore_config, stencil_factory
+                test_name, grid, namelist, stencil_factory
             )
             n_calls = xr.open_dataset(
                 os.path.join(data_path, f"{test_name}-In.nc")
@@ -205,14 +202,14 @@ def compute_grid_data(grid, namelist, backend, layout):
 def parallel_savepoint_cases(
     metafunc, data_path, namelist_filename, mpi_rank, *, backend: str
 ):
-    stencil_config, dycore_config = get_config(namelist_filename, backend)
+    stencil_config, namelist = get_config(namelist_filename, backend)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     compute_grid = metafunc.config.getoption("compute_grid")
     return _savepoint_cases(
         savepoint_names,
         [mpi_rank],
         stencil_config,
-        dycore_config,
+        namelist,
         backend,
         data_path,
         compute_grid,
