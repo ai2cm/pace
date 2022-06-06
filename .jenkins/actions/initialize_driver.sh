@@ -3,6 +3,5 @@
 backend=$1
 experiment=$2
 
-EXPERIMENT=$experiment TARGET=driver make get_test_data
-
-.jenkins/initialize_driver.py test_data/8.1.0/$experiment/driver $backend
+data_version=$(cd fv3core && EXPERIMENT=$experiment TARGET=driver make get_test_data | tail -1)
+.jenkins/initialize_driver.py test_data/$data_version/$experiment/driver $backend

@@ -142,7 +142,8 @@ get_test_data:
 	rm -rf $(TEST_DATA_HOST) && \
 	$(MAKE) sync_test_data && \
 	$(MAKE) unpack_test_data ;\
-	fi
+	fi; \
+	echo $(FORTRAN_SERIALIZED_DATA_VERSION)
 
 unpack_test_data:
 	if [ -f $(TEST_DATA_TARPATH) ]; then \

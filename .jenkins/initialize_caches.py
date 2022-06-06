@@ -42,7 +42,8 @@ if __name__ == "__main__":
         f90nml.read(os.path.join(driver_data_path, "input.nml"))
     )
 
-    num_ranks = namelist.layout[0] * namelist.layout[1] * 6
+    num_ranks_on_tile = namelist.layout[0] * namelist.layout[1]
+    num_ranks = num_ranks_on_tile * 6
 
-    for rank in range(num_ranks):
+    for rank in range(num_ranks_on_tile):
         initialize_caches(namelist, backend, rank, num_ranks)
