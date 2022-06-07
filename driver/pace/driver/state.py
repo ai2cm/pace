@@ -160,9 +160,12 @@ def _overwrite_state_from_restart(
     for _field in fields(type(state)):
         if "units" in _field.metadata.keys():
             if is_gpu_backend:
-                state.__dict__[_field.name].data[:] = cp.asarray(
-                    df[_field.name].data[:]
-                )
+                if "physics" in restart_file_prefix:
+                    state.__dict__[_field.name][:] = cp.asarray(df[_field.name].data[:])
+                else:
+                    state.__dict__[_field.name].data[:] = cp.asarray(
+                        df[_field.name].data[:]
+                    )
             else:
                 state.__dict__[_field.name].data[:] = df[_field.name].data[:]
     return state
