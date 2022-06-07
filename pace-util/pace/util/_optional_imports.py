@@ -15,6 +15,11 @@ except ModuleNotFoundError as err:
     zarr = RaiseWhenAccessed(err)
 
 try:
+    import xarray
+except ModuleNotFoundError as err:
+    xarray = None
+
+try:
     import cupy
 except ImportError:
     cupy = None
