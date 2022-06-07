@@ -2,11 +2,15 @@ import dataclasses
 
 import numpy as np
 
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
-from pace.stencils.testing.translate_physics import ParallelPhysicsTranslate2Py
+from pace.stencils.testing.translate_physics import (
+    ParallelPhysicsTranslate2Py,
+    transform_dwind_serialized_data,
+)
 
 
 @dataclasses.dataclass()
@@ -33,7 +37,12 @@ class DycoreState:
 
 
 class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         self.grid_indexing = self.stencil_factory.grid_indexing
@@ -88,40 +97,9 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         self.namelist = namelist
 
     def transform_dwind_serialized_data(self, data):
-        max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
-
-        # convert single element numpy arrays to scalars
-        if data.size == 1:
-            data = data.item()
-        elif len(data.shape) < 2:
-            start1 = 0
-            size1 = data.shape[0]
-            data = np.zeros(max_shape[2])
-            data[start1 : start1 + size1] = data
-
-        elif len(data.shape) == 2:
-            data = np.zeros(max_shape[0:2])
-            start1, start2 = (0, 0)
-            size1, size2 = data.shape
-            data[start1 : start1 + size1, start2 : start2 + size2] = data
-        else:
-            start1, start2, start3 = self.grid.full_origin()
-            size1, size2, size3 = data.shape
-            new_data = np.zeros(max_shape)
-            new_data[
-                start1 : start1 + size1,
-                start2 : start2 + size2,
-                start3 : start3 + size3,
-            ] = data
-            data = new_data
-        if isinstance(data, np.ndarray):
-            data = utils.make_storage_data(
-                data=data,
-                origin=self.grid.full_origin(),
-                shape=data.shape,
-                backend=self.stencil_factory.backend,
-            )
-        return data
+        return transform_dwind_serialized_data(
+            data, self.stencil_factory.grid_indexing, self.stencil_factory.backend
+        )
 
     def storage_vars(self):
         return self._base.in_vars["data_vars"]

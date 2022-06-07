@@ -2,8 +2,45 @@ import numpy as np
 
 import pace.dsl.gt4py_utils as utils
 from fv3gfs.physics import PhysicsConfig
+from pace.dsl.stencil import GridIndexing
 from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
 from pace.stencils.testing.translate import TranslateFortranData2Py
+
+
+def transform_dwind_serialized_data(data, grid_indexing: GridIndexing, backend: str):
+    max_shape = grid_indexing.domain_full(add=(1, 1, 1))
+    # convert single element numpy arrays to scalars
+    if data.size == 1:
+        data = data.item()
+    elif len(data.shape) < 2:
+        start1 = 0
+        size1 = data.shape[0]
+        data = np.zeros(max_shape[2])
+        data[start1 : start1 + size1] = data
+
+    elif len(data.shape) == 2:
+        data = np.zeros(max_shape[0:2])
+        start1, start2 = (0, 0)
+        size1, size2 = data.shape
+        data[start1 : start1 + size1, start2 : start2 + size2] = data
+    else:
+        start1, start2, start3 = grid_indexing.origin
+        size1, size2, size3 = data.shape
+        new_data = np.zeros(max_shape)
+        new_data[
+            start1 : start1 + size1,
+            start2 : start2 + size2,
+            start3 : start3 + size3,
+        ] = data
+        data = new_data
+    if isinstance(data, np.ndarray):
+        data = utils.make_storage_data(
+            data=data,
+            origin=grid_indexing.origin,
+            shape=data.shape,
+            backend=backend,
+        )
+    return data
 
 
 class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
@@ -52,40 +89,9 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
         return rearranged
 
     def transform_dwind_serialized_data(self, data):
-        max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
-
-        # convert single element numpy arrays to scalars
-        if data.size == 1:
-            data = data.item()
-        elif len(data.shape) < 2:
-            start1 = 0
-            size1 = data.shape[0]
-            data = np.zeros(max_shape[2])
-            data[start1 : start1 + size1] = data
-
-        elif len(data.shape) == 2:
-            data = np.zeros(max_shape[0:2])
-            start1, start2 = (0, 0)
-            size1, size2 = data.shape
-            data[start1 : start1 + size1, start2 : start2 + size2] = data
-        else:
-            start1, start2, start3 = self.grid.full_origin()
-            size1, size2, size3 = data.shape
-            new_data = np.zeros(max_shape)
-            new_data[
-                start1 : start1 + size1,
-                start2 : start2 + size2,
-                start3 : start3 + size3,
-            ] = data
-            data = new_data
-        if isinstance(data, np.ndarray):
-            data = utils.make_storage_data(
-                data=data,
-                origin=self.grid.full_origin(),
-                shape=data.shape,
-                backend=self.stencil_factory.backend,
-            )
-        return data
+        return transform_dwind_serialized_data(
+            data, self.stencil_factory.grid_indexing, self.stencil_factory.backend
+        )
 
     def make_storage_data_input_vars(self, inputs, storage_vars=None):
         for varname in [*self.in_vars["data_vars"]]:
