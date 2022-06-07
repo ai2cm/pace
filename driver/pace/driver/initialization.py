@@ -233,9 +233,7 @@ class SerialboxConfig(Initializer):
             quantity_factory=quantity_factory,
             active_packages=["microphysics"],
         )
-        tendency_state = TendencyState.init_zeros(
-            quantity_factory=quantity_factory,
-        )
+        tendency_state = TendencyState.init_zeros(quantity_factory=quantity_factory)
         return DriverState(
             dycore_state=dycore_state,
             physics_state=physics_state,
@@ -261,13 +259,11 @@ class SerialboxConfig(Initializer):
         )
         ser = self._serializer(communicator)
         savepoint_in = ser.get_savepoint("Driver-In")[0]
-        stencil_config = pace.dsl.stencil.StencilConfig(
-            backend=backend,
-        )
+        stencil_config = pace.dsl.stencil.StencilConfig(backend=backend)
         stencil_factory = StencilFactory(
             config=stencil_config, grid_indexing=grid.grid_indexing
         )
-        translate_object = TranslateFVDynamics([grid], self._namelist, stencil_factory)
+        translate_object = TranslateFVDynamics(grid, self._namelist, stencil_factory)
         input_data = translate_object.collect_input_data(ser, savepoint_in)
         dycore_state = translate_object.state_from_inputs(input_data)
         return dycore_state

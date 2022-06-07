@@ -116,8 +116,6 @@ def sample_wherefail(
 
 
 def process_override(threshold_overrides, testobj, test_name, backend):
-    # NOTE (jdahm): Temporary replace call until Jenkins is updated
-    backend = backend.replace("gtc:", "")
     override = threshold_overrides.get(test_name, None)
     if override is not None:
         for spec in override:
