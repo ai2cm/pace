@@ -20,4 +20,7 @@ if [ ! -d $(pwd)/.gt_cache ]; then
             echo ".gt_cache not fetched, cache not found at ${cache_filename}"
         fi
     fi
+else
+    echo "WARNING: $(pwd)/.gt_cache already exists. Will not overwrite directory with caches."
+    echo "Please remove this directory and try again."
 fi
