@@ -1,6 +1,8 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.stencils.ytp_v as ytp_v
+import pace.dsl
+import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.testing import TranslateDycoreFortranData2Py
@@ -67,7 +69,12 @@ class YTP_V:
 
 
 class TranslateYTP_V(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         c_info = self.grid.compute_dict_buffer_2d()
         c_info["serialname"] = "vb"

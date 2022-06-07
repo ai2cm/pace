@@ -1,12 +1,20 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
+import fv3core
 import fv3core.stencils.d_sw as d_sw
+import pace.dsl
+import pace.util
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateD_SW(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.max_error = 3.2e-10
         self.stencil_factory = stencil_factory
@@ -14,6 +22,7 @@ class TranslateD_SW(TranslateDycoreFortranData2Py):
             namelist, grid.npz, backend=self.stencil_factory.backend
         )
         self.stencil_factory = stencil_factory
+        dycore_config = fv3core.DynamicalCoreConfig.from_namelist(namelist)
         self.compute_func = d_sw.DGridShallowWaterLagrangianDynamics(
             self.stencil_factory,
             self.grid.grid_data,
@@ -21,7 +30,7 @@ class TranslateD_SW(TranslateDycoreFortranData2Py):
             column_namelist,
             nested=self.grid.nested,
             stretched_grid=self.grid.stretched_grid,
-            config=namelist.d_grid_shallow_water,
+            config=dycore_config.d_grid_shallow_water,
         )
         self.in_vars["data_vars"] = {
             "uc": grid.x3d_domain_dict(),
@@ -72,7 +81,12 @@ def ubke(
 
 
 class TranslateUbKE(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "uc": {},
@@ -114,7 +128,12 @@ def vbke(
 
 
 class TranslateVbKE(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "vc": {},
@@ -140,7 +159,12 @@ class TranslateVbKE(TranslateDycoreFortranData2Py):
 
 
 class TranslateFluxCapacitor(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "cx": grid.x3d_compute_domain_y_dict(),
@@ -164,7 +188,12 @@ class TranslateFluxCapacitor(TranslateDycoreFortranData2Py):
 
 
 class TranslateHeatDiss(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "fx2": {},
@@ -203,7 +232,12 @@ class TranslateHeatDiss(TranslateDycoreFortranData2Py):
 
 
 class TranslateWdivergence(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "q": {"serialname": "w"},
