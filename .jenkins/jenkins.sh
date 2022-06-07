@@ -40,14 +40,8 @@ T="$(date +%s)"
 test -n "$1" || exitError 1001 ${LINENO} "must pass an argument"
 test -n "${slave}" || exitError 1005 ${LINENO} "slave is not defined"
 
-# GTC backend name fix: passed as gtc_gt_* but their real name are gtc:gt:*
-#                       OR gtc_* but their real name is gtc:*
 input_backend="$2"
-if [[ $input_backend = gtc_gt_* ]] ; then
-    # sed explained: replace _ with :, two times
-    input_backend=`echo $input_backend | sed 's/_/:/;s/_/:/'`
-fi
-if [[ $input_backend = gtc_* ]] ; then
+if [[ $input_backend = gt_* ]] ; then
     # sed explained: replace _ with :
     input_backend=`echo $input_backend | sed 's/_/:/'`
 fi
@@ -72,14 +66,10 @@ test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "canno
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
 
-
-# If the backend is a GTC backend we fetch the caches
-if [[ $backend != *numpy* ]];then
-    echo "Fetching for existing gt_caches"
-    cd ${PACE_DIR}/fv3gfs-physics
-    ${JENKINS_DIR}/fetch_caches.sh $backend $experiment
-    cd ${PACE_DIR}
-fi
+# NOTE: All backends are GTC backends now, so fetch caches
+echo "Fetching existing gt_caches"
+(cd ${PACE_DIR}/fv3gfs-physics && ${JENKINS_DIR}/fetch_caches.sh $backend $experiment)
+cd ${PACE_DIR}
 
 # load machine dependent environment
 if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then
