@@ -1,5 +1,7 @@
 import logging
 
+import pace.dsl
+import pace.util
 import pace.util as fv3util
 from pace.dsl import gt4py_utils as utils
 from pace.stencils.testing import ParallelTranslate
@@ -29,7 +31,12 @@ class TranslateHaloUpdate(ParallelTranslate):
     }
     halo_update_varname = "air_temperature"
 
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
 
     def compute_parallel(self, inputs, communicator):
@@ -134,7 +141,12 @@ class TranslateHaloVectorUpdate(ParallelTranslate):
         },
     }
 
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super(TranslateHaloVectorUpdate, self).__init__(grid, namelist, stencil_factory)
 
     def compute_parallel(self, inputs, communicator):
@@ -198,7 +210,12 @@ class TranslateMPPBoundaryAdjust(ParallelTranslate):
         },
     }
 
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super(TranslateMPPBoundaryAdjust, self).__init__(
             grid, namelist, stencil_factory
         )

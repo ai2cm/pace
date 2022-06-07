@@ -1,12 +1,19 @@
 import numpy as np
 
 import fv3core.stencils.remap_profile as profile
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateCS_Profile_2d(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "a4_1": {"serialname": "q4_1"},
@@ -80,7 +87,12 @@ class TranslateCS_Profile_2d(TranslateDycoreFortranData2Py):
 
 
 class TranslateCS_Profile_2d_2(TranslateCS_Profile_2d):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "qs": {"serialname": "qs_column_2", "kstart": 0, "kend": grid.npz},

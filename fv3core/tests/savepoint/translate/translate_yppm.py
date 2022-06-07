@@ -1,10 +1,17 @@
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from fv3core.stencils import yppm
 from pace.stencils.testing import TranslateDycoreFortranData2Py, TranslateGrid
 
 
 class TranslateYPPM(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "q": {"istart": "ifirst"},
@@ -52,7 +59,12 @@ class TranslateYPPM(TranslateDycoreFortranData2Py):
 
 
 class TranslateYPPM_2(TranslateYPPM):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"]["q"]["serialname"] = "q_2"
         self.out_vars["flux"]["serialname"] = "flux_2"
