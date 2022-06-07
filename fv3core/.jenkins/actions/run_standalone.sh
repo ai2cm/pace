@@ -82,13 +82,7 @@ if [ ! -d "${BENCHMARK_DIR}" ] ; then
     exitError 1005 ${LINENO} "Benchmark directory ${BENCHMARK_DIR} does not exist"
 fi
 
-# GTC backend name fix: passed as gtc_gt_* but their real name are gtc:gt:*
-#                       OR gtc_* but their real name is gtc:*
-if [[ $backend = gtc_gt_* ]] ; then
-    # sed explained: replace _ with :, two times
-    backend=`echo $backend | sed 's/_/:/;s/_/:/'`
-fi
-if [[ $backend = gtc_* ]] ; then
+if [[ $backend = gt_* ]] ; then
     # sed explained: replace _ with :
     backend=`echo $backend | sed 's/_/:/'`
 fi
@@ -112,10 +106,8 @@ echo "Perf. artifact directory:     ${TIMING_DIR}"
 echo "Profile artifact directory:   ${PROFILE_DIR}"
 
 
-# If the backend is a GTC backend we fetch the caches
-if [[ $backend != *numpy* ]];then
-    . ${ROOT_DIR}/../.jenkins/fetch_caches.sh $backend $experiment
-fi
+# NOTE: All backends are GTC backends, so fetch caches
+. ${ROOT_DIR}/../.jenkins/fetch_caches.sh $backend $experiment
 
 # run standalone
 echo "=== Running standalone ========================="

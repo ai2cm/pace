@@ -99,9 +99,8 @@ class StencilConfig(Hashable):
     def stencil_kwargs(
         self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()
     ):
-        # NOTE (jdahm): Temporary replace call until Jenkins is updated
         kwargs = {
-            "backend": self.backend.replace("gtc:", ""),
+            "backend": self.backend,
             "rebuild": self.rebuild,
             "name": func.__module__ + "." + func.__name__,
             **self.backend_opts,
@@ -116,11 +115,7 @@ class StencilConfig(Hashable):
 
     @property
     def is_gpu_backend(self) -> bool:
-        try:
-            return gt4py.backend.from_name(self.backend).storage_info["device"] == "gpu"
-        except Exception:
-            backend = self.backend.replace("gtc:", "")
-            return gt4py.backend.from_name(backend).storage_info["device"] == "gpu"
+        return gt4py.backend.from_name(self.backend).storage_info["device"] == "gpu"
 
     @classmethod
     def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:

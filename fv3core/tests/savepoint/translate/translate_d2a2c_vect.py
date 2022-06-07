@@ -1,9 +1,16 @@
+import pace.dsl
+import pace.util
 from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateD2A2C_Vect(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         dord4 = True
         self.stencil_factory = stencil_factory

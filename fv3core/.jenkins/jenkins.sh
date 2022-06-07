@@ -40,21 +40,16 @@ T="$(date +%s)"
 test -n "$1" || exitError 1001 ${LINENO} "must pass an argument"
 test -n "${slave}" || exitError 1005 ${LINENO} "slave is not defined"
 
-# GTC backend name fix: passed as gtc_gt_* but their real name are gtc:gt:*
-#                       OR gtc_* but their real name is gtc:*
 input_backend="$2"
-if [[ $input_backend = gtc_gt_* ]] ; then
-    # sed explained: replace _ with :, two times
-    input_backend=`echo $input_backend | sed 's/_/:/;s/_/:/'`
-fi
-if [[ $input_backend = gtc_* ]] ; then
+if [[ $input_backend = gt_* ]] ; then
     # sed explained: replace _ with :
     input_backend=`echo $input_backend | sed 's/_/:/'`
 fi
 
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-BUILDENV_DIR=$JENKINS_DIR/../../buildenv
-TOP_LEVEL_JENKINS_DIR=$JENKINS_DIR/../../.jenkins
+PACE_DIR=$JENKINS_DIR/../../
+BUILDENV_DIR=$PACE_DIR/buildenv
+TOP_LEVEL_JENKINS_DIR=$PACE_DIR/.jenkins
 
 # Read arguments
 action="$1"
@@ -72,14 +67,9 @@ test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "canno
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
 
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PACE_DIR=$SCRIPT_DIR/../../
-
-# If the backend is a GTC backend we fetch the caches
-if [[ $backend != *numpy* ]];then
-    echo "Fetching for exisintg gt_caches"
-    . ${TOP_LEVEL_JENKINS_DIR}/fetch_caches.sh $backend $experiment
-fi
+# NOTE: All backends are GTC backends, so fetch the caches
+echo "Fetching existing gt_caches"
+${TOP_LEVEL_JENKINS_DIR}/fetch_caches.sh $backend $experiment
 
 # load machine dependent environment
 if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then

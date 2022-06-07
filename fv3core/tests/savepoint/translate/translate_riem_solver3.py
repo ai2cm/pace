@@ -1,10 +1,17 @@
 import fv3core._config as spec
+import pace.dsl
+import pace.util
 from fv3core.stencils.riem_solver3 import RiemannSolver3
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.riemann_solver_3 = RiemannSolver3(
             stencil_factory,
