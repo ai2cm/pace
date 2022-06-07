@@ -536,7 +536,7 @@ def set_interpolation_coefficients(
         if __INLINED(iv == 0):
             a4_1, a4_2, a4_3, a4_4 = posdef_constraint_iv0(a4_1, a4_2, a4_3, a4_4)
     # set_bottom_as_iv0, set_bottom_as_iv1
-    # TODO(rheag) temporary workaround to gtc:gt:gpu bug
+    # TODO(rheag) temporary workaround to gt:gpu bug
     # this computation can get out of order with the one that follows
     with computation(FORWARD), interval(-1, None):
         if __INLINED(iv == 0):
@@ -601,8 +601,8 @@ class RemapProfile:
         self._ext5: BoolField = make_storage()
         self._ext6: BoolField = make_storage()
 
-        i_extent: int = i2 - i1 + 1
-        j_extent: int = j2 - j1 + 1
+        i_extent: int = int(i2 - i1 + 1)
+        j_extent: int = int(j2 - j1 + 1)
         origin: Tuple[int, int, int] = (i1, j1, 0)
         domain: Tuple[int, int, int] = (i_extent, j_extent, km)
         domain_extend: Tuple[int, int, int] = (i_extent, j_extent, km + 1)

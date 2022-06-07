@@ -11,7 +11,6 @@ pytest-cov
 pytest-subtests
 gcsfs>=0.7.0
 google-cloud-storage
-black==19.10b0
 numcodecs>=0.7.2 #pin for gt4py, h5py and py3.6 to agree
 h5py>=2.10.0 #pin for gt4py, h5py and py3.6 to agree
 h5netcdf

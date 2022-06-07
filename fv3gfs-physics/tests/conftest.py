@@ -8,7 +8,7 @@ def backend(pytestconfig):
 
 
 def pytest_addoption(parser):
-    parser.addoption("--backend", action="store", default="gtc:numpy")
+    parser.addoption("--backend", action="store", default="numpy")
     parser.addoption("--which_modules", action="store")
     parser.addoption("--which_rank", action="store")
     parser.addoption("--skip_modules", action="store")

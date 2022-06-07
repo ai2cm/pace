@@ -47,7 +47,7 @@ def setup_data_vars(backend: str):
     MPI is not None and MPI.COMM_WORLD.Get_size() > 1,
     reason="Running in parallel with mpi",
 )
-@pytest.mark.parametrize("backend", ("gtc:numpy",))
+@pytest.mark.parametrize("backend", ("numpy",))
 @pytest.mark.parametrize("rebuild", (True, False))
 @pytest.mark.parametrize("use_wrapper", (True, False))
 def test_future_stencil(backend: str, rebuild: bool, use_wrapper: bool):
@@ -156,7 +156,7 @@ def test_one_sided_mpi():
     reason="Not running in parallel with mpi",
 )
 def test_rank_adder_numpy():
-    run_rank_adder_test("gtc:numpy", True)
+    run_rank_adder_test("numpy", True)
 
 
 @pytest.mark.parallel
@@ -165,7 +165,7 @@ def test_rank_adder_numpy():
     reason="Not running in parallel with mpi",
 )
 def test_rank_adder_gridtools():
-    run_rank_adder_test("gtc:gt:cpu_ifirst", True)
+    run_rank_adder_test("gt:cpu_ifirst", True)
 
 
 def run_rank_adder_test(backend: str, rebuild: bool):

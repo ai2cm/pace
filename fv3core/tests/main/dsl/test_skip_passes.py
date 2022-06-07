@@ -19,7 +19,7 @@ def stencil_definition(a: FloatField):
 
 
 def test_skip_passes_becomes_oir_pipeline():
-    config = StencilConfig(backend="gtc:gt:cpu_ifirst")
+    config = StencilConfig(backend="numpy")
     grid_indexing = GridIndexing(
         domain=(4, 4, 7),
         n_halo=3,
@@ -34,7 +34,9 @@ def test_skip_passes_becomes_oir_pipeline():
             stencil_definition,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
         )
-    pipeline: DefaultPipeline = mock_stencil_builder.call_args.kwargs["oir_pipeline"]
+    pipeline: DefaultPipeline = mock_stencil_builder.call_args.kwargs.get(
+        "oir_pipeline", DefaultPipeline()
+    )
     assert HorizontalExecutionMerging not in pipeline.skip
     assert HorizontalExecutionMerging in pipeline.steps
     with unittest.mock.patch("gt4py.gtscript.stencil") as mock_stencil_builder:

@@ -26,5 +26,5 @@ def inject_attrs(attr_dict, module):
         attr_dict[name] = getattr(module, name)
 
 
-inject_storage_methods(locals(), "gtc:numpy")
+inject_storage_methods(locals(), "numpy")
 inject_attrs(locals(), np)

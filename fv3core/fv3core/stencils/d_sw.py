@@ -900,11 +900,6 @@ class DGridShallowWaterLagrangianDynamics:
             (0,),
             backend=stencil_factory.backend,
         )
-        y_temporary = utils.make_storage_from_shape(
-            shape=self.grid_indexing.max_shape,
-            origin=self.grid_indexing.origin,
-            backend=stencil_factory.backend,
-        )
 
     @computepath_method
     def __call__(

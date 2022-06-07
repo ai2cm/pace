@@ -6,7 +6,7 @@ from pace.stencils.testing import TranslateDycoreFortranData2Py
 class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
     def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
-        self.compute_func = RiemannSolver3(
+        self.riemann_solver_3 = RiemannSolver3(
             stencil_factory,
             spec.RiemannConfig(
                 p_fac=namelist.p_fac,
@@ -15,6 +15,7 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
                 beta=namelist.beta,
             ),
         )
+
         self.in_vars["data_vars"] = {
             "cappa": {},
             "zs": {},
@@ -57,3 +58,7 @@ class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):
             "pk3": grid.default_buffer_k_dict(),
         }
         self.stencil_factory = stencil_factory
+
+    def compute_func(self, **kwargs):
+        kwargs["last_call"] = bool(kwargs["last_call"])
+        return self.riemann_solver_3(**kwargs)

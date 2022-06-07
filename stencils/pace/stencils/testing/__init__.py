@@ -5,6 +5,7 @@ from .parallel_translate import (
     ParallelTranslate2PyState,
     ParallelTranslateBaseSlicing,
 )
+from .savepoint import SavepointCase, Translate, dataset_to_dict
 from .translate import (
     TranslateFortranData2Py,
     TranslateGrid,

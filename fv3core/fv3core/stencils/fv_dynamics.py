@@ -1,5 +1,8 @@
 from dace import constant as dace_constant
 from dace.frontend.python.interface import nounroll as dace_no_unroll
+from typing import Optional
+from pace.util import Timer
+
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
@@ -94,6 +97,7 @@ class DynamicalCore:
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
         state: DycoreState,
+        checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         """
         Args:
@@ -105,9 +109,14 @@ class DynamicalCore:
                 the namelist in the Fortran model
             phis: surface geopotential height
             state: Model state
+            checkpointer: if given, used to perform operations on model data
+                at specific points in model execution, such as testing against
+                reference data
         """
         # nested and stretched_grid are options in the Fortran code which we
         # have not implemented, so they are hard-coded here.
+        self.call_checkpointer = checkpointer is not None
+        self.checkpointer = checkpointer
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
@@ -205,6 +214,7 @@ class DynamicalCore:
             self._pfull,
             self._phis,
             state,
+            checkpointer=checkpointer,
         )
         self._hyperdiffusion = HyperdiffusionDamping(
             stencil_factory,
@@ -244,6 +254,21 @@ class DynamicalCore:
             comm.get_scalar_halo_updater([full_xyz_spec]), state, ["omga"], comm=comm
         )
 
+    def _checkpoint_fvdynamics(self, state: DycoreState, tag: str):
+        if self.call_checkpointer:
+            self.checkpointer(
+                f"FVDynamics-{tag}",
+                u=state.u,
+                v=state.v,
+                w=state.w,
+                delz=state.delz,
+                ua=state.ua,
+                va=state.va,
+                uc=state.uc,
+                vc=state.vc,
+                qvapor=state.qvapor,
+            )
+
     def update_state(
         self,
         conserve_total_energy: float,
@@ -261,6 +286,9 @@ class DynamicalCore:
             timestep: time to progress forward in seconds
             n_split: number of acoustic timesteps per remapping timestep
         """
+        # TODO: state should be a statically typed class, move these to the
+        # definition of DycoreState and pass them on init or alternatively
+        # move these to/get these from the namelist/configuration class
         state.__dict__.update(
             {
                 "consv_te": conserve_total_energy,
@@ -273,6 +301,22 @@ class DynamicalCore:
         )
         state.__dict__.update(self._temporaries)
         state.__dict__.update(self.acoustic_dynamics._temporaries)
+
+    def step_dynamics(
+        self,
+        timer: Timer,
+        state: DycoreState,
+    ):
+        """
+        Step the model state forward by one timestep.
+
+        Args:
+            timer: keep time of model sections
+            state: model prognostic state and inputs
+        """
+        self._checkpoint_fvdynamics(state=state, tag="In")
+        self._compute(state, timer)
+        self._checkpoint_fvdynamics(state=state, tag="Out")
 
     @computepath_method
     def compute_preamble(
