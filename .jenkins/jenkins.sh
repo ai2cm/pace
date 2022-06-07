@@ -66,11 +66,9 @@ test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "canno
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
 
-
 # NOTE: All backends are GTC backends now, so fetch caches
-echo "Fetching for existing gt_caches"
-cd ${PACE_DIR}/fv3gfs-physics
-${JENKINS_DIR}/fetch_caches.sh $backend $experiment
+echo "Fetching existing gt_caches"
+(cd ${PACE_DIR}/fv3gfs-physics && ${JENKINS_DIR}/fetch_caches.sh $backend $experiment)
 cd ${PACE_DIR}
 
 # load machine dependent environment

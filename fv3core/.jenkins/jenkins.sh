@@ -47,8 +47,9 @@ if [[ $input_backend = gt_* ]] ; then
 fi
 
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-BUILDENV_DIR=$JENKINS_DIR/../../buildenv
-TOP_LEVEL_JENKINS_DIR=$JENKINS_DIR/../../.jenkins
+PACE_DIR=$JENKINS_DIR/../../
+BUILDENV_DIR=$PACE_DIR/buildenv
+TOP_LEVEL_JENKINS_DIR=$PACE_DIR/.jenkins
 
 # Read arguments
 action="$1"
@@ -66,12 +67,9 @@ test -f ${BUILDENV_DIR}/machineEnvironment.sh || exitError 1201 ${LINENO} "canno
 export python_env=${python_env}
 echo "PYTHON env ${python_env}"
 
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PACE_DIR=$SCRIPT_DIR/../../
-
 # NOTE: All backends are GTC backends, so fetch the caches
-echo "Fetching for existing gt_caches"
-. ${TOP_LEVEL_JENKINS_DIR}/fetch_caches.sh $backend $experiment
+echo "Fetching existing gt_caches"
+${TOP_LEVEL_JENKINS_DIR}/fetch_caches.sh $backend $experiment
 
 # load machine dependent environment
 if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then
