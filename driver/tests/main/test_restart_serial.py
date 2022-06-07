@@ -49,7 +49,7 @@ def test_default_save_restart():
 
 def test_restart_save_to_disk():
     try:
-        backend = "gtc:numpy"
+        backend = "numpy"
         mpi_comm = NullComm(rank=0, total_ranks=6, fill_value=0.0)
         partitioner = pace.util.CubedSpherePartitioner(
             pace.util.TilePartitioner((1, 1))
