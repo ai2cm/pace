@@ -4,7 +4,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 
 # will need to update this import when gt4py is updated
 from gtc.passes.oir_optimizations.horizontal_execution_merging import (
-    GreedyMerging as HorizontalExecutionMerging,
+    HorizontalExecutionMerging,
 )
 from gtc.passes.oir_pipeline import DefaultPipeline
 

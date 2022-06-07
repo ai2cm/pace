@@ -420,8 +420,12 @@ def orchestrate(
                 # but that would patch _every_ instance of A.
                 # What we can do is patch the instance.__class__ with a local made class
                 # in order to keep each instance with it's own patch.
+                #
+                # Re: type:ignore
+                # Mypy is unhappy about dynamic class name and the devs (per github
+                # issues discussion) is to make a plugin. Too much work -> ignore mypy
 
-                class _(type(obj)):
+                class _(type(obj)):  # type: ignore
                     __qualname__ = f"{type(obj)}_patched"
                     __name__ = f"{type(obj)}_patched"
 

@@ -24,5 +24,4 @@ pytest-factoryboy
 pytest-cache
 pytest-cov
 
-# DaCe
-git+https://github.com/spcl/dace.git@e7ff676de9e5d1c6001ddbdb969bf62cace2b2bb
+-r requirements_dace.txt
