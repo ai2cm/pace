@@ -1,7 +1,7 @@
 from fv3core.stencils.divergence_damping import DivergenceDamping
+from pace.dsl.dace.orchestrate import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.stencils.testing import TranslateDycoreFortranData2Py
-from pace.dsl.dace.orchestrate import orchestrate, orchestrate
 
 
 class A2B_Ord4Compute:

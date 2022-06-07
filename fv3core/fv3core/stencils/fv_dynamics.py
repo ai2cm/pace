@@ -1,8 +1,7 @@
+from typing import Optional
+
 from dace import constant as dace_constant
 from dace.frontend.python.interface import nounroll as dace_no_unroll
-from typing import Optional
-from pace.util import Timer
-
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
@@ -21,6 +20,7 @@ from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.util import Timer
 from pace.util.grid import DampingCoefficients, GridData
 
 
@@ -374,16 +374,6 @@ class DynamicalCore:
     @computepath_method
     def __call__(self, *args, **kwargs):
         return self.step_dynamics(*args, **kwargs)
-
-    @computepath_method
-    def step_dynamics(self, state: dace_constant, timer: dace_constant):
-        """
-        Step the model state forward by one timestep.
-
-        Args:
-            state: model prognostic state and inputs
-        """
-        self._compute(state, timer)
 
     @computepath_method
     def _compute(self, state: dace_constant, timer: dace_constant):
