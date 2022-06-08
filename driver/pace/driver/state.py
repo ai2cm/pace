@@ -6,6 +6,7 @@ import xarray as xr
 
 import fv3core
 import fv3gfs.physics
+import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
 from pace.util.grid import DampingCoefficients
@@ -161,10 +162,12 @@ def _overwrite_state_from_restart(
         if "units" in _field.metadata.keys():
             if is_gpu_backend:
                 if "physics" in restart_file_prefix:
-                    state.__dict__[_field.name][:] = cp.asarray(df[_field.name].data[:])
+                    state.__dict__[_field.name][:] = gt_utils.asarray(
+                        df[_field.name].data[:], to_type=cp.ndarray
+                    )
                 else:
-                    state.__dict__[_field.name].data[:] = cp.asarray(
-                        df[_field.name].data[:]
+                    state.__dict__[_field.name].data[:] = gt_utils.asarray(
+                        df[_field.name].data[:], to_type=cp.ndarray
                     )
             else:
                 state.__dict__[_field.name].data[:] = df[_field.name].data[:]
