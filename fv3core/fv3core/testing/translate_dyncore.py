@@ -2,7 +2,7 @@ import fv3core.stencils.dyn_core as dyn_core
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3core import DycoreState, DynamicalCoreConfig
+from fv3core import DycoreState
 from pace.stencils.testing import ParallelTranslate2PyState
 
 

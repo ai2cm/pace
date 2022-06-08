@@ -1,7 +1,7 @@
 import copy
 import os
 import unittest.mock
-from typing import Tuple, List
+from typing import List, Tuple
 
 import gt4py.storage.storage
 import numpy as np
@@ -20,7 +20,9 @@ from pace.util.null_comm import NullComm
 DIR = os.path.abspath(os.path.dirname(__file__))
 
 
-def setup_dycore() -> Tuple[fv3core.DynamicalCore, fv3core.DycoreState]:
+def setup_dycore() -> Tuple[
+    fv3core.DynamicalCore, fv3core.DycoreState, pace.util.Timer
+]:
     backend = "numpy"
     config = fv3core.DynamicalCoreConfig(
         layout=(1, 1),
@@ -188,13 +190,13 @@ def test_temporaries_are_deterministic():
     This will fail if there is non-determinism in the initialization,
     for example from using `empty` instead of `zeros` to initialize data.
     """
-    dycore1, args1 = setup_dycore()
-    dycore2, args2 = setup_dycore()
+    dycore1, state1, timer1 = setup_dycore()
+    dycore2, state2, timer2 = setup_dycore()
 
-    dycore1.step_dynamics(*args1)
+    dycore1.step_dynamics(state1, timer1)
     first_temporaries = copy_temporaries(dycore1, max_depth=10)
     assert len(first_temporaries) > 0
-    dycore2.step_dynamics(*args2)
+    dycore2.step_dynamics(state2, timer2)
     second_temporaries = copy_temporaries(dycore2, max_depth=10)
     assert_same_temporaries(second_temporaries, first_temporaries)
 
@@ -206,35 +208,35 @@ def test_call_on_same_state_same_dycore_produces_same_temporaries():
     If it does not, then subsequent calls on identical input should
     produce identical results.
     """
-    dycore, state_1 = setup_dycore()
-    _, state_2 = setup_dycore()
+    dycore, state_1, timer_1 = setup_dycore()
+    _, state_2, timer_2 = setup_dycore()
 
     # state_1 and state_2 are identical, if the dycore is stateless then they
     # should produce identical dycore final states when used to call
-    dycore.step_dynamics(*state_1)
+    dycore.step_dynamics(state_1, timer_1)
     first_temporaries = copy_temporaries(dycore, max_depth=10)
     assert len(first_temporaries) > 0
-    dycore.step_dynamics(*state_2)
+    dycore.step_dynamics(state_2, timer_2)
     second_temporaries = copy_temporaries(dycore, max_depth=10)
     assert_same_temporaries(second_temporaries, first_temporaries)
 
 
 def test_call_does_not_allocate_storages():
-    dycore, args = setup_dycore()
+    dycore, state, timer = setup_dycore()
 
     def error_func(*args, **kwargs):
         raise AssertionError("call not allowed")
 
     with unittest.mock.patch("gt4py.storage.storage.zeros", new=error_func):
         with unittest.mock.patch("gt4py.storage.storage.empty", new=error_func):
-            dycore.step_dynamics(*args)
+            dycore.step_dynamics(state, timer)
 
 
 def test_call_does_not_define_stencils():
-    dycore, args = setup_dycore()
+    dycore, state, timer = setup_dycore()
 
     def error_func(*args, **kwargs):
         raise AssertionError("call not allowed")
 
     with unittest.mock.patch("gt4py.gtscript.stencil", new=error_func):
-        dycore.step_dynamics(*args)
+        dycore.step_dynamics(state, timer)

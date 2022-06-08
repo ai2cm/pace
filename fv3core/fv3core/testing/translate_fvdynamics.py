@@ -327,7 +327,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             self.namelist.n_split,
             state,
         )
-        self.dycore.step_dynamics(state, fv3util.NullTimer())
+        self.dycore.step_dynamics(state, pace.util.NullTimer())
         outputs = self.outputs_from_state(state)
         for name, value in outputs.items():
             outputs[name] = self.subset_output(name, value)

@@ -1,4 +1,3 @@
-import fv3core
 import pace.dsl
 import pace.util
 from fv3core.stencils import temperature_adjust

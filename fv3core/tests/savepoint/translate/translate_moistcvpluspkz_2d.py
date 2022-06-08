@@ -1,8 +1,8 @@
 import fv3core.stencils.moist_cv as moist_cv
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
-from pace.util import Namelist
 from pace.stencils.testing import TranslateDycoreFortranData2Py, pad_field_in_j
+from pace.util import Namelist
 
 
 class MoistPKZ:
