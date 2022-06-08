@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import numpy as np
 import pytest
@@ -114,9 +114,6 @@ def sample_wherefail(
 
 def process_override(threshold_overrides, testobj, test_name, backend):
     override = threshold_overrides.get(test_name, None)
-    # NOTE (jdahm): Temporary until Jenkins is updated
-    if backend.startswith("gtc:"):
-        backend = backend.replace("gtc:", "")
     if override is not None:
         for spec in override:
             if "platform" not in spec:
@@ -206,9 +203,10 @@ def test_sequential_savepoint(
     input_data = {name: input_data[name] for name in input_names}
     # run python version of functionality
     output = case.testobj.compute(input_data)
-    failing_names = []
-    passing_names = []
+    failing_names: List[str] = []
+    passing_names: List[str] = []
     all_ref_data = dataset_to_dict(case.ds_out)
+    ref_data_out = {}
     for varname in case.testobj.serialnames(case.testobj.out_vars):
         ignore_near_zero = case.testobj.ignore_near_zero_errors.get(varname, False)
         ref_data = all_ref_data[varname]
@@ -235,19 +233,17 @@ def test_sequential_savepoint(
                 xy_indices=xy_indices,
             )
             passing_names.append(failing_names.pop())
+        ref_data_out[varname] = [ref_data]
     if len(failing_names) > 0:
         out_filename = os.path.join(OUTDIR, f"{case.savepoint_name}.nc")
-        try:
-            save_netcdf(
-                case.testobj,
-                [input_data],
-                [output],
-                ref_data,
-                failing_names,
-                out_filename,
-            )
-        except Exception as error:
-            print(f"TestSequential SaveNetCDF Error: {error}")
+        save_netcdf(
+            case.testobj,
+            [input_data],
+            [output],
+            ref_data_out,
+            failing_names,
+            out_filename,
+        )
     assert failing_names == [], f"only the following variables passed: {passing_names}"
     assert len(passing_names) > 0, "No tests passed"
 
@@ -369,28 +365,42 @@ def test_parallel_savepoint(
 
 
 def save_netcdf(
-    testobj, inputs_list, output_list, ref_data, failing_names, out_filename
+    testobj,
+    # first list over rank, second list over savepoint
+    inputs_list: List[Dict[str, List[np.ndarray]]],
+    output_list: List[Dict[str, List[np.ndarray]]],
+    ref_data: Dict[str, List[np.ndarray]],
+    failing_names,
+    out_filename,
 ):
     import xarray as xr
 
     data_vars = {}
     for i, varname in enumerate(failing_names):
-        dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
-        attrs = {"units": testobj.outputs[varname]["units"]}
+        if hasattr(testobj, "outputs"):
+            dims = [dim_name + f"_{i}" for dim_name in testobj.outputs[varname]["dims"]]
+            attrs = {"units": testobj.outputs[varname]["units"]}
+        else:
+            dims = [
+                f"dim_{varname}_{j}" for j in range(len(ref_data[varname][0].shape))
+            ]
+            attrs = {"units": "unknown"}
         try:
             data_vars[f"{varname}_in"] = xr.DataArray(
                 np.stack([in_data[varname] for in_data in inputs_list]),
-                dims=("rank",) + tuple(dims),
+                dims=("rank",) + tuple([f"{d}_in" for d in dims]),
                 attrs=attrs,
             )
         except KeyError as error:
             print(f"No input data found for {error}")
         data_vars[f"{varname}_ref"] = xr.DataArray(
-            np.stack(ref_data[varname]), dims=("rank",) + tuple(dims), attrs=attrs
+            np.stack(ref_data[varname]),
+            dims=("rank",) + tuple([f"{d}_out" for d in dims]),
+            attrs=attrs,
         )
         data_vars[f"{varname}_out"] = xr.DataArray(
             np.stack([output[varname] for output in output_list]),
-            dims=("rank",) + tuple(dims),
+            dims=("rank",) + tuple([f"{d}_out" for d in dims]),
             attrs=attrs,
         )
         data_vars[f"{varname}_error"] = (

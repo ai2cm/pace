@@ -124,10 +124,10 @@ class ApplyPhysicsToDycore:
         )
         # TODO: check if we actually need surface winds
         self._u_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=self.origin, init=True, backend=stencil_factory.backend
+            shape[0:2], origin=self.origin, backend=stencil_factory.backend
         )
         self._v_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=self.origin, init=True, backend=stencil_factory.backend
+            shape[0:2], origin=self.origin, backend=stencil_factory.backend
         )
 
     def __call__(

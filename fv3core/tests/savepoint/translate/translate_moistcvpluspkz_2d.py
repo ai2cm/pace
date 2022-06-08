@@ -1,6 +1,7 @@
 import fv3core.stencils.moist_cv as moist_cv
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
+from pace.util import Namelist
 from pace.stencils.testing import TranslateDycoreFortranData2Py, pad_field_in_j
 
 
@@ -59,7 +60,12 @@ class MoistPKZ:
 
 
 class TranslateMoistCVPlusPkz_2d(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: Namelist,
+        stencil_factory: StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         self.compute_func = MoistPKZ(stencil_factory, self.grid)

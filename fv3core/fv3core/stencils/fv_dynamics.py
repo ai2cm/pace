@@ -69,12 +69,12 @@ def init_pfull(
 def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
-        quantity = quantity_factory.empty(
+        quantity = quantity_factory.zeros(
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         )
         tmps[name] = quantity
     for name in ["cappa", "dp1", "cvm"]:
-        quantity = quantity_factory.empty(
+        quantity = quantity_factory.zeros(
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="unknown",
         )
@@ -225,6 +225,12 @@ class DynamicalCore:
             state, stencil_factory, grid_data, config.c2l_ord, comm
         )
 
+        self._temporaries = fvdyn_temporaries(quantity_factory)
+        # This is only here so the temporaries are attributes on this class,
+        # to more easily pick them up in unit testing
+        # if self._temporaries were a dataclass we can remove this
+        for name, value in self._temporaries.items():
+            setattr(self, f"_tmp_{name}", value)
         if not (not self.config.inline_q and NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(

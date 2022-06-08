@@ -1935,18 +1935,18 @@ class Microphysics:
                 shape, origin=origin, backend=stencil_factory.backend, **kwargs
             )
 
-        self._land = make_storage(init=True)
-        self._rain = make_storage(init=True)
-        self._graupel = make_storage(init=True)
-        self._ice = make_storage(init=True)
-        self._snow = make_storage(init=True)
+        self._land = make_storage()
+        self._rain = make_storage()
+        self._graupel = make_storage()
+        self._ice = make_storage()
+        self._snow = make_storage()
 
         self._h_var = make_storage()
         self._rh_adj = make_storage()
         self._rh_rain = make_storage()
 
-        self._qn = make_storage(init=True)
-        self._qaz = make_storage(init=True)
+        self._qn = make_storage()
+        self._qaz = make_storage()
         self._qgz = make_storage()
         self._qiz = make_storage()
         self._qlz = make_storage()
@@ -1974,15 +1974,15 @@ class Microphysics:
         self._p1 = make_storage()
         self._u1 = make_storage()
         self._v1 = make_storage()
-        self._m1 = make_storage(init=True)
+        self._m1 = make_storage()
         self._vtgz = make_storage()
         self._vtrz = make_storage()
         self._vtsz = make_storage()
         self._ccn = make_storage()
         self._c_praut = make_storage()
         self._m1_sol = make_storage()
-        self._m2_rain = make_storage(init=True)
-        self._m2_sol = make_storage(init=True)
+        self._m2_rain = make_storage()
+        self._m2_sol = make_storage()
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0

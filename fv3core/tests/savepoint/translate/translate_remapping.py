@@ -1,10 +1,18 @@
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.util
+from fv3core import DynamicalCoreConfig
 from fv3core.stencils.remapping import LagrangianToEulerian
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateRemapping(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "tracers": {},
@@ -118,7 +126,7 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
         inputs["last_step"] = bool(inputs["last_step"])
         l_to_e_obj = LagrangianToEulerian(
             self.stencil_factory,
-            self.namelist.remapping,
+            DynamicalCoreConfig.from_namelist(self.namelist).remapping,
             self.grid.area_64,
             inputs["nq"],
             inputs["pfull"],

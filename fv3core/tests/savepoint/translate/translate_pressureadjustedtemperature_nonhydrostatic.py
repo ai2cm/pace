@@ -1,10 +1,18 @@
+import fv3core
+import pace.dsl
+import pace.util
 from fv3core.stencils import temperature_adjust
 from fv3core.stencils.dyn_core import get_nk_heat_dissipation
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class PressureAdjustedTemperature_Wrapper:
-    def __init__(self, stencil_factory, namelist, grid):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         n_adj = get_nk_heat_dissipation(
             config=namelist.d_grid_shallow_water,
             npz=grid.grid_indexing.domain[2],
@@ -24,7 +32,12 @@ class PressureAdjustedTemperature_Wrapper:
 class TranslatePressureAdjustedTemperature_NonHydrostatic(
     TranslateDycoreFortranData2Py
 ):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.namelist = namelist
         self.compute_func = PressureAdjustedTemperature_Wrapper(

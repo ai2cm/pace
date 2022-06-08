@@ -2,6 +2,7 @@ from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.stencils.moist_cv as moist_cv
 from pace.dsl.stencil import StencilFactory
+from pace.util import Namelist
 from pace.dsl.typing import FloatField
 from pace.stencils.testing import TranslateFortranData2Py, pad_field_in_j
 

@@ -1,3 +1,5 @@
+import pace.dsl
+import pace.util
 import pace.util as fv3util
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.stencils.testing import ParallelTranslate2Py
@@ -15,14 +17,16 @@ class TranslateCubedToLatLon(ParallelTranslate2Py):
         },
     }
 
-    def __init__(self, grids, namelist, stencil_factory):
-        super().__init__(grids, namelist, stencil_factory)
-        grid = grids[0]
-        self.grid_data = grid.grid_data
-        self.quantity_factory = grid.quantity_factory
-        self.stencil_factory = stencil_factory
-        self.grid_indexing = grid.grid_indexing
-        self.namelist = namelist
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
+        super().__init__(grid, namelist, stencil_factory)
+        self._base.compute_func = CubedToLatLon(
+            stencil_factory, grid.grid_data, order=namelist.c2l_ord
+        )
         self._base.in_vars["data_vars"] = {"u": {}, "v": {}, "ua": {}, "va": {}}
         self._base.out_vars = {
             "ua": {},
