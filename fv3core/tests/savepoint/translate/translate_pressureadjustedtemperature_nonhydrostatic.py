@@ -1,6 +1,5 @@
 from fv3core.stencils import temperature_adjust
 from fv3core.stencils.dyn_core import get_nk_heat_dissipation
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
@@ -18,7 +17,6 @@ class PressureAdjustedTemperature_Wrapper:
             ).domain_compute(),
         )
 
-    @computepath_method
     def __call__(self, delp, delz, cappa, heat_source, pt, pkz, delt_time_factor):
         self.stencil(delp, delz, cappa, heat_source, pt, pkz, delt_time_factor)
 

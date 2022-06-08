@@ -9,6 +9,7 @@ import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl.stencil
 import pace.stencils.testing
 import pace.util
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
 
@@ -49,11 +50,6 @@ def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
 
 def setup_dycore() -> Tuple[fv3core.DynamicalCore, fv3core.DycoreState]:
     backend = "numpy"
-    stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=True,
-    )
     config = fv3core.DynamicalCoreConfig(
         layout=(1, 1),
         npx=13,
@@ -105,6 +101,12 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, fv3core.DycoreState]:
         pace.util.TilePartitioner(config.layout)
     )
     communicator = pace.util.CubedSphereCommunicator(mpi_comm, partitioner)
+    dace_config = DaceConfig(
+        communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
+    )
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
+    )
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.npx - 1,
         ny_tile=config.npy - 1,

@@ -20,7 +20,6 @@ from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.xtp_u import advect_u_along_x
 from fv3core.stencils.ytp_v import advect_v_along_y
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
@@ -901,7 +900,6 @@ class DGridShallowWaterLagrangianDynamics:
             backend=stencil_factory.backend,
         )
 
-    @computepath_method
     def __call__(
         self,
         delpc,

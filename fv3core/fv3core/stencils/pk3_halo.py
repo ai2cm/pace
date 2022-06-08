@@ -1,7 +1,6 @@
 from gt4py.gtscript import FORWARD, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 
@@ -59,7 +58,6 @@ class PK3Halo:
             is_temporary=False,
         )
 
-    @computepath_method
     def __call__(self, pk3: FloatField, delp: FloatField, ptop: float, akap: float):
         """Update pressure (pk3) in halo region
 

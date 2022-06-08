@@ -1,7 +1,6 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.stencils.moist_cv as moist_cv
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
 from pace.stencils.testing import TranslateFortranData2Py, pad_field_in_j
@@ -58,7 +57,6 @@ class MoistPT:
             domain=(grid.nic, 1, grid.npz),
         )
 
-    @computepath_method
     def __call__(
         self,
         qvapor: FloatField,

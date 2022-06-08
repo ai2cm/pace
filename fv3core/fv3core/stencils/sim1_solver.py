@@ -3,7 +3,6 @@ import typing
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 
 import pace.util.constants as constants
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 
@@ -136,7 +135,6 @@ class Sim1Solver:
             domain=(nic, njc, nk),
         )
 
-    @computepath_method
     def __call__(
         self,
         dt: float,

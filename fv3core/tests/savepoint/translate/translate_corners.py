@@ -1,5 +1,4 @@
 import pace.dsl.gt4py_utils as utils
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.stencils import corners
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
@@ -106,7 +105,6 @@ class FillCornersVector_Wrapper:
             domain=domain,
         )
 
-    @computepath_method
     def __call__(
         self,
         x_in,

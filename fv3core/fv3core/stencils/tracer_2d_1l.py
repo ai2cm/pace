@@ -9,7 +9,6 @@ import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util import Quantity
@@ -273,7 +272,6 @@ class TracerAdvection:
             [t for t in tracers.keys()],
         )
 
-    @computepath_method
     def __call__(self, tracers: dace_constant, dp1, mfxd, mfyd, cxd, cyd, mdt):
         """
         Args:

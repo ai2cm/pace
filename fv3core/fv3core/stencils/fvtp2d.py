@@ -8,7 +8,6 @@ import pace.stencils.corners as corners
 from fv3core.stencils.delnflux import DelnFlux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import DampingCoefficients, GridData
@@ -229,7 +228,6 @@ class FiniteVolumeTransport:
             domain=idx.domain_compute(add=(1, 1, 1)),
         )
 
-    @computepath_method
     def __call__(
         self,
         q,

@@ -8,6 +8,7 @@ from gtc.passes.oir_optimizations.horizontal_execution_merging import (
 )
 from gtc.passes.oir_pipeline import DefaultPipeline
 
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
 from pace.dsl.typing import FloatField
 from pace.util import X_DIM, Y_DIM, Z_DIM
@@ -19,7 +20,9 @@ def stencil_definition(a: FloatField):
 
 
 def test_skip_passes_becomes_oir_pipeline():
-    config = StencilConfig(backend="numpy")
+    backend = "numpy"
+    dace_config = DaceConfig(None, backend)
+    config = StencilConfig(backend=backend, dace_config=dace_config)
     grid_indexing = GridIndexing(
         domain=(4, 4, 7),
         n_halo=3,
@@ -43,9 +46,7 @@ def test_skip_passes_becomes_oir_pipeline():
         factory.from_dims_halo(
             stencil_definition,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
-            # will need to update this import when gt4py is updated
-            # skip_passes=("HorizontalExecutionMerging",),
-            skip_passes=("GreedyMerging",),
+            skip_passes=("HorizontalExecutionMerging",),
         )
     assert "oir_pipeline" in mock_stencil_builder.call_args.kwargs
     pipeline: DefaultPipeline = mock_stencil_builder.call_args.kwargs["oir_pipeline"]

@@ -4,7 +4,6 @@ from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField
 from pace.util.constants import (
@@ -53,7 +52,6 @@ class CopyCorners:
         else:
             raise ValueError("Direction must be either 'x' or 'y'")
 
-    @computepath_method
     def __call__(self, field: FloatField):
         """
         Fills cell quantity field using corners from itself and multipliers
@@ -98,7 +96,6 @@ class CopyCornersXY:
             },
         )
 
-    @computepath_method
     def __call__(self, field: FloatField):
         """
         Fills cell quantity field using corners from itself.

@@ -1,5 +1,4 @@
 from fv3core.stencils import pe_halo
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
@@ -16,7 +15,6 @@ class PE_Halo_Wrapper:
             externals={**ax_offsets_pe},
         )
 
-    @computepath_method
     def __call__(self, pe, delp, ptop):
         self._stencil(pe, delp, ptop)
 

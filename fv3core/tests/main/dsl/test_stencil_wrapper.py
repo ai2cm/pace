@@ -5,9 +5,9 @@ import gt4py.gtscript
 import numpy as np
 import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
-from gtc.passes.oir_pipeline import DefaultPipeline
 
 import pace.util
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.stencil import (
     FrozenStencil,
@@ -15,6 +15,26 @@ from pace.dsl.stencil import (
     _convert_quantities_to_storage,
 )
 from pace.dsl.typing import FloatField
+
+
+def get_stencil_config(
+    backend,
+    rebuild,
+    validate_args,
+    format_source,
+    device_sync,
+    orchestration=DaCeOrchestration.Python,
+):
+    dace_config = DaceConfig(None, backend=backend, orchestration=orchestration)
+    config = StencilConfig(
+        backend=backend,
+        rebuild=rebuild,
+        validate_args=validate_args,
+        format_source=format_source,
+        device_sync=device_sync,
+        dace_config=dace_config,
+    )
+    return config
 
 
 @contextlib.contextmanager
@@ -106,7 +126,7 @@ def test_copy_frozen_stencil(
     format_source: bool,
     device_sync: bool,
 ):
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
@@ -138,7 +158,7 @@ def test_frozen_stencil_raises_if_given_origin(
     device_sync: bool,
 ):
     # only guaranteed when validating args
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=rebuild,
         validate_args=True,
@@ -168,7 +188,7 @@ def test_frozen_stencil_raises_if_given_domain(
     device_sync: bool,
 ):
     # only guaranteed when validating args
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=rebuild,
         validate_args=True,
@@ -199,7 +219,7 @@ def test_frozen_stencil_kwargs_passed_to_init(
     format_source: bool,
     device_sync: bool,
 ):
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
@@ -236,7 +256,7 @@ def field_after_parameter_stencil(q_in: FloatField, param: float, q_out: FloatFi
 
 
 def test_frozen_field_after_parameter(backend):
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=False,
         validate_args=False,
@@ -272,14 +292,15 @@ def test_backend_options(
             "device_sync": False,
             "format_source": False,
             "verbose": False,
-            "oir_pipeline": DefaultPipeline(),
         },
     }
 
-    actual = StencilConfig(
+    actual = get_stencil_config(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
+        format_source=False,
+        device_sync=False,
     ).stencil_kwargs()
     expected = expected_options[backend]
     assert str(actual) == str(expected)

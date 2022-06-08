@@ -5,7 +5,6 @@ from dace import constant as DaceConstant
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
 from pace.util import Quantity
@@ -155,7 +154,6 @@ class FillNegativeTracerValues:
             name: tracers[name] for name in utils.tracer_variables[0 : self._nq]
         }
 
-    @computepath_method
     def __call__(
         self,
         dp2: FloatField,

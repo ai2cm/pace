@@ -22,7 +22,6 @@ from fv3core.stencils.map_single import MapSingle
 from fv3core.stencils.mapn_tracer import MapNTracer
 from fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import Quantity
@@ -480,7 +479,6 @@ class LagrangianToEulerian:
             domain=grid_indexing.domain_compute(),
         )
 
-    @computepath_method
     def __call__(
         self,
         tracers: DaceConstant,

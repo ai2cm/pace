@@ -1,86 +1,85 @@
-import contextlib
 import unittest.mock
 
-import pace.dsl
-import pace.dsl.dace.dace_config
-from pace.dsl.dace.orchestrate import DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
+from pace.dsl.dace.orchestrate import (
+    DaCeOrchestration,
+    orchestrate,
+    orchestrate_function,
+)
 
 
 """
-Tests that the global dace configuration pace.dsl.dace.dace_config.dace_config
-determines whether we use dace to run wrapped functions.
-
-These tests can be refactored or removed if we change the global dace configuration
-functionality.
+Tests that the dace configuration pace.dsl.dace.dace_config
+which determines whether we use dace to run wrapped functions.
 """
 
 
-@contextlib.contextmanager
-def use_dace(orchestration_mode: DaCeOrchestration):
-    original_setting = pace.dsl.dace.dace_config.dace_config.get_orchestrate()
-    try:
-        pace.dsl.dace.dace_config.dace_config._orchestrate = orchestration_mode
-        yield
-    finally:
-        pace.dsl.dace.dace_config.dace_config._orchestrate = original_setting
-
-
-def test_computepath_function_calls_dace():
+def test_orchestrate_function_calls_dace():
     def foo():
         pass
 
-    with use_dace(DaCeOrchestration.BuildAndRun):
-        wrapped = pace.dsl.computepath_function(foo)
-        with unittest.mock.patch(
-            "pace.dsl.dace.orchestrate.call_sdfg"
-        ) as mock_call_sdfg:
-            wrapped()
-        assert mock_call_sdfg.called
-        assert mock_call_sdfg.call_args.args[0].f == foo
+    dace_config = DaceConfig(
+        communicator=None,
+        backend="gtc:dace",
+        orchestration=DaCeOrchestration.BuildAndRun,
+    )
+    wrapped = orchestrate_function(config=dace_config)(foo)
+    with unittest.mock.patch("pace.dsl.dace.orchestrate.call_sdfg") as mock_call_sdfg:
+        wrapped()
+    assert mock_call_sdfg.called
+    assert mock_call_sdfg.call_args.args[0].f == foo
 
 
-def test_computepath_function_does_not_call_dace():
+def test_orchestrate_function_does_not_call_dace():
     def foo():
         pass
 
-    with use_dace(DaCeOrchestration.Python):
-        wrapped = pace.dsl.computepath_function(foo)
-        with unittest.mock.patch(
-            "pace.dsl.dace.orchestrate.call_sdfg"
-        ) as mock_call_sdfg:
-            wrapped()
-        assert not mock_call_sdfg.called
+    dace_config = DaceConfig(
+        communicator=None,
+        backend="gtc:dace",
+        orchestration=DaCeOrchestration.Python,
+    )
+    wrapped = orchestrate_function(config=dace_config)(foo)
+    with unittest.mock.patch("pace.dsl.dace.orchestrate.call_sdfg") as mock_call_sdfg:
+        wrapped()
+    assert not mock_call_sdfg.called
 
 
-def test_computepath_method_calls_dace():
+def test_orchestrate_calls_dace():
+    dace_config = DaceConfig(
+        communicator=None,
+        backend="gtc:dace",
+        orchestration=DaCeOrchestration.BuildAndRun,
+    )
 
-    with use_dace(DaCeOrchestration.BuildAndRun):
+    class A:
+        def __init__(self):
+            orchestrate(obj=self, config=dace_config, method_to_orchestrate="foo")
 
-        class A:
-            @pace.dsl.computepath_method
-            def foo(self):
-                pass
+        def foo(self):
+            pass
 
-        with unittest.mock.patch(
-            "pace.dsl.dace.orchestrate.call_sdfg"
-        ) as mock_call_sdfg:
-            a = A()
-            a.foo()
-        assert mock_call_sdfg.called
+    with unittest.mock.patch("pace.dsl.dace.orchestrate.call_sdfg") as mock_call_sdfg:
+        a = A()
+        a.foo()
+    assert mock_call_sdfg.called
 
 
-def test_computepath_method_does_not_call_dace():
+def test_orchestrate_does_not_call_dace():
+    dace_config = DaceConfig(
+        communicator=None,
+        backend="gtc:dace",
+        orchestration=DaCeOrchestration.Python,
+    )
 
-    with use_dace(DaCeOrchestration.Python):
+    class A:
+        def __init__(self):
+            orchestrate(obj=self, config=dace_config, method_to_orchestrate="foo")
 
-        class A:
-            @pace.dsl.computepath_method
-            def foo(self):
-                pass
+        def foo(self):
+            pass
 
-        with unittest.mock.patch(
-            "pace.dsl.dace.orchestrate.call_sdfg"
-        ) as mock_call_sdfg:
-            a = A()
-            a.foo()
-        assert not mock_call_sdfg.called
+    with unittest.mock.patch("pace.dsl.dace.orchestrate.call_sdfg") as mock_call_sdfg:
+        a = A()
+        a.foo()
+    assert not mock_call_sdfg.called

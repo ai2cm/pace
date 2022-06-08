@@ -1,4 +1,5 @@
 import enum
+from typing import Optional
 
 from pace.util.communicator import CubedSphereCommunicator
 
@@ -20,13 +21,21 @@ class DaCeOrchestration(enum.Enum):
 
 
 class DaceConfig:
-    def __init__(self, communicator: CubedSphereCommunicator, backend: str):
+    def __init__(
+        self,
+        communicator: CubedSphereCommunicator,
+        backend: str,
+        orchestration: Optional[DaCeOrchestration] = None,
+    ):
         # Temporary. This is a bit too out of the ordinary for the common user.
         # We should refactor the architecture to allow for a `gtc:orchestrated:dace:X`
         # backend that would signify both the `CPU|GPU` split and the orchestration mode
         import os
 
-        self._orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
+        if orchestration is None:
+            self._orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
+        else:
+            self._orchestrate = orchestration
         self._communicator = communicator
         self._backend = backend
         from pace.dsl.dace.build import set_distributed_caches

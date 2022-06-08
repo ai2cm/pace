@@ -357,28 +357,6 @@ class _LazyComputepathMethod:
         return _LazyComputepathMethod.bound_callables[(id(obj), id(self.func))]
 
 
-# TODO: Kill me before merging
-def computepath_method(
-    method: Callable[..., Any]
-) -> Union[Callable[..., Any], _LazyComputepathFunction]:
-    """
-    Decorator wrapping a class method in a JIT DaCe orchestrator.
-
-    Args:
-        method: class method to either orchestrate or directly execute
-        load_sdfg: folder path to a pre-compiled SDFG or file path to a .sdfg graph
-            that will be compiled but not regenerated."""
-
-    # return method
-
-    config = DaceConfig(None, "gtc:dace")
-
-    def _decorator(method):
-        return _LazyComputepathMethod(method, config)
-
-    return _decorator(method)
-
-
 def orchestrate(
     obj: object,
     config: DaceConfig,
@@ -479,11 +457,11 @@ def orchestrate_function(
         def _wrapper(*args, **kwargs):
             for argument in dace_constant_args:
                 func.__annotations__[argument] = DaceConstant
-            return _LazyComputepathFunction(func)
+            return _LazyComputepathFunction(func, config)
 
         if config.is_dace_orchestrated():
-            return func
-        else:
             return _wrapper(func)
+        else:
+            return func
 
     return _decorator

@@ -227,6 +227,7 @@ class CompareToNumpyStencil:
             validate_args=stencil_config.validate_args,
             format_source=True,
             device_sync=None,
+            dace_config=stencil_config.dace_config,
         )
         self._numpy = FrozenStencil(
             func=func,

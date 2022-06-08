@@ -5,7 +5,6 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.remap_profile import RemapProfile
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
 
@@ -151,7 +150,6 @@ class MapSingle:
     def j_extent(self):
         return self._extents[1]
 
-    @computepath_method
     def __call__(
         self,
         q1: FloatField,

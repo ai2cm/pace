@@ -16,7 +16,6 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
@@ -304,8 +303,8 @@ class DynamicalCore:
 
     def step_dynamics(
         self,
-        timer: Timer,
         state: DycoreState,
+        timer: Timer,
     ):
         """
         Step the model state forward by one timestep.
@@ -318,7 +317,6 @@ class DynamicalCore:
         self._compute(state, timer)
         self._checkpoint_fvdynamics(state=state, tag="Out")
 
-    @computepath_method
     def compute_preamble(
         self,
         state: dace_constant,
@@ -371,11 +369,9 @@ class DynamicalCore:
                 state.pt,
             )
 
-    @computepath_method
     def __call__(self, *args, **kwargs):
         return self.step_dynamics(*args, **kwargs)
 
-    @computepath_method
     def _compute(self, state: dace_constant, timer: dace_constant):
         last_step = False
         self.compute_preamble(
@@ -452,7 +448,6 @@ class DynamicalCore:
         )
 
     # TODO: type hint state when it is possible to do so, when it is a static type
-    @computepath_method
     def _dyn(
         self, state: dace_constant, tracers: dace_constant, n_map, timer: dace_constant
     ):
@@ -484,7 +479,6 @@ class DynamicalCore:
                     state.mdt,
                 )
 
-    @computepath_method
     def post_remap(
         self,
         state: dace_constant,
@@ -508,7 +502,6 @@ class DynamicalCore:
             self._omega_halo_updater.update()
             self._hyperdiffusion(state.omga, 0.18 * da_min)
 
-    @computepath_method
     def wrapup(
         self,
         state: dace_constant,  # DycoreState

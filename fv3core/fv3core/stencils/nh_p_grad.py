@@ -2,7 +2,6 @@ from gt4py.gtscript import PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util import Z_INTERFACE_DIM
@@ -175,7 +174,6 @@ class NonHydrostaticPressureGradient:
             domain=v_domain,
         )
 
-    @computepath_method
     def __call__(
         self,
         u: FloatField,

@@ -11,7 +11,6 @@ from gt4py.gtscript import (
 
 from fv3core.stencils import ppm
 from fv3core.stencils.basic_operations import sign
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, Index3D
 
@@ -321,7 +320,6 @@ class YPiecewiseParabolic:
             domain=domain,
         )
 
-    @computepath_method
     def __call__(
         self,
         q_in: FloatField,

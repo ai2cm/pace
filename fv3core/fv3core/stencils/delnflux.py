@@ -13,7 +13,6 @@ from gt4py.gtscript import (
 )
 
 import pace.dsl.gt4py_utils as utils
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, Y_DIM, Z_DIM
@@ -1004,7 +1003,6 @@ class DelnFlux:
             stencil_factory, damping_coefficients, rarea, nord, nk=nk
         )
 
-    @computepath_method
     def __call__(
         self,
         q: FloatField,
@@ -1205,7 +1203,6 @@ class DelnFluxNoSG:
             domain=corner_domain,
         )
 
-    @computepath_method
     def __call__(self, q, fx2, fy2, damp_c, d2, mass=None):
         """
         Computes flux fields which would apply del-n damping to q,

@@ -3,7 +3,6 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.util.constants as constants
 from pace.dsl import gt4py_utils
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils import corners
@@ -121,11 +120,8 @@ class UpdateGeopotentialHeightOnCGrid:
             update_dz_c,
             origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
             domain=grid_indexing.domain_compute(add=(2, 2, 1)),
-            # [EW]: is there another dace version to not have to do this?
-            skip_passes=("graph_merge_horizontal_executions",),
         )
 
-    @computepath_method
     def __call__(
         self,
         dp_ref: FloatFieldK,

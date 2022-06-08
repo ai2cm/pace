@@ -3,7 +3,6 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import pace.dsl.gt4py_utils as utils
 import pace.stencils.corners as corners
 from fv3core.stencils.basic_operations import copy_defn
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, cast_to_index3d
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
@@ -159,7 +158,6 @@ class HyperdiffusionDamping:
             update_q, origins, domains, stencil_factory=stencil_factory
         )
 
-    @computepath_method
     def __call__(self, qdel: FloatField, cd: float):
         """
         Perform hyperdiffusion damping/filtering

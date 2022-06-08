@@ -3,7 +3,6 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 import fv3core
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.dyn_core import AcousticDynamics
-from pace.dsl.dace.orchestrate import computepath_method
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util import CubedSphereCommunicator
@@ -170,7 +169,6 @@ class CubedToLatLon:
             comm=comm,
         )
 
-    @computepath_method
     def __call__(
         self,
         u: FloatField,
