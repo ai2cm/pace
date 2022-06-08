@@ -176,7 +176,7 @@ class Driver:
             comm: communication object behaving like mpi4py.Comm
         """
         logger.info("initializing driver")
-        self.config = config
+        self.config: DriverConfig = config
         self.time = self.config.start_time
         self.comm_config = config.comm_config
         self.comm = config.comm_config.get_comm()
@@ -338,6 +338,10 @@ class Driver:
     def _write_restart_files(self):
         self.state.save_state(comm=self.comm)
         if self.comm.Get_rank() == 0:
+            # Communicator cannot be pickled, we remove it before
+            # and restore it after save
+            comm = self.config.stencil_config.dace_config._communicator
+            self.config.stencil_config.dace_config._communicator = None
             config_dict = dataclasses.asdict(self.config)
             config_dict["performance_config"].pop("times_per_step", None)
             config_dict["performance_config"].pop("hits_per_step", None)
@@ -351,6 +355,8 @@ class Driver:
             config_dict["initialization"]["config"]["path"] = f"{os.getcwd()}/RESTART"
             with open("RESTART/restart.yaml", "w") as file:
                 yaml.safe_dump(config_dict, file)
+            # Restore the communicator
+            self.config.stencil_config.dace_config._communicator = comm
 
     def cleanup(self):
         logger.info("cleaning up driver")

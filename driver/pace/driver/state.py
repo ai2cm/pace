@@ -81,6 +81,8 @@ class DriverState:
         communicator = pace.util.CubedSphereCommunicator.from_layout(
             comm=comm, layout=driver_config.layout
         )
+        # The communicator is not part of the restart file and need to be reset
+        driver_config.stencil_config.dace_config._communicator = communicator
         sizer = pace.util.SubtileGridSizer.from_tile_params(
             nx_tile=driver_config.nx_tile,
             ny_tile=driver_config.nx_tile,
