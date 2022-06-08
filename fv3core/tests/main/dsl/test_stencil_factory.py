@@ -180,7 +180,9 @@ def test_stencil_factory_numpy_comparison_runs_without_exceptions():
     )
     factory = StencilFactory(config=config, grid_indexing=indexing)
     stencil = factory.from_origin_domain(
-        func=copy_stencil, origin=(0, 0, 0), domain=(12, 12, 79)
+        func=copy_stencil,
+        origin=(0, 0, 0),
+        domain=indexing.max_shape,
     )
     assert isinstance(stencil, CompareToNumpyStencil)
     q_in = make_storage_from_shape(indexing.max_shape, backend=backend)

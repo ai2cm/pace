@@ -185,7 +185,7 @@ class Physics:
 
         def make_storage():
             return utils.make_storage_from_shape(
-                shape, origin=origin, init=True, backend=stencil_factory.backend
+                shape, origin=origin, backend=stencil_factory.backend
             )
 
         self._prsik = make_storage()
