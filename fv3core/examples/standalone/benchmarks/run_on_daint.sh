@@ -119,7 +119,7 @@ echo "    Run arguments:     $run_args"
 echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 
-$FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME
+$FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME dycore
 
 # Adapt batch script to compile the code:
 sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm

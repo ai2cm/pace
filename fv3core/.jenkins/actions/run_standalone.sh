@@ -107,7 +107,7 @@ echo "Profile artifact directory:   ${PROFILE_DIR}"
 
 
 # NOTE: All backends are GTC backends, so fetch caches
-. ${ROOT_DIR}/../.jenkins/fetch_caches.sh $backend $experiment
+. ${ROOT_DIR}/../.jenkins/fetch_caches.sh $backend $experiment dycore
 
 # run standalone
 echo "=== Running standalone ========================="
