@@ -7,7 +7,6 @@ import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 
 
-
 @dataclass()
 class DycoreState:
     u: pace.util.Quantity = field(
