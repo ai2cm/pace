@@ -24,7 +24,7 @@ def transform_dwind_serialized_data(data, grid_indexing: GridIndexing, backend: 
         size1, size2 = data.shape
         data[start1 : start1 + size1, start2 : start2 + size2] = data
     else:
-        start1, start2, start3 = grid_indexing.origin
+        start1, start2, start3 = 0, 0, 0
         size1, size2, size3 = data.shape
         new_data = np.zeros(max_shape)
         new_data[
