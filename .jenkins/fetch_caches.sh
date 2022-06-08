@@ -2,7 +2,7 @@
 BACKEND=$1
 EXPNAME=$2
 SANITIZED_BACKEND=`echo $BACKEND | sed 's/:/_/g'` #sanitize the backend from any ':'
-CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/${EXPNAME}/${SANITIZED_BACKEND}"
+CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v1/${EXPNAME}/${SANITIZED_BACKEND}"
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PACE_DIR=$SCRIPT_DIR/../
 
