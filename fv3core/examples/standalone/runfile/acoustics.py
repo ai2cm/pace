@@ -13,6 +13,7 @@ import pace.util as util
 from fv3core._config import DynamicalCoreConfig
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.testing import TranslateDynCore
+from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
 from pace.stencils.testing.grid import Grid
 from pace.util.null_comm import NullComm
 
@@ -144,10 +145,16 @@ def driver(
             disable_halo_exchange, layout=layout
         )
         grid = Grid.with_data_from_namelist(dycore_config, communicator, backend)
+        dace_config = DaceConfig(
+            communicator,
+            backend,
+            DaCeOrchestration.Python,
+        )
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=backend,
             rebuild=False,
             validate_args=True,
+            dace_config=dace_config,
         )
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,

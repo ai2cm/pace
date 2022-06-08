@@ -10,6 +10,7 @@ import yaml
 
 import pace.dsl
 import pace.util as fv3util
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.stencils.testing.parallel_translate import ParallelTranslate
 from pace.stencils.testing.translate import TranslateGrid
 from pace.util.mpi import MPI
@@ -86,11 +87,14 @@ def read_serialized_data(serializer, savepoint, variable):
 
 
 @pytest.fixture
-def stencil_config(backend):
-    return pace.dsl.stencil.StencilConfig(
+def stencil_config(backend, communicator):
+    dace_config = DaceConfig(
+        communicator=communicator,
         backend=backend,
-        rebuild=False,
-        validate_args=True,
+        orchestration=DaCeOrchestration.Python,
+    )
+    return pace.dsl.stencil.StencilConfig(
+        backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
     )
 
 
@@ -194,10 +198,16 @@ def sequential_savepoint_cases(
 
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
     ranks = get_ranks(metafunc, namelist.layout)
+    dace_config = DaceConfig(
+        None,
+        backend=backend,
+        orchestration=DaCeOrchestration.Python,
+    )
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=True,
+        dace_config=dace_config,
     )
     for rank in ranks:
         serializer = get_serializer(data_path, rank)
@@ -243,10 +253,16 @@ def mock_parallel_savepoint_cases(
     return_list = []
     namelist = Namelist.from_f90nml(f90nml.read(namelist_filename))
     total_ranks = 6 * namelist.layout[0] * namelist.layout[1]
+    dace_config = DaceConfig(
+        None,
+        backend=backend,
+        orchestration=DaCeOrchestration.Python,
+    )
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=True,
+        dace_config=dace_config,
     )
     grid_list = []
     for rank in range(total_ranks):
@@ -295,10 +311,16 @@ def parallel_savepoint_cases(
 ):
     serializer = get_serializer(data_path, mpi_rank)
     namelist = Namelist.from_f90nml(f90nml.read(namelist_filename))
+    dace_config = DaceConfig(
+        None,
+        backend=backend,
+        orchestration=DaCeOrchestration.Python,
+    )
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=True,
+        dace_config=dace_config,
     )
     grid = TranslateGrid.new_from_serialized_data(
         serializer, mpi_rank, namelist.layout, backend

@@ -12,6 +12,7 @@ import pace.dsl
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util as fv3util
+from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
 from pace.util.mpi import MPI
 from pace.util.testing import compare_scalar, success, success_array
 
@@ -220,7 +221,15 @@ def test_sequential_savepoint(
     caplog.set_level(logging.DEBUG, logger="physics")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
-    stencil_config = pace.dsl.StencilConfig(backend=backend)
+    dace_config = DaceConfig(
+        None,
+        backend=backend,
+        orchestration=DaCeOrchestration.Python,
+    )
+    stencil_config = pace.dsl.StencilConfig(
+        backend=backend,
+        dace_config=dace_config,
+    )
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
@@ -320,7 +329,15 @@ def test_mock_parallel_savepoint(
     caplog.set_level(logging.DEBUG, logger="fv3util")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
-    stencil_config = pace.dsl.StencilConfig(backend=backend)
+    dace_config = DaceConfig(
+        None,
+        backend=backend,
+        orchestration=DaCeOrchestration.Python,
+    )
+    stencil_config = pace.dsl.StencilConfig(
+        backend=backend,
+        dace_config=dace_config,
+    )
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)
@@ -415,7 +432,15 @@ def test_parallel_savepoint(
         pytest.xfail(f"python_regression not set for test {test_name}")
     if testobj is None:
         pytest.xfail(f"no translate object available for savepoint {test_name}")
-    stencil_config = pace.dsl.StencilConfig(backend=backend)
+    dace_config = DaceConfig(
+        None,
+        backend=backend,
+        orchestration=DaCeOrchestration.Python,
+    )
+    stencil_config = pace.dsl.StencilConfig(
+        backend=backend,
+        dace_config=dace_config,
+    )
     # Increase minimum error threshold for GPU
     if stencil_config.is_gpu_backend:
         testobj.max_error = max(testobj.max_error, GPU_MAX_ERR)

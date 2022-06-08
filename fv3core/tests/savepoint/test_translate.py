@@ -8,6 +8,7 @@ import pytest
 import pace.dsl
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
+from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
 from pace.stencils.testing import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
 from pace.util.testing import compare_scalar, success, success_array
@@ -186,7 +187,15 @@ def test_sequential_savepoint(
         pytest.xfail(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
-    stencil_config = pace.dsl.StencilConfig(backend=backend)
+    dace_config = DaceConfig(
+        None,
+        backend=backend,
+        orchestration=DaCeOrchestration.Python,
+    )
+    stencil_config = pace.dsl.StencilConfig(
+        backend=backend,
+        dace_config=dace_config,
+    )
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
         case.testobj.max_error = max(case.testobj.max_error, GPU_MAX_ERR)
@@ -297,7 +306,15 @@ def test_parallel_savepoint(
         pytest.xfail(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
-    stencil_config = pace.dsl.StencilConfig(backend=backend)
+    dace_config = DaceConfig(
+        None,
+        backend=backend,
+        orchestration=DaCeOrchestration.Python,
+    )
+    stencil_config = pace.dsl.StencilConfig(
+        backend=backend,
+        dace_config=dace_config,
+    )
     # Increase minimum error threshold for GPU
     if stencil_config.is_gpu_backend:
         case.testobj.max_error = max(case.testobj.max_error, GPU_MAX_ERR)

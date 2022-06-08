@@ -21,6 +21,7 @@ from fv3core import DynamicalCore
 from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.baroclinic import init_baroclinic_state
 from fv3core.testing import TranslateFVDynamics
+from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -215,10 +216,16 @@ def setup_dycore(
     )
     communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
     grid = Grid.from_namelist(dycore_config, mpi_comm.rank, backend)
+    dace_config = DaceConfig(
+        communicator,
+        backend,
+        DaCeOrchestration.Python,
+    )
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=False,
+        dace_config=dace_config,
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
