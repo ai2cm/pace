@@ -2,7 +2,6 @@ import math
 from typing import Dict
 
 import gt4py.gtscript as gtscript
-from dace import constant as dace_constant
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
@@ -272,7 +271,7 @@ class TracerAdvection:
             [t for t in tracers.keys()],
         )
 
-    def __call__(self, tracers: dace_constant, dp1, mfxd, mfyd, cxd, cyd, mdt):
+    def __call__(self, tracers: Dict[str, Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt):
         """
         Args:
             tracers (inout):

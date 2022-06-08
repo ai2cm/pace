@@ -1,7 +1,5 @@
 from typing import Dict
 
-from dace import constant as DaceConstant
-
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.fillz import FillNegativeTracerValues
 from fv3core.stencils.map_single import MapSingle
@@ -68,7 +66,7 @@ class MapNTracer:
         pe1: FloatField,
         pe2: FloatField,
         dp2: FloatField,
-        tracers: DaceConstant,
+        tracers: Dict[str, Quantity],
     ):
         """
         Remaps the tracer species onto the Eulerian grid

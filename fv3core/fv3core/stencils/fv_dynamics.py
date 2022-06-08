@@ -1,6 +1,5 @@
-from typing import Optional
+from typing import Dict, Optional
 
-from dace import constant as dace_constant
 from dace.frontend.python.interface import nounroll as dace_no_unroll
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
@@ -21,6 +20,7 @@ from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.util import Timer
 from pace.util.grid import DampingCoefficients, GridData
+from pace.util.quantity import Quantity
 
 
 # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
@@ -325,7 +325,7 @@ class DynamicalCore:
 
     def compute_preamble(
         self,
-        state: dace_constant,
+        state,
         is_root_rank: bool,
     ):
         if self.config.hydrostatic:
@@ -378,7 +378,7 @@ class DynamicalCore:
     def __call__(self, *args, **kwargs):
         return self.step_dynamics(*args, **kwargs)
 
-    def _compute(self, state: dace_constant, timer: dace_constant):
+    def _compute(self, state, timer: pace.util.Timer):
         last_step = False
         self.compute_preamble(
             state,
@@ -453,9 +453,12 @@ class DynamicalCore:
             is_root_rank=self.comm_rank == 0,
         )
 
-    # TODO: type hint state when it is possible to do so, when it is a static type
     def _dyn(
-        self, state: dace_constant, tracers: dace_constant, n_map, timer: dace_constant
+        self,
+        state,
+        tracers: Dict[str, Quantity],
+        n_map,
+        timer: pace.util.Timer,
     ):
         self._copy_stencil(
             state.delp,
@@ -487,7 +490,7 @@ class DynamicalCore:
 
     def post_remap(
         self,
-        state: dace_constant,
+        state: DycoreState,
         is_root_rank: bool,
         da_min: FloatFieldIJ,
     ):
@@ -510,7 +513,7 @@ class DynamicalCore:
 
     def wrapup(
         self,
-        state: dace_constant,  # DycoreState
+        state: DycoreState,
         is_root_rank: bool,
     ):
         if __debug__:
