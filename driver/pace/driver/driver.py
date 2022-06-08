@@ -277,10 +277,6 @@ class Driver:
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
             end_time = self.config.start_time + self.config.total_time
-            self.diagnostics.store_grid(
-                grid_data=self.state.grid_data,
-                metadata=self.state.dycore_state.ps.metadata,
-            )
             # Temporary DaCe execution code to restrict orchestration to the dycore only
             # and properly error out. Original code conserved in else
             if self.config.stencil_config.dace_config.is_dace_orchestrated():
