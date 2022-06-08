@@ -15,24 +15,25 @@ def transform_dwind_serialized_data(data, grid_indexing: GridIndexing, backend: 
     elif len(data.shape) < 2:
         start1 = 0
         size1 = data.shape[0]
-        data = np.zeros(max_shape[2])
-        data[start1 : start1 + size1] = data
-
+        padded_data = np.zeros(max_shape[2])
+        padded_data[start1 : start1 + size1] = data
+        data = padded_data
     elif len(data.shape) == 2:
-        data = np.zeros(max_shape[0:2])
+        padded_data = np.zeros(max_shape[0:2])
         start1, start2 = (0, 0)
         size1, size2 = data.shape
-        data[start1 : start1 + size1, start2 : start2 + size2] = data
+        padded_data[start1 : start1 + size1, start2 : start2 + size2] = data
+        data = padded_data
     else:
         start1, start2, start3 = 0, 0, 0
         size1, size2, size3 = data.shape
-        new_data = np.zeros(max_shape)
-        new_data[
+        padded_data = np.zeros(max_shape)
+        padded_data[
             start1 : start1 + size1,
             start2 : start2 + size2,
             start3 : start3 + size3,
         ] = data
-        data = new_data
+        data = padded_data
     if isinstance(data, np.ndarray):
         data = utils.make_storage_data(
             data=data,
