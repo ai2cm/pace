@@ -3,6 +3,7 @@ from typing import Any, Mapping
 
 import xarray as xr
 
+import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 
 
@@ -362,7 +363,7 @@ class DycoreState:
                     f"{dim_name}_{name}" for dim_name in field_info.metadata["dims"]
                 ]
                 data_vars[name] = xr.DataArray(
-                    getattr(self, name).data,
+                    gt_utils.asarray(getattr(self, name).data),
                     dims=dims,
                     attrs={
                         "long_name": field_info.metadata["name"],
