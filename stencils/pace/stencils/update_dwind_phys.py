@@ -178,9 +178,7 @@ class AGrid2DGridPhysics:
         self.east_edge = grid_indexing.east_edge
 
         def make_storage():
-            return utils.make_storage_from_shape(
-                shape, init=True, backend=stencil_factory.backend
-            )
+            return utils.make_storage_from_shape(shape, backend=stencil_factory.backend)
 
         self._ue_1 = make_storage()
         self._ue_2 = make_storage()
