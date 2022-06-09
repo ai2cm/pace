@@ -34,7 +34,7 @@ def parse_args():
         type=str,
         action="store",
         help="when plotting locally, specify pace zarr output path",
-        default=None,
+        default="/model_output/output.zarr",
     )
     parser.add_argument(
         "--vmin",
@@ -141,16 +141,9 @@ if __name__ == "__main__":
         raise ValueError(
             "You must specify the path (fortran_data_path) to Fortran data."
         )
-    if args.zarr_output is not None:
-        ds = xr.open_zarr(
-            store=zarr.DirectoryStore(path=args.zarr_output), consolidated=False
-        )
-    else:
-        # when plotting through sarus or docker
-        # we expect pace output mounted at /pace
-        ds = xr.open_zarr(
-            store=zarr.DirectoryStore(path="/pace/output.zarr"), consolidated=False
-        )
+    ds = xr.open_zarr(
+        store=zarr.DirectoryStore(path=args.zarr_output), consolidated=False
+    )
     python_lat = ds["lat"].values * 180.0 / np.pi
     python_lon = ds["lon"].values * 180.0 / np.pi
     if args.diff_init:
@@ -216,10 +209,10 @@ if __name__ == "__main__":
             fontsize=8,
         )
         plt.tight_layout()
-        if args.zarr_output is not None:
-            save_path = ""
-        else:
+        if args.zarr_output == "/model_output/output.zarr":
             save_path = "/work/"
+        else:
+            save_path = ""
         plt.savefig(
             f"{save_path}{args.experiment}_{args.variable}_time_{t:02d}.png",
             dpi=150,
