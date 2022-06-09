@@ -15,6 +15,7 @@ class PE_Halo_Wrapper:
             origin=stencil_factory.grid_indexing.origin_full(),
             domain=stencil_factory.grid_indexing.domain_full(add=(0, 0, 1)),
             externals={**ax_offsets_pe},
+            skip_passes=("PruneKCacheFills",),
         )
 
     def __call__(self, pe, delp, ptop):
