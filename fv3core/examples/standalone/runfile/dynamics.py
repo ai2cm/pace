@@ -179,7 +179,7 @@ def read_serialized_initial_state(rank, grid, namelist, stencil_factory, data_di
     )
     # create a state from serialized data
     savepoint_in = serializer.get_savepoint("Driver-In")[0]
-    driver_object = TranslateFVDynamics([grid], namelist, stencil_factory)
+    driver_object = TranslateFVDynamics(grid, namelist, stencil_factory)
     input_data = driver_object.collect_input_data(serializer, savepoint_in)
     state = driver_object.state_from_inputs(input_data)
     return state

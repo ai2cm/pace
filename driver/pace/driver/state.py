@@ -6,9 +6,16 @@ import xarray as xr
 
 import fv3core
 import fv3gfs.physics
+import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
 from pace.util.grid import DampingCoefficients
+
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 
 @dataclasses.dataclass()
@@ -103,6 +110,34 @@ class DriverState:
         self.physics_state.xr_dataset.to_netcdf(
             f"{restart_path}/restart_physics_state_{current_rank}.nc"
         )
+        # we can also convert the state to Fortran's restart format using
+        # code similar to this commented code. We don't need this feature right
+        # now so we haven't implemented it, but this is a good starter.
+        """
+        xr.Dataset(
+            data_vars={
+                "cld_amt": state.dycore_state.qcld.data_array,
+                "graupel": state.dycore_state.qgraupel.data_array,
+                "ice_wat": state.dycore_state.qice.data_array,
+                "liq_wat": state.dycore_state.qliquid.data_array,
+                "o3mr": state.dycore_state.qo3mr.data_array,
+                "rainwat": state.dycore_state.qrain.data_array,
+                "sgs_tke": state.dycore_state.qsgs_tke.data_array,
+                "snowwat": state.dycore_state.qsnow.data_array,
+                "sphum": state.dycore_state.qvapor.data_array,
+            }
+        ).rename(
+            {
+                "z": "zaxis_1",
+                "x": "xaxis_1",
+                "y": "yaxis_1",
+            }
+        ).transpose(
+            "zaxis_1", "yaxis_1", "xaxis_1"
+        ).expand_dims(
+            dim="Time", axis=0
+        ).to_netcdf(os.path.join(path, f"fv_tracer.res.tile{rank + 1}.nc"))
+        """
 
 
 def _overwrite_state_from_restart(
@@ -110,6 +145,7 @@ def _overwrite_state_from_restart(
     rank: int,
     state: Union[fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState],
     restart_file_prefix: str,
+    is_gpu_backend: bool,
 ):
     """
     Args:
@@ -124,7 +160,17 @@ def _overwrite_state_from_restart(
     df = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
     for _field in fields(type(state)):
         if "units" in _field.metadata.keys():
-            state.__dict__[_field.name].data[:] = df[_field.name].data[:]
+            if is_gpu_backend:
+                if "physics" in restart_file_prefix:
+                    state.__dict__[_field.name][:] = gt_utils.asarray(
+                        df[_field.name].data[:], to_type=cp.ndarray
+                    )
+                else:
+                    state.__dict__[_field.name].data[:] = gt_utils.asarray(
+                        df[_field.name].data[:], to_type=cp.ndarray
+                    )
+            else:
+                state.__dict__[_field.name].data[:] = df[_field.name].data[:]
     return state
 
 
@@ -141,15 +187,24 @@ def _restart_driver_state(
     damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
+    is_gpu_backend = "gpu" in dycore_state.u.metadata.gt4py_backend
     dycore_state = _overwrite_state_from_restart(
-        path, rank, dycore_state, "restart_dycore_state"
+        path,
+        rank,
+        dycore_state,
+        "restart_dycore_state",
+        is_gpu_backend,
     )
     active_packages = ["microphysics"]
     physics_state = fv3gfs.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages
     )
     physics_state = _overwrite_state_from_restart(
-        path, rank, physics_state, "restart_physics_state"
+        path,
+        rank,
+        physics_state,
+        "restart_physics_state",
+        is_gpu_backend,
     )
     physics_state.__post_init__(quantity_factory, active_packages)
     tendency_state = TendencyState.init_zeros(

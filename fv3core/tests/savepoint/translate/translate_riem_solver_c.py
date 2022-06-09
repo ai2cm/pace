@@ -1,9 +1,16 @@
+import pace.dsl
+import pace.util
 from fv3core.stencils.riem_solver_c import RiemannSolverC
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateRiem_Solver_C(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.compute_func = RiemannSolverC(stencil_factory, namelist.p_fac)
         self.in_vars["data_vars"] = {

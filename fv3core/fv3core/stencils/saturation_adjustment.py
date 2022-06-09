@@ -959,11 +959,11 @@ class SatAdjust3d:
                 "icloud_f": self._config.icloud_f,
                 "cld_min": self._config.cld_min,
             },
-            origin=(grid_indexing.isc, grid_indexing.jsc, kmp),
+            origin=(grid_indexing.isc, grid_indexing.jsc, int(kmp)),
             domain=(
                 grid_indexing.domain[0],
                 grid_indexing.domain[1],
-                (grid_indexing.domain[2] - kmp),
+                int(grid_indexing.domain[2] - kmp),
             ),
         )
 

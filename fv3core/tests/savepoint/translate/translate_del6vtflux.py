@@ -1,9 +1,16 @@
 import fv3core.stencils.delnflux as delnflux
+import pace.dsl
+import pace.util
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateDel6VtFlux(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         fxstat = grid.x3d_domain_dict()
         fxstat.update({"serialname": "fx2"})

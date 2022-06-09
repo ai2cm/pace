@@ -99,13 +99,11 @@ class TranslateAtmosPhysDriverStatein(TranslatePhysicsFortranData2Py):
         qsgs_tke = utils.make_storage_from_shape(
             self.maxshape,
             origin=(0, 0, 0),
-            init=True,
             backend=self.stencil_factory.backend,
         )
         dm = utils.make_storage_from_shape(
             self.maxshape,
             origin=(0, 0, 0),
-            init=True,
             backend=self.stencil_factory.backend,
         )
         inputs["qsgs_tke"] = qsgs_tke

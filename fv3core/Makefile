@@ -3,7 +3,7 @@ include docker/Makefile.image_names
 GCR_URL = us.gcr.io/vcm-ml
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_standard
-FORTRAN_SERIALIZED_DATA_VERSION=8.0.5
+FORTRAN_SERIALIZED_DATA_VERSION=8.1.0
 DOCKER_BUILDKIT=1
 SHELL=/bin/bash
 CWD=$(shell pwd)
@@ -23,7 +23,7 @@ FV3=fv3core
 FV3_PATH ?=/$(FV3)
 
 ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/usr/src/pace-util -v $(CWD)/external/stencils:/external/stencils  -v $(CWD)/external/dsl:/external/dsl
+	VOLUMES += -v $(CWD):$(FV3_PATH) -v $(FV3UTIL_DIR):/usr/src/pace-util -v $(CWD)/external/stencils:/external/stencils  -v $(CWD)/external/dsl:/external/dsl
 endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
 
@@ -128,7 +128,7 @@ ifneq ($(findstring docker,$(CONTAINER_CMD)),)
 	$(MAKE) build
     endif
 endif
-	$(CONTAINER_CMD) bash -c "pip list && $(PYTEST_CMD)"
+	$(CONTAINER_CMD) bash -c "pip list && cd $(FV3_PATH) && $(PYTEST_CMD)"
 
 sync_test_data:
 	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)
