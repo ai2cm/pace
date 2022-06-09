@@ -1,8 +1,8 @@
+import dataclasses
 from typing import Dict, Optional, Sequence, Union
 
 import dace
 from dace.frontend.python.interface import nounroll as dace_nounroll
-import dataclasses
 from gt4py.gtscript import (
     __INLINED,
     BACKWARD,
