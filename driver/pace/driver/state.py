@@ -1,6 +1,7 @@
 import dataclasses
 from dataclasses import fields
 from typing import Union
+from pace.dsl.dace.dace_config import DaceConfig
 
 import xarray as xr
 
@@ -81,8 +82,12 @@ class DriverState:
         communicator = pace.util.CubedSphereCommunicator.from_layout(
             comm=comm, layout=driver_config.layout
         )
-        # The communicator is not part of the restart file and need to be reset
-        driver_config.stencil_config.dace_config._communicator = communicator
+        # The only part of DaCe config saved is the orchestration mode
+        # the config itself need to be set
+        driver_config.stencil_config.dace_config = DaceConfig(
+            communicator=communicator,
+            backend=driver_config.stencil_config.backend,
+        )
         sizer = pace.util.SubtileGridSizer.from_tile_params(
             nx_tile=driver_config.nx_tile,
             ny_tile=driver_config.nx_tile,

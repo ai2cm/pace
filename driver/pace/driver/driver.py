@@ -338,10 +338,10 @@ class Driver:
     def _write_restart_files(self):
         self.state.save_state(comm=self.comm)
         if self.comm.Get_rank() == 0:
-            # Communicator cannot be pickled, we remove it before
+            # DaCe config cannot be pickled, we remove it before
             # and restore it after save
-            comm = self.config.stencil_config.dace_config._communicator
-            self.config.stencil_config.dace_config._communicator = None
+            dace_conf = self.config.stencil_config.dace_config
+            self.config.stencil_config.dace_config = None
             config_dict = dataclasses.asdict(self.config)
             config_dict["performance_config"].pop("times_per_step", None)
             config_dict["performance_config"].pop("hits_per_step", None)
@@ -355,8 +355,8 @@ class Driver:
             config_dict["initialization"]["config"]["path"] = f"{os.getcwd()}/RESTART"
             with open("RESTART/restart.yaml", "w") as file:
                 yaml.safe_dump(config_dict, file)
-            # Restore the communicator
-            self.config.stencil_config.dace_config._communicator = comm
+            # Restore the DaCe config
+            self.config.stencil_config.dace_config = dace_conf
 
     def cleanup(self):
         logger.info("cleaning up driver")
