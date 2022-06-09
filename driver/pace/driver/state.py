@@ -1,7 +1,6 @@
 import dataclasses
 from dataclasses import fields
 from typing import Union
-from pace.dsl.dace.dace_config import DaceConfig
 
 import xarray as xr
 
@@ -10,6 +9,7 @@ import fv3gfs.physics
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.util.grid import DampingCoefficients
 
 
