@@ -115,16 +115,14 @@ if grep -q "parallel" <<< "${script}"; then
         export CRAY_CUDA_MPS=0
 	fi
 	if [ -f ${scheduler_script} ] ; then
-	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
+	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread|g' ${scheduler_script}
 	    sed -i 's|45|50|g' ${scheduler_script}
 	    # if 54 rank test can run in 30 minutes again, sed 45 to 30 and:
 	    # if [ "$NUM_RANKS" -gt "6" ] && [ ! -v LONG_EXECUTION ]; then
             #  sed -i 's|cscsci|debug|g' ${scheduler_script}
-            if [ "$NUM_RANKS" -gt "6" ]; then
-              sed -i 's|cscsci|normal|g' ${scheduler_script}
-            fi
+        sed -i 's|cscsci|normal|g' ${scheduler_script}
 	    sed -i 's|<NTASKS>|"'${NUM_RANKS}'"|g' ${scheduler_script}
-	    sed -i 's|<NTASKSPERNODE>|"24"|g' ${scheduler_script}
+	    sed -i 's|<NTASKSPERNODE>|"1"|g' ${scheduler_script}
 	fi
     fi
 fi
