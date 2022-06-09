@@ -2,7 +2,7 @@ import fv3core.stencils.dyn_core as dyn_core
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3core import DycoreState
+from fv3core import DycoreState, DynamicalCoreConfig
 from pace.stencils.testing import ParallelTranslate2PyState
 
 
@@ -160,17 +160,17 @@ class TranslateDynCore(ParallelTranslate2PyState):
             else:
                 setattr(state, name, value)
         acoustic_dynamics = dyn_core.AcousticDynamics(
-            communicator,
-            self.stencil_factory,
-            grid_data,
-            self.grid.damping_coefficients,
-            self.grid.grid_type,
-            self.grid.nested,
-            self.grid.stretched_grid,
-            self.namelist.acoustic_dynamics,
-            inputs["pfull"],
-            inputs["phis"],
-            state,
+            comm=communicator,
+            stencil_factory=self.stencil_factory,
+            grid_data=grid_data,
+            damping_coefficients=self.grid.damping_coefficients,
+            grid_type=self.grid.grid_type,
+            nested=self.grid.nested,
+            stretched_grid=self.grid.stretched_grid,
+            config=DynamicalCoreConfig.from_namelist(self.namelist).acoustic_dynamics,
+            pfull=inputs["pfull"],
+            phis=inputs["phis"],
+            state=state,
         )
         state.__dict__.update(acoustic_dynamics._temporaries)
         acoustic_dynamics(state, n_map=state.n_map, update_temporaries=False)
