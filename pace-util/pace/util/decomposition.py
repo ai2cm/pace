@@ -1,8 +1,10 @@
+import os
 from typing import Optional
+
+import yaml
+
 import pace.util.global_config as global_config
 from pace.util.partitioner import CubedSpherePartitioner
-import yaml
-import os
 
 
 def top_tile_rank_from_decomposition_string(
@@ -137,8 +139,9 @@ def set_distributed_caches(rank, size):
 
     # Check that we have all the file we need to early out in case
     # of issues.
-    from gt4py import config as gt_config
     import os
+
+    from gt4py import config as gt_config
 
     # Check layout
     layout_filepath = (
