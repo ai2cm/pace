@@ -30,7 +30,7 @@ from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
-from pace.dsl.dace.dace_config import DaCeOrchestration, DaceConfig
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
@@ -52,8 +52,8 @@ class StencilConfig(Hashable):
         self.backend_opts = self._get_backend_opts(self.device_sync, self.format_source)
         self._hash = self._compute_hash()
         # We need a DaceConfig to known our orchestration as part of the build system
-        # but we can't hash it very well (for now). The workaround is to make sure we have
-        # a default Python orchestrated config.
+        # but we can't hash it very well (for now). The workaround is to make
+        # sure we have a default Python orchestrated config.
         if self.dace_config is None:
             self.dace_config = DaceConfig(
                 communicator=None,
