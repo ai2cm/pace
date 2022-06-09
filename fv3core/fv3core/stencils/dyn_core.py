@@ -26,7 +26,6 @@ import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util as fv3util
 import pace.util.constants as constants
-from fv3core import DycoreState
 from fv3core._config import AcousticDynamicsConfig
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
