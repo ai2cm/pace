@@ -257,6 +257,8 @@ class Driver:
             grid_data=self.state.grid_data,
             metadata=self.state.dycore_state.ps.metadata,
         )
+        if config.diagnostics_config.output_initial_state:
+            self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time
 
@@ -294,19 +296,23 @@ class Driver:
                     ),
                 )
             else:
+                timestep_counter = 0
                 while self.time < end_time:
-                    self._step()
-                    self.time += self.config.timestep
-                    self.diagnostics.store(time=self.time, state=self.state)
-            self.performance_config.collect_performance()
+                    self.step(timestep=self.config.timestep)
+                    timestep_counter += 1
+                    if (
+                        timestep_counter
+                        % self.config.diagnostics_config.output_frequency
+                        == 0
+                    ):
+                        self.diagnostics.store(time=self.time, state=self.state)
 
-    def _step(self):
+    def step(self, timestep: timedelta):
         with self.performance_config.timestep_timer.clock("mainloop"):
-            self._step_dynamics(
-                self.state.dycore_state, self.performance_config.timestep_timer
-            )
-        if not self.config.disable_step_physics:
-            self._step_physics(timestep=self.config.timestep.total_seconds())
+            self._step_dynamics(timestep=timestep.total_seconds())
+            if not self.config.disable_step_physics:
+                self._step_physics(timestep=timestep.total_seconds())
+        self.time += timestep
         self.performance_config.collect_performance()
 
     def _step_dynamics(self, state: dace.constant, timer: dace.constant):
