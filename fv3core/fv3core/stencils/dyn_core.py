@@ -2,6 +2,7 @@ from typing import Dict, Optional, Sequence, Union
 
 import dace
 from dace.frontend.python.interface import nounroll as dace_nounroll
+import dataclasses
 from gt4py.gtscript import (
     __INLINED,
     BACKWARD,
@@ -251,7 +252,7 @@ class AcousticDynamics:
         @dace_inhibitor
         def start(self):
             if self._qtx_y_names is None:
-                if isinstance(self._state, DycoreState):
+                if dataclasses.is_dataclass(self._state):
                     self._updater.start(
                         [self._state.__getattribute__(x) for x in self._qtx_x_names]
                     )
@@ -260,7 +261,7 @@ class AcousticDynamics:
                 else:
                     raise NotImplementedError
             else:
-                if isinstance(self._state, DycoreState):
+                if dataclasses.is_dataclass(self._state):
                     self._updater.start(
                         [self._state.__getattribute__(x) for x in self._qtx_x_names],
                         [self._state.__getattribute__(y) for y in self._qtx_y_names],
