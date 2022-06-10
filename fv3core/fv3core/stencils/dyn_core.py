@@ -645,7 +645,6 @@ class AcousticDynamics:
         )
 
         # Halo updaters
-        # state.__dict__.update(self._temporaries)
         self._halo_updaters = AcousticDynamics._HaloUpdaters(
             comm, grid_indexing, stencil_factory.backend, state
         )
@@ -732,7 +731,7 @@ class AcousticDynamics:
         # NOTE: In Fortran model the halo update starts happens in fv_dynamics, not here
         self._halo_updaters.q_con__cappa.start()
         self._halo_updaters.delp__pt.start()
-        self._halo_updaters.u__v.update()
+        self._halo_updaters.u__v.start()
         self._halo_updaters.q_con__cappa.wait()
 
         if update_temporaries:
@@ -786,6 +785,7 @@ class AcousticDynamics:
                         self._ptop,
                     )
 
+            self._halo_updaters.u__v.wait()
             if not self.config.hydrostatic:
                 self._halo_updaters.w.wait()
 
@@ -974,7 +974,7 @@ class AcousticDynamics:
                 # [DaCe] this should be a reuse of
                 #        self._halo_updaters.u__v but it creates
                 #        parameter generation issues, and therefore has been duplicated
-                self._halo_updaters.u__v.update()
+                self._halo_updaters.u__v.start()
             else:
                 if self.config.grid_type < 4:
                     self._halo_updaters.interface_uc__vc.interface()
