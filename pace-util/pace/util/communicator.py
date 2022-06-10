@@ -569,6 +569,72 @@ class TileCommunicator(Communicator):
     def tile(self):
         return self
 
+    def start_halo_update(
+        self, quantity: Union[Quantity, List[Quantity]], n_points: int
+    ) -> HaloUpdater:
+        """Start an asynchronous halo update on a quantity.
+
+        Args:
+            quantity: the quantity to be updated
+            n_points: how many halo points to update, starting from the interior
+
+        Returns:
+            request: an asynchronous request object with a .wait() method
+        """
+        if self.partitioner.layout[0] < 3 or self.partitioner.layout[1] < 3:
+            raise NotImplementedError()
+        else:
+            return super().start_halo_update(quantity, n_points)
+
+    def start_vector_halo_update(
+        self,
+        x_quantity: Union[Quantity, List[Quantity]],
+        y_quantity: Union[Quantity, List[Quantity]],
+        n_points: int,
+    ) -> HaloUpdater:
+        """Start an asynchronous halo update of a horizontal vector quantity.
+
+        Assumes the x and y dimension indices are the same between the two quantities.
+
+        Args:
+            x_quantity: the x-component quantity to be halo updated
+            y_quantity: the y-component quantity to be halo updated
+            n_points: how many halo points to update, starting at the interior
+
+        Returns:
+            request: an asynchronous request object with a .wait() method
+        """
+        if self.partitioner.layout[0] < 3 or self.partitioner.layout[1] < 3:
+            raise NotImplementedError()
+        else:
+            return super().start_vector_halo_update(x_quantity, y_quantity, n_points)
+
+    def start_synchronize_vector_interfaces(
+        self, x_quantity: Quantity, y_quantity: Quantity
+    ) -> HaloUpdateRequest:
+        """
+        Synchronize shared points at the edges of a vector interface variable.
+
+        Sends the values on the south and west edges to overwrite the values on adjacent
+        subtiles. Vector must be defined on the Arakawa C grid.
+
+        For interface variables, the edges of the tile are computed on both ranks
+        bordering that edge. This routine copies values across those shared edges
+        so that both ranks have the same value for that edge. It also handles any
+        rotation of vector quantities needed to move data across the edge.
+
+        Args:
+            x_quantity: the x-component quantity to be synchronized
+            y_quantity: the y-component quantity to be synchronized
+
+        Returns:
+            request: an asynchronous request object with a .wait() method
+        """
+        if self.partitioner.layout[0] < 3 or self.partitioner.layout[1] < 3:
+            raise NotImplementedError()
+        else:
+            return super().start_synchronize_vector_interfaces(x_quantity, y_quantity)
+
 
 class CubedSphereCommunicator(Communicator):
     """Performs communications within a cubed sphere"""
