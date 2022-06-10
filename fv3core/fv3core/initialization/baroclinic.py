@@ -439,7 +439,7 @@ def init_baroclinic_state(
     hydrostatic: bool,
     moist_phys: bool,
     comm: fv3util.CubedSphereCommunicator,
-):
+) -> DycoreState:
     """
     Create a DycoreState object with quantities initialized to the Jablonowski &
     Williamson baroclinic test case perturbation applied to the cubed sphere grid.

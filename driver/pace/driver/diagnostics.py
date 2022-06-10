@@ -37,10 +37,16 @@ class DiagnosticsConfig:
     Attributes:
         path: location to save diagnostics if given, otherwise no diagnostics
             will be stored
+        output_frequency: frequency in which diagnostics writes output, defaults
+            to every timestep
+        output_initial_state: flag to determine if the first output should be the
+            initial state of the model before timestepping
         names: diagnostics to save
     """
 
     path: Optional[str] = None
+    output_frequency: int = 1
+    output_initial_state: bool = False
     names: List[str] = dataclasses.field(default_factory=list)
 
     def __post_init__(self):

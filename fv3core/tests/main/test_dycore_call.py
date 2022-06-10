@@ -1,7 +1,10 @@
-import contextlib
+import copy
 import os
 import unittest.mock
 from typing import Any, List, Tuple
+
+import gt4py.storage.storage
+import numpy as np
 
 import fv3core
 import fv3core._config
@@ -14,37 +17,6 @@ from pace.util.null_comm import NullComm
 
 
 DIR = os.path.abspath(os.path.dirname(__file__))
-
-
-@contextlib.contextmanager
-def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
-    # TODO: lagrangian contributions currently cause an out of bounds iteration
-    # when halo updates are disabled. Fix that bug and remove this decorator.
-    # Probably requires an update to gt4py (currently v36).
-    def do_nothing(*args, **kwargs):
-        pass
-
-    original_attributes = {}
-    for obj in (
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_delz,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_pt,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_u,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_v,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_w,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_delz,
-    ):
-        original_attributes[obj] = obj._lagrangian_contributions
-        obj._lagrangian_contributions = do_nothing  # type: ignore
-    for (
-        obj
-    ) in dynamical_core._lagrangian_to_eulerian_obj._mapn_tracer._list_of_remap_objects:
-        original_attributes[obj] = obj._lagrangian_contributions
-        obj._lagrangian_contributions = do_nothing  # type: ignore
-    try:
-        yield
-    finally:
-        for obj, original in original_attributes.items():
-            obj._lagrangian_contributions = original
 
 
 def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
@@ -162,6 +134,89 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     return dycore, args
 
 
+def assert_same_temporaries(dict1: dict, dict2: dict):
+    diffs = _assert_same_temporaries(dict1, dict2)
+    if len(diffs) > 0:
+        raise AssertionError(f"{len(diffs)} differing temporaries found: {diffs}")
+
+
+def _assert_same_temporaries(dict1: dict, dict2: dict) -> List[str]:
+    differences = []
+    for attr in dict1:
+        attr1 = dict1[attr]
+        attr2 = dict2[attr]
+        if isinstance(attr1, np.ndarray):
+            try:
+                np.testing.assert_almost_equal(
+                    attr1, attr2, err_msg=f"{attr} not equal"
+                )
+            except AssertionError:
+                differences.append(attr)
+        else:
+            sub_differences = _assert_same_temporaries(attr1, attr2)
+            for d in sub_differences:
+                differences.append(f"{attr}.{d}")
+    return differences
+
+
+def copy_temporaries(obj, max_depth: int) -> dict:
+    temporaries = {}
+    attrs = [a for a in dir(obj) if not a.startswith("__")]
+    for attr_name in attrs:
+        try:
+            attr = getattr(obj, attr_name)
+        except AttributeError:
+            attr = None
+        if isinstance(attr, (gt4py.storage.storage.Storage, pace.util.Quantity)):
+            temporaries[attr_name] = copy.deepcopy(np.asarray(attr.data))
+        elif attr.__class__.__module__.split(".")[0] in ("fv3core", "pace"):
+            if max_depth > 0:
+                sub_temporaries = copy_temporaries(attr, max_depth - 1)
+                if len(sub_temporaries) > 0:
+                    temporaries[attr_name] = sub_temporaries
+    return temporaries
+
+
+def test_temporaries_are_deterministic():
+    """
+    This is a precursor test to the next one, ensuring that two
+    identically-initialized dycores called on identically-initialized
+    states produce identical temporaries.
+
+    This will fail if there is non-determinism in the initialization,
+    for example from using `empty` instead of `zeros` to initialize data.
+    """
+    dycore1, args1 = setup_dycore()
+    dycore2, args2 = setup_dycore()
+
+    dycore1.step_dynamics(*args1)
+    first_temporaries = copy_temporaries(dycore1, max_depth=10)
+    assert len(first_temporaries) > 0
+    dycore2.step_dynamics(*args2)
+    second_temporaries = copy_temporaries(dycore2, max_depth=10)
+    assert_same_temporaries(second_temporaries, first_temporaries)
+
+
+def test_call_on_same_state_same_dycore_produces_same_temporaries():
+    """
+    Assuming the precursor test passes, this test indicates whether
+    the dycore retains and re-uses internal state on subsequent calls.
+    If it does not, then subsequent calls on identical input should
+    produce identical results.
+    """
+    dycore, state_1 = setup_dycore()
+    _, state_2 = setup_dycore()
+
+    # state_1 and state_2 are identical, if the dycore is stateless then they
+    # should produce identical dycore final states when used to call
+    dycore.step_dynamics(*state_1)
+    first_temporaries = copy_temporaries(dycore, max_depth=10)
+    assert len(first_temporaries) > 0
+    dycore.step_dynamics(*state_2)
+    second_temporaries = copy_temporaries(dycore, max_depth=10)
+    assert_same_temporaries(second_temporaries, first_temporaries)
+
+
 def test_call_does_not_allocate_storages():
     dycore, args = setup_dycore()
 
@@ -170,8 +225,7 @@ def test_call_does_not_allocate_storages():
 
     with unittest.mock.patch("gt4py.storage.storage.zeros", new=error_func):
         with unittest.mock.patch("gt4py.storage.storage.empty", new=error_func):
-            with no_lagrangian_contributions(dynamical_core=dycore):
-                dycore.step_dynamics(*args)
+            dycore.step_dynamics(*args)
 
 
 def test_call_does_not_define_stencils():
@@ -181,5 +235,4 @@ def test_call_does_not_define_stencils():
         raise AssertionError("call not allowed")
 
     with unittest.mock.patch("gt4py.gtscript.stencil", new=error_func):
-        with no_lagrangian_contributions(dynamical_core=dycore):
-            dycore.step_dynamics(*args)
+        dycore.step_dynamics(*args)
