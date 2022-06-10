@@ -348,13 +348,6 @@ class Communicator(abc.ABC):
         halo_updater.start(quantities)
         return halo_updater
 
-    def finish_halo_update(self, quantity: Quantity, n_points: int):
-        """Deprecated, do not use."""
-        raise NotImplementedError(
-            "finish_halo_update has been removed, use .wait() on the request object "
-            "returned by start_halo_update"
-        )
-
     def vector_halo_update(
         self,
         x_quantity: Union[Quantity, List[Quantity]],
