@@ -2,8 +2,6 @@ import functools
 import os
 from typing import Optional
 
-import pace.util as util
-
 
 def getenv_bool(name: str, default: str) -> bool:
     indicator = os.getenv(name, default).title()
