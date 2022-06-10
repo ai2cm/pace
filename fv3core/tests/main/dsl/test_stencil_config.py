@@ -1,5 +1,6 @@
 import pytest
 
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.stencil import StencilConfig
 
 
@@ -14,12 +15,18 @@ def test_same_config_equal(
     format_source: bool,
     device_sync: bool,
 ):
+    dace_config = DaceConfig(
+        None,
+        backend,
+        DaCeOrchestration.Python,
+    )
     config = StencilConfig(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
     assert config == config
 
@@ -29,6 +36,7 @@ def test_same_config_equal(
         validate_args=validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
     assert config == same_config
 
@@ -44,12 +52,18 @@ def test_different_backend_not_equal(
     format_source: bool,
     device_sync: bool,
 ):
+    dace_config = DaceConfig(
+        None,
+        backend,
+        DaCeOrchestration.Python,
+    )
     config = StencilConfig(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
 
     different_config = StencilConfig(
@@ -58,6 +72,7 @@ def test_different_backend_not_equal(
         validate_args=validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
     assert config != different_config
 
@@ -73,12 +88,18 @@ def test_different_rebuild_not_equal(
     format_source: bool,
     device_sync: bool,
 ):
+    dace_config = DaceConfig(
+        None,
+        backend,
+        DaCeOrchestration.Python,
+    )
     config = StencilConfig(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
 
     different_config = StencilConfig(
@@ -87,6 +108,7 @@ def test_different_rebuild_not_equal(
         validate_args=validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
     assert config != different_config
 
@@ -102,12 +124,18 @@ def test_different_device_sync_not_equal(
     format_source: bool,
     device_sync: bool,
 ):
+    dace_config = DaceConfig(
+        None,
+        backend,
+        DaCeOrchestration.Python,
+    )
     config = StencilConfig(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
 
     different_config = StencilConfig(
@@ -116,6 +144,7 @@ def test_different_device_sync_not_equal(
         validate_args=validate_args,
         format_source=format_source,
         device_sync=not device_sync,
+        dace_config=dace_config,
     )
     assert config != different_config
 
@@ -131,12 +160,18 @@ def test_different_validate_args_not_equal(
     format_source: bool,
     device_sync: bool,
 ):
+    dace_config = DaceConfig(
+        None,
+        backend,
+        DaCeOrchestration.Python,
+    )
     config = StencilConfig(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
 
     different_config = StencilConfig(
@@ -145,6 +180,7 @@ def test_different_validate_args_not_equal(
         validate_args=not validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
     assert config != different_config
 
@@ -160,12 +196,18 @@ def test_different_format_source_not_equal(
     format_source: bool,
     device_sync: bool,
 ):
+    dace_config = DaceConfig(
+        None,
+        backend,
+        DaCeOrchestration.Python,
+    )
     config = StencilConfig(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
         format_source=format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
 
     different_config = StencilConfig(
@@ -174,5 +216,6 @@ def test_different_format_source_not_equal(
         validate_args=validate_args,
         format_source=not format_source,
         device_sync=device_sync,
+        dace_config=dace_config,
     )
     assert config != different_config
