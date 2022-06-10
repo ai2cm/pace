@@ -68,14 +68,6 @@ class TranslateFortranData2Py:
         utils.k_split_run(self.compute_func, inputs, kstarts, column_info)
         return self.slice_output(inputs)
 
-    def collect_input_data(self, serializer, savepoint):
-        input_data = {}
-        for varname in (
-            self.serialnames(self.in_vars["data_vars"]) + self.in_vars["parameters"]
-        ):
-            input_data[varname] = read_serialized_data(serializer, savepoint, varname)
-        return input_data
-
     def make_storage_data(
         self,
         array: np.ndarray,

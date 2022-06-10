@@ -6,6 +6,8 @@ latest
 
 Major changes:
 - Added the following attributes/methods to Communicator: `tile`, `halo_update`, `boundaries`, `start_halo_update`, `vector_halo_update`, `start_vector_halo_update`, `synchronize_vector_interfaces`, `start_synchronize_vector_interfaces`, `get_scalar_halo_updater`, and `get_vector_halo_updater`
+- Added Checkpointer and NullCheckpointer classes
+- Added SnapshotCheckpointer
 
 Minor changes:
 - Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator
@@ -14,9 +16,6 @@ v0.9.0
 ------
 
 Major changes:
-- Added Checkpointer and NullCheckpointer classes
-
-Minor changes:
 - Modified `pace.util.Quantity.transpose` to retain attributes, and loosened `pace.util.ZarrMonitor.store` requirements on attribute consistency, both to ease fv3net integration issues not addressed in v0.8.0
 
 v0.8.0

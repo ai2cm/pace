@@ -1,6 +1,10 @@
+from typing import Any, Dict
+
 import numpy as np
 
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from fv3core.testing import MapSingleFactory
 from pace.stencils.testing import (
     TranslateDycoreFortranData2Py,
@@ -29,7 +33,12 @@ class TranslateSingleJ(TranslateDycoreFortranData2Py):
 
 
 class TranslateMap1_PPM_2d(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.compute_func = MapSingleFactory(stencil_factory)
         self.in_vars["data_vars"] = {
@@ -39,7 +48,7 @@ class TranslateMap1_PPM_2d(TranslateDycoreFortranData2Py):
             "qs": {"serialname": "ws_1d", "kstart": grid.is_, "axis": 0},
         }
         self.in_vars["parameters"] = ["j_2d", "i1", "i2", "mode", "kord"]
-        self.out_vars = {"var_inout": {}}
+        self.out_vars: Dict[str, Any] = {"var_inout": {}}
         self.max_error = 5e-13
         self.write_vars = ["qs"]
         self.nj = self.maxshape[1]
@@ -99,7 +108,12 @@ class TranslateMap1_PPM_2d(TranslateDycoreFortranData2Py):
 
 
 class TranslateMap1_PPM_2d_3(TranslateMap1_PPM_2d):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"]["pe1"]["serialname"] = "pe1_2"
         self.in_vars["data_vars"]["pe2"]["serialname"] = "pe2_2"
@@ -114,7 +128,12 @@ class TranslateMap1_PPM_2d_3(TranslateMap1_PPM_2d):
 
 
 class TranslateMap1_PPM_2d_2(TranslateMap1_PPM_2d):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"]["pe1"]["serialname"] = "pe1_2"
         self.in_vars["data_vars"]["pe2"]["serialname"] = "pe2_2"

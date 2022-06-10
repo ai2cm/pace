@@ -1,10 +1,19 @@
+from typing import Any, Dict
+
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateNeg_Adj3(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "qvapor": {},
@@ -20,7 +29,7 @@ class TranslateNeg_Adj3(TranslateDycoreFortranData2Py):
             "peln": {"istart": grid.is_, "jstart": grid.js, "kaxis": 1},
         }
         self.in_vars["parameters"] = []
-        self.out_vars = {
+        self.out_vars: Dict[str, Any] = {
             "qvapor": {},
             "qliquid": {},
             "qice": {},

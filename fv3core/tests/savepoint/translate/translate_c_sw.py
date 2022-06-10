@@ -1,8 +1,12 @@
+import pace.dsl
+import pace.util
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
-def get_c_sw_instance(grid, namelist, stencil_factory):
+def get_c_sw_instance(
+    grid, namelist: pace.util.Namelist, stencil_factory: pace.dsl.StencilFactory
+):
     return CGridShallowWaterDynamics(
         stencil_factory,
         grid.grid_data,
@@ -60,7 +64,12 @@ def compute_vorticitytransport_cgrid(
 
 
 class TranslateC_SW(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         cgrid_shallow_water_lagrangian_dynamics = get_c_sw_instance(
             grid, namelist, stencil_factory
@@ -101,7 +110,12 @@ class TranslateC_SW(TranslateDycoreFortranData2Py):
 
 
 class TranslateDivergenceCorner(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.max_error = 9e-10
         self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(
@@ -154,7 +168,12 @@ class TranslateDivergenceCorner(TranslateDycoreFortranData2Py):
 
 
 class TranslateCirculation_Cgrid(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.max_error = 5e-9
         self.cgrid_sw_lagrangian_dynamics = get_c_sw_instance(
@@ -191,7 +210,12 @@ class TranslateCirculation_Cgrid(TranslateDycoreFortranData2Py):
 
 
 class TranslateVorticityTransport_Cgrid(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         cgrid_sw_lagrangian_dynamics = get_c_sw_instance(
             grid, namelist, stencil_factory

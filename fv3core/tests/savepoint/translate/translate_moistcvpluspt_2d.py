@@ -1,6 +1,8 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.stencils.moist_cv as moist_cv
+import pace.dsl
+import pace.util
 from pace.dsl.typing import FloatField
 from pace.stencils.testing import TranslateDycoreFortranData2Py, pad_field_in_j
 
@@ -41,7 +43,12 @@ def moist_pt(
 
 
 class TranslateMoistCVPlusPt_2d(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         self.compute_func = self.stencil_factory.from_origin_domain(
