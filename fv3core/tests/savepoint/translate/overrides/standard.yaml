@@ -5,7 +5,7 @@ CS_Profile_2d:
   - backend: cuda
     max_error: 2.5e-9
     near_zero: 1.5e-14
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 2.5e-9
     near_zero: 1.5e-14
 
@@ -13,7 +13,7 @@ CS_Profile_2d-2:
   - backend: gt:gpu
     max_error: 3e-8
     near_zero: 1.5e-14
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 3e-8
     near_zero: 1.5e-14
   - backend: cuda
@@ -23,7 +23,7 @@ CS_Profile_2d-2:
 Fillz:
   - backend: gt:gpu
     max_error: 5e-6
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 5e-6
 
 MapN_Tracer_2d:
@@ -32,7 +32,7 @@ MapN_Tracer_2d:
     near_zero: 1e-17
     ignore_near_zero_errors:
       - qtracers
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 2e-7
     near_zero: 1e-17
     ignore_near_zero_errors:
@@ -43,7 +43,7 @@ MapN_Tracer_2d:
 NH_P_Grad:
   - backend: gtcuda
     max_error: 2e-9
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 6e-11
 
 Riem_Solver3:
@@ -54,9 +54,9 @@ Riem_Solver3:
   - platform: metal
     backend: numpy
     max_error: 1e-11 # 48_6ranks
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 5e-6
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 5e-6
 
 Remapping:
@@ -66,7 +66,7 @@ Remapping:
     ignore_near_zero_errors:
       - q_con
       - tracers
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 1e-9
     near_zero: 5e-6
     ignore_near_zero_errors:
@@ -84,12 +84,12 @@ UpdateDzC:
     near_zero: 4.5e-15
     ignore_near_zero_errors:
       - ws
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 5e-10
     near_zero: 4.5e-15
     ignore_near_zero_errors:
       - ws
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 3e-13
 
 UpdateDzD:
@@ -101,11 +101,11 @@ UpdateDzD:
     max_error: 5e-10
     ignore_near_zero_errors:
       - wsd
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 5e-10
     ignore_near_zero_errors:
       - wsd
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 5e-10
     ignore_near_zero_errors:
       - wsd
@@ -113,7 +113,7 @@ UpdateDzD:
 FVSubgridZ:
   - backend: gt:gpu
     max_error: 1e-8
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 1e-8
   - backend: cuda
     max_error: 1e-8
@@ -125,10 +125,10 @@ DynCore:
  - backend: cuda
    ignore_near_zero_errors:
      - wsd
- - backend: gtc:dace
+ - backend: dace:cpu
    ignore_near_zero_errors:
      - wsd
- - backend: gtc:dace:gpu
+ - backend: dace:gpu
    ignore_near_zero_errors:
      - wsd
 
@@ -137,13 +137,13 @@ Tracer2D1L:
    max_error: 1e-9
  - backend: cuda
    max_error: 1e-9
- - backend: gtc:dace
+ - backend: dace:cpu
    ignore_near_zero_errors:
      tracers: 1e-9
- - backend: gtc:dace:gpu
+ - backend: dace:gpu
    ignore_near_zero_errors:
      tracers: 1e-9
- - backend: gtc:gt:cpu_ifirst
+ - backend: gt:cpu_ifirst
    ignore_near_zero_errors:
      tracers: 1e-15
 
@@ -192,37 +192,37 @@ FVDynamics:
   - max_error: 5e-5 # 48_6ranks using metric terms
 
 DivergenceDamping:
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 1e-9
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 1e-9
 
 DelnFlux:
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 2e-13
-  - backend: gtc:dace:gpu
+  - backend: dace:gpu
     max_error: 7e-13
 
 Del2Cubed:
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 8e-12
 
 FvTp2d:
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 2e-13
 
 FxAdv:
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 5e-12
 
 XPPM:
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 2e-12
 
 YPPM:
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 2e-13
 
 A2B_Ord4:
-  - backend: gtc:dace
+  - backend: dace:cpu
     max_error: 1e-13

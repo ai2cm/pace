@@ -42,14 +42,12 @@ class DiagnosticsConfig:
         output_initial_state: flag to determine if the first output should be the
             initial state of the model before timestepping
         names: diagnostics to save
-        timestep_io_frequency: number of time steps to do a write
     """
 
     path: Optional[str] = None
     output_frequency: int = 1
     output_initial_state: bool = False
     names: List[str] = dataclasses.field(default_factory=list)
-    timestep_io_frequency: int = 1
 
     def __post_init__(self):
         if len(self.names) > 0 and self.path is None:

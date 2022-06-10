@@ -295,7 +295,7 @@ class Driver:
                     state=self.state.dycore_state,
                     time_steps=time_steps,
                     time_step_io_freq=(
-                        self.config.diagnostics_config.timestep_io_frequency,
+                        self.config.diagnostics_config.output_frequency,
                     ),
                 )
             else:
