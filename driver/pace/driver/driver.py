@@ -1,12 +1,10 @@
 import dataclasses
 import functools
 import logging
-import os
 from datetime import datetime, timedelta
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import dacite
-import yaml
 
 import fv3core
 import fv3gfs.physics
@@ -59,6 +57,7 @@ class DriverConfig:
             in a later commit.
         save_restart: whether to save the state output as restart files at
             cleanup time
+        intermediate_restart: list of time steps to save intermediate restart files
     """
 
     stencil_config: pace.dsl.StencilConfig
@@ -89,6 +88,7 @@ class DriverConfig:
     dycore_only: bool = False
     disable_step_physics: bool = False
     save_restart: bool = False
+    intermediate_restart: List[int] = dataclasses.field(default_factory=list)
 
     @functools.cached_property
     def timestep(self) -> timedelta:
@@ -224,6 +224,10 @@ class Driver:
                 partitioner=communicator.partitioner,
                 comm=self.comm,
             )
+            self.restart = pace.driver.Restart(
+                save_restart=self.config.save_restart,
+                intermediate_restart=self.config.intermediate_restart,
+            )
         log_subtile_location(
             partitioner=communicator.partitioner.tile, rank=communicator.rank
         )
@@ -247,6 +251,13 @@ class Driver:
                     == 0
                 ):
                     self.diagnostics.store(time=self.time, state=self.state)
+                if (
+                    self.restart.save_intermediate_restart
+                    and timestep_counter in self.config.intermediate_restart
+                ):
+                    self._write_restart_files(
+                        restart_path=f"RESTART_{timestep_counter}"
+                    )
 
     def step(self, timestep: timedelta):
         with self.performance_config.timestep_timer.clock("mainloop"):
@@ -289,22 +300,18 @@ class Driver:
             self.config.dt_atmos,
         )
 
-    def _write_restart_files(self):
-        self.state.save_state(comm=self.comm)
-        if self.comm.Get_rank() == 0:
-            config_dict = dataclasses.asdict(self.config)
-            config_dict["performance_config"].pop("times_per_step", None)
-            config_dict["performance_config"].pop("hits_per_step", None)
-            config_dict["performance_config"].pop("timestep_timer", None)
-            config_dict["performance_config"].pop("total_timer", None)
-            for field in ["dt_atmos", "layout", "npx", "npy", "npz", "ntiles"]:
-                config_dict["dycore_config"].pop(field, None)
-                config_dict["physics_config"].pop(field, None)
-            config_dict["initialization"]["type"] = "restart"
-            config_dict["initialization"]["config"]["start_time"] = self.time
-            config_dict["initialization"]["config"]["path"] = f"{os.getcwd()}/RESTART"
-            with open("RESTART/restart.yaml", "w") as file:
-                yaml.safe_dump(config_dict, file)
+    def _write_restart_files(self, restart_path="RESTART"):
+        self.restart.save_state_as_restart(
+            state=self.state,
+            comm=self.comm,
+            restart_path=restart_path,
+        )
+        self.restart.write_restart_config(
+            comm=self.comm,
+            time=self.time,
+            driver_config=self.config,
+            restart_path=restart_path,
+        )
 
     def cleanup(self):
         logger.info("cleaning up driver")
