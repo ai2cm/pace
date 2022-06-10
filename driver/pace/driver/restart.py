@@ -13,6 +13,7 @@ from .state import DriverState
 class Restart:
     save_restart: bool = False
     intermediate_restart: List[int] = dataclasses.field(default_factory=list)
+    save_intermediate_restart: bool = False
 
     def __post_init__(self):
         if len(self.intermediate_restart) > 0:
