@@ -3,6 +3,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import a1, a2, lagrange_x_func, lagrange_y_func
+from pace.dsl.dace.orchestrate import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils import corners
@@ -384,6 +385,8 @@ class DGrid2AGrid2CGridVectors:
         grid_type: int,
         dord4: bool,
     ):
+        orchestrate(self, config=stencil_factory.config.dace_config)
+
         grid_indexing = stencil_factory.grid_indexing
         self._cosa_s = grid_data.cosa_s
         self._cosa_u = grid_data.cosa_u

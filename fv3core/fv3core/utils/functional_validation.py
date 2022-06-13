@@ -11,6 +11,15 @@ def get_subset_func(
     dims: Sequence[str],
     n_halo: Tuple[Tuple[int, int], Tuple[int, int]] = ((0, 0), (0, 0)),
 ) -> Callable[[np.ndarray], np.ndarray]:
+    """
+    Args:
+        grid_indexing: configuration for domain and halo indexing
+        dims: dimensions
+        n_halo: number of halo points to retain
+
+    Returns:
+        subset: a subset function
+    """
     origin, domain = grid_indexing.get_origin_domain(dims)
     i_start = origin[0] - n_halo[0][0]
     i_end = origin[0] + domain[0] + n_halo[0][1]
@@ -31,10 +40,16 @@ def get_set_nan_func(
     subset = get_subset_func(grid_indexing=grid_indexing, dims=dims, n_halo=n_halo)
 
     def set_nans(data):
-        safe = copy.deepcopy(data)
-        data[:] = np.nan
-        # data_subset is a view of data, so modifying data_subset modifies data
-        data_subset = subset(data)
-        data_subset[:] = subset(safe)
+        try:
+            safe = copy.deepcopy(data)
+            data[:] = np.nan
+            # data_subset is a view of data, so modifying data_subset modifies data
+            data_subset = subset(data)
+            data_subset[:] = subset(safe)
+        except TypeError:
+            safe = copy.deepcopy(data.storage)
+            data.storage[:] = np.nan
+            data_subset = subset(data.storage)
+            data_subset[:] = subset(safe)
 
     return set_nans

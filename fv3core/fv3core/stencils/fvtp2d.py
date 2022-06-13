@@ -141,7 +141,10 @@ class FiniteVolumeTransport:
 
         def make_storage():
             return utils.make_storage_from_shape(
-                idx.max_shape, origin=origin, backend=stencil_factory.backend
+                idx.max_shape,
+                origin=origin,
+                backend=stencil_factory.backend,
+                is_temporary=False,
             )
 
         self._q_advected_y = make_storage()
@@ -150,7 +153,6 @@ class FiniteVolumeTransport:
         self._q_y_advected_mean = make_storage()
         self._q_advected_x_y_advected_mean = make_storage()
         self._q_advected_y_x_advected_mean = make_storage()
-
         self._nord = nord
         self._damp_c = damp_c
         ord_outer = hord
@@ -167,8 +169,9 @@ class FiniteVolumeTransport:
                 damp_c=self._damp_c,
             )
         else:
+            # This triggers dace parsing error:
+            # self.delnflux = None
             self._do_delnflux = False
-            self.delnflux = None
 
         self._copy_corners_y: corners.CopyCorners = corners.CopyCorners(
             "y", stencil_factory

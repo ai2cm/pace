@@ -8,7 +8,7 @@ import xarray as xr
 from .grid import Grid
 
 
-def dataset_to_dict(ds: xr.Dataset) -> Dict[str, np.ndarray]:
+def dataset_to_dict(ds: xr.Dataset) -> Dict[str, Union[np.ndarray, float, int]]:
     return {
         name: _process_if_scalar(array.values) for name, array in ds.data_vars.items()
     }

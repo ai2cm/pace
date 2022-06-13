@@ -2,8 +2,46 @@ import numpy as np
 
 import pace.dsl.gt4py_utils as utils
 from fv3gfs.physics import PhysicsConfig
+from pace.dsl.stencil import GridIndexing
 from pace.stencils.testing.parallel_translate import ParallelTranslate2Py
 from pace.stencils.testing.translate import TranslateFortranData2Py
+
+
+def transform_dwind_serialized_data(data, grid_indexing: GridIndexing, backend: str):
+    max_shape = grid_indexing.domain_full(add=(1, 1, 1))
+    # convert single element numpy arrays to scalars
+    if data.size == 1:
+        data = data.item()
+    elif len(data.shape) < 2:
+        start1 = 0
+        size1 = data.shape[0]
+        padded_data = np.zeros(max_shape[2])
+        padded_data[start1 : start1 + size1] = data
+        data = padded_data
+    elif len(data.shape) == 2:
+        padded_data = np.zeros(max_shape[0:2])
+        start1, start2 = (0, 0)
+        size1, size2 = data.shape
+        padded_data[start1 : start1 + size1, start2 : start2 + size2] = data
+        data = padded_data
+    else:
+        start1, start2, start3 = 0, 0, 0
+        size1, size2, size3 = data.shape
+        padded_data = np.zeros(max_shape)
+        padded_data[
+            start1 : start1 + size1,
+            start2 : start2 + size2,
+            start3 : start3 + size3,
+        ] = data
+        data = padded_data
+    if isinstance(data, np.ndarray):
+        data = utils.make_storage_data(
+            data=data,
+            origin=grid_indexing.origin,
+            shape=data.shape,
+            backend=backend,
+        )
+    return data
 
 
 class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
@@ -11,10 +49,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
         super().__init__(grid, stencil_factory)
         self.namelist = PhysicsConfig.from_namelist(namelist)
 
-    def read_physics_serialized_data(
-        self, serializer, savepoint, variable, roll_zero, index_order
-    ):
-        data = serializer.read(variable, savepoint)
+    def transform_physics_serialized_data(self, data, roll_zero, index_order):
         if isinstance(data, np.ndarray):
             n_dim = len(data.shape)
             cn = int(np.sqrt(data.shape[0]))
@@ -38,8 +73,7 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             rearranged = np.roll(rearranged, -1, axis=-1)
         return rearranged
 
-    def read_microphysics_serialized_data(self, serializer, savepoint, variable):
-        data = serializer.read(variable, savepoint)
+    def transform_microphysics_serialized_data(self, data):
         if isinstance(data, np.ndarray):
             n_dim = len(data.shape)
             cn = int(np.sqrt(data.shape[0]))
@@ -55,52 +89,12 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             return data
         return rearranged
 
-    def read_dycore_serialized_data(self, serializer, savepoint, variable):
-        data = serializer.read(variable, savepoint)
-        if len(data.flatten()) == 1:
-            return data[0]
-        return data
-
-    def read_dwind_serialized_data(self, serializer, savepoint, varname):
-        max_shape = self.stencil_factory.grid_indexing.domain_full(add=(1, 1, 1))
-        input_data = {}
-        data = serializer.read(varname, savepoint)
-
-        # convert single element numpy arrays to scalars
-        if data.size == 1:
-            data = data.item()
-            input_data[varname] = data
-            return input_data
-        elif len(data.shape) < 2:
-            start1 = 0
-            size1 = data.shape[0]
-            input_data[varname] = np.zeros(max_shape[2])
-            input_data[varname][start1 : start1 + size1] = data
-
-        elif len(data.shape) == 2:
-            input_data[varname] = np.zeros(max_shape[0:2])
-            start1, start2 = (0, 0)
-            size1, size2 = data.shape
-            input_data[varname][start1 : start1 + size1, start2 : start2 + size2] = data
-        else:
-            start1, start2, start3 = self.grid.full_origin()
-            size1, size2, size3 = data.shape
-            input_data[varname] = np.zeros(max_shape)
-            input_data[varname][
-                start1 : start1 + size1,
-                start2 : start2 + size2,
-                start3 : start3 + size3,
-            ] = data
-        input_data[varname] = utils.make_storage_data(
-            data=input_data[varname],
-            origin=self.grid.full_origin(),
-            shape=input_data[varname].shape,
-            backend=self.stencil_factory.backend,
+    def transform_dwind_serialized_data(self, data):
+        return transform_dwind_serialized_data(
+            data, self.stencil_factory.grid_indexing, self.stencil_factory.backend
         )
-        return input_data
 
-    def collect_input_data(self, serializer, savepoint):
-        input_data = {}
+    def make_storage_data_input_vars(self, inputs, storage_vars=None):
         for varname in [*self.in_vars["data_vars"]]:
             info = self.in_vars["data_vars"][varname]
             roll_zero = info["in_roll_zero"] if "in_roll_zero" in info else False
@@ -113,28 +107,20 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             dwind_format = info["dwind"] if "dwind" in info else False
             index_order = info["order"] if "order" in info else "C"
             if dycore_format:
-                input_data[serialname] = self.read_dycore_serialized_data(
-                    serializer, savepoint, serialname
-                )
+                pass
             elif microph_format:
-                input_data[serialname] = self.read_microphysics_serialized_data(
-                    serializer, savepoint, serialname
+                inputs[serialname] = self.transform_microphysics_serialized_data(
+                    inputs[serialname]
                 )
             elif dwind_format:
-                dwind_data_dict = self.read_dwind_serialized_data(
-                    serializer, savepoint, serialname
+                inputs[serialname] = self.transform_dwind_serialized_data(
+                    inputs[serialname]
                 )
-                for dvar in dwind_data_dict.keys():
-                    input_data[dvar] = dwind_data_dict[dvar]
             else:
-                input_data[serialname] = self.read_physics_serialized_data(
-                    serializer, savepoint, serialname, roll_zero, index_order
+                inputs[serialname] = self.transform_physics_serialized_data(
+                    inputs[serialname], roll_zero, index_order
                 )
-        for varname in self.in_vars["parameters"]:
-            input_data[varname] = self.read_dycore_serialized_data(
-                serializer, savepoint, varname
-            )
-        return input_data
+        super().make_storage_data_input_vars(inputs, storage_vars=storage_vars)
 
     def slice_output(self, inputs, out_data=None):
         if out_data is None:

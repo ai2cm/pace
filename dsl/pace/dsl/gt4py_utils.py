@@ -234,6 +234,9 @@ def make_storage_from_shape(
     backend: str,
     dtype: DTypes = np.float64,
     mask: Optional[Tuple[bool, bool, bool]] = None,
+    # [TODO]: temporary storage should be lowered properly to DaCe
+    # and added elsewhere (e.g., remapping)
+    is_temporary: bool = False,
 ) -> Field:
     """Create a new gt4py storage of a given shape filled with zeros.
 
@@ -268,6 +271,8 @@ def make_storage_from_shape(
         mask=mask,
         managed_memory=managed_memory,
     )
+    if is_temporary:
+        storage._istransient = True
     return storage
 
 

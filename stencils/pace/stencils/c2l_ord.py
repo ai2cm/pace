@@ -1,12 +1,13 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
+import fv3core
 import pace.dsl.gt4py_utils as utils
+from fv3core.stencils.dyn_core import AcousticDynamics
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util import CubedSphereCommunicator
-from pace.util.constants import X_DIM, Y_DIM, Z_DIM
+from pace.util.constants import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from pace.util.grid import GridData
-from pace.util.quantity import Quantity
 
 
 C1 = 1.125
@@ -102,7 +103,12 @@ class CubedToLatLon:
     """
 
     def __init__(
-        self, stencil_factory: StencilFactory, grid_data: GridData, order: int
+        self,
+        state: fv3core.DycoreState,
+        stencil_factory: StencilFactory,
+        grid_data: GridData,
+        order: int,
+        comm: CubedSphereCommunicator,
     ):
         """
         Initializes stencils to use either 2nd or 4th order of interpolation
@@ -137,13 +143,38 @@ class CubedToLatLon:
             func=func, compute_dims=[X_DIM, Y_DIM, Z_DIM], compute_halos=halos
         )
 
+        origin = grid_indexing.origin_compute()
+        shape = grid_indexing.max_shape
+        full_size_xyiz_halo_spec = grid_indexing.get_quantity_halo_spec(
+            shape,
+            origin,
+            dims=[X_DIM, Y_INTERFACE_DIM, Z_DIM],
+            n_halo=grid_indexing.n_halo,
+            backend=stencil_factory.backend,
+        )
+        full_size_xiyz_halo_spec = grid_indexing.get_quantity_halo_spec(
+            shape,
+            origin,
+            dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
+            n_halo=grid_indexing.n_halo,
+            backend=stencil_factory.backend,
+        )
+        self.u__v = AcousticDynamics._WrappedHaloUpdater(
+            comm.get_vector_halo_updater(
+                [full_size_xyiz_halo_spec], [full_size_xiyz_halo_spec]
+            ),
+            state,
+            ["u"],
+            ["v"],
+            comm=comm,
+        )
+
     def __call__(
         self,
-        u: Quantity,
-        v: Quantity,
+        u: FloatField,
+        v: FloatField,
         ua: FloatField,
         va: FloatField,
-        comm: CubedSphereCommunicator,
     ):
         """
         Interpolate D-grid to A-grid winds at latitude-longitude coordinates.
@@ -155,10 +186,10 @@ class CubedToLatLon:
             comm: Cubed-sphere communicator
         """
         if self._do_ord4:
-            comm.vector_halo_update(u, v, n_points=self._n_halo)
+            self.u__v.update()
         self._compute_cubed_to_latlon(
-            u.storage,
-            v.storage,
+            u,
+            v,
             self._dx,
             self._dy,
             self._a11,

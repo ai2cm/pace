@@ -706,7 +706,9 @@ class DGridShallowWaterLagrangianDynamics:
 
         def make_storage():
             return utils.make_storage_from_shape(
-                self.grid_indexing.max_shape, backend=stencil_factory.backend
+                self.grid_indexing.max_shape,
+                backend=stencil_factory.backend,
+                is_temporary=False,
             )
 
         self._tmp_heat_s = make_storage()
@@ -729,7 +731,9 @@ class DGridShallowWaterLagrangianDynamics:
         self._tmp_fx2 = make_storage()
         self._tmp_fy2 = make_storage()
         self._tmp_damp_3d = utils.make_storage_from_shape(
-            (1, 1, self.grid_indexing.domain[2]), backend=stencil_factory.backend
+            (1, 1, self.grid_indexing.domain[2]),
+            backend=stencil_factory.backend,
+            is_temporary=False,
         )
         self._column_namelist = column_namelist
 
@@ -971,6 +975,7 @@ class DGridShallowWaterLagrangianDynamics:
         # TODO: the structure of much of this is to get fluxes from fvtp2d and then
         # apply them in various similar stencils - can these steps be merged?
 
+        # [DaCe] Remove CopiedCorners
         self.fvtp2d_dp(
             delp,
             crx,
@@ -1031,6 +1036,7 @@ class DGridShallowWaterLagrangianDynamics:
             self.grid_data.rarea,
         )
         # Fortran: #ifdef USE_COND
+        # [DaCe] Remove CopiedCorners
         self.fvtp2d_dp_t(
             q_con,
             crx,
@@ -1049,6 +1055,7 @@ class DGridShallowWaterLagrangianDynamics:
         )
 
         # Fortran #endif //USE_COND
+        # [DaCe] Remove CopiedCorners
         self.fvtp2d_tm(
             pt,
             crx,
@@ -1128,6 +1135,7 @@ class DGridShallowWaterLagrangianDynamics:
         # Vorticity transport
         self._compute_vort_stencil(self._vorticity_agrid, self._f0, zh, self._tmp_vort)
 
+        # [DaCe] Unroll CopiedCorners see __init__
         self.fvtp2d_vt_nodelnflux(
             self._tmp_vort,
             crx,

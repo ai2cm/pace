@@ -1,12 +1,12 @@
 import pytest
 
-import fv3core.stencils.fv_dynamics as fv_dynamics
 import fv3core.stencils.fvtp2d
 import fv3core.stencils.tracer_2d_1l
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util as fv3util
+from fv3core.utils.functional_validation import get_subset_func
 from pace.stencils.testing import ParallelTranslate
 
 
@@ -37,6 +37,11 @@ class TranslateTracer2D1L(ParallelTranslate):
         self._base.out_vars = self._base.in_vars["data_vars"]
         self.stencil_factory = stencil_factory
         self.namelist = namelist
+        self._subset = get_subset_func(
+            self.grid.grid_indexing,
+            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_DIM],
+            n_halo=((0, 0), (0, 0)),
+        )
 
     def collect_input_data(self, serializer, savepoint):
         input_data = self._base.collect_input_data(serializer, savepoint)
@@ -62,7 +67,7 @@ class TranslateTracer2D1L(ParallelTranslate):
             transport,
             self.grid.grid_data,
             communicator,
-            fv_dynamics.NQ,
+            inputs["tracers"],
         )
         self.tracer_advection(**inputs)
         inputs[
@@ -97,4 +102,7 @@ class TranslateTracer2D1L(ParallelTranslate):
         Given an output array, return the slice of the array which we'd
         like to validate against reference data
         """
-        return self.tracer_advection.subset_output(varname, output)
+        if varname in ["tracers"]:
+            return self._subset(output)
+        else:
+            return output
