@@ -575,7 +575,11 @@ class TileCommunicator(Communicator):
             request: an asynchronous request object with a .wait() method
         """
         if self.partitioner.layout[0] < 3 or self.partitioner.layout[1] < 3:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                "implementing halo updates on smaller layouts requires "
+                "refactoring our code to remove the assumption that any pair "
+                "of ranks only share one boundary"
+            )
         else:
             return super().start_halo_update(quantity, n_points)
 
@@ -598,7 +602,11 @@ class TileCommunicator(Communicator):
             request: an asynchronous request object with a .wait() method
         """
         if self.partitioner.layout[0] < 3 or self.partitioner.layout[1] < 3:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                "implementing halo updates on smaller layouts requires "
+                "refactoring our code to remove the assumption that any pair "
+                "of ranks only share one boundary"
+            )
         else:
             return super().start_vector_halo_update(x_quantity, y_quantity, n_points)
 
@@ -624,7 +632,11 @@ class TileCommunicator(Communicator):
             request: an asynchronous request object with a .wait() method
         """
         if self.partitioner.layout[0] < 3 or self.partitioner.layout[1] < 3:
-            raise NotImplementedError()
+            raise NotImplementedError(
+                "implementing halo updates on smaller layouts requires "
+                "refactoring our code to remove the assumption that any pair "
+                "of ranks only share one boundary"
+            )
         else:
             return super().start_synchronize_vector_interfaces(x_quantity, y_quantity)
 
