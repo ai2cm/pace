@@ -1,10 +1,9 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import fv3core.stencils.moist_cv as moist_cv
-import pace.dsl
-import pace.util
+from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
-from pace.stencils.testing import TranslateDycoreFortranData2Py, pad_field_in_j
+from pace.stencils.testing import TranslateFortranData2Py, pad_field_in_j
 
 
 def moist_pt(
@@ -42,20 +41,62 @@ def moist_pt(
         )
 
 
-class TranslateMoistCVPlusPt_2d(TranslateDycoreFortranData2Py):
+class MoistPT:
+    """
+    Class to test with DaCe orchestration. test class is MoistCVPlusPt_2d
+    """
+
     def __init__(
         self,
+        stencil_factory: StencilFactory,
         grid,
-        namelist: pace.util.Namelist,
-        stencil_factory: pace.dsl.StencilFactory,
     ):
+        self._moist_cv_pt = stencil_factory.from_origin_domain(
+            moist_pt,
+            origin=grid.compute_origin(),
+            domain=(grid.nic, 1, grid.npz),
+        )
+
+    def __call__(
+        self,
+        qvapor: FloatField,
+        qliquid: FloatField,
+        qrain: FloatField,
+        qsnow: FloatField,
+        qice: FloatField,
+        qgraupel: FloatField,
+        q_con: FloatField,
+        gz: FloatField,
+        cvm: FloatField,
+        pt: FloatField,
+        cappa: FloatField,
+        delp: FloatField,
+        delz: FloatField,
+        r_vir: float,
+    ):
+        self._moist_cv_pt(
+            qvapor,
+            qliquid,
+            qrain,
+            qsnow,
+            qice,
+            qgraupel,
+            q_con,
+            gz,
+            cvm,
+            pt,
+            cappa,
+            delp,
+            delz,
+            r_vir,
+        )
+
+
+class TranslateMoistCVPlusPt_2d(TranslateFortranData2Py):
+    def __init__(self, grid, namelist, stencil_factory):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
-        self.compute_func = self.stencil_factory.from_origin_domain(
-            moist_pt,
-            origin=self.grid.compute_origin(),
-            domain=(self.grid.nic, 1, self.grid.npz),
-        )
+        self.compute_func = MoistPT(stencil_factory, self.grid)
         self.in_vars["data_vars"] = {
             "qvapor": {"serialname": "qvapor_js"},
             "qliquid": {"serialname": "qliquid_js"},

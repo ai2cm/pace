@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple, Union
 
+import dace
 import dacite
 
 import fv3core
@@ -13,6 +14,9 @@ import pace.dsl
 import pace.stencils
 import pace.util
 import pace.util.grid
+from fv3core.initialization.dycore_state import DycoreState
+from pace.dsl.dace.dace_config import DaceConfig
+from pace.dsl.dace.orchestrate import dace_inhibitor, orchestrate
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
@@ -172,7 +176,7 @@ class Driver:
             comm: communication object behaving like mpi4py.Comm
         """
         logger.info("initializing driver")
-        self.config = config
+        self.config: DriverConfig = config
         self.time = self.config.start_time
         self.comm_config = config.comm_config
         self.comm = config.comm_config.get_comm()
@@ -181,6 +185,18 @@ class Driver:
             communicator = pace.util.CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
+
+            dace_config = DaceConfig(
+                communicator=communicator, backend=self.config.stencil_config.backend
+            )
+            self.config.stencil_config.dace_config = dace_config
+            orchestrate(
+                obj=self,
+                config=dace_config,
+                method_to_orchestrate="dycore_only_loop_orchestrated",
+                dace_constant_args=["state"],
+            )
+
             self.quantity_factory, self.stencil_factory = _setup_factories(
                 config=config, communicator=communicator
             )
@@ -196,6 +212,15 @@ class Driver:
                 damping_coefficients=self.state.damping_coefficients,
                 config=self.config.dycore_config,
                 phis=self.state.dycore_state.phis,
+                state=self.state.dycore_state,
+            )
+
+            self.dycore.update_state(
+                conserve_total_energy=self.config.dycore_config.consv_te,
+                do_adiabatic_init=False,
+                timestep=self.config.timestep.total_seconds(),
+                n_split=self.config.dycore_config.n_split,
+                state=self.state.dycore_state,
             )
 
             self.physics = fv3gfs.physics.Physics(
@@ -216,6 +241,7 @@ class Driver:
                 namelist=self.config.physics_config,
                 comm=communicator,
                 grid_info=self.state.driver_grid_data,
+                state=self.state.dycore_state,
                 quantity_factory=self.quantity_factory,
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,
@@ -238,43 +264,103 @@ class Driver:
         if config.diagnostics_config.output_initial_state:
             self.diagnostics.store(time=self.time, state=self.state)
 
+        self._time_run = self.config.start_time
+
+    @dace_inhibitor
+    def _callback_diagnostics(self):
+        self._time_run += self.config.timestep
+        self.diagnostics.store(time=self._time_run, state=self.state)
+
+    @dace_inhibitor
+    def _callback_restart(self, restart_path: str):
+        self.restart.save_state_as_restart(
+            state=self.state,
+            comm=self.comm,
+            restart_path=restart_path,
+        )
+        self.restart.write_restart_config(
+            comm=self.comm,
+            time=self.time,
+            driver_config=self.config,
+            restart_path=restart_path,
+        )
+
+    def dycore_only_loop_orchestrated(
+        self,
+        state: DycoreState,
+        time_steps: int,
+        time_step_io_freq: int,
+        intermediate_restart: list,
+    ):
+        for t in dace.nounroll(range(time_steps)):
+            self._step_dynamics(
+                state=state,
+                timer=self.performance_config.timestep_timer,
+            )
+            if (t % time_step_io_freq) == 0:
+                self._callback_diagnostics()
+            if t in intermediate_restart:
+                self._callback_restart(restart_path=f"RESTART_{t}")
+
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
             end_time = self.config.start_time + self.config.total_time
-            timestep_counter = 0
-            while self.time < end_time:
-                self.step(timestep=self.config.timestep)
-                timestep_counter += 1
-                if (
-                    timestep_counter % self.config.diagnostics_config.output_frequency
-                    == 0
-                ):
-                    self.diagnostics.store(time=self.time, state=self.state)
-                if (
-                    self.restart.save_intermediate_restart
-                    and timestep_counter in self.config.intermediate_restart
-                ):
-                    self._write_restart_files(
-                        restart_path=f"RESTART_{timestep_counter}"
-                    )
+            # Temporary DaCe execution code to restrict orchestration to the dycore only
+            # and properly error out. Original code conserved in else
+            if self.config.stencil_config.dace_config.is_dace_orchestrated():
+                time_steps = int(
+                    (end_time - self.time).seconds / self.config.timestep.seconds
+                )
+                logger.info(f"  time_steps: {time_steps}")
+                if not self.config.disable_step_physics:
+                    raise RuntimeError("DaCe orchestration doesn't handle physics.")
+                self.dycore_only_loop_orchestrated(
+                    state=self.state.dycore_state,
+                    time_steps=time_steps,
+                    time_step_io_freq=(
+                        self.config.diagnostics_config.output_frequency,
+                    ),
+                    intermediate_restart=self.config.intermediate_restart,
+                )
+            else:
+                timestep_counter = 0
+                while self.time < end_time:
+                    self.step(timestep=self.config.timestep)
+                    timestep_counter += 1
+                    if (
+                        timestep_counter
+                        % self.config.diagnostics_config.output_frequency
+                        == 0
+                    ):
+                        self.diagnostics.store(time=self.time, state=self.state)
+                    if (
+                        self.restart.save_intermediate_restart
+                        and timestep_counter in self.config.intermediate_restart
+                    ):
+                        self._write_restart_files(
+                            restart_path=f"RESTART_{timestep_counter}"
+                        )
 
     def step(self, timestep: timedelta):
         with self.performance_config.timestep_timer.clock("mainloop"):
-            self._step_dynamics(timestep=timestep.total_seconds())
+            self._step_dynamics(
+                self.state.dycore_state,
+                self.performance_config.timestep_timer,
+            )
             if not self.config.disable_step_physics:
                 self._step_physics(timestep=timestep.total_seconds())
         self.time += timestep
         self.performance_config.collect_performance()
 
-    def _step_dynamics(self, timestep: float):
+    def _step_dynamics(
+        self,
+        state: DycoreState,
+        timer: pace.util.Timer,
+    ):
         self.dycore.step_dynamics(
-            state=self.state.dycore_state,
-            conserve_total_energy=self.config.dycore_config.consv_te,
-            n_split=self.config.dycore_config.n_split,
-            do_adiabatic_init=False,
-            timestep=float(timestep),
-            timer=self.performance_config.timestep_timer,
+            state=state,
+            timer=timer,
         )
 
     def _step_physics(self, timestep: float):

@@ -158,6 +158,7 @@ class RiemannSolver3:
                 grid_indexing.max_shape,
                 origin=grid_indexing.origin_compute(),
                 backend=stencil_factory.backend,
+                is_temporary=False,
             )
 
         self._tmp_dm = make_storage()

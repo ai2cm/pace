@@ -30,6 +30,7 @@ class Restart:
         restart_path: str,
     ):
         if comm.Get_rank() == 0:
+            driver_config.stencil_config.dace_config = None
             config_dict = dataclasses.asdict(driver_config)
             config_dict["performance_config"].pop("times_per_step", None)
             config_dict["performance_config"].pop("hits_per_step", None)

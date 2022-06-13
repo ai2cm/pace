@@ -13,6 +13,7 @@ import pace.util as util
 from fv3core._config import DynamicalCoreConfig
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.testing import TranslateDynCore
+from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
 from pace.stencils.testing.grid import Grid
 from pace.util.null_comm import NullComm
 
@@ -144,10 +145,16 @@ def driver(
             disable_halo_exchange, layout=layout
         )
         grid = Grid.with_data_from_namelist(dycore_config, communicator, backend)
+        dace_config = DaceConfig(
+            communicator,
+            backend,
+            DaCeOrchestration.Python,
+        )
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=backend,
             rebuild=False,
             validate_args=True,
+            dace_config=dace_config,
         )
         stencil_factory = pace.dsl.stencil.StencilFactory(
             config=stencil_config,
@@ -157,6 +164,9 @@ def driver(
         experiment_name = get_experiment_name(data_directory)
         nested = False
         stretched_grid = False
+
+        state = get_state_from_input(grid, dycore_config, stencil_config, input_data)
+
         acoustics_object = AcousticDynamics(
             communicator,
             stencil_factory,
@@ -168,9 +178,8 @@ def driver(
             dycore_config.acoustic_dynamics,
             input_data["pfull"],
             input_data["phis"],
+            state,
         )
-
-        state = get_state_from_input(grid, dycore_config, stencil_config, input_data)
 
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
