@@ -138,7 +138,7 @@ if grep -q "fv_dynamics" <<< "${script}"; then
         export CRAY_CUDA_MPS=0
 	fi
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${scheduler_script}
-    sed -i 's|00:45:00|03:30:00|g' ${scheduler_script}
+    sed -i 's|00:45:00|04:30:00|g' ${scheduler_script}
     sed -i 's|<NTASKSPERNODE>|6|g' ${scheduler_script}
     sed -i 's/<CPUSPERTASK>/1/g' ${scheduler_script}
     export MPIRUN_CALL="srun"
