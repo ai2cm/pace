@@ -30,6 +30,7 @@ def get_driver_config(
     frequency: int = 1,
     output_initial_state=False,
     start_time_type: Literal["timedelta", "datetime"] = "timedelta",
+    intermediate_restart: list = [],
 ) -> DriverConfig:
     initialization_config = unittest.mock.MagicMock()
     if start_time_type == "timedelta":
@@ -52,6 +53,7 @@ def get_driver_config(
         diagnostics_config=unittest.mock.MagicMock(
             output_frequency=frequency, output_initial_state=output_initial_state
         ),
+        intermediate_restart=intermediate_restart,
         dycore_config=unittest.mock.MagicMock(fv_sg_adj=1),
         physics_config=unittest.mock.MagicMock(),
     )
@@ -226,6 +228,7 @@ class MockedComponents:
     diagnostics: unittest.mock.MagicMock
     dycore_to_physics: unittest.mock.MagicMock
     end_of_step_update: unittest.mock.MagicMock
+    restart_mock: unittest.mock.MagicMock
 
 
 @contextlib.contextmanager
@@ -244,11 +247,15 @@ def mocked_components():
                         with unittest.mock.patch(
                             "fv3core.DynamicalCore.step_dynamics"
                         ) as step_dynamics_mock:
-                            yield MockedComponents(
-                                dycore=dycore_mock,
-                                step_dynamics=step_dynamics_mock,
-                                physics=physics_mock,
-                                diagnostics=diagnostics_mock,
-                                dycore_to_physics=dycore_to_physics_mock,
-                                end_of_step_update=end_of_step_update_mock,
-                            )
+                            with unittest.mock.patch(
+                                "pace.driver.Restart"
+                            ) as restart_mock:
+                                yield MockedComponents(
+                                    dycore=dycore_mock,
+                                    step_dynamics=step_dynamics_mock,
+                                    physics=physics_mock,
+                                    diagnostics=diagnostics_mock,
+                                    dycore_to_physics=dycore_to_physics_mock,
+                                    end_of_step_update=end_of_step_update_mock,
+                                    restart_mock=restart_mock,
+                                )
