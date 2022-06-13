@@ -262,10 +262,14 @@ def setup_dycore(
         phis=state.phis,
         state=state,
     )
-    # TODO include functionality that uses and changes this
     do_adiabatic_init = False
-    # TODO compute from namelist
-    bdt = 225.0
+    dycore.update_state(
+        conserve_total_energy=dycore_config.consv_te,
+        do_adiabatic_init=False,
+        timestep=dycore_config.dt_atmos,
+        n_split=dycore_config.n_split,
+        state=state,
+    )
     return dycore, state
 
 
