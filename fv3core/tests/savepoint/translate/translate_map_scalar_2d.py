@@ -80,5 +80,5 @@ class TranslateMapScalar_2d(TranslateDycoreFortranData2Py):
         inputs["qs"] = qs_field
         if inputs["qs"].shape[1] == 1:
             inputs["qs"] = utils.tile(inputs["qs"][:, 0], [self.nj, 1]).transpose(1, 0)
-        var_inout = self.compute_func(**inputs)
-        return self.slice_output(inputs, {"pt": var_inout})
+        self.compute_func(**inputs)
+        return self.slice_output(inputs, {"pt": inputs["q1"]})

@@ -172,20 +172,6 @@ def enable_selective_validation():
     # to enable selective validation for a new class, add a new monkeypatch
     # this should require only a new function for (origin, domain)
     # note we have not implemented disabling selective validation once enabled
-    fv3core.stencils.updatedzd.UpdateHeightOnDGrid = get_selective_class(
-        fv3core.stencils.updatedzd.UpdateHeightOnDGrid,
-        {
-            "height": get_compute_domain_k_interfaces,
-            "zh": get_compute_domain_k_interfaces,
-        },  # must include both function argument and savepoint names
-    )
-    # make absolutely sure you don't write just the savepoint name, this would
-    # selecively validate without making sure it's safe to do so
-
-    fv3core.stencils.tracer_2d_1l.TracerAdvection = get_selective_tracer_advection(
-        fv3core.stencils.tracer_2d_1l.TracerAdvection,
-        get_compute_domain_k_interfaces,
-    )
 
     fv3core.stencils.divergence_damping.DivergenceDamping = get_selective_class(
         fv3core.stencils.divergence_damping.DivergenceDamping,
@@ -209,4 +195,3 @@ def enable_selective_validation():
             "u": get_domain_func([X_DIM, Y_INTERFACE_DIM, Z_DIM]),
         },
     )
-    fv3core.DynamicalCore = fv3core.stencils.fv_dynamics.DynamicalCore

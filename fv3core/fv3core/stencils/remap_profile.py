@@ -329,7 +329,6 @@ def apply_constraints(
 
 
 def set_interpolation_coefficients(
-    q: FloatField,
     gam: FloatField,
     a4_1: FloatField,
     a4_2: FloatField,
@@ -342,7 +341,6 @@ def set_interpolation_coefficients(
 ):
     """
     Args:
-        q (in):
         gam (in):
         a4_1 (inout):
         a4_2 (inout):
@@ -353,7 +351,6 @@ def set_interpolation_coefficients(
         extm (in):
         qmin (in):
     """
-    # TODO: q isn't used here. We should take it out of the call signature
     from __externals__ import iv, kord
 
     # set_top_as_iv0
@@ -680,7 +677,6 @@ class RemapProfile:
             )
 
             self._set_interpolation_coefficients(
-                self._q,
                 self._gam,
                 a4_1,
                 a4_2,
@@ -691,5 +687,3 @@ class RemapProfile:
                 self._extm,
                 qmin,
             )
-
-        return a4_1, a4_2, a4_3, a4_4

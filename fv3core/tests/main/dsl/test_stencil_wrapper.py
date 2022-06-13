@@ -7,6 +7,7 @@ import pytest
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import pace.util
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.stencil import (
     FrozenStencil,
@@ -14,6 +15,17 @@ from pace.dsl.stencil import (
     _convert_quantities_to_storage,
 )
 from pace.dsl.typing import FloatField
+
+
+def get_stencil_config(
+    *,
+    backend: str,
+    orchestration: DaCeOrchestration = DaCeOrchestration.Python,
+    **kwargs,
+):
+    dace_config = DaceConfig(None, backend=backend, orchestration=orchestration)
+    config = StencilConfig(backend=backend, dace_config=dace_config, **kwargs)
+    return config
 
 
 @contextlib.contextmanager
@@ -105,7 +117,7 @@ def test_copy_frozen_stencil(
     format_source: bool,
     device_sync: bool,
 ):
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
@@ -137,7 +149,7 @@ def test_frozen_stencil_raises_if_given_origin(
     device_sync: bool,
 ):
     # only guaranteed when validating args
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=rebuild,
         validate_args=True,
@@ -167,7 +179,7 @@ def test_frozen_stencil_raises_if_given_domain(
     device_sync: bool,
 ):
     # only guaranteed when validating args
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=rebuild,
         validate_args=True,
@@ -198,7 +210,7 @@ def test_frozen_stencil_kwargs_passed_to_init(
     format_source: bool,
     device_sync: bool,
 ):
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=rebuild,
         validate_args=validate_args,
@@ -234,7 +246,7 @@ def field_after_parameter_stencil(q_in: FloatField, param: float, q_out: FloatFi
 
 
 def test_frozen_field_after_parameter(backend):
-    config = StencilConfig(
+    config = get_stencil_config(
         backend=backend,
         rebuild=False,
         validate_args=False,
@@ -275,12 +287,11 @@ def test_backend_options(
         },
     }
 
-    stencil_kwargs = StencilConfig(
-        backend=backend,
-        rebuild=rebuild,
-        validate_args=validate_args,
+    actual = get_stencil_config(
+        backend=backend, rebuild=rebuild, validate_args=validate_args
     ).stencil_kwargs(func=copy_stencil)
-    assert stencil_kwargs == expected_options[backend]
+    expected = expected_options[backend]
+    assert actual == expected
 
 
 def get_mock_quantity():
