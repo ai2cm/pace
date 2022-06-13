@@ -335,10 +335,7 @@ class FrozenStencil(SDFGConvertible):
 
     def _compile(self):
         stencil_object: gt4py.StencilObject = gtscript.stencil(
-            definition=self.func,
-            externals=self.externals,
-            **self.stencil_kwargs,
-            name=self.func.__module__ + "." + self.func.__name__,
+            definition=self.func, externals=self.externals, **self.stencil_kwargs
         )
         field_info = stencil_object.field_info
         self._field_origins: Dict[
