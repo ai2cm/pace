@@ -123,9 +123,13 @@ if grep -q "parallel" <<< "${script}"; then
             if [ "$NUM_RANKS" -gt "6" ]; then
                 sed -i 's|cscsci|normal|g' ${scheduler_script}
             fi
-            sed -i 's|cscsci|normal|g' ${scheduler_script}
-            sed -i 's|<NTASKS>|"'${NUM_RANKS}'"|g' ${scheduler_script}
-            sed -i 's|<NTASKSPERNODE>|6|g' ${scheduler_script}
+            sed -i "s|<NTASKS>|$NUM_RANKS|g" ${scheduler_script}
+            if [ "$backend" == "*gpu*" ] || [ "$backend" == "*cuda*" ]; then
+                ntaskspernode=1
+            else
+                ntaskspernode=6
+            fi
+            sed -i "s|<NTASKSPERNODE>|$ntaskspernode|g" ${scheduler_script}
         fi
     fi
 fi
