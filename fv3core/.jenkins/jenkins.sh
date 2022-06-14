@@ -143,7 +143,7 @@ if grep -q "fv_dynamics" <<< "${script}"; then
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${scheduler_script}
     sed -i 's|00:45:00|03:30:00|g' ${scheduler_script}
     if [ "$backend" == "*gpu*" ] || [ "$backend" == "*cuda*" ]; then
-        ntaskspernode=3
+        ntaskspernode=1
     else
         ntaskspernode=24
     fi
