@@ -124,7 +124,7 @@ if grep -q "parallel" <<< "${script}"; then
                 sed -i 's|cscsci|normal|g' ${scheduler_script}
             fi
             sed -i "s|<NTASKS>|$NUM_RANKS|g" ${scheduler_script}
-            if [ "$backend" == "*gpu*" ] || [ "$backend" == "*cuda*" ]; then
+            if [[ $backend == *gpu* || $backend == *cuda* ]]; then
                 ntaskspernode=1
             else
                 ntaskspernode=6
@@ -146,7 +146,7 @@ if grep -q "fv_dynamics" <<< "${script}"; then
         fi
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${scheduler_script}
     sed -i 's|00:45:00|03:30:00|g' ${scheduler_script}
-    if [ "$backend" == "*gpu*" ] || [ "$backend" == "*cuda*" ]; then
+    if [[ $backend == *gpu* || $backend == *cuda* ]]; then
         ntaskspernode=1
     else
         ntaskspernode=24
