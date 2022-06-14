@@ -488,8 +488,7 @@ class FrozenStencil(SDFGConvertible):
     def __sdfg__(self, *args, **kwargs):
         """Implemented SDFG generation"""
         args_as_kwargs = dict(zip(self._argument_names, args))
-        self._stencil_sdfg = self._frozen_stencil.__sdfg__(**args_as_kwargs, **kwargs)
-        return self._stencil_sdfg
+        return self._frozen_stencil.__sdfg__(**args_as_kwargs, **kwargs)
 
     def __sdfg_signature__(self):
         """Implemented SDFG signature lookup"""

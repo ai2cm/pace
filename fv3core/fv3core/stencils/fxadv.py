@@ -1,6 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 from fv3core.stencils.d2a2c_vect import contravariant
+from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import GridData
@@ -486,6 +487,10 @@ class FiniteVolumeFluxPrep:
         stencil_factory: StencilFactory,
         grid_data: GridData,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+        )
         grid_indexing = stencil_factory.grid_indexing
         self._tile_interior = not (
             grid_indexing.west_edge

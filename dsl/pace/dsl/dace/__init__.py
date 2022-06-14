@@ -1,5 +1,7 @@
 import os
 
+from pace.dsl.dace.orchestrate import orchestrate
+
 
 os.environ.setdefault(
     "DACE_CONFIG",

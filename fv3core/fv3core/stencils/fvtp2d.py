@@ -8,6 +8,7 @@ import pace.stencils.corners as corners
 from fv3core.stencils.delnflux import DelnFlux
 from fv3core.stencils.xppm import XPiecewiseParabolic
 from fv3core.stencils.yppm import YPiecewiseParabolic
+from pace.dsl.dace.orchestrate import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util.grid import DampingCoefficients, GridData
@@ -134,6 +135,11 @@ class FiniteVolumeTransport:
         nord=None,
         damp_c=None,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+        )
+
         # use a shorter alias for grid_indexing here to avoid very verbose lines
         idx = stencil_factory.grid_indexing
         self._area = grid_data.area
