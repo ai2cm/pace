@@ -192,7 +192,6 @@ def test_sequential_savepoint(
         dace_config=DaceConfig(
             communicator=None,
             backend=backend,
-            orchestration=DaCeOrchestration.Python,
         ),
     )
     # Reduce error threshold for GPU
@@ -310,7 +309,6 @@ def test_parallel_savepoint(
         dace_config=DaceConfig(
             communicator=None,
             backend=backend,
-            orchestration=DaCeOrchestration.Python,
         ),
     )
     # Increase minimum error threshold for GPU

@@ -118,7 +118,6 @@ def get_config(namelist_filename, backend):
         dace_config=DaceConfig(
             communicator=None,
             backend=backend,
-            orchestration=DaCeOrchestration.Python,
         ),
     )
     return stencil_config, namelist

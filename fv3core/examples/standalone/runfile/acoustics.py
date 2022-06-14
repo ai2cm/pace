@@ -148,7 +148,6 @@ def driver(
         dace_config = DaceConfig(
             communicator,
             backend,
-            DaCeOrchestration.Python,
         )
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=backend,
