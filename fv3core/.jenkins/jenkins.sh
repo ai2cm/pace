@@ -120,7 +120,7 @@ if grep -q "parallel" <<< "${script}"; then
             # if 54 rank test can run in 30 minutes again, sed 45 to 30 and:
             # if [ "$NUM_RANKS" -gt "6" ] && [ ! -v LONG_EXECUTION ]; then
             #  sed -i 's|cscsci|debug|g' ${scheduler_script}
-            if [ "$NUM_RANKS" -gt "6" ]; then
+            if [[ $NUM_RANKS -gt 6 || $backend == *gpu* || $backend == *cuda* ]]; then
                 sed -i 's|cscsci|normal|g' ${scheduler_script}
             fi
             sed -i "s|<NTASKS>|$NUM_RANKS|g" ${scheduler_script}
