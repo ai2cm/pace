@@ -125,7 +125,7 @@ if grep -q "parallel" <<< "${script}"; then
             fi
             sed -i 's|cscsci|normal|g' ${scheduler_script}
             sed -i 's|<NTASKS>|"'${NUM_RANKS}'"|g' ${scheduler_script}
-            sed -i 's|<NTASKSPERNODE>|"24"|g' ${scheduler_script}
+            sed -i 's|<NTASKSPERNODE>|6|g' ${scheduler_script}
         fi
     fi
 fi
