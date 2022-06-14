@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import shutil
 import sys
 from argparse import ArgumentParser, Namespace
 
@@ -53,6 +54,6 @@ if __name__ == "__main__":
             args.data_dir,
         )
     # NOTE (jdahm): Temporary until driver initialization-based cache is merged
-    for rank in range(6 * dycore_config.layout[0] * dycore_config.layout[1]):
-        os.symlink(f".gt_cache_{0:06}", f".gt_cache_{rank:06}")
+    for rank in range(1, 6 * dycore_config.layout[0] * dycore_config.layout[1]):
+        shutil.copytree(f".gt_cache_{0:06}", f".gt_cache_{rank:06}")
     print("SUCCESS")
