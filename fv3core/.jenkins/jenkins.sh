@@ -142,8 +142,13 @@ if grep -q "fv_dynamics" <<< "${script}"; then
         fi
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${scheduler_script}
     sed -i 's|00:45:00|03:30:00|g' ${scheduler_script}
-    sed -i 's|<NTASKSPERNODE>|6|g' ${scheduler_script}
-    sed -i 's/<CPUSPERTASK>/1/g' ${scheduler_script}
+    if [ "$backend" == "*gpu*" ] || [ "$backend" == "*cuda*" ]; then
+        ntaskspernode=3
+    else
+        ntaskspernode=24
+    fi
+    sed -i "s|<NTASKSPERNODE>|$ntaskspernode|g" ${scheduler_script}
+    sed -i 's|<CPUSPERTASK>|1|g' ${scheduler_script}
     export MPIRUN_CALL="srun"
 fi
 
