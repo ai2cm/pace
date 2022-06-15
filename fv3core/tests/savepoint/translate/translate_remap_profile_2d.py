@@ -1,12 +1,19 @@
 import numpy as np
 
 import fv3core.stencils.remap_profile as profile
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateCS_Profile_2d(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "a4_1": {"serialname": "q4_1"},
@@ -73,14 +80,25 @@ class TranslateCS_Profile_2d(TranslateDycoreFortranData2Py):
             ]
             inputs["qs"] = qs_field
         del inputs["km"], inputs["iv"], inputs["kord"], inputs["i1"], inputs["i2"]
-        q4_1, q4_2, q4_3, q4_4 = self.compute_func(**inputs)
+        self.compute_func(**inputs)
         return self.slice_output(
-            inputs, {"q4_1": q4_1, "q4_2": q4_2, "q4_3": q4_3, "q4_4": q4_4}
+            inputs,
+            {
+                "q4_1": inputs["a4_1"],
+                "q4_2": inputs["a4_2"],
+                "q4_3": inputs["a4_3"],
+                "q4_4": inputs["a4_4"],
+            },
         )
 
 
 class TranslateCS_Profile_2d_2(TranslateCS_Profile_2d):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "qs": {"serialname": "qs_column_2", "kstart": 0, "kend": grid.npz},

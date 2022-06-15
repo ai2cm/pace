@@ -235,6 +235,7 @@ class UpdateAtmosphereState:
         namelist,
         comm: pace.util.CubedSphereCommunicator,
         grid_info: DriverGridData,
+        state: fv3core.DycoreState,
         quantity_factory: pace.util.QuantityFactory,
         dycore_only: bool,
         apply_tendencies: bool,
@@ -266,6 +267,7 @@ class UpdateAtmosphereState:
             self.namelist,
             comm,
             grid_info,
+            state,
         )
         self._dycore_only = dycore_only
         # apply_tendencies when we have run physics or fv_subgridz

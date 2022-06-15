@@ -95,7 +95,7 @@ There is no determined convention for order of arguments, but the code generally
 
 Another example
 ```python
-def make_storage_from_shape(shape, origin, dtype, init=True):
+def make_storage_from_shape(shape, origin, dtype):
 ```
 
 Turns into
@@ -105,7 +105,6 @@ Turns into
         origin: Tuple[int, int, int],
         *,
         dtype: DTypes = np.float64,
-        init: bool = True,
     ) -> Field:
 ```
 

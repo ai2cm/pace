@@ -24,8 +24,6 @@ class StorageNumpy:
         Args:
             backend: gt4py backend
         """
-        # NOTE (jdahm): Temporary replace call until Jenkins is updated
-        backend = backend.replace("gtc:", "")
         self.empty = _wrap_storage_call(gt4py.storage.empty, backend)
         self.zeros = _wrap_storage_call(gt4py.storage.zeros, backend)
         self.ones = _wrap_storage_call(gt4py.storage.ones, backend)

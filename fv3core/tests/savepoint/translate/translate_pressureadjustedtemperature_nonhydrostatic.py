@@ -1,3 +1,6 @@
+import fv3core
+import pace.dsl
+import pace.util
 from fv3core.stencils import temperature_adjust
 from fv3core.stencils.dyn_core import get_nk_heat_dissipation
 from pace.stencils.testing import TranslateDycoreFortranData2Py
@@ -6,11 +9,17 @@ from pace.stencils.testing import TranslateDycoreFortranData2Py
 class TranslatePressureAdjustedTemperature_NonHydrostatic(
     TranslateDycoreFortranData2Py
 ):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.namelist = namelist
+        dycore_config = fv3core.DynamicalCoreConfig.from_namelist(namelist)
         n_adj = get_nk_heat_dissipation(
-            config=self.namelist.d_grid_shallow_water,
+            config=dycore_config.d_grid_shallow_water,
             npz=grid.grid_indexing.domain[2],
         )
         self.compute_func = stencil_factory.from_origin_domain(
