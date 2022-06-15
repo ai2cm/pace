@@ -9,6 +9,7 @@ import fv3gfs.physics
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.util.grid import DampingCoefficients
 
 
@@ -80,6 +81,12 @@ class DriverState:
         comm = driver_config.comm_config.get_comm()
         communicator = pace.util.CubedSphereCommunicator.from_layout(
             comm=comm, layout=driver_config.layout
+        )
+        # The only part of DaCe config saved is the orchestration mode
+        # the config itself need to be set
+        driver_config.stencil_config.dace_config = DaceConfig(
+            communicator=communicator,
+            backend=driver_config.stencil_config.backend,
         )
         sizer = pace.util.SubtileGridSizer.from_tile_params(
             nx_tile=driver_config.nx_tile,

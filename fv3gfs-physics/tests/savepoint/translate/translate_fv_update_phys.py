@@ -167,14 +167,15 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
                 origin=(0, 0, 0),
                 extent=storage.shape,
             )
+        state = DycoreState(**inputs)
         self._base.compute_func = ApplyPhysicsToDycore(
             self.stencil_factory,
             self.grid.grid_data,
             self.namelist,
             communicator,
             self.grid.driver_grid_data,
+            state,
         )
-        state = DycoreState(**inputs)
         dims_u = [pace.util.X_DIM, pace.util.Y_INTERFACE_DIM, pace.util.Z_DIM]
         u_quantity = self.grid.make_quantity(
             state.u,

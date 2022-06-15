@@ -14,6 +14,7 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from fv3core.testing import TranslateFVDynamics
+from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
 from pace.dsl.stencil import StencilFactory
 from pace.stencils.testing import TranslateGrid
 from pace.util.grid import DampingCoefficients
@@ -259,7 +260,15 @@ class SerialboxConfig(Initializer):
         )
         ser = self._serializer(communicator)
         savepoint_in = ser.get_savepoint("Driver-In")[0]
-        stencil_config = pace.dsl.stencil.StencilConfig(backend=backend)
+        dace_config = DaceConfig(
+            communicator,
+            backend,
+            DaCeOrchestration.Python,
+        )
+        stencil_config = pace.dsl.stencil.StencilConfig(
+            backend=backend,
+            dace_config=dace_config,
+        )
         stencil_factory = StencilFactory(
             config=stencil_config, grid_indexing=grid.grid_indexing
         )

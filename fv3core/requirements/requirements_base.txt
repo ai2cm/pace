@@ -23,3 +23,5 @@ factory-boy
 pytest-factoryboy
 pytest-cache
 pytest-cov
+
+-r requirements_dace.txt

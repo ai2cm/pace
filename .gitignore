@@ -1,5 +1,4 @@
 .dace.conf
-
 # Test outputs
 results.xml
 *.zarr
@@ -150,10 +149,13 @@ dmypy.json
 .vscode/
 
 # GT4Py
-**/.gt_cache/
+**/.gt_cache*/
 
 # Run outputs
 plot_output/
 profiling_results/
 model_output/
 RESTART/
+
+# DaCe caches
+.dacecache

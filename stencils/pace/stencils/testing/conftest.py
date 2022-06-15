@@ -9,6 +9,7 @@ import yaml
 
 import pace.dsl
 import pace.util
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.stencils.testing import ParallelTranslate, TranslateGrid
 from pace.stencils.testing.savepoint import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
@@ -114,6 +115,11 @@ def get_config(namelist_filename, backend):
         backend=backend,
         rebuild=False,
         validate_args=True,
+        dace_config=DaceConfig(
+            communicator=None,
+            backend=backend,
+            orchestration=DaCeOrchestration.Python,
+        ),
     )
     return stencil_config, namelist
 

@@ -73,6 +73,7 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
             inputs.pop("jm"),
             inputs.pop("km"),
             inputs.pop("nq"),
+            inputs["tracers"],
         )
         run_fillz(**inputs)
         ds = self.grid.default_domain_dict()
