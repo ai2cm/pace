@@ -1,4 +1,6 @@
 version: 2.1
+orbs:
+  gcp-cli: circleci/gcp-cli@2.4.1
 commands:
   setup-mpi-environment:
     steps:
@@ -8,46 +10,46 @@ commands:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v1-mpi-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
+            - v1-mpi-venv-{{ checksum ".circleci/requirements.txt" }}-{{ checksum ".circleci/requirements.txt" }}-{{ checksum "constraints.txt" }}
       - run:
           name: Install Dependencies
           command: |
-            sudo apt-get update
-            sudo apt-get install libopenmpi3 libopenmpi-dev
+            DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
+            DEBIAN_FRONTEND=noninteractive sudo apt-get -y install software-properties-common libopenmpi3 libopenmpi-dev
             python3 -m venv venv
             source venv/bin/activate
             pip3 install --upgrade pip setuptools wheel
             pip3 install -r .circleci/requirements.txt -r .circleci/mpi_requirements.txt -c constraints.txt
             pip3 install external/gt4py -c constraints.txt
-            pip3 install pace-util fv3core fv3gfs-physics stencils dsl driver -c constraints.txt
+            pip3 install ./pace-util ./fv3core ./fv3gfs-physics ./stencils ./dsl ./driver -c constraints.txt
       - save_cache:
-          key: v1-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
+          key: v1-mpi-venv-{{ checksum ".circleci/requirements.txt" }}-{{ checksum ".circleci/requirements.txt" }}-{{ checksum "constraints.txt" }}
           paths:
             - venv
             - /root/.cache/pip
-  setup-environment:
-    steps:
-      - checkout
-      - run:
-          name: Install Submodules
-          command: git submodule update --init
-      - restore_cache:
-          keys:
-            - v1-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
-      - run:
-          name: Install Dependencies
-          command: |
-            python3 -m venv venv
-            source venv/bin/activate
-            pip3 install --upgrade pip setuptools wheel
-            pip3 install -r .circleci/requirements.txt -c constraints.txt
-            pip3 install external/gt4py -c constraints.txt
-            pip3 install pace-util fv3core fv3gfs-physics stencils dsl driver -c constraints.txt
-      - save_cache:
-          key: v1-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
-          paths:
-            - venv
-            - /root/.cache/pip
+  # setup-environment:
+  #   steps:
+  #     - checkout
+  #     - run:
+  #         name: Install Submodules
+  #         command: git submodule update --init
+  #     - restore_cache:
+  #         keys:
+  #           - v1-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
+  #     - run:
+  #         name: Install Dependencies
+  #         command: |
+  #           python3 -m venv venv
+  #           source venv/bin/activate
+  #           pip3 install --upgrade pip setuptools wheel
+  #           pip3 install -r .circleci/requirements.txt -c constraints.txt
+  #           pip3 install external/gt4py -c constraints.txt
+  #           pip3 install ./pace-util ./fv3core ./fv3gfs-physics ./stencils ./dsl ./driver -c constraints.txt
+  #     - save_cache:
+  #         key: v1-venv-{{ checksum "requirements.txt" }}-{{ checksum "constraints.txt" }}
+  #         paths:
+  #           - venv
+  #           - /root/.cache/pip
   download-regression-data:
     parameters:
       case:
@@ -96,15 +98,36 @@ jobs:
 
   regression:
     docker:
-    - image: google/cloud-sdk
+    - image: cimg/python:3.8
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
+      - gcp-cli/install:
+        version: 323.0.0
+      - run:
+          name: gcloud auth
+          command: |
+            echo $ENCODED_GCR_KEY
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
       - setup-mpi-environment
-      - download-regression-data:
-          case: c12_6ranks_baroclinic
-          version: 8.0.3
-          module: dycore
-      - unpack-regression-data
-      
+      # - download-regression-data:
+      #     case: c12_6ranks_baroclinic
+      #     version: 8.1.0
+      #     module: dycore
+      # - unpack-regression-data
+      - restore_cache:
+          keys:
+            - v1-{{ git submodule status external/gt4py | awk '{print $1;}' }}
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            CONTAINER_CMD="" FV3_PATH="$(pwd)/fv3core" make savepoint_tests savepoint_tests_mpi
+      - save_cache:
+          key: v1-{{ git submodule status external/gt4py | awk '{print $1;}' }}
+          paths:
+            - .gt_cache
 
   test_util:
     docker:
@@ -222,6 +245,8 @@ workflows:
             tags:
               only: /^v.*/
       - regression:
+          context:
+            - GCLOUD_ENCODED_KEY
           filters:
             tags:
               only: /^v.*/
