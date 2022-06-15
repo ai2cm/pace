@@ -84,7 +84,7 @@ def test_modifying_numpy_storage_modifies_view():
         extent=shape,
         dims=["dim1", "dim2"],
         units="units",
-        gt4py_backend="gtc:numpy",
+        gt4py_backend="numpy",
     )
     assert np.all(quantity.data == 0)
     quantity.storage[0, 0] = 1
@@ -133,6 +133,22 @@ def test_modifying_storage_modifies_data(quantity):
     storage = quantity.storage
     quantity.data[:] = 5
     assert quantity.np.all(quantity.np.asarray(storage) == 5)
+    assert quantity.data.data == quantity.storage.data.data
+
+
+@pytest.mark.parametrize("backend", ["gt4py_numpy"], indirect=True)
+def test_modifying_storage_modifies_data_when_initialized_from_storage(quantity):
+    storage = quantity.storage
+    quantity = pace.util.Quantity(
+        storage,
+        dims=quantity.dims,
+        units=quantity.units,
+        origin=quantity.origin,
+        extent=quantity.extent,
+    )
+    quantity.data[:] = 5
+    assert quantity.np.all(quantity.np.asarray(storage) == 5)
+    assert quantity.data.data == quantity.storage.data.data
 
 
 @pytest.mark.parametrize("backend", ["gt4py_numpy", "gt4py_cupy"], indirect=True)

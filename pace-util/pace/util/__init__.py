@@ -7,6 +7,7 @@ from ._timing import NullTimer, Timer
 from ._xarray import to_dataset
 from .buffer import Buffer, array_buffer, recv_buffer, send_buffer
 from .caching_comm import CachingCommData, CachingCommReader, CachingCommWriter
+from .checkpointer import Checkpointer, NullCheckpointer, SnapshotCheckpointer
 from .communicator import Communicator, CubedSphereCommunicator, TileCommunicator
 from .constants import (
     BOUNDARY_TYPES,
@@ -58,5 +59,5 @@ from .units import UnitsError, ensure_equal_units, units_are_equal
 from .zarr_monitor import ZarrMonitor
 
 
-__version__ = "0.7.0"
+__version__ = "0.9.0"
 __all__ = list(key for key in locals().keys() if not key.startswith("_"))

@@ -1,0 +1,78 @@
+comm_config:
+  config:
+    path: comm
+    ranks:
+    - 0
+  type: write
+dt_atmos: 225
+dycore_config:
+  a_imp: 1.0
+  beta: 0.0
+  consv_te: 0.0
+  d2_bg: 0.0
+  d2_bg_k1: 0.2
+  d2_bg_k2: 0.1
+  d4_bg: 0.15
+  d_con: 1.0
+  d_ext: 0.0
+  dddmp: 0.5
+  delt_max: 0.002
+  do_qa: true
+  do_sat_adj: true
+  do_vort_damp: true
+  dw_land: 0.15
+  dw_ocean: 0.1
+  fill: true
+  fv_sg_adj: 0
+  hord_dp: 6
+  hord_mt: 6
+  hord_tm: 6
+  hord_tr: 8
+  hord_vt: 6
+  hydrostatic: false
+  icloud_f: 0
+  k_split: 1
+  ke_bg: 0.0
+  kord_mt: 9
+  kord_tm: -9
+  kord_tr: 9
+  kord_wz: 9
+  n_split: 1
+  n_sponge: 48
+  nord: 3
+  nwat: 6
+  p_fac: 0.05
+  qi_lim: 1.0
+  ql_gen: 0.001
+  ql_mlt: 0.002
+  qs_mlt: 1.0e-06
+  rf_cutoff: 3000.0
+  rf_fast: true
+  tau: 10.0
+  tau_g2v: 1200.0
+  tau_i2s: 1000.0
+  tau_l2v: 300.0
+  tau_v2l: 90.0
+  vtdm4: 0.06
+  z_tracer: true
+initialization_config: {}
+initialization_type: baroclinic
+layout:
+- 1
+- 1
+minutes: 60
+nx_tile: 12
+nz: 79
+performance_config:
+  experiment_name: c12_baroclinic
+  performance_mode: true
+physics_config:
+  do_qa: true
+  hydrostatic: false
+  nwat: 6
+stencil_config:
+  backend: numpy
+  device_sync: true
+  format_source: false
+  rebuild: false
+  validate_args: true

@@ -1,5 +1,3 @@
-from mpi4py import MPI
-
 import pace.dsl
 import pace.util
 from fv3core._config import DynamicalCoreConfig
@@ -10,7 +8,7 @@ from fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from fv3core.testing.validation import enable_selective_validation
 from fv3gfs.physics import PhysicsConfig, PhysicsState
 from pace.driver.run import Driver, DriverConfig
-from pace.driver.tendency_state import TendencyState
+from pace.driver.state import TendencyState
 from pace.util.namelist import Namelist
 
 
@@ -18,9 +16,8 @@ enable_selective_validation()
 
 
 class TranslateDriver(TranslateFVDynamics):
-    def __init__(self, grids, namelist, stencil_factory):
-        super().__init__(grids, namelist, stencil_factory)
-        grid = grids[0]
+    def __init__(self, grid, namelist, stencil_factory):
+        super().__init__(grid, namelist, stencil_factory)
         self.namelist: Namelist = namelist
         self.stencil_factory = stencil_factory
         self.stencil_config = self.stencil_factory.config
@@ -38,9 +35,6 @@ class TranslateDriver(TranslateFVDynamics):
             tile_rank=communicator.tile.rank,
         )
 
-        grid_indexing = pace.dsl.stencil.GridIndexing.from_sizer_and_communicator(
-            sizer=sizer, cube=communicator
-        )
         quantity_factory = pace.util.QuantityFactory.from_backend(
             sizer, backend=self.stencil_config.backend
         )
@@ -51,15 +45,17 @@ class TranslateDriver(TranslateFVDynamics):
             quantity_factory=quantity_factory,
         )
         config_info = {
-            "stencil_config": self.stencil_config.stencil_kwargs,
-            "initialization_type": "predefined",
-            "initialization_config": {
-                "dycore_state": dycore_state,
-                "grid_data": self.grid.grid_data,
-                "damping_coefficients": self.grid.damping_coefficients,
-                "driver_grid_data": self.grid.driver_grid_data,
-                "physics_state": physics_state,
-                "tendency_state": tendency_state,
+            "stencil_config": self.stencil_config,
+            "initialization": {
+                "type": "predefined",
+                "config": {
+                    "dycore_state": dycore_state,
+                    "grid_data": self.grid.grid_data,
+                    "damping_coefficients": self.grid.damping_coefficients,
+                    "driver_grid_data": self.grid.driver_grid_data,
+                    "physics_state": physics_state,
+                    "tendency_state": tendency_state,
+                },
             },
             "dt_atmos": self.namelist.dt_atmos,
             "diagnostics_config": {"path": "null.zarr", "names": []},
@@ -73,7 +69,7 @@ class TranslateDriver(TranslateFVDynamics):
             "layout": tuple(self.namelist.layout),
         }
         config = DriverConfig.from_dict(config_info)
-        driver = Driver(config=config, comm=MPI.COMM_WORLD)
+        driver = Driver(config=config)
 
         driver.step_all()
         self.dycore = driver.dycore

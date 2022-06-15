@@ -114,7 +114,7 @@ class HyperdiffusionDamping:
             direction="x", stencil_factory=stencil_factory
         )
 
-        self._ntimes = min(3, nmax)
+        self._ntimes = int(min(3, nmax))
         origins = []
         domains_x = []
         domains_y = []

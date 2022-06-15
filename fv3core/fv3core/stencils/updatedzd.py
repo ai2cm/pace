@@ -245,6 +245,11 @@ class UpdateHeightOnDGrid:
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
+        # self._set_nans = get_set_nan_func(
+        #     grid_indexing,
+        #     dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+        #     n_halo=((0, 0), (0, 0)),
+        # )
 
     def _allocate_temporary_storages(self, grid_indexing: GridIndexing, backend: str):
         largest_possible_shape = grid_indexing.domain_full(add=(1, 1, 1))
@@ -393,3 +398,4 @@ class UpdateHeightOnDGrid:
             ws,
             dt,
         )
+        # self._set_nans(height)

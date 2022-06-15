@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e -x
 BACKEND=$1
-EXPNAME=$2
 export TEST_ARGS="-v -s -rsx --backend=${BACKEND} "
 
 if [ ${python_env} == "virtualenv" ]; then

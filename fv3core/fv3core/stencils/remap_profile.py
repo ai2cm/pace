@@ -329,7 +329,6 @@ def apply_constraints(
 
 
 def set_interpolation_coefficients(
-    q: FloatField,
     gam: FloatField,
     a4_1: FloatField,
     a4_2: FloatField,
@@ -342,7 +341,6 @@ def set_interpolation_coefficients(
 ):
     """
     Args:
-        q (in):
         gam (in):
         a4_1 (inout):
         a4_2 (inout):
@@ -353,7 +351,6 @@ def set_interpolation_coefficients(
         extm (in):
         qmin (in):
     """
-    # TODO: q isn't used here. We should take it out of the call signature
     from __externals__ import iv, kord
 
     # set_top_as_iv0
@@ -538,7 +535,7 @@ def set_interpolation_coefficients(
         if __INLINED(iv == 0):
             a4_1, a4_2, a4_3, a4_4 = posdef_constraint_iv0(a4_1, a4_2, a4_3, a4_4)
     # set_bottom_as_iv0, set_bottom_as_iv1
-    # TODO(rheag) temporary workaround to gtc:gt:gpu bug
+    # TODO(rheag) temporary workaround to gt:gpu bug
     # this computation can get out of order with the one that follows
     with computation(FORWARD), interval(-1, None):
         if __INLINED(iv == 0):
@@ -585,7 +582,6 @@ class RemapProfile:
         """
         assert kord <= 10, f"kord {kord} not implemented."
         grid_indexing = stencil_factory.grid_indexing
-        full_orig: Tuple[int] = grid_indexing.origin_full()
         km: int = grid_indexing.domain[2]
         self._kord = kord
 
@@ -604,8 +600,8 @@ class RemapProfile:
         self._ext5: BoolField = make_storage()
         self._ext6: BoolField = make_storage()
 
-        i_extent: int = i2 - i1 + 1
-        j_extent: int = j2 - j1 + 1
+        i_extent: int = int(i2 - i1 + 1)
+        j_extent: int = int(j2 - j1 + 1)
         origin: Tuple[int, int, int] = (i1, j1, 0)
         domain: Tuple[int, int, int] = (i_extent, j_extent, km)
         domain_extend: Tuple[int, int, int] = (i_extent, j_extent, km + 1)
@@ -681,7 +677,6 @@ class RemapProfile:
             )
 
             self._set_interpolation_coefficients(
-                self._q,
                 self._gam,
                 a4_1,
                 a4_2,
@@ -692,5 +687,3 @@ class RemapProfile:
                 self._extm,
                 qmin,
             )
-
-        return a4_1, a4_2, a4_3, a4_4

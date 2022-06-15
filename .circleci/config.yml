@@ -172,9 +172,6 @@ jobs:
               make test
               MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
             fi
-          environment:
-            GT_CACHE_ROOT: ~/workspace
-            GT_CACHE_DIR_NAME: .gt_cache
       - save_cache:
           key: v3-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
           paths:

@@ -8,16 +8,15 @@ def backend(pytestconfig):
 
 
 def pytest_addoption(parser):
-    parser.addoption("--backend", action="store", default="gtc:numpy")
+    parser.addoption("--backend", action="store", default="numpy")
     parser.addoption("--which_modules", action="store")
     parser.addoption("--which_rank", action="store")
     parser.addoption("--skip_modules", action="store")
     parser.addoption("--print_failures", action="store_true")
     parser.addoption("--failure_stride", action="store", default=1)
     parser.addoption("--data_path", action="store", default="./")
-    parser.addoption("--python_regression", action="store_true")
     parser.addoption("--threshold_overrides_file", action="store", default=None)
-    parser.addoption("--print_domains", action="store_true")
+    parser.addoption("--compute_grid", action="store_true")
 
 
 def pytest_configure(config):

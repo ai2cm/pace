@@ -23,8 +23,8 @@ with open("HISTORY.md") as history_file:
     history = history_file.read()
 
 setup(
-    author="Vulcan Technologies LLC",
-    author_email="jeremym@vulcan.com",
+    author="Allen Institute of Artificial Intelligence",
+    author_email="jeremym@allenai.org",
     python_requires=">=3.8",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
@@ -48,6 +48,6 @@ setup(
     packages=find_namespace_packages(include=["pace.*"]),
     include_package_data=True,
     url="https://github.com/ai2cm/pace",
-    version="0.7.0",
+    version="0.9.0",
     zip_safe=False,
 )

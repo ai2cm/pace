@@ -6,7 +6,9 @@ import pytest
 import fv3core.initialization.baroclinic as baroclinic_init
 import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
 import fv3core.stencils.fv_dynamics as fv_dynamics
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.util
 import pace.util as fv3util
 from pace.stencils.testing import (
     ParallelTranslateBaseSlicing,
@@ -110,7 +112,12 @@ class TranslateInitCase(ParallelTranslateBaseSlicing):
         },
     }
 
-    def __init__(self, grid_list, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid_list,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid_list, namelist, stencil_factory)
         grid = grid_list[0]
         self._base.in_vars["data_vars"] = {}
@@ -228,7 +235,12 @@ def make_sliced_inputs_dict(inputs, slice_2d):
 
 
 class TranslateInitPreJab(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {"ak": {}, "bk": {}, "delp": {}}
         self.in_vars["parameters"] = ["ptop"]
@@ -282,7 +294,12 @@ class TranslateInitPreJab(TranslateDycoreFortranData2Py):
 
 
 class TranslateJablonowskiBaroclinic(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "delp": {},
@@ -359,7 +376,12 @@ class TranslateJablonowskiBaroclinic(TranslateDycoreFortranData2Py):
 
 
 class TranslatePVarAuxiliaryPressureVars(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "delp": {},

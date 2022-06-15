@@ -3,17 +3,13 @@ from typing import Iterable, Sequence, Tuple, TypeVar, Union
 import numpy as np
 
 from . import constants
+from ._optional_imports import cupy as cp
 from .types import Allocator
 
 
-try:
-    import cupy as cp
-except ImportError:
-    cp = None
-
 # Run a deviceSynchronize() to check
 # that the GPU is present and ready to run
-if cp:
+if cp is not None:
     try:
         cp.cuda.runtime.deviceSynchronize()
         GPU_AVAILABLE = True

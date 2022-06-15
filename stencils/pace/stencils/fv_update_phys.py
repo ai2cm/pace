@@ -1,6 +1,7 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
+import fv3core
 import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util.constants as constants
@@ -85,6 +86,7 @@ class ApplyPhysicsToDycore:
         namelist,
         comm: pace.util.CubedSphereCommunicator,
         grid_info: DriverGridData,
+        state: fv3core.DycoreState,
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.comm = comm
@@ -102,9 +104,7 @@ class ApplyPhysicsToDycore:
             stencil_factory, comm.partitioner, comm.rank, namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
-            stencil_factory,
-            grid_data,
-            order=namelist.c2l_ord,
+            state, stencil_factory, grid_data, order=namelist.c2l_ord, comm=comm
         )
         self.origin = grid_indexing.origin_compute()
         self.extent = grid_indexing.domain_compute()
@@ -124,10 +124,10 @@ class ApplyPhysicsToDycore:
         )
         # TODO: check if we actually need surface winds
         self._u_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=self.origin, init=True, backend=stencil_factory.backend
+            shape[0:2], origin=self.origin, backend=stencil_factory.backend
         )
         self._v_srf = utils.make_storage_from_shape(
-            shape[0:2], origin=self.origin, init=True, backend=stencil_factory.backend
+            shape[0:2], origin=self.origin, backend=stencil_factory.backend
         )
 
     def __call__(
@@ -173,5 +173,4 @@ class ApplyPhysicsToDycore:
             state.v,
             state.ua,
             state.va,
-            self.comm,
         )

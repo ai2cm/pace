@@ -32,9 +32,9 @@ def backend(request):
 @pytest.fixture
 def gt4py_backend(backend):
     if backend in ("numpy", "gt4py_numpy"):
-        return "gtc:numpy"
+        return "numpy"
     elif backend in ("cupy", "gt4py_cupy"):
-        return "gtc:gt:gpu"
+        return "gt:gpu"
     else:
         return None
 

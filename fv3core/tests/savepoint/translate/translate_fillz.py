@@ -1,12 +1,19 @@
 import numpy as np
 
 import fv3core.stencils.fillz as fillz
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.util
 from pace.stencils.testing import TranslateDycoreFortranData2Py, pad_field_in_j
 
 
 class TranslateFillz(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.in_vars["data_vars"] = {
             "dp2": {"istart": grid.is_, "iend": grid.ie, "axis": 1},
@@ -35,7 +42,7 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
         )
         inputs["tracers"] = {}
         info = storage_vars["q2tracers"]
-        for i in range(inputs["nq"]):
+        for i in range(int(inputs["nq"])):
             inputs["tracers"][utils.tracer_variables[i]] = self.make_storage_data(
                 np.squeeze(inputs["q2tracers"][:, :, i]),
                 istart=info["istart"],
@@ -66,6 +73,7 @@ class TranslateFillz(TranslateDycoreFortranData2Py):
             inputs.pop("jm"),
             inputs.pop("km"),
             inputs.pop("nq"),
+            inputs["tracers"],
         )
         run_fillz(**inputs)
         ds = self.grid.default_domain_dict()

@@ -7,3 +7,24 @@ class RaiseWhenAccessed:
 
     def __call__(self, *args, **kwargs):
         raise self._err
+
+
+try:
+    import zarr
+except ModuleNotFoundError as err:
+    zarr = RaiseWhenAccessed(err)
+
+try:
+    import xarray
+except ModuleNotFoundError as err:
+    xarray = None
+
+try:
+    import cupy
+except ImportError:
+    cupy = None
+
+try:
+    import gt4py
+except ImportError:
+    gt4py = None

@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 from datetime import datetime
+from typing import ClassVar
 
 import f90nml
 
@@ -13,17 +14,17 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from fv3core.testing import TranslateFVDynamics
+from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
 from pace.dsl.stencil import StencilFactory
-
-# TODO: move update_atmos_state into pace.driver
 from pace.stencils.testing import TranslateGrid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
 
-from .state import DriverState, TendencyState
+from .registry import Registry
+from .state import DriverState, TendencyState, _restart_driver_state
 
 
-class InitializationConfig(abc.ABC):
+class Initializer(abc.ABC):
     @property
     @abc.abstractmethod
     def start_time(self) -> datetime:
@@ -39,15 +40,51 @@ class InitializationConfig(abc.ABC):
 
 
 @dataclasses.dataclass
-class BaroclinicConfig(InitializationConfig):
+class InitializerSelector(Initializer):
+    """
+    Dataclass for selecting the implementation of Initializer to use.
+
+    Used to circumvent the issue that dacite expects static class definitions,
+    but we would like to dynamically define which Initializer to use. Does this
+    by representing the part of the yaml specification that asks which initializer
+    to use, but deferring to the implementation in that initializer when called.
+    """
+
+    type: str
+    config: Initializer
+    registry: ClassVar[Registry] = Registry()
+
+    @classmethod
+    def register(cls, type_name):
+        return cls.registry.register(type_name)
+
+    @property
+    def start_time(self) -> datetime:
+        return self.config.start_time
+
+    def get_driver_state(
+        self,
+        quantity_factory: pace.util.QuantityFactory,
+        communicator: pace.util.CubedSphereCommunicator,
+    ) -> DriverState:
+        return self.config.get_driver_state(
+            quantity_factory=quantity_factory, communicator=communicator
+        )
+
+    @classmethod
+    def from_dict(cls, config: dict):
+        instance = cls.registry.from_dict(config)
+        return cls(config=instance, type=config["type"])
+
+
+@InitializerSelector.register("baroclinic")
+@dataclasses.dataclass
+class BaroclinicConfig(Initializer):
     """
     Configuration for baroclinic initialization.
     """
 
-    @property
-    def start_time(self) -> datetime:
-        # TODO: instead of arbitrary start time, enable use of timedeltas
-        return datetime(2000, 1, 1)
+    start_time: datetime = datetime(2000, 1, 1)
 
     def get_driver_state(
         self,
@@ -85,36 +122,30 @@ class BaroclinicConfig(InitializationConfig):
         )
 
 
+@InitializerSelector.register("restart")
 @dataclasses.dataclass
-class RestartConfig(InitializationConfig):
+class RestartConfig(Initializer):
     """
     Configuration for restart initialization.
     """
 
-    path: str
-
-    @property
-    def start_time(self) -> datetime:
-        return datetime(2000, 1, 1)
+    path: str = "."
+    start_time: datetime = datetime(2000, 1, 1)
 
     def get_driver_state(
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
-        metric_terms = pace.util.grid.MetricTerms(
-            quantity_factory=quantity_factory, communicator=communicator
+        state = _restart_driver_state(
+            self.path, communicator.rank, quantity_factory, communicator
         )
-        state = pace.util.open_restart(
-            dirname=self.path,
-            communicator=communicator,
-            quantity_factory=quantity_factory,
-        )
-        raise NotImplementedError()
+        return state
 
 
+@InitializerSelector.register("serialbox")
 @dataclasses.dataclass
-class SerialboxConfig(InitializationConfig):
+class SerialboxConfig(Initializer):
     """
     Configuration for Serialbox initialization.
     """
@@ -203,9 +234,7 @@ class SerialboxConfig(InitializationConfig):
             quantity_factory=quantity_factory,
             active_packages=["microphysics"],
         )
-        tendency_state = TendencyState.init_zeros(
-            quantity_factory=quantity_factory,
-        )
+        tendency_state = TendencyState.init_zeros(quantity_factory=quantity_factory)
         return DriverState(
             dycore_state=dycore_state,
             physics_state=physics_state,
@@ -231,22 +260,33 @@ class SerialboxConfig(InitializationConfig):
         )
         ser = self._serializer(communicator)
         savepoint_in = ser.get_savepoint("Driver-In")[0]
+        dace_config = DaceConfig(
+            communicator,
+            backend,
+            DaCeOrchestration.Python,
+        )
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=backend,
+            dace_config=dace_config,
         )
         stencil_factory = StencilFactory(
             config=stencil_config, grid_indexing=grid.grid_indexing
         )
-        translate_object = TranslateFVDynamics([grid], self._namelist, stencil_factory)
+        translate_object = TranslateFVDynamics(grid, self._namelist, stencil_factory)
         input_data = translate_object.collect_input_data(ser, savepoint_in)
         dycore_state = translate_object.state_from_inputs(input_data)
         return dycore_state
 
 
+@InitializerSelector.register("predefined")
 @dataclasses.dataclass
-class PredefinedStateConfig(InitializationConfig):
+class PredefinedStateConfig(Initializer):
     """
-    Configuration if the states are already defined
+    Configuration if the states are already defined.
+
+    Generally you will not want to use this class when initializing from yaml,
+    as it requires numpy array data to be part of the configuration dictionary
+    used to construct the class.
     """
 
     dycore_state: fv3core.DycoreState
@@ -255,11 +295,7 @@ class PredefinedStateConfig(InitializationConfig):
     grid_data: pace.util.grid.GridData
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
-
-    @property
-    def start_time(self) -> datetime:
-        # TODO: instead of arbitrary start time, enable use of timedeltas
-        return datetime(2016, 8, 1)
+    start_time: datetime = datetime(2016, 8, 1)
 
     def get_driver_state(
         self,

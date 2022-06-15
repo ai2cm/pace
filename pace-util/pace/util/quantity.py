@@ -6,17 +6,12 @@ import numpy as np
 
 from . import _xarray, constants
 from ._boundary_utils import bound_default_slice, shift_boundary_slice_tuple
+from ._optional_imports import cupy, gt4py
 from .types import NumpyModule
 
 
-try:
-    import cupy
-except ImportError:
-    cupy = np  # avoids attribute errors while also disabling cupy support
-try:
-    import gt4py
-except ImportError:
-    gt4py = None
+if cupy is None:
+    import numpy as cupy
 
 __all__ = ["Quantity", "QuantityMetadata"]
 
@@ -299,7 +294,7 @@ class Quantity:
                 self._data = data.gpu_view
             elif isinstance(data, gt4py.storage.storage.CPUStorage):
                 self._storage = data
-                self._data = np.asarray(data)
+                self._data = data.data
             else:
                 raise TypeError(
                     "only storages supported are CPUStorage and GPUStorage, "
@@ -421,7 +416,7 @@ class Quantity:
         # when GDP-3 is merged, we can instead use the data in self._data to
         # initialize the storage, instead of making a copy.
         if isinstance(storage, gt4py.storage.storage.CPUStorage):
-            data = np.asarray(storage.data)
+            data = storage.data
         elif isinstance(storage, gt4py.storage.storage.GPUStorage):
             data = storage.gpu_view
         else:
@@ -492,6 +487,23 @@ class Quantity:
     def np(self) -> NumpyModule:
         return self.metadata.np
 
+    @property
+    def __array_interface__(self):
+        return self.storage.__array_interface__
+
+    @property
+    def __cuda_array_interface__(self):
+        return self.storage.__cuda_array_interface__
+
+    @property
+    def shape(self):
+        return self.storage.shape
+
+    def __descriptor__(self):
+        if self._storage is None:
+            return None  # trigger DaCe JIT
+        return self._storage.__descriptor__()
+
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.
 
@@ -523,7 +535,7 @@ class Quantity:
         """
         target_dims = _collapse_dims(target_dims, self.dims)
         transpose_order = [self.dims.index(dim) for dim in target_dims]
-        return Quantity(
+        transposed = Quantity(
             self.np.transpose(self.data, transpose_order),  # type: ignore[attr-defined]
             dims=transpose_sequence(self.dims, transpose_order),
             units=self.units,
@@ -531,6 +543,8 @@ class Quantity:
             extent=transpose_sequence(self.extent, transpose_order),
             gt4py_backend=self.gt4py_backend,
         )
+        transposed._attrs = self._attrs
+        return transposed
 
 
 def transpose_sequence(sequence, order):
