@@ -18,22 +18,13 @@ from pace.dsl.typing import FloatField
 
 
 def get_stencil_config(
-    backend,
-    rebuild,
-    validate_args,
-    format_source,
-    device_sync,
-    orchestration=DaCeOrchestration.Python,
+    *,
+    backend: str,
+    orchestration: DaCeOrchestration = DaCeOrchestration.Python,
+    **kwargs,
 ):
     dace_config = DaceConfig(None, backend=backend, orchestration=orchestration)
-    config = StencilConfig(
-        backend=backend,
-        rebuild=rebuild,
-        validate_args=validate_args,
-        format_source=format_source,
-        device_sync=device_sync,
-        dace_config=dace_config,
-    )
+    config = StencilConfig(backend=backend, dace_config=dace_config, **kwargs)
     return config
 
 
@@ -245,8 +236,7 @@ def test_frozen_stencil_kwargs_passed_to_init(
     mock_stencil.assert_called_once_with(
         definition=copy_stencil,
         externals={},
-        name="test_stencil_wrapper.copy_stencil",
-        **config.stencil_kwargs(),
+        **config.stencil_kwargs(func=copy_stencil),
     )
 
 
@@ -285,25 +275,23 @@ def test_backend_options(
             "backend": "numpy",
             "rebuild": True,
             "format_source": False,
+            "name": "test_stencil_wrapper.copy_stencil",
         },
         "cuda": {
             "backend": "cuda",
             "rebuild": True,
             "device_sync": False,
             "format_source": False,
+            "name": "test_stencil_wrapper.copy_stencil",
             "verbose": False,
         },
     }
 
     actual = get_stencil_config(
-        backend=backend,
-        rebuild=rebuild,
-        validate_args=validate_args,
-        format_source=False,
-        device_sync=False,
-    ).stencil_kwargs()
+        backend=backend, rebuild=rebuild, validate_args=validate_args
+    ).stencil_kwargs(func=copy_stencil)
     expected = expected_options[backend]
-    assert str(actual) == str(expected)
+    assert actual == expected
 
 
 def get_mock_quantity():

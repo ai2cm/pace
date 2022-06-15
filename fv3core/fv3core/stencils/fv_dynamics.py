@@ -307,11 +307,7 @@ class DynamicalCore:
         state.__dict__.update(self._temporaries)
         state.__dict__.update(self.acoustic_dynamics._temporaries)
 
-    def step_dynamics(
-        self,
-        state: DycoreState,
-        timer: Timer,
-    ):
+    def step_dynamics(self, state: DycoreState, timer: Timer):
         """
         Step the model state forward by one timestep.
 
@@ -323,11 +319,7 @@ class DynamicalCore:
         self._compute(state, timer)
         self._checkpoint_fvdynamics(state=state, tag="Out")
 
-    def compute_preamble(
-        self,
-        state,
-        is_root_rank: bool,
-    ):
+    def compute_preamble(self, state, is_root_rank: bool):
         if self.config.hydrostatic:
             raise NotImplementedError("Hydrostatic is not implemented")
         if __debug__:
