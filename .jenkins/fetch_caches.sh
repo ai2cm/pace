@@ -2,11 +2,7 @@
 
 backend=$1
 expname=$2
-if (( $# > 2 )); then
-    cache_dir=$3
-else
-    cache_dir="/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/${expname}/${backend//:/_}"
-fi
+cache_dir=${3:=/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/${expname}/${backend//:/_}}
 
 script_dir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 pace_dir=$script_dir/../

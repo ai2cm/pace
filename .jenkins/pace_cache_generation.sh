@@ -51,4 +51,4 @@ rm -rf $cache_archive
 
 mkdir -p $target_dir
 cp _tmp $cache_archive
-rm _tmp .gt_cache*
+rm -rf _tmp .gt_cache*

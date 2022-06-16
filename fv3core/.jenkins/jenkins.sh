@@ -55,6 +55,7 @@ TOP_LEVEL_JENKINS_DIR=$PACE_DIR/.jenkins
 action="$1"
 backend="$input_backend"
 experiment="$3"
+(( $# > 3 )) && cache_dir=$4
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
@@ -69,7 +70,11 @@ echo "PYTHON env ${python_env}"
 
 # NOTE: All backends are GTC backends, so fetch the caches
 echo "Fetching existing gt_caches"
-${TOP_LEVEL_JENKINS_DIR}/fetch_caches.sh $backend $experiment
+if [ -z "$cache_dir" ]; then
+    $TOP_LEVEL_JENKINS_DIR/fetch_caches.sh $backend $experiment
+else
+    $TOP_LEVEL_JENKINS_DIR/fetch_caches.sh $backend $experiment $cache_dir
+fi
 
 # load machine dependent environment
 if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then

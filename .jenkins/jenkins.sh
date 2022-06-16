@@ -54,6 +54,7 @@ PACE_DIR=$JENKINS_DIR/../
 action="$1"
 backend="$input_backend"
 experiment="$3"
+(( $# > 3 )) && cache_dir=$4
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
@@ -68,8 +69,12 @@ echo "PYTHON env ${python_env}"
 
 # NOTE: All backends are GTC backends now, so fetch caches
 echo "Fetching existing gt_caches"
-(cd ${PACE_DIR}/fv3gfs-physics && ${JENKINS_DIR}/fetch_caches.sh $backend $experiment)
-cd ${PACE_DIR}
+if [ -z "$cache_dir" ]; then
+    (cd $PACE_DIR/fv3gfs-physics && $JENKINS_DIR/fetch_caches.sh $backend $experiment)
+else
+    (cd $PACE_DIR/fv3gfs-physics && $JENKINS_DIR/fetch_caches.sh $backend $experiment $cache_dir)
+fi
+cd $PACE_DIR
 
 # load machine dependent environment
 if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then
