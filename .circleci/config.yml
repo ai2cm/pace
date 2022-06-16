@@ -118,7 +118,7 @@ jobs:
       # - unpack-regression-data
       - run:
           name: save gt4py_version.txt
-          run: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
+          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
       - restore_cache:
           keys:
             - v1-{{ checksum "gt4py_version.txt" }}
