@@ -69,7 +69,7 @@ echo "PYTHON env ${python_env}"
 
 # NOTE: All backends are GTC backends, so fetch the caches
 echo "Fetching existing gt_caches"
-${TOP_LEVEL_JENKINS_DIR}/fetch_caches.sh $backend $experiment dycore
+${TOP_LEVEL_JENKINS_DIR}/fetch_caches.sh $backend $experiment
 
 # load machine dependent environment
 if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then
