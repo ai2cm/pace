@@ -202,9 +202,7 @@ def get_sdfg_path(
 
     # Guarding against bad usage of this function
     if config.get_orchestrate() != DaCeOrchestration.Run:
-        raise RuntimeError(
-            "Coding mistaked: sdfg path ask but DaCe orchestration is != Production"
-        )
+        None
 
     # Case of a .sdfg file given by the user to be compiled
     if sdfg_file_path is not None:
