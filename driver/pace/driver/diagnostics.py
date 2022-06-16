@@ -42,15 +42,17 @@ class DiagnosticsConfig:
         output_initial_state: flag to determine if the first output should be the
             initial state of the model before timestepping
         names: diagnostics to save
+        derived_names: derived diagnostics to save
     """
 
     path: Optional[str] = None
     output_frequency: int = 1
     output_initial_state: bool = False
     names: List[str] = dataclasses.field(default_factory=list)
+    derived_names: List[str] = dataclasses.field(default_factory=list)
 
     def __post_init__(self):
-        if len(self.names) > 0 and self.path is None:
+        if (len(self.names) > 0 or len(self.derived_names) > 0) and self.path is None:
             raise ValueError(
                 "DiagnosticsConfig.path must be given to enable diagnostics"
             )
@@ -70,7 +72,11 @@ class DiagnosticsConfig:
             return NullDiagnostics()
         else:
             return ZarrDiagnostics(
-                path=self.path, names=self.names, partitioner=partitioner, comm=comm
+                path=self.path,
+                names=self.names,
+                derived_names=self.derived_names,
+                partitioner=partitioner,
+                comm=comm,
             )
 
 
@@ -81,6 +87,7 @@ class ZarrDiagnostics(Diagnostics):
         self,
         path: str,
         names: List[str],
+        derived_names: List[str],
         partitioner: pace.util.CubedSpherePartitioner,
         comm,
     ):
@@ -88,6 +95,7 @@ class ZarrDiagnostics(Diagnostics):
             raise ModuleNotFoundError("zarr must be installed to use this class")
         else:
             self.names = names
+            self.derived_names = derived_names
             store = zarr_storage.DirectoryStore(path=path)
             self.monitor = pace.util.ZarrMonitor(
                 store=store, partitioner=partitioner, mpi_comm=comm
@@ -102,8 +110,25 @@ class ZarrDiagnostics(Diagnostics):
                 except AttributeError:
                     quantity = getattr(state.physics_state, name)
                 zarr_state[name] = quantity
+            derived_state = self._get_derived_state(state)
+            zarr_state.update(derived_state)
             assert time is not None
             self.monitor.store(zarr_state)
+
+    def _get_derived_state(self, state: DriverState):
+        output = {}
+        if len(self.derived_names) > 0:
+            for name in self.derived_names:
+                if "column_integrated_" in name:
+                    tracer = name.split("column_integrated_")[-1]
+                    output[name] = _compute_column_integral(
+                        name,
+                        getattr(state.dycore_state, tracer),
+                        state.dycore_state.delp,
+                    )
+                else:
+                    print(f"{name} is not a supported diagnostic variable.")
+        return output
 
     def store_grid(
         self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
@@ -131,3 +156,26 @@ class NullDiagnostics(Diagnostics):
         self, grid_data: pace.util.grid.GridData, metadata: QuantityMetadata
     ):
         pass
+
+
+def _compute_column_integral(
+    name: str, q_in: pace.util.Quantity, delp: pace.util.Quantity
+):
+    """
+    Compute column integrated mixing ratio (e.g., total liquid water path)
+
+    Args:
+        q_in: tracer mixing ratio
+        delp: pressure thickness of atmospheric layer
+    """
+    column_integral = pace.util.Quantity(
+        sum(
+            q_in.data[:, :, k] * delp.data[:, :, k]
+            for k in range(q_in.metadata.extent[2])
+        ),
+        dims=("x_interface", "y_interface"),
+        origin=q_in.metadata.origin[0:2],
+        extent=(q_in.metadata.extent[0], q_in.metadata.extent[1]),
+        units="kg/m**2",
+    )
+    return column_integral

@@ -31,3 +31,6 @@ def test_returns_zarr_diagnostics_if_path_given(tmpdir):
 def test_raises_if_names_given_but_no_path():
     with pytest.raises(ValueError):
         pace.driver.DiagnosticsConfig(path=None, names=["foo"])
+
+    with pytest.raises(ValueError):
+        pace.driver.DiagnosticsConfig(path=None, derived_names=["foo"])
