@@ -10,14 +10,7 @@ fi
 
 backend=$1
 experiment=$2
-
-
-if (( $# > 2 )); then
-    target_dir=$3
-else
-    target_dir="/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/$experiment/${backend//:/_}"
-fi
-
+target_dir=${3:-/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/$experiment/${backend//:/_}}
 
 if (( $# > 3 )) && [[ $4 == "bypass_wrapper" ]]; then
     bypass_wrapper=true
@@ -33,7 +26,7 @@ if [[ $bypass_wrapper != "true" ]]; then
     export LONG_EXECUTION=1
     slave=daint .jenkins/jenkins.sh create_caches $backend $experiment
 else
-    .jenkins/actions/create_caches.sh $backend $experiment
+    .jenkins/actions/create_caches.sh $backend $experiment bypass_wrapper
 fi
 
 export gt4py_version=$(git submodule status $pace_dir/external/gt4py | awk '{print $1;}')
