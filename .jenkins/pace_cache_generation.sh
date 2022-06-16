@@ -11,13 +11,15 @@ fi
 backend=$1
 experiment=$2
 
-if [ $# > 2 ]; then
+
+if (( $# > 2 )); then
     target_dir=$3
 else
     target_dir="/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/$experiment/${backend//:/_}"
 fi
 
-if [ $# > 3 ] && [ $4 == "bypass_wrapper" ]; then
+
+if (( $# > 3 )) && [[ $4 == "bypass_wrapper" ]]; then
     bypass_wrapper=true
 else
     bypass_wrapper=false
@@ -48,4 +50,5 @@ tar -czf _tmp .gt_cache*
 rm -rf $cache_archive
 
 mkdir -p $target_dir
-cp _tmp $cache_archve
+cp _tmp $cache_archive
+rm _tmp

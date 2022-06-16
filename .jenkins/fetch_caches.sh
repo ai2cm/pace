@@ -1,26 +1,32 @@
-#!/bin/bash
-BACKEND=$1
-EXPNAME=$2
-SANITIZED_BACKEND=`echo $BACKEND | sed 's/:/_/g'` #sanitize the backend from any ':'
-CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/${EXPNAME}/${SANITIZED_BACKEND}"
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PACE_DIR=$SCRIPT_DIR/../
+#!/usr/bin/env bash
 
-if [ -z "${GT4PY_VERSION}" ]; then
-    export GT4PY_VERSION=`git submodule status ${PACE_DIR}/external/gt4py | awk '{print $1;}'`
+backend=$1
+expname=$2
+if (( $# > 2 )); then
+    cache_dir=$3
+else
+    cache_dir="/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/${expname}/${backend//:/_}"
 fi
 
+script_dir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+pace_dir=$script_dir/../
+
+export gt4py_version=$(git submodule status $pace_dir/external/gt4py | awk '{print $1;}')
+
 if ! compgen -G ./.gt_cache* > /dev/null; then
-    if [ -d ${CACHE_DIR} ]; then
-        cache_filename=${CACHE_DIR}/${GT4PY_VERSION}.tar.gz
-        if [ -f "${cache_filename}" ]; then
-            tar -xzf ${cache_filename} -C .
-            echo ".gt_cache successfully fetched from ${cache_filename}"
+    if [ -d $cache_dir ]; then
+        cache_filename=$cache_dir/$gt4py_version.tar.gz
+        if [ -f "$cache_filename" ]; then
+            tar -xzf $cache_filename -C .
+            echo "Caches sucessfully loaded from $cache_filename"
         else
-            echo ".gt_cache not fetched, cache not found at ${cache_filename}"
+            echo "Caches $cache_filename not found"
+            exit 1
         fi
+    else
+        echo "Cache directory $cache_dir not found"
     fi
 else
-    echo "WARNING: $(pwd)/.gt_cache already exists. Will not overwrite directory with caches."
-    echo "Please remove this directory and try again."
+    echo "WARNING: $(pwd)/.gt_cache* already exists. Will not overwrite directory with caches."
+    exit 1
 fi

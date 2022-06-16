@@ -49,5 +49,5 @@ if __name__ == "__main__":
     for rank in range(num_ranks_on_tile):
         initialize_caches(namelist, backend, rank, num_ranks)
 
-    for rank in range(num_ranks):
+    for rank in range(1, num_ranks):
         shutil.copytree(f".gt_cache_{0:06}", f".gt_cache_{rank:06}")
