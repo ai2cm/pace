@@ -252,6 +252,7 @@ def setup_dycore(
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=dycore_config,
         phis=state.phis,
+        state=state,  # Dace hack
     )
     # TODO include functionality that uses and changes this
     do_adiabatic_init = False
