@@ -1,5 +1,6 @@
 import os.path
 from typing import Any, Callable, Dict, Optional, Tuple
+from pace.util import communicator
 
 import yaml
 
@@ -187,35 +188,8 @@ def write_decomposition(
         yaml.dump(decomposition, outfile)
 
 
-def load_sdfg_once(
-    program: Callable, config: DaceConfig, sdfg_file_path: Optional[str] = None
-) -> Optional[str]:
-    """Attempt to load SDFG the first time it's called.
-    Silently return for any other call but the first one.
-    """
-
-    if config.get_orchestrate() != DaCeOrchestration.Run:
-        return None
-
-    global _loaded_sdfg_once
-    if _loaded_sdfg_once:
-        return None
-
-    # Flag the function has called
-    _loaded_sdfg_once = True
-
-    # Qualified name as built by DaCe folder structure
-    qualified_dirname = (
-        f"{program.__module__}.{program.__qualname__}".replace(".", "_")
-        .replace("__main__", "")
-        .replace("_run_<locals>_", "")
-    )
-
-    return _get_sdfg_path(qualified_dirname, sdfg_file_path)
-
-
-def _get_sdfg_path(
-    program_name: str, config: DaceConfig, sdfg_file_path: Optional[str] = None
+def get_sdfg_path(
+    daceprog_name: str, config: DaceConfig, sdfg_file_path: Optional[str] = None
 ) -> str:
     """Build an SDFG path from the qualified program name or it's direct path to .sdfg
 
@@ -223,6 +197,8 @@ def _get_sdfg_path(
         program_name: qualified name in the form module_qualname if module is not locals
         sdfg_file_path: absolute path to a .sdfg file
     """
+
+    # TODO: check DaceConfig for cache.strategy == name
 
     # Guarding against bad usage of this function
     if config.get_orchestrate() != DaCeOrchestration.Run:
@@ -243,21 +219,23 @@ def _get_sdfg_path(
 
     from gt4py import config as gt_config
 
-    comm = config.get_communicator().comm
+    comm = config.get_communicator()
     config_path = f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
-    if comm.Get_size() > 1:
-        rank_str = f"_{read_target_rank(comm.Get_rank(), config_path):06d}"
+    if comm and comm.comm.Get_size() > 1:
+        rank = comm.comm.Get_rank()
+        rank_str = f"_{read_target_rank(comm.comm.Get_rank(), config_path):06d}"
     else:
+        rank = "N/A"
         rank_str = ""
 
     sdfg_dir_path = (
         f"{gt_config.cache_settings['root_path']}"
-        f"/.gt_cache{rank_str}/dacecache/{program_name}"
+        f"/.gt_cache{rank_str}/dacecache/{daceprog_name}"
     )
     if not os.path.isdir(sdfg_dir_path):
         raise RuntimeError(f"Precompiled SDFG is missing at {sdfg_dir_path}")
 
-    print(f"[DaCe Config] Rank {comm.Get_rank()} loading SDFG {sdfg_dir_path}")
+    print(f"[DaCe Config] Rank {rank} loading SDFG {sdfg_dir_path}")
 
     return sdfg_dir_path
 
@@ -275,23 +253,23 @@ def set_distributed_caches(config: "DaceConfig"):
 
         from gt4py import config as gt_config
 
-        comm = config.get_communicator().comm
-        rank = comm.Get_rank()
-
-        # Check layout
-        layout_filepath = (
-            f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
-        )
-        if not os.path.exists(layout_filepath):
-            raise RuntimeError(
-                f"{orchestration_mode} error: Could not find layout at"
-                f" {layout_filepath}"
-            )
+        comm = config.get_communicator()
 
         # Check our cache exist
-        if comm.Get_size() > 1:
+        if comm and comm.comm.Get_size() > 1:
+            rank = comm.comm.Get_rank()
+            # Check layout
+            layout_filepath = (
+                f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
+            )
+            if not os.path.exists(layout_filepath):
+                raise RuntimeError(
+                    f"{orchestration_mode} error: Could not find layout at"
+                    f" {layout_filepath}"
+                )
             rank_str = f"_{read_target_rank(rank, layout_filepath):06d}"
         else:
+            rank = "N/A"
             rank_str = ""
         cache_filepath = f"{gt_config.cache_settings['root_path']}/.gt_cache{rank_str}"
         if not os.path.exists(cache_filepath):

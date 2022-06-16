@@ -1,5 +1,5 @@
 import os
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 import dace
 import gt4py.storage
@@ -11,7 +11,7 @@ from dace.transformation.helpers import get_parent_map
 
 from pace.dsl.dace.build import (
     determine_compiling_ranks,
-    load_sdfg_once,
+    get_sdfg_path,
     read_target_rank,
     unblock_waiting_tiles,
     write_decomposition,
@@ -20,6 +20,9 @@ from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import strip_unused_global_in_compute_x_flux
 from pace.dsl.dace.utils import DaCeProgress
 from pace.util.mpi import MPI
+
+if TYPE_CHECKING:
+    from dace.frontend import DaceProgram
 
 
 def dace_inhibitor(func: Callable):
@@ -134,7 +137,7 @@ def build_sdfg(
                 del sdfg_kwargs[k]
 
         # Promote scalar
-        from dace.sdfg.analysis import scalar_to_symbol as scal2sym
+        from dace.transformation.passes import scalar_to_symbol as scal2sym
 
         with DaCeProgress(config, "Scalar promotion"):
             for sd in sdfg.all_sdfgs_recursive():
@@ -221,7 +224,7 @@ class _LazyComputepathFunction(SDFGConvertible):
     def __init__(self, func: Callable, config: DaceConfig):
         self.func = func
         self.config = config
-        self.daceprog = dace.program(self.func)
+        self.daceprog: DaceProgram = dace.program(self.func)
         self._sdfg_loaded = False
         self._sdfg = None
 
@@ -245,7 +248,7 @@ class _LazyComputepathFunction(SDFGConvertible):
         self.daceprog.global_vars = value
 
     def __sdfg__(self, *args, **kwargs):
-        sdfg_path = load_sdfg_once(self.func, self.config)
+        sdfg_path = get_sdfg_path(self.daceprog.name, self.config)
         if not self._sdfg_loaded and sdfg_path is None:
             return self.daceprog.to_sdfg(
                 *args,
@@ -292,7 +295,7 @@ class _LazyComputepathMethod:
             methodwrapper = dace.method(lazy_method.func)
             self.obj_to_bind = obj_to_bind
             self.lazy_method = lazy_method
-            self.daceprog = methodwrapper.__get__(obj_to_bind)
+            self.daceprog: DaceProgram = methodwrapper.__get__(obj_to_bind)
 
         @property
         def global_vars(self):
@@ -314,7 +317,7 @@ class _LazyComputepathMethod:
             )
 
         def __sdfg__(self, *args, **kwargs):
-            sdfg_path = load_sdfg_once(self.lazy_method.func, self.lazy_method.config)
+            sdfg_path = get_sdfg_path(self.daceprog.name, self.lazy_method.config)
             if sdfg_path is None:
                 return self.daceprog.to_sdfg(
                     *args,
@@ -404,8 +407,8 @@ def orchestrate(
                 # issues discussion) is to make a plugin. Too much work -> ignore mypy
 
                 class _(type(obj)):  # type: ignore
-                    __qualname__ = f"{type(obj)}_patched"
-                    __name__ = f"{type(obj)}_patched"
+                    __qualname__ = f"{type(obj).__qualname__}"
+                    __name__ = f"{type(obj).__name__}"
 
                     def __call__(self, *arg, **kwarg):
                         return wrapped(*arg, **kwarg)
@@ -426,7 +429,11 @@ def orchestrate(
                             constant_args, given_args, parent_closure
                         )
 
+                # We keep the original class type name to not perturb
+                # the workflows that uses it to build relevant info (path, hash...)
+                previous_cls_name = type(obj).__name__
                 obj.__class__ = _
+                type(obj).__name__ = previous_cls_name
             else:
                 # For regular attribute - we can just patch as usual
                 setattr(obj, method_to_orchestrate, wrapped)

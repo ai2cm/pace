@@ -109,23 +109,27 @@ def get_ranks(metafunc, layout):
         return [int(only_rank)]
 
 
-def get_config(namelist_filename, backend):
-    namelist = pace.util.Namelist.from_f90nml(f90nml.read(namelist_filename))
+def get_namelist(namelist_filename):
+    return pace.util.Namelist.from_f90nml(f90nml.read(namelist_filename))
+
+
+def get_config(backend, communicator):
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=True,
         dace_config=DaceConfig(
-            communicator=None,
+            communicator=communicator,
             backend=backend,
         ),
     )
-    return stencil_config, namelist
+    return stencil_config
 
 
 def sequential_savepoint_cases(metafunc, data_path, namelist_filename, *, backend: str):
     savepoint_names = get_sequential_savepoint_names(metafunc, data_path)
-    stencil_config, namelist = get_config(namelist_filename, backend)
+    namelist = get_namelist(namelist_filename)
+    stencil_config = get_config(backend, None)
     ranks = get_ranks(metafunc, namelist.layout)
     compute_grid = metafunc.config.getoption("compute_grid")
     return _savepoint_cases(
@@ -197,9 +201,11 @@ def compute_grid_data(grid, namelist, backend, layout):
 
 
 def parallel_savepoint_cases(
-    metafunc, data_path, namelist_filename, mpi_rank, *, backend: str
+    metafunc, data_path, namelist_filename, mpi_rank, *, backend: str, comm
 ):
-    stencil_config, namelist = get_config(namelist_filename, backend)
+    namelist = get_namelist(namelist_filename)
+    communicator = get_communicator(comm, namelist.layout)
+    stencil_config = get_config(backend, communicator)
     savepoint_names = get_parallel_savepoint_names(metafunc, data_path)
     compute_grid = metafunc.config.getoption("compute_grid")
     return _savepoint_cases(
@@ -242,7 +248,12 @@ def generate_parallel_stencil_tests(metafunc, *, backend: str):
     comm = MPI.COMM_WORLD
     mpi_rank = comm.Get_rank()
     savepoint_cases = parallel_savepoint_cases(
-        metafunc, data_path, namelist_filename, mpi_rank, backend=backend
+        metafunc,
+        data_path,
+        namelist_filename,
+        mpi_rank,
+        backend=backend,
+        comm=comm,
     )
     metafunc.parametrize(
         "case", savepoint_cases, ids=[str(item) for item in savepoint_cases]
