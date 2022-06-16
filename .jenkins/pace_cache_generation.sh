@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# This file is executed by the "pace_cache_generation" plan.
+
 set -e
 
 if (( $# < 3 )); then
@@ -13,7 +15,7 @@ shift 2
 if [ $# > 0 ]; then
     target_dir=$1
 else
-    target_dir="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/$experiment/${backend//:/_}"
+    target_dir="/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/$experiment/${backend//:/_}"
 fi
 
 if [ $# > 1 ] && [ $2 == "bypass_wrapper" ]; then

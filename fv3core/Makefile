@@ -142,6 +142,7 @@ sync_test_data:
 push_python_regressions:
 	gsutil -m cp -r $(TEST_DATA_HOST)/python_regressions $(DATA_BUCKET)python_regressions
 
+# NOTE: The echo at the end of 'get_test_data' is used by the caching workflow.
 get_test_data:
 	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
 	[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt -)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
