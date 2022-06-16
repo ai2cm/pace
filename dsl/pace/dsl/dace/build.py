@@ -190,7 +190,7 @@ def write_decomposition(
 
 def get_sdfg_path(
     daceprog_name: str, config: DaceConfig, sdfg_file_path: Optional[str] = None
-) -> str:
+) -> Optional[str]:
     """Build an SDFG path from the qualified program name or it's direct path to .sdfg
 
     Args:
@@ -202,7 +202,7 @@ def get_sdfg_path(
 
     # Guarding against bad usage of this function
     if config.get_orchestrate() != DaCeOrchestration.Run:
-        None
+        return None
 
     # Case of a .sdfg file given by the user to be compiled
     if sdfg_file_path is not None:
