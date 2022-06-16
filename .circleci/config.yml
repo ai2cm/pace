@@ -116,16 +116,19 @@ jobs:
       #     version: 8.1.0
       #     module: dycore
       # - unpack-regression-data
+      - run:
+          name: save gt4py_version.txt
+          run: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
       - restore_cache:
           keys:
-            - v1-{{ git submodule status external/gt4py | awk '{print $1;}' }}
+            - v1-{{ checksum "gt4py_version.txt" }}
       - run:
           name: run tests
           command: |
             . venv/bin/activate
             CONTAINER_CMD="" FV3_PATH="$(pwd)/fv3core" make savepoint_tests savepoint_tests_mpi
       - save_cache:
-          key: v1-{{ git submodule status external/gt4py | awk '{print $1;}' }}
+          key: v1-{{ checksum "gt4py_version.txt" }}
           paths:
             - .gt_cache
 
