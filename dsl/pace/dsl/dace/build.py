@@ -1,10 +1,10 @@
 import os.path
-from typing import Any, Callable, Dict, Optional, Tuple
-from pace.util import communicator
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+
+from pace.util import TilePartitioner
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 
 import yaml
-
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 
 
 ################################################
@@ -13,22 +13,15 @@ from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 
 def determine_compiling_ranks(config: DaceConfig) -> Tuple[bool, Any]:
     is_compiling = False
-    rank = 0
-    size = 1
-
-    if config.get_communicator():
-        comm = config.get_communicator().comm
-        rank = comm.Get_rank()
-        size = comm.Get_size()
-    else:
-        comm = None
+    rank = config.my_rank
+    size = config.rank_size
 
     if int(size / 6) == 0:
         is_compiling = True
     elif rank % int(size / 6) == rank:
         is_compiling = True
 
-    return is_compiling, comm
+    return is_compiling
 
 
 def unblock_waiting_tiles(comm, sdfg_path: str) -> None:
@@ -112,13 +105,12 @@ def top_tile_rank_from_decomposition_string(string, partitioner):
     return None
 
 
-def top_tile_rank_to_decomposition_string(rank: int, config: DaceConfig):
+def top_tile_rank_to_decomposition_string(rank: int, partitioner: TilePartitioner):
     """
     Return the decomposition string for the correct subtile position by matching
      osition given by the partitionner
         e.g.: return "00" for ranl at bottom left subtile
     """
-    partitioner = config.get_communicator().partitioner
     if partitioner.tile.on_tile_bottom(rank):
         if partitioner.tile.on_tile_left(rank):
             return "00"
@@ -142,13 +134,21 @@ def top_tile_rank_to_decomposition_string(rank: int, config: DaceConfig):
             return "11"
 
 
-def read_target_rank(rank: int, config: DaceConfig, filename=None):
-    partitioner = config.get_communicator().partitioner
-    top_tile_rank = top_tile_equivalent(rank, partitioner.total_ranks)
-    with open(filename) as decomposition:
+def read_target_rank(
+    rank: int,
+    partitioner: TilePartitioner,
+    config: DaceConfig,
+    layout_filepath=None,
+) -> int:
+    if not layout_filepath:
+        return -1
+    top_tile_rank = top_tile_equivalent(rank, config.rank_size)
+    with open(layout_filepath) as decomposition:
         parsed_file = yaml.safe_load(decomposition)
         return int(
-            parsed_file[top_tile_rank_to_decomposition_string(top_tile_rank, config)]
+            parsed_file[
+                top_tile_rank_to_decomposition_string(top_tile_rank, partitioner)
+            ]
         )
 
 
@@ -166,15 +166,12 @@ def top_tile_equivalent(rank, size):
     calls as those are called from function in a recursive pattern.
 """
 
-_loaded_sdfg_once = False
-
 
 def write_decomposition(
-    config: DaceConfig,
+    partitioner: TilePartitioner,
 ):
     from gt4py import config as gt_config
 
-    partitioner = config.get_communicator().partitioner
     path = f"{gt_config.cache_settings['root_path']}/.layout/"
     config_path = path + "decomposition.yml"
     os.makedirs(path, exist_ok=True)
@@ -217,11 +214,8 @@ def get_sdfg_path(
 
     from gt4py import config as gt_config
 
-    comm = config.get_communicator()
-    config_path = f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
-    if comm and comm.comm.Get_size() > 1:
-        rank = comm.comm.Get_rank()
-        rank_str = f"_{read_target_rank(comm.comm.Get_rank(), config_path):06d}"
+    if config.rank_size > 1:
+        rank_str = f"_{config.target_rank:06d}"
     else:
         rank = "N/A"
         rank_str = ""
@@ -251,21 +245,9 @@ def set_distributed_caches(config: "DaceConfig"):
 
         from gt4py import config as gt_config
 
-        comm = config.get_communicator()
-
         # Check our cache exist
-        if comm and comm.comm.Get_size() > 1:
-            rank = comm.comm.Get_rank()
-            # Check layout
-            layout_filepath = (
-                f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
-            )
-            if not os.path.exists(layout_filepath):
-                raise RuntimeError(
-                    f"{orchestration_mode} error: Could not find layout at"
-                    f" {layout_filepath}"
-                )
-            rank_str = f"_{read_target_rank(rank, layout_filepath):06d}"
+        if config.rank_size > 1:
+            rank_str = f"_{config.target_rank:06d}"
         else:
             rank = "N/A"
             rank_str = ""
