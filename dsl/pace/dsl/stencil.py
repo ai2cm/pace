@@ -346,28 +346,29 @@ class FrozenStencil(SDFGConvertible):
 
         # Keep compilation at __init__ if we are not orchestrated.
         # If we orchestrate, move the compilation at call time to make sure
-        # disable_codegen do not lead to call to uncompiled stencils, which fails
-        # silently
+        # gt4py compilation is only done when needed
+        """generated stencil object returned from gt4py."""
         if self.stencil_config.dace_config.is_dace_orchestrated():
             self.stencil_object = gtscript.lazy_stencil(
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
             )
+
         else:
             self.stencil_object: gt4py.StencilObject = stencil_function(
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
             )
-            """generated stencil object returned from gt4py."""
+        self._stencil_run_kwargs = None
 
-            self._argument_names = tuple(inspect.getfullargspec(func).args)
-
-            assert (
-                len(self._argument_names) > 0
-            ), "A stencil with no arguments? You may be double decorating"
-
+    def __call__(
+        self,
+        *args,
+        **kwargs,
+    ) -> None:
+        if not self._stencil_run_kwargs:
             field_info = self.stencil_object.field_info
             self._field_origins: Dict[
                 str, Tuple[int, ...]
@@ -383,11 +384,6 @@ class FrozenStencil(SDFGConvertible):
                 field_info
             )
 
-    def __call__(
-        self,
-        *args,
-        **kwargs,
-    ) -> None:
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)
