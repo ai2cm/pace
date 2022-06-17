@@ -300,11 +300,9 @@ class FrozenStencil(SDFGConvertible):
         if externals is None:
             externals = {}
         self.externals = externals
-        self.func = func
-        self.stencil_function = gtscript.stencil
-        self.stencil_kwargs = self.stencil_config.stencil_kwargs(
-            skip_passes=skip_passes
-        )
+        func = func
+        stencil_function = gtscript.stencil
+        stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes)
         self._stencil_run_kwargs = None
         self._field_origins = None
         self.stencil_object: Optional[gt4py.StencilObject] = None
@@ -332,17 +330,15 @@ class FrozenStencil(SDFGConvertible):
             and MPI.COMM_WORLD.Get_size() > 1
             and "dace" not in self.stencil_config.backend
         ):
-            self.stencil_function = future_stencil.future_stencil
-            self.stencil_kwargs["wrapper"] = self
+            stencil_function = future_stencil.future_stencil
+            stencil_kwargs["wrapper"] = self
         else:
             # future stencil provides this information and
             # we want to be consistent with the naming whether we are
             # running in parallel or not (so we use the same cache)
-            self.stencil_kwargs["name"] = (
-                self.func.__module__ + "." + self.func.__name__
-            )
+            stencil_kwargs["name"] = func.__module__ + "." + func.__name__
 
-        self._argument_names = tuple(inspect.getfullargspec(self.func).args)
+        self._argument_names = tuple(inspect.getfullargspec(func).args)
 
         assert (
             len(self._argument_names) > 0
@@ -352,35 +348,40 @@ class FrozenStencil(SDFGConvertible):
         # If we orchestrate, move the compilation at call time to make sure
         # disable_codegen do not lead to call to uncompiled stencils, which fails
         # silently
-        if not self.stencil_config.dace_config.is_dace_orchestrated():
-            self.stencil_object = self._compile()
-
-    def _compile(self):
-        stencil_object: gt4py.StencilObject = self.stencil_function(
-            definition=self.func,
-            externals=self.externals,
-            **self.stencil_kwargs,
-        )
-        field_info = stencil_object.field_info
-        self._field_origins: Dict[
-            str, Tuple[int, ...]
-        ] = FrozenStencil._compute_field_origins(field_info, self.origin)
-        """mapping from field names to field origins"""
-        self._stencil_run_kwargs: Dict[str, Any] = {
-            "_origin_": self._field_origins,
-            "_domain_": self.domain,
-        }
-        self._written_fields = FrozenStencil._get_written_fields(field_info)
-
-        # When orchestrating with DaCe, cache the frozen stencil for
-        # calls in __sdfg__ generation
         if self.stencil_config.dace_config.is_dace_orchestrated():
-            self._frozen_stencil = stencil_object.freeze(
-                origin=self._field_origins,
-                domain=self.domain,
+            self.stencil_object = gtscript.lazy_stencil(
+                definition=func,
+                externals=externals,
+                **stencil_kwargs,
             )
+        else:
+            self.stencil_object: gt4py.StencilObject = stencil_function(
+                definition=func,
+                externals=externals,
+                **stencil_kwargs,
+            )
+            """generated stencil object returned from gt4py."""
 
-        return stencil_object
+            self._argument_names = tuple(inspect.getfullargspec(func).args)
+
+            assert (
+                len(self._argument_names) > 0
+            ), "A stencil with no arguments? You may be double decorating"
+
+            field_info = self.stencil_object.field_info
+            self._field_origins: Dict[
+                str, Tuple[int, ...]
+            ] = FrozenStencil._compute_field_origins(field_info, self.origin)
+            """mapping from field names to field origins"""
+
+            self._stencil_run_kwargs: Dict[str, Any] = {
+                "_origin_": self._field_origins,
+                "_domain_": self.domain,
+            }
+
+            self._written_fields: List[str] = FrozenStencil._get_written_fields(
+                field_info
+            )
 
     def __call__(
         self,
@@ -390,8 +391,6 @@ class FrozenStencil(SDFGConvertible):
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)
-        if self.stencil_object is None:
-            self.stencil_object = self._compile()
 
         if self.stencil_config.validate_args:
             if __debug__ and "origin" in kwargs:
@@ -488,19 +487,19 @@ class FrozenStencil(SDFGConvertible):
     def __sdfg__(self, *args, **kwargs):
         """Implemented SDFG generation"""
         args_as_kwargs = dict(zip(self._argument_names, args))
-        return self._frozen_stencil.__sdfg__(**args_as_kwargs, **kwargs)
+        return self.stencil_object.__sdfg__(**args_as_kwargs, **kwargs)
 
     def __sdfg_signature__(self):
         """Implemented SDFG signature lookup"""
-        return self._frozen_stencil.__sdfg_signature__()
+        return self.stencil_object.__sdfg_signature__()
 
     def __sdfg_closure__(self, *args, **kwargs):
         """Implemented SDFG closure build"""
-        return self._frozen_stencil.__sdfg_closure__(*args, **kwargs)
+        return self.stencil_object.__sdfg_closure__(*args, **kwargs)
 
     def closure_resolver(self, constant_args, given_args, parent_closure=None):
         """Implemented SDFG closure resolver build"""
-        return self._frozen_stencil.closure_resolver(
+        return self.stencil_object.closure_resolver(
             constant_args, given_args, parent_closure=parent_closure
         )
 
