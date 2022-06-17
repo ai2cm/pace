@@ -15,13 +15,13 @@ commands:
           name: Install Dependencies
           command: |
             DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
-            DEBIAN_FRONTEND=noninteractive sudo apt-get -y install software-properties-common libopenmpi3 libopenmpi-dev
+            DEBIAN_FRONTEND=noninteractive sudo apt-get -y install software-properties-common libopenmpi3 libopenmpi-dev libboost-all-dev
             python3 -m venv venv
             source venv/bin/activate
             pip3 install --upgrade pip setuptools wheel
             pip3 install -r .circleci/requirements.txt -r .circleci/mpi_requirements.txt -c constraints.txt
-            pip3 install external/gt4py -c constraints.txt
-            pip3 install ./pace-util ./fv3core ./fv3gfs-physics ./stencils ./dsl ./driver -c constraints.txt
+            pip3 install -e external/gt4py -c constraints.txt
+            pip3 install -e ./pace-util -e ./fv3core -e ./fv3gfs-physics -e ./stencils -e ./dsl -e ./driver -c constraints.txt
       - save_cache:
           key: v1-mpi-venv-{{ checksum ".circleci/requirements.txt" }}-{{ checksum ".circleci/requirements.txt" }}-{{ checksum "constraints.txt" }}
           paths:
@@ -96,7 +96,13 @@ jobs:
             - ~/.cache/pre-commit
             - venv
 
-  regression:
+  savepoints_mpi:
+    parameters:
+      backend:
+        description: "Gt4py backend"
+        default: "gt:cpu_ifirst"
+        type: enum
+        enum: ["numpy", "gt:cpu_ifirst"]
     docker:
     - image: cimg/python:3.8
     environment:
@@ -126,7 +132,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            CONTAINER_CMD="" FV3_PATH="$(pwd)/fv3core" make savepoint_tests savepoint_tests_mpi
+            TEST_ARGS="--backend=<<parameters.backend>> -v" MPIRUN_CALL="mpirun -np 6 --oversubscribe" CONTAINER_CMD="" FV3_PATH="$(pwd)/fv3core" make savepoint_tests
       - save_cache:
           key: v1-{{ checksum "gt4py_version.txt" }}
           paths:
@@ -247,7 +253,12 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - regression:
+      - savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
           context:
             - GCLOUD_ENCODED_KEY
           filters:
