@@ -215,6 +215,7 @@ def get_sdfg_path(
     from gt4py import config as gt_config
 
     if config.rank_size > 1:
+        rank = config.my_rank
         rank_str = f"_{config.target_rank:06d}"
     else:
         rank = "N/A"
@@ -247,6 +248,7 @@ def set_distributed_caches(config: "DaceConfig"):
 
         # Check our cache exist
         if config.rank_size > 1:
+            rank = config.target_rank
             rank_str = f"_{config.target_rank:06d}"
         else:
             rank = "N/A"
