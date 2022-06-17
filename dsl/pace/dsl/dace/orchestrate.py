@@ -12,9 +12,7 @@ from dace.transformation.helpers import get_parent_map
 from pace.dsl.dace.build import (
     determine_compiling_ranks,
     get_sdfg_path,
-    read_target_rank,
     unblock_waiting_tiles,
-    write_decomposition,
 )
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import strip_unused_global_in_compute_x_flux
@@ -109,10 +107,8 @@ def build_sdfg(
     daceprog: DaceProgram, sdfg: dace.SDFG, config: DaceConfig, args, kwargs
 ):
     """Build the .so out of the SDFG on the top tile ranks only"""
-    is_compiling, comm = determine_compiling_ranks(config)
+    is_compiling = determine_compiling_ranks(config)
     if is_compiling:
-        if comm and comm.Get_rank() == 0 and comm.Get_size() > 1:
-            write_decomposition(config)
         # Make the transients array persistents
         if config.is_gpu_backend():
             to_gpu(sdfg)
@@ -175,7 +171,7 @@ def build_sdfg(
     elif config.get_orchestrate() == DaCeOrchestration.BuildAndRun:
         MPI.COMM_WORLD.Barrier()
         if is_compiling:
-            unblock_waiting_tiles(comm, sdfg.build_folder)
+            unblock_waiting_tiles(MPI.COMM_WORLD, sdfg.build_folder)
             with DaCeProgress(config, "Run"):
                 res = sdfg(**sdfg_kwargs)
                 res = download_results_from_dace(
@@ -187,9 +183,9 @@ def build_sdfg(
             config_path = (
                 f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
             )
-            source_rank = read_target_rank(comm.Get_rank(), config_path)
+            source_rank = config.target_rank
             # wait for compilation to be done
-            sdfg_path = comm.recv(source=source_rank)
+            sdfg_path = MPI.COMM_WORLD.recv(source=source_rank)
             daceprog.load_precompiled_sdfg(sdfg_path, *args, **kwargs)
             with DaCeProgress(config, "Run"):
                 res = run_sdfg(daceprog, config, args, kwargs)
@@ -428,6 +424,12 @@ def orchestrate(
                         return wrapped.closure_resolver(
                             constant_args, given_args, parent_closure
                         )
+
+                    def __str__(self) -> str:
+                        return f"{type(obj).__module__}.{type(obj).__name__}"
+
+                    def __repr__(self) -> str:
+                        return "self"
 
                 # We keep the original class type name to not perturb
                 # the workflows that uses it to build relevant info (path, hash...)

@@ -82,12 +82,6 @@ class DriverState:
         communicator = pace.util.CubedSphereCommunicator.from_layout(
             comm=comm, layout=driver_config.layout
         )
-        # The only part of DaCe config saved is the orchestration mode
-        # the config itself need to be set
-        driver_config.stencil_config.dace_config = DaceConfig(
-            communicator=communicator,
-            backend=driver_config.stencil_config.backend,
-        )
         sizer = pace.util.SubtileGridSizer.from_tile_params(
             nx_tile=driver_config.nx_tile,
             ny_tile=driver_config.nx_tile,

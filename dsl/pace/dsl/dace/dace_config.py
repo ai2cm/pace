@@ -23,7 +23,7 @@ class DaCeOrchestration(enum.Enum):
 class DaceConfig:
     def __init__(
         self,
-        communicator: CubedSphereCommunicator,
+        communicator: Optional[CubedSphereCommunicator],
         backend: str,
         orchestration: Optional[DaCeOrchestration] = None,
     ):
@@ -36,11 +36,45 @@ class DaceConfig:
             self._orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
         else:
             self._orchestrate = orchestration
-        self._communicator = communicator
+
         self._backend = backend
-        from pace.dsl.dace.build import set_distributed_caches
+        from pace.dsl.dace.build import (
+            set_distributed_caches,
+            read_target_rank,
+            write_decomposition,
+        )
+
+        # Distributed build required info
+        if communicator:
+            self.my_rank = communicator.rank
+            self.rank_size = communicator.comm.Get_size()
+            from gt4py import config as gt_config
+
+            config_path = (
+                f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
+            )
+            self.target_rank = read_target_rank(
+                rank=self.my_rank,
+                partitioner=communicator.partitioner,
+                config=self,
+                layout_filepath=config_path,
+            )
+        else:
+            self.my_rank = 0
+            self.rank_size = 1
+            self.target_rank = 0
 
         set_distributed_caches(self)
+
+        if (
+            (
+                self._orchestrate == DaCeOrchestration.Build
+                or self._orchestrate == DaCeOrchestration.BuildAndRun
+            )
+            and self.my_rank == 0
+            and self.rank_size > 1
+        ):
+            write_decomposition(communicator.partitioner)
 
         if (
             self._orchestrate != DaCeOrchestration.Python
