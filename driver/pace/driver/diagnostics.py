@@ -173,7 +173,7 @@ def _compute_column_integral(
             q_in.data[:, :, k] * delp.data[:, :, k]
             for k in range(q_in.metadata.extent[2])
         ),
-        dims=("x_interface", "y_interface"),
+        dims=("x", "y"),
         origin=q_in.metadata.origin[0:2],
         extent=(q_in.metadata.extent[0], q_in.metadata.extent[1]),
         units="kg/m**2",
