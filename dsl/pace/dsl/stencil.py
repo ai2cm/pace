@@ -465,22 +465,13 @@ class FrozenStencil(SDFGConvertible):
         skip_steps = [step_map[pass_name] for pass_name in skip_passes]
         return DefaultPipeline(skip=skip_steps)
 
-    @cached_property
-    def _frozen_stencil(self):
-        old_codegen_flag = None
-        if "disable_code_generation" in self.stencil_kwargs:
-            self.stencil_kwargs.pop("disable_code_generation")
-        stencil_object_no_codegen = self._compile()
-        return stencil_object_no_codegen.freeze(
-            origin=self._field_origins,
-            domain=self.domain,
-        )
-
     def __sdfg__(self, *args, **kwargs):
         """Implemented SDFG generation"""
         args_as_kwargs = dict(zip(self._argument_names, args))
         return self.stencil_object.__sdfg__(
-            origin=self._field_origins, **args_as_kwargs, **kwargs
+            origin=self._field_origins,
+            **args_as_kwargs,
+            **kwargs,
         )
 
     def __sdfg_signature__(self):
