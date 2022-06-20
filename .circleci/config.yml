@@ -27,28 +27,6 @@ commands:
           paths:
             - venv
             - /root/.cache/pip
-  download-regression-data:
-    parameters:
-      case:
-        type: string
-      version:
-        type: string
-      module:
-        type: string
-    steps:
-      - restore_cache:
-          keys:
-            - v1-regression-data-<<parameters.version>>-<<parameters.case>>-<<parameters.module>>
-      - run: mkdir -p test_data
-      - run: gsutil -m rsync -r gs://vcm-fv3gfs-serialized-regression-data/<<parameters.version>>/<<parameters.case>>/<<parameters.module>> test_data/
-      - run: ls test_data
-      - save_cache:
-          key: v1-regression-data-<<parameters.version>>-<<parameters.case>>-<<parameters.module>>
-          paths:
-            - test_data
-  unpack-regression-data:
-    steps:
-      - run: tar -xf test_data/dat_files.tar.gz
 
 jobs:
 
@@ -94,11 +72,6 @@ jobs:
             echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
       - setup-mpi-environment
-      # - download-regression-data:
-      #     case: c12_6ranks_baroclinic
-      #     version: 8.1.0
-      #     module: dycore
-      # - unpack-regression-data
       - run:
           name: save gt4py_version.txt
           command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
