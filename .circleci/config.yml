@@ -88,7 +88,6 @@ jobs:
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
             make -c fv3core build
             TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
       - save_cache:
