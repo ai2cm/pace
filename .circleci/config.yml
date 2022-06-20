@@ -52,7 +52,8 @@ jobs:
             - venv
 
   docker_savepoints_mpi:
-    machine: true
+    machine:
+      image: ubuntu-2004:202111-02
     parameters:
       backend:
         description: "gt4py backend"
@@ -62,6 +63,10 @@ jobs:
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
+      - run: |
+          sudo apt-get update && sudo apt-get install -y make \
+            python3 \
+            python3-pip
       - gcp-cli/install:
         version: 323.0.0
       - run:
