@@ -10,7 +10,7 @@ fi
 
 backend=$1
 experiment=$2
-target_dir=${3:-/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/$experiment/${backend//:/_}}
+target_dir=${3:-/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/$experiment/$backend}
 
 if (( $# > 3 )) && [[ $4 == "bypass_wrapper" ]]; then
     bypass_wrapper=true

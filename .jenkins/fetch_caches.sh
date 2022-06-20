@@ -2,7 +2,7 @@
 
 backend=$1
 expname=$2
-cache_dir=${3:-/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/${expname}/${backend//:/_}}
+cache_dir=${3:-/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v2/$expname/$backend}
 
 script_dir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 pace_dir=$script_dir/../

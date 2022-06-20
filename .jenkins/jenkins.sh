@@ -40,19 +40,13 @@ T="$(date +%s)"
 test -n "$1" || exitError 1001 ${LINENO} "must pass an argument"
 test -n "${slave}" || exitError 1005 ${LINENO} "slave is not defined"
 
-input_backend="$2"
-if [[ $input_backend = gt_* ]] ; then
-    # sed explained: replace _ with :
-    input_backend=`echo $input_backend | sed 's/_/:/'`
-fi
-
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BUILDENV_DIR=$JENKINS_DIR/../buildenv
 PACE_DIR=$JENKINS_DIR/../
 
 # Read arguments
 action="$1"
-backend="$input_backend"
+backend="$2"
 experiment="$3"
 (( $# > 3 )) && cache_dir=$4
 
