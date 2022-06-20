@@ -2,17 +2,10 @@ dacite
 f90nml>=1.1.0
 numpy>=1.15
 
-pytest-xdist
-pytest-dependency
 pytest
-pytest-cov
 pytest-subtests
-pytest-profiling
-pytest-regressions
 xarray
 zarr
 cftime
 pip-tools
 netCDF4
-hypothesis
-scipy
