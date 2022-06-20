@@ -361,29 +361,25 @@ class FrozenStencil(SDFGConvertible):
                 externals=externals,
                 **stencil_kwargs,
             )
-        self._stencil_run_kwargs = None
+
+        field_info = self.stencil_object.field_info
+        self._field_origins: Dict[
+            str, Tuple[int, ...]
+        ] = FrozenStencil._compute_field_origins(field_info, self.origin)
+        """mapping from field names to field origins"""
+
+        self._stencil_run_kwargs: Dict[str, Any] = {
+            "_origin_": self._field_origins,
+            "_domain_": self.domain,
+        }
+
+        self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
 
     def __call__(
         self,
         *args,
         **kwargs,
     ) -> None:
-        if not self._stencil_run_kwargs:
-            field_info = self.stencil_object.field_info
-            self._field_origins: Dict[
-                str, Tuple[int, ...]
-            ] = FrozenStencil._compute_field_origins(field_info, self.origin)
-            """mapping from field names to field origins"""
-
-            self._stencil_run_kwargs: Dict[str, Any] = {
-                "_origin_": self._field_origins,
-                "_domain_": self.domain,
-            }
-
-            self._written_fields: List[str] = FrozenStencil._get_written_fields(
-                field_info
-            )
-
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)
@@ -483,7 +479,9 @@ class FrozenStencil(SDFGConvertible):
     def __sdfg__(self, *args, **kwargs):
         """Implemented SDFG generation"""
         args_as_kwargs = dict(zip(self._argument_names, args))
-        return self.stencil_object.__sdfg__(**args_as_kwargs, **kwargs)
+        return self.stencil_object.__sdfg__(
+            origin=self._field_origins, **args_as_kwargs, **kwargs
+        )
 
     def __sdfg_signature__(self):
         """Implemented SDFG signature lookup"""
