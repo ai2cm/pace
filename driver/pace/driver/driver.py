@@ -14,7 +14,7 @@ import pace.dsl
 import pace.stencils
 import pace.util
 import pace.util.grid
-from fv3core.initialization.dycore_state import DycoreState
+from fv3core import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestrate import dace_inhibitor, orchestrate
 
