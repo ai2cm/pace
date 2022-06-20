@@ -99,10 +99,10 @@ jobs:
   savepoints_mpi:
     parameters:
       backend:
-        description: "Gt4py backend"
-        default: "gt:cpu_ifirst"
+        description: "gt4py backend"
+        default: "numpy"
         type: enum
-        enum: ["numpy", "gt:cpu_ifirst"]
+        enum: ["numpy"]
     docker:
     - image: cimg/python:3.8
     environment:
@@ -127,16 +127,22 @@ jobs:
           command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
       - restore_cache:
           keys:
-            - v1-{{ checksum "gt4py_version.txt" }}
+            - v1-gt_cache-{{ checksum "gt4py_version.txt" }}
       - run:
           name: run tests
           command: |
             . venv/bin/activate
-            TEST_ARGS="--backend=<<parameters.backend>> -v" MPIRUN_CALL="mpirun -np 6 --oversubscribe" CONTAINER_CMD="" FV3_PATH="$(pwd)/fv3core" make savepoint_tests
+            TEST_ARGS="--backend=<<parameters.backend>> -v" MPIRUN_CALL="mpirun -np 6 --oversubscribe" CONTAINER_CMD="" FV3_PATH="$(pwd)/fv3core" make savepoint_tests_mpi
       - save_cache:
-          key: v1-{{ checksum "gt4py_version.txt" }}
+          key: v1-gt_cache-{{ checksum "gt4py_version.txt" }}
           paths:
             - .gt_cache
+            - .gt_cache_000000
+            - .gt_cache_000001
+            - .gt_cache_000002
+            - .gt_cache_000003
+            - .gt_cache_000004
+            - .gt_cache_000005
 
   test_util:
     docker:
