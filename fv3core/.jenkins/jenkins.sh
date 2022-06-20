@@ -47,7 +47,7 @@ TOP_LEVEL_JENKINS_DIR=$PACE_DIR/.jenkins
 
 # Read arguments
 action="$1"
-backend="$2"
+backend="${2/_/:}"
 experiment="$3"
 (( $# > 3 )) && cache_dir=$4
 

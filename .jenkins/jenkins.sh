@@ -46,7 +46,7 @@ PACE_DIR=$JENKINS_DIR/../
 
 # Read arguments
 action="$1"
-backend="$2"
+backend="${2/_/:}"
 experiment="$3"
 (( $# > 3 )) && cache_dir=$4
 
