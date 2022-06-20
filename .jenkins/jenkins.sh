@@ -46,9 +46,13 @@ PACE_DIR=$JENKINS_DIR/../
 
 # Read arguments
 action="$1"
-backend="${2/_/:}"
+backend="$2"
 experiment="$3"
 (( $# > 3 )) && cache_dir=$4
+
+if [[ $backend == gt_* ]]; then
+    backend=${backend/_/:}
+fi
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
