@@ -470,6 +470,7 @@ class FrozenStencil(SDFGConvertible):
         args_as_kwargs = dict(zip(self._argument_names, args))
         return self.stencil_object.__sdfg__(
             origin=self._field_origins,
+            domain=self.domain,
             **args_as_kwargs,
             **kwargs,
         )
