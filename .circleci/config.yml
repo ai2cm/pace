@@ -6,7 +6,7 @@ commands:
     steps:
       - checkout
       - run:
-          name: Install Submodules
+          name: Update Submodules
           command: git submodule update --init
       - restore_cache:
           keys:
@@ -50,6 +50,52 @@ jobs:
           paths:
             - ~/.cache/pre-commit
             - venv
+
+  docker_savepoints_mpi:
+    machine: true
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - gcp-cli/install:
+        version: 323.0.0
+      - run:
+          name: gcloud auth
+          command: |
+            echo $ENCODED_GCR_KEY
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+      - checkout
+      - run:
+          name: Update Submodules
+          command: git submodule update --init
+      - run:
+          name: save gt4py_version.txt
+          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
+      - restore_cache:
+          keys:
+            - v1-gt_cache-{{ checksum "gt4py_version.txt" }}
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            make -c fv3core build
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
+      - save_cache:
+          key: v1-gt_cache-{{ checksum "gt4py_version.txt" }}
+          paths:
+            - .gt_cache
+            - .gt_cache_000000
+            - .gt_cache_000001
+            - .gt_cache_000002
+            - .gt_cache_000003
+            - .gt_cache_000004
+            - .gt_cache_000005
 
   savepoints_mpi:
     parameters:
@@ -206,6 +252,16 @@ workflows:
   tagged-build:
     jobs:
       - lint:
+          filters:
+            tags:
+              only: /^v.*/
+      - docker_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
           filters:
             tags:
               only: /^v.*/
