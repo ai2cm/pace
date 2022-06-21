@@ -90,7 +90,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            make -C fv3core build
+            BUILD_ARGS="--progress=plain" make -C fv3core build
             TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
       - save_cache:
           key: v1-gt_cache-{{ checksum "gt4py_version.txt" }}
