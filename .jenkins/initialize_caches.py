@@ -45,6 +45,8 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 3:
         use_serial = sys.argv[3] == "serial"
+    else:
+        use_serial = False
 
     namelist = Namelist.from_f90nml(
         f90nml.read(os.path.join(driver_data_path, "input.nml"))
