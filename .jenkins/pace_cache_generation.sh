@@ -24,9 +24,15 @@ pace_dir=$script_dir/../
 
 if [[ $bypass_wrapper != "true" ]]; then
     export LONG_EXECUTION=1
-    slave=daint .jenkins/jenkins.sh create_caches $backend $experiment
+    slave=daint .jenkins/jenkins.sh create_caches_parallel $backend $experiment
 else
-    .jenkins/actions/create_caches.sh $backend $experiment bypass_wrapper
+    target=driver
+    data_version=$(cd fv3core && EXPERIMENT=$experiment TARGET=$target make get_test_data | tail -1)
+
+    # Jenkins sets TEST_DATA_ROOT to a custom path and `make get_test_data` uses that above
+    data_path=${TEST_DATA_ROOT:-fv3core/test_data}/$data_version/$experiment/$target
+
+    .jenkins/initialize_caches.py $data_path $backend serial
 fi
 
 export gt4py_version=$(git submodule status $pace_dir/external/gt4py | awk '{print $1;}')
