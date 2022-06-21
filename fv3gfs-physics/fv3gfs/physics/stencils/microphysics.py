@@ -5,6 +5,7 @@ import numpy as np
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
 
 import fv3gfs.physics.functions.microphysics_funcs as functions
+from pace.dsl.dace.orchestrate import orchestrate
 import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
 from pace.dsl.stencil import StencilFactory
@@ -1905,6 +1906,12 @@ class Microphysics:
         grid_data: GridData,
         namelist: PhysicsConfig,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["state"],
+        )
+
         self.namelist = namelist
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         self.gfdl_cloud_microphys_init()
@@ -2104,7 +2111,7 @@ class Microphysics:
         pie = 4.0 * np.arctan(1.0)
 
         # S. Klein's formular (eq 16) from am2
-        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh ** 3
+        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh**3
 
         vdifu = 2.11e-5
         tcond = 2.36e-2
@@ -2169,7 +2176,7 @@ class Microphysics:
             / act[0] ** 0.65625
         )
         cssub[3] = tcond * constants.RVGAS
-        cssub[4] = (hlts ** 2) * vdifu
+        cssub[4] = (hlts**2) * vdifu
 
         cgsub = np.empty(5)
         cgsub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
@@ -2185,7 +2192,7 @@ class Microphysics:
             0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
         )
         crevp[3] = cssub[3]
-        crevp[4] = hltc ** 2 * vdifu
+        crevp[4] = hltc**2 * vdifu
 
         cgfr = np.empty(2)
         cgfr[0] = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
@@ -2234,9 +2241,9 @@ class Microphysics:
 
     def _set_timestep(self, timestep: float):
         # Define cloud microphysics sub time step
-        self._mpdt = min(timestep, self.namelist.mp_time)
-        self._rdt = 1.0 / timestep
-        self._ntimes = int(round(timestep / self._mpdt))
+        self._mpdt: float = min(timestep, self.namelist.mp_time)
+        self._rdt: float = 1.0 / timestep
+        self._ntimes: int = int(round(timestep / self._mpdt))
         # Small time step
         self._dts = timestep / self._ntimes
         self._dt_rain = self._dts * 0.5

@@ -245,6 +245,7 @@ class Driver:
                 quantity_factory=self.quantity_factory,
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,
+                tendency_state=self.state.tendency_state,
             )
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
