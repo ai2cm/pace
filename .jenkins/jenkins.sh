@@ -101,7 +101,7 @@ fi
 
 # if the environment variable is set to long_job we skip timing restrictions:
 if [ -v LONG_EXECUTION ]; then
-    sed -i 's|00:45:00|03:30:00|g' ${scheduler_script}
+    sed -i 's|00:45:00|06:00:00|g' ${scheduler_script}
 fi
 
 # if this is a parallel job and the number of ranks is specified in the experiment argument, set NUM_RANKS
@@ -117,10 +117,10 @@ if grep -q "parallel" <<< "${script}"; then
 		sed -i 's|cscsci|normal|g' ${scheduler_script}
 	    fi
 	    sed -i "s|<NTASKS>|$NUM_RANKS|g" ${scheduler_script}
-	    if [[ $backend == *gpu* || $backend == *cuda* ]]; then
-		ntaskspernode=1
-	    else
+	    if grep -q "cache" <<< "$script"; then
 		ntaskspernode=6
+	    else
+		ntaskspernode=24
 	    fi
 	    sed -i "s|<NTASKSPERNODE>|$ntaskspernode|g" ${scheduler_script}
         fi
