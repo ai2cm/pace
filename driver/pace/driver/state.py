@@ -181,6 +181,26 @@ def _overwrite_state_from_restart(
     return state
 
 
+def _overwrite_state_from_fortran_restart(
+    path: str,
+    rank: int,
+    state: Union[fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState],
+    restart_file_prefix: str,
+    is_gpu_backend: bool,
+):
+    """
+    Args:
+        path: path to restart files
+        rank: current rank number
+        state: an empty state
+        restart_file_prefix: file prefix name to read
+
+    Returns:
+        state: new state filled with restart files
+    """
+    pass
+
+
 def _restart_driver_state(
     path: str,
     rank: int,
