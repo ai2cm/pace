@@ -362,7 +362,7 @@ def test_parallel_savepoint(
             passing_names.append(failing_names.pop())
     if len(failing_names) > 0:
         out_filename = os.path.join(
-            OUTDIR, f"{case.savepoint_name}-{case.grid[0].rank}.nc"
+            OUTDIR, f"{case.savepoint_name}-{case.grid.rank}.nc"
         )
         try:
             save_netcdf(
