@@ -4,6 +4,7 @@ from typing import Dict
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
+from pace.dsl.dace.orchestrate import orchestrate
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.stencils.dyn_core import AcousticDynamics
@@ -183,10 +184,14 @@ class TracerAdvection:
         comm: pace.util.CubedSphereCommunicator,
         tracers: Dict[str, Quantity],
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["tracers"],
+        )
         grid_indexing = stencil_factory.grid_indexing
         self.grid_indexing = grid_indexing  # needed for selective validation
         self._tracer_count = len(tracers)
-        self.comm = comm
         self.grid_data = grid_data
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
