@@ -225,6 +225,7 @@ class CompareToNumpyStencil:
             stencil_config=stencil_config,
             externals=externals,
             skip_passes=skip_passes,
+            timing_collector=None,
         )
         numpy_stencil_config = StencilConfig(
             backend="numpy",
@@ -241,6 +242,7 @@ class CompareToNumpyStencil:
             stencil_config=numpy_stencil_config,
             externals=externals,
             skip_passes=skip_passes,
+            timing_collector=None,
         )
         self._func_name = func.__name__
 
@@ -263,6 +265,67 @@ class CompareToNumpyStencil:
         )
 
 
+class TimingCollector:
+    build_infos: Dict[str, dict]
+    exec_infos: Dict[str, dict]
+
+    def __init__(self):
+        self.build_infos: Dict[str, dict] = {}
+        self.exec_infos: Dict[str, dict] = {}
+
+    def add_build_info(self, name: str, build_info: dict) -> None:
+        assert name not in self.build_infos
+        self.build_infos[name] = build_info
+
+    def add_exec_info(self, name: str, exec_info: dict) -> None:
+        self.exec_infos[name] = exec_info
+
+    def build_info(self, name: str) -> dict:
+        return self.build_infos[name]
+
+    def exec_info(self, name: str) -> dict:
+        return self.exec_infos[name]
+
+    def show_build_report(self, key: str = "build_time", **kwargs) -> str:
+        return type(self)._show_report(self.build_infos, key, **kwargs)
+
+    def show_exec_report(self, key: str = "total_run_time", **kwargs) -> str:
+        return type(self)._show_report(self.exec_infos, key, **kwargs)
+
+    @staticmethod
+    def _show_report(
+        infos: Dict[str, dict],
+        key: str,
+        *,
+        name_width: int = 40,
+        bar_width: int = 40,
+        delimiter: str = " | ",
+        show_bar: bool = True,
+    ) -> str:
+        assert name_width > 10
+
+        data = [(name, infos[name][key]) for name in infos.keys()]
+        sorted_data = tuple(
+            sorted(data, key=lambda name_time: name_time[1], reverse=True)
+        )
+        max_time = sorted_data[0][1]
+
+        outputs: List[str] = [f"Total: {sum(d[1] for d in data)}"]
+        for name, time in sorted_data:
+            if len(name) > name_width:
+                width = int(name_width / 2) - 3
+                disp_name = f"{name[0:width]}...{name[-width:]}"
+            else:
+                disp_name = name
+            line = f"{disp_name.rjust(name_width)}{delimiter}{time:.3E}"
+            if show_bar:
+                bar_data = bar = "█" * (time / max_time * bar_width)
+                line += f"{delimiter}{bar_data}"
+            outputs.append(line)
+
+        return "\n".join(outputs)
+
+
 class FrozenStencil(SDFGConvertible):
     """
     Wrapper for gt4py stencils which stores origin and domain at compile time,
@@ -281,6 +344,7 @@ class FrozenStencil(SDFGConvertible):
         stencil_config: StencilConfig,
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Tuple[str, ...] = (),
+        timing_collector: Optional[TimingCollector] = None,
     ):
         """
         Args:
@@ -290,6 +354,7 @@ class FrozenStencil(SDFGConvertible):
             stencil_config: container for stencil configuration
             externals: compile-time external variables required by stencil
             skip_passes: compiler passes to skip when building stencil
+            timing_collector: Optional object that accumulates timings
         """
         if isinstance(origin, tuple):
             origin = cast_to_index3d(origin)
@@ -297,6 +362,7 @@ class FrozenStencil(SDFGConvertible):
         self.origin = origin
         self.domain: Index3D = cast_to_index3d(domain)
         self.stencil_config: StencilConfig = stencil_config
+        self.timing_collector = timing_collector
 
         if externals is None:
             externals = {}
@@ -334,9 +400,17 @@ class FrozenStencil(SDFGConvertible):
             self.stencil_object = self._compile()
 
     def _compile(self):
+        build_info: Dict[str, Any] = {}
         stencil_object: gt4py.StencilObject = gtscript.stencil(
-            definition=self.func, externals=self.externals, **self.stencil_kwargs
+            definition=self.func,
+            externals=self.externals,
+            **self.stencil_kwargs,
+            build_info=build_info,
         )
+        if self.timing_collector:
+            self.timing_collector.add_build_info(
+                stencil_object.options["name"], build_info
+            )
         field_info = stencil_object.field_info
         self._field_origins: Dict[
             str, Tuple[int, ...]
@@ -365,6 +439,14 @@ class FrozenStencil(SDFGConvertible):
         if self.stencil_object is None:
             self.stencil_object = self._compile()
 
+        exec_info: Dict[str, Any]
+        if self.timing_collector:
+            exec_info = self.timing_collector.exec_info(
+                self.stencil_object.options["name"]
+            )
+        else:
+            exec_info = {}
+
         if self.stencil_config.validate_args:
             if __debug__ and "origin" in kwargs:
                 raise TypeError("origin cannot be passed to FrozenStencil call")
@@ -376,13 +458,22 @@ class FrozenStencil(SDFGConvertible):
                 origin=self._field_origins,
                 domain=self.domain,
                 validate_args=True,
+                exec_info=exec_info,
             )
         else:
             args_as_kwargs = dict(zip(self._argument_names, args))
             self.stencil_object.run(
-                **args_as_kwargs, **kwargs, **self._stencil_run_kwargs, exec_info=None
+                **args_as_kwargs,
+                **kwargs,
+                **self._stencil_run_kwargs,
+                exec_info=exec_info,
             )
             self._mark_cuda_fields_written({**args_as_kwargs, **kwargs})
+
+        if self.timing_collector:
+            self.timing_collector.add_exec_info(
+                self.stencil_object.options["name"], exec_info
+            )
 
     def _mark_cuda_fields_written(self, fields: Mapping[str, Storage]):
         if self.stencil_config.is_gpu_backend:
@@ -871,6 +962,7 @@ class StencilFactory:
         """
         self.config: StencilConfig = config
         self.grid_indexing: GridIndexing = grid_indexing
+        self.timing_collector = TimingCollector()
 
     @property
     def backend(self):
@@ -883,7 +975,7 @@ class StencilFactory:
         domain: Tuple[int, ...],
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Tuple[str, ...] = (),
-    ) -> FrozenStencil:
+    ) -> Union[FrozenStencil, CompareToNumpyStencil]:
         """
         Args:
             func: stencil definition function
@@ -904,6 +996,7 @@ class StencilFactory:
             stencil_config=self.config,
             externals=externals,
             skip_passes=skip_passes,
+            timing_collector=self.timing_collector,
         )
 
     def from_dims_halo(
@@ -913,7 +1006,7 @@ class StencilFactory:
         compute_halos: Sequence[int] = tuple(),
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Tuple[str, ...] = (),
-    ) -> FrozenStencil:
+    ) -> Union[FrozenStencil, CompareToNumpyStencil]:
         """
         Initialize a stencil from dimensions and number of halo points.
 
@@ -953,6 +1046,12 @@ class StencilFactory:
             grid_indexing=self.grid_indexing.restrict_vertical(k_start=k_start, nk=nk),
         )
 
+    def show_build_report(self) -> str:
+        return self.timing_collector.show_build_report()
+
+    def show_exec_report(self) -> str:
+        return self.timing_collector.show_exec_report()
+
 
 def get_stencils_with_varied_bounds(
     func: Callable[..., None],
@@ -960,7 +1059,7 @@ def get_stencils_with_varied_bounds(
     domains: List[Index3D],
     stencil_factory: StencilFactory,
     externals: Optional[Mapping[str, Any]] = None,
-) -> List[FrozenStencil]:
+) -> List[Union[FrozenStencil, CompareToNumpyStencil]]:
     assert len(origins) == len(domains), (
         "Lists of origins and domains need to have the same length, you provided "
         + str(len(origins))
