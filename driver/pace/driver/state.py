@@ -10,6 +10,7 @@ import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
 from pace.dsl.dace.dace_config import DaceConfig
+from pace.util._properties import RESTART_PROPERTIES
 from pace.util.grid import DampingCoefficients
 
 
@@ -184,6 +185,7 @@ def _overwrite_state_from_restart(
 def _overwrite_state_from_fortran_restart(
     path: str,
     rank: int,
+    communicator: pace.util.CubedSphereCommunicator,
     state: Union[fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState],
     restart_file_prefix: str,
     is_gpu_backend: bool,
@@ -198,7 +200,40 @@ def _overwrite_state_from_fortran_restart(
     Returns:
         state: new state filled with restart files
     """
-    pass
+    state_dict = _driver_state_to_dict(state)  # do we need to transform state?
+
+    restart_filename = path + f"/{restart_file_prefix}_{rank}.nc"
+    state = pace.util.open_restart(restart_filename, communicator, to_state=state_dict)
+
+    state = _dict_state_to_driver_state(
+        state_dict, state
+    )  # if we needed to transform state
+
+    return state
+
+
+def _driver_state_to_dict(driver_state):
+    """
+    Takes a Pace driver state
+    and returns a dict of state quantities with their Fortran names
+    """
+    dict_state = {}
+    for driver_name, quantity in driver_state:
+        fortran_name = RESTART_PROPERTIES[driver_name]["restart_name"]
+        dict_state[fortran_name] = quantity
+    return dict_state
+
+
+def _dict_state_to_driver_state(fortran_state: dict, driver_state):
+    """
+    Takes a dict of state quantities with their Fortran names and a driver state
+    and populates the driver state with quantities from the dict.
+    """
+    for driver_name in driver_state:
+        fortran_name = RESTART_PROPERTIES[driver_name]["restart_name"]
+        driver_state[driver_name] = fortran_state[fortran_name]
+
+    return driver_state
 
 
 def _restart_driver_state(
