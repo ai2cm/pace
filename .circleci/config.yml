@@ -76,8 +76,7 @@ jobs:
             echo $ENCODED_GCR_KEY
             echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-            echo "export GCLOUD_SERVICE_KEY=\$(echo \$ENCODED_GCR_KEY | base64 --decode)" >> $BASH_ENV
-      - gcp-gcr/gcr-auth
+            gcloud auth configure-docker
       - checkout
       - run:
           name: Update Submodules
