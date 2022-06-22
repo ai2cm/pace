@@ -6,8 +6,8 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 from pace.dsl.dace.orchestrate import orchestrate
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 import pace.util
-from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
@@ -270,7 +270,7 @@ class TracerAdvection:
             n_halo=utils.halo,
             backend=stencil_factory.backend,
         )
-        self._tracers_halo_updater = AcousticDynamics._WrappedHaloUpdater(
+        self._tracers_halo_updater = WrappedHaloUpdater(
             comm.get_scalar_halo_updater([tracer_halo_spec] * self._tracer_count),
             tracers,
             [t for t in tracers.keys()],
