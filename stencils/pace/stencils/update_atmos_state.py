@@ -4,6 +4,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import fv3core
 import fv3core.stencils.fv_subgridz as fv_subgridz
+from pace.dsl.dace.orchestrate import orchestrate
 import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
@@ -152,6 +153,12 @@ class DycoreToPhysics:
         do_dry_convective_adjustment: bool,
         dycore_only: bool,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["dycore_state", "physics_state", "tendency_state"],
+        )
+
         self._copy_dycore_to_physics = stencil_factory.from_dims_halo(
             copy_dycore_to_physics,
             compute_dims=[
@@ -239,6 +246,7 @@ class UpdateAtmosphereState:
         quantity_factory: pace.util.QuantityFactory,
         dycore_only: bool,
         apply_tendencies: bool,
+        tendency_state,
     ):
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
@@ -268,6 +276,8 @@ class UpdateAtmosphereState:
             comm,
             grid_info,
             state,
+            tendency_state.u_dt,
+            tendency_state.v_dt,
         )
         self._dycore_only = dycore_only
         # apply_tendencies when we have run physics or fv_subgridz

@@ -1072,6 +1072,7 @@ class DelnFluxNoSG:
         nord = 1:   del-4
         nord = 2:   del-6
         """
+        orchestrate(obj=self, config=stencil_factory.config.dace_config,)
         grid_indexing = stencil_factory.grid_indexing
         self._del6_u = damping_coefficients.del6_u
         self._del6_v = damping_coefficients.del6_v
