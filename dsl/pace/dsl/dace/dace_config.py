@@ -44,6 +44,17 @@ class DaceConfig:
             write_decomposition,
         )
 
+        if (
+            communicator
+            and (
+                self._orchestrate == DaCeOrchestration.Build
+                or self._orchestrate == DaCeOrchestration.BuildAndRun
+            )
+            and communicator.rank == 0
+            and communicator.comm.Get_size() > 1
+        ):
+            write_decomposition(communicator.partitioner)
+
         # Distributed build required info
         if communicator:
             self.my_rank = communicator.rank
@@ -65,16 +76,6 @@ class DaceConfig:
             self.target_rank = 0
 
         set_distributed_caches(self)
-
-        if (
-            (
-                self._orchestrate == DaCeOrchestration.Build
-                or self._orchestrate == DaCeOrchestration.BuildAndRun
-            )
-            and self.my_rank == 0
-            and self.rank_size > 1
-        ):
-            write_decomposition(communicator.partitioner)
 
         if (
             self._orchestrate != DaCeOrchestration.Python

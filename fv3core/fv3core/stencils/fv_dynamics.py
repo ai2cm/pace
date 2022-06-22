@@ -15,6 +15,8 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
+from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
@@ -112,10 +114,62 @@ class DynamicalCore:
                 at specific points in model execution, such as testing against
                 reference data
         """
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="step_dynamics",
+            dace_constant_args=["state", "timer"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="compute_preamble",
+            dace_constant_args=["state", "is_root_rank"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_compute",
+            dace_constant_args=["state", "timer"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_dyn",
+            dace_constant_args=["state", "tracers", "timer"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="post_remap",
+            dace_constant_args=["state", "is_root_rank"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="wrapup",
+            dace_constant_args=["state", "is_root_rank"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_fvdynamics",
+            dace_constant_args=["state", "tag"],
+        )
+
         # nested and stretched_grid are options in the Fortran code which we
         # have not implemented, so they are hard-coded here.
         self.call_checkpointer = checkpointer is not None
-        self.checkpointer = checkpointer
+        if not self.call_checkpointer:
+            self.checkpointer = pace.util.NullCheckpointer()
+        else:
+            self.checkpointer = checkpointer
         nested = False
         stretched_grid = False
         grid_indexing = stencil_factory.grid_indexing
@@ -255,7 +309,7 @@ class DynamicalCore:
             n_halo=utils.halo,
             backend=stencil_factory.backend,
         )
-        self._omega_halo_updater = AcousticDynamics._WrappedHaloUpdater(
+        self._omega_halo_updater = WrappedHaloUpdater(
             comm.get_scalar_halo_updater([full_xyz_spec]), state, ["omga"], comm=comm
         )
 
@@ -440,7 +494,6 @@ class DynamicalCore:
                         state.bdt / state.k_split,
                         state.bdt,
                         state.do_adiabatic_init,
-                        NQ,
                     )
                 if last_step:
                     self.post_remap(

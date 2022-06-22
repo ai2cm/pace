@@ -1,5 +1,6 @@
 import os.path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
+from pace.util.mpi import MPI
 
 from pace.util import TilePartitioner
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
@@ -145,11 +146,13 @@ def read_target_rank(
     top_tile_rank = top_tile_equivalent(rank, config.rank_size)
     with open(layout_filepath) as decomposition:
         parsed_file = yaml.safe_load(decomposition)
-        return int(
+        read_rank = int(
             parsed_file[
                 top_tile_rank_to_decomposition_string(top_tile_rank, partitioner)
             ]
         )
+        MPI.COMM_WORLD.Barrier()  # with open() is not very multi-node friendly
+        return read_rank
 
 
 def top_tile_equivalent(rank, size):
