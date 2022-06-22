@@ -311,6 +311,10 @@ class TimingCollector:
         return "\n".join(outputs)
 
 
+def _stencil_object_name(stencil_object: gt4py.StencilObject) -> str:
+    return type(stencil_object).__name__
+
+
 class FrozenStencil(SDFGConvertible):
     """
     Wrapper for gt4py stencils which stores origin and domain at compile time,
@@ -386,15 +390,16 @@ class FrozenStencil(SDFGConvertible):
 
     def _compile(self):
 
-        assert self.stencil_kwargs["name"] not in self.timing_collector.build_info
+        # Ensure the stencil names are unique
         stencil_object: gt4py.StencilObject = gtscript.stencil(
             definition=self.func,
             externals=self.externals,
             **self.stencil_kwargs,
             build_info=(build_info := {}),
         )
-
-        self.timing_collector.build_info[self.stencil_kwargs["name"]] = build_info
+        self.timing_collector.build_info[
+            _stencil_object_name(stencil_object)
+        ] = build_info
 
         field_info = stencil_object.field_info
         self._field_origins: Dict[
@@ -424,7 +429,7 @@ class FrozenStencil(SDFGConvertible):
             self.stencil_object = self._compile()
 
         exec_info = self.timing_collector.exec_info.setdefault(
-            self.stencil_kwargs["name"], {}
+            _stencil_object_name(self.stencil_object), {}
         )
 
         if self.stencil_config.validate_args:
