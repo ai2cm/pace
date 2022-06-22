@@ -5,6 +5,8 @@ from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateNH_P_Grad(TranslateDycoreFortranData2Py):
+    max_error = 5e-10
+
     def __init__(
         self,
         grid,

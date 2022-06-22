@@ -250,7 +250,7 @@ def test_sequential_savepoint(
         + case.testobj.in_vars["parameters"]
     )
     input_data = {name: input_data[name] for name in input_names}
-    get_thresholds(case.testobj, input_data=input_data)
+    original_input_data = copy.deepcopy(input_data)
     # run python version of functionality
     output = case.testobj.compute(input_data)
     failing_names: List[str] = []
@@ -285,6 +285,7 @@ def test_sequential_savepoint(
             passing_names.append(failing_names.pop())
         ref_data_out[varname] = [ref_data]
     if len(failing_names) > 0:
+        get_thresholds(case.testobj, input_data=original_input_data)
         out_filename = os.path.join(OUTDIR, f"{case.savepoint_name}.nc")
         save_netcdf(
             case.testobj,
