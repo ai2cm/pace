@@ -158,7 +158,7 @@ def build_sdfg(
         with DaCeProgress(config, "Expand"):
             sdfg.expand_library_nodes()
 
-        with DaCeProgress(config, "Inlined, Fuse & Simplify (1/2)"):
+        with DaCeProgress(config, "Inlined, Fuse & Simplify (2/2)"):
             while (
                 dace.sdfg.utils.inline_sdfgs(sdfg) > 0
                 or dace.sdfg.utils.fuse_states(sdfg) > 0
