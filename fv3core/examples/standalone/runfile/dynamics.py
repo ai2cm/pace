@@ -20,7 +20,9 @@ import pace.util as util
 from fv3core import DynamicalCore
 from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.baroclinic import init_baroclinic_state
+from fv3core.initialization.dycore_state import DycoreState
 from fv3core.testing import TranslateFVDynamics
+from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -208,17 +210,23 @@ def collect_data_and_write_to_file(
 
 def setup_dycore(
     dycore_config, mpi_comm, backend, is_baroclinic_test_case, data_dir
-) -> Tuple[DynamicalCore, Dict[str, Any]]:
+) -> Tuple[DynamicalCore, DycoreState]:
     # set up grid-dependent helper structures
     partitioner = util.CubedSpherePartitioner(
         util.TilePartitioner(dycore_config.layout)
     )
     communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
     grid = Grid.from_namelist(dycore_config, mpi_comm.rank, backend)
+    dace_config = DaceConfig(
+        communicator,
+        backend,
+        DaCeOrchestration.Python,
+    )
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,
         validate_args=False,
+        dace_config=dace_config,
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
@@ -252,19 +260,17 @@ def setup_dycore(
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=dycore_config,
         phis=state.phis,
+        state=state,
     )
-    # TODO include functionality that uses and changes this
     do_adiabatic_init = False
-    # TODO compute from namelist
-    bdt = 225.0
-    args = {
-        "state": state,
-        "conserve_total_energy": dycore_config.consv_te,
-        "do_adiabatic_init": do_adiabatic_init,
-        "timestep": bdt,
-        "n_split": dycore_config.n_split,
-    }
-    return dycore, args
+    dycore.update_state(
+        conserve_total_energy=dycore_config.consv_te,
+        do_adiabatic_init=False,
+        timestep=dycore_config.dt_atmos,
+        n_split=dycore_config.n_split,
+        state=state,
+    )
+    return dycore, state
 
 
 if __name__ == "__main__":
@@ -289,7 +295,7 @@ if __name__ == "__main__":
             mpi_comm = NullComm(MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
         else:
             mpi_comm = MPI.COMM_WORLD
-        dycore, dycore_args = setup_dycore(
+        dycore, state = setup_dycore(
             dycore_config,
             mpi_comm,
             args.backend,
@@ -302,7 +308,7 @@ if __name__ == "__main__":
         # warmup/compilation from the internal timers
         if rank == 0:
             print("timestep 1")
-        dycore.step_dynamics(**dycore_args)
+        dycore.step_dynamics(state, timer)
 
     if profiler is not None:
         profiler.enable()
@@ -316,10 +322,7 @@ if __name__ == "__main__":
         with timestep_timer.clock("mainloop"):
             if rank == 0:
                 print(f"timestep {i+2}")
-            dycore.step_dynamics(
-                **dycore_args,
-                timer=timestep_timer,
-            )
+            dycore.step_dynamics(state, timer=timestep_timer)
         times_per_step.append(timestep_timer.times)
         hits_per_step.append(timestep_timer.hits)
         timestep_timer.reset()

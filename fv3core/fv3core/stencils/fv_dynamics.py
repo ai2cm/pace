@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Dict, Optional
 
+from dace.frontend.python.interface import nounroll as dace_no_unroll
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
 import fv3core.stencils.moist_cv as moist_cv
@@ -14,11 +15,12 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
-from pace.dsl.stencil import FrozenStencil, StencilFactory
+from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
+from pace.util import Timer
 from pace.util.grid import DampingCoefficients, GridData
-from pace.util.halo_updater import HaloUpdater
+from pace.util.quantity import Quantity
 
 
 # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
@@ -64,133 +66,15 @@ def init_pfull(
         pfull = (ph2 - ph1) / log(ph2 / ph1)
 
 
-def compute_preamble(
-    state,
-    is_root_rank: bool,
-    config: DynamicalCoreConfig,
-    fv_setup_stencil: FrozenStencil,
-    pt_adjust_stencil: FrozenStencil,
-):
-    if config.hydrostatic:
-        raise NotImplementedError("Hydrostatic is not implemented")
-    if __debug__:
-        if is_root_rank:
-            print("FV Setup")
-    fv_setup_stencil(
-        state.qvapor,
-        state.qliquid,
-        state.qrain,
-        state.qsnow,
-        state.qice,
-        state.qgraupel,
-        state.q_con,
-        state.cvm,
-        state.pkz,
-        state.pt,
-        state.cappa,
-        state.delp,
-        state.delz,
-        state.dp1,
-    )
-
-    if state.consv_te > 0 and not state.do_adiabatic_init:
-        raise NotImplementedError(
-            "compute total energy is not implemented, it needs an allReduce"
-        )
-
-    if (not config.rf_fast) and config.tau != 0:
-        raise NotImplementedError(
-            "Rayleigh_Super, called when rf_fast=False and tau !=0"
-        )
-
-    if config.adiabatic and config.kord_tm > 0:
-        raise NotImplementedError(
-            "unimplemented namelist options adiabatic with positive kord_tm"
-        )
-    else:
-        if __debug__:
-            if is_root_rank:
-                print("Adjust pt")
-        pt_adjust_stencil(
-            state.pkz,
-            state.dp1,
-            state.q_con,
-            state.pt,
-        )
-
-
-def post_remap(
-    state: DycoreState,
-    is_root_rank: bool,
-    config: DynamicalCoreConfig,
-    hyperdiffusion: HyperdiffusionDamping,
-    set_omega_stencil: FrozenStencil,
-    omega_halo_updater: HaloUpdater,
-    da_min: FloatFieldIJ,
-):
-    if not config.hydrostatic:
-        if __debug__:
-            if is_root_rank:
-                print("Omega")
-        set_omega_stencil(
-            state.delp,
-            state.delz,
-            state.w,
-            state.omga,
-        )
-    if config.nf_omega > 0:
-        if __debug__:
-            if is_root_rank == 0:
-                print("Del2Cubed")
-        omega_halo_updater.update([state.omga])
-        hyperdiffusion(state.omga, 0.18 * da_min)
-
-
-def wrapup(
-    state: DycoreState,
-    comm: pace.util.CubedSphereCommunicator,
-    adjust_stencil: AdjustNegativeTracerMixingRatio,
-    cubed_to_latlon_stencil: CubedToLatLon,
-    is_root_rank: bool,
-):
-    if __debug__:
-        if is_root_rank:
-            print("Neg Adj 3")
-    adjust_stencil(
-        state.qvapor,
-        state.qliquid,
-        state.qrain,
-        state.qsnow,
-        state.qice,
-        state.qgraupel,
-        state.qcld,
-        state.pt,
-        state.delp,
-        state.delz,
-        state.peln,
-    )
-
-    if __debug__:
-        if is_root_rank:
-            print("CubedToLatLon")
-    cubed_to_latlon_stencil(
-        state.u,
-        state.v,
-        state.ua,
-        state.va,
-        comm,
-    )
-
-
 def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
-        quantity = quantity_factory.empty(
+        quantity = quantity_factory.zeros(
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         )
         tmps[name] = quantity
     for name in ["cappa", "dp1", "cvm"]:
-        quantity = quantity_factory.empty(
+        quantity = quantity_factory.zeros(
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="unknown",
         )
@@ -211,6 +95,7 @@ class DynamicalCore:
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
+        state: DycoreState,
         checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         """
@@ -222,6 +107,7 @@ class DynamicalCore:
             config: configuration of dynamical core, for example as would be set by
                 the namelist in the Fortran model
             phis: surface geopotential height
+            state: Model state
             checkpointer: if given, used to perform operations on model data
                 at specific points in model execution, such as testing against
                 reference data
@@ -248,7 +134,7 @@ class DynamicalCore:
         )
         assert config.moist_phys, "fvsetup is only implemented for moist_phys=true"
         assert config.nwat == 6, "Only nwat=6 has been implemented and tested"
-        self.comm = comm
+        self.comm_rank = comm.rank
         self.grid_data = grid_data
         self.grid_indexing = grid_indexing
         self._da_min = damping_coefficients.da_min
@@ -261,8 +147,20 @@ class DynamicalCore:
             grid_type=config.grid_type,
             hord=config.hord_tr,
         )
+
+        self.tracers = {}
+        for name in utils.tracer_variables[0:NQ]:
+            self.tracers[name] = state.__dict__[name]
+        self.tracer_storages = {
+            name: quantity.storage for name, quantity in self.tracers.items()
+        }
+
+        self._temporaries = fvdyn_temporaries(quantity_factory)
+        state.__dict__.update(self._temporaries)
+
+        # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
-            stencil_factory, tracer_transport, self.grid_data, comm, NQ
+            stencil_factory, tracer_transport, self.grid_data, comm, self.tracers
         )
         self._ak = grid_data.ak
         self._bk = grid_data.bk
@@ -314,6 +212,7 @@ class DynamicalCore:
             self.config.acoustic_dynamics,
             self._pfull,
             self._phis,
+            state,
             checkpointer=checkpointer,
         )
         self._hyperdiffusion = HyperdiffusionDamping(
@@ -323,10 +222,15 @@ class DynamicalCore:
             self.config.nf_omega,
         )
         self._cubed_to_latlon = CubedToLatLon(
-            stencil_factory, grid_data, order=config.c2l_ord
+            state, stencil_factory, grid_data, config.c2l_ord, comm
         )
 
         self._temporaries = fvdyn_temporaries(quantity_factory)
+        # This is only here so the temporaries are attributes on this class,
+        # to more easily pick them up in unit testing
+        # if self._temporaries were a dataclass we can remove this
+        for name, value in self._temporaries.items():
+            setattr(self, f"_tmp_{name}", value)
         if not (not self.config.inline_q and NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
@@ -341,6 +245,7 @@ class DynamicalCore:
             grid_data.area_64,
             NQ,
             self._pfull,
+            tracers=self.tracers,
         )
 
         full_xyz_spec = grid_indexing.get_quantity_halo_spec(
@@ -350,7 +255,9 @@ class DynamicalCore:
             n_halo=utils.halo,
             backend=stencil_factory.backend,
         )
-        self._omega_halo_updater = self.comm.get_scalar_halo_updater([full_xyz_spec])
+        self._omega_halo_updater = AcousticDynamics._WrappedHaloUpdater(
+            comm.get_scalar_halo_updater([full_xyz_spec]), state, ["omga"], comm=comm
+        )
 
     def _checkpoint_fvdynamics(self, state: DycoreState, tag: str):
         if self.call_checkpointer:
@@ -367,28 +274,23 @@ class DynamicalCore:
                 qvapor=state.qvapor,
             )
 
-    def step_dynamics(
+    def update_state(
         self,
-        state: DycoreState,
         conserve_total_energy: float,
         do_adiabatic_init: bool,
         timestep: float,
         n_split: int,
-        timer: pace.util.Timer = pace.util.NullTimer(),
+        state: DycoreState,
     ):
         """
-        Step the model state forward by one timestep.
-
         Args:
-            state: model prognostic state and inputs
+            state: model dycore state
             conserve_total_energy: if True, conserve total energy
             do_adiabatic_init: if True, do adiabatic dynamics. Used
                 for model initialization.
             timestep: time to progress forward in seconds
             n_split: number of acoustic timesteps per remapping timestep
-            timer: if given, use for timing model execution
         """
-        self._checkpoint_fvdynamics(state=state, tag="In")
         # TODO: state should be a statically typed class, move these to the
         # definition of DycoreState and pass them on init or alternatively
         # move these to/get these from the namelist/configuration class
@@ -402,40 +304,83 @@ class DynamicalCore:
                 "k_split": self.config.k_split,
             }
         )
+        state.__dict__.update(self._temporaries)
+        state.__dict__.update(self.acoustic_dynamics._temporaries)
+
+    def step_dynamics(self, state: DycoreState, timer: Timer):
+        """
+        Step the model state forward by one timestep.
+
+        Args:
+            timer: keep time of model sections
+            state: model prognostic state and inputs
+        """
+        self._checkpoint_fvdynamics(state=state, tag="In")
         self._compute(state, timer)
         self._checkpoint_fvdynamics(state=state, tag="Out")
 
-    # TODO: type hint state when it is possible to do so, when it is a static type
-    def _compute(
-        self,
-        state,
-        timer: pace.util.Timer,
-    ):
-        # TODO: put temporaries on a statically typed container class, as they are not
-        # attributes of DycoreState
-        state.__dict__.update(self._temporaries)
-        tracers = {}
-        for name in utils.tracer_variables[0:NQ]:
-            tracers[name] = state.__dict__[name]
-        tracer_storages = {name: quantity.storage for name, quantity in tracers.items()}
-
-        # TODO: ak and bk are not attributes of DycoreState, put them on a statically
-        # typed class that has them as attributes
-        state.ak = self._ak
-        state.bk = self._bk
-        last_step = False
-        compute_preamble(
-            state,
-            is_root_rank=self.comm.rank == 0,
-            config=self.config,
-            fv_setup_stencil=self._fv_setup_stencil,
-            pt_adjust_stencil=self._pt_adjust_stencil,
+    def compute_preamble(self, state, is_root_rank: bool):
+        if self.config.hydrostatic:
+            raise NotImplementedError("Hydrostatic is not implemented")
+        if __debug__:
+            if is_root_rank:
+                print("FV Setup")
+        self._fv_setup_stencil(
+            state.qvapor,
+            state.qliquid,
+            state.qrain,
+            state.qsnow,
+            state.qice,
+            state.qgraupel,
+            state.q_con,
+            state.cvm,
+            state.pkz,
+            state.pt,
+            state.cappa,
+            state.delp,
+            state.delz,
+            state.dp1,
         )
 
-        for n_map in range(state.k_split):
-            state.n_map = n_map + 1
-            last_step = n_map == state.k_split - 1
-            self._dyn(state, tracers, timer)
+        if state.consv_te > 0 and not state.do_adiabatic_init:
+            raise NotImplementedError(
+                "compute total energy is not implemented, it needs an allReduce"
+            )
+
+        if (not self.config.rf_fast) and self.config.tau != 0:
+            raise NotImplementedError(
+                "Rayleigh_Super, called when rf_fast=False and tau !=0"
+            )
+
+        if self.config.adiabatic and self.config.kord_tm > 0:
+            raise NotImplementedError(
+                "unimplemented namelist options adiabatic with positive kord_tm"
+            )
+        else:
+            if __debug__:
+                if is_root_rank:
+                    print("Adjust pt")
+            self._pt_adjust_stencil(
+                state.pkz,
+                state.dp1,
+                state.q_con,
+                state.pt,
+            )
+
+    def __call__(self, *args, **kwargs):
+        return self.step_dynamics(*args, **kwargs)
+
+    def _compute(self, state, timer: pace.util.Timer):
+        last_step = False
+        self.compute_preamble(
+            state,
+            is_root_rank=self.comm_rank == 0,
+        )
+
+        for k_split in dace_no_unroll(range(state.k_split)):
+            n_map = k_split + 1
+            last_step = k_split == state.k_split - 1
+            self._dyn(state=state, tracers=self.tracers, n_map=n_map, timer=timer)
 
             if self.grid_indexing.domain[2] > 4:
                 # nq is actually given by ncnst - pnats,
@@ -450,11 +395,11 @@ class DynamicalCore:
                 # issue is that set_val in map_single expects a 3D field for the
                 # "surface" array
                 if __debug__:
-                    if self.comm.rank == 0:
+                    if self.comm_rank == 0:
                         print("Remapping")
                 with timer.clock("Remapping"):
                     self._lagrangian_to_eulerian_obj(
-                        tracer_storages,
+                        self.tracer_storages,
                         state.pt,
                         state.delp,
                         state.delz,
@@ -490,37 +435,39 @@ class DynamicalCore:
                         NQ,
                     )
                 if last_step:
-                    post_remap(
+                    self.post_remap(
                         state,
-                        is_root_rank=self.comm.rank == 0,
-                        config=self.config,
-                        hyperdiffusion=self._hyperdiffusion,
-                        set_omega_stencil=self._set_omega_stencil,
-                        omega_halo_updater=self._omega_halo_updater,
+                        is_root_rank=self.comm_rank == 0,
                         da_min=self._da_min,
                     )
-        wrapup(
+        self.wrapup(
             state,
-            comm=self.comm,
-            adjust_stencil=self._adjust_tracer_mixing_ratio,
-            cubed_to_latlon_stencil=self._cubed_to_latlon,
-            is_root_rank=self.comm.rank == 0,
+            is_root_rank=self.comm_rank == 0,
         )
 
-    # TODO: type hint state when it is possible to do so, when it is a static type
-    def _dyn(self, state, tracers, timer=pace.util.NullTimer()):
+    def _dyn(
+        self,
+        state,
+        tracers: Dict[str, Quantity],
+        n_map,
+        timer: pace.util.Timer,
+    ):
         self._copy_stencil(
             state.delp,
             state.dp1,
         )
         if __debug__:
-            if self.comm.rank == 0:
+            if self.comm_rank == 0:
                 print("DynCore")
         with timer.clock("DynCore"):
-            self.acoustic_dynamics(state)
+            self.acoustic_dynamics(
+                state,
+                n_map=n_map,
+                update_temporaries=False,
+            )
         if self.config.z_tracer:
             if __debug__:
-                if self.comm.rank == 0:
+                if self.comm_rank == 0:
                     print("TracerAdvection")
             with timer.clock("TracerAdvection"):
                 self.tracer_advection(
@@ -532,3 +479,58 @@ class DynamicalCore:
                     state.cyd,
                     state.mdt,
                 )
+
+    def post_remap(
+        self,
+        state: DycoreState,
+        is_root_rank: bool,
+        da_min: FloatFieldIJ,
+    ):
+        if not self.config.hydrostatic:
+            if __debug__:
+                if is_root_rank:
+                    print("Omega")
+            self._set_omega_stencil(
+                state.delp,
+                state.delz,
+                state.w,
+                state.omga,
+            )
+        if self.config.nf_omega > 0:
+            if __debug__:
+                if is_root_rank == 0:
+                    print("Del2Cubed")
+            self._omega_halo_updater.update()
+            self._hyperdiffusion(state.omga, 0.18 * da_min)
+
+    def wrapup(
+        self,
+        state: DycoreState,
+        is_root_rank: bool,
+    ):
+        if __debug__:
+            if is_root_rank:
+                print("Neg Adj 3")
+        self._adjust_tracer_mixing_ratio(
+            state.qvapor,
+            state.qliquid,
+            state.qrain,
+            state.qsnow,
+            state.qice,
+            state.qgraupel,
+            state.qcld,
+            state.pt,
+            state.delp,
+            state.delz,
+            state.peln,
+        )
+
+        if __debug__:
+            if is_root_rank:
+                print("CubedToLatLon")
+        self._cubed_to_latlon(
+            state.u,
+            state.v,
+            state.ua,
+            state.va,
+        )

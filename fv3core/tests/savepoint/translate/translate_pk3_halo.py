@@ -1,9 +1,16 @@
+import pace.dsl
+import pace.util
 from fv3core.stencils.pk3_halo import PK3Halo
 from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslatePK3_Halo(TranslateDycoreFortranData2Py):
-    def __init__(self, grid, namelist, stencil_factory):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
         super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         self.compute_func = PK3Halo(self.stencil_factory)

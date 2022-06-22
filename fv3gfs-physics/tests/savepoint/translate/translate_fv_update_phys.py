@@ -2,11 +2,15 @@ import dataclasses
 
 import numpy as np
 
+import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
-from pace.stencils.testing.translate_physics import ParallelPhysicsTranslate2Py
+from pace.stencils.testing.translate_physics import (
+    ParallelPhysicsTranslate2Py,
+    transform_dwind_serialized_data,
+)
 
 
 @dataclasses.dataclass()
@@ -33,9 +37,13 @@ class DycoreState:
 
 
 class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
-    def __init__(self, grids, namelist, stencil_factory):
-        super().__init__(grids, namelist, stencil_factory)
-        grid = grids[0]
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
+        super().__init__(grid, namelist, stencil_factory)
         self.stencil_factory = stencil_factory
         self.grid_indexing = self.stencil_factory.grid_indexing
         self._base.in_vars["data_vars"] = {
@@ -88,8 +96,15 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
         }
         self.namelist = namelist
 
-    def collect_input_data(self, serializer, savepoint):
-        input_data = {}
+    def transform_dwind_serialized_data(self, data):
+        return transform_dwind_serialized_data(
+            data, self.stencil_factory.grid_indexing, self.stencil_factory.backend
+        )
+
+    def storage_vars(self):
+        return self._base.in_vars["data_vars"]
+
+    def make_storage_data_input_vars(self, inputs, storage_vars=None):
         for varname in [*self._base.in_vars["data_vars"]]:
             info = self._base.in_vars["data_vars"][varname]
             dwind_format = info["dwind"] if "dwind" in info else False
@@ -98,70 +113,10 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
             else:
                 serialname = varname
             if dwind_format:
-                dwind_data_dict = self.read_dwind_serialized_data(
-                    serializer, savepoint, serialname
+                inputs[serialname] = self.transform_dwind_serialized_data(
+                    inputs[serialname]
                 )
-                for dvar in dwind_data_dict.keys():
-                    input_data[dvar] = dwind_data_dict[dvar]
-            else:
-                input_data[serialname] = self.read_dycore_serialized_data(
-                    serializer, savepoint, serialname
-                )
-        return input_data
 
-    def read_dycore_serialized_data(self, serializer, savepoint, variable):
-        data = serializer.read(variable, savepoint)
-        if len(data.flatten()) == 1:
-            return data[0]
-        return data
-
-    def read_dwind_serialized_data(self, serializer, savepoint, varname):
-        max_shape = self.grid.domain_shape_full(add=(1, 1, 1))
-        start_indices = {
-            "vlon": (self.grid.isd + 1, self.grid.jsd + 1),
-            "vlat": (self.grid.isd + 1, self.grid.jsd + 1),
-        }
-        axes = {"edge_vect_s": 0, "edge_vect_n": 0, "edge_vect_w": 1, "edge_vect_e": 1}
-        input_data = {}
-        data = serializer.read(varname, savepoint)
-
-        # convert single element numpy arrays to scalars
-        if data.size == 1:
-            data = data.item()
-            input_data[varname] = data
-            return input_data
-        elif len(data.shape) < 2:
-            start1 = start_indices.get(varname, 0)
-            size1 = data.shape[0]
-            axis = axes.get(varname, 2)
-            input_data[varname] = np.zeros(max_shape[axis])
-            input_data[varname][start1 : start1 + size1] = data
-        elif len(data.shape) == 2:
-            input_data[varname] = np.zeros(max_shape[0:2])
-            start1, start2 = start_indices.get(varname, (0, 0))
-            size1, size2 = data.shape
-            input_data[varname][start1 : start1 + size1, start2 : start2 + size2] = data
-        else:
-            start1, start2, start3 = start_indices.get(varname, self.grid.full_origin())
-            size1, size2, size3 = data.shape
-            input_data[varname] = np.zeros(max_shape)
-            input_data[varname][
-                start1 : start1 + size1,
-                start2 : start2 + size2,
-                start3 : start3 + size3,
-            ] = data
-        input_data[varname] = utils.make_storage_data(
-            data=input_data[varname],
-            origin=self.grid_indexing.origin_full(),
-            shape=input_data[varname].shape,
-            backend=self.stencil_factory.backend,
-        )
-        return input_data
-
-    def storage_vars(self):
-        return self._base.in_vars["data_vars"]
-
-    def make_storage_data_input_vars(self, inputs, storage_vars=None):
         if storage_vars is None:
             storage_vars = self.storage_vars()
         for p in self._base.in_vars["parameters"]:
@@ -195,6 +150,9 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
             )
             if d != serialname:
                 del inputs[serialname]
+        remove_names = set(inputs.keys()).difference(self._base.in_vars["data_vars"])
+        for name in remove_names:
+            inputs.pop(name)
 
     def compute_parallel(self, inputs, communicator):
         self.make_storage_data_input_vars(inputs)
@@ -209,17 +167,15 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
                 origin=(0, 0, 0),
                 extent=storage.shape,
             )
-        partitioner = pace.util.CubedSpherePartitioner(
-            pace.util.TilePartitioner(self.namelist.layout)
-        )
+        state = DycoreState(**inputs)
         self._base.compute_func = ApplyPhysicsToDycore(
             self.stencil_factory,
             self.grid.grid_data,
             self.namelist,
             communicator,
             self.grid.driver_grid_data,
+            state,
         )
-        state = DycoreState(**inputs)
         dims_u = [pace.util.X_DIM, pace.util.Y_INTERFACE_DIM, pace.util.Z_DIM]
         u_quantity = self.grid.make_quantity(
             state.u,

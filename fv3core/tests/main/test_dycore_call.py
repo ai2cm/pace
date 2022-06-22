@@ -1,7 +1,10 @@
-import contextlib
+import copy
 import os
 import unittest.mock
-from typing import Any, List, Tuple
+from typing import List, Tuple
+
+import gt4py.storage.storage
+import numpy as np
 
 import fv3core
 import fv3core._config
@@ -9,6 +12,7 @@ import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl.stencil
 import pace.stencils.testing
 import pace.util
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
 
@@ -16,44 +20,10 @@ from pace.util.null_comm import NullComm
 DIR = os.path.abspath(os.path.dirname(__file__))
 
 
-@contextlib.contextmanager
-def no_lagrangian_contributions(dynamical_core: fv3core.DynamicalCore):
-    # TODO: lagrangian contributions currently cause an out of bounds iteration
-    # when halo updates are disabled. Fix that bug and remove this decorator.
-    # Probably requires an update to gt4py (currently v36).
-    def do_nothing(*args, **kwargs):
-        pass
-
-    original_attributes = {}
-    for obj in (
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_delz,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_pt,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_u,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_v,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_w,
-        dynamical_core._lagrangian_to_eulerian_obj._map_single_delz,
-    ):
-        original_attributes[obj] = obj._lagrangian_contributions
-        obj._lagrangian_contributions = do_nothing  # type: ignore
-    for (
-        obj
-    ) in dynamical_core._lagrangian_to_eulerian_obj._mapn_tracer._list_of_remap_objects:
-        original_attributes[obj] = obj._lagrangian_contributions
-        obj._lagrangian_contributions = do_nothing  # type: ignore
-    try:
-        yield
-    finally:
-        for obj, original in original_attributes.items():
-            obj._lagrangian_contributions = original
-
-
-def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
+def setup_dycore() -> Tuple[
+    fv3core.DynamicalCore, fv3core.DycoreState, pace.util.Timer
+]:
     backend = "numpy"
-    stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=True,
-    )
     config = fv3core.DynamicalCoreConfig(
         layout=(1, 1),
         npx=13,
@@ -105,6 +75,12 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         pace.util.TilePartitioner(config.layout)
     )
     communicator = pace.util.CubedSphereCommunicator(mpi_comm, partitioner)
+    dace_config = DaceConfig(
+        communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
+    )
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
+    )
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.npx - 1,
         ny_tile=config.npy - 1,
@@ -147,39 +123,124 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
         phis=state.phis,
+        state=state,
     )
     do_adiabatic_init = False
-    # TODO compute from namelist
-    bdt = config.dt_atmos
 
-    args = [
-        state,
+    dycore.update_state(
         config.consv_te,
         do_adiabatic_init,
-        bdt,
+        config.dt_atmos,
         config.n_split,
-    ]
-    return dycore, args
+        state,
+    )
+
+    return dycore, state, pace.util.NullTimer()
+
+
+def assert_same_temporaries(dict1: dict, dict2: dict):
+    diffs = _assert_same_temporaries(dict1, dict2)
+    if len(diffs) > 0:
+        raise AssertionError(f"{len(diffs)} differing temporaries found: {diffs}")
+
+
+def _assert_same_temporaries(dict1: dict, dict2: dict) -> List[str]:
+    differences = []
+    for attr in dict1:
+        attr1 = dict1[attr]
+        attr2 = dict2[attr]
+        if isinstance(attr1, np.ndarray):
+            try:
+                np.testing.assert_almost_equal(
+                    attr1, attr2, err_msg=f"{attr} not equal"
+                )
+            except AssertionError:
+                differences.append(attr)
+        else:
+            sub_differences = _assert_same_temporaries(attr1, attr2)
+            for d in sub_differences:
+                differences.append(f"{attr}.{d}")
+    return differences
+
+
+def copy_temporaries(obj, max_depth: int) -> dict:
+    temporaries = {}
+    attrs = [a for a in dir(obj) if not a.startswith("__")]
+    for attr_name in attrs:
+        try:
+            attr = getattr(obj, attr_name)
+        except AttributeError:
+            attr = None
+        if isinstance(attr, (gt4py.storage.storage.Storage, pace.util.Quantity)):
+            temporaries[attr_name] = copy.deepcopy(np.asarray(attr.data))
+        elif attr.__class__.__module__.split(".")[0] in ("fv3core", "pace"):
+            if max_depth > 0:
+                sub_temporaries = copy_temporaries(attr, max_depth - 1)
+                if len(sub_temporaries) > 0:
+                    temporaries[attr_name] = sub_temporaries
+    return temporaries
+
+
+def test_temporaries_are_deterministic():
+    """
+    This is a precursor test to the next one, ensuring that two
+    identically-initialized dycores called on identically-initialized
+    states produce identical temporaries.
+
+    This will fail if there is non-determinism in the initialization,
+    for example from using `empty` instead of `zeros` to initialize data.
+    """
+    dycore1, state1, timer1 = setup_dycore()
+    dycore2, state2, timer2 = setup_dycore()
+
+    dycore1.step_dynamics(state1, timer1)
+    first_temporaries = copy_temporaries(dycore1, max_depth=10)
+    assert len(first_temporaries) > 0
+    dycore2.step_dynamics(state2, timer2)
+    second_temporaries = copy_temporaries(dycore2, max_depth=10)
+    assert_same_temporaries(second_temporaries, first_temporaries)
+
+
+# TODO: The orchestrated code pushed us to make the dycore stateful for halo
+# exchange. This needs to be reactivated after halo exchange are reverted to
+# not being stateful.
+def test_call_on_same_state_same_dycore_produces_same_temporaries():
+    """
+    Assuming the precursor test passes, this test indicates whether
+    the dycore retains and re-uses internal state on subsequent calls.
+    If it does not, then subsequent calls on identical input should
+    produce identical results.
+    """
+    return
+    dycore, state_1, timer_1 = setup_dycore()
+    _, state_2, timer_2 = setup_dycore()
+
+    # state_1 and state_2 are identical, if the dycore is stateless then they
+    # should produce identical dycore final states when used to call
+    dycore.step_dynamics(state_1, timer_1)
+    first_temporaries = copy_temporaries(dycore, max_depth=10)
+    assert len(first_temporaries) > 0
+    dycore.step_dynamics(state_2, timer_2)
+    second_temporaries = copy_temporaries(dycore, max_depth=10)
+    assert_same_temporaries(second_temporaries, first_temporaries)
 
 
 def test_call_does_not_allocate_storages():
-    dycore, args = setup_dycore()
+    dycore, state, timer = setup_dycore()
 
     def error_func(*args, **kwargs):
         raise AssertionError("call not allowed")
 
     with unittest.mock.patch("gt4py.storage.storage.zeros", new=error_func):
         with unittest.mock.patch("gt4py.storage.storage.empty", new=error_func):
-            with no_lagrangian_contributions(dynamical_core=dycore):
-                dycore.step_dynamics(*args)
+            dycore.step_dynamics(state, timer)
 
 
 def test_call_does_not_define_stencils():
-    dycore, args = setup_dycore()
+    dycore, state, timer = setup_dycore()
 
     def error_func(*args, **kwargs):
         raise AssertionError("call not allowed")
 
     with unittest.mock.patch("gt4py.gtscript.stencil", new=error_func):
-        with no_lagrangian_contributions(dynamical_core=dycore):
-            dycore.step_dynamics(*args)
+        dycore.step_dynamics(state, timer)

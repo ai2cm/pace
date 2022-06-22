@@ -487,6 +487,23 @@ class Quantity:
     def np(self) -> NumpyModule:
         return self.metadata.np
 
+    @property
+    def __array_interface__(self):
+        return self.storage.__array_interface__
+
+    @property
+    def __cuda_array_interface__(self):
+        return self.storage.__cuda_array_interface__
+
+    @property
+    def shape(self):
+        return self.storage.shape
+
+    def __descriptor__(self):
+        if self._storage is None:
+            return None  # trigger DaCe JIT
+        return self._storage.__descriptor__()
+
     def transpose(self, target_dims: Sequence[Union[str, Iterable[str]]]) -> "Quantity":
         """Change the dimension order of this Quantity.
 

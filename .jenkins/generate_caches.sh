@@ -2,7 +2,7 @@
 
 # Script to generate gt caches on Piz Daint
 # Syntax:
-# .jenkins/generate_caches.sh <backend> <experiment>
+# .jenkins/generate_caches.sh <backend> <experiment> <cache_type>
 
 
 # stop on all errors and echo commands
@@ -19,8 +19,9 @@ exitError()
 
 backend=$1
 experiment=$2
+cache_type=$3
 SANITIZED_BACKEND=`echo $backend | sed 's/:/_/g'` #sanitize the backend from any ':'
-CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/store_gt_caches/${experiment}/${SANITIZED_BACKEND}/"
+CACHE_DIR="/scratch/snx3000/olifu/jenkins/scratch/gt_caches_v1/${cache_type}/${experiment}/${SANITIZED_BACKEND}/"
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PACE_DIR=$SCRIPT_DIR/../
 
@@ -41,4 +42,4 @@ find .gt_cache* -type d -name __pycache__ -prune -exec \rm -rf {} \;
 echo "Copying GT4Py cache directories to ${CACHE_DIR}"
 mkdir -p ${CACHE_DIR}
 rm -rf ${CACHE_FILENAME}
-tar -czf ${CACHE_FILENAME} .gt_cache
+tar -czf ${CACHE_FILENAME} .gt_cache*
