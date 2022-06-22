@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 from typing import Any, Dict, List
@@ -167,6 +168,46 @@ def process_override(threshold_overrides, testobj, test_name, backend):
             )
 
 
+def perturb(input):
+    roundoff = 1e-16
+    for data in input.values():
+        if isinstance(data, np.ndarray) and data.dtype in (np.float64, np.float32):
+            not_fill_value = data < 1e10
+            # multiply data by roundoff-level error
+            data[not_fill_value] *= 1.0 + np.random.uniform(
+                low=-roundoff, high=roundoff, size=data[not_fill_value].shape
+            )
+
+
+N_THRESHOLD_SAMPLES = 10
+
+
+def get_thresholds(testobj, input_data):
+    output_list = []
+    for _ in range(N_THRESHOLD_SAMPLES):
+        input = copy.deepcopy(input_data)
+        perturb(input)
+        output_list.append(testobj.compute(input))
+
+    output_varnames = output_list[0].keys()
+    for varname in output_varnames:
+        if output_list[0][varname].dtype in (
+            np.float64,
+            np.int64,
+            np.float32,
+            np.int32,
+        ):
+            samples = [out[varname] for out in output_list]
+            pointwise_max_abs_errors = np.max(samples, axis=0) - np.min(samples, axis=0)
+            max_rel_diff = np.nanmax(
+                pointwise_max_abs_errors / np.min(np.abs(samples), axis=0)
+            )
+            max_abs_diff = np.nanmax(pointwise_max_abs_errors)
+            print(
+                f"{varname}: max rel diff {max_rel_diff}, max abs diff {max_abs_diff}"
+            )
+
+
 @pytest.mark.sequential
 @pytest.mark.skipif(
     MPI is not None and MPI.COMM_WORLD.Get_size() > 1,
@@ -209,6 +250,7 @@ def test_sequential_savepoint(
         + case.testobj.in_vars["parameters"]
     )
     input_data = {name: input_data[name] for name in input_names}
+    get_thresholds(case.testobj, input_data=input_data)
     # run python version of functionality
     output = case.testobj.compute(input_data)
     failing_names: List[str] = []
