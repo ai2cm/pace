@@ -389,7 +389,6 @@ class FrozenStencil(SDFGConvertible):
 
     def _compile(self):
 
-        # Ensure the stencil names are unique
         stencil_object: gt4py.StencilObject = gtscript.stencil(
             definition=self.func,
             externals=self.externals,
