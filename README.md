@@ -36,7 +36,7 @@ $ cd ../
 $ make build
 ```
 
-For serial tests (these take a bit of time), there are two options: 
+For serial tests (these take a bit of time), there are two options:
 
 (1) To enter the container and run the dynamical core serial tests (main and savepoint tests):
 
@@ -57,7 +57,7 @@ For parallel tests:
 $ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/fv3core/test_data/c12_6ranks_standard/ /fv3core/tests
 ```
 
-or 
+or
 
 ```shell
 $ DEV=y make savepoint_tests_mpi
@@ -98,7 +98,7 @@ For parallel tests use:
 $ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/test_data/8.1.0/c12_6ranks_baroclinic_dycore_microphysics/physics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
-or 
+or
 
 ```shell
 $ DEV=y make physics_savepoint_tests_mpi
