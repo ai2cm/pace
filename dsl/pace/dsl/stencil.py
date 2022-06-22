@@ -265,32 +265,16 @@ class CompareToNumpyStencil:
         )
 
 
+@dataclasses.dataclass
 class TimingCollector:
-    build_infos: Dict[str, dict]
-    exec_infos: Dict[str, dict]
-
-    def __init__(self):
-        self.build_infos: Dict[str, dict] = {}
-        self.exec_infos: Dict[str, dict] = {}
-
-    def add_build_info(self, name: str, build_info: dict) -> None:
-        assert name not in self.build_infos
-        self.build_infos[name] = build_info
-
-    def add_exec_info(self, name: str, exec_info: dict) -> None:
-        self.exec_infos[name] = exec_info
-
-    def build_info(self, name: str) -> dict:
-        return self.build_infos[name]
-
-    def exec_info(self, name: str) -> dict:
-        return self.exec_infos[name]
+    build_info: Dict[str, dict] = dataclasses.field(default_factory=dict)
+    exec_info: Dict[str, dict] = dataclasses.field(default_factory=dict)
 
     def show_build_report(self, key: str = "build_time", **kwargs) -> str:
-        return type(self)._show_report(self.build_infos, key, **kwargs)
+        return type(self)._show_report(self.build_info, key, **kwargs)
 
     def show_exec_report(self, key: str = "total_run_time", **kwargs) -> str:
-        return type(self)._show_report(self.exec_infos, key, **kwargs)
+        return type(self)._show_report(self.exec_info, key, **kwargs)
 
     @staticmethod
     def _show_report(
@@ -301,12 +285,13 @@ class TimingCollector:
         bar_width: int = 40,
         delimiter: str = " | ",
         show_bar: bool = True,
+        reverse: bool = True,
     ) -> str:
         assert name_width > 10
 
         data = [(name, infos[name][key]) for name in infos.keys()]
         sorted_data = tuple(
-            sorted(data, key=lambda name_time: name_time[1], reverse=True)
+            sorted(data, key=lambda name_time: name_time[1], reverse=reverse)
         )
         max_time = sorted_data[0][1]
 
@@ -362,7 +347,7 @@ class FrozenStencil(SDFGConvertible):
         self.origin = origin
         self.domain: Index3D = cast_to_index3d(domain)
         self.stencil_config: StencilConfig = stencil_config
-        self.timing_collector = timing_collector
+        self.timing_collector = timing_collector or TimingCollector()
 
         if externals is None:
             externals = {}
@@ -400,17 +385,17 @@ class FrozenStencil(SDFGConvertible):
             self.stencil_object = self._compile()
 
     def _compile(self):
-        build_info: Dict[str, Any] = {}
+
+        assert self.stencil_kwargs["name"] not in self.timing_collector.build_info
         stencil_object: gt4py.StencilObject = gtscript.stencil(
             definition=self.func,
             externals=self.externals,
             **self.stencil_kwargs,
-            build_info=build_info,
+            build_info=(build_info := {}),
         )
-        if self.timing_collector:
-            self.timing_collector.add_build_info(
-                stencil_object.options["name"], build_info
-            )
+
+        self.timing_collector.build_info[self.stencil_kwargs["name"]] = build_info
+
         field_info = stencil_object.field_info
         self._field_origins: Dict[
             str, Tuple[int, ...]
@@ -426,8 +411,7 @@ class FrozenStencil(SDFGConvertible):
         # calls in __sdfg__ generation
         if self.stencil_config.dace_config.is_dace_orchestrated():
             self._frozen_stencil = stencil_object.freeze(
-                origin=self._field_origins,
-                domain=self.domain,
+                origin=self._field_origins, domain=self.domain
             )
 
         return stencil_object
@@ -439,13 +423,9 @@ class FrozenStencil(SDFGConvertible):
         if self.stencil_object is None:
             self.stencil_object = self._compile()
 
-        exec_info: Dict[str, Any]
-        if self.timing_collector:
-            exec_info = self.timing_collector.exec_info(
-                self.stencil_object.options["name"]
-            )
-        else:
-            exec_info = {}
+        exec_info = self.timing_collector.exec_info.setdefault(
+            self.stencil_kwargs["name"], {}
+        )
 
         if self.stencil_config.validate_args:
             if __debug__ and "origin" in kwargs:
@@ -469,11 +449,6 @@ class FrozenStencil(SDFGConvertible):
                 exec_info=exec_info,
             )
             self._mark_cuda_fields_written({**args_as_kwargs, **kwargs})
-
-        if self.timing_collector:
-            self.timing_collector.add_exec_info(
-                self.stencil_object.options["name"], exec_info
-            )
 
     def _mark_cuda_fields_written(self, fields: Mapping[str, Storage]):
         if self.stencil_config.is_gpu_backend:
@@ -1046,11 +1021,13 @@ class StencilFactory:
             grid_indexing=self.grid_indexing.restrict_vertical(k_start=k_start, nk=nk),
         )
 
-    def show_build_report(self) -> str:
-        return self.timing_collector.show_build_report()
+    def show_build_report(self, key: str = "build_time", **kwargs) -> str:
+        """Report all stencils built by this factory."""
+        return self.timing_collector.show_build_report(key, **kwargs)
 
-    def show_exec_report(self) -> str:
-        return self.timing_collector.show_exec_report()
+    def show_exec_report(self, key: str = "total_run_time", **kwargs) -> str:
+        """Report all stencils executed that were built by this factory."""
+        return self.timing_collector.show_exec_report(key, **kwargs)
 
 
 def get_stencils_with_varied_bounds(
