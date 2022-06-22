@@ -2,6 +2,8 @@ import os
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 import dace
+from dace.dtypes import StorageType as DaceStorageType
+from dace.dtypes import DeviceType as DaceDeviceType
 import gt4py.storage
 from dace import constant as DaceConstant
 from dace.frontend.python.common import SDFGConvertible
@@ -112,12 +114,12 @@ def build_sdfg(
         # Make the transients array persistents
         if config.is_gpu_backend():
             to_gpu(sdfg)
-            make_transients_persistent(sdfg=sdfg, device=dace.dtypes.DeviceType.GPU)
+            make_transients_persistent(sdfg=sdfg, device=DaceDeviceType.GPU)
         else:
             for sd, _aname, arr in sdfg.arrays_recursive():
                 if arr.shape == (1,):
-                    arr.storage = dace.StorageType.Register
-            make_transients_persistent(sdfg=sdfg, device=dace.dtypes.DeviceType.CPU)
+                    arr.storage = DaceStorageType.Register
+            make_transients_persistent(sdfg=sdfg, device=DaceDeviceType.CPU)
 
         # Upload args to device
         upload_to_device(list(args) + list(kwargs.values()))
@@ -134,12 +136,18 @@ def build_sdfg(
 
         # Promote scalar
         from dace.transformation.passes import scalar_to_symbol as scal2sym
+        import dace.sdfg.utils
 
         with DaCeProgress(config, "Scalar promotion"):
             for sd in sdfg.all_sdfgs_recursive():
                 scal2sym.promote_scalars_to_symbols(sd)
 
-        with DaCeProgress(config, "Simplify (1 of 2)"):
+        with DaCeProgress(config, "Inlined, Fuse & Simplify (1/2)"):
+            while (
+                dace.sdfg.utils.inline_sdfgs(sdfg) > 0
+                or dace.sdfg.utils.fuse_states(sdfg) > 0
+            ):
+                pass
             sdfg.simplify(validate=False)
 
         # Perform pre-expansion fine tuning
@@ -150,8 +158,12 @@ def build_sdfg(
         with DaCeProgress(config, "Expand"):
             sdfg.expand_library_nodes()
 
-        # Simplify again after expansion
-        with DaCeProgress(config, "Simplify (final)"):
+        with DaCeProgress(config, "Inlined, Fuse & Simplify (1/2)"):
+            while (
+                dace.sdfg.utils.inline_sdfgs(sdfg) > 0
+                or dace.sdfg.utils.fuse_states(sdfg) > 0
+            ):
+                pass
             sdfg.simplify(validate=False)
 
         with DaCeProgress(
@@ -178,11 +190,6 @@ def build_sdfg(
                     config, res, list(args) + list(kwargs.values())
                 )
         else:
-            from gt4py import config as gt_config
-
-            config_path = (
-                f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
-            )
             source_rank = config.target_rank
             # wait for compilation to be done
             sdfg_path = MPI.COMM_WORLD.recv(source=source_rank)
@@ -403,8 +410,8 @@ def orchestrate(
                 # issues discussion) is to make a plugin. Too much work -> ignore mypy
 
                 class _(type(obj)):  # type: ignore
-                    __qualname__ = f"{type(obj).__qualname__}"
-                    __name__ = f"{type(obj).__name__}"
+                    __qualname__ = f"{type(obj).__qualname__}_patched"
+                    __name__ = f"{type(obj).__name__}_patched"
 
                     def __call__(self, *arg, **kwarg):
                         return wrapped(*arg, **kwarg)

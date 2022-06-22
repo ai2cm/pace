@@ -1,7 +1,5 @@
-import dataclasses
 from typing import Dict, Optional, Sequence, Union
 
-import dace
 from dace.frontend.python.interface import nounroll as dace_nounroll
 from gt4py.gtscript import (
     __INLINED,
@@ -23,6 +21,8 @@ import fv3core.stencils.temperature_adjust as temperature_adjust
 import fv3core.stencils.updatedzc as updatedzc
 import fv3core.stencils.updatedzd as updatedzd
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 import pace.util
 import pace.util as fv3util
 import pace.util.constants as constants
@@ -238,59 +238,6 @@ class AcousticDynamics:
     Peforms the Lagrangian acoustic dynamics described by Lin 2004
     """
 
-    class _WrappedHaloUpdater:
-        def __init__(
-            self, updater, state, qty_x_names, qty_y_names=None, comm=None
-        ) -> None:
-            self._updater = updater
-            self._state = state
-            self._qtx_x_names = qty_x_names
-            self._qtx_y_names = qty_y_names
-            self._comm = comm
-
-        @dace_inhibitor
-        def start(self):
-            if self._qtx_y_names is None:
-                if dataclasses.is_dataclass(self._state):
-                    self._updater.start(
-                        [self._state.__getattribute__(x) for x in self._qtx_x_names]
-                    )
-                elif isinstance(self._state, dict):
-                    self._updater.start([self._state[x] for x in self._qtx_x_names])
-                else:
-                    raise NotImplementedError
-            else:
-                if dataclasses.is_dataclass(self._state):
-                    self._updater.start(
-                        [self._state.__getattribute__(x) for x in self._qtx_x_names],
-                        [self._state.__getattribute__(y) for y in self._qtx_y_names],
-                    )
-                elif isinstance(self._state, dict):
-                    self._updater.start(
-                        [self._state[x] for x in self._qtx_x_names],
-                        [self._state[y] for y in self._qtx_y_names],
-                    )
-                else:
-                    raise NotImplementedError
-
-        @dace_inhibitor
-        def wait(self):
-            self._updater.wait()
-
-        @dace_inhibitor
-        def update(self):
-            self.start()
-            self.wait()
-
-        @dace_inhibitor
-        def interface(self):
-            assert len(self._qtx_x_names) == 1
-            assert len(self._qtx_y_names) == 1
-            self._comm.synchronize_vector_interfaces(
-                self._state.__getattribute__(self._qtx_x_names[0]),
-                self._state.__getattribute__(self._qtx_y_names[0]),
-            )
-
     class _HaloUpdaters(object):
         """Encapsulate all HaloUpdater objects"""
 
@@ -348,17 +295,17 @@ class AcousticDynamics:
             # [DaCe] Wrapping call to a DaCe readable halo updater
             #        Biggest parsing issue is that DaCe cannot do
             #        quantities at runtime paradigm
-            self.q_con__cappa = AcousticDynamics._WrappedHaloUpdater(
+            self.q_con__cappa = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyz_halo_spec] * 2),
                 state,
                 ["q_con", "cappa"],
             )
-            self.delp__pt = AcousticDynamics._WrappedHaloUpdater(
+            self.delp__pt = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyz_halo_spec] * 2),
                 state,
                 ["delp", "pt"],
             )
-            self.u__v = AcousticDynamics._WrappedHaloUpdater(
+            self.u__v = WrappedHaloUpdater(
                 comm.get_vector_halo_updater(
                     [full_size_xyiz_halo_spec], [full_size_xiyz_halo_spec]
                 ),
@@ -366,32 +313,32 @@ class AcousticDynamics:
                 ["u"],
                 ["v"],
             )
-            self.w = AcousticDynamics._WrappedHaloUpdater(
+            self.w = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyz_halo_spec]),
                 state,
                 ["w"],
             )
-            self.gz = AcousticDynamics._WrappedHaloUpdater(
+            self.gz = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyzi_halo_spec]),
                 state,
                 ["gz"],
             )
-            self.delp__pt__q_con = AcousticDynamics._WrappedHaloUpdater(
+            self.delp__pt__q_con = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyz_halo_spec] * 3),
                 state,
                 ["delp", "pt", "q_con"],
             )
-            self.zh = AcousticDynamics._WrappedHaloUpdater(
+            self.zh = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyzi_halo_spec]),
                 state,
                 ["zh"],
             )
-            self.divgd = AcousticDynamics._WrappedHaloUpdater(
+            self.divgd = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xiyiz_halo_spec]),
                 state,
                 ["divgd"],
             )
-            self.heat_source = AcousticDynamics._WrappedHaloUpdater(
+            self.heat_source = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyz_halo_spec]),
                 state,
                 ["heat_source"],
@@ -404,14 +351,14 @@ class AcousticDynamics:
                     n_halo=2,
                     backend=backend,
                 )
-                self.pkc = AcousticDynamics._WrappedHaloUpdater(
+                self.pkc = WrappedHaloUpdater(
                     comm.get_scalar_halo_updater([full_3Dfield_2pts_halo_spec]),
                     state,
                     ["pkc"],
                 )
             else:
                 self.pkc = comm.get_scalar_halo_updater([full_size_xyzi_halo_spec])
-            self.uc__vc = AcousticDynamics._WrappedHaloUpdater(
+            self.uc__vc = WrappedHaloUpdater(
                 comm.get_vector_halo_updater(
                     [full_size_xiyz_halo_spec], [full_size_xyiz_halo_spec]
                 ),
@@ -419,7 +366,7 @@ class AcousticDynamics:
                 ["uc"],
                 ["vc"],
             )
-            self.interface_uc__vc = AcousticDynamics._WrappedHaloUpdater(
+            self.interface_uc__vc = WrappedHaloUpdater(
                 None, state, ["u"], ["v"], comm=comm
             )
 
@@ -454,10 +401,39 @@ class AcousticDynamics:
                 at specific points in model execution, such as testing against
                 reference data
         """
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["state", "update_temporaries"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_csw",
+            dace_constant_args=["state", "tag"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_dsw_in",
+            dace_constant_args=["state", "tag"],
+        )
+
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            method_to_orchestrate="_checkpoint_dsw_out",
+            dace_constant_args=["state", "tag"],
+        )
+
         self.call_checkpointer = checkpointer is not None
-        self.checkpointer = checkpointer
+        if not self.call_checkpointer:
+            self.checkpointer = pace.util.NullCheckpointer()
+        else:
+            self.checkpointer = checkpointer
         grid_indexing = stencil_factory.grid_indexing
-        self.comm = comm
         self.config = config
         assert config.d_ext == 0, "d_ext != 0 is not implemented"
         assert config.beta == 0, "beta != 0 is not implemented"
@@ -713,9 +689,9 @@ class AcousticDynamics:
     # TODO: type hint state when it is possible to do so, when it is a static type
     def __call__(
         self,
-        state: dace.constant,
+        state,
         n_map=1,  # [DaCe] replaces state.n_map
-        update_temporaries: dace.constant = True,
+        update_temporaries: bool = True,
     ):
         # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
         # mfyd, cxd, cyd, pkz, peln, q_con, ak, bk, diss_estd, cappa, mdt, n_split,

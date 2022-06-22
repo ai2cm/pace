@@ -132,6 +132,7 @@ class TranslateRemapping(TranslateDycoreFortranData2Py):
             inputs["pfull"],
             inputs["tracers"],
         )
+        inputs.pop("nq")
         l_to_e_obj(**inputs)
         inputs.pop("q_cld")
         return inputs

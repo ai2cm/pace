@@ -307,7 +307,7 @@ def test_parallel_savepoint(
     stencil_config = pace.dsl.StencilConfig(
         backend=backend,
         dace_config=DaceConfig(
-            communicator=None,
+            communicator=communicator,
             backend=backend,
         ),
     )

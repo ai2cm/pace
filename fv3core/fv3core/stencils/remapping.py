@@ -519,7 +519,6 @@ class LagrangianToEulerian:
         mdt: float,
         bdt: float,
         do_adiabatic_init: bool,
-        nq: int,
     ):
         """
         tracers (inout): Tracer species tracked across
@@ -556,7 +555,6 @@ class LagrangianToEulerian:
         mdt (in) : Remap time step
         bdt (in): Timestep
         do_adiabatic_init (in): If True, do adiabatic dynamics
-        nq (in): Number of tracers
 
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.
