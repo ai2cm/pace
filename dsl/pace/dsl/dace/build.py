@@ -145,13 +145,18 @@ def read_target_rank(
         return -1
     top_tile_rank = top_tile_equivalent(rank, config.rank_size)
     with open(layout_filepath) as decomposition:
-        parsed_file = yaml.safe_load(decomposition)
+        parsed_file = None
+        attempt = 1000
+        while not parsed_file or attempt > 0:
+            parsed_file = yaml.safe_load(decomposition)
+            attempt = attempt - 1
+        if attempt <= 0:
+            raise RuntimeError("Cannot load yaml file")
         read_rank = int(
             parsed_file[
                 top_tile_rank_to_decomposition_string(top_tile_rank, partitioner)
             ]
         )
-        MPI.COMM_WORLD.Barrier()  # with open() is not very multi-node friendly
         return read_rank
 
 
