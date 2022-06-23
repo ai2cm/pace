@@ -230,18 +230,18 @@ class TimingCollector:
         sorted_data = tuple(
             sorted(data, key=lambda name_time: name_time[1], reverse=reverse)
         )
-        max_time = sorted_data[0][1]
+        max_val = sorted_data[0 if reverse else -1][1]
 
         outputs: List[str] = [f"Total: {sum(d[1] for d in data)}"]
-        for name, time in sorted_data:
+        for name, val in sorted_data:
             if len(name) > name_width:
                 width = int(name_width / 2) - 3
-                disp_name = f"{name[0:width]}...{name[-width:]}"
+                disp_name = f"{name[:width]}...{name[-width:]}"
             else:
                 disp_name = name
-            line = f"{disp_name.rjust(name_width)}{delimiter}{time:.3E}"
-            if show_bar:
-                bar_data = bar = "█" * (time / max_time * bar_width)
+            line = f"{disp_name.rjust(name_width)}{delimiter}{val:.3E}"
+            if show_bar and max_val > 0:
+                bar_data = bar = "█" * (val / max_val * bar_width)
                 line += f"{delimiter}{bar_data}"
             outputs.append(line)
 
