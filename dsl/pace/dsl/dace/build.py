@@ -147,7 +147,7 @@ def read_target_rank(
     with open(layout_filepath) as decomposition:
         parsed_file = None
         attempt = 1000  # having issue with multi-prcess load of a yaml file (sic)
-        while not parsed_file or attempt > 0:
+        while not parsed_file and attempt > 0:
             parsed_file = yaml.safe_load(decomposition)
             attempt = attempt - 1
         if attempt <= 0:
