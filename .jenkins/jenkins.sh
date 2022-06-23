@@ -118,7 +118,11 @@ if grep -q "parallel" <<< "${script}"; then
 	    fi
 	    sed -i "s|<NTASKS>|$NUM_RANKS|g" ${scheduler_script}
 	    if grep -q "cache" <<< "$script"; then
-		ntaskspernode=6
+		if [[ $backend == *gpu* || $backend == *cuda* ]]; then
+		    ntaskspernode=2
+		else
+		    ntaskspernode=6
+		fi
 	    else
 		ntaskspernode=24
 	    fi
