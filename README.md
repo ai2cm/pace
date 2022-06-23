@@ -6,7 +6,6 @@ If you are visiting for AMS 2022, we recommend you go to `driver/README.md`.
 
 **WARNING** This repo is under active development and relies on code and data that is not publicly available at this point.
 
-## Getting started
 
 Currently, we support tests in the dynamical core, physics, and util.
 
@@ -14,7 +13,7 @@ This git repository is laid out as a mono-repo, containing multiple independent 
 
 ![Graph of interdependencies of Pace modules, generated from dependences.dot](./dependencies.svg)
 
-### Dynamical core tests
+## Dynamical core tests
 
 Before the top-level build, make sure you have configured the authentication with user credientials and configured Docker with the following commands:
 ```shell
@@ -22,9 +21,9 @@ $ gcloud auth login
 $ gcloud auth configure-docker
 ```
 
-You will also need to update the submodules to include gt4py:
+You will also need to update the git submodules are cloned and at the correct version:
 ```shell
-$ git submodule update --init
+$ git submodule update --init --recursive
 ```
 
 To run dynamical core tests, first get the test data from inside `fv3core` or `fv3gfs-physics` folder, then build `fv3gfs-integration` docker image at the top level.
@@ -65,7 +64,7 @@ $ DEV=y make savepoint_tests_mpi
 
 Additional test options are described under `fv3core` documentation.
 
-### Physics tests
+## Physics tests
 
 Currently, the supported test case is dynamical core + microphysics: e.g., `c12_6ranks_baroclinic_dycore_microphysics` (gs://vcm-fv3gfs-serialized-regression-data/integration-7.2.5/c12_6ranks_baroclinic_dycore_microphysics).
 
@@ -83,7 +82,7 @@ In the container, physics tests can be run by:
 $ DEV=y make dev
 $ pytest -v -s --data_path=/test_data/8.1.0/c12_6ranks_baroclinic_dycore_microphysics/physics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
-(in this case, DEV=y also mounts the test_data directory, which is needed)
+In this case, DEV=y mounts the local directory, so any changes in it will take effect without needing to rebuild the container.
 
 or use the second method (as in dynamical core testing) outside of the docker container:
 
@@ -106,7 +105,7 @@ $ DEV=y make physics_savepoint_tests_mpi
 
 --------
 
-### Util tests
+## Util tests
 
 Inside the container, util tests can be run from `/pace-util`:
 
