@@ -15,13 +15,14 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
-from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.orchestrate import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.util import Timer
 from pace.util.grid import DampingCoefficients, GridData
+from pace.util.mpi import MPIComm
 from pace.util.quantity import Quantity
 
 
@@ -82,6 +83,13 @@ def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
         )
         tmps[name] = quantity
     return tmps
+
+
+@dace_inhibitor
+def log_on_rank_0(msg: str):
+    """Print when rank is 0 - outside of DaCe critical path"""
+    if MPIComm.Get_rank() == 0:
+        print(msg)
 
 
 class DynamicalCore:
@@ -384,9 +392,7 @@ class DynamicalCore:
     ):
         if self.config.hydrostatic:
             raise NotImplementedError("Hydrostatic is not implemented")
-        if __debug__:
-            if is_root_rank:
-                print("FV Setup")
+        log_on_rank_0("FV Setup")
         self._fv_setup_stencil(
             state.qvapor,
             state.qliquid,
@@ -419,9 +425,7 @@ class DynamicalCore:
                 "unimplemented namelist options adiabatic with positive kord_tm"
             )
         else:
-            if __debug__:
-                if is_root_rank:
-                    print("Adjust pt")
+            log_on_rank_0("Adjust pt")
             self._pt_adjust_stencil(
                 state.pkz,
                 state.dp1,
@@ -456,9 +460,7 @@ class DynamicalCore:
                 # TODO: Determine a better way to do this, polymorphic fields perhaps?
                 # issue is that set_val in map_single expects a 3D field for the
                 # "surface" array
-                if __debug__:
-                    if self.comm_rank == 0:
-                        print("Remapping")
+                log_on_rank_0("Remapping")
                 with timer.clock("Remapping"):
                     self._lagrangian_to_eulerian_obj(
                         self.tracer_storages,
@@ -517,9 +519,7 @@ class DynamicalCore:
             state.delp,
             state.dp1,
         )
-        if __debug__:
-            if self.comm_rank == 0:
-                print("DynCore")
+        log_on_rank_0("DynCore")
         with timer.clock("DynCore"):
             self.acoustic_dynamics(
                 state,
@@ -527,9 +527,7 @@ class DynamicalCore:
                 update_temporaries=False,
             )
         if self.config.z_tracer:
-            if __debug__:
-                if self.comm_rank == 0:
-                    print("TracerAdvection")
+            log_on_rank_0("TracerAdvection")
             with timer.clock("TracerAdvection"):
                 self.tracer_advection(
                     tracers,
@@ -548,9 +546,7 @@ class DynamicalCore:
         da_min: FloatFieldIJ,
     ):
         if not self.config.hydrostatic:
-            if __debug__:
-                if is_root_rank:
-                    print("Omega")
+            log_on_rank_0("Omega")
             self._set_omega_stencil(
                 state.delp,
                 state.delz,
@@ -558,9 +554,7 @@ class DynamicalCore:
                 state.omga,
             )
         if self.config.nf_omega > 0:
-            if __debug__:
-                if is_root_rank == 0:
-                    print("Del2Cubed")
+            log_on_rank_0("Del2Cubed")
             self._omega_halo_updater.update()
             self._hyperdiffusion(state.omga, 0.18 * da_min)
 
@@ -569,9 +563,7 @@ class DynamicalCore:
         state: DycoreState,
         is_root_rank: bool,
     ):
-        if __debug__:
-            if is_root_rank:
-                print("Neg Adj 3")
+        log_on_rank_0("Neg Adj 3")
         self._adjust_tracer_mixing_ratio(
             state.qvapor,
             state.qliquid,
@@ -586,9 +578,7 @@ class DynamicalCore:
             state.peln,
         )
 
-        if __debug__:
-            if is_root_rank:
-                print("CubedToLatLon")
+        log_on_rank_0("CubedToLatLon")
         self._cubed_to_latlon(
             state.u,
             state.v,
