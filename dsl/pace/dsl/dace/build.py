@@ -146,12 +146,12 @@ def read_target_rank(
     top_tile_rank = top_tile_equivalent(rank, config.rank_size)
     with open(layout_filepath) as decomposition:
         parsed_file = None
-        attempt = 1000
+        attempt = 1000  # having issue with multi-prcess load of a yaml file (sic)
         while not parsed_file or attempt > 0:
             parsed_file = yaml.safe_load(decomposition)
             attempt = attempt - 1
         if attempt <= 0:
-            raise RuntimeError("Cannot load yaml file")
+            raise RuntimeError("Cannot load yaml decomposition file")
         read_rank = int(
             parsed_file[
                 top_tile_rank_to_decomposition_string(top_tile_rank, partitioner)
