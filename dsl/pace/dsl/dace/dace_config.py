@@ -2,6 +2,7 @@ import enum
 from typing import Optional
 
 from pace.util.communicator import CubedSphereCommunicator
+import dace.config
 
 
 class DaCeOrchestration(enum.Enum):
@@ -27,6 +28,90 @@ class DaceConfig:
         backend: str,
         orchestration: Optional[DaCeOrchestration] = None,
     ):
+        # Set the configuration of DaCe to a rigid & tested set of divergence
+        # from the defaults
+
+        # Required to True for gt4py storage/memory
+        dace.config.Config.set(
+            "compiler",
+            "allow_view_arguments",
+            value=True,
+        )
+        # Removed --fmath
+        dace.config.Config.set(
+            "compiler",
+            "cpu",
+            "args",
+            value="-std=c++14 -fPIC -Wall -Wextra -O3",
+        )
+        # Potentially buggy - deactivate
+        dace.config.Config.set(
+            "compiler",
+            "cpu",
+            "openmp_sections",
+            value=0,
+        )
+        # Removed --fast-math
+        dace.config.Config.set(
+            "compiler",
+            "cuda",
+            "args",
+            value="-std=c++14 -Xcompiler -fPIC -O3 -Xcompiler -march=native",
+        )
+        # Potentiall buggy - deactivate
+        dace.config.Config.set(
+            "compiler",
+            "cuda",
+            "max_concurrent_streams",
+            value=-1,
+        )
+        # Speed up built time
+        dace.config.Config.set(
+            "compiler",
+            "cuda",
+            "unique_functions",
+            value="none",
+        )
+        # Required to False. Bug to be fixes on DaCe side
+        dace.config.Config.set(
+            "execution",
+            "general",
+            "check_args",
+            value=False,
+        )
+        # Required for HaloEx callbacks and general code sanity
+        dace.config.Config.set(
+            "frontend",
+            "dont_fuse_callbacks",
+            value=True,
+        )
+        # Unroll all loop - outer loop should be exempted with dace.nounroll
+        dace.config.Config.set(
+            "frontend",
+            "unroll_threshold",
+            value=False,
+        )
+        # Allow for a longer stack dump when parsing fails
+        dace.config.Config.set(
+            "frontend",
+            "verbose_errors",
+            value=True,
+        )
+        # Build speed up by removing some deep copies
+        dace.config.Config.set(
+            "store_history",
+            value=False,
+        )
+
+        # attempt to kill the dace.conf to avoid confusion
+        if dace.config.Config._cfg_filename:
+            try:
+                import os
+
+                os.remove(dace.config.Config._cfg_filename)
+            except:
+                pass
+
         # Temporary. This is a bit too out of the ordinary for the common user.
         # We should refactor the architecture to allow for a `gtc:orchestrated:dace:X`
         # backend that would signify both the `CPU|GPU` split and the orchestration mode
