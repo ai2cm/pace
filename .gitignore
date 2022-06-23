@@ -159,3 +159,6 @@ RESTART/
 
 # DaCe caches
 .dacecache
+_dacegraphs
+
+**/testing/output/*
