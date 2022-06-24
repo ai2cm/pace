@@ -67,12 +67,12 @@ echo "PYTHON env ${python_env}"
 
 # NOTE: All backends are GTC backends now, so fetch caches
 echo "Fetching existing gt_caches"
-if [ -z "$cache_dir" ]; then
-    (cd $PACE_DIR/fv3gfs-physics && $JENKINS_DIR/fetch_caches.sh $backend $experiment)
-else
-    (cd $PACE_DIR/fv3gfs-physics && $JENKINS_DIR/fetch_caches.sh $backend $experiment $cache_dir)
-fi
 cd $PACE_DIR
+if [ -z "$cache_dir" ]; then
+    $JENKINS_DIR/fetch_caches.sh $backend $experiment
+else
+    $JENKINS_DIR/fetch_caches.sh $backend $experiment $cache_dir
+fi
 
 # load machine dependent environment
 if [ ! -f ${BUILDENV_DIR}/env.${host}.sh ] ; then
