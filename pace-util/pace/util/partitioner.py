@@ -55,14 +55,6 @@ def get_tile_number(tile_rank: int, total_ranks: int) -> int:
 
 class Partitioner(abc.ABC):
     @abc.abstractmethod
-    def boundary(self, boundary_type: int, rank: int) -> Optional[bd.SimpleBoundary]:
-        ...
-
-    @abc.abstractmethod
-    def tile_index(self, rank: int):
-        pass
-
-    @abc.abstractmethod
     def global_extent(self, rank_metadata: QuantityMetadata) -> Tuple[int, ...]:
         """Return the shape of a full tile representation for the given dimensions.
 
@@ -133,9 +125,6 @@ class TilePartitioner(Partitioner):
         """Create an object for fv3gfs tile decomposition."""
         self.layout = layout
         self.edge_interior_ratio = edge_interior_ratio
-
-    def tile_index(self, rank: int):
-        return 0
 
     @classmethod
     def from_namelist(cls, namelist):
