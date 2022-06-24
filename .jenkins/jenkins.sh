@@ -40,20 +40,25 @@ T="$(date +%s)"
 test -n "$1" || exitError 1001 ${LINENO} "must pass an argument"
 test -n "${slave}" || exitError 1005 ${LINENO} "slave is not defined"
 
-input_backend="$2"
-if [[ $input_backend = gt_* ]] ; then
-    # sed explained: replace _ with :
-    input_backend=`echo $input_backend | sed 's/_/:/'`
-fi
-
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BUILDENV_DIR=$JENKINS_DIR/../buildenv
 PACE_DIR=$JENKINS_DIR/../
 
 # Read arguments
-action="$1"
-backend="$input_backend"
-experiment="$3"
+action=$1
+backend=$2
+experiment=$3
+
+if [[ $backend == gt_* ]]; then
+    backend=${backend/_/:}
+fi
+
+if [ -v LONG_EXECUTION ]; then
+    default_timeout=4
+else
+    default_timeout=1
+fi
+timeout_hrs=${4:-$default_timeout}
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
@@ -96,10 +101,8 @@ if [ -f ${scheduler_script} ] ; then
 fi
 
 
-# if the environment variable is set to long_job we skip timing restrictions:
-if [ -v LONG_EXECUTION ]; then
-    sed -i 's|00:45:00|03:30:00|g' ${scheduler_script}
-fi
+timeoutstr="00:$(printf '%2d' $timeout_hrs):00"
+sed -i "s|<TIMEOUT>|$timeoutstr|" $scheduler_script
 
 # if this is a parallel job and the number of ranks is specified in the experiment argument, set NUM_RANKS
 # and update the scheduler script if there is one
@@ -109,12 +112,9 @@ if grep -q "parallel" <<< "${script}"; then
 	echo "Setting NUM_RANKS=${NUM_RANKS}"
 	if [ -f ${scheduler_script} ] ; then
 	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
-	    sed -i 's|45|30|g' ${scheduler_script}
 	    if [ "$NUM_RANKS" -gt "6" ] && [ ! -v LONG_EXECUTION ]; then
-            sed -i 's|cscsci|debug|g' ${scheduler_script}
-        elif [ "$NUM_RANKS" -gt "6" ]; then
-            sed -i 's|cscsci|normal|g' ${scheduler_script}
-        fi
+                sed -i 's|cscsci|normal|g' ${scheduler_script}
+            fi
 	    sed -i 's|<NTASKS>|"'${NUM_RANKS}'"|g' ${scheduler_script}
 	    sed -i 's|<NTASKSPERNODE>|"24"|g' ${scheduler_script}
 	fi
@@ -166,7 +166,7 @@ fi
 
 export DOCKER_BUILDKIT=1
 
-run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script}
+run_command "$script $backend $experiment " Job$action $scheduler_script $timeout_hrs
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
