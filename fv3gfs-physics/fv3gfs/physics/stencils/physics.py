@@ -3,6 +3,7 @@ from typing import List
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 from typing_extensions import Literal
+from pace.dsl.dace.orchestrate import orchestrate
 
 import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
@@ -175,6 +176,12 @@ class Physics:
         namelist: PhysicsConfig,
         active_packages: List[Literal[PHYSICS_PACKAGES]],
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["physics_state"],
+        )
+
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_compute()
         shape = grid_indexing.domain_full(add=(1, 1, 1))

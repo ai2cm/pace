@@ -248,6 +248,12 @@ class UpdateAtmosphereState:
         apply_tendencies: bool,
         tendency_state,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["dycore_state", "phy_state", "tendency_state"],
+        )
+
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         origin = grid_indexing.origin_compute()

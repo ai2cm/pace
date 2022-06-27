@@ -159,7 +159,7 @@ class ApplyPhysicsToDycore:
             state.qice,
             state.qgraupel,
             state.pt,
-            t_dt,
+            t_dt.storage,
             constants.CP_AIR,
             dt,
         )

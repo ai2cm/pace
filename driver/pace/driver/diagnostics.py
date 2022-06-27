@@ -3,6 +3,8 @@ import dataclasses
 from datetime import datetime, timedelta
 from typing import List, Optional, Union
 
+from pace.dsl.dace.orchestrate import dace_inhibitor
+
 import pace.driver
 import pace.dsl
 import pace.stencils
@@ -93,6 +95,7 @@ class ZarrDiagnostics(Diagnostics):
                 store=store, partitioner=partitioner, mpi_comm=comm
             )
 
+    @dace_inhibitor
     def store(self, time: Union[datetime, timedelta], state: DriverState):
         if len(self.names) > 0:
             zarr_state = {"time": time}
