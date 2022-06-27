@@ -3,7 +3,7 @@ import pytest
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.util
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.stencil import (
     CompareToNumpyStencil,

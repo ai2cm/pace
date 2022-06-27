@@ -1,8 +1,9 @@
-from pace.dsl.dace.orchestrate import dace_inhibitor
 import dataclasses
-from pace.util.halo_updater import HaloUpdater
+from typing import List, Optional
+
+from pace.dsl.dace.orchestrate import dace_inhibitor
 from pace.util.communicator import CubedSphereCommunicator
-from typing import Optional, List
+from pace.util.halo_updater import HaloUpdater
 
 
 class WrappedHaloUpdater:

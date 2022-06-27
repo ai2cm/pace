@@ -13,7 +13,7 @@ import pace.util as util
 from fv3core._config import DynamicalCoreConfig
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.testing import TranslateDynCore
-from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.orchestrate import DaceConfig
 from pace.stencils.testing.grid import Grid
 from pace.util.null_comm import NullComm
 

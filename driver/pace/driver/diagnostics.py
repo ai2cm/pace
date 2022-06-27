@@ -3,13 +3,12 @@ import dataclasses
 from datetime import datetime, timedelta
 from typing import List, Optional, Union
 
-from pace.dsl.dace.orchestrate import dace_inhibitor
-
 import pace.driver
 import pace.dsl
 import pace.stencils
 import pace.util
 import pace.util.grid
+from pace.dsl.dace.orchestrate import dace_inhibitor
 from pace.util.quantity import QuantityMetadata
 
 from .state import DriverState

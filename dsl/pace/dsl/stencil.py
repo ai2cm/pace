@@ -3,7 +3,6 @@ import dataclasses
 import hashlib
 import inspect
 import re
-from functools import cached_property
 from typing import (
     Any,
     Callable,
@@ -304,10 +303,7 @@ class FrozenStencil(SDFGConvertible):
         stencil_kwargs = self.stencil_config.stencil_kwargs(
             skip_passes=skip_passes, func=func
         )
-        self._stencil_run_kwargs = None
-        self._field_origins = None
         self.stencil_object: Optional[gt4py.StencilObject] = None
-        self._written_fields: List[str] = []
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
@@ -336,7 +332,7 @@ class FrozenStencil(SDFGConvertible):
             )
 
         else:
-            self.stencil_object: gt4py.StencilObject = gtscript.stencil(
+            self.stencil_object = gtscript.stencil(
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,

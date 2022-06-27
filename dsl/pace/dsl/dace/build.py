@@ -1,18 +1,17 @@
 import os.path
-from typing import Any, Dict, Optional, Tuple
-from pace.util.mpi import MPI
-
-from pace.util import TilePartitioner
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from typing import Any, Dict, Optional
 
 import yaml
+
+from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.util import TilePartitioner
 
 
 ################################################
 # Distributed compilation
 
 
-def determine_compiling_ranks(config: DaceConfig) -> Tuple[bool, Any]:
+def determine_compiling_ranks(config: DaceConfig) -> bool:
     is_compiling = False
     rank = config.my_rank
     size = config.rank_size

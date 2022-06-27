@@ -1,6 +1,6 @@
 import pytest
 
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.stencil import StencilConfig
 
 

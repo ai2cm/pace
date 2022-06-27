@@ -8,7 +8,7 @@ import pytest
 import pace.dsl
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.stencils.testing import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
 from pace.util.testing import compare_scalar, success, success_array

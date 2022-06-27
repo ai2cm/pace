@@ -295,7 +295,7 @@ class Driver:
         )
 
     @dace_inhibitor
-    def _callback_log_info(message: str):
+    def _callback_log_info(self, message: str):
         logger.info(message)
 
     def _orchestratable_step_all(

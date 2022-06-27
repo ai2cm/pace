@@ -1,8 +1,9 @@
 import enum
 from typing import Optional
 
-from pace.util.communicator import CubedSphereCommunicator
 import dace.config
+
+from pace.util.communicator import CubedSphereCommunicator
 
 
 class DaCeOrchestration(enum.Enum):
@@ -119,13 +120,13 @@ class DaceConfig:
                 import os
 
                 os.remove(dace.config.Config._cfg_filename)
-            except:
+            except OSError:
                 pass
 
         self._backend = backend
         from pace.dsl.dace.build import (
-            set_distributed_caches,
             read_target_rank,
+            set_distributed_caches,
             write_decomposition,
         )
 
@@ -182,6 +183,3 @@ class DaceConfig:
 
     def get_orchestrate(self) -> DaCeOrchestration:
         return self._orchestrate
-
-    def get_communicator(self) -> CubedSphereCommunicator:
-        return self._communicator

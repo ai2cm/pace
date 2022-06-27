@@ -2,11 +2,11 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
 import fv3core
-from pace.dsl.dace.orchestrate import orchestrate
-from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util.constants as constants
+from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon

@@ -3,7 +3,6 @@ from typing import List
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interval, log
 from typing_extensions import Literal
-from pace.dsl.dace.orchestrate import orchestrate
 
 import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
@@ -11,6 +10,7 @@ from fv3gfs.physics.physics_state import PhysicsState
 from fv3gfs.physics.stencils.get_phi_fv3 import get_phi_fv3
 from fv3gfs.physics.stencils.get_prs_fv3 import get_prs_fv3
 from fv3gfs.physics.stencils.microphysics import Microphysics
+from pace.dsl.dace.orchestrate import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.util.grid import GridData

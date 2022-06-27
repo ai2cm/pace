@@ -1,11 +1,11 @@
 import os
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import dace
-from dace.dtypes import StorageType as DaceStorageType
-from dace.dtypes import DeviceType as DaceDeviceType
 import gt4py.storage
 from dace import constant as DaceConstant
+from dace.dtypes import DeviceType as DaceDeviceType
+from dace.dtypes import StorageType as DaceStorageType
 from dace.frontend.python.common import SDFGConvertible
 from dace.frontend.python.parser import DaceProgram
 from dace.transformation.auto.auto_optimize import make_transients_persistent
@@ -20,9 +20,6 @@ from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import strip_unused_global_in_compute_x_flux
 from pace.dsl.dace.utils import DaCeProgress
 from pace.util.mpi import MPI
-
-if TYPE_CHECKING:
-    from dace.frontend import DaceProgram
 
 
 def dace_inhibitor(func: Callable):
@@ -135,8 +132,8 @@ def _build_sdfg(
                 del sdfg_kwargs[k]
 
         # Promote scalar
-        from dace.transformation.passes import scalar_to_symbol as scal2sym
         import dace.sdfg.utils
+        from dace.transformation.passes import scalar_to_symbol as scal2sym
 
         with DaCeProgress(config, "Scalar promotion"):
             for sd in sdfg.all_sdfgs_recursive():
@@ -437,12 +434,6 @@ def orchestrate(
                         return wrapped.closure_resolver(
                             constant_args, given_args, parent_closure
                         )
-
-                    def __str__(self) -> str:
-                        return f"{type(obj).__module__}.{type(obj).__name__}"
-
-                    def __repr__(self) -> str:
-                        return "self"
 
                 # We keep the original class type name to not perturb
                 # the workflows that uses it to build relevant info (path, hash...)
