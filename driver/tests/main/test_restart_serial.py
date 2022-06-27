@@ -113,7 +113,7 @@ def test_restart_save_to_disk():
                             should not be in physics restart file"
                     )
     finally:
-        shutil.rmtree("RESTART")
+        shutil.rmtree("RESTART", ignore_errors=True)
 
 
 @pytest.mark.parametrize(
