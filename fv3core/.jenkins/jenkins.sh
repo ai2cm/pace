@@ -50,6 +50,7 @@ action=$1
 backend=$2
 experiment=$3
 
+# NOTE: Timeout is set by run_command in schedulerTools.sh
 if [ -v LONG_EXECUTION ]; then
     default_timeout=4
 else
@@ -100,9 +101,6 @@ if [ -f ${scheduler_script} ] ; then
     fi
 fi
 
-timeoutstr="00:$(printf '%2d' $timeout_hrs):00"
-sed -i "s|<TIMEOUT>|$timeoutstr|" $scheduler_script
-
 # if this is a parallel job and the number of ranks is specified in the experiment argument, set NUM_RANKS
 # and update the scheduler script if there is one
 if grep -q "parallel" <<< "${script}"; then
@@ -118,8 +116,6 @@ if grep -q "parallel" <<< "${script}"; then
         fi
         if [ -f ${scheduler_script} ] ; then
             sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread|g' ${scheduler_script}
-            sed -i 's|45|50|g' ${scheduler_script}
-            # if 54 rank test can run in 30 minutes again, sed 45 to 30 and:
             # if [ "$NUM_RANKS" -gt "6" ] && [ ! -v LONG_EXECUTION ]; then
             #  sed -i 's|cscsci|debug|g' ${scheduler_script}
             if [[ $NUM_RANKS -gt 6 || $backend == *gpu* || $backend == *cuda* ]]; then
@@ -147,7 +143,6 @@ if grep -q "fv_dynamics" <<< "${script}"; then
         export CRAY_CUDA_MPS=0
         fi
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${scheduler_script}
-    sed -i 's|00:45:00|03:30:00|g' ${scheduler_script}
     if [[ $backend == *gpu* || $backend == *cuda* ]]; then
         ntaskspernode=1
     else

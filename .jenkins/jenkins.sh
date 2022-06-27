@@ -53,6 +53,7 @@ if [[ $backend == gt_* ]]; then
     backend=${backend/_/:}
 fi
 
+# NOTE: Timeout is set by run_command in schedulerTools.sh
 if [ -v LONG_EXECUTION ]; then
     default_timeout=4
 else
@@ -100,9 +101,6 @@ if [ -f ${scheduler_script} ] ; then
     fi
 fi
 
-
-timeoutstr="00:$(printf '%2d' $timeout_hrs):00"
-sed -i "s|<TIMEOUT>|$timeoutstr|" $scheduler_script
 
 # if this is a parallel job and the number of ranks is specified in the experiment argument, set NUM_RANKS
 # and update the scheduler script if there is one
