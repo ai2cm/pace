@@ -193,7 +193,7 @@ class Driver:
             orchestrate(
                 obj=self,
                 config=dace_config,
-                method_to_orchestrate="critical_loop",
+                method_to_orchestrate="_orchestratable_step_all",
             )
             orchestrate(
                 obj=self,

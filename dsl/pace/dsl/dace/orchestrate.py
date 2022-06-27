@@ -236,7 +236,6 @@ def _parse_sdfg(
                 **kwargs,
                 save=False,
                 simplify=False,
-                use_cache=True,
             )
         return sdfg
     else:
