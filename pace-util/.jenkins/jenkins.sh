@@ -30,6 +30,9 @@ BUILDENV_DIR=$JENKINS_DIR/../../buildenv
 action="$1"
 optarg="$2"
 
+# Timeout after this many hours
+hours=1
+
 # get latest version of buildenv
 git submodule update --init
 
@@ -64,7 +67,7 @@ if [ "${target}" == "cpu" ] ; then
 fi
 
 echo "I am running on host ${host} with scheduler ${scheduler}."
-run_command "${script} ${optarg}" "UtilAction${action}"
+run_command "${script} ${optarg}" "UtilAction${action}" $hours
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
