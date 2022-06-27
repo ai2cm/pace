@@ -232,13 +232,14 @@ def _parse_sdfg(
     """
     sdfg_path = get_sdfg_path(daceprog.name, config)
     if sdfg_path is None:
-        with DaCeProgress(config, "Parse code to SDFG"):
+        with DaCeProgress(config, f"Parse code of {daceprog.name} to SDFG"):
             sdfg = daceprog.to_sdfg(
                 *args,
                 **daceprog.__sdfg_closure__(),
                 **kwargs,
                 save=False,
                 simplify=False,
+                use_cache=True,
             )
         return sdfg
     else:
