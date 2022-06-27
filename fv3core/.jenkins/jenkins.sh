@@ -50,17 +50,17 @@ action=$1
 backend=$2
 experiment=$3
 
-# NOTE: Timeout is set by run_command in schedulerTools.sh
-if [ -v LONG_EXECUTION ]; then
-    default_timeout=4
-else
-    default_timeout=1
-fi
-timeout_hrs=${4:-$default_timeout}
-
 if [[ $backend == gt_* ]]; then
     backend=${backend/_/:}
 fi
+
+# NOTE: Timeout is set by run_command in schedulerTools.sh
+if [ -v LONG_EXECUTION ]; then
+    default_timeout=$((60 * 3))
+else
+    default_timeout=30
+fi
+minutes=${4:-$default_timeout}
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
@@ -197,7 +197,7 @@ if [ ${python_env} == "virtualenv" ]; then
     export FV3_PATH="${JENKINS_DIR}/../"
 fi
 
-run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script} $timeout_hrs
+run_command "${script} ${backend} ${experiment} " Job${action} ${scheduler_script} $minutes
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
@@ -221,7 +221,7 @@ if grep -q "fv_dynamics" <<< "${script}"; then
     sed -i 's|<NTASKSPERNODE>|1|g' ${run_timing_script}
     sed -i 's/<CPUSPERTASK>/1/g' ${run_timing_script}
     sed -i 's|cscsci|debug|g' ${run_timing_script}
-    run_command "${script} ${backend} ${experiment} " Job2${action} ${run_timing_script} $timeout_hrs
+    run_command "${script} ${backend} ${experiment} " Job2${action} ${run_timing_script} $minutes
     if [ $? -ne 0 ] ; then
         exitError 1511 ${LINENO} "problem while executing script ${script}"
     fi

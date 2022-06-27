@@ -20,7 +20,7 @@ exitError()
 set -x +e
 
 experiment="$1"
-hours=3
+minutes=50
 
 ARTIFACT_ROOT="/project/s1053/baroclinic_initialization/"
 echo "####### executing: $0 $* (PID=$$ HOST=$HOSTNAME TIME=`date '+%D %H:%M:%S'`)"
@@ -63,7 +63,7 @@ ${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
 source ${VIRTUALENV}/bin/activate
 
 CMD="srun python3 ${PACE_DIR}/driver/examples/baroclinic_init.py ${JENKINS_DIR}/driver_configs/${experiment}.yaml"
-run_command "${CMD}" Job${action} ${scheduler_script} $hours
+run_command "${CMD}" Job${action} ${scheduler_script} $minutes
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
 fi

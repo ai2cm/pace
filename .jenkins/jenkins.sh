@@ -55,11 +55,11 @@ fi
 
 # NOTE: Timeout is set by run_command in schedulerTools.sh
 if [ -v LONG_EXECUTION ]; then
-    default_timeout=4
+    default_timeout=$((60 * 3))
 else
-    default_timeout=1
+    default_timeout=30
 fi
-timeout_hrs=${4:-$default_timeout}
+minutes=${4:-$default_timeout}
 
 # check presence of env directory
 pushd `dirname $0` > /dev/null
@@ -166,7 +166,7 @@ fi
 
 export DOCKER_BUILDKIT=1
 
-run_command "$script $backend $experiment " Job$action $scheduler_script $timeout_hrs
+run_command "$script $backend $experiment " Job$action $scheduler_script $minutes
 
 if [ $? -ne 0 ] ; then
   exitError 1510 ${LINENO} "problem while executing script ${script}"
