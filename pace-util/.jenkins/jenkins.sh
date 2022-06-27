@@ -31,7 +31,7 @@ action="$1"
 optarg="$2"
 
 # Timeout after this many minutes
-hours=30
+minutes=45
 
 # get latest version of buildenv
 git submodule update --init

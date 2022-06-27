@@ -56,9 +56,9 @@ fi
 
 # NOTE: Timeout is set by run_command in schedulerTools.sh
 if [ -v LONG_EXECUTION ]; then
-    default_timeout=$((60 * 3))
+    default_timeout=210
 else
-    default_timeout=30
+    default_timeout=45
 fi
 minutes=${4:-$default_timeout}
 
