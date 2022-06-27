@@ -27,7 +27,6 @@ from gt4py import gtscript
 from gt4py.storage.storage import Storage
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
-import pace.dsl.future_stencil as future_stencil
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
@@ -35,7 +34,6 @@ from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.halo_data_transformer import QuantityHaloSpec
-from pace.util.mpi import MPI
 
 
 @dataclasses.dataclass
@@ -112,10 +110,13 @@ class StencilConfig(Hashable):
 
         return backend_opts
 
-    def stencil_kwargs(self, skip_passes: Iterable[str] = ()):
+    def stencil_kwargs(
+        self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()
+    ):
         kwargs = {
             "backend": self.backend,
             "rebuild": self.rebuild,
+            "name": func.__module__ + "." + func.__name__,
             **self.backend_opts,
         }
         if not self.is_gpu_backend:
@@ -300,44 +301,23 @@ class FrozenStencil(SDFGConvertible):
         if externals is None:
             externals = {}
         self.externals = externals
-        func = func
-        stencil_function = gtscript.stencil
-        stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes)
+        stencil_kwargs = self.stencil_config.stencil_kwargs(
+            skip_passes=skip_passes, func=func
+        )
         self._stencil_run_kwargs = None
         self._field_origins = None
         self.stencil_object: Optional[gt4py.StencilObject] = None
         self._written_fields: List[str] = []
 
-        if "dace" in self.stencil_config.backend:
-            # [TODO]: find a better solution for this
-            # 1 indexing to 0 and halos: -2, -1, 0 --> 0, 1,2
-            if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-                gt4py.config.cache_settings["dir_name"] = ".gt_cache_{:0>6d}".format(
-                    MPI.COMM_WORLD.Get_rank()
-                )
+        self._argument_names = tuple(inspect.getfullargspec(func).args)
 
+        if "dace" in self.stencil_config.backend:
             dace.Config.set(
                 "default_build_folder",
                 value="{gt_cache}/dacecache".format(
                     gt_cache=gt4py.config.cache_settings["dir_name"]
                 ),
             )
-
-        # Enable distributed compilation if running in parallel and
-        # not running dace orchestration
-        if (
-            MPI is not None
-            and MPI.COMM_WORLD.Get_size() > 1
-            and "dace" not in self.stencil_config.backend
-        ):
-            stencil_function = future_stencil.future_stencil
-            stencil_kwargs["wrapper"] = self
-        else:
-            # future stencil provides this information and
-            # we want to be consistent with the naming whether we are
-            # running in parallel or not (so we use the same cache)
-            stencil_kwargs["name"] = func.__module__ + "." + func.__name__
-
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
         assert (
@@ -356,7 +336,7 @@ class FrozenStencil(SDFGConvertible):
             )
 
         else:
-            self.stencil_object: gt4py.StencilObject = stencil_function(
+            self.stencil_object: gt4py.StencilObject = gtscript.stencil(
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
@@ -375,11 +355,7 @@ class FrozenStencil(SDFGConvertible):
 
         self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
 
-    def __call__(
-        self,
-        *args,
-        **kwargs,
-    ) -> None:
+    def __call__(self, *args, **kwargs) -> None:
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)

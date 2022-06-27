@@ -107,7 +107,7 @@ echo "Profile artifact directory:   ${PROFILE_DIR}"
 
 
 # NOTE: All backends are GTC backends, so fetch caches
-. ${ROOT_DIR}/../.jenkins/fetch_caches.sh $backend $experiment
+. ${ROOT_DIR}/../.jenkins/fetch_caches.sh $backend $experiment dycore
 
 # run standalone
 echo "=== Running standalone ========================="
@@ -125,7 +125,7 @@ if [ "${SAVE_TIMINGS}" == "true" ] && [ "${SAVE_ARTIFACTS}" == "true" ] ; then
         cp $ROOT_DIR/*.json ${TIMING_DIR}/
 fi
 
-# copying the cache is in a separate action (generache_cache.sh),
+# copying the cache is in a separate action (generate_caches.sh),
 # otherwise delete it
 if [ "${SAVE_CACHE}" != "true" ] ; then
     rm -rf .gt_cache*
