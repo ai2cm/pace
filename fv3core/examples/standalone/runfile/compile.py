@@ -57,5 +57,5 @@ if __name__ == "__main__":
     for rank in range(1, 6 * dycore_config.layout[0] * dycore_config.layout[1]):
         shutil.copytree(f".gt_cache_{0:06}", f".gt_cache_{rank:06}", dirs_exist_ok=True)
 
-    print(stencil_factory.show_build_report())
+    print(stencil_factory.build_report())
     print("SUCCESS")
