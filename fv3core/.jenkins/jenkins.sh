@@ -143,6 +143,7 @@ if grep -q "fv_dynamics" <<< "${script}"; then
         export CRAY_CUDA_MPS=0
         fi
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${scheduler_script}
+    minutes=210
     if [[ $backend == *gpu* || $backend == *cuda* ]]; then
         ntaskspernode=1
     else
@@ -217,7 +218,7 @@ if grep -q "fv_dynamics" <<< "${script}"; then
         export CRAY_CUDA_MPS=0
         fi
     sed -i 's|<NTASKS>|6\n#SBATCH \-\-hint=nomultithread|g' ${run_timing_script}
-    sed -i 's|00:45:00|00:15:00|g' ${run_timing_script}
+    minutes=15
     sed -i 's|<NTASKSPERNODE>|1|g' ${run_timing_script}
     sed -i 's/<CPUSPERTASK>/1/g' ${run_timing_script}
     sed -i 's|cscsci|debug|g' ${run_timing_script}
