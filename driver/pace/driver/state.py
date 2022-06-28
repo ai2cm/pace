@@ -202,38 +202,71 @@ def _overwrite_state_from_fortran_restart(
     Returns:
         state: new state filled with restart files
     """
-    state_dict = _driver_state_to_dict(state)  # do we need to transform state?
-
-    restart_filename = path + f"/{restart_file_prefix}_{rank}.nc"
-    state = pace.util.open_restart(restart_filename, communicator, to_state=state_dict)
+    state_dict = _driver_state_to_dict(
+        state, restart_file_prefix, is_gpu_backend
+    )  # do we need to transform state?
+    state = pace.util.open_restart(path, communicator, to_state=state_dict)
 
     state = _dict_state_to_driver_state(
-        state_dict, state
+        state_dict, state, restart_file_prefix, is_gpu_backend
     )  # if we needed to transform state
 
     return state
 
 
-def _driver_state_to_dict(driver_state):
+def _driver_state_to_dict(
+    driver_state: Union[
+        fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState
+    ],
+    restart_file_prefix: str,
+    is_gpu_backend: bool,
+):
     """
     Takes a Pace driver state
     and returns a dict of state quantities with their Fortran names
     """
     dict_state = {}
-    for driver_name, quantity in driver_state:
-        fortran_name = RESTART_PROPERTIES[driver_name]["restart_name"]
-        dict_state[fortran_name] = quantity
+    for _field in fields(type(driver_state)):
+        if "units" in _field.metadata.keys():
+            fortran_name = RESTART_PROPERTIES[_field.name]["restart_name"]
+            if is_gpu_backend:
+                if "phy" in restart_file_prefix:
+                    dict_state[fortran_name] = driver_state.__dict__[_field.name][:]
+                else:
+                    dict_state[fortran_name] = driver_state.__dict__[_field.name].data[
+                        :
+                    ]
+            else:
+                dict_state[fortran_name] = driver_state.__dict__[_field.name].data[:]
+
     return dict_state
 
 
-def _dict_state_to_driver_state(fortran_state: dict, driver_state):
+def _dict_state_to_driver_state(
+    fortran_state: dict,
+    driver_state: Union[
+        fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState
+    ],
+    restart_file_prefix: str,
+    is_gpu_backend: bool,
+):
     """
     Takes a dict of state quantities with their Fortran names and a driver state
     and populates the driver state with quantities from the dict.
     """
-    for driver_name in driver_state:
-        fortran_name = RESTART_PROPERTIES[driver_name]["restart_name"]
-        driver_state[driver_name] = fortran_state[fortran_name]
+
+    for _field in fields(type(driver_state)):
+        if "units" in _field.metadata.keys():
+            fortran_name = RESTART_PROPERTIES[_field.name]["restart_name"]
+            if is_gpu_backend:
+                if "phy" in restart_file_prefix:
+                    driver_state.__dict__[_field.name][:] = fortran_state[fortran_name]
+                else:
+                    driver_state.__dict__[_field.name].data[:] = fortran_state[
+                        fortran_name
+                    ]
+            else:
+                driver_state.__dict__[_field.name].data[:] = fortran_state[fortran_name]
 
     return driver_state
 
@@ -274,13 +307,23 @@ def _restart_driver_state(
     physics_state = fv3gfs.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages
     )
-    physics_state = _overwrite_state_from_restart(
-        path,
-        rank,
-        physics_state,
-        "restart_physics_state",
-        is_gpu_backend,
-    )
+    if fortran_data is True:
+        dycore_state = _overwrite_state_from_fortran_restart(
+            path,
+            rank,
+            communicator,
+            physics_state,
+            "restart_dycore_state",
+            is_gpu_backend,
+        )
+    else:
+        physics_state = _overwrite_state_from_restart(
+            path,
+            rank,
+            physics_state,
+            "restart_physics_state",
+            is_gpu_backend,
+        )
     physics_state.__post_init__(quantity_factory, active_packages)
     tendency_state = TendencyState.init_zeros(
         quantity_factory=quantity_factory,
