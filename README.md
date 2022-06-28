@@ -41,7 +41,7 @@ For serial tests (these take a bit of time), there are two options:
 
 ```shell
 $ make dev
-$ pytest -v -s --data_path=/fv3core/test_data/8.1.0/c12_6ranks_standard/dycore/ /fv3core/tests
+$ pytest -v -s --data_path=/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore/ /fv3core/tests
 ```
 
 (2) To run the tests without opening the docker container (just savepoint tests):
@@ -80,7 +80,7 @@ In the container, physics tests can be run by:
 
 ```shell
 $ DEV=y make dev
-$ pytest -v -s --data_path=/test_data/8.1.0/c12_6ranks_baroclinic_dycore_microphysics/physics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
+$ pytest -v -s --data_path=/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 In this case, DEV=y mounts the local directory, so any changes in it will take effect without needing to rebuild the container.
 
@@ -94,7 +94,7 @@ $ DEV=y make physics_savepoint_tests
 For parallel tests use:
 
 ```shell
-$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/test_data/8.1.0/c12_6ranks_baroclinic_dycore_microphysics/physics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
+$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
 or
