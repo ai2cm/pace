@@ -80,6 +80,7 @@ jobs:
               . dsl/venv/bin/activate
               pip3 install -r dsl/requirements.txt -c constraints.txt
               pip3 install -e external/gt4py -c constraints.txt
+              pip3 install pytest -c constraints.txt
             fi
       - run:
           name: run tests
