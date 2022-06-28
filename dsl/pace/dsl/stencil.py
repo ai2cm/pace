@@ -204,44 +204,61 @@ def report_diff(arg: np.ndarray, numpy_arg: np.ndarray, label) -> str:
 
 @dataclasses.dataclass
 class TimingCollector:
+    """
+    Attributes:
+        build_info: contains info about the generation process for each stencil.
+        exec_info: contains info about the execution of each stencil.
+    """
+
     build_info: Dict[str, dict] = dataclasses.field(default_factory=dict)
-    exec_info: Dict[str, dict] = dataclasses.field(default_factory=dict)
+    exec_info: Dict[str, Any] = dataclasses.field(
+        default_factory=lambda: {"__aggregate_data": True}
+    )
 
     def show_build_report(self, key: str = "build_time", **kwargs) -> str:
-        return type(self)._show_report(self.build_info, key, **kwargs)
+        return type(self)._show_report(
+            self.build_info, self.build_info.keys(), key, **kwargs
+        )
 
     def show_exec_report(self, key: str = "total_run_time", **kwargs) -> str:
-        return type(self)._show_report(self.exec_info, key, **kwargs)
+        # NOTE: Uses the build_info keys to distinguish stencils
+        return type(self)._show_report(
+            self.exec_info, self.build_info.keys(), key, **kwargs
+        )
 
     @staticmethod
     def _show_report(
-        infos: Dict[str, dict],
-        key: str,
+        infos: Dict[str, Any],
+        keys: Iterable[str],
+        secondary_key: str,
         *,
         name_width: int = 40,
         bar_width: int = 40,
         delimiter: str = " | ",
         show_bar: bool = True,
         reverse: bool = True,
+        digits: int = 3,
     ) -> str:
         assert name_width > 10
 
-        data = [(name, infos[name][key]) for name in infos.keys()]
+        data = [(key, infos[key][secondary_key]) for key in keys]
         sorted_data = tuple(
             sorted(data, key=lambda name_time: name_time[1], reverse=reverse)
         )
         max_val = sorted_data[0 if reverse else -1][1]
 
-        outputs: List[str] = [f"Total: {sum(d[1] for d in data)}"]
+        format = f".{digits}e"
+
+        outputs: List[str] = [f"Total: {sum(d[1] for d in data):{format}}"]
         for name, val in sorted_data:
             if len(name) > name_width:
                 width = int(name_width / 2) - 3
-                disp_name = f"{name[:width]}...{name[-width:]}"
+                disp_name = f"{name[:width]}...{name[-width:]:{format}}"
             else:
                 disp_name = name
-            line = f"{disp_name.rjust(name_width)}{delimiter}{val:.3E}"
+            line = f"{disp_name.rjust(name_width)}{delimiter}{val:{format}}"
             if show_bar and max_val > 0:
-                bar_data = bar = "█" * (val / max_val * bar_width)
+                bar_data = bar = "█" * int(val / max_val * bar_width)
                 line += f"{delimiter}{bar_data}"
             outputs.append(line)
 
@@ -262,6 +279,7 @@ class CompareToNumpyStencil:
         stencil_config: StencilConfig,
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Optional[Tuple[str, ...]] = None,
+        timing_collector: Optional[TimingCollector] = None,
     ):
         self._actual = FrozenStencil(
             func=func,
@@ -270,7 +288,7 @@ class CompareToNumpyStencil:
             stencil_config=stencil_config,
             externals=externals,
             skip_passes=skip_passes,
-            timing_collector=None,
+            timing_collector=timing_collector,
         )
         numpy_stencil_config = StencilConfig(
             backend="numpy",
@@ -287,7 +305,7 @@ class CompareToNumpyStencil:
             stencil_config=numpy_stencil_config,
             externals=externals,
             skip_passes=skip_passes,
-            timing_collector=None,
+            timing_collector=timing_collector,
         )
         self._func_name = func.__name__
 
@@ -311,6 +329,7 @@ class CompareToNumpyStencil:
 
 
 def _stencil_object_name(stencil_object: gt4py.StencilObject) -> str:
+    """Returns a unique name for each gt4py stencil object, including the hash."""
     return type(stencil_object).__name__
 
 
@@ -350,7 +369,11 @@ class FrozenStencil(SDFGConvertible):
         self.origin = origin
         self.domain: Index3D = cast_to_index3d(domain)
         self.stencil_config: StencilConfig = stencil_config
-        self.timing_collector = timing_collector or TimingCollector()
+
+        if timing_collector is None:
+            self._timing_collector = TimingCollector()
+        else:
+            self._timing_collector = timing_collector
 
         if externals is None:
             externals = {}
@@ -395,7 +418,7 @@ class FrozenStencil(SDFGConvertible):
             **self.stencil_kwargs,
             build_info=(build_info := {}),
         )
-        self.timing_collector.build_info[
+        self._timing_collector.build_info[
             _stencil_object_name(stencil_object)
         ] = build_info
 
@@ -426,10 +449,6 @@ class FrozenStencil(SDFGConvertible):
         if self.stencil_object is None:
             self.stencil_object = self._compile()
 
-        exec_info = self.timing_collector.exec_info.setdefault(
-            _stencil_object_name(self.stencil_object), {}
-        )
-
         if self.stencil_config.validate_args:
             if __debug__ and "origin" in kwargs:
                 raise TypeError("origin cannot be passed to FrozenStencil call")
@@ -441,7 +460,7 @@ class FrozenStencil(SDFGConvertible):
                 origin=self._field_origins,
                 domain=self.domain,
                 validate_args=True,
-                exec_info=exec_info,
+                exec_info=self._timing_collector.exec_info,
             )
         else:
             args_as_kwargs = dict(zip(self._argument_names, args))
@@ -449,7 +468,7 @@ class FrozenStencil(SDFGConvertible):
                 **args_as_kwargs,
                 **kwargs,
                 **self._stencil_run_kwargs,
-                exec_info=exec_info,
+                exec_info=self._timing_collector.exec_info,
             )
             self._mark_cuda_fields_written({**args_as_kwargs, **kwargs})
 
@@ -965,10 +984,8 @@ class StencilFactory:
         """
         if self.config.compare_to_numpy:
             cls: Type = CompareToNumpyStencil
-            extra_kwargs = {}
         else:
             cls = FrozenStencil
-            extra_kwargs = {"timing_collector": self.timing_collector}
         return cls(
             func=func,
             origin=origin,
@@ -976,7 +993,7 @@ class StencilFactory:
             stencil_config=self.config,
             externals=externals,
             skip_passes=skip_passes,
-            **extra_kwargs,
+            timing_collector=self.timing_collector,
         )
 
     def from_dims_halo(
