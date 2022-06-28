@@ -112,6 +112,7 @@ if grep -q "parallel" <<< "${script}"; then
 	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
 	    if [ "$NUM_RANKS" -gt "6" ] && [ ! -v LONG_EXECUTION ]; then
 		sed -i "s|cscsci|debug|g" ${scheduler_script}
+		minutes=30
 	    elif [ "$NUM_RANKS" -gt "6" ]; then
                 sed -i "s|cscsci|normal|g" ${scheduler_script}
             fi
