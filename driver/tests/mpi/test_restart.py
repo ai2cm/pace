@@ -81,4 +81,4 @@ def test_restart():
                     restart_physics[var].values,
                 )
     finally:
-        shutil.rmtree("RESTART", ignore_errors=True)
+        shutil.rmtree("RESTART")
