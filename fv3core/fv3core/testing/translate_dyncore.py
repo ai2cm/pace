@@ -125,6 +125,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
         # TODO: Fix edge_interpolate4 in d2a2c_vect to match closer and the
         # variables here should as well.
         self.max_error = 2e-6
+        self.ignore_near_zero_errors = {"wsd": True}
         self.stencil_factory = stencil_factory
         self.namelist = namelist
 
