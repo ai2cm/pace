@@ -108,6 +108,10 @@ class DriverConfig:
             days=self.days, hours=self.hours, minutes=self.minutes, seconds=self.seconds
         )
 
+    def n_timesteps(self) -> int:
+        """Computing how many timestep required to carry the simulation."""
+        return int(self.total_time.seconds / self.timestep.seconds)
+
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:
         return self.dycore_config.do_dry_convective_adjustment
@@ -312,7 +316,10 @@ class Driver:
                 )
                 if not self.config.disable_step_physics:
                     self._step_physics(timestep=dt)
-                if step % self.config.diagnostics_config.output_frequency == 0:
+                if (step + 1) % self.config.diagnostics_config.output_frequency == 0:
+                    print(
+                        f"store {step} | {self.config.diagnostics_config.output_frequency}"
+                    )
                     self.diagnostics.store(time=self.time, state=self.state)
                 if (
                     self.restart.save_intermediate_restart
@@ -323,12 +330,8 @@ class Driver:
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
-            end_time = self.config.start_time + self.config.total_time
-            steps_count = int(
-                (end_time - self.time).seconds / self.config.timestep.seconds
-            )
             self._orchestratable_step_all(
-                steps_count=steps_count,
+                steps_count=self.config.n_timesteps(),
                 dt=self.config.timestep.total_seconds(),
             )
 

@@ -105,16 +105,15 @@ def test_driver(timestep: timedelta, minutes: int):
         dt_atmos=int(timestep.total_seconds()),
         minutes=minutes,
     )
-    n_timesteps = math.ceil((minutes * 60) / timestep.total_seconds())
     with mocked_components() as mock:
         driver = Driver(
             config=config,
         )
         driver.step_all()
-    assert driver.dycore.step_dynamics.call_count == n_timesteps
-    assert driver.physics.call_count == n_timesteps
-    assert driver.dycore_to_physics.call_count == n_timesteps
-    assert driver.end_of_step_update.call_count == n_timesteps
+    assert driver.dycore.step_dynamics.call_count == config.n_timesteps()
+    assert driver.physics.call_count == config.n_timesteps()
+    assert driver.dycore_to_physics.call_count == config.n_timesteps()
+    assert driver.end_of_step_update.call_count == config.n_timesteps()
 
 
 @pytest.mark.parametrize(
