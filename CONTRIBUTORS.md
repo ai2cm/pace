@@ -15,3 +15,4 @@ List format (alphabetical order):  Surname, Name. Employer/Affiliation
 * Niedermayr, Yannick. ETH.
 * Wicky, Tobias. Vulcan Inc.
 * Wu, Elynn. Vulcan Inc.
+* Savarin, Ajda. AI2.
