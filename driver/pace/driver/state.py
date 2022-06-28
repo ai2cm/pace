@@ -75,9 +75,7 @@ class DriverState:
 
     @classmethod
     def load_state_from_restart(
-        cls,
-        restart_path: str,
-        driver_config,
+        cls, restart_path: str, driver_config, fortran_data: bool = False
     ) -> "DriverState":
         comm = driver_config.comm_config.get_comm()
         communicator = pace.util.CubedSphereCommunicator.from_layout(
@@ -103,7 +101,11 @@ class DriverState:
             sizer, backend=driver_config.stencil_config.backend
         )
         state = _restart_driver_state(
-            restart_path, communicator.rank, quantity_factory, communicator
+            restart_path,
+            communicator.rank,
+            quantity_factory,
+            communicator,
+            fortran_data,
         )
         return state
 
@@ -241,6 +243,7 @@ def _restart_driver_state(
     rank: int,
     quantity_factory: pace.util.QuantityFactory,
     communicator: pace.util.CubedSphereCommunicator,
+    fortran_data: bool = False,
 ):
     metric_terms = pace.util.grid.MetricTerms(
         quantity_factory=quantity_factory, communicator=communicator
@@ -250,13 +253,23 @@ def _restart_driver_state(
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
     is_gpu_backend = "gpu" in dycore_state.u.metadata.gt4py_backend
-    dycore_state = _overwrite_state_from_restart(
-        path,
-        rank,
-        dycore_state,
-        "restart_dycore_state",
-        is_gpu_backend,
-    )
+    if fortran_data is True:
+        dycore_state = _overwrite_state_from_fortran_restart(
+            path,
+            rank,
+            communicator,
+            dycore_state,
+            "restart_dycore_state",
+            is_gpu_backend,
+        )
+    else:
+        dycore_state = _overwrite_state_from_restart(
+            path,
+            rank,
+            dycore_state,
+            "restart_dycore_state",
+            is_gpu_backend,
+        )
     active_packages = ["microphysics"]
     physics_state = fv3gfs.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages
