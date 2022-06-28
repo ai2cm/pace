@@ -44,12 +44,12 @@ def test_timing_collector():
         func, (0, 0, 0), domain=grid_indexing.domain
     )
 
-    build_report = stencil_factory.show_build_report(key="parse_time")
+    build_report = stencil_factory.build_report(key="parse_time")
     assert "func" in build_report
 
     inp = _make_storage(ones, grid_indexing, stencil_config, dtype=float)
     out = _make_storage(empty, grid_indexing, stencil_config, dtype=float)
 
     test(inp, out)
-    exec_report = stencil_factory.show_exec_report()
+    exec_report = stencil_factory.exec_report()
     assert "func" in exec_report

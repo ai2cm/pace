@@ -215,12 +215,12 @@ class TimingCollector:
         default_factory=lambda: {"__aggregate_data": True}
     )
 
-    def show_build_report(self, key: str = "build_time", **kwargs) -> str:
+    def build_report(self, key: str = "build_time", **kwargs) -> str:
         return type(self)._show_report(
             self.build_info, self.build_info.keys(), key, **kwargs
         )
 
-    def show_exec_report(self, key: str = "total_run_time", **kwargs) -> str:
+    def exec_report(self, key: str = "total_run_time", **kwargs) -> str:
         # NOTE: Uses the build_info keys to distinguish stencils
         return type(self)._show_report(
             self.exec_info, self.build_info.keys(), key, **kwargs
@@ -1043,13 +1043,13 @@ class StencilFactory:
             grid_indexing=self.grid_indexing.restrict_vertical(k_start=k_start, nk=nk),
         )
 
-    def show_build_report(self, key: str = "build_time", **kwargs) -> str:
+    def build_report(self, key: str = "build_time", **kwargs) -> str:
         """Report all stencils built by this factory."""
-        return self.timing_collector.show_build_report(key, **kwargs)
+        return self.timing_collector.build_report(key, **kwargs)
 
-    def show_exec_report(self, key: str = "total_run_time", **kwargs) -> str:
+    def exec_report(self, key: str = "total_run_time", **kwargs) -> str:
         """Report all stencils executed that were built by this factory."""
-        return self.timing_collector.show_exec_report(key, **kwargs)
+        return self.timing_collector.exec_report(key, **kwargs)
 
 
 def get_stencils_with_varied_bounds(
