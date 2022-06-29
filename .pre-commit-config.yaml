@@ -55,6 +55,10 @@ repos:
           --follow-imports, skip  # needed so we only test enabled files
         ]
       files: driver
+      exclude: |
+        (?x)^(
+        tests/main/driver/__init__.py |
+        )$
     - id: mypy
       name: mypy-physics
       args: [
