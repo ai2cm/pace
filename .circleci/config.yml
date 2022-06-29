@@ -106,7 +106,7 @@ jobs:
           keys:
             - v1-main-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
       - run:
-          name: install tox
+          name: install packages
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
               pip3 install --upgrade setuptools wheel virtualenv
