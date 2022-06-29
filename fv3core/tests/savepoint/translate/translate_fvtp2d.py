@@ -2,7 +2,7 @@ import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateFvTp2d(TranslateDycoreFortranData2Py):

@@ -10,10 +10,8 @@ import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util as fv3util
-from pace.stencils.testing import (
-    ParallelTranslateBaseSlicing,
-    TranslateDycoreFortranData2Py,
-)
+from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.stencils.testing import ParallelTranslateBaseSlicing
 from pace.stencils.testing.grid import TRACER_DIM
 from pace.util.grid import MetricTerms
 

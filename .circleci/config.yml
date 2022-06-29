@@ -166,6 +166,38 @@ jobs:
             - fv3core/.tox
             - fv3core/venv
 
+
+  test_physics:
+    docker:
+      - image: cimg/python:3.8
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Install Submodules
+          command: git submodule update --init
+      - restore_cache:
+          keys:
+            - v3-physics-{{ checksum "fv3gfs-physics/tox.ini" }}-{{ checksum "constraints.txt" }}
+      - run:
+          name: install tox
+          command: |
+            pip3 install --upgrade setuptools wheel virtualenv
+            virtualenv venv
+            . venv/bin/activate
+            pip3 install tox -c constraints.txt
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            cd fv3gfs-physics
+            tox --recreate -e test
+      - save_cache:
+          key: v3-physics-{{ checksum "fv3gfs-physics/tox.ini" }}-{{ checksum "constraints.txt" }}
+          paths:
+            - fv3gfs-physics/.tox
+            - venv
+
 workflows:
   version: 2
   tagged-build:

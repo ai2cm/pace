@@ -3,7 +3,7 @@ from typing import Any, Dict
 import pace.dsl
 import pace.util
 from fv3core.stencils.del2cubed import HyperdiffusionDamping
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateDel2Cubed(TranslateDycoreFortranData2Py):

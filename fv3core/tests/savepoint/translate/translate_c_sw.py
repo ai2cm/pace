@@ -1,7 +1,7 @@
 import pace.dsl
 import pace.util
 from fv3core.stencils.c_sw import CGridShallowWaterDynamics
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 def get_c_sw_instance(
