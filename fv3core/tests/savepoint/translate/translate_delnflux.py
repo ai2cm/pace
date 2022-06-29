@@ -1,7 +1,7 @@
 import fv3core.stencils.delnflux as delnflux
 import pace.dsl
 import pace.util
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateDelnFlux(TranslateDycoreFortranData2Py):

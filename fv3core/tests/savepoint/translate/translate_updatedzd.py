@@ -4,8 +4,8 @@ import fv3core.stencils.updatedzd
 import pace.dsl
 import pace.util
 from fv3core.stencils import d_sw
+from fv3core.testing import TranslateDycoreFortranData2Py
 from fv3core.utils.functional_validation import get_subset_func
-from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateUpdateDzD(TranslateDycoreFortranData2Py):

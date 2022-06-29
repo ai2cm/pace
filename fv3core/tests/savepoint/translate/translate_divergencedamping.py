@@ -3,7 +3,7 @@ from typing import Optional
 import fv3core.stencils.divergence_damping
 import pace.dsl
 import pace.util
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
