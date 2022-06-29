@@ -219,7 +219,7 @@ def _parse_sdfg(
     config: DaceConfig,
     *args,
     **kwargs,
-) -> dace.SDFG:
+) -> Optional[dace.SDFG]:
     """Return an SDFG depending on cache existence.
     Either parses, load a .sdfg or load .so (as a compiled sdfg)
 
@@ -229,6 +229,11 @@ def _parse_sdfg(
     """
     sdfg_path = get_sdfg_path(daceprog.name, config)
     if sdfg_path is None:
+        is_compiling = determine_compiling_ranks(config)
+        if not is_compiling:
+            # We can not parse the SDFG since we will load the proper
+            # compiled SDFG from the compiling rank
+            return None
         with DaCeProgress(config, f"Parse code of {daceprog.name} to SDFG"):
             sdfg = daceprog.to_sdfg(
                 *args,
@@ -266,7 +271,12 @@ class _LazyComputepathFunction(SDFGConvertible):
 
     def __call__(self, *args, **kwargs):
         assert self.config.is_dace_orchestrated()
-        sdfg = _parse_sdfg(self.daceprog, self.config, *args, **kwargs)
+        sdfg = _parse_sdfg(
+            self.daceprog,
+            self.config,
+            *args,
+            **kwargs,
+        )
         return _call_sdfg(
             self.daceprog,
             sdfg,
@@ -326,7 +336,12 @@ class _LazyComputepathMethod:
 
         def __call__(self, *args, **kwargs):
             assert self.lazy_method.config.is_dace_orchestrated()
-            sdfg = _parse_sdfg(self.daceprog, self.lazy_method.config, *args, **kwargs)
+            sdfg = _parse_sdfg(
+                self.daceprog,
+                self.lazy_method.config,
+                *args,
+                **kwargs,
+            )
             return _call_sdfg(
                 self.daceprog,
                 sdfg,
