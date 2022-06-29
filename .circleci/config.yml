@@ -102,6 +102,11 @@ jobs:
       - run:
           name: Install Submodules
           command: git submodule update --init
+      - run:
+          name: install MPI
+          command: |
+              sudo apt-get update
+              sudo apt-get install libopenmpi3 libopenmpi-dev
       - restore_cache:
           keys:
             - v1-main-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}

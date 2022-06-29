@@ -12,6 +12,7 @@ requirements = [
     "pace-stencils",
     "dacite",
     "pyyaml",
+    "mpi4py",
     "numpy",
     "netCDF4",
     "xarray",
