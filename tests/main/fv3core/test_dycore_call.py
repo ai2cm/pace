@@ -75,7 +75,9 @@ def setup_dycore() -> Tuple[
     )
     communicator = pace.util.CubedSphereCommunicator(mpi_comm, partitioner)
     dace_config = DaceConfig(
-        communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
+        communicator=communicator,
+        backend=backend,
+        orchestration=DaCeOrchestration.Python,
     )
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
