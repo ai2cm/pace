@@ -136,11 +136,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - test_dsl:
-          filters:
-            tags:
-              only: /^v.*/
-      - test_fv3core:
+      - test_main:
           filters:
             tags:
               only: /^v.*/
