@@ -255,12 +255,14 @@ def set_distributed_caches(config: "DaceConfig"):
 
         # Check our cache exist
         if config.rank_size > 1:
-            rank = config.target_rank
-            rank_str = f"_{config.target_rank:06d}"
+            rank = config.my_rank
+            target_rank_str = f"_{config.target_rank:06d}"
         else:
             rank = "N/A"
-            rank_str = ""
-        cache_filepath = f"{gt_config.cache_settings['root_path']}/.gt_cache{rank_str}"
+            target_rank_str = ""
+        cache_filepath = (
+            f"{gt_config.cache_settings['root_path']}/.gt_cache{target_rank_str}"
+        )
         if not os.path.exists(cache_filepath):
             raise RuntimeError(
                 f"{orchestration_mode} error: Could not find caches for rank "
@@ -268,7 +270,7 @@ def set_distributed_caches(config: "DaceConfig"):
             )
 
         # All, good set this rank cache to the source cache
-        gt_config.cache_settings["dir_name"] = f".gt_cache{rank_str}"
+        gt_config.cache_settings["dir_name"] = f".gt_cache{target_rank_str}"
         print(
             f"[{orchestration_mode}] Rank {rank} "
             f"reading cache {gt_config.cache_settings['dir_name']}"
