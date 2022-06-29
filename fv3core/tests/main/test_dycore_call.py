@@ -1,6 +1,7 @@
 import copy
 import os
 import unittest.mock
+from dataclasses import fields
 from typing import List, Tuple
 
 import gt4py.storage.storage
@@ -12,6 +13,7 @@ import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl.stencil
 import pace.stencils.testing
 import pace.util
+from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -181,6 +183,16 @@ def copy_temporaries(obj, max_depth: int) -> dict:
     return temporaries
 
 
+def copy_state(state1: DycoreState, state2: DycoreState):
+    # copy all attributes of state1 to state2
+    for attr_name in dir(state1):
+        for _field in fields(type(state1)):
+            if issubclass(_field.type, pace.util.Quantity):
+                attr = getattr(state1, attr_name)
+                if isinstance(attr, pace.util.Quantity):
+                    getattr(state2, attr_name).data[:] = attr.data
+
+
 def test_temporaries_are_deterministic():
     """
     This is a precursor test to the next one, ensuring that two
@@ -201,9 +213,6 @@ def test_temporaries_are_deterministic():
     assert_same_temporaries(second_temporaries, first_temporaries)
 
 
-# TODO: The orchestrated code pushed us to make the dycore stateful for halo
-# exchange. This needs to be reactivated after halo exchange are reverted to
-# not being stateful.
 def test_call_on_same_state_same_dycore_produces_same_temporaries():
     """
     Assuming the precursor test passes, this test indicates whether
@@ -211,7 +220,6 @@ def test_call_on_same_state_same_dycore_produces_same_temporaries():
     If it does not, then subsequent calls on identical input should
     produce identical results.
     """
-    return
     dycore, state_1, timer_1 = setup_dycore()
     _, state_2, timer_2 = setup_dycore()
 
@@ -220,7 +228,11 @@ def test_call_on_same_state_same_dycore_produces_same_temporaries():
     dycore.step_dynamics(state_1, timer_1)
     first_temporaries = copy_temporaries(dycore, max_depth=10)
     assert len(first_temporaries) > 0
-    dycore.step_dynamics(state_2, timer_2)
+    # TODO: The orchestrated code pushed us to make the dycore stateful for halo
+    # exchange, so we must copy into state_1 instead of using state_2.
+    # We should call with state_2 directly when this is fixed.
+    copy_state(state_2, state_1)
+    dycore.step_dynamics(state_1, timer_2)
     second_temporaries = copy_temporaries(dycore, max_depth=10)
     assert_same_temporaries(second_temporaries, first_temporaries)
 
