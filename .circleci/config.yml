@@ -178,7 +178,7 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v3-physics-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
+            - v3-physics-{{ checksum "fv3gfs-physics/tox.ini" }}-{{ checksum "constraints.txt" }}
       - run:
           name: install tox
           command: |
