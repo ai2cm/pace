@@ -251,7 +251,10 @@ class UpdateAtmosphereState:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["dycore_state", "phy_state", "tendency_state"],
+            dace_constant_args=[
+                "dycore_state",
+                "phy_state",
+            ],
         )
 
         grid_indexing = stencil_factory.grid_indexing
@@ -291,11 +294,17 @@ class UpdateAtmosphereState:
         # fill_GFS_delp
         self._apply_tendencies = apply_tendencies
 
+    # [DaCe] Parsing limit: accessing a quantity withing a dataclass more than
+    # one-level down in the call stack is forbidden for now due to the quantity
+    # being resolved early has an array (loose of type of the object leads
+    # to bad inference lower down the stack)
     def __call__(
         self,
         dycore_state,
         phy_state,
-        tendency_state,
+        u_dt,
+        v_dt,
+        pt_dt,
         dt: float,
     ):
         if self._dycore_only:
@@ -305,9 +314,9 @@ class UpdateAtmosphereState:
                 dycore_state.delp, phy_state.physics_updated_specific_humidity, 1.0e-9
             )
             self._prepare_tendencies_and_update_tracers(
-                tendency_state.u_dt,
-                tendency_state.v_dt,
-                tendency_state.pt_dt,
+                u_dt,
+                v_dt,
+                pt_dt,
                 phy_state.physics_updated_ua,
                 phy_state.physics_updated_va,
                 phy_state.physics_updated_pt,
@@ -333,8 +342,8 @@ class UpdateAtmosphereState:
         if self._apply_tendencies:
             self._apply_physics_to_dycore(
                 dycore_state,
-                tendency_state.u_dt,
-                tendency_state.v_dt,
-                tendency_state.pt_dt,
+                u_dt,
+                v_dt,
+                pt_dt,
                 dt=dt,
             )

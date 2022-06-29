@@ -95,7 +95,7 @@ class ApplyPhysicsToDycore:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["state", "u_dt", "v_dt", "t_dt"],
+            dace_constant_args=["state"],
         )
         grid_indexing = stencil_factory.grid_indexing
         self.comm = comm
@@ -146,9 +146,9 @@ class ApplyPhysicsToDycore:
     def __call__(
         self,
         state,
-        u_dt: pace.util.Quantity,
-        v_dt: pace.util.Quantity,
-        t_dt: pace.util.Quantity,
+        u_dt,
+        v_dt,
+        t_dt,
         dt: float,
     ):
         self._moist_cv(
@@ -159,7 +159,7 @@ class ApplyPhysicsToDycore:
             state.qice,
             state.qgraupel,
             state.pt,
-            t_dt.storage,
+            t_dt,
             constants.CP_AIR,
             dt,
         )
@@ -180,7 +180,7 @@ class ApplyPhysicsToDycore:
         )
         self._udt_halo_updater.wait()
         self._vdt_halo_updater.wait()
-        self._AGrid2DGridPhysics(state.u, state.v, u_dt.storage, v_dt.storage)
+        self._AGrid2DGridPhysics(state.u, state.v, u_dt, v_dt)
         self._do_cubed_to_latlon(
             state.u,
             state.v,
