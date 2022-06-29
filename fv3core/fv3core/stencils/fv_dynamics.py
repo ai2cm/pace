@@ -22,7 +22,7 @@ from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.stencils.c2l_ord import CubedToLatLon
 from pace.util import Timer
 from pace.util.grid import DampingCoefficients, GridData
-from pace.util.mpi import MPIComm
+from pace.util.mpi import MPI
 from pace.util.quantity import Quantity
 
 
@@ -88,7 +88,7 @@ def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
 @dace_inhibitor
 def log_on_rank_0(msg: str):
     """Print when rank is 0 - outside of DaCe critical path"""
-    if MPIComm.Get_rank() == 0:
+    if MPI.COMM_WORLD.Get_rank() == 0:
         print(msg)
 
 
