@@ -38,7 +38,7 @@ def setup_physics():
         sizer=sizer, backend=backend
     )
     dace_config = pace.dsl.DaceConfig(
-        communicator=None,
+        communicator=communicator,
         backend=backend,
         orchestration=pace.dsl.DaCeOrchestration.Python,
     )
