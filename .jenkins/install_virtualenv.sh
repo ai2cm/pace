@@ -16,9 +16,9 @@ PACE_DIR=$JENKINS_DIR/../
 echo "pace path is ${PACE_DIR}"
 
 if [ "$WHEEL_DIR" != "" ]; then
-    wheel_command="--find-links=$WHEEL_DIR"
+    wheel_args="--find-links=$WHEEL_DIR"
 else
-    wheel_command=""
+    wheel_args=""
 fi
 virtualenv_path=$1
 
@@ -28,13 +28,6 @@ git submodule update --init ${PACE_DIR}/external/daint_venv
 git submodule update --init ${PACE_DIR}/external/gt4py
 ${PACE_DIR}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/external/gt4py/
-python3 -m pip install ${PACE_DIR}/pace-util/
-python3 -m pip install $wheel_command -c ${PACE_DIR}/constraints.txt -r fv3core/requirements/requirements_base.txt
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/fv3core/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/fv3gfs-physics/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/stencils/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/dsl/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/driver/
+python3 -m pip install $wheel_args -r ${PACE_DIR}/requirements.txt -c ${PACE_DIR}/constraints.txt
 
 deactivate

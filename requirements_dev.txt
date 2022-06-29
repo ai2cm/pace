@@ -1,6 +1,7 @@
 pytest
 pytest-subtests
 pytest-cov
+mpi4py==3.1.0a0  # must match version in daint_venv
 -e external/gt4py
 -e pace-util
 -e stencils
