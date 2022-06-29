@@ -59,43 +59,6 @@ jobs:
             - pace-util/.tox
             - pace-util/venv
 
-  test_dsl:
-    docker:
-      - image: cimg/python:3.8
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - run:
-          name: Install Submodules
-          command: git submodule update --init
-      - restore_cache:
-          keys:
-            - v2-{{ checksum "constraints.txt" }}-{{ checksum "dsl/setup.py" }}
-      - run:
-          name: run tests
-          command: |
-            if [ $(python changed_from_main.py dsl) != false ]; then
-              pip3 install --upgrade setuptools wheel
-              python3 -m venv dsl/venv
-              . dsl/venv/bin/activate
-              pip3 install -r dsl/requirements.txt -c constraints.txt
-              pip3 install -e external/gt4py -c constraints.txt
-              pip3 install -e pace-util/ -c constraints.txt
-              pip3 install -e dsl/ -c constraints.txt
-              pip3 install pytest -c constraints.txt
-            fi
-      - run:
-          name: run tests
-          command: |
-            if [ $(python changed_from_main.py dsl) != false ]; then
-              . dsl/venv/bin/activate
-              pytest dsl/tests
-            fi
-      - save_cache:
-          key: v2-{{ checksum "constraints.txt" }}-{{ checksum "dsl/setup.py" }}
-          paths:
-            - dsl/venv
-
   test_driver:
     docker:
       - image: cimg/python:3.8
@@ -122,7 +85,6 @@ jobs:
             if [ $(python changed_from_main.py driver) != false ]; then
               cd driver
               . venv/bin/activate
-              make test
               MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
             fi
       - save_cache:
@@ -131,7 +93,7 @@ jobs:
             - driver/venv
             - /root/.cache/pip
 
-  test_fv3core:
+  test_main:
     docker:
       - image: cimg/python:3.8
     working_directory: ~/repo
@@ -142,60 +104,24 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v3-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
+            - v1-main-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
       - run:
           name: install tox
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
               pip3 install --upgrade setuptools wheel virtualenv
-              virtualenv fv3core/venv
-              . fv3core/venv/bin/activate
-              pip3 install tox -c constraints.txt
-            fi
-      - run:
-          name: run tests
-          command: |
-            if [ $(python changed_from_main.py fv3core) != false ]; then
-              cd fv3core
+              virtualenv venv
               . venv/bin/activate
-              tox --recreate -e test
+              pip3 install -r requirements_dev.txt -c constraints.txt
             fi
-      - save_cache:
-          key: v3-{{ checksum "fv3core/tox.ini" }}-{{ checksum "constraints.txt" }}
-          paths:
-            - fv3core/.tox
-            - fv3core/venv
-
-
-  test_physics:
-    docker:
-      - image: cimg/python:3.8
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - run:
-          name: Install Submodules
-          command: git submodule update --init
-      - restore_cache:
-          keys:
-            - v3-physics-{{ checksum "fv3gfs-physics/tox.ini" }}-{{ checksum "constraints.txt" }}
-      - run:
-          name: install tox
-          command: |
-            pip3 install --upgrade setuptools wheel virtualenv
-            virtualenv venv
-            . venv/bin/activate
-            pip3 install tox -c constraints.txt
       - run:
           name: run tests
           command: |
             . venv/bin/activate
-            cd fv3gfs-physics
-            tox --recreate -e test
+            pytest tests/main
       - save_cache:
-          key: v3-physics-{{ checksum "fv3gfs-physics/tox.ini" }}-{{ checksum "constraints.txt" }}
+          key: v1-main-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
           paths:
-            - fv3gfs-physics/.tox
             - venv
 
 workflows:
