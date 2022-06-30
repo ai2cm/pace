@@ -183,11 +183,22 @@ N_THRESHOLD_SAMPLES = 10
 
 
 def get_thresholds(testobj, input_data):
+    return _get_thresholds(testobj.compute, input_data)
+
+
+def get_thresholds_parallel(testobj, input_data, communicator):
+    def compute(input):
+        return testobj.compute_parallel(input, communicator)
+
+    return _get_thresholds(compute, input_data)
+
+
+def _get_thresholds(compute_function, input_data):
     output_list = []
     for _ in range(N_THRESHOLD_SAMPLES):
         input = copy.deepcopy(input_data)
         perturb(input)
-        output_list.append(testobj.compute(input))
+        output_list.append(compute_function(input))
 
     output_varnames = output_list[0].keys()
     for varname in output_varnames:
