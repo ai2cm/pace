@@ -10,7 +10,7 @@ import pace.dsl.stencil
 import pace.stencils.testing
 import pace.util
 from fv3core.initialization.dycore_state import DycoreState
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.stencils.testing import assert_same_temporaries, copy_temporaries
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm

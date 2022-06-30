@@ -406,7 +406,7 @@ class FrozenStencil(SDFGConvertible):
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
-                build_info=(build_info := {}),
+                build_info=(build_info := {}),  # type: ignore
             )
 
         else:
