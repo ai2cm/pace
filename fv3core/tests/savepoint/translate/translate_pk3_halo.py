@@ -1,7 +1,7 @@
 import pace.dsl
 import pace.util
 from fv3core.stencils.pk3_halo import PK3Halo
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslatePK3_Halo(TranslateDycoreFortranData2Py):
