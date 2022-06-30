@@ -28,6 +28,6 @@ git submodule update --init ${PACE_DIR}/external/daint_venv
 git submodule update --init ${PACE_DIR}/external/gt4py
 ${PACE_DIR}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
-python3 -m pip install $wheel_args -r ${PACE_DIR}/requirements.txt -c ${PACE_DIR}/constraints.txt
+python3 -m pip install $wheel_args -r ${PACE_DIR}/requirements_dev.txt -c ${PACE_DIR}/constraints.txt
 
 deactivate
