@@ -124,42 +124,19 @@ class DaceConfig:
                 pass
 
         self._backend = backend
-        from pace.dsl.dace.build import (
-            read_target_rank,
-            set_distributed_caches,
-            write_decomposition,
-        )
-
-        if (
-            communicator
-            and (
-                self._orchestrate == DaCeOrchestration.Build
-                or self._orchestrate == DaCeOrchestration.BuildAndRun
-            )
-            and communicator.rank == 0
-            and communicator.comm.Get_size() > 1
-        ):
-            write_decomposition(communicator.partitioner)
+        from pace.dsl.dace.build import get_target_rank, set_distributed_caches
 
         # Distributed build required info
         if communicator:
             self.my_rank = communicator.rank
             self.rank_size = communicator.comm.Get_size()
-            from gt4py import config as gt_config
-
-            config_path = (
-                f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
-            )
-            self.target_rank = read_target_rank(
-                rank=self.my_rank,
-                partitioner=communicator.partitioner,
-                config=self,
-                layout_filepath=config_path,
-            )
+            self.target_rank = get_target_rank(self.my_rank, communicator.partitioner)
+            self.layout = communicator.partitioner.layout
         else:
             self.my_rank = 0
             self.rank_size = 1
             self.target_rank = 0
+            self.layout = (1, 1)
 
         set_distributed_caches(self)
 

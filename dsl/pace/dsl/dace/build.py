@@ -1,7 +1,6 @@
-import os.path
-from typing import Any, Dict, Optional
+from typing import Optional, Tuple
 
-import yaml
+from dace.sdfg import SDFG
 
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.util import TilePartitioner
@@ -31,165 +30,58 @@ def unblock_waiting_tiles(comm, sdfg_path: str) -> None:
             comm.send(sdfg_path, dest=tile * tilesize + comm.Get_rank())
 
 
-def top_tile_rank_from_decomposition_string(string, partitioner):
-    """
-    Return the rank number on the correct subtile position by matching
-    the decomposition string and the position given by the partitionner
-        e.g.: return rank for "00" for bottom left subtile
-    """
-    tilesize = partitioner.total_ranks / 6
-    if tilesize == 1:
+def get_target_rank(rank: int, partitioner: TilePartitioner):
+    """From my rank & the current partitioner we determine which
+    rank we should read from"""
+    if partitioner.layout == (1, 1):
         return 0
-    for rank in range(partitioner.total_ranks):
-        if (
-            string == "00"
-            and partitioner.tile.on_tile_bottom(rank)
-            and partitioner.tile.on_tile_left(rank)
-        ):
-            return rank % tilesize
-        if (
-            string == "10"
-            and partitioner.tile.on_tile_bottom(rank)
-            and not partitioner.tile.on_tile_left(rank)
-            and not partitioner.tile.on_tile_right(rank)
-        ):
-            return rank % tilesize
-        if (
-            string == "20"
-            and partitioner.tile.on_tile_bottom(rank)
-            and partitioner.tile.on_tile_right(rank)
-        ):
-            return rank % tilesize
-        if (
-            string == "01"
-            and not partitioner.tile.on_tile_bottom(rank)
-            and not partitioner.tile.on_tile_top(rank)
-            and partitioner.tile.on_tile_left(rank)
-        ):
-            return rank % tilesize
-        if (
-            string == "11"
-            and not partitioner.tile.on_tile_bottom(rank)
-            and not partitioner.tile.on_tile_top(rank)
-            and not partitioner.tile.on_tile_left(rank)
-            and not partitioner.tile.on_tile_right(rank)
-        ):
-            return rank % tilesize
-        if (
-            string == "21"
-            and not partitioner.tile.on_tile_bottom(rank)
-            and not partitioner.tile.on_tile_top(rank)
-            and partitioner.tile.on_tile_right(rank)
-        ):
-            return rank % tilesize
-        if (
-            string == "02"
-            and partitioner.tile.on_tile_top(rank)
-            and partitioner.tile.on_tile_left(rank)
-        ):
-            return rank % tilesize
-        if (
-            string == "12"
-            and partitioner.tile.on_tile_top(rank)
-            and not partitioner.tile.on_tile_left(rank)
-            and not partitioner.tile.on_tile_right(rank)
-        ):
-            return rank % tilesize
-        if (
-            string == "22"
-            and partitioner.tile.on_tile_top(rank)
-            and partitioner.tile.on_tile_right(rank)
-        ):
-            return rank % tilesize
-
-    return None
-
-
-def top_tile_rank_to_decomposition_string(rank: int, partitioner: TilePartitioner):
-    """
-    Return the decomposition string for the correct subtile position by matching
-     osition given by the partitionner
-        e.g.: return "00" for ranl at bottom left subtile
-    """
-    if partitioner.tile.on_tile_bottom(rank):
-        if partitioner.tile.on_tile_left(rank):
-            return "00"
-        if partitioner.tile.on_tile_right(rank):
-            return "20"
-        else:
-            return "10"
-    if partitioner.tile.on_tile_top(rank):
-        if partitioner.tile.on_tile_left(rank):
-            return "02"
-        if partitioner.tile.on_tile_right(rank):
-            return "22"
-        else:
-            return "12"
+    if partitioner.layout == (2, 2):
+        if partitioner.tile.on_tile_bottom(rank):
+            if partitioner.tile.on_tile_left(rank):
+                return 0  # "00"
+            if partitioner.tile.on_tile_right(rank):
+                return 1  # "10"
+        if partitioner.tile.on_tile_top(rank):
+            if partitioner.tile.on_tile_left(rank):
+                return 2  # "01"
+            if partitioner.tile.on_tile_right(rank):
+                return 3  # "11"
     else:
-        if partitioner.tile.on_tile_left(rank):
-            return "01"
-        if partitioner.tile.on_tile_right(rank):
-            return "21"
+        if partitioner.tile.on_tile_bottom(rank):
+            if partitioner.tile.on_tile_left(rank):
+                return 0  # "00"
+            if partitioner.tile.on_tile_right(rank):
+                return 2  # "20"
+            else:
+                return 1  # "10"
+        if partitioner.tile.on_tile_top(rank):
+            if partitioner.tile.on_tile_left(rank):
+                return 6  # "02"
+            if partitioner.tile.on_tile_right(rank):
+                return 8  # "22"
+            else:
+                return 7  # "12"
         else:
-            return "11"
+            if partitioner.tile.on_tile_left(rank):
+                return 3  # "01"
+            if partitioner.tile.on_tile_right(rank):
+                return 5  # "21"
+            else:
+                return 4  # "11"
 
 
-def read_target_rank(
-    rank: int,
-    partitioner: TilePartitioner,
-    config: DaceConfig,
-    layout_filepath=None,
-) -> int:
-    if not layout_filepath:
-        return -1
-    top_tile_rank = top_tile_equivalent(rank, config.rank_size)
-    with open(layout_filepath) as decomposition:
-        parsed_file = None
-        attempt = 1000  # having issue with multi-prcess load of a yaml file (sic)
-        while not parsed_file and attempt > 0:
-            parsed_file = yaml.safe_load(decomposition)
-            attempt = attempt - 1
-        if attempt <= 0:
-            raise RuntimeError("Cannot load yaml decomposition file")
-        read_rank = int(
-            parsed_file[
-                top_tile_rank_to_decomposition_string(top_tile_rank, partitioner)
-            ]
-        )
-        return read_rank
+def write_layout(sdfg: SDFG, layout: Tuple[int]):
+    import os
 
-
-def top_tile_equivalent(rank, size):
-    tilesize = size / 6
-    return rank % tilesize
+    path_to_sdfg_dir = os.path.abspath(sdfg.build_folder)
+    with open(f"{path_to_sdfg_dir}/build_pace_layout.txt", "w") as layout_file:
+        layout_file.write(str(layout))
 
 
 ################################################
 
 ################################################
 # SDFG load (both .sdfg file and build directory containing .so)
-
-""" The below helpers use a dirty "once" global flag to allow for reentry many
-    calls as those are called from function in a recursive pattern.
-"""
-
-
-def write_decomposition(
-    partitioner: TilePartitioner,
-):
-    from gt4py import config as gt_config
-
-    path = f"{gt_config.cache_settings['root_path']}/.layout/"
-    config_path = path + "decomposition.yml"
-    os.makedirs(path, exist_ok=True)
-    decomposition: Dict[Any, Any] = {}
-    for string in ["00", "10", "20", "01", "11", "21", "02", "12", "22"]:
-        target_rank = top_tile_rank_from_decomposition_string(string, partitioner)
-        if target_rank is not None:
-            decomposition.setdefault(string, int(target_rank))
-
-    with open(config_path, "w") as outfile:
-        yaml.dump(decomposition, outfile)
 
 
 def get_sdfg_path(
@@ -201,9 +93,9 @@ def get_sdfg_path(
         program_name: qualified name in the form module_qualname if module is not locals
         sdfg_file_path: absolute path to a .sdfg file
     """
+    import os
 
     # TODO: check DaceConfig for cache.strategy == name
-
     # Guarding against bad usage of this function
     if config.get_orchestrate() != DaCeOrchestration.Run:
         return None
@@ -217,8 +109,6 @@ def get_sdfg_path(
         return sdfg_file_path
 
     # Case of loading a precompiled .so - lookup using GT_CACHE
-    import os
-
     from gt4py import config as gt_config
 
     if config.rank_size > 1:
@@ -234,6 +124,27 @@ def get_sdfg_path(
     )
     if not os.path.isdir(sdfg_dir_path):
         raise RuntimeError(f"Precompiled SDFG is missing at {sdfg_dir_path}")
+
+    # Check layout in build time matches layout now
+    import ast
+
+    with open(f"{sdfg_dir_path}/build_pace_layout.txt") as layout_file:
+        list_ast_str = layout_file.read()
+        build_layout = ast.literal_eval(list_ast_str)
+        can_read = True
+        if config.layout == [1, 1] and config.layout != build_layout:
+            can_read = False
+        elif config.layout == [2, 2] and config.layout != build_layout:
+            can_read = False
+        elif (
+            build_layout != [1, 1] and build_layout != [2, 2] and build_layout != [3, 3]
+        ):
+            can_read = False
+        if not can_read:
+            raise RuntimeError(
+                f"SDFG build for layout {build_layout}, "
+                f"cannot be run with current layout {config.layout}"
+            )
 
     print(f"[DaCe Config] Rank {rank} loading SDFG {sdfg_dir_path}")
 
