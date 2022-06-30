@@ -136,7 +136,7 @@ class DaceConfig:
             self.my_rank = 0
             self.rank_size = 1
             self.target_rank = 0
-            self.layout = (1, 1)
+            self.layout = [1, 1]
 
         set_distributed_caches(self)
 
@@ -163,7 +163,19 @@ class DaceConfig:
 
     def as_dict(self) -> Dict[str, Any]:
         return {
+            "_orchestrate": str(self._orchestrate.name),
+            "_backend": self._backend,
             "my_rank": self.my_rank,
             "rank_size": self.rank_size,
             "layout": self.layout,
         }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        import ast
+
+        config = cls(None, data["_backend"], DaCeOrchestration[data["_orchestrate"]])
+        config.my_rank = data["my_rank"]
+        config.rank_size = data["rank_size"]
+        config.layout = data["layout"]
+        return config
