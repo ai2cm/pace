@@ -172,8 +172,6 @@ class DaceConfig:
 
     @classmethod
     def from_dict(cls, data: dict):
-        import ast
-
         config = cls(None, data["_backend"], DaCeOrchestration[data["_orchestrate"]])
         config.my_rank = data["my_rank"]
         config.rank_size = data["rank_size"]
