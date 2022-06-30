@@ -63,9 +63,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     )
     mpi_comm = pace.util.MPIComm()
     partitioner = pace.util.TilePartitioner(config.layout)
-    cube_partitioner = pace.util.CubedSpherePartitioner(partitioner)
     communicator = pace.util.TileCommunicator(mpi_comm, partitioner)
-    # communicator = pace.util.CubedSphereCommunicator(mpi_comm, cube_partitioner)
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.npx - 1,
         ny_tile=config.npy - 1,
@@ -108,6 +106,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
         phis=state.phis,
+        state=state,
     )
     do_adiabatic_init = False
     # TODO compute from namelist
