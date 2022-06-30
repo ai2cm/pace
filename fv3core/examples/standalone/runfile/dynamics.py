@@ -22,7 +22,7 @@ from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.baroclinic import init_baroclinic_state
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.testing import TranslateFVDynamics
-from pace.dsl.dace.orchestrate import DaceConfig
+from pace.dsl.dace.orchestration import DaceConfig
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm

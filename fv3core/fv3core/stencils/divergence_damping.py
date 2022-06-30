@@ -13,7 +13,7 @@ import pace.dsl.gt4py_utils as utils
 import pace.stencils.corners as corners
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from fv3core.stencils.d2a2c_vect import contravariant
-from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
@@ -269,7 +269,7 @@ def smagorinksy_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: flo
     # some kind of u and v, and is vort (as output) some kind of kinetic energy?
     # what does this have to do with diffusion?
     with computation(PARALLEL), interval(...):
-        vort = absdt * (delpc ** 2.0 + vort ** 2.0) ** 0.5
+        vort = absdt * (delpc**2.0 + vort**2.0) ** 0.5
 
 
 class DivergenceDamping:

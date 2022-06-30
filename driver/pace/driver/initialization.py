@@ -14,7 +14,7 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from fv3core.testing import TranslateFVDynamics
-from pace.dsl.dace.orchestrate import DaceConfig
+from pace.dsl.dace.orchestration import DaceConfig
 from pace.dsl.stencil import StencilFactory
 from pace.stencils.testing import TranslateGrid
 from pace.util.grid import DampingCoefficients

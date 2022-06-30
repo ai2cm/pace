@@ -4,7 +4,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
-from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import BoolField, FloatField, FloatFieldIJ
 

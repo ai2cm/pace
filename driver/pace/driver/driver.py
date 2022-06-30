@@ -16,7 +16,7 @@ import pace.util
 import pace.util.grid
 from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig
-from pace.dsl.dace.orchestrate import dace_inhibitor, orchestrate
+from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state

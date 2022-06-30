@@ -29,7 +29,7 @@ from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
-from pace.dsl.dace.orchestrate import SDFGConvertible
+from pace.dsl.dace.orchestration import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.halo_data_transformer import QuantityHaloSpec

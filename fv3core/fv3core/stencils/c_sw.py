@@ -10,7 +10,7 @@ from gt4py.gtscript import (
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import compute_coriolis_parameter_defn
 from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
-from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.stencils import corners

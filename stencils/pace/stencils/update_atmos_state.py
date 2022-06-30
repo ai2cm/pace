@@ -5,7 +5,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import fv3core
 import fv3core.stencils.fv_subgridz as fv_subgridz
 import pace.util
-from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
