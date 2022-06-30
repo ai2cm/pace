@@ -1,4 +1,5 @@
 import copy
+from typing import Any, Dict
 
 import pytest
 
@@ -20,19 +21,27 @@ def layout(request, fast):
 
 
 @pytest.fixture
+def nx_rank(n_points):
+    return max(3, n_points * 2 - 1)
+
+
+@pytest.fixture
+def ny_rank(nx_rank):
+    return nx_rank
+
+
+@pytest.fixture
 def nz():
     return 2
 
 
 @pytest.fixture
-def ny(n_points, layout):
-    ny_rank = max(12, n_points * 2 - 1)
+def ny(ny_rank, layout):
     return ny_rank * layout[0]
 
 
 @pytest.fixture
-def nx(n_points, layout):
-    nx_rank = max(12, n_points * 2 - 1)
+def nx(nx_rank, layout):
     return nx_rank * layout[1]
 
 
@@ -105,6 +114,11 @@ def total_ranks(ranks_per_tile):
     return 6 * ranks_per_tile
 
 
+@pytest.fixture
+def single_tile_ranks(layout):
+    return layout[0] * layout[1]
+
+
 @pytest.fixture(params=[0, 1])
 def n_buffer(request):
     return request.param
@@ -159,10 +173,11 @@ def extent(n_points, dims, nz, ny, nx):
 
 
 @pytest.fixture
-def communicator_list(cube_partitioner, total_ranks):
-    shared_buffer = {}
+def communicator_list(cube_partitioner: pace.util.CubedSpherePartitioner):
+    total_ranks = cube_partitioner.total_ranks
+    shared_buffer: Dict[str, Any] = {}
     return_list = []
-    for rank in range(cube_partitioner.total_ranks):
+    for rank in range(total_ranks):
         return_list.append(
             pace.util.CubedSphereCommunicator(
                 comm=pace.util.testing.DummyComm(
@@ -175,14 +190,27 @@ def communicator_list(cube_partitioner, total_ranks):
     return return_list
 
 
-@pytest.fixture(params=[0.1, 1.0])
-def edge_interior_ratio(request):
-    return request.param
+@pytest.fixture
+def tile_communicator_list(tile_partitioner):
+    total_ranks = tile_partitioner.total_ranks
+    shared_buffer = {}
+    return_list = []
+    for rank in range(total_ranks):
+        return_list.append(
+            pace.util.TileCommunicator(
+                comm=pace.util.testing.DummyComm(
+                    rank=rank, total_ranks=total_ranks, buffer_dict=shared_buffer
+                ),
+                partitioner=tile_partitioner,
+                timer=pace.util.Timer(),
+            )
+        )
+    return return_list
 
 
 @pytest.fixture
-def tile_partitioner(layout, edge_interior_ratio: float):
-    return pace.util.TilePartitioner(layout, edge_interior_ratio=edge_interior_ratio)
+def tile_partitioner(layout):
+    return pace.util.TilePartitioner(layout)
 
 
 @pytest.fixture
@@ -289,6 +317,43 @@ def depth_quantity_list(
     return return_list
 
 
+@pytest.fixture
+def tile_depth_quantity_list(
+    single_tile_ranks, dims, units, origin, extent, shape, numpy, dtype, n_points
+):
+    """A list of quantities whose value indicates the distance from the computational
+    domain boundary for a single tile."""
+    return_list = []
+    for rank in range(single_tile_ranks):
+        data = numpy.empty(shape, dtype=dtype)
+        data[:] = numpy.nan
+        for n_inside in range(max(n_points, max(extent) // 2), -1, -1):
+            for i, dim in enumerate(dims):
+                if (n_inside <= extent[i] // 2) and (dim in pace.util.HORIZONTAL_DIMS):
+                    pos = [slice(None, None)] * len(dims)
+                    pos[i] = origin[i] + n_inside
+                    data[tuple(pos)] = n_inside
+                    pos[i] = origin[i] + extent[i] - 1 - n_inside
+                    data[tuple(pos)] = n_inside
+        for n_outside in range(1, n_points + 1):
+            for i, dim in enumerate(dims):
+                if dim in pace.util.HORIZONTAL_DIMS:
+                    pos = [slice(None, None)] * len(dims)
+                    pos[i] = origin[i] - n_outside
+                    data[tuple(pos)] = numpy.nan
+                    pos[i] = origin[i] + extent[i] + n_outside - 1
+                    data[tuple(pos)] = numpy.nan
+        quantity = pace.util.Quantity(
+            data,
+            dims=dims,
+            units=units,
+            origin=origin,
+            extent=extent,
+        )
+        return_list.append(quantity)
+    return return_list
+
+
 @pytest.mark.parametrize(
     "layout, n_points, n_points_update, dims",
     [[(1, 1), 3, "same", [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]]],
@@ -366,12 +431,75 @@ def test_depth_halo_update(
                         raise NotImplementedError(n_points_update)
 
 
+@pytest.mark.parametrize("layout", [(3, 3)], indirect=True)
+def test_depth_tile_halo_update(
+    tile_depth_quantity_list,
+    tile_communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
+    """test that written values have the correct orientation on a tile"""
+    sample_quantity = tile_depth_quantity_list[0]
+    y_dim, x_dim = get_horizontal_dims(sample_quantity.dims)
+    y_index = sample_quantity.dims.index(y_dim)
+    x_index = sample_quantity.dims.index(x_dim)
+    y_extent = sample_quantity.extent[y_index]
+    x_extent = sample_quantity.extent[x_index]
+    halo_updater_list = []
+    if 0 < n_points_update <= n_points:
+        for communicator, quantity in zip(
+            tile_communicator_list, tile_depth_quantity_list
+        ):
+            halo_updater = communicator.start_halo_update(quantity, n_points_update)
+            halo_updater_list.append(halo_updater)
+        for halo_updater in halo_updater_list:
+            halo_updater.wait()
+        for rank, quantity in enumerate(tile_depth_quantity_list):
+            with subtests.test(rank=rank, quantity=quantity):
+                for dim, extent in ((y_dim, y_extent), (x_dim, x_extent)):
+                    assert numpy.all(quantity.sel(**{dim: -1}) <= 1)
+                    assert numpy.all(quantity.sel(**{dim: extent}) <= 1)
+                    if n_points_update >= 2:
+                        assert numpy.all(quantity.sel(**{dim: -2}) <= 2)
+                        assert numpy.all(quantity.sel(**{dim: extent + 1}) <= 2)
+                    if n_points_update >= 3:
+                        assert numpy.all(quantity.sel(**{dim: -3}) <= 3)
+                        assert numpy.all(quantity.sel(**{dim: extent + 2}) <= 3)
+                    if n_points_update > 3:
+                        raise NotImplementedError(n_points_update)
+
+
 @pytest.fixture
 def zeros_quantity_list(total_ranks, dims, units, origin, extent, shape, numpy, dtype):
     """A list of quantities whose values are 0 in the computational domain and 1
     outside of it."""
     return_list = []
     for rank in range(total_ranks):
+        data = numpy.ones(shape, dtype=dtype)
+        quantity = pace.util.Quantity(
+            data,
+            dims=dims,
+            units=units,
+            origin=origin,
+            extent=extent,
+        )
+        quantity.view[:] = 0.0
+        return_list.append(quantity)
+    return return_list
+
+
+@pytest.fixture
+def zeros_quantity_tile_list(
+    single_tile_ranks, dims, units, origin, extent, shape, numpy, dtype
+):
+    """A list of quantities whose values are 0 in the computational domain and 1
+    outside of it on a single tile."""
+    return_list = []
+    for rank in range(single_tile_ranks):
         data = numpy.ones(shape, dtype=dtype)
         quantity = pace.util.Quantity(
             data,
@@ -392,16 +520,29 @@ def test_too_many_points_requested(
     zeros_quantity_list,
     communicator_list,
     n_points_update,
-    n_points,
-    numpy,
-    subtests,
-    boundary_dict,
-    ranks_per_tile,
 ):
     """
     test that an exception is raised when trying to update more halo points than exist
     """
     for communicator, quantity in zip(communicator_list, zeros_quantity_list):
+        with pytest.raises(pace.util.OutOfBoundsError):
+            communicator.start_halo_update(quantity, n_points_update)
+
+
+@pytest.mark.parametrize(
+    "n_points, n_points_update, n_buffer", [(2, "more", 0)], indirect=True
+)
+@pytest.mark.parametrize("layout", [(3, 3)], indirect=True)
+def test_too_many_points_requested_tile(
+    zeros_quantity_tile_list,
+    tile_communicator_list,
+    n_points_update,
+):
+    """
+    test that an exception is raised when trying to update more halo points than exist
+    on a tile
+    """
+    for communicator, quantity in zip(tile_communicator_list, zeros_quantity_tile_list):
         with pytest.raises(pace.util.OutOfBoundsError):
             communicator.start_halo_update(quantity, n_points_update)
 
@@ -447,6 +588,76 @@ def test_zeros_halo_update(
                     )
 
 
+@pytest.mark.parametrize(
+    "layout, n_points, n_points_update, dims",
+    [
+        [(1, 1), 3, "same", [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]],
+        [(2, 2), 3, "same", [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]],
+    ],
+    indirect=True,
+)
+def test_tile_halo_update_unsupported_layout(
+    zeros_quantity_tile_list,
+    tile_communicator_list,
+    n_points_update,
+):
+    """test that correct exception is raised if layout is unsupported"""
+    # if you delete this test because this is now implemented,
+    # please add the appropriate layout cases to the main halo update test
+    for communicator, quantity in zip(tile_communicator_list, zeros_quantity_tile_list):
+        with pytest.raises(NotImplementedError):
+            communicator.start_halo_update(quantity, n_points_update)
+        with pytest.raises(NotImplementedError):
+            communicator.halo_update(quantity, n_points_update)
+
+
+@pytest.mark.parametrize("layout", [(3, 3)], indirect=True)
+def test_zeros_tile_halo_update(
+    zeros_quantity_tile_list,
+    tile_communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
+    """test that zeros from adjacent domains get written over ones on local halo
+    on a single tile"""
+    halo_updater_list = []
+    if 0 < n_points_update <= n_points:
+        for communicator, quantity in zip(
+            tile_communicator_list, zeros_quantity_tile_list
+        ):
+            halo_updater = communicator.start_halo_update(quantity, n_points_update)
+            halo_updater_list.append(halo_updater)
+        for halo_updater in halo_updater_list:
+            halo_updater.wait()
+        for rank, quantity in enumerate(zeros_quantity_tile_list):
+            boundaries = boundary_dict[
+                rank % ranks_per_tile
+            ]  # Is the %ranks_per_tile necessary?
+            for boundary in boundaries:
+                boundary_slice = pace.util._boundary_utils.get_boundary_slice(
+                    quantity.dims,
+                    quantity.origin,
+                    quantity.extent,
+                    quantity.data.shape,
+                    boundary,
+                    n_points_update,
+                    interior=False,
+                )
+                with subtests.test(
+                    quantity=quantity,
+                    rank=rank,
+                    boundary=boundary,
+                    boundary_slice=boundary_slice,
+                ):
+                    numpy.testing.assert_array_equal(
+                        quantity.data[tuple(boundary_slice)], 0.0
+                    )
+
+
 def test_zeros_vector_halo_update(
     zeros_quantity_list,
     communicator_list,
@@ -464,6 +675,57 @@ def test_zeros_vector_halo_update(
         halo_updater_list = []
         for communicator, y_quantity, x_quantity in zip(
             communicator_list, y_list, x_list
+        ):
+            halo_updater_list.append(
+                communicator.start_vector_halo_update(
+                    y_quantity, x_quantity, n_points_update
+                )
+            )
+        for halo_updater in halo_updater_list:
+            halo_updater.wait()
+        for rank, (y_quantity, x_quantity) in enumerate(zip(y_list, x_list)):
+            boundaries = boundary_dict[rank % ranks_per_tile]
+            for boundary in boundaries:
+                boundary_slice = pace.util._boundary_utils.get_boundary_slice(
+                    x_quantity.dims,
+                    x_quantity.origin,
+                    x_quantity.extent,
+                    x_quantity.data.shape,
+                    boundary,
+                    n_points_update,
+                    interior=False,
+                )
+                with subtests.test(
+                    x_quantity=x_quantity,
+                    rank=rank,
+                    boundary=boundary,
+                    boundary_slice=boundary_slice,
+                ):
+                    for quantity in y_quantity, x_quantity:
+                        numpy.testing.assert_array_equal(
+                            quantity.data[tuple(boundary_slice)], 0.0
+                        )
+
+
+@pytest.mark.parametrize("layout", [(3, 3)], indirect=True)
+def test_zeros_vector_tile_halo_update(
+    zeros_quantity_tile_list,
+    tile_communicator_list,
+    n_points_update,
+    n_points,
+    numpy,
+    subtests,
+    boundary_dict,
+    ranks_per_tile,
+):
+    """test that zeros from adjacent domains get written over ones on local halo
+    on a single tile"""
+    x_list = zeros_quantity_tile_list
+    y_list = copy.deepcopy(x_list)
+    if 0 < n_points_update <= n_points:
+        halo_updater_list = []
+        for communicator, y_quantity, x_quantity in zip(
+            tile_communicator_list, y_list, x_list
         ):
             halo_updater_list.append(
                 communicator.start_vector_halo_update(
