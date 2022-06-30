@@ -178,7 +178,7 @@ class Physics:
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_compute()
         shape = grid_indexing.domain_full(add=(1, 1, 1))
-        self.setup_statein()
+        self._setup_statein()
         self._ptop = grid_data.ptop
         self._pktop = (self._ptop / self._p00) ** constants.KAPPA
         self._pk0inv = (1.0 / self._p00) ** constants.KAPPA
@@ -233,7 +233,7 @@ class Physics:
         else:
             self._do_microphysics = False
 
-    def setup_statein(self):
+    def _setup_statein(self):
         self._NQ = 8  # state.nq_tot - spec.namelist.dnats
         self._dnats = 1  # spec.namelist.dnats
         self._nwat = 6  # spec.namelist.nwat

@@ -10,9 +10,21 @@ import pace.util
 from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.dycore_state import DycoreState
 from pace.stencils.testing import ParallelTranslateBaseSlicing
+from pace.stencils.testing.translate import TranslateFortranData2Py
 
 
 ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]
+
+
+class TranslateDycoreFortranData2Py(TranslateFortranData2Py):
+    def __init__(
+        self,
+        grid,
+        namelist: pace.util.Namelist,
+        stencil_factory: pace.dsl.StencilFactory,
+    ):
+        super().__init__(grid, stencil_factory)
+        self.namelist = DynamicalCoreConfig.from_namelist(namelist)
 
 
 class TranslateFVDynamics(ParallelTranslateBaseSlicing):

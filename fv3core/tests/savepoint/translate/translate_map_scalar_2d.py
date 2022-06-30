@@ -3,12 +3,8 @@ from typing import Any, Dict
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3core.testing import MapSingleFactory
-from pace.stencils.testing import (
-    TranslateDycoreFortranData2Py,
-    TranslateGrid,
-    pad_field_in_j,
-)
+from fv3core.testing import MapSingleFactory, TranslateDycoreFortranData2Py
+from pace.stencils.testing import TranslateGrid, pad_field_in_j
 
 
 class TranslateMapScalar_2d(TranslateDycoreFortranData2Py):

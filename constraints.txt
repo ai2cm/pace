@@ -18,8 +18,10 @@ asciitree==0.3.3
     # via zarr
 asttokens==2.0.5
     # via devtools
-astunparse==1.6.3
-    # via dace
+astunparse==1.6.3 ; python_version < "3.9"
+    # via
+    #   dace
+    #   gt4py (external/gt4py/setup.cfg)
 async-timeout==3.0.1
     # via aiohttp
 attrs==21.2.0
@@ -77,10 +79,8 @@ coverage==5.5
     #   pytest-cov
 cytoolz==0.11.2
     # via gt4py (external/gt4py/setup.cfg)
-dace==0.13
-    # via
-    #   -r dsl/requirements.txt
-    #   -r fv3core/requirements/requirements_dace.txt
+dace==0.13.2
+    # via -r dsl/requirements.txt
 dacite==1.6.0
     # via
     #   -r .circleci/requirements.txt
