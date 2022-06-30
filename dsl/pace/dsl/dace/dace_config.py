@@ -161,7 +161,7 @@ class DaceConfig:
     def get_orchestrate(self) -> DaCeOrchestration:
         return self._orchestrate
 
-    def as_dict__(self) -> Dict[str, Any]:
+    def as_dict(self) -> Dict[str, Any]:
         return {
             "my_rank": self.my_rank,
             "rank_size": self.rank_size,
