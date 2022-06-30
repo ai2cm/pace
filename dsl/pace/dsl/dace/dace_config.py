@@ -1,5 +1,5 @@
 import enum
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import dace.config
 
@@ -146,7 +146,7 @@ class DaceConfig:
         ):
             raise RuntimeError(
                 "DaceConfig: orchestration can only be leverage "
-                f"on gtc:dace or gtc:dace:gpu not on {self._backend}"
+                f"on dace or dace:gpu not on {self._backend}"
             )
 
     def is_dace_orchestrated(self) -> bool:
@@ -160,3 +160,10 @@ class DaceConfig:
 
     def get_orchestrate(self) -> DaCeOrchestration:
         return self._orchestrate
+
+    def as_dict__(self) -> Dict[str, Any]:
+        return {
+            "my_rank": self.my_rank,
+            "rank_size": self.rank_size,
+            "layout": self.layout,
+        }

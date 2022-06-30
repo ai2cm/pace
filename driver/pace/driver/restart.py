@@ -31,6 +31,10 @@ class Restart:
     ):
         if comm.Get_rank() == 0:
             config_dict = dataclasses.asdict(driver_config)
+            if driver_config.stencil_config.dace_config:
+                config_dict["stencil_config"][
+                    "dace_config"
+                ] = driver_config.stencil_config.dace_config.as_dict()
             config_dict["performance_config"].pop("times_per_step", None)
             config_dict["performance_config"].pop("hits_per_step", None)
             config_dict["performance_config"].pop("timestep_timer", None)
