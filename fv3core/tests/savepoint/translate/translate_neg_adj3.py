@@ -4,7 +4,7 @@ import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateNeg_Adj3(TranslateDycoreFortranData2Py):

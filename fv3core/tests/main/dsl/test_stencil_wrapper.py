@@ -237,6 +237,7 @@ def test_frozen_stencil_kwargs_passed_to_init(
         definition=copy_stencil,
         externals={},
         **config.stencil_kwargs(func=copy_stencil),
+        build_info={},
     )
 
 
