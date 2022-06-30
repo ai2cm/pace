@@ -88,10 +88,14 @@ jobs:
           keys:
             - v1-gt_cache-{{ checksum "gt4py_version.txt" }}
       - run:
-          name: run tests
+          name: build image
           command: |
             BUILD_ARGS="--progress=plain" make -C fv3core build
+      - run:
+          name: run tests
+          command: |
             TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
+          no_output_timeout: 3h
       - save_cache:
           key: v1-gt_cache-{{ checksum "gt4py_version.txt" }}
           paths:
