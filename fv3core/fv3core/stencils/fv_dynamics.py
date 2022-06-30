@@ -88,7 +88,7 @@ def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
 @dace_inhibitor
 def log_on_rank_0(msg: str):
     """Print when rank is 0 - outside of DaCe critical path"""
-    if MPI.COMM_WORLD.Get_rank() == 0:
+    if not MPI or MPI.COMM_WORLD.Get_rank() == 0:
         print(msg)
 
 

@@ -24,7 +24,7 @@ def test_orchestrate_function_calls_dace():
         orchestration=DaCeOrchestration.BuildAndRun,
     )
     wrapped = orchestrate_function(config=dace_config)(foo)
-    with unittest.mock.patch("pace.dsl.dace.orchestrate.call_sdfg") as mock_call_sdfg:
+    with unittest.mock.patch("pace.dsl.dace.orchestrate._call_sdfg") as mock_call_sdfg:
         wrapped()
     assert mock_call_sdfg.called
     assert mock_call_sdfg.call_args.args[0].f == foo
@@ -40,7 +40,7 @@ def test_orchestrate_function_does_not_call_dace():
         orchestration=DaCeOrchestration.Python,
     )
     wrapped = orchestrate_function(config=dace_config)(foo)
-    with unittest.mock.patch("pace.dsl.dace.orchestrate.call_sdfg") as mock_call_sdfg:
+    with unittest.mock.patch("pace.dsl.dace.orchestrate._call_sdfg") as mock_call_sdfg:
         wrapped()
     assert not mock_call_sdfg.called
 
@@ -59,7 +59,7 @@ def test_orchestrate_calls_dace():
         def foo(self):
             pass
 
-    with unittest.mock.patch("pace.dsl.dace.orchestrate.call_sdfg") as mock_call_sdfg:
+    with unittest.mock.patch("pace.dsl.dace.orchestrate._call_sdfg") as mock_call_sdfg:
         a = A()
         a.foo()
     assert mock_call_sdfg.called
@@ -79,7 +79,7 @@ def test_orchestrate_does_not_call_dace():
         def foo(self):
             pass
 
-    with unittest.mock.patch("pace.dsl.dace.orchestrate.call_sdfg") as mock_call_sdfg:
+    with unittest.mock.patch("pace.dsl.dace.orchestrate._call_sdfg") as mock_call_sdfg:
         a = A()
         a.foo()
     assert not mock_call_sdfg.called
