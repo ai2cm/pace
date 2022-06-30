@@ -162,9 +162,13 @@ class DriverConfig:
             kwargs["initialization"]
         )
 
-        kwargs["stencil_config"]["dace_config"] = DaceConfig.from_dict(
-            data=kwargs["stencil_config"]["dace_config"]
-        )
+        if (
+            isinstance(kwargs["stencil_config"], dict)
+            and "dace_config" in kwargs["stencil_config"].keys()
+        ):
+            kwargs["stencil_config"]["dace_config"] = DaceConfig.from_dict(
+                data=kwargs["stencil_config"]["dace_config"]
+            )
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
