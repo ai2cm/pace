@@ -8,6 +8,8 @@ from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateQSInit(TranslateDycoreFortranData2Py):
+    max_error = 5e-14
+
     def __init__(
         self,
         grid,
