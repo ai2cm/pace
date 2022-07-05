@@ -13,7 +13,7 @@ from gt4py.gtscript import (
 )
 
 import pace.dsl.gt4py_utils as utils
-from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, Y_DIM, Z_DIM

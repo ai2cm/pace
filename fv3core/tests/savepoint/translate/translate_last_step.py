@@ -1,7 +1,7 @@
 import fv3core.stencils.moist_cv as moist_cv
 import pace.dsl
 import pace.util
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateLastStep(TranslateDycoreFortranData2Py):

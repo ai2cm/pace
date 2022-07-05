@@ -1,10 +1,7 @@
-import copy
 import os
 import unittest.mock
-from typing import List, Tuple
-
-import gt4py.storage.storage
-import numpy as np
+from dataclasses import fields
+from typing import Tuple
 
 import fv3core
 import fv3core._config
@@ -12,7 +9,9 @@ import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl.stencil
 import pace.stencils.testing
 import pace.util
+from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig
+from pace.stencils.testing import assert_same_temporaries, copy_temporaries
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
 
@@ -75,7 +74,7 @@ def setup_dycore() -> Tuple[
         pace.util.TilePartitioner(config.layout)
     )
     communicator = pace.util.CubedSphereCommunicator(mpi_comm, partitioner)
-    dace_config = DaceConfig(communicator=None, backend=backend)
+    dace_config = DaceConfig(communicator=communicator, backend=backend)
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
     )
@@ -136,47 +135,14 @@ def setup_dycore() -> Tuple[
     return dycore, state, pace.util.NullTimer()
 
 
-def assert_same_temporaries(dict1: dict, dict2: dict):
-    diffs = _assert_same_temporaries(dict1, dict2)
-    if len(diffs) > 0:
-        raise AssertionError(f"{len(diffs)} differing temporaries found: {diffs}")
-
-
-def _assert_same_temporaries(dict1: dict, dict2: dict) -> List[str]:
-    differences = []
-    for attr in dict1:
-        attr1 = dict1[attr]
-        attr2 = dict2[attr]
-        if isinstance(attr1, np.ndarray):
-            try:
-                np.testing.assert_almost_equal(
-                    attr1, attr2, err_msg=f"{attr} not equal"
-                )
-            except AssertionError:
-                differences.append(attr)
-        else:
-            sub_differences = _assert_same_temporaries(attr1, attr2)
-            for d in sub_differences:
-                differences.append(f"{attr}.{d}")
-    return differences
-
-
-def copy_temporaries(obj, max_depth: int) -> dict:
-    temporaries = {}
-    attrs = [a for a in dir(obj) if not a.startswith("__")]
-    for attr_name in attrs:
-        try:
-            attr = getattr(obj, attr_name)
-        except AttributeError:
-            attr = None
-        if isinstance(attr, (gt4py.storage.storage.Storage, pace.util.Quantity)):
-            temporaries[attr_name] = copy.deepcopy(np.asarray(attr.data))
-        elif attr.__class__.__module__.split(".")[0] in ("fv3core", "pace"):
-            if max_depth > 0:
-                sub_temporaries = copy_temporaries(attr, max_depth - 1)
-                if len(sub_temporaries) > 0:
-                    temporaries[attr_name] = sub_temporaries
-    return temporaries
+def copy_state(state1: DycoreState, state2: DycoreState):
+    # copy all attributes of state1 to state2
+    for attr_name in dir(state1):
+        for _field in fields(type(state1)):
+            if issubclass(_field.type, pace.util.Quantity):
+                attr = getattr(state1, attr_name)
+                if isinstance(attr, pace.util.Quantity):
+                    getattr(state2, attr_name).data[:] = attr.data
 
 
 def test_temporaries_are_deterministic():
@@ -199,9 +165,6 @@ def test_temporaries_are_deterministic():
     assert_same_temporaries(second_temporaries, first_temporaries)
 
 
-# TODO: The orchestrated code pushed us to make the dycore stateful for halo
-# exchange. This needs to be reactivated after halo exchange are reverted to
-# not being stateful.
 def test_call_on_same_state_same_dycore_produces_same_temporaries():
     """
     Assuming the precursor test passes, this test indicates whether
@@ -209,7 +172,6 @@ def test_call_on_same_state_same_dycore_produces_same_temporaries():
     If it does not, then subsequent calls on identical input should
     produce identical results.
     """
-    return
     dycore, state_1, timer_1 = setup_dycore()
     _, state_2, timer_2 = setup_dycore()
 
@@ -218,7 +180,11 @@ def test_call_on_same_state_same_dycore_produces_same_temporaries():
     dycore.step_dynamics(state_1, timer_1)
     first_temporaries = copy_temporaries(dycore, max_depth=10)
     assert len(first_temporaries) > 0
-    dycore.step_dynamics(state_2, timer_2)
+    # TODO: The orchestrated code pushed us to make the dycore stateful for halo
+    # exchange, so we must copy into state_1 instead of using state_2.
+    # We should call with state_2 directly when this is fixed.
+    copy_state(state_2, state_1)
+    dycore.step_dynamics(state_1, timer_2)
     second_temporaries = copy_temporaries(dycore, max_depth=10)
     assert_same_temporaries(second_temporaries, first_temporaries)
 

@@ -16,7 +16,7 @@ import pace.util
 import pace.util.grid
 from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig
-from pace.dsl.dace.orchestrate import dace_inhibitor, orchestrate
+from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
@@ -161,6 +161,14 @@ class DriverConfig:
         kwargs["initialization"] = InitializerSelector.from_dict(
             kwargs["initialization"]
         )
+
+        if (
+            isinstance(kwargs["stencil_config"], dict)
+            and "dace_config" in kwargs["stencil_config"].keys()
+        ):
+            kwargs["stencil_config"]["dace_config"] = DaceConfig.from_dict(
+                data=kwargs["stencil_config"]["dace_config"]
+            )
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)

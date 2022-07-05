@@ -15,6 +15,7 @@ from pace.dsl.dace.build import (
     determine_compiling_ranks,
     get_sdfg_path,
     unblock_waiting_tiles,
+    write_layout,
 )
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import strip_unused_global_in_compute_x_flux
@@ -171,6 +172,8 @@ def _build_sdfg(
         # Compile
         with DaCeProgress(config, "Codegen & compile"):
             sdfg.compile()
+
+        write_layout(sdfg, config.layout)
 
     # Compilation done, either exit or scatter/gather and run
     if config.get_orchestrate() == DaCeOrchestration.Build:

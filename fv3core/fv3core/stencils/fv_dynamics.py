@@ -15,7 +15,7 @@ from fv3core.stencils.del2cubed import HyperdiffusionDamping
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.stencils.neg_adj3 import AdjustNegativeTracerMixingRatio
 from fv3core.stencils.remapping import LagrangianToEulerian
-from pace.dsl.dace.orchestrate import dace_inhibitor, orchestrate
+from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -88,7 +88,7 @@ def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
 @dace_inhibitor
 def log_on_rank_0(msg: str):
     """Print when rank is 0 - outside of DaCe critical path"""
-    if MPI.COMM_WORLD.Get_rank() == 0:
+    if not MPI or MPI.COMM_WORLD.Get_rank() == 0:
         print(msg)
 
 

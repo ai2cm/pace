@@ -8,7 +8,7 @@ import pace.dsl
 import pace.stencils
 import pace.util
 import pace.util.grid
-from pace.dsl.dace.orchestrate import dace_inhibitor
+from pace.dsl.dace.orchestration import dace_inhibitor
 from pace.util.quantity import QuantityMetadata
 
 from .state import DriverState

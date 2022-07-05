@@ -1,5 +1,5 @@
 import enum
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import dace.config
 
@@ -129,42 +129,19 @@ class DaceConfig:
                 pass
 
         self._backend = backend
-        from pace.dsl.dace.build import (
-            read_target_rank,
-            set_distributed_caches,
-            write_decomposition,
-        )
-
-        if (
-            communicator
-            and (
-                self._orchestrate == DaCeOrchestration.Build
-                or self._orchestrate == DaCeOrchestration.BuildAndRun
-            )
-            and communicator.rank == 0
-            and communicator.comm.Get_size() > 1
-        ):
-            write_decomposition(communicator.partitioner)
+        from pace.dsl.dace.build import get_target_rank, set_distributed_caches
 
         # Distributed build required info
         if communicator:
             self.my_rank = communicator.rank
             self.rank_size = communicator.comm.Get_size()
-            from gt4py import config as gt_config
-
-            config_path = (
-                f"{gt_config.cache_settings['root_path']}/.layout/decomposition.yml"
-            )
-            self.target_rank = read_target_rank(
-                rank=self.my_rank,
-                partitioner=communicator.partitioner,
-                config=self,
-                layout_filepath=config_path,
-            )
+            self.target_rank = get_target_rank(self.my_rank, communicator.partitioner)
+            self.layout = communicator.partitioner.layout
         else:
             self.my_rank = 0
             self.rank_size = 1
             self.target_rank = 0
+            self.layout = [1, 1]
 
         set_distributed_caches(self)
 
@@ -174,7 +151,7 @@ class DaceConfig:
         ):
             raise RuntimeError(
                 "DaceConfig: orchestration can only be leverage "
-                f"on gtc:dace or gtc:dace:gpu not on {self._backend}"
+                f"on dace or dace:gpu not on {self._backend}"
             )
 
     def is_dace_orchestrated(self) -> bool:
@@ -188,3 +165,20 @@ class DaceConfig:
 
     def get_orchestrate(self) -> DaCeOrchestration:
         return self._orchestrate
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "_orchestrate": str(self._orchestrate.name),
+            "_backend": self._backend,
+            "my_rank": self.my_rank,
+            "rank_size": self.rank_size,
+            "layout": self.layout,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        config = cls(None, data["_backend"], DaCeOrchestration[data["_orchestrate"]])
+        config.my_rank = data["my_rank"]
+        config.rank_size = data["rank_size"]
+        config.layout = data["layout"]
+        return config

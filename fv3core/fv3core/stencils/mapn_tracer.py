@@ -3,7 +3,7 @@ from typing import Dict
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.fillz import FillNegativeTracerValues
 from fv3core.stencils.map_single import MapSingle
-from pace.dsl.dace.orchestrate import orchestrate
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
 from pace.util import Quantity
