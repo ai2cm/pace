@@ -35,7 +35,12 @@ class DaceConfig:
         import os
 
         if orchestration is None:
-            self._orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
+            fv3_dacemode_env_var = os.getenv("FV3_DACEMODE", "Python")
+            # The below condition guard against defining empty FV3_DACEMODE and
+            # awkward behavior of os.getenv returning "" even when not defined
+            if fv3_dacemode_env_var is None or fv3_dacemode_env_var == "":
+                fv3_dacemode_env_var = "Python"
+            self._orchestrate = DaCeOrchestration[fv3_dacemode_env_var]
         else:
             self._orchestrate = orchestration
 
