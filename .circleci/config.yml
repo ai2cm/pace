@@ -201,16 +201,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - docker_savepoints_mpi:
-          matrix:
-            parameters:
-              backend:
-                - numpy
-          context:
-            - GCLOUD_ENCODED_KEY
-          filters:
-            tags:
-              only: /^v.*/
       - savepoints_mpi:
           matrix:
             parameters:
