@@ -7,6 +7,14 @@ from pace.util.halo_updater import HaloUpdater
 
 
 class WrappedHaloUpdater:
+    """Wrapping the original Halo Updater for critical runtime.
+
+    Because DaCe cannot parse the complexity of the HaloUpdater and
+    because it cannot pass in Quantity to callback easily, we made a wrapper
+    that goes around those two problems, using a .get_attr on a cached state
+    to look up the proper quantities.
+    """
+
     def __init__(
         self,
         updater: HaloUpdater,

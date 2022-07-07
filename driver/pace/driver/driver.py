@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 import logging
+import warnings
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple, Union
 
@@ -110,7 +111,12 @@ class DriverConfig:
 
     def n_timesteps(self) -> int:
         """Computing how many timestep required to carry the simulation."""
-        return int(self.total_time.seconds / self.timestep.seconds)
+        if self.total_time < self.timestep:
+            warnings.warn(
+                f"No simulation possible: you asked for {self.total_time} "
+                f"simulation time but the timestep is {self.timestep}"
+            )
+        return round(self.total_time.seconds / self.timestep.seconds)
 
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:

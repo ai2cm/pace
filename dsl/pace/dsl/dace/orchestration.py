@@ -176,6 +176,11 @@ def _build_sdfg(
         write_layout(sdfg, config.layout)
 
     # Compilation done, either exit or scatter/gather and run
+    # DEV NOTE: we explicitly use MPI.COMM_WORLD here because it is
+    # a true multi-machine sync, outside of our own communicator class.
+    # Also this code is protected in the case of running on one machine by the fact
+    # that 0 is _always_ a compiling rank & unblock_waiting_tiles is protected
+    # against scattering when no other ranks are present.
     if config.get_orchestrate() == DaCeOrchestration.Build:
         MPI.COMM_WORLD.Barrier()  # Protect against early exist which kill SLURM jobs
         DaCeProgress.log(config, "Compilation finished and saved, exiting.")
