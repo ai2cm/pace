@@ -44,3 +44,4 @@ ENVIRONMENT_IMAGE ?= $(GCR_URL)/fv3core-environment:$(TAG_NAME)
 # built image names
 JENKINS_TAG ?=
 FV3GFS_IMAGE ?= $(GCR_URL)/$(FV3GFS_NAME):$(TAG_NAME)$(JENKINS_TAG)
+PACE_IMAGE?=$(GCR_URL)/pace

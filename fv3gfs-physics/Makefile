@@ -10,7 +10,7 @@ NUM_RANKS ?=6
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 TEST_ARGS ?=
-MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
+MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) --oversubscribe --mca btl_vader_single_copy_mechanism none
 
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_baroclinic_dycore_microphysics
@@ -25,9 +25,9 @@ DATA_BUCKET ?= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSI
 ifeq ($(DEV),y)
 	VOLUMES += -v $(CWD)/../fv3core:/fv3core -v $(CWD)/../fv3gfs-physics:/fv3gfs-physics -v $(CWD)/../stencils:/stencils -v $(CWD)/tests:/$(pace)/tests -v $(FV3UTIL_DIR):/pace-util  -v $(CWD)/../driver:/driver -v $(CWD)/../dsl:/dsl
 endif
-CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3GFS_IMAGE)
+CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(PACE_IMAGE)
 
-ifneq (,$(findstring $(FV3GFS_IMAGE),$(CONTAINER_CMD)))
+ifneq (,$(findstring $(PACE_IMAGE),$(CONTAINER_CMD)))
 	TEST_DATA_RUN_LOC =/test_data
 else
 	TEST_DATA_RUN_LOC=$(TEST_DATA_HOST)
@@ -41,7 +41,7 @@ PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_
 PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3gfs-physics/tests/savepoint
 
 build:
-	PULL=$(PULL) $(MAKE) -C ../docker fv3gfs_image
+	$(MAKE) -C .. build
 
 sync_test_data:
 	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)

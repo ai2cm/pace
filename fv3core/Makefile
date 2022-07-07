@@ -21,12 +21,12 @@ TEST_DATA_HOST ?=$(TEST_DATA_ROOT)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIME
 FV3UTIL_DIR=$(CWD)/external/pace-util
 
 FV3=fv3core
-FV3_PATH ?=/$(FV3)
+FV3_PATH ?=/pace/$(FV3)
 
 ifeq ($(DEV),y)
 	VOLUMES += -v $(CWD):$(FV3_PATH) -v $(FV3UTIL_DIR):/usr/src/pace-util -v $(CWD)/external/stencils:/external/stencils  -v $(CWD)/external/dsl:/external/dsl
 endif
-CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
+CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(PACE_IMAGE)
 
 ifneq (,$(findstring $(FV3GFS_IMAGE),$(CONTAINER_CMD)))
 	TEST_DATA_RUN_LOC =/test_data
@@ -38,8 +38,7 @@ PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
 PYTHON_INIT_FILES = $(shell git ls-files | grep '__init__.py')
 TEST_DATA_TARFILE=dat_files.tar.gz
 TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
-CORE_TAR=$(SARUS_FV3CORE_IMAGE).tar
-MPIRUN_CALL ?=mpirun -np $(NUM_RANKS)
+MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) --oversubscribe --mca btl_vader_single_copy_mechanism=none
 BASE_INSTALL?=$(FV3)-install-serialbox
 DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)/
 
@@ -52,7 +51,7 @@ PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_pat
 ifeq ($(DEV),y)
 	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/external/pace-util -v $(CWD)/external/dsl:/external/dsl -v $(CWD)/external/stencils:/external/stencils
 endif
-CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
+CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(PACE_IMAGE)
 
 clean:
 
@@ -63,42 +62,9 @@ update_submodules_venv:
 
 # Image build instructions have moved to docker/Makefile but are kept here for backwards-compatibility
 
-build_environment:
-	$(MAKE) -C docker build_core_deps
-
-build_cuda_environment: build_environment
-	CUDA=y $(MAKE) -C docker build_core_env
 
 build:
-	if [ $(PULL) == True ]; then \
-		$(MAKE) pull_environment_if_needed; \
-	else \
-		$(MAKE) build_environment; \
-	fi
-	$(MAKE) -C docker fv3core_image
-
-pull_environment_if_needed:
-	$(MAKE) -C docker pull_core_deps_if_needed
-
-pull_environment:
-	$(MAKE) -C docker pull_core_deps
-
-push_environment:
-	$(MAKE) -C docker push_deps
-
-rebuild_environment: build_environment push_environment
-
-push_core:
-	$(MAKE) -C docker push
-
-pull_core:
-	$(MAKE) -C docker pull
-
-tar_core:
-	$(MAKE) -C docker tar_core
-
-sarus_load_tar:
-	$(MAKE) -C docker sarus_load_tar
+	$(MAKE) -C .. build
 
 cleanup_remote:
 	$(MAKE) -C docker cleanup_remote
@@ -126,7 +92,7 @@ dev:
 		-v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) \
 		-v $(CWD):/port_dev \
 		$(VOLUMES) \
-		$(FV3CORE_IMAGE) bash
+		$(PACE_IMAGE) bash
 
 test_base:
 ifneq ($(findstring docker,$(CONTAINER_CMD)),)
@@ -163,7 +129,7 @@ lint:
 
 gt4py_tests_gpu:
 	CUDA=y make build && \
-	docker run --gpus all $(FV3CORE_IMAGE) python3 -m pytest -x gt4py/tests
+	docker run --gpus all $(PACE_IMAGE) python3 -m pytest -x gt4py/tests
 
 .PHONY: update_submodules_venv build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
 	 list_test_data_options pull_environment pull_test_data push_environment \
