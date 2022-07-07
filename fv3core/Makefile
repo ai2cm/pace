@@ -1,10 +1,9 @@
-include docker/Makefile.image_names
+include ../docker/Makefile.image_names
 
 GCR_URL = us.gcr.io/vcm-ml
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
 EXPERIMENT ?=c12_6ranks_standard
 FORTRAN_SERIALIZED_DATA_VERSION=8.1.1
-DOCKER_BUILDKIT=1
 SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
@@ -59,9 +58,6 @@ update_submodules_venv:
 	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
                 git submodule update --init external/daint_venv; \
         fi
-
-# Image build instructions have moved to docker/Makefile but are kept here for backwards-compatibility
-
 
 build:
 	$(MAKE) -C .. build
@@ -127,11 +123,7 @@ list_test_data_options:
 lint:
 	pre-commit run --all-files
 
-gt4py_tests_gpu:
-	CUDA=y make build && \
-	docker run --gpus all $(PACE_IMAGE) python3 -m pytest -x gt4py/tests
-
-.PHONY: update_submodules_venv build_environment build dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
+.PHONY: update_submodules_venv dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
 	 list_test_data_options pull_environment pull_test_data push_environment \
-	rebuild_environment reformat run_tests_sequential run_tests_parallel test_base test_base_parallel \
-	tests push_core pull_core tar_core sarus_load_tar cleanup_remote
+	reformat run_tests_sequential run_tests_parallel test_base test_base_parallel \
+	tests cleanup_remote
