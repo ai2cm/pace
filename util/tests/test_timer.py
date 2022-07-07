@@ -41,7 +41,7 @@ def test_clock(timer):
     times = timer.times
     assert "label" in times
     assert len(times) == 1
-    assert abs(times["label"] - 0.1) < 1e-2
+    assert abs(times["label"] - 0.1) < 5e-2
     assert timer.hits["label"] == 1
     assert len(timer.hits) == 1
 
