@@ -6,5 +6,5 @@ fv3/.gt_cache/**
 .gt_cache/**
 fv3core/test_data/**
 .git/**
-pace-util/.tox/**
+util/.tox/**
 **/venv/**

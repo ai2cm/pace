@@ -18,13 +18,13 @@ TEST_ARGS ?=
 TARGET ?=dycore
 TEST_DATA_ROOT ?=$(CWD)/test_data/
 TEST_DATA_HOST ?=$(TEST_DATA_ROOT)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)
-FV3UTIL_DIR=$(CWD)/external/pace-util
+FV3UTIL_DIR=$(CWD)/external/util
 
 FV3=fv3core
 FV3_PATH ?=/$(FV3)
 
 ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD):$(FV3_PATH) -v $(FV3UTIL_DIR):/usr/src/pace-util -v $(CWD)/external/stencils:/external/stencils  -v $(CWD)/external/dsl:/external/dsl
+	VOLUMES += -v $(CWD):$(FV3_PATH) -v $(FV3UTIL_DIR):/usr/src/util -v $(CWD)/external/stencils:/external/stencils  -v $(CWD)/external/dsl:/external/dsl
 endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
 
@@ -50,7 +50,7 @@ PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_
 # we can't rule out a deadlock if one test fails, so we must set maxfail=1 for parallel tests
 PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(FV3_PATH)/tests/savepoint
 ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/external/pace-util -v $(CWD)/external/dsl:/external/dsl -v $(CWD)/external/stencils:/external/stencils
+	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/external/util -v $(CWD)/external/dsl:/external/dsl -v $(CWD)/external/stencils:/external/stencils
 endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(FV3CORE_IMAGE)
 

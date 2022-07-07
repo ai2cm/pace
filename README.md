@@ -26,7 +26,7 @@ You will also need to update the git submodules are cloned and at the correct ve
 $ git submodule update --init --recursive
 ```
 
-To run dynamical core tests, first get the test data from inside `fv3core` or `fv3gfs-physics` folder, then build `fv3gfs-integration` docker image at the top level.
+To run dynamical core tests, first get the test data from inside `fv3core` or `physics` folder, then build `fv3gfs-integration` docker image at the top level.
 
 ```shell
 $ cd fv3core
@@ -71,7 +71,7 @@ Currently, the supported test case is dynamical core + microphysics: e.g., `c12_
 To download the data and open the Docker container:
 
 ```shell
-$ cd fv3gfs-physics
+$ cd physics
 $ make get_test_data
 $ cd ..
 ```
@@ -80,7 +80,7 @@ In the container, physics tests can be run by:
 
 ```shell
 $ DEV=y make dev
-$ pytest -v -s --data_path=/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
+$ pytest -v -s --data_path=/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ /physics/tests --threshold_overrides_file=/physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 In this case, DEV=y mounts the local directory, so any changes in it will take effect without needing to rebuild the container.
 
@@ -94,7 +94,7 @@ $ DEV=y make physics_savepoint_tests
 For parallel tests use:
 
 ```shell
-$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ /fv3gfs-physics/tests --threshold_overrides_file=/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
+$ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ /physics/tests --threshold_overrides_file=/physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
 or
@@ -107,9 +107,9 @@ $ DEV=y make physics_savepoint_tests_mpi
 
 ## Util tests
 
-Inside the container, util tests can be run from `/pace-util`:
+Inside the container, util tests can be run from `/util`:
 
 ```shell
-$ cd /pace-util
+$ cd /util
 $ make test
 ```

@@ -12,7 +12,7 @@ requirements = [
     "f90nml>=1.1.0",
     "gt4py",
     "numpy",
-    "pace-util>=0.4.3",
+    "util>=0.4.3",
     "xarray",
 ]
 
@@ -31,20 +31,20 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
     ],
-    description="fv3gfs-physics is a gt4py-based physical parameterization "
+    description="physics is a gt4py-based physical parameterization "
     "for atmospheric models",
     install_requires=requirements,
     extras_require={},
     license="BSD license",
     long_description=readme,
     include_package_data=True,
-    keywords="fv3gfs-physics",
-    name="fv3gfs-physics",
+    keywords="physics",
+    name="physics",
     packages=find_namespace_packages(include=["fv3gfs.*"]),
     setup_requires=[],
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/VulcanClimateModeling/fv3gfs-physics",
+    url="https://github.com/VulcanClimateModeling/physics",
     version="0.1.0",
     zip_safe=False,
 )

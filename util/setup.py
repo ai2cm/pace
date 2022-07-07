@@ -42,7 +42,7 @@ setup(
         "netcdf": ["xarray>=0.15.1", "scipy>=1.3.1"],
         "zarr": ["zarr>=2.3.2", "xarray>=0.15.1", "scipy>=1.3.1"],
     },
-    name="pace-util",
+    name="util",
     license="BSD license",
     long_description=readme + "\n\n" + history,
     packages=find_namespace_packages(include=["pace.*"]),

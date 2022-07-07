@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=.
 set BUILDDIR=_build
-set SPHINXPROJ=pace-util
+set SPHINXPROJ=util
 
 if "%1" == "" goto help
 

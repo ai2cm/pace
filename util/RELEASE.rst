@@ -12,7 +12,7 @@ version, while "v1" is not and "0.3.0" is not.
 
 4. Commit your changes so far to the release branch.
 
-5. In the pace-util directory, run `bumpversion <major/minor/patch>`. This will create a new commit.
+5. In the util directory, run `bumpversion <major/minor/patch>`. This will create a new commit.
 
 6. `git push -u origin release/util/<version>` and create a new pull request in Github.
 

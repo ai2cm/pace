@@ -25,7 +25,7 @@ RUN_FLAGS ?=--rm
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 VOLUMES = -v $(CWD):/port_dev
 ifeq ($(DEV),y)
-	VOLUMES = -v $(CWD)/fv3core:/fv3core -v $(CWD)/fv3gfs-physics:/fv3gfs-physics -v $(CWD)/stencils:/stencils -v $(CWD)/dsl:/dsl -v $(CWD)/pace-util:/pace-util -v $(CWD)/test_data:/test_data -v $(CWD)/examples:/port_dev/examples -v $(CWD)/driver:/driver
+	VOLUMES = -v $(CWD)/fv3core:/fv3core -v $(CWD)/physics:/physics -v $(CWD)/stencils:/stencils -v $(CWD)/dsl:/dsl -v $(CWD)/util:/util -v $(CWD)/test_data:/test_data -v $(CWD)/examples:/port_dev/examples -v $(CWD)/driver:/driver
 endif
 
 build:
@@ -38,8 +38,8 @@ dev:
 		$(FV3GFS_IMAGE) bash
 
 test_util:
-	if [ $(shell $(CHECK_CHANGED_SCRIPT) pace-util) != false ]; then \
-		$(MAKE) -C pace-util test; \
+	if [ $(shell $(CHECK_CHANGED_SCRIPT) util) != false ]; then \
+		$(MAKE) -C util test; \
 	fi
 
 savepoint_tests:
@@ -51,16 +51,16 @@ savepoint_tests_mpi:
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
 
-constraints.txt: dsl/requirements.txt fv3core/requirements.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt driver/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg
+constraints.txt: dsl/requirements.txt fv3core/requirements.txt util/requirements.txt physics/requirements.txt driver/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg
 	pip-compile $^ --output-file constraints.txt
 	sed -i.bak '/\@ git+https/d' constraints.txt
 	rm -f constraints.txt.bak
 
 physics_savepoint_tests:
-	$(MAKE) -C fv3gfs-physics $@
+	$(MAKE) -C physics $@
 
 physics_savepoint_tests_mpi:
-	$(MAKE) -C fv3gfs-physics $@
+	$(MAKE) -C physics $@
 
 update_submodules_venv:
 	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
@@ -71,7 +71,7 @@ test_driver:
 	DEV=$(DEV) $(MAKE) -C driver test
 
 driver_savepoint_tests_mpi:
-	DEV=$(DEV) $(MAKE) -C  fv3gfs-physics $@
+	DEV=$(DEV) $(MAKE) -C  physics $@
 
 docs: ## generate Sphinx HTML documentation
 	$(MAKE) -C docs html

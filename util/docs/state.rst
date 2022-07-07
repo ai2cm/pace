@@ -5,7 +5,7 @@ State
 Quantity
 --------
 
-Data in pace-util is managed using a container type called :py:class:`pace.util.Quantity`.
+Data in util is managed using a container type called :py:class:`pace.util.Quantity`.
 This stores metadata such as dimensions and units (in ``quantity.dims`` and ``quantity.units``),
 and manages the "computational domain" of the data.
 

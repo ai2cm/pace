@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# pace-util documentation build configuration file, created by
+# util documentation build configuration file, created by
 # sphinx-quickstart on Fri Jun  9 13:47:02 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -54,7 +54,7 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "pace-util"
+project = "util"
 copyright = "2019, Vulcan Technologies, LLC"
 author = "Vulcan Technologies, LLC"
 
@@ -108,7 +108,7 @@ html_static_path = []  # type: ignore
 # -- Options for HTMLHelp output ---------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "pace-util-doc"
+htmlhelp_basename = "util-doc"
 
 
 # -- Options for LaTeX output ------------------------------------------
@@ -134,8 +134,8 @@ latex_elements = {  # type: ignore
 latex_documents = [
     (
         master_doc,
-        "pace-util.tex",
-        "pace-util Documentation",
+        "util.tex",
+        "util Documentation",
         "Vulcan Technologies, LLC",
         "manual",
     ),
@@ -146,7 +146,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "pace-util", "pace-util Documentation", [author], 1)]
+man_pages = [(master_doc, "util", "util Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------
@@ -157,10 +157,10 @@ man_pages = [(master_doc, "pace-util", "pace-util Documentation", [author], 1)]
 texinfo_documents = [
     (
         master_doc,
-        "pace-util",
-        "pace-util Documentation",
+        "util",
+        "util Documentation",
         author,
-        "pace-util",
+        "util",
         "Python toolkit for the FV3GFS global climate model.",
         "Miscellaneous",
     ),

@@ -25,7 +25,7 @@ Major changes:
 - Changed `ZarrMonitor.store` behavior to allow passing quantities with different dimension orders
 - Added `CachingCommWriter` which wraps a `Comm` object and can be serialized to a file-like object with a `.dump` method
 - Added `CachingCommReader` which can be loaded from the dump output of `CachingCommWriter` and replays its communication in the order it occurred.
-- `NullComm` is now public api in `pace-util`
+- `NullComm` is now public api in `util`
 - Deleted deprecated `finish_vector_halo_update` method from `CubedSphereCommunicator`
 - Renamed DummyComm to LocalComm, and added support for message tags. The DummyComm symbol is still in place for backwards compatibility, but points to LocalComm
 - added error in CubedSphereCommunicator init if given a communicator with a size not equal to the total ranks of the given partitioner
@@ -33,7 +33,7 @@ Major changes:
 - TilePartitioner has a new `edge_interior_ratio` argument which defaults to 1.0, and lets the user specify the relative 1-dimensional extent of the compute domains of ranks on tile edges and corners relative to ranks on the tile interior. In all cases, the closest valid value will be used, which enables some previously invalid configurations (e.g. C128 on a 3 by 3 layout will use the closest valid edge_interior_ratio to 1.0)
 
 Minor changes:
-- The `split_cartesian_into_storages` method is moved out of pace-util, as it is more generally used, and now lives in pace.dsl.gt4py_utils
+- The `split_cartesian_into_storages` method is moved out of util, as it is more generally used, and now lives in pace.dsl.gt4py_utils
 - created `DriverGridData.new_from_grid_variables` class method to initialize from grid variable data
 - updated QuantityFactory to accept the more generic GridSizer class on initialization
 - added `sizer` as public attribute on QuantityFactory
@@ -47,7 +47,7 @@ v0.7.0
 ------
 
 Major changes:
-- Renamed package from fv3gfs-util to pace-util
+- Renamed package from fv3gfs-util to util
 - Added NullTimer to use for default Timer value, it is a disabled timer which cannot be enabled (raises NotImplementedError)
 - Added pace.util.grid, keeping symbols out of top level as they are still unstable
 - Added HaloUpdater and associated code, which compiles halo packing for more efficient halo updates

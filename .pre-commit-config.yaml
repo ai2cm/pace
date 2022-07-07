@@ -27,13 +27,13 @@ repos:
         fv3core/fv3core/stencils/fv_subgridz.py |
         )$
     - id: mypy
-      name: mypy-pace-util
+      name: mypy-util
       args: [
           --no-strict-optional,
           --ignore-missing-imports,
           --follow-imports, skip  # needed so we only test enabled files
         ]
-      files: pace-util
+      files: util
     - id: mypy
       name: mypy-stencils
       args: [
@@ -61,7 +61,7 @@ repos:
           --ignore-missing-imports,
           --follow-imports, skip  # needed so we only test enabled files
         ]
-      files: fv3gfs-physics
+      files: physics
     - id: mypy
       name: mypy-dsl
       args: [

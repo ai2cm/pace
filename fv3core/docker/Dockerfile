@@ -35,7 +35,7 @@ ENV FV3_STENCIL_REBUILD_FLAG=False
 ###
 ### Copy over necessary source and configuration files
 ###
-COPY external/pace-util/ /external/pace-util/
+COPY external/util/ /external/util/
 COPY external/stencils/ /external/stencils/
 COPY external/dsl/ /external/dsl/
 COPY fv3core /fv3core/fv3core
