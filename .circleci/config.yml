@@ -2,32 +2,6 @@ version: 2.1
 orbs:
   gcp-cli: circleci/gcp-cli@2.4.1
   gcp-gcr: circleci/gcp-gcr@0.15.0
-commands:
-  setup-mpi-environment:
-    steps:
-      - checkout
-      - run:
-          name: Update Submodules
-          command: git submodule update --init
-      - restore_cache:
-          keys:
-            - v1-mpi-venv-{{ checksum ".circleci/requirements.txt" }}-{{ checksum ".circleci/requirements.txt" }}-{{ checksum "constraints.txt" }}
-      - run:
-          name: Install Dependencies
-          command: |
-            DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
-            DEBIAN_FRONTEND=noninteractive sudo apt-get -y install software-properties-common libopenmpi3 libopenmpi-dev libboost-all-dev
-            python3 -m venv venv
-            source venv/bin/activate
-            pip3 install --upgrade pip setuptools wheel
-            pip3 install -r .circleci/requirements.txt -r .circleci/mpi_requirements.txt -c constraints.txt
-            pip3 install -e external/gt4py -c constraints.txt
-            pip3 install -e ./pace-util -e ./fv3core -e ./fv3gfs-physics -e ./stencils -e ./dsl -e ./driver -c constraints.txt
-      - save_cache:
-          key: v1-mpi-venv-{{ checksum ".circleci/requirements.txt" }}-{{ checksum ".circleci/requirements.txt" }}-{{ checksum "constraints.txt" }}
-          paths:
-            - venv
-            - /root/.cache/pip
 
 jobs:
 
@@ -52,7 +26,7 @@ jobs:
             - ~/.cache/pre-commit
             - venv
 
-  docker_savepoints_mpi:
+  savepoints_mpi:
     machine:
       image: ubuntu-2004:202111-02
     parameters:
@@ -111,49 +85,6 @@ jobs:
           key: v1-savepoints-{{ checksum "fv3core/Makefile" }}
           paths:
             - fv3core/test_data
-
-  savepoints_mpi:
-    parameters:
-      backend:
-        description: "gt4py backend"
-        default: "numpy"
-        type: enum
-        enum: ["numpy"]
-    docker:
-    - image: cimg/python:3.8
-    environment:
-      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
-    steps:
-      - gcp-cli/install:
-        version: 323.0.0
-      - run:
-          name: gcloud auth
-          command: |
-            echo $ENCODED_GCR_KEY
-            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
-            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-      - setup-mpi-environment
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache:
-          keys:
-            - v1-gt_cache-{{ checksum "gt4py_version.txt" }}
-      - run:
-          name: run tests
-          command: |
-            . venv/bin/activate
-            TEST_ARGS="--backend=<<parameters.backend>> -v" MPIRUN_CALL="mpirun -np 6 --oversubscribe" CONTAINER_CMD="" FV3_PATH="$(pwd)/fv3core" make savepoint_tests_mpi
-      - save_cache:
-          key: v1-gt_cache-{{ checksum "gt4py_version.txt" }}
-          paths:
-            - .gt_cache
-            - .gt_cache_000000
-            - .gt_cache_000001
-            - .gt_cache_000002
-            - .gt_cache_000003
-            - .gt_cache_000004
-            - .gt_cache_000005
 
   test_util:
     docker:
