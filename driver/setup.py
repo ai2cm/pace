@@ -6,10 +6,10 @@ from setuptools import find_namespace_packages, setup
 setup_requirements: List[str] = []
 
 requirements = [
-    "util",
-    "fv3core",
-    "physics",
+    "pace-fv3core",
+    "pace-physics",
     "pace-stencils",
+    "pace-util",
     "dacite",
     "pyyaml",
     "mpi4py",

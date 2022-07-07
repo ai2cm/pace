@@ -12,7 +12,7 @@ requirements = [
     "f90nml>=1.1.0",
     "gt4py",
     "numpy",
-    "util>=0.4.3",
+    "pace-util>=0.4.3",
     "xarray",
 ]
 
@@ -39,12 +39,12 @@ setup(
     long_description=readme,
     include_package_data=True,
     keywords="physics",
-    name="physics",
+    name="pace-physics",
     packages=find_namespace_packages(include=["fv3gfs.*"]),
     setup_requires=[],
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/VulcanClimateModeling/physics",
+    url="https://github.com/ai2cm/pace",
     version="0.1.0",
     zip_safe=False,
 )

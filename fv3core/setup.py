@@ -13,7 +13,8 @@ requirements = [
     "f90nml>=1.1.0",
     "gt4py",
     "numpy",
-    "util>=0.4.3",
+    "pace-util>=0.4.3",
+    "pace-stencils",
     "xarray",
 ]
 
@@ -39,7 +40,7 @@ setup(
     long_description=readme,
     include_package_data=True,
     keywords="fv3core",
-    name="fv3core",
+    name="pace-fv3core",
     packages=find_packages(include=["fv3core", "fv3core.*"]),
     setup_requires=[],
     test_suite="tests",
