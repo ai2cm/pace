@@ -25,6 +25,7 @@ repos:
       exclude: |
         (?x)^(
         fv3core/fv3core/stencils/fv_subgridz.py |
+        fv3core/tests/conftest.py
         )$
     - id: mypy
       name: mypy-pace-util
@@ -54,6 +55,10 @@ repos:
           --follow-imports, skip  # needed so we only test enabled files
         ]
       files: driver
+      exclude: |
+        (?x)^(
+        tests/main/driver/__init__.py |
+        )$
     - id: mypy
       name: mypy-physics
       args: [
