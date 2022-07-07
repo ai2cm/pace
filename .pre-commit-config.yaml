@@ -33,7 +33,7 @@ repos:
           --ignore-missing-imports,
           --follow-imports, skip  # needed so we only test enabled files
         ]
-      files: util
+      files: util/
     - id: mypy
       name: mypy-stencils
       args: [
