@@ -21,7 +21,7 @@ make update_submodules_venv
 virtualenv_path=$1
 fv3core_dir=`dirname $0`/../
 pace_dir=`dirname $0`/../../
-${fv3core_dir}/external/daint_venv/install.sh ${virtualenv_path}
+${pace_dir}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
 python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${pace_dir}/gt4py/ -c ${pace_dir}/constraints.txt
 python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${pace_dir}/pace-util/ -c ${pace_dir}/constraints.txt
