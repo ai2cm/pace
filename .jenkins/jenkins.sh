@@ -74,7 +74,7 @@ echo "PYTHON env ${python_env}"
 
 # NOTE: All backends are GTC backends now, so fetch caches
 echo "Fetching existing gt_caches"
-(cd ${PACE_DIR}/fv3gfs-physics && ${JENKINS_DIR}/fetch_caches.sh $backend $experiment physics)
+(cd ${PACE_DIR}/physics && ${JENKINS_DIR}/fetch_caches.sh $backend $experiment physics)
 cd ${PACE_DIR}
 
 # load machine dependent environment

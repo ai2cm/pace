@@ -12,7 +12,7 @@ RUN pip3 install --upgrade pip setuptools wheel && \
 
 COPY constraints.txt requirements.txt  /
 COPY fv3core/requirements  /fv3core/requirements
-COPY fv3gfs-physics/requirements.txt /fv3gfs-physics/requirements.txt
+COPY physics/requirements.txt /physics/requirements.txt
 RUN pip3 install -r /requirements.txt -c /constraints.txt
 
 COPY --from=serialbox_image /usr/local/serialbox /usr/local/serialbox
@@ -37,9 +37,9 @@ ENV FV3_STENCIL_REBUILD_FLAG=False
 ###
 ### Copy over necessary source and configuration files
 ###
-COPY pace-util/ pace-util/
+COPY util/ util/
 COPY fv3core fv3core/
-COPY fv3gfs-physics fv3gfs-physics/
+COPY physics physics/
 COPY stencils stencils/
 COPY dsl dsl/
 COPY driver driver/
