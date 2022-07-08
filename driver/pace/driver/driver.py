@@ -211,7 +211,7 @@ class Driver:
             orchestrate(
                 obj=self,
                 config=dace_config,
-                method_to_orchestrate="_orchestratable_step_all",
+                method_to_orchestrate="_critical_path_step_all",
                 dace_constant_args=["timer"],
             )
             orchestrate(
@@ -328,13 +328,17 @@ class Driver:
         ):
             self._write_restart_files(restart_path=f"RESTART_{step}")
 
-    def _orchestratable_step_all(
+    def _critical_path_step_all(
         self,
         steps_count: int,
         timer: pace.util.Timer,
         dt: float,
     ):
-        """Step all loop that can be orchestrated."""
+        """Start of code path where performance is critical.
+
+        This function must remain orchestrateable by DaCe (e.g.
+        all code not parseable due to python complexity needs to be moved
+        to a callbcak, like end_of_step_actions)."""
         for step in dace.nounroll(range(steps_count)):
             with timer.clock("mainloop"):
                 self._step_dynamics(
@@ -348,7 +352,7 @@ class Driver:
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
-            self._orchestratable_step_all(
+            self._critical_path_step_all(
                 steps_count=self.config.n_timesteps(),
                 timer=self.performance_config.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
