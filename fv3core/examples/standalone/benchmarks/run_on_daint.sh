@@ -127,7 +127,7 @@ sed -i "s/<NTASKS>/1/g" compile.daint.slurm
 sed -i "s/<NTASKSPERNODE>/1/g" compile.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
-sed -i "s/00:45:00/02:00:00/g" compile.daint.slurm
+sed -i "s/<TIMEOUT>/02:00:00/g" compile.daint.slurm
 sed -i "s#<CMD>#export PYTHONOPTIMIZE=TRUE\nsrun python examples/standalone/runfile/compile.py $data_path $backend #g" compile.daint.slurm
 
 
@@ -138,6 +138,7 @@ sed -i "s/<NTASKS>/$ranks/g" run.daint.slurm
 sed -i "s/<NTASKSPERNODE>/1/g" run.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
 sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
+sed -i "s/<TIMEOUT>/00:45:00/g" run.daint.slurm
 sed -i "s/cscsci/normal/g" run.daint.slurm
 sed -i "s#<CMD>#$env_vars\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 
@@ -189,7 +190,7 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
     sed -i "s/<NTASKSPERNODE>/1/g" run.nsys.daint.slurm
     sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.nsys.daint.slurm
     sed -i "s/<OUTFILE>/run.nsys.daint.out\n#SBATCH --hint=nomultithread/g" run.nsys.daint.slurm
-    sed -i "s/00:45:00/00:40:00/g" run.nsys.daint.slurm
+    sed -i "s/<TIMEOUT>/00:40:00/g" run.nsys.daint.slurm
     sed -i "s/cscsci/normal/g" run.nsys.daint.slurm
     sed -i "s#<CMD>#srun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
     # execute on a gpu node

@@ -16,9 +16,6 @@ from pace.dsl.stencil import (
 from pace.dsl.typing import FloatField
 
 
-TEST_BACKEND = "numpy"
-
-
 def copy_stencil(q_in: FloatField, q_out: FloatField):
     with computation(PARALLEL), interval(...):
         q_out = q_in
