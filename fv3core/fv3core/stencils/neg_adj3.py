@@ -174,26 +174,31 @@ def fix_water_vapor_down(qvapor: FloatField, dp: FloatField):
         lower_fix = 0.0  # type: FloatField
     with computation(BACKWARD):
         with interval(1, 2):
-            if qvapor[0, 0, -1] < 0:
+            if qvapor[0, 0, -1] < 0:  # top level is negative
+                # reduce level 1 by that amount to compensate:
                 qvapor = qvapor + qvapor[0, 0, -1] * dp[0, 0, -1] / dp
         with interval(0, 1):
             if qvapor < 0.0:
-                qvapor = 0.0
+                qvapor = 0.0  # top level is now 0
     with computation(FORWARD), interval(1, -1):
         dq = qvapor[0, 0, -1] * dp[0, 0, -1]
+        # if we borrowed from this level to fix the upper level, account for that here:
         if lower_fix[0, 0, -1] != 0:
             qvapor += lower_fix[0, 0, -1] / dp
+        # if we're now negative and can borrow from above do so:
         if (qvapor < 0) and (qvapor[0, 0, -1] > 0):
             dq = dq if dq < -qvapor * dp else -qvapor * dp
             upper_fix = dq
             qvapor += dq / dp
-        if qvapor < 0:
+        if qvapor < 0:  # If still negative borrow from below
             lower_fix = qvapor * dp
             qvapor = 0
     with computation(PARALLEL), interval(0, -2):
+        # if we had to borrow from upper levels before account for that in this loop
         if upper_fix[0, 0, 1] != 0:
             qvapor = qvapor - upper_fix[0, 0, 1] / dp
     with computation(PARALLEL), interval(-1, None):
+        # if we borrowed from the bottom level account for that here:
         if lower_fix[0, 0, -1] > 0:
             qvapor = qvapor + lower_fix / dp
         # Here we're re-using upper_fix to represent the current version of
@@ -202,20 +207,30 @@ def fix_water_vapor_down(qvapor: FloatField, dp: FloatField):
         upper_fix = qvapor
         # If we didn't have to worry about float valitation and negative column
         # mass we could set qvapor[k_bot] to 0 here...
-        dp_bot = dp
+        dp_bottom = dp
     with computation(BACKWARD), interval(0, -1):
+        dp_bottom = dp_bottom[0, 0, 1]
         dq = qvapor * dp
+        # (if qvapor[kbot] isn't negative we will just loop through and do nothing)
+        # if the level below us is negative and we are positive:
         if (upper_fix[0, 0, 1] < 0) and (qvapor > 0):
-            if dq >= -upper_fix[0, 0, 1] * dp_bot:
-                dq = -upper_fix[0, 0, 1] * dp_bot
-            qvapor = qvapor - dq / dp
-            upper_fix = upper_fix[0, 0, 1] + dq / dp_bot
+            # AND if we have enough mass to fill the level below us:
+            if dq >= -upper_fix[0, 0, 1] * dp_bottom:
+                # set dq to the amount needed to fill the level below us
+                dq = -upper_fix[0, 0, 1] * dp_bottom
+                # (otherwise dq is all of the vapor mass)
+            qvapor = qvapor - dq / dp  # subtract dq from current mass
+            upper_fix = upper_fix[0, 0, 1] + dq / dp_bottom  # add mass to qvapor[kbot]
+        # if qvapor[kbot] is still negative move to the next level
         else:
-            upper_fix = upper_fix[0, 0, 1]
+            upper_fix = upper_fix[
+                0, 0, 1
+            ]  # now upper_fix[k] is q[kbot] after adjusting
+    # after that loop upper_fix[ktop] = qvapot[kbot] so bring that value back to kbot
     with computation(FORWARD), interval(1, None):
         upper_fix = upper_fix[0, 0, -1]
     with computation(PARALLEL), interval(-1, None):
-        qvapor = upper_fix
+        qvapor = upper_fix  # and finally set qvapor[kbot]
 
 
 def fix_neg_cloud(dp: FloatField, qcld: FloatField):
