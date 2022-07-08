@@ -176,6 +176,7 @@ class DaceConfig:
             "my_rank": self.my_rank,
             "rank_size": self.rank_size,
             "layout": self.layout,
+            "tile_resolution": self.tile_resolution,
         }
 
     @classmethod
