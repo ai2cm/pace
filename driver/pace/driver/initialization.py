@@ -263,6 +263,8 @@ class SerialboxConfig(Initializer):
         dace_config = DaceConfig(
             communicator,
             backend,
+            tile_nx=self._namelist.npx,
+            tile_nz=self._namelist.npz,
         )
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=backend,

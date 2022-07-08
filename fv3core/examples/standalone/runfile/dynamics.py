@@ -221,6 +221,8 @@ def setup_dycore(
     dace_config = DaceConfig(
         communicator,
         backend,
+        tile_nx=dycore_config.npx,
+        tile_nz=dycore_config.npz,
     )
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,

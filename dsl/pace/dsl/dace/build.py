@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from dace.sdfg import SDFG
 
@@ -70,12 +70,22 @@ def get_target_rank(rank: int, partitioner: TilePartitioner):
                 return 4  # "11"
 
 
-def write_layout(sdfg: SDFG, layout: Tuple[int]):
+def build_info_filepath() -> str:
+    return "build_info.txt"
+
+
+def write_build_info(
+    sdfg: SDFG, layout: Tuple[int], resolution_per_tile: List[int], backend: str
+):
+    """Write down all relevant information on the build to identify
+    it at load time."""
     import os
 
     path_to_sdfg_dir = os.path.abspath(sdfg.build_folder)
-    with open(f"{path_to_sdfg_dir}/build_pace_layout.txt", "w") as layout_file:
-        layout_file.write(str(layout))
+    with open(f"{path_to_sdfg_dir}/{build_info_filepath()}", "w") as build_info_read:
+        build_info_read.write(backend)
+        build_info_read.write(str(layout))
+        build_info_read.write(str(resolution_per_tile))
 
 
 ################################################
@@ -128,9 +138,14 @@ def get_sdfg_path(
     # Check layout in build time matches layout now
     import ast
 
-    with open(f"{sdfg_dir_path}/build_pace_layout.txt") as layout_file:
-        list_ast_str = layout_file.read()
-        build_layout = ast.literal_eval(list_ast_str)
+    with open(f"{sdfg_dir_path}/{build_info_filepath()}") as build_info_file:
+        build_backend = build_info_file.readline()
+        if config.get_backend() != build_backend:
+            raise RuntimeError(
+                f"SDFG build for {build_backend}, {config._backend} has been asked"
+            )
+        # Check layout
+        build_layout = ast.literal_eval(build_info_file.readline())
         can_read = True
         if config.layout == [1, 1] and config.layout != build_layout:
             can_read = False
@@ -144,6 +159,13 @@ def get_sdfg_path(
             raise RuntimeError(
                 f"SDFG build for layout {build_layout}, "
                 f"cannot be run with current layout {config.layout}"
+            )
+        # Check resolution per tile
+        build_resolution = ast.literal_eval(build_info_file.readline())
+        if config.tile_resolution != build_resolution:
+            raise RuntimeError(
+                f"SDFG build for resolution {build_resolution}, "
+                f"cannot be run with current resolution {config.tile_resolution}"
             )
 
     print(f"[DaCe Config] Rank {rank} loading SDFG {sdfg_dir_path}")

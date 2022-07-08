@@ -205,7 +205,10 @@ class Driver:
             )
 
             dace_config = DaceConfig(
-                communicator=communicator, backend=self.config.stencil_config.backend
+                communicator=communicator,
+                backend=self.config.stencil_config.backend,
+                tile_nx=self.config.nx_tile,
+                tile_nz=self.config.nz,
             )
             self.config.stencil_config.dace_config = dace_config
             orchestrate(

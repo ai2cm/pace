@@ -27,6 +27,8 @@ class DaceConfig:
         self,
         communicator: Optional[CubedSphereCommunicator],
         backend: str,
+        tile_nx: int = 0,
+        tile_nz: int = 0,
         orchestration: Optional[DaCeOrchestration] = None,
     ):
         # Temporary. This is a bit too out of the ordinary for the common user.
@@ -129,6 +131,7 @@ class DaceConfig:
                 pass
 
         self._backend = backend
+        self.tile_resolution = [tile_nx, tile_nx, tile_nz]
         from pace.dsl.dace.build import get_target_rank, set_distributed_caches
 
         # Distributed build required info
@@ -177,8 +180,13 @@ class DaceConfig:
 
     @classmethod
     def from_dict(cls, data: dict):
-        config = cls(None, data["_backend"], DaCeOrchestration[data["_orchestrate"]])
+        config = cls(
+            None,
+            backend=data["_backend"],
+            orchestration=DaCeOrchestration[data["_orchestrate"]],
+        )
         config.my_rank = data["my_rank"]
         config.rank_size = data["rank_size"]
         config.layout = data["layout"]
+        config.tile_resolution = data["tile_resolution"]
         return config
