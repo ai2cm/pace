@@ -4,10 +4,12 @@ import fv3core.stencils.saturation_adjustment as satadjust
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateQSInit(TranslateDycoreFortranData2Py):
+    max_error = 5e-14
+
     def __init__(
         self,
         grid,
