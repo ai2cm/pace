@@ -1,7 +1,10 @@
 import abc
 import dataclasses
+import warnings
 from datetime import datetime, timedelta
 from typing import List, Optional, Union
+
+from sympy import ShapeError
 
 import pace.driver
 import pace.dsl
@@ -119,15 +122,15 @@ class ZarrDiagnostics(Diagnostics):
         output = {}
         if len(self.derived_names) > 0:
             for name in self.derived_names:
-                if "column_integrated_" in name:
-                    tracer = name.split("column_integrated_")[-1]
+                if name.startswith("column_integrated_"):
+                    tracer = name[len("column_integrated_") :]
                     output[name] = _compute_column_integral(
                         name,
                         getattr(state.dycore_state, tracer),
                         state.dycore_state.delp,
                     )
                 else:
-                    print(f"{name} is not a supported diagnostic variable.")
+                    warnings.warn(f"{name} is not a supported diagnostic variable.")
         return output
 
     def store_grid(
@@ -165,9 +168,12 @@ def _compute_column_integral(
     Compute column integrated mixing ratio (e.g., total liquid water path)
 
     Args:
+        name: name of the tracer
         q_in: tracer mixing ratio
         delp: pressure thickness of atmospheric layer
     """
+    if len(q_in.shape) < 3:
+        assert ShapeError(f"{name} does not have vertical levels.")
     column_integral = pace.util.Quantity(
         sum(
             q_in.data[:, :, k] * delp.data[:, :, k]

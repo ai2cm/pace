@@ -98,7 +98,7 @@ def parse_args():
     parser.add_argument(
         "--var2D",
         action="store_true",
-        help="whether variable is 2D",
+        help="whether variable is 2D, for diagnostics",
     )
     return parser.parse_args()
 
