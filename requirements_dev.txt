@@ -1,0 +1,11 @@
+pytest
+pytest-subtests
+pytest-cov
+mpi4py
+-e external/gt4py
+-e pace-util
+-e stencils
+-e dsl
+-e fv3gfs-physics
+-e fv3core
+-e driver
