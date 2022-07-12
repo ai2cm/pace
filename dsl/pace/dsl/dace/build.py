@@ -83,7 +83,7 @@ def write_build_info(
 
     path_to_sdfg_dir = os.path.abspath(sdfg.build_folder)
     with open(f"{path_to_sdfg_dir}/{build_info_filepath()}", "w") as build_info_read:
-        build_info_read.write("#Schema: Backend Layout Resolution per tile")
+        build_info_read.write("#Schema: Backend Layout Resolution per tile\n")
         build_info_read.write(f"{backend}\n")
         build_info_read.write(f"{str(layout)}\n")
         build_info_read.write(f"{str(resolution_per_tile)}\n")
