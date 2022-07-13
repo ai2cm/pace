@@ -200,6 +200,9 @@ class Driver:
                 quantity_factory=quantity_factory, communicator=communicator
             )
             self._start_time = self.config.initialization_config.start_time
+            import pace.util.global_config as global_config
+
+            global_config.set_partitioner(communicator.partitioner)
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
                 grid_data=self.state.grid_data,
@@ -241,6 +244,7 @@ class Driver:
 
     def step_all(self):
         logger.info("integrating driver forward in time")
+        stepper = 1
         with self.performance_config.total_timer.clock("total"):
             time = self.config.start_time
             end_time = self.config.start_time + self.config.total_time
@@ -249,9 +253,12 @@ class Driver:
                 metadata=self.state.dycore_state.ps.metadata,
             )
             while time < end_time:
+                logger.info(f"time step {stepper} started")
                 self._step(timestep=self.config.timestep.total_seconds())
                 time += self.config.timestep
                 self.diagnostics.store(time=time, state=self.state)
+                logger.info(f"time step {stepper} done")
+                stepper += 1
             self.performance_config.collect_performance()
 
     def _step(self, timestep: float):

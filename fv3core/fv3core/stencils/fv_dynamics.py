@@ -391,6 +391,8 @@ class DynamicalCore:
         tracers = {}
         for name in utils.tracer_variables[0:NQ]:
             tracers[name] = state.__dict__[name]
+        for _, quantity in tracers:
+            quantity.data[:] = 0
         tracer_storages = {name: quantity.storage for name, quantity in tracers.items()}
 
         # TODO: ak and bk are not attributes of DycoreState, put them on a statically
