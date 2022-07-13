@@ -35,7 +35,12 @@ from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.communicator import CubedSphereCommunicator
-from pace.util.decomposition import determine_compiling_ranks, get_target_rank, set_distributed_caches
+from pace.util.decomposition import (
+    determine_compiling_ranks,
+    determine_rank_is_compiling,
+    get_target_rank,
+    set_distributed_caches,
+)
 from pace.util.halo_data_transformer import QuantityHaloSpec
 
 
@@ -80,13 +85,16 @@ class CompilationConfig:
                 self.rank, communicator.partitioner
             )
             if use_minimal_caching:
-                self.is_compiling = determine_rank_is_compiling(self.rank, communicator.partitioner)
+                self.is_compiling = determine_rank_is_compiling(
+                    self.rank, communicator.partitioner
+                )
             else:
                 self.is_compiling = True
         else:
             self.rank = 1
             self.size = self.rank
             self.compiling_equivalent = self.rank
+            self.is_compiling = True
 
         set_distributed_caches(self)
 
@@ -497,7 +505,9 @@ class FrozenStencil(SDFGConvertible):
         args = tuple(args_list)
         if self.stencil_object is None:
             if self.stencil_config.compilation_config.run_mode == RunMode.Run:
-                raise RuntimeError(f"Stencil {self.func.__name__} needs compilation in run-mode, exiting")
+                raise RuntimeError(
+                    f"Stencil {self.func.__name__} needs compilation in run-mode, exiting"
+                )
             self.stencil_object = self._compile()
 
         if self.stencil_config.validate_args:
