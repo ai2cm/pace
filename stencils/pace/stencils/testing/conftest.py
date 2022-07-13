@@ -112,13 +112,11 @@ def get_ranks(metafunc, layout):
 def get_config(namelist_filename, backend):
     namelist = pace.util.Namelist.from_f90nml(f90nml.read(namelist_filename))
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=True,
+        compilation_config=pace.dsl.stencil.CompilationConfig(
+            backend=backend, rebuild=False, validate_args=True
+        ),
         dace_config=DaceConfig(
-            communicator=None,
-            backend=backend,
-            orchestration=DaCeOrchestration.Python,
+            communicator=None, backend=backend, orchestration=DaCeOrchestration.Python,
         ),
     )
     return stencil_config, namelist
@@ -163,8 +161,7 @@ def _savepoint_cases(
         if compute_grid:
             compute_grid_data(grid, namelist, backend, namelist.layout)
         stencil_factory = pace.dsl.stencil.StencilFactory(
-            config=stencil_config,
-            grid_indexing=grid.grid_indexing,
+            config=stencil_config, grid_indexing=grid.grid_indexing,
         )
         for test_name in sorted(list(savepoint_names)):
             testobj = get_test_class_instance(

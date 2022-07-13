@@ -10,6 +10,7 @@ import pace.util
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.stencil import (
+    CompilationConfig,
     FrozenStencil,
     StencilConfig,
     _convert_quantities_to_storage,
@@ -24,7 +25,11 @@ def get_stencil_config(
     **kwargs,
 ):
     dace_config = DaceConfig(None, backend=backend, orchestration=orchestration)
-    config = StencilConfig(backend=backend, dace_config=dace_config, **kwargs)
+    config = StencilConfig(
+        compilation_config=CompilationConfig(backend=backend),
+        dace_config=dace_config,
+        **kwargs,
+    )
     return config
 
 
@@ -143,10 +148,7 @@ def test_copy_frozen_stencil(
 @pytest.mark.parametrize("rebuild", [False])
 @pytest.mark.parametrize("format_source", [False])
 def test_frozen_stencil_raises_if_given_origin(
-    backend: str,
-    rebuild: bool,
-    format_source: bool,
-    device_sync: bool,
+    backend: str, rebuild: bool, format_source: bool, device_sync: bool,
 ):
     # only guaranteed when validating args
     config = get_stencil_config(
@@ -173,10 +175,7 @@ def test_frozen_stencil_raises_if_given_origin(
 @pytest.mark.parametrize("rebuild", [False])
 @pytest.mark.parametrize("format_source", [False])
 def test_frozen_stencil_raises_if_given_domain(
-    backend: str,
-    rebuild: bool,
-    format_source: bool,
-    device_sync: bool,
+    backend: str, rebuild: bool, format_source: bool, device_sync: bool,
 ):
     # only guaranteed when validating args
     config = get_stencil_config(
@@ -267,9 +266,7 @@ def test_frozen_field_after_parameter(backend):
 @pytest.mark.parametrize("rebuild", [True])
 @pytest.mark.parametrize("validate_args", [True])
 def test_backend_options(
-    backend: str,
-    rebuild: bool,
-    validate_args: bool,
+    backend: str, rebuild: bool, validate_args: bool,
 ):
     expected_options = {
         "numpy": {

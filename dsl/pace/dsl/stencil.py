@@ -1,5 +1,6 @@
 import copy
 import dataclasses
+import enum
 import hashlib
 import inspect
 import re
@@ -33,21 +34,73 @@ from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
+from pace.util.communicator import CubedSphereCommunicator
+from pace.util.decomposition import determine_compiling_ranks, get_target_rank, set_distributed_caches
 from pace.util.halo_data_transformer import QuantityHaloSpec
+
+
+class RunMode(enum.Enum):
+    """
+    Run-Mode for the model
+        Build: compile & save compiled files only
+        BuildAndRun: compile & save compiled files, then run
+        Run: load from .so and run, will fail if .so is not available
+    """
+
+    Build = 0
+    BuildAndRun = 1
+    Run = 2
+
+
+class CompilationConfig:
+    def __init__(
+        self,
+        backend: str = "numpy",
+        rebuild: bool = True,
+        validate_args: bool = True,
+        format_source: bool = False,
+        device_sync: bool = False,
+        run_mode: RunMode = RunMode.BuildAndRun,
+        use_minimal_caching: bool = False,
+        communicator: Optional[CubedSphereCommunicator] = None,
+    ) -> None:
+        # GT4Py backend args
+        self.backend = backend
+        self.rebuild = rebuild
+        self.validate_args = validate_args
+        self.format_source = format_source
+        self.device_sync = device_sync
+        # Caching strategy
+        self.run_mode = run_mode
+        self.use_minimal_caching = use_minimal_caching
+        if communicator:
+            self.rank = communicator.rank
+            self.size = communicator.partitioner.total_ranks
+            self.compiling_equivalent = get_target_rank(
+                self.rank, communicator.partitioner
+            )
+            if use_minimal_caching:
+                self.is_compiling = determine_rank_is_compiling(self.rank, communicator.partitioner)
+            else:
+                self.is_compiling = True
+        else:
+            self.rank = 1
+            self.size = self.rank
+            self.compiling_equivalent = self.rank
+
+        set_distributed_caches(self)
 
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
-    backend: str = "numpy"
-    rebuild: bool = True
-    validate_args: bool = True
-    format_source: bool = False
-    device_sync: bool = False
     compare_to_numpy: bool = False
     dace_config: Optional[DaceConfig] = None
+    compilation_config: CompilationConfig = CompilationConfig()
 
     def __post_init__(self):
-        self.backend_opts = self._get_backend_opts(self.device_sync, self.format_source)
+        self.backend_opts = self._get_backend_opts(
+            self.compilation_config.device_sync, self.compilation_config.format_source
+        )
         self._hash = self._compute_hash()
         # We need a DaceConfig to known our orchestration as part of the build system
         # but we can't hash it very well (for now). The workaround is to make
@@ -55,22 +108,25 @@ class StencilConfig(Hashable):
         if self.dace_config is None:
             self.dace_config = DaceConfig(
                 communicator=None,
-                backend=self.backend,
+                backend=self.compilation_config.backend,
                 orchestration=DaCeOrchestration.Python,
             )
 
     def _compute_hash(self):
         md5 = hashlib.md5()
-        md5.update(self.backend.encode())
+        md5.update(self.compilation_config.backend.encode())
         for attr in (
-            self.rebuild,
-            self.validate_args,
+            self.compilation_config.rebuild,
+            self.compilation_config.validate_args,
+            self.compilation_config.use_minimal_caching,
+            self.compare_to_numpy,
             self.backend_opts["format_source"],
         ):
             md5.update(bytes(attr))
         attr = self.backend_opts.get("device_sync", None)
         if attr:
             md5.update(bytes(attr))
+        md5.update(bytes(self.compilation_config.run_mode.value))
         return int(md5.hexdigest(), base=16)
 
     def __hash__(self):
@@ -83,23 +139,18 @@ class StencilConfig(Hashable):
             return False
 
     def _get_backend_opts(
-        self,
-        device_sync: Optional[bool] = None,
-        format_source: Optional[bool] = None,
+        self, device_sync: Optional[bool] = None, format_source: Optional[bool] = None,
     ) -> Dict[str, Any]:
         backend_opts: Dict[str, Any] = {}
         all_backend_opts: Optional[Dict[str, Any]] = {
-            "device_sync": {
-                "backend": r".*(gpu|cuda)$",
-                "value": False,
-            },
-            "format_source": {
-                "value": False,
-            },
+            "device_sync": {"backend": r".*(gpu|cuda)$", "value": False,},
+            "format_source": {"value": False,},
             "verbose": {"backend": r"(gt:|cuda)", "value": False},
         }
         for name, option in all_backend_opts.items():
-            using_option_backend = re.match(option.get("backend", ""), self.backend)
+            using_option_backend = re.match(
+                option.get("backend", ""), self.compilation_config.backend
+            )
             if "backend" not in option or using_option_backend:
                 backend_opts[name] = option["value"]
 
@@ -129,7 +180,12 @@ class StencilConfig(Hashable):
 
     @property
     def is_gpu_backend(self) -> bool:
-        return gt4py.backend.from_name(self.backend).storage_info["device"] == "gpu"
+        return (
+            gt4py.backend.from_name(self.compilation_config.backend).storage_info[
+                "device"
+            ]
+            == "gpu"
+        )
 
     @classmethod
     def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
@@ -169,24 +225,9 @@ def report_diff(arg: np.ndarray, numpy_arg: np.ndarray, label) -> str:
     metric_err = testing.compare_arr(arg, numpy_arg)
     nans_match = np.logical_and(np.isnan(arg), np.isnan(numpy_arg))
     n_points = np.product(arg.shape)
-    failures_14 = n_points - np.sum(
-        np.logical_or(
-            nans_match,
-            metric_err < 1e-14,
-        )
-    )
-    failures_10 = n_points - np.sum(
-        np.logical_or(
-            nans_match,
-            metric_err < 1e-10,
-        )
-    )
-    failures_8 = n_points - np.sum(
-        np.logical_or(
-            nans_match,
-            metric_err < 1e-10,
-        )
-    )
+    failures_14 = n_points - np.sum(np.logical_or(nans_match, metric_err < 1e-14,))
+    failures_10 = n_points - np.sum(np.logical_or(nans_match, metric_err < 1e-10,))
+    failures_8 = n_points - np.sum(np.logical_or(nans_match, metric_err < 1e-10,))
     greatest_error = np.max(metric_err[~np.isnan(metric_err)])
     if greatest_error == 0.0 and failures_14 == 0:
         report = ""
@@ -290,13 +331,18 @@ class CompareToNumpyStencil:
             skip_passes=skip_passes,
             timing_collector=timing_collector,
         )
-        numpy_stencil_config = StencilConfig(
+        compilation_config = CompilationConfig(
             backend="numpy",
             rebuild=stencil_config.rebuild,
             validate_args=stencil_config.validate_args,
             format_source=True,
             device_sync=None,
+            run_mode=RunMode.BuildAndRun,
+            use_minimal_caching=False,
+        )
+        numpy_stencil_config = StencilConfig(
             dace_config=stencil_config.dace_config,
+            compilation_config=compilation_config,
         )
         self._numpy = FrozenStencil(
             func=func,
@@ -309,11 +355,7 @@ class CompareToNumpyStencil:
         )
         self._func_name = func.__name__
 
-    def __call__(
-        self,
-        *args,
-        **kwargs,
-    ) -> None:
+    def __call__(self, *args, **kwargs,) -> None:
         args_copy = copy.deepcopy(args)
         kwargs_copy = copy.deepcopy(kwargs)
         self._actual(*args, **kwargs)
@@ -410,6 +452,13 @@ class FrozenStencil(SDFGConvertible):
         if not self.stencil_config.dace_config.is_dace_orchestrated():
             self.stencil_object = self._compile()
 
+        if stencil_config.compilation_config.run_mode == RunMode.Run:
+
+            def empty(*args, **kwargs):
+                pass
+
+            self.__call__ = empty
+
     def _compile(self):
 
         stencil_object: gt4py.StencilObject = gtscript.stencil(
@@ -447,6 +496,8 @@ class FrozenStencil(SDFGConvertible):
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)
         if self.stencil_object is None:
+            if self.stencil_config.compilation_config.run_mode == RunMode.Run:
+                raise RuntimeError(f"Stencil {self.func.__name__} needs compilation in run-mode, exiting")
             self.stencil_object = self._compile()
 
         if self.stencil_config.validate_args:
@@ -541,8 +592,7 @@ class FrozenStencil(SDFGConvertible):
             self.stencil_kwargs.pop("disable_code_generation")
         stencil_object_no_codegen = self._compile()
         return stencil_object_no_codegen.freeze(
-            origin=self._field_origins,
-            domain=self.domain,
+            origin=self._field_origins, domain=self.domain,
         )
 
     def __sdfg__(self, *args, **kwargs):
@@ -752,9 +802,7 @@ class GridIndexing:
         )
 
     def axis_offsets(
-        self,
-        origin: Tuple[int, ...],
-        domain: Tuple[int, ...],
+        self, origin: Tuple[int, ...], domain: Tuple[int, ...],
     ) -> Dict[str, Any]:
         if self.west_edge:
             i_start = gtscript.I[0] + self.origin[0] - origin[0]
@@ -921,11 +969,7 @@ class GridIndexing:
         )
         origin, extent = self.get_origin_domain(dims)
         temp_quantity = pace.util.Quantity(
-            temp_storage,
-            dims=dims,
-            units="unknown",
-            origin=origin,
-            extent=extent,
+            temp_storage, dims=dims, units="unknown", origin=origin, extent=extent,
         )
         if n_halo is None:
             n_halo = self.n_halo

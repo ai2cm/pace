@@ -7,6 +7,7 @@ from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.stencil import (
     CompareToNumpyStencil,
+    CompilationConfig,
     FrozenStencil,
     GridIndexing,
     StencilConfig,
@@ -50,11 +51,13 @@ def get_stencil_factory(backend: str) -> StencilFactory:
         communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
     )
     config = StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
-        format_source=False,
-        device_sync=False,
+        compilation_config=CompilationConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=False,
+            format_source=False,
+            device_sync=False,
+        ),
         dace_config=dace_config,
     )
     indexing = GridIndexing(
@@ -92,10 +95,7 @@ def test_get_stencils_with_varied_bounds_and_regions(backend: str):
     origins = [(3, 3, 0), (2, 2, 0)]
     domains = [(1, 1, 3), (2, 2, 3)]
     stencils = get_stencils_with_varied_bounds(
-        add_1_in_region_stencil,
-        origins,
-        domains,
-        stencil_factory=factory,
+        add_1_in_region_stencil, origins, domains, stencil_factory=factory,
     )
     q_orig, q_ref = setup_data_vars(backend=backend)
     stencils[0](q_orig, q_orig)
@@ -114,11 +114,13 @@ def test_stencil_factory_numpy_comparison_from_dims_halo(enabled: bool):
         communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
     )
     config = StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
-        format_source=False,
-        device_sync=False,
+        compilation_config=CompilationConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=False,
+            format_source=False,
+            device_sync=False,
+        ),
         compare_to_numpy=enabled,
         dace_config=dace_config,
     )
@@ -149,11 +151,13 @@ def test_stencil_factory_numpy_comparison_from_origin_domain(enabled: bool):
         communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
     )
     config = StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
-        format_source=False,
-        device_sync=False,
+        compilation_config=CompilationConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=False,
+            format_source=False,
+            device_sync=False,
+        ),
         compare_to_numpy=enabled,
         dace_config=dace_config,
     )
@@ -181,11 +185,13 @@ def test_stencil_factory_numpy_comparison_runs_without_exceptions():
         communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
     )
     config = StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
-        format_source=False,
-        device_sync=False,
+        compilation_config=CompilationConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=False,
+            format_source=False,
+            device_sync=False,
+        ),
         compare_to_numpy=True,
         dace_config=dace_config,
     )
@@ -199,9 +205,7 @@ def test_stencil_factory_numpy_comparison_runs_without_exceptions():
     )
     factory = StencilFactory(config=config, grid_indexing=indexing)
     stencil = factory.from_origin_domain(
-        func=copy_stencil,
-        origin=(0, 0, 0),
-        domain=indexing.max_shape,
+        func=copy_stencil, origin=(0, 0, 0), domain=indexing.max_shape,
     )
     assert isinstance(stencil, CompareToNumpyStencil)
     q_in = make_storage_from_shape(indexing.max_shape, backend=backend)

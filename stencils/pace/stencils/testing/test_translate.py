@@ -4,6 +4,7 @@ import os
 from typing import Any, Dict, List
 
 import numpy as np
+from pace.dsl.stencil import CompilationConfig
 import pytest
 
 import pace.dsl
@@ -229,11 +230,9 @@ def test_sequential_savepoint(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
     stencil_config = pace.dsl.StencilConfig(
-        backend=backend,
+        compilation_config=CompilationConfig(backend=backend),
         dace_config=DaceConfig(
-            communicator=None,
-            backend=backend,
-            orchestration=DaCeOrchestration.Python,
+            communicator=None, backend=backend, orchestration=DaCeOrchestration.Python,
         ),
     )
     # Reduce error threshold for GPU
@@ -349,11 +348,9 @@ def test_parallel_savepoint(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
     stencil_config = pace.dsl.StencilConfig(
-        backend=backend,
+        compilation_config=CompilationConfig(backend=backend),
         dace_config=DaceConfig(
-            communicator=None,
-            backend=backend,
-            orchestration=DaCeOrchestration.Python,
+            communicator=None, backend=backend, orchestration=DaCeOrchestration.Python,
         ),
     )
     # Increase minimum error threshold for GPU

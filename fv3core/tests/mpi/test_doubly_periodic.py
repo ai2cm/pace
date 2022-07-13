@@ -12,9 +12,9 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     backend = "numpy"
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=True,
+        compilation_config=pace.dsl.stencil.CompilationConfig(
+            backend=backend, rebuild=False, validate_args=True,
+        )
     )
     layout = (3, 3)
     config = fv3core.DynamicalCoreConfig(
@@ -81,8 +81,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         sizer=sizer, backend=backend
     )
     metric_terms = MetricTerms(
-        quantity_factory=quantity_factory,
-        communicator=communicator,
+        quantity_factory=quantity_factory, communicator=communicator,
     )
 
     # create an initial state from the Jablonowski & Williamson Baroclinic
@@ -95,8 +94,7 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         comm=communicator,
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config,
-        grid_indexing=grid_indexing,
+        config=stencil_config, grid_indexing=grid_indexing,
     )
 
     dycore = fv3core.DynamicalCore(

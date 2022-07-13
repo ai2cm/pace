@@ -80,7 +80,10 @@ def setup_dycore() -> Tuple[
         orchestration=DaCeOrchestration.Python,
     )
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
+        compilation_config=pace.dsl.stencil.CompilationConfig(
+            backend=backend, rebuild=False, validate_args=True
+        ),
+        dace_config=dace_config,
     )
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.npx - 1,
@@ -99,8 +102,7 @@ def setup_dycore() -> Tuple[
         sizer=sizer, backend=backend
     )
     metric_terms = MetricTerms(
-        quantity_factory=quantity_factory,
-        communicator=communicator,
+        quantity_factory=quantity_factory, communicator=communicator,
     )
 
     # create an initial state from the Jablonowski & Williamson Baroclinic
@@ -113,8 +115,7 @@ def setup_dycore() -> Tuple[
         comm=communicator,
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config,
-        grid_indexing=grid_indexing,
+        config=stencil_config, grid_indexing=grid_indexing,
     )
 
     dycore = fv3core.DynamicalCore(
@@ -129,11 +130,7 @@ def setup_dycore() -> Tuple[
     do_adiabatic_init = False
 
     dycore.update_state(
-        config.consv_te,
-        do_adiabatic_init,
-        config.dt_atmos,
-        config.n_split,
-        state,
+        config.consv_te, do_adiabatic_init, config.dt_atmos, config.n_split, state,
     )
 
     return dycore, state, pace.util.NullTimer()
