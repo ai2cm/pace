@@ -1,2 +1,2 @@
 # DaCe
-dace==0.13.3
+git+https://github.com/spcl/dace.git@v0.14rc1
