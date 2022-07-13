@@ -126,8 +126,8 @@ def get_sdfg_path(
         rank = config.my_rank
         rank_str = f"_{config.target_rank:06d}"
     else:
-        rank = "N/A"
-        rank_str = ""
+        rank = 0
+        rank_str = f"_{rank:06d}"
 
     sdfg_dir_path = (
         f"{gt_config.cache_settings['root_path']}"
@@ -151,12 +151,12 @@ def get_sdfg_path(
         # Check layout
         build_layout = ast.literal_eval(build_info_file.readline())
         can_read = True
-        if config.layout == [1, 1] and config.layout != build_layout:
+        if config.layout == (1, 1) and config.layout != build_layout:
             can_read = False
-        elif config.layout == [2, 2] and config.layout != build_layout:
+        elif config.layout == (2, 2) and config.layout != build_layout:
             can_read = False
         elif (
-            build_layout != [1, 1] and build_layout != [2, 2] and build_layout != [3, 3]
+            build_layout != (1, 1) and build_layout != (2, 2) and build_layout != (3, 3)
         ):
             can_read = False
         if not can_read:
@@ -195,8 +195,8 @@ def set_distributed_caches(config: "DaceConfig"):
             rank = config.my_rank
             target_rank_str = f"_{config.target_rank:06d}"
         else:
-            rank = "N/A"
-            target_rank_str = ""
+            rank = 0
+            target_rank_str = f"_{rank:06d}"
         cache_filepath = (
             f"{gt_config.cache_settings['root_path']}/.gt_cache{target_rank_str}"
         )
