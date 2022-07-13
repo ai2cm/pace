@@ -179,7 +179,9 @@ class Driver:
         self.config: DriverConfig = config
         self.time = self.config.start_time
         self.comm_config = config.comm_config
-        self.comm = config.comm_config.get_comm()
+        global_comm = config.comm_config.get_comm()
+        world = int(global_comm.Get_rank() >= (global_comm.Get_size() // 2))
+        self.comm = global_comm.Split(color=world, key=global_comm.Get_rank())
         self.performance_config = self.config.performance_config
         with self.performance_config.total_timer.clock("initialization"):
             communicator = pace.util.CubedSphereCommunicator.from_layout(
@@ -198,7 +200,7 @@ class Driver:
             )
 
             self.quantity_factory, self.stencil_factory = _setup_factories(
-                config=config, communicator=communicator
+                config=config, communicator=communicator, global_comm=global_comm
             )
 
             self.state = self.config.initialization.get_driver_state(
@@ -418,7 +420,9 @@ def log_subtile_location(partitioner: pace.util.TilePartitioner, rank: int):
 
 
 def _setup_factories(
-    config: DriverConfig, communicator: pace.util.CubedSphereCommunicator
+    config: DriverConfig,
+    communicator: pace.util.CubedSphereCommunicator,
+    global_comm,
 ) -> Tuple["pace.util.QuantityFactory", "pace.dsl.StencilFactory"]:
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.nx_tile,
@@ -438,7 +442,6 @@ def _setup_factories(
         sizer, backend=config.stencil_config.backend
     )
     stencil_factory = pace.dsl.StencilFactory(
-        config=config.stencil_config,
-        grid_indexing=grid_indexing,
+        config=config.stencil_config, grid_indexing=grid_indexing, comm=global_comm
     )
     return quantity_factory, stencil_factory

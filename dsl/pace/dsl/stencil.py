@@ -333,6 +333,32 @@ def _stencil_object_name(stencil_object: gt4py.StencilObject) -> str:
     return type(stencil_object).__name__
 
 
+def get_pair_rank(rank: int, size: int):
+    dycore_ranks = size // 2
+    if rank < dycore_ranks:
+        return rank + dycore_ranks
+    else:
+        return rank - dycore_ranks
+
+
+def compare_ranks(comm, data) -> Mapping[str, int]:
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    pair_rank = get_pair_rank(rank, size)
+    differences = {}
+    for name, maybe_array in sorted(data.items(), key=lambda x: x[0]):
+        if isinstance(maybe_array, pace.util.Quantity):
+            maybe_array = maybe_array.data
+        if hasattr(maybe_array, "data") and isinstance(maybe_array.data, np.ndarray):
+            array = maybe_array.data
+            other = comm.sendrecv(array, pair_rank)
+            arr_diffs = np.sum(np.logical_and(~np.isnan(array), array != other))
+            if arr_diffs > 0:
+                print(name, rank, pair_rank, array, other)
+                differences[name] = arr_diffs
+    return differences
+
+
 class FrozenStencil(SDFGConvertible):
     """
     Wrapper for gt4py stencils which stores origin and domain at compile time,
@@ -352,6 +378,7 @@ class FrozenStencil(SDFGConvertible):
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Tuple[str, ...] = (),
         timing_collector: Optional[TimingCollector] = None,
+        comm=None,
     ):
         """
         Args:
@@ -362,6 +389,8 @@ class FrozenStencil(SDFGConvertible):
             externals: compile-time external variables required by stencil
             skip_passes: compiler passes to skip when building stencil
             timing_collector: Optional object that accumulates timings
+            comm: if given, inputs and outputs will be compared to the "twin"
+                rank of this rank
         """
         if isinstance(origin, tuple):
             origin = cast_to_index3d(origin)
@@ -369,6 +398,7 @@ class FrozenStencil(SDFGConvertible):
         self.origin = origin
         self.domain: Index3D = cast_to_index3d(domain)
         self.stencil_config: StencilConfig = stencil_config
+        self.comm = comm
 
         if timing_collector is None:
             self._timing_collector = TimingCollector()
@@ -379,6 +409,7 @@ class FrozenStencil(SDFGConvertible):
             externals = {}
         self.externals = externals
         self.func = func
+        self._func_name = func.__name__
         self.stencil_kwargs = self.stencil_config.stencil_kwargs(
             skip_passes=skip_passes, func=self.func
         )
@@ -449,6 +480,13 @@ class FrozenStencil(SDFGConvertible):
         if self.stencil_object is None:
             self.stencil_object = self._compile()
 
+        args_as_kwargs = dict(zip(self._argument_names, args))
+        differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
+        if len(differences) > 0:
+            raise ValueError(
+                f"rank {self.comm.Get_rank()} has differences {differences} "
+                f"before calling {self._func_name}"
+            )
         if self.stencil_config.validate_args:
             if __debug__ and "origin" in kwargs:
                 raise TypeError("origin cannot be passed to FrozenStencil call")
@@ -463,7 +501,6 @@ class FrozenStencil(SDFGConvertible):
                 exec_info=self._timing_collector.exec_info,
             )
         else:
-            args_as_kwargs = dict(zip(self._argument_names, args))
             self.stencil_object.run(
                 **args_as_kwargs,
                 **kwargs,
@@ -471,6 +508,12 @@ class FrozenStencil(SDFGConvertible):
                 exec_info=self._timing_collector.exec_info,
             )
             self._mark_cuda_fields_written({**args_as_kwargs, **kwargs})
+        differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
+        if len(differences) > 0:
+            raise ValueError(
+                f"rank {self.comm.Get_rank()} has differences {differences} "
+                f"after calling {self._func_name}"
+            )
 
     def _mark_cuda_fields_written(self, fields: Mapping[str, Storage]):
         if self.stencil_config.is_gpu_backend:
@@ -951,7 +994,7 @@ class GridIndexing:
 class StencilFactory:
     """Configurable class which creates stencil objects."""
 
-    def __init__(self, config: StencilConfig, grid_indexing: GridIndexing):
+    def __init__(self, config: StencilConfig, grid_indexing: GridIndexing, comm):
         """
         Args:
             config: gt4py-specific stencil configuration
@@ -960,6 +1003,7 @@ class StencilFactory:
         self.config: StencilConfig = config
         self.grid_indexing: GridIndexing = grid_indexing
         self.timing_collector = TimingCollector()
+        self.comm = comm
 
     @property
     def backend(self):
@@ -994,6 +1038,7 @@ class StencilFactory:
             externals=externals,
             skip_passes=skip_passes,
             timing_collector=self.timing_collector,
+            comm=self.comm,
         )
 
     def from_dims_halo(
@@ -1041,6 +1086,7 @@ class StencilFactory:
         return StencilFactory(
             config=self.config,
             grid_indexing=self.grid_indexing.restrict_vertical(k_start=k_start, nk=nk),
+            comm=self.comm,
         )
 
     def build_report(self, key: str = "build_time", **kwargs) -> str:
