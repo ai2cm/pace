@@ -14,12 +14,10 @@ ACTION_SDFG_MEMORY_COUNT = "sdfg_memory_count"
     "action",
     required=True,
     type=click.Choice([ACTION_SDFG_MEMORY_COUNT]),
-    help=f"{ACTION_SDFG_MEMORY_COUNT}: count RAM/VRAM needed for a given SDFG (+/- 10%)",
 )
 @click.option(
     "--sdfg_path",
     type=click.STRING,
-    help="Path to SDFG file",
 )
 def command_line(action: str, sdfg_path: Optional[str]):
     """
