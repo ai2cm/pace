@@ -143,7 +143,7 @@ def get_sdfg_path(
         # Jump over schema comment
         build_info_file.readline()
         # Read in
-        build_backend = build_info_file.readline()
+        build_backend = build_info_file.readline().rstrip()
         if config.get_backend() != build_backend:
             raise RuntimeError(
                 f"SDFG build for {build_backend}, {config._backend} has been asked"
