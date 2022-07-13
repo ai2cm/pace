@@ -2,6 +2,12 @@ import copy
 import typing
 
 import numpy as np
+
+
+try:
+    import cupy as cp
+except ModuleNotFoundError:
+    cp = None
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
 
 import fv3gfs.physics.functions.microphysics_funcs as functions
@@ -1913,8 +1919,12 @@ class Microphysics:
         )
 
         self.namelist = namelist
+        # Cache a numpy-like module for
+        if stencil_factory.config.dace_config.is_gpu_backend():
+            self.gfdl_cloud_microphys_init(cp)
+        else:
+            self.gfdl_cloud_microphys_init(np)
         # [TODO]: many of the "constants" come from namelist, needs to be updated
-        self.gfdl_cloud_microphys_init()
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_compute()
         shape = grid_indexing.domain_full(add=(1, 1, 1))
@@ -2085,14 +2095,14 @@ class Microphysics:
             domain=grid_indexing.domain_compute(),
         )
 
-    def gfdl_cloud_microphys_init(self):
-        self.setupm()
+    def gfdl_cloud_microphys_init(self, numpy_module):
+        self.setupm(numpy_module)
         self._log_10 = np.log(10.0)
         self._tice0 = self.namelist.tice - 0.01
         # supercooled water can exist down to - 48 c, which is the "absolute"
         self._t_wfr = self.namelist.tice - 40.0
 
-    def setupm(self):
+    def setupm(self, numpy_module):
         gam263 = 1.456943
         gam275 = 1.608355
         gam290 = 1.827363
@@ -2106,9 +2116,9 @@ class Microphysics:
         rnzg = 4.0e6
 
         # Density parameters
-        acc = np.array([5.0, 2.0, 0.5])
+        acc = numpy_module.array([5.0, 2.0, 0.5])
 
-        pie = 4.0 * np.arctan(1.0)
+        pie = 4.0 * numpy_module.arctan(1.0)
 
         # S. Klein's formular (eq 16) from am2
         fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh ** 3
@@ -2132,7 +2142,7 @@ class Microphysics:
         cgacs = pisq * rnzg * rnzs * functions.RHOS
         cgacs = cgacs * self.namelist.c_pgacs
 
-        act = np.empty(8)
+        act = numpy_module.empty(8)
         act[0] = pie * rnzs * functions.RHOS
         act[1] = pie * rnzr * functions.RHOR
         act[5] = pie * rnzg * functions.RHOG
@@ -2142,14 +2152,14 @@ class Microphysics:
         act[6] = act[0]
         act[7] = act[5]
 
-        acco = np.empty((3, 4))
+        acco = numpy_module.empty((3, 4))
         for i in range(3):
             for k in range(4):
                 acco[i, k] = acc[i] / (
                     act[2 * k] ** ((6 - i) * 0.25) * act[2 * k + 1] ** ((i + 1) * 0.25)
                 )
 
-        gcon = 40.74 * np.sqrt(functions.SFCRHO)
+        gcon = 40.74 * numpy_module.sqrt(functions.SFCRHO)
 
         # Decreasing csacw to reduce cloud water --- > snow
         csacw = pie * rnzs * self.namelist.clin * gam325 / (4.0 * act[0] ** 0.8125)
@@ -2165,41 +2175,47 @@ class Microphysics:
         cracw = self.namelist.c_cracw * cracw
 
         # Subl and revap: five constants for three separate processes
-        cssub = np.empty(5)
+        cssub = numpy_module.empty(5)
         cssub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzs
-        cssub[1] = 0.78 / np.sqrt(act[0])
+        cssub[1] = 0.78 / numpy_module.sqrt(act[0])
         cssub[2] = (
             0.31
             * scm3
             * gam263
-            * np.sqrt(self.namelist.clin / visk)
+            * numpy_module.sqrt(self.namelist.clin / visk)
             / act[0] ** 0.65625
         )
         cssub[3] = tcond * constants.RVGAS
         cssub[4] = (hlts ** 2) * vdifu
 
-        cgsub = np.empty(5)
+        cgsub = numpy_module.empty(5)
         cgsub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
-        cgsub[1] = 0.78 / np.sqrt(act[5])
-        cgsub[2] = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
+        cgsub[1] = 0.78 / numpy_module.sqrt(act[5])
+        cgsub[2] = (
+            0.31 * scm3 * gam275 * numpy_module.sqrt(gcon / visk) / act[5] ** 0.6875
+        )
         cgsub[3] = cssub[3]
         cgsub[4] = cssub[4]
 
-        crevp = np.empty(5)
+        crevp = numpy_module.empty(5)
         crevp[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
-        crevp[1] = 0.78 / np.sqrt(act[1])
+        crevp[1] = 0.78 / numpy_module.sqrt(act[1])
         crevp[2] = (
-            0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
+            0.31
+            * scm3
+            * gam290
+            * numpy_module.sqrt(self.namelist.alin / visk)
+            / act[1] ** 0.725
         )
         crevp[3] = cssub[3]
         crevp[4] = hltc ** 2 * vdifu
 
-        cgfr = np.empty(2)
+        cgfr = numpy_module.empty(2)
         cgfr[0] = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
         cgfr[1] = 0.66
 
         # smlt: five constants (lin et al. 1983)
-        csmlt = np.empty(5)
+        csmlt = numpy_module.empty(5)
         csmlt[0] = 2.0 * pie * tcond * rnzs / hltf
         csmlt[1] = 2.0 * pie * vdifu * rnzs * hltc / hltf
         csmlt[2] = cssub[1]
@@ -2207,7 +2223,7 @@ class Microphysics:
         csmlt[4] = ch2o / hltf
 
         # gmlt: five constants
-        cgmlt = np.empty(5)
+        cgmlt = numpy_module.empty(5)
         cgmlt[0] = 2.0 * pie * tcond * rnzg / hltf
         cgmlt[1] = 2.0 * pie * vdifu * rnzg * hltc / hltf
         cgmlt[2] = cgsub[1]
