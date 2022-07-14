@@ -7,6 +7,14 @@ from pace.util import TilePartitioner
 from pace.util.grid import DriverGridData
 
 
+def set_winds_zero(
+    u_dt: FloatField, v_dt: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        u_dt = 0.0
+        v_dt = 0.0
+
+
 def update_dwind_prep_stencil(
     u_dt: FloatField,
     v_dt: FloatField,
@@ -33,9 +41,6 @@ def update_dwind_prep_stencil(
         ve_1 = v3_1[-1, 0, 0] + v3_1
         ve_2 = v3_2[-1, 0, 0] + v3_2
         ve_3 = v3_3[-1, 0, 0] + v3_3
-    with computation(PARALLEL), interval(...):
-        u_dt = 0.0
-        v_dt = 0.0
 
 
 def update_dwind_y_edge_south_stencil(
@@ -199,6 +204,12 @@ class AGrid2DGridPhysics:
             domain=(nic + 2, njc + 2, npz),
         )
 
+        self._set_winds_to_zero_stencil = stencil_factory.from_origin_domain(
+            set_winds_zero,
+            origin=(grid_indexing.n_halo - 1, grid_indexing.n_halo - 1, 0),
+            domain=(nic + 2, njc + 2, npz),
+        )
+
         self.global_is, self.global_js = self.local_to_global_indices(
             grid_indexing.isc, grid_indexing.jsc
         )
@@ -216,12 +227,10 @@ class AGrid2DGridPhysics:
             )
             if self.global_js <= self._jm2:
                 if self._domain_lower_west[1] > 0:
-                    self._update_dwind_y_edge_south_stencil1 = (
-                        stencil_factory.from_origin_domain(
-                            update_dwind_y_edge_south_stencil,
-                            origin=origin_lower,
-                            domain=self._domain_lower_west,
-                        )
+                    self._update_dwind_y_edge_south_stencil1 = stencil_factory.from_origin_domain(
+                        update_dwind_y_edge_south_stencil,
+                        origin=origin_lower,
+                        domain=self._domain_lower_west,
                     )
             if self.global_je > self._jm2:
                 js_upper = self.global_to_local_y(max(self._jm2 + 1, self.global_js))
@@ -232,12 +241,10 @@ class AGrid2DGridPhysics:
                     npz,
                 )
                 if self._domain_upper_west[1] > 0:
-                    self._update_dwind_y_edge_north_stencil1 = (
-                        stencil_factory.from_origin_domain(
-                            update_dwind_y_edge_north_stencil,
-                            origin=origin_upper,
-                            domain=self._domain_upper_west,
-                        )
+                    self._update_dwind_y_edge_north_stencil1 = stencil_factory.from_origin_domain(
+                        update_dwind_y_edge_north_stencil,
+                        origin=origin_upper,
+                        domain=self._domain_upper_west,
                     )
                     self._copy3_stencil1 = stencil_factory.from_origin_domain(
                         copy3_stencil,
@@ -259,12 +266,10 @@ class AGrid2DGridPhysics:
             )
             if self.global_js <= self._jm2:
                 if self._domain_lower_east[1] > 0:
-                    self._update_dwind_y_edge_south_stencil2 = (
-                        stencil_factory.from_origin_domain(
-                            update_dwind_y_edge_south_stencil,
-                            origin=origin_lower,
-                            domain=self._domain_lower_east,
-                        )
+                    self._update_dwind_y_edge_south_stencil2 = stencil_factory.from_origin_domain(
+                        update_dwind_y_edge_south_stencil,
+                        origin=origin_lower,
+                        domain=self._domain_lower_east,
                     )
 
             if self.global_je > self._jm2:
@@ -276,12 +281,10 @@ class AGrid2DGridPhysics:
                     npz,
                 )
                 if self._domain_upper_east[1] > 0:
-                    self._update_dwind_y_edge_north_stencil2 = (
-                        stencil_factory.from_origin_domain(
-                            update_dwind_y_edge_north_stencil,
-                            origin=origin_upper,
-                            domain=self._domain_upper_east,
-                        )
+                    self._update_dwind_y_edge_north_stencil2 = stencil_factory.from_origin_domain(
+                        update_dwind_y_edge_north_stencil,
+                        origin=origin_upper,
+                        domain=self._domain_upper_east,
                     )
                     self._copy3_stencil3 = stencil_factory.from_origin_domain(
                         copy3_stencil,
@@ -302,12 +305,10 @@ class AGrid2DGridPhysics:
             )
             if self.global_is <= self._im2:
                 if self._domain_lower_south[0] > 0:
-                    self._update_dwind_x_edge_west_stencil1 = (
-                        stencil_factory.from_origin_domain(
-                            update_dwind_x_edge_west_stencil,
-                            origin=origin_lower,
-                            domain=self._domain_lower_south,
-                        )
+                    self._update_dwind_x_edge_west_stencil1 = stencil_factory.from_origin_domain(
+                        update_dwind_x_edge_west_stencil,
+                        origin=origin_lower,
+                        domain=self._domain_lower_south,
                     )
             if self.global_ie > self._im2:
                 is_upper = self.global_to_local_x(max(self._im2 + 1, self.global_is))
@@ -317,12 +318,10 @@ class AGrid2DGridPhysics:
                     1,
                     npz,
                 )
-                self._update_dwind_x_edge_east_stencil1 = (
-                    stencil_factory.from_origin_domain(
-                        update_dwind_x_edge_east_stencil,
-                        origin=origin_upper,
-                        domain=self._domain_upper_south,
-                    )
+                self._update_dwind_x_edge_east_stencil1 = stencil_factory.from_origin_domain(
+                    update_dwind_x_edge_east_stencil,
+                    origin=origin_upper,
+                    domain=self._domain_upper_south,
                 )
                 self._copy3_stencil5 = stencil_factory.from_origin_domain(
                     copy3_stencil, origin=origin_upper, domain=self._domain_upper_south
@@ -342,12 +341,10 @@ class AGrid2DGridPhysics:
             )
             if self.global_is < self._im2:
                 if self._domain_lower_north[0] > 0:
-                    self._update_dwind_x_edge_west_stencil2 = (
-                        stencil_factory.from_origin_domain(
-                            update_dwind_x_edge_west_stencil,
-                            origin=origin_lower,
-                            domain=self._domain_lower_north,
-                        )
+                    self._update_dwind_x_edge_west_stencil2 = stencil_factory.from_origin_domain(
+                        update_dwind_x_edge_west_stencil,
+                        origin=origin_lower,
+                        domain=self._domain_lower_north,
                     )
             if self.global_ie >= self._im2:
                 is_upper = self.global_to_local_x(max(self._im2 + 1, self.global_is))
@@ -358,12 +355,10 @@ class AGrid2DGridPhysics:
                     npz,
                 )
                 if self._domain_upper_north[0] > 0:
-                    self._update_dwind_x_edge_east_stencil2 = (
-                        stencil_factory.from_origin_domain(
-                            update_dwind_x_edge_east_stencil,
-                            origin=origin_upper,
-                            domain=self._domain_upper_north,
-                        )
+                    self._update_dwind_x_edge_east_stencil2 = stencil_factory.from_origin_domain(
+                        update_dwind_x_edge_east_stencil,
+                        origin=origin_upper,
+                        domain=self._domain_upper_north,
                     )
                     self._copy3_stencil7 = stencil_factory.from_origin_domain(
                         copy3_stencil,
@@ -428,11 +423,7 @@ class AGrid2DGridPhysics:
         return local_value + subtile_index * subtile_length
 
     def __call__(
-        self,
-        u: FloatField,
-        v: FloatField,
-        u_dt: FloatField,
-        v_dt: FloatField,
+        self, u: FloatField, v: FloatField, u_dt: FloatField, v_dt: FloatField,
     ):
         """
         Transforms the wind tendencies from A grid to D grid for the final update
@@ -454,6 +445,7 @@ class AGrid2DGridPhysics:
             self._ve_2,
             self._ve_3,
         )
+        self._set_winds_to_zero_stencil(u_dt, v_dt)
         if self.west_edge:
             if self.global_js <= self._jm2:
                 if self._domain_lower_west[1] > 0:
