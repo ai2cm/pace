@@ -221,9 +221,9 @@ def calculate_streamfunction_testCase1(lon, lat, dimensions):
     return psi, psi_staggered
 
 
-def calculate_windsFromStreamfunction(psi, dx, dy, dimensions):
+def calculate_windsFromStreamfunction_Agrid(psi, dx, dy, dimensions):
     """
-    Use: ua, va = calculate_windsFromStreamfunction(psi, dx, dy, dimensions)
+    Use: ua, va = calculate_windsFromStreamfunction_Agrid(psi, dx, dy, dimensions)
 
     Inputs:
     - psi: streamfunction on center points; with halo points
@@ -246,6 +246,29 @@ def calculate_windsFromStreamfunction(psi, dx, dy, dimensions):
             va[ii, jj] = 0 if dist == 0 else (psi2 - psi1) / dist
 
     return ua, va
+
+
+def calculate_windsFromStreamfunction_Cgrid(psi, dx, dy, dimensions):
+    """
+    Use: uc, vc = calculate_windsFromStreamfunction_Cgrid(psi, dx, dy, dimensions)
+
+    Inputs:
+    - psi: streamfunction on corner points; with halo points
+    - dx, dy: distance between edge points; with halo points
+    - dimensions: Dict{'nxhalo', 'nyhalo', 'nx', 'ny}
+    """
+    uc = np.zeros((dimensions['nxhalo'], dimensions['nyhalo']))
+    vc = np.zeros((dimensions['nxhalo'], dimensions['nyhalo']))
+
+    for jj in range(dimensions['nhalo']-1, dimensions['ny']+dimensions['nhalo']+1):
+        for ii in range(dimensions['nhalo']-1, dimensions['nx']+dimensions['nhalo']+1):
+            dist = dx.data[ii, jj]
+            vc[ii, jj] = 0 if dist == 0 else (psi.data[ii+1, jj] - psi.data[ii, jj]) / dist
+
+            dist = dy.data[ii, jj]
+            uc[ii, jj] = 0 if dist == 0 else -1.0 * (psi.data[ii, jj+1] - psi.data[ii, jj]) / dist
+
+    return uc, vc
 
 
 def write_initialCondition_toFile(fOut, variables, dimensions, units):
