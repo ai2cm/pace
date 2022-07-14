@@ -37,9 +37,7 @@ def is_ref(sd: SDFG, aname: str):
     return found
 
 
-def count_memory(sdfg_path: str):
-    sdfg = SDFG.from_file(sdfg_path)
-
+def count_memory(sdfg: SDFG):
     allocations = {}
     for storage_type in StorageType:
         allocations[storage_type] = {}
@@ -76,3 +74,7 @@ def count_memory(sdfg_path: str):
                 f"    Alloc ref | unref: {alloc_in_mb}mb | {badalloc_in_mb}mb\n"
                 f"    Top lvl alloc: {toplvlalloc_in_mb}mb\n"
             )
+
+
+def count_memory_from_path(sdfg_path: str):
+    count_memory(SDFG.from_file(sdfg_path))
