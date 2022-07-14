@@ -330,6 +330,7 @@ class Driver:
             and step in self.config.intermediate_restart
         ):
             self._write_restart_files(restart_path=f"RESTART_{step}")
+        self.performance_config.collect_performance()
 
     def _critical_path_step_all(
         self,

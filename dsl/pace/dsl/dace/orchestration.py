@@ -18,7 +18,10 @@ from pace.dsl.dace.build import (
     write_build_info,
 )
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
-from pace.dsl.dace.sdfg_opt_passes import strip_unused_global_in_compute_x_flux
+from pace.dsl.dace.sdfg_opt_passes import (
+    splittable_region_expansion,
+    strip_unused_global_in_compute_x_flux,
+)
 from pace.dsl.dace.utils import DaCeProgress
 from pace.util.mpi import MPI
 
@@ -136,8 +139,8 @@ def _build_sdfg(
             sdfg.simplify(validate=False, verbose=True)
 
         # Perform pre-expansion fine tuning
-        # WARNING: Deactivate until expansion is in gt4py/master
-        # splittable_region_expansion(sdfg)
+        with DaCeProgress(config, "Split regions"):
+            splittable_region_expansion(sdfg)
 
         # Expand the stencil computation Library Nodes with the right expansion
         with DaCeProgress(config, "Expand"):
