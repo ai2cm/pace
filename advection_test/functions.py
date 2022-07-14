@@ -8,6 +8,7 @@ from pace.util import CubedSphereCommunicator, CubedSpherePartitioner, Quantity,
 from pace.util.constants import RADIUS
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
+import copy as cp
 import ipyparallel as ipp
 import matplotlib.pyplot as plt
 import numpy as np
@@ -60,6 +61,7 @@ def configure_domain(layout, mpi_comm, dimensions, backend='numpy'):
     - stencil_factory
     """
 
+
     partitioner = CubedSpherePartitioner(TilePartitioner(layout))
     communicator = CubedSphereCommunicator(mpi_comm, partitioner)
 
@@ -76,6 +78,15 @@ def configure_domain(layout, mpi_comm, dimensions, backend='numpy'):
     dace_config = DaceConfig(communicator=None, backend=backend, orchestration=DaCeOrchestration.Python)
     stencil_config = StencilConfig(backend=backend, rebuild=False, validate_args=True, dace_config=dace_config)
     grid_indexing = GridIndexing.from_sizer_and_communicator(sizer=sizer, cube=communicator)
+
+    ### set the domain so there is only one level in the vertical -- forced 
+    domain = (grid_indexing.domain)
+    domain_new = list(domain)
+    domain_new[2] = 2
+    domain_new = tuple(domain_new)
+
+    grid_indexing.domain = domain_new
+
     stencil_factory = StencilFactory(config=stencil_config, grid_indexing=grid_indexing)
 
     configuration = {'partitioner': partitioner, 'communicator': communicator, 
@@ -221,54 +232,66 @@ def calculate_streamfunction_testCase1(lon, lat, dimensions):
     return psi, psi_staggered
 
 
-def calculate_windsFromStreamfunction_Agrid(psi, dx, dy, dimensions):
+def calculate_windsFromStreamfunction_grid(psi, dx, dy, dimensions, grid='A'):
     """
-    Use: ua, va = calculate_windsFromStreamfunction_Agrid(psi, dx, dy, dimensions)
+    Use: u_grid, v_grid = calculate_windsFromStreamfunction_Agrid(psi, dx, dy, dimensions, grid='A')
+
+    Returns winds on a chosen grid based on streamfunction and grid spacing.
 
     Inputs:
-    - psi: streamfunction on center points; with halo points
-    - dx, dy: distance between center points; with halo points
+    - psi: streamfunction
+    - dx, dy: distance between points
     - dimensions: Dict{'nxhalo', 'nyhalo', 'nx', 'ny}
+
+    Outputs:
+    - u_grid: x-direction wind on chosen grid
+    - v_grid: y-direction wind on chosen grid
+
+    Grid options:
+    - A: A-grid, center points
+    - C: C-grid, edge points, (y dim + 1 for u, x dim +1 for v)
+    - D: D-grid, edge points (x dim + 1 for u, y dim +1 for v)
+
+    For different grid, input functions are different:
+    - A: streamfunction, dx, dy on cell centers, all with halos
+    - C: streamfunction on corder points, dx, dy on edge points, all with halos
+    - D: streamfunction on center points, dx, dy on c-grid, all with halos
     """
-    ua = np.zeros((dimensions['nxhalo'], dimensions['nyhalo']))
-    va = np.zeros((dimensions['nxhalo'], dimensions['nyhalo']))
+    u_grid = np.zeros((dimensions['nxhalo'], dimensions['nyhalo']))
+    v_grid = np.zeros((dimensions['nxhalo'], dimensions['nyhalo']))
 
-    for jj in range(dimensions['nhalo']-1, dimensions['ny']+dimensions['nhalo']+1):
-        for ii in range(dimensions['nhalo']-1, dimensions['nx']+dimensions['nhalo']+1):
-            psi1 = 0.5 * (psi.data[ii, jj] + psi.data[ii, jj-1])
-            psi2 = 0.5 * (psi.data[ii, jj] + psi.data[ii, jj+1])
-            dist = dy.data[ii, jj]
-            ua[ii, jj] = 0 if dist == 0 else -1.0 * (psi2 - psi1) / dist
+    if grid == 'A':
+        for jj in range(dimensions['nhalo']-1, dimensions['ny']+dimensions['nhalo']+1):
+            for ii in range(dimensions['nhalo']-1, dimensions['nx']+dimensions['nhalo']+1):
+                psi1 = 0.5 * (psi.data[ii, jj] + psi.data[ii, jj-1])
+                psi2 = 0.5 * (psi.data[ii, jj] + psi.data[ii, jj+1])
+                dist = dy.data[ii, jj]
+                u_grid[ii, jj] = 0 if dist == 0 else -1.0 * (psi2 - psi1) / dist
 
-            psi1 = 0.5 * (psi.data[ii, jj] + psi.data[ii-1, jj])
-            psi2 = 0.5 * (psi.data[ii, jj] + psi.data[ii+1, jj])
-            dist = dx.data[ii, jj]
-            va[ii, jj] = 0 if dist == 0 else (psi2 - psi1) / dist
+                psi1 = 0.5 * (psi.data[ii, jj] + psi.data[ii-1, jj])
+                psi2 = 0.5 * (psi.data[ii, jj] + psi.data[ii+1, jj])
+                dist = dx.data[ii, jj]
+                v_grid[ii, jj] = 0 if dist == 0 else (psi2 - psi1) / dist
+    
+    if grid == 'C':
+        for jj in range(dimensions['nhalo']-1, dimensions['ny']+dimensions['nhalo']+1):
+            for ii in range(dimensions['nhalo']-1, dimensions['nx']+dimensions['nhalo']+1):
+                dist = dx.data[ii, jj]
+                v_grid[ii, jj] = 0 if dist == 0 else (psi.data[ii+1, jj] - psi.data[ii, jj]) / dist
 
-    return ua, va
+                dist = dy.data[ii, jj]
+                u_grid[ii, jj] = 0 if dist == 0 else -1.0 * (psi.data[ii, jj+1] - psi.data[ii, jj]) / dist
+    
+    if grid == 'D':
+        for jj in range(dimensions['nhalo']-1, dimensions['ny']+dimensions['nhalo']+1):
+            for ii in range(dimensions['nhalo']-1, dimensions['nx']+dimensions['nhalo']+1):
+                dist = dx.data[ii, jj]
+                v_grid[ii, jj] = 0 if dist == 0 else (psi.data[ii, jj] - psi.data[ii-1, jj]) / dist
 
-
-def calculate_windsFromStreamfunction_Cgrid(psi, dx, dy, dimensions):
-    """
-    Use: uc, vc = calculate_windsFromStreamfunction_Cgrid(psi, dx, dy, dimensions)
-
-    Inputs:
-    - psi: streamfunction on corner points; with halo points
-    - dx, dy: distance between edge points; with halo points
-    - dimensions: Dict{'nxhalo', 'nyhalo', 'nx', 'ny}
-    """
-    uc = np.zeros((dimensions['nxhalo'], dimensions['nyhalo']))
-    vc = np.zeros((dimensions['nxhalo'], dimensions['nyhalo']))
-
-    for jj in range(dimensions['nhalo']-1, dimensions['ny']+dimensions['nhalo']+1):
-        for ii in range(dimensions['nhalo']-1, dimensions['nx']+dimensions['nhalo']+1):
-            dist = dx.data[ii, jj]
-            vc[ii, jj] = 0 if dist == 0 else (psi.data[ii+1, jj] - psi.data[ii, jj]) / dist
-
-            dist = dy.data[ii, jj]
-            uc[ii, jj] = 0 if dist == 0 else -1.0 * (psi.data[ii, jj+1] - psi.data[ii, jj]) / dist
-
-    return uc, vc
+                dist = dy.data[ii, jj]
+                u_grid[ii, jj] = 0 if dist == 0 else -1.0 * (psi.data[ii, jj] - psi.data[ii, jj-1]) / dist     
+        
+    return u_grid, v_grid
 
 
 def write_initialCondition_toFile(fOut, variables, dimensions, units):
