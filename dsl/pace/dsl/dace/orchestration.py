@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import dace
 import gt4py.storage
-from dace import constant as DaceConstant
+from dace import compiletime as DaceCompiletime
 from dace.dtypes import DeviceType as DaceDeviceType
 from dace.dtypes import StorageType as DaceStorageType
 from dace.frontend.python.common import SDFGConvertible
@@ -132,21 +132,8 @@ def _build_sdfg(
             if k in sdfg_kwargs and tup[1].transient:
                 del sdfg_kwargs[k]
 
-        # Promote scalar
-        import dace.sdfg.utils
-        from dace.transformation.passes import scalar_to_symbol as scal2sym
-
-        with DaCeProgress(config, "Scalar promotion"):
-            for sd in sdfg.all_sdfgs_recursive():
-                scal2sym.promote_scalars_to_symbols(sd)
-
-        with DaCeProgress(config, "Inlined, Fuse & Simplify (1/2)"):
-            while (
-                dace.sdfg.utils.inline_sdfgs(sdfg) > 0
-                or dace.sdfg.utils.fuse_states(sdfg) > 0
-            ):
-                pass
-            sdfg.simplify(validate=False)
+        with DaCeProgress(config, "Simplify (1/2)"):
+            sdfg.simplify(validate=False, verbose=True)
 
         # Perform pre-expansion fine tuning
         # WARNING: Deactivate until expansion is in gt4py/master
@@ -156,13 +143,8 @@ def _build_sdfg(
         with DaCeProgress(config, "Expand"):
             sdfg.expand_library_nodes()
 
-        with DaCeProgress(config, "Inlined, Fuse & Simplify (2/2)"):
-            while (
-                dace.sdfg.utils.inline_sdfgs(sdfg) > 0
-                or dace.sdfg.utils.fuse_states(sdfg) > 0
-            ):
-                pass
-            sdfg.simplify(validate=False)
+        with DaCeProgress(config, "Simplify (2/2)"):
+            sdfg.simplify(validate=False, verbose=True)
 
         with DaCeProgress(
             config, "Removed unused globals of compute_x_flux (lower VRAM)"
@@ -411,7 +393,7 @@ def orchestrate(
 
             # Flag argument as dace.constant
             for argument in dace_constant_args:
-                func.__annotations__[argument] = DaceConstant
+                func.__annotations__[argument] = DaceCompiletime
 
             # Build DaCe orchestrated wrapper
             # This is a JIT object, e.g. DaCe compilation will happen on call
@@ -490,7 +472,7 @@ def orchestrate_function(
     def _decorator(func: Callable[..., Any]):
         def _wrapper(*args, **kwargs):
             for argument in dace_constant_args:
-                func.__annotations__[argument] = DaceConstant
+                func.__annotations__[argument] = DaceCompiletime
             return _LazyComputepathFunction(func, config)
 
         if config.is_dace_orchestrated():

@@ -78,7 +78,7 @@ coverage==5.5
     #   pytest-cov
 cytoolz==0.11.2
     # via gt4py (external/gt4py/setup.cfg)
-dace==0.13.3
+dace @ git+https://github.com/spcl/dace.git@v0.14rc1
     # via
     #   -r dsl/requirements.txt
     #   -r fv3core/requirements/requirements_dace.txt
