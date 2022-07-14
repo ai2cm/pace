@@ -36,12 +36,13 @@ from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.communicator import CubedSphereCommunicator
 from pace.util.decomposition import (
-    determine_compiling_ranks,
+    compiling_equivalent,
     determine_rank_is_compiling,
-    get_target_rank,
     set_distributed_caches,
+    unblock_waiting_tiles,
 )
 from pace.util.halo_data_transformer import QuantityHaloSpec
+from pace.util.mpi import MPI
 
 
 class RunMode(enum.Enum):
@@ -81,7 +82,7 @@ class CompilationConfig:
         if communicator:
             self.rank = communicator.rank
             self.size = communicator.partitioner.total_ranks
-            self.compiling_equivalent = get_target_rank(
+            self.compiling_equivalent = compiling_equivalent(
                 self.rank, communicator.partitioner
             )
             if use_minimal_caching:
@@ -457,10 +458,39 @@ class FrozenStencil(SDFGConvertible):
         # If we orchestrate, move the compilation at call time to make sure
         # disable_codegen do not lead to call to uncompiled stencils, which fails
         # silently
+
+        if stencil_config.compilation_config.run_mode == RunMode.Run:
+
+            def build(self):
+                stencil_class = None if self.options.rebuild else self.backend.load()
+                if stencil_class is None:
+                    raise RuntimeError(
+                        "Stencil needs to be compiled in run mode, exiting"
+                    )
+                return stencil_class
+
+            from gt4py.stencil_builder import StencilBuilder
+
+            StencilBuilder.build = build
+
+        if stencil_config.compilation_config.use_minimal_caching:
+            if not stencil_config.compilation_config.is_compiling:
+                # block from moving until compilation is done
+                if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
+                    _ = MPI.COMM_WORLD.recv(
+                        source=stencil_config.compilation_config.compiling_equivalent
+                    )
+
         if not self.stencil_config.dace_config.is_dace_orchestrated():
             self.stencil_object = self._compile()
 
-        if stencil_config.compilation_config.run_mode == RunMode.Run:
+        if stencil_config.compilation_config.use_minimal_caching:
+            if stencil_config.compilation_config.is_compiling:
+                # block from moving until compilation is done
+                if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
+                    unblock_waiting_tiles()
+
+        if stencil_config.compilation_config.run_mode == RunMode.Build:
 
             def empty(*args, **kwargs):
                 pass

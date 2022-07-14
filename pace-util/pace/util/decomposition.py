@@ -10,8 +10,101 @@ from pace.util.partitioner import CubedSpherePartitioner
 # Distributed compilation
 
 
+def get_first_matching_rank(
+    partitioner: CubedSpherePartitioner, decomposition_string: str
+) -> int:
+    tile_size = partitioner.total_ranks / 6
+    for rank in range(partitioner.total_ranks):
+        if (
+            decomposition_string == "00"
+            and partitioner.tile.on_tile_bottom(rank)
+            and partitioner.tile.on_tile_left(rank)
+        ):
+            return rank % tile_size
+        if (
+            decomposition_string == "10"
+            and partitioner.tile.on_tile_bottom(rank)
+            and not partitioner.tile.on_tile_left(rank)
+            and not partitioner.tile.on_tile_right(rank)
+        ):
+            return rank % tile_size
+        if (
+            decomposition_string == "20"
+            and partitioner.tile.on_tile_bottom(rank)
+            and partitioner.tile.on_tile_right(rank)
+        ):
+            return rank % tile_size
+        if (
+            decomposition_string == "01"
+            and not partitioner.tile.on_tile_bottom(rank)
+            and not partitioner.tile.on_tile_top(rank)
+            and partitioner.tile.on_tile_left(rank)
+        ):
+            return rank % tile_size
+        if (
+            decomposition_string == "11"
+            and not partitioner.tile.on_tile_bottom(rank)
+            and not partitioner.tile.on_tile_top(rank)
+            and not partitioner.tile.on_tile_left(rank)
+            and not partitioner.tile.on_tile_right(rank)
+        ):
+            return rank % tile_size
+        if (
+            decomposition_string == "21"
+            and not partitioner.tile.on_tile_bottom(rank)
+            and not partitioner.tile.on_tile_top(rank)
+            and partitioner.tile.on_tile_right(rank)
+        ):
+            return rank % tile_size
+        if (
+            decomposition_string == "02"
+            and partitioner.tile.on_tile_top(rank)
+            and partitioner.tile.on_tile_left(rank)
+        ):
+            return rank % tile_size
+        if (
+            decomposition_string == "12"
+            and partitioner.tile.on_tile_top(rank)
+            and not partitioner.tile.on_tile_left(rank)
+            and not partitioner.tile.on_tile_right(rank)
+        ):
+            return rank % tile_size
+        if (
+            decomposition_string == "22"
+            and partitioner.tile.on_tile_top(rank)
+            and partitioner.tile.on_tile_right(rank)
+        ):
+            return rank % tile_size
+
+    raise RuntimeError("Tiling seems to be broken")
+
+
+def compiling_equivalent(rank: int, partitioner: CubedSpherePartitioner) -> int:
+    if partitioner.tile.on_tile_bottom(rank):
+        if partitioner.tile.on_tile_left(rank):
+            return get_first_matching_rank(partitioner, "00")
+        if partitioner.tile.on_tile_right(rank):
+            return get_first_matching_rank(partitioner, "20")
+        else:
+            return get_first_matching_rank(partitioner, "10")
+    if partitioner.tile.on_tile_top(rank):
+        if partitioner.tile.on_tile_left(rank):
+            return get_first_matching_rank(partitioner, "02")
+        if partitioner.tile.on_tile_right(rank):
+            return get_first_matching_rank(partitioner, "22")
+        else:
+            return get_first_matching_rank(partitioner, "12")
+    else:
+        if partitioner.tile.on_tile_left(rank):
+            return get_first_matching_rank(partitioner, "01")
+        if partitioner.tile.on_tile_right(rank):
+            return get_first_matching_rank(partitioner, "21")
+        else:
+            return get_first_matching_rank(partitioner, "11")
+
+
 def determine_rank_is_compiling(rank: int, partitioner: CubedSpherePartitioner) -> bool:
-    top_tile_equivalent = get_target_rank(rank, partitioner)
+    top_tile_equivalent = compiling_equivalent(rank, partitioner)
     return rank == top_tile_equivalent
 
 
@@ -30,44 +123,44 @@ def unblock_waiting_tiles(comm) -> None:
             comm.send(message, dest=tile * tile_size + rank)
 
 
-def get_target_rank(rank: int, partitioner: TilePartitioner):
-    """From my rank & the current partitioner we determine which
-    rank we should read from"""
-    if partitioner.layout == (1, 1):
-        return 0
-    if partitioner.layout == (2, 2):
-        if partitioner.tile.on_tile_bottom(rank):
-            if partitioner.tile.on_tile_left(rank):
-                return 0  # "00"
-            if partitioner.tile.on_tile_right(rank):
-                return 1  # "10"
-        if partitioner.tile.on_tile_top(rank):
-            if partitioner.tile.on_tile_left(rank):
-                return 2  # "01"
-            if partitioner.tile.on_tile_right(rank):
-                return 3  # "11"
-    else:
-        if partitioner.tile.on_tile_bottom(rank):
-            if partitioner.tile.on_tile_left(rank):
-                return 0  # "00"
-            if partitioner.tile.on_tile_right(rank):
-                return 2  # "20"
-            else:
-                return 1  # "10"
-        if partitioner.tile.on_tile_top(rank):
-            if partitioner.tile.on_tile_left(rank):
-                return 6  # "02"
-            if partitioner.tile.on_tile_right(rank):
-                return 8  # "22"
-            else:
-                return 7  # "12"
-        else:
-            if partitioner.tile.on_tile_left(rank):
-                return 3  # "01"
-            if partitioner.tile.on_tile_right(rank):
-                return 5  # "21"
-            else:
-                return 4  # "11"
+# def get_target_rank(rank: int, partitioner: TilePartitioner):
+#     """From my rank & the current partitioner we determine which
+#     rank we should read from"""
+#     if partitioner.layout == (1, 1):
+#         return 0
+#     if partitioner.layout == (2, 2):
+#         if partitioner.tile.on_tile_bottom(rank):
+#             if partitioner.tile.on_tile_left(rank):
+#                 return 0  # "00"
+#             if partitioner.tile.on_tile_right(rank):
+#                 return 1  # "10"
+#         if partitioner.tile.on_tile_top(rank):
+#             if partitioner.tile.on_tile_left(rank):
+#                 return 2  # "01"
+#             if partitioner.tile.on_tile_right(rank):
+#                 return 3  # "11"
+#     else:
+#         if partitioner.tile.on_tile_bottom(rank):
+#             if partitioner.tile.on_tile_left(rank):
+#                 return 0  # "00"
+#             if partitioner.tile.on_tile_right(rank):
+#                 return 2  # "20"
+#             else:
+#                 return 1  # "10"
+#         if partitioner.tile.on_tile_top(rank):
+#             if partitioner.tile.on_tile_left(rank):
+#                 return 6  # "02"
+#             if partitioner.tile.on_tile_right(rank):
+#                 return 8  # "22"
+#             else:
+#                 return 7  # "12"
+#         else:
+#             if partitioner.tile.on_tile_left(rank):
+#                 return 3  # "01"
+#             if partitioner.tile.on_tile_right(rank):
+#                 return 5  # "21"
+#             else:
+#                 return 4  # "11"
 
 
 def set_distributed_caches(config: CompilationConfig):
