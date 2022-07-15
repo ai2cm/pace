@@ -4,7 +4,7 @@ from fv3viz import pcolormesh_cube
 from netCDF4 import Dataset
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
-from pace.util import CubedSphereCommunicator, CubedSpherePartitioner, Quantity, QuantityFactory, SubtileGridSizer, TilePartitioner
+from pace.util import CubedSphereCommunicator, CubedSpherePartitioner, QuantityFactory, SubtileGridSizer, TilePartitioner
 from pace.util.constants import RADIUS
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
@@ -214,7 +214,7 @@ def calculate_streamfunction_testCase1(lon, lat, dimensions):
     - psi_staggered: streamfunction on tile corners (with halo points)
     """
 
-    Ubar = (2.0 * np.pi * RADIUS) / (12. * 86400.0)  # 38.6 
+    Ubar = (2.0 * np.pi * RADIUS) / (12. * 86400.0) * 8 # 38.6 
     alpha = 0
 
     psi = np.ones((dimensions['nxhalo'], dimensions['nyhalo'])) * 1.e25
@@ -340,8 +340,6 @@ def write_initialCondition_toFile(fOut, variables, dimensions, units):
     data.close()
     
     return
-
-
 
 
 def unstagger_coord(field, mode='mean'):
