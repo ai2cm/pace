@@ -82,7 +82,7 @@ def configure_domain(layout, mpi_comm, dimensions, backend='numpy'):
     ### set the domain so there is only one level in the vertical -- forced 
     domain = (grid_indexing.domain)
     domain_new = list(domain)
-    domain_new[2] = 2
+    domain_new[2] = 1
     domain_new = tuple(domain_new)
 
     grid_indexing.domain = domain_new
