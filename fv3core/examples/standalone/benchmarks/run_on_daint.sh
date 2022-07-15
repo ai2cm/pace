@@ -128,7 +128,7 @@ sed -i "s/<NTASKSPERNODE>/1/g" compile.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
 sed -i "s/<TIMEOUT>/02:00:00/g" compile.daint.slurm
-sed -i "s#<CMD>#export PYTHONOPTIMIZE=TRUE\nexport GT_CACHE_DIR_NAME=/tmp\nsrun python examples/standalone/runfile/compile.py $data_path $backend \ncp -r .gt_cache* $FV3CORE_DIR #g" compile.daint.slurm
+sed -i "s#<CMD>#export PYTHONOPTIMIZE=TRUE\nexport GT_CACHE_DIR_NAME=/tmp\nsrun python examples/standalone/runfile/compile.py $data_path $backend \nrm -rf $FV3CORE_DIR/.gt_cache*\ncp -r .gt_cache* $FV3CORE_DIR #g" compile.daint.slurm
 
 
 env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"
