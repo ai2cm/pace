@@ -62,7 +62,7 @@ if __name__ == "__main__":
         for tile in range(1, 6):
             shutil.copytree(
                 f"{root_path}/.gt_cache_{rank:06}",
-                f"{root_path}.gt_cache_{rank*tile:06}",
+                f"{root_path}/.gt_cache_{rank*tile:06}",
                 dirs_exist_ok=True,
             )
     print("SUCCESS")
