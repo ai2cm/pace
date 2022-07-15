@@ -2118,7 +2118,7 @@ class Microphysics:
         # Density parameters
         acc = numpy_module.array([5.0, 2.0, 0.5])
 
-        pie = 4.0 * numpy_module.arctan(1.0)
+        pie = 4.0 * np.arctan(1.0)
 
         # S. Klein's formular (eq 16) from am2
         fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh ** 3
@@ -2142,7 +2142,7 @@ class Microphysics:
         cgacs = pisq * rnzg * rnzs * functions.RHOS
         cgacs = cgacs * self.namelist.c_pgacs
 
-        act = numpy_module.empty(8)
+        act = np.empty(8)
         act[0] = pie * rnzs * functions.RHOS
         act[1] = pie * rnzr * functions.RHOR
         act[5] = pie * rnzg * functions.RHOG
@@ -2159,7 +2159,7 @@ class Microphysics:
                     act[2 * k] ** ((6 - i) * 0.25) * act[2 * k + 1] ** ((i + 1) * 0.25)
                 )
 
-        gcon = 40.74 * numpy_module.sqrt(functions.SFCRHO)
+        gcon = 40.74 * np.sqrt(functions.SFCRHO)
 
         # Decreasing csacw to reduce cloud water --- > snow
         csacw = pie * rnzs * self.namelist.clin * gam325 / (4.0 * act[0] ** 0.8125)
@@ -2177,12 +2177,12 @@ class Microphysics:
         # Subl and revap: five constants for three separate processes
         cssub = numpy_module.empty(5)
         cssub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzs
-        cssub[1] = 0.78 / numpy_module.sqrt(act[0])
+        cssub[1] = 0.78 / np.sqrt(act[0])
         cssub[2] = (
             0.31
             * scm3
             * gam263
-            * numpy_module.sqrt(self.namelist.clin / visk)
+            * np.sqrt(self.namelist.clin / visk)
             / act[0] ** 0.65625
         )
         cssub[3] = tcond * constants.RVGAS
@@ -2190,22 +2190,16 @@ class Microphysics:
 
         cgsub = numpy_module.empty(5)
         cgsub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
-        cgsub[1] = 0.78 / numpy_module.sqrt(act[5])
-        cgsub[2] = (
-            0.31 * scm3 * gam275 * numpy_module.sqrt(gcon / visk) / act[5] ** 0.6875
-        )
+        cgsub[1] = 0.78 / np.sqrt(act[5])
+        cgsub[2] = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
         cgsub[3] = cssub[3]
         cgsub[4] = cssub[4]
 
         crevp = numpy_module.empty(5)
         crevp[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
-        crevp[1] = 0.78 / numpy_module.sqrt(act[1])
+        crevp[1] = 0.78 / np.sqrt(act[1])
         crevp[2] = (
-            0.31
-            * scm3
-            * gam290
-            * numpy_module.sqrt(self.namelist.alin / visk)
-            / act[1] ** 0.725
+            0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
         )
         crevp[3] = cssub[3]
         crevp[4] = hltc ** 2 * vdifu
