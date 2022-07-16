@@ -66,7 +66,7 @@ def configure_domain(layout, mpi_comm, dimensions, backend='numpy'):
     communicator = CubedSphereCommunicator(mpi_comm, partitioner)
 
 
-    sizer = SubtileGridSizer.from_tile_params(nx_tile=dimensions['nx']-1, ny_tile=dimensions['ny']-1, nz=dimensions['nz'], n_halo=dimensions['nhalo'], 
+    sizer = SubtileGridSizer.from_tile_params(nx_tile=dimensions['nx']-1, ny_tile=dimensions['ny']-1, nz=dimensions['nz']-1, n_halo=dimensions['nhalo'], 
                                               extra_dim_lengths={}, layout=layout, tile_partitioner=partitioner.tile, tile_rank=communicator.tile.rank)
 
     quantity_factory = QuantityFactory.from_backend(sizer=sizer, backend=backend)
