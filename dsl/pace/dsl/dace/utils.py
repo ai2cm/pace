@@ -1,7 +1,9 @@
+from dataclasses import dataclass, field
 import time
 
 from dace import SDFG, SDFGState, nodes, StorageType
 from pace.dsl.dace.dace_config import DaceConfig
+from typing import Dict, List
 
 
 class DaCeProgress:
@@ -37,44 +39,86 @@ def is_ref(sd: SDFG, aname: str):
     return found
 
 
-def count_memory(sdfg: SDFG):
-    allocations = {}
+@dataclass
+class ArrayReport:
+    name: str = ""
+    total_size_in_bytes: int = 0
+    referenced: bool = False
+    transient: bool = False
+    top_level: bool = False
+
+
+@dataclass
+class StorageReport:
+    name: str = ""
+    referenced_in_bytes: int = 0
+    unreferenced_in_bytes: int = 0
+    top_level_in_bytes: int = 0
+    details: List[ArrayReport] = field(default_factory=list)
+
+
+def count_memory(sdfg: SDFG, detail_report=False) -> str:
+    allocations: Dict[StorageReport] = {}
     for storage_type in StorageType:
-        allocations[storage_type] = {}
-        allocations[storage_type]["alloc"] = 0
-        allocations[storage_type]["bad_alloc"] = 0
-        allocations[storage_type]["toplvl_alloc"] = 0
+        allocations[storage_type] = StorageReport(name=storage_type)
 
     for sd, aname, arr in sdfg.arrays_recursive():
+        array_size_in_bytes = arr.total_size * arr.dtype.bytes
+        ref = is_ref(sd, aname)
+
         if sd is not sdfg and arr.transient:
-            if is_ref(sd, aname):
-                allocations[arr.storage]["alloc"] += arr.total_size * arr.dtype.bytes
-            else:
-                allocations[arr.storage]["bad_alloc"] += (
-                    arr.total_size * arr.dtype.bytes
+            allocations[arr.storage].details.append(
+                ArrayReport(
+                    name=aname,
+                    total_size_in_bytes=array_size_in_bytes,
+                    referenced=ref,
+                    transient=arr.transient,
+                    top_level=False,
                 )
+            )
+            if ref:
+                allocations[arr.storage].referenced_in_bytes += array_size_in_bytes
+            else:
+                allocations[arr.storage].unreferenced_in_bytes += array_size_in_bytes
 
         elif sd is sdfg:
-            allocations[arr.storage]["toplvl_alloc"] += arr.total_size * arr.dtype.bytes
-            if is_ref(sd, aname):
-                allocations[arr.storage]["alloc"] += arr.total_size * arr.dtype.bytes
-            else:
-                allocations[arr.storage]["bad_alloc"] += (
-                    arr.total_size * arr.dtype.bytes
+            allocations[arr.storage].details.append(
+                ArrayReport(
+                    name=aname,
+                    total_size_in_bytes=array_size_in_bytes,
+                    referenced=ref,
+                    transient=arr.transient,
+                    top_level=True,
                 )
-
-    print(f"{sdfg.name}:\n")
-    for storage, allocs in allocations.items():
-        alloc_in_mb = int(allocs["alloc"] / (1024 * 1024))
-        badalloc_in_mb = int(allocs["bad_alloc"] / (1024 * 1024))
-        toplvlalloc_in_mb = int(allocs["toplvl_alloc"] / (1024 * 1024))
-        if alloc_in_mb or toplvlalloc_in_mb > 0:
-            print(
-                f"  {storage}:\n"
-                f"    Alloc ref | unref: {alloc_in_mb}mb | {badalloc_in_mb}mb\n"
-                f"    Top lvl alloc: {toplvlalloc_in_mb}mb\n"
             )
+            allocations[arr.storage].top_level_in_bytes += array_size_in_bytes
+            if ref:
+                allocations[arr.storage].referenced_in_bytes += array_size_in_bytes
+            else:
+                allocations[arr.storage].unreferenced_in_bytes += array_size_in_bytes
+
+    report = f"{sdfg.name}:\n"
+    for storage, allocs in allocations.items():
+        alloc_in_mb = float(allocs.referenced_in_bytes / (1024 * 1024))
+        unref_alloc_in_mb = float(allocs.unreferenced_in_bytes / (1024 * 1024))
+        toplvlalloc_in_mb = float(allocs.top_level_in_bytes / (1024 * 1024))
+        if alloc_in_mb or toplvlalloc_in_mb > 0:
+            report += (
+                f"{storage}:\n"
+                f"  Alloc ref | unref: {alloc_in_mb:.2f}mb | {unref_alloc_in_mb:.2f}mb\n"
+                f"  Top lvl alloc: {toplvlalloc_in_mb:.2f}mb\n"
+            )
+            if detail_report:
+                report += "\n"
+                report += "  Referenced\tTransient\tTotal size(mb)\tName\n"
+                for detail in allocs.details:
+                    size_in_mb = float(detail.total_size_in_bytes / (1024 * 1024))
+                    ref_str = "     X     " if detail.referenced else "           "
+                    transient_str = "     X     " if detail.transient else "           "
+                    report += f" {ref_str}\t{transient_str}\t   {size_in_mb:.2f}   \t{detail.name}\n"
+
+    return report
 
 
-def count_memory_from_path(sdfg_path: str):
-    count_memory(SDFG.from_file(sdfg_path))
+def count_memory_from_path(sdfg_path: str) -> str:
+    return count_memory(SDFG.from_file(sdfg_path))
