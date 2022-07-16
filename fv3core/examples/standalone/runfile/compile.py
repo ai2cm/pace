@@ -58,11 +58,12 @@ if __name__ == "__main__":
         )
     # NOTE (jdahm): Temporary until driver initialization-based cache is merged
     root_path = gt4py.config.cache_settings["root_path"]
-    for rank in range(dycore_config.layout[0] * dycore_config.layout[1]):
+    tile_size = dycore_config.layout[0] * dycore_config.layout[1]
+    for rank in range(tile_size):
         for tile in range(1, 6):
             shutil.copytree(
                 f"{root_path}/.gt_cache_{rank:06}",
-                f"{root_path}/.gt_cache_{rank*tile:06}",
+                f"{root_path}/.gt_cache_{rank + tile*tile_size:06}",
                 dirs_exist_ok=True,
             )
     print("SUCCESS")
