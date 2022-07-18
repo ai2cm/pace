@@ -120,10 +120,10 @@ echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 
 $FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME dycore
-
+tile_size=$(( ranks / 6 ))
 # Adapt batch script to compile the code:
 sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
-sed -i "s/<NTASKS>/1/g" compile.daint.slurm
+sed -i "s/<NTASKS>/$tile_size/g" compile.daint.slurm
 sed -i "s/<NTASKSPERNODE>/1/g" compile.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm

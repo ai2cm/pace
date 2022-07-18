@@ -10,6 +10,12 @@ import pace.dsl.stencil  # noqa: F401
 from fv3core._config import DynamicalCoreConfig
 from pace.util.null_comm import NullComm
 import gt4py.config
+import math
+
+try:
+    from mpi4py import MPI
+except ImportError:
+    MPI = None
 
 local = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, local)
@@ -37,9 +43,20 @@ if __name__ == "__main__":
     namelist = f90nml.read(args.data_dir + "/input.nml")
     experiment_name, is_baroclinic_test_case = get_experiment_info(args.data_dir)
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
-    for rank in range(dycore_config.layout[0] * dycore_config.layout[1]):
+    if MPI is not None:
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+    else:
+        rank = 0
+        size = 1
+    compile_steps = dycore_config.layout[0] * dycore_config.layout[1]
+    iterations = math.ceil(compile_steps / size)
+
+    for tile in range(iterations):
+        target_rank = rank + size * tile
         mpi_comm = NullComm(
-            rank=rank,
+            rank=target_rank,
             total_ranks=6 * dycore_config.layout[0] * dycore_config.layout[1],
             fill_value=0.0,
         )
