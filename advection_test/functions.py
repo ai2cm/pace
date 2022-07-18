@@ -398,7 +398,7 @@ def unstagger_coord(field, mode='mean'):
     return field
 
 
-def plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title=''):
+def plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title='', fSave=None):
     """
     Use: plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title='')
 
@@ -425,7 +425,15 @@ def plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, unit
     plt.colorbar(f1, label=units)
 
     ax.set_title(title)
-    plt.show()
+
+    if not fSave == None:
+        plt.savefig(fSave, dpi=200, bbox_inches='tight')
+        plt.close('all')
+    else:
+        plt.show()
+
     return
+
+
 
 
