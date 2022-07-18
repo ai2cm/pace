@@ -54,8 +54,8 @@ if __name__ == "__main__":
     compile_steps = dycore_config.layout[0] * dycore_config.layout[1]
     iterations = math.ceil(compile_steps / size)
 
-    for tile in range(iterations):
-        target_rank = rank + size * tile
+    for subtile in range(iterations):
+        target_rank = rank + size * subtile
         mpi_comm = NullComm(
             rank=target_rank,
             total_ranks=6 * dycore_config.layout[0] * dycore_config.layout[1],
@@ -75,17 +75,17 @@ if __name__ == "__main__":
             args.data_dir,
         )
     # NOTE (jdahm): Temporary until driver initialization-based cache is merged
-    if rank == 0:
-        root_path = gt4py.config.cache_settings["root_path"]
-        tile_size = dycore_config.layout[0] * dycore_config.layout[1]
+    tile_size = dycore_config.layout[0] * dycore_config.layout[1]
+    root_path = gt4py.config.cache_settings["root_path"]
+    for subtile in range(iterations):
+        target_rank = rank + size * subtile
         for rank in range(tile_size):
             for tile in range(1, 6):
                 shutil.copytree(
-                    f"{root_path}/.gt_cache_{rank:06}",
-                    f"{root_path}/.gt_cache_{rank + tile*tile_size:06}",
+                    f"{root_path}/.gt_cache_{target_rank:06}",
+                    f"{root_path}/.gt_cache_{target_rank + tile*tile_size:06}",
                     dirs_exist_ok=True,
                 )
         print("SUCCESS")
-
     if comm is not None:
         comm.Barrier()
