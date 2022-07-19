@@ -95,7 +95,11 @@ def parse_args():
         help="ending time step",
         default=1,
     )
-
+    parser.add_argument(
+        "--var2D",
+        action="store_true",
+        help="whether variable is 2D, for diagnostics",
+    )
     return parser.parse_args()
 
 
@@ -152,17 +156,31 @@ if __name__ == "__main__":
                 "You cannot plot the difference from Fortran \
                     when plotting the python difference from the first time step."
             )
-        python_init = (
-            ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
-            .isel(time=0, z=args.zlevel)
-            .values
-        )
+        if args.var2D:
+            python_init = (
+                ds[args.variable][:, :, 0 : args.size, 0 : args.size]
+                .isel(time=0)
+                .values
+            )
+        else:
+            python_init = (
+                ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
+                .isel(time=0, z=args.zlevel)
+                .values
+            )
     for t in range(args.start, args.stop):
-        python = (
-            ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
-            .isel(time=t, z=args.zlevel)
-            .values
-        )
+        if args.var2D:
+            python = (
+                ds[args.variable][:, :, 0 : args.size, 0 : args.size]
+                .isel(time=t)
+                .values
+            )
+        else:
+            python = (
+                ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
+                .isel(time=t, z=args.zlevel)
+                .values
+            )
         if args.fortran_data_path is not None:
             plotted_data = python - fortran[t, :]
         elif args.diff_init:
