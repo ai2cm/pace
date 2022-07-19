@@ -121,15 +121,15 @@ echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 $FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME dycore
 tile_size=$(( ranks / 6 ))
+env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=1"
 # Adapt batch script to compile the code:
 sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
-sed -i "s/<NTASKS>/$tile_size/g" compile.daint.slurm
-sed -i "s/<NTASKSPERNODE>/1/g" compile.daint.slurm
-sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
+sed -i "s/<NTASKS>/1/g" compile.daint.slurm
+sed -i "s/<NTASKSPERNODE>/$3/g" compile.daint.slurm
+sed -i "s/<CPUSPERTASK>/8/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
 sed -i "s/<TIMEOUT>/02:00:00/g" compile.daint.slurm
-sed -i "s/cscsci/normal/g" compile.daint.slurm
-sed -i "s#<CMD>#export PYTHONOPTIMIZE=TRUE\nrm -rf $FV3CORE_DIR/.gt_cache*\nexport GT_CACHE_DIR_NAME=/tmp\nsrun python examples/standalone/runfile/compile.py $data_path $backend $FV3CORE_DIR#g" compile.daint.slurm
+sed -i "s#<CMD>#$env_vars\nrm -rf $FV3CORE_DIR/.gt_cache*\nexport GT_CACHE_DIR_NAME=/tmp\nsrun python examples/standalone/runfile/compile.py $data_path $backend $FV3CORE_DIR#g" compile.daint.slurm
 
 
 env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"
