@@ -121,15 +121,21 @@ echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 $FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME dycore
 tile_size=$(( ranks / 6 ))
+COMPILING_RANKS=$(( 3 < tile_size ? 3 : tile_size ))
+CPU_PER_TASK=$(( 12 / COMPILING_RANKS ))
 env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=1"
+clear_cache="rm -rf $FV3CORE_DIR/.gt_cache*"
+set_up_cache_dir="export GT_CACHE_DIR_NAME=/tmp"
+execution="srun python examples/standalone/runfile/compile.py $data_path $backend $FV3CORE_DIR"
+run_command="$env_vars\n$clear_cache\n$set_up_cache_dir\n$execution"
 # Adapt batch script to compile the code:
 sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
 sed -i "s/<NTASKS>/1/g" compile.daint.slurm
-sed -i "s/<NTASKSPERNODE>/3/g" compile.daint.slurm
-sed -i "s/<CPUSPERTASK>/8/g" compile.daint.slurm
+sed -i "s/<NTASKSPERNODE>/$COMPILING_RANKS/g" compile.daint.slurm
+sed -i "s/<CPUSPERTASK>/$CPU_PER_TASK/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
-sed -i "s/<TIMEOUT>/02:00:00/g" compile.daint.slurm
-sed -i "s#<CMD>#$env_vars\nrm -rf $FV3CORE_DIR/.gt_cache*\nexport GT_CACHE_DIR_NAME=/tmp\nsrun python examples/standalone/runfile/compile.py $data_path $backend $FV3CORE_DIR#g" compile.daint.slurm
+sed -i "s/<TIMEOUT>/03:00:00/g" compile.daint.slurm
+sed -i "s#<CMD>#$run_command#g" compile.daint.slurm
 
 
 env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"

@@ -73,6 +73,7 @@ if __name__ == "__main__":
                 is_baroclinic_test_case,
                 args.data_dir,
             )
+            print(f"rank {rank} compiled target rank {top_tile_rank}")
     # NOTE (jdahm): Temporary until driver initialization-based cache is merged
     if comm is not None:
         comm.Barrier()
