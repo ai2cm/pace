@@ -125,7 +125,7 @@ env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=1"
 # Adapt batch script to compile the code:
 sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
 sed -i "s/<NTASKS>/1/g" compile.daint.slurm
-sed -i "s/<NTASKSPERNODE>/$3/g" compile.daint.slurm
+sed -i "s/<NTASKSPERNODE>/3/g" compile.daint.slurm
 sed -i "s/<CPUSPERTASK>/8/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
 sed -i "s/<TIMEOUT>/02:00:00/g" compile.daint.slurm
