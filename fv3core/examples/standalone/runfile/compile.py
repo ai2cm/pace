@@ -34,6 +34,9 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "backend", type=str, action="store", help="gt4py backend to use",
     )
+    parser.add_argument(
+        "target_dir", type=str, action="store", help="directory to copy the caches to",
+    )
 
     return parser.parse_args()
 
@@ -51,41 +54,39 @@ if __name__ == "__main__":
         comm = None
         rank = 0
         size = 1
-    compile_steps = dycore_config.layout[0] * dycore_config.layout[1]
-    iterations = math.ceil(compile_steps / size)
-
-    for subtile in range(iterations):
-        target_rank = rank + size * subtile
-        mpi_comm = NullComm(
-            rank=target_rank,
-            total_ranks=6 * dycore_config.layout[0] * dycore_config.layout[1],
-            fill_value=0.0,
-        )
-        gt4py.config.cache_settings["root_path"] = os.environ.get(
-            "GT_CACHE_DIR_NAME", "."
-        )
-        gt4py.config.cache_settings["dir_name"] = os.environ.get(
-            "GT_CACHE_ROOT", f".gt_cache_{mpi_comm.Get_rank():06}"
-        )
-        dycore, dycore_args, stencil_factory = setup_dycore(
-            dycore_config,
-            mpi_comm,
-            args.backend,
-            is_baroclinic_test_case,
-            args.data_dir,
-        )
+    sub_tiles = dycore_config.layout[0] * dycore_config.layout[1]
+    iterations = math.ceil(sub_tiles / size)
+    gt4py.config.cache_settings["root_path"] = os.environ.get("GT_CACHE_DIR_NAME", ".")
+    for iteration in range(iterations):
+        top_tile_rank = rank + size * iteration
+        if top_tile_rank < sub_tiles:
+            mpi_comm = NullComm(
+                rank=top_tile_rank, total_ranks=6 * sub_tiles, fill_value=0.0,
+            )
+            gt4py.config.cache_settings["dir_name"] = os.environ.get(
+                "GT_CACHE_ROOT", f".gt_cache_{mpi_comm.Get_rank():06}"
+            )
+            dycore, dycore_args, stencil_factory = setup_dycore(
+                dycore_config,
+                mpi_comm,
+                args.backend,
+                is_baroclinic_test_case,
+                args.data_dir,
+            )
     # NOTE (jdahm): Temporary until driver initialization-based cache is merged
-    tile_size = dycore_config.layout[0] * dycore_config.layout[1]
-    root_path = gt4py.config.cache_settings["root_path"]
-    for subtile in range(iterations):
-        target_rank = rank + size * subtile
-        for rank in range(tile_size):
-            for tile in range(1, 6):
-                shutil.copytree(
-                    f"{root_path}/.gt_cache_{target_rank:06}",
-                    f"{root_path}/.gt_cache_{target_rank + tile*tile_size:06}",
-                    dirs_exist_ok=True,
-                )
-        print("SUCCESS")
     if comm is not None:
         comm.Barrier()
+    root_path = gt4py.config.cache_settings["root_path"]
+    for iter in range(iterations):
+        top_tile_rank = rank + size * iter
+        if top_tile_rank < sub_tiles:
+            for tile in range(1, 6):
+                shutil.copytree(
+                    f"{root_path}/.gt_cache_{top_tile_rank:06}",
+                    f"{args.target_dir}/.gt_cache_{(top_tile_rank + tile*sub_tiles):06}",
+                    dirs_exist_ok=True,
+                )
+    if comm is not None:
+        comm.Barrier()
+    if rank == 0:
+        print("SUCCESS")
