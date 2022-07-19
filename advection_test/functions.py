@@ -1,6 +1,10 @@
 
 
-#from netCDF4 import Dataset
+from netCDF4 import Dataset
+import ipyparallel as ipp
+import os
+
+
 from cartopy import crs as ccrs
 from fv3viz import pcolormesh_cube
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
@@ -17,8 +21,7 @@ import copy as cp
 import matplotlib.pyplot as plt
 import numpy as np
 
-#import ipyparallel as ipp
-#import os
+
 
 def get_lonLat_agrid(grid_data, dimensions, units, origins, backend):
     """
@@ -39,6 +42,7 @@ def get_lonLat_agrid(grid_data, dimensions, units, origins, backend):
     lat =  Quantity(grid_data.lat_agrid.data * 180 / np.pi, ('x_interface', 'y_interface'), units['coord'], origins['compute_2d'], (dimensions['nx1'], dimensions['ny1']), backend)
 
     return lon, lat
+
 
 def define_dimensionsUnitsOrigins(nx, ny, nz, nhalo, mpi_comm):
     """
