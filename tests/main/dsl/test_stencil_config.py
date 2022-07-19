@@ -1,7 +1,7 @@
 import pytest
 
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
-from pace.dsl.stencil import CompilationConfig, StencilConfig
+from pace.dsl.dace.dace_config import DaceConfig
+from pace.dsl.stencil import StencilConfig, CompilationConfig
 
 
 @pytest.mark.parametrize("validate_args", [True, False])
@@ -18,7 +18,7 @@ def test_same_config_equal(
     device_sync: bool,
     compare_to_numpy: bool,
 ):
-    dace_config = DaceConfig(None, backend, DaCeOrchestration.Python,)
+    dace_config = DaceConfig(communicator=None, backend=backend,)
     config = StencilConfig(
         compilation_config=CompilationConfig(
             backend=backend,
@@ -59,7 +59,7 @@ def test_different_backend_not_equal(
     device_sync: bool,
     compare_to_numpy: bool,
 ):
-    dace_config = DaceConfig(None, backend, DaCeOrchestration.Python,)
+    dace_config = DaceConfig(communicator=None, backend=backend,)
     config = StencilConfig(
         compilation_config=CompilationConfig(
             backend=backend,
@@ -99,7 +99,7 @@ def test_different_rebuild_not_equal(
     device_sync: bool,
     compare_to_numpy: bool,
 ):
-    dace_config = DaceConfig(None, backend, DaCeOrchestration.Python,)
+    dace_config = DaceConfig(communicator=None, backend=backend,)
     config = StencilConfig(
         compilation_config=CompilationConfig(
             backend=backend,
@@ -139,7 +139,7 @@ def test_different_device_sync_not_equal(
     device_sync: bool,
     compare_to_numpy: bool,
 ):
-    dace_config = DaceConfig(None, backend, DaCeOrchestration.Python,)
+    dace_config = DaceConfig(communicator=None, backend=backend,)
     config = StencilConfig(
         compilation_config=CompilationConfig(
             backend=backend,
@@ -179,7 +179,7 @@ def test_different_validate_args_not_equal(
     device_sync: bool,
     compare_to_numpy: bool,
 ):
-    dace_config = DaceConfig(None, backend, DaCeOrchestration.Python,)
+    dace_config = DaceConfig(None, backend,)
     config = StencilConfig(
         compilation_config=CompilationConfig(
             backend=backend,
@@ -219,7 +219,7 @@ def test_different_format_source_not_equal(
     device_sync: bool,
     compare_to_numpy: bool,
 ):
-    dace_config = DaceConfig(None, backend, DaCeOrchestration.Python,)
+    dace_config = DaceConfig(comm=None, backend=backend)
     config = StencilConfig(
         compilation_config=CompilationConfig(
             backend=backend,
@@ -255,7 +255,7 @@ def test_different_compare_to_numpy_not_equal(
     rebuild: bool = True,
     validate_args: bool = False,
 ):
-    dace_config = DaceConfig(None, backend, DaCeOrchestration.Python,)
+    dace_config = DaceConfig(comm=None, backend=backend)
     config = StencilConfig(
         compilation_config=CompilationConfig(
             backend=backend,

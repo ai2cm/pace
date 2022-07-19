@@ -1,4 +1,3 @@
-import contextlib
 import warnings
 from timeit import default_timer as time
 from typing import Mapping
@@ -35,7 +34,6 @@ class Timer:
             else:
                 self._hit_count[name] += 1
 
-    @contextlib.contextmanager
     def clock(self, name: str):
         """Context manager to produce timings of operations.
 
@@ -55,9 +53,27 @@ class Timer:
                 >>> timer.times
                 {'sleep': 1.0032463260000029}
         """
-        self.start(name)
-        yield
-        self.stop(name)
+        # [DaCe] Because the contextlib is a "one-shot" object
+        # which self-destroys itself when called, we can't orchestrate
+        # it easily in DaCe. Waiting for a fix DaCe side to this Python
+        # ridiculousness (see contelib.py:_GeneratorContextManager.__enter__)
+        def dace_inhibitor(func):
+            return func
+
+        class Wrapper:
+            def __init__(self, timer, name) -> None:
+                self.timer = timer
+                self.name = name
+
+            @dace_inhibitor
+            def __enter__(self):
+                self.timer.start(name)
+
+            @dace_inhibitor
+            def __exit__(self, type, value, traceback):
+                self.timer.stop(name)
+
+        return Wrapper(self, name)
 
     @property
     def times(self) -> Mapping[str, float]:

@@ -10,7 +10,7 @@ import pytest
 import pace.dsl
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.stencils.testing import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
 from pace.util.testing import compare_scalar, success, success_array
@@ -231,9 +231,7 @@ def test_sequential_savepoint(
         )
     stencil_config = pace.dsl.StencilConfig(
         compilation_config=CompilationConfig(backend=backend),
-        dace_config=DaceConfig(
-            communicator=None, backend=backend, orchestration=DaCeOrchestration.Python,
-        ),
+        dace_config=DaceConfig(communicator=None, backend=backend,),
     )
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
@@ -349,9 +347,7 @@ def test_parallel_savepoint(
         )
     stencil_config = pace.dsl.StencilConfig(
         compilation_config=CompilationConfig(backend=backend),
-        dace_config=DaceConfig(
-            communicator=None, backend=backend, orchestration=DaCeOrchestration.Python,
-        ),
+        dace_config=DaceConfig(communicator=communicator, backend=backend,),
     )
     # Increase minimum error threshold for GPU
     if stencil_config.is_gpu_backend:

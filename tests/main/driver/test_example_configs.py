@@ -23,6 +23,7 @@ EXCLUDED_CONFIGS: List[str] = [
     # We don't test serialbox example because it loads namelist
     # filepath that are not in git
     "baroclinic_c12_from_serialbox.yaml",
+    "baroclinic_c12_orch_cpu.yaml",
 ]
 
 
