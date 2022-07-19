@@ -48,17 +48,17 @@ if __name__ == "__main__":
     dycore_config = DynamicalCoreConfig.from_f90nml(namelist)
     if MPI is not None:
         comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()
+        global_rank = comm.Get_rank()
         size = comm.Get_size()
     else:
         comm = None
-        rank = 0
+        global_rank = 0
         size = 1
     sub_tiles = dycore_config.layout[0] * dycore_config.layout[1]
     iterations = math.ceil(sub_tiles / size)
     gt4py.config.cache_settings["root_path"] = os.environ.get("GT_CACHE_DIR_NAME", ".")
     for iteration in range(iterations):
-        top_tile_rank = rank + size * iteration
+        top_tile_rank = global_rank + size * iteration
         if top_tile_rank < sub_tiles:
             mpi_comm = NullComm(
                 rank=top_tile_rank, total_ranks=6 * sub_tiles, fill_value=0.0,
@@ -73,15 +73,15 @@ if __name__ == "__main__":
                 is_baroclinic_test_case,
                 args.data_dir,
             )
-            print(f"rank {rank} compiled target rank {top_tile_rank}")
+            print(f"rank {global_rank} compiled target rank {top_tile_rank}")
     # NOTE (jdahm): Temporary until driver initialization-based cache is merged
     if comm is not None:
         comm.Barrier()
     root_path = gt4py.config.cache_settings["root_path"]
     for iter in range(iterations):
-        top_tile_rank = rank + size * iter
+        top_tile_rank = global_rank + size * iter
         if top_tile_rank < sub_tiles:
-            for tile in range(1, 6):
+            for tile in range(6):
                 shutil.copytree(
                     f"{root_path}/.gt_cache_{top_tile_rank:06}",
                     f"{args.target_dir}/.gt_cache_{(top_tile_rank + tile*sub_tiles):06}",
@@ -89,5 +89,3 @@ if __name__ == "__main__":
                 )
     if comm is not None:
         comm.Barrier()
-    if rank == 0:
-        print("SUCCESS")

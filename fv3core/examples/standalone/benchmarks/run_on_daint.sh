@@ -130,7 +130,7 @@ execution="srun python examples/standalone/runfile/compile.py $data_path $backen
 run_command="$env_vars\n$clear_cache\n$set_up_cache_dir\n$execution"
 # Adapt batch script to compile the code:
 sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
-sed -i "s/<NTASKS>/1/g" compile.daint.slurm
+sed -i "s/<NTASKS>/$COMPILING_RANKS/g" compile.daint.slurm
 sed -i "s/<NTASKSPERNODE>/$COMPILING_RANKS/g" compile.daint.slurm
 sed -i "s/<CPUSPERTASK>/$CPU_PER_TASK/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
