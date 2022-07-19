@@ -87,5 +87,9 @@ if __name__ == "__main__":
                     f"{args.target_dir}/.gt_cache_{(top_tile_rank + tile*sub_tiles):06}",
                     dirs_exist_ok=True,
                 )
+                print(
+                    f"rank {global_rank} copied for target rank {(top_tile_rank + tile*sub_tiles)}"
+                )
     if comm is not None:
         comm.Barrier()
+    print(f"rank {global_rank} is past the barrier, exiting")
