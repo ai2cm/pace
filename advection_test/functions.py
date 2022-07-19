@@ -1,7 +1,8 @@
 
-#from cartopy import crs as ccrs
-#from fv3viz import pcolormesh_cube
+
 #from netCDF4 import Dataset
+from cartopy import crs as ccrs
+from fv3viz import pcolormesh_cube
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.tracer_2d_1l import TracerAdvection
@@ -12,10 +13,11 @@ from pace.util.constants import RADIUS
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 import copy as cp
+
+import matplotlib.pyplot as plt
 import numpy as np
 
 #import ipyparallel as ipp
-#import matplotlib.pyplot as plt
 #import os
 
 def get_lonLat_agrid(grid_data, dimensions, units, origins, backend):
