@@ -551,6 +551,43 @@ def plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, unit
     return
 
 
+def plot_grid(lon, lat, field, cmap='bwr', vmin=-1, vmax=1, units='', title='', fSave=None):
+    """
+    Use: plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title='')
+
+    Creates a Robinson projection and plots the (6) tiles on a map.
+
+    Inputs:
+    - lon, lat: lon and lat of coordinate edges (tile, x, y)
+    - field: unstaggered field at a given vertical level (tile, x, y)
+    - cmap: colormap
+    - vmin, vmax: limits of the color map
+    - units: label the units on the color bar
+    - title: set title of the plot
+
+    Outputs: none
+    """
+
+
+    fig = plt.figure(figsize = (8, 4))
+    fig.patch.set_facecolor('white')
+    ax = fig.add_subplot(111, projection=ccrs.Robinson())
+    ax.set_facecolor('.4')
+
+    f1 = pcolormesh_cube(lat, lon, field, cmap=cmap, vmin=vmin, vmax=vmax, edgecolor='k', linewidth=.1)
+    #plt.colorbar(f1, label=units)
+
+    ax.set_title(title)
+
+    if not fSave == None:
+        plt.savefig(fSave, dpi=1500, bbox_inches='tight')
+        plt.close('all')
+    else:
+        plt.show()
+
+    return
+
+
 def write_initialCondition_toFile(fOut, variables, dimensions, units, origins, backend, configuration, mpi_rank):
     """
     Use: write_initialCondition_toFile(fOut, lon, lat, data, dimensions, units, communicator)
@@ -572,6 +609,7 @@ def write_initialCondition_toFile(fOut, variables, dimensions, units, origins, b
 
     lon_global = configuration['communicator'].gather(lon)
     lat_global = configuration['communicator'].gather(lat)
+
     
     uC = np.squeeze(configuration['communicator'].gather(variables['uC']))
     vC = np.squeeze(configuration['communicator'].gather(variables['vC']))
@@ -581,6 +619,10 @@ def write_initialCondition_toFile(fOut, variables, dimensions, units, origins, b
     if mpi_rank == 0:
         uC = unstagger_coordinate(uC)
         vC = unstagger_coordinate(vC)
+    
+        plot_grid(lon_global.data, lat_global.data, np.zeros((dimensions['tile'], dimensions['nx'], dimensions['ny'])), 
+                  cmap='bwr', vmin=-1, vmax=1, units='', title='%s x %s' % (dimensions['nx']-1, dimensions['ny']-1), 
+                  fSave='grid_map_%sx%s.png' % (dimensions['nx']-1, dimensions['ny']-1))
 
         if not os.path.isdir(os.path.dirname(fOut)):
             os.mkdir(os.path.dirname(fOut))
