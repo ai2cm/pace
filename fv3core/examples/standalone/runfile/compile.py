@@ -93,3 +93,5 @@ if __name__ == "__main__":
     if comm is not None:
         comm.Barrier()
     print(f"rank {global_rank} is past the barrier, exiting")
+    if global_rank == 0:
+        print("SUCCESS")
