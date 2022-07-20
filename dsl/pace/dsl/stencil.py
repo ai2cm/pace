@@ -69,6 +69,10 @@ class CompilationConfig:
         use_minimal_caching: bool = False,
         communicator: Optional[CubedSphereCommunicator] = None,
     ) -> None:
+        if run_mode != RunMode.Run and use_minimal_caching:
+            raise RuntimeError("Cannot use minimal caching in any building mode")
+        if (not ("gpu" in backend or "cuda" in backend)) and device_sync == True:
+            raise RuntimeError("Device Sync is true on a CPU based backend")
         # GT4Py backend args
         self.backend = backend
         self.rebuild = rebuild
