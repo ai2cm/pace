@@ -32,7 +32,9 @@ def unblock_waiting_tiles(comm, sdfg_path: str) -> None:
 
 def get_target_rank(rank: int, partitioner: TilePartitioner):
     """From my rank & the current partitioner we determine which
-    rank we should read from"""
+    rank we should read from.
+    For all layout >= 3,3 this presumes build has been done on a
+    3,3 layout."""
     if partitioner.layout == (1, 1):
         return 0
     if partitioner.layout == (2, 2):
@@ -46,7 +48,7 @@ def get_target_rank(rank: int, partitioner: TilePartitioner):
                 return 2  # "01"
             if partitioner.tile.on_tile_right(rank):
                 return 3  # "11"
-    elif partitioner.layout == (3, 3):
+    else:
         if partitioner.tile.on_tile_bottom(rank):
             if partitioner.tile.on_tile_left(rank):
                 return 0  # "00"
@@ -68,8 +70,6 @@ def get_target_rank(rank: int, partitioner: TilePartitioner):
                 return 5  # "21"
             else:
                 return 4  # "11"
-    else:
-        raise NotImplementedError("Get target rank: only 1x1, 2x2, 3x3 available")
 
 
 def build_info_filepath() -> str:

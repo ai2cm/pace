@@ -4,6 +4,7 @@ import logging
 import warnings
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple, Union
+from math import floor
 
 import dace
 import dacite
@@ -116,7 +117,7 @@ class DriverConfig:
                 f"No simulation possible: you asked for {self.total_time} "
                 f"simulation time but the timestep is {self.timestep}"
             )
-        return round(self.total_time.seconds / self.timestep.seconds)
+        return floor(self.total_time.seconds / self.timestep.seconds)
 
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:
