@@ -46,7 +46,7 @@ def get_target_rank(rank: int, partitioner: TilePartitioner):
                 return 2  # "01"
             if partitioner.tile.on_tile_right(rank):
                 return 3  # "11"
-    else:
+    elif partitioner.layout == (3, 3):
         if partitioner.tile.on_tile_bottom(rank):
             if partitioner.tile.on_tile_left(rank):
                 return 0  # "00"
@@ -68,6 +68,8 @@ def get_target_rank(rank: int, partitioner: TilePartitioner):
                 return 5  # "21"
             else:
                 return 4  # "11"
+    else:
+        raise NotImplementedError("Get target rank: only 1x1, 2x2, 3x3 available")
 
 
 def build_info_filepath() -> str:
@@ -79,6 +81,8 @@ def write_build_info(
 ):
     """Write down all relevant information on the build to identify
     it at load time."""
+    # Dev NOTE: we should be able to leverage sdfg.make_key to get a hash or
+    # even go to a complete hash base system and read the data from the SDFG itself
     import os
 
     path_to_sdfg_dir = os.path.abspath(sdfg.build_folder)
@@ -106,7 +110,6 @@ def get_sdfg_path(
     """
     import os
 
-    # TODO: check DaceConfig for cache.strategy == name
     # Guarding against bad usage of this function
     if config.get_orchestrate() != DaCeOrchestration.Run:
         return None
