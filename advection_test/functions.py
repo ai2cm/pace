@@ -25,7 +25,7 @@ import numpy as np
 
 def get_lonLat_agrid(grid_data, dimensions, units, origins, backend):
     """
-    Use: lon, lat = get_lonLat_agrid(grid_data, dimensions, units, origins, backed, final_unit='deg')
+    Use: lon, lat = get_lonLat_agrid(grid_data, dimensions, units, origins, backend)
 
     Inputs:
     - grid_data configuration
@@ -155,69 +155,6 @@ def configure_domain(layout, mpi_comm, dimensions, backend='numpy'):
                    'dace_config': dace_config, 'stencil_config': stencil_config, 'grid_indexing': grid_indexing, 'stencil_factory': stencil_factory}
 
     return configuration
-
-
-def store_coordinates(fOut, dimensions, variables):
-    """
-    Use: store_coordinates(fOut, dimensions, variables)
-
-    Creates and writes to a coordinate file.
-
-    Inputs:
-    - fOut: output netcdf file
-    - dimensions: Dict{'tile', 'nxhalo', 'nyhalo'}
-    - variables: Dict{'dx', 'dy', 'dxa', 'dya', 'dxc', 'dyc', 'lon', 'lat', lona', 'lata'}
-
-    Outputs: none
-    """
-
-    if os.path.isfile(fOut):
-        os.remove(fOut)
-
-    data = Dataset(fOut, 'w')
-
-    data.createDimension('tile', dimensions['tile'])
-    data.createDimension('nxhalo', dimensions['nxhalo'])
-    data.createDimension('nyhalo', dimensions['nyhalo'])
-
-    v0 = data.createVariable('dx', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v0[:] = variables['dx']
-    v0.units = 'm'
-    v0 = data.createVariable('dy', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v0[:] = variables['dy']
-    v0.units = 'm'
-
-    v0 = data.createVariable('dxa', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v0[:] = variables['dxa']
-    v0.units = 'm'
-    v0 = data.createVariable('dya', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v0[:] = variables['dya']
-    v0.units = 'm'
-
-    v0 = data.createVariable('dxc', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v0[:] = variables['dxc']
-    v0.units = 'm'
-    v0 = data.createVariable('dyc', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v0[:] = variables['dyc']
-    v0.units = 'm'
-
-    v1 = data.createVariable('lon', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v1[:] = variables['lon']
-    v1.units = 'degrees_east'
-    v1 = data.createVariable('lat', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v1[:] = variables['lat']
-    v1.units = 'degrees_north'
-
-    v1 = data.createVariable('lona', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v1[:] = variables['lona']
-    v1.units = 'degrees_east'
-    v1 = data.createVariable('lata', 'f8', ('tile', 'nxhalo', 'nyhalo'))
-    v1[:] = variables['lata']
-    v1.units = 'degrees_north'
-
-    data.close()
-
-    return
 
 
 def create_gaussianMultiplier(lon, lat, dimensions, mpi_rank, center_tile=0):
@@ -353,7 +290,7 @@ def calculate_windsFromStreamfunction_grid(psi, dx, dy, dimensions, grid='A'):
 
 def create_initialState_testCase1(grid_data, dimensions, units, origins, backend, smoke_dict, pressure_dict):
     """
-    Use: create_initialState(grid_data, dimensions, units, origins, backend, smoke_dict, pressure_dict)
+    Use: initialState = create_initialState(grid_data, dimensions, units, origins, backend, smoke_dict, pressure_dict)
 
     Creates inital state from the fortran test_case 1 streamfunction configuration - pressure, gaussian smoke distribution, u and v winds on C-grid.
 
@@ -503,7 +440,7 @@ def build_tracerAdvection(configuration, fvt_dict, tracers):
 
 def prepare_everythingForAdvection(configuration, uc, vc, delp, tracers, density, dimensions, units, origins, backend, fvt_dict, dt_acoustic=300):
     """
-    Use: = prepare_everythingForAdvection(configuration, uc, vc, delp, tracers, density, dimensions, units, origins, backend, fvt_dict, dt_acoustic=300)
+    Use: fluxPrep, tracAdv = prepare_everythingForAdvection(configuration, uc, vc, delp, tracers, density, dimensions, units, origins, backend, fvt_dict, dt_acoustic=300)
 
     Inputs:
     - configuration: Dict{'stencil_factory', 'grid_data', 'damping_coefficients'}
@@ -545,7 +482,7 @@ def prepare_everythingForAdvection(configuration, uc, vc, delp, tracers, density
 
 def run_advectionStepWithReset(tracAdv_dataInit, tracAdv_data, tracAdv, dt, mpi_rank=None):
     """
-    Use: = run_advectionStepWithReset()
+    Use: tracAdv_data = run_advectionStepWithReset()
 
     Inputs:
     - tracAdv_dataInit: Dict{'tracers', 'delp', 'mfxd', 'mfyd', 'crx', 'cry'} of values to be reset to after each advection step
@@ -577,55 +514,115 @@ def run_advectionStepWithReset(tracAdv_dataInit, tracAdv_data, tracAdv, dt, mpi_
     return tracAdv_data
 
 
-def write_initialCondition_toFile(fOut, variables, dimensions, units):
+def plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title='', fSave=None):
     """
+    Use: plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title='')
+
+    Creates a Robinson projection and plots the (6) tiles on a map.
+
+    Inputs:
+    - lon, lat: lon and lat of coordinate edges (tile, x, y)
+    - field: unstaggered field at a given vertical level (tile, x, y)
+    - cmap: colormap
+    - vmin, vmax: limits of the color map
+    - units: label the units on the color bar
+    - title: set title of the plot
+
+    Outputs: none
+    """
+
+
+    fig = plt.figure(figsize = (8, 4))
+    fig.patch.set_facecolor('white')
+    ax = fig.add_subplot(111, projection=ccrs.Robinson())
+    ax.set_facecolor('.4')
+
+    f1 = pcolormesh_cube(lat, lon, field, cmap=cmap, vmin=vmin, vmax=vmax)#, edgecolor='k', linewidth=.1)
+    plt.colorbar(f1, label=units)
+
+    ax.set_title(title)
+
+    if not fSave == None:
+        plt.savefig(fSave, dpi=200, bbox_inches='tight')
+        plt.close('all')
+    else:
+        plt.show()
+
+    return
+
+
+def write_initialCondition_toFile(fOut, variables, dimensions, units, origins, backend, configuration, mpi_rank):
+    """
+    Use: write_initialCondition_toFile(fOut, lon, lat, data, dimensions, units, communicator)
 
     Inputs:
     - fOut: output netcdf file
-    - variables: Dict{'ua', 'va', 'psi', 'qvapor'}
+    - variables: Dict{'delp', 'smoke', 'uC', 'vC'}
     - dimensions: Dict{'tile', 'nx', 'ny', 'nx1', 'ny1'}
-    - configuration: output of configure_domain function
-    - units: Dict{'coord', 'wind', 'psi', 'qvapor'}
+    - units: Dict{'coord', 'wind', 'pressure', 'mass'}
     - origins: Dict{'compute_2d'}
-    - backend = 'numpy'
+    - backend: 'numpy'
+    - configuration: Dict{'communicator', 'grid_data'}
+    - mpi_rank: gathered from all tiles, only written on root
+
+    Outputs: None; creates netCDF file
     """
+
+    lon, lat = get_lonLat_agrid(configuration['grid_data'], dimensions, units, origins, backend)
+
+    lon_global = configuration['communicator'].gather(lon)
+    lat_global = configuration['communicator'].gather(lat)
     
-    if os.path.isfile(fOut):
-        os.remove(fOut)
+    uC = np.squeeze(configuration['communicator'].gather(variables['uC']))
+    vC = np.squeeze(configuration['communicator'].gather(variables['vC']))
+    delp = np.squeeze(configuration['communicator'].gather(variables['delp']))
+    smoke = np.squeeze(configuration['communicator'].gather(variables['smoke']))
 
-    data = Dataset(fOut, 'w')
+    if mpi_rank == 0:
+        uC = unstagger_coordinate(uC)
+        vC = unstagger_coordinate(vC)
 
-    for dim in ['tile', 'nx', 'ny', 'nx1', 'ny1']:
-        data.createDimension(dim, dimensions[dim])
+        if not os.path.isdir(os.path.dirname(fOut)):
+            os.mkdir(os.path.dirname(fOut))
+        else:
+            if os.path.isfile(fOut):
+                os.remove(fOut)
     
-    v0 = data.createVariable('lon', 'f8', ('tile', 'nx1', 'ny1'))
-    v0[:] = variables['lon']
-    v0.units = units['coord']
-    v0 = data.createVariable('lat', 'f8', ('tile', 'nx1', 'ny1'))
-    v0[:] = variables['lat']
-    v0.units = units['coord']
+        data = Dataset(fOut, 'w')
 
-    v1 = data.createVariable('ua', 'f8', ('tile', 'nx', 'ny'))
-    v1[:] = variables['ua']
-    v1.units = units['wind']
-    v1 = data.createVariable('va', 'f8', ('tile', 'nx', 'ny'))
-    v1[:] = variables['va']
-    v1.units = units['wind']
+        for dim in ['tile', 'nx', 'ny', 'nx1', 'ny1']:
+            data.createDimension(dim, dimensions[dim])
+            
+        v0 = data.createVariable('lon', 'f8', ('tile', 'nx1', 'ny1'))
+        v0[:] = lon_global.data
+        v0.units = units['coord']
+        v0 = data.createVariable('lat', 'f8', ('tile', 'nx1', 'ny1'))
+        v0[:] = lat_global.data
+        v0.units = units['coord']
 
-    v1 = data.createVariable('psi', 'f8', ('tile', 'nx', 'ny'))
-    v1[:] = variables['psi']
-    v1.units = units['psi']
+        v1 = data.createVariable('uC', 'f8', ('tile', 'nx', 'ny'))
+        v1[:] = uC.data
+        v1.units = units['wind']
+        v1.description = 'C-grid u wind, unstaggered'
+        v1 = data.createVariable('vC', 'f8', ('tile', 'nx', 'ny'))
+        v1[:] = vC.data
+        v1.units = units['wind']
+        v1.description = 'C-grid v wind, unstaggered'
 
-    v1 = data.createVariable('qvapor', 'f8', ('tile', 'nx', 'ny'))
-    v1[:] = variables['qvapor']
-    v1.units = units['qvapor']
+        v1 = data.createVariable('delp', 'f8', ('tile', 'nx', 'ny'))
+        v1[:] = delp.data
+        v1.units = units['pressure']
 
-    data.close()
+        v1 = data.createVariable('smoke', 'f8', ('tile', 'nx', 'ny'))
+        v1[:] = smoke.data
+        v1.units = units['mass']
+
+        data.close()
     
     return
 
 
-def unstagger_coord(field, mode='mean'):
+def unstagger_coordinate(field, mode='mean'):
     """
     Use: field = unstagger_coord(field, mode='mean')
 
@@ -641,6 +638,7 @@ def unstagger_coord(field, mode='mean'):
     ** currently only works with fields that are the same size in x- and y- directions.
     ** TO DO: add final dimensions parameter to inputs and staggering based on that. 
     """
+
     fs = field.shape
 
     if len(fs) == 2:
@@ -679,44 +677,3 @@ def unstagger_coord(field, mode='mean'):
         field = field[0]
 
     return field
-
-
-def plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title='', fSave=None):
-    """
-    Use: plot_projection_field(lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title='')
-
-    Creates a Robinson projection and plots the (6) tiles on a map.
-
-    Inputs:
-    - lon, lat: lon and lat of coordinate edges (tile, x, y)
-    - field: unstaggered field at a given vertical level (tile, x, y)
-    - cmap: colormap
-    - vmin, vmax: limits of the color map
-    - units: label the units on the color bar
-    - title: set title of the plot
-
-    Outputs: none
-    """
-
-
-    fig = plt.figure(figsize = (8, 4))
-    fig.patch.set_facecolor('white')
-    ax = fig.add_subplot(111, projection=ccrs.Robinson())
-    ax.set_facecolor('.4')
-
-    f1 = pcolormesh_cube(lat, lon, field, cmap=cmap, vmin=vmin, vmax=vmax)
-    plt.colorbar(f1, label=units)
-
-    ax.set_title(title)
-
-    if not fSave == None:
-        plt.savefig(fSave, dpi=200, bbox_inches='tight')
-        plt.close('all')
-    else:
-        plt.show()
-
-    return
-
-
-
-
