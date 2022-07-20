@@ -25,9 +25,9 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
-def get_lonLat_agrid(grid_data, dimensions, units, origins, backend):
+def get_lonLat_edges(grid_data, dimensions, units, origins, backend):
     """
-    Use: lon, lat = get_lonLat_agrid(grid_data, dimensions, units, origins, backend)
+    Use: lon, lat = get_lonLat_edges(grid_data, dimensions, units, origins, backend)
 
     Inputs:
     - grid_data configuration
@@ -41,7 +41,7 @@ def get_lonLat_agrid(grid_data, dimensions, units, origins, backend):
     """
 
     lon = Quantity(
-        grid_data.lon_agrid.data * 180 / np.pi,
+        grid_data.lon.data * 180 / np.pi,
         ("x_interface", "y_interface"),
         units["coord"],
         origins["compute_2d"],
@@ -49,7 +49,7 @@ def get_lonLat_agrid(grid_data, dimensions, units, origins, backend):
         backend,
     )
     lat = Quantity(
-        grid_data.lat_agrid.data * 180 / np.pi,
+        grid_data.lat.data * 180 / np.pi,
         ("x_interface", "y_interface"),
         units["coord"],
         origins["compute_2d"],
@@ -921,7 +921,7 @@ def plot_grid(
     ax.set_title(title)
 
     if fSave is not None:
-        plt.savefig(fSave, dpi=1500, bbox_inches="tight")
+        plt.savefig(fSave, dpi=300, bbox_inches="tight")
         plt.close("all")
     else:
         plt.show()
@@ -949,7 +949,7 @@ def write_initialCondition_toFile(
     Outputs: None; creates netCDF file
     """
 
-    lon, lat = get_lonLat_agrid(
+    lon, lat = get_lonLat_edges(
         configuration["grid_data"], dimensions, units, origins, backend
     )
 
