@@ -120,5 +120,5 @@ def count_memory(sdfg: SDFG, detail_report=False) -> str:
     return report
 
 
-def count_memory_from_path(sdfg_path: str) -> str:
-    return count_memory(SDFG.from_file(sdfg_path))
+def count_memory_from_path(sdfg_path: str, detail_report=False) -> str:
+    return count_memory(SDFG.from_file(sdfg_path), detail_report=detail_report)

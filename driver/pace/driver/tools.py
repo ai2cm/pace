@@ -1,3 +1,4 @@
+from email.policy import default
 import os
 from typing import Optional
 
@@ -19,14 +20,15 @@ ACTION_SDFG_MEMORY_COUNT = "sdfg_memory_count"
     "--sdfg_path",
     type=click.STRING,
 )
-def command_line(action: str, sdfg_path: Optional[str]):
+@click.option("--report_detail", is_flag=True, type=click.BOOL, default=False)
+def command_line(action: str, sdfg_path: Optional[str], report_detail: Optional[bool]):
     """
     Run tooling.
     """
     if action == ACTION_SDFG_MEMORY_COUNT:
         if sdfg_path is None or not os.path.exists(sdfg_path):
             raise RuntimeError(f"Can't load SDFG {sdfg_path}")
-        count_memory_from_path(sdfg_path)
+        print(count_memory_from_path(sdfg_path, detail_report=report_detail))
 
 
 if __name__ == "__main__":
