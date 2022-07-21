@@ -245,7 +245,7 @@ def create_gaussianMultiplier(lon, lat, dimensions, mpi_rank, center_tile=0):
     return gaussian_multiplier
 
 
-def calculate_streamfunction_testCase1(lon, lat, dimensions):
+def calculate_streamfunction_testCase1a(lon, lat, dimensions):
     """
     Use: psi, psi_staggered = calculate_streamfunction_testCase1(lon, lat, dimensions)
 
@@ -300,6 +300,7 @@ def calculate_streamfunction_testCase1b(lon, lat, dimensions):
 
     Calculates streamfunction for testCase1 in fortran. Runs on each rank independently.
     Modified Ubar so it depends on radius (same period regardless of latitude?)
+    Some experimentation here.
 
     Inputs:
     - lon: longitude of center points (in radians)
@@ -311,10 +312,8 @@ def calculate_streamfunction_testCase1b(lon, lat, dimensions):
     - psi_staggered: streamfunction on tile corners (with halo points)
     """
 
-    R_lat = RADIUS * np.cos(lat/2)
-    #R_lat = 0.5 * (R_lat + RADIUS)
-    Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0) 
-    #Ubar = (2.0 * np.pi * R_lat) / (12.0 * 86400.0) # now shape of lat
+    R_lat = RADIUS * np.cos(lat / 2)
+    Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0)
     alpha = 0
 
     psi = np.ones((dimensions["nxhalo"], dimensions["nyhalo"])) * 1.0e25
@@ -434,12 +433,12 @@ def calculate_windsFromStreamfunction_grid(psi, dx, dy, dimensions, grid="A"):
     return u_grid, v_grid
 
 
-def create_initialState_testCase1(
+def create_initialState_testCase1a(
     grid_data, dimensions, units, origins, backend, smoke_dict, pressure_dict
 ):
     """
     Use: initialState =
-    create_initialState(grid_data, dimensions, units, origins,
+    create_initialState1a(grid_data, dimensions, units, origins,
                         backend, smoke_dict, pressure_dict)
 
     Creates inital state from the fortran test_case 1 streamfunction configuration -
@@ -503,7 +502,7 @@ def create_initialState_testCase1(
     )
 
     # STREAMFUNCTION
-    _, psi_staggered = calculate_streamfunction_testCase1(
+    _, psi_staggered = calculate_streamfunction_testCase1a(
         lonA_halo.data, latA_halo.data, dimensions
     )
     psi_staggered_halo = Quantity(
@@ -614,7 +613,7 @@ def create_initialState_testCase1b(
 ):
     """
     Use: initialState =
-    create_initialState(grid_data, dimensions, units, origins,
+    create_initialState1b(grid_data, dimensions, units, origins,
                         backend, smoke_dict, pressure_dict)
 
     Creates inital state from the fortran test_case 1 streamfunction configuration -
