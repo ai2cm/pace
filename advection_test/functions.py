@@ -294,6 +294,59 @@ def calculate_streamfunction_testCase1(lon, lat, dimensions):
     return psi, psi_staggered
 
 
+def calculate_streamfunction_testCase1b(lon, lat, dimensions):
+    """
+    Use: psi, psi_staggered = calculate_streamfunction_testCase1(lon, lat, dimensions)
+
+    Calculates streamfunction for testCase1 in fortran. Runs on each rank independently.
+    Modified Ubar so it depends on radius (same period regardless of latitude?)
+
+    Inputs:
+    - lon: longitude of center points (in radians)
+    - lat: latitude of center points (in radians)
+    - dimensions: Dict{'nxhalo', 'nyhalo'}
+
+    Outputs:
+    - psi: streamfunction on tile centers (with halo points)
+    - psi_staggered: streamfunction on tile corners (with halo points)
+    """
+
+    R_lat = RADIUS * np.cos(lat/2)
+    #R_lat = 0.5 * (R_lat + RADIUS)
+    Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0) 
+    #Ubar = (2.0 * np.pi * R_lat) / (12.0 * 86400.0) # now shape of lat
+    alpha = 0
+
+    psi = np.ones((dimensions["nxhalo"], dimensions["nyhalo"])) * 1.0e25
+    psi_staggered = np.ones((dimensions["nxhalo"], dimensions["nyhalo"])) * 1.0e25
+
+    for jj in range(dimensions["nyhalo"]):
+        for ii in range(dimensions["nxhalo"]):
+            psi[ii, jj] = (
+                -1.0
+                * Ubar
+                * R_lat[ii, jj]
+                * (
+                    np.sin(lat[ii, jj]) * np.cos(alpha)
+                    - np.cos(lon[ii, jj]) * np.cos(lat[ii, jj]) * np.sin(alpha)
+                )
+            )
+
+    for jj in range(dimensions["nyhalo"]):
+        for ii in range(dimensions["nxhalo"]):
+            psi_staggered[ii, jj] = (
+                -1.0
+                * Ubar
+                * R_lat[ii, jj]
+                * (
+                    np.sin(lat[ii, jj]) * np.cos(alpha)
+                    - np.cos(lon[ii, jj]) * np.cos(lat[ii, jj]) * np.sin(alpha)
+                )
+            )
+
+    return psi, psi_staggered
+
+
 def calculate_windsFromStreamfunction_grid(psi, dx, dy, dimensions, grid="A"):
     """
     Use: u_grid, v_grid =
@@ -451,6 +504,181 @@ def create_initialState_testCase1(
 
     # STREAMFUNCTION
     _, psi_staggered = calculate_streamfunction_testCase1(
+        lonA_halo.data, latA_halo.data, dimensions
+    )
+    psi_staggered_halo = Quantity(
+        psi_staggered,
+        ("x_halo", "y_halo"),
+        units["psi"],
+        origins["halo"],
+        (dimensions["nxhalo"], dimensions["nyhalo"]),
+        backend,
+    )
+
+    # WINDS
+    dx_halo = Quantity(
+        grid_data.dx.data,
+        ("x_halo", "y_halo"),
+        units["dist"],
+        origins["halo"],
+        (dimensions["nxhalo"], dimensions["nyhalo"]),
+        backend,
+    )
+    dy_halo = Quantity(
+        grid_data.dy.data,
+        ("x_halo", "y_halo"),
+        units["dist"],
+        origins["halo"],
+        (dimensions["nxhalo"], dimensions["nyhalo"]),
+        backend,
+    )
+    uC, vC = calculate_windsFromStreamfunction_grid(
+        psi_staggered_halo, dx_halo, dy_halo, dimensions, grid="C"
+    )
+    uC = Quantity(
+        uC,
+        ("x", "y_interface"),
+        units["wind"],
+        origins["compute_2d"],
+        (dimensions["nx"], dimensions["ny1"]),
+        backend,
+    )
+    vC = Quantity(
+        vC,
+        ("x_interface", "y"),
+        units["wind"],
+        origins["compute_2d"],
+        (dimensions["nx1"], dimensions["ny"]),
+        backend,
+    )
+
+    # EXTEND INITIAL CONDITIONS INTO ONE VERTICAL LAYER
+    dimensions["nz"] = 1
+    empty = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"], dimensions["nz"] + 1))
+
+    smoke_3d = np.copy(empty)
+    uC_3d = np.copy(empty)
+    vC_3d = np.copy(empty)
+    delp_3d = np.copy(empty)
+
+    smoke_3d[:, :, 0] = smoke.data
+    uC_3d[:, :, 0] = uC.data
+    vC_3d[:, :, 0] = vC.data
+    delp_3d[:, :, 0] = delp.data
+
+    smoke = Quantity(
+        smoke_3d,
+        ("x", "y", "z"),
+        units["mass"],
+        origins["compute_3d"],
+        (dimensions["nx"], dimensions["ny"], dimensions["nz"]),
+        backend,
+    )
+    uC = Quantity(
+        uC_3d,
+        ("x", "y_interface", "z"),
+        units["wind"],
+        origins["compute_3d"],
+        (dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
+        backend,
+    )
+    vC = Quantity(
+        vC_3d,
+        ("x_interface", "y", "z"),
+        units["wind"],
+        origins["compute_3d"],
+        (dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
+        backend,
+    )
+    delp = Quantity(
+        delp_3d,
+        ("x", "y", "z"),
+        units["wind"],
+        origins["compute_3d"],
+        (dimensions["nx"], dimensions["ny"], dimensions["nz"]),
+        backend,
+    )
+
+    initialState = {
+        "delp": delp,
+        "smoke": smoke,
+        "uC": uC,
+        "vC": vC,
+    }
+
+    return initialState
+
+
+def create_initialState_testCase1b(
+    grid_data, dimensions, units, origins, backend, smoke_dict, pressure_dict
+):
+    """
+    Use: initialState =
+    create_initialState(grid_data, dimensions, units, origins,
+                        backend, smoke_dict, pressure_dict)
+
+    Creates inital state from the fortran test_case 1 streamfunction configuration -
+    pressure, gaussian smoke distribution, u and v winds on C-grid.
+
+    Inputs:
+    - grid_data: configuration['grid_data']
+    - dimensions: Dict{'nx', 'ny', 'nx1', 'ny1', 'nxhalo', 'nyhalo', 'tile'}
+    - units: Dict{'coord', 'dist', 'mass', 'psi', 'wind'}
+    - origins: Dict{'halo', 'compute_2d'}
+    - backend: 'numpy'
+    - smoke_dict: Dict{'center_tile', 'rank', 'smoke_base'}
+    - pressure_dict: Dict{'pressure_base'}
+
+    Outputs:
+    - initialState: Dict{'delp', 'smoke', 'uc', 'vc'} - 3D with a
+        single layer in the vertical
+    """
+    lonA_halo = Quantity(
+        grid_data.lon_agrid.data,
+        ("x_halo", "y_halo"),
+        units["coord"],
+        origins["halo"],
+        (dimensions["nxhalo"], dimensions["nyhalo"]),
+        backend,
+    )
+    latA_halo = Quantity(
+        grid_data.lat_agrid.data,
+        ("x_halo", "y_halo"),
+        units["coord"],
+        origins["halo"],
+        (dimensions["nxhalo"], dimensions["nyhalo"]),
+        backend,
+    )
+
+    # SMOKE
+    gaussian_multiplier = create_gaussianMultiplier(
+        lonA_halo.data,
+        latA_halo.data,
+        dimensions,
+        center_tile=smoke_dict["center_tile"],
+        mpi_rank=smoke_dict["rank"],
+    )
+    smoke = Quantity(
+        gaussian_multiplier * smoke_dict["smoke_base"],
+        ("x", "y"),
+        units["mass"],
+        origins["compute_2d"],
+        (dimensions["nx"], dimensions["ny"]),
+        backend,
+    )
+
+    # PRESSURE
+    delp = Quantity(
+        np.ones(smoke.data.shape) * pressure_dict["pressure_base"],
+        ("x", "y"),
+        units["pressure"],
+        origins["compute_2d"],
+        (dimensions["nx"], dimensions["ny"]),
+        backend,
+    )
+
+    # STREAMFUNCTION
+    _, psi_staggered = calculate_streamfunction_testCase1b(
         lonA_halo.data, latA_halo.data, dimensions
     )
     psi_staggered_halo = Quantity(
