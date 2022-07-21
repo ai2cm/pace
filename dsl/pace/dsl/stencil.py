@@ -21,6 +21,7 @@ from typing import (
 )
 
 import dace
+from pace.dsl.gt4py_utils import is_gpu_backend
 import gt4py
 import numpy as np
 from gt4py import gtscript
@@ -72,7 +73,7 @@ class CompilationConfig:
         if run_mode != RunMode.Run and use_minimal_caching:
             raise RuntimeError("Cannot use minimal caching in any building mode")
         if (not ("gpu" in backend or "cuda" in backend)) and device_sync == True:
-            raise RuntimeError("Device Sync is true on a CPU based backend")
+            raise RuntimeError("Device sync is true on a CPU based backend")
         # GT4Py backend args
         self.backend = backend
         self.rebuild = rebuild
@@ -85,14 +86,15 @@ class CompilationConfig:
         if communicator:
             self.rank = communicator.rank
             self.size = communicator.partitioner.total_ranks
-            self.compiling_equivalent = compiling_equivalent(
-                self.rank, communicator.partitioner
-            )
             if use_minimal_caching:
+                self.compiling_equivalent = compiling_equivalent(
+                    self.rank, communicator.partitioner
+                )
                 self.is_compiling = determine_rank_is_compiling(
                     self.rank, communicator.partitioner
                 )
             else:
+                self.compiling_equivalent = self.rank
                 self.is_compiling = True
         else:
             self.rank = 1
@@ -192,12 +194,7 @@ class StencilConfig(Hashable):
 
     @property
     def is_gpu_backend(self) -> bool:
-        return (
-            gt4py.backend.from_name(self.compilation_config.backend).storage_info[
-                "device"
-            ]
-            == "gpu"
-        )
+        return is_gpu_backend(self.compilation_config.backend)
 
     @classmethod
     def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
@@ -436,6 +433,7 @@ class FrozenStencil(SDFGConvertible):
             skip_passes=skip_passes, func=func
         )
         self.stencil_object: Optional[gt4py.StencilObject] = None
+        """generated stencil object returned from gt4py."""
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
@@ -459,7 +457,7 @@ class FrozenStencil(SDFGConvertible):
 
         if stencil_config.compilation_config.run_mode == RunMode.Run:
 
-            def build(self):
+            def exit_instead_of_build(self):
                 stencil_class = None if self.options.rebuild else self.backend.load()
                 if stencil_class is None:
                     raise RuntimeError(
@@ -469,32 +467,33 @@ class FrozenStencil(SDFGConvertible):
 
             from gt4py.stencil_builder import StencilBuilder
 
-            StencilBuilder.build = build
+            StencilBuilder.build = exit_instead_of_build
 
-        if stencil_config.compilation_config.use_minimal_caching:
-            if not stencil_config.compilation_config.is_compiling:
-                # block from moving until compilation is done
-                if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-                    _ = MPI.COMM_WORLD.recv(
-                        source=stencil_config.compilation_config.compiling_equivalent
-                    )
-        # gt4py compilation is only done when needed
-        """generated stencil object returned from gt4py."""
         if self.stencil_config.dace_config.is_dace_orchestrated():
+            # gt4py compilation is only done when needed
             self.stencil_object = gtscript.lazy_stencil(
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
                 build_info=(build_info := {}),  # type: ignore
             )
-
         else:
+            if stencil_config.compilation_config.use_minimal_caching:
+                if not stencil_config.compilation_config.is_compiling:
+                    # block from moving until compilation is done
+                    if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
+                        _ = MPI.COMM_WORLD.recv(
+                            source=stencil_config.compilation_config.compiling_equivalent
+                        )
             self.stencil_object = gtscript.stencil(
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
                 build_info=(build_info := {}),
             )
+            if stencil_config.compilation_config.use_minimal_caching:
+                if stencil_config.compilation_config.is_compiling:
+                    unblock_waiting_tiles(MPI.COMM_WORLD)
 
         self._timing_collector.build_info[
             _stencil_object_name(self.stencil_object)

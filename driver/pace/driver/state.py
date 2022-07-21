@@ -10,7 +10,7 @@ import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
 from pace.util.grid import DampingCoefficients
-
+from pace.dsl.gt4py_utils import is_gpu_backend
 
 try:
     import cupy as cp
@@ -55,9 +55,7 @@ class TendencyState:
         initial_quantities = {}
         for _field in dataclasses.fields(cls):
             initial_quantities[_field.name] = quantity_factory.zeros(
-                _field.metadata["dims"],
-                _field.metadata["units"],
-                dtype=float,
+                _field.metadata["dims"], _field.metadata["units"], dtype=float,
             )
         return cls(**initial_quantities)
 
@@ -73,9 +71,7 @@ class DriverState:
 
     @classmethod
     def load_state_from_restart(
-        cls,
-        restart_path: str,
-        driver_config,
+        cls, restart_path: str, driver_config,
     ) -> "DriverState":
         comm = driver_config.comm_config.get_comm()
         communicator = pace.util.CubedSphereCommunicator.from_layout(
@@ -187,29 +183,19 @@ def _restart_driver_state(
     damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
-    is_gpu_backend = "gpu" in dycore_state.u.metadata.gt4py_backend
+    backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
     dycore_state = _overwrite_state_from_restart(
-        path,
-        rank,
-        dycore_state,
-        "restart_dycore_state",
-        is_gpu_backend,
+        path, rank, dycore_state, "restart_dycore_state", backend_uses_gpu,
     )
     active_packages = ["microphysics"]
     physics_state = fv3gfs.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages
     )
     physics_state = _overwrite_state_from_restart(
-        path,
-        rank,
-        physics_state,
-        "restart_physics_state",
-        is_gpu_backend,
+        path, rank, physics_state, "restart_physics_state", backend_uses_gpu,
     )
     physics_state.__post_init__(quantity_factory, active_packages)
-    tendency_state = TendencyState.init_zeros(
-        quantity_factory=quantity_factory,
-    )
+    tendency_state = TendencyState.init_zeros(quantity_factory=quantity_factory,)
 
     return DriverState(
         dycore_state=dycore_state,

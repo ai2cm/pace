@@ -3,6 +3,7 @@ from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gt4py.storage as gt_storage
+import gt4py.backend
 import numpy as np
 
 from pace.dsl.typing import DTypes, Field, Float, FloatField
@@ -220,9 +221,7 @@ def _make_storage_data_3d(
     isize, jsize, ksize = data.shape
     buffer = zeros(shape, backend=backend)
     buffer[
-        istart : istart + isize,
-        jstart : jstart + jsize,
-        kstart : kstart + ksize,
+        istart : istart + isize, jstart : jstart + jsize, kstart : kstart + ksize,
     ] = asarray(data, type(buffer))
     return buffer
 
@@ -371,7 +370,7 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
 
 
 def is_gpu_backend(backend: str) -> bool:
-    return backend.endswith("cuda") or backend.endswith("gpu")
+    return gt4py.backend.from_name(backend).storage_info["device"] == "gpu"
 
 
 def zeros(shape, dtype=Float, *, backend: str):
