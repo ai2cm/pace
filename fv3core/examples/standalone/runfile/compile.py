@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
+import math
 import os
 import shutil
 import sys
 from argparse import ArgumentParser, Namespace
 
 import f90nml
+import gt4py.config
 
 import pace.dsl.stencil  # noqa: F401
 from fv3core._config import DynamicalCoreConfig
 from pace.util.null_comm import NullComm
-import gt4py.config
-import math
+
 
 try:
     from mpi4py import MPI
@@ -32,10 +33,16 @@ def parse_args() -> Namespace:
         help="directory containing data to run with",
     )
     parser.add_argument(
-        "backend", type=str, action="store", help="gt4py backend to use",
+        "backend",
+        type=str,
+        action="store",
+        help="gt4py backend to use",
     )
     parser.add_argument(
-        "target_dir", type=str, action="store", help="directory to copy the caches to",
+        "target_dir",
+        type=str,
+        action="store",
+        help="directory to copy the caches to",
     )
 
     return parser.parse_args()
@@ -61,7 +68,9 @@ if __name__ == "__main__":
         top_tile_rank = global_rank + size * iteration
         if top_tile_rank < sub_tiles:
             mpi_comm = NullComm(
-                rank=top_tile_rank, total_ranks=6 * sub_tiles, fill_value=0.0,
+                rank=top_tile_rank,
+                total_ranks=6 * sub_tiles,
+                fill_value=0.0,
             )
             gt4py.config.cache_settings["dir_name"] = os.environ.get(
                 "GT_CACHE_ROOT", f".gt_cache_{mpi_comm.Get_rank():06}"
@@ -84,11 +93,13 @@ if __name__ == "__main__":
             for tile in range(6):
                 shutil.copytree(
                     f"{root_path}/.gt_cache_{top_tile_rank:06}",
-                    f"{args.target_dir}/.gt_cache_{(top_tile_rank + tile*sub_tiles):06}",
+                    f"{args.target_dir}/.gt_cache"
+                    f"_{(top_tile_rank + tile*sub_tiles):06}",
                     dirs_exist_ok=True,
                 )
                 print(
-                    f"rank {global_rank} copied for target rank {(top_tile_rank + tile*sub_tiles)}"
+                    f"rank {global_rank} copied for "
+                    f"target rank {(top_tile_rank + tile*sub_tiles)}"
                 )
     if comm is not None:
         comm.Barrier()
