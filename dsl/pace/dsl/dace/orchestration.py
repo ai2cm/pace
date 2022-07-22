@@ -20,7 +20,6 @@ from pace.dsl.dace.build import (
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import (
     splittable_region_expansion,
-    strip_unused_global_in_compute_x_flux,
 )
 from pace.dsl.dace.utils import DaCeProgress
 from pace.util.mpi import MPI
@@ -140,7 +139,7 @@ def _build_sdfg(
 
         # Perform pre-expansion fine tuning
         with DaCeProgress(config, "Split regions"):
-            splittable_region_expansion(sdfg)
+            splittable_region_expansion(sdfg, verbose=True)
 
         # Expand the stencil computation Library Nodes with the right expansion
         with DaCeProgress(config, "Expand"):
@@ -148,11 +147,6 @@ def _build_sdfg(
 
         with DaCeProgress(config, "Simplify (2/2)"):
             sdfg.simplify(validate=False, verbose=True)
-
-        with DaCeProgress(
-            config, "Removed unused globals of compute_x_flux (lower VRAM)"
-        ):
-            strip_unused_global_in_compute_x_flux(sdfg)
 
         # Compile
         with DaCeProgress(config, "Codegen & compile"):
