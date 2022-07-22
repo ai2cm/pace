@@ -3,25 +3,29 @@ import unittest.mock as mock
 import pytest
 
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
-from pace.dsl.stencil import CompilationConfig, StencilConfig
-from pace.util.decomposition import determine_compiling_ranks
+from pace.dsl.stencil import CompilationConfig, RunMode, StencilConfig
+from pace.util.decomposition import determine_rank_is_compiling
 
 
 def test_compiling_ranks():
     part = mock.MagicMock(total_ranks=6)
     comm = mock.MagicMock(rank=0, partitioner=part)
-    config = CompilationConfig(communicator=comm, use_minimal_caching=True)
+    config = CompilationConfig(
+        communicator=comm, use_minimal_caching=True, run_mode=RunMode.Run
+    )
 
-    assert determine_compiling_ranks(config) == True
+    assert determine_rank_is_compiling(config) == True
 
     part = mock.MagicMock(total_ranks=24)
     comm = mock.MagicMock(rank=5, partitioner=part)
-    config = CompilationConfig(communicator=comm, use_minimal_caching=True)
-    assert determine_compiling_ranks(config) == False
+    config = CompilationConfig(
+        communicator=comm, use_minimal_caching=True, run_mode=RunMode.Run
+    )
+    assert determine_rank_is_compiling(config) == False
 
 
 def tests_configurations():
-    config = CompilationConfig(use_minimal_caching=True)
+    config = CompilationConfig(use_minimal_caching=True, run_mode=RunMode.Run)
 
 
 # @pytest.mark.parametrize("validate_args", [True, False])

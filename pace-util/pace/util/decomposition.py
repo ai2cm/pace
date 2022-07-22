@@ -1,13 +1,16 @@
+from __future__ import annotations
 import os
 from typing import List, Optional, Tuple
 
 import gt4py.config as config
 from gt4py import config as gt_config
 
-from pace.dsl.dace.dace_config import DaceConfig
-from pace.dsl.stencil import CompilationConfig, RunMode, StencilConfig
 from pace.util import TilePartitioner
 from pace.util.partitioner import CubedSpherePartitioner
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pace.dsl.stencil import CompilationConfig
 
 
 ################################################
@@ -83,6 +86,8 @@ def set_distributed_caches(config: CompilationConfig):
 
     # Check that we have all the file we need to early out in case
     # of issues.
+    from pace.dsl.stencil import RunMode
+
     if config.run_mode == RunMode.Run:
         rank = config.rank
         if config.size == 1:
