@@ -11,6 +11,7 @@ import pace.dsl
 import pace.stencils
 import pace.util
 import pace.util.grid
+from pace.dsl.dace.orchestration import dace_inhibitor
 from pace.util.quantity import QuantityMetadata
 
 from .state import DriverState
@@ -104,6 +105,7 @@ class ZarrDiagnostics(Diagnostics):
                 store=store, partitioner=partitioner, mpi_comm=comm
             )
 
+    @dace_inhibitor
     def store(self, time: Union[datetime, timedelta], state: DriverState):
         if len(self.names) > 0:
             zarr_state = {"time": time}

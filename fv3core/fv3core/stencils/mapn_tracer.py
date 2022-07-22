@@ -3,6 +3,7 @@ from typing import Dict
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.fillz import FillNegativeTracerValues
 from fv3core.stencils.map_single import MapSingle
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField
 from pace.util import Quantity
@@ -25,6 +26,11 @@ class MapNTracer:
         fill: bool,
         tracers: Dict[str, Quantity],
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["tracers"],
+        )
         grid_indexing = stencil_factory.grid_indexing
         self._origin = (i1, j1, 0)
         self._domain = ()

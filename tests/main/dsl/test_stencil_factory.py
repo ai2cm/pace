@@ -3,7 +3,7 @@ import pytest
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.util
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.stencil import (
     CompareToNumpyStencil,
@@ -46,9 +46,7 @@ def setup_data_vars(backend: str):
 
 
 def get_stencil_factory(backend: str) -> StencilFactory:
-    dace_config = DaceConfig(
-        communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
-    )
+    dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
         backend=backend,
         rebuild=False,
@@ -110,9 +108,7 @@ def test_get_stencils_with_varied_bounds_and_regions(backend: str):
 @pytest.mark.parametrize("enabled", [True, False])
 def test_stencil_factory_numpy_comparison_from_dims_halo(enabled: bool):
     backend = "numpy"
-    dace_config = DaceConfig(
-        communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
-    )
+    dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
         backend=backend,
         rebuild=False,
@@ -145,9 +141,7 @@ def test_stencil_factory_numpy_comparison_from_dims_halo(enabled: bool):
 @pytest.mark.parametrize("enabled", [True, False])
 def test_stencil_factory_numpy_comparison_from_origin_domain(enabled: bool):
     backend = "numpy"
-    dace_config = DaceConfig(
-        communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
-    )
+    dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
         backend=backend,
         rebuild=False,
@@ -177,9 +171,7 @@ def test_stencil_factory_numpy_comparison_from_origin_domain(enabled: bool):
 
 def test_stencil_factory_numpy_comparison_runs_without_exceptions():
     backend = "numpy"
-    dace_config = DaceConfig(
-        communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
-    )
+    dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
         backend=backend,
         rebuild=False,

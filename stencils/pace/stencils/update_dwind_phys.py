@@ -1,6 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
 from pace.util import TilePartitioner
@@ -161,6 +162,8 @@ class AGrid2DGridPhysics:
         namelist,
         grid_info: DriverGridData,
     ):
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
+
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         self._dt5 = 0.5 * self.namelist.dt_atmos
