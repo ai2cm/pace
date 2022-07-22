@@ -117,7 +117,7 @@ class DriverConfig:
                 f"No simulation possible: you asked for {self.total_time} "
                 f"simulation time but the timestep is {self.timestep}"
             )
-        return floor(self.total_time.seconds / self.timestep.seconds)
+        return floor(self.total_time.total_seconds() / self.timestep.total_seconds())
 
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:
