@@ -6,7 +6,6 @@ import sys
 from argparse import ArgumentParser, Namespace
 
 import f90nml
-from fv3core.stencils.fv_dynamics import DynamicalCore
 import gt4py.config
 
 import pace.dsl.stencil  # noqa: F401
@@ -34,10 +33,16 @@ def parse_args() -> Namespace:
         help="directory containing data to run with",
     )
     parser.add_argument(
-        "backend", type=str, action="store", help="gt4py backend to use",
+        "backend",
+        type=str,
+        action="store",
+        help="gt4py backend to use",
     )
     parser.add_argument(
-        "target_dir", type=str, action="store", help="directory to copy the caches to",
+        "target_dir",
+        type=str,
+        action="store",
+        help="directory to copy the caches to",
     )
 
     return parser.parse_args()
@@ -63,7 +68,9 @@ if __name__ == "__main__":
         top_tile_rank = global_rank + size * iteration
         if top_tile_rank < sub_tiles:
             mpi_comm = NullComm(
-                rank=top_tile_rank, total_ranks=6 * sub_tiles, fill_value=0.0,
+                rank=top_tile_rank,
+                total_ranks=6 * sub_tiles,
+                fill_value=0.0,
             )
             gt4py.config.cache_settings["dir_name"] = os.environ.get(
                 "GT_CACHE_ROOT", f".gt_cache_{mpi_comm.Get_rank():06}"
@@ -77,7 +84,8 @@ if __name__ == "__main__":
             )
             if stencil_factory.config.dace_config.is_dace_orchestrated():
                 raise RuntimeError(
-                    "cannot use a setup of the dycore to initialize orchestrated code, the code needs to be run!"
+                    "cannot use a setup of the dycore to initialize "
+                    "orchestrated code, the code needs to be run!"
                 )
             print(f"rank {global_rank} compiled target rank {top_tile_rank}")
     # NOTE (jdahm): Temporary until driver initialization-based cache is merged
