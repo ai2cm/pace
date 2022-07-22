@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import click
 import f90nml
-from pace.dsl.stencil import CompilationConfig
 import serialbox
 import yaml
 from timing import collect_data_and_write_to_file
@@ -15,6 +14,7 @@ from fv3core._config import DynamicalCoreConfig
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.testing import TranslateDynCore
 from pace.dsl.dace.orchestration import DaceConfig
+from pace.dsl.stencil import CompilationConfig
 from pace.stencils.testing.grid import Grid
 from pace.util.null_comm import NullComm
 
@@ -38,7 +38,9 @@ def dycore_config_from_namelist(data_directory: str) -> DynamicalCoreConfig:
 def initialize_serializer(data_directory: str, rank: int = 0) -> serialbox.Serializer:
     """Creates a Serializer based on the data-directory and the rank"""
     return serialbox.Serializer(
-        serialbox.OpenModeKind.Read, data_directory, "Generator_rank" + str(rank),
+        serialbox.OpenModeKind.Read,
+        data_directory,
+        "Generator_rank" + str(rank),
     )
 
 
@@ -81,7 +83,8 @@ def get_state_from_input(
 
 
 def set_up_communicator(
-    disable_halo_exchange: bool, layout: Tuple[int, int],
+    disable_halo_exchange: bool,
+    layout: Tuple[int, int],
 ) -> Tuple[Optional[MPI.Comm], Optional[util.CubedSphereCommunicator]]:
     partitioner = util.CubedSpherePartitioner(util.TilePartitioner(layout))
     if MPI is not None:
@@ -96,8 +99,15 @@ def set_up_communicator(
     return comm, cube_comm
 
 
-def get_experiment_name(data_directory: str,) -> str:
-    return yaml.safe_load(open(data_directory + "/input.yml", "r",))["experiment_name"]
+def get_experiment_name(
+    data_directory: str,
+) -> str:
+    return yaml.safe_load(
+        open(
+            data_directory + "/input.yml",
+            "r",
+        )
+    )["experiment_name"]
 
 
 def initialize_timers() -> Tuple[util.Timer, util.Timer, List, List]:
@@ -137,7 +147,10 @@ def driver(
         )
         grid = Grid.with_data_from_namelist(dycore_config, communicator, backend)
         dace_config = DaceConfig(
-            communicator, backend, tile_nx=dycore_config.npx, tile_nz=dycore_config.npz,
+            communicator,
+            backend,
+            tile_nx=dycore_config.npx,
+            tile_nz=dycore_config.npz,
         )
         stencil_config = pace.dsl.stencil.StencilConfig(
             compilation_config=CompilationConfig(
@@ -146,7 +159,8 @@ def driver(
             dace_config=dace_config,
         )
         stencil_factory = pace.dsl.stencil.StencilFactory(
-            config=stencil_config, grid_indexing=grid.grid_indexing,
+            config=stencil_config,
+            grid_indexing=grid.grid_indexing,
         )
         input_data = read_input_data(grid, dycore_config, stencil_factory, serializer)
         experiment_name = get_experiment_name(data_directory)
@@ -173,7 +187,8 @@ def driver(
         # We're intentionally not passing the timer here to exclude
         # warmup/compilation from the internal timers
         acoustics_object(
-            state, n_map=state["n_map"],
+            state,
+            n_map=state["n_map"],
         )
 
     # we set up a specific timer for each timestep

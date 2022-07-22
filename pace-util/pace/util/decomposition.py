@@ -1,12 +1,14 @@
+import os
 from typing import List, Optional, Tuple
+
+import gt4py.config as config
+from gt4py import config as gt_config
 
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.stencil import CompilationConfig, RunMode, StencilConfig
 from pace.util import TilePartitioner
-import gt4py.config as config
 from pace.util.partitioner import CubedSpherePartitioner
-from gt4py import config as gt_config
-import os
+
 
 ################################################
 # Distributed compilation

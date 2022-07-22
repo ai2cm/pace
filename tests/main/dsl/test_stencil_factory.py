@@ -93,7 +93,10 @@ def test_get_stencils_with_varied_bounds_and_regions(backend: str):
     origins = [(3, 3, 0), (2, 2, 0)]
     domains = [(1, 1, 3), (2, 2, 3)]
     stencils = get_stencils_with_varied_bounds(
-        add_1_in_region_stencil, origins, domains, stencil_factory=factory,
+        add_1_in_region_stencil,
+        origins,
+        domains,
+        stencil_factory=factory,
     )
     q_orig, q_ref = setup_data_vars(backend=backend)
     stencils[0](q_orig, q_orig)
@@ -197,7 +200,9 @@ def test_stencil_factory_numpy_comparison_runs_without_exceptions():
     )
     factory = StencilFactory(config=config, grid_indexing=indexing)
     stencil = factory.from_origin_domain(
-        func=copy_stencil, origin=(0, 0, 0), domain=indexing.max_shape,
+        func=copy_stencil,
+        origin=(0, 0, 0),
+        domain=indexing.max_shape,
     )
     assert isinstance(stencil, CompareToNumpyStencil)
     q_in = make_storage_from_shape(indexing.max_shape, backend=backend)

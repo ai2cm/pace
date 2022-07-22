@@ -2,8 +2,8 @@ import logging
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import gt4py.storage as gt_storage
 import gt4py.backend
+import gt4py.storage as gt_storage
 import numpy as np
 
 from pace.dsl.typing import DTypes, Field, Float, FloatField
@@ -221,7 +221,9 @@ def _make_storage_data_3d(
     isize, jsize, ksize = data.shape
     buffer = zeros(shape, backend=backend)
     buffer[
-        istart : istart + isize, jstart : jstart + jsize, kstart : kstart + ksize,
+        istart : istart + isize,
+        jstart : jstart + jsize,
+        kstart : kstart + ksize,
     ] = asarray(data, type(buffer))
     return buffer
 

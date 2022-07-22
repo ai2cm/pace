@@ -1,9 +1,10 @@
-from pace.util.decomposition import determine_compiling_ranks
+import unittest.mock as mock
+
 import pytest
 
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.stencil import CompilationConfig, StencilConfig
-import unittest.mock as mock
+from pace.util.decomposition import determine_compiling_ranks
 
 
 def test_compiling_ranks():
@@ -57,4 +58,3 @@ def tests_configurations():
 #         ),
 #     )
 #     assert config == same_config
-

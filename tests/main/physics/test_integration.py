@@ -5,9 +5,9 @@ import numpy as np
 
 import fv3gfs.physics
 import pace.dsl
-from pace.dsl.stencil import CompilationConfig
 import pace.util
 import pace.util.grid
+from pace.dsl.stencil import CompilationConfig
 from pace.stencils.testing import assert_same_temporaries, copy_temporaries
 
 
@@ -45,15 +45,19 @@ def setup_physics():
     )
     stencil_config = pace.dsl.stencil.StencilConfig(
         compilation_config=CompilationConfig(
-            backend=backend, rebuild=False, validate_args=True,
+            backend=backend,
+            rebuild=False,
+            validate_args=True,
         ),
         dace_config=dace_config,
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
-        config=stencil_config, grid_indexing=grid_indexing,
+        config=stencil_config,
+        grid_indexing=grid_indexing,
     )
     metric_terms = pace.util.grid.MetricTerms(
-        quantity_factory=quantity_factory, communicator=communicator,
+        quantity_factory=quantity_factory,
+        communicator=communicator,
     )
     grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
     physics = fv3gfs.physics.Physics(

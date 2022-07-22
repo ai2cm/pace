@@ -39,13 +39,22 @@ def parse_args() -> Namespace:
         help="directory containing data to run with",
     )
     parser.add_argument(
-        "time_step", type=int, action="store", help="number of timesteps to execute",
+        "time_step",
+        type=int,
+        action="store",
+        help="number of timesteps to execute",
     )
     parser.add_argument(
-        "backend", type=str, action="store", help="gt4py backend to use",
+        "backend",
+        type=str,
+        action="store",
+        help="gt4py backend to use",
     )
     parser.add_argument(
-        "hash", type=str, action="store", help="git hash to store",
+        "hash",
+        type=str,
+        action="store",
+        help="git hash to store",
     )
     parser.add_argument(
         "--disable_halo_exchange",
@@ -53,7 +62,9 @@ def parse_args() -> Namespace:
         help="enable or disable the halo exchange",
     )
     parser.add_argument(
-        "--disable_json_dump", action="store_true", help="enable or disable json dump",
+        "--disable_json_dump",
+        action="store_true",
+        help="enable or disable json dump",
     )
     parser.add_argument(
         "--profile",
@@ -141,7 +152,12 @@ def gather_hit_counts(
 
 
 def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
-    config_yml = yaml.safe_load(open(data_directory + "/input.yml", "r",))
+    config_yml = yaml.safe_load(
+        open(
+            data_directory + "/input.yml",
+            "r",
+        )
+    )
     is_baroclinic_test_case = False
     if (
         "test_case_nml" in config_yml["namelist"].keys()
@@ -160,7 +176,9 @@ def get_experiment_info(data_directory: str) -> Tuple[str, bool]:
 def read_serialized_initial_state(rank, grid, namelist, stencil_factory, data_dir):
     # set up of helper structures
     serializer = serialbox.Serializer(
-        serialbox.OpenModeKind.Read, data_dir, "Generator_rank" + str(rank),
+        serialbox.OpenModeKind.Read,
+        data_dir,
+        "Generator_rank" + str(rank),
     )
     # create a state from serialized data
     savepoint_in = serializer.get_savepoint("Driver-In")[0]
@@ -202,7 +220,10 @@ def setup_dycore(
     grid = Grid.from_namelist(dycore_config, mpi_comm.rank, backend)
 
     dace_config = DaceConfig(
-        communicator, backend, tile_nx=dycore_config.npx, tile_nz=dycore_config.npz,
+        communicator,
+        backend,
+        tile_nx=dycore_config.npx,
+        tile_nz=dycore_config.npz,
     )
     stencil_config = pace.dsl.stencil.StencilConfig(
         compilation_config=pace.dsl.stencil.CompilationConfig(
@@ -211,7 +232,8 @@ def setup_dycore(
         dace_config=dace_config,
     )
     stencil_factory = StencilFactory(
-        config=stencil_config, grid_indexing=grid.grid_indexing,
+        config=stencil_config,
+        grid_indexing=grid.grid_indexing,
     )
     metric_terms = MetricTerms.from_tile_sizing(
         npx=dycore_config.npx,

@@ -119,7 +119,10 @@ def get_config(backend, communicator):
         compilation_config=pace.dsl.stencil.CompilationConfig(
             backend=backend, rebuild=False, validate_args=True
         ),
-        dace_config=DaceConfig(communicator=communicator, backend=backend,),
+        dace_config=DaceConfig(
+            communicator=communicator,
+            backend=backend,
+        ),
     )
     return stencil_config
 
@@ -164,7 +167,8 @@ def _savepoint_cases(
         if compute_grid:
             compute_grid_data(grid, namelist, backend, namelist.layout)
         stencil_factory = pace.dsl.stencil.StencilFactory(
-            config=stencil_config, grid_indexing=grid.grid_indexing,
+            config=stencil_config,
+            grid_indexing=grid.grid_indexing,
         )
         for test_name in sorted(list(savepoint_names)):
             testobj = get_test_class_instance(
@@ -245,7 +249,12 @@ def generate_parallel_stencil_tests(metafunc, *, backend: str):
     comm = MPI.COMM_WORLD
     mpi_rank = comm.Get_rank()
     savepoint_cases = parallel_savepoint_cases(
-        metafunc, data_path, namelist_filename, mpi_rank, backend=backend, comm=comm,
+        metafunc,
+        data_path,
+        namelist_filename,
+        mpi_rank,
+        backend=backend,
+        comm=comm,
     )
     metafunc.parametrize(
         "case", savepoint_cases, ids=[str(item) for item in savepoint_cases]
