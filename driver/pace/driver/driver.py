@@ -3,6 +3,7 @@ import functools
 import logging
 import warnings
 from datetime import datetime, timedelta
+from math import floor
 from typing import Any, Dict, List, Tuple, Union
 
 import dace
@@ -116,7 +117,7 @@ class DriverConfig:
                 f"No simulation possible: you asked for {self.total_time} "
                 f"simulation time but the timestep is {self.timestep}"
             )
-        return round(self.total_time.seconds / self.timestep.seconds)
+        return floor(self.total_time.seconds / self.timestep.seconds)
 
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:
@@ -183,8 +184,7 @@ class DriverConfig:
 
 class Driver:
     def __init__(
-        self,
-        config: DriverConfig,
+        self, config: DriverConfig,
     ):
         """
         Initializes a pace Driver.
@@ -224,9 +224,7 @@ class Driver:
                 dace_constant_args=["state", "timer"],
             )
             orchestrate(
-                obj=self,
-                config=dace_config,
-                method_to_orchestrate="_step_physics",
+                obj=self, config=dace_config, method_to_orchestrate="_step_physics",
             )
 
             self.quantity_factory, self.stencil_factory = _setup_factories(
@@ -280,8 +278,7 @@ class Driver:
                 tendency_state=self.state.tendency_state,
             )
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
-                partitioner=communicator.partitioner,
-                comm=self.comm,
+                partitioner=communicator.partitioner, comm=self.comm,
             )
             self.restart = pace.driver.Restart(
                 save_restart=self.config.save_restart,
@@ -307,9 +304,7 @@ class Driver:
     @dace_inhibitor
     def _callback_restart(self, restart_path: str):
         self.restart.save_state_as_restart(
-            state=self.state,
-            comm=self.comm,
-            restart_path=restart_path,
+            state=self.state, comm=self.comm, restart_path=restart_path,
         )
         self.restart.write_restart_config(
             comm=self.comm,
@@ -333,10 +328,7 @@ class Driver:
         self.performance_config.collect_performance()
 
     def _critical_path_step_all(
-        self,
-        steps_count: int,
-        timer: pace.util.Timer,
-        dt: float,
+        self, steps_count: int, timer: pace.util.Timer, dt: float,
     ):
         """Start of code path where performance is critical.
 
@@ -346,8 +338,7 @@ class Driver:
         for step in dace.nounroll(range(steps_count)):
             with timer.clock("mainloop"):
                 self._step_dynamics(
-                    self.state.dycore_state,
-                    self.performance_config.timestep_timer,
+                    self.state.dycore_state, self.performance_config.timestep_timer,
                 )
                 if not self.config.disable_step_physics:
                     self._step_physics(timestep=dt)
@@ -365,8 +356,7 @@ class Driver:
     def step(self, timestep: timedelta):
         with self.performance_config.timestep_timer.clock("mainloop"):
             self._step_dynamics(
-                self.state.dycore_state,
-                self.performance_config.timestep_timer,
+                self.state.dycore_state, self.performance_config.timestep_timer,
             )
             if not self.config.disable_step_physics:
                 self._step_physics(timestep=timestep.total_seconds())
@@ -374,13 +364,10 @@ class Driver:
         self.performance_config.collect_performance()
 
     def _step_dynamics(
-        self,
-        state: DycoreState,
-        timer: pace.util.Timer,
+        self, state: DycoreState, timer: pace.util.Timer,
     ):
         self.dycore.step_dynamics(
-            state=state,
-            timer=timer,
+            state=state, timer=timer,
         )
 
     def _step_physics(self, timestep: float):
@@ -403,17 +390,13 @@ class Driver:
 
     def _write_performance_json_output(self):
         self.performance_config.write_out_performance(
-            self.comm,
-            self.config.stencil_config.backend,
-            self.config.dt_atmos,
+            self.comm, self.config.stencil_config.backend, self.config.dt_atmos,
         )
 
     @dace_inhibitor
     def _write_restart_files(self, restart_path="RESTART"):
         self.restart.save_state_as_restart(
-            state=self.state,
-            comm=self.comm,
-            restart_path=restart_path,
+            state=self.state, comm=self.comm, restart_path=restart_path,
         )
         self.restart.write_restart_config(
             comm=self.comm,
@@ -461,7 +444,6 @@ def _setup_factories(
         sizer, backend=config.stencil_config.backend
     )
     stencil_factory = pace.dsl.StencilFactory(
-        config=config.stencil_config,
-        grid_indexing=grid_indexing,
+        config=config.stencil_config, grid_indexing=grid_indexing,
     )
     return quantity_factory, stencil_factory

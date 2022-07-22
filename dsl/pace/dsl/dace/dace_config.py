@@ -69,9 +69,12 @@ class DaceConfig:
                 "args",
                 value="-std=c++14 -Xcompiler -fPIC -O3 -Xcompiler -march=native",
             )
-            # Potentiall buggy - deactivate
+            # Potentially buggy - deactivate
             dace.config.Config.set(
-                "compiler", "cuda", "max_concurrent_streams", value=-1,
+                "compiler",
+                "cuda",
+                "max_concurrent_streams",
+                value=-1,  # no concurrent streams, every kernel on defaultStream
             )
             # Speed up built time
             dace.config.Config.set(

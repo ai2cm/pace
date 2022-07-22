@@ -433,7 +433,6 @@ class FrozenStencil(SDFGConvertible):
             skip_passes=skip_passes, func=func
         )
         self.stencil_object: Optional[gt4py.StencilObject] = None
-        """generated stencil object returned from gt4py."""
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
@@ -482,14 +481,12 @@ class FrozenStencil(SDFGConvertible):
                 if not stencil_config.compilation_config.is_compiling:
                     # block from moving until compilation is done
                     if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-                        _ = MPI.COMM_WORLD.recv(
-                            source=stencil_config.compilation_config.compiling_equivalent
-                        )
+                        source = stencil_config.compilation_config.compiling_equivalent
             self.stencil_object = gtscript.stencil(
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
-                build_info=(build_info := {}),
+                build_info=(build_info := {}),  # type: ignore
             )
             if stencil_config.compilation_config.use_minimal_caching:
                 if stencil_config.compilation_config.is_compiling:
