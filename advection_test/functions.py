@@ -1,10 +1,13 @@
 import copy as cp
 import os
+from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 from cartopy import crs as ccrs
 from fv3viz import pcolormesh_cube
+from IPython.display import HTML, display
+from matplotlib import animation
 from netCDF4 import Dataset
 
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
@@ -25,23 +28,101 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
-def get_lonLat_edges(grid_data, dimensions, units, origins, backend):
+backend = "numpy"
+layout = (1, 1)
+fvt_dict = {"grid_type": 0, "hord": 6}
+
+
+def split_metadata(
+    metadata: Dict[str, Dict[str, Any]]
+) -> Tuple[Dict[str, int], Dict[str, Tuple[Any]], Dict[str, str]]:
     """
-    Use: lon, lat = get_lonLat_edges(grid_data, dimensions, units, origins, backend)
+    Use: dimensions, origins, units = split_metadata(metadata)
+
+    metadata is output of define_metadata().
 
     Inputs:
-    - grid_data configuration
-    - dimensions: Dict{'nx1', 'ny1'}
-    - units: Dict{'coord}
-    - origins: Dict{'compute_2d'}
-    - backend: 'numpy'
+    - metadata (Dict)
+
+    Outputs:
+    - dimensions (Dict)
+    - origins (Dict)
+    - units (Dict)
+    """
+
+    dimensions = metadata["dimensions"]
+    origins = metadata["origins"]
+    units = metadata["units"]
+
+    return dimensions, origins, units
+
+
+def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Use: namelistDict = store_namelist_variables(local_variables)
+
+    Inputs:
+    - localVariables: namespace
+
+    Outputs:
+    - namelistDict (Dict)
+    """
+
+    namelist_variables = [
+        "nx",
+        "ny",
+        "nhalo",
+        "timestep",
+        "nDays",
+        "test_case",
+        "print_advectionProgress",
+        "plot_outputDuring",
+        "plot_outputAfter",
+        "plot_jupyterAnimation",
+        "figure_everyNhours",
+        "write_initialCondition",
+        "plot_gridLayout",
+        "show_figures",
+        "pressure_base",
+        "tracer_base",
+        "tracer_target_tile",
+        "density",
+        "nSeconds",
+        "figure_everyNsteps",
+        "nSteps_advection",
+    ]
+
+    namelistDict = {}
+    for i in namelist_variables:
+        namelistDict[i] = local_variables[i]
+
+    return namelistDict
+
+
+def get_lon_lat_edges(
+    configuration: Dict[str, Any],
+    metadata: Dict[str, Dict[str, Any]],
+    gather: bool = True,
+) -> Tuple[Quantity, Quantity]:
+    """
+    Use: lon, lat = get_lon_lat_edges(
+        configuration, metadata, gather=True)
+
+    Creates lon and lat Quantities with data in degrees.
+
+    Inputs:
+    - configuration (Dict)
+    - metadata (Dict)
+    - gather (bool): - gathers on rank 0
 
     Outputs:
     - lon and lat on A-grid in degrees
     """
 
+    dimensions, origins, units = split_metadata(metadata)
+
     lon = Quantity(
-        grid_data.lon.data * 180 / np.pi,
+        configuration["grid_data"].lon.data * 180 / np.pi,
         ("x_interface", "y_interface"),
         units["coord"],
         origins["compute_2d"],
@@ -49,7 +130,7 @@ def get_lonLat_edges(grid_data, dimensions, units, origins, backend):
         backend,
     )
     lat = Quantity(
-        grid_data.lat.data * 180 / np.pi,
+        configuration["grid_data"].lat.data * 180 / np.pi,
         ("x_interface", "y_interface"),
         units["coord"],
         origins["compute_2d"],
@@ -57,32 +138,40 @@ def get_lonLat_edges(grid_data, dimensions, units, origins, backend):
         backend,
     )
 
+    if gather:
+        lon = configuration["communicator"].gather(lon)
+        lat = configuration["communicator"].gather(lat)
+
     return lon, lat
 
 
-def define_dimensionsUnitsOrigins(nx, ny, nz, nhalo, mpi_comm):
+def define_metadata(
+    namelistDict: Dict[str, Any], mpi_comm: Any
+) -> Tuple[Dict[str, int], Dict[str, Tuple[Any]], Dict[str, str], int]:
     """
-    Use: dimensions, units, origins, mpi_rank =
-    define_dimensionsUnitsOrigins(nx, ny, nz, nhalo, mpi_comm)
+    Use: metadata, mpi_rank =
+    define_metadata(namelistDict, mpi_comm)
 
     Outputs dictionaries for basic configuration parameters.
 
     Inputs:
-    - nx, ny, nz: number of points in x, y, z dimensions for each tile
-    - nhalo: number of halo points
+    - namelistDict (Dict)
     - mpi_comm: mpi communicator
 
     Outputs:
-    - dimensions: Dict{'nx', 'ny', 'nz', 'nx1', 'ny1',
-                       'nhalo', 'nxhalo', nyhalo', 'tile'}
-    - units: Dict{'dist', 'coord', 'mass', 'psi', 'wind',
-                  'courant', 'areaflux', 'pressure'}
-    - origins: Dict{'halo', 'compute_2d', 'compute_3d'}
+    - dimensions (Dict)
+    - units (Dict)
+    - origins (Dict)
     - mpi_rank: rank for each of the subprocesses
     """
 
     mpi_size = mpi_comm.Get_size()
     mpi_rank = mpi_comm.Get_rank()
+
+    # to match fortran
+    nx = namelistDict["nx"] + 1
+    ny = namelistDict["ny"] + 1
+    nz = 79 + 1
 
     dimensions = {
         "nx": nx,
@@ -90,9 +179,9 @@ def define_dimensionsUnitsOrigins(nx, ny, nz, nhalo, mpi_comm):
         "nz": nz,
         "nx1": nx + 1,
         "ny1": ny + 1,
-        "nhalo": nhalo,
-        "nxhalo": nx + 2 * nhalo,
-        "nyhalo": ny + 2 * nhalo,
+        "nhalo": namelistDict["nhalo"],
+        "nxhalo": nx + 2 * namelistDict["nhalo"],
+        "nyhalo": ny + 2 * namelistDict["nhalo"],
         "tile": mpi_size,
     }
 
@@ -113,31 +202,32 @@ def define_dimensionsUnitsOrigins(nx, ny, nz, nhalo, mpi_comm):
         "compute_3d": (dimensions["nhalo"], dimensions["nhalo"], 0),
     }
 
-    return dimensions, units, origins, mpi_rank
+    metadata = {"dimensions": dimensions, "origins": origins, "units": units}
+
+    return metadata, mpi_rank
 
 
-def configure_domain(layout, mpi_comm, dimensions, backend="numpy"):
+def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any]:
     """
-    Use: configuration = configure_domain(layout, mpi_comm, dimensions, backend='numpy')
+    Use: configuration = configure_domain(mpi_comm, dimensions)
 
     Inputs:
-    - layout:
-    - mpi_comm:
-    - dimensions: Dict{'nx', 'ny', 'nx1', 'ny1', 'nz', 'nhalo'}
-    - backend
+    - mpi_comm: communicator
+    - dimensions (Dict)
 
-    Outputs: configuration dictionary that includes:
-    - partitioner
-    - communicator
-    - sizer
-    - quantity_factory
-    - metric_terms
-    - damping_coefficients
-    - grid_data
-    - dace_config
-    - stencil_config
-    - grid_indexing
-    - stencil_factory
+    Outputs:
+    - configuration (Dict):
+        - partitioner
+        - communicator
+        - sizer
+        - quantity_factory
+        - metric_terms
+        - damping_coefficients
+        - grid_data
+        - dace_config
+        - stencil_config
+        - grid_indexing
+        - stencil_factory
     """
 
     partitioner = CubedSpherePartitioner(TilePartitioner(layout))
@@ -199,31 +289,35 @@ def configure_domain(layout, mpi_comm, dimensions, backend="numpy"):
     return configuration
 
 
-def create_gaussianMultiplier(lon, lat, dimensions, mpi_rank, center_tile=0):
+def create_gaussian_multiplier(
+    lon: np.ndarray,
+    lat: np.ndarray,
+    dimensions: Dict[str, int],
+    mpi_rank: Any,
+    target_tile: int = 0,
+) -> np.ndarray:
     """
     Use: gaussian_multiplier =
-    gaussian_multiplier(lon, lat, dimensions, mpi_rank, center_tile=0)
+    create_gaussian_multiplier(lon, lat, dimensions, mpi_rank, target_tile=0)
 
     Creates a 2-D Gaussian bell shape on the desired tile/rank in the domain.
 
     Inputs:
     - lon, lat: longitude and latitude of centerpoints (A-grid) (in radians)
-    - dimensions: Dict{'nxhalo', 'nyhalo', 'tile'}
-    - mpi_rank: rank of the process
-    - center_tile = 0: the tile on which to center the blob
+    - dimensions (Dict)
+    - mpi_rank
+    - target_tile: the tile on which to center the blob
 
     Outputs:
-    - gaussian_multiplier: blob centered at the middle of center_tile
+    - gaussian_multiplier (array): blob centered at the middle of target_tile
         with gaussian dropoff
     """
 
     r0 = RADIUS / 3.0
-    p1x, p1y = int(dimensions["nxhalo"] / 2), int(
-        dimensions["nyhalo"] / 2
-    )  # center gaussian on middle of tile
+    p1x, p1y = dimensions["nxhalo"] // 2, dimensions["nyhalo"] // 2  # center gaussian on middle of tile
     gaussian_multiplier = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
 
-    if mpi_rank == center_tile:
+    if mpi_rank == target_tile:
         p_center = [lon[p1x, p1y], lat[p1x, p1y]]
         print(
             "Centering gaussian on lon=%.2f, lat=%.2f"
@@ -245,16 +339,20 @@ def create_gaussianMultiplier(lon, lat, dimensions, mpi_rank, center_tile=0):
     return gaussian_multiplier
 
 
-def calculate_streamfunction_testCase1a(lon, lat, dimensions):
+def calculate_streamfunction_testcase1a(
+    lon: np.ndarray, lat: np.ndarray, dimensions: Dict[str, int]
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Use: psi, psi_staggered = calculate_streamfunction_testCase1(lon, lat, dimensions)
+    Use: psi, psi_staggered = calculate_streamfunction_testcase1a(lon, lat, dimensions)
 
     Calculates streamfunction for testCase1 in fortran. Runs on each rank independently.
+    Streamfunction is calculated by multiplying -wind (-Ubar), the radius of the earth 
+    (RADIUS), and sin(latitude), so it decreases from the South pole to the North pole.
 
     Inputs:
     - lon: longitude of center points (in radians)
     - lat: latitude of center points (in radians)
-    - dimensions: Dict{'nxhalo', 'nyhalo'}
+    - dimensions (Dict)
 
     Outputs:
     - psi: streamfunction on tile centers (with halo points)
@@ -294,9 +392,11 @@ def calculate_streamfunction_testCase1a(lon, lat, dimensions):
     return psi, psi_staggered
 
 
-def calculate_streamfunction_testCase1b(lon, lat, dimensions):
+def calculate_streamfunction_testcase1b(
+    lon, lat, dimensions: Dict[str, int]
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Use: psi, psi_staggered = calculate_streamfunction_testCase1(lon, lat, dimensions)
+    Use: psi, psi_staggered = calculate_streamfunction_testcase1b(lon, lat, dimensions)
 
     Calculates streamfunction for testCase1 in fortran. Runs on each rank independently.
     Modified Ubar so it depends on radius (same period regardless of latitude?)
@@ -305,7 +405,7 @@ def calculate_streamfunction_testCase1b(lon, lat, dimensions):
     Inputs:
     - lon: longitude of center points (in radians)
     - lat: latitude of center points (in radians)
-    - dimensions: Dict{'nxhalo', 'nyhalo'}
+    - dimensions (Dict)
 
     Outputs:
     - psi: streamfunction on tile centers (with halo points)
@@ -346,17 +446,23 @@ def calculate_streamfunction_testCase1b(lon, lat, dimensions):
     return psi, psi_staggered
 
 
-def calculate_windsFromStreamfunction_grid(psi, dx, dy, dimensions, grid="A"):
+def calculate_winds_from_streamfunction_grid(
+    psi: Quantity,
+    dx: Quantity,
+    dy: Quantity,
+    dimensions: Dict[str, int],
+    grid: str = "A",
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: u_grid, v_grid =
-    calculate_windsFromStreamfunction_Agrid(psi, dx, dy, dimensions, grid='A')
+    calculate_winds_from_streamfunction_grid(psi, dx, dy, dimensions, grid="A")
 
     Returns winds on a chosen grid based on streamfunction and grid spacing.
 
     Inputs:
     - psi: streamfunction
     - dx, dy: distance between points
-    - dimensions: Dict{'nxhalo', 'nyhalo', 'nx', 'ny}
+    - dimensions(Dict))
 
     Outputs:
     - u_grid: x-direction wind on chosen grid
@@ -392,7 +498,7 @@ def calculate_windsFromStreamfunction_grid(psi, dx, dy, dimensions, grid="A"):
                 dist = dx.data[ii, jj]
                 v_grid[ii, jj] = 0 if dist == 0 else (psi2 - psi1) / dist
 
-    if grid == "C":
+    elif grid == "C":
         for jj in range(
             dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
         ):
@@ -411,7 +517,7 @@ def calculate_windsFromStreamfunction_grid(psi, dx, dy, dimensions, grid="A"):
                     else -1.0 * (psi.data[ii, jj + 1] - psi.data[ii, jj]) / dist
                 )
 
-    if grid == "D":
+    elif grid == "D":
         for jj in range(
             dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
         ):
@@ -433,30 +539,35 @@ def calculate_windsFromStreamfunction_grid(psi, dx, dy, dimensions, grid="A"):
     return u_grid, v_grid
 
 
-def create_initialState_testCase1a(
-    grid_data, dimensions, units, origins, backend, smoke_dict, pressure_dict
-):
+def create_initialstate_testcase1a(
+    grid_data: GridData,
+    metadata: Dict[str, Dict[str, Any]],
+    tracer_dict: Dict[str, str],
+    pressure_base: int,
+) -> Dict[str, Quantity]:
     """
     Use: initialState =
-    create_initialState1a(grid_data, dimensions, units, origins,
-                        backend, smoke_dict, pressure_dict)
+    create_initialstate_testcase1a(grid_data, metadata, tracer_dict, pressure_base)
 
     Creates inital state from the fortran test_case 1 streamfunction configuration -
-    pressure, gaussian smoke distribution, u and v winds on C-grid.
+    pressure, gaussian tracer distribution, u and v winds on C-grid.
 
     Inputs:
-    - grid_data: configuration['grid_data']
-    - dimensions: Dict{'nx', 'ny', 'nx1', 'ny1', 'nxhalo', 'nyhalo', 'tile'}
-    - units: Dict{'coord', 'dist', 'mass', 'psi', 'wind'}
-    - origins: Dict{'halo', 'compute_2d'}
-    - backend: 'numpy'
-    - smoke_dict: Dict{'center_tile', 'rank', 'smoke_base'}
-    - pressure_dict: Dict{'pressure_base'}
+    - grid_data: configuration["grid_data"]
+    - metadata (Dict):
+        - dimensions: Dict{"nx", "ny", "nx1", "ny1", "nxhalo", "nyhalo", "tile"}
+        - units: Dict{"coord", "dist", "mass", "psi", "wind"}
+        - origins: Dict{"halo", "compute_2d"}
+    - tracer_dict: Dict{"target_tile", "rank", "tracer_base"}
+    - pressure_base: pressure thickess of layer in Pa
 
     Outputs:
-    - initialState: Dict{'delp', 'smoke', 'uc', 'vc'} - 3D with a
+    - initialState: Dict{"delp", "tracer", "uc", "vc"} - 3D with a
         single layer in the vertical
     """
+
+    dimensions, origins, units = split_metadata(metadata)
+
     lonA_halo = Quantity(
         grid_data.lon_agrid.data,
         ("x_halo", "y_halo"),
@@ -474,16 +585,16 @@ def create_initialState_testCase1a(
         backend,
     )
 
-    # SMOKE
-    gaussian_multiplier = create_gaussianMultiplier(
+    # tracer
+    gaussian_multiplier = create_gaussian_multiplier(
         lonA_halo.data,
         latA_halo.data,
         dimensions,
-        center_tile=smoke_dict["center_tile"],
-        mpi_rank=smoke_dict["rank"],
+        target_tile=tracer_dict["target_tile"],
+        mpi_rank=tracer_dict["rank"],
     )
-    smoke = Quantity(
-        gaussian_multiplier * smoke_dict["smoke_base"],
+    tracer = Quantity(
+        gaussian_multiplier * tracer_dict["tracer_base"],
         ("x", "y"),
         units["mass"],
         origins["compute_2d"],
@@ -491,9 +602,9 @@ def create_initialState_testCase1a(
         backend,
     )
 
-    # PRESSURE
+    # pressure
     delp = Quantity(
-        np.ones(smoke.data.shape) * pressure_dict["pressure_base"],
+        np.ones(tracer.data.shape) * pressure_base,
         ("x", "y"),
         units["pressure"],
         origins["compute_2d"],
@@ -501,8 +612,8 @@ def create_initialState_testCase1a(
         backend,
     )
 
-    # STREAMFUNCTION
-    _, psi_staggered = calculate_streamfunction_testCase1a(
+    # streamfunction
+    _, psi_staggered = calculate_streamfunction_testcase1a(
         lonA_halo.data, latA_halo.data, dimensions
     )
     psi_staggered_halo = Quantity(
@@ -514,7 +625,7 @@ def create_initialState_testCase1a(
         backend,
     )
 
-    # WINDS
+    # winds
     dx_halo = Quantity(
         grid_data.dx.data,
         ("x_halo", "y_halo"),
@@ -531,7 +642,7 @@ def create_initialState_testCase1a(
         (dimensions["nxhalo"], dimensions["nyhalo"]),
         backend,
     )
-    uC, vC = calculate_windsFromStreamfunction_grid(
+    uC, vC = calculate_winds_from_streamfunction_grid(
         psi_staggered_halo, dx_halo, dy_halo, dimensions, grid="C"
     )
     uC = Quantity(
@@ -551,22 +662,22 @@ def create_initialState_testCase1a(
         backend,
     )
 
-    # EXTEND INITIAL CONDITIONS INTO ONE VERTICAL LAYER
+    # extend initial conditions into one vertical layer
     dimensions["nz"] = 1
     empty = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"], dimensions["nz"] + 1))
 
-    smoke_3d = np.copy(empty)
+    tracer_3d = np.copy(empty)
     uC_3d = np.copy(empty)
     vC_3d = np.copy(empty)
     delp_3d = np.copy(empty)
 
-    smoke_3d[:, :, 0] = smoke.data
+    tracer_3d[:, :, 0] = tracer.data
     uC_3d[:, :, 0] = uC.data
     vC_3d[:, :, 0] = vC.data
     delp_3d[:, :, 0] = delp.data
 
-    smoke = Quantity(
-        smoke_3d,
+    tracer = Quantity(
+        tracer_3d,
         ("x", "y", "z"),
         units["mass"],
         origins["compute_3d"],
@@ -600,7 +711,7 @@ def create_initialState_testCase1a(
 
     initialState = {
         "delp": delp,
-        "smoke": smoke,
+        "tracer": tracer,
         "uC": uC,
         "vC": vC,
     }
@@ -608,30 +719,36 @@ def create_initialState_testCase1a(
     return initialState
 
 
-def create_initialState_testCase1b(
-    grid_data, dimensions, units, origins, backend, smoke_dict, pressure_dict
-):
+def create_initialstate_testcase1b(
+    grid_data: GridData,
+    metadata: Dict[str, Dict[str, Any]],
+    tracer_dict: Dict[str, str],
+    pressure_base: int,
+) -> Dict[str, Quantity]:
     """
     Use: initialState =
-    create_initialState1b(grid_data, dimensions, units, origins,
-                        backend, smoke_dict, pressure_dict)
+    create_initialstate_testcase1b(grid_data, metadata, tracer_dict, pressure_base)
 
     Creates inital state from the fortran test_case 1 streamfunction configuration -
-    pressure, gaussian smoke distribution, u and v winds on C-grid.
+    pressure, gaussian tracer distribution, u and v winds on C-grid.
+    Streamfunction modified to have weaker winds away from equator
 
     Inputs:
-    - grid_data: configuration['grid_data']
-    - dimensions: Dict{'nx', 'ny', 'nx1', 'ny1', 'nxhalo', 'nyhalo', 'tile'}
-    - units: Dict{'coord', 'dist', 'mass', 'psi', 'wind'}
-    - origins: Dict{'halo', 'compute_2d'}
-    - backend: 'numpy'
-    - smoke_dict: Dict{'center_tile', 'rank', 'smoke_base'}
-    - pressure_dict: Dict{'pressure_base'}
+    - grid_data: configuration["grid_data"]
+    - metadata (Dict):
+        - dimensions: Dict{"nx", "ny", "nx1", "ny1", "nxhalo", "nyhalo", "tile"}
+        - units: Dict{"coord", "dist", "mass", "psi", "wind"}
+        - origins: Dict{"halo", "compute_2d"}
+    - tracer_dict: Dict{"target_tile", "rank", "tracer_base"}
+    - pressure_base: pressure thickess of layer in Pa
 
     Outputs:
-    - initialState: Dict{'delp', 'smoke', 'uc', 'vc'} - 3D with a
+    - initialState: Dict{"delp", "tracer", "uc", "vc"} - 3D with a
         single layer in the vertical
     """
+
+    dimensions, origins, units = split_metadata(metadata)
+
     lonA_halo = Quantity(
         grid_data.lon_agrid.data,
         ("x_halo", "y_halo"),
@@ -649,16 +766,16 @@ def create_initialState_testCase1b(
         backend,
     )
 
-    # SMOKE
-    gaussian_multiplier = create_gaussianMultiplier(
+    # TRACER
+    gaussian_multiplier = create_gaussian_multiplier(
         lonA_halo.data,
         latA_halo.data,
         dimensions,
-        center_tile=smoke_dict["center_tile"],
-        mpi_rank=smoke_dict["rank"],
+        target_tile=tracer_dict["target_tile"],
+        mpi_rank=tracer_dict["rank"],
     )
-    smoke = Quantity(
-        gaussian_multiplier * smoke_dict["smoke_base"],
+    tracer = Quantity(
+        gaussian_multiplier * tracer_dict["tracer_base"],
         ("x", "y"),
         units["mass"],
         origins["compute_2d"],
@@ -668,7 +785,7 @@ def create_initialState_testCase1b(
 
     # PRESSURE
     delp = Quantity(
-        np.ones(smoke.data.shape) * pressure_dict["pressure_base"],
+        np.ones(tracer.data.shape) * pressure_base,
         ("x", "y"),
         units["pressure"],
         origins["compute_2d"],
@@ -677,7 +794,7 @@ def create_initialState_testCase1b(
     )
 
     # STREAMFUNCTION
-    _, psi_staggered = calculate_streamfunction_testCase1b(
+    _, psi_staggered = calculate_streamfunction_testcase1b(
         lonA_halo.data, latA_halo.data, dimensions
     )
     psi_staggered_halo = Quantity(
@@ -706,7 +823,7 @@ def create_initialState_testCase1b(
         (dimensions["nxhalo"], dimensions["nyhalo"]),
         backend,
     )
-    uC, vC = calculate_windsFromStreamfunction_grid(
+    uC, vC = calculate_winds_from_streamfunction_grid(
         psi_staggered_halo, dx_halo, dy_halo, dimensions, grid="C"
     )
     uC = Quantity(
@@ -730,18 +847,18 @@ def create_initialState_testCase1b(
     dimensions["nz"] = 1
     empty = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"], dimensions["nz"] + 1))
 
-    smoke_3d = np.copy(empty)
+    tracer_3d = np.copy(empty)
     uC_3d = np.copy(empty)
     vC_3d = np.copy(empty)
     delp_3d = np.copy(empty)
 
-    smoke_3d[:, :, 0] = smoke.data
+    tracer_3d[:, :, 0] = tracer.data
     uC_3d[:, :, 0] = uC.data
     vC_3d[:, :, 0] = vC.data
     delp_3d[:, :, 0] = delp.data
 
-    smoke = Quantity(
-        smoke_3d,
+    tracer = Quantity(
+        tracer_3d,
         ("x", "y", "z"),
         units["mass"],
         origins["compute_3d"],
@@ -775,7 +892,7 @@ def create_initialState_testCase1b(
 
     initialState = {
         "delp": delp,
-        "smoke": smoke,
+        "tracer": tracer,
         "uC": uC,
         "vC": vC,
     }
@@ -783,44 +900,43 @@ def create_initialState_testCase1b(
     return initialState
 
 
-def run_finiteVolumeFluxPrep(
-    configuration,
-    uc,
-    vc,
-    delp,
-    density,
-    dimensions,
-    units,
-    origins,
-    backend,
-    dt_acoustic=300,
-):
+def run_finite_volume_fluxprep(
+    configuration: Dict[str, Any],
+    initialState: Dict[str, Quantity],
+    metadata: Dict[str, Dict[str, Any]],
+    density: float,
+    timestep: float,
+) -> Dict[str, Quantity]:
     """
     Use: fluxPrep =
-    run_finiteVolumeFluxPrep(configuration, uc, vc, dimensions, units,
-                             origins, backend, data, dt_acoustic=300)
+    run_finite_volume_fluxprep(configuration, initialState, metadata, density, timestep)
 
     Initializes FiniteVolumeFluxPrep class and fills in variables
     from initial wind data.
 
     Inputs:
-    - configuration: Dict{'stencil_factory', 'grid_data'}
-    - uc, vc: x- and y- winds on C-grid
-    - delp: pressure thickness of layer
-    - density: 1 (kg/m3 for air)
-    - dimensions: Dict{'nx', 'ny', 'nz', 'nx1', 'ny1', 'nxhalo', 'nyhalo'}
-    - units: Dict{'areaflux', 'courant', 'mass', 'wind'}
-    - origins: Dict{'compute_3d'}
-    - backend: 'numpy'
-    - dt_acoustic: acoustic time step (default = 300 seconds)
+    - configuration (Dict): "stencil_factory", "grid_data"
+    - initialState (Dict): "uC", "vC", "delp"
+    - metadata (Dict):=
+        - dimensions: Dict{"nx", "ny", "nz", "nx1", "ny1", "nxhalo", "nyhalo"}
+        - units: Dict{"areaflux", "courant", "mass", "wind"}
+        - origins: Dict{"compute_3d"}
+    - density (float): air density (kg/m3)
+    - timestep (float): advection time step
 
     Outputs:
-    - fluxPrep: Dict{'crx', 'cry', 'mfxd', 'mfyd', 'ucv', 'vcv', 'xaf', 'yaf'}
+    - fluxPrep: Dict{"crx", "cry", "mfxd", "mfyd", "ucv", "vcv", "xaf", "yaf"}
         - crx, cry are Courant numbers
         - ucv, vcv are the contravariant winds
         - xaf, yaf are fluxes of area (dx*dy but incorporating wind speed)
         - mfxd, mfyd are mass (volume) fluxes incorporating wind speed
     """
+
+    uc = initialState["uC"]
+    vc = initialState["vC"]
+    delp = initialState["delp"]
+
+    dimensions, origins, units = split_metadata(metadata)
 
     # CREATE EMPTY QUANTITIES TO BE FILLED
     empty = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"], dimensions["nz"] + 1))
@@ -880,7 +996,7 @@ def run_finiteVolumeFluxPrep(
     )
 
     fvf_prep(
-        uc, vc, crx, cry, xaf, yaf, ucv, vcv, dt_acoustic
+        uc, vc, crx, cry, xaf, yaf, ucv, vcv, timestep
     )  # THIS WILL MODIFY CREATED QUANTITIES, but not change uc, vc
 
     mfxd = Quantity(
@@ -917,18 +1033,22 @@ def run_finiteVolumeFluxPrep(
     return fluxPrep
 
 
-def build_tracerAdvection(configuration, fvt_dict, tracers):
+def build_tracer_advection(
+    configuration: Dict[str, Any],
+    fvt_dict: Dict[str, int],
+    tracers: Dict[str, Quantity],
+) -> TracerAdvection:
     """
-    Use: tracAdv = build_tracerAdvection(configuration, fvt_dict, tracers)
+    Use: tracAdv = build_tracer_advection(configuration, fvt_dict, tracers)
 
     Initializes the tracer advection class from FiniteVolumeTransport
     and TracerAdvection.
 
     Inputs:
-    - configuration: Dict{'stencil_factory', 'grid_data',
-                          'damping_coefficients'}
-    - fvt_dict: Dict{'grid_type', 'hord'}
-    - tracers: Dict{'smoke}
+    - configuration: Dict{"stencil_factory", "grid_data",
+                          "damping_coefficients"}
+    - fvt_dict: Dict{"grid_type", "hord"}
+    - tracers: Dict{"tracer}
 
     Outputs:
     - tracAdv: class instance that performs tracer advection
@@ -953,40 +1073,29 @@ def build_tracerAdvection(configuration, fvt_dict, tracers):
     return tracAdv
 
 
-def prepare_everythingForAdvection(
-    configuration,
-    uc,
-    vc,
-    delp,
-    tracers,
-    density,
-    dimensions,
-    units,
-    origins,
-    backend,
-    fvt_dict,
-    dt_acoustic=300,
-):
+def prepare_everything_for_advection(
+    configuration: Dict[str, Any],
+    initialState: Dict[str, Quantity],
+    metadata: Dict[str, Dict[str, Any]],
+    density: float,
+    timestep: float,
+) -> Tuple[Dict[str, Quantity], TracerAdvection]:
     """
-    Use: fluxPrep, tracAdv = prepare_everythingForAdvection(
-        configuration, uc, vc, delp, tracers, density, dimensions, units,
-        origins, backend, fvt_dict, dt_acoustic=300)
+    Use: fluxPrep, tracAdv = prepare_everything_for_advection(
+        configuration, initialState, metadata, density, timestep, fvt_dict)
 
     Inputs:
-    - configuration: Dict{'stencil_factory', 'grid_data', 'damping_coefficients'}
-    - uc, vc: x- and y- winds on C-grid
-    - delp: pressure thickness of layer
-    - tracers: Dict{'smoke}
-    - density: (kg/m3 for air)
-    - dimensions: Dict{'nx', 'ny', 'nz', 'nx1', 'ny1', 'nxhalo', 'nyhalo'}
-    - units: Dict{'areaflux', 'courant', 'mass', 'wind'}
-    - origins: Dict{'compute_3d'}
-    - backend: 'numpy'
-    - fvt_dict: Dict{'grid_type', 'hord'}
-    - dt_acoustic: acoustic time step (default = 300 seconds)
+    - configuration (Dict): "stencil_factory", "grid_data", "damping_coefficients"
+    - initialState (Dict): "uC", "vC", "delp", "tracer"
+    - metadata (Dict):
+        - dimensions: Dict{"nx", "ny", "nz", "nx1", "ny1", "nxhalo", "nyhalo"}
+        - units: Dict{"areaflux", "courant", "mass", "wind"}
+        - origins: Dict{"compute_3d"}
+    - density: air density in kg/m3
+    - timestep: advection time step
 
     Outputs:
-    - fluxPrep: Dict{'crx', 'cry', 'mfxd', 'mfyd', 'ucv', 'vcv', 'xaf', 'yaf'}
+    - fluxPrep: Dict{"crx", "cry", "mfxd", "mfyd", "ucv", "vcv", "xaf", "yaf"}
         - crx, cry are Courant numbers
         - ucv, vcv are the contravariant winds
         - xaf, yaf are fluxes of area (dx*dy but incorporating wind speed)
@@ -994,20 +1103,14 @@ def prepare_everythingForAdvection(
     - tracAdv: class instance that performs tracer advection
     """
 
-    fluxPrep = run_finiteVolumeFluxPrep(
-        configuration,
-        uc,
-        vc,
-        delp,
-        density,
-        dimensions,
-        units,
-        origins,
-        backend,
-        dt_acoustic,
+    delp = initialState["delp"]
+    tracers = {"tracer": initialState["tracer"]}
+
+    fluxPrep = run_finite_volume_fluxprep(
+        configuration, initialState, metadata, density, timestep
     )
 
-    tracAdv = build_tracerAdvection(configuration, fvt_dict, tracers)
+    tracAdv = build_tracer_advection(configuration, fvt_dict, tracers)
 
     tracAdv_data = {
         "tracers": tracers,
@@ -1021,25 +1124,29 @@ def prepare_everythingForAdvection(
     return tracAdv_data, tracAdv
 
 
-def run_advectionStepWithReset(
-    tracAdv_dataInit, tracAdv_data, tracAdv, dt, mpi_rank=None
-):
+def run_advection_step_with_reset(
+    tracAdv_dataInit: Dict[str, Quantity],
+    tracAdv_data: Dict[str, Quantity],
+    tracAdv: TracerAdvection,
+    timestep: float,
+    mpi_rank: int = None,
+) -> Dict[str, Quantity]:
     """
-    Use: tracAdv_data = run_advectionStepWithReset()
+    Use: tracAdv_data = run_advection_step_with_reset()
 
     Inputs:
-    - tracAdv_dataInit: Dict{'tracers', 'delp', 'mfxd', 'mfyd', 'crx', 'cry'}
+    - tracAdv_dataInit: Dict{"tracers", "delp", "mfxd", "mfyd", "crx", "cry"}
                         of values to be reset to after each advection step
-    - tracAdv_data: Dict{'tracers', 'delp', 'mfxd', 'mfyd', 'crx', 'cry'}
+    - tracAdv_data: Dict{"tracers", "delp", "mfxd", "mfyd", "crx", "cry"}
     - tracAdv: class instance of TracerAdvection
-    - dt: time step in seconds
+    - timestep: time step in seconds
     - mpi_rank: if 0, prints differences from timestep, initial condition
 
     Outputs:
     - tracAdv_data: updated fields (of only tracer)
     """
 
-    tmp = cp.deepcopy(tracAdv_data["tracers"])  # pre-advection tracer state
+    preAdvection_tracerState = cp.deepcopy(tracAdv_data["tracers"])
 
     tracAdv(
         tracAdv_data["tracers"],
@@ -1048,20 +1155,20 @@ def run_advectionStepWithReset(
         tracAdv_data["mfyd"],
         tracAdv_data["crx"],
         tracAdv_data["cry"],
-        dt,
+        timestep,
     )
 
-    tracAdv_data["delp"] = cp.deepcopy(tracAdv_dataInit["delp"])
     tracAdv_data["mfxd"] = cp.deepcopy(tracAdv_dataInit["mfxd"])
     tracAdv_data["mfyd"] = cp.deepcopy(tracAdv_dataInit["mfyd"])
     tracAdv_data["crx"] = cp.deepcopy(tracAdv_dataInit["crx"])
     tracAdv_data["cry"] = cp.deepcopy(tracAdv_dataInit["cry"])
 
+    # print diagnostics if mpi_rank is provided
     if mpi_rank == 0:
-        diff_timestep = tracAdv_data["tracers"]["smoke"].data - tmp["smoke"].data
+        diff_timestep = tracAdv_data["tracers"]["tracer"].data - preAdvection_tracerState["tracer"].data
         diff_fromInit = (
-            tracAdv_data["tracers"]["smoke"].data
-            - tracAdv_dataInit["tracers"]["smoke"].data
+            tracAdv_data["tracers"]["tracer"].data
+            - tracAdv_dataInit["tracers"]["tracer"].data
         )
         print(
             "timestep diff min=%.2e; max=%.2e; from init diff min=%.2e; max=%.2e"
@@ -1077,132 +1184,245 @@ def run_advectionStepWithReset(
 
 
 def plot_projection_field(
-    lon, lat, field, cmap="viridis", vmin=-1, vmax=1, units="", title="", fSave=None
+    configuration: Dict[str, Any],
+    metadata: Dict[str, Dict[str, Any]],
+    field: Quantity,
+    plotDict: Dict[str, Any],
+    mpi_rank: Any,
+    fOut: str,
+    show: bool = False,
 ):
-    """
-    Use: plot_projection_field(
-        lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title='')
 
-    Creates a Robinson projection and plots the (6) tiles on a map.
+    # mpi_rank, show=False):
+    """
+    Use: plot_projection_field
+    (configuration, metadata, field, plotDict, mpi_rankm fOut, show=False)
+
+    Creates a Robinson projection and plots the (6) tiles of field on a map.
 
     Inputs:
-    - lon, lat: lon and lat of coordinate edges (tile, x, y)
+    - configuration (Dict): "grid_data", "communicator"
+    - medatada (Dict): "dimensions", "origins", "units"
     - field: unstaggered field at a given vertical level (tile, x, y)
-    - cmap: colormap
-    - vmin, vmax: limits of the color map
-    - units: label the units on the color bar
-    - title: set title of the plot
+    - plotDict_tracer: Dict{"vmin", "vmax", "units", "title", "cmap"}
+    - mpi_rank
+    - fOut: save image to this file
+    - show (bool): whether to draw the image in jupyter notebook
 
-    Outputs: none
+    Outputs: plots figure
     """
 
-    fig = plt.figure(figsize=(8, 4))
-    fig.patch.set_facecolor("white")
-    ax = fig.add_subplot(111, projection=ccrs.Robinson())
-    ax.set_facecolor(".4")
+    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
 
-    f1 = pcolormesh_cube(lat, lon, field, cmap=cmap, vmin=vmin, vmax=vmax)
-    plt.colorbar(f1, label=units)
+    if mpi_rank == 0:
+        if not os.path.isdir(os.path.dirname(fOut)):
+            os.mkdir(os.path.dirname(fOut))
+        else:
+            if os.path.isfile(fOut):
+                os.remove(fOut)
 
-    ax.set_title(title)
+        field_plot = field.data[:, :, :, 0]
 
-    if fSave is not None:
-        plt.savefig(fSave, dpi=200, bbox_inches="tight")
-        plt.close("all")
-    else:
-        plt.show()
+        fig = plt.figure(figsize=(8, 4))
+        fig.patch.set_facecolor("white")
+        ax = fig.add_subplot(111, projection=ccrs.Robinson())
+        ax.set_facecolor(".4")
 
-    return
+        f1 = pcolormesh_cube(
+            lat.data,
+            lon.data,
+            field_plot,
+            cmap=plotDict["cmap"],
+            vmin=plotDict["vmin"],
+            vmax=plotDict["vmax"],
+        )
+        plt.colorbar(f1, label=plotDict["units"])
+
+        ax.set_title(plotDict["title"])
+
+        plt.savefig(fOut, dpi=200, bbox_inches="tight")
+        if show:
+            plt.show()
+        else:
+            plt.close("all")
+
 
 
 def plot_grid(
-    lon, lat, field, cmap="bwr", vmin=-1, vmax=1, units="", title="", fSave=None
+    configuration: Dict[str, Any],
+    metadata: Dict[str, Dict[str, Any]],
+    mpi_rank: Any,
+    fSave: str = "grid_map.png",
+    show: bool = False,
 ):
     """
-    Use: plot_projection_field(
-        lon, lat, field, cmap='viridis', vmin=-1, vmax=1, units='', title='')
+    Use: plot_grid(
+        configuration, metadata, fSave="grid_map.png", show=False)
 
-    Creates a Robinson projection and plots the (6) tiles on a map.
+    Creates a Robinson projection and plots grid edges.
 
     Inputs:
-    - lon, lat: lon and lat of coordinate edges (tile, x, y)
-    - field: unstaggered field at a given vertical level (tile, x, y)
-    - cmap: colormap
-    - vmin, vmax: limits of the color map
-    - units: label the units on the color bar
-    - title: set title of the plot
+    - configuration (Dict): "communicator", "grid_data"
+    - metadata (Dict): "dimensions", "origins", "units"
+    - fSave (str): file name
+    - show (Bool): whether to show image in notebook
 
-    Outputs: none
+    Outputs: saved figure
     """
 
-    fig = plt.figure(figsize=(8, 4))
-    fig.patch.set_facecolor("white")
-    ax = fig.add_subplot(111, projection=ccrs.Robinson())
-    ax.set_facecolor(".4")
+    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
 
-    f1 = pcolormesh_cube(
-        lat, lon, field, cmap=cmap, vmin=vmin, vmax=vmax, edgecolor="k", linewidth=0.1
-    )
-    # plt.colorbar(f1, label=units)
+    if mpi_rank == 0:
 
-    ax.set_title(title)
+        field = np.zeros(
+            (
+                metadata["dimensions"]["tile"],
+                metadata["dimensions"]["nx"],
+                metadata["dimensions"]["ny"],
+            )
+        )
 
-    if fSave is not None:
+        fig = plt.figure(figsize=(8, 4))
+        fig.patch.set_facecolor("white")
+        ax = fig.add_subplot(111, projection=ccrs.Robinson())
+        ax.set_facecolor(".4")
+
+        pcolormesh_cube(
+            lat.data,
+            lon.data,
+            field,
+            cmap="bwr",
+            vmin=-1,
+            vmax=1,
+            edgecolor="k",
+            linewidth=0.1,
+        )
+
+        ax.set_title(
+            "Grid map: %s x %s"
+            % (metadata["dimensions"]["nx"] - 1, metadata["dimensions"]["ny"] - 1)
+        )
+
         plt.savefig(fSave, dpi=300, bbox_inches="tight")
-        plt.close("all")
-    else:
-        plt.show()
+        if show:
+            plt.show()
+        else:
+            plt.close("all")
 
-    return
 
 
-def write_initialCondition_toFile(
-    fOut, variables, dimensions, units, origins, backend, configuration, mpi_rank
+def plot_tracer_animation(
+    configuration: Dict[str, Any],
+    metadata: Dict[str, Dict[str, Any]],
+    tracer_archive: List[Quantity],
+    mpi_rank: int,
+    plotDict_tracer: Dict[str, Any],
+    figure_everyNsteps: int,
+    timestep: float,
+    frames: Union[str, int] = "all",
 ):
     """
-    Use: write_initialCondition_toFile(
-        fOut, lon, lat, data, dimensions, units, communicator)
+    Use:
+    plot_tracer_animation(
+        configuration, metadata, tracer_archive, mpi_rank,
+        plotDict_tracer, figure_everyNsteps, timestep, frames="all"
+        )
+
+    Creates an interactive animation inside jupyter notebook.
+    (takes about 3.5 seconds per frame)
+
+    Inputs:
+    - configuration (Dict): "grid_data", "communicator"
+    - metadata (Dict)
+    - tracer_archive (List): list of stored tracer states
+    - mpi_rank
+    - plotDict_tracer (Dict): plotting parameters
+    - figure_everyNsteps (Int): how many steps to skip between frames
+    - timestep
+    - frames ("all" or Int): how many frames of the animation to plot
+
+    Outputs: animation
+    """
+
+    tracer_global = []
+    for step in range(len(tracer_archive)):
+        tracer_global.append(configuration["communicator"].gather(tracer_archive[step]))
+
+    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
+
+    if mpi_rank == 0:
+        tracer_stack = np.squeeze(np.stack(tracer_global))[::figure_everyNsteps]
+        if frames == "all":
+            frames = int(len(tracer_stack))
+
+        fig = plt.figure(figsize=(8, 4))
+        fig.patch.set_facecolor("white")
+        ax = fig.add_subplot(111, projection=ccrs.Robinson())
+        ax.set_facecolor(".4")
+
+        def animate(step):
+            ax.clear()
+            plotDict_tracer["title"] = "Tracer state @ hour: %.2f" % (
+                (step * figure_everyNsteps * timestep) / 60 / 60
+            )
+
+            pcolormesh_cube(
+                lat.data,
+                lon.data,
+                tracer_stack[step],
+                vmin=plotDict_tracer["vmin"],
+                vmax=plotDict_tracer["vmax"],
+                cmap=plotDict_tracer["cmap"],
+            )
+            ax.set_title(plotDict_tracer["title"])
+
+
+        anim = animation.FuncAnimation(
+            fig, animate, frames=frames, interval=400, blit=False
+        )
+
+        display(HTML(anim.to_jshtml()))
+        plt.close()
+
+
+
+def write_initial_condition_tofile(
+    fOut: str,
+    variables: Dict[str, Quantity],
+    metadata: Dict[str, Dict[str, Any]],
+    configuration: Dict[str, Any],
+    mpi_rank: int,
+):
+    """
+    Use: write_initial_condition_tofile(
+        fOut, variables, metadata, configuration, mpi_rank)
+
+    Creates netCDF file with initial conditions.
 
     Inputs:
     - fOut: output netcdf file
-    - variables: Dict{'delp', 'smoke', 'uC', 'vC'}
-    - dimensions: Dict{'tile', 'nx', 'ny', 'nx1', 'ny1'}
-    - units: Dict{'coord', 'wind', 'pressure', 'mass'}
-    - origins: Dict{'compute_2d'}
-    - backend: 'numpy'
-    - configuration: Dict{'communicator', 'grid_data'}
-    - mpi_rank: gathered from all tiles, only written on root
+    - variables: initialState
+    - metadata:
+        - dimensions: Dict{"tile", "nx", "ny", "nx1", "ny1"}
+        - units: Dict{"coord", "wind", "pressure", "mass"}
+    - configuration (Dict): "communicator", "grid_data"
+    - mpi_rank
 
-    Outputs: None; creates netCDF file
+    Outputs: written netCDF file
     """
 
-    lon, lat = get_lonLat_edges(
-        configuration["grid_data"], dimensions, units, origins, backend
-    )
+    dimensions, _, units = split_metadata(metadata)
 
-    lon_global = configuration["communicator"].gather(lon)
-    lat_global = configuration["communicator"].gather(lat)
+    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
 
     uC = np.squeeze(configuration["communicator"].gather(variables["uC"]))
     vC = np.squeeze(configuration["communicator"].gather(variables["vC"]))
     delp = np.squeeze(configuration["communicator"].gather(variables["delp"]))
-    smoke = np.squeeze(configuration["communicator"].gather(variables["smoke"]))
+    tracer = np.squeeze(configuration["communicator"].gather(variables["tracer"]))
 
     if mpi_rank == 0:
         uC = unstagger_coordinate(uC)
         vC = unstagger_coordinate(vC)
-
-        plot_grid(
-            lon_global.data,
-            lat_global.data,
-            np.zeros((dimensions["tile"], dimensions["nx"], dimensions["ny"])),
-            cmap="bwr",
-            vmin=-1,
-            vmax=1,
-            units="",
-            title="%s x %s" % (dimensions["nx"] - 1, dimensions["ny"] - 1),
-            fSave="grid_map_%sx%s.png" % (dimensions["nx"] - 1, dimensions["ny"] - 1),
-        )
 
         if not os.path.isdir(os.path.dirname(fOut)):
             os.mkdir(os.path.dirname(fOut))
@@ -1216,10 +1436,10 @@ def write_initialCondition_toFile(
             data.createDimension(dim, dimensions[dim])
 
         v0 = data.createVariable("lon", "f8", ("tile", "nx1", "ny1"))
-        v0[:] = lon_global.data
+        v0[:] = lon.data
         v0.units = units["coord"]
         v0 = data.createVariable("lat", "f8", ("tile", "nx1", "ny1"))
-        v0[:] = lat_global.data
+        v0[:] = lat.data
         v0.units = units["coord"]
 
         v1 = data.createVariable("uC", "f8", ("tile", "nx", "ny"))
@@ -1235,18 +1455,17 @@ def write_initialCondition_toFile(
         v1[:] = delp.data
         v1.units = units["pressure"]
 
-        v1 = data.createVariable("smoke", "f8", ("tile", "nx", "ny"))
-        v1[:] = smoke.data
+        v1 = data.createVariable("tracer", "f8", ("tile", "nx", "ny"))
+        v1[:] = tracer.data
         v1.units = units["mass"]
 
         data.close()
 
-    return
 
 
-def unstagger_coordinate(field, mode="mean"):
+def unstagger_coordinate(field: np.ndarray, mode: str = "mean") -> np.ndarray:
     """
-    Use: field = unstagger_coord(field, mode='mean')
+    Use: field = unstagger_coord(field, mode="mean")
 
     Unstaggers the coordinate that is +1 in length compared to the other.
 
@@ -1295,6 +1514,10 @@ def unstagger_coordinate(field, mode="mean"):
             field = field[:, :, 1:]
         elif dim1 == dim2:
             pass
+    
+    else:
+        print('Mode not supported.')
+        field = np.nan
 
     if len(fs) == 2:
         field = field[0]
