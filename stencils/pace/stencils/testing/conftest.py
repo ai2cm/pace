@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Tuple
+from typing import Optional, Tuple
 
 import f90nml
 import pytest
@@ -12,6 +12,7 @@ import pace.util
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.stencils.testing import ParallelTranslate, TranslateGrid
 from pace.stencils.testing.savepoint import SavepointCase, dataset_to_dict
+from pace.util.communicator import CubedSphereCommunicator
 from pace.util.mpi import MPI
 
 
@@ -113,7 +114,7 @@ def get_namelist(namelist_filename):
     return pace.util.Namelist.from_f90nml(f90nml.read(namelist_filename))
 
 
-def get_config(backend, communicator):
+def get_config(backend: str, communicator: Optional[CubedSphereCommunicator]):
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
         rebuild=False,

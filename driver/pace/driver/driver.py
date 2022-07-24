@@ -3,6 +3,7 @@ import functools
 import logging
 import warnings
 from datetime import datetime, timedelta
+from math import floor
 from typing import Any, Dict, List, Tuple, Union
 
 import dace
@@ -116,7 +117,7 @@ class DriverConfig:
                 f"No simulation possible: you asked for {self.total_time} "
                 f"simulation time but the timestep is {self.timestep}"
             )
-        return round(self.total_time.seconds / self.timestep.seconds)
+        return floor(self.total_time.total_seconds() / self.timestep.total_seconds())
 
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:
@@ -204,28 +205,27 @@ class Driver:
                 comm=self.comm, layout=self.config.layout
             )
 
-            dace_config = DaceConfig(
+            self.config.stencil_config.dace_config = DaceConfig(
                 communicator=communicator,
                 backend=self.config.stencil_config.backend,
                 tile_nx=self.config.nx_tile,
                 tile_nz=self.config.nz,
             )
-            self.config.stencil_config.dace_config = dace_config
             orchestrate(
                 obj=self,
-                config=dace_config,
+                config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_critical_path_step_all",
                 dace_constant_args=["timer"],
             )
             orchestrate(
                 obj=self,
-                config=dace_config,
+                config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_step_dynamics",
                 dace_constant_args=["state", "timer"],
             )
             orchestrate(
                 obj=self,
-                config=dace_config,
+                config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_step_physics",
             )
 
@@ -255,30 +255,33 @@ class Driver:
                 state=self.state.dycore_state,
             )
 
-            self.physics = fv3gfs.physics.Physics(
-                stencil_factory=self.stencil_factory,
-                grid_data=self.state.grid_data,
-                namelist=self.config.physics_config,
-                active_packages=["microphysics"],
-            )
-            self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
-                stencil_factory=self.stencil_factory,
-                dycore_config=self.config.dycore_config,
-                do_dry_convective_adjustment=self.config.do_dry_convective_adjustment,
-                dycore_only=self.config.dycore_only,
-            )
-            self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
-                stencil_factory=self.stencil_factory,
-                grid_data=self.state.grid_data,
-                namelist=self.config.physics_config,
-                comm=communicator,
-                grid_info=self.state.driver_grid_data,
-                state=self.state.dycore_state,
-                quantity_factory=self.quantity_factory,
-                dycore_only=self.config.dycore_only,
-                apply_tendencies=self.config.apply_tendencies,
-                tendency_state=self.state.tendency_state,
-            )
+            if not self.config.disable_step_physics:
+                self.physics = fv3gfs.physics.Physics(
+                    stencil_factory=self.stencil_factory,
+                    grid_data=self.state.grid_data,
+                    namelist=self.config.physics_config,
+                    active_packages=["microphysics"],
+                )
+                self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
+                    stencil_factory=self.stencil_factory,
+                    dycore_config=self.config.dycore_config,
+                    do_dry_convective_adjustment=(
+                        self.config.do_dry_convective_adjustment
+                    ),
+                    dycore_only=self.config.dycore_only,
+                )
+                self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
+                    stencil_factory=self.stencil_factory,
+                    grid_data=self.state.grid_data,
+                    namelist=self.config.physics_config,
+                    comm=communicator,
+                    grid_info=self.state.driver_grid_data,
+                    state=self.state.dycore_state,
+                    quantity_factory=self.quantity_factory,
+                    dycore_only=self.config.dycore_only,
+                    apply_tendencies=self.config.apply_tendencies,
+                    tendency_state=self.state.tendency_state,
+                )
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
                 comm=self.comm,
@@ -351,7 +354,7 @@ class Driver:
                 )
                 if not self.config.disable_step_physics:
                     self._step_physics(timestep=dt)
-                self.end_of_step_actions(step)
+            self.end_of_step_actions(step)
 
     def step_all(self):
         logger.info("integrating driver forward in time")
@@ -405,6 +408,7 @@ class Driver:
         self.performance_config.write_out_performance(
             self.comm,
             self.config.stencil_config.backend,
+            self.config.stencil_config.dace_config.is_dace_orchestrated(),
             self.config.dt_atmos,
         )
 

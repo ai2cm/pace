@@ -32,7 +32,9 @@ def unblock_waiting_tiles(comm, sdfg_path: str) -> None:
 
 def get_target_rank(rank: int, partitioner: TilePartitioner):
     """From my rank & the current partitioner we determine which
-    rank we should read from"""
+    rank we should read from.
+    For all layout >= 3,3 this presumes build has been done on a
+    3,3 layout."""
     if partitioner.layout == (1, 1):
         return 0
     if partitioner.layout == (2, 2):
@@ -79,6 +81,8 @@ def write_build_info(
 ):
     """Write down all relevant information on the build to identify
     it at load time."""
+    # Dev NOTE: we should be able to leverage sdfg.make_key to get a hash or
+    # even go to a complete hash base system and read the data from the SDFG itself
     import os
 
     path_to_sdfg_dir = os.path.abspath(sdfg.build_folder)
