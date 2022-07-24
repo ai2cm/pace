@@ -408,6 +408,7 @@ class Driver:
         self.performance_config.write_out_performance(
             self.comm,
             self.config.stencil_config.backend,
+            self.config.stencil_config.dace_config.is_dace_orchestrated(),
             self.config.dt_atmos,
         )
 
