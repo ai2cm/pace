@@ -76,9 +76,7 @@ class DaceConfig:
                 "args",
                 value="-std=c++14 -Xcompiler -fPIC -O3 -Xcompiler -march=native",
             )
-            dace.config.Config.set(
-                "compiler", "cuda", "cuda_arch", value="60"
-            )
+            dace.config.Config.set("compiler", "cuda", "cuda_arch", value="60")
             dace.config.Config.set(
                 "compiler", "cuda", "default_block_size", value="64,8,1"
             )

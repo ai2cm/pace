@@ -1,4 +1,8 @@
 import time
+from typing import List, Tuple
+
+import dace
+from dace.transformation.helpers import get_parent_map
 
 from pace.dsl.dace.dace_config import DaceConfig
 
@@ -22,19 +26,17 @@ class DaCeProgress:
         DaCeProgress.log(self.prefix, f"{self.label}...{elapsed}s.")
 
 
-import dace
-from typing import List, Tuple
-from dace.transformation.helpers import get_parent_map
-
-
 def nanczek(sdfg: dace.SDFG):
     """
     Insert after sdfg.simplify(...)
     """
     import copy
-    from dace.sdfg import graph as gr, utils as sdutil
-    from dace import data as dt, symbolic, subsets as sbs
+
     import sympy as sp
+    from dace import data as dt
+    from dace import symbolic
+    from dace.sdfg import graph as gr
+    from dace.sdfg import utils as sdutil
 
     # Adds a NaN checker after every mapexit->access node
     checks: List[
@@ -91,6 +93,7 @@ def nanczek(sdfg: dace.SDFG):
         if not symbols_expr:
             symbols_printf = "%s"
             symbols_expr = '"N/A"'
+
         # Get range from memlet (which may not be the entire array size)
         def evaluate(expr):
             return expr.subs({sp.Function("int_floor"): symbolic.int_floor})
@@ -102,12 +105,11 @@ def nanczek(sdfg: dace.SDFG):
             name="nancheck",
             map_ranges=ranges,
             inputs={"__inp": dace.Memlet.simple(newnode.data, index_expr)},
-            # printf("NaN value found at {newnode.data}, line %d, index {index_printf}. Symbols: {symbols_printf}\\n", __LINE__, {index_expr}, {symbols_expr});
             code=f"""
             if (__inp != __inp) {{
                 printf("NaN value found at {newnode.data}, line %d, index {index_printf}\\n", __LINE__, {index_expr});
             }}
-            """,
+            """,  # noqa: E501
             schedule=dace.ScheduleType.GPU_Device,
             language=dace.Language.CPP,
             outputs={
@@ -118,40 +120,3 @@ def nanczek(sdfg: dace.SDFG):
             external_edges=True,
         )
     print(f"Added {len(checks)} NaN checks")
-
-
-def _dace_inhibitor(fn):
-    return fn
-
-
-@_dace_inhibitor
-def checks(arr, name):
-    import cupy as cp
-
-    if isinstance(arr, float) or isinstance(arr, bool) or isinstance(arr, int):
-        print(f"Scalar {name}: {arr}")
-    else:
-        host_arr = cp.asnumpy(arr)
-        print(f"{name} @ value [10, 5, 5]: {host_arr[10,5,5]}")
-        print(f"{name} @ value [10, 5, 4]: {host_arr[10,5,4]}")
-        print(f"{name} @ value [10, 5, 3]: {host_arr[10,5,3]}")
-
-
-@_dace_inhibitor
-def checks_fieldij(arr, name):
-    import cupy as cp
-
-    host_arr = cp.asnumpy(arr)
-    print(f"{name} @ value [12, 5]: {host_arr[12,5]}")
-    print(f"{name} @ value [11, 5]: {host_arr[11,5]}")
-    print(f"{name} @ value [10, 5]: {host_arr[10,5]}")
-    print(f"{name} @ value [9, 4]: {host_arr[9,5]}")
-    print(f"{name} @ value [8, 4]: {host_arr[8,5]}")
-
-
-@_dace_inhibitor
-def checks_fieldk(arr, name):
-    import cupy as cp
-
-    host_arr = cp.asnumpy(arr)
-    print(f"{name} @ value [:]: {host_arr[:]}")

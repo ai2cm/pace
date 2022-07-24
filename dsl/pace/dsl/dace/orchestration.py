@@ -18,9 +18,7 @@ from pace.dsl.dace.build import (
     write_build_info,
 )
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
-from pace.dsl.dace.sdfg_opt_passes import (
-    splittable_region_expansion,
-)
+from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
 from pace.dsl.dace.utils import DaCeProgress
 from pace.util.mpi import MPI
 

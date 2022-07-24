@@ -265,7 +265,9 @@ class Driver:
                 self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
                     stencil_factory=self.stencil_factory,
                     dycore_config=self.config.dycore_config,
-                    do_dry_convective_adjustment=self.config.do_dry_convective_adjustment,
+                    do_dry_convective_adjustment=(
+                        self.config.do_dry_convective_adjustment
+                    ),
                     dycore_only=self.config.dycore_only,
                 )
                 self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
