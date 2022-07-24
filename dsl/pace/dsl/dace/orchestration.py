@@ -167,6 +167,7 @@ def _build_sdfg(
         MPI.COMM_WORLD.Barrier()
         if is_compiling:
             unblock_waiting_tiles(MPI.COMM_WORLD, sdfg.build_folder)
+            DaCeProgress.log(config, "Build folder exchanged.")
             with DaCeProgress(config, "Run"):
                 res = sdfg(**sdfg_kwargs)
                 res = _download_results_from_dace(
@@ -175,7 +176,9 @@ def _build_sdfg(
         else:
             source_rank = config.target_rank
             # wait for compilation to be done
+            DaCeProgress.log(config, "Not compiling rank, waiting for build folder.")
             sdfg_path = MPI.COMM_WORLD.recv(source=source_rank)
+            DaCeProgress.log(config, "Build folder received.")
             daceprog.load_precompiled_sdfg(sdfg_path, *args, **kwargs)
             with DaCeProgress(config, "Run"):
                 res = _run_sdfg(daceprog, config, args, kwargs)

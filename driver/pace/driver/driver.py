@@ -117,7 +117,7 @@ class DriverConfig:
                 f"No simulation possible: you asked for {self.total_time} "
                 f"simulation time but the timestep is {self.timestep}"
             )
-        return floor(self.total_time.seconds / self.timestep.seconds)
+        return floor(self.total_time.total_seconds() / self.timestep.total_seconds())
 
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:
@@ -205,28 +205,27 @@ class Driver:
                 comm=self.comm, layout=self.config.layout
             )
 
-            dace_config = DaceConfig(
+            self.config.stencil_config.dace_config = DaceConfig(
                 communicator=communicator,
                 backend=self.config.stencil_config.backend,
                 tile_nx=self.config.nx_tile,
                 tile_nz=self.config.nz,
             )
-            self.config.stencil_config.dace_config = dace_config
             orchestrate(
                 obj=self,
-                config=dace_config,
+                config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_critical_path_step_all",
                 dace_constant_args=["timer"],
             )
             orchestrate(
                 obj=self,
-                config=dace_config,
+                config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_step_dynamics",
                 dace_constant_args=["state", "timer"],
             )
             orchestrate(
                 obj=self,
-                config=dace_config,
+                config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_step_physics",
             )
 
@@ -353,7 +352,7 @@ class Driver:
                 )
                 if not self.config.disable_step_physics:
                     self._step_physics(timestep=dt)
-                self.end_of_step_actions(step)
+            self.end_of_step_actions(step)
 
     def step_all(self):
         logger.info("integrating driver forward in time")
