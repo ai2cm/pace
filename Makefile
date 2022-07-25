@@ -20,22 +20,24 @@ SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
 DEV ?=n
-CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
-VOLUMES = -v $(CWD):/port_dev
+
 ifeq ($(DEV),y)
-	VOLUMES = -v $(CWD)/fv3core:/fv3core -v $(CWD)/fv3gfs-physics:/fv3gfs-physics -v $(CWD)/stencils:/stencils -v $(CWD)/dsl:/dsl -v $(CWD)/pace-util:/pace-util -v $(CWD)/test_data:/test_data -v $(CWD)/examples:/port_dev/examples -v $(CWD)/driver:/driver
+	VOLUMES += -v $(CWD):/pace
 endif
 
 build:
-	PULL=$(PULL) $(MAKE) -C docker fv3gfs_image
+	DOCKER_BUILDKIT=1 docker build \
+		-f $(CWD)/Dockerfile \
+		-t $(PACE_IMAGE) \
+		.
 
 dev:
 	docker run --rm -it \
 		--network host \
 		$(VOLUMES) \
-		$(FV3GFS_IMAGE) bash
+		$(PACE_IMAGE) bash
 
 test_util:
 	if [ $(shell $(CHECK_CHANGED_SCRIPT) pace-util) != false ]; then \
