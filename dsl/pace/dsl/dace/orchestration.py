@@ -19,7 +19,7 @@ from pace.dsl.dace.build import (
 )
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
-from pace.dsl.dace.utils import DaCeProgress
+from pace.dsl.dace.utils import DaCeProgress, count_memory
 from pace.util.mpi import MPI
 
 
@@ -151,6 +151,10 @@ def _build_sdfg(
             sdfg.compile()
         write_build_info(sdfg, config.layout, config.tile_resolution, config._backend)
 
+        # Printing analysis of the compiled SDFG
+        DaCeProgress.log(config, "Build finish, printing static memory analysis")
+        print(count_memory(sdfg))
+
     # Compilation done, either exit or scatter/gather and run
     # DEV NOTE: we explicitly use MPI.COMM_WORLD here because it is
     # a true multi-machine sync, outside of our own communicator class.
@@ -159,7 +163,7 @@ def _build_sdfg(
     # against scattering when no other ranks are present.
     if config.get_orchestrate() == DaCeOrchestration.Build:
         MPI.COMM_WORLD.Barrier()  # Protect against early exist which kill SLURM jobs
-        DaCeProgress.log(config, "Compilation finished and saved, exiting.")
+        DaCeProgress.log(config, "Build only, exiting.")
         exit(0)
     elif config.get_orchestrate() == DaCeOrchestration.BuildAndRun:
         MPI.COMM_WORLD.Barrier()
