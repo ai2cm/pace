@@ -48,10 +48,6 @@ class MPIComm(Comm):
         logger.debug("Send on rank %s with dest %s", self._comm.Get_rank(), dest)
         self._comm.Send(sendbuf, dest, tag=tag, **kwargs)
 
-    def Sendrecv(self, sendbuf, dest, **kwargs):
-        logger.debug("Sendrecv on rank %s with dest %s", self._comm.Get_rank(), dest)
-        self._comm.Sendrecv(sendbuf, dest, **kwargs)
-
     def sendrecv(self, sendbuf, dest, **kwargs):
         logger.debug("sendrecv on rank %s with dest %s", self._comm.Get_rank(), dest)
         return self._comm.sendrecv(sendbuf, dest, **kwargs)

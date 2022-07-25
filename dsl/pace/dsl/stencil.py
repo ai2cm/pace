@@ -34,7 +34,7 @@ from pace.dsl.dace.orchestrate import SDFGConvertible
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.halo_data_transformer import QuantityHaloSpec
-from mpi4py import MPI
+
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
@@ -341,7 +341,7 @@ def get_pair_rank(rank: int, size: int):
         return rank - dycore_ranks
 
 
-def compare_ranks(comm, data) -> Mapping[str, int]:
+def compare_ranks(comm: pace.util.Comm, data) -> Mapping[str, int]:
     rank = comm.Get_rank()
     size = comm.Get_size()
     pair_rank = get_pair_rank(rank, size)
@@ -351,7 +351,7 @@ def compare_ranks(comm, data) -> Mapping[str, int]:
             maybe_array = maybe_array.data
         if hasattr(maybe_array, "data") and isinstance(maybe_array.data, np.ndarray):
             array = maybe_array.data
-            other = MPI.COMM_WORLD.sendrecv(array, pair_rank)
+            other = comm.sendrecv(array, pair_rank)
             arr_diffs = np.sum(np.logical_and(~np.isnan(array), array != other))
             if arr_diffs > 0:
                 print(name, rank, pair_rank, array, other)
