@@ -505,6 +505,13 @@ class FrozenStencil(SDFGConvertible):
 
         self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
 
+        if stencil_config.compilation_config.run_mode == RunMode.Build:
+
+            def nothing_function(*args, **kwargs):
+                pass
+
+            self.__call__ = nothing_function
+
     def __call__(self, *args, **kwargs) -> None:
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
