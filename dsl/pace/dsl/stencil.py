@@ -279,6 +279,7 @@ class CompareToNumpyStencil:
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Optional[Tuple[str, ...]] = None,
         timing_collector: Optional[TimingCollector] = None,
+        comm: Optional[pace.util.Comm] = None,
     ):
         self._actual = FrozenStencil(
             func=func,
@@ -288,6 +289,7 @@ class CompareToNumpyStencil:
             externals=externals,
             skip_passes=skip_passes,
             timing_collector=timing_collector,
+            comm=comm,
         )
         numpy_stencil_config = StencilConfig(
             backend="numpy",
@@ -305,6 +307,7 @@ class CompareToNumpyStencil:
             externals=externals,
             skip_passes=skip_passes,
             timing_collector=timing_collector,
+            comm=comm,
         )
         self._func_name = func.__name__
 
