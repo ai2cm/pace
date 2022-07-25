@@ -86,9 +86,10 @@ jobs:
           paths:
             - fv3core/test_data
 
-  savepoints_mpi_54ranks:
+  savepoints_mpi_54rank:
     machine:
       image: ubuntu-2004:202111-02
+      resource_class: 2xlarge
     parameters:
       backend:
         description: "gt4py backend"
@@ -322,8 +323,6 @@ workflows:
             tags:
               only: /^v.*/
       - savepoints_mpi_54rank:
-          machine: true
-          resource_class: 2xlarge
           matrix:
             parameters:
               backend:
