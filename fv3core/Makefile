@@ -37,7 +37,8 @@ PYTHON_FILES = $(shell git ls-files | grep -e 'py$$' | grep -v -e '__init__.py')
 PYTHON_INIT_FILES = $(shell git ls-files | grep '__init__.py')
 TEST_DATA_TARFILE=dat_files.tar.gz
 TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
-MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) --oversubscribe --mca btl_vader_single_copy_mechanism=none
+MPIRUN_ARGS ?=--oversubscribe --mca btl_vader_single_copy_mechanism=none
+MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) $(MPIRUN_ARGS)
 BASE_INSTALL?=$(FV3)-install-serialbox
 DATA_BUCKET= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)/
 
