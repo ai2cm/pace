@@ -131,7 +131,7 @@ jobs:
           name: set up environment
           command: |
             pip3 install --upgrade setuptools wheel
-            pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt
+            pip3 install -r requirements_dev.txt -c constraints.txt
       - run:
           name: run tests
           command: |
