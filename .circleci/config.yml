@@ -130,7 +130,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" RUN_FLAGS="--rm --memory=30g --cpus=2" NUM_RANKS=54 EXPERIMENT="c12_54ranks_standard" DEV=y make savepoint_tests_mpi
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" RUN_FLAGS="--rm --memory=62g --cpus=2" NUM_RANKS=54 EXPERIMENT="c12_54ranks_standard" DEV=y make savepoint_tests_mpi
           no_output_timeout: 3h
       - save_cache:
           key: v1-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
