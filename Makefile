@@ -20,9 +20,12 @@ SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
 DEV ?=n
-CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
+
+ifeq ($(DEV),y)
+	VOLUMES += -v $(CWD):/pace
+endif
 
 build:
 	DOCKER_BUILDKIT=1 docker build \

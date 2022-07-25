@@ -23,7 +23,7 @@ FV3=fv3core
 FV3_PATH ?=/pace/$(FV3)
 
 ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD):$(FV3_PATH) -v $(FV3UTIL_DIR):/usr/src/pace-util -v $(CWD)/external/stencils:/external/stencils  -v $(CWD)/external/dsl:/external/dsl
+	VOLUMES += -v $(CWD)/..:/pace
 endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
 

@@ -22,8 +22,9 @@ TEST_DATA_HOST ?=$(TEST_DATA_ROOT)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIME
 TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
 FV3UTIL_DIR=$(CWD)/../pace-util
 DATA_BUCKET ?= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)/
+
 ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD)/../fv3core:/fv3core -v $(CWD)/../fv3gfs-physics:/fv3gfs-physics -v $(CWD)/../stencils:/stencils -v $(CWD)/tests:/$(pace)/tests -v $(FV3UTIL_DIR):/pace-util  -v $(CWD)/../driver:/driver -v $(CWD)/../dsl:/dsl
+	VOLUMES += -v $(CWD)/..:/pace
 endif
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(CUDA_FLAGS) $(PACE_IMAGE)
 
