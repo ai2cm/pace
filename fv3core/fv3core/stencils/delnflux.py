@@ -13,6 +13,7 @@ from gt4py.gtscript import (
 )
 
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory, get_stencils_with_varied_bounds
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import X_DIM, Y_DIM, Z_DIM
@@ -951,6 +952,10 @@ class DelnFlux:
 
         nord and damp_c define the damping coefficient used in DelnFluxNoSG
         """
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+        )
         self._no_compute = False
         if (damp_c <= 1e-4).all():
             self._no_compute = True
@@ -1067,6 +1072,10 @@ class DelnFluxNoSG:
         nord = 1:   del-4
         nord = 2:   del-6
         """
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+        )
         grid_indexing = stencil_factory.grid_indexing
         self._del6_u = damping_coefficients.del6_u
         self._del6_v = damping_coefficients.del6_v

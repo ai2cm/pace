@@ -10,7 +10,7 @@ import pace.dsl.stencil
 import pace.stencils.testing
 import pace.util
 from fv3core.initialization.dycore_state import DycoreState
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.stencils.testing import assert_same_temporaries, copy_temporaries
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -74,11 +74,7 @@ def setup_dycore() -> Tuple[
         pace.util.TilePartitioner(config.layout)
     )
     communicator = pace.util.CubedSphereCommunicator(mpi_comm, partitioner)
-    dace_config = DaceConfig(
-        communicator=communicator,
-        backend=backend,
-        orchestration=DaCeOrchestration.Python,
-    )
+    dace_config = DaceConfig(communicator=communicator, backend=backend)
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
     )

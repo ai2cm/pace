@@ -2,7 +2,7 @@ from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import fv3core
 import pace.dsl.gt4py_utils as utils
-from fv3core.stencils.dyn_core import AcousticDynamics
+from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.util import CubedSphereCommunicator
@@ -159,7 +159,7 @@ class CubedToLatLon:
             n_halo=grid_indexing.n_halo,
             backend=stencil_factory.backend,
         )
-        self.u__v = AcousticDynamics._WrappedHaloUpdater(
+        self.u__v = WrappedHaloUpdater(
             comm.get_vector_halo_updater(
                 [full_size_xyiz_halo_spec], [full_size_xiyz_halo_spec]
             ),

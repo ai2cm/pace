@@ -13,7 +13,7 @@ import pace.util as util
 from fv3core._config import DynamicalCoreConfig
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.testing import TranslateDynCore
-from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.orchestration import DaceConfig
 from pace.stencils.testing.grid import Grid
 from pace.util.null_comm import NullComm
 
@@ -148,7 +148,8 @@ def driver(
         dace_config = DaceConfig(
             communicator,
             backend,
-            DaCeOrchestration.Python,
+            tile_nx=dycore_config.npx,
+            tile_nz=dycore_config.npz,
         )
         stencil_config = pace.dsl.stencil.StencilConfig(
             backend=backend,
@@ -184,7 +185,10 @@ def driver(
         # warm-up timestep.
         # We're intentionally not passing the timer here to exclude
         # warmup/compilation from the internal timers
-        acoustics_object(**state)
+        acoustics_object(
+            state,
+            n_map=state["n_map"],
+        )
 
     # we set up a specific timer for each timestep
     # that is cleared after so we get individual statistics
@@ -193,7 +197,7 @@ def driver(
         # but make performance numbers comparable with FVDynamics
         for _ in range(dycore_config.k_split):
             with timestep_timer.clock("DynCore"):
-                acoustics_object(**state)
+                acoustics_object(state, n_map=state["n_map"])
         times_per_step, hits_per_step = read_and_reset_timer(
             timestep_timer, times_per_step, hits_per_step
         )
