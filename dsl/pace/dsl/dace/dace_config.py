@@ -1,5 +1,7 @@
 import enum
-from typing import Optional
+from typing import Any, Dict, Optional
+
+import dace.config
 
 from pace.util.communicator import CubedSphereCommunicator
 
@@ -23,8 +25,10 @@ class DaCeOrchestration(enum.Enum):
 class DaceConfig:
     def __init__(
         self,
-        communicator: CubedSphereCommunicator,
+        communicator: Optional[CubedSphereCommunicator],
         backend: str,
+        tile_nx: int = 0,
+        tile_nz: int = 0,
         orchestration: Optional[DaCeOrchestration] = None,
     ):
         # Temporary. This is a bit too out of the ordinary for the common user.
@@ -33,12 +37,114 @@ class DaceConfig:
         import os
 
         if orchestration is None:
-            self._orchestrate = DaCeOrchestration[os.getenv("FV3_DACEMODE", "Python")]
+            fv3_dacemode_env_var = os.getenv("FV3_DACEMODE", "Python")
+            # The below condition guard against defining empty FV3_DACEMODE and
+            # awkward behavior of os.getenv returning "" even when not defined
+            if fv3_dacemode_env_var is None or fv3_dacemode_env_var == "":
+                fv3_dacemode_env_var = "Python"
+            self._orchestrate = DaCeOrchestration[fv3_dacemode_env_var]
         else:
             self._orchestrate = orchestration
-        self._communicator = communicator
+
+        # Set the configuration of DaCe to a rigid & tested set of divergence
+        # from the defaults when orchestrating
+        if orchestration != DaCeOrchestration.Python:
+            # Required to True for gt4py storage/memory
+            dace.config.Config.set(
+                "compiler",
+                "allow_view_arguments",
+                value=True,
+            )
+            # Removed --fmath
+            dace.config.Config.set(
+                "compiler",
+                "cpu",
+                "args",
+                value="-std=c++14 -fPIC -Wall -Wextra -O3",
+            )
+            # Potentially buggy - deactivate
+            dace.config.Config.set(
+                "compiler",
+                "cpu",
+                "openmp_sections",
+                value=0,
+            )
+            # Removed --fast-math
+            dace.config.Config.set(
+                "compiler",
+                "cuda",
+                "args",
+                value="-std=c++14 -Xcompiler -fPIC -O3 -Xcompiler -march=native",
+            )
+            # Potentially buggy - deactivate
+            dace.config.Config.set(
+                "compiler",
+                "cuda",
+                "max_concurrent_streams",
+                value=-1,  # no concurrent streams, every kernel on defaultStream
+            )
+            # Speed up built time
+            dace.config.Config.set(
+                "compiler",
+                "cuda",
+                "unique_functions",
+                value="none",
+            )
+            # Required to False. Bug to be fixes on DaCe side
+            dace.config.Config.set(
+                "execution",
+                "general",
+                "check_args",
+                value=False,
+            )
+            # Required for HaloEx callbacks and general code sanity
+            dace.config.Config.set(
+                "frontend",
+                "dont_fuse_callbacks",
+                value=True,
+            )
+            # Unroll all loop - outer loop should be exempted with dace.nounroll
+            dace.config.Config.set(
+                "frontend",
+                "unroll_threshold",
+                value=False,
+            )
+            # Allow for a longer stack dump when parsing fails
+            dace.config.Config.set(
+                "frontend",
+                "verbose_errors",
+                value=True,
+            )
+            # Build speed up by removing some deep copies
+            dace.config.Config.set(
+                "store_history",
+                value=False,
+            )
+
+        # attempt to kill the dace.conf to avoid confusion
+        if dace.config.Config._cfg_filename:
+            try:
+                import os
+
+                os.remove(dace.config.Config._cfg_filename)
+            except OSError:
+                pass
+
         self._backend = backend
-        from pace.dsl.dace.build import set_distributed_caches
+        self.tile_resolution = [tile_nx, tile_nx, tile_nz]
+        from pace.dsl.dace.build import get_target_rank, set_distributed_caches
+
+        # Distributed build required info
+        if communicator:
+            self.my_rank = communicator.rank
+            self.rank_size = communicator.comm.Get_size()
+            self.target_rank = get_target_rank(self.my_rank, communicator.partitioner)
+            self.layout = communicator.partitioner.layout
+        else:
+            self.my_rank = 0
+            self.rank_size = 1
+            self.target_rank = 0
+            self.layout = [1, 1]
 
         set_distributed_caches(self)
 
@@ -48,7 +154,7 @@ class DaceConfig:
         ):
             raise RuntimeError(
                 "DaceConfig: orchestration can only be leverage "
-                f"on gtc:dace or gtc:dace:gpu not on {self._backend}"
+                f"on dace or dace:gpu not on {self._backend}"
             )
 
     def is_dace_orchestrated(self) -> bool:
@@ -63,5 +169,25 @@ class DaceConfig:
     def get_orchestrate(self) -> DaCeOrchestration:
         return self._orchestrate
 
-    def get_communicator(self) -> CubedSphereCommunicator:
-        return self._communicator
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "_orchestrate": str(self._orchestrate.name),
+            "_backend": self._backend,
+            "my_rank": self.my_rank,
+            "rank_size": self.rank_size,
+            "layout": self.layout,
+            "tile_resolution": self.tile_resolution,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        config = cls(
+            None,
+            backend=data["_backend"],
+            orchestration=DaCeOrchestration[data["_orchestrate"]],
+        )
+        config.my_rank = data["my_rank"]
+        config.rank_size = data["rank_size"]
+        config.layout = data["layout"]
+        config.tile_resolution = data["tile_resolution"]
+        return config

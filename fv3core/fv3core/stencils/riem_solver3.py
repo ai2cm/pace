@@ -16,6 +16,7 @@ import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
 from fv3core._config import RiemannConfig
 from fv3core.stencils.sim1_solver import Sim1Solver
+from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
 
@@ -150,6 +151,11 @@ class RiemannSolver3:
             grid_indexing.jec,
             grid_indexing.domain[2] + 1,
         )
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+        )
+
         if config.a_imp <= 0.999:
             raise NotImplementedError("a_imp <= 0.999 is not implemented")
 

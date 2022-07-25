@@ -17,12 +17,15 @@ def test_returns_null_diagnostics_if_no_path_given():
 
 
 def test_returns_zarr_diagnostics_if_path_given(tmpdir):
-    config = pace.driver.DiagnosticsConfig(path=tmpdir, names=["foo"])
+    config = pace.driver.DiagnosticsConfig(
+        path=tmpdir, names=["foo"], derived_names=["bar"]
+    )
     with unittest.mock.patch(target="pace.driver.diagnostics.ZarrDiagnostics") as mock:
         config.diagnostics_factory(unittest.mock.MagicMock(), unittest.mock.MagicMock())
         mock.assert_called_once_with(
             path=tmpdir,
             names=["foo"],
+            derived_names=["bar"],
             partitioner=unittest.mock.ANY,
             comm=unittest.mock.ANY,
         )
@@ -31,3 +34,6 @@ def test_returns_zarr_diagnostics_if_path_given(tmpdir):
 def test_raises_if_names_given_but_no_path():
     with pytest.raises(ValueError):
         pace.driver.DiagnosticsConfig(path=None, names=["foo"])
+
+    with pytest.raises(ValueError):
+        pace.driver.DiagnosticsConfig(path=None, derived_names=["foo"])

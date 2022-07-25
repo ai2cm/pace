@@ -1,6 +1,6 @@
 import pytest
 
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.stencil import StencilConfig
 
 
@@ -18,7 +18,6 @@ def test_same_config_equal(
     dace_config = DaceConfig(
         None,
         backend,
-        DaCeOrchestration.Python,
     )
     config = StencilConfig(
         backend=backend,
@@ -55,7 +54,6 @@ def test_different_backend_not_equal(
     dace_config = DaceConfig(
         None,
         backend,
-        DaCeOrchestration.Python,
     )
     config = StencilConfig(
         backend=backend,
@@ -91,7 +89,6 @@ def test_different_rebuild_not_equal(
     dace_config = DaceConfig(
         None,
         backend,
-        DaCeOrchestration.Python,
     )
     config = StencilConfig(
         backend=backend,
@@ -127,7 +124,6 @@ def test_different_device_sync_not_equal(
     dace_config = DaceConfig(
         None,
         backend,
-        DaCeOrchestration.Python,
     )
     config = StencilConfig(
         backend=backend,
@@ -163,7 +159,6 @@ def test_different_validate_args_not_equal(
     dace_config = DaceConfig(
         None,
         backend,
-        DaCeOrchestration.Python,
     )
     config = StencilConfig(
         backend=backend,
@@ -199,7 +194,6 @@ def test_different_format_source_not_equal(
     dace_config = DaceConfig(
         None,
         backend,
-        DaCeOrchestration.Python,
     )
     config = StencilConfig(
         backend=backend,

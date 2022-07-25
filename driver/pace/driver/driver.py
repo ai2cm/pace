@@ -1,7 +1,9 @@
 import dataclasses
 import functools
 import logging
+import warnings
 from datetime import datetime, timedelta
+from math import floor
 from typing import Any, Dict, List, Tuple, Union
 
 import dace
@@ -16,7 +18,7 @@ import pace.util
 import pace.util.grid
 from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig
-from pace.dsl.dace.orchestrate import dace_inhibitor, orchestrate
+from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
@@ -114,6 +116,15 @@ class DriverConfig:
             days=self.days, hours=self.hours, minutes=self.minutes, seconds=self.seconds
         )
 
+    def n_timesteps(self) -> int:
+        """Computing how many timestep required to carry the simulation."""
+        if self.total_time < self.timestep:
+            warnings.warn(
+                f"No simulation possible: you asked for {self.total_time} "
+                f"simulation time but the timestep is {self.timestep}"
+            )
+        return floor(self.total_time.total_seconds() / self.timestep.total_seconds())
+
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:
         return self.dycore_config.do_dry_convective_adjustment
@@ -164,6 +175,14 @@ class DriverConfig:
             kwargs["initialization"]
         )
 
+        if (
+            isinstance(kwargs["stencil_config"], dict)
+            and "dace_config" in kwargs["stencil_config"].keys()
+        ):
+            kwargs["stencil_config"]["dace_config"] = DaceConfig.from_dict(
+                data=kwargs["stencil_config"]["dace_config"]
+            )
+
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
         )
@@ -200,14 +219,28 @@ class Driver:
             )
 
             dace_config = DaceConfig(
-                communicator=communicator, backend=self.config.stencil_config.backend
+                communicator=communicator,
+                backend=self.config.stencil_config.backend,
+                tile_nx=self.config.nx_tile,
+                tile_nz=self.config.nz,
             )
             self.config.stencil_config.dace_config = dace_config
             orchestrate(
                 obj=self,
                 config=dace_config,
-                method_to_orchestrate="dycore_only_loop_orchestrated",
-                dace_constant_args=["state"],
+                method_to_orchestrate="_critical_path_step_all",
+                dace_constant_args=["timer"],
+            )
+            orchestrate(
+                obj=self,
+                config=dace_config,
+                method_to_orchestrate="_step_dynamics",
+                dace_constant_args=["state", "timer"],
+            )
+            orchestrate(
+                obj=self,
+                config=dace_config,
+                method_to_orchestrate="_step_physics",
             )
 
             self.quantity_factory, self.stencil_factory = _setup_factories(
@@ -260,6 +293,7 @@ class Driver:
                 quantity_factory=self.quantity_factory,
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,
+                tendency_state=self.state.tendency_state,
             )
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
@@ -300,62 +334,49 @@ class Driver:
             restart_path=restart_path,
         )
 
-    def dycore_only_loop_orchestrated(
+    @dace_inhibitor
+    def end_of_step_actions(self, step: int):
+        """Gather operations unrelated to computation.
+        Using a function allows those actions to be removed from the orchestration path.
+        """
+        if not ((step + 1) % self.config.diagnostics_config.output_frequency):
+            self.diagnostics.store(time=self.time, state=self.state)
+        if (
+            self.restart.save_intermediate_restart
+            and step in self.config.intermediate_restart
+        ):
+            self._write_restart_files(restart_path=f"RESTART_{step}")
+        self.performance_config.collect_performance()
+
+    def _critical_path_step_all(
         self,
-        state: DycoreState,
-        time_steps: int,
-        time_step_io_freq: int,
-        intermediate_restart: list,
+        steps_count: int,
+        timer: pace.util.Timer,
+        dt: float,
     ):
-        for t in dace.nounroll(range(time_steps)):
-            self._step_dynamics(
-                state=state,
-                timer=self.performance_config.timestep_timer,
-            )
-            if (t % time_step_io_freq) == 0:
-                self._callback_diagnostics()
-            if t in intermediate_restart:
-                self._callback_restart(restart_path=f"RESTART_{t}")
+        """Start of code path where performance is critical.
+
+        This function must remain orchestrateable by DaCe (e.g.
+        all code not parseable due to python complexity needs to be moved
+        to a callbcak, like end_of_step_actions)."""
+        for step in dace.nounroll(range(steps_count)):
+            with timer.clock("mainloop"):
+                self._step_dynamics(
+                    self.state.dycore_state,
+                    self.performance_config.timestep_timer,
+                )
+                if not self.config.disable_step_physics:
+                    self._step_physics(timestep=dt)
+                self.end_of_step_actions(step)
 
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
-            end_time = self.config.start_time + self.config.total_time
-            # Temporary DaCe execution code to restrict orchestration to the dycore only
-            # and properly error out. Original code conserved in else
-            if self.config.stencil_config.dace_config.is_dace_orchestrated():
-                time_steps = int(
-                    (end_time - self.time).seconds / self.config.timestep.seconds
-                )
-                logger.info(f"  time_steps: {time_steps}")
-                if not self.config.disable_step_physics:
-                    raise RuntimeError("DaCe orchestration doesn't handle physics.")
-                self.dycore_only_loop_orchestrated(
-                    state=self.state.dycore_state,
-                    time_steps=time_steps,
-                    time_step_io_freq=(
-                        self.config.diagnostics_config.output_frequency,
-                    ),
-                    intermediate_restart=self.config.intermediate_restart,
-                )
-            else:
-                timestep_counter = 0
-                while self.time < end_time:
-                    self.step(timestep=self.config.timestep)
-                    timestep_counter += 1
-                    if (
-                        timestep_counter
-                        % self.config.diagnostics_config.output_frequency
-                        == 0
-                    ):
-                        self.diagnostics.store(time=self.time, state=self.state)
-                    if (
-                        self.restart.save_intermediate_restart
-                        and timestep_counter in self.config.intermediate_restart
-                    ):
-                        self._write_restart_files(
-                            restart_path=f"RESTART_{timestep_counter}"
-                        )
+            self._critical_path_step_all(
+                steps_count=self.config.n_timesteps(),
+                timer=self.performance_config.timestep_timer,
+                dt=self.config.timestep.total_seconds(),
+            )
 
     def step(self, timestep: timedelta):
         with self.performance_config.timestep_timer.clock("mainloop"):
@@ -390,7 +411,9 @@ class Driver:
         self.end_of_step_update(
             dycore_state=self.state.dycore_state,
             phy_state=self.state.physics_state,
-            tendency_state=self.state.tendency_state,
+            u_dt=self.state.tendency_state.u_dt.storage,
+            v_dt=self.state.tendency_state.v_dt.storage,
+            pt_dt=self.state.tendency_state.pt_dt.storage,
             dt=float(timestep),
         )
 
@@ -401,6 +424,7 @@ class Driver:
             self.config.dt_atmos,
         )
 
+    @dace_inhibitor
     def _write_restart_files(self, restart_path="RESTART"):
         self.restart.save_state_as_restart(
             state=self.state,
