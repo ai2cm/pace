@@ -101,8 +101,12 @@ jobs:
     steps:
       - run: |
           sudo apt-get update && sudo apt-get install -y make \
+            software-properties-common \
+            libopenmpi3 \
+            libopenmpi-dev \
+            libboost-all-dev \
             python3 \
-            python3-pip
+            python3-pip \
       - gcp-cli/install:
         version: 323.0.0
       - run:
@@ -124,13 +128,14 @@ jobs:
             - v1-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
             - v1-savepoints-c12_54ranks_standard-{{ checksum "fv3core/Makefile" }}
       - run:
-          name: build image
+          name: set up environment
           command: |
-            BUILD_ARGS="--progress=plain" make -C fv3core build
+            pip3 install --upgrade setuptools wheel
+            pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt
       - run:
           name: run tests
           command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" RUN_FLAGS="--rm --memory=62g --cpus=2" NUM_RANKS=54 EXPERIMENT="c12_54ranks_standard" DEV=y make savepoint_tests_mpi
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" CONTAINER_CMD="" NUM_RANKS=54 EXPERIMENT="c12_54ranks_standard" DEV=y make savepoint_tests_mpi
           no_output_timeout: 3h
       - save_cache:
           key: v1-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
