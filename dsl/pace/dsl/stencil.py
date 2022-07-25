@@ -378,7 +378,7 @@ class FrozenStencil(SDFGConvertible):
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Tuple[str, ...] = (),
         timing_collector: Optional[TimingCollector] = None,
-        comm=None,
+        comm: Optional[pace.util.Comm] = None,
     ):
         """
         Args:
@@ -996,11 +996,19 @@ class GridIndexing:
 class StencilFactory:
     """Configurable class which creates stencil objects."""
 
-    def __init__(self, config: StencilConfig, grid_indexing: GridIndexing, comm):
+    def __init__(
+        self,
+        config: StencilConfig,
+        grid_indexing: GridIndexing,
+        comm: Optional[pace.util.Comm] = None,
+    ):
         """
         Args:
             config: gt4py-specific stencil configuration
-            grid_indexing: configuration for domain and halo indexing`
+            grid_indexing: configuration for domain and halo indexing
+            comm: if given, stencils will compare all data before and after
+                stencil execution to their "pair" rank on the comm. This is very
+                expensive and only used for debugging.
         """
         self.config: StencilConfig = config
         self.grid_indexing: GridIndexing = grid_indexing
