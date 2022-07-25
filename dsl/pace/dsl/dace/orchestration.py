@@ -152,7 +152,7 @@ def _build_sdfg(
         write_build_info(sdfg, config.layout, config.tile_resolution, config._backend)
 
         # Printing analysis of the compiled SDFG
-        DaCeProgress.log(config, "Build finish, printing static memory analysis")
+        DaCeProgress.log(config, "Build finish, printing memory static analysis")
         print(count_memory(sdfg))
 
     # Compilation done, either exit or scatter/gather and run
