@@ -98,6 +98,9 @@ class LocalComm(Comm):
         logger.debug(f"bcast {value} to rank {self.rank}")
         return value
 
+    def Barrier(self):
+        return
+
     def barrier(self):
         return
 
