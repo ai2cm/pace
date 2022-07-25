@@ -1,13 +1,14 @@
 from __future__ import annotations
+
 import os
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import gt4py.config as config
 from gt4py import config as gt_config
 
 from pace.util import TilePartitioner
 from pace.util.partitioner import CubedSpherePartitioner
-from typing import TYPE_CHECKING
+
 
 if TYPE_CHECKING:
     from pace.dsl.stencil import CompilationConfig
@@ -56,9 +57,7 @@ def compiling_equivalent(rank: int, partitioner: TilePartitioner):
             else:
                 return 4  # "11"
     else:
-        raise RuntimeError(
-            "Can't compile with a layout larger than 3x3 with minimal caching on"
-        )
+        raise RuntimeError("Can't compile with a layout larger than 3x3 with minimal caching on")
 
 
 def determine_rank_is_compiling(rank: int, partitioner: CubedSpherePartitioner) -> bool:
@@ -81,6 +80,26 @@ def unblock_waiting_tiles(comm) -> None:
             comm.send(message, dest=tile * tile_size + rank)
 
 
+def check_cached_path_exists(cache_filepath: str) -> None:
+    if not os.path.exists(cache_filepath):
+        raise RuntimeError(
+            f"{config.run_mode} error: Could not find caches for rank at {cache_filepath}"
+        )
+
+
+def build_cache_path(config: CompilationConfig) -> Tuple[str, str]:
+    if config.size == 1:
+        target_rank_str = ""
+    else:
+        if config.use_minimal_caching:
+            target_rank_str = f"_{config.compiling_equivalent:06d}"
+        else:
+            target_rank_str = f"_{config.rank:06d}"
+
+    path = f"{gt_config.cache_settings['root_path']}/.gt_cache{target_rank_str}"
+    return path, target_rank_str
+
+
 def set_distributed_caches(config: CompilationConfig):
     """In Run mode, check required file then point current rank cache to source cache"""
 
@@ -89,28 +108,11 @@ def set_distributed_caches(config: CompilationConfig):
     from pace.dsl.stencil import RunMode
 
     if config.run_mode == RunMode.Run:
-        rank = config.rank
-        if config.size == 1:
-            target_rank_str = ""
-        else:
-            if config.use_minimal_caching:
-                target_rank_str = f"_{config.compiling_equivalent:06d}"
-            else:
-                target_rank_str = f"_{config.rank:06d}"
-
-        cache_filepath = (
-            f"{gt_config.cache_settings['root_path']}/.gt_cache{target_rank_str}"
-        )
-        if not os.path.exists(cache_filepath):
-            raise RuntimeError(
-                f"{config.run_mode} error: Could not find caches for rank "
-                f"{rank} at {cache_filepath}"
-            )
-
-        # All, good set this rank cache to the source cache
+        cache_filepath, target_rank_str = build_cache_path(config)
+        check_cached_path_exists(cache_filepath)
         gt_config.cache_settings["dir_name"] = f".gt_cache{target_rank_str}"
         print(
-            f"[{config.run_mode}] Rank {rank} "
+            f"[{config.run_mode}] Rank {config.rank} "
             f"reading cache {gt_config.cache_settings['dir_name']}"
         )
 
