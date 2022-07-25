@@ -33,8 +33,6 @@ layout = (1, 1)
 fvt_dict = {"grid_type": 0, "hord": 6}
 
 
-
-
 def split_metadata(
     metadata: Dict[str, Dict[str, Any]]
 ) -> Tuple[Dict[str, int], Dict[str, Tuple[Any]], Dict[str, str]]:
@@ -316,7 +314,10 @@ def create_gaussian_multiplier(
     """
 
     r0 = RADIUS / 3.0
-    p1x, p1y = dimensions["nxhalo"] // 2, dimensions["nyhalo"] // 2  # center gaussian on middle of tile
+    p1x, p1y = (
+        dimensions["nxhalo"] // 2,
+        dimensions["nyhalo"] // 2,
+    )  # center gaussian on middle of tile
     gaussian_multiplier = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
 
     if mpi_rank == target_tile:
@@ -348,7 +349,7 @@ def calculate_streamfunction_testcase1a(
     Use: psi, psi_staggered = calculate_streamfunction_testcase1a(lon, lat, dimensions)
 
     Calculates streamfunction for testCase1 in fortran. Runs on each rank independently.
-    Streamfunction is calculated by multiplying -wind (-Ubar), the radius of the earth 
+    Streamfunction is calculated by multiplying -wind (-Ubar), the radius of the earth
     (RADIUS), and sin(latitude), so it decreases from the South pole to the North pole.
 
     Inputs:
@@ -1167,7 +1168,10 @@ def run_advection_step_with_reset(
 
     # print diagnostics if mpi_rank is provided
     if mpi_rank == 0:
-        diff_timestep = tracAdv_data["tracers"]["tracer"].data - preAdvection_tracerState["tracer"].data
+        diff_timestep = (
+            tracAdv_data["tracers"]["tracer"].data
+            - preAdvection_tracerState["tracer"].data
+        )
         diff_fromInit = (
             tracAdv_data["tracers"]["tracer"].data
             - tracAdv_dataInit["tracers"]["tracer"].data
@@ -1249,7 +1253,6 @@ def plot_projection_field(
             plt.close("all")
 
 
-
 def plot_grid(
     configuration: Dict[str, Any],
     metadata: Dict[str, Dict[str, Any]],
@@ -1310,7 +1313,6 @@ def plot_grid(
             plt.show()
         else:
             plt.close("all")
-
 
 
 def plot_tracer_animation(
@@ -1378,14 +1380,12 @@ def plot_tracer_animation(
             )
             ax.set_title(plotDict_tracer["title"])
 
-
         anim = animation.FuncAnimation(
             fig, animate, frames=frames, interval=400, blit=False
         )
 
         display(HTML(anim.to_jshtml()))
         plt.close()
-
 
 
 def write_initial_condition_tofile(
@@ -1464,7 +1464,6 @@ def write_initial_condition_tofile(
         data.close()
 
 
-
 def unstagger_coordinate(field: np.ndarray, mode: str = "mean") -> np.ndarray:
     """
     Use: field = unstagger_coord(field, mode="mean")
@@ -1516,9 +1515,9 @@ def unstagger_coordinate(field: np.ndarray, mode: str = "mean") -> np.ndarray:
             field = field[:, :, 1:]
         elif dim1 == dim2:
             pass
-    
+
     else:
-        print('Mode not supported.')
+        print("Mode not supported.")
         field = np.nan
 
     if len(fs) == 2:
