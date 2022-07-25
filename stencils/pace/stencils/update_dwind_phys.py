@@ -1,10 +1,20 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldI, FloatFieldIJ
 from pace.util import TilePartitioner
 from pace.util.grid import DriverGridData
+
+
+def set_winds_zero(
+    u_dt: FloatField,
+    v_dt: FloatField,
+):
+    with computation(PARALLEL), interval(...):
+        u_dt = 0.0
+        v_dt = 0.0
 
 
 def update_dwind_prep_stencil(
@@ -33,9 +43,6 @@ def update_dwind_prep_stencil(
         ve_1 = v3_1[-1, 0, 0] + v3_1
         ve_2 = v3_2[-1, 0, 0] + v3_2
         ve_3 = v3_3[-1, 0, 0] + v3_3
-    with computation(PARALLEL), interval(...):
-        u_dt = 0.0
-        v_dt = 0.0
 
 
 def update_dwind_y_edge_south_stencil(
@@ -155,6 +162,8 @@ class AGrid2DGridPhysics:
         namelist,
         grid_info: DriverGridData,
     ):
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
+
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         self._dt5 = 0.5 * self.namelist.dt_atmos
@@ -195,6 +204,12 @@ class AGrid2DGridPhysics:
 
         self._update_dwind_prep_stencil = stencil_factory.from_origin_domain(
             update_dwind_prep_stencil,
+            origin=(grid_indexing.n_halo - 1, grid_indexing.n_halo - 1, 0),
+            domain=(nic + 2, njc + 2, npz),
+        )
+
+        self._set_winds_to_zero_stencil = stencil_factory.from_origin_domain(
+            set_winds_zero,
             origin=(grid_indexing.n_halo - 1, grid_indexing.n_halo - 1, 0),
             domain=(nic + 2, njc + 2, npz),
         )
@@ -454,6 +469,7 @@ class AGrid2DGridPhysics:
             self._ve_2,
             self._ve_3,
         )
+        self._set_winds_to_zero_stencil(u_dt, v_dt)
         if self.west_edge:
             if self.global_js <= self._jm2:
                 if self._domain_lower_west[1] > 0:

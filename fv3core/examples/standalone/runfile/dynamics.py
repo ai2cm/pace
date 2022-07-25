@@ -23,7 +23,7 @@ from fv3core.initialization.baroclinic import init_baroclinic_state
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.testing import TranslateFVDynamics
 from pace.dsl import StencilFactory
-from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.orchestration import DaceConfig
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -221,7 +221,8 @@ def setup_dycore(
     dace_config = DaceConfig(
         communicator,
         backend,
-        DaCeOrchestration.Python,
+        tile_nx=dycore_config.npx,
+        tile_nz=dycore_config.npz,
     )
     stencil_config = pace.dsl.stencil.StencilConfig(
         backend=backend,
