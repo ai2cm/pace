@@ -73,7 +73,7 @@ class CompilationConfig:
     ) -> None:
         if run_mode != RunMode.Run and use_minimal_caching:
             raise RuntimeError("Cannot use minimal caching in any building mode")
-        if (not ("gpu" in backend or "cuda" in backend)) and device_sync == True:
+        if (not ("gpu" in backend or "cuda" in backend)) and device_sync is True:
             raise RuntimeError("Device sync is true on a CPU based backend")
         # GT4Py backend args
         self.backend = backend
@@ -90,8 +90,8 @@ class CompilationConfig:
             self.compiling_equivalent,
             self.is_compiling,
         ) = self.get_decomposition_info_from_comm(communicator)
-
-        set_distributed_caches(self)
+        if communicator:
+            set_distributed_caches(self)
 
     def get_decomposition_info_from_comm(
         self, communicator: Optional[CubedSphereCommunicator]
@@ -100,8 +100,12 @@ class CompilationConfig:
             rank = communicator.rank
             size = communicator.partitioner.total_ranks
             if self.use_minimal_caching:
-                equivalent_compiling_rank = compiling_equivalent(rank, communicator.partitioner)
-                is_compiling = determine_rank_is_compiling(rank, communicator.partitioner)
+                equivalent_compiling_rank = compiling_equivalent(
+                    rank, communicator.partitioner
+                )
+                is_compiling = determine_rank_is_compiling(
+                    rank, communicator.partitioner
+                )
             else:
                 equivalent_compiling_rank = rank
                 is_compiling = True
@@ -113,12 +117,37 @@ class CompilationConfig:
 
         return rank, size, equivalent_compiling_rank, is_compiling
 
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "backend": self.backend,
+            "rebuild": self.rebuild,
+            "validate_args": self.validate_args,
+            "format_source": self.format_source,
+            "device_sync": self.device_sync,
+            "run_mode": self.run_mode,
+            "use_minimal_caching": self.use_minimal_caching,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        instance = cls(
+            backend=data.get("backend", "numpy"),
+            rebuild=data.get("rebuild", False),
+            validate_args=data.get("validate_args", True),
+            format_source=data.get("format_source", False),
+            device_sync=data.get("device_sync", False),
+            run_mode=RunMode[data.get("run_mode", "BuildAndRun")],
+            use_minimal_caching=data.get("use_minimal_caching", False),
+            communicator=None,
+        )
+        return instance
+
 
 @dataclasses.dataclass
 class StencilConfig(Hashable):
     compare_to_numpy: bool = False
     dace_config: Optional[DaceConfig] = None
-    compilation_config: CompilationConfig = CompilationConfig()
+    compilation_config: Optional[CompilationConfig] = None
 
     def __post_init__(self):
         self.backend_opts = self._get_backend_opts(
@@ -162,12 +191,19 @@ class StencilConfig(Hashable):
             return False
 
     def _get_backend_opts(
-        self, device_sync: Optional[bool] = None, format_source: Optional[bool] = None,
+        self,
+        device_sync: Optional[bool] = None,
+        format_source: Optional[bool] = None,
     ) -> Dict[str, Any]:
         backend_opts: Dict[str, Any] = {}
         all_backend_opts: Optional[Dict[str, Any]] = {
-            "device_sync": {"backend": r".*(gpu|cuda)$", "value": False,},
-            "format_source": {"value": False,},
+            "device_sync": {
+                "backend": r".*(gpu|cuda)$",
+                "value": False,
+            },
+            "format_source": {
+                "value": False,
+            },
             "verbose": {"backend": r"(gt:|cuda)", "value": False},
         }
         for name, option in all_backend_opts.items():
@@ -184,10 +220,12 @@ class StencilConfig(Hashable):
 
         return backend_opts
 
-    def stencil_kwargs(self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()):
+    def stencil_kwargs(
+        self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()
+    ):
         kwargs = {
-            "backend": self.backend,
-            "rebuild": self.rebuild,
+            "backend": self.compilation_config.backend,
+            "rebuild": self.compilation_config.rebuild,
             "name": func.__module__ + "." + func.__name__,
             **self.backend_opts,
         }
@@ -228,7 +266,9 @@ def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id
             kwarg = kwargs[name]
             numpy_kwarg = kwargs_copy[name]
         if isinstance(kwarg, np.ndarray):
-            report_segments.append(report_diff(kwarg, numpy_kwarg, label=f"kwarg {name}"))
+            report_segments.append(
+                report_diff(kwarg, numpy_kwarg, label=f"kwarg {name}")
+            )
     report_body = "".join(report_segments)
     if len(report_body) > 0:
         print("")  # newline
@@ -239,9 +279,24 @@ def report_diff(arg: np.ndarray, numpy_arg: np.ndarray, label) -> str:
     metric_err = testing.compare_arr(arg, numpy_arg)
     nans_match = np.logical_and(np.isnan(arg), np.isnan(numpy_arg))
     n_points = np.product(arg.shape)
-    failures_14 = n_points - np.sum(np.logical_or(nans_match, metric_err < 1e-14,))
-    failures_10 = n_points - np.sum(np.logical_or(nans_match, metric_err < 1e-10,))
-    failures_8 = n_points - np.sum(np.logical_or(nans_match, metric_err < 1e-10,))
+    failures_14 = n_points - np.sum(
+        np.logical_or(
+            nans_match,
+            metric_err < 1e-14,
+        )
+    )
+    failures_10 = n_points - np.sum(
+        np.logical_or(
+            nans_match,
+            metric_err < 1e-10,
+        )
+    )
+    failures_8 = n_points - np.sum(
+        np.logical_or(
+            nans_match,
+            metric_err < 1e-10,
+        )
+    )
     greatest_error = np.max(metric_err[~np.isnan(metric_err)])
     if greatest_error == 0.0 and failures_14 == 0:
         report = ""
@@ -271,11 +326,15 @@ class TimingCollector:
     )
 
     def build_report(self, key: str = "build_time", **kwargs) -> str:
-        return type(self)._show_report(self.build_info, self.build_info.keys(), key, **kwargs)
+        return type(self)._show_report(
+            self.build_info, self.build_info.keys(), key, **kwargs
+        )
 
     def exec_report(self, key: str = "total_run_time", **kwargs) -> str:
         # NOTE: Uses the build_info keys to distinguish stencils
-        return type(self)._show_report(self.exec_info, self.build_info.keys(), key, **kwargs)
+        return type(self)._show_report(
+            self.exec_info, self.build_info.keys(), key, **kwargs
+        )
 
     @staticmethod
     def _show_report(
@@ -293,7 +352,9 @@ class TimingCollector:
         assert name_width > 10
 
         data = [(key, infos[key][secondary_key]) for key in keys]
-        sorted_data = tuple(sorted(data, key=lambda name_time: name_time[1], reverse=reverse))
+        sorted_data = tuple(
+            sorted(data, key=lambda name_time: name_time[1], reverse=reverse)
+        )
         max_val = sorted_data[0 if reverse else -1][1]
 
         format = f".{digits}e"
@@ -341,15 +402,16 @@ class CompareToNumpyStencil:
         )
         compilation_config = CompilationConfig(
             backend="numpy",
-            rebuild=stencil_config.rebuild,
-            validate_args=stencil_config.validate_args,
+            rebuild=stencil_config.compilation_config.rebuild,
+            validate_args=stencil_config.compilation_config.validate_args,
             format_source=True,
             device_sync=None,
             run_mode=RunMode.BuildAndRun,
             use_minimal_caching=False,
         )
         numpy_stencil_config = StencilConfig(
-            dace_config=stencil_config.dace_config, compilation_config=compilation_config,
+            dace_config=stencil_config.dace_config,
+            compilation_config=compilation_config,
         )
         self._numpy = FrozenStencil(
             func=func,
@@ -362,7 +424,11 @@ class CompareToNumpyStencil:
         )
         self._func_name = func.__name__
 
-    def __call__(self, *args, **kwargs,) -> None:
+    def __call__(
+        self,
+        *args,
+        **kwargs,
+    ) -> None:
         args_copy = copy.deepcopy(args)
         kwargs_copy = copy.deepcopy(kwargs)
         self._actual(*args, **kwargs)
@@ -427,12 +493,14 @@ class FrozenStencil(SDFGConvertible):
         if externals is None:
             externals = {}
         self.externals = externals
-        stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes, func=func)
+        stencil_kwargs = self.stencil_config.stencil_kwargs(
+            skip_passes=skip_passes, func=func
+        )
         self.stencil_object: Optional[gt4py.StencilObject] = None
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
-        if "dace" in self.stencil_config.backend:
+        if "dace" in self.stencil_config.compilation_config.backend:
             dace.Config.set(
                 "default_build_folder",
                 value="{gt_cache}/dacecache".format(
@@ -455,7 +523,9 @@ class FrozenStencil(SDFGConvertible):
             def exit_instead_of_build(self):
                 stencil_class = None if self.options.rebuild else self.backend.load()
                 if stencil_class is None:
-                    raise RuntimeError("Stencil needs to be compiled in run mode, exiting")
+                    raise RuntimeError(
+                        "Stencil needs to be compiled in run mode, exiting"
+                    )
                 return stencil_class
 
             from gt4py.stencil_builder import StencilBuilder
@@ -475,7 +545,9 @@ class FrozenStencil(SDFGConvertible):
                 stencil_config.compilation_config.use_minimal_caching
                 and not stencil_config.compilation_config.is_compiling
             ):
-                block_waiting_for_compilation(MPI.COMM_WORLD, stencil_config.compilation_config)
+                block_waiting_for_compilation(
+                    MPI.COMM_WORLD, stencil_config.compilation_config
+                )
 
             self.stencil_object = gtscript.stencil(
                 definition=func,
@@ -490,12 +562,14 @@ class FrozenStencil(SDFGConvertible):
             ):
                 unblock_waiting_tiles(MPI.COMM_WORLD)
 
-        self._timing_collector.build_info[_stencil_object_name(self.stencil_object)] = build_info
+        self._timing_collector.build_info[
+            _stencil_object_name(self.stencil_object)
+        ] = build_info
         field_info = self.stencil_object.field_info
 
-        self._field_origins: Dict[str, Tuple[int, ...]] = FrozenStencil._compute_field_origins(
-            field_info, self.origin
-        )
+        self._field_origins: Dict[
+            str, Tuple[int, ...]
+        ] = FrozenStencil._compute_field_origins(field_info, self.origin)
         """mapping from field names to field origins"""
 
         self._stencil_run_kwargs: Dict[str, Any] = {
@@ -510,14 +584,15 @@ class FrozenStencil(SDFGConvertible):
             def nothing_function(*args, **kwargs):
                 pass
 
-            self.__call__ = nothing_function
+            # self.__call__ = nothing_function
+            setattr(self, "__call__", nothing_function)
 
     def __call__(self, *args, **kwargs) -> None:
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)
 
-        if self.stencil_config.validate_args:
+        if self.stencil_config.compilation_config.validate_args:
             if __debug__ and "origin" in kwargs:
                 raise TypeError("origin cannot be passed to FrozenStencil call")
             if __debug__ and "domain" in kwargs:
@@ -606,7 +681,10 @@ class FrozenStencil(SDFGConvertible):
         """Implemented SDFG generation"""
         args_as_kwargs = dict(zip(self._argument_names, args))
         return self.stencil_object.__sdfg__(
-            origin=self._field_origins, domain=self.domain, **args_as_kwargs, **kwargs,
+            origin=self._field_origins,
+            domain=self.domain,
+            **args_as_kwargs,
+            **kwargs,
         )
 
     def __sdfg_signature__(self):
@@ -681,7 +759,11 @@ class GridIndexing:
     def domain(self, domain):
         self._domain = domain
         self._sizer = pace.util.SubtileGridSizer(
-            nx=domain[0], ny=domain[1], nz=domain[2], n_halo=self.n_halo, extra_dim_lengths={},
+            nx=domain[0],
+            ny=domain[1],
+            nz=domain[2],
+            n_halo=self.n_halo,
+            extra_dim_lengths={},
         )
 
     @classmethod
@@ -805,14 +887,22 @@ class GridIndexing:
             self.domain[2] + add[2],
         )
 
-    def axis_offsets(self, origin: Tuple[int, ...], domain: Tuple[int, ...],) -> Dict[str, Any]:
+    def axis_offsets(
+        self,
+        origin: Tuple[int, ...],
+        domain: Tuple[int, ...],
+    ) -> Dict[str, Any]:
         if self.west_edge:
             i_start = gtscript.I[0] + self.origin[0] - origin[0]
         else:
             i_start = gtscript.I[0] - np.iinfo(np.int16).max
 
         if self.east_edge:
-            i_end = gtscript.I[-1] + (self.origin[0] + self.domain[0]) - (origin[0] + domain[0])
+            i_end = (
+                gtscript.I[-1]
+                + (self.origin[0] + self.domain[0])
+                - (origin[0] + domain[0])
+            )
         else:
             i_end = gtscript.I[-1] + np.iinfo(np.int16).max
 
@@ -822,7 +912,11 @@ class GridIndexing:
             j_start = gtscript.J[0] - np.iinfo(np.int16).max
 
         if self.north_edge:
-            j_end = gtscript.J[-1] + (self.origin[1] + self.domain[1]) - (origin[1] + domain[1])
+            j_end = (
+                gtscript.J[-1]
+                + (self.origin[1] + self.domain[1])
+                - (origin[1] + domain[1])
+            )
         else:
             j_end = gtscript.J[-1] + np.iinfo(np.int16).max
 
@@ -870,7 +964,9 @@ class GridIndexing:
                 return_origin.append(self.origin[2])
         return return_origin
 
-    def get_shape(self, dims: Sequence[str], halos: Sequence[int] = tuple()) -> Tuple[int, ...]:
+    def get_shape(
+        self, dims: Sequence[str], halos: Sequence[int] = tuple()
+    ) -> Tuple[int, ...]:
         """
         Get the storage shape required for an array with the given dimensions
         which is accessed up to a given number of halo points.
@@ -916,7 +1012,9 @@ class GridIndexing:
         elif nk < 0:
             raise ValueError("number of vertical levels should be positive")
         elif nk > (self.domain[2] - k_start):
-            raise ValueError("nk can be at most the size of the vertical domain minus k_start")
+            raise ValueError(
+                "nk can be at most the size of the vertical domain minus k_start"
+            )
 
         new = GridIndexing(
             self.domain[:2] + (nk,),
@@ -954,10 +1052,16 @@ class GridIndexing:
         # we don't allocate
         # Refactor is filed in ticket DSL-820
 
-        temp_storage = gt4py_utils.make_storage_from_shape(shape, origin, backend=backend)
+        temp_storage = gt4py_utils.make_storage_from_shape(
+            shape, origin, backend=backend
+        )
         origin, extent = self.get_origin_domain(dims)
         temp_quantity = pace.util.Quantity(
-            temp_storage, dims=dims, units="unknown", origin=origin, extent=extent,
+            temp_storage,
+            dims=dims,
+            units="unknown",
+            origin=origin,
+            extent=extent,
         )
         if n_halo is None:
             n_halo = self.n_halo
@@ -995,7 +1099,7 @@ class StencilFactory:
 
     @property
     def backend(self):
-        return self.config.backend
+        return self.config.compilation_config.backend
 
     def from_origin_domain(
         self,
@@ -1051,7 +1155,9 @@ class StencilFactory:
         if externals is None:
             externals = {}
         if len(compute_dims) != 3:
-            raise ValueError(f"must have 3 dimensions to create stencil, got {compute_dims}")
+            raise ValueError(
+                f"must have 3 dimensions to create stencil, got {compute_dims}"
+            )
         origin, domain = self.grid_indexing.get_origin_domain(
             dims=compute_dims, halos=compute_halos
         )
@@ -1100,10 +1206,15 @@ def get_stencils_with_varied_bounds(
         externals = {}
     stencils = []
     for origin, domain in zip(origins, domains):
-        ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin=origin, domain=domain)
+        ax_offsets = stencil_factory.grid_indexing.axis_offsets(
+            origin=origin, domain=domain
+        )
         stencils.append(
             stencil_factory.from_origin_domain(
-                func, origin=origin, domain=domain, externals={**externals, **ax_offsets},
+                func,
+                origin=origin,
+                domain=domain,
+                externals={**externals, **ax_offsets},
             )
         )
     return stencils

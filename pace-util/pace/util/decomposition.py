@@ -53,7 +53,9 @@ def compiling_equivalent(rank: int, partitioner: TilePartitioner):
             else:
                 return 4  # "11"
     else:
-        raise RuntimeError("Can't compile with a layout larger than 3x3 with minimal caching on")
+        raise RuntimeError(
+            "Can't compile with a layout larger than 3x3 with minimal caching on"
+        )
 
 
 def determine_rank_is_compiling(rank: int, partitioner: CubedSpherePartitioner) -> bool:
@@ -66,7 +68,7 @@ def block_waiting_for_compilation(comm, compilation_config: CompilationConfig) -
 
     Args:
         comm (MPI.Comm): communicator over which the ok is sent
-        compilation_config (CompilationConfig): compilation configuration
+        stencil_config (CompilationConfig): holding communicator and rank information
     """
     if comm and comm.Get_size() > 1:
         compiling_rank = compilation_config.compiling_equivalent
@@ -77,7 +79,7 @@ def unblock_waiting_tiles(comm) -> None:
     """sends a message to all the ranks waiting for compilation to finish
 
     Args:
-        stencil_config (CompilationConfig): configuration that holds the communicator and the rank information
+        comm (MPI.Comm): communicator over which the ok is sent
     """
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -90,9 +92,7 @@ def unblock_waiting_tiles(comm) -> None:
 
 def check_cached_path_exists(cache_filepath: str) -> None:
     if not os.path.exists(cache_filepath):
-        raise RuntimeError(
-            f"{config.run_mode} error: Could not find caches for rank at {cache_filepath}"
-        )
+        raise RuntimeError(f"Error: Could not find caches for rank at {cache_filepath}")
 
 
 def build_cache_path(config: CompilationConfig) -> Tuple[str, str]:

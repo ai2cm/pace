@@ -1,12 +1,10 @@
-import unittest.mock as mock
 from typing import Tuple
 
 import pytest
 
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
-from pace.dsl.stencil import CompilationConfig, RunMode, StencilConfig
+from pace.dsl.stencil import CompilationConfig
 from pace.util.decomposition import determine_rank_is_compiling
-from pace.util.partitioner import CubedSpherePartitioner, Partitioner, TilePartitioner
+from pace.util.partitioner import CubedSpherePartitioner, TilePartitioner
 
 
 @pytest.mark.parametrize(
