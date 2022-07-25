@@ -36,6 +36,7 @@ from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
 from pace.util.communicator import CubedSphereCommunicator
 from pace.util.decomposition import (
+    block_waiting_for_compilation,
     compiling_equivalent,
     determine_rank_is_compiling,
     set_distributed_caches,
@@ -83,26 +84,34 @@ class CompilationConfig:
         # Caching strategy
         self.run_mode = run_mode
         self.use_minimal_caching = use_minimal_caching
-        if communicator:
-            self.rank = communicator.rank
-            self.size = communicator.partitioner.total_ranks
-            if use_minimal_caching:
-                self.compiling_equivalent = compiling_equivalent(
-                    self.rank, communicator.partitioner
-                )
-                self.is_compiling = determine_rank_is_compiling(
-                    self.rank, communicator.partitioner
-                )
-            else:
-                self.compiling_equivalent = self.rank
-                self.is_compiling = True
-        else:
-            self.rank = 1
-            self.size = self.rank
-            self.compiling_equivalent = self.rank
-            self.is_compiling = True
+        (
+            self.rank,
+            self.size,
+            self.compiling_equivalent,
+            self.is_compiling,
+        ) = self.get_decomposition_info_from_comm(communicator)
 
         set_distributed_caches(self)
+
+    def get_decomposition_info_from_comm(
+        self, communicator: Optional[CubedSphereCommunicator]
+    ) -> Tuple[int, int, int, bool]:
+        if communicator:
+            rank = communicator.rank
+            size = communicator.partitioner.total_ranks
+            if self.use_minimal_caching:
+                equivalent_compiling_rank = compiling_equivalent(rank, communicator.partitioner)
+                is_compiling = determine_rank_is_compiling(rank, communicator.partitioner)
+            else:
+                equivalent_compiling_rank = rank
+                is_compiling = True
+        else:
+            rank = 1
+            size = rank
+            equivalent_compiling_rank = rank
+            is_compiling = True
+
+        return rank, size, equivalent_compiling_rank, is_compiling
 
 
 @dataclasses.dataclass
@@ -175,9 +184,7 @@ class StencilConfig(Hashable):
 
         return backend_opts
 
-    def stencil_kwargs(
-        self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()
-    ):
+    def stencil_kwargs(self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()):
         kwargs = {
             "backend": self.backend,
             "rebuild": self.rebuild,
@@ -221,9 +228,7 @@ def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id
             kwarg = kwargs[name]
             numpy_kwarg = kwargs_copy[name]
         if isinstance(kwarg, np.ndarray):
-            report_segments.append(
-                report_diff(kwarg, numpy_kwarg, label=f"kwarg {name}")
-            )
+            report_segments.append(report_diff(kwarg, numpy_kwarg, label=f"kwarg {name}"))
     report_body = "".join(report_segments)
     if len(report_body) > 0:
         print("")  # newline
@@ -266,15 +271,11 @@ class TimingCollector:
     )
 
     def build_report(self, key: str = "build_time", **kwargs) -> str:
-        return type(self)._show_report(
-            self.build_info, self.build_info.keys(), key, **kwargs
-        )
+        return type(self)._show_report(self.build_info, self.build_info.keys(), key, **kwargs)
 
     def exec_report(self, key: str = "total_run_time", **kwargs) -> str:
         # NOTE: Uses the build_info keys to distinguish stencils
-        return type(self)._show_report(
-            self.exec_info, self.build_info.keys(), key, **kwargs
-        )
+        return type(self)._show_report(self.exec_info, self.build_info.keys(), key, **kwargs)
 
     @staticmethod
     def _show_report(
@@ -292,9 +293,7 @@ class TimingCollector:
         assert name_width > 10
 
         data = [(key, infos[key][secondary_key]) for key in keys]
-        sorted_data = tuple(
-            sorted(data, key=lambda name_time: name_time[1], reverse=reverse)
-        )
+        sorted_data = tuple(sorted(data, key=lambda name_time: name_time[1], reverse=reverse))
         max_val = sorted_data[0 if reverse else -1][1]
 
         format = f".{digits}e"
@@ -350,8 +349,7 @@ class CompareToNumpyStencil:
             use_minimal_caching=False,
         )
         numpy_stencil_config = StencilConfig(
-            dace_config=stencil_config.dace_config,
-            compilation_config=compilation_config,
+            dace_config=stencil_config.dace_config, compilation_config=compilation_config,
         )
         self._numpy = FrozenStencil(
             func=func,
@@ -429,9 +427,7 @@ class FrozenStencil(SDFGConvertible):
         if externals is None:
             externals = {}
         self.externals = externals
-        stencil_kwargs = self.stencil_config.stencil_kwargs(
-            skip_passes=skip_passes, func=func
-        )
+        stencil_kwargs = self.stencil_config.stencil_kwargs(skip_passes=skip_passes, func=func)
         self.stencil_object: Optional[gt4py.StencilObject] = None
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
@@ -459,9 +455,7 @@ class FrozenStencil(SDFGConvertible):
             def exit_instead_of_build(self):
                 stencil_class = None if self.options.rebuild else self.backend.load()
                 if stencil_class is None:
-                    raise RuntimeError(
-                        "Stencil needs to be compiled in run mode, exiting"
-                    )
+                    raise RuntimeError("Stencil needs to be compiled in run mode, exiting")
                 return stencil_class
 
             from gt4py.stencil_builder import StencilBuilder
@@ -477,29 +471,31 @@ class FrozenStencil(SDFGConvertible):
                 build_info=(build_info := {}),  # type: ignore
             )
         else:
-            if stencil_config.compilation_config.use_minimal_caching:
-                if not stencil_config.compilation_config.is_compiling:
-                    # block from moving until compilation is done
-                    if MPI is not None and MPI.COMM_WORLD.Get_size() > 1:
-                        source = stencil_config.compilation_config.compiling_equivalent
+            if (
+                stencil_config.compilation_config.use_minimal_caching
+                and not stencil_config.compilation_config.is_compiling
+            ):
+                block_waiting_for_compilation(MPI.COMM_WORLD, stencil_config.compilation_config)
+
             self.stencil_object = gtscript.stencil(
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
                 build_info=(build_info := {}),  # type: ignore
             )
-            if stencil_config.compilation_config.use_minimal_caching:
-                if stencil_config.compilation_config.is_compiling:
-                    unblock_waiting_tiles(MPI.COMM_WORLD)
 
-        self._timing_collector.build_info[
-            _stencil_object_name(self.stencil_object)
-        ] = build_info
+            if (
+                stencil_config.compilation_config.use_minimal_caching
+                and stencil_config.compilation_config.is_compiling
+            ):
+                unblock_waiting_tiles(MPI.COMM_WORLD)
+
+        self._timing_collector.build_info[_stencil_object_name(self.stencil_object)] = build_info
         field_info = self.stencil_object.field_info
 
-        self._field_origins: Dict[
-            str, Tuple[int, ...]
-        ] = FrozenStencil._compute_field_origins(field_info, self.origin)
+        self._field_origins: Dict[str, Tuple[int, ...]] = FrozenStencil._compute_field_origins(
+            field_info, self.origin
+        )
         """mapping from field names to field origins"""
 
         self._stencil_run_kwargs: Dict[str, Any] = {
@@ -678,11 +674,7 @@ class GridIndexing:
     def domain(self, domain):
         self._domain = domain
         self._sizer = pace.util.SubtileGridSizer(
-            nx=domain[0],
-            ny=domain[1],
-            nz=domain[2],
-            n_halo=self.n_halo,
-            extra_dim_lengths={},
+            nx=domain[0], ny=domain[1], nz=domain[2], n_halo=self.n_halo, extra_dim_lengths={},
         )
 
     @classmethod
@@ -806,20 +798,14 @@ class GridIndexing:
             self.domain[2] + add[2],
         )
 
-    def axis_offsets(
-        self, origin: Tuple[int, ...], domain: Tuple[int, ...],
-    ) -> Dict[str, Any]:
+    def axis_offsets(self, origin: Tuple[int, ...], domain: Tuple[int, ...],) -> Dict[str, Any]:
         if self.west_edge:
             i_start = gtscript.I[0] + self.origin[0] - origin[0]
         else:
             i_start = gtscript.I[0] - np.iinfo(np.int16).max
 
         if self.east_edge:
-            i_end = (
-                gtscript.I[-1]
-                + (self.origin[0] + self.domain[0])
-                - (origin[0] + domain[0])
-            )
+            i_end = gtscript.I[-1] + (self.origin[0] + self.domain[0]) - (origin[0] + domain[0])
         else:
             i_end = gtscript.I[-1] + np.iinfo(np.int16).max
 
@@ -829,11 +815,7 @@ class GridIndexing:
             j_start = gtscript.J[0] - np.iinfo(np.int16).max
 
         if self.north_edge:
-            j_end = (
-                gtscript.J[-1]
-                + (self.origin[1] + self.domain[1])
-                - (origin[1] + domain[1])
-            )
+            j_end = gtscript.J[-1] + (self.origin[1] + self.domain[1]) - (origin[1] + domain[1])
         else:
             j_end = gtscript.J[-1] + np.iinfo(np.int16).max
 
@@ -881,9 +863,7 @@ class GridIndexing:
                 return_origin.append(self.origin[2])
         return return_origin
 
-    def get_shape(
-        self, dims: Sequence[str], halos: Sequence[int] = tuple()
-    ) -> Tuple[int, ...]:
+    def get_shape(self, dims: Sequence[str], halos: Sequence[int] = tuple()) -> Tuple[int, ...]:
         """
         Get the storage shape required for an array with the given dimensions
         which is accessed up to a given number of halo points.
@@ -929,9 +909,7 @@ class GridIndexing:
         elif nk < 0:
             raise ValueError("number of vertical levels should be positive")
         elif nk > (self.domain[2] - k_start):
-            raise ValueError(
-                "nk can be at most the size of the vertical domain minus k_start"
-            )
+            raise ValueError("nk can be at most the size of the vertical domain minus k_start")
 
         new = GridIndexing(
             self.domain[:2] + (nk,),
@@ -969,9 +947,7 @@ class GridIndexing:
         # we don't allocate
         # Refactor is filed in ticket DSL-820
 
-        temp_storage = gt4py_utils.make_storage_from_shape(
-            shape, origin, backend=backend
-        )
+        temp_storage = gt4py_utils.make_storage_from_shape(shape, origin, backend=backend)
         origin, extent = self.get_origin_domain(dims)
         temp_quantity = pace.util.Quantity(
             temp_storage, dims=dims, units="unknown", origin=origin, extent=extent,
@@ -1068,9 +1044,7 @@ class StencilFactory:
         if externals is None:
             externals = {}
         if len(compute_dims) != 3:
-            raise ValueError(
-                f"must have 3 dimensions to create stencil, got {compute_dims}"
-            )
+            raise ValueError(f"must have 3 dimensions to create stencil, got {compute_dims}")
         origin, domain = self.grid_indexing.get_origin_domain(
             dims=compute_dims, halos=compute_halos
         )
@@ -1119,15 +1093,10 @@ def get_stencils_with_varied_bounds(
         externals = {}
     stencils = []
     for origin, domain in zip(origins, domains):
-        ax_offsets = stencil_factory.grid_indexing.axis_offsets(
-            origin=origin, domain=domain
-        )
+        ax_offsets = stencil_factory.grid_indexing.axis_offsets(origin=origin, domain=domain)
         stencils.append(
             stencil_factory.from_origin_domain(
-                func,
-                origin=origin,
-                domain=domain,
-                externals={**externals, **ax_offsets},
+                func, origin=origin, domain=domain, externals={**externals, **ax_offsets},
             )
         )
     return stencils

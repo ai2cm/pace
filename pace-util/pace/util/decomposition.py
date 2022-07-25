@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
 import gt4py.config as config
 from gt4py import config as gt_config
@@ -12,10 +12,6 @@ from pace.util.partitioner import CubedSpherePartitioner
 
 if TYPE_CHECKING:
     from pace.dsl.stencil import CompilationConfig
-
-
-################################################
-# Distributed compilation
 
 
 def compiling_equivalent(rank: int, partitioner: TilePartitioner):
@@ -63,6 +59,18 @@ def compiling_equivalent(rank: int, partitioner: TilePartitioner):
 def determine_rank_is_compiling(rank: int, partitioner: CubedSpherePartitioner) -> bool:
     top_tile_equivalent = compiling_equivalent(rank, partitioner)
     return rank == top_tile_equivalent
+
+
+def block_waiting_for_compilation(comm, compilation_config: CompilationConfig) -> None:
+    """block moving on until an ok is received from the compiling rank
+
+    Args:
+        comm (MPI.Comm): communicator over which the ok is sent
+        compilation_config (CompilationConfig): compilation configuration
+    """
+    if comm and comm.Get_size() > 1:
+        compiling_rank = compilation_config.compiling_equivalent
+        _ = comm.recv(source=compiling_rank)
 
 
 def unblock_waiting_tiles(comm) -> None:
