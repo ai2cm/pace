@@ -10,7 +10,7 @@ NUM_RANKS ?=6
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 TEST_ARGS ?=
-MPIRUN_ARGS ?=--oversubscribe --mca btl_vader_single_copy_mechanism=none
+MPIRUN_ARGS ?=--oversubscribe
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) $(MPIRUN_ARGS)
 
 REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
