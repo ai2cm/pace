@@ -26,9 +26,12 @@ class DaCeProgress:
         DaCeProgress.log(self.prefix, f"{self.label}...{elapsed}s.")
 
 
-def nanczek(sdfg: dace.SDFG):
+def NaN_checker(sdfg: dace.SDFG):
     """
-    Insert after sdfg.simplify(...)
+    Insert a check on array after each computational map to check for NaN
+    in the domain.
+
+    In current pipeline, it is to be inserter after sdfg.simplify(...).
     """
     import copy
 
@@ -78,29 +81,24 @@ def nanczek(sdfg: dace.SDFG):
         inparr = sdfg.arrays[newnode.data]
         index_expr = ", ".join(["__i%d" % i for i in range(len(inparr.shape))])
         index_printf = ", ".join(["%d"] * len(inparr.shape))
-        symbols_printf = ", ".join(
-            [f"{s}=%d" for s, v in sorted(sdfg.symbols.items()) if v is dace.int32]
-            + [f"{s}=%lld" for s, v in sorted(sdfg.symbols.items()) if v is dace.int64]
-            + [f"{s}=%u" for s, v in sorted(sdfg.symbols.items()) if v is dace.uint32]
-            + [f"{s}=%llu" for s, v in sorted(sdfg.symbols.items()) if v is dace.uint64]
-        )
-        symbols_expr = ", ".join(
-            [f"{s}" for s, v in sorted(sdfg.symbols.items()) if v is dace.int32]
-            + [f"{s}" for s, v in sorted(sdfg.symbols.items()) if v is dace.int64]
-            + [f"{s}" for s, v in sorted(sdfg.symbols.items()) if v is dace.uint32]
-            + [f"{s}" for s, v in sorted(sdfg.symbols.items()) if v is dace.uint64]
-        )
-        if not symbols_expr:
-            symbols_printf = "%s"
-            symbols_expr = '"N/A"'
 
         # Get range from memlet (which may not be the entire array size)
         def evaluate(expr):
             return expr.subs({sp.Function("int_floor"): symbolic.int_floor})
 
+        # Infer scheduly
+        schedule_type = dace.ScheduleType.Default
+        if (
+            inparr.storage == dace.StorageType.GPU_Global
+            or inparr.storage == dace.StorageType.GPU_Shared
+        ):
+            schedule_type = dace.ScheduleType.GPU_Device
+
         ranges = []
-        for i, (b, e, s) in enumerate(e.data.subset):
-            ranges.append((f"__i{i}", (evaluate(b), evaluate(e), evaluate(s))))
+        for i, (begin, end, step) in enumerate(e.data.subset):
+            ranges.append(
+                (f"__i{i}", (evaluate(begin), evaluate(end), evaluate(step)))
+            )  # evaluate to resolve views & actively read/write domains
         state.add_mapped_tasklet(
             name="nancheck",
             map_ranges=ranges,
@@ -110,7 +108,7 @@ def nanczek(sdfg: dace.SDFG):
                 printf("NaN value found at {newnode.data}, line %d, index {index_printf}\\n", __LINE__, {index_expr});
             }}
             """,  # noqa: E501
-            schedule=dace.ScheduleType.GPU_Device,
+            schedule=schedule_type,
             language=dace.Language.CPP,
             outputs={
                 "__out": dace.Memlet.simple(newnode.data, index_expr, num_accesses=-1)
