@@ -1,13 +1,12 @@
-from dataclasses import dataclass, field
 import time
-from typing import List, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
 
 import dace
+from dace import SDFG, SDFGState, StorageType, nodes
 from dace.transformation.helpers import get_parent_map
 
-from dace import SDFG, SDFGState, nodes, StorageType
 from pace.dsl.dace.dace_config import DaceConfig
-from typing import Dict, List
 
 
 class DaCeProgress:
@@ -62,7 +61,7 @@ class StorageReport:
 
 
 def count_memory(sdfg: SDFG, detail_report=False) -> str:
-    allocations: Dict[StorageReport] = {}
+    allocations: Dict[StorageType, StorageReport] = {}
     for storage_type in StorageType:
         allocations[storage_type] = StorageReport(name=storage_type)
 
@@ -109,7 +108,8 @@ def count_memory(sdfg: SDFG, detail_report=False) -> str:
         if alloc_in_mb or toplvlalloc_in_mb > 0:
             report += (
                 f"{storage}:\n"
-                f"  Alloc ref | unref: {alloc_in_mb:.2f}mb | {unref_alloc_in_mb:.2f}mb\n"
+                f"  Alloc ref {alloc_in_mb:.2f} mb\n"
+                f"  Alloc unref {unref_alloc_in_mb:.2f} mb\n"
                 f"  Top lvl alloc: {toplvlalloc_in_mb:.2f}mb\n"
             )
             if detail_report:
@@ -119,7 +119,11 @@ def count_memory(sdfg: SDFG, detail_report=False) -> str:
                     size_in_mb = float(detail.total_size_in_bytes / (1024 * 1024))
                     ref_str = "     X     " if detail.referenced else "           "
                     transient_str = "     X     " if detail.transient else "           "
-                    report += f" {ref_str}\t{transient_str}\t   {size_in_mb:.2f}   \t{detail.name}\n"
+                    report += (
+                        f" {ref_str}\t{transient_str}"
+                        f"\t   {size_in_mb:.2f}"
+                        f"\t   {detail.name}\n"
+                    )
 
     return report
 

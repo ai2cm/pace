@@ -1,10 +1,10 @@
-from email.policy import default
 import os
 from typing import Optional
 
 import click
 
 from pace.dsl.dace.utils import count_memory_from_path
+
 
 # Count the memory from a given SDFG
 ACTION_SDFG_MEMORY_COUNT = "sdfg_memory_count"
