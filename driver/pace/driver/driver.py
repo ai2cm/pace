@@ -61,6 +61,11 @@ class DriverConfig:
             in a later commit.
         save_restart: whether to save the state output as restart files at
             cleanup time
+        pair_debug: if True, runs two copies of the model each using
+            half of the available MPI ranks, and compares results across these two
+            copies during model execution, raising an exception if results ever
+            differ. This is considerably more expensive since all model data must
+            be communicated at the start and end of every stencil call.
         intermediate_restart: list of time steps to save intermediate restart files
     """
 
@@ -92,6 +97,7 @@ class DriverConfig:
     dycore_only: bool = False
     disable_step_physics: bool = False
     save_restart: bool = False
+    pair_debug: bool = False
     intermediate_restart: List[int] = dataclasses.field(default_factory=list)
 
     @functools.cached_property
@@ -180,8 +186,13 @@ class Driver:
         self.time = self.config.start_time
         self.comm_config = config.comm_config
         global_comm = config.comm_config.get_comm()
-        world = int(global_comm.Get_rank() >= (global_comm.Get_size() // 2))
-        self.comm = global_comm.Split(color=world, key=global_comm.Get_rank())
+        if config.pair_debug:
+            world = int(global_comm.Get_rank() >= (global_comm.Get_size() // 2))
+            self.comm = global_comm.Split(color=world, key=global_comm.Get_rank())
+            stencil_compare_comm = global_comm
+        else:
+            self.comm = global_comm
+            stencil_compare_comm = None
         self.performance_config = self.config.performance_config
         with self.performance_config.total_timer.clock("initialization"):
             communicator = pace.util.CubedSphereCommunicator.from_layout(
@@ -200,7 +211,9 @@ class Driver:
             )
 
             self.quantity_factory, self.stencil_factory = _setup_factories(
-                config=config, communicator=communicator, global_comm=global_comm
+                config=config,
+                communicator=communicator,
+                stencil_compare_comm=stencil_compare_comm,
             )
 
             self.state = self.config.initialization.get_driver_state(
@@ -422,8 +435,21 @@ def log_subtile_location(partitioner: pace.util.TilePartitioner, rank: int):
 def _setup_factories(
     config: DriverConfig,
     communicator: pace.util.CubedSphereCommunicator,
-    global_comm,
+    stencil_compare_comm,
 ) -> Tuple["pace.util.QuantityFactory", "pace.dsl.StencilFactory"]:
+    """
+    Args:
+        config: configuration of driver
+        communicator: performs communication needed for grid initialization
+        stencil_compare_comm: if given, all stencils created by the returned factory
+            will compare data to its "pair" rank before and after every stencil call,
+            used for debugging in "pair_debug" mode.
+
+    Returns:
+        quantity_factory: creates Quantities
+        stencil_factory: creates Stencils
+    """
+
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.nx_tile,
         ny_tile=config.nx_tile,
@@ -442,6 +468,8 @@ def _setup_factories(
         sizer, backend=config.stencil_config.backend
     )
     stencil_factory = pace.dsl.StencilFactory(
-        config=config.stencil_config, grid_indexing=grid_indexing, comm=global_comm
+        config=config.stencil_config,
+        grid_indexing=grid_indexing,
+        comm=stencil_compare_comm,
     )
     return quantity_factory, stencil_factory

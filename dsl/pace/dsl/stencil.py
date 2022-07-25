@@ -481,12 +481,13 @@ class FrozenStencil(SDFGConvertible):
             self.stencil_object = self._compile()
 
         args_as_kwargs = dict(zip(self._argument_names, args))
-        differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
-        if len(differences) > 0:
-            raise ValueError(
-                f"rank {self.comm.Get_rank()} has differences {differences} "
-                f"before calling {self._func_name}"
-            )
+        if self.comm is not None:
+            differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
+            if len(differences) > 0:
+                raise ValueError(
+                    f"rank {self.comm.Get_rank()} has differences {differences} "
+                    f"before calling {self._func_name}"
+                )
         if self.stencil_config.validate_args:
             if __debug__ and "origin" in kwargs:
                 raise TypeError("origin cannot be passed to FrozenStencil call")
@@ -508,12 +509,13 @@ class FrozenStencil(SDFGConvertible):
                 exec_info=self._timing_collector.exec_info,
             )
             self._mark_cuda_fields_written({**args_as_kwargs, **kwargs})
-        differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
-        if len(differences) > 0:
-            raise ValueError(
-                f"rank {self.comm.Get_rank()} has differences {differences} "
-                f"after calling {self._func_name}"
-            )
+        if self.comm is not None:
+            differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
+            if len(differences) > 0:
+                raise ValueError(
+                    f"rank {self.comm.Get_rank()} has differences {differences} "
+                    f"after calling {self._func_name}"
+                )
 
     def _mark_cuda_fields_written(self, fields: Mapping[str, Storage]):
         if self.stencil_config.is_gpu_backend:
