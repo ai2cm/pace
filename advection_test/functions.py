@@ -1,13 +1,13 @@
 import copy as cp
 import os
 from typing import Any, Dict, List, Tuple, Union
-from matplotlib import animation
 
 import matplotlib.pyplot as plt
 import numpy as np
 from cartopy import crs as ccrs
 from fv3viz import pcolormesh_cube
 from IPython.display import HTML, display
+from matplotlib import animation
 from netCDF4 import Dataset
 
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
@@ -929,7 +929,7 @@ def run_advection_step_with_reset(
 ) -> Dict[str, Quantity]:
     """
     Use: tracAdv_data =
-            run_advection_step_with_reset(tracAdv_dataInit, tracAdv_data, 
+            run_advection_step_with_reset(tracAdv_dataInit, tracAdv_data,
             tracAdv, timestep, mpi_rank=None)
 
 
