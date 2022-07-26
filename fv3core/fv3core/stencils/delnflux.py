@@ -978,7 +978,7 @@ class DelnFlux:
             shape, backend=stencil_factory.backend, is_temporary=False
         )
         self._fy2 = utils.make_storage_from_shape(
-            shape, backend=stencil_factory.backend, is_temporary=False
+            shape, backend=stencil_factory.backend, is_temporary=True
         )
         self._d2 = utils.make_storage_from_shape(
             grid_indexing.domain_full(),
@@ -1193,12 +1193,12 @@ class DelnFluxNoSG:
         corner_domain = corner_domain[:2] + (nk,)
         corner_axis_offsets = grid_indexing.axis_offsets(corner_origin, corner_domain)
 
-        self._corner_tmp = utils.make_storage_from_shape(
-            corner_domain,
-            origin=corner_origin,
-            backend=stencil_factory.backend,
-            is_temporary=False,
-        )
+        # self._corner_tmp = utils.make_storage_from_shape(
+        #     corner_domain,
+        #     origin=corner_origin,
+        #     backend=stencil_factory.backend,
+        #     is_temporary=True,
+        # )
         self._copy_corners_x_nord = stencil_factory.from_origin_domain(
             copy_corners_x_nord,
             externals={**corner_axis_offsets, **nord_dictionary},
