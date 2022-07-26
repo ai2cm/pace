@@ -45,6 +45,10 @@ class Comm(abc.ABC):
         ...
 
     @abc.abstractmethod
+    def sendrecv(self, sendbuf, dest, **kwargs):
+        ...
+
+    @abc.abstractmethod
     def Isend(self, sendbuf, dest, tag: int = 0, **kwargs) -> Request:
         ...
 
