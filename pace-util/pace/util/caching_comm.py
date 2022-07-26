@@ -130,6 +130,9 @@ class CachingCommReader(Comm):
     def Irecv(self, recvbuf, source, tag: int = 0, **kwargs) -> Request:
         return CachingRequestReader(recvbuf, self._data.get_buffer())
 
+    def sendrecv(self, sendbuf, dest, **kwargs):
+        raise NotImplementedError()
+
     def Split(self, color, key) -> "CachingCommReader":
         new_data = self._data.get_split()
         return CachingCommReader(data=new_data)
@@ -197,6 +200,9 @@ class CachingCommWriter(Comm):
         return CachingRequestWriter(
             req=req, buffer=recvbuf, buffer_list=self._data.received_buffers
         )
+
+    def sendrecv(self, sendbuf, dest, **kwargs):
+        raise NotImplementedError()
 
     def Split(self, color, key) -> "CachingCommWriter":
         new_comm = self._comm.Split(color=color, key=key)
