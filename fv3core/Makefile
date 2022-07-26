@@ -56,9 +56,9 @@ CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
 clean:
 
 update_submodules_venv:
-	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
-                git submodule update --init external/daint_venv; \
-        fi
+	if [ ! -f $(CWD)/../external/daint_venv/install.sh  ]; then \
+		git submodule update --init external/daint_venv; \
+	fi
 
 build:
 	$(MAKE) -C .. build
