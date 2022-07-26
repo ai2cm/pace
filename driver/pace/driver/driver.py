@@ -339,6 +339,9 @@ class Driver:
         """Gather operations unrelated to computation.
         Using a function allows those actions to be removed from the orchestration path.
         """
+        if __debug__:
+            logger.info(f"Finished stepping {step}")
+        self.time += self.config.timestep
         if not ((step + 1) % self.config.diagnostics_config.output_frequency):
             self.diagnostics.store(time=self.time, state=self.state)
         if (
@@ -377,17 +380,6 @@ class Driver:
                 timer=self.performance_config.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
             )
-
-    def step(self, timestep: timedelta):
-        with self.performance_config.timestep_timer.clock("mainloop"):
-            self._step_dynamics(
-                self.state.dycore_state,
-                self.performance_config.timestep_timer,
-            )
-            if not self.config.disable_step_physics:
-                self._step_physics(timestep=timestep.total_seconds())
-        self.time += timestep
-        self.performance_config.collect_performance()
 
     def _step_dynamics(
         self,
