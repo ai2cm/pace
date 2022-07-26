@@ -119,12 +119,6 @@ cytoolz==0.11.2
     # via
     #   gt4py
     #   gt4py (external/gt4py/setup.cfg)
-dace @ git+https://github.com/spcl/dace.git@v0.14rc1
-    # via
-    #   -r dsl/requirements.txt
-    #   -r fv3core/requirements/requirements_dace.txt
-    #   -r requirements_dev.txt
-    #   pace-dsl
 dacite==1.6.0
     # via
     #   -r driver/requirements.txt
