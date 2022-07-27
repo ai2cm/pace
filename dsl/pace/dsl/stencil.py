@@ -343,7 +343,7 @@ class FrozenStencil(SDFGConvertible):
                 stencil_class = None if self.options.rebuild else self.backend.load()
                 if stencil_class is None:
                     raise RuntimeError(
-                        "Stencil needs to be compiled in run mode, exiting"
+                        "Stencil needs to be compiled first in run mode, exiting"
                     )
                 return stencil_class
 
