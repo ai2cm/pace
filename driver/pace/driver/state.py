@@ -93,7 +93,7 @@ class DriverState:
             tile_rank=communicator.tile.rank,
         )
         quantity_factory = pace.util.QuantityFactory.from_backend(
-            sizer, backend=driver_config.stencil_config.backend
+            sizer, backend=driver_config.stencil_config.compilation_config.backend
         )
         state = _restart_driver_state(
             restart_path, communicator.rank, quantity_factory, communicator
