@@ -7,7 +7,7 @@ import fv3gfs.physics
 import pace.dsl
 import pace.util
 import pace.util.grid
-from pace.dsl.stencil import CompilationConfig
+from pace.dsl.stencil_config import CompilationConfig
 from pace.stencils.testing import assert_same_temporaries, copy_temporaries
 
 

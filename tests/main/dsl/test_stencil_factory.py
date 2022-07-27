@@ -7,13 +7,12 @@ from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.gt4py_utils import make_storage_from_shape
 from pace.dsl.stencil import (
     CompareToNumpyStencil,
-    CompilationConfig,
     FrozenStencil,
     GridIndexing,
-    StencilConfig,
     StencilFactory,
     get_stencils_with_varied_bounds,
 )
+from pace.dsl.stencil_config import CompilationConfig, StencilConfig
 from pace.dsl.typing import FloatField
 
 

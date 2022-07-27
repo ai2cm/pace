@@ -10,7 +10,7 @@ from pace.util.partitioner import CubedSpherePartitioner
 
 
 if TYPE_CHECKING:
-    from pace.dsl.stencil import CompilationConfig
+    from pace.dsl.stencil_config import CompilationConfig
 
 
 def compiling_equivalent(rank: int, partitioner: TilePartitioner):
@@ -129,7 +129,7 @@ def set_distributed_caches(config: CompilationConfig):
 
     # Check that we have all the file we need to early out in case
     # of issues.
-    from pace.dsl.stencil import RunMode
+    from pace.dsl.stencil_config import RunMode
 
     if config.run_mode == RunMode.Run:
         cache_filepath, target_rank_str = build_cache_path(config)
