@@ -1,4 +1,8 @@
 version: 2.1
+orbs:
+  gcp-cli: circleci/gcp-cli@2.4.1
+  gcp-gcr: circleci/gcp-gcr@0.15.0
+
 jobs:
 
   lint:
@@ -21,6 +25,66 @@ jobs:
           paths:
             - ~/.cache/pre-commit
             - venv
+
+  savepoints_mpi:
+    machine:
+      image: ubuntu-2004:202111-02
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - run: |
+          sudo apt-get update && sudo apt-get install -y make \
+            python3 \
+            python3-pip
+      - gcp-cli/install:
+        version: 323.0.0
+      - run:
+          name: gcloud auth
+          command: |
+            echo $ENCODED_GCR_KEY
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+            gcloud auth configure-docker
+      - checkout
+      - run:
+          name: Update Submodules
+          command: git submodule update --init
+      - run:
+          name: save gt4py_version.txt
+          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
+      - restore_cache:
+          keys:
+            - v1-gt_cache-{{ checksum "gt4py_version.txt" }}
+            - v1-savepoints-{{ checksum "fv3core/Makefile" }}
+      - run:
+          name: build image
+          command: |
+            BUILD_ARGS="--progress=plain" make -C fv3core build
+      - run:
+          name: run tests
+          command: |
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
+          no_output_timeout: 3h
+      - save_cache:
+          key: v1-gt_cache-{{ checksum "gt4py_version.txt" }}
+          paths:
+            - .gt_cache
+            - .gt_cache_000000
+            - .gt_cache_000001
+            - .gt_cache_000002
+            - .gt_cache_000003
+            - .gt_cache_000004
+            - .gt_cache_000005
+      - save_cache:
+          key: v1-savepoints-{{ checksum "fv3core/Makefile" }}
+          paths:
+            - fv3core/test_data
 
   test_util:
     docker:
@@ -134,6 +198,16 @@ workflows:
   tagged-build:
     jobs:
       - lint:
+          filters:
+            tags:
+              only: /^v.*/
+      - savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
           filters:
             tags:
               only: /^v.*/
