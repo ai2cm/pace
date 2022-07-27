@@ -23,6 +23,7 @@ from pace.dsl.stencil_config import CompilationConfig, RunMode
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
+from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
 from .comm import CreatesCommSelector
@@ -224,30 +225,12 @@ class Driver:
             stencil_compare_comm = None
         self.performance_config = self.config.performance_config
         with self.performance_config.total_timer.clock("initialization"):
-            communicator = pace.util.CubedSphereCommunicator.from_layout(
+            communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
+            self.update_driver_config_with_communicator(communicator)
 
-            dace_config = DaceConfig(
-                communicator=communicator,
-                backend=self.config.stencil_config.compilation_config.backend,
-                tile_nx=self.config.nx_tile,
-                tile_nz=self.config.nz,
-            )
-            self.config.stencil_config.dace_config = dace_config
-            default_config = self.config.stencil_config.compilation_config
-            compilation_config = CompilationConfig(
-                backend=default_config.backend,
-                rebuild=default_config.rebuild,
-                validate_args=default_config.validate_args,
-                format_source=default_config.format_source,
-                device_sync=default_config.device_sync,
-                run_mode=default_config.run_mode,
-                use_minimal_caching=default_config.use_minimal_caching,
-                communicator=communicator,
-            )
-            self.config.stencil_config.compilation_config = compilation_config
-            if compilation_config.run_mode == RunMode.Build:
+            if self.config.stencil_config.compilation_config.run_mode == RunMode.Build:
 
                 def exit_function(*args, **kwargs):
                     print("compilation finished, exiting")
@@ -256,19 +239,19 @@ class Driver:
                 setattr(self, "step_all", exit_function)
             orchestrate(
                 obj=self,
-                config=dace_config,
+                config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_critical_path_step_all",
                 dace_constant_args=["timer"],
             )
             orchestrate(
                 obj=self,
-                config=dace_config,
+                config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_step_dynamics",
                 dace_constant_args=["state", "timer"],
             )
             orchestrate(
                 obj=self,
-                config=dace_config,
+                config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_step_physics",
             )
 
@@ -343,6 +326,29 @@ class Driver:
             self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time
+
+    def update_driver_config_with_communicator(
+        self, communicator: CubedSphereCommunicator
+    ) -> None:
+        dace_config = DaceConfig(
+            communicator=communicator,
+            backend=self.config.stencil_config.compilation_config.backend,
+            tile_nx=self.config.nx_tile,
+            tile_nz=self.config.nz,
+        )
+        self.config.stencil_config.dace_config = dace_config
+        original_config = self.config.stencil_config.compilation_config
+        compilation_config = CompilationConfig(
+            backend=original_config.backend,
+            rebuild=original_config.rebuild,
+            validate_args=original_config.validate_args,
+            format_source=original_config.format_source,
+            device_sync=original_config.device_sync,
+            run_mode=original_config.run_mode,
+            use_minimal_caching=original_config.use_minimal_caching,
+            communicator=communicator,
+        )
+        self.config.stencil_config.compilation_config = compilation_config
 
     @dace_inhibitor
     def _callback_diagnostics(self):
