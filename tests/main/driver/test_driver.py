@@ -113,6 +113,8 @@ def test_driver(timestep: timedelta, minutes: int):
     assert driver.physics.call_count == config.n_timesteps()
     assert driver.dycore_to_physics.call_count == config.n_timesteps()
     assert driver.end_of_step_update.call_count == config.n_timesteps()
+    final_time = driver._start_time + timestep * config.n_timesteps()
+    assert driver.time == final_time
 
 
 @pytest.mark.parametrize(

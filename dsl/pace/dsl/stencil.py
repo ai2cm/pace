@@ -390,6 +390,7 @@ class CompareToNumpyStencil:
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Optional[Tuple[str, ...]] = None,
         timing_collector: Optional[TimingCollector] = None,
+        comm: Optional[pace.util.Comm] = None,
     ):
         self._actual = FrozenStencil(
             func=func,
@@ -399,6 +400,7 @@ class CompareToNumpyStencil:
             externals=externals,
             skip_passes=skip_passes,
             timing_collector=timing_collector,
+            comm=comm,
         )
         compilation_config = CompilationConfig(
             backend="numpy",
@@ -421,6 +423,7 @@ class CompareToNumpyStencil:
             externals=externals,
             skip_passes=skip_passes,
             timing_collector=timing_collector,
+            comm=comm,
         )
         self._func_name = func.__name__
 
@@ -448,6 +451,32 @@ def _stencil_object_name(stencil_object: gt4py.StencilObject) -> str:
     return type(stencil_object).__name__
 
 
+def get_pair_rank(rank: int, size: int):
+    dycore_ranks = size // 2
+    if rank < dycore_ranks:
+        return rank + dycore_ranks
+    else:
+        return rank - dycore_ranks
+
+
+def compare_ranks(comm: pace.util.Comm, data) -> Mapping[str, int]:
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    pair_rank = get_pair_rank(rank, size)
+    differences = {}
+    for name, maybe_array in sorted(data.items(), key=lambda x: x[0]):
+        if isinstance(maybe_array, pace.util.Quantity):
+            maybe_array = maybe_array.data
+        if hasattr(maybe_array, "data") and isinstance(maybe_array.data, np.ndarray):
+            array = maybe_array.data
+            other = comm.sendrecv(array, pair_rank)
+            arr_diffs = np.sum(np.logical_and(~np.isnan(array), array != other))
+            if arr_diffs > 0:
+                print(name, rank, pair_rank, array, other)
+                differences[name] = arr_diffs
+    return differences
+
+
 class FrozenStencil(SDFGConvertible):
     """
     Wrapper for gt4py stencils which stores origin and domain at compile time,
@@ -467,6 +496,7 @@ class FrozenStencil(SDFGConvertible):
         externals: Optional[Mapping[str, Any]] = None,
         skip_passes: Tuple[str, ...] = (),
         timing_collector: Optional[TimingCollector] = None,
+        comm: Optional[pace.util.Comm] = None,
     ):
         """
         Args:
@@ -477,6 +507,8 @@ class FrozenStencil(SDFGConvertible):
             externals: compile-time external variables required by stencil
             skip_passes: compiler passes to skip when building stencil
             timing_collector: Optional object that accumulates timings
+            comm: if given, inputs and outputs will be compared to the "twin"
+                rank of this rank
         """
         if isinstance(origin, tuple):
             origin = cast_to_index3d(origin)
@@ -484,6 +516,7 @@ class FrozenStencil(SDFGConvertible):
         self.origin = origin
         self.domain: Index3D = cast_to_index3d(domain)
         self.stencil_config: StencilConfig = stencil_config
+        self.comm = comm
 
         if timing_collector is None:
             self._timing_collector = TimingCollector()
@@ -493,6 +526,7 @@ class FrozenStencil(SDFGConvertible):
         if externals is None:
             externals = {}
         self.externals = externals
+        self._func_name = func.__name__
         stencil_kwargs = self.stencil_config.stencil_kwargs(
             skip_passes=skip_passes, func=func
         )
@@ -591,6 +625,14 @@ class FrozenStencil(SDFGConvertible):
         _convert_quantities_to_storage(args_list, kwargs)
         args = tuple(args_list)
 
+        args_as_kwargs = dict(zip(self._argument_names, args))
+        if self.comm is not None:
+            differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
+            if len(differences) > 0:
+                raise ValueError(
+                    f"rank {self.comm.Get_rank()} has differences {differences} "
+                    f"before calling {self._func_name}"
+                )
         if self.stencil_config.compilation_config.validate_args:
             if __debug__ and "origin" in kwargs:
                 raise TypeError("origin cannot be passed to FrozenStencil call")
@@ -605,7 +647,6 @@ class FrozenStencil(SDFGConvertible):
                 exec_info=self._timing_collector.exec_info,
             )
         else:
-            args_as_kwargs = dict(zip(self._argument_names, args))
             self.stencil_object.run(
                 **args_as_kwargs,
                 **kwargs,
@@ -613,6 +654,13 @@ class FrozenStencil(SDFGConvertible):
                 exec_info=self._timing_collector.exec_info,
             )
             self._mark_cuda_fields_written({**args_as_kwargs, **kwargs})
+        if self.comm is not None:
+            differences = compare_ranks(self.comm, {**args_as_kwargs, **kwargs})
+            if len(differences) > 0:
+                raise ValueError(
+                    f"rank {self.comm.Get_rank()} has differences {differences} "
+                    f"after calling {self._func_name}"
+                )
 
     def _mark_cuda_fields_written(self, fields: Mapping[str, Storage]):
         if self.stencil_config.is_gpu_backend:
@@ -1086,15 +1134,24 @@ class GridIndexing:
 class StencilFactory:
     """Configurable class which creates stencil objects."""
 
-    def __init__(self, config: StencilConfig, grid_indexing: GridIndexing):
+    def __init__(
+        self,
+        config: StencilConfig,
+        grid_indexing: GridIndexing,
+        comm: Optional[pace.util.Comm] = None,
+    ):
         """
         Args:
             config: gt4py-specific stencil configuration
-            grid_indexing: configuration for domain and halo indexing`
+            grid_indexing: configuration for domain and halo indexing
+            comm: if given, stencils will compare all data before and after
+                stencil execution to their "pair" rank on the comm. This is very
+                expensive and only used for debugging.
         """
         self.config: StencilConfig = config
         self.grid_indexing: GridIndexing = grid_indexing
         self.timing_collector = TimingCollector()
+        self.comm = comm
 
     @property
     def backend(self):
@@ -1129,6 +1186,7 @@ class StencilFactory:
             externals=externals,
             skip_passes=skip_passes,
             timing_collector=self.timing_collector,
+            comm=self.comm,
         )
 
     def from_dims_halo(
@@ -1176,6 +1234,7 @@ class StencilFactory:
         return StencilFactory(
             config=self.config,
             grid_indexing=self.grid_indexing.restrict_vertical(k_start=k_start, nk=nk),
+            comm=self.comm,
         )
 
     def build_report(self, key: str = "build_time", **kwargs) -> str:
