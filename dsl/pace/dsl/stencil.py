@@ -124,7 +124,7 @@ class CompilationConfig:
             "validate_args": self.validate_args,
             "format_source": self.format_source,
             "device_sync": self.device_sync,
-            "run_mode": self.run_mode,
+            "run_mode": str(self.run_mode.name),
             "use_minimal_caching": self.use_minimal_caching,
         }
 
