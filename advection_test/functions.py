@@ -1,4 +1,5 @@
 import copy as cp
+import enum
 import os
 from typing import Any, Dict, List, Tuple, Union
 
@@ -26,6 +27,12 @@ from pace.util import (
 from pace.util.constants import RADIUS
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
+
+
+class GridType(enum.Enum):
+    AGrid = 1
+    CGrid = 2
+    DGrid = 3
 
 
 backend = "numpy"
@@ -419,7 +426,7 @@ def calculate_winds_from_streamfunction_grid(
     dx: Quantity,
     dy: Quantity,
     dimensions: Dict[str, int],
-    grid: str = "A",
+    grid: GridType = GridType.AGrid,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: u_grid, v_grid =
@@ -450,7 +457,7 @@ def calculate_winds_from_streamfunction_grid(
     u_grid = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
     v_grid = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
 
-    if grid == "A":
+    if grid == GridType.AGrid:
         for jj in range(
             dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
         ):
@@ -467,7 +474,7 @@ def calculate_winds_from_streamfunction_grid(
                 dist = dx.data[ii, jj]
                 v_grid[ii, jj] = 0 if dist == 0 else (psi2 - psi1) / dist
 
-    if grid == "C":
+    elif grid == GridType.CGrid:
         for jj in range(
             dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
         ):
@@ -486,7 +493,7 @@ def calculate_winds_from_streamfunction_grid(
                     else -1.0 * (psi.data[ii, jj + 1] - psi.data[ii, jj]) / dist
                 )
 
-    if grid == "D":
+    elif grid == GridType.DGrid:
         for jj in range(
             dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
         ):
@@ -624,8 +631,9 @@ def create_initial_state(
         (dimensions["nxhalo"], dimensions["nyhalo"]),
         backend,
     )
+    grid = GridType.CGrid
     uC, vC = calculate_winds_from_streamfunction_grid(
-        psi_staggered_halo, dx_halo, dy_halo, dimensions, grid="C"
+        psi_staggered_halo, dx_halo, dy_halo, dimensions, grid=grid
     )
     uC = Quantity(
         uC,
