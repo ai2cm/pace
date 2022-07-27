@@ -233,7 +233,9 @@ class Driver:
             if self.config.stencil_config.compilation_config.run_mode == RunMode.Build:
 
                 def exit_function(*args, **kwargs):
-                    print("compilation finished, exiting")
+                    print(
+                        "Running in build-only mode and compilation finished, exiting"
+                    )
                     exit(0)
 
                 setattr(self, "step_all", exit_function)

@@ -134,6 +134,10 @@ class StencilConfig(Hashable):
                 orchestration=DaCeOrchestration.Python,
             )
 
+    @property
+    def backend(self):
+        return self.compilation_config.backend
+
     def _compute_hash(self):
         md5 = hashlib.md5()
         md5.update(self.compilation_config.backend.encode())

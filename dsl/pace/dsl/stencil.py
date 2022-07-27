@@ -359,13 +359,12 @@ class FrozenStencil(SDFGConvertible):
                 build_info=(build_info := {}),  # type: ignore
             )
         else:
+            compilation_config = stencil_config.compilation_config
             if (
-                stencil_config.compilation_config.use_minimal_caching
-                and not stencil_config.compilation_config.is_compiling
+                compilation_config.use_minimal_caching
+                and not compilation_config.is_compiling
             ):
-                block_waiting_for_compilation(
-                    MPI.COMM_WORLD, stencil_config.compilation_config
-                )
+                block_waiting_for_compilation(MPI.COMM_WORLD, compilation_config)
 
             self.stencil_object = gtscript.stencil(
                 definition=func,
@@ -375,8 +374,8 @@ class FrozenStencil(SDFGConvertible):
             )
 
             if (
-                stencil_config.compilation_config.use_minimal_caching
-                and stencil_config.compilation_config.is_compiling
+                compilation_config.use_minimal_caching
+                and compilation_config.is_compiling
             ):
                 unblock_waiting_tiles(MPI.COMM_WORLD)
 
@@ -402,7 +401,6 @@ class FrozenStencil(SDFGConvertible):
             def nothing_function(*args, **kwargs):
                 pass
 
-            # self.__call__ = nothing_function
             setattr(self, "__call__", nothing_function)
 
     def __call__(self, *args, **kwargs) -> None:
