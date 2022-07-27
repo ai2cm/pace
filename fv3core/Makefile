@@ -47,7 +47,7 @@ THRESH_ARGS=--threshold_overrides_file=$(FV3_PATH)/tests/savepoint/translate/ove
 PYTEST_MAIN=pytest $(TEST_ARGS) $(FV3_PATH)/tests/main
 PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(FV3_PATH)/tests/savepoint
 # we can't rule out a deadlock if one test fails, so we must set maxfail=1 for parallel tests
-PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(FV3_PATH)/tests/savepoint
+PYTEST_PARALLEL=$(MPIRUN_CALL) python3 -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(FV3_PATH)/tests/savepoint
 ifeq ($(DEV),y)
 	VOLUMES += -v $(CWD)/$(FV3):/$(FV3)/$(FV3) -v $(CWD)/tests:/$(FV3)/tests -v $(FV3UTIL_DIR):/external/pace-util -v $(CWD)/external/dsl:/external/dsl -v $(CWD)/external/stencils:/external/stencils
 endif
@@ -56,9 +56,9 @@ CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
 clean:
 
 update_submodules_venv:
-	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
-                git submodule update --init external/daint_venv; \
-        fi
+	if [ ! -f $(CWD)/../external/daint_venv/install.sh  ]; then \
+		git submodule update --init external/daint_venv; \
+	fi
 
 build:
 	$(MAKE) -C .. build
@@ -97,7 +97,7 @@ ifneq ($(findstring docker,$(CONTAINER_CMD)),)
 	$(MAKE) build
     endif
 endif
-	$(CONTAINER_CMD) bash -c "pip list && cd $(FV3_PATH) && $(PYTEST_CMD)"
+	$(CONTAINER_CMD) bash -c "pip3 list && cd $(FV3_PATH) && $(PYTEST_CMD)"
 
 sync_test_data:
 	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)
