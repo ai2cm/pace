@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, Tuple
 
-import gt4py.config as config
 from gt4py import config as gt_config
 
 from pace.util import TilePartitioner
@@ -59,6 +58,15 @@ def compiling_equivalent(rank: int, partitioner: TilePartitioner):
 
 
 def determine_rank_is_compiling(rank: int, partitioner: CubedSpherePartitioner) -> bool:
+    """Determines if a rank needs to be a compiling one
+
+    Args:
+        rank (int): current rank
+        partitioner (CubedSpherePartitioner): partitioner object
+
+    Returns:
+        bool: True if the rank is a compiling one
+    """
     top_tile_equivalent = compiling_equivalent(rank, partitioner)
     return rank == top_tile_equivalent
 
@@ -96,6 +104,14 @@ def check_cached_path_exists(cache_filepath: str) -> None:
 
 
 def build_cache_path(config: CompilationConfig) -> Tuple[str, str]:
+    """generate the GT-Cache path from the config
+
+    Args:
+        config (CompilationConfig): stencil-config object at post-init state
+
+    Returns:
+        Tuple[str, str]: path and individual rank string
+    """
     if config.size == 1:
         target_rank_str = ""
     else:
@@ -123,110 +139,3 @@ def set_distributed_caches(config: CompilationConfig):
             f"[{config.run_mode}] Rank {config.rank} "
             f"reading cache {gt_config.cache_settings['dir_name']}"
         )
-
-
-def build_info_filepath() -> str:
-    return "build_info.txt"
-
-
-def write_build_info(layout: Tuple[int], resolution_per_tile: List[int], backend: str):
-    """Write down all relevant information on the build to identify
-    it at load time."""
-
-    path = config.cache_settings["root_path"]
-    with open(f"{path}/{build_info_filepath()}", "w") as build_info_read:
-        build_info_read.write("#Schema: Backend Layout\n")
-        build_info_read.write(f"{backend}\n")
-        build_info_read.write(f"{str(layout)}\n")
-
-
-# def compiling_equivalent(rank: int, partitioner: CubedSpherePartitioner) -> int:
-#     if partitioner.tile.on_tile_bottom(rank):
-#         if partitioner.tile.on_tile_left(rank):
-#             return get_first_matching_rank(partitioner, "00")
-#         if partitioner.tile.on_tile_right(rank):
-#             return get_first_matching_rank(partitioner, "20")
-#         else:
-#             return get_first_matching_rank(partitioner, "10")
-#     if partitioner.tile.on_tile_top(rank):
-#         if partitioner.tile.on_tile_left(rank):
-#             return get_first_matching_rank(partitioner, "02")
-#         if partitioner.tile.on_tile_right(rank):
-#             return get_first_matching_rank(partitioner, "22")
-#         else:
-#             return get_first_matching_rank(partitioner, "12")
-#     else:
-#         if partitioner.tile.on_tile_left(rank):
-#             return get_first_matching_rank(partitioner, "01")
-#         if partitioner.tile.on_tile_right(rank):
-#             return get_first_matching_rank(partitioner, "21")
-#         else:
-#             return get_first_matching_rank(partitioner, "11")
-
-# def get_first_matching_rank(
-#     partitioner: CubedSpherePartitioner, decomposition_string: str
-# ) -> int:
-#     tile_size = partitioner.total_ranks / 6
-#     for rank in range(partitioner.total_ranks):
-#         if (
-#             decomposition_string == "00"
-#             and partitioner.tile.on_tile_bottom(rank)
-#             and partitioner.tile.on_tile_left(rank)
-#         ):
-#             return rank % tile_size
-#         if (
-#             decomposition_string == "10"
-#             and partitioner.tile.on_tile_bottom(rank)
-#             and not partitioner.tile.on_tile_left(rank)
-#             and not partitioner.tile.on_tile_right(rank)
-#         ):
-#             return rank % tile_size
-#         if (
-#             decomposition_string == "20"
-#             and partitioner.tile.on_tile_bottom(rank)
-#             and partitioner.tile.on_tile_right(rank)
-#         ):
-#             return rank % tile_size
-#         if (
-#             decomposition_string == "01"
-#             and not partitioner.tile.on_tile_bottom(rank)
-#             and not partitioner.tile.on_tile_top(rank)
-#             and partitioner.tile.on_tile_left(rank)
-#         ):
-#             return rank % tile_size
-#         if (
-#             decomposition_string == "11"
-#             and not partitioner.tile.on_tile_bottom(rank)
-#             and not partitioner.tile.on_tile_top(rank)
-#             and not partitioner.tile.on_tile_left(rank)
-#             and not partitioner.tile.on_tile_right(rank)
-#         ):
-#             return rank % tile_size
-#         if (
-#             decomposition_string == "21"
-#             and not partitioner.tile.on_tile_bottom(rank)
-#             and not partitioner.tile.on_tile_top(rank)
-#             and partitioner.tile.on_tile_right(rank)
-#         ):
-#             return rank % tile_size
-#         if (
-#             decomposition_string == "02"
-#             and partitioner.tile.on_tile_top(rank)
-#             and partitioner.tile.on_tile_left(rank)
-#         ):
-#             return rank % tile_size
-#         if (
-#             decomposition_string == "12"
-#             and partitioner.tile.on_tile_top(rank)
-#             and not partitioner.tile.on_tile_left(rank)
-#             and not partitioner.tile.on_tile_right(rank)
-#         ):
-#             return rank % tile_size
-#         if (
-#             decomposition_string == "22"
-#             and partitioner.tile.on_tile_top(rank)
-#             and partitioner.tile.on_tile_right(rank)
-#         ):
-#             return rank % tile_size
-
-#     raise RuntimeError("Tiling seems to be broken")

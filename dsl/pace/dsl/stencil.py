@@ -533,7 +533,6 @@ class FrozenStencil(SDFGConvertible):
             StencilBuilder.build = exit_instead_of_build
 
         if self.stencil_config.dace_config.is_dace_orchestrated():
-            # gt4py compilation is only done when needed
             self.stencil_object = gtscript.lazy_stencil(
                 definition=func,
                 externals=externals,
@@ -553,7 +552,7 @@ class FrozenStencil(SDFGConvertible):
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
-                build_info=(build_info := {}),  # type: ignore
+                build_info=(build_info := {}),
             )
 
             if (

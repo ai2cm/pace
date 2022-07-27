@@ -1,69 +1,119 @@
-from typing import Tuple
+import unittest.mock
+from math import sqrt
 
 import pytest
 
-from pace.dsl.stencil import CompilationConfig
-from pace.util.decomposition import determine_rank_is_compiling
+from pace.dsl.stencil import CompilationConfig, RunMode
+from pace.util.communicator import CubedSphereCommunicator
 from pace.util.partitioner import CubedSpherePartitioner, TilePartitioner
 
 
+def test_safety_checks():
+    with pytest.raises(RuntimeError):
+        CompilationConfig(run_mode=RunMode.BuildAndRun, use_minimal_caching=True)
+    with pytest.raises(RuntimeError):
+        CompilationConfig(run_mode=RunMode.Build, use_minimal_caching=True)
+    with pytest.raises(RuntimeError):
+        CompilationConfig(backend="numpy", device_sync=True)
+    with pytest.raises(RuntimeError):
+        CompilationConfig(backend="gt:cpu_ifirst", device_sync=True)
+
+
+def test_get_decomposition_info_from_no_comm():
+    config = CompilationConfig()
+    (
+        computed_rank,
+        computed_size,
+        computed_equivalent,
+        computed_is_compiling,
+    ) = config.get_decomposition_info_from_comm(None)
+    assert computed_rank == 1
+    assert computed_size == 1
+    assert computed_equivalent == 1
+    assert computed_is_compiling is True
+
+
 @pytest.mark.parametrize(
-    "layout, rank, is_compiling",
+    "rank, size, is_compiling, equivalent",
     [
-        pytest.param((1, 1), 0, True, id="1x1 layout"),
-        pytest.param((1, 1), 2, False, id="1x1 layout"),
-        pytest.param((2, 2), 1, True, id="2x2 layout"),
-        pytest.param((2, 2), 5, False, id="2x2 layout"),
-        pytest.param((3, 3), 8, True, id="3x3 layout"),
-        pytest.param((3, 3), 25, False, id="3x3 layout"),
+        pytest.param(0, 6, True, 0, id="1x1 layout - 0"),
+        pytest.param(1, 6, False, 0, id="1x1 layout - 1"),
+        pytest.param(2, 24, True, 2, id="2x2 layout - 2"),
+        pytest.param(4, 24, False, 0, id="2x2 layout - 2"),
     ],
 )
-def test_compiling_ranks(layout: Tuple[int, int], rank: int, is_compiling: bool):
-    partitioner = CubedSpherePartitioner(TilePartitioner(layout))
-    assert determine_rank_is_compiling(rank, partitioner) == is_compiling
+def test_get_decomposition_info_from_comm(
+    rank: int, size: int, is_compiling: bool, equivalent: int
+):
+    partitioner = CubedSpherePartitioner(
+        TilePartitioner((sqrt(size / 6), sqrt(size / 6)))
+    )
+    comm = unittest.mock.MagicMock()
+    comm.Get_rank.return_value = rank
+    comm.Get_size.return_value = size
+    cubed_sphere_comm = CubedSphereCommunicator(comm, partitioner)
+    config = CompilationConfig(use_minimal_caching=True, run_mode=RunMode.Run)
+    (
+        computed_rank,
+        computed_size,
+        computed_equivalent,
+        computed_is_compiling,
+    ) = config.get_decomposition_info_from_comm(cubed_sphere_comm)
+    assert rank == computed_rank
+    assert size == computed_size
+    assert equivalent == computed_equivalent
+    assert is_compiling == computed_is_compiling
 
 
-def test_assert_on_large_layout():
-    with pytest.raises(RuntimeError):
-        partitioner = CubedSpherePartitioner(TilePartitioner((4, 4)))
-        determine_rank_is_compiling(0, partitioner)
+def test_as_dict():
+    config = CompilationConfig()
+    asdict = config.as_dict()
+    assert asdict["backend"] == "numpy"
+    assert asdict["rebuild"] is True
+    assert asdict["validate_args"] is True
+    assert asdict["format_source"] is False
+    assert asdict["device_sync"] is False
+    assert asdict["run_mode"] == RunMode.BuildAndRun
+    assert asdict["use_minimal_caching"] is False
+    assert len(asdict) == 7
 
 
-def tests_configurations():
-    config = CompilationConfig()  # use_minimal_caching=True, run_mode=RunMode.Run)
+def test_from_dict():
+    specification_dict = {}
+    config = CompilationConfig.from_dict(specification_dict)
+    assert config.backend == "numpy"
+    assert config.rebuild is False
+    assert config.validate_args is True
+    assert config.format_source is False
+    assert config.device_sync is False
+    assert config.run_mode == RunMode.BuildAndRun
+    assert config.use_minimal_caching is False
 
+    specification_dict["backend"] = "gt:gpu"
+    config = CompilationConfig.from_dict(specification_dict)
+    assert config.backend == "gt:gpu"
 
-# @pytest.mark.parametrize("validate_args", [True, False])
-# @pytest.mark.parametrize("device_sync", [True, False])
-# @pytest.mark.parametrize("rebuild", [True, False])
-# @pytest.mark.parametrize("format_source", [True, False])
-# def test_same_config_equal(
-#     backend: str,
-#     rebuild: bool,
-#     validate_args: bool,
-#     format_source: bool,
-#     device_sync: bool,
-# ):
-#     dace_config = DaceConfig(None, backend, DaCeOrchestration.Python,)
-#     config = StencilConfig(
-#         compilation_config=CompilationConfig(
-#             backend=backend,
-#             rebuild=rebuild,
-#             validate_args=validate_args,
-#             format_source=format_source,
-#             device_sync=device_sync,
-#         ),
-#         dace_config=dace_config,
-#     )
-#     assert config == config
+    specification_dict["rebuild"] = True
+    config = CompilationConfig.from_dict(specification_dict)
+    assert config.rebuild is True
 
-#     same_config = StencilConfig(
-#         compilation_config=CompilationConfig(
-#             backend=backend,
-#             rebuild=rebuild,
-#             validate_args=validate_args,
-#             format_source=format_source,
-#             device_sync=device_sync,
-#         ),
-#     )
-#     assert config == same_config
+    specification_dict["validate_args"] = False
+    config = CompilationConfig.from_dict(specification_dict)
+    assert config.validate_args is False
+
+    specification_dict["format_source"] = True
+    config = CompilationConfig.from_dict(specification_dict)
+    assert config.format_source is True
+
+    specification_dict["device_sync"] = True
+    config = CompilationConfig.from_dict(specification_dict)
+    assert config.device_sync is True
+
+    specification_dict["run_mode"] = "Build"
+    config = CompilationConfig.from_dict(specification_dict)
+    assert config.run_mode == RunMode.Build
+
+    specification_dict["use_minimal_caching"] = True
+    specification_dict["run_mode"] = "Run"
+    config = CompilationConfig.from_dict(specification_dict)
+    assert config.use_minimal_caching is True
