@@ -26,9 +26,11 @@ def get_stencil_config(
 ):
     dace_config = DaceConfig(None, backend=backend, orchestration=orchestration)
     config = StencilConfig(
-        compilation_config=CompilationConfig(backend=backend),
+        compilation_config=CompilationConfig(
+            backend=backend,
+            **kwargs,
+        ),
         dace_config=dace_config,
-        **kwargs,
     )
     return config
 
@@ -112,7 +114,7 @@ def copy_stencil(q_in: FloatField, q_out: FloatField):
 
 
 @pytest.mark.parametrize("validate_args", [True, False])
-@pytest.mark.parametrize("device_sync", [True])
+@pytest.mark.parametrize("device_sync", [False])
 @pytest.mark.parametrize("rebuild", [False])
 @pytest.mark.parametrize("format_source", [False])
 def test_copy_frozen_stencil(
@@ -144,7 +146,7 @@ def test_copy_frozen_stencil(
     np.testing.assert_array_equal(q_in, q_out)
 
 
-@pytest.mark.parametrize("device_sync", [True])
+@pytest.mark.parametrize("device_sync", [False])
 @pytest.mark.parametrize("rebuild", [False])
 @pytest.mark.parametrize("format_source", [False])
 def test_frozen_stencil_raises_if_given_origin(
@@ -174,7 +176,7 @@ def test_frozen_stencil_raises_if_given_origin(
         stencil(q_in, q_out, origin=(0, 0, 0))
 
 
-@pytest.mark.parametrize("device_sync", [True])
+@pytest.mark.parametrize("device_sync", [False])
 @pytest.mark.parametrize("rebuild", [False])
 @pytest.mark.parametrize("format_source", [False])
 def test_frozen_stencil_raises_if_given_domain(

@@ -5,7 +5,6 @@ from pace.dsl.stencil import CompilationConfig, StencilConfig
 
 
 @pytest.mark.parametrize("validate_args", [True, False])
-@pytest.mark.parametrize("device_sync", [True, False])
 @pytest.mark.parametrize("rebuild", [True, False])
 @pytest.mark.parametrize("format_source", [True, False])
 @pytest.mark.parametrize("compare_to_numpy", [True, False])
@@ -15,7 +14,6 @@ def test_same_config_equal(
     rebuild: bool,
     validate_args: bool,
     format_source: bool,
-    device_sync: bool,
     compare_to_numpy: bool,
 ):
     dace_config = DaceConfig(
@@ -28,7 +26,7 @@ def test_same_config_equal(
             rebuild=rebuild,
             validate_args=validate_args,
             format_source=format_source,
-            device_sync=device_sync,
+            device_sync=False,
         ),
         compare_to_numpy=compare_to_numpy,
         dace_config=dace_config,
@@ -41,7 +39,7 @@ def test_same_config_equal(
             rebuild=rebuild,
             validate_args=validate_args,
             format_source=format_source,
-            device_sync=device_sync,
+            device_sync=False,
         ),
         compare_to_numpy=compare_to_numpy,
         dace_config=dace_config,
@@ -50,7 +48,7 @@ def test_same_config_equal(
 
 
 @pytest.mark.parametrize("validate_args", [True])
-@pytest.mark.parametrize("device_sync", [True])
+@pytest.mark.parametrize("device_sync", [False])
 @pytest.mark.parametrize("rebuild", [True])
 @pytest.mark.parametrize("format_source", [True])
 @pytest.mark.parametrize("compare_to_numpy", [True])
@@ -93,7 +91,7 @@ def test_different_backend_not_equal(
 
 
 @pytest.mark.parametrize("validate_args", [True])
-@pytest.mark.parametrize("device_sync", [True])
+@pytest.mark.parametrize("device_sync", [False])
 @pytest.mark.parametrize("rebuild", [True])
 @pytest.mark.parametrize("format_source", [True])
 @pytest.mark.parametrize("compare_to_numpy", [True])
@@ -136,12 +134,11 @@ def test_different_rebuild_not_equal(
 
 
 @pytest.mark.parametrize("validate_args", [True])
-@pytest.mark.parametrize("device_sync", [True])
+@pytest.mark.parametrize("device_sync", [False])
 @pytest.mark.parametrize("rebuild", [True])
 @pytest.mark.parametrize("format_source", [True])
 @pytest.mark.parametrize("compare_to_numpy", [True])
 def test_different_device_sync_not_equal(
-    backend: str,
     rebuild: bool,
     validate_args: bool,
     format_source: bool,
@@ -150,11 +147,11 @@ def test_different_device_sync_not_equal(
 ):
     dace_config = DaceConfig(
         communicator=None,
-        backend=backend,
+        backend="gt:gpu",
     )
     config = StencilConfig(
         compilation_config=CompilationConfig(
-            backend=backend,
+            backend="gt:gpu",
             rebuild=rebuild,
             validate_args=validate_args,
             format_source=format_source,
@@ -166,7 +163,7 @@ def test_different_device_sync_not_equal(
 
     different_config = StencilConfig(
         compilation_config=CompilationConfig(
-            backend=backend,
+            backend="gt:gpu",
             rebuild=rebuild,
             validate_args=validate_args,
             format_source=format_source,
@@ -179,7 +176,7 @@ def test_different_device_sync_not_equal(
 
 
 @pytest.mark.parametrize("validate_args", [True])
-@pytest.mark.parametrize("device_sync", [True])
+@pytest.mark.parametrize("device_sync", [False])
 @pytest.mark.parametrize("rebuild", [True])
 @pytest.mark.parametrize("format_source", [True])
 @pytest.mark.parametrize("compare_to_numpy", [True])
@@ -222,7 +219,7 @@ def test_different_validate_args_not_equal(
 
 
 @pytest.mark.parametrize("validate_args", [True])
-@pytest.mark.parametrize("device_sync", [True])
+@pytest.mark.parametrize("device_sync", [False])
 @pytest.mark.parametrize("rebuild", [True])
 @pytest.mark.parametrize("format_source", [True])
 @pytest.mark.parametrize("compare_to_numpy", [True])
@@ -234,7 +231,7 @@ def test_different_format_source_not_equal(
     device_sync: bool,
     compare_to_numpy: bool,
 ):
-    dace_config = DaceConfig(comm=None, backend=backend)
+    dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
         compilation_config=CompilationConfig(
             backend=backend,
@@ -270,7 +267,7 @@ def test_different_compare_to_numpy_not_equal(
     rebuild: bool = True,
     validate_args: bool = False,
 ):
-    dace_config = DaceConfig(comm=None, backend=backend)
+    dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
         compilation_config=CompilationConfig(
             backend=backend,

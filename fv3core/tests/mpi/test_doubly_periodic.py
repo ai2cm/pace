@@ -11,13 +11,6 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     backend = "numpy"
-    stencil_config = pace.dsl.stencil.StencilConfig(
-        compilation_config=pace.dsl.stencil.CompilationConfig(
-            backend=backend,
-            rebuild=False,
-            validate_args=True,
-        )
-    )
     layout = (3, 3)
     config = fv3core.DynamicalCoreConfig(
         layout=layout,
@@ -66,6 +59,14 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     mpi_comm = pace.util.MPIComm()
     partitioner = pace.util.TilePartitioner(config.layout)
     communicator = pace.util.TileCommunicator(mpi_comm, partitioner)
+    stencil_config = pace.dsl.stencil.StencilConfig(
+        compilation_config=pace.dsl.stencil.CompilationConfig(
+            communicator=communicator,
+            backend=backend,
+            rebuild=False,
+            validate_args=True,
+        )
+    )
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.npx - 1,
         ny_tile=config.npy - 1,

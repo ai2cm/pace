@@ -89,6 +89,7 @@ class MetricTerms:
         self._partitioner = self._comm.partitioner
         self._tile_partitioner = self._comm.tile.partitioner
         self._rank = self._comm.rank
+        rank = self._rank
         self.quantity_factory = quantity_factory
         self.quantity_factory.set_extra_dim_lengths(
             **{
@@ -1360,7 +1361,6 @@ class MetricTerms:
             "radians",
             dtype=float,
         )
-
         local_west_edge = self._tile_partitioner.on_tile_left(self._rank)
         local_east_edge = self._tile_partitioner.on_tile_right(self._rank)
         local_south_edge = self._tile_partitioner.on_tile_bottom(self._rank)

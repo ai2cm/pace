@@ -8,14 +8,14 @@ from pace.dsl.stencil import CompilationConfig, GridIndexing
 def _make_storage(
     func,
     grid_indexing,
-    stencil_config,
+    stencil_config: pace.dsl.StencilConfig,
     *,
     dtype=float,
     mask=None,
     default_origin=(0, 0, 0),
 ):
     return func(
-        backend=stencil_config.backend,
+        backend=stencil_config.compilation_config.backend,
         shape=grid_indexing.domain,
         dtype=dtype,
         mask=mask,
