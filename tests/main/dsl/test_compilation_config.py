@@ -73,7 +73,7 @@ def test_as_dict():
     assert asdict["validate_args"] is True
     assert asdict["format_source"] is False
     assert asdict["device_sync"] is False
-    assert asdict["run_mode"] == RunMode.BuildAndRun
+    assert asdict["run_mode"] == "BuildAndRun"
     assert asdict["use_minimal_caching"] is False
     assert len(asdict) == 7
 
