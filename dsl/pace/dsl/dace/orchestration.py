@@ -146,6 +146,17 @@ def _build_sdfg(
         with DaCeProgress(config, "Simplify (2/2)"):
             sdfg.simplify(validate=False, verbose=True)
 
+        # Remove all Persistent memory
+        with DaCeProgress(config, "Turn Persistents into pooled Scope"):
+            memory_pooled = 0
+            for _sd, _aname, arr in sdfg.arrays_recursive():
+                if arr.lifetime == dace.AllocationLifetime.Persistent:
+                    arr.pool = True
+                    memory_pooled += arr.total_size * arr.dtype.bytes
+                    arr.lifetime = dace.AllocationLifetime.Scope
+            memory_pooled = float(memory_pooled) / (1024 * 1024)
+            print(f"Pooled {memory_pooled} mb")
+
         # Compile
         with DaCeProgress(config, "Codegen & compile"):
             sdfg.compile()
@@ -159,13 +170,18 @@ def _build_sdfg(
     # against scattering when no other ranks are present.
     if config.get_orchestrate() == DaCeOrchestration.Build:
         MPI.COMM_WORLD.Barrier()  # Protect against early exist which kill SLURM jobs
-        DaCeProgress.log(config, "Compilation finished and saved, exiting.")
+        DaCeProgress.log(
+            DaCeProgress.default_prefix(config),
+            "Compilation finished and saved, exiting.",
+        )
         exit(0)
     elif config.get_orchestrate() == DaCeOrchestration.BuildAndRun:
         MPI.COMM_WORLD.Barrier()
         if is_compiling:
             unblock_waiting_tiles(MPI.COMM_WORLD, sdfg.build_folder)
-            DaCeProgress.log(config, "Build folder exchanged.")
+            DaCeProgress.log(
+                DaCeProgress.default_prefix(config), "Build folder exchanged."
+            )
             with DaCeProgress(config, "Run"):
                 res = sdfg(**sdfg_kwargs)
                 res = _download_results_from_dace(
@@ -174,9 +190,14 @@ def _build_sdfg(
         else:
             source_rank = config.target_rank
             # wait for compilation to be done
-            DaCeProgress.log(config, "Not compiling rank, waiting for build folder.")
+            DaCeProgress.log(
+                DaCeProgress.default_prefix(config),
+                "Not compiling rank, waiting for build folder.",
+            )
             sdfg_path = MPI.COMM_WORLD.recv(source=source_rank)
-            DaCeProgress.log(config, "Build folder received.")
+            DaCeProgress.log(
+                DaCeProgress.default_prefix(config), "Build folder received."
+            )
             daceprog.load_precompiled_sdfg(sdfg_path, *args, **kwargs)
             with DaCeProgress(config, "Run"):
                 res = _run_sdfg(daceprog, config, args, kwargs)

@@ -10,12 +10,17 @@ from pace.dsl.dace.dace_config import DaceConfig
 # Rough timer & log for major operations of DaCe build stack
 class DaCeProgress:
     def __init__(self, config: DaceConfig, label: str):
+        self.prefix = DaCeProgress.default_prefix(config)
         self.prefix = f"[{config.get_orchestrate()}]"
         self.label = label
 
     @classmethod
     def log(cls, prefix: str, message: str):
-        print(f"{prefix} {message}")
+        print(f"{prefix} {message}", flush=True)
+
+    @classmethod
+    def default_prefix(cls, config: DaceConfig) -> str:
+        return f"[{config.get_orchestrate()}]"
 
     def __enter__(self):
         DaCeProgress.log(self.prefix, f"{self.label}...")
