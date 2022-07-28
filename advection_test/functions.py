@@ -1,4 +1,5 @@
 import copy as cp
+import enum
 import os
 from typing import Any, Dict, List, Tuple, Union
 
@@ -28,9 +29,17 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
+
+
 backend = "numpy"
+density = 1
 layout = (1, 1)
 fvt_dict = {"grid_type": 0, "hord": 6}
+
+class GridType(enum.Enum):
+    AGrid = 1
+    CGrid = 2
+    DGrid = 3
 
 
 def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
@@ -65,7 +74,6 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
         "pressure_base",
         "tracer_base",
         "tracer_target_tile",
-        "density",
         "nSeconds",
         "figure_everyNsteps",
         "nSteps_advection",
@@ -352,18 +360,19 @@ def create_gaussian_multiplier(
 
 
 def calculate_streamfunction(
-    lon: np.ndarray, lat: np.ndarray, dimensions: Dict[str, int], test_case: str
+    lonA: np.ndarray, latA: np.ndarray, lon: np.ndarray, lat: np.ndarray, dimensions: Dict[str, int], test_case: str
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: psi, psi_staggered =
-            calculate_streamfunction(lon, lat, dimensions, test_case)
+            calculate_streamfunction(lonA, latA, lon, lat, dimensions, test_case)
 
     Creates streamfunction from input quantities, for defined test cases:
         - a) constant radius (as in Fortran test case 1)
         - b) radius varies with latitude, less spreading out.
 
     Inputs:
-    - lon, lat (in radians)
+    - lonA, latA (in radians) on A-grid
+    - lon, lat (in radians) on cell corners
     - dimensions
     - test_case ("a" or "b")
 
@@ -373,10 +382,13 @@ def calculate_streamfunction(
     """
 
     if test_case == "a":
+        RadA = RADIUS * np.ones(lonA.shape)
         Rad = RADIUS * np.ones(lon.shape)
     elif test_case == "b":
+        RadA = RADIUS * np.cos(latA / 2)
         Rad = RADIUS * np.cos(lat / 2)
     else:
+        RadA = np.nan(np.ones(lonA.shape))
         Rad = np.nan(np.ones(lon.shape))
         print("Please choose one of the defined test cases.")
         print("This will return gibberish.")
@@ -392,10 +404,10 @@ def calculate_streamfunction(
             psi[ii, jj] = (
                 -1.0
                 * Ubar
-                * Rad[ii, jj]
+                * RadA[ii, jj]
                 * (
-                    np.sin(lat[ii, jj]) * np.cos(alpha)
-                    - np.cos(lon[ii, jj]) * np.cos(lat[ii, jj]) * np.sin(alpha)
+                    np.sin(latA[ii, jj]) * np.cos(alpha)
+                    - np.cos(lonA[ii, jj]) * np.cos(latA[ii, jj]) * np.sin(alpha)
                 )
             )
 
@@ -419,7 +431,7 @@ def calculate_winds_from_streamfunction_grid(
     dx: Quantity,
     dy: Quantity,
     dimensions: Dict[str, int],
-    grid: str = "A",
+    grid: GridType = GridType.AGrid,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: u_grid, v_grid =
@@ -444,13 +456,13 @@ def calculate_winds_from_streamfunction_grid(
 
     For different grid, input functions are different:
     - A: streamfunction, dx, dy on cell centers, all with halos
-    - C: streamfunction on corder points, dx, dy on edge points, all with halos
-    - D: streamfunction on center points, dx, dy on c-grid, all with halos
+    - C: streamfunction on corner points, dx, dy on edge points, all with halos
+    - D: streamfunction on center points, dx, dy on edge points, all with halos
     """
     u_grid = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
     v_grid = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
 
-    if grid == "A":
+    if grid == GridType.AGrid:
         for jj in range(
             dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
         ):
@@ -467,18 +479,15 @@ def calculate_winds_from_streamfunction_grid(
                 dist = dx.data[ii, jj]
                 v_grid[ii, jj] = 0 if dist == 0 else (psi2 - psi1) / dist
 
-    if grid == "C":
-        for jj in range(
-            dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
-        ):
-            for ii in range(
-                dimensions["nhalo"] - 1, dimensions["nx"] + dimensions["nhalo"] + 1
-            ):
+    if grid == GridType.CGrid:
+        for jj in range(dimensions["ny"] + 2 * dimensions["nhalo"]):
+            for ii in range(dimensions["nx"] + 2 * dimensions["nhalo"] - 1):
                 dist = dx.data[ii, jj]
                 v_grid[ii, jj] = (
                     0 if dist == 0 else (psi.data[ii + 1, jj] - psi.data[ii, jj]) / dist
                 )
-
+        for jj in range(dimensions["ny"] + 2 * dimensions["nhalo"] - 1):
+            for ii in range(dimensions["nx"] + 2 * dimensions["nhalo"]):
                 dist = dy.data[ii, jj]
                 u_grid[ii, jj] = (
                     0
@@ -486,7 +495,7 @@ def calculate_winds_from_streamfunction_grid(
                     else -1.0 * (psi.data[ii, jj + 1] - psi.data[ii, jj]) / dist
                 )
 
-    if grid == "D":
+    if grid == GridType.DGrid:
         for jj in range(
             dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
         ):
@@ -567,6 +576,23 @@ def create_initial_state(
         backend,
     )
 
+    lon_halo = Quantity(
+        grid_data.lon.data,
+        ("x_halo", "y_halo"),
+        units["coord"],
+        origins["halo"],
+        (dimensions["nxhalo"], dimensions["nyhalo"]),
+        backend,
+    )
+    lat_halo = Quantity(
+        grid_data.lat.data,
+        ("x_halo", "y_halo"),
+        units["coord"],
+        origins["halo"],
+        (dimensions["nxhalo"], dimensions["nyhalo"]),
+        backend,
+    )
+
     # tracer
     gaussian_multiplier = create_gaussian_multiplier(
         lonA_halo.data,
@@ -596,7 +622,7 @@ def create_initial_state(
 
     # streamfunction
     _, psi_staggered = calculate_streamfunction(
-        lonA_halo.data, latA_halo.data, dimensions, test_case
+        lonA_halo.data, latA_halo.data, lon_halo.data, lat_halo.data, dimensions, test_case
     )
     psi_staggered_halo = Quantity(
         psi_staggered,
@@ -644,7 +670,7 @@ def create_initial_state(
         backend,
     )
 
-    # EXTEND INITIAL CONDITIONS INTO ONE VERTICAL LAYER
+    # extend initial conditions into one vertical layer
     dimensions["nz"] = 1
     empty = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"], dimensions["nz"] + 1))
 
@@ -704,14 +730,13 @@ def create_initial_state(
 def run_finite_volume_fluxprep(
     configuration: Dict[str, Any],
     initialState: Dict[str, Quantity],
-    density: float,
     metadata: Dict[str, Any],
     timestep: float,
 ) -> Dict[str, Quantity]:
     """
     Use: fluxPrep =
             run_finite_volume_fluxprep(configuration, initialState,
-            density, metadata, timestep)
+            metadata, timestep)
 
     Initializes and runs the FiniteVolumeFluxPrep class to get
     initial states for mass flux, contravariant winds, area flux.
@@ -719,7 +744,6 @@ def run_finite_volume_fluxprep(
     Inputs:
     - configuration (Dict) from configure_domain()
     - initialState (Dict) from create_initial_state()
-    - density of air
     - metadata (Dict) from define_metadata()
     - timestep (float) for advection
 
@@ -868,21 +892,19 @@ def build_tracer_advection(
 def prepare_everything_for_advection(
     configuration: Dict[str, Any],
     initialState: Dict[str, Quantity],
-    density: float,
     metadata: Dict[str, Any],
     timestep: float,
 ) -> Tuple[Dict[str, Any], TracerAdvection]:
     """
     Use: tracAdv_data, tracAdv =
         prepare_everything_for_advection(configuration, initialState,
-        density, metadata, timestep)
+        metadata, timestep)
 
     Calls run_finite_volume_fluxprep() and build_tracer_advection().
 
     Inputs:
     - configuration from configure_domain()
     - initialState from create_initial_state()
-    - density of air from input parameters
     - metadata from define_metadata()
     - timestep (float) advection timestep
 
@@ -901,7 +923,6 @@ def prepare_everything_for_advection(
     fluxPrep = run_finite_volume_fluxprep(
         configuration,
         initialState,
-        density,
         metadata,
         timestep,
     )
@@ -1259,6 +1280,109 @@ def write_initial_condition_tofile(
         data.close()
 
 
+def write_coordinate_variables_tofile(
+    fOut: str,
+    metadata: Dict[str, Dict[str, Any]],
+    configuration: Dict[str, Any],
+    mpi_rank: int,
+) -> None:
+    """
+    Use: write_coordinate_variables_tofile(
+        fOut, metadata, configuration, mpi_rank)
+
+    Creates netCDF file with coordinate variables (dx, dy, etc.).
+    To be used for making streamfunction experiments easier.
+
+    Inputs:
+    - fOut (str) output netcdf file
+    - metadata (Dict) from define_metadata()
+    - configuration (Dict) from configure_domain()
+    - mpi_rank
+
+    Outputs: written netCDF file
+    """
+
+    dimensions, origins, units = split_metadata(metadata)
+
+    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
+
+    lonA = Quantity(
+        configuration['grid_data'].lon_agrid.data * 180 / np.pi,
+        ("x", "y"),
+        units["coord"],
+        origins["compute_2d"],
+        (dimensions["nx"], dimensions["ny"]),
+        backend,
+    )
+    latA = Quantity(
+        configuration['grid_data'].lat_agrid.data * 180 / np.pi,
+        ("x", "y"),
+        units["coord"],
+        origins["compute_2d"],
+        (dimensions["nx"], dimensions["ny"]),
+        backend,
+    ) 
+
+    dx = Quantity(
+        configuration['grid_data'].dx.data,
+        ("x", "y_interface"),
+        units["dist"],
+        origins["compute_2d"],
+        (dimensions["nx"], dimensions["ny1"]),
+        backend,
+    )
+    dy = Quantity(
+        configuration['grid_data'].dy.data,
+        ("x_interface", "y"),
+        units["dist"],
+        origins["compute_2d"],
+        (dimensions["nx1"], dimensions["ny"]),
+        backend,
+    )
+
+
+    lonA = np.squeeze(configuration["communicator"].gather(lonA))
+    latA = np.squeeze(configuration["communicator"].gather(latA))
+    dx = np.squeeze(configuration["communicator"].gather(dx))
+    dy = np.squeeze(configuration["communicator"].gather(dy))
+
+    if mpi_rank == 0:
+        if not os.path.isdir(os.path.dirname(fOut)):
+            os.mkdir(os.path.dirname(fOut))
+        else:
+            if os.path.isfile(fOut):
+                os.remove(fOut)
+
+        data = Dataset(fOut, "w")
+
+        for dim in ["tile", "nx", "ny", "nx1", "ny1"]:
+            data.createDimension(dim, dimensions[dim])
+
+        v0 = data.createVariable("lon", "f8", ("tile", "nx1", "ny1"))
+        v0[:] = lon.data
+        v0.units = units["coord"]
+        v0 = data.createVariable("lat", "f8", ("tile", "nx1", "ny1"))
+        v0[:] = lat.data
+        v0.units = units["coord"]
+
+        v1 = data.createVariable("lonA", "f8", ("tile", "nx", "ny"))
+        v1[:] = lonA.data
+        v1.units = units["coord"]
+        v1 = data.createVariable("latA", "f8", ("tile", "nx", "ny"))
+        v1[:] = latA.data
+        v1.units = units["coord"]
+
+        v2 = data.createVariable("dx", "f8", ("tile", "nx", "ny1"))
+        v2[:] = dx.data
+        v2.units = units["dist"]
+        v2 = data.createVariable("dy", "f8", ("tile", "nx1", "ny"))
+        v2[:] = dy.data
+        v2.units = units["dist"]
+
+        data.close()
+
+
+
 def unstagger_coordinate(field: np.ndarray, mode: str = "mean") -> np.ndarray:
     """
     Use: field =
@@ -1347,8 +1471,8 @@ def remap_winds_to_meteorological(
             meridional[tile] = v_input[tile]
 
         if tile == 2:
-            zonal[tile] = -v_input[tile]
-            meridional[tile] = u_input[tile]
+            zonal[tile] = v_input[tile]
+            meridional[tile] = -u_input[tile]
 
         if tile in [3, 4]:
             zonal[tile] = v_input[tile]
