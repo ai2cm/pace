@@ -53,6 +53,7 @@ class ArrayReport:
     total_size_in_bytes: int = 0
     referenced: bool = False
     transient: bool = False
+    pool: bool = False
     top_level: bool = False
 
 
@@ -61,6 +62,7 @@ class StorageReport:
     name: str = ""
     referenced_in_bytes: int = 0
     unreferenced_in_bytes: int = 0
+    in_pooled_in_bytes: int = 0
     top_level_in_bytes: int = 0
     details: List[ArrayReport] = field(default_factory=list)
 
@@ -75,12 +77,15 @@ def count_memory(sdfg: SDFG, detail_report=False) -> str:
         ref = is_ref(sd, aname)
 
         if sd is not sdfg and arr.transient:
+            if arr.pool:
+                allocations[arr.storage].in_pooled_in_bytes += array_size_in_bytes
             allocations[arr.storage].details.append(
                 ArrayReport(
                     name=aname,
                     total_size_in_bytes=array_size_in_bytes,
                     referenced=ref,
                     transient=arr.transient,
+                    pool=arr.pool,
                     top_level=False,
                 )
             )
@@ -90,12 +95,15 @@ def count_memory(sdfg: SDFG, detail_report=False) -> str:
                 allocations[arr.storage].unreferenced_in_bytes += array_size_in_bytes
 
         elif sd is sdfg:
+            if arr.pool:
+                allocations[arr.storage].in_pooled_in_bytes += array_size_in_bytes
             allocations[arr.storage].details.append(
                 ArrayReport(
                     name=aname,
                     total_size_in_bytes=array_size_in_bytes,
                     referenced=ref,
                     transient=arr.transient,
+                    pool=arr.pool,
                     top_level=True,
                 )
             )
@@ -109,23 +117,27 @@ def count_memory(sdfg: SDFG, detail_report=False) -> str:
     for storage, allocs in allocations.items():
         alloc_in_mb = float(allocs.referenced_in_bytes / (1024 * 1024))
         unref_alloc_in_mb = float(allocs.unreferenced_in_bytes / (1024 * 1024))
+        in_pooled_in_mb = float(allocs.in_pooled_in_bytes / (1024 * 1024))
         toplvlalloc_in_mb = float(allocs.top_level_in_bytes / (1024 * 1024))
         if alloc_in_mb or toplvlalloc_in_mb > 0:
             report += (
                 f"{storage}:\n"
                 f"  Alloc ref {alloc_in_mb:.2f} mb\n"
                 f"  Alloc unref {unref_alloc_in_mb:.2f} mb\n"
+                f"  Pooled {in_pooled_in_mb:.2f} mb\n"
                 f"  Top lvl alloc: {toplvlalloc_in_mb:.2f}mb\n"
             )
             if detail_report:
                 report += "\n"
-                report += "  Referenced\tTransient\tTotal size(mb)\tName\n"
+                report += "  Referenced\tTransient   \tPooled\tTotal size(mb)\tName\n"
                 for detail in allocs.details:
                     size_in_mb = float(detail.total_size_in_bytes / (1024 * 1024))
                     ref_str = "     X     " if detail.referenced else "           "
                     transient_str = "     X     " if detail.transient else "           "
+                    pooled_str = "     X     " if detail.pool else "           "
                     report += (
                         f" {ref_str}\t{transient_str}"
+                        f"\t   {pooled_str}"
                         f"\t   {size_in_mb:.2f}"
                         f"\t   {detail.name}\n"
                     )

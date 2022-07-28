@@ -19,7 +19,7 @@ from pace.dsl.dace.build import (
 )
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
-from pace.dsl.dace.utils import DaCeProgress, count_memory
+from pace.dsl.dace.utils import DaCeProgress, count_memory, NaN_checker
 from pace.util.mpi import MPI
 
 
@@ -162,9 +162,15 @@ def _build_sdfg(
             sdfg.compile()
         write_build_info(sdfg, config.layout, config.tile_resolution, config._backend)
 
+        # Set of debug tools inserted in the SDFG when dace.conf "syncdebug"
+        # is turned on.
+        if config.sync_debug():
+            with DaCeProgress(config, "Debug tooling (NaNChecker)"):
+                NaN_checker(sdfg)
+
         # Printing analysis of the compiled SDFG
-        DaCeProgress.log(config, "Build finish, printing memory static analysis")
-        print(count_memory(sdfg))
+        with DaCeProgress(config, "Build finished. Running memory static analysis"):
+            print(count_memory(sdfg))
 
     # Compilation done, either exit or scatter/gather and run
     # DEV NOTE: we explicitly use MPI.COMM_WORLD here because it is

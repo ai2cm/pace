@@ -176,6 +176,9 @@ class DaceConfig:
     def get_orchestrate(self) -> DaCeOrchestration:
         return self._orchestrate
 
+    def sync_debug(self) -> bool:
+        return dace.config.Config.get("compiler", "cuda", "syncdebug")
+
     def as_dict(self) -> Dict[str, Any]:
         return {
             "_orchestrate": str(self._orchestrate.name),

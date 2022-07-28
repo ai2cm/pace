@@ -3,6 +3,12 @@ from timeit import default_timer as time
 from typing import Mapping
 
 
+try:
+    import cupy as cp
+except ModuleNotFoundError:
+    cp = None
+
+
 class Timer:
     """Class to accumulate timings for named operations."""
 
@@ -11,9 +17,13 @@ class Timer:
         self._accumulated_time = {}
         self._hit_count = {}
         self._enabled = True
+        self._time_CUDA = True
 
     def start(self, name: str):
         """Start timing a given named operation."""
+        if self._time_CUDA and cp:
+            cp.cuda.Device(0).synchronize()
+            cp.cuda.nvtx.RangePush(name)
         if self._enabled:
             if name in self._clock_starts:
                 raise ValueError(f"clock already started for '{name}'")
@@ -24,6 +34,9 @@ class Timer:
         """Stop timing a given named operation, add the time elapsed to
         accumulated timing and increase the hit count.
         """
+        if self._time_CUDA and cp:
+            cp.cuda.Device(0).synchronize()
+            cp.cuda.nvtx.RangePop()
         if self._enabled:
             if name not in self._accumulated_time:
                 self._accumulated_time[name] = time() - self._clock_starts.pop(name)
