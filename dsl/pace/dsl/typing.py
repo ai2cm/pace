@@ -18,7 +18,7 @@ J = gtscript.J  # noqa: E741
 K = gtscript.K  # noqa: E741
 
 # Union of valid data types (from gt4py.gtscript)
-DTypes = Union[bool, np.bool, int, np.int32, np.int64, float, np.float32, np.float64]
+DTypes = Union[bool, np.bool_, int, np.int32, np.int64, float, np.float32, np.float64]
 
 # Default float and int types
 Float = np.float_

@@ -566,7 +566,8 @@ class AGrid2BGridFourthOrder:
 
         def make_storage():
             return utils.make_storage_from_shape(
-                self._idx.max_shape, backend=self._stencil_config.backend
+                self._idx.max_shape,
+                backend=self._stencil_config.compilation_config.backend,
             )
 
         self._tmp_qx = make_storage()
