@@ -29,6 +29,13 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
+<<<<<<< HEAD
+=======
+class GridType(enum.Enum):
+    AGrid = 1
+    CGrid = 2
+    DGrid = 3
+>>>>>>> ca9a625cd93b817117d06e9960e57b9a3cc0756f
 
 
 backend = "numpy"
@@ -36,10 +43,7 @@ density = 1
 layout = (1, 1)
 fvt_dict = {"grid_type": 0, "hord": 6}
 
-class GridType(enum.Enum):
-    AGrid = 1
-    CGrid = 2
-    DGrid = 3
+
 
 
 def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
@@ -479,9 +483,19 @@ def calculate_winds_from_streamfunction_grid(
                 dist = dx.data[ii, jj]
                 v_grid[ii, jj] = 0 if dist == 0 else (psi2 - psi1) / dist
 
+<<<<<<< HEAD
     if grid == GridType.CGrid:
         for jj in range(dimensions["ny"] + 2 * dimensions["nhalo"]):
             for ii in range(dimensions["nx"] + 2 * dimensions["nhalo"] - 1):
+=======
+    elif grid == GridType.CGrid:
+        for jj in range(
+            dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
+        ):
+            for ii in range(
+                dimensions["nhalo"] - 1, dimensions["nx"] + dimensions["nhalo"] + 1
+            ):
+>>>>>>> ca9a625cd93b817117d06e9960e57b9a3cc0756f
                 dist = dx.data[ii, jj]
                 v_grid[ii, jj] = (
                     0 if dist == 0 else (psi.data[ii + 1, jj] - psi.data[ii, jj]) / dist
@@ -495,7 +509,11 @@ def calculate_winds_from_streamfunction_grid(
                     else -1.0 * (psi.data[ii, jj + 1] - psi.data[ii, jj]) / dist
                 )
 
+<<<<<<< HEAD
     if grid == GridType.DGrid:
+=======
+    elif grid == GridType.DGrid:
+>>>>>>> ca9a625cd93b817117d06e9960e57b9a3cc0756f
         for jj in range(
             dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
         ):
@@ -650,8 +668,9 @@ def create_initial_state(
         (dimensions["nxhalo"], dimensions["nyhalo"]),
         backend,
     )
+    grid = GridType.CGrid
     uC, vC = calculate_winds_from_streamfunction_grid(
-        psi_staggered_halo, dx_halo, dy_halo, dimensions, grid="C"
+        psi_staggered_halo, dx_halo, dy_halo, dimensions, grid=grid
     )
     uC = Quantity(
         uC,
