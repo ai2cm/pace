@@ -29,14 +29,10 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
-<<<<<<< HEAD
-=======
 class GridType(enum.Enum):
     AGrid = 1
     CGrid = 2
     DGrid = 3
->>>>>>> ca9a625cd93b817117d06e9960e57b9a3cc0756f
-
 
 backend = "numpy"
 density = 1
@@ -388,6 +384,61 @@ def calculate_streamfunction(
     if test_case == "a":
         RadA = RADIUS * np.ones(lonA.shape)
         Rad = RADIUS * np.ones(lon.shape)
+        multiplierA = np.sin(latA)
+        multiplier = np.sin(lat)
+    elif test_case == "b":
+        RadA = RADIUS * np.cos(latA / 2)
+        Rad = RADIUS * np.cos(lat / 2)
+        multiplierA = np.sin(latA)
+        multiplier = np.sin(lat)
+    else:
+        RadA = np.nan(np.ones(lonA.shape))
+        Rad = np.nan(np.ones(lon.shape))
+        multiplierA = np.sin(latA)
+        multiplier = np.sin(lat)
+        print("Please choose one of the defined test cases.")
+        print("This will return gibberish.")
+
+    Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0)  # 38.6
+
+
+    psi = -1 * Ubar * RadA * multiplierA
+    psi_staggered = -1 * Ubar * Rad * multiplier
+
+    # original multiplier = np.sin(latA[ii, jj]) * np.cos(alpha)
+    #                 - np.cos(lonA[ii, jj]) * np.cos(latA[ii, jj]) * np.sin(alpha)
+    # but since alpha = 0, we don't need to worry about anything.
+
+    return psi, psi_staggered
+
+
+def calculate_streamfunction_test(
+    lonA: np.ndarray, latA: np.ndarray, lon: np.ndarray, lat: np.ndarray, dimensions: Dict[str, int], test_case: str
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Use: psi, psi_staggered =
+            calculate_streamfunction(lonA, latA, lon, lat, dimensions, test_case)
+
+    Creates streamfunction from input quantities, for defined test cases:
+        - a) constant radius (as in Fortran test case 1)
+        - b) radius varies with latitude, less spreading out.
+
+    Inputs:
+    - lonA, latA (in radians) on A-grid
+    - lon, lat (in radians) on cell corners
+    - dimensions
+    - test_case ("a" or "b")
+
+    Outputs:
+    - psi (streamfunction)
+    - psi_staggered (streamfunction, but on tile corners.)
+    """
+
+    if test_case == "a":
+        RadA = RADIUS * np.ones(lonA.shape)
+        Rad = RADIUS * np.ones(lon.shape)
+        multiplierA = np.sin(latA)
+        multiplier = np.sin(latA)
     elif test_case == "b":
         RadA = RADIUS * np.cos(latA / 2)
         Rad = RADIUS * np.cos(lat / 2)
@@ -398,36 +449,15 @@ def calculate_streamfunction(
         print("This will return gibberish.")
 
     Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0)  # 38.6
-    alpha = 0
-
+    #alpha = 0
     psi = np.ones((dimensions["nxhalo"], dimensions["nyhalo"])) * 1.0e25
     psi_staggered = np.ones((dimensions["nxhalo"], dimensions["nyhalo"])) * 1.0e25
 
-    for jj in range(dimensions["nyhalo"]):
-        for ii in range(dimensions["nxhalo"]):
-            psi[ii, jj] = (
-                -1.0
-                * Ubar
-                * RadA[ii, jj]
-                * (
-                    np.sin(latA[ii, jj]) * np.cos(alpha)
-                    - np.cos(lonA[ii, jj]) * np.cos(latA[ii, jj]) * np.sin(alpha)
-                )
-            )
-
-    for jj in range(dimensions["nyhalo"]):
-        for ii in range(dimensions["nxhalo"]):
-            psi_staggered[ii, jj] = (
-                -1.0
-                * Ubar
-                * Rad[ii, jj]
-                * (
-                    np.sin(lat[ii, jj]) * np.cos(alpha)
-                    - np.cos(lon[ii, jj]) * np.cos(lat[ii, jj]) * np.sin(alpha)
-                )
-            )
+    psi[:-1, :-1] = -1 * Ubar * RadA * np.sin(np.deg2rad(latA))
+    psi_staggered = -1 * Ubar * Rad * np.sin(np.deg2rad(lat))
 
     return psi, psi_staggered
+
 
 
 def calculate_winds_from_streamfunction_grid(
@@ -483,37 +513,14 @@ def calculate_winds_from_streamfunction_grid(
                 dist = dx.data[ii, jj]
                 v_grid[ii, jj] = 0 if dist == 0 else (psi2 - psi1) / dist
 
-<<<<<<< HEAD
-    if grid == GridType.CGrid:
-        for jj in range(dimensions["ny"] + 2 * dimensions["nhalo"]):
-            for ii in range(dimensions["nx"] + 2 * dimensions["nhalo"] - 1):
-=======
     elif grid == GridType.CGrid:
-        for jj in range(
-            dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
-        ):
-            for ii in range(
-                dimensions["nhalo"] - 1, dimensions["nx"] + dimensions["nhalo"] + 1
-            ):
->>>>>>> ca9a625cd93b817117d06e9960e57b9a3cc0756f
-                dist = dx.data[ii, jj]
-                v_grid[ii, jj] = (
-                    0 if dist == 0 else (psi.data[ii + 1, jj] - psi.data[ii, jj]) / dist
-                )
-        for jj in range(dimensions["ny"] + 2 * dimensions["nhalo"] - 1):
-            for ii in range(dimensions["nx"] + 2 * dimensions["nhalo"]):
-                dist = dy.data[ii, jj]
-                u_grid[ii, jj] = (
-                    0
-                    if dist == 0
-                    else -1.0 * (psi.data[ii, jj + 1] - psi.data[ii, jj]) / dist
-                )
+        v_grid = np.zeros(psi.data.shape) * np.nan
+        v_grid[:-1] = (psi.data[1:] - psi.data[:-1]) / dx.data[:-1]
 
-<<<<<<< HEAD
-    if grid == GridType.DGrid:
-=======
+        u_grid = np.zeros(psi.data.shape) * np.nan
+        u_grid[:, :-1] = -1 * (psi.data[:, 1:] - psi.data[:, :-1]) / dy.data[:, :-1]
+
     elif grid == GridType.DGrid:
->>>>>>> ca9a625cd93b817117d06e9960e57b9a3cc0756f
         for jj in range(
             dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
         ):
