@@ -1,4 +1,4 @@
-from gt4py.gtscript import PARALLEL, computation, interval
+from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
@@ -17,11 +17,13 @@ def set_k0_and_calc_wk(
         pk3 (inout):
         wk (out):
     """
-    with computation(PARALLEL), interval(0, 1):
-        pp[0, 0, 0] = 0.0
-        pk3[0, 0, 0] = top_value
-    with computation(PARALLEL), interval(...):
-        wk = pk3[0, 0, 1] - pk3[0, 0, 0]
+    with computation(FORWARD):
+        with interval(0, 1):
+            pp[0, 0, 0] = 0.0
+            pk3[0, 0, 0] = top_value
+            wk = pk3[0, 0, 1] - pk3[0, 0, 0]
+        with interval(1, None):
+            wk = pk3[0, 0, 1] - pk3[0, 0, 0]
 
 
 def calc_u(
