@@ -26,7 +26,7 @@ from pace.util import (
 )
 from pace.util.constants import RADIUS
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
-from pace.util.grid.gnomonic import great_circle_distance_lon_lat
+from pace.util.grid.gnomonic import great_circle_distance_lon_lat, lon_lat_to_xyz
 
 
 class GridType(enum.Enum):
@@ -37,6 +37,9 @@ class GridType(enum.Enum):
 backend = "numpy"
 density = 1
 layout = (1, 1)
+nhalo = 3
+pressure_base = 10
+tracer_base = 1.0
 fvt_dict = {"grid_type": 0, "hord": 6}
 
 
@@ -59,7 +62,6 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
     namelist_variables = [
         "nx",
         "ny",
-        "nhalo",
         "timestep",
         "nDays",
         "test_case",
@@ -71,9 +73,7 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
         "write_initialCondition",
         "plot_gridLayout",
         "show_figures",
-        "pressure_base",
-        "tracer_base",
-        "tracer_target_tile",
+        "tracer_center",
         "nSeconds",
         "figure_everyNsteps",
         "nSteps_advection",
@@ -121,9 +121,9 @@ def define_metadata(
         "nz": nz,
         "nx1": nx + 1,
         "ny1": ny + 1,
-        "nhalo": namelistDict["nhalo"],
-        "nxhalo": nx + 2 * namelistDict["nhalo"],
-        "nyhalo": ny + 2 * namelistDict["nhalo"],
+        "nhalo": nhalo,
+        "nxhalo": nx + 2 * nhalo,
+        "nyhalo": ny + 2 * nhalo,
         "tile": mpi_size,
     }
 
@@ -311,8 +311,7 @@ def create_gaussian_multiplier(
     lon: np.ndarray,
     lat: np.ndarray,
     dimensions: Dict[str, int],
-    mpi_rank: int,
-    target_tile: int = 0,
+    center: Tuple[float, float] = (0., 0.),
 ) -> np.ndarray:
     """
     Use: gaussian_multiplier =
@@ -332,29 +331,21 @@ def create_gaussian_multiplier(
     """
 
     r0 = RADIUS / 3.0
-    p1x, p1y = int(dimensions["nxhalo"] / 2), int(
-        dimensions["nyhalo"] / 2
-    )  # center gaussian on middle of tile
     gaussian_multiplier = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
+    p_center = [np.deg2rad(center[0]), np.deg2rad(center[1])]
+    #print("Centering gaussian on lon=%.2f, lat=%.2f" % (np.rad2deg(p_center[0]), np.rad2deg(p_center[1])))
 
-    if mpi_rank == target_tile:
-        p_center = [lon[p1x, p1y], lat[p1x, p1y]]
-        print(
-            "Centering gaussian on lon=%.2f, lat=%.2f"
-            % (np.rad2deg(p_center[0]), np.rad2deg(p_center[1]))
-        )
+    for jj in range(dimensions["nyhalo"]):
+        for ii in range(dimensions["nxhalo"]):
 
-        for jj in range(dimensions["nyhalo"]):
-            for ii in range(dimensions["nxhalo"]):
+            p_dist = [lon[ii, jj], lat[ii, jj]]
+            r = great_circle_distance_lon_lat(
+                p_center[0], p_dist[0], p_center[1], p_dist[1], RADIUS, np
+            )
 
-                p_dist = [lon[ii, jj], lat[ii, jj]]
-                r = great_circle_distance_lon_lat(
-                    p_center[0], p_dist[0], p_center[1], p_dist[1], RADIUS, np
-                )
-
-                gaussian_multiplier[ii, jj] = (
-                    0.5 * (1.0 + np.cos(np.pi * r / r0)) if r < r0 else 0.0
-                )
+            gaussian_multiplier[ii, jj] = (
+                0.5 * (1.0 + np.cos(np.pi * r / r0)) if r < r0 else 0.0
+            )
 
     return gaussian_multiplier
 
@@ -369,6 +360,7 @@ def calculate_streamfunction(
     Creates streamfunction from input quantities, for defined test cases:
         - a) constant radius (as in Fortran test case 1)
         - b) radius varies with latitude, less spreading out.
+        - c) south-north propagation from tile 1
 
     Inputs:
     - lonA, latA (in radians) on A-grid
@@ -381,27 +373,44 @@ def calculate_streamfunction(
     - psi_staggered (streamfunction, but on tile corners.)
     """
 
+    xA_t = np.cos(latA) * np.cos(lonA)
+    yA_t = np.cos(latA) * np.sin(lonA)
+    zA_t = np.sin(latA)
+    x_t = np.cos(lat) * np.cos(lon)
+    y_t = np.cos(lat) * np.sin(lon)
+    z_t = np.sin(lat)
+
+
     if test_case == "a":
         RadA = RADIUS * np.ones(lonA.shape)
         Rad = RADIUS * np.ones(lon.shape)
-        multiplierA = np.sin(latA)
-        multiplier = np.sin(lat)
+        multiplierA = zA_t
+        multiplier = z_t
     elif test_case == "b":
         RadA = RADIUS * np.cos(latA / 2)
         Rad = RADIUS * np.cos(lat / 2)
-        multiplierA = np.sin(latA)
-        multiplier = np.sin(lat)
+        multiplierA = zA_t
+        multiplier = z_t
+    elif test_case == "c":
+        RadA = RADIUS * np.ones(lonA.shape)
+        Rad = RADIUS * np.ones(lon.shape)
+        multiplierA = - yA_t
+        multiplier = - y_t
+    elif test_case == "d":
+        print("This case is in TESTING.")
+        RadA = RADIUS * np.ones(lon.shape)
+        Rad = RADIUS * np.ones(lon.shape)
+        multiplierA = (yA_t + zA_t) / 1.5
+        multiplier = (y_t + z_t) / 1.5
     else:
-        RadA = np.nan(np.ones(lonA.shape))
-        Rad = np.nan(np.ones(lon.shape))
-        multiplierA = np.sin(latA)
-        multiplier = np.sin(lat)
+        RadA = np.ones(lonA.shape) * np.nan
+        Rad = np.ones(lon.shape) * np.nan
+        multiplierA = np.nan
+        multiplier = np.nan
         print("Please choose one of the defined test cases.")
         print("This will return gibberish.")
 
-    Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0)  # 38.6
-
-
+    Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0)
     psi = -1 * Ubar * RadA * multiplierA
     psi_staggered = -1 * Ubar * Rad * multiplier
 
@@ -410,54 +419,6 @@ def calculate_streamfunction(
     # but since alpha = 0, we don't need to worry about anything.
 
     return psi, psi_staggered
-
-
-def calculate_streamfunction_test(
-    lonA: np.ndarray, latA: np.ndarray, lon: np.ndarray, lat: np.ndarray, dimensions: Dict[str, int], test_case: str
-) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Use: psi, psi_staggered =
-            calculate_streamfunction(lonA, latA, lon, lat, dimensions, test_case)
-
-    Creates streamfunction from input quantities, for defined test cases:
-        - a) constant radius (as in Fortran test case 1)
-        - b) radius varies with latitude, less spreading out.
-
-    Inputs:
-    - lonA, latA (in radians) on A-grid
-    - lon, lat (in radians) on cell corners
-    - dimensions
-    - test_case ("a" or "b")
-
-    Outputs:
-    - psi (streamfunction)
-    - psi_staggered (streamfunction, but on tile corners.)
-    """
-
-    if test_case == "a":
-        RadA = RADIUS * np.ones(lonA.shape)
-        Rad = RADIUS * np.ones(lon.shape)
-        multiplierA = np.sin(latA)
-        multiplier = np.sin(latA)
-    elif test_case == "b":
-        RadA = RADIUS * np.cos(latA / 2)
-        Rad = RADIUS * np.cos(lat / 2)
-    else:
-        RadA = np.nan(np.ones(lonA.shape))
-        Rad = np.nan(np.ones(lon.shape))
-        print("Please choose one of the defined test cases.")
-        print("This will return gibberish.")
-
-    Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0)  # 38.6
-    #alpha = 0
-    psi = np.ones((dimensions["nxhalo"], dimensions["nyhalo"])) * 1.0e25
-    psi_staggered = np.ones((dimensions["nxhalo"], dimensions["nyhalo"])) * 1.0e25
-
-    psi[:-1, :-1] = -1 * Ubar * RadA * np.sin(np.deg2rad(latA))
-    psi_staggered = -1 * Ubar * Rad * np.sin(np.deg2rad(lat))
-
-    return psi, psi_staggered
-
 
 
 def calculate_winds_from_streamfunction_grid(
@@ -545,14 +506,13 @@ def calculate_winds_from_streamfunction_grid(
 def create_initial_state(
     grid_data: GridData,
     metadata: Dict[str, Any],
-    tracer_dict: Dict[str, Any],
-    pressure_base: float,
+    tracer_center: Tuple[float, float],
     test_case: str,
 ) -> Dict[str, Quantity]:
     """
     Use: initialState =
-            create_initial_state(grid_data, metadata, tracer_dict,
-            pressure_base, test_case)
+            create_initial_state(grid_data, metadata, tracer_center, 
+            test_case)
 
     Creates the initial state for one of the defined test cases:
         - a) constant radius (as in Fortran test case 1)
@@ -570,8 +530,7 @@ def create_initial_state(
     Inputs:
     - grid_data (cofiguration) from configure_domain()
     - metadata (Dict) from define_metadata()
-    - tracer_dict (Dict) initial parameters for tracer
-    - pressure_base (float) constant pressure thickness
+    - tracerCenter
     - test_case ("a" or "b")
 
     Outputs:
@@ -623,11 +582,10 @@ def create_initial_state(
         lonA_halo.data,
         latA_halo.data,
         dimensions,
-        target_tile=tracer_dict["target_tile"],
-        mpi_rank=tracer_dict["rank"],
+        tracer_center,
     )
     tracer = Quantity(
-        gaussian_multiplier * tracer_dict["tracer_base"],
+        gaussian_multiplier * tracer_base,
         ("x", "y"),
         units["mass"],
         origins["compute_2d"],
@@ -657,7 +615,7 @@ def create_initial_state(
         (dimensions["nxhalo"], dimensions["nyhalo"]),
         backend,
     )
-
+    
     # winds
     dx_halo = Quantity(
         grid_data.dx.data,
@@ -1261,7 +1219,6 @@ def write_initial_condition_tofile(
 
     uC = np.squeeze(configuration["communicator"].gather(initialState["uC"]))
     vC = np.squeeze(configuration["communicator"].gather(initialState["vC"]))
-    delp = np.squeeze(configuration["communicator"].gather(initialState["delp"]))
     tracer = np.squeeze(configuration["communicator"].gather(initialState["tracer"]))
 
     if mpi_rank == 0:
@@ -1294,10 +1251,6 @@ def write_initial_condition_tofile(
         v1[:] = vC.data
         v1.units = units["wind"]
         v1.description = "C-grid v wind, unstaggered"
-
-        v1 = data.createVariable("delp", "f8", ("tile", "nx", "ny"))
-        v1[:] = delp.data
-        v1.units = units["pressure"]
 
         v1 = data.createVariable("tracer", "f8", ("tile", "nx", "ny"))
         v1[:] = tracer.data
@@ -1501,7 +1454,7 @@ def remap_winds_to_meteorological(
             meridional[tile] = -u_input[tile]
 
         if tile in [3, 4]:
-            zonal[tile] = v_input[tile]
-            meridional[tile] = -u_input[tile]
+            zonal[tile] = -v_input[tile]
+            meridional[tile] = u_input[tile]
 
     return zonal, meridional
