@@ -26,13 +26,14 @@ from pace.util import (
 )
 from pace.util.constants import RADIUS
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
-from pace.util.grid.gnomonic import great_circle_distance_lon_lat, lon_lat_to_xyz
+from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
 class GridType(enum.Enum):
     AGrid = 1
     CGrid = 2
     DGrid = 3
+
 
 backend = "numpy"
 density = 1
@@ -41,8 +42,6 @@ nhalo = 3
 pressure_base = 10
 tracer_base = 1.0
 fvt_dict = {"grid_type": 0, "hord": 6}
-
-
 
 
 def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
@@ -311,7 +310,7 @@ def create_gaussian_multiplier(
     lon: np.ndarray,
     lat: np.ndarray,
     dimensions: Dict[str, int],
-    center: Tuple[float, float] = (0., 0.),
+    center: Tuple[float, float] = (0.0, 0.0),
 ) -> np.ndarray:
     """
     Use: gaussian_multiplier =
@@ -333,7 +332,6 @@ def create_gaussian_multiplier(
     r0 = RADIUS / 3.0
     gaussian_multiplier = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
     p_center = [np.deg2rad(center[0]), np.deg2rad(center[1])]
-    #print("Centering gaussian on lon=%.2f, lat=%.2f" % (np.rad2deg(p_center[0]), np.rad2deg(p_center[1])))
 
     for jj in range(dimensions["nyhalo"]):
         for ii in range(dimensions["nxhalo"]):
@@ -351,7 +349,12 @@ def create_gaussian_multiplier(
 
 
 def calculate_streamfunction(
-    lonA: np.ndarray, latA: np.ndarray, lon: np.ndarray, lat: np.ndarray, dimensions: Dict[str, int], test_case: str
+    lonA: np.ndarray,
+    latA: np.ndarray,
+    lon: np.ndarray,
+    lat: np.ndarray,
+    dimensions: Dict[str, int],
+    test_case: str,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: psi, psi_staggered =
@@ -380,7 +383,6 @@ def calculate_streamfunction(
     y_t = np.cos(lat) * np.sin(lon)
     z_t = np.sin(lat)
 
-
     if test_case == "a":
         RadA = RADIUS * np.ones(lonA.shape)
         Rad = RADIUS * np.ones(lon.shape)
@@ -394,8 +396,8 @@ def calculate_streamfunction(
     elif test_case == "c":
         RadA = RADIUS * np.ones(lonA.shape)
         Rad = RADIUS * np.ones(lon.shape)
-        multiplierA = - yA_t
-        multiplier = - y_t
+        multiplierA = -yA_t
+        multiplier = -y_t
     elif test_case == "d":
         print("This case is in TESTING.")
         RadA = RADIUS * np.ones(lon.shape)
@@ -511,7 +513,7 @@ def create_initial_state(
 ) -> Dict[str, Quantity]:
     """
     Use: initialState =
-            create_initial_state(grid_data, metadata, tracer_center, 
+            create_initial_state(grid_data, metadata, tracer_center,
             test_case)
 
     Creates the initial state for one of the defined test cases:
@@ -605,7 +607,12 @@ def create_initial_state(
 
     # streamfunction
     _, psi_staggered = calculate_streamfunction(
-        lonA_halo.data, latA_halo.data, lon_halo.data, lat_halo.data, dimensions, test_case
+        lonA_halo.data,
+        latA_halo.data,
+        lon_halo.data,
+        lat_halo.data,
+        dimensions,
+        test_case,
     )
     psi_staggered_halo = Quantity(
         psi_staggered,
@@ -615,7 +622,7 @@ def create_initial_state(
         (dimensions["nxhalo"], dimensions["nyhalo"]),
         backend,
     )
-    
+
     # winds
     dx_halo = Quantity(
         grid_data.dx.data,
@@ -1286,7 +1293,7 @@ def write_coordinate_variables_tofile(
     lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
 
     lonA = Quantity(
-        configuration['grid_data'].lon_agrid.data * 180 / np.pi,
+        configuration["grid_data"].lon_agrid.data * 180 / np.pi,
         ("x", "y"),
         units["coord"],
         origins["compute_2d"],
@@ -1294,16 +1301,16 @@ def write_coordinate_variables_tofile(
         backend,
     )
     latA = Quantity(
-        configuration['grid_data'].lat_agrid.data * 180 / np.pi,
+        configuration["grid_data"].lat_agrid.data * 180 / np.pi,
         ("x", "y"),
         units["coord"],
         origins["compute_2d"],
         (dimensions["nx"], dimensions["ny"]),
         backend,
-    ) 
+    )
 
     dx = Quantity(
-        configuration['grid_data'].dx.data,
+        configuration["grid_data"].dx.data,
         ("x", "y_interface"),
         units["dist"],
         origins["compute_2d"],
@@ -1311,14 +1318,13 @@ def write_coordinate_variables_tofile(
         backend,
     )
     dy = Quantity(
-        configuration['grid_data'].dy.data,
+        configuration["grid_data"].dy.data,
         ("x_interface", "y"),
         units["dist"],
         origins["compute_2d"],
         (dimensions["nx1"], dimensions["ny"]),
         backend,
     )
-
 
     lonA = np.squeeze(configuration["communicator"].gather(lonA))
     latA = np.squeeze(configuration["communicator"].gather(latA))
@@ -1359,7 +1365,6 @@ def write_coordinate_variables_tofile(
         v2.units = units["dist"]
 
         data.close()
-
 
 
 def unstagger_coordinate(field: np.ndarray, mode: str = "mean") -> np.ndarray:
