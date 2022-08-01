@@ -77,6 +77,10 @@ class DaceConfig:
                 "args",
                 value="-std=c++14 -Xcompiler -fPIC -O3 -Xcompiler -march=native",
             )
+            dace.config.Config.set("compiler", "cuda", "cuda_arch", value="60")
+            dace.config.Config.set(
+                "compiler", "cuda", "default_block_size", value="64,8,1"
+            )
             # Potentially buggy - deactivate
             dace.config.Config.set(
                 "compiler",
@@ -121,6 +125,9 @@ class DaceConfig:
                 "store_history",
                 value=False,
             )
+
+            # Enable to debug GPU failures
+            dace.config.Config.set("compiler", "cuda", "syncdebug", value=False)
 
         # attempt to kill the dace.conf to avoid confusion
         if dace.config.Config._cfg_filename:

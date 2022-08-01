@@ -1,2 +1,2 @@
 # DaCe
-git+https://github.com/spcl/dace.git@v0.14rc1
+git+https://github.com/spcl/dace.git@v0.14rc2

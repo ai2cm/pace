@@ -7,3 +7,4 @@ numpy
 netCDF4
 xarray
 zarr
+git+https://github.com/spcl/dace.git@v0.14rc2

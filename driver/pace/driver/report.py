@@ -37,15 +37,20 @@ class Report:
 
 
 def get_experiment_info(
-    experiment_name: str, time_step: int, backend: str, git_hash: str
+    experiment_name: str,
+    time_step: int,
+    backend: str,
+    git_hash: str,
+    is_orchestrated: bool,
 ) -> Experiment:
+    orchestration = "orchestrated" if is_orchestrated else "python"
     experiment = Experiment(
         dataset=experiment_name,
         format_version=3,
         git_hash=git_hash,
         timestamp=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         timesteps=time_step,
-        backend="python/" + backend,
+        backend=f"{orchestration}/{backend}",
     )
     return experiment
 
@@ -120,6 +125,7 @@ def get_sypd(timing_info: Dict[str, TimeReport], dt_atmos: float) -> float:
 def collect_data_and_write_to_file(
     time_step: int,
     backend: str,
+    is_orchestrated: bool,
     git_hash: str,
     comm: Comm,
     hits_per_step: List,
@@ -134,7 +140,9 @@ def collect_data_and_write_to_file(
     timing_info = gather_timing_data(times_per_step, comm)
 
     if is_root:
-        exp_info = get_experiment_info(experiment_name, time_step, backend, git_hash)
+        exp_info = get_experiment_info(
+            experiment_name, time_step, backend, git_hash, is_orchestrated
+        )
         timing_info = gather_hit_counts(hits_per_step, timing_info)
         report = Report(setup=exp_info, times=timing_info, dt_atmos=dt_atmos)
         write_to_timestamped_json(report)

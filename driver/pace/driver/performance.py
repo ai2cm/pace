@@ -36,6 +36,7 @@ class PerformanceConfig:
         self,
         comm,
         backend: str,
+        is_orchestrated: bool,
         dt_atmos: float,
     ):
         if self.performance_mode:
@@ -59,6 +60,7 @@ class PerformanceConfig:
             collect_data_and_write_to_file(
                 len(self.hits_per_step) - 1,
                 backend,
+                is_orchestrated,
                 git_hash,
                 comm,
                 self.hits_per_step,
