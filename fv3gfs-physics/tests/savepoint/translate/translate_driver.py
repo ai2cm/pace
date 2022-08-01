@@ -36,7 +36,7 @@ class TranslateDriver(TranslateFVDynamics):
         )
 
         quantity_factory = pace.util.QuantityFactory.from_backend(
-            sizer, backend=self.stencil_config.backend
+            sizer, backend=self.stencil_config.compilation_config.backend
         )
         physics_state = PhysicsState.init_zeros(
             quantity_factory=quantity_factory, active_packages=["microphysics"]

@@ -218,6 +218,7 @@ def setup_dycore(
     )
     communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
     grid = Grid.from_namelist(dycore_config, mpi_comm.rank, backend)
+
     dace_config = DaceConfig(
         communicator,
         backend,
@@ -225,9 +226,9 @@ def setup_dycore(
         tile_nz=dycore_config.npz,
     )
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
+        compilation_config=pace.dsl.stencil.CompilationConfig(
+            backend=backend, rebuild=False, validate_args=False
+        ),
         dace_config=dace_config,
     )
     stencil_factory = StencilFactory(

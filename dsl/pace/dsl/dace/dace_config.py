@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 
 import dace.config
 
+from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.communicator import CubedSphereCommunicator
 
 
@@ -168,7 +169,7 @@ class DaceConfig:
         return self._orchestrate != DaCeOrchestration.Python
 
     def is_gpu_backend(self) -> bool:
-        return "gpu" in self._backend
+        return is_gpu_backend(self._backend)
 
     def get_backend(self) -> str:
         return self._backend

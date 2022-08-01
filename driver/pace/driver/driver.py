@@ -19,9 +19,11 @@ import pace.util.grid
 from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
+from pace.dsl.stencil_config import CompilationConfig, RunMode
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
+from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
 from .comm import CreatesCommSelector
@@ -182,6 +184,15 @@ class DriverConfig:
             kwargs["stencil_config"]["dace_config"] = DaceConfig.from_dict(
                 data=kwargs["stencil_config"]["dace_config"]
             )
+        if (
+            isinstance(kwargs["stencil_config"], dict)
+            and "compilation_config" in kwargs["stencil_config"].keys()
+        ):
+            kwargs["stencil_config"][
+                "compilation_config"
+            ] = CompilationConfig.from_dict(
+                data=kwargs["stencil_config"]["compilation_config"]
+            )
 
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
@@ -214,10 +225,20 @@ class Driver:
             stencil_compare_comm = None
         self.performance_config = self.config.performance_config
         with self.performance_config.total_timer.clock("initialization"):
-            communicator = pace.util.CubedSphereCommunicator.from_layout(
+            communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
+            self.update_driver_config_with_communicator(communicator)
 
+            if self.config.stencil_config.compilation_config.run_mode == RunMode.Build:
+
+                def exit_function(*args, **kwargs):
+                    print(
+                        "Running in build-only mode and compilation finished, exiting"
+                    )
+                    exit(0)
+
+                setattr(self, "step_all", exit_function)
             self.config.stencil_config.dace_config = DaceConfig(
                 communicator=communicator,
                 backend=self.config.stencil_config.backend,
@@ -317,6 +338,29 @@ class Driver:
 
         self._time_run = self.config.start_time
 
+    def update_driver_config_with_communicator(
+        self, communicator: CubedSphereCommunicator
+    ) -> None:
+        dace_config = DaceConfig(
+            communicator=communicator,
+            backend=self.config.stencil_config.compilation_config.backend,
+            tile_nx=self.config.nx_tile,
+            tile_nz=self.config.nz,
+        )
+        self.config.stencil_config.dace_config = dace_config
+        original_config = self.config.stencil_config.compilation_config
+        compilation_config = CompilationConfig(
+            backend=original_config.backend,
+            rebuild=original_config.rebuild,
+            validate_args=original_config.validate_args,
+            format_source=original_config.format_source,
+            device_sync=original_config.device_sync,
+            run_mode=original_config.run_mode,
+            use_minimal_caching=original_config.use_minimal_caching,
+            communicator=communicator,
+        )
+        self.config.stencil_config.compilation_config = compilation_config
+
     @dace_inhibitor
     def _callback_diagnostics(self):
         self._time_run += self.config.timestep
@@ -341,6 +385,9 @@ class Driver:
         """Gather operations unrelated to computation.
         Using a function allows those actions to be removed from the orchestration path.
         """
+        if __debug__:
+            logger.info(f"Finished stepping {step}")
+        self.time += self.config.timestep
         if not ((step + 1) % self.config.diagnostics_config.output_frequency):
             self.diagnostics.store(time=self.time, state=self.state)
         if (
@@ -359,8 +406,8 @@ class Driver:
         """Start of code path where performance is critical.
 
         This function must remain orchestrateable by DaCe (e.g.
-        all code not parseable due to python complexity needs to be moved
-        to a callbcak, like end_of_step_actions)."""
+        all code not parsable due to python complexity needs to be moved
+        to a callback, like end_of_step_actions)."""
         for step in dace.nounroll(range(steps_count)):
             with timer.clock("mainloop"):
                 self._step_dynamics(
@@ -379,17 +426,6 @@ class Driver:
                 timer=self.performance_config.timestep_timer,
                 dt=self.config.timestep.total_seconds(),
             )
-
-    def step(self, timestep: timedelta):
-        with self.performance_config.timestep_timer.clock("mainloop"):
-            self._step_dynamics(
-                self.state.dycore_state,
-                self.performance_config.timestep_timer,
-            )
-            if not self.config.disable_step_physics:
-                self._step_physics(timestep=timestep.total_seconds())
-        self.time += timestep
-        self.performance_config.collect_performance()
 
     def _step_dynamics(
         self,
@@ -422,7 +458,7 @@ class Driver:
     def _write_performance_json_output(self):
         self.performance_config.write_out_performance(
             self.comm,
-            self.config.stencil_config.backend,
+            self.config.stencil_config.compilation_config.backend,
             self.config.stencil_config.dace_config.is_dace_orchestrated(),
             self.config.dt_atmos,
         )
@@ -492,7 +528,7 @@ def _setup_factories(
         sizer=sizer, cube=communicator
     )
     quantity_factory = pace.util.QuantityFactory.from_backend(
-        sizer, backend=config.stencil_config.backend
+        sizer, backend=config.stencil_config.compilation_config.backend
     )
     stencil_factory = pace.dsl.StencilFactory(
         config=config.stencil_config,

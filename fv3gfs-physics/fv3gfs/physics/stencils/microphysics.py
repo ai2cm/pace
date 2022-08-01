@@ -1920,7 +1920,7 @@ class Microphysics:
 
         self.namelist = namelist
         # Cache a numpy-like module for
-        if stencil_factory.config.dace_config.is_gpu_backend():
+        if stencil_factory.config.is_gpu_backend:
             self.gfdl_cloud_microphys_init(cp)
         else:
             self.gfdl_cloud_microphys_init(np)

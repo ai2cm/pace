@@ -76,7 +76,10 @@ def setup_dycore() -> Tuple[
     communicator = pace.util.CubedSphereCommunicator(mpi_comm, partitioner)
     dace_config = DaceConfig(communicator=communicator, backend=backend)
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
+        compilation_config=pace.dsl.stencil.CompilationConfig(
+            backend=backend, rebuild=False, validate_args=True
+        ),
+        dace_config=dace_config,
     )
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.npx - 1,
