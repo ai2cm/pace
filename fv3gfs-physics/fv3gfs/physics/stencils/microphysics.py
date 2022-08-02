@@ -2,11 +2,18 @@ import copy
 import typing
 
 import numpy as np
+
+
+try:
+    import cupy as cp
+except ModuleNotFoundError:
+    cp = None
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
 
 import fv3gfs.physics.functions.microphysics_funcs as functions
 import pace.dsl.gt4py_utils as utils
 import pace.util.constants as constants
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ, Int
 from pace.util.grid import GridData
@@ -1905,9 +1912,19 @@ class Microphysics:
         grid_data: GridData,
         namelist: PhysicsConfig,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["state"],
+        )
+
         self.namelist = namelist
+        # Cache a numpy-like module for
+        if stencil_factory.config.is_gpu_backend:
+            self.gfdl_cloud_microphys_init(cp)
+        else:
+            self.gfdl_cloud_microphys_init(np)
         # [TODO]: many of the "constants" come from namelist, needs to be updated
-        self.gfdl_cloud_microphys_init()
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_compute()
         shape = grid_indexing.domain_full(add=(1, 1, 1))
@@ -2078,14 +2095,14 @@ class Microphysics:
             domain=grid_indexing.domain_compute(),
         )
 
-    def gfdl_cloud_microphys_init(self):
-        self.setupm()
+    def gfdl_cloud_microphys_init(self, numpy_module):
+        self.setupm(numpy_module)
         self._log_10 = np.log(10.0)
         self._tice0 = self.namelist.tice - 0.01
         # supercooled water can exist down to - 48 c, which is the "absolute"
         self._t_wfr = self.namelist.tice - 40.0
 
-    def setupm(self):
+    def setupm(self, numpy_module):
         gam263 = 1.456943
         gam275 = 1.608355
         gam290 = 1.827363
@@ -2099,7 +2116,7 @@ class Microphysics:
         rnzg = 4.0e6
 
         # Density parameters
-        acc = np.array([5.0, 2.0, 0.5])
+        acc = numpy_module.array([5.0, 2.0, 0.5])
 
         pie = 4.0 * np.arctan(1.0)
 
@@ -2135,7 +2152,7 @@ class Microphysics:
         act[6] = act[0]
         act[7] = act[5]
 
-        acco = np.empty((3, 4))
+        acco = numpy_module.empty((3, 4))
         for i in range(3):
             for k in range(4):
                 acco[i, k] = acc[i] / (
@@ -2158,7 +2175,7 @@ class Microphysics:
         cracw = self.namelist.c_cracw * cracw
 
         # Subl and revap: five constants for three separate processes
-        cssub = np.empty(5)
+        cssub = numpy_module.empty(5)
         cssub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzs
         cssub[1] = 0.78 / np.sqrt(act[0])
         cssub[2] = (
@@ -2171,14 +2188,14 @@ class Microphysics:
         cssub[3] = tcond * constants.RVGAS
         cssub[4] = (hlts ** 2) * vdifu
 
-        cgsub = np.empty(5)
+        cgsub = numpy_module.empty(5)
         cgsub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
         cgsub[1] = 0.78 / np.sqrt(act[5])
         cgsub[2] = 0.31 * scm3 * gam275 * np.sqrt(gcon / visk) / act[5] ** 0.6875
         cgsub[3] = cssub[3]
         cgsub[4] = cssub[4]
 
-        crevp = np.empty(5)
+        crevp = numpy_module.empty(5)
         crevp[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzr
         crevp[1] = 0.78 / np.sqrt(act[1])
         crevp[2] = (
@@ -2187,12 +2204,12 @@ class Microphysics:
         crevp[3] = cssub[3]
         crevp[4] = hltc ** 2 * vdifu
 
-        cgfr = np.empty(2)
+        cgfr = numpy_module.empty(2)
         cgfr[0] = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
         cgfr[1] = 0.66
 
         # smlt: five constants (lin et al. 1983)
-        csmlt = np.empty(5)
+        csmlt = numpy_module.empty(5)
         csmlt[0] = 2.0 * pie * tcond * rnzs / hltf
         csmlt[1] = 2.0 * pie * vdifu * rnzs * hltc / hltf
         csmlt[2] = cssub[1]
@@ -2200,7 +2217,7 @@ class Microphysics:
         csmlt[4] = ch2o / hltf
 
         # gmlt: five constants
-        cgmlt = np.empty(5)
+        cgmlt = numpy_module.empty(5)
         cgmlt[0] = 2.0 * pie * tcond * rnzg / hltf
         cgmlt[1] = 2.0 * pie * vdifu * rnzg * hltc / hltf
         cgmlt[2] = cgsub[1]
@@ -2234,9 +2251,9 @@ class Microphysics:
 
     def _set_timestep(self, timestep: float):
         # Define cloud microphysics sub time step
-        self._mpdt = min(timestep, self.namelist.mp_time)
-        self._rdt = 1.0 / timestep
-        self._ntimes = int(round(timestep / self._mpdt))
+        self._mpdt: float = min(timestep, self.namelist.mp_time)
+        self._rdt: float = 1.0 / timestep
+        self._ntimes: int = int(round(timestep / self._mpdt))
         # Small time step
         self._dts = timestep / self._ntimes
         self._dt_rain = self._dts * 0.5

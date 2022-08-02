@@ -82,7 +82,6 @@ make update_submodules_venv
 # set up the virtual environment
 echo "creating the venv"
 if [ -d ./venv ] ; then rm -rf venv ; fi
-cd $FV3CORE_DIR/external/daint_venv/
 if [ -d ./gt4py ] ; then rm -rf gt4py ; fi
 cd $FV3CORE_DIR
 $FV3CORE_DIR/.jenkins/install_virtualenv.sh $FV3CORE_DIR/venv
@@ -120,15 +119,22 @@ echo "    Extra run in nsys: $DO_NSYS_RUN"
 
 
 $FV3CORE_DIR/../.jenkins/fetch_caches.sh $backend $EXPNAME dycore
-
+tile_size=$(( ranks / 6 ))
+COMPILING_RANKS=$(( 3 < tile_size ? 3 : tile_size ))
+CPU_PER_TASK=$(( 12 / COMPILING_RANKS ))
+env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=1"
+clear_cache="rm -rf $FV3CORE_DIR/.gt_cache*"
+set_up_cache_dir="export GT_CACHE_DIR_NAME=/tmp"
+execution="srun python examples/standalone/runfile/compile.py $data_path $backend $FV3CORE_DIR"
+run_command="$env_vars\n$clear_cache\n$set_up_cache_dir\n$execution"
 # Adapt batch script to compile the code:
 sed -i "s/<NAME>/compilestandalone/g" compile.daint.slurm
-sed -i "s/<NTASKS>/1/g" compile.daint.slurm
-sed -i "s/<NTASKSPERNODE>/1/g" compile.daint.slurm
-sed -i "s/<CPUSPERTASK>/$NTHREADS/g" compile.daint.slurm
+sed -i "s/<NTASKS>/$COMPILING_RANKS/g" compile.daint.slurm
+sed -i "s/<NTASKSPERNODE>/$COMPILING_RANKS/g" compile.daint.slurm
+sed -i "s/<CPUSPERTASK>/$CPU_PER_TASK/g" compile.daint.slurm
 sed -i "s/<OUTFILE>/compile.daint.out\n#SBATCH --hint=nomultithread/g" compile.daint.slurm
-sed -i "s/00:45:00/02:00:00/g" compile.daint.slurm
-sed -i "s#<CMD>#export PYTHONOPTIMIZE=TRUE\nsrun python examples/standalone/runfile/compile.py $data_path $backend #g" compile.daint.slurm
+sed -i "s/<TIMEOUT>/03:00:00/g" compile.daint.slurm
+sed -i "s#<CMD>#$run_command#g" compile.daint.slurm
 
 
 env_vars="export PYTHONOPTIMIZE=TRUE\nexport CRAY_CUDA_MPS=0"
@@ -138,6 +144,7 @@ sed -i "s/<NTASKS>/$ranks/g" run.daint.slurm
 sed -i "s/<NTASKSPERNODE>/1/g" run.daint.slurm
 sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.daint.slurm
 sed -i "s/<OUTFILE>/run.daint.out\n#SBATCH --hint=nomultithread/g" run.daint.slurm
+sed -i "s/<TIMEOUT>/00:45:00/g" run.daint.slurm
 sed -i "s/cscsci/normal/g" run.daint.slurm
 sed -i "s#<CMD>#$env_vars\nsrun python $py_args examples/standalone/runfile/dynamics.py $data_path $timesteps $backend $githash $run_args#g" run.daint.slurm
 
@@ -189,7 +196,7 @@ if [ "${DO_NSYS_RUN}" == "true" ] ; then
     sed -i "s/<NTASKSPERNODE>/1/g" run.nsys.daint.slurm
     sed -i "s/<CPUSPERTASK>/$NTHREADS/g" run.nsys.daint.slurm
     sed -i "s/<OUTFILE>/run.nsys.daint.out\n#SBATCH --hint=nomultithread/g" run.nsys.daint.slurm
-    sed -i "s/00:45:00/00:40:00/g" run.nsys.daint.slurm
+    sed -i "s/<TIMEOUT>/00:40:00/g" run.nsys.daint.slurm
     sed -i "s/cscsci/normal/g" run.nsys.daint.slurm
     sed -i "s#<CMD>#srun nsys profile --force-overwrite=true -o %h.%q{SLURM_NODEID}.%q{SLURM_PROCID}.qdstrm --trace=cuda,mpi,nvtx --mpi-impl=mpich python ./performance_visualization/analysis/pywrapper.py --config ./performance_visualization/config_examples/f3core.json --nvtx examples/standalone/runfile/dynamics.py $data_path 3 $backend $githash --disable_json_dump#g" run.nsys.daint.slurm
     # execute on a gpu node

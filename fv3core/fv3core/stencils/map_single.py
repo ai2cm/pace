@@ -5,6 +5,7 @@ from gt4py.gtscript import FORWARD, PARALLEL, computation, interval
 import pace.dsl.gt4py_utils as utils
 from fv3core.stencils.basic_operations import copy_defn
 from fv3core.stencils.remap_profile import RemapProfile
+from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ  # noqa: F401
 
@@ -94,6 +95,11 @@ class MapSingle:
         j1: int,
         j2: int,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+        )
+
         # TODO: consider refactoring to take in origin and domain
         grid_indexing = stencil_factory.grid_indexing
         shape = grid_indexing.domain_full(add=(1, 1, 1))

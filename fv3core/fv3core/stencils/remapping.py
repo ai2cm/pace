@@ -21,6 +21,7 @@ from fv3core.stencils.map_single import MapSingle
 from fv3core.stencils.mapn_tracer import MapNTracer
 from fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.util import Quantity
@@ -286,6 +287,11 @@ class LagrangianToEulerian:
         pfull,
         tracers: Dict[str, Quantity],
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["tracers"],
+        )
         grid_indexing = stencil_factory.grid_indexing
         if config.kord_tm >= 0:
             raise NotImplementedError("map ppm, untested mode where kord_tm >= 0")
@@ -513,7 +519,6 @@ class LagrangianToEulerian:
         mdt: float,
         bdt: float,
         do_adiabatic_init: bool,
-        nq: int,
     ):
         """
         tracers (inout): Tracer species tracked across
@@ -550,7 +555,6 @@ class LagrangianToEulerian:
         mdt (in) : Remap time step
         bdt (in): Timestep
         do_adiabatic_init (in): If True, do adiabatic dynamics
-        nq (in): Number of tracers
 
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.

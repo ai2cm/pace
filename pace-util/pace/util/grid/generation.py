@@ -87,7 +87,7 @@ class MetricTerms:
         self._halo = N_HALO_DEFAULT
         self._comm = communicator
         self._partitioner = self._comm.partitioner
-        self._tile_partitioner = self._partitioner.tile
+        self._tile_partitioner = self._comm.tile.partitioner
         self._rank = self._comm.rank
         self.quantity_factory = quantity_factory
         self.quantity_factory.set_extra_dim_lengths(

@@ -4,6 +4,7 @@ from typing import Dict
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
 from pace.util import Quantity
@@ -126,6 +127,11 @@ class FillNegativeTracerValues:
         nq: int,
         tracers: Dict[str, Quantity],
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["tracers"],
+        )
         self._nq = int(nq)
         self._fix_tracer_stencil = stencil_factory.from_origin_domain(
             fix_tracer,

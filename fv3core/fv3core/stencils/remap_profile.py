@@ -4,6 +4,7 @@ import gt4py.gtscript as gtscript
 from gt4py.gtscript import __INLINED, BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import BoolField, FloatField, FloatFieldIJ
 
@@ -580,6 +581,11 @@ class RemapProfile:
             j1: The first j-element to compute on
             j2: The last j-element to compute on
         """
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+        )
+
         assert kord <= 10, f"kord {kord} not implemented."
         grid_indexing = stencil_factory.grid_indexing
         km: int = grid_indexing.domain[2]

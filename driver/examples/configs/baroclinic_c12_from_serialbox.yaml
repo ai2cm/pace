@@ -1,9 +1,10 @@
 stencil_config:
-  backend: gtc:numpy
-  rebuild: false
-  validate_args: true
-  format_source: false
-  device_sync: true
+  compilation_config:
+    backend: gtc:numpy
+    rebuild: false
+    validate_args: true
+    format_source: false
+    device_sync: false
 initialization_type: serialbox
 initialization_config:
   path: /test_data/8.0.0/c12_6ranks_baroclinic_dycore_microphysics/driver

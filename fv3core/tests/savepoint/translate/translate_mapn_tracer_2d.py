@@ -1,11 +1,8 @@
 import fv3core.stencils.mapn_tracer as MapN_Tracer
 import pace.dsl
 import pace.util
-from pace.stencils.testing import (
-    TranslateDycoreFortranData2Py,
-    TranslateGrid,
-    pad_field_in_j,
-)
+from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.stencils.testing import TranslateGrid, pad_field_in_j
 
 
 class TranslateMapN_Tracer_2d(TranslateDycoreFortranData2Py):
