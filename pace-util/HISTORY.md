@@ -13,6 +13,9 @@ Major changes:
 Minor changes:
 - Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator
 
+Minor changes:
+- Fixed a bug in normalize_vector(xyz) in `pace.util.grid.gnomonic` where it would divide the input by cells-per-tile, where it should not.
+
 v0.9.0
 ------
 
