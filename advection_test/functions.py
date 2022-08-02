@@ -64,7 +64,6 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
         "timestep",
         "nDays",
         "test_case",
-        "print_advectionProgress",
         "plot_outputDuring",
         "plot_outputAfter",
         "plot_jupyterAnimation",
@@ -394,8 +393,8 @@ def calculate_streamfunction(
         multiplierA = zA_t
         multiplier = z_t
     elif test_case == "c":
-        RadA = RADIUS * np.ones(lonA.shape)
-        Rad = RADIUS * np.ones(lon.shape)
+        RadA = RADIUS
+        Rad = RADIUS
         multiplierA = -yA_t
         multiplier = -y_t
     elif test_case == "d":
