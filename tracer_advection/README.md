@@ -4,11 +4,11 @@ Note that this proof-of-concept example is only running the tracer advection and
 
 This example builds an MPI-enabled Docker image by adding jupyter notebooks to the pace image and opens it with port forwarding. You can build this image with:
 ```
-$ make build
+$ docker build -t tracer_advection .
 ```
 and then open the notebook by running:
 ```
-$ make run
+$ docker run -p 8888:8888 tracer_advection
 ```
 
 You should see output that looks something like:

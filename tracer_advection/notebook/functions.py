@@ -42,6 +42,7 @@ nhalo = 3
 pressure_base = 10
 tracer_base = 1.0
 fvt_dict = {"grid_type": 0, "hord": 6}
+print("Something")
 
 
 def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
