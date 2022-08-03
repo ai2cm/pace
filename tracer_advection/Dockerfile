@@ -1,4 +1,4 @@
-
+# # # figure out how to get pace image running here too
 
 
 FROM ubuntu:22.04
@@ -28,7 +28,7 @@ RUN cd / && \
     git checkout
 
 RUN python3 -m pip --no-cache-dir install \
-    cartopy \ 
+    cartopy \
     fv3net/external/vcm \
     ipyparallel==8.4.1 \
     jupyter==1.0.0 \
