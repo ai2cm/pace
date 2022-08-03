@@ -1,7 +1,8 @@
-# # # figure out how to get pace image running here too
-
 
 FROM ubuntu:22.04
+
+
+COPY . /pace
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
@@ -22,12 +23,15 @@ RUN apt-get update -y && \
     python3-pip && \
     python3 -m pip install --upgrade pip
 
+RUN cd /pace && pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt
+
+
 RUN cd / && \
     git clone https://github.com/ai2cm/fv3net.git && \
     cd fv3net && \
     git checkout
 
-RUN python3 -m pip --no-cache-dir install \
+RUN python3 -m pip install \
     cartopy \
     fv3net/external/vcm \
     ipyparallel==8.4.1 \
@@ -43,7 +47,7 @@ ENV OMPI_ALLOW_RUN_AS_ROOT=1
 
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 
-COPY notebook /notebook
+COPY tracer_advection/notebook /notebook
 
 WORKDIR /notebook
 

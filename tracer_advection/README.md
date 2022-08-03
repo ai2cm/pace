@@ -2,6 +2,12 @@ This directory serves as a demo of how you can run individual components of pace
 
 Note that this proof-of-concept example is only running the tracer advection and none of the other model components.
 
+
+```
+ln -sfv .. pace
+```
+
+
 This example builds an MPI-enabled Docker image by adding jupyter notebooks to the pace image and opens it with port forwarding. You can build this image with:
 ```
 $ docker build -t tracer_advection .
