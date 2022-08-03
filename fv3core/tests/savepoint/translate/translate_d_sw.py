@@ -4,8 +4,8 @@ import fv3core
 import fv3core.stencils.d_sw as d_sw
 import pace.dsl
 import pace.util
+from fv3core.testing import TranslateDycoreFortranData2Py
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.stencils.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateD_SW(TranslateDycoreFortranData2Py):

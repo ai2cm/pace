@@ -231,7 +231,7 @@ class HaloDataTransformer(abc.ABC):
         self._compile()
 
     def finalize(self):
-        """Del routine, making sure all buffers were inserted back into cache."""
+        """Deletion routine, making sure all buffers were inserted back into cache."""
         # Synchronize all work
         self.synchronize()
 

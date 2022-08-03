@@ -2,5 +2,5 @@
 
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-FV3GFS_IMAGE="driver_image" make -C ${JENKINS_DIR}/../docker fv3gfs_image
-docker run --rm driver_image make -C /driver test test_mpi
+PACE_IMAGE="driver_image" make -C ${JENKINS_DIR}/.. build
+docker run --rm driver_image make -C /pace/driver test test_mpi

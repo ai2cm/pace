@@ -2,7 +2,7 @@ import pace.dsl
 import pace.util
 from fv3core import DynamicalCoreConfig
 from fv3core.stencils.saturation_adjustment import SatAdjust3d
-from pace.stencils.testing import TranslateDycoreFortranData2Py
+from fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateSatAdjust3d(TranslateDycoreFortranData2Py):
@@ -31,7 +31,7 @@ class TranslateSatAdjust3d(TranslateDycoreFortranData2Py):
             "pkz": {"istart": grid.is_, "jstart": grid.js},
             "cappa": {},
         }
-        self.max_error = 2e-14
+        self.max_error = 5e-14
         # te0 is off by 1e-10 when you do nothing...
         self.in_vars["parameters"] = [
             "r_vir",

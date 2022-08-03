@@ -22,7 +22,8 @@ from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.baroclinic import init_baroclinic_state
 from fv3core.initialization.dycore_state import DycoreState
 from fv3core.testing import TranslateFVDynamics
-from pace.dsl.dace.orchestrate import DaceConfig, DaCeOrchestration
+from pace.dsl import StencilFactory
+from pace.dsl.dace.orchestration import DaceConfig
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -210,25 +211,27 @@ def collect_data_and_write_to_file(
 
 def setup_dycore(
     dycore_config, mpi_comm, backend, is_baroclinic_test_case, data_dir
-) -> Tuple[DynamicalCore, DycoreState]:
+) -> Tuple[DynamicalCore, DycoreState, StencilFactory]:
     # set up grid-dependent helper structures
     partitioner = util.CubedSpherePartitioner(
         util.TilePartitioner(dycore_config.layout)
     )
     communicator = util.CubedSphereCommunicator(mpi_comm, partitioner)
     grid = Grid.from_namelist(dycore_config, mpi_comm.rank, backend)
+
     dace_config = DaceConfig(
         communicator,
         backend,
-        DaCeOrchestration.Python,
+        tile_nx=dycore_config.npx,
+        tile_nz=dycore_config.npz,
     )
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
+        compilation_config=pace.dsl.stencil.CompilationConfig(
+            backend=backend, rebuild=False, validate_args=False
+        ),
         dace_config=dace_config,
     )
-    stencil_factory = pace.dsl.stencil.StencilFactory(
+    stencil_factory = StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,
     )
@@ -262,7 +265,6 @@ def setup_dycore(
         phis=state.phis,
         state=state,
     )
-    do_adiabatic_init = False
     dycore.update_state(
         conserve_total_energy=dycore_config.consv_te,
         do_adiabatic_init=False,
@@ -270,7 +272,7 @@ def setup_dycore(
         n_split=dycore_config.n_split,
         state=state,
     )
-    return dycore, state
+    return dycore, state, stencil_factory
 
 
 if __name__ == "__main__":
@@ -295,7 +297,7 @@ if __name__ == "__main__":
             mpi_comm = NullComm(MPI.COMM_WORLD.Get_rank(), MPI.COMM_WORLD.Get_size())
         else:
             mpi_comm = MPI.COMM_WORLD
-        dycore, state = setup_dycore(
+        dycore, state, stencil_factory = setup_dycore(
             dycore_config,
             mpi_comm,
             args.backend,

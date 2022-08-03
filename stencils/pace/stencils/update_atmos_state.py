@@ -5,6 +5,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 import fv3core
 import fv3core.stencils.fv_subgridz as fv_subgridz
 import pace.util
+from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
 from pace.stencils.fv_update_phys import ApplyPhysicsToDycore
@@ -152,6 +153,12 @@ class DycoreToPhysics:
         do_dry_convective_adjustment: bool,
         dycore_only: bool,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["dycore_state", "physics_state", "tendency_state"],
+        )
+
         self._copy_dycore_to_physics = stencil_factory.from_dims_halo(
             copy_dycore_to_physics,
             compute_dims=[
@@ -239,7 +246,17 @@ class UpdateAtmosphereState:
         quantity_factory: pace.util.QuantityFactory,
         dycore_only: bool,
         apply_tendencies: bool,
+        tendency_state,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=[
+                "dycore_state",
+                "phy_state",
+            ],
+        )
+
         grid_indexing = stencil_factory.grid_indexing
         self.namelist = namelist
         origin = grid_indexing.origin_compute()
@@ -268,6 +285,8 @@ class UpdateAtmosphereState:
             comm,
             grid_info,
             state,
+            tendency_state.u_dt,
+            tendency_state.v_dt,
         )
         self._dycore_only = dycore_only
         # apply_tendencies when we have run physics or fv_subgridz
@@ -275,11 +294,17 @@ class UpdateAtmosphereState:
         # fill_GFS_delp
         self._apply_tendencies = apply_tendencies
 
+    # [DaCe] Parsing limit: accessing a quantity withing a dataclass more than
+    # one-level down in the call stack is forbidden for now due to the quantity
+    # being resolved early has an array (loose of type of the object leads
+    # to bad inference lower down the stack)
     def __call__(
         self,
         dycore_state,
         phy_state,
-        tendency_state,
+        u_dt,
+        v_dt,
+        pt_dt,
         dt: float,
     ):
         if self._dycore_only:
@@ -289,9 +314,9 @@ class UpdateAtmosphereState:
                 dycore_state.delp, phy_state.physics_updated_specific_humidity, 1.0e-9
             )
             self._prepare_tendencies_and_update_tracers(
-                tendency_state.u_dt,
-                tendency_state.v_dt,
-                tendency_state.pt_dt,
+                u_dt,
+                v_dt,
+                pt_dt,
                 phy_state.physics_updated_ua,
                 phy_state.physics_updated_va,
                 phy_state.physics_updated_pt,
@@ -317,8 +342,8 @@ class UpdateAtmosphereState:
         if self._apply_tendencies:
             self._apply_physics_to_dycore(
                 dycore_state,
-                tendency_state.u_dt,
-                tendency_state.v_dt,
-                tendency_state.pt_dt,
+                u_dt,
+                v_dt,
+                pt_dt,
                 dt=dt,
             )

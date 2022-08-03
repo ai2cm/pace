@@ -1,7 +1,9 @@
 import dataclasses
 import functools
 import logging
+import warnings
 from datetime import datetime, timedelta
+from math import floor
 from typing import Any, Dict, List, Tuple, Union
 
 import dace
@@ -16,10 +18,12 @@ import pace.util
 import pace.util.grid
 from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig
-from pace.dsl.dace.orchestrate import dace_inhibitor, orchestrate
+from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
+from pace.dsl.stencil_config import CompilationConfig, RunMode
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
+from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
 from .comm import CreatesCommSelector
@@ -61,6 +65,11 @@ class DriverConfig:
             in a later commit.
         save_restart: whether to save the state output as restart files at
             cleanup time
+        pair_debug: if True, runs two copies of the model each using
+            half of the available MPI ranks, and compares results across these two
+            copies during model execution, raising an exception if results ever
+            differ. This is considerably more expensive since all model data must
+            be communicated at the start and end of every stencil call.
         intermediate_restart: list of time steps to save intermediate restart files
     """
 
@@ -92,6 +101,7 @@ class DriverConfig:
     dycore_only: bool = False
     disable_step_physics: bool = False
     save_restart: bool = False
+    pair_debug: bool = False
     intermediate_restart: List[int] = dataclasses.field(default_factory=list)
 
     @functools.cached_property
@@ -107,6 +117,15 @@ class DriverConfig:
         return timedelta(
             days=self.days, hours=self.hours, minutes=self.minutes, seconds=self.seconds
         )
+
+    def n_timesteps(self) -> int:
+        """Computing how many timestep required to carry the simulation."""
+        if self.total_time < self.timestep:
+            warnings.warn(
+                f"No simulation possible: you asked for {self.total_time} "
+                f"simulation time but the timestep is {self.timestep}"
+            )
+        return floor(self.total_time.total_seconds() / self.timestep.total_seconds())
 
     @functools.cached_property
     def do_dry_convective_adjustment(self) -> bool:
@@ -158,6 +177,23 @@ class DriverConfig:
             kwargs["initialization"]
         )
 
+        if (
+            isinstance(kwargs["stencil_config"], dict)
+            and "dace_config" in kwargs["stencil_config"].keys()
+        ):
+            kwargs["stencil_config"]["dace_config"] = DaceConfig.from_dict(
+                data=kwargs["stencil_config"]["dace_config"]
+            )
+        if (
+            isinstance(kwargs["stencil_config"], dict)
+            and "compilation_config" in kwargs["stencil_config"].keys()
+        ):
+            kwargs["stencil_config"][
+                "compilation_config"
+            ] = CompilationConfig.from_dict(
+                data=kwargs["stencil_config"]["compilation_config"]
+            )
+
         return dacite.from_dict(
             data_class=cls, data=kwargs, config=dacite.Config(strict=True)
         )
@@ -179,26 +215,52 @@ class Driver:
         self.config: DriverConfig = config
         self.time = self.config.start_time
         self.comm_config = config.comm_config
-        self.comm = config.comm_config.get_comm()
+        global_comm = config.comm_config.get_comm()
+        if config.pair_debug:
+            world = int(global_comm.Get_rank() >= (global_comm.Get_size() // 2))
+            self.comm = global_comm.Split(color=world, key=global_comm.Get_rank())
+            stencil_compare_comm = global_comm
+        else:
+            self.comm = global_comm
+            stencil_compare_comm = None
         self.performance_config = self.config.performance_config
         with self.performance_config.total_timer.clock("initialization"):
-            communicator = pace.util.CubedSphereCommunicator.from_layout(
+            communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
+            self.update_driver_config_with_communicator(communicator)
 
-            dace_config = DaceConfig(
-                communicator=communicator, backend=self.config.stencil_config.backend
-            )
-            self.config.stencil_config.dace_config = dace_config
+            if self.config.stencil_config.compilation_config.run_mode == RunMode.Build:
+
+                def exit_function(*args, **kwargs):
+                    print(
+                        "Running in build-only mode and compilation finished, exiting"
+                    )
+                    exit(0)
+
+                setattr(self, "step_all", exit_function)
             orchestrate(
                 obj=self,
-                config=dace_config,
-                method_to_orchestrate="dycore_only_loop_orchestrated",
-                dace_constant_args=["state"],
+                config=self.config.stencil_config.dace_config,
+                method_to_orchestrate="_critical_path_step_all",
+                dace_constant_args=["timer"],
+            )
+            orchestrate(
+                obj=self,
+                config=self.config.stencil_config.dace_config,
+                method_to_orchestrate="_step_dynamics",
+                dace_constant_args=["state", "timer"],
+            )
+            orchestrate(
+                obj=self,
+                config=self.config.stencil_config.dace_config,
+                method_to_orchestrate="_step_physics",
             )
 
             self.quantity_factory, self.stencil_factory = _setup_factories(
-                config=config, communicator=communicator
+                config=config,
+                communicator=communicator,
+                stencil_compare_comm=stencil_compare_comm,
             )
 
             self.state = self.config.initialization.get_driver_state(
@@ -245,6 +307,7 @@ class Driver:
                 quantity_factory=self.quantity_factory,
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,
+                tendency_state=self.state.tendency_state,
             )
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
@@ -266,6 +329,29 @@ class Driver:
 
         self._time_run = self.config.start_time
 
+    def update_driver_config_with_communicator(
+        self, communicator: CubedSphereCommunicator
+    ) -> None:
+        dace_config = DaceConfig(
+            communicator=communicator,
+            backend=self.config.stencil_config.compilation_config.backend,
+            tile_nx=self.config.nx_tile,
+            tile_nz=self.config.nz,
+        )
+        self.config.stencil_config.dace_config = dace_config
+        original_config = self.config.stencil_config.compilation_config
+        compilation_config = CompilationConfig(
+            backend=original_config.backend,
+            rebuild=original_config.rebuild,
+            validate_args=original_config.validate_args,
+            format_source=original_config.format_source,
+            device_sync=original_config.device_sync,
+            run_mode=original_config.run_mode,
+            use_minimal_caching=original_config.use_minimal_caching,
+            communicator=communicator,
+        )
+        self.config.stencil_config.compilation_config = compilation_config
+
     @dace_inhibitor
     def _callback_diagnostics(self):
         self._time_run += self.config.timestep
@@ -285,73 +371,52 @@ class Driver:
             restart_path=restart_path,
         )
 
-    def dycore_only_loop_orchestrated(
+    @dace_inhibitor
+    def end_of_step_actions(self, step: int):
+        """Gather operations unrelated to computation.
+        Using a function allows those actions to be removed from the orchestration path.
+        """
+        if __debug__:
+            logger.info(f"Finished stepping {step}")
+        self.time += self.config.timestep
+        if not ((step + 1) % self.config.diagnostics_config.output_frequency):
+            self.diagnostics.store(time=self.time, state=self.state)
+        if (
+            self.restart.save_intermediate_restart
+            and step in self.config.intermediate_restart
+        ):
+            self._write_restart_files(restart_path=f"RESTART_{step}")
+        self.performance_config.collect_performance()
+
+    def _critical_path_step_all(
         self,
-        state: DycoreState,
-        time_steps: int,
-        time_step_io_freq: int,
-        intermediate_restart: list,
+        steps_count: int,
+        timer: pace.util.Timer,
+        dt: float,
     ):
-        for t in dace.nounroll(range(time_steps)):
-            self._step_dynamics(
-                state=state,
-                timer=self.performance_config.timestep_timer,
-            )
-            if (t % time_step_io_freq) == 0:
-                self._callback_diagnostics()
-            if t in intermediate_restart:
-                self._callback_restart(restart_path=f"RESTART_{t}")
+        """Start of code path where performance is critical.
+
+        This function must remain orchestrateable by DaCe (e.g.
+        all code not parsable due to python complexity needs to be moved
+        to a callback, like end_of_step_actions)."""
+        for step in dace.nounroll(range(steps_count)):
+            with timer.clock("mainloop"):
+                self._step_dynamics(
+                    self.state.dycore_state,
+                    self.performance_config.timestep_timer,
+                )
+                if not self.config.disable_step_physics:
+                    self._step_physics(timestep=dt)
+                self.end_of_step_actions(step)
 
     def step_all(self):
         logger.info("integrating driver forward in time")
         with self.performance_config.total_timer.clock("total"):
-            end_time = self.config.start_time + self.config.total_time
-            # Temporary DaCe execution code to restrict orchestration to the dycore only
-            # and properly error out. Original code conserved in else
-            if self.config.stencil_config.dace_config.is_dace_orchestrated():
-                time_steps = int(
-                    (end_time - self.time).seconds / self.config.timestep.seconds
-                )
-                logger.info(f"  time_steps: {time_steps}")
-                if not self.config.disable_step_physics:
-                    raise RuntimeError("DaCe orchestration doesn't handle physics.")
-                self.dycore_only_loop_orchestrated(
-                    state=self.state.dycore_state,
-                    time_steps=time_steps,
-                    time_step_io_freq=(
-                        self.config.diagnostics_config.output_frequency,
-                    ),
-                    intermediate_restart=self.config.intermediate_restart,
-                )
-            else:
-                timestep_counter = 0
-                while self.time < end_time:
-                    self.step(timestep=self.config.timestep)
-                    timestep_counter += 1
-                    if (
-                        timestep_counter
-                        % self.config.diagnostics_config.output_frequency
-                        == 0
-                    ):
-                        self.diagnostics.store(time=self.time, state=self.state)
-                    if (
-                        self.restart.save_intermediate_restart
-                        and timestep_counter in self.config.intermediate_restart
-                    ):
-                        self._write_restart_files(
-                            restart_path=f"RESTART_{timestep_counter}"
-                        )
-
-    def step(self, timestep: timedelta):
-        with self.performance_config.timestep_timer.clock("mainloop"):
-            self._step_dynamics(
-                self.state.dycore_state,
-                self.performance_config.timestep_timer,
+            self._critical_path_step_all(
+                steps_count=self.config.n_timesteps(),
+                timer=self.performance_config.timestep_timer,
+                dt=self.config.timestep.total_seconds(),
             )
-            if not self.config.disable_step_physics:
-                self._step_physics(timestep=timestep.total_seconds())
-        self.time += timestep
-        self.performance_config.collect_performance()
 
     def _step_dynamics(
         self,
@@ -375,17 +440,20 @@ class Driver:
         self.end_of_step_update(
             dycore_state=self.state.dycore_state,
             phy_state=self.state.physics_state,
-            tendency_state=self.state.tendency_state,
+            u_dt=self.state.tendency_state.u_dt.storage,
+            v_dt=self.state.tendency_state.v_dt.storage,
+            pt_dt=self.state.tendency_state.pt_dt.storage,
             dt=float(timestep),
         )
 
     def _write_performance_json_output(self):
         self.performance_config.write_out_performance(
             self.comm,
-            self.config.stencil_config.backend,
+            self.config.stencil_config.compilation_config.backend,
             self.config.dt_atmos,
         )
 
+    @dace_inhibitor
     def _write_restart_files(self, restart_path="RESTART"):
         self.restart.save_state_as_restart(
             state=self.state,
@@ -418,8 +486,23 @@ def log_subtile_location(partitioner: pace.util.TilePartitioner, rank: int):
 
 
 def _setup_factories(
-    config: DriverConfig, communicator: pace.util.CubedSphereCommunicator
+    config: DriverConfig,
+    communicator: pace.util.CubedSphereCommunicator,
+    stencil_compare_comm,
 ) -> Tuple["pace.util.QuantityFactory", "pace.dsl.StencilFactory"]:
+    """
+    Args:
+        config: configuration of driver
+        communicator: performs communication needed for grid initialization
+        stencil_compare_comm: if given, all stencils created by the returned factory
+            will compare data to its "pair" rank before and after every stencil call,
+            used for debugging in "pair_debug" mode.
+
+    Returns:
+        quantity_factory: creates Quantities
+        stencil_factory: creates Stencils
+    """
+
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.nx_tile,
         ny_tile=config.nx_tile,
@@ -435,10 +518,11 @@ def _setup_factories(
         sizer=sizer, cube=communicator
     )
     quantity_factory = pace.util.QuantityFactory.from_backend(
-        sizer, backend=config.stencil_config.backend
+        sizer, backend=config.stencil_config.compilation_config.backend
     )
     stencil_factory = pace.dsl.StencilFactory(
         config=config.stencil_config,
         grid_indexing=grid_indexing,
+        comm=stencil_compare_comm,
     )
     return quantity_factory, stencil_factory

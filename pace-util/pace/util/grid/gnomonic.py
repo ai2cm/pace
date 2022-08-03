@@ -166,7 +166,8 @@ def _corner_to_center_mean(corner_array):
 
 def normalize_vector(np, *vector_components):
     scale = np.divide(
-        1.0, np.sum(np.asarray([item ** 2.0 for item in vector_components])) ** 0.5
+        1.0,
+        np.sum(np.asarray([item ** 2.0 for item in vector_components]), axis=0) ** 0.5,
     )
     return np.asarray([item * scale for item in vector_components])
 

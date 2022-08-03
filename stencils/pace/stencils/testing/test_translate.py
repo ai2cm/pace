@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 from typing import Any, Dict, List
@@ -8,7 +9,8 @@ import pytest
 import pace.dsl
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import DaceConfig
+from pace.dsl.stencil import CompilationConfig
 from pace.stencils.testing import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
 from pace.util.testing import compare_scalar, success, success_array
@@ -167,6 +169,57 @@ def process_override(threshold_overrides, testobj, test_name, backend):
             )
 
 
+def perturb(input):
+    roundoff = 1e-16
+    for data in input.values():
+        if isinstance(data, np.ndarray) and data.dtype in (np.float64, np.float32):
+            not_fill_value = data < 1e30
+            # multiply data by roundoff-level error
+            data[not_fill_value] *= 1.0 + np.random.uniform(
+                low=-roundoff, high=roundoff, size=data[not_fill_value].shape
+            )
+
+
+N_THRESHOLD_SAMPLES = 10
+
+
+def get_thresholds(testobj, input_data):
+    return _get_thresholds(testobj.compute, input_data)
+
+
+def get_thresholds_parallel(testobj, input_data, communicator):
+    def compute(input):
+        return testobj.compute_parallel(input, communicator)
+
+    return _get_thresholds(compute, input_data)
+
+
+def _get_thresholds(compute_function, input_data):
+    output_list = []
+    for _ in range(N_THRESHOLD_SAMPLES):
+        input = copy.deepcopy(input_data)
+        perturb(input)
+        output_list.append(compute_function(input))
+
+    output_varnames = output_list[0].keys()
+    for varname in output_varnames:
+        if output_list[0][varname].dtype in (
+            np.float64,
+            np.int64,
+            np.float32,
+            np.int32,
+        ):
+            samples = [out[varname] for out in output_list]
+            pointwise_max_abs_errors = np.max(samples, axis=0) - np.min(samples, axis=0)
+            max_rel_diff = np.nanmax(
+                pointwise_max_abs_errors / np.min(np.abs(samples), axis=0)
+            )
+            max_abs_diff = np.nanmax(pointwise_max_abs_errors)
+            print(
+                f"{varname}: max rel diff {max_rel_diff}, max abs diff {max_abs_diff}"
+            )
+
+
 @pytest.mark.sequential
 @pytest.mark.skipif(
     MPI is not None and MPI.COMM_WORLD.Get_size() > 1,
@@ -188,11 +241,10 @@ def test_sequential_savepoint(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
     stencil_config = pace.dsl.StencilConfig(
-        backend=backend,
+        compilation_config=CompilationConfig(backend=backend),
         dace_config=DaceConfig(
             communicator=None,
             backend=backend,
-            orchestration=DaCeOrchestration.Python,
         ),
     )
     # Reduce error threshold for GPU
@@ -209,6 +261,7 @@ def test_sequential_savepoint(
         + case.testobj.in_vars["parameters"]
     )
     input_data = {name: input_data[name] for name in input_names}
+    original_input_data = copy.deepcopy(input_data)
     # run python version of functionality
     output = case.testobj.compute(input_data)
     failing_names: List[str] = []
@@ -243,6 +296,7 @@ def test_sequential_savepoint(
             passing_names.append(failing_names.pop())
         ref_data_out[varname] = [ref_data]
     if len(failing_names) > 0:
+        get_thresholds(case.testobj, input_data=original_input_data)
         out_filename = os.path.join(OUTDIR, f"{case.savepoint_name}.nc")
         save_netcdf(
             case.testobj,
@@ -306,11 +360,10 @@ def test_parallel_savepoint(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
     stencil_config = pace.dsl.StencilConfig(
-        backend=backend,
+        compilation_config=CompilationConfig(backend=backend),
         dace_config=DaceConfig(
-            communicator=None,
+            communicator=communicator,
             backend=backend,
-            orchestration=DaCeOrchestration.Python,
         ),
     )
     # Increase minimum error threshold for GPU
@@ -362,7 +415,7 @@ def test_parallel_savepoint(
             passing_names.append(failing_names.pop())
     if len(failing_names) > 0:
         out_filename = os.path.join(
-            OUTDIR, f"{case.savepoint_name}-{case.grid[0].rank}.nc"
+            OUTDIR, f"{case.savepoint_name}-{case.grid.rank}.nc"
         )
         try:
             save_netcdf(

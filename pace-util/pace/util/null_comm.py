@@ -69,6 +69,9 @@ class NullComm(Comm):
     def Irecv(self, recvbuf, source, **kwargs):
         return NullAsyncResult(recvbuf)
 
+    def sendrecv(self, sendbuf, dest, **kwargs):
+        return sendbuf
+
     def Split(self, color, key):
         # key argument is ignored, assumes we're calling the ranks from least to
         # greatest when mocking Split
