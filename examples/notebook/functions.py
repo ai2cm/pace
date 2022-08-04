@@ -16,6 +16,7 @@ from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
 from fv3core.stencils.tracer_2d_1l import TracerAdvection
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
+from pace.dsl.stencil_config import CompilationConfig, RunMode
 from pace.util import (
     CubedSphereCommunicator,
     CubedSpherePartitioner,
@@ -27,6 +28,7 @@ from pace.util import (
 from pace.util.constants import RADIUS
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
+
 
 
 class GridType(enum.Enum):
@@ -224,9 +226,23 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
     dace_config = DaceConfig(
         communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
     )
+
+    compilation_config = CompilationConfig(backend=backend, 
+        rebuild=True, 
+        validate_args=True, 
+        format_source=False, 
+        device_sync=False, 
+        run_mode=RunMode.BuildAndRun, 
+        use_minimal_caching=False, 
+        communicator=communicator,
+)
+
     stencil_config = StencilConfig(
-        backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
+        compare_to_numpy=False,
+        compilation_config=compilation_config,
+        dace_config = dace_config
     )
+
     grid_indexing = GridIndexing.from_sizer_and_communicator(
         sizer=sizer, cube=communicator
     )
