@@ -105,7 +105,6 @@ def define_metadata(
     - mpi_rank
     """
 
-    mpi_size = mpi_comm.Get_size()
     mpi_rank = mpi_comm.Get_rank()
 
     # to match fortran
@@ -125,7 +124,7 @@ def define_metadata(
         "nhalo": nhalo,
         "nxhalo": nx + 2 * nhalo,
         "nyhalo": ny + 2 * nhalo,
-        "tile": mpi_size,
+        "tile": 6,
     }
 
     units = {
