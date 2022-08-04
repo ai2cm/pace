@@ -1,6 +1,5 @@
 import copy as cp
 import enum
-import os
 from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -28,7 +27,6 @@ from pace.util import (
 from pace.util.constants import RADIUS
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
-
 
 
 class GridType(enum.Enum):
@@ -227,20 +225,21 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
         communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
     )
 
-    compilation_config = CompilationConfig(backend=backend, 
-        rebuild=True, 
-        validate_args=True, 
-        format_source=False, 
-        device_sync=False, 
-        run_mode=RunMode.BuildAndRun, 
-        use_minimal_caching=False, 
+    compilation_config = CompilationConfig(
+        backend=backend,
+        rebuild=True,
+        validate_args=True,
+        format_source=False,
+        device_sync=False,
+        run_mode=RunMode.BuildAndRun,
+        use_minimal_caching=False,
         communicator=communicator,
-)
+    )
 
     stencil_config = StencilConfig(
         compare_to_numpy=False,
         compilation_config=compilation_config,
-        dace_config = dace_config
+        dace_config=dace_config,
     )
 
     grid_indexing = GridIndexing.from_sizer_and_communicator(
