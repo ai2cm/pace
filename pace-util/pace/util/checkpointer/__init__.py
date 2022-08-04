@@ -6,3 +6,4 @@ from .thresholds import (
     Threshold,
     ThresholdCalibrationCheckpointer,
 )
+from .validation import ValidationCheckpointer
