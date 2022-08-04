@@ -1111,11 +1111,6 @@ def plot_projection_field(
     lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
 
     if mpi_rank == 0:
-        if not os.path.isdir(os.path.dirname(fOut)):
-            os.mkdir(os.path.dirname(fOut))
-        else:
-            if os.path.isfile(fOut):
-                os.remove(fOut)
 
         field_plot = np.squeeze(field.data)
 
@@ -1248,12 +1243,6 @@ def write_initial_condition_tofile(
         uC = unstagger_coordinate(uC)
         vC = unstagger_coordinate(vC)
 
-        if not os.path.isdir(os.path.dirname(fOut)):
-            os.mkdir(os.path.dirname(fOut))
-        else:
-            if os.path.isfile(fOut):
-                os.remove(fOut)
-
         data = Dataset(fOut, "w")
 
         for dim in ["tile", "nx", "ny", "nx1", "ny1"]:
@@ -1348,11 +1337,6 @@ def write_coordinate_variables_tofile(
     dy = np.squeeze(configuration["communicator"].gather(dy))
 
     if mpi_rank == 0:
-        if not os.path.isdir(os.path.dirname(fOut)):
-            os.mkdir(os.path.dirname(fOut))
-        else:
-            if os.path.isfile(fOut):
-                os.remove(fOut)
 
         data = Dataset(fOut, "w")
 
