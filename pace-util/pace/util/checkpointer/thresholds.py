@@ -1,7 +1,7 @@
 import collections
 import contextlib
 import dataclasses
-from typing import List, Mapping, Optional, Union
+from typing import Dict, List, Mapping, Optional, Union
 
 import gt4py.storage
 import numpy as np
@@ -49,30 +49,31 @@ class ThresholdCalibrationCheckpointer(Checkpointer):
             SavepointName, List[Mapping[VariableName, np.ndarray]]
         ] = collections.defaultdict(list)
         self._factor = factor
-        self._sums: Mapping[
+        self._abs_sums: Mapping[
             SavepointName, List[Mapping[VariableName, np.ndarray]]
         ] = collections.defaultdict(list)
         self._n_trials = 0
         self._n_calls: Mapping[SavepointName, int] = collections.defaultdict(int)
 
     def __call__(self, savepoint_name, **kwargs):
-        n_calls = self._n_calls[savepoint_name]
-        if len(self._minimums[savepoint_name]) < n_calls + 1:
+        i_call = self._n_calls[savepoint_name]
+        if len(self._minimums[savepoint_name]) < i_call + 1:
             self._minimums[savepoint_name].append(
                 collections.defaultdict(lambda: np.inf)
             )
             self._maximums[savepoint_name].append(
                 collections.defaultdict(lambda: -np.inf)
             )
+            self._abs_sums[savepoint_name].append(collections.defaultdict(lambda: 0.0))
         for varname, array in kwargs.items():
             array: np.ndarray = cast_to_ndarray(array)
-            self._minimums[savepoint_name][n_calls][varname] = np.minimum(
-                self._minimums[savepoint_name][n_calls][varname], array
+            self._minimums[savepoint_name][i_call][varname] = np.minimum(
+                self._minimums[savepoint_name][i_call][varname], array
             )
-            self._maximums[savepoint_name][n_calls][varname] = np.maximum(
-                self._maximums[savepoint_name][n_calls][varname], array
+            self._maximums[savepoint_name][i_call][varname] = np.maximum(
+                self._maximums[savepoint_name][i_call][varname], array
             )
-            self._sums[savepoint_name][n_calls][varname] += array
+            self._abs_sums[savepoint_name][i_call][varname] += np.abs(array)
 
         self._n_calls[savepoint_name] += 1
 
@@ -95,20 +96,29 @@ class ThresholdCalibrationCheckpointer(Checkpointer):
     @property
     def thresholds(
         self,
-    ) -> Mapping[SavepointName, List[Mapping[VariableName, Threshold]]]:
+    ) -> Dict[SavepointName, List[Dict[VariableName, Threshold]]]:
         if self._n_trials < 2:
             raise InsufficientTrialsError(
                 "at least 2 trials required to generate thresholds"
             )
-        return_value = {}
+        return_value: Dict[SavepointName, List[Dict[VariableName, Threshold]]] = {}
         for savepoint_name in self._minimums:
             return_value[savepoint_name] = []
-            for trial in range(self._n_trials):
+            for i_call in range(self._n_calls[savepoint_name]):
                 return_value[savepoint_name].append({})
-                for varname, minimum in self._minimums[savepoint_name][trial].items():
-                    maximum = self._maximums[savepoint_name][trial][varname]
-                    mean = self._sums[savepoint_name][trial][varname] / self._n_trials
-                    return_value[savepoint_name][trial][varname] = Threshold(
-                        relative=self._factor * (maximum - minimum) / mean,
-                        absolute=self._factor * (maximum - minimum),
+                for varname, minimum in self._minimums[savepoint_name][i_call].items():
+                    maximum = self._maximums[savepoint_name][i_call][varname]
+                    mean_abs = (
+                        self._abs_sums[savepoint_name][i_call][varname] / self._n_trials
                     )
+                    if np.all(mean_abs == 0.0):
+                        relative = 0.0
+                    else:
+                        relative = self._factor * np.nanmax(
+                            (maximum - minimum) / mean_abs
+                        )
+                    return_value[savepoint_name][i_call][varname] = Threshold(
+                        relative=relative,
+                        absolute=self._factor * np.max(maximum - minimum),
+                    )
+        return return_value
