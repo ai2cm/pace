@@ -109,12 +109,12 @@ def define_metadata(
     mpi_rank = mpi_comm.Get_rank()
 
     # to match fortran
-    nx = namelistDict["nx"] + 1
-    ny = namelistDict["ny"] + 1
+    nx = namelistDict["nx"]
+    ny = namelistDict["ny"]
     if "nz" in namelistDict.keys():
-        nz = namelistDict["nz"] + 1
+        nz = namelistDict["nz"]
     else:
-        nz = 79 + 1
+        nz = 79
 
     dimensions = {
         "nx": nx,
@@ -205,9 +205,9 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
     communicator = CubedSphereCommunicator(mpi_comm, partitioner)
 
     sizer = SubtileGridSizer.from_tile_params(
-        nx_tile=dimensions["nx"] - 1,
-        ny_tile=dimensions["ny"] - 1,
-        nz=dimensions["nz"] - 1,
+        nx_tile=dimensions["nx"],
+        ny_tile=dimensions["ny"],
+        nz=dimensions["nz"],
         n_halo=dimensions["nhalo"],
         extra_dim_lengths={},
         layout=layout,
@@ -680,17 +680,19 @@ def create_initial_state(
 
     # extend initial conditions into one vertical layer
     dimensions["nz"] = 1
-    empty = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"], dimensions["nz"] + 1))
+    empty = np.zeros(
+        (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+    )
 
     tracer_3d = np.copy(empty)
     uC_3d = np.copy(empty)
     vC_3d = np.copy(empty)
     delp_3d = np.copy(empty)
 
-    tracer_3d[:, :, 0] = tracer.data
+    tracer_3d[:-1, :-1, 0] = tracer.data
     uC_3d[:, :, 0] = uC.data
     vC_3d[:, :, 0] = vC.data
-    delp_3d[:, :, 0] = delp.data
+    delp_3d[:-1, :-1, 0] = delp.data
 
     tracer = Quantity(
         tracer_3d,
@@ -766,7 +768,9 @@ def run_finite_volume_fluxprep(
     dimensions, origins, units = split_metadata(metadata)
 
     # create empty quantities to be filled
-    empty = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"], dimensions["nz"] + 1))
+    empty = np.zeros(
+        (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+    )
 
     crx = Quantity(
         empty,
@@ -1054,7 +1058,7 @@ def plot_grid(
             )
         )
 
-        fig = plt.figure(figsize=(8, 4))
+        fig = plt.figure(figsize=(12, 6))
         fig.patch.set_facecolor("white")
         ax = fig.add_subplot(111, projection=ccrs.Robinson())
         ax.set_facecolor(".4")
@@ -1093,7 +1097,7 @@ def plot_projection_field(
 ) -> None:
     """
     Use: plot_projection_field(configuration, metadata,
-            field, pltoDict, mpi_rank, fOut,
+            field, plotDict, mpi_rank, fOut,
             show=False)
 
     Creates a Robinson projection and plots provided field.
@@ -1115,7 +1119,7 @@ def plot_projection_field(
 
         field_plot = np.squeeze(field.data)
 
-        fig = plt.figure(figsize=(8, 4))
+        fig = plt.figure(figsize=(12, 6))
         fig.patch.set_facecolor("white")
         ax = fig.add_subplot(111, projection=ccrs.Robinson())
         ax.set_facecolor(".4")
