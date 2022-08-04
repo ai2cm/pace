@@ -42,7 +42,6 @@ nhalo = 3
 pressure_base = 10
 tracer_base = 1.0
 fvt_dict = {"grid_type": 0, "hord": 6}
-print("Something")
 
 
 def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
@@ -70,7 +69,6 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
         "plot_jupyterAnimation",
         "figure_everyNhours",
         "write_initialCondition",
-        "plot_gridLayout",
         "show_figures",
         "tracer_center",
         "nSeconds",
@@ -80,7 +78,8 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
 
     namelistDict = {}
     for i in namelist_variables:
-        namelistDict[i] = local_variables[i]
+        if i in local_variables:
+            namelistDict[i] = local_variables[i]
 
     return namelistDict
 
@@ -112,7 +111,10 @@ def define_metadata(
     # to match fortran
     nx = namelistDict["nx"] + 1
     ny = namelistDict["ny"] + 1
-    nz = 79 + 1
+    if "nz" in namelistDict.keys():
+        nz = namelistDict["nz"] + 1
+    else:
+        nz = 79 + 1
 
     dimensions = {
         "nx": nx,
