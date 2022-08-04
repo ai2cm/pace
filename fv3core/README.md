@@ -198,13 +198,50 @@ PULL=False make build
 
 ### Bare-Metal
 
-To build a bare-metal installation of Pace you must have Python version 3.8 installed. We recommend creating a virtual environment specifically for Pace.
+Pace requires gcc > 9.2, cuda, MPI, and Python 3.8 on your system in order to run bare-metal.
+
 You will also need the headers of the boost libraries in your `path` (boost itself does not need to be installed).
+
+```shell
+cd $BOOST_LOCATION
+wget https://boostorg.jfrog.io/artifactory/main/release/1.79.0/source/boost_1_79_0.tar.gz
+tar -xzf boost_1_79_0.tar.gz
+mkdir -p boost_1_79_0/include
+mv boost_1_79_0/boost boost_1_79_0/include/.
+setenv BOOST_ROOT $BOOST_LOCATION/boost_1_79_0
+```
 
 After cloning Pace you will need to update the repository's submodules:
 ```shell
-$ git submodule update --init --recursive
+$ git submodule update --init
 ```
+
+We recommend creating a python venv or conda environment specifically for Pace.\
+
+Inside of your pace `venv` or conda environment install the Python requirements and GT4Py:
+```shell
+$ pip install -r requirements.txt -c constraints.txt
+$ pip install --no-cache-dir -c ./constraints.txt "$PYHOME/PACE/pace/external/gt4py"
+python3 -m gt4py.gt_src_manager install --major-version 2
+```
+
+And then use pip to install the Pace components
+```shell
+$ pip install -e ./pace-util
+$ pip install -e ./fv3core
+$ pip install -e ./fv3gfs-physics
+$ pip install -e ./dsl
+$ pip install -e ./driver
+$ pip install -e ./stencils
+```
+
+You can now run and develop Pace directly. To run the tests simply invoke pytest:
+```shell
+$ pytest [TEST_ARGS] fv3core/tests/main
+$ pytest --data_path=path/to/test/data [TEST_ARGS] --threshold_overrides_file=fv3core/tests/savepoint/translate/overrides/standard.yaml fv3core/tests/savepoint
+$ mpirun -np 6 python3 -m mpi4py -m pytest --maxfail=1 --data_path=path/to/test/data [TEST_ARGS] --threshold_overrides_file=fv3core/tests/savepoint/translate/overrides/standard.yaml -m parallel fv3core/tests/savepoint
+```
+using the same test arguments as inside the container.
 
 ## Relevant repositories
 
