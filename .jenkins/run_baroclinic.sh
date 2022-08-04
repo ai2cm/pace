@@ -19,7 +19,7 @@ cat << EOF > compile.daint.slurm
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --output=compile.out
-#SBATCH --time=01:00:00
+#SBATCH --time=03:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --account=s1053
 #SBATCH --partition=normal
@@ -33,7 +33,7 @@ export GT_CACHE_DIR_NAME=/tmp
 srun python ${PACE_DIR}/driver/examples/compile_driver.py ${JENKINS_DIR}/driver_configs/compile_baroclinic_c576_54ranks.yaml ${PACE_DIR}
 EOF
 
-launch_job compile.daint.slurm 7200
+launch_job compile.daint.slurm 15000
 
 cat << EOF > run.daint.slurm
 #!/bin/bash
