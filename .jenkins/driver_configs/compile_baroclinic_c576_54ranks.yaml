@@ -1,6 +1,6 @@
 stencil_config:
   compilation_config:
-    backend: gtc:gpu
+    backend: gt:gpu
     rebuild: false
     validate_args: true
     format_source: false
