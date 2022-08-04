@@ -299,7 +299,7 @@ def get_lon_lat_edges(
     dimensions, origins, units = split_metadata(metadata)
 
     lon = Quantity(
-        configuration["grid_data"].lon.data * 180 / np.pi,
+        configuration["metric_terms"].lon.data * 180 / np.pi,
         ("x_interface", "y_interface"),
         units["coord"],
         origins["compute_2d"],
@@ -307,7 +307,7 @@ def get_lon_lat_edges(
         backend,
     )
     lat = Quantity(
-        configuration["grid_data"].lat.data * 180 / np.pi,
+        configuration["metric_terms"].lat.data * 180 / np.pi,
         ("x_interface", "y_interface"),
         units["coord"],
         origins["compute_2d"],
@@ -522,14 +522,14 @@ def calculate_winds_from_streamfunction_grid(
 
 
 def create_initial_state(
-    grid_data: GridData,
+    metric_terms: MetricTerms,
     metadata: Dict[str, Any],
     tracer_center: Tuple[float, float],
     test_case: str,
 ) -> Dict[str, Quantity]:
     """
     Use: initialState =
-            create_initial_state(grid_data, metadata, tracer_center,
+            create_initial_state(metric_terms, metadata, tracer_center,
             test_case)
 
     Creates the initial state for one of the defined test cases:
@@ -546,7 +546,7 @@ def create_initial_state(
         - extends initial fields into a single vertical layer
 
     Inputs:
-    - grid_data (cofiguration) from configure_domain()
+    - metric_terms (cofiguration) from configure_domain()
     - metadata (Dict) from define_metadata()
     - tracerCenter
     - test_case ("a" or "b")
@@ -562,7 +562,7 @@ def create_initial_state(
     dimensions, origins, units = split_metadata(metadata)
 
     lonA_halo = Quantity(
-        grid_data.lon_agrid.data,
+        metric_terms.lon_agrid.data,
         ("x_halo", "y_halo"),
         units["coord"],
         origins["halo"],
@@ -570,7 +570,7 @@ def create_initial_state(
         backend,
     )
     latA_halo = Quantity(
-        grid_data.lat_agrid.data,
+        metric_terms.lat_agrid.data,
         ("x_halo", "y_halo"),
         units["coord"],
         origins["halo"],
@@ -579,7 +579,7 @@ def create_initial_state(
     )
 
     lon_halo = Quantity(
-        grid_data.lon.data,
+        metric_terms.lon.data,
         ("x_halo", "y_halo"),
         units["coord"],
         origins["halo"],
@@ -587,7 +587,7 @@ def create_initial_state(
         backend,
     )
     lat_halo = Quantity(
-        grid_data.lat.data,
+        metric_terms.lat.data,
         ("x_halo", "y_halo"),
         units["coord"],
         origins["halo"],
@@ -641,7 +641,7 @@ def create_initial_state(
 
     # winds
     dx_halo = Quantity(
-        grid_data.dx.data,
+        metric_terms.dx.data,
         ("x_halo", "y_halo"),
         units["dist"],
         origins["halo"],
@@ -649,7 +649,7 @@ def create_initial_state(
         backend,
     )
     dy_halo = Quantity(
-        grid_data.dy.data,
+        metric_terms.dy.data,
         ("x_halo", "y_halo"),
         units["dist"],
         origins["halo"],
@@ -1302,7 +1302,7 @@ def write_coordinate_variables_tofile(
     lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
 
     lonA = Quantity(
-        configuration["grid_data"].lon_agrid.data * 180 / np.pi,
+        configuration["metric_terms"].lon_agrid.data * 180 / np.pi,
         ("x", "y"),
         units["coord"],
         origins["compute_2d"],
@@ -1310,7 +1310,7 @@ def write_coordinate_variables_tofile(
         backend,
     )
     latA = Quantity(
-        configuration["grid_data"].lat_agrid.data * 180 / np.pi,
+        configuration["metric_terms"].lat_agrid.data * 180 / np.pi,
         ("x", "y"),
         units["coord"],
         origins["compute_2d"],
@@ -1319,7 +1319,7 @@ def write_coordinate_variables_tofile(
     )
 
     dx = Quantity(
-        configuration["grid_data"].dx.data,
+        configuration["metric_terms"].dx.data,
         ("x", "y_interface"),
         units["dist"],
         origins["compute_2d"],
@@ -1327,7 +1327,7 @@ def write_coordinate_variables_tofile(
         backend,
     )
     dy = Quantity(
-        configuration["grid_data"].dy.data,
+        configuration["metric_terms"].dy.data,
         ("x_interface", "y"),
         units["dist"],
         origins["compute_2d"],
