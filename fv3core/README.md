@@ -182,6 +182,8 @@ $ make dev_tests TEST_ARGS="-–which_modules=<stencil name(s)>"
 **Please also review the [Porting conventions](#porting-conventions) section for additional explanation**
 ## Installation
 
+### Docker Image
+
 To build the `us.gcr.io/vcm-ml/fv3core` image with required dependencies for running the Python code, run
 
 ```shell
@@ -192,6 +194,16 @@ Add `PULL=False` to build from scratch without running `docker pull`:
 
 ```shell
 PULL=False make build
+```
+
+### Bare-Metal
+
+To build a bare-metal installation of Pace you must have Python version 3.8 installed. We recommend creating a virtual environment specifically for Pace.
+You will also need the headers of the boost libraries in your `path` (boost itself does not need to be installed).
+
+After cloning Pace you will need to update the repository's submodules:
+```shell
+$ git submodule update --init --recursive
 ```
 
 ## Relevant repositories
