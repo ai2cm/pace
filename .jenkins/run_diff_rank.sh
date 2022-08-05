@@ -29,7 +29,7 @@ cat << EOF > run.daint.slurm
 ########################################################
 set -x
 export OMP_NUM_THREADS=12
-srun python pace.driver.run -m ${JENKINS_DIR}/driver_configs/baroclinic_c192_54ranks.yaml
+srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/baroclinic_c192_54ranks.yaml
 EOF
 
 launch_job run.daint.slurm 15000
