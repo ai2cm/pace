@@ -51,7 +51,7 @@ There are two ways to run the tests, manually by explicitly invoking `pytest` or
 First enter the container and navigate to the pace directory:
 
 ```shell
-make dev
+DEV=y make dev
 cd /pace
 ```
 
@@ -63,7 +63,7 @@ To run the sequential and parallel tests for the dynmical core (fv3core), you ca
 
 ```shell
 pytest -v -s --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore/ ./fv3core/tests
-mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3core/test_data/c12_6ranks_standard/ ./fv3core/tests
+mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore ./fv3core/tests
 ```
 
 Similarly, you can run the sequential and parallel tests for the physical parameterizations (fv3gfs-physics). Currently, only the microphysics is integrated into pace and will be tested.
