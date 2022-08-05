@@ -27,7 +27,7 @@ make build
 
 ## Downloading test data
 
-The unit and regression tests of pace require data generated from the Fortran reference implementation which has to be downloaded from a Google Cloud Platform storage bucket. Since the bucket is setup as "requester pays", you need a valid GCP account to download the test data. If you do not have a GCP account, there is an option to download basic test data from a public FTP server and you can skip the next step.
+The unit and regression tests of pace require data generated from the Fortran reference implementation which has to be downloaded from a Google Cloud Platform storage bucket. Since the bucket is setup as "requester pays", you need a valid GCP account to download the test data.
 
 First, make sure you have configured the authentication with user credientials and configured Docker with the following commands:
 ```shell
@@ -35,7 +35,7 @@ gcloud auth login
 gcloud auth configure-docker
 ```
 
-Next, you can download the test data for the dynamical core and the physics tests. If you prefer to download test data from the FTP server, use `make USE_FTP=yes get_test_data` instead and this will avoid fetching from a GCP storage bucket.
+Next, you can download the test data for the dynamical core and the physics tests.
 
 ```shell
 cd fv3core
@@ -44,6 +44,8 @@ cd ../fv3gfs-physics
 make get_test_data
 cd ..
 ```
+
+If you do not have a GCP account, there is an option to download basic test data from a public FTP server and you can skip the GCP authentication step above. To download test data from the FTP server, use `make USE_FTP=yes get_test_data` instead and this will avoid fetching from a GCP storage bucket.
 
 ## Running the tests (manually)
 
