@@ -17,6 +17,8 @@ TEST_ARGS ?=
 TARGET ?=dycore
 TEST_DATA_ROOT ?=$(CWD)/test_data/
 TEST_DATA_HOST ?=$(TEST_DATA_ROOT)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)
+FTP_SERVER ?=ftp://anonymous:anonymous@ftp.cscs.ch
+TEST_DATA_FTP ?=/in/put/abc/cosmo/fuo/pace/fv3core/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)
 FV3UTIL_DIR=$(CWD)/external/pace-util
 
 FV3=fv3core
@@ -102,15 +104,22 @@ endif
 sync_test_data:
 	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)
 
+sync_test_data_from_ftp:
+	mkdir -p $(TEST_DATA_HOST) && cd $(TEST_DATA_HOST) && lftp -c "set ftp:list-options -a; open $(FTP_SERVER); mirror --delete --use-cache --verbose --allow-chown --allow-suid --no-umask --parallel=2 --max-errors=0 . $(TEST_DATA_FTP)"
+
 push_python_regressions:
 	gsutil -m cp -r $(TEST_DATA_HOST)/python_regressions $(DATA_BUCKET)python_regressions
 
 get_test_data:
-	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
-	[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt -)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
-	rm -rf $(TEST_DATA_HOST) && \
-	$(MAKE) sync_test_data && \
-	$(MAKE) unpack_test_data ;\
+	if [ -z "${USE_FTP}" ] ; then \
+		if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
+		[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt -)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
+		rm -rf $(TEST_DATA_HOST) && \
+		$(MAKE) sync_test_data && \
+		$(MAKE) unpack_test_data ;\
+		fi ; \
+	else \
+	  $(MAKE) sync_test_data_from_ftp ; \
 	fi
 
 unpack_test_data:
