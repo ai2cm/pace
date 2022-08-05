@@ -17,6 +17,7 @@ Before the top-level build, make sure you have configured the authentication wit
 $ gcloud auth login
 $ gcloud auth configure-docker
 ```
+(Note: if you do not have a GCP account you can still fetch basic unit testing data and can skip this step initially.)
 
 You will also need to update the git submodules are cloned and at the correct version:
 ```shell
@@ -31,6 +32,7 @@ $ make get_test_data
 $ cd ../
 $ make build
 ```
+(Note: if you have not authenticated with a GCP account, you can alternatively fetch test data from an FTP server using `make USE_FTP=yes get_test_data` to get started.)
 
 For serial tests (these take a bit of time), there are two options:
 
