@@ -33,11 +33,14 @@ build:
 		-t $(PACE_IMAGE) \
 		.
 
-dev:
+enter:
 	docker run --rm -it \
 		--network host \
 		$(VOLUMES) \
-		$(PACE_IMAGE) bash
+	$(PACE_IMAGE) bash
+
+dev:
+	DEV=y $(MAKE) enter
 
 test_util:
 	if [ $(shell $(CHECK_CHANGED_SCRIPT) pace-util) != false ]; then \
