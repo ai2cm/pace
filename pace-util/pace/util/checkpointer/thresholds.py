@@ -25,6 +25,9 @@ class Threshold:
     absolute: Optional[float] = None
 
 
+SavepointThresholds = Dict[SavepointName, List[Dict[VariableName, Threshold]]]
+
+
 def cast_to_ndarray(array: ArrayLike) -> np.ndarray:
     if isinstance(array, Quantity):
         array = array.data
@@ -95,7 +98,7 @@ class ThresholdCalibrationCheckpointer(Checkpointer):
     @property
     def thresholds(
         self,
-    ) -> Dict[SavepointName, List[Dict[VariableName, Threshold]]]:
+    ) -> SavepointThresholds:
         if self._n_trials < 2:
             raise InsufficientTrialsError(
                 "at least 2 trials required to generate thresholds"
