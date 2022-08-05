@@ -57,7 +57,7 @@ cd /pace
 
 Note that by entering the container with the `make dev` command, volumes for code and test data will be mounted into the container and modifications inside the container will be retained.
 
-There are two sets of tests. The "sequential tests" test components which do not require MPI-parallelism. The "parallel tests" can only within an MPI environment. 
+There are two sets of tests. The "sequential tests" test components which do not require MPI-parallelism. The "parallel tests" can only within an MPI environment.
 
 To run the sequential and parallel tests for the dynmical core (fv3core), you can execute the following commands (these take a bit of time):
 
