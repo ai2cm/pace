@@ -10,114 +10,83 @@ This git repository is laid out as a mono-repo, containing multiple independent 
 
 ![Graph of interdependencies of Pace modules, generated from dependences.dot](./dependencies.svg)
 
-## Testing all components
+## Building the docker container
 
-Before the top-level build, make sure you have configured the authentication with user credientials and configured Docker with the following commands:
+While it is possible to install and build pace bare-metal, the easiest setup is to use a Docker container for testing and developing pace.
+
+First, you will need to update the git submodules so that any dependencies are cloned and at the correct version:
+```shell
+git submodule update --init --recursive
+```
+
+Then build the `pace` docker image at the top level.
+```shell
+make build
+```
+
+## Downloading test data
+
+The unit and regression tests of pace require data generated from the Fortran reference implementation which has to be downloaded from a Google Cloud Platform storage bucket. Since the bucket is setup as "requester pays", you need a valid GCP account to download the test data.
+
+First, make sure you have configured the authentication with user credientials and configured Docker with the following commands:
 ```shell
 gcloud auth login
 gcloud auth configure-docker
 ```
 
-You will also need to update the git submodules are cloned and at the correct version:
-```shell
-git submodule update --init --recursive
-```
-
-Then build `pace` docker image at the top level.
-
-```shell
-make build
-```
-
-## Dynamical core tests
-
-To run dynamical core tests, first get the test data from inside the `fv3core` directory.
+Next, you can download the test data for the dynamical core and the physics tests.
 
 ```shell
 cd fv3core
 make get_test_data
-cd ../
-```
-
-For sequential tests (these take a bit of time), there are two options:
-
-1. To enter the container and run the dynamical core sequential tests (main and savepoint tests):
-
-```shell
-make dev
-cd /pace
-pytest -v -s --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore/ ./fv3core/tests
-```
-
-2. To run the tests without opening the docker container (just savepoint tests):
-
-```shell
-DEV=y make savepoint_tests
-```
-
-For parallel tests:
-
-1. Enter the container and run the dynamical core parallel tests
-
-```shell
-make dev
-cd /pace
-mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3core/test_data/c12_6ranks_standard/ ./fv3core/tests
-```
-
-2. Run the tests without opening the docker container
-
-```shell
-DEV=y make savepoint_tests_mpi
-```
-
-Additional test options are described under `fv3core` documentation.
-
-## Physics tests
-
-To run physics tests, first get the test data from inside the `fv3core` directory. Currently only the microphysics is supported.
-
-```shell
-cd fv3gfs-physics 
+cd ../fv3gfs-physics
 make get_test_data
 cd ..
 ```
 
-In the container, the sequential physics tests can be run by:
+## Running the tests (manually)
 
-```shell
-DEV=y make dev
-cd /pace
-pytest -v -s --data_path=/pace/fv3gfs-physics/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./fv3gfs-physics/tests --threshold_overrides_file=/pace/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
-```
-In this case, DEV=y mounts the local directory, so any changes in it will take effect without needing to rebuild the container.
+There are two ways to run the tests, manually by explicitly invoking `pytest` or autmatically using make targets. The former can be used both inside the Docker container as well as for a bare-metal installation and will be described here.
 
-or use the second method (as in dynamical core testing) outside of the docker container:
-
-```shell
-DEV=y make physics_savepoint_tests
-```
-
-For running the parallel tests use:
+First enter the container and navigate to the pace directory:
 
 ```shell
 make dev
 cd /pace
+```
+
+Note that by entering the container with the `make dev` command, volumes for code and test data will be mounted into the container and modifications inside the container will be retained.
+
+There are two sets of tests. The "sequential tests" test components which do not require MPI-parallelism. The "parallel tests" can only within an MPI environment. 
+
+To run the sequential and parallel tests for the dynmical core (fv3core), you can execute the following commands (these take a bit of time):
+
+```shell
+pytest -v -s --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore/ ./fv3core/tests
+mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3core/test_data/c12_6ranks_standard/ ./fv3core/tests
+```
+
+Similarly, you can run the sequential and parallel tests for the physical parameterizations (fv3gfs-physics). Currently, only the microphysics is integrated into pace and will be tested.
+
+```shell
+pytest -v -s --data_path=/pace/fv3gfs-physics/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./fv3gfs-physics/tests --threshold_overrides_file=/pace/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3gfs-physics/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./fv3gfs-physics/tests --threshold_overrides_file=/pace/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
-or
+Finally, to test the pace infrastructure utilities (pace-util), you can run the following commands:
 
 ```shell
-DEV=y make physics_savepoint_tests_mpi
+cd pace-util
+make test
 ```
 
-## Infrastructure utilities tests
+## Running the tests automatically using Docker
 
-Inside the container, the infrastructure utilities tests can be run as follows:
+To automatize testing, a set of convenience commands is available that build the Docker image, run the container and execute the tests (dynamical core and physics only). This is mainly useful for CI/CD workflows.
 
 ```shell
-make dev
-cd /pace/pace-util
-make test
+DEV=y make savepoint_tests
+DEV=y make savepoint_tests_mpi
+DEV=y make physics_savepoint_tests
+DEV=y make physics_savepoint_tests_mpi
 ```
