@@ -82,6 +82,13 @@ def parse_args():
         default=None,
     )
     parser.add_argument(
+        "--diff_python_path",
+        type=str,
+        action="store",
+        help="python reference path",
+        default=None,
+    )
+    parser.add_argument(
         "--start",
         type=int,
         action="store",
@@ -132,6 +139,17 @@ def gather_fortran_data_at_klevel(path: str, cn: int, var: str, klevel: int):
 
 if __name__ == "__main__":
     args = parse_args()
+    if (
+        sum(
+            x is not None
+            for x in [args.fortran_data_path, args.diff_init, args.diff_python_path]
+        )
+        > 1
+    ):
+        raise RuntimeError(
+            "Scirpt called with confilicting options between: \
+            Diff init, diff python and diff to fortran"
+        )
     if args.fortran_data_path is not None:
         if args.fortran_var is None:
             raise ValueError(
@@ -145,6 +163,11 @@ if __name__ == "__main__":
         raise ValueError(
             "You must specify the path (fortran_data_path) to Fortran data."
         )
+    if args.diff_python_path is not None:
+        ds_ref = xr.open_zarr(
+            store=zarr.DirectoryStore(path=args.diff_python_path), consolidated=False
+        )
+        python_ref = ds_ref[args.variable][:, :, 0 : args.size, 0 : args.size]
     ds = xr.open_zarr(
         store=zarr.DirectoryStore(path=args.zarr_output), consolidated=False
     )
@@ -185,6 +208,8 @@ if __name__ == "__main__":
             plotted_data = python - fortran[t, :]
         elif args.diff_init:
             plotted_data = python - python_init
+        elif args.diff_python_path is not None:
+            plotted_data = python - python_ref.isel(time=t).values
         else:
             plotted_data = python
         fig, ax = plt.subplots(1, 1, subplot_kw={"projection": ccrs.Robinson()})
