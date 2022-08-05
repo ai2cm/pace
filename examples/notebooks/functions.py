@@ -136,7 +136,7 @@ def define_metadata(
         "pressure": "Pa",
         "psi": "kg/m/s",
         "wind": "m/s",
-        "mass": "kg"
+        "mass": "kg",
     }
 
     origins = {
@@ -471,7 +471,7 @@ def calculate_winds_from_streamfunction_grid(
 
     if grid == GridType.AGrid:
         u_grid = np.zeros(psi.data.shape) * np.nan
-        u_grid[:, 1:-1] = - 0.5 * (psi.data[:, 2:] - psi.data[:, :-2]) / dy.data[:, 1:-1]
+        u_grid[:, 1:-1] = -0.5 * (psi.data[:, 2:] - psi.data[:, :-2]) / dy.data[:, 1:-1]
 
         v_grid = np.zeros(psi.data.shape) * np.nan
         v_grid[1:-1, :] = 0.5 * (psi.data[2:, :] - psi.data[:-2, :]) / dx.data[1:-1, :]
@@ -485,10 +485,10 @@ def calculate_winds_from_streamfunction_grid(
 
     elif grid == GridType.DGrid:
         u_grid = np.zeros(psi.data.shape) * np.nan
-        u_grid[:, 1:] = - (psi.data[:, 1:] - psi.data[:, :-1]) / dy.data[:, 1:]
+        u_grid[:, 1:] = -(psi.data[:, 1:] - psi.data[:, :-1]) / dy.data[:, 1:]
 
         v_grid = np.zeros(psi.data.shape) * np.nan
-        v_grid[1:, :] = - (psi.data[1:, :] - psi.data[:-1, :]) / dy.data[1:, :]
+        v_grid[1:, :] = -(psi.data[1:, :] - psi.data[:-1, :]) / dy.data[1:, :]
 
     return u_grid, v_grid
 
@@ -716,7 +716,13 @@ def create_initial_state(
         gt4py_backend=backend,
     )
 
-    initial_state = {"delp": delp, "tracer": tracer, "u_cgrid": u_cgrid, "v_cgrid": v_cgrid, "psi": psi}
+    initial_state = {
+        "delp": delp,
+        "tracer": tracer,
+        "u_cgrid": u_cgrid,
+        "v_cgrid": v_cgrid,
+        "psi": psi,
+    }
 
     return initial_state
 
@@ -811,7 +817,15 @@ def run_finite_volume_fluxprep(
     )
 
     fvf_prep(
-        initial_state["u_cgrid"], initial_state["v_cgrid"], crx, cry, xaf, yaf, ucv, vcv, timestep
+        initial_state["u_cgrid"],
+        initial_state["v_cgrid"],
+        crx,
+        cry,
+        xaf,
+        yaf,
+        ucv,
+        vcv,
+        timestep,
     )  # THIS WILL MODIFY CREATED QUANTITIES, but not change uc, vc
 
     mfxd = Quantity(
@@ -945,7 +959,7 @@ def run_advection_step_with_reset(
 ) -> Dict[str, Quantity]:
     """
     Use: tracer_advection_data =
-            run_advection_step_with_reset(tracer_advection_data_initial, 
+            run_advection_step_with_reset(tracer_advection_data_initial,
             tracer_advection_data,
             tracer_advection, timestep)
 
@@ -1061,7 +1075,7 @@ def plot_projection_field(
     mpi_rank: Any,
     f_out: str,
     show: bool = False,
-    unstagger: str = "first"
+    unstagger: str = "first",
 ) -> None:
     """
     Use: plot_projection_field(configuration, metadata,
@@ -1095,7 +1109,7 @@ def plot_projection_field(
         if "title" not in plot_dict:
             plot_dict["title"] = "forgot to add title"
 
-        if isinstance(field.data, np.ndarray): 
+        if isinstance(field.data, np.ndarray):
             field = field.data
 
         field_plot = np.squeeze(field)
