@@ -132,7 +132,7 @@ def define_metadata(
         "coord": "degrees",
         "courant": "",
         "dist": "m",
-        "mass": "kg",
+        "tracer": "/",
         "pressure": "Pa",
         "psi": "kg/m/s",
         "wind": "m/s",
@@ -622,13 +622,21 @@ def create_initial_state(
     )
 
     # streamfunction
-    _, psi_staggered = calculate_streamfunction(
+    psi, psi_staggered = calculate_streamfunction(
         lonA_halo.data,
         latA_halo.data,
         lon_halo.data,
         lat_halo.data,
         dimensions,
         test_case,
+    )
+    psi_halo = Quantity(
+        psi,
+        ("x_halo", "y_halo"),
+        units["psi"],
+        origins["halo"],
+        (dimensions["nxhalo"], dimensions["nyhalo"]),
+        backend,
     )
     psi_staggered_halo = Quantity(
         psi_staggered,
@@ -687,11 +695,13 @@ def create_initial_state(
     uC_3d = np.copy(empty)
     vC_3d = np.copy(empty)
     delp_3d = np.copy(empty)
+    psi_3d = np.copy(empty)
 
     tracer_3d[:-1, :-1, 0] = tracer.data
     uC_3d[:, :, 0] = uC.data
     vC_3d[:, :, 0] = vC.data
     delp_3d[:-1, :-1, 0] = delp.data
+    psi_3d[:-1, :-1, 0] = psi_halo.data
 
     tracer = Quantity(
         tracer_3d,
@@ -725,13 +735,16 @@ def create_initial_state(
         (dimensions["nx"], dimensions["ny"], dimensions["nz"]),
         backend,
     )
+    psi = Quantity(
+        psi_3d,
+        ("x", "y", "z"),
+        units["psi"],
+        origins["compute_3d"],
+        (dimensions["nx"], dimensions["ny"], dimensions["nz"]),
+        backend,
+    )
 
-    initialState = {
-        "delp": delp,
-        "tracer": tracer,
-        "uC": uC,
-        "vC": vC,
-    }
+    initialState = {"delp": delp, "tracer": tracer, "uC": uC, "vC": vC, "psi": psi}
 
     return initialState
 
