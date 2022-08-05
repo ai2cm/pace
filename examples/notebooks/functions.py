@@ -29,12 +29,6 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
-class GridType(enum.Enum):
-    AGrid = 1
-    CGrid = 2
-    DGrid = 3
-
-
 backend = "numpy"
 density = 1
 layout = (1, 1)
@@ -44,9 +38,15 @@ tracer_base = 1.0
 fvt_dict = {"grid_type": 0, "hord": 6}
 
 
+class GridType(enum.Enum):
+    AGrid = 1
+    CGrid = 2
+    DGrid = 3
+
+
 def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Use: namelistDict =
+    Use: namelist_dict =
             store_namelist_variables(local_variables)
 
     Stores namelist variables into a dictionary.
@@ -55,7 +55,7 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
     - locally defined variables (locals())
 
     Outputs:
-    - namelistDict (Dict)
+    - namelist_dict (Dict)
     """
 
     namelist_variables = [
@@ -64,11 +64,11 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
         "timestep",
         "nDays",
         "test_case",
-        "plot_outputDuring",
-        "plot_outputAfter",
-        "plot_jupyterAnimation",
+        "plot_output_during",
+        "plot_output_after",
+        "plot_jupyter_animation",
         "figure_everyNhours",
-        "write_initialCondition",
+        "write_initial_condition",
         "show_figures",
         "tracer_center",
         "nSeconds",
@@ -76,12 +76,12 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
         "nSteps_advection",
     ]
 
-    namelistDict = {}
+    namelist_dict = {}
     for i in namelist_variables:
         if i in local_variables:
-            namelistDict[i] = local_variables[i]
+            namelist_dict[i] = local_variables[i]
 
-    return namelistDict
+    return namelist_dict
 
 
 def define_metadata(
@@ -136,6 +136,7 @@ def define_metadata(
         "pressure": "Pa",
         "psi": "kg/m/s",
         "wind": "m/s",
+        "mass": "kg"
     }
 
     origins = {
@@ -299,20 +300,20 @@ def get_lon_lat_edges(
     dimensions, origins, units = split_metadata(metadata)
 
     lon = Quantity(
-        configuration["metric_terms"].lon.data * 180 / np.pi,
-        ("x_interface", "y_interface"),
-        units["coord"],
-        origins["compute_2d"],
-        (dimensions["nx1"], dimensions["ny1"]),
-        backend,
+        data=configuration["metric_terms"].lon.data * 180 / np.pi,
+        dims=("x_interface", "y_interface"),
+        units=units["coord"],
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx1"], dimensions["ny1"]),
+        gt4py_backend=backend,
     )
     lat = Quantity(
-        configuration["metric_terms"].lat.data * 180 / np.pi,
-        ("x_interface", "y_interface"),
-        units["coord"],
-        origins["compute_2d"],
-        (dimensions["nx1"], dimensions["ny1"]),
-        backend,
+        data=configuration["metric_terms"].lat.data * 180 / np.pi,
+        dims=("x_interface", "y_interface"),
+        units=units["coord"],
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx1"], dimensions["ny1"]),
+        gt4py_backend=backend,
     )
 
     if gather:
@@ -365,16 +366,15 @@ def create_gaussian_multiplier(
 
 
 def calculate_streamfunction(
-    lonA: np.ndarray,
-    latA: np.ndarray,
+    lon_agrid: np.ndarray,
+    lat_agrid: np.ndarray,
     lon: np.ndarray,
     lat: np.ndarray,
-    dimensions: Dict[str, int],
     test_case: str,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: psi, psi_staggered =
-            calculate_streamfunction(lonA, latA, lon, lat, dimensions, test_case)
+            calculate_streamfunction(lonA, latA, lon, lat, test_case)
 
     Creates streamfunction from input quantities, for defined test cases:
         - a) constant radius (as in Fortran test case 1)
@@ -392,20 +392,18 @@ def calculate_streamfunction(
     - psi_staggered (streamfunction, but on tile corners.)
     """
 
-    xA_t = np.cos(latA) * np.cos(lonA)
-    yA_t = np.cos(latA) * np.sin(lonA)
-    zA_t = np.sin(latA)
-    x_t = np.cos(lat) * np.cos(lon)
+    yA_t = np.cos(lat_agrid) * np.sin(lon_agrid)
+    zA_t = np.sin(lat_agrid)
     y_t = np.cos(lat) * np.sin(lon)
     z_t = np.sin(lat)
 
     if test_case == "a":
-        RadA = RADIUS * np.ones(lonA.shape)
+        RadA = RADIUS * np.ones(lon_agrid.shape)
         Rad = RADIUS * np.ones(lon.shape)
         multiplierA = zA_t
         multiplier = z_t
     elif test_case == "b":
-        RadA = RADIUS * np.cos(latA / 2)
+        RadA = RADIUS * np.cos(lat_agrid / 2)
         Rad = RADIUS * np.cos(lat / 2)
         multiplierA = zA_t
         multiplier = z_t
@@ -421,7 +419,7 @@ def calculate_streamfunction(
         multiplierA = (yA_t + zA_t) / 1.5
         multiplier = (y_t + z_t) / 1.5
     else:
-        RadA = np.ones(lonA.shape) * np.nan
+        RadA = np.ones(lon_agrid.shape) * np.nan
         Rad = np.ones(lon.shape) * np.nan
         multiplierA = np.nan
         multiplier = np.nan
@@ -431,10 +429,6 @@ def calculate_streamfunction(
     Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0)
     psi = -1 * Ubar * RadA * multiplierA
     psi_staggered = -1 * Ubar * Rad * multiplier
-
-    # original multiplier = np.sin(latA[ii, jj]) * np.cos(alpha)
-    #                 - np.cos(lonA[ii, jj]) * np.cos(latA[ii, jj]) * np.sin(alpha)
-    # but since alpha = 0, we don't need to worry about anything.
 
     return psi, psi_staggered
 
@@ -476,47 +470,25 @@ def calculate_winds_from_streamfunction_grid(
     v_grid = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
 
     if grid == GridType.AGrid:
-        for jj in range(
-            dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
-        ):
-            for ii in range(
-                dimensions["nhalo"] - 1, dimensions["nx"] + dimensions["nhalo"] + 1
-            ):
-                psi1 = 0.5 * (psi.data[ii, jj] + psi.data[ii, jj - 1])
-                psi2 = 0.5 * (psi.data[ii, jj] + psi.data[ii, jj + 1])
-                dist = dy.data[ii, jj]
-                u_grid[ii, jj] = 0 if dist == 0 else -1.0 * (psi2 - psi1) / dist
+        u_grid = np.zeros(psi.data.shape) * np.nan
+        u_grid[:, 1:-1] = - 0.5 * (psi.data[:, 2:] - psi.data[:, :-2]) / dy.data[:, 1:-1]
 
-                psi1 = 0.5 * (psi.data[ii, jj] + psi.data[ii - 1, jj])
-                psi2 = 0.5 * (psi.data[ii, jj] + psi.data[ii + 1, jj])
-                dist = dx.data[ii, jj]
-                v_grid[ii, jj] = 0 if dist == 0 else (psi2 - psi1) / dist
+        v_grid = np.zeros(psi.data.shape) * np.nan
+        v_grid[1:-1, :] = 0.5 * (psi.data[2:, :] - psi.data[:-2, :]) / dx.data[1:-1, :]
 
     elif grid == GridType.CGrid:
-        v_grid = np.zeros(psi.data.shape) * np.nan
-        v_grid[:-1] = (psi.data[1:] - psi.data[:-1]) / dx.data[:-1]
-
         u_grid = np.zeros(psi.data.shape) * np.nan
         u_grid[:, :-1] = -1 * (psi.data[:, 1:] - psi.data[:, :-1]) / dy.data[:, :-1]
 
-    elif grid == GridType.DGrid:
-        for jj in range(
-            dimensions["nhalo"] - 1, dimensions["ny"] + dimensions["nhalo"] + 1
-        ):
-            for ii in range(
-                dimensions["nhalo"] - 1, dimensions["nx"] + dimensions["nhalo"] + 1
-            ):
-                dist = dx.data[ii, jj]
-                v_grid[ii, jj] = (
-                    0 if dist == 0 else (psi.data[ii, jj] - psi.data[ii - 1, jj]) / dist
-                )
+        v_grid = np.zeros(psi.data.shape) * np.nan
+        v_grid[:-1] = (psi.data[1:] - psi.data[:-1]) / dx.data[:-1, :]
 
-                dist = dy.data[ii, jj]
-                u_grid[ii, jj] = (
-                    0
-                    if dist == 0
-                    else -1.0 * (psi.data[ii, jj] - psi.data[ii, jj - 1]) / dist
-                )
+    elif grid == GridType.DGrid:
+        u_grid = np.zeros(psi.data.shape) * np.nan
+        u_grid[:, 1:] = - (psi.data[:, 1:] - psi.data[:, :-1]) / dy.data[:, 1:]
+
+        v_grid = np.zeros(psi.data.shape) * np.nan
+        v_grid[1:, :] = - (psi.data[1:, :] - psi.data[:-1, :]) / dy.data[1:, :]
 
     return u_grid, v_grid
 
@@ -528,7 +500,7 @@ def create_initial_state(
     test_case: str,
 ) -> Dict[str, Quantity]:
     """
-    Use: initialState =
+    Use: initial_state =
             create_initial_state(metric_terms, metadata, tracer_center,
             test_case)
 
@@ -552,137 +524,137 @@ def create_initial_state(
     - test_case ("a" or "b")
 
     Outputs:
-    - initialState (Dict):
+    - initial_state (Dict):
         - delp
         - tracer
         - uC
         - vC
+        - psi
     """
 
     dimensions, origins, units = split_metadata(metadata)
 
-    lonA_halo = Quantity(
-        metric_terms.lon_agrid.data,
-        ("x_halo", "y_halo"),
-        units["coord"],
-        origins["halo"],
-        (dimensions["nxhalo"], dimensions["nyhalo"]),
-        backend,
+    lon_agrid_halo = Quantity(
+        data=metric_terms.lon_agrid.data,
+        dims=("x_halo", "y_halo"),
+        units=units["coord"],
+        origin=origins["halo"],
+        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        gt4py_backend=backend,
     )
-    latA_halo = Quantity(
-        metric_terms.lat_agrid.data,
-        ("x_halo", "y_halo"),
-        units["coord"],
-        origins["halo"],
-        (dimensions["nxhalo"], dimensions["nyhalo"]),
-        backend,
+    lat_agrid_halo = Quantity(
+        data=metric_terms.lat_agrid.data,
+        dims=("x_halo", "y_halo"),
+        units=units["coord"],
+        origin=origins["halo"],
+        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        gt4py_backend=backend,
     )
 
     lon_halo = Quantity(
-        metric_terms.lon.data,
-        ("x_halo", "y_halo"),
-        units["coord"],
-        origins["halo"],
-        (dimensions["nxhalo"], dimensions["nyhalo"]),
-        backend,
+        data=metric_terms.lon.data,
+        dims=("x_halo", "y_halo"),
+        units=units["coord"],
+        origin=origins["halo"],
+        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        gt4py_backend=backend,
     )
     lat_halo = Quantity(
-        metric_terms.lat.data,
-        ("x_halo", "y_halo"),
-        units["coord"],
-        origins["halo"],
-        (dimensions["nxhalo"], dimensions["nyhalo"]),
-        backend,
+        data=metric_terms.lat.data,
+        dims=("x_halo", "y_halo"),
+        units=units["coord"],
+        origin=origins["halo"],
+        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        gt4py_backend=backend,
     )
 
     # tracer
     gaussian_multiplier = create_gaussian_multiplier(
-        lonA_halo.data,
-        latA_halo.data,
+        lon_agrid_halo.data,
+        lat_agrid_halo.data,
         dimensions,
         tracer_center,
     )
     tracer = Quantity(
-        gaussian_multiplier * tracer_base,
-        ("x", "y"),
-        units["mass"],
-        origins["compute_2d"],
-        (dimensions["nx"], dimensions["ny"]),
-        backend,
+        data=gaussian_multiplier * tracer_base,
+        dims=("x", "y"),
+        units=units["tracer"],
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx"], dimensions["ny"]),
+        gt4py_backend=backend,
     )
 
     # pressure
     delp = Quantity(
-        np.ones(tracer.data.shape) * pressure_base,
-        ("x", "y"),
-        units["pressure"],
-        origins["compute_2d"],
-        (dimensions["nx"], dimensions["ny"]),
-        backend,
+        data=np.ones(tracer.data.shape) * pressure_base,
+        dims=("x", "y"),
+        units=units["pressure"],
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx"], dimensions["ny"]),
+        gt4py_backend=backend,
     )
 
     # streamfunction
     psi, psi_staggered = calculate_streamfunction(
-        lonA_halo.data,
-        latA_halo.data,
+        lon_agrid_halo.data,
+        lat_agrid_halo.data,
         lon_halo.data,
         lat_halo.data,
-        dimensions,
         test_case,
     )
     psi_halo = Quantity(
-        psi,
-        ("x_halo", "y_halo"),
-        units["psi"],
-        origins["halo"],
-        (dimensions["nxhalo"], dimensions["nyhalo"]),
-        backend,
+        data=psi,
+        dims=("x_halo", "y_halo"),
+        units=units["psi"],
+        origin=origins["halo"],
+        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        gt4py_backend=backend,
     )
     psi_staggered_halo = Quantity(
-        psi_staggered,
-        ("x_halo", "y_halo"),
-        units["psi"],
-        origins["halo"],
-        (dimensions["nxhalo"], dimensions["nyhalo"]),
-        backend,
+        data=psi_staggered,
+        dims=("x_halo", "y_halo"),
+        units=units["psi"],
+        origin=origins["halo"],
+        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        gt4py_backend=backend,
     )
 
     # winds
     dx_halo = Quantity(
-        metric_terms.dx.data,
-        ("x_halo", "y_halo"),
-        units["dist"],
-        origins["halo"],
-        (dimensions["nxhalo"], dimensions["nyhalo"]),
-        backend,
+        data=metric_terms.dx.data,
+        dims=("x_halo", "y_halo"),
+        units=units["dist"],
+        origin=origins["halo"],
+        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        gt4py_backend=backend,
     )
     dy_halo = Quantity(
-        metric_terms.dy.data,
-        ("x_halo", "y_halo"),
-        units["dist"],
-        origins["halo"],
-        (dimensions["nxhalo"], dimensions["nyhalo"]),
-        backend,
+        data=metric_terms.dy.data,
+        dims=("x_halo", "y_halo"),
+        units=units["dist"],
+        origin=origins["halo"],
+        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        gt4py_backend=backend,
     )
     grid = GridType.CGrid
-    uC, vC = calculate_winds_from_streamfunction_grid(
+    u_cgrid, v_cgrid = calculate_winds_from_streamfunction_grid(
         psi_staggered_halo, dx_halo, dy_halo, dimensions, grid=grid
     )
-    uC = Quantity(
-        uC,
-        ("x", "y_interface"),
-        units["wind"],
-        origins["compute_2d"],
-        (dimensions["nx"], dimensions["ny1"]),
-        backend,
+    u_cgrid = Quantity(
+        data=u_cgrid,
+        dims=("x", "y_interface"),
+        units=units["wind"],
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx"], dimensions["ny1"]),
+        gt4py_backend=backend,
     )
-    vC = Quantity(
-        vC,
-        ("x_interface", "y"),
-        units["wind"],
-        origins["compute_2d"],
-        (dimensions["nx1"], dimensions["ny"]),
-        backend,
+    v_cgrid = Quantity(
+        data=v_cgrid,
+        dims=("x_interface", "y"),
+        units=units["wind"],
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx1"], dimensions["ny"]),
+        gt4py_backend=backend,
     )
 
     # extend initial conditions into one vertical layer
@@ -692,72 +664,72 @@ def create_initial_state(
     )
 
     tracer_3d = np.copy(empty)
-    uC_3d = np.copy(empty)
-    vC_3d = np.copy(empty)
+    u_cgrid_3d = np.copy(empty)
+    v_cgrid_3d = np.copy(empty)
     delp_3d = np.copy(empty)
     psi_3d = np.copy(empty)
 
     tracer_3d[:-1, :-1, 0] = tracer.data
-    uC_3d[:, :, 0] = uC.data
-    vC_3d[:, :, 0] = vC.data
+    u_cgrid_3d[:, :, 0] = u_cgrid.data
+    v_cgrid_3d[:, :, 0] = v_cgrid.data
     delp_3d[:-1, :-1, 0] = delp.data
-    psi_3d[:-1, :-1, 0] = psi_halo.data
+    psi_3d[:, :, 0] = psi_halo.data
 
     tracer = Quantity(
-        tracer_3d,
-        ("x", "y", "z"),
-        units["mass"],
-        origins["compute_3d"],
-        (dimensions["nx"], dimensions["ny"], dimensions["nz"]),
-        backend,
+        data=tracer_3d,
+        dims=("x", "y", "z"),
+        units=units["tracer"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
-    uC = Quantity(
-        uC_3d,
-        ("x", "y_interface", "z"),
-        units["wind"],
-        origins["compute_3d"],
-        (dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        backend,
+    u_cgrid = Quantity(
+        data=u_cgrid_3d,
+        dims=("x", "y_interface", "z"),
+        units=units["wind"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
-    vC = Quantity(
-        vC_3d,
-        ("x_interface", "y", "z"),
-        units["wind"],
-        origins["compute_3d"],
-        (dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        backend,
+    v_cgrid = Quantity(
+        data=v_cgrid_3d,
+        dims=("x_interface", "y", "z"),
+        units=units["wind"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
     delp = Quantity(
-        delp_3d,
-        ("x", "y", "z"),
-        units["wind"],
-        origins["compute_3d"],
-        (dimensions["nx"], dimensions["ny"], dimensions["nz"]),
-        backend,
+        data=delp_3d,
+        dims=("x", "y", "z"),
+        units=units["wind"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
     psi = Quantity(
-        psi_3d,
-        ("x", "y", "z"),
-        units["psi"],
-        origins["compute_3d"],
-        (dimensions["nx"], dimensions["ny"], dimensions["nz"]),
-        backend,
+        data=psi_3d,
+        dims=("x", "y", "z"),
+        units=units["psi"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
 
-    initialState = {"delp": delp, "tracer": tracer, "uC": uC, "vC": vC, "psi": psi}
+    initial_state = {"delp": delp, "tracer": tracer, "u_cgrid": u_cgrid, "v_cgrid": v_cgrid, "psi": psi}
 
-    return initialState
+    return initial_state
 
 
 def run_finite_volume_fluxprep(
     configuration: Dict[str, Any],
-    initialState: Dict[str, Quantity],
+    initial_state: Dict[str, Quantity],
     metadata: Dict[str, Any],
     timestep: float,
 ) -> Dict[str, Quantity]:
     """
     Use: fluxPrep =
-            run_finite_volume_fluxprep(configuration, initialState,
+            run_finite_volume_fluxprep(configuration, initial_state,
             metadata, timestep)
 
     Initializes and runs the FiniteVolumeFluxPrep class to get
@@ -765,12 +737,12 @@ def run_finite_volume_fluxprep(
 
     Inputs:
     - configuration (Dict) from configure_domain()
-    - initialState (Dict) from create_initial_state()
+    - initial_tate (Dict) from create_initial_state()
     - metadata (Dict) from define_metadata()
     - timestep (float) for advection
 
     Outputs:
-    - fluxPrep (Dict):
+    - flux_prep (Dict):
         - crx and cry
         - mfxd and mfyd
         - ucv, vcv
@@ -785,52 +757,52 @@ def run_finite_volume_fluxprep(
     )
 
     crx = Quantity(
-        empty,
-        ("x_interface", "y", "z"),
-        units["courant"],
-        origins["compute_3d"],
-        (dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        backend,
+        data=empty,
+        dims=("x_interface", "y", "z"),
+        units=units["courant"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
     cry = Quantity(
-        empty,
-        ("x", "y_interface", "z"),
-        units["courant"],
-        origins["compute_3d"],
-        (dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        backend,
+        data=empty,
+        dims=("x", "y_interface", "z"),
+        units=units["courant"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
     xaf = Quantity(
-        empty,
-        ("x_interface", "y", "z"),
-        units["areaflux"],
-        origins["compute_3d"],
-        (dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        backend,
+        data=empty,
+        dims=("x_interface", "y", "z"),
+        units=units["areaflux"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
     yaf = Quantity(
-        empty,
-        ("x", "y_interface", "z"),
-        units["areaflux"],
-        origins["compute_3d"],
-        (dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        backend,
+        data=empty,
+        dims=("x", "y_interface", "z"),
+        units=units["areaflux"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
     ucv = Quantity(
-        empty,
-        ("x_interface", "y", "z"),
-        units["wind"],
-        origins["compute_3d"],
-        (dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        backend,
+        data=empty,
+        dims=("x_interface", "y", "z"),
+        units=units["wind"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
     vcv = Quantity(
-        empty,
-        ("x", "y_interface", "z"),
-        units["wind"],
-        origins["compute_3d"],
-        (dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        backend,
+        data=empty,
+        dims=("x", "y_interface", "z"),
+        units=units["wind"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
 
     # intialize and run
@@ -839,30 +811,30 @@ def run_finite_volume_fluxprep(
     )
 
     fvf_prep(
-        initialState["uC"], initialState["vC"], crx, cry, xaf, yaf, ucv, vcv, timestep
+        initial_state["u_cgrid"], initial_state["v_cgrid"], crx, cry, xaf, yaf, ucv, vcv, timestep
     )  # THIS WILL MODIFY CREATED QUANTITIES, but not change uc, vc
 
     mfxd = Quantity(
-        empty,
-        ("x_interface", "y", "z"),
-        units["mass"],
-        origins["compute_3d"],
-        (dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        backend,
+        data=empty,
+        dims=("x_interface", "y", "z"),
+        units=units["mass"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
     mfyd = Quantity(
-        empty,
-        ("x", "y_interface", "z"),
-        units["mass"],
-        origins["compute_3d"],
-        (dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        backend,
+        data=empty,
+        dims=("x", "y_interface", "z"),
+        units=units["mass"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
+        gt4py_backend=backend,
     )
 
-    mfxd.data[:] = xaf.data[:] * initialState["delp"].data[:] * density
-    mfyd.data[:] = yaf.data[:] * initialState["delp"].data[:] * density
+    mfxd.data[:] = xaf.data[:] * initial_state["delp"].data[:] * density
+    mfyd.data[:] = yaf.data[:] * initial_state["delp"].data[:] * density
 
-    fluxPrep = {
+    flux_prep = {
         "crx": crx,
         "cry": cry,
         "mfxd": mfxd,
@@ -873,14 +845,14 @@ def run_finite_volume_fluxprep(
         "yaf": yaf,
     }
 
-    return fluxPrep
+    return flux_prep
 
 
 def build_tracer_advection(
     configuration: Dict[str, Any], tracers: Dict[str, Quantity]
 ) -> TracerAdvection:
     """
-    Use: tracAdv =
+    Use: tracer_advection =
             build_tracer_advection(configuration, tracers)
 
 
@@ -891,7 +863,7 @@ def build_tracer_advection(
     - tracers (Dict) from initialState created by create_initial_state()
 
     Outputs:
-    - tracAdv - an instance of TracerAdvection class
+    - tracer_advection - an instance of TracerAdvection class
     """
 
     fvtp_2d = FiniteVolumeTransport(
@@ -902,7 +874,7 @@ def build_tracer_advection(
         fvt_dict["hord"],
     )
 
-    tracAdv = TracerAdvection(
+    tracer_advection = TracerAdvection(
         configuration["stencil_factory"],
         fvtp_2d,
         configuration["grid_data"],
@@ -910,18 +882,18 @@ def build_tracer_advection(
         tracers,
     )
 
-    return tracAdv
+    return tracer_advection
 
 
 def prepare_everything_for_advection(
     configuration: Dict[str, Any],
-    initialState: Dict[str, Quantity],
+    initial_state: Dict[str, Quantity],
     metadata: Dict[str, Any],
     timestep: float,
 ) -> Tuple[Dict[str, Any], TracerAdvection]:
     """
-    Use: tracAdv_data, tracAdv =
-        prepare_everything_for_advection(configuration, initialState,
+    Use: tracer_advection_data, tracer_advection =
+        prepare_everything_for_advection(configuration, initial_state,
         metadata, timestep)
 
     Calls run_finite_volume_fluxprep() and build_tracer_advection().
@@ -933,49 +905,49 @@ def prepare_everything_for_advection(
     - timestep (float) advection timestep
 
     Outputs:
-    - tracAdv_data (Dict):
+    - tracer_advection_data (Dict):
         - tracers (Dict)
         - delp
         - mfxd and mfyd
         - crx and cry
-    - tracAdv: instance of TracerAdvection class
+    - tracer_advection: instance of TracerAdvection class
 
     """
 
-    tracers = {"tracer": initialState["tracer"]}
+    tracers = {"tracer": initial_state["tracer"]}
 
-    fluxPrep = run_finite_volume_fluxprep(
+    flux_prep = run_finite_volume_fluxprep(
         configuration,
-        initialState,
+        initial_state,
         metadata,
         timestep,
     )
 
-    tracAdv = build_tracer_advection(configuration, tracers)
+    tracer_advection = build_tracer_advection(configuration, tracers)
 
-    tracAdv_data = {
+    tracer_advection_data = {
         "tracers": tracers,
-        "delp": initialState["delp"],
-        "mfxd": fluxPrep["mfxd"],
-        "mfyd": fluxPrep["mfyd"],
-        "crx": fluxPrep["crx"],
-        "cry": fluxPrep["cry"],
+        "delp": initial_state["delp"],
+        "mfxd": flux_prep["mfxd"],
+        "mfyd": flux_prep["mfyd"],
+        "crx": flux_prep["crx"],
+        "cry": flux_prep["cry"],
     }
 
-    return tracAdv_data, tracAdv
+    return tracer_advection_data, tracer_advection
 
 
 def run_advection_step_with_reset(
-    tracAdv_dataInit: Dict[str, Quantity],
-    tracAdv_data: Dict[str, Quantity],
-    tracAdv: TracerAdvection,
+    tracer_advection_data_initial: Dict[str, Quantity],
+    tracer_advection_data: Dict[str, Quantity],
+    tracer_advection: TracerAdvection,
     timestep,
-    mpi_rank: Any = None,
 ) -> Dict[str, Quantity]:
     """
-    Use: tracAdv_data =
-            run_advection_step_with_reset(tracAdv_dataInit, tracAdv_data,
-            tracAdv, timestep, mpi_rank=None)
+    Use: tracer_advection_data =
+            run_advection_step_with_reset(tracer_advection_data_initial, 
+            tracer_advection_data,
+            tracer_advection, timestep)
 
 
     Runs one timestep of tracer advection, which overwrites all
@@ -985,52 +957,35 @@ def run_advection_step_with_reset(
     decay of advection if left unchanged.
 
     Inputs:
-    - tracAdv_dataInit (Dict) - initial state data, to which
+    - tracer_advection_data_initial (Dict) - initial state data, to which
         all but tracer gets reset to after every step
-    - tracAdv_data(Dict) - data that gets updated during tracer advection
-    - tracAdv (TracerAdvection) instance of class
+    - tracer_advection_data(Dict) - data that gets updated during tracer advection
+    - tracer_advection (TracerAdvection) instance of class
     - timestep (float)
-    - mpi_rank (int or None): if provided, prints out diagnostics
 
     Outputs:
-    - tracAdv_data (Dict) with updated tracer only
+    - tracer_advection_data (Dict) with updated tracer only
     """
 
-    tmp = cp.deepcopy(tracAdv_data["tracers"])  # pre-advection tracer state
+    tmp = cp.deepcopy(tracer_advection_data["tracers"])  # pre-advection tracer state
 
-    tracAdv(
-        tracAdv_data["tracers"],
-        tracAdv_data["delp"],
-        tracAdv_data["mfxd"],
-        tracAdv_data["mfyd"],
-        tracAdv_data["crx"],
-        tracAdv_data["cry"],
+    tracer_advection(
+        tracer_advection_data["tracers"],
+        tracer_advection_data["delp"],
+        tracer_advection_data["mfxd"],
+        tracer_advection_data["mfyd"],
+        tracer_advection_data["crx"],
+        tracer_advection_data["cry"],
         timestep,
     )
 
-    tracAdv_data["delp"] = cp.deepcopy(tracAdv_dataInit["delp"])
-    tracAdv_data["mfxd"] = cp.deepcopy(tracAdv_dataInit["mfxd"])
-    tracAdv_data["mfyd"] = cp.deepcopy(tracAdv_dataInit["mfyd"])
-    tracAdv_data["crx"] = cp.deepcopy(tracAdv_dataInit["crx"])
-    tracAdv_data["cry"] = cp.deepcopy(tracAdv_dataInit["cry"])
+    tracer_advection_data["delp"] = cp.deepcopy(tracer_advection_data_initial["delp"])
+    tracer_advection_data["mfxd"] = cp.deepcopy(tracer_advection_data_initial["mfxd"])
+    tracer_advection_data["mfyd"] = cp.deepcopy(tracer_advection_data_initial["mfyd"])
+    tracer_advection_data["crx"] = cp.deepcopy(tracer_advection_data_initial["crx"])
+    tracer_advection_data["cry"] = cp.deepcopy(tracer_advection_data_initial["cry"])
 
-    if mpi_rank == 0:
-        diff_timestep = tracAdv_data["tracers"]["tracer"].data - tmp["tracer"].data
-        diff_fromInit = (
-            tracAdv_data["tracers"]["tracer"].data
-            - tracAdv_dataInit["tracers"]["tracer"].data
-        )
-        print(
-            "timestep diff min=%.2e; max=%.2e; from init diff min=%.2e; max=%.2e"
-            % (
-                np.nanmin(diff_timestep),
-                np.nanmax(diff_timestep),
-                np.nanmin(diff_fromInit),
-                np.nanmax(diff_fromInit),
-            )
-        )
-
-    return tracAdv_data
+    return tracer_advection_data
 
 
 def plot_grid(
@@ -1101,15 +1056,16 @@ def plot_grid(
 def plot_projection_field(
     configuration: Dict[str, Any],
     metadata: Dict[str, Dict[str, Any]],
-    field: Quantity,
-    plotDict: Dict[str, Any],
+    field: Union[Quantity, np.ndarray],
+    plot_dict: Dict[str, Any],
     mpi_rank: Any,
-    fOut: str,
+    f_out: str,
     show: bool = False,
+    unstagger: str = "first"
 ) -> None:
     """
     Use: plot_projection_field(configuration, metadata,
-            field, plotDict, mpi_rank, fOut,
+            field, plot_dict, mpi_rank, fOut,
             show=False)
 
     Creates a Robinson projection and plots provided field.
@@ -1117,9 +1073,10 @@ def plot_projection_field(
     Inputs:
     - configuration (Dict) from configure_domain()
     - metadata (Dict) from define_metadata()
-    - field (Quantity) - single layer
+    - field (Quantity or array) - single layer
+    - plot_dict (Dict) - vmin, vmax, etc.
     - mpi_rank
-    - fOut (str): file name to save to
+    - f_out (str): file name to save to - if blank, not saved.
     - show (bool): whether to show image in notebook
 
     Outputs: saved figure
@@ -1129,7 +1086,20 @@ def plot_projection_field(
 
     if mpi_rank == 0:
 
-        field_plot = np.squeeze(field.data)
+        if "vmin" not in plot_dict:
+            plot_dict["vmin"] = 0
+        if "vmax" not in plot_dict:
+            plot_dict["vmax"] = 1
+        if "units" not in plot_dict:
+            plot_dict["units"] = "forgot to add units"
+        if "title" not in plot_dict:
+            plot_dict["title"] = "forgot to add title"
+
+        if isinstance(field.data, np.ndarray): 
+            field = field.data
+
+        field_plot = np.squeeze(field)
+        field_plot = unstagger_coordinate(field_plot, "first")
 
         fig = plt.figure(figsize=(12, 6))
         fig.patch.set_facecolor("white")
@@ -1140,15 +1110,17 @@ def plot_projection_field(
             lat.data,
             lon.data,
             field_plot,
-            cmap=plotDict["cmap"],
-            vmin=plotDict["vmin"],
-            vmax=plotDict["vmax"],
+            cmap=plot_dict["cmap"],
+            vmin=plot_dict["vmin"],
+            vmax=plot_dict["vmax"],
         )
-        plt.colorbar(f1, label=plotDict["units"])
+        plt.colorbar(f1, label=plot_dict["units"])
 
-        ax.set_title(plotDict["title"])
+        ax.set_title(plot_dict["title"])
 
-        plt.savefig(fOut, dpi=200, bbox_inches="tight")
+        if len(f_out) > 0:
+            plt.savefig(f_out, dpi=200, bbox_inches="tight")
+
         if show:
             plt.show()
         else:
@@ -1160,14 +1132,14 @@ def plot_tracer_animation(
     metadata: Dict[str, Dict[str, Any]],
     tracer_archive: List[Quantity],
     mpi_rank: int,
-    plotDict_tracer: Dict[str, Any],
+    plot_dict_tracer: Dict[str, Any],
     figure_everyNsteps: int,
     timestep: float,
     frames: Union[str, int] = "all",
 ) -> None:
     """
     Use: plot_tracer_animation(configuration, metadata,
-            tracer_archive, mpi_rank, plotDict_tracer,
+            tracer_archive, mpi_rank, plot_dict_tracer,
             figure_everyNsteps, timestep, frames="all")
 
     Plots an interactive animation inside Jupyter notebook.
@@ -1177,7 +1149,7 @@ def plot_tracer_animation(
     - metadata (Dict) from define_metadata()
     - tracer_archive (List) of tracer states
     - mpi_rank
-    - plotDict_tracer (Dict) of plotting settings
+    - plot_dict_tracer (Dict) of plotting settings
     - figure_everyNsteps (int) from initial setup
     - timestep (float) for advection
     - frames ("all" or int) - how many frames to plot
@@ -1203,7 +1175,7 @@ def plot_tracer_animation(
 
         def animate(step: int):
             ax.clear()
-            plotDict_tracer["title"] = "Tracer state @ hour: %.2f" % (
+            plot_dict_tracer["title"] = "Tracer state @ hour: %.2f" % (
                 (step * figure_everyNsteps * timestep) / 60 / 60
             )
 
@@ -1211,11 +1183,11 @@ def plot_tracer_animation(
                 lat.data,
                 lon.data,
                 tracer_stack[step],
-                vmin=plotDict_tracer["vmin"],
-                vmax=plotDict_tracer["vmax"],
-                cmap=plotDict_tracer["cmap"],
+                vmin=plot_dict_tracer["vmin"],
+                vmax=plot_dict_tracer["vmax"],
+                cmap=plot_dict_tracer["cmap"],
             )
-            ax.set_title(plotDict_tracer["title"])
+            ax.set_title(plot_dict_tracer["title"])
 
         anim = animation.FuncAnimation(
             fig, animate, frames=frames, interval=400, blit=False
