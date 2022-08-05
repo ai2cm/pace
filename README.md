@@ -51,7 +51,7 @@ There are two ways to run the tests, manually by explicitly invoking `pytest` or
 First enter the container and navigate to the pace directory:
 
 ```shell
-DEV=y make dev
+make dev
 cd /pace
 ```
 
