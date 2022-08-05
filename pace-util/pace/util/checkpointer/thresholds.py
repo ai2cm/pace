@@ -12,6 +12,7 @@ from .base import Checkpointer
 
 SavepointName = str
 VariableName = str
+ArrayLike = Union[Quantity, gt4py.storage.Storage, np.ndarray]
 
 
 class InsufficientTrialsError(Exception):
@@ -24,9 +25,7 @@ class Threshold:
     absolute: Optional[float] = None
 
 
-def cast_to_ndarray(
-    array: Union[Quantity, gt4py.storage.Storage, np.ndarray]
-) -> np.ndarray:
+def cast_to_ndarray(array: ArrayLike) -> np.ndarray:
     if isinstance(array, Quantity):
         array = array.data
     if isinstance(array.data, np.ndarray):
