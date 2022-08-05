@@ -146,7 +146,7 @@ def gather_fortran_wrapper_at_klevel(
                 path + f"/outstate_{t}_{rank}.nc",
             ) as f:
                 for t in range(ts_size):
-                    fortran_data[t, rank, :, :] = f[var][t, klevel, :, :].T
+                    fortran_data[t, rank, :, :] = f[var][klevel, :, :].T
     return fortran_data
 
 
