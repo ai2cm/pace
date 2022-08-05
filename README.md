@@ -4,7 +4,7 @@ Pace is an implementation of the FV3GFS / SHiELD atmospheric model developed by 
 
 The top level directory contains the FV3 dynamical core (fv3core), the GFS physics package (fv3gfs-physics), and infrastructure utilities (pace-util).
 
-**WARNING** This repo is under active development and supported features and procedures can change rapidly and without notice.
+**WARNING** This repo is under active development - supported features and procedures can change rapidly and without notice.
 
 This git repository is laid out as a mono-repo, containing multiple independent projects. Because of this, it is important not to introduce unintended dependencies between projects. The graph below indicates a project depends on another by an arrow pointing from the parent project to its dependency. For example, the tests for fv3core should be able to run with only files contained under the fv3core and util projects, and should not access any files in the driver or physics packages. Only the top-level tests in Pace are allowed to read all files.
 
@@ -12,7 +12,7 @@ This git repository is laid out as a mono-repo, containing multiple independent 
 
 ## Building the docker container
 
-While it is possible to install and build pace bare-metal, the easiest setup is to use a Docker container for testing and developing pace.
+While it is possible to install and build pace bare-metal, we can ensure all system libraries are installed with the correct versions by using a Docker container to test and develop pace.
 
 First, you will need to update the git submodules so that any dependencies are cloned and at the correct version:
 ```shell
@@ -66,6 +66,8 @@ To run the sequential and parallel tests for the dynmical core (fv3core), you ca
 pytest -v -s --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore/ ./fv3core/tests
 mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3core/test_data/8.1.1/c12_6ranks_standard/dycore ./fv3core/tests
 ```
+
+Note that you must have already downloaded the test data according to the instructions above. The precise path needed for `--data_path` may be different, particularly the version directory.
 
 Similarly, you can run the sequential and parallel tests for the physical parameterizations (fv3gfs-physics). Currently, only the microphysics is integrated into pace and will be tested.
 
