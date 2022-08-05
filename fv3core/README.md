@@ -225,7 +225,7 @@ $ pip install --no-cache-dir -c ./constraints.txt "$PYHOME/PACE/pace/external/gt
 python3 -m gt4py.gt_src_manager install --major-version 2
 ```
 
-And then use pip to install the Pace components
+Then use pip to install the Pace components
 ```shell
 $ pip install -e ./pace-util
 $ pip install -e ./fv3core
@@ -235,13 +235,14 @@ $ pip install -e ./driver
 $ pip install -e ./stencils
 ```
 
-You can now run and develop Pace directly. To run the tests simply invoke pytest:
+You can now run and develop Pace directly. To run the tests simply invoke pytest using the same test arguments as inside the container:
 ```shell
 $ pytest [TEST_ARGS] fv3core/tests/main
 $ pytest --data_path=path/to/test/data [TEST_ARGS] --threshold_overrides_file=fv3core/tests/savepoint/translate/overrides/standard.yaml fv3core/tests/savepoint
 $ mpirun -np 6 python3 -m mpi4py -m pytest --maxfail=1 --data_path=path/to/test/data [TEST_ARGS] --threshold_overrides_file=fv3core/tests/savepoint/translate/overrides/standard.yaml -m parallel fv3core/tests/savepoint
 ```
-using the same test arguments as inside the container.
+
+An example set of commands to build pace can be found in `examples/standalone/build_scripts/build_example.sh`
 
 ## Relevant repositories
 
