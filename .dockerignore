@@ -8,3 +8,4 @@ fv3core/test_data/**
 .git/**
 pace-util/.tox/**
 **/venv/**
+**/Dockerfile

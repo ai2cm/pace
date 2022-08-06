@@ -3,18 +3,19 @@ FROM ubuntu:20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
-RUN apt-get update -y && \
-    apt-get install -y tzdata
 
 RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends \
-    software-properties-common \
-    git && \
-    rm -rf /var/lib/apt/lists/* && \
-    apt-get clean
+    apt-get install -y \
+    tzdata \
+    software-properties-common
+
+RUN add-apt-repository ppa:git-core/ppa -y && \
+    apt-get update -y && \
+    apt-get install -y \
+    git
 
 RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends\
+    apt-get install -y \
     g++ \
     libgeos-dev \
     libopenmpi-dev \
@@ -25,29 +26,33 @@ RUN apt-get update -y && \
     libproj-dev \
     proj-bin \
     proj-data \
-    python3.8 python3.8-dev python3-pip && \
-    python3 -m pip install --upgrade pip wheel
+    python3.8 \
+    python3.8-dev \
+    python3-pip && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+RUN python3 -m pip install --upgrade pip wheel
 
 COPY . /pace
 
-RUN cd /pace && pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt
+RUN cd /pace && \
+    pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt
 
 RUN cd / && \
-    git clone https://github.com/ai2cm/fv3net.git && \
-    cd fv3net && \
-    git checkout
+    git clone https://github.com/ai2cm/fv3net
 
 ENV CFLAGS="-I/usr/include -DACCEPT_USE_OF_DEPRECATED_PROJ_API_H=1"
 
 RUN python3 -m pip install \
-    cartopy==0.18.0 \
-    fv3net/external/vcm \
+    numpy==1.21.2 \
+    netCDF4==1.5.7 \
+    mpi4py==3.1.0 \
+    matplotlib==3.5.2 \
     ipyparallel==8.4.1 \
     jupyter==1.0.0 \
-    matplotlib==3.5.2 \
-    mpi4py==3.1.0 \
-    netCDF4 \
-    numpy 
+    cartopy==0.18.0 \
+    /fv3net/external/vcm
 
 ENV PYTHONPATH=/fv3net/external/fv3viz:/pace/external/gt4py/src
 
