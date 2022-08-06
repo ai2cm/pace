@@ -5,7 +5,8 @@ Note that this proof-of-concept example is only running the tracer advection and
 
 In addition to having pace built, you will also need the following modules installed:
 - `ipyparallel`: (https://pypi.org/project/ipyparallel/)
--  `fv3viz`:
+- `cartopy`: Try conda; otherwise good luck with this one ... (https://stackoverflow.com/questions/72442087/cant-install-proj-8-0-0-for-cartopy-linux)
+- `fv3viz`:
 ```
 git clone https://github.com/ai2cm/fv3net.git
 cd fv3net
