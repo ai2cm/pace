@@ -1,4 +1,3 @@
-
 #FROM python:3.8.13-bullseye@sha256:2a01d88a1684e6d7f08030cf5ae73b536926c64076cab197e9e3d9f699255283
 FROM ubuntu:20.04
 
@@ -19,17 +18,19 @@ RUN apt-get update -y && \
     g++ \
     libgeos-dev \
     libopenmpi-dev \
+    libboost-all-dev \
+    libhdf5-serial-dev \
+    netcdf-bin \
+    libnetcdf-dev \
     libproj-dev \
     proj-bin \
     proj-data \
     python3.8 python3.8-dev python3-pip && \
     python3 -m pip install --upgrade pip wheel
 
-
 COPY . /pace
 
 RUN cd /pace && pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt
-
 
 RUN cd / && \
     git clone https://github.com/ai2cm/fv3net.git && \
@@ -37,7 +38,6 @@ RUN cd / && \
     git checkout
 
 ENV CFLAGS="-I/usr/include -DACCEPT_USE_OF_DEPRECATED_PROJ_API_H=1"
-
 
 RUN python3 -m pip install \
     cartopy==0.18.0 \
@@ -48,8 +48,6 @@ RUN python3 -m pip install \
     mpi4py==3.1.0 \
     netCDF4 \
     numpy 
-
-
 
 ENV PYTHONPATH=/fv3net/external/fv3viz:/pace/external/gt4py/src
 
