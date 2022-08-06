@@ -19,20 +19,24 @@ The `notebooks` directory contains a helper `functions.py` file and a few notebo
 - `tracer_advection.ipynb`: the high-level notebook that has everything set up for cosine bell advection.
 
 
-<!--
+
 This example builds an MPI-enabled Docker image by adding jupyter notebooks to the pace image and opens it with port forwarding.
-You can build this image from within tracer advection directory with:
+You can build this image from within the `examples` directory with:
 ```
-$ docker build -t tracer_advection -f Dockerfile ..
+$ docker build -t examples -f Dockerfile ..
 ```
 and then open the notebook by running:
 ```
-$ docker run -p 8888:8888 tracer_advection
+$ docker run -p 8888:8888 examples
 ```
 
 You should see output that looks something like:
 ```
-SOMETHING
+    To access the notebook, open this file in a browser:
+        file:///root/.local/share/jupyter/runtime/nbserver-1-open.html
+    Or copy and paste one of these URLs:
+        http://67992777e8d0:8888/?token=c229b0f42a4bed38c9762931e0cc9d606f0fb9d4bf6a5b5f
+     or http://127.0.0.1:8888/?token=c229b0f42a4bed38c9762931e0cc9d606f0fb9d4bf6a5b5f
 ```
 
-To use the notebook, you need to copy-paste the second URL into your browser. -->
+To use the notebook, you need to copy-paste the last URL into your browser.
