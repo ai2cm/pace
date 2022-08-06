@@ -38,8 +38,9 @@ RUN cd / && \
 
 ENV CFLAGS="-I/usr/include -DACCEPT_USE_OF_DEPRECATED_PROJ_API_H=1"
 
+
 RUN python3 -m pip install \
-    cartopy==0.17.0 \
+    cartopy==0.18.0 \
     fv3net/external/vcm \
     ipyparallel==8.4.1 \
     jupyter==1.0.0 \
