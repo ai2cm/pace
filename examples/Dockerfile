@@ -50,8 +50,11 @@ RUN python3 -m pip install \
     mpi4py==3.1.0 \
     matplotlib==3.5.2 \
     ipyparallel==8.4.1 \
-    jupyter==1.0.0 \
+    jupyterlab==3.4.4 \
     cartopy==0.18.0 \
+    jupyterlab_code_formatter==1.5.2 \
+    isort==5.10.1 \
+    black==22.3.0 \
     /fv3net/external/vcm
 
 ENV PYTHONPATH=/fv3net/external/fv3viz:/pace/external/gt4py/src
@@ -64,4 +67,4 @@ COPY ./examples/notebooks /notebooks
 
 WORKDIR /notebooks
 
-CMD ["jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
+CMD ["jupyter-lab", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
