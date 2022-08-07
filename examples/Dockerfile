@@ -63,6 +63,8 @@ ENV OMPI_ALLOW_RUN_AS_ROOT=1
 
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 
+ENV OMPI_MCA_rmaps_base_oversubscribe=1
+
 COPY ./examples/notebooks /notebooks
 
 WORKDIR /notebooks
