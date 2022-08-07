@@ -1055,9 +1055,10 @@ def plot_grid(
             linewidth=0.1,
         )
 
+        nx = metadata["dimensions"]["nx"]
+        ny = metadata["dimensions"]["ny"]
         ax.set_title(
-            "Grid map: %s x %s"
-            % (metadata["dimensions"]["nx"] - 1, metadata["dimensions"]["ny"] - 1)
+            f"Cubed-sphere mesh with {nx} x {ny} cells per tile (c{nx})"
         )
 
         plt.savefig(fOut, dpi=300, bbox_inches="tight")
