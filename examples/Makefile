@@ -18,7 +18,6 @@ build-nc: ## Build the image without caching
 	$(MAKE) BUILD_OPTIONS="--no-cache" build
 
 run: ## Run container
-	xhost + 127.0.0.1
 	docker run -i -t --rm $(RUN_OPTIONS) -p=$(PORT):$(PORT) --name="$(APP_NAME)" $(APP_NAME)
 
 dev: ## Run container and mount local directory for development
