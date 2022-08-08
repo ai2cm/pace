@@ -3,20 +3,10 @@ The component demonstrated is tracer advection, and mirrors the setup of test ca
 
 Note that this proof-of-concept example is only running the tracer advection and none of the other model components.
 
-In addition to having pace built, you will also need the following modules installed:
-- `ipyparallel`: (https://pypi.org/project/ipyparallel/)
-- `cartopy`: Try conda; otherwise good luck with this one ... (https://stackoverflow.com/questions/72442087/cant-install-proj-8-0-0-for-cartopy-linux)
-- `fv3viz`:
-```
-git clone https://github.com/ai2cm/fv3net.git
-cd fv3net
-git checkout
-export PYTHONPATH=/fv3net/external/fv3viz
-```
-
 The `notebooks` directory contains a helper `functions.py` file and a few notebooks:
 - `domain_decomposition_grid_generation.ipynb`: focuses on how to set up a domain and create tools for individual component creation.
 - `initial_condition_definition.ipynb`: focuses on how to set up initial conditions on the cubed sphere.
+- ??`building_stencils.ipynb`???: focuses on how to initialize and run stencils (short?)
 - `tracer_advection.ipynb`: the high-level notebook that has everything set up for cosine bell advection.
 
 
