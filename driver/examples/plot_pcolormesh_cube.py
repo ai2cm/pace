@@ -252,10 +252,10 @@ if __name__ == "__main__":
             fontsize=8,
         )
         plt.tight_layout()
-        if args.zarr_output == "/model_output/output.zarr":
-            save_path = "/work/"
-        else:
-            save_path = ""
+        save_path = "/work/"
+        # if args.zarr_output == "/model_output/output.zarr":
+        # else:
+        #     save_path = ""
         plt.savefig(
             f"{save_path}{args.experiment}_{args.variable}_time_{t:02d}.png",
             dpi=150,
