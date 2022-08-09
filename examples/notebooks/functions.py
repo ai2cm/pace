@@ -260,7 +260,6 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
 
         grid_indexing.domain = domain_new
 
-
     stencil_factory = StencilFactory(config=stencil_config, grid_indexing=grid_indexing)
 
     configuration = {
@@ -355,9 +354,8 @@ def create_initial_tracer(
 
     p_center = [np.deg2rad(center[0]), np.deg2rad(center[1])]
 
-
-    for jj in range(tracer.data.shape[1]-1):
-        for ii in range(tracer.data.shape[0]-1):
+    for jj in range(tracer.data.shape[1] - 1):
+        for ii in range(tracer.data.shape[0] - 1):
 
             p_dist = [lon.data[ii, jj], lat.data[ii, jj]]
             r = great_circle_distance_lon_lat(
@@ -382,7 +380,10 @@ def calculate_streamfunction(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: psi, psi_staggered =
-            calculate_streamfunction(lon_agrid, lat_agrid, lon, lat, psi, psi_staggered, test_case)
+            calculate_streamfunction(
+                lon_agrid, lat_agrid, lon, lat,
+                psi, psi_staggered, test_case
+            )
 
     Creates streamfunction from input quantities, for defined test cases:
         - a) constant radius (as in Fortran test case 1)
@@ -480,26 +481,53 @@ def calculate_winds_from_streamfunction_grid(
     """
 
     if grid == GridType.AGrid:
-        if not (u_grid.metadata.dims == ("x", "y", "z") and v_grid.metadata.dims == ("x", "y", "z")):
-            print('Incorrect wind input dimensions for A-grid.')
+        if not (
+            u_grid.metadata.dims == ("x", "y", "z")
+            and v_grid.metadata.dims == ("x", "y", "z")
+        ):
+            print("Incorrect wind input dimensions for A-grid.")
     elif grid == GridType.CGrid:
-        if not (u_grid.metadata.dims == ("x", "y_interface", "z") and v_grid.metadata.dims == ("x_interface", "y", "z")):
-            print('Incorrect wind input dimensions for C-grid.') 
+        if not (
+            u_grid.metadata.dims == ("x", "y_interface", "z")
+            and v_grid.metadata.dims == ("x_interface", "y", "z")
+        ):
+            print("Incorrect wind input dimensions for C-grid.")
     elif grid == GridType.DGrid:
-        if not (u_grid.metadata.dims == ("x_interface", "y", "z") and v_grid.metadata.dims == ("x", "y_interface", "z")):
-            print('Incorrect wind input dimensions for D-grid.')            
+        if not (
+            u_grid.metadata.dims == ("x_interface", "y", "z")
+            and v_grid.metadata.dims == ("x", "y_interface", "z")
+        ):
+            print("Incorrect wind input dimensions for D-grid.")
 
     if grid == GridType.AGrid:
-        u_grid[:, 1:-1, :] = -0.5 * (psi.data[:, 2:, :] - psi.data[:, :-2, :]) / dy.data[:, 1:-1, np.newaxis]
-        v_grid[1:-1, :, :] = 0.5 * (psi.data[2:, :, :] - psi.data[:-2, :, :]) / dx.data[1:-1, :, np.newaxis]
+        u_grid[:, 1:-1, :] = (
+            -0.5
+            * (psi.data[:, 2:, :] - psi.data[:, :-2, :])
+            / dy.data[:, 1:-1, np.newaxis]
+        )
+        v_grid[1:-1, :, :] = (
+            0.5
+            * (psi.data[2:, :, :] - psi.data[:-2, :, :])
+            / dx.data[1:-1, :, np.newaxis]
+        )
 
     elif grid == GridType.CGrid:
-        u_grid.data[:, :-1, :] = -1 * (psi.data[:, 1:, :] - psi.data[:, :-1, :]) / dy.data[:, :-1, np.newaxis]
-        v_grid.data[:-1, :, :] = (psi.data[1:, :, :] - psi.data[:-1, :, :]) / dx.data[:-1, :, np.newaxis]
+        u_grid.data[:, :-1, :] = (
+            -1
+            * (psi.data[:, 1:, :] - psi.data[:, :-1, :])
+            / dy.data[:, :-1, np.newaxis]
+        )
+        v_grid.data[:-1, :, :] = (psi.data[1:, :, :] - psi.data[:-1, :, :]) / dx.data[
+            :-1, :, np.newaxis
+        ]
 
     elif grid == GridType.DGrid:
-        u_grid[:, 1:, :] = -(psi.data[:, 1:, :] - psi.data[:, :-1, :]) / dy.data[:, 1:, np.newaxis]
-        v_grid[1:, :, :] = -(psi.data[1:, :, :] - psi.data[:-1, :, :]) / dy.data[1:, :, np.newaxis]
+        u_grid[:, 1:, :] = (
+            -(psi.data[:, 1:, :] - psi.data[:, :-1, :]) / dy.data[:, 1:, np.newaxis]
+        )
+        v_grid[1:, :, :] = (
+            -(psi.data[1:, :, :] - psi.data[:-1, :, :]) / dy.data[1:, :, np.newaxis]
+        )
 
     return u_grid, v_grid
 
@@ -512,7 +540,7 @@ def create_initial_state(
 ) -> Dict[str, Quantity]:
     """
     Use: initial_state =
-            create_initial_state(metric_terms, quantity_factory, metadata, tracer_center,
+            create_initial_state(metric_terms, metadata, tracer_center,
             test_case)
 
     Creates the initial state for one of the defined test cases:
@@ -581,7 +609,9 @@ def create_initial_state(
 
     # tracer
     tracer = Quantity(
-        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
+        data=np.zeros(
+            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+        ),
         dims=("x", "y", "z"),
         units=units["tracer"],
         origin=origins["compute_3d"],
@@ -597,7 +627,10 @@ def create_initial_state(
 
     # # pressure
     delp = Quantity(
-        data=np.ones((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)) * pressure_base,
+        data=np.ones(
+            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+        )
+        * pressure_base,
         dims=("x", "y", "z"),
         units=units["pressure"],
         origin=origins["compute_3d"],
@@ -607,7 +640,9 @@ def create_initial_state(
 
     # # # streamfunction
     psi_agrid = Quantity(
-        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
+        data=np.zeros(
+            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+        ),
         dims=("x", "y", "z"),
         units=units["psi"],
         origin=origins["compute_3d"],
@@ -615,7 +650,9 @@ def create_initial_state(
         gt4py_backend=backend,
     )
     psi = Quantity(
-        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
+        data=np.zeros(
+            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+        ),
         dims=("x_interface", "y_interface", "z"),
         units=units["psi"],
         origin=origins["compute_3d"],
@@ -651,7 +688,9 @@ def create_initial_state(
     )
 
     u_cgrid = Quantity(
-        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
+        data=np.zeros(
+            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+        ),
         dims=("x", "y_interface", "z"),
         units=units["wind"],
         origin=origins["compute_3d"],
@@ -659,7 +698,9 @@ def create_initial_state(
         gt4py_backend=backend,
     )
     v_cgrid = Quantity(
-        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
+        data=np.zeros(
+            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+        ),
         dims=("x_interface", "y", "z"),
         units=units["wind"],
         origin=origins["compute_3d"],
@@ -714,7 +755,7 @@ def run_finite_volume_fluxprep(
 
     # create empty quantities to be filled
     empty = np.zeros(
-        (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"]+1)
+        (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
     )
 
     crx = Quantity(
@@ -1010,9 +1051,7 @@ def plot_grid(
 
         nx = metadata["dimensions"]["nx"]
         ny = metadata["dimensions"]["ny"]
-        ax.set_title(
-            f"Cubed-sphere mesh with {nx} x {ny} cells per tile (c{nx})"
-        )
+        ax.set_title(f"Cubed-sphere mesh with {nx} x {ny} cells per tile (c{nx})")
 
         plt.savefig(fOut, dpi=300, bbox_inches="tight")
         if show:
@@ -1030,7 +1069,7 @@ def plot_projection_field(
     f_out: str,
     show: bool = False,
     unstagger: str = "first",
-    level: int = 0
+    level: int = 0,
 ) -> None:
     """
     Use: plot_projection_field(configuration, metadata,
@@ -1066,7 +1105,7 @@ def plot_projection_field(
 
         if isinstance(field.data, np.ndarray):
             field = field.data
-        
+
         if len(field.shape) == 4:
             field = field[:, :, :, level]
 
@@ -1154,7 +1193,7 @@ def plot_tracer_animation(
             pcolormesh_cube(
                 lat.data,
                 lon.data,
-                tracer_stack[step][:, :, :, 0],
+                tracer_stack[step][:, :, :],
                 vmin=plot_dict_tracer["vmin"],
                 vmax=plot_dict_tracer["vmax"],
                 cmap=plot_dict_tracer["cmap"],
