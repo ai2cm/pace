@@ -53,7 +53,6 @@ cat << EOF > run.daint.slurm
 
 set -x
 export OMP_NUM_THREADS=12
-export GT_CACHE_DIR_NAME=/tmp
 srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/run_baroclinic_c576_54ranks.yaml
 EOF
 launch_job run.daint.slurm 15000
