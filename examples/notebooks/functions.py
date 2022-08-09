@@ -35,6 +35,7 @@ layout = (1, 1)
 nhalo = 3
 pressure_base = 10
 tracer_base = 1.0
+nz_effective = 79
 fvt_dict = {"grid_type": 0, "hord": 6}
 
 
@@ -61,6 +62,7 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
     namelist_variables = [
         "nx",
         "ny",
+        "nz",
         "timestep",
         "nDays",
         "test_case",
@@ -128,7 +130,7 @@ def define_metadata(
     }
 
     units = {
-        "areaflux": "m2",
+        "area": "m2",
         "coord": "degrees",
         "courant": "",
         "dist": "m",
@@ -141,6 +143,7 @@ def define_metadata(
 
     origins = {
         "halo": (0, 0),
+        "halo_3d": (0, 0, 0),
         "compute_2d": (dimensions["nhalo"], dimensions["nhalo"]),
         "compute_3d": (dimensions["nhalo"], dimensions["nhalo"], 0),
     }
@@ -207,7 +210,7 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
     sizer = SubtileGridSizer.from_tile_params(
         nx_tile=dimensions["nx"],
         ny_tile=dimensions["ny"],
-        nz=dimensions["nz"],
+        nz=nz_effective,
         n_halo=dimensions["nhalo"],
         extra_dim_lengths={},
         layout=layout,
@@ -249,12 +252,14 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
     )
 
     # set the domain so there is only one level in the vertical -- forced
-    domain = grid_indexing.domain
-    domain_new = list(domain)
-    domain_new[2] = 1
-    domain_new = tuple(domain_new)
+    if not nz_effective == dimensions["nz"]:
+        domain = grid_indexing.domain
+        domain_new = list(domain)
+        domain_new[2] = dimensions["nz"]
+        domain_new = tuple(domain_new)
 
-    grid_indexing.domain = domain_new
+        grid_indexing.domain = domain_new
+
 
     stencil_factory = StencilFactory(config=stencil_config, grid_indexing=grid_indexing)
 
@@ -323,58 +328,61 @@ def get_lon_lat_edges(
     return lon, lat
 
 
-def create_gaussian_multiplier(
-    lon: np.ndarray,
-    lat: np.ndarray,
-    dimensions: Dict[str, int],
+def create_initial_tracer(
+    lon: Quantity,
+    lat: Quantity,
+    tracer: Quantity,
     center: Tuple[float, float] = (0.0, 0.0),
-) -> np.ndarray:
+) -> Quantity:
     """
-    Use: gaussian_multiplier =
-            create_gaussian_multiplier(lon, lat, dimensions, mpi_rank, target_tile)
+    Use: tracer =
+            create_initial_tracer(lon, lat, metadata, tracer, target_tile)
 
     Calculates a gaussian-bell shaped multiplier for tracer initialization.
-    It centers the bell in the middle of the target_tile provided.
+    It centers the bell at the longitude and latitude provided in center.
 
     Inputs:
     - lon and lat (in radians, and including halo points)
-    - dimensions (Dict)
-    - mpi_rank
-    - target_tile
+    - metadata (Dict)
+    - tracer: empty array to be filled with tracer
+    - center: (lon, lat) in degrees
 
     Outputs:
-    - gaussian_multiplier: array of values between 0 and 1
+    - tracer: updated quantity
     """
 
     r0 = RADIUS / 3.0
-    gaussian_multiplier = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
+
     p_center = [np.deg2rad(center[0]), np.deg2rad(center[1])]
 
-    for jj in range(dimensions["nyhalo"]):
-        for ii in range(dimensions["nxhalo"]):
 
-            p_dist = [lon[ii, jj], lat[ii, jj]]
+    for jj in range(tracer.data.shape[1]-1):
+        for ii in range(tracer.data.shape[0]-1):
+
+            p_dist = [lon.data[ii, jj], lat.data[ii, jj]]
             r = great_circle_distance_lon_lat(
                 p_center[0], p_dist[0], p_center[1], p_dist[1], RADIUS, np
             )
 
-            gaussian_multiplier[ii, jj] = (
+            tracer.data[ii, jj, :] = (
                 0.5 * (1.0 + np.cos(np.pi * r / r0)) if r < r0 else 0.0
             )
 
-    return gaussian_multiplier
+    return tracer
 
 
 def calculate_streamfunction(
-    lon_agrid: np.ndarray,
-    lat_agrid: np.ndarray,
-    lon: np.ndarray,
-    lat: np.ndarray,
+    lon_agrid: Quantity,
+    lat_agrid: Quantity,
+    lon: Quantity,
+    lat: Quantity,
+    psi: Quantity,
+    psi_staggered: Quantity,
     test_case: str,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: psi, psi_staggered =
-            calculate_streamfunction(lonA, latA, lon, lat, test_case)
+            calculate_streamfunction(lon_agrid, lat_agrid, lon, lat, psi, psi_staggered, test_case)
 
     Creates streamfunction from input quantities, for defined test cases:
         - a) constant radius (as in Fortran test case 1)
@@ -382,29 +390,29 @@ def calculate_streamfunction(
         - c) south-north propagation from tile 1
 
     Inputs:
-    - lonA, latA (in radians) on A-grid
-    - lon, lat (in radians) on cell corners
-    - dimensions
-    - test_case ("a" or "b")
+    - lonA, latA (Quantity): (in radians) on A-grid
+    - lon, lat (Quantity): (in radians) on cell corners
+    - psi, psi_staggered (empty quantities):
+    - test_case ("a" or "b" or "c")
 
     Outputs:
     - psi (streamfunction)
-    - psi_staggered (streamfunction, but on tile corners.)
+    - psi_staggered (streamfunction on tile corners.)
     """
 
-    yA_t = np.cos(lat_agrid) * np.sin(lon_agrid)
-    zA_t = np.sin(lat_agrid)
-    y_t = np.cos(lat) * np.sin(lon)
-    z_t = np.sin(lat)
+    yA_t = np.cos(lat_agrid.data) * np.sin(lon_agrid.data)
+    zA_t = np.sin(lat_agrid.data)
+    y_t = np.cos(lat.data) * np.sin(lon.data)
+    z_t = np.sin(lat.data)
 
     if test_case == "a":
-        RadA = RADIUS * np.ones(lon_agrid.shape)
-        Rad = RADIUS * np.ones(lon.shape)
+        RadA = RADIUS * np.ones(lon_agrid.data.shape)
+        Rad = RADIUS * np.ones(lon.data.shape)
         multiplierA = zA_t
         multiplier = z_t
     elif test_case == "b":
-        RadA = RADIUS * np.cos(lat_agrid / 2)
-        Rad = RADIUS * np.cos(lat / 2)
+        RadA = RADIUS * np.cos(lat_agrid.data / 2)
+        Rad = RADIUS * np.cos(lat.data / 2)
         multiplierA = zA_t
         multiplier = z_t
     elif test_case == "c":
@@ -414,21 +422,23 @@ def calculate_streamfunction(
         multiplier = -y_t
     elif test_case == "d":
         print("This case is in TESTING.")
-        RadA = RADIUS * np.ones(lon.shape)
-        Rad = RADIUS * np.ones(lon.shape)
+        RadA = RADIUS * np.ones(lon.data.shape)
+        Rad = RADIUS * np.ones(lon.data.shape)
         multiplierA = (yA_t + zA_t) / 1.5
         multiplier = (y_t + z_t) / 1.5
     else:
-        RadA = np.ones(lon_agrid.shape) * np.nan
-        Rad = np.ones(lon.shape) * np.nan
+        RadA = np.ones(lon_agrid.data.shape) * np.nan
+        Rad = np.ones(lon.data.shape) * np.nan
         multiplierA = np.nan
         multiplier = np.nan
         print("Please choose one of the defined test cases.")
         print("This will return gibberish.")
 
     Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0)
-    psi = -1 * Ubar * RadA * multiplierA
-    psi_staggered = -1 * Ubar * Rad * multiplier
+    streamfunction = -1 * Ubar * RadA * multiplierA
+    psi.data[:, :, :] = streamfunction[:, :, np.newaxis]
+    streamfunction = -1 * Ubar * Rad * multiplier
+    psi_staggered.data[:, :, :] = streamfunction[:, :, np.newaxis]
 
     return psi, psi_staggered
 
@@ -437,12 +447,13 @@ def calculate_winds_from_streamfunction_grid(
     psi: np.ndarray,
     dx: Quantity,
     dy: Quantity,
-    dimensions: Dict[str, int],
+    u_grid: Quantity,
+    v_grid: Quantity,
     grid: GridType = GridType.AGrid,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: u_grid, v_grid =
-            calculate_winds_from_streamfunction_grid(psi, dx, dy, dimensions, grid)
+            calculate_winds_from_streamfunction_grid(psi, dx, dy, u_Grid, v_grid, grid)
 
 
     Returns winds on a chosen grid based on streamfunction and grid spacing.
@@ -450,7 +461,8 @@ def calculate_winds_from_streamfunction_grid(
     Inputs:
     - psi: streamfunction
     - dx, dy: distance between points
-    - dimensions(Dict))
+    - u_grid, v_grid: empty quantities to be filled
+    - grid: A, C, or D for winds to be returned on
 
     Outputs:
     - u_grid: x-direction wind on chosen grid
@@ -466,29 +478,28 @@ def calculate_winds_from_streamfunction_grid(
     - C: streamfunction on corner points, dx, dy on edge points, all with halos
     - D: streamfunction on center points, dx, dy on edge points, all with halos
     """
-    u_grid = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
-    v_grid = np.zeros((dimensions["nxhalo"], dimensions["nyhalo"]))
 
     if grid == GridType.AGrid:
-        u_grid = np.zeros(psi.data.shape) * np.nan
-        u_grid[:, 1:-1] = -0.5 * (psi.data[:, 2:] - psi.data[:, :-2]) / dy.data[:, 1:-1]
+        if not (u_grid.metadata.dims == ("x", "y", "z") and v_grid.metadata.dims == ("x", "y", "z")):
+            print('Incorrect wind input dimensions for A-grid.')
+    elif grid == GridType.CGrid:
+        if not (u_grid.metadata.dims == ("x", "y_interface", "z") and v_grid.metadata.dims == ("x_interface", "y", "z")):
+            print('Incorrect wind input dimensions for C-grid.') 
+    elif grid == GridType.DGrid:
+        if not (u_grid.metadata.dims == ("x_interface", "y", "z") and v_grid.metadata.dims == ("x", "y_interface", "z")):
+            print('Incorrect wind input dimensions for D-grid.')            
 
-        v_grid = np.zeros(psi.data.shape) * np.nan
-        v_grid[1:-1, :] = 0.5 * (psi.data[2:, :] - psi.data[:-2, :]) / dx.data[1:-1, :]
+    if grid == GridType.AGrid:
+        u_grid[:, 1:-1, :] = -0.5 * (psi.data[:, 2:, :] - psi.data[:, :-2, :]) / dy.data[:, 1:-1, np.newaxis]
+        v_grid[1:-1, :, :] = 0.5 * (psi.data[2:, :, :] - psi.data[:-2, :, :]) / dx.data[1:-1, :, np.newaxis]
 
     elif grid == GridType.CGrid:
-        u_grid = np.zeros(psi.data.shape) * np.nan
-        u_grid[:, :-1] = -1 * (psi.data[:, 1:] - psi.data[:, :-1]) / dy.data[:, :-1]
-
-        v_grid = np.zeros(psi.data.shape) * np.nan
-        v_grid[:-1] = (psi.data[1:] - psi.data[:-1]) / dx.data[:-1, :]
+        u_grid.data[:, :-1, :] = -1 * (psi.data[:, 1:, :] - psi.data[:, :-1, :]) / dy.data[:, :-1, np.newaxis]
+        v_grid.data[:-1, :, :] = (psi.data[1:, :, :] - psi.data[:-1, :, :]) / dx.data[:-1, :, np.newaxis]
 
     elif grid == GridType.DGrid:
-        u_grid = np.zeros(psi.data.shape) * np.nan
-        u_grid[:, 1:] = -(psi.data[:, 1:] - psi.data[:, :-1]) / dy.data[:, 1:]
-
-        v_grid = np.zeros(psi.data.shape) * np.nan
-        v_grid[1:, :] = -(psi.data[1:, :] - psi.data[:-1, :]) / dy.data[1:, :]
+        u_grid[:, 1:, :] = -(psi.data[:, 1:, :] - psi.data[:, :-1, :]) / dy.data[:, 1:, np.newaxis]
+        v_grid[1:, :, :] = -(psi.data[1:, :, :] - psi.data[:-1, :, :]) / dy.data[1:, :, np.newaxis]
 
     return u_grid, v_grid
 
@@ -501,7 +512,7 @@ def create_initial_state(
 ) -> Dict[str, Quantity]:
     """
     Use: initial_state =
-            create_initial_state(metric_terms, metadata, tracer_center,
+            create_initial_state(metric_terms, quantity_factory, metadata, tracer_center,
             test_case)
 
     Creates the initial state for one of the defined test cases:
@@ -534,157 +545,113 @@ def create_initial_state(
 
     dimensions, origins, units = split_metadata(metadata)
 
-    lon_agrid_halo = Quantity(
+    lon_agrid = Quantity(
         data=metric_terms.lon_agrid.data,
-        dims=("x_halo", "y_halo"),
+        dims=("x", "y"),
         units=units["coord"],
-        origin=origins["halo"],
-        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx"], dimensions["ny"]),
         gt4py_backend=backend,
     )
-    lat_agrid_halo = Quantity(
+    lat_agrid = Quantity(
         data=metric_terms.lat_agrid.data,
-        dims=("x_halo", "y_halo"),
+        dims=("x", "y"),
         units=units["coord"],
-        origin=origins["halo"],
-        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx"], dimensions["ny"]),
         gt4py_backend=backend,
     )
 
-    lon_halo = Quantity(
+    lon = Quantity(
         data=metric_terms.lon.data,
-        dims=("x_halo", "y_halo"),
+        dims=("x_interface", "y_interface"),
         units=units["coord"],
-        origin=origins["halo"],
-        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx1"], dimensions["ny1"]),
         gt4py_backend=backend,
     )
-    lat_halo = Quantity(
+    lat = Quantity(
         data=metric_terms.lat.data,
-        dims=("x_halo", "y_halo"),
+        dims=("x_interface", "y_interface"),
         units=units["coord"],
-        origin=origins["halo"],
-        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx1"], dimensions["ny1"]),
         gt4py_backend=backend,
     )
 
     # tracer
-    gaussian_multiplier = create_gaussian_multiplier(
-        lon_agrid_halo.data,
-        lat_agrid_halo.data,
-        dimensions,
-        tracer_center,
-    )
     tracer = Quantity(
-        data=gaussian_multiplier * tracer_base,
-        dims=("x", "y"),
-        units=units["tracer"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx"], dimensions["ny"]),
-        gt4py_backend=backend,
-    )
-
-    # pressure
-    delp = Quantity(
-        data=np.ones(tracer.data.shape) * pressure_base,
-        dims=("x", "y"),
-        units=units["pressure"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx"], dimensions["ny"]),
-        gt4py_backend=backend,
-    )
-
-    # streamfunction
-    psi, psi_staggered = calculate_streamfunction(
-        lon_agrid_halo.data,
-        lat_agrid_halo.data,
-        lon_halo.data,
-        lat_halo.data,
-        test_case,
-    )
-    psi_halo = Quantity(
-        data=psi,
-        dims=("x_halo", "y_halo"),
-        units=units["psi"],
-        origin=origins["halo"],
-        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
-        gt4py_backend=backend,
-    )
-    psi_staggered_halo = Quantity(
-        data=psi_staggered,
-        dims=("x_halo", "y_halo"),
-        units=units["psi"],
-        origin=origins["halo"],
-        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
-        gt4py_backend=backend,
-    )
-
-    # winds
-    dx_halo = Quantity(
-        data=metric_terms.dx.data,
-        dims=("x_halo", "y_halo"),
-        units=units["dist"],
-        origin=origins["halo"],
-        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
-        gt4py_backend=backend,
-    )
-    dy_halo = Quantity(
-        data=metric_terms.dy.data,
-        dims=("x_halo", "y_halo"),
-        units=units["dist"],
-        origin=origins["halo"],
-        extent=(dimensions["nxhalo"], dimensions["nyhalo"]),
-        gt4py_backend=backend,
-    )
-    grid = GridType.CGrid
-    u_cgrid, v_cgrid = calculate_winds_from_streamfunction_grid(
-        psi_staggered_halo, dx_halo, dy_halo, dimensions, grid=grid
-    )
-    u_cgrid = Quantity(
-        data=u_cgrid,
-        dims=("x", "y_interface"),
-        units=units["wind"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx"], dimensions["ny1"]),
-        gt4py_backend=backend,
-    )
-    v_cgrid = Quantity(
-        data=v_cgrid,
-        dims=("x_interface", "y"),
-        units=units["wind"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx1"], dimensions["ny"]),
-        gt4py_backend=backend,
-    )
-
-    # extend initial conditions into one vertical layer
-    dimensions["nz"] = 1
-    empty = np.zeros(
-        (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
-    )
-
-    tracer_3d = np.copy(empty)
-    u_cgrid_3d = np.copy(empty)
-    v_cgrid_3d = np.copy(empty)
-    delp_3d = np.copy(empty)
-    psi_3d = np.copy(empty)
-
-    tracer_3d[:-1, :-1, 0] = tracer.data
-    u_cgrid_3d[:, :, 0] = u_cgrid.data
-    v_cgrid_3d[:, :, 0] = v_cgrid.data
-    delp_3d[:-1, :-1, 0] = delp.data
-    psi_3d[:, :, 0] = psi_halo.data
-
-    tracer = Quantity(
-        data=tracer_3d,
+        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
         dims=("x", "y", "z"),
         units=units["tracer"],
         origin=origins["compute_3d"],
         extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
         gt4py_backend=backend,
     )
+    tracer = create_initial_tracer(
+        lon_agrid,
+        lat_agrid,
+        tracer,
+        tracer_center,
+    )
+
+    # # pressure
+    delp = Quantity(
+        data=np.ones((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)) * pressure_base,
+        dims=("x", "y", "z"),
+        units=units["pressure"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
+    )
+
+    # # # streamfunction
+    psi_agrid = Quantity(
+        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
+        dims=("x", "y", "z"),
+        units=units["psi"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
+        gt4py_backend=backend,
+    )
+    psi = Quantity(
+        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
+        dims=("x_interface", "y_interface", "z"),
+        units=units["psi"],
+        origin=origins["compute_3d"],
+        extent=(dimensions["nx1"], dimensions["ny1"], dimensions["nz"]),
+        gt4py_backend=backend,
+    )
+    psi_agrid, psi = calculate_streamfunction(
+        lon_agrid,
+        lat_agrid,
+        lon,
+        lat,
+        psi_agrid,
+        psi,
+        test_case,
+    )
+
+    # # winds
+    dx = Quantity(
+        data=metric_terms.dx.data,
+        dims=("x", "y_interface"),
+        units=units["dist"],
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx"], dimensions["ny1"]),
+        gt4py_backend=backend,
+    )
+    dy = Quantity(
+        data=metric_terms.dy.data,
+        dims=("x_interface", "y"),
+        units=units["dist"],
+        origin=origins["compute_2d"],
+        extent=(dimensions["nx1"], dimensions["ny"]),
+        gt4py_backend=backend,
+    )
+
     u_cgrid = Quantity(
-        data=u_cgrid_3d,
+        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
         dims=("x", "y_interface", "z"),
         units=units["wind"],
         origin=origins["compute_3d"],
@@ -692,28 +659,16 @@ def create_initial_state(
         gt4py_backend=backend,
     )
     v_cgrid = Quantity(
-        data=v_cgrid_3d,
+        data=np.zeros((dimensions["nxhalo"]+1, dimensions["nyhalo"]+1, dimensions["nz"]+1)),
         dims=("x_interface", "y", "z"),
         units=units["wind"],
         origin=origins["compute_3d"],
         extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
         gt4py_backend=backend,
     )
-    delp = Quantity(
-        data=delp_3d,
-        dims=("x", "y", "z"),
-        units=units["wind"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
-    )
-    psi = Quantity(
-        data=psi_3d,
-        dims=("x", "y", "z"),
-        units=units["psi"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
+    grid = GridType.CGrid
+    u_cgrid, v_cgrid = calculate_winds_from_streamfunction_grid(
+        psi, dx, dy, u_cgrid, v_cgrid, grid=grid
     )
 
     initial_state = {
@@ -721,7 +676,7 @@ def create_initial_state(
         "tracer": tracer,
         "u_cgrid": u_cgrid,
         "v_cgrid": v_cgrid,
-        "psi": psi,
+        "psi": psi_agrid,
     }
 
     return initial_state
@@ -751,15 +706,15 @@ def run_finite_volume_fluxprep(
     - flux_prep (Dict):
         - crx and cry
         - mfxd and mfyd
-        - ucv, vcv
-        - xaf, yaf
+        - uc_contra, vc_contra
+        - x_area_flux, y_area_flux
     """
 
     dimensions, origins, units = split_metadata(metadata)
 
     # create empty quantities to be filled
     empty = np.zeros(
-        (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+        (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"]+1)
     )
 
     crx = Quantity(
@@ -778,23 +733,23 @@ def run_finite_volume_fluxprep(
         extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
         gt4py_backend=backend,
     )
-    xaf = Quantity(
+    x_area_flux = Quantity(
         data=empty,
         dims=("x_interface", "y", "z"),
-        units=units["areaflux"],
+        units=units["area"],
         origin=origins["compute_3d"],
         extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
         gt4py_backend=backend,
     )
-    yaf = Quantity(
+    y_area_flux = Quantity(
         data=empty,
         dims=("x", "y_interface", "z"),
-        units=units["areaflux"],
+        units=units["area"],
         origin=origins["compute_3d"],
         extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
         gt4py_backend=backend,
     )
-    ucv = Quantity(
+    uc_contra = Quantity(
         data=empty,
         dims=("x_interface", "y", "z"),
         units=units["wind"],
@@ -802,7 +757,7 @@ def run_finite_volume_fluxprep(
         extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
         gt4py_backend=backend,
     )
-    vcv = Quantity(
+    vc_contra = Quantity(
         data=empty,
         dims=("x", "y_interface", "z"),
         units=units["wind"],
@@ -821,10 +776,10 @@ def run_finite_volume_fluxprep(
         initial_state["v_cgrid"],
         crx,
         cry,
-        xaf,
-        yaf,
-        ucv,
-        vcv,
+        x_area_flux,
+        y_area_flux,
+        uc_contra,
+        vc_contra,
         timestep,
     )  # THIS WILL MODIFY CREATED QUANTITIES, but not change uc, vc
 
@@ -845,18 +800,18 @@ def run_finite_volume_fluxprep(
         gt4py_backend=backend,
     )
 
-    mfxd.data[:] = xaf.data[:] * initial_state["delp"].data[:] * density
-    mfyd.data[:] = yaf.data[:] * initial_state["delp"].data[:] * density
+    mfxd.data[:] = x_area_flux.data[:] * initial_state["delp"].data[:] * density
+    mfyd.data[:] = y_area_flux.data[:] * initial_state["delp"].data[:] * density
 
     flux_prep = {
         "crx": crx,
         "cry": cry,
         "mfxd": mfxd,
         "mfyd": mfyd,
-        "ucv": ucv,
-        "vcv": vcv,
-        "xaf": xaf,
-        "yaf": yaf,
+        "uc_contra": uc_contra,
+        "vc_contra": vc_contra,
+        "x_area_flux": x_area_flux,
+        "y_area_flux": y_area_flux,
     }
 
     return flux_prep
@@ -981,8 +936,6 @@ def run_advection_step_with_reset(
     - tracer_advection_data (Dict) with updated tracer only
     """
 
-    tmp = cp.deepcopy(tracer_advection_data["tracers"])  # pre-advection tracer state
-
     tracer_advection(
         tracer_advection_data["tracers"],
         tracer_advection_data["delp"],
@@ -1077,6 +1030,7 @@ def plot_projection_field(
     f_out: str,
     show: bool = False,
     unstagger: str = "first",
+    level: int = 0
 ) -> None:
     """
     Use: plot_projection_field(configuration, metadata,
@@ -1112,9 +1066,12 @@ def plot_projection_field(
 
         if isinstance(field.data, np.ndarray):
             field = field.data
+        
+        if len(field.shape) == 4:
+            field = field[:, :, :, level]
 
         field_plot = np.squeeze(field)
-        field_plot = unstagger_coordinate(field_plot, "first")
+        field_plot = unstagger_coordinate(field_plot, unstagger)
 
         fig = plt.figure(figsize=(12, 6))
         fig.patch.set_facecolor("white")
@@ -1197,7 +1154,7 @@ def plot_tracer_animation(
             pcolormesh_cube(
                 lat.data,
                 lon.data,
-                tracer_stack[step],
+                tracer_stack[step][:, :, :, 0],
                 vmin=plot_dict_tracer["vmin"],
                 vmax=plot_dict_tracer["vmax"],
                 cmap=plot_dict_tracer["cmap"],
