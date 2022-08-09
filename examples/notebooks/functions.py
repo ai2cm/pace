@@ -327,12 +327,51 @@ def get_lon_lat_edges(
     return lon, lat
 
 
+def check_get_data_from_quantity(field: Union[Quantity, np.ndarray]) -> np.ndarray:
+    """
+    Use:
+    field = check_get_data_from_quantity(field)
+
+    If field is a quantity, gets data out as an array.
+    If field is an array, it remains an array.
+
+    Inputs:
+    - field (Quantity or array)
+
+    Outputs:
+    - field: array
+    """
+    if isinstance(field.data, np.ndarray):
+        field = field.data
+
+    return field
+
+
+def check_fill_data_to_quantity(
+    field: Union[Quantity, np.ndarray], data
+) -> Union[Quantity, np.ndarray]:
+    """
+    Use:
+    field = check_fill_data_to_quantity(field, data)
+
+    If field is a quantity, data gets stored inside field.data.
+    If field is an array, it remains an array.
+
+    """
+    if isinstance(field.data, np.ndarray):
+        field.data[:] = data
+    else:
+        field = data
+
+    return field
+
+
 def create_initial_tracer(
-    lon: Quantity,
-    lat: Quantity,
-    tracer: Quantity,
+    lon: Union[Quantity, np.ndarray],
+    lat: Union[Quantity, np.ndarray],
+    tracer: Union[Quantity, np.ndarray],
     center: Tuple[float, float] = (0.0, 0.0),
-) -> Quantity:
+) -> Union[Quantity, np.ndarray]:
     """
     Use: tracer =
             create_initial_tracer(lon, lat, metadata, tracer, target_tile)
@@ -350,34 +389,40 @@ def create_initial_tracer(
     - tracer: updated quantity
     """
 
+    lon = check_get_data_from_quantity(lon)
+    lat = check_get_data_from_quantity(lat)
+    tracer_input = check_get_data_from_quantity(tracer)
+
     r0 = RADIUS / 3.0
 
     p_center = [np.deg2rad(center[0]), np.deg2rad(center[1])]
 
-    for jj in range(tracer.data.shape[1] - 1):
-        for ii in range(tracer.data.shape[0] - 1):
+    for jj in range(tracer_input.shape[1] - 1):
+        for ii in range(tracer_input.shape[0] - 1):
 
-            p_dist = [lon.data[ii, jj], lat.data[ii, jj]]
+            p_dist = [lon[ii, jj], lat[ii, jj]]
             r = great_circle_distance_lon_lat(
                 p_center[0], p_dist[0], p_center[1], p_dist[1], RADIUS, np
             )
 
-            tracer.data[ii, jj, :] = (
+            tracer_input[ii, jj, :] = (
                 0.5 * (1.0 + np.cos(np.pi * r / r0)) if r < r0 else 0.0
             )
+
+    tracer = check_fill_data_to_quantity(tracer, tracer_input)
 
     return tracer
 
 
 def calculate_streamfunction(
-    lon_agrid: Quantity,
-    lat_agrid: Quantity,
-    lon: Quantity,
-    lat: Quantity,
-    psi: Quantity,
-    psi_staggered: Quantity,
+    lon_agrid: Union[Quantity, np.ndarray],
+    lat_agrid: Union[Quantity, np.ndarray],
+    lon: Union[Quantity, np.ndarray],
+    lat: Union[Quantity, np.ndarray],
+    psi: Union[Quantity, np.ndarray],
+    psi_staggered: Union[Quantity, np.ndarray],
     test_case: str,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[Union[Quantity, np.ndarray], Union[Quantity, np.ndarray]]:
     """
     Use: psi, psi_staggered =
             calculate_streamfunction(
@@ -401,19 +446,26 @@ def calculate_streamfunction(
     - psi_staggered (streamfunction on tile corners.)
     """
 
-    yA_t = np.cos(lat_agrid.data) * np.sin(lon_agrid.data)
-    zA_t = np.sin(lat_agrid.data)
-    y_t = np.cos(lat.data) * np.sin(lon.data)
-    z_t = np.sin(lat.data)
+    lat_agrid = check_get_data_from_quantity(lat_agrid)
+    lon_agrid = check_get_data_from_quantity(lon_agrid)
+    lat = check_get_data_from_quantity(lat)
+    lon = check_get_data_from_quantity(lon)
+    psi_input = check_get_data_from_quantity(psi)
+    psi_staggered_input = check_get_data_from_quantity(psi_staggered)
+
+    yA_t = np.cos(lat_agrid) * np.sin(lon_agrid)
+    zA_t = np.sin(lat_agrid)
+    y_t = np.cos(lat) * np.sin(lon)
+    z_t = np.sin(lat)
 
     if test_case == "a":
-        RadA = RADIUS * np.ones(lon_agrid.data.shape)
-        Rad = RADIUS * np.ones(lon.data.shape)
+        RadA = RADIUS * np.ones(lon_agrid.shape)
+        Rad = RADIUS * np.ones(lon.shape)
         multiplierA = zA_t
         multiplier = z_t
     elif test_case == "b":
-        RadA = RADIUS * np.cos(lat_agrid.data / 2)
-        Rad = RADIUS * np.cos(lat.data / 2)
+        RadA = RADIUS * np.cos(lat_agrid / 2)
+        Rad = RADIUS * np.cos(lat / 2)
         multiplierA = zA_t
         multiplier = z_t
     elif test_case == "c":
@@ -423,35 +475,38 @@ def calculate_streamfunction(
         multiplier = -y_t
     elif test_case == "d":
         print("This case is in TESTING.")
-        RadA = RADIUS * np.ones(lon.data.shape)
-        Rad = RADIUS * np.ones(lon.data.shape)
+        RadA = RADIUS * np.ones(lon.shape)
+        Rad = RADIUS * np.ones(lon.shape)
         multiplierA = (yA_t + zA_t) / 1.5
         multiplier = (y_t + z_t) / 1.5
     else:
-        RadA = np.ones(lon_agrid.data.shape) * np.nan
-        Rad = np.ones(lon.data.shape) * np.nan
+        RadA = np.ones(lon_agrid.shape) * np.nan
+        Rad = np.ones(lon.shape) * np.nan
         multiplierA = np.nan
         multiplier = np.nan
         print("Please choose one of the defined test cases.")
         print("This will return gibberish.")
 
     Ubar = (2.0 * np.pi * RADIUS) / (12.0 * 86400.0)
-    streamfunction = -1 * Ubar * RadA * multiplierA
-    psi.data[:, :, :] = streamfunction[:, :, np.newaxis]
+    streamfunction_agrid = -1 * Ubar * RadA * multiplierA
+    psi_input[:, :, :] = streamfunction_agrid[:, :, np.newaxis]
     streamfunction = -1 * Ubar * Rad * multiplier
-    psi_staggered.data[:, :, :] = streamfunction[:, :, np.newaxis]
+    psi_staggered_input[:, :, :] = streamfunction[:, :, np.newaxis]
+
+    psi = check_fill_data_to_quantity(psi, psi_input)
+    psi_staggered = check_fill_data_to_quantity(psi_staggered, psi_staggered_input)
 
     return psi, psi_staggered
 
 
 def calculate_winds_from_streamfunction_grid(
-    psi: np.ndarray,
-    dx: Quantity,
-    dy: Quantity,
-    u_grid: Quantity,
-    v_grid: Quantity,
+    psi: Union[Quantity, np.ndarray],
+    dx: Union[Quantity, np.ndarray],
+    dy: Union[Quantity, np.ndarray],
+    u_grid: Union[Quantity, np.ndarray],
+    v_grid: Union[Quantity, np.ndarray],
     grid: GridType = GridType.AGrid,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[Union[Quantity, np.ndarray], Union[Quantity, np.ndarray]]:
     """
     Use: u_grid, v_grid =
             calculate_winds_from_streamfunction_grid(psi, dx, dy, u_Grid, v_grid, grid)
@@ -480,54 +535,77 @@ def calculate_winds_from_streamfunction_grid(
     - D: streamfunction on center points, dx, dy on edge points, all with halos
     """
 
-    if grid == GridType.AGrid:
-        if not (
-            u_grid.metadata.dims == ("x", "y", "z")
-            and v_grid.metadata.dims == ("x", "y", "z")
-        ):
-            print("Incorrect wind input dimensions for A-grid.")
-    elif grid == GridType.CGrid:
-        if not (
-            u_grid.metadata.dims == ("x", "y_interface", "z")
-            and v_grid.metadata.dims == ("x_interface", "y", "z")
-        ):
-            print("Incorrect wind input dimensions for C-grid.")
-    elif grid == GridType.DGrid:
-        if not (
-            u_grid.metadata.dims == ("x_interface", "y", "z")
-            and v_grid.metadata.dims == ("x", "y_interface", "z")
-        ):
-            print("Incorrect wind input dimensions for D-grid.")
+    if isinstance(u_grid.data, np.ndarray) and isinstance(v_grid.data, np.ndarray):
+        if grid == GridType.AGrid:
+            if not (
+                u_grid.metadata.dims == ("x", "y", "z")
+                and v_grid.metadata.dims == ("x", "y", "z")
+            ):
+                print("Incorrect wind input dimensions for A-grid.")
+        elif grid == GridType.CGrid:
+            if not (
+                u_grid.metadata.dims == ("x", "y_interface", "z")
+                and v_grid.metadata.dims == ("x_interface", "y", "z")
+            ):
+                print("Incorrect wind input dimensions for C-grid.")
+        elif grid == GridType.DGrid:
+            if not (
+                u_grid.metadata.dims == ("x_interface", "y", "z")
+                and v_grid.metadata.dims == ("x", "y_interface", "z")
+            ):
+                print("Incorrect wind input dimensions for D-grid.")
+    else:
+        if grid == GridType.AGrid:
+            if (
+                not u_grid.shape[0] == u_grid.shape[1]
+                and v_grid.shape[0] == v_grid.shape[1]
+            ):
+                print("Incorrect wind input dimensions for A-grid.")
+        elif grid == GridType.CGrid:
+            if (
+                not u_grid.shape[0] + 1 == u_grid.shape[1]
+                and v_grid.shape[0] == v_grid.shape[1] + 1
+            ):
+                print("Incorrect wind input dimensions for C-grid.")
+        elif grid == GridType.DGrid:
+            if (
+                not u_grid.shape[0] == u_grid.shape[1] + 1
+                and v_grid.shape[0] + 1 == v_grid.shape[1]
+            ):
+                print("Incorrect wind input dimensions for D-grid.")
+
+    psi = check_get_data_from_quantity(psi)
+    dx = check_get_data_from_quantity(dx)
+    dy = check_get_data_from_quantity(dy)
+    u_grid_input = check_get_data_from_quantity(u_grid)
+    v_grid_input = check_get_data_from_quantity(v_grid)
 
     if grid == GridType.AGrid:
-        u_grid[:, 1:-1, :] = (
-            -0.5
-            * (psi.data[:, 2:, :] - psi.data[:, :-2, :])
-            / dy.data[:, 1:-1, np.newaxis]
+        u_grid_input[:, 1:-1, :] = (
+            -0.5 * (psi[:, 2:, :] - psi[:, :-2, :]) / dy[:, 1:-1, np.newaxis]
         )
-        v_grid[1:-1, :, :] = (
-            0.5
-            * (psi.data[2:, :, :] - psi.data[:-2, :, :])
-            / dx.data[1:-1, :, np.newaxis]
+        v_grid_input[1:-1, :, :] = (
+            0.5 * (psi[2:, :, :] - psi[:-2, :, :]) / dx[1:-1, :, np.newaxis]
         )
 
     elif grid == GridType.CGrid:
-        u_grid.data[:, :-1, :] = (
-            -1
-            * (psi.data[:, 1:, :] - psi.data[:, :-1, :])
-            / dy.data[:, :-1, np.newaxis]
+        u_grid_input[:, :-1, :] = (
+            -1 * (psi[:, 1:, :] - psi[:, :-1, :]) / dy[:, :-1, np.newaxis]
         )
-        v_grid.data[:-1, :, :] = (psi.data[1:, :, :] - psi.data[:-1, :, :]) / dx.data[
+        v_grid_input[:-1, :, :] = (psi[1:, :, :] - psi[:-1, :, :]) / dx[
             :-1, :, np.newaxis
         ]
 
     elif grid == GridType.DGrid:
-        u_grid[:, 1:, :] = (
-            -(psi.data[:, 1:, :] - psi.data[:, :-1, :]) / dy.data[:, 1:, np.newaxis]
+        u_grid_input[:, 1:, :] = (
+            -(psi[:, 1:, :] - psi[:, :-1, :]) / dy[:, 1:, np.newaxis]
         )
-        v_grid[1:, :, :] = (
-            -(psi.data[1:, :, :] - psi.data[:-1, :, :]) / dy.data[1:, :, np.newaxis]
+        v_grid_input[1:, :, :] = (
+            -(psi[1:, :, :] - psi[:-1, :, :]) / dy[1:, :, np.newaxis]
         )
+
+    u_grid = check_fill_data_to_quantity(u_grid, u_grid_input)
+    v_grid = check_fill_data_to_quantity(v_grid, v_grid_input)
 
     return u_grid, v_grid
 
