@@ -23,7 +23,7 @@ fv3core_dir=`dirname $0`/../
 pace_dir=`dirname $0`/../../
 ${pace_dir}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
-python3 -m pip install -r ${fv3core_dir}/fv3core/requirements/requirements_dace.txt # To allow for non-release version of DaCe to be picked up first (since PIP doesn't allow git constrainted anymore...)
+python3 -m pip install -r ${fv3core_dir}/requirements/requirements_dace.txt # To allow for non-release version of DaCe to be picked up first (since PIP doesn't allow git constrainted anymore...)
 python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${pace_dir}/external/gt4py/ -c ${pace_dir}/constraints.txt
 python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${pace_dir}/pace-util/ -c ${pace_dir}/constraints.txt
 python3 -m pip install ${FV3CORE_INSTALL_FLAGS} ${pace_dir}/stencils/ -c ${pace_dir}/constraints.txt
