@@ -9,7 +9,7 @@ BUILDENV_DIR=$PACE_DIR/buildenv
 . ${BUILDENV_DIR}/schedulerTools.sh
 
 cd $PACE_DIR
-
+${JENKINS_DIR}/fetch_caches.sh gt:gpu c576_54ranks_minimal_baroclinic driver
 
 cat << EOF > compile.daint.slurm
 #!/bin/bash
@@ -19,7 +19,7 @@ cat << EOF > compile.daint.slurm
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --output=compile.out
-#SBATCH --time=06:00:00
+#SBATCH --time=09:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --account=s1053
 #SBATCH --partition=normal
@@ -33,7 +33,8 @@ export GT_CACHE_DIR_NAME=/tmp
 srun python ${PACE_DIR}/driver/examples/compile_driver.py ${JENKINS_DIR}/driver_configs/compile_baroclinic_c576_54ranks.yaml ${PACE_DIR}
 EOF
 
-launch_job compile.daint.slurm 30000
+launch_job compile.daint.slurm 45000
+${JENKINS_DIR}/generate_caches.sh gt:gpu c576_54ranks_minimal_baroclinic driver
 
 cat << EOF > run.daint.slurm
 #!/bin/bash
