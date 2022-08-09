@@ -48,7 +48,7 @@ cat << EOF > run.daint.slurm
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --output=run.out
-#SBATCH --time=08:00:00
+#SBATCH --time=09:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --account=s1053
 #SBATCH --partition=normal
