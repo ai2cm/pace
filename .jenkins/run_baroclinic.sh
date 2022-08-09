@@ -57,6 +57,7 @@ export OMP_NUM_THREADS=12
 srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/run_baroclinic_c576_54ranks.yaml
 EOF
 launch_job run.daint.slurm 15000
+tar -czvf ${PACE_DIR}/output.tar.gz output.zarr
 
 module load sarus
 sarus pull elynnwu/pace:latest
