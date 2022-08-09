@@ -55,7 +55,7 @@ cat << EOF > run.daint.slurm
 ########################################################
 set -x
 export OMP_NUM_THREADS=12
-srun python pace.driver.run -m ${JENKINS_DIR}/driver_configs/baroclinic_c192_6ranks.yaml
+srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/baroclinic_c192_6ranks.yaml
 EOF
 launch_job run.daint.slurm 29000
 ${JENKINS_DIR}/generate_cahches.sh gt:gpu c192_6ranks_baroclinic driver
