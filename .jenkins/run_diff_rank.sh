@@ -32,9 +32,9 @@ export OMP_NUM_THREADS=12
 srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/baroclinic_c192_54ranks.yaml
 EOF
 
-launch_job run.daint.slurm 15000
-
+launch_job run.daint.slurm 29000
 ${JENKINS_DIR}/generate_caches.sh gt:gpu c192_54ranks_baroclinic driver
+tar -czvf ${PACE_DIR}/54_rank_ouput.tar.gz output.zarr
 
 cd $PACE_DIR
 mkdir 6_rank_job
@@ -48,22 +48,24 @@ cat << EOF > run.daint.slurm
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
 #SBATCH --output=run.out
-#SBATCH --time=08:00:00
+#SBATCH --time=09:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --account=s1053
 #SBATCH --partition=normal
 ########################################################
 set -x
 export OMP_NUM_THREADS=12
-srun python pace.driver.run -m ${JENKINS_DIR}/driver_configs/baroclinic_c192_6ranks.yaml
+srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/baroclinic_c192_6ranks.yaml
 EOF
-launch_job run.daint.slurm 15000
+
+launch_job run.daint.slurm 29000
 ${JENKINS_DIR}/generate_caches.sh gt:gpu c192_6ranks_baroclinic driver
+tar -czvf ${PACE_DIR}/6_rank_ouput.tar.gz output.zarr
 cd $PACE_DIR
 
 
 module load sarus
 sarus pull elynnwu/pace:latest
 echo "####### generating figures..."
-srun -C gpu --partition=debug --account=s1053 --time=00:30:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_pcolormesh_cube.py moist_baroclinic_c192_diff ua 40 --zarr_output=/work/54_rank_job/output.zarr --force_symmetric_colorbar --diff_python_path=/work/6_rank_job/output.zarr
+srun -C gpu --partition=debug --account=s1053 --time=00:30:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_pcolormesh_cube.py moist_baroclinic_c192_diff ua 40 --zarr_output=/work/54_rank_job/output.zarr --force_symmetric_colorbar --diff_python_path=/work/6_rank_job/output.zarr --size=192
 echo "####### figures completed."
