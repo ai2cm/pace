@@ -164,7 +164,13 @@ if __name__ == "__main__":
         ds_ref = xr.open_zarr(
             store=zarr.DirectoryStore(path=args.diff_python_path), consolidated=False
         )
-        python_ref = ds_ref[args.variable][:, :, 0 : args.size, 0 : args.size]
+        if args.var2D:
+            python_ref = ds_ref[args.variable][:, :, 0 : args.size, 0 : args.size]
+        else:
+            python_ref = ds_ref[args.variable][:, :, 0 : args.size, 0 : args.size].isel(
+                z=args.zlevel
+            )
+
     ds = xr.open_zarr(
         store=zarr.DirectoryStore(path=args.zarr_output), consolidated=False
     )
@@ -190,12 +196,14 @@ if __name__ == "__main__":
             )
     for t in range(args.start, args.stop):
         if args.var2D:
+            print("why here?")
             python = (
                 ds[args.variable][:, :, 0 : args.size, 0 : args.size]
                 .isel(time=t)
                 .values
             )
         else:
+            print("this is good")
             python = (
                 ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
                 .isel(time=t, z=args.zlevel)
@@ -252,7 +260,7 @@ if __name__ == "__main__":
         if args.zarr_output == "/model_output/output.zarr":
             save_path = "/work/"
         else:
-            save_path = ""
+            save_path = "/work/"
         plt.savefig(
             f"{save_path}{args.experiment}_{args.variable}_time_{t:02d}.png",
             dpi=150,
