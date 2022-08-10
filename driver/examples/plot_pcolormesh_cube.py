@@ -140,12 +140,9 @@ def gather_fortran_data_at_klevel(path: str, cn: int, var: str, klevel: int):
 if __name__ == "__main__":
     args = parse_args()
     if (
-        sum(
-            x is not None
-            for x in [args.fortran_data_path, args.diff_init, args.diff_python_path]
-        )
-        > 1
-    ):
+        sum(x is not None for x in [args.fortran_data_path, args.diff_python_path])
+        + args.diff_init
+    ) > 1:
         raise RuntimeError(
             "Scirpt called with confilicting options between: \
             Diff init, diff python and diff to fortran"

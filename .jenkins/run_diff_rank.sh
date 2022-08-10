@@ -34,7 +34,7 @@ EOF
 
 launch_job run.daint.slurm 15000
 
-${JENKINS_DIR}/generate_cahches.sh gt:gpu c192_54ranks_baroclinic driver
+${JENKINS_DIR}/generate_caches.sh gt:gpu c192_54ranks_baroclinic driver
 
 cd $PACE_DIR
 mkdir 6_rank_job
@@ -58,7 +58,7 @@ export OMP_NUM_THREADS=12
 srun python pace.driver.run -m ${JENKINS_DIR}/driver_configs/baroclinic_c192_6ranks.yaml
 EOF
 launch_job run.daint.slurm 15000
-${JENKINS_DIR}/generate_cahches.sh gt:gpu c192_6ranks_baroclinic driver
+${JENKINS_DIR}/generate_caches.sh gt:gpu c192_6ranks_baroclinic driver
 cd $PACE_DIR
 
 
