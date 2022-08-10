@@ -8,7 +8,7 @@ from cartopy import crs as ccrs
 from fv3viz import pcolormesh_cube
 from IPython.display import HTML, display
 from matplotlib import animation
-from netCDF4 import Dataset
+from units_config import units
 
 from fv3core.stencils.fvtp2d import FiniteVolumeTransport
 from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
@@ -29,20 +29,107 @@ from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
-backend = "numpy"
-density = 1
-layout = (1, 1)
-nhalo = 3
-pressure_base = 10
-tracer_base = 1.0
-nz_effective = 79
-fvt_dict = {"grid_type": 0, "hord": 6}
-
-
 class GridType(enum.Enum):
     AGrid = 1
     CGrid = 2
     DGrid = 3
+
+
+class VariableDims(enum.Enum):
+    XY = 1
+    XYZ = 2
+
+
+class VariableGrid(enum.Enum):
+    CellCenters = 1
+    CellCorners = 2
+    StaggeredInX = 3
+    StaggeredInY = 4
+
+
+def init_quantity(
+    dimensions: Dict,
+    grid: VariableGrid,
+    dims: VariableDims = VariableDims.XYZ,
+    units: str = "",
+    backend: str = "numpy",
+) -> Quantity:
+    """
+    Use: output = init_quantity(dimensions, grid, dims, units)
+
+    Creates a zero-filled quantity (either 2- or 3-d) with correct
+    dims, extent, origin, etc.
+
+    Inputs:
+    - dimensions (Dict)
+    - grid (VariableGrid):
+        - CellCenters,
+        - CellCorners,
+        - StaggeredInX,
+        - StaggeredInY
+    - dims (VariableDims):
+        - XY (2-dimensional, like lat, lon, dx, etc.)
+        - XYZ (3-dimensional)
+
+    Outputs:
+    - output (Quantity) with set metadata
+    """
+
+    nx, ny, nz = dimensions["nx"], dimensions["ny"], dimensions["nz"]
+    nhalo = dimensions["nhalo"]
+
+    nx_all, ny_all = nx + 2 * nhalo + 1, ny + 2 * nhalo + 1
+    nz_all = nz + 1
+
+    if dims == VariableDims.XY:
+        empty = np.zeros((nx_all, ny_all))
+        skip_z = -1
+    elif dims == VariableDims.XYZ:
+        empty = np.zeros((nx_all, ny_all, nz_all))
+        skip_z = None
+
+    variable = 0
+    if grid == VariableGrid.CellCenters:
+        variable = Quantity(
+            data=empty,
+            dims=("x", "y", "z")[:skip_z],
+            units=units,
+            origin=(nhalo, nhalo, 0)[:skip_z],
+            extent=(nx, ny, nz)[:skip_z],
+            gt4py_backend=backend,
+        )
+
+    if grid == VariableGrid.CellCorners:
+        variable = Quantity(
+            data=empty,
+            dims=("x_interface", "y_interface", "z")[:skip_z],
+            units=units,
+            origin=(nhalo, nhalo, 0)[:skip_z],
+            extent=(nx + 1, ny + 1, nz)[:skip_z],
+            gt4py_backend=backend,
+        )
+
+    elif grid == VariableGrid.StaggeredInX:
+        variable = Quantity(
+            data=empty,
+            dims=("x_interface", "y", "z")[:skip_z],
+            units=units,
+            origin=(nhalo, nhalo, 0)[:skip_z],
+            extent=(nx + 1, ny, nz)[:skip_z],
+            gt4py_backend=backend,
+        )
+
+    elif grid == VariableGrid.StaggeredInY:
+        variable = Quantity(
+            data=empty,
+            dims=("x", "y_interface", "z")[:skip_z],
+            units=units,
+            origin=(nhalo, nhalo, 0)[:skip_z],
+            extent=(nx, ny + 1, nz)[:skip_z],
+            gt4py_backend=backend,
+        )
+
+    return variable
 
 
 def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
@@ -63,15 +150,15 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
         "nx",
         "ny",
         "nz",
+        "nhalo",
+        "layout",
         "timestep",
         "nDays",
         "test_case",
-        "plot_output_during",
         "plot_output_after",
         "plot_jupyter_animation",
         "figure_everyNhours",
         "write_initial_condition",
-        "show_figures",
         "tracer_center",
         "nSeconds",
         "figure_everyNsteps",
@@ -86,32 +173,27 @@ def store_namelist_variables(local_variables: Dict[str, Any]) -> Dict[str, Any]:
     return namelist_dict
 
 
-def define_metadata(
-    namelistDict: Dict[str, Any], mpi_comm: Any
+def define_dimensions(
+    namelistDict: Dict[str, Any]
 ) -> Tuple[Dict[str, int], Dict[str, Tuple[Any]], Dict[str, str], int]:
     """
-    Use: metadata, mpi_rank =
-            define_metadata(namelistDict, mpi_comm)
+    Use: dimensions =
+            define_dimensions(namelistDict)
 
-    Creates dictionaries with metadata used for Quantity definitions.
+    Creates dictionary that stores dimension information.
 
     Inputs:
     - namelistDict (Dict) from store_namelist_variables()
-    - mpi_comm
 
     Outputs:
-    - metadata (Dict):
-        - dimensions (Dict)
-        - origins (Dict)
-        - units (Dict)
-    - mpi_rank
+    - dimensions (Dict)
     """
 
-    mpi_rank = mpi_comm.Get_rank()
-
     # to match fortran
+    nhalo = namelistDict["nhalo"]
     nx = namelistDict["nx"]
     ny = namelistDict["ny"]
+    layout = namelistDict["layout"]
     if "nz" in namelistDict.keys():
         nz = namelistDict["nz"]
     else:
@@ -127,58 +209,17 @@ def define_metadata(
         "nxhalo": nx + 2 * nhalo,
         "nyhalo": ny + 2 * nhalo,
         "tile": 6,
+        "layout": layout,
     }
-
-    units = {
-        "area": "m2",
-        "coord": "degrees",
-        "courant": "",
-        "dist": "m",
-        "tracer": "/",
-        "pressure": "Pa",
-        "psi": "kg/m/s",
-        "wind": "m/s",
-        "mass": "kg",
-    }
-
-    origins = {
-        "halo": (0, 0),
-        "halo_3d": (0, 0, 0),
-        "compute_2d": (dimensions["nhalo"], dimensions["nhalo"]),
-        "compute_3d": (dimensions["nhalo"], dimensions["nhalo"], 0),
-    }
-
-    metadata = {"dimensions": dimensions, "origins": origins, "units": units}
-
-    return metadata, mpi_rank
+    return dimensions
 
 
-def split_metadata(
-    metadata: Dict[str, Dict[str, Any]]
-) -> Tuple[Dict[str, int], Dict[str, Tuple[Any]], Dict[str, str]]:
-    """
-    Use: dimensions, origins, units =
-            split.metadata(metadata)
-
-    Splits the metadata dictionary into its component dictionaries.
-
-    Inputs:
-    - metadata (Dict) from define_metadata()
-
-    Outputs:
-    - dimensions (Dict)
-    - origins (Dict)
-    - units (Dict)
-    """
-
-    dimensions = metadata["dimensions"]
-    origins = metadata["origins"]
-    units = metadata["units"]
-
-    return dimensions, origins, units
-
-
-def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any]:
+def configure_domain(
+    mpi_comm: Any,
+    dimensions: Dict[str, int],
+    single_layer: bool = True,
+    backend: str = "numpy",
+) -> Dict[str, Any]:
     """
     Use: configuration =
             configure_domain(mpi_comm, dimensions)
@@ -204,16 +245,16 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
         - stencil_factory
     """
 
-    partitioner = CubedSpherePartitioner(TilePartitioner(layout))
+    partitioner = CubedSpherePartitioner(TilePartitioner(dimensions["layout"]))
     communicator = CubedSphereCommunicator(mpi_comm, partitioner)
 
     sizer = SubtileGridSizer.from_tile_params(
         nx_tile=dimensions["nx"],
         ny_tile=dimensions["ny"],
-        nz=nz_effective,
+        nz=79,
         n_halo=dimensions["nhalo"],
         extra_dim_lengths={},
-        layout=layout,
+        layout=dimensions["layout"],
         tile_partitioner=partitioner.tile,
         tile_rank=communicator.tile.rank,
     )
@@ -224,6 +265,7 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
         quantity_factory=quantity_factory, communicator=communicator
     )
     damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
+
     grid_data = GridData.new_from_metric_terms(metric_terms)
 
     dace_config = DaceConfig(
@@ -251,11 +293,11 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
         sizer=sizer, cube=communicator
     )
 
-    # set the domain so there is only one level in the vertical -- forced
-    if not nz_effective == dimensions["nz"]:
+    # workaround for single layer
+    if single_layer:
         domain = grid_indexing.domain
         domain_new = list(domain)
-        domain_new[2] = dimensions["nz"]
+        domain_new[2] = 1
         domain_new = tuple(domain_new)
 
         grid_indexing.domain = domain_new
@@ -281,19 +323,19 @@ def configure_domain(mpi_comm: Any, dimensions: Dict[str, int]) -> Dict[str, Any
 
 def get_lon_lat_edges(
     configuration: Dict[str, Any],
-    metadata: Dict[str, Dict[str, Any]],
+    dimensions: Dict[str, int],
     gather: bool = True,
 ) -> Tuple[Quantity, Quantity]:
     """
     Use: lon, lat =
-    get_lon_lat_edges(configuration, metadata, gather=True)
+    get_lon_lat_edges(configuration, dimensions, gather=True)
 
     Creates quantities containing longitude and latitude of
     tile edges (without halo points), in degrees.
 
     Inputs:
     - configuration (Dict) from configure_domain()
-    - metadata (Dict)
+    - dimensions (Dict)
     - gather (bool): if true, then gathers all tiles
 
     Outputs:
@@ -301,24 +343,15 @@ def get_lon_lat_edges(
     - lat in degrees
     """
 
-    dimensions, origins, units = split_metadata(metadata)
+    lon = init_quantity(
+        dimensions, VariableGrid.CellCorners, VariableDims.XY, units=units["coord-deg"]
+    )
+    lon.data[:] = configuration["metric_terms"].lon.data * 180 / np.pi
 
-    lon = Quantity(
-        data=configuration["metric_terms"].lon.data * 180 / np.pi,
-        dims=("x_interface", "y_interface"),
-        units=units["coord"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx1"], dimensions["ny1"]),
-        gt4py_backend=backend,
+    lat = init_quantity(
+        dimensions, VariableGrid.CellCorners, VariableDims.XY, units=units["coord-deg"]
     )
-    lat = Quantity(
-        data=configuration["metric_terms"].lat.data * 180 / np.pi,
-        dims=("x_interface", "y_interface"),
-        units=units["coord"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx1"], dimensions["ny1"]),
-        gt4py_backend=backend,
-    )
+    lat.data[:] = configuration["metric_terms"].lat.data * 180 / np.pi
 
     if gather:
         lon = configuration["communicator"].gather(lon)
@@ -374,14 +407,13 @@ def create_initial_tracer(
 ) -> Union[Quantity, np.ndarray]:
     """
     Use: tracer =
-            create_initial_tracer(lon, lat, metadata, tracer, target_tile)
+            create_initial_tracer(lon, lat, tracer, target_tile)
 
     Calculates a gaussian-bell shaped multiplier for tracer initialization.
     It centers the bell at the longitude and latitude provided in center.
 
     Inputs:
     - lon and lat (in radians, and including halo points)
-    - metadata (Dict)
     - tracer: empty array to be filled with tracer
     - center: (lon, lat) in degrees
 
@@ -610,15 +642,15 @@ def calculate_winds_from_streamfunction_grid(
     return u_grid, v_grid
 
 
-def create_initial_state(
+def create_initial_state_advection(
     metric_terms: MetricTerms,
-    metadata: Dict[str, Any],
+    dimensions: Dict[str, int],
     tracer_center: Tuple[float, float],
     test_case: str,
 ) -> Dict[str, Quantity]:
     """
     Use: initial_state =
-            create_initial_state(metric_terms, metadata, tracer_center,
+            create_initial_state_advection(metric_terms, dimensions, tracer_center,
             test_case)
 
     Creates the initial state for one of the defined test cases:
@@ -636,7 +668,7 @@ def create_initial_state(
 
     Inputs:
     - metric_terms (cofiguration) from configure_domain()
-    - metadata (Dict) from define_metadata()
+    - dimensions (Dict) from define_dimensions()
     - tracerCenter
     - test_case ("a" or "b")
 
@@ -649,52 +681,15 @@ def create_initial_state(
         - psi
     """
 
-    dimensions, origins, units = split_metadata(metadata)
+    lon_agrid = metric_terms.lon_agrid
+    lat_agrid = metric_terms.lat_agrid
 
-    lon_agrid = Quantity(
-        data=metric_terms.lon_agrid.data,
-        dims=("x", "y"),
-        units=units["coord"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx"], dimensions["ny"]),
-        gt4py_backend=backend,
-    )
-    lat_agrid = Quantity(
-        data=metric_terms.lat_agrid.data,
-        dims=("x", "y"),
-        units=units["coord"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx"], dimensions["ny"]),
-        gt4py_backend=backend,
-    )
-
-    lon = Quantity(
-        data=metric_terms.lon.data,
-        dims=("x_interface", "y_interface"),
-        units=units["coord"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx1"], dimensions["ny1"]),
-        gt4py_backend=backend,
-    )
-    lat = Quantity(
-        data=metric_terms.lat.data,
-        dims=("x_interface", "y_interface"),
-        units=units["coord"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx1"], dimensions["ny1"]),
-        gt4py_backend=backend,
-    )
+    lon = metric_terms.lon
+    lat = metric_terms.lat
 
     # tracer
-    tracer = Quantity(
-        data=np.zeros(
-            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
-        ),
-        dims=("x", "y", "z"),
-        units=units["tracer"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
+    tracer = init_quantity(
+        dimensions, VariableGrid.CellCenters, VariableDims.XYZ, units=units["tracer"]
     )
     tracer = create_initial_tracer(
         lon_agrid,
@@ -704,38 +699,23 @@ def create_initial_state(
     )
 
     # # pressure
-    delp = Quantity(
-        data=np.ones(
-            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
-        )
-        * pressure_base,
-        dims=("x", "y", "z"),
-        units=units["pressure"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
+    delp = init_quantity(
+        dimensions, VariableGrid.CellCenters, VariableDims.XYZ, units=units["pressure"]
     )
+    delp.data[:-1, :-1, :-1] = 10
 
     # # # streamfunction
-    psi_agrid = Quantity(
-        data=np.zeros(
-            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
-        ),
-        dims=("x", "y", "z"),
-        units=units["psi"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
+    psi_agrid = init_quantity(
+        dimensions,
+        VariableGrid.CellCenters,
+        VariableDims.XYZ,
+        units=units["streamfunction"],
     )
-    psi = Quantity(
-        data=np.zeros(
-            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
-        ),
-        dims=("x_interface", "y_interface", "z"),
-        units=units["psi"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx1"], dimensions["ny1"], dimensions["nz"]),
-        gt4py_backend=backend,
+    psi = init_quantity(
+        dimensions,
+        VariableGrid.CellCorners,
+        VariableDims.XYZ,
+        units=units["streamfunction"],
     )
     psi_agrid, psi = calculate_streamfunction(
         lon_agrid,
@@ -748,43 +728,16 @@ def create_initial_state(
     )
 
     # # winds
-    dx = Quantity(
-        data=metric_terms.dx.data,
-        dims=("x", "y_interface"),
-        units=units["dist"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx"], dimensions["ny1"]),
-        gt4py_backend=backend,
+    dx = metric_terms.dx
+    dy = metric_terms.dy
+
+    u_cgrid = init_quantity(
+        dimensions, VariableGrid.StaggeredInY, VariableDims.XYZ, units=units["wind"]
     )
-    dy = Quantity(
-        data=metric_terms.dy.data,
-        dims=("x_interface", "y"),
-        units=units["dist"],
-        origin=origins["compute_2d"],
-        extent=(dimensions["nx1"], dimensions["ny"]),
-        gt4py_backend=backend,
+    v_cgrid = init_quantity(
+        dimensions, VariableGrid.StaggeredInX, VariableDims.XYZ, units=units["wind"]
     )
 
-    u_cgrid = Quantity(
-        data=np.zeros(
-            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
-        ),
-        dims=("x", "y_interface", "z"),
-        units=units["wind"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        gt4py_backend=backend,
-    )
-    v_cgrid = Quantity(
-        data=np.zeros(
-            (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
-        ),
-        dims=("x_interface", "y", "z"),
-        units=units["wind"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
-    )
     grid = GridType.CGrid
     u_cgrid, v_cgrid = calculate_winds_from_streamfunction_grid(
         psi, dx, dy, u_cgrid, v_cgrid, grid=grid
@@ -804,21 +757,22 @@ def create_initial_state(
 def run_finite_volume_fluxprep(
     configuration: Dict[str, Any],
     initial_state: Dict[str, Quantity],
-    metadata: Dict[str, Any],
+    dimensions: Dict[str, int],
     timestep: float,
+    density: float = 1.0,
 ) -> Dict[str, Quantity]:
     """
     Use: fluxPrep =
             run_finite_volume_fluxprep(configuration, initial_state,
-            metadata, timestep)
+            dimensions, timestep)
 
     Initializes and runs the FiniteVolumeFluxPrep class to get
     initial states for mass flux, contravariant winds, area flux.
 
     Inputs:
     - configuration (Dict) from configure_domain()
-    - initial_tate (Dict) from create_initial_state()
-    - metadata (Dict) from define_metadata()
+    - initial_state (Dict) from create_initial_state()
+    - dimensions (Dict)
     - timestep (float) for advection
 
     Outputs:
@@ -829,60 +783,25 @@ def run_finite_volume_fluxprep(
         - x_area_flux, y_area_flux
     """
 
-    dimensions, origins, units = split_metadata(metadata)
-
-    # create empty quantities to be filled
-    empty = np.zeros(
-        (dimensions["nxhalo"] + 1, dimensions["nyhalo"] + 1, dimensions["nz"] + 1)
+    crx = init_quantity(
+        dimensions, VariableGrid.StaggeredInX, VariableDims.XYZ, units=units["courant"]
+    )
+    cry = init_quantity(
+        dimensions, VariableGrid.StaggeredInY, VariableDims.XYZ, units=units["courant"]
     )
 
-    crx = Quantity(
-        data=empty,
-        dims=("x_interface", "y", "z"),
-        units=units["courant"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
+    x_area_flux = init_quantity(
+        dimensions, VariableGrid.StaggeredInX, VariableDims.XYZ, units=units["area"]
     )
-    cry = Quantity(
-        data=empty,
-        dims=("x", "y_interface", "z"),
-        units=units["courant"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        gt4py_backend=backend,
+    y_area_flux = init_quantity(
+        dimensions, VariableGrid.StaggeredInY, VariableDims.XYZ, units=units["area"]
     )
-    x_area_flux = Quantity(
-        data=empty,
-        dims=("x_interface", "y", "z"),
-        units=units["area"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
+
+    uc_contra = init_quantity(
+        dimensions, VariableGrid.StaggeredInX, VariableDims.XYZ, units=units["area"]
     )
-    y_area_flux = Quantity(
-        data=empty,
-        dims=("x", "y_interface", "z"),
-        units=units["area"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        gt4py_backend=backend,
-    )
-    uc_contra = Quantity(
-        data=empty,
-        dims=("x_interface", "y", "z"),
-        units=units["wind"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
-    )
-    vc_contra = Quantity(
-        data=empty,
-        dims=("x", "y_interface", "z"),
-        units=units["wind"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        gt4py_backend=backend,
+    vc_contra = init_quantity(
+        dimensions, VariableGrid.StaggeredInY, VariableDims.XYZ, units=units["area"]
     )
 
     # intialize and run
@@ -900,26 +819,15 @@ def run_finite_volume_fluxprep(
         uc_contra,
         vc_contra,
         timestep,
-    )  # THIS WILL MODIFY CREATED QUANTITIES, but not change uc, vc
+    )  # this will modify empty quantities, but not change uc, vc
 
-    mfxd = Quantity(
-        data=empty,
-        dims=("x_interface", "y", "z"),
-        units=units["mass"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx1"], dimensions["ny"], dimensions["nz"]),
-        gt4py_backend=backend,
+    mfxd = init_quantity(
+        dimensions, VariableGrid.StaggeredInX, VariableDims.XYZ, units=units["area"]
     )
-    mfyd = Quantity(
-        data=empty,
-        dims=("x", "y_interface", "z"),
-        units=units["mass"],
-        origin=origins["compute_3d"],
-        extent=(dimensions["nx"], dimensions["ny1"], dimensions["nz"]),
-        gt4py_backend=backend,
-    )
-
     mfxd.data[:] = x_area_flux.data[:] * initial_state["delp"].data[:] * density
+    mfyd = init_quantity(
+        dimensions, VariableGrid.StaggeredInY, VariableDims.XYZ, units=units["area"]
+    )
     mfyd.data[:] = y_area_flux.data[:] * initial_state["delp"].data[:] * density
 
     flux_prep = {
@@ -953,6 +861,7 @@ def build_tracer_advection(
     Outputs:
     - tracer_advection - an instance of TracerAdvection class
     """
+    fvt_dict = {"grid_type": 0, "hord": 6}
 
     fvtp_2d = FiniteVolumeTransport(
         configuration["stencil_factory"],
@@ -976,20 +885,20 @@ def build_tracer_advection(
 def prepare_everything_for_advection(
     configuration: Dict[str, Any],
     initial_state: Dict[str, Quantity],
-    metadata: Dict[str, Any],
+    dimensions: Dict[str, int],
     timestep: float,
 ) -> Tuple[Dict[str, Any], TracerAdvection]:
     """
     Use: tracer_advection_data, tracer_advection =
         prepare_everything_for_advection(configuration, initial_state,
-        metadata, timestep)
+        dimensions, timestep)
 
     Calls run_finite_volume_fluxprep() and build_tracer_advection().
 
     Inputs:
     - configuration from configure_domain()
     - initialState from create_initial_state()
-    - metadata from define_metadata()
+    - dimensions
     - timestep (float) advection timestep
 
     Outputs:
@@ -1007,7 +916,7 @@ def prepare_everything_for_advection(
     flux_prep = run_finite_volume_fluxprep(
         configuration,
         initial_state,
-        metadata,
+        dimensions,
         timestep,
     )
 
@@ -1075,169 +984,155 @@ def run_advection_step_with_reset(
 
 
 def plot_grid(
-    configuration: Dict[str, Any],
-    metadata: Dict[str, Dict[str, Any]],
-    mpi_rank: Any,
+    lon: Quantity,
+    lat: Quantity,
+    dimensions: Dict[str, int],
     fOut: str = "grid_map.png",
     show: bool = False,
 ) -> None:
     """
-    Use: plot_grid(configuration, metadata,
-            mpi_rank, fOut="grid_map.png", show=False)
+    Use: plot_grid(lon, lat, dimensions,
+            fOut="grid_map.png", show=False)
 
     Creates a Robinson projection and plots grid edges.
     Note -- this is basically useless for more than
     50 points as the cells are too small.
 
     Inputs:
-    - configuration (Dict) from configure_domain()
-    - metadata (Dict) from define_metadata()
-    - mpi_rank
+    - lon, lat (Quantity)
+    - dimensions (Dict)
     - fOut (str): file name to save to
     - show (bool): whether to show image in notebook
 
     Outputs: saved figure
     """
+    lon = check_get_data_from_quantity(lon)
+    lat = check_get_data_from_quantity(lat)
 
-    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
+    field = np.zeros(lon.data.shape)[:, :-1, :-1]
 
-    if mpi_rank == 0:
+    fig = plt.figure(figsize=(12, 6))
+    fig.patch.set_facecolor("white")
+    ax = fig.add_subplot(111, projection=ccrs.Robinson())
+    ax.set_facecolor(".4")
 
-        field = np.zeros(
-            (
-                metadata["dimensions"]["tile"],
-                metadata["dimensions"]["nx"],
-                metadata["dimensions"]["ny"],
-            )
-        )
+    pcolormesh_cube(
+        lat,
+        lon,
+        field,
+        cmap="bwr",
+        vmin=-1,
+        vmax=1,
+        edgecolor="k",
+        linewidth=0.1,
+    )
 
-        fig = plt.figure(figsize=(12, 6))
-        fig.patch.set_facecolor("white")
-        ax = fig.add_subplot(111, projection=ccrs.Robinson())
-        ax.set_facecolor(".4")
+    nx = dimensions["nx"]
+    ny = dimensions["ny"]
+    ax.set_title(f"Cubed-sphere mesh with {nx} x {ny} cells per tile (c{nx})")
 
-        pcolormesh_cube(
-            lat.data,
-            lon.data,
-            field,
-            cmap="bwr",
-            vmin=-1,
-            vmax=1,
-            edgecolor="k",
-            linewidth=0.1,
-        )
-
-        nx = metadata["dimensions"]["nx"]
-        ny = metadata["dimensions"]["ny"]
-        ax.set_title(f"Cubed-sphere mesh with {nx} x {ny} cells per tile (c{nx})")
-
-        plt.savefig(fOut, dpi=300, bbox_inches="tight")
-        if show:
-            plt.show()
-        else:
-            plt.close("all")
+    plt.savefig(fOut, dpi=300, bbox_inches="tight")
+    if show:
+        plt.show()
+    else:
+        plt.close("all")
 
 
 def plot_projection_field(
-    configuration: Dict[str, Any],
-    metadata: Dict[str, Dict[str, Any]],
+    lon: Union[Quantity, np.ndarray],
+    lat: Union[Quantity, np.ndarray],
     field: Union[Quantity, np.ndarray],
     plot_dict: Dict[str, Any],
-    mpi_rank: Any,
     f_out: str,
     show: bool = False,
     unstagger: str = "first",
     level: int = 0,
 ) -> None:
     """
-    Use: plot_projection_field(configuration, metadata,
-            field, plot_dict, mpi_rank, fOut,
-            show=False)
+    Use: plot_projection_field(lon, lat,
+            field, plot_dict, fOut,
+            show=False, unstagger="first", level=0)
 
     Creates a Robinson projection and plots provided field.
+    The field must have been gathered from subprocesses first.
 
     Inputs:
-    - configuration (Dict) from configure_domain()
-    - metadata (Dict) from define_metadata()
-    - field (Quantity or array) - single layer
+    - lon, lat (Quantity or array)
+    - field (Quantity or array) - if multiple layers, gets subset
     - plot_dict (Dict) - vmin, vmax, etc.
-    - mpi_rank
     - f_out (str): file name to save to - if blank, not saved.
     - show (bool): whether to show image in notebook
+    - unstagger: if field is staggered, it unstaggers it
+    - level: if multilple levels, which gets subset
 
     Outputs: saved figure
     """
 
-    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
+    lon = check_get_data_from_quantity(lon)
+    lat = check_get_data_from_quantity(lat)
+    field = check_get_data_from_quantity(field)
 
-    if mpi_rank == 0:
+    if len(field.shape) == 4:
+        field = np.squeeze(field[:, :, :, level])
 
-        if "vmin" not in plot_dict:
-            plot_dict["vmin"] = 0
-        if "vmax" not in plot_dict:
-            plot_dict["vmax"] = 1
-        if "units" not in plot_dict:
-            plot_dict["units"] = "forgot to add units"
-        if "title" not in plot_dict:
-            plot_dict["title"] = "forgot to add title"
+    field_plot = unstagger_coordinate(field, unstagger)
 
-        if isinstance(field.data, np.ndarray):
-            field = field.data
+    if "vmin" not in plot_dict:
+        plot_dict["vmin"] = 0
+    if "vmax" not in plot_dict:
+        plot_dict["vmax"] = 1
+    if "units" not in plot_dict:
+        plot_dict["units"] = "forgot to add units"
+    if "title" not in plot_dict:
+        plot_dict["title"] = "forgot to add title"
+    if "cmap" not in plot_dict:
+        plot_dict["cmap"] = "viridis"
 
-        if len(field.shape) == 4:
-            field = field[:, :, :, level]
+    fig = plt.figure(figsize=(12, 6))
+    fig.patch.set_facecolor("white")
+    ax = fig.add_subplot(111, projection=ccrs.Robinson())
+    ax.set_facecolor(".4")
 
-        field_plot = np.squeeze(field)
-        field_plot = unstagger_coordinate(field_plot, unstagger)
+    f1 = pcolormesh_cube(
+        lat,
+        lon,
+        field_plot,
+        cmap=plot_dict["cmap"],
+        vmin=plot_dict["vmin"],
+        vmax=plot_dict["vmax"],
+    )
+    plt.colorbar(f1, label=plot_dict["units"])
 
-        fig = plt.figure(figsize=(12, 6))
-        fig.patch.set_facecolor("white")
-        ax = fig.add_subplot(111, projection=ccrs.Robinson())
-        ax.set_facecolor(".4")
+    ax.set_title(plot_dict["title"])
 
-        f1 = pcolormesh_cube(
-            lat.data,
-            lon.data,
-            field_plot,
-            cmap=plot_dict["cmap"],
-            vmin=plot_dict["vmin"],
-            vmax=plot_dict["vmax"],
-        )
-        plt.colorbar(f1, label=plot_dict["units"])
+    if len(f_out) > 0:
+        plt.savefig(f_out, dpi=200, bbox_inches="tight")
 
-        ax.set_title(plot_dict["title"])
-
-        if len(f_out) > 0:
-            plt.savefig(f_out, dpi=200, bbox_inches="tight")
-
-        if show:
-            plt.show()
-        else:
-            plt.close("all")
+    if show:
+        plt.show()
+    else:
+        plt.close("all")
 
 
 def plot_tracer_animation(
-    configuration: Dict[str, Any],
-    metadata: Dict[str, Dict[str, Any]],
-    tracer_archive: List[Quantity],
-    mpi_rank: int,
+    lon: Union[Quantity, np.ndarray],
+    lat: Union[Quantity, np.ndarray],
+    tracer_gather: Union[List[Quantity], List[np.ndarray]],
     plot_dict_tracer: Dict[str, Any],
     figure_everyNsteps: int,
     timestep: float,
     frames: Union[str, int] = "all",
 ) -> None:
     """
-    Use: plot_tracer_animation(configuration, metadata,
-            tracer_archive, mpi_rank, plot_dict_tracer,
+    Use: plot_tracer_animation(lon, lat,
+            tracer_gather, plot_dict_tracer,
             figure_everyNsteps, timestep, frames="all")
 
     Plots an interactive animation inside Jupyter notebook.
 
     Inputs:
-    - configuration (Dict) from configure_domain()
-    - metadata (Dict) from define_metadata()
-    - tracer_archive (List) of tracer states
-    - mpi_rank
+    - lon, lat (Quantity or array)
+    - tracer_gather (List of Quantities) of tracer states
     - plot_dict_tracer (Dict) of plotting settings
     - figure_everyNsteps (int) from initial setup
     - timestep (float) for advection
@@ -1246,206 +1141,50 @@ def plot_tracer_animation(
     Outputs: animation
     """
 
+    lon = check_get_data_from_quantity(lon)
+    lat = check_get_data_from_quantity(lat)
+
     tracer_global = []
-    for step in range(len(tracer_archive)):
-        tracer_global.append(configuration["communicator"].gather(tracer_archive[step]))
+    for step in range(len(tracer_gather)):
+        tracer_global.append(check_get_data_from_quantity(tracer_gather[step]))
 
-    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
+    tracer_stack = np.squeeze(np.stack(tracer_global))[::figure_everyNsteps]
 
-    if mpi_rank == 0:
-        tracer_stack = np.squeeze(np.stack(tracer_global))[::figure_everyNsteps]
-        if frames == "all":
-            frames = int(len(tracer_stack))
+    if frames == "all":
+        frames = int(len(tracer_stack))
 
-        fig = plt.figure(figsize=(8, 4))
-        fig.patch.set_facecolor("white")
-        ax = fig.add_subplot(111, projection=ccrs.Robinson())
-        ax.set_facecolor(".4")
+    fig = plt.figure(figsize=(8, 4))
+    fig.patch.set_facecolor("white")
+    ax = fig.add_subplot(111, projection=ccrs.Robinson())
+    ax.set_facecolor(".4")
 
-        def animate(step: int):
-            ax.clear()
-            plot_dict_tracer["title"] = "Tracer state @ hour: %.2f" % (
-                (step * figure_everyNsteps * timestep) / 60 / 60
-            )
-
-            pcolormesh_cube(
-                lat.data,
-                lon.data,
-                tracer_stack[step][:, :, :],
-                vmin=plot_dict_tracer["vmin"],
-                vmax=plot_dict_tracer["vmax"],
-                cmap=plot_dict_tracer["cmap"],
-            )
-            ax.set_title(plot_dict_tracer["title"])
-
-        anim = animation.FuncAnimation(
-            fig, animate, frames=frames, interval=400, blit=False
+    def animate(step: int):
+        ax.clear()
+        plot_dict_tracer["title"] = "Tracer state @ hour: %.2f" % (
+            (step * figure_everyNsteps * timestep) / 60 / 60
         )
 
-        display(HTML(anim.to_jshtml()))
-        plt.close()
+        pcolormesh_cube(
+            lat,
+            lon,
+            tracer_stack[step][:, :, :],
+            vmin=plot_dict_tracer["vmin"],
+            vmax=plot_dict_tracer["vmax"],
+            cmap=plot_dict_tracer["cmap"],
+        )
+        ax.set_title(plot_dict_tracer["title"])
 
-
-def write_initial_condition_tofile(
-    fOut: str,
-    initialState: Dict[str, Quantity],
-    metadata: Dict[str, Dict[str, Any]],
-    configuration: Dict[str, Any],
-    mpi_rank: int,
-) -> None:
-    """
-    Use: write_initial_condition_tofile(
-        fOut, initialState, metadata, configuration, mpi_rank)
-
-    Creates netCDF file with initial conditions.
-
-    Inputs:
-    - fOut (str) output netcdf file
-    - initialState (Dict) from create_initial_state()
-    - metadata (Dict) from define_metadata()
-    - configuration (Dict) from configure_domain()
-    - mpi_rank
-
-    Outputs: written netCDF file
-    """
-
-    dimensions, _, units = split_metadata(metadata)
-
-    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
-
-    uC = np.squeeze(configuration["communicator"].gather(initialState["uC"]))
-    vC = np.squeeze(configuration["communicator"].gather(initialState["vC"]))
-    tracer = np.squeeze(configuration["communicator"].gather(initialState["tracer"]))
-
-    if mpi_rank == 0:
-        uC = unstagger_coordinate(uC)
-        vC = unstagger_coordinate(vC)
-
-        data = Dataset(fOut, "w")
-
-        for dim in ["tile", "nx", "ny", "nx1", "ny1"]:
-            data.createDimension(dim, dimensions[dim])
-
-        v0 = data.createVariable("lon", "f8", ("tile", "nx1", "ny1"))
-        v0[:] = lon.data
-        v0.units = units["coord"]
-        v0 = data.createVariable("lat", "f8", ("tile", "nx1", "ny1"))
-        v0[:] = lat.data
-        v0.units = units["coord"]
-
-        v1 = data.createVariable("uC", "f8", ("tile", "nx", "ny"))
-        v1[:] = uC.data
-        v1.units = units["wind"]
-        v1.description = "C-grid u wind, unstaggered"
-        v1 = data.createVariable("vC", "f8", ("tile", "nx", "ny"))
-        v1[:] = vC.data
-        v1.units = units["wind"]
-        v1.description = "C-grid v wind, unstaggered"
-
-        v1 = data.createVariable("tracer", "f8", ("tile", "nx", "ny"))
-        v1[:] = tracer.data
-        v1.units = units["mass"]
-
-        data.close()
-
-
-def write_coordinate_variables_tofile(
-    fOut: str,
-    metadata: Dict[str, Dict[str, Any]],
-    configuration: Dict[str, Any],
-    mpi_rank: int,
-) -> None:
-    """
-    Use: write_coordinate_variables_tofile(
-        fOut, metadata, configuration, mpi_rank)
-
-    Creates netCDF file with coordinate variables (dx, dy, etc.).
-    To be used for making streamfunction experiments easier.
-
-    Inputs:
-    - fOut (str) output netcdf file
-    - metadata (Dict) from define_metadata()
-    - configuration (Dict) from configure_domain()
-    - mpi_rank
-
-    Outputs: written netCDF file
-    """
-
-    dimensions, origins, units = split_metadata(metadata)
-
-    lon, lat = get_lon_lat_edges(configuration, metadata, gather=True)
-
-    lonA = Quantity(
-        configuration["metric_terms"].lon_agrid.data * 180 / np.pi,
-        ("x", "y"),
-        units["coord"],
-        origins["compute_2d"],
-        (dimensions["nx"], dimensions["ny"]),
-        backend,
-    )
-    latA = Quantity(
-        configuration["metric_terms"].lat_agrid.data * 180 / np.pi,
-        ("x", "y"),
-        units["coord"],
-        origins["compute_2d"],
-        (dimensions["nx"], dimensions["ny"]),
-        backend,
+    anim = animation.FuncAnimation(
+        fig, animate, frames=frames, interval=400, blit=False
     )
 
-    dx = Quantity(
-        configuration["metric_terms"].dx.data,
-        ("x", "y_interface"),
-        units["dist"],
-        origins["compute_2d"],
-        (dimensions["nx"], dimensions["ny1"]),
-        backend,
-    )
-    dy = Quantity(
-        configuration["metric_terms"].dy.data,
-        ("x_interface", "y"),
-        units["dist"],
-        origins["compute_2d"],
-        (dimensions["nx1"], dimensions["ny"]),
-        backend,
-    )
-
-    lonA = np.squeeze(configuration["communicator"].gather(lonA))
-    latA = np.squeeze(configuration["communicator"].gather(latA))
-    dx = np.squeeze(configuration["communicator"].gather(dx))
-    dy = np.squeeze(configuration["communicator"].gather(dy))
-
-    if mpi_rank == 0:
-
-        data = Dataset(fOut, "w")
-
-        for dim in ["tile", "nx", "ny", "nx1", "ny1"]:
-            data.createDimension(dim, dimensions[dim])
-
-        v0 = data.createVariable("lon", "f8", ("tile", "nx1", "ny1"))
-        v0[:] = lon.data
-        v0.units = units["coord"]
-        v0 = data.createVariable("lat", "f8", ("tile", "nx1", "ny1"))
-        v0[:] = lat.data
-        v0.units = units["coord"]
-
-        v1 = data.createVariable("lonA", "f8", ("tile", "nx", "ny"))
-        v1[:] = lonA.data
-        v1.units = units["coord"]
-        v1 = data.createVariable("latA", "f8", ("tile", "nx", "ny"))
-        v1[:] = latA.data
-        v1.units = units["coord"]
-
-        v2 = data.createVariable("dx", "f8", ("tile", "nx", "ny1"))
-        v2[:] = dx.data
-        v2.units = units["dist"]
-        v2 = data.createVariable("dy", "f8", ("tile", "nx1", "ny"))
-        v2[:] = dy.data
-        v2.units = units["dist"]
-
-        data.close()
+    display(HTML(anim.to_jshtml()))
+    plt.close()
 
 
-def unstagger_coordinate(field: np.ndarray, mode: str = "mean") -> np.ndarray:
+def unstagger_coordinate(
+    field: Union[Quantity, np.ndarray], mode: str = "mean"
+) -> np.ndarray:
     """
     Use: field =
             unstagger_coord(field, mode='mean')
@@ -1466,7 +1205,9 @@ def unstagger_coordinate(field: np.ndarray, mode: str = "mean") -> np.ndarray:
     ** and y- directions.
     """
 
-    fs = field.shape
+    field_input = check_get_data_from_quantity(field)
+
+    fs = field_input.shape
 
     if len(fs) == 2:
         field = field[np.newaxis]
@@ -1478,36 +1219,40 @@ def unstagger_coordinate(field: np.ndarray, mode: str = "mean") -> np.ndarray:
 
     if mode == "mean":
         if dim1 > dim2:
-            field = 0.5 * (field[:, 1:, :] + field[:, :-1, :])
+            field_unstagger = 0.5 * (field_input[:, 1:, :] + field_input[:, :-1, :])
         elif dim2 > dim1:
-            field = 0.5 * (field[:, :, 1:] + field[:, :, :-1])
+            field_unstagger = 0.5 * (field_input[:, :, 1:] + field_input[:, :, :-1])
         elif dim1 == dim2:
-            pass
+            field_unstagger = field_input
 
     elif mode == "first":
         if dim1 > dim2:
-            field = field[:, :-1, :]
+            field_unstagger = field[:, :-1, :]
         elif dim2 > dim1:
-            field = field[:, :, :-1]
+            field_unstagger = field[:, :, :-1]
         elif dim1 == dim2:
-            pass
+            field_unstagger = field_input
 
     elif mode == "last":
         if dim1 > dim2:
-            field = field[:, 1:, :]
+            field_unstagger = field[:, 1:, :]
         elif dim2 > dim1:
-            field = field[:, :, 1:]
+            field_unstagger = field[:, :, 1:]
         elif dim1 == dim2:
-            pass
+            field_unstagger = field_input
 
     if len(fs) == 2:
-        field = field[0]
+        field_unstagger = field_unstagger[0]
+
+    field = check_fill_data_to_quantity(field, field_unstagger)
 
     return field
 
 
 def remap_winds_to_meteorological(
-    u_input: np.ndarray, v_input: np.ndarray, nTiles: int = 6
+    u_input: Union[Quantity, np.ndarray],
+    v_input: Union[Quantity, np.ndarray],
+    nTiles: int = 6,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Use: zonal, meridional =
@@ -1524,6 +1269,10 @@ def remap_winds_to_meteorological(
         - zonal is west -> east
         - meridional is south -> north
     """
+
+    u_input = check_get_data_from_quantity(u_input)
+    v_input = check_get_data_from_quantity(v_input)
+
     zonal = np.zeros(u_input.shape)
     meridional = np.zeros(v_input.shape)
 
@@ -1533,11 +1282,14 @@ def remap_winds_to_meteorological(
             meridional[tile] = v_input[tile]
 
         if tile == 2:
+            zonal[tile] = -v_input[tile]
+            meridional[tile] = u_input[tile]
+
+        if tile in [3, 4]:
             zonal[tile] = v_input[tile]
             meridional[tile] = -u_input[tile]
 
-        if tile in [3, 4]:
-            zonal[tile] = -v_input[tile]
-            meridional[tile] = u_input[tile]
+    zonal = check_fill_data_to_quantity(zonal)
+    meridional = check_fill_data_to_quantity(meridional)
 
     return zonal, meridional
