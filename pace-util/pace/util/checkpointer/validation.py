@@ -1,19 +1,13 @@
 import collections
 import contextlib
 import os.path
-from typing import List, Mapping, MutableMapping, Tuple
+from typing import MutableMapping, Tuple
 
 import numpy as np
 import xarray as xr
 
 from .base import Checkpointer
-from .thresholds import (
-    ArrayLike,
-    SavepointName,
-    Threshold,
-    VariableName,
-    cast_to_ndarray,
-)
+from .thresholds import ArrayLike, SavepointName, SavepointThresholds, cast_to_ndarray
 
 
 def _clip_pace_array_to_target(
@@ -67,7 +61,7 @@ class ValidationCheckpointer(Checkpointer):
     def __init__(
         self,
         savepoint_data_path: str,
-        thresholds: Mapping[SavepointName, List[Mapping[VariableName, Threshold]]],
+        thresholds: SavepointThresholds,
         rank: int,
     ):
         self._savepoint_data_path = savepoint_data_path
@@ -104,7 +98,7 @@ class ValidationCheckpointer(Checkpointer):
         ds = xr.open_dataset(nc_file)
 
         n_calls = self._n_calls[savepoint_name]
-        var_thresholds = self._thresholds[savepoint_name][n_calls]
+        var_thresholds = self._thresholds.savepoints[savepoint_name][n_calls]
         for varname, array in kwargs.items():
             if varname not in ds:
                 raise ValueError(f"argument {varname} not in netCDF file {nc_file}")

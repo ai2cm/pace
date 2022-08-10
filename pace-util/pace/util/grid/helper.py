@@ -69,6 +69,40 @@ class HorizontalGridData:
     edge_s: FloatFieldI
     edge_n: FloatFieldI
 
+    @classmethod
+    def new_from_metric_terms(cls, metric_terms: MetricTerms):
+        horizontal_data = HorizontalGridData(
+            lon=metric_terms.lon.storage,
+            lat=metric_terms.lat.storage,
+            lon_agrid=metric_terms.lon_agrid.storage,
+            lat_agrid=metric_terms.lat_agrid.storage,
+            area=metric_terms.area.storage,
+            area_64=metric_terms.area.storage,
+            rarea=metric_terms.rarea.storage,
+            rarea_c=metric_terms.rarea_c.storage,
+            dx=metric_terms.dx.storage,
+            dy=metric_terms.dy.storage,
+            dxc=metric_terms.dxc.storage,
+            dyc=metric_terms.dyc.storage,
+            dxa=metric_terms.dxa.storage,
+            dya=metric_terms.dya.storage,
+            rdx=metric_terms.rdx.storage,
+            rdy=metric_terms.rdy.storage,
+            rdxc=metric_terms.rdxc.storage,
+            rdyc=metric_terms.rdyc.storage,
+            rdxa=metric_terms.rdxa.storage,
+            rdya=metric_terms.rdya.storage,
+            a11=metric_terms.a11.storage,
+            a12=metric_terms.a12.storage,
+            a21=metric_terms.a21.storage,
+            a22=metric_terms.a22.storage,
+            edge_w=metric_terms.edge_w.storage,
+            edge_e=metric_terms.edge_e.storage,
+            edge_s=metric_terms.edge_s.storage,
+            edge_n=metric_terms.edge_n.storage,
+        )
+        return horizontal_data
+
 
 @dataclasses.dataclass
 class VerticalGridData:

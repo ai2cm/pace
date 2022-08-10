@@ -5,7 +5,11 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from pace.util.checkpointer import Threshold, ValidationCheckpointer
+from pace.util.checkpointer import (
+    SavepointThresholds,
+    Threshold,
+    ValidationCheckpointer,
+)
 from pace.util.checkpointer.validation import _clip_pace_array_to_target
 
 
@@ -45,7 +49,9 @@ def test_validation_validates_onevar_onecall():
 
     checkpointer = ValidationCheckpointer(
         temp_dir.name,
-        {savepoint_name: [{"data0": Threshold(relative=1.0, absolute=1.0)}]},
+        SavepointThresholds(
+            {savepoint_name: [{"data0": Threshold(relative=1.0, absolute=1.0)}]}
+        ),
         rank=0,
     )
     with checkpointer.trial():
@@ -77,16 +83,18 @@ def test_validation_asserts_onevar_onecall(relative_threshold, absolute_threshol
 
     checkpointer = ValidationCheckpointer(
         temp_dir.name,
-        {
-            savepoint_name: [
-                {
-                    "data0": Threshold(
-                        relative=relative_threshold,
-                        absolute=absolute_threshold,
-                    )
-                }
-            ]
-        },
+        SavepointThresholds(
+            {
+                savepoint_name: [
+                    {
+                        "data0": Threshold(
+                            relative=relative_threshold,
+                            absolute=absolute_threshold,
+                        )
+                    }
+                ]
+            }
+        ),
         rank=0,
     )
     with checkpointer.trial():
@@ -119,22 +127,24 @@ def test_validation_passes_onevar_two_calls(relative_threshold, absolute_thresho
 
     checkpointer = ValidationCheckpointer(
         temp_dir.name,
-        {
-            savepoint_name: [
-                {
-                    "data0": Threshold(
-                        relative=relative_threshold,
-                        absolute=absolute_threshold,
-                    )
-                },
-                {
-                    "data0": Threshold(
-                        relative=relative_threshold,
-                        absolute=absolute_threshold,
-                    )
-                },
-            ]
-        },
+        SavepointThresholds(
+            {
+                savepoint_name: [
+                    {
+                        "data0": Threshold(
+                            relative=relative_threshold,
+                            absolute=absolute_threshold,
+                        )
+                    },
+                    {
+                        "data0": Threshold(
+                            relative=relative_threshold,
+                            absolute=absolute_threshold,
+                        )
+                    },
+                ]
+            }
+        ),
         rank=0,
     )
     with checkpointer.trial():
@@ -168,22 +178,24 @@ def test_validation_asserts_onevar_two_calls(relative_threshold, absolute_thresh
 
     checkpointer = ValidationCheckpointer(
         temp_dir.name,
-        {
-            savepoint_name: [
-                {
-                    "data0": Threshold(
-                        relative=relative_threshold,
-                        absolute=absolute_threshold,
-                    )
-                },
-                {
-                    "data0": Threshold(
-                        relative=relative_threshold,
-                        absolute=absolute_threshold,
-                    )
-                },
-            ]
-        },
+        SavepointThresholds(
+            {
+                savepoint_name: [
+                    {
+                        "data0": Threshold(
+                            relative=relative_threshold,
+                            absolute=absolute_threshold,
+                        )
+                    },
+                    {
+                        "data0": Threshold(
+                            relative=relative_threshold,
+                            absolute=absolute_threshold,
+                        )
+                    },
+                ]
+            }
+        ),
         rank=0,
     )
     with checkpointer.trial():
@@ -218,20 +230,22 @@ def test_validation_asserts_twovar_onecall(relative_threshold, absolute_threshol
 
     checkpointer = ValidationCheckpointer(
         temp_dir.name,
-        {
-            savepoint_name: [
-                {
-                    "data0": Threshold(
-                        relative=1.0,
-                        absolute=1.0,
-                    ),
-                    "data1": Threshold(
-                        relative=relative_threshold,
-                        absolute=absolute_threshold,
-                    ),
-                }
-            ]
-        },
+        SavepointThresholds(
+            {
+                savepoint_name: [
+                    {
+                        "data0": Threshold(
+                            relative=1.0,
+                            absolute=1.0,
+                        ),
+                        "data1": Threshold(
+                            relative=relative_threshold,
+                            absolute=absolute_threshold,
+                        ),
+                    }
+                ]
+            }
+        ),
         rank=0,
     )
     with checkpointer.trial():

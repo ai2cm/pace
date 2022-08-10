@@ -24,8 +24,16 @@ class Threshold:
     relative: float
     absolute: Optional[float] = None
 
+    def merge(self, other: "Threshold") -> "Threshold":
+        return Threshold(
+            relative=max(self.relative, other.relative),
+            absolute=max(self.absolute, other.absolute),
+        )
 
-SavepointThresholds = Dict[SavepointName, List[Dict[VariableName, Threshold]]]
+
+@dataclasses.dataclass
+class SavepointThresholds:
+    savepoints: Dict[SavepointName, List[Dict[VariableName, Threshold]]]
 
 
 def cast_to_ndarray(array: ArrayLike) -> np.ndarray:
@@ -103,11 +111,11 @@ class ThresholdCalibrationCheckpointer(Checkpointer):
             raise InsufficientTrialsError(
                 "at least 2 trials required to generate thresholds"
             )
-        return_value: Dict[SavepointName, List[Dict[VariableName, Threshold]]] = {}
+        savepoints: Dict[SavepointName, List[Dict[VariableName, Threshold]]] = {}
         for savepoint_name in self._minimums:
-            return_value[savepoint_name] = []
+            savepoints[savepoint_name] = []
             for i_call in range(self._n_calls[savepoint_name]):
-                return_value[savepoint_name].append({})
+                savepoints[savepoint_name].append({})
                 for varname, minimum in self._minimums[savepoint_name][i_call].items():
                     maximum = self._maximums[savepoint_name][i_call][varname]
                     mean_abs = (
@@ -119,8 +127,8 @@ class ThresholdCalibrationCheckpointer(Checkpointer):
                         relative = self._factor * np.nanmax(
                             (maximum - minimum) / mean_abs
                         )
-                    return_value[savepoint_name][i_call][varname] = Threshold(
-                        relative=relative,
-                        absolute=self._factor * np.max(maximum - minimum),
+                    savepoints[savepoint_name][i_call][varname] = Threshold(
+                        relative=float(relative),
+                        absolute=float(self._factor * np.max(maximum - minimum)),
                     )
-        return return_value
+        return SavepointThresholds(savepoints=savepoints)

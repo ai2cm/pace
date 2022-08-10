@@ -1,7 +1,7 @@
 import copy
 import dataclasses
 import os
-from typing import Tuple
+from typing import List, Tuple
 
 import dacite
 import f90nml
@@ -11,10 +11,12 @@ import yaml
 import fv3core
 import pace.dsl
 import pace.util
+from fv3core.initialization.dycore_state import DycoreState
 from fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from pace.stencils.testing import TranslateGrid, dataset_to_dict
 from pace.stencils.testing.grid import Grid
-from pace.util.grid import DampingCoefficients
+from pace.util.grid import DampingCoefficients, GridData
+from pace.util.testing import perturb
 
 
 def get_grid(data_path: str, rank: int, layout: Tuple[int, int], backend: str) -> Grid:
@@ -30,9 +32,53 @@ def get_grid(data_path: str, rank: int, layout: Tuple[int, int], backend: str) -
     return grid
 
 
+class StateInitializer:
+    def __init__(
+        self,
+        ds: xr.Dataset,
+        translate: TranslateFVDynamics,
+        communicator,
+        stencil_factory,
+        grid,
+        dycore_config,
+        consv_te,
+        n_split,
+    ):
+        self._ds = ds
+        self._translate = translate
+        self._consv_te = consv_te
+        self._n_split = n_split
+
+        input_data = dataset_to_dict(self._ds.copy())
+        state, grid_data = self._translate.prepare_data(input_data)
+        self._dycore = fv3core.DynamicalCore(
+            comm=communicator,
+            grid_data=grid_data,
+            stencil_factory=stencil_factory,
+            damping_coefficients=grid.damping_coefficients,
+            config=dycore_config,
+            phis=state.phis,
+            state=state,
+        )
+
+    def new_state(self) -> Tuple[DycoreState, GridData]:
+        input_data = dataset_to_dict(self._ds.copy())
+        state, grid_data = self._translate.prepare_data(input_data)
+
+        self._dycore.update_state(
+            self._consv_te,
+            input_data["do_adiabatic_init"],
+            input_data["bdt"],
+            self._n_split,
+            state,
+        )
+        return state, grid_data
+
+
 def test_fv_dynamics(
     backend: str, data_path: str, calibrate_thresholds: bool, threshold_path: str
 ):
+    print("start test call")
     namelist = pace.util.Namelist.from_f90nml(
         f90nml.read(os.path.join(data_path, "input.nml"))
     )
@@ -48,10 +94,21 @@ def test_fv_dynamics(
             compilation_config=pace.dsl.CompilationConfig(
                 backend=backend,
                 communicator=communicator,
+                rebuild=False,
             )
         ),
         grid_indexing=pace.dsl.GridIndexing.from_sizer_and_communicator(
-            sizer=pace.util.SubtileGridSizer(), cube=communicator
+            sizer=pace.util.SubtileGridSizer.from_tile_params(
+                nx_tile=namelist.npx - 1,
+                ny_tile=namelist.npy - 1,
+                nz=namelist.npz,
+                n_halo=3,
+                tile_partitioner=communicator.partitioner.tile,
+                tile_rank=communicator.rank,
+                extra_dim_lengths={},
+                layout=namelist.layout,
+            ),
+            cube=communicator,
         ),
     )
     grid = get_grid(
@@ -66,41 +123,34 @@ def test_fv_dynamics(
     ds = xr.open_dataset(os.path.join(data_path, "FVDynamics-In.nc")).sel(
         savepoint=0, rank=communicator.rank
     )
-    input_data = dataset_to_dict(ds)
-    state, grid_data = translate.prepare_data(input_data)
     dycore_config = fv3core.DynamicalCoreConfig.from_namelist(namelist)
-    # TODO: refactor so dycore.update_state is no longer a method
-    # and DycoreState is a statically-typed class and we don't have to make
-    # a dycore until we're actually running the simulation
-    init_dycore = fv3core.DynamicalCore(
-        comm=communicator,
-        grid_data=grid_data,
-        stencil_factory=stencil_factory,
-        damping_coefficients=grid.damping_coefficients,
-        config=dycore_config,
-        phis=state.phis,
-        state=state,
-    )
-    init_dycore.update_state(
+    initializer = StateInitializer(
+        ds,
+        translate,
+        communicator,
+        stencil_factory,
+        grid,
+        dycore_config,
         namelist.consv_te,
-        input_data["do_adiabatic_init"],
-        input_data["bdt"],
         namelist.n_split,
-        state,
     )
+    print("stencils initialized")
     if calibrate_thresholds:
         thresholds = _calibrate_thresholds(
-            state=state,
+            initializer=initializer,
             communicator=communicator,
-            grid_data=grid_data,
             stencil_factory=stencil_factory,
             damping_coefficients=grid.damping_coefficients,
             dycore_config=dycore_config,
-            n_trials=10,
+            n_trials=3,
             factor=2.0,
         )
-        with open(threshold_filename, "w") as f:
-            yaml.safe_dump(dataclasses.asdict(thresholds), f)
+        print(f"calibrated thresholds: {thresholds}")
+        if communicator.rank == 0:
+            with open(threshold_filename, "w") as f:
+                yaml.safe_dump(dataclasses.asdict(thresholds), f)
+        communicator.comm.barrier()
+    print("thresholds calibrated")
     with open(threshold_filename, "r") as f:
         data = yaml.safe_load(f)
         thresholds = dacite.from_dict(
@@ -111,6 +161,7 @@ def test_fv_dynamics(
     validation = pace.util.ValidationCheckpointer(
         savepoint_data_path=data_path, thresholds=thresholds, rank=communicator.rank
     )
+    state, grid_data = initializer.new_state()
     dycore = fv3core.DynamicalCore(
         comm=communicator,
         grid_data=grid_data,
@@ -126,15 +177,15 @@ def test_fv_dynamics(
 
 
 def _calibrate_thresholds(
-    state: fv3core.DycoreState,
+    initializer: StateInitializer,
     communicator: pace.util.CubedSphereCommunicator,
-    grid_data: fv3core.GridData,
     stencil_factory: pace.dsl.StencilFactory,
     damping_coefficients: DampingCoefficients,
     dycore_config: fv3core.DynamicalCoreConfig,
     n_trials: int,
     factor: float,
 ):
+    state, grid_data = initializer.new_state()
     calibration = pace.util.ThresholdCalibrationCheckpointer(factor=factor)
     dycore = fv3core.DynamicalCore(
         comm=communicator,
@@ -144,9 +195,40 @@ def _calibrate_thresholds(
         config=dycore_config,
         phis=state.phis,
         state=state,
+        checkpointer=calibration,
     )
-    original_state = copy.deepcopy(state)
-    for _ in range(n_trials):
+    for i in range(n_trials):
+        print(f"running calibration trial {i}")
+        trial_state = copy.deepcopy(state)
+        perturb(dycore_state_to_dict(trial_state))
         with calibration.trial():
-            dycore.step_dynamics(copy.deepcopy(original_state))
-    return calibration.thresholds
+            dycore.step_dynamics(trial_state)
+    all_thresholds = communicator.comm.allgather(calibration.thresholds)
+    thresholds = merge_thresholds(all_thresholds)
+    return thresholds
+
+
+def merge_thresholds(all_thresholds: List[pace.util.SavepointThresholds]):
+    thresholds = all_thresholds[0]
+    for other_thresholds in all_thresholds[1:]:
+        for savepoint_name in thresholds.savepoints:
+            for i_call in range(len(thresholds.savepoints[savepoint_name])):
+                for variable_name in thresholds.savepoints[savepoint_name][i_call]:
+                    thresholds.savepoints[savepoint_name][i_call][
+                        variable_name
+                    ] = thresholds.savepoints[savepoint_name][i_call][
+                        variable_name
+                    ].merge(
+                        other_thresholds.savepoints[savepoint_name][i_call][
+                            variable_name
+                        ]
+                    )
+    return thresholds
+
+
+def dycore_state_to_dict(state: DycoreState):
+    return {
+        name: getattr(state, name).data
+        for name in dir(state)
+        if isinstance(getattr(state, name), pace.util.Quantity)
+    }

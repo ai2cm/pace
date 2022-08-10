@@ -27,7 +27,7 @@ def test_thresholds_two_empty_trials():
     for _ in range(2):
         with checkpointer.trial():
             pass
-    assert checkpointer.thresholds == {}
+    assert checkpointer.thresholds.savepoints == {}
 
 
 def test_thresholds_one_data_trial():
@@ -56,7 +56,7 @@ def test_thresholds_sufficient_trials(factor, values, rel_threshold, abs_thresho
         with checkpointer.trial():
             data = np.asarray([val, 0.0, 0.0])
             checkpointer("savepoint_name", data=data)
-    assert checkpointer.thresholds == {
+    assert checkpointer.thresholds.savepoints == {
         "savepoint_name": [
             {"data": Threshold(relative=rel_threshold, absolute=abs_threshold)}
         ]
@@ -73,7 +73,7 @@ def test_thresholds_more_variables():
         data1 = np.asarray([0.0, 0.0, 0.0])
         data2 = np.asarray([1.0, 0.0, 0.0])
         checkpointer("savepoint_name", data1=data1, data2=data2)
-    assert checkpointer.thresholds == {
+    assert checkpointer.thresholds.savepoints == {
         "savepoint_name": [
             {
                 "data1": Threshold(relative=0.0, absolute=0.0),
@@ -95,7 +95,7 @@ def test_thresholds_two_calls():
         data2 = np.asarray([1.0, 0.0, 0.0])
         checkpointer("savepoint_name", data=data1)
         checkpointer("savepoint_name", data=data2)
-    assert checkpointer.thresholds == {
+    assert checkpointer.thresholds.savepoints == {
         "savepoint_name": [
             {
                 "data": Threshold(relative=0.0, absolute=0.0),

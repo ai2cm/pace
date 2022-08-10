@@ -1,5 +1,5 @@
 import abc
-from typing import Optional, TypeVar
+from typing import List, Optional, TypeVar
 
 
 T = TypeVar("T")
@@ -38,6 +38,10 @@ class Comm(abc.ABC):
 
     @abc.abstractmethod
     def Gather(self, sendbuf, recvbuf, root=0, **kwargs):
+        ...
+
+    @abc.abstractmethod
+    def allgather(self, sendobj: T) -> List[T]:
         ...
 
     @abc.abstractmethod

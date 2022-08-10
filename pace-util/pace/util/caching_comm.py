@@ -118,6 +118,9 @@ class CachingCommReader(Comm):
         if recvbuf is not None:
             recvbuf[:] = self._data.get_buffer()
 
+    def allgather(self, sendobj):
+        raise NotImplementedError("allgather not yet implemented for CachingCommReader")
+
     def Send(self, sendbuf, dest, tag: int = 0, **kwargs):
         pass
 
@@ -184,6 +187,9 @@ class CachingCommWriter(Comm):
     def Gather(self, sendbuf, recvbuf, root=0, **kwargs):
         self._comm.Gather(sendbuf=sendbuf, recvbuf=recvbuf, root=root, **kwargs)
         self._data.received_buffers.append(copy.deepcopy(recvbuf))
+
+    def allgather(self, sendobj):
+        raise NotImplementedError("allgather not yet implemented for CachingCommReader")
 
     def Send(self, sendbuf, dest, tag: int = 0, **kwargs):
         self._comm.Send(sendbuf=sendbuf, dest=dest, tag=tag, **kwargs)
