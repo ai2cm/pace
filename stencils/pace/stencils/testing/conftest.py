@@ -124,6 +124,7 @@ def get_config(backend: str, communicator: Optional[CubedSphereCommunicator]):
             backend=backend,
         ),
     )
+    stencil_config.compilation_config.configure_gt4py(communicator)
     return stencil_config
 
 

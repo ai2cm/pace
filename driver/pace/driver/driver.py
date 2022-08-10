@@ -348,8 +348,8 @@ class Driver:
             device_sync=original_config.device_sync,
             run_mode=original_config.run_mode,
             use_minimal_caching=original_config.use_minimal_caching,
-            communicator=communicator,
         )
+        compilation_config.configure_gt4py(communicator)
         self.config.stencil_config.compilation_config = compilation_config
 
     @dace_inhibitor

@@ -231,6 +231,7 @@ def setup_dycore(
         ),
         dace_config=dace_config,
     )
+    stencil_config.compilation_config.configure_gt4py(communicator)
     stencil_factory = StencilFactory(
         config=stencil_config,
         grid_indexing=grid.grid_indexing,

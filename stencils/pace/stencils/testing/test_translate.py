@@ -247,6 +247,7 @@ def test_sequential_savepoint(
             backend=backend,
         ),
     )
+    stencil_config.compilation_config.configure_gt4py(None)
     # Reduce error threshold for GPU
     if stencil_config.is_gpu_backend:
         case.testobj.max_error = max(case.testobj.max_error, GPU_MAX_ERR)
@@ -366,6 +367,7 @@ def test_parallel_savepoint(
             backend=backend,
         ),
     )
+    stencil_config.compilation_config.configure_gt4py(communicator)
     # Increase minimum error threshold for GPU
     if stencil_config.is_gpu_backend:
         case.testobj.max_error = max(case.testobj.max_error, GPU_MAX_ERR)

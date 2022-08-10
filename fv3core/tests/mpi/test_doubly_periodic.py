@@ -61,12 +61,12 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
     communicator = pace.util.TileCommunicator(mpi_comm, partitioner)
     stencil_config = pace.dsl.stencil.StencilConfig(
         compilation_config=pace.dsl.stencil.CompilationConfig(
-            communicator=communicator,
             backend=backend,
             rebuild=False,
             validate_args=True,
         )
     )
+    stencil_config.compilation_config.configure_gt4py(communicator)
     sizer = pace.util.SubtileGridSizer.from_tile_params(
         nx_tile=config.npx - 1,
         ny_tile=config.npy - 1,
