@@ -5,17 +5,13 @@ from typing import Tuple
 import pytest
 
 from pace.util.decomposition import (
-    block_waiting_for_compilation,
     build_cache_path,
     check_cached_path_exists,
     determine_rank_is_compiling,
-    unblock_waiting_tiles,
 )
-from pace.util.mpi import MPI
 from pace.util.partitioner import CubedSpherePartitioner, TilePartitioner
 
 
-@pytest.mark.sequential
 @pytest.mark.parametrize(
     "layout, rank, is_compiling",
     [
@@ -34,26 +30,22 @@ def test_determine_rank_is_compiling(
     assert determine_rank_is_compiling(rank, partitioner) == is_compiling
 
 
-@pytest.mark.sequential
 def test_determine_rank_is_compiling_large():
     with pytest.raises(RuntimeError):
         partitioner = CubedSpherePartitioner(TilePartitioner((4, 4)))
         determine_rank_is_compiling(0, partitioner)
 
 
-@pytest.mark.sequential
 def test_check_cached_path_exists():
     with pytest.raises(RuntimeError):
         check_cached_path_exists("notarealpath")
 
 
-@pytest.mark.sequential
 def test_check_cached_path_exists_working():
     path = os.getcwd()
     check_cached_path_exists(path)
 
 
-@pytest.mark.sequential
 @pytest.mark.parametrize(
     "use_minimal_caching, compiling_equivalent, rank, size, target_rank_str",
     [
@@ -78,19 +70,3 @@ def test_build_cache_path(
     )
     _, rank_str = build_cache_path(compilation_config)
     assert rank_str == target_rank_str
-
-
-@pytest.mark.parallel
-@pytest.mark.skipif(
-    MPI is None or MPI.COMM_WORLD.Get_size() != 6,
-    reason="mpi4py is not available or pytest was not run in parallel",
-)
-def test_unblock_waiting_tiles():
-    comm = MPI.COMM_WORLD
-    compilation_config = unittest.mock.MagicMock(compiling_equivalent=0)
-    rank = comm.Get_rank()
-    size = comm.Get_size()
-    if rank != 0:
-        block_waiting_for_compilation(comm, compilation_config)
-    if rank == 0:
-        unblock_waiting_tiles(comm)
