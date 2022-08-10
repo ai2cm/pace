@@ -121,7 +121,8 @@ def build_cache_path(
         if config.use_minimal_caching:
             if config.compiling_equivalent is None:
                 raise RuntimeError(
-                    "Using a compilation config without setting it up with a communicator"
+                    "Using a compilation config without \
+                    setting it up with a communicator"
                 )
             target_rank_str = f"_{config.compiling_equivalent:06d}"
         else:

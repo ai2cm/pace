@@ -7,14 +7,14 @@ from typing import Any, Callable, Dict, Hashable, Iterable, Optional, Sequence, 
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
-from pace.dsl.gt4py_utils import is_gpu_backend
-from pace.util.communicator import CubedSphereCommunicator
 from pace.dsl.decomposition import (
     compiling_equivalent,
     determine_rank_is_compiling,
     set_building_caches,
     set_distributed_caches,
 )
+from pace.dsl.gt4py_utils import is_gpu_backend
+from pace.util.communicator import CubedSphereCommunicator
 
 
 class RunMode(enum.Enum):
@@ -102,7 +102,6 @@ class CompilationConfig:
             device_sync=data.get("device_sync", False),
             run_mode=RunMode[data.get("run_mode", "BuildAndRun")],
             use_minimal_caching=data.get("use_minimal_caching", False),
-            communicator=None,
         )
         return instance
 
