@@ -11,6 +11,7 @@ BUILDENV_DIR=$PACE_DIR/buildenv
 cd $PACE_DIR
 ${JENKINS_DIR}/fetch_caches.sh gt:gpu c576_54ranks_minimal_baroclinic driver
 
+
 cat << EOF > compile.daint.slurm
 #!/bin/bash
 #SBATCH --constraint=gpu
@@ -30,6 +31,7 @@ cat << EOF > compile.daint.slurm
 set -x
 export OMP_NUM_THREADS=12
 export GT_CACHE_DIR_NAME=/tmp
+mv .gt_cache* /tmp/
 srun python ${PACE_DIR}/driver/examples/compile_driver.py ${JENKINS_DIR}/driver_configs/compile_baroclinic_c576_54ranks.yaml ${PACE_DIR}
 EOF
 
