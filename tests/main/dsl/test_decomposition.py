@@ -4,7 +4,7 @@ from typing import Tuple
 
 import pytest
 
-from pace.util.decomposition import (
+from pace.dsl.decomposition import (
     block_waiting_for_compilation,
     build_cache_path,
     check_cached_path_exists,

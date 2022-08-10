@@ -9,9 +9,10 @@ from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.communicator import CubedSphereCommunicator
-from pace.util.decomposition import (
+from pace.dsl.decomposition import (
     compiling_equivalent,
     determine_rank_is_compiling,
+    set_building_caches,
     set_distributed_caches,
 )
 
@@ -39,7 +40,6 @@ class CompilationConfig:
         device_sync: bool = False,
         run_mode: RunMode = RunMode.BuildAndRun,
         use_minimal_caching: bool = False,
-        communicator: Optional[CubedSphereCommunicator] = None,
     ) -> None:
         if run_mode != RunMode.Run and use_minimal_caching:
             raise RuntimeError("Cannot use minimal caching in any building mode")
@@ -54,14 +54,8 @@ class CompilationConfig:
         # Caching strategy
         self.run_mode = run_mode
         self.use_minimal_caching = use_minimal_caching
-        (
-            self.rank,
-            self.size,
-            self.compiling_equivalent,
-            self.is_compiling,
-        ) = self.get_decomposition_info_from_comm(communicator)
-        if communicator:
-            set_distributed_caches(self)
+        self.is_compiling: bool = True
+        self.compiling_equivalent: Optional[int] = None
 
     def get_decomposition_info_from_comm(
         self, communicator: Optional[CubedSphereCommunicator]
@@ -111,6 +105,18 @@ class CompilationConfig:
             communicator=None,
         )
         return instance
+
+    def configure_gt4py(self, communicator: Optional[CubedSphereCommunicator] = None):
+        (
+            rank,
+            size,
+            self.compiling_equivalent,
+            self.is_compiling,
+        ) = self.get_decomposition_info_from_comm(communicator)
+        if self.run_mode == RunMode.Run:
+            set_distributed_caches(self, rank, size)
+        else:
+            set_building_caches(communicator)
 
 
 @dataclasses.dataclass

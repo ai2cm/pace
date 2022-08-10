@@ -26,10 +26,10 @@ from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
 from pace.dsl.dace.orchestration import SDFGConvertible
+from pace.dsl.decomposition import block_waiting_for_compilation, unblock_waiting_tiles
 from pace.dsl.stencil_config import CompilationConfig, RunMode, StencilConfig
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
-from pace.util.decomposition import block_waiting_for_compilation, unblock_waiting_tiles
 from pace.util.halo_data_transformer import QuantityHaloSpec
 from pace.util.mpi import MPI
 
