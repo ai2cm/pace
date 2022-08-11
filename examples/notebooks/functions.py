@@ -25,7 +25,15 @@ from pace.util import (
     TilePartitioner,
 )
 from pace.util.constants import RADIUS
-from pace.util.grid import AngleGridData, ContravariantGridData, DampingCoefficients, GridData, HorizontalGridData, MetricTerms, VerticalGridData
+from pace.util.grid import (
+    AngleGridData,
+    ContravariantGridData,
+    DampingCoefficients,
+    GridData,
+    HorizontalGridData,
+    MetricTerms,
+    VerticalGridData,
+)
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
@@ -269,11 +277,18 @@ def configure_domain(
     if single_layer:
         horizontal_grid_data = HorizontalGridData.new_from_metric_terms(metric_terms)
         vertical_grid_data = VerticalGridData(ptop=0, ks=0, ak=[10], bk=[0], p_ref=0)
-        contravariant_grid_data = ContravariantGridData.new_from_metric_terms(metric_terms)
+        contravariant_grid_data = ContravariantGridData.new_from_metric_terms(
+            metric_terms
+        )
         angle_grid_data = AngleGridData.new_from_metric_terms(metric_terms)
 
-        grid_data = GridData(horizontal_grid_data, vertical_grid_data, contravariant_grid_data, angle_grid_data)
-    
+        grid_data = GridData(
+            horizontal_grid_data,
+            vertical_grid_data,
+            contravariant_grid_data,
+            angle_grid_data,
+        )
+
     else:
         grid_data = GridData.new_from_metric_terms(metric_terms)
 
@@ -289,10 +304,15 @@ def configure_domain(
     return domain_configuration
 
 
-def configure_stencil(domain_configuration: Dict[str, Any], backend: str = "numpy", single_layer: bool = True) -> Dict[str, Any]:
+def configure_stencil(
+    domain_configuration: Dict[str, Any],
+    backend: str = "numpy",
+    single_layer: bool = True,
+) -> Dict[str, Any]:
     """
     Use:
-    stencil_configuration = configure_stencil(domain_configuration, backend="numpy", single_layer=True)
+    stencil_configuration = configure_stencil(
+        domain_configuration, backend="numpy", single_layer=True)
 
     Inputs:
     - domain configuration (Dict) from configure_domain()
@@ -315,16 +335,24 @@ def configure_stencil(domain_configuration: Dict[str, Any], backend: str = "nump
     if single_layer:
         horizontal_grid_data = HorizontalGridData.new_from_metric_terms(metric_terms)
         vertical_grid_data = VerticalGridData(ptop=0, ks=0, ak=[10], bk=[0], p_ref=0)
-        contravariant_grid_data = ContravariantGridData.new_from_metric_terms(metric_terms)
+        contravariant_grid_data = ContravariantGridData.new_from_metric_terms(
+            metric_terms
+        )
         angle_grid_data = AngleGridData.new_from_metric_terms(metric_terms)
 
-        grid_data = GridData(horizontal_grid_data, vertical_grid_data, contravariant_grid_data, angle_grid_data)
-    
+        grid_data = GridData(
+            horizontal_grid_data,
+            vertical_grid_data,
+            contravariant_grid_data,
+            angle_grid_data,
+        )
+
     else:
         grid_data = GridData.new_from_metric_terms(metric_terms)
 
-
-    damping_coefficients = DampingCoefficients.new_from_metric_terms(domain_configuration["metric_terms"])
+    damping_coefficients = DampingCoefficients.new_from_metric_terms(
+        domain_configuration["metric_terms"]
+    )
 
     dace_config = DaceConfig(
         communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
@@ -354,7 +382,7 @@ def configure_stencil(domain_configuration: Dict[str, Any], backend: str = "nump
     stencil_factory = StencilFactory(config=stencil_config, grid_indexing=grid_indexing)
 
     stencil_configuration = {
-        ""
+        "grid_data": grid_data,
         "communicator": domain_configuration["communicator"],
         "damping_coefficients": damping_coefficients,
         "dace_config": dace_config,
