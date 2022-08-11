@@ -25,7 +25,7 @@ from pace.util import (
     TilePartitioner,
 )
 from pace.util.constants import RADIUS
-from pace.util.grid import DampingCoefficients, GridData, MetricTerms
+from pace.util.grid import AngleGridData, ContravariantGridData, DampingCoefficients, GridData, HorizontalGridData, MetricTerms, VerticalGridData
 from pace.util.grid.gnomonic import great_circle_distance_lon_lat
 
 
@@ -231,7 +231,7 @@ def configure_domain(
     - dimensions (Dict)
 
     Outputs:
-    - configuration (Dict):
+    - domain_configuration (Dict):
         - partitioner
         - communicator
         - sizer
@@ -251,7 +251,7 @@ def configure_domain(
     sizer = SubtileGridSizer.from_tile_params(
         nx_tile=dimensions["nx"],
         ny_tile=dimensions["ny"],
-        nz=79,
+        nz=dimensions["nz"],
         n_halo=dimensions["nhalo"],
         extra_dim_lengths={},
         layout=dimensions["layout"],
@@ -264,9 +264,67 @@ def configure_domain(
     metric_terms = MetricTerms(
         quantity_factory=quantity_factory, communicator=communicator
     )
-    damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
 
-    grid_data = GridData.new_from_metric_terms(metric_terms)
+    # workaround for single layer
+    if single_layer:
+        horizontal_grid_data = HorizontalGridData.new_from_metric_terms(metric_terms)
+        vertical_grid_data = VerticalGridData(ptop=0, ks=0, ak=[10], bk=[0], p_ref=0)
+        contravariant_grid_data = ContravariantGridData.new_from_metric_terms(metric_terms)
+        angle_grid_data = AngleGridData.new_from_metric_terms(metric_terms)
+
+        grid_data = GridData(horizontal_grid_data, vertical_grid_data, contravariant_grid_data, angle_grid_data)
+    
+    else:
+        grid_data = GridData.new_from_metric_terms(metric_terms)
+
+    domain_configuration = {
+        "partitioner": partitioner,
+        "communicator": communicator,
+        "sizer": sizer,
+        "quantity_factory": quantity_factory,
+        "metric_terms": metric_terms,
+        "grid_data": grid_data,
+    }
+
+    return domain_configuration
+
+
+def configure_stencil(domain_configuration: Dict[str, Any], backend: str = "numpy", single_layer: bool = True) -> Dict[str, Any]:
+    """
+    Use:
+    stencil_configuration = configure_stencil(domain_configuration, backend="numpy", single_layer=True)
+
+    Inputs:
+    - domain configuration (Dict) from configure_domain()
+    - backend (only works for numpy)
+    - single_layer - should be true if nz=1
+
+    Outputs:
+    - stencil_configuraton (Dict):
+        - grid_data
+        - damping_coefficients
+        - dace_config
+        - compilation_config
+        - stencil_config
+        - grid_indexing
+        - stencil_factory
+    """
+
+    metric_terms = domain_configuration["metric_terms"]
+
+    if single_layer:
+        horizontal_grid_data = HorizontalGridData.new_from_metric_terms(metric_terms)
+        vertical_grid_data = VerticalGridData(ptop=0, ks=0, ak=[10], bk=[0], p_ref=0)
+        contravariant_grid_data = ContravariantGridData.new_from_metric_terms(metric_terms)
+        angle_grid_data = AngleGridData.new_from_metric_terms(metric_terms)
+
+        grid_data = GridData(horizontal_grid_data, vertical_grid_data, contravariant_grid_data, angle_grid_data)
+    
+    else:
+        grid_data = GridData.new_from_metric_terms(metric_terms)
+
+
+    damping_coefficients = DampingCoefficients.new_from_metric_terms(domain_configuration["metric_terms"])
 
     dace_config = DaceConfig(
         communicator=None, backend=backend, orchestration=DaCeOrchestration.Python
@@ -280,7 +338,7 @@ def configure_domain(
         device_sync=False,
         run_mode=RunMode.BuildAndRun,
         use_minimal_caching=False,
-        communicator=communicator,
+        communicator=domain_configuration["communicator"],
     )
 
     stencil_config = StencilConfig(
@@ -290,39 +348,26 @@ def configure_domain(
     )
 
     grid_indexing = GridIndexing.from_sizer_and_communicator(
-        sizer=sizer, cube=communicator
+        sizer=domain_configuration["sizer"], cube=domain_configuration["communicator"]
     )
-
-    # workaround for single layer
-    if single_layer:
-        domain = grid_indexing.domain
-        domain_new = list(domain)
-        domain_new[2] = 1
-        domain_new = tuple(domain_new)
-
-        grid_indexing.domain = domain_new
 
     stencil_factory = StencilFactory(config=stencil_config, grid_indexing=grid_indexing)
 
-    configuration = {
-        "partitioner": partitioner,
-        "communicator": communicator,
-        "sizer": sizer,
-        "quantity_factory": quantity_factory,
-        "metric_terms": metric_terms,
+    stencil_configuration = {
+        ""
+        "communicator": domain_configuration["communicator"],
         "damping_coefficients": damping_coefficients,
-        "grid_data": grid_data,
         "dace_config": dace_config,
         "stencil_config": stencil_config,
         "grid_indexing": grid_indexing,
         "stencil_factory": stencil_factory,
     }
 
-    return configuration
+    return stencil_configuration
 
 
 def get_lon_lat_edges(
-    configuration: Dict[str, Any],
+    domain_configuration: Dict[str, Any],
     dimensions: Dict[str, int],
     gather: bool = True,
 ) -> Tuple[Quantity, Quantity]:
@@ -346,16 +391,16 @@ def get_lon_lat_edges(
     lon = init_quantity(
         dimensions, VariableGrid.CellCorners, VariableDims.XY, units=units["coord-deg"]
     )
-    lon.data[:] = configuration["metric_terms"].lon.data * 180 / np.pi
+    lon.data[:] = domain_configuration["metric_terms"].lon.data * 180 / np.pi
 
     lat = init_quantity(
         dimensions, VariableGrid.CellCorners, VariableDims.XY, units=units["coord-deg"]
     )
-    lat.data[:] = configuration["metric_terms"].lat.data * 180 / np.pi
+    lat.data[:] = domain_configuration["metric_terms"].lat.data * 180 / np.pi
 
     if gather:
-        lon = configuration["communicator"].gather(lon)
-        lat = configuration["communicator"].gather(lat)
+        lon = domain_configuration["communicator"].gather(lon)
+        lat = domain_configuration["communicator"].gather(lat)
 
     return lon, lat
 
@@ -755,7 +800,7 @@ def create_initial_state_advection(
 
 
 def run_finite_volume_fluxprep(
-    configuration: Dict[str, Any],
+    stencil_configuration: Dict[str, Any],
     initial_state: Dict[str, Quantity],
     dimensions: Dict[str, int],
     timestep: float,
@@ -770,7 +815,7 @@ def run_finite_volume_fluxprep(
     initial states for mass flux, contravariant winds, area flux.
 
     Inputs:
-    - configuration (Dict) from configure_domain()
+    - stencil_configuration (Dict) from configure_stencil()
     - initial_state (Dict) from create_initial_state()
     - dimensions (Dict)
     - timestep (float) for advection
@@ -806,7 +851,7 @@ def run_finite_volume_fluxprep(
 
     # intialize and run
     fvf_prep = FiniteVolumeFluxPrep(
-        configuration["stencil_factory"], configuration["grid_data"]
+        stencil_configuration["stencil_factory"], stencil_configuration["grid_data"]
     )
 
     fvf_prep(
@@ -845,17 +890,17 @@ def run_finite_volume_fluxprep(
 
 
 def build_tracer_advection(
-    configuration: Dict[str, Any], tracers: Dict[str, Quantity]
+    stencil_configuration: Dict[str, Any], tracers: Dict[str, Quantity]
 ) -> TracerAdvection:
     """
     Use: tracer_advection =
-            build_tracer_advection(configuration, tracers)
+            build_tracer_advection(stencil_configuration, tracers)
 
 
     Initializes FiniteVolumeTransport and TracerAdvection classes.
 
     Inputs:
-    - configuration (Dict) from configure_domain()
+    - stencil_configuration (Dict) from configure_stencil()
     - tracers (Dict) from initialState created by create_initial_state()
 
     Outputs:
@@ -864,18 +909,18 @@ def build_tracer_advection(
     fvt_dict = {"grid_type": 0, "hord": 6}
 
     fvtp_2d = FiniteVolumeTransport(
-        configuration["stencil_factory"],
-        configuration["grid_data"],
-        configuration["damping_coefficients"],
+        stencil_configuration["stencil_factory"],
+        stencil_configuration["grid_data"],
+        stencil_configuration["damping_coefficients"],
         fvt_dict["grid_type"],
         fvt_dict["hord"],
     )
 
     tracer_advection = TracerAdvection(
-        configuration["stencil_factory"],
+        stencil_configuration["stencil_factory"],
         fvtp_2d,
-        configuration["grid_data"],
-        configuration["communicator"],
+        stencil_configuration["grid_data"],
+        stencil_configuration["communicator"],
         tracers,
     )
 
@@ -883,20 +928,20 @@ def build_tracer_advection(
 
 
 def prepare_everything_for_advection(
-    configuration: Dict[str, Any],
+    stencil_configuration: Dict[str, Any],
     initial_state: Dict[str, Quantity],
     dimensions: Dict[str, int],
     timestep: float,
 ) -> Tuple[Dict[str, Any], TracerAdvection]:
     """
     Use: tracer_advection_data, tracer_advection =
-        prepare_everything_for_advection(configuration, initial_state,
+        prepare_everything_for_advection(stencil_configuration, initial_state,
         dimensions, timestep)
 
     Calls run_finite_volume_fluxprep() and build_tracer_advection().
 
     Inputs:
-    - configuration from configure_domain()
+    - stencil_configuration from configure_stencil()
     - initialState from create_initial_state()
     - dimensions
     - timestep (float) advection timestep
@@ -914,13 +959,13 @@ def prepare_everything_for_advection(
     tracers = {"tracer": initial_state["tracer"]}
 
     flux_prep = run_finite_volume_fluxprep(
-        configuration,
+        stencil_configuration,
         initial_state,
         dimensions,
         timestep,
     )
 
-    tracer_advection = build_tracer_advection(configuration, tracers)
+    tracer_advection = build_tracer_advection(stencil_configuration, tracers)
 
     tracer_advection_data = {
         "tracers": tracers,
