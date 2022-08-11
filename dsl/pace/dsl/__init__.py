@@ -3,6 +3,7 @@ import gt4py.config
 from pace.util.mpi import MPI
 
 from . import dace
+from .comparison import ParallelModelComparison, StencilComparison, TwinModelComparison
 from .dace.dace_config import DaceConfig, DaCeOrchestration
 from .dace.orchestration import orchestrate, orchestrate_function
 from .stencil import FrozenStencil, StencilConfig, StencilFactory

@@ -34,7 +34,7 @@ from .performance import PerformanceConfig
 logger = logging.getLogger(__name__)
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class DriverConfig:
     """
     Configuration for a run of the Pace model.
@@ -70,6 +70,10 @@ class DriverConfig:
             copies during model execution, raising an exception if results ever
             differ. This is considerably more expensive since all model data must
             be communicated at the start and end of every stencil call.
+        pair_debug_layouts: similar to pair_debug but the model runs specifically with
+            6 ranks for one model and the remainder of the ranks for the other model.
+            The configured value for "layout" is overridden  for the first model.
+            Used to detect decomposition-dependent logic (which shouldn't happen).
         intermediate_restart: list of time steps to save intermediate restart files
     """
 
@@ -102,6 +106,7 @@ class DriverConfig:
     disable_step_physics: bool = False
     save_restart: bool = False
     pair_debug: bool = False
+    pair_debug_layouts: bool = False
     intermediate_restart: List[int] = dataclasses.field(default_factory=list)
 
     @functools.cached_property
@@ -199,6 +204,22 @@ class DriverConfig:
         )
 
 
+def get_tile_root_ranks(n_ranks: int):
+    tiles_per_rank = n_ranks // 6
+    return [i * tiles_per_rank for i in range(6)]
+
+
+def get_pair_rank(global_rank: int, global_size: int, split_index: int):
+    first_roots = get_tile_root_ranks(split_index)
+    second_roots = [
+        split_index + r for r in get_tile_root_ranks(global_size - split_index)
+    ]
+    root_mapping = dict(
+        (*zip(first_roots, second_roots), *zip(second_roots, first_roots))
+    )
+    return root_mapping.get(global_rank, None)
+
+
 class Driver:
     def __init__(
         self,
@@ -216,19 +237,51 @@ class Driver:
         self.time = self.config.start_time
         self.comm_config = config.comm_config
         global_comm = config.comm_config.get_comm()
+
         if config.pair_debug:
             world = int(global_comm.Get_rank() >= (global_comm.Get_size() // 2))
             self.comm = global_comm.Split(color=world, key=global_comm.Get_rank())
-            stencil_compare_comm = global_comm
+            comparison = pace.dsl.TwinModelComparison(global_comm=global_comm)
+        elif config.pair_debug_layouts:
+            world = int(global_comm.Get_rank() >= 6)
+            logger.debug("splitting global comm")
+            self.comm = global_comm.Split(color=world, key=global_comm.Get_rank())
+            logger.debug("split rank %d into world %d", global_comm.Get_rank(), world)
+            # TODO: if we make layout a configuration of the communicator only,
+            # and always get the layout from a communicator in dycore/physics
+            # instead of from config, we can avoid modifying the config with an
+            # updated layout and storing copies of this information
+            if world == 0:
+                self.config.layout = (1, 1)
+                self.config.dycore_config.layout = (1, 1)
+                self.config.physics_config.layout = (1, 1)
+
+            logger.debug("initializing cube communicator")
+            cube_communicator = CubedSphereCommunicator.from_layout(
+                comm=self.comm, layout=self.config.layout
+            )
+            logger.debug("initializing tile communicator")
+            tile_communicator = cube_communicator.tile
+            pair_rank = get_pair_rank(
+                global_comm.Get_rank(), global_comm.Get_size(), split_index=6
+            )
+            logger.debug("initializing comparison")
+            comparison = pace.dsl.ParallelModelComparison(
+                global_comm=global_comm,
+                tile_communicator=tile_communicator,
+                pair_rank=pair_rank,
+            )
         else:
             self.comm = global_comm
-            stencil_compare_comm = None
+            comparison = None
         self.performance_config = self.config.performance_config
         with self.performance_config.total_timer.clock("initialization"):
+            logger.debug("initializing another cube communicator")
             communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
             self.update_driver_config_with_communicator(communicator)
+            logger.debug("updated driver config with communicator")
 
             if self.config.stencil_config.compilation_config.run_mode == RunMode.Build:
 
@@ -256,17 +309,20 @@ class Driver:
                 config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_step_physics",
             )
+            logger.debug("done orchestrating")
 
             self.quantity_factory, self.stencil_factory = _setup_factories(
                 config=config,
                 communicator=communicator,
-                stencil_compare_comm=stencil_compare_comm,
+                stencil_comparison=comparison,
             )
+            logger.debug("done factory setup")
 
             self.state = self.config.initialization.get_driver_state(
                 quantity_factory=self.quantity_factory, communicator=communicator
             )
             self._start_time = self.config.initialization.start_time
+            logger.debug("initialized state")
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
                 grid_data=self.state.grid_data,
@@ -276,6 +332,7 @@ class Driver:
                 phis=self.state.dycore_state.phis,
                 state=self.state.dycore_state,
             )
+            logger.debug("initialized dynamical core")
 
             self.dycore.update_state(
                 conserve_total_energy=self.config.dycore_config.consv_te,
@@ -328,6 +385,7 @@ class Driver:
             self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time
+        logger.debug("done driver init")
 
     def update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator
@@ -488,7 +546,7 @@ def log_subtile_location(partitioner: pace.util.TilePartitioner, rank: int):
 def _setup_factories(
     config: DriverConfig,
     communicator: pace.util.CubedSphereCommunicator,
-    stencil_compare_comm,
+    stencil_comparison: pace.dsl.StencilComparison,
 ) -> Tuple["pace.util.QuantityFactory", "pace.dsl.StencilFactory"]:
     """
     Args:
@@ -523,6 +581,6 @@ def _setup_factories(
     stencil_factory = pace.dsl.StencilFactory(
         config=config.stencil_config,
         grid_indexing=grid_indexing,
-        comm=stencil_compare_comm,
+        comparison=stencil_comparison,
     )
     return quantity_factory, stencil_factory
