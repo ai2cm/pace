@@ -70,8 +70,8 @@ class HorizontalGridData:
     edge_n: FloatFieldI
 
     @classmethod
-    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "HorizontalGridData": # ??
-        
+    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "HorizontalGridData":
+
         return cls(
             lon=metric_terms.lon.storage,
             lat=metric_terms.lat.storage,
@@ -101,7 +101,7 @@ class HorizontalGridData:
             edge_e=metric_terms.edge_e.storage,
             edge_s=metric_terms.edge_s.storage,
             edge_n=metric_terms.edge_n.storage,
-            )
+        )
 
 
 @dataclasses.dataclass
@@ -125,7 +125,15 @@ class VerticalGridData:
     which rayleigh friction
 
     """
-    
+
+    @classmethod
+    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "VerticalGridData":
+        return cls(
+            ak=metric_terms.ak.storage,
+            bk=metric_terms.bk.storage,
+            ptop=metric_terms.ptop,
+            ks=metric_terms.ks,
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -147,8 +155,10 @@ class ContravariantGridData:
     rsin2: FloatFieldIJ
 
     @classmethod
-    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "ContravariantGridData":
-        
+    def new_from_metric_terms(
+        cls, metric_terms: MetricTerms
+    ) -> "ContravariantGridData":
+
         return cls(
             cosa=metric_terms.cosa.storage,
             cosa_u=metric_terms.cosa_u.storage,
@@ -161,7 +171,6 @@ class ContravariantGridData:
             rsin_v=metric_terms.rsin_v.storage,
             rsin2=metric_terms.rsin2.storage,
         )
-
 
 
 @dataclasses.dataclass(frozen=True)
@@ -182,8 +191,8 @@ class AngleGridData:
     cos_sg4: FloatFieldIJ
 
     @classmethod
-    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "ContravariantGridData":
-        
+    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "AngleGridData":
+
         return cls(
             sin_sg1=metric_terms.sin_sg1.storage,
             sin_sg2=metric_terms.sin_sg2.storage,
@@ -213,71 +222,15 @@ class GridData:
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
-        edge_n = metric_terms.edge_n.storage
-        edge_s = metric_terms.edge_s.storage
-        edge_e = metric_terms.edge_e.storage
-        edge_w = metric_terms.edge_w.storage
 
-        horizontal_data = HorizontalGridData(
-            lon=metric_terms.lon.storage,
-            lat=metric_terms.lat.storage,
-            lon_agrid=metric_terms.lon_agrid.storage,
-            lat_agrid=metric_terms.lat_agrid.storage,
-            area=metric_terms.area.storage,
-            area_64=metric_terms.area.storage,
-            rarea=metric_terms.rarea.storage,
-            rarea_c=metric_terms.rarea_c.storage,
-            dx=metric_terms.dx.storage,
-            dy=metric_terms.dy.storage,
-            dxc=metric_terms.dxc.storage,
-            dyc=metric_terms.dyc.storage,
-            dxa=metric_terms.dxa.storage,
-            dya=metric_terms.dya.storage,
-            rdx=metric_terms.rdx.storage,
-            rdy=metric_terms.rdy.storage,
-            rdxc=metric_terms.rdxc.storage,
-            rdyc=metric_terms.rdyc.storage,
-            rdxa=metric_terms.rdxa.storage,
-            rdya=metric_terms.rdya.storage,
-            a11=metric_terms.a11.storage,
-            a12=metric_terms.a12.storage,
-            a21=metric_terms.a21.storage,
-            a22=metric_terms.a22.storage,
-            edge_w=edge_w,
-            edge_e=edge_e,
-            edge_s=edge_s,
-            edge_n=edge_n,
-        )
-        ak = metric_terms.ak.storage
-        bk = metric_terms.bk.storage
-        vertical_data = VerticalGridData(
-            ak=ak,
-            bk=bk,
-            ptop=metric_terms.ptop,
-            ks=metric_terms.ks,
-        )
-        contravariant_data = ContravariantGridData(
-            cosa=metric_terms.cosa.storage,
-            cosa_u=metric_terms.cosa_u.storage,
-            cosa_v=metric_terms.cosa_v.storage,
-            cosa_s=metric_terms.cosa_s.storage,
-            sina_u=metric_terms.sina_u.storage,
-            sina_v=metric_terms.sina_v.storage,
-            rsina=metric_terms.rsina.storage,
-            rsin_u=metric_terms.rsin_u.storage,
-            rsin_v=metric_terms.rsin_v.storage,
-            rsin2=metric_terms.rsin2.storage,
-        )
-        angle_data = AngleGridData(
-            sin_sg1=metric_terms.sin_sg1.storage,
-            sin_sg2=metric_terms.sin_sg2.storage,
-            sin_sg3=metric_terms.sin_sg3.storage,
-            sin_sg4=metric_terms.sin_sg4.storage,
-            cos_sg1=metric_terms.cos_sg1.storage,
-            cos_sg2=metric_terms.cos_sg2.storage,
-            cos_sg3=metric_terms.cos_sg3.storage,
-            cos_sg4=metric_terms.cos_sg4.storage,
-        )
+        horizontal_data = HorizontalGridData.new_from_metric_terms(metric_terms)
+
+        vertical_data = VerticalGridData.new_from_metric_terms(metric_terms)
+
+        contravariant_data = ContravariantGridData.new_from_metric_terms(metric_terms)
+
+        angle_data = AngleGridData.new_from_metric_terms(metric_terms)
+
         return cls(horizontal_data, vertical_data, contravariant_data, angle_data)
 
     @property
