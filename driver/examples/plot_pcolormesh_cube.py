@@ -196,14 +196,12 @@ if __name__ == "__main__":
             )
     for t in range(args.start, args.stop):
         if args.var2D:
-            print("why here?")
             python = (
                 ds[args.variable][:, :, 0 : args.size, 0 : args.size]
                 .isel(time=t)
                 .values
             )
         else:
-            print("this is good")
             python = (
                 ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
                 .isel(time=t, z=args.zlevel)
