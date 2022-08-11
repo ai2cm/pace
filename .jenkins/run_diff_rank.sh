@@ -67,5 +67,5 @@ cd $PACE_DIR
 module load sarus
 sarus pull elynnwu/pace:latest
 echo "####### generating figures..."
-srun -C gpu --partition=debug --account=s1053 --time=00:30:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_pcolormesh_cube.py moist_baroclinic_c192_diff ua 40 --zarr_output=/work/54_rank_job/output.zarr --force_symmetric_colorbar --diff_python_path=/work/6_rank_job/output.zarr --size=192 --start=0 --stop=5
+srun -C gpu --partition=debug --account=s1053 --time=00:30:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_pcolormesh_cube.py moist_baroclinic_c192_diff ua 40 --zarr_output=/work/54_rank_job/output.zarr --force_symmetric_colorbar --diff_python_path=/work/6_rank_job/output.zarr --size=192 --start=0 --stop=2
 echo "####### figures completed."
