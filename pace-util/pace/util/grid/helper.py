@@ -71,7 +71,6 @@ class HorizontalGridData:
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "HorizontalGridData":
-
         return cls(
             lon=metric_terms.lon.storage,
             lat=metric_terms.lat.storage,
@@ -158,7 +157,6 @@ class ContravariantGridData:
     def new_from_metric_terms(
         cls, metric_terms: MetricTerms
     ) -> "ContravariantGridData":
-
         return cls(
             cosa=metric_terms.cosa.storage,
             cosa_u=metric_terms.cosa_u.storage,
@@ -192,7 +190,6 @@ class AngleGridData:
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "AngleGridData":
-
         return cls(
             sin_sg1=metric_terms.sin_sg1.storage,
             sin_sg2=metric_terms.sin_sg2.storage,
@@ -224,13 +221,9 @@ class GridData:
     def new_from_metric_terms(cls, metric_terms: MetricTerms):
 
         horizontal_data = HorizontalGridData.new_from_metric_terms(metric_terms)
-
         vertical_data = VerticalGridData.new_from_metric_terms(metric_terms)
-
         contravariant_data = ContravariantGridData.new_from_metric_terms(metric_terms)
-
         angle_data = AngleGridData.new_from_metric_terms(metric_terms)
-
         return cls(horizontal_data, vertical_data, contravariant_data, angle_data)
 
     @property
