@@ -190,7 +190,6 @@ class AngleGridData:
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "AngleGridData":
-
         return cls(
             sin_sg1=metric_terms.sin_sg1.storage,
             sin_sg2=metric_terms.sin_sg2.storage,
