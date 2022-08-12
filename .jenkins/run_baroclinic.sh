@@ -64,5 +64,5 @@ tar -czvf ${PACE_DIR}/output.tar.gz output.zarr
 module load sarus
 sarus pull elynnwu/pace:latest
 echo "####### generating figures..."
-srun -C gpu --partition=debug --account=s1053 --time=00:30:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_pcolormesh_cube.py moist_baroclinic_c576 ua 40 --zarr_output=/work/output.zarr --diff_init --start=1 --stop=4 --force_symmetric_colorbar --size=576
+srun -C gpu --partition=debug --account=s1053 --time=00:30:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_pcolormesh_cube.py moist_baroclinic_c576 ua 40 --zarr_output=/work/output.zarr --diff_init --start=1 --stop=3 --force_symmetric_colorbar --size=576
 echo "####### figures completed."
