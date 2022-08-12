@@ -17,7 +17,7 @@ wget https://boostorg.jfrog.io/artifactory/main/release/1.79.0/source/boost_1_79
 tar -xzf boost_1_79_0.tar.gz
 mkdir -p boost_1_79_0/include
 mv boost_1_79_0/boost boost_1_79_0/include/.
-setenv BOOST_ROOT $HOME/src/boost_1_79_0
+export BOOST_ROOT=$HOME/src/boost_1_79_0
 
 # go into pace, update submodules and download test data:
 cd $HOME/pace
