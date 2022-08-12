@@ -157,7 +157,6 @@ class ContravariantGridData:
     def new_from_metric_terms(
         cls, metric_terms: MetricTerms
     ) -> "ContravariantGridData":
-
         return cls(
             cosa=metric_terms.cosa.storage,
             cosa_u=metric_terms.cosa_u.storage,
