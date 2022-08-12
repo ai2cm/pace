@@ -71,7 +71,6 @@ class HorizontalGridData:
 
     @classmethod
     def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "HorizontalGridData":
-
         return cls(
             lon=metric_terms.lon.storage,
             lat=metric_terms.lat.storage,
