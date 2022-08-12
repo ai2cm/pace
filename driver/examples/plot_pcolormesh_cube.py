@@ -233,6 +233,7 @@ if __name__ == "__main__":
                 python_lon,
                 plotted_data,
                 ax=ax,
+                cmap=plt.cm.bwr if args.vmin == -1 * args.vmax else plt.cm.viridis,
                 vmin=args.vmin,
                 vmax=args.vmax,
             )
