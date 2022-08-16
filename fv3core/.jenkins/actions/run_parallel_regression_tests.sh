@@ -9,12 +9,16 @@ make get_test_data
 
 if [ ${python_env} == "virtualenv" ]; then
     CONTAINER_CMD="" MPIRUN_ARGS="" make savepoint_tests_mpi
+    TARGET=init CONTAINER_CMD="" MPIRUN_ARGS="" make savepoint_tests_mpi
 else
     make savepoint_tests_mpi
+    TARGET=init make savepoint_tests_mpi
 fi
 export TEST_ARGS="${TEST_ARGS} --compute_grid"
 if [ ${python_env} == "virtualenv" ]; then
     CONTAINER_CMD="" MPIRUN_ARGS="" make savepoint_tests_mpi
+    TARGET=init CONTAINER_CMD="" MPIRUN_ARGS="" make savepoint_tests_mpi
 else
     make savepoint_tests_mpi
+    TARGET=init make savepoint_tests_mpi
 fi
