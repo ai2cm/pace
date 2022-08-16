@@ -117,9 +117,9 @@ class CopyCornersXY:
 
 
 def kslice_from_inputs(
-    kstart, nk: Optional[int], grid_indexer: GridIndexing
+    kstart: int, nk: Optional[int], grid_indexer: GridIndexing
 ) -> Tuple[slice, int]:
-    # This expects an integer, but it casts in case something was implicitly converted
+    # This expects ints, but it casts in case something was implicitly converted
     # to a float before this call.
     if nk is None:
         nk = grid_indexer.domain[2] - kstart
