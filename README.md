@@ -23,7 +23,6 @@ Then build the `pace` docker image at the top level.
 ```shell
 make build
 ```
-(Note: if you have not authenticated with a GCP account, you can alternatively fetch test data from an FTP server using `make USE_FTP=yes get_test_data` to get started.)
 
 ## Downloading test data
 
