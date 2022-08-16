@@ -14,6 +14,7 @@ from .gnomonic import (
 
 
 BIG_NUMBER = np.nan
+TINY_NUMBER = np.nan
 
 
 def get_center_vector(
@@ -184,11 +185,9 @@ def calculate_supergrid_cos_sin(
     |       |
     6---2---7
     """
-    tiny_number = 1.0e-8
-
     shape_a = xyz_agrid.shape
     cos_sg = np.zeros((shape_a[0], shape_a[1], 9)) + BIG_NUMBER
-    sin_sg = np.zeros((shape_a[0], shape_a[1], 9)) + tiny_number
+    sin_sg = np.zeros((shape_a[0], shape_a[1], 9)) + TINY_NUMBER
 
     if grid_type < 3:
         cos_sg[:, :, 5] = spherical_cos(
@@ -338,9 +337,6 @@ def calculate_trig_uv(
     """
     Calculates more trig quantities
     """
-
-    tiny_number = 1.0e-8
-
     dgrid_shape_2d = xyz_dgrid[:, :, 0].shape
     cosa = np.zeros(dgrid_shape_2d) + BIG_NUMBER
     sina = np.zeros(dgrid_shape_2d) + BIG_NUMBER
@@ -363,54 +359,54 @@ def calculate_trig_uv(
     cosa_u[1:-1, :] = 0.5 * (cos_sg[:-1, :, 2] + cos_sg[1:, :, 0])
     sina_u[1:-1, :] = 0.5 * (sin_sg[:-1, :, 2] + sin_sg[1:, :, 0])
     sinu2 = sina_u[1:-1, :] ** 2
-    sinu2[sinu2 < tiny_number] = tiny_number
+    sinu2[sinu2 < TINY_NUMBER] = TINY_NUMBER
     rsin_u[1:-1, :] = 1.0 / sinu2
 
     cosa_v[:, 1:-1] = 0.5 * (cos_sg[:, :-1, 3] + cos_sg[:, 1:, 1])
     sina_v[:, 1:-1] = 0.5 * (sin_sg[:, :-1, 3] + sin_sg[:, 1:, 1])
     sinv2 = sina_v[:, 1:-1] ** 2
-    sinv2[sinv2 < tiny_number] = tiny_number
+    sinv2[sinv2 < TINY_NUMBER] = TINY_NUMBER
     rsin_v[:, 1:-1] = 1.0 / sinv2
 
     cosa_s = cos_sg[:, :, 4]
     sin2 = sin_sg[:, :, 4] ** 2
-    sin2[sin2 < tiny_number] = tiny_number
+    sin2[sin2 < TINY_NUMBER] = TINY_NUMBER
     rsin2 = 1.0 / sin2
 
     # fill ghost on cosa_s:
     _fill_halo_corners(cosa_s, BIG_NUMBER, nhalo, tile_partitioner, rank)
 
     sina2 = sina[nhalo:-nhalo, nhalo:-nhalo] ** 2
-    sina2[sina2 < tiny_number] = tiny_number
+    sina2[sina2 < TINY_NUMBER] = TINY_NUMBER
     rsina = 1.0 / sina2
 
     # Set special sin values at edges
     if tile_partitioner.on_tile_left(rank):
         rsina[0, :] = BIG_NUMBER
         sina_u_limit = sina_u[nhalo, :]
-        sina_u_limit[abs(sina_u_limit) < tiny_number] = tiny_number * np.sign(
-            sina_u_limit[abs(sina_u_limit) < tiny_number]
+        sina_u_limit[abs(sina_u_limit) < TINY_NUMBER] = TINY_NUMBER * np.sign(
+            sina_u_limit[abs(sina_u_limit) < TINY_NUMBER]
         )
         rsin_u[nhalo, :] = 1.0 / sina_u_limit
     if tile_partitioner.on_tile_right(rank):
         rsina[-1, :] = BIG_NUMBER
         sina_u_limit = sina_u[-nhalo - 1, :]
-        sina_u_limit[abs(sina_u_limit) < tiny_number] = tiny_number * np.sign(
-            sina_u_limit[abs(sina_u_limit) < tiny_number]
+        sina_u_limit[abs(sina_u_limit) < TINY_NUMBER] = TINY_NUMBER * np.sign(
+            sina_u_limit[abs(sina_u_limit) < TINY_NUMBER]
         )
         rsin_u[-nhalo - 1, :] = 1.0 / sina_u_limit
     if tile_partitioner.on_tile_bottom(rank):
         rsina[:, 0] = BIG_NUMBER
         sina_v_limit = sina_v[:, nhalo]
-        sina_v_limit[abs(sina_v_limit) < tiny_number] = tiny_number * np.sign(
-            sina_v_limit[abs(sina_v_limit) < tiny_number]
+        sina_v_limit[abs(sina_v_limit) < TINY_NUMBER] = TINY_NUMBER * np.sign(
+            sina_v_limit[abs(sina_v_limit) < TINY_NUMBER]
         )
         rsin_v[:, nhalo] = 1.0 / sina_v_limit
     if tile_partitioner.on_tile_top(rank):
         rsina[:, -1] = BIG_NUMBER
         sina_v_limit = sina_v[:, -nhalo - 1]
-        sina_v_limit[abs(sina_v_limit) < tiny_number] = tiny_number * np.sign(
-            sina_v_limit[abs(sina_v_limit) < tiny_number]
+        sina_v_limit[abs(sina_v_limit) < TINY_NUMBER] = TINY_NUMBER * np.sign(
+            sina_v_limit[abs(sina_v_limit) < TINY_NUMBER]
         )
         rsin_v[:, -nhalo - 1] = 1.0 / sina_v_limit
 
@@ -438,18 +434,16 @@ def supergrid_corner_fix(
     This function resolves the issue by filling in the appropriate values
     after the _fill_single_halo_corner call
     """
-    tiny_number = 1.0e-8
-
     if tile_partitioner.on_tile_left(rank):
         if tile_partitioner.on_tile_bottom(rank):
-            _fill_single_halo_corner(sin_sg, tiny_number, nhalo, "sw")
+            _fill_single_halo_corner(sin_sg, TINY_NUMBER, nhalo, "sw")
             _fill_single_halo_corner(cos_sg, BIG_NUMBER, nhalo, "sw")
             _rotate_trig_sg_sw_counterclockwise(sin_sg[:, :, 1], sin_sg[:, :, 2], nhalo)
             _rotate_trig_sg_sw_counterclockwise(cos_sg[:, :, 1], cos_sg[:, :, 2], nhalo)
             _rotate_trig_sg_sw_clockwise(sin_sg[:, :, 0], sin_sg[:, :, 3], nhalo)
             _rotate_trig_sg_sw_clockwise(cos_sg[:, :, 0], cos_sg[:, :, 3], nhalo)
         if tile_partitioner.on_tile_top(rank):
-            _fill_single_halo_corner(sin_sg, tiny_number, nhalo, "nw")
+            _fill_single_halo_corner(sin_sg, TINY_NUMBER, nhalo, "nw")
             _fill_single_halo_corner(cos_sg, BIG_NUMBER, nhalo, "nw")
             _rotate_trig_sg_nw_counterclockwise(sin_sg[:, :, 0], sin_sg[:, :, 1], nhalo)
             _rotate_trig_sg_nw_counterclockwise(cos_sg[:, :, 0], cos_sg[:, :, 1], nhalo)
@@ -457,14 +451,14 @@ def supergrid_corner_fix(
             _rotate_trig_sg_nw_clockwise(cos_sg[:, :, 3], cos_sg[:, :, 2], nhalo)
     if tile_partitioner.on_tile_right(rank):
         if tile_partitioner.on_tile_bottom(rank):
-            _fill_single_halo_corner(sin_sg, tiny_number, nhalo, "se")
+            _fill_single_halo_corner(sin_sg, TINY_NUMBER, nhalo, "se")
             _fill_single_halo_corner(cos_sg, BIG_NUMBER, nhalo, "se")
             _rotate_trig_sg_se_clockwise(sin_sg[:, :, 1], sin_sg[:, :, 0], nhalo)
             _rotate_trig_sg_se_clockwise(cos_sg[:, :, 1], cos_sg[:, :, 0], nhalo)
             _rotate_trig_sg_se_counterclockwise(sin_sg[:, :, 2], sin_sg[:, :, 3], nhalo)
             _rotate_trig_sg_se_counterclockwise(cos_sg[:, :, 2], cos_sg[:, :, 3], nhalo)
         if tile_partitioner.on_tile_top(rank):
-            _fill_single_halo_corner(sin_sg, tiny_number, nhalo, "ne")
+            _fill_single_halo_corner(sin_sg, TINY_NUMBER, nhalo, "ne")
             _fill_single_halo_corner(cos_sg, BIG_NUMBER, nhalo, "ne")
             _rotate_trig_sg_ne_counterclockwise(sin_sg[:, :, 3], sin_sg[:, :, 0], nhalo)
             _rotate_trig_sg_ne_counterclockwise(cos_sg[:, :, 3], cos_sg[:, :, 0], nhalo)
