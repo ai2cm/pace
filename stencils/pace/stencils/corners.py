@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Optional, Sequence, Tuple
 
 from gt4py import gtscript
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
@@ -116,11 +116,15 @@ class CopyCornersXY:
         return field, self._y_field
 
 
-def kslice_from_inputs(kstart, nk, grid_indexer: GridIndexing):
+def kslice_from_inputs(
+    kstart: int, nk: Optional[int], grid_indexer: GridIndexing
+) -> Tuple[slice, int]:
+    # This expects ints, but it casts in case something was implicitly converted
+    # to a float before this call.
     if nk is None:
         nk = grid_indexer.domain[2] - kstart
-    kslice = slice(kstart, kstart + nk)
-    return [kslice, nk]
+    kslice = slice(int(kstart), int(kstart + nk))
+    return (kslice, int(nk))
 
 
 @gtscript.function
