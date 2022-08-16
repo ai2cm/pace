@@ -119,8 +119,8 @@ class CopyCornersXY:
 def kslice_from_inputs(kstart, nk, grid_indexer: GridIndexing):
     if nk is None:
         nk = grid_indexer.domain[2] - kstart
-    kslice = slice(kstart, kstart + nk)
-    return [kslice, nk]
+    kslice = slice(int(kstart), int(kstart + nk))
+    return [kslice, int(nk)]
 
 
 @gtscript.function
