@@ -1,3 +1,5 @@
+import numpy as np
+
 from pace.util import Quantity, TilePartitioner
 
 from .gnomonic import (
@@ -9,6 +11,9 @@ from .gnomonic import (
     spherical_cos,
     xyz_midpoint,
 )
+
+
+BIG_NUMBER = np.nan
 
 
 def get_center_vector(
@@ -26,7 +31,6 @@ def get_center_vector(
         vector1: the horizontal unit vector
         vector2: the vertical unit vector
     """
-    big_number = 1.0e8
 
     if grid_type < 3:
         if False:  # ifdef OLD_VECT
@@ -61,8 +65,8 @@ def get_center_vector(
             vector2 = normalize_xyz(np.cross(center_points, p3))
 
         # fill ghost on ec1 and ec2:
-        _fill_halo_corners(vector1, big_number, nhalo, tile_partitioner, rank)
-        _fill_halo_corners(vector2, big_number, nhalo, tile_partitioner, rank)
+        _fill_halo_corners(vector1, BIG_NUMBER, nhalo, tile_partitioner, rank)
+        _fill_halo_corners(vector2, BIG_NUMBER, nhalo, tile_partitioner, rank)
 
     else:
         shape_dgrid = xyz_gridpoints.shape
@@ -180,11 +184,10 @@ def calculate_supergrid_cos_sin(
     |       |
     6---2---7
     """
-    big_number = 1.0e8
     tiny_number = 1.0e-8
 
     shape_a = xyz_agrid.shape
-    cos_sg = np.zeros((shape_a[0], shape_a[1], 9)) + big_number
+    cos_sg = np.zeros((shape_a[0], shape_a[1], 9)) + BIG_NUMBER
     sin_sg = np.zeros((shape_a[0], shape_a[1], 9)) + tiny_number
 
     if grid_type < 3:
@@ -336,18 +339,17 @@ def calculate_trig_uv(
     Calculates more trig quantities
     """
 
-    big_number = 1.0e8
     tiny_number = 1.0e-8
 
     dgrid_shape_2d = xyz_dgrid[:, :, 0].shape
-    cosa = np.zeros(dgrid_shape_2d) + big_number
-    sina = np.zeros(dgrid_shape_2d) + big_number
-    cosa_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1)) + big_number
-    sina_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1)) + big_number
-    rsin_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1)) + big_number
-    cosa_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1])) + big_number
-    sina_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1])) + big_number
-    rsin_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1])) + big_number
+    cosa = np.zeros(dgrid_shape_2d) + BIG_NUMBER
+    sina = np.zeros(dgrid_shape_2d) + BIG_NUMBER
+    cosa_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1)) + BIG_NUMBER
+    sina_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1)) + BIG_NUMBER
+    rsin_u = np.zeros((dgrid_shape_2d[0], dgrid_shape_2d[1] - 1)) + BIG_NUMBER
+    cosa_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1])) + BIG_NUMBER
+    sina_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1])) + BIG_NUMBER
+    rsin_v = np.zeros((dgrid_shape_2d[0] - 1, dgrid_shape_2d[1])) + BIG_NUMBER
 
     cosa[nhalo:-nhalo, nhalo:-nhalo] = 0.5 * (
         cos_sg[nhalo - 1 : -nhalo, nhalo - 1 : -nhalo, 7]
@@ -376,7 +378,7 @@ def calculate_trig_uv(
     rsin2 = 1.0 / sin2
 
     # fill ghost on cosa_s:
-    _fill_halo_corners(cosa_s, big_number, nhalo, tile_partitioner, rank)
+    _fill_halo_corners(cosa_s, BIG_NUMBER, nhalo, tile_partitioner, rank)
 
     sina2 = sina[nhalo:-nhalo, nhalo:-nhalo] ** 2
     sina2[sina2 < tiny_number] = tiny_number
@@ -384,28 +386,28 @@ def calculate_trig_uv(
 
     # Set special sin values at edges
     if tile_partitioner.on_tile_left(rank):
-        rsina[0, :] = big_number
+        rsina[0, :] = BIG_NUMBER
         sina_u_limit = sina_u[nhalo, :]
         sina_u_limit[abs(sina_u_limit) < tiny_number] = tiny_number * np.sign(
             sina_u_limit[abs(sina_u_limit) < tiny_number]
         )
         rsin_u[nhalo, :] = 1.0 / sina_u_limit
     if tile_partitioner.on_tile_right(rank):
-        rsina[-1, :] = big_number
+        rsina[-1, :] = BIG_NUMBER
         sina_u_limit = sina_u[-nhalo - 1, :]
         sina_u_limit[abs(sina_u_limit) < tiny_number] = tiny_number * np.sign(
             sina_u_limit[abs(sina_u_limit) < tiny_number]
         )
         rsin_u[-nhalo - 1, :] = 1.0 / sina_u_limit
     if tile_partitioner.on_tile_bottom(rank):
-        rsina[:, 0] = big_number
+        rsina[:, 0] = BIG_NUMBER
         sina_v_limit = sina_v[:, nhalo]
         sina_v_limit[abs(sina_v_limit) < tiny_number] = tiny_number * np.sign(
             sina_v_limit[abs(sina_v_limit) < tiny_number]
         )
         rsin_v[:, nhalo] = 1.0 / sina_v_limit
     if tile_partitioner.on_tile_top(rank):
-        rsina[:, -1] = big_number
+        rsina[:, -1] = BIG_NUMBER
         sina_v_limit = sina_v[:, -nhalo - 1]
         sina_v_limit[abs(sina_v_limit) < tiny_number] = tiny_number * np.sign(
             sina_v_limit[abs(sina_v_limit) < tiny_number]
@@ -436,20 +438,19 @@ def supergrid_corner_fix(
     This function resolves the issue by filling in the appropriate values
     after the _fill_single_halo_corner call
     """
-    big_number = 1.0e8
     tiny_number = 1.0e-8
 
     if tile_partitioner.on_tile_left(rank):
         if tile_partitioner.on_tile_bottom(rank):
             _fill_single_halo_corner(sin_sg, tiny_number, nhalo, "sw")
-            _fill_single_halo_corner(cos_sg, big_number, nhalo, "sw")
+            _fill_single_halo_corner(cos_sg, BIG_NUMBER, nhalo, "sw")
             _rotate_trig_sg_sw_counterclockwise(sin_sg[:, :, 1], sin_sg[:, :, 2], nhalo)
             _rotate_trig_sg_sw_counterclockwise(cos_sg[:, :, 1], cos_sg[:, :, 2], nhalo)
             _rotate_trig_sg_sw_clockwise(sin_sg[:, :, 0], sin_sg[:, :, 3], nhalo)
             _rotate_trig_sg_sw_clockwise(cos_sg[:, :, 0], cos_sg[:, :, 3], nhalo)
         if tile_partitioner.on_tile_top(rank):
             _fill_single_halo_corner(sin_sg, tiny_number, nhalo, "nw")
-            _fill_single_halo_corner(cos_sg, big_number, nhalo, "nw")
+            _fill_single_halo_corner(cos_sg, BIG_NUMBER, nhalo, "nw")
             _rotate_trig_sg_nw_counterclockwise(sin_sg[:, :, 0], sin_sg[:, :, 1], nhalo)
             _rotate_trig_sg_nw_counterclockwise(cos_sg[:, :, 0], cos_sg[:, :, 1], nhalo)
             _rotate_trig_sg_nw_clockwise(sin_sg[:, :, 3], sin_sg[:, :, 2], nhalo)
@@ -457,14 +458,14 @@ def supergrid_corner_fix(
     if tile_partitioner.on_tile_right(rank):
         if tile_partitioner.on_tile_bottom(rank):
             _fill_single_halo_corner(sin_sg, tiny_number, nhalo, "se")
-            _fill_single_halo_corner(cos_sg, big_number, nhalo, "se")
+            _fill_single_halo_corner(cos_sg, BIG_NUMBER, nhalo, "se")
             _rotate_trig_sg_se_clockwise(sin_sg[:, :, 1], sin_sg[:, :, 0], nhalo)
             _rotate_trig_sg_se_clockwise(cos_sg[:, :, 1], cos_sg[:, :, 0], nhalo)
             _rotate_trig_sg_se_counterclockwise(sin_sg[:, :, 2], sin_sg[:, :, 3], nhalo)
             _rotate_trig_sg_se_counterclockwise(cos_sg[:, :, 2], cos_sg[:, :, 3], nhalo)
         if tile_partitioner.on_tile_top(rank):
             _fill_single_halo_corner(sin_sg, tiny_number, nhalo, "ne")
-            _fill_single_halo_corner(cos_sg, big_number, nhalo, "ne")
+            _fill_single_halo_corner(cos_sg, BIG_NUMBER, nhalo, "ne")
             _rotate_trig_sg_ne_counterclockwise(sin_sg[:, :, 3], sin_sg[:, :, 0], nhalo)
             _rotate_trig_sg_ne_counterclockwise(cos_sg[:, :, 3], cos_sg[:, :, 0], nhalo)
             _rotate_trig_sg_ne_clockwise(sin_sg[:, :, 2], sin_sg[:, :, 1], nhalo)
@@ -615,13 +616,12 @@ def edge_factors(
     Creates interpolation factors from the A grid to the B grid on tile edges
     """
     grid = grid_quantity.data[:]
-    big_number = 1.0e8
     i_range = grid[nhalo:-nhalo, nhalo:-nhalo].shape[0]
     j_range = grid[nhalo:-nhalo, nhalo:-nhalo].shape[1]
-    edge_n = np.zeros(i_range) + big_number
-    edge_s = np.zeros(i_range) + big_number
-    edge_e = np.zeros(j_range) + big_number
-    edge_w = np.zeros(j_range) + big_number
+    edge_n = np.zeros(i_range) + BIG_NUMBER
+    edge_s = np.zeros(i_range) + BIG_NUMBER
+    edge_e = np.zeros(j_range) + BIG_NUMBER
+    edge_w = np.zeros(j_range) + BIG_NUMBER
     npx, npy, ndims = tile_partitioner.global_extent(grid_quantity)
     slice_x, slice_y = tile_partitioner.subtile_slice(
         rank, grid_quantity.dims, (npx, npy)
@@ -728,7 +728,6 @@ def efactor_a2c_v(
     Creates interpolation factors at tile edges
     for interpolating vectors from A to C grids
     """
-    big_number = 1.0e8
     grid = grid_quantity.data[:]
     npx, npy, ndims = tile_partitioner.global_extent(grid_quantity)
     slice_x, slice_y = tile_partitioner.subtile_slice(
@@ -762,10 +761,10 @@ def efactor_a2c_v(
     im2 = max(im2, -1)
     jm2 = max(jm2, -1)
 
-    edge_vect_s = np.zeros(grid.shape[0] - 1) + big_number
-    edge_vect_n = np.zeros(grid.shape[0] - 1) + big_number
-    edge_vect_e = np.zeros(grid.shape[1] - 1) + big_number
-    edge_vect_w = np.zeros(grid.shape[1] - 1) + big_number
+    edge_vect_s = np.zeros(grid.shape[0] - 1) + BIG_NUMBER
+    edge_vect_n = np.zeros(grid.shape[0] - 1) + BIG_NUMBER
+    edge_vect_e = np.zeros(grid.shape[1] - 1) + BIG_NUMBER
+    edge_vect_w = np.zeros(grid.shape[1] - 1) + BIG_NUMBER
     if grid_type < 3:
         if tile_partitioner.on_tile_left(rank):
             edge_vect_w[2:-2] = calculate_west_edge_vectors(
