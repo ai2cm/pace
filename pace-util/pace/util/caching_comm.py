@@ -137,6 +137,9 @@ class CachingCommReader(Comm):
         new_data = self._data.get_split()
         return CachingCommReader(data=new_data)
 
+    def allreduce(self, sendobj, op=None) -> Any:
+        raise NotImplementedError()
+
     @classmethod
     def load(cls, file: BinaryIO) -> "CachingCommReader":
         data = CachingCommData.load(file)
@@ -212,3 +215,6 @@ class CachingCommWriter(Comm):
 
     def dump(self, file: BinaryIO):
         self._data.dump(file)
+
+    def allreduce(self, sendobj, op=None) -> Any:
+        raise NotImplementedError()

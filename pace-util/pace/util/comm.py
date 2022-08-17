@@ -1,5 +1,5 @@
 import abc
-from typing import Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 
 T = TypeVar("T")

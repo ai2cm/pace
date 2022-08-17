@@ -3,7 +3,7 @@ try:
 except ImportError:
     MPI = None
 import logging
-from typing import Any, Callable, Optional, TypeVar, Union, cast
+from typing import Any, Optional, TypeVar, cast
 
 from .comm import Comm, Request
 
