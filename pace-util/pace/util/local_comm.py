@@ -1,5 +1,6 @@
 import copy
 import logging
+from typing import Any
 
 from .comm import Comm
 from .utils import ensure_contiguous, safe_assign_array
@@ -177,3 +178,9 @@ class LocalComm(Comm):
             comm.total_ranks = total_ranks
         self._split_comms[color].append(new_comm)
         return new_comm
+
+    def allreduce(self, sendobj, op=None) -> Any:
+        raise NotImplementedError(
+            "sendrecv fundamentally cannot be written for LocalComm, "
+            "as it requires synchronicity"
+        )
