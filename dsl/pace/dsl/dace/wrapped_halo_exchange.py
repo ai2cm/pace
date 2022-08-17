@@ -34,22 +34,22 @@ class WrappedHaloUpdater:
         if self._qtx_y_names is None:
             if dataclasses.is_dataclass(self._state):
                 self._updater.start(
-                    [self._state.__getattribute__(x) for x in self._qtx_x_names]
+                    [self._state.__getattribute__(x).data for x in self._qtx_x_names]
                 )
             elif isinstance(self._state, dict):
-                self._updater.start([self._state[x] for x in self._qtx_x_names])
+                self._updater.start([self._state[x].data for x in self._qtx_x_names])
             else:
                 raise NotImplementedError
         else:
             if dataclasses.is_dataclass(self._state):
                 self._updater.start(
-                    [self._state.__getattribute__(x) for x in self._qtx_x_names],
-                    [self._state.__getattribute__(y) for y in self._qtx_y_names],
+                    [self._state.__getattribute__(x).data for x in self._qtx_x_names],
+                    [self._state.__getattribute__(y).data for y in self._qtx_y_names],
                 )
             elif isinstance(self._state, dict):
                 self._updater.start(
-                    [self._state[x] for x in self._qtx_x_names],
-                    [self._state[y] for y in self._qtx_y_names],
+                    [self._state[x].data for x in self._qtx_x_names],
+                    [self._state[y].data for y in self._qtx_y_names],
                 )
             else:
                 raise NotImplementedError

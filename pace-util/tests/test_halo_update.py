@@ -866,7 +866,7 @@ def test_halo_updater_stability(
 
     # First run
     for halo_updater in halo_updaters:
-        halo_updater.start([quantity])
+        halo_updater.start([quantity.data])
     for halo_updater in halo_updaters:
         halo_updater.wait()
 
@@ -874,11 +874,11 @@ def test_halo_updater_stability(
     # The buffer should stay stable since we are exchanging the same information
     exchanged_once_quantity = copy.deepcopy(quantity)
     for halo_updater in halo_updaters:
-        halo_updater.start([quantity])
+        halo_updater.start([quantity.data])
     for halo_updater in halo_updaters:
         halo_updater.wait()
     for halo_updater in halo_updaters:
-        halo_updater.start([quantity])
+        halo_updater.start([quantity.data])
     for halo_updater in halo_updaters:
         halo_updater.wait()
     assert (quantity.data == exchanged_once_quantity.data).all()

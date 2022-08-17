@@ -9,7 +9,7 @@ from .boundary import Boundary
 from .buffer import Buffer
 from .halo_data_transformer import HaloDataTransformer, HaloExchangeSpec
 from .halo_quantity_specification import QuantityHaloSpec
-from .quantity import BoundaryArrayView, Quantity
+from .quantity import BoundaryArrayView
 from .rotate import rotate_scalar_data
 from .types import AsyncRequest, NumpyModule
 from .utils import device_synchronize
@@ -61,8 +61,8 @@ class HaloUpdater:
         self._timer = timer
         self._recv_requests: List[AsyncRequest] = []
         self._send_requests: List[AsyncRequest] = []
-        self._inflight_x_quantities: Optional[Tuple[Quantity, ...]] = None
-        self._inflight_y_quantities: Optional[Tuple[Quantity, ...]] = None
+        self._inflight_x_arrays: Optional[Tuple[np.ndarray, ...]] = None
+        self._inflight_y_arrays: Optional[Tuple[np.ndarray, ...]] = None
         self._finalize_on_wait = False
 
     def force_finalize_on_wait(self):
@@ -74,10 +74,7 @@ class HaloUpdater:
 
     def __del__(self):
         """Clean up all buffers on garbage collection"""
-        if (
-            self._inflight_x_quantities is not None
-            or self._inflight_y_quantities is not None
-        ):
+        if self._inflight_x_arrays is not None or self._inflight_y_arrays is not None:
             raise RuntimeError(
                 "An halo exchange wasn't completed and a wait() call was expected"
             )
@@ -205,25 +202,22 @@ class HaloUpdater:
 
     def update(
         self,
-        quantities_x: List[Quantity],
-        quantities_y: Optional[List[Quantity]] = None,
+        arrays_x: List[np.ndarray],
+        arrays_y: Optional[List[np.ndarray]] = None,
     ):
         """Exhange the data and blocks until finished."""
-        self.start(quantities_x, quantities_y)
+        self.start(arrays_x, arrays_y)
         self.wait()
 
     def start(
         self,
-        quantities_x: List[Quantity],
-        quantities_y: Optional[List[Quantity]] = None,
+        arrays_x: List[np.ndarray],
+        arrays_y: Optional[List[np.ndarray]] = None,
     ):
         """Start data exchange."""
         self._comm._device_synchronize()
 
-        if (
-            self._inflight_x_quantities is not None
-            or self._inflight_y_quantities is not None
-        ):
+        if self._inflight_x_arrays is not None or self._inflight_y_arrays is not None:
             raise RuntimeError(
                 "Previous exchange hasn't been properly finished."
                 "E.g. previous start() call didn't have a wait() call."
@@ -241,15 +235,13 @@ class HaloUpdater:
                     )
                 )
 
-        # Pack quantities halo points data into buffers
+        # Pack arrays halo points data into buffers
         with self._timer.clock("pack"):
             for transformer in self._transformers.values():
-                transformer.async_pack(quantities_x, quantities_y)
+                transformer.async_pack(arrays_x, arrays_y)
 
-        self._inflight_x_quantities = tuple(quantities_x)
-        self._inflight_y_quantities = (
-            tuple(quantities_y) if quantities_y is not None else None
-        )
+        self._inflight_x_arrays = tuple(arrays_x)
+        self._inflight_y_arrays = tuple(arrays_y) if arrays_y is not None else None
 
         # Post send MPI order
         with self._timer.clock("Isend"):
@@ -265,7 +257,7 @@ class HaloUpdater:
 
     def wait(self):
         """Finalize data exchange."""
-        if __debug__ and self._inflight_x_quantities is None:
+        if __debug__ and self._inflight_x_arrays is None:
             raise RuntimeError('Halo update "wait" call before "start"')
         # Wait message to be exchange
         with self._timer.clock("wait"):
@@ -275,12 +267,10 @@ class HaloUpdater:
                 recv_req.wait()
 
         # Unpack buffers (updated by MPI with neighbouring halos)
-        # to proper quantities
+        # to proper arrays
         with self._timer.clock("unpack"):
             for buffer in self._transformers.values():
-                buffer.async_unpack(
-                    self._inflight_x_quantities, self._inflight_y_quantities
-                )
+                buffer.async_unpack(self._inflight_x_arrays, self._inflight_y_arrays)
             if self._finalize_on_wait:
                 for transformer in self._transformers.values():
                     transformer.finalize()
@@ -288,8 +278,8 @@ class HaloUpdater:
                 for transformer in self._transformers.values():
                     transformer.synchronize()
 
-        self._inflight_x_quantities = None
-        self._inflight_y_quantities = None
+        self._inflight_x_arrays = None
+        self._inflight_y_arrays = None
 
 
 class HaloUpdateRequest:
@@ -397,7 +387,7 @@ class VectorInterfaceHaloUpdater:
         For interface variables, the edges of the tile are computed on both ranks
         bordering that edge. This routine copies values across those shared edges
         so that both ranks have the same value for that edge. It also handles any
-        rotation of vector quantities needed to move data across the edge.
+        rotation of vector data needed to move data across the edge.
 
         Args:
             x_array: the x-component data to be synchronized

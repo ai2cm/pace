@@ -325,8 +325,10 @@ class Communicator(abc.ABC):
         """
         if isinstance(quantity, Quantity):
             quantities = [quantity]
+            arrays = [quantity.data]
         else:
             quantities = quantity
+            arrays = [qty.data for qty in quantity]
 
         specifications = []
         for quantity in quantities:
@@ -345,7 +347,7 @@ class Communicator(abc.ABC):
 
         halo_updater = self.get_scalar_halo_updater(specifications)
         halo_updater.force_finalize_on_wait()
-        halo_updater.start(quantities)
+        halo_updater.start(arrays)
         return halo_updater
 
     def vector_halo_update(
@@ -397,12 +399,16 @@ class Communicator(abc.ABC):
         """
         if isinstance(x_quantity, Quantity):
             x_quantities = [x_quantity]
+            x_arrays = [x_quantity.data]
         else:
             x_quantities = x_quantity
+            x_arrays = [qty.data for qty in x_quantity]
         if isinstance(y_quantity, Quantity):
             y_quantities = [y_quantity]
+            y_arrays = [y_quantity.data]
         else:
             y_quantities = y_quantity
+            y_arrays = [qty.data for qty in y_quantity]
 
         x_specifications = []
         y_specifications = []
@@ -434,7 +440,7 @@ class Communicator(abc.ABC):
 
         halo_updater = self.get_vector_halo_updater(x_specifications, y_specifications)
         halo_updater.force_finalize_on_wait()
-        halo_updater.start(x_quantities, y_quantities)
+        halo_updater.start(x_arrays, y_arrays)
         return halo_updater
 
     def synchronize_vector_interfaces(self, x_quantity: Quantity, y_quantity: Quantity):

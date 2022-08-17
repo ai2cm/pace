@@ -326,12 +326,12 @@ def test_data_transformer_scalar_pack_unpack(quantity, rotation, n_halos):
 
     data_transformer = HaloDataTransformer.get(quantity.np, exchange_descriptors)
 
-    data_transformer.async_pack([quantity, quantity])
+    data_transformer.async_pack([quantity.data, quantity.data])
     # Simulate data transfer
     data_transformer.get_unpack_buffer().assign_from(
         data_transformer.get_pack_buffer().array
     )
-    data_transformer.async_unpack([quantity, quantity])
+    data_transformer.async_unpack([quantity.data, quantity.data])
     data_transformer.synchronize()
 
     # From the copy of the original quantity we rotate data
@@ -433,12 +433,16 @@ def test_data_transformer_vector_pack_unpack(quantity, rotation, n_halos):
         x_quantity.np, exchange_descriptors_x, exchange_descriptors_y
     )
 
-    data_transformer.async_pack([x_quantity, x_quantity], [y_quantity, y_quantity])
+    data_transformer.async_pack(
+        [x_quantity.data, x_quantity.data], [y_quantity.data, y_quantity.data]
+    )
     # Simulate data transfer
     data_transformer.get_unpack_buffer().assign_from(
         data_transformer.get_pack_buffer().array
     )
-    data_transformer.async_unpack([x_quantity, x_quantity], [y_quantity, y_quantity])
+    data_transformer.async_unpack(
+        [x_quantity.data, x_quantity.data], [y_quantity.data, y_quantity.data]
+    )
     data_transformer.synchronize()
 
     # From the copy of the original quantity we rotate data
