@@ -69,3 +69,6 @@ class MPIComm(Comm):
             "Split on rank %s with color %s, key %s", self._comm.Get_rank(), color, key
         )
         return self._comm.Split(color, key)
+
+    def allreduce(self, sendobj, op):
+        return self._comm.allreduce(sendobj, op)

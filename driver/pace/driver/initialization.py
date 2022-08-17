@@ -199,6 +199,7 @@ class SerialboxConfig(Initializer):
             driver_grid_data = grid.driver_grid_data
             damping_coeff = grid.damping_coefficients
         else:
+            print("Using metric term grid")
             grid = pace.stencils.testing.grid.Grid.with_data_from_namelist(
                 self._namelist, communicator, backend
             )

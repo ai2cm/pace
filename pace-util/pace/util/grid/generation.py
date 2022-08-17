@@ -2228,17 +2228,11 @@ class MetricTerms:
         return edge_vect_e_2d, edge_vect_w_2d
 
     def _reduce_global_area_minmaxes(self):
-        min_area = self._np.min(self.area.storage[3:-4, 3:-4])[()]
-        max_area = self._np.max(self.area.storage[3:-4, 3:-4])[()]
-        min_area_c = self._np.min(self.area_c.storage[3:-4, 3:-4])[()]
-        max_area_c = self._np.max(self.area_c.storage[3:-4, 3:-4])[()]
-        try:
-            self._da_min = self._comm.comm.allreduce(min_area, min)
-            self._da_max = self._comm.comm.allreduce(max_area, max)
-            self._da_min_c = self._comm.comm.allreduce(min_area_c, min)
-            self._da_max_c = self._comm.comm.allreduce(max_area_c, max)
-        except AttributeError:
-            self._da_min = min_area
-            self._da_max = max_area
-            self._da_min_c = min_area_c
-            self._da_max_c = max_area_c
+        min_area = self._np.min(self.area.data[3:-4, 3:-4])[()]
+        max_area = self._np.max(self.area.data[3:-4, 3:-4])[()]
+        min_area_c = self._np.min(self.area_c.data[3:-4, 3:-4])[()]
+        max_area_c = self._np.max(self.area_c.data[3:-4, 3:-4])[()]
+        self._da_min = self._comm.comm.allreduce(min_area, min)
+        self._da_max = self._comm.comm.allreduce(max_area, max)
+        self._da_min_c = self._comm.comm.allreduce(min_area_c, min)
+        self._da_max_c = self._comm.comm.allreduce(max_area_c, max)
