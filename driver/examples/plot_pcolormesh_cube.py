@@ -145,8 +145,7 @@ def gather_fortran_wrapper_at_klevel(
             with xr.open_dataset(
                 path + f"/outstate_{t}_{rank}.nc",
             ) as f:
-                for t in range(ts_size):
-                    fortran_data[t, rank, :, :] = f[var][klevel, :, :].T
+                fortran_data[t, rank, :, :] = f[var][klevel, :, :].T
     return fortran_data
 
 
