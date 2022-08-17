@@ -16,6 +16,7 @@ import pace.util.grid
 from fv3core.testing import TranslateFVDynamics
 from pace.dsl.dace.orchestration import DaceConfig
 from pace.dsl.stencil import StencilFactory
+from pace.dsl.stencil_config import CompilationConfig
 from pace.stencils.testing import TranslateGrid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
@@ -267,7 +268,7 @@ class SerialboxConfig(Initializer):
             tile_nz=self._namelist.npz,
         )
         stencil_config = pace.dsl.stencil.StencilConfig(
-            backend=backend,
+            compilation_config=CompilationConfig(backend=backend),
             dace_config=dace_config,
         )
         stencil_factory = StencilFactory(
