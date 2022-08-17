@@ -63,7 +63,7 @@ class Comm(abc.ABC):
     @abc.abstractmethod
     def Split(self, color, key) -> "Comm":
         ...
-    
-    @abc.abstractmethod 
+
+    @abc.abstractmethod
     def allreduce(self, sendobj, op=None) -> Any:
         ...
