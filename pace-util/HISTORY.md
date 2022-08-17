@@ -9,9 +9,11 @@ Major changes:
 - Added Checkpointer and NullCheckpointer classes
 - Added SnapshotCheckpointer
 - Comm and Request abstract base classes are added to the top level
+- Added the following attributes/methods to the Comm abstract base classes: `allreduce`
 
 Minor changes:
 - Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator
+- fixed a bug in `pace.util.grid.` where `_reduce_global_area_minmaxes` would use local values instead of the gathered ones
 
 Minor changes:
 - Fixed a bug in normalize_vector(xyz) in `pace.util.grid.gnomonic` where it would divide the input by cells-per-tile, where it should not.
