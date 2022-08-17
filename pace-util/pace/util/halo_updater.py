@@ -7,12 +7,9 @@ from . import constants
 from ._timing import NullTimer, Timer
 from .boundary import Boundary
 from .buffer import Buffer
-from .halo_data_transformer import (
-    HaloDataTransformer,
-    HaloExchangeSpec,
-    QuantityHaloSpec,
-)
-from .quantity import Quantity
+from .halo_data_transformer import HaloDataTransformer, HaloExchangeSpec
+from .halo_quantity_specification import QuantityHaloSpec
+from .quantity import BoundaryArrayView, Quantity
 from .rotate import rotate_scalar_data
 from .types import AsyncRequest, NumpyModule
 from .utils import device_synchronize
@@ -333,15 +330,15 @@ class HaloUpdateRequest:
                 Buffer.push_to_cache(transfer_buffer)
 
 
-def on_c_grid(x_quantity, y_quantity):
+def on_c_grid(x_spec: QuantityHaloSpec, y_spec: QuantityHaloSpec):
     if (
-        constants.X_DIM not in x_quantity.dims
-        or constants.Y_INTERFACE_DIM not in x_quantity.dims
+        constants.X_DIM not in x_spec.dims
+        or constants.Y_INTERFACE_DIM not in x_spec.dims
     ):
         return False
     if (
-        constants.Y_DIM not in y_quantity.dims
-        or constants.X_INTERFACE_DIM not in y_quantity.dims
+        constants.Y_DIM not in y_spec.dims
+        or constants.X_INTERFACE_DIM not in y_spec.dims
     ):
         return False
     else:
@@ -349,9 +346,19 @@ def on_c_grid(x_quantity, y_quantity):
 
 
 class VectorInterfaceHaloUpdater:
+    """Exchange halo on information between ranks for data living on the interface.
+
+    This class reasons on QuantityHaloSpec for initialization and assumes the arrays given
+    to the start_synchronize_vector_interfaces adhere to those specs.
+
+    See start_synchronize_vector_interfaces for details on interface exchange.
+    """
+
     def __init__(
         self,
         comm,
+        qty_x_spec: QuantityHaloSpec,
+        qty_y_spec: QuantityHaloSpec,
         boundaries: Mapping[int, Boundary],
         force_cpu: bool = False,
         timer: Optional[Timer] = None,
@@ -360,6 +367,8 @@ class VectorInterfaceHaloUpdater:
 
         Args:
             comm: mpi4py.Comm object
+            qty_x_spec: halo specification for data to exchange on the X-axis
+            qty_y_spec: halo specification for data to exchange on the Y-axis
             partitioner: cubed sphere partitioner
             force_cpu: Force all communication to go through central memory. Optional.
             timer: Time communication operations. Optional.
@@ -369,13 +378,15 @@ class VectorInterfaceHaloUpdater:
         self._force_cpu = force_cpu
         self.comm = comm
         self.boundaries = boundaries
+        self._qty_x_spec = qty_x_spec
+        self._qty_y_spec = qty_y_spec
 
     def _get_halo_tag(self) -> int:
         self._last_halo_tag += 1
         return self._last_halo_tag
 
     def start_synchronize_vector_interfaces(
-        self, x_quantity: Quantity, y_quantity: Quantity
+        self, x_array: np.ndarray, y_array: np.ndarray
     ) -> HaloUpdateRequest:
         """
         Synchronize shared points at the edges of a vector interface variable.
@@ -389,70 +400,91 @@ class VectorInterfaceHaloUpdater:
         rotation of vector quantities needed to move data across the edge.
 
         Args:
-            x_quantity: the x-component quantity to be synchronized
-            y_quantity: the y-component quantity to be synchronized
+            x_array: the x-component data to be synchronized
+            y_array: the y-component data to be synchronized
 
         Returns:
             request: an asynchronous request object with a .wait() method
         """
-        if not on_c_grid(x_quantity, y_quantity):
+        if not on_c_grid(self._qty_x_spec, self._qty_y_spec):
             raise ValueError("vector must be defined on Arakawa C-grid")
         device_synchronize()
         tag = self._get_halo_tag()
-        send_requests = self._Isend_vector_shared_boundary(
-            x_quantity, y_quantity, tag=tag
-        )
-        recv_requests = self._Irecv_vector_shared_boundary(
-            x_quantity, y_quantity, tag=tag
-        )
+        send_requests = self._Isend_vector_shared_boundary(x_array, y_array, tag=tag)
+        recv_requests = self._Irecv_vector_shared_boundary(x_array, y_array, tag=tag)
         return HaloUpdateRequest(send_requests, recv_requests, self.timer)
 
     def _Isend_vector_shared_boundary(
-        self, x_quantity, y_quantity, tag=0
+        self, x_array: np.ndarray, y_array: np.ndarray, tag=0
     ) -> _HaloRequestSendList:
+        # South boundary
         south_boundary = self.boundaries[constants.SOUTH]
-        west_boundary = self.boundaries[constants.WEST]
-        south_data = x_quantity.view.southwest.sel(
+        southwest_x_view = BoundaryArrayView(
+            x_array,
+            constants.SOUTHWEST,
+            self._qty_x_spec.dims,
+            self._qty_x_spec.origin,
+            self._qty_x_spec.extent,
+        )
+        south_data = southwest_x_view.sel(
             **{
                 constants.Y_INTERFACE_DIM: 0,
                 constants.X_DIM: slice(
-                    0, x_quantity.extent[x_quantity.dims.index(constants.X_DIM)]
+                    0,
+                    self._qty_x_spec.extent[
+                        self._qty_x_spec.dims.index(constants.X_DIM)
+                    ],
                 ),
             }
         )
         south_data = rotate_scalar_data(
             south_data,
             [constants.X_DIM],
-            x_quantity.np,
+            self._qty_x_spec.numpy_module,
             -south_boundary.n_clockwise_rotations,
         )
         if south_boundary.n_clockwise_rotations in (3, 2):
             south_data = -south_data
-        west_data = y_quantity.view.southwest.sel(
+
+        # West boundary
+        west_boundary = self.boundaries[constants.WEST]
+        southwest_y_view = BoundaryArrayView(
+            y_array,
+            constants.SOUTHWEST,
+            self._qty_y_spec.dims,
+            self._qty_y_spec.origin,
+            self._qty_y_spec.extent,
+        )
+        west_data = southwest_y_view.sel(
             **{
                 constants.X_INTERFACE_DIM: 0,
                 constants.Y_DIM: slice(
-                    0, y_quantity.extent[y_quantity.dims.index(constants.Y_DIM)]
+                    0,
+                    self._qty_y_spec.extent[
+                        self._qty_y_spec.dims.index(constants.Y_DIM)
+                    ],
                 ),
             }
         )
         west_data = rotate_scalar_data(
             west_data,
             [constants.Y_DIM],
-            y_quantity.np,
+            self._qty_y_spec.numpy_module,
             -west_boundary.n_clockwise_rotations,
         )
         if west_boundary.n_clockwise_rotations in (1, 2):
             west_data = -west_data
+
+        # Send requests
         send_requests = [
             self._Isend(
-                self._maybe_force_cpu(x_quantity.np),
+                self._maybe_force_cpu(self._qty_x_spec.numpy_module),
                 south_data,
                 dest=south_boundary.to_rank,
                 tag=tag,
             ),
             self._Isend(
-                self._maybe_force_cpu(y_quantity.np),
+                self._maybe_force_cpu(self._qty_y_spec.numpy_module),
                 west_data,
                 dest=west_boundary.to_rank,
                 tag=tag,
@@ -470,35 +502,61 @@ class VectorInterfaceHaloUpdater:
         return module
 
     def _Irecv_vector_shared_boundary(
-        self, x_quantity, y_quantity, tag=0
+        self, x_array: np.ndarray, y_array: np.ndarray, tag=0
     ) -> _HaloRequestRecvList:
+        # North boundary
         north_rank = self.boundaries[constants.NORTH].to_rank
-        east_rank = self.boundaries[constants.EAST].to_rank
-        north_data = x_quantity.view.northwest.sel(
+        northwest_x_view = BoundaryArrayView(
+            x_array,
+            constants.NORTHWEST,
+            self._qty_x_spec.dims,
+            self._qty_x_spec.origin,
+            self._qty_x_spec.extent,
+        )
+
+        north_data = northwest_x_view.sel(
             **{
                 constants.Y_INTERFACE_DIM: -1,
                 constants.X_DIM: slice(
-                    0, x_quantity.extent[x_quantity.dims.index(constants.X_DIM)]
+                    0,
+                    self._qty_x_spec.extent[
+                        self._qty_x_spec.dims.index(constants.X_DIM)
+                    ],
                 ),
             }
         )
-        east_data = y_quantity.view.southeast.sel(
+
+        # East boundary
+        east_rank = self.boundaries[constants.EAST].to_rank
+        southeast_y_view = BoundaryArrayView(
+            y_array,
+            constants.SOUTHEAST,
+            self._qty_y_spec.dims,
+            self._qty_y_spec.origin,
+            self._qty_y_spec.extent,
+        )
+        east_data = southeast_y_view.sel(
             **{
                 constants.X_INTERFACE_DIM: -1,
                 constants.Y_DIM: slice(
-                    0, y_quantity.extent[y_quantity.dims.index(constants.Y_DIM)]
+                    0,
+                    self._qty_y_spec.extent[
+                        self._qty_y_spec.dims.index(constants.Y_DIM)
+                    ],
                 ),
             }
         )
+
+        # Receive requests
         recv_requests = [
             self._Irecv(
-                self._maybe_force_cpu(x_quantity.np),
+                self._maybe_force_cpu(self._qty_x_spec.numpy_module),
                 north_data,
                 source=north_rank,
                 tag=tag,
             ),
             self._Irecv(
-                self._maybe_force_cpu(y_quantity.np),
+                self._maybe_force_cpu(self._qty_y_spec.numpy_module),
                 east_data,
                 source=east_rank,
                 tag=tag,

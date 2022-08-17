@@ -1,9 +1,9 @@
 import dataclasses
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pace.dsl.dace.orchestration import dace_inhibitor
 from pace.util.communicator import CubedSphereCommunicator
-from pace.util.halo_updater import HaloUpdater
+from pace.util.halo_updater import HaloUpdater, VectorInterfaceHaloUpdater
 
 
 class WrappedHaloUpdater:
@@ -17,7 +17,7 @@ class WrappedHaloUpdater:
 
     def __init__(
         self,
-        updater: HaloUpdater,
+        updater: Union[HaloUpdater, VectorInterfaceHaloUpdater],
         state,
         qty_x_names: List[str],
         qty_y_names: List[str] = None,
@@ -65,9 +65,11 @@ class WrappedHaloUpdater:
 
     @dace_inhibitor
     def interface(self):
+        assert isinstance(self._updater, VectorInterfaceHaloUpdater)
         assert len(self._qtx_x_names) == 1
         assert len(self._qtx_y_names) == 1
-        self._comm.synchronize_vector_interfaces(
-            self._state.__getattribute__(self._qtx_x_names[0]),
-            self._state.__getattribute__(self._qtx_y_names[0]),
+        request = self._updater.start_synchronize_vector_interfaces(
+            self._state.__getattribute__(self._qtx_x_names[0]).data,
+            self._state.__getattribute__(self._qtx_y_names[0]).data,
         )
+        request.wait()

@@ -1,7 +1,7 @@
 import abc
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID, uuid1
 
 import numpy as np
@@ -14,25 +14,11 @@ from .cuda_kernels import (
     unpack_scalar_f64_kernel,
     unpack_vector_f64_kernel,
 )
+from .halo_quantity_specification import QuantityHaloSpec
 from .quantity import Quantity
 from .rotate import rotate_scalar_data, rotate_vector_data
 from .types import NumpyModule
 from .utils import device_synchronize
-
-
-@dataclass
-class QuantityHaloSpec:
-    """Describe the memory to be exchanged, including size of the halo."""
-
-    n_points: int
-    strides: Tuple[int]
-    itemsize: int
-    shape: Tuple[int]
-    origin: Tuple[int, ...]
-    extent: Tuple[int, ...]
-    dims: Tuple[str, ...]
-    numpy_module: NumpyModule
-    dtype: Any
 
 
 # ------------------------------------------------------------------------
