@@ -41,4 +41,3 @@ cp -r /project/s1053/fortran_output/wrapper_output/c48_6ranks_baroclinic referen
 module load sarus
 sarus pull elynnwu/pace:latest
 srun -C gpu --partition=debug --account=s1053 --time=00:30:00 sarus run --mount=type=bind,source=${PACE_DIR},destination=/work elynnwu/pace:latest python /work/driver/examples/plot_pcolormesh_cube.py dry_baroclinic_c48_comparison ua 40 --start=0 --stop=20 --zarr_output=/work/output.zarr --fortran_data_path=/work/reference_data/c48_6ranks_baroclinic --fortran_var=eastward_wind --fortran_from_wrapper --size=48 --force_symmetric_colorbar
-
