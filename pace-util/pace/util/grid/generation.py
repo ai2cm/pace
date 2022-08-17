@@ -2232,7 +2232,7 @@ class MetricTerms:
         max_area = self._np.max(self.area.storage[3:-4, 3:-4])[()]
         min_area_c = self._np.min(self.area_c.storage[3:-4, 3:-4])[()]
         max_area_c = self._np.max(self.area_c.storage[3:-4, 3:-4])[()]
-        self._da_min = self._comm.comm.allreduce(min_area, min).item()
-        self._da_max = self._comm.comm.allreduce(max_area, max).item()
-        self._da_min_c = self._comm.comm.allreduce(min_area_c, min).item()
-        self._da_max_c = self._comm.comm.allreduce(max_area_c, max).item()
+        self._da_min = float(self._comm.comm.allreduce(min_area, min))
+        self._da_max = float(self._comm.comm.allreduce(max_area, max))
+        self._da_min_c = float(self._comm.comm.allreduce(min_area_c, min))
+        self._da_max_c = float(self._comm.comm.allreduce(max_area_c, max))
