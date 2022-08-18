@@ -5,6 +5,8 @@ import fv3core
 import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util.constants as constants
+from pace.dsl.dace.orchestration import orchestrate
+from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField, FloatFieldIJ
 from pace.stencils.c2l_ord import CubedToLatLon
@@ -87,7 +89,14 @@ class ApplyPhysicsToDycore:
         comm: pace.util.CubedSphereCommunicator,
         grid_info: DriverGridData,
         state: fv3core.DycoreState,
+        u_dt: pace.util.Quantity,
+        v_dt: pace.util.Quantity,
     ):
+        orchestrate(
+            obj=self,
+            config=stencil_factory.config.dace_config,
+            dace_constant_args=["state"],
+        )
         grid_indexing = stencil_factory.grid_indexing
         self.comm = comm
         self._moist_cv = stencil_factory.from_origin_domain(
@@ -116,11 +125,15 @@ class ApplyPhysicsToDycore:
             n_halo=1,
             backend=stencil_factory.backend,
         )
-        self._udt_halo_updater = self.comm.get_scalar_halo_updater(
-            [full_3Dfield_1pts_halo_spec]
+        self._udt_halo_updater = WrappedHaloUpdater(
+            self.comm.get_scalar_halo_updater([full_3Dfield_1pts_halo_spec]),
+            {"u_dt": u_dt},
+            ["u_dt"],
         )
-        self._vdt_halo_updater = self.comm.get_scalar_halo_updater(
-            [full_3Dfield_1pts_halo_spec]
+        self._vdt_halo_updater = WrappedHaloUpdater(
+            self.comm.get_scalar_halo_updater([full_3Dfield_1pts_halo_spec]),
+            {"v_dt": v_dt},
+            ["v_dt"],
         )
         # TODO: check if we actually need surface winds
         self._u_srf = utils.make_storage_from_shape(
@@ -133,9 +146,9 @@ class ApplyPhysicsToDycore:
     def __call__(
         self,
         state,
-        u_dt: pace.util.Quantity,
-        v_dt: pace.util.Quantity,
-        t_dt: pace.util.Quantity,
+        u_dt,
+        v_dt,
+        t_dt,
         dt: float,
     ):
         self._moist_cv(
@@ -151,8 +164,8 @@ class ApplyPhysicsToDycore:
             dt,
         )
 
-        self._udt_halo_updater.start([u_dt])
-        self._vdt_halo_updater.start([v_dt])
+        self._udt_halo_updater.start()
+        self._vdt_halo_updater.start()
         self._update_pressure_and_surface_winds(
             state.pe,
             state.delp,
@@ -167,7 +180,7 @@ class ApplyPhysicsToDycore:
         )
         self._udt_halo_updater.wait()
         self._vdt_halo_updater.wait()
-        self._AGrid2DGridPhysics(state.u, state.v, u_dt.storage, v_dt.storage)
+        self._AGrid2DGridPhysics(state.u, state.v, u_dt, v_dt)
         self._do_cubed_to_latlon(
             state.u,
             state.v,

@@ -10,6 +10,7 @@ import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
 from pace.dsl.dace.dace_config import DaceConfig
+from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util._properties import RESTART_PROPERTIES
 from pace.util.grid import DampingCoefficients
 
@@ -81,12 +82,6 @@ class DriverState:
         communicator = pace.util.CubedSphereCommunicator.from_layout(
             comm=comm, layout=driver_config.layout
         )
-        # The only part of DaCe config saved is the orchestration mode
-        # the config itself need to be set
-        driver_config.stencil_config.dace_config = DaceConfig(
-            communicator=communicator,
-            backend=driver_config.stencil_config.backend,
-        )
         sizer = pace.util.SubtileGridSizer.from_tile_params(
             nx_tile=driver_config.nx_tile,
             ny_tile=driver_config.nx_tile,
@@ -98,7 +93,7 @@ class DriverState:
             tile_rank=communicator.tile.rank,
         )
         quantity_factory = pace.util.QuantityFactory.from_backend(
-            sizer, backend=driver_config.stencil_config.backend
+            sizer, backend=driver_config.stencil_config.compilation_config.backend
         )
         state = _restart_driver_state(
             restart_path,
@@ -285,7 +280,7 @@ def _restart_driver_state(
     damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
-    is_gpu_backend = "gpu" in dycore_state.u.metadata.gt4py_backend
+    backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
     if fortran_data is True:
         dycore_state = _overwrite_state_from_fortran_restart(
             path,
@@ -293,7 +288,7 @@ def _restart_driver_state(
             communicator,
             dycore_state,
             "restart_dycore_state",
-            is_gpu_backend,
+            backend_uses_gpu,
         )
     else:
         dycore_state = _overwrite_state_from_restart(
@@ -301,7 +296,7 @@ def _restart_driver_state(
             rank,
             dycore_state,
             "restart_dycore_state",
-            is_gpu_backend,
+            backend_uses_gpu,
         )
     active_packages = ["microphysics"]
     physics_state = fv3gfs.physics.PhysicsState.init_zeros(
@@ -314,7 +309,7 @@ def _restart_driver_state(
             communicator,
             physics_state,
             "restart_dycore_state",
-            is_gpu_backend,
+            backend_uses_gpu,
         )
     else:
         physics_state = _overwrite_state_from_restart(
@@ -322,7 +317,7 @@ def _restart_driver_state(
             rank,
             physics_state,
             "restart_physics_state",
-            is_gpu_backend,
+            backend_uses_gpu,
         )
     physics_state.__post_init__(quantity_factory, active_packages)
     tendency_state = TendencyState.init_zeros(

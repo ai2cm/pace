@@ -5,8 +5,17 @@ latest
 ------
 
 Major changes:
+- Added the following attributes/methods to Communicator: `tile`, `halo_update`, `boundaries`, `start_halo_update`, `vector_halo_update`, `start_vector_halo_update`, `synchronize_vector_interfaces`, `start_synchronize_vector_interfaces`, `get_scalar_halo_updater`, and `get_vector_halo_updater`
 - Added Checkpointer and NullCheckpointer classes
 - Added SnapshotCheckpointer
+- Comm and Request abstract base classes are added to the top level
+
+Minor changes:
+- Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator
+
+Minor changes:
+- Fixed a bug in normalize_vector(xyz) in `pace.util.grid.gnomonic` where it would divide the input by cells-per-tile, where it should not.
+- Refactored `pace.util.grid.helper` so that `HorizontalGridData`, `VerticalGridData`, `ContravariantGridData` and `AngleGridData` have their own `new_from_metric_terms` class methods, and `GridData` calls those in its own method definition.
 
 v0.9.0
 ------

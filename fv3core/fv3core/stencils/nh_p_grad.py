@@ -17,11 +17,13 @@ def set_k0_and_calc_wk(
         pk3 (inout):
         wk (out):
     """
-    with computation(PARALLEL), interval(0, 1):
-        pp[0, 0, 0] = 0.0
-        pk3[0, 0, 0] = top_value
-    with computation(PARALLEL), interval(...):
-        wk = pk3[0, 0, 1] - pk3[0, 0, 0]
+    with computation(PARALLEL):
+        with interval(0, 1):
+            pp[0, 0, 0] = 0.0
+            pk3[0, 0, 0] = top_value
+            wk = pk3[0, 0, 1] - pk3[0, 0, 0]
+        with interval(1, None):
+            wk = pk3[0, 0, 1] - pk3[0, 0, 0]
 
 
 def calc_u(
