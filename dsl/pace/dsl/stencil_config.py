@@ -68,13 +68,6 @@ class CompilationConfig:
             raise RuntimeError(
                 "Trying to run with a non-square layout is not supported"
             )
-        if (
-            communicator.partitioner.layout[0] > 3
-            or communicator.partitioner.layout[1] > 3
-        ) and (self.run_mode != RunMode.Run and self.use_minimal_caching):
-            raise RuntimeError(
-                "Can't compile with a layout larger than 3x3 with minimal caching on"
-            )
 
     def get_decomposition_info_from_comm(
         self, communicator: Optional[CubedSphereCommunicator]
