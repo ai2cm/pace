@@ -4,7 +4,6 @@ import hashlib
 import re
 from typing import Any, Callable, Dict, Hashable, Iterable, Optional, Sequence, Tuple
 
-import numpy as np
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
