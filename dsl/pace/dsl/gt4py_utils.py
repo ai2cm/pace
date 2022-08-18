@@ -355,7 +355,7 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
             return np.asarray(array, dtype, order)
         else:
             return cp.asarray(array, dtype, order)
-    if cp and (
+    if cp and hasattr(array, "data") and (
         isinstance(array, memoryview)
         or isinstance(array.data, (cp.ndarray, cp.cuda.memory.MemoryPointer))
     ):
