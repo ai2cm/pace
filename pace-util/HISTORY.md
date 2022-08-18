@@ -13,7 +13,7 @@ Major changes:
 
 Minor changes:
 - Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator
-- fixed a bug in `pace.util.grid.` where `_reduce_global_area_minmaxes` would use local values instead of the gathered ones
+- fixed a bug in `pace.util.grid` where `_reduce_global_area_minmaxes` would use local values instead of the gathered ones
 
 Minor changes:
 - Fixed a bug in normalize_vector(xyz) in `pace.util.grid.gnomonic` where it would divide the input by cells-per-tile, where it should not.
