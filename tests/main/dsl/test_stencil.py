@@ -2,20 +2,20 @@ from gt4py.gtscript import PARALLEL, Field, computation, interval
 from gt4py.storage import empty, ones
 
 import pace.dsl
-from pace.dsl.stencil import GridIndexing
+from pace.dsl.stencil import CompilationConfig, GridIndexing
 
 
 def _make_storage(
     func,
     grid_indexing,
-    stencil_config,
+    stencil_config: pace.dsl.StencilConfig,
     *,
     dtype=float,
     mask=None,
     default_origin=(0, 0, 0),
 ):
     return func(
-        backend=stencil_config.backend,
+        backend=stencil_config.compilation_config.backend,
         shape=grid_indexing.domain,
         dtype=dtype,
         mask=mask,
@@ -32,7 +32,9 @@ def test_timing_collector():
         west_edge=True,
         east_edge=True,
     )
-    stencil_config = pace.dsl.StencilConfig(backend="numpy", rebuild=True)
+    stencil_config = pace.dsl.StencilConfig(
+        compilation_config=CompilationConfig(backend="numpy", rebuild=True)
+    )
 
     stencil_factory = pace.dsl.StencilFactory(stencil_config, grid_indexing)
 

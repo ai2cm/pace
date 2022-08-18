@@ -14,6 +14,7 @@ from fv3core._config import DynamicalCoreConfig
 from fv3core.stencils.dyn_core import AcousticDynamics
 from fv3core.testing import TranslateDynCore
 from pace.dsl.dace.orchestration import DaceConfig
+from pace.dsl.stencil import CompilationConfig
 from pace.stencils.testing.grid import Grid
 from pace.util.null_comm import NullComm
 
@@ -152,9 +153,9 @@ def driver(
             tile_nz=dycore_config.npz,
         )
         stencil_config = pace.dsl.stencil.StencilConfig(
-            backend=backend,
-            rebuild=False,
-            validate_args=True,
+            compilation_config=CompilationConfig(
+                backend=backend, rebuild=False, validate_args=True
+            ),
             dace_config=dace_config,
         )
         stencil_factory = pace.dsl.stencil.StencilFactory(

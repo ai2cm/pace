@@ -116,9 +116,9 @@ def get_namelist(namelist_filename):
 
 def get_config(backend: str, communicator: Optional[CubedSphereCommunicator]):
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=True,
+        compilation_config=pace.dsl.stencil.CompilationConfig(
+            backend=backend, rebuild=False, validate_args=True
+        ),
         dace_config=DaceConfig(
             communicator=communicator,
             backend=backend,
