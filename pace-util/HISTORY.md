@@ -13,6 +13,10 @@ Major changes:
 Minor changes:
 - Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator
 
+Minor changes:
+- Fixed a bug in normalize_vector(xyz) in `pace.util.grid.gnomonic` where it would divide the input by cells-per-tile, where it should not.
+- Refactored `pace.util.grid.helper` so that `HorizontalGridData`, `VerticalGridData`, `ContravariantGridData` and `AngleGridData` have their own `new_from_metric_terms` class methods, and `GridData` calls those in its own method definition.
+
 v0.9.0
 ------
 
