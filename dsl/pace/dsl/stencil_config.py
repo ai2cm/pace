@@ -4,6 +4,7 @@ import hashlib
 import re
 from typing import Any, Callable, Dict, Hashable, Iterable, Optional, Sequence, Tuple
 
+import numpy as np
 from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
@@ -63,10 +64,24 @@ class CompilationConfig:
         if communicator:
             set_distributed_caches(self)
 
+    def check_communicator(self, communicator: CubedSphereCommunicator):
+        if communicator.partitioner.layout[0] != communicator.partitioner.layout[1]:
+            raise RuntimeError(
+                "Trying to run with a non-square layout is not supported"
+            )
+        if (
+            communicator.partitioner.layout[0] > 3
+            or communicator.partitioner.layout[1] > 3
+        ) and (self.run_mode != RunMode.Run and self.use_minimal_caching):
+            raise RuntimeError(
+                "Can't compile with a layout larger than 3x3 with minimal caching on"
+            )
+
     def get_decomposition_info_from_comm(
         self, communicator: Optional[CubedSphereCommunicator]
     ) -> Tuple[int, int, int, bool]:
         if communicator:
+            self.check_communicator(communicator)
             rank = communicator.rank
             size = communicator.partitioner.total_ranks
             if self.use_minimal_caching:
@@ -84,7 +99,6 @@ class CompilationConfig:
             size = rank
             equivalent_compiling_rank = rank
             is_compiling = True
-
         return rank, size, equivalent_compiling_rank, is_compiling
 
     def as_dict(self) -> Dict[str, Any]:
