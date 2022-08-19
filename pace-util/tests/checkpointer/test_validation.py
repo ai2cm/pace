@@ -18,7 +18,7 @@ requires_xarray = pytest.mark.skipif(xr is None, reason="xarray is not installed
 
 def get_dataset(
     n_savepoints: int, n_vars: int, n_ranks: int, nx: int, ny: int, nz: int
-) -> xr.Dataset:
+):
     data_vars = {}
     for i in range(n_vars):
         data_vars["data{}".format(i)] = xr.DataArray(
