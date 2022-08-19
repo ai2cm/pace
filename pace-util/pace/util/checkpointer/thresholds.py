@@ -1,7 +1,7 @@
 import collections
 import contextlib
 import dataclasses
-from typing import Dict, List, Mapping, Optional, Union
+from typing import Dict, List, Mapping, Union
 
 import gt4py.storage
 import numpy as np
@@ -22,9 +22,15 @@ class InsufficientTrialsError(Exception):
 @dataclasses.dataclass
 class Threshold:
     relative: float
-    absolute: Optional[float] = None
+    absolute: float
 
     def merge(self, other: "Threshold") -> "Threshold":
+        """
+        Provide a threshold which is always satisfied
+        if both input thresholds are satisfied.
+
+        This is generally a less strict threshold than either input.
+        """
         return Threshold(
             relative=max(self.relative, other.relative),
             absolute=max(self.absolute, other.absolute),
@@ -46,6 +52,14 @@ def cast_to_ndarray(array: ArrayLike) -> np.ndarray:
 
 
 class ThresholdCalibrationCheckpointer(Checkpointer):
+    """
+    Calibrates thresholds to be used by a ValidationCheckpointer.
+
+    Does this by recording the minimum and maximum values seen across trials,
+    and using them to derive the maximum relative and absolute error one could
+    have across any pair of trials, then multiplying this by a user-provided factor.
+    """
+
     def __init__(self, factor: float = 1.0):
         """
         Args:
@@ -66,6 +80,13 @@ class ThresholdCalibrationCheckpointer(Checkpointer):
         self._n_calls: Mapping[SavepointName, int] = collections.defaultdict(int)
 
     def __call__(self, savepoint_name, **kwargs):
+        """
+        Record values for a savepoint.
+
+        Args:
+            savepoint_name: name of the savepoint
+            **kwargs: data for the savepoint
+        """
         i_call = self._n_calls[savepoint_name]
         if len(self._minimums[savepoint_name]) < i_call + 1:
             self._minimums[savepoint_name].append(

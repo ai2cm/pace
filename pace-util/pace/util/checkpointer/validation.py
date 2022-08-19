@@ -65,6 +65,13 @@ class ValidationCheckpointer(Checkpointer):
         thresholds: SavepointThresholds,
         rank: int,
     ):
+        """
+        Args:
+            savepoint_data_path: path to directory containing netcdf savepoint data
+            thresholds: thresholds to check against
+            rank: rank of the process, needed to compare against
+                the correct savepoint data
+        """
         self._savepoint_data_path = savepoint_data_path
         self._thresholds = thresholds
         self._rank = rank

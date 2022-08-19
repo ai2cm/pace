@@ -1,7 +1,14 @@
+from typing import Mapping
+
 import numpy as np
 
 
-def perturb(input):
+def perturb(input: Mapping[str, np.ndarray]):
+    """
+    Adds roundoff-level noise to the input array in-place through multiplication.
+
+    Will only make changes to float64 or float32 arrays.
+    """
     roundoff = 1e-16
     for data in input.values():
         if isinstance(data, np.ndarray) and data.dtype in (np.float64, np.float32):
