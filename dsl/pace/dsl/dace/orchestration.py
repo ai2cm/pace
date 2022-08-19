@@ -19,7 +19,7 @@ from pace.dsl.dace.build import (
 )
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
-from pace.dsl.dace.utils import DaCeProgress, count_memory, NaN_checker
+from pace.dsl.dace.utils import DaCeProgress, NaN_checker, count_memory
 from pace.util.mpi import MPI
 
 
@@ -148,7 +148,7 @@ def _build_sdfg(
 
         # Remove all Persistent memory
         with DaCeProgress(config, "Turn Persistents into pooled Scope"):
-            memory_pooled = 0
+            memory_pooled = 0.0
             for _sd, _aname, arr in sdfg.arrays_recursive():
                 if arr.lifetime == dace.AllocationLifetime.Persistent:
                     arr.pool = True
