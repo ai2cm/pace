@@ -622,10 +622,6 @@ class LagrangianToEulerian:
             zvir,
         )
 
-        # if do_omega:
-        # dp2 update, if larger than pe0 and smaller than one level up, update omega
-        # and exit
-
         self._pressures_mapu(pe, self._pe1, ak, bk, self._pe0, self._pe3)
         self._map_single_u(u, self._pe0, self._pe3)
 

@@ -80,7 +80,7 @@ def command_line(config_path: str, log_rank: Optional[int], log_level: str):
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         driver_config = DriverConfig.from_dict(config)
-    logging.info(f"DriverConfig loaded: {yaml.dump(dataclasses.asdict(driver_config))}")
+    # logging.info(f"DriverConfig loaded: {yaml.dump(dataclasses.asdict(driver_config))}")
     main(driver_config=driver_config)
 
 

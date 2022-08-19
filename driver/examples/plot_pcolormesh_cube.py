@@ -145,6 +145,22 @@ if __name__ == "__main__":
         raise ValueError(
             "You must specify the path (fortran_data_path) to Fortran data."
         )
+    if args.diff_python_path is not None:
+        ds_ref = xr.open_zarr(
+            store=zarr.DirectoryStore(path=args.diff_python_path), consolidated=False
+        )
+        if args.var2D:
+            python_ref = ds_ref[args.variable][:, :, 0 : args.size, 0 : args.size]
+        else:
+            if args.variable == "pe":
+                python_ref = ds_ref[args.variable][
+                    :, :, 0 : args.size, 0 : args.size
+                ].isel(z_interface=args.zlevel)
+            else:
+                python_ref = ds_ref[args.variable][
+                    :, :, 0 : args.size, 0 : args.size
+                ].isel(z=args.zlevel)
+
     ds = xr.open_zarr(
         store=zarr.DirectoryStore(path=args.zarr_output), consolidated=False
     )
@@ -163,11 +179,19 @@ if __name__ == "__main__":
                 .values
             )
         else:
-            python_init = (
-                ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
-                .isel(time=0, z=args.zlevel)
-                .values
-            )
+            if args.variable == "pe":
+                python_init = (
+                    ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
+                    .isel(time=0, z=args.zlevel)
+                    .values
+                )
+            else:
+                python_init = (
+                    ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
+                    .isel(time=0, z=args.zlevel)
+                    .values
+                )
+
     for t in range(args.start, args.stop):
         if args.var2D:
             python = (
@@ -176,11 +200,20 @@ if __name__ == "__main__":
                 .values
             )
         else:
-            python = (
-                ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
-                .isel(time=t, z=args.zlevel)
-                .values
-            )
+            print("this is good")
+            if args.variable == "pe":
+                python = (
+                    ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
+                    .isel(time=t, z_interface=args.zlevel)
+                    .values
+                )
+            else:
+                python = (
+                    ds[args.variable][:, :, 0 : args.size, 0 : args.size, :]
+                    .isel(time=t, z=args.zlevel)
+                    .values
+                )
+
         if args.fortran_data_path is not None:
             plotted_data = python - fortran[t, :]
         elif args.diff_init:
@@ -205,6 +238,7 @@ if __name__ == "__main__":
                 python_lon,
                 plotted_data,
                 ax=ax,
+                cmap=plt.cm.bwr,
                 vmin=args.vmin,
                 vmax=args.vmax,
             )

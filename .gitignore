@@ -8,6 +8,12 @@ driver/examples/comm
 20*-*-*-*-*-*.json
 *.pkl
 
+*.slurm
+*.out
+*.png
+*.yaml
+serialized/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

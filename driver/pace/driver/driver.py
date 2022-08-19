@@ -387,6 +387,8 @@ class Driver:
         ):
             self._write_restart_files(restart_path=f"RESTART_{step}")
         self.performance_config.collect_performance()
+        if __debug__:
+            logger.info(f"Finished diagnostics {step}")
 
     def _critical_path_step_all(
         self,

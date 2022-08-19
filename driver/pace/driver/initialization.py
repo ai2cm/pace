@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 from datetime import datetime
+import math
 from typing import ClassVar
 
 import f90nml
@@ -198,18 +199,29 @@ class SerialboxConfig(Initializer):
             driver_grid_data = grid.driver_grid_data
             damping_coeff = grid.damping_coefficients
         else:
-            grid = pace.stencils.testing.grid.Grid.with_data_from_namelist(
-                self._namelist, communicator, backend
-            )
+            grid = self._get_serialized_grid(communicator, backend)
             metric_terms = pace.util.grid.MetricTerms(
                 quantity_factory=quantity_factory, communicator=communicator
             )
+
+            # newgrid = grid
+            newgrid = pace.stencils.testing.grid.Grid.with_data_from_namelist(
+                self._namelist, communicator, backend
+            )
+
             grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
+            # grid_data = grid.grid_data
+
             damping_coeff = DampingCoefficients.new_from_metric_terms(metric_terms)
+            # grid_damping_coeff = grid.damping_coefficients
+            # damping_coeff.da_min = grid_damping_coeff.da_min
+            # damping_coeff.da_min_c = grid_damping_coeff.da_min_c
+
             driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
                 metric_terms
             )
-        return grid, grid_data, damping_coeff, driver_grid_data
+            # driver_grid_data = grid.driver_grid_data
+        return newgrid, grid_data, damping_coeff, driver_grid_data
 
     def get_driver_state(
         self,
@@ -266,8 +278,14 @@ class SerialboxConfig(Initializer):
             tile_nx=self._namelist.npx,
             tile_nz=self._namelist.npz,
         )
-        stencil_config = pace.dsl.stencil.StencilConfig(
+        compilation_config = pace.dsl.stencil.CompilationConfig(
             backend=backend,
+            rebuild=False,
+            validate_args=False,
+            communicator=communicator,
+        )
+        stencil_config = pace.dsl.stencil.StencilConfig(
+            compilation_config=compilation_config,
             dace_config=dace_config,
         )
         stencil_factory = StencilFactory(

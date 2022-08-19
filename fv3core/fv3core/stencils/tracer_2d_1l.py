@@ -286,15 +286,6 @@ class TracerAdvection:
             cxd (inout):
             cyd (inout):
         """
-        # TODO: remove unused mdt argument
-        # DaCe parsing issue
-        # if len(tracers) != self._tracer_count:
-        #     raise ValueError(
-        #         f"incorrect number of tracers, {self._tracer_count} was "
-        #         f"specified on init but {len(tracers)} were passed"
-        #     )
-        # start HALO update on q (in dyn_core in fortran -- just has started when
-        # this function is called...)
         self._flux_compute(
             cxd,
             cyd,
@@ -310,36 +301,10 @@ class TracerAdvection:
             self._tmp_yfx,
         )
 
-        # # TODO for if we end up using the Allreduce and compute cmax globally
-        # (or locally). For now, hardcoded.
-        # split = int(grid_indexing.domain[2] / 6)
-        # self._cmax_1(
-        #     cxd, cyd, self._tmp_cmax, origin=grid_indexing.origin_compute(),
-        #     domain=(grid_indexing.domain[0], self.grid_indexing.domain[1], split)
-        # )
-        # self._cmax_2(
-        #     cxd,
-        #     cyd,
-        #     self.grid.sin_sg5,
-        #     self._tmp_cmax,
-        #     origin=(grid_indexing.isc, self.grid_indexing.jsc, split),
-        #     domain=(
-        #         grid_indexing.domain[0],
-        #         self.grid_indexing.domain[1],
-        #         grid_indexing.domain[2] - split + 1
-        #     ),
-        # )
-        # cmax_flat = np.amax(self._tmp_cmax, axis=(0, 1))
-        # # cmax_flat is a gt4py storage still, but of dimension [npz+1]...
-
-        # cmax_max_all_ranks = cmax_flat.data
-        # # TODO mpi allreduce...
-        # # comm.Allreduce(cmax_flat, cmax_max_all_ranks, op=MPI.MAX)
-
+    
         cmax_max_all_ranks = 2.0
         n_split = math.floor(1.0 + cmax_max_all_ranks)
-        # NOTE: cmax is not usually a single value, it varies with k, if return to
-        # that, make n_split a column as well
+
 
         if n_split > 1.0:
             self._cmax_multiply_by_frac(
@@ -387,5 +352,4 @@ class TracerAdvection:
                 )
             if not last_call:
                 self._tracers_halo_updater.update()
-                # use variable assignment to avoid a data copy
                 self._swap_dp(dp1, dp2)
