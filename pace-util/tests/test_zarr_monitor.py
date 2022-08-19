@@ -5,21 +5,16 @@ try:
     import zarr
 except ModuleNotFoundError:
     zarr = None
+import copy
+import logging
 from datetime import datetime, timedelta
 
 import cftime
 import pytest
 
-
-try:
-    import xarray as xr
-except ModuleNotFoundError:
-    xr = None
-import copy
-import logging
-
 import pace.util
 from pace.util import X_DIMS, Y_DIMS
+from pace.util._optional_imports import xarray as xr
 from pace.util.testing import DummyComm
 
 
