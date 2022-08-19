@@ -40,7 +40,9 @@ If you want to download test data run
 $ make get_test_data
 ```
 
-And the c12_6ranks_standard data will download into the `test_data` directory
+And the c12_6ranks_standard data will download into the `test_data` directory.
+
+If you do not have a GCP account, there is an option to download basic test data from a public FTP server and you can skip the GCP authentication step above. To download test data from the FTP server, use `make USE_FTP=yes get_test_data` instead and this will avoid fetching from a GCP storage bucket. You will need a valid in stallation of the `lftp` command.
 
 MPI parallel tests (that run that way to exercise halo updates in the model) can also be run with:
 
@@ -96,7 +98,7 @@ These will mount your current code into the fv3core container and run it rather 
 
 ## Running tests inside a container
 
-If you to prefer to work interactively inside the fv3core container, get the test data and build the docker image:
+If you to prefer to work interactively inside the fv3core container, get the test data and build the docker image (see above if you do not have a GCP account and want to get test data):
 ```shell
 $ make get_test_data
 ```
