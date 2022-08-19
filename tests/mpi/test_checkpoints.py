@@ -1,4 +1,3 @@
-import copy
 import dataclasses
 import os
 from typing import List, Tuple
@@ -15,6 +14,7 @@ from fv3core.initialization.dycore_state import DycoreState
 from fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from pace.stencils.testing import TranslateGrid, dataset_to_dict
 from pace.stencils.testing.grid import Grid
+from pace.util.checkpointer.thresholds import SavepointThresholds
 from pace.util.grid import DampingCoefficients, GridData
 from pace.util.testing import perturb
 
@@ -142,8 +142,8 @@ def test_fv_dynamics(
             stencil_factory=stencil_factory,
             damping_coefficients=grid.damping_coefficients,
             dycore_config=dycore_config,
-            n_trials=3,
-            factor=2.0,
+            n_trials=10,
+            factor=10.0,
         )
         print(f"calibrated thresholds: {thresholds}")
         if communicator.rank == 0:
@@ -199,13 +199,21 @@ def _calibrate_thresholds(
     )
     for i in range(n_trials):
         print(f"running calibration trial {i}")
-        trial_state = copy.deepcopy(state)
+        trial_state, _ = initializer.new_state()
         perturb(dycore_state_to_dict(trial_state))
         with calibration.trial():
             dycore.step_dynamics(trial_state)
     all_thresholds = communicator.comm.allgather(calibration.thresholds)
     thresholds = merge_thresholds(all_thresholds)
+    set_manual_thresholds(thresholds)
     return thresholds
+
+
+def set_manual_thresholds(thresholds: SavepointThresholds):
+    # all thresholds on the input data are 0 because no computation has happened yet
+    for entry in thresholds.savepoints["FVDynamics-In"]:
+        for name in entry:
+            entry[name] = pace.util.Threshold(relative=0.0, absolute=0.0)
 
 
 def merge_thresholds(all_thresholds: List[pace.util.SavepointThresholds]):

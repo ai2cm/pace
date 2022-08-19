@@ -103,12 +103,17 @@ class ValidationCheckpointer(Checkpointer):
             if varname not in ds:
                 raise ValueError(f"argument {varname} not in netCDF file {nc_file}")
 
-            expected = ds[varname][n_calls, self._rank]
+            expected = ds[varname][n_calls, self._rank].values
             output = _clip_pace_array_to_target(cast_to_ndarray(array), expected.shape)
 
+            # cannot use relative threshold when comparing to zero value
+            expected_not_zero = expected != 0
             np.testing.assert_allclose(
-                output, expected, rtol=var_thresholds[varname].relative
+                output[expected_not_zero],
+                expected[expected_not_zero],
+                rtol=var_thresholds[varname].relative,
             )
+
             np.testing.assert_allclose(
                 output, expected, atol=var_thresholds[varname].absolute
             )
