@@ -95,13 +95,6 @@ class DaceConfig:
                 "unique_functions",
                 value="none",
             )
-            # Required to False. Bug to be fixes on DaCe side
-            dace.config.Config.set(
-                "execution",
-                "general",
-                "check_args",
-                value=False,
-            )
             # Required for HaloEx callbacks and general code sanity
             dace.config.Config.set(
                 "frontend",
