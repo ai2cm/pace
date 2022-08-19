@@ -63,10 +63,25 @@ class CompilationConfig:
         if communicator:
             set_distributed_caches(self)
 
+    def check_communicator(self, communicator: CubedSphereCommunicator) -> None:
+        """Checks that the communicator has a square layout
+
+        Args:
+            communicator (CubedSphereCommunicator): communicator to use
+
+        Raises:
+            RuntimeError: If non-square layout is given
+        """
+        if communicator.partitioner.layout[0] != communicator.partitioner.layout[1]:
+            raise RuntimeError(
+                "Trying to run with a non-square layout is not supported"
+            )
+
     def get_decomposition_info_from_comm(
         self, communicator: Optional[CubedSphereCommunicator]
     ) -> Tuple[int, int, int, bool]:
         if communicator:
+            self.check_communicator(communicator)
             rank = communicator.rank
             size = communicator.partitioner.total_ranks
             if self.use_minimal_caching:
@@ -84,7 +99,6 @@ class CompilationConfig:
             size = rank
             equivalent_compiling_rank = rank
             is_compiling = True
-
         return rank, size, equivalent_compiling_rank, is_compiling
 
     def as_dict(self) -> Dict[str, Any]:

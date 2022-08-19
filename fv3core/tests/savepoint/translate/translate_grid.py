@@ -2326,7 +2326,7 @@ class TranslateInitGridUtils(ParallelTranslateGrid):
         grid_generator = MetricTerms.from_tile_sizing(
             npx=namelist.npx,
             npy=namelist.npy,
-            npz=inputs["npz"],
+            npz=int(inputs["npz"]),
             communicator=communicator,
             backend=self.stencil_factory.backend,
         )

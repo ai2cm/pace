@@ -3,7 +3,7 @@ try:
 except ImportError:
     MPI = None
 import logging
-from typing import Optional, TypeVar, cast
+from typing import Any, Optional, TypeVar, cast
 
 from .comm import Comm, Request
 
@@ -70,5 +70,6 @@ class MPIComm(Comm):
         )
         return self._comm.Split(color, key)
 
-    def allreduce(self, sendobj, op):
+    def allreduce(self, sendobj, op=None) -> Any:
+        logger.debug("allreduce on rank %s with operator %s", self._comm.Get_rank(), op)
         return self._comm.allreduce(sendobj, op)
