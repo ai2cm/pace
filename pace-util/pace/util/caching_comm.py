@@ -49,12 +49,14 @@ class CachingCommData:
     size: int
     bcast_objects: List[Any] = dataclasses.field(default_factory=list)
     received_buffers: List[np.ndarray] = dataclasses.field(default_factory=list)
+    generic_obj_buffers: List[Any] = dataclasses.field(default_factory=list)
     split_data: List["CachingCommData"] = dataclasses.field(default_factory=list)
 
     def __post_init__(self):
         self._i_bcast = 0
         self._i_buffers = 0
         self._i_split = 0
+        self._i_generic_obj = 0
 
     def get_bcast(self):
         return_value = self.bcast_objects[self._i_bcast]
@@ -64,6 +66,11 @@ class CachingCommData:
     def get_buffer(self):
         return_value = self.received_buffers[self._i_buffers]
         self._i_buffers += 1
+        return return_value
+
+    def get_generic_obj(self):
+        return_value = self.generic_obj_buffers[self._i_generic_obj]
+        self._i_generic_obj += 1
         return return_value
 
     def get_split(self):
@@ -139,6 +146,9 @@ class CachingCommReader(Comm):
     def Split(self, color, key) -> "CachingCommReader":
         new_data = self._data.get_split()
         return CachingCommReader(data=new_data)
+
+    def allreduce(self, sendobj, op=None) -> Any:
+        return self._data.get_generic_obj()
 
     @classmethod
     def load(cls, file: BinaryIO) -> "CachingCommReader":
@@ -218,3 +228,8 @@ class CachingCommWriter(Comm):
 
     def dump(self, file: BinaryIO):
         self._data.dump(file)
+
+    def allreduce(self, sendobj, op=None) -> Any:
+        result = self._comm.allreduce(sendobj, op)
+        self._data.generic_obj_buffers.append(copy.deepcopy(result))
+        return result

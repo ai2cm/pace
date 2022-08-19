@@ -90,3 +90,6 @@ class NullComm(Comm):
             comm.total_ranks = total_ranks
         self._split_comms[color].append(new_comm)
         return new_comm
+
+    def allreduce(self, sendobj, op=None) -> Any:
+        return self._fill_value
