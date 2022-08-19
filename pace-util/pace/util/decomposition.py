@@ -29,7 +29,7 @@ def compiling_equivalent(rank: int, partitioner: TilePartitioner):
                 return 2  # "01"
             if partitioner.tile.on_tile_right(rank):
                 return 3  # "11"
-    if partitioner.layout == (3, 3):
+    else:
         if partitioner.tile.on_tile_bottom(rank):
             if partitioner.tile.on_tile_left(rank):
                 return 0  # "00"
@@ -51,10 +51,6 @@ def compiling_equivalent(rank: int, partitioner: TilePartitioner):
                 return 5  # "21"
             else:
                 return 4  # "11"
-    else:
-        raise RuntimeError(
-            "Can't compile with a layout larger than 3x3 with minimal caching on"
-        )
 
 
 def determine_rank_is_compiling(rank: int, partitioner: CubedSpherePartitioner) -> bool:
