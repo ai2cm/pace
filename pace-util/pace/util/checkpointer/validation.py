@@ -4,7 +4,8 @@ import os.path
 from typing import MutableMapping, Tuple
 
 import numpy as np
-import xarray as xr
+
+from pace.util._optional_imports import xarray as xr
 
 from .base import Checkpointer
 from .thresholds import ArrayLike, SavepointName, SavepointThresholds, cast_to_ndarray
@@ -93,7 +94,8 @@ class ValidationCheckpointer(Checkpointer):
         Raises:
             AssertionError: if the thresholds on any variable are not met
         """
-
+        if xr is None:
+            raise ModuleNotFoundError("xarray is not installed")
         nc_file = os.path.join(self._savepoint_data_path, savepoint_name + ".nc")
         ds = xr.open_dataset(nc_file)
 
