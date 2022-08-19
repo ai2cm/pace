@@ -1,4 +1,6 @@
 #!/bin/bash
+GRID=$1
+INIT=$2
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PACE_DIR=$JENKINS_DIR/../
 export VIRTUALENV=${PACE_DIR}/venv
@@ -9,6 +11,19 @@ BUILDENV_DIR=$PACE_DIR/buildenv
 . ${BUILDENV_DIR}/schedulerTools.sh
 
 cd $PACE_DIR
+
+if [[ "${GRID}" == "serialbox" ]] && [[ "${INIT}" == "serialbox" ]]; then
+	NAMELIST=baroclinic_c48_6ranks_dycore_only_serialbox
+    sed -i "s/grid_option/true/g" ${JENKINS_DIR}/driver_configs/${NAMELIST}.yaml
+elif [[ "${GRID}" == "pace" ]] && [[ "${INIT}" == "serialbox" ]]; then
+    NAMELIST=baroclinic_c48_6ranks_dycore_only_serialbox
+    sed -i "s/grid_option/false/g" ${JENKINS_DIR}/driver_configs/${NAMELIST}.yaml
+elif [[ "${GRID}" == "pace" ]] && [[ "${INIT}" == "pace" ]]; then
+    NAMELIST=baroclinic_c48_6ranks_dycore_only
+else
+    echo "This grid and init option is not supported."
+    exit 1
+fi
 
 
 ${JENKINS_DIR}/fetch_caches.sh "gt:gpu" "c48_6ranks_baroclinic" dycore
@@ -28,7 +43,7 @@ cat << EOF > run.daint.slurm
 ########################################################
 set -x
 export OMP_NUM_THREADS=12
-srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/baroclinic_c48_6ranks_dycore_only.yaml
+srun python -m pace.driver.run ${JENKINS_DIR}/driver_configs/${NAMELIST}.yaml
 EOF
 
 launch_job run.daint.slurm 2400
