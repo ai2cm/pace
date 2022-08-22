@@ -318,6 +318,12 @@ class Driver:
                     apply_tendencies=self.config.apply_tendencies,
                     tendency_state=self.state.tendency_state,
                 )
+            else:
+                # Make sure those are set to None to raise any issues
+                self.physics = None
+                self.dycore_to_physics = None
+                self.end_of_step_update = None
+
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
                 comm=self.comm,
