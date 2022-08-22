@@ -33,17 +33,13 @@ def test_determine_rank_is_compiling(
     assert determine_rank_is_compiling(rank, partitioner) == is_compiling
 
 
-def test_determine_rank_is_compiling_large():
-    partitioner = CubedSpherePartitioner(TilePartitioner((4, 4)))
-    with pytest.raises(RuntimeError):
-        determine_rank_is_compiling(0, partitioner)
-
-
+@pytest.mark.sequential
 def test_check_cached_path_exists():
     with pytest.raises(RuntimeError):
         check_cached_path_exists("notarealpath")
 
 
+@pytest.mark.sequential
 def test_check_cached_path_exists_working():
     path = os.getcwd()
     check_cached_path_exists(path)
