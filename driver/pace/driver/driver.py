@@ -284,31 +284,32 @@ class Driver:
                 n_split=self.config.dycore_config.n_split,
                 state=self.state.dycore_state,
             )
-
-            self.physics = fv3gfs.physics.Physics(
-                stencil_factory=self.stencil_factory,
-                grid_data=self.state.grid_data,
-                namelist=self.config.physics_config,
-                active_packages=["microphysics"],
-            )
-            self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
-                stencil_factory=self.stencil_factory,
-                dycore_config=self.config.dycore_config,
-                do_dry_convective_adjustment=self.config.do_dry_convective_adjustment,
-                dycore_only=self.config.dycore_only,
-            )
-            self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
-                stencil_factory=self.stencil_factory,
-                grid_data=self.state.grid_data,
-                namelist=self.config.physics_config,
-                comm=communicator,
-                grid_info=self.state.driver_grid_data,
-                state=self.state.dycore_state,
-                quantity_factory=self.quantity_factory,
-                dycore_only=self.config.dycore_only,
-                apply_tendencies=self.config.apply_tendencies,
-                tendency_state=self.state.tendency_state,
-            )
+            if not config.dycore_only and not config.disable_step_physics:
+                self.physics = fv3gfs.physics.Physics(
+                    stencil_factory=self.stencil_factory,
+                    grid_data=self.state.grid_data,
+                    namelist=self.config.physics_config,
+                    active_packages=["microphysics"],
+                )
+            if not config.disable_step_physics:
+                self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
+                    stencil_factory=self.stencil_factory,
+                    dycore_config=self.config.dycore_config,
+                    do_dry_convective_adjust=self.config.do_dry_convective_adjustment,
+                    dycore_only=self.config.dycore_only,
+                )
+                self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
+                    stencil_factory=self.stencil_factory,
+                    grid_data=self.state.grid_data,
+                    namelist=self.config.physics_config,
+                    comm=communicator,
+                    grid_info=self.state.driver_grid_data,
+                    state=self.state.dycore_state,
+                    quantity_factory=self.quantity_factory,
+                    dycore_only=self.config.dycore_only,
+                    apply_tendencies=self.config.apply_tendencies,
+                    tendency_state=self.state.tendency_state,
+                )
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
                 comm=self.comm,
