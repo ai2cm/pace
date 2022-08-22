@@ -34,6 +34,10 @@ def _clip_pace_array_to_target(
 
 def _remove_buffer_if_needed(array: np.ndarray, target_shape: Tuple[int, ...]):
     selection = []
+    # both arrays are assumed to have the same staggering and an even number of
+    # halo points for each dimension, so any odd difference in points must be
+    # due to a buffer point in the pace array
+    # (fortran data is assumed to never have buffer points)
     for array_len, target_len in zip(array.shape, target_shape):
         if (array_len - target_len) % 2 == 1:
             # clip the buffer point

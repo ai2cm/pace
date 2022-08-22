@@ -66,6 +66,8 @@ class ThresholdCalibrationCheckpointer(Checkpointer):
             factor: set thresholds equal to this factor of the maximum error
                 seen across trials
         """
+        # we keep dictionaries (over savepoint name) of lists (over call count)
+        # of dictionaries (over variable name) of numpy arrays
         self._minimums: Mapping[
             SavepointName, List[Mapping[VariableName, np.ndarray]]
         ] = collections.defaultdict(list)

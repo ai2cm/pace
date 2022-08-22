@@ -33,13 +33,11 @@ def test_determine_rank_is_compiling(
     assert determine_rank_is_compiling(rank, partitioner) == is_compiling
 
 
-@pytest.mark.sequential
 def test_check_cached_path_exists():
     with pytest.raises(RuntimeError):
         check_cached_path_exists("notarealpath")
 
 
-@pytest.mark.sequential
 def test_check_cached_path_exists_working():
     path = os.getcwd()
     check_cached_path_exists(path)
