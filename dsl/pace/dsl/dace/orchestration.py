@@ -174,9 +174,9 @@ def _build_sdfg(
         else:
             source_rank = config.target_rank
             # wait for compilation to be done
-            DaCeProgress.log(config, "Not compiling rank, waiting for build folder.")
+            DaCeProgress.log(config, "Rank is not compiling. Waiting for build dir...")
             sdfg_path = MPI.COMM_WORLD.recv(source=source_rank)
-            DaCeProgress.log(config, "Build folder received.")
+            DaCeProgress.log(config, "Build dir received.")
             daceprog.load_precompiled_sdfg(sdfg_path, *args, **kwargs)
             with DaCeProgress(config, "Run"):
                 res = _run_sdfg(daceprog, config, args, kwargs)

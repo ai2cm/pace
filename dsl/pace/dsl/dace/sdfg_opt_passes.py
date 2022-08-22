@@ -1,4 +1,9 @@
+import logging
+
 import dace
+
+
+logger = logging.getLogger(__name__)
 
 
 def splittable_region_expansion(sdfg: dace.SDFG, verbose: bool = False):
@@ -19,4 +24,4 @@ def splittable_region_expansion(sdfg: dace.SDFG, verbose: bool = False):
                     "K",
                 ]
                 if verbose:
-                    print("Reordered schedule for", node.label)
+                    logger.info("Reordered schedule for", node.label)

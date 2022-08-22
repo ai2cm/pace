@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import List, Tuple
 
@@ -7,6 +8,8 @@ from dace.transformation.helpers import get_parent_map
 from pace.dsl.dace.dace_config import DaceConfig
 
 
+logger = logging.getLogger(__name__)
+
 # Rough timer & log for major operations of DaCe build stack
 class DaCeProgress:
     def __init__(self, config: DaceConfig, label: str):
@@ -15,7 +18,7 @@ class DaCeProgress:
 
     @classmethod
     def log(cls, prefix: str, message: str):
-        print(f"{prefix} {message}")
+        logger.info(f"{prefix} {message}")
 
     def __enter__(self):
         DaCeProgress.log(self.prefix, f"{self.label}...")
@@ -26,7 +29,7 @@ class DaCeProgress:
         DaCeProgress.log(self.prefix, f"{self.label}...{elapsed}s.")
 
 
-def NaN_checker(sdfg: dace.SDFG):
+def sdfg_nan_checker(sdfg: dace.SDFG):
     """
     Insert a check on array after each computational map to check for NaN
     in the domain.
