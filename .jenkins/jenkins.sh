@@ -110,10 +110,11 @@ if grep -q "parallel" <<< "${script}"; then
 	echo "Setting NUM_RANKS=${NUM_RANKS}"
 	if [ -f ${scheduler_script} ] ; then
 	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
+	    minutes=30
             if [[ $NUM_RANKS -gt 6 || $backend == *gpu* || $backend == *cuda* ]]; then
                 sed -i 's|cscsci|normal|g' ${scheduler_script}
             fi
-            sed -i "s|<NTASKS>|$NUM_RANKS|g" ${scheduler_script}
+	    sed -i "s|<NTASKS>|$NUM_RANKS|g" ${scheduler_script}
             if [[ $backend == *gpu* || $backend == *cuda* ]]; then
                 ntaskspernode=1
             else
