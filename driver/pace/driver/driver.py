@@ -284,7 +284,6 @@ class Driver:
                 n_split=self.config.dycore_config.n_split,
                 state=self.state.dycore_state,
             )
-
             if not config.dycore_only and not config.disable_step_physics:
                 self.physics = fv3gfs.physics.Physics(
                     stencil_factory=self.stencil_factory,
@@ -311,6 +310,10 @@ class Driver:
                     apply_tendencies=self.config.apply_tendencies,
                     tendency_state=self.state.tendency_state,
                 )
+            self.diagnostics = config.diagnostics_config.diagnostics_factory(
+                partitioner=communicator.partitioner,
+                comm=self.comm,
+            )
             self.restart = pace.driver.Restart(
                 save_restart=self.config.save_restart,
                 intermediate_restart=self.config.intermediate_restart,
