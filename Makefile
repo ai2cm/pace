@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 include docker/Makefile.image_names
+include Makefile.data_download
 
 define BROWSER_PYSCRIPT
 import os, webbrowser, sys

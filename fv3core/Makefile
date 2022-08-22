@@ -1,9 +1,6 @@
 include ../docker/Makefile.image_names
 
 GCR_URL = us.gcr.io/vcm-ml
-REGRESSION_DATA_STORAGE_BUCKET = gs://vcm-fv3gfs-serialized-regression-data
-EXPERIMENT ?=c12_6ranks_standard
-FORTRAN_SERIALIZED_DATA_VERSION=8.1.1
 SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
@@ -15,11 +12,8 @@ RUN_FLAGS ?=--rm
 RUN_FLAGS += -e FV3_DACEMODE=$(FV3_DACEMODE)
 TEST_ARGS ?=
 TARGET ?=dycore
-TEST_DATA_ROOT ?=$(CWD)/test_data/
-TEST_DATA_HOST ?=$(TEST_DATA_ROOT)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)
-FTP_SERVER ?=ftp://anonymous:anonymous@ftp.cscs.ch
-TEST_DATA_FTP ?=in/put/abc/cosmo/fuo/pace/fv3core/
 FV3UTIL_DIR=$(CWD)/external/pace-util
+TEST_DATA_FTP ?=in/put/abc/cosmo/fuo/pace/fv3core/
 
 FV3=fv3core
 FV3_PATH ?=/pace/$(FV3)
@@ -102,35 +96,13 @@ endif
 	$(CONTAINER_CMD) bash -c "pip3 list && cd $(FV3_PATH) && $(PYTEST_CMD)"
 
 sync_test_data:
-	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)
+	TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data
 
 sync_test_data_from_ftp:
-	mkdir -p $(TEST_DATA_HOST) && cd $(TEST_DATA_ROOT) && lftp -c "set ftp:list-options -a; open $(FTP_SERVER); cd $(TEST_DATA_FTP); mirror --delete --use-cache --verbose --allow-chown --allow-suid --no-umask --parallel=2 --max-errors=0 . ."
-
-push_python_regressions:
-	gsutil -m cp -r $(TEST_DATA_HOST)/python_regressions $(DATA_BUCKET)python_regressions
+	TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data_from_ftp
 
 get_test_data:
-	if [ -z "${USE_FTP}" ] ; then \
-		if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
-		[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt -)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)" ] ; then \
-			rm -rf $(TEST_DATA_HOST) ; \
-			$(MAKE) sync_test_data ; \
-			$(MAKE) unpack_test_data ; \
-		fi ; \
-	else \
-		$(MAKE) sync_test_data_from_ftp ; \
-		$(MAKE) unpack_test_data ; \
-	fi
-
-unpack_test_data:
-	if [ -f $(TEST_DATA_TARPATH) ]; then \
-		cd $(TEST_DATA_HOST) && tar -xf $(TEST_DATA_TARFILE) && \
-		rm $(TEST_DATA_TARFILE); \
-	fi
-
-list_test_data_options:
-	gsutil ls $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)
+	TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. get_test_data
 
 lint:
 	pre-commit run --all-files
