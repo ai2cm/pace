@@ -1,5 +1,5 @@
 import abc
-from typing import Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 
 T = TypeVar("T")
@@ -62,4 +62,8 @@ class Comm(abc.ABC):
 
     @abc.abstractmethod
     def Split(self, color, key) -> "Comm":
+        ...
+
+    @abc.abstractmethod
+    def allreduce(self, sendobj, op=None) -> Any:
         ...

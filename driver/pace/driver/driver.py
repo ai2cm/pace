@@ -290,20 +290,21 @@ class Driver:
                 n_split=self.config.dycore_config.n_split,
                 state=self.state.dycore_state,
             )
-
-            if not self.config.disable_step_physics:
+            if not config.dycore_only and not config.disable_step_physics:
                 self.physics = fv3gfs.physics.Physics(
                     stencil_factory=self.stencil_factory,
                     grid_data=self.state.grid_data,
                     namelist=self.config.physics_config,
                     active_packages=["microphysics"],
                 )
+            else:
+                # Make sure those are set to None to raise any issues
+                self.physics = None
+            if not config.disable_step_physics:
                 self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
                     stencil_factory=self.stencil_factory,
                     dycore_config=self.config.dycore_config,
-                    do_dry_convective_adjustment=(
-                        self.config.do_dry_convective_adjustment
-                    ),
+                    do_dry_convective_adjust=self.config.do_dry_convective_adjustment,
                     dycore_only=self.config.dycore_only,
                 )
                 self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
@@ -320,10 +321,8 @@ class Driver:
                 )
             else:
                 # Make sure those are set to None to raise any issues
-                self.physics = None
                 self.dycore_to_physics = None
                 self.end_of_step_update = None
-
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
                 comm=self.comm,
