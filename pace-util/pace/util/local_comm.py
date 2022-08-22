@@ -136,6 +136,11 @@ class LocalComm(Comm):
             for i, sendbuf in enumerate(gather_buffer):
                 safe_assign_array(recvbuf[i, :], sendbuf)
 
+    def allgather(self, sendobj):
+        raise NotImplementedError(
+            "cannot implement allgather on local comm due to its inherent parallelism"
+        )
+
     def Send(self, sendbuf, dest, tag: int = 0, **kwargs):
         ensure_contiguous(sendbuf)
         self._put_send_recv(sendbuf, dest, tag)

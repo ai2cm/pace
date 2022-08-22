@@ -3,7 +3,7 @@ try:
 except ImportError:
     MPI = None
 import logging
-from typing import Any, Optional, TypeVar, cast
+from typing import List, Optional, TypeVar, cast
 
 from .comm import Comm, Request
 
@@ -44,6 +44,10 @@ class MPIComm(Comm):
         logger.debug("Gather on rank %s with root %s", self._comm.Get_rank(), root)
         self._comm.Gather(sendbuf, recvbuf, root=root, **kwargs)
 
+    def allgather(self, sendobj: T) -> List[T]:
+        logger.debug("allgather on rank %s", self._comm.Get_rank())
+        return self._comm.allgather(sendobj)
+
     def Send(self, sendbuf, dest, tag: int = 0, **kwargs):
         logger.debug("Send on rank %s with dest %s", self._comm.Get_rank(), dest)
         self._comm.Send(sendbuf, dest, tag=tag, **kwargs)
@@ -70,6 +74,6 @@ class MPIComm(Comm):
         )
         return self._comm.Split(color, key)
 
-    def allreduce(self, sendobj, op=None) -> Any:
+    def allreduce(self, sendobj: T, op=None) -> T:
         logger.debug("allreduce on rank %s with operator %s", self._comm.Get_rank(), op)
         return self._comm.allreduce(sendobj, op)
