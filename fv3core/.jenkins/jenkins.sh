@@ -109,10 +109,10 @@ if grep -q "parallel" <<< "${script}"; then
         echo "Setting NUM_RANKS=${NUM_RANKS}"
         if grep -q "cuda\|gpu" <<< "${backend}" ; then
             export MPICH_RDMA_ENABLED_CUDA=1
-        export CRAY_CUDA_MPS=1
+            export CRAY_CUDA_MPS=1
         else
             export MPICH_RDMA_ENABLED_CUDA=0
-        export CRAY_CUDA_MPS=0
+            export CRAY_CUDA_MPS=0
         fi
         if [ -f ${scheduler_script} ] ; then
             sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread|g' ${scheduler_script}
