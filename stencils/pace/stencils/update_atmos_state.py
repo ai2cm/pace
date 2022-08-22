@@ -150,7 +150,7 @@ class DycoreToPhysics:
         self,
         stencil_factory: StencilFactory,
         dycore_config: fv3core.DynamicalCoreConfig,
-        do_dry_convective_adjustment: bool,
+        do_dry_convective_adjust: bool,
         dycore_only: bool,
     ):
         orchestrate(
@@ -168,7 +168,7 @@ class DycoreToPhysics:
             ],
             compute_halos=(0, 0),
         )
-        self._do_dry_convective_adjustment = do_dry_convective_adjustment
+        self._do_dry_convective_adjustment = do_dry_convective_adjust
         self._dycore_only = dycore_only
         if self._do_dry_convective_adjustment:
             self._fv_subgridz = fv_subgridz.DryConvectiveAdjustment(

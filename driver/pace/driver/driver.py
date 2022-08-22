@@ -20,7 +20,6 @@ from fv3core.initialization.dycore_state import DycoreState
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
-
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.util.communicator import CubedSphereCommunicator
@@ -284,18 +283,18 @@ class Driver:
                 n_split=self.config.dycore_config.n_split,
                 state=self.state.dycore_state,
             )
-            if not (self.config.disable_step_physics or self.config.dycore_only):
+            if not config.dycore_only and not config.disable_step_physics:
                 self.physics = fv3gfs.physics.Physics(
                     stencil_factory=self.stencil_factory,
                     grid_data=self.state.grid_data,
                     namelist=self.config.physics_config,
                     active_packages=["microphysics"],
                 )
-            if not self.config.disable_step_physics:
+            if not config.disable_step_physics:
                 self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
                     stencil_factory=self.stencil_factory,
                     dycore_config=self.config.dycore_config,
-                    do_dry_convective_adjustment=config.do_dry_convective_adjustment,
+                    do_dry_convective_adjust=config.do_dry_convective_adjustment,
                     dycore_only=self.config.dycore_only,
                 )
                 self.end_of_step_update = update_atmos_state.UpdateAtmosphereState(
