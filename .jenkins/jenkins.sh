@@ -49,7 +49,7 @@ action=$1
 backend=$2
 experiment=$3
 
-if [[ $backend == gt_* ]]; then
+if [[ $backend == gt_* || $backend == dace_* ]]; then
     backend=${backend/_/:}
 fi
 
