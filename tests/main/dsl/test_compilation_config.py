@@ -104,6 +104,40 @@ def test_get_decomposition_info_from_comm(
     assert is_compiling == computed_is_compiling
 
 
+@pytest.mark.parametrize(
+    "rank, size, minimal_caching, run_mode, equivalent",
+    [
+        pytest.param(0, 6, True, RunMode.Run, 0, id="1x1 layout - 0 - R"),
+        pytest.param(1, 6, False, RunMode.Run, 0, id="1x1 layout - 1 - R"),
+        pytest.param(2, 24, True, RunMode.Run, 2, id="2x2 layout - 2 - R"),
+        pytest.param(4, 24, False, RunMode.Run, 0, id="2x2 layout - 4 - R"),
+        pytest.param(5, 54, True, RunMode.Run, 5, id="3x3 layout - 5 - R"),
+        pytest.param(28, 54, False, RunMode.Run, 1, id="3x3 layout - 28 - R"),
+        pytest.param(10, 96, False, RunMode.Run, 4, id="4x4 layout - 10 - R"),
+        pytest.param(20, 96, False, RunMode.Run, 3, id="4x4 layout - 20 - R"),
+        pytest.param(
+            10, 96, False, RunMode.BuildAndRun, 10, id="4x4 layout - 10 - BnR"
+        ),
+        pytest.param(20, 96, False, RunMode.BuildAndRun, 4, id="4x4 layout - 20 - BnR"),
+    ],
+)
+def test_determine_compiling_equivalent(
+    rank, size, minimal_caching, run_mode, equivalent
+):
+    config = CompilationConfig(use_minimal_caching=minimal_caching, run_mode=run_mode)
+    partitioner = CubedSpherePartitioner(
+        TilePartitioner((sqrt(size / 6), sqrt(size / 6)))
+    )
+    comm = unittest.mock.MagicMock()
+    comm.Get_rank.return_value = rank
+    comm.Get_size.return_value = size
+    cubed_sphere_comm = CubedSphereCommunicator(comm, partitioner)
+    assert (
+        config.determine_compiling_equivalent(rank, cubed_sphere_comm.partitioner)
+        == equivalent
+    )
+
+
 def test_as_dict():
     config = CompilationConfig()
     asdict = config.as_dict()

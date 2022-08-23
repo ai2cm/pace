@@ -8,9 +8,9 @@ from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.gt4py_utils import is_gpu_backend
-from pace.util import TilePartitioner
 from pace.util.communicator import CubedSphereCommunicator
 from pace.util.decomposition import determine_rank_is_compiling, set_distributed_caches
+from pace.util.partitioner import CubedSpherePartitioner
 
 
 class RunMode(enum.Enum):
@@ -72,13 +72,15 @@ class CompilationConfig:
                 "Trying to run with a non-square layout is not supported"
             )
 
-    def determine_compiling_equivalent(self, rank: int, partitioner: TilePartitioner):
+    def determine_compiling_equivalent(
+        self, rank: int, partitioner: CubedSpherePartitioner
+    ) -> int:
         """From my rank & the current partitioner we determine which
         rank we should read from"""
         if self.run_mode == RunMode.Run:
             if partitioner.layout == (1, 1):
                 return 0
-            if partitioner.layout == (2, 2):
+            elif partitioner.layout == (2, 2):
                 if partitioner.tile.on_tile_bottom(rank):
                     if partitioner.tile.on_tile_left(rank):
                         return 0  # "00"
@@ -112,8 +114,8 @@ class CompilationConfig:
                     else:
                         return 4  # "11"
         else:
-            tile_size = partitioner.total_ranks / 6
-            return rank % tile_size
+            return rank % partitioner.tile.total_ranks
+        raise RuntimeError("Illegal partition specified")
 
     def get_decomposition_info_from_comm(
         self, communicator: Optional[CubedSphereCommunicator]
