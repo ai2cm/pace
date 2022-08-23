@@ -1,5 +1,5 @@
 from dataclasses import fields
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import pytest
 
@@ -11,6 +11,7 @@ from fv3core._config import DynamicalCoreConfig
 from fv3core.initialization.dycore_state import DycoreState
 from pace.stencils.testing import ParallelTranslateBaseSlicing
 from pace.stencils.testing.translate import TranslateFortranData2Py
+from pace.util.grid import GridData
 
 
 ADVECTED_TRACER_NAMES = utils.tracer_variables[: utils.NQ]
@@ -306,7 +307,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         state = DycoreState.init_from_storages(input_storages, sizer=self.grid.sizer)
         return state
 
-    def compute_parallel(self, inputs, communicator):
+    def prepare_data(self, inputs) -> Tuple[DycoreState, GridData]:
         for name in ("ak", "bk"):
             inputs[name] = utils.make_storage_data(
                 inputs[name],
@@ -323,6 +324,10 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             grid_data.ks = inputs["ks"]
 
         state = self.state_from_inputs(inputs)
+        return state, grid_data
+
+    def compute_parallel(self, inputs, communicator):
+        state, grid_data = self.prepare_data(inputs)
         self.dycore = fv_dynamics.DynamicalCore(
             comm=communicator,
             grid_data=grid_data,

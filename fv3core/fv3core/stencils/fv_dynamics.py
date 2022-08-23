@@ -355,7 +355,10 @@ class DynamicalCore:
         state.__dict__.update(self.acoustic_dynamics._temporaries)
 
     def step_dynamics(
-        self, state: DycoreState, tracers_dict: Dict[str, np.ndarray], timer: Timer
+        self,
+        state: DycoreState,
+        tracers_dict: Dict[str, np.ndarray],
+        timer: Timer = pace.util.NullTimer(),
     ):
         """
         Step the model state forward by one timestep.
@@ -371,7 +374,8 @@ class DynamicalCore:
     def compute_preamble(self, state, is_root_rank: bool):
         if self.config.hydrostatic:
             raise NotImplementedError("Hydrostatic is not implemented")
-        log_on_rank_0("FV Setup")
+        if __debug__:
+            log_on_rank_0("FV Setup")
         self._fv_setup_stencil(
             state.qvapor,
             state.qliquid,
@@ -404,7 +408,8 @@ class DynamicalCore:
                 "unimplemented namelist options adiabatic with positive kord_tm"
             )
         else:
-            log_on_rank_0("Adjust pt")
+            if __debug__:
+                log_on_rank_0("Adjust pt")
             self._pt_adjust_stencil(
                 state.pkz,
                 state.dp1,
@@ -444,7 +449,8 @@ class DynamicalCore:
                 # TODO: Determine a better way to do this, polymorphic fields perhaps?
                 # issue is that set_val in map_single expects a 3D field for the
                 # "surface" array
-                log_on_rank_0("Remapping")
+                if __debug__:
+                    log_on_rank_0("Remapping")
                 with timer.clock("Remapping"):
                     self._lagrangian_to_eulerian_obj(
                         tracers_dict,
@@ -503,7 +509,8 @@ class DynamicalCore:
             state.delp,
             state.dp1,
         )
-        log_on_rank_0("DynCore")
+        if __debug__:
+            log_on_rank_0("DynCore")
         with timer.clock("DynCore"):
             self.acoustic_dynamics(
                 state,
@@ -511,7 +518,8 @@ class DynamicalCore:
                 update_temporaries=False,
             )
         if self.config.z_tracer:
-            log_on_rank_0("TracerAdvection")
+            if __debug__:
+                log_on_rank_0("TracerAdvection")
             with timer.clock("TracerAdvection"):
                 self.tracer_advection(
                     tracers,
@@ -530,7 +538,8 @@ class DynamicalCore:
         da_min: FloatFieldIJ,
     ):
         if not self.config.hydrostatic:
-            log_on_rank_0("Omega")
+            if __debug__:
+                log_on_rank_0("Omega")
             self._set_omega_stencil(
                 state.delp,
                 state.delz,
@@ -547,7 +556,8 @@ class DynamicalCore:
         state: DycoreState,
         is_root_rank: bool,
     ):
-        log_on_rank_0("Neg Adj 3")
+        if __debug__:
+            log_on_rank_0("Neg Adj 3")
         self._adjust_tracer_mixing_ratio(
             state.qvapor,
             state.qliquid,
@@ -562,7 +572,8 @@ class DynamicalCore:
             state.peln,
         )
 
-        log_on_rank_0("CubedToLatLon")
+        if __debug__:
+            log_on_rank_0("CubedToLatLon")
         self._cubed_to_latlon(
             state.u,
             state.v,

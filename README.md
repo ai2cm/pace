@@ -23,7 +23,6 @@ Then build the `pace` docker image at the top level.
 ```shell
 make build
 ```
-(Note: if you have not authenticated with a GCP account, you can alternatively fetch test data from an FTP server using `make USE_FTP=yes get_test_data` to get started.)
 
 ## Downloading test data
 
@@ -45,7 +44,7 @@ make get_test_data
 cd ..
 ```
 
-If you do not have a GCP account, there is an option to download basic test data from a public FTP server and you can skip the GCP authentication step above. To download test data from the FTP server, use `make USE_FTP=yes get_test_data` instead and this will avoid fetching from a GCP storage bucket.
+If you do not have a GCP account, there is an option to download basic test data from a public FTP server and you can skip the GCP authentication step above. To download test data from the FTP server, use `make USE_FTP=yes get_test_data` instead and this will avoid fetching from a GCP storage bucket. You will need a valid in stallation of the `lftp` command.
 
 ## Running the tests (manually)
 

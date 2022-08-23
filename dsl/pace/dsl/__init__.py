@@ -5,7 +5,13 @@ from pace.util.mpi import MPI
 from . import dace
 from .dace.dace_config import DaceConfig, DaCeOrchestration
 from .dace.orchestration import orchestrate, orchestrate_function
-from .stencil import FrozenStencil, StencilConfig, StencilFactory
+from .stencil import (
+    CompilationConfig,
+    FrozenStencil,
+    GridIndexing,
+    StencilConfig,
+    StencilFactory,
+)
 
 
 if MPI is not None:

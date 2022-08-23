@@ -15,7 +15,6 @@ from pace.util.mpi import MPI
 from pace.util.partitioner import CubedSpherePartitioner, TilePartitioner
 
 
-@pytest.mark.sequential
 @pytest.mark.parametrize(
     "layout, rank, is_compiling",
     [
@@ -34,26 +33,16 @@ def test_determine_rank_is_compiling(
     assert determine_rank_is_compiling(rank, partitioner) == is_compiling
 
 
-@pytest.mark.sequential
-def test_determine_rank_is_compiling_large():
-    with pytest.raises(RuntimeError):
-        partitioner = CubedSpherePartitioner(TilePartitioner((4, 4)))
-        determine_rank_is_compiling(0, partitioner)
-
-
-@pytest.mark.sequential
 def test_check_cached_path_exists():
     with pytest.raises(RuntimeError):
         check_cached_path_exists("notarealpath")
 
 
-@pytest.mark.sequential
 def test_check_cached_path_exists_working():
     path = os.getcwd()
     check_cached_path_exists(path)
 
 
-@pytest.mark.sequential
 @pytest.mark.parametrize(
     "use_minimal_caching, compiling_equivalent, rank, size, target_rank_str",
     [
@@ -80,7 +69,6 @@ def test_build_cache_path(
     assert rank_str == target_rank_str
 
 
-@pytest.mark.parallel
 @pytest.mark.skipif(
     MPI is None or MPI.COMM_WORLD.Get_size() != 6,
     reason="mpi4py is not available or pytest was not run in parallel",
