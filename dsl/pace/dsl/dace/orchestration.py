@@ -19,7 +19,7 @@ from pace.dsl.dace.build import (
 )
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
-from pace.dsl.dace.utils import DaCeProgress, NaN_checker, count_memory
+from pace.dsl.dace.utils import DaCeProgress, count_memory, sdfg_nan_checker
 from pace.util.mpi import MPI
 
 
@@ -137,7 +137,7 @@ def _build_sdfg(
 
         # Perform pre-expansion fine tuning
         with DaCeProgress(config, "Split regions"):
-            splittable_region_expansion(sdfg, verbose=True, verbose=True)
+            splittable_region_expansion(sdfg, verbose=True)
 
         # Expand the stencil computation Library Nodes with the right expansion
         with DaCeProgress(config, "Expand"):
@@ -166,11 +166,14 @@ def _build_sdfg(
         # is turned on.
         if config.sync_debug():
             with DaCeProgress(config, "Debug tooling (NaNChecker)"):
-                NaN_checker(sdfg)
+                sdfg_nan_checker(sdfg)
 
         # Printing analysis of the compiled SDFG
         with DaCeProgress(config, "Build finished. Running memory static analysis"):
-            print(count_memory(sdfg))
+            DaCeProgress.log(
+                DaCeProgress.default_prefix(config),
+                count_memory(sdfg),
+            )
 
     # Compilation done, either exit or scatter/gather and run
     # DEV NOTE: we explicitly use MPI.COMM_WORLD here because it is
@@ -205,9 +208,7 @@ def _build_sdfg(
                 "Rank is not compiling. Waiting for build dir...",
             )
             sdfg_path = MPI.COMM_WORLD.recv(source=source_rank)
-            DaCeProgress.log(
-                DaCeProgress.default_prefix(config), "Build dir received."
-            )
+            DaCeProgress.log(DaCeProgress.default_prefix(config), "Build dir received.")
             daceprog.load_precompiled_sdfg(sdfg_path, *args, **kwargs)
             with DaCeProgress(config, "Run"):
                 res = _run_sdfg(daceprog, config, args, kwargs)
