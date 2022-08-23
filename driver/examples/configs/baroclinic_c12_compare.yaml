@@ -10,7 +10,8 @@ initialization:
 performance_config:
   performance_mode: false
   experiment_name: c12_baroclinic
-pair_debug_layouts: true
+stencil_debug:
+  pair_debug_layouts: true
 nx_tile: 12
 nz: 79
 dt_atmos: 225

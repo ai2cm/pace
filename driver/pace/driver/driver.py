@@ -4,7 +4,7 @@ import logging
 import warnings
 from datetime import datetime, timedelta
 from math import floor
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import dace
 import dacite
@@ -17,6 +17,7 @@ import pace.stencils
 import pace.util
 import pace.util.grid
 from fv3core.initialization.dycore_state import DycoreState
+from pace.dsl.comparison import StencilComparison
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
@@ -24,6 +25,7 @@ from pace.dsl.stencil_config import CompilationConfig, RunMode
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state
 from pace.util.communicator import CubedSphereCommunicator
+from pace.util.mpi import MPIComm
 
 from . import diagnostics
 from .comm import CreatesCommSelector
@@ -32,6 +34,79 @@ from .performance import PerformanceConfig
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class StencilDebugConfig:
+    """
+    Configuration for debugging comparison code to run before and after execution
+    of every stencil.
+
+    Attributes:
+        pair_debug: if True, runs two copies of the model each using
+            half of the available MPI ranks, and compares results across these two
+            copies during model execution, raising an exception if results ever
+            differ. This is considerably more expensive since all model data must
+            be communicated at the start and end of every stencil call.
+        pair_debug_layouts: similar to pair_debug but the model runs specifically with
+            6 ranks for one model and the remainder of the ranks for the other model.
+            The configured value for "layout" is overridden  for the first model.
+            Used to detect decomposition-dependent logic (which shouldn't happen).
+    """
+
+    pair_debug: bool = False
+    pair_debug_layouts: bool = False
+
+    def get_comparison(
+        self, global_comm: MPIComm, config_layout: Tuple[int, int]
+    ) -> Tuple[MPIComm, Tuple[int, int], Optional[StencilComparison]]:
+        """
+        Args:
+            global_comm: the MPI communicator for the entire program
+            config_layout: the layout of the model as configured by the user
+
+        Returns:
+            comm: the MPI communicator for the model the local rank belongs to
+            layout: the layout of the model the local rank belongs to
+            comparison: stencil debugging instance to use in all stencils
+        """
+        if self.pair_debug:
+            world = int(global_comm.Get_rank() >= (global_comm.Get_size() // 2))
+            comm = global_comm.Split(color=world, key=global_comm.Get_rank())
+            comparison = pace.dsl.TwinModelComparison(global_comm=global_comm)
+        elif self.pair_debug_layouts:
+            world = int(global_comm.Get_rank() >= 6)
+            logger.debug("splitting global comm")
+            comm = global_comm.Split(color=world, key=global_comm.Get_rank())
+            logger.debug("split rank %d into world %d", global_comm.Get_rank(), world)
+            # TODO: if we make layout a configuration of the communicator only,
+            # and always get the layout from a communicator in dycore/physics
+            # instead of from config, we can avoid modifying the config with an
+            # updated layout and storing copies of this information
+            if world == 0:
+                layout = (1, 1)
+            else:
+                layout = config_layout
+
+            logger.debug("initializing cube communicator")
+            cube_communicator = CubedSphereCommunicator.from_layout(
+                comm=comm, layout=config_layout
+            )
+            logger.debug("initializing tile communicator")
+            tile_communicator = cube_communicator.tile
+            pair_rank = get_pair_rank(
+                global_comm.Get_rank(), global_comm.Get_size(), split_index=6
+            )
+            logger.debug("initializing comparison")
+            comparison = pace.dsl.ParallelModelComparison(
+                global_comm=global_comm,
+                tile_communicator=tile_communicator,
+                pair_rank=pair_rank,
+            )
+        else:
+            comm = global_comm
+            comparison = None
+        return comm, layout, comparison
 
 
 @dataclasses.dataclass
@@ -65,15 +140,6 @@ class DriverConfig:
             in a later commit.
         save_restart: whether to save the state output as restart files at
             cleanup time
-        pair_debug: if True, runs two copies of the model each using
-            half of the available MPI ranks, and compares results across these two
-            copies during model execution, raising an exception if results ever
-            differ. This is considerably more expensive since all model data must
-            be communicated at the start and end of every stencil call.
-        pair_debug_layouts: similar to pair_debug but the model runs specifically with
-            6 ranks for one model and the remainder of the ranks for the other model.
-            The configured value for "layout" is overridden  for the first model.
-            Used to detect decomposition-dependent logic (which shouldn't happen).
         intermediate_restart: list of time steps to save intermediate restart files
     """
 
@@ -105,8 +171,9 @@ class DriverConfig:
     dycore_only: bool = False
     disable_step_physics: bool = False
     save_restart: bool = False
-    pair_debug: bool = False
-    pair_debug_layouts: bool = False
+    stencil_debug: StencilDebugConfig = dataclasses.field(
+        default_factory=StencilDebugConfig
+    )
     intermediate_restart: List[int] = dataclasses.field(default_factory=list)
 
     @functools.cached_property
@@ -238,45 +305,16 @@ class Driver:
         self.comm_config = config.comm_config
         global_comm = config.comm_config.get_comm()
 
-        if config.pair_debug:
-            world = int(global_comm.Get_rank() >= (global_comm.Get_size() // 2))
-            self.comm = global_comm.Split(color=world, key=global_comm.Get_rank())
-            comparison = pace.dsl.TwinModelComparison(global_comm=global_comm)
-        elif config.pair_debug_layouts:
-            world = int(global_comm.Get_rank() >= 6)
-            logger.debug("splitting global comm")
-            self.comm = global_comm.Split(color=world, key=global_comm.Get_rank())
-            logger.debug("split rank %d into world %d", global_comm.Get_rank(), world)
-            # TODO: if we make layout a configuration of the communicator only,
-            # and always get the layout from a communicator in dycore/physics
-            # instead of from config, we can avoid modifying the config with an
-            # updated layout and storing copies of this information
-            if world == 0:
-                self.config.layout = (1, 1)
-                self.config.dycore_config.layout = (1, 1)
-                self.config.physics_config.layout = (1, 1)
+        self.comm, comparison, layout = config.stencil_debug.get_comparison(
+            global_comm, config_layout=config.layout
+        )
+        config.layout = layout
+        config.dycore_config.layout = layout
+        config.physics_config.layout = layout
 
-            logger.debug("initializing cube communicator")
-            cube_communicator = CubedSphereCommunicator.from_layout(
-                comm=self.comm, layout=self.config.layout
-            )
-            logger.debug("initializing tile communicator")
-            tile_communicator = cube_communicator.tile
-            pair_rank = get_pair_rank(
-                global_comm.Get_rank(), global_comm.Get_size(), split_index=6
-            )
-            logger.debug("initializing comparison")
-            comparison = pace.dsl.ParallelModelComparison(
-                global_comm=global_comm,
-                tile_communicator=tile_communicator,
-                pair_rank=pair_rank,
-            )
-        else:
-            self.comm = global_comm
-            comparison = None
         self.performance_config = self.config.performance_config
         with self.performance_config.total_timer.clock("initialization"):
-            logger.debug("initializing another cube communicator")
+            logger.debug("initializing cubed sphere communicator")
             communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
             )
