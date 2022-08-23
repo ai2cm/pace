@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Tuple
 from gt4py import config as gt_config
 
 from pace.util import TilePartitioner
-from pace.util.partitioner import CubedSpherePartitioner
 
 
 if TYPE_CHECKING:
