@@ -54,11 +54,6 @@ CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
 
 clean:
 
-update_submodules_venv:
-	if [ ! -f $(CWD)/../external/daint_venv/install.sh  ]; then \
-		git submodule update --init external/daint_venv; \
-	fi
-
 build:
 	$(MAKE) -C .. build
 
@@ -74,10 +69,10 @@ tests:
 	$(MAKE) -C .. test_main
 
 savepoint_tests:
-	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. savepoint_tests
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 savepoint_tests_mpi:
-	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. savepoint_tests_mpi
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 dev:
 	docker run --rm -it \
@@ -88,13 +83,13 @@ dev:
 		$(PACE_IMAGE) bash
 
 sync_test_data:
-	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 sync_test_data_from_ftp:
-	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data_from_ftp
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 get_test_data:
-	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. get_test_data
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 lint:
 	pre-commit run --all-files

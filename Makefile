@@ -112,11 +112,6 @@ physics_savepoint_tests_mpi: build
 	TARGET=physics $(MAKE) get_test_data
 	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/physics/ $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3gfs-physics/tests/savepoint"
 
-update_submodules_venv:
-	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
-                git submodule update --init external/daint_venv; \
-        fi
-
 test_main: build
 	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && pytest $(TEST_ARGS) $(PACE_PATH)/tests/main"
 
