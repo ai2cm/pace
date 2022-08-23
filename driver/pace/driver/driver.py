@@ -239,6 +239,12 @@ class Driver:
                     exit(0)
 
                 setattr(self, "step_all", exit_function)
+            self.config.stencil_config.dace_config = DaceConfig(
+                communicator=communicator,
+                backend=self.config.stencil_config.backend,
+                tile_nx=self.config.nx_tile,
+                tile_nz=self.config.nz,
+            )
             orchestrate(
                 obj=self,
                 config=self.config.stencil_config.dace_config,
@@ -291,6 +297,9 @@ class Driver:
                     namelist=self.config.physics_config,
                     active_packages=["microphysics"],
                 )
+            else:
+                # Make sure those are set to None to raise any issues
+                self.physics = None
             if not config.disable_step_physics:
                 self.dycore_to_physics = update_atmos_state.DycoreToPhysics(
                     stencil_factory=self.stencil_factory,
@@ -310,6 +319,10 @@ class Driver:
                     apply_tendencies=self.config.apply_tendencies,
                     tendency_state=self.state.tendency_state,
                 )
+            else:
+                # Make sure those are set to None to raise any issues
+                self.dycore_to_physics = None
+                self.end_of_step_update = None
             self.diagnostics = config.diagnostics_config.diagnostics_factory(
                 partitioner=communicator.partitioner,
                 comm=self.comm,
@@ -408,7 +421,7 @@ class Driver:
                 )
                 if not self.config.disable_step_physics:
                     self._step_physics(timestep=dt)
-                self.end_of_step_actions(step)
+            self.end_of_step_actions(step)
 
     def step_all(self):
         logger.info("integrating driver forward in time")
@@ -451,6 +464,7 @@ class Driver:
         self.performance_config.write_out_performance(
             self.comm,
             self.config.stencil_config.compilation_config.backend,
+            self.config.stencil_config.dace_config.is_dace_orchestrated(),
             self.config.dt_atmos,
         )
 
