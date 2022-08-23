@@ -41,8 +41,6 @@ class CompilationConfig:
         use_minimal_caching: bool = False,
         communicator: Optional[CubedSphereCommunicator] = None,
     ) -> None:
-        if run_mode != RunMode.Run and use_minimal_caching:
-            raise RuntimeError("Cannot use minimal caching in any building mode")
         if (not ("gpu" in backend or "cuda" in backend)) and device_sync is True:
             raise RuntimeError("Device sync is true on a CPU based backend")
         # GT4Py backend args
@@ -88,9 +86,7 @@ class CompilationConfig:
                 equivalent_compiling_rank = compiling_equivalent(
                     rank, communicator.partitioner
                 )
-                is_compiling = determine_rank_is_compiling(
-                    rank, communicator.partitioner
-                )
+                is_compiling = determine_rank_is_compiling(rank, size)
             else:
                 equivalent_compiling_rank = rank
                 is_compiling = True

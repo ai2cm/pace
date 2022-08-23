@@ -53,18 +53,17 @@ def compiling_equivalent(rank: int, partitioner: TilePartitioner):
                 return 4  # "11"
 
 
-def determine_rank_is_compiling(rank: int, partitioner: CubedSpherePartitioner) -> bool:
+def determine_rank_is_compiling(rank: int, size: int) -> bool:
     """Determines if a rank needs to be a compiling one
 
     Args:
         rank (int): current rank
-        partitioner (CubedSpherePartitioner): partitioner object
+        size (int): size of the communicator
 
     Returns:
         bool: True if the rank is a compiling one
     """
-    top_tile_equivalent = compiling_equivalent(rank, partitioner)
-    return rank == top_tile_equivalent
+    return rank < (size / 6)
 
 
 def block_waiting_for_compilation(comm, compilation_config: CompilationConfig) -> None:

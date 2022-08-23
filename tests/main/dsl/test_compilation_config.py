@@ -10,10 +10,6 @@ from pace.util.partitioner import CubedSpherePartitioner, TilePartitioner
 
 def test_safety_checks():
     with pytest.raises(RuntimeError):
-        CompilationConfig(run_mode=RunMode.BuildAndRun, use_minimal_caching=True)
-    with pytest.raises(RuntimeError):
-        CompilationConfig(run_mode=RunMode.Build, use_minimal_caching=True)
-    with pytest.raises(RuntimeError):
         CompilationConfig(backend="numpy", device_sync=True)
     with pytest.raises(RuntimeError):
         CompilationConfig(backend="gt:cpu_ifirst", device_sync=True)

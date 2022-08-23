@@ -348,6 +348,7 @@ class FrozenStencil(SDFGConvertible):
             if (
                 compilation_config.use_minimal_caching
                 and not compilation_config.is_compiling
+                and compilation_config.run_mode != RunMode.Run
             ):
                 block_waiting_for_compilation(MPI.COMM_WORLD, compilation_config)
 
@@ -361,6 +362,7 @@ class FrozenStencil(SDFGConvertible):
             if (
                 compilation_config.use_minimal_caching
                 and compilation_config.is_compiling
+                and compilation_config.run_mode != RunMode.Run
             ):
                 unblock_waiting_tiles(MPI.COMM_WORLD)
 
