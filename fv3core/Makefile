@@ -94,7 +94,4 @@ get_test_data:
 lint:
 	pre-commit run --all-files
 
-.PHONY: update_submodules_venv dev dev_tests dev_tests_mpi flake8 lint get_test_data unpack_test_data \
-	 list_test_data_options pull_environment pull_test_data push_environment \
-	reformat run_tests_sequential run_tests_parallel test_base test_base_parallel \
-	tests cleanup_remote
+.PHONY: dev get_test_data tests
