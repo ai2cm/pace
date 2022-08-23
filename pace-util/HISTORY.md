@@ -9,7 +9,8 @@ Major changes:
 - Added Checkpointer and NullCheckpointer classes
 - Added SnapshotCheckpointer
 - Comm and Request abstract base classes are added to the top level
-- Added the following attributes/methods to the Comm abstract base classes: `allreduce`
+- Added the following attributes/methods to the Comm abstract base classes: `allreduce`, `allgather`
+- Added classes `Threshold`, `ThresholdCalibrationCheckpointer`, `ValidationCheckpointer`, and `SavepointThresholds`
 
 Minor changes:
 - Deleted deprecated `finish_halo_update` method from CubedSphereCommunicator

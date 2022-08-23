@@ -1,3 +1,4 @@
+import copy
 from typing import Any, Mapping
 
 from pace.util.comm import Comm, Request
@@ -56,6 +57,9 @@ class NullComm(Comm):
     def Gather(self, sendbuf, recvbuf, root=0, **kwargs):
         if recvbuf is not None:
             recvbuf[:] = self._fill_value
+
+    def allgather(self, sendobj):
+        return [copy.deepcopy(sendobj) for _ in range(self.total_ranks)]
 
     def Send(self, sendbuf, dest, **kwargs):
         pass
