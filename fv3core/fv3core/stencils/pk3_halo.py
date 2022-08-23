@@ -29,7 +29,7 @@ def edge_pe_update(
                 region[local_is - 2 : local_ie + 3, local_je + 1 : local_je + 3],
             ):
                 pe = pe + delp[0, 0, -1]
-                pk3 = pe**akap
+                pk3 = pe ** akap
 
 
 class PK3Halo:
