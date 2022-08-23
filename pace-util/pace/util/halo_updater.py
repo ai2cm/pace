@@ -338,8 +338,8 @@ def on_c_grid(x_spec: QuantityHaloSpec, y_spec: QuantityHaloSpec):
 class VectorInterfaceHaloUpdater:
     """Exchange halo on information between ranks for data living on the interface.
 
-    This class reasons on QuantityHaloSpec for initialization and assumes the arrays given
-    to the start_synchronize_vector_interfaces adhere to those specs.
+    This class reasons on QuantityHaloSpec for initialization and assumes
+    the arrays given to the start_synchronize_vector_interfaces adhere to those specs.
 
     See start_synchronize_vector_interfaces for details on interface exchange.
     """
@@ -417,7 +417,7 @@ class VectorInterfaceHaloUpdater:
             self._qty_x_spec.extent,
         )
         south_data = southwest_x_view.sel(
-            **{
+            **{  # type: ignore
                 constants.Y_INTERFACE_DIM: 0,
                 constants.X_DIM: slice(
                     0,
@@ -446,7 +446,7 @@ class VectorInterfaceHaloUpdater:
             self._qty_y_spec.extent,
         )
         west_data = southwest_y_view.sel(
-            **{
+            **{  # type: ignore
                 constants.X_INTERFACE_DIM: 0,
                 constants.Y_DIM: slice(
                     0,
@@ -505,7 +505,7 @@ class VectorInterfaceHaloUpdater:
         )
 
         north_data = northwest_x_view.sel(
-            **{
+            **{  # type: ignore
                 constants.Y_INTERFACE_DIM: -1,
                 constants.X_DIM: slice(
                     0,
@@ -526,7 +526,7 @@ class VectorInterfaceHaloUpdater:
             self._qty_y_spec.extent,
         )
         east_data = southeast_y_view.sel(
-            **{
+            **{  # type: ignore
                 constants.X_INTERFACE_DIM: -1,
                 constants.Y_DIM: slice(
                     0,

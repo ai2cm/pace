@@ -1,9 +1,11 @@
-from . import constants
 from typing import List
+
 import numpy as np
 
+from . import constants
 
-def rotate_scalar_data(data, dims, numpy, n_clockwise_rotations) -> List[np.ndarray]:
+
+def rotate_scalar_data(data, dims, numpy, n_clockwise_rotations) -> np.ndarray:
     n_clockwise_rotations = n_clockwise_rotations % 4
     if n_clockwise_rotations == 0:
         pass

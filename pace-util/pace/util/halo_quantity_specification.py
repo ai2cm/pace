@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from .types import NumpyModule
-from typing import Tuple, Any
+from typing import Any, Tuple
+
 from .quantity import Quantity
+from .types import NumpyModule
 
 
 @dataclass

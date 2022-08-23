@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import numpy as np
 from dace.frontend.python.interface import nounroll as dace_no_unroll
@@ -432,9 +432,9 @@ class DynamicalCore:
             is_root_rank=self.comm_rank == 0,
         )
 
-        for k_split in dace_no_unroll(range(state.k_split)):
+        for k_split in dace_no_unroll(range(state.k_split)):  # type: ignore
             n_map = k_split + 1
-            last_step = k_split == state.k_split - 1
+            last_step = k_split == state.k_split - 1  # type: ignore
             self._dyn(state=state, tracers=tracers_dict, n_map=n_map, timer=timer)
 
             if self.grid_indexing.domain[2] > 4:
@@ -463,27 +463,27 @@ class DynamicalCore:
                         state.w,
                         state.ua,
                         state.va,
-                        state.cappa,
+                        state.cappa,  # type: ignore
                         state.q_con,
                         state.qcld,
                         state.pkz,
                         state.pk,
                         state.pe,
                         state.phis,
-                        state.te0_2d,
+                        state.te0_2d,  # type: ignore
                         state.ps,
-                        state.wsd,
+                        state.wsd,  # type: ignore
                         state.omga,
                         self._ak,
                         self._bk,
                         self._pfull,
-                        state.dp1,
+                        state.dp1,  # type: ignore
                         self._ptop,
                         constants.KAPPA,
                         constants.ZVIR,
                         last_step,
-                        state.consv_te,
-                        state.bdt / state.k_split,
+                        state.consv_te,  # type: ignore
+                        state.bdt / state.k_split,  # type: ignore
                         state.bdt,
                         state.do_adiabatic_init,
                     )
