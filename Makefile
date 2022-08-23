@@ -35,12 +35,12 @@ FV3=fv3core
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
 CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
-ifeq ($(CONTAINER_CMD),)
+ifeq ("$(CONTAINER_CMD)","")
 	PACE_PATH?=$(ROOT_DIR)
 else
 	PACE_PATH?=/pace
 endif
-ifeq ($(CONTAINER_CMD),)
+ifeq ("$(CONTAINER_CMD)","")
 	TEST_DATA_RUN_LOC=$(TEST_DATA_HOST)
 else
 	TEST_DATA_RUN_LOC=$(PACE_PATH)/test_data/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)
@@ -56,13 +56,11 @@ THRESH_ARGS=--threshold_overrides_file=$(PACE_PATH)/fv3core/tests/savepoint/tran
 
 
 build:
-ifeq ($(DEV),n)
-	ifneq ($(CONTAINER_CMD),)
-		DOCKER_BUILDKIT=1 docker build \
-			-f $(CWD)/Dockerfile \
-			-t $(PACE_IMAGE) \
-			.
-	endif
+ifeq ($(DEV).$(CONTAINER_CMD),n.)
+	DOCKER_BUILDKIT=1 docker build \
+		-f $(CWD)/Dockerfile \
+		-t $(PACE_IMAGE) \
+		.
 endif
 
 enter:
