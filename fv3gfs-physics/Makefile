@@ -21,6 +21,8 @@ TARGET ?= physics
 TEST_DATA_ROOT ?=$(CWD)/../test_data/
 TEST_DATA_HOST ?=$(TEST_DATA_ROOT)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)/
 TEST_DATA_TARPATH=$(TEST_DATA_HOST)/$(TEST_DATA_TARFILE)
+FTP_SERVER ?=ftp://anonymous:anonymous@ftp.cscs.ch
+TEST_DATA_FTP ?=in/put/abc/cosmo/fuo/pace/fv3gfs-physics
 FV3UTIL_DIR=$(CWD)/../pace-util
 DATA_BUCKET ?= $(REGRESSION_DATA_STORAGE_BUCKET)/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)/
 
@@ -48,17 +50,26 @@ build:
 sync_test_data:
 	mkdir -p $(TEST_DATA_HOST) && gsutil -m rsync -r $(DATA_BUCKET) $(TEST_DATA_HOST)
 
+sync_test_data_from_ftp:
+	mkdir -p $(TEST_DATA_HOST) && cd $(TEST_DATA_ROOT) && lftp -c "set ftp:list-options -a; open $(FTP_SERVER); cd $(TEST_DATA_FTP); mirror --delete --use-cache --verbose --allow-chown --allow-suid --no-umask --parallel=2 --max-errors=0 . ."
+
 unpack_test_data:
 	if [ -f $(TEST_DATA_TARPATH) ]; then \
-	cd $(TEST_DATA_HOST) && tar -xf $(TEST_DATA_TARFILE) && \
-	rm $(TEST_DATA_TARFILE); fi
+		cd $(TEST_DATA_HOST) && tar -xf $(TEST_DATA_TARFILE) && \
+		rm $(TEST_DATA_TARFILE); \
+	fi
 
 get_test_data:
-	if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
-	[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt -)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)"  ]; then \
-	rm -rf $(TEST_DATA_HOST) && \
-	$(MAKE) sync_test_data && \
-	$(MAKE) unpack_test_data ;\
+	if [ -z "${USE_FTP}" ] ; then \
+		if [ ! -f "$(TEST_DATA_HOST)/input.nml" ] || \
+		[ "$$(gsutil cp $(DATA_BUCKET)md5sums.txt -)" != "$$(cat $(TEST_DATA_HOST)/md5sums.txt)" ] ; then \
+			rm -rf $(TEST_DATA_HOST) ; \
+			$(MAKE) sync_test_data ; \
+			$(MAKE) unpack_test_data ; \
+		fi ; \
+	else \
+		$(MAKE) sync_test_data_from_ftp ; \
+		$(MAKE) unpack_test_data ; \
 	fi
 
 test_base:

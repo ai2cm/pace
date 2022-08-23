@@ -18,10 +18,7 @@ from pace.dsl.dace.build import (
     write_build_info,
 )
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
-from pace.dsl.dace.sdfg_opt_passes import (
-    splittable_region_expansion,
-    strip_unused_global_in_compute_x_flux,
-)
+from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
 from pace.dsl.dace.utils import DaCeProgress
 from pace.util.mpi import MPI
 
@@ -140,7 +137,7 @@ def _build_sdfg(
 
         # Perform pre-expansion fine tuning
         with DaCeProgress(config, "Split regions"):
-            splittable_region_expansion(sdfg)
+            splittable_region_expansion(sdfg, verbose=True)
 
         # Expand the stencil computation Library Nodes with the right expansion
         with DaCeProgress(config, "Expand"):
@@ -148,11 +145,6 @@ def _build_sdfg(
 
         with DaCeProgress(config, "Simplify (2/2)"):
             sdfg.simplify(validate=False, verbose=True)
-
-        with DaCeProgress(
-            config, "Removed unused globals of compute_x_flux (lower VRAM)"
-        ):
-            strip_unused_global_in_compute_x_flux(sdfg)
 
         # Compile
         with DaCeProgress(config, "Codegen & compile"):
@@ -173,6 +165,7 @@ def _build_sdfg(
         MPI.COMM_WORLD.Barrier()
         if is_compiling:
             unblock_waiting_tiles(MPI.COMM_WORLD, sdfg.build_folder)
+            DaCeProgress.log(config, "Build folder exchanged.")
             with DaCeProgress(config, "Run"):
                 res = sdfg(**sdfg_kwargs)
                 res = _download_results_from_dace(
@@ -181,7 +174,9 @@ def _build_sdfg(
         else:
             source_rank = config.target_rank
             # wait for compilation to be done
+            DaCeProgress.log(config, "Rank is not compiling. Waiting for build dir...")
             sdfg_path = MPI.COMM_WORLD.recv(source=source_rank)
+            DaCeProgress.log(config, "Build dir received.")
             daceprog.load_precompiled_sdfg(sdfg_path, *args, **kwargs)
             with DaCeProgress(config, "Run"):
                 res = _run_sdfg(daceprog, config, args, kwargs)
