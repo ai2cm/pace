@@ -17,6 +17,8 @@ EXPERIMENT ?=c12_6ranks_baroclinic_dycore_microphysics
 TARGET ?= physics
 TEST_DATA_FTP ?=in/put/abc/cosmo/fuo/pace/fv3gfs-physics
 FV3UTIL_DIR=$(CWD)/../pace-util
+ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+TEST_DATA_ROOT ?=$(ROOT_DIR)/test_data/
 
 ifeq ($(DEV),y)
 	VOLUMES += -v $(CWD)/..:/pace
@@ -40,13 +42,13 @@ build:
 	$(MAKE) -C .. build
 
 sync_test_data:
-	TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data
 
 sync_test_data_from_ftp:
-	TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data_from_ftp
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data_from_ftp
 
 get_test_data:
-	TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. get_test_data
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. get_test_data
 
 test_base:
 ifneq ($(findstring docker,$(CONTAINER_CMD)),)

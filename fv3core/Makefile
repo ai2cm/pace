@@ -13,6 +13,8 @@ RUN_FLAGS += -e FV3_DACEMODE=$(FV3_DACEMODE)
 TEST_ARGS ?=
 TARGET ?=dycore
 FV3UTIL_DIR=$(CWD)/external/pace-util
+ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+TEST_DATA_ROOT ?=$(ROOT_DIR)/test_data/
 TEST_DATA_FTP ?=in/put/abc/cosmo/fuo/pace/fv3core/
 
 FV3=fv3core
@@ -96,13 +98,13 @@ endif
 	$(CONTAINER_CMD) bash -c "pip3 list && cd $(FV3_PATH) && $(PYTEST_CMD)"
 
 sync_test_data:
-	TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data
 
 sync_test_data_from_ftp:
-	TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data_from_ftp
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data_from_ftp
 
 get_test_data:
-	TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. get_test_data
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. get_test_data
 
 lint:
 	pre-commit run --all-files
