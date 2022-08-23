@@ -57,10 +57,12 @@ THRESH_ARGS=--threshold_overrides_file=$(PACE_PATH)/fv3core/tests/savepoint/tran
 
 build:
 ifeq ($(DEV),n)
-	DOCKER_BUILDKIT=1 docker build \
-		-f $(CWD)/Dockerfile \
-		-t $(PACE_IMAGE) \
-		.
+	ifneq ($(CONTAINER_CMD),)
+		DOCKER_BUILDKIT=1 docker build \
+			-f $(CWD)/Dockerfile \
+			-t $(PACE_IMAGE) \
+			.
+	endif
 endif
 
 enter:
