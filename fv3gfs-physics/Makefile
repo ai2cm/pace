@@ -39,37 +39,22 @@ PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_
 PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3gfs-physics/tests/savepoint
 
 build:
-	$(MAKE) -C .. build
+	$(MAKE) -C .. $@
 
 sync_test_data:
-	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 sync_test_data_from_ftp:
-	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data_from_ftp
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 get_test_data:
-	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. get_test_data
-
-test_base:
-ifneq ($(findstring docker,$(CONTAINER_CMD)),)
-    ifeq ($(DEV),n)
-	$(MAKE) build
-    endif
-endif
-	$(CONTAINER_CMD) bash -c "pip list && $(PYTEST_CMD)"
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 physics_savepoint_tests:
-	$(MAKE) get_test_data
-	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)' \
-	PYTEST_CMD="$(PYTEST_SEQUENTIAL)" $(MAKE) test_base
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 physics_savepoint_tests_mpi:
-	$(MAKE) get_test_data
-	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)' \
-	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@
 
 driver_savepoint_tests_mpi:
-	TARGET=driver \
-	$(MAKE) get_test_data
-	TARGET=driver VOLUMES='  -v $(TEST_DATA_HOST)/../driver/:$(TEST_DATA_RUN_LOC) -v $(TEST_HOST_LOC):$(TEST_RUN_LOC)'  \
-	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. $@

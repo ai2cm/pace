@@ -27,6 +27,8 @@ CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 VOLUMES ?=
 ifeq ($(DEV),y)
 	VOLUMES += -v $(ROOT_DIR):/pace
+else
+	VOLUMES += -v $(ROOT_DIR)/test_data:/pace/test_data
 endif
 
 ### testing variables
@@ -41,9 +43,9 @@ else
 	PACE_PATH?=/pace
 endif
 ifeq ("$(CONTAINER_CMD)","")
-	TEST_DATA_RUN_LOC=$(TEST_DATA_HOST)
+	EXPERIMENT_DATA_RUN=$(EXPERIMENT_DATA)
 else
-	TEST_DATA_RUN_LOC=$(PACE_PATH)/test_data/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)
+	EXPERIMENT_DATA_RUN=$(PACE_PATH)/test_data/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)
 endif
 NUM_RANKS ?=6
 MPIRUN_ARGS ?=--oversubscribe
@@ -56,7 +58,7 @@ THRESH_ARGS=--threshold_overrides_file=$(PACE_PATH)/fv3core/tests/savepoint/tran
 
 
 build:
-ifneq ($(CONTAINER_CMD),)  # never build if running bare-metal
+ifneq ($(findstring docker,$(CONTAINER_CMD)),)  # only build if using docker
 ifeq ($(DEV),n)  # rebuild container if not running in dev mode
 	$(MAKE) _force_build
 else  # build even if running in dev mode if there is no environment image
@@ -86,11 +88,13 @@ test_util:
 		$(MAKE) -C pace-util test; \
 	fi
 
-savepoint_tests: get_test_data build
-	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(PACE_PATH)/fv3core/tests/savepoint"
+savepoint_tests: build
+	TARGET=dycore $(MAKE) get_test_data
+	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(THRESH_ARGS) $(PACE_PATH)/fv3core/tests/savepoint"
 
-savepoint_tests_mpi: get_test_data build
-	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && $(MPIRUN_CALL) python3 -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3core/tests/savepoint"
+savepoint_tests_mpi: build
+	TARGET=dycore $(MAKE) get_test_data
+	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && $(MPIRUN_CALL) python3 -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3core/tests/savepoint"
 
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
@@ -100,22 +104,25 @@ constraints.txt: dsl/requirements.txt fv3core/requirements.txt pace-util/require
 	sed -i.bak '/\@ git+https/d' constraints.txt
 	rm -f constraints.txt.bak
 
-physics_savepoint_tests:
-	$(MAKE) -C fv3gfs-physics $@
+physics_savepoint_tests: build
+	TARGET=physics $(MAKE) get_test_data
+	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && pytest --data_path=$(EXPERIMENT_DATA_RUN)/physics/ $(TEST_ARGS) $(THRESH_ARGS) $(PACE_PATH)/fv3gfs-physics/tests/savepoint"
 
-physics_savepoint_tests_mpi:
-	$(MAKE) -C fv3gfs-physics $@
+physics_savepoint_tests_mpi: build
+	TARGET=physics $(MAKE) get_test_data
+	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/physics/ $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3gfs-physics/tests/savepoint"
 
 update_submodules_venv:
 	if [ ! -f $(CWD)/external/daint_venv/install.sh  ]; then \
                 git submodule update --init external/daint_venv; \
         fi
 
-test_driver:
-	DEV=$(DEV) $(MAKE) -C driver test
+test_main: build
+	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && pytest $(TEST_ARGS) $(PACE_PATH)/tests/main"
 
-driver_savepoint_tests_mpi:
-	DEV=$(DEV) $(MAKE) -C  fv3gfs-physics $@
+driver_savepoint_tests_mpi: build
+	TARGET=driver $(MAKE) get_test_data
+	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(EXPERIMENT_DATA_RUN)/driver/ $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3gfs-physics/tests/savepoint"
 
 docs: ## generate Sphinx HTML documentation
 	$(MAKE) -C docs html
@@ -127,4 +134,4 @@ servedocs: docs ## compile the docs watching for changes
 lint:
 	pre-commit run --all-files
 
-.PHONY: docs servedocs
+.PHONY: docs servedocs build

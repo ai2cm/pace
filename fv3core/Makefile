@@ -67,10 +67,11 @@ cleanup_remote:
 
 # end of image build targets which have been moved to docker/Makefile
 
-test: tests
+test:
+	$(MAKE) -C .. test_main
 
 tests:
-	PYTEST_CMD="$(PYTEST_MAIN)" $(MAKE) test_base
+	$(MAKE) -C .. test_main
 
 savepoint_tests:
 	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. savepoint_tests
