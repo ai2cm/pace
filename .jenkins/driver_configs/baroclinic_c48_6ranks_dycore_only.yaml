@@ -16,7 +16,6 @@ nx_tile: 48
 nz: 79
 dt_atmos: 225
 seconds: 4500
-# minutes: 7200
 layout:
   - 1
   - 1
@@ -27,7 +26,6 @@ diagnostics_config:
     - va
     - pt
   output_frequency: 1
-  # output_frequency: 384
 dycore_config:
   a_imp: 1.0
   beta: 0.
