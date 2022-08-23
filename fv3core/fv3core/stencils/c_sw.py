@@ -525,7 +525,6 @@ class CGridShallowWaterDynamics:
             return utils.make_storage_from_shape(
                 grid_indexing.max_shape,
                 backend=stencil_factory.backend,
-                is_temporary=False,
             )
 
         self._tmp_ke = make_storage()
