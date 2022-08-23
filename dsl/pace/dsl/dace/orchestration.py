@@ -155,7 +155,10 @@ def _build_sdfg(
                     memory_pooled += arr.total_size * arr.dtype.bytes
                     arr.lifetime = dace.AllocationLifetime.Scope
             memory_pooled = float(memory_pooled) / (1024 * 1024)
-            print(f"Pooled {memory_pooled} mb")
+            DaCeProgress.log(
+                DaCeProgress.default_prefix(config),
+                f"Pooled {memory_pooled} mb",
+            )
 
         # Compile
         with DaCeProgress(config, "Codegen & compile"):
