@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 include docker/Makefile.image_names
 include Makefile.data_download
+ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 define BROWSER_PYSCRIPT
 import os, webbrowser, sys
@@ -21,18 +22,46 @@ SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
 DEV ?=n
-RUN_FLAGS ?=--rm
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 
+VOLUMES ?=
 ifeq ($(DEV),y)
-	VOLUMES += -v $(CWD):/pace
+	VOLUMES += -v $(ROOT_DIR):/pace
 endif
 
+### testing variables
+
+FV3=fv3core
+CONTAINER_ENGINE ?=docker
+RUN_FLAGS ?=--rm
+CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
+ifeq ($(CONTAINER_CMD),)
+	PACE_PATH?=$(ROOT_DIR)
+else
+	PACE_PATH?=/pace
+endif
+ifeq ($(CONTAINER_CMD),)
+	TEST_DATA_RUN_LOC=$(TEST_DATA_HOST)
+else
+	TEST_DATA_RUN_LOC=$(PACE_PATH)/test_data/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)/$(TARGET)
+endif
+NUM_RANKS ?=6
+MPIRUN_ARGS ?=--oversubscribe
+MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) $(MPIRUN_ARGS)
+TEST_ARGS ?=-v
+TEST_TYPE=$(word 3, $(subst _, ,$(EXPERIMENT)))
+THRESH_ARGS=--threshold_overrides_file=$(PACE_PATH)/fv3core/tests/savepoint/translate/overrides/$(TEST_TYPE).yaml
+
+###
+
+
 build:
+ifeq ($(DEV),n)
 	DOCKER_BUILDKIT=1 docker build \
 		-f $(CWD)/Dockerfile \
 		-t $(PACE_IMAGE) \
 		.
+endif
 
 enter:
 	docker run --rm -it \
@@ -48,11 +77,11 @@ test_util:
 		$(MAKE) -C pace-util test; \
 	fi
 
-savepoint_tests:
-	$(MAKE) -C fv3core $@
+savepoint_tests: get_test_data build
+	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(PACE_PATH)/fv3core/tests/savepoint"
 
-savepoint_tests_mpi:
-	$(MAKE) -C fv3core $@
+savepoint_tests_mpi: get_test_data build
+	$(CONTAINER_CMD) bash -c "pip3 list && cd $(PACE_PATH) && $(MPIRUN_CALL) python3 -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3core/tests/savepoint"
 
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@

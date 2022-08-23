@@ -1,6 +1,7 @@
 include ../docker/Makefile.image_names
 
 GCR_URL = us.gcr.io/vcm-ml
+EXPERIMENT ?=c12_6ranks_standard
 SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
@@ -72,14 +73,10 @@ tests:
 	PYTEST_CMD="$(PYTEST_MAIN)" $(MAKE) test_base
 
 savepoint_tests:
-	$(MAKE) get_test_data
-	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC)' \
-	PYTEST_CMD="$(PYTEST_SEQUENTIAL)" $(MAKE) test_base
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. savepoint_tests
 
 savepoint_tests_mpi:
-	$(MAKE) get_test_data
-	VOLUMES='$(VOLUMES) -v $(TEST_DATA_HOST):$(TEST_DATA_RUN_LOC)' \
-	PYTEST_CMD="$(PYTEST_PARALLEL)" $(MAKE) test_base
+	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. savepoint_tests_mpi
 
 dev:
 	docker run --rm -it \
@@ -88,14 +85,6 @@ dev:
 		-v $(CWD):/port_dev \
 		$(VOLUMES) \
 		$(PACE_IMAGE) bash
-
-test_base:
-ifneq ($(findstring docker,$(CONTAINER_CMD)),)
-    ifeq ($(DEV),n)
-	$(MAKE) build
-    endif
-endif
-	$(CONTAINER_CMD) bash -c "pip3 list && cd $(FV3_PATH) && $(PYTEST_CMD)"
 
 sync_test_data:
 	TEST_DATA_ROOT=$(TEST_DATA_ROOT) TARGET=$(TARGET) EXPERIMENT=$(EXPERIMENT) $(MAKE) -C .. sync_test_data
