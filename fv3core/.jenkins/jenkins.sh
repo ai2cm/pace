@@ -110,7 +110,7 @@ if grep -q "parallel" <<< "${script}"; then
         if grep -q "cuda\|gpu" <<< "${backend}" ; then
             export MPICH_RDMA_ENABLED_CUDA=1
             # Has to be deactivated to be able to use VRAM pooling
-            export CRAY_CUDA_MPS=0 
+            export CRAY_CUDA_MPS=0
         else
             export MPICH_RDMA_ENABLED_CUDA=0
             export CRAY_CUDA_MPS=0
