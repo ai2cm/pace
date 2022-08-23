@@ -56,12 +56,21 @@ THRESH_ARGS=--threshold_overrides_file=$(PACE_PATH)/fv3core/tests/savepoint/tran
 
 
 build:
-ifeq ($(DEV).$(CONTAINER_CMD),n.)
+ifneq ($(CONTAINER_CMD),)  # never build if running bare-metal
+ifeq ($(DEV),n)  # rebuild container if not running in dev mode
+	$(MAKE) _force_build
+else  # build even if running in dev mode if there is no environment image
+ifeq ($(shell docker images -q us.gcr.io/vcm-ml/pace 2> /dev/null),)
+	$(MAKE) _force_build
+endif
+endif
+endif
+
+_force_build:
 	DOCKER_BUILDKIT=1 docker build \
 		-f $(CWD)/Dockerfile \
 		-t $(PACE_IMAGE) \
 		.
-endif
 
 enter:
 	docker run --rm -it \
