@@ -19,7 +19,6 @@ nx_tile: 48
 nz: 79
 dt_atmos: 225
 seconds: 4500
-# minutes: 7200
 layout:
   - 1
   - 1
@@ -30,7 +29,6 @@ diagnostics_config:
     - va
     - pt
   output_frequency: 1
-  # output_frequency: 384
 dycore_config:
   namelist_override: /project/s1053/fv3core_serialized_test_data/8.1.1/c48_6ranks_baroclinic/driver/input.nml
 
