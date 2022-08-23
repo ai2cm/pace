@@ -123,7 +123,6 @@ def setup_dycore() -> Tuple[
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
         phis=state.phis,
-        state=state,
     )
     do_adiabatic_init = False
 
@@ -160,10 +159,10 @@ def test_temporaries_are_deterministic():
     dycore1, state1, timer1 = setup_dycore()
     dycore2, state2, timer2 = setup_dycore()
 
-    dycore1.step_dynamics(state1, timer1)
+    dycore1.step_dynamics(state1, state1.tracers_as_array(), timer1)
     first_temporaries = copy_temporaries(dycore1, max_depth=10)
     assert len(first_temporaries) > 0
-    dycore2.step_dynamics(state2, timer2)
+    dycore2.step_dynamics(state2, state2.tracers_as_array(), timer2)
     second_temporaries = copy_temporaries(dycore2, max_depth=10)
     assert_same_temporaries(second_temporaries, first_temporaries)
 
@@ -180,14 +179,14 @@ def test_call_on_same_state_same_dycore_produces_same_temporaries():
 
     # state_1 and state_2 are identical, if the dycore is stateless then they
     # should produce identical dycore final states when used to call
-    dycore.step_dynamics(state_1, timer_1)
+    dycore.step_dynamics(state_1, state_1.tracers_as_array(), timer_1)
     first_temporaries = copy_temporaries(dycore, max_depth=10)
     assert len(first_temporaries) > 0
     # TODO: The orchestrated code pushed us to make the dycore stateful for halo
     # exchange, so we must copy into state_1 instead of using state_2.
     # We should call with state_2 directly when this is fixed.
     copy_state(state_2, state_1)
-    dycore.step_dynamics(state_1, timer_2)
+    dycore.step_dynamics(state_1, state_1.tracers_as_array(), timer_2)
     second_temporaries = copy_temporaries(dycore, max_depth=10)
     assert_same_temporaries(second_temporaries, first_temporaries)
 

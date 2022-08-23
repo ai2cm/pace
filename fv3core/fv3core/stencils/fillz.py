@@ -1,13 +1,13 @@
 import typing
 from typing import Dict
 
+import numpy as np
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.dace import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, IntFieldIJ
-from pace.util import Quantity
 
 
 @typing.no_type_check
@@ -125,7 +125,6 @@ class FillNegativeTracerValues:
         jm: int,
         km: int,
         nq: int,
-        tracers: Dict[str, Quantity],
     ):
         orchestrate(
             obj=self,
@@ -155,21 +154,17 @@ class FillNegativeTracerValues:
         self._sum0 = make_storage(shape_ij, origin=(0, 0))
         self._sum1 = make_storage(shape_ij, origin=(0, 0))
 
-        self._filtered_tracer_dict = {
-            name: tracers[name] for name in utils.tracer_variables[0 : self._nq]
-        }
-
     def __call__(
         self,
         dp2: FloatField,
-        tracers: Dict[str, Quantity],
+        tracers: Dict[str, np.ndarray],
     ):
         """
         Args:
             dp2 (in): pressure thickness of atmospheric layer
             tracers (inout): tracers to fix negative masses in
         """
-        for tracer_name in self._filtered_tracer_dict.keys():
+        for tracer_name in utils.tracer_variables[0 : self._nq]:
             self._fix_tracer_stencil(
                 tracers[tracer_name],
                 dp2,

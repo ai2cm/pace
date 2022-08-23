@@ -1,5 +1,6 @@
 from typing import Dict
 
+import numpy as np
 from gt4py.gtscript import (
     __INLINED,
     BACKWARD,
@@ -24,7 +25,6 @@ from fv3core.stencils.saturation_adjustment import SatAdjust3d
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
-from pace.util import Quantity
 
 
 # TODO: Should this be set here or in global_constants?
@@ -285,7 +285,6 @@ class LagrangianToEulerian:
         area_64,
         nq,
         pfull,
-        tracers: Dict[str, Quantity],
     ):
         orchestrate(
             obj=self,
@@ -372,7 +371,6 @@ class LagrangianToEulerian:
             grid_indexing.jsc,
             grid_indexing.jec,
             fill=config.fill,
-            tracers=tracers,
         )
 
         self._map_single_w = MapSingle(
@@ -486,7 +484,7 @@ class LagrangianToEulerian:
 
     def __call__(
         self,
-        tracers: Dict[str, Quantity],
+        tracers: Dict[str, np.ndarray],
         pt: FloatField,
         delp: FloatField,
         delz: FloatField,

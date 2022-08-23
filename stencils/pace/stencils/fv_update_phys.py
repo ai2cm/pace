@@ -1,7 +1,6 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
-import fv3core
 import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util.constants as constants
@@ -88,9 +87,6 @@ class ApplyPhysicsToDycore:
         namelist,
         comm: pace.util.CubedSphereCommunicator,
         grid_info: DriverGridData,
-        state: fv3core.DycoreState,
-        u_dt: pace.util.Quantity,
-        v_dt: pace.util.Quantity,
     ):
         orchestrate(
             obj=self,
@@ -113,7 +109,7 @@ class ApplyPhysicsToDycore:
             stencil_factory, comm.partitioner, comm.rank, namelist, grid_info
         )
         self._do_cubed_to_latlon = CubedToLatLon(
-            state, stencil_factory, grid_data, order=namelist.c2l_ord, comm=comm
+            stencil_factory, grid_data, order=namelist.c2l_ord, comm=comm
         )
         self.origin = grid_indexing.origin_compute()
         self.extent = grid_indexing.domain_compute()
@@ -127,13 +123,9 @@ class ApplyPhysicsToDycore:
         )
         self._udt_halo_updater = WrappedHaloUpdater(
             self.comm.get_scalar_halo_updater([full_3Dfield_1pts_halo_spec]),
-            {"u_dt": u_dt},
-            ["u_dt"],
         )
         self._vdt_halo_updater = WrappedHaloUpdater(
             self.comm.get_scalar_halo_updater([full_3Dfield_1pts_halo_spec]),
-            {"v_dt": v_dt},
-            ["v_dt"],
         )
         # TODO: check if we actually need surface winds
         self._u_srf = utils.make_storage_from_shape(
@@ -164,8 +156,8 @@ class ApplyPhysicsToDycore:
             dt,
         )
 
-        self._udt_halo_updater.start()
-        self._vdt_halo_updater.start()
+        self._udt_halo_updater.start([u_dt])
+        self._vdt_halo_updater.start([v_dt])
         self._update_pressure_and_surface_winds(
             state.pe,
             state.delp,

@@ -2,6 +2,7 @@ import math
 from typing import Dict
 
 import gt4py.gtscript as gtscript
+import numpy as np
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
 import pace.dsl.gt4py_utils as utils
@@ -11,7 +12,6 @@ from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
-from pace.util import Quantity
 
 
 @gtscript.function
@@ -182,7 +182,6 @@ class TracerAdvection:
         transport: FiniteVolumeTransport,
         grid_data,
         comm: pace.util.CubedSphereCommunicator,
-        tracers: Dict[str, Quantity],
     ):
         orchestrate(
             obj=self,
@@ -191,7 +190,6 @@ class TracerAdvection:
         )
         grid_indexing = stencil_factory.grid_indexing
         self.grid_indexing = grid_indexing  # needed for selective validation
-        self._tracer_count = len(tracers)
         self.grid_data = grid_data
         shape = grid_indexing.domain_full(add=(1, 1, 1))
         origin = grid_indexing.origin_compute()
@@ -271,12 +269,10 @@ class TracerAdvection:
             backend=stencil_factory.backend,
         )
         self._tracers_halo_updater = WrappedHaloUpdater(
-            comm.get_scalar_halo_updater([tracer_halo_spec] * self._tracer_count),
-            tracers,
-            [t for t in tracers.keys()],
+            comm.get_scalar_halo_updater([tracer_halo_spec] * utils.NQ),
         )
 
-    def __call__(self, tracers: Dict[str, Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt):
+    def __call__(self, tracers: Dict[str, np.ndarray], dp1, mfxd, mfyd, cxd, cyd, mdt):
         """
         Args:
             tracers (inout):
@@ -352,7 +348,7 @@ class TracerAdvection:
                 n_split,
             )
 
-        self._tracers_halo_updater.update()
+        self._tracers_halo_updater.update(tracers.values())
 
         dp2 = self._tmp_dp
 
@@ -386,6 +382,6 @@ class TracerAdvection:
                     dp2,
                 )
             if not last_call:
-                self._tracers_halo_updater.update()
+                self._tracers_halo_updater.update(tracers.values())
                 # use variable assignment to avoid a data copy
                 self._swap_dp(dp1, dp2)

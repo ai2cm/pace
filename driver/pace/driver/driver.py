@@ -274,7 +274,6 @@ class Driver:
                 damping_coefficients=self.state.damping_coefficients,
                 config=self.config.dycore_config,
                 phis=self.state.dycore_state.phis,
-                state=self.state.dycore_state,
             )
 
             self.dycore.update_state(
@@ -303,7 +302,6 @@ class Driver:
                 namelist=self.config.physics_config,
                 comm=communicator,
                 grid_info=self.state.driver_grid_data,
-                state=self.state.dycore_state,
                 quantity_factory=self.quantity_factory,
                 dycore_only=self.config.dycore_only,
                 apply_tendencies=self.config.apply_tendencies,
@@ -425,6 +423,7 @@ class Driver:
     ):
         self.dycore.step_dynamics(
             state=state,
+            tracers_dict=state.tracers_as_array(),
             timer=timer,
         )
 

@@ -917,9 +917,7 @@ def run_finite_volume_fluxprep(
     return flux_prep
 
 
-def build_tracer_advection(
-    stencil_configuration: Dict[str, Any], tracers: Dict[str, Quantity]
-) -> TracerAdvection:
+def build_tracer_advection(stencil_configuration: Dict[str, Any]) -> TracerAdvection:
     """
     Use: tracer_advection =
             build_tracer_advection(stencil_configuration, tracers)
@@ -949,7 +947,6 @@ def build_tracer_advection(
         fvtp_2d,
         stencil_configuration["grid_data"],
         stencil_configuration["communicator"],
-        tracers,
     )
 
     return tracer_advection
@@ -993,7 +990,7 @@ def prepare_everything_for_advection(
         timestep,
     )
 
-    tracer_advection = build_tracer_advection(stencil_configuration, tracers)
+    tracer_advection = build_tracer_advection(stencil_configuration)
 
     tracer_advection_data = {
         "tracers": tracers,

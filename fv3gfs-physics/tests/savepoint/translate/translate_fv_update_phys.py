@@ -174,9 +174,6 @@ class TranslateFVUpdatePhys(ParallelPhysicsTranslate2Py):
             self.namelist,
             communicator,
             self.grid.driver_grid_data,
-            state,
-            tendencies["u_dt"],
-            tendencies["v_dt"],
         )
         dims_u = [pace.util.X_DIM, pace.util.Y_INTERFACE_DIM, pace.util.Z_DIM]
         u_quantity = self.grid.make_quantity(

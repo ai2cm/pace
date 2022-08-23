@@ -263,7 +263,6 @@ def setup_dycore(
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=dycore_config,
         phis=state.phis,
-        state=state,
     )
     dycore.update_state(
         conserve_total_energy=dycore_config.consv_te,
@@ -310,7 +309,7 @@ if __name__ == "__main__":
         # warmup/compilation from the internal timers
         if rank == 0:
             print("timestep 1")
-        dycore.step_dynamics(state, timer)
+        dycore.step_dynamics(state, state.tracers_as_array(), timer)
 
     if profiler is not None:
         profiler.enable()

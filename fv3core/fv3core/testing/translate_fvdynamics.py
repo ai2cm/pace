@@ -13,7 +13,7 @@ from pace.stencils.testing import ParallelTranslateBaseSlicing
 from pace.stencils.testing.translate import TranslateFortranData2Py
 
 
-ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]
+ADVECTED_TRACER_NAMES = utils.tracer_variables[: utils.NQ]
 
 
 class TranslateDycoreFortranData2Py(TranslateFortranData2Py):
@@ -330,7 +330,6 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             damping_coefficients=self.grid.damping_coefficients,
             config=DynamicalCoreConfig.from_namelist(self.namelist),
             phis=state.phis,
-            state=state,
         )
         self.dycore.update_state(
             self.namelist.consv_te,
@@ -339,7 +338,9 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             self.namelist.n_split,
             state,
         )
-        self.dycore.step_dynamics(state, pace.util.NullTimer())
+        self.dycore.step_dynamics(
+            state, state.tracers_as_array(), pace.util.NullTimer()
+        )
         outputs = self.outputs_from_state(state)
         for name, value in outputs.items():
             outputs[name] = self.subset_output(name, value)

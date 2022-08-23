@@ -109,18 +109,22 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
         phis=state.phis,
-        state=state,
     )
     do_adiabatic_init = False
     # TODO compute from namelist
     bdt = config.dt_atmos
 
-    args = [
-        state,
+    dycore.update_state(
         config.consv_te,
         do_adiabatic_init,
         bdt,
         config.n_split,
+        state,
+    )
+
+    args = [
+        state,
+        state.tracers_as_array(),
     ]
     return dycore, args
 

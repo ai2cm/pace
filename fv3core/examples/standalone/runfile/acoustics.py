@@ -180,7 +180,6 @@ def driver(
             dycore_config.acoustic_dynamics,
             input_data["pfull"],
             input_data["phis"],
-            state,
         )
 
         # warm-up timestep.

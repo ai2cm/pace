@@ -1,5 +1,6 @@
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
+import numpy as np
 from dace.frontend.python.interface import nounroll as dace_no_unroll
 from gt4py.gtscript import PARALLEL, computation, interval, log
 
@@ -23,14 +24,6 @@ from pace.stencils.c2l_ord import CubedToLatLon
 from pace.util import Timer
 from pace.util.grid import DampingCoefficients, GridData
 from pace.util.mpi import MPI
-from pace.util.quantity import Quantity
-
-
-# nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
-# ncnst = Atm(mytile)%ncnst
-# pnats = Atm(mytile)%flagstruct%pnats
-# here we hard-coded it because 8 is the only supported value, refactor this later!
-NQ = 8  # state.nq_tot - spec.namelist.dnats
 
 
 def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatField):
@@ -105,7 +98,6 @@ class DynamicalCore:
         damping_coefficients: DampingCoefficients,
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
-        state: DycoreState,
         checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         """
@@ -210,19 +202,14 @@ class DynamicalCore:
             hord=config.hord_tr,
         )
 
-        self.tracers = {}
-        for name in utils.tracer_variables[0:NQ]:
-            self.tracers[name] = state.__dict__[name]
-        self.tracer_storages = {
-            name: quantity.storage for name, quantity in self.tracers.items()
-        }
-
         self._temporaries = fvdyn_temporaries(quantity_factory)
-        state.__dict__.update(self._temporaries)
 
         # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
-            stencil_factory, tracer_transport, self.grid_data, comm, self.tracers
+            stencil_factory,
+            tracer_transport,
+            self.grid_data,
+            comm,
         )
         self._ak = grid_data.ak
         self._bk = grid_data.bk
@@ -274,7 +261,6 @@ class DynamicalCore:
             self.config.acoustic_dynamics,
             self._pfull,
             self._phis,
-            state,
             checkpointer=checkpointer,
         )
         self._hyperdiffusion = HyperdiffusionDamping(
@@ -284,7 +270,7 @@ class DynamicalCore:
             self.config.nf_omega,
         )
         self._cubed_to_latlon = CubedToLatLon(
-            state, stencil_factory, grid_data, config.c2l_ord, comm
+            stencil_factory, grid_data, config.c2l_ord, comm
         )
 
         self._temporaries = fvdyn_temporaries(quantity_factory)
@@ -293,7 +279,7 @@ class DynamicalCore:
         # if self._temporaries were a dataclass we can remove this
         for name, value in self._temporaries.items():
             setattr(self, f"_tmp_{name}", value)
-        if not (not self.config.inline_q and NQ != 0):
+        if not (not self.config.inline_q and utils.NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
             stencil_factory,
@@ -305,9 +291,8 @@ class DynamicalCore:
             stencil_factory,
             config.remapping,
             grid_data.area_64,
-            NQ,
+            utils.NQ,
             self._pfull,
-            tracers=self.tracers,
         )
 
         full_xyz_spec = grid_indexing.get_quantity_halo_spec(
@@ -318,7 +303,7 @@ class DynamicalCore:
             backend=stencil_factory.backend,
         )
         self._omega_halo_updater = WrappedHaloUpdater(
-            comm.get_scalar_halo_updater([full_xyz_spec]), state, ["omga"], comm=comm
+            comm.get_scalar_halo_updater([full_xyz_spec])
         )
 
     def _checkpoint_fvdynamics(self, state: DycoreState, tag: str):
@@ -369,7 +354,9 @@ class DynamicalCore:
         state.__dict__.update(self._temporaries)
         state.__dict__.update(self.acoustic_dynamics._temporaries)
 
-    def step_dynamics(self, state: DycoreState, timer: Timer):
+    def step_dynamics(
+        self, state: DycoreState, tracers_dict: Dict[str, np.ndarray], timer: Timer
+    ):
         """
         Step the model state forward by one timestep.
 
@@ -378,7 +365,7 @@ class DynamicalCore:
             state: model prognostic state and inputs
         """
         self._checkpoint_fvdynamics(state=state, tag="In")
-        self._compute(state, timer)
+        self._compute(state, tracers_dict, timer)
         self._checkpoint_fvdynamics(state=state, tag="Out")
 
     def compute_preamble(self, state, is_root_rank: bool):
@@ -428,7 +415,12 @@ class DynamicalCore:
     def __call__(self, *args, **kwargs):
         return self.step_dynamics(*args, **kwargs)
 
-    def _compute(self, state, timer: pace.util.Timer):
+    def _compute(
+        self,
+        state: DycoreState,
+        tracers_dict: Dict[str, np.ndarray],
+        timer: pace.util.Timer,
+    ):
         last_step = False
         self.compute_preamble(
             state,
@@ -438,7 +430,7 @@ class DynamicalCore:
         for k_split in dace_no_unroll(range(state.k_split)):
             n_map = k_split + 1
             last_step = k_split == state.k_split - 1
-            self._dyn(state=state, tracers=self.tracers, n_map=n_map, timer=timer)
+            self._dyn(state=state, tracers=tracers_dict, n_map=n_map, timer=timer)
 
             if self.grid_indexing.domain[2] > 4:
                 # nq is actually given by ncnst - pnats,
@@ -455,7 +447,7 @@ class DynamicalCore:
                 log_on_rank_0("Remapping")
                 with timer.clock("Remapping"):
                     self._lagrangian_to_eulerian_obj(
-                        self.tracer_storages,
+                        tracers_dict,
                         state.pt,
                         state.delp,
                         state.delz,
@@ -503,7 +495,7 @@ class DynamicalCore:
     def _dyn(
         self,
         state,
-        tracers: Dict[str, Quantity],
+        tracers: Dict[str, np.ndarray],
         n_map,
         timer: pace.util.Timer,
     ):
@@ -547,7 +539,7 @@ class DynamicalCore:
             )
         if self.config.nf_omega > 0:
             log_on_rank_0("Del2Cubed")
-            self._omega_halo_updater.update()
+            self._omega_halo_updater.update([state.omga.data])
             self._hyperdiffusion(state.omga, 0.18 * da_min)
 
     def wrapup(

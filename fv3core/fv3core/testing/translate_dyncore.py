@@ -171,7 +171,6 @@ class TranslateDynCore(ParallelTranslate2PyState):
             config=DynamicalCoreConfig.from_namelist(self.namelist).acoustic_dynamics,
             pfull=inputs["pfull"],
             phis=inputs["phis"],
-            state=state,
         )
         state.__dict__.update(acoustic_dynamics._temporaries)
         acoustic_dynamics(state, n_map=state.n_map, update_temporaries=False)
