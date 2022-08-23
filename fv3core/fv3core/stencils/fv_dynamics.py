@@ -369,7 +369,7 @@ class DynamicalCore:
         state.__dict__.update(self._temporaries)
         state.__dict__.update(self.acoustic_dynamics._temporaries)
 
-    def step_dynamics(self, state: DycoreState, timer: Timer):
+    def step_dynamics(self, state: DycoreState, timer: Timer = pace.util.NullTimer()):
         """
         Step the model state forward by one timestep.
 

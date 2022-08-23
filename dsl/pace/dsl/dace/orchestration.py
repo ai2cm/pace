@@ -137,7 +137,7 @@ def _build_sdfg(
 
         # Perform pre-expansion fine tuning
         with DaCeProgress(config, "Split regions"):
-            splittable_region_expansion(sdfg, verbose=True)
+            splittable_region_expansion(sdfg, verbose=True, verbose=True)
 
         # Expand the stencil computation Library Nodes with the right expansion
         with DaCeProgress(config, "Expand"):
@@ -202,11 +202,11 @@ def _build_sdfg(
             # wait for compilation to be done
             DaCeProgress.log(
                 DaCeProgress.default_prefix(config),
-                "Not compiling rank, waiting for build folder.",
+                "Rank is not compiling. Waiting for build dir...",
             )
             sdfg_path = MPI.COMM_WORLD.recv(source=source_rank)
             DaCeProgress.log(
-                DaCeProgress.default_prefix(config), "Build folder received."
+                DaCeProgress.default_prefix(config), "Build dir received."
             )
             daceprog.load_precompiled_sdfg(sdfg_path, *args, **kwargs)
             with DaCeProgress(config, "Run"):
