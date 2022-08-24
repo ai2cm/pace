@@ -75,6 +75,11 @@ def parse_args():
         default=None,
     )
     parser.add_argument(
+        "--fortran_from_wrapper",
+        action="store_true",
+        help="fortran data is from fv3gfs-wrapper",
+    )
+    parser.add_argument(
         "--fortran_var",
         type=str,
         action="store",
@@ -130,6 +135,20 @@ def gather_fortran_data_at_klevel(path: str, cn: int, var: str, klevel: int):
     return fortran_data
 
 
+def gather_fortran_wrapper_at_klevel(
+    path: str, cn: int, var: str, klevel: int, ts_size: int
+):
+    total_tiles = 6
+    fortran_data = np.zeros((ts_size, total_tiles, cn, cn))
+    for rank in range(total_tiles):
+        for t in range(ts_size):
+            with xr.open_dataset(
+                path + f"/outstate_{t}_{rank}.nc",
+            ) as f:
+                fortran_data[t, rank, :, :] = f[var][klevel, :, :].T
+    return fortran_data
+
+
 if __name__ == "__main__":
     args = parse_args()
     if args.fortran_data_path is not None:
@@ -138,9 +157,14 @@ if __name__ == "__main__":
                 "You must specify the variable name (fortran_var) \
                     to be subtracted in Fortran data."
             )
-        fortran = gather_fortran_data_at_klevel(
-            args.fortran_data_path, args.size, args.fortran_var, args.zlevel
-        )
+        if args.fortran_from_wrapper:
+            fortran = gather_fortran_wrapper_at_klevel(
+                args.fortran_data_path, args.size, args.fortran_var, args.zlevel, 20
+            )
+        else:
+            fortran = gather_fortran_data_at_klevel(
+                args.fortran_data_path, args.size, args.fortran_var, args.zlevel
+            )
     if args.fortran_var is not None and args.fortran_data_path is None:
         raise ValueError(
             "You must specify the path (fortran_data_path) to Fortran data."
@@ -261,10 +285,8 @@ if __name__ == "__main__":
             fontsize=8,
         )
         plt.tight_layout()
-        if args.zarr_output == "/model_output/output.zarr":
-            save_path = "/work/"
-        else:
-            save_path = ""
+        # change this if not using saurs/docker
+        save_path = "/work/"
         plt.savefig(
             f"{save_path}{args.experiment}_{args.variable}_time_{t:02d}.png",
             dpi=150,

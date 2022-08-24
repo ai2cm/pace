@@ -1,2 +1,2 @@
 # We can only pip-compile external dependencies, and indirectly depend on dace for development
-git+https://github.com/spcl/dace.git@v0.14rc1
+git+https://github.com/spcl/dace.git@v0.14rc2
