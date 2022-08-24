@@ -21,6 +21,7 @@ from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
 from pace.dsl.dace.utils import DaCeProgress, count_memory, sdfg_nan_checker
 from pace.util.mpi import MPI
+from pace.dsl.dace.utils import TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE
 
 
 def dace_inhibitor(func: Callable):
@@ -107,7 +108,10 @@ def _build_sdfg(
     daceprog: DaceProgram, sdfg: dace.SDFG, config: DaceConfig, args, kwargs
 ):
     """Build the .so out of the SDFG on the top tile ranks only"""
-    is_compiling = determine_compiling_ranks(config)
+    if TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
+        is_compiling = True
+    else:
+        is_compiling = determine_compiling_ranks(config)
     if is_compiling:
         # Make the transients array persistents
         if config.is_gpu_backend():
@@ -194,10 +198,11 @@ def _build_sdfg(
     elif config.get_orchestrate() == DaCeOrchestration.BuildAndRun:
         MPI.COMM_WORLD.Barrier()
         if is_compiling:
-            unblock_waiting_tiles(MPI.COMM_WORLD, sdfg.build_folder)
-            DaCeProgress.log(
-                DaCeProgress.default_prefix(config), "Build folder exchanged."
-            )
+            if not TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
+                unblock_waiting_tiles(MPI.COMM_WORLD, sdfg.build_folder)
+                DaCeProgress.log(
+                    DaCeProgress.default_prefix(config), "Build folder exchanged."
+                )
             with DaCeProgress(config, "Run"):
                 res = sdfg(**sdfg_kwargs)
                 res = _download_results_from_dace(
@@ -251,7 +256,10 @@ def _parse_sdfg(
     """
     sdfg_path = get_sdfg_path(daceprog.name, config)
     if sdfg_path is None:
-        is_compiling = determine_compiling_ranks(config)
+        if TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
+            is_compiling = True
+        else:
+            is_compiling = determine_compiling_ranks(config)
         if not is_compiling:
             # We can not parse the SDFG since we will load the proper
             # compiled SDFG from the compiling rank

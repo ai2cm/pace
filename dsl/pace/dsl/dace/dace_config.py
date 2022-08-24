@@ -5,6 +5,7 @@ import dace.config
 
 from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.communicator import CubedSphereCommunicator
+from pace.dsl.dace.utils import TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE
 
 
 class DaCeOrchestration(enum.Enum):
@@ -139,7 +140,12 @@ class DaceConfig:
         if communicator:
             self.my_rank = communicator.rank
             self.rank_size = communicator.comm.Get_size()
-            self.target_rank = get_target_rank(self.my_rank, communicator.partitioner)
+            if TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
+                self.target_rank = communicator.rank
+            else:
+                self.target_rank = get_target_rank(
+                    self.my_rank, communicator.partitioner
+                )
             self.layout = communicator.partitioner.layout
         else:
             self.my_rank = 0
