@@ -29,10 +29,6 @@ VOLUMES ?=
 
 ### Testing variables
 
-# CONTAINER_CMD -> VOLUMES
-# VOLUMES -> EXPERIMENT_DATA_RUN
-# EXPERIMENT_DATA_RUN -> CONTAINER_CMD
-
 FV3=fv3core
 RUN_FLAGS ?=--rm
 ifeq ("$(CONTAINER_CMD)","")
