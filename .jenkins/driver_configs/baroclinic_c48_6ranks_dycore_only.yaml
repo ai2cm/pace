@@ -1,39 +1,31 @@
+dycore_only: true
+disable_step_physics: true
 stencil_config:
   compilation_config:
-    backend: numpy
+    backend: gt:gpu
     rebuild: false
     validate_args: true
     format_source: false
     device_sync: false
+    run_mode: Run
 initialization:
   type: baroclinic
 performance_config:
-  performance_mode: true
-  experiment_name: c192_baroclinic
-nx_tile: 192
+  performance_mode: false
+nx_tile: 48
 nz: 79
 dt_atmos: 225
-minutes: 60
+seconds: 4500
 layout:
-  - 3
-  - 3
+  - 1
+  - 1
 diagnostics_config:
   path: "output.zarr"
   names:
-    - u
-    - v
     - ua
     - va
     - pt
-    - delp
-    - qvapor
-    - qliquid
-    - qice
-    - qrain
-    - qsnow
-    - qgraupel
-  output_frequency: 10
-  output_initial_state: false
+  output_frequency: 1
 dycore_config:
   a_imp: 1.0
   beta: 0.
