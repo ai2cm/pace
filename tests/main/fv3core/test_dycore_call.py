@@ -209,4 +209,4 @@ def test_call_does_not_define_stencils():
         raise AssertionError("call not allowed")
 
     with unittest.mock.patch("gt4py.gtscript.stencil", new=error_func):
-        dycore.step_dynamics(state, timer)
+        dycore.step_dynamics(state, state.tracers_as_array(), timer)

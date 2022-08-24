@@ -173,7 +173,7 @@ def test_fv_dynamics(
         checkpointer=validation,
     )
     with validation.trial():
-        dycore.step_dynamics(state)
+        dycore.step_dynamics(state, state.tracers_as_array())
 
 
 def _calibrate_thresholds(
@@ -202,7 +202,7 @@ def _calibrate_thresholds(
         trial_state, _ = initializer.new_state()
         perturb(dycore_state_to_dict(trial_state))
         with calibration.trial():
-            dycore.step_dynamics(trial_state)
+            dycore.step_dynamics(trial_state, trial_state.tracers_as_array())
     all_thresholds = communicator.comm.allgather(calibration.thresholds)
     thresholds = merge_thresholds(all_thresholds)
     set_manual_thresholds(thresholds)
