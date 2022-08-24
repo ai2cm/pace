@@ -199,7 +199,7 @@ def test_call_does_not_allocate_storages():
 
     with unittest.mock.patch("gt4py.storage.storage.zeros", new=error_func):
         with unittest.mock.patch("gt4py.storage.storage.empty", new=error_func):
-            dycore.step_dynamics(state, timer)
+            dycore.step_dynamics(state, state.tracers_as_array(), timer)
 
 
 def test_call_does_not_define_stencils():

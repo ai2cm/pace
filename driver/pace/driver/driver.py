@@ -312,10 +312,8 @@ class Driver:
                     namelist=self.config.physics_config,
                     comm=communicator,
                     grid_info=self.state.driver_grid_data,
-                    quantity_factory=self.quantity_factory,
                     dycore_only=self.config.dycore_only,
                     apply_tendencies=self.config.apply_tendencies,
-                    tendency_state=self.state.tendency_state,
                 )
             else:
                 # Make sure those are set to None to raise any issues
