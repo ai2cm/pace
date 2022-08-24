@@ -11,8 +11,6 @@ from pace.dsl.dace.dace_config import DaceConfig
 
 logger = logging.getLogger(__name__)
 
-TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE = True
-
 # Rough timer & log for major operations of DaCe build stack
 class DaCeProgress:
     """Timer and log to track build progress"""

@@ -17,11 +17,14 @@ from pace.dsl.dace.build import (
     unblock_waiting_tiles,
     write_build_info,
 )
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
+from pace.dsl.dace.dace_config import (
+    DaceConfig,
+    DaCeOrchestration,
+    TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE,
+)
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
 from pace.dsl.dace.utils import DaCeProgress, count_memory, sdfg_nan_checker
 from pace.util.mpi import MPI
-from pace.dsl.dace.utils import TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE
 
 
 def dace_inhibitor(func: Callable):
