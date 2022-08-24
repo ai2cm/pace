@@ -156,8 +156,8 @@ class ApplyPhysicsToDycore:
             dt,
         )
 
-        self._udt_halo_updater.start([u_dt])
-        self._vdt_halo_updater.start([v_dt])
+        self._udt_halo_updater.start([u_dt.data])
+        self._vdt_halo_updater.start([v_dt.data])
         self._update_pressure_and_surface_winds(
             state.pe,
             state.delp,
