@@ -1,11 +1,12 @@
 stencil_config:
-  backend: numpy
-  rebuild: false
-  validate_args: true
-  format_source: false
-  device_sync: true
-initialization_type: baroclinic
-initialization_config: {}
+  compilation_config:
+    backend: numpy
+    rebuild: false
+    validate_args: true
+    format_source: false
+    device_sync: false
+initialization:
+  type: baroclinic
 performance_config:
   performance_mode: true
   experiment_name: c192_baroclinic
