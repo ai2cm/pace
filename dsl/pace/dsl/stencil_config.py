@@ -9,11 +9,8 @@ from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.communicator import CubedSphereCommunicator
-from pace.util.decomposition import (
-    compiling_equivalent,
-    determine_rank_is_compiling,
-    set_distributed_caches,
-)
+from pace.util.decomposition import determine_rank_is_compiling, set_distributed_caches
+from pace.util.partitioner import CubedSpherePartitioner
 
 
 class RunMode(enum.Enum):
@@ -41,8 +38,6 @@ class CompilationConfig:
         use_minimal_caching: bool = False,
         communicator: Optional[CubedSphereCommunicator] = None,
     ) -> None:
-        if run_mode != RunMode.Run and use_minimal_caching:
-            raise RuntimeError("Cannot use minimal caching in any building mode")
         if (not ("gpu" in backend or "cuda" in backend)) and device_sync is True:
             raise RuntimeError("Device sync is true on a CPU based backend")
         # GT4Py backend args
@@ -77,6 +72,51 @@ class CompilationConfig:
                 "Trying to run with a non-square layout is not supported"
             )
 
+    def determine_compiling_equivalent(
+        self, rank: int, partitioner: CubedSpherePartitioner
+    ) -> int:
+        """From my rank & the current partitioner we determine which
+        rank we should read from"""
+        if self.run_mode == RunMode.Run:
+            if partitioner.layout == (1, 1):
+                return 0
+            elif partitioner.layout == (2, 2):
+                if partitioner.tile.on_tile_bottom(rank):
+                    if partitioner.tile.on_tile_left(rank):
+                        return 0  # "00"
+                    if partitioner.tile.on_tile_right(rank):
+                        return 1  # "10"
+                if partitioner.tile.on_tile_top(rank):
+                    if partitioner.tile.on_tile_left(rank):
+                        return 2  # "01"
+                    if partitioner.tile.on_tile_right(rank):
+                        return 3  # "11"
+            else:
+                if partitioner.tile.on_tile_bottom(rank):
+                    if partitioner.tile.on_tile_left(rank):
+                        return 0  # "00"
+                    if partitioner.tile.on_tile_right(rank):
+                        return 2  # "20"
+                    else:
+                        return 1  # "10"
+                if partitioner.tile.on_tile_top(rank):
+                    if partitioner.tile.on_tile_left(rank):
+                        return 6  # "02"
+                    if partitioner.tile.on_tile_right(rank):
+                        return 8  # "22"
+                    else:
+                        return 7  # "12"
+                else:
+                    if partitioner.tile.on_tile_left(rank):
+                        return 3  # "01"
+                    if partitioner.tile.on_tile_right(rank):
+                        return 5  # "21"
+                    else:
+                        return 4  # "11"
+        else:
+            return rank % partitioner.tile.total_ranks
+        raise RuntimeError("Illegal partition specified")
+
     def get_decomposition_info_from_comm(
         self, communicator: Optional[CubedSphereCommunicator]
     ) -> Tuple[int, int, int, bool]:
@@ -85,12 +125,10 @@ class CompilationConfig:
             rank = communicator.rank
             size = communicator.partitioner.total_ranks
             if self.use_minimal_caching:
-                equivalent_compiling_rank = compiling_equivalent(
+                equivalent_compiling_rank = self.determine_compiling_equivalent(
                     rank, communicator.partitioner
                 )
-                is_compiling = determine_rank_is_compiling(
-                    rank, communicator.partitioner
-                )
+                is_compiling = determine_rank_is_compiling(rank, size)
             else:
                 equivalent_compiling_rank = rank
                 is_compiling = True

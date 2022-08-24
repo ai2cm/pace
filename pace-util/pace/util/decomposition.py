@@ -5,66 +5,22 @@ from typing import TYPE_CHECKING, Tuple
 
 from gt4py import config as gt_config
 
-from pace.util import TilePartitioner
-from pace.util.partitioner import CubedSpherePartitioner
-
 
 if TYPE_CHECKING:
     from pace.dsl.stencil_config import CompilationConfig
 
 
-def compiling_equivalent(rank: int, partitioner: TilePartitioner):
-    """From my rank & the current partitioner we determine which
-    rank we should read from"""
-    if partitioner.layout == (1, 1):
-        return 0
-    if partitioner.layout == (2, 2):
-        if partitioner.tile.on_tile_bottom(rank):
-            if partitioner.tile.on_tile_left(rank):
-                return 0  # "00"
-            if partitioner.tile.on_tile_right(rank):
-                return 1  # "10"
-        if partitioner.tile.on_tile_top(rank):
-            if partitioner.tile.on_tile_left(rank):
-                return 2  # "01"
-            if partitioner.tile.on_tile_right(rank):
-                return 3  # "11"
-    else:
-        if partitioner.tile.on_tile_bottom(rank):
-            if partitioner.tile.on_tile_left(rank):
-                return 0  # "00"
-            if partitioner.tile.on_tile_right(rank):
-                return 2  # "20"
-            else:
-                return 1  # "10"
-        if partitioner.tile.on_tile_top(rank):
-            if partitioner.tile.on_tile_left(rank):
-                return 6  # "02"
-            if partitioner.tile.on_tile_right(rank):
-                return 8  # "22"
-            else:
-                return 7  # "12"
-        else:
-            if partitioner.tile.on_tile_left(rank):
-                return 3  # "01"
-            if partitioner.tile.on_tile_right(rank):
-                return 5  # "21"
-            else:
-                return 4  # "11"
-
-
-def determine_rank_is_compiling(rank: int, partitioner: CubedSpherePartitioner) -> bool:
+def determine_rank_is_compiling(rank: int, size: int) -> bool:
     """Determines if a rank needs to be a compiling one
 
     Args:
         rank (int): current rank
-        partitioner (CubedSpherePartitioner): partitioner object
+        size (int): size of the communicator
 
     Returns:
         bool: True if the rank is a compiling one
     """
-    top_tile_equivalent = compiling_equivalent(rank, partitioner)
-    return rank == top_tile_equivalent
+    return rank < (size / 6)
 
 
 def block_waiting_for_compilation(comm, compilation_config: CompilationConfig) -> None:

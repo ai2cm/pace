@@ -239,6 +239,22 @@ class Driver:
                     exit(0)
 
                 setattr(self, "step_all", exit_function)
+            elif self.config.stencil_config.compilation_config.run_mode == RunMode.Run:
+
+                def exit_instead_of_build(self):
+                    stencil_class = (
+                        None if self.options.rebuild else self.backend.load()
+                    )
+                    if stencil_class is None:
+                        raise RuntimeError(
+                            "Stencil needs to be compiled first in run mode, exiting"
+                        )
+                    return stencil_class
+
+                from gt4py.stencil_builder import StencilBuilder
+
+                setattr(StencilBuilder, "build", exit_instead_of_build)
+
             self.config.stencil_config.dace_config = DaceConfig(
                 communicator=communicator,
                 backend=self.config.stencil_config.backend,

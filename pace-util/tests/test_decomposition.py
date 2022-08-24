@@ -30,7 +30,7 @@ def test_determine_rank_is_compiling(
     layout: Tuple[int, int], rank: int, is_compiling: bool
 ):
     partitioner = CubedSpherePartitioner(TilePartitioner(layout))
-    assert determine_rank_is_compiling(rank, partitioner) == is_compiling
+    assert determine_rank_is_compiling(rank, partitioner.total_ranks) == is_compiling
 
 
 def test_check_cached_path_exists():
