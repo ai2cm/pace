@@ -26,6 +26,8 @@ CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 
 VOLUMES ?=
 
+### Testing variables
+
 FV3=fv3core
 RUN_FLAGS ?=--rm
 ifeq ("$(CONTAINER_CMD)","")
