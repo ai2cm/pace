@@ -336,21 +336,6 @@ class FrozenStencil(SDFGConvertible):
         # If we orchestrate, move the compilation at call time to make sure
         # disable_codegen do not lead to call to uncompiled stencils, which fails
         # silently
-
-        if stencil_config.compilation_config.run_mode == RunMode.Run:
-
-            def exit_instead_of_build(self):
-                stencil_class = None if self.options.rebuild else self.backend.load()
-                if stencil_class is None:
-                    raise RuntimeError(
-                        "Stencil needs to be compiled first in run mode, exiting"
-                    )
-                return stencil_class
-
-            from gt4py.stencil_builder import StencilBuilder
-
-            StencilBuilder.build = exit_instead_of_build
-
         if self.stencil_config.dace_config.is_dace_orchestrated():
             self.stencil_object = gtscript.lazy_stencil(
                 definition=func,
@@ -363,6 +348,7 @@ class FrozenStencil(SDFGConvertible):
             if (
                 compilation_config.use_minimal_caching
                 and not compilation_config.is_compiling
+                and compilation_config.run_mode != RunMode.Run
             ):
                 block_waiting_for_compilation(MPI.COMM_WORLD, compilation_config)
 
@@ -376,6 +362,7 @@ class FrozenStencil(SDFGConvertible):
             if (
                 compilation_config.use_minimal_caching
                 and compilation_config.is_compiling
+                and compilation_config.run_mode != RunMode.Run
             ):
                 unblock_waiting_tiles(MPI.COMM_WORLD)
 
