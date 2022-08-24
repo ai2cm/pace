@@ -25,18 +25,10 @@ DEV ?=n
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 
 VOLUMES ?=
-ifeq ($(DEV),y)
-	VOLUMES += -v $(ROOT_DIR):/pace
-else
-	VOLUMES += -v $(ROOT_DIR)/test_data:/pace/test_data
-endif
-
-### testing variables
 
 FV3=fv3core
 CONTAINER_ENGINE ?=docker
 RUN_FLAGS ?=--rm
-CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
 ifeq ("$(CONTAINER_CMD)","")
 	PACE_PATH?=$(ROOT_DIR)
 else
@@ -47,6 +39,12 @@ ifeq ("$(CONTAINER_CMD)","")
 else
 	EXPERIMENT_DATA_RUN=$(PACE_PATH)/test_data/$(FORTRAN_SERIALIZED_DATA_VERSION)/$(EXPERIMENT)
 endif
+ifeq ($(DEV),y)
+	VOLUMES += -v $(ROOT_DIR):/pace
+else
+	VOLUMES += -v $(EXPERIMENT_DATA):$(EXPERIMENT_DATA_RUN)
+endif
+CONTAINER_CMD?=$(CONTAINER_ENGINE) run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
 NUM_RANKS ?=6
 MPIRUN_ARGS ?=--oversubscribe
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) $(MPIRUN_ARGS)
