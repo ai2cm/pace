@@ -18,4 +18,4 @@ else
     export VOLUMES="-v ${SCRIPT_DIR}/../:/.jenkins"
 fi
 
-make savepoint_tests
+DEV=n make savepoint_tests
