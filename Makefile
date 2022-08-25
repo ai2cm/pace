@@ -21,7 +21,7 @@ DOCKER_BUILDKIT=1
 SHELL=/bin/bash
 CWD=$(shell pwd)
 PULL ?=True
-DEV ?=n
+DEV ?=y
 CHECK_CHANGED_SCRIPT=$(CWD)/changed_from_main.py
 CONTAINER_CMD?=docker
 
