@@ -17,11 +17,19 @@ class Timer:
         self._accumulated_time = {}
         self._hit_count = {}
         self._enabled = True
-        self._time_CUDA = True
+        # Check if we have CUDA device and it's ready to
+        # perform tasks
+        self._can_time_CUDA = False
+        if cp:
+            try:
+                cp.cuda.Device(0).synchronize()
+                self._can_time_CUDA = True
+            except:
+                pass
 
     def start(self, name: str):
         """Start timing a given named operation."""
-        if self._time_CUDA and cp:
+        if self._can_time_CUDA:
             cp.cuda.Device(0).synchronize()
             cp.cuda.nvtx.RangePush(name)
         if self._enabled:
@@ -34,7 +42,7 @@ class Timer:
         """Stop timing a given named operation, add the time elapsed to
         accumulated timing and increase the hit count.
         """
-        if self._time_CUDA and cp:
+        if self._can_time_CUDA:
             cp.cuda.Device(0).synchronize()
             cp.cuda.nvtx.RangePop()
         if self._enabled:
