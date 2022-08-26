@@ -38,29 +38,49 @@ def open_restart(
     Returns:
         state: model state dictionary
     """
+
+
+    print("I'm in open_restart")
+
+    print("tracer_properties:", tracer_properties)
     if tracer_properties is None:
         restart_properties = RESTART_PROPERTIES
     else:
         restart_properties = {**tracer_properties, **RESTART_PROPERTIES}
+    
     rank = communicator.rank
     tile_index = communicator.partitioner.tile_index(rank)
+    print(rank, tile_index)
     state = {}
+    print("State keys:", state.keys())
     if communicator.tile.rank == constants.ROOT_RANK:
         for file in restart_files(dirname, tile_index, label):
+            print("I'm reading this file:", file.name)
+
+            print("I'm updating state.")
             state.update(
                 load_partial_state_from_restart_file(
                     file, restart_properties, only_names=only_names
                 )
             )
+            print("I've updated state")
+
+        print("I'm getting coupler_res_filename")
         coupler_res_filename = get_coupler_res_filename(dirname, label)
         if filesystem.is_file(coupler_res_filename):
             if only_names is None or "time" in only_names:
                 with filesystem.open(coupler_res_filename, "r") as f:
                     state["time"] = io.get_current_date_from_coupler_res(f)
+                    print("State time:", state["time"])
+    
+    print("Scattering state to tiles.")
     if to_state is None:
         state = communicator.tile.scatter_state(state)
     else:
         state = communicator.tile.scatter_state(state, recv_state=to_state)
+
+    print("I'm exiting open_restart()")
+
     return state
 
 

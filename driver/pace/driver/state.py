@@ -197,14 +197,28 @@ def _overwrite_state_from_fortran_restart(
     Returns:
         state: new state filled with restart files
     """
+    print("Now in _overwrite_state_from_fortran_restart.")
+
+    print("Now going to run _driver_state_to_dict")
     state_dict = _driver_state_to_dict(
         state, restart_file_prefix, is_gpu_backend
     )  # do we need to transform state?
-    state = pace.util.open_restart(path, communicator, to_state=state_dict)
+    print("Now out of _driver_state_to_dict")
+    #print("state_dict content keys:", state_dict.keys())
 
+
+    print("Now starting pace.util.open_restart()")
+    state_dict = pace.util.open_restart(path, communicator, to_state=state_dict)
+    print("I've exited pace.util.open_restart")
+    #print("state_dict keys:", state_dict.keys())
+
+    print("Now starting _dict_state_to_driver_state")
     state = _dict_state_to_driver_state(
         state_dict, state, restart_file_prefix, is_gpu_backend
     )  # if we needed to transform state
+    print("Now done with _dict_state_to_driver_state.")
+
+    print("Finished with _overwrite_state_from_fortran_restart.")
 
     return state
 
@@ -220,19 +234,39 @@ def _driver_state_to_dict(
     Takes a Pace driver state
     and returns a dict of state quantities with their Fortran names
     """
+
+    print("Now in _driver_state_to_dict")
+
     dict_state = {}
+    tmp = type(driver_state)
+    print("Type of driver state:", tmp)
     for _field in fields(type(driver_state)):
         if "units" in _field.metadata.keys():
-            fortran_name = RESTART_PROPERTIES[_field.name]["restart_name"]
+            #print("Field name:", _field.name)
+            # for key in RESTART_PROPERTIES.keys():
+            #     fname = RESTART_PROPERTIES[key]["restart_name"]
+            #     if fname == _field.name:
+            #         print(fname, key)
+            #         dict_state[fname] = driver_state.__dict__[_field.name].data[:]
+                #     fortran_name = key
+                    #dict_state[fortran_name] = driver_state.__dict__[_field.name].data[:]
+                
+                # else:
+                #     fortran_name = "NOT PRESENT IN _PROPERTIES.PY"
+
+            # print("Fortran name:", fortran_name)                    
+
+            #fortran_name = RESTART_PROPERTIES[_field.name]["restart_name"]
+            #print("Fortran_name:", fortran_name)
             if is_gpu_backend:
                 if "phy" in restart_file_prefix:
-                    dict_state[fortran_name] = driver_state.__dict__[_field.name][:]
+                    dict_state[_field.name] = driver_state.__dict__[_field.name][:]
                 else:
-                    dict_state[fortran_name] = driver_state.__dict__[_field.name].data[
+                    dict_state[_field.name] = driver_state.__dict__[_field.name].data[
                         :
                     ]
             else:
-                dict_state[fortran_name] = driver_state.__dict__[_field.name].data[:]
+                dict_state[_field.name] = driver_state.__dict__[_field.name].data[:]
 
     return dict_state
 
@@ -250,18 +284,25 @@ def _dict_state_to_driver_state(
     and populates the driver state with quantities from the dict.
     """
 
+    print("Now in _dict_state_to_driver_state")
+
+    tmp = driver_state # these are just empty fields to be filled
+    tmp = type(driver_state) # just says it's dictionary
+    print("type of driver state:", tmp) 
+
     for _field in fields(type(driver_state)):
         if "units" in _field.metadata.keys():
-            fortran_name = RESTART_PROPERTIES[_field.name]["restart_name"]
+            print("Field:", _field.name)
+            #fortran_name = RESTART_PROPERTIES[_field.name]["restart_name"]
             if is_gpu_backend:
                 if "phy" in restart_file_prefix:
-                    driver_state.__dict__[_field.name][:] = fortran_state[fortran_name]
+                    driver_state.__dict__[_field.name][:] = fortran_state[_field.name]
                 else:
                     driver_state.__dict__[_field.name].data[:] = fortran_state[
-                        fortran_name
+                        _field.name
                     ]
             else:
-                driver_state.__dict__[_field.name].data[:] = fortran_state[fortran_name]
+                driver_state.__dict__[_field.name].data[:] = fortran_state[_field.name]
 
     return driver_state
 
@@ -281,7 +322,11 @@ def _restart_driver_state(
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
     backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
+
+    print("Fortran data flag:", fortran_data)
+
     if fortran_data is True:
+        print("Now going into _overwrite_state_from_fortran_restart for dycore")
         dycore_state = _overwrite_state_from_fortran_restart(
             path,
             rank,
@@ -290,6 +335,7 @@ def _restart_driver_state(
             "restart_dycore_state",
             backend_uses_gpu,
         )
+        print("Now out of _overwrite_state_from_fortran_restart for dycore")
     else:
         dycore_state = _overwrite_state_from_restart(
             path,
@@ -299,10 +345,13 @@ def _restart_driver_state(
             backend_uses_gpu,
         )
     active_packages = ["microphysics"]
+    
     physics_state = fv3gfs.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages
-    )
+    )    
+
     if fortran_data is True:
+        print("Now going into _overwrite_state_from_fortran_restart for MP (I think?)")
         dycore_state = _overwrite_state_from_fortran_restart(
             path,
             rank,
@@ -311,6 +360,7 @@ def _restart_driver_state(
             "restart_dycore_state",
             backend_uses_gpu,
         )
+        print("Now out of _overwrite_state_from_fortran_restart for MP (I think?)")
     else:
         physics_state = _overwrite_state_from_restart(
             path,
@@ -319,10 +369,13 @@ def _restart_driver_state(
             "restart_physics_state",
             backend_uses_gpu,
         )
+
     physics_state.__post_init__(quantity_factory, active_packages)
     tendency_state = TendencyState.init_zeros(
         quantity_factory=quantity_factory,
     )
+
+    print("Returning DriverState")
 
     return DriverState(
         dycore_state=dycore_state,
