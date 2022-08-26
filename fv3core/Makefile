@@ -4,7 +4,6 @@ GCR_URL = us.gcr.io/vcm-ml
 EXPERIMENT ?=c12_6ranks_standard
 SHELL=/bin/bash
 CWD=$(shell pwd)
-PULL ?=True
 DEV ?=y
 NUM_RANKS ?=6
 VOLUMES ?=
