@@ -18,9 +18,9 @@ from pace.dsl.dace.build import (
     write_build_info,
 )
 from pace.dsl.dace.dace_config import (
+    TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE,
     DaceConfig,
     DaCeOrchestration,
-    TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE,
 )
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
 from pace.dsl.dace.utils import DaCeProgress, count_memory, sdfg_nan_checker

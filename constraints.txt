@@ -4,37 +4,6 @@
 #
 #    pip-compile --output-file=constraints.txt driver/requirements.txt dsl/requirements.txt external/gt4py/setup.cfg fv3core/requirements.txt fv3gfs-physics/requirements.txt pace-util/requirements.txt requirements_dev.txt requirements_docs.txt requirements_lint.txt
 #
--e file:///scratch/snx3000/fdeconic/pace/fv3core
-    # via
-    #   -r requirements_dev.txt
-    #   pace-driver
--e file:///scratch/snx3000/fdeconic/pace/fv3gfs-physics
-    # via
-    #   -r requirements_dev.txt
-    #   pace-driver
--e file:///scratch/snx3000/fdeconic/pace/external/gt4py
-    # via
-    #   -r requirements_dev.txt
-    #   fv3core
-    #   fv3gfs-physics
-    #   pace-dsl
-    #   pace-stencils
--e file:///scratch/snx3000/fdeconic/pace/driver
-    # via -r requirements_dev.txt
--e file:///scratch/snx3000/fdeconic/pace/dsl
-    # via -r requirements_dev.txt
--e file:///scratch/snx3000/fdeconic/pace/stencils
-    # via
-    #   -r requirements_dev.txt
-    #   pace-driver
--e file:///scratch/snx3000/fdeconic/pace/pace-util
-    # via
-    #   -r requirements_dev.txt
-    #   fv3core
-    #   fv3gfs-physics
-    #   pace-driver
-    #   pace-dsl
-    #   pace-stencils
 aenum==3.1.11
     # via dace
 aiohttp==3.7.4.post0

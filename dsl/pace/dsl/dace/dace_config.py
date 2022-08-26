@@ -6,6 +6,7 @@ import dace.config
 from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.communicator import CubedSphereCommunicator
 
+
 TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE = True
 
 
