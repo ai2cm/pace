@@ -2,11 +2,8 @@ import warnings
 from timeit import default_timer as time
 from typing import Mapping
 
-
-try:
-    import cupy as cp
-except ModuleNotFoundError:
-    cp = None
+from ._optional_imports import cupy as cp
+from .utils import GPU_AVAILABLE
 
 
 class Timer:
@@ -19,13 +16,7 @@ class Timer:
         self._enabled = True
         # Check if we have CUDA device and it's ready to
         # perform tasks
-        self._can_time_CUDA = False
-        if cp:
-            try:
-                cp.cuda.Device(0).synchronize()
-                self._can_time_CUDA = True
-            except:
-                pass
+        self._can_time_CUDA = GPU_AVAILABLE
 
     def start(self, name: str):
         """Start timing a given named operation."""
