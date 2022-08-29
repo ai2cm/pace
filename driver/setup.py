@@ -6,7 +6,7 @@ from setuptools import find_namespace_packages, setup
 setup_requirements: List[str] = []
 
 requirements = [
-    "util",
+    "pace-util",
     "fv3core",
     "fv3gfs-physics",
     "pace-stencils",
