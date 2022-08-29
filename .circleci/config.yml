@@ -156,7 +156,7 @@ jobs:
           paths:
             - driver/venv
             - /root/.cache/pip
-
+            
   test_main:
     docker:
       - image: cimg/python:3.8
@@ -193,6 +193,26 @@ jobs:
           paths:
             - venv
 
+  test_notebooks:
+    docker:
+      - image: gcr.io/vcm-ml/pace_notebook_examples
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Test grid generation
+          command: jupyter run grid_generation.ipynb
+      - run:
+          name: Test initial condition definition
+          command: jupyter run initial_condition_definition.ipynb
+      - run:
+          name: Test stencil definition
+          command: jupyter run stencil_definition.ipynb
+      - run:
+          name: Test tracer advection
+          command: jupyter run tracer_advection.ipynb
+
+
 workflows:
   version: 2
   tagged-build:
@@ -220,6 +240,10 @@ workflows:
             tags:
               only: /^v.*/
       - test_driver:
+          filters:
+            tags:
+              only: /^v.*/
+      - test_notebooks:
           filters:
             tags:
               only: /^v.*/
