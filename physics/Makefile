@@ -15,7 +15,7 @@ MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) $(MPIRUN_ARGS)
 
 EXPERIMENT ?=c12_6ranks_baroclinic_dycore_microphysics
 TARGET ?= physics
-TEST_DATA_FTP ?=in/put/abc/cosmo/fuo/pace/fv3gfs-physics
+TEST_DATA_FTP ?=in/put/abc/cosmo/fuo/pace/pace-physics
 FV3UTIL_DIR=$(CWD)/../util
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 TEST_DATA_ROOT ?=$(ROOT_DIR)/test_data/

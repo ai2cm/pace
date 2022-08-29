@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Tuple, Union
 import dace
 import dacite
 
-import fv3gfs.physics
 import pace.driver
 import pace.dsl
+import pace.physics
 import pace.stencils
 import pace.util
 import pace.util.grid
@@ -91,8 +91,8 @@ class DriverConfig:
     dycore_config: fv3core.DynamicalCoreConfig = dataclasses.field(
         default_factory=fv3core.DynamicalCoreConfig
     )
-    physics_config: fv3gfs.physics.PhysicsConfig = dataclasses.field(
-        default_factory=fv3gfs.physics.PhysicsConfig
+    physics_config: pace.physics.PhysicsConfig = dataclasses.field(
+        default_factory=pace.physics.PhysicsConfig
     )
     days: int = 0
     hours: int = 0
@@ -153,7 +153,7 @@ class DriverConfig:
 
         if isinstance(kwargs["physics_config"], dict):
             kwargs["physics_config"] = dacite.from_dict(
-                data_class=fv3gfs.physics.PhysicsConfig,
+                data_class=pace.physics.PhysicsConfig,
                 data=kwargs.get("physics_config", {}),
                 config=dacite.Config(strict=True),
             )
@@ -307,7 +307,7 @@ class Driver:
                 state=self.state.dycore_state,
             )
             if not config.dycore_only and not config.disable_step_physics:
-                self.physics = fv3gfs.physics.Physics(
+                self.physics = pace.physics.Physics(
                     stencil_factory=self.stencil_factory,
                     grid_data=self.state.grid_data,
                     namelist=self.config.physics_config,

@@ -2,7 +2,7 @@ import copy
 
 import pace.dsl.gt4py_utils as utils
 import pace.util as util
-from fv3gfs.physics.stencils.physics import Physics, PhysicsState
+from pace.physics.stencils.physics import Physics, PhysicsState
 from pace.stencils import update_atmos_state
 from pace.stencils.testing.translate_physics import TranslatePhysicsFortranData2Py
 

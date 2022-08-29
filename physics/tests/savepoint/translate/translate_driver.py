@@ -1,6 +1,5 @@
 import pace.dsl
 import pace.util
-from fv3gfs.physics import PhysicsConfig, PhysicsState
 from pace.driver.run import Driver, DriverConfig
 from pace.driver.state import TendencyState
 from pace.fv3core._config import DynamicalCoreConfig
@@ -9,6 +8,7 @@ from pace.fv3core._config import DynamicalCoreConfig
 # but also, driver tests should not be in physics
 from pace.fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from pace.fv3core.testing.validation import enable_selective_validation
+from pace.physics import PhysicsConfig, PhysicsState
 from pace.util.namelist import Namelist
 
 

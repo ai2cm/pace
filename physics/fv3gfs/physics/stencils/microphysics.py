@@ -10,8 +10,8 @@ except ModuleNotFoundError:
     cp = None
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval, sqrt
 
-import fv3gfs.physics.functions.microphysics_funcs as functions
 import pace.dsl.gt4py_utils as utils
+import pace.physics.functions.microphysics_funcs as functions
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory

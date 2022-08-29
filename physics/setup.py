@@ -31,15 +31,15 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
     ],
-    description="fv3gfs-physics is a gt4py-based physical parameterization "
+    description="pace-physics is a gt4py-based physical parameterization "
     "for atmospheric models",
     install_requires=requirements,
     extras_require={},
     license="BSD license",
     long_description=readme,
     include_package_data=True,
-    name="fv3gfs-physics",
-    packages=find_namespace_packages(include=["fv3gfs.*"]),
+    name="pace-physics",
+    packages=find_namespace_packages(include=["pace.*"]),
     setup_requires=[],
     test_suite="tests",
     tests_require=test_requirements,

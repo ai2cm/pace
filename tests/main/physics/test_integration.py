@@ -3,8 +3,8 @@ from datetime import timedelta
 
 import numpy as np
 
-import fv3gfs.physics
 import pace.dsl
+import pace.physics
 import pace.util
 import pace.util.grid
 from pace.dsl.stencil_config import CompilationConfig
@@ -14,7 +14,7 @@ from pace.stencils.testing import assert_same_temporaries, copy_temporaries
 def setup_physics():
     backend = "numpy"
     layout = (1, 1)
-    physics_config = fv3gfs.physics.PhysicsConfig(
+    physics_config = pace.physics.PhysicsConfig(
         dt_atmos=225, hydrostatic=False, npx=13, npy=13, npz=79, nwat=6, do_qa=True
     )
     mpi_comm = pace.util.NullComm(
@@ -60,14 +60,14 @@ def setup_physics():
         communicator=communicator,
     )
     grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-    physics = fv3gfs.physics.Physics(
+    physics = pace.physics.Physics(
         stencil_factory, grid_data, physics_config, active_packages=["microphysics"]
     )
-    physics_state = fv3gfs.physics.PhysicsState.init_zeros(
+    physics_state = pace.physics.PhysicsState.init_zeros(
         quantity_factory, active_packages=["microphysics"]
     )
     random = np.random.RandomState(0)
-    for field in fields(fv3gfs.physics.PhysicsState):
+    for field in fields(pace.physics.PhysicsState):
         array = getattr(physics_state, field.name)
         # check that it's a storage this way, because Field is not a class
         if hasattr(array, "data"):

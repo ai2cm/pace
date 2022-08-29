@@ -6,8 +6,8 @@ import xarray as xr
 
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
-from fv3gfs.physics.stencils.microphysics import MicrophysicsState
 from pace.dsl.typing import FloatField
+from pace.physics.stencils.microphysics import MicrophysicsState
 
 
 @dataclass()

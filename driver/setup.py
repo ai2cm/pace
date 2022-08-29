@@ -8,7 +8,7 @@ setup_requirements: List[str] = []
 requirements = [
     "pace-util",
     "pace-fv3core",
-    "fv3gfs-physics",
+    "pace-physics",
     "pace-stencils",
     "dacite",
     "pyyaml",
