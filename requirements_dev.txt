@@ -2,7 +2,7 @@ pytest
 pytest-subtests
 pytest-cov
 mpi4py
-git+https://github.com/spcl/dace.git@v0.14rc2
+dace>=0.14
 -e external/gt4py
 -e pace-util
 -e stencils

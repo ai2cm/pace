@@ -2,6 +2,9 @@ import warnings
 from timeit import default_timer as time
 from typing import Mapping
 
+from ._optional_imports import cupy as cp
+from .utils import GPU_AVAILABLE
+
 
 class Timer:
     """Class to accumulate timings for named operations."""
@@ -11,9 +14,15 @@ class Timer:
         self._accumulated_time = {}
         self._hit_count = {}
         self._enabled = True
+        # Check if we have CUDA device and it's ready to
+        # perform tasks
+        self._can_time_CUDA = GPU_AVAILABLE
 
     def start(self, name: str):
         """Start timing a given named operation."""
+        if self._can_time_CUDA:
+            cp.cuda.Device(0).synchronize()
+            cp.cuda.nvtx.RangePush(name)
         if self._enabled:
             if name in self._clock_starts:
                 raise ValueError(f"clock already started for '{name}'")
@@ -24,6 +33,9 @@ class Timer:
         """Stop timing a given named operation, add the time elapsed to
         accumulated timing and increase the hit count.
         """
+        if self._can_time_CUDA:
+            cp.cuda.Device(0).synchronize()
+            cp.cuda.nvtx.RangePop()
         if self._enabled:
             if name not in self._accumulated_time:
                 self._accumulated_time[name] = time() - self._clock_starts.pop(name)

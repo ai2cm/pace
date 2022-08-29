@@ -100,7 +100,7 @@ class RiemannSolverC:
 
         def make_storage():
             return utils.make_storage_from_shape(
-                shape, origin, backend=stencil_factory.backend, is_temporary=True
+                shape, origin, backend=stencil_factory.backend
             )
 
         self._dm = make_storage()
