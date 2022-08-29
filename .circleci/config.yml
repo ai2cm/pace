@@ -201,16 +201,16 @@ jobs:
       - checkout
       - run:
           name: Test grid generation
-          command: jupyter run grid_generation.ipynb
+          command: jupyter run examples/notebooks/grid_generation.ipynb
       - run:
           name: Test initial condition definition
-          command: jupyter run initial_condition_definition.ipynb
+          command: jupyter run examples/notebooks/initial_condition_definition.ipynb
       - run:
           name: Test stencil definition
-          command: jupyter run stencil_definition.ipynb
+          command: jupyter run examples/notebooks/stencil_definition.ipynb
       - run:
           name: Test tracer advection
-          command: jupyter run tracer_advection.ipynb
+          command: jupyter run examples/notebooks/tracer_advection.ipynb
 
 
 workflows:
