@@ -7,7 +7,10 @@ from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.communicator import CubedSphereCommunicator
 
 
-TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE = True
+# TODO (floriand): Temporary deactivate the distributed compiled
+# until we deal with the Grid data inlining during orchestration
+# See github issue #301
+DEACTIVATE_DISTRIBUTED_DACE_COMPILE = True
 
 
 class DaCeOrchestration(enum.Enum):
@@ -142,7 +145,7 @@ class DaceConfig:
         if communicator:
             self.my_rank = communicator.rank
             self.rank_size = communicator.comm.Get_size()
-            if TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
+            if DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
                 self.target_rank = communicator.rank
             else:
                 self.target_rank = get_target_rank(
@@ -178,7 +181,7 @@ class DaceConfig:
     def get_orchestrate(self) -> DaCeOrchestration:
         return self._orchestrate
 
-    def sync_debug(self) -> bool:
+    def get_sync_debug(self) -> bool:
         return dace.config.Config.get("compiler", "cuda", "syncdebug")
 
     def as_dict(self) -> Dict[str, Any]:

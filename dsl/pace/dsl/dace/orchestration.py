@@ -18,7 +18,7 @@ from pace.dsl.dace.build import (
     write_build_info,
 )
 from pace.dsl.dace.dace_config import (
-    TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE,
+    DEACTIVATE_DISTRIBUTED_DACE_COMPILE,
     DaceConfig,
     DaCeOrchestration,
 )
@@ -111,7 +111,7 @@ def _build_sdfg(
     daceprog: DaceProgram, sdfg: dace.SDFG, config: DaceConfig, args, kwargs
 ):
     """Build the .so out of the SDFG on the top tile ranks only"""
-    if TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
+    if DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
         is_compiling = True
     else:
         is_compiling = determine_compiling_ranks(config)
@@ -153,7 +153,8 @@ def _build_sdfg(
         with DaCeProgress(config, "Simplify (2/2)"):
             sdfg.simplify(validate=False, verbose=True)
 
-        # Remove all Persistent memory
+        # Move all memory that can be into a pool to lower memory pressure.
+        # Change Persistent memory (sub-SDFG) into Scope and flag it.
         with DaCeProgress(config, "Turn Persistents into pooled Scope"):
             memory_pooled = 0.0
             for _sd, _aname, arr in sdfg.arrays_recursive():
@@ -174,7 +175,7 @@ def _build_sdfg(
 
         # Set of debug tools inserted in the SDFG when dace.conf "syncdebug"
         # is turned on.
-        if config.sync_debug():
+        if config.get_sync_debug():
             with DaCeProgress(config, "Debug tooling (NaNChecker)"):
                 sdfg_nan_checker(sdfg)
 
@@ -201,7 +202,7 @@ def _build_sdfg(
     elif config.get_orchestrate() == DaCeOrchestration.BuildAndRun:
         MPI.COMM_WORLD.Barrier()
         if is_compiling:
-            if not TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
+            if not DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
                 unblock_waiting_tiles(MPI.COMM_WORLD, sdfg.build_folder)
                 DaCeProgress.log(
                     DaCeProgress.default_prefix(config), "Build folder exchanged."
@@ -259,7 +260,7 @@ def _parse_sdfg(
     """
     sdfg_path = get_sdfg_path(daceprog.name, config)
     if sdfg_path is None:
-        if TEMPORARY_DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
+        if DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
             is_compiling = True
         else:
             is_compiling = determine_compiling_ranks(config)

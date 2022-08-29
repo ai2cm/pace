@@ -131,7 +131,7 @@ def sdfg_nan_checker(sdfg: dace.SDFG):
     logger.info(f"Added {len(checks)} NaN checks")
 
 
-def is_ref(sd: dace.sdfg.SDFG, aname: str):
+def _is_ref(sd: dace.sdfg.SDFG, aname: str):
     found = False
     for node, state in sd.all_nodes_recursive():
         if not isinstance(state, dace.sdfg.SDFGState):
@@ -171,7 +171,7 @@ def count_memory(sdfg: dace.sdfg.SDFG, detail_report=False) -> str:
 
     for sd, aname, arr in sdfg.arrays_recursive():
         array_size_in_bytes = arr.total_size * arr.dtype.bytes
-        ref = is_ref(sd, aname)
+        ref = _is_ref(sd, aname)
 
         if sd is not sdfg and arr.transient:
             if arr.pool:
