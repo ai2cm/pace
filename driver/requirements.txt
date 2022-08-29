@@ -7,3 +7,4 @@ numpy
 netCDF4
 xarray
 zarr
+dace>=0.14

@@ -76,7 +76,7 @@ DO_NSYS_RUN="$7"
 
 # get dependencies
 cd $FV3CORE_DIR
-make update_submodules_venv
+git submodule update --init
 
 
 # set up the virtual environment

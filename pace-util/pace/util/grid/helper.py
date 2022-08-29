@@ -69,90 +69,9 @@ class HorizontalGridData:
     edge_s: FloatFieldI
     edge_n: FloatFieldI
 
-
-@dataclasses.dataclass
-class VerticalGridData:
-    """
-    Terms defining the vertical grid.
-
-    Eulerian vertical grid is defined by p = ak + bk * p_ref
-    """
-
-    # TODO: make these non-optional, make FloatFieldK a true type and use it
-    ptop: float
-    ks: int
-    ak: Optional[Any] = None
-    bk: Optional[Any] = None
-    p_ref: Optional[Any] = None
-    """
-    reference pressure (Pa) used to define pressure at vertical interfaces,
-    where p = ak + bk * p_ref
-    ptop is the top of the atmosphere and ks is the lowest index (highest layer) for
-    which rayleigh friction
-
-    """
-
-
-@dataclasses.dataclass(frozen=True)
-class ContravariantGridData:
-    """
-    Grid variables used for converting vectors from covariant to
-    contravariant components.
-    """
-
-    cosa: FloatFieldIJ
-    cosa_u: FloatFieldIJ
-    cosa_v: FloatFieldIJ
-    cosa_s: FloatFieldIJ
-    sina_u: FloatFieldIJ
-    sina_v: FloatFieldIJ
-    rsina: FloatFieldIJ
-    rsin_u: FloatFieldIJ
-    rsin_v: FloatFieldIJ
-    rsin2: FloatFieldIJ
-
-
-@dataclasses.dataclass(frozen=True)
-class AngleGridData:
-    """
-    sin and cos of certain angles used in metric calculations.
-
-    Corresponds in the fortran code to sin_sg and cos_sg.
-    """
-
-    sin_sg1: FloatFieldIJ
-    sin_sg2: FloatFieldIJ
-    sin_sg3: FloatFieldIJ
-    sin_sg4: FloatFieldIJ
-    cos_sg1: FloatFieldIJ
-    cos_sg2: FloatFieldIJ
-    cos_sg3: FloatFieldIJ
-    cos_sg4: FloatFieldIJ
-
-
-class GridData:
-    # TODO: add docstrings to remaining properties
-
-    def __init__(
-        self,
-        horizontal_data: HorizontalGridData,
-        vertical_data: VerticalGridData,
-        contravariant_data: ContravariantGridData,
-        angle_data: AngleGridData,
-    ):
-        self._horizontal_data = horizontal_data
-        self._vertical_data = vertical_data
-        self._contravariant_data = contravariant_data
-        self._angle_data = angle_data
-
     @classmethod
-    def new_from_metric_terms(cls, metric_terms: MetricTerms):
-        edge_n = metric_terms.edge_n.storage
-        edge_s = metric_terms.edge_s.storage
-        edge_e = metric_terms.edge_e.storage
-        edge_w = metric_terms.edge_w.storage
-
-        horizontal_data = HorizontalGridData(
+    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "HorizontalGridData":
+        return cls(
             lon=metric_terms.lon.storage,
             lat=metric_terms.lat.storage,
             lon_agrid=metric_terms.lon_agrid.storage,
@@ -177,20 +96,68 @@ class GridData:
             a12=metric_terms.a12.storage,
             a21=metric_terms.a21.storage,
             a22=metric_terms.a22.storage,
-            edge_w=edge_w,
-            edge_e=edge_e,
-            edge_s=edge_s,
-            edge_n=edge_n,
+            edge_w=metric_terms.edge_w.storage,
+            edge_e=metric_terms.edge_e.storage,
+            edge_s=metric_terms.edge_s.storage,
+            edge_n=metric_terms.edge_n.storage,
         )
-        ak = metric_terms.ak.storage
-        bk = metric_terms.bk.storage
-        vertical_data = VerticalGridData(
-            ak=ak,
-            bk=bk,
+
+
+@dataclasses.dataclass
+class VerticalGridData:
+    """
+    Terms defining the vertical grid.
+
+    Eulerian vertical grid is defined by p = ak + bk * p_ref
+    """
+
+    # TODO: make these non-optional, make FloatFieldK a true type and use it
+    ptop: float
+    ks: int
+    ak: Optional[Any] = None
+    bk: Optional[Any] = None
+    p_ref: Optional[Any] = None
+    """
+    reference pressure (Pa) used to define pressure at vertical interfaces,
+    where p = ak + bk * p_ref
+    ptop is the top of the atmosphere and ks is the lowest index (highest layer) for
+    which rayleigh friction
+
+    """
+
+    @classmethod
+    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "VerticalGridData":
+        return cls(
+            ak=metric_terms.ak.storage,
+            bk=metric_terms.bk.storage,
             ptop=metric_terms.ptop,
             ks=metric_terms.ks,
         )
-        contravariant_data = ContravariantGridData(
+
+
+@dataclasses.dataclass(frozen=True)
+class ContravariantGridData:
+    """
+    Grid variables used for converting vectors from covariant to
+    contravariant components.
+    """
+
+    cosa: FloatFieldIJ
+    cosa_u: FloatFieldIJ
+    cosa_v: FloatFieldIJ
+    cosa_s: FloatFieldIJ
+    sina_u: FloatFieldIJ
+    sina_v: FloatFieldIJ
+    rsina: FloatFieldIJ
+    rsin_u: FloatFieldIJ
+    rsin_v: FloatFieldIJ
+    rsin2: FloatFieldIJ
+
+    @classmethod
+    def new_from_metric_terms(
+        cls, metric_terms: MetricTerms
+    ) -> "ContravariantGridData":
+        return cls(
             cosa=metric_terms.cosa.storage,
             cosa_u=metric_terms.cosa_u.storage,
             cosa_v=metric_terms.cosa_v.storage,
@@ -202,7 +169,28 @@ class GridData:
             rsin_v=metric_terms.rsin_v.storage,
             rsin2=metric_terms.rsin2.storage,
         )
-        angle_data = AngleGridData(
+
+
+@dataclasses.dataclass(frozen=True)
+class AngleGridData:
+    """
+    sin and cos of certain angles used in metric calculations.
+
+    Corresponds in the fortran code to sin_sg and cos_sg.
+    """
+
+    sin_sg1: FloatFieldIJ
+    sin_sg2: FloatFieldIJ
+    sin_sg3: FloatFieldIJ
+    sin_sg4: FloatFieldIJ
+    cos_sg1: FloatFieldIJ
+    cos_sg2: FloatFieldIJ
+    cos_sg3: FloatFieldIJ
+    cos_sg4: FloatFieldIJ
+
+    @classmethod
+    def new_from_metric_terms(cls, metric_terms: MetricTerms) -> "AngleGridData":
+        return cls(
             sin_sg1=metric_terms.sin_sg1.storage,
             sin_sg2=metric_terms.sin_sg2.storage,
             sin_sg3=metric_terms.sin_sg3.storage,
@@ -212,6 +200,30 @@ class GridData:
             cos_sg3=metric_terms.cos_sg3.storage,
             cos_sg4=metric_terms.cos_sg4.storage,
         )
+
+
+class GridData:
+    # TODO: add docstrings to remaining properties
+
+    def __init__(
+        self,
+        horizontal_data: HorizontalGridData,
+        vertical_data: VerticalGridData,
+        contravariant_data: ContravariantGridData,
+        angle_data: AngleGridData,
+    ):
+        self._horizontal_data = horizontal_data
+        self._vertical_data = vertical_data
+        self._contravariant_data = contravariant_data
+        self._angle_data = angle_data
+
+    @classmethod
+    def new_from_metric_terms(cls, metric_terms: MetricTerms):
+
+        horizontal_data = HorizontalGridData.new_from_metric_terms(metric_terms)
+        vertical_data = VerticalGridData.new_from_metric_terms(metric_terms)
+        contravariant_data = ContravariantGridData.new_from_metric_terms(metric_terms)
+        angle_data = AngleGridData.new_from_metric_terms(metric_terms)
         return cls(horizontal_data, vertical_data, contravariant_data, angle_data)
 
     @property

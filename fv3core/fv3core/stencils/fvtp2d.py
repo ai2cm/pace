@@ -150,7 +150,6 @@ class FiniteVolumeTransport:
                 idx.max_shape,
                 origin=origin,
                 backend=stencil_factory.backend,
-                is_temporary=False,
             )
 
         self._q_advected_y = make_storage()
