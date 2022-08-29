@@ -8,7 +8,7 @@ digraph {
   pace [shape=box]
   fv3core [shape=oval, label="fv3core"]
   driver [shape=oval, label="driver"]
-  physics [shape=oval, label="fv3gfs-physics"]
+  physics [shape=oval, label="physics"]
   stencils [shape=oval, label="stencils"]
   util [shape=oval, label="util"]
   dsl [shape=oval, label="dsl"]

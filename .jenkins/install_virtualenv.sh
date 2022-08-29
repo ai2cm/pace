@@ -33,7 +33,7 @@ python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/external/gt4py/
 python3 -m pip install ${PACE_DIR}/util/
 python3 -m pip install $wheel_command -c ${PACE_DIR}/constraints.txt -r fv3core/requirements/requirements_base.txt
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/fv3core/
-python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/fv3gfs-physics/
+python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/physics/
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/stencils/
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/dsl/
 python3 -m pip install ${PACE_INSTALL_FLAGS} ${PACE_DIR}/driver/

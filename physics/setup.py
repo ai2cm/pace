@@ -16,7 +16,7 @@ requirements = [
     "xarray",
 ]
 
-test_requirements = ["serialbox"]
+test_requirements = ["pytest"]
 
 setup(
     author="Vulcan Technologies LLC",
@@ -38,13 +38,12 @@ setup(
     license="BSD license",
     long_description=readme,
     include_package_data=True,
-    keywords="fv3gfs-physics",
     name="fv3gfs-physics",
     packages=find_namespace_packages(include=["fv3gfs.*"]),
     setup_requires=[],
     test_suite="tests",
     tests_require=test_requirements,
-    url="https://github.com/VulcanClimateModeling/fv3gfs-physics",
+    url="https://github.com/ai2cm/pace",
     version="0.1.0",
     zip_safe=False,
 )

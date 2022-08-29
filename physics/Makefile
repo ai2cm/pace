@@ -33,10 +33,10 @@ endif
 pace=pace
 PACE_PATH ?=/$(pace)
 TEST_HOST_LOC=$(CWD)/tests
-TEST_RUN_LOC ?=$(PACE_PATH)/fv3gfs-physics/tests
-THRESH_ARGS=--threshold_overrides_file=$(PACE_PATH)/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
-PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(PACE_PATH)/fv3gfs-physics/tests/savepoint
-PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/fv3gfs-physics/tests/savepoint
+TEST_RUN_LOC ?=$(PACE_PATH)/physics/tests
+THRESH_ARGS=--threshold_overrides_file=$(PACE_PATH)/physics/tests/savepoint/translate/overrides/baroclinic.yaml
+PYTEST_SEQUENTIAL=pytest --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) $(PACE_PATH)/physics/tests/savepoint
+PYTEST_PARALLEL=$(MPIRUN_CALL) python -m mpi4py -m pytest --maxfail=1 --data_path=$(TEST_DATA_RUN_LOC) $(TEST_ARGS) $(THRESH_ARGS) -m parallel $(PACE_PATH)/physics/tests/savepoint
 
 build:
 	$(MAKE) -C .. $@
