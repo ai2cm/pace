@@ -1,2 +1,2 @@
 # DaCe
-git+https://github.com/spcl/dace.git@v0.14rc2
+dace>=0.14
