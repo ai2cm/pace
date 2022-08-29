@@ -1,7 +1,7 @@
-import fv3core.stencils.updatedzc as updatedzc
 import pace.dsl
+import pace.fv3core.stencils.updatedzc as updatedzc
 import pace.util
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateUpdateDzC(TranslateDycoreFortranData2Py):

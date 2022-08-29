@@ -24,7 +24,7 @@ repos:
       files: fv3core
       exclude: |
         (?x)^(
-        fv3core/fv3core/stencils/fv_subgridz.py |
+        fv3core/pace/fv3core/stencils/fv_subgridz.py |
         fv3core/tests/conftest.py
         )$
     - id: mypy

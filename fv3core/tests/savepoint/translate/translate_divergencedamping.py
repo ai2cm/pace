@@ -1,9 +1,9 @@
 from typing import Optional
 
-import fv3core.stencils.divergence_damping
 import pace.dsl
 import pace.util
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.stencils.divergence_damping import DivergenceDamping
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
@@ -36,14 +36,12 @@ class TranslateDivergenceDamping(TranslateDycoreFortranData2Py):
             "delpc": {},
         }
         self.max_error = 1.4e-10
-        self.divdamp: Optional[
-            fv3core.stencils.divergence_damping.DivergenceDamping
-        ] = None
+        self.divdamp: Optional[DivergenceDamping] = None
         self.stencil_factory = stencil_factory
         self.namelist = namelist
 
     def compute_from_storage(self, inputs):
-        self.divdamp = fv3core.stencils.divergence_damping.DivergenceDamping(
+        self.divdamp = DivergenceDamping(
             self.stencil_factory,
             self.grid.grid_data,
             self.grid.damping_coefficients,

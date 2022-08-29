@@ -1,14 +1,14 @@
 import pace.dsl
 import pace.util
-from fv3core._config import DynamicalCoreConfig
-
-# TODO physics should not depend on fv3core
-# but also, driver tests should not be in physics
-from fv3core.testing.translate_fvdynamics import TranslateFVDynamics
-from fv3core.testing.validation import enable_selective_validation
 from fv3gfs.physics import PhysicsConfig, PhysicsState
 from pace.driver.run import Driver, DriverConfig
 from pace.driver.state import TendencyState
+from pace.fv3core._config import DynamicalCoreConfig
+
+# TODO physics should not depend on fv3core
+# but also, driver tests should not be in physics
+from pace.fv3core.testing.translate_fvdynamics import TranslateFVDynamics
+from pace.fv3core.testing.validation import enable_selective_validation
 from pace.util.namelist import Namelist
 
 

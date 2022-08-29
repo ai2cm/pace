@@ -9,17 +9,17 @@ from typing import Any, Dict, List, Tuple, Union
 import dace
 import dacite
 
-import fv3core
 import fv3gfs.physics
 import pace.driver
 import pace.dsl
 import pace.stencils
 import pace.util
 import pace.util.grid
-from fv3core.initialization.dycore_state import DycoreState
+from pace import fv3core
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
+from pace.fv3core.initialization.dycore_state import DycoreState
 
 # TODO: move update_atmos_state into pace.driver
 from pace.stencils import update_atmos_state

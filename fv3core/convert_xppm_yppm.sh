@@ -6,10 +6,10 @@
 
 set -e -x
 
-cp fv3core/stencils/xppm.py fv3core/stencils/yppm.py
-cp fv3core/stencils/xtp_u.py fv3core/stencils/ytp_v.py
+cp pace/fv3core/stencils/xppm.py pace/fv3core/stencils/yppm.py
+cp pace/fv3core/stencils/xtp_u.py pace/fv3core/stencils/ytp_v.py
 
-for fname in fv3core/stencils/yppm.py fv3core/stencils/ytp_v.py
+for fname in pace/fv3core/stencils/yppm.py pace/fv3core/stencils/ytp_v.py
 do
     gsed -i 's/ub/vb/g' $fname
     gsed -i 's/dx/dy/g' $fname
@@ -42,16 +42,16 @@ do
     gsed -i 's/\[j_end + 2, :/\[:, j_end + 2/g' $fname
 done
 
-gsed -i 's/i_start/j_start/g' fv3core/stencils/yppm.py
-gsed -i 's/i_end/j_end/g' fv3core/stencils/yppm.py
-gsed -i 's/XPiecewise/YPiecewise/g' fv3core/stencils/yppm.py
-gsed -i 's/u\*/v\*/g' fv3core/stencils/yppm.py
+gsed -i 's/i_start/j_start/g' pace/fv3core/stencils/yppm.py
+gsed -i 's/i_end/j_end/g' pace/fv3core/stencils/yppm.py
+gsed -i 's/XPiecewise/YPiecewise/g' pace/fv3core/stencils/yppm.py
+gsed -i 's/u\*/v\*/g' pace/fv3core/stencils/yppm.py
 
-gsed -i 's/j_start - 1 : j_start + 1, j_start/i_start, j_start - 1 : j_start + 1/g' fv3core/stencils/ytp_v.py
-gsed -i 's/j_start - 1 : j_start + 1, j_end + 1/i_end + 1, j_start - 1 : j_start + 1/g' fv3core/stencils/ytp_v.py
-gsed -i 's/j_end : j_end + 2, j_start/i_start, j_end : j_end + 2/g' fv3core/stencils/ytp_v.py
-gsed -i 's/j_end : j_end + 2, j_end + 1/i_end + 1, j_end : j_end + 2/g' fv3core/stencils/ytp_v.py
-gsed -i 's/j_end, j_start, jord, j_end, j_start/j_end, j_start, jord, i_end, i_start/g' fv3core/stencils/ytp_v.py
-gsed -i 's/xppm/yppm/g' fv3core/stencils/ytp_v.py
+gsed -i 's/j_start - 1 : j_start + 1, j_start/i_start, j_start - 1 : j_start + 1/g' pace/fv3core/stencils/ytp_v.py
+gsed -i 's/j_start - 1 : j_start + 1, j_end + 1/i_end + 1, j_start - 1 : j_start + 1/g' pace/fv3core/stencils/ytp_v.py
+gsed -i 's/j_end : j_end + 2, j_start/i_start, j_end : j_end + 2/g' pace/fv3core/stencils/ytp_v.py
+gsed -i 's/j_end : j_end + 2, j_end + 1/i_end + 1, j_end : j_end + 2/g' pace/fv3core/stencils/ytp_v.py
+gsed -i 's/j_end, j_start, jord, j_end, j_start/j_end, j_start, jord, i_end, i_start/g' pace/fv3core/stencils/ytp_v.py
+gsed -i 's/xppm/yppm/g' pace/fv3core/stencils/ytp_v.py
 
-gsed -i 's/region\[j_start - 1 : j_start + 2, :\], region\[j_end - 1 : j_end + 2, :\]/region\[:, j_start - 1 : j_start + 2\], region\[:, j_end - 1 : j_end + 2\]/g' fv3core/stencils/yppm.py
+gsed -i 's/region\[j_start - 1 : j_start + 2, :\], region\[j_end - 1 : j_end + 2, :\]/region\[:, j_start - 1 : j_start + 2\], region\[:, j_end - 1 : j_end + 2\]/g' pace/fv3core/stencils/yppm.py

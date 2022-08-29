@@ -4,11 +4,11 @@ from typing import Union
 
 import xarray as xr
 
-import fv3core
 import fv3gfs.physics
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
+from pace import fv3core
 from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.grid import DampingCoefficients
 
