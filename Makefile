@@ -97,8 +97,8 @@ dev:
 	DEV=y $(MAKE) enter
 
 test_util:
-	if [ $(shell $(CHECK_CHANGED_SCRIPT) pace-util) != false ]; then \
-		$(MAKE) -C pace-util test; \
+	if [ $(shell $(CHECK_CHANGED_SCRIPT) util) != false ]; then \
+		$(MAKE) -C util test; \
 	fi
 
 savepoint_tests: build
@@ -112,7 +112,7 @@ savepoint_tests_mpi: build
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
 
-constraints.txt: dsl/requirements.txt fv3core/requirements.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt driver/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg requirements_dev.txt
+constraints.txt: dsl/requirements.txt fv3core/requirements.txt util/requirements.txt fv3gfs-physics/requirements.txt driver/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg requirements_dev.txt
 	pip-compile $^ --output-file constraints.txt
 	sed -i.bak '/\@ git+https/d' constraints.txt
 	rm -f constraints.txt.bak

@@ -12,7 +12,7 @@ requirements = [
     "f90nml>=1.1.0",
     "gt4py",
     "numpy",
-    "pace-util>=0.4.3",
+    "util>=0.4.3",
     "xarray",
 ]
 

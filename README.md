@@ -77,10 +77,10 @@ pytest -v -s --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_micr
 mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./fv3gfs-physics/tests --threshold_overrides_file=/pace/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
-Finally, to test the pace infrastructure utilities (pace-util), you can run the following commands:
+Finally, to test the pace infrastructure utilities (util), you can run the following commands:
 
 ```shell
-cd pace-util
+cd util
 make test
 make test_mpi
 ```

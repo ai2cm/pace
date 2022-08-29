@@ -23,7 +23,7 @@ Before submitting this PR, please make sure:
 - [ ] You have followed the coding standards guidelines established at [Code Review Checklist](https://drive.google.com/file/d/1R0nqOxfYnzaSdoYdt8yjx5J482ETI2Ft/view?usp=sharing).
 - [ ] Docstrings and type hints are added to new and updated routines, as appropriate
 - [ ] All relevant documentation has been updated or added (e.g. README, CONTRIBUTING docs)
-- [ ] For each public change and fix in `pace-util`, HISTORY has been updated
+- [ ] For each public change and fix in `util`, HISTORY has been updated
 - [ ] Unit tests are added or updated for non-stencil code changes
 
 Additionally, if this PR contains code authored by new contributors:

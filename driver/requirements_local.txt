@@ -1,5 +1,5 @@
 -e ../external/gt4py[dace]
--e ../pace-util[zarr]
+-e ../util[zarr]
 -e ../dsl
 -e ../stencils
 -e ../fv3core
