@@ -17,7 +17,7 @@ else
     wheel_command=""
 fi
 
-make update_submodules_venv
+git submodule update --init
 virtualenv_path=$1
 fv3core_dir=`dirname $0`/../
 pace_dir=`dirname $0`/../../
