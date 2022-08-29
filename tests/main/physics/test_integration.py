@@ -75,21 +75,38 @@ def setup_physics():
     return physics, physics_state
 
 
-# TODO: The orchestrated code pushed us to make the dycore stateful for halo
-# exchange. This needs to be reactivated after halo exchange are reverted to
-# not being stateful.
-def test_call_on_same_state_same_dycore_produces_same_temporaries():
+def test_temporaries_are_deterministic():
+    """
+    This is a precursor test to the next one, ensuring that two
+    identically-initialized dycores called on identically-initialized
+    states produce identical temporaries.
+
+    This will fail if there is non-determinism in the initialization,
+    for example from using `empty` instead of `zeros` to initialize data.
+    """
+    physics1, state_1 = setup_physics()
+    physics2, state_2 = setup_physics()
+
+    physics1(state_1, timestep=timedelta(minutes=5).total_seconds())
+    first_temporaries = copy_temporaries(physics1, max_depth=10)
+    assert len(first_temporaries) > 0
+    physics2(state_2, timestep=timedelta(minutes=5).total_seconds())
+    second_temporaries = copy_temporaries(physics2, max_depth=10)
+    assert_same_temporaries(second_temporaries, first_temporaries)
+
+
+def test_call_on_same_state_same_physics_produces_same_temporaries():
     """
     Assuming the precursor test passes, this test indicates whether
-    the dycore retains and re-uses internal state on subsequent calls.
+    the physics retains and re-uses internal state on subsequent calls.
     If it does not, then subsequent calls on identical input should
     produce identical results.
     """
     physics, state_1 = setup_physics()
     _, state_2 = setup_physics()
 
-    # state_1 and state_2 are identical, if the dycore is stateless then they
-    # should produce identical dycore final states when used to call
+    # state_1 and state_2 are identical, if the physics is stateless then they
+    # should produce identical physics final states when used to call
     physics(state_1, timestep=timedelta(minutes=5).total_seconds())
     first_temporaries = copy_temporaries(physics, max_depth=10)
     assert len(first_temporaries) > 0

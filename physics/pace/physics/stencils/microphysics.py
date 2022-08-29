@@ -68,6 +68,7 @@ def fields_init(
     v0: FloatField,
     dp1: FloatField,
     p1: FloatField,
+    m1: FloatField,
     u1: FloatField,
     v1: FloatField,
     ccn: FloatField,
@@ -157,6 +158,7 @@ def fields_init(
         qg0 = qgz
 
         # For sedi_momentum
+        m1 = 0.0
         u0 = uin
         v0 = vin
         u1 = u0
@@ -326,8 +328,6 @@ def warm_rain(
     ccn: FloatField,
     c_praut: FloatField,
     m1_sol: FloatField,
-    m2_rain: FloatField,
-    m2_sol: FloatField,
     is_first: bool,
     c_air: Float,
     c_vap: Float,
@@ -750,7 +750,6 @@ def warm_rain(
             )
 
         rain = rain + r1
-        m2_rain = m2_rain + m1_rain
 
         if is_first:
 
@@ -758,7 +757,6 @@ def warm_rain(
 
         else:
 
-            m2_sol = m2_sol + m1_sol
             m1 = m1 + m1_rain + m1_sol
 
 
@@ -1760,20 +1758,12 @@ def fields_update(
     u1: FloatField,
     v1: FloatField,
     m1: FloatField,
-    m2_rain: FloatField,
-    m2_sol: FloatField,
     ntimes: Int,
     c_air: Float,
     c_vap: Float,
     rdt: Float,
 ):
     from __externals__ import do_qa, sedi_transport
-
-    with computation(PARALLEL), interval(...):
-
-        # Convert units from Pa*kg/kg to kg/m^2/s
-        m2_rain = m2_rain * rdt * constants.RGRAV
-        m2_sol = m2_sol * rdt * constants.RGRAV
 
     # Momentum transportation during sedimentation (dp1 is dry mass; dp0
     # is the old moist total mass)
@@ -1998,8 +1988,6 @@ class Microphysics:
         self._ccn = make_storage()
         self._c_praut = make_storage()
         self._m1_sol = make_storage()
-        self._m2_rain = make_storage()
-        self._m2_sol = make_storage()
 
         self._so3 = 7.0 / 3.0
         self._zs = 0.0
@@ -2315,6 +2303,7 @@ class Microphysics:
             self._v0,
             self._dp1,
             self._p1,
+            self._m1,
             self._u1,
             self._v1,
             self._ccn,
@@ -2352,8 +2341,6 @@ class Microphysics:
                 self._ccn,
                 self._c_praut,
                 self._m1_sol,
-                self._m2_rain,
-                self._m2_sol,
                 True,
                 self._c_air,
                 self._c_vap,
@@ -2421,8 +2408,6 @@ class Microphysics:
                 self._ccn,
                 self._c_praut,
                 self._m1_sol,
-                self._m2_rain,
-                self._m2_sol,
                 False,
                 self._c_air,
                 self._c_vap,
@@ -2546,8 +2531,6 @@ class Microphysics:
             self._u1,
             self._v1,
             self._m1,
-            self._m2_rain,
-            self._m2_sol,
             self._ntimes,
             self._c_air,
             self._c_vap,
