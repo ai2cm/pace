@@ -2,6 +2,7 @@ import logging
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+import gt4py.backend
 import gt4py.storage as gt_storage
 import numpy as np
 
@@ -234,9 +235,6 @@ def make_storage_from_shape(
     backend: str,
     dtype: DTypes = np.float64,
     mask: Optional[Tuple[bool, bool, bool]] = None,
-    # [TODO]: temporary storage should be lowered properly to DaCe
-    # and added elsewhere (e.g., remapping)
-    is_temporary: bool = False,
 ) -> Field:
     """Create a new gt4py storage of a given shape filled with zeros.
 
@@ -271,8 +269,6 @@ def make_storage_from_shape(
         mask=mask,
         managed_memory=managed_memory,
     )
-    if is_temporary:
-        storage._istransient = True
     return storage
 
 
@@ -356,7 +352,10 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
             return cp.asarray(array, dtype, order)
     if cp and (
         isinstance(array, memoryview)
-        or isinstance(array.data, (cp.ndarray, cp.cuda.memory.MemoryPointer))
+        or (
+            hasattr(array, "data")
+            and isinstance(array.data, (cp.ndarray, cp.cuda.memory.MemoryPointer))
+        )
     ):
         if to_type is np.ndarray:
             order = "F" if order is None else order
@@ -371,7 +370,7 @@ def asarray(array, to_type=np.ndarray, dtype=None, order=None):
 
 
 def is_gpu_backend(backend: str) -> bool:
-    return backend.endswith("cuda") or backend.endswith("gpu")
+    return gt4py.backend.from_name(backend).storage_info["device"] == "gpu"
 
 
 def zeros(shape, dtype=Float, *, backend: str):

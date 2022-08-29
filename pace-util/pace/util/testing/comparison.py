@@ -10,7 +10,7 @@ def compare_arr(computed_data, ref_data):
     """
     if ref_data.dtype in (np.float64, np.int64, np.float32, np.int32):
         denom = np.abs(ref_data) + np.abs(computed_data)
-        compare = 2.0 * np.abs(computed_data - ref_data) / denom
+        compare = np.asarray(2.0 * np.abs(computed_data - ref_data) / denom)
         compare[denom == 0] = 0.0
         return compare
     elif ref_data.dtype in (np.bool,):
@@ -58,5 +58,11 @@ def success_array(
 
 def success(computed_data, ref_data, eps, ignore_near_zero_errors, near_zero=0.0):
     return np.all(
-        success_array(computed_data, ref_data, eps, ignore_near_zero_errors, near_zero)
+        success_array(
+            np.asarray(computed_data),
+            np.asarray(ref_data),
+            eps,
+            ignore_near_zero_errors,
+            near_zero,
+        )
     )

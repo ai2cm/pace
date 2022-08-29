@@ -76,13 +76,12 @@ DO_NSYS_RUN="$7"
 
 # get dependencies
 cd $FV3CORE_DIR
-make update_submodules_venv
+git submodule update --init
 
 
 # set up the virtual environment
 echo "creating the venv"
 if [ -d ./venv ] ; then rm -rf venv ; fi
-cd $FV3CORE_DIR/external/daint_venv/
 if [ -d ./gt4py ] ; then rm -rf gt4py ; fi
 cd $FV3CORE_DIR
 $FV3CORE_DIR/.jenkins/install_virtualenv.sh $FV3CORE_DIR/venv

@@ -9,10 +9,10 @@ from pace.dsl.stencil import (
     CompareToNumpyStencil,
     FrozenStencil,
     GridIndexing,
-    StencilConfig,
     StencilFactory,
     get_stencils_with_varied_bounds,
 )
+from pace.dsl.stencil_config import CompilationConfig, StencilConfig
 from pace.dsl.typing import FloatField
 
 
@@ -48,11 +48,13 @@ def setup_data_vars(backend: str):
 def get_stencil_factory(backend: str) -> StencilFactory:
     dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
-        format_source=False,
-        device_sync=False,
+        compilation_config=CompilationConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=False,
+            format_source=False,
+            device_sync=False,
+        ),
         dace_config=dace_config,
     )
     indexing = GridIndexing(
@@ -110,11 +112,13 @@ def test_stencil_factory_numpy_comparison_from_dims_halo(enabled: bool):
     backend = "numpy"
     dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
-        format_source=False,
-        device_sync=False,
+        compilation_config=CompilationConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=False,
+            format_source=False,
+            device_sync=False,
+        ),
         compare_to_numpy=enabled,
         dace_config=dace_config,
     )
@@ -143,11 +147,13 @@ def test_stencil_factory_numpy_comparison_from_origin_domain(enabled: bool):
     backend = "numpy"
     dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
-        format_source=False,
-        device_sync=False,
+        compilation_config=CompilationConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=False,
+            format_source=False,
+            device_sync=False,
+        ),
         compare_to_numpy=enabled,
         dace_config=dace_config,
     )
@@ -173,11 +179,13 @@ def test_stencil_factory_numpy_comparison_runs_without_exceptions():
     backend = "numpy"
     dace_config = DaceConfig(communicator=None, backend=backend)
     config = StencilConfig(
-        backend=backend,
-        rebuild=False,
-        validate_args=False,
-        format_source=False,
-        device_sync=False,
+        compilation_config=CompilationConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=False,
+            format_source=False,
+            device_sync=False,
+        ),
         compare_to_numpy=True,
         dace_config=dace_config,
     )

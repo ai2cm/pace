@@ -1,13 +1,10 @@
 import copy
 import dataclasses
-import hashlib
 import inspect
-import re
 from typing import (
     Any,
     Callable,
     Dict,
-    Hashable,
     Iterable,
     List,
     Mapping,
@@ -28,114 +25,13 @@ from gtc.passes.oir_pipeline import DefaultPipeline, OirPipeline
 
 import pace.dsl.gt4py_utils as gt4py_utils
 import pace.util
-from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.dace.orchestration import SDFGConvertible
+from pace.dsl.stencil_config import CompilationConfig, RunMode, StencilConfig
 from pace.dsl.typing import Index3D, cast_to_index3d
 from pace.util import testing
+from pace.util.decomposition import block_waiting_for_compilation, unblock_waiting_tiles
 from pace.util.halo_data_transformer import QuantityHaloSpec
-
-
-@dataclasses.dataclass
-class StencilConfig(Hashable):
-    backend: str = "numpy"
-    rebuild: bool = True
-    validate_args: bool = True
-    format_source: bool = False
-    device_sync: bool = False
-    compare_to_numpy: bool = False
-    dace_config: Optional[DaceConfig] = None
-
-    def __post_init__(self):
-        self.backend_opts = self._get_backend_opts(self.device_sync, self.format_source)
-        self._hash = self._compute_hash()
-        # We need a DaceConfig to known our orchestration as part of the build system
-        # but we can't hash it very well (for now). The workaround is to make
-        # sure we have a default Python orchestrated config.
-        if self.dace_config is None:
-            self.dace_config = DaceConfig(
-                communicator=None,
-                backend=self.backend,
-                orchestration=DaCeOrchestration.Python,
-            )
-
-    def _compute_hash(self):
-        md5 = hashlib.md5()
-        md5.update(self.backend.encode())
-        for attr in (
-            self.rebuild,
-            self.validate_args,
-            self.backend_opts["format_source"],
-        ):
-            md5.update(bytes(attr))
-        attr = self.backend_opts.get("device_sync", None)
-        if attr:
-            md5.update(bytes(attr))
-        return int(md5.hexdigest(), base=16)
-
-    def __hash__(self):
-        return self._hash
-
-    def __eq__(self, other):
-        try:
-            return self.__hash__() == other.__hash__()
-        except AttributeError:
-            return False
-
-    def _get_backend_opts(
-        self,
-        device_sync: Optional[bool] = None,
-        format_source: Optional[bool] = None,
-    ) -> Dict[str, Any]:
-        backend_opts: Dict[str, Any] = {}
-        all_backend_opts: Optional[Dict[str, Any]] = {
-            "device_sync": {
-                "backend": r".*(gpu|cuda)$",
-                "value": False,
-            },
-            "format_source": {
-                "value": False,
-            },
-            "verbose": {"backend": r"(gt:|cuda)", "value": False},
-        }
-        for name, option in all_backend_opts.items():
-            using_option_backend = re.match(option.get("backend", ""), self.backend)
-            if "backend" not in option or using_option_backend:
-                backend_opts[name] = option["value"]
-
-        if device_sync is not None:
-            backend_opts["device_sync"] = device_sync
-        if format_source is not None:
-            backend_opts["format_source"] = format_source
-
-        return backend_opts
-
-    def stencil_kwargs(
-        self, *, func: Callable[..., None], skip_passes: Iterable[str] = ()
-    ):
-        kwargs = {
-            "backend": self.backend,
-            "rebuild": self.rebuild,
-            "name": func.__module__ + "." + func.__name__,
-            **self.backend_opts,
-        }
-        if not self.is_gpu_backend:
-            kwargs.pop("device_sync", None)
-        if skip_passes or kwargs.get("skip_passes", ()):
-            kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
-                list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
-            )
-        return kwargs
-
-    @property
-    def is_gpu_backend(self) -> bool:
-        return gt4py.backend.from_name(self.backend).storage_info["device"] == "gpu"
-
-    @classmethod
-    def _get_oir_pipeline(cls, skip_passes: Sequence[str]) -> OirPipeline:
-        """Creates a DefaultPipeline with skip_passes properly initialized."""
-        step_map = {step.__name__: step for step in DefaultPipeline.all_steps()}
-        skip_steps = [step_map[pass_name] for pass_name in skip_passes]
-        return DefaultPipeline(skip=skip_steps)
+from pace.util.mpi import MPI
 
 
 def report_difference(args, kwargs, args_copy, kwargs_copy, function_name, gt_id):
@@ -291,13 +187,18 @@ class CompareToNumpyStencil:
             timing_collector=timing_collector,
             comm=comm,
         )
-        numpy_stencil_config = StencilConfig(
+        compilation_config = CompilationConfig(
             backend="numpy",
-            rebuild=stencil_config.rebuild,
-            validate_args=stencil_config.validate_args,
+            rebuild=stencil_config.compilation_config.rebuild,
+            validate_args=stencil_config.compilation_config.validate_args,
             format_source=True,
             device_sync=None,
+            run_mode=RunMode.BuildAndRun,
+            use_minimal_caching=False,
+        )
+        numpy_stencil_config = StencilConfig(
             dace_config=stencil_config.dace_config,
+            compilation_config=compilation_config,
         )
         self._numpy = FrozenStencil(
             func=func,
@@ -418,7 +319,7 @@ class FrozenStencil(SDFGConvertible):
 
         self._argument_names = tuple(inspect.getfullargspec(func).args)
 
-        if "dace" in self.stencil_config.backend:
+        if "dace" in self.stencil_config.compilation_config.backend:
             dace.Config.set(
                 "default_build_folder",
                 value="{gt_cache}/dacecache".format(
@@ -433,8 +334,8 @@ class FrozenStencil(SDFGConvertible):
 
         # Keep compilation at __init__ if we are not orchestrated.
         # If we orchestrate, move the compilation at call time to make sure
-        # gt4py compilation is only done when needed
-        """generated stencil object returned from gt4py."""
+        # disable_codegen do not lead to call to uncompiled stencils, which fails
+        # silently
         if self.stencil_config.dace_config.is_dace_orchestrated():
             self.stencil_object = gtscript.lazy_stencil(
                 definition=func,
@@ -442,14 +343,28 @@ class FrozenStencil(SDFGConvertible):
                 **stencil_kwargs,
                 build_info=(build_info := {}),  # type: ignore
             )
-
         else:
+            compilation_config = stencil_config.compilation_config
+            if (
+                compilation_config.use_minimal_caching
+                and not compilation_config.is_compiling
+                and compilation_config.run_mode != RunMode.Run
+            ):
+                block_waiting_for_compilation(MPI.COMM_WORLD, compilation_config)
+
             self.stencil_object = gtscript.stencil(
                 definition=func,
                 externals=externals,
                 **stencil_kwargs,
                 build_info=(build_info := {}),
             )
+
+            if (
+                compilation_config.use_minimal_caching
+                and compilation_config.is_compiling
+                and compilation_config.run_mode != RunMode.Run
+            ):
+                unblock_waiting_tiles(MPI.COMM_WORLD)
 
         self._timing_collector.build_info[
             _stencil_object_name(self.stencil_object)
@@ -468,6 +383,13 @@ class FrozenStencil(SDFGConvertible):
 
         self._written_fields: List[str] = FrozenStencil._get_written_fields(field_info)
 
+        if stencil_config.compilation_config.run_mode == RunMode.Build:
+
+            def nothing_function(*args, **kwargs):
+                pass
+
+            setattr(self, "__call__", nothing_function)
+
     def __call__(self, *args, **kwargs) -> None:
         args_list = list(args)
         _convert_quantities_to_storage(args_list, kwargs)
@@ -481,7 +403,7 @@ class FrozenStencil(SDFGConvertible):
                     f"rank {self.comm.Get_rank()} has differences {differences} "
                     f"before calling {self._func_name}"
                 )
-        if self.stencil_config.validate_args:
+        if self.stencil_config.compilation_config.validate_args:
             if __debug__ and "origin" in kwargs:
                 raise TypeError("origin cannot be passed to FrozenStencil call")
             if __debug__ and "domain" in kwargs:
@@ -1003,7 +925,7 @@ class StencilFactory:
 
     @property
     def backend(self):
-        return self.config.backend
+        return self.config.compilation_config.backend
 
     def from_origin_domain(
         self,

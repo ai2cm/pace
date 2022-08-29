@@ -10,9 +10,10 @@ import pace.dsl
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 from pace.dsl.dace.dace_config import DaceConfig
+from pace.dsl.stencil import CompilationConfig
 from pace.stencils.testing import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
-from pace.util.testing import compare_scalar, success, success_array
+from pace.util.testing import compare_scalar, perturb, success, success_array
 
 
 # this only matters for manually-added print statements
@@ -168,17 +169,6 @@ def process_override(threshold_overrides, testobj, test_name, backend):
             )
 
 
-def perturb(input):
-    roundoff = 1e-16
-    for data in input.values():
-        if isinstance(data, np.ndarray) and data.dtype in (np.float64, np.float32):
-            not_fill_value = data < 1e30
-            # multiply data by roundoff-level error
-            data[not_fill_value] *= 1.0 + np.random.uniform(
-                low=-roundoff, high=roundoff, size=data[not_fill_value].shape
-            )
-
-
 N_THRESHOLD_SAMPLES = 10
 
 
@@ -240,7 +230,7 @@ def test_sequential_savepoint(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
     stencil_config = pace.dsl.StencilConfig(
-        backend=backend,
+        compilation_config=CompilationConfig(backend=backend),
         dace_config=DaceConfig(
             communicator=None,
             backend=backend,
@@ -359,7 +349,7 @@ def test_parallel_savepoint(
             f"no translate object available for savepoint {case.savepoint_name}"
         )
     stencil_config = pace.dsl.StencilConfig(
-        backend=backend,
+        compilation_config=CompilationConfig(backend=backend),
         dace_config=DaceConfig(
             communicator=communicator,
             backend=backend,

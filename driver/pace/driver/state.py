@@ -9,6 +9,7 @@ import fv3gfs.physics
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
+from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.grid import DampingCoefficients
 
 
@@ -92,7 +93,7 @@ class DriverState:
             tile_rank=communicator.tile.rank,
         )
         quantity_factory = pace.util.QuantityFactory.from_backend(
-            sizer, backend=driver_config.stencil_config.backend
+            sizer, backend=driver_config.stencil_config.compilation_config.backend
         )
         state = _restart_driver_state(
             restart_path, communicator.rank, quantity_factory, communicator
@@ -187,13 +188,13 @@ def _restart_driver_state(
     damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
-    is_gpu_backend = "gpu" in dycore_state.u.metadata.gt4py_backend
+    backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
     dycore_state = _overwrite_state_from_restart(
         path,
         rank,
         dycore_state,
         "restart_dycore_state",
-        is_gpu_backend,
+        backend_uses_gpu,
     )
     active_packages = ["microphysics"]
     physics_state = fv3gfs.physics.PhysicsState.init_zeros(
@@ -204,7 +205,7 @@ def _restart_driver_state(
         rank,
         physics_state,
         "restart_physics_state",
-        is_gpu_backend,
+        backend_uses_gpu,
     )
     physics_state.__post_init__(quantity_factory, active_packages)
     tendency_state = TendencyState.init_zeros(

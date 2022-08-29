@@ -7,6 +7,7 @@ import fv3gfs.physics
 import pace.dsl
 import pace.util
 import pace.util.grid
+from pace.dsl.stencil_config import CompilationConfig
 from pace.stencils.testing import assert_same_temporaries, copy_temporaries
 
 
@@ -43,7 +44,12 @@ def setup_physics():
         orchestration=pace.dsl.DaCeOrchestration.Python,
     )
     stencil_config = pace.dsl.stencil.StencilConfig(
-        backend=backend, rebuild=False, validate_args=True, dace_config=dace_config
+        compilation_config=CompilationConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=True,
+        ),
+        dace_config=dace_config,
     )
     stencil_factory = pace.dsl.stencil.StencilFactory(
         config=stencil_config,
