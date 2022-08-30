@@ -25,8 +25,8 @@ from pace.dsl.dace.dace_config import (
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
 from pace.dsl.dace.utils import (
     DaCeProgress,
-    report_memory_static_analysis,
     memory_static_analysis,
+    report_memory_static_analysis,
     sdfg_nan_checker,
 )
 from pace.util.mpi import MPI

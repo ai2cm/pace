@@ -4,8 +4,8 @@ from typing import Optional
 import click
 
 from pace.dsl.dace.utils import (
-    memory_static_analysis_from_path,
     kernel_theoritical_timing_from_path,
+    memory_static_analysis_from_path,
 )
 
 

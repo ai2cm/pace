@@ -294,7 +294,7 @@ def kernel_theoritical_timing(
         (me, state) for me, state in allmaps if get_parent_map(state, me) is None
     ]
 
-    result = {}
+    result: Dict[str, float] = {}
     for node, state in topmaps:
         nsdfg = state.parent
         mx = state.exit_node(node)
@@ -317,9 +317,10 @@ def kernel_theoritical_timing(
         )
 
         # Compute hardware memory bandwith in bytes/us
-        if not hardware in _HARDWARE_BW_GB_S.keys():
+        if hardware not in _HARDWARE_BW_GB_S.keys():
             print(
-                f"Timing analysis: hardware {hardware} unknown, reading hardware_bw_in_Gb_s option"
+                f"Timing analysis: hardware {hardware} unknown"
+                " reading hardware_bw_in_Gb_s option"
             )
             bandwidth_in_bytes_s = hardware_bw_in_Gb_s * 1024 * 1024 * 1024
         else:
