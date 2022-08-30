@@ -164,7 +164,15 @@ class StorageReport:
     details: List[ArrayReport] = field(default_factory=list)
 
 
-def count_memory(sdfg: dace.sdfg.SDFG, detail_report=False) -> str:
+def memory_static_analysis(
+    sdfg: dace.sdfg.SDFG,
+) -> Dict[dace.StorageType, StorageReport]:
+    """Analysis an SDFG for memory pressure.
+
+    The results split memory by type (dace.StorageType) and account for
+    allocated, unreferenced and top lovel (e.g. top-most SDFG) memory
+    """
+    # We report all allocation type
     allocations: Dict[dace.StorageType, StorageReport] = {}
     for storage_type in dace.StorageType:
         allocations[storage_type] = StorageReport(name=storage_type)
@@ -173,6 +181,7 @@ def count_memory(sdfg: dace.sdfg.SDFG, detail_report=False) -> str:
         array_size_in_bytes = arr.total_size * arr.dtype.bytes
         ref = _is_ref(sd, aname)
 
+        # Transient in maps (refrence and not referenced)
         if sd is not sdfg and arr.transient:
             if arr.pool:
                 allocations[arr.storage].in_pooled_in_bytes += array_size_in_bytes
@@ -191,6 +200,7 @@ def count_memory(sdfg: dace.sdfg.SDFG, detail_report=False) -> str:
             else:
                 allocations[arr.storage].unreferenced_in_bytes += array_size_in_bytes
 
+        # SDFG-level memory (refrence, not referenced and pooled)
         elif sd is sdfg:
             if arr.pool:
                 allocations[arr.storage].in_pooled_in_bytes += array_size_in_bytes
@@ -210,6 +220,15 @@ def count_memory(sdfg: dace.sdfg.SDFG, detail_report=False) -> str:
             else:
                 allocations[arr.storage].unreferenced_in_bytes += array_size_in_bytes
 
+    return allocations
+
+
+def report_memory_static_analysis(
+    sdfg: dace.sdfg.SDFG,
+    allocations: Dict[dace.StorageType, StorageReport],
+    detail_report=False,
+) -> str:
+    """Create a human readable report form the memory analysis results"""
     report = f"{sdfg.name}:\n"
     for storage, allocs in allocations.items():
         alloc_in_mb = float(allocs.referenced_in_bytes / (1024 * 1024))
@@ -242,5 +261,111 @@ def count_memory(sdfg: dace.sdfg.SDFG, detail_report=False) -> str:
     return report
 
 
-def count_memory_from_path(sdfg_path: str, detail_report=False) -> str:
-    return count_memory(dace.SDFG.from_file(sdfg_path), detail_report=detail_report)
+def memory_static_analysis_from_path(sdfg_path: str, detail_report=False) -> str:
+    """Open a SDFG and report the memory analysis"""
+    sdfg = dace.SDFG.from_file(sdfg_path)
+    return report_memory_static_analysis(
+        sdfg,
+        memory_static_analysis(sdfg),
+        detail_report=detail_report,
+    )
+
+
+_HARDWARE_BW_GB_S = {"P100": 492.0}  # P100 on Piz Daint w/ CopyStencil test
+
+
+def kernel_theoritical_timing(
+    sdfg: dace.sdfg.SDFG, hardware="P100", hardware_bw_in_Gb_s=0
+) -> Dict[str, float]:
+    """Compute a lower timing bound for kernels with the following hypothesis:
+
+    - Performance is memory bound, e.g. arithmetic intensity isn't counted
+    - Hardware bandwith comes from a GT4Py/DaCe test rather than a spec sheet for
+      for higher accuracy. Best is to run a copy_stencils on a full domain
+    - Memory pressure is mostly in read/write from global memory, inner scalar & shared
+      memory is not counted towards memory movement.
+    """
+    allmaps = [
+        (me, state)
+        for me, state in sdfg.all_nodes_recursive()
+        if isinstance(me, dace.nodes.MapEntry)
+    ]
+    topmaps = [
+        (me, state) for me, state in allmaps if get_parent_map(state, me) is None
+    ]
+
+    result = {}
+    for node, state in topmaps:
+        nsdfg = state.parent
+        mx = state.exit_node(node)
+
+        # Gather all memory read & write by reading all
+        # in-node & out-node memory. All in bytes
+        alldata_in_bytes = sum(
+            [
+                dace.data._prod(e.data.subset.size())
+                * nsdfg.arrays[e.data.data].dtype.bytes
+                for e in state.in_edges(node)
+            ]
+        )
+        alldata_in_bytes += sum(
+            [
+                dace.data._prod(e.data.subset.size())
+                * nsdfg.arrays[e.data.data].dtype.bytes
+                for e in state.out_edges(mx)
+            ]
+        )
+
+        # Compute hardware memory bandwith in bytes/us
+        if not hardware in _HARDWARE_BW_GB_S.keys():
+            print(
+                f"Timing analysis: hardware {hardware} unknown, reading hardware_bw_in_Gb_s option"
+            )
+            bandwidth_in_bytes_s = hardware_bw_in_Gb_s * 1024 * 1024 * 1024
+        else:
+            # Time it has to take (at least): bytes / bandwidth_in_bytes_s
+            bandwidth_in_bytes_s = _HARDWARE_BW_GB_S[hardware] * 1024 * 1024 * 1024
+        in_us = 1000 * 1000
+
+        # Theoritical fastest timning
+        try:
+            newresult_in_us = (float(alldata_in_bytes) / bandwidth_in_bytes_s) * in_us
+        except TypeError:
+            newresult_in_us = (alldata_in_bytes / bandwidth_in_bytes_s) * in_us
+
+        if node.label in result:
+            import sympy
+
+            newresult_in_us = sympy.Max(result[node.label], newresult_in_us).expand()
+            try:
+                newresult_in_us = float(newresult_in_us)
+            except TypeError:
+                pass
+
+        # Bad expansion
+        if not isinstance(newresult_in_us, float):
+            continue
+
+        result[node.label] = newresult_in_us
+
+    return result
+
+
+def report_kernel_theoritical_timing(
+    timings: Dict[str, float], human_readable: bool = True, csv: bool = False
+):
+    """Produce a human readable or CSV of the kernel timings"""
+    result_string = f"Maps processed: {len(timings)}.\n"
+    if human_readable:
+        result_string += "Timing in microseconds  Map name:\n"
+        result_string += "\n".join(f"{v:.2f}\t{k}," for k, v in sorted(timings.items()))
+    if csv:
+        result_string += "#Map name,timing in microseconds\n"
+        result_string += "\n".join(f"{k},{v}," for k, v in sorted(timings.items()))
+    return result_string
+
+
+def kernel_theoritical_timing_from_path(sdfg_path: str):
+    """Load an SDFG and report the theoritical kernel timings"""
+    timings = kernel_theoritical_timing(dace.SDFG.from_file(sdfg_path))
+    return report_kernel_theoritical_timing(timings, human_readable=True, csv=False)

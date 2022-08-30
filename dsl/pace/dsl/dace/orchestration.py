@@ -23,7 +23,12 @@ from pace.dsl.dace.dace_config import (
     DaCeOrchestration,
 )
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
-from pace.dsl.dace.utils import DaCeProgress, count_memory, sdfg_nan_checker
+from pace.dsl.dace.utils import (
+    DaCeProgress,
+    report_memory_static_analysis,
+    memory_static_analysis,
+    sdfg_nan_checker,
+)
 from pace.util.mpi import MPI
 
 
@@ -183,7 +188,9 @@ def _build_sdfg(
         with DaCeProgress(config, "Build finished. Running memory static analysis"):
             DaCeProgress.log(
                 DaCeProgress.default_prefix(config),
-                count_memory(sdfg),
+                report_memory_static_analysis(
+                    sdfg, memory_static_analysis(sdfg), False
+                ),
             )
 
     # Compilation done, either exit or scatter/gather and run
