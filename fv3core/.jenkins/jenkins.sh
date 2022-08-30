@@ -189,7 +189,7 @@ if [ ${python_env} == "virtualenv" ]; then
         echo "Using existing virtualenv ${VIRTUALENV}"
     else
         echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
-        ${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
+        ${TOP_LEVEL_JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
     fi
     source ${VIRTUALENV}/bin/activate
     if grep -q "parallel" <<< "${script}"; then
