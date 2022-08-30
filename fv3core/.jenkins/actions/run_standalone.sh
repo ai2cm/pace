@@ -51,7 +51,7 @@ fi
 SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
 ROOT_DIR="$(dirname "$(dirname "$SCRIPTPATH")")"
-DATA_VERSION=`grep 'FORTRAN_SERIALIZED_DATA_VERSION *=' ${ROOT_DIR}/Makefile | cut -d '=' -f 2`
+DATA_VERSION=`grep 'FORTRAN_SERIALIZED_DATA_VERSION *=' ${ROOT_DIR}/../Makefile.data_download | cut -d '=' -f 2`
 if [ "$2" != "" ]; then
     TIMESTEPS=$2
 elif [ "${SAVE_CACHE}" == "true" ]; then
