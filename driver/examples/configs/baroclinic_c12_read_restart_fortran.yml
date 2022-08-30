@@ -17,7 +17,7 @@ performance_config:
 nx_tile: 12
 nz: 79
 dt_atmos: 225
-minutes: 60
+minutes: 15
 layout:
   - 1
   - 1

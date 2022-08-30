@@ -139,12 +139,12 @@ class RestartConfig(Initializer):
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
-        print("Ajda...")
         print("Fortran data flag in initialization.py:", self.fortran_data)
         state = _restart_driver_state(
             self.path, communicator.rank, quantity_factory, communicator, self.fortran_data
         )
         print("Restarted driver state")
+        #exit()
         return state
 
 
