@@ -112,7 +112,7 @@ savepoint_tests_mpi: build
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
 
-constraints.txt: dsl/requirements.txt fv3core/requirements.txt pace-util/requirements.txt fv3gfs-physics/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg requirements_dev.txt
+constraints.txt: driver/setup.py dsl/setup.py fv3core/setup.py fv3gfs-physics/setup.py pace-util/setup.py stencils/setup.py pace-util/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg requirements_dev.txt
 	pip-compile $^ --output-file constraints.txt
 	sed -i.bak '/\@ git+https/d' constraints.txt
 	rm -f constraints.txt.bak
