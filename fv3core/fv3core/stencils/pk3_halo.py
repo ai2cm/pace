@@ -55,7 +55,6 @@ class PK3Halo:
             shape_2D,
             grid_indexing.origin_full(),
             backend=stencil_factory.backend,
-            is_temporary=False,
         )
 
     def __call__(self, pk3: FloatField, delp: FloatField, ptop: float, akap: float):
