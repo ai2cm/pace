@@ -117,10 +117,14 @@ class ValidationCheckpointer(Checkpointer):
                 raise ValueError(f"argument {varname} not in netCDF file {nc_file}")
 
             expected = ds[varname][n_calls, self._rank].values
+            expected[expected == 1.0e40] = 0.0
             output = _clip_pace_array_to_target(cast_to_ndarray(array), expected.shape)
-
+            if savepoint_name == "FVDynamics-Out":
+                expected = expected[3:-3, 3:-3, :]
+                output = output[3:-3, 3:-3, :]
             # cannot use relative threshold when comparing to zero value
-            expected_not_zero = expected != 0
+            near_zero = 1.0e-15
+            expected_not_zero = abs(expected) > near_zero
             np.testing.assert_allclose(
                 output[expected_not_zero],
                 expected[expected_not_zero],
