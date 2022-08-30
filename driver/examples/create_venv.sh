@@ -12,10 +12,9 @@ python3 -m venv venv
 . venv/bin/activate
 
 rundir=$(pwd)
-cd ${SCRIPT_DIR}/../
+cd ${SCRIPT_DIR}/../../
 
-pip3 install -r requirements.txt -r requirements_local.txt -c ../constraints.txt
-pip3 install -e . -c ../constraints.txt
+pip3 install -r requirements_dev.txt -c constraints.txt
 
 deactivate
 cd $rundir
