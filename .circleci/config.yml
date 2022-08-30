@@ -143,6 +143,11 @@ jobs:
               sudo apt-get install libopenmpi3 libopenmpi-dev
               cd driver && ./examples/create_venv.sh
             fi
+      - save_cache:
+          key: v3-driver-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
+          paths:
+            - driver/venv
+            - /root/.cache/pip
       - run:
           name: run tests
           command: |
@@ -151,11 +156,6 @@ jobs:
               . venv/bin/activate
               MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
             fi
-      - save_cache:
-          key: v3-driver-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
-          paths:
-            - driver/venv
-            - /root/.cache/pip
 
   test_main:
     docker:
