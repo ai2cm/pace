@@ -10,12 +10,12 @@ from IPython.display import HTML, display
 from matplotlib import animation
 from units_config import units
 
-from fv3core.stencils.fvtp2d import FiniteVolumeTransport
-from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
-from fv3core.stencils.tracer_2d_1l import TracerAdvection
 from pace.dsl.dace.dace_config import DaceConfig, DaCeOrchestration
 from pace.dsl.stencil import GridIndexing, StencilConfig, StencilFactory
 from pace.dsl.stencil_config import CompilationConfig, RunMode
+from pace.fv3core.stencils.fvtp2d import FiniteVolumeTransport
+from pace.fv3core.stencils.fxadv import FiniteVolumeFluxPrep
+from pace.fv3core.stencils.tracer_2d_1l import TracerAdvection
 from pace.util import (
     CubedSphereCommunicator,
     CubedSpherePartitioner,

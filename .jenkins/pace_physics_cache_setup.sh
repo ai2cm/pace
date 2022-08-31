@@ -7,5 +7,5 @@ export LONG_EXECUTION=1
 .jenkins/jenkins.sh run_physics_regression_tests ${backend} ${experiment}
 cd buildenv && git reset --hard && cd ..
 .jenkins/jenkins.sh run_physics_parallel_regression_tests ${backend} ${experiment}
-cd ${PACE_DIR}/fv3gfs-physics
+cd ${PACE_DIR}/physics
 ${PACE_DIR}/.jenkins/generate_caches.sh ${backend} ${experiment} physics

@@ -1,11 +1,11 @@
 from typing import Any, List, Tuple
 
-import fv3core
-import fv3core._config
-import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl.stencil
+import pace.fv3core._config
+import pace.fv3core.initialization.baroclinic as baroclinic_init
 import pace.stencils.testing
 import pace.util
+from pace import fv3core
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 

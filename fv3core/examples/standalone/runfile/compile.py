@@ -9,7 +9,7 @@ import f90nml
 import gt4py.config
 
 import pace.dsl.stencil  # noqa: F401
-from fv3core._config import DynamicalCoreConfig
+from pace.fv3core._config import DynamicalCoreConfig
 from pace.util.null_comm import NullComm
 
 

@@ -7,11 +7,11 @@ import f90nml
 import xarray as xr
 import yaml
 
-import fv3core
 import pace.dsl
 import pace.util
-from fv3core.initialization.dycore_state import DycoreState
-from fv3core.testing.translate_fvdynamics import TranslateFVDynamics
+from pace import fv3core
+from pace.fv3core.initialization.dycore_state import DycoreState
+from pace.fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from pace.stencils.testing import TranslateGrid, dataset_to_dict
 from pace.stencils.testing.grid import Grid
 from pace.util.checkpointer.thresholds import SavepointThresholds
