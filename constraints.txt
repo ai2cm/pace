@@ -4,49 +4,6 @@
 #
 #    pip-compile --output-file=constraints.txt driver/setup.py dsl/setup.py external/gt4py/setup.cfg fv3core/setup.py physics/setup.py requirements_dev.txt requirements_docs.txt requirements_lint.txt stencils/setup.py util/requirements.txt util/setup.py
 #
--e file:///home/mcgibbon/python/pace/external/gt4py
-    # via
-    #   -r requirements_dev.txt
-    #   pace-dsl
-    #   pace-dsl (dsl/setup.py)
-    #   pace-fv3core
-    #   pace-fv3core (fv3core/setup.py)
-    #   pace-physics
-    #   pace-physics (physics/setup.py)
-    #   pace-stencils
-    #   pace-stencils (stencils/setup.py)
--e file:///home/mcgibbon/python/pace/driver
-    # via -r requirements_dev.txt
--e file:///home/mcgibbon/python/pace/dsl
-    # via -r requirements_dev.txt
--e file:///home/mcgibbon/python/pace/fv3core
-    # via
-    #   -r requirements_dev.txt
-    #   pace-driver
-    #   pace-driver (driver/setup.py)
--e file:///home/mcgibbon/python/pace/physics
-    # via
-    #   -r requirements_dev.txt
-    #   pace-driver
-    #   pace-driver (driver/setup.py)
--e file:///home/mcgibbon/python/pace/stencils
-    # via
-    #   -r requirements_dev.txt
-    #   pace-driver
-    #   pace-driver (driver/setup.py)
--e file:///home/mcgibbon/python/pace/util
-    # via
-    #   -r requirements_dev.txt
-    #   pace-driver
-    #   pace-driver (driver/setup.py)
-    #   pace-dsl
-    #   pace-dsl (dsl/setup.py)
-    #   pace-fv3core
-    #   pace-fv3core (fv3core/setup.py)
-    #   pace-physics
-    #   pace-physics (physics/setup.py)
-    #   pace-stencils
-    #   pace-stencils (stencils/setup.py)
 aenum==3.1.11
     # via dace
 aiohttp==3.7.4.post0
