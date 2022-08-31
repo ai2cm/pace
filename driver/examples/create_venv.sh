@@ -6,14 +6,13 @@ set -e -x
 
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-pip3 install --upgrade setuptools wheel
-
 python3 -m venv venv
 . venv/bin/activate
 
 rundir=$(pwd)
 cd ${SCRIPT_DIR}/../../
 
+pip3 install --upgrade setuptools wheel
 pip3 install -r requirements_dev.txt -c constraints.txt
 
 deactivate

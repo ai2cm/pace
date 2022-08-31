@@ -178,9 +178,10 @@ jobs:
           name: install packages
           command: |
             if [ $(python changed_from_main.py fv3core) != false ]; then
-              pip3 install --upgrade setuptools wheel virtualenv
+              pip3 install --upgrade virtualenv
               virtualenv venv
               . venv/bin/activate
+              pip3 install --upgrade setuptools wheel
               pip3 install -r requirements_dev.txt -c constraints.txt
             fi
       - run:
