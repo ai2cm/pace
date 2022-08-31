@@ -381,74 +381,86 @@ RESTART_PROPERTIES: RestartProperties = {
         "units": "m^2 s^-2",
         "long_name": "surface_geopotential",
     },
-    "surface_pressure": {"dims": [Y_DIM, X_DIM], "restart_name": "ps", "units": "Pa"},
-    "surface_roughness": {
+    "ps": {"dims": [Y_DIM, X_DIM], "restart_name": "ps", "units": "Pa", "long_name": "surface_pressure",},
+    "zorl": {
         "dims": [Y_DIM, X_DIM],
         "restart_name": "zorl",
         "units": "cm",
+        "long_name": "surface_roughness",
     },
-    "surface_slope_type": {
+    "slope": {
         "description": "used in land surface model",
         "dims": [Y_DIM, X_DIM],
         "restart_name": "slope",
         "units": "",
+        "long_name": "surface_slope_type",
     },
-    "surface_temperature": {
+    "tsea": {
         "description": "surface skin temperature",
         "dims": [Y_DIM, X_DIM],
         "restart_name": "tsea",
         "units": "degK",
+        "long_name": "surface_temperature",
     },
-    "surface_temperature_over_ice_fraction": {
+    "tisfc": {
         "dims": [Y_DIM, X_DIM],
         "restart_name": "tisfc",
         "units": "degK",
+        "long_name": "surface_temperature_over_ice_fraction",
     },
-    "total_condensate_mixing_ratio": {
+    "q_con": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "q_con",
         "units": "kg/kg",
+        "long_name": "total_condensate_mixing_ratio",
     },
-    "total_precipitation": {
+    "tprcp": {
         "dims": [Y_DIM, X_DIM],
         "restart_name": "tprcp",
         "units": "m",
+        "long_name": "total_precipitation",
     },
-    "total_sky_downward_longwave_flux_at_surface": {
+    "sfcflw": {
         "dims": [Y_DIM, X_DIM],
         "fortran_subname": "dnfxc",
         "restart_name": "sfcflw",
         "units": "W/m^2",
+        "long_name": "total_sky_downward_longwave_flux_at_surface",
     },
-    "total_sky_downward_shortwave_flux_at_surface": {
+    "sfcfsw": {
         "dims": [Y_DIM, X_DIM],
         "fortran_subname": "dnfxc",
         "restart_name": "sfcfsw",
         "units": "W/m^2",
+        "long_name": "total_sky_downward_shortwave_flux_at_surface",
     },
-    "total_sky_downward_shortwave_flux_at_top_of_atmosphere": {
+    "topfsw": {
         "dims": [Y_DIM, X_DIM],
         "fortran_subname": "dnfxc",
         "restart_name": "topfsw",
         "units": "W/m^2",
+        "long_name":"total_sky_downward_shortwave_flux_at_top_of_atmosphere",
     },
-    "total_sky_upward_longwave_flux_at_surface": {
+    "sfcflw": {
         "dims": [Y_DIM, X_DIM],
         "fortran_subname": "upfxc",
         "restart_name": "sfcflw",
         "units": "W/m^2",
+        "long_name": "total_sky_upward_longwave_flux_at_surface",
     },
-    "total_sky_upward_longwave_flux_at_top_of_atmosphere": {
+    "topflw": {
         "dims": [Y_DIM, X_DIM],
         "fortran_subname": "upfxc",
         "restart_name": "topflw",
         "units": "W/m^2",
+        "long_name": "total_sky_upward_longwave_flux_at_top_of_atmosphere",
     },
     "total_sky_upward_shortwave_flux_at_surface": {
         "dims": [Y_DIM, X_DIM],
         "fortran_subname": "upfxc",
         "restart_name": "sfcfsw",
         "units": "W/m^2",
+        "long_name": "total_sky_upward_shortwave_flux_at_surface",
     },
     "total_sky_upward_shortwave_flux_at_top_of_atmosphere": {
         "dims": [Y_DIM, X_DIM],
