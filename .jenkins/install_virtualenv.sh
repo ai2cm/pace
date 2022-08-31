@@ -24,10 +24,15 @@ virtualenv_path=$1
 
 set -e -x
 
+workdir=$(pwd)
 git submodule update --init ${PACE_DIR}/external/daint_venv
 git submodule update --init ${PACE_DIR}/external/gt4py
 ${PACE_DIR}/external/daint_venv/install.sh ${virtualenv_path}
 source ${virtualenv_path}/bin/activate
+
+workdir=$(pwd)
+cd ${PACE_DIR}
 python3 -m pip install $wheel_command -r ${PACE_DIR}/requirements_dev.txt -c ${PACE_DIR}/constraints.txt
+cd ${workdir}
 
 deactivate
