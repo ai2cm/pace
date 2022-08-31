@@ -9,7 +9,7 @@ zarr
 netCDF4
 cftime
 fv3config>=0.9.0
-git+https://github.com/spcl/dace.git@v0.14rc2
+dace>=0.14
 f90nml>=1.1.0
 numpy>=1.15
 -e external/gt4py
