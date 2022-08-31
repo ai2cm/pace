@@ -23,7 +23,6 @@ Then build the `pace` docker image at the top level.
 ```shell
 make build
 ```
-(Note: if you have not authenticated with a GCP account, you can alternatively fetch test data from an FTP server using `make USE_FTP=yes get_test_data` to get started.)
 
 ## Downloading test data
 
@@ -40,12 +39,12 @@ Next, you can download the test data for the dynamical core and the physics test
 ```shell
 cd fv3core
 make get_test_data
-cd ../fv3gfs-physics
+cd ../physics
 make get_test_data
 cd ..
 ```
 
-If you do not have a GCP account, there is an option to download basic test data from a public FTP server and you can skip the GCP authentication step above. To download test data from the FTP server, use `make USE_FTP=yes get_test_data` instead and this will avoid fetching from a GCP storage bucket.
+If you do not have a GCP account, there is an option to download basic test data from a public FTP server and you can skip the GCP authentication step above. To download test data from the FTP server, use `make USE_FTP=yes get_test_data` instead and this will avoid fetching from a GCP storage bucket. You will need a valid in stallation of the `lftp` command.
 
 ## Running the tests (manually)
 
@@ -71,17 +70,17 @@ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3c
 
 Note that you must have already downloaded the test data according to the instructions above. The precise path needed for `--data_path` may be different, particularly the version directory.
 
-Similarly, you can run the sequential and parallel tests for the physical parameterizations (fv3gfs-physics). Currently, only the microphysics is integrated into pace and will be tested.
+Similarly, you can run the sequential and parallel tests for the physical parameterizations (physics). Currently, only the microphysics is integrated into pace and will be tested.
 
 ```shell
-pytest -v -s --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./fv3gfs-physics/tests --threshold_overrides_file=/pace/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
-mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./fv3gfs-physics/tests --threshold_overrides_file=/pace/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
+pytest -v -s --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./physics/tests --threshold_overrides_file=/pace/physics/tests/savepoint/translate/overrides/baroclinic.yaml
+mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./physics/tests --threshold_overrides_file=/pace/physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
-Finally, to test the pace infrastructure utilities (pace-util), you can run the following commands:
+Finally, to test the pace infrastructure utilities (util), you can run the following commands:
 
 ```shell
-cd pace-util
+cd util
 make test
 make test_mpi
 ```

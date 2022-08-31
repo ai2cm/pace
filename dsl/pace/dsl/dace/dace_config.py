@@ -7,6 +7,12 @@ from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.communicator import CubedSphereCommunicator
 
 
+# TODO (floriand): Temporary deactivate the distributed compiled
+# until we deal with the Grid data inlining during orchestration
+# See github issue #301
+DEACTIVATE_DISTRIBUTED_DACE_COMPILE = True
+
+
 class DaCeOrchestration(enum.Enum):
     """
     Orchestration mode for DaCe
@@ -77,6 +83,10 @@ class DaceConfig:
                 "args",
                 value="-std=c++14 -Xcompiler -fPIC -O3 -Xcompiler -march=native",
             )
+            dace.config.Config.set("compiler", "cuda", "cuda_arch", value="60")
+            dace.config.Config.set(
+                "compiler", "cuda", "default_block_size", value="64,8,1"
+            )
             # Potentially buggy - deactivate
             dace.config.Config.set(
                 "compiler",
@@ -90,13 +100,6 @@ class DaceConfig:
                 "cuda",
                 "unique_functions",
                 value="none",
-            )
-            # Required to False. Bug to be fixes on DaCe side
-            dace.config.Config.set(
-                "execution",
-                "general",
-                "check_args",
-                value=False,
             )
             # Required for HaloEx callbacks and general code sanity
             dace.config.Config.set(
@@ -122,6 +125,9 @@ class DaceConfig:
                 value=False,
             )
 
+            # Enable to debug GPU failures
+            dace.config.Config.set("compiler", "cuda", "syncdebug", value=False)
+
         # attempt to kill the dace.conf to avoid confusion
         if dace.config.Config._cfg_filename:
             try:
@@ -139,7 +145,12 @@ class DaceConfig:
         if communicator:
             self.my_rank = communicator.rank
             self.rank_size = communicator.comm.Get_size()
-            self.target_rank = get_target_rank(self.my_rank, communicator.partitioner)
+            if DEACTIVATE_DISTRIBUTED_DACE_COMPILE:
+                self.target_rank = communicator.rank
+            else:
+                self.target_rank = get_target_rank(
+                    self.my_rank, communicator.partitioner
+                )
             self.layout = communicator.partitioner.layout
         else:
             self.my_rank = 0
@@ -169,6 +180,9 @@ class DaceConfig:
 
     def get_orchestrate(self) -> DaCeOrchestration:
         return self._orchestrate
+
+    def get_sync_debug(self) -> bool:
+        return dace.config.Config.get("compiler", "cuda", "syncdebug")
 
     def as_dict(self) -> Dict[str, Any]:
         return {

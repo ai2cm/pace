@@ -7,8 +7,8 @@ export TEST_ARGS="-v -s -rsx --backend=${BACKEND} "
 JENKINS_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../"
 if [ ${python_env} == "virtualenv" ]; then
     export TEST_ARGS="${TEST_ARGS} --junitxml=${JENKINS_DIR}/${XML_REPORT}"
-    CONTAINER_CMD="srun" make physics_savepoint_tests
+    CONTAINER_CMD="srun" DEV=n make physics_savepoint_tests
 else
     export TEST_ARGS="${TEST_ARGS} --junitxml=/${XML_REPORT}"
-    make physics_savepoint_tests
+    DEV=n make physics_savepoint_tests
 fi

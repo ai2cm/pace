@@ -3,14 +3,14 @@ from typing import Any, Dict
 import numpy as np
 import pytest
 
-import fv3core.initialization.baroclinic as baroclinic_init
-import fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
-import fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.fv3core.initialization.baroclinic as baroclinic_init
+import pace.fv3core.initialization.baroclinic_jablonowski_williamson as jablo_init
+import pace.fv3core.stencils.fv_dynamics as fv_dynamics
 import pace.util
 import pace.util as fv3util
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 from pace.stencils.testing import ParallelTranslateBaseSlicing
 from pace.stencils.testing.grid import TRACER_DIM
 from pace.util.grid import MetricTerms

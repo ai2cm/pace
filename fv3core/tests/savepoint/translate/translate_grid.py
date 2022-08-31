@@ -6,7 +6,7 @@ import pytest
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
+from pace.fv3core.stencils.a2b_ord4 import AGrid2BGridFourthOrder
 from pace.stencils.testing.parallel_translate import ParallelTranslateGrid
 from pace.util.grid import MetricTerms, set_hybrid_pressure_coefficients
 from pace.util.grid.global_setup import global_mirror_grid, gnomonic_grid
@@ -2326,7 +2326,7 @@ class TranslateInitGridUtils(ParallelTranslateGrid):
         grid_generator = MetricTerms.from_tile_sizing(
             npx=namelist.npx,
             npy=namelist.npy,
-            npz=inputs["npz"],
+            npz=int(inputs["npz"]),
             communicator=communicator,
             backend=self.stencil_factory.backend,
         )

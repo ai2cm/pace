@@ -110,6 +110,7 @@ def get_sdfg_path(
     """
     import os
 
+    # TODO: check DaceConfig for cache.strategy == name
     # Guarding against bad usage of this function
     if config.get_orchestrate() != DaCeOrchestration.Run:
         return None

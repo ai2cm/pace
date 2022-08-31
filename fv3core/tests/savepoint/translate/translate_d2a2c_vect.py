@@ -1,7 +1,7 @@
 import pace.dsl
 import pace.util
-from fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.stencils.d2a2c_vect import DGrid2AGrid2CGridVectors
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateD2A2C_Vect(TranslateDycoreFortranData2Py):
