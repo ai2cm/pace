@@ -10,9 +10,9 @@ Driver initialization type can be either `baroclinic` or `serialbox`.
 ## initialization_config
 **`baroclinic`**:  no additional config needs to be specified.
 
-**`serialbox`**:  `path` to the test data directory and optionally `serialized_grid` to specify whether to create grid from serialized data or calculate them in Python. The directory should have the necessary serialized data and a fortran namelist which will be used to set options such as dycore_config and physics_config. Currently, the supported serialized dataset is the same as the test case in `fv3gfs-physics`. To obtain this data, run the following command at the top level:
+**`serialbox`**:  `path` to the test data directory and optionally `serialized_grid` to specify whether to create grid from serialized data or calculate them in Python. The directory should have the necessary serialized data and a fortran namelist which will be used to set options such as dycore_config and physics_config. Currently, the supported serialized dataset is the same as the test case in pace-physics. To obtain this data, run the following command at the top level:
 ```
-make -C fv3gfs-physics get_test_data
+make -C physics get_test_data
 ```
 [TODO] Update this once driver specific savepoints are added.
 

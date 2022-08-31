@@ -1,5 +1,5 @@
 # flake8: noqa: F401
-from fv3core.testing import TranslateDynCore, TranslateFVDynamics
+from pace.fv3core.testing import TranslateDynCore, TranslateFVDynamics
 
 from .translate_a2b_ord4 import TranslateA2B_Ord4
 from .translate_c_sw import (

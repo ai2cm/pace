@@ -1,11 +1,11 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3core.stencils.ytp_v as ytp_v
 import pace.dsl
+import pace.fv3core.stencils.ytp_v as ytp_v
 import pace.util
-from fv3core.testing import TranslateDycoreFortranData2Py
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 from pace.util.grid import GridData
 
 

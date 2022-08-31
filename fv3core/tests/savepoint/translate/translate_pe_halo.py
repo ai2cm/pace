@@ -1,7 +1,7 @@
 import pace.dsl
 import pace.util
-from fv3core.stencils import pe_halo
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.stencils import pe_halo
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class PE_Halo_Wrapper:
