@@ -295,6 +295,7 @@ class Driver:
                 stencil_factory=self.stencil_factory,
                 damping_coefficients=self.state.damping_coefficients,
                 config=self.config.dycore_config,
+                timestep=self.config.timestep,
                 phis=self.state.dycore_state.phis,
                 state=self.state.dycore_state,
             )
