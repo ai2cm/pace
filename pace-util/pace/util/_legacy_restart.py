@@ -5,7 +5,6 @@ from typing import BinaryIO, Generator, Iterable
 from . import _xarray as xr
 from . import constants, filesystem, io
 from ._properties import RESTART_PROPERTIES, RestartProperties
-from ._properties2 import RESTART_PROPERTIES as RESTART_PROPERTIES_FORTRAN
 from .communicator import CubedSphereCommunicator
 from .partitioner import get_tile_index
 from .quantity import Quantity
@@ -42,16 +41,10 @@ def open_restart(
     """
 
     if tracer_properties is None:
-        if fortran_restart:
-            restart_properties = RESTART_PROPERTIES_FORTRAN
-        else:
-            restart_properties = RESTART_PROPERTIES
+        restart_properties = RESTART_PROPERTIES
     else:
-        if fortran_restart:
-            restart_properties = {**tracer_properties, **RESTART_PROPERTIES_FORTRAN}
-        else:
-            restart_properties = {**tracer_properties, **RESTART_PROPERTIES}
-    
+        restart_properties = {**tracer_properties, **RESTART_PROPERTIES}
+
     rank = communicator.rank
     tile_index = communicator.partitioner.tile_index(rank)
     print("Rank:", rank)
@@ -59,9 +52,11 @@ def open_restart(
     if communicator.tile.rank == constants.ROOT_RANK:
         for file in restart_files(dirname, tile_index, label):
 
-            state.update(load_partial_state_from_restart_file(
+            state.update(
+                load_partial_state_from_restart_file(
                     file, restart_properties, only_names=only_names
-                ))
+                )
+            )
 
         coupler_res_filename = get_coupler_res_filename(dirname, label)
         if filesystem.is_file(coupler_res_filename):
@@ -126,13 +121,15 @@ def _apply_dims(da, new_dims):
 def _apply_restart_metadata(state, restart_properties: RestartProperties):
     new_state = {}
     for name, da in state.items():
-        if name in restart_properties.keys():
-            properties = restart_properties[name]
-            new_dims = properties["dims"]
-            new_state[name] = _apply_dims(da, new_dims)
-            new_state[name].attrs["units"] = properties["units"]
-        else:
-            new_state[name] = copy.deepcopy(da)
+        for key in restart_properties.keys():
+            if name in restart_properties[key]["driver_name"]:
+                properties = restart_properties[key]
+                new_dims = properties["dims"]
+                new_state[name] = _apply_dims(da, new_dims)
+                new_state[name].attrs["units"] = properties["units"]
+                new_state[name].attrs["long_name"] = key
+            else:
+                new_state[name] = copy.deepcopy(da)
     return new_state
 
 
@@ -143,7 +140,6 @@ def map_keys(old_dict, old_keys_to_new):
             new_dict[new_key] = old_dict[old_key]
     for old_key in set(old_dict.keys()).difference(old_keys_to_new.keys()):
         new_dict[old_key] = old_dict[old_key]
-    print(new_dict.keys())
     return new_dict
 
 
@@ -166,7 +162,6 @@ def load_partial_state_from_restart_file(
 
     if only_names is None:
         only_names = state.keys()
-    
 
     state = {  # remove any variables that don't have restart metadata
         name: value
@@ -182,14 +177,13 @@ def load_partial_state_from_restart_file(
     return state
 
 
-
 def _get_restart_standard_names(restart_properties: RestartProperties = None):
     """Return a list of variable names needed for a smooth restart. By default uses
     restart_properties from RESTART_PROPERTIES."""
     if restart_properties is None:
         restart_properties = RESTART_PROPERTIES
     return_dict = {}
-    for std_name, properties in restart_properties.items():
-        return_dict[properties["restart_name"]] = std_name
+    for _, properties in restart_properties.items():
+        return_dict[properties["restart_name"]] = properties["driver_name"]
 
     return return_dict

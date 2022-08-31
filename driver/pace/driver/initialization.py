@@ -133,7 +133,6 @@ class RestartConfig(Initializer):
     start_time: datetime = datetime(2000, 1, 1)
     fortran_data: bool = False
 
-
     def get_driver_state(
         self,
         quantity_factory: pace.util.QuantityFactory,
@@ -141,7 +140,11 @@ class RestartConfig(Initializer):
     ) -> DriverState:
         print("Fortran data flag:", self.fortran_data)
         state = _restart_driver_state(
-            self.path, communicator.rank, quantity_factory, communicator, self.fortran_data
+            self.path,
+            communicator.rank,
+            quantity_factory,
+            communicator,
+            self.fortran_data,
         )
         print("Restarted driver state")
         return state

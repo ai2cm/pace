@@ -10,10 +10,9 @@ import fv3gfs.physics
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
 import pace.util.grid
-from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.gt4py_utils import is_gpu_backend
-from pace.util.grid import DampingCoefficients
 from pace.util import N_HALO_DEFAULT as halo
+from pace.util.grid import DampingCoefficients
 
 
 try:
@@ -198,9 +197,7 @@ def _overwrite_state_from_fortran_restart(
         state: new state filled with restart files
     """
 
-    state_dict = _driver_state_to_dict(
-        state, restart_file_prefix, is_gpu_backend
-    )
+    state_dict = _driver_state_to_dict(state, restart_file_prefix, is_gpu_backend)
 
     state_dict = pace.util.open_restart(path, communicator, fortran_restart=True)
 
@@ -231,9 +228,7 @@ def _driver_state_to_dict(
                 if "phy" in restart_file_prefix:
                     dict_state[_field.name] = driver_state.__dict__[_field.name][:]
                 else:
-                    dict_state[_field.name] = driver_state.__dict__[_field.name].data[
-                        :
-                    ]
+                    dict_state[_field.name] = driver_state.__dict__[_field.name].data[:]
             else:
                 dict_state[_field.name] = driver_state.__dict__[_field.name].data[:]
 
@@ -263,12 +258,21 @@ def _dict_state_to_driver_state(
                         _field.name
                     ]
             else:
-                if _field.name in fortran_state and _field.name in driver_state.__dict__.keys():
-                    if isinstance(driver_state, fv3gfs.physics.physics_state.PhysicsState):
-                        driver_state.__dict__[_field.name][halo:-halo-1, halo:-halo-1, :-1] = np.transpose(fortran_state[_field.name].data)
+                if (
+                    _field.name in fortran_state
+                    and _field.name in driver_state.__dict__.keys()
+                ):
+                    if isinstance(
+                        driver_state, fv3gfs.physics.physics_state.PhysicsState
+                    ):
+                        driver_state.__dict__[_field.name][
+                            halo : -halo - 1, halo : -halo - 1, :-1
+                        ] = np.transpose(fortran_state[_field.name].data)
                     else:
-                        driver_state.__dict__[_field.name].view[:] = np.transpose(fortran_state[_field.name].data)
-    
+                        driver_state.__dict__[_field.name].view[:] = np.transpose(
+                            fortran_state[_field.name].data
+                        )
+
     return driver_state
 
 
@@ -288,7 +292,6 @@ def _restart_driver_state(
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
     backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
 
-
     if fortran_data is True:
         dycore_state = _overwrite_state_from_fortran_restart(
             path,
@@ -306,10 +309,10 @@ def _restart_driver_state(
             backend_uses_gpu,
         )
     active_packages = ["microphysics"]
-    
+
     physics_state = fv3gfs.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages
-    )    
+    )
 
     if fortran_data is True:
         physics_state = _overwrite_state_from_fortran_restart(
