@@ -47,7 +47,6 @@ class TranslateCubedToLatLon(ParallelTranslate2Py):
         state_dict = {"u": u_quantity, "v": v_quantity}
 
         self._cubed_to_latlon = CubedToLatLon(
-            state=state_dict,
             stencil_factory=self.stencil_factory,
             grid_data=self.grid.grid_data,
             order=self.namelist.c2l_ord,

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field, fields
-from typing import Any, Mapping
+from typing import Any, Dict, List, Mapping
 
+import numpy as np
 import xarray as xr
 
 import pace.dsl.gt4py_utils as gt_utils
@@ -371,6 +372,22 @@ class DycoreState:
                     },
                 )
         return xr.Dataset(data_vars=data_vars)
+
+    @property
+    def tracers(self) -> List[pace.util.Quantity]:
+        return [self.__getattribute__(x) for x in DycoreState.tracer_names()]
+
+    def tracers_as_array(self) -> Dict[str, np.ndarray]:
+        all_tracers = {
+            name: self.__getattribute__(name).data
+            for name in DycoreState.tracer_names()
+        }
+        all_tracers.pop("qcld")
+        return all_tracers
+
+    @classmethod
+    def tracer_names(cls) -> List[str]:
+        return gt_utils.tracer_variables
 
     def __getitem__(self, item):
         return getattr(self, item)

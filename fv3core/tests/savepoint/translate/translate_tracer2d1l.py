@@ -51,8 +51,9 @@ class TranslateTracer2D1L(ParallelTranslate):
 
         self._base.make_storage_data_input_vars(inputs)
         all_tracers = inputs["tracers"]
+        tracer_count = int(inputs.pop("nq"))
         inputs["tracers"] = self.get_advected_tracer_dict(
-            inputs["tracers"], int(inputs.pop("nq"))
+            inputs["tracers"], tracer_count
         )
         transport = fv3core.stencils.fvtp2d.FiniteVolumeTransport(
             stencil_factory=self.stencil_factory,
@@ -67,7 +68,6 @@ class TranslateTracer2D1L(ParallelTranslate):
             transport,
             self.grid.grid_data,
             communicator,
-            inputs["tracers"],
         )
         self.tracer_advection(**inputs)
         inputs[
@@ -89,7 +89,7 @@ class TranslateTracer2D1L(ParallelTranslate):
                 units=properties["units"],
             )
         tracer_names = utils.tracer_variables[:nq]
-        return {name: all_tracers[name + "_quantity"] for name in tracer_names}
+        return {name: all_tracers[name + "_quantity"].data for name in tracer_names}
 
     def compute_sequential(self, a, b):
         pytest.skip(

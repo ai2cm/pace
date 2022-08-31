@@ -1,6 +1,5 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core
 import pace.dsl.gt4py_utils as utils
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
@@ -104,7 +103,6 @@ class CubedToLatLon:
 
     def __init__(
         self,
-        state: fv3core.DycoreState,
         stencil_factory: StencilFactory,
         grid_data: GridData,
         order: int,
@@ -162,11 +160,7 @@ class CubedToLatLon:
         self.u__v = WrappedHaloUpdater(
             comm.get_vector_halo_updater(
                 [full_size_xyiz_halo_spec], [full_size_xiyz_halo_spec]
-            ),
-            state,
-            ["u"],
-            ["v"],
-            comm=comm,
+            )
         )
 
     def __call__(
@@ -186,7 +180,7 @@ class CubedToLatLon:
             comm: Cubed-sphere communicator
         """
         if self._do_ord4:
-            self.u__v.update()
+            self.u__v.update([u.data], [v.data])
         self._compute_cubed_to_latlon(
             u,
             v,

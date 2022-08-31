@@ -1,7 +1,7 @@
 import abc
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID, uuid1
 
 import numpy as np
@@ -14,25 +14,10 @@ from .cuda_kernels import (
     unpack_scalar_f64_kernel,
     unpack_vector_f64_kernel,
 )
-from .quantity import Quantity
+from .halo_quantity_specification import QuantityHaloSpec
 from .rotate import rotate_scalar_data, rotate_vector_data
 from .types import NumpyModule
 from .utils import device_synchronize
-
-
-@dataclass
-class QuantityHaloSpec:
-    """Describe the memory to be exchanged, including size of the halo."""
-
-    n_points: int
-    strides: Tuple[int]
-    itemsize: int
-    shape: Tuple[int]
-    origin: Tuple[int, ...]
-    extent: Tuple[int, ...]
-    dims: Tuple[str, ...]
-    numpy_module: NumpyModule
-    dtype: Any
 
 
 # ------------------------------------------------------------------------
@@ -274,7 +259,7 @@ class HaloDataTransformer(abc.ABC):
             )
 
         raise NotImplementedError(
-            f"Quantity module {np_module} has no HaloDataTransformer implemented"
+            f"Numpy-like module {np_module} has no HaloDataTransformer implemented"
         )
 
     def get_unpack_buffer(self) -> Buffer:
@@ -325,41 +310,41 @@ class HaloDataTransformer(abc.ABC):
     @abc.abstractmethod
     def async_pack(
         self,
-        quantities_x: List[Quantity],
-        quantities_y: Optional[List[Quantity]] = None,
+        arrays_x: List[np.ndarray],
+        arrays_y: Optional[List[np.ndarray]] = None,
     ):
-        """Pack all given quantities into a single send Buffer.
+        """Pack all given arrays into a single send Buffer.
 
         Does not guarantee the buffer returned by `get_unpack_buffer` has
         received data, doing so requires calling `synchronize`.
         Reaching for the buffer via get_pack_buffer() will call synchronize().
 
         Args:
-            quantities_x: scalar or vector x-component quantities to pack,
+            arrays_x: scalar or vector x-component data to pack,
                 if one is vector they must all be vector
 
-            quantities_y: if quantities are vector, the y-component
-                quantities.
+            arrays_y: if data to exchange are vectors, the y-component
+                data.
         """
         pass
 
     @abc.abstractmethod
     def async_unpack(
         self,
-        quantities_x: List[Quantity],
-        quantities_y: Optional[List[Quantity]] = None,
+        arrays_x: List[np.ndarray],
+        arrays_y: Optional[List[np.ndarray]] = None,
     ):
-        """Unpack the buffer into destination quantities.
+        """Unpack the buffer into destination arrays.
 
         Does not guarantee the buffer returned by `get_unpack_buffer` has
         received data, doing so requires calling `synchronize`.
         Reaching for the buffer via get_unpack_buffer() will call synchronize().
 
         Args:
-            quantities_x: scalar or vector x-component quantities to be unpacked into,
+            arrays_x: scalar or vector x-component data to pack,
                 if one is vector they must all be vector
-            quantities_y: if quantities are vector, the y-component
-                quantities.
+            arrays_y: if data to exchange are vectors, the y-component
+                data.
         """
         pass
 
@@ -386,41 +371,41 @@ class HaloDataTransformerCPU(HaloDataTransformer):
 
     def async_pack(
         self,
-        quantities_x: List[Quantity],
-        quantities_y: Optional[List[Quantity]] = None,
+        arrays_x: List[np.ndarray],
+        arrays_y: Optional[List[np.ndarray]] = None,
     ):
         # Unpack per type
         if self._type == _HaloDataTransformerType.SCALAR:
-            self._pack_scalar(quantities_x)
+            self._pack_scalar(arrays_x)
         elif self._type == _HaloDataTransformerType.VECTOR:
-            assert quantities_y is not None
-            self._pack_vector(quantities_x, quantities_y)
+            assert arrays_y is not None
+            self._pack_vector(arrays_x, arrays_y)
         else:
             raise RuntimeError(f"Unimplemented {self._type} pack")
 
         assert isinstance(self._pack_buffer, Buffer)  # e.g. allocate happened
 
-    def _pack_scalar(self, quantities: List[Quantity]):
+    def _pack_scalar(self, arrays: List[np.ndarray]):
         if __debug__:
-            if len(quantities) != len(self._infos_x):
+            if len(arrays) != len(self._infos_x):
                 raise RuntimeError(
-                    f"Quantities count ({len(quantities)}"
+                    f"Arrays count ({len(arrays)}"
                     f" is different that edges count {len(self._infos_x)}"
                 )
-            # TODO Per quantity check
+            # TODO Per array check
 
         assert isinstance(self._pack_buffer, Buffer)  # e.g. allocate happened
         offset = 0
-        for quantity, info_x in zip(quantities, self._infos_x):
+        for array, info_x in zip(arrays, self._infos_x):
             data_size = _slices_size(info_x.pack_slices)
             # sending data across the boundary will rotate the data
             # n_clockwise_rotations times, due to the difference in axis orientation.\
             # Thus we rotate that number of times counterclockwise before sending,
             # to get the right final orientation
             source_view = rotate_scalar_data(
-                quantity.data[info_x.pack_slices],
-                quantity.dims,
-                quantity.np,
+                array[info_x.pack_slices],
+                info_x.specification.dims,
+                info_x.specification.numpy_module,
                 -info_x.pack_clockwise_rotation,
             )
             self._pack_buffer.assign_from(
@@ -429,38 +414,38 @@ class HaloDataTransformerCPU(HaloDataTransformer):
             )
             offset += data_size
 
-    def _pack_vector(self, quantities_x: List[Quantity], quantities_y: List[Quantity]):
+    def _pack_vector(self, arrays_x: List[np.ndarray], arrays_y: List[np.ndarray]):
         if __debug__:
-            if len(quantities_x) != len(self._infos_x) and len(quantities_y) != len(
+            if len(arrays_x) != len(self._infos_x) and len(arrays_y) != len(
                 self._infos_y
             ):
                 raise RuntimeError(
-                    f"Quantities count (x: {len(quantities_x)}, y: {len(quantities_y)})"
+                    f"Arrays count (x: {len(arrays_x)}, y: {len(arrays_y)})"
                     " is different that specifications count "
                     f"(x: {len(self._infos_x)}, y: {len(self._infos_y)}"
                 )
-            # TODO Per quantity check
+            # TODO Per array check
 
         assert isinstance(self._pack_buffer, Buffer)  # e.g. allocate happened
-        assert len(quantities_y) == len(quantities_x)
+        assert len(arrays_y) == len(arrays_x)
         assert len(self._infos_x) == len(self._infos_y)
         offset = 0
         for (
-            quantity_x,
-            quantity_y,
+            array_x,
+            array_y,
             info_x,
             info_y,
-        ) in zip(quantities_x, quantities_y, self._infos_x, self._infos_y):
+        ) in zip(arrays_x, arrays_y, self._infos_x, self._infos_y):
             # sending data across the boundary will rotate the data
             # n_clockwise_rotations times, due to the difference in axis orientation
             # Thus we rotate that number of times counterclockwise before sending,
             # to get the right final orientation
             x_view, y_view = rotate_vector_data(
-                quantity_x.data[info_x.pack_slices],
-                quantity_y.data[info_y.pack_slices],
+                array_x[info_x.pack_slices],
+                array_y[info_y.pack_slices],
                 -info_x.pack_clockwise_rotation,
-                quantity_x.dims,
-                quantity_x.np,
+                info_x.specification.dims,
+                info_x.specification.numpy_module,
             )
 
             # Pack X/Y data slices in the buffer
@@ -477,74 +462,72 @@ class HaloDataTransformerCPU(HaloDataTransformer):
 
     def async_unpack(
         self,
-        quantities_x: List[Quantity],
-        quantities_y: Optional[List[Quantity]] = None,
+        arrays_x: List[np.ndarray],
+        arrays_y: Optional[List[np.ndarray]] = None,
     ):
         # Unpack per type
         if self._type == _HaloDataTransformerType.SCALAR:
-            self._unpack_scalar(quantities_x)
+            self._unpack_scalar(arrays_x)
         elif self._type == _HaloDataTransformerType.VECTOR:
-            assert quantities_y is not None
-            self._unpack_vector(quantities_x, quantities_y)
+            assert arrays_y is not None
+            self._unpack_vector(arrays_x, arrays_y)
         else:
             raise RuntimeError(f"Unimplemented {self._type} unpack")
 
         assert isinstance(self._unpack_buffer, Buffer)  # e.g. allocate happened
 
-    def _unpack_scalar(self, quantities: List[Quantity]):
+    def _unpack_scalar(self, arrays: List[np.ndarray]):
         if __debug__:
-            if len(quantities) != len(self._infos_x):
+            if len(arrays) != len(self._infos_x):
                 raise RuntimeError(
-                    f"Quantities count ({len(quantities)}"
+                    f"Arrays count ({len(arrays)}"
                     f" is different that specifications count {len(self._infos_x)}"
                 )
-            # TODO Per quantity check
+            # TODO Per array check
 
         assert isinstance(self._unpack_buffer, Buffer)  # e.g. allocate happened
         offset = 0
-        for quantity, info_x in zip(quantities, self._infos_x):
-            quantity_view = quantity.data[info_x.unpack_slices]
+        for array, info_x in zip(arrays, self._infos_x):
+            array_view = array[info_x.unpack_slices]
             data_size = _slices_size(info_x.unpack_slices)
             self._unpack_buffer.assign_to(
-                quantity_view,
+                array_view,
                 buffer_slice=np.index_exp[offset : offset + data_size],
-                buffer_reshape=quantity_view.shape,
+                buffer_reshape=array_view.shape,
             )
             offset += data_size
 
-    def _unpack_vector(
-        self, quantities_x: List[Quantity], quantities_y: List[Quantity]
-    ):
+    def _unpack_vector(self, arrays_x: List[np.ndarray], arrays_y: List[np.ndarray]):
         if __debug__:
-            if len(quantities_x) != len(self._infos_x) and len(quantities_y) != len(
+            if len(arrays_x) != len(self._infos_x) and len(arrays_y) != len(
                 self._infos_y
             ):
                 raise RuntimeError(
-                    f"Quantities count (x: {len(quantities_x)}, y: {len(quantities_y)})"
+                    f"Arrays count (x: {len(arrays_x)}, y: {len(arrays_y)})"
                     " is different that specifications count "
                     f"(x: {len(self._infos_x)}, y: {len(self._infos_y)})"
                 )
-            # TODO Per quantity check
+            # TODO Per array check
 
         assert isinstance(self._unpack_buffer, Buffer)  # e.g. allocate happened
         offset = 0
-        for quantity_x, quantity_y, info_x, info_y in zip(
-            quantities_x, quantities_y, self._infos_x, self._infos_y
+        for array_x, array_y, info_x, info_y in zip(
+            arrays_x, arrays_y, self._infos_x, self._infos_y
         ):
-            quantity_view = quantity_x.data[info_x.unpack_slices]
+            array_view = array_x[info_x.unpack_slices]
             data_size = _slices_size(info_x.unpack_slices)
             self._unpack_buffer.assign_to(
-                quantity_view,
+                array_view,
                 buffer_slice=np.index_exp[offset : offset + data_size],
-                buffer_reshape=quantity_view.shape,
+                buffer_reshape=array_view.shape,
             )
             offset += data_size
-            quantity_view = quantity_y.data[info_y.unpack_slices]
+            array_view = array_y[info_y.unpack_slices]
             data_size = _slices_size(info_y.unpack_slices)
             self._unpack_buffer.assign_to(
-                quantity_view,
+                array_view,
                 buffer_slice=np.index_exp[offset : offset + data_size],
-                buffer_reshape=quantity_view.shape,
+                buffer_reshape=array_view.shape,
             )
             offset += data_size
 
@@ -553,7 +536,7 @@ class HaloDataTransformerGPU(HaloDataTransformer):
     """Pack/unpack data in a single buffer using CUDA Kernels.
 
     In order to efficiently pack/unpack on the GPU to a single GPU buffer
-    we use streamed (e.g. async) kernels per quantity per edge to send. The
+    we use streamed (e.g. async) kernels per array per edge to send. The
     kernels are store in `cuda_kernels.py`, they both follow the same simple pattern
     by reading the indices to the device memory of the data to pack/unpack.
     `_flatten_indices` is the routine that take the layout of the memory and
@@ -683,47 +666,47 @@ class HaloDataTransformerGPU(HaloDataTransformer):
 
     def async_pack(
         self,
-        quantities_x: List[Quantity],
-        quantities_y: Optional[List[Quantity]] = None,
+        arrays_x: List["cp.ndarray"],
+        arrays_y: Optional[List["cp.ndarray"]] = None,
     ):
-        """Pack the quantities into a single buffer via streamed cuda kernels
+        """Pack the arrays into a single buffer via streamed cuda kernels
 
         Writes into self._pack_buffer using self._x_infos and self._y_infos
-        to read the offsets and sizes per quantity.
+        to read the offsets and sizes per array.
 
         Args:
-            quantities_x: list of quantities to pack. Must fit the specifications given
+            arrays_x: list of arrays to pack. Must fit the specifications given
                 at init time.
-            quantities_y: Same as above but optional, used only for vector transfer.
+            arrays_y: Same as above but optional, used only for vector transfer.
         """
 
         # Unpack per type
         if self._type == _HaloDataTransformerType.SCALAR:
-            self._opt_pack_scalar(quantities_x)
+            self._opt_pack_scalar(arrays_x)
         elif self._type == _HaloDataTransformerType.VECTOR:
-            assert quantities_y is not None
-            self._opt_pack_vector(quantities_x, quantities_y)
+            assert arrays_y is not None
+            self._opt_pack_vector(arrays_x, arrays_y)
         else:
             raise RuntimeError(f"Unimplemented {self._type} pack")
 
-    def _opt_pack_scalar(self, quantities: List[Quantity]):
+    def _opt_pack_scalar(self, arrays: List["cp.ndarray"]):
         """Specialized packing for scalar. See async_pack docs for usage."""
         if __debug__:
-            if len(quantities) != len(self._infos_x):
+            if len(arrays) != len(self._infos_x):
                 raise RuntimeError(
-                    f"Quantities count ({len(quantities)}"
+                    f"Quantities count ({len(arrays)}"
                     f" is different that specifications count {len(self._infos_x)}"
                 )
-            # TODO Per quantity check
+            # TODO Per array check
 
         assert isinstance(self._pack_buffer, Buffer)  # e.g. allocate happened
         offset = 0
-        for info_x, quantity in zip(self._infos_x, quantities):
+        for info_x, array in zip(self._infos_x, arrays):
             cu_kernel_args = self._cu_kernel_args[info_x._id]
 
             # Use private stream
             with self._get_stream(cu_kernel_args.stream):
-                if quantity.metadata.dtype != np.float64:
+                if info_x.specification.dtype != np.float64:
                     raise RuntimeError(f"Kernel requires f64 given {np.float64}")
 
                 # Launch kernel
@@ -736,7 +719,7 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                         (grid_x,),
                         (blocks,),
                         (
-                            quantity.data[:],  # source_array
+                            array[:],  # source_array
                             cu_kernel_args.x_send_indices,  # indices
                             info_x.pack_buffer_size,  # nIndex
                             offset,
@@ -748,29 +731,29 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                 offset += info_x.pack_buffer_size
 
     def _opt_pack_vector(
-        self, quantities_x: List[Quantity], quantities_y: List[Quantity]
+        self, arrays_x: List["cp.ndarray"], arrays_y: List["cp.ndarray"]
     ):
         """Specialized packing for vectors. See async_pack docs for usage."""
         if __debug__:
-            if len(quantities_x) != len(self._infos_x) and len(quantities_y) != len(
+            if len(arrays_x) != len(self._infos_x) and len(arrays_y) != len(
                 self._infos_y
             ):
                 raise RuntimeError(
-                    f"Quantities count (x: {len(quantities_x)}, y: {len(quantities_y)}"
+                    f"Arrays count (x: {len(arrays_x)}, y: {len(arrays_y)}"
                     " is different that specifications count "
                     f"(x: {len(self._infos_x)}, y: {len(self._infos_y)}"
                 )
-            # TODO Per quantity check
+            # TODO Per array check
         assert isinstance(self._pack_buffer, Buffer)  # e.g. allocate happened
         assert len(self._infos_x) == len(self._infos_y)
-        assert len(quantities_x) == len(quantities_y)
+        assert len(arrays_x) == len(arrays_y)
         offset = 0
         for (
-            quantity_x,
-            quantity_y,
+            array_x,
+            array_y,
             info_x,
             info_y,
-        ) in zip(quantities_x, quantities_y, self._infos_x, self._infos_y):
+        ) in zip(arrays_x, arrays_y, self._infos_x, self._infos_y):
             cu_kernel_args = self._cu_kernel_args[info_x._id]
 
             # Use private stream
@@ -779,7 +762,7 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                 # Buffer sizes
                 transformer_size = info_x.pack_buffer_size + info_y.pack_buffer_size
 
-                if quantity_x.metadata.dtype != np.float64:
+                if info_x.specification.dtype != np.float64:
                     raise RuntimeError(f"Kernel requires f64 given {np.float64}")
 
                 # Launch kernel
@@ -792,8 +775,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                         (grid_x,),
                         (blocks,),
                         (
-                            quantity_x.data[:],  # source_array_x
-                            quantity_y.data[:],  # source_array_y
+                            array_x[:],  # source_array_x
+                            array_y[:],  # source_array_y
                             cu_kernel_args.x_send_indices,  # indices_x
                             cu_kernel_args.y_send_indices,  # indices_y
                             info_x.pack_buffer_size,  # nIndex_x
@@ -809,40 +792,40 @@ class HaloDataTransformerGPU(HaloDataTransformer):
 
     def async_unpack(
         self,
-        quantities_x: List[Quantity],
-        quantities_y: Optional[List[Quantity]] = None,
+        arrays_x: List["cp.ndarray"],
+        arrays_y: Optional[List["cp.ndarray"]] = None,
     ):
-        """Unpack the quantities from a single buffer via streamed cuda kernels
+        """Unpack the arrays from a single buffer via streamed cuda kernels
 
         Reads from self._unpack_buffer using self._x_infos and self._y_infos
-        to read the offsets and sizes per quantity.
+        to read the offsets and sizes per array.
 
         Args:
-            quantities_x: list of quantities to unpack. Must fit
+            arrays_x: list of arrays to unpack. Must fit
                 the specifications given at init time.
-            quantities_y: Same as above but optional, used only for vector transfer.
+            arrays_y: Same as above but optional, used only for vector transfer.
         """
         # Unpack per type
         if self._type == _HaloDataTransformerType.SCALAR:
-            self._opt_unpack_scalar(quantities_x)
+            self._opt_unpack_scalar(arrays_x)
         elif self._type == _HaloDataTransformerType.VECTOR:
-            assert quantities_y is not None
-            self._opt_unpack_vector(quantities_x, quantities_y)
+            assert arrays_y is not None
+            self._opt_unpack_vector(arrays_x, arrays_y)
         else:
             raise RuntimeError(f"Unimplemented {self._type} unpack")
 
-    def _opt_unpack_scalar(self, quantities: List[Quantity]):
+    def _opt_unpack_scalar(self, arrays: List["cp.ndarray"]):
         """Specialized unpacking for scalars. See async_unpack docs for usage."""
         if __debug__:
-            if len(quantities) != len(self._infos_x):
+            if len(arrays) != len(self._infos_x):
                 raise RuntimeError(
-                    f"Quantities count ({len(quantities)})"
+                    f"Arrays count ({len(arrays)})"
                     f" is different that specifications count ({len(self._infos_x)})"
                 )
-            # TODO Per quantity check
+            # TODO Per array check
         assert isinstance(self._unpack_buffer, Buffer)  # e.g. allocate happened
         offset = 0
-        for quantity, info_x in zip(quantities, self._infos_x):
+        for array, info_x in zip(arrays, self._infos_x):
             cu_kernel_args = self._cu_kernel_args[info_x._id]
 
             # Use private stream
@@ -862,7 +845,7 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                             cu_kernel_args.x_recv_indices,  # indices
                             info_x._unpack_buffer_size,  # nIndex
                             offset,
-                            quantity.data[:],  # destination_array
+                            array[:],  # destination_array
                         ),
                     )
 
@@ -870,31 +853,31 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                 offset += info_x._unpack_buffer_size
 
     def _opt_unpack_vector(
-        self, quantities_x: List[Quantity], quantities_y: List[Quantity]
+        self, arrays_x: List["cp.ndarray"], arrays_y: List["cp.ndarray"]
     ):
         """Specialized unpacking for vectors. See async_unpack docs for usage."""
         if __debug__:
-            if len(quantities_x) != len(self._infos_x) and len(quantities_y) != len(
+            if len(arrays_x) != len(self._infos_x) and len(arrays_y) != len(
                 self._infos_y
             ):
                 raise RuntimeError(
-                    f"Quantities count (x: {len(quantities_x)}, y: {len(quantities_y)}"
+                    f"Arrays count (x: {len(arrays_x)}, y: {len(arrays_y)}"
                     " is different that specifications count "
                     f"(x: {len(self._infos_x)}, y: {len(self._infos_y)}"
                 )
-            # TODO Per quantity check
+            # TODO Per array check
         assert isinstance(self._unpack_buffer, Buffer)  # e.g. allocate happened
         assert len(self._infos_x) == len(self._infos_y)
-        assert len(quantities_x) == len(quantities_y)
+        assert len(arrays_x) == len(arrays_y)
         offset = 0
         for (
-            quantity_x,
-            quantity_y,
+            array_x,
+            array_y,
             info_x,
             info_y,
-        ) in zip(quantities_x, quantities_y, self._infos_x, self._infos_y):
+        ) in zip(arrays_x, arrays_y, self._infos_x, self._infos_y):
             # We only have writte a f64 kernel
-            if quantity_x.metadata.dtype != np.float64:
+            if info_x.specification.dtype != np.float64:
                 raise RuntimeError(f"Kernel requires f64 given {np.float64}")
 
             cu_kernel_args = self._cu_kernel_args[info_x._id]
@@ -921,8 +904,8 @@ class HaloDataTransformerGPU(HaloDataTransformer):
                             info_x._unpack_buffer_size,  # nIndex_x
                             info_y._unpack_buffer_size,  # nIndex_y
                             offset,
-                            quantity_x.data[:],  # destination_array_x
-                            quantity_y.data[:],  # destination_array_y
+                            array_x[:],  # destination_array_x
+                            array_y[:],  # destination_array_y
                         ),
                     )
 

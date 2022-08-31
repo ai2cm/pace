@@ -21,6 +21,12 @@ managed_memory = True
 halo = 3
 origin = (halo, halo, 0)
 
+# nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
+# ncnst = Atm(mytile)%ncnst
+# pnats = Atm(mytile)%flagstruct%pnats
+# here we hard-coded it because 8 is the only supported value, refactor this later!
+NQ = 8  # state.nq_tot - spec.namelist.dnats
+
 # TODO get from field_table
 tracer_variables = [
     "qvapor",

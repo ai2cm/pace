@@ -1,7 +1,11 @@
+from typing import List
+
+import numpy as np
+
 from . import constants
 
 
-def rotate_scalar_data(data, dims, numpy, n_clockwise_rotations):
+def rotate_scalar_data(data, dims, numpy, n_clockwise_rotations) -> np.ndarray:
     n_clockwise_rotations = n_clockwise_rotations % 4
     if n_clockwise_rotations == 0:
         pass
@@ -34,7 +38,9 @@ def rotate_scalar_data(data, dims, numpy, n_clockwise_rotations):
     return data
 
 
-def rotate_vector_data(x_data, y_data, n_clockwise_rotations, dims, numpy):
+def rotate_vector_data(
+    x_data, y_data, n_clockwise_rotations, dims, numpy
+) -> List[np.ndarray]:
     x_data = rotate_scalar_data(x_data, dims, numpy, n_clockwise_rotations)
     y_data = rotate_scalar_data(y_data, dims, numpy, n_clockwise_rotations)
     data = [x_data, y_data]

@@ -66,7 +66,6 @@ class TranslateMapN_Tracer_2d(TranslateDycoreFortranData2Py):
             inputs.pop("j1"),
             inputs.pop("j2"),
             fill=self.namelist.fill,
-            tracers=inputs["tracers"],
         )
         self.compute_func(**inputs)
         return self.slice_output(inputs)

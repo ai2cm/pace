@@ -8,7 +8,7 @@ from . import constants
 from ._timing import NullTimer, Timer
 from .boundary import Boundary
 from .buffer import array_buffer, recv_buffer, send_buffer
-from .halo_data_transformer import QuantityHaloSpec
+from .halo_quantity_specification import QuantityHaloSpec
 from .halo_updater import HaloUpdater, HaloUpdateRequest, VectorInterfaceHaloUpdater
 from .partitioner import CubedSpherePartitioner, Partitioner, TilePartitioner
 from .quantity import Quantity, QuantityMetadata
@@ -325,8 +325,10 @@ class Communicator(abc.ABC):
         """
         if isinstance(quantity, Quantity):
             quantities = [quantity]
+            arrays = [quantity.data]
         else:
             quantities = quantity
+            arrays = [qty.data for qty in quantity]
 
         specifications = []
         for quantity in quantities:
@@ -345,7 +347,7 @@ class Communicator(abc.ABC):
 
         halo_updater = self.get_scalar_halo_updater(specifications)
         halo_updater.force_finalize_on_wait()
-        halo_updater.start(quantities)
+        halo_updater.start(arrays)
         return halo_updater
 
     def vector_halo_update(
@@ -397,12 +399,16 @@ class Communicator(abc.ABC):
         """
         if isinstance(x_quantity, Quantity):
             x_quantities = [x_quantity]
+            x_arrays = [x_quantity.data]
         else:
             x_quantities = x_quantity
+            x_arrays = [qty.data for qty in x_quantity]
         if isinstance(y_quantity, Quantity):
             y_quantities = [y_quantity]
+            y_arrays = [y_quantity.data]
         else:
             y_quantities = y_quantity
+            y_arrays = [qty.data for qty in y_quantity]
 
         x_specifications = []
         y_specifications = []
@@ -434,7 +440,7 @@ class Communicator(abc.ABC):
 
         halo_updater = self.get_vector_halo_updater(x_specifications, y_specifications)
         halo_updater.force_finalize_on_wait()
-        halo_updater.start(x_quantities, y_quantities)
+        halo_updater.start(x_arrays, y_arrays)
         return halo_updater
 
     def synchronize_vector_interfaces(self, x_quantity: Quantity, y_quantity: Quantity):
@@ -479,14 +485,20 @@ class Communicator(abc.ABC):
         """
         halo_updater = VectorInterfaceHaloUpdater(
             comm=self.comm,
+            qty_x_spec=QuantityHaloSpec.from_quantity(x_quantity, -1),
+            qty_y_spec=QuantityHaloSpec.from_quantity(y_quantity, -1),
             boundaries=self.boundaries,
             force_cpu=self._force_cpu,
             timer=self.timer,
         )
-        req = halo_updater.start_synchronize_vector_interfaces(x_quantity, y_quantity)
+        req = halo_updater.start_synchronize_vector_interfaces(
+            x_quantity.data, y_quantity.data
+        )
         return req
 
-    def get_scalar_halo_updater(self, specifications: List[QuantityHaloSpec]):
+    def get_scalar_halo_updater(
+        self, specifications: List[QuantityHaloSpec]
+    ) -> HaloUpdater:
         if len(specifications) == 0:
             raise RuntimeError("Cannot create updater with specifications list")
         if specifications[0].n_points == 0:
@@ -504,7 +516,7 @@ class Communicator(abc.ABC):
         self,
         specifications_x: List[QuantityHaloSpec],
         specifications_y: List[QuantityHaloSpec],
-    ):
+    ) -> HaloUpdater:
         if len(specifications_x) == 0 and len(specifications_y) == 0:
             raise RuntimeError("Cannot create updater with empty specifications list")
         if specifications_x[0].n_points == 0 and specifications_y[0].n_points == 0:
@@ -517,6 +529,20 @@ class Communicator(abc.ABC):
             self.boundaries.values(),
             self._get_halo_tag(),
             self.timer,
+        )
+
+    def get_vector_interface_halo_updater(
+        self,
+        specification_x: QuantityHaloSpec,
+        specification_y: QuantityHaloSpec,
+    ) -> VectorInterfaceHaloUpdater:
+        return VectorInterfaceHaloUpdater(
+            comm=self.comm,
+            qty_x_spec=specification_x,
+            qty_y_spec=specification_y,
+            boundaries=self.boundaries,
+            force_cpu=self._force_cpu,
+            timer=self.timer,
         )
 
     def _get_halo_tag(self) -> int:
