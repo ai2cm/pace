@@ -97,31 +97,31 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v2-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}-{{ checksum "pace-util/setup.py" }}
+            - v2-{{ checksum "util/tox.ini" }}-{{ checksum "constraints.txt" }}-{{ checksum "util/setup.py" }}
       - run:
           name: install tox and MPI
           command: |
-            if [ $(python changed_from_main.py pace-util) != false ]; then
+            if [ $(python changed_from_main.py util) != false ]; then
               sudo apt-get update
               sudo apt-get install libopenmpi3 libopenmpi-dev
               pip3 install --upgrade setuptools wheel
-              python3 -m venv pace-util/venv
-              . pace-util/venv/bin/activate
+              python3 -m venv util/venv
+              . util/venv/bin/activate
               pip3 install tox -c constraints.txt
             fi
       - run:
           name: run tests
           command: |
-            if [ $(python changed_from_main.py pace-util) != false ]; then
-              cd pace-util
+            if [ $(python changed_from_main.py util) != false ]; then
+              cd util
               . venv/bin/activate
               tox --recreate -e test -e test_no_extras
             fi
       - save_cache:
-          key: v2-{{ checksum "pace-util/tox.ini" }}-{{ checksum "constraints.txt" }}
+          key: v2-{{ checksum "util/tox.ini" }}-{{ checksum "constraints.txt" }}
           paths:
-            - pace-util/.tox
-            - pace-util/venv
+            - util/.tox
+            - util/venv
 
   test_driver:
     docker:

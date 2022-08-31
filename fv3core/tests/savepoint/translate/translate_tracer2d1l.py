@@ -1,12 +1,12 @@
 import pytest
 
-import fv3core.stencils.fvtp2d
-import fv3core.stencils.tracer_2d_1l
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
+import pace.fv3core.stencils.fvtp2d
+import pace.fv3core.stencils.tracer_2d_1l
 import pace.util
 import pace.util as fv3util
-from fv3core.utils.functional_validation import get_subset_func
+from pace.fv3core.utils.functional_validation import get_subset_func
 from pace.stencils.testing import ParallelTranslate
 
 
@@ -54,7 +54,7 @@ class TranslateTracer2D1L(ParallelTranslate):
         inputs["tracers"] = self.get_advected_tracer_dict(
             inputs["tracers"], int(inputs.pop("nq"))
         )
-        transport = fv3core.stencils.fvtp2d.FiniteVolumeTransport(
+        transport = pace.fv3core.stencils.fvtp2d.FiniteVolumeTransport(
             stencil_factory=self.stencil_factory,
             grid_data=self.grid.grid_data,
             damping_coefficients=self.grid.damping_coefficients,
@@ -62,7 +62,7 @@ class TranslateTracer2D1L(ParallelTranslate):
             hord=self.namelist.hord_tr,
         )
 
-        self.tracer_advection = fv3core.stencils.tracer_2d_1l.TracerAdvection(
+        self.tracer_advection = pace.fv3core.stencils.tracer_2d_1l.TracerAdvection(
             self.stencil_factory,
             transport,
             self.grid.grid_data,

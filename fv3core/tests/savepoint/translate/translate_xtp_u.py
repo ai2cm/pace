@@ -1,7 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, interval
 
-import fv3core.stencils.xtp_u as xtp_u
 import pace.dsl
+import pace.fv3core.stencils.xtp_u as xtp_u
 import pace.util
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ

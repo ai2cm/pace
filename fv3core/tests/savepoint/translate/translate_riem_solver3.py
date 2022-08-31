@@ -1,8 +1,8 @@
-import fv3core._config as spec
 import pace.dsl
 import pace.util
-from fv3core.stencils.riem_solver3 import RiemannSolver3
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core import _config as spec
+from pace.fv3core.stencils.riem_solver3 import RiemannSolver3
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateRiem_Solver3(TranslateDycoreFortranData2Py):

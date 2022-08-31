@@ -1,7 +1,7 @@
-import fv3core.stencils.nh_p_grad as NH_P_Grad
 import pace.dsl
+import pace.fv3core.stencils.nh_p_grad as NH_P_Grad
 import pace.util
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateNH_P_Grad(TranslateDycoreFortranData2Py):

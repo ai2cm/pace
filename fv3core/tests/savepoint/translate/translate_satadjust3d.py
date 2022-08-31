@@ -1,8 +1,8 @@
 import pace.dsl
 import pace.util
-from fv3core import DynamicalCoreConfig
-from fv3core.stencils.saturation_adjustment import SatAdjust3d
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core import DynamicalCoreConfig
+from pace.fv3core.stencils.saturation_adjustment import SatAdjust3d
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateSatAdjust3d(TranslateDycoreFortranData2Py):
