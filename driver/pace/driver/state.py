@@ -209,9 +209,7 @@ def _overwrite_state_from_fortran_restart(
 
 
 def _driver_state_to_dict(
-    driver_state: Union[
-        fv3core.DycoreState, pace.physics.PhysicsState, TendencyState
-    ],
+    driver_state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
     restart_file_prefix: str,
     is_gpu_backend: bool,
 ):
@@ -237,9 +235,7 @@ def _driver_state_to_dict(
 
 def _dict_state_to_driver_state(
     fortran_state: dict,
-    driver_state: Union[
-        fv3core.DycoreState, pace.physics.PhysicsState, TendencyState
-    ],
+    driver_state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
     restart_file_prefix: str,
     is_gpu_backend: bool,
 ):
