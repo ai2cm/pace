@@ -138,35 +138,12 @@ def _apply_restart_metadata(state, restart_properties: RestartProperties):
 
 def map_keys(old_dict, old_keys_to_new):
     new_dict = {}
-
-    # print(old_keys_to_new.keys())
-    # for key in old_keys_to_new.keys():
-    #     old_keys_to_new[key] = key
-
-    # old_keys_to_new["W"] = "w"
-    # old_keys_to_new["sphum"] = "qvapor"
-    # old_keys_to_new["liq_wat"] = "qliquid"
-    # old_keys_to_new["ice_wat"] = "qice"
-    # old_keys_to_new["rainwat"] = "qrain"
-    # old_keys_to_new["snowwat"] = "qsnow"
-    # old_keys_to_new["graupel"] = "qgraupel"
-    # old_keys_to_new["o3mr"] = "qo3mr"
-    # old_keys_to_new["sgs_tke"] = "qsgs_tke"
-    # old_keys_to_new["cld_amt"] = "qcld"
-    # old_keys_to_new["DZ"] = "delz"
-    # old_keys_to_new["T"] = "pt"
-
-
-    # print(old_keys_to_new.keys())
-    # exit()
-
-    print(old_keys_to_new)
     for old_key, new_key in old_keys_to_new.items():
         if old_key in old_dict:
             new_dict[new_key] = old_dict[old_key]
     for old_key in set(old_dict.keys()).difference(old_keys_to_new.keys()):
         new_dict[old_key] = old_dict[old_key]
-    exit()
+    print(new_dict.keys())
     return new_dict
 
 

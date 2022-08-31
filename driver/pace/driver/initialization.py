@@ -144,7 +144,6 @@ class RestartConfig(Initializer):
             self.path, communicator.rank, quantity_factory, communicator, self.fortran_data
         )
         print("Restarted driver state")
-        #  exit()
         return state
 
 

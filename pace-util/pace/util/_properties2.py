@@ -79,48 +79,6 @@ RESTART_PROPERTIES: RestartProperties = {
         "units": "unknown",
         "long_name": "canopy_water",
     },
-    "sfcflw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "dnfx0",
-        "restart_name": "sfcflw",
-        "units": "W/m^2",
-        "long_name": "clear_sky_downward_longwave_flux_at_surface",
-    },
-    "sfcfsw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "dnfx0",
-        "restart_name": "sfcfsw",
-        "units": "W/m^2",
-        "long_name": "clear_sky_downward_shortwave_flux_at_surface",
-    },
-    "sfcflw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "upfx0",
-        "restart_name": "sfcflw",
-        "units": "W/m^2",
-        "long_name": "clear_sky_upward_longwave_flux_at_surface",
-    },
-    "topflw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "upfx0",
-        "restart_name": "topflw",
-        "units": "W/m^2",
-        "long_name": "clear_sky_upward_longwave_flux_at_top_of_atmosphere",
-    },
-    "sfcfsw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "upfx0",
-        "restart_name": "sfcfsw",
-        "units": "W/m^2",
-        "long_name": "clear_sky_upward_shortwave_flux_at_surface",
-    },
-    "topfsw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "upfx0",
-        "restart_name": "topfsw",
-        "units": "W/m^2",
-        "long_name": "clear_sky_upward_shortwave_flux_at_top_of_atmosphere",
-    },
     "cvb": {
         "dims": [Y_DIM, X_DIM],
         "restart_name": "cvb",
@@ -420,104 +378,126 @@ RESTART_PROPERTIES: RestartProperties = {
         "units": "m",
         "long_name": "total_precipitation",
     },
-    "sfcflw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "dnfxc",
-        "restart_name": "sfcflw",
-        "units": "W/m^2",
-        "long_name": "total_sky_downward_longwave_flux_at_surface",
-    },
-    "sfcfsw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "dnfxc",
-        "restart_name": "sfcfsw",
-        "units": "W/m^2",
-        "long_name": "total_sky_downward_shortwave_flux_at_surface",
-    },
-    "topfsw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "dnfxc",
-        "restart_name": "topfsw",
-        "units": "W/m^2",
-        "long_name":"total_sky_downward_shortwave_flux_at_top_of_atmosphere",
-    },
-    "sfcflw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "upfxc",
-        "restart_name": "sfcflw",
-        "units": "W/m^2",
-        "long_name": "total_sky_upward_longwave_flux_at_surface",
-    },
-    "topflw": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "upfxc",
-        "restart_name": "topflw",
-        "units": "W/m^2",
-        "long_name": "total_sky_upward_longwave_flux_at_top_of_atmosphere",
-    },
-    "total_sky_upward_shortwave_flux_at_surface": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "upfxc",
-        "restart_name": "sfcfsw",
-        "units": "W/m^2",
-        "long_name": "total_sky_upward_shortwave_flux_at_surface",
-    },
-    "total_sky_upward_shortwave_flux_at_top_of_atmosphere": {
-        "dims": [Y_DIM, X_DIM],
-        "fortran_subname": "upfxc",
-        "restart_name": "topfsw",
-        "units": "W/m^2",
-    },
-    "total_soil_moisture": {
+    "smc": {
         "dims": [Z_SOIL_DIM, Y_DIM, X_DIM],
         "restart_name": "smc",
         "units": "unknown",
+        "long_name": "total_soil_moisture",
     },
-    "vegetation_fraction": {
+    "vfrac": {
         "dims": [Y_DIM, X_DIM],
         "restart_name": "vfrac",
         "units": "",
+        "long_name": "vegetation_fraction",
     },
-    "vegetation_type": {"dims": [Y_DIM, X_DIM], "restart_name": "vtype", "units": ""},
-    "vertical_pressure_velocity": {
+    "vtype": {"dims": [Y_DIM, X_DIM], "restart_name": "vtype", "units": "", "long_name": "vegetation_type",},
+    "omga": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "omga",
         "units": "Pa/s",
+        "long_name": "vertical_pressure_velocity",
     },
-    "vertical_thickness_of_atmospheric_layer": {
+    "DZ": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "DZ",
         "units": "m",
+        "long_name": "vertical_thickness_of_atmospheric_layer",
     },
-    "vertical_wind": {
+    "w": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "W",
         "units": "m/s",
+        "long_name": "vertical_wind",
     },
-    "water_equivalent_of_accumulated_snow_depth": {
+    "sheleg": {
         "description": "weasd in Fortran code, over land and sea ice only",
         "dims": [Y_DIM, X_DIM],
         "restart_name": "sheleg",
         "units": "kg/m^2",
+        "long_name": "water_equivalent_of_accumulated_snow_depth",
     },
-    "x_wind": {
+    "u": {
         "dims": [Z_DIM, Y_INTERFACE_DIM, X_DIM],
         "restart_name": "u",
         "units": "m/s",
+        "long_name": "x_wind",
     },
-    "x_wind_on_c_grid": {
+    "uc": {
         "dims": [Z_DIM, Y_DIM, X_INTERFACE_DIM],
         "restart_name": "uc",
         "units": "m/s",
+        "long_name": "x_wind_on_c_grid",
     },
-    "y_wind": {
+    "v": {
         "dims": [Z_DIM, Y_DIM, X_INTERFACE_DIM],
         "restart_name": "v",
         "units": "m/s",
+        "long_name": "y_wind",
     },
-    "y_wind_on_c_grid": {
+    "vc": {
         "dims": [Z_DIM, Y_INTERFACE_DIM, X_DIM],
         "restart_name": "vc",
         "units": "m/s",
+        "long_name": "y_wind_on_c_grid",
+    },
+    "qvapor": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "sphum",
+        "units": "kg/kg",
+        "long_name": "specific_humidity",
+    },
+    "qliquid": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "liq_wat",
+        "units": "kg/kg",
+        "long_name": "cloud_water_mixing_ratio",
+    },
+    "qice": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "liq_wat",
+        "units": "kg/kg",
+        "long_name": "cloud_ice_mixing_ratio",
+    },
+    "qrain": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "rainwat",
+        "units": "kg/kg",
+        "long_name": "rain_mixing_ratio",
+    },
+    "qsnow": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "snowwat",
+        "units": "kg/kg",
+        "long_name": "snow_mixing_ratio",
+    },
+    "qgraupel": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "graupel",
+        "units": "kg/kg",
+        "long_name": "graupel_mixing_ratio",
+    },
+    "qo3mr": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "o3mr",
+        "units": "kg/kg",
+        "long_name": "ozone_mixing_ratio",
+    },
+    "qsgs_tke": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "sgs_tke",
+        "units": "kg/kg",
+        "long_name": "turbulent_kinetic_energy",
+    },
+    "qcld": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "cld_amt",
+        "units": "kg/kg",
+        "long_name": "cloud_fraction",
+    },
+    "delz": {
+        "dims": [Z_DIM, Y_DIM, X_DIM],
+        "restart_name": "DZ",
+        "units": "kg/kg",
+        "long_name": "vertical_thickness_of_atmospheric_layer",
     },
 }

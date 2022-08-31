@@ -12,7 +12,6 @@ import pace.util
 import pace.util.grid
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.gt4py_utils import is_gpu_backend
-from pace.util._properties import RESTART_PROPERTIES
 from pace.util.grid import DampingCoefficients
 from pace.util import N_HALO_DEFAULT as halo
 
