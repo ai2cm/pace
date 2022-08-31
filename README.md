@@ -24,6 +24,48 @@ Then build the `pace` docker image at the top level.
 make build
 ```
 
+## Building Bare-Metal
+
+Pace requires gcc > 9.2, cuda, MPI, and Python 3.8 on your system in order to run bare-metal.
+
+You will also need the headers of the boost libraries in your `path` (boost itself does not need to be installed).
+
+```shell
+cd $BOOST_LOCATION
+wget https://boostorg.jfrog.io/artifactory/main/release/1.79.0/source/boost_1_79_0.tar.gz
+tar -xzf boost_1_79_0.tar.gz
+mkdir -p boost_1_79_0/include
+mv boost_1_79_0/boost boost_1_79_0/include/.
+setenv BOOST_ROOT $BOOST_LOCATION/boost_1_79_0
+```
+
+After cloning Pace you will need to update the repository's submodules:
+```shell
+$ git submodule update --init
+```
+
+We recommend creating a python venv or conda environment specifically for Pace.
+
+Inside of your pace `venv` or conda environment install the Python requirements and GT4Py:
+```shell
+$ pip install -r requirements.txt -c constraints.txt
+$ pip install --no-cache-dir -c ./constraints.txt "PATH/TO/PACE/pace/external/gt4py"
+python3 -m gt4py.gt_src_manager install --major-version 2
+```
+
+Then use pip to install the Pace components
+```shell
+$ pip install -r requirements_dev.txt -c constraints.txt
+```
+Bash scripts to install Pace on specific machines such as Gaea can be found in `examples/build_scripts/`.
+
+You can now run and develop Pace directly. To run the tests simply invoke pytest using the same test arguments as inside the container:
+```shell
+$ pytest [TEST_ARGS] fv3core/tests/main
+$ pytest --data_path=path/to/test/data [TEST_ARGS] --threshold_overrides_file=fv3core/tests/savepoint/translate/overrides/standard.yaml fv3core/tests/savepoint
+$ mpirun -np 6 python3 -m mpi4py -m pytest --maxfail=1 --data_path=path/to/test/data [TEST_ARGS] --threshold_overrides_file=fv3core/tests/savepoint/translate/overrides/standard.yaml -m parallel fv3core/tests/savepoint
+```
+
 ## Downloading test data
 
 The unit and regression tests of pace require data generated from the Fortran reference implementation which has to be downloaded from a Google Cloud Platform storage bucket. Since the bucket is setup as "requester pays", you need a valid GCP account to download the test data.
