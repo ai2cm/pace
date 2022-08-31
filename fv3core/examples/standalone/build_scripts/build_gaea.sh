@@ -21,7 +21,7 @@ cd pace
 git submodule update --init --recursive
 
 # create a conda environment for pace
-conde create -y --name my_name -python=3.8
+conda create -y --name my_name python=3.8
 
 # enter the environment and update it
 conda activate my_name
@@ -35,9 +35,4 @@ pip3 install --no-cache-dir -c ./constraints.txt "$PWD/external/gt4py"
 python3 -m gt4py.gt_src_manager install --major-version 2
 
 # install pace
-pip3 install -e ./pace-util -c constraints.txt
-pip3 install -e ./fv3core -c constraints.txt
-pip3 install -e ./fv3gfs-physics -c constraints.txt
-pip3 install -e ./stencils -c constraints.txt
-pip3 install -e ./dsl -c constraints.txt
-pip3 install -e ./driver -c constraints.txt
+pip install -r requirements_dev.txt -c constraints.txt

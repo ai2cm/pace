@@ -229,13 +229,9 @@ python3 -m gt4py.gt_src_manager install --major-version 2
 
 Then use pip to install the Pace components
 ```shell
-$ pip install -e ./pace-util
-$ pip install -e ./fv3core
-$ pip install -e ./fv3gfs-physics
-$ pip install -e ./dsl
-$ pip install -e ./driver
-$ pip install -e ./stencils
+$ pip install -r requirements_dev.txt -c constraints.txt
 ```
+Bash scripts to install Pace on specific machines such as Gaea can be found in `fv3core/examples/standalone/build_scripts/`.
 
 You can now run and develop Pace directly. To run the tests simply invoke pytest using the same test arguments as inside the container:
 ```shell
