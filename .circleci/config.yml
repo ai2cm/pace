@@ -126,6 +126,7 @@ jobs:
   test_driver:
     docker:
       - image: cimg/python:3.8
+    resource_class: medium+
     working_directory: ~/repo
     steps:
       - checkout
