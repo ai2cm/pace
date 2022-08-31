@@ -124,15 +124,6 @@ def setup_dycore() -> Tuple[
         phis=state.phis,
         state=state,
     )
-    do_adiabatic_init = False
-
-    dycore.update_state(
-        config.consv_te,
-        do_adiabatic_init,
-        config.dt_atmos,
-        config.n_split,
-        state,
-    )
 
     return dycore, state, pace.util.NullTimer()
 
