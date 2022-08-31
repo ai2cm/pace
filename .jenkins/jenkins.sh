@@ -49,7 +49,7 @@ action=$1
 backend=$2
 experiment=$3
 
-if [[ $backend == gt_* ]]; then
+if [[ $backend == gt_* || $backend == dace_* ]]; then
     backend=${backend/_/:}
 fi
 
@@ -74,7 +74,7 @@ echo "PYTHON env ${python_env}"
 
 # NOTE: All backends are GTC backends now, so fetch caches
 echo "Fetching existing gt_caches"
-(cd ${PACE_DIR}/fv3gfs-physics && ${JENKINS_DIR}/fetch_caches.sh $backend $experiment physics)
+(cd ${PACE_DIR}/physics && ${JENKINS_DIR}/fetch_caches.sh $backend $experiment physics)
 cd ${PACE_DIR}
 
 # load machine dependent environment
@@ -110,14 +110,20 @@ if grep -q "parallel" <<< "${script}"; then
 	echo "Setting NUM_RANKS=${NUM_RANKS}"
 	if [ -f ${scheduler_script} ] ; then
 	    sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread\n#SBATCH --ntasks-per-core=2|g' ${scheduler_script}
+            if [[ $NUM_RANKS -gt 6 || $backend == *gpu* || $backend == *cuda* ]]; then
+                sed -i 's|cscsci|normal|g' ${scheduler_script}
+            fi
 	    if [ "$NUM_RANKS" -gt "6" ] && [ ! -v LONG_EXECUTION ]; then
-		sed -i "s|cscsci|debug|g" ${scheduler_script}
 		minutes=30
-	    elif [ "$NUM_RANKS" -gt "6" ]; then
-                sed -i "s|cscsci|normal|g" ${scheduler_script}
+	    fi
+	    sed -i "s|<NTASKS>|$NUM_RANKS|g" ${scheduler_script}
+            if [[ $backend == *gpu* || $backend == *cuda* ]]; then
+                ntaskspernode=1
+            else
+                ntaskspernode=24
             fi
 	    sed -i "s|<NTASKS>|$NUM_RANKS|g" ${scheduler_script}
-	    sed -i "s|<NTASKSPERNODE>|24|g" ${scheduler_script}
+	    sed -i "s|<NTASKSPERNODE>|$ntaskspernode|g" ${scheduler_script}
 	fi
     fi
 fi

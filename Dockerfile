@@ -6,6 +6,9 @@ RUN apt-get update && apt-get install -y make \
     libopenmpi3 \
     libopenmpi-dev \
     libboost-all-dev \
+    libhdf5-serial-dev \
+    netcdf-bin \
+    libnetcdf-dev \
     python3 \
     python3-pip
 

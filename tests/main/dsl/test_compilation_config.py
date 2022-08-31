@@ -10,13 +10,52 @@ from pace.util.partitioner import CubedSpherePartitioner, TilePartitioner
 
 def test_safety_checks():
     with pytest.raises(RuntimeError):
-        CompilationConfig(run_mode=RunMode.BuildAndRun, use_minimal_caching=True)
-    with pytest.raises(RuntimeError):
-        CompilationConfig(run_mode=RunMode.Build, use_minimal_caching=True)
-    with pytest.raises(RuntimeError):
         CompilationConfig(backend="numpy", device_sync=True)
     with pytest.raises(RuntimeError):
         CompilationConfig(backend="gt:cpu_ifirst", device_sync=True)
+
+
+@pytest.mark.parametrize(
+    "size, use_minimal_caching, run_mode",
+    [
+        pytest.param(54, True, RunMode.Run, id="3x3 layout Run minimal"),
+        pytest.param(96, False, RunMode.BuildAndRun, id="4x4 layout BnR normal"),
+        pytest.param(96, True, RunMode.Run, id="4x4 layout Run minimal"),
+    ],
+)
+def test_check_communicator_valid(
+    size: int, use_minimal_caching: bool, run_mode: RunMode
+):
+    partitioner = CubedSpherePartitioner(
+        TilePartitioner((sqrt(size / 6), (sqrt(size / 6))))
+    )
+    comm = unittest.mock.MagicMock()
+    comm.Get_size.return_value = size
+    cubed_sphere_comm = CubedSphereCommunicator(comm, partitioner)
+    config = CompilationConfig(
+        run_mode=run_mode, use_minimal_caching=use_minimal_caching
+    )
+    config.check_communicator(cubed_sphere_comm)
+
+
+@pytest.mark.parametrize(
+    "nx, ny, use_minimal_caching, run_mode",
+    [
+        pytest.param(2, 3, False, RunMode.BuildAndRun, id="2x3 layout BnR normal"),
+    ],
+)
+def test_check_communicator_invalid(
+    nx: int, ny: int, use_minimal_caching: bool, run_mode: RunMode
+):
+    partitioner = CubedSpherePartitioner(TilePartitioner((nx, ny)))
+    comm = unittest.mock.MagicMock()
+    comm.Get_size.return_value = nx * ny * 6
+    cubed_sphere_comm = CubedSphereCommunicator(comm, partitioner)
+    config = CompilationConfig(
+        run_mode=run_mode, use_minimal_caching=use_minimal_caching
+    )
+    with pytest.raises(RuntimeError):
+        config.check_communicator(cubed_sphere_comm)
 
 
 def test_get_decomposition_info_from_no_comm():
@@ -63,6 +102,40 @@ def test_get_decomposition_info_from_comm(
     assert size == computed_size
     assert equivalent == computed_equivalent
     assert is_compiling == computed_is_compiling
+
+
+@pytest.mark.parametrize(
+    "rank, size, minimal_caching, run_mode, equivalent",
+    [
+        pytest.param(0, 6, True, RunMode.Run, 0, id="1x1 layout - 0 - R"),
+        pytest.param(1, 6, False, RunMode.Run, 0, id="1x1 layout - 1 - R"),
+        pytest.param(2, 24, True, RunMode.Run, 2, id="2x2 layout - 2 - R"),
+        pytest.param(4, 24, False, RunMode.Run, 0, id="2x2 layout - 4 - R"),
+        pytest.param(5, 54, True, RunMode.Run, 5, id="3x3 layout - 5 - R"),
+        pytest.param(28, 54, False, RunMode.Run, 1, id="3x3 layout - 28 - R"),
+        pytest.param(10, 96, False, RunMode.Run, 4, id="4x4 layout - 10 - R"),
+        pytest.param(20, 96, False, RunMode.Run, 3, id="4x4 layout - 20 - R"),
+        pytest.param(
+            10, 96, False, RunMode.BuildAndRun, 10, id="4x4 layout - 10 - BnR"
+        ),
+        pytest.param(20, 96, False, RunMode.BuildAndRun, 4, id="4x4 layout - 20 - BnR"),
+    ],
+)
+def test_determine_compiling_equivalent(
+    rank, size, minimal_caching, run_mode, equivalent
+):
+    config = CompilationConfig(use_minimal_caching=minimal_caching, run_mode=run_mode)
+    partitioner = CubedSpherePartitioner(
+        TilePartitioner((sqrt(size / 6), sqrt(size / 6)))
+    )
+    comm = unittest.mock.MagicMock()
+    comm.Get_rank.return_value = rank
+    comm.Get_size.return_value = size
+    cubed_sphere_comm = CubedSphereCommunicator(comm, partitioner)
+    assert (
+        config.determine_compiling_equivalent(rank, cubed_sphere_comm.partitioner)
+        == equivalent
+    )
 
 
 def test_as_dict():

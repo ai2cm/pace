@@ -13,7 +13,7 @@ from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.stencil import CompilationConfig
 from pace.stencils.testing import SavepointCase, dataset_to_dict
 from pace.util.mpi import MPI
-from pace.util.testing import compare_scalar, success, success_array
+from pace.util.testing import compare_scalar, perturb, success, success_array
 
 
 # this only matters for manually-added print statements
@@ -166,17 +166,6 @@ def process_override(threshold_overrides, testobj, test_name, backend):
                 + backend
                 + ", platform="
                 + platform()
-            )
-
-
-def perturb(input):
-    roundoff = 1e-16
-    for data in input.values():
-        if isinstance(data, np.ndarray) and data.dtype in (np.float64, np.float32):
-            not_fill_value = data < 1e30
-            # multiply data by roundoff-level error
-            data[not_fill_value] *= 1.0 + np.random.uniform(
-                low=-roundoff, high=roundoff, size=data[not_fill_value].shape
             )
 
 
