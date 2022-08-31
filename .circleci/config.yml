@@ -89,7 +89,7 @@ jobs:
   savepoints_mpi_54rank:
     machine:
       image: ubuntu-2004:202111-02
-      resource_class: 2xlarge
+      resource_class: xlarge
     parameters:
       backend:
         description: "gt4py backend"
@@ -126,7 +126,7 @@ jobs:
       - restore_cache:
           keys:
             - v1-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
-            - v1-savepoints-c12_54ranks_standard-{{ checksum "fv3core/Makefile" }}
+            - v2-savepoints-c12_54ranks_standard-{{ checksum "Makefile.data_download" }}
             - v2-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
       - run:
           name: set up environment
@@ -203,9 +203,9 @@ jobs:
             - .gt_cache_000054
             - .gt_cache_000055
       - save_cache:
-          key: v1-savepoints-c12_54ranks_standard-{{ checksum "fv3core/Makefile" }}
+          key: v2-savepoints-c12_54ranks_standard-{{ checksum "Makefile.data_download" }}
           paths:
-            - fv3core/test_data
+            - test_data
 
   test_util:
     docker:
