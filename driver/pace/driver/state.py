@@ -182,7 +182,7 @@ def _overwrite_state_from_restart(
 def _overwrite_state_from_fortran_restart(
     path: str,
     communicator: pace.util.CubedSphereCommunicator,
-    state: Union[fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState],
+    state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
     restart_file_prefix: str,
     is_gpu_backend: bool,
 ):
@@ -210,7 +210,7 @@ def _overwrite_state_from_fortran_restart(
 
 def _driver_state_to_dict(
     driver_state: Union[
-        fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState
+        fv3core.DycoreState, pace.physics.PhysicsState, TendencyState
     ],
     restart_file_prefix: str,
     is_gpu_backend: bool,
@@ -238,7 +238,7 @@ def _driver_state_to_dict(
 def _dict_state_to_driver_state(
     fortran_state: dict,
     driver_state: Union[
-        fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState
+        fv3core.DycoreState, pace.physics.PhysicsState, TendencyState
     ],
     restart_file_prefix: str,
     is_gpu_backend: bool,
@@ -263,7 +263,7 @@ def _dict_state_to_driver_state(
                     and _field.name in driver_state.__dict__.keys()
                 ):
                     if isinstance(
-                        driver_state, fv3gfs.physics.physics_state.PhysicsState
+                        driver_state, pace.physics.physics_state.PhysicsState
                     ):
                         driver_state.__dict__[_field.name][
                             halo : -halo - 1, halo : -halo - 1, :-1
