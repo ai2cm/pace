@@ -364,7 +364,6 @@ workflows:
             parameters:
               backend:
                 - numpy
-                - gt:cpu_ifirst
           context:
             - GCLOUD_ENCODED_KEY
           filters:
