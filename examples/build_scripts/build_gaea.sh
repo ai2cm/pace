@@ -23,5 +23,6 @@ conda create -y --name my_name python=3.8
 conda activate my_name
 pip3 install --upgrade pip setuptools wheel
 
-# install the Pace dependencies, GT4Py, and Pace
+# install the Pace dependencies, Pace, and GT4Py
 pip3 install -r requirements_dev.txt -c constraints.txt
+python3 -m gt4py.gt_src_manager install
