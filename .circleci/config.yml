@@ -183,6 +183,7 @@ jobs:
             . venv/bin/activate
             pip3 install --upgrade setuptools wheel
             pip3 install -r requirements_dev.txt -c constraints.txt
+            python3 -m gt4py.gt_src_manager install
       - save_cache:
           key: v2-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
           paths:
