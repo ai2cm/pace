@@ -176,12 +176,14 @@ class TranslateDynCore(ParallelTranslate2PyState):
         acoustic_dynamics.cappa.storage[:] = inputs["cappa"][:]
 
         acoustic_dynamics(state, wsd=wsd, timestep=inputs["mdt"], n_map=state.n_map)
-        inputs["cappa"][:] = acoustic_dynamics.cappa.storage[:]
-        inputs["wsd"] = wsd
+        # the "inputs" dict is not used to return, we construct a new dict based
+        # on variables attached to `state`
         storages_only = {}
         for name, value in vars(state).items():
             if isinstance(value, pace.util.Quantity):
                 storages_only[name] = value.storage
             else:
                 storages_only[name] = value
+        storages_only["wsd"] = wsd.storage
+        storages_only["cappa"] = acoustic_dynamics.cappa.storage
         return self._base.slice_output(storages_only)
