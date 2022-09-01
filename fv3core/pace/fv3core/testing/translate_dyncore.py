@@ -148,7 +148,7 @@ class TranslateDynCore(ParallelTranslate2PyState):
             grid_data.ks = inputs["ks"]
         self._base.make_storage_data_input_vars(inputs)
         state = DycoreState.init_zeros(quantity_factory=self.grid.quantity_factory)
-        wsd = self.grid.quantity_factory.empty(
+        wsd: pace.util.Quantity = self.grid.quantity_factory.empty(
             dims=[pace.util.X_DIM, pace.util.Y_DIM],
             units="unknown",
         )
@@ -173,11 +173,11 @@ class TranslateDynCore(ParallelTranslate2PyState):
             phis=inputs["phis"],
             state=state,
         )
-        acoustic_dynamics.cappa.data[:] = inputs["cappa"][:]
+        acoustic_dynamics.cappa.data = inputs["cappa"]
 
         acoustic_dynamics(state, wsd=wsd, timestep=inputs["mdt"], n_map=state.n_map)
-        inputs["cappa"][:] = acoustic_dynamics.cappa.data[:]
-        inputs["wsd"][:] = wsd.data[:]
+        inputs["cappa"] = acoustic_dynamics.cappa.data
+        inputs["wsd"] = wsd
         storages_only = {}
         for name, value in vars(state).items():
             if isinstance(value, pace.util.Quantity):
