@@ -31,40 +31,34 @@ Pace requires gcc > 9.2, cuda, MPI, and Python 3.8 on your system in order to ru
 You will also need the headers of the boost libraries in your `path` (boost itself does not need to be installed).
 
 ```shell
-cd $BOOST_LOCATION
+cd /BOOST/LOCATION
 wget https://boostorg.jfrog.io/artifactory/main/release/1.79.0/source/boost_1_79_0.tar.gz
 tar -xzf boost_1_79_0.tar.gz
 mkdir -p boost_1_79_0/include
 mv boost_1_79_0/boost boost_1_79_0/include/.
-setenv BOOST_ROOT $BOOST_LOCATION/boost_1_79_0
+export BOOST_ROOT=BOOST/LOCATION/boost_1_79_0
 ```
 
-After cloning Pace you will need to update the repository's submodules:
+When cloning Pace you will need to update the repository's submodules as well:
 ```shell
-$ git submodule update --init
+$ git clone --recursive https://github.com/ai2cm/pace.git
 ```
 
 We recommend creating a python venv or conda environment specifically for Pace.
 
-Inside of your pace `venv` or conda environment install the Python requirements and GT4Py:
 ```shell
-$ pip install -r requirements.txt -c constraints.txt
-$ pip install --no-cache-dir -c ./constraints.txt "PATH/TO/PACE/pace/external/gt4py"
-python3 -m gt4py.gt_src_manager install --major-version 2
+$ python3 -m venv venv_name
 ```
 
-Then use pip to install the Pace components
+Inside of your pace `venv` or conda environment pip install the Python requirements, GT4Py, and Pace:
 ```shell
-$ pip install -r requirements_dev.txt -c constraints.txt
+$ pip3 install -r requirements_dev.txt -c constraints.txt
 ```
-Bash scripts to install Pace on specific machines such as Gaea can be found in `examples/build_scripts/`.
 
-You can now run and develop Pace directly. To run the tests simply invoke pytest using the same test arguments as inside the container:
-```shell
-$ pytest [TEST_ARGS] fv3core/tests/main
-$ pytest --data_path=path/to/test/data [TEST_ARGS] --threshold_overrides_file=fv3core/tests/savepoint/translate/overrides/standard.yaml fv3core/tests/savepoint
-$ mpirun -np 6 python3 -m mpi4py -m pytest --maxfail=1 --data_path=path/to/test/data [TEST_ARGS] --threshold_overrides_file=fv3core/tests/savepoint/translate/overrides/standard.yaml -m parallel fv3core/tests/savepoint
-```
+Shell scripts to install Pace on specific machines such as Gaea can be found in `examples/build_scripts/`.
+
+You can now run and develop Pace directly. After downloading the test data the pace tests can be run with pytest using the same test arguments as inside the container.
+
 
 ## Downloading test data
 
