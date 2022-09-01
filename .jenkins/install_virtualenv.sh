@@ -33,6 +33,9 @@ source ${virtualenv_path}/bin/activate
 workdir=$(pwd)
 cd ${PACE_DIR}
 python3 -m pip install $wheel_command -r ${PACE_DIR}/requirements_dev.txt -c ${PACE_DIR}/constraints.txt
+# have to be installed in non-develop mode because the directory where this gets built from
+# gets deleted before the tests run on daint
+python3 -m pip install driver dsl fv3core physics stencils util external/gt4py -c ${PACE_DIR}/constraints.txt
 cd ${workdir}
 
 deactivate
