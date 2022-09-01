@@ -185,8 +185,13 @@ if [ -z ${VIRTUALENV} ]; then
 fi
 
 if [ ${python_env} == "virtualenv" ]; then
-	echo "Installing virtualenv to ${VIRTUALENV}"
-	${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
+    if [ -d ${VIRTUALENV} ]; then
+        echo "Using existing virtualenv ${VIRTUALENV}"
+    else
+        echo "virtualenv ${VIRTUALENV} is not setup yet, installing now"
+        export FV3CORE_INSTALL_FLAGS="-e"
+        ${JENKINS_DIR}/install_virtualenv.sh ${VIRTUALENV}
+    fi
     source ${VIRTUALENV}/bin/activate
     if grep -q "parallel" <<< "${script}"; then
         export MPIRUN_CALL="srun"
