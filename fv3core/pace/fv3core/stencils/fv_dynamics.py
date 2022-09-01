@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Optional
 
 from dace.frontend.python.interface import nounroll as dace_no_unroll
 from gt4py.gtscript import PARALLEL, computation, interval, log
@@ -10,7 +10,7 @@ import pace.util.constants as constants
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
-from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.typing import FloatField, FloatFieldK
 from pace.fv3core._config import DynamicalCoreConfig
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils import fvtp2d, tracer_2d_1l
@@ -23,7 +23,6 @@ from pace.stencils.c2l_ord import CubedToLatLon
 from pace.util import Timer
 from pace.util.grid import DampingCoefficients, GridData
 from pace.util.mpi import MPI
-from pace.util.quantity import Quantity
 
 
 # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
@@ -41,28 +40,40 @@ def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatFiel
         q_con (in):
         pt (out):
     """
+    # TODO: why and how is pt being adjusted? update docstring and/or name
     with computation(PARALLEL), interval(...):
         pt = pt * (1.0 + dp1) * (1.0 - q_con) / pkz
 
 
-def set_omega(delp: FloatField, delz: FloatField, w: FloatField, omga: FloatField):
+def omega_from_w(delp: FloatField, delz: FloatField, w: FloatField, omega: FloatField):
     """
     Args:
-        delp (in):
-        delz (in):
-        w (in):
-        omga (out):
+        delp (in): vertical layer thickness in Pa
+        delz (in): vertical layer thickness in m
+        w (in): vertical wind in m/s
+        omga (out): vertical wind in Pa/s
     """
     with computation(PARALLEL), interval(...):
-        omga = delp / delz * w
+        omega = delp / delz * w
 
 
-def init_pfull(
+def initialize_pfull(
     ak: FloatFieldK,
     bk: FloatFieldK,
     pfull: FloatField,
     p_ref: float,
 ):
+    """
+    Set pfull to reference pressures defined by the hybrid coordinate.
+
+    Defined as ak[k] + bk[k] * p_ref.
+
+    Args:
+        ak (in): ak coefficient for the hybrid coordinate
+        bk (in): bk coefficient for the hybrid coordinate
+        pfull (out): pressure thickness of atmospheric layer
+        p_ref (in): reference pressure
+    """
     with computation(PARALLEL), interval(...):
         ph1 = ak + bk * p_ref
         ph2 = ak[1] + bk[1] * p_ref
@@ -127,13 +138,6 @@ class DynamicalCore:
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="step_dynamics",
             dace_constant_args=["state", "timer"],
-        )
-
-        orchestrate(
-            obj=self,
-            config=stencil_factory.config.dace_config,
-            method_to_orchestrate="compute_preamble",
-            dace_constant_args=["state", "is_root_rank"],
         )
 
         orchestrate(
@@ -229,7 +233,7 @@ class DynamicalCore:
         self._phis = phis
         self._ptop = self.grid_data.ptop
         pfull_stencil = stencil_factory.from_origin_domain(
-            init_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
+            initialize_pfull, origin=(0, 0, 0), domain=(1, 1, grid_indexing.domain[2])
         )
         pfull = utils.make_storage_from_shape(
             (1, 1, self._ak.shape[0]), backend=stencil_factory.backend
@@ -253,8 +257,8 @@ class DynamicalCore:
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
-        self._set_omega_stencil = stencil_factory.from_origin_domain(
-            set_omega,
+        self._omega_from_w = stencil_factory.from_origin_domain(
+            omega_from_w,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(),
         )
@@ -369,6 +373,9 @@ class DynamicalCore:
         state.__dict__.update(self._temporaries)
         state.__dict__.update(self.acoustic_dynamics._temporaries)
 
+    def __call__(self, *args, **kwargs):
+        return self.step_dynamics(*args, **kwargs)
+
     def step_dynamics(self, state: DycoreState, timer: Timer = pace.util.NullTimer()):
         """
         Step the model state forward by one timestep.
@@ -381,11 +388,13 @@ class DynamicalCore:
         self._compute(state, timer)
         self._checkpoint_fvdynamics(state=state, tag="Out")
 
-    def compute_preamble(self, state, is_root_rank: bool):
+    def _compute(self, state, timer: pace.util.Timer):
+        last_step = False
         if self.config.hydrostatic:
             raise NotImplementedError("Hydrostatic is not implemented")
         if __debug__:
             log_on_rank_0("FV Setup")
+
         self._fv_setup_stencil(
             state.qvapor,
             state.qliquid,
@@ -427,20 +436,39 @@ class DynamicalCore:
                 state.pt,
             )
 
-    def __call__(self, *args, **kwargs):
-        return self.step_dynamics(*args, **kwargs)
-
-    def _compute(self, state, timer: pace.util.Timer):
-        last_step = False
-        self.compute_preamble(
-            state,
-            is_root_rank=self.comm_rank == 0,
-        )
+        tracers = {}
+        for name in utils.tracer_variables[0:NQ]:
+            tracers[name] = getattr(state, name)
 
         for k_split in dace_no_unroll(range(state.k_split)):
             n_map = k_split + 1
             last_step = k_split == state.k_split - 1
-            self._dyn(state=state, tracers=self.tracers, n_map=n_map, timer=timer)
+            # TODO: why are we copying delp to dp1? what is dp1?
+            self._copy_stencil(
+                state.delp,
+                state.dp1,
+            )
+            if __debug__:
+                log_on_rank_0("DynCore")
+            with timer.clock("DynCore"):
+                self.acoustic_dynamics(
+                    state,
+                    n_map=n_map,
+                    update_temporaries=False,
+                )
+            if self.config.z_tracer:
+                if __debug__:
+                    log_on_rank_0("TracerAdvection")
+                with timer.clock("TracerAdvection"):
+                    self.tracer_advection(
+                        tracers,
+                        state.dp1,
+                        state.mfxd,
+                        state.mfyd,
+                        state.cxd,
+                        state.cyd,
+                        state.mdt,
+                    )
 
             if self.grid_indexing.domain[2] > 4:
                 # nq is actually given by ncnst - pnats,
@@ -493,75 +521,20 @@ class DynamicalCore:
                         state.do_adiabatic_init,
                     )
                 if last_step:
-                    self.post_remap(
-                        state,
-                        is_root_rank=self.comm_rank == 0,
-                        da_min=self._da_min,
-                    )
-        self.wrapup(
-            state,
-            is_root_rank=self.comm_rank == 0,
-        )
-
-    def _dyn(
-        self,
-        state,
-        tracers: Dict[str, Quantity],
-        n_map,
-        timer: pace.util.Timer,
-    ):
-        self._copy_stencil(
-            state.delp,
-            state.dp1,
-        )
-        if __debug__:
-            log_on_rank_0("DynCore")
-        with timer.clock("DynCore"):
-            self.acoustic_dynamics(
-                state,
-                n_map=n_map,
-                update_temporaries=False,
-            )
-        if self.config.z_tracer:
-            if __debug__:
-                log_on_rank_0("TracerAdvection")
-            with timer.clock("TracerAdvection"):
-                self.tracer_advection(
-                    tracers,
-                    state.dp1,
-                    state.mfxd,
-                    state.mfyd,
-                    state.cxd,
-                    state.cyd,
-                    state.mdt,
-                )
-
-    def post_remap(
-        self,
-        state: DycoreState,
-        is_root_rank: bool,
-        da_min: FloatFieldIJ,
-    ):
-        if not self.config.hydrostatic:
-            if __debug__:
-                log_on_rank_0("Omega")
-            self._set_omega_stencil(
-                state.delp,
-                state.delz,
-                state.w,
-                state.omga,
-            )
-        if self.config.nf_omega > 0:
-            if __debug__:
-                log_on_rank_0("Del2Cubed")
-            self._omega_halo_updater.update()
-            self._hyperdiffusion(state.omga, 0.18 * da_min)
-
-    def wrapup(
-        self,
-        state: DycoreState,
-        is_root_rank: bool,
-    ):
+                    if not self.config.hydrostatic:
+                        if __debug__:
+                            log_on_rank_0("Omega")
+                        self._omega_from_w(
+                            state.delp,
+                            state.delz,
+                            state.w,
+                            state.omga,
+                        )
+                    if self.config.nf_omega > 0:
+                        if __debug__:
+                            log_on_rank_0("Del2Cubed")
+                        self._omega_halo_updater.update()
+                        self._hyperdiffusion(state.omga, 0.18 * self._da_min)
         if __debug__:
             log_on_rank_0("Neg Adj 3")
         self._adjust_tracer_mixing_ratio(
