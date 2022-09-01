@@ -53,7 +53,6 @@ $ python3 -m venv venv_name
 Inside of your pace `venv` or conda environment pip install the Python requirements, GT4Py, and Pace:
 ```shell
 $ pip3 install -r requirements_dev.txt -c constraints.txt
-python3 -m gt4py.gt_src_manager install
 ```
 
 Shell scripts to install Pace on specific machines such as Gaea can be found in `examples/build_scripts/`.
