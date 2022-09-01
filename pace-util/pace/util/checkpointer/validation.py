@@ -122,9 +122,7 @@ class ValidationCheckpointer(Checkpointer):
             if savepoint_name == "FVDynamics-Out":
                 expected = expected[3:-3, 3:-3, :]
                 output = output[3:-3, 3:-3, :]
-            # cannot use relative threshold when comparing to zero value
-            near_zero = 1.0e-15
-            expected_not_zero = abs(expected) > near_zero
+            expected_not_zero = expected != 0
             np.testing.assert_allclose(
                 output[expected_not_zero],
                 expected[expected_not_zero],

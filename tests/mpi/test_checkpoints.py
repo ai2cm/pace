@@ -48,9 +48,14 @@ class StateInitializer:
         self._translate = translate
         self._consv_te = consv_te
         self._n_split = n_split
+        self._communicator = communicator
+        self._stencil_factory = stencil_factory
+        self._grid = grid
+        self._dycore_config = dycore_config
 
         input_data = dataset_to_dict(self._ds.copy())
         state, grid_data = self._translate.prepare_data(input_data)
+        self._grid_data = grid_data
         self._dycore = fv3core.DynamicalCore(
             comm=communicator,
             grid_data=grid_data,
@@ -64,7 +69,15 @@ class StateInitializer:
     def new_state(self) -> Tuple[DycoreState, GridData]:
         input_data = dataset_to_dict(self._ds.copy())
         state, grid_data = self._translate.prepare_data(input_data)
-
+        self._dycore = fv3core.DynamicalCore(
+            comm=self._communicator,
+            grid_data=grid_data,
+            stencil_factory=self._stencil_factory,
+            damping_coefficients=self._grid.damping_coefficients,
+            config=self._dycore_config,
+            phis=state.phis,
+            state=state,
+        )
         self._dycore.update_state(
             self._consv_te,
             input_data["do_adiabatic_init"],
