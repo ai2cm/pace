@@ -86,7 +86,15 @@ def dp_ref_compute(
         zs = phis * rgrav
 
 
-def set_gz(zs: FloatFieldIJ, delz: FloatField, gz: FloatField):
+def gz_from_surface_height_and_thicknesses(
+    zs: FloatFieldIJ, delz: FloatField, gz: FloatField
+):
+    """
+    Args:
+        zs (in): surface height
+        delz (in): layer thickness
+        gz (out): geopotential height
+    """
     with computation(BACKWARD):
         with interval(-1, None):
             gz[0, 0, 0] = zs
@@ -94,7 +102,15 @@ def set_gz(zs: FloatFieldIJ, delz: FloatField, gz: FloatField):
             gz[0, 0, 0] = gz[0, 0, 1] - delz
 
 
-def set_pem(delp: FloatField, pem: FloatField, ptop: float):
+def interface_pressure_from_toa_pressure_and_thickness(
+    delp: FloatField, pem: FloatField, ptop: float
+):
+    """
+    Args:
+        delp (in): pressure thickness of atmospheric layer
+        pem (out): interface pressure
+        ptop (in): pressure at top of atmosphere
+    """
     with computation(FORWARD):
         with interval(0, 1):
             pem[0, 0, 0] = ptop
@@ -551,15 +567,17 @@ class AcousticDynamics:
             config.nord,
         )
 
-        self._set_gz = stencil_factory.from_origin_domain(
-            set_gz,
+        self._gz_from_surface_height_and_thickness = stencil_factory.from_origin_domain(
+            gz_from_surface_height_and_thicknesses,
             origin=grid_indexing.origin_compute(),
             domain=grid_indexing.domain_compute(add=(0, 0, 1)),
         )
-        self._set_pem = stencil_factory.from_origin_domain(
-            set_pem,
-            origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
-            domain=grid_indexing.domain_compute(add=(2, 2, 0)),
+        self._interface_pressure_from_toa_pressure_and_thickness = (
+            stencil_factory.from_origin_domain(
+                interface_pressure_from_toa_pressure_and_thickness,
+                origin=grid_indexing.origin_compute(add=(-1, -1, 0)),
+                domain=grid_indexing.domain_compute(add=(2, 2, 0)),
+            )
         )
 
         self._p_grad_c = stencil_factory.from_origin_domain(
@@ -712,6 +730,7 @@ class AcousticDynamics:
         if update_temporaries:
             state.__dict__.update(self._temporaries)
 
+        # TODO: what is being zeroed and why?
         self._zero_data(
             state.mfxd,
             state.mfyd,
@@ -743,7 +762,7 @@ class AcousticDynamics:
             if not self.config.hydrostatic:
                 self._halo_updaters.w.start()
                 if it == 0:
-                    self._set_gz(
+                    self._gz_from_surface_height_and_thickness(
                         self._zs,
                         state.delz,
                         state.gz,
@@ -754,7 +773,7 @@ class AcousticDynamics:
 
             if it == n_split - 1 and end_step:
                 if self.config.use_old_omega:
-                    self._set_pem(
+                    self._interface_pressure_from_toa_pressure_and_thickness(
                         state.delp,
                         state.pem,
                         self._ptop,
@@ -787,6 +806,8 @@ class AcousticDynamics:
             if self.config.nord > 0:
                 self._halo_updaters.divgd.start()
             if not self.config.hydrostatic:
+                # TODO: is there some way we can avoid aliasing gz and zh, so that
+                # gz is always a geopotential and zh is always a height?
                 if it == 0:
                     self._halo_updaters.gz.wait()
                     self._copy_stencil(
@@ -869,6 +890,8 @@ class AcousticDynamics:
             # if self.namelist.d_ext > 0:
             #    raise 'Unimplemented namelist option d_ext > 0'
 
+            # TODO: should the dycore have hydrostatic and non-hydrostatic modes,
+            # or would we make a new class for the non-hydrostatic mode?
             if not self.config.hydrostatic:
                 # without explicit arg names, numpy does not run
                 self.update_height_on_d_grid(

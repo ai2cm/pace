@@ -140,8 +140,11 @@ class UpdateGeopotentialHeightOnCGrid:
             vt: horizontal wind (TODO: covariant or contravariant?)
             gz: geopotential height (TODO: on cell mid levels or interfaces?)
             ws: surface vertical wind implied by horizontal motion over topography
-            dt: timestep over which to evolve the geopotential height
+            dt: timestep over which to evolve the geopotential height, in seconds
         """
+        # TODO: is this advecting gz, and if so can we name it that?
+        # Can we reduce duplication of advection logic with other stencils?
+
         # TODO: use a tmp variable inside the update_dz_c stencil instead of
         # _gz_x and _gz_y stencil to skip the copies and corner-fill stencils
         # once regions bug is fixed

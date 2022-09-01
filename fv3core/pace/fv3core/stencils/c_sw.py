@@ -18,7 +18,7 @@ from pace.util import X_DIM, X_INTERFACE_DIM, Y_DIM, Y_INTERFACE_DIM, Z_DIM
 from pace.util.grid import GridData
 
 
-def initialize_delpc_ptc(delpc: FloatField, ptc: FloatField):
+def zero_delpc_ptc(delpc: FloatField, ptc: FloatField):
     """
     Args:
         delpc (out):
@@ -216,7 +216,7 @@ def fill_corners_delp_pt_w(
         w_out = fill_corners_func(w_in)
 
 
-def compute_nonhydro_fluxes_x(
+def compute_nonhydrostatic_fluxes_x(
     delp: FloatField,
     pt: FloatField,
     utc: FloatField,
@@ -507,8 +507,8 @@ class CGridShallowWaterDynamics:
             origin=origin_halo1,
             backend=stencil_factory.backend,
         )
-        self._initialize_delpc_ptc = stencil_factory.from_dims_halo(
-            initialize_delpc_ptc,
+        self._zero_delpc_ptc = stencil_factory.from_dims_halo(
+            zero_delpc_ptc,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
             compute_halos=(3, 3),
         )
@@ -561,7 +561,7 @@ class CGridShallowWaterDynamics:
         )
 
         self._compute_nonhydro_fluxes_x_stencil = stencil_factory.from_dims_halo(
-            compute_nonhydro_fluxes_x,
+            compute_nonhydrostatic_fluxes_x,
             compute_dims=[X_INTERFACE_DIM, Y_DIM, Z_DIM],
             compute_halos=(1, 1),
         )
@@ -623,6 +623,7 @@ class CGridShallowWaterDynamics:
         """
         C-grid shallow water routine.
         Advances C-grid winds by half a time step.
+
         Args:
             delp (in): D-grid vertical delta in pressure
             pt (inout): D-grid potential temperature (only halos get updated)
@@ -640,7 +641,7 @@ class CGridShallowWaterDynamics:
             dt2 (in): Half a model timestep in seconds
         """
         # TODO: omga is called "wc" inside stencils, consolidate the naming
-        self._initialize_delpc_ptc(
+        self._zero_delpc_ptc(
             self.delpc,
             self.ptc,
         )
@@ -664,6 +665,8 @@ class CGridShallowWaterDynamics:
                 self.grid_data.rarea_c,
                 divgd,
             )
+
+        # TODO: what does "geoadjust" mean?
         self._geoadjust_ut(
             ut,
             self.grid_data.dy,
@@ -681,6 +684,8 @@ class CGridShallowWaterDynamics:
 
         # TODO(eddied): We pass the same fields 2x to avoid GTC validation errors
         self._fill_corners_x_delp_pt_w_stencil(delp, pt, w, delp, pt, w)
+        # TODO: why is there only a "x" version of this? Is the "y" verison folded
+        # into the next routine?
         self._compute_nonhydro_fluxes_x_stencil(
             delp, pt, ut, w, self._tmp_fx, self._tmp_fx1, self._tmp_fx2
         )
