@@ -35,7 +35,7 @@ jobs:
         description: "gt4py backend"
         default: "numpy"
         type: enum
-        enum: ["numpy", "gtc:cpu_ifirst"]
+        enum: ["numpy", "gt:cpu_ifirst"]
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
@@ -86,7 +86,7 @@ jobs:
         description: "gt4py backend"
         default: "numpy"
         type: enum
-        enum: ["numpy", "gtc:cpu_ifirst"]
+        enum: ["numpy", "gt:cpu_ifirst"]
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
@@ -143,7 +143,7 @@ jobs:
         description: "gt4py backend"
         default: "numpy"
         type: enum
-        enum: ["numpy", "gtc:cpu_ifirst"]
+        enum: ["numpy", "gt:cpu_ifirst"]
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
@@ -344,7 +344,7 @@ workflows:
             parameters:
               backend:
                 - numpy
-                - gtc:cpu_ifirst
+                - gt:cpu_ifirst
           context:
             - GCLOUD_ENCODED_KEY
           filters:
@@ -355,7 +355,7 @@ workflows:
             parameters:
               backend:
                 - numpy
-                - gtc:cpu_ifirst
+                - gt:cpu_ifirst
           context:
             - GCLOUD_ENCODED_KEY
           filters:
@@ -366,7 +366,7 @@ workflows:
             parameters:
               backend:
                 - numpy
-                - gtc:cpu_ifirst
+                - gt:cpu_ifirst
           context:
             - GCLOUD_ENCODED_KEY
           filters:
