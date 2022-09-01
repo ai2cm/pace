@@ -66,7 +66,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=n make savepoint_tests
           no_output_timeout: 3h
       - save_cache:
           key: v1-gt_cache-serial-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
@@ -117,7 +117,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=n make savepoint_tests_mpi
           no_output_timeout: 3h
       - save_cache:
           key: v1-gt_cache-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
