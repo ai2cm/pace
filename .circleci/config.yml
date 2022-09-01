@@ -175,23 +175,20 @@ jobs:
           keys:
             - v3-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
             - v2-savepoints-c12_54ranks_standard-{{ checksum "Makefile.data_download" }}
-            - v2-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+            - v3-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
       - run:
           name: set up environment
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
             pip3 install --upgrade setuptools wheel
             pip3 install -r requirements_dev.txt -c constraints.txt
       - save_cache:
-          key: v2-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+          key: v3-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
           paths:
             - /home/circleci/.cache/pip
-            - venv
+            - /opt/circleci/.pyenv/versions
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
             GT_CACHE_ROOT=".gt_cache" TEST_ARGS="--backend=<<parameters.backend>> -v -s" CONTAINER_CMD="" NUM_RANKS=54 EXPERIMENT="c12_54ranks_standard" FV3_PATH=$(pwd)/fv3core make savepoint_tests_mpi
           no_output_timeout: 3h
       - save_cache:
