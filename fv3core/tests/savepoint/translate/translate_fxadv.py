@@ -2,9 +2,9 @@ import numpy as np
 
 import pace.dsl
 import pace.util
-from fv3core.stencils.fxadv import FiniteVolumeFluxPrep
-from fv3core.testing import TranslateDycoreFortranData2Py
-from fv3core.utils.functional_validation import get_subset_func
+from pace.fv3core.stencils.fxadv import FiniteVolumeFluxPrep
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.utils.functional_validation import get_subset_func
 
 
 class TranslateFxAdv(TranslateDycoreFortranData2Py):

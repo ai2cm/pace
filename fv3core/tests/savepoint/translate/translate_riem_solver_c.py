@@ -1,7 +1,7 @@
 import pace.dsl
 import pace.util
-from fv3core.stencils.riem_solver_c import RiemannSolverC
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core.stencils.riem_solver_c import RiemannSolverC
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateRiem_Solver_C(TranslateDycoreFortranData2Py):

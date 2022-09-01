@@ -4,9 +4,9 @@ pytest-cov
 mpi4py
 dace>=0.14
 -e external/gt4py
--e pace-util
+-e util
 -e stencils
 -e dsl
--e fv3gfs-physics
+-e physics
 -e fv3core
 -e driver
