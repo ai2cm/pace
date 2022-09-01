@@ -2,7 +2,7 @@
 
 Pace is an implementation of the FV3GFS / SHiELD atmospheric model developed by NOAA/GFDL using the GT4Py domain-specific language in Python. The model can be run on a laptop using Python-based backend or on thousands of heterogeneous compute nodes of a large supercomputer.
 
-The top-level directory contains the main compnents of pace such as the dynamical core, the physical parameterizations and infrastructure utilities.
+The top-level directory contains the main components of pace such as the dynamical core, the physical parameterizations and utilities.
 
 **WARNING** This repo is under active development - supported features and procedures can change rapidly and without notice.
 
@@ -10,7 +10,7 @@ This git repository is laid out as a mono-repo, containing multiple independent 
 
 ![Graph of interdependencies of Pace modules, generated from dependences.dot](./dependencies.svg)
 
-## Building the docker container
+## Building the docker image
 
 While it is possible to install and build pace bare-metal, we can ensure all system libraries are installed with the correct versions by using a Docker container to test and develop pace.
 
@@ -24,7 +24,7 @@ Then build the `pace` docker image at the top level.
 make build
 ```
 
-## Building Bare-Metal
+## Building bare-metal
 
 Pace requires gcc > 9.2, cuda, MPI, and Python 3.8 on your system in order to run bare-metal.
 
