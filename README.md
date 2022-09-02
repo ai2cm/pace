@@ -26,16 +26,16 @@ make build
 
 ## Building bare-metal
 
-Pace requires gcc > 9.2, cuda, MPI, and Python 3.8 on your system in order to run bare-metal.
+Pace requires gcc > 9.2, MPI, and Python 3.8 on your system, and CUDA is required to run with a GPU backend
 
-You will also need the headers of the boost libraries in your `path` (boost itself does not need to be installed).
+You will also need the headers of the boost libraries in your `$PATH` (boost itself does not need to be installed).
 
 ```shell
 cd /BOOST/LOCATION
 wget https://boostorg.jfrog.io/artifactory/main/release/1.79.0/source/boost_1_79_0.tar.gz
 tar -xzf boost_1_79_0.tar.gz
 mkdir -p boost_1_79_0/include
-mv boost_1_79_0/boost boost_1_79_0/include/.
+mv boost_1_79_0/boost boost_1_79_0/include/
 export BOOST_ROOT=BOOST/LOCATION/boost_1_79_0
 ```
 
@@ -43,11 +43,16 @@ When cloning Pace you will need to update the repository's submodules as well:
 ```shell
 $ git clone --recursive https://github.com/ai2cm/pace.git
 ```
+or if you have already cloned the repository:
+```
+$ git submodule update --init --recursive
+```
 
-We recommend creating a python venv or conda environment specifically for Pace.
+We recommend creating a python `venv` or conda environment specifically for Pace.
 
 ```shell
 $ python3 -m venv venv_name
+$ source venv_name/bin/activate
 ```
 
 Inside of your pace `venv` or conda environment pip install the Python requirements, GT4Py, and Pace:
@@ -57,7 +62,7 @@ $ pip3 install -r requirements_dev.txt -c constraints.txt
 
 Shell scripts to install Pace on specific machines such as Gaea can be found in `examples/build_scripts/`.
 
-You can now run and develop Pace directly. After downloading the test data the pace tests can be run with pytest using the same test arguments as inside the container.
+You can now run and develop Pace directly. After downloading the test data the Pace tests can be run with pytest using the same test arguments as inside the container.
 
 
 ## Downloading test data
