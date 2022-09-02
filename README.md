@@ -26,7 +26,7 @@ make build
 
 ## Building bare-metal
 
-Pace requires gcc > 9.2, MPI, and Python 3.8 on your system, and CUDA is required to run with a GPU backend
+Pace requires gcc > 9.2, MPI, and Python 3.8 on your system, and CUDA is required to run with a GPU backend.
 
 You will also need the headers of the boost libraries in your `$PATH` (boost itself does not need to be installed).
 
