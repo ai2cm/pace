@@ -47,14 +47,11 @@ class TranslateDriver(TranslateFVDynamics):
         config_info = {
             "stencil_config": self.stencil_config,
             "initialization": {
-                "type": "predefined",
+                "type": "restart",
                 "config": {
-                    "dycore_state": dycore_state,
-                    "grid_data": self.grid.grid_data,
-                    "damping_coefficients": self.grid.damping_coefficients,
-                    "driver_grid_data": self.grid.driver_grid_data,
-                    "physics_state": physics_state,
-                    "tendency_state": tendency_state,
+                    "path": "/home/ajdas/pace/restart_data/v1.0",
+                    "start_time": datetime.strptime("2016-08-11 00:00:00", "%Y-%m-%d %H:%M:%S"),
+                    "fortran_data": True,
                 },
             },
             "dt_atmos": self.namelist.dt_atmos,

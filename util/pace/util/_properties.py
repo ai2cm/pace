@@ -531,6 +531,7 @@ RESTART_PROPERTIES: RestartProperties = {
         "restart_name": "u",
         "driver_name": "u",
         "units": "m/s",
+        "restart_file": "fv_core.res.tile"
     },
     "x_wind_on_c_grid": {
         "dims": [Z_DIM, Y_DIM, X_INTERFACE_DIM],
