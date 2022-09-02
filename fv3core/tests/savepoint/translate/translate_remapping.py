@@ -1,9 +1,9 @@
 import pace.dsl
 import pace.dsl.gt4py_utils as utils
 import pace.util
-from fv3core import DynamicalCoreConfig
-from fv3core.stencils.remapping import LagrangianToEulerian
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace.fv3core import DynamicalCoreConfig
+from pace.fv3core.stencils.remapping import LagrangianToEulerian
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslateRemapping(TranslateDycoreFortranData2Py):
