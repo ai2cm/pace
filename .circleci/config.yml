@@ -29,7 +29,7 @@ jobs:
   savepoints_mpi:
     machine:
       image: ubuntu-2004:202111-02
-      resource_class: medium+
+      resource_class: large
     parameters:
       backend:
         description: "gt4py backend"
@@ -126,25 +126,26 @@ jobs:
           command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
       - restore_cache:
           keys:
-            - v2-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
+            - v3-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
             - v2-savepoints-c12_54ranks_standard-{{ checksum "Makefile.data_download" }}
-            - v2-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+            - v3-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
       - run:
           name: set up environment
           command: |
             pip3 install --upgrade setuptools wheel
             pip3 install -r requirements_dev.txt -c constraints.txt
       - save_cache:
-          key: v2-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+          key: v3-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
           paths:
             - /home/circleci/.cache/pip
+            - /opt/circleci/.pyenv/versions
       - run:
           name: run tests
           command: |
-            GT_CACHE_DIR_ROOT=".gt_cache" TEST_ARGS="--backend=<<parameters.backend>> -v -s" CONTAINER_CMD="" NUM_RANKS=54 EXPERIMENT="c12_54ranks_standard" FV3_PATH=$(pwd)/fv3core make savepoint_tests_mpi
+            GT_CACHE_ROOT=".gt_cache" TEST_ARGS="--backend=<<parameters.backend>> -v -s" CONTAINER_CMD="" NUM_RANKS=54 EXPERIMENT="c12_54ranks_standard" FV3_PATH=$(pwd)/fv3core make savepoint_tests_mpi
           no_output_timeout: 3h
       - save_cache:
-          key: v2-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
+          key: v3-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
           paths:
             - .gt_cache
       - save_cache:
@@ -192,7 +193,7 @@ jobs:
   test_driver:
     docker:
       - image: cimg/python:3.8
-    resource_class: medium+
+    resource_class: large
     working_directory: ~/repo
     steps:
       - checkout
