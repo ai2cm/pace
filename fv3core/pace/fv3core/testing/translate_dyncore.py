@@ -148,8 +148,8 @@ class TranslateDynCore(ParallelTranslate2PyState):
             grid_data.ks = inputs["ks"]
         self._base.make_storage_data_input_vars(inputs)
         state = DycoreState.init_zeros(quantity_factory=self.grid.quantity_factory)
-        state.cappa = self.grid.quantity_factory.empty(
-            dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+        wsd: pace.util.Quantity = self.grid.quantity_factory.empty(
+            dims=[pace.util.X_DIM, pace.util.Y_DIM],
             units="unknown",
         )
         for name, value in inputs.items():
@@ -173,12 +173,17 @@ class TranslateDynCore(ParallelTranslate2PyState):
             phis=inputs["phis"],
             state=state,
         )
-        state.__dict__.update(acoustic_dynamics._temporaries)
-        acoustic_dynamics(state, n_map=state.n_map, update_temporaries=False)
+        acoustic_dynamics.cappa.storage[:] = inputs["cappa"][:]
+
+        acoustic_dynamics(state, wsd=wsd, timestep=inputs["mdt"], n_map=state.n_map)
+        # the "inputs" dict is not used to return, we construct a new dict based
+        # on variables attached to `state`
         storages_only = {}
         for name, value in vars(state).items():
             if isinstance(value, pace.util.Quantity):
                 storages_only[name] = value.storage
             else:
                 storages_only[name] = value
+        storages_only["wsd"] = wsd.storage
+        storages_only["cappa"] = acoustic_dynamics.cappa.storage
         return self._base.slice_output(storages_only)
