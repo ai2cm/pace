@@ -26,6 +26,57 @@ jobs:
             - ~/.cache/pre-commit
             - venv
 
+  savepoints:
+    machine:
+      image: ubuntu-2004:202111-02
+      resource_class: large
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy", "gt:cpu_ifirst"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - gcp-cli/install:
+        version: 323.0.0
+      - run:
+          name: gcloud auth
+          command: |
+            echo $ENCODED_GCR_KEY
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+            gcloud auth configure-docker
+      - checkout
+      - run:
+          name: Update Submodules
+          command: git submodule update --init
+      - run:
+          name: save gt4py_version.txt
+          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
+      - restore_cache:
+          keys:
+            - v1-gt_cache-serial-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
+            - v1-savepoints-{{ checksum "Makefile.data_download" }}
+      - run:
+          name: build image
+          command: |
+            BUILD_ARGS="--progress=plain" DEV=n make build
+      - run:
+          name: run tests
+          command: |
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=n make savepoint_tests
+          no_output_timeout: 3h
+      - save_cache:
+          key: v1-gt_cache-serial-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
+          paths:
+            - .gt_cache
+      - save_cache:
+          key: v1-savepoints-{{ checksum "Makefile.data_download" }}
+          paths:
+            - test_data
+
   savepoints_mpi:
     machine:
       image: ubuntu-2004:202111-02
@@ -35,14 +86,10 @@ jobs:
         description: "gt4py backend"
         default: "numpy"
         type: enum
-        enum: ["numpy"]
+        enum: ["numpy", "gt:cpu_ifirst"]
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
-      - run: |
-          sudo apt-get update && sudo apt-get install -y make \
-            python3 \
-            python3-pip
       - gcp-cli/install:
         version: 323.0.0
       - run:
@@ -62,15 +109,15 @@ jobs:
       - restore_cache:
           keys:
             - v1-gt_cache-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
-            - v1-savepoints-{{ checksum "fv3core/Makefile" }}
+            - v1-savepoints-{{ checksum "Makefile.data_download" }}
       - run:
           name: build image
           command: |
-            BUILD_ARGS="--progress=plain" make -C fv3core build
+            BUILD_ARGS="--progress=plain" DEV=n make build
       - run:
           name: run tests
           command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=n make savepoint_tests_mpi
           no_output_timeout: 3h
       - save_cache:
           key: v1-gt_cache-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
@@ -83,9 +130,9 @@ jobs:
             - .gt_cache_000004
             - .gt_cache_000005
       - save_cache:
-          key: v1-savepoints-{{ checksum "fv3core/Makefile" }}
+          key: v1-savepoints-{{ checksum "Makefile.data_download" }}
           paths:
-            - fv3core/test_data
+            - test_data
 
   savepoints_mpi_54rank:
     machine:
@@ -96,7 +143,7 @@ jobs:
         description: "gt4py backend"
         default: "numpy"
         type: enum
-        enum: ["numpy"]
+        enum: ["numpy", "gt:cpu_ifirst"]
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
@@ -134,6 +181,7 @@ jobs:
           command: |
             pip3 install --upgrade setuptools wheel
             pip3 install -r requirements_dev.txt -c constraints.txt
+            python3 -m gt4py.gt_src_manager install
       - save_cache:
           key: v3-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
           paths:
@@ -289,11 +337,23 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - savepoints:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
       - savepoints_mpi:
           matrix:
             parameters:
               backend:
                 - numpy
+                - gt:cpu_ifirst
           context:
             - GCLOUD_ENCODED_KEY
           filters:

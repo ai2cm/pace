@@ -49,10 +49,12 @@ NH_P_Grad:
 Riem_Solver3:
   - backend: gt:gpu
     max_error: 5e-6
+  - backend: gt:cpu_ifirst
+    max_error: 5e-6
   - backend: cuda
     max_error: 5e-6
   - backend: numpy
-    max_error: 5e-7
+    max_error: 5e-6
   - backend: dace:gpu
     max_error: 5e-6
   - backend: dace:cpu
