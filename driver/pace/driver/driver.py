@@ -295,17 +295,11 @@ class Driver:
                 stencil_factory=self.stencil_factory,
                 damping_coefficients=self.state.damping_coefficients,
                 config=self.config.dycore_config,
+                timestep=self.config.timestep,
                 phis=self.state.dycore_state.phis,
                 state=self.state.dycore_state,
             )
 
-            self.dycore.update_state(
-                conserve_total_energy=self.config.dycore_config.consv_te,
-                do_adiabatic_init=False,
-                timestep=self.config.timestep.total_seconds(),
-                n_split=self.config.dycore_config.n_split,
-                state=self.state.dycore_state,
-            )
             if not config.dycore_only and not config.disable_step_physics:
                 self.physics = pace.physics.Physics(
                     stencil_factory=self.stencil_factory,
