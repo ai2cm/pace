@@ -309,22 +309,22 @@ def _restart_driver_state(
         quantity_factory=quantity_factory, active_packages=active_packages
     )
 
-    if fortran_data is True:
-        physics_state = _overwrite_state_from_fortran_restart(
-            path,
-            communicator,
-            physics_state,
-            "restart_dycore_state",
-            backend_uses_gpu,
-        )
-    else:
-        physics_state = _overwrite_state_from_restart(
-            path,
-            rank,
-            physics_state,
-            "restart_physics_state",
-            backend_uses_gpu,
-        )
+    # if fortran_data is True:
+    #     physics_state = _overwrite_state_from_fortran_restart(
+    #         path,
+    #         communicator,
+    #         physics_state,
+    #         "restart_dycore_state",
+    #         backend_uses_gpu,
+    #     )
+    # else:
+    #     physics_state = _overwrite_state_from_restart(
+    #         path,
+    #         rank,
+    #         physics_state,
+    #         "restart_physics_state",
+    #         backend_uses_gpu,
+    #     )
 
     physics_state.__post_init__(quantity_factory, active_packages)
     tendency_state = TendencyState.init_zeros(
