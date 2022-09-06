@@ -1,16 +1,16 @@
 import os
 import unittest.mock
 from dataclasses import fields
+from datetime import timedelta
 from typing import Tuple
 
-import fv3core
-import fv3core._config
-import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl.stencil
+import pace.fv3core.initialization.baroclinic as baroclinic_init
 import pace.stencils.testing
 import pace.util
-from fv3core.initialization.dycore_state import DycoreState
+from pace import fv3core
 from pace.dsl.dace.dace_config import DaceConfig
+from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.stencils.testing import assert_same_temporaries, copy_temporaries
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -122,17 +122,9 @@ def setup_dycore() -> Tuple[
         stencil_factory=stencil_factory,
         damping_coefficients=DampingCoefficients.new_from_metric_terms(metric_terms),
         config=config,
+        timestep=timedelta(seconds=config.dt_atmos),
         phis=state.phis,
         state=state,
-    )
-    do_adiabatic_init = False
-
-    dycore.update_state(
-        config.consv_te,
-        do_adiabatic_init,
-        config.dt_atmos,
-        config.n_split,
-        state,
     )
 
     return dycore, state, pace.util.NullTimer()

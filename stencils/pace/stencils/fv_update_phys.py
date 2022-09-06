@@ -1,10 +1,10 @@
 import gt4py.gtscript as gtscript
 from gt4py.gtscript import FORWARD, PARALLEL, computation, exp, interval, log
 
-import fv3core
 import pace.dsl.gt4py_utils as utils
 import pace.util
 import pace.util.constants as constants
+from pace import fv3core
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory

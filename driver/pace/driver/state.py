@@ -4,11 +4,11 @@ from typing import Union
 
 import xarray as xr
 
-import fv3core
-import fv3gfs.physics
 import pace.dsl.gt4py_utils as gt_utils
+import pace.physics
 import pace.util
 import pace.util.grid
+from pace import fv3core
 from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.grid import DampingCoefficients
 
@@ -66,7 +66,7 @@ class TendencyState:
 @dataclasses.dataclass
 class DriverState:
     dycore_state: fv3core.DycoreState
-    physics_state: fv3gfs.physics.PhysicsState
+    physics_state: pace.physics.PhysicsState
     tendency_state: TendencyState
     grid_data: pace.util.grid.GridData
     damping_coefficients: pace.util.grid.DampingCoefficients
@@ -144,7 +144,7 @@ class DriverState:
 def _overwrite_state_from_restart(
     path: str,
     rank: int,
-    state: Union[fv3core.DycoreState, fv3gfs.physics.PhysicsState, TendencyState],
+    state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
     restart_file_prefix: str,
     is_gpu_backend: bool,
 ):
@@ -197,7 +197,7 @@ def _restart_driver_state(
         backend_uses_gpu,
     )
     active_packages = ["microphysics"]
-    physics_state = fv3gfs.physics.PhysicsState.init_zeros(
+    physics_state = pace.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages
     )
     physics_state = _overwrite_state_from_restart(

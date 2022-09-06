@@ -1,9 +1,9 @@
-import fv3core
 import pace.dsl
 import pace.util
-from fv3core.stencils import temperature_adjust
-from fv3core.stencils.dyn_core import get_nk_heat_dissipation
-from fv3core.testing import TranslateDycoreFortranData2Py
+from pace import fv3core
+from pace.fv3core.stencils import temperature_adjust
+from pace.fv3core.stencils.dyn_core import get_nk_heat_dissipation
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class TranslatePressureAdjustedTemperature_NonHydrostatic(
