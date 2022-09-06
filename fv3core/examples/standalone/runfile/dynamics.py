@@ -3,7 +3,7 @@
 import copy
 import json
 from argparse import ArgumentParser, Namespace
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple
 
 import f90nml
@@ -263,6 +263,7 @@ def setup_dycore(
         config=dycore_config,
         phis=state.phis,
         state=state,
+        timestep=timedelta(seconds=dycore_config.dt_atmos),
     )
     return dycore, state, stencil_factory
 
