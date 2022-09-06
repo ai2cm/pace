@@ -2,9 +2,9 @@ from typing import Optional
 
 from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, interval
 
-import fv3core
-import fv3core.stencils.fv_subgridz as fv_subgridz
+import pace.fv3core.stencils.fv_subgridz as fv_subgridz
 import pace.util
+from pace import fv3core
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import Float, FloatField
@@ -150,7 +150,7 @@ class DycoreToPhysics:
         self,
         stencil_factory: StencilFactory,
         dycore_config: fv3core.DynamicalCoreConfig,
-        do_dry_convective_adjustment: bool,
+        do_dry_convective_adjust: bool,
         dycore_only: bool,
     ):
         orchestrate(
@@ -168,7 +168,7 @@ class DycoreToPhysics:
             ],
             compute_halos=(0, 0),
         )
-        self._do_dry_convective_adjustment = do_dry_convective_adjustment
+        self._do_dry_convective_adjustment = do_dry_convective_adjust
         self._dycore_only = dycore_only
         if self._do_dry_convective_adjustment:
             self._fv_subgridz = fv_subgridz.DryConvectiveAdjustment(

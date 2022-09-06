@@ -1,7 +1,7 @@
 from gt4py.gtscript import PARALLEL, computation, horizontal, interval, region
 
-import fv3core
 import pace.dsl.gt4py_utils as utils
+from pace import fv3core
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ

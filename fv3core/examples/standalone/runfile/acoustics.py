@@ -10,11 +10,11 @@ from timing import collect_data_and_write_to_file
 
 import pace.dsl
 import pace.util as util
-from fv3core._config import DynamicalCoreConfig
-from fv3core.stencils.dyn_core import AcousticDynamics
-from fv3core.testing import TranslateDynCore
 from pace.dsl.dace.orchestration import DaceConfig
 from pace.dsl.stencil import CompilationConfig
+from pace.fv3core._config import DynamicalCoreConfig
+from pace.fv3core.stencils.dyn_core import AcousticDynamics
+from pace.fv3core.testing import TranslateDynCore
 from pace.stencils.testing.grid import Grid
 from pace.util.null_comm import NullComm
 

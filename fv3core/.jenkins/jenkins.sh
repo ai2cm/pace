@@ -50,7 +50,7 @@ action=$1
 backend=$2
 experiment=$3
 
-if [[ $backend == gt_* ]]; then
+if [[ $backend == gt_* || $backend == dace_* ]]; then
     backend=${backend/_/:}
 fi
 
@@ -109,10 +109,11 @@ if grep -q "parallel" <<< "${script}"; then
         echo "Setting NUM_RANKS=${NUM_RANKS}"
         if grep -q "cuda\|gpu" <<< "${backend}" ; then
             export MPICH_RDMA_ENABLED_CUDA=1
-        export CRAY_CUDA_MPS=1
+            # Has to be deactivated to be able to use VRAM pooling
+            export CRAY_CUDA_MPS=0
         else
             export MPICH_RDMA_ENABLED_CUDA=0
-        export CRAY_CUDA_MPS=0
+            export CRAY_CUDA_MPS=0
         fi
         if [ -f ${scheduler_script} ] ; then
             sed -i 's|<NTASKS>|<NTASKS>\n#SBATCH \-\-hint=multithread|g' ${scheduler_script}

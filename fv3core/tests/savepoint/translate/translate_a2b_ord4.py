@@ -2,10 +2,10 @@ from typing import Any, Dict
 
 import pace.dsl
 import pace.util
-from fv3core.stencils.divergence_damping import DivergenceDamping
-from fv3core.testing import TranslateDycoreFortranData2Py
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
+from pace.fv3core.stencils.divergence_damping import DivergenceDamping
+from pace.fv3core.testing import TranslateDycoreFortranData2Py
 
 
 class A2B_Ord4Compute:

@@ -6,6 +6,9 @@ RUN apt-get update && apt-get install -y make \
     libopenmpi3 \
     libopenmpi-dev \
     libboost-all-dev \
+    libhdf5-serial-dev \
+    netcdf-bin \
+    libnetcdf-dev \
     python3 \
     python3-pip
 
@@ -13,7 +16,9 @@ RUN pip3 install --upgrade setuptools wheel
 
 COPY . /pace
 
-RUN cd /pace && pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt
+RUN cd /pace && \
+    pip3 install -r /pace/requirements_dev.txt -c /pace/constraints.txt && \
+    python3 -m gt4py.gt_src_manager install
 
 ENV OMPI_ALLOW_RUN_AS_ROOT=1
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
