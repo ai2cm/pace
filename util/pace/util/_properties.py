@@ -42,6 +42,7 @@ RESTART_PROPERTIES: RestartProperties = {
         "restart_name": "T",
         "driver_name": "pt",
         "units": "degK",
+        "restart_file": "fv_core.res.tile"
     },
     "air_temperature_after_physics": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
@@ -340,6 +341,7 @@ RESTART_PROPERTIES: RestartProperties = {
         "restart_name": "delp",
         "driver_name": "delp",
         "units": "Pa",
+        "restart_file": "fv_core.res.tile"
     },
     "sea_ice_thickness": {
         "dims": [Y_DIM, X_DIM],
@@ -395,6 +397,7 @@ RESTART_PROPERTIES: RestartProperties = {
         "restart_name": "phis",
         "driver_name": "phis",
         "units": "m^2 s^-2",
+        "restart_file": "fv_core.res.tile"
     },
     "surface_pressure": {
         "dims": [Y_DIM, X_DIM],
@@ -518,6 +521,7 @@ RESTART_PROPERTIES: RestartProperties = {
         "restart_name": "W",
         "driver_name": "w",
         "units": "m/s",
+        "restart_file": "fv_core.res.tile"
     },
     "water_equivalent_of_accumulated_snow_depth": {
         "description": "weasd in Fortran code, over land and sea ice only",
@@ -544,6 +548,7 @@ RESTART_PROPERTIES: RestartProperties = {
         "restart_name": "v",
         "driver_name": "v",
         "units": "m/s",
+        "restart_file": "fv_core.res.tile"
     },
     "y_wind_on_c_grid": {
         "dims": [Z_DIM, Y_INTERFACE_DIM, X_DIM],
@@ -556,59 +561,69 @@ RESTART_PROPERTIES: RestartProperties = {
         "restart_name": "sphum",
         "driver_name": "qvapor",
         "units": "kg/kg",
+        "restart_file": "fv_tracer.res.tile"
     },
     "cloud_water_mixing_ratio": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "liq_wat",
         "driver_name": "qliquid",
         "units": "kg/kg",
+        "restart_file": "fv_tracer.res.tile"
     },
     "cloud_ice_mixing_ratio": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "ice_wat",
         "driver_name": "qice",
         "units": "kg/kg",
+        "restart_file": "fv_tracer.res.tile"
     },
     "rain_mixing_ratio": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "rainwat",
         "driver_name": "qrain",
         "units": "kg/kg",
+        "restart_file": "fv_tracer.res.tile"
     },
     "snow_mixing_ratio": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "snowwat",
         "driver_name": "qsnow",
         "units": "kg/kg",
+        "restart_file": "fv_tracer.res.tile"
     },
     "graupel_mixing_ratio": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "graupel",
         "driver_name": "qgraupel",
         "units": "kg/kg",
+        "restart_file": "fv_tracer.res.tile"
     },
     "ozone_mixing_ratio": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "o3mr",
         "driver_name": "qo3mr",
         "units": "kg/kg",
+        "restart_file": "fv_tracer.res.tile"
     },
     "turbulent_kinetic_energy": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "sgs_tke",
         "driver_name": "qsgs_tke",
         "units": "kg/kg",
+        "restart_file": "fv_tracer.res.tile"
     },
     "cloud_fraction": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "cld_amt",
         "driver_name": "qcld",
         "units": "kg/kg",
+        "restart_file": "fv_tracer.res.tile"
     },
     "vertical_thickness_of_atmospheric_layer": {
         "dims": [Z_DIM, Y_DIM, X_DIM],
         "restart_name": "DZ",
         "driver_name": "delz",
         "units": "m",
+        "restart_file": "fv_core.res.tile"
     },
 }
