@@ -137,6 +137,7 @@ class RestartConfig(Initializer):
     path: str = "."
     start_time: datetime = datetime(2000, 1, 1)
     fortran_data: bool = False
+    fortran_grid: bool = False
 
     def get_driver_state(
         self,
@@ -150,8 +151,12 @@ class RestartConfig(Initializer):
             quantity_factory,
             communicator,
             self.fortran_data,
+            self.fortran_grid,
         )
         print("Restarted driver state")
+    
+    # TODO
+    # follow what fortran does with restart data after reading it
         return state
 
 

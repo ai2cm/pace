@@ -278,10 +278,16 @@ def _restart_driver_state(
     quantity_factory: pace.util.QuantityFactory,
     communicator: pace.util.CubedSphereCommunicator,
     fortran_data: bool = False,
+    fortran_grid: bool = False,
 ):
     metric_terms = pace.util.grid.MetricTerms(
         quantity_factory=quantity_factory, communicator=communicator
     )
+
+    # if fortran_grid:
+    #     pass
+
+
     grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
     damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
