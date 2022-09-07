@@ -1,4 +1,6 @@
-from typing import Dict, Optional
+import logging
+from datetime import timedelta
+from typing import Dict, Mapping, Optional
 
 from dace.frontend.python.interface import nounroll as dace_no_unroll
 from gt4py.gtscript import PARALLEL, computation, interval, log
@@ -25,6 +27,8 @@ from pace.util.grid import DampingCoefficients, GridData
 from pace.util.mpi import MPI
 from pace.util.quantity import Quantity
 
+
+logger = logging.getLogger(__name__)
 
 # nq is actually given by ncnst - pnats, where those are given in atmosphere.F90 by:
 # ncnst = Atm(mytile)%ncnst
@@ -69,14 +73,16 @@ def init_pfull(
         pfull = (ph2 - ph1) / log(ph2 / ph1)
 
 
-def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
+def fvdyn_temporaries(
+    quantity_factory: pace.util.QuantityFactory,
+) -> Mapping[str, Quantity]:
     tmps = {}
     for name in ["te_2d", "te0_2d", "wsd"]:
         quantity = quantity_factory.zeros(
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         )
         tmps[name] = quantity
-    for name in ["cappa", "dp1", "cvm"]:
+    for name in ["dp1", "cvm"]:
         quantity = quantity_factory.zeros(
             dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             units="unknown",
@@ -89,7 +95,7 @@ def fvdyn_temporaries(quantity_factory: pace.util.QuantityFactory):
 def log_on_rank_0(msg: str):
     """Print when rank is 0 - outside of DaCe critical path"""
     if not MPI or MPI.COMM_WORLD.Get_rank() == 0:
-        print(msg)
+        logger.info(msg)
 
 
 class DynamicalCore:
@@ -106,6 +112,7 @@ class DynamicalCore:
         config: DynamicalCoreConfig,
         phis: pace.util.Quantity,
         state: DycoreState,
+        timestep: timedelta,
         checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         """
@@ -117,7 +124,8 @@ class DynamicalCore:
             config: configuration of dynamical core, for example as would be set by
                 the namelist in the Fortran model
             phis: surface geopotential height
-            state: Model state
+            state: model state
+            timestep: model timestep
             checkpointer: if given, used to perform operations on model data
                 at specific points in model execution, such as testing against
                 reference data
@@ -217,8 +225,12 @@ class DynamicalCore:
             name: quantity.storage for name, quantity in self.tracers.items()
         }
 
-        self._temporaries = fvdyn_temporaries(quantity_factory)
-        state.__dict__.update(self._temporaries)
+        temporaries = fvdyn_temporaries(quantity_factory)
+        self._te_2d = temporaries["te_2d"]
+        self._te0_2d = temporaries["te0_2d"]
+        self._wsd = temporaries["wsd"]
+        self._dp1 = temporaries["dp1"]
+        self._cvm = temporaries["cvm"]
 
         # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
@@ -286,13 +298,8 @@ class DynamicalCore:
         self._cubed_to_latlon = CubedToLatLon(
             state, stencil_factory, grid_data, config.c2l_ord, comm
         )
+        self._cappa = self.acoustic_dynamics.cappa
 
-        self._temporaries = fvdyn_temporaries(quantity_factory)
-        # This is only here so the temporaries are attributes on this class,
-        # to more easily pick them up in unit testing
-        # if self._temporaries were a dataclass we can remove this
-        for name, value in self._temporaries.items():
-            setattr(self, f"_tmp_{name}", value)
         if not (not self.config.inline_q and NQ != 0):
             raise NotImplementedError("tracer_2d not implemented, turn on z_tracer")
         self._adjust_tracer_mixing_ratio = AdjustNegativeTracerMixingRatio(
@@ -320,6 +327,10 @@ class DynamicalCore:
         self._omega_halo_updater = WrappedHaloUpdater(
             comm.get_scalar_halo_updater([full_xyz_spec]), state, ["omga"], comm=comm
         )
+        self._n_split = config.n_split
+        self._k_split = config.k_split
+        self._conserve_total_energy = config.consv_te
+        self._timestep = timestep.total_seconds()
 
     def _checkpoint_fvdynamics(self, state: DycoreState, tag: str):
         if self.call_checkpointer:
@@ -336,40 +347,11 @@ class DynamicalCore:
                 qvapor=state.qvapor,
             )
 
-    def update_state(
+    def step_dynamics(
         self,
-        conserve_total_energy: float,
-        do_adiabatic_init: bool,
-        timestep: float,
-        n_split: int,
         state: DycoreState,
+        timer: Timer = pace.util.NullTimer(),
     ):
-        """
-        Args:
-            state: model dycore state
-            conserve_total_energy: if True, conserve total energy
-            do_adiabatic_init: if True, do adiabatic dynamics. Used
-                for model initialization.
-            timestep: time to progress forward in seconds
-            n_split: number of acoustic timesteps per remapping timestep
-        """
-        # TODO: state should be a statically typed class, move these to the
-        # definition of DycoreState and pass them on init or alternatively
-        # move these to/get these from the namelist/configuration class
-        state.__dict__.update(
-            {
-                "consv_te": conserve_total_energy,
-                "bdt": timestep,
-                "mdt": timestep / self.config.k_split,
-                "do_adiabatic_init": do_adiabatic_init,
-                "n_split": n_split,
-                "k_split": self.config.k_split,
-            }
-        )
-        state.__dict__.update(self._temporaries)
-        state.__dict__.update(self.acoustic_dynamics._temporaries)
-
-    def step_dynamics(self, state: DycoreState, timer: Timer = pace.util.NullTimer()):
         """
         Step the model state forward by one timestep.
 
@@ -381,7 +363,7 @@ class DynamicalCore:
         self._compute(state, timer)
         self._checkpoint_fvdynamics(state=state, tag="Out")
 
-    def compute_preamble(self, state, is_root_rank: bool):
+    def compute_preamble(self, state: DycoreState, is_root_rank: bool):
         if self.config.hydrostatic:
             raise NotImplementedError("Hydrostatic is not implemented")
         if __debug__:
@@ -394,19 +376,17 @@ class DynamicalCore:
             state.qice,
             state.qgraupel,
             state.q_con,
-            state.cvm,
+            self._cvm,
             state.pkz,
             state.pt,
-            state.cappa,
+            self._cappa,
             state.delp,
             state.delz,
-            state.dp1,
+            self._dp1,
         )
 
-        if state.consv_te > 0 and not state.do_adiabatic_init:
-            raise NotImplementedError(
-                "compute total energy is not implemented, it needs an allReduce"
-            )
+        if self._conserve_total_energy > 0:
+            raise NotImplementedError("compute total energy is not implemented")
 
         if (not self.config.rf_fast) and self.config.tau != 0:
             raise NotImplementedError(
@@ -422,7 +402,7 @@ class DynamicalCore:
                 log_on_rank_0("Adjust pt")
             self._pt_adjust_stencil(
                 state.pkz,
-                state.dp1,
+                self._dp1,
                 state.q_con,
                 state.pt,
             )
@@ -430,17 +410,25 @@ class DynamicalCore:
     def __call__(self, *args, **kwargs):
         return self.step_dynamics(*args, **kwargs)
 
-    def _compute(self, state, timer: pace.util.Timer):
+    def _compute(self, state: DycoreState, timer: pace.util.Timer):
         last_step = False
         self.compute_preamble(
             state,
             is_root_rank=self.comm_rank == 0,
         )
 
-        for k_split in dace_no_unroll(range(state.k_split)):
+        for k_split in dace_no_unroll(range(self._k_split)):
             n_map = k_split + 1
-            last_step = k_split == state.k_split - 1
-            self._dyn(state=state, tracers=self.tracers, n_map=n_map, timer=timer)
+            last_step = k_split == self._k_split - 1
+            self._dyn(
+                state=state,
+                cappa=self._cappa,
+                wsd=self._wsd,
+                tracers=self.tracers,
+                n_map=n_map,
+                timer=timer,
+                timestep=self._timestep / self._k_split,
+            )
 
             if self.grid_indexing.domain[2] > 4:
                 # nq is actually given by ncnst - pnats,
@@ -468,29 +456,28 @@ class DynamicalCore:
                         state.w,
                         state.ua,
                         state.va,
-                        state.cappa,
+                        self._cappa,
                         state.q_con,
                         state.qcld,
                         state.pkz,
                         state.pk,
                         state.pe,
                         state.phis,
-                        state.te0_2d,
+                        self._te0_2d,
                         state.ps,
-                        state.wsd,
+                        self._wsd,
                         state.omga,
                         self._ak,
                         self._bk,
                         self._pfull,
-                        state.dp1,
+                        self._dp1,
                         self._ptop,
                         constants.KAPPA,
                         constants.ZVIR,
                         last_step,
-                        state.consv_te,
-                        state.bdt / state.k_split,
-                        state.bdt,
-                        state.do_adiabatic_init,
+                        self._conserve_total_energy,
+                        self._timestep / self._k_split,
+                        self._timestep,
                     )
                 if last_step:
                     self.post_remap(
@@ -505,22 +492,26 @@ class DynamicalCore:
 
     def _dyn(
         self,
-        state,
+        state: DycoreState,
+        cappa: Quantity,
+        wsd: Quantity,
         tracers: Dict[str, Quantity],
         n_map,
+        timestep: float,  # time to step forward by
         timer: pace.util.Timer,
     ):
         self._copy_stencil(
             state.delp,
-            state.dp1,
+            self._dp1,
         )
         if __debug__:
             log_on_rank_0("DynCore")
         with timer.clock("DynCore"):
             self.acoustic_dynamics(
                 state,
+                wsd=wsd,
+                timestep=timestep,
                 n_map=n_map,
-                update_temporaries=False,
             )
         if self.config.z_tracer:
             if __debug__:
@@ -528,12 +519,12 @@ class DynamicalCore:
             with timer.clock("TracerAdvection"):
                 self.tracer_advection(
                     tracers,
-                    state.dp1,
+                    self._dp1,
                     state.mfxd,
                     state.mfyd,
                     state.cxd,
                     state.cyd,
-                    state.mdt,
+                    self._timestep / self._k_split,
                 )
 
     def post_remap(
