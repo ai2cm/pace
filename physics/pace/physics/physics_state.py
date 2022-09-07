@@ -169,6 +169,9 @@ class PhysicsState:
     prsik: FloatField = field(
         metadata={"name": "log_interface_pressure", "units": "Pa", "intent": "inout"}
     )
+    land: FloatField = field(
+        metadata={"name": "land_mask", "units": "-", "intent": "in"}
+    )
     quantity_factory: InitVar[pace.util.QuantityFactory]
     active_packages: InitVar[List[str]]
 
@@ -200,6 +203,7 @@ class PhysicsState:
                 wmp=self.wmp,
                 dz=self.dz,
                 tendency_storage=tendency,
+                land=self.land,
             )
         else:
             self.microphysics = None

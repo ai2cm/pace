@@ -27,6 +27,7 @@ class TranslateMicroph(TranslatePhysicsFortranData2Py):
             "wmp": {"serialname": "mph_w", "microph": True},
             "delz": {"serialname": "mph_dz", "microph": True},
             "pt": {"serialname": "mph_pt", "microph": True},
+            "land": {"serialname": "mph_land", "microph": True},
         }
 
         self.out_vars = {

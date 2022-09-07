@@ -22,7 +22,7 @@ from .._config import PhysicsConfig
 
 
 def fields_init(
-    land: FloatField,
+    land: FloatFieldIJ,
     area: FloatFieldIJ,
     h_var: FloatField,
     rh_adj: FloatField,
@@ -173,7 +173,6 @@ def fields_init(
         else:
 
             ccn = (ccn_l * land + ccn_o * (1.0 - land)) * 1.0e6
-
     with computation(BACKWARD):
 
         with interval(-1, None):
@@ -182,7 +181,6 @@ def fields_init(
 
                 # ccn is formulted as ccn = ccn_surface * (den / den_surface)
                 ccn = ccn * constants.RDGAS * tz / p1
-
         with interval(0, -1):
 
             if not prog_ccn and use_ccn:
@@ -191,7 +189,6 @@ def fields_init(
                 ccn = ccn[0, 0, +1]
 
     with computation(PARALLEL), interval(...):
-
         if not prog_ccn:
             c_praut = cpaut * (ccn * functions.RHOR) ** (-1.0 / 3.0)
 
@@ -450,7 +447,6 @@ def warm_rain(
                 den,
                 denfac,
             )
-
             if do_sedi_w:
                 dm = dp1 * (1.0 + qvz + qlz + qrz + qiz + qsz + qgz)
 
@@ -515,7 +511,6 @@ def warm_rain(
 
             dd = dt_rain * vtrz
             qrz = qrz * dp1
-
     # Sedimentation
     with computation(FORWARD):
 
@@ -593,7 +588,6 @@ def warm_rain(
                         - m1_rain[0, 0, -1] * vtrz[0, 0, -1]
                         + m1_rain * vtrz
                     ) / (dm + m1_rain[0, 0, -1] - m1_rain)
-
     # Heat transportation during sedimentation
     with computation(PARALLEL):
 
@@ -1845,6 +1839,7 @@ class MicrophysicsState:
     udt: eastard wind tendency
     vdt: northward wind tendency
     pt_dt: air temperature tendency
+    land: land mask
     """
 
     def __init__(
@@ -1866,6 +1861,7 @@ class MicrophysicsState:
         wmp: FloatField,
         dz: FloatField,
         tendency_storage: FloatField,
+        land: FloatField,
     ):
         self.pt = pt
         self.qvapor = qvapor
@@ -1893,6 +1889,7 @@ class MicrophysicsState:
         self.delprsi = delprsi
         self.wmp = wmp
         self.dz = dz
+        self.land = land
 
 
 class Microphysics:
@@ -1942,7 +1939,7 @@ class Microphysics:
                 shape, origin=origin, backend=stencil_factory.backend, **kwargs
             )
 
-        self._land = make_storage()
+        # self._land = make_storage()
         self._rain = make_storage()
         self._graupel = make_storage()
         self._ice = make_storage()
@@ -2257,7 +2254,7 @@ class Microphysics:
     def __call__(self, state: MicrophysicsState, timestep: float):
         self._update_timestep_if_needed(timestep)
         self._fields_init(
-            self._land,
+            state.land,
             self._area,
             self._h_var,
             self._rh_adj,
