@@ -9,7 +9,7 @@ from pace.dsl.dace.utils import (
 
 
 # Count the memory from a given SDFG
-ACTION_SDFG_MEMORY_STATIC_ANALYSIS = "sdfg_memory_static_analys"
+ACTION_SDFG_MEMORY_STATIC_ANALYSIS = "sdfg_memory_static_analysis"
 ACTION_SDFG_KERNEL_THEORETICAL_TIMING = "sdfg_kernel_theoretical_timing"
 
 

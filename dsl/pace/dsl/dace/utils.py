@@ -325,17 +325,21 @@ def kernel_theoretical_timing(
         )
 
         # Compute hardware memory bandwidth in bytes/us
+        if hardware_bw_in_Gb_s and hardware in _HARDWARE_BW_GB_S.keys():
+            raise NotImplementedError("can't specify hardware bandwidth and hardware")
         if hardware_bw_in_Gb_s:
             bandwidth_in_bytes_s = hardware_bw_in_Gb_s * 1024 * 1024 * 1024
-        elif not hardware not in _HARDWARE_BW_GB_S.keys():
+        elif hardware in _HARDWARE_BW_GB_S.keys():
             # Time it has to take (at least): bytes / bandwidth_in_bytes_s
             bandwidth_in_bytes_s = _HARDWARE_BW_GB_S[hardware] * 1024 * 1024 * 1024
         else:
-            print(f"Timing analysis: hardware {hardware} unknown and no bandwith given")
+            print(
+                f"Timing analysis: hardware {hardware} unknown and no bandwidth given"
+            )
 
         in_us = 1000 * 1000
 
-        # Theoritical fastest timing
+        # Theoretical fastest timing
         try:
             newresult_in_us = (float(alldata_in_bytes) / bandwidth_in_bytes_s) * in_us
         except TypeError:
@@ -373,7 +377,7 @@ def report_kernel_theoretical_timing(
     return result_string
 
 
-def kernel_theoretical_timing_from_path(sdfg_path: str):
+def kernel_theoretical_timing_from_path(sdfg_path: str) -> str:
     """Load an SDFG and report the theoretical kernel timings"""
     timings = kernel_theoretical_timing(dace.SDFG.from_file(sdfg_path))
     return report_kernel_theoretical_timing(timings, human_readable=True, csv=False)
