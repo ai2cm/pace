@@ -212,11 +212,18 @@ class PhysicsState:
     def init_zeros(cls, quantity_factory, active_packages: List[str]) -> "PhysicsState":
         initial_storages = {}
         for _field in fields(cls):
-            initial_storages[_field.name] = quantity_factory.zeros(
-                [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
-                _field.metadata["units"],
-                dtype=float,
-            ).storage
+            if _field.name == "land":
+                initial_storages[_field.name] = quantity_factory.zeros(
+                    [pace.util.X_DIM, pace.util.Y_DIM],
+                    _field.metadata["units"],
+                    dtype=float,
+                ).storage
+            else:
+                initial_storages[_field.name] = quantity_factory.zeros(
+                    [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+                    _field.metadata["units"],
+                    dtype=float,
+                ).storage
         return cls(
             **initial_storages,
             quantity_factory=quantity_factory,
