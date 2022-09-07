@@ -1,4 +1,5 @@
 from dataclasses import fields
+from datetime import timedelta
 from typing import Any, Dict, Optional, Tuple
 
 import pytest
@@ -209,7 +210,6 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "dims": [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
             "units": "Pa/s",
         },
-        "do_adiabatic_init": {"dims": []},
         "bdt": {"dims": []},
         "ptop": {"dims": []},
         "ks": {"dims": []},
@@ -217,7 +217,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
 
     outputs = inputs.copy()
 
-    for name in ("do_adiabatic_init", "bdt", "ak", "bk", "ks", "ptop"):
+    for name in ("bdt", "ak", "bk", "ks", "ptop"):
         outputs.pop(name)
 
     def __init__(
@@ -336,13 +336,7 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             config=DynamicalCoreConfig.from_namelist(self.namelist),
             phis=state.phis,
             state=state,
-        )
-        self.dycore.update_state(
-            self.namelist.consv_te,
-            inputs["do_adiabatic_init"],
-            inputs["bdt"],
-            self.namelist.n_split,
-            state,
+            timestep=timedelta(seconds=inputs["bdt"]),
         )
         self.dycore.step_dynamics(state, pace.util.NullTimer())
         outputs = self.outputs_from_state(state)

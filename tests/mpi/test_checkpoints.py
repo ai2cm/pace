@@ -37,41 +37,13 @@ class StateInitializer:
         self,
         ds: xr.Dataset,
         translate: TranslateFVDynamics,
-        communicator,
-        stencil_factory,
-        grid,
-        dycore_config,
-        consv_te,
-        n_split,
     ):
         self._ds = ds
         self._translate = translate
-        self._consv_te = consv_te
-        self._n_split = n_split
-
-        input_data = dataset_to_dict(self._ds.copy())
-        state, grid_data = self._translate.prepare_data(input_data)
-        self._dycore = fv3core.DynamicalCore(
-            comm=communicator,
-            grid_data=grid_data,
-            stencil_factory=stencil_factory,
-            damping_coefficients=grid.damping_coefficients,
-            config=dycore_config,
-            phis=state.phis,
-            state=state,
-        )
 
     def new_state(self) -> Tuple[DycoreState, GridData]:
         input_data = dataset_to_dict(self._ds.copy())
         state, grid_data = self._translate.prepare_data(input_data)
-
-        self._dycore.update_state(
-            self._consv_te,
-            input_data["do_adiabatic_init"],
-            input_data["bdt"],
-            self._n_split,
-            state,
-        )
         return state, grid_data
 
 
@@ -127,12 +99,6 @@ def test_fv_dynamics(
     initializer = StateInitializer(
         ds,
         translate,
-        communicator,
-        stencil_factory,
-        grid,
-        dycore_config,
-        namelist.consv_te,
-        namelist.n_split,
     )
     print("stencils initialized")
     if calibrate_thresholds:

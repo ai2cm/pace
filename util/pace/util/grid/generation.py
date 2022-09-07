@@ -1,5 +1,6 @@
 import functools
 import warnings
+import numpy as np
 
 from pace import util
 from pace.dsl.gt4py_utils import asarray
@@ -228,6 +229,23 @@ class MetricTerms:
             communicator=communicator,
             grid_type=grid_type,
         )
+
+    def from_lat_lon(self, lat: np.ndarray, lon: np.ndarray) -> util.grid.MetricTerms:
+        """
+        Inputs: 
+        lat: 2D latitude in degrees (y, x)
+        lon: 2D longitude in degrees (y, x)
+        """
+
+        new_grid = np.empty(self._grid.data.shape)
+        new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 0] = np.deg2rad(lon)
+        new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 1] = np.deg2rad(lat)
+
+        self.grid.data[:] = new_grid
+        self._init_agrid()
+
+        return self
+
 
     @property
     def grid(self):
