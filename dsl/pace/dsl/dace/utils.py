@@ -271,16 +271,24 @@ def memory_static_analysis_from_path(sdfg_path: str, detail_report=False) -> str
     )
 
 
-_HARDWARE_BW_GB_S = {"P100": 492.0}  # P100 on Piz Daint w/ CopyStencil test
+# TODO (floriand): in order for the timing analysis to be realistic the reference
+# bandwidth of the hardware should be measured with GT4Py & simple in/out copy
+# stencils. This allows to both measure the _actual_ deployed hardware and
+# size it against the current GT4Py version.
+# Below we bypass this needed automation by writing the P100 bw on Piz Daint
+# measured with the above strategy.
+# A better tool would allow this measure with a simple command and allow
+# a one command that measure bw & report kernel analysis in one command
+_HARDWARE_BW_GB_S = {"P100": 492.0}
 
 
-def kernel_theoritical_timing(
-    sdfg: dace.sdfg.SDFG, hardware="P100", hardware_bw_in_Gb_s=0
+def kernel_theoretical_timing(
+    sdfg: dace.sdfg.SDFG, hardware="P100", hardware_bw_in_Gb_s=None
 ) -> Dict[str, float]:
     """Compute a lower timing bound for kernels with the following hypothesis:
 
     - Performance is memory bound, e.g. arithmetic intensity isn't counted
-    - Hardware bandwith comes from a GT4Py/DaCe test rather than a spec sheet for
+    - Hardware bandwidth comes from a GT4Py/DaCe test rather than a spec sheet for
       for higher accuracy. Best is to run a copy_stencils on a full domain
     - Memory pressure is mostly in read/write from global memory, inner scalar & shared
       memory is not counted towards memory movement.
@@ -316,19 +324,18 @@ def kernel_theoritical_timing(
             ]
         )
 
-        # Compute hardware memory bandwith in bytes/us
-        if hardware not in _HARDWARE_BW_GB_S.keys():
-            print(
-                f"Timing analysis: hardware {hardware} unknown"
-                " reading hardware_bw_in_Gb_s option"
-            )
+        # Compute hardware memory bandwidth in bytes/us
+        if hardware_bw_in_Gb_s:
             bandwidth_in_bytes_s = hardware_bw_in_Gb_s * 1024 * 1024 * 1024
-        else:
+        elif not hardware not in _HARDWARE_BW_GB_S.keys():
             # Time it has to take (at least): bytes / bandwidth_in_bytes_s
             bandwidth_in_bytes_s = _HARDWARE_BW_GB_S[hardware] * 1024 * 1024 * 1024
+        else:
+            print(f"Timing analysis: hardware {hardware} unknown and no bandwith given")
+
         in_us = 1000 * 1000
 
-        # Theoritical fastest timning
+        # Theoritical fastest timing
         try:
             newresult_in_us = (float(alldata_in_bytes) / bandwidth_in_bytes_s) * in_us
         except TypeError:
@@ -352,9 +359,9 @@ def kernel_theoritical_timing(
     return result
 
 
-def report_kernel_theoritical_timing(
+def report_kernel_theoretical_timing(
     timings: Dict[str, float], human_readable: bool = True, csv: bool = False
-):
+) -> str:
     """Produce a human readable or CSV of the kernel timings"""
     result_string = f"Maps processed: {len(timings)}.\n"
     if human_readable:
@@ -366,7 +373,7 @@ def report_kernel_theoritical_timing(
     return result_string
 
 
-def kernel_theoritical_timing_from_path(sdfg_path: str):
-    """Load an SDFG and report the theoritical kernel timings"""
-    timings = kernel_theoritical_timing(dace.SDFG.from_file(sdfg_path))
-    return report_kernel_theoritical_timing(timings, human_readable=True, csv=False)
+def kernel_theoretical_timing_from_path(sdfg_path: str):
+    """Load an SDFG and report the theoretical kernel timings"""
+    timings = kernel_theoretical_timing(dace.SDFG.from_file(sdfg_path))
+    return report_kernel_theoretical_timing(timings, human_readable=True, csv=False)
