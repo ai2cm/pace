@@ -38,8 +38,7 @@ def direct_transform(*, lon: Quantity, lat: Quantity, stretch_factor: float, lon
     c2p1 = 1. + stretch_factor**2
     c2m1 = 1. - stretch_factor**2
 
-
-    # # first limit longitude so it's between 0 and 2pi
+    # first limit longitude so it's between 0 and 2pi
     lon_data[lon_data < 0] += 2 * np.pi
     lon_data[lon_data >= 2 * np.pi] -= 2 * np.pi
 
@@ -56,14 +55,13 @@ def direct_transform(*, lon: Quantity, lat: Quantity, stretch_factor: float, lon
     sin_o = - (sin_p * sin_lat + cos_p * cos_lat * np.cos(lon_data))
     tmp = 1 - np.abs(sin_o)
 
-
     lon_trans = np.zeros(lon_data.shape) * np.nan
     lat_trans = np.zeros(lat_data.shape) * np.nan
 
     lon_trans[tmp < 1e-7] = 0.
     lat_trans[tmp < 1e-7] = _sign(np.pi / 2, sin_o[tmp < 1e-7])
 
-    lon_trans[tmp >= 1e-7] = lon_p + np.arctan2(-np.cos(lat_t[tmp >= 1e-7]) * np.sin(lon[tmp >= 1e-7]), -np.sin(lat_t[tmp >= 1e-7])*np.cos(lat_p) + np.cos(lat_t[tmp >= 1e-7]) * np.sin(lat_p) * np.cos(lon[tmp >= 1e-7]))
+    lon_trans[tmp >= 1e-7] = lon_p + np.arctan2(-np.cos(lat_t[tmp >= 1e-7]) * np.sin(lon_data[tmp >= 1e-7]), -np.sin(lat_t[tmp >= 1e-7])*np.cos(lat_p) + np.cos(lat_t[tmp >= 1e-7]) * np.sin(lat_p) * np.cos(lon_data[tmp >= 1e-7]))
     lat_trans[tmp >= 1e-7] = np.arcsin(sin_o[tmp >= 1e-7])
 
     lon_trans[lon_trans < 0] += 2 * np.pi
