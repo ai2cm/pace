@@ -31,7 +31,7 @@ class TranslateSatAdjust3d(TranslateDycoreFortranData2Py):
             "pkz": {"istart": grid.is_, "jstart": grid.js},
             "cappa": {},
         }
-        self.max_error = 5e-14
+        self.max_error = 2e-11
         # te0 is off by 1e-10 when you do nothing...
         self.in_vars["parameters"] = [
             "r_vir",

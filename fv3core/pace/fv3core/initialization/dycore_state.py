@@ -276,7 +276,6 @@ class DycoreState:
             "intent": "in",
         }
     )
-    do_adiabatic_init: bool = field(default=False)
     bdt: float = field(default=0.0)
     mdt: float = field(default=0.0)
 
@@ -336,7 +335,6 @@ class DycoreState:
         cls,
         storages: Mapping[str, Any],
         sizer: pace.util.GridSizer,
-        do_adiabatic_init: bool = False,
         bdt: float = 0.0,
         mdt: float = 0.0,
     ):
@@ -352,7 +350,7 @@ class DycoreState:
                     extent=sizer.get_extent(dims),
                 )
                 inputs[_field.name] = quantity
-        return cls(**inputs, do_adiabatic_init=do_adiabatic_init, bdt=bdt, mdt=mdt)
+        return cls(**inputs, bdt=bdt, mdt=mdt)
 
     @property
     def xr_dataset(self):

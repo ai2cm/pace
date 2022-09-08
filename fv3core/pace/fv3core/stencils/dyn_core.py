@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Sequence, Union
+from typing import Dict, Mapping, Optional, Sequence, Tuple
 
 from dace.frontend.python.interface import nounroll as dace_nounroll
 from gt4py.gtscript import (
@@ -29,12 +29,20 @@ from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
 from pace.fv3core._config import AcousticDynamicsConfig
+from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils.c_sw import CGridShallowWaterDynamics
 from pace.fv3core.stencils.del2cubed import HyperdiffusionDamping
 from pace.fv3core.stencils.pk3_halo import PK3Halo
 from pace.fv3core.stencils.riem_solver3 import RiemannSolver3
 from pace.fv3core.stencils.riem_solver_c import RiemannSolverC
-from pace.util import X_DIM, Y_DIM, Z_DIM, Z_INTERFACE_DIM
+from pace.util import (
+    X_DIM,
+    X_INTERFACE_DIM,
+    Y_DIM,
+    Y_INTERFACE_DIM,
+    Z_DIM,
+    Z_INTERFACE_DIM,
+)
 from pace.util.grid import DampingCoefficients, GridData
 
 
@@ -183,52 +191,59 @@ def _quantity_wrap(storage, dims: Sequence[str], grid_indexing: GridIndexing):
     )
 
 
-def dyncore_temporaries(grid_indexing: GridIndexing, *, backend: str):
-    tmps: Dict[str, Union[pace.util.Quantity, "FloatField"]] = {}
+def dyncore_temporaries(
+    grid_indexing: GridIndexing, *, backend: str
+) -> Tuple[Mapping[str, pace.util.Quantity], Mapping[str, "FloatField"]]:
+    tmp_storages: Dict[str, "FloatField"] = {}
     utils.storage_dict(
-        tmps,
-        ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "divgd"],
+        tmp_storages,
+        ["ut", "vt", "gz", "zh", "pem", "pkc", "pk3", "heat_source", "divgd", "cappa"],
         grid_indexing.max_shape,
         grid_indexing.origin_full(),
         backend=backend,
     )
     utils.storage_dict(
-        tmps,
+        tmp_storages,
         ["ws3"],
         grid_indexing.max_shape[0:2],
         grid_indexing.origin_full()[0:2],
         backend=backend,
     )
     utils.storage_dict(
-        tmps,
+        tmp_storages,
         ["crx", "xfx"],
         grid_indexing.max_shape,
         grid_indexing.origin_compute(add=(0, -grid_indexing.n_halo, 0)),
         backend=backend,
     )
     utils.storage_dict(
-        tmps,
+        tmp_storages,
         ["cry", "yfx"],
         grid_indexing.max_shape,
         grid_indexing.origin_compute(add=(-grid_indexing.n_halo, 0, 0)),
         backend=backend,
     )
-    tmps["heat_source"] = _quantity_wrap(
-        tmps["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
+    tmp_quantities: Dict[str, pace.util.Quantity] = {}
+    tmp_quantities["heat_source"] = _quantity_wrap(
+        tmp_storages["heat_source"], [X_DIM, Y_DIM, Z_DIM], grid_indexing
     )
-    tmps["divgd"] = _quantity_wrap(
-        tmps["divgd"],
-        dims=[fv3util.X_INTERFACE_DIM, fv3util.Y_INTERFACE_DIM, fv3util.Z_DIM],
+    tmp_quantities["divgd"] = _quantity_wrap(
+        tmp_storages["divgd"],
+        dims=[X_INTERFACE_DIM, Y_INTERFACE_DIM, Z_DIM],
+        grid_indexing=grid_indexing,
+    )
+    tmp_quantities["cappa"] = _quantity_wrap(
+        tmp_storages["cappa"],
+        dims=[pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
         grid_indexing=grid_indexing,
     )
     for name in ["gz", "pkc", "zh"]:
-        tmps[name] = _quantity_wrap(
-            tmps[name],
-            dims=[fv3util.X_DIM, fv3util.Y_DIM, fv3util.Z_INTERFACE_DIM],
+        tmp_quantities[name] = _quantity_wrap(
+            tmp_storages[name],
+            dims=[X_DIM, Y_DIM, Z_INTERFACE_DIM],
             grid_indexing=grid_indexing,
         )
-
-    return tmps
+    return tmp_quantities, tmp_storages
 
 
 class AcousticDynamics:
@@ -245,7 +260,13 @@ class AcousticDynamics:
             comm: pace.util.CubedSphereCommunicator,
             grid_indexing: GridIndexing,
             backend: str,
-            state,
+            state: DycoreState,
+            cappa: pace.util.Quantity,
+            gz: pace.util.Quantity,
+            zh: pace.util.Quantity,
+            divgd: pace.util.Quantity,
+            heat_source: pace.util.Quantity,
+            pkc: pace.util.Quantity,
         ):
             origin = grid_indexing.origin_compute()
             shape = grid_indexing.max_shape
@@ -296,7 +317,7 @@ class AcousticDynamics:
             #        quantities at runtime paradigm
             self.q_con__cappa = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyz_halo_spec] * 2),
-                state,
+                dict(q_con=state.q_con, cappa=cappa),
                 ["q_con", "cappa"],
             )
             self.delp__pt = WrappedHaloUpdater(
@@ -319,7 +340,7 @@ class AcousticDynamics:
             )
             self.gz = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyzi_halo_spec]),
-                state,
+                {"gz": gz},
                 ["gz"],
             )
             self.delp__pt__q_con = WrappedHaloUpdater(
@@ -329,17 +350,17 @@ class AcousticDynamics:
             )
             self.zh = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyzi_halo_spec]),
-                state,
+                {"zh": zh},
                 ["zh"],
             )
             self.divgd = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xiyiz_halo_spec]),
-                state,
+                {"divgd": divgd},
                 ["divgd"],
             )
             self.heat_source = WrappedHaloUpdater(
                 comm.get_scalar_halo_updater([full_size_xyz_halo_spec]),
-                state,
+                {"heat_source": heat_source},
                 ["heat_source"],
             )
             if grid_indexing.domain[0] == grid_indexing.domain[1]:
@@ -352,7 +373,7 @@ class AcousticDynamics:
                 )
                 self.pkc = WrappedHaloUpdater(
                     comm.get_scalar_halo_updater([full_3Dfield_2pts_halo_spec]),
-                    state,
+                    {"pkc": pkc},
                     ["pkc"],
                 )
             else:
@@ -403,7 +424,7 @@ class AcousticDynamics:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["state", "update_temporaries"],
+            dace_constant_args=["state"],
         )
 
         orchestrate(
@@ -451,16 +472,28 @@ class AcousticDynamics:
                 stencil_factory, grid_data, config.grid_type
             )
         )
-        self._temporaries = dyncore_temporaries(
+
+        quantity_temporaries, storage_temporaries = dyncore_temporaries(
             grid_indexing, backend=stencil_factory.backend
         )
-        # This is only here so the temporaries are attributes on this class,
-        # to more easily pick them up in unit testing
-        # if self._temporaries were a dataclass we can remove this
-        for name, value in self._temporaries.items():
-            setattr(self, f"_tmp_{name}", value)
+        self._heat_source = quantity_temporaries["heat_source"]
+        self._divgd = quantity_temporaries["divgd"]
+        self._gz = quantity_temporaries["gz"]
+        self._pkc = quantity_temporaries["pkc"]
+        self._zh = quantity_temporaries["zh"]
+        self.cappa = quantity_temporaries["cappa"]
+        self._ut = storage_temporaries["ut"]
+        self._vt = storage_temporaries["vt"]
+        self._pem = storage_temporaries["pem"]
+        self._pk3 = storage_temporaries["pk3"]
+        self._crx = storage_temporaries["crx"]
+        self._cry = storage_temporaries["cry"]
+        self._xfx = storage_temporaries["xfx"]
+        self._yfx = storage_temporaries["yfx"]
+        self._ws3 = storage_temporaries["ws3"]
+
         if not config.hydrostatic:
-            self._temporaries["pk3"][:] = HUGE_R
+            self._pk3[:] = HUGE_R
 
         column_namelist = d_sw.get_column_namelist(
             config.d_grid_shallow_water,
@@ -621,10 +654,19 @@ class AcousticDynamics:
 
         # Halo updaters
         self._halo_updaters = AcousticDynamics._HaloUpdaters(
-            comm, grid_indexing, stencil_factory.backend, state
+            comm,
+            grid_indexing,
+            stencil_factory.backend,
+            state,
+            cappa=self.cappa,
+            gz=self._gz,
+            zh=self._zh,
+            divgd=self._divgd,
+            heat_source=self._heat_source,
+            pkc=self._pkc,
         )
 
-    def _checkpoint_csw(self, state, tag: str):
+    def _checkpoint_csw(self, state: DycoreState, tag: str):
         if self.call_checkpointer:
             self.checkpointer(
                 f"C_SW-{tag}",
@@ -637,12 +679,12 @@ class AcousticDynamics:
                 vcd=state.vc,
                 uad=state.ua,
                 vad=state.va,
-                utd=state.ut,
-                vtd=state.vt,
-                divgdd=state.divgd,
+                utd=self._ut,
+                vtd=self._vt,
+                divgdd=self._divgd,
             )
 
-    def _checkpoint_dsw_in(self, state):
+    def _checkpoint_dsw_in(self, state: DycoreState):
         if self.call_checkpointer:
             self.checkpointer(
                 "D_SW-In",
@@ -656,15 +698,15 @@ class AcousticDynamics:
                 ptd=state.pt,
                 uad=state.ua,
                 vad=state.va,
-                zhd=state.zh,
-                divgdd=state.divgd,
-                xfxd=state.xfx,
-                yfxd=state.yfx,
+                zhd=self._zh,
+                divgdd=self._divgd,
+                xfxd=self._xfx,
+                yfxd=self._yfx,
                 mfxd=state.mfxd,
                 mfyd=state.mfyd,
             )
 
-    def _checkpoint_dsw_out(self, state):
+    def _checkpoint_dsw_out(self, state: DycoreState):
         if self.call_checkpointer:
             self.checkpointer(
                 "D_SW-Out",
@@ -678,9 +720,9 @@ class AcousticDynamics:
                 ptd=state.pt,
                 uad=state.ua,
                 vad=state.va,
-                divgdd=state.divgd,
-                xfxd=state.xfx,
-                yfxd=state.yfx,
+                divgdd=self._divgd,
+                xfxd=self._xfx,
+                yfxd=self._yfx,
                 mfxd=state.mfxd,
                 mfyd=state.mfyd,
             )
@@ -688,17 +730,19 @@ class AcousticDynamics:
     # TODO: type hint state when it is possible to do so, when it is a static type
     def __call__(
         self,
-        state,
+        state: DycoreState,
+        wsd: pace.util.Quantity,
+        timestep: float,  # time to step forward by in seconds
         n_map=1,  # [DaCe] replaces state.n_map
-        update_temporaries: bool = True,
     ):
         # u, v, w, delz, delp, pt, pe, pk, phis, wsd, omga, ua, va, uc, vc, mfxd,
         # mfyd, cxd, cyd, pkz, peln, q_con, ak, bk, diss_estd, cappa, mdt, n_split,
         # akap, ptop, n_map, comm):
         end_step = n_map == self.config.k_split
         akap = constants.KAPPA
-        dt = state.mdt / self.config.n_split
-        dt2 = 0.5 * dt
+        # dt = state.mdt / self.config.n_split
+        dt_acoustic_substep = timestep / self.config.n_split
+        dt2 = 0.5 * dt_acoustic_substep
         n_split = self.config.n_split
         # TODO: When the namelist values are set to 0, use these instead:
         # m_split = 1. + abs(dt_atmos)/real(k_split*n_split*abs(p_split))
@@ -709,15 +753,12 @@ class AcousticDynamics:
         self._halo_updaters.u__v.start()
         self._halo_updaters.q_con__cappa.wait()
 
-        if update_temporaries:
-            state.__dict__.update(self._temporaries)
-
         self._zero_data(
             state.mfxd,
             state.mfyd,
             state.cxd,
             state.cyd,
-            state.heat_source,
+            self._heat_source,
             state.diss_estd,
             n_map == 1,
         )
@@ -746,7 +787,7 @@ class AcousticDynamics:
                     self._set_gz(
                         self._zs,
                         state.delz,
-                        state.gz,
+                        self._gz,
                     )
                     self._halo_updaters.gz.start()
             if it == 0:
@@ -756,7 +797,7 @@ class AcousticDynamics:
                 if self.config.use_old_omega:
                     self._set_pem(
                         state.delp,
-                        state.pem,
+                        self._pem,
                         self._ptop,
                     )
 
@@ -776,9 +817,9 @@ class AcousticDynamics:
                 state.vc,
                 state.ua,
                 state.va,
-                state.ut,
-                state.vt,
-                state.divgd,
+                self._ut,
+                self._vt,
+                self._divgd,
                 state.omga,
                 dt2,
             )
@@ -790,29 +831,29 @@ class AcousticDynamics:
                 if it == 0:
                     self._halo_updaters.gz.wait()
                     self._copy_stencil(
-                        state.gz,
-                        state.zh,
+                        self._gz,
+                        self._zh,
                     )
                 else:
                     self._copy_stencil(
-                        state.zh,
-                        state.gz,
+                        self._zh,
+                        self._gz,
                     )
             if not self.config.hydrostatic:
                 self.update_geopotential_height_on_c_grid(
-                    self._dp_ref, self._zs, state.ut, state.vt, state.gz, state.ws3, dt2
+                    self._dp_ref, self._zs, self._ut, self._vt, self._gz, self._ws3, dt2
                 )
                 self.riem_solver_c(
                     dt2,
-                    state.cappa,
+                    self.cappa,
                     self._ptop,
                     state.phis,
-                    state.ws3,
+                    self._ws3,
                     self.ptc,
                     state.q_con,
                     self.delpc,
-                    state.gz,
-                    state.pkc,
+                    self._gz,
+                    self._pkc,
                     state.omga,
                 )
 
@@ -822,8 +863,8 @@ class AcousticDynamics:
                 state.uc,
                 state.vc,
                 self.delpc,
-                state.pkc,
-                state.gz,
+                self._pkc,
+                self._gz,
                 dt2,
             )
             self._halo_updaters.uc__vc.start()
@@ -834,7 +875,7 @@ class AcousticDynamics:
             # by 1 timestep
             self._checkpoint_dsw_in(state)
             self.dgrid_shallow_water_lagrangian_dynamics(
-                state.vt,
+                self._vt,
                 state.delp,
                 state.pt,
                 state.u,
@@ -844,20 +885,20 @@ class AcousticDynamics:
                 state.vc,
                 state.ua,
                 state.va,
-                state.divgd,
+                self._divgd,
                 state.mfxd,
                 state.mfyd,
                 state.cxd,
                 state.cyd,
-                state.crx,
-                state.cry,
-                state.xfx,
-                state.yfx,
+                self._crx,
+                self._cry,
+                self._xfx,
+                self._yfx,
                 state.q_con,
-                state.zh,
-                state.heat_source,
+                self._zh,
+                self._heat_source,
                 state.diss_estd,
-                dt,
+                dt_acoustic_substep,
             )
             self._checkpoint_dsw_out(state)
             # note that uc and vc are not needed at all past this point.
@@ -873,29 +914,29 @@ class AcousticDynamics:
                 # without explicit arg names, numpy does not run
                 self.update_height_on_d_grid(
                     surface_height=self._zs,
-                    height=state.zh,
-                    courant_number_x=state.crx,
-                    courant_number_y=state.cry,
-                    x_area_flux=state.xfx,
-                    y_area_flux=state.yfx,
-                    ws=state.wsd,
-                    dt=dt,
+                    height=self._zh,
+                    courant_number_x=self._crx,
+                    courant_number_y=self._cry,
+                    x_area_flux=self._xfx,
+                    y_area_flux=self._yfx,
+                    ws=wsd,
+                    dt=dt_acoustic_substep,
                 )
                 self.riem_solver3(
                     remap_step,
-                    dt,
-                    state.cappa,
+                    dt_acoustic_substep,
+                    self.cappa,
                     self._ptop,
                     self._zs,
-                    state.wsd,
+                    wsd,
                     state.delz,
                     state.q_con,
                     state.delp,
                     state.pt,
-                    state.zh,
+                    self._zh,
                     state.pe,
-                    state.pkc,
-                    state.pk3,
+                    self._pkc,
+                    self._pk3,
                     state.pk,
                     state.peln,
                     state.w,
@@ -910,23 +951,23 @@ class AcousticDynamics:
                         "unimplemented namelist option use_logp=True"
                     )
                 else:
-                    self._pk3_halo(state.pk3, state.delp, self._ptop, akap)
+                    self._pk3_halo(self._pk3, state.delp, self._ptop, akap)
             if not self.config.hydrostatic:
                 self._halo_updaters.zh.wait()
                 self._compute_geopotential_stencil(
-                    state.zh,
-                    state.gz,
+                    self._zh,
+                    self._gz,
                 )
                 self._halo_updaters.pkc.wait()
 
                 self.nonhydrostatic_pressure_gradient(
                     state.u,
                     state.v,
-                    state.pkc,
-                    state.gz,
-                    state.pk3,
+                    self._pkc,
+                    self._gz,
+                    self._pk3,
                     state.delp,
-                    dt,
+                    dt_acoustic_substep,
                     self._ptop,
                     akap,
                 )
@@ -940,7 +981,7 @@ class AcousticDynamics:
                     state.w,
                     self._dp_ref,
                     self._pfull,
-                    dt,
+                    dt_acoustic_substep,
                     self._ptop,
                     self._ks,
                 )
@@ -958,14 +999,14 @@ class AcousticDynamics:
             self._halo_updaters.heat_source.update()
             # TODO: move dependence on da_min into init of hyperdiffusion class
             cd = constants.CNST_0P20 * self._da_min
-            self._hyperdiffusion(state.heat_source, cd)
+            self._hyperdiffusion(self._heat_source, cd)
             if not self.config.hydrostatic:
-                delt_time_factor = abs(dt * self.config.delt_max)
+                delt_time_factor = abs(dt_acoustic_substep * self.config.delt_max)
                 self._compute_pkz_tempadjust(
                     state.delp,
                     state.delz,
-                    state.cappa,
-                    state.heat_source,
+                    self.cappa,
+                    self._heat_source,
                     state.pt,
                     state.pkz,
                     delt_time_factor,

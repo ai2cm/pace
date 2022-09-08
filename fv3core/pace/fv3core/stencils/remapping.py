@@ -518,7 +518,6 @@ class LagrangianToEulerian:
         consv_te: float,
         mdt: float,
         bdt: float,
-        do_adiabatic_init: bool,
     ):
         """
         tracers (inout): Tracer species tracked across
@@ -554,7 +553,6 @@ class LagrangianToEulerian:
         consv_te (in): If True, conserve total energy
         mdt (in) : Remap time step
         bdt (in): Timestep
-        do_adiabatic_init (in): If True, do adiabatic dynamics
 
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.
@@ -636,7 +634,7 @@ class LagrangianToEulerian:
 
         self._copy_from_below_stencil(ua, pe)
         dtmp = 0.0
-        if last_step and not do_adiabatic_init:
+        if last_step:
             if consv_te > CONSV_MIN:
                 raise NotImplementedError(
                     "We do not support consv_te > 0.001 "
@@ -652,7 +650,7 @@ class LagrangianToEulerian:
                 )
 
         if self._do_sat_adjust:
-            fast_mp_consv = not do_adiabatic_init and consv_te > CONSV_MIN
+            fast_mp_consv = consv_te > CONSV_MIN
             self._saturation_adjustment(
                 dp1,
                 tracers["qvapor"],
