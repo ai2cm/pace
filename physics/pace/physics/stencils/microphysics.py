@@ -1939,7 +1939,6 @@ class Microphysics:
                 shape, origin=origin, backend=stencil_factory.backend, **kwargs
             )
 
-        # self._land = make_storage()
         self._rain = make_storage()
         self._graupel = make_storage()
         self._ice = make_storage()
