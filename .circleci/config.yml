@@ -19,18 +19,20 @@ commands:
               python3-pip \
       - restore_cache:
           keys:
-            - v3-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+            - v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
       - run:
           name: setup python environment
           command: |
+            python3 -m venv venv
+            . venv/bin/activate
             pip3 install --upgrade setuptools wheel
             pip3 install -r requirements_dev.txt -c constraints.txt
             python3 -m gt4py.gt_src_manager install
       - save_cache:
-          key: v3-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+          key: v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
           paths:
-            - /home/circleci/.cache/pip
-            - /opt/circleci/.pyenv/versions
+            - venv
+            - /root/.cache/pip
 
 jobs:
 
@@ -176,10 +178,14 @@ jobs:
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
-      - checkout
-      - run:
-          name: Update Submodules
-          command: git submodule update --init
+      - run: |
+          sudo apt-get update && sudo apt-get install -y make \
+            software-properties-common \
+            libopenmpi3 \
+            libopenmpi-dev \
+            libboost-all-dev \
+            python3 \
+            python3-pip \
       - gcp-cli/install:
         version: 323.0.0
       - run:
@@ -189,14 +195,32 @@ jobs:
             echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
             gcloud auth configure-docker
+      - checkout
+      - run:
+          name: Update Submodules
+          command: git submodule update --init
       - run:
           name: save gt4py_version.txt
           command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
       - restore_cache:
           keys:
             - v3-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
+      - restore_cache:
+          keys:
             - v2-savepoints-c12_54ranks_standard-{{ checksum "Makefile.data_download" }}
-      - setup_environment_mpi
+      - restore_cache:
+          keys:
+            - v4-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+      - run:
+          name: set up environment
+          command: |
+            pip3 install --upgrade setuptools wheel
+            pip3 install -r requirements_dev.txt -c constraints.txt
+            python3 -m gt4py.gt_src_manager install
+      - save_cache:
+          key: v4-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+          paths:
+            - /home/circleci/.cache/pip
       - run:
           name: run tests
           command: |
@@ -296,6 +320,7 @@ jobs:
       - run:
           name: run tests
           command: |
+            . venv/bin/activate
             pytest tests/main
 
   test_mpi_54rank:
@@ -311,6 +336,7 @@ jobs:
       - run:
           name: run tests
           command: |
+            . venv/bin/activate
             mpirun -n 54 --oversubscribe python3 -m mpi4py -m pytest tests/mpi_54rank
 
   test_notebooks:
