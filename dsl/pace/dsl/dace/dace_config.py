@@ -10,7 +10,7 @@ from pace.util.communicator import CubedSphereCommunicator
 # TODO (floriand): Temporary deactivate the distributed compiled
 # until we deal with the Grid data inlining during orchestration
 # See github issue #301
-DEACTIVATE_DISTRIBUTED_DACE_COMPILE = True
+DEACTIVATE_DISTRIBUTED_DACE_COMPILE = False
 
 
 class DaCeOrchestration(enum.Enum):

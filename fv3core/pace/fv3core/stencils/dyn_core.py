@@ -24,7 +24,7 @@ import pace.fv3core.stencils.updatedzd as updatedzd
 import pace.util
 import pace.util as fv3util
 import pace.util.constants as constants
-from pace.dsl.dace.orchestration import orchestrate
+from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -666,6 +666,11 @@ class AcousticDynamics:
             pkc=self._pkc,
         )
 
+    # See divergence_damping.py, _get_da_min for explanation of this function
+    @dace_inhibitor
+    def _get_da_min(self) -> float:
+        return self._da_min
+
     def _checkpoint_csw(self, state: DycoreState, tag: str):
         if self.call_checkpointer:
             self.checkpointer(
@@ -998,7 +1003,7 @@ class AcousticDynamics:
         if self._do_del2cubed:
             self._halo_updaters.heat_source.update()
             # TODO: move dependence on da_min into init of hyperdiffusion class
-            cd = constants.CNST_0P20 * self._da_min
+            cd = constants.CNST_0P20 * self._get_da_min()
             self._hyperdiffusion(self._heat_source, cd)
             if not self.config.hydrostatic:
                 delt_time_factor = abs(dt_acoustic_substep * self.config.delt_max)

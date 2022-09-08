@@ -12,7 +12,7 @@ import pace.util.constants as constants
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import StencilFactory
-from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
+from pace.dsl.typing import FloatField, FloatFieldK
 from pace.fv3core._config import DynamicalCoreConfig
 from pace.fv3core.initialization.dycore_state import DycoreState
 from pace.fv3core.stencils import fvtp2d, tracer_2d_1l
@@ -332,6 +332,11 @@ class DynamicalCore:
         self._conserve_total_energy = config.consv_te
         self._timestep = timestep.total_seconds()
 
+    # See divergence_damping.py, _get_da_min for explanation of this function
+    @dace_inhibitor
+    def _get_da_min(self) -> float:
+        return self._da_min
+
     def _checkpoint_fvdynamics(self, state: DycoreState, tag: str):
         if self.call_checkpointer:
             self.checkpointer(
@@ -483,7 +488,7 @@ class DynamicalCore:
                     self.post_remap(
                         state,
                         is_root_rank=self.comm_rank == 0,
-                        da_min=self._da_min,
+                        da_min=self._get_da_min(),
                     )
         self.wrapup(
             state,
@@ -531,7 +536,7 @@ class DynamicalCore:
         self,
         state: DycoreState,
         is_root_rank: bool,
-        da_min: FloatFieldIJ,
+        da_min: float,
     ):
         if not self.config.hydrostatic:
             if __debug__:
