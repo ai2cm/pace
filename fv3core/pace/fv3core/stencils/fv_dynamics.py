@@ -38,9 +38,10 @@ def pt_adjust(pkz: FloatField, dp1: FloatField, q_con: FloatField, pt: FloatFiel
         pkz (in):
         dp1 (in):
         q_con (in):
-        pt (out):
+        pt (out): temperature when input, "potential density temperature" when output
     """
     # TODO: why and how is pt being adjusted? update docstring and/or name
+    # TODO: split pt into two variables for different in/out meanings
     with computation(PARALLEL), interval(...):
         pt = pt * (1.0 + dp1) * (1.0 - q_con) / pkz
 

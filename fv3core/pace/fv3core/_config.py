@@ -101,7 +101,16 @@ class AcousticDynamicsConfig:
     rf_cutoff: float
     rf_fast: bool
     breed_vortex_inline: bool
+    """
+    setting for nudging where we can insert tropical cyclone tracks
+    and add fake tropical cyclones at a certain point in the code
+    not used so much right now because we can run at high enough
+    resolution to directly nudge to tropical cyclone data
+    """
     use_old_omega: bool
+    """
+    mainly for backwards compatibility, not really used anymore
+    """
     riemann: RiemannConfig
     d_grid_shallow_water: DGridShallowWaterLagrangianDynamicsConfig
 

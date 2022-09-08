@@ -48,9 +48,14 @@ def divergence_corner(
     divg_d: FloatField,
 ):
     """Calculate divg on d-grid.
+
+    Computed in order to damp the divergence, the damping is applied
+    at the end of d_sw directly to the winds
+    Described in detail in chapter 8 (?) of the FV3 docs
+
     Args:
-        u (in): x-velocity
-        v (in): y-velocity
+        u (in): x-velocity on d-grid
+        v (in): y-velocity on d-grid
         ua (in): x-velocity on a
         va (in): y-velocity on a
         dxc (in): grid spacing in x-direction
@@ -64,7 +69,7 @@ def divergence_corner(
         cos_sg3 (in): grid cos(sg3)
         cos_sg4 (in): grid cos(sg4)
         rarea_c (in): inverse cell areas on c-grid
-        divg_d (out): divergence on d-grid
+        divg_d (out): divergence on d-grid (cell corners)
     """
     from __externals__ import i_end, i_start, j_end, j_start
 
@@ -75,6 +80,9 @@ def divergence_corner(
             * 0.5
             * (sin_sg4[0, -1] + sin_sg2)
         )
+        """c-grid (?) contravariant component of the wind in the x-direction"""
+        # TODO: refactor this into a call to contravariant()
+        # TODO: add reference to FV3 documentation on divergence damping
 
         vf = (
             (v - 0.25 * (ua[-1, 0, 0] + ua) * (cos_sg3[-1, 0] + cos_sg1))
@@ -502,11 +510,17 @@ class CGridShallowWaterDynamics:
             origin=origin_halo1,
             backend=stencil_factory.backend,
         )
+        """
+        pressure thickness on c-grid forward step
+        """
         self.ptc = utils.make_storage_from_shape(
             grid_indexing.max_shape,
             origin=origin_halo1,
             backend=stencil_factory.backend,
         )
+        """
+        potential temperature on c-grid forward step
+        """
         self._zero_delpc_ptc = stencil_factory.from_dims_halo(
             zero_delpc_ptc,
             compute_dims=[X_DIM, Y_DIM, Z_DIM],
@@ -637,6 +651,8 @@ class CGridShallowWaterDynamics:
             ut (out): u * dx
             vt (out): v * dy
             divgd (out): D-grid horizontal divergence
+                Computed in order to damp the divergence, the damping is applied
+                at the end of d_sw directly to the winds
             omga (out): Vertical pressure velocity
             dt2 (in): Half a model timestep in seconds
         """

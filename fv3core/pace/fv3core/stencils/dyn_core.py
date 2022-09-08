@@ -52,13 +52,15 @@ def zero_data(
 ):
     """
     Args:
-        mfxd (out):
-        mfyd (out):
-        cxd (out):
-        cyd (out):
-        heat_source (out):
-        diss_estd (out):
-        first_timestep (in):
+        mfxd (out): mass flux in x direction
+        mfyd (out): mass flux in y direction
+        cxd (out): courant number in x direction
+        cyd (out): courant number in y direction
+        heat_source (out): heat accumulated from diffusion of kinetic energy
+            gets applied at the end of all acoustic steps
+        diss_estd (out): how much energy is dissipated, is mainly captured
+            to send to the stochastic physics (in contrast to heat_source)
+        first_timestep (in): is this the first acoustic timestep?
     """
     with computation(PARALLEL), interval(...):
         mfxd = 0.0
