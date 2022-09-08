@@ -285,18 +285,18 @@ def _restart_driver_state(
         quantity_factory=quantity_factory, communicator=communicator
     )
 
-    if fortran_grid:
-        ds = xr.open_dataset(path+"/grid_spec.tile%s.nc" % (rank+1))
-        lon_fort = ds.grid_lon.data
-        lat_fort = ds.grid_lat.data
-        # metric_terms = metric_terms.from_lat_lon(lat_fort, lon_fort)
+    # if fortran_grid:
+    #     ds = xr.open_dataset(path+"/grid_spec.tile%s.nc" % (rank+1))
+    #     lon_fort = ds.grid_lon.data
+    #     lat_fort = ds.grid_lat.data
+    #     # metric_terms = metric_terms.from_lat_lon(lat_fort, lon_fort)
 
-        new_grid = np.empty(metric_terms.grid.data.shape)
-        new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 0] = lon_fort
-        new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 1] = lat_fort
-        metric_terms.grid.data[:] = new_grid
-        metric_terms._init_agrid()
-        print("modified_grid")
+    #     new_grid = np.empty(metric_terms.grid.data.shape)
+    #     new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 0] = lon_fort
+    #     new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 1] = lat_fort
+    #     metric_terms.grid.data[:] = new_grid
+    #     metric_terms._init_agrid()
+    #     print("modified_grid")
 
 
     grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)

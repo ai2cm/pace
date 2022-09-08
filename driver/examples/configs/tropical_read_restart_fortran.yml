@@ -11,6 +11,9 @@ initialization:
     start_time: 2016-08-01 00:15:00
     fortran_data: true
     fortran_grid: true
+    stretch_fac: 3.0
+    target_lat: 17.5
+    target_lon: 172.5
   type: restart
 performance_config:
   performance_mode: true

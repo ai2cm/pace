@@ -230,21 +230,38 @@ class MetricTerms:
             grid_type=grid_type,
         )
 
-    def from_lat_lon(self, lat: np.ndarray, lon: np.ndarray) -> util.grid.MetricTerms:
+    @classmethod
+    def from_lat_lon(
+        cls, 
+        *, 
+        lat: np.ndarray, 
+        lon: np.ndarray, 
+        quantity_factory: util.QuantityFactory, 
+        communicator: util.Communicator, 
+        grid_type: int = 0
+        ) -> "MetricTerms":
+
         """
         Inputs: 
         lat: 2D latitude in degrees (y, x)
         lon: 2D longitude in degrees (y, x)
         """
 
-        new_grid = np.empty(self._grid.data.shape)
-        new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 0] = np.deg2rad(lon)
-        new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 1] = np.deg2rad(lat)
+        metric_terms = cls(quantity_factory=quantity_factory, communicator=communicator, grid_type=grid_type)
+        grid_shape = metric_terms._grid.data.shape
 
-        self.grid.data[:] = new_grid
-        self._init_agrid()
+        ny1, nx1 = lon.shape
 
-        return self
+
+        assert lon.shape == lat.shape
+        assert grid_shape == (ny1 + 2*N_HALO_DEFAULT, nx1 + 2*N_HALO_DEFAULT, 2)
+
+        metric_terms._grid.data[N_HALO_DEFAULT:N_HALO_DEFAULT+ny1, N_HALO_DEFAULT:N_HALO_DEFAULT+nx1, 0] = np.deg2rad(lon)
+        metric_terms._grid.data[N_HALO_DEFAULT:N_HALO_DEFAULT+ny1, N_HALO_DEFAULT:N_HALO_DEFAULT+nx1, 1] = np.deg2rad(lat)
+
+        metric_terms._init_agrid()
+
+        return metric_terms
 
 
     @property
