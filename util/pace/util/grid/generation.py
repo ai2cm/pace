@@ -95,7 +95,6 @@ class MetricTerms:
                 self.LON_OR_LAT_DIM: 2,
                 self.TILE_DIM: 6,
                 self.CARTESIAN_DIM: 3,
-                util.X_DIM: 1,
             }
         )
         self._grid_indexing = GridIndexing.from_sizer_and_communicator(
@@ -411,7 +410,7 @@ class MetricTerms:
     def ec1(self) -> util.Quantity:
         """
         cartesian components of the local unit vetcor
-        in the x-direation at the cell centers
+        in the x-direction at the cell centers
         3d array whose last dimension is length 3 and indicates cartesian x/y/z value
         """
         if self._ec1 is None:
@@ -1249,6 +1248,8 @@ class MetricTerms:
         return util.Quantity(
             data=1.0 / self.area.data,
             dims=self.area.dims,
+            origin=self.area.origin,
+            extent=self.area.extent,
             units="m^-2",
             gt4py_backend=self.area.gt4py_backend,
         )
@@ -1261,6 +1262,8 @@ class MetricTerms:
         return util.Quantity(
             data=1.0 / self.area_c.data,
             dims=self.area_c.dims,
+            origin=self.area_c.origin,
+            extent=self.area_c.extent,
             units="m^-2",
             gt4py_backend=self.area_c.gt4py_backend,
         )
@@ -1274,6 +1277,8 @@ class MetricTerms:
         return util.Quantity(
             data=1.0 / self.dx.data,
             dims=self.dx.dims,
+            origin=self.dx.origin,
+            extent=self.dx.extent,
             units="m^-1",
             gt4py_backend=self.dx.gt4py_backend,
         )
@@ -1287,6 +1292,8 @@ class MetricTerms:
         return util.Quantity(
             data=1.0 / self.dy.data,
             dims=self.dy.dims,
+            origin=self.dy.origin,
+            extent=self.dy.extent,
             units="m^-1",
             gt4py_backend=self.dy.gt4py_backend,
         )
@@ -1300,6 +1307,8 @@ class MetricTerms:
         return util.Quantity(
             data=1.0 / self.dxa.data,
             dims=self.dxa.dims,
+            origin=self.dxa.origin,
+            extent=self.dxa.extent,
             units="m^-1",
             gt4py_backend=self.dxa.gt4py_backend,
         )
@@ -1326,6 +1335,8 @@ class MetricTerms:
         return util.Quantity(
             data=1.0 / self.dxc.data,
             dims=self.dxc.dims,
+            origin=self.dxc.origin,
+            extent=self.dxc.extent,
             units="m^-1",
             gt4py_backend=self.dxc.gt4py_backend,
         )
@@ -1339,6 +1350,8 @@ class MetricTerms:
         return util.Quantity(
             data=1.0 / self.dyc.data,
             dims=self.dyc.dims,
+            origin=self.dyc.origin,
+            extent=self.dyc.extent,
             units="m^-1",
             gt4py_backend=self.dyc.gt4py_backend,
         )
