@@ -49,9 +49,6 @@ def test_grid_init_not_decomposition_dependent(rank: int):
     assert allclose(metric_terms_1by1.grid, metric_terms_3by3.grid, partitioner, rank)
     assert allclose(metric_terms_1by1.agrid, metric_terms_3by3.agrid, partitioner, rank)
     assert allclose(metric_terms_1by1.area, metric_terms_3by3.area, partitioner, rank)
-    assert allclose(
-        metric_terms_1by1.area_c, metric_terms_3by3.rarea_c, partitioner, rank
-    )
     assert allclose(metric_terms_1by1.dx, metric_terms_3by3.dx, partitioner, rank)
     assert allclose(metric_terms_1by1.dy, metric_terms_3by3.dy, partitioner, rank)
     assert allclose(metric_terms_1by1.dxa, metric_terms_3by3.dxa, partitioner, rank)
@@ -80,33 +77,9 @@ def test_grid_init_not_decomposition_dependent(rank: int):
     assert allclose(
         metric_terms_1by1.sin_sg4, metric_terms_3by3.sin_sg4, partitioner, rank
     )
-    assert allclose(
-        metric_terms_1by1.rarea_c, metric_terms_3by3.rarea_c, partitioner, rank
-    )
     assert allclose(metric_terms_1by1.rarea, metric_terms_3by3.rarea, partitioner, rank)
     assert allclose(metric_terms_1by1.rdx, metric_terms_3by3.rdx, partitioner, rank)
     assert allclose(metric_terms_1by1.rdy, metric_terms_3by3.rdy, partitioner, rank)
-    assert allclose(metric_terms_1by1.cosa, metric_terms_3by3.cosa, partitioner, rank)
-    assert allclose(metric_terms_1by1.sina, metric_terms_3by3.sina, partitioner, rank)
-    assert allclose(metric_terms_1by1.rsina, metric_terms_3by3.rsina, partitioner, rank)
-    assert allclose(
-        metric_terms_1by1.cosa_u, metric_terms_3by3.cosa_u, partitioner, rank
-    )
-    assert allclose(
-        metric_terms_1by1.cosa_v, metric_terms_3by3.cosa_v, partitioner, rank
-    )
-    assert allclose(
-        metric_terms_1by1.sina_u, metric_terms_3by3.sina_u, partitioner, rank
-    )
-    assert allclose(
-        metric_terms_1by1.sina_v, metric_terms_3by3.sina_v, partitioner, rank
-    )
-    assert allclose(
-        metric_terms_1by1.divg_u, metric_terms_3by3.divg_u, partitioner, rank
-    )
-    assert allclose(
-        metric_terms_1by1.divg_v, metric_terms_3by3.divg_u, partitioner, rank
-    )
 
 
 def allclose(
