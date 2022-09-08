@@ -27,9 +27,9 @@ from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
 from .comm import CreatesCommSelector
+from .gridconfig import GridConfig
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
-from .gridconfig import GridConfig
 
 
 logger = logging.getLogger(__name__)
@@ -95,10 +95,8 @@ class DriverConfig:
     physics_config: pace.physics.PhysicsConfig = dataclasses.field(
         default_factory=pace.physics.PhysicsConfig
     )
-    grid_config: GridConfig = dataclasses.field(
-        default_factory=GridConfig
-    )
-    
+    grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
+
     days: int = 0
     hours: int = 0
     minutes: int = 0
