@@ -7,9 +7,9 @@ import numpy as np
 @dataclasses.dataclass
 class GridConfig:
     stretch_mode: bool = False
-    stretch_factor: Optional[np.float_] = 1.0
-    lon_target: Optional[np.float_] = 0.0
-    lat_target: Optional[np.float_] = 0.0
+    stretch_factor: Optional[np.float_] = None
+    lon_target: Optional[np.float_] = None
+    lat_target: Optional[np.float_] = None
 
     def __post_init__(self):
         if self.stretch_mode:
