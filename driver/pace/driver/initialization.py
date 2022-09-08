@@ -155,7 +155,6 @@ class RestartConfig(Initializer):
             quantity_factory,
             communicator,
             self.fortran_data,
-            self.fortran_grid,
         )
         print("Restarted driver state")
     
