@@ -338,7 +338,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            mpirun -n 54 --oversubscribe python3 -m mpi4py -m pytest tests/mpi_54rank
+            mpirun -n 54 --oversubscribe --mca btl_vader_single_copy_mechanism none python3 -m mpi4py -m pytest tests/mpi_54rank
 
   test_notebooks:
     docker:
