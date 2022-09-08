@@ -20,5 +20,4 @@ from .helper import (
     HorizontalGridData,
     VerticalGridData,
 )
-
 from .stretch_transformation import direct_transform
