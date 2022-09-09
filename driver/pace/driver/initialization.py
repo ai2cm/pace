@@ -154,7 +154,6 @@ class RestartConfig(Initializer):
             self.fortran_data,
         )
         print("Restarted driver state")
-        exit()
     
         # TODO
         # follow what fortran does with restart data after reading it
