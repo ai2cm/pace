@@ -289,6 +289,7 @@ def _restart_driver_state(
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
     backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
 
+
     if fortran_data is True:
         dycore_state = _overwrite_state_from_fortran_restart(
             path,
@@ -305,6 +306,7 @@ def _restart_driver_state(
             "restart_dycore_state",
             backend_uses_gpu,
         )
+
     active_packages = ["microphysics"]
     physics_state = pace.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages

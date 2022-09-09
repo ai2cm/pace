@@ -18,8 +18,8 @@ grid_config:
   lat_target: 172.5
 performance_config:
   performance_mode: true
-  experiment_name: c12_baroclinic
-nx_tile: 12
+  experiment_name: c128_tropical
+nx_tile: 128
 nz: 79
 dt_atmos: 225
 minutes: 15
