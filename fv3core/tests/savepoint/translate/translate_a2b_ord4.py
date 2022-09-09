@@ -13,7 +13,7 @@ class A2B_Ord4Compute:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["divdamp"],
+            dace_compiletime_args=["divdamp"],
         )
 
     def __call__(self, divdamp, wk, vort, delpc, dt):

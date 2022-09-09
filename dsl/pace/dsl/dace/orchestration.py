@@ -425,7 +425,7 @@ def orchestrate(
     obj: object,
     config: DaceConfig,
     method_to_orchestrate: str = "__call__",
-    dace_constant_args: List[str] = [],
+    dace_compiletime_args: List[str] = [],
 ):
     """
     Orchestrate a method of an object with DaCe.
@@ -435,7 +435,7 @@ def orchestrate(
         obj: object which methods is to be orchestrated
         config: DaceConfig carrying model configuration
         method_to_orchestrate: string representing the name of the method
-        dace_constant_args: list of names of arguments to be flagged has dace.constant
+        dace_compiletime_args: list of names of arguments to be flagged has dace.constant
                             for orchestration to behave
     """
 
@@ -444,7 +444,7 @@ def orchestrate(
             func = type.__getattribute__(type(obj), method_to_orchestrate)
 
             # Flag argument as dace.constant
-            for argument in dace_constant_args:
+            for argument in dace_compiletime_args:
                 func.__annotations__[argument] = DaceCompiletime
 
             # Build DaCe orchestrated wrapper
@@ -509,7 +509,7 @@ def orchestrate(
 
 def orchestrate_function(
     config: DaceConfig = None,
-    dace_constant_args: List[str] = [],
+    dace_compiletime_args: List[str] = [],
 ) -> Union[Callable[..., Any], _LazyComputepathFunction]:
     """
     Decorator orchestrating a method of an object with DaCe.
@@ -517,13 +517,13 @@ def orchestrate_function(
 
     Args:
         config: DaceConfig carrying model configuration
-        dace_constant_args: list of names of arguments to be flagged has dace.constant
+        dace_compiletime_args: list of names of arguments to be flagged has dace.constant
                             for orchestration to behave
     """
 
     def _decorator(func: Callable[..., Any]):
         def _wrapper(*args, **kwargs):
-            for argument in dace_constant_args:
+            for argument in dace_compiletime_args:
                 func.__annotations__[argument] = DaceCompiletime
             return _LazyComputepathFunction(func, config)
 
