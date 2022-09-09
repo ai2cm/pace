@@ -7,14 +7,15 @@ stencil_config:
     device_sync: false
 initialization:
   config:
-    path: /home/ajdas/pace/restart_data/v1.0
-    start_time: 2016-08-01 00:15:00
+    path: /home/ajdas/pace/restart_data/v5.0
+    start_time: 2020-08-26 12:00:01
     fortran_data: true
-    fortran_grid: true
-    stretch_fac: 3.0
-    target_lat: 17.5
-    target_lon: 172.5
   type: restart
+grid_config:
+  stretch_mode: true
+  stretch_factor: 3.0
+  lon_target: 17.5
+  lat_target: 172.5
 performance_config:
   performance_mode: true
   experiment_name: c12_baroclinic

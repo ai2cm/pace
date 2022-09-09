@@ -283,39 +283,7 @@ def _restart_driver_state(
     metric_terms = pace.util.grid.MetricTerms(
         quantity_factory=quantity_factory, communicator=communicator
     )
-
-
-
-    # if fortran_grid:
-    #     ds = xr.open_dataset(path+"/grid_spec.tile%s.nc" % (rank+1))
-    #     lon_fort = ds.grid_lon.data
-    #     lat_fort = ds.grid_lat.data
-    #     # metric_terms = metric_terms.from_lat_lon(lat_fort, lon_fort)
-
-    #     new_grid = np.empty(metric_terms.grid.data.shape)
-    #     new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 0] = lon_fort
-    #     new_grid[N_HALO_DEFAULT:-N_HALO_DEFAULT, N_HALO_DEFAULT:-N_HALO_DEFAULT, 1] = lat_fort
-    #     metric_terms.grid.data[:] = new_grid
-    #     metric_terms._init_agrid()
-    #     print("modified_grid")
-
-    # construct vertical grid data from fortran restart
-
-    if fortran_data is True:
-        horizontal_grid_data = pace.util.grid.HorizontalGridData.new_from_metric_terms(metric_terms)
-    # create vertical grid data from scratch
-    # vertical_grid_data = pace.util.grid.VerticalGridData.new_from_metric_terms(metric_terms)
-        vertica_grid_data = pace.util.grid.VerticalGridData(ptop, ks, ak, bk, p_ref)
-
-        contravariant_grid_data = pace.util.grid.ContravariantGridData.new_from_metric_terms(metric_terms)
-        angle_grid_data = pace.util.grid.AngleGridData.new_from_metric_terms(metric_terms)
-
-        grid_data = pace.util.grid.GridData(horizontal_grid_data, vertical_grid_data, contravariant_grid_data, angle_grid_data)
-    else:
-        grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-
-
-
+    grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
     damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)

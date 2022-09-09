@@ -137,11 +137,7 @@ class RestartConfig(Initializer):
 
     path: str = "."
     start_time: datetime = datetime(2000, 1, 1)
-    fortran_data: bool = False
-    fortran_grid: bool = False  
-    stretch_fac: float = 1.0
-    target_lat: float = 0
-    target_lon: float = 0      
+    fortran_data: bool = False     
 
     def get_driver_state(
         self,

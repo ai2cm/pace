@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
@@ -7,7 +7,7 @@ import numpy as np
 @dataclasses.dataclass
 class GridConfig:
     stretch_mode: bool = False
-    stretch_factor: Optional[np.float_] = None
+    stretch_factor: Optional[np.float64] = None
     lon_target: Optional[np.float_] = None
     lat_target: Optional[np.float_] = None
 
@@ -21,3 +21,4 @@ class GridConfig:
                 raise ValueError("Stretch_mode is true, but no lon_target is provided.")
             if not self.lat_target:
                 raise ValueError("Stretch_mode is true, but no lat_target is provided.")
+Optional[str] = None
