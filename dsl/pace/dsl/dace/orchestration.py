@@ -435,8 +435,8 @@ def orchestrate(
         obj: object which methods is to be orchestrated
         config: DaceConfig carrying model configuration
         method_to_orchestrate: string representing the name of the method
-        dace_compiletime_args: list of names of arguments to be flagged has dace.constant
-                            for orchestration to behave
+        dace_compiletime_args: list of names of arguments to be flagged has
+                               dace.compiletime for orchestration to behave
     """
 
     if config.is_dace_orchestrated():
@@ -517,8 +517,8 @@ def orchestrate_function(
 
     Args:
         config: DaceConfig carrying model configuration
-        dace_compiletime_args: list of names of arguments to be flagged has dace.constant
-                            for orchestration to behave
+        dace_compiletime_args: list of names of arguments to be flagged has
+                               dace.compiletime for orchestration to behave
     """
 
     def _decorator(func: Callable[..., Any]):
