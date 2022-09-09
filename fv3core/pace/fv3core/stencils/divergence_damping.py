@@ -269,7 +269,7 @@ def smagorinksy_diffusion_approx(delpc: FloatField, vort: FloatField, absdt: flo
     # some kind of u and v, and is vort (as output) some kind of kinetic energy?
     # what does this have to do with diffusion?
     with computation(PARALLEL), interval(...):
-        vort = absdt * (delpc ** 2.0 + vort ** 2.0) ** 0.5
+        vort = absdt * (delpc**2.0 + vort**2.0) ** 0.5
 
 
 class DivergenceDamping:
@@ -640,8 +640,8 @@ class DivergenceDamping:
                 abs(dt),
             )
 
-        da_min = self._get_da_min()
-        da_min_c = self._get_da_min_c()
+        da_min: float = self._get_da_min()
+        da_min_c: float = self._get_da_min_c()
         if self._stretched_grid:
             dd8 = da_min * self._d4_bg ** (self._nonzero_nord + 1)
         else:

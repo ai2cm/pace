@@ -402,6 +402,7 @@ class AcousticDynamics:
         config: AcousticDynamicsConfig,
         pfull: FloatFieldK,
         phis: FloatFieldIJ,
+        wsd: FloatFieldIJ,
         state,  # [DaCe] hack to get around quantity as parameters for halo updates
         checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
@@ -424,28 +425,28 @@ class AcousticDynamics:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["state"],
+            dace_compiletime_args=["state"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_csw",
-            dace_constant_args=["state", "tag"],
+            dace_compiletime_args=["state", "tag"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_dsw_in",
-            dace_constant_args=["state", "tag"],
+            dace_compiletime_args=["state", "tag"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_dsw_out",
-            dace_constant_args=["state", "tag"],
+            dace_compiletime_args=["state", "tag"],
         )
 
         self.call_checkpointer = checkpointer is not None
@@ -463,6 +464,7 @@ class AcousticDynamics:
         self._ptop = self.grid_data.ptop
         self._ks = self.grid_data.ks
         self._pfull = pfull
+        self._wsd = wsd
         self._nk_heat_dissipation = get_nk_heat_dissipation(
             config.d_grid_shallow_water,
             npz=grid_indexing.domain[2],
@@ -736,7 +738,6 @@ class AcousticDynamics:
     def __call__(
         self,
         state: DycoreState,
-        wsd: pace.util.Quantity,
         timestep: float,  # time to step forward by in seconds
         n_map=1,  # [DaCe] replaces state.n_map
     ):
@@ -924,7 +925,7 @@ class AcousticDynamics:
                     courant_number_y=self._cry,
                     x_area_flux=self._xfx,
                     y_area_flux=self._yfx,
-                    ws=wsd,
+                    ws=self._wsd,
                     dt=dt_acoustic_substep,
                 )
                 self.riem_solver3(
@@ -933,7 +934,7 @@ class AcousticDynamics:
                     self.cappa,
                     self._ptop,
                     self._zs,
-                    wsd,
+                    self._wsd,
                     state.delz,
                     state.q_con,
                     state.delp,
@@ -1003,7 +1004,8 @@ class AcousticDynamics:
         if self._do_del2cubed:
             self._halo_updaters.heat_source.update()
             # TODO: move dependence on da_min into init of hyperdiffusion class
-            cd = constants.CNST_0P20 * self._get_da_min()
+            da_min: float = self._get_da_min()
+            cd = constants.CNST_0P20 * da_min
             self._hyperdiffusion(self._heat_source, cd)
             if not self.config.hydrostatic:
                 delt_time_factor = abs(dt_acoustic_substep * self.config.delt_max)

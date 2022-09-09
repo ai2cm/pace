@@ -134,49 +134,49 @@ class DynamicalCore:
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="step_dynamics",
-            dace_constant_args=["state", "timer"],
+            dace_compiletime_args=["state", "timer"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="compute_preamble",
-            dace_constant_args=["state", "is_root_rank"],
+            dace_compiletime_args=["state", "is_root_rank"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_compute",
-            dace_constant_args=["state", "timer"],
+            dace_compiletime_args=["state", "timer"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_dyn",
-            dace_constant_args=["state", "tracers", "timer"],
+            dace_compiletime_args=["state", "tracers", "timer"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="post_remap",
-            dace_constant_args=["state", "is_root_rank"],
+            dace_compiletime_args=["state", "is_root_rank"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="wrapup",
-            dace_constant_args=["state", "is_root_rank"],
+            dace_compiletime_args=["state", "is_root_rank"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_fvdynamics",
-            dace_constant_args=["state", "tag"],
+            dace_compiletime_args=["state", "tag"],
         )
 
         # nested and stretched_grid are options in the Fortran code which we
@@ -286,6 +286,7 @@ class DynamicalCore:
             self.config.acoustic_dynamics,
             self._pfull,
             self._phis,
+            self._wsd.storage,
             state,
             checkpointer=checkpointer,
         )
@@ -427,8 +428,6 @@ class DynamicalCore:
             last_step = k_split == self._k_split - 1
             self._dyn(
                 state=state,
-                cappa=self._cappa,
-                wsd=self._wsd,
                 tracers=self.tracers,
                 n_map=n_map,
                 timer=timer,
@@ -485,10 +484,11 @@ class DynamicalCore:
                         self._timestep,
                     )
                 if last_step:
+                    da_min: float = self._get_da_min()
                     self.post_remap(
                         state,
                         is_root_rank=self.comm_rank == 0,
-                        da_min=self._get_da_min(),
+                        da_min=da_min,
                     )
         self.wrapup(
             state,
@@ -498,8 +498,6 @@ class DynamicalCore:
     def _dyn(
         self,
         state: DycoreState,
-        cappa: Quantity,
-        wsd: Quantity,
         tracers: Dict[str, Quantity],
         n_map,
         timestep: float,  # time to step forward by
@@ -514,7 +512,6 @@ class DynamicalCore:
         with timer.clock("DynCore"):
             self.acoustic_dynamics(
                 state,
-                wsd=wsd,
                 timestep=timestep,
                 n_map=n_map,
             )
