@@ -378,7 +378,11 @@ def test_parallel_savepoint(
         ref_data[varname] = []
         new_ref_data = all_ref_data[varname]
         if hasattr(case.testobj, "subset_output"):
-            new_ref_data = case.testobj.subset_output(varname, new_ref_data)
+            if hasattr(case.testobj, "_do_not_subset_tracers"):
+                if varname in case.testobj._tracer_names:
+                    pass
+            else:
+                new_ref_data = case.testobj.subset_output(varname, new_ref_data)
         ref_data[varname].append(new_ref_data)
         ignore_near_zero = case.testobj.ignore_near_zero_errors.get(varname, False)
         with subtests.test(varname=varname):

@@ -282,6 +282,8 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         self._base.out_vars.update(fv_dynamics_vars)
         self._base.out_vars["ps"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
         self._base.out_vars["phis"] = {"kstart": grid.npz - 1, "kend": grid.npz - 1}
+        self._do_not_subset_tracers = True
+        self._tracer_names = ADVECTED_TRACER_NAMES
 
         self.max_error = 1e-5
 
