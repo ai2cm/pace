@@ -170,7 +170,9 @@ def get_sdfg_path(
             )
         # Check resolution per tile
         build_resolution = ast.literal_eval(build_info_file.readline())
-        if config.tile_resolution != build_resolution:
+        if (config.tile_resolution[0] / config.layout[0]) != (
+            build_resolution[0] / build_layout[0]
+        ):
             raise RuntimeError(
                 f"SDFG build for resolution {build_resolution}, "
                 f"cannot be run with current resolution {config.tile_resolution}"
