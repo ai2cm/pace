@@ -7,11 +7,11 @@ import f90nml
 import xarray as xr
 import yaml
 
-import fv3core
 import pace.dsl
 import pace.util
-from fv3core.initialization.dycore_state import DycoreState
-from fv3core.testing.translate_fvdynamics import TranslateFVDynamics
+from pace import fv3core
+from pace.fv3core.initialization.dycore_state import DycoreState
+from pace.fv3core.testing.translate_fvdynamics import TranslateFVDynamics
 from pace.stencils.testing import TranslateGrid, dataset_to_dict
 from pace.stencils.testing.grid import Grid
 from pace.util.checkpointer.thresholds import SavepointThresholds
@@ -37,41 +37,13 @@ class StateInitializer:
         self,
         ds: xr.Dataset,
         translate: TranslateFVDynamics,
-        communicator,
-        stencil_factory,
-        grid,
-        dycore_config,
-        consv_te,
-        n_split,
     ):
         self._ds = ds
         self._translate = translate
-        self._consv_te = consv_te
-        self._n_split = n_split
-
-        input_data = dataset_to_dict(self._ds.copy())
-        state, grid_data = self._translate.prepare_data(input_data)
-        self._dycore = fv3core.DynamicalCore(
-            comm=communicator,
-            grid_data=grid_data,
-            stencil_factory=stencil_factory,
-            damping_coefficients=grid.damping_coefficients,
-            config=dycore_config,
-            phis=state.phis,
-            state=state,
-        )
 
     def new_state(self) -> Tuple[DycoreState, GridData]:
         input_data = dataset_to_dict(self._ds.copy())
         state, grid_data = self._translate.prepare_data(input_data)
-
-        self._dycore.update_state(
-            self._consv_te,
-            input_data["do_adiabatic_init"],
-            input_data["bdt"],
-            self._n_split,
-            state,
-        )
         return state, grid_data
 
 
@@ -127,12 +99,6 @@ def test_fv_dynamics(
     initializer = StateInitializer(
         ds,
         translate,
-        communicator,
-        stencil_factory,
-        grid,
-        dycore_config,
-        namelist.consv_te,
-        namelist.n_split,
     )
     print("stencils initialized")
     if calibrate_thresholds:

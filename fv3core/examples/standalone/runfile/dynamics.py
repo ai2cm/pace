@@ -3,7 +3,7 @@
 import copy
 import json
 from argparse import ArgumentParser, Namespace
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple
 
 import f90nml
@@ -17,13 +17,12 @@ from mpi4py import MPI
 # very strange errors on some systems (e.g. daint)
 import pace.dsl.stencil
 import pace.util as util
-from fv3core import DynamicalCore
-from fv3core._config import DynamicalCoreConfig
-from fv3core.initialization.baroclinic import init_baroclinic_state
-from fv3core.initialization.dycore_state import DycoreState
-from fv3core.testing import TranslateFVDynamics
 from pace.dsl import StencilFactory
 from pace.dsl.dace.orchestration import DaceConfig
+from pace.fv3core import DynamicalCore, DynamicalCoreConfig
+from pace.fv3core.initialization.baroclinic import init_baroclinic_state
+from pace.fv3core.initialization.dycore_state import DycoreState
+from pace.fv3core.testing import TranslateFVDynamics
 from pace.stencils.testing.grid import Grid
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 from pace.util.null_comm import NullComm
@@ -264,13 +263,7 @@ def setup_dycore(
         config=dycore_config,
         phis=state.phis,
         state=state,
-    )
-    dycore.update_state(
-        conserve_total_energy=dycore_config.consv_te,
-        do_adiabatic_init=False,
-        timestep=dycore_config.dt_atmos,
-        n_split=dycore_config.n_split,
-        state=state,
+        timestep=timedelta(seconds=dycore_config.dt_atmos),
     )
     return dycore, state, stencil_factory
 

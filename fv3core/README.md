@@ -184,6 +184,8 @@ $ make dev_tests TEST_ARGS="-–which_modules=<stencil name(s)>"
 **Please also review the [Porting conventions](#porting-conventions) section for additional explanation**
 ## Installation
 
+### Docker Image
+
 To build the `us.gcr.io/vcm-ml/fv3core` image with required dependencies for running the Python code, run
 
 ```shell
@@ -207,7 +209,7 @@ PULL=False make build
 - https://github.com/GridTools/gt4py -
   Python package for the DSL language
 
-- https://github.com/VulcanClimateModeling/pace-util
+- https://github.com/VulcanClimateModeling/util
   Python specific model functionality, such as halo updates.
 
 - https://github.com/VulcanClimateModeling/fv3gfs-wrapper
@@ -223,7 +225,7 @@ $ git submodule update --init
 
 The submodules include:
 
-- `external/pace-util` - git@github.com:VulcanClimateModeling/pace-util.git
+- `external/util` - git@github.com:VulcanClimateModeling/util.git
 - `external/daint_venv` -  git@github.com:VulcanClimateModeling/daint_venv.git
 
 ## Dockerfiles and building

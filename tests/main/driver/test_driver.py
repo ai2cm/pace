@@ -48,6 +48,7 @@ def get_driver_config(
         layout=layout,
         initialization=initialization_config,
         performance_config=unittest.mock.MagicMock(),
+        grid_config=unittest.mock.MagicMock(),
         comm_config=NullCommConfig(layout),
         diagnostics_config=unittest.mock.MagicMock(
             output_frequency=frequency, output_initial_state=output_initial_state
@@ -233,8 +234,8 @@ class MockedComponents:
 
 @contextlib.contextmanager
 def mocked_components():
-    with unittest.mock.patch("fv3core.DynamicalCore", spec=True) as dycore_mock:
-        with unittest.mock.patch("fv3gfs.physics.Physics") as physics_mock:
+    with unittest.mock.patch("pace.fv3core.DynamicalCore", spec=True) as dycore_mock:
+        with unittest.mock.patch("pace.physics.Physics") as physics_mock:
             with unittest.mock.patch(
                 "pace.stencils.update_atmos_state.UpdateAtmosphereState"
             ) as end_of_step_update_mock:
@@ -245,7 +246,7 @@ def mocked_components():
                         "pace.driver.diagnostics.Diagnostics"
                     ) as diagnostics_mock:
                         with unittest.mock.patch(
-                            "fv3core.DynamicalCore.step_dynamics"
+                            "pace.fv3core.DynamicalCore.step_dynamics"
                         ) as step_dynamics_mock:
                             with unittest.mock.patch(
                                 "pace.driver.Restart"

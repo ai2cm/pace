@@ -1,11 +1,11 @@
 from typing import Any, List, Tuple
 
-import fv3core
-import fv3core._config
-import fv3core.initialization.baroclinic as baroclinic_init
 import pace.dsl.stencil
+import pace.fv3core._config
+import pace.fv3core.initialization.baroclinic as baroclinic_init
 import pace.stencils.testing
 import pace.util
+from pace import fv3core
 from pace.util.grid import DampingCoefficients, GridData, MetricTerms
 
 
@@ -111,14 +111,12 @@ def setup_dycore() -> Tuple[fv3core.DynamicalCore, List[Any]]:
         phis=state.phis,
         state=state,
     )
-    do_adiabatic_init = False
     # TODO compute from namelist
     bdt = config.dt_atmos
 
     args = [
         state,
         config.consv_te,
-        do_adiabatic_init,
         bdt,
         config.n_split,
     ]

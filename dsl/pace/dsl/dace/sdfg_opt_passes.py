@@ -24,4 +24,4 @@ def splittable_region_expansion(sdfg: dace.SDFG, verbose: bool = False):
                     "K",
                 ]
                 if verbose:
-                    logger.info("Reordered schedule for", node.label)
+                    logger.info(f"Reordered schedule for {node.label}")

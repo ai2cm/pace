@@ -2,7 +2,7 @@
 
 Pace is an implementation of the FV3GFS / SHiELD atmospheric model developed by NOAA/GFDL using the GT4Py domain-specific language in Python. The model can be run on a laptop using Python-based backend or on thousands of heterogeneous compute nodes of a large supercomputer.
 
-The top-level directory contains the main compnents of pace such as the dynamical core, the physical parameterizations and infrastructure utilities.
+The top-level directory contains the main components of pace such as the dynamical core, the physical parameterizations and utilities.
 
 **WARNING** This repo is under active development - supported features and procedures can change rapidly and without notice.
 
@@ -10,7 +10,7 @@ This git repository is laid out as a mono-repo, containing multiple independent 
 
 ![Graph of interdependencies of Pace modules, generated from dependences.dot](./dependencies.svg)
 
-## Building the docker container
+## Building the docker image
 
 While it is possible to install and build pace bare-metal, we can ensure all system libraries are installed with the correct versions by using a Docker container to test and develop pace.
 
@@ -23,6 +23,45 @@ Then build the `pace` docker image at the top level.
 ```shell
 make build
 ```
+
+## Building bare-metal
+
+Pace requires gcc > 9.2, MPI, and Python 3.8 on your system, and CUDA is required to run with a GPU backend. You will also need the headers of the boost libraries in your `$PATH` (boost itself does not need to be installed).
+
+```shell
+cd /BOOST/LOCATION
+wget https://boostorg.jfrog.io/artifactory/main/release/1.79.0/source/boost_1_79_0.tar.gz
+tar -xzf boost_1_79_0.tar.gz
+mkdir -p boost_1_79_0/include
+mv boost_1_79_0/boost boost_1_79_0/include/
+export BOOST_ROOT=BOOST/LOCATION/boost_1_79_0
+```
+
+When cloning Pace you will need to update the repository's submodules as well:
+```shell
+$ git clone --recursive https://github.com/ai2cm/pace.git
+```
+or if you have already cloned the repository:
+```
+$ git submodule update --init --recursive
+```
+
+We recommend creating a python `venv` or conda environment specifically for Pace.
+
+```shell
+$ python3 -m venv venv_name
+$ source venv_name/bin/activate
+```
+
+Inside of your pace `venv` or conda environment pip install the Python requirements, GT4Py, and Pace:
+```shell
+$ pip3 install -r requirements_dev.txt -c constraints.txt
+```
+
+Shell scripts to install Pace on specific machines such as Gaea can be found in `examples/build_scripts/`.
+
+You can now run and develop Pace directly. After downloading the test data the Pace tests can be run with pytest using the same test arguments as inside the container.
+
 
 ## Downloading test data
 
@@ -39,7 +78,7 @@ Next, you can download the test data for the dynamical core and the physics test
 ```shell
 cd fv3core
 make get_test_data
-cd ../fv3gfs-physics
+cd ../physics
 make get_test_data
 cd ..
 ```
@@ -70,17 +109,17 @@ mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/fv3c
 
 Note that you must have already downloaded the test data according to the instructions above. The precise path needed for `--data_path` may be different, particularly the version directory.
 
-Similarly, you can run the sequential and parallel tests for the physical parameterizations (fv3gfs-physics). Currently, only the microphysics is integrated into pace and will be tested.
+Similarly, you can run the sequential and parallel tests for the physical parameterizations (physics). Currently, only the microphysics is integrated into pace and will be tested.
 
 ```shell
-pytest -v -s --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./fv3gfs-physics/tests --threshold_overrides_file=/pace/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
-mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./fv3gfs-physics/tests --threshold_overrides_file=/pace/fv3gfs-physics/tests/savepoint/translate/overrides/baroclinic.yaml
+pytest -v -s --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./physics/tests --threshold_overrides_file=/pace/physics/tests/savepoint/translate/overrides/baroclinic.yaml
+mpirun -np 6 python -m mpi4py -m pytest -v -s -m parallel --data_path=/pace/test_data/8.1.1/c12_6ranks_baroclinic_dycore_microphysics/physics/ ./physics/tests --threshold_overrides_file=/pace/physics/tests/savepoint/translate/overrides/baroclinic.yaml
 ```
 
-Finally, to test the pace infrastructure utilities (pace-util), you can run the following commands:
+Finally, to test the pace infrastructure utilities (util), you can run the following commands:
 
 ```shell
-cd pace-util
+cd util
 make test
 make test_mpi
 ```
