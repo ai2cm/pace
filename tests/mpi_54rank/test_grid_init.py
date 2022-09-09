@@ -103,16 +103,20 @@ def metric_terms_to_quantity_dict(metric_terms: MetricTerms) -> Dict[str, Quanti
         "a12": metric_terms.a12,
         "a21": metric_terms.a21,
         "a22": metric_terms.a22,
-        "edge_w": metric_terms.edge_w,
-        "edge_e": metric_terms.edge_e,
-        "edge_s": metric_terms.edge_s,
-        "edge_n": metric_terms.edge_n,
-        "edge_vect_w": metric_terms.edge_vect_w,
-        "edge_vect_w_2d": metric_terms.edge_vect_w_2d,
-        "edge_vect_e": metric_terms.edge_vect_e,
-        "edge_vect_e_2d": metric_terms.edge_vect_e_2d,
-        "edge_vect_s": metric_terms.edge_vect_s,
-        "edge_vect_n": metric_terms.edge_vect_n,
+        # Can't test these because they are only computed on edge ranks,
+        # but get broadcast through the entire compute domain, so they are
+        # technically grid-dependent. They can't be computed on all ranks
+        # because they need the lat/lon data of the tile edge.
+        # "edge_w": metric_terms.edge_w,
+        # "edge_e": metric_terms.edge_e,
+        # "edge_s": metric_terms.edge_s,
+        # "edge_n": metric_terms.edge_n,
+        # "edge_vect_w": metric_terms.edge_vect_w,
+        # "edge_vect_w_2d": metric_terms.edge_vect_w_2d,
+        # "edge_vect_e": metric_terms.edge_vect_e,
+        # "edge_vect_e_2d": metric_terms.edge_vect_e_2d,
+        # "edge_vect_s": metric_terms.edge_vect_s,
+        # "edge_vect_n": metric_terms.edge_vect_n,
     }
 
 
@@ -173,7 +177,7 @@ def test_grid_init_not_decomposition_dependent():
         )
         computed_1by1 = metric_terms_to_quantity_dict(metric_terms_1by1)
         for name in computed_1by1:
-            assert allclose(computed_1by1[name], gathered_3by3[name], name)
+            assert allclose(computed_1by1[name], gathered_3by3[name], name, global_rank)
 
 
 def test_baroclinic_init_not_decomposition_dependent():
@@ -219,14 +223,23 @@ def test_baroclinic_init_not_decomposition_dependent():
         )
         computed_1by1 = dycore_state_to_quantity_dict(state_1by1)
         for name in computed_1by1:
-            assert allclose(computed_1by1[name], gathered_3by3[name], name)
+            assert allclose(computed_1by1[name], gathered_3by3[name], name, global_rank)
 
 
-def allclose(q_1by1: pace.util.Quantity, q_3by3: pace.util.Quantity, name: str):
+def allclose(q_1by1: pace.util.Quantity, q_3by3: pace.util.Quantity, name: str, rank):
     print("1by1", q_1by1.metadata, "3by3", q_3by3.metadata)
     assert q_1by1.view[:].shape == q_3by3.view[:].shape, name
     same = (q_1by1.view[:] == q_3by3.view[:]) | np.isnan(q_1by1.view[:])
     all_same = np.all(same)
     if not all_same:
         print(np.sum(~same), np.where(~same))
+        import xarray as xr
+
+        ds = xr.Dataset(
+            data_vars={
+                f"{name}_1by1": (q_1by1.metadata.dims, q_1by1.view[:]),
+                f"{name}_3by3": (q_3by3.metadata.dims, q_3by3.view[:]),
+            }
+        )
+        ds.to_netcdf(f"failure_{rank}.nc")
     return all_same

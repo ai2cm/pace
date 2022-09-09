@@ -1322,8 +1322,8 @@ class MetricTerms:
         return util.Quantity(
             data=1.0 / self.dya.data,
             dims=self.dya.dims,
-            origin=self.dy.origin,
-            extent=self.dy.extent,
+            origin=self.dya.origin,
+            extent=self.dya.extent,
             units="m^-1",
             gt4py_backend=self.dya.gt4py_backend,
         )
