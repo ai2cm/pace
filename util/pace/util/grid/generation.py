@@ -230,38 +230,38 @@ class MetricTerms:
             grid_type=grid_type,
         )
 
-    @classmethod
-    def from_lat_lon(
-        cls, 
-        *, 
-        lat: np.ndarray, 
-        lon: np.ndarray, 
-        quantity_factory: util.QuantityFactory, 
-        communicator: util.Communicator, 
-        grid_type: int = 0
-        ) -> "MetricTerms":
+    # @classmethod
+    # def from_lat_lon(
+    #     cls, 
+    #     *, 
+    #     lat: np.ndarray, 
+    #     lon: np.ndarray, 
+    #     quantity_factory: util.QuantityFactory, 
+    #     communicator: util.Communicator, 
+    #     grid_type: int = 0
+    #     ) -> "MetricTerms":
 
-        """
-        Inputs: 
-        lat: 2D latitude in degrees (y, x)
-        lon: 2D longitude in degrees (y, x)
-        """
+    #     """
+    #     Inputs: 
+    #     lat: 2D latitude in degrees (y, x)
+    #     lon: 2D longitude in degrees (y, x)
+    #     """
 
-        metric_terms = cls(quantity_factory=quantity_factory, communicator=communicator, grid_type=grid_type)
-        grid_shape = metric_terms._grid.data.shape
+    #     metric_terms = cls(quantity_factory=quantity_factory, communicator=communicator, grid_type=grid_type)
+    #     grid_shape = metric_terms._grid.data.shape
 
-        ny1, nx1 = lon.shape
+    #     ny1, nx1 = lon.shape
 
 
-        assert lon.shape == lat.shape
-        assert grid_shape == (ny1 + 2*N_HALO_DEFAULT, nx1 + 2*N_HALO_DEFAULT, 2)
+    #     assert lon.shape == lat.shape
+    #     assert grid_shape == (ny1 + 2*N_HALO_DEFAULT, nx1 + 2*N_HALO_DEFAULT, 2)
 
-        metric_terms._grid.data[N_HALO_DEFAULT:N_HALO_DEFAULT+ny1, N_HALO_DEFAULT:N_HALO_DEFAULT+nx1, 0] = np.deg2rad(lon)
-        metric_terms._grid.data[N_HALO_DEFAULT:N_HALO_DEFAULT+ny1, N_HALO_DEFAULT:N_HALO_DEFAULT+nx1, 1] = np.deg2rad(lat)
+    #     metric_terms._grid.data[N_HALO_DEFAULT:N_HALO_DEFAULT+ny1, N_HALO_DEFAULT:N_HALO_DEFAULT+nx1, 0] = np.deg2rad(lon)
+    #     metric_terms._grid.data[N_HALO_DEFAULT:N_HALO_DEFAULT+ny1, N_HALO_DEFAULT:N_HALO_DEFAULT+nx1, 1] = np.deg2rad(lat)
 
-        metric_terms._init_agrid()
+    #     metric_terms._init_agrid()
 
-        return metric_terms
+    #     return metric_terms
 
 
     @property

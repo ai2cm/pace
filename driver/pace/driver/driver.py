@@ -97,8 +97,6 @@ class DriverConfig:
     )
     grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
 
-    print(grid_config)
-    exit()
 
     days: int = 0
     hours: int = 0
@@ -358,6 +356,7 @@ class Driver:
             self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time
+
 
     def update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator

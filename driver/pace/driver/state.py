@@ -280,6 +280,7 @@ def _restart_driver_state(
     communicator: pace.util.CubedSphereCommunicator,
     fortran_data: bool = False,
 ):
+
     metric_terms = pace.util.grid.MetricTerms(
         quantity_factory=quantity_factory, communicator=communicator
     )

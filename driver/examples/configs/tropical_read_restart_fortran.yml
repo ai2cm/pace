@@ -14,8 +14,8 @@ initialization:
 grid_config:
   stretch_mode: true
   stretch_factor: 3.0
-  lon_target: 17.5
-  lat_target: 172.5
+  lon_target: 172.5
+  lat_target: 17.5
 performance_config:
   performance_mode: true
   experiment_name: c128_tropical

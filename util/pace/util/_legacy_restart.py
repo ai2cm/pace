@@ -47,7 +47,7 @@ def open_restart(
 
     rank = communicator.rank
     tile_index = communicator.partitioner.tile_index(rank)
-    print("Rank:", rank)
+    #print("Rank:", rank)
     state = {}
     if communicator.tile.rank == constants.ROOT_RANK:
         for file in restart_files(dirname, tile_index, label):
@@ -63,7 +63,7 @@ def open_restart(
             if only_names is None or "time" in only_names:
                 with filesystem.open(coupler_res_filename, "r") as f:
                     state["time"] = io.get_current_date_from_coupler_res(f)
-                    print("State time:", state["time"])
+                    #print("State time:", state["time"])
 
     if not fortran_restart:
         if to_state is None:

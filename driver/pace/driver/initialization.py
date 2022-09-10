@@ -145,7 +145,7 @@ class RestartConfig(Initializer):
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
-        print("Fortran data flag:", self.fortran_data)
+        #print("Fortran data flag:", self.fortran_data)
         state = _restart_driver_state(
             self.path,
             communicator.rank,
@@ -153,7 +153,7 @@ class RestartConfig(Initializer):
             communicator,
             self.fortran_data,
         )
-        print("Restarted driver state")
+        #print("Restarted driver state")
     
         # TODO
         # follow what fortran does with restart data after reading it
