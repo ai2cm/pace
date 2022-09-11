@@ -301,8 +301,7 @@ class DivergenceDamping:
         # TODO: make dddmp a compile-time external, instead of runtime scalar
         self._dddmp = dddmp
         # TODO: make da_min_c a compile-time external, instead of runtime scalar
-        self._da_min_c = damping_coefficients.da_min_c
-        self._da_min = damping_coefficients.da_min
+        self._damping_coefficients = damping_coefficients
         self._stretched_grid = stretched_grid
         self._d4_bg = d4_bg
         self._grid_type = grid_type
@@ -499,11 +498,11 @@ class DivergenceDamping:
 
     @dace_inhibitor
     def _get_da_min_c(self) -> float:
-        return self._da_min_c
+        return self._damping_coefficients.da_min_c
 
     @dace_inhibitor
     def _get_da_min(self) -> float:
-        return self._da_min
+        return self._damping_coefficients.da_min
 
     def __call__(
         self,
@@ -596,12 +595,13 @@ class DivergenceDamping:
             )
             """
 
+            da_min_c: float = self._get_da_min_c()
             self._damping(
                 delpc,
                 v_contra_dxc,
                 ke,
                 self._d2_bg_column,
-                self._da_min_c,
+                da_min_c,
                 self._dddmp,
                 dt,
             )
@@ -641,7 +641,6 @@ class DivergenceDamping:
             )
 
         da_min: float = self._get_da_min()
-        da_min_c: float = self._get_da_min_c()
         if self._stretched_grid:
             dd8 = da_min * self._d4_bg ** (self._nonzero_nord + 1)
         else:
