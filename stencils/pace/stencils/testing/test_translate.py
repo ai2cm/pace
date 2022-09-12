@@ -378,7 +378,10 @@ def test_parallel_savepoint(
         ref_data[varname] = []
         new_ref_data = all_ref_data[varname]
         if hasattr(case.testobj, "subset_output"):
-            if hasattr(case.testobj, "_do_not_subset_tracers"):
+            do_not_subset_tracers = getattr(
+                case.testobj, "_do_not_subset_tracers", None
+            )
+            if do_not_subset_tracers:
                 if varname in case.testobj._tracer_names:
                     pass
             else:

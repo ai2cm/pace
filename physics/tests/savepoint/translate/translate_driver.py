@@ -21,6 +21,7 @@ class TranslateDriver(TranslateFVDynamics):
         self.namelist: Namelist = namelist
         self.stencil_factory = stencil_factory
         self.stencil_config = self.stencil_factory.config
+        self._do_not_subset_tracers = False
 
     def compute_parallel(self, inputs, communicator):
         dycore_state = self.state_from_inputs(inputs)
