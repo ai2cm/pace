@@ -118,6 +118,8 @@ class ValidationCheckpointer(Checkpointer):
 
             expected = ds[varname][n_calls, self._rank].values
             output = _clip_pace_array_to_target(cast_to_ndarray(array), expected.shape)
+
+            # cannot use relative threshold when comparing to zero value
             expected_not_zero = expected != 0
             np.testing.assert_allclose(
                 output[expected_not_zero],
