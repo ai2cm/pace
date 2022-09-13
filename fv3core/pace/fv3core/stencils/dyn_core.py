@@ -575,7 +575,7 @@ class AcousticDynamics:
         #  - self.cgrid_shallow_water_lagrangian_dynamics.delpc
         #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
         # DaCe has already a fix on their side and it awaits release
-        # issue 
+        # issue
         # self.delpc = utils.make_storage_from_shape(
         #     grid_indexing.domain_full(add=(1, 1, 1)),
         #     backend=stencil_factory.backend,
