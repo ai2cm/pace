@@ -145,7 +145,6 @@ class RestartConfig(Initializer):
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
-        #print("Fortran data flag:", self.fortran_data)
         state = _restart_driver_state(
             self.path,
             communicator.rank,
@@ -153,12 +152,11 @@ class RestartConfig(Initializer):
             communicator,
             self.fortran_data,
         )
-        #print("Restarted driver state")
     
         # TODO
         # follow what fortran does with restart data after reading it
+        # should eliminate small differences between restart input and serialized test data
         return state
-
 
 @InitializerSelector.register("serialbox")
 @dataclasses.dataclass

@@ -13,6 +13,7 @@ import pace.util.grid
 from pace import fv3core
 from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util import N_HALO_DEFAULT as halo
+from pace.util._properties import RESTART_PROPERTIES
 from pace.util.grid import DampingCoefficients
 
 
@@ -334,6 +335,7 @@ def _restart_driver_state(
     tendency_state = TendencyState.init_zeros(
         quantity_factory=quantity_factory,
     )
+
 
     return DriverState(
         dycore_state=dycore_state,

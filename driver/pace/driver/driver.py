@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import dace
 import dacite
+from netCDF4 import Dataset
 
 import pace.driver
 import pace.dsl
@@ -15,7 +16,10 @@ import pace.physics
 import pace.stencils
 import pace.util
 import pace.util.grid
+import importlib
+importlib.reload(pace.util.grid)
 from pace import fv3core
+import os
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
@@ -30,6 +34,8 @@ from .comm import CreatesCommSelector
 from .gridconfig import GridConfig
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
+
+import numpy as np
 
 
 logger = logging.getLogger(__name__)
@@ -288,10 +294,31 @@ class Driver:
                 communicator=communicator,
                 stencil_compare_comm=stencil_compare_comm,
             )
-
             self.state = self.config.initialization.get_driver_state(
                 quantity_factory=self.quantity_factory, communicator=communicator
             )
+
+            if self.config.initialization.config.fortran_data is True:
+                #print("Now calculating pe and peln")
+                #print("pe min, max:", self.state.dycore_state["pe"].view[:].min(), self.state.dycore_state["pe"].view[:].max())
+                #print("peln min, max:", self.state.dycore_state["peln"].view[:].min(), self.state.dycore_state["peln"].view[:].max())
+                self._calculate_fortran_restart_pe_peln()
+                #print("Done calculating pe and peln")
+                #print("pe min, max:", self.state.dycore_state["pe"].view[:].min(), self.state.dycore_state["pe"].view[:].max())
+                #print("peln min, max:", self.state.dycore_state["peln"].view[:].min(), self.state.dycore_state["peln"].view[:].max())
+
+            if self.config.grid_config.stretch_mode is True:
+                #print("Perform grid transformation.")
+                #print("Before:", self.state.grid_data.lon.data.min(), self.state.grid_data.lon.data.max())
+                self._transform_grid()
+                #print("After:", self.state.grid_data.lon.data.min(), self.state.grid_data.lon.data.max())
+            
+            if (self.config.grid_config.use_tc_vertical_grid is True) and (self.config.initialization.config.fortran_data is True):
+                #print("Will get vertical grid from fortran restart files")
+                #print("Before - index of max ak:", np.argmax(self.state.grid_data._vertical_data.ak.data))
+                self._replace_vertical_grid()
+                #print("After - index of max ak:", np.argmax(self.state.grid_data._vertical_data.ak.data))
+            
             self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
@@ -357,6 +384,76 @@ class Driver:
 
         self._time_run = self.config.start_time
 
+    def _transform_grid(self):
+
+        communicator = CubedSphereCommunicator.from_layout(
+                comm=self.comm, layout=self.config.layout
+        )
+        metric_terms = pace.util.grid.MetricTerms(quantity_factory=self.quantity_factory, communicator=communicator)
+        grid = metric_terms.grid
+
+        lon_transform, lat_transform = pace.util.grid.direct_transform(
+            lon=grid.data[:, :, 0], 
+            lat=grid.data[:, :, 1],
+            stretch_factor=self.config.grid_config.stretch_factor,
+            lon_target=self.config.grid_config.lon_target,
+            lat_target=self.config.grid_config.lat_target
+        )
+
+        grid.data[:, :, 0] = lon_transform.data
+        grid.data[:, :, 1] = lat_transform.data
+
+
+        metric_terms._grid.data[:] = grid.data
+        metric_terms._init_agrid()
+        self.state.grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
+        self.state.damping_coefficients = pace.util.grid.DampingCoefficients.new_from_metric_terms(metric_terms)
+        self.state.driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
+
+    def _replace_vertical_grid(self):
+
+        ak_bk_data_file = self.config.initialization.config.path + "/fv_core.res.nc"
+        if not os.path.isfile(ak_bk_data_file):
+            raise ValueError(
+                "use_tc_vertical_grid is true, but no fv_core.res.nc in restart data file."
+            )
+
+        ks = self.config.grid_config.tc_ks # guessing this is the case
+        p_ref = self.config.dycore_config.p_ref # from test case 55 in SHiELD
+        data = Dataset(ak_bk_data_file, "r")
+        ak = np.array(data["ak"][0]).astype("float64")
+        bk = np.array(data["bk"][0]).astype("float64")
+        data.close()
+
+        delp = ak[1:]- ak[:-1] + p_ref * (bk[1:] - bk[:-1]) # from baroclinic initialization
+        pres = p_ref - np.cumsum(delp)
+        ptop = pres[-1]
+        vertical_data = pace.util.grid.VerticalGridData(ptop, ks, ak, bk, p_ref=p_ref)
+
+        communicator = CubedSphereCommunicator.from_layout(
+            comm=self.comm, layout=self.config.layout
+        )
+        metric_terms = pace.util.grid.MetricTerms(quantity_factory=self.quantity_factory, communicator=communicator)
+        horizontal_data = pace.util.grid.HorizontalGridData.new_from_metric_terms(metric_terms)
+        contravariant_data = pace.util.grid.ContravariantGridData.new_from_metric_terms(metric_terms)
+        angle_data = pace.util.grid.AngleGridData.new_from_metric_terms(metric_terms)
+        grid_data = pace.util.grid.GridData(horizontal_data=horizontal_data, vertical_data=vertical_data, contravariant_data=contravariant_data, angle_data=angle_data)
+        self.state.grid_data = grid_data
+
+    def _calculate_fortran_restart_pe_peln(self):
+
+        ptop = self.state.grid_data._vertical_data.ptop
+        pe = self.state.dycore_state.pe
+        peln = self.state.dycore_state.peln
+        delp = self.state.dycore_state.delp
+
+        for level in range(pe.data.shape[2]):
+            pe.data[:, :, level] = ptop + np.sum(delp.data[:, :, :level], 2)
+        
+        peln.data[:] = np.log(pe.data[:])
+
+        self.state.dycore_state.pe = pe
+        self.state.dycore_state.peln = peln
 
     def update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator

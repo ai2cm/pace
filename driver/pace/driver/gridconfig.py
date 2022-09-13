@@ -6,10 +6,12 @@ import numpy as np
 
 @dataclasses.dataclass
 class GridConfig:
-    stretch_mode: bool = False
+    stretch_mode: Optional[bool] = False
     stretch_factor: Optional[float] = None
     lon_target: Optional[float] = None
     lat_target: Optional[float] = None
+    use_tc_vertical_grid: Optional[bool] = None
+    tc_ks: Optional[int] = None
 
     def __post_init__(self):
         if self.stretch_mode:

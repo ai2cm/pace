@@ -128,8 +128,10 @@ def _apply_restart_metadata(state, restart_properties: RestartProperties):
                 new_state[name] = _apply_dims(da, new_dims)
                 new_state[name].attrs["units"] = properties["units"]
                 new_state[name].attrs["long_name"] = key
-            else:
-                new_state[name] = copy.deepcopy(da)
+            #else:
+                #print("No")
+                #exit()
+                #new_state[name] = copy.deepcopy(da)
     return new_state
 
 

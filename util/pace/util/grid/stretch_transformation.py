@@ -4,6 +4,7 @@ from typing import Tuple, Union
 import numpy as np
 
 from pace.util import Quantity
+from pace.util.constants import STRETCH_GRID_ROTATION_LON_OFFSET_DEG
 
 
 def direct_transform(
@@ -37,11 +38,16 @@ def direct_transform(
     if isinstance(lon, Quantity):
         lon_data = lon.data
         lat_data = lat.data
+        # offset lon by 190 to match tropical case
+        lon_data = lon_data + np.deg2rad(STRETCH_GRID_ROTATION_LON_OFFSET_DEG)
     elif isinstance(lon, np.ndarray):
         lon_data = lon
         lat_data = lat
+        lon_data = lon_data + np.deg2rad(STRETCH_GRID_ROTATION_LON_OFFSET_DEG)
     else:
         raise Exception("Input data type not supported.")
+    
+
 
     lon_p, lat_p = np.deg2rad(lon_target), np.deg2rad(lat_target)
     sin_p, cos_p = np.sin(lat_p), np.cos(lat_p)
@@ -56,10 +62,8 @@ def direct_transform(
         lat_t = np.arcsin(
             (c2m1 + c2p1 * np.sin(lat_data)) / (c2p1 + c2m1 * np.sin(lat_data))
         )
-        lon_t = lon_data
     else:  # no stretching
         lat_t = lat_data
-        lon_t = lon_data
 
     sin_lat = np.sin(lat_t)
     cos_lat = np.cos(lat_t)

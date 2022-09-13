@@ -16,6 +16,8 @@ grid_config:
   stretch_factor: 3.0
   lon_target: 172.5
   lat_target: 17.5
+  use_tc_vertical_grid: true
+  tc_ks: 0
 performance_config:
   performance_mode: true
   experiment_name: c128_tropical
@@ -91,6 +93,7 @@ dycore_config:
   tau_v2l: 90.
   fv_sg_adj: 0
   n_sponge: 48
+  p_ref: 101500.
 
 physics_config:
   hydrostatic: false
