@@ -95,7 +95,7 @@ class ApplyPhysicsToDycore:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["state"],
+            dace_compiletime_args=["state"],
         )
         grid_indexing = stencil_factory.grid_indexing
         self.comm = comm
