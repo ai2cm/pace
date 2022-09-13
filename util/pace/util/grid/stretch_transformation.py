@@ -4,7 +4,6 @@ from typing import Tuple, Union
 import numpy as np
 
 from pace.util import Quantity
-from pace.util.constants import STRETCH_GRID_ROTATION_LON_OFFSET_DEG
 
 
 def direct_transform(
@@ -25,8 +24,8 @@ def direct_transform(
     Args:
         lon (in) in radians
         lat (in) in radians
-        stretch_factor (in) stretch_factor (e.g. 3.0 means that the resolution on
-            tile 6 becomes 3 times as fine)
+        stretch_factor (in) stretch_factor (e.g. 3.0 means that the resolution 
+            on tile 6 becomes 3 times as fine)
         lon_target (in) in degrees (from namelist)
         lat_target (in) in degrees (from namelist)
 
@@ -38,15 +37,17 @@ def direct_transform(
     if isinstance(lon, Quantity):
         lon_data = lon.data
         lat_data = lat.data
-        # offset lon by 190 to match tropical case
-        lon_data = lon_data + np.deg2rad(STRETCH_GRID_ROTATION_LON_OFFSET_DEG)
     elif isinstance(lon, np.ndarray):
         lon_data = lon
         lat_data = lat
-        lon_data = lon_data + np.deg2rad(STRETCH_GRID_ROTATION_LON_OFFSET_DEG)
     else:
         raise Exception("Input data type not supported.")
     
+    STRETCH_GRID_ROTATION_LON_OFFSET_DEG = 190
+    # this is added to all longitude values to match the SHiELD TC case
+    # 180 is to flip the orientation around the center tile (6)
+    # 10 is because the tile center is offset from the prime meridian by 10
+    lon_data = lon_data + np.deg2rad(STRETCH_GRID_ROTATION_LON_OFFSET_DEG)
 
 
     lon_p, lat_p = np.deg2rad(lon_target), np.deg2rad(lat_target)
