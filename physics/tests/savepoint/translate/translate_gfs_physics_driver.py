@@ -110,6 +110,13 @@ class TranslateGFSPhysicsDriver(TranslatePhysicsFortranData2Py):
         inputs["physics_updated_va"] = copy.deepcopy(storage)
         inputs["prsi"] = copy.deepcopy(storage)
         inputs["prsik"] = copy.deepcopy(storage)
+        # When we start doing standard case physics driver test,
+        # land will need to be added as part of the savepoint.
+        inputs["land"] = utils.make_storage_from_shape(
+            self.grid_indexing.domain_full(add=(1, 1, 1))[0:2],
+            origin=self.grid_indexing.origin_compute()[0:2],
+            backend=self.stencil_factory.backend,
+        )
         sizer = util.SubtileGridSizer.from_tile_params(
             nx_tile=self.namelist.npx - 1,
             ny_tile=self.namelist.npy - 1,
