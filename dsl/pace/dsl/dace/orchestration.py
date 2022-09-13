@@ -422,10 +422,11 @@ class _LazyComputepathMethod:
 
 
 def orchestrate(
+    *,
     obj: object,
     config: DaceConfig,
     method_to_orchestrate: str = "__call__",
-    dace_compiletime_args: List[str] = [],
+    dace_compiletime_args: List[str] = None,
 ):
     """
     Orchestrate a method of an object with DaCe.
@@ -438,6 +439,8 @@ def orchestrate(
         dace_compiletime_args: list of names of arguments to be flagged has
                                dace.compiletime for orchestration to behave
     """
+    if dace_compiletime_args is None:
+        dace_compiletime_args = []
 
     if config.is_dace_orchestrated():
         if hasattr(obj, method_to_orchestrate):
@@ -509,7 +512,7 @@ def orchestrate(
 
 def orchestrate_function(
     config: DaceConfig = None,
-    dace_compiletime_args: List[str] = [],
+    dace_compiletime_args: List[str] = None,
 ) -> Union[Callable[..., Any], _LazyComputepathFunction]:
     """
     Decorator orchestrating a method of an object with DaCe.
@@ -520,6 +523,9 @@ def orchestrate_function(
         dace_compiletime_args: list of names of arguments to be flagged has
                                dace.compiletime for orchestration to behave
     """
+
+    if dace_compiletime_args is None:
+        dace_compiletime_args = []
 
     def _decorator(func: Callable[..., Any]):
         def _wrapper(*args, **kwargs):
