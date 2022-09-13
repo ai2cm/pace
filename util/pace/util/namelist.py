@@ -105,6 +105,7 @@ class NamelistDefaults:
     tice = 273.16  # set tice = 165. to turn off ice - phase phys (kessler emulator)
     alin = 842.0  # "a" in lin1983
     clin = 4.8  # "c" in lin 1983, 4.8 -- > 6. (to ehance ql -- > qs)
+    stretch_grid = False
 
     @classmethod
     def as_dict(cls):
@@ -451,6 +452,7 @@ class Namelist:
     nf_omega: int = NamelistDefaults.nf_omega
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
+    stretch_grid: bool = NamelistDefaults.stretch_grid
 
     @classmethod
     def from_f90nml(cls, namelist: f90nml.Namelist):

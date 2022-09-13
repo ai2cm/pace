@@ -299,25 +299,8 @@ class Driver:
             )
 
             if self.config.initialization.config.fortran_data is True:
-                #print("Now calculating pe and peln")
-                #print("pe min, max:", self.state.dycore_state["pe"].view[:].min(), self.state.dycore_state["pe"].view[:].max())
-                #print("peln min, max:", self.state.dycore_state["peln"].view[:].min(), self.state.dycore_state["peln"].view[:].max())
                 self._calculate_fortran_restart_pe_peln()
-                #print("Done calculating pe and peln")
-                #print("pe min, max:", self.state.dycore_state["pe"].view[:].min(), self.state.dycore_state["pe"].view[:].max())
-                #print("peln min, max:", self.state.dycore_state["peln"].view[:].min(), self.state.dycore_state["peln"].view[:].max())
-
-            if self.config.grid_config.stretch_mode is True:
-                #print("Perform grid transformation.")
-                #print("Before:", self.state.grid_data.lon.data.min(), self.state.grid_data.lon.data.max())
                 self._transform_grid()
-                #print("After:", self.state.grid_data.lon.data.min(), self.state.grid_data.lon.data.max())
-            
-            if (self.config.grid_config.use_tc_vertical_grid is True) and (self.config.initialization.config.fortran_data is True):
-                #print("Will get vertical grid from fortran restart files")
-                #print("Before - index of max ak:", np.argmax(self.state.grid_data._vertical_data.ak.data))
-                self._replace_vertical_grid()
-                #print("After - index of max ak:", np.argmax(self.state.grid_data._vertical_data.ak.data))
             
             self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
@@ -384,7 +367,7 @@ class Driver:
 
         self._time_run = self.config.start_time
 
-    def _transform_grid(self):
+    def _transform_horizontal_grid(self):
 
         communicator = CubedSphereCommunicator.from_layout(
                 comm=self.comm, layout=self.config.layout
@@ -407,8 +390,13 @@ class Driver:
         metric_terms._grid.data[:] = grid.data
         metric_terms._init_agrid()
         self.state.grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-        self.state.damping_coefficients = pace.util.grid.DampingCoefficients.new_from_metric_terms(metric_terms)
         self.state.driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
+        #print("da_min, da_min_c before replacement: ", self.state.damping_coefficients.da_min, self.state.damping_coefficients.da_min_c)
+        self.state.damping_coefficients = pace.util.grid.DampingCoefficients.new_from_metric_terms(metric_terms)
+        #self.state.damping_coefficients.da_min_c.data = 3.
+        #exit()
+        #print("da_min, da_min_c after replacement: ", self.state.damping_coefficients.da_min, self.state.damping_coefficients.da_min_c)
+        #exit()
 
     def _replace_vertical_grid(self):
 
@@ -420,9 +408,11 @@ class Driver:
 
         ks = self.config.grid_config.tc_ks # guessing this is the case
         p_ref = self.config.dycore_config.p_ref # from test case 55 in SHiELD
+        ak = self.state.grid_data.ak
+        bk = self.state.grid_data.bk
         data = Dataset(ak_bk_data_file, "r")
-        ak = np.array(data["ak"][0]).astype("float64")
-        bk = np.array(data["bk"][0]).astype("float64")
+        ak.data[:] = np.array(data["ak"][0]).astype("float64")
+        bk.data[:] = np.array(data["bk"][0]).astype("float64")
         data.close()
 
         delp = ak[1:]- ak[:-1] + p_ref * (bk[1:] - bk[:-1]) # from baroclinic initialization
@@ -439,6 +429,13 @@ class Driver:
         angle_data = pace.util.grid.AngleGridData.new_from_metric_terms(metric_terms)
         grid_data = pace.util.grid.GridData(horizontal_data=horizontal_data, vertical_data=vertical_data, contravariant_data=contravariant_data, angle_data=angle_data)
         self.state.grid_data = grid_data
+
+    def _transform_grid(self):
+        if (self.config.grid_config.use_tc_vertical_grid is True) and (self.config.initialization.config.fortran_data is True):
+            self._replace_vertical_grid()
+
+        if self.config.grid_config.stretch_grid is True:
+            self._transform_horizontal_grid()
 
     def _calculate_fortran_restart_pe_peln(self):
 
