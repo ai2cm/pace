@@ -7,9 +7,9 @@ from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.communicator import CubedSphereCommunicator
 
 
-# TODO (floriand): Temporary deactivate the distributed compiled
-# until we deal with the Grid data inlining during orchestration
-# See github issue #301
+# This can be turned on to revert compilation for orchestration
+# in a rank-compile-itself more, instead of the distributed top-tile
+# mechanism.
 DEACTIVATE_DISTRIBUTED_DACE_COMPILE = False
 
 

@@ -569,11 +569,13 @@ class AcousticDynamics:
             )
         )
 
-        # ToDo: Due to DaCe VRAM pooling creating a memory
-        # leak with the usage pattern of those two fields (to be fixed soon)
+        # TODO (floriand): Due to DaCe VRAM pooling creating a memory
+        # leak with the usage pattern of those two fields
         # We use the C_SW internal to workaround it e.g.:
         #  - self.cgrid_shallow_water_lagrangian_dynamics.delpc
         #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
+        # DaCe has already a fix on their side and it awaits release
+        # issue 
         # self.delpc = utils.make_storage_from_shape(
         #     grid_indexing.domain_full(add=(1, 1, 1)),
         #     backend=stencil_factory.backend,
