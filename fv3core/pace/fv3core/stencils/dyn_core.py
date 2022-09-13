@@ -569,14 +569,19 @@ class AcousticDynamics:
             )
         )
 
-        self.delpc = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(1, 1, 1)),
-            backend=stencil_factory.backend,
-        )
-        self.ptc = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(1, 1, 1)),
-            backend=stencil_factory.backend,
-        )
+        # ToDo: Due to DaCe VRAM pooling creating a memory
+        # leak with the usage pattern of those two fields (to be fixed soon)
+        # We use the C_SW internal to workaround it e.g.:
+        #  - self.cgrid_shallow_water_lagrangian_dynamics.delpc
+        #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
+        # self.delpc = utils.make_storage_from_shape(
+        #     grid_indexing.domain_full(add=(1, 1, 1)),
+        #     backend=stencil_factory.backend,
+        # )
+        # self.ptc = utils.make_storage_from_shape(
+        #     grid_indexing.domain_full(add=(1, 1, 1)),
+        #     backend=stencil_factory.backend,
+        # )
 
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
             stencil_factory,
@@ -698,7 +703,7 @@ class AcousticDynamics:
                 ucd=state.uc,
                 vcd=state.vc,
                 wd=state.w,
-                delpcd=self.delpc,
+                delpcd=self.cgrid_shallow_water_lagrangian_dynamics.delpc,
                 delpd=state.delp,
                 ud=state.u,
                 vd=state.v,
@@ -720,7 +725,7 @@ class AcousticDynamics:
                 ucd=state.uc,
                 vcd=state.vc,
                 wd=state.w,
-                delpcd=self.delpc,
+                delpcd=self.cgrid_shallow_water_lagrangian_dynamics.delpc,
                 delpd=state.delp,
                 ud=state.u,
                 vd=state.v,
@@ -813,7 +818,7 @@ class AcousticDynamics:
 
             # compute the c-grid winds at t + 1/2 timestep
             self._checkpoint_csw(state, tag="In")
-            self.delpc, self.ptc = self.cgrid_shallow_water_lagrangian_dynamics(
+            self.cgrid_shallow_water_lagrangian_dynamics(
                 state.delp,
                 state.pt,
                 state.u,
@@ -855,9 +860,9 @@ class AcousticDynamics:
                     self._ptop,
                     state.phis,
                     self._ws3,
-                    self.ptc,
+                    self.cgrid_shallow_water_lagrangian_dynamics.ptc,
                     state.q_con,
-                    self.delpc,
+                    self.cgrid_shallow_water_lagrangian_dynamics.delpc,
                     self._gz,
                     self._pkc,
                     state.omga,
@@ -868,7 +873,7 @@ class AcousticDynamics:
                 self.grid_data.rdyc,
                 state.uc,
                 state.vc,
-                self.delpc,
+                self.cgrid_shallow_water_lagrangian_dynamics.delpc,
                 self._pkc,
                 self._gz,
                 dt2,
