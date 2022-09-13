@@ -259,6 +259,8 @@ class MetricTerms:
         return util.Quantity(
             data=self.grid.data[:, :, 0],
             dims=self.grid.dims[0:2],
+            origin=self.grid.origin,
+            extent=self.grid.extent,
             units=self.grid.units,
             gt4py_backend=self.grid.gt4py_backend,
         )
@@ -268,6 +270,8 @@ class MetricTerms:
         return util.Quantity(
             data=self.grid.data[:, :, 1],
             dims=self.grid.dims[0:2],
+            origin=self.grid.origin,
+            extent=self.grid.extent,
             units=self.grid.units,
             gt4py_backend=self.grid.gt4py_backend,
         )
@@ -277,6 +281,8 @@ class MetricTerms:
         return util.Quantity(
             data=self.agrid.data[:, :, 0],
             dims=self.agrid.dims[0:2],
+            origin=self.agrid.origin,
+            extent=self.agrid.extent,
             units=self.agrid.units,
             gt4py_backend=self.agrid.gt4py_backend,
         )
@@ -286,6 +292,8 @@ class MetricTerms:
         return util.Quantity(
             data=self.agrid.data[:, :, 1],
             dims=self.agrid.dims[0:2],
+            origin=self.agrid.origin,
+            extent=self.agrid.extent,
             units=self.agrid.units,
             gt4py_backend=self.agrid.gt4py_backend,
         )
