@@ -48,6 +48,7 @@ def get_driver_config(
         layout=layout,
         initialization=initialization_config,
         performance_config=unittest.mock.MagicMock(),
+        grid_config=unittest.mock.MagicMock(),
         comm_config=NullCommConfig(layout),
         diagnostics_config=unittest.mock.MagicMock(
             output_frequency=frequency, output_initial_state=output_initial_state
