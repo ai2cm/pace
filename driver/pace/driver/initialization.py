@@ -9,6 +9,7 @@ import f90nml
 import pace.driver
 import pace.dsl
 import pace.fv3core.initialization.baroclinic as baroclinic_init
+import pace.fv3core.initialization.tropical_cyclone as tc_init
 import pace.physics
 import pace.stencils
 import pace.util
@@ -125,6 +126,66 @@ class BaroclinicConfig(Initializer):
             damping_coefficients=damping_coeffient,
             driver_grid_data=driver_grid_data,
         )
+
+
+@InitializerSelector.register("tropicalcyclone")
+@dataclasses.dataclass
+class TropicalCycloneConfig(Initializer):
+    """
+    Configuration for tropical cyclone initialization.
+    """
+
+    start_time: datetime = datetime(2000, 1, 1)
+
+    def get_driver_state(
+        self,
+        quantity_factory: pace.util.QuantityFactory,
+        communicator: pace.util.CubedSphereCommunicator,
+    ) -> DriverState:
+        metric_terms = pace.util.grid.MetricTerms(
+            quantity_factory=quantity_factory, communicator=communicator
+        )
+
+        # grid transformation
+        grid = metric_terms.grid
+        lon_transform, lat_transform = pace.util.grid.direct_transform(
+            lon=grid[:, :, 0],
+            lat=grid[:, :, 1],
+            stretch_factor="A",
+            lon_target="A",
+            lat_target="A"
+        )
+        grid[:, :, 0] = lon_transform
+        grid[:, :, 1] = lat_transform
+        metric_terms.grid[:] = grid
+
+        grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
+        damping_coeffient = DampingCoefficients.new_from_metric_terms(metric_terms)
+        driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
+            metric_terms
+        )
+        dycore_state = tc_init.init_tc_state(
+            metric_terms,
+            adiabatic=False,
+            hydrostatic=False,
+            moist_phys=True,
+            comm=communicator,
+        )
+        physics_state = pace.physics.PhysicsState.init_zeros(
+            quantity_factory=quantity_factory, active_packages=["microphysics"]
+        )
+        tendency_state = TendencyState.init_zeros(
+            quantity_factory=quantity_factory,
+        )
+        return DriverState(
+            dycore_state=dycore_state,
+            physics_state=physics_state,
+            tendency_state=tendency_state,
+            grid_data=grid_data,
+            damping_coefficients=damping_coeffient,
+            driver_grid_data=driver_grid_data,
+        )
+
 
 
 @InitializerSelector.register("restart")
