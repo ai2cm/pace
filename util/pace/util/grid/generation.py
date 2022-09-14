@@ -258,9 +258,9 @@ class MetricTerms:
     def lon(self):
         return util.Quantity(
             data=self.grid.data[:, :, 0],
-            dims=self.grid.dims[0:2],
-            origin=self.grid.origin,
-            extent=self.grid.extent,
+            dims=self.grid.dims[:2],
+            origin=self.grid.origin[:2],
+            extent=self.grid.extent[:2],
             units=self.grid.units,
             gt4py_backend=self.grid.gt4py_backend,
         )
@@ -269,9 +269,9 @@ class MetricTerms:
     def lat(self) -> util.Quantity:
         return util.Quantity(
             data=self.grid.data[:, :, 1],
-            dims=self.grid.dims[0:2],
-            origin=self.grid.origin,
-            extent=self.grid.extent,
+            dims=self.grid.dims[:2],
+            origin=self.grid.origin[:2],
+            extent=self.grid.extent[:2],
             units=self.grid.units,
             gt4py_backend=self.grid.gt4py_backend,
         )
@@ -280,9 +280,9 @@ class MetricTerms:
     def lon_agrid(self) -> util.Quantity:
         return util.Quantity(
             data=self.agrid.data[:, :, 0],
-            dims=self.agrid.dims[0:2],
-            origin=self.agrid.origin,
-            extent=self.agrid.extent,
+            dims=self.agrid.dims[:2],
+            origin=self.agrid.origin[:2],
+            extent=self.agrid.extent[:2],
             units=self.agrid.units,
             gt4py_backend=self.agrid.gt4py_backend,
         )
@@ -291,9 +291,9 @@ class MetricTerms:
     def lat_agrid(self) -> util.Quantity:
         return util.Quantity(
             data=self.agrid.data[:, :, 1],
-            dims=self.agrid.dims[0:2],
-            origin=self.agrid.origin,
-            extent=self.agrid.extent,
+            dims=self.agrid.dims[:2],
+            origin=self.agrid.origin[:2],
+            extent=self.agrid.extent[:2],
             units=self.agrid.units,
             gt4py_backend=self.agrid.gt4py_backend,
         )
