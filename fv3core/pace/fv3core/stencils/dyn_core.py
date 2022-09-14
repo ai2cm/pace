@@ -691,6 +691,7 @@ class AcousticDynamics:
                 ucd=state.uc,
                 vcd=state.vc,
                 wd=state.w,
+                # delpc is a temporary and not a variable in D_SW savepoint
                 delpcd=self._vt,
                 delpd=state.delp,
                 ud=state.u,
