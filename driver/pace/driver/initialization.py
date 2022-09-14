@@ -146,18 +146,19 @@ class TropicalCycloneConfig(Initializer):
             quantity_factory=quantity_factory, communicator=communicator
         )
 
-        # grid transformation
+        # grid transformation to locally increase resolution
         grid = metric_terms.grid
         lon_transform, lat_transform = pace.util.grid.direct_transform(
-            lon=grid[:, :, 0],
-            lat=grid[:, :, 1],
-            stretch_factor="A",
-            lon_target="A",
-            lat_target="A"
+            lon=grid.data[:, :, 0],
+            lat=grid.data[:, :, 1],
+            stretch_factor=3.0,
+            lon_target=172.5,
+            lat_target=17.5
         )
-        grid[:, :, 0] = lon_transform
-        grid[:, :, 1] = lat_transform
-        metric_terms.grid[:] = grid
+        grid.data[:, :, 0] = lon_transform
+        grid.data[:, :, 1] = lat_transform
+        metric_terms._grid.data[:] = grid.data
+        metric_terms._init_agrid()
 
         grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
         damping_coeffient = DampingCoefficients.new_from_metric_terms(metric_terms)
