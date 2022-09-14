@@ -1,5 +1,5 @@
 import os
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import dace
 import gt4py.storage
@@ -426,10 +426,12 @@ def orchestrate(
     obj: object,
     config: DaceConfig,
     method_to_orchestrate: str = "__call__",
-    dace_compiletime_args: List[str] = None,
+    dace_compiletime_args: Optional[Sequence[str]] = None,
 ):
     """
     Orchestrate a method of an object with DaCe.
+    The method object is patched in place, replacing the orignal Callable with
+    a wrapper that will trigger orchestration at call time.
     If the model configuration doesn't demand orchestration, this won't do anything.
 
     Args:
@@ -512,7 +514,7 @@ def orchestrate(
 
 def orchestrate_function(
     config: DaceConfig = None,
-    dace_compiletime_args: List[str] = None,
+    dace_compiletime_args: Optional[Sequence[str]] = None,
 ) -> Union[Callable[..., Any], _LazyComputepathFunction]:
     """
     Decorator orchestrating a method of an object with DaCe.
