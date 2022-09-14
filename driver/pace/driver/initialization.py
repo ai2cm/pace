@@ -142,18 +142,30 @@ class TropicalCycloneConfig(Initializer):
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
     ) -> DriverState:
+
         metric_terms = pace.util.grid.MetricTerms(
             quantity_factory=quantity_factory, communicator=communicator
         )
+
+        stretch_factor = 3.0
+        # these are for centering tile 6 on
+        lon_target = 172.5
+        lat_target = 17.5
+
+        gridconfig = {
+            "stretch_factor": stretch_factor,
+            "lon_target": lon_target,
+            "lat_target": lat_target
+        }
 
         # grid transformation to locally increase resolution
         grid = metric_terms.grid
         lon_transform, lat_transform = pace.util.grid.direct_transform(
             lon=grid.data[:, :, 0],
             lat=grid.data[:, :, 1],
-            stretch_factor=3.0,
-            lon_target=172.5,
-            lat_target=17.5
+            stretch_factor=stretch_factor,
+            lon_target=lon_target,
+            lat_target=lat_target
         )
         grid.data[:, :, 0] = lon_transform
         grid.data[:, :, 1] = lat_transform
@@ -167,9 +179,10 @@ class TropicalCycloneConfig(Initializer):
         )
         dycore_state = tc_init.init_tc_state(
             metric_terms,
+            gridconfig,
             adiabatic=False,
             hydrostatic=False,
-            moist_phys=True,
+            moist_phys=False,
             comm=communicator,
         )
         physics_state = pace.physics.PhysicsState.init_zeros(
