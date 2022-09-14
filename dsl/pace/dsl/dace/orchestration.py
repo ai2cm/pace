@@ -1,5 +1,5 @@
 import os
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import dace
 import gt4py.storage
@@ -422,29 +422,34 @@ class _LazyComputepathMethod:
 
 
 def orchestrate(
+    *,
     obj: object,
     config: DaceConfig,
     method_to_orchestrate: str = "__call__",
-    dace_constant_args: List[str] = [],
+    dace_compiletime_args: Optional[Sequence[str]] = None,
 ):
     """
     Orchestrate a method of an object with DaCe.
+    The method object is patched in place, replacing the orignal Callable with
+    a wrapper that will trigger orchestration at call time.
     If the model configuration doesn't demand orchestration, this won't do anything.
 
     Args:
         obj: object which methods is to be orchestrated
         config: DaceConfig carrying model configuration
         method_to_orchestrate: string representing the name of the method
-        dace_constant_args: list of names of arguments to be flagged has dace.constant
-                            for orchestration to behave
+        dace_compiletime_args: list of names of arguments to be flagged has
+                               dace.compiletime for orchestration to behave
     """
+    if dace_compiletime_args is None:
+        dace_compiletime_args = []
 
     if config.is_dace_orchestrated():
         if hasattr(obj, method_to_orchestrate):
             func = type.__getattribute__(type(obj), method_to_orchestrate)
 
             # Flag argument as dace.constant
-            for argument in dace_constant_args:
+            for argument in dace_compiletime_args:
                 func.__annotations__[argument] = DaceCompiletime
 
             # Build DaCe orchestrated wrapper
@@ -509,7 +514,7 @@ def orchestrate(
 
 def orchestrate_function(
     config: DaceConfig = None,
-    dace_constant_args: List[str] = [],
+    dace_compiletime_args: Optional[Sequence[str]] = None,
 ) -> Union[Callable[..., Any], _LazyComputepathFunction]:
     """
     Decorator orchestrating a method of an object with DaCe.
@@ -517,13 +522,16 @@ def orchestrate_function(
 
     Args:
         config: DaceConfig carrying model configuration
-        dace_constant_args: list of names of arguments to be flagged has dace.constant
-                            for orchestration to behave
+        dace_compiletime_args: list of names of arguments to be flagged has
+                               dace.compiletime for orchestration to behave
     """
+
+    if dace_compiletime_args is None:
+        dace_compiletime_args = []
 
     def _decorator(func: Callable[..., Any]):
         def _wrapper(*args, **kwargs):
-            for argument in dace_constant_args:
+            for argument in dace_compiletime_args:
                 func.__annotations__[argument] = DaceCompiletime
             return _LazyComputepathFunction(func, config)
 

@@ -24,7 +24,7 @@ import pace.fv3core.stencils.updatedzd as updatedzd
 import pace.util
 import pace.util as fv3util
 import pace.util.constants as constants
-from pace.dsl.dace.orchestration import orchestrate
+from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.dace.wrapped_halo_exchange import WrappedHaloUpdater
 from pace.dsl.stencil import GridIndexing, StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -402,6 +402,7 @@ class AcousticDynamics:
         config: AcousticDynamicsConfig,
         pfull: FloatFieldK,
         phis: FloatFieldIJ,
+        wsd: FloatFieldIJ,
         state,  # [DaCe] hack to get around quantity as parameters for halo updates
         checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
@@ -424,28 +425,28 @@ class AcousticDynamics:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["state"],
+            dace_compiletime_args=["state"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_csw",
-            dace_constant_args=["state", "tag"],
+            dace_compiletime_args=["state", "tag"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_dsw_in",
-            dace_constant_args=["state", "tag"],
+            dace_compiletime_args=["state", "tag"],
         )
 
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             method_to_orchestrate="_checkpoint_dsw_out",
-            dace_constant_args=["state", "tag"],
+            dace_compiletime_args=["state", "tag"],
         )
 
         self.call_checkpointer = checkpointer is not None
@@ -463,6 +464,7 @@ class AcousticDynamics:
         self._ptop = self.grid_data.ptop
         self._ks = self.grid_data.ks
         self._pfull = pfull
+        self._wsd = wsd
         self._nk_heat_dissipation = get_nk_heat_dissipation(
             config.d_grid_shallow_water,
             npz=grid_indexing.domain[2],
@@ -567,14 +569,21 @@ class AcousticDynamics:
             )
         )
 
-        self.delpc = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(1, 1, 1)),
-            backend=stencil_factory.backend,
-        )
-        self.ptc = utils.make_storage_from_shape(
-            grid_indexing.domain_full(add=(1, 1, 1)),
-            backend=stencil_factory.backend,
-        )
+        # TODO (floriand): Due to DaCe VRAM pooling creating a memory
+        # leak with the usage pattern of those two fields
+        # We use the C_SW internal to workaround it e.g.:
+        #  - self.cgrid_shallow_water_lagrangian_dynamics.delpc
+        #  - self.cgrid_shallow_water_lagrangian_dynamics.ptc
+        # DaCe has already a fix on their side and it awaits release
+        # issue
+        # self.delpc = utils.make_storage_from_shape(
+        #     grid_indexing.domain_full(add=(1, 1, 1)),
+        #     backend=stencil_factory.backend,
+        # )
+        # self.ptc = utils.make_storage_from_shape(
+        #     grid_indexing.domain_full(add=(1, 1, 1)),
+        #     backend=stencil_factory.backend,
+        # )
 
         self.cgrid_shallow_water_lagrangian_dynamics = CGridShallowWaterDynamics(
             stencil_factory,
@@ -666,6 +675,11 @@ class AcousticDynamics:
             pkc=self._pkc,
         )
 
+    # See divergence_damping.py, _get_da_min for explanation of this function
+    @dace_inhibitor
+    def _get_da_min(self) -> float:
+        return self._da_min
+
     def _checkpoint_csw(self, state: DycoreState, tag: str):
         if self.call_checkpointer:
             self.checkpointer(
@@ -732,7 +746,6 @@ class AcousticDynamics:
     def __call__(
         self,
         state: DycoreState,
-        wsd: pace.util.Quantity,
         timestep: float,  # time to step forward by in seconds
         n_map=1,  # [DaCe] replaces state.n_map
     ):
@@ -808,7 +821,7 @@ class AcousticDynamics:
 
             # compute the c-grid winds at t + 1/2 timestep
             self._checkpoint_csw(state, tag="In")
-            self.delpc, self.ptc = self.cgrid_shallow_water_lagrangian_dynamics(
+            self.cgrid_shallow_water_lagrangian_dynamics(
                 state.delp,
                 state.pt,
                 state.u,
@@ -850,9 +863,9 @@ class AcousticDynamics:
                     self._ptop,
                     state.phis,
                     self._ws3,
-                    self.ptc,
+                    self.cgrid_shallow_water_lagrangian_dynamics.ptc,
                     state.q_con,
-                    self.delpc,
+                    self.cgrid_shallow_water_lagrangian_dynamics.delpc,
                     self._gz,
                     self._pkc,
                     state.omga,
@@ -863,7 +876,7 @@ class AcousticDynamics:
                 self.grid_data.rdyc,
                 state.uc,
                 state.vc,
-                self.delpc,
+                self.cgrid_shallow_water_lagrangian_dynamics.delpc,
                 self._pkc,
                 self._gz,
                 dt2,
@@ -920,7 +933,7 @@ class AcousticDynamics:
                     courant_number_y=self._cry,
                     x_area_flux=self._xfx,
                     y_area_flux=self._yfx,
-                    ws=wsd,
+                    ws=self._wsd,
                     dt=dt_acoustic_substep,
                 )
                 self.riem_solver3(
@@ -929,7 +942,7 @@ class AcousticDynamics:
                     self.cappa,
                     self._ptop,
                     self._zs,
-                    wsd,
+                    self._wsd,
                     state.delz,
                     state.q_con,
                     state.delp,
@@ -999,7 +1012,8 @@ class AcousticDynamics:
         if self._do_del2cubed:
             self._halo_updaters.heat_source.update()
             # TODO: move dependence on da_min into init of hyperdiffusion class
-            cd = constants.CNST_0P20 * self._da_min
+            da_min: float = self._get_da_min()
+            cd = constants.CNST_0P20 * da_min
             self._hyperdiffusion(self._heat_source, cd)
             if not self.config.hydrostatic:
                 delt_time_factor = abs(dt_acoustic_substep * self.config.delt_max)

@@ -385,7 +385,7 @@ class DGrid2AGrid2CGridVectors:
         grid_type: int,
         dord4: bool,
     ):
-        orchestrate(self, config=stencil_factory.config.dace_config)
+        orchestrate(obj=self, config=stencil_factory.config.dace_config)
 
         grid_indexing = stencil_factory.grid_indexing
         self._cosa_s = grid_data.cosa_s
