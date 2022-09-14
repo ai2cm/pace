@@ -7,7 +7,7 @@ Fundamentals
 
 Full program optimziation with DaCe is the process of turning all Python and GT4Py code in generated C++.
 
-_Orchestration_ is the our own wording for full program optimization. We only _orchestrate_ the runtime code of the model, e.g. everything in the `__call__` method of the module. All code in `__init__` is executed like a normal gt backend.
+_Orchestration_ is our own wording for full program optimization. We only _orchestrate_ the runtime code of the model, e.g. everything in the `__call__` method of the module. All code in `__init__` is executed like a normal gt backend.
 
 At the highest level in Pace, to turn on orchestration you need to flip the `FV3_DACEMODE` to an orchestrated options _and_ run a `dace:*` backend (it will error out if run anything else). Option for `FV3_DACEMODE` are:
 - _Python_: default, turns orchestration off.
@@ -16,7 +16,7 @@ At the highest level in Pace, to turn on orchestration you need to flip the `FV3
 - _Run_: tries to execute, errors out if the cache don't exists.
 
 Code is orchestrated two ways:
-- functions are orchestrated via `orchestrate_function` decorator
+- functions are orchestrated via `orchestrate_function` decorator,
 - methods are orchestrate via the `orchestrate` function (e.g. `pace.driver.Driver._critical_path_step_all`)
 
 The later is the way we orchestrate in our model. `orchestrate` is often called as the first function in the `__init__`. It patches _in place_ the methods and replace them with a wrapper that will deal with turning it all into executable SDFG when call time comes.
@@ -34,7 +34,7 @@ File structure
 * `orchestration.py`: main code, takes care of orchestration .scaffolding, build pipeline (including parsing) and execution.
 * `sdfg_opt_passes.py`: custom optimization pass for Pace, used in the build pipeline.
 * `utils.py`: as every "utils" or "misc" or "common" file, this should not exists and collect tools & functions I lazily didn't put in a proper place.
-* `wrapped_halo_exchange.py`: a callback-ready halo exchanger, which is our current solution for keeping the Halo Exchange in python (because of prior optimization) in orchestration
+* `wrapped_halo_exchange.py`: a callback-ready halo exchanger, which is our current solution for keeping the Halo Exchange in python (because of prior optimization) in orchestration.
 
 DaCe Config
 -----------
@@ -93,7 +93,7 @@ DaCe will optimize aas much as it can. This means any scalar with be turned into
 
 _Parsing errors_
 
-DaCe cannot parse _any_ dynamic Python and any code that allocates memory on the fly (think list creation). It will also complain about any arguments it can't memory describe (remember `dace_compiletime_args` )
+DaCe cannot parse _any_ dynamic Python and any code that allocates memory on the fly (think list creation). It will also complain about any arguments it can't memory describe (remember `dace_compiletime_args` ).
 
 Conclusion
 ----------
