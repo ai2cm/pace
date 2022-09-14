@@ -266,6 +266,7 @@ class DynamicalCoreConfig:
     fv_sg_adj: int = NamelistDefaults.fv_sg_adj
     n_sponge: int = NamelistDefaults.n_sponge
     namelist_override: Optional[str] = None
+    stretch_grid: bool = NamelistDefaults.stretch_grid
 
     def __post_init__(self):
         if self.namelist_override is not None:
