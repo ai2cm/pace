@@ -153,7 +153,7 @@ jobs:
             TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
           no_output_timeout: 3h
       - save_cache:
-          key: v12-gt_cache-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
+          key: v2-gt_cache-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
           paths:
             - .gt_cache
             - .gt_cache_000000
