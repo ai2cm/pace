@@ -10,11 +10,9 @@ RUN apt-get update && apt-get install -y make \
     netcdf-bin \
     libnetcdf-dev \
     python3 \
-    python3-pip \
-    git
+    python3-pip
 
-RUN git config --global http.sslverify false && \
-    pip3 install --upgrade setuptools wheel
+RUN pip3 install --upgrade setuptools wheel
 
 COPY . /pace
 
