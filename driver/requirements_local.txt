@@ -1,6 +1,0 @@
--e ../external/gt4py[dace]
--e ../util[zarr]
--e ../dsl
--e ../stencils
--e ../fv3core
--e ../physics
