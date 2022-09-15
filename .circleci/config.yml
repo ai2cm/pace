@@ -3,6 +3,37 @@ orbs:
   gcp-cli: circleci/gcp-cli@2.4.1
   gcp-gcr: circleci/gcp-gcr@0.15.0
 
+commands:
+  setup_environment_mpi:
+    description: "Setup environment with MPI"
+    steps:
+      - run:
+          name: setup mpi
+          command: |
+            sudo apt-get update && sudo apt-get install -y make \
+              software-properties-common \
+              libopenmpi3 \
+              libopenmpi-dev \
+              libboost-all-dev \
+              python3 \
+              python3-pip \
+      - restore_cache:
+          keys:
+            - v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+      - run:
+          name: setup python environment
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip3 install --upgrade setuptools wheel
+            pip3 install -r requirements_dev.txt -c constraints.txt
+            python3 -m gt4py.gt_src_manager install
+      - save_cache:
+          key: v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+          paths:
+            - venv
+            - /root/.cache/pip
+
 jobs:
 
   lint:
@@ -174,8 +205,12 @@ jobs:
       - restore_cache:
           keys:
             - v3-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
+      - restore_cache:
+          keys:
             - v2-savepoints-c12_54ranks_standard-{{ checksum "Makefile.data_download" }}
-            - v3-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+      - restore_cache:
+          keys:
+            - v4-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
       - run:
           name: set up environment
           command: |
@@ -183,10 +218,9 @@ jobs:
             pip3 install -r requirements_dev.txt -c constraints.txt
             python3 -m gt4py.gt_src_manager install
       - save_cache:
-          key: v3-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+          key: v4-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
           paths:
             - /home/circleci/.cache/pip
-            - /opt/circleci/.pyenv/versions
       - run:
           name: run tests
           command: |
@@ -250,7 +284,7 @@ jobs:
           command: git submodule update --init
       - restore_cache:
           keys:
-            - v3-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
+            - v3-driver-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
       - run:
           name: install packages
           command: |
@@ -259,6 +293,11 @@ jobs:
               sudo apt-get install libopenmpi3 libopenmpi-dev
               cd driver && ./examples/create_venv.sh
             fi
+      - save_cache:
+          key: v3-driver-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
+          paths:
+            - driver/venv
+            - /root/.cache/pip
       - run:
           name: run tests
           command: |
@@ -267,11 +306,6 @@ jobs:
               . venv/bin/activate
               MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
             fi
-      - save_cache:
-          key: v3-driver-{{ checksum "driver/requirements.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
-          paths:
-            - driver/venv
-            - /root/.cache/pip
 
   test_main:
     docker:
@@ -282,32 +316,29 @@ jobs:
       - run:
           name: Install Submodules
           command: git submodule update --init
-      - run:
-          name: install MPI
-          command: |
-              sudo apt-get update
-              sudo apt-get install libopenmpi3 libopenmpi-dev
-      - restore_cache:
-          keys:
-            - v1-main-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
-      - run:
-          name: install packages
-          command: |
-            if [ $(python changed_from_main.py fv3core) != false ]; then
-              pip3 install --upgrade setuptools wheel virtualenv
-              virtualenv venv
-              . venv/bin/activate
-              pip3 install -r requirements_dev.txt -c constraints.txt
-            fi
+      - setup_environment_mpi
       - run:
           name: run tests
           command: |
             . venv/bin/activate
             pytest tests/main
-      - save_cache:
-          key: v1-main-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
-          paths:
-            - venv
+
+  test_mpi_54rank:
+    docker:
+      - image: cimg/python:3.8
+    resource_class: large
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Install Submodules
+          command: git submodule update --init
+      - setup_environment_mpi
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            mpirun -n 54 --oversubscribe --mca btl_vader_single_copy_mechanism none python3 -m mpi4py -m pytest tests/mpi_54rank
 
   test_notebooks:
     docker:
@@ -327,7 +358,6 @@ jobs:
       - run:
           name: Test tracer advection
           command: jupyter run examples/notebooks/tracer_advection.ipynb
-
 
 workflows:
   version: 2
@@ -374,6 +404,10 @@ workflows:
             tags:
               only: /^v.*/
       - test_main:
+          filters:
+            tags:
+              only: /^v.*/
+      - test_mpi_54rank:
           filters:
             tags:
               only: /^v.*/

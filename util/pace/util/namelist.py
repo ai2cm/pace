@@ -25,7 +25,7 @@ class NamelistDefaults:
     tau_imlt = 600.0  # cloud ice melting
     tau_i2s = 1000.0  # cloud ice to snow auto - conversion
     tau_l2r = 900.0  # cloud water to rain auto - conversion
-    tau_g2v = 900.0  # graupel sublimation
+    tau_g2v = 1200.0  # graupel sublimation
     tau_v2g = 21600.0  # graupel deposition -- make it a slow process
     sat_adj0 = 0.90  # adjustment factor (0: no, 1: full) during fast_sat_adj
     ql_gen = 1.0e-3  # max new cloud water during remapping step if fast_sat_adj = .t.
@@ -41,14 +41,14 @@ class NamelistDefaults:
     rad_graupel = True  # consider graupel in cloud fraction calculation
     tintqs = False  # use temperature in the saturation mixing in PDF
     dw_ocean = 0.10  # base value for ocean
-    dw_land = 0.20  # base value for subgrid deviation / variability over land
+    dw_land = 0.15  # base value for subgrid deviation / variability over land
     # cloud scheme 0 - ?
     # 1: old fvgfs gfdl) mp implementation
     # 2: binary cloud scheme (0 / 1)
     icloud_f = 0
     cld_min = 0.05  # !< minimum cloud fraction
     tau_l2v = 300.0  # cloud water to water vapor (evaporation)
-    tau_v2l = 150.0  # water vapor to cloud water (condensation)
+    tau_v2l = 90.0  # water vapor to cloud water (condensation)
     c2l_ord = 4
     regional = False
     m_split = 0
@@ -62,7 +62,7 @@ class NamelistDefaults:
     nf_omega = 1
     fv_sg_adj = -1
     n_sponge = 1
-    fast_sat_adj = False
+    fast_sat_adj = True
     qc_crt = 5.0e-8  # Minimum condensate mixing ratio to allow partial cloudiness
     c_cracw = 0.8  # Rain accretion efficiency
     c_paut = (
@@ -83,7 +83,7 @@ class NamelistDefaults:
     de_ice = False  # To prevent excessive build-up of cloud ice from external sources
     do_qa = True  # Do inline cloud fraction
     do_sedi_heat = False  # Transport of heat in sedimentation
-    do_sedi_w = False  # Transport of vertical motion in sedimentation
+    do_sedi_w = True  # Transport of vertical motion in sedimentation
     fix_negative = True  # Fix negative water species
     irain_f = 0  # Cloud water to rain auto conversion scheme
     mono_prof = False  # Perform terminal fall with mono ppm scheme

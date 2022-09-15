@@ -60,7 +60,7 @@ else
 	CONTAINER_FLAGS=
 endif
 NUM_RANKS ?=6
-MPIRUN_ARGS ?=--oversubscribe
+MPIRUN_ARGS ?=--oversubscribe --mca btl_vader_single_copy_mechanism none
 MPIRUN_CALL ?=mpirun -np $(NUM_RANKS) $(MPIRUN_ARGS)
 TEST_ARGS ?=-v
 TEST_TYPE=$(word 3, $(subst _, ,$(EXPERIMENT)))
@@ -112,7 +112,7 @@ savepoint_tests_mpi: build
 dependencies.svg: dependencies.dot
 	dot -Tsvg $< -o $@
 
-constraints.txt: dsl/requirements.txt fv3core/requirements.txt util/requirements.txt physics/requirements.txt driver/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg requirements_dev.txt
+constraints.txt: driver/setup.py dsl/setup.py fv3core/setup.py physics/setup.py util/setup.py stencils/setup.py util/requirements.txt requirements_docs.txt requirements_lint.txt external/gt4py/setup.cfg requirements_dev.txt
 	pip-compile $^ --output-file constraints.txt
 	sed -i.bak '/\@ git+https/d' constraints.txt
 	rm -f constraints.txt.bak
@@ -127,6 +127,9 @@ physics_savepoint_tests_mpi: build
 
 test_main: build
 	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "pip3 list && cd $(PACE_PATH) && pytest $(TEST_ARGS) $(PACE_PATH)/tests/main"
+
+test_mpi_54rank:
+	mpirun -n 54 $(MPIRUN_ARGS) python3 -m mpi4py -m pytest tests/mpi_54rank
 
 driver_savepoint_tests_mpi: build
 	TARGET=driver $(MAKE) get_test_data
