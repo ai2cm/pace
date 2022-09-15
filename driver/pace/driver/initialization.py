@@ -155,7 +155,7 @@ class TropicalCycloneConfig(Initializer):
         gridconfig = {
             "stretch_factor": stretch_factor,
             "lon_target": lon_target,
-            "lat_target": lat_target
+            "lat_target": lat_target,
         }
 
         # grid transformation to locally increase resolution
@@ -165,7 +165,7 @@ class TropicalCycloneConfig(Initializer):
             lat=grid.data[:, :, 1],
             stretch_factor=stretch_factor,
             lon_target=lon_target,
-            lat_target=lat_target
+            lat_target=lat_target,
         )
         grid.data[:, :, 0] = lon_transform
         grid.data[:, :, 1] = lat_transform
@@ -199,7 +199,6 @@ class TropicalCycloneConfig(Initializer):
             damping_coefficients=damping_coeffient,
             driver_grid_data=driver_grid_data,
         )
-
 
 
 @InitializerSelector.register("restart")
