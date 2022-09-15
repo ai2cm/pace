@@ -805,6 +805,9 @@ class AcousticDynamics:
             )
             self._checkpoint_csw(state, tag="Out")
 
+            # TODO: Computing the pressure gradient outside of C_SW was originally done
+            # so that we could transpose into a vertical-first memory ordering for the
+            # gz computation, now that we have gt4py we should pull this into C_SW.
             if self.config.nord > 0:
                 self._halo_updaters.divgd.start()
             if not self.config.hydrostatic:

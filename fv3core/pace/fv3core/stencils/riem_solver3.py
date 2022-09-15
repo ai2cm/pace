@@ -138,6 +138,11 @@ def finalize(
 class RiemannSolver3:
     """
     Fortran subroutine Riem_Solver3
+
+    Like RiemannSolverC, but for the d-grid.
+
+    Difference is that this uses the advanced values for the d-grid full timestep,
+    while RiemannSolverC uses the half time stepped c-grid w, delp, and gz.
     """
 
     def __init__(self, stencil_factory: StencilFactory, config: RiemannConfig):

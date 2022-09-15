@@ -90,6 +90,13 @@ def finalize(
 class RiemannSolverC:
     """
     Fortran subroutine Riem_Solver_C
+
+    Semi-implicit solver for pressure, vertical velocity, and dz (not a Riemann solver)
+
+    accounts for:
+    Vertically-propagating sound wave and straining terms
+    vertical non-hydrostatic pressure gradient force
+    change in layer interface heights due to straining/compression by sound waves
     """
 
     def __init__(self, stencil_factory: StencilFactory, p_fac):
