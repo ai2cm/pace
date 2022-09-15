@@ -3,7 +3,6 @@ from dataclasses import fields
 from typing import Union
 
 import numpy as np
-from pace.util.constants import N_HALO_DEFAULT
 import xarray as xr
 
 import pace.dsl.gt4py_utils as gt_utils
@@ -13,7 +12,6 @@ import pace.util.grid
 from pace import fv3core
 from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util import N_HALO_DEFAULT as halo
-from pace.util._properties import RESTART_PROPERTIES
 from pace.util.grid import DampingCoefficients
 
 
@@ -249,12 +247,24 @@ def _dict_state_to_driver_state(
     for _field in fields(type(driver_state)):
         if "units" in _field.metadata.keys():
             if is_gpu_backend:
-                if "phy" in restart_file_prefix:
-                    driver_state.__dict__[_field.name][:] = fortran_state[_field.name]
-                else:
-                    driver_state.__dict__[_field.name].data[:] = fortran_state[
-                        _field.name
-                    ]
+                if (
+                    _field.name in fortran_state
+                    and _field.name in driver_state.__dict__.keys()
+                ):
+                    if isinstance(
+                        driver_state, pace.physics.physics_state.PhysicsState
+                    ):
+                        driver_state.__dict__[_field.name][
+                            halo : -halo - 1, halo : -halo - 1, :-1
+                        ] = gt_utils.asarray(
+                            np.transpose(fortran_state[_field.name].data),
+                            to_type=cp.ndarray,
+                        )
+                    else:
+                        driver_state.__dict__[_field.name].view[:] = gt_utils.asarray(
+                            np.transpose(fortran_state[_field.name].data),
+                            to_type=cp.ndarray,
+                        )
             else:
                 if (
                     _field.name in fortran_state
@@ -290,7 +300,6 @@ def _restart_driver_state(
     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
     backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
-
 
     if fortran_data is True:
         dycore_state = _overwrite_state_from_fortran_restart(
@@ -335,7 +344,6 @@ def _restart_driver_state(
     tendency_state = TendencyState.init_zeros(
         quantity_factory=quantity_factory,
     )
-
 
     return DriverState(
         dycore_state=dycore_state,

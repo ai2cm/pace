@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 import logging
+import os
 import warnings
 from datetime import datetime, timedelta
 from math import floor
@@ -8,6 +9,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import dace
 import dacite
+import numpy as np
 from netCDF4 import Dataset
 
 import pace.driver
@@ -16,10 +18,7 @@ import pace.physics
 import pace.stencils
 import pace.util
 import pace.util.grid
-import importlib
-importlib.reload(pace.util.grid)
 from pace import fv3core
-import os
 from pace.dsl.dace.dace_config import DaceConfig
 from pace.dsl.dace.orchestration import dace_inhibitor, orchestrate
 from pace.dsl.stencil_config import CompilationConfig, RunMode
@@ -35,8 +34,11 @@ from .gridconfig import GridConfig
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
 
-import numpy as np
 
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +104,6 @@ class DriverConfig:
         default_factory=pace.physics.PhysicsConfig
     )
     grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
-
 
     days: int = 0
     hours: int = 0
@@ -301,7 +302,7 @@ class Driver:
             if self.config.initialization.config.fortran_data is True:
                 self._calculate_fortran_restart_pe_peln()
                 self._transform_grid()
-            
+
             self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,
@@ -370,33 +371,43 @@ class Driver:
     def _transform_horizontal_grid(self):
 
         communicator = CubedSphereCommunicator.from_layout(
-                comm=self.comm, layout=self.config.layout
+            comm=self.comm, layout=self.config.layout
         )
-        metric_terms = pace.util.grid.MetricTerms(quantity_factory=self.quantity_factory, communicator=communicator)
+        metric_terms = pace.util.grid.MetricTerms(
+            quantity_factory=self.quantity_factory, communicator=communicator
+        )
         grid = metric_terms.grid
-
+        if self.stencil_factory.config.is_gpu_backend:
+            numpy_module = cp
+        else:
+            numpy_module = np
         lon_transform, lat_transform = pace.util.grid.direct_transform(
-            lon=grid.data[:, :, 0], 
+            lon=grid.data[:, :, 0],
             lat=grid.data[:, :, 1],
             stretch_factor=self.config.grid_config.stretch_factor,
             lon_target=self.config.grid_config.lon_target,
-            lat_target=self.config.grid_config.lat_target
+            lat_target=self.config.grid_config.lat_target,
+            numpy_module=numpy_module,
         )
+        grid.data[:, :, 0] = lon_transform[:]
+        grid.data[:, :, 1] = lat_transform[:]
 
-        grid.data[:, :, 0] = lon_transform.data
-        grid.data[:, :, 1] = lat_transform.data
-
-
-        metric_terms._grid.data[:] = grid.data
+        metric_terms._grid.data[:] = grid.data[:]
         metric_terms._init_agrid()
-        self.state.grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-        self.state.driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
-        #print("da_min, da_min_c before replacement: ", self.state.damping_coefficients.da_min, self.state.damping_coefficients.da_min_c)
-        self.state.damping_coefficients = pace.util.grid.DampingCoefficients.new_from_metric_terms(metric_terms)
-        #self.state.damping_coefficients.da_min_c.data = 3.
-        #exit()
-        #print("da_min, da_min_c after replacement: ", self.state.damping_coefficients.da_min, self.state.damping_coefficients.da_min_c)
-        #exit()
+        self.state.grid_data = pace.util.grid.GridData.new_from_metric_terms(
+            metric_terms
+        )
+        self.state.driver_grid_data = (
+            pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
+        )
+        # print("da_min, da_min_c before replacement: ", self.state.damping_coefficients.da_min, self.state.damping_coefficients.da_min_c)
+        self.state.damping_coefficients = (
+            pace.util.grid.DampingCoefficients.new_from_metric_terms(metric_terms)
+        )
+        # self.state.damping_coefficients.da_min_c.data = 3.
+        # exit()
+        # print("da_min, da_min_c after replacement: ", self.state.damping_coefficients.da_min, self.state.damping_coefficients.da_min_c)
+        # exit()
 
     def _replace_vertical_grid(self):
 
@@ -406,8 +417,8 @@ class Driver:
                 "use_tc_vertical_grid is true, but no fv_core.res.nc in restart data file."
             )
 
-        ks = self.config.grid_config.tc_ks # guessing this is the case
-        p_ref = self.config.dycore_config.p_ref # from test case 55 in SHiELD
+        ks = self.config.grid_config.tc_ks  # guessing this is the case
+        p_ref = self.config.dycore_config.p_ref  # from test case 55 in SHiELD
         ak = self.state.grid_data.ak
         bk = self.state.grid_data.bk
         data = Dataset(ak_bk_data_file, "r")
@@ -415,7 +426,9 @@ class Driver:
         bk.data[:] = np.array(data["bk"][0]).astype("float64")
         data.close()
 
-        delp = ak[1:]- ak[:-1] + p_ref * (bk[1:] - bk[:-1]) # from baroclinic initialization
+        delp = (
+            ak[1:] - ak[:-1] + p_ref * (bk[1:] - bk[:-1])
+        )  # from baroclinic initialization
         pres = p_ref - np.cumsum(delp)
         ptop = pres[-1]
         vertical_data = pace.util.grid.VerticalGridData(ptop, ks, ak, bk, p_ref=p_ref)
@@ -423,15 +436,28 @@ class Driver:
         communicator = CubedSphereCommunicator.from_layout(
             comm=self.comm, layout=self.config.layout
         )
-        metric_terms = pace.util.grid.MetricTerms(quantity_factory=self.quantity_factory, communicator=communicator)
-        horizontal_data = pace.util.grid.HorizontalGridData.new_from_metric_terms(metric_terms)
-        contravariant_data = pace.util.grid.ContravariantGridData.new_from_metric_terms(metric_terms)
+        metric_terms = pace.util.grid.MetricTerms(
+            quantity_factory=self.quantity_factory, communicator=communicator
+        )
+        horizontal_data = pace.util.grid.HorizontalGridData.new_from_metric_terms(
+            metric_terms
+        )
+        contravariant_data = pace.util.grid.ContravariantGridData.new_from_metric_terms(
+            metric_terms
+        )
         angle_data = pace.util.grid.AngleGridData.new_from_metric_terms(metric_terms)
-        grid_data = pace.util.grid.GridData(horizontal_data=horizontal_data, vertical_data=vertical_data, contravariant_data=contravariant_data, angle_data=angle_data)
+        grid_data = pace.util.grid.GridData(
+            horizontal_data=horizontal_data,
+            vertical_data=vertical_data,
+            contravariant_data=contravariant_data,
+            angle_data=angle_data,
+        )
         self.state.grid_data = grid_data
 
     def _transform_grid(self):
-        if (self.config.grid_config.use_tc_vertical_grid is True) and (self.config.initialization.config.fortran_data is True):
+        if (self.config.grid_config.use_tc_vertical_grid is True) and (
+            self.config.initialization.config.fortran_data is True
+        ):
             self._replace_vertical_grid()
 
         if self.config.grid_config.stretch_grid is True:
@@ -446,7 +472,7 @@ class Driver:
 
         for level in range(pe.data.shape[2]):
             pe.data[:, :, level] = ptop + np.sum(delp.data[:, :, :level], 2)
-        
+
         peln.data[:] = np.log(pe.data[:])
 
         self.state.dycore_state.pe = pe
