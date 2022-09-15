@@ -89,6 +89,8 @@ jobs:
       - restore_cache:
           keys:
             - v3-gt_cache-serial-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
+      - restore_cache:
+          keys:
             - v1-savepoints-{{ checksum "Makefile.data_download" }}
       - run:
           name: build image
@@ -148,10 +150,6 @@ jobs:
           name: build image
           command: |
             BUILD_ARGS="--progress=plain" DEV=n make build
-      - run:
-          name: download GridTools sources
-          command: |
-            PYTHONPATH=./external/gt4py/src python3 -m gt4py.gt_src_manager install
       - run:
           name: run tests
           command: |
