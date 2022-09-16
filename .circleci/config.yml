@@ -156,7 +156,7 @@ jobs:
   dycore_savepoints:
     machine:
       image: ubuntu-2004:202111-02
-      resource_class: large
+      resource_class: medium
     parameters:
       backend:
         description: "gt4py backend"
@@ -175,7 +175,7 @@ jobs:
   physics_savepoints:
     machine:
       image: ubuntu-2004:202111-02
-      resource_class: large
+      resource_class: medium
     parameters:
       backend:
         description: "gt4py backend"
