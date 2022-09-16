@@ -17,9 +17,12 @@ commands:
               libboost-all-dev \
               python3 \
               python3-pip \
+      - run:
+          name: save python_version.txt
+          command: python --version | awk '{print $2;}' > python_version.txt
       - restore_cache:
           keys:
-            - v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+            - v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
       - run:
           name: setup python environment
           command: |
@@ -29,7 +32,7 @@ commands:
             pip3 install -r requirements_dev.txt -c constraints.txt
             python3 -m gt4py.gt_src_manager install
       - save_cache:
-          key: v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+          key: v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
           paths:
             - venv
             - /root/.cache/pip
