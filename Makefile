@@ -30,7 +30,6 @@ VOLUMES ?=
 
 ### Testing variables
 
-FV3=fv3core
 RUN_FLAGS ?=--rm
 ifeq ("$(CONTAINER_CMD)","")
 	PACE_PATH?=$(ROOT_DIR)
@@ -56,7 +55,7 @@ else
 	VOLUMES += -v $(EXPERIMENT_DATA):$(EXPERIMENT_DATA_RUN)
 endif
 ifeq ($(CONTAINER_CMD),docker)
-	CONTAINER_FLAGS=run $(RUN_FLAGS) $(VOLUMES) $(PACE_IMAGE)
+	CONTAINER_FLAGS=run $(RUN_FLAGS) $(VOLUMES) --env GT_CACHE_ROOT=/pace/.gt_cache $(PACE_IMAGE)
 else
 	CONTAINER_FLAGS=
 endif
