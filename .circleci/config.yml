@@ -97,10 +97,14 @@ jobs:
           command: |
             BUILD_ARGS="--progress=plain" DEV=n make build
       - run:
-          name: run tests
+          name: run dycore tests
           command: |
             TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests
           no_output_timeout: 3h
+      - run:
+          name: run physics tests
+          command: |
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make physics_savepoint_tests
       - save_cache:
           key: v3-gt_cache-serial-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
           paths:
@@ -151,9 +155,19 @@ jobs:
           command: |
             BUILD_ARGS="--progress=plain" DEV=n make build
       - run:
-          name: run tests
+          name: run dycore tests
           command: |
             TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
+          no_output_timeout: 3h
+      - run:
+          name: run physics tests
+          command: |
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make physics_savepoint_tests_mpi
+          no_output_timeout: 3h
+      - run:
+          name: run driver tests
+          command: |
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make driver_savepoint_tests_mpi
           no_output_timeout: 3h
       - save_cache:
           key: v2-gt_cache-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
@@ -227,9 +241,19 @@ jobs:
           paths:
             - /home/circleci/.cache/pip
       - run:
-          name: run tests
+          name: run dycore tests
           command: |
             GT_CACHE_ROOT=".gt_cache" TEST_ARGS="--backend=<<parameters.backend>> -v -s" CONTAINER_CMD="" NUM_RANKS=54 EXPERIMENT="c12_54ranks_standard" FV3_PATH=$(pwd)/fv3core make savepoint_tests_mpi
+          no_output_timeout: 3h
+      - run:
+          name: run physics tests
+          command: |
+            GT_CACHE_ROOT=".gt_cache" TEST_ARGS="--backend=<<parameters.backend>> -v -s" CONTAINER_CMD="" NUM_RANKS=54 EXPERIMENT="c12_54ranks_baroclinic_dycore_microphysics" make physics_savepoint_tests_mpi
+          no_output_timeout: 3h
+      - run:
+          name: run driver tests
+          command: |
+            GT_CACHE_ROOT=".gt_cache" TEST_ARGS="--backend=<<parameters.backend>> -v -s" CONTAINER_CMD="" NUM_RANKS=54 EXPERIMENT="c12_54ranks_baroclinic_dycore_microphysics" make driver_savepoint_tests_mpi
           no_output_timeout: 3h
       - save_cache:
           key: v3-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
