@@ -116,7 +116,7 @@ commands:
           name: run savepoint tests
           command: |
             TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT=<<parameters.experiment>> NUM_RANKS=<<parameters.num_ranks>> make <<parameters.target>>
-          no_output_timeout: 3h
+          no_output_timeout: 2h
       - save_gt_cache:
           key: dycore-serial-<<parameters.backend>>
 jobs:
@@ -126,9 +126,12 @@ jobs:
     - image: cimg/python:3.8
     steps:
       - checkout
+      - run:
+          name: save python_version.txt
+          command: python --version | awk '{print $2;}' > python_version.txt
       - restore_cache:
           keys:
-            - v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
+            - v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
       - run:
           name: run linting
           command: |
@@ -137,7 +140,7 @@ jobs:
             pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
       - save_cache:
-          key: v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
+          key: v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
           paths:
             - ~/.cache/pre-commit
             - venv
@@ -198,7 +201,7 @@ jobs:
       - checkout
       - make_savepoints:
           backend: <<parameters.backend>>
-          experiment: c12_54ranks_standard
+          experiment: c12_6ranks_standard
           target: savepoint_tests_mpi
 
 
@@ -236,14 +239,10 @@ jobs:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
-      - build_docker_image
-      - restore_cache_savepoints_mpi
-      - run:
-          name: run driver tests
-          command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT=c12_6ranks_baroclinic_dycore_microphysics make driver_savepoint_tests_mpi
-          no_output_timeout: 3h
-      - save_cache_savepoints_mpi
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_6ranks_baroclinic_dycore_microphysics
+          target: driver_savepoint_tests_mpi
 
   make_mpi_54rank:
     machine:
@@ -293,18 +292,11 @@ jobs:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
-      - setup_54ranks_mpi
-      - build_docker_image
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache_54ranks_savepoints_mpi
-      - run:
-          name: run physics tests
-          command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT="c12_54ranks_baroclinic_dycore_microphysics" NUM_RANKS=54 make physics_savepoint_tests_mpi
-          no_output_timeout: 3h
-      - save_cache_54ranks_savepoints_mpi
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_54ranks_baroclinic_dycore_microphysics
+          target: physics_savepoint_tests_mpi
+          num_ranks: 54
 
   driver_savepoints_mpi_54rank:
     machine:
@@ -320,18 +312,11 @@ jobs:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
-      - setup_54ranks_mpi
-      - build_docker_image
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache_54ranks_savepoints_mpi
-      - run:
-          name: run driver tests
-          command: |
-            GT_CACHE_ROOT=".gt_cache" TEST_ARGS="--backend=<<parameters.backend>> -v -s" CONTAINER_CMD="" NUM_RANKS=54 EXPERIMENT="c12_54ranks_baroclinic_dycore_microphysics" make driver_savepoint_tests_mpi
-          no_output_timeout: 3h
-      - save_cache_54ranks_savepoints_mpi
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_54ranks_baroclinic_dycore_microphysics
+          target: driver_savepoint_tests_mpi
+          num_ranks: 54
 
   test_util:
     docker:
@@ -380,30 +365,13 @@ jobs:
       - run:
           name: Install Submodules
           command: git submodule update --init
-      - restore_cache:
-          keys:
-            - v3-driver-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
-      - run:
-          name: install packages
-          command: |
-            if [ $(python changed_from_main.py driver) != false ]; then
-              sudo apt-get update
-              sudo apt-get install libopenmpi3 libopenmpi-dev
-              cd driver && ./examples/create_venv.sh
-            fi
-      - save_cache:
-          key: v3-driver-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
-          paths:
-            - driver/venv
-            - /root/.cache/pip
+      - setup_environment_mpi
       - run:
           name: run tests
           command: |
-            if [ $(python changed_from_main.py driver) != false ]; then
-              cd driver
-              . venv/bin/activate
-              MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
-            fi
+            cd driver
+            . venv/bin/activate
+            MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
 
   test_main:
     docker:
