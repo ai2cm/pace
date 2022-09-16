@@ -254,7 +254,7 @@ def _initialize_delz_w(pe, pt, qvapor, tc_properties, shape):
     w = np.zeros(shape)
 
     if tc_properties["hydrostatic"] is False:
-        tmp = (
+        delz[:, :, :-1] = (
             constants.RDGAS
             * pt[:, :, :-1]
             * (1 + constants.ZVIR * qvapor[:, :, :-1])
@@ -262,7 +262,6 @@ def _initialize_delz_w(pe, pt, qvapor, tc_properties, shape):
             * np.log(pe[:, :, :-1] / pe[:, :, 1:])
         )
         w[:] = 0.0
-        #delz[:, :, :-1]
 
     return delz, w
 
