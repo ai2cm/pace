@@ -112,6 +112,9 @@ commands:
       - build_docker_image
       - restore_gt_cache:
           key: dycore-serial-<<parameters.backend>>
+      - restore_cache:
+          keys:
+            - v1-test_data-<<parameters.experiment>>-{{ checksum "Makefile.data_download" }}
       - run:
           name: run savepoint tests
           command: |
@@ -119,6 +122,11 @@ commands:
           no_output_timeout: 2h
       - save_gt_cache:
           key: dycore-serial-<<parameters.backend>>
+      - save_cache:
+          key: v1-test_data-<<parameters.experiment>>-{{ checksum "Makefile.data_download" }}
+          paths:
+            - test_data
+
 jobs:
 
   lint:
@@ -164,7 +172,6 @@ jobs:
           experiment: c12_54ranks_standard
           target: savepoint_tests
 
-
   physics_savepoints:
     machine:
       image: ubuntu-2004:202111-02
@@ -184,7 +191,6 @@ jobs:
           experiment: c12_6ranks_baroclinic_dycore_microphysics
           target: physics_savepoint_tests
 
-
   dycore_savepoints_mpi:
     machine:
       image: ubuntu-2004:202111-02
@@ -203,7 +209,6 @@ jobs:
           backend: <<parameters.backend>>
           experiment: c12_6ranks_standard
           target: savepoint_tests_mpi
-
 
   physics_savepoints_mpi:
     machine:
@@ -354,8 +359,8 @@ jobs:
       - run:
           name: run tests
           command: |
-            cd driver
             . venv/bin/activate
+            cd driver
             MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
 
   test_main:
