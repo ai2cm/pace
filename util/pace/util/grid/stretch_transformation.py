@@ -49,7 +49,6 @@ def direct_transform(
     # 10 is because the tile center is offset from the prime meridian by 10
     lon_data = lon_data + np.deg2rad(STRETCH_GRID_ROTATION_LON_OFFSET_DEG)
 
-
     lon_p, lat_p = np.deg2rad(lon_target), np.deg2rad(lat_target)
     sin_p, cos_p = np.sin(lat_p), np.cos(lat_p)
     c2p1 = 1.0 + stretch_factor ** 2
