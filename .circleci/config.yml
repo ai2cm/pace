@@ -474,7 +474,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - savepoints:
+      - dycore_savepoints:
           matrix:
             parameters:
               backend:
@@ -485,7 +485,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - savepoints_mpi:
+      - physics_savepoints:
           matrix:
             parameters:
               backend:
@@ -496,7 +496,60 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - savepoints_mpi_54rank:
+      - dycore_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - physics_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - driver_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - dycore_savepoints_mpi_54rank:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - physics_savepoints_mpi_54rank:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - driver_savepoints_mpi_54rank:
           matrix:
             parameters:
               backend:
