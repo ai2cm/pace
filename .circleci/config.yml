@@ -89,11 +89,21 @@ commands:
       experiment:
         description: "experiment data to use"
         type: enum
-        enum: ["c12_54ranks_standard", "c12_54ranks_baroclinic_dycore_microphysics"]
+        enum:
+          - "c12_6ranks_standard"
+          - "c12_54ranks_standard"
+          - "c12_6ranks_baroclinic_dycore_microphysics"
+          - "c12_54ranks_baroclinic_dycore_microphysics"
       target:
         description: "make target to run"
         type: enum
-        enum: ["savepoint_tests_mpi", "physics_savepoint_tests_mpi", "driver_savepoint_tests_mpi"]
+        enum:
+          - "savepoint_tests"
+          - "savepoint_tests_mpi"
+          - "physics_savepoint_tests"
+          - "physics_savepoint_tests_mpi"
+          - "driver_savepoint_tests"
+          - "driver_savepoint_tests_mpi"
       num_ranks:
         description: "number of ranks required"
         type: integer
