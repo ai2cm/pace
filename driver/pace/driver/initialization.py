@@ -179,10 +179,7 @@ class TropicalCycloneConfig(Initializer):
         )
         dycore_state = tc_init.init_tc_state(
             metric_terms,
-            gridconfig,
-            adiabatic=False,
             hydrostatic=False,
-            moist_phys=False,
             comm=communicator,
         )
         physics_state = pace.physics.PhysicsState.init_zeros(

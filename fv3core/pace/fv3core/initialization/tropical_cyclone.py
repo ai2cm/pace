@@ -23,10 +23,7 @@ nhalo = fv3util.N_HALO_DEFAULT
 
 def init_tc_state(
     metric_terms: MetricTerms,
-    grid_config: dict,
-    adiabatic: bool,
     hydrostatic: bool,
-    moist_phys: bool,
     comm: fv3util.CubedSphereCommunicator,
 ) -> DycoreState:
     """
@@ -52,7 +49,7 @@ def init_tc_state(
     numpy_state.phis[:] = 1.0e30
 
     tc_properties = {
-        "hydrostatic": False,
+        "hydrostatic": hydrostatic,
         "dp": 1115.0,
         "exppr": 1.5,
         "exppz": 2.0,
@@ -82,7 +79,9 @@ def init_tc_state(
     ak = metric_terms.ak.data
     bk = metric_terms.bk.data
     delp = initialize_delp(ps, ak, bk)
-    pe = initialize_edge_pressure(delp, tc_properties["ptop"])
+    pe = np.zeros(shape)
+    pe[:, :, :-1] = initialize_edge_pressure(delp, tc_properties["ptop"])
+
     pe_u = _initialize_edge_pressure_cgrid(ak, bk, ps_u, shape, tc_properties["ptop"])
     pe_v = _initialize_edge_pressure_cgrid(ak, bk, ps_v, shape, tc_properties["ptop"])
 
@@ -253,8 +252,9 @@ def _initialize_delz_w(pe, pt, qvapor, tc_properties, shape):
 
     delz = np.zeros(shape)
     w = np.zeros(shape)
+
     if tc_properties["hydrostatic"] is False:
-        delz[:, :, :-1] = (
+        tmp = (
             constants.RDGAS
             * pt[:, :, :-1]
             * (1 + constants.ZVIR * qvapor[:, :, :-1])
@@ -262,6 +262,7 @@ def _initialize_delz_w(pe, pt, qvapor, tc_properties, shape):
             * np.log(pe[:, :, :-1] / pe[:, :, 1:])
         )
         w[:] = 0.0
+        #delz[:, :, :-1]
 
     return delz, w
 
@@ -288,7 +289,6 @@ def _initialize_qvapor_temperature(metric_terms, pe, ps, tc_properties, calc, sh
     height = (calc["t00"] / tc_properties["gamma"]) * (
         1.0 - (ptmp / ps[:, :, None]) ** calc["exponent"]
     )
-
     qvapor[:, :, :-1] = (
         tc_properties["q00"]
         * np.exp(-height / tc_properties["zq1"])
