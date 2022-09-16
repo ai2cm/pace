@@ -111,7 +111,7 @@ commands:
     steps:
       - build_docker_image
       - restore_gt_cache:
-          key: dycore-serial-<<parameters.backend>>
+          key: <<parameters.backend>>-<<parameters.target>>-<<parameters.experiment>>
       - restore_cache:
           keys:
             - v1-test_data-<<parameters.experiment>>-{{ checksum "Makefile.data_download" }}
@@ -121,7 +121,7 @@ commands:
             TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT=<<parameters.experiment>> NUM_RANKS=<<parameters.num_ranks>> make <<parameters.target>>
           no_output_timeout: 2h
       - save_gt_cache:
-          key: dycore-serial-<<parameters.backend>>
+          key: <<parameters.backend>>-<<parameters.target>>-<<parameters.experiment>>
       - save_cache:
           key: v1-test_data-<<parameters.experiment>>-{{ checksum "Makefile.data_download" }}
           paths:
