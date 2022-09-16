@@ -24,8 +24,8 @@ def direct_transform(
     Args:
         lon (in) in radians
         lat (in) in radians
-        stretch_factor (in) stretch_factor (e.g. 3.0 means that the resolution on
-            tile 6 becomes 3 times as fine)
+        stretch_factor (in) stretch_factor (e.g. 3.0 means that the resolution 
+            on tile 6 becomes 3 times as fine)
         lon_target (in) in degrees (from namelist)
         lat_target (in) in degrees (from namelist)
 
@@ -42,6 +42,12 @@ def direct_transform(
         lat_data = lat
     else:
         raise Exception("Input data type not supported.")
+    
+    STRETCH_GRID_ROTATION_LON_OFFSET_DEG = 190
+    # this is added to all longitude values to match the SHiELD TC case
+    # 180 is to flip the orientation around the center tile (6)
+    # 10 is because the tile center is offset from the prime meridian by 10
+    lon_data = lon_data + np.deg2rad(STRETCH_GRID_ROTATION_LON_OFFSET_DEG)
 
     lon_p, lat_p = np.deg2rad(lon_target), np.deg2rad(lat_target)
     sin_p, cos_p = np.sin(lat_p), np.cos(lat_p)
@@ -56,10 +62,8 @@ def direct_transform(
         lat_t = np.arcsin(
             (c2m1 + c2p1 * np.sin(lat_data)) / (c2p1 + c2m1 * np.sin(lat_data))
         )
-        lon_t = lon_data
     else:  # no stretching
         lat_t = lat_data
-        lon_t = lon_data
 
     sin_lat = np.sin(lat_t)
     cos_lat = np.cos(lat_t)

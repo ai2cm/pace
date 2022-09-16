@@ -147,15 +147,10 @@ class TropicalCycloneConfig(Initializer):
             quantity_factory=quantity_factory, communicator=communicator
         )
 
-        stretch_factor = 3.0
-        # these are for centering tile 6 on
-        lon_target = 172.5
-        lat_target = 17.5
-
         gridconfig = {
-            "stretch_factor": stretch_factor,
-            "lon_target": lon_target,
-            "lat_target": lat_target,
+            "stretch_factor": 3.0,
+            "lon_target": 172.5,
+            "lat_target": 17.5,
         }
 
         # grid transformation to locally increase resolution
@@ -163,9 +158,9 @@ class TropicalCycloneConfig(Initializer):
         lon_transform, lat_transform = pace.util.grid.direct_transform(
             lon=grid.data[:, :, 0],
             lat=grid.data[:, :, 1],
-            stretch_factor=stretch_factor,
-            lon_target=lon_target,
-            lat_target=lat_target,
+            stretch_factor=gridconfig["stretch_factor"],
+            lon_target=gridconfig["lon_target"],
+            lat_target=gridconfig["lat_target"],
         )
         grid.data[:, :, 0] = lon_transform
         grid.data[:, :, 1] = lat_transform
@@ -182,6 +177,7 @@ class TropicalCycloneConfig(Initializer):
             hydrostatic=False,
             comm=communicator,
         )
+
         physics_state = pace.physics.PhysicsState.init_zeros(
             quantity_factory=quantity_factory, active_packages=["microphysics"]
         )

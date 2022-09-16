@@ -3,7 +3,7 @@ import numpy as np
 import pace.util as fv3util
 import pace.util.constants as constants
 from pace.fv3core.initialization.dycore_state import DycoreState
-from pace.util.grid import MetricTerms, great_circle_distance_lon_lat
+from pace.util.grid import GridData, MetricTerms, great_circle_distance_lon_lat
 from pace.util.grid.gnomonic import (
     get_lonlat_vect,
     get_unit_vector_direction,
@@ -40,13 +40,12 @@ def init_tc_state(
     numpy_state = empty_numpy_dycore_state(shape)
 
     # Initializing to values the Fortran does for easy comparison
-    numpy_state.delp[:] = 1e30
     numpy_state.delp[:nhalo, :nhalo] = 0.0
     numpy_state.delp[:nhalo, nhalo + ny :] = 0.0
     numpy_state.delp[nhalo + nx :, :nhalo] = 0.0
     numpy_state.delp[nhalo + nx :, nhalo + ny :] = 0.0
-    numpy_state.pe[:] = 0.0
-    numpy_state.phis[:] = 1.0e30
+    #numpy_state.pe[:] = 0.0
+    #numpy_state.phis[:] = 1.0e30
 
     tc_properties = {
         "hydrostatic": hydrostatic,
@@ -108,8 +107,8 @@ def init_tc_state(
     numpy_state.phis[:] = ps_output["phis"]
     # numpy_state.pk[:] =
     # numpy_state.pkz[:] =
-    numpy_state.ps[:] = pe[:, :, -1]
-    numpy_state.pt[:] = pt
+    numpy_state.ps[:] = pe[:, :, -2]
+    #numpy_state.pt[:] = pt
     # numpy_state.qcld[:] =
     # numpy_state.qgraupel[:] =
     # numpy_state.qice[:] =
@@ -143,10 +142,9 @@ def _calculate_distance_from_tc_center(pe_v, ps_v, muv, calc, tc_properties):
         np.sin(calc["p0"][1]) * np.cos(muv["midpoint"][:, :, 1])
         - np.cos(calc["p0"][1])
         * np.sin(muv["midpoint"][:, :, 1])
-        * np.cos(muv["midpoint"][:, :, 0])
-        - calc["p0"][0]
+        * np.cos(muv["midpoint"][:, :, 0] - calc["p0"][0])
     )
-    d2 = np.cos(calc["p0"][1]) * np.sin(muv["midpoint"][:, :, 0]) - calc["p0"][0]
+    d2 = np.cos(calc["p0"][1]) * np.sin(muv["midpoint"][:, :, 0] - calc["p0"][0])
     d = np.sqrt(d1 ** 2 + d2 ** 2)
     d[d < 1e-15] = 1e-15
 
@@ -163,7 +161,7 @@ def _calculate_distance_from_tc_center(pe_v, ps_v, muv, calc, tc_properties):
         1.0 - (ptmp / ps_v[:, :, None]) ** calc["exponent"]
     )
 
-    distance_dict = {"d": d, "d2": d2, "height": height, "r": r}
+    distance_dict = {"d": d, "d1": d1, "d2": d2, "height": height, "r": r}
 
     return distance_dict
 
@@ -184,36 +182,22 @@ def _calculate_pt_height(height, qvapor, r, tc_properties, calc):
     return pt
 
 
-def _calculate_utmp(height, r, d, calc, tc_properties):
+def _calculate_utmp(height, dist, calc, tc_properties):
 
-    r_ratio = (r / tc_properties["rp"]) ** tc_properties["exppr"]
+    aa = (height / tc_properties["zp"]) # (134, 135, 79)
+    bb = (dist["r"] / tc_properties["rp"]) # (134, 135)
+    cc = (aa**tc_properties["exppz"]) # (134, 135, 79)
+    dd = (bb**tc_properties["exppr"]) # (134, 135)
+    ee = (1. - tc_properties["p_ref"]/tc_properties["dp"] * np.exp(dd[:, :, None]) * np.exp(cc)) # (134, 135, 79)
+    ff = (constants.GRAV * tc_properties["zp"]**tc_properties["exppz"]) # number
+    gg = (calc["t00"] - tc_properties["gamma"] * height) # (134, 135, 79)
+    hh = (tc_properties["exppz"] * height * constants.RDGAS * gg / ff + ee) # (134, 135, 79)
+    ii = (calc["cor"] * dist["r"] / 2.0) # (134, 135)
+    jj = (2.0) # number
+    kk = (ii[:, :, None]**jj - tc_properties["exppr"] * bb[:, :, None]**tc_properties["exppr"] * constants.RDGAS * gg / hh) # (134, 135, 79)
+    ll = (-calc["cor"] * dist["r"][:, :, None] / 2.0 + np.sqrt(kk)) # (134, 135, 79)
 
-    aa = np.exp((height / tc_properties["zp"]) ** tc_properties["exppz"])
-    bb = (
-        1.0
-        - tc_properties["p_ref"]
-        / tc_properties["dp"]
-        * np.exp(r_ratio)[:, :, None]
-        * aa
-    )
-    cc = (
-        tc_properties["exppz"]
-        * height
-        * constants.RDGAS
-        * (calc["t00"] - tc_properties["gamma"] * height)
-        / (constants.GRAV * tc_properties["zp"] ** tc_properties["exppz"])
-        + bb
-    )
-    dd = np.sqrt(
-        (calc["cor"] * r[:, :, None] / 2.0) ** (2.0)
-        - tc_properties["exppr"]
-        * r_ratio[:, :, None]
-        * constants.RDGAS
-        * (calc["t00"] - tc_properties["gamma"] * height)
-        / cc
-    )
-
-    utmp = 1.0 / d[:, :, None] * (-calc["cor"] * r[:, :, None] / 2.0 + dd)
+    utmp = 1.0 / dist["d"][:, :, None] * ll
 
     return utmp
 
@@ -346,10 +330,14 @@ def _initialize_wind_dgrid(
     p2 = metric_terms.grid.data[1:, :, :]
     muv = _find_midpoint_unit_vectors(p1, p2)
     dist = _calculate_distance_from_tc_center(pe_u, ps_u, muv, calc, tc_properties)
+
     utmp = _calculate_utmp(
-        dist["height"][:-1, :, :], dist["r"], dist["d"], calc, tc_properties
+        dist["height"][:-1, :, :], dist, calc, tc_properties
     )
     vtmp = utmp * dist["d2"][:, :, None]
+    print()
+    utmp = utmp * dist["d1"][:, :, None]
+
     ud[:-1, :, :-1] = (
         utmp * np.sum(muv["unit_dir"] * muv["exv"], 2)[:, :, None]
         + vtmp * np.sum(muv["unit_dir"] * muv["eyv"], 2)[:, :, None]
@@ -364,9 +352,10 @@ def _initialize_wind_dgrid(
     dist = _calculate_distance_from_tc_center(pe_v, ps_v, muv, calc, tc_properties)
 
     utmp = _calculate_utmp(
-        dist["height"][:, :-1, :], dist["r"], dist["d"], calc, tc_properties
+        dist["height"][:, :-1, :], dist, calc, tc_properties
     )
     vtmp = utmp * dist["d2"][:, :, None]
+    utmp *= dist["d1"][:, :, None]
 
     vd[:, :-1, :-1] = (
         utmp * np.sum(muv["unit_dir"] * muv["exv"], 2)[:, :, None]
