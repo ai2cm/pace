@@ -28,6 +28,8 @@ from pace.dsl.dace.utils import (
     memory_static_analysis,
     report_memory_static_analysis,
     sdfg_nan_checker,
+    negative_delp_checker,
+    negative_qtracers_checker,
 )
 from pace.util.mpi import MPI
 
@@ -173,16 +175,20 @@ def _build_sdfg(
                 f"Pooled {memory_pooled} mb",
             )
 
+        # Set of debug tools inserted in the SDFG when dace.conf "syncdebug"
+        # is turned on.
+        if config.get_sync_debug():
+            with DaCeProgress(
+                config, "Debug tooling (NaN, Delp negative, tracer negative)"
+            ):
+                # sdfg_nan_checker(sdfg) # TODO (florian): segfault - bad range?
+                negative_delp_checker(sdfg)
+                negative_qtracers_checker(sdfg)
+
         # Compile
         with DaCeProgress(config, "Codegen & compile"):
             sdfg.compile()
         write_build_info(sdfg, config.layout, config.tile_resolution, config._backend)
-
-        # Set of debug tools inserted in the SDFG when dace.conf "syncdebug"
-        # is turned on.
-        if config.get_sync_debug():
-            with DaCeProgress(config, "Debug tooling (NaNChecker)"):
-                sdfg_nan_checker(sdfg)
 
         # Printing analysis of the compiled SDFG
         with DaCeProgress(config, "Build finished. Running memory static analysis"):

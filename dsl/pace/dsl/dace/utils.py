@@ -1,10 +1,16 @@
 import logging
 import time
+import copy
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, TYPE_CHECKING
 
 import dace
+from dace import data as dt
+from dace.sdfg import graph as gr
+from dace.sdfg import utils as sdutil
 from dace.transformation.helpers import get_parent_map
+from dace import symbolic
+import sympy as sp
 
 from pace.dsl.dace.dace_config import DaceConfig
 
@@ -37,22 +43,22 @@ class DaCeProgress:
         DaCeProgress.log(self.prefix, f"{self.label}...{elapsed}s.")
 
 
-def sdfg_nan_checker(sdfg: dace.SDFG):
+_DACE_MEMLET_EDGE_TYPE_HINT = gr.MultiConnectorEdge[dace.Memlet]
+_FILTER_MAP_TYPE_HINT = List[
+    Tuple[dace.SDFGState, dace.nodes.AccessNode, _DACE_MEMLET_EDGE_TYPE_HINT]
+]
+
+
+def _filter_all_maps(
+    sdfg: dace.SDFG,
+    whitelist: List[str] = None,
+    blacklist: List[str] = None,
+) -> _FILTER_MAP_TYPE_HINT:
     """
-    Insert a check on array after each computational map to check for NaN
-    in the domain.
-
-    In current pipeline, it is to be inserter after sdfg.simplify(...).
+    Grab all maps, filter by variable name (either black or whitelist)
     """
-    import copy
 
-    import sympy as sp
-    from dace import data as dt
-    from dace import symbolic
-    from dace.sdfg import graph as gr
-    from dace.sdfg import utils as sdutil
-
-    # Adds a NaN checker after every mapexit->access node
+    # Gra
     checks: List[
         Tuple[dace.SDFGState, dace.nodes.AccessNode, gr.MultiConnectorEdge[dace.Memlet]]
     ] = []
@@ -71,64 +77,147 @@ def sdfg_nan_checker(sdfg: dace.SDFG):
                 if isinstance(e.dst.desc(state.parent), dt.View):  # Skip views for now
                     continue
                 node = sdutil.get_last_view_node(state, e.dst)
-                if "diss_estd" in node.data:
-                    continue
+                # Whitelist
+                if whitelist is not None:
+                    if any([varname not in node.data for varname in whitelist]):
+                        continue
+                # Blacklist
+                if blacklist is not None:
+                    if any([varname in node.data for varname in blacklist]):
+                        continue
                 if state.memlet_path(e)[
                     0
                 ].data.dynamic:  # Skip dynamic (region) outputs
                     continue
 
                 checks.append((state, node, e))
-    for state, node, e in checks:
-        # Append node that will go after the map
-        newnode: dace.nodes.AccessNode = copy.deepcopy(node)
-        # Move all outgoing edges to new node
-        for oe in list(state.out_edges(node)):
-            state.remove_edge(oe)
-            state.add_edge(newnode, oe.src_conn, oe.dst, oe.dst_conn, oe.data)
+    return checks
 
-        # Add map in between node and newnode
-        sdfg = state.parent
-        inparr = sdfg.arrays[newnode.data]
-        index_expr = ", ".join(["__i%d" % i for i in range(len(inparr.shape))])
-        index_printf = ", ".join(["%d"] * len(inparr.shape))
 
-        # Get range from memlet (which may not be the entire array size)
-        def evaluate(expr):
-            return expr.subs({sp.Function("int_floor"): symbolic.int_floor})
+def _check_node(
+    state: dace.sdfg.SDFGState,
+    node: dace.nodes.Node,
+    edge: dace.InterstateEdge,
+    kernel_name: str,
+    c_varname: str,
+    check_c_code: str,
+    comment_c_code: str,
+    assert_out: bool = False,
+):
+    # Append node that will go after the map
+    newnode: dace.nodes.AccessNode = copy.deepcopy(node)
+    # Move all outgoing edges to new node
+    for oe in list(state.out_edges(node)):
+        state.remove_edge(oe)
+        state.add_edge(newnode, oe.src_conn, oe.dst, oe.dst_conn, oe.data)
 
-        # Infer scheduly
-        schedule_type = dace.ScheduleType.Default
-        if (
-            inparr.storage == dace.StorageType.GPU_Global
-            or inparr.storage == dace.StorageType.GPU_Shared
-        ):
-            schedule_type = dace.ScheduleType.GPU_Device
+    # Add map in between node and newnode
+    sdfg = state.parent
+    inparr = sdfg.arrays[newnode.data]
+    index_expr = ", ".join(["__i%d" % i for i in range(len(inparr.shape))])
+    index_printf = ", ".join(["%d"] * len(inparr.shape))
 
-        ranges = []
-        for i, (begin, end, step) in enumerate(e.data.subset):
-            ranges.append(
-                (f"__i{i}", (evaluate(begin), evaluate(end), evaluate(step)))
-            )  # evaluate to resolve views & actively read/write domains
-        state.add_mapped_tasklet(
-            name="nancheck",
-            map_ranges=ranges,
-            inputs={"__inp": dace.Memlet.simple(newnode.data, index_expr)},
-            code=f"""
-            if (__inp != __inp) {{
-                printf("NaN value found at {newnode.data}, line %d, index {index_printf}\\n", __LINE__, {index_expr});
-            }}
-            """,  # noqa: E501
-            schedule=schedule_type,
-            language=dace.Language.CPP,
-            outputs={
-                "__out": dace.Memlet.simple(newnode.data, index_expr, num_accesses=-1)
-            },
-            input_nodes={node.data: node},
-            output_nodes={newnode.data: newnode},
-            external_edges=True,
+    # Get range from memlet (which may not be the entire array size)
+    def evaluate(expr):
+        return expr.subs({sp.Function("int_floor"): symbolic.int_floor})
+
+    # Infer scheduly
+    schedule_type = dace.ScheduleType.Default
+    if (
+        inparr.storage == dace.StorageType.GPU_Global
+        or inparr.storage == dace.StorageType.GPU_Shared
+    ):
+        schedule_type = dace.ScheduleType.GPU_Device
+
+    ranges = []
+    for i, (begin, end, step) in enumerate(edge.data.subset):
+        ranges.append(
+            (f"__i{i}", (evaluate(begin), evaluate(end), evaluate(step)))
+        )  # evaluate to resolve views & actively read/write domains
+    state.add_mapped_tasklet(
+        name=kernel_name,
+        map_ranges=ranges,
+        inputs={f"{c_varname}": dace.Memlet.simple(newnode.data, index_expr)},
+        code=f"""
+        if ({check_c_code}) {{
+            printf("{node.data} value {comment_c_code} at line %d, index {index_printf}\\n", __LINE__, {index_expr});
+            {'assert(0);' if assert_out else ''}
+        }}
+        """,  # noqa: E501
+        schedule=schedule_type,
+        language=dace.Language.CPP,
+        outputs={
+            "__out": dace.Memlet.simple(newnode.data, index_expr, num_accesses=-1)
+        },
+        input_nodes={node.data: node},
+        output_nodes={newnode.data: newnode},
+        external_edges=True,
+    )
+
+
+def negative_delp_checker(sdfg: dace.SDFG):
+    """
+    Adds a negative check on every variable name containing "delp"
+    """
+    allmaps_filtered = _filter_all_maps(sdfg, whitelist=["delp"])
+
+    for state, node, e in allmaps_filtered:
+        _check_node(
+            state, node, e, "neg_delp_check", "_inp", "_inp < 0", "delp* is negative"
         )
-    logger.info(f"Added {len(checks)} NaN checks")
+
+    logger.info(f"Added {len(allmaps_filtered)} delp* < 0 checks")
+
+
+def negative_qtracers_checker(sdfg: dace.SDFG):
+    """
+    Adds a negative check on every tracer
+    """
+    allmaps_filtered = _filter_all_maps(
+        sdfg,
+        whitelist=[
+            "qvapor",
+            "qliquid",
+            "qrain",
+            "qice",
+            "qsnow",
+            "qgraupel",
+            "qo3mr",
+            "qsgs_tke",
+            "qcld",
+        ],
+    )
+
+    for state, node, e in allmaps_filtered:
+        _check_node(
+            state,
+            node,
+            e,
+            "neg_tracers_check",
+            "_inp",
+            "_inp < 0",
+            "tracer is negative",
+        )
+
+    logger.info(f"Added {len(allmaps_filtered)} tracer < 0 checks")
+
+
+def sdfg_nan_checker(sdfg: dace.SDFG):
+    """
+    Insert a check on array after each computational map to check for NaN
+    in the domain.
+
+    In current pipeline, it is to be inserter after sdfg.simplify(...).
+    """
+    allmaps_filtered = _filter_all_maps(
+        sdfg,
+        blacklist=["diss_estd"],
+    )
+
+    for state, node, e in allmaps_filtered:
+        _check_node(state, node, e, "nan_check", "_inp", "_inp != _inp", "NaN found")
+
+    logger.info(f"Added {len(allmaps_filtered)} NaN checks")
 
 
 def _is_ref(sd: dace.sdfg.SDFG, aname: str):
