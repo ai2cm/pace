@@ -224,7 +224,6 @@ jobs:
           experiment: c12_6ranks_baroclinic_dycore_microphysics
           target: physics_savepoint_tests_mpi
 
-
   driver_savepoints_mpi:
     machine:
       image: ubuntu-2004:202111-02
@@ -244,7 +243,7 @@ jobs:
           experiment: c12_6ranks_baroclinic_dycore_microphysics
           target: driver_savepoint_tests_mpi
 
-  make_mpi_54rank:
+  dycore_savepoints_mpi_54rank:
     machine:
       image: ubuntu-2004:202111-02
       resource_class: xlarge
@@ -254,29 +253,15 @@ jobs:
         default: "numpy"
         type: enum
         enum: ["numpy", "gt:cpu_ifirst"]
-      experiment:
-        description: "experiment data to use"
-        type: enum
-        enum: ["c12_54ranks_standard", "c12_54ranks_baroclinic_dycore_microphysics"]
-      target:
-        description: "make target to run"
-        type: enum
-        enum: ["savepoint_tests_mpi", "physics_savepoint_tests_mpi", "driver_savepoint_tests_mpi"]
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
-      - build_docker_image
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache_54ranks_savepoints_mpi
-      - run:
-          name: run dycore tests
-          command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT="<<parameters.experiment>>" NUM_RANKS=54 make <<parameters.target>>
-          no_output_timeout: 3h
-      - save_cache_54ranks_savepoints_mpi
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_54ranks_standard
+          target: savepoint_tests_mpi
+          num_ranks: 54
 
   physics_savepoints_mpi_54rank:
     machine:
@@ -455,7 +440,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-
       - dycore_savepoints_mpi:
           matrix:
             parameters:
@@ -467,7 +451,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-
       - physics_savepoints_mpi:
           matrix:
             parameters:
@@ -479,57 +462,47 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-
-      # - driver_savepoints_mpi:
-      #     matrix:
-      #       parameters:
-      #         backend:
-      #           - numpy
-      #           - gt:cpu_ifirst
-      #     context:
-      #       - GCLOUD_ENCODED_KEY
-      #     filters:
-      #       tags:
-      #         only: /^v.*/
-      # - make_savepoints:
-      #     matrix:
-      #       parameters:
-      #         backend: ["numpy", "gt:cpu_ifirst"]
-      #         experiment: ["c12_54ranks_standard", "c12_54ranks_baroclinic_dycore_microphysics"]
-      #         target: ["savepoint_tests_mpi", "physics_savepoint_tests_mpi", "driver_savepoint_tests_mpi"]
-      #       exclude:
-      #         - experiment: "c12_54ranks_standard"
-      #           target: "physics_savepoint_tests_mpi"
-      #         - experiment: "c12_54ranks_standard"
-      #           target: "driver_savepoint_tests_mpi"
-      #         - experiment: "c12_54ranks_baroclinic_dycore_microphysics"
-      #           target: "savepoint_tests_mpi"
-      #     context:
-      #       - GCLOUD_ENCODED_KEY
-      #     filters:
-      #       tags:
-      #         only: /^v.*/
-      # - savepoints_mpi:
-      #     matrix:
-      #       parameters:
-      #         backend:
-      #           - numpy
-      #           - gt:cpu_ifirst
-      #     context:
-      #       - GCLOUD_ENCODED_KEY
-      #     filters:
-      #       tags:
-      #         only: /^v.*/
-      # - savepoints_mpi_54rank:
-      #     matrix:
-      #       parameters:
-      #         backend:
-      #           - numpy
-      #     context:
-      #       - GCLOUD_ENCODED_KEY
-      #     filters:
-      #       tags:
-      #         only: /^v.*/
+      - driver_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - dycore_savepoints_mpi_54rank:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - physics_savepoints_mpi_54rank:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - driver_savepoints_mpi_54rank:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
       - test_util:
           filters:
             tags:
