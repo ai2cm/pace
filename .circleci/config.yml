@@ -78,6 +78,37 @@ commands:
           key: v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}
           paths:
             - .gt_cache
+  make_savepoints:
+    description: "Setup and run a savepoints test make target"
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy", "gt:cpu_ifirst"]
+      experiment:
+        description: "experiment data to use"
+        type: enum
+        enum: ["c12_54ranks_standard", "c12_54ranks_baroclinic_dycore_microphysics"]
+      target:
+        description: "make target to run"
+        type: enum
+        enum: ["savepoint_tests_mpi", "physics_savepoint_tests_mpi", "driver_savepoint_tests_mpi"]
+      num_ranks:
+        description: "number of ranks required"
+        type: integer
+        default: 6
+    steps:
+      - build_docker_image
+      - restore_gt_cache:
+          key: dycore-serial-<<parameters.backend>>
+      - run:
+          name: run savepoint tests
+          command: |
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT=<<parameters.experiment>> NUM_RANKS=<<parameters.num_ranks>> make <<parameters.target>>
+          no_output_timeout: 3h
+      - save_gt_cache:
+          key: dycore-serial-<<parameters.backend>>
 jobs:
 
   lint:
@@ -101,7 +132,7 @@ jobs:
             - ~/.cache/pre-commit
             - venv
 
-  make_savepoints:
+  dycore_savepoints:
     machine:
       image: ubuntu-2004:202111-02
       resource_class: large
@@ -111,28 +142,15 @@ jobs:
         default: "numpy"
         type: enum
         enum: ["numpy", "gt:cpu_ifirst"]
-      experiment:
-        description: "experiment data to use"
-        type: enum
-        enum: ["c12_54ranks_standard", "c12_54ranks_baroclinic_dycore_microphysics"]
-      target:
-        description: "make target to run"
-        type: enum
-        enum: ["savepoint_tests_mpi", "physics_savepoint_tests_mpi", "driver_savepoint_tests_mpi"]
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
-      - build_docker_image
-      - restore_gt_cache:
-          key: dycore-serial-<<parameters.backend>>
-      - run:
-          name: run dycore tests
-          command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT=<<parameters.experiment>> make <<parameters.target>>
-          no_output_timeout: 3h
-      - save_gt_cache:
-          key: dycore-serial-<<parameters.backend>>
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_54ranks_standard
+          target: savepoint_tests
+
 
   physics_savepoints:
     machine:
@@ -148,16 +166,11 @@ jobs:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
-      - build_docker_image
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache_savepoints
-      - run:
-          name: run physics tests
-          command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT=c12_6ranks_baroclinic_dycore_microphysics make physics_savepoint_tests
-      - save_cache_savepoints
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_6ranks_baroclinic_dycore_microphysics
+          target: physics_savepoint_tests
+
 
   dycore_savepoints_mpi:
     machine:
@@ -172,17 +185,12 @@ jobs:
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
-      - build_docker_image
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache_savepoints_mpi
-      - run:
-          name: run dycore tests
-          command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
-          no_output_timeout: 3h
-      - save_cache_savepoints_mpi
+      - checkout
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_54ranks_standard
+          target: savepoint_tests_mpi
+
 
   physics_savepoints_mpi:
     machine:
@@ -198,17 +206,11 @@ jobs:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
-      - build_docker_image
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache_savepoints_mpi
-      - run:
-          name: run physics tests
-          command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT=c12_6ranks_baroclinic_dycore_microphysics make physics_savepoint_tests_mpi
-          no_output_timeout: 3h
-      - save_cache_savepoints_mpi
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_6ranks_baroclinic_dycore_microphysics
+          target: physics_savepoint_tests_mpi
+
 
   driver_savepoints_mpi:
     machine:
@@ -453,24 +455,82 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - make_savepoints:
+      - dycore_savepoints:
           matrix:
             parameters:
-              backend: ["numpy", "gt:cpu_ifirst"]
-              experiment: ["c12_54ranks_standard", "c12_54ranks_baroclinic_dycore_microphysics"]
-              target: ["savepoint_tests_mpi", "physics_savepoint_tests_mpi", "driver_savepoint_tests_mpi"]
-            exclude:
-              - experiment: "c12_54ranks_standard"
-                target: "physics_savepoint_tests_mpi"
-              - experiment: "c12_54ranks_standard"
-                target: "driver_savepoint_tests_mpi"
-              - experiment: "c12_54ranks_baroclinic_dycore_microphysics"
-                target: "savepoint_tests_mpi"
+              backend:
+                - numpy
+                - gt:cpu_ifirst
           context:
             - GCLOUD_ENCODED_KEY
           filters:
             tags:
               only: /^v.*/
+      - physics_savepoints:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+
+      - dycore_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+
+      - physics_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+
+      # - driver_savepoints_mpi:
+      #     matrix:
+      #       parameters:
+      #         backend:
+      #           - numpy
+      #           - gt:cpu_ifirst
+      #     context:
+      #       - GCLOUD_ENCODED_KEY
+      #     filters:
+      #       tags:
+      #         only: /^v.*/
+      # - make_savepoints:
+      #     matrix:
+      #       parameters:
+      #         backend: ["numpy", "gt:cpu_ifirst"]
+      #         experiment: ["c12_54ranks_standard", "c12_54ranks_baroclinic_dycore_microphysics"]
+      #         target: ["savepoint_tests_mpi", "physics_savepoint_tests_mpi", "driver_savepoint_tests_mpi"]
+      #       exclude:
+      #         - experiment: "c12_54ranks_standard"
+      #           target: "physics_savepoint_tests_mpi"
+      #         - experiment: "c12_54ranks_standard"
+      #           target: "driver_savepoint_tests_mpi"
+      #         - experiment: "c12_54ranks_baroclinic_dycore_microphysics"
+      #           target: "savepoint_tests_mpi"
+      #     context:
+      #       - GCLOUD_ENCODED_KEY
+      #     filters:
+      #       tags:
+      #         only: /^v.*/
       # - savepoints_mpi:
       #     matrix:
       #       parameters:
