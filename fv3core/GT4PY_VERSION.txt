@@ -1,1 +1,0 @@
-../GT4PY_VERSION.txt

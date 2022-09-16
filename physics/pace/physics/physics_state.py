@@ -6,7 +6,7 @@ import xarray as xr
 
 import pace.dsl.gt4py_utils as gt_utils
 import pace.util
-from pace.dsl.typing import FloatField
+from pace.dsl.typing import FloatField, FloatFieldIJ
 from pace.physics.stencils.microphysics import MicrophysicsState
 
 
@@ -169,6 +169,9 @@ class PhysicsState:
     prsik: FloatField = field(
         metadata={"name": "log_interface_pressure", "units": "Pa", "intent": "inout"}
     )
+    land: FloatFieldIJ = field(
+        metadata={"name": "land_mask", "units": "-", "intent": "in", "dimensions": "2D"}
+    )
     quantity_factory: InitVar[pace.util.QuantityFactory]
     active_packages: InitVar[List[str]]
 
@@ -200,6 +203,7 @@ class PhysicsState:
                 wmp=self.wmp,
                 dz=self.dz,
                 tendency_storage=tendency,
+                land=self.land,
             )
         else:
             self.microphysics = None
@@ -208,8 +212,12 @@ class PhysicsState:
     def init_zeros(cls, quantity_factory, active_packages: List[str]) -> "PhysicsState":
         initial_storages = {}
         for _field in fields(cls):
+            if len(_field.type.axes) == 2:
+                dims = [pace.util.X_DIM, pace.util.Y_DIM]
+            else:
+                dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
             initial_storages[_field.name] = quantity_factory.zeros(
-                [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM],
+                dims,
                 _field.metadata["units"],
                 dtype=float,
             ).storage
@@ -224,7 +232,10 @@ class PhysicsState:
         data_vars = {}
         for name, field_info in self.__dataclass_fields__.items():
             if isinstance(field_info.type, gtscript._FieldDescriptor):
-                dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
+                if len(field_info.type.axes) == 2:
+                    dims = [pace.util.X_DIM, pace.util.Y_DIM]
+                else:
+                    dims = [pace.util.X_DIM, pace.util.Y_DIM, pace.util.Z_DIM]
                 data_vars[name] = xr.DataArray(
                     gt_utils.asarray(getattr(self, name).data),
                     dims=dims,

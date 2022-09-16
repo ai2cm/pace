@@ -1,3 +1,0 @@
--r fv3core/requirements/requirements_container.txt
--r physics/requirements.txt
-dacite
