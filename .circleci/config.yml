@@ -382,7 +382,7 @@ jobs:
   test_mpi_54rank:
     docker:
       - image: cimg/python:3.8
-    resource_class: large
+    resource_class: xlarge
     working_directory: ~/repo
     steps:
       - checkout
