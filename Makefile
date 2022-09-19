@@ -27,6 +27,7 @@ CONTAINER_CMD?=docker
 SAVEPOINT_SETUP=pip3 list && python3 -m gt4py.gt_src_manager install
 
 VOLUMES ?=
+BUILD_FLAGS ?=
 
 ### Testing variables
 
@@ -83,6 +84,7 @@ endif
 
 _force_build:
 	DOCKER_BUILDKIT=1 docker build \
+		$(BUILD_FLAGS) \
 		-f $(CWD)/Dockerfile \
 		-t $(PACE_IMAGE) \
 		.

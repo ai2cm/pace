@@ -48,14 +48,13 @@ commands:
             echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
             gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
             gcloud auth configure-docker
-      - checkout
       - run:
           name: Update Submodules
           command: git submodule update --init
       - run:
           name: build image
           command: |
-            BUILD_ARGS="--progress=plain" DEV=n make build
+            .circleci/build_and_push_image.sh
   restore_gt_cache:
     description: "Restore .gt_cache"
     parameters:
