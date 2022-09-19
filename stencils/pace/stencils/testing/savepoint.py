@@ -48,7 +48,10 @@ class SavepointCase:
     @property
     def ds_in(self) -> xr.Dataset:
         return (
-            xr.open_dataset(os.path.join(self.data_dir, f"{self.savepoint_name}-In.nc"))
+            xr.open_dataset(
+                os.path.join(self.data_dir, f"{self.savepoint_name}-In.nc"),
+                engine="h5netcdf",
+            )
             .isel(rank=self.rank)
             .isel(savepoint=self.i_call)
         )
@@ -57,7 +60,8 @@ class SavepointCase:
     def ds_out(self) -> xr.Dataset:
         return (
             xr.open_dataset(
-                os.path.join(self.data_dir, f"{self.savepoint_name}-Out.nc")
+                os.path.join(self.data_dir, f"{self.savepoint_name}-Out.nc"),
+                engine="h5netcdf",
             )
             .isel(rank=self.rank)
             .isel(savepoint=self.i_call)
