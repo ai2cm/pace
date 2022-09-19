@@ -101,7 +101,6 @@ def test_fv_dynamics(
         ds,
         translate,
     )
-    print("stencils initialized")
     if calibrate_thresholds:
         thresholds = _calibrate_thresholds(
             initializer=initializer,
@@ -153,23 +152,24 @@ def _calibrate_thresholds(
     n_trials: int,
     factor: float,
 ):
-    state, grid_data = initializer.new_state()
     calibration = pace.util.ThresholdCalibrationCheckpointer(factor=factor)
-    dycore = fv3core.DynamicalCore(
-        comm=communicator,
-        grid_data=grid_data,
-        stencil_factory=stencil_factory,
-        damping_coefficients=damping_coefficients,
-        config=dycore_config,
-        phis=state.phis,
-        state=state,
-        checkpointer=calibration,
-        timestep=timedelta(seconds=dycore_config.dt_atmos),
-    )
     for i in range(n_trials):
         print(f"running calibration trial {i}")
-        trial_state, _ = initializer.new_state()
+        trial_state, grid_data = initializer.new_state()
         perturb(dycore_state_to_dict(trial_state))
+        # we need to initialize new DynamicalCore because halo updates bind
+        # to a particular state object, currently
+        dycore = fv3core.DynamicalCore(
+            comm=communicator,
+            grid_data=grid_data,
+            stencil_factory=stencil_factory,
+            damping_coefficients=damping_coefficients,
+            config=dycore_config,
+            phis=trial_state.phis,
+            state=trial_state,
+            checkpointer=calibration,
+            timestep=timedelta(seconds=dycore_config.dt_atmos),
+        )
         with calibration.trial():
             dycore.step_dynamics(trial_state)
     all_thresholds = communicator.comm.allgather(calibration.thresholds)

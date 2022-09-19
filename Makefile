@@ -128,6 +128,10 @@ physics_savepoint_tests_mpi: build
 test_main: build
 	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "pip3 list && cd $(PACE_PATH) && pytest $(TEST_ARGS) $(PACE_PATH)/tests/main"
 
+test_mpi:
+	TARGET=dycore $(MAKE) get_test_data
+	mpirun -n 6 $(MPIRUN_ARGS) python3 -m mpi4py -m pytest tests/mpi --data_path=$(EXPERIMENT_DATA)/dycore/
+
 test_mpi_54rank:
 	mpirun -n 54 $(MPIRUN_ARGS) python3 -m mpi4py -m pytest tests/mpi_54rank
 

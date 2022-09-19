@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 from gt4py.gtscript import (
     __INLINED,
@@ -15,6 +15,7 @@ from gt4py.gtscript import (
 
 import pace.dsl.gt4py_utils as utils
 import pace.fv3core.stencils.moist_cv as moist_cv
+import pace.util
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
 from pace.dsl.typing import FloatField, FloatFieldIJ, FloatFieldK
@@ -286,12 +287,17 @@ class LagrangianToEulerian:
         nq,
         pfull,
         tracers: Dict[str, Quantity],
+        checkpointer: Optional[pace.util.Checkpointer] = None,
     ):
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
             dace_compiletime_args=["tracers"],
         )
+        self._checkpointer = checkpointer
+        # this is only computed in init because Dace does not yet support
+        # this operation
+        self._call_checkpointer = checkpointer is not None
         grid_indexing = stencil_factory.grid_indexing
         if config.kord_tm >= 0:
             raise NotImplementedError("map ppm, untested mode where kord_tm >= 0")
@@ -557,6 +563,35 @@ class LagrangianToEulerian:
         Remap the deformed Lagrangian surfaces onto the reference, or "Eulerian",
         coordinate levels.
         """
+
+        if self._call_checkpointer:
+            self._checkpointer(
+                "Remapping-In",
+                pt=pt,
+                delp=delp,
+                delz=delz,
+                peln=peln,
+                u=u,
+                v=v,
+                w=w,
+                ua=ua,
+                va=va,
+                cappa=cappa,
+                q_con=q_con,
+                q_cld=q_cld,
+                pkz=pkz,
+                pk=pk,
+                pe=pe,
+                phis=hs,
+                te_2d=te0_2d,
+                ps=ps,
+                wsd=wsd,
+                omga=omga,
+                ak=ak,
+                bk=bk,
+                pfull=pfull,
+                dp1=dp1,
+            )
         # TODO: remove unused arguments (and commented code that references them)
         # TODO: can we trim ps or make it a temporary
         self._init_pe(pe, self._pe1, self._pe2, ptop)
@@ -692,3 +727,32 @@ class LagrangianToEulerian:
             )
         else:
             self._basic_adjust_divide_stencil(pkz, pt)
+
+        if self._call_checkpointer:
+            self._checkpointer(
+                "Remapping-Out",
+                pt=pt,
+                delp=delp,
+                delz=delz,
+                peln=peln,
+                u=u,
+                v=v,
+                w=w,
+                ua=ua,
+                va=va,
+                cappa=cappa,
+                q_con=q_con,
+                q_cld=q_cld,
+                pkz=pkz,
+                pk=pk,
+                pe=pe,
+                hs=hs,
+                te0_2d=te0_2d,
+                ps=ps,
+                wsd=wsd,
+                omga=omga,
+                ak=ak,
+                bk=bk,
+                pfull=pfull,
+                dp1=dp1,
+            )
