@@ -171,11 +171,12 @@ class TranslateDynCore(ParallelTranslate2PyState):
             config=DynamicalCoreConfig.from_namelist(self.namelist).acoustic_dynamics,
             pfull=inputs["pfull"],
             phis=inputs["phis"],
+            wsd=wsd.storage,
             state=state,
         )
         acoustic_dynamics.cappa.storage[:] = inputs["cappa"][:]
 
-        acoustic_dynamics(state, wsd=wsd, timestep=inputs["mdt"], n_map=state.n_map)
+        acoustic_dynamics(state, timestep=inputs["mdt"], n_map=state.n_map)
         # the "inputs" dict is not used to return, we construct a new dict based
         # on variables attached to `state`
         storages_only = {}
