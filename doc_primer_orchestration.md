@@ -47,7 +47,11 @@ DaCe has many configuration options. When executing, it drops or reads a `dace.c
 # Enable to debug GPU failures
 dace.config.Config.set("compiler", "cuda", "syncdebug", value=False)
 ```
-When set to `True`, this will drop a `sdfg_nan_checker`, which drops a NaN check after _every_ computation.
+When set to `True`, this will drop a few checks:
+- `sdfg_nan_checker`, which drops a NaN check after _every_ computation on field _written_.
+- `negative_qtracers_checker` drops a check for `tracer < -1e8` for every written field named one of the tracers
+- `negative_delp_checker` drops a check for `delp < -1e8` for every written field named `delp*`
+See `dsl/pace/dsl/dace/utils.py` for details.
 
 Build
 -----
@@ -62,6 +66,7 @@ Code goes through phases before being ready to execute:
 * `expand` will expand all the stencils to a fully workable SDFG (with tasklet filled)
 * another `simplify` is applied,
 * the memory that can is flagged to be `pooled`,
+* [OPTIONAL] Insert debugging passes
 * `code generation` into a single file for CPU or two for GPU (a `.cpp` and a `.cu`),
 * the SDFG is analysed for memory consumption.
 
