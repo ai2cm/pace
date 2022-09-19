@@ -26,7 +26,7 @@ performance_config:
 nx_tile: 128
 nz: 79
 dt_atmos: 60
-minutes: 120
+minutes: 2
 layout:
   - 1
   - 1
@@ -40,11 +40,7 @@ diagnostics_config:
     - pt
     - delp
     - qvapor
-    - qliquid
-    - qice
-    - qrain
-    - qsnow
-    - qgraupel
+  output_initial_state: true
 dycore_config:
   a_imp: 1.0
   beta: 0.
