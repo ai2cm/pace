@@ -317,8 +317,6 @@ class FrozenStencil(SDFGConvertible):
         )
         self.stencil_object: Optional[gt4py.StencilObject] = None
 
-        self._argument_names = tuple(inspect.getfullargspec(func).args)
-
         if "dace" in self.stencil_config.compilation_config.backend:
             dace.Config.set(
                 "default_build_folder",
@@ -336,39 +334,33 @@ class FrozenStencil(SDFGConvertible):
         # If we orchestrate, move the compilation at call time to make sure
         # disable_codegen do not lead to call to uncompiled stencils, which fails
         # silently
-        if self.stencil_config.dace_config.is_dace_orchestrated():
-            self.stencil_object = gtscript.lazy_stencil(
-                definition=func,
-                externals=externals,
-                **stencil_kwargs,
-                build_info=(build_info := {}),  # type: ignore
-            )
-        else:
-            compilation_config = stencil_config.compilation_config
-            if (
-                compilation_config.use_minimal_caching
-                and not compilation_config.is_compiling
-                and compilation_config.run_mode != RunMode.Run
-            ):
-                block_waiting_for_compilation(MPI.COMM_WORLD, compilation_config)
-
-            self.stencil_object = gtscript.stencil(
-                definition=func,
-                externals=externals,
-                **stencil_kwargs,
-                build_info=(build_info := {}),
+        self.stencil_object = gtscript.lazy_stencil(
+            definition=func,
+            externals=externals,
+            **stencil_kwargs,
+            build_info=(build_info := {}),  # type: ignore
+        )
+        if not self.stencil_config.dace_config.is_dace_orchestrated():
+            # Trigger compilation
+            do_block_waiting = (
+                self.stencil_config.compilation_config.use_minimal_caching
+                and not self.stencil_config.compilation_config.is_compiling
+                and self.stencil_config.compilation_config.run_mode != RunMode.Run
             )
 
-            if (
-                compilation_config.use_minimal_caching
-                and compilation_config.is_compiling
-                and compilation_config.run_mode != RunMode.Run
-            ):
+            if do_block_waiting:
+                block_waiting_for_compilation(
+                    MPI.COMM_WORLD, self.stencil_config.compilation_config
+                )
+
+            # Referencing the implementation attribute triggers compilation
+            self.stencil_object.implementation
+
+            if do_block_waiting:
                 unblock_waiting_tiles(MPI.COMM_WORLD)
 
-        self._timing_collector.build_info[
-            _stencil_object_name(self.stencil_object)
-        ] = build_info
+        obj_name = _stencil_object_name(self.stencil_object)
+        self._timing_collector.build_info[obj_name] = build_info
         field_info = self.stencil_object.field_info
 
         self._field_origins: Dict[

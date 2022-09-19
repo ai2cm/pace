@@ -255,12 +255,18 @@ class StencilConfig(Hashable):
             "name": func.__module__ + "." + func.__name__,
             **self.backend_opts,
         }
+
         if not self.is_gpu_backend:
             kwargs.pop("device_sync", None)
+
         if skip_passes or kwargs.get("skip_passes", ()):
             kwargs["oir_pipeline"] = StencilConfig._get_oir_pipeline(
                 list(kwargs.pop("skip_passes", ())) + list(skip_passes)  # type: ignore
             )
+
+        if self.compilation_config.run_mode == RunMode.Run:
+            kwargs["raise_if_not_cached"] = True
+
         return kwargs
 
     @property
