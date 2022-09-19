@@ -130,9 +130,9 @@ physics_savepoint_tests_mpi: build
 test_main: build
 	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && pytest $(TEST_ARGS) $(PACE_PATH)/tests/main"
 
-test_savepoints:  ## top level savepoint tests
+test_savepoint:  ## top level savepoint tests
 	TARGET=dycore $(MAKE) get_test_data
-	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m mpi4py -m pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(PACE_PATH)/tests/mpi"
+	$(CONTAINER_CMD) $(CONTAINER_FLAGS) bash -c "$(SAVEPOINT_SETUP) && cd $(PACE_PATH) && $(MPIRUN_CALL) python -m mpi4py -m pytest --data_path=$(EXPERIMENT_DATA_RUN)/dycore/ $(TEST_ARGS) $(PACE_PATH)/tests/savepoint"
 
 test_mpi_54rank:
 	mpirun -n 54 $(MPIRUN_ARGS) python3 -m mpi4py -m pytest tests/mpi_54rank

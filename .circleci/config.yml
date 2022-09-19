@@ -97,7 +97,7 @@ commands:
         description: "make target to run"
         type: enum
         enum:
-          - "test_savepoints"
+          - "test_savepoint"
           - "savepoint_tests"
           - "savepoint_tests_mpi"
           - "physics_savepoint_tests"
@@ -396,7 +396,7 @@ jobs:
             . venv/bin/activate
             mpirun -n 54 --oversubscribe --mca btl_vader_single_copy_mechanism none python3 -m mpi4py -m pytest tests/mpi_54rank
 
-  test_savepoints:
+  test_savepoint:
     machine:
       image: ubuntu-2004:202111-02
       resource_class: large
@@ -407,7 +407,7 @@ jobs:
       - make_savepoints:
           backend: numpy
           experiment: c12_6ranks_standard
-          target: test_savepoints
+          target: test_savepoint
           num_ranks: 6
 
   test_notebooks:
@@ -523,7 +523,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - test_savepoints:
+      - test_savepoint:
           context:
             - GCLOUD_ENCODED_KEY
           filters:
