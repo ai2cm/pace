@@ -402,10 +402,12 @@ jobs:
       - image: cimg/python:3.8
     resource_class: large
     working_directory: ~/repo
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
       - checkout
       - make_savepoints:
-          backend: gt:cpu_ifirst
+          backend: numpy
           experiment: c12_6ranks_standard
           target: test_savepoints
           num_ranks: 6
