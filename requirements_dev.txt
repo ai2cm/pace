@@ -4,7 +4,6 @@ pytest-regressions
 pytest-profiling
 pytest-cov
 mpi4py
-h5netcdf
 xarray
 zarr
 netCDF4

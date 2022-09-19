@@ -50,7 +50,7 @@ class SavepointCase:
         return (
             xr.open_dataset(
                 os.path.join(self.data_dir, f"{self.savepoint_name}-In.nc"),
-                engine="h5netcdf",
+                engine="netcdf4",
             )
             .isel(rank=self.rank)
             .isel(savepoint=self.i_call)
@@ -61,7 +61,7 @@ class SavepointCase:
         return (
             xr.open_dataset(
                 os.path.join(self.data_dir, f"{self.savepoint_name}-Out.nc"),
-                engine="h5netcdf",
+                engine="netcdf4",
             )
             .isel(rank=self.rank)
             .isel(savepoint=self.i_call)

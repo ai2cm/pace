@@ -155,7 +155,7 @@ def _savepoint_cases(
 ):
     return_list = []
     ds_grid: xr.Dataset = xr.open_dataset(
-        os.path.join(data_path, "Grid-Info.nc"), engine="h5netcdf"
+        os.path.join(data_path, "Grid-Info.nc"), engine="netcdf4"
     ).isel(savepoint=0)
     for rank in ranks:
         grid = TranslateGrid(
@@ -175,7 +175,7 @@ def _savepoint_cases(
                 test_name, grid, namelist, stencil_factory
             )
             n_calls = xr.open_dataset(
-                os.path.join(data_path, f"{test_name}-In.nc"), engine="h5netcdf"
+                os.path.join(data_path, f"{test_name}-In.nc"), engine="netcdf4"
             ).dims["savepoint"]
             for i_call in range(n_calls):
                 return_list.append(
