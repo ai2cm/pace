@@ -396,6 +396,19 @@ jobs:
             . venv/bin/activate
             mpirun -n 54 --oversubscribe --mca btl_vader_single_copy_mechanism none python3 -m mpi4py -m pytest tests/mpi_54rank
 
+  test_savepoints:
+    docker:
+      - image: cimg/python:3.8
+    resource_class: large
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - make_savepoints:
+          backend: gt:cpu_ifirst
+          experiment: c12_6ranks_standard
+          target: test_mpi
+          num_ranks: 6
+
   test_notebooks:
     docker:
       - image: gcr.io/vcm-ml/pace_notebook_examples
@@ -503,6 +516,12 @@ workflows:
             parameters:
               backend:
                 - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - test_savepoints:
           context:
             - GCLOUD_ENCODED_KEY
           filters:
