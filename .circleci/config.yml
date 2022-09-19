@@ -98,6 +98,7 @@ commands:
         description: "make target to run"
         type: enum
         enum:
+          - "test_savepoints"
           - "savepoint_tests"
           - "savepoint_tests_mpi"
           - "physics_savepoint_tests"
@@ -406,7 +407,7 @@ jobs:
       - make_savepoints:
           backend: gt:cpu_ifirst
           experiment: c12_6ranks_standard
-          target: test_mpi
+          target: test_savepoints
           num_ranks: 6
 
   test_notebooks:
