@@ -53,15 +53,13 @@ def _filter_all_maps(
     sdfg: dace.SDFG,
     whitelist: List[str] = None,
     blacklist: List[str] = None,
+    skyp_dynamic_memlet=True,
 ) -> _FILTER_MAP_TYPE_HINT:
     """
     Grab all maps, filter by variable name (either black or whitelist)
     """
 
-    # Gra
-    checks: List[
-        Tuple[dace.SDFGState, dace.nodes.AccessNode, gr.MultiConnectorEdge[dace.Memlet]]
-    ] = []
+    checks: _FILTER_MAP_TYPE_HINT = []
     allmaps = [
         (me, state)
         for me, state in sdfg.all_nodes_recursive()
@@ -79,15 +77,16 @@ def _filter_all_maps(
                 node = sdutil.get_last_view_node(state, e.dst)
                 # Whitelist
                 if whitelist is not None:
-                    if any([varname not in node.data for varname in whitelist]):
+                    if all([varname not in node.data for varname in whitelist]):
                         continue
                 # Blacklist
                 if blacklist is not None:
                     if any([varname in node.data for varname in blacklist]):
                         continue
-                if state.memlet_path(e)[
-                    0
-                ].data.dynamic:  # Skip dynamic (region) outputs
+                if (
+                    skyp_dynamic_memlet and state.memlet_path(e)[0].data.dynamic
+                ):  # Skip dynamic (region) outputs
+                    print(f"Skip {node.data} (dynamic)")
                     continue
 
                 checks.append((state, node, e))
@@ -140,7 +139,7 @@ def _check_node(
         inputs={f"{c_varname}": dace.Memlet.simple(newnode.data, index_expr)},
         code=f"""
         if ({check_c_code}) {{
-            printf("{node.data} value {comment_c_code} at line %d, index {index_printf}\\n", __LINE__, {index_expr});
+            printf("{node.data} value (%f) {comment_c_code} at line %d, index {index_printf}\\n", {c_varname}, __LINE__, {index_expr});
             {'assert(0);' if assert_out else ''}
         }}
         """,  # noqa: E501
@@ -159,11 +158,22 @@ def negative_delp_checker(sdfg: dace.SDFG):
     """
     Adds a negative check on every variable name containing "delp"
     """
-    allmaps_filtered = _filter_all_maps(sdfg, whitelist=["delp"])
+    allmaps_filtered = _filter_all_maps(
+        sdfg,
+        whitelist=["delp"],
+        skyp_dynamic_memlet=False,
+    )
 
     for state, node, e in allmaps_filtered:
         _check_node(
-            state, node, e, "neg_delp_check", "_inp", "_inp < 0", "delp* is negative"
+            state,
+            node,
+            e,
+            "neg_delp_check",
+            "_inp",
+            "_inp < 0",
+            "delp* is negative",
+            assert_out=True,
         )
 
     logger.info(f"Added {len(allmaps_filtered)} delp* < 0 checks")
@@ -186,6 +196,7 @@ def negative_qtracers_checker(sdfg: dace.SDFG):
             "qsgs_tke",
             "qcld",
         ],
+        skyp_dynamic_memlet=False,
     )
 
     for state, node, e in allmaps_filtered:
@@ -195,8 +206,9 @@ def negative_qtracers_checker(sdfg: dace.SDFG):
             e,
             "neg_tracers_check",
             "_inp",
-            "_inp < 0",
+            "_inp < -1e-8",
             "tracer is negative",
+            assert_out=True,
         )
 
     logger.info(f"Added {len(allmaps_filtered)} tracer < 0 checks")

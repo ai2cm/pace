@@ -251,7 +251,9 @@ def _call_sdfg(
     ):
         return _build_sdfg(daceprog, sdfg, config, args, kwargs)
     elif config.get_orchestrate() == DaCeOrchestration.Run:
-        return _run_sdfg(daceprog, config, args, kwargs)
+        with DaCeProgress(config, "Run"):
+            res = _run_sdfg(daceprog, config, args, kwargs)
+        return res
     else:
         raise NotImplementedError(
             f"Mode {config.get_orchestrate()} unimplemented at call time"
