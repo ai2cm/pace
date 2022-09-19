@@ -26,7 +26,6 @@ echo $BUILD_IMAGE
 BUILD_FLAGS=" \
     --secret id=gcp,src=$GOOGLE_APPLICATION_CREDENTIALS \
     --build-arg BUILDKIT_INLINE_CACHE=1 \
-    --build-arg COMMIT_SHA_ARG="$(git rev-parse HEAD)" \
     --progress=plain \
     --cache-from $CACHE_IMAGE \
 "
@@ -35,4 +34,5 @@ PACE_IMAGE="$BUILD_IMAGE" DEV=n BUILD_FLAGS="$BUILD_FLAGS" make build
 
 echo "pushing tagged images $CIRCLE_SHA1"
 docker push $BUILD_IMAGE
+docker tag $BUILD_IMAGE $CACHE_IMAGE
 docker push $CACHE_IMAGE
