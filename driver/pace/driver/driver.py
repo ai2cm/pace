@@ -97,6 +97,7 @@ class DriverConfig:
     )
     grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
 
+
     days: int = 0
     hours: int = 0
     minutes: int = 0
@@ -291,6 +292,10 @@ class Driver:
             self.state = self.config.initialization.get_driver_state(
                 quantity_factory=self.quantity_factory, communicator=communicator
             )
+            print("Ajda")
+            print("Got driver state")
+
+
             self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
                 comm=communicator,

@@ -184,6 +184,9 @@ class TropicalCycloneConfig(Initializer):
         tendency_state = TendencyState.init_zeros(
             quantity_factory=quantity_factory,
         )
+        print("Ajda")
+        print("Finished TropicalCycloneConfig")
+        exit()
         return DriverState(
             dycore_state=dycore_state,
             physics_state=physics_state,
