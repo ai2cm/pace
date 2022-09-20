@@ -149,27 +149,20 @@ def prepend_label(filename, label=None):
 def load_partial_state_from_restart_file(
     file, restart_properties: RestartProperties, only_names=None
 ):
-
     ds = xr.open_dataset(file).isel(Time=0).drop_vars("Time")
-
     state = map_keys(ds.data_vars, _get_restart_standard_names(restart_properties))
-
     state = _apply_restart_metadata(state, restart_properties)
-
     if only_names is None:
         only_names = state.keys()
-
     state = {  # remove any variables that don't have restart metadata
         name: value
         for name, value in state.items()
         if ((name == "time") or ("units" in value.attrs)) and name in only_names
     }
-
     for name, array in state.items():
         if name != "time":
             array.load()
             state[name] = Quantity.from_data_array(array)
-
     return state
 
 
