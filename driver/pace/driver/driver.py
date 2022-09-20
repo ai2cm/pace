@@ -103,7 +103,6 @@ class DriverConfig:
     )
     grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
     
-
     days: int = 0
     hours: int = 0
     minutes: int = 0
