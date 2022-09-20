@@ -6,18 +6,20 @@ import numpy as np
 
 @dataclasses.dataclass
 class GridConfig:
-    stretch_mode: bool = False
-    stretch_factor: Optional[np.float_] = None
-    lon_target: Optional[np.float_] = None
-    lat_target: Optional[np.float_] = None
+    stretch_grid: bool = False
+    stretch_factor: Optional[float] = None
+    lon_target: Optional[float] = None
+    lat_target: Optional[float] = None
+    use_tc_vertical_grid: bool = False
+    tc_ks: int = 0
 
     def __post_init__(self):
-        if self.stretch_mode:
+        if self.stretch_grid:
             if not self.stretch_factor:
                 raise ValueError(
                     "Stretch_mode is true, but no stretch_factor is provided."
                 )
             if not self.lon_target:
-                raise ValueError("Stretch_mode is true, but no lon_target is provided.")
+                raise ValueError("Stretch_grid is true, but no lon_target is provided.")
             if not self.lat_target:
-                raise ValueError("Stretch_mode is true, but no lat_target is provided.")
+                raise ValueError("Stretch_grid is true, but no lat_target is provided.")
