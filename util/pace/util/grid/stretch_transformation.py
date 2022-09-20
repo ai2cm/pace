@@ -13,15 +13,13 @@ from pace.util import Quantity
 
 def direct_transform(
     *,
-    lon: Union[Quantity, np.ndarray, cp.ndarray],
-    lat: Union[Quantity, np.ndarray, cp.ndarray],
+    lon,
+    lat,
     stretch_factor: np.float_,
     lon_target: np.float_,
     lat_target: np.float_,
     numpy_module,
-) -> Tuple[
-    Union[np.ndarray, Quantity, cp.ndarray], Union[np.ndarray, Quantity, cp.ndarray]
-]:
+):
     """
     The direct_transform subroutine from fv_grid_utils.F90.
     Takes in latitude and longitude in radians.
@@ -30,16 +28,16 @@ def direct_transform(
     centeres on lon_target, lat_target.
 
     Args:
-        lon (in) in radians
-        lat (in) in radians
+        lon (in) in radians # Quantity or ndarray (cupy or numpy)
+        lat (in) in radians # Quantity or ndarray (cupy or numpy)
         stretch_factor (in) stretch_factor (e.g. 3.0 means that the resolution
             on tile 6 becomes 3 times as fine)
         lon_target (in) in degrees (from namelist)
         lat_target (in) in degrees (from namelist)
 
     Returns:
-        lon_transform (out) in radians
-        lat_transform (out) in radians
+        lon_transform (out) in radians # Quantity or ndarray (cupy or numpy)
+        lat_transform (out) in radians # Quantity or ndarray (cupy or numpy)
     """
 
     if isinstance(lon, Quantity):
