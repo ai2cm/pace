@@ -9,7 +9,7 @@ stencil_config:
     device_sync: false
 initialization:
   config:
-    path: /home/ajdas/pace/restart_data/v5.0
+    path: gs://vcm-fv3config/data/initial_conditions/c128_6ranks_tc
     start_time: 2020-08-26 12:00:01
     fortran_data: true
   type: restart
