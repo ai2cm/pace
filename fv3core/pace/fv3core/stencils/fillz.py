@@ -130,7 +130,7 @@ class FillNegativeTracerValues:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["tracers"],
+            dace_compiletime_args=["tracers"],
         )
         self._nq = int(nq)
         self._fix_tracer_stencil = stencil_factory.from_origin_domain(

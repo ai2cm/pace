@@ -81,6 +81,8 @@ class TranslatePhysicsFortranData2Py(TranslateFortranData2Py):
             if n_dim == 3:
                 var_reshape = np.reshape(data[:, 0, :], (cn, cn, npz))
                 rearranged = var_reshape[:, :, :]
+            elif n_dim == 2:
+                rearranged = np.reshape(data[:, :], (cn, cn))
             elif len(data.flatten()) == 1:
                 rearranged = data[0]
             else:

@@ -290,7 +290,7 @@ class LagrangianToEulerian:
         orchestrate(
             obj=self,
             config=stencil_factory.config.dace_config,
-            dace_constant_args=["tracers"],
+            dace_compiletime_args=["tracers"],
         )
         grid_indexing = stencil_factory.grid_indexing
         if config.kord_tm >= 0:
