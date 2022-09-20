@@ -5,9 +5,11 @@ from typing import List, Tuple
 
 import dacite
 import f90nml
+import pytest
 import xarray as xr
 import yaml
 
+import pace.driver
 import pace.dsl
 import pace.util
 from pace import fv3core
@@ -108,8 +110,8 @@ def test_fv_dynamics(
             stencil_factory=stencil_factory,
             damping_coefficients=grid.damping_coefficients,
             dycore_config=dycore_config,
-            n_trials=10,
-            factor=10.0,
+            n_trials=5,
+            factor=2.0,
         )
         print(f"calibrated thresholds: {thresholds}")
         if communicator.rank == 0:
@@ -209,3 +211,82 @@ def dycore_state_to_dict(state: DycoreState):
         for name in dir(state)
         if isinstance(getattr(state, name), pace.util.Quantity)
     }
+
+
+@pytest.mark.skip()
+def test_driver(
+    backend: str, data_path: str, calibrate_thresholds: bool, threshold_path: str
+):
+    threshold_filename = os.path.join(threshold_path, "driver.yaml")
+    comm = pace.util.MPIComm()
+    driver_config = prepare_serialized_config(backend=backend, data_path=data_path)
+    if calibrate_thresholds:
+        thresholds = _calibrate_driver_thresholds(
+            driver_config,
+            comm=comm,
+            n_trials=10,
+            factor=10.0,
+        )
+        print(f"calibrated thresholds: {thresholds}")
+        if comm.Get_rank() == 0:
+            with open(threshold_filename, "w") as f:
+                yaml.safe_dump(dataclasses.asdict(thresholds), f)
+        comm.barrier()
+
+    with open(threshold_filename, "r") as f:
+        data = yaml.safe_load(f)
+        thresholds = dacite.from_dict(
+            data_class=pace.util.SavepointThresholds,
+            data=data,
+            config=dacite.Config(strict=True),
+        )
+    validation = pace.util.ValidationCheckpointer(
+        savepoint_data_path=data_path, thresholds=thresholds, rank=comm.Get_rank()
+    )
+
+    driver = pace.driver.Driver(config=driver_config, checkpointer=validation)
+    with validation.trial():
+        try:
+            driver.step_all()
+        finally:
+            driver.cleanup()
+
+
+def prepare_serialized_config(backend: str, data_path: str) -> pace.driver.DriverConfig:
+    config = pace.driver.DriverConfig(
+        stencil_config=pace.dsl.StencilConfig(
+            backend=backend,
+            rebuild=False,
+            validate_args=True,
+            format_source=False,
+            device_sync=False,
+        ),
+        initialization_type="serialbox",
+        initialization_config=pace.driver.SerialboxConfig(
+            path=data_path,
+            serialized_grid=True,
+        ),
+        dycore_config=pace.fv3core.DynamicalCoreConfig(),
+        physics_config=pace.physics.PhysicsConfig(),
+    )
+
+
+def _calibrate_driver_thresholds(
+    driver_config: pace.driver.DriverConfig,
+    comm: pace.util.Comm,
+    n_trials: int,
+    factor: float,
+) -> pace.util.SavepointThresholds:
+    calibration = pace.util.ThresholdCalibrationCheckpointer(factor=factor)
+    for i in range(n_trials):
+        print(f"running calibration trial {i}")
+        driver = pace.driver.Driver(config=driver_config)
+        perturb(dycore_state_to_dict(driver.state.dycore_state))
+        with calibration.trial():
+            try:
+                driver.step_all()
+            finally:
+                driver.cleanup()
+    all_thresholds = comm.allgather(calibration.thresholds)
+    thresholds = merge_thresholds(all_thresholds)
+    return thresholds

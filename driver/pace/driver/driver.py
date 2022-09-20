@@ -206,6 +206,7 @@ class Driver:
     def __init__(
         self,
         config: DriverConfig,
+        checkpointer: pace.util.Checkpointer = pace.util.NullCheckpointer(),
     ):
         """
         Initializes a pace Driver.
@@ -301,6 +302,7 @@ class Driver:
                 timestep=self.config.timestep,
                 phis=self.state.dycore_state.phis,
                 state=self.state.dycore_state,
+                checkpointer=checkpointer,
             )
 
             if not config.dycore_only and not config.disable_step_physics:
@@ -309,6 +311,7 @@ class Driver:
                     grid_data=self.state.grid_data,
                     namelist=self.config.physics_config,
                     active_packages=["microphysics"],
+                    checkpointer=checkpointer,
                 )
             else:
                 # Make sure those are set to None to raise any issues

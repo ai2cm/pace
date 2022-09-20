@@ -5,6 +5,7 @@ from gt4py.gtscript import BACKWARD, FORWARD, PARALLEL, computation, exp, interv
 from typing_extensions import Literal
 
 import pace.dsl.gt4py_utils as utils
+import pace.util
 import pace.util.constants as constants
 from pace.dsl.dace.orchestration import orchestrate
 from pace.dsl.stencil import StencilFactory
@@ -175,6 +176,7 @@ class Physics:
         grid_data: GridData,
         namelist: PhysicsConfig,
         active_packages: List[Literal[PHYSICS_PACKAGES]],
+        checkpointer: pace.util.Checkpointer = pace.util.NullCheckpointer(),
     ):
         orchestrate(
             obj=self,

@@ -7,7 +7,12 @@ from .comm import (
 )
 from .diagnostics import Diagnostics, DiagnosticsConfig
 from .driver import Driver, DriverConfig
-from .initialization import BaroclinicConfig, PredefinedStateConfig, RestartConfig
+from .initialization import (
+    BaroclinicConfig,
+    PredefinedStateConfig,
+    RestartConfig,
+    SerialboxConfig,
+)
 from .performance import PerformanceConfig
 from .registry import Registry
 from .restart import Restart
