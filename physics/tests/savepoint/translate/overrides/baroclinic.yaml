@@ -16,6 +16,8 @@ GFSPhysicsDriver:
     cuda_no_fma: true
   - backend: gt:gpu
     cuda_no_fma: true
+  - backend: dace:gpu
+    cuda_no_fma: true
 
 # On GPU u/v wind tendencies seems to diverge in computation from numpy/fortran
 # equivalent due to the use of fused multiply-add in the update stencil.
