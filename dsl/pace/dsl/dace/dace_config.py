@@ -126,7 +126,7 @@ class DaceConfig:
             )
 
             # Enable to debug GPU failures
-            dace.config.Config.set("compiler", "cuda", "syncdebug", value=False)
+            dace.config.Config.set("compiler", "cuda", "syncdebug", value=True)
 
         # attempt to kill the dace.conf to avoid confusion
         if dace.config.Config._cfg_filename:

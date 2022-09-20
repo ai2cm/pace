@@ -179,6 +179,34 @@ def negative_delp_checker(sdfg: dace.SDFG):
     logger.info(f"Added {len(allmaps_filtered)} delp* < 0 checks")
 
 
+def hunt_qliquid_neg_value(sdfg: dace.SDFG):
+    """
+    Adds a negative check on every tracer
+    """
+    allmaps_filtered = _filter_all_maps(
+        sdfg,
+        whitelist=[
+            "tz",
+            "t0",
+        ],
+        skyp_dynamic_memlet=False,
+    )
+
+    for state, node, e in allmaps_filtered:
+        _check_node(
+            state,
+            node,
+            e,
+            "tz_t0_print",
+            "_inp",
+            "__i0 == 0 && __i1 == 0 && __i2 == 60",
+            "tz/t0 prints at 0,0,60",
+            assert_out=False,
+        )
+
+    logger.info(f"Added {len(allmaps_filtered)} tz/t0 prints at 0,0,60")
+
+
 def negative_qtracers_checker(sdfg: dace.SDFG):
     """
     Adds a negative check on every tracer
