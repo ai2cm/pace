@@ -394,7 +394,7 @@ jobs:
           name: run tests
           command: |
             mpirun -n 6 --mca btl_vader_single_copy_mechanism none \
-              python3 -m mpi4py -m pace.driver.run examples/configs/baroclinic_c12.yaml
+              python3 -m mpi4py -m pace.driver.run examples/configs/baroclinic_c12_dacecpu.yaml
 
   test_main:
     docker:
@@ -554,6 +554,10 @@ workflows:
             tags:
               only: /^v.*/
       - test_driver:
+          filters:
+            tags:
+              only: /^v.*/
+      - test_driver_daceorch:
           filters:
             tags:
               only: /^v.*/
