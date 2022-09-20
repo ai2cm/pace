@@ -10,7 +10,6 @@ from mpi4py import MPI
 
 from pace.driver.comm import NullCommConfig
 from pace.driver.run import Driver, DriverConfig
-from pace.util.null_comm import NullComm
 
 
 def parse_args():
