@@ -705,7 +705,8 @@ class AcousticDynamics:
                 ucd=state.uc,
                 vcd=state.vc,
                 wd=state.w,
-                delpcd=self.cgrid_shallow_water_lagrangian_dynamics.delpc,
+                # delpc is a temporary and not a variable in D_SW savepoint
+                delpcd=self._vt,
                 delpd=state.delp,
                 ud=state.u,
                 vd=state.v,
@@ -727,7 +728,7 @@ class AcousticDynamics:
                 ucd=state.uc,
                 vcd=state.vc,
                 wd=state.w,
-                delpcd=self.cgrid_shallow_water_lagrangian_dynamics.delpc,
+                delpcd=self._vt,
                 delpd=state.delp,
                 ud=state.u,
                 vd=state.v,
