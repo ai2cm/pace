@@ -34,6 +34,7 @@ def direct_transform(
             on tile 6 becomes 3 times as fine)
         lon_target (in) in degrees (from namelist)
         lat_target (in) in degrees (from namelist)
+        np: numpy or cupy module
 
     Returns:
         lon_transform (out) in radians
