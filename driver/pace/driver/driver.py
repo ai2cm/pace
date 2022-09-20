@@ -381,16 +381,16 @@ class Driver:
         )
         grid = metric_terms.grid
         if self.stencil_factory.config.is_gpu_backend:
-            numpy_module = cp
+            np = cp
         else:
-            numpy_module = np
+            np = np
         lon_transform, lat_transform = pace.util.grid.direct_transform(
             lon=grid.data[:, :, 0],
             lat=grid.data[:, :, 1],
             stretch_factor=self.config.grid_config.stretch_factor,
             lon_target=self.config.grid_config.lon_target,
             lat_target=self.config.grid_config.lat_target,
-            numpy_module=numpy_module,
+            np=np,
         )
         grid.data[:, :, 0] = lon_transform[:]
         grid.data[:, :, 1] = lat_transform[:]
