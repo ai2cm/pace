@@ -61,3 +61,18 @@ UpdateDzD:
     max_error: 5e-10
     ignore_near_zero_errors:
       - wsd
+
+Microph:
+  - backend: numpy
+    max_error: 2e-9
+  - backend: gt:cpu_ifirst
+    max_error: 1e-12
+  - backend: cuda
+    cuda_no_fma: true
+  - backend: gt:gpu
+    max_error: 2.2e-8
+    cuda_no_fma: true
+    ignore_near_zero_errors:
+      mph_ql_dt: 1e-8
+      mph_qr_dt: 1e-9
+      mph_qg_dt: 1e-18
