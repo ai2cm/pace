@@ -146,6 +146,10 @@ class TropicalCycloneConfig(Initializer):
         metric_terms = pace.util.grid.MetricTerms(
             quantity_factory=quantity_factory, communicator=communicator
         )
+        ak_tmp = metric_terms.ak
+        bk_tmp = metric_terms.bk
+        metric_terms._ak.data[:] = tc_init._define_ak()
+        metric_terms._bk.data[:] = tc_init._define_bk()
 
         gridconfig = {
             "stretch_factor": 3.0,
@@ -184,9 +188,9 @@ class TropicalCycloneConfig(Initializer):
         tendency_state = TendencyState.init_zeros(
             quantity_factory=quantity_factory,
         )
-        print("Ajda")
-        print("Finished TropicalCycloneConfig")
-        exit()
+
+        print("delp: ", dycore_state.delp.data[:, :, -2].min(), dycore_state.pt.data[:, :, -2].max())
+
         return DriverState(
             dycore_state=dycore_state,
             physics_state=physics_state,

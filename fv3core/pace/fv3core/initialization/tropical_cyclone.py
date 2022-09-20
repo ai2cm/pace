@@ -12,8 +12,7 @@ from pace.util.grid.gnomonic import (
 
 from .baroclinic import (
     empty_numpy_dycore_state,
-    initialize_delp,
-    initialize_edge_pressure,
+    initialize_kappa_pressures,
     local_compute_size,
 )
 
@@ -40,10 +39,10 @@ def init_tc_state(
     numpy_state = empty_numpy_dycore_state(shape)
 
     # Initializing to values the Fortran does for easy comparison
-    numpy_state.delp[:nhalo, :nhalo] = 0.0
-    numpy_state.delp[:nhalo, nhalo + ny :] = 0.0
-    numpy_state.delp[nhalo + nx :, :nhalo] = 0.0
-    numpy_state.delp[nhalo + nx :, nhalo + ny :] = 0.0
+    # numpy_state.delp[:nhalo, :nhalo] = 0.0
+    # numpy_state.delp[:nhalo, nhalo + ny :] = 0.0
+    # numpy_state.delp[nhalo + nx :, :nhalo] = 0.0
+    # numpy_state.delp[nhalo + nx :, nhalo + ny :] = 0.0
     #numpy_state.pe[:] = 0.0
     #numpy_state.phis[:] = 1.0e30
 
@@ -75,11 +74,12 @@ def init_tc_state(
 
     # TODO restart file had different ak, bk. Figure out where they came from;
     # for now, take from metric terms
-    ak = metric_terms.ak.data
-    bk = metric_terms.bk.data
-    delp = initialize_delp(ps, ak, bk)
-    pe = np.zeros(shape)
-    pe[:, :, :-1] = initialize_edge_pressure(delp, tc_properties["ptop"])
+    ak = _define_ak()
+    bk = _define_bk()
+    delp = _initialize_delp(ak, bk, ps, shape)
+    pe = _initialize_edge_pressure(delp, tc_properties["ptop"], shape)
+    peln = np.log(pe)
+    pk, pkz = initialize_kappa_pressures(pe, peln, tc_properties["ptop"])
 
     pe_u = _initialize_edge_pressure_cgrid(ak, bk, ps_u, shape, tc_properties["ptop"])
     pe_v = _initialize_edge_pressure_cgrid(ak, bk, ps_v, shape, tc_properties["ptop"])
@@ -92,23 +92,23 @@ def init_tc_state(
     qvapor, pt = _initialize_qvapor_temperature(
         metric_terms, pe, ps, tc_properties, calc, shape
     )
-    delz, w = _initialize_delz_w(pe, pt, qvapor, tc_properties, shape)
+    delz, w = _initialize_delz_w(pe, ps, pt, qvapor, tc_properties, calc, shape)
 
     # numpy_state.cxd[:] =
     # numpy_state.cyd[:] =
-    numpy_state.delp[:, :, :-1] = delp
+    numpy_state.delp[:] = delp
     numpy_state.delz[:] = delz
     # numpy_state.diss_estd[:] =
     # numpy_state.mfxd[:] =
     # numpy_state.mfyd[:] =
     # numpy_state.omga[:] =
     numpy_state.pe[:] = pe
-    numpy_state.peln[:] = np.log(pe)
+    numpy_state.peln[:] = peln
     numpy_state.phis[:] = ps_output["phis"]
-    # numpy_state.pk[:] =
-    # numpy_state.pkz[:] =
-    numpy_state.ps[:] = pe[:, :, -2]
-    #numpy_state.pt[:] = pt
+    numpy_state.pk[:] = pk
+    numpy_state.pkz[:] = pkz
+    numpy_state.ps[:] = pe[:, :, -1]
+    numpy_state.pt[:] = pt
     # numpy_state.qcld[:] =
     # numpy_state.qgraupel[:] =
     # numpy_state.qice[:] =
@@ -124,7 +124,7 @@ def init_tc_state(
     # numpy_state.uc[:] =
     numpy_state.v[:] = vd
     numpy_state.va[:] = va
-    # numpy_state.uc[:] =
+    # numpy_state.vc[:] =
     numpy_state.w[:] = w
 
     state = DycoreState.init_from_numpy_arrays(
@@ -168,16 +168,17 @@ def _calculate_distance_from_tc_center(pe_v, ps_v, muv, calc, tc_properties):
 
 def _calculate_pt_height(height, qvapor, r, tc_properties, calc):
 
-    aa = calc["t00"] - tc_properties["gamma"] * height
-    bb = (1.0 + constants.ZVIR * qvapor)[:, :, :-1]
-    cc = np.exp((height / tc_properties["zp"]) ** tc_properties["exppz"]) * np.exp(
-        (r[:, :, None] / tc_properties["rp"]) ** tc_properties["exppr"]
-    )
-    dd = 1.0 - tc_properties["p_ref"] / tc_properties["dp"] * cc
-    ee = constants.GRAV * tc_properties["zp"] ** tc_properties["exppz"] * dd
-    ff = 1.0 + tc_properties["exppz"] * constants.RDGAS * aa * height / ee
+    aa = (height / tc_properties["zp"])
+    bb = np.exp(aa ** tc_properties["exppz"])
+    cc = (r / tc_properties["rp"])
+    dd = np.exp(cc ** tc_properties["exppr"])
+    ee = (1. - tc_properties["p_ref"] / tc_properties["dp"] * dd[:, :, None] * bb)
+    ff = (constants.GRAV * tc_properties["zp"]**tc_properties["exppz"] * ee)
+    gg = (calc["t00"] - tc_properties["gamma"] * height)
+    hh = (1. + tc_properties["exppz"] * constants.RDGAS * gg * height / ff)
+    ii = (1. + constants.ZVIR * qvapor)
 
-    pt = aa / bb / ff
+    pt = gg / ii / hh
 
     return pt
 
@@ -213,10 +214,188 @@ def _calculate_vortex_surface_pressure_with_radius(p0, p_grid, tc_properties):
         p0[0], p_grid[:, :, 0], p0[1], p_grid[:, :, 1], constants.RADIUS, np
     )
     ps = tc_properties["p_ref"] - tc_properties["dp"] * np.exp(
-        -((r / tc_properties["rp"]) ** 1.5)
-    )
+        -(r / tc_properties["rp"]) ** 1.5)
 
     return ps
+
+
+def _define_ak():
+    ak = np.array(
+        [
+            1.0 ,
+            4.3334675 ,
+            10.677089 ,
+            21.541527 ,
+            35.58495 ,
+            52.180374 ,
+            71.43384 ,
+            93.80036 ,
+            120.00996 ,
+            151.22435 ,
+            188.9106 ,
+            234.46414 ,
+            289.17712 ,
+            354.48535 ,
+            431.97327 ,
+            523.37726 ,
+            630.5866 ,
+            755.64453 ,
+            900.745 ,
+            1068.2289 ,
+            1260.578 ,
+            1480.4054 ,
+            1730.4465 ,
+            2013.547 ,
+            2332.6455 ,
+            2690.7593 ,
+            3090.968 ,
+            3536.3882 ,
+            4030.164 ,
+            4575.4316 ,
+            5175.3115 ,
+            5832.871 ,
+            6551.1157 ,
+            7332.957 ,
+            8181.1987 ,
+            9098.508 ,
+            10087.395 ,
+            11024.773 ,
+            11800.666 ,
+            12434.538 ,
+            12942.799 ,
+            13339.364 ,
+            13636.07 ,
+            13843.023 ,
+            13968.898 ,
+            14021.17 ,
+            14006.316 ,
+            13929.978 ,
+            13797.103 ,
+            13612.045 ,
+            13378.674 ,
+            13100.442 ,
+            12780.452 ,
+            12421.524 ,
+            12026.23 ,
+            11596.926 ,
+            11135.791 ,
+            10644.859 ,
+            10126.039 ,
+            9581.128 ,
+            9011.82 ,
+            8419.746 ,
+            7806.45 ,
+            7171.0674 ,
+            6517.474 ,
+            5861.0713 ,
+            5214.543 ,
+            4583.264 ,
+            3972.567 ,
+            3387.6143 ,
+            2833.4417 ,
+            2314.8213 ,
+            1836.298 ,
+            1402.0687 ,
+            1016.004 ,
+            681.5313 ,
+            401.6795 ,
+            178.95885 ,
+            0.0015832484 ,
+            0.0 ,
+
+        ]
+    )
+
+    return ak
+
+
+def _define_bk():
+    bk = np.array(
+        [
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0 ,
+            0.0012543945 ,
+            0.004884307 ,
+            0.01071458 ,
+            0.018598301 ,
+            0.028411143 ,
+            0.040047247 ,
+            0.05341539 ,
+            0.068436176 ,
+            0.08503932 ,
+            0.10316211 ,
+            0.12274763 ,
+            0.14374262 ,
+            0.16609776 ,
+            0.18976559 ,
+            0.21470062 ,
+            0.24085836 ,
+            0.2681944 ,
+            0.2966648 ,
+            0.32622582 ,
+            0.35683352 ,
+            0.38844362 ,
+            0.421011 ,
+            0.45448995 ,
+            0.4888354 ,
+            0.52400005 ,
+            0.55993766 ,
+            0.59673643 ,
+            0.63420564 ,
+            0.67150474 ,
+            0.7079659 ,
+            0.74333787 ,
+            0.7773684 ,
+            0.8098109 ,
+            0.84042233 ,
+            0.86897135 ,
+            0.8952358 ,
+            0.91901 ,
+            0.94010323 ,
+            0.9583462 ,
+            0.97358865 ,
+            0.9857061 ,
+            0.9954344 ,
+            1.0 ,
+        ]
+    )
+
+    return bk
 
 
 def _find_midpoint_unit_vectors(p1, p2):
@@ -232,22 +411,34 @@ def _find_midpoint_unit_vectors(p1, p2):
     return muv
 
 
-def _initialize_delz_w(pe, pt, qvapor, tc_properties, shape):
+def _initialize_delp(ak, bk, ps, shape):
+    delp = np.zeros(shape)
+    delp[:, :, :-1] = ak[None, None, 1:] - ak[None, None, :-1] + ps[:, :, None]*(bk[None, None, 1:] - bk[None, None, :-1])
+
+    return delp
+
+
+def _initialize_delz_w(pe, ps, pt, qvapor, tc_properties, calc, shape):
 
     delz = np.zeros(shape)
     w = np.zeros(shape)
-
-    if tc_properties["hydrostatic"] is False:
-        delz[:, :, :-1] = (
-            constants.RDGAS
-            * pt[:, :, :-1]
-            * (1 + constants.ZVIR * qvapor[:, :, :-1])
-            / constants.GRAV
-            * np.log(pe[:, :, :-1] / pe[:, :, 1:])
-        )
-        w[:] = 0.0
+    delz[:, :, :-1] = (
+        constants.RDGAS
+        * pt[:, :, :-1]
+        * (1 + constants.ZVIR * qvapor[:, :, :-1])
+        / constants.GRAV
+        * np.log(pe[:, :, :-1] / pe[:, :, 1:])
+    )
 
     return delz, w
+
+
+def _initialize_edge_pressure(delp, ptop, shape):
+    pe = np.zeros(shape)
+    pe[:, :, 0] = ptop
+    for k in range(1, pe.shape[2]):
+        pe[:, :, k] = ptop + np.sum(delp[:, :, :k], axis=2)
+    return pe
 
 
 def _initialize_edge_pressure_cgrid(ak, bk, ps, shape, ptop):
@@ -267,12 +458,13 @@ def _initialize_qvapor_temperature(metric_terms, pe, ps, tc_properties, calc, sh
 
     qvapor = np.zeros(shape)
     pt = np.zeros(shape)
+    height = np.zeros(shape)
 
     ptmp = 0.5 * (pe[:, :, :-1] + pe[:, :, 1:])
-    height = (calc["t00"] / tc_properties["gamma"]) * (
+    height[:, :, :-1] = (calc["t00"] / tc_properties["gamma"]) * (
         1.0 - (ptmp / ps[:, :, None]) ** calc["exponent"]
     )
-    qvapor[:, :, :-1] = (
+    qvapor = (
         tc_properties["q00"]
         * np.exp(-height / tc_properties["zq1"])
         * np.exp(-((height / tc_properties["zq2"]) ** tc_properties["exppz"]))
@@ -283,10 +475,10 @@ def _initialize_qvapor_temperature(metric_terms, pe, ps, tc_properties, calc, sh
         calc["p0"][0], p2[:, :, 0], calc["p0"][1], p2[:, :, 1], constants.RADIUS, np
     )
 
-    pt[:, :, :-1] = _calculate_pt_height(height, qvapor, r, tc_properties, calc)
+    pt = _calculate_pt_height(height, qvapor, r, tc_properties, calc)
 
-    qvapor[:, :, :-1][height > tc_properties["ztrop"]] = tc_properties["qtrop"]
-    pt[:, :, :-1][height > tc_properties["ztrop"]] = calc["ttrop"]
+    qvapor[height > tc_properties["ztrop"]] = tc_properties["qtrop"]
+    pt[height > tc_properties["ztrop"]] = calc["ttrop"]
 
     return qvapor, pt
 

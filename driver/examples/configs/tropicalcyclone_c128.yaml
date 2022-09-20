@@ -28,6 +28,7 @@ diagnostics_config:
     - va
     - pt
     - delp
+    - delz
     - qvapor
     - ps
   output_initial_state: true
