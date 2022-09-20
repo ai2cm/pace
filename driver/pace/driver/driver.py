@@ -34,6 +34,7 @@ from .gridconfig import GridConfig
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
 
+
 try:
     import cupy as cp
 except ImportError:
@@ -409,14 +410,15 @@ class Driver:
     def _replace_vertical_grid(self):
         """
         Replaces the vertical grid generators from metric terms (ak and bk) with
-        their fortran restart values (in fv_core.res.nc). 
+        their fortran restart values (in fv_core.res.nc).
         Then re-generates grid data with the new vertical inputs.
         """
 
         ak_bk_data_file = self.config.initialization.config.path + "/fv_core.res.nc"
         if not os.path.isfile(ak_bk_data_file):
             raise ValueError(
-                "use_tc_vertical_grid is true, but no fv_core.res.nc in restart data file."
+                """use_tc_vertical_grid is true,
+                but no fv_core.res.nc in restart data file."""
             )
 
         ks = self.config.grid_config.tc_ks  # guessing this is the case
@@ -428,9 +430,7 @@ class Driver:
         bk.data[:] = np.array(data["bk"][0]).astype("float64")
         data.close()
 
-        delp = (
-            ak[1:] - ak[:-1] + p_ref * (bk[1:] - bk[:-1])
-        )
+        delp = ak[1:] - ak[:-1] + p_ref * (bk[1:] - bk[:-1])
         pres = p_ref - np.cumsum(delp)
         ptop = pres[-1]
         vertical_data = pace.util.grid.VerticalGridData(ptop, ks, ak, bk, p_ref=p_ref)
@@ -462,7 +462,7 @@ class Driver:
         vertical spacing with that from fortran restart files.
 
         If grid_config.stretch_grid is True, perform Schmidt transformation
-        on the grid. Need to also provide stretch_factor, lon_target, and 
+        on the grid. Need to also provide stretch_factor, lon_target, and
         lat_target.
         """
         if (self.config.grid_config.use_tc_vertical_grid is True) and (

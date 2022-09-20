@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pace.dsl
 import pace.util
 from pace.driver.run import Driver, DriverConfig
@@ -54,7 +56,9 @@ class TranslateDriver(TranslateFVDynamics):
                 "type": "restart",
                 "config": {
                     "path": "/home/ajdas/pace/restart_data/v1.0",
-                    "start_time": datetime.strptime("2016-08-11 00:00:00", "%Y-%m-%d %H:%M:%S"),
+                    "start_time": datetime.strptime(
+                        "2016-08-11 00:00:00", "%Y-%m-%d %H:%M:%S"
+                    ),
                     "fortran_data": True,
                 },
             },

@@ -153,7 +153,8 @@ class RestartConfig(Initializer):
 
         # TODO
         # follow what fortran does with restart data after reading it
-        # should eliminate small differences between restart input and serialized test data
+        # should eliminate small differences between restart input and
+        # serialized test data
         return state
 
 

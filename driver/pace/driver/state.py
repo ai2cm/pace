@@ -201,9 +201,7 @@ def _overwrite_state_from_fortran_restart(
 
     state_dict = pace.util.open_restart(path, communicator, fortran_restart=True)
 
-    state = _dict_state_to_driver_state(
-        state_dict, state, is_gpu_backend
-    )
+    state = _dict_state_to_driver_state(state_dict, state, is_gpu_backend)
 
     return state
 
