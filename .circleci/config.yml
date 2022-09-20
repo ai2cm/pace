@@ -365,7 +365,7 @@ jobs:
   test_driver_orch_cpu:
     docker:
       - image: cimg/python:3.8
-    resource_class: large
+    resource_class: xlarge
     working_directory: ~/repo
     environment:
       - FV3_DACEMODE: BuildAndRun
