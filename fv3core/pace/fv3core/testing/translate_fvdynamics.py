@@ -15,9 +15,6 @@ from pace.stencils.testing.translate import TranslateFortranData2Py
 from pace.util.grid import GridData
 
 
-ADVECTED_TRACER_NAMES = utils.tracer_variables[: fv_dynamics.NQ]
-
-
 class TranslateDycoreFortranData2Py(TranslateFortranData2Py):
     def __init__(
         self,
@@ -234,14 +231,14 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             "v": grid.x3d_domain_dict(),
             "w": {},
             "delz": {},
-            "qvapor": {},
-            "qliquid": {},
-            "qice": {},
-            "qrain": {},
-            "qsnow": {},
-            "qgraupel": {},
-            "qo3mr": {},
-            "qsgs_tke": {},
+            "qvapor": grid.compute_dict(),
+            "qliquid": grid.compute_dict(),
+            "qice": grid.compute_dict(),
+            "qrain": grid.compute_dict(),
+            "qsnow": grid.compute_dict(),
+            "qgraupel": grid.compute_dict(),
+            "qo3mr": grid.compute_dict(),
+            "qsgs_tke": grid.compute_dict(),
             "qcld": {},
             "ps": {},
             "pe": {
@@ -340,8 +337,6 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
         )
         self.dycore.step_dynamics(state, pace.util.NullTimer())
         outputs = self.outputs_from_state(state)
-        for name, value in outputs.items():
-            outputs[name] = self.subset_output(name, value)
         return outputs
 
     def outputs_from_state(self, state: dict):
@@ -364,42 +359,3 @@ class TranslateFVDynamics(ParallelTranslateBaseSlicing):
             f"{self.__class__} only has a mpirun implementation, "
             "not running in mock-parallel"
         )
-
-    def subset_output(self, varname: str, output):
-        """
-        Given an output array, return the slice of the array which we'd
-        like to validate against reference data
-        """
-        if self.dycore is None:
-            raise RuntimeError(
-                "cannot call subset_output before calling compute_parallel "
-                "to initialize dycore"
-            )
-        if hasattr(self.dycore, "selective_names") and (
-            varname in self.dycore.selective_names  # type: ignore
-        ):
-            return_value = self.dycore.subset_output(varname, output)  # type: ignore
-
-        if varname in ADVECTED_TRACER_NAMES:
-
-            def get_compute_domain_k_interfaces(
-                instance,
-            ):
-                try:
-                    origin = instance.grid_indexing.origin_compute()
-                    domain = instance.grid_indexing.domain_compute(add=(0, 0, 1))
-                except AttributeError:
-                    origin = instance.grid.compute_origin()
-                    domain = instance.grid.domain_shape_compute(add=(0, 0, 1))
-                return origin, domain
-
-            origin, domain = get_compute_domain_k_interfaces(
-                self.dycore.tracer_advection
-            )
-            self._validation_slice = tuple(
-                slice(start, start + n) for start, n in zip(origin, domain)
-            )
-            return_value = output[self._validation_slice]
-        else:
-            return_value = output
-        return return_value
