@@ -103,7 +103,6 @@ class DriverConfig:
     )
     grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
 
-
     days: int = 0
     hours: int = 0
     minutes: int = 0
@@ -275,13 +274,13 @@ class Driver:
                 obj=self,
                 config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_critical_path_step_all",
-                dace_constant_args=["timer"],
+                dace_compiletime_args=["timer"],
             )
             orchestrate(
                 obj=self,
                 config=self.config.stencil_config.dace_config,
                 method_to_orchestrate="_step_dynamics",
-                dace_constant_args=["state", "timer"],
+                dace_compiletime_args=["state", "timer"],
             )
             orchestrate(
                 obj=self,
