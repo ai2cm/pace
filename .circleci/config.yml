@@ -17,9 +17,12 @@ commands:
               libboost-all-dev \
               python3 \
               python3-pip \
+      - run:
+          name: save python_version.txt
+          command: python --version | awk '{print $2;}' > python_version.txt
       - restore_cache:
           keys:
-            - v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+            - v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
       - run:
           name: setup python environment
           command: |
@@ -29,10 +32,99 @@ commands:
             pip3 install -r requirements_dev.txt -c constraints.txt
             python3 -m gt4py.gt_src_manager install
       - save_cache:
-          key: v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
+          key: v1-venv-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
           paths:
             - venv
             - /root/.cache/pip
+  build_docker_image:
+    description: "Setup savepoints"
+    steps:
+      - gcp-cli/install:
+        version: 323.0.0
+      - run:
+          name: gcloud auth
+          command: |
+            echo $ENCODED_GCR_KEY
+            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
+            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+            gcloud auth configure-docker
+      - run:
+          name: Update Submodules
+          command: git submodule update --init
+      - run:
+          name: build image
+          command: |
+            .circleci/build_and_push_image.sh
+  restore_gt_cache:
+    description: "Restore .gt_cache"
+    parameters:
+      key:
+        type: string
+    steps:
+      - run:
+          name: save gt4py_version.txt
+          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
+      - restore_cache:
+          keys:
+            - v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}
+  save_gt_cache:
+    description: "Save .gt_cache"
+    parameters:
+      key:
+        type: string
+    steps:
+      - save_cache:
+          key: v4-gt_cache-<<parameters.key>>-{{ checksum "gt4py_version.txt" }}
+          paths:
+            - .gt_cache
+  make_savepoints:
+    description: "Setup and run a savepoints test make target"
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy", "gt:cpu_ifirst"]
+      experiment:
+        description: "experiment data to use"
+        type: enum
+        enum:
+          - "c12_6ranks_standard"
+          - "c12_54ranks_standard"
+          - "c12_6ranks_baroclinic_dycore_microphysics"
+          - "c12_54ranks_baroclinic_dycore_microphysics"
+      target:
+        description: "make target to run"
+        type: enum
+        enum:
+          - "savepoint_tests"
+          - "savepoint_tests_mpi"
+          - "physics_savepoint_tests"
+          - "physics_savepoint_tests_mpi"
+          - "driver_savepoint_tests"
+          - "driver_savepoint_tests_mpi"
+      num_ranks:
+        description: "number of ranks required"
+        type: integer
+        default: 6
+    steps:
+      - build_docker_image
+      - restore_gt_cache:
+          key: <<parameters.backend>>-<<parameters.target>>-<<parameters.experiment>>
+      - restore_cache:
+          keys:
+            - v1-test_data-<<parameters.experiment>>-{{ checksum "Makefile.data_download" }}
+      - run:
+          name: run savepoint tests
+          command: |
+            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y EXPERIMENT=<<parameters.experiment>> NUM_RANKS=<<parameters.num_ranks>> make <<parameters.target>>
+          no_output_timeout: 2h
+      - save_gt_cache:
+          key: <<parameters.backend>>-<<parameters.target>>-<<parameters.experiment>>
+      - save_cache:
+          key: v1-test_data-<<parameters.experiment>>-{{ checksum "Makefile.data_download" }}
+          paths:
+            - test_data
 
 jobs:
 
@@ -41,9 +133,12 @@ jobs:
     - image: cimg/python:3.8
     steps:
       - checkout
+      - run:
+          name: save python_version.txt
+          command: python --version | awk '{print $2;}' > python_version.txt
       - restore_cache:
           keys:
-            - v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
+            - v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
       - run:
           name: run linting
           command: |
@@ -52,12 +147,50 @@ jobs:
             pip3 install pre-commit -c constraints.txt
             pre-commit run --all-files
       - save_cache:
-          key: v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}
+          key: v3-{{ checksum ".pre-commit-config.yaml" }}-{{ checksum "constraints.txt" }}-{{ checksum "python_version.txt" }}
           paths:
             - ~/.cache/pre-commit
             - venv
 
-  savepoints:
+  dycore_savepoints:
+    machine:
+      image: ubuntu-2004:202111-02
+      resource_class: medium
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy", "gt:cpu_ifirst"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_54ranks_standard
+          target: savepoint_tests
+
+  physics_savepoints:
+    machine:
+      image: ubuntu-2004:202111-02
+      resource_class: medium
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy", "gt:cpu_ifirst"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_6ranks_baroclinic_dycore_microphysics
+          target: physics_savepoint_tests
+
+  dycore_savepoints_mpi:
     machine:
       image: ubuntu-2004:202111-02
       resource_class: large
@@ -70,48 +203,13 @@ jobs:
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
-      - gcp-cli/install:
-        version: 323.0.0
-      - run:
-          name: gcloud auth
-          command: |
-            echo $ENCODED_GCR_KEY
-            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
-            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-            gcloud auth configure-docker
       - checkout
-      - run:
-          name: Update Submodules
-          command: git submodule update --init
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache:
-          keys:
-            - v3-gt_cache-serial-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
-      - restore_cache:
-          keys:
-            - v1-savepoints-{{ checksum "Makefile.data_download" }}
-      - run:
-          name: build image
-          command: |
-            BUILD_ARGS="--progress=plain" DEV=n make build
-      - run:
-          name: run tests
-          command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests
-          no_output_timeout: 3h
-      - save_cache:
-          key: v3-gt_cache-serial-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
-          paths:
-            - .gt_cache
-            - .gt_cache_000000
-      - save_cache:
-          key: v1-savepoints-{{ checksum "Makefile.data_download" }}
-          paths:
-            - test_data
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_6ranks_standard
+          target: savepoint_tests_mpi
 
-  savepoints_mpi:
+  physics_savepoints_mpi:
     machine:
       image: ubuntu-2004:202111-02
       resource_class: large
@@ -124,53 +222,32 @@ jobs:
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
-      - gcp-cli/install:
-        version: 323.0.0
-      - run:
-          name: gcloud auth
-          command: |
-            echo $ENCODED_GCR_KEY
-            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
-            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-            gcloud auth configure-docker
       - checkout
-      - run:
-          name: Update Submodules
-          command: git submodule update --init
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache:
-          keys:
-            - v2-gt_cache-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
-      - restore_cache:
-          keys:
-            - v1-savepoints-{{ checksum "Makefile.data_download" }}
-      - run:
-          name: build image
-          command: |
-            BUILD_ARGS="--progress=plain" DEV=n make build
-      - run:
-          name: run tests
-          command: |
-            TEST_ARGS="--backend=<<parameters.backend>> -v -s" DEV=y make savepoint_tests_mpi
-          no_output_timeout: 3h
-      - save_cache:
-          key: v2-gt_cache-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
-          paths:
-            - .gt_cache
-            - .gt_cache_000000
-            - .gt_cache_000001
-            - .gt_cache_000002
-            - .gt_cache_000003
-            - .gt_cache_000004
-            - .gt_cache_000005
-      - save_cache:
-          key: v1-savepoints-{{ checksum "Makefile.data_download" }}
-          paths:
-            - test_data
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_6ranks_baroclinic_dycore_microphysics
+          target: physics_savepoint_tests_mpi
 
-  savepoints_mpi_54rank:
+  driver_savepoints_mpi:
+    machine:
+      image: ubuntu-2004:202111-02
+      resource_class: large
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy", "gt:cpu_ifirst"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_6ranks_baroclinic_dycore_microphysics
+          target: driver_savepoint_tests_mpi
+
+  dycore_savepoints_mpi_54rank:
     machine:
       image: ubuntu-2004:202111-02
       resource_class: xlarge
@@ -183,62 +260,52 @@ jobs:
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
     steps:
-      - run: |
-          sudo apt-get update && sudo apt-get install -y make \
-            software-properties-common \
-            libopenmpi3 \
-            libopenmpi-dev \
-            libboost-all-dev \
-            python3 \
-            python3-pip \
-      - gcp-cli/install:
-        version: 323.0.0
-      - run:
-          name: gcloud auth
-          command: |
-            echo $ENCODED_GCR_KEY
-            echo $ENCODED_GCR_KEY | base64 -d > $GOOGLE_APPLICATION_CREDENTIALS
-            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-            gcloud auth configure-docker
       - checkout
-      - run:
-          name: Update Submodules
-          command: git submodule update --init
-      - run:
-          name: save gt4py_version.txt
-          command: git submodule status external/gt4py | awk '{print $1;}' > gt4py_version.txt
-      - restore_cache:
-          keys:
-            - v3-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
-      - restore_cache:
-          keys:
-            - v2-savepoints-c12_54ranks_standard-{{ checksum "Makefile.data_download" }}
-      - restore_cache:
-          keys:
-            - v4-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
-      - run:
-          name: set up environment
-          command: |
-            pip3 install --upgrade setuptools wheel
-            pip3 install -r requirements_dev.txt -c constraints.txt
-            python3 -m gt4py.gt_src_manager install
-      - save_cache:
-          key: v4-pip_cache-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}
-          paths:
-            - /home/circleci/.cache/pip
-      - run:
-          name: run tests
-          command: |
-            GT_CACHE_ROOT=".gt_cache" TEST_ARGS="--backend=<<parameters.backend>> -v -s" CONTAINER_CMD="" NUM_RANKS=54 EXPERIMENT="c12_54ranks_standard" FV3_PATH=$(pwd)/fv3core make savepoint_tests_mpi
-          no_output_timeout: 3h
-      - save_cache:
-          key: v3-gt_cache_54ranks-<<parameters.backend>>-{{ checksum "gt4py_version.txt" }}
-          paths:
-            - .gt_cache
-      - save_cache:
-          key: v2-savepoints-c12_54ranks_standard-{{ checksum "Makefile.data_download" }}
-          paths:
-            - test_data
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_54ranks_standard
+          target: savepoint_tests_mpi
+          num_ranks: 54
+
+  physics_savepoints_mpi_54rank:
+    machine:
+      image: ubuntu-2004:202111-02
+      resource_class: xlarge
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy", "gt:cpu_ifirst"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_54ranks_baroclinic_dycore_microphysics
+          target: physics_savepoint_tests_mpi
+          num_ranks: 54
+
+  driver_savepoints_mpi_54rank:
+    machine:
+      image: ubuntu-2004:202111-02
+      resource_class: xlarge
+    parameters:
+      backend:
+        description: "gt4py backend"
+        default: "numpy"
+        type: enum
+        enum: ["numpy", "gt:cpu_ifirst"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/key.json
+    steps:
+      - checkout
+      - make_savepoints:
+          backend: <<parameters.backend>>
+          experiment: c12_54ranks_baroclinic_dycore_microphysics
+          target: driver_savepoint_tests_mpi
+          num_ranks: 54
 
   test_util:
     docker:
@@ -287,30 +354,13 @@ jobs:
       - run:
           name: Install Submodules
           command: git submodule update --init
-      - restore_cache:
-          keys:
-            - v3-driver-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
-      - run:
-          name: install packages
-          command: |
-            if [ $(python changed_from_main.py driver) != false ]; then
-              sudo apt-get update
-              sudo apt-get install libopenmpi3 libopenmpi-dev
-              cd driver && ./examples/create_venv.sh
-            fi
-      - save_cache:
-          key: v3-driver-{{ checksum "requirements_dev.txt" }}-{{ checksum "constraints.txt" }}-{{ checksum "driver/setup.py" }}
-          paths:
-            - driver/venv
-            - /root/.cache/pip
+      - setup_environment_mpi
       - run:
           name: run tests
           command: |
-            if [ $(python changed_from_main.py driver) != false ]; then
-              cd driver
-              . venv/bin/activate
-              MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
-            fi
+            . venv/bin/activate
+            cd driver
+            MPIRUN_CALL="mpirun -n 6 --mca btl_vader_single_copy_mechanism none" make test_mpi
 
   test_driver_daceorch:
     docker:
@@ -406,7 +456,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - savepoints:
+      - dycore_savepoints:
           matrix:
             parameters:
               backend:
@@ -417,7 +467,7 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - savepoints_mpi:
+      - physics_savepoints:
           matrix:
             parameters:
               backend:
@@ -428,7 +478,60 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-      - savepoints_mpi_54rank:
+      - dycore_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - physics_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - driver_savepoints_mpi:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+                - gt:cpu_ifirst
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - dycore_savepoints_mpi_54rank:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - physics_savepoints_mpi_54rank:
+          matrix:
+            parameters:
+              backend:
+                - numpy
+          context:
+            - GCLOUD_ENCODED_KEY
+          filters:
+            tags:
+              only: /^v.*/
+      - driver_savepoints_mpi_54rank:
           matrix:
             parameters:
               backend:
