@@ -1,20 +1,18 @@
 import dataclasses
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 
 
 @dataclasses.dataclass
 class GridConfig:
-    stretch_grid: Optional[bool] = False
-    stretch_factor: Optional[float] = None
-    lon_target: Optional[float] = None
-    lat_target: Optional[float] = None
-    use_tc_vertical_grid: Optional[bool] = None
-    tc_ks: Optional[int] = None
+    stretch_mode: bool = False
+    stretch_factor: Optional[np.float_] = None
+    lon_target: Optional[np.float_] = None
+    lat_target: Optional[np.float_] = None
 
     def __post_init__(self):
-        if self.stretch_grid:
+        if self.stretch_mode:
             if not self.stretch_factor:
                 raise ValueError(
                     "Stretch_mode is true, but no stretch_factor is provided."
