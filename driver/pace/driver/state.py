@@ -202,7 +202,7 @@ def _overwrite_state_from_fortran_restart(
     state_dict = pace.util.open_restart(path, communicator, fortran_restart=True)
 
     state = _dict_state_to_driver_state(
-        state_dict, state, restart_file_prefix, is_gpu_backend
+        state_dict, state, is_gpu_backend
     )
 
     return state
@@ -236,7 +236,6 @@ def _driver_state_to_dict(
 def _dict_state_to_driver_state(
     fortran_state: dict,
     driver_state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
-    restart_file_prefix: str,
     is_gpu_backend: bool,
 ):
     """
@@ -322,23 +321,6 @@ def _restart_driver_state(
     physics_state = pace.physics.PhysicsState.init_zeros(
         quantity_factory=quantity_factory, active_packages=active_packages
     )
-
-    # if fortran_data is True:
-    #     physics_state = _overwrite_state_from_fortran_restart(
-    #         path,
-    #         communicator,
-    #         physics_state,
-    #         "restart_dycore_state",
-    #         backend_uses_gpu,
-    #     )
-    # else:
-    #     physics_state = _overwrite_state_from_restart(
-    #         path,
-    #         rank,
-    #         physics_state,
-    #         "restart_physics_state",
-    #         backend_uses_gpu,
-    #     )
 
     physics_state.__post_init__(quantity_factory, active_packages)
     tendency_state = TendencyState.init_zeros(

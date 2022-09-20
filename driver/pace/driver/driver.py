@@ -34,7 +34,6 @@ from .gridconfig import GridConfig
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
 
-
 try:
     import cupy as cp
 except ImportError:
@@ -104,7 +103,7 @@ class DriverConfig:
         default_factory=pace.physics.PhysicsConfig
     )
     grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
-    
+
     days: int = 0
     hours: int = 0
     minutes: int = 0
@@ -369,6 +368,9 @@ class Driver:
         self._time_run = self.config.start_time
 
     def _transform_horizontal_grid(self):
+        """
+        Uses the Schmidt transform to locally refine the horizontal grid.
+        """
 
         communicator = CubedSphereCommunicator.from_layout(
             comm=self.comm, layout=self.config.layout
@@ -400,16 +402,16 @@ class Driver:
         self.state.driver_grid_data = (
             pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
         )
-        # print("da_min, da_min_c before replacement: ", self.state.damping_coefficients.da_min, self.state.damping_coefficients.da_min_c)
         self.state.damping_coefficients = (
             pace.util.grid.DampingCoefficients.new_from_metric_terms(metric_terms)
         )
-        # self.state.damping_coefficients.da_min_c.data = 3.
-        # exit()
-        # print("da_min, da_min_c after replacement: ", self.state.damping_coefficients.da_min, self.state.damping_coefficients.da_min_c)
-        # exit()
 
     def _replace_vertical_grid(self):
+        """
+        Replaces the vertical grid generators from metric terms (ak and bk) with
+        their fortran restart values (in fv_core.res.nc). 
+        Then re-generates grid data with the new vertical inputs.
+        """
 
         ak_bk_data_file = self.config.initialization.config.path + "/fv_core.res.nc"
         if not os.path.isfile(ak_bk_data_file):
@@ -428,7 +430,7 @@ class Driver:
 
         delp = (
             ak[1:] - ak[:-1] + p_ref * (bk[1:] - bk[:-1])
-        )  # from baroclinic initialization
+        )
         pres = p_ref - np.cumsum(delp)
         ptop = pres[-1]
         vertical_data = pace.util.grid.VerticalGridData(ptop, ks, ak, bk, p_ref=p_ref)
@@ -455,6 +457,14 @@ class Driver:
         self.state.grid_data = grid_data
 
     def _transform_grid(self):
+        """
+        If grid_config.use_tc_vertical_grid is True, replace the default
+        vertical spacing with that from fortran restart files.
+
+        If grid_config.stretch_grid is True, perform Schmidt transformation
+        on the grid. Need to also provide stretch_factor, lon_target, and 
+        lat_target.
+        """
         if (self.config.grid_config.use_tc_vertical_grid is True) and (
             self.config.initialization.config.fortran_data is True
         ):
@@ -464,7 +474,6 @@ class Driver:
             self._transform_horizontal_grid()
 
     def _calculate_fortran_restart_pe_peln(self):
-
         ptop = self.state.grid_data._vertical_data.ptop
         pe = self.state.dycore_state.pe
         peln = self.state.dycore_state.peln

@@ -57,8 +57,8 @@ def direct_transform(
 
     lon_p, lat_p = numpy_module.deg2rad(lon_target), numpy_module.deg2rad(lat_target)
     sin_p, cos_p = numpy_module.sin(lat_p), numpy_module.cos(lat_p)
-    c2p1 = 1.0 + stretch_factor**2
-    c2m1 = 1.0 - stretch_factor**2
+    c2p1 = 1.0 + stretch_factor ** 2
+    c2m1 = 1.0 - stretch_factor ** 2
 
     # first limit longitude so it's between 0 and 2pi
     lon_data[lon_data < 0] += 2 * numpy_module.pi
