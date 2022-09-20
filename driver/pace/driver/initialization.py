@@ -23,7 +23,6 @@ from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
 
 from .registry import Registry
-
 from .state import DriverState, TendencyState, _restart_driver_state
 
 
@@ -137,8 +136,7 @@ class RestartConfig(Initializer):
 
     path: str = "."
     start_time: datetime = datetime(2000, 1, 1)
-    fortran_data: bool = False     
-
+    fortran_data: bool = False
 
     def get_driver_state(
         self,
@@ -152,11 +150,12 @@ class RestartConfig(Initializer):
             communicator,
             self.fortran_data,
         )
-    
+
         # TODO
         # follow what fortran does with restart data after reading it
         # should eliminate small differences between restart input and serialized test data
         return state
+
 
 @InitializerSelector.register("serialbox")
 @dataclasses.dataclass
