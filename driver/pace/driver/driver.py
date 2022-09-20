@@ -436,7 +436,7 @@ class Driver:
                     self.state.dycore_state,
                     self.performance_config.timestep_timer,
                 )
-                #breakpoint()
+                breakpoint()
                 if not self.config.disable_step_physics:
                     self._step_physics(timestep=dt)
             self.end_of_step_actions(step)
