@@ -24,6 +24,9 @@ EXCLUDED_CONFIGS: List[str] = [
     # filepath that are not in git
     "baroclinic_c12_from_serialbox.yaml",
     "baroclinic_c12_orch_cpu.yaml",
+    # We don't test c576 config since they are tested only on daint
+    "compile_baroclinic_c576_54ranks.yaml",
+    "run_baroclinic_c576_54ranks.yaml",
 ]
 
 JENKINS_CONFIGS_DIR = os.path.join(dirname, "../../../.jenkins/driver_configs/")
