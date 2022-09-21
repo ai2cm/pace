@@ -3,6 +3,7 @@ from dataclasses import fields
 from typing import Union
 
 import numpy as np
+import os
 import xarray as xr
 
 import pace.dsl.gt4py_utils as gt_utils
@@ -286,7 +287,6 @@ def _restart_driver_state(
     rank: int,
     quantity_factory: pace.util.QuantityFactory,
     communicator: pace.util.CubedSphereCommunicator,
-    fortran_data: bool = False,
 ):
 
     metric_terms = pace.util.grid.MetricTerms(
@@ -298,7 +298,8 @@ def _restart_driver_state(
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
     backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
 
-    if fortran_data is True:
+    # at this point, check for fv_core.res.nc (this is in fortran restart)
+    if "fv_core.res.nc" in os.path.listdir(path):
         dycore_state = _overwrite_state_from_fortran_restart(
             path,
             communicator,
