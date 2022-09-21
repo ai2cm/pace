@@ -379,20 +379,6 @@ class Driver:
         self._time_run = self.config.start_time
 
 
-    def _calculate_fortran_restart_pe_peln(self):
-        ptop = self.state.grid_data._vertical_data.ptop
-        pe = self.state.dycore_state.pe
-        peln = self.state.dycore_state.peln
-        delp = self.state.dycore_state.delp
-
-        for level in range(pe.data.shape[2]):
-            pe.data[:, :, level] = ptop + np.sum(delp.data[:, :, :level], 2)
-
-        peln.data[:] = np.log(pe.data[:])
-
-        self.state.dycore_state.pe = pe
-        self.state.dycore_state.peln = peln
-
     def update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator
     ) -> None:

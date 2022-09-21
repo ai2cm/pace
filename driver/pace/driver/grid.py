@@ -249,8 +249,8 @@ def _replace_vertical_grid(self, metric_terms) -> GridData:
         )
 
     ds = xr.open_dataset(ak_bk_data_file).isel(Time=0).drop_vars("Time")
-    metric_terms._ak = ds["ak"].data
-    metric_terms._bk = ds["bk"].data
+    metric_terms._ak.data[:] = ds["ak"].values
+    metric_terms._bk.data[:] = ds["bk"].values
     ds.close()
 
     vertical_data = pace.util.grid.VerticalGridData(ks=self.ks, ak=metric_terms.ak.data, bk=metric_terms.bk.data)
