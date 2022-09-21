@@ -295,13 +295,24 @@ class Driver:
                 communicator=communicator,
                 stencil_compare_comm=stencil_compare_comm,
             )
+            # do I know what self.state is?
+            damping_coefficients, driver_grid_data, grid_data = self.config.grid.get_grid(
+                quantity_factory=self.quantity_factory, communicator=communicator
+            )
             self.state = self.config.initialization.get_driver_state(
                 quantity_factory=self.quantity_factory, communicator=communicator
             )
+            # TODO
+            # for now, account for grid stuff by just replacing it.
+            # but find a better way
+            self.state.damping_coefficients = damping_coefficients
+            self.state.driver_grid_data = driver_grid_data
+            self.state.grid_data = grid_data
 
-            if self.config.initialization.config.fortran_data is True:
-                self._calculate_fortran_restart_pe_peln()
-                self._transform_grid()
+            # also figure out how to initialize pe and peln without knowing vertical grid stuff??
+            # if self.config.initialization.config.fortran_data is True:
+            #     self._calculate_fortran_restart_pe_peln()
+            #     self._transform_grid()
 
             self._start_time = self.config.initialization.start_time
             self.dycore = fv3core.DynamicalCore(
@@ -368,110 +379,110 @@ class Driver:
 
         self._time_run = self.config.start_time
 
-    def _transform_horizontal_grid(self):
-        """
-        Uses the Schmidt transform to locally refine the horizontal grid.
-        """
+    # def _transform_horizontal_grid(self):
+    #     """
+    #     Uses the Schmidt transform to locally refine the horizontal grid.
+    #     """
 
-        communicator = CubedSphereCommunicator.from_layout(
-            comm=self.comm, layout=self.config.layout
-        )
-        metric_terms = pace.util.grid.MetricTerms(
-            quantity_factory=self.quantity_factory, communicator=communicator
-        )
-        grid = metric_terms.grid
-        if self.stencil_factory.config.is_gpu_backend:
-            np = cp
-        else:
-            np = np
-        lon_transform, lat_transform = pace.util.grid.direct_transform(
-            lon=grid.data[:, :, 0],
-            lat=grid.data[:, :, 1],
-            stretch_factor=self.config.grid_config.stretch_factor,
-            lon_target=self.config.grid_config.lon_target,
-            lat_target=self.config.grid_config.lat_target,
-            np=np,
-        )
-        grid.data[:, :, 0] = lon_transform[:]
-        grid.data[:, :, 1] = lat_transform[:]
+    #     communicator = CubedSphereCommunicator.from_layout(
+    #         comm=self.comm, layout=self.config.layout
+    #     )
+    #     metric_terms = pace.util.grid.MetricTerms(
+    #         quantity_factory=self.quantity_factory, communicator=communicator
+    #     )
+    #     grid = metric_terms.grid
+    #     if self.stencil_factory.config.is_gpu_backend:
+    #         np = cp
+    #     else:
+    #         np = np
+    #     lon_transform, lat_transform = pace.util.grid.direct_transform(
+    #         lon=grid.data[:, :, 0],
+    #         lat=grid.data[:, :, 1],
+    #         stretch_factor=self.config.grid_config.stretch_factor,
+    #         lon_target=self.config.grid_config.lon_target,
+    #         lat_target=self.config.grid_config.lat_target,
+    #         np=np,
+    #     )
+    #     grid.data[:, :, 0] = lon_transform[:]
+    #     grid.data[:, :, 1] = lat_transform[:]
 
-        metric_terms._grid.data[:] = grid.data[:]
-        metric_terms._init_agrid()
-        self.state.grid_data = pace.util.grid.GridData.new_from_metric_terms(
-            metric_terms
-        )
-        self.state.driver_grid_data = (
-            pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
-        )
-        self.state.damping_coefficients = (
-            pace.util.grid.DampingCoefficients.new_from_metric_terms(metric_terms)
-        )
+    #     metric_terms._grid.data[:] = grid.data[:]
+    #     metric_terms._init_agrid()
+    #     self.state.grid_data = pace.util.grid.GridData.new_from_metric_terms(
+    #         metric_terms
+    #     )
+    #     self.state.driver_grid_data = (
+    #         pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
+    #     )
+    #     self.state.damping_coefficients = (
+    #         pace.util.grid.DampingCoefficients.new_from_metric_terms(metric_terms)
+    #     )
 
-    def _replace_vertical_grid(self):
-        """
-        Replaces the vertical grid generators from metric terms (ak and bk) with
-        their fortran restart values (in fv_core.res.nc).
-        Then re-generates grid data with the new vertical inputs.
-        """
+    # def _replace_vertical_grid(self):
+    #     """
+    #     Replaces the vertical grid generators from metric terms (ak and bk) with
+    #     their fortran restart values (in fv_core.res.nc).
+    #     Then re-generates grid data with the new vertical inputs.
+    #     """
 
-        ak_bk_data_file = self.config.initialization.config.path + "/fv_core.res.nc"
-        if not os.path.isfile(ak_bk_data_file):
-            raise ValueError(
-                """use_tc_vertical_grid is true,
-                but no fv_core.res.nc in restart data file."""
-            )
+    #     ak_bk_data_file = self.config.initialization.config.path + "/fv_core.res.nc"
+    #     if not os.path.isfile(ak_bk_data_file):
+    #         raise ValueError(
+    #             """use_tc_vertical_grid is true,
+    #             but no fv_core.res.nc in restart data file."""
+    #         )
 
-        ks = self.config.grid_config.tc_ks  # guessing this is the case
-        p_ref = self.config.dycore_config.p_ref  # from test case 55 in SHiELD
-        ak = self.state.grid_data.ak
-        bk = self.state.grid_data.bk
-        data = Dataset(ak_bk_data_file, "r")
-        ak.data[:] = np.array(data["ak"][0]).astype("float64")
-        bk.data[:] = np.array(data["bk"][0]).astype("float64")
-        data.close()
+    #     ks = self.config.grid_config.tc_ks  # guessing this is the case
+    #     p_ref = self.config.dycore_config.p_ref  # from test case 55 in SHiELD
+    #     ak = self.state.grid_data.ak
+    #     bk = self.state.grid_data.bk
+    #     data = Dataset(ak_bk_data_file, "r")
+    #     ak.data[:] = np.array(data["ak"][0]).astype("float64")
+    #     bk.data[:] = np.array(data["bk"][0]).astype("float64")
+    #     data.close()
 
-        delp = ak[1:] - ak[:-1] + p_ref * (bk[1:] - bk[:-1])
-        pres = p_ref - np.cumsum(delp)
-        ptop = pres[-1]
-        vertical_data = pace.util.grid.VerticalGridData(ptop, ks, ak, bk, p_ref=p_ref)
+    #     delp = ak[1:] - ak[:-1] + p_ref * (bk[1:] - bk[:-1])
+    #     pres = p_ref - np.cumsum(delp)
+    #     ptop = pres[-1]
+    #     vertical_data = pace.util.grid.VerticalGridData(ptop, ks, ak, bk, p_ref=p_ref)
 
-        communicator = CubedSphereCommunicator.from_layout(
-            comm=self.comm, layout=self.config.layout
-        )
-        metric_terms = pace.util.grid.MetricTerms(
-            quantity_factory=self.quantity_factory, communicator=communicator
-        )
-        horizontal_data = pace.util.grid.HorizontalGridData.new_from_metric_terms(
-            metric_terms
-        )
-        contravariant_data = pace.util.grid.ContravariantGridData.new_from_metric_terms(
-            metric_terms
-        )
-        angle_data = pace.util.grid.AngleGridData.new_from_metric_terms(metric_terms)
-        grid_data = pace.util.grid.GridData(
-            horizontal_data=horizontal_data,
-            vertical_data=vertical_data,
-            contravariant_data=contravariant_data,
-            angle_data=angle_data,
-        )
-        self.state.grid_data = grid_data
+    #     communicator = CubedSphereCommunicator.from_layout(
+    #         comm=self.comm, layout=self.config.layout
+    #     )
+    #     metric_terms = pace.util.grid.MetricTerms(
+    #         quantity_factory=self.quantity_factory, communicator=communicator
+    #     )
+    #     horizontal_data = pace.util.grid.HorizontalGridData.new_from_metric_terms(
+    #         metric_terms
+    #     )
+    #     contravariant_data = pace.util.grid.ContravariantGridData.new_from_metric_terms(
+    #         metric_terms
+    #     )
+    #     angle_data = pace.util.grid.AngleGridData.new_from_metric_terms(metric_terms)
+    #     grid_data = pace.util.grid.GridData(
+    #         horizontal_data=horizontal_data,
+    #         vertical_data=vertical_data,
+    #         contravariant_data=contravariant_data,
+    #         angle_data=angle_data,
+    #     )
+    #     self.state.grid_data = grid_data
 
-    def _transform_grid(self):
-        """
-        If grid_config.use_tc_vertical_grid is True, replace the default
-        vertical spacing with that from fortran restart files.
+    # def _transform_grid(self):
+    #     """
+    #     If grid_config.use_tc_vertical_grid is True, replace the default
+    #     vertical spacing with that from fortran restart files.
 
-        If grid_config.stretch_grid is True, perform Schmidt transformation
-        on the grid. Need to also provide stretch_factor, lon_target, and
-        lat_target.
-        """
-        if (self.config.grid_config.use_tc_vertical_grid is True) and (
-            self.config.initialization.config.fortran_data is True
-        ):
-            self._replace_vertical_grid()
+    #     If grid_config.stretch_grid is True, perform Schmidt transformation
+    #     on the grid. Need to also provide stretch_factor, lon_target, and
+    #     lat_target.
+    #     """
+    #     if (self.config.grid_config.use_tc_vertical_grid is True) and (
+    #         self.config.initialization.config.fortran_data is True
+    #     ):
+    #         self._replace_vertical_grid()
 
-        if self.config.grid_config.stretch_grid is True:
-            self._transform_horizontal_grid()
+    #     if self.config.grid_config.stretch_grid is True:
+    #         self._transform_horizontal_grid()
 
     def _calculate_fortran_restart_pe_peln(self):
         ptop = self.state.grid_data._vertical_data.ptop
