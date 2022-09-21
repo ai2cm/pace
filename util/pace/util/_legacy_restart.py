@@ -23,7 +23,6 @@ def open_restart(
     only_names: Iterable[str] = None,
     to_state: dict = None,
     tracer_properties: RestartProperties = None,
-    fortran_restart: bool = False,
 ):
     """Load restart files output by the Fortran model into a state dictionary.
 
