@@ -112,11 +112,10 @@ class VerticalGridData:
     """
 
     # TODO: make these non-optional, make FloatFieldK a true type and use it
-    ptop: float
     ks: int
     ak: Optional[Any] = None
     bk: Optional[Any] = None
-    p_ref: Optional[Any] = None
+    #p_ref: Optional[Any] = None
     """
     reference pressure (Pa) used to define pressure at vertical interfaces,
     where p = ak + bk * p_ref
@@ -130,9 +129,15 @@ class VerticalGridData:
         return cls(
             ak=metric_terms.ak.storage,
             bk=metric_terms.bk.storage,
-            ptop=metric_terms.ptop,
             ks=metric_terms.ks,
+            #p_ref=metric_terms.p_ref
         )
+    
+    # @property
+    # def ptop(cls, metric_terms: MetricTerms) -> float:
+    #     assert metric_terms.bk[0] == 0
+    #     ptop = metric_terms.ak[0]
+    #     return ptop
 
 
 @dataclasses.dataclass(frozen=True)
@@ -357,17 +362,18 @@ class GridData:
     def edge_n(self):
         return self._horizontal_data.edge_n
 
-    @property
-    def p_ref(self) -> float:
-        """
-        reference pressure (Pa) used to define pressure at vertical interfaces,
-        where p = ak + bk * p_ref
-        """
-        return self._vertical_data.p_ref
+    # Ajda
+    # @property
+    # def p_ref(self) -> float:
+    #     """
+    #     reference pressure (Pa) used to define pressure at vertical interfaces,
+    #     where p = ak + bk * p_ref
+    #     """
+    #     return self._vertical_data.p_ref
 
-    @p_ref.setter
-    def p_ref(self, value):
-        self._vertical_data.p_ref = value
+    # @p_ref.setter
+    # def p_ref(self, value):
+    #     self._vertical_data.p_ref = value
 
     @property
     def ak(self):
@@ -401,10 +407,12 @@ class GridData:
     def ks(self, value):
         self._vertical_data.ks = value
 
+    # Ajda
+    # how do I get the vertical data from metric terms ptop in here?
     @property
     def ptop(self):
         """pressure at top of atmosphere (Pa)"""
-        return self._vertical_data.ptop
+        return self._vertical_data.ak[0]
 
     @ptop.setter
     def ptop(self, value):

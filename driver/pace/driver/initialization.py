@@ -21,6 +21,7 @@ from pace.fv3core.testing import TranslateFVDynamics
 from pace.stencils.testing import TranslateGrid
 from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
+import os
 
 from .registry import Registry
 from .state import DriverState, TendencyState, _restart_driver_state
@@ -40,6 +41,9 @@ class Initializer(abc.ABC):
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> DriverState:
         ...
 
@@ -71,9 +75,16 @@ class InitializerSelector(Initializer):
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> DriverState:
         return self.config.get_driver_state(
-            quantity_factory=quantity_factory, communicator=communicator
+            quantity_factory=quantity_factory, 
+            communicator=communicator, 
+            damping_coefficients=damping_coefficients, 
+            driver_grid_data=driver_grid_data, 
+            grid_data=grid_data,
         )
 
     @classmethod
@@ -95,14 +106,14 @@ class BaroclinicConfig(Initializer):
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> DriverState:
+        # Ajda
+        # do I need to keep metric terms here?
         metric_terms = pace.util.grid.MetricTerms(
             quantity_factory=quantity_factory, communicator=communicator
-        )
-        grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-        damping_coeffient = DampingCoefficients.new_from_metric_terms(metric_terms)
-        driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
-            metric_terms
         )
         dycore_state = baroclinic_init.init_baroclinic_state(
             metric_terms,
@@ -122,7 +133,7 @@ class BaroclinicConfig(Initializer):
             physics_state=physics_state,
             tendency_state=tendency_state,
             grid_data=grid_data,
-            damping_coefficients=damping_coeffient,
+            damping_coefficients=damping_coefficients,
             driver_grid_data=driver_grid_data,
         )
 
@@ -141,12 +152,18 @@ class RestartConfig(Initializer):
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> DriverState:
         state = _restart_driver_state(
             self.path,
             communicator.rank,
             quantity_factory,
             communicator,
+            damping_coefficients,
+            driver_grid_data,
+            grid_data,
         )
 
         return state
@@ -164,8 +181,9 @@ class FortranRestartConfig(Initializer):
     @property
     def start_time(self) -> datetime:
         """Reads the last line in coupler.res to find the restart time"""
-        #TODO how can I pass it path?
-        restart_doc = self.path + "/coupler.res"
+        restart_files = os.listdir(self.path)
+        coupler_file = [fl for fl in restart_files if "coupler.res" in fl][0] 
+        restart_doc = self.path + coupler_file
         fl = open(restart_doc, "r")
         contents = fl.readlines()
         fl.close()
@@ -174,23 +192,57 @@ class FortranRestartConfig(Initializer):
         date_dt = datetime.strptime(''.join(date), "%Y%m%d%H%M%S")
         return date_dt
 
+
     def get_driver_state(
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> DriverState:
         state = _restart_driver_state(
             self.path,
             communicator.rank,
             quantity_factory,
             communicator,
+            damping_coefficients,
+            driver_grid_data,
+            grid_data,
         )
+
+        state = _update_fortran_restart_pe_peln(state)
+
 
         # TODO
         # follow what fortran does with restart data after reading it
         # should eliminate small differences between restart input and
         # serialized test data
+    
         return state
+
+
+def _update_fortran_restart_pe_peln(state):
+
+    ptop = state.grid_data._vertical_data.ak[0]
+    pe = state.dycore_state.pe
+    peln = state.dycore_state.peln
+    delp = state.dycore_state.delp
+
+    np = state.dycore_state.u.np
+
+    for level in range(pe.data.shape[2]):
+        pe.data[:, :, level] = ptop + np.sum(delp.data[:, :, :level], 2)
+
+    peln.data[:] = np.log(pe.data[:])
+
+    state.dycore_state.pe = pe
+    state.dycore_state.peln = peln
+
+    return state
+
+
+
 
 
 
@@ -217,6 +269,7 @@ class SerialboxConfig(Initializer):
     def _namelist(self) -> Namelist:
         return Namelist.from_f90nml(self._f90_namelist)
 
+
     def _get_serialized_grid(
         self,
         communicator: pace.util.CubedSphereCommunicator,
@@ -238,80 +291,44 @@ class SerialboxConfig(Initializer):
         )
         return serializer
 
-    def _get_grid_data_damping_coeff_and_driver_grid(
-        self,
-        quantity_factory: pace.util.QuantityFactory,
-        communicator: pace.util.CubedSphereCommunicator,
-        backend: str,
-    ):
-        if self.serialized_grid:
-            logger.info("Using serialized grid data")
-            grid = self._get_serialized_grid(communicator, backend)
-            grid_data = grid.grid_data
-            driver_grid_data = grid.driver_grid_data
-            damping_coeff = grid.damping_coefficients
-        else:
-            logger.info("Using a grid generated from metric terms")
-            grid = pace.stencils.testing.grid.Grid.with_data_from_namelist(
-                self._namelist, communicator, backend
-            )
-            metric_terms = pace.util.grid.MetricTerms(
-                quantity_factory=quantity_factory, communicator=communicator
-            )
-            grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-            damping_coeff = DampingCoefficients.new_from_metric_terms(metric_terms)
-            driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
-                metric_terms
-            )
-        return grid, grid_data, damping_coeff, driver_grid_data
-
     def get_driver_state(
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> DriverState:
         backend = quantity_factory.empty(
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         ).gt4py_backend
-        (
-            grid,
-            grid_data,
-            damping_coeff,
-            driver_grid_data,
-        ) = self._get_grid_data_damping_coeff_and_driver_grid(
-            quantity_factory, communicator, backend
-        )
+
         dycore_state = self._initialize_dycore_state(
-            quantity_factory, communicator, backend
+            communicator, backend
         )
         physics_state = pace.physics.PhysicsState.init_zeros(
             quantity_factory=quantity_factory,
             active_packages=["microphysics"],
         )
         tendency_state = TendencyState.init_zeros(quantity_factory=quantity_factory)
+
         return DriverState(
             dycore_state=dycore_state,
             physics_state=physics_state,
             tendency_state=tendency_state,
             grid_data=grid_data,
-            damping_coefficients=damping_coeff,
+            damping_coefficients=damping_coefficients,
             driver_grid_data=driver_grid_data,
         )
 
     def _initialize_dycore_state(
         self,
-        quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
         backend: str,
     ) -> fv3core.DycoreState:
-        (
-            grid,
-            grid_data,
-            damping_coeff,
-            driver_grid_data,
-        ) = self._get_grid_data_damping_coeff_and_driver_grid(
-            quantity_factory, communicator, backend
-        )
+
+        grid = self._get_serialized_grid(communicator=communicator, backend=backend)
+
         ser = self._serializer(communicator)
         savepoint_in = ser.get_savepoint("Driver-In")[0]
         dace_config = DaceConfig(
@@ -353,11 +370,15 @@ class PredefinedStateConfig(Initializer):
     damping_coefficients: pace.util.grid.DampingCoefficients
     driver_grid_data: pace.util.grid.DriverGridData
     start_time: datetime = datetime(2016, 8, 1)
-
+    # Ajda
+    # not sure what to do here ... Keep arguments?
     def get_driver_state(
         self,
         quantity_factory: pace.util.QuantityFactory,
         communicator: pace.util.CubedSphereCommunicator,
+        damping_coefficients: pace.util.grid.DampingCoefficients,
+        driver_grid_data: pace.util.grid.DriverGridData,
+        grid_data: pace.util.grid.GridData,
     ) -> DriverState:
 
         return DriverState(

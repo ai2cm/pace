@@ -287,19 +287,21 @@ def _restart_driver_state(
     rank: int,
     quantity_factory: pace.util.QuantityFactory,
     communicator: pace.util.CubedSphereCommunicator,
+    damping_coefficients: pace.util.grid.DampingCoefficients,
+    driver_grid_data: pace.util.grid.DriverGridData,
+    grid_data: pace.util.grid.GridData,
 ):
 
-    metric_terms = pace.util.grid.MetricTerms(
-        quantity_factory=quantity_factory, communicator=communicator
-    )
-    grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-    damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
-    driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(metric_terms)
     dycore_state = fv3core.DycoreState.init_zeros(quantity_factory=quantity_factory)
     backend_uses_gpu = is_gpu_backend(dycore_state.u.metadata.gt4py_backend)
 
-    # at this point, check for fv_core.res.nc (this is in fortran restart)
-    if "fv_core.res.nc" in os.path.listdir(path):
+    is_fortran_restart = False
+    restart_files = os.listdir(path)
+    for fl in restart_files:
+        if "fv_core.res.nc" in fl:
+            is_fortran_restart = True
+
+    if is_fortran_restart:
         dycore_state = _overwrite_state_from_fortran_restart(
             path,
             communicator,
