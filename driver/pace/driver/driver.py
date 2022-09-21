@@ -295,7 +295,7 @@ class Driver:
                 communicator=communicator,
                 stencil_compare_comm=stencil_compare_comm,
             )
-            # do I know what self.state is?
+            # do I know what self.config.grid is?
             damping_coefficients, driver_grid_data, grid_data = self.config.grid.get_grid(
                 quantity_factory=self.quantity_factory, communicator=communicator
             )
