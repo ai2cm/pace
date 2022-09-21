@@ -136,7 +136,6 @@ class RestartConfig(Initializer):
 
     path: str = "."
     start_time: datetime = datetime(2000, 1, 1)
-    fortran_data: bool = False
 
     def get_driver_state(
         self,
@@ -148,7 +147,43 @@ class RestartConfig(Initializer):
             communicator.rank,
             quantity_factory,
             communicator,
-            self.fortran_data,
+        )
+
+        return state
+
+
+@InitializerSelector.register("fortran_restart")
+@dataclasses.dataclass
+class FortranRestartConfig(Initializer):
+    """
+    Configuration for fortran restart initialization.
+    """
+
+    path: str = "."
+
+    @property
+    def start_time(self) -> datetime:
+        """Reads the last line in coupler.res to find the restart time"""
+        #TODO how can I pass it path?
+        restart_doc = self.path + "/coupler.res"
+        fl = open(restart_doc, "r")
+        contents = fl.readlines()
+        fl.close()
+        last_line = contents.pop(-1)
+        date = [dt if len(dt) == 4 else "%02d" % int(dt) for dt in last_line.split()[:6]]
+        date_dt = datetime.strptime(''.join(date), "%Y%m%d%H%M%S")
+        return date_dt
+
+    def get_driver_state(
+        self,
+        quantity_factory: pace.util.QuantityFactory,
+        communicator: pace.util.CubedSphereCommunicator,
+    ) -> DriverState:
+        state = _restart_driver_state(
+            self.path,
+            communicator.rank,
+            quantity_factory,
+            communicator,
         )
 
         # TODO
@@ -156,6 +191,8 @@ class RestartConfig(Initializer):
         # should eliminate small differences between restart input and
         # serialized test data
         return state
+
+
 
 
 @InitializerSelector.register("serialbox")
