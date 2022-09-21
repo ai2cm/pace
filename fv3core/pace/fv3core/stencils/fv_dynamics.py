@@ -234,7 +234,12 @@ class DynamicalCore:
 
         # Build advection stencils
         self.tracer_advection = tracer_2d_1l.TracerAdvection(
-            stencil_factory, tracer_transport, self.grid_data, comm, self.tracers
+            stencil_factory,
+            tracer_transport,
+            self.grid_data,
+            comm,
+            self.tracers,
+            checkpointer=checkpointer,
         )
         self._ak = grid_data.ak
         self._bk = grid_data.bk
@@ -316,6 +321,7 @@ class DynamicalCore:
             NQ,
             self._pfull,
             tracers=self.tracers,
+            checkpointer=checkpointer,
         )
 
         full_xyz_spec = grid_indexing.get_quantity_halo_spec(

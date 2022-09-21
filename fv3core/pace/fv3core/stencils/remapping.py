@@ -25,7 +25,7 @@ from pace.fv3core.stencils.map_single import MapSingle
 from pace.fv3core.stencils.mapn_tracer import MapNTracer
 from pace.fv3core.stencils.moist_cv import moist_pt_func, moist_pt_last_step
 from pace.fv3core.stencils.saturation_adjustment import SatAdjust3d
-from pace.util import Quantity
+from pace.util import X_DIM, Y_DIM, Z_INTERFACE_DIM, Quantity
 
 
 # TODO: Should this be set here or in global_constants?
@@ -570,18 +570,20 @@ class LagrangianToEulerian:
                 pt=pt,
                 delp=delp,
                 delz=delz,
-                peln=peln,
+                peln=peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
                 u=u,
                 v=v,
                 w=w,
                 ua=ua,
                 va=va,
                 cappa=cappa,
-                q_con=q_con,
-                q_cld=q_cld,
                 pkz=pkz,
                 pk=pk,
-                pe=pe,
+                pe=pe.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
                 phis=hs,
                 te_2d=te0_2d,
                 ps=ps,
@@ -734,25 +736,19 @@ class LagrangianToEulerian:
                 pt=pt,
                 delp=delp,
                 delz=delz,
-                peln=peln,
+                peln=peln.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
                 u=u,
                 v=v,
                 w=w,
-                ua=ua,
-                va=va,
                 cappa=cappa,
-                q_con=q_con,
-                q_cld=q_cld,
                 pkz=pkz,
                 pk=pk,
-                pe=pe,
-                hs=hs,
-                te0_2d=te0_2d,
-                ps=ps,
-                wsd=wsd,
+                pe=pe.transpose(
+                    [X_DIM, Z_INTERFACE_DIM, Y_DIM]
+                ),  # [x, z, y] fortran data
+                te_2d=te0_2d,
                 omga=omga,
-                ak=ak,
-                bk=bk,
-                pfull=pfull,
                 dp1=dp1,
             )

@@ -116,7 +116,6 @@ def test_fv_dynamics(
             with open(threshold_filename, "w") as f:
                 yaml.safe_dump(dataclasses.asdict(thresholds), f)
         communicator.comm.barrier()
-    print("thresholds calibrated")
     with open(threshold_filename, "r") as f:
         data = yaml.safe_load(f)
         thresholds = dacite.from_dict(

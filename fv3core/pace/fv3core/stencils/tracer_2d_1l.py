@@ -292,7 +292,6 @@ class TracerAdvection:
                 mfyd=mfyd,
                 cxd=cxd,
                 cyd=cyd,
-                **tracers,
             )
 
     def _checkpoint_output(
@@ -306,7 +305,6 @@ class TracerAdvection:
                 mfyd=mfyd,
                 cxd=cxd,
                 cyd=cyd,
-                **tracers,
             )
 
     def __call__(self, tracers: Dict[str, Quantity], dp1, mfxd, mfyd, cxd, cyd, mdt):
