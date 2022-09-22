@@ -3,20 +3,15 @@ import logging
 from typing import List, Tuple
 
 import dace
+import sympy as sp
 from dace import data as dt
+from dace import symbolic
 from dace.sdfg import graph as gr
 from dace.sdfg import utils as sdutil
 from dace.transformation.helpers import get_parent_map
-from dace import symbolic
-import sympy as sp
+
 
 logger = logging.getLogger(__name__)
-
-# Typedef hints for readability
-_DACE_MEMLET_EDGE_TYPE_HINT = gr.MultiConnectorEdge[dace.Memlet]
-_FILTER_MAP_TYPE_HINT = List[
-    Tuple[dace.SDFGState, dace.nodes.AccessNode, _DACE_MEMLET_EDGE_TYPE_HINT]
-]
 
 
 def _filter_all_maps(
@@ -24,7 +19,9 @@ def _filter_all_maps(
     whitelist: List[str] = None,
     blacklist: List[str] = None,
     skyp_dynamic_memlet=True,
-) -> _FILTER_MAP_TYPE_HINT:
+) -> List[
+    Tuple[dace.SDFGState, dace.nodes.AccessNode, gr.MultiConnectorEdge[dace.Memlet]]
+]:
     """
     Grab all maps outputs and filter by variable name (either black or whitelist)
 
@@ -39,7 +36,9 @@ def _filter_all_maps(
         [state, node, edges]
     """
 
-    checks: _FILTER_MAP_TYPE_HINT = []
+    checks: List[
+        Tuple[dace.SDFGState, dace.nodes.AccessNode, gr.MultiConnectorEdge[dace.Memlet]]
+    ] = []
     allmaps = [
         (me, state)
         for me, state in sdfg.all_nodes_recursive()
