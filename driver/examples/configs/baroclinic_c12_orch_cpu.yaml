@@ -13,25 +13,10 @@ performance_config:
 nx_tile: 12
 nz: 79
 dt_atmos: 225
-minutes: 60
+minutes: 1
 layout:
   - 1
   - 1
-diagnostics_config:
-  path: "output.zarr"
-  names:
-    - u
-    - v
-    - ua
-    - va
-    - pt
-    - delp
-    - qvapor
-    - qliquid
-    - qice
-    - qrain
-    - qsnow
-    - qgraupel
 dycore_config:
   a_imp: 1.0
   beta: 0.
