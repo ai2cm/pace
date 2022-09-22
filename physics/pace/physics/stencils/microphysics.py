@@ -2108,7 +2108,7 @@ class Microphysics:
         pie = 4.0 * np.arctan(1.0)
 
         # S. Klein's formular (eq 16) from am2
-        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh**3
+        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh ** 3
 
         vdifu = 2.11e-5
         tcond = 2.36e-2
@@ -2173,7 +2173,7 @@ class Microphysics:
             / act[0] ** 0.65625
         )
         cssub[3] = tcond * constants.RVGAS
-        cssub[4] = (hlts**2) * vdifu
+        cssub[4] = (hlts ** 2) * vdifu
 
         cgsub = numpy_module.empty(5)
         cgsub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
@@ -2189,7 +2189,7 @@ class Microphysics:
             0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
         )
         crevp[3] = cssub[3]
-        crevp[4] = hltc**2 * vdifu
+        crevp[4] = hltc ** 2 * vdifu
 
         cgfr = numpy_module.empty(2)
         cgfr[0] = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75

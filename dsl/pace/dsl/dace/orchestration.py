@@ -22,15 +22,16 @@ from pace.dsl.dace.dace_config import (
     DaceConfig,
     DaCeOrchestration,
 )
+from pace.dsl.dace.sdfg_debug_passes import (
+    negative_delp_checker,
+    negative_qtracers_checker,
+    trace_all_outputs,
+)
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
 from pace.dsl.dace.utils import (
     DaCeProgress,
     memory_static_analysis,
     report_memory_static_analysis,
-    sdfg_nan_checker,
-    negative_delp_checker,
-    negative_qtracers_checker,
-    trace_all_outputs,
 )
 from pace.util.mpi import MPI
 
@@ -179,11 +180,9 @@ def _build_sdfg(
         # Set of debug tools inserted in the SDFG when dace.conf "syncdebug"
         # is turned on.
         if config.get_sync_debug():
-            with DaCeProgress(
-                config, "Debug tooling (NaN, Delp negative, tracer negative)"
-            ):
+            with DaCeProgress(config, "Tooling the SDFG for debug"):
                 # sdfg_nan_checker(sdfg) # TODO (florian): segfault - bad range?
-                trace_all_outputs(sdfg)
+                trace_all_outputs(sdfg, 0, 0, 60)
                 negative_delp_checker(sdfg)
                 negative_qtracers_checker(sdfg)
 
