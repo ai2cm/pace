@@ -179,6 +179,30 @@ def negative_delp_checker(sdfg: dace.SDFG):
     logger.info(f"Added {len(allmaps_filtered)} delp* < 0 checks")
 
 
+def trace_all_outputs(sdfg: dace.SDFG):
+    """
+    Adds a negative check on every tracer
+    """
+    allmaps_filtered = _filter_all_maps(
+        sdfg,
+        skyp_dynamic_memlet=False,
+    )
+
+    for state, node, e in allmaps_filtered:
+        _check_node(
+            state,
+            node,
+            e,
+            "tracer_outputs",
+            "_inp",
+            "__i0 == 0 && __i1 == 0 && __i2 == 60",
+            "",
+            assert_out=False,
+        )
+
+    logger.info(f"Added {len(allmaps_filtered)} ouputs trace at 0,0,60")
+
+
 def negative_qtracers_checker(sdfg: dace.SDFG):
     """
     Adds a negative check on every tracer

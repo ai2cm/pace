@@ -30,6 +30,7 @@ from pace.dsl.dace.utils import (
     sdfg_nan_checker,
     negative_delp_checker,
     negative_qtracers_checker,
+    trace_all_outputs,
 )
 from pace.util.mpi import MPI
 
@@ -182,6 +183,7 @@ def _build_sdfg(
                 config, "Debug tooling (NaN, Delp negative, tracer negative)"
             ):
                 # sdfg_nan_checker(sdfg) # TODO (florian): segfault - bad range?
+                trace_all_outputs(sdfg)
                 negative_delp_checker(sdfg)
                 negative_qtracers_checker(sdfg)
 

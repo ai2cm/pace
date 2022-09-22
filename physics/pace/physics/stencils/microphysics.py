@@ -1907,10 +1907,13 @@ class Microphysics:
 
         self.namelist = namelist
         # Cache a numpy-like module for
-        if stencil_factory.config.is_gpu_backend:
-            self.gfdl_cloud_microphys_init(cp)
+        if (
+            stencil_factory.config.is_gpu_backend
+            and stencil_factory.config.dace_config.is_dace_orchestrated()
+        ):
+            self.gfdl_cloud_microphys_init(namelist.dt_atmos, cp)
         else:
-            self.gfdl_cloud_microphys_init(np)
+            self.gfdl_cloud_microphys_init(namelist.dt_atmos, np)
         # [TODO]: many of the "constants" come from namelist, needs to be updated
         grid_indexing = stencil_factory.grid_indexing
         origin = grid_indexing.origin_compute()
@@ -2079,14 +2082,14 @@ class Microphysics:
             domain=grid_indexing.domain_compute(),
         )
 
-    def gfdl_cloud_microphys_init(self, numpy_module):
-        self.setupm(numpy_module)
+    def gfdl_cloud_microphys_init(self, dt_atmos: float, numpy_module):
+        self.setupm(dt_atmos, numpy_module)
         self._log_10 = np.log(10.0)
         self._tice0 = self.namelist.tice - 0.01
         # supercooled water can exist down to - 48 c, which is the "absolute"
         self._t_wfr = self.namelist.tice - 40.0
 
-    def setupm(self, numpy_module):
+    def setupm(self, dt_atmos: float, numpy_module):
         gam263 = 1.456943
         gam275 = 1.608355
         gam290 = 1.827363
@@ -2105,7 +2108,7 @@ class Microphysics:
         pie = 4.0 * np.arctan(1.0)
 
         # S. Klein's formular (eq 16) from am2
-        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh ** 3
+        fac_rc = (4.0 / 3.0) * pie * functions.RHOR * self.namelist.rthresh**3
 
         vdifu = 2.11e-5
         tcond = 2.36e-2
@@ -2170,7 +2173,7 @@ class Microphysics:
             / act[0] ** 0.65625
         )
         cssub[3] = tcond * constants.RVGAS
-        cssub[4] = (hlts ** 2) * vdifu
+        cssub[4] = (hlts**2) * vdifu
 
         cgsub = numpy_module.empty(5)
         cgsub[0] = 2.0 * pie * vdifu * tcond * constants.RVGAS * rnzg
@@ -2186,7 +2189,7 @@ class Microphysics:
             0.31 * scm3 * gam290 * np.sqrt(self.namelist.alin / visk) / act[1] ** 0.725
         )
         crevp[3] = cssub[3]
-        crevp[4] = hltc ** 2 * vdifu
+        crevp[4] = hltc**2 * vdifu
 
         cgfr = numpy_module.empty(2)
         cgfr[0] = 20.0e2 * pisq * rnzr * functions.RHOR / act[1] ** 1.75
@@ -2227,7 +2230,7 @@ class Microphysics:
         self._csmlt = csmlt
         self._cgmlt = cgmlt
         self._ces0 = constants.EPS * es0
-        self._set_timestep(-1.0)
+        self._set_timestep(dt_atmos)
 
     def _update_timestep_if_needed(self, timestep: float):
         if timestep != self._timestep:
@@ -2251,6 +2254,7 @@ class Microphysics:
         self._timestep = timestep
 
     def __call__(self, state: MicrophysicsState, timestep: float):
+        # TODO (floriand): reintroduce after DaCe fix to inlined scalar that shouldn't
         self._update_timestep_if_needed(timestep)
         self._fields_init(
             state.land,
