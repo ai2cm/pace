@@ -245,8 +245,6 @@ def _update_fortran_restart_pe_peln(state):
 
 
 
-
-
 @InitializerSelector.register("serialbox")
 @dataclasses.dataclass
 class SerialboxConfig(Initializer):

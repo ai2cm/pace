@@ -579,28 +579,3 @@ def _setup_factories(
     return quantity_factory, stencil_factory
 
 
-def fortran_restart_to_dycore_variable_names() -> Dict:
-    """
-    Dictionary that matches the fortran restart file variables
-    to those in dycore state.
-    """
-
-    dictionary = {}
-    dictionary["pt"] = "T" # air temperature
-    dictionary["delp"] = "delp" # pressure thickness of atmospheric layer
-    dictionary["phis"] = "phis" # surface geopotential
-    dictionary["w"] = "W" # vertical wind
-    dictionary["u"] = "u" # x_wind
-    dictionary["v"] = "v" # y_wind
-    dictionary["qvapor"] = "sphum" # specific humidity
-    dictionary["qliquid"] = "liq_wat" # liquid water mixing ratio
-    dictionary["qice"] = "ice_wat" # cloud ice mixing ratio
-    dictionary["qrain"] = "rainwat" # rain mixing ratio
-    dictionary["qsnow"] = "snowwat" # snow mixing ratio
-    dictionary["qgraupel"] = "graupel" # graupel mixing ratio
-    dictionary["qo3mr"] = "o3mr" # ozone mixing ratio
-    dictionary["qsgs_tke"] = "sgs_tke" # turbulent kinetic energy
-    dictionary["qcld"] = "cld_amt" # cloud fraction
-    dictionary["delz"] = "DZ" # vertical thickness of atmospheric layer
-
-    return dictionary
