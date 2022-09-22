@@ -11,7 +11,7 @@ initialization:
   config:
     path: gs://vcm-ml-public/dsl/initial_conditions/c128_6ranks_tc
   type: fortran_restart
-grid_init:
+grid_config:
   config:
     stretch_grid: true
     stretch_factor: 3.0
