@@ -1906,7 +1906,8 @@ class Microphysics:
         )
 
         self.namelist = namelist
-        # Cache a numpy-like module for
+        # In orchestration mode, we pass the device memory
+        # TODO: turn arrays in setupm into a dataclass, or inidivudal scalars
         if (
             stencil_factory.config.is_gpu_backend
             and stencil_factory.config.dace_config.is_dace_orchestrated()
