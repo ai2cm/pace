@@ -1,5 +1,5 @@
-dycore_only: true
-disable_step_physics: true
+dycore_only: false
+disable_step_physics: false
 stencil_config:
   compilation_config:
     backend: numpy
