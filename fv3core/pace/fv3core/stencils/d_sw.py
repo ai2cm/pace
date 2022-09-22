@@ -946,7 +946,10 @@ class DGridShallowWaterLagrangianDynamics:
             vc (in): C-grid y-velocity
             ua (in): A-grid x-velocity
             va (in) A-grid y-velocity
-            divgd (inout): D-grid horizontal divergence
+            divgd (inout): D-grid horizontal divergence, used for divergence
+                damping. TODO: Variable gets re-used for other purposes causing
+                it to be inout, can we refactor those?
+                corner handling, higher-order divergence damping temporary
             mfx (inout): accumulated x mass flux
             mfy (inout): accumulated y mass flux
             cx (inout): accumulated Courant number in the x direction

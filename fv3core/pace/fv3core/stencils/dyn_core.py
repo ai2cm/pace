@@ -135,32 +135,39 @@ def p_grad_c_stencil(
     gz: FloatField,
     dt2: float,
 ):
-    """Update C-grid winds from the pressure gradient force
+    """
+    Update C-grid winds from the backwards-in-time pressure gradient force
 
     When this is run the C-grid winds have almost been completely
     updated by computing the momentum equation terms, but the pressure
     gradient force term has not yet been applied. This stencil completes
     the equation and Arakawa C-grid winds have been advected half a timestep
-    upon completing this stencil..
+    upon completing this stencil.
 
-     Args:
+    Args:
         rdxc (in):
         rdyc (in):
-        uc (inout): x-velocity on the C-grid
-        vc (inout): y-velocity on the C-grid
+        uc (inout): x-velocity on the C-grid, has been updated due to advection
+            but not yet due to pressure gradient force
+        vc (inout): y-velocity on the C-grid, has been updated due to advection
+            but not yet due to pressure gradient force
         delpc (in): vertical delta in pressure
-        pkc (in):  pressure if non-hydrostatic,
+        pkc (in): pressure if non-hydrostatic,
             (edge pressure)**(moist kappa) if hydrostatic
         gz (in):  height of the model grid cells (m)
         dt2 (in): half a model timestep (for C-grid update) in seconds
     """
     from __externals__ import hydrostatic
 
+    # TODO: reference derivation in SJ Lin 1997 paper,
+    # FV3 documentation section 6.6 (?)
+
     with computation(PARALLEL), interval(...):
         if __INLINED(hydrostatic):
             wk = pkc[0, 0, 1] - pkc
         else:
             wk = delpc
+        # wk is pressure gradient
         uc = uc + dt2 * rdxc / (wk[-1, 0, 0] + wk) * (
             (gz[-1, 0, 1] - gz) * (pkc[0, 0, 1] - pkc[-1, 0, 0])
             + (gz[-1, 0, 0] - gz[0, 0, 1]) * (pkc[-1, 0, 1] - pkc)

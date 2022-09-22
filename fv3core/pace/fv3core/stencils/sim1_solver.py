@@ -31,7 +31,7 @@ def sim1_solver(
     dz (inout):
     ptr (in):
     pm (in):
-    pe (out):
+    pe (out): nonhydrostatic perturbation pressure defined on interfaces
     pem (in):
     wsr (in):
     cp3 (in):
@@ -154,6 +154,8 @@ class Sim1Solver:
         system for sound waves to compute nonhydrostatic terms for
         vertical velocity and pressure perturbations.
 
+        Chapter 7 of the FV3 documentation
+
         Args:
           dt (in): timstep in seconds of solver
           gm (in): ?? 1 / (1 - cappa)
@@ -167,6 +169,9 @@ class Sim1Solver:
           ptr (in): potential temperature
           wsr (in): vertical velocity of the lowest level
         """
+
+        # TODO: email Lucas about any remaining variable naming here
+
         t1g = 2.0 * dt * dt
         rdt = 1.0 / dt
         self._compute_sim1_solve(
