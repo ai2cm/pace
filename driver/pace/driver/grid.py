@@ -121,7 +121,7 @@ class GeneratedConfig(GridInitializer):
         grid_data = GridData.new_from_metric_terms(metric_terms)
 
         if self.vertical_grid_from_restart:  # read in vertical grid
-            grid_data = _replace_vertical_grid(metric_terms)
+            grid_data = _replace_vertical_grid(self.ks, metric_terms)
 
         damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
         driver_grid_data = DriverGridData.new_from_metric_terms(metric_terms)
@@ -233,7 +233,7 @@ def _transform_horizontal_grid(metric_terms: MetricTerms, stretch_factor: float,
     return metric_terms
 
 
-def _replace_vertical_grid(metric_terms: MetricTerms, restart_path: str = "restart_tmp/") -> GridData:
+def _replace_vertical_grid(ks, metric_terms: MetricTerms, restart_path: str = "restart_tmp/") -> GridData:
     """
     Replaces the vertical grid generators from metric terms (ak and bk) with
     their fortran restart values (in fv_core.res.nc).
@@ -262,7 +262,7 @@ def _replace_vertical_grid(metric_terms: MetricTerms, restart_path: str = "resta
     ds.close()
 
     vertical_data = pace.util.grid.VerticalGridData(
-        ks=self.ks, ak=metric_terms.ak.data, bk=metric_terms.bk.data
+        ks=ks, ak=metric_terms.ak.data, bk=metric_terms.bk.data
     )
     horizontal_data = pace.util.grid.HorizontalGridData.new_from_metric_terms(
         metric_terms
