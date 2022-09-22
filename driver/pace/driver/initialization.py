@@ -236,7 +236,14 @@ class FortranRestartConfig(Initializer):
         return state
 
 
-def _update_fortran_restart_pe_peln(state):
+def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
+    """
+    Fortran restart data don't have information on pressure interface values
+    and their logs. 
+    This function takes the delp data (that is present in restart files), and 
+    top level pressure to calculate pressure at interfaces and their log, 
+    and updates the driver state with values.
+    """
 
     ptop = state.grid_data._vertical_data.ak[0]
     pe = state.dycore_state.pe
