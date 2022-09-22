@@ -137,7 +137,6 @@ class SerialboxConfig(GridInitializer):
     """
 
     path: str
-    serialized_grid: bool
 
     @property
     def _f90_namelist(self) -> f90nml.Namelist:
@@ -178,27 +177,27 @@ class SerialboxConfig(GridInitializer):
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         ).gt4py_backend
 
-        if self.serialized_grid:
-            logger.info("Using serialized grid data")
-            grid = self._get_serialized_grid(communicator, backend)
-            grid_data = grid.grid_data
-            driver_grid_data = grid.driver_grid_data
-            damping_coefficients = grid.damping_coefficients
-        else:
-            logger.info("Using a grid generated from metric terms")
-            grid = pace.stencils.testing.grid.Grid.with_data_from_namelist(
-                self._namelist, communicator, backend
-            )
-            metric_terms = pace.util.grid.MetricTerms(
-                quantity_factory=quantity_factory, communicator=communicator
-            )
-            grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
-            damping_coefficients = DampingCoefficients.new_from_metric_terms(
-                metric_terms
-            )
-            driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
-                metric_terms
-            )
+        #if self.serialized_grid:
+        logger.info("Using serialized grid data")
+        grid = self._get_serialized_grid(communicator, backend)
+        grid_data = grid.grid_data
+        driver_grid_data = grid.driver_grid_data
+        damping_coefficients = grid.damping_coefficients
+        # else:
+        #     logger.info("Using a grid generated from metric terms")
+        #     grid = pace.stencils.testing.grid.Grid.with_data_from_namelist(
+        #         self._namelist, communicator, backend
+        #     )
+        #     metric_terms = pace.util.grid.MetricTerms(
+        #         quantity_factory=quantity_factory, communicator=communicator
+        #     )
+        #     grid_data = pace.util.grid.GridData.new_from_metric_terms(metric_terms)
+        #     damping_coefficients = DampingCoefficients.new_from_metric_terms(
+        #         metric_terms
+        #     )
+        #     driver_grid_data = pace.util.grid.DriverGridData.new_from_metric_terms(
+        #         metric_terms
+        #     )
 
         return damping_coefficients, driver_grid_data, grid_data
 
