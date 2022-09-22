@@ -101,13 +101,6 @@ class DriverState:
             quantity_factory=quantity_factory,
             communicator=communicator,
         )
-        # state = _restart_driver_state(
-        #     restart_path,
-        #     communicator.rank,
-        #     quantity_factory,
-        #     communicator,
-        #     fortran_data,
-        # )
         state = _restart_driver_state(
             restart_path,
             communicator.rank,
@@ -203,9 +196,9 @@ def _overwrite_state_from_fortran_restart(
     """
     Args:
         path: path to restart files
-        rank: current rank number
+        communicator:
         state: an empty state
-        restart_file_prefix: file prefix name to read
+        is_gpu_backend: 
 
     Returns:
         state: new state filled with restart files
@@ -304,8 +297,6 @@ def _dict_state_to_driver_state(
     #                     driver_state.__dict__[_field.name].view[:] = np.transpose(
     #                         fortran_state[_field.name].data
     #                     )
-
-    return driver_state
 
 
 def _restart_driver_state(
