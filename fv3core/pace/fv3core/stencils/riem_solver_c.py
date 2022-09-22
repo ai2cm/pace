@@ -60,6 +60,22 @@ def precompute(
         gm = 1.0 / (1.0 - cappa)
         dm /= constants.GRAV
     with computation(PARALLEL), interval(0, -1):
+        # (1) From \partial p*/\partial z = -\rho g, we can separate and integrate
+        # over a layer to get
+        # \delta p* = -\bar\rho g \delta z = -\bar p* g\delta z / (R_d T_v)
+        # (using the ideal gas law)
+        # which we can solve for cell-mean pressure to get
+        # \bar p* = - \delta p* \frac{R_d T_v}{g \delta z}
+
+        # (2) From the hydrostatic balance, use the ideal gas law first to get
+        # \partial p* / \partial z = - \frac{p* g}{R_d T_v}. Separating and integrating
+        # yields
+        # \delta log p* = - \frac{g\delta z}{R_d T_v}
+
+        # The RHS of the final expression in (2) is the reciprocal of the fraction in
+        # (1), giving us
+
+        # \bar p* = \delta p* / \delta log p*
         pm = (peg[0, 0, 1] - peg) / (log(peg[0, 0, 1]) - log(peg))
 
 

@@ -471,22 +471,20 @@ def fxadv_fluxes_stencil(
     from __externals__ import local_ie, local_is, local_je, local_js
 
     with computation(PARALLEL), interval(...):
-        prod = dt * uc_contra
         with horizontal(region[local_is : local_ie + 2, :]):
-            if prod > 0:
-                crx = prod * rdxa[-1, 0]
-                x_area_flux = dy * prod * sin_sg3[-1, 0]
+            if uc_contra > 0:
+                crx = dt * uc_contra * rdxa[-1, 0]
+                x_area_flux = dy * dt * uc_contra * sin_sg3[-1, 0]
             else:
-                crx = prod * rdxa
-                x_area_flux = dy * prod * sin_sg1
-        prod = dt * vc_contra
+                crx = dt * uc_contra * rdxa
+                x_area_flux = dy * dt * uc_contra * sin_sg1
         with horizontal(region[:, local_js : local_je + 2]):
-            if prod > 0:
-                cry = prod * rdya[0, -1]
-                y_area_flux = dx * prod * sin_sg4[0, -1]
+            if vc_contra > 0:
+                cry = dt * vc_contra * rdya[0, -1]
+                y_area_flux = dx * dt * vc_contra * sin_sg4[0, -1]
             else:
-                cry = prod * rdya
-                y_area_flux = dx * prod * sin_sg2
+                cry = dt * vc_contra * rdya
+                y_area_flux = dx * dt * vc_contra * sin_sg2
 
 
 class FiniteVolumeFluxPrep:
