@@ -11,7 +11,7 @@ import pace.physics
 import pace.util
 import pace.util.grid
 from pace import fv3core
-from pace.driver.grid import get_grid
+from pace.driver.grid import GeneratedConfig
 from pace.dsl.gt4py_utils import is_gpu_backend
 from pace.util.initialization import fortran_restart_to_pace_dict
 
@@ -97,7 +97,7 @@ class DriverState:
             sizer, backend=driver_config.stencil_config.compilation_config.backend
         )
 
-        damping_coefficients, driver_grid_data, grid_data = get_grid(
+        damping_coefficients, driver_grid_data, grid_data = GeneratedConfig.get_grid(
             quantity_factory=quantity_factory,
             communicator=communicator,
         )
@@ -248,8 +248,7 @@ def _dict_state_to_driver_state(
     Takes a dict of state quantities with their Fortran names and a driver state
     and populates the driver state with quantities from the dict.
     """
-    print("Driver state", driver_state.__dict__.keys())
-    print("Fortran state", fortran_state.keys())
+
     for field in fortran_restart_to_pace_dict.keys():
         driver_state.__dict__[field].view[:] = np.transpose(fortran_state[field].data)
 

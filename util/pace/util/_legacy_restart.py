@@ -1,13 +1,18 @@
 import os
 from typing import BinaryIO, Generator, Iterable
 
+from pace.util.initialization import (
+    extra_restart_properties,
+    fortran_restart_to_pace_dict,
+)
+
 from . import _xarray as xr
 from . import constants, filesystem, io
 from ._properties import RESTART_PROPERTIES, RestartProperties
 from .communicator import CubedSphereCommunicator
 from .partitioner import get_tile_index
 from .quantity import Quantity
-from pace.util.initialization import fortran_restart_to_pace_dict, extra_restart_properties
+
 
 __all__ = ["open_restart"]
 
@@ -40,7 +45,7 @@ def open_restart(
 
     if tracer_properties is None:
         restart_properties = RESTART_PROPERTIES
-        restart_properties.update(extra_restart_properties) # add microphysics 
+        restart_properties.update(extra_restart_properties)  # add microphysics
         # original restart properties don't have that stuff
     else:
         restart_properties = {**tracer_properties, **RESTART_PROPERTIES}
@@ -70,7 +75,7 @@ def open_restart(
     #     else:
     #         state = communicator.tile.scatter_state(state, recv_state=to_state)
     # Ajda
-    # fortran restart files don't need to be scattered as each tile has its own 
+    # fortran restart files don't need to be scattered as each tile has its own
     # file ... At least when it's run on 6 ranks.
     # Not sure what happens if you have more (do you get more restart files?) ...
 
@@ -130,7 +135,7 @@ def _apply_restart_metadata(state, restart_properties: RestartProperties):
                 new_dims = properties["dims"]
                 new_state[name] = _apply_dims(da, new_dims)
                 new_state[name].attrs["units"] = properties["units"]
-            
+
     return new_state
 
 
@@ -153,9 +158,7 @@ def prepend_label(filename, label=None):
         return filename
 
 
-def load_partial_state_from_restart_file(
-    file, restart_properties, only_names=None
-):
+def load_partial_state_from_restart_file(file, restart_properties, only_names=None):
     ds = xr.open_dataset(file).isel(Time=0).drop_vars("Time")
     state = _apply_restart_metadata(ds.data_vars, restart_properties)
     state = map_keys(state, fortran_restart_to_pace_dict)

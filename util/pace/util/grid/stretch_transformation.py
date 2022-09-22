@@ -1,8 +1,8 @@
 import copy
+from typing import Tuple, Union
 
 import numpy as np
 
-from typing import Union, Tuple
 
 try:
     import cupy as cp
@@ -67,8 +67,7 @@ def direct_transform(
 
     if np.abs(c2m1) > 1e-7:  # do stretching
         lat_t = np.arcsin(
-            (c2m1 + c2p1 * np.sin(lat_data))
-            / (c2p1 + c2m1 * np.sin(lat_data))
+            (c2m1 + c2p1 * np.sin(lat_data)) / (c2p1 + c2m1 * np.sin(lat_data))
         )
     else:  # no stretching
         lat_t = lat_data
@@ -88,9 +87,7 @@ def direct_transform(
     lon_trans[tmp >= 1e-7] = lon_p + np.arctan2(
         -np.cos(lat_t[tmp >= 1e-7]) * np.sin(lon_data[tmp >= 1e-7]),
         -np.sin(lat_t[tmp >= 1e-7]) * np.cos(lat_p)
-        + np.cos(lat_t[tmp >= 1e-7])
-        * np.sin(lat_p)
-        * np.cos(lon_data[tmp >= 1e-7]),
+        + np.cos(lat_t[tmp >= 1e-7]) * np.sin(lat_p) * np.cos(lon_data[tmp >= 1e-7]),
     )
     lat_trans[tmp >= 1e-7] = np.arcsin(sin_o[tmp >= 1e-7])
 
