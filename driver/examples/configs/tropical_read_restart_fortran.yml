@@ -1,5 +1,5 @@
-dycore_only: false
-disable_step_physics: false
+dycore_only: true
+disable_step_physics: true
 stencil_config:
   compilation_config:
     backend: numpy
@@ -9,7 +9,7 @@ stencil_config:
     device_sync: false
 initialization:
   config:
-    path: /home/ajdas/pace/restart_data/v5.0/
+    path: gs://vcm-ml-public/dsl/initial_conditions/c128_6ranks_tc
   type: fortran_restart
 grid_init:
   config:
@@ -18,7 +18,7 @@ grid_init:
     lon_target: 172.5
     lat_target: 17.5
     ks: 0
-    restart_path: /home/ajdas/pace/restart_data/v5.0/
+    vertical_grid_from_restart: True
   type: generated
 performance_config:
   performance_mode: true

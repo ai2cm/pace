@@ -86,7 +86,7 @@ class GeneratedConfig(GridInitializer):
         lon_target: desired center longitude for refined tile (deg)
         lat_target: desired center latitude for refined tile (deg)
         tc_ks: something to do with friction in the vertical ???Ajda
-        restart_path: path to restart data
+        vertical_grid_from_restart: whether to read ak, bk from restart files
     """
 
     stretch_grid: bool = False
@@ -94,10 +94,7 @@ class GeneratedConfig(GridInitializer):
     lon_target: Optional[float] = None
     lat_target: Optional[float] = None
     ks: int = 0
-    restart_path: Optional[
-        str
-    ] = None  # can this be just path from config? can I see that?
-    # if restart_path, then read in vertical grid
+    vertical_grid_from_restart: Optional[bool] = False
 
     def __post_init__(self):
         if self.stretch_grid:
@@ -125,7 +122,7 @@ class GeneratedConfig(GridInitializer):
             metric_terms = _transform_horizontal_grid(self, metric_terms)
         grid_data = GridData.new_from_metric_terms(metric_terms)
 
-        if self.restart_path is not None:  # read in vertical grid
+        if self.vertical_grid_from_restart:  # read in vertical grid
             grid_data = _replace_vertical_grid(self, metric_terms)
 
         damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
@@ -238,13 +235,13 @@ def _replace_vertical_grid(self, metric_terms) -> GridData:
     p_ref(?)
     """
 
-    restart_files = os.listdir(self.restart_path)
-    data_file = [fl for fl in restart_files if "fv_core.res.nc" in fl][0]
+    restart_path = "restart_tmp/"
+    data_file = [fl for fl in os.listdir(restart_path) if "fv_core.res.nc" in fl][0]
 
-    ak_bk_data_file = self.restart_path + data_file
+    ak_bk_data_file = restart_path + os.path.sep + data_file
     if not os.path.isfile(ak_bk_data_file):
         raise ValueError(
-            """use_tc_vertical_grid is true,
+            """vertical_grid_from_restart is true,
             but no fv_core.res.nc in restart data file."""
         )
 
