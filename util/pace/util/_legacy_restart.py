@@ -56,7 +56,6 @@ def open_restart(
     state = {}
     if communicator.tile.rank == constants.ROOT_RANK:
         for file in restart_files(dirname, tile_index, label):
-
             state.update(
                 load_partial_state_from_restart_file(
                     file, restart_properties, only_names=only_names
@@ -69,15 +68,10 @@ def open_restart(
                 with filesystem.open(coupler_res_filename, "r") as f:
                     state["time"] = io.get_current_date_from_coupler_res(f)
 
-    # if not fortran_restart:
-    #     if to_state is None:
-    #         state = communicator.tile.scatter_state(state)
-    #     else:
-    #         state = communicator.tile.scatter_state(state, recv_state=to_state)
-    # Ajda
-    # fortran restart files don't need to be scattered as each tile has its own
-    # file ... At least when it's run on 6 ranks.
-    # Not sure what happens if you have more (do you get more restart files?) ...
+    if to_state is None:
+        state = communicator.tile.scatter_state(state)
+    else:
+        state = communicator.tile.scatter_state(state, recv_state=to_state)
 
     return state
 
