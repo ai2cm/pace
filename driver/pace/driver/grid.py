@@ -85,7 +85,9 @@ class GeneratedConfig(GridInitializer):
         stretch_factor: refinement amount
         lon_target: desired center longitude for refined tile (deg)
         lat_target: desired center latitude for refined tile (deg)
-        tc_ks: something to do with friction in the vertical ???Ajda
+        tc_ks: The number of pure-pressure layers at the top of the model
+            Also the level where model transitions from pure pressure to
+            hybrid pressure levels.
         vertical_grid_from_restart: whether to read ak, bk from restart files
     """
 
@@ -119,11 +121,11 @@ class GeneratedConfig(GridInitializer):
         np = metric_terms.lat.np
 
         if self.stretch_grid:  # do horizontal grid transformation
-            metric_terms = _transform_horizontal_grid(self, metric_terms)
+            metric_terms = _transform_horizontal_grid(metric_terms, self.stretch_factor, self.lon_target, self.lat_target)
         grid_data = GridData.new_from_metric_terms(metric_terms)
 
         if self.vertical_grid_from_restart:  # read in vertical grid
-            grid_data = _replace_vertical_grid(self, metric_terms)
+            grid_data = _replace_vertical_grid(metric_terms)
 
         damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
         driver_grid_data = DriverGridData.new_from_metric_terms(metric_terms)
@@ -205,17 +207,26 @@ class SerialboxConfig(GridInitializer):
         return damping_coefficients, driver_grid_data, grid_data
 
 
-def _transform_horizontal_grid(self, metric_terms: MetricTerms) -> MetricTerms:
+def _transform_horizontal_grid(metric_terms: MetricTerms, stretch_factor: float, lon_target: float, lat_target: float) -> MetricTerms:
     """
     Uses the Schmidt transform to locally refine the horizontal grid.
+
+    Args:
+        metric_terms
+        stretch_factor: refinement factor for tile 6
+        lon_target: in degrees, lon of the new center for refined tile 6
+        lat_target: in degrees, lat of the new center for refined tile 6
+        
+    Returns:
+        updated metric terms
     """
     grid = metric_terms.grid
     lon_transform, lat_transform = direct_transform(
         lon=grid.data[:, :, 0],
         lat=grid.data[:, :, 1],
-        stretch_factor=self.stretch_factor,
-        lon_target=self.lon_target,
-        lat_target=self.lat_target,
+        stretch_factor=stretch_factor,
+        lon_target=lon_target,
+        lat_target=lat_target,
         np=grid.np,
     )
     grid.data[:, :, 0] = lon_transform[:]
@@ -227,15 +238,20 @@ def _transform_horizontal_grid(self, metric_terms: MetricTerms) -> MetricTerms:
     return metric_terms
 
 
-def _replace_vertical_grid(self, metric_terms) -> GridData:
+def _replace_vertical_grid(metric_terms: MetricTerms, restart_path: str = "restart_tmp/") -> GridData:
     """
     Replaces the vertical grid generators from metric terms (ak and bk) with
     their fortran restart values (in fv_core.res.nc).
     Then re-generates grid data with the new vertical inputs.
-    p_ref(?)
+
+    Args:
+        metric_terms
+        restart_tmp: the directory where the restart data is stored
+    
+    Returns:
+        updated metric terms
     """
 
-    restart_path = "restart_tmp/"
     data_file = [fl for fl in os.listdir(restart_path) if "fv_core.res.nc" in fl][0]
 
     ak_bk_data_file = restart_path + os.path.sep + data_file
