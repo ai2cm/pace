@@ -202,33 +202,10 @@ def _overwrite_state_from_fortran_restart(
     Returns:
         state: new state filled with restart files
     """
-    #state_dict = _driver_state_to_dict(state)
 
     state_dict = pace.util.open_restart(path, communicator)
 
     _dict_state_to_driver_state(state_dict, state, is_gpu_backend)
-
-
-
-def _driver_state_to_dict(
-    driver_state: Union[fv3core.DycoreState, pace.physics.PhysicsState, TendencyState],
-):
-    """
-    Takes a Pace driver state
-    and returns a dict of state quantities with their Fortran names
-    """
-
-    dict_state = {}
-
-    for field in fortran_restart_to_pace_dict.keys():
-        dict_state[fortran_restart_to_pace_dict[field]] = driver_state.__dict__[
-            field
-        ].data[:]
-
-    # Ajda
-    # at this point the data for every field in dict_state is 0.
-    return dict_state
-
 
 def _dict_state_to_driver_state(
     fortran_state: dict,
@@ -312,9 +289,7 @@ def _restart_driver_state(
 
     is_fortran_restart = False
     restart_files = os.listdir(path)
-    for fl in restart_files:
-        if "fv_core.res.nc" in fl:
-            is_fortran_restart = True
+    is_fortran_restart = any(fname.endswith("fv_core.res.nc") for fname in restart_files)
 
     if is_fortran_restart:
         _overwrite_state_from_fortran_restart(
