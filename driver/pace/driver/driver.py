@@ -81,7 +81,7 @@ class DriverConfig:
 
     stencil_config: pace.dsl.StencilConfig
     initialization: InitializerSelector
-    grid_init: GridInitializerSelector
+    grid_config: GridInitializerSelector
     nx_tile: int
     nz: int
     layout: Tuple[int, int]
@@ -184,7 +184,7 @@ class DriverConfig:
         kwargs["initialization"] = InitializerSelector.from_dict(
             kwargs["initialization"]
         )
-        kwargs["grid_init"] = GridInitializerSelector.from_dict(kwargs["grid_init"])
+        kwargs["grid_config"] = GridInitializerSelector.from_dict(kwargs["grid_config"])
 
         if (
             isinstance(kwargs["stencil_config"], dict)
@@ -297,7 +297,7 @@ class Driver:
                 damping_coefficients,
                 driver_grid_data,
                 grid_data,
-            ) = self.config.grid_init.get_grid(
+            ) = self.config.grid_config.get_grid(
                 quantity_factory=self.quantity_factory,
                 communicator=communicator,
             )
