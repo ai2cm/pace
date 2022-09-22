@@ -45,7 +45,7 @@ class GridInitializerSelector(GridInitializer):
     Dataclass for selecting the implementation of GridInitializer to use.
 
     Used to circumvent the issue that dacite expects static class definitions,
-    but we would like to dynamically define which Initializer to use. Does this
+    but we would like to dynamically define which GridInitializer to use. Does this
     by representing the part of the yaml specification that asks which initializer
     to use, but deferring to the implementation in that initializer when called.
     """
