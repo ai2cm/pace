@@ -202,7 +202,7 @@ class SerialboxConfig(GridInitializer):
         return damping_coefficients, driver_grid_data, grid_data
 
 
-def _transform_horizontal_grid(metric_terms: MetricTerms, stretch_factor: float, lon_target: float, lat_target: float) -> MetricTerms:
+def _transform_horizontal_grid(metric_terms: MetricTerms, stretch_factor: float, lon_target: float, lat_target: float):
     """
     Uses the Schmidt transform to locally refine the horizontal grid.
 
@@ -229,8 +229,6 @@ def _transform_horizontal_grid(metric_terms: MetricTerms, stretch_factor: float,
 
     metric_terms._grid.data[:] = grid.data[:]
     metric_terms._init_agrid()
-
-    return metric_terms
 
 
 def _replace_vertical_grid(ks, metric_terms: MetricTerms, restart_path: str = "restart_tmp/") -> GridData:
