@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import logging
+import os
 from datetime import datetime
 from typing import ClassVar
 
@@ -19,9 +20,7 @@ from pace.dsl.stencil import StencilFactory
 from pace.dsl.stencil_config import CompilationConfig
 from pace.fv3core.testing import TranslateFVDynamics
 from pace.stencils.testing import TranslateGrid
-from pace.util.grid import DampingCoefficients
 from pace.util.namelist import Namelist
-import os
 
 from .registry import Registry
 from .state import DriverState, TendencyState, _restart_driver_state
@@ -80,10 +79,10 @@ class InitializerSelector(Initializer):
         grid_data: pace.util.grid.GridData,
     ) -> DriverState:
         return self.config.get_driver_state(
-            quantity_factory=quantity_factory, 
-            communicator=communicator, 
-            damping_coefficients=damping_coefficients, 
-            driver_grid_data=driver_grid_data, 
+            quantity_factory=quantity_factory,
+            communicator=communicator,
+            damping_coefficients=damping_coefficients,
+            driver_grid_data=driver_grid_data,
             grid_data=grid_data,
         )
 
@@ -182,16 +181,17 @@ class FortranRestartConfig(Initializer):
     def start_time(self) -> datetime:
         """Reads the last line in coupler.res to find the restart time"""
         restart_files = os.listdir(self.path)
-        coupler_file = [fl for fl in restart_files if "coupler.res" in fl][0] 
+        coupler_file = [fl for fl in restart_files if "coupler.res" in fl][0]
         restart_doc = self.path + coupler_file
         fl = open(restart_doc, "r")
         contents = fl.readlines()
         fl.close()
         last_line = contents.pop(-1)
-        date = [dt if len(dt) == 4 else "%02d" % int(dt) for dt in last_line.split()[:6]]
-        date_dt = datetime.strptime(''.join(date), "%Y%m%d%H%M%S")
+        date = [
+            dt if len(dt) == 4 else "%02d" % int(dt) for dt in last_line.split()[:6]
+        ]
+        date_dt = datetime.strptime("".join(date), "%Y%m%d%H%M%S")
         return date_dt
-
 
     def get_driver_state(
         self,
@@ -213,12 +213,11 @@ class FortranRestartConfig(Initializer):
 
         state = _update_fortran_restart_pe_peln(state)
 
-
         # TODO
         # follow what fortran does with restart data after reading it
         # should eliminate small differences between restart input and
         # serialized test data
-    
+
         return state
 
 
@@ -242,9 +241,6 @@ def _update_fortran_restart_pe_peln(state):
     return state
 
 
-
-
-
 @InitializerSelector.register("serialbox")
 @dataclasses.dataclass
 class SerialboxConfig(Initializer):
@@ -266,7 +262,6 @@ class SerialboxConfig(Initializer):
     @property
     def _namelist(self) -> Namelist:
         return Namelist.from_f90nml(self._f90_namelist)
-
 
     def _get_serialized_grid(
         self,
@@ -301,9 +296,7 @@ class SerialboxConfig(Initializer):
             dims=[pace.util.X_DIM, pace.util.Y_DIM], units="unknown"
         ).gt4py_backend
 
-        dycore_state = self._initialize_dycore_state(
-            communicator, backend
-        )
+        dycore_state = self._initialize_dycore_state(communicator, backend)
         physics_state = pace.physics.PhysicsState.init_zeros(
             quantity_factory=quantity_factory,
             active_packages=["microphysics"],
@@ -370,6 +363,7 @@ class PredefinedStateConfig(Initializer):
     start_time: datetime = datetime(2016, 8, 1)
     # Ajda
     # not sure what to do here ... Keep arguments?
+
     def get_driver_state(
         self,
         quantity_factory: pace.util.QuantityFactory,

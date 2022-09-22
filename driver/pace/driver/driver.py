@@ -1,7 +1,6 @@
 import dataclasses
 import functools
 import logging
-import os
 import warnings
 from datetime import datetime, timedelta
 from math import floor
@@ -9,8 +8,6 @@ from typing import Any, Dict, List, Tuple, Union
 
 import dace
 import dacite
-import numpy as np
-from netCDF4 import Dataset
 
 import pace.driver
 import pace.dsl
@@ -30,9 +27,8 @@ from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
 from .comm import CreatesCommSelector
-from .gridconfig import GridConfig
-from .initialization import InitializerSelector
 from .grid import GridInitializerSelector
+from .initialization import InitializerSelector
 from .performance import PerformanceConfig
 
 
@@ -123,7 +119,7 @@ class DriverConfig:
     @property
     def start_time(self) -> Union[datetime, timedelta]:
         return self.initialization.start_time
-    
+
     @functools.cached_property
     def total_time(self) -> timedelta:
         return timedelta(
@@ -188,9 +184,7 @@ class DriverConfig:
         kwargs["initialization"] = InitializerSelector.from_dict(
             kwargs["initialization"]
         )
-        kwargs["grid_init"] = GridInitializerSelector.from_dict(
-            kwargs["grid_init"]
-        )
+        kwargs["grid_init"] = GridInitializerSelector.from_dict(kwargs["grid_init"])
 
         if (
             isinstance(kwargs["stencil_config"], dict)
@@ -299,18 +293,21 @@ class Driver:
                 communicator=communicator,
                 stencil_compare_comm=stencil_compare_comm,
             )
-            # do I know what self.config.grid is?
-            damping_coefficients, driver_grid_data, grid_data = self.config.grid_init.get_grid(
-                quantity_factory=self.quantity_factory, 
-                communicator=communicator, 
+            (
+                damping_coefficients,
+                driver_grid_data,
+                grid_data,
+            ) = self.config.grid_init.get_grid(
+                quantity_factory=self.quantity_factory,
+                communicator=communicator,
             )
 
             self.state = self.config.initialization.get_driver_state(
-                quantity_factory=self.quantity_factory, 
+                quantity_factory=self.quantity_factory,
                 communicator=communicator,
                 damping_coefficients=damping_coefficients,
-                driver_grid_data = driver_grid_data,
-                grid_data = grid_data,
+                driver_grid_data=driver_grid_data,
+                grid_data=grid_data,
             )
 
             self._start_time = self.config.initialization.start_time
@@ -377,7 +374,6 @@ class Driver:
             self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time
-
 
     def update_driver_config_with_communicator(
         self, communicator: CubedSphereCommunicator
@@ -577,5 +573,3 @@ def _setup_factories(
         comm=stencil_compare_comm,
     )
     return quantity_factory, stencil_factory
-
-

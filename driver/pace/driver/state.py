@@ -1,9 +1,9 @@
 import dataclasses
+import os
 from dataclasses import fields
 from typing import Union
 
 import numpy as np
-import os
 import xarray as xr
 
 import pace.dsl.gt4py_utils as gt_utils
@@ -11,10 +11,10 @@ import pace.physics
 import pace.util
 import pace.util.grid
 from pace import fv3core
+from pace.driver.grid import get_grid
 from pace.dsl.gt4py_utils import is_gpu_backend
-from pace.util import N_HALO_DEFAULT as halo
-from pace.util.grid import DampingCoefficients
 from pace.util.initialization import fortran_restart_to_pace_dict
+
 
 try:
     import cupy as cp
@@ -96,12 +96,26 @@ class DriverState:
         quantity_factory = pace.util.QuantityFactory.from_backend(
             sizer, backend=driver_config.stencil_config.compilation_config.backend
         )
+
+        damping_coefficients, driver_grid_data, grid_data = get_grid(
+            quantity_factory=quantity_factory,
+            communicator=communicator,
+        )
+        # state = _restart_driver_state(
+        #     restart_path,
+        #     communicator.rank,
+        #     quantity_factory,
+        #     communicator,
+        #     fortran_data,
+        # )
         state = _restart_driver_state(
             restart_path,
             communicator.rank,
             quantity_factory,
             communicator,
-            fortran_data,
+            damping_coefficients=damping_coefficients,
+            driver_grid_data=driver_grid_data,
+            grid_data=grid_data,
         )
         return state
 
@@ -215,9 +229,10 @@ def _driver_state_to_dict(
 
     dict_state = {}
 
-
     for field in fortran_restart_to_pace_dict.keys():
-            dict_state[fortran_restart_to_pace_dict[field]] = driver_state.__dict__[field].data[:]
+        dict_state[fortran_restart_to_pace_dict[field]] = driver_state.__dict__[
+            field
+        ].data[:]
 
     # Ajda
     # at this point the data for every field in dict_state is 0.
