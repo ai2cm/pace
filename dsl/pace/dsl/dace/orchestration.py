@@ -25,7 +25,7 @@ from pace.dsl.dace.dace_config import (
 from pace.dsl.dace.sdfg_debug_passes import (
     negative_delp_checker,
     negative_qtracers_checker,
-    trace_all_outputs,
+    trace_all_outputs_at_index,
 )
 from pace.dsl.dace.sdfg_opt_passes import splittable_region_expansion
 from pace.dsl.dace.utils import (
@@ -182,7 +182,7 @@ def _build_sdfg(
         if config.get_sync_debug():
             with DaCeProgress(config, "Tooling the SDFG for debug"):
                 # sdfg_nan_checker(sdfg) # TODO (florian): segfault - bad range?
-                trace_all_outputs(sdfg, 0, 0, 60)
+                trace_all_outputs_at_index(sdfg, 0, 0, 60)
                 negative_delp_checker(sdfg)
                 negative_qtracers_checker(sdfg)
 
