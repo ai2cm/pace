@@ -226,7 +226,7 @@ class FortranRestartConfig(Initializer):
             grid_data,
         )
 
-        state = _update_fortran_restart_pe_peln(state)
+        _update_fortran_restart_pe_peln(state)
 
         # TODO
         # follow what fortran does with restart data after reading it
@@ -258,7 +258,7 @@ def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
     state.dycore_state.pe = pe
     state.dycore_state.peln = peln
 
-    return state
+    #return state
 
 
 @InitializerSelector.register("serialbox")

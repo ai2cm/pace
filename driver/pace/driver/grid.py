@@ -114,10 +114,9 @@ class GeneratedConfig(GridInitializer):
         metric_terms = MetricTerms(
             quantity_factory=quantity_factory, communicator=communicator
         )
-        np = metric_terms.lat.np
-
         if self.stretch_factor != 1:  # do horizontal grid transformation
-            metric_terms = _transform_horizontal_grid(metric_terms, self.stretch_factor, self.lon_target, self.lat_target)
+            _transform_horizontal_grid(metric_terms, self.stretch_factor, self.lon_target, self.lat_target)
+
         grid_data = GridData.new_from_metric_terms(metric_terms)
 
         if self.vertical_grid_from_restart:  # read in vertical grid
@@ -125,6 +124,7 @@ class GeneratedConfig(GridInitializer):
 
         damping_coefficients = DampingCoefficients.new_from_metric_terms(metric_terms)
         driver_grid_data = DriverGridData.new_from_metric_terms(metric_terms)
+
 
         return damping_coefficients, driver_grid_data, grid_data
 

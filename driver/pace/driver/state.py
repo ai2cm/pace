@@ -184,7 +184,6 @@ def _overwrite_state_from_restart(
                     )
             else:
                 state.__dict__[_field.name].data[:] = df[_field.name].data[:]
-    return state
 
 
 def _overwrite_state_from_fortran_restart(
@@ -203,13 +202,12 @@ def _overwrite_state_from_fortran_restart(
     Returns:
         state: new state filled with restart files
     """
-    state_dict = _driver_state_to_dict(state)
+    #state_dict = _driver_state_to_dict(state)
 
     state_dict = pace.util.open_restart(path, communicator)
 
-    state = _dict_state_to_driver_state(state_dict, state, is_gpu_backend)
+    _dict_state_to_driver_state(state_dict, state, is_gpu_backend)
 
-    return state
 
 
 def _driver_state_to_dict(
@@ -319,14 +317,14 @@ def _restart_driver_state(
             is_fortran_restart = True
 
     if is_fortran_restart:
-        dycore_state = _overwrite_state_from_fortran_restart(
+        _overwrite_state_from_fortran_restart(
             path,
             communicator,
             dycore_state,
             backend_uses_gpu,
         )
     else:
-        dycore_state = _overwrite_state_from_restart(
+        _overwrite_state_from_restart(
             path,
             rank,
             dycore_state,
