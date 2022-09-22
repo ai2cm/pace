@@ -105,7 +105,6 @@ class NamelistDefaults:
     tice = 273.16  # set tice = 165. to turn off ice - phase phys (kessler emulator)
     alin = 842.0  # "a" in lin1983
     clin = 4.8  # "c" in lin 1983, 4.8 -- > 6. (to ehance ql -- > qs)
-    stretch_grid = False
 
     @classmethod
     def as_dict(cls):

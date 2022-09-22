@@ -115,7 +115,6 @@ class VerticalGridData:
     ks: int
     ak: Optional[Any] = None
     bk: Optional[Any] = None
-    # p_ref: Optional[Any] = None
     """
     reference pressure (Pa) used to define pressure at vertical interfaces,
     where p = ak + bk * p_ref
@@ -130,7 +129,6 @@ class VerticalGridData:
             ak=metric_terms.ak.storage,
             bk=metric_terms.bk.storage,
             ks=metric_terms.ks,
-            # p_ref=metric_terms.p_ref
         )
 
     # @property
