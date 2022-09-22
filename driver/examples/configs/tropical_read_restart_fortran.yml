@@ -13,7 +13,6 @@ initialization:
   type: fortran_restart
 grid_config:
   config:
-    stretch_grid: true
     stretch_factor: 3.0
     lon_target: 172.5
     lat_target: 17.5

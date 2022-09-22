@@ -80,8 +80,6 @@ class GeneratedConfig(GridInitializer):
     Configuration for baroclinic initialization.
 
     Attributes:
-        stretch_grid: whether to Schmidt transform the grid
-            (local refinement)
         stretch_factor: refinement amount
         lon_target: desired center longitude for refined tile (deg)
         lat_target: desired center latitude for refined tile (deg)
@@ -91,23 +89,21 @@ class GeneratedConfig(GridInitializer):
         vertical_grid_from_restart: whether to read ak, bk from restart files
     """
 
-    stretch_grid: bool = False
-    stretch_factor: Optional[float] = None
-    lon_target: Optional[float] = None
-    lat_target: Optional[float] = None
+    stretch_factor: Optional[float] = 1.0
+    lon_target: Optional[float] = 350.
+    lat_target: Optional[float] = -90.
     ks: int = 0
     vertical_grid_from_restart: Optional[bool] = False
 
-    def __post_init__(self):
-        if self.stretch_grid:
-            if not self.stretch_factor:
-                raise ValueError(
-                    "Stretch_mode is true, but no stretch_factor is provided."
-                )
-            if not self.lon_target:
-                raise ValueError("Stretch_grid is true, but no lon_target is provided.")
-            if not self.lat_target:
-                raise ValueError("Stretch_grid is true, but no lat_target is provided.")
+    # def __post_init__(self):
+    #         if not self.stretch_factor:
+    #             raise ValueError(
+    #                 "Stretch_mode is true, but no stretch_factor is provided."
+    #             )
+    #         if not self.lon_target:
+    #             raise ValueError("Stretch_grid is true, but no lon_target is provided.")
+    #         if not self.lat_target:
+    #             raise ValueError("Stretch_grid is true, but no lat_target is provided.")
 
     def get_grid(
         self,
@@ -120,7 +116,7 @@ class GeneratedConfig(GridInitializer):
         )
         np = metric_terms.lat.np
 
-        if self.stretch_grid:  # do horizontal grid transformation
+        if self.stretch_factor != 1:  # do horizontal grid transformation
             metric_terms = _transform_horizontal_grid(metric_terms, self.stretch_factor, self.lon_target, self.lat_target)
         grid_data = GridData.new_from_metric_terms(metric_terms)
 
@@ -216,7 +212,7 @@ def _transform_horizontal_grid(metric_terms: MetricTerms, stretch_factor: float,
         stretch_factor: refinement factor for tile 6
         lon_target: in degrees, lon of the new center for refined tile 6
         lat_target: in degrees, lat of the new center for refined tile 6
-        
+
     Returns:
         updated metric terms
     """
