@@ -24,9 +24,6 @@ EXCLUDED_CONFIGS: List[str] = [
     # filepath that are not in git
     "baroclinic_c12_from_serialbox.yaml",
     "baroclinic_c12_orch_cpu.yaml",
-    # We don't test c576 config since they are tested only on daint
-    "compile_baroclinic_c576_54ranks.yaml",
-    "run_baroclinic_c576_54ranks.yaml",
 ]
 
 JENKINS_CONFIGS_DIR = os.path.join(dirname, "../../../.jenkins/driver_configs/")
@@ -34,12 +31,16 @@ TESTED_JENKINS_CONFIGS: List[str] = [
     "baroclinic_c48_6ranks_dycore_only.yaml",
     "baroclinic_c192_6ranks.yaml",
     "baroclinic_c192_54ranks.yaml",
+    "compile_baroclinic_c12_6ranks.yaml",
 ]
 
 EXCLUDED_JENKINS_CONFIGS: List[str] = [
     # We don't test serialbox example because it loads namelist
     # filepath that are not in git
     "baroclinic_c48_6ranks_dycore_only_serialbox.yaml",
+    # We don't test c576 config since they are tested only on daint
+    "compile_baroclinic_c576_54ranks.yaml",
+    "run_baroclinic_c576_54ranks.yaml",
 ]
 
 
