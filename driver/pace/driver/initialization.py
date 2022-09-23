@@ -134,6 +134,8 @@ class TropicalCycloneConfig(Initializer):
     """
     Configuration for tropical cyclone initialization.
     """
+    # TODO
+    # this can be cleaned up after grid config is separated
 
     start_time: datetime = datetime(2000, 1, 1)
 
@@ -146,8 +148,7 @@ class TropicalCycloneConfig(Initializer):
         metric_terms = pace.util.grid.MetricTerms(
             quantity_factory=quantity_factory, communicator=communicator
         )
-        ak_tmp = metric_terms.ak
-        bk_tmp = metric_terms.bk
+
         metric_terms._ak.data[:] = tc_init._define_ak()
         metric_terms._bk.data[:] = tc_init._define_bk()
 
