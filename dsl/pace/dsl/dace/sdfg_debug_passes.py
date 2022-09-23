@@ -18,7 +18,7 @@ def _filter_all_maps(
     sdfg: dace.SDFG,
     whitelist: List[str] = None,
     blacklist: List[str] = None,
-    skyp_dynamic_memlet=True,
+    skip_dynamic_memlet=True,
 ) -> List[
     Tuple[dace.SDFGState, dace.nodes.AccessNode, gr.MultiConnectorEdge[dace.Memlet]]
 ]:
@@ -27,9 +27,9 @@ def _filter_all_maps(
 
     Arguments:
         sdfg: SDFG to be read. Read-only
-        whitelist: filter out everyvariable NOT in this list
+        whitelist: filter out every variable NOT in this list
         blacklist: filter out every variable in this list
-        skyp_dynamic_memlet: skip the memlet flagged as dynamic (regions)
+        skip_dynamic_memlet: skip the memlet flagged as dynamic (regions)
 
     Return:
         A list of access nodes, with their state & edges organized as
@@ -39,15 +39,15 @@ def _filter_all_maps(
     checks: List[
         Tuple[dace.SDFGState, dace.nodes.AccessNode, gr.MultiConnectorEdge[dace.Memlet]]
     ] = []
-    allmaps = [
+    all_maps = [
         (me, state)
         for me, state in sdfg.all_nodes_recursive()
         if isinstance(me, dace.nodes.MapEntry)
     ]
-    topmaps = [
-        (me, state) for me, state in allmaps if get_parent_map(state, me) is None
+    top_maps = [
+        (me, state) for me, state in all_maps if get_parent_map(state, me) is None
     ]
-    for me, state in topmaps:
+    for me, state in top_maps:
         mx = state.exit_node(me)
         for e in state.out_edges(mx):
             if isinstance(e.dst, dace.nodes.AccessNode):
@@ -62,9 +62,8 @@ def _filter_all_maps(
                 if blacklist is not None:
                     if any([varname in node.data for varname in blacklist]):
                         continue
-                if (
-                    skyp_dynamic_memlet and state.memlet_path(e)[0].data.dynamic
-                ):  # Skip dynamic (region) outputs
+                # Skip dynamic (region) outputs
+                if skip_dynamic_memlet and state.memlet_path(e)[0].data.dynamic:
                     print(f"Skip {node.data} (dynamic)")
                     continue
 
@@ -86,7 +85,7 @@ def _check_node(
     Grab all maps outputs and filter by variable name (either black or whitelist)
 
     Arguments:
-        state: SDFG-state to be modified in-palce.
+        state: SDFG-state to be modified in-place.
         node: original node to insert check after
         edge: original output edge of the node
         kernel_name: kernel name for C code generation
@@ -104,39 +103,38 @@ def _check_node(
     """
 
     # Append node that will go after the map
-    newnode: dace.nodes.AccessNode = copy.deepcopy(node)
+    new_node: dace.nodes.AccessNode = copy.deepcopy(node)
     # Move all outgoing edges to new node
     for oe in list(state.out_edges(node)):
         state.remove_edge(oe)
-        state.add_edge(newnode, oe.src_conn, oe.dst, oe.dst_conn, oe.data)
+        state.add_edge(new_node, oe.src_conn, oe.dst, oe.dst_conn, oe.data)
 
-    # Add map in between node and newnode
+    # Add map in between node and new_node
     sdfg = state.parent
-    inparr = sdfg.arrays[newnode.data]
-    index_expr = ", ".join(["__i%d" % i for i in range(len(inparr.shape))])
-    index_printf = ", ".join(["%d"] * len(inparr.shape))
+    input_array = sdfg.arrays[new_node.data]
+    index_expr = ", ".join(["__i%d" % i for i in range(len(input_array.shape))])
+    index_printf = ", ".join(["%d"] * len(input_array.shape))
 
     # Get range from memlet (which may not be the entire array size)
     def evaluate(expr):
         return expr.subs({sp.Function("int_floor"): symbolic.int_floor})
 
-    # Infer scheduly
+    # Infer schedule
     schedule_type = dace.ScheduleType.Default
     if (
-        inparr.storage == dace.StorageType.GPU_Global
-        or inparr.storage == dace.StorageType.GPU_Shared
+        input_array.storage == dace.StorageType.GPU_Global
+        or input_array.storage == dace.StorageType.GPU_Shared
     ):
         schedule_type = dace.ScheduleType.GPU_Device
 
     ranges = []
     for i, (begin, end, step) in enumerate(edge.data.subset):
-        ranges.append(
-            (f"__i{i}", (evaluate(begin), evaluate(end), evaluate(step)))
-        )  # evaluate to resolve views & actively read/write domains
+        # evaluate being used to resolve views & actively read/write domains
+        ranges.append((f"__i{i}", (evaluate(begin), evaluate(end), evaluate(step))))
     state.add_mapped_tasklet(
         name=kernel_name,
         map_ranges=ranges,
-        inputs={f"{c_varname}": dace.Memlet.simple(newnode.data, index_expr)},
+        inputs={f"{c_varname}": dace.Memlet.simple(new_node.data, index_expr)},
         code=f"""
         if ({check_c_code}) {{
             printf("{node.data} value (%f) {comment_c_code} at line %d, index {index_printf}\\n", {c_varname}, __LINE__, {index_expr});
@@ -146,24 +144,30 @@ def _check_node(
         schedule=schedule_type,
         language=dace.Language.CPP,
         outputs={
-            "__out": dace.Memlet.simple(newnode.data, index_expr, num_accesses=-1)
+            "__out": dace.Memlet.simple(new_node.data, index_expr, num_accesses=-1)
         },
         input_nodes={node.data: node},
-        output_nodes={newnode.data: newnode},
+        output_nodes={new_node.data: new_node},
         external_edges=True,
     )
 
 
 def trace_all_outputs_at_index(sdfg: dace.SDFG, i: int, j: int, k: int):
+    """Prints value for all variable when written for a specific index.
+
+
+    Args:
+        sdfg (dace.SDFG): sdfg to analyze
+        i (int): i coordinate of the index to trace
+        j (int): j coordinate of the index to trace
+        k (int): k coordinate of the index to trace
     """
-    Prints value for all variable when written for a specific index.
-    """
-    allmaps_filtered = _filter_all_maps(
+    all_maps_filtered = _filter_all_maps(
         sdfg,
-        skyp_dynamic_memlet=False,
+        skip_dynamic_memlet=False,
     )
 
-    for state, node, e in allmaps_filtered:
+    for state, node, e in all_maps_filtered:
         _check_node(
             state,
             node,
@@ -175,21 +179,21 @@ def trace_all_outputs_at_index(sdfg: dace.SDFG, i: int, j: int, k: int):
             assert_out=False,
         )
 
-    logger.info(f"Added {len(allmaps_filtered)} ouputs trace at {i},{j},{k}")
+    logger.info(f"Added {len(all_maps_filtered)} outputs trace at {i},{j},{k}")
 
 
-def negative_delp_checker(sdfg: dace.SDFG):
+def negative_delp_checker(sdfg: dace.SDFG) -> None:
     """
     Adds a negative check on every variable name containing "delp" when
     written to. Assert when check is True.
     """
-    allmaps_filtered = _filter_all_maps(
+    all_maps_filtered = _filter_all_maps(
         sdfg,
         whitelist=["delp"],
-        skyp_dynamic_memlet=False,
+        skip_dynamic_memlet=False,
     )
 
-    for state, node, e in allmaps_filtered:
+    for state, node, e in all_maps_filtered:
         _check_node(
             state,
             node,
@@ -201,7 +205,7 @@ def negative_delp_checker(sdfg: dace.SDFG):
             assert_out=True,
         )
 
-    logger.info(f"Added {len(allmaps_filtered)} delp* < 0 checks")
+    logger.info(f"Added {len(all_maps_filtered)} delp* < 0 checks")
 
 
 def negative_qtracers_checker(sdfg: dace.SDFG):
@@ -209,7 +213,7 @@ def negative_qtracers_checker(sdfg: dace.SDFG):
     Adds a negative check on every tracers via their name when
     written to. Assert when check is True.
     """
-    allmaps_filtered = _filter_all_maps(
+    all_maps_filtered = _filter_all_maps(
         sdfg,
         whitelist=[
             "qvapor",
@@ -222,10 +226,10 @@ def negative_qtracers_checker(sdfg: dace.SDFG):
             "qsgs_tke",
             "qcld",
         ],
-        skyp_dynamic_memlet=False,
+        skip_dynamic_memlet=False,
     )
 
-    for state, node, e in allmaps_filtered:
+    for state, node, e in all_maps_filtered:
         _check_node(
             state,
             node,
@@ -237,7 +241,7 @@ def negative_qtracers_checker(sdfg: dace.SDFG):
             assert_out=True,
         )
 
-    logger.info(f"Added {len(allmaps_filtered)} tracer < 0 checks")
+    logger.info(f"Added {len(all_maps_filtered)} tracer < 0 checks")
 
 
 def sdfg_nan_checker(sdfg: dace.SDFG):
@@ -245,12 +249,12 @@ def sdfg_nan_checker(sdfg: dace.SDFG):
     Insert a check on array after each computational map to check for NaN
     in the domain. Assert when check is True.
     """
-    allmaps_filtered = _filter_all_maps(
+    all_maps_filtered = _filter_all_maps(
         sdfg,
         blacklist=["diss_estd"],
     )
 
-    for state, node, e in allmaps_filtered:
+    for state, node, e in all_maps_filtered:
         _check_node(
             state,
             node,
@@ -262,4 +266,4 @@ def sdfg_nan_checker(sdfg: dace.SDFG):
             assert_out=True,
         )
 
-    logger.info(f"Added {len(allmaps_filtered)} NaN checks")
+    logger.info(f"Added {len(all_maps_filtered)} NaN checks")
