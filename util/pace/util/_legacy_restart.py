@@ -1,11 +1,6 @@
 import os
 from typing import BinaryIO, Generator, Iterable
 
-# from pace.util.initialization import (
-#     extra_restart_properties,
-#     fortran_restart_to_pace_dict,
-# )
-
 from . import _xarray as xr
 from . import constants, filesystem, io
 from ._properties import RESTART_PROPERTIES, RestartProperties

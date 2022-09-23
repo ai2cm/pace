@@ -120,11 +120,12 @@ class BaroclinicConfig(Initializer):
     ) -> DriverState:
         # Ajda
         # do I need to keep metric terms here?
-        metric_terms = pace.util.grid.MetricTerms(
-            quantity_factory=quantity_factory, communicator=communicator
-        )
+        # metric_terms = pace.util.grid.MetricTerms(
+        #     quantity_factory=quantity_factory, communicator=communicator
+        # )
         dycore_state = baroclinic_init.init_baroclinic_state(
-            metric_terms,
+            #metric_terms,
+            grid_data=grid_data,
             adiabatic=False,
             hydrostatic=False,
             moist_phys=True,
