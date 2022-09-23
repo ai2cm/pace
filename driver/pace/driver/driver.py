@@ -353,11 +353,6 @@ class Driver:
             metadata=self.state.dycore_state.ps.metadata,
         )
         if config.diagnostics_config.output_initial_state:
-            print(
-                "delz min, max",
-                self.state.dycore_state.delz.data.min(),
-                self.state.dycore_state.delz.data.max(),
-            )
             self.diagnostics.store(time=self.time, state=self.state)
 
         self._time_run = self.config.start_time
@@ -438,7 +433,7 @@ class Driver:
                     self.state.dycore_state,
                     self.performance_config.timestep_timer,
                 )
-                breakpoint()
+                #breakpoint() = this is where it becomes nan, I think
                 if not self.config.disable_step_physics:
                     self._step_physics(timestep=dt)
             self.end_of_step_actions(step)
