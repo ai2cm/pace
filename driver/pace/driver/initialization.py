@@ -455,7 +455,7 @@ def _overwrite_state_from_restart(
         rank: current rank number
         state: an empty state
         restart_file_prefix: file prefix name to read
-
+        is_gpu_backend:
     """
     df = xr.open_dataset(path + f"/{restart_file_prefix}_{rank}.nc")
     for _field in fields(type(state)):
@@ -485,9 +485,6 @@ def _overwrite_state_from_fortran_restart(
         communicator:
         state: an empty state
         is_gpu_backend: 
-
-    Returns:
-        state: new state filled with restart files
     """
 
     state_dict = pace.util.open_restart(path, communicator, tracer_properties=extra_restart_properties, fortran_dict=fortran_restart_to_pace_dict)
@@ -503,6 +500,10 @@ def _dict_state_to_driver_state(
     """
     Takes a dict of state quantities with their Fortran names and a driver state
     and populates the driver state with quantities from the dict.
+    Args:
+        fortran_state
+        driver_state
+        is_gpu_backend
     """
 
     for field in fortran_restart_to_pace_dict.keys():
@@ -545,17 +546,6 @@ def _update_fortran_restart_pe_peln(state: DriverState) -> DriverState:
     state.dycore_state.pe = pe
     state.dycore_state.peln = peln
 
-    #return state
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -577,17 +567,15 @@ fortran_restart_to_pace_dict = {
     "qcld": "cld_amt", # cloud fraction
     "delz": "DZ", # vertical thickness of atmospheric layer
 }
-# not sure why qsgs breaks this... maybe it doesn't exist?
+    # not sure why qsgs breaks this... maybe it doesn't exist?
 
+# put tracer properties here for now, but there's probably a better place for them.
+# maybe a file name _tracer_properties.py since _properties.py is already taken?
 from pace.util._properties import RestartProperties
 from pace.util.constants import (
     X_DIM,
-    X_INTERFACE_DIM,
     Y_DIM,
-    Y_INTERFACE_DIM,
     Z_DIM,
-    Z_INTERFACE_DIM,
-    Z_SOIL_DIM,
 )
 
 extra_restart_properties: RestartProperties = {
