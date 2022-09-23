@@ -367,7 +367,7 @@ class DynamicalCore:
         """
         self._checkpoint_fvdynamics(state=state, tag="In")
         self._compute(state, timer)
-        breakpoint()
+        # breakpoint() Ajda - this step makes nans
         self._checkpoint_fvdynamics(state=state, tag="Out")
 
     def compute_preamble(self, state: DycoreState, is_root_rank: bool):
@@ -415,7 +415,6 @@ class DynamicalCore:
                 state.pt,
             )
 
-        breakpoint()
 
     def __call__(self, *args, **kwargs):
         return self.step_dynamics(*args, **kwargs)
@@ -426,7 +425,6 @@ class DynamicalCore:
             state,
             is_root_rank=self.comm_rank == 0,
         )
-        breakpoint()
 
         for k_split in dace_no_unroll(range(self._k_split)):
             n_map = k_split + 1
@@ -488,8 +486,7 @@ class DynamicalCore:
                         self._timestep / self._k_split,
                         self._timestep,
                     )
-                if k_split == 0:
-                    breakpoint()
+
                 if last_step:
                     da_min: float = self._get_da_min()
                     self.post_remap(
@@ -498,7 +495,6 @@ class DynamicalCore:
                         da_min=da_min,
                     )
 
-        breakpoint()
         self.wrapup(
             state,
             is_root_rank=self.comm_rank == 0,
