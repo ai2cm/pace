@@ -128,13 +128,13 @@ def _apply_restart_metadata(state, restart_properties: RestartProperties):
 
 def map_keys(old_dict, old_keys_to_new):
     new_dict = {}
-    for new_key, old_key in old_keys_to_new.items():
+    for old_key, new_key in old_keys_to_new.items():
         if old_key in old_dict:
             new_dict[new_key] = old_dict[old_key]
     # Ajda
     # not sure what this next part does
-    # for old_key in set(old_dict.keys()).difference(old_keys_to_new.keys()):
-    #     new_dict[old_key] = old_dict[old_key]
+    #for old_key in set(old_dict.keys()).difference(old_keys_to_new.keys()):
+        #new_dict[old_key] = old_dict[old_key]
     return new_dict
 
 

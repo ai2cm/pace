@@ -2,6 +2,7 @@ import abc
 import dataclasses
 import logging
 import os
+import pathlib
 from datetime import datetime
 from typing import ClassVar
 
@@ -205,8 +206,12 @@ class FortranRestartConfig(Initializer):
     def start_time(self) -> datetime:
         """Reads the last line in coupler.res to find the restart time"""
         restart_files = os.listdir(self.path)
-        coupler_file = [fl for fl in restart_files if "coupler.res" in fl][0]
-        restart_doc = self.path + coupler_file
+
+        coupler_file = restart_files[
+            [fname.endswith("coupler.res") for fname in restart_files].index(True)
+        ]
+        # coupler_file = [fl for fl in restart_files if "coupler.res" in fl][0]
+        restart_doc = pathlib.Path(self.path) / coupler_file
         fl = open(restart_doc, "r")
         contents = fl.readlines()
         fl.close()

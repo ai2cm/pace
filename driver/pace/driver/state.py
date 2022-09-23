@@ -314,6 +314,11 @@ fortran_restart_to_pace_dict = {
     "qcld": "cld_amt",  # cloud fraction
     "delz": "DZ",  # vertical thickness of atmospheric layer
 }
+# pace : fortran_restart
+fortran_restart_to_pace_dict = dict(
+    (v, k) for k, v in fortran_restart_to_pace_dict.items()
+)
+
 # not sure why qsgs breaks this... maybe it doesn't exist?
 
 

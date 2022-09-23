@@ -2,6 +2,7 @@ import abc
 import dataclasses
 import logging
 import os
+import pathlib
 from typing import ClassVar, Optional, Tuple
 
 import f90nml
@@ -94,18 +95,6 @@ class GeneratedConfig(GridInitializer):
     lat_target: Optional[float] = -90.0
     ks: int = 0
     vertical_grid_from_restart: Optional[bool] = False
-
-    # def __post_init__(self):
-    #         if not self.stretch_factor:
-    #             raise ValueError(
-    #                 "Stretch_mode is true, but no stretch_factor is provided."
-    #             )
-    #         if not self.lon_target:
-    #             raise ValueError("Stretch_grid is true,
-    #               but no lon_target is provided.")
-    #         if not self.lat_target:
-    #             raise ValueError("Stretch_grid is true,
-    #               but no lat_target is provided.")
 
     def get_grid(
         self,
@@ -240,7 +229,7 @@ def _transform_horizontal_grid(
 
 
 def _replace_vertical_grid(
-    ks, metric_terms: MetricTerms, restart_path: str = "restart_tmp/"
+    ks, metric_terms: MetricTerms, restart_path: str = "restart_tmp"
 ) -> GridData:
     """
     Replaces the vertical grid generators from metric terms (ak and bk) with
@@ -254,10 +243,12 @@ def _replace_vertical_grid(
     Returns:
         updated metric terms
     """
+    restart_files = os.listdir(restart_path)
+    data_file = restart_files[
+        [fname.endswith("fv_core.res.nc") for fname in restart_files].index(True)
+    ]
 
-    data_file = [fl for fl in os.listdir(restart_path) if "fv_core.res.nc" in fl][0]
-
-    ak_bk_data_file = restart_path + os.path.sep + data_file
+    ak_bk_data_file = pathlib.Path(restart_path) / data_file
     if not os.path.isfile(ak_bk_data_file):
         raise ValueError(
             """vertical_grid_from_restart is true,

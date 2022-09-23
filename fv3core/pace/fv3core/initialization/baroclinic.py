@@ -9,7 +9,7 @@ import pace.fv3core.initialization.baroclinic_jablonowski_williamson as jablo_in
 import pace.util as fv3util
 import pace.util.constants as constants
 from pace.fv3core.initialization.dycore_state import DycoreState
-from pace.util.grid import GridData, lon_lat_midpoint  # , MetricTerms
+from pace.util.grid import GridData, lon_lat_midpoint
 
 
 nhalo = fv3util.N_HALO_DEFAULT
