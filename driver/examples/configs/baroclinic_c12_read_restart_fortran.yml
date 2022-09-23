@@ -7,11 +7,13 @@ stencil_config:
     device_sync: false
 initialization:
   config:
-    path: util/tests/data/c12_restart
+    path: /home/ajdas/pace/restart_data/1.0
   type: fortran_restart
 performance_config:
   performance_mode: true
-  experiment_name: c12_baroclinic
+  experiment_name: c12_baroclinic_restart
+grid_config:
+  type: generated
 nx_tile: 12
 nz: 79
 dt_atmos: 225

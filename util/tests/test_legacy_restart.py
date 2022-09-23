@@ -13,9 +13,9 @@ import pytest
 
 import pace.util
 import pace.util._legacy_restart
-from pace.util.testing import DummyComm
-from pace.driver.state import fortran_restart_to_pace_dict as fortran_dict
 from pace.driver.state import extra_restart_properties
+from pace.driver.state import fortran_restart_to_pace_dict as fortran_dict
+from pace.util.testing import DummyComm
 
 
 requires_xarray = pytest.mark.skipif(xr is None, reason="xarray is not installed")
@@ -48,7 +48,7 @@ def get_c12_restart_state_list(layout, only_names, tracer_properties, fortran_di
                 communicator,
                 only_names=only_names,
                 tracer_properties=tracer_properties,
-                fortran_dict = fortran_dict
+                fortran_dict=fortran_dict,
             )
         )
     return state_list
@@ -63,7 +63,7 @@ def test_open_c12_restart(layout):
     c12_restart_state_list = get_c12_restart_state_list(
         layout, only_names, tracer_properties, fortran_dict
     )
-    #breakpoint()
+    # breakpoint()
     # C12 has 12 gridcells along each tile side, we divide this across processors
     ny = 12 / layout[0]
     nx = 12 / layout[1]
@@ -71,7 +71,7 @@ def test_open_c12_restart(layout):
         assert "time" in state.keys()
         # Ajda
         # fails on this but not sure why it's in there
-        #assert len(state.keys()) == 63
+        # assert len(state.keys()) == 63
         for name, value in state.items():
             print(name)
             if name == "time":
@@ -166,13 +166,13 @@ def test_open_c12_restart_empty_to_state_without_crashing(layout):
             communicator,
             to_state=state_list[-1],
             tracer_properties=extra_restart_properties,
-            fortran_dict=fortran_dict
+            fortran_dict=fortran_dict,
         )
     for state in state_list:
         assert "time" in state.keys()
         # Ajda
         # fails on this but not sure why it's in there
-        #assert len(state.keys()) == 63
+        # assert len(state.keys()) == 63
         for name, value in state.items():
             if name == "time":
                 assert isinstance(value, cftime.DatetimeJulian)
@@ -209,7 +209,10 @@ def test_open_c12_restart_to_allocated_state_without_crashing(layout):
     for communicator in communicator_list:
         state_list.append(
             pace.util.open_restart(
-                os.path.join(DATA_DIRECTORY, "c12_restart"), communicator, tracer_properties=extra_restart_properties, fortran_dict=fortran_dict
+                os.path.join(DATA_DIRECTORY, "c12_restart"),
+                communicator,
+                tracer_properties=extra_restart_properties,
+                fortran_dict=fortran_dict,
             )
         )
     for state in state_list:
@@ -218,14 +221,18 @@ def test_open_c12_restart_to_allocated_state_without_crashing(layout):
                 value.view[:] = np.nan
     for state, communicator in zip(state_list, communicator_list):
         pace.util.open_restart(
-            os.path.join(DATA_DIRECTORY, "c12_restart"), communicator, to_state=state, tracer_properties=extra_restart_properties, fortran_dict=fortran_dict
+            os.path.join(DATA_DIRECTORY, "c12_restart"),
+            communicator,
+            to_state=state,
+            tracer_properties=extra_restart_properties,
+            fortran_dict=fortran_dict,
         )
 
     for state in state_list:
         assert "time" in state.keys()
         # Ajda
         # fails on this but not sure why it's in there
-        #assert len(state.keys()) == 63
+        # assert len(state.keys()) == 63
         for name, value in state.items():
             if name == "time":
                 assert isinstance(value, cftime.DatetimeJulian)
@@ -405,7 +412,7 @@ def test_read_state_non_scalar_time():
 
 @pytest.mark.parametrize(
     "only_names",
-    #[["time", "air_temperature"], ["air_temperature"]],
+    # [["time", "air_temperature"], ["air_temperature"]],
     [["time", "pt"], ["pt"]],
     ids=lambda x: f"{x}",
 )
@@ -413,7 +420,10 @@ def test_read_state_non_scalar_time():
 def test_open_c12_restart_only_names(layout, only_names):
     tracer_properties = {}
     c12_restart_state_list = get_c12_restart_state_list(
-        layout, only_names, tracer_properties, fortran_dict,
+        layout,
+        only_names,
+        tracer_properties,
+        fortran_dict,
     )
     for state in c12_restart_state_list:
         assert set(only_names) == set(state.keys())

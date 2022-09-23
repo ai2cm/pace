@@ -278,8 +278,11 @@ def _dict_state_to_driver_state(
         is_gpu_backend
     """
 
-    for field in fortran_restart_to_pace_dict.keys():
+    # breakpoint()
+    for field in fortran_restart_to_pace_dict.values():
+        # breakpoint()
         driver_state.__dict__[field].view[:] = np.transpose(fortran_state[field].data)
+        # breakpoint()
 
         if is_gpu_backend:
             # driver_state.__dict__[field].view[:] = gt_utils.asarray(
@@ -294,6 +297,7 @@ def _dict_state_to_driver_state(
             driver_state.__dict__[field].view[:] = np.transpose(
                 fortran_state[field].data
             )
+        # breakpoint()
 
 
 fortran_restart_to_pace_dict = {
