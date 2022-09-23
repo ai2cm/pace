@@ -3,7 +3,7 @@ import numpy as np
 import pace.util as fv3util
 import pace.util.constants as constants
 from pace.fv3core.initialization.dycore_state import DycoreState
-from pace.util.grid import MetricTerms, great_circle_distance_lon_lat
+from pace.util.grid import GridData, great_circle_distance_lon_lat
 from pace.util.grid.gnomonic import (
     get_lonlat_vect,
     get_unit_vector_direction,
@@ -21,7 +21,7 @@ nhalo = fv3util.N_HALO_DEFAULT
 
 
 def init_tc_state(
-    metric_terms: MetricTerms,
+    grid_data: GridData,
     hydrostatic: bool,
     comm: fv3util.CubedSphereCommunicator,
 ) -> DycoreState:
@@ -33,18 +33,10 @@ def init_tc_state(
     to locally increase resolution.
     """
 
-    sample_quantity = metric_terms.lat
-    shape = (*sample_quantity.data.shape[:2], metric_terms.ak.data.shape[0])
-    nx, ny, nz = local_compute_size(shape)
+    sample_quantity = grid_data.lat
+    shape = (*sample_quantity.data.shape[:2], grid_data.ak.data.shape[0])
+    #nx, ny, nz = local_compute_size(shape)
     numpy_state = empty_numpy_dycore_state(shape)
-
-    # Initializing to values the Fortran does for easy comparison
-    # numpy_state.delp[:nhalo, :nhalo] = 0.0
-    # numpy_state.delp[:nhalo, nhalo + ny :] = 0.0
-    # numpy_state.delp[nhalo + nx :, :nhalo] = 0.0
-    # numpy_state.delp[nhalo + nx :, nhalo + ny :] = 0.0
-    # numpy_state.pe[:] = 0.0
-    # numpy_state.phis[:] = 1.0e30
 
     tc_properties = {
         "hydrostatic": hydrostatic,
@@ -69,7 +61,7 @@ def init_tc_state(
 
     calc = _some_inital_calculations(tc_properties)
 
-    ps_output = _initialize_vortex_ps_phis(metric_terms, shape, tc_properties, calc)
+    ps_output = _initialize_vortex_ps_phis(grid_data, shape, tc_properties, calc)
     ps, ps_u, ps_v = ps_output["ps"], ps_output["ps_uc"], ps_output["ps_vc"]
 
     # TODO restart file had different ak, bk. Figure out where they came from;
@@ -85,12 +77,12 @@ def init_tc_state(
     pe_v = _initialize_edge_pressure_cgrid(ak, bk, ps_v, shape, tc_properties["ptop"])
 
     ud, vd = _initialize_wind_dgrid(
-        metric_terms, tc_properties, calc, pe_u, pe_v, ps_u, ps_v, shape
+        grid_data, tc_properties, calc, pe_u, pe_v, ps_u, ps_v, shape
     )
-    ua, va = _interpolate_winds_dgrid_agrid(metric_terms, ud, vd, tc_properties, shape)
+    ua, va = _interpolate_winds_dgrid_agrid(grid_data, ud, vd, tc_properties, shape)
 
     qvapor, pt = _initialize_qvapor_temperature(
-        metric_terms, pe, ps, tc_properties, calc, shape
+        grid_data, pe, ps, tc_properties, calc, shape
     )
     delz, w = _initialize_delz_w(pe, ps, pt, qvapor, tc_properties, calc, shape)
 
@@ -129,7 +121,7 @@ def init_tc_state(
 
     state = DycoreState.init_from_numpy_arrays(
         numpy_state.__dict__,
-        sizer=metric_terms.quantity_factory.sizer,
+        sizer=grid_data.quantity_factory.sizer,
         backend=sample_quantity.metadata.gt4py_backend,
     )
 
@@ -218,8 +210,8 @@ def _calculate_utmp(height, dist, calc, tc_properties):
 def _calculate_vortex_surface_pressure_with_radius(p0, p_grid, tc_properties):
     """
     p0 is the tc center point
-    p_grid is the metric_terms.grid variable corresponding to what is needed
-    for ps on A-grid, p_grid is metric_terms.agrid.data
+    p_grid is the grid_data.grid variable corresponding to what is needed
+    for ps on A-grid, p_grid is grid_data.agrid.data
     """
 
     r = great_circle_distance_lon_lat(
@@ -470,7 +462,7 @@ def _initialize_edge_pressure_cgrid(ak, bk, ps, shape, ptop):
     return pe_cgrid
 
 
-def _initialize_qvapor_temperature(metric_terms, pe, ps, tc_properties, calc, shape):
+def _initialize_qvapor_temperature(grid_data, pe, ps, tc_properties, calc, shape):
 
     qvapor = np.zeros(shape)
     pt = np.zeros(shape)
@@ -486,7 +478,7 @@ def _initialize_qvapor_temperature(metric_terms, pe, ps, tc_properties, calc, sh
         * np.exp(-((height / tc_properties["zq2"]) ** tc_properties["exppz"]))
     )
 
-    p2 = metric_terms.agrid.data
+    p2 = grid_data.agrid.data
     r = great_circle_distance_lon_lat(
         calc["p0"][0], p2[:, :, 0], calc["p0"][1], p2[:, :, 1], constants.RADIUS, np
     )
@@ -499,18 +491,18 @@ def _initialize_qvapor_temperature(metric_terms, pe, ps, tc_properties, calc, sh
     return qvapor, pt
 
 
-def _initialize_vortex_ps_phis(metric_terms, shape, tc_properties, calc):
+def _initialize_vortex_ps_phis(grid_data, shape, tc_properties, calc):
     p0 = [np.deg2rad(tc_properties["lon_tc"]), np.deg2rad(tc_properties["lat_tc"])]
 
     phis = np.zeros(shape[:2])
     ps = np.zeros(shape[:2])
     ps = _calculate_vortex_surface_pressure_with_radius(
-        calc["p0"], metric_terms.agrid.data, tc_properties
+        calc["p0"], grid_data.agrid.data, tc_properties
     )
 
     ps_vc = np.zeros(shape[:2])
     p_grid = 0.5 * (
-        metric_terms.grid.data[:, :-1, :] + metric_terms.grid.data[:, 1:, :]
+        grid_data.grid.data[:, :-1, :] + grid_data.grid.data[:, 1:, :]
     )
     ps_vc[:, :-1] = _calculate_vortex_surface_pressure_with_radius(
         p0, p_grid, tc_properties
@@ -518,7 +510,7 @@ def _initialize_vortex_ps_phis(metric_terms, shape, tc_properties, calc):
 
     ps_uc = np.zeros(shape[:2])
     p_grid = 0.5 * (
-        metric_terms.grid.data[:-1, :, :] + metric_terms.grid.data[1:, :, :]
+        grid_data.grid.data[:-1, :, :] + grid_data.grid.data[1:, :, :]
     )
     ps_uc[:-1, :] = _calculate_vortex_surface_pressure_with_radius(
         p0, p_grid, tc_properties
@@ -530,12 +522,12 @@ def _initialize_vortex_ps_phis(metric_terms, shape, tc_properties, calc):
 
 
 def _initialize_wind_dgrid(
-    metric_terms, tc_properties, calc, pe_u, pe_v, ps_u, ps_v, shape
+    grid_data, tc_properties, calc, pe_u, pe_v, ps_u, ps_v, shape
 ):
     # u-wind
     ud = np.zeros(shape)
-    p1 = metric_terms.grid.data[:-1, :, :]
-    p2 = metric_terms.grid.data[1:, :, :]
+    p1 = grid_data.grid.data[:-1, :, :]
+    p2 = grid_data.grid.data[1:, :, :]
     muv = _find_midpoint_unit_vectors(p1, p2)
     dist = _calculate_distance_from_tc_center(pe_u, ps_u, muv, calc, tc_properties)
 
@@ -552,8 +544,8 @@ def _initialize_wind_dgrid(
 
     # v-wind
     vd = np.zeros(shape)
-    p1 = metric_terms.grid.data[:, :-1, :]
-    p2 = metric_terms.grid.data[:, 1:, :]
+    p1 = grid_data.grid.data[:, :-1, :]
+    p2 = grid_data.grid.data[:, 1:, :]
     muv = _find_midpoint_unit_vectors(p1, p2)
     dist = _calculate_distance_from_tc_center(pe_v, ps_v, muv, calc, tc_properties)
 
@@ -570,7 +562,7 @@ def _initialize_wind_dgrid(
     return ud, vd
 
 
-def _interpolate_winds_dgrid_agrid(metric_terms, ud, vd, tc_properties, shape):
+def _interpolate_winds_dgrid_agrid(grid_data, ud, vd, tc_properties, shape):
 
     ua = np.zeros(shape)
     va = np.zeros(shape)
@@ -579,16 +571,16 @@ def _interpolate_winds_dgrid_agrid(metric_terms, ud, vd, tc_properties, shape):
         ua[:, :-1, :] = (
             0.5
             * (
-                ud[:, :-1, :] * metric_terms.dx.data[:, :-1, None]
-                + ud[:, 1:, :] * metric_terms.dx.data[:, 1:, None]
+                ud[:, :-1, :] * grid_data.dx.data[:, :-1, None]
+                + ud[:, 1:, :] * grid_data.dx.data[:, 1:, None]
             )
-            / metric_terms.dxa.data[:, :-1, None]
+            / grid_data.dxa.data[:, :-1, None]
         )
         va[:-1, :, :] = (
             0.5
             * (
-                vd[:-1, :, :] * metric_terms.dy.data[:-1, :, None]
-                + vd[1:, :, :] * metric_terms.dy.data[1:, :, None]
+                vd[:-1, :, :] * grid_data.dy.data[:-1, :, None]
+                + vd[1:, :, :] * grid_data.dy.data[1:, :, None]
             )
             / metric_terms.dya.data[:-1, :, None]
         )
