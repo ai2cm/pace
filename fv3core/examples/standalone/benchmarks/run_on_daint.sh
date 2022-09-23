@@ -84,7 +84,7 @@ echo "creating the venv"
 if [ -d ./venv ] ; then rm -rf venv ; fi
 if [ -d ./gt4py ] ; then rm -rf gt4py ; fi
 cd $FV3CORE_DIR
-$FV3CORE_DIR/.jenkins/install_virtualenv.sh $FV3CORE_DIR/venv
+$PACE_DIR/.jenkins/install_virtualenv.sh $FV3CORE_DIR/venv
 source ./venv/bin/activate
 pip list
 

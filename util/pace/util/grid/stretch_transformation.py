@@ -3,6 +3,11 @@ from typing import Tuple, Union
 
 import numpy as np
 
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 from pace.util import Quantity
 
 
@@ -10,9 +15,10 @@ def direct_transform(
     *,
     lon: Union[Quantity, np.ndarray],
     lat: Union[Quantity, np.ndarray],
-    stretch_factor: np.float_,
-    lon_target: np.float_,
-    lat_target: np.float_,
+    stretch_factor: float,
+    lon_target: float,
+    lat_target: float,
+    np,
 ) -> Tuple[Union[np.ndarray, Quantity], Union[np.ndarray, Quantity]]:
     """
     The direct_transform subroutine from fv_grid_utils.F90.
@@ -28,6 +34,7 @@ def direct_transform(
             on tile 6 becomes 3 times as fine)
         lon_target (in) in degrees (from namelist)
         lat_target (in) in degrees (from namelist)
+        np: numpy or cupy module
 
     Returns:
         lon_transform (out) in radians
@@ -75,7 +82,7 @@ def direct_transform(
     lat_trans = np.zeros(lat_data.shape) * np.nan
 
     lon_trans[tmp < 1e-7] = 0.0
-    lat_trans[tmp < 1e-7] = _sign(np.pi / 2, sin_o[tmp < 1e-7])
+    lat_trans[tmp < 1e-7] = np.abs(np.pi / 2) * np.sign(sin_o[tmp < 1e-7])
 
     lon_trans[tmp >= 1e-7] = lon_p + np.arctan2(
         -np.cos(lat_t[tmp >= 1e-7]) * np.sin(lon_data[tmp >= 1e-7]),
@@ -99,39 +106,3 @@ def direct_transform(
         lat_transform = lat_trans
 
     return lon_transform, lat_transform
-
-
-def _sign(input, pn):
-    """
-    Use:
-    output = sign(input, pn)
-
-    Takes the sign of pn (positive or negative) and assigns it to value.
-
-    Args:
-        input (in): value to be assigned a sign
-        pn (in): value whose sign is assigned to input
-    Returns:
-        output (out): value with assigned sign based on pn
-    """
-    if isinstance(input, float) and isinstance(pn, float):
-        output = np.nan
-
-        if pn >= 0:
-            output = np.abs(input)
-        else:
-            output = -np.abs(input)
-
-    elif isinstance(input, np.ndarray):
-        tmp = np.abs(input)
-        output = np.zeros(input.shape) * np.nan
-        output[pn >= 0] = tmp[pn >= 0]
-        output[pn < 0] = -tmp[pn < 0]
-
-    elif isinstance(pn, np.ndarray) and isinstance(input, float):
-        tmp = np.abs(input)
-        output = np.zeros(pn.shape) * np.nan
-        output[pn >= 0] = tmp
-        output[pn < 0] = -tmp
-
-    return output

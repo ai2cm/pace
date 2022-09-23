@@ -27,10 +27,15 @@ from pace.util.communicator import CubedSphereCommunicator
 
 from . import diagnostics
 from .comm import CreatesCommSelector
-from .gridconfig import GridConfig
+from .grid import GridInitializerSelector
 from .initialization import InitializerSelector
 from .performance import PerformanceConfig
 
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +81,7 @@ class DriverConfig:
 
     stencil_config: pace.dsl.StencilConfig
     initialization: InitializerSelector
+    grid_config: GridInitializerSelector
     nx_tile: int
     nz: int
     layout: Tuple[int, int]
@@ -95,7 +101,6 @@ class DriverConfig:
     physics_config: pace.physics.PhysicsConfig = dataclasses.field(
         default_factory=pace.physics.PhysicsConfig
     )
-    grid_config: GridConfig = dataclasses.field(default_factory=GridConfig)
 
     days: int = 0
     hours: int = 0
@@ -179,6 +184,7 @@ class DriverConfig:
         kwargs["initialization"] = InitializerSelector.from_dict(
             kwargs["initialization"]
         )
+        kwargs["grid_config"] = GridInitializerSelector.from_dict(kwargs["grid_config"])
 
         if (
             isinstance(kwargs["stencil_config"], dict)
@@ -287,9 +293,21 @@ class Driver:
                 communicator=communicator,
                 stencil_compare_comm=stencil_compare_comm,
             )
+            (
+                damping_coefficients,
+                driver_grid_data,
+                grid_data,
+            ) = self.config.grid_config.get_grid(
+                quantity_factory=self.quantity_factory,
+                communicator=communicator,
+            )
 
             self.state = self.config.initialization.get_driver_state(
-                quantity_factory=self.quantity_factory, communicator=communicator
+                quantity_factory=self.quantity_factory,
+                communicator=communicator,
+                damping_coefficients=damping_coefficients,
+                driver_grid_data=driver_grid_data,
+                grid_data=grid_data,
             )
 
             self._start_time = self.config.initialization.start_time

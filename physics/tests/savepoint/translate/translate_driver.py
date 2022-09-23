@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pace.dsl
 import pace.util
 from pace.driver.run import Driver, DriverConfig
@@ -21,6 +23,10 @@ class TranslateDriver(TranslateFVDynamics):
         self.namelist: Namelist = namelist
         self.stencil_factory = stencil_factory
         self.stencil_config = self.stencil_factory.config
+
+        # TODO: use threshold calibration to set this properly
+        # increase this for circleci tests
+        self.max_error = 3e-5
 
     def compute_parallel(self, inputs, communicator):
         dycore_state = self.state_from_inputs(inputs)
@@ -47,14 +53,13 @@ class TranslateDriver(TranslateFVDynamics):
         config_info = {
             "stencil_config": self.stencil_config,
             "initialization": {
-                "type": "predefined",
+                "type": "restart",
                 "config": {
-                    "dycore_state": dycore_state,
-                    "grid_data": self.grid.grid_data,
-                    "damping_coefficients": self.grid.damping_coefficients,
-                    "driver_grid_data": self.grid.driver_grid_data,
-                    "physics_state": physics_state,
-                    "tendency_state": tendency_state,
+                    "path": "/home/ajdas/pace/restart_data/v1.0",
+                    "start_time": datetime.strptime(
+                        "2016-08-11 00:00:00", "%Y-%m-%d %H:%M:%S"
+                    ),
+                    "fortran_data": True,
                 },
             },
             "dt_atmos": self.namelist.dt_atmos,
@@ -75,6 +80,4 @@ class TranslateDriver(TranslateFVDynamics):
         self.dycore = driver.dycore
 
         outputs = self.outputs_from_state(driver.state.dycore_state)
-        for name, value in outputs.items():
-            outputs[name] = self.subset_output(name, value)
         return outputs
